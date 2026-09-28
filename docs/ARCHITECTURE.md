@@ -67,6 +67,33 @@ The envelope is a **structured observation**. It states retrieval provenance
 and never claims truth. The ECS history, the pipeline and inference
 (`AddressProposal`) can all consume it.
 
+### Grid81 representation (`elpis.structure.grid81`)
+
+Grid81 is the bounded 9 × 9 structural representation. Everything in this
+package is read-only with respect to canonical state.
+
+```text
+source rows -> typed projection (source identity + transition, expansion
+               locus, quiescence and rationale views, each with a D4 orbit
+               digest)
+            -> join (explicit, caller-pinned row count; all five views must
+               cover exactly the same rows or nothing is joined)
+            -> structural groups (per row: five group evidence records, five
+               proposals, one ordering, conflict evidence, row index)
+```
+
+* `semantics` defines the D4 dihedral actions on the 81 cells, pair orbits
+  and passive structural contracts.
+* `typed` and `groups` each keep their own D4 table and canonical-JSON helper.
+  Persisted orbit identities are bound to each, so they are not merged; a
+  test proves the three D4 tables are the same group.
+* `canonical` is the fail-closed reader of published canonical state. It
+  reads HEAD first and verifies every hash. It rejects symlinks and
+  unexpected files. It holds a shared `flock` on the `Canonical` directory
+  inode for the whole multi-file read. `load_grid81_runtime_state` reduces a
+  verified state to its runtime projection. A rejected read yields no object.
+  The supplied project root is only data: no code is imported from it.
+
 ## Substrate: resources and residency (`elpis.substrate`, `native/substrate`)
 
 The substrate manages bytes, descriptors, residency and native code. It does
@@ -201,3 +228,100 @@ identity depend on them: `ecs.state_root.v3`, `ecs.event.v1`,
 scheduler protocol strings, and every `elpis.ecs.r0.*` /
 `elpis.ecs.structural_r0.*` domain. Beta *phase* names such as M1A were
 removed from the code and docs everywhere else.
+
+## Pipeline: from structural proposal to one canonical publication (`elpis.pipeline`)
+
+The pipeline is the only path that changes canonical Grid81 state. Each stage
+is a separate authority boundary and consumes only the typed output of the
+stage before it:
+
+```text
+structural groups (structure)
+-> adjudication      deterministic policy over each row's five proposals ->
+                     dispositions, abstention, adjudication record, inert
+                     capability review request
+-> capability        evaluation input -> authority decision -> one granted,
+                     unconsumed structural-influence capability
+-> consumption       capability consumed once -> inert structural-influence
+                     artifact + receipt + lifecycle transition
+-> application       17 guards; artifact applied to shadow capability state;
+                     artifact-bound durable SQLite application ledger (v2)
+-> promotion         read-only: source chain, 19 gates, advisory decision,
+                     non-executable plan
+-> canonical.authority  explicit operator approval digest -> one-use
+                        promotion capability bound to the live source state
+-> canonical.candidate  isolated immediate-successor candidate tree
+-> canonical.publisher  atomic publication
+```
+
+Proposals are never authority. A grant is inert until it is consumed. An
+application changes only shadow state. The plan cannot execute. The
+publisher accepts only the exact capability object: bare digests and a
+different lock path are both refused.
+
+### Canonical publication protocol
+
+The lock domain is the existing `Canonical` directory inode of the resolved
+project root. Writers take `LOCK_EX` and readers take `LOCK_SH`. No lock file
+is ever created. Under the exclusive lock the publisher re-reads everything
+mutable: live canonical digest, generation and history, promotion bindings,
+ledger head, reservation and recovery record. It then walks this state
+machine:
+
+```text
+NO_RESERVATION -> PREPARED (fsynced recovery record binds the exact receipt,
+                  candidate tree digest and ledger identity)
+-> RESERVED_NOT_VISIBLE (durable publication-ledger entry; expected head is
+                  checked inside the SQLite write transaction)
+-> renameat2(RENAME_EXCHANGE) of Canonical/Grid81 + parent fsync
+-> VISIBLE_UNVERIFIED -> verified by the production reader -> VISIBLE_VERIFIED
+-> old stage cleanup -> CLOSED
+```
+
+* **Exact retries are idempotent.** A retry that finds the new state already
+  visible never exchanges again. It returns `ALREADY_COMMITTED` with the
+  original receipt.
+* **Conflicts fail closed.** A same-source retry with a different object, a
+  stale source, a future generation, a different ledger database or a
+  malformed recovery record is rejected.
+* **There is no rollback.** A verification error keeps the new state and the
+  recovery material.
+
+After PREPARED, only the exact object can finish. The protocol has no timeout
+and no reservation cancellation.
+
+Trust boundary: this is Linux only, with local-filesystem `flock`,
+`renameat2` and directory `fsync`. SQLite needs working locks and FULL sync.
+Cooperating writers are assumed. A same-user attacker with write access to
+the parent directory is out of scope. Process-death tests are not power-cut
+tests.
+
+### Ledgers
+
+The v1 durable ledger is the publication ledger, and the publisher requires
+it. The v2 ledger (`elpis.grid81.durable-application-ledger.v2`) is the
+artifact-bound application ledger. They are distinct persisted identities.
+Both verify their chains relative to trusted database/head authority. They
+are not signatures.
+
+### Incomplete interfaces
+
+* **Promotion gates need an evidence writer.** Gate evaluation still reads
+  the historical phase-evidence directory layout. Application identity can be
+  bound in memory (`bind_g53c_application_identity`), but no in-repo stage
+  writes the gate evidence yet.
+* **The historical markdown disposition is gone.** Human-readable reports
+  never supply a phase disposition. The donor did this despite its own test,
+  and the migration fixed it, so phase disposition is always unestablished.
+* **The only canonical state is historical.** The one canonical generation is
+  a historical test fixture, and no in-repo producer creates a genesis state.
+
+### Protocol identifiers
+
+Schema and domain strings keep their historical spelling because persisted
+digests depend on them. Examples: `capability-review-request.v1`,
+`g5.structural-group-proposal.v1`, `g52a-reason-taxonomy.v1`,
+`elpis.grid81.canonical-generation.v2`, the promotion phase ids
+`G5.3B.1`/`G5.3C`/`G5.3D`, and `source_gate` values inside digested records.
+Phase names were removed from module names, docstrings and comments.
+

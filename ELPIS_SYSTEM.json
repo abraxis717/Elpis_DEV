@@ -110,7 +110,7 @@
     {
       "id": "structure",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "Structural memory and representation: HACF content-addressed cascade/graph identity, chunked content-addressed corpus, FMS-resident exact vector index, context graph and deterministic hybrid retrieval; the native semantic core (typed hypergraph, snapshots and query overlays, context-deficit control, retrieval materialization, evidence typing/admission, bounded semantic views, semantic topology IR, Grid81 structural packets, structural observations); the Python retrieval stage producing validated evidence envelopes; the bounded Grid81 representation and canonical substrate reader.",
+      "purpose": "Structural memory and representation: HACF content-addressed cascade/graph identity, chunked content-addressed corpus, FMS-resident exact vector index, context graph and deterministic hybrid retrieval; the native semantic core (typed hypergraph, snapshots and query overlays, context-deficit control, retrieval materialization, evidence typing/admission, bounded semantic views, semantic topology IR, Grid81 structural packets, structural observations); the Python retrieval stage producing validated evidence envelopes; the bounded Grid81 representation (D4 structural semantics, typed projection with orbit identity, structural-group evidence/proposals/orderings/conflicts) and the read-only canonical Grid81 reader with its runtime reduction.",
       "python_package": "elpis.structure",
       "implementation_roots": [
         "src/elpis/structure",
@@ -141,7 +141,9 @@
         "elpis.retrieval_bundle.v1",
         "elpis.retrieval_contract.v1",
         "elpis.retrieval_budget.v1",
-        "elpis.semantic.*.v1/v2 identity domains (including elpis.semantic.r3_bridge.v1, r3_epoch.v1, r3_query_plan.v1 and grid81.sudoku_template.v1)"
+        "elpis.semantic.*.v1/v2 identity domains (including elpis.semantic.r3_bridge.v1, r3_epoch.v1, r3_query_plan.v1 and grid81.sudoku_template.v1)",
+        "Grid81 structural identity domains: elpis.d4_pair_payload.v1, elpis.grid81.{source,row,d4_transform_registry,transition_view,expansion_view,quiescence_view,rationale_view,transition_orbit,expansion_orbit,quiescence_orbit,rationale_orbit}.v1, grid81.structural.v1, g4.0a.spec.v1, g4.0b.1.v1, g5.structural-group-evidence.v1, g5.structural-group-proposal.v1, g5.proposal-ordering.v1, g5.structural-conflict-evidence.v1",
+        "Record field values source_gate and source_split inside digested structural records"
       ],
       "external_dependencies": [
         "SQLite 3 (HACF corpus)",
@@ -154,17 +156,48 @@
       "incomplete_interfaces": [
         "The retrieval bridge library is loaded by explicit path but is not yet digest-pinned through elpis.substrate authority.",
         "Native semantic ABI records keep beta stage prefixes (P2..P8) in struct field names; renaming them is deferred to the next native ABI version.",
-        "The retrieval bridge builds no context graph; hybrid retrieval through it is lexical + dense only."
+        "The retrieval bridge builds no context graph; hybrid retrieval through it is lexical + dense only.",
+        "Three D4 conventions coexist (structural semantics, typed projection, structural groups); each is bound into persisted orbit identities, so they are proven set-equivalent by test rather than unified.",
+        "Structural-group and typed-projection packages each keep their own canonical-JSON helper; the encodings are digest-bound and are not merged."
       ]
     },
     {
       "id": "pipeline",
-      "status": "PLANNED",
+      "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
+      "purpose": "The canonical Grid81 writer pipeline, one authority boundary per stage: deterministic structural adjudication -> capability authority decision and one granted-unconsumed structural-influence capability -> capability consumption into an inert artifact -> application against shadow capability state with a durable SQLite application ledger -> read-only advisory promotion plan -> promotion authority (explicit operator approval, one-use capability) -> isolated successor candidate -> atomic publication (durable publication ledger reservation, renameat2 exchange, post-commit verification through the canonical reader).",
       "python_package": "elpis.pipeline",
-      "implementation_roots": [],
-      "test_roots": [],
+      "implementation_roots": [
+        "src/elpis/pipeline"
+      ],
+      "test_roots": [
+        "tests/pipeline"
+      ],
       "native_targets": [],
-      "depends_on": []
+      "depends_on": [
+        "structure"
+      ],
+      "mutation_authority": "Only elpis.pipeline.canonical.publisher changes canonical Grid81 state, and only with the exact one-use promotion capability object issued by elpis.pipeline.canonical.authority against an explicit operator approval digest. Adjudication, capability evaluation and promotion planning are read-only; consumption and application write only caller-owned shadow state and ledgers.",
+      "runtime_participation": "The runtime composition may drive the stages in process; nothing runs implicitly, and each stage consumes only the previous stage's typed output.",
+      "security_boundary": "Fail closed at every stage: proposals and model output are never authority; the promotion plan is advisory and non-executable; the one-use promotion capability binds the source canonical digest and generation it was issued against, and the publisher re-reads the canonical root under an exclusive flock on its Canonical parent and refuses any other state, symlinked layout, or candidate inside the root; publication reserves a durable ledger entry, exchanges atomically with renameat2(RENAME_EXCHANGE) and verifies through the production reader; replay is idempotent and a consumed capability cannot be reused. Linux only.",
+      "protocol_identifiers_retained": [
+        "Capability-chain schema identifiers: capability-review-request.v1, capability-authority-{evaluation-input,decision,policy}.v1, capability-{abstention,lifecycle,limit,scope,revocation-policy}.v1, capability-consumption-{policy,receipt,transaction-input,transaction-result}.v1, consumption-rejection-record.v1, application-receipt.v1/v2, promotion-source-chain.v1, g5.1b.v1, g52a-reason-taxonomy.v1, g53a-authority-boundary.v1, g5.structural-influence-capability-nonce.v1",
+        "Canonical writer domains: elpis.grid81.{canonical-generation,canonical-head,canonical-transaction-manifest,canonical-consumption-receipt,source-nonmutation-audit,promotion-authority-audit,promotion-plan-data-check,promotion-plan-observation}.v2, elpis.grid81.{atomic-canonical-promotion-capability,atomic-promotion-capability,atomic-promotion-capability-id,atomic-publication-receipt,canonical-transaction-reservation,canonical-tree,capability-consumption-binding,promotion-authority-binding,promotion-authority-policy,publication-recovery,structural-artifact-binding}.v1",
+        "Ledger schemas: elpis.grid81.durable-application-ledger.v2 with elpis.grid81.application-ledger.{entry,genesis}.v2, and the v1 durable ledger used for publication",
+        "Promotion phase-evidence identifiers: phase ids G5.3B.1/G5.3C/G5.3D, SourceChain fields g53b1/g53c/g53d, evidence file names and G53*-prefixed rejection codes (all bound into promotion-source-chain digests)"
+      ],
+      "external_dependencies": [
+        "SQLite 3 (Python sqlite3)",
+        "Linux renameat2 via libc"
+      ],
+      "model_dependency": "NONE",
+      "uses_numpy": false,
+      "maturity": "Mechanics qualified: per-stage suites (adjudication, capability authority, consumption, application incl. crash-recovery and cross-process CAS contention, promotion gates and recomputation, promotion authority, candidate construction, publisher protocol incl. concurrent readers, process contention and root aliasing) plus six stage-to-stage integration tests and the full writer chain from a historical canonical fixture.",
+      "incomplete_interfaces": [
+        "Promotion gate evaluation reads the historical phase-evidence directory layout (consumption/application/application-evidence reports); no in-repo stage emits that layout yet, so an end-to-end promotion from live stages can bind application identity in memory but cannot pass the gates without a phase-evidence writer.",
+        "Two durable ledger schemas coexist: v1 (publication ledger, required by the publisher) and v2 (artifact-bound application ledger); they are distinct persisted identities and are not merged.",
+        "Adjudication consumes structural groups for a caller-pinned row count; there is no streaming or incremental adjudication.",
+        "Canonical Grid81 state has one historical fixture generation; no in-repo producer creates a genesis canonical state."
+      ]
     },
     {
       "id": "evolution",

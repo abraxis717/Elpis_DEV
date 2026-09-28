@@ -735,17 +735,17 @@
     {
       "donor_repository": "https://github.com/abraxis717/Elpis",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
-      "donor_path": "components/Grid81*/verify_*.py, g5*_execute.py, g5*_mutation_harness.py, */upstream.py, */source_join.py, */verifier.py",
+      "donor_path": "components/Grid81*/verify_*.py, g5*_execute.py, g5*_mutation_harness.py, */upstream.py, */verifier.py, capability authority source_join.py, application mutation_harness.py",
       "destination": null,
       "disposition": "DROPPED_NO_CONSUMER",
       "migration_type": "NOT_MIGRATED",
       "semantic_code_changed": false,
-      "reason": "Phase qualification drivers that re-verify external `reports/G5_*` evidence trees absent from the donor repository; 150+ donor tests depending on them fail in the donor checkout."
+      "reason": "Phase qualification drivers and mutation harnesses that re-verify external `reports/G5_*` evidence trees absent from the donor repository; 150+ donor tests depending on them fail in the donor checkout. The structural-group and adjudication source joins survive in in-memory form."
     },
     {
       "donor_repository": "https://github.com/abraxis717/Elpis",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
-      "donor_path": "components/Grid81DeterministicCapabilityApplicationExecutor/.../reports/G53C_MUTATION_RECORDS.jsonl",
+      "donor_path": "components/Grid81DeterministicCapabilityApplicationExecutor/src/.../reports/G53C_MUTATION_RECORDS.jsonl",
       "destination": null,
       "disposition": "DROPPED_NO_CONSUMER",
       "migration_type": "NOT_MIGRATED",
@@ -1101,6 +1101,286 @@
       "migration_type": "RELOCATION",
       "semantic_code_changed": false,
       "reason": "Retrieval suites ported; receipt and canonical-root tests of the retired R0 composition dropped; an end-to-end HACF -> bundle -> validation -> evidence test added."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81StructuralSemantics/src/elpis_grid81_semantics/",
+      "destination": "src/elpis/structure/grid81/semantics",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "D4 dihedral actions over the 81-cell grid, pair orbits, quarantine identity and passive structural contracts. Phase labels removed from docstrings; identity domains unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81TypedProjectionCompiler/src/elpis_grid81_typed/",
+      "destination": "src/elpis/structure/grid81/typed",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": true,
+      "reason": "Typed projection (transition, expansion locus, quiescence, rationale views with D4 orbit identity). New in-memory entry point compile_inventories(rows); the on-disk train/validation/test corpus driver (load_corpus/compile_corpus) is dropped as a dataset driver with no consumer. Missing typing import fixed."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81StructuralGroupProjectionCompiler/src/elpis_grid81_groups/ (except upstream.py, verifier.py)",
+      "destination": "src/elpis/structure/grid81/groups",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": true,
+      "reason": "Structural-group evidence, proposals, orderings and conflicts. New in-memory compile_structural_groups(joined_rows, manifest_sha); the join takes an explicit expected_row_count instead of the hard-coded 8,192-row corpus size and never returns a partial join; the file-writing driver is dropped."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81/canonical_reader.py",
+      "destination": "src/elpis/structure/grid81/canonical.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Read-only, fail-closed canonical Grid81 reader (HEAD-first, hash-verified, symlink-rejecting, shared namespace flock)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/elpis-header/src/elpis_header/observer/grid81_reducer.py",
+      "destination": "src/elpis/structure/grid81/canonical.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "REWRITE",
+      "semantic_code_changed": true,
+      "reason": "Runtime reduction of verified canonical state merged into the canonical reader module. The donor pushed the caller-supplied project root onto sys.path and imported the reader from it; the reduction now calls the in-package reader directly (the root is data only). Runtime projection digest formula unchanged and pinned against the donor."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/elpis-header/src/elpis_header/observer/grid81_materialized_reducer.py",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "MECHANICALLY BROKEN in donor: imports the nonexistent Grid81.materialized_state_reader module; no consumer."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/elpis-header/src/elpis_header/observer/__init__.py, README.md",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Observer package shell; its only live member (the Grid81 reducer) is merged into elpis.structure.grid81.canonical."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81/state/Canonical/Grid81/",
+      "destination": "tests/fixtures/grid81/Canonical/Grid81",
+      "disposition": "TEST_FIXTURE_ONLY",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Historical canonical generation 000001 (HEAD, generation, manifest and lifecycle sidecars), byte-identical; used by reader, adversarial and writer-chain tests. Not live runtime state."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81/evidence/, Grid81/COMPONENT_MANIFEST.json, Grid81/README.md",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Phase evidence of the historical canonical generation; the state itself is kept as a test fixture."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81/test_g53ig1_adversarial_runtime_consumer.py",
+      "destination": "tests/structure/grid81/test_canonical_reader.py",
+      "disposition": "MIGRATED",
+      "migration_type": "REWRITE_AS_TEST",
+      "semantic_code_changed": false,
+      "reason": "The 28 adversarial reader scenarios as one parametrized test over a temporary copy of the fixture (the donor pointed at an external canonical root), plus pinned fixture digests and a no-import-from-root check."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81StructuralSemantics/tests/, Grid81TypedProjectionCompiler/tests/",
+      "destination": "tests/structure/grid81/semantics + tests/structure/grid81/typed",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Semantics and typed-projection suites; the consumer-manifest test is dropped with the per-component manifests."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81StructuralGroupProjectionCompiler/tests/ (derivation, orbits, ordering, proposals, conflicts)",
+      "destination": "tests/structure/grid81/groups + tests/structure/grid81/_rows.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Structural-group suites; a fail-closed join test and a synthetic-row helper running the real typed -> groups stages are added."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81StructuralGroupProjectionCompiler/tests/test_boundary.py",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Scanned a nonexistent external package path and passed vacuously; import and identifier boundaries are enforced repository-wide by tests/boundary."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicStructuralAdjudicator/src/elpis_grid81_adjudication/ (except upstream.py, verifier.py, import_boundary.py)",
+      "destination": "src/elpis/pipeline/adjudication",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": true,
+      "reason": "Deterministic adjudication (envelope, policy, dispositions, abstention, semantic identity, review requests). The source join now fails closed on proposals without evidence or rows (the donor raised KeyError or dropped them silently) and verification takes an explicit expected_row_count; verifier-only error classes and report writers are dropped."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicCapabilityAuthorityEvaluator/src/elpis_grid81_capability_authority/ (except upstream.py, verifier.py, source_join.py)",
+      "destination": "src/elpis/pipeline/capability",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Capability authority evaluation (evaluation input, decision, capability, lifecycle, limits, nonce, scope, revocation policy, semantic identity). compile_one no longer takes an unused reports directory."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicCapabilityConsumptionCompiler/src/elpis_grid81_consumption_compiler/",
+      "destination": "src/elpis/pipeline/consumption",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Capability consumption into an inert structural-influence artifact with receipt, lifecycle transition and replay."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicCapabilityApplicationExecutor/src/elpis_grid81_application_executor/ (except fixture.py, mutation_harness.py, reports/)",
+      "destination": "src/elpis/pipeline/application",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Application against shadow capability state; in-memory ledger, v1 durable ledger (publication) and v2 artifact-bound durable application ledger."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicCapabilityApplicationExecutor/src/elpis_grid81_application_executor/fixture.py",
+      "destination": "tests/pipeline/application/_fixture.py",
+      "disposition": "TEST_FIXTURE_ONLY",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Deterministic shadow-fixture generator; only tests consume it."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicCanonicalPromotionPlanner/src/elpis_grid81_promotion_planner/ (except cli.py, verifier.py, adversarial_matrix.py, contract.py)",
+      "destination": "src/elpis/pipeline/promotion",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": true,
+      "reason": "Advisory, non-executable promotion planning: source binding, 19 gates, decision, plan. Authority-audit generation moved to audit.py and the plan non-executability check to plan.py. FAIL-CLOSED FIX: the donor derived phase disposition from human-edited markdown reports (its own test of this was red at the basis commit); the disposition is now always unestablished. The CLI and report verifier are dropped."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicCanonicalPromotionPlanner/fixtures/source_config.json",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Pointed at external report directories under an environment root; tests now build the source chain from temporary directories."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicCanonicalPromotionAuthority/src/elpis_grid81_promotion_authority/__init__.py",
+      "destination": "src/elpis/pipeline/canonical/authority.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "One-use promotion capability issued against an explicit operator approval digest."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicCanonicalCandidateConstructor/src/elpis_grid81_candidate_constructor/__init__.py",
+      "destination": "src/elpis/pipeline/canonical/candidate.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Isolated immediate-successor candidate tree construction."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicCanonicalPublisher/src/elpis_grid81_canonical_publisher/__init__.py",
+      "destination": "src/elpis/pipeline/canonical/publisher.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Atomic canonical publication: exclusive namespace flock, durable ledger reservation, renameat2 exchange, post-commit verification, crash recovery."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicCanonicalPublisher/R1_PROTOCOL.md, */README.md",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Per-component protocol notes; the publication protocol is summarized in docs/ARCHITECTURE.md."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81Deterministic*/tests/ (adjudication, capability, consumption, application, promotion, authority, candidate, publisher)",
+      "destination": "tests/pipeline",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Stage suites. Capability and adjudication tests that read the absent report inventory now use review requests produced by the real typed -> groups -> adjudication stages over synthetic rows (tests/pipeline/_chain.py). Promotion gate tests use temporary source chains; a child-process ledger test imports the same package root as its parent; test_protocol_r1.py renamed test_protocol.py."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81Deterministic*/tests/ (report-bound: test_mutations, test_mutation_exactness, test_mutation_verifier, test_qualification, test_upstream*, test_verifier_qualification, test_import_boundary, test_source_binding, test_adversarial, test_cli, reproduce_r0.py)",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Read the absent external reports/G5_* trees or tested dropped drivers; import boundaries are enforced repository-wide by tests/boundary."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_grid81_{authority_consumption,consumption_application,promotion_candidate,candidate_publication}_runtime_integration.py, test_grid81_application_promotion_source_identity.py, test_grid81_canonical_writer_chain_r0.py",
+      "destination": "tests/pipeline",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Six stage-to-stage integration tests and the full canonical writer chain, now over the in-repo canonical fixture."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_grid81_writer_chain_registry_coverage.py, test_grid81_writer_successor_assembly_verifier_r0.py, test_grid81_writer_successor_component_manifests_r0.py",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Verified the retired successor registries and per-component manifests."
     }
   ]
 }

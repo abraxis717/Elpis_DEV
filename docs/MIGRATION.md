@@ -108,14 +108,33 @@ These are distinct from architectural rejections:
   suite and several phase verifiers read `$ELPIS_CANON_ROOT/.../reports/G*`
   evidence that is not in the donor repository. They fail in a donor checkout
   and were never run by donor CI.
+* `elpis_header/observer/grid81_materialized_reducer.py` imports a
+  nonexistent `Grid81.materialized_state_reader` module.
+* Several Grid81 boundary tests passed vacuously: they checked that
+  forbidden files do not exist under a nonexistent external path.
+* The promotion planner derived phase disposition from human-edited
+  markdown reports. Its own test forbidding this was red at the basis
+  commit. The migration fixed it (fail closed) instead of carrying it over.
+* The Grid81 runtime reducer put a caller-supplied project root on
+  `sys.path` and imported the canonical reader from it. The migrated
+  reduction calls the in-package reader instead.
+* Structural-group and adjudication joins hard-coded the historical corpus
+  size (8,192 rows and 40,960 proposals). Callers now pin the count
+  explicitly.
 
 ### Duplicated mechanisms
 
 * Three canonical-JSON digest conventions (ECS `canonical`, cross-component
   `canonical_identity`, per-component `canonical.py` files). Persisted digests
   depend on each, so each is preserved where its identities are persisted.
-* Four "one-use authority" implementations: P0 lineage receipts, Grid81
+* Four "one-use authority" implementations: P0 lineage receipts, the Grid81
   capability lifecycle, the in-memory `ApplicationLedger`, and the durable
-  SQLite ledger. The durable ledger and capability lifecycle survive.
+  SQLite ledgers. P0 lineage receipts are dropped. The capability lifecycle,
+  the in-memory ledger and both durable ledgers survive: v1 is the
+  publication ledger and v2 the artifact-bound application ledger. Their
+  persisted identities are distinct.
+* Three D4 tables (structural semantics, typed projection, structural
+  groups). Persisted orbit identities are bound to each, so all three survive,
+  and a test proves they are the same group.
 * Two HACF Python bridges: the R1 retrieval wrapper and the TRM checkpoint
   bridge. The retrieval wrapper survives.
