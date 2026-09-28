@@ -14,15 +14,14 @@ requires-python = ">=3.11,<3.13"
 license = "Apache-2.0 AND MIT"
 license-files = ["LICENSE", "NOTICE", "LICENSES/*"]
 classifiers = ["Private :: Do Not Upload"]
-# Base installation never downloads model weights and never requires Torch.
-# NumPy is required by the inference subsystem only; the boundary suite proves
-# that importing ecs/structure/pipeline/evolution does not import it.
-dependencies = [
-  "numpy>=1.26,<2",
-]
+# Base installation is model- and numerics-neutral. NumPy is an explicit
+# inference extra; the test extra includes it because the full suite exercises
+# inference.
+dependencies = []
 
 [project.optional-dependencies]
-test = ["pytest>=8"]
+inference = ["numpy>=1.26,<2"]
+test = ["pytest>=8", "numpy>=1.26,<2"]
 
 [project.urls]
 Repository = "https://github.com/abraxis717/Elpis_DEV"

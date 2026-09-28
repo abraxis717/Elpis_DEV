@@ -309,7 +309,7 @@
       ],
       "external_dependencies": [],
       "model_dependency": "NONE_REQUIRED. Inference runs only on caller-supplied targets; the integration suite uses the synthetic DSV4 fixture.",
-      "uses_numpy": true,
+      "uses_numpy": false,
       "maturity": "Integration qualified: five end-to-end suites over real native libraries and a real HACF corpus (ingress, structural memory, canonical writer, evolution, inference with the DSV4 fixture), including record idempotence, replay on reopen, tamper refusal, stale-history rejection and non-recording of refused operations.",
       "incomplete_interfaces": [
         "Ingress proposals are recorded but the query-local overlay itself is not persisted; recording carries its identity only.",

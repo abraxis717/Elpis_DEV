@@ -30,9 +30,9 @@ jobs:
           import importlib.metadata as md, json
           installed = {d.metadata["Name"].lower() for d in md.distributions()}
           policy = json.load(open("ELPIS_SYSTEM.json"))["boundary_policy"]["forbidden_python_imports"]
-          forbidden = {n.lower() for n in policy} | {"torch", "transformers", "huggingface-hub", "safetensors"}
+          forbidden = {n.lower() for n in policy} | {"torch", "transformers", "huggingface-hub", "safetensors", "numpy"}
           assert not installed & forbidden, installed & forbidden
-          import elpis, sys
+          import elpis, elpis.runtime, sys
           assert "torch" not in sys.modules and "numpy" not in sys.modules
           print("base install:", sorted(installed))
           EOF

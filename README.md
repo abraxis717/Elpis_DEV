@@ -41,7 +41,9 @@ python -m pip install ".[test]"
 ELPIS_NATIVE_BUILD=$PWD/build ELPIS_REQUIRE_NATIVE=1 python -m pytest
 ```
 
-Base installation depends only on NumPy. It never downloads model weights,
-and importing `elpis` needs neither Torch nor NumPy. The distribution is
+Base installation has no mandatory Python runtime dependencies and never
+downloads model weights. NumPy is installed only by the `inference` extra (and
+the `test` extra, because the full suite exercises inference). Importing
+`elpis` or `elpis.runtime` needs neither Torch nor NumPy. The distribution is
 `elpis-dev`, marked `Private :: Do Not Upload`. No release, tag or PyPI
 publication exists.

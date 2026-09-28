@@ -29,10 +29,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from elpis.ecs.projection.contracts import ContextProjection, ProjectionRequest
 from elpis.evolution.path_gate import EvolutionPathGate, GateExecuted, GateRejected
-from elpis.inference.transaction import DecodeResult, InferenceEngine
 from elpis.pipeline.canonical.publisher import CanonicalPublicationReceipt, publish_candidate
 from elpis.pipeline.ingress import QueryIngress, QueryIngressResult
 from elpis.structure.retrieval.budget import RetrievalBudget
@@ -40,6 +40,9 @@ from elpis.structure.retrieval.contracts import RetrievalBundle
 from elpis.structure.retrieval.validation import validate_bundle
 
 from .history import HistoryError, ReceiptHistory, ReceiptRecord, RecordedReceipt
+
+if TYPE_CHECKING:
+    from elpis.inference.transaction import DecodeResult, InferenceEngine
 
 __all__ = ("Runtime", "RuntimeConfig")
 
@@ -141,8 +144,10 @@ class Runtime:
         ))
 
     # -- inference: one decode transaction ---------------------------------------------
-    def decode(self, engine: InferenceEngine, state, request, *, expected_state: str,
-               prefetch_enabled: bool = False) -> tuple[DecodeResult, RecordedReceipt | None]:
+    def decode(self, engine: "InferenceEngine", state, request, *, expected_state: str,
+               prefetch_enabled: bool = False) -> tuple["DecodeResult", RecordedReceipt | None]:
+        from elpis.inference.transaction import InferenceEngine
+
         if type(engine) is not InferenceEngine:
             raise TypeError("decode takes an InferenceEngine")
         result = engine.execute(state, request, expected_state=expected_state,
