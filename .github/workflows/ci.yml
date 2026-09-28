@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Native build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake libsqlite3-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libsqlite3-dev libpcre2-dev
       - name: Native build (libraries loaded by Python)
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -49,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Native build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake clang libsqlite3-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake clang pkg-config libsqlite3-dev libpcre2-dev
       - name: Configure (warnings are errors)
         run: |
           if [ "${{ matrix.compiler }}" = clang ]; then export CC=clang CXX=clang++; fi

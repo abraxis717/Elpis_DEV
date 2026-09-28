@@ -1,0 +1,12 @@
+/* Exported surface of libelpis_ingress_bridge: the bridge, the streaming Regex
+ * ABI and the Regex -> HACF query-ingress result ABI. Everything else,
+ * including linked structure and substrate code, stays local. */
+{
+  global:
+    elpis_ingress_bridge_abi_version;
+    elpis_ingress_env_*;
+    elpis_streaming_regex_*;
+    elpis_regex_hacf_query_ingress_*;
+  local:
+    *;
+};

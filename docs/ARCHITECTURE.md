@@ -229,11 +229,52 @@ scheduler protocol strings, and every `elpis.ecs.r0.*` /
 `elpis.ecs.structural_r0.*` domain. Beta *phase* names such as M1A were
 removed from the code and docs everywhere else.
 
-## Pipeline: from structural proposal to one canonical publication (`elpis.pipeline`)
+## Pipeline: ingress and canonical publication (`elpis.pipeline`, `native/pipeline`)
 
-The pipeline is the only path that changes canonical Grid81 state. Each stage
-is a separate authority boundary and consumes only the typed output of the
-stage before it:
+The pipeline has two paths. **Ingress** turns bytes into zero-authority
+proposals. The **canonical writer path** is the only way canonical Grid81 state
+changes.
+
+### Bounded ingress (`native/pipeline/ingress`, `elpis.pipeline.ingress`)
+
+```text
+task bytes
+-> streaming Regex lexer (PCRE2; bounded interval-specification grammar:
+   comparisons, bounds, role bindings, coalescence relations and reducers)
+   -> lexical evidence + task candidates + composition, or fail-closed on
+      ambiguity
+-> HACF: lexical corpus search per evidence anchor + one-hop context graph
+   (read-only) -> context proposal (elpis.regex-hacf-context-proposal.r1,
+   self-digested, all four authority flags false)
+-> query-local proposal batch: every candidate materialized as an unadmitted
+   node and assertion in one semantic query overlay, or none
+```
+
+* **Bounded input.** The whole-input lexer admits input only up to its carry
+  profile (default 1024 bytes). Longer input is rejected before any evidence
+  exists, because the grammar has unbounded-span expressions and a rolling
+  window could retire a negation before the final disposition. The streaming
+  lexer accepts unbounded input with bounded memory. Its identity equals the
+  whole-input lexer's wherever both accept; matches longer than 4096 bytes use
+  the v2 evidence schema.
+* **Ambiguity fails closed.** Contradictory evidence is rejected with
+  `REJECTED_PRE_BATCH_AMBIGUITY`. No proposal set, segment, overlay or receipt
+  exists for it.
+* **Python binding.** Python loads one library, `libelpis_ingress_bridge`,
+  from an explicit path. A linker version script limits its exports to the
+  bridge, the lexer ABI and the query-ingress result ABI. The bridge opens
+  only an existing corpus: symlinked, relative or absent roots are refused,
+  and it never creates a corpus. The binding re-reads the authority flags and
+  refuses any result that claims authority.
+* **Parity.** At migration, the bounded composition identities were
+  byte-identical to the donor, and they are pinned in
+  `test_query_ingress_bounded`. An 18,000-case differential run matched the
+  donor lexer.
+
+### Canonical writer path
+
+Each stage is a separate authority boundary and consumes only the typed
+output of the stage before it:
 
 ```text
 structural groups (structure)
@@ -315,6 +356,11 @@ are not signatures.
   and the migration fixed it, so phase disposition is always unestablished.
 * **The only canonical state is historical.** The one canonical generation is
   a historical test fixture, and no in-repo producer creates a genesis state.
+* **The ingress library is not digest-pinned.** It is loaded by explicit
+  path only, not yet through substrate authority.
+* **Query-local overlays are transient.** Each one lives only in memory for
+  the duration of a call. It is not persisted into a semantic snapshot or
+  recorded in the ECS history.
 
 ### Protocol identifiers
 
@@ -323,5 +369,8 @@ digests depend on them. Examples: `capability-review-request.v1`,
 `g5.structural-group-proposal.v1`, `g52a-reason-taxonomy.v1`,
 `elpis.grid81.canonical-generation.v2`, the promotion phase ids
 `G5.3B.1`/`G5.3C`/`G5.3D`, and `source_gate` values inside digested records.
-Phase names were removed from module names, docstrings and comments.
+Ingress keeps its schemas (`elpis.regex-*`, `elpis.semantic.query_local_*`),
+the digest-bound component value `HACF_R3` inside the context proposal, and
+its C ABI symbol names. Phase names were removed from module names,
+docstrings and comments.
 

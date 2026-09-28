@@ -1,7 +1,10 @@
-"""Canonical pipeline: structural proposals to one atomic canonical publication.
+"""Pipeline: bounded ingress, and structural proposals to one canonical publication.
 
-Each stage is its own authority boundary and consumes only the previous
-stage's typed output:
+* ``ingress`` — bytes -> bounded Regex lexer -> read-only HACF retrieval ->
+  zero-authority context proposal -> atomic query-local proposal batch.
+
+The canonical writer path follows. Each stage is its own authority boundary
+and consumes only the previous stage's typed output:
 
 * ``adjudication`` — structural-group proposal sets -> adjudication records and
   inert capability review requests;

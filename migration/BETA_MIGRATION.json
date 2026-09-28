@@ -1381,6 +1381,146 @@
       "migration_type": "NOT_MIGRATED",
       "semantic_code_changed": false,
       "reason": "Verified the retired successor registries and per-component manifests."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/StreamingRegexIngress/src/native_regex_ingress.cpp, incremental_lexer.{h,cpp}; include/streaming_regex_ingress{,_v2}.h",
+      "destination": "native/pipeline/ingress/src/streaming_regex_ingress.cpp + native/pipeline/ingress/src/incremental_lexer.cpp + native/pipeline/ingress/include",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Streaming Regex lexer (bounded whole-input v1 ABI and streaming v2 ABI) becomes the static pipeline library elpis_regex_ingress; the source is renamed streaming_regex_ingress.cpp. The standalone CLI (main, file reader, bounded_file_staging.h) is removed, so ingress takes bytes and never opens paths; the shared object is replaced by the bridge. An 18,000-case differential run (v1 and v2, chunk and carry sweeps, invalid UTF-8) matched the donor library byte for byte."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/StreamingRegexIngress/src/bounded_file_staging.h + CLI entry point (elpis_native_regex_ingress)",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Standalone file-reading CLI with no consumer; ingress admits bytes only (explicit path access stays with the caller)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/StreamingRegexIngress/tests/test_b01_bounded_profile.cpp, test_v2_{stream,allocation,c_abi,memory}.cpp/.c",
+      "destination": "native/pipeline/ingress/tests",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Lexer suites renamed by function (test_regex_bounded_profile, test_regex_stream, test_regex_allocation, test_regex_c_abi, test_regex_memory); defect labels removed from comments and output."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/StreamingRegexIngress/tests/test_b01_cli_eof_gate.cpp",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Exercised the removed CLI file-staging state machine."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/StreamingRegexIngress/tests/test_v2_properties.py",
+      "destination": "tests/pipeline/ingress/test_regex_properties.py",
+      "disposition": "MIGRATED",
+      "migration_type": "REWRITE_AS_TEST",
+      "semantic_code_changed": false,
+      "reason": "Differential streaming-vs-bounded property suite ported to pytest over the Python binding (explicit library from the build tree)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/RegexHACFQueryIngress/src/regex_hacf_query_ingress.cpp, canonical_json.hpp; include/regex_hacf_query_ingress{,_v2}.h",
+      "destination": "native/pipeline/ingress/src/regex_hacf_query_ingress.cpp + native/pipeline/ingress/include",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Regex -> HACF read-only context proposal -> atomic query-local batch becomes the static pipeline library elpis_query_ingress, linked against the structure corpus, context graph and semantic core targets instead of recompiling their sources."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/RegexHACFQueryIngress/tests/test_b01_range_prepublication.cpp, test_v2_composition.cpp",
+      "destination": "native/pipeline/ingress/tests/test_query_ingress_bounded.cpp + native/pipeline/ingress/tests/test_query_ingress_composition.cpp",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Bounded prepublication and streaming/whole-input composition suites; the bounded test now also pins the positive and contradiction identities, byte-identical to the donor at the migration basis."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/QueryLocalProposalIngress/src/, include/",
+      "destination": "native/pipeline/ingress/src/query_local_proposal.c + native/pipeline/ingress/src/query_local_proposal_batch.c + native/pipeline/ingress/include",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Query-local proposal validation, materialization and atomic batch overlay; compiled into elpis_query_ingress (the donor never built it standalone)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/QueryLocalProposalIngress/tests/test_atomic_batch.c, fixture.h",
+      "destination": "native/pipeline/ingress/tests/test_atomic_batch.c + native/pipeline/ingress/tests/fixture.h",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Atomic batch suite; registered in the default build and passing (the donor build never registered it)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/QueryLocalProposalIngress/contracts/QUERY_LOCAL_PROPOSAL_{REGISTRY,REPRESENTATION_POLICY}_V1.json",
+      "destination": "native/pipeline/ingress/contracts",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Byte-identical preimages of the registry-contract and representation-policy digests compiled into the query ingress; a test proves the pinned constants equal their canonical digests."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/StreamingRegexIngress/contracts/, RegexHACFQueryIngress/contracts/COMPOSITION_BINDING_V1.json, BUILD_CONTRACT.json",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "File-hash qualification and parity bindings of the beta components; parity is now enforced by pinned identities in tests."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/{StreamingRegexIngress,RegexHACFQueryIngress,QueryLocalProposalIngress}/{README.md,V2_DESIGN.md,V2_QUALIFICATION.md,CMakeLists.txt}",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Per-component design and qualification notes and standalone builds; summarized in docs/ARCHITECTURE.md and replaced by native/pipeline/CMakeLists.txt."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_ingress_trio_coverage_contract.py, tools/verify_ingress_trio_coverage.py, manifests/INGRESS_TRIO_COVERAGE_R0.json",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Coverage manifest and verifier of the three beta ingress components."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis_reference/p0_validator_ingress.py, tests/test_p0_validator_ingress.py, tests/run_c2r4_p0_validator_ingress_e2e.py, tests/run_c2r6cb_trusted_ingress_e2e.py, tools/redteam_c2r6cb_ingress_authority.py",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "P0 validator ingress for artifacts of the retired learned path; unrelated to the bounded Regex ingress."
     }
   ]
 }

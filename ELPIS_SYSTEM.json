@@ -164,35 +164,46 @@
     {
       "id": "pipeline",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "The canonical Grid81 writer pipeline, one authority boundary per stage: deterministic structural adjudication -> capability authority decision and one granted-unconsumed structural-influence capability -> capability consumption into an inert artifact -> application against shadow capability state with a durable SQLite application ledger -> read-only advisory promotion plan -> promotion authority (explicit operator approval, one-use capability) -> isolated successor candidate -> atomic publication (durable publication ledger reservation, renameat2 exchange, post-commit verification through the canonical reader).",
+      "purpose": "Two paths. (1) Bounded ingress: a streaming Regex lexer over a bounded interval-specification grammar -> read-only HACF lexical retrieval and one-hop context graph -> a zero-authority context proposal -> an atomic query-local proposal batch published as a semantic query overlay; ambiguity rejects before any batch. (2) The canonical Grid81 writer pipeline, one authority boundary per stage: deterministic structural adjudication -> capability authority decision and one granted-unconsumed structural-influence capability -> capability consumption into an inert artifact -> application against shadow capability state with a durable SQLite application ledger -> read-only advisory promotion plan -> promotion authority (explicit operator approval, one-use capability) -> isolated successor candidate -> atomic publication (durable publication ledger reservation, renameat2 exchange, post-commit verification through the canonical reader).",
       "python_package": "elpis.pipeline",
       "implementation_roots": [
-        "src/elpis/pipeline"
+        "src/elpis/pipeline",
+        "native/pipeline"
       ],
       "test_roots": [
-        "tests/pipeline"
+        "tests/pipeline",
+        "native/pipeline/ingress/tests"
       ],
-      "native_targets": [],
+      "native_targets": [
+        "elpis_regex_ingress",
+        "elpis_query_ingress",
+        "elpis_ingress_bridge"
+      ],
       "depends_on": [
-        "structure"
+        "structure",
+        "substrate"
       ],
-      "mutation_authority": "Only elpis.pipeline.canonical.publisher changes canonical Grid81 state, and only with the exact one-use promotion capability object issued by elpis.pipeline.canonical.authority against an explicit operator approval digest. Adjudication, capability evaluation and promotion planning are read-only; consumption and application write only caller-owned shadow state and ledgers.",
-      "runtime_participation": "The runtime composition may drive the stages in process; nothing runs implicitly, and each stage consumes only the previous stage's typed output.",
-      "security_boundary": "Fail closed at every stage: proposals and model output are never authority; the promotion plan is advisory and non-executable; the one-use promotion capability binds the source canonical digest and generation it was issued against, and the publisher re-reads the canonical root under an exclusive flock on its Canonical parent and refuses any other state, symlinked layout, or candidate inside the root; publication reserves a durable ledger entry, exchanges atomically with renameat2(RENAME_EXCHANGE) and verifies through the production reader; replay is idempotent and a consumed capability cannot be reused. Linux only.",
+      "mutation_authority": "Ingress mutates nothing: it opens an existing HACF corpus, performs only lexical reads and never creates one, and every result carries zero semantic, admission, execution and runtime authority. Only elpis.pipeline.canonical.publisher changes canonical Grid81 state, and only with the exact one-use promotion capability object issued by elpis.pipeline.canonical.authority against an explicit operator approval digest. Adjudication, capability evaluation and promotion planning are read-only; consumption and application write only caller-owned shadow state and ledgers.",
+      "runtime_participation": "The runtime composition may run ingress on caller-supplied bytes against a corpus it owns and hand the proposal export to inference (structural address proposals); it may drive the writer stages in process. Nothing runs implicitly, and each stage consumes only the previous stage's typed output.",
+      "security_boundary": "Ingress takes bytes, never paths to read; the bounded lexer refuses input beyond its carry profile before any evidence is built; the bridge library is loaded only from an explicit path, exports only its declared ABI (linker version script) and refuses symlinked, relative or absent corpus roots. The Python binding re-reads the four authority flags and refuses any result that claims authority. Fail closed at every stage: proposals and model output are never authority; the promotion plan is advisory and non-executable; the one-use promotion capability binds the source canonical digest and generation it was issued against, and the publisher re-reads the canonical root under an exclusive flock on its Canonical parent and refuses any other state, symlinked layout, or candidate inside the root; publication reserves a durable ledger entry, exchanges atomically with renameat2(RENAME_EXCHANGE) and verifies through the production reader; replay is idempotent and a consumed capability cannot be reused. Linux only.",
       "protocol_identifiers_retained": [
+        "Ingress schemas: elpis.regex-lexical-evidence.v1/v2, elpis.regex-stream-ingress-result.v1/v2, elpis.regex-task-candidate.v1, elpis.regex-task-composition.v1, elpis.regex-hacf-context-proposal.r1 (with its digest-bound component value HACF_R3), elpis.semantic.query_local_proposal{,_set,_batch_receipt}.v1, elpis.semantic.query_local_representation_receipt.v1, elpis.live.regex-hacf.query-local.batch.r0.base; the C ABI symbol families elpis_streaming_regex_*, elpis_regex_hacf_query_ingress_*, elpis_query_local_proposal_*",
         "Capability-chain schema identifiers: capability-review-request.v1, capability-authority-{evaluation-input,decision,policy}.v1, capability-{abstention,lifecycle,limit,scope,revocation-policy}.v1, capability-consumption-{policy,receipt,transaction-input,transaction-result}.v1, consumption-rejection-record.v1, application-receipt.v1/v2, promotion-source-chain.v1, g5.1b.v1, g52a-reason-taxonomy.v1, g53a-authority-boundary.v1, g5.structural-influence-capability-nonce.v1",
         "Canonical writer domains: elpis.grid81.{canonical-generation,canonical-head,canonical-transaction-manifest,canonical-consumption-receipt,source-nonmutation-audit,promotion-authority-audit,promotion-plan-data-check,promotion-plan-observation}.v2, elpis.grid81.{atomic-canonical-promotion-capability,atomic-promotion-capability,atomic-promotion-capability-id,atomic-publication-receipt,canonical-transaction-reservation,canonical-tree,capability-consumption-binding,promotion-authority-binding,promotion-authority-policy,publication-recovery,structural-artifact-binding}.v1",
         "Ledger schemas: elpis.grid81.durable-application-ledger.v2 with elpis.grid81.application-ledger.{entry,genesis}.v2, and the v1 durable ledger used for publication",
         "Promotion phase-evidence identifiers: phase ids G5.3B.1/G5.3C/G5.3D, SourceChain fields g53b1/g53c/g53d, evidence file names and G53*-prefixed rejection codes (all bound into promotion-source-chain digests)"
       ],
       "external_dependencies": [
-        "SQLite 3 (Python sqlite3)",
+        "PCRE2 (libpcre2-8)",
+        "SQLite 3 (HACF corpus; Python sqlite3 for ledgers)",
         "Linux renameat2 via libc"
       ],
       "model_dependency": "NONE",
       "uses_numpy": false,
-      "maturity": "Mechanics qualified: per-stage suites (adjudication, capability authority, consumption, application incl. crash-recovery and cross-process CAS contention, promotion gates and recomputation, promotion authority, candidate construction, publisher protocol incl. concurrent readers, process contention and root aliasing) plus six stage-to-stage integration tests and the full writer chain from a historical canonical fixture.",
+      "maturity": "Mechanics qualified. Ingress: native suites (bounded profile, streaming, allocation failure injection, C ABI, memory bound, atomic query-local batch, bounded prepublication with identities pinned byte-identical to the donor, streaming/whole-input composition parity), Python differential properties and binding tests; an 18,000-case differential run matched the donor lexer byte for byte at migration. Mechanics qualified: per-stage suites (adjudication, capability authority, consumption, application incl. crash-recovery and cross-process CAS contention, promotion gates and recomputation, promotion authority, candidate construction, publisher protocol incl. concurrent readers, process contention and root aliasing) plus six stage-to-stage integration tests and the full writer chain from a historical canonical fixture.",
       "incomplete_interfaces": [
+        "The ingress bridge library is loaded by explicit path but is not yet digest-pinned through elpis.substrate authority.",
+        "The query-local overlay is published in memory per call; it is not yet persisted into a semantic snapshot or recorded in the ECS history.",
         "Promotion gate evaluation reads the historical phase-evidence directory layout (consumption/application/application-evidence reports); no in-repo stage emits that layout yet, so an end-to-end promotion from live stages can bind application identity in memory but cannot pass the gates without a phase-evidence writer.",
         "Two durable ledger schemas coexist: v1 (publication ledger, required by the publisher) and v2 (artifact-bound application ledger); they are distinct persisted identities and are not merged.",
         "Adjudication consumes structural groups for a caller-pinned row count; there is no streaming or incremental adjudication.",
