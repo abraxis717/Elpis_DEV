@@ -12,3 +12,10 @@ When redistributing Elpis or derivative works, preserve this NOTICE together
 with the other notices required by the applicable licenses.
 
 This NOTICE is informational and does not modify the Apache License.
+
+Third-party mechanisms
+----------------------
+The inference subsystem independently implements mechanisms whose design
+follows DeepSeek V4.1 (MIT), ds4.c (MIT), DeepSpec (MIT), vLLM (Apache-2.0)
+and ZCode (Apache-2.0). No upstream code, weights or data are included. The
+upstream license texts and the provenance table are in LICENSES/.

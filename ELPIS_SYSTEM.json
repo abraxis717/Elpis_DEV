@@ -245,12 +245,42 @@
     },
     {
       "id": "inference",
-      "status": "PLANNED",
+      "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
+      "purpose": "Inference behind contracts, driver-neutral: typed target records (tensors, latent inputs, target state, step receipts) and a Target protocol a driver implements; n-gram associative addressing (DSV4.1 engram and Qwen PLE schemes) with bounded row lookup over substrate file assets; immutable context lifetimes/snapshots and sparse global candidate selection; digest-bound experts executed from file assets; physical prefetch predictions that can never select content; structural address proposals from ingress exports and retrieval bundles; an atomic, replay-verified decode transaction; speculative drafting verified token by token by the target (greedy equivalence); a read-only observer over completed decode epochs with future-only latent steering applied through the target's own latent-input path. The first driver is DSV4 (drivers/dsv4: a compact target and an explicit synthetic fixture intake).",
       "python_package": "elpis.inference",
-      "implementation_roots": [],
-      "test_roots": [],
+      "implementation_roots": [
+        "src/elpis/inference"
+      ],
+      "test_roots": [
+        "tests/inference"
+      ],
       "native_targets": [],
-      "depends_on": []
+      "depends_on": [
+        "structure",
+        "substrate"
+      ],
+      "mutation_authority": "Only InferenceEngine.execute commits decode state, and only as one transaction against the exact expected state; a failed step commits nothing and replay re-executes the receipt chain to validate history. Every proposal record (address proposals, drafts, prefetch plans, steering observations/proposals/applications) is ProposalOnly with fixed zero semantic, admission, execution and mutation authority. Steering never mutates weights, context, tokens or logits: its only effect is one LatentInput on a later request, recorded by the transaction. Inference never writes ECS, structural memory or canonical state; model output is proposal, never authority.",
+      "runtime_participation": "The runtime composition constructs a driver target from explicitly supplied file assets (tests use the synthetic DSV4 fixture), passes structural address proposals from ingress or retrieval, runs decode transactions, and records their receipt digests in the ECS history.",
+      "security_boundary": "No network, no downloads and no implicit model: a target exists only from caller-supplied, digest-verified file assets registered through elpis.substrate beneath its trusted root, and every bank, expert, parameter artifact and projection is bound to the target's model identity. Prefetch predicts physical ranges only and cannot change which rows are read. Proposals are validated against the pinned scheme, bank and snapshot, and a retrieval bundle is re-validated against the caller's expected query, corpus and bundle digests before it becomes an address proposal. Fixed IEEE-754 binary64 arithmetic in steering; no hidden or global mutable recurrence state.",
+      "protocol_identifiers_retained": [
+        "Record identities in the elpis.inference.<kind>.r0 family: bank, tensor, target-config, target-model, target-step, neural-state, latent-input, latent-projection, native-kv-source, row-representation, dsv41.parameters, qwen38.parameters, ngram.history, ngram.result, context.{item,snapshot,compaction}, global-{candidate,pool,index.config,index.result}, expert-{bank,manifest}, prefetch-plan, structural-{address,rules}, r1-bundle-export (route key HACF_R1)",
+        "Decode transaction: r3.{request,receipt,committed-state}, the typed failures r3.invalid-request and r3.invalid-proposal, and the runtime schema elpis.runtime.r3.r1",
+        "Speculative drafting: deepspec.{draft,markov-drafter,accepted-prefix,rounds}",
+        "Steering: elpis.sot.<kind>.r0 (inference-epoch-binding, observer-state, fast-steering-{profile,proposal,application}, fast-control-state, width-transport, epoch-provenance) with the frozen elpis.sot.frozen-steering-contract.r0 and fast-steering-profile digests; steered sessions: elpis.r3sot.<kind>.r0 (session-state and epoch records)"
+      ],
+      "external_dependencies": [
+        "NumPy"
+      ],
+      "model_dependency": "NONE_REQUIRED. The DSV4 driver runs on explicitly supplied file assets; the only assets exercised are deterministic synthetic fixtures (tests/fixtures/inference, drivers/dsv4/fixtures.make_fixture). No weights are shipped or downloaded, and no model output is authority.",
+      "uses_numpy": true,
+      "maturity": "Mechanics qualified on synthetic fixtures: associative addressing (DSV4.1 and Qwen PLE frozen synthetic address artifacts), rows, context, global context, experts, prefetch, structural proposals and the retrieval-bundle adapter; decode transaction suites (atomicity, replay, determinism across processes and hash seeds, fault injection, adversarial requests); speculative greedy-equivalence; steering and steered-session suites (future-only delivery, TTL/hop/cycle guards, frozen-contract digests). No quality, reasoning or transfer claim (docs/NONCLAIMS.md).",
+      "incomplete_interfaces": [
+        "Only the synthetic DSV4 fixture exists: no trained table, tokenizer map or production parameter artifact is available, so compatibility with any production model is unestablished.",
+        "NeuralState and TargetConfig still carry DSV4-shaped fields (compressed KV, expert routing); a second driver will need them generalized behind the Target protocol.",
+        "CPU/NumPy only: no GPU or native kernel path; the pure steering functions are marked as the replacement surface for a native backend.",
+        "steering.global_event_fields() exposes the values an ECS integration would bind, but inference never records them; binding steering epochs into the ECS history is the runtime composition's job.",
+        "Speculative verification is greedy-equivalence only; no sampling-equivalent acceptance rule."
+      ]
     },
     {
       "id": "runtime",
@@ -269,6 +299,7 @@
     "docs": "documentation",
     "ELPIS_SYSTEM.json": "system authority",
     "LICENSE": "license",
+    "LICENSES": "license",
     "migration": "migration provenance (not runtime authority)",
     "native": "native implementation",
     "NOTICE": "license",
@@ -366,6 +397,7 @@
   "nonclaims": [
     "Elpis is not claimed to be generally intelligent; 'geodesic intelligence' names a research direction.",
     "No release, tag or PyPI publication exists for this development repository; beta release authority was not migrated.",
-    "Mechanics qualification (tests passing) is not scientific qualification and not runtime admission of any learned model."
+    "Mechanics qualification (tests passing) is not scientific qualification and not runtime admission of any learned model.",
+    "Inference mechanics are qualified on synthetic fixtures only: no compatibility with a production model, and no quality, reasoning or steering-effect claim (docs/NONCLAIMS.md)."
   ]
 }

@@ -448,3 +448,110 @@ schema identifiers are historical and carry no self-improvement claim.
 * **No in-repo evaluator.** Nothing produces promotion evaluation evidence.
 * **The caller records receipts.** Transition receipts are returned rather
   than recorded; the runtime composition records them in the ECS history.
+
+## Inference: models behind contracts (`elpis.inference`)
+
+Inference turns proposals into verified target steps. A model is a *driver*
+behind a contract: it never owns ECS state, structural memory or canonical
+state, and everything it emits outside a committed decode transaction is a
+proposal whose authority flags are fixed at zero (`ProposalOnly`).
+
+### Driver contract
+
+`elpis.inference.target` holds the driver-neutral records: tensors, latent
+projections and latent inputs, the target configuration, the target state
+and the step receipt. It also defines the `Target` protocol, which the
+transaction, speculative verification and steering all require of a driver:
+
+* a model identity and numerical profile;
+* `initial(context_snapshot)`;
+* `step(state, token, expected_state=..., latents=...)`, which returns the next
+  state and a step receipt.
+
+The first driver is `drivers/dsv4`. Its `CompactTarget` is a compact
+DSV4-shaped target: local and compressed attention, MoE experts executed from
+file assets, engram rows and latent channels M/G/X/R. It has no weights of
+its own. It is built only from explicitly supplied, digest-verified file
+assets registered through `elpis.substrate`, and every bank, expert,
+parameter artifact and projection is bound to its model identity.
+`drivers/dsv4/fixtures.make_fixture` is an opt-in synthetic fixture intake:
+seeded tensors, a synthetic tokenizer, and no training or evaluation data.
+Nothing in the base install downloads or ships weights.
+
+### Memory-facing primitives
+
+* **Associative addressing** (`associative`): n-gram address schemes. DSV4.1
+  engram and Qwen PLE parameter artifacts are bound by digest to their
+  tokenizer and scheme.
+* **Rows** (`rows`): bounded row lookup from a bank over a file asset in FMS
+  residency.
+* **Context** (`context`, `global_context`): immutable context items, lifetimes,
+  snapshots, compaction and forks, plus sparse global candidate selection.
+* **Experts** (`experts`): expert tensors verified against their manifest
+  digests before execution.
+* **Prefetch** (`prefetch`): a plan predicts physical byte ranges only. It
+  cannot select rows or experts, and replay recomputes it and must match
+  exactly.
+* **Structural proposals** (`structural`): address proposals built from two
+  sources, both pinned by digest and bound to the expected source, corpus
+  and overlay:
+  * the pipeline ingress export (`from_regex_hacf`);
+  * a structure retrieval bundle (`from_retrieval_bundle`), re-validated by
+    the retrieval stage.
+
+### Decode transaction
+
+`InferenceEngine.execute(state, request, expected_state=...)` is the only
+model-execution path. It applies a whole request, or nothing:
+
+* A committed base different from `expected_state` rejects as stale.
+* A malformed request, proposal or latent returns the original state with a
+  typed failure receipt.
+* A state this engine has not validated is replayed from the target's initial
+  state through every recorded receipt before it is trusted. That covers a
+  fresh engine and a state that was tampered with. The validated-state cache
+  is bounded.
+* `replay(state, request, receipt)` re-executes and requires an identical
+  receipt.
+
+Receipts chain request, target steps, latents, structural proposals and
+prefetch plans. Determinism holds across processes and hash seeds.
+
+`speculative` drafts tokens with a Markov drafter and verifies them token by
+token against the target. The accepted prefix is exactly what greedy decoding
+would have produced, and a rejected suffix never enters state or the
+validation cache.
+
+### Steering
+
+`steering` is a read-only observer over *completed* decode epochs. It binds
+the request, result and receipt of epoch *n*. It then derives a DYN4
+observation (hidden and logit statistics, current value and delta) and
+proposes one X-channel latent for epoch *n+1*, which expires after *n+2*.
+
+The proposal takes effect only by being applied to a later request as a
+`LatentInput`. That application is gated by a host-owned `FastControlState`
+with a stall, cycle and hop guard. The transaction records it in the normal
+chain: request latents → step receipt latents → decode receipt. There is no
+second steering receipt.
+
+Steering never retroacts on its source epoch, replaces tokens, overwrites
+logits, mutates weights or context, or touches the ECS. `steered` composes
+the engine with this lane: exactly one `execute` per epoch, no retry, and all
+recurrence state held in an immutable session value.
+
+The frozen steering contract and guard digests are persisted identities and
+are checked at import time. The beta's empirical steering claims are not
+carried forward (`docs/NONCLAIMS.md`).
+
+### Incomplete interfaces
+
+* **Synthetic fixture only.** No trained table, tokenizer map or production
+  parameter artifact exists here.
+* **DSV4-shaped records.** `NeuralState` and `TargetConfig` still carry
+  DSV4-shaped fields. A second driver will need them generalized.
+* **CPU/NumPy only.** There is no GPU or native kernel path.
+* **Steering is not in the ECS.** `global_event_fields` exposes what an ECS
+  integration would bind, but no steering event is recorded in the ECS
+  history yet.
+* **Greedy speculative verification only.**

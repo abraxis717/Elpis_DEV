@@ -1691,6 +1691,316 @@
       "migration_type": "NOT_MIGRATED",
       "semantic_code_changed": false,
       "reason": "Extraction and wiring records of the gate's beta placement before the TRM-driven episode."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/inference/{associative,context,experts,global_context,prefetch,rows}.py",
+      "destination": "src/elpis/inference/associative.py + src/elpis/inference/context.py + src/elpis/inference/experts.py + src/elpis/inference/global_context.py + src/elpis/inference/prefetch.py + src/elpis/inference/rows.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Driver-neutral inference primitives (DSV4.1 engram and Qwen PLE n-gram addressing, bounded row lookup over file assets, context lifetimes/snapshots, sparse global selection, digest-bound experts, physical prefetch plans). Imports rewired to elpis.substrate (file assets, raw digests, contract primitives) and elpis.inference.target; InferenceError is ContractError; provenance pointers now name LICENSES/. Every elpis.inference.<kind>.r0 identity domain is unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/inference/structural.py",
+      "destination": "src/elpis/inference/structural.py",
+      "disposition": "MIGRATED",
+      "migration_type": "REWRITE",
+      "semantic_code_changed": true,
+      "reason": "Structural address proposals. from_regex_hacf consumes the pipeline ingress export unchanged; the R3 retrieval-bundle adapter is merged here as from_retrieval_bundle (see the runtime/R3 r1_adapter record)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/inference/neural.py (numerical profile, Tensor, LatentProjection, LatentInput, TargetConfig, NeuralState, StepReceipt)",
+      "destination": "src/elpis/inference/target.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "SPLIT",
+      "semantic_code_changed": true,
+      "reason": "Driver-neutral target records plus a new Target protocol that every driver implements. Record fields and identity domains (tensor, latent-*, target-config, neural-state, target-step) are unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/inference/neural.py (CompactTarget)",
+      "destination": "src/elpis/inference/drivers/dsv4/target.py",
+      "disposition": "MIGRATED",
+      "migration_type": "SPLIT",
+      "semantic_code_changed": false,
+      "reason": "The compact DSV4-shaped target (local/compressed attention, MoE experts over file assets, engram rows, latent channels) becomes the first driver behind the Target protocol. It needs no weights: it runs on explicitly supplied file assets only."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/inference/fixtures.py",
+      "destination": "src/elpis/inference/drivers/dsv4/fixtures.py",
+      "disposition": "TEST_FIXTURE_ONLY",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Explicit synthetic fixture intake (seeded tensors, synthetic tokenizer, no training or donor evaluation data), placed with the driver it builds."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/inference/__init__.py",
+      "destination": "src/elpis/inference/__init__.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "REWRITE",
+      "semantic_code_changed": true,
+      "reason": "Package docstring rewritten for the migrated module set; no re-exports."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/inference/contracts.py (ProposalOnly, Bank, RowIdentity)",
+      "destination": "src/elpis/inference/contracts.py",
+      "disposition": "MIGRATED",
+      "migration_type": "SPLIT",
+      "semantic_code_changed": false,
+      "reason": "Inference-owned contract records; the typed failure and integer/digest checks re-export from elpis.substrate.contracts (tranche 3)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/fixtures/inference_r0/{dsv41,qwen38}.json",
+      "destination": "tests/fixtures/inference/dsv41.json + tests/fixtures/inference/qwen38.json",
+      "disposition": "TEST_FIXTURE_ONLY",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Frozen synthetic address artifacts, byte-identical."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R3/src/elpis_runtime_r3/transaction.py",
+      "destination": "src/elpis/inference/transaction.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "The atomic, replay-verified decode transaction is the inference engine, not a runtime generation: RuntimeR3 -> InferenceEngine, RuntimeReceipt/RuntimeResult -> DecodeReceipt/DecodeResult. The r3.* identity domains, the typed failures and the runtime schema elpis.runtime.r3.r1 are persisted identity and unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R3/src/elpis_runtime_r3/speculative.py",
+      "destination": "src/elpis/inference/speculative.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Markov drafter and token-by-token greedy verification against the target; deepspec.* identities unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R3/src/elpis_runtime_r3/r1_adapter.py",
+      "destination": "src/elpis/inference/structural.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "REWRITE",
+      "semantic_code_changed": true,
+      "reason": "from_r1_bundle becomes structural.from_retrieval_bundle over the extracted structure retrieval stage. The export pin (r1-bundle-export) and route key HACF_R1 are persisted identity and unchanged. FAIL-CLOSED FIX: bundle-validation failures now surface as ContractError(IDENTITY) with the retrieval error chained, so the inference boundary has one typed failure."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R3/src/elpis_runtime_r3/__init__.py, README.md, pyproject.toml",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Runtime-generation package shell ('additive general-inference prototype'); one distribution and ELPIS_SYSTEM.json replace it."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R3/tests/test_r3_{concurrency,determinism,failure_contract,property,provider_cleanup,receipt_lineage,rollback_faults,scaling,snapshot_replay,speculative_exactness}.py",
+      "destination": "tests/inference/transaction",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Decode-transaction suites with imports renamed."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R3/tests/test_r3_{corrective_226,corrective_229_r0,numerical_profile_228,redteam_228,r1_adapter}.py",
+      "destination": "tests/inference/transaction/test_latent_and_history_revalidation.py + tests/inference/transaction/test_request_identity_strictness.py + tests/inference/transaction/test_numerical_profile.py + tests/inference/transaction/test_adversarial_proposals.py + tests/inference/transaction/test_retrieval_bundle_boundary.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Renamed by function: latent/history revalidation, request-identity strictness, numerical profile, adversarial proposals and the retrieval-bundle boundary."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R3/tests/conftest.py, helpers.py, __init__.py",
+      "destination": "tests/inference/conftest.py + tests/inference/transaction/_helpers.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Fixtures folded into the inference conftest (tmp_path beneath the trusted provider root) and a helpers module."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/StateOfThought/src/elpis_sot/core.py",
+      "destination": "src/elpis/inference/steering.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Read-only observer over completed decode epochs and future-only latent steering, renamed by function (SoT* -> ObserverState, FastSteeringProposal/Application, FastControlState, SteeringContractError; SOT_CORE12_R0/SOT_DYN4_R0 -> CORE12_FEATURES/DYN4_FEATURES). elpis.sot.* identities and the frozen contract, width-transport and guard digests are unchanged, including the import-time self-check."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/StateOfThought/src/elpis_sot/core.py (BOUNDED_CLOSURE_CLAIM, NEGATIVE_CORE12_X_*, CONTIGUOUS_WIDTH_*_DIGEST)",
+      "destination": null,
+      "disposition": "RESEARCH_ONLY_NOT_MIGRATED",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Research conclusions encoded as code constants (an empirical causal-transfer claim and closure-evidence digests whose evidence is not in the repository). Recorded as non-claims in docs/NONCLAIMS.md."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/StateOfThought/src/elpis_sot/__init__.py, README.md, pyproject.toml",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Component shell of an inactive component."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/StateOfThought/tests/test_core.py",
+      "destination": "tests/inference/test_steering.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Steering suite with renamed symbols; assertions on the removed claim constants dropped."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R3SOT/src/elpis_runtime_r3_sot/controller.py",
+      "destination": "src/elpis/inference/steered.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "The decode transaction composed with future-only steering: RuntimeR3SoT -> SteeredInferenceEngine and matching session/epoch/error records. RUNTIME_ID and QUALIFICATION_DISPOSITION (beta runtime-admission labels) are removed; elpis.r3sot.* identities are unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R3SOT/RUNTIME_MANIFEST.json",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Runtime-admission manifest of the only beta surface admitted at runtime; the system authority is ELPIS_SYSTEM.json and no model path is runtime-admitted."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R3SOT/src/elpis_runtime_r3_sot/__init__.py, README.md, pyproject.toml",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Runtime-generation package shell."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R3SOT/tests/test_{active_steering,authority_boundary,determinism,fail_closed,replay_provenance,request_lineage,temporality,r3_parity}.py, conftest.py, r3sot_helpers.py",
+      "destination": "tests/inference/steered",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Steered-session suites; test_r3_parity renamed test_unsteered_parity; helpers module renamed."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_inference_{associative,context,experts,global_context,prefetch,rows,structural,speculative}_r0.py",
+      "destination": "tests/inference/test_associative.py + tests/inference/test_context.py + tests/inference/test_experts.py + tests/inference/test_global_context.py + tests/inference/test_prefetch.py + tests/inference/test_rows.py + tests/inference/test_structural.py + tests/inference/test_speculative.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Primitive suites with imports renamed."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_inference_neural_r0.py, test_inference_runtime_r3.py, test_inference_r1_adapter_r0.py, test_inference_staging_telemetry_classification.py",
+      "destination": "tests/inference/test_dsv4_target.py + tests/inference/test_transaction_smoke.py + tests/inference/test_retrieval_adapter.py + tests/inference/test_staging_telemetry.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Compact-target, transaction smoke, retrieval-adapter and staging-telemetry suites; the stale repository-relative sys.path insertion is removed."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_inference_driver_plugin_discovery.py, test_inference_plugin_trust_boundary_contract.py, test_inference_portability_ports.py",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Driver registry and model-port discovery through TRMFractalSpine provider activation and Runtime R2."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_inference_native_execution.py, test_inference_native_hosted_ci.py, test_inference_native_locus_authority.py",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Validators of the beta inference-native locus tooling and workflow (tools/, .github), both retired with release authority."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_r3sot_active_inference_admission_r0.py",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Runtime-admission record checks for R3SOT; no model path is runtime-admitted here."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_2_2_25_inference_release_prep.py, test_2_2_26_inference_corrective_release_prep.py",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Release-preparation suites bound to beta release authority."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/InferenceInfrastructure/licenses/{Apache-2.0,DS4-MIT,DeepSeek-V41-MIT,DeepSpec-MIT}.txt, PROVENANCE.md",
+      "destination": "LICENSES/Apache-2.0.txt + LICENSES/DS4-MIT.txt + LICENSES/DeepSeek-V41-MIT.txt + LICENSES/DeepSpec-MIT.txt + LICENSES/PROVENANCE.md",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Upstream license texts and the mechanism provenance table for the inference code, now at the repository root; NOTICE and pyproject license metadata declare them."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "manifests/FILE_LICENSE_MAP.json, manifests/LICENSE_REVIEW.json, tests/test_license_provenance_contract.py",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Per-file license map and review of the beta tree, including retired TRM/Cadence surfaces."
     }
   ]
 }

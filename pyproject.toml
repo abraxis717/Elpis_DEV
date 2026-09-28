@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -11,8 +11,8 @@ version = "0.1.0.dev0"
 description = "Elpis development foundation: persistent ECS state, structural memory, controlled evolution and inference over structured state"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
-license = "Apache-2.0"
-license-files = ["LICENSE", "NOTICE"]
+license = "Apache-2.0 AND MIT"
+license-files = ["LICENSE", "NOTICE", "LICENSES/*"]
 classifiers = ["Private :: Do Not Upload"]
 # Base installation never downloads model weights and never requires Torch.
 # NumPy is required by the inference subsystem only; the boundary suite proves
