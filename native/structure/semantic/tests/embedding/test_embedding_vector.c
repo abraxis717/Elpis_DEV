@@ -37,7 +37,7 @@ int main(void) {
         elpis_semantic_embedding_profile_v1 *p = make_profile(4, EMBEDDING_NORMALIZATION_NONE, EMBEDDING_METRIC_COSINE);
         float data[4] = {1.0f, 2.0f, 3.0f, 4.0f};
         elpis_semantic_embedding_vector_v1 vec;
-        uint8_t *bytes;
+        uint8_t *bytes = NULL;
         uint32_t len;
         int rc = elpis_embedding_vector_from_float32(p, data, 4, &vec, &bytes, &len);
         if (rc == 0 && len == 16) passed++;
@@ -51,7 +51,7 @@ int main(void) {
         elpis_semantic_embedding_profile_v1 *p = make_profile(2, EMBEDDING_NORMALIZATION_NONE, EMBEDDING_METRIC_COSINE);
         float data[2] = {-0.0f, 1.0f};
         elpis_semantic_embedding_vector_v1 vec;
-        uint8_t *bytes;
+        uint8_t *bytes = NULL;
         uint32_t len;
         int rc = elpis_embedding_vector_from_float32(p, data, 2, &vec, &bytes, &len);
         if (rc == 0) {
@@ -72,7 +72,7 @@ int main(void) {
         elpis_semantic_embedding_profile_v1 *p = make_profile(2, EMBEDDING_NORMALIZATION_NONE, EMBEDDING_METRIC_COSINE);
         float data[2] = {NAN, 1.0f};
         elpis_semantic_embedding_vector_v1 vec;
-        uint8_t *bytes;
+        uint8_t *bytes = NULL;
         uint32_t len;
         int rc = elpis_embedding_vector_from_float32(p, data, 2, &vec, &bytes, &len);
         if (rc != 0) passed++;
@@ -86,7 +86,7 @@ int main(void) {
         elpis_semantic_embedding_profile_v1 *p = make_profile(2, EMBEDDING_NORMALIZATION_NONE, EMBEDDING_METRIC_COSINE);
         float data[2] = {INFINITY, 1.0f};
         elpis_semantic_embedding_vector_v1 vec;
-        uint8_t *bytes;
+        uint8_t *bytes = NULL;
         uint32_t len;
         int rc = elpis_embedding_vector_from_float32(p, data, 2, &vec, &bytes, &len);
         if (rc != 0) passed++;
@@ -100,7 +100,7 @@ int main(void) {
         elpis_semantic_embedding_profile_v1 *p = make_profile(2, EMBEDDING_NORMALIZATION_NONE, EMBEDDING_METRIC_COSINE);
         float data[2] = {-INFINITY, 1.0f};
         elpis_semantic_embedding_vector_v1 vec;
-        uint8_t *bytes;
+        uint8_t *bytes = NULL;
         uint32_t len;
         int rc = elpis_embedding_vector_from_float32(p, data, 2, &vec, &bytes, &len);
         if (rc != 0) passed++;
@@ -114,7 +114,7 @@ int main(void) {
         elpis_semantic_embedding_profile_v1 *p = make_profile(4, EMBEDDING_NORMALIZATION_NONE, EMBEDDING_METRIC_COSINE);
         float data[2] = {1.0f, 2.0f};
         elpis_semantic_embedding_vector_v1 vec;
-        uint8_t *bytes;
+        uint8_t *bytes = NULL;
         uint32_t len;
         int rc = elpis_embedding_vector_from_float32(p, data, 2, &vec, &bytes, &len);
         if (rc != 0) passed++;
@@ -129,7 +129,7 @@ int main(void) {
         elpis_semantic_embedding_profile_v1 *p2 = make_profile(8, EMBEDDING_NORMALIZATION_NONE, EMBEDDING_METRIC_COSINE);
         float data[8] = {0,0,0,0,0,0,0,0};
         elpis_semantic_embedding_vector_v1 vec;
-        uint8_t *bytes;
+        uint8_t *bytes = NULL;
         uint32_t len;
         int rc = elpis_embedding_vector_from_float32(p1, data, 8, &vec, &bytes, &len);
         if (rc != 0) passed++;
@@ -145,7 +145,7 @@ int main(void) {
         float data1[3] = {1.0f, 2.0f, 3.0f};
         float data2[3] = {1.0f, 2.0f, 3.0f};
         elpis_semantic_embedding_vector_v1 vec1, vec2;
-        uint8_t *bytes1, *bytes2;
+        uint8_t *bytes1 = NULL, *bytes2 = NULL;
         uint32_t len1, len2;
         int rc1 = elpis_embedding_vector_from_float32(p, data1, 3, &vec1, &bytes1, &len1);
         int rc2 = elpis_embedding_vector_from_float32(p, data2, 3, &vec2, &bytes2, &len2);
@@ -184,7 +184,7 @@ int main(void) {
         /* Create a unit vector: [1, 0] has norm 1.0 */
         float data[2] = {1.0f, 0.0f};
         elpis_semantic_embedding_vector_v1 vec;
-        uint8_t *bytes;
+        uint8_t *bytes = NULL;
         uint32_t len;
         int rc = elpis_embedding_vector_from_float32(p, data, 2, &vec, &bytes, &len);
         if (rc == 0) passed++;
@@ -198,7 +198,7 @@ int main(void) {
         elpis_semantic_embedding_profile_v1 *p = make_profile(2, EMBEDDING_NORMALIZATION_UNIT_L2, EMBEDDING_METRIC_COSINE);
         float data[2] = {1.0f, 1.0f}; /* norm = sqrt(2) ≈ 1.414, not unit */
         elpis_semantic_embedding_vector_v1 vec;
-        uint8_t *bytes;
+        uint8_t *bytes = NULL;
         uint32_t len;
         int rc = elpis_embedding_vector_from_float32(p, data, 2, &vec, &bytes, &len);
         if (rc != 0) passed++;
@@ -212,7 +212,7 @@ int main(void) {
         elpis_semantic_embedding_profile_v1 *p = make_profile(3, EMBEDDING_NORMALIZATION_NONE, EMBEDDING_METRIC_COSINE);
         float data[3] = {1.0f, 2.0f, 2.0f};
         elpis_semantic_embedding_vector_v1 vec;
-        uint8_t *bytes;
+        uint8_t *bytes = NULL;
         uint32_t len;
         elpis_embedding_vector_from_float32(p, data, 3, &vec, &bytes, &len);
         double norm = elpis_embedding_vector_l2_norm(bytes, 3);
@@ -272,7 +272,7 @@ int main(void) {
     {
         elpis_semantic_embedding_profile_v1 *p = make_profile(2, EMBEDDING_NORMALIZATION_UNIT_L2, EMBEDDING_METRIC_COSINE);
         elpis_semantic_embedding_vector_v1 vec;
-        uint8_t *bytes;
+        uint8_t *bytes = NULL;
         uint32_t len;
         /* This might fail due to tolerance — let's use exact unit */
         float data_exact[2] = {1.0f, 0.0f};

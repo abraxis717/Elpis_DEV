@@ -377,47 +377,59 @@ static int test_placement_digit_occupied(void) {
 /* Cell record and mask tests                                                */
 /* ========================================================================= */
 
+/* A cell record is several megabytes: always heap-allocate it in tests. */
+static elpis_semantic_grid81_cell_v1 *new_cell(void) {
+    elpis_semantic_grid81_cell_v1 *c = malloc(sizeof *c);
+    if (!c) abort();
+    elpis_grid81_cell_init(c);
+    return c;
+}
+
 static int test_cell_init(void) {
-    elpis_semantic_grid81_cell_v1 c;
-    elpis_grid81_cell_init(&c);
-    return (c.abi_version == GRID81_CELL_ABI_VERSION);
+    elpis_semantic_grid81_cell_v1 *c = new_cell();
+    int ok = (c->abi_version == GRID81_CELL_ABI_VERSION);
+    free(c);
+    return ok;
 }
 
 static int test_cell_validate_empty(void) {
-    elpis_semantic_grid81_cell_v1 c;
-    elpis_grid81_cell_init(&c);
-    c.cell_index = 0;
-    c.row = 0;
-    c.column = 0;
-    c.digit = 0;
-    c.occupied = 0;
-    c.compiler_writable = 0;
-    return (elpis_grid81_cell_validate(&c) == SEMANTIC_OK);
+    elpis_semantic_grid81_cell_v1 *c = new_cell();
+    c->cell_index = 0;
+    c->row = 0;
+    c->column = 0;
+    c->digit = 0;
+    c->occupied = 0;
+    c->compiler_writable = 0;
+    int ok = (elpis_grid81_cell_validate(c) == SEMANTIC_OK);
+    free(c);
+    return ok;
 }
 
 static int test_cell_validate_occupied_agrees(void) {
-    elpis_semantic_grid81_cell_v1 c;
-    elpis_grid81_cell_init(&c);
-    c.cell_index = 0;
-    c.row = 0;
-    c.column = 0;
-    c.digit = 1;
-    c.occupied = 1;
-    c.capsule_count = 1;
-    c.compiler_writable = 0;
-    return (elpis_grid81_cell_validate(&c) == SEMANTIC_OK);
+    elpis_semantic_grid81_cell_v1 *c = new_cell();
+    c->cell_index = 0;
+    c->row = 0;
+    c->column = 0;
+    c->digit = 1;
+    c->occupied = 1;
+    c->capsule_count = 1;
+    c->compiler_writable = 0;
+    int ok = (elpis_grid81_cell_validate(c) == SEMANTIC_OK);
+    free(c);
+    return ok;
 }
 
 static int test_cell_validate_writable_must_be_zero(void) {
-    elpis_semantic_grid81_cell_v1 c;
-    elpis_grid81_cell_init(&c);
-    c.cell_index = 0;
-    c.row = 0;
-    c.column = 0;
-    c.digit = 0;
-    c.occupied = 0;
-    c.compiler_writable = 1; /* Grid81-compiler requires all zero */
-    return (elpis_grid81_cell_validate(&c) == SEMANTIC_E_INVAL);
+    elpis_semantic_grid81_cell_v1 *c = new_cell();
+    c->cell_index = 0;
+    c->row = 0;
+    c->column = 0;
+    c->digit = 0;
+    c->occupied = 0;
+    c->compiler_writable = 1; /* Grid81-compiler requires all zero */
+    int ok = (elpis_grid81_cell_validate(c) == SEMANTIC_E_INVAL);
+    free(c);
+    return ok;
 }
 
 static int test_masks_init_all_zero(void) {
@@ -524,13 +536,17 @@ static int test_constraint_projection_validate(void) {
 }
 
 static int test_constraint_projection_mandatory_unsupported_blocks(void) {
-    elpis_semantic_grid81_constraint_projections_v1 ps;
-    elpis_grid81_constraint_projections_init(&ps);
-    ps.projection_count = 1;
-    elpis_grid81_constraint_projection_init(&ps.projections[0]);
-    ps.projections[0].mandatory_constraint = 1;
-    ps.projections[0].projection_disposition = GRID81_PROJECTION_UNSUPPORTED_BLOCKING;
-    return (elpis_grid81_constraint_projections_validate(&ps) == SEMANTIC_E_INVAL);
+    /* Several megabytes: heap-allocated, never on the stack. */
+    elpis_semantic_grid81_constraint_projections_v1 *ps = malloc(sizeof *ps);
+    if (!ps) abort();
+    elpis_grid81_constraint_projections_init(ps);
+    ps->projection_count = 1;
+    elpis_grid81_constraint_projection_init(&ps->projections[0]);
+    ps->projections[0].mandatory_constraint = 1;
+    ps->projections[0].projection_disposition = GRID81_PROJECTION_UNSUPPORTED_BLOCKING;
+    int ok = (elpis_grid81_constraint_projections_validate(ps) == SEMANTIC_E_INVAL);
+    free(ps);
+    return ok;
 }
 
 static int test_constraint_projection_dispositions_exist(void) {

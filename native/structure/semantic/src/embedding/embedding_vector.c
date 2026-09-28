@@ -101,11 +101,11 @@ int elpis_embedding_vector_from_float32(
     elpis_semantic_embedding_vector_v1 *out,
     uint8_t **canonical_bytes_out, uint32_t *canonical_bytes_len) {
     if (!profile || !data || !out || !canonical_bytes_out || !canonical_bytes_len) return -1;
-    if (dimensions == 0) return -1;
-    if (dimensions != profile->dimensions) return -1;
-
+    /* Outputs are defined on every return path, including rejections. */
     *canonical_bytes_out = NULL;
     *canonical_bytes_len = 0;
+    if (dimensions == 0) return -1;
+    if (dimensions != profile->dimensions) return -1;
 
     uint32_t byte_count = dimensions * sizeof(float);
     uint8_t *canonical = malloc(byte_count);
