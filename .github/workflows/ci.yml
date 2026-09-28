@@ -18,11 +18,19 @@ jobs:
     env:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONNOUSERSITE: "1"
+      ELPIS_REQUIRE_NATIVE: "1"
+      ELPIS_NATIVE_BUILD: ${{ github.workspace }}/build
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      - name: Native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+      - name: Native build (libraries loaded by Python)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
       - name: Clean install
         run: |
           python -m venv /tmp/elpis-venv
@@ -30,3 +38,23 @@ jobs:
           /tmp/elpis-venv/bin/python -m pip install ".[test]"
       - name: Test suite
         run: /tmp/elpis-venv/bin/python -m pytest
+
+  native:
+    name: Native (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake clang
+      - name: Configure (warnings are errors)
+        run: |
+          if [ "${{ matrix.compiler }}" = clang ]; then export CC=clang CXX=clang++; fi
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DELPIS_WARNINGS_AS_ERRORS=ON
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure

@@ -4,6 +4,54 @@
 depend on and what they may mutate. This document explains the design those
 facts describe.
 
+## Substrate: resources and residency (`elpis.substrate`, `native/substrate`)
+
+The substrate manages bytes, descriptors, residency and native code. It does
+not know which model, if any, consumes them.
+
+### FMS residency (native)
+
+FMS ABI v2 separates **logical latency tiers** (HOT, WARM, COLD) from
+**physical resource domains** (RAM, device, storage). On an integrated GPU,
+HOT and WARM both charge RAM. Objects are registered with a kind, size and
+preferred tier. Readers take **leases**, and demotion is forbidden while a
+lease or device fence is pending. Budgets and high/low watermarks drive
+deterministic eviction. The **platform abstraction layer** (PAL) owns
+storage: the POSIX PAL provides file-backed COLD tokens or a RAM-only mode.
+There is no silent device emulation, and the tier-collapse policy
+(`FOLD_DOWN` or `REJECT`) is explicit.
+
+### File-backed assets (Python + native bridge)
+
+External, immutable files such as weight banks or memory tables are
+**admitted**, not copied:
+
+1. A deployment supplies a catalog's bytes and, through a separate trusted
+   channel, its SHA-256 (`PinnedAuthority`). A catalog never authorizes itself.
+2. `RootCapability` opens one trusted root. Every later open resolves beneath
+   that descriptor with `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS)`.
+   FIFOs, symlinks, traversal and rename races fail closed.
+3. The native provider library is copied into a sealed `memfd`, hashed
+   against the catalog pin, and only then `dlopen`ed from that descriptor.
+4. `FMSFileAssets.register` streams and verifies every page against the
+   pinned manifest (size, page size, page map, raw SHA-256). `inspect_asset`
+   is observation only.
+5. `acquire(asset, offset, length)` materializes the covering pages into
+   bounded native FMS residency and returns a `RangeLease`. Evicting a leased
+   page is `BUSY`. Released pages are evicted LRU under the WARM budget.
+
+`SyntheticFileAssets` self-authorizes generated test fixtures. The production
+constructor rejects its `synthetic-test` provenance.
+
+Nonclaims: the Linux page cache is not charged or bounded (buffered `pread`);
+there is no writable COLD replica; the CPU PAL has no accelerator fences.
+
+### Typed contracts
+
+`elpis.substrate.contracts` defines the fail-closed `ContractError(Code, detail)`
+used by the substrate and inference. Callers branch on `Code` (`IDENTITY`,
+`INTEGRITY`, `LIMIT`, `BUSY`, `STALE`, …), never on message text.
+
 ## ECS: identity, history and replay (`elpis.ecs`)
 
 The ECS is the system's memory of *what happened*. It is a deterministic,

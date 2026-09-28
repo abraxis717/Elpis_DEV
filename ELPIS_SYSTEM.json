@@ -31,12 +31,46 @@
   "subsystems": [
     {
       "id": "substrate",
-      "status": "PLANNED",
+      "status": "OPERATIONAL",
+      "purpose": "Machine/OS substrate and memory management below every model: content hashing, FMS residency (HOT/WARM/COLD logical tiers over RAM/device/storage physical domains) with a POSIX platform abstraction layer, Linux descriptor capabilities, sealed native loading, deployment-pinned resource authority and verified file-backed assets materialized on demand into bounded residency.",
       "python_package": "elpis.substrate",
-      "implementation_roots": [],
-      "test_roots": [],
-      "native_targets": [],
-      "depends_on": []
+      "implementation_roots": [
+        "src/elpis/substrate",
+        "native/substrate"
+      ],
+      "test_roots": [
+        "tests/substrate",
+        "native/substrate/tests"
+      ],
+      "native_targets": [
+        "elpis_hash",
+        "elpis_fms",
+        "elpis_fms_file_assets"
+      ],
+      "depends_on": [],
+      "mutation_authority": "The substrate never mutates admitted external assets (no writable replicas). It owns only its own residency state: page registration, leases and eviction inside configured budgets. Admission requires a deployment-pinned catalog; inspection never creates authority.",
+      "runtime_participation": "Constructed by the runtime composition when file-backed memory is configured; consumed by inference (associative rows, experts, prefetch).",
+      "security_boundary": "Trusted root selected once; opens resolve beneath its descriptor with openat2 RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS; native code is copied into a sealed memfd, digest-verified, then loaded. Linux only; other platforms fail closed.",
+      "protocol_identifiers_retained": [
+        "elpis.inference.raw-bytes.r0",
+        "elpis.inference.file-asset.manifest.r0",
+        "elpis.inference.file-asset.content-map.r0",
+        "elpis.fms.file-asset.r0",
+        "elpis.inference-authority.v1",
+        "FMS ABI v2"
+      ],
+      "external_dependencies": [
+        "libc (openat2, memfd_create)",
+        "pthreads"
+      ],
+      "model_dependency": "NONE",
+      "uses_numpy": false,
+      "maturity": "Mechanics qualified: native FMS invariant/concurrency/adversarial suites, Python admission/lease/eviction/adversarial path suites.",
+      "incomplete_interfaces": [
+        "COLD tier for file assets is external immutable storage only; no writable cold replica is implemented.",
+        "Buffered pread accounting does not charge or bound the Linux page cache.",
+        "No accelerator/device fences on the CPU POSIX PAL (bind_fence fails closed)."
+      ]
     },
     {
       "id": "ecs",
@@ -122,13 +156,15 @@
   "repository_surfaces": {
     ".github": "CI",
     ".gitignore": "repository metadata",
+    "CMakeLists.txt": "native build",
+    "docs": "documentation",
     "ELPIS_SYSTEM.json": "system authority",
     "LICENSE": "license",
-    "NOTICE": "license",
-    "README.md": "documentation",
-    "docs": "documentation",
     "migration": "migration provenance (not runtime authority)",
+    "native": "native implementation",
+    "NOTICE": "license",
     "pyproject.toml": "python build",
+    "README.md": "documentation",
     "src": "python implementation",
     "tests": "tests"
   },

@@ -891,6 +891,86 @@
       "migration_type": "DOCUMENTATION_MERGE",
       "semantic_code_changed": false,
       "reason": "Kernel contract documentation merged into docs/ARCHITECTURE.md (ECS section)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/hacf/src/hash/sha256.c, native/hacf/include/elpis/sha256.h, native/hacf/tests/hash_test.c",
+      "destination": "native/substrate/src/sha256.c + native/substrate/include/elpis/sha256.h + native/substrate/tests/test_hash.c",
+      "disposition": "EXTRACTED_PRIMITIVE",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "SHA-256 content hashing used by every native subsystem; moved from the HACF tree into the substrate."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/hacf/src/memory/fms/, native/hacf/include/elpis/fms*.h",
+      "destination": "native/substrate/src/fms_core.c + native/substrate/src/fms_pal_posix.c + native/substrate/include/elpis/fms.h",
+      "disposition": "EXTRACTED_PRIMITIVE",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "FMS ABI v2 residency core and POSIX PAL: logical tiers vs physical domains, opaque PAL cold tokens, explicit tier-collapse policy, leases with fences, deterministic eviction. Model-independent; moved out of HACF into the substrate unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/hacf/tests/fms/, native/hacf/tests/support/",
+      "destination": "native/substrate/tests",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "FMS invariant, concurrency and adversarial suites plus the fault-injecting test PAL. test_fms_r0 renamed test_fms."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/hacf/file_assets_r0/",
+      "destination": "native/substrate/src/fms_file_assets.c",
+      "disposition": "EXTRACTED_PRIMITIVE",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": true,
+      "reason": "File-asset page bridge over FMS ABI v2, now a default-built substrate library (libelpis_fms_file_assets). The unused scratch-directory constructor (elpis_fms_file_create) was removed; the RAM-only constructor and stats ABI are unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/inference/file_assets.py, asset_boundary.py, asset_authority.py, synthetic_file_assets.py, raw_sha256.py",
+      "destination": "src/elpis/substrate",
+      "disposition": "EXTRACTED_PRIMITIVE",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": true,
+      "reason": "Descriptor capabilities, sealed native loading, deployment-pinned catalogs and verified file-backed page residency were model-independent resource mechanics filed under inference; they are the Python substrate now. InferenceError is renamed ContractError (same Code set, same message format). The no-op deprecated `scratch` argument is removed. Every persisted identity domain (elpis.inference.raw-bytes.r0, file-asset manifest/content-map, elpis.inference-authority.v1 catalog schema) is unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/inference/contracts.py (Code, error, require, integer, digest_value)",
+      "destination": "src/elpis/substrate/contracts.py",
+      "disposition": "EXTRACTED_PRIMITIVE",
+      "migration_type": "SPLIT",
+      "semantic_code_changed": false,
+      "reason": "Typed fail-closed contract primitives shared by substrate and inference live in the lowest layer."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/inference/ASSET_TRUST.md",
+      "destination": "docs/ARCHITECTURE.md",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "DOCUMENTATION_MERGE",
+      "semantic_code_changed": false,
+      "reason": "Asset trust boundary documentation merged into docs/ARCHITECTURE.md (substrate section)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_inference_asset_boundary.py, test_inference_file_assets_r0.py, test_inference_raw_digest_streaming.py",
+      "destination": "tests/substrate",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Admission, path-adversary, sealed-load, lease/eviction and raw-digest suites. The native library now comes from the root build instead of being compiled inside the test; the scratch no-op test was dropped with the argument (63 tests vs 64)."
     }
   ]
 }
