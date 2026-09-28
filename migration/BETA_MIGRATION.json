@@ -2001,6 +2001,56 @@
       "migration_type": "NOT_MIGRATED",
       "semantic_code_changed": false,
       "reason": "Per-file license map and review of the beta tree, including retired TRM/Cadence surfaces."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/README.md",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Index of the beta runtime generations (R0, R1, R2, R3, R4, R3SOT) and their separate admission scopes. Replaced by one runtime composition, elpis.runtime (Runtime over one ECS receipt history), which is not a numbered generation."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R1/src/elpis_runtime_r1/__init__.py, README.md, pyproject.toml",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Runtime-generation package shell; its retrieval stage lives in elpis.structure.retrieval and its composition role in elpis.runtime."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_ecs_r0_e0r3.py, tests/test_ecs_r0_e0r3_runtime_integration.py",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Adapter and runtime-integration qualification of the E0R3 participation experiment (elpis_reference) that bound ECS Structural R0 to the retired TRM guidance path."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_fms_inference_adapter.py",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "FMS checkpoint inference adapter for the vendored TRM reference model."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/run_c2r3_feedback_e2e.py",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "End-to-end driver of the Samsung learned feedback re-proposal step (Runtime R2 profile)."
     }
   ]
 }

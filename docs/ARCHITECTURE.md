@@ -555,3 +555,69 @@ carried forward (`docs/NONCLAIMS.md`).
   integration would bind, but no steering event is recorded in the ECS
   history yet.
 * **Greedy speculative verification only.**
+
+## Runtime: one composition over one history (`elpis.runtime`)
+
+There is one runtime composition. The beta's numbered runtime generations
+(R0–R4, R3SOT) are retired.
+
+### Receipt history
+
+`ReceiptHistory` is an ordinary ECS kernel history with a fixed genesis
+(`elpis.runtime.history.v1`). At genesis it founds, in order, one `history`
+entity and one recorder entity for each of `pipeline`, `structure`,
+`evolution` and `inference`.
+
+Recording a receipt sends one message from the owning subsystem's recorder
+to the history entity. The kernel attributes the sender, so a record cannot
+claim another subsystem. The payload is a canonical
+`elpis.runtime.receipt-record.v1` record: subsystem, kind, digest and named
+bindings.
+
+Recording is idempotent: an equal record returns the existing entry. Opening
+replays and verifies the whole event chain, and it refuses a history founded
+differently, a record from the wrong recorder or a non-canonical payload.
+
+### Composition
+
+`Runtime` owns only its history. The caller supplies everything else
+explicitly: library paths, corpus roots, file assets, ledgers and
+capabilities. Each operation goes through its subsystem's own fail-closed
+entry point and is recorded only if that entry point committed:
+
+| Operation | Subsystem entry point | Recorded |
+|---|---|---|
+| `run_ingress` | `QueryIngress.run` | published zero-authority proposal batch |
+| `admit_retrieval` | `validate_bundle` | valid retrieval bundle |
+| `publish_canonical` | `publish_candidate` | publication receipt (replay records nothing new) |
+| `evolve` | `EvolutionPathGate.execute` over a projection of this history taken at call time | transition receipt of an admitted attempt |
+| `decode` | `InferenceEngine.execute` | committed decode receipt |
+
+The evolution gate reasons over the runtime's own history. Because each
+recorded transition moves the history head, an assertion built against an
+older head is rejected before anything runs.
+
+### Integration suites (`tests/integration`)
+
+Each suite runs over the real native libraries and a real HACF corpus:
+
+* ingress;
+* structural memory;
+* canonical writer;
+* evolution;
+* inference on the synthetic DSV4 fixture, where the live ingress export
+  becomes structural address proposals for a committed decode.
+
+Each suite also checks that refused operations leave both the history and
+the subsystem state unchanged.
+
+### Incomplete interfaces
+
+* **Proposals only, not overlays.** Ingress overlays are recorded by
+  identity only and are not persisted.
+* **No steering epochs.** Steering epochs are not recorded, and the steered
+  engine is composed by the caller.
+* **Only publication is recorded.** The application and promotion stages
+  before canonical publication are driven by the caller and not recorded.
+* **Single process.** There is no cross-process transport. `record()`
+  re-reads the event log after each write.

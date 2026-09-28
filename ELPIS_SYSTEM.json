@@ -284,12 +284,40 @@
     },
     {
       "id": "runtime",
-      "status": "PLANNED",
+      "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
+      "purpose": "The one runtime composition: Runtime wires the subsystems explicitly around one durable receipt history (ReceiptHistory), an ECS kernel history founded with one history entity and one recorder entity per subsystem. It runs one subsystem operation at a time through that subsystem's own fail-closed entry point (pipeline ingress, structure retrieval-bundle admission, canonical Grid81 publication, the evolution path gate bound to a projection of the runtime's own history, and one inference decode transaction) and records the committed outcome as a kernel-attributed message. It is not a numbered runtime generation.",
       "python_package": "elpis.runtime",
-      "implementation_roots": [],
-      "test_roots": [],
+      "implementation_roots": [
+        "src/elpis/runtime"
+      ],
+      "test_roots": [
+        "tests/integration"
+      ],
       "native_targets": [],
-      "depends_on": []
+      "depends_on": [
+        "ecs",
+        "evolution",
+        "inference",
+        "pipeline",
+        "structure"
+      ],
+      "mutation_authority": "The runtime writes only its own ECS receipt history, and only through ReceiptHistory.record: one message from the owning subsystem's recorder entity to the history entity, appended only after that subsystem's own operation committed or published. Recording is idempotent and grants the recorded thing no authority. Every other state change (canonical publication, decode state, evolution receipts) is made by the owning subsystem's entry point with the caller's explicit inputs; the runtime adds no authority and no fallback.",
+      "runtime_participation": "This is the runtime composition.",
+      "security_boundary": "The history directory is an explicit absolute path and the history is replay-validated on open (event chain, clock progression, state roots); a history founded with other entities, a record sent by the wrong recorder, or a non-canonical record payload is refused. Libraries, corpus roots, file assets, ledgers and promotion capabilities are supplied explicitly by the caller; the runtime opens no network connection and loads no model. The evolution gate receives a projection taken at call time, so an assertion bound to an older history head is rejected before anything executes.",
+      "protocol_identifiers_retained": [
+        "New: elpis.runtime.history.v1 (history genesis label), elpis.runtime.receipt-record.v1 (record payload schema). The ECS identifiers it builds on (ecs.event.v1, ecs.message.v1, ecs.state_root.v3) are owned by elpis.ecs."
+      ],
+      "external_dependencies": [],
+      "model_dependency": "NONE_REQUIRED. Inference runs only on caller-supplied targets; the integration suite uses the synthetic DSV4 fixture.",
+      "uses_numpy": true,
+      "maturity": "Integration qualified: five end-to-end suites over real native libraries and a real HACF corpus (ingress, structural memory, canonical writer, evolution, inference with the DSV4 fixture), including record idempotence, replay on reopen, tamper refusal, stale-history rejection and non-recording of refused operations.",
+      "incomplete_interfaces": [
+        "Ingress proposals are recorded but the query-local overlay itself is not persisted; recording carries its identity only.",
+        "Steering epochs (steering.global_event_fields) are not yet recorded; the steered engine is composed by the caller, not by Runtime.",
+        "Canonical publication is recorded after the fact; the application and promotion stages before it are driven by the caller and not recorded.",
+        "The runtime is single-process and same-process like the ECS kernel; no cross-process transport or service boundary.",
+        "record() re-reads the event log after each write; adequate at test scale, not an indexed store."
+      ]
     }
   ],
   "repository_surfaces": {
