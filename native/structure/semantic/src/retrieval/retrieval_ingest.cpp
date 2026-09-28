@@ -28,9 +28,6 @@
 
 namespace {
 
-static const char kZeroDigest[] =
-    "0000000000000000000000000000000000000000000000000000000000000000";
-
 /* Map HACF authority string to numeric value */
 static uint32_t authority_string_to_numeric(const char *authority_str) {
     if (!authority_str) return 0;

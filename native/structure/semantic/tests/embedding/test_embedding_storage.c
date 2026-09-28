@@ -31,7 +31,10 @@ int main(void) {
 
     /* Clean test dir */
     snprintf(path, sizeof(path), "rm -rf '%s' && mkdir -p '%s'", test_dir, test_dir);
-    system(path);
+    if (system(path) != 0) {
+        fprintf(stderr, "test directory setup failed\n");
+        return 1;
+    }
 
     /* Test 1: profile round trip */
     {
@@ -203,7 +206,7 @@ int main(void) {
         FILE *f = fopen(path, "r+b");
         if (f) {
             fseek(f, 20, SEEK_SET);
-            ftruncate(fileno(f), 20);
+            if (ftruncate(fileno(f), 20) != 0) abort();
             fclose(f);
 
             elpis_semantic_embedding_profile_v1 p2;
@@ -313,7 +316,7 @@ int main(void) {
 
     /* Cleanup */
     snprintf(path, sizeof(path), "rm -rf '%s'", test_dir);
-    system(path);
+    if (system(path) != 0) fprintf(stderr, "test directory cleanup failed\n");
 
     printf("Storage tests: %d passed, %d failed\n", passed, failed);
     return failed;

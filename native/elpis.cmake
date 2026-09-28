@@ -45,6 +45,11 @@ function(_elpis_register subsystem target kind)
   set_property(GLOBAL APPEND PROPERTY ELPIS_REGISTERED_TARGETS "${target}")
   set_target_properties(${target} PROPERTIES ELPIS_SUBSYSTEM "${subsystem}" ELPIS_KIND "${kind}")
   elpis_warnings(${target})
+  if(kind STREQUAL "test")
+    # Tests assert with assert(): they must check in every build type,
+    # including Release, where NDEBUG would silently turn them into no-ops.
+    target_compile_options(${target} PRIVATE -UNDEBUG)
+  endif()
 endfunction()
 
 # elpis_add_library(<subsystem> <name> STATIC|SHARED <sources...>)

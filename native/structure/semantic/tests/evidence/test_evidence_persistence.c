@@ -57,12 +57,16 @@ extern int elpis_read_typed_evidence_view(const char *path, elpis_typed_evidence
 static const char *TEST_DIR = "/tmp/elpis_p4_test";
 
 static void setup(void) {
-    system("mkdir -p /tmp/elpis_p4_test");
-    system("rm -rf /tmp/elpis_p4_test/*");
+    if (system("mkdir -p /tmp/elpis_p4_test") != 0 ||
+        system("rm -rf /tmp/elpis_p4_test/*") != 0) {
+        fprintf(stderr, "test directory setup failed\n");
+        exit(1);
+    }
 }
 
 static void cleanup(void) {
-    system("rm -rf /tmp/elpis_p4_test");
+    if (system("rm -rf /tmp/elpis_p4_test") != 0)
+        fprintf(stderr, "test directory cleanup failed\n");
 }
 
 static void test_typer_profile_roundtrip(void) {
@@ -239,7 +243,7 @@ static void test_truncation_rejected(void) {
     FILE *fp = fopen("/tmp/elpis_p4_test/truncated.bin", "r+b");
     if (fp) {
         fseek(fp, sizeof(orig) / 2, SEEK_SET);
-        ftruncate(fileno(fp), ftell(fp));
+        if (ftruncate(fileno(fp), ftell(fp)) != 0) abort();
         fclose(fp);
     }
 
