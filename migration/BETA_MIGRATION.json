@@ -1521,6 +1521,176 @@
       "migration_type": "NOT_MIGRATED",
       "semantic_code_changed": false,
       "reason": "P0 validator ingress for artifacts of the retired learned path; unrelated to the bounded Regex ingress."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/life/{canonical,genotype,lifecycle,lineage,mutation,organism,fitness,reproduction}.py",
+      "destination": "src/elpis/evolution",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Pure-Python heredity, lifecycle, fitness and reproduction become elpis.evolution modules unchanged apart from one assertion message that embedded a donor file path. darwinian.life.* schemas and the life canonical encoding are kept."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/life/selection.py (PopulationState)",
+      "destination": "src/elpis/evolution/selection.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Canonical population state (darwinian.life.population-state.v1) kept unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/life/selection.py (SelectionProposal, SelectionSolverKind, SelectionCandidateBinding, SelectionCommitPolicyV1, commit_selection)",
+      "destination": null,
+      "disposition": "RESEARCH_ONLY_NOT_MIGRATED",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Retired QUBO branch: a selection proposal carried caller-claimed QUBO energies and solver provenance (exact classical, local statevector QAOA, IBM runtime QAOA) and the commit trusted the claimed optimality gap without recomputing it; no in-repo producer of the QUBO existed. Replaced by elpis.evolution.selection.commit_selection, a deterministic truncation selection that accepts no external solution and recomputes every fitness score."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/life/__init__.py",
+      "destination": "src/elpis/evolution/__init__.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "REWRITE",
+      "semantic_code_changed": true,
+      "reason": "Package exports folded into elpis.evolution.__init__."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/tests/test_life_{fitness,heredity,reproduction}.py",
+      "destination": "tests/evolution/test_fitness.py + tests/evolution/test_heredity.py + tests/evolution/test_reproduction.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Donor suites with imports renamed."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/tests/test_life_selection.py",
+      "destination": "tests/evolution/test_selection.py",
+      "disposition": "MIGRATED",
+      "migration_type": "REWRITE_AS_TEST",
+      "semantic_code_changed": false,
+      "reason": "Population-order and duplicate-identity cases kept; the proposal/QUBO cases retired with the branch; new cases cover the truncation law and every rejection path."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/tests/ (climate, controller, ecology, episode, frame, geometry, ledger, marginal probe, p01, projector, structural frame, trm contract, cross-process determinism)",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Suites of the retired Torch lattice, TRM-driven controllers, episode ledger and projector."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/grid_constants.py, __init__.py, README.md, COMPONENT_MANIFEST.json",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Grid81 cell-count constant used only by the retired projector; component shell and manifest."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/ledger/__init__.py",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Package exports of the retired Torch episode ledger."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/EvolutionPathGate/src/elpis_evolution_path_gate/path_gate.py",
+      "destination": "src/elpis/evolution/path_gate.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "REWRITE",
+      "semantic_code_changed": true,
+      "reason": "Assertion and transition-receipt records kept byte-identical (digests verified against the donor). execute() no longer reads TRM refinement results: an admitted attempt must return a typed EvolutionAttempt, the history binding must be a real ECS ContextProjection (look-alikes are rejected), and the gate configuration is validated."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/EvolutionPathGate/src/elpis_evolution_path_gate/selection.py",
+      "destination": "src/elpis/evolution/promotion.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": true,
+      "reason": "Evaluation-gated candidate promotion and atomic materialization, renamed promotion by function; record schemas (elpis.rsi.*) and digests unchanged. FAIL-CLOSED FIX: workspace digests and copies followed symlinks, so a candidate could pull content from outside its tree; symlinks, special files and empty or escaping edit paths are now refused, and tree entries are sorted by the same string order the manifest validates."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/EvolutionPathGate/src/elpis_evolution_path_gate/canonical.py",
+      "destination": "src/elpis/evolution/digests.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Domain digest over the shared canonical identity, digest check and file hash."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/EvolutionPathGate/src/elpis_evolution_path_gate/__init__.py",
+      "destination": "src/elpis/evolution/__init__.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "REWRITE",
+      "semantic_code_changed": true,
+      "reason": "Exports folded into elpis.evolution.__init__."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/EvolutionPathGate/tests/test_path_gate.py",
+      "destination": "tests/evolution/test_path_gate.py + tests/evolution/_history.py",
+      "disposition": "MIGRATED",
+      "migration_type": "REWRITE_AS_TEST",
+      "semantic_code_changed": false,
+      "reason": "Fail-closed matrix kept; the fake projection is replaced by a projection of a real ECS kernel history; typed-result, look-alike projection and receipt-chaining cases added."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/EvolutionPathGate/tests/test_selection.py, test_materialization.py",
+      "destination": "tests/evolution/test_promotion.py + tests/evolution/test_materialization.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Promotion and materialization suites; symlink and path-escape refusal cases added."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/EvolutionPathGate/tests/test_authority_surface.py, COMPONENT_MANIFEST.json, README.md, pyproject.toml",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Per-component manifest checks; import and authority boundaries are enforced repository-wide by tests/boundary and ELPIS_SYSTEM.json."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "manifests/BRANCH46C_EVOLUTION_PATH_GATE_PRODUCTION_EXTRACTION_R0.json, manifests/BRANCH46D_EVOLUTION_PATH_DARWINIAN_WIRING_R0.json",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Extraction and wiring records of the gate's beta placement before the TRM-driven episode."
     }
   ]
 }

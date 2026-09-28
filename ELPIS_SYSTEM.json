@@ -212,12 +212,36 @@
     },
     {
       "id": "evolution",
-      "status": "PLANNED",
+      "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
+      "purpose": "Generic, deterministic evolution: canonical integer genotypes, bounded mutation seeded from content-addressed lineage, persistent organisms with a lifecycle law, atomic energy-conserving reproduction, exact integer fitness, self-verified truncation selection over a population revision, an evolution path gate that admits one bounded attempt per exact ECS-history-bound assertion and chains transition receipts, and evaluation-gated promotion of a candidate workspace over its incumbent with atomic materialization.",
       "python_package": "elpis.evolution",
-      "implementation_roots": [],
-      "test_roots": [],
+      "implementation_roots": [
+        "src/elpis/evolution"
+      ],
+      "test_roots": [
+        "tests/evolution"
+      ],
       "native_targets": [],
-      "depends_on": []
+      "depends_on": [
+        "ecs"
+      ],
+      "mutation_authority": "Evolution records are immutable values; every state change returns a new population, organism or receipt and nothing is written in place. Selection and reproduction commit only against the exact revision the caller observed and reject atomically otherwise. Promotion writes a child workspace only at a caller-supplied, not-yet-existing destination, and only when its content matches the selected manifest. The path gate grants no authority beyond the single attempt it admits.",
+      "runtime_participation": "The runtime composition may run gated evolution attempts against an ECS projection of its own history and record their transition receipts in that history.",
+      "security_boundary": "No implicit randomness (mutation seeds derive from lineage content), no model, no numerics, no network. Selection accepts no externally proposed solution and recomputes every fitness score. The path gate type-checks the history projection and executes nothing for a rejected assertion. Promotion refuses symlinks and special files in workspaces and edit paths outside the child.",
+      "protocol_identifiers_retained": [
+        "Life record schemas: darwinian.life.{genotype,lineage,mutation-*,organism-state,population-state,fitness-*,reproduction-*}.v1 and their canonical JSON encoding (ASCII, sorted keys)",
+        "Path gate: elpis.evolution-path-assertion.v0, elpis.evolution-path-transition-receipt.v0 (including the field names structural_attempt_digest and refinement_result_digest)",
+        "Promotion: elpis.rsi.harness-manifest.v0, elpis.rsi.evaluation-evidence.v0, elpis.rsi.selection-receipt.v0, elpis.rsi.component-content-map.v0 (historical identifiers; no self-improvement claim)"
+      ],
+      "external_dependencies": [],
+      "model_dependency": "NONE",
+      "uses_numpy": false,
+      "maturity": "Mechanics qualified: heredity, mutation, reproduction and fitness suites from the donor; new truncation-selection suite covering every rejection path; path-gate suite over a real ECS kernel history with digests identical to the donor gate; promotion and atomic-materialization suites including symlink and path-escape refusal.",
+      "incomplete_interfaces": [
+        "No environment produces fitness observations: the donor's ecological lattice was Torch-backed and TRM-driven and is retired, so observations are supplied by the caller.",
+        "Promotion evaluation evidence (held-out, OOD and calibration deltas) is supplied by the caller; no in-repo evaluator produces it.",
+        "Path-gate transition receipts are returned to the caller; recording them in the ECS history is the runtime composition's job."
+      ]
     },
     {
       "id": "inference",

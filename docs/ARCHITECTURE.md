@@ -374,3 +374,77 @@ the digest-bound component value `HACF_R3` inside the context proposal, and
 its C ABI symbol names. Phase names were removed from module names,
 docstrings and comments.
 
+
+## Evolution: heredity, selection and gated promotion (`elpis.evolution`)
+
+Evolution is a set of deterministic, immutable record transitions. Nothing in
+it randomizes implicitly, loads a model or touches numerics.
+
+### Heredity and lifecycle
+
+* **Genotypes** are canonical tuples of bounded integer genes.
+* **Mutation** is bounded and seeded from content-addressed lineage (parents,
+  birth tick and ordinal, world digest), so the same history always
+  reproduces the same child.
+* **Organisms** carry lineage, genotype, energy, age and a lifecycle state
+  (EMBRYO → ALIVE ⇄ REPRODUCTIVE → DYING → DEAD). Death is irreversible.
+* **Reproduction** is an atomic, energy-conserving transaction against the
+  exact parent revision the caller observed.
+
+### Fitness and selection
+
+A fitness record binds one measured observation to one organism revision and
+one fitness policy (exact integer weights). Selection is deterministic
+truncation selection over a population revision. It takes no externally
+proposed solution: the commit itself verifies every record against the
+organism's current revision, recomputes every score, ranks by score and then
+organism id, keeps the policy's survivor count and moves every other eligible
+organism to DYING. Any stale, missing, duplicate, foreign or misscored record
+rejects the whole commit, and the population is unchanged.
+
+The QUBO/solver-proposal selection branch of the beta is retired: its commit
+trusted a caller-claimed optimality gap.
+
+### Path gate
+
+An `EvolutionPathAssertion` binds:
+
+* the episode state digest, attempt index and attempt head;
+* an edit count within an edit budget;
+* a component scope;
+* a resource budget and an evaluation contract;
+* the exact ECS history the caller reasoned over (projection digest, head
+  event digest and final state root of a real `ContextProjection`).
+
+The gate re-checks every binding against the live state. A rejected assertion
+executes nothing. An admitted one executes exactly one attempt, which must
+return a typed `EvolutionAttempt`. The result is a `PathTransitionReceipt`
+chained to the previous receipt by digest. Assertion and receipt records are
+byte-identical to the beta gate's.
+
+### Promotion
+
+A candidate workspace is promoted over its incumbent only when all of these
+hold:
+
+* its evaluation evidence is bound to the exact parent, candidate, path
+  receipt, evaluation contract and all four data partitions (EVOLVE,
+  CALIBRATION, HELD_OUT, OOD);
+* the correctness, leakage, resource and source-scope checks all pass;
+* the held-out gain exceeds the fixed noise envelope;
+* the OOD delta stays above the regression floor.
+
+Ties break by held-out gain, then resource cost, then edit count, then
+candidate digest. Otherwise the incumbent is retained. Materialization copies
+the parent and applies explicit edits in a private stage directory. The child
+is renamed into place only if its content map equals the selected manifest.
+Symlinks, special files and escaping edit paths are refused. The `elpis.rsi.*`
+schema identifiers are historical and carry no self-improvement claim.
+
+### Incomplete interfaces
+
+* **No in-repo fitness environment.** No environment produces fitness
+  observations; the beta's Torch lattice ecology is retired.
+* **No in-repo evaluator.** Nothing produces promotion evaluation evidence.
+* **The caller records receipts.** Transition receipts are returned rather
+  than recorded; the runtime composition records them in the ECS history.
