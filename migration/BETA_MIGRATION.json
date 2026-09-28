@@ -2,7 +2,7 @@
   "schema": "elpis.beta-migration.v1",
   "role": "Migration provenance only. This file is not runtime authority; ELPIS_SYSTEM.json is the sole system authority.",
   "donor": {
-    "repository": "https://github.com/abraxis717/Elpis",
+    "repository": "https://github.com/abraxis717/Elpis_beta",
     "default_branch": "main",
     "migration_basis_commit": "8eda162712ebe291f2b88b6906366075859bc485",
     "migration_basis_tree": "9e3ff61385817f94e5b0d6823fd7c471ef384c59",
@@ -23,7 +23,7 @@
   ],
   "records": [
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "COMPONENT_REGISTRY.json",
       "destination": null,
@@ -33,7 +33,7 @@
       "reason": "Beta 17-component registry; replaced by the single root authority ELPIS_SYSTEM.json."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "ELPIS_CANONICAL_MANIFEST.json",
       "destination": null,
@@ -43,7 +43,7 @@
       "reason": "Beta canonical assembly manifest overlapping the component registry; superseded by ELPIS_SYSTEM.json."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "manifests/",
       "destination": null,
@@ -53,7 +53,7 @@
       "reason": "Public registry, dependency graph, successor registries, file-license maps and branch settlements: parallel overlapping authorities."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "PUBLICATION_ASSERTIONS.json",
       "destination": null,
@@ -63,7 +63,7 @@
       "reason": "Release publication assertions; release/PyPI authority migration is explicitly deferred."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "PUBLISHED_RELEASES.json",
       "destination": null,
@@ -73,7 +73,7 @@
       "reason": "Historical release registry; release authority deferred."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "FAILED_RELEASES.json",
       "destination": null,
@@ -83,7 +83,7 @@
       "reason": "Historical failed-release registry; release authority deferred."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "VERSION",
       "destination": null,
@@ -93,7 +93,7 @@
       "reason": "Historical beta release identity (2.2.37); the development distribution does not claim it."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "BASIC_REGEX_SHIPMENT_R0.json",
       "destination": null,
@@ -103,7 +103,7 @@
       "reason": "Beta shipment/admission record; the regex mechanism itself is migrated into the pipeline subsystem."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "RELEASE_NOTES/",
       "destination": null,
@@ -113,7 +113,7 @@
       "reason": "Historical release notes."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "RELEASE_RATIFICATIONS/",
       "destination": null,
@@ -123,7 +123,7 @@
       "reason": "Historical release ratification records."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "CHANGELOG.md",
       "destination": null,
@@ -133,7 +133,7 @@
       "reason": "Beta release changelog; history remains in the donor repository."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "CITATION.cff",
       "destination": null,
@@ -143,7 +143,7 @@
       "reason": "Citation metadata of the beta repository; the donor remains the citation target for beta work."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "health/",
       "destination": null,
@@ -153,7 +153,7 @@
       "reason": "Beta repository-health snapshots."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "qualification/",
       "destination": null,
@@ -163,7 +163,7 @@
       "reason": "Beta qualification lockfiles for release CI."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": ".github/workflows/pypi-publish.yaml",
       "destination": null,
@@ -173,7 +173,7 @@
       "reason": "PyPI trusted-publishing workflow; no publication authority is migrated."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": ".github/workflows/ci.yml",
       "destination": null,
@@ -183,7 +183,7 @@
       "reason": "Beta CI (release sealing, branch-numbered jobs); replaced by a new CI written for the clean architecture."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": ".github/workflows/component-attribution.yml",
       "destination": null,
@@ -193,7 +193,7 @@
       "reason": "Beta component attribution workflow."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": ".github/workflows/platform-matrix.yml",
       "destination": null,
@@ -203,7 +203,7 @@
       "reason": "Beta platform matrix for the TRM reference runtime."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": ".github/workflows/reference-runtime.yml",
       "destination": null,
@@ -213,7 +213,7 @@
       "reason": "Beta TRM/FPRM reference runtime workflow."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": ".github/workflows/inference-native-r0.yml",
       "destination": null,
@@ -223,7 +223,7 @@
       "reason": "Beta inference-native locus workflow; its checks are rebuilt in the new CI."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tools/",
       "destination": null,
@@ -233,7 +233,7 @@
       "reason": "Beta release orchestration, sealing, red-team and locus tooling bound to beta release authority."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/ (release, seal, publication, orchestrator, hygiene and branch-numbered release-prep suites)",
       "destination": null,
@@ -243,7 +243,7 @@
       "reason": "Tests of retired release authority; not applicable to the clean foundation."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "AGENTS.md",
       "destination": null,
@@ -253,7 +253,7 @@
       "reason": "Beta documentation-mutability policy bound to beta authority payloads."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "docs/",
       "destination": null,
@@ -263,7 +263,7 @@
       "reason": "Beta architecture/integration/red-team documents describing retired component taxonomy; replaced by docs/ARCHITECTURE.md, docs/NONCLAIMS.md and docs/MIGRATION.md."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "examples/",
       "destination": null,
@@ -273,7 +273,7 @@
       "reason": "Beta examples for the retired Sudoku reference CLI."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "LICENSES/Samsung-TinyRecursiveModels-MIT.txt",
       "destination": null,
@@ -283,7 +283,7 @@
       "reason": "License of the retired TRM vendor code; no TRM code is migrated."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "LICENSES/MIT.txt",
       "destination": null,
@@ -293,7 +293,7 @@
       "reason": "Generic MIT text used by retired beta surfaces; the surviving MIT-derived inference mechanics carry their specific upstream license texts."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "THIRD_PARTY_NOTICES.md",
       "destination": null,
@@ -303,7 +303,7 @@
       "reason": "Rewritten for surviving code only (Cadence and TRM notices no longer apply)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis_reference/",
       "destination": null,
@@ -313,7 +313,7 @@
       "reason": "Public FPRM/TRM Sudoku reference runtime (model fetch, checkpoint authority, `elpis sudoku`); the learned Sudoku path is retired as architecture."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis_reference/vendor/",
       "destination": null,
@@ -323,7 +323,7 @@
       "reason": "Vendored Samsung TinyRecursiveModels/FPRM Torch implementation."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis_reference/structural_guidance/",
       "destination": null,
@@ -333,7 +333,7 @@
       "reason": "TRM-driven structural guidance/decoding/materialization/validation authority chain producing Python source artifacts; every consumer is the learned TRM path."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis_reference/fms_inference_adapter.py",
       "destination": null,
@@ -343,7 +343,7 @@
       "reason": "FMS residency adapter for the TRM model checkpoint; superseded by the model-independent substrate file-asset provider."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis_reference/ecs_r0_e0r2 and E0R3 participation (tools/ecs_r0_e0r2.py, tools/ecs_r0_e0r3.py, structural_guidance/e0r3_participation.py)",
       "destination": null,
@@ -353,7 +353,7 @@
       "reason": "Representability/participation experiments binding ECS Structural R0 to the TRM guidance path."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/TRMFractalSpine/",
       "destination": null,
@@ -363,7 +363,7 @@
       "reason": "TRM structural oracle/refinement/model-port/provider activation and isolated-driver host; its only admitted consumers were P0, R0 and the TRM reference drivers."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Pipeline/P0ControlProtocol/",
       "destination": null,
@@ -373,7 +373,7 @@
       "reason": "Model-wide TRM control protocol (keyword projector -> 81-cell lattice -> ShadowTRMProposer -> Python decoder -> AST validator)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/trm/",
       "destination": null,
@@ -383,7 +383,7 @@
       "reason": "TRM contract, P01 identity/materializer and Sudoku reference solver adapters around the learned solver."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/controller/",
       "destination": null,
@@ -393,7 +393,7 @@
       "reason": "Episode/frame controllers driven by the TRM FrozenStructuralAdapter over a solved Grid81 lattice (Torch)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/ledger/episode_archive.py",
       "destination": null,
@@ -403,7 +403,7 @@
       "reason": "Episode archive bound to the TRM contract and Sudoku reference solver (Torch)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/projector/",
       "destination": null,
@@ -413,7 +413,7 @@
       "reason": "ClampState RELEASE projector used only by the Runtime R2 SUDOKU_FEEDBACK_V1 learned re-proposal profile (optional Torch)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R0/",
       "destination": null,
@@ -423,7 +423,7 @@
       "reason": "Deterministic transaction composing P0 projection, TRM StructuralOracle, Grid81 adjudication and a Torch Darwinian episode; every stage except adjudication is a retired TRM-path surface."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R2/",
       "destination": null,
@@ -433,7 +433,7 @@
       "reason": "SUDOKU_FEEDBACK_V1: task residual -> Projector RELEASE -> pinned Samsung learned re-proposal."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "drivers/fms_posix/",
       "destination": null,
@@ -443,7 +443,7 @@
       "reason": "Platform wheel for the fms.checkpoint.v1 TRM checkpoint residency provider."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "drivers/needle3/",
       "destination": null,
@@ -453,7 +453,7 @@
       "reason": "Isolated model-port platform wheel (Needle3/Cactus) whose only consumer was the TRM model-port registry."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/hacf_bridge/fms_inference_bridge.c",
       "destination": null,
@@ -463,7 +463,7 @@
       "reason": "Single-checkpoint FMS residency bridge for the TRM checkpoint (ELPIS_FMS_KIND_MODEL_CHECKPOINT)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/src/trm/ (P8 TRM adapter, mutability policy, output guard)",
       "destination": null,
@@ -473,7 +473,7 @@
       "reason": "TRM tensor ABI/adapter/guard; leaf layer with no non-TRM includers."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/src/trm_eval/ (P10 incl. sudoku_reference_solver.c)",
       "destination": null,
@@ -483,7 +483,7 @@
       "reason": "TRM efficacy evaluation and native Sudoku reference solver."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/src/trm_align/ (P10R)",
       "destination": null,
@@ -493,7 +493,7 @@
       "reason": "TRM alignment lanes/placement analysis; the only OpenSSL consumer in the native tree."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/src/refiner/ (P11)",
       "destination": null,
@@ -503,7 +503,7 @@
       "reason": "TRM refiner bake-off harness."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/src/refinement_integration/ (P12)",
       "destination": null,
@@ -513,7 +513,7 @@
       "reason": "Refinement backend registry whose only qualified backend is the TRM path."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/optional_dependencies.py",
       "destination": null,
@@ -523,7 +523,7 @@
       "reason": "`require_torch` entry to the optional TRM runtime; no Torch path survives."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/fixtures/allocator_*.json, tests/_support/allocator_fixtures.py",
       "destination": null,
@@ -533,7 +533,7 @@
       "reason": "Allocator measurement fixtures for the TRM guidance planner."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/CadenceECSProbe/",
       "destination": null,
@@ -543,7 +543,7 @@
       "reason": "Research-only inactive diagnostic over ECS projections bound to an external Cadence donor; not scientifically admitted."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/FuryanLocusOracle/",
       "destination": null,
@@ -553,7 +553,7 @@
       "reason": "Verification/falsification oracle for the retired TRM guidance allocator; its target no longer exists in the clean system."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "ECS/science/",
       "destination": null,
@@ -563,7 +563,7 @@
       "reason": "Historical per-branch scientific records (Branch35-48); summarized with provenance in docs/ARCHITECTURE.md, not runtime authority."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "ECS/qualification/M1A_R1/",
       "destination": null,
@@ -573,7 +573,7 @@
       "reason": "Defect reproduction scripts for the historical M1A-R1 repair."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/ecology/, climate/, geometry.py, runtime.py, evaluation/, ledger/records.py",
       "destination": null,
@@ -583,7 +583,7 @@
       "reason": "Torch-backed 6,561-site ecological lattice simulation derived from a solved Grid81; only consumers are the TRM-driven controllers and inactive Runtime R4. Generic population/selection/heredity machinery survives in elpis.evolution; the ecology environment is recorded as an incomplete evolution interface."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/ECSPhilosophy.md",
       "destination": null,
@@ -593,7 +593,7 @@
       "reason": "Design essay; not runtime authority."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "RESEARCH_REFERENCES.md",
       "destination": null,
@@ -603,7 +603,7 @@
       "reason": "Scholarly acknowledgements; carried as a reference list in docs/ARCHITECTURE.md."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/CNumPyCortex/",
       "destination": null,
@@ -613,7 +613,7 @@
       "reason": "Optional telemetry cortex (host sensors -> 9x9 transport, optional Chronos forecasting, TRM bridge); no import consumer outside its own tests; no core function not better represented elsewhere."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/R3SOTObservationBridge/",
       "destination": null,
@@ -623,7 +623,7 @@
       "reason": "External development observation bridge from R3SOT epochs to detached host data; no consumer."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R4/",
       "destination": null,
@@ -633,7 +633,7 @@
       "reason": "Placement of EvolutionPathGate before a TRM-driven Darwinian episode; the gate survives in elpis.evolution, the TRM episode it wrapped does not."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/contracts/",
       "destination": null,
@@ -643,7 +643,7 @@
       "reason": "Budget/phase/envelope/closure contracts consumed only by P0 and TRM structural guidance."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/logic/",
       "destination": null,
@@ -653,7 +653,7 @@
       "reason": "L0 affine-logic account/capability reference package consumed only by P0."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/python_ast_policy.py",
       "destination": null,
@@ -663,7 +663,7 @@
       "reason": "Static policy for TRM-generated Python artifacts; consumers are P0 validators and structural guidance."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/elpis-header/src/elpis_header/contracts/ (leases, observations, states)",
       "destination": null,
@@ -673,7 +673,7 @@
       "reason": "MECHANICALLY BROKEN in donor: imports the nonexistent `Artifacts.content_identity` package; no consumer."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/elpis-header/src/elpis_header/core/, observer/{epoch_window,role_sources,token_record}.py",
       "destination": null,
@@ -683,7 +683,7 @@
       "reason": "Empty (zero-byte) placeholder modules."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/src/structural_spine/ (P13)",
       "destination": null,
@@ -693,7 +693,7 @@
       "reason": "`elpis_spine_execute` is a stub returning hard-coded P12 production numbers (36 -> 52 filled cells, 16 backend invocations) without executing anything; it orchestrated the TRM refinement path."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/include/elpis_semantic/sudoku_reference_solution.h",
       "destination": null,
@@ -703,7 +703,7 @@
       "reason": "Sudoku reference-solution header for the retired TRM evaluation path."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Pipeline/P0ControlProtocol/src/elpis_p0/lineage_authority.py, artifact_lineage.py",
       "destination": null,
@@ -713,7 +713,7 @@
       "reason": "One-shot in-memory lineage receipts for P0 artifacts; the surviving one-use capability/ledger authority of the Grid81 canonical pipeline supersedes it."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Pipeline/P0ControlProtocol/src/elpis_p0/semantic_ir.py, semantic_space.py, semantic_binding.py",
       "destination": null,
@@ -723,7 +723,7 @@
       "reason": "Relational request graph whose only consumer is the retired P0 keyword projector sidecar."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R1/src/elpis_runtime_r1/transaction.py, evidence_adapter.py, receipt.py, replay.py",
       "destination": null,
@@ -733,7 +733,7 @@
       "reason": "R1 composition that prepended retrieval to the retired R0 transaction; the retrieval stage itself is extracted."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81*/verify_*.py, g5*_execute.py, g5*_mutation_harness.py, */upstream.py, */verifier.py, capability authority source_join.py, application mutation_harness.py",
       "destination": null,
@@ -743,7 +743,7 @@
       "reason": "Phase qualification drivers and mutation harnesses that re-verify external `reports/G5_*` evidence trees absent from the donor repository; 150+ donor tests depending on them fail in the donor checkout. The structural-group and adjudication source joins survive in in-memory form."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicCapabilityApplicationExecutor/src/.../reports/G53C_MUTATION_RECORDS.jsonl",
       "destination": null,
@@ -753,7 +753,7 @@
       "reason": "Historical mutation-qualification output."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/*/COMPONENT_MANIFEST.json, QUALIFICATION_BINDING.json, BUILD_CONTRACT.json, contracts/*.json, pyproject.toml",
       "destination": null,
@@ -763,7 +763,7 @@
       "reason": "Per-component constitutional identity (manifests, qualification bindings, per-component packages) replaced by one distribution and one system authority."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/*/manifests/, native/*/evidence/, native/*/docs/R*_*.md",
       "destination": null,
@@ -773,7 +773,7 @@
       "reason": "Machine-specific qualification dumps, hotfix notes and release-era seals."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/InferenceInfrastructure/ (as a component)",
       "destination": null,
@@ -783,7 +783,7 @@
       "reason": "Pure provenance/licence holder; its license texts and provenance table move to LICENSES/ and docs."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/canonical_identity.py",
       "destination": "src/elpis/identity.py",
@@ -793,7 +793,7 @@
       "reason": "Cross-subsystem canonical content identity v1; module renamed to elpis.identity, algorithm and domain framing byte-identical."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_canonical_identity_v1.py",
       "destination": "tests/foundation/test_identity.py",
@@ -803,7 +803,7 @@
       "reason": "Identity vectors and rejection tests; import path updated only."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_canonical_identity_verifier_standalone.py",
       "destination": null,
@@ -813,7 +813,7 @@
       "reason": "Ran a beta tools/ convergence verifier over retired surfaces."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "ECS/runtime/elpis_ecs/",
       "destination": "src/elpis/ecs",
@@ -823,7 +823,7 @@
       "reason": "Same-process ECS kernel: identity, lifecycle, messaging, scheduler, durable history, state roots, replay, checkpoints, recovery, topology. Package renamed elpis_ecs -> elpis.ecs; code is AST-identical to the donor except the package __init__; docstrings dropped M1A/M1A-R1 phase names. Every persisted protocol string (ecs.state_root.v3, ecs.m1a.integration.v3, scheduler protocols) is unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "ECS/tests/",
       "destination": "tests/ecs",
@@ -833,7 +833,7 @@
       "reason": "Kernel adversarial, attribution, crash/fault, durable fault matrix, replay, state-root, scheduler, topology suites (547 tests, same count as donor). Imports renamed; child processes import the same elpis package the test process imported."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "ECS/qualification/run.py, ECS/qualification/scenario.py",
       "destination": "tests/ecs/test_determinism_qualification.py + tests/ecs/_determinism_scenario.py",
@@ -843,7 +843,7 @@
       "reason": "Fresh-process determinism qualification (5 hash seeds x 4 restart cadences, build vs. replay) became a pytest test; evidence-file emission dropped."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/ECSContextProjector/",
       "destination": "src/elpis/ecs/projection + tests/ecs/test_projection.py + tests/ecs/test_projection_kernel_adapter.py",
@@ -853,7 +853,7 @@
       "reason": "Read-only replay-backed projection over committed ECS history; becomes elpis.ecs.projection. Component manifest, compatibility file and CI verifier dropped. 98 tests, same count as donor."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis_reference/ecs_r0.py, src/elpis_reference/ecs_r0_authority.py",
       "destination": "src/elpis/ecs/structural.py + src/elpis/ecs/structural_authority.py",
@@ -863,7 +863,7 @@
       "reason": "Frozen Structural R0 mutation grammar and embedded sealed authority bytes. Moved out of the retired reference package into the ECS. The two E0R3 participation methods that delegated into retired TRM structural guidance were removed; all elpis.ecs.r0.* digest domains and sealed bytes are unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_ecs_r0.py, tests/test_ecs_r0_authority_boundary.py",
       "destination": "tests/ecs/test_structural.py + tests/ecs/test_structural_authority.py",
@@ -873,7 +873,7 @@
       "reason": "Byte-level Structural R0 contract tests and anchor fail-closed tests. Dropped: beta CI/README marker checks and the tools/ on-disk transport adapter tests (no on-disk copy of the sealed payload exists any more)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "ECS/ECS_AUTHORITY/STRUCTURAL_R0/, ECS/ECS_AUTHORITY_HEADER.md",
       "destination": "src/elpis/ecs/structural_authority.py",
@@ -883,7 +883,7 @@
       "reason": "Sealed Structural R0 payload; its exact bytes were already embedded behind logical anchors in the donor and are carried in elpis.ecs.structural_authority. No parallel on-disk copy is kept."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "ECS/README.md, ECS/SCHEDULER_PROTOCOL_MIGRATION_V2.md",
       "destination": "docs/ARCHITECTURE.md",
@@ -893,7 +893,7 @@
       "reason": "Kernel contract documentation merged into docs/ARCHITECTURE.md (ECS section)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/hacf/src/hash/sha256.c, native/hacf/include/elpis/sha256.h, native/hacf/tests/hash_test.c",
       "destination": "native/substrate/src/sha256.c + native/substrate/include/elpis/sha256.h + native/substrate/tests/test_hash.c",
@@ -903,7 +903,7 @@
       "reason": "SHA-256 content hashing used by every native subsystem; moved from the HACF tree into the substrate."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/hacf/src/memory/fms/, native/hacf/include/elpis/fms*.h",
       "destination": "native/substrate/src/fms_core.c + native/substrate/src/fms_pal_posix.c + native/substrate/include/elpis/fms.h",
@@ -913,7 +913,7 @@
       "reason": "FMS ABI v2 residency core and POSIX PAL: logical tiers vs physical domains, opaque PAL cold tokens, explicit tier-collapse policy, leases with fences, deterministic eviction. Model-independent; moved out of HACF into the substrate unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/hacf/tests/fms/, native/hacf/tests/support/",
       "destination": "native/substrate/tests",
@@ -923,7 +923,7 @@
       "reason": "FMS invariant, concurrency and adversarial suites plus the fault-injecting test PAL. test_fms_r0 renamed test_fms."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/hacf/file_assets_r0/",
       "destination": "native/substrate/src/fms_file_assets.c",
@@ -933,7 +933,7 @@
       "reason": "File-asset page bridge over FMS ABI v2, now a default-built substrate library (libelpis_fms_file_assets). The unused scratch-directory constructor (elpis_fms_file_create) was removed; the RAM-only constructor and stats ABI are unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/inference/file_assets.py, asset_boundary.py, asset_authority.py, synthetic_file_assets.py, raw_sha256.py",
       "destination": "src/elpis/substrate",
@@ -943,7 +943,7 @@
       "reason": "Descriptor capabilities, sealed native loading, deployment-pinned catalogs and verified file-backed page residency were model-independent resource mechanics filed under inference; they are the Python substrate now. InferenceError is renamed ContractError (same Code set, same message format). The no-op deprecated `scratch` argument is removed. Every persisted identity domain (elpis.inference.raw-bytes.r0, file-asset manifest/content-map, elpis.inference-authority.v1 catalog schema) is unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/inference/contracts.py (Code, error, require, integer, digest_value)",
       "destination": "src/elpis/substrate/contracts.py",
@@ -953,7 +953,7 @@
       "reason": "Typed fail-closed contract primitives shared by substrate and inference live in the lowest layer."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/inference/ASSET_TRUST.md",
       "destination": "docs/ARCHITECTURE.md",
@@ -963,7 +963,7 @@
       "reason": "Asset trust boundary documentation merged into docs/ARCHITECTURE.md (substrate section)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_inference_asset_boundary.py, test_inference_file_assets_r0.py, test_inference_raw_digest_streaming.py",
       "destination": "tests/substrate",
@@ -973,7 +973,7 @@
       "reason": "Admission, path-adversary, sealed-load, lease/eviction and raw-digest suites. The native library now comes from the root build instead of being compiled inside the test; the scratch no-op test was dropped with the argument (63 tests vs 64)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/hacf/src/{kernel,graph,retrieval}/, native/hacf/include/elpis/{cascade,graph,chunking,corpus,embedding_provider,vector_*,context_graph,hybrid_retrieval,retrieval_bundle}.h",
       "destination": "native/structure/hacf",
@@ -983,7 +983,7 @@
       "reason": "HACF content-addressed cascade/graph, chunking, SQLite corpus, embeddings, exact FMS-backed vector index, context graph, hybrid retrieval and RetrievalBundle become the structural-memory store of the structure subsystem. Sources unchanged; comments lost HACF generation labels (R1/R2/R3)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/hacf/tests/{kernel,graph,retrieval,vector,hybrid}/",
       "destination": "native/structure/hacf/tests",
@@ -993,7 +993,7 @@
       "reason": "HACF suites incl. cross-host golden fixtures. Test harness names lost generation labels (r1/r2/r3 -> corpus/vector/hybrid); fixture bytes unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/hacf/benchmarks/",
       "destination": null,
@@ -1003,7 +1003,7 @@
       "reason": "Performance measurement tools that produced beta qualification evidence; not tests and not part of the default build."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/hacf/{docs,manifests,evidence}/, native/hacf/COMPONENT_MANIFEST.json, native/hacf/CMakeLists.txt",
       "destination": null,
@@ -1013,7 +1013,7 @@
       "reason": "R2/R3 qualification seals, machine-specific evidence dumps, hotfix notes and the standalone HACF build; replaced by native/structure/CMakeLists.txt."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/src/{graph,embedding,context,retrieval,evidence,view,topology,grid81}/ and matching headers",
       "destination": "native/structure/semantic",
@@ -1023,7 +1023,7 @@
       "reason": "Model-independent semantic structural core (hypergraph, snapshots, overlays, embeddings, context-deficit control, retrieval materialization, evidence typing/admission, bounded views, topology IR, Grid81 structural packets). Module files renamed by function (r3_bridge -> hybrid_bridge, r3_epoch -> retrieval_epoch, r3_query_plan -> hybrid_query_plan, p5_writer/reader -> view_writer/reader, grid81_sudoku_template -> grid81_group_template) with matching C symbols; persisted identity domains (e.g. elpis.semantic.r3_bridge.v1, elpis.semantic.grid81.sudoku_template.v1) unchanged; stage labels removed from comments. Struct field names keep P2..P8 prefixes (ABI record binding)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/src/structural_spine/structural_observation.c + header",
       "destination": "native/structure/semantic/src/observation/structural_observation.c",
@@ -1033,7 +1033,7 @@
       "reason": "Read-only structural observation record (topology vertex -> Grid81 capsule -> cell transition class) extracted from the retired integrated-spine layer."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/tests/{graph,embedding,context,evidence,p5,topology,grid81}/",
       "destination": "native/structure/semantic/tests",
@@ -1043,7 +1043,7 @@
       "reason": "Semantic core suites; tests/p5 -> tests/view (test_p5_* renamed test_view_*). The embedding source-boundary scan now also forbids the renamed hybrid-bridge symbols."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/tests/structural_spine/test_p13_structural_spine.c (observation cases)",
       "destination": "native/structure/semantic/tests/observation/test_structural_observation.c",
@@ -1053,7 +1053,7 @@
       "reason": "Observation init/validate/read-only/invalid-cell cases extracted; reserved-byte and identity-binding cases added."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/semantic-spine/{docs,evidence,manifests}/, COMPONENT_MANIFEST.json, CMakeLists.txt",
       "destination": null,
@@ -1063,7 +1063,7 @@
       "reason": "P-numbered program documentation, bake-off artifacts and seals; the build is replaced by native/structure/CMakeLists.txt."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/hacf_bridge/python_r1_wrapper.c",
       "destination": "native/structure/bridge/retrieval_bridge.c",
@@ -1073,7 +1073,7 @@
       "reason": "Narrow C ABI over HACF (corpus + embedding + FMS vector index + hybrid retrieval) for Python; now a default-built structure library. Symbols renamed r1_env_* -> elpis_retrieval_env_*."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/hacf_bridge/CMakeLists.txt",
       "destination": null,
@@ -1083,7 +1083,7 @@
       "reason": "Out-of-tree build that required a pre-built HACF directory; the bridge is now a normal target of the root build."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R1/src/elpis_runtime_r1/{contracts,query_derivation,bundle_validation,budget,evidence_adapter,hacf_adapter,errors}.py",
       "destination": "src/elpis/structure/retrieval",
@@ -1093,7 +1093,7 @@
       "reason": "The retrieval stage of Runtime R1 (query derivation, hybrid retrieval, bundle validation, budgets, evidence envelope) is model-independent structural retrieval. Errors renamed R1* -> Retrieval*; the R1 composite receipt and the P0 input converter are dropped; the ctypes adapter now requires an explicit library path (no environment lookup, no repository-relative fallback). Schema strings unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R1/tests/test_r1.py (query derivation, HACF retrieval, bundle validation, budget)",
       "destination": "tests/structure/test_retrieval.py",
@@ -1103,7 +1103,7 @@
       "reason": "Retrieval suites ported; receipt and canonical-root tests of the retired R0 composition dropped; an end-to-end HACF -> bundle -> validation -> evidence test added."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81StructuralSemantics/src/elpis_grid81_semantics/",
       "destination": "src/elpis/structure/grid81/semantics",
@@ -1113,7 +1113,7 @@
       "reason": "D4 dihedral actions over the 81-cell grid, pair orbits, quarantine identity and passive structural contracts. Phase labels removed from docstrings; identity domains unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81TypedProjectionCompiler/src/elpis_grid81_typed/",
       "destination": "src/elpis/structure/grid81/typed",
@@ -1123,7 +1123,7 @@
       "reason": "Typed projection (transition, expansion locus, quiescence, rationale views with D4 orbit identity). New in-memory entry point compile_inventories(rows); the on-disk train/validation/test corpus driver (load_corpus/compile_corpus) is dropped as a dataset driver with no consumer. Missing typing import fixed."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81StructuralGroupProjectionCompiler/src/elpis_grid81_groups/ (except upstream.py, verifier.py)",
       "destination": "src/elpis/structure/grid81/groups",
@@ -1133,7 +1133,7 @@
       "reason": "Structural-group evidence, proposals, orderings and conflicts. New in-memory compile_structural_groups(joined_rows, manifest_sha); the join takes an explicit expected_row_count instead of the hard-coded 8,192-row corpus size and never returns a partial join; the file-writing driver is dropped."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81/canonical_reader.py",
       "destination": "src/elpis/structure/grid81/canonical.py",
@@ -1143,7 +1143,7 @@
       "reason": "Read-only, fail-closed canonical Grid81 reader (HEAD-first, hash-verified, symlink-rejecting, shared namespace flock)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/elpis-header/src/elpis_header/observer/grid81_reducer.py",
       "destination": "src/elpis/structure/grid81/canonical.py",
@@ -1153,7 +1153,7 @@
       "reason": "Runtime reduction of verified canonical state merged into the canonical reader module. The donor pushed the caller-supplied project root onto sys.path and imported the reader from it; the reduction now calls the in-package reader directly (the root is data only). Runtime projection digest formula unchanged and pinned against the donor."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/elpis-header/src/elpis_header/observer/grid81_materialized_reducer.py",
       "destination": null,
@@ -1163,7 +1163,7 @@
       "reason": "MECHANICALLY BROKEN in donor: imports the nonexistent Grid81.materialized_state_reader module; no consumer."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "native/elpis-header/src/elpis_header/observer/__init__.py, README.md",
       "destination": null,
@@ -1173,7 +1173,7 @@
       "reason": "Observer package shell; its only live member (the Grid81 reducer) is merged into elpis.structure.grid81.canonical."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81/state/Canonical/Grid81/",
       "destination": "tests/fixtures/grid81/Canonical/Grid81",
@@ -1183,7 +1183,7 @@
       "reason": "Historical canonical generation 000001 (HEAD, generation, manifest and lifecycle sidecars), byte-identical; used by reader, adversarial and writer-chain tests. Not live runtime state."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81/evidence/, Grid81/COMPONENT_MANIFEST.json, Grid81/README.md",
       "destination": null,
@@ -1193,7 +1193,7 @@
       "reason": "Phase evidence of the historical canonical generation; the state itself is kept as a test fixture."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81/test_g53ig1_adversarial_runtime_consumer.py",
       "destination": "tests/structure/grid81/test_canonical_reader.py",
@@ -1203,7 +1203,7 @@
       "reason": "The 28 adversarial reader scenarios as one parametrized test over a temporary copy of the fixture (the donor pointed at an external canonical root), plus pinned fixture digests and a no-import-from-root check."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81StructuralSemantics/tests/, Grid81TypedProjectionCompiler/tests/",
       "destination": "tests/structure/grid81/semantics + tests/structure/grid81/typed",
@@ -1213,7 +1213,7 @@
       "reason": "Semantics and typed-projection suites; the consumer-manifest test is dropped with the per-component manifests."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81StructuralGroupProjectionCompiler/tests/ (derivation, orbits, ordering, proposals, conflicts)",
       "destination": "tests/structure/grid81/groups + tests/structure/grid81/_rows.py",
@@ -1223,7 +1223,7 @@
       "reason": "Structural-group suites; a fail-closed join test and a synthetic-row helper running the real typed -> groups stages are added."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81StructuralGroupProjectionCompiler/tests/test_boundary.py",
       "destination": null,
@@ -1233,7 +1233,7 @@
       "reason": "Scanned a nonexistent external package path and passed vacuously; import and identifier boundaries are enforced repository-wide by tests/boundary."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicStructuralAdjudicator/src/elpis_grid81_adjudication/ (except upstream.py, verifier.py, import_boundary.py)",
       "destination": "src/elpis/pipeline/adjudication",
@@ -1243,7 +1243,7 @@
       "reason": "Deterministic adjudication (envelope, policy, dispositions, abstention, semantic identity, review requests). The source join now fails closed on proposals without evidence or rows (the donor raised KeyError or dropped them silently) and verification takes an explicit expected_row_count; verifier-only error classes and report writers are dropped."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicCapabilityAuthorityEvaluator/src/elpis_grid81_capability_authority/ (except upstream.py, verifier.py, source_join.py)",
       "destination": "src/elpis/pipeline/capability",
@@ -1253,7 +1253,7 @@
       "reason": "Capability authority evaluation (evaluation input, decision, capability, lifecycle, limits, nonce, scope, revocation policy, semantic identity). compile_one no longer takes an unused reports directory."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicCapabilityConsumptionCompiler/src/elpis_grid81_consumption_compiler/",
       "destination": "src/elpis/pipeline/consumption",
@@ -1263,7 +1263,7 @@
       "reason": "Capability consumption into an inert structural-influence artifact with receipt, lifecycle transition and replay."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicCapabilityApplicationExecutor/src/elpis_grid81_application_executor/ (except fixture.py, mutation_harness.py, reports/)",
       "destination": "src/elpis/pipeline/application",
@@ -1273,7 +1273,7 @@
       "reason": "Application against shadow capability state; in-memory ledger, v1 durable ledger (publication) and v2 artifact-bound durable application ledger."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicCapabilityApplicationExecutor/src/elpis_grid81_application_executor/fixture.py",
       "destination": "tests/pipeline/application/_fixture.py",
@@ -1283,7 +1283,7 @@
       "reason": "Deterministic shadow-fixture generator; only tests consume it."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicCanonicalPromotionPlanner/src/elpis_grid81_promotion_planner/ (except cli.py, verifier.py, adversarial_matrix.py, contract.py)",
       "destination": "src/elpis/pipeline/promotion",
@@ -1293,7 +1293,7 @@
       "reason": "Advisory, non-executable promotion planning: source binding, 19 gates, decision, plan. Authority-audit generation moved to audit.py and the plan non-executability check to plan.py. FAIL-CLOSED FIX: the donor derived phase disposition from human-edited markdown reports (its own test of this was red at the basis commit); the disposition is now always unestablished. The CLI and report verifier are dropped."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicCanonicalPromotionPlanner/fixtures/source_config.json",
       "destination": null,
@@ -1303,7 +1303,7 @@
       "reason": "Pointed at external report directories under an environment root; tests now build the source chain from temporary directories."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicCanonicalPromotionAuthority/src/elpis_grid81_promotion_authority/__init__.py",
       "destination": "src/elpis/pipeline/canonical/authority.py",
@@ -1313,7 +1313,7 @@
       "reason": "One-use promotion capability issued against an explicit operator approval digest."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicCanonicalCandidateConstructor/src/elpis_grid81_candidate_constructor/__init__.py",
       "destination": "src/elpis/pipeline/canonical/candidate.py",
@@ -1323,7 +1323,7 @@
       "reason": "Isolated immediate-successor candidate tree construction."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicCanonicalPublisher/src/elpis_grid81_canonical_publisher/__init__.py",
       "destination": "src/elpis/pipeline/canonical/publisher.py",
@@ -1333,7 +1333,7 @@
       "reason": "Atomic canonical publication: exclusive namespace flock, durable ledger reservation, renameat2 exchange, post-commit verification, crash recovery."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81DeterministicCanonicalPublisher/R1_PROTOCOL.md, */README.md",
       "destination": null,
@@ -1343,7 +1343,7 @@
       "reason": "Per-component protocol notes; the publication protocol is summarized in docs/ARCHITECTURE.md."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81Deterministic*/tests/ (adjudication, capability, consumption, application, promotion, authority, candidate, publisher)",
       "destination": "tests/pipeline",
@@ -1353,7 +1353,7 @@
       "reason": "Stage suites. Capability and adjudication tests that read the absent report inventory now use review requests produced by the real typed -> groups -> adjudication stages over synthetic rows (tests/pipeline/_chain.py). Promotion gate tests use temporary source chains; a child-process ledger test imports the same package root as its parent; test_protocol_r1.py renamed test_protocol.py."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/Grid81Deterministic*/tests/ (report-bound: test_mutations, test_mutation_exactness, test_mutation_verifier, test_qualification, test_upstream*, test_verifier_qualification, test_import_boundary, test_source_binding, test_adversarial, test_cli, reproduce_r0.py)",
       "destination": null,
@@ -1363,7 +1363,7 @@
       "reason": "Read the absent external reports/G5_* trees or tested dropped drivers; import boundaries are enforced repository-wide by tests/boundary."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_grid81_{authority_consumption,consumption_application,promotion_candidate,candidate_publication}_runtime_integration.py, test_grid81_application_promotion_source_identity.py, test_grid81_canonical_writer_chain_r0.py",
       "destination": "tests/pipeline",
@@ -1373,7 +1373,7 @@
       "reason": "Six stage-to-stage integration tests and the full canonical writer chain, now over the in-repo canonical fixture."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_grid81_writer_chain_registry_coverage.py, test_grid81_writer_successor_assembly_verifier_r0.py, test_grid81_writer_successor_component_manifests_r0.py",
       "destination": null,
@@ -1383,7 +1383,7 @@
       "reason": "Verified the retired successor registries and per-component manifests."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/StreamingRegexIngress/src/native_regex_ingress.cpp, incremental_lexer.{h,cpp}; include/streaming_regex_ingress{,_v2}.h",
       "destination": "native/pipeline/ingress/src/streaming_regex_ingress.cpp + native/pipeline/ingress/src/incremental_lexer.cpp + native/pipeline/ingress/include",
@@ -1393,7 +1393,7 @@
       "reason": "Streaming Regex lexer (bounded whole-input v1 ABI and streaming v2 ABI) becomes the static pipeline library elpis_regex_ingress; the source is renamed streaming_regex_ingress.cpp. The standalone CLI (main, file reader, bounded_file_staging.h) is removed, so ingress takes bytes and never opens paths; the shared object is replaced by the bridge. An 18,000-case differential run (v1 and v2, chunk and carry sweeps, invalid UTF-8) matched the donor library byte for byte."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/StreamingRegexIngress/src/bounded_file_staging.h + CLI entry point (elpis_native_regex_ingress)",
       "destination": null,
@@ -1403,7 +1403,7 @@
       "reason": "Standalone file-reading CLI with no consumer; ingress admits bytes only (explicit path access stays with the caller)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/StreamingRegexIngress/tests/test_b01_bounded_profile.cpp, test_v2_{stream,allocation,c_abi,memory}.cpp/.c",
       "destination": "native/pipeline/ingress/tests",
@@ -1413,7 +1413,7 @@
       "reason": "Lexer suites renamed by function (test_regex_bounded_profile, test_regex_stream, test_regex_allocation, test_regex_c_abi, test_regex_memory); defect labels removed from comments and output."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/StreamingRegexIngress/tests/test_b01_cli_eof_gate.cpp",
       "destination": null,
@@ -1423,7 +1423,7 @@
       "reason": "Exercised the removed CLI file-staging state machine."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/StreamingRegexIngress/tests/test_v2_properties.py",
       "destination": "tests/pipeline/ingress/test_regex_properties.py",
@@ -1433,7 +1433,7 @@
       "reason": "Differential streaming-vs-bounded property suite ported to pytest over the Python binding (explicit library from the build tree)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/RegexHACFQueryIngress/src/regex_hacf_query_ingress.cpp, canonical_json.hpp; include/regex_hacf_query_ingress{,_v2}.h",
       "destination": "native/pipeline/ingress/src/regex_hacf_query_ingress.cpp + native/pipeline/ingress/include",
@@ -1443,7 +1443,7 @@
       "reason": "Regex -> HACF read-only context proposal -> atomic query-local batch becomes the static pipeline library elpis_query_ingress, linked against the structure corpus, context graph and semantic core targets instead of recompiling their sources."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/RegexHACFQueryIngress/tests/test_b01_range_prepublication.cpp, test_v2_composition.cpp",
       "destination": "native/pipeline/ingress/tests/test_query_ingress_bounded.cpp + native/pipeline/ingress/tests/test_query_ingress_composition.cpp",
@@ -1453,7 +1453,7 @@
       "reason": "Bounded prepublication and streaming/whole-input composition suites; the bounded test now also pins the positive and contradiction identities, byte-identical to the donor at the migration basis."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/QueryLocalProposalIngress/src/, include/",
       "destination": "native/pipeline/ingress/src/query_local_proposal.c + native/pipeline/ingress/src/query_local_proposal_batch.c + native/pipeline/ingress/include",
@@ -1463,7 +1463,7 @@
       "reason": "Query-local proposal validation, materialization and atomic batch overlay; compiled into elpis_query_ingress (the donor never built it standalone)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/QueryLocalProposalIngress/tests/test_atomic_batch.c, fixture.h",
       "destination": "native/pipeline/ingress/tests/test_atomic_batch.c + native/pipeline/ingress/tests/fixture.h",
@@ -1473,7 +1473,7 @@
       "reason": "Atomic batch suite; registered in the default build and passing (the donor build never registered it)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/QueryLocalProposalIngress/contracts/QUERY_LOCAL_PROPOSAL_{REGISTRY,REPRESENTATION_POLICY}_V1.json",
       "destination": "native/pipeline/ingress/contracts",
@@ -1483,7 +1483,7 @@
       "reason": "Byte-identical preimages of the registry-contract and representation-policy digests compiled into the query ingress; a test proves the pinned constants equal their canonical digests."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/StreamingRegexIngress/contracts/, RegexHACFQueryIngress/contracts/COMPOSITION_BINDING_V1.json, BUILD_CONTRACT.json",
       "destination": null,
@@ -1493,7 +1493,7 @@
       "reason": "File-hash qualification and parity bindings of the beta components; parity is now enforced by pinned identities in tests."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/{StreamingRegexIngress,RegexHACFQueryIngress,QueryLocalProposalIngress}/{README.md,V2_DESIGN.md,V2_QUALIFICATION.md,CMakeLists.txt}",
       "destination": null,
@@ -1503,7 +1503,7 @@
       "reason": "Per-component design and qualification notes and standalone builds; summarized in docs/ARCHITECTURE.md and replaced by native/pipeline/CMakeLists.txt."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_ingress_trio_coverage_contract.py, tools/verify_ingress_trio_coverage.py, manifests/INGRESS_TRIO_COVERAGE_R0.json",
       "destination": null,
@@ -1513,7 +1513,7 @@
       "reason": "Coverage manifest and verifier of the three beta ingress components."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis_reference/p0_validator_ingress.py, tests/test_p0_validator_ingress.py, tests/run_c2r4_p0_validator_ingress_e2e.py, tests/run_c2r6cb_trusted_ingress_e2e.py, tools/redteam_c2r6cb_ingress_authority.py",
       "destination": null,
@@ -1523,7 +1523,7 @@
       "reason": "P0 validator ingress for artifacts of the retired learned path; unrelated to the bounded Regex ingress."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/life/{canonical,genotype,lifecycle,lineage,mutation,organism,fitness,reproduction}.py",
       "destination": "src/elpis/evolution",
@@ -1533,7 +1533,7 @@
       "reason": "Pure-Python heredity, lifecycle, fitness and reproduction become elpis.evolution modules unchanged apart from one assertion message that embedded a donor file path. darwinian.life.* schemas and the life canonical encoding are kept."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/life/selection.py (PopulationState)",
       "destination": "src/elpis/evolution/selection.py",
@@ -1543,7 +1543,7 @@
       "reason": "Canonical population state (darwinian.life.population-state.v1) kept unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/life/selection.py (SelectionProposal, SelectionSolverKind, SelectionCandidateBinding, SelectionCommitPolicyV1, commit_selection)",
       "destination": null,
@@ -1553,7 +1553,7 @@
       "reason": "Retired QUBO branch: a selection proposal carried caller-claimed QUBO energies and solver provenance (exact classical, local statevector QAOA, IBM runtime QAOA) and the commit trusted the claimed optimality gap without recomputing it; no in-repo producer of the QUBO existed. Replaced by elpis.evolution.selection.commit_selection, a deterministic truncation selection that accepts no external solution and recomputes every fitness score."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/life/__init__.py",
       "destination": "src/elpis/evolution/__init__.py",
@@ -1563,7 +1563,7 @@
       "reason": "Package exports folded into elpis.evolution.__init__."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/tests/test_life_{fitness,heredity,reproduction}.py",
       "destination": "tests/evolution/test_fitness.py + tests/evolution/test_heredity.py + tests/evolution/test_reproduction.py",
@@ -1573,7 +1573,7 @@
       "reason": "Donor suites with imports renamed."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/tests/test_life_selection.py",
       "destination": "tests/evolution/test_selection.py",
@@ -1583,7 +1583,7 @@
       "reason": "Population-order and duplicate-identity cases kept; the proposal/QUBO cases retired with the branch; new cases cover the truncation law and every rejection path."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/tests/ (climate, controller, ecology, episode, frame, geometry, ledger, marginal probe, p01, projector, structural frame, trm contract, cross-process determinism)",
       "destination": null,
@@ -1593,7 +1593,7 @@
       "reason": "Suites of the retired Torch lattice, TRM-driven controllers, episode ledger and projector."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/grid_constants.py, __init__.py, README.md, COMPONENT_MANIFEST.json",
       "destination": null,
@@ -1603,7 +1603,7 @@
       "reason": "Grid81 cell-count constant used only by the retired projector; component shell and manifest."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/DarwinianMatrix/ledger/__init__.py",
       "destination": null,
@@ -1613,7 +1613,7 @@
       "reason": "Package exports of the retired Torch episode ledger."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/EvolutionPathGate/src/elpis_evolution_path_gate/path_gate.py",
       "destination": "src/elpis/evolution/path_gate.py",
@@ -1623,7 +1623,7 @@
       "reason": "Assertion and transition-receipt records kept byte-identical (digests verified against the donor). execute() no longer reads TRM refinement results: an admitted attempt must return a typed EvolutionAttempt, the history binding must be a real ECS ContextProjection (look-alikes are rejected), and the gate configuration is validated."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/EvolutionPathGate/src/elpis_evolution_path_gate/selection.py",
       "destination": "src/elpis/evolution/promotion.py",
@@ -1633,7 +1633,7 @@
       "reason": "Evaluation-gated candidate promotion and atomic materialization, renamed promotion by function; record schemas (elpis.rsi.*) and digests unchanged. FAIL-CLOSED FIX: workspace digests and copies followed symlinks, so a candidate could pull content from outside its tree; symlinks, special files and empty or escaping edit paths are now refused, and tree entries are sorted by the same string order the manifest validates."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/EvolutionPathGate/src/elpis_evolution_path_gate/canonical.py",
       "destination": "src/elpis/evolution/digests.py",
@@ -1643,7 +1643,7 @@
       "reason": "Domain digest over the shared canonical identity, digest check and file hash."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/EvolutionPathGate/src/elpis_evolution_path_gate/__init__.py",
       "destination": "src/elpis/evolution/__init__.py",
@@ -1653,7 +1653,7 @@
       "reason": "Exports folded into elpis.evolution.__init__."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/EvolutionPathGate/tests/test_path_gate.py",
       "destination": "tests/evolution/test_path_gate.py + tests/evolution/_history.py",
@@ -1663,7 +1663,7 @@
       "reason": "Fail-closed matrix kept; the fake projection is replaced by a projection of a real ECS kernel history; typed-result, look-alike projection and receipt-chaining cases added."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/EvolutionPathGate/tests/test_selection.py, test_materialization.py",
       "destination": "tests/evolution/test_promotion.py + tests/evolution/test_materialization.py",
@@ -1673,7 +1673,7 @@
       "reason": "Promotion and materialization suites; symlink and path-escape refusal cases added."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/EvolutionPathGate/tests/test_authority_surface.py, COMPONENT_MANIFEST.json, README.md, pyproject.toml",
       "destination": null,
@@ -1683,7 +1683,7 @@
       "reason": "Per-component manifest checks; import and authority boundaries are enforced repository-wide by tests/boundary and ELPIS_SYSTEM.json."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "manifests/BRANCH46C_EVOLUTION_PATH_GATE_PRODUCTION_EXTRACTION_R0.json, manifests/BRANCH46D_EVOLUTION_PATH_DARWINIAN_WIRING_R0.json",
       "destination": null,
@@ -1693,7 +1693,7 @@
       "reason": "Extraction and wiring records of the gate's beta placement before the TRM-driven episode."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/inference/{associative,context,experts,global_context,prefetch,rows}.py",
       "destination": "src/elpis/inference/associative.py + src/elpis/inference/context.py + src/elpis/inference/experts.py + src/elpis/inference/global_context.py + src/elpis/inference/prefetch.py + src/elpis/inference/rows.py",
@@ -1703,7 +1703,7 @@
       "reason": "Driver-neutral inference primitives (DSV4.1 engram and Qwen PLE n-gram addressing, bounded row lookup over file assets, context lifetimes/snapshots, sparse global selection, digest-bound experts, physical prefetch plans). Imports rewired to elpis.substrate (file assets, raw digests, contract primitives) and elpis.inference.target; InferenceError is ContractError; provenance pointers now name LICENSES/. Every elpis.inference.<kind>.r0 identity domain is unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/inference/structural.py",
       "destination": "src/elpis/inference/structural.py",
@@ -1713,7 +1713,7 @@
       "reason": "Structural address proposals. from_regex_hacf consumes the pipeline ingress export unchanged; the R3 retrieval-bundle adapter is merged here as from_retrieval_bundle (see the runtime/R3 r1_adapter record)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/inference/neural.py (numerical profile, Tensor, LatentProjection, LatentInput, TargetConfig, NeuralState, StepReceipt)",
       "destination": "src/elpis/inference/target.py",
@@ -1723,7 +1723,7 @@
       "reason": "Driver-neutral target records plus a new Target protocol that every driver implements. Record fields and identity domains (tensor, latent-*, target-config, neural-state, target-step) are unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/inference/neural.py (CompactTarget)",
       "destination": "src/elpis/inference/drivers/dsv4/target.py",
@@ -1733,7 +1733,7 @@
       "reason": "The compact DSV4-shaped target (local/compressed attention, MoE experts over file assets, engram rows, latent channels) becomes the first driver behind the Target protocol. It needs no weights: it runs on explicitly supplied file assets only."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/inference/fixtures.py",
       "destination": "src/elpis/inference/drivers/dsv4/fixtures.py",
@@ -1743,7 +1743,7 @@
       "reason": "Explicit synthetic fixture intake (seeded tensors, synthetic tokenizer, no training or donor evaluation data), placed with the driver it builds."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/inference/__init__.py",
       "destination": "src/elpis/inference/__init__.py",
@@ -1753,7 +1753,7 @@
       "reason": "Package docstring rewritten for the migrated module set; no re-exports."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/inference/contracts.py (ProposalOnly, Bank, RowIdentity)",
       "destination": "src/elpis/inference/contracts.py",
@@ -1763,7 +1763,7 @@
       "reason": "Inference-owned contract records; the typed failure and integer/digest checks re-export from elpis.substrate.contracts (tranche 3)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/fixtures/inference_r0/{dsv41,qwen38}.json",
       "destination": "tests/fixtures/inference/dsv41.json + tests/fixtures/inference/qwen38.json",
@@ -1773,7 +1773,7 @@
       "reason": "Frozen synthetic address artifacts, byte-identical."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3/src/elpis_runtime_r3/transaction.py",
       "destination": "src/elpis/inference/transaction.py",
@@ -1783,7 +1783,7 @@
       "reason": "The atomic, replay-verified decode transaction is the inference engine, not a runtime generation: RuntimeR3 -> InferenceEngine, RuntimeReceipt/RuntimeResult -> DecodeReceipt/DecodeResult. The r3.* identity domains, the typed failures and the runtime schema elpis.runtime.r3.r1 are persisted identity and unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3/src/elpis_runtime_r3/speculative.py",
       "destination": "src/elpis/inference/speculative.py",
@@ -1793,7 +1793,7 @@
       "reason": "Markov drafter and token-by-token greedy verification against the target; deepspec.* identities unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3/src/elpis_runtime_r3/r1_adapter.py",
       "destination": "src/elpis/inference/structural.py",
@@ -1803,7 +1803,7 @@
       "reason": "from_r1_bundle becomes structural.from_retrieval_bundle over the extracted structure retrieval stage. The export pin (r1-bundle-export) and route key HACF_R1 are persisted identity and unchanged. FAIL-CLOSED FIX: bundle-validation failures now surface as ContractError(IDENTITY) with the retrieval error chained, so the inference boundary has one typed failure."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3/src/elpis_runtime_r3/__init__.py, README.md, pyproject.toml",
       "destination": null,
@@ -1813,7 +1813,7 @@
       "reason": "Runtime-generation package shell ('additive general-inference prototype'); one distribution and ELPIS_SYSTEM.json replace it."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3/tests/test_r3_{concurrency,determinism,failure_contract,property,provider_cleanup,receipt_lineage,rollback_faults,scaling,snapshot_replay,speculative_exactness}.py",
       "destination": "tests/inference/transaction",
@@ -1823,7 +1823,7 @@
       "reason": "Decode-transaction suites with imports renamed."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3/tests/test_r3_{corrective_226,corrective_229_r0,numerical_profile_228,redteam_228,r1_adapter}.py",
       "destination": "tests/inference/transaction/test_latent_and_history_revalidation.py + tests/inference/transaction/test_request_identity_strictness.py + tests/inference/transaction/test_numerical_profile.py + tests/inference/transaction/test_adversarial_proposals.py + tests/inference/transaction/test_retrieval_bundle_boundary.py",
@@ -1833,7 +1833,7 @@
       "reason": "Renamed by function: latent/history revalidation, request-identity strictness, numerical profile, adversarial proposals and the retrieval-bundle boundary."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3/tests/conftest.py, helpers.py, __init__.py",
       "destination": "tests/inference/conftest.py + tests/inference/transaction/_helpers.py",
@@ -1843,7 +1843,7 @@
       "reason": "Fixtures folded into the inference conftest (tmp_path beneath the trusted provider root) and a helpers module."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/StateOfThought/src/elpis_sot/core.py",
       "destination": "src/elpis/inference/steering.py",
@@ -1853,7 +1853,7 @@
       "reason": "Read-only observer over completed decode epochs and future-only latent steering, renamed by function (SoT* -> ObserverState, FastSteeringProposal/Application, FastControlState, SteeringContractError; SOT_CORE12_R0/SOT_DYN4_R0 -> CORE12_FEATURES/DYN4_FEATURES). elpis.sot.* identities and the frozen contract, width-transport and guard digests are unchanged, including the import-time self-check."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/StateOfThought/src/elpis_sot/core.py (BOUNDED_CLOSURE_CLAIM, NEGATIVE_CORE12_X_*, CONTIGUOUS_WIDTH_*_DIGEST)",
       "destination": null,
@@ -1863,7 +1863,7 @@
       "reason": "Research conclusions encoded as code constants (an empirical causal-transfer claim and closure-evidence digests whose evidence is not in the repository). Recorded as non-claims in docs/NONCLAIMS.md."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/StateOfThought/src/elpis_sot/__init__.py, README.md, pyproject.toml",
       "destination": null,
@@ -1873,7 +1873,7 @@
       "reason": "Component shell of an inactive component."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/StateOfThought/tests/test_core.py",
       "destination": "tests/inference/test_steering.py",
@@ -1883,7 +1883,7 @@
       "reason": "Steering suite with renamed symbols; assertions on the removed claim constants dropped."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3SOT/src/elpis_runtime_r3_sot/controller.py",
       "destination": "src/elpis/inference/steered.py",
@@ -1893,7 +1893,7 @@
       "reason": "The decode transaction composed with future-only steering: RuntimeR3SoT -> SteeredInferenceEngine and matching session/epoch/error records. RUNTIME_ID and QUALIFICATION_DISPOSITION (beta runtime-admission labels) are removed; elpis.r3sot.* identities are unchanged."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3SOT/RUNTIME_MANIFEST.json",
       "destination": null,
@@ -1903,7 +1903,7 @@
       "reason": "Runtime-admission manifest of the only beta surface admitted at runtime; the system authority is ELPIS_SYSTEM.json and no model path is runtime-admitted."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3SOT/src/elpis_runtime_r3_sot/__init__.py, README.md, pyproject.toml",
       "destination": null,
@@ -1913,7 +1913,7 @@
       "reason": "Runtime-generation package shell."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3SOT/tests/test_{active_steering,authority_boundary,determinism,fail_closed,replay_provenance,request_lineage,temporality,r3_parity}.py, conftest.py, r3sot_helpers.py",
       "destination": "tests/inference/steered",
@@ -1923,7 +1923,7 @@
       "reason": "Steered-session suites; test_r3_parity renamed test_unsteered_parity; helpers module renamed."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_inference_{associative,context,experts,global_context,prefetch,rows,structural,speculative}_r0.py",
       "destination": "tests/inference/test_associative.py + tests/inference/test_context.py + tests/inference/test_experts.py + tests/inference/test_global_context.py + tests/inference/test_prefetch.py + tests/inference/test_rows.py + tests/inference/test_structural.py + tests/inference/test_speculative.py",
@@ -1933,7 +1933,7 @@
       "reason": "Primitive suites with imports renamed."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_inference_neural_r0.py, test_inference_runtime_r3.py, test_inference_r1_adapter_r0.py, test_inference_staging_telemetry_classification.py",
       "destination": "tests/inference/test_dsv4_target.py + tests/inference/test_transaction_smoke.py + tests/inference/test_retrieval_adapter.py + tests/inference/test_staging_telemetry.py",
@@ -1943,7 +1943,7 @@
       "reason": "Compact-target, transaction smoke, retrieval-adapter and staging-telemetry suites; the stale repository-relative sys.path insertion is removed."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_inference_driver_plugin_discovery.py, test_inference_plugin_trust_boundary_contract.py, test_inference_portability_ports.py",
       "destination": null,
@@ -1953,7 +1953,7 @@
       "reason": "Driver registry and model-port discovery through TRMFractalSpine provider activation and Runtime R2."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_inference_native_execution.py, test_inference_native_hosted_ci.py, test_inference_native_locus_authority.py",
       "destination": null,
@@ -1963,7 +1963,7 @@
       "reason": "Validators of the beta inference-native locus tooling and workflow (tools/, .github), both retired with release authority."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_r3sot_active_inference_admission_r0.py",
       "destination": null,
@@ -1973,7 +1973,7 @@
       "reason": "Runtime-admission record checks for R3SOT; no model path is runtime-admitted here."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_2_2_25_inference_release_prep.py, test_2_2_26_inference_corrective_release_prep.py",
       "destination": null,
@@ -1983,7 +1983,7 @@
       "reason": "Release-preparation suites bound to beta release authority."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "components/InferenceInfrastructure/licenses/{Apache-2.0,DS4-MIT,DeepSeek-V41-MIT,DeepSpec-MIT}.txt, PROVENANCE.md",
       "destination": "LICENSES/Apache-2.0.txt + LICENSES/DS4-MIT.txt + LICENSES/DeepSeek-V41-MIT.txt + LICENSES/DeepSpec-MIT.txt + LICENSES/PROVENANCE.md",
@@ -1993,7 +1993,7 @@
       "reason": "Upstream license texts and the mechanism provenance table for the inference code, now at the repository root; NOTICE and pyproject license metadata declare them."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "manifests/FILE_LICENSE_MAP.json, manifests/LICENSE_REVIEW.json, tests/test_license_provenance_contract.py",
       "destination": null,
@@ -2003,7 +2003,7 @@
       "reason": "Per-file license map and review of the beta tree, including retired TRM/Cadence surfaces."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/README.md",
       "destination": null,
@@ -2013,7 +2013,7 @@
       "reason": "Index of the beta runtime generations (R0, R1, R2, R3, R4, R3SOT) and their separate admission scopes. Replaced by one runtime composition, elpis.runtime (Runtime over one ECS receipt history), which is not a numbered generation."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R1/src/elpis_runtime_r1/__init__.py, README.md, pyproject.toml",
       "destination": null,
@@ -2023,7 +2023,7 @@
       "reason": "Runtime-generation package shell; its retrieval stage lives in elpis.structure.retrieval and its composition role in elpis.runtime."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_ecs_r0_e0r3.py, tests/test_ecs_r0_e0r3_runtime_integration.py",
       "destination": null,
@@ -2033,7 +2033,7 @@
       "reason": "Adapter and runtime-integration qualification of the E0R3 participation experiment (elpis_reference) that bound ECS Structural R0 to the retired TRM guidance path."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_fms_inference_adapter.py",
       "destination": null,
@@ -2043,7 +2043,7 @@
       "reason": "FMS checkpoint inference adapter for the vendored TRM reference model."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/run_c2r3_feedback_e2e.py",
       "destination": null,
@@ -2053,7 +2053,7 @@
       "reason": "End-to-end driver of the Samsung learned feedback re-proposal step (Runtime R2 profile)."
     },
     {
-      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_airgap_ci.py",
       "destination": null,

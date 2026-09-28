@@ -9,7 +9,7 @@ does not duplicate it.
 
 | Fact | Value |
 |---|---|
-| Donor | `https://github.com/abraxis717/Elpis` (read-only) |
+| Donor | `https://github.com/abraxis717/Elpis_beta` (read-only) |
 | Planned basis commit | `8eda162712ebe291f2b88b6906366075859bc485` |
 | Planned basis tree | `9e3ff61385817f94e5b0d6823fd7c471ef384c59` |
 | Live `main` at migration time | `8eda162712ebe291f2b88b6906366075859bc485` (unchanged; tree verified) |

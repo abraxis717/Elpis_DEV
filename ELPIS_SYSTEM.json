@@ -12,7 +12,7 @@
   },
   "purpose": "Research direction: geodesic intelligence. Persistent structured state, memory topology, relational structure, bounded transformations, controlled evolution and inference interact so that computation follows structure already accumulated by the system instead of being reconstructed from an unstructured prompt. This is an architectural research direction, not a claim of general intelligence.",
   "donor": {
-    "repository": "https://github.com/abraxis717/Elpis",
+    "repository": "https://github.com/abraxis717/Elpis_beta",
     "migration_basis_commit": "8eda162712ebe291f2b88b6906366075859bc485",
     "migration_basis_tree": "9e3ff61385817f94e5b0d6823fd7c471ef384c59",
     "relationship": "read-only historical donor; never mutated",

@@ -53,7 +53,7 @@ jobs:
       - name: Read-only donor checkout at the migration basis
         uses: actions/checkout@v4
         with:
-          repository: abraxis717/Elpis
+          repository: abraxis717/Elpis_beta
           ref: 8eda162712ebe291f2b88b6906366075859bc485
           path: donor
           persist-credentials: false
