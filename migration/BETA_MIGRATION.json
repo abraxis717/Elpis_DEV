@@ -1,0 +1,816 @@
+{
+  "schema": "elpis.beta-migration.v1",
+  "role": "Migration provenance only. This file is not runtime authority; ELPIS_SYSTEM.json is the sole system authority.",
+  "donor": {
+    "repository": "https://github.com/abraxis717/Elpis",
+    "default_branch": "main",
+    "migration_basis_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+    "migration_basis_tree": "9e3ff61385817f94e5b0d6823fd7c471ef384c59",
+    "live_head_verified_at_migration": "8eda162712ebe291f2b88b6906366075859bc485",
+    "live_head_matches_basis": true,
+    "donor_mutated": false,
+    "access": "read-only anonymous clone"
+  },
+  "dispositions": [
+    "MIGRATED",
+    "EXTRACTED_PRIMITIVE",
+    "COLLAPSED_INTO_SUBSYSTEM",
+    "TEST_FIXTURE_ONLY",
+    "RESEARCH_ONLY_NOT_MIGRATED",
+    "HISTORICAL_ONLY",
+    "OBSOLETE_MODEL_PATH",
+    "DROPPED_NO_CONSUMER"
+  ],
+  "records": [
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "COMPONENT_REGISTRY.json",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta 17-component registry; replaced by the single root authority ELPIS_SYSTEM.json."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "ELPIS_CANONICAL_MANIFEST.json",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta canonical assembly manifest overlapping the component registry; superseded by ELPIS_SYSTEM.json."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "manifests/",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Public registry, dependency graph, successor registries, file-license maps and branch settlements: parallel overlapping authorities."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "PUBLICATION_ASSERTIONS.json",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Release publication assertions; release/PyPI authority migration is explicitly deferred."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "PUBLISHED_RELEASES.json",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Historical release registry; release authority deferred."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "FAILED_RELEASES.json",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Historical failed-release registry; release authority deferred."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "VERSION",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Historical beta release identity (2.2.37); the development distribution does not claim it."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "BASIC_REGEX_SHIPMENT_R0.json",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta shipment/admission record; the regex mechanism itself is migrated into the pipeline subsystem."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "RELEASE_NOTES/",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Historical release notes."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "RELEASE_RATIFICATIONS/",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Historical release ratification records."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "CHANGELOG.md",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta release changelog; history remains in the donor repository."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "CITATION.cff",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Citation metadata of the beta repository; the donor remains the citation target for beta work."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "health/",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta repository-health snapshots."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "qualification/",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta qualification lockfiles for release CI."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": ".github/workflows/pypi-publish.yaml",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "PyPI trusted-publishing workflow; no publication authority is migrated."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": ".github/workflows/ci.yml",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta CI (release sealing, branch-numbered jobs); replaced by a new CI written for the clean architecture."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": ".github/workflows/component-attribution.yml",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta component attribution workflow."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": ".github/workflows/platform-matrix.yml",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta platform matrix for the TRM reference runtime."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": ".github/workflows/reference-runtime.yml",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta TRM/FPRM reference runtime workflow."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": ".github/workflows/inference-native-r0.yml",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta inference-native locus workflow; its checks are rebuilt in the new CI."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tools/",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta release orchestration, sealing, red-team and locus tooling bound to beta release authority."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/ (release, seal, publication, orchestrator, hygiene and branch-numbered release-prep suites)",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Tests of retired release authority; not applicable to the clean foundation."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "AGENTS.md",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta documentation-mutability policy bound to beta authority payloads."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "docs/",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta architecture/integration/red-team documents describing retired component taxonomy; replaced by docs/ARCHITECTURE.md, docs/NONCLAIMS.md and docs/MIGRATION.md."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "examples/",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Beta examples for the retired Sudoku reference CLI."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "LICENSES/Samsung-TinyRecursiveModels-MIT.txt",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "License of the retired TRM vendor code; no TRM code is migrated."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "LICENSES/MIT.txt",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Generic MIT text used by retired beta surfaces; the surviving MIT-derived inference mechanics carry their specific upstream license texts."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "THIRD_PARTY_NOTICES.md",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Rewritten for surviving code only (Cadence and TRM notices no longer apply)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis_reference/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Public FPRM/TRM Sudoku reference runtime (model fetch, checkpoint authority, `elpis sudoku`); the learned Sudoku path is retired as architecture."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis_reference/vendor/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Vendored Samsung TinyRecursiveModels/FPRM Torch implementation."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis_reference/structural_guidance/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "TRM-driven structural guidance/decoding/materialization/validation authority chain producing Python source artifacts; every consumer is the learned TRM path."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis_reference/fms_inference_adapter.py",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "FMS residency adapter for the TRM model checkpoint; superseded by the model-independent substrate file-asset provider."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis_reference/ecs_r0_e0r2 and E0R3 participation (tools/ecs_r0_e0r2.py, tools/ecs_r0_e0r3.py, structural_guidance/e0r3_participation.py)",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Representability/participation experiments binding ECS Structural R0 to the TRM guidance path."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/TRMFractalSpine/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "TRM structural oracle/refinement/model-port/provider activation and isolated-driver host; its only admitted consumers were P0, R0 and the TRM reference drivers."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Pipeline/P0ControlProtocol/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Model-wide TRM control protocol (keyword projector -> 81-cell lattice -> ShadowTRMProposer -> Python decoder -> AST validator)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/trm/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "TRM contract, P01 identity/materializer and Sudoku reference solver adapters around the learned solver."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/controller/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Episode/frame controllers driven by the TRM FrozenStructuralAdapter over a solved Grid81 lattice (Torch)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/ledger/episode_archive.py",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Episode archive bound to the TRM contract and Sudoku reference solver (Torch)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/projector/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "ClampState RELEASE projector used only by the Runtime R2 SUDOKU_FEEDBACK_V1 learned re-proposal profile (optional Torch)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R0/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Deterministic transaction composing P0 projection, TRM StructuralOracle, Grid81 adjudication and a Torch Darwinian episode; every stage except adjudication is a retired TRM-path surface."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R2/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "SUDOKU_FEEDBACK_V1: task residual -> Projector RELEASE -> pinned Samsung learned re-proposal."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "drivers/fms_posix/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Platform wheel for the fms.checkpoint.v1 TRM checkpoint residency provider."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "drivers/needle3/",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Isolated model-port platform wheel (Needle3/Cactus) whose only consumer was the TRM model-port registry."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/hacf_bridge/fms_inference_bridge.c",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Single-checkpoint FMS residency bridge for the TRM checkpoint (ELPIS_FMS_KIND_MODEL_CHECKPOINT)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/src/trm/ (P8 TRM adapter, mutability policy, output guard)",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "TRM tensor ABI/adapter/guard; leaf layer with no non-TRM includers."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/src/trm_eval/ (P10 incl. sudoku_reference_solver.c)",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "TRM efficacy evaluation and native Sudoku reference solver."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/src/trm_align/ (P10R)",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "TRM alignment lanes/placement analysis; the only OpenSSL consumer in the native tree."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/src/refiner/ (P11)",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "TRM refiner bake-off harness."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/src/refinement_integration/ (P12)",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Refinement backend registry whose only qualified backend is the TRM path."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/optional_dependencies.py",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "`require_torch` entry to the optional TRM runtime; no Torch path survives."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/fixtures/allocator_*.json, tests/_support/allocator_fixtures.py",
+      "destination": null,
+      "disposition": "OBSOLETE_MODEL_PATH",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Allocator measurement fixtures for the TRM guidance planner."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/CadenceECSProbe/",
+      "destination": null,
+      "disposition": "RESEARCH_ONLY_NOT_MIGRATED",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Research-only inactive diagnostic over ECS projections bound to an external Cadence donor; not scientifically admitted."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/FuryanLocusOracle/",
+      "destination": null,
+      "disposition": "RESEARCH_ONLY_NOT_MIGRATED",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Verification/falsification oracle for the retired TRM guidance allocator; its target no longer exists in the clean system."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "ECS/science/",
+      "destination": null,
+      "disposition": "RESEARCH_ONLY_NOT_MIGRATED",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Historical per-branch scientific records (Branch35-48); summarized with provenance in docs/ARCHITECTURE.md, not runtime authority."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "ECS/qualification/M1A_R1/",
+      "destination": null,
+      "disposition": "RESEARCH_ONLY_NOT_MIGRATED",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Defect reproduction scripts for the historical M1A-R1 repair."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/ecology/, climate/, geometry.py, runtime.py, evaluation/, ledger/records.py",
+      "destination": null,
+      "disposition": "RESEARCH_ONLY_NOT_MIGRATED",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Torch-backed 6,561-site ecological lattice simulation derived from a solved Grid81; only consumers are the TRM-driven controllers and inactive Runtime R4. Generic population/selection/heredity machinery survives in elpis.evolution; the ecology environment is recorded as an incomplete evolution interface."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/DarwinianMatrix/ECSPhilosophy.md",
+      "destination": null,
+      "disposition": "RESEARCH_ONLY_NOT_MIGRATED",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Design essay; not runtime authority."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "RESEARCH_REFERENCES.md",
+      "destination": null,
+      "disposition": "RESEARCH_ONLY_NOT_MIGRATED",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Scholarly acknowledgements; carried as a reference list in docs/ARCHITECTURE.md."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/CNumPyCortex/",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Optional telemetry cortex (host sensors -> 9x9 transport, optional Chronos forecasting, TRM bridge); no import consumer outside its own tests; no core function not better represented elsewhere."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/R3SOTObservationBridge/",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "External development observation bridge from R3SOT epochs to detached host data; no consumer."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R4/",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Placement of EvolutionPathGate before a TRM-driven Darwinian episode; the gate survives in elpis.evolution, the TRM episode it wrapped does not."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/contracts/",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Budget/phase/envelope/closure contracts consumed only by P0 and TRM structural guidance."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/logic/",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "L0 affine-logic account/capability reference package consumed only by P0."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/python_ast_policy.py",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Static policy for TRM-generated Python artifacts; consumers are P0 validators and structural guidance."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/elpis-header/src/elpis_header/contracts/ (leases, observations, states)",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "MECHANICALLY BROKEN in donor: imports the nonexistent `Artifacts.content_identity` package; no consumer."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/elpis-header/src/elpis_header/core/, observer/{epoch_window,role_sources,token_record}.py",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Empty (zero-byte) placeholder modules."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/src/structural_spine/ (P13)",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "`elpis_spine_execute` is a stub returning hard-coded P12 production numbers (36 -> 52 filled cells, 16 backend invocations) without executing anything; it orchestrated the TRM refinement path."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/include/elpis_semantic/sudoku_reference_solution.h",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Sudoku reference-solution header for the retired TRM evaluation path."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Pipeline/P0ControlProtocol/src/elpis_p0/lineage_authority.py, artifact_lineage.py",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "One-shot in-memory lineage receipts for P0 artifacts; the surviving one-use capability/ledger authority of the Grid81 canonical pipeline supersedes it."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Pipeline/P0ControlProtocol/src/elpis_p0/semantic_ir.py, semantic_space.py, semantic_binding.py",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Relational request graph whose only consumer is the retired P0 keyword projector sidecar."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R1/src/elpis_runtime_r1/transaction.py, evidence_adapter.py, receipt.py, replay.py",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "R1 composition that prepended retrieval to the retired R0 transaction; the retrieval stage itself is extracted."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81*/verify_*.py, g5*_execute.py, g5*_mutation_harness.py, */upstream.py, */source_join.py, */verifier.py",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Phase qualification drivers that re-verify external `reports/G5_*` evidence trees absent from the donor repository; 150+ donor tests depending on them fail in the donor checkout."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/Grid81DeterministicCapabilityApplicationExecutor/.../reports/G53C_MUTATION_RECORDS.jsonl",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Historical mutation-qualification output."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/*/COMPONENT_MANIFEST.json, QUALIFICATION_BINDING.json, BUILD_CONTRACT.json, contracts/*.json, pyproject.toml",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Per-component constitutional identity (manifests, qualification bindings, per-component packages) replaced by one distribution and one system authority."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/*/manifests/, native/*/evidence/, native/*/docs/R*_*.md",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Machine-specific qualification dumps, hotfix notes and release-era seals."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/InferenceInfrastructure/ (as a component)",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Pure provenance/licence holder; its license texts and provenance table move to LICENSES/ and docs."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis/canonical_identity.py",
+      "destination": "src/elpis/identity.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Cross-subsystem canonical content identity v1; module renamed to elpis.identity, algorithm and domain framing byte-identical."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_canonical_identity_v1.py",
+      "destination": "tests/foundation/test_identity.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Identity vectors and rejection tests; import path updated only."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_canonical_identity_verifier_standalone.py",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Ran a beta tools/ convergence verifier over retired surfaces."
+    }
+  ]
+}

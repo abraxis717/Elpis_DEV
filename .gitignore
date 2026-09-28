@@ -1,0 +1,33 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+build-*/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Native build products are never repository authority.
+*.o
+*.a
+*.so
+*.dylib
+
+# Model weights and large binary assets are never committed.
+*.gguf
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.ckpt
+*.onnx
+*.npy
+*.npz
+*.pkl
+
+.DS_Store
+*.swp

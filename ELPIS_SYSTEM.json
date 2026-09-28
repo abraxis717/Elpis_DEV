@@ -1,0 +1,122 @@
+{
+  "schema": "elpis.system.v1",
+  "role": "Sole machine-readable authority for the live Elpis system boundary. Every other description (README, docs, build files) is derived from or checked against this file.",
+  "identity": {
+    "name": "Elpis",
+    "repository": "https://github.com/abraxis717/Elpis_DEV",
+    "python_distribution": "elpis-dev",
+    "python_namespace": "elpis",
+    "development_stage": "FOUNDATION",
+    "release_authority": "NONE_DEFERRED",
+    "publication": "NONE"
+  },
+  "purpose": "Research direction: geodesic intelligence. Persistent structured state, memory topology, relational structure, bounded transformations, controlled evolution and inference interact so that computation follows structure already accumulated by the system instead of being reconstructed from an unstructured prompt. This is an architectural research direction, not a claim of general intelligence.",
+  "donor": {
+    "repository": "https://github.com/abraxis717/Elpis",
+    "migration_basis_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+    "migration_basis_tree": "9e3ff61385817f94e5b0d6823fd7c471ef384c59",
+    "relationship": "read-only historical donor; never mutated",
+    "provenance_record": "migration/BETA_MIGRATION.json"
+  },
+  "shared_modules": [
+    {
+      "module": "elpis.identity",
+      "path": "src/elpis/identity.py",
+      "role": "Canonical content identity v1 (domain-framed canonical JSON SHA-256) used across subsystems.",
+      "test_roots": ["tests/foundation"]
+    }
+  ],
+  "subsystems": [
+    {
+      "id": "substrate",
+      "status": "PLANNED",
+      "python_package": "elpis.substrate",
+      "implementation_roots": [],
+      "test_roots": [],
+      "native_targets": [],
+      "depends_on": []
+    },
+    {
+      "id": "ecs",
+      "status": "PLANNED",
+      "python_package": "elpis.ecs",
+      "implementation_roots": [],
+      "test_roots": [],
+      "native_targets": [],
+      "depends_on": []
+    },
+    {
+      "id": "structure",
+      "status": "PLANNED",
+      "python_package": "elpis.structure",
+      "implementation_roots": [],
+      "test_roots": [],
+      "native_targets": [],
+      "depends_on": []
+    },
+    {
+      "id": "pipeline",
+      "status": "PLANNED",
+      "python_package": "elpis.pipeline",
+      "implementation_roots": [],
+      "test_roots": [],
+      "native_targets": [],
+      "depends_on": []
+    },
+    {
+      "id": "evolution",
+      "status": "PLANNED",
+      "python_package": "elpis.evolution",
+      "implementation_roots": [],
+      "test_roots": [],
+      "native_targets": [],
+      "depends_on": []
+    },
+    {
+      "id": "inference",
+      "status": "PLANNED",
+      "python_package": "elpis.inference",
+      "implementation_roots": [],
+      "test_roots": [],
+      "native_targets": [],
+      "depends_on": []
+    },
+    {
+      "id": "runtime",
+      "status": "PLANNED",
+      "python_package": "elpis.runtime",
+      "implementation_roots": [],
+      "test_roots": [],
+      "native_targets": [],
+      "depends_on": []
+    }
+  ],
+  "repository_surfaces": {
+    ".github": "CI",
+    ".gitignore": "repository metadata",
+    "ELPIS_SYSTEM.json": "system authority",
+    "LICENSE": "license",
+    "NOTICE": "license",
+    "README.md": "documentation",
+    "docs": "documentation",
+    "migration": "migration provenance (not runtime authority)",
+    "pyproject.toml": "python build",
+    "src": "python implementation",
+    "tests": "tests"
+  },
+  "boundary_policy": {
+    "forbidden_top_level_paths": ["components", "runtime", "drivers", "manifests", "health", "qualification", "RELEASE_NOTES", "RELEASE_RATIFICATIONS", "tools"],
+    "forbidden_files": ["COMPONENT_REGISTRY.json", "ELPIS_CANONICAL_MANIFEST.json", "PUBLICATION_ASSERTIONS.json", "PUBLISHED_RELEASES.json", "FAILED_RELEASES.json", "VERSION", "BASIC_REGEX_SHIPMENT_R0.json", "COMPONENT_MANIFEST.json", "RUNTIME_MANIFEST.json", "QUALIFICATION_BINDING.json"],
+    "forbidden_directory_name_patterns": ["^R[0-9]+[A-Z]*$", "^components$"],
+    "forbidden_python_imports": ["torch", "torchvision", "transformers", "huggingface_hub", "safetensors", "einops", "pydantic", "scipy", "requests", "urllib3", "httpx", "elpis_reference", "elpis_fractal_spine", "elpis_p0", "DarwinianMatrix", "c_numpy_cortex", "elpis_runtime_r0", "elpis_runtime_r1", "elpis_runtime_r2", "elpis_runtime_r3", "elpis_runtime_r3_sot", "elpis_runtime_r4", "elpis_sot"],
+    "forbidden_identifier_patterns": ["(?i)\\btrm\\b", "(?i)\\bfprm\\b", "(?i)sudoku_solve", "(?i)samsung", "(?i)tinyrecursive"],
+    "forbidden_file_suffixes": [".gguf", ".safetensors", ".pt", ".pth", ".ckpt", ".onnx", ".bin", ".npy", ".npz", ".pkl", ".so", ".a", ".o", ".dylib", ".whl"],
+    "network_access_in_tests": "FORBIDDEN",
+    "model_weights": "NEVER_COMMITTED_NEVER_DOWNLOADED_BY_BASE"
+  },
+  "nonclaims": [
+    "Elpis is not claimed to be generally intelligent; 'geodesic intelligence' names a research direction.",
+    "No release, tag or PyPI publication exists for this development repository; beta release authority was not migrated.",
+    "Mechanics qualification (tests passing) is not scientific qualification and not runtime admission of any learned model."
+  ]
+}

@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Clean install
+        run: |
+          python -m venv /tmp/elpis-venv
+          /tmp/elpis-venv/bin/python -m pip install --upgrade pip
+          /tmp/elpis-venv/bin/python -m pip install ".[test]"
+      - name: Test suite
+        run: /tmp/elpis-venv/bin/python -m pytest
