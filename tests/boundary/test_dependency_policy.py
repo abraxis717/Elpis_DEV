@@ -34,12 +34,15 @@ def test_no_forbidden_imports_anywhere_in_the_package():
 def test_no_learned_solver_identifiers_in_source():
     patterns = [re.compile(p) for p in POLICY["forbidden_identifier_patterns"]]
     roots = [REPO / "src", REPO / "native"]
+    exempt = {REPO / e["path"] for e in POLICY.get("identifier_scan_exemptions", [])}
+    for path in exempt:
+        assert path.is_file(), f"stale scan exemption {path}"
     offenders = []
     for root in roots:
         if not root.is_dir():
             continue
         for path in sorted(root.rglob("*")):
-            if path.suffix not in (".py", ".c", ".h", ".cpp", ".hpp", ".txt"):
+            if path.suffix not in (".py", ".c", ".h", ".cpp", ".hpp", ".txt") or path in exempt:
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
             for pattern in patterns:

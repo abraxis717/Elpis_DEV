@@ -811,6 +811,86 @@
       "migration_type": "NOT_MIGRATED",
       "semantic_code_changed": false,
       "reason": "Ran a beta tools/ convergence verifier over retired surfaces."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "ECS/runtime/elpis_ecs/",
+      "destination": "src/elpis/ecs",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Same-process ECS kernel: identity, lifecycle, messaging, scheduler, durable history, state roots, replay, checkpoints, recovery, topology. Package renamed elpis_ecs -> elpis.ecs; code is AST-identical to the donor except the package __init__; docstrings dropped M1A/M1A-R1 phase names. Every persisted protocol string (ecs.state_root.v3, ecs.m1a.integration.v3, scheduler protocols) is unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "ECS/tests/",
+      "destination": "tests/ecs",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Kernel adversarial, attribution, crash/fault, durable fault matrix, replay, state-root, scheduler, topology suites (547 tests, same count as donor). Imports renamed; child processes import the same elpis package the test process imported."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "ECS/qualification/run.py, ECS/qualification/scenario.py",
+      "destination": "tests/ecs/test_determinism_qualification.py + tests/ecs/_determinism_scenario.py",
+      "disposition": "MIGRATED",
+      "migration_type": "REWRITE_AS_TEST",
+      "semantic_code_changed": false,
+      "reason": "Fresh-process determinism qualification (5 hash seeds x 4 restart cadences, build vs. replay) became a pytest test; evidence-file emission dropped."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "components/ECSContextProjector/",
+      "destination": "src/elpis/ecs/projection + tests/ecs/test_projection.py + tests/ecs/test_projection_kernel_adapter.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Read-only replay-backed projection over committed ECS history; becomes elpis.ecs.projection. Component manifest, compatibility file and CI verifier dropped. 98 tests, same count as donor."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "src/elpis_reference/ecs_r0.py, src/elpis_reference/ecs_r0_authority.py",
+      "destination": "src/elpis/ecs/structural.py + src/elpis/ecs/structural_authority.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": true,
+      "reason": "Frozen Structural R0 mutation grammar and embedded sealed authority bytes. Moved out of the retired reference package into the ECS. The two E0R3 participation methods that delegated into retired TRM structural guidance were removed; all elpis.ecs.r0.* digest domains and sealed bytes are unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_ecs_r0.py, tests/test_ecs_r0_authority_boundary.py",
+      "destination": "tests/ecs/test_structural.py + tests/ecs/test_structural_authority.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Byte-level Structural R0 contract tests and anchor fail-closed tests. Dropped: beta CI/README marker checks and the tools/ on-disk transport adapter tests (no on-disk copy of the sealed payload exists any more)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "ECS/ECS_AUTHORITY/STRUCTURAL_R0/, ECS/ECS_AUTHORITY_HEADER.md",
+      "destination": "src/elpis/ecs/structural_authority.py",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "EMBEDDED_BYTES",
+      "semantic_code_changed": false,
+      "reason": "Sealed Structural R0 payload; its exact bytes were already embedded behind logical anchors in the donor and are carried in elpis.ecs.structural_authority. No parallel on-disk copy is kept."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "ECS/README.md, ECS/SCHEDULER_PROTOCOL_MIGRATION_V2.md",
+      "destination": "docs/ARCHITECTURE.md",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "DOCUMENTATION_MERGE",
+      "semantic_code_changed": false,
+      "reason": "Kernel contract documentation merged into docs/ARCHITECTURE.md (ECS section)."
     }
   ]
 }

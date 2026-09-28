@@ -23,7 +23,9 @@
       "module": "elpis.identity",
       "path": "src/elpis/identity.py",
       "role": "Canonical content identity v1 (domain-framed canonical JSON SHA-256) used across subsystems.",
-      "test_roots": ["tests/foundation"]
+      "test_roots": [
+        "tests/foundation"
+      ]
     }
   ],
   "subsystems": [
@@ -38,12 +40,38 @@
     },
     {
       "id": "ecs",
-      "status": "PLANNED",
+      "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
+      "purpose": "Persistent identity, continuity and history: deterministic entities and lifecycle, sender-bound local messaging, deterministic scheduling, one authoritative durable event history, canonical state roots, replay, checkpoints, crash recovery, read-only topology and context projections, and the frozen Structural R0 mutation grammar.",
       "python_package": "elpis.ecs",
-      "implementation_roots": [],
-      "test_roots": [],
+      "implementation_roots": [
+        "src/elpis/ecs"
+      ],
+      "test_roots": [
+        "tests/ecs"
+      ],
       "native_targets": [],
-      "depends_on": []
+      "depends_on": [],
+      "mutation_authority": "Only Kernel transitions (found/activate/dormant/terminate/message/step) mutate ECS state, each linearized under the kernel lock and committed as one framed event before the projection is installed. Projections (topology, context) are read-only. Entity-facing code sends only through kernel-bound EntityPort objects and cannot choose its sender.",
+      "runtime_participation": "The runtime composition owns one Kernel as the system's durable history; receipts of other subsystems are recorded there as messages. Projections feed inference context read-only.",
+      "persistence": "Length-framed append-only event log with fsync durability boundary and complete-frame crash recovery; checkpoints are rollback-floor markers only.",
+      "protocol_identifiers_retained": [
+        "ecs.state_root.v3",
+        "ecs.event.v1",
+        "ecs.genesis.v1",
+        "ecs.m1a.integration.v3",
+        "active-mailbox-fifo/entity-id-before-founded-activation.v1",
+        "active-mailbox-global-arrival/founding-index-activation.v2",
+        "elpis.ecs.r0.*",
+        "elpis.ecs.structural_r0.*"
+      ],
+      "external_dependencies": [],
+      "model_dependency": "NONE",
+      "uses_numpy": false,
+      "maturity": "Mechanics qualified in-process (same-process POSIX model). No cross-process transport or authority.",
+      "incomplete_interfaces": [
+        "Structural R0 mutations are executable and verified but not admitted as kernel transitions.",
+        "Cross-process transport, federation and cross-process authority are deferred."
+      ]
     },
     {
       "id": "structure",
@@ -105,14 +133,90 @@
     "tests": "tests"
   },
   "boundary_policy": {
-    "forbidden_top_level_paths": ["components", "runtime", "drivers", "manifests", "health", "qualification", "RELEASE_NOTES", "RELEASE_RATIFICATIONS", "tools"],
-    "forbidden_files": ["COMPONENT_REGISTRY.json", "ELPIS_CANONICAL_MANIFEST.json", "PUBLICATION_ASSERTIONS.json", "PUBLISHED_RELEASES.json", "FAILED_RELEASES.json", "VERSION", "BASIC_REGEX_SHIPMENT_R0.json", "COMPONENT_MANIFEST.json", "RUNTIME_MANIFEST.json", "QUALIFICATION_BINDING.json"],
-    "forbidden_directory_name_patterns": ["^R[0-9]+[A-Z]*$", "^components$"],
-    "forbidden_python_imports": ["torch", "torchvision", "transformers", "huggingface_hub", "safetensors", "einops", "pydantic", "scipy", "requests", "urllib3", "httpx", "elpis_reference", "elpis_fractal_spine", "elpis_p0", "DarwinianMatrix", "c_numpy_cortex", "elpis_runtime_r0", "elpis_runtime_r1", "elpis_runtime_r2", "elpis_runtime_r3", "elpis_runtime_r3_sot", "elpis_runtime_r4", "elpis_sot"],
-    "forbidden_identifier_patterns": ["(?i)\\btrm\\b", "(?i)\\bfprm\\b", "(?i)sudoku_solve", "(?i)samsung", "(?i)tinyrecursive"],
-    "forbidden_file_suffixes": [".gguf", ".safetensors", ".pt", ".pth", ".ckpt", ".onnx", ".bin", ".npy", ".npz", ".pkl", ".so", ".a", ".o", ".dylib", ".whl"],
+    "forbidden_top_level_paths": [
+      "components",
+      "runtime",
+      "drivers",
+      "manifests",
+      "health",
+      "qualification",
+      "RELEASE_NOTES",
+      "RELEASE_RATIFICATIONS",
+      "tools"
+    ],
+    "forbidden_files": [
+      "COMPONENT_REGISTRY.json",
+      "ELPIS_CANONICAL_MANIFEST.json",
+      "PUBLICATION_ASSERTIONS.json",
+      "PUBLISHED_RELEASES.json",
+      "FAILED_RELEASES.json",
+      "VERSION",
+      "BASIC_REGEX_SHIPMENT_R0.json",
+      "COMPONENT_MANIFEST.json",
+      "RUNTIME_MANIFEST.json",
+      "QUALIFICATION_BINDING.json"
+    ],
+    "forbidden_directory_name_patterns": [
+      "^R[0-9]+[A-Z]*$",
+      "^components$"
+    ],
+    "forbidden_python_imports": [
+      "torch",
+      "torchvision",
+      "transformers",
+      "huggingface_hub",
+      "safetensors",
+      "einops",
+      "pydantic",
+      "scipy",
+      "requests",
+      "urllib3",
+      "httpx",
+      "elpis_reference",
+      "elpis_fractal_spine",
+      "elpis_p0",
+      "DarwinianMatrix",
+      "c_numpy_cortex",
+      "elpis_runtime_r0",
+      "elpis_runtime_r1",
+      "elpis_runtime_r2",
+      "elpis_runtime_r3",
+      "elpis_runtime_r3_sot",
+      "elpis_runtime_r4",
+      "elpis_sot"
+    ],
+    "forbidden_identifier_patterns": [
+      "(?i)\\btrm\\b",
+      "(?i)\\bfprm\\b",
+      "(?i)sudoku_solve",
+      "(?i)samsung",
+      "(?i)tinyrecursive"
+    ],
+    "forbidden_file_suffixes": [
+      ".gguf",
+      ".safetensors",
+      ".pt",
+      ".pth",
+      ".ckpt",
+      ".onnx",
+      ".bin",
+      ".npy",
+      ".npz",
+      ".pkl",
+      ".so",
+      ".a",
+      ".o",
+      ".dylib",
+      ".whl"
+    ],
     "network_access_in_tests": "FORBIDDEN",
-    "model_weights": "NEVER_COMMITTED_NEVER_DOWNLOADED_BY_BASE"
+    "model_weights": "NEVER_COMMITTED_NEVER_DOWNLOADED_BY_BASE",
+    "identifier_scan_exemptions": [
+      {
+        "path": "src/elpis/ecs/structural_authority.py",
+        "reason": "Sealed Structural R0 authority bytes, digest-pinned and byte-identical to the donor; the only match is the phrase 'TRM or learned inference' inside the payload's list of explicitly NOT authorized operations."
+      }
+    ]
   },
   "nonclaims": [
     "Elpis is not claimed to be generally intelligent; 'geodesic intelligence' names a research direction.",
