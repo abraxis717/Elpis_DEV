@@ -4,6 +4,69 @@
 depend on and what they may mutate. This document explains the design those
 facts describe.
 
+## Structure: structural memory and representation (`elpis.structure`, `native/structure`)
+
+Structure is the system's memory of *what things are and how they relate*.
+
+### HACF structural store (`native/structure/hacf`)
+
+The hash-addressed cascade fabric is the content-addressed store:
+
+* **identity**: SHA-256 object identity for cascade nodes and graph deltas.
+  A digest is integrity/content identity, not a semantic encoding;
+* **corpus**: deterministic structural chunking into a SQLite-backed,
+  content-addressed corpus with lexical retrieval and namespace/authority
+  metadata;
+* **vectors**: deterministic embedding profiles and an exact CPU vector index
+  whose shards are FMS-resident (substrate residency). It is built with
+  `-ffp-contract=off` so scores cannot drift between hosts;
+* **hybrid retrieval**: lexical + dense + one-hop context-graph fusion under a
+  versioned fusion policy, producing a canonical, digest-bound
+  `RetrievalBundle`. Cross-host golden fixtures pin the exact output.
+
+### Semantic core (`native/structure/semantic`)
+
+* a typed **hypergraph** (nodes, hyperedges, incidences) persisted as
+  segments and snapshots, with query-local **overlays** that never mutate the
+  base graph;
+* **embeddings** bound to profiles and snapshots;
+* **context-deficit control**: typed requirements, deficit reports and
+  retrieval requirements, then re-evaluation with bounded iteration and
+  progress guarantees;
+* **retrieval materialization**: retrieval epochs bind corpus, index and graph
+  and detect drift, so hybrid query plans and bridge receipts never retry
+  silently;
+* **evidence typing and admission**: typed spans, claim and relation
+  candidates, an admission policy, an adjudicator, admission receipts, and
+  typed evidence views;
+* **bounded semantic views**: seeds, candidate enumeration, bounded selection,
+  conflict and provenance closure, and downstream handoffs; metrics are
+  non-authoritative;
+* **semantic topology IR**: anchors, constellations, addresses, constraints;
+* **Grid81 structural packets**: topology → 81-cell capsules and codebook →
+  constraint projection → packet → compile receipt → handoff. Also
+  **structural observations**: read-only records mapping a topology vertex to
+  a cell transition.
+
+The canonical Grid81 digit template is the unique row/column/box
+Latin-square codebook (`digit(r,c) = 1 + ((3r + r/3 + c) mod 9)`). It is
+structural geometry, not a solver. Its persisted domain keeps the historical
+spelling `elpis.semantic.grid81.sudoku_template.v1`.
+
+### Retrieval stage (`elpis.structure.retrieval`)
+
+```text
+request -> derive_query (NFKC, bounded, no model inference)
+-> hybrid_retrieve via the explicitly loaded native bridge
+-> RetrievalBundle -> validate_bundle (schema, query/corpus binding, ranks,
+   dedup, frozen text, <= 1 context hop) + check_budget
+-> EvidenceEnvelope (ordered references, frozen texts, provenance)
+```
+
+The envelope is a **structured observation**. It states retrieval provenance
+and never claims truth. The ECS history, the pipeline and inference
+(`AddressProposal`) can all consume it.
+
 ## Substrate: resources and residency (`elpis.substrate`, `native/substrate`)
 
 The substrate manages bytes, descriptors, residency and native code. It does

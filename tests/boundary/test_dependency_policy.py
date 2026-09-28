@@ -33,7 +33,11 @@ def test_no_forbidden_imports_anywhere_in_the_package():
 
 def test_no_learned_solver_identifiers_in_source():
     patterns = [re.compile(p) for p in POLICY["forbidden_identifier_patterns"]]
-    roots = [REPO / "src", REPO / "native"]
+    # Implementation sources only: tests may name forbidden tokens in order to
+    # assert their absence.
+    roots = [REPO / "src"] + sorted(
+        d for d in (REPO / "native").glob("**/*") if d.is_dir() and d.name in ("src", "include")
+    ) if (REPO / "native").is_dir() else [REPO / "src"]
     exempt = {REPO / e["path"] for e in POLICY.get("identifier_scan_exemptions", [])}
     for path in exempt:
         assert path.is_file(), f"stale scan exemption {path}"

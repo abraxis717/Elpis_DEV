@@ -1,0 +1,97 @@
+/* evidence_admission_segment.c — Admission segment construction.
+ *
+ * Creates one immutable semantic segment containing all new evidence-admission objects:
+ * new claim nodes, span ref nodes, typer-profile ref nodes,
+ * typing-bundle ref nodes, admission-decision ref nodes,
+ * new semantic hyperedges, new assertions, new incidences.
+ */
+
+#include "elpis_semantic/identity.h"
+#include "elpis_semantic/evidence_admission.h"
+#include "elpis_semantic/identity.h"
+#include "elpis/sha256.h"
+
+
+
+
+#include <string.h>
+
+/*
+ * Segment identity = HACF graph operations applied to prior retrieval-bridge expanded view.
+ * The segment is insertion-order independent: readers recalculate every
+ * semantic and HACF identity.
+ */
+
+typedef struct elpis_admission_segment_v1 {
+    uint32_t                abi_version;
+    hacf_digest             prior_snapshot_digest;      /* retrieval-bridge expanded view */
+    hacf_digest             prior_segment_identity;     /* retrieval-bridge segment chain */
+    uint32_t                new_node_count;
+    hacf_digest             new_node_digests[256];
+    uint32_t                new_hyperedge_count;
+    hacf_digest             new_hyperedge_digests[256];
+    uint32_t                new_assertion_count;
+    hacf_digest             new_assertion_digests[512];
+    uint32_t                new_incidence_count;
+    hacf_digest             new_incidence_digests[512];
+    hacf_digest             graph_delta_digest;
+    hacf_digest             resulting_snapshot_digest;
+    hacf_digest             segment_payload_digest;
+    hacf_digest             HACF_package_digest;
+    uint8_t                 reserved[32];
+} elpis_admission_segment_v1;
+
+static const char SEGMENT_DOMAIN[] = "elpis.semantic.evidence_admission_segment.v1";
+
+void elpis_admission_segment_init(elpis_admission_segment_v1 *segment) {
+    memset(segment, 0, sizeof(*segment));
+    segment->abi_version = 1;
+}
+
+int elpis_admission_segment_identity(const elpis_admission_segment_v1 *segment,
+                                      hacf_digest *out) {
+    if (!segment || !out) return SEMANTIC_E_INVAL;
+
+    elpis_sha256_ctx ctx;
+    elpis_sha256_init(&ctx);
+
+    elpis_sha256_update(&ctx, (const uint8_t *)SEGMENT_DOMAIN,
+                       strlen(SEGMENT_DOMAIN));
+
+    uint32_t v = __builtin_bswap32(segment->abi_version);
+    elpis_sha256_update(&ctx, (const uint8_t *)&v, 4);
+
+    elpis_sha256_update(&ctx, segment->prior_snapshot_digest.bytes, HACF_DIGEST_BYTES);
+    elpis_sha256_update(&ctx, segment->prior_segment_identity.bytes, HACF_DIGEST_BYTES);
+
+    v = __builtin_bswap32(segment->new_node_count);
+    elpis_sha256_update(&ctx, (const uint8_t *)&v, 4);
+    for (uint32_t i = 0; i < segment->new_node_count; i++) {
+        elpis_sha256_update(&ctx, segment->new_node_digests[i].bytes, HACF_DIGEST_BYTES);
+    }
+
+    v = __builtin_bswap32(segment->new_hyperedge_count);
+    elpis_sha256_update(&ctx, (const uint8_t *)&v, 4);
+    for (uint32_t i = 0; i < segment->new_hyperedge_count; i++) {
+        elpis_sha256_update(&ctx, segment->new_hyperedge_digests[i].bytes, HACF_DIGEST_BYTES);
+    }
+
+    v = __builtin_bswap32(segment->new_assertion_count);
+    elpis_sha256_update(&ctx, (const uint8_t *)&v, 4);
+    for (uint32_t i = 0; i < segment->new_assertion_count; i++) {
+        elpis_sha256_update(&ctx, segment->new_assertion_digests[i].bytes, HACF_DIGEST_BYTES);
+    }
+
+    v = __builtin_bswap32(segment->new_incidence_count);
+    elpis_sha256_update(&ctx, (const uint8_t *)&v, 4);
+    for (uint32_t i = 0; i < segment->new_incidence_count; i++) {
+        elpis_sha256_update(&ctx, segment->new_incidence_digests[i].bytes, HACF_DIGEST_BYTES);
+    }
+
+    elpis_sha256_update(&ctx, segment->graph_delta_digest.bytes, HACF_DIGEST_BYTES);
+    elpis_sha256_update(&ctx, segment->resulting_snapshot_digest.bytes, HACF_DIGEST_BYTES);
+    elpis_sha256_update(&ctx, segment->HACF_package_digest.bytes, HACF_DIGEST_BYTES);
+
+    elpis_sha256_final(&ctx, out->bytes);
+    return SEMANTIC_OK;
+}

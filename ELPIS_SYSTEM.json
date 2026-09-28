@@ -109,12 +109,53 @@
     },
     {
       "id": "structure",
-      "status": "PLANNED",
+      "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
+      "purpose": "Structural memory and representation: HACF content-addressed cascade/graph identity, chunked content-addressed corpus, FMS-resident exact vector index, context graph and deterministic hybrid retrieval; the native semantic core (typed hypergraph, snapshots and query overlays, context-deficit control, retrieval materialization, evidence typing/admission, bounded semantic views, semantic topology IR, Grid81 structural packets, structural observations); the Python retrieval stage producing validated evidence envelopes; the bounded Grid81 representation and canonical substrate reader.",
       "python_package": "elpis.structure",
-      "implementation_roots": [],
-      "test_roots": [],
-      "native_targets": [],
-      "depends_on": []
+      "implementation_roots": [
+        "src/elpis/structure",
+        "native/structure"
+      ],
+      "test_roots": [
+        "tests/structure",
+        "native/structure/hacf/tests",
+        "native/structure/semantic/tests"
+      ],
+      "native_targets": [
+        "elpis_cascade",
+        "elpis_graph",
+        "elpis_chunking",
+        "elpis_corpus",
+        "elpis_embedding",
+        "elpis_vector",
+        "elpis_hybrid",
+        "elpis_semantic",
+        "elpis_retrieval_bridge"
+      ],
+      "depends_on": [
+        "substrate"
+      ],
+      "mutation_authority": "Structural memory is written only by its owner (corpus ingestion into a caller-owned state root). Retrieval, validation, views, topology and observations are read-only and grant no semantic truth, execution or admission authority. Canonical Grid81 state is read here but changed only by the pipeline's canonical writer path.",
+      "runtime_participation": "The runtime composition may own a HACF corpus/index; retrieval results become evidence envelopes consumable by the pipeline, the ECS history and inference structural proposals.",
+      "protocol_identifiers_retained": [
+        "elpis.retrieval_bundle.v1",
+        "elpis.retrieval_contract.v1",
+        "elpis.retrieval_budget.v1",
+        "elpis.semantic.*.v1/v2 identity domains (including elpis.semantic.r3_bridge.v1, r3_epoch.v1, r3_query_plan.v1 and grid81.sudoku_template.v1)"
+      ],
+      "external_dependencies": [
+        "SQLite 3 (HACF corpus)",
+        "libm",
+        "pthreads"
+      ],
+      "model_dependency": "NONE",
+      "uses_numpy": false,
+      "maturity": "Mechanics qualified: HACF corpus/vector/hybrid suites incl. cross-host golden fixtures, adversarial and concurrency tests; semantic core suites incl. source-boundary scans and fresh-process determinism; Python retrieval and evidence tests over the native bridge.",
+      "incomplete_interfaces": [
+        "The retrieval bridge library is loaded by explicit path but is not yet digest-pinned through elpis.substrate authority.",
+        "Native semantic ABI records keep beta stage prefixes (P2..P8) in struct field names; renaming them is deferred to the next native ABI version.",
+        "The retrieval bridge builds no context graph; hybrid retrieval through it is lexical + dense only."
+      ]
     },
     {
       "id": "pipeline",

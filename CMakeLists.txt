@@ -44,5 +44,6 @@ find_package(Threads REQUIRED)
 include(native/elpis.cmake)
 
 add_subdirectory(native/substrate)
+add_subdirectory(native/structure)
 
 elpis_verify_targets()

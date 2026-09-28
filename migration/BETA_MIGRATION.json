@@ -971,6 +971,136 @@
       "migration_type": "RELOCATION",
       "semantic_code_changed": false,
       "reason": "Admission, path-adversary, sealed-load, lease/eviction and raw-digest suites. The native library now comes from the root build instead of being compiled inside the test; the scratch no-op test was dropped with the argument (63 tests vs 64)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/hacf/src/{kernel,graph,retrieval}/, native/hacf/include/elpis/{cascade,graph,chunking,corpus,embedding_provider,vector_*,context_graph,hybrid_retrieval,retrieval_bundle}.h",
+      "destination": "native/structure/hacf",
+      "disposition": "COLLAPSED_INTO_SUBSYSTEM",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "HACF content-addressed cascade/graph, chunking, SQLite corpus, embeddings, exact FMS-backed vector index, context graph, hybrid retrieval and RetrievalBundle become the structural-memory store of the structure subsystem. Sources unchanged; comments lost HACF generation labels (R1/R2/R3)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/hacf/tests/{kernel,graph,retrieval,vector,hybrid}/",
+      "destination": "native/structure/hacf/tests",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "HACF suites incl. cross-host golden fixtures. Test harness names lost generation labels (r1/r2/r3 -> corpus/vector/hybrid); fixture bytes unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/hacf/benchmarks/",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Performance measurement tools that produced beta qualification evidence; not tests and not part of the default build."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/hacf/{docs,manifests,evidence}/, native/hacf/COMPONENT_MANIFEST.json, native/hacf/CMakeLists.txt",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "R2/R3 qualification seals, machine-specific evidence dumps, hotfix notes and the standalone HACF build; replaced by native/structure/CMakeLists.txt."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/src/{graph,embedding,context,retrieval,evidence,view,topology,grid81}/ and matching headers",
+      "destination": "native/structure/semantic",
+      "disposition": "EXTRACTED_PRIMITIVE",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Model-independent semantic structural core (hypergraph, snapshots, overlays, embeddings, context-deficit control, retrieval materialization, evidence typing/admission, bounded views, topology IR, Grid81 structural packets). Module files renamed by function (r3_bridge -> hybrid_bridge, r3_epoch -> retrieval_epoch, r3_query_plan -> hybrid_query_plan, p5_writer/reader -> view_writer/reader, grid81_sudoku_template -> grid81_group_template) with matching C symbols; persisted identity domains (e.g. elpis.semantic.r3_bridge.v1, elpis.semantic.grid81.sudoku_template.v1) unchanged; stage labels removed from comments. Struct field names keep P2..P8 prefixes (ABI record binding)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/src/structural_spine/structural_observation.c + header",
+      "destination": "native/structure/semantic/src/observation/structural_observation.c",
+      "disposition": "EXTRACTED_PRIMITIVE",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Read-only structural observation record (topology vertex -> Grid81 capsule -> cell transition class) extracted from the retired integrated-spine layer."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/tests/{graph,embedding,context,evidence,p5,topology,grid81}/",
+      "destination": "native/structure/semantic/tests",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Semantic core suites; tests/p5 -> tests/view (test_p5_* renamed test_view_*). The embedding source-boundary scan now also forbids the renamed hybrid-bridge symbols."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/tests/structural_spine/test_p13_structural_spine.c (observation cases)",
+      "destination": "native/structure/semantic/tests/observation/test_structural_observation.c",
+      "disposition": "EXTRACTED_PRIMITIVE",
+      "migration_type": "REWRITE_AS_TEST",
+      "semantic_code_changed": false,
+      "reason": "Observation init/validate/read-only/invalid-cell cases extracted; reserved-byte and identity-binding cases added."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/semantic-spine/{docs,evidence,manifests}/, COMPONENT_MANIFEST.json, CMakeLists.txt",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "P-numbered program documentation, bake-off artifacts and seals; the build is replaced by native/structure/CMakeLists.txt."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/hacf_bridge/python_r1_wrapper.c",
+      "destination": "native/structure/bridge/retrieval_bridge.c",
+      "disposition": "EXTRACTED_PRIMITIVE",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Narrow C ABI over HACF (corpus + embedding + FMS vector index + hybrid retrieval) for Python; now a default-built structure library. Symbols renamed r1_env_* -> elpis_retrieval_env_*."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "native/hacf_bridge/CMakeLists.txt",
+      "destination": null,
+      "disposition": "DROPPED_NO_CONSUMER",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Out-of-tree build that required a pre-built HACF directory; the bridge is now a normal target of the root build."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R1/src/elpis_runtime_r1/{contracts,query_derivation,bundle_validation,budget,evidence_adapter,hacf_adapter,errors}.py",
+      "destination": "src/elpis/structure/retrieval",
+      "disposition": "EXTRACTED_PRIMITIVE",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": true,
+      "reason": "The retrieval stage of Runtime R1 (query derivation, hybrid retrieval, bundle validation, budgets, evidence envelope) is model-independent structural retrieval. Errors renamed R1* -> Retrieval*; the R1 composite receipt and the P0 input converter are dropped; the ctypes adapter now requires an explicit library path (no environment lookup, no repository-relative fallback). Schema strings unchanged."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "runtime/R1/tests/test_r1.py (query derivation, HACF retrieval, bundle validation, budget)",
+      "destination": "tests/structure/test_retrieval.py",
+      "disposition": "MIGRATED",
+      "migration_type": "RELOCATION",
+      "semantic_code_changed": false,
+      "reason": "Retrieval suites ported; receipt and canonical-root tests of the retired R0 composition dropped; an end-to-end HACF -> bundle -> validation -> evidence test added."
     }
   ]
 }
