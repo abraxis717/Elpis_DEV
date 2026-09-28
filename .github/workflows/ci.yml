@@ -7,7 +7,64 @@ on:
 permissions:
   contents: read
 
+env:
+  NATIVE_DEPS: build-essential cmake clang pkg-config libsqlite3-dev libpcre2-dev
+
 jobs:
+  boundary:
+    name: Boundary
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Base install pulls no model stack
+        run: |
+          python -m venv /tmp/base
+          /tmp/base/bin/python -m pip install --upgrade pip
+          /tmp/base/bin/python -m pip install .
+          /tmp/base/bin/python - <<'EOF'
+          import importlib.metadata as md, json
+          installed = {d.metadata["Name"].lower() for d in md.distributions()}
+          policy = json.load(open("ELPIS_SYSTEM.json"))["boundary_policy"]["forbidden_python_imports"]
+          forbidden = {n.lower() for n in policy} | {"torch", "transformers", "huggingface-hub", "safetensors"}
+          assert not installed & forbidden, installed & forbidden
+          import elpis, sys
+          assert "torch" not in sys.modules and "numpy" not in sys.modules
+          print("base install:", sorted(installed))
+          EOF
+      - name: Boundary suite (architecture, authority, migration record)
+        run: |
+          /tmp/base/bin/python -m pip install pytest
+          /tmp/base/bin/python -m pytest tests/boundary
+
+  parity:
+    name: Donor parity
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      ELPIS_REQUIRE_DONOR: "1"
+      ELPIS_DONOR_ROOT: ${{ github.workspace }}/donor
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read-only donor checkout at the migration basis
+        uses: actions/checkout@v4
+        with:
+          repository: abraxis717/Elpis
+          ref: 8eda162712ebe291f2b88b6906366075859bc485
+          path: donor
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Parity suite
+        run: |
+          python -m pip install ".[test]"
+          python -m pytest tests/boundary/test_donor_parity.py -rs
+
   python:
     name: Python ${{ matrix.python }}
     runs-on: ubuntu-latest
@@ -26,7 +83,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Native build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake pkg-config libsqlite3-dev libpcre2-dev
+        run: sudo apt-get update && sudo apt-get install -y $NATIVE_DEPS
       - name: Native build (libraries loaded by Python)
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -39,22 +96,87 @@ jobs:
       - name: Test suite
         run: /tmp/elpis-venv/bin/python -m pytest
 
+  airgap:
+    name: Python without network
+    runs-on: ubuntu-latest
+    env:
+      ELPIS_NATIVE_BUILD: ${{ github.workspace }}/build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y $NATIVE_DEPS
+      - name: Build and install (network allowed only here)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+          python -m venv /tmp/elpis-venv
+          /tmp/elpis-venv/bin/python -m pip install ".[test]"
+      - name: Full suite in a network namespace with no interfaces up
+        run: |
+          run_isolated() {
+            sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
+              env -i PATH="$PATH" HOME="$HOME" PYTHONDONTWRITEBYTECODE=1 ELPIS_REQUIRE_NATIVE=1 \
+              ELPIS_NATIVE_BUILD="$ELPIS_NATIVE_BUILD" "$@"
+          }
+          run_isolated /tmp/elpis-venv/bin/python -c "
+          import socket
+          try:
+              socket.create_connection(('1.1.1.1', 443), 3)
+          except OSError as exc:
+              print('network unreachable as required:', exc)
+          else:
+              raise SystemExit('network reachable inside the isolation namespace')
+          "
+          run_isolated /tmp/elpis-venv/bin/python -m pytest
+
   native:
-    name: Native (${{ matrix.compiler }})
+    name: Native (${{ matrix.compiler }}, ${{ matrix.build }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         compiler: [gcc, clang]
+        build: [Debug, Release]
     steps:
       - uses: actions/checkout@v4
       - name: Native build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential cmake clang pkg-config libsqlite3-dev libpcre2-dev
+        run: sudo apt-get update && sudo apt-get install -y $NATIVE_DEPS
       - name: Configure (warnings are errors)
         run: |
           if [ "${{ matrix.compiler }}" = clang ]; then export CC=clang CXX=clang++; fi
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DELPIS_WARNINGS_AS_ERRORS=ON
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DELPIS_WARNINGS_AS_ERRORS=ON
       - name: Build
         run: cmake --build build --parallel
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+  sanitizers:
+    name: Native ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ASan+UBSan
+            flags: -DELPIS_ENABLE_ASAN=ON -DELPIS_ENABLE_UBSAN=ON
+          - name: TSan
+            flags: -DELPIS_ENABLE_TSAN=ON
+    env:
+      ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+      TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y $NATIVE_DEPS
+      - name: Sanitizer-compatible address layout
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+      - name: Configure (gcc, Debug, warnings are errors)
+        run: CC=gcc CXX=g++ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DELPIS_WARNINGS_AS_ERRORS=ON ${{ matrix.flags }}
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --timeout 1800

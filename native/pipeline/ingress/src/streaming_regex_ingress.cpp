@@ -355,7 +355,11 @@ static void scan_window(
     std::set<std::tuple<std::string,uint64_t,uint64_t>> &seen)
 {
     for(auto &p:ps) {
-        pcre2_match_data *md=pcre2_match_data_create_from_pattern(p.code,nullptr);
+        // Owned for every exit path: evidence construction and bound checks
+        // below may throw after the match data exists.
+        std::unique_ptr<pcre2_match_data,decltype(&pcre2_match_data_free)> owner(
+            pcre2_match_data_create_from_pattern(p.code,nullptr),pcre2_match_data_free);
+        pcre2_match_data *md=owner.get();
         if(!md) throw std::runtime_error("PCRE2_MATCH_DATA");
         PCRE2_SIZE offset=0;
         while(offset<=window.size()) {
@@ -369,13 +373,11 @@ static void scan_window(
                 nullptr);
             if(rc==PCRE2_ERROR_NOMATCH) break;
             if(rc<0) {
-                pcre2_match_data_free(md);
                 throw std::runtime_error(std::string("PCRE2_MATCH:")+p.id+":"+std::to_string(rc));
             }
             PCRE2_SIZE *ov=pcre2_get_ovector_pointer(md);
             size_t a=(size_t)ov[0], b=(size_t)ov[1];
             if(b<a || b>window.size()) {
-                pcre2_match_data_free(md);
                 throw std::runtime_error("PCRE2_OVECTOR");
             }
             uint64_t ga=global_base+a, gb=global_base+b;
@@ -395,7 +397,6 @@ static void scan_window(
                 offset=b+1;
             }
         }
-        pcre2_match_data_free(md);
     }
 }
 

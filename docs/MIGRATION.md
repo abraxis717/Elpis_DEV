@@ -138,3 +138,78 @@ These are distinct from architectural rejections:
   and a test proves they are the same group.
 * Two HACF Python bridges: the R1 retrieval wrapper and the TRM checkpoint
   bridge. The retrieval wrapper survives.
+
+## Result
+
+The migration landed in ten tranches, one commit each, plus two corrective
+native commits. Per-path provenance is in `migration/BETA_MIGRATION.json`:
+204 records across all eight dispositions.
+
+| Tranche | Landed as |
+|---|---|
+| 1 Foundation | `ELPIS_SYSTEM.json` (sole authority), boundary suite, donor census |
+| 2 ECS | `elpis.ecs`: kernel, durable history, replay, projections, Structural R0 |
+| 3 Substrate | `elpis.substrate` + `native/substrate`: FMS residency, POSIX PAL, descriptor capabilities, verified file assets |
+| 4 Structure | `elpis.structure` + `native/structure`: HACF structural memory, semantic core, retrieval stage |
+| 5 Grid81 | `elpis.structure.grid81` and the `elpis.pipeline` canonical writer stages |
+| 6 Ingress | `native/pipeline/ingress` + `elpis.pipeline.ingress`: bounded Regex → HACF query ingress |
+| 7 Evolution | `elpis.evolution`: heredity, self-verified truncation selection, ECS-bound path gate, gated promotion |
+| 8 Inference | `elpis.inference`: driver-neutral contracts, the DSV4 driver, decode transaction, speculative verification, steering |
+| 9 Runtime | `elpis.runtime`: one composition over one ECS receipt history; `tests/integration` |
+| 10 Hardening | sanitizer, no-network and donor-parity CI; this document, `docs/NONCLAIMS.md`, README |
+
+### Retired
+
+The retired surfaces were not moved elsewhere. Each has a record explaining
+why it was retired.
+
+* TRM, FPRM and Sudoku: the reference runtime, TRMFractalSpine, P0, the
+  learned drivers and the TRM layers of the semantic spine.
+* CNumPyCortex.
+* Cadence and CadenceECSProbe.
+* Furyan as a runtime.
+* R3SOTObservationBridge.
+* The runtime generations R0–R4 and R3SOT. Their surviving mechanisms were
+  collapsed into subsystems: the R1 retrieval stage into structure, and the
+  R3 transaction and R3SOT steering into inference.
+* The QUBO selection branch.
+* The beta release, sealing, PyPI and registry machinery.
+
+No release, tag or publication authority was migrated.
+
+### Fixes made during migration
+
+These are distinct from renames. Each is recorded with
+`semantic_code_changed: true` or described in its record:
+
+* Grid81 joins no longer hard-code the historical corpus size.
+* The promotion planner no longer reads human-edited markdown dispositions.
+* The Grid81 runtime reducer no longer imports from a caller-chosen `sys.path`.
+* Workspace digests and copies in evolution promotion refuse symlinks and
+  special files.
+* The evolution path gate requires a real ECS `ContextProjection` and a typed
+  attempt result.
+* The retrieval-bundle adapter fails closed with one typed error.
+* Native vector outputs are defined on every path.
+* Multi-MB test records live on the heap.
+* Test assertions stay live in Release builds.
+* A PCRE2 match-data leak on exception paths in the streaming regex ingress,
+  found by LeakSanitizer, is fixed with an owning handle.
+
+### Parity with the donor
+
+`tests/boundary/test_donor_parity.py` runs in CI against a read-only checkout
+of the donor at the basis commit. It checks two things:
+
+* **Byte identity.** The synthetic inference address artifacts, the
+  historical Grid81 canonical generation, `LICENSE` and the upstream license
+  texts must be byte-identical to the donor.
+* **Persisted identities.** Evolution assertion and harness-manifest
+  digests, the content-map digest, canonical identity v1, and ECS state roots
+  and event digests for the same history must be equal between donor and
+  target.
+
+Two further checks were run once at migration time:
+
+* the query-ingress identities, which are pinned in the native suites;
+* an 18,000-case differential run of the streaming lexer.

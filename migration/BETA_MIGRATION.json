@@ -2051,6 +2051,16 @@
       "migration_type": "NOT_MIGRATED",
       "semantic_code_changed": false,
       "reason": "End-to-end driver of the Samsung learned feedback re-proposal step (Runtime R2 profile)."
+    },
+    {
+      "donor_repository": "https://github.com/abraxis717/Elpis",
+      "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
+      "donor_path": "tests/test_airgap_ci.py",
+      "destination": null,
+      "disposition": "HISTORICAL_ONLY",
+      "migration_type": "NOT_MIGRATED",
+      "semantic_code_changed": false,
+      "reason": "Static check of the beta's CNumPyCortex-only air-gap CI job. Replaced by the CI job that runs the entire Python suite inside a network namespace with no interfaces up, after asserting that the network is unreachable there."
     }
   ]
 }
