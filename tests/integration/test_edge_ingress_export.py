@@ -1,6 +1,7 @@
 import json
 import pytest
-from elpis.inference.structural import from_regex_hacf,RouteRule
+from elpis.inference.structural import RouteRule
+from elpis.runtime.edges import from_regex_hacf
 from elpis.substrate.file_assets import raw_digest
 from elpis.inference.contracts import ContractError
 

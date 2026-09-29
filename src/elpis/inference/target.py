@@ -14,7 +14,7 @@ from typing import Protocol
 import numpy as np
 from .associative import History
 from .contracts import Code, ProposalOnly, identity, integer, require, raw_digest
-from .global_context import GlobalCandidate,IndexResult
+from .global_context import GlobalCandidate,IndexResult,StreamCandidate
 
 
 def numerical_profile():
@@ -137,6 +137,56 @@ class NeuralState:
 
 
 @dataclass(frozen=True)
+class StreamingNeuralState:
+    """Ephemeral model-local state of an active sequence. Not authority, not durable.
+
+    Deliberately has no digest/provenance API; the global pool holds
+    ``StreamCandidate`` entries without provenance. Only finalization at the
+    commit boundary produces a :class:`NeuralState`.
+    """
+    model: str
+    context_snapshot: str
+    numerical_profile: str
+    tokens: tuple[int,...]
+    history: History
+    local_keys: tuple[tuple[float,...],...]=()
+    local_values: tuple[tuple[float,...],...]=()
+    pending: tuple[tuple,...]=()
+    global_pool: tuple=()
+    hidden: tuple[float,...]=()
+    logits: tuple[float,...]=()
+    step: 'StreamStep | None'=None
+
+    def record(self):
+        """The bounded part of this state finalization needs (tokens and pool are rebuilt)."""
+        return StreamRecord(self.step,self.history,self.local_keys,self.local_values,self.pending,
+                            self.hidden,self.logits)
+
+
+@dataclass(frozen=True, slots=True)
+class StreamStep:
+    """What one stream step observed: model data only, kept for the commit boundary."""
+    token: int
+    rows: tuple            # address rows for the token, every layer (as HashResult.rows)
+    memory: tuple[float,...]
+    query: tuple[float,...]
+    route: tuple[int,...]
+    selected: tuple[str,...]   # object ids of the selected global candidates
+    candidate: StreamCandidate | None
+
+
+@dataclass(frozen=True, slots=True)
+class StreamRecord:
+    step: StreamStep
+    history: History
+    local_keys: tuple
+    local_values: tuple
+    pending: tuple
+    hidden: tuple[float,...]
+    logits: tuple[float,...]
+
+
+@dataclass(frozen=True)
 class StepReceipt:
     model: str
     tokenizer: str
@@ -172,4 +222,16 @@ class Target(Protocol):
 
     def step(self, state: NeuralState, token: int, *, expected_state: str,
              latents: tuple = (), **options) -> tuple[NeuralState, StepReceipt]: ...
+
+    def admit_stream(self, *, resident_experts=None): ...
+
+    def initial_stream(self, context_snapshot: str) -> StreamingNeuralState: ...
+
+    def resume_stream(self, state: NeuralState) -> StreamingNeuralState: ...
+
+    def finalize_stream(self, committed: NeuralState, records: tuple, *,
+                        latents: tuple = ()) -> tuple[tuple[NeuralState, StepReceipt], ...]: ...
+
+    def stream_step(self, state: StreamingNeuralState, token: int, *, admission,
+                    latents: tuple = ()) -> StreamingNeuralState: ...
 

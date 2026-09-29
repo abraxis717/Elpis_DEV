@@ -1706,11 +1706,11 @@
       "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "src/elpis/inference/structural.py",
-      "destination": "src/elpis/inference/structural.py",
+      "destination": "src/elpis/inference/structural.py + src/elpis/runtime/edges.py",
       "disposition": "MIGRATED",
       "migration_type": "REWRITE",
       "semantic_code_changed": true,
-      "reason": "Structural address proposals. from_regex_hacf consumes the pipeline ingress export unchanged; the R3 retrieval-bundle adapter is merged here as from_retrieval_bundle (see the runtime/R3 r1_adapter record)."
+      "reason": "Structural address proposals. AddressProposal and RouteRule stay in inference as the edge contract; from_regex_hacf, which consumes the pipeline ingress export unchanged, moved to the runtime composition (elpis.runtime.edges) so the token lane imports no slow lane. The R3 retrieval-bundle adapter is merged there as from_retrieval_bundle (see the runtime/R3 r1_adapter record)."
     },
     {
       "donor_repository": "https://github.com/abraxis717/Elpis_beta",
@@ -1796,11 +1796,11 @@
       "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3/src/elpis_runtime_r3/r1_adapter.py",
-      "destination": "src/elpis/inference/structural.py",
+      "destination": "src/elpis/runtime/edges.py",
       "disposition": "COLLAPSED_INTO_SUBSYSTEM",
       "migration_type": "REWRITE",
       "semantic_code_changed": true,
-      "reason": "from_r1_bundle becomes structural.from_retrieval_bundle over the extracted structure retrieval stage. The export pin (r1-bundle-export) and route key HACF_R1 are persisted identity and unchanged. FAIL-CLOSED FIX: bundle-validation failures now surface as ContractError(IDENTITY) with the retrieval error chained, so the inference boundary has one typed failure."
+      "reason": "from_r1_bundle becomes elpis.runtime.edges.from_retrieval_bundle over the extracted structure retrieval stage. The export pin (r1-bundle-export) and route key HACF_R1 are persisted identity and unchanged. FAIL-CLOSED FIX: bundle-validation failures now surface as ContractError(IDENTITY) with the retrieval error chained, so the inference boundary has one typed failure."
     },
     {
       "donor_repository": "https://github.com/abraxis717/Elpis_beta",
@@ -1826,7 +1826,7 @@
       "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "runtime/R3/tests/test_r3_{corrective_226,corrective_229_r0,numerical_profile_228,redteam_228,r1_adapter}.py",
-      "destination": "tests/inference/transaction/test_latent_and_history_revalidation.py + tests/inference/transaction/test_request_identity_strictness.py + tests/inference/transaction/test_numerical_profile.py + tests/inference/transaction/test_adversarial_proposals.py + tests/inference/transaction/test_retrieval_bundle_boundary.py",
+      "destination": "tests/inference/transaction/test_latent_and_history_revalidation.py + tests/inference/transaction/test_request_identity_strictness.py + tests/inference/transaction/test_numerical_profile.py + tests/inference/transaction/test_adversarial_proposals.py + tests/integration/test_edge_retrieval_bundle.py",
       "disposition": "MIGRATED",
       "migration_type": "RELOCATION",
       "semantic_code_changed": false,
@@ -1926,7 +1926,7 @@
       "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_inference_{associative,context,experts,global_context,prefetch,rows,structural,speculative}_r0.py",
-      "destination": "tests/inference/test_associative.py + tests/inference/test_context.py + tests/inference/test_experts.py + tests/inference/test_global_context.py + tests/inference/test_prefetch.py + tests/inference/test_rows.py + tests/inference/test_structural.py + tests/inference/test_speculative.py",
+      "destination": "tests/inference/test_associative.py + tests/inference/test_context.py + tests/inference/test_experts.py + tests/inference/test_global_context.py + tests/inference/test_prefetch.py + tests/inference/test_rows.py + tests/integration/test_edge_ingress_export.py + tests/inference/test_speculative.py",
       "disposition": "MIGRATED",
       "migration_type": "RELOCATION",
       "semantic_code_changed": false,
@@ -1936,7 +1936,7 @@
       "donor_repository": "https://github.com/abraxis717/Elpis_beta",
       "donor_commit": "8eda162712ebe291f2b88b6906366075859bc485",
       "donor_path": "tests/test_inference_neural_r0.py, test_inference_runtime_r3.py, test_inference_r1_adapter_r0.py, test_inference_staging_telemetry_classification.py",
-      "destination": "tests/inference/test_dsv4_target.py + tests/inference/test_transaction_smoke.py + tests/inference/test_retrieval_adapter.py + tests/inference/test_staging_telemetry.py",
+      "destination": "tests/inference/test_dsv4_target.py + tests/inference/test_transaction_smoke.py + tests/integration/test_edge_retrieval_adapter.py + tests/inference/test_staging_telemetry.py",
       "disposition": "MIGRATED",
       "migration_type": "RELOCATION",
       "semantic_code_changed": false,

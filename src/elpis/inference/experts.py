@@ -81,6 +81,7 @@ class ExpertBank:
                 require(t.offset+t.size<=provider._assets[t.asset][1].size,detail='expert tensor range')
         self.provider=provider; self.model=model; self.staging_budget=staging_bytes
         self._lock=RLock(); self.staged_bytes=0; self.high_water=0; self.last_metrics={}
+        self._bindings_verified=False
 
     @property
     def digest(self):
@@ -101,26 +102,58 @@ class ExpertBank:
             tensors.append(value)
         return tuple(tensors)
 
+    def _read(self,manifest):
+        raws=[]
+        for tensor in manifest.tensors:
+            data=bytearray(); offset=tensor.offset
+            while len(data)<tensor.size:
+                page_size=self.provider._assets[tensor.asset][1].page_size
+                count=min(tensor.size-len(data),page_size-offset%page_size)
+                with self.provider.acquire(tensor.asset,offset,count) as lease: data.extend(lease.read())
+                offset+=count
+            raws.append(bytes(data))
+        return raws
+
+    @contextmanager
+    def _staged(self,manifest):
+        reservation=sum(t.size for t in manifest.tensors)*3
+        require(self.staged_bytes+reservation<=self.staging_budget,Code.LIMIT,'expert staging exhausted')
+        self.staged_bytes+=reservation; self.high_water=max(self.high_water,self.staged_bytes)
+        try:
+            yield
+        finally:
+            self.staged_bytes-=reservation
+
     @contextmanager
     def acquire(self,layer,expert):
         with self._lock:
             manifest=self.manifest(layer,expert)
-            reservation=sum(t.size for t in manifest.tensors)*3
-            require(self.staged_bytes+reservation<=self.staging_budget,Code.LIMIT,'expert staging exhausted')
-            self.staged_bytes+=reservation; self.high_water=max(self.high_water,self.staged_bytes)
-            try:
-                raws=[]
-                for tensor in manifest.tensors:
-                    data=bytearray(); offset=tensor.offset
-                    while len(data)<tensor.size:
-                        page_size=self.provider._assets[tensor.asset][1].page_size
-                        count=min(tensor.size-len(data),page_size-offset%page_size)
-                        with self.provider.acquire(tensor.asset,offset,count) as lease: data.extend(lease.read())
-                        offset+=count
-                    raws.append(bytes(data))
-                yield self._decode(manifest,raws)
-            finally:
-                self.staged_bytes-=reservation
+            with self._staged(manifest):
+                yield self._decode(manifest,self._read(manifest))
+
+    def admit(self,*,resident=None):
+        """Verify expert bytes against their manifests once, before a sequence.
+
+        With ``resident`` (raw bytes per (layer, expert), as for ``execute``)
+        every manifest is verified and decoded once and the returned admission
+        holds the read-only arrays. Without it, each manifest's content binding
+        to its asset range is verified once per bank (the substrate still
+        verifies every cold page it faults in); later reads decode without
+        re-hashing. Either way the admission is the only input
+        :meth:`execute_admitted` accepts.
+        """
+        with self._lock:
+            if resident is None:
+                if not self._bindings_verified:
+                    for key in sorted(self.manifests):
+                        with self.acquire(*key):
+                            pass
+                    self._bindings_verified=True
+                return ExpertAdmission(self,None)
+            require(type(resident) is dict and set(resident)>=set(self.manifests),Code.MISSING,
+                    'resident experts must cover the bank')
+            return ExpertAdmission(self,{key:self._decode(self.manifests[key],resident[key])
+                                         for key in sorted(self.manifests)})
 
     def execute(self,x,*,model,layer,route,weights,resident=None,shared=()):
         require(model==self.model,Code.IDENTITY,'execution model')
@@ -153,3 +186,53 @@ class ExpertBank:
                                staging_high_water=self.high_water,transfer_overlap_ns=None,
                                staging_high_water_kind='configured_reservation')
         return result
+
+
+    def execute_admitted(self,x,*,admission,model,layer,route,weights,shared=()):
+        """Stream-lane execution over an admission: no per-call content hashing.
+
+        Arithmetic is :func:`expert_kernel` on the same F32 arrays as
+        :meth:`execute`, so results are bitwise identical.
+        """
+        require(type(admission) is ExpertAdmission and admission.bank is self,Code.IDENTITY,'expert admission')
+        require(model==self.model,Code.IDENTITY,'execution model')
+        require(type(route) is tuple and len(set(route))==len(route) and len(route)==len(weights),detail='expert route')
+        require(type(shared) is tuple and len(set(shared))==len(shared) and not set(shared).intersection(route))
+        x=np.asarray(x,dtype='<f4')
+        result=np.zeros_like(x); materialize_ns=execution_ns=byte_count=0
+        for expert,weight in tuple(zip(route,weights))+tuple((i,1.0) for i in shared):
+            m=self.manifest(layer,expert)
+            require(x.shape==(m.tensors[0].shape[0],),detail='expert input dimension')
+            byte_count+=sum(t.size for t in m.tensors)
+            start=perf_counter_ns()
+            if admission.resident is not None:
+                tensors=admission.resident[layer,expert]
+                materialize_ns+=perf_counter_ns()-start
+                begin=perf_counter_ns()
+                result+=np.float32(weight)*expert_kernel(x,tensors)
+                execution_ns+=perf_counter_ns()-begin
+            else:
+                with self._lock, self._staged(m):
+                    tensors=tuple(np.frombuffer(raw,dtype='<f4').reshape(t.shape)
+                                  for t,raw in zip(m.tensors,self._read(m)))
+                    materialize_ns+=perf_counter_ns()-start
+                    begin=perf_counter_ns()
+                    result+=np.float32(weight)*expert_kernel(x,tensors)
+                    execution_ns+=perf_counter_ns()-begin
+        self.last_metrics=dict(selected_experts=len(route)+len(shared),expert_bytes=byte_count,
+                               materialization_ns=materialize_ns,execution_ns=execution_ns,
+                               staging_high_water=self.high_water,transfer_overlap_ns=None,
+                               staging_high_water_kind='configured_reservation')
+        return result
+
+
+class ExpertAdmission:
+    """Expert bytes admitted for one bank before a sequence. Not provenance.
+
+    ``resident`` holds verified read-only arrays per (layer, expert), or is
+    None when experts are read through the substrate on use.
+    """
+    __slots__=('bank','resident')
+
+    def __init__(self,bank,resident):
+        self.bank=bank; self.resident=resident

@@ -246,7 +246,7 @@
     {
       "id": "inference",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "Inference behind contracts, driver-neutral: typed target records (tensors, latent inputs, target state, step receipts) and a Target protocol a driver implements; n-gram associative addressing (DSV4.1 engram and Qwen PLE schemes) with bounded row lookup over substrate file assets; immutable context lifetimes/snapshots and sparse global candidate selection; digest-bound experts executed from file assets; physical prefetch predictions that can never select content; structural address proposals from ingress exports and retrieval bundles; an atomic, replay-verified decode transaction; speculative drafting verified token by token by the target (greedy equivalence); a read-only observer over completed decode epochs with future-only latent steering applied through the target's own latent-input path. The first driver is DSV4 (drivers/dsv4: a compact target and an explicit synthetic fixture intake).",
+      "purpose": "Inference behind contracts, driver-neutral: typed target records (tensors, latent inputs, target state, step receipts) and a Target protocol a driver implements; n-gram associative addressing (DSV4.1 engram and Qwen PLE schemes) with bounded row lookup over substrate file assets; immutable context lifetimes/snapshots and sparse global candidate selection; digest-bound experts executed from file assets; physical prefetch predictions that can never select content; the structural address-proposal edge contract (inference never parses or validates slow-lane artifacts; the adapters live in elpis.runtime.edges); an atomic, replay-verified decode transaction; speculative drafting verified token by token by the target (greedy equivalence); a read-only observer over completed decode epochs with future-only latent steering applied through the target's own latent-input path. The first driver is DSV4 (drivers/dsv4: a compact target and an explicit synthetic fixture intake). Token streaming is a separate fast lane: sequence transactions (begin, then next per token, then finalize) validate committed input once, run only model arithmetic per token with no canonical or provenance identity and no re-hashing of admitted bytes, and build receipts, identities and the committed state at the finalization boundary, identical to the legacy transaction's.",
       "python_package": "elpis.inference",
       "implementation_roots": [
         "src/elpis/inference"
@@ -256,12 +256,11 @@
       ],
       "native_targets": [],
       "depends_on": [
-        "structure",
         "substrate"
       ],
       "mutation_authority": "Only InferenceEngine.execute commits decode state, and only as one transaction against the exact expected state; a failed step commits nothing and replay re-executes the receipt chain to validate history. Every proposal record (address proposals, drafts, prefetch plans, steering observations/proposals/applications) is ProposalOnly with fixed zero semantic, admission, execution and mutation authority. Steering never mutates weights, context, tokens or logits: its only effect is one LatentInput on a later request, recorded by the transaction. Inference never writes ECS, structural memory or canonical state; model output is proposal, never authority.",
       "runtime_participation": "The runtime composition constructs a driver target from explicitly supplied file assets (tests use the synthetic DSV4 fixture), passes structural address proposals from ingress or retrieval, runs decode transactions, and records their receipt digests in the ECS history.",
-      "security_boundary": "No network, no downloads and no implicit model: a target exists only from caller-supplied, digest-verified file assets registered through elpis.substrate beneath its trusted root, and every bank, expert, parameter artifact and projection is bound to the target's model identity. Prefetch predicts physical ranges only and cannot change which rows are read. Proposals are validated against the pinned scheme, bank and snapshot, and a retrieval bundle is re-validated against the caller's expected query, corpus and bundle digests before it becomes an address proposal. Fixed IEEE-754 binary64 arithmetic in steering; no hidden or global mutable recurrence state.",
+      "security_boundary": "No network, no downloads and no implicit model: a target exists only from caller-supplied, digest-verified file assets registered through elpis.substrate beneath its trusted root, and every bank, expert, parameter artifact and projection is bound to the target's model identity. Prefetch predicts physical ranges only and cannot change which rows are read. Proposals arrive as already validated, digest-pinned AddressProposal values and are checked against the snapshot they are bound to. elpis.inference imports no ECS, structure, pipeline, evolution or runtime module, directly or transitively (boundary-tested). Fixed IEEE-754 binary64 arithmetic in steering; no hidden or global mutable recurrence state.",
       "protocol_identifiers_retained": [
         "Record identities in the elpis.inference.<kind>.r0 family: bank, tensor, target-config, target-model, target-step, neural-state, latent-input, latent-projection, native-kv-source, row-representation, dsv41.parameters, qwen38.parameters, ngram.history, ngram.result, context.{item,snapshot,compaction}, global-{candidate,pool,index.config,index.result}, expert-{bank,manifest}, prefetch-plan, structural-{address,rules}, r1-bundle-export (route key HACF_R1)",
         "Decode transaction: r3.{request,receipt,committed-state}, the typed failures r3.invalid-request and r3.invalid-proposal, and the runtime schema elpis.runtime.r3.r1",
@@ -279,13 +278,16 @@
         "NeuralState and TargetConfig still carry DSV4-shaped fields (compressed KV, expert routing); a second driver will need them generalized behind the Target protocol.",
         "CPU/NumPy only: no GPU or native kernel path; the pure steering functions are marked as the replacement surface for a native backend.",
         "steering.global_event_fields() exposes the values an ECS integration would bind, but inference never records them; binding steering epochs into the ECS history is the runtime composition's job.",
-        "Speculative verification is greedy-equivalence only; no sampling-equivalent acceptance rule."
+        "Speculative verification is greedy-equivalence only; no sampling-equivalent acceptance rule.",
+        "Sequence begin still validates the committed lineage with the legacy validator, which walks the whole receipt history before its validated-state cache check; this is paid once per sequence, not per token.",
+        "Speculative decoding, physical prefetch and steering are not on the sequence lane yet; they run only through the legacy transaction.",
+        "The legacy per-token transaction (InferenceEngine.execute) still computes identities on every token; it remains the replay oracle and is not the streaming path."
       ]
     },
     {
       "id": "runtime",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "The one runtime composition: Runtime wires the subsystems explicitly around one durable receipt history (ReceiptHistory), an ECS kernel history founded with one history entity and one recorder entity per subsystem. It runs one subsystem operation at a time through that subsystem's own fail-closed entry point (pipeline ingress, structure retrieval-bundle admission, canonical Grid81 publication, the evolution path gate bound to a projection of the runtime's own history, and one inference decode transaction) and records the committed outcome as a kernel-attributed message. It is not a numbered runtime generation.",
+      "purpose": "The one runtime composition: Runtime wires the subsystems explicitly around one durable receipt history (ReceiptHistory), an ECS kernel history founded with one history entity and one recorder entity per subsystem. It runs one subsystem operation at a time through that subsystem's own fail-closed entry point (pipeline ingress, structure retrieval-bundle admission, canonical Grid81 publication, the evolution path gate bound to a projection of the runtime's own history, and one inference decode transaction) and records the committed outcome as a kernel-attributed message. It owns the edge adapters (elpis.runtime.edges) that turn ingress exports and retrieval bundles into inference AddressProposals before a sequence begins. It is not a numbered runtime generation.",
       "python_package": "elpis.runtime",
       "implementation_roots": [
         "src/elpis/runtime"
@@ -299,7 +301,8 @@
         "evolution",
         "inference",
         "pipeline",
-        "structure"
+        "structure",
+        "substrate"
       ],
       "mutation_authority": "The runtime writes only its own ECS receipt history, and only through ReceiptHistory.record: one message from the owning subsystem's recorder entity to the history entity, appended only after that subsystem's own operation committed or published. Recording is idempotent and grants the recorded thing no authority. Every other state change (canonical publication, decode state, evolution receipts) is made by the owning subsystem's entry point with the caller's explicit inputs; the runtime adds no authority and no fallback.",
       "runtime_participation": "This is the runtime composition.",

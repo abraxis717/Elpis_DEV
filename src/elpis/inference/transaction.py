@@ -346,3 +346,14 @@ class InferenceEngine:
         result=self.execute(state,request,expected_state=state.digest)
         require(result.receipt==receipt,Code.IDENTITY,'runtime replay mismatch')
         return result
+
+    def begin(self,state,request,*,expected_state,admission=None,resident_experts=None,stop_tokens=()):
+        """Open a streaming sequence; see :mod:`elpis.inference.sequence`."""
+        from .sequence import begin
+        return begin(self,state,request,expected_state=expected_state,admission=admission,
+                     resident_experts=resident_experts,stop_tokens=stop_tokens)
+
+    def finalize(self,sequence):
+        """Commit a finished sequence; see :mod:`elpis.inference.sequence`."""
+        from .sequence import finalize
+        return finalize(self,sequence)

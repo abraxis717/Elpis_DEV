@@ -170,6 +170,13 @@ class History:
 
 
 @dataclass(frozen=True)
+class StreamHashResult:
+    rows: tuple
+    active: tuple[bool, ...]
+    history: History
+
+
+@dataclass(frozen=True)
 class HashResult:
     scheme: str
     parameters: str
@@ -190,19 +197,19 @@ class AddressScheme:
         require(parameters.digest == expected_digest and tokenizer == parameters.tokenizer and
                 scheme == parameters.schema, Code.IDENTITY, 'address scheme/artifact/tokenizer')
         self.parameters = parameters
+        self.parameter_identity = expected_digest
 
     def initial(self):
         p = self.parameters
         pad = p.dead if type(p) is DSV41Parameters else p.eos
-        return History(p.schema, p.digest, p.tokenizer, 0, (pad,) * (p.order - 1))
+        return History(p.schema, self.parameter_identity, p.tokenizer, 0, (pad,) * (p.order - 1))
 
-    def hash(self, history, tokens, mask=None, *, expected_history):
+    def stream_hash(self, history, tokens, mask=None):
         p = self.parameters
         ds = type(p) is DSV41Parameters
         require(type(history) is History, detail='history type')
-        require(history.digest == expected_history, Code.STALE, 'history predecessor')
         require((history.scheme, history.parameters, history.tokenizer) ==
-                (p.schema, p.digest, p.tokenizer), Code.IDENTITY, 'history binding')
+                (p.schema, self.parameter_identity, p.tokenizer), Code.IDENTITY, 'history binding')
         integer(history.position)
         _tuple(history.tail, p.order - 1)
         vocab = p.compressed_vocab if ds else p.vocab
@@ -244,8 +251,16 @@ class AddressScheme:
                 layers.append(tuple(row))
             output.append(tuple(layers))
             tail = (current,) + tail[:-1]
-        end = History(p.schema, p.digest, p.tokenizer, history.position + len(tokens), tail)
-        return HashResult(p.schema, p.digest, history.digest, tuple(output), mask, end)
+        end = History(p.schema, self.parameter_identity, p.tokenizer, history.position + len(tokens), tail)
+        return StreamHashResult(tuple(output), mask, end)
+
+    def hash(self, history, tokens, mask=None, *, expected_history):
+        predecessor = history.digest
+        require(predecessor == expected_history, Code.STALE, 'history predecessor')
+        streamed = self.stream_hash(history, tokens, mask)
+        p = self.parameters
+        return HashResult(p.schema, self.parameter_identity, predecessor,
+                          streamed.rows, streamed.active, streamed.history)
 
     def validate_bank(self, bank: Bank):
         p = self.parameters
