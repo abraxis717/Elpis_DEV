@@ -38,7 +38,10 @@ jobs:
           EOF
       - name: Boundary suite (architecture, authority, migration record)
         run: |
-          /tmp/base/bin/python -m pip install pytest
+          # Base neutrality was proved above before inference dependencies existed.
+          # The closure probe intentionally imports every inference module, so
+          # qualify it in the explicit inference environment.
+          /tmp/base/bin/python -m pip install ".[inference]" pytest
           /tmp/base/bin/python -m pytest tests/boundary
 
   parity:
