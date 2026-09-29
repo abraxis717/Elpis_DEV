@@ -137,6 +137,22 @@ class NeuralState:
 
 
 @dataclass(frozen=True)
+class StreamingNeuralState:
+    # Ephemeral model-local state. Deliberately has no digest/provenance API.
+    model: str
+    context_snapshot: str
+    numerical_profile: str
+    tokens: tuple[int,...]
+    history: History
+    local_keys: tuple[tuple[float,...],...]=()
+    local_values: tuple[tuple[float,...],...]=()
+    pending: tuple[tuple,...]=()
+    global_pool: tuple=()
+    hidden: tuple[float,...]=()
+    logits: tuple[float,...]=()
+
+
+@dataclass(frozen=True)
 class StepReceipt:
     model: str
     tokenizer: str
@@ -172,4 +188,9 @@ class Target(Protocol):
 
     def step(self, state: NeuralState, token: int, *, expected_state: str,
              latents: tuple = (), **options) -> tuple[NeuralState, StepReceipt]: ...
+
+    def initial_stream(self, context_snapshot: str) -> StreamingNeuralState: ...
+
+    def stream_step(self, state: StreamingNeuralState, token: int, *,
+                    latents: tuple = (), **options) -> StreamingNeuralState: ...
 

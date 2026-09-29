@@ -72,7 +72,7 @@ class RowEngine:
     def __init__(self,provider,table,*,expected_bank,workers=1,max_rows=4096,max_output_bytes=16<<20):
         table.validate(provider,expected_bank)
         integer(workers,1,32); integer(max_rows,1); integer(max_output_bytes,1)
-        self.provider=provider; self.table=table; self.workers=workers
+        self.provider=provider; self.table=table; self.bank_identity=expected_bank; self.workers=workers
         self.max_rows=max_rows; self.max_output_bytes=max_output_bytes
         self.last_metrics={}
 
@@ -82,7 +82,7 @@ class RowEngine:
         require(len(requests)*bank.dimension*4<=self.max_output_bytes,Code.LIMIT,'caller output budget')
         positions={}
         for i,r in enumerate(requests):
-            require(type(r) is RowIdentity and r.bank==bank.digest,Code.IDENTITY,'row bank')
+            require(type(r) is RowIdentity and r.bank==self.bank_identity,Code.IDENTITY,'row bank')
             require(r.row<bank.rows,detail='row out of range')
             positions.setdefault(r.row,[]).append(i)
         output=np.empty((len(requests),bank.dimension),dtype='<f4')

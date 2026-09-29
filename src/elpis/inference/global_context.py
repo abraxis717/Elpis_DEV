@@ -103,6 +103,30 @@ def select_global(config,pool,query,*,context_snapshot,position,mode=IndexMode.F
                        None if previous is None else previous.digest)
 
 
+def select_global_stream(config, pool, query, *, position):
+    require(type(config) is IndexConfig)
+    integer(position)
+    require(type(pool) is tuple and
+            len({c.object_id for c in pool}) == len(pool), detail='stream global pool')
+    query=tuple(float(x) for x in query)
+    require(len(query)==config.dimension and all(math.isfinite(x) for x in query),detail='global query')
+    for c in pool:
+        require(len(c.key)==config.dimension and len(c.value)==config.dimension,
+                Code.IDENTITY,'stream global representation')
+    eligible=sorted((c for c in pool if c.end_position<=position),
+                    key=lambda c:(c.end_position,c.object_id))
+    scores={c.object_id:max(0.0,float(np.dot(np.asarray(query,dtype='<f4'),
+                                             np.asarray(c.key,dtype='<f4'))))
+            for c in eligible}
+    blocks=[eligible[i:i+config.block_size] for i in range(0,len(eligible),config.block_size)]
+    ranked=sorted(enumerate(blocks),
+                  key=lambda pair:(-max(scores[c.object_id] for c in pair[1]),pair[0]))
+    candidates=[c for _,block in ranked[:config.candidate_blocks] for c in block]
+    winners=sorted(candidates,
+                   key=lambda c:(-scores[c.object_id],c.end_position,c.object_id))[:config.top_k]
+    return tuple(sorted(winners,key=lambda c:(c.end_position,c.object_id)))
+
+
 def selected_values(pool,result):
     require(identity('global-pool',pool)==result.pool,Code.STALE,'selected pool')
     by_digest={c.digest:c for c in pool}

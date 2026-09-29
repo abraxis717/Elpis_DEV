@@ -12,9 +12,12 @@ from time import perf_counter_ns
 import numpy as np
 from ...associative import DSV41Parameters
 from ...contracts import Code, RowIdentity, digest_value, identity, integer, require
-from ...global_context import GlobalCandidate, IndexConfig, IndexMode, select_global, selected_values
+from ...global_context import (
+    GlobalCandidate, IndexConfig, IndexMode, select_global, select_global_stream, selected_values,
+)
 from ...target import (
-    LatentInput, NeuralState, StepReceipt, Tensor, numerical_profile, softmax, vector,
+    LatentInput, NeuralState, StepReceipt, StreamingNeuralState, Tensor,
+    numerical_profile, softmax, vector,
 )
 
 
@@ -39,6 +42,9 @@ class CompactTarget:
             m=experts.manifest(config.layer,i)
             require(m.tensors[0].shape[0]==d,detail='expert target dimension')
         self.scheme=scheme; self.rows=rows; self.experts=experts
+        self.parameter_identity=scheme.parameters.digest
+        self.bank_identity=rows.table.bank.digest
+        self.projection_identities={p.channel:p.digest for p in projections}
         self.numerical_profile=numerical_profile()
         self.model_identity=identity('target-model',dict(config=config.digest,
               weights=tuple((k,t.digest) for k,t in sorted(weights.items())),
@@ -55,11 +61,88 @@ class CompactTarget:
         require(type(packet) is LatentInput and packet.channel in self.projections,detail='latent packet')
         projection=self.projections[packet.channel]
         digest_value(packet.source)
-        require(packet.context_snapshot==context and packet.projection==projection.digest and
+        require(packet.context_snapshot==context and packet.projection==self.projection_identities[packet.channel] and
                 packet.source_schema==projection.source_schema,Code.IDENTITY,'latent provenance/projection')
         require(type(packet.values) is tuple and len(packet.values)==projection.weights.shape[0] and
                 all(np.isfinite(x) for x in packet.values),detail='latent input geometry')
         return np.asarray(packet.values,dtype='<f4')@projection.weights.array()
+
+    def initial_stream(self,context_snapshot):
+        digest_value(context_snapshot)
+        base=self.initial(context_snapshot)
+        return StreamingNeuralState(base.model,base.context_snapshot,base.numerical_profile,
+                                    (),base.history)
+
+    def stream_step(self,state,token,*,latents=(),resident_experts=None):
+        start=perf_counter_ns(); c=self.config; w={k:t.array() for k,t in self.weights.items()}
+        require(type(state) is StreamingNeuralState,detail='stream state')
+        require(state.model==self.model_identity,Code.IDENTITY,'target state model')
+        require(state.numerical_profile==self.numerical_profile,Code.UNSUPPORTED,'numerical execution profile')
+        integer(token,0,c.vocab-1)
+        require(len(state.tokens)<c.max_tokens,Code.LIMIT,'explicit target context capacity')
+        require(state.history.position==len(state.tokens),Code.STALE,'token/hash position')
+        require(type(latents) is tuple and len({p.channel for p in latents})==len(latents),detail='latent channels')
+
+        begin=perf_counter_ns()
+        hashed=self.scheme.stream_hash(state.history,(token,))
+        address_ns=perf_counter_ns()-begin
+        p=self.scheme.parameters
+        layer_index=p.layers.index(self.rows.table.bank.layer) if type(p) is DSV41Parameters else 0
+        row_ids=hashed.rows[0][layer_index]
+        memory=self.rows.lookup(tuple(RowIdentity(self.bank_identity,r) for r in row_ids)).mean(axis=0,dtype=np.float32)
+        mp=self.projections['M']
+        x=w['embedding'][token].copy()+np.asarray(vector(memory),dtype='<f4')@mp.weights.array()
+        require(all(packet.channel!='M' for packet in latents),detail='associative channel is target-owned')
+        for packet in latents:
+            value=self._latent(packet,state.context_snapshot)
+            if packet.channel!='R': x+=value
+
+        begin=perf_counter_ns()
+        key=x@w['k']; val=x@w['v']; query=x@w['q']
+        keys=(state.local_keys+(vector(key),))[-c.local_window:]
+        values=(state.local_values+(vector(val),))[-c.local_window:]
+        score=np.asarray(keys,dtype='<f4')@query/np.float32(c.dimension**.5)
+        local=softmax(score)@np.asarray(values,dtype='<f4')
+        local_ns=perf_counter_ns()-begin
+
+        pending=state.pending+((vector(key),vector(val),float((x@w['compress'])[0])),)
+        pool=state.global_pool
+        if len(pending)==c.compression:
+            a=softmax([item[2] for item in pending])
+            ck=a@np.asarray([item[0] for item in pending],dtype='<f4')
+            cv=a@np.asarray([item[1] for item in pending],dtype='<f4')
+            pool+=(GlobalCandidate(str(len(pool)),c.model,self.index_config.projection,
+                                   len(state.tokens),vector(ck),vector(cv),self.model_identity),)
+            pending=()
+
+        begin=perf_counter_ns()
+        selected=select_global_stream(self.index_config,pool,vector(query),position=len(state.tokens))
+        global_value=np.zeros(c.dimension,dtype='<f4')
+        if selected:
+            score=np.asarray([v.key for v in selected],dtype='<f4')@query/np.float32(c.dimension**.5)
+            global_value=softmax(score)@np.asarray([v.value for v in selected],dtype='<f4')
+        global_ns=perf_counter_ns()-begin
+
+        hidden=np.tanh(x+local+global_value).astype('<f4')
+        route_logits=hidden@w['router']
+        indexes=sorted(range(len(c.expert_ids)),
+                       key=lambda i:(-float(route_logits[i]),c.expert_ids[i]))[:c.active_experts]
+        route=tuple(c.expert_ids[i] for i in indexes)
+        route_weights=tuple(float(v) for v in softmax(route_logits[indexes]))
+        hidden+=self.experts.execute(hidden,model=c.model,layer=c.layer,route=route,
+                                    weights=route_weights,shared=c.shared_experts,
+                                    resident=resident_experts)
+        logits=hidden@w['out']
+        require(np.all(np.isfinite(logits)),Code.ENCODING,'target logits')
+        out=StreamingNeuralState(
+            state.model,state.context_snapshot,state.numerical_profile,
+            state.tokens+(token,),hashed.history,keys,values,pending,pool,
+            vector(hidden),vector(logits))
+        self.last_metrics=dict(address_ns=address_ns,local_context_ns=local_ns,
+                               global_index_ns=global_ns,target_ns=perf_counter_ns()-start,
+                               rows=dict(self.rows.last_metrics),experts=dict(self.experts.last_metrics),
+                               device_copy_ns=None)
+        return out
 
     def step(self,state,token,*,expected_state,latents=(),resident_experts=None,index_mode=IndexMode.FULL):
         start=perf_counter_ns(); c=self.config; w={k:t.array() for k,t in self.weights.items()}
