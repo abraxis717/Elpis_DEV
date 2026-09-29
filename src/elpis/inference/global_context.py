@@ -103,7 +103,27 @@ def select_global(config,pool,query,*,context_snapshot,position,mode=IndexMode.F
                        None if previous is None else previous.digest)
 
 
+@dataclass(frozen=True, slots=True)
+class StreamCandidate:
+    """A compressed KV entry inside an active sequence. Deliberately no provenance.
+
+    Finalization turns it into a :class:`GlobalCandidate` whose ``source`` is
+    the ``native-kv-source`` identity over the committed tokens, exactly as the
+    legacy step would have written it.
+    """
+    object_id: str
+    end_position: int
+    key: tuple[float,...]
+    value: tuple[float,...]
+
+
 def select_global_stream(config, pool, query, *, position):
+    """FULL-mode selection of :func:`select_global` without identity work.
+
+    Scores are keyed by ``object_id`` (unique within a pool) where the legacy
+    selection keys them by candidate digest; a score depends only on the key,
+    so both select the same candidates in the same order.
+    """
     require(type(config) is IndexConfig)
     integer(position)
     require(type(pool) is tuple and
@@ -111,7 +131,7 @@ def select_global_stream(config, pool, query, *, position):
     query=tuple(float(x) for x in query)
     require(len(query)==config.dimension and all(math.isfinite(x) for x in query),detail='global query')
     for c in pool:
-        require(len(c.key)==config.dimension and len(c.value)==config.dimension,
+        require(type(c) is StreamCandidate and len(c.key)==config.dimension and len(c.value)==config.dimension,
                 Code.IDENTITY,'stream global representation')
     eligible=sorted((c for c in pool if c.end_position<=position),
                     key=lambda c:(c.end_position,c.object_id))

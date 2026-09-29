@@ -138,7 +138,12 @@ class NeuralState:
 
 @dataclass(frozen=True)
 class StreamingNeuralState:
-    # Ephemeral model-local state. Deliberately has no digest/provenance API.
+    """Ephemeral model-local state of an active sequence. Not authority, not durable.
+
+    Deliberately has no digest/provenance API; the global pool holds
+    ``StreamCandidate`` entries without provenance. Only finalization at the
+    commit boundary produces a :class:`NeuralState`.
+    """
     model: str
     context_snapshot: str
     numerical_profile: str
@@ -189,8 +194,10 @@ class Target(Protocol):
     def step(self, state: NeuralState, token: int, *, expected_state: str,
              latents: tuple = (), **options) -> tuple[NeuralState, StepReceipt]: ...
 
+    def admit_stream(self, *, resident_experts=None): ...
+
     def initial_stream(self, context_snapshot: str) -> StreamingNeuralState: ...
 
-    def stream_step(self, state: StreamingNeuralState, token: int, *,
-                    latents: tuple = (), **options) -> StreamingNeuralState: ...
+    def stream_step(self, state: StreamingNeuralState, token: int, *, admission,
+                    latents: tuple = ()) -> StreamingNeuralState: ...
 

@@ -12,8 +12,10 @@ from time import perf_counter_ns
 import numpy as np
 from ...associative import DSV41Parameters
 from ...contracts import Code, RowIdentity, digest_value, identity, integer, require
+from ...experts import ExpertAdmission
 from ...global_context import (
-    GlobalCandidate, IndexConfig, IndexMode, select_global, select_global_stream, selected_values,
+    GlobalCandidate, IndexConfig, IndexMode, StreamCandidate, select_global, select_global_stream,
+    selected_values,
 )
 from ...target import (
     LatentInput, NeuralState, StepReceipt, StreamingNeuralState, Tensor,
@@ -67,15 +69,27 @@ class CompactTarget:
                 all(np.isfinite(x) for x in packet.values),detail='latent input geometry')
         return np.asarray(packet.values,dtype='<f4')@projection.weights.array()
 
+    def admit_stream(self,*,resident_experts=None):
+        """Verify expert bytes once, before a sequence; see ExpertBank.admit."""
+        return self.experts.admit(resident=resident_experts)
+
     def initial_stream(self,context_snapshot):
         digest_value(context_snapshot)
         base=self.initial(context_snapshot)
         return StreamingNeuralState(base.model,base.context_snapshot,base.numerical_profile,
                                     (),base.history)
 
-    def stream_step(self,state,token,*,latents=(),resident_experts=None):
+    def stream_step(self,state,token,*,admission,latents=()):
+        """One model step of an active sequence: model arithmetic only.
+
+        Numerically identical to :meth:`step` in FULL index mode. No canonical
+        or content identity is computed; expert bytes come from ``admission``
+        (verified once by :meth:`admit_stream`), and the substrate verifies
+        only cold pages it faults in.
+        """
         start=perf_counter_ns(); c=self.config; w={k:t.array() for k,t in self.weights.items()}
         require(type(state) is StreamingNeuralState,detail='stream state')
+        require(type(admission) is ExpertAdmission and admission.bank is self.experts,Code.IDENTITY,'expert admission')
         require(state.model==self.model_identity,Code.IDENTITY,'target state model')
         require(state.numerical_profile==self.numerical_profile,Code.UNSUPPORTED,'numerical execution profile')
         integer(token,0,c.vocab-1)
@@ -111,8 +125,7 @@ class CompactTarget:
             a=softmax([item[2] for item in pending])
             ck=a@np.asarray([item[0] for item in pending],dtype='<f4')
             cv=a@np.asarray([item[1] for item in pending],dtype='<f4')
-            pool+=(GlobalCandidate(str(len(pool)),c.model,self.index_config.projection,
-                                   len(state.tokens),vector(ck),vector(cv),self.model_identity),)
+            pool+=(StreamCandidate(str(len(pool)),len(state.tokens),vector(ck),vector(cv)),)
             pending=()
 
         begin=perf_counter_ns()
@@ -129,9 +142,8 @@ class CompactTarget:
                        key=lambda i:(-float(route_logits[i]),c.expert_ids[i]))[:c.active_experts]
         route=tuple(c.expert_ids[i] for i in indexes)
         route_weights=tuple(float(v) for v in softmax(route_logits[indexes]))
-        hidden+=self.experts.execute(hidden,model=c.model,layer=c.layer,route=route,
-                                    weights=route_weights,shared=c.shared_experts,
-                                    resident=resident_experts)
+        hidden+=self.experts.execute_admitted(hidden,admission=admission,model=c.model,layer=c.layer,
+                                             route=route,weights=route_weights,shared=c.shared_experts)
         logits=hidden@w['out']
         require(np.all(np.isfinite(logits)),Code.ENCODING,'target logits')
         out=StreamingNeuralState(
