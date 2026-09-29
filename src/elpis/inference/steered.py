@@ -28,6 +28,14 @@ Invariants:
 
 Scope: steering latents can be delivered into later epochs under the frozen
 temporal/control contract. No quality, reasoning or fitness claim is made.
+
+Legacy compatibility only. This engine applies steering between GREEDY blocks
+of one trajectory, which the current product boundary no longer allows for new
+writes: the sequence path (:mod:`elpis.inference.sequence`) refuses any input
+change on a continuation, so a steering latent enters only on a PREFILL (turn
+boundary). This module is kept to reproduce and verify the historical
+elpis.r3sot/elpis.sot records; channel-X steering is pending architectural
+debt.
 """
 from __future__ import annotations
 
