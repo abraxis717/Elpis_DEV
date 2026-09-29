@@ -38,12 +38,15 @@ def _proposal(context, route="route"):
 
 
 def _turns(context, target):
+    """Two turns; each continuation carries its turn's inputs (turn-scoped)."""
     latents, proposals = _latents(target, context), (_proposal(context),)
+    second = (_proposal(context, "second-route"),)
     return [
         InferenceRequest("prefill", context, "PREFILL", (1, 4, 9, 2, 7, 11, 3, 5, 8, 13, 6, 0),
                          proposals=proposals, latents=latents),
-        InferenceRequest("greedy-1", context, "GREEDY", count=30, latents=latents),
-        InferenceRequest("greedy-2", context, "GREEDY", count=5, proposals=proposals),
+        InferenceRequest("greedy-1", context, "GREEDY", count=30, proposals=proposals, latents=latents),
+        InferenceRequest("prefill-2", context, "PREFILL", (2, 5, 1), proposals=second),
+        InferenceRequest("greedy-2", context, "GREEDY", count=5, proposals=second),
     ]
 
 
@@ -88,7 +91,7 @@ def test_token_loop_computes_no_identity_and_hashes_nothing_resident(warm_provid
     target, resident_bytes, _ = make_fixture(warm_provider, native_workspace / "t")
     engine = InferenceEngine(target)
     state = engine.initial(initial_snapshot())
-    prefill, greedy, _ = _turns(state.context.digest, target)
+    prefill, greedy = _turns(state.context.digest, target)[:2]
     committed = _run(engine, state, prefill, resident_experts=resident_bytes)[1].state
 
     def token_loop():
@@ -114,9 +117,10 @@ def test_stop_and_stop_tokens_commit_the_effective_request(warm_provider, native
     target, _, _ = make_fixture(warm_provider, native_workspace / "t")
     engine = InferenceEngine(target)
     state = engine.initial(initial_snapshot())
-    prefill, _, _ = _turns(state.context.digest, target)
+    prefill = _turns(state.context.digest, target)[0]
     state = _run(engine, state, prefill)[1].state
-    request = InferenceRequest("long", state.context.digest, "GREEDY", count=20)
+    request = InferenceRequest("long", state.context.digest, "GREEDY", count=20,
+                               proposals=prefill.proposals, latents=prefill.latents)
     reference = InferenceEngine(target).execute(state, request, expected_state=state.digest)
 
     sequence = engine.begin(state, request, expected_state=state.digest)
@@ -193,3 +197,67 @@ def test_sequence_inputs_are_frozen_at_begin(warm_provider, native_workspace):
         assert not hasattr(sequence, name)
         with pytest.raises(AttributeError):
             setattr(sequence, name, ())
+
+
+# --- turn boundary: slow-lane inputs enter only on a PREFILL ------------------------------------------
+
+
+def test_a_continuation_cannot_change_inputs_mid_trajectory(warm_provider, native_workspace):
+    target, _, _ = make_fixture(warm_provider, native_workspace / "t")
+    engine, legacy = InferenceEngine(target), InferenceEngine(target)
+    state = engine.initial(initial_snapshot())
+    prefill, greedy = _turns(state.context.digest, target)[:2]
+    state = _run(engine, state, prefill)[1].state
+    x = target.projections["X"]
+    steering = LatentInput("X", x.source_schema, "b" * 64, state.context.digest, x.digest,
+                           tuple(0.25 for _ in range(x.weights.shape[0])))
+    swapped = tuple(packet for packet in greedy.latents if packet.channel != "X") + (steering,)
+    for changed in (replace(greedy, latents=swapped),                        # steering between blocks
+                    replace(greedy, latents=()),                             # dropping the turn's inputs
+                    replace(greedy, proposals=(_proposal(state.context.digest, "late"),))):
+        sequence = engine.begin(state, changed, expected_state=state.digest)
+        assert list(sequence) == [] and sequence.stop_reason == "FAILED"
+        result = engine.finalize(sequence)
+        assert result.state is state and result.receipt.failure == "INVALID"
+        # The legacy transaction (historical compatibility) still accepts it; the sequence path does not.
+        assert legacy.execute(state, changed, expected_state=state.digest).receipt.terminal == "COMMITTED"
+    assert _run(engine, state, greedy)[1].receipt.terminal == "COMMITTED"  # unchanged inputs continue
+
+
+def test_steering_from_the_slow_lane_is_admitted_only_at_the_next_prefill(provider, native_workspace):
+    from elpis.inference.steering import (SteeringOutcome, apply_fast_steering, bind_completed_epoch,
+                                          initial_fast_control_state, observe_epoch, propose_fast_steering)
+    f, *_ = provider
+    target, _, _ = make_fixture(f, native_workspace / "steer")
+    engine = InferenceEngine(target)
+    ctx = initial_snapshot()
+    state = engine.initial(ctx)
+    turn = [InferenceRequest("req-A", ctx.digest, "PREFILL", (1, 2, 3)),
+            InferenceRequest("req-A", ctx.digest, "GREEDY", count=2)]
+    binding = observer = None
+    for index, request in enumerate(turn):  # the slow lane observes finalized sequences only
+        result = _run(engine, state, request)[1]
+        binding = bind_completed_epoch(request, result, epoch_index=index, predecessor=binding)
+        observer = observe_epoch(binding, request, result, predecessor=observer)
+        state = result.state
+    control = initial_fast_control_state("req-A")
+    x = target.projections["X"]
+    proposal = propose_fast_steering(observer, target_model=target.model_identity, x_projection=x,
+                                     control_state=control)
+
+    def attach(request):
+        return apply_fast_steering(proposal, request, target_epoch_index=proposal.source_epoch_index + 1,
+                                   target_state=state, x_projection=x, control_state=control)
+
+    continuation, applied, _ = attach(InferenceRequest("req-A", ctx.digest, "GREEDY", count=2))
+    assert applied.outcome is SteeringOutcome.APPLIED  # the historical contract would steer mid-trajectory
+    sequence = engine.begin(state, continuation, expected_state=state.digest)
+    assert list(sequence) == [] and engine.finalize(sequence).receipt.failure == "INVALID"
+
+    next_turn, applied, _ = attach(InferenceRequest("req-A", ctx.digest, "PREFILL", (4, 5)))
+    assert applied.outcome is SteeringOutcome.APPLIED
+    tokens, result = _run(engine, state, next_turn)
+    assert tokens == [4, 5] and result.receipt.terminal == "COMMITTED"
+    assert all(proposal.latent_digest in step.latents for step in result.receipt.target_steps)
+    follow = InferenceRequest("req-A", ctx.digest, "GREEDY", count=2, latents=next_turn.latents)
+    assert _run(engine, result.state, follow)[1].receipt.terminal == "COMMITTED"  # the turn keeps its inputs

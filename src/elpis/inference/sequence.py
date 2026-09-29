@@ -24,8 +24,12 @@ Three kinds of state are kept apart:
 Everything a sequence depends on is fixed at :func:`begin`: the committed
 state, the request (tokens or count, latents, structural proposals) and the
 expert admission. A sequence has no way to accept new latents or proposals
-while it runs; a later request, after finalization, is the only place new
-inputs enter.
+while it runs. Inputs are also turn-scoped: a GREEDY continuation must carry
+exactly the latents and proposals of the committed turn's last step, so a
+slow-lane result (a steering latent, a structural proposal) can enter only on
+a later PREFILL, never between continuation blocks of one trajectory. The
+legacy :meth:`InferenceEngine.execute` does not apply this rule and remains
+the replay oracle and the compatibility path for historical records.
 
 The synchronous token loop does model arithmetic only. The substrate still
 verifies any cold page it faults in, since integrity is not traded for
@@ -157,6 +161,12 @@ def begin(engine, committed, request, *, expected_state, admission=None, residen
         engine._validate(committed, request)
         if request.mode == "GREEDY":
             require(bool(committed.neural.logits), detail="greedy generation needs prefill")
+            # Turn-scoped inputs: a continuation carries exactly the inputs of the
+            # running turn. New latents (steering included) and new structural
+            # proposals enter only on a PREFILL, the turn boundary.
+            require(request.latents == committed.step_latents[-1] and
+                    request.proposals == committed.step_proposals[-1],
+                    Code.INVALID, "inputs change only at a prefill boundary")
         target = engine.target
         if admission is None:
             admission = target.admit_stream(resident_experts=resident_experts)
