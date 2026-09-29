@@ -1,7 +1,7 @@
 """Retrieval-bundle boundary: validated retrieval bundle -> AddressProposal.
 
-``structural.from_retrieval_bundle`` delegates bundle validation to
-``elpis.structure.retrieval`` and adds an inference-local export pin. It must:
+``elpis.runtime.edges.from_retrieval_bundle`` delegates bundle validation to
+``elpis.structure.retrieval`` and adds the export pin. It must:
 - accept a valid bundle and produce a correctly bound AddressProposal;
 - fail closed (typed ContractError) when the export pin is tampered;
 - fail closed when the bundle is invalid (validation stays in structure).
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from elpis.inference.structural import from_retrieval_bundle
+from elpis.runtime.edges import from_retrieval_bundle
 from elpis.inference.contracts import ContractError, identity
 from elpis.structure.retrieval.contracts import RetrievalBundle, RetrievalItem, _sha256_hex
 

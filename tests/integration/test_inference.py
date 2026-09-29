@@ -10,7 +10,8 @@ import pytest
 from elpis.inference.context import initial_snapshot
 from elpis.inference.contracts import ContractError
 from elpis.inference.drivers.dsv4.fixtures import make_fixture
-from elpis.inference.structural import RouteRule, from_regex_hacf
+from elpis.inference.structural import RouteRule
+from elpis.runtime.edges import from_regex_hacf
 from elpis.inference.transaction import InferenceEngine, InferenceRequest
 from elpis.substrate.digests import raw_digest
 from elpis.substrate.synthetic import SyntheticFileAssets

@@ -6,7 +6,7 @@ import pytest
 from elpis.inference.contracts import ContractError, identity
 from elpis.structure.retrieval.errors import BundleValidationError
 from elpis.structure.retrieval.contracts import RetrievalBundle, RetrievalItem
-from elpis.inference.structural import from_retrieval_bundle
+from elpis.runtime.edges import from_retrieval_bundle
 
 
 def _bundle():

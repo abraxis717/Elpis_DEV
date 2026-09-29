@@ -492,12 +492,14 @@ Nothing in the base install downloads or ships weights.
 * **Prefetch** (`prefetch`): a plan predicts physical byte ranges only. It
   cannot select rows or experts, and replay recomputes it and must match
   exactly.
-* **Structural proposals** (`structural`): address proposals built from two
-  sources, both pinned by digest and bound to the expected source, corpus
-  and overlay:
-  * the pipeline ingress export (`from_regex_hacf`);
-  * a structure retrieval bundle (`from_retrieval_bundle`), re-validated by
-    the retrieval stage.
+* **Structural proposals** (`structural`): the edge contract. An
+  `AddressProposal` arrives already validated and digest-pinned; inference
+  never parses or validates slow-lane artifacts. The adapters that build
+  proposals from the pipeline ingress export (`from_regex_hacf`) and from a
+  structure retrieval bundle (`from_retrieval_bundle`) live in the runtime
+  composition (`elpis.runtime.edges`). `elpis.inference` imports no ECS,
+  structure, pipeline, evolution or runtime module, directly or transitively;
+  the boundary suite checks both.
 
 ### Decode transaction
 
@@ -605,9 +607,11 @@ differently, a record from the wrong recorder or a non-canonical payload.
 
 ### Composition
 
-`Runtime` owns only its history. The caller supplies everything else
-explicitly: library paths, corpus roots, file assets, ledgers and
-capabilities. Each operation goes through its subsystem's own fail-closed
+`Runtime` owns only its history and the edge adapters (`elpis.runtime.edges`)
+that turn ingress exports and retrieval bundles into inference
+`AddressProposal` values before a sequence begins. The caller supplies
+everything else explicitly: library paths, corpus roots, file assets, ledgers
+and capabilities. Each operation goes through its subsystem's own fail-closed
 entry point and is recorded only if that entry point committed:
 
 | Operation | Subsystem entry point | Recorded |

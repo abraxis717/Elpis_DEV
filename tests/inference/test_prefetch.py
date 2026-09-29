@@ -1,12 +1,18 @@
 import pytest
 from elpis.inference.prefetch import *
 from elpis.inference.contracts import ContractError
-from .test_structural import adapt,proposal_fixture
+from elpis.inference.structural import AddressProposal
+
+
+def _proposal():
+    # An edge-contract value as the runtime's ingress adapter would deliver it.
+    return AddressProposal('1'*64,'2'*64,'3'*64,'7'*64,'8'*64,'python.function',('python-memory',),
+                           ('6'*64,),('code-experts',),None,('9'*64,'a'*64,'4'*64))
 
 
 def test_prefetch_off_on_identical_bytes_wrong_prediction(provider):
     f,path,m,a=provider
-    proposal=adapt(proposal_fixture())[0]
+    proposal=_proposal()
     catalog={'python-memory':(RangeHint(a,0,16,2,10,proposal.digest),
                                RangeHint(a,112,16,1,10,proposal.digest))}
     plan=plan_prefetch(committed_state='1'*64,context_snapshot=proposal.context_snapshot,step=0,
@@ -23,7 +29,7 @@ def test_prefetch_off_on_identical_bytes_wrong_prediction(provider):
 
 
 def test_expiry_and_stale_prefetch(provider):
-    f,path,m,a=provider; p=adapt(proposal_fixture())[0]
+    f,path,m,a=provider; p=_proposal()
     plan=plan_prefetch(committed_state='1'*64,context_snapshot=p.context_snapshot,step=2,
                       proposals=(p,),catalog={'python-memory':(RangeHint(a,0,16,1,1,p.digest),)})
     assert plan.hints==()
