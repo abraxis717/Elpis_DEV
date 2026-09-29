@@ -246,7 +246,7 @@
     {
       "id": "inference",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "Inference behind contracts, driver-neutral: typed target records (tensors, latent inputs, target state, step receipts) and a Target protocol a driver implements; n-gram associative addressing (DSV4.1 engram and Qwen PLE schemes) with bounded row lookup over substrate file assets; immutable context lifetimes/snapshots and sparse global candidate selection; digest-bound experts executed from file assets; physical prefetch predictions that can never select content; structural address proposals from ingress exports and retrieval bundles; an atomic, replay-verified decode transaction; speculative drafting verified token by token by the target (greedy equivalence); a read-only observer over completed decode epochs with future-only latent steering applied through the target's own latent-input path. The first driver is DSV4 (drivers/dsv4: a compact target and an explicit synthetic fixture intake).",
+      "purpose": "Inference behind contracts, driver-neutral: typed target records (tensors, latent inputs, target state, step receipts) and a Target protocol a driver implements; n-gram associative addressing (DSV4.1 engram and Qwen PLE schemes) with bounded row lookup over substrate file assets; immutable context lifetimes/snapshots and sparse global candidate selection; digest-bound experts executed from file assets; physical prefetch predictions that can never select content; structural address proposals from ingress exports and retrieval bundles; an atomic, replay-verified decode transaction; speculative drafting verified token by token by the target (greedy equivalence); a read-only observer over completed decode epochs with future-only latent steering applied through the target's own latent-input path. The first driver is DSV4 (drivers/dsv4: a compact target and an explicit synthetic fixture intake). Token streaming is a separate fast lane: sequence transactions (begin, then next per token, then finalize) validate committed input once, run only model arithmetic per token with no canonical or provenance identity and no re-hashing of admitted bytes, and build receipts, identities and the committed state at the finalization boundary, identical to the legacy transaction's.",
       "python_package": "elpis.inference",
       "implementation_roots": [
         "src/elpis/inference"
@@ -279,7 +279,10 @@
         "NeuralState and TargetConfig still carry DSV4-shaped fields (compressed KV, expert routing); a second driver will need them generalized behind the Target protocol.",
         "CPU/NumPy only: no GPU or native kernel path; the pure steering functions are marked as the replacement surface for a native backend.",
         "steering.global_event_fields() exposes the values an ECS integration would bind, but inference never records them; binding steering epochs into the ECS history is the runtime composition's job.",
-        "Speculative verification is greedy-equivalence only; no sampling-equivalent acceptance rule."
+        "Speculative verification is greedy-equivalence only; no sampling-equivalent acceptance rule.",
+        "Sequence begin still validates the committed lineage with the legacy validator, which walks the whole receipt history before its validated-state cache check; this is paid once per sequence, not per token.",
+        "Speculative decoding, physical prefetch and steering are not on the sequence lane yet; they run only through the legacy transaction.",
+        "The legacy per-token transaction (InferenceEngine.execute) still computes identities on every token; it remains the replay oracle and is not the streaming path."
       ]
     },
     {

@@ -522,6 +522,31 @@ token against the target. The accepted prefix is exactly what greedy decoding
 would have produced, and a rejected suffix never enters state or the
 validation cache.
 
+### Token lane: sequence transactions
+
+While a sequence is producing tokens, only model execution may make the user
+wait. `InferenceEngine.begin` validates the committed state and request once,
+admits expert bytes once (`admit_stream`: verified against their manifests,
+then never re-hashed), and resumes the driver's stream state. Each
+`Sequence.next()` is one `stream_step`: n-gram address arithmetic, row lookup,
+local and compressed attention, global selection, expert routing and
+execution. The token is returned at once. No canonical JSON, no content or
+provenance identity, no `.digest`, no receipt and no replay happen there; the
+substrate still verifies any cold page it faults in, and resident pages cost
+no hashing. All inputs (tokens or count, latents, proposals, admission) are
+frozen at `begin`, and a sequence has no way to take new ones.
+
+`InferenceEngine.finalize` is the commit boundary. The driver's
+`finalize_stream` rebuilds, from bounded per-step records and without
+re-running the model, exactly the states and step receipts the legacy step
+writes. The transaction layer adds prefetch records and the decode receipt.
+The result equals `InferenceEngine.execute` for the effective request, so
+legacy replay verifies it and no persisted identity changes meaning. A
+failure before finalization leaves the committed state untouched; tokens
+already streamed are visible but uncommitted. A stop token or an explicit
+`stop()` commits what was produced as the effective request (the same request
+cut to that length).
+
 ### Steering
 
 `steering` is a read-only observer over *completed* decode epochs. It binds
