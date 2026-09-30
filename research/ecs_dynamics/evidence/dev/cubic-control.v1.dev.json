@@ -1,0 +1,696 @@
+{
+ "digest": "66d98eac57c233a10fc387be0c2c57ffa34669b1174697347008e1f4c2ff8257",
+ "result": {
+  "coarse_representation": "S3=(m1,m2,m3)",
+  "evidence": "ALGEBRAIC_IDENTITY",
+  "experiment": "cubic-control",
+  "findings": [],
+  "flags": {
+   "NO_PRODUCTION_NEURAL_CLAIM": true,
+   "NO_RUNTIME_AUTHORITY": true,
+   "RESEARCH_ONLY": true
+  },
+  "frozen_digest": null,
+  "intervention_policy": "fibre-null-space+gauss-newton-retraction",
+  "limitations": [
+   "synthetic regime only",
+   "finite-time, finite-size diagnostics",
+   "no statement about production ECS, trained models or Elpis neural components",
+   "establishes instantaneous-forward sufficiency of S3 only; not transition, trajectory, attractor, intervention or production-ECS sufficiency"
+  ],
+  "mechanics": "MECHANICS_PASS",
+  "metrics": {
+   "choices": {},
+   "worlds": [
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.024999999999999977,
+      "coarse_residual": 1.4122109974473361e-16,
+      "instantaneous_output_change": 3.552713678800501e-15,
+      "relative_error": 0.017040897144978424,
+      "target_change_norm": 0.014362029983635585
+     },
+     "exactness_relative_error": 4.95121624839748e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 23.115122129177855
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 118.98927892351864
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 7.274094787195897
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 14.757672654677505
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 79.18297632620488
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 6.205560593937746
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 8.520801682768323e-15
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 15.408176104327168
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.5744811993454239
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.023299865502820538,
+        "relative_median": 0.014555943124814185,
+        "relative_min": 0.00850496245718736,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.04586208926502624,
+        "relative_median": 0.028892083578075607,
+        "relative_min": 0.010472594711828622,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.020688318670223266,
+        "relative_median": 0.013228086058060983,
+        "relative_min": 0.005296033425574791,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 2.073704837891831e-16,
+        "residual_median": 8.900061467988777e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 7.336006904427805e-16,
+        "relative_median": 4.584582941503188e-16,
+        "relative_min": 2.641843125040461e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.009609174140515236,
+        "relative_median": 0.006224280188141333,
+        "relative_min": 0.002884799913469426,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.002522382989895779,
+        "relative_median": 0.0014109497672835955,
+        "relative_min": 0.0008663232959714923,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.375867983346603e-16,
+        "residual_median": 1.5105924603145868e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.024119405391672455,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 8.881784197001252e-16,
+      "S3_transition_difference": 0.006299129780963919
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.02500000000000001,
+      "coarse_residual": 1.5025530923370656e-16,
+      "instantaneous_output_change": 7.105427357601002e-15,
+      "relative_error": 0.013868946206245483,
+      "target_change_norm": 0.011100996404623472
+     },
+     "exactness_relative_error": 1.7379163931812726e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 59.191676345332766
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 428.0222549176013
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 8.632676693433913
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 34.88265700156965
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 270.54305438252106
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 4.360417949127955
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 1.712929882829482e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 38.661182352460514
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.444039856184939
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.01483233315836077,
+        "relative_median": 0.006081261526388706,
+        "relative_min": 0.0008270155411398126,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.031237566893040754,
+        "relative_median": 0.010423475086602378,
+        "relative_min": 0.0018840157273387888,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.011948948213984227,
+        "relative_median": 0.006750811122991881,
+        "relative_min": 0.002090974831637973,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 2.213136442671406e-16,
+        "residual_median": 8.146775643963482e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 5.126933032925967e-16,
+        "relative_median": 2.9433204289701567e-16,
+        "relative_min": 1.696663563787058e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.005862352559079645,
+        "relative_median": 0.001946406981979122,
+        "relative_min": 0.00064639888963398,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0014419891207581737,
+        "relative_median": 0.0007557035732814804,
+        "relative_min": 0.0003894533530628382,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.2618142292491593e-16,
+        "residual_median": 1.5064115810731937e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.028336889478850935,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 4.440892098500626e-16,
+      "S3_transition_difference": 0.006299129780963586
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.02500000000000002,
+      "coarse_residual": 8.46662559736225e-17,
+      "instantaneous_output_change": 7.105427357601002e-15,
+      "relative_error": 0.007402427503114877,
+      "target_change_norm": 0.0347039687866016
+     },
+     "exactness_relative_error": 2.970490376710015e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 50.361770514684345
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 2048.063882535642
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 15.869129066210784
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 27.14295132838676
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 1295.2745693672732
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 8.54611119014791
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 1.603347773433393e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 500.7732912131365
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 1.3881587514640636
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.016684168434954665,
+        "relative_median": 0.008670501952380658,
+        "relative_min": 0.00327701286985583,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.05857725500179775,
+        "relative_median": 0.02617632358110636,
+        "relative_min": 0.0031513867406516047,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.01686084805340274,
+        "relative_median": 0.009271901843246416,
+        "relative_min": 0.003786123027625559,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 2.0519386696810872e-16,
+        "residual_median": 5.740126091106727e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 7.578450874482513e-16,
+        "relative_median": 3.3963646251515903e-16,
+        "relative_min": 1.4839571448191108e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.03636209857457224,
+        "relative_median": 0.007458208470142171,
+        "relative_min": 0.0006071548679868113,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0037424997288419766,
+        "relative_median": 0.0010244620217343195,
+        "relative_min": 0.0002882180404939342,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.699389224418913e-16,
+        "residual_median": 9.686295523867997e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.02857156727018939,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 1.7763568394002505e-15,
+      "S3_transition_difference": 0.006299129780963808
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.024999999999999998,
+      "coarse_residual": 6.945316288623288e-17,
+      "instantaneous_output_change": 1.4210854715202004e-14,
+      "relative_error": 0.006968514302290686,
+      "target_change_norm": 0.10890719070572524
+     },
+     "exactness_relative_error": 2.334740050897176e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 70.3808342255808
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 11987.996818235433
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 23.963355967284706
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 39.8405035457589
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 8443.05457158294
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 14.541141067154031
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 2.4522638502218038e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 4260.550264507635
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 4.356287628229008
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.014478201362966297,
+        "relative_median": 0.00759413341539711,
+        "relative_min": 0.002814894298747773,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.11727658939813652,
+        "relative_median": 0.044842107246074445,
+        "relative_min": 0.0011192153668631106,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.02646564154043664,
+        "relative_median": 0.010497139022025783,
+        "relative_min": 0.0025455835878954638,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 2.8342943571568287e-16,
+        "residual_median": 1.0024600032068149e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 3.98925122352884e-16,
+        "relative_median": 2.6841863437345095e-16,
+        "relative_min": 1.3419890417343674e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.07194828738143531,
+        "relative_median": 0.026820009948547156,
+        "relative_min": 0.0015604679562170774,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.008566098907115903,
+        "relative_median": 0.003133564062005596,
+        "relative_min": 0.0007128928553657358,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 1.7449032307846992e-16,
+        "residual_median": 1.2525409124911612e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.01612714249082625,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 8.881784197001252e-16,
+      "S3_transition_difference": 0.006299129780963919
+     }
+    }
+   ]
+  },
+  "model_family": "cubic-moment-control",
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.12.3"
+  },
+  "pass_rule": {
+   "capacity_S2_instantaneous_min": 1,
+   "capacity_S3_instantaneous": 0,
+   "capacity_S3_transition_min": 1,
+   "design_relative_error_max": 0.1,
+   "exactness_max_relative_error": 1e-10,
+   "hypothesis": "For the cubic family, S3 is sufficient for INSTANTANEOUS_OUTPUT and not for ONE_STEP_TRANSITION; the S3 fibre has zero response capacity for the instantaneous output and positive capacity for the transition target.",
+   "pte_coarse_max": 1e-12,
+   "pte_output_max": 1e-10,
+   "pte_transition_min": 1e-06,
+   "s3_intervention_output_divergence_max": 1e-08,
+   "s3_intervention_transition_fraction_min": 0.5
+  },
+  "schema": "elpis.research.ecs-dynamics.result.v1",
+  "scientific": "NOT_TESTED",
+  "source_commit": "7cd8158d4123220e376e99e852e6ac0c7987234b",
+  "source_digest": "0b7281806153c1446d4939e27737dd26f43916bcb9d5175afff68a54fe953974",
+  "sources": [
+   "LAB: cubic identity, PTE witnesses",
+   "arXiv:2609.29834 Eq. (2) response capacity",
+   "arXiv:2609.29834 Eq. (3) prediction loss (Euclidean-budget adaptation)",
+   "arXiv:2609.29834 'Designed oscillations and their limits' (design within a fibre)"
+  ],
+  "spec_digest": "7dffd5600dd14f359842ec9295a56b34b5d768b53de54dc71207ffcb86ab9aff",
+  "split": "DEV",
+  "target": "INSTANTANEOUS_OUTPUT",
+  "version": 1,
+  "world_ids": [
+   "dev-0000",
+   "dev-0001",
+   "dev-0002",
+   "dev-0003"
+  ]
+ }
+}

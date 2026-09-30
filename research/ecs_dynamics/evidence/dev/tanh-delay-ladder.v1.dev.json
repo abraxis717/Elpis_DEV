@@ -1,0 +1,261 @@
+{
+ "digest": "e57aea5b4e7870c3b8ece60f3f3332e76631fca18ea4f00f6d0973034b7b253e",
+ "result": {
+  "coarse_representation": "projection[0, 1]",
+  "evidence": "DESCRIPTIVE_RESULT",
+  "experiment": "tanh-delay-ladder",
+  "findings": [],
+  "flags": {
+   "NO_PRODUCTION_NEURAL_CLAIM": true,
+   "NO_RUNTIME_AUTHORITY": true,
+   "RESEARCH_ONLY": true
+  },
+  "frozen_digest": null,
+  "intervention_policy": "none",
+  "limitations": [
+   "synthetic regime only",
+   "finite-time, finite-size diagnostics",
+   "no statement about production ECS, trained models or Elpis neural components",
+   "errors are held-out errors of one linear ridge class: upper-bound surrogates of the paper's irreducible errors, not estimates of them"
+  ],
+  "mechanics": "MECHANICS_PASS",
+  "metrics": {
+   "choices": {
+    "cell": {
+     "gain": 2.0,
+     "gamma": 1.0
+    },
+    "lambdas": {
+     "EVENT/coarse": 0.001,
+     "EVENT/delay": 0.0001,
+     "EVENT/full": 0.001,
+     "EVENT/random_projection": 0.1,
+     "EVENT/seed": 0.001,
+     "EVENT/shuffled_delay": 0.0001,
+     "EVENT/weak": 0.01,
+     "K_STEP_TRAJECTORY/coarse": 0.1,
+     "K_STEP_TRAJECTORY/delay": 0.001,
+     "K_STEP_TRAJECTORY/full": 1e-06,
+     "K_STEP_TRAJECTORY/random_projection": 0.01,
+     "K_STEP_TRAJECTORY/seed": 0.1,
+     "K_STEP_TRAJECTORY/shuffled_delay": 0.1,
+     "K_STEP_TRAJECTORY/weak": 0.01,
+     "ONE_STEP_TRANSITION/coarse": 0.1,
+     "ONE_STEP_TRANSITION/delay": 0.001,
+     "ONE_STEP_TRANSITION/full": 0.0001,
+     "ONE_STEP_TRANSITION/random_projection": 0.001,
+     "ONE_STEP_TRANSITION/seed": 0.1,
+     "ONE_STEP_TRANSITION/shuffled_delay": 0.1,
+     "ONE_STEP_TRANSITION/weak": 0.01
+    }
+   },
+   "validation_tables": {
+    "EVENT/coarse": {
+     "0.0001": 0.7638735463658963,
+     "0.001": 0.7638735463658963,
+     "0.01": 0.7637051816928572,
+     "0.1": 0.7634484059770341,
+     "1.0": 0.7338231912693264,
+     "1e-06": 0.7638735463658963
+    },
+    "EVENT/delay": {
+     "0.0001": 0.8575294413640333,
+     "0.001": 0.8572104541828368,
+     "0.01": 0.8575256827648743,
+     "0.1": 0.8548846560543022,
+     "1.0": 0.8357178364299727,
+     "1e-06": 0.8575294413640333
+    },
+    "EVENT/full": {
+     "0.0001": 0.9110284757383691,
+     "0.001": 0.911451184973889,
+     "0.01": 0.9097119814622117,
+     "0.1": 0.9074294652192862,
+     "1.0": 0.8834241653060184,
+     "1e-06": 0.911234187294873
+    },
+    "EVENT/random_projection": {
+     "0.0001": 0.8655328597070439,
+     "0.001": 0.8659737148296824,
+     "0.01": 0.8660608106222589,
+     "0.1": 0.8708125332883094,
+     "1.0": 0.8560074282202853,
+     "1e-06": 0.8655328597070439
+    },
+    "EVENT/seed": {
+     "0.0001": 0.7647044858495822,
+     "0.001": 0.7647044858495822,
+     "0.01": 0.764521287900408,
+     "0.1": 0.7623761848209484,
+     "1.0": 0.7350749594231057,
+     "1e-06": 0.7647044858495822
+    },
+    "EVENT/shuffled_delay": {
+     "0.0001": 0.7890356777618052,
+     "0.001": 0.788795754537237,
+     "0.01": 0.7882170470948535,
+     "0.1": 0.7887542422314258,
+     "1.0": 0.7709118559401633,
+     "1e-06": 0.7890356777618052
+    },
+    "EVENT/weak": {
+     "0.0001": 0.7035964371677222,
+     "0.001": 0.7040762836168586,
+     "0.01": 0.7084092889470448,
+     "0.1": 0.6833681491636403,
+     "1.0": 0.6825464065080235,
+     "1e-06": 0.7034764755554381
+    },
+    "K_STEP_TRAJECTORY/coarse": {
+     "0.0001": 0.41048303656150814,
+     "0.001": 0.41055067651255267,
+     "0.01": 0.4111570112454278,
+     "0.1": 0.41193083192365143,
+     "1.0": 0.3037623563937967,
+     "1e-06": 0.41047551586388265
+    },
+    "K_STEP_TRAJECTORY/delay": {
+     "0.0001": 0.7302530405590062,
+     "0.001": 0.7302549400858858,
+     "0.01": 0.7300970034127847,
+     "0.1": 0.7235849759588799,
+     "1.0": 0.6698301750162553,
+     "1e-06": 0.7302525965690119
+    },
+    "K_STEP_TRAJECTORY/full": {
+     "0.0001": 0.8423900612433379,
+     "0.001": 0.8423418648097424,
+     "0.01": 0.840921634222427,
+     "0.1": 0.8246107491655225,
+     "1.0": 0.7558803637506533,
+     "1e-06": 0.8424974533211341
+    },
+    "K_STEP_TRAJECTORY/random_projection": {
+     "0.0001": 0.7027129206741934,
+     "0.001": 0.7027548859374984,
+     "0.01": 0.7028797537540724,
+     "0.1": 0.6964647687920583,
+     "1.0": 0.6265709119173611,
+     "1e-06": 0.702707868863074
+    },
+    "K_STEP_TRAJECTORY/seed": {
+     "0.0001": 0.40716366396457654,
+     "0.001": 0.4072370680500638,
+     "0.01": 0.40790020573126334,
+     "0.1": 0.40916629963586626,
+     "1.0": 0.30283522635090754,
+     "1e-06": 0.407155508272963
+    },
+    "K_STEP_TRAJECTORY/shuffled_delay": {
+     "0.0001": 0.49767272434522414,
+     "0.001": 0.49774524553643407,
+     "0.01": 0.49839864945087825,
+     "0.1": 0.5002311535622259,
+     "1.0": 0.4476999656772264,
+     "1e-06": 0.49766466266143283
+    },
+    "K_STEP_TRAJECTORY/weak": {
+     "0.0001": 0.29370038936514165,
+     "0.001": 0.2937210347838748,
+     "0.01": 0.29386564247639113,
+     "0.1": 0.29018759682410167,
+     "1.0": 0.13414180145939164,
+     "1e-06": 0.2936980483624396
+    },
+    "ONE_STEP_TRANSITION/coarse": {
+     "0.0001": 0.3509751019099381,
+     "0.001": 0.35120373252179116,
+     "0.01": 0.3533104292860671,
+     "0.1": 0.3619216697404102,
+     "1.0": 0.25441503907530816,
+     "1e-06": 0.3509497446359594
+    },
+    "ONE_STEP_TRANSITION/delay": {
+     "0.0001": 0.7931864135894805,
+     "0.001": 0.7931874873152757,
+     "0.01": 0.7930028406937155,
+     "0.1": 0.7857396671998036,
+     "1.0": 0.7089063903733099,
+     "1e-06": 0.7931860281152401
+    },
+    "ONE_STEP_TRANSITION/full": {
+     "0.0001": 0.9643180683461055,
+     "0.001": 0.9642181380337757,
+     "0.01": 0.9627104869698112,
+     "0.1": 0.9453721178657652,
+     "1.0": 0.8593682441686714,
+     "1e-06": 0.9643042838807937
+    },
+    "ONE_STEP_TRANSITION/random_projection": {
+     "0.0001": 0.8425516207522881,
+     "0.001": 0.842622902855124,
+     "0.01": 0.8426159123412009,
+     "0.1": 0.8320059989608971,
+     "1.0": 0.7280351839610464,
+     "1e-06": 0.8425424353189435
+    },
+    "ONE_STEP_TRANSITION/seed": {
+     "0.0001": 0.3496121337502648,
+     "0.001": 0.34984505638281754,
+     "0.01": 0.351993082758009,
+     "0.1": 0.3609087969352407,
+     "1.0": 0.2542114838622137,
+     "1e-06": 0.3495863025050786
+    },
+    "ONE_STEP_TRANSITION/shuffled_delay": {
+     "0.0001": 0.4793948877957581,
+     "0.001": 0.47963748750995155,
+     "0.01": 0.4818514911922609,
+     "0.1": 0.4904904251962947,
+     "1.0": 0.4209271683534338,
+     "1e-06": 0.4793679528863237
+    },
+    "ONE_STEP_TRANSITION/weak": {
+     "0.0001": 0.29053696195961876,
+     "0.001": 0.2905571858302817,
+     "0.01": 0.29069794041448066,
+     "0.1": 0.2870116327390744,
+     "1.0": 0.13166188591303093,
+     "1e-06": 0.29053466773705877
+    }
+   }
+  },
+  "model_family": "tanh-rnn-nonreciprocal",
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.12.3"
+  },
+  "pass_rule": {
+   "continuous_targets": [
+    "ONE_STEP_TRANSITION",
+    "K_STEP_TRAJECTORY"
+   ],
+   "delay_beats_shuffled_fraction_min": 0.75,
+   "hypothesis": "In the DEV-selected unresolved cell, the delay vector (C_t..C_{t-4}) predicts ONE_STEP_TRANSITION and K_STEP_TRAJECTORY targets better than C_t alone under the same ridge class, split and metric; the gain is not reproduced by a dimension-matched shuffled delay; and independent seed columns do not improve on C_t.",
+   "median_delay_gain_min": 0.05,
+   "seed_gain_median_max": 0.01
+  },
+  "schema": "elpis.research.ecs-dynamics.result.v1",
+  "scientific": "NOT_TESTED",
+  "source_commit": "7cd8158d4123220e376e99e852e6ac0c7987234b",
+  "source_digest": "0b7281806153c1446d4939e27737dd26f43916bcb9d5175afff68a54fe953974",
+  "sources": [
+   "arXiv:2609.19424 Eq. (3.11) delay vector",
+   "arXiv:2609.19424 Eq. (3.24) reference-penalty-gain form",
+   "arXiv:2609.19424 Eq. (3.44) independent seed adds no information",
+   "arXiv:2609.19424 Eqs. (3.17)-(3.18) nested predictors"
+  ],
+  "spec_digest": "7cf283495a082fd2a2a340a610d40c4b7eb32571a80d0133a9318e01f1d07ded",
+  "split": "DEV",
+  "target": "ONE_STEP_TRANSITION",
+  "version": 1,
+  "world_ids": [
+   "dev-0000",
+   "dev-0001",
+   "dev-0002",
+   "dev-0003"
+  ]
+ }
+}

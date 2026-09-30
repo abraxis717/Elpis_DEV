@@ -1,0 +1,45 @@
+{
+ "digest": "63e1540daba21e1c1d2b2a1ab3eec9073d7de4a51b29fe0a2590ee8ce62a9ec6",
+ "spec": {
+  "coarse_observable": "projection[0, 1]",
+  "delay_depth": 0,
+  "dev_worlds": 3,
+  "dimension": 32,
+  "fixed_point_tolerance": 1e-10,
+  "horizon": 10,
+  "intervention_protocol": "null-space (exact for linear C; Gauss-Newton retraction otherwise)",
+  "lyapunov_horizon": 0,
+  "max_period": 16,
+  "model_family": "tanh-rnn-nonreciprocal",
+  "name": "tanh-intervention",
+  "parameters": {
+   "coarse_maps": [
+    "projection[0, 1]",
+    "mean+second_moment"
+   ],
+   "input_dimension": 1,
+   "interventions": 16,
+   "long_run_offset": 300,
+   "long_run_samples": 4,
+   "long_run_window": 2000,
+   "pulse_amplitude": 1.0,
+   "retraction_steps": 6
+  },
+  "perturbation": 0.05,
+  "protocol": {
+   "long_run_absolute_floor": 1e-12,
+   "long_run_floor_ratio_max": 2.0,
+   "preservation_tolerance": 1e-09,
+   "response_threshold": 0.001,
+   "trajectory_threshold": 0.001
+  },
+  "qual_worlds": 8,
+  "recurrence_tolerance": 1e-08,
+  "schema": "elpis.research.ecs-dynamics.spec.v1",
+  "seed": 20260930,
+  "target": "K_STEP_TRAJECTORY",
+  "version": 1,
+  "warmup": 500,
+  "width": null
+ }
+}

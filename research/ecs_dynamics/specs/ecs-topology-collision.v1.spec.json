@@ -1,0 +1,32 @@
+{
+ "digest": "849b198b0cba36740fe6fdc18d15d85d8d4c69a269ff06a809407c415fd26492",
+ "spec": {
+  "coarse_observable": "topology analysis minus topology_digest",
+  "delay_depth": 1,
+  "dev_worlds": 6,
+  "dimension": 5,
+  "fixed_point_tolerance": 1e-10,
+  "horizon": 2,
+  "intervention_protocol": "reorder committed enqueues (same multiset)",
+  "lyapunov_horizon": 0,
+  "max_period": 16,
+  "model_family": "ecs-topology",
+  "name": "ecs-topology-collision",
+  "parameters": {
+   "max_entities": 5,
+   "max_messages": 6,
+   "min_entities": 3,
+   "min_messages": 3
+  },
+  "perturbation": 1e-06,
+  "protocol": {},
+  "qual_worlds": 24,
+  "recurrence_tolerance": 1e-08,
+  "schema": "elpis.research.ecs-dynamics.spec.v1",
+  "seed": 20260930,
+  "target": "EVENT",
+  "version": 1,
+  "warmup": 0,
+  "width": null
+ }
+}

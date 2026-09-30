@@ -1,0 +1,47 @@
+{
+ "digest": "fe39286c6e0b49c56283c8fbe1e77dc93bc1fd495ddaa55d3f7c72bae31bb8ab",
+ "spec": {
+  "coarse_observable": "projection[0, 1]",
+  "delay_depth": 0,
+  "dev_worlds": 3,
+  "dimension": 32,
+  "fixed_point_tolerance": 1e-10,
+  "horizon": 400,
+  "intervention_protocol": "none",
+  "lyapunov_horizon": 300,
+  "max_period": 16,
+  "model_family": "tanh-rnn-nonreciprocal",
+  "name": "tanh-phase-sweep",
+  "parameters": {
+   "bias_scale": 0.0,
+   "gains": [
+    0.5,
+    0.8,
+    1.0,
+    1.2,
+    1.6,
+    2.0,
+    3.0
+   ],
+   "gammas": [
+    0.0,
+    0.5,
+    1.0,
+    2.0,
+    4.0
+   ],
+   "initial_conditions": 6,
+   "sweep_lambda": 0.001
+  },
+  "perturbation": 1e-06,
+  "protocol": {},
+  "qual_worlds": 6,
+  "recurrence_tolerance": 1e-08,
+  "schema": "elpis.research.ecs-dynamics.spec.v1",
+  "seed": 20260930,
+  "target": "ATTRACTOR_CLASS",
+  "version": 1,
+  "warmup": 1000,
+  "width": null
+ }
+}
