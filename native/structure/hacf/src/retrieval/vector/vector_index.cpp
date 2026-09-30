@@ -39,8 +39,10 @@ struct ShardEntry {
     /* Serialises residency work for THIS shard only. Without it, several
      * readers promote the same shard at once, each seeing the others'
      * FMS_ST_MOVING as FMS_E_BUSY, and under memory pressure a reader can
-     * starve on the retry path. Scans of different shards still run in
-     * parallel. Lock order is always ix->mu, then this. */
+     * starve on the retry path. It covers lease acquisition only: the READ
+     * lease then pins the shard WARM, so scoring runs outside the gate and
+     * concurrent scans of one shard proceed in parallel. Lock order is always
+     * ix->mu, then this. */
     std::shared_ptr<std::mutex> gate = std::make_shared<std::mutex>();
 };
 
@@ -296,9 +298,12 @@ elpis_exec_status vector_shard_compute(void *opaque, const elpis_exec_buffer *,
         elpis_vector_index *ix = ctx->index;
         const ShardEntry &s = *ctx->shard;
         void *p = nullptr;
-        std::lock_guard<std::mutex> shard_lk(*s.gate);
         LeaseGuard g(ix->fms, s.id);
-        fms_status r = g.acquire(&p);
+        fms_status r;
+        {
+            std::lock_guard<std::mutex> shard_lk(*s.gate);   /* one promoter per shard */
+            r = g.acquire(&p);
+        }
         if (r != FMS_OK) {
             std::vector<elpis_vector_hit> empty;
             char detail[192];
@@ -664,9 +669,12 @@ static int search_impl(elpis_vector_index *ix, const elpis_vector_query *q,
 
     for (const ShardEntry &s : ix->shards) {
         void *p = nullptr;
-        std::lock_guard<std::mutex> shard_lk(*s.gate);   /* one promoter per shard */
         LeaseGuard g(ix->fms, s.id);
-        fms_status r = g.acquire(&p);
+        fms_status r;
+        {
+            std::lock_guard<std::mutex> shard_lk(*s.gate);   /* one promoter per shard */
+            r = g.acquire(&p);
+        }
         if (r != FMS_OK) {
             /* Structured error, never an empty result. FMS_E_DIGEST stays an
              * integrity failure with its cause intact. */
