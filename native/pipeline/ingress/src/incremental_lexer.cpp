@@ -23,8 +23,9 @@
 //    that can still be referenced but would leave the window are materialized
 //    first (closed capture spans, a won match's inline text); hashes are brought
 //    up to date in bulk.
-//  * Closure scratch (stack, ready list, next list) and the per-program
-//    first-arrival table (generation counters) are owned by the lexer and reused.
+//  * Closure scratch (stack, ready list, next list), sized by proven per-program
+//    bounds, and the per-program first-arrival table (generation counters) are
+//    owned by the lexer and reused. Compiled programs are shared by all handles.
 //  * Predicates are evaluated lazily per codepoint: one 64-bit ASCII signature
 //    table, and a direct-mapped cache of PCRE2 results for other codepoints.
 //  * Runs of identical-signature ASCII bytes are applied in bulk once one step
@@ -331,7 +332,11 @@ constexpr size_t compact_at=16*1024;
 struct Lexer::Impl {
     std::map<std::string,int> predicate_ids;
     std::vector<Predicate> predicates;
-    std::vector<Program> programs;
+    // Compiled programs are immutable: the grammar instance owns them and every
+    // handle reads the same copy.
+    std::vector<Program> compiled;
+    const Program* programs=nullptr;
+    size_t program_count=0;
     std::array<uint64_t,128> ascii_signature{};
     std::array<bool,128> ascii_word{};
     std::vector<std::vector<uint32_t>> rows;          // candidate ids per program, start order
@@ -344,7 +349,7 @@ struct Lexer::Impl {
     std::vector<uint32_t> generation;
     std::vector<std::vector<uint32_t>> chain_generation, chain_watermark;
     std::unique_ptr<Thread[]> stack, ready, next;
-    size_t scratch=0;
+    size_t stack_capacity=0, ready_capacity=0;
     std::vector<Match> evidence;
     uint32_t limit;
     int word=0;
@@ -381,7 +386,7 @@ struct Lexer::Impl {
             static const Impl grammar(expressions,0,false);
             predicates.reserve(grammar.predicates.size());
             for(const auto& p:grammar.predicates) predicates.emplace_back(p);
-            programs=grammar.programs; word=grammar.word;
+            programs=grammar.programs; program_count=grammar.program_count; word=grammar.word;
             ascii_signature=grammar.ascii_signature; ascii_word=grammar.ascii_word;
             measured.program_instructions=grammar.measured.program_instructions;
             prepare();
@@ -397,8 +402,9 @@ struct Lexer::Impl {
             Program p; int end=p.add({Instruction::accept,0,0,0}); p.entry=p.compile(tree,end);
             if(p.code.size()>max_instructions) throw std::runtime_error("V2_PROGRAM_BOUND");
             p.analyse_start(); p.analyse_chains();
-            measured.program_instructions+=p.code.size(); programs.push_back(std::move(p));
+            measured.program_instructions+=p.code.size(); compiled.push_back(std::move(p));
         }
+        programs=compiled.data(); program_count=compiled.size();
         if(predicates.size()>max_predicates) throw std::runtime_error("V2_PREDICATE_BOUND");
         for(unsigned c=0;c<128;++c) {
             uint64_t s=0;
@@ -407,21 +413,32 @@ struct Lexer::Impl {
         }
     }
     void prepare() {
-        rows.resize(programs.size());
-        seen.resize(programs.size());
-        chain_generation.resize(programs.size()); chain_watermark.resize(programs.size());
-        generation.assign(programs.size(),0);
-        size_t largest=0;
-        for(size_t i=0;i<programs.size();++i) {
+        rows.resize(program_count);
+        seen.resize(program_count);
+        chain_generation.resize(program_count); chain_watermark.resize(program_count);
+        generation.assign(program_count,0);
+        size_t most_consumes=0, most_pending=0;
+        for(size_t i=0;i<program_count;++i) {
             seen[i].assign(programs[i].code.size(),0);
             chain_generation[i].assign(programs[i].chain_bottom.size(),0);
             chain_watermark[i].assign(programs[i].chain_bottom.size(),0);
-            largest=std::max(largest,programs[i].code.size());
+            size_t consumes=0, splits=0;
+            for(const auto& x:programs[i].code) {
+                consumes+=x.op==Instruction::consume;
+                splits+=x.op==Instruction::split;
+            }
+            most_consumes=std::max(most_consumes,consumes);
+            most_pending=std::max(most_pending,consumes+splits);
         }
-        // A closure pushes at most two entries per first-visited PC on top of the
-        // candidate's threads (at most one per consume PC).
-        scratch=3*largest+8;
-        stack.reset(new Thread[scratch]); ready.reset(new Thread[scratch]); next.reset(new Thread[scratch]);
+        // Closure bounds, per generation: a ready entry is a consume PC reached for
+        // the first time (a chain adds B_j only for a strictly higher j, and B_j is
+        // reachable only from S_j), so ready, next and a candidate's threads each
+        // hold at most `consumes` entries. The stack starts with the candidate's
+        // threads and grows only when a split is first visited (every other pop
+        // pushes at most one entry), so it holds at most consumes+splits.
+        stack_capacity=most_pending+1; ready_capacity=most_consumes+1;
+        stack.reset(new Thread[stack_capacity]);
+        ready.reset(new Thread[ready_capacity]); next.reset(new Thread[ready_capacity]);
         cache.reset(new CacheEntry[cache_entries]);
     }
 
@@ -671,7 +688,7 @@ struct Lexer::Impl {
         }
         bool stable=!boundary && !eof && current_ascii;
         active=false; close_start_stream();
-        for(size_t pi=0;pi<programs.size();++pi) {
+        for(size_t pi=0;pi<program_count;++pi) {
             auto& ids=rows[pi];
             // Every expression begins with a word-boundary + word character.
             // No new starts can accumulate in an infinite whitespace run.
