@@ -357,8 +357,15 @@ elpis_exec_status vector_shard_compute(void *opaque, const elpis_exec_buffer *,
                                    "scoring rejected the query", empty, cap, out));
         }
 
-        std::vector<elpis_vector_hit> local;
-        local.reserve(static_cast<size_t>(std::min<uint64_t>(n, ctx->k)));
+        /* Every record is checked in index order exactly as the serial path does
+         * (the first unreadable metadata entry or out-of-domain score fails the
+         * shard), but only the local top-k are materialized as hits. The hit
+         * order is elpis_vector_hit_compare: canonical key descending, then chunk
+         * digest ascending. Lowercase hex preserves byte order, so comparing the
+         * raw 32-byte digests yields the same total order. */
+        struct Candidate { int64_t key; double score; uint64_t i; const char *ns, *au; };
+        std::vector<Candidate> found;
+        found.reserve(static_cast<size_t>(n));
         for (uint64_t i = 0; i < n; ++i) {
             const char *ns = "", *au = "";
             if (elpis_vshard_record_meta(p, s.bytes, i, &ns, &au) != 0) {
@@ -369,15 +376,6 @@ elpis_exec_status vector_shard_compute(void *opaque, const elpis_exec_buffer *,
             }
             if (ctx->ns_filter && std::strcmp(ns, ctx->ns_filter) != 0) continue;
             if (ctx->authority_filter && std::strcmp(au, ctx->authority_filter) != 0) continue;
-
-            elpis_vector_hit h{};
-            elpis_hex32(recs + i * ELPIS_VSHARD_RECORD_BYTES, h.chunk_digest);
-            elpis_hex32(recs + i * ELPIS_VSHARD_RECORD_BYTES + 32, h.doc_digest);
-            std::snprintf(h.shard_digest, sizeof h.shard_digest, "%s", s.digest);
-            std::snprintf(h.embedding_profile_digest, sizeof h.embedding_profile_digest,
-                          "%s", ix->profile_digest);
-            std::snprintf(h.ns, sizeof h.ns, "%s", ns);
-            std::snprintf(h.authority, sizeof h.authority, "%s", au);
             double canonical_score = 0.0;
             if (!canonical_index_score(scores[i], &canonical_score)) {
                 std::vector<elpis_vector_hit> empty;
@@ -386,16 +384,29 @@ elpis_exec_status vector_shard_compute(void *opaque, const elpis_exec_buffer *,
                                        "scoring produced a non-finite or out-of-domain value",
                                        empty, cap, out));
             }
-            h.score = canonical_score;
-            h.score_key = elpis_vector_score_key(canonical_score);
-            local.push_back(h);
+            found.push_back({elpis_vector_score_key(canonical_score), canonical_score, i, ns, au});
         }
-
-        std::sort(local.begin(), local.end(),
-                  [](const elpis_vector_hit &a, const elpis_vector_hit &b) {
-                      return elpis_vector_hit_compare(&a, &b) < 0;
-                  });
-        if (local.size() > ctx->k) local.resize(ctx->k);
+        const size_t keep = std::min<size_t>(found.size(), ctx->k);
+        std::partial_sort(found.begin(), found.begin() + static_cast<std::ptrdiff_t>(keep), found.end(),
+                          [recs](const Candidate &a, const Candidate &b) {
+                              if (a.key != b.key) return a.key > b.key;
+                              return std::memcmp(recs + a.i * ELPIS_VSHARD_RECORD_BYTES,
+                                                 recs + b.i * ELPIS_VSHARD_RECORD_BYTES, 32) < 0;
+                          });
+        std::vector<elpis_vector_hit> local(keep);
+        for (size_t j = 0; j < keep; ++j) {
+            const Candidate &c = found[j];
+            elpis_vector_hit &h = local[j];
+            elpis_hex32(recs + c.i * ELPIS_VSHARD_RECORD_BYTES, h.chunk_digest);
+            elpis_hex32(recs + c.i * ELPIS_VSHARD_RECORD_BYTES + 32, h.doc_digest);
+            std::snprintf(h.shard_digest, sizeof h.shard_digest, "%s", s.digest);
+            std::snprintf(h.embedding_profile_digest, sizeof h.embedding_profile_digest,
+                          "%s", ix->profile_digest);
+            std::snprintf(h.ns, sizeof h.ns, "%s", c.ns);
+            std::snprintf(h.authority, sizeof h.authority, "%s", c.au);
+            h.score = c.score;
+            h.score_key = c.key;
+        }
         return static_cast<elpis_exec_status>(
             emit_exec_envelope(ELPIS_VEC_OK, 0, "ok", local, cap, out));
     } catch (...) {

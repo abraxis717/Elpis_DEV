@@ -425,6 +425,47 @@ static void case_parallel_execution_parity() {
         CHECK(n == 0, "oversized k changed n_out to %u", n);
         elpis_vector_executor_destroy(executor);
     }
+
+    /* Whole-hit parity (every field, the score bit-for-bit) for k below, at and
+     * above one shard's size, with and without filters: shard tasks select their
+     * local top-k before materializing hits. */
+    const char *ns_opts[] = {nullptr, "elpis.docs", "elpis.code"};
+    const char *au_opts[] = {nullptr, "canonical", "reference"};
+    const uint32_t ks[] = {1, 3, 16, 64, 65, 300};
+    unsigned compared = 0;
+    for (unsigned workers : {1u, 4u}) {
+        elpis_vector_executor *vx = nullptr;
+        CHECK(elpis_vector_executor_create(e.ix, workers, &vx) == ELPIS_VEC_OK && vx,
+              "sweep executor create workers=%u", workers);
+        if (!vx) continue;
+        for (int qi = 0; qi < 4; ++qi) {
+            elpis_vector_query sq{};
+            sq.vector = shards[(size_t)qi].vec[(size_t)((qi * 13 + 5) % 64)].data();
+            sq.dimensions = D;
+            for (uint32_t k : ks) for (const char *ns : ns_opts) for (const char *au : au_opts) {
+                sq.k = k; sq.ns_filter = ns; sq.authority_filter = au;
+                std::vector<elpis_vector_hit> a(k), b(k);
+                uint32_t na = 0, nb = 0;
+                CHECK(elpis_vector_index_search(e.ix, &sq, a.data(), &na) == ELPIS_VEC_OK, "sweep serial");
+                CHECK(elpis_vector_executor_search(vx, &sq, b.data(), &nb) == ELPIS_VEC_OK, "sweep parallel");
+                CHECK(na == nb, "sweep count workers=%u q=%d k=%u: %u != %u", workers, qi, k, na, nb);
+                for (uint32_t i = 0; i < na && i < nb; ++i) {
+                    const elpis_vector_hit &x = a[i], &y = b[i];
+                    bool same = !std::strcmp(x.chunk_digest, y.chunk_digest) &&
+                                !std::strcmp(x.doc_digest, y.doc_digest) &&
+                                !std::strcmp(x.shard_digest, y.shard_digest) &&
+                                !std::strcmp(x.embedding_profile_digest, y.embedding_profile_digest) &&
+                                !std::strcmp(x.ns, y.ns) && !std::strcmp(x.authority, y.authority) &&
+                                !std::memcmp(&x.score, &y.score, sizeof x.score) &&
+                                x.score_key == y.score_key && x.rank == y.rank;
+                    CHECK(same, "sweep hit workers=%u q=%d k=%u rank=%u differs", workers, qi, k, i);
+                    ++compared;
+                }
+            }
+        }
+        elpis_vector_executor_destroy(vx);
+    }
+    CHECK(compared > 1000, "sweep compared only %u hits", compared);
 }
 
 static void case_index_manifest() {
