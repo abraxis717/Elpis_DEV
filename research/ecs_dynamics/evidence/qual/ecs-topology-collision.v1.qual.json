@@ -1,0 +1,759 @@
+{
+ "digest": "d110ec532d6a33a10f3bfeb195620af7b6c30c926e31b01823827d212aa4bbb1",
+ "result": {
+  "coarse_representation": "topology analysis minus topology_digest",
+  "evidence": "INTERVENTION_SUPPORTED_RESULT",
+  "experiment": "ecs-topology-collision",
+  "findings": [
+   {
+    "evidence": "INTERVENTION_SUPPORTED_RESULT",
+    "outcome": "COUNTEREXAMPLE_FOUND",
+    "regime": "public ECS kernel, scheduler v2, 24 reordered QUAL pairs + minimal pair",
+    "representation": "topology analysis minus topology_digest",
+    "statement": "topology analysis minus topology_digest was tested for sufficiency with respect to target EVENT under regime public ECS kernel, scheduler v2, 24 reordered QUAL pairs + minimal pair: a counterexample was found.",
+    "statistic": {
+     "divergent_pairs": 19,
+     "pairs": 24
+    },
+    "target": "EVENT"
+   },
+   {
+    "evidence": "INTERVENTION_SUPPORTED_RESULT",
+    "outcome": "COUNTEREXAMPLE_FOUND",
+    "regime": "public ECS kernel, scheduler v2, 24 reordered QUAL pairs + minimal pair",
+    "representation": "topology analysis minus topology_digest",
+    "statement": "topology analysis minus topology_digest was tested for sufficiency with respect to target K_STEP_TRAJECTORY under regime public ECS kernel, scheduler v2, 24 reordered QUAL pairs + minimal pair: a counterexample was found.",
+    "statistic": {
+     "divergent_pairs": 23,
+     "pairs": 24,
+     "reply_rounds": 2
+    },
+    "target": "K_STEP_TRAJECTORY"
+   },
+   {
+    "evidence": "INTERVENTION_SUPPORTED_RESULT",
+    "outcome": "COUNTEREXAMPLE_FOUND",
+    "regime": "public ECS kernel, scheduler v2, 24 reordered QUAL pairs + minimal pair",
+    "representation": "weak (node_count, total_message_count)",
+    "statement": "weak (node_count, total_message_count) was tested for sufficiency with respect to target EVENT under regime public ECS kernel, scheduler v2, 24 reordered QUAL pairs + minimal pair: a counterexample was found.",
+    "statistic": {},
+    "target": "EVENT"
+   },
+   {
+    "evidence": "INTERVENTION_SUPPORTED_RESULT",
+    "outcome": "COUNTEREXAMPLE_FOUND",
+    "regime": "public ECS kernel, scheduler v2, 24 reordered QUAL pairs + minimal pair",
+    "representation": "delay-augmented (C_t..C_t-1) over history prefixes",
+    "statement": "delay-augmented (C_t..C_t-1) over history prefixes was tested for sufficiency with respect to target EVENT under regime public ECS kernel, scheduler v2, 24 reordered QUAL pairs + minimal pair: a counterexample was found.",
+    "statistic": {
+     "divergent_pairs": 19,
+     "divergent_pairs_not_resolved": 4
+    },
+    "target": "EVENT"
+   },
+   {
+    "evidence": "INTERVENTION_SUPPORTED_RESULT",
+    "outcome": "NO_COUNTEREXAMPLE_UNDER_REGIME",
+    "regime": "public ECS kernel, scheduler v2, 24 reordered QUAL pairs + minimal pair",
+    "representation": "full microscopic state (state-root digest)",
+    "statement": "full microscopic state (state-root digest) was tested for sufficiency with respect to target EVENT under regime public ECS kernel, scheduler v2, 24 reordered QUAL pairs + minimal pair: no counterexample was found.",
+    "statistic": {},
+    "target": "EVENT"
+   }
+  ],
+  "flags": {
+   "NO_PRODUCTION_NEURAL_CLAIM": true,
+   "NO_RUNTIME_AUTHORITY": true,
+   "RESEARCH_ONLY": true
+  },
+  "frozen_digest": "05d97d6eb869a67cbb2784cee0067ae2ddd07e7428eea11d49b172549dedd721",
+  "intervention_policy": "reorder committed enqueues (same multiset)",
+  "limitations": [
+   "public ECS kernel in temporary storage; no production change",
+   "reply continuation is laboratory host code, not an ECS rule"
+  ],
+  "mechanics": "MECHANICS_PASS",
+  "metrics": {
+   "delay_unresolved_divergent": 4,
+   "event_divergent": 19,
+   "mechanics_checks": {
+    "analysis_read_only": true,
+    "coarse_equal_every_reordering": true
+   },
+   "minimal_pair": {
+    "analysis_read_only": true,
+    "coarse_equal": true,
+    "delay_equal": false,
+    "endpoint_differs": false,
+    "event_differs": true,
+    "event_edges": [
+     [
+      "7dbee95533b9be8eea7668f78690f467b2a0c9c4f7cd04fe0c1891a020388514",
+      "196164dcb10686005875d835f48d4d21e193cf1823ce5c07d18c756115aa9ac5"
+     ],
+     [
+      "1aaabf08ccd5c5127a3799681ce7a4d7b21c69dfa14ceab60604a69da275f092",
+      "196164dcb10686005875d835f48d4d21e193cf1823ce5c07d18c756115aa9ac5"
+     ]
+    ],
+    "first_divergent_round": 1,
+    "full_equal": false,
+    "histories_distinct": true,
+    "trajectory_differs": true,
+    "weak_equal": true
+   },
+   "pairs": [
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 5,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "46d0ca2703e15ef0e4ef7441e7328dec2904833d870cd52ca515d9e5f4eac504",
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69"
+      ],
+      [
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 3,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ],
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 4,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 4,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ],
+      [
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 6,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 3,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ],
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": true,
+     "endpoint_differs": true,
+     "entities": 3,
+     "event_differs": false,
+     "event_edges": [
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ],
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ]
+     ],
+     "first_divergent_round": 2,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 5,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 4,
+     "event_differs": false,
+     "event_edges": [
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ],
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ]
+     ],
+     "first_divergent_round": 2,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 4,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ],
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": false,
+     "entities": 3,
+     "event_differs": false,
+     "event_edges": [
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ],
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ]
+     ],
+     "first_divergent_round": null,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 4,
+     "reordered": true,
+     "trajectory_differs": false,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 3,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ],
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 4,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ],
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 6,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": true,
+     "endpoint_differs": false,
+     "entities": 4,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ],
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 4,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ],
+      [
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 4,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": true,
+     "endpoint_differs": true,
+     "entities": 3,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ],
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 6,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 4,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69"
+      ],
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 5,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ],
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "46d0ca2703e15ef0e4ef7441e7328dec2904833d870cd52ca515d9e5f4eac504"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 6,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": true,
+     "endpoint_differs": true,
+     "entities": 4,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ],
+      [
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 5,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 3,
+     "event_differs": false,
+     "event_edges": [
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ],
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ]
+     ],
+     "first_divergent_round": 2,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 6,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 5,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69"
+      ],
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 5,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 3,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ],
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 5,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": false,
+     "entities": 3,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ],
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 6,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 4,
+     "event_differs": false,
+     "event_edges": [
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ],
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ]
+     ],
+     "first_divergent_round": 2,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": false,
+     "entities": 4,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ],
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 4,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": true,
+     "endpoint_differs": true,
+     "entities": 3,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ],
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 6,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 5,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "46d0ca2703e15ef0e4ef7441e7328dec2904833d870cd52ca515d9e5f4eac504",
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69"
+      ],
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 6,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    }
+   ],
+   "reordered_pairs": 24,
+   "trajectory_divergent": 23
+  },
+  "model_family": "ecs-topology",
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.12.3"
+  },
+  "pass_rule": {
+   "hypothesis": "The topology-analysis coarse state (without its projection-binding digest) is not sufficient for the next-processed-edge EVENT nor for the reply-policy K_STEP_TRAJECTORY: the minimal pair and at least one QUAL pair share it exactly and diverge; every sampled reordering shares it; reading it never changes the kernel state root."
+  },
+  "schema": "elpis.research.ecs-dynamics.result.v1",
+  "scientific": "SUPPORTS_UNDER_FROZEN_SYNTHETIC_REGIME",
+  "source_commit": "9d012be925a53e252a2a29452d8c1692e9980b4e",
+  "source_digest": "0b7281806153c1446d4939e27737dd26f43916bcb9d5175afff68a54fe953974",
+  "sources": [
+   "LAB: public ECS kernel and topology analysis",
+   "arXiv:2609.29834 fibre of a coarse map (main text)"
+  ],
+  "spec_digest": "849b198b0cba36740fe6fdc18d15d85d8d4c69a269ff06a809407c415fd26492",
+  "split": "QUAL",
+  "target": "EVENT",
+  "version": 1,
+  "world_ids": [
+   "qual-0000",
+   "qual-0001",
+   "qual-0002",
+   "qual-0003",
+   "qual-0004",
+   "qual-0005",
+   "qual-0006",
+   "qual-0007",
+   "qual-0008",
+   "qual-0009",
+   "qual-0010",
+   "qual-0011",
+   "qual-0012",
+   "qual-0013",
+   "qual-0014",
+   "qual-0015",
+   "qual-0016",
+   "qual-0017",
+   "qual-0018",
+   "qual-0019",
+   "qual-0020",
+   "qual-0021",
+   "qual-0022",
+   "qual-0023"
+  ]
+ }
+}

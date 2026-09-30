@@ -1,0 +1,48 @@
+{
+ "digest": "7f468f25c7ad8da78de782925fe58f71b266f080d8127cf0a6d846b7d0ee06cc",
+ "spec": {
+  "coarse_observable": "projection[0, 1]",
+  "delay_depth": 0,
+  "dev_worlds": 3,
+  "dimension": 32,
+  "fixed_point_tolerance": 1e-10,
+  "horizon": 400,
+  "intervention_protocol": "exact-linear-null-space",
+  "lyapunov_horizon": 300,
+  "max_period": 16,
+  "model_family": "tanh-rnn-nonreciprocal",
+  "name": "tanh-attractors",
+  "parameters": {
+   "initial_conditions": 24,
+   "match_tol": 1e-06,
+   "pair_magnitude": 1.0,
+   "pairs": 24,
+   "reference_cells": [
+    {
+     "gain": 0.9,
+     "gamma": 0.0
+    },
+    {
+     "gain": 2.5,
+     "gamma": 4.0
+    },
+    {
+     "gain": 2.0,
+     "gamma": 1.0
+    }
+   ]
+  },
+  "perturbation": 0.0001,
+  "protocol": {
+   "preservation_tolerance": 1e-12
+  },
+  "qual_worlds": 8,
+  "recurrence_tolerance": 1e-08,
+  "schema": "elpis.research.ecs-dynamics.spec.v1",
+  "seed": 20260930,
+  "target": "ATTRACTOR_CLASS",
+  "version": 1,
+  "warmup": 1000,
+  "width": null
+ }
+}

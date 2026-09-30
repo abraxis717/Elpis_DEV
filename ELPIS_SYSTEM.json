@@ -344,6 +344,7 @@
     "NOTICE": "license",
     "pyproject.toml": "python build",
     "README.md": "documentation",
+    "research": "research laboratories (RESEARCH_ONLY, NO_RUNTIME_AUTHORITY; not packaged, never imported by src)",
     "src": "python implementation",
     "tests": "tests"
   },
@@ -398,7 +399,8 @@
       "elpis_runtime_r3",
       "elpis_runtime_r3_sot",
       "elpis_runtime_r4",
-      "elpis_sot"
+      "elpis_sot",
+      "research"
     ],
     "forbidden_identifier_patterns": [
       "(?i)\\btrm\\b",

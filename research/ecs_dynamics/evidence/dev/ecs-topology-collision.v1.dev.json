@@ -1,0 +1,228 @@
+{
+ "digest": "16d26b90f2274e60ff8c8c0387560b9e6947891df73ac75df5b6ccdd3ae44957",
+ "result": {
+  "coarse_representation": "topology analysis minus topology_digest",
+  "evidence": "INTERVENTION_SUPPORTED_RESULT",
+  "experiment": "ecs-topology-collision",
+  "findings": [],
+  "flags": {
+   "NO_PRODUCTION_NEURAL_CLAIM": true,
+   "NO_RUNTIME_AUTHORITY": true,
+   "RESEARCH_ONLY": true
+  },
+  "frozen_digest": null,
+  "intervention_policy": "reorder committed enqueues (same multiset)",
+  "limitations": [
+   "public ECS kernel in temporary storage; no production change",
+   "reply continuation is laboratory host code, not an ECS rule"
+  ],
+  "mechanics": "MECHANICS_PASS",
+  "metrics": {
+   "choices": {},
+   "minimal_pair": {
+    "analysis_read_only": true,
+    "coarse_equal": true,
+    "delay_equal": false,
+    "endpoint_differs": false,
+    "event_differs": true,
+    "event_edges": [
+     [
+      "7dbee95533b9be8eea7668f78690f467b2a0c9c4f7cd04fe0c1891a020388514",
+      "196164dcb10686005875d835f48d4d21e193cf1823ce5c07d18c756115aa9ac5"
+     ],
+     [
+      "1aaabf08ccd5c5127a3799681ce7a4d7b21c69dfa14ceab60604a69da275f092",
+      "196164dcb10686005875d835f48d4d21e193cf1823ce5c07d18c756115aa9ac5"
+     ]
+    ],
+    "first_divergent_round": 1,
+    "full_equal": false,
+    "histories_distinct": true,
+    "trajectory_differs": true,
+    "weak_equal": true
+   },
+   "pairs": [
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 3,
+     "event_differs": false,
+     "event_edges": [
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ],
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ]
+     ],
+     "first_divergent_round": 2,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 5,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "46d0ca2703e15ef0e4ef7441e7328dec2904833d870cd52ca515d9e5f4eac504",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ],
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 5,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 5,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ],
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 4,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 5,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "46d0ca2703e15ef0e4ef7441e7328dec2904833d870cd52ca515d9e5f4eac504"
+      ],
+      [
+       "46d0ca2703e15ef0e4ef7441e7328dec2904833d870cd52ca515d9e5f4eac504",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": true,
+     "endpoint_differs": false,
+     "entities": 5,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "46d0ca2703e15ef0e4ef7441e7328dec2904833d870cd52ca515d9e5f4eac504"
+      ],
+      [
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969",
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    },
+    {
+     "analysis_read_only": true,
+     "coarse_equal": true,
+     "delay_equal": false,
+     "endpoint_differs": true,
+     "entities": 4,
+     "event_differs": true,
+     "event_edges": [
+      [
+       "d26897c64bd7055cfc4635031415e7cf441961f35db739e8e11f3ef09c0e3a9e",
+       "2eae5ca7abb54d89eb405469eb9c0cd278ad38baed08afc066a61c3ff1a84969"
+      ],
+      [
+       "146e83b540533fd60b0458ca1d8ac685a53c30d80c1eaeecef6e8cf5e9f583a6",
+       "3004742fa043f808c228c2fc62882ab26350ff97957f3e20d6d76cc2def54c69"
+      ]
+     ],
+     "first_divergent_round": 1,
+     "full_equal": false,
+     "histories_distinct": true,
+     "messages": 3,
+     "reordered": true,
+     "trajectory_differs": true,
+     "weak_equal": true
+    }
+   ]
+  },
+  "model_family": "ecs-topology",
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.12.3"
+  },
+  "pass_rule": {
+   "hypothesis": "The topology-analysis coarse state (without its projection-binding digest) is not sufficient for the next-processed-edge EVENT nor for the reply-policy K_STEP_TRAJECTORY: the minimal pair and at least one QUAL pair share it exactly and diverge; every sampled reordering shares it; reading it never changes the kernel state root."
+  },
+  "schema": "elpis.research.ecs-dynamics.result.v1",
+  "scientific": "NOT_TESTED",
+  "source_commit": "7cd8158d4123220e376e99e852e6ac0c7987234b",
+  "source_digest": "0b7281806153c1446d4939e27737dd26f43916bcb9d5175afff68a54fe953974",
+  "sources": [
+   "LAB: public ECS kernel and topology analysis",
+   "arXiv:2609.29834 fibre of a coarse map (main text)"
+  ],
+  "spec_digest": "849b198b0cba36740fe6fdc18d15d85d8d4c69a269ff06a809407c415fd26492",
+  "split": "DEV",
+  "target": "EVENT",
+  "version": 1,
+  "world_ids": [
+   "dev-0000",
+   "dev-0001",
+   "dev-0002",
+   "dev-0003",
+   "dev-0004",
+   "dev-0005"
+  ]
+ }
+}

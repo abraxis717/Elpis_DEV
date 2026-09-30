@@ -1,0 +1,2652 @@
+{
+ "digest": "638f23d7f185fe657f0835fae62e7e85bb220cb83b05088e1c3440809333f610",
+ "result": {
+  "coarse_representation": "S3=(m1,m2,m3)",
+  "evidence": "ALGEBRAIC_IDENTITY",
+  "experiment": "cubic-control",
+  "findings": [
+   {
+    "evidence": "ALGEBRAIC_IDENTITY",
+    "outcome": "NO_COUNTEREXAMPLE_UNDER_REGIME",
+    "regime": "cubic phi family, d=3, N=12, eta=0.1, 16 QUAL worlds",
+    "representation": "S3=(m1,m2,m3)",
+    "statement": "S3=(m1,m2,m3) was tested for sufficiency with respect to target INSTANTANEOUS_OUTPUT under regime cubic phi family, d=3, N=12, eta=0.1, 16 QUAL worlds: no counterexample was found.",
+    "statistic": {
+     "max_relative_error": 8.117458050056343e-16
+    },
+    "target": "INSTANTANEOUS_OUTPUT"
+   },
+   {
+    "evidence": "ALGEBRAIC_IDENTITY",
+    "outcome": "COUNTEREXAMPLE_FOUND",
+    "regime": "cubic phi family, d=3, N=12, eta=0.1, 16 QUAL worlds",
+    "representation": "S2=(m1,m2)",
+    "statement": "S2=(m1,m2) was tested for sufficiency with respect to target INSTANTANEOUS_OUTPUT under regime cubic phi family, d=3, N=12, eta=0.1, 16 QUAL worlds: a counterexample was found.",
+    "statistic": {
+     "fibre_intervention_min_divergence": 0.012438919736595676,
+     "pte2_min_output_difference": 0.011024806874564419
+    },
+    "target": "INSTANTANEOUS_OUTPUT"
+   },
+   {
+    "evidence": "ALGEBRAIC_IDENTITY",
+    "outcome": "COUNTEREXAMPLE_FOUND",
+    "regime": "cubic phi family, d=3, N=12, eta=0.1, 16 QUAL worlds",
+    "representation": "S3=(m1,m2,m3)",
+    "statement": "S3=(m1,m2,m3) was tested for sufficiency with respect to target ONE_STEP_TRANSITION under regime cubic phi family, d=3, N=12, eta=0.1, 16 QUAL worlds: a counterexample was found.",
+    "statistic": {
+     "pte3_min_transition_difference": 0.006299129780963586
+    },
+    "target": "ONE_STEP_TRANSITION"
+   },
+   {
+    "evidence": "INTERVENTION_SUPPORTED_RESULT",
+    "outcome": "COUNTEREXAMPLE_FOUND",
+    "regime": "cubic phi family, d=3, N=12, eta=0.1, 16 QUAL worlds",
+    "representation": "S3=(m1,m2,m3)",
+    "statement": "S3=(m1,m2,m3) was tested for sufficiency with respect to target K_STEP_TRAJECTORY under regime cubic phi family, d=3, N=12, eta=0.1, 16 QUAL worlds: a counterexample was found.",
+    "statistic": {
+     "min_fraction_above_threshold": 1.0
+    },
+    "target": "K_STEP_TRAJECTORY"
+   }
+  ],
+  "flags": {
+   "NO_PRODUCTION_NEURAL_CLAIM": true,
+   "NO_RUNTIME_AUTHORITY": true,
+   "RESEARCH_ONLY": true
+  },
+  "frozen_digest": "4fed32dc18c6ca1f2859c1fc69a1d4c4b8099257597f001f1aee7b9fae97f6d5",
+  "intervention_policy": "fibre-null-space+gauss-newton-retraction",
+  "limitations": [
+   "synthetic regime only",
+   "finite-time, finite-size diagnostics",
+   "no statement about production ECS, trained models or Elpis neural components",
+   "establishes instantaneous-forward sufficiency of S3 only; not transition, trajectory, attractor, intervention or production-ECS sufficiency"
+  ],
+  "mechanics": "MECHANICS_PASS",
+  "metrics": {
+   "mechanics_checks": {
+    "all_finite": true,
+    "interventions_accepted": true,
+    "rejections_counted": true
+   },
+   "passes": {
+    "capacity_S2_instantaneous": true,
+    "capacity_S3_instantaneous": true,
+    "capacity_S3_transition": true,
+    "design": true,
+    "exactness": true,
+    "monotone": true,
+    "pte": true,
+    "s3_interventions": true
+   },
+   "worlds": [
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.024999999999999998,
+      "coarse_residual": 3.630008967942988e-17,
+      "instantaneous_output_change": 8.881784197001252e-15,
+      "relative_error": 0.00962810168643388,
+      "target_change_norm": 0.029503769239057613
+     },
+     "exactness_relative_error": 3.3081787528712225e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 52.68532227984451
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 333.25848591225815
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 10.472984048444077
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 51.48282004204338
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 324.10655359808135
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 10.166305426814665
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 2.167920562378409e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 64.22134983026177
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 1.1801507695623046
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.08669007014134172,
+        "relative_median": 0.03964625546875451,
+        "relative_min": 0.0031049355111743143,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.2544937653787726,
+        "relative_median": 0.10633595474292412,
+        "relative_min": 0.02506020848242797,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.02963946487242456,
+        "relative_median": 0.01613256345438209,
+        "relative_min": 0.006821593549500576,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 2.7540782799234118e-16,
+        "residual_median": 7.006663506022205e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 1.129519581295621e-15,
+        "relative_median": 4.779148413747976e-16,
+        "relative_min": 2.3410503943793067e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.05424806807725903,
+        "relative_median": 0.018964473204215966,
+        "relative_min": 0.008561763080664904,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.004319362376971014,
+        "relative_median": 0.00203139085781216,
+        "relative_min": 0.0007129043425909607,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.0399082542124505e-16,
+        "residual_median": 1.4524923051955763e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.022242938390755418,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 1.7763568394002505e-15,
+      "S3_transition_difference": 0.006299129780964252
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.02499999999999999,
+      "coarse_residual": 5.2540868576598854e-17,
+      "instantaneous_output_change": 7.105427357601002e-15,
+      "relative_error": 0.010367288577767237,
+      "target_change_norm": 0.013712553185761511
+     },
+     "exactness_relative_error": 1.5700810521307375e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 49.28774012408486
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 249.55004780524695
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 9.355859326062545
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 33.4719114840438
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 157.8602091485665
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 5.404626969513118
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 1.2564709313900112e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 25.45886079164727
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.5485021274304605
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.024790501543198316,
+        "relative_median": 0.011682135673786988,
+        "relative_min": 0.0045845880160481165,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.03726361590861848,
+        "relative_median": 0.018098298881194363,
+        "relative_min": 0.0070957426058623,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.01676291728879082,
+        "relative_median": 0.010378388634334858,
+        "relative_min": 0.005292278243173142,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 1.5830590462557743e-16,
+        "residual_median": 3.713524922381411e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 4.466933791565843e-16,
+        "relative_median": 2.51535013963524e-16,
+        "relative_min": 8.27812825815546e-17,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0059253615555018005,
+        "relative_median": 0.004091970868842156,
+        "relative_min": 0.0009115814291022508,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0019613559255508887,
+        "relative_median": 0.0010724175022821113,
+        "relative_min": 0.0003785282685016124,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 1.8969338364366861e-16,
+        "residual_median": 1.0331523853027617e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.011024806874564419,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 2.220446049250313e-16,
+      "S3_transition_difference": 0.00629912978096403
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.025000000000000012,
+      "coarse_residual": 1.738324959930881e-16,
+      "instantaneous_output_change": 5.329070518200751e-15,
+      "relative_error": 0.015763222293975938,
+      "target_change_norm": 0.004810046781512767
+     },
+     "exactness_relative_error": 2.9971271564539545e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 23.475955613476213
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 64.89008180531502
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 3.9496626713146146
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 15.924307351561225
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 49.54885698304617
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 2.5614965921165216
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 8.194291869730272e-15
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 5.940714877612401
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.19240187126051064
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.021899994738960916,
+        "relative_median": 0.009800317371457958,
+        "relative_min": 0.005523746149203609,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.03263785326698359,
+        "relative_median": 0.01220171120972147,
+        "relative_min": 0.006764696267795439,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.013419496344915722,
+        "relative_median": 0.007705941295202891,
+        "relative_min": 0.0044951348654234,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 1.7259801285168698e-16,
+        "residual_median": 1.1107731048463062e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 4.529232806764408e-16,
+        "relative_median": 3.4106263681451526e-16,
+        "relative_min": 1.4875992685362376e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.003113055163077768,
+        "relative_median": 0.002089746530968538,
+        "relative_min": 0.0008943087523617153,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0013356710821975722,
+        "relative_median": 0.0008133431956904495,
+        "relative_min": 0.00030512678477312975,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.4853832757853894e-16,
+        "residual_median": 1.4335747715413033e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.03889038976157444,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 1.7763568394002505e-15,
+      "S3_transition_difference": 0.006299129780963919
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.025000000000000012,
+      "coarse_residual": 7.489046916437218e-17,
+      "instantaneous_output_change": 3.774758283725532e-15,
+      "relative_error": 0.007034961832573222,
+      "target_change_norm": 0.011427518182052994
+     },
+     "exactness_relative_error": 1.9017513117994253e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 24.912842574651307
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 198.59864943337726
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 9.704387671631832
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 21.329030129887713
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 140.50631671446703
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 7.646503074270061
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 1.1809480003066057e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 22.375968822694162
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.45710072728211987
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.03134156219215293,
+        "relative_median": 0.017840262373279115,
+        "relative_min": 0.005531805086561736,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.05888291363695099,
+        "relative_median": 0.03558870218185144,
+        "relative_min": 0.009475490456903692,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.026598217956324166,
+        "relative_median": 0.015085876171498078,
+        "relative_min": 0.006524416898579611,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 1.9125326880757132e-16,
+        "residual_median": 6.579064955852066e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 7.069264579046711e-16,
+        "relative_median": 4.2466217519969874e-16,
+        "relative_min": 2.483630676222375e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.011615033976538373,
+        "relative_median": 0.005059224293015965,
+        "relative_min": 0.0028051587837686067,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0016408985878093095,
+        "relative_median": 0.0010951922657002802,
+        "relative_min": 0.0007486166990392422,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.1041342478035748e-16,
+        "residual_median": 1.3262783745574568e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.03198701653792124,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 8.881784197001252e-16,
+      "S3_transition_difference": 0.006299129780964252
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.025,
+      "coarse_residual": 1.0718691821705203e-16,
+      "instantaneous_output_change": 7.105427357601002e-15,
+      "relative_error": 0.012113127320409455,
+      "target_change_norm": 0.06090381745524014
+     },
+     "exactness_relative_error": 4.487225778298041e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 29.537046749777804
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 2248.7446176867325
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 20.311017578237294
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 16.20240917636224
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 1533.6324247104508
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 11.712915841233393
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 7.0415286933706544e-15
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 496.2768703211756
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 2.4361526982096047
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.012438919736595676,
+        "relative_median": 0.006317062386656888,
+        "relative_min": 0.0037716731563271896,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.09625735170021935,
+        "relative_median": 0.03084501683103604,
+        "relative_min": 0.0032481166008177125,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.020264206891128896,
+        "relative_median": 0.008356893037243653,
+        "relative_min": 0.003272895401458383,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 2.435327569916743e-16,
+        "residual_median": 1.1504341041104154e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 4.932025897769436e-16,
+        "relative_median": 2.404874401758672e-16,
+        "relative_min": 1.4101072271176304e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.03229676138681648,
+        "relative_median": 0.010013949046299507,
+        "relative_min": 0.0010750994116327888,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.004435683415176528,
+        "relative_median": 0.0015174847504331708,
+        "relative_min": 0.0006157167411930134,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 3.1796307246158956e-16,
+        "residual_median": 1.5598214017468726e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.017994089884183495,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 1.7763568394002505e-15,
+      "S3_transition_difference": 0.006299129780964918
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.024999999999999994,
+      "coarse_residual": 1.4200122431330974e-16,
+      "instantaneous_output_change": 1.4210854715202004e-14,
+      "relative_error": 0.015845135838570005,
+      "target_change_norm": 0.02248803663801107
+     },
+     "exactness_relative_error": 3.6140619302423094e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 59.07949836944935
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 390.4041149332627
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 7.929787817416294
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 50.73440372322063
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 302.642828632513
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 4.698005659139831
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 1.3668294710286003e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 125.55447341746714
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.8995214655204434
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.024625610544693102,
+        "relative_median": 0.011126226729227445,
+        "relative_min": 0.00404971980690181,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.04723880789480854,
+        "relative_median": 0.01616266736994089,
+        "relative_min": 0.004463465686291928,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.013086281617453498,
+        "relative_median": 0.006329564007253742,
+        "relative_min": 0.003288932188292571,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 1.9984743963679937e-16,
+        "residual_median": 9.728386858777203e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 6.22868829536337e-16,
+        "relative_median": 3.6819285918856845e-16,
+        "relative_min": 1.5698493097553995e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.023632972071668045,
+        "relative_median": 0.0077355421065504765,
+        "relative_min": 0.0018561925492765986,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.002674554957730255,
+        "relative_median": 0.0009922440571332786,
+        "relative_min": 0.0004624618943011131,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.4009886728352937e-16,
+        "residual_median": 1.2211257045733009e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.028962898453752217,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 3.552713678800501e-15,
+      "S3_transition_difference": 0.00629912978096403
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.024999999999999994,
+      "coarse_residual": 5.828909674484304e-17,
+      "instantaneous_output_change": 2.842170943040401e-14,
+      "relative_error": 0.004135156719507149,
+      "target_change_norm": 0.05207725143014504
+     },
+     "exactness_relative_error": 9.735975832513515e-17,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 255.19804965678463
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 5664.055434051655
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 14.768395033321854
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 219.26609500262487
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 4274.186869084347
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 11.402544662231715
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 6.033481311237266e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 1627.1168494645449
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 2.0830900572058
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.026946398806315202,
+        "relative_median": 0.012373458560664755,
+        "relative_min": 0.0021746199893742197,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.09413991068394033,
+        "relative_median": 0.02022703792245293,
+        "relative_min": 0.005476296257398657,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.027574460409074755,
+        "relative_median": 0.010100298344596326,
+        "relative_min": 0.0037636608110433955,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 1.8350387875880005e-16,
+        "residual_median": 9.184981140180474e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 5.818430905804674e-16,
+        "relative_median": 2.677996479406353e-16,
+        "relative_min": 7.785580343516839e-17,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.03402767623626043,
+        "relative_median": 0.012124552541760172,
+        "relative_min": 0.003206042787101468,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.005138909683062726,
+        "relative_median": 0.0021723067885415226,
+        "relative_min": 0.0009414893152317413,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.2000057722503858e-16,
+        "residual_median": 1.3691476937752304e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.18295968345755043,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 3.552713678800501e-15,
+      "S3_transition_difference": 0.00629912978096403
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.024999999999999967,
+      "coarse_residual": 1.307806835179884e-16,
+      "instantaneous_output_change": 7.549516567451064e-15,
+      "relative_error": 0.005006341022847782,
+      "target_change_norm": 0.011327339291757447
+     },
+     "exactness_relative_error": 2.1509531230822596e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 40.7337902706983
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 128.60118501772348
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 5.5490215441157575
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 35.329669606102804
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 110.77913433827463
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 4.280476082770541
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 1.3963580880037754e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 24.874583250118413
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.45309357167029823
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.02844955022907906,
+        "relative_median": 0.013752644438859717,
+        "relative_min": 0.006025263269982698,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.04418605191075028,
+        "relative_median": 0.023718478134563487,
+        "relative_min": 0.0058844134148628435,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.01971426104759134,
+        "relative_median": 0.011548813352702539,
+        "relative_min": 0.003719322102424231,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 1.8273217953700236e-16,
+        "residual_median": 9.325878525142235e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 4.4052931699423776e-16,
+        "relative_median": 3.25039865959476e-16,
+        "relative_min": 1.8457057413741144e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.009713178032255182,
+        "relative_median": 0.006167129678463817,
+        "relative_min": 0.001600876616298791,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0017835570692170627,
+        "relative_median": 0.0012545358275732649,
+        "relative_min": 0.0007228998917545558,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 1.700000191857164e-16,
+        "residual_median": 1.390832456178913e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.059162151092552406,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 8.881784197001252e-16,
+      "S3_transition_difference": 0.006299129780963808
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.025,
+      "coarse_residual": 1.5495962848081312e-16,
+      "instantaneous_output_change": 1.0658141036401503e-14,
+      "relative_error": 0.004553138557121066,
+      "target_change_norm": 0.14122913313682955
+     },
+     "exactness_relative_error": 8.117458050056343e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 54.805035612372194
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 24424.324099952468
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 29.895442649867814
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 48.22469063186501
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 17608.70473542775
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 20.42523542051357
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 2.7724839855715132e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 8573.175154744418
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 5.649165325473181
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.05632060392622331,
+        "relative_median": 0.019029097614223674,
+        "relative_min": 0.008607503930223944,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.1063191134776074,
+        "relative_median": 0.05197069593941022,
+        "relative_min": 0.0029765916973667652,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.02208971856165433,
+        "relative_median": 0.009886874937822965,
+        "relative_min": 0.0038071215116871984,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 2.39843146958267e-16,
+        "residual_median": 6.275038983745392e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 1.2157207740069338e-15,
+        "relative_median": 5.392726169029269e-16,
+        "relative_min": 1.7165687100275426e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.1040232774126702,
+        "relative_median": 0.03280648307330526,
+        "relative_min": 0.0009463886725376467,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.01171726962481567,
+        "relative_median": 0.0035366598094271687,
+        "relative_min": 0.0005671169618351664,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.6674257500369453e-16,
+        "residual_median": 1.466380915147228e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.017006097383901242,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 3.552713678800501e-15,
+      "S3_transition_difference": 0.006299129780963586
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.02500000000000002,
+      "coarse_residual": 1.4238798726231249e-16,
+      "instantaneous_output_change": 3.552713678800501e-15,
+      "relative_error": 0.02386415009557083,
+      "target_change_norm": 0.015243227472099281
+     },
+     "exactness_relative_error": 1.6307037958975275e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 51.47111684525913
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 229.25968568615184
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 6.014197740562477
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 50.472458882365686
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 214.20689596804255
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 5.041743182241629
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 1.5254168123446052e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 54.519119191176564
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.609729098883971
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.030616630254355983,
+        "relative_median": 0.012860287571206955,
+        "relative_min": 0.003068497620129453,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.07072572479053789,
+        "relative_median": 0.021390830024311212,
+        "relative_min": 0.006707226728375232,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.01650054357324066,
+        "relative_median": 0.011087928122535331,
+        "relative_min": 0.007116184732849898,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 1.336758617760677e-16,
+        "residual_median": 7.163099839835406e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 4.822980834334948e-16,
+        "relative_median": 2.974797482489334e-16,
+        "relative_min": 1.6670041966720098e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0160339792002195,
+        "relative_median": 0.008567337933868942,
+        "relative_min": 0.002421542417866993,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.002440696702500606,
+        "relative_median": 0.0013982059965787852,
+        "relative_min": 0.0004655123915065802,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 1.7834113516212055e-16,
+        "residual_median": 1.241058524966151e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.04410290733025235,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 8.881784197001252e-16,
+      "S3_transition_difference": 0.00629912978096403
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.025000000000000026,
+      "coarse_residual": 1.1148104398426972e-16,
+      "instantaneous_output_change": 3.552713678800501e-15,
+      "relative_error": 0.020902108104094628,
+      "target_change_norm": 0.028405673248758357
+     },
+     "exactness_relative_error": 3.131288861810544e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 37.06524431252757
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 152.14372623592882
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 10.300791902267312
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 23.012833554817913
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 104.76032426483403
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 6.6358767496648525
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 1.2015089183180205e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 35.40610143018181
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 1.1362269299503343
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.022171190205997452,
+        "relative_median": 0.008551672968156204,
+        "relative_min": 0.0034879243765548467,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.03696642820509847,
+        "relative_median": 0.01264265359583715,
+        "relative_min": 0.006087927597744207,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.021219172182633736,
+        "relative_median": 0.007782116102165148,
+        "relative_min": 0.005157808070498963,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 1.7932222042369898e-16,
+        "residual_median": 8.562276791451211e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 4.406000085834729e-16,
+        "relative_median": 2.404339537577125e-16,
+        "relative_min": 1.2672804738970314e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.011544322318407213,
+        "relative_median": 0.005337090632819074,
+        "relative_min": 0.0017721786907900822,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.002991136594337981,
+        "relative_median": 0.0016134723682386344,
+        "relative_min": 0.0006300268485192191,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.102365455112356e-16,
+        "residual_median": 1.0861302991381871e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.0820261304180967,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 8.881784197001252e-16,
+      "S3_transition_difference": 0.006299129780963919
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.025000000000000012,
+      "coarse_residual": 1.8813474551456755e-16,
+      "instantaneous_output_change": 3.552713678800501e-15,
+      "relative_error": 0.026530219006409925,
+      "target_change_norm": 0.006145320812492371
+     },
+     "exactness_relative_error": 2.8999159317000906e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 24.16488564792286
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 73.53356781889788
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 4.771818629556361
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 23.44698639071484
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 69.98785679130751
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 3.3096698988417086
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 1.2561468195859745e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 7.220085290720582
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.2458128324996948
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.041175472853952184,
+        "relative_median": 0.014474845085854931,
+        "relative_min": 0.00482681290522545,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.05901837291469396,
+        "relative_median": 0.02277670706010835,
+        "relative_min": 0.005265596410820799,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.017992755105815456,
+        "relative_median": 0.009613011582118944,
+        "relative_min": 0.005757023808236075,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 2.031033986382028e-16,
+        "residual_median": 1.0100446022467473e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 6.542831191564554e-16,
+        "relative_median": 3.385938823663099e-16,
+        "relative_min": 1.010720556347802e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.007260829335562593,
+        "relative_median": 0.003727902622685889,
+        "relative_min": 0.0012537480184247837,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.001831617959116627,
+        "relative_median": 0.0008720495196607785,
+        "relative_min": 0.0004518401271606004,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 1.8081642407085187e-16,
+        "residual_median": 1.3942068163889103e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.024917181725911064,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 8.881784197001252e-16,
+      "S3_transition_difference": 0.00629912978096403
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.02500000000000001,
+      "coarse_residual": 1.565625447647512e-16,
+      "instantaneous_output_change": 2.4868995751603507e-14,
+      "relative_error": 0.030159540338152376,
+      "target_change_norm": 0.011154398291365258
+     },
+     "exactness_relative_error": 1.3768629324967922e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 65.23761071678283
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 626.8480817417872
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 10.27757929303537
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 58.688883389562136
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 598.4848958532937
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 9.87457181340587
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 5.680380108921003e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 37.700324858840524
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.4461759316546104
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.03678643456406932,
+        "relative_median": 0.016502311392361198,
+        "relative_min": 0.00378500775752263,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.1321819591247224,
+        "relative_median": 0.050078964659960576,
+        "relative_min": 0.005290504481313857,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.02640023039879707,
+        "relative_median": 0.012554085079053295,
+        "relative_min": 0.0020665756994425405,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 1.960054300901502e-16,
+        "residual_median": 7.085967960571067e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 7.021490266842245e-16,
+        "relative_median": 2.793378272934728e-16,
+        "relative_min": 1.6626186544977831e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.016277065734619317,
+        "relative_median": 0.004330095144376439,
+        "relative_min": 0.0007258453490186018,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0016381466874758627,
+        "relative_median": 0.0008602227693988729,
+        "relative_min": 0.000390311455942085,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.1087132222170653e-16,
+        "residual_median": 1.3902683916101516e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.057355541713205005,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 1.7763568394002505e-15,
+      "S3_transition_difference": 0.006299129780963919
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.025000000000000015,
+      "coarse_residual": 1.388852581823598e-16,
+      "instantaneous_output_change": 1.7763568394002505e-15,
+      "relative_error": 0.016006698108403432,
+      "target_change_norm": 0.0034513171878519672
+     },
+     "exactness_relative_error": 6.069918269776513e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 15.671244788309469
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 36.99514423735879
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 3.294338282647674
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 14.74289176732772
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 35.53023921836129
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 2.409254827930427
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 5.0026017909423134e-15
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 1.8471265041481095
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.1380526875140787
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.037433584595108,
+        "relative_median": 0.01519199846973529,
+        "relative_min": 0.0075918876199302775,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.05243944765156635,
+        "relative_median": 0.021816652349675343,
+        "relative_min": 0.009078617926522462,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.013654788476731568,
+        "relative_median": 0.00818001866830485,
+        "relative_min": 0.003938837581328646,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 2.1727952718262944e-16,
+        "residual_median": 1.1127917093503494e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 5.618418163698507e-16,
+        "relative_median": 4.1941617421587114e-16,
+        "relative_min": 2.4547758849735363e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0036809575133925146,
+        "relative_median": 0.0018089173543415428,
+        "relative_min": 0.0010230844196280901,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0013238088749656515,
+        "relative_median": 0.0005211078152808107,
+        "relative_min": 0.0002668016555349706,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 1.970669203938889e-16,
+        "residual_median": 1.3983642070819862e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.03015002649537868,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 4.440892098500626e-16,
+      "S3_transition_difference": 0.006299129780963808
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.02500000000000001,
+      "coarse_residual": 1.542399120892406e-16,
+      "instantaneous_output_change": 2.6645352591003757e-15,
+      "relative_error": 0.010281337542070477,
+      "target_change_norm": 0.008340398284630833
+     },
+     "exactness_relative_error": 8.27901060554141e-17,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 35.90662889171016
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 149.2295920893026
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 8.82948673932571
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 25.401269396823356
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 109.45441379090134
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 6.010272893476888
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 1.5644125345227203e-14
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 10.526566371705021
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.33361593138523327
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.03326964453194201,
+        "relative_median": 0.012876858275315334,
+        "relative_min": 0.008038471242444301,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.05315486122154472,
+        "relative_median": 0.0239646636737903,
+        "relative_min": 0.012159398744251287,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.022744480982173184,
+        "relative_median": 0.010941033855592277,
+        "relative_min": 0.006221701523034888,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 1.855734815034426e-16,
+        "residual_median": 5.154733268908219e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 4.66927572115351e-16,
+        "relative_median": 2.8204527979432245e-16,
+        "relative_min": 1.5434548039206378e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.007529075691461808,
+        "relative_median": 0.003111620153669137,
+        "relative_min": 0.0014678898201400787,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0015946701175218625,
+        "relative_median": 0.0008265379909367462,
+        "relative_min": 0.0005687515322796956,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.7997223819148326e-16,
+        "residual_median": 1.6576227171595198e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.02599547351506004,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 1.7763568394002505e-15,
+      "S3_transition_difference": 0.006299129780963919
+     }
+    },
+    {
+     "capacity_monotone": true,
+     "design": {
+      "budget_l2": 0.024999999999999967,
+      "coarse_residual": 1.682793472869333e-16,
+      "instantaneous_output_change": 3.552713678800501e-15,
+      "relative_error": 0.024619009119801083,
+      "target_change_norm": 0.014792490129255377
+     },
+     "exactness_relative_error": 2.455765850631413e-16,
+     "fibre": {
+      "S1": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 16,
+        "prediction_loss": 24.365979901137493
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 33,
+        "prediction_loss": 119.06976389882682
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 6.88348658335571
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 3,
+       "null_dimension": 33,
+       "rank": 3
+      },
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 10,
+        "prediction_loss": 15.536154139496823
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 27,
+        "prediction_loss": 80.30332963144028
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 19,
+        "prediction_loss": 5.052498353019565
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 9,
+       "null_dimension": 27,
+       "rank": 9
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "capacity": 0,
+        "prediction_loss": 9.489091020687444e-15
+       },
+       "K_STEP_TRAJECTORY": {
+        "capacity": 17,
+        "prediction_loss": 28.059075532743268
+       },
+       "ONE_STEP_TRANSITION": {
+        "capacity": 16,
+        "prediction_loss": 0.5916996051702152
+       },
+       "microscopic_dimension": 36,
+       "nominal_dimension": 19,
+       "null_dimension": 17,
+       "rank": 19
+      }
+     },
+     "interventions": {
+      "S2": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.013936412699452378,
+        "relative_median": 0.009240516174202584,
+        "relative_min": 0.004141225597615433,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.028201316280394788,
+        "relative_median": 0.017061110283306605,
+        "relative_min": 0.004624448967635815,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.015537672469248429,
+        "relative_median": 0.010753969162206238,
+        "relative_min": 0.003566298310482425,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 9,
+        "null_dimension": 27,
+        "rank": 9,
+        "rejected": 0,
+        "residual_max": 1.8063551898105907e-16,
+        "residual_median": 8.444081122400563e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "S3": {
+       "INSTANTANEOUS_OUTPUT": {
+        "count": 24,
+        "fraction_above_threshold": 0.0,
+        "relative_max": 4.1664946930168773e-16,
+        "relative_median": 2.5815519154784796e-16,
+        "relative_min": 1.0055702347194334e-16,
+        "threshold": 1e-06
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.013550397848521946,
+        "relative_median": 0.005321728825163109,
+        "relative_min": 0.0021464846578206666,
+        "threshold": 1e-06
+       },
+       "ONE_STEP_TRANSITION": {
+        "count": 24,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0029946377770827515,
+        "relative_median": 0.001597978342657944,
+        "relative_min": 0.0006648855403586809,
+        "threshold": 1e-06
+       },
+       "report": {
+        "accepted": 24,
+        "attempted": 24,
+        "magnitude": 0.05,
+        "microscopic_dimension": 36,
+        "nominal_dimension": 19,
+        "null_dimension": 17,
+        "rank": 19,
+        "rejected": 0,
+        "residual_max": 2.1151365323027188e-16,
+        "residual_median": 1.3993107211227217e-16,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     "loss_monotone": true,
+     "pte": {
+      "S2_coarse_difference": 0.0,
+      "S2_output_difference": 0.023044243610049087,
+      "S3_coarse_difference": 0.0,
+      "S3_output_difference": 8.881784197001252e-16,
+      "S3_transition_difference": 0.006299129780964252
+     }
+    }
+   ]
+  },
+  "model_family": "cubic-moment-control",
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.12.3"
+  },
+  "pass_rule": {
+   "capacity_S2_instantaneous_min": 1,
+   "capacity_S3_instantaneous": 0,
+   "capacity_S3_transition_min": 1,
+   "design_relative_error_max": 0.1,
+   "exactness_max_relative_error": 1e-10,
+   "hypothesis": "For the cubic family, S3 is sufficient for INSTANTANEOUS_OUTPUT and not for ONE_STEP_TRANSITION; the S3 fibre has zero response capacity for the instantaneous output and positive capacity for the transition target.",
+   "pte_coarse_max": 1e-12,
+   "pte_output_max": 1e-10,
+   "pte_transition_min": 1e-06,
+   "s3_intervention_output_divergence_max": 1e-08,
+   "s3_intervention_transition_fraction_min": 0.5
+  },
+  "schema": "elpis.research.ecs-dynamics.result.v1",
+  "scientific": "SUPPORTS_UNDER_FROZEN_SYNTHETIC_REGIME",
+  "source_commit": "9d012be925a53e252a2a29452d8c1692e9980b4e",
+  "source_digest": "0b7281806153c1446d4939e27737dd26f43916bcb9d5175afff68a54fe953974",
+  "sources": [
+   "LAB: cubic identity, PTE witnesses",
+   "arXiv:2609.29834 Eq. (2) response capacity",
+   "arXiv:2609.29834 Eq. (3) prediction loss (Euclidean-budget adaptation)",
+   "arXiv:2609.29834 'Designed oscillations and their limits' (design within a fibre)"
+  ],
+  "spec_digest": "7dffd5600dd14f359842ec9295a56b34b5d768b53de54dc71207ffcb86ab9aff",
+  "split": "QUAL",
+  "target": "INSTANTANEOUS_OUTPUT",
+  "version": 1,
+  "world_ids": [
+   "qual-0000",
+   "qual-0001",
+   "qual-0002",
+   "qual-0003",
+   "qual-0004",
+   "qual-0005",
+   "qual-0006",
+   "qual-0007",
+   "qual-0008",
+   "qual-0009",
+   "qual-0010",
+   "qual-0011",
+   "qual-0012",
+   "qual-0013",
+   "qual-0014",
+   "qual-0015"
+  ]
+ }
+}

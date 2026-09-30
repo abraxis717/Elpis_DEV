@@ -1,0 +1,196 @@
+{
+ "digest": "355bd5a2074ba72a0c1959de15e79343dc93a293a4e2c00ac1b20ad0f4c0fbbe",
+ "result": {
+  "coarse_representation": "none (full-state diagnostics)",
+  "evidence": "DESCRIPTIVE_RESULT",
+  "experiment": "feedback-transition",
+  "findings": [],
+  "flags": {
+   "NO_PRODUCTION_NEURAL_CLAIM": true,
+   "NO_RUNTIME_AUTHORITY": true,
+   "RESEARCH_ONLY": true
+  },
+  "frozen_digest": null,
+  "intervention_policy": "none",
+  "limitations": [
+   "synthetic regime only",
+   "finite-time, finite-size diagnostics",
+   "no statement about production ECS, trained models or Elpis neural components",
+   "learning dynamics (Eq. 2.4), t_cr and the two-time DMFT solution are not tested",
+   "discrete-time probe, not the paper's continuous-time network"
+  ],
+  "mechanics": "MECHANICS_PASS",
+  "metrics": {
+   "choices": {
+    "resolvable_gains": [
+     2.0
+    ]
+   },
+   "table": [
+    {
+     "factor": 0.0,
+     "fixed_fraction": 0.0,
+     "gain": 1.3,
+     "growth_mean": 0.006981529141484795,
+     "growth_se": 0.007992977188253248,
+     "meanfield_log_norm_rate": 0.0311911479968095,
+     "unresolved_fraction": 1.0,
+     "yhat": 0.0,
+     "yhat_c": 0.1958228668730243
+    },
+    {
+     "factor": 0.5,
+     "fixed_fraction": 0.0,
+     "gain": 1.3,
+     "growth_mean": 0.005711624958711579,
+     "growth_se": 0.003526794908876835,
+     "meanfield_log_norm_rate": 0.022350370590281395,
+     "unresolved_fraction": 1.0,
+     "yhat": 0.09791143343651215,
+     "yhat_c": 0.1958228668730243
+    },
+    {
+     "factor": 0.75,
+     "fixed_fraction": 0.0,
+     "gain": 1.3,
+     "growth_mean": -0.0120357966015069,
+     "growth_se": 0.0052707359918859505,
+     "meanfield_log_norm_rate": 0.01239933721984954,
+     "unresolved_fraction": 0.75,
+     "yhat": 0.14686715015476823,
+     "yhat_c": 0.1958228668730243
+    },
+    {
+     "factor": 1.0,
+     "fixed_fraction": 0.0,
+     "gain": 1.3,
+     "growth_mean": 0.007850145464552805,
+     "growth_se": 0.003923250382458893,
+     "meanfield_log_norm_rate": -2.7755575615628923e-16,
+     "unresolved_fraction": 1.0,
+     "yhat": 0.1958228668730243,
+     "yhat_c": 0.1958228668730243
+    },
+    {
+     "factor": 1.33,
+     "fixed_fraction": 0.0,
+     "gain": 1.3,
+     "growth_mean": -0.006517530336590995,
+     "growth_se": 0.002282979664632529,
+     "meanfield_log_norm_rate": -0.018751884426611375,
+     "unresolved_fraction": 1.0,
+     "yhat": 0.26044441294112236,
+     "yhat_c": 0.1958228668730243
+    },
+    {
+     "factor": 2.0,
+     "fixed_fraction": 0.25,
+     "gain": 1.3,
+     "growth_mean": -0.02301787081284156,
+     "growth_se": 0.011590826206362611,
+     "meanfield_log_norm_rate": -0.06061976429714162,
+     "unresolved_fraction": 0.5,
+     "yhat": 0.3916457337460486,
+     "yhat_c": 0.1958228668730243
+    },
+    {
+     "factor": 0.0,
+     "fixed_fraction": 0.0,
+     "gain": 2.0,
+     "growth_mean": 0.1477183390254507,
+     "growth_se": 0.002805993431485935,
+     "meanfield_log_norm_rate": 0.15472422928557414,
+     "unresolved_fraction": 1.0,
+     "yhat": 0.0,
+     "yhat_c": 1.2790391444356162
+    },
+    {
+     "factor": 0.5,
+     "fixed_fraction": 0.0,
+     "gain": 2.0,
+     "growth_mean": 0.1034310807627046,
+     "growth_se": 0.003958060444968388,
+     "meanfield_log_norm_rate": 0.10178840914710457,
+     "unresolved_fraction": 1.0,
+     "yhat": 0.6395195722178081,
+     "yhat_c": 1.2790391444356162
+    },
+    {
+     "factor": 0.75,
+     "fixed_fraction": 0.0,
+     "gain": 2.0,
+     "growth_mean": 0.018909103388607247,
+     "growth_se": 0.019136114130520715,
+     "meanfield_log_norm_rate": 0.052593323203895974,
+     "unresolved_fraction": 1.0,
+     "yhat": 0.9592793583267121,
+     "yhat_c": 1.2790391444356162
+    },
+    {
+     "factor": 1.0,
+     "fixed_fraction": 0.5,
+     "gain": 2.0,
+     "growth_mean": -0.010257706299114093,
+     "growth_se": 0.016988939918964507,
+     "meanfield_log_norm_rate": 1.1102230246251564e-16,
+     "unresolved_fraction": 0.5,
+     "yhat": 1.2790391444356162,
+     "yhat_c": 1.2790391444356162
+    },
+    {
+     "factor": 1.33,
+     "fixed_fraction": 0.5,
+     "gain": 2.0,
+     "growth_mean": -0.07490147401837798,
+     "growth_se": 0.025977657474147833,
+     "meanfield_log_norm_rate": -0.06855328521381762,
+     "unresolved_fraction": 0.25,
+     "yhat": 1.7011220620993697,
+     "yhat_c": 1.2790391444356162
+    },
+    {
+     "factor": 2.0,
+     "fixed_fraction": 1.0,
+     "gain": 2.0,
+     "growth_mean": -0.19727358950706897,
+     "growth_se": 0.051993813357404245,
+     "meanfield_log_norm_rate": -0.19532300892926996,
+     "unresolved_fraction": 0.0,
+     "yhat": 2.5580782888712323,
+     "yhat_c": 1.2790391444356162
+    }
+   ]
+  },
+  "model_family": "tanh-rnn-nonreciprocal",
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.12.3"
+  },
+  "pass_rule": {
+   "fixed_fraction_rise_min": 0.5,
+   "hypothesis": "(a) Eqs. (4.5)-(4.6) of arXiv:2609.19288 give yhat_c = 0.2 +- 0.01 at g = 1.3. (b) For each DEV-resolvable gain, the discrete static-feedback probe has positive mean finite-time growth at 0.5 yhat_c and negative at 2 yhat_c, and the fixed-point fraction rises by >= 0.5 between them."
+  },
+  "schema": "elpis.research.ecs-dynamics.result.v1",
+  "scientific": "NOT_TESTED",
+  "source_commit": "7cd8158d4123220e376e99e852e6ac0c7987234b",
+  "source_digest": "0b7281806153c1446d4939e27737dd26f43916bcb9d5175afff68a54fe953974",
+  "sources": [
+   "arXiv:2609.19288 Eq. (4.2) quasi-static feedback field",
+   "arXiv:2609.19288 Eqs. (4.5)-(4.6)",
+   "arXiv:2609.19288 Sec. 4 and Fig. 1(f): yhat_c = 0.2 at g = 1.3",
+   "LAB: discrete-time static-feedback mean field"
+  ],
+  "spec_digest": "eea4d6d00e7a4a2cb998dcc805dd78c871ee59a4d9f26eefe9799cce7f8b9979",
+  "split": "DEV",
+  "target": "LONG_RUN_STATISTIC",
+  "version": 1,
+  "world_ids": [
+   "dev-0000",
+   "dev-0001",
+   "dev-0002",
+   "dev-0003"
+  ]
+ }
+}

@@ -1,0 +1,643 @@
+{
+ "digest": "3660fc5468a8685e73b29da6ddaadd1f3d40fed24dbcaae8f6d44947194f7357",
+ "result": {
+  "coarse_representation": "projection[0, 1]",
+  "evidence": "INTERVENTION_SUPPORTED_RESULT",
+  "experiment": "tanh-intervention",
+  "findings": [],
+  "flags": {
+   "NO_PRODUCTION_NEURAL_CLAIM": true,
+   "NO_RUNTIME_AUTHORITY": true,
+   "RESEARCH_ONLY": true
+  },
+  "frozen_digest": null,
+  "intervention_policy": "null-space (exact for linear C; Gauss-Newton retraction otherwise)",
+  "limitations": [
+   "synthetic regime only",
+   "finite-time, finite-size diagnostics",
+   "no statement about production ECS, trained models or Elpis neural components",
+   "long-run comparison uses a within-trajectory sampling floor, not a stationary-law test"
+  ],
+  "mechanics": "MECHANICS_PASS",
+  "metrics": {
+   "choices": {
+    "stable_cell": {
+     "gain": 0.8,
+     "gamma": 1.0
+    },
+    "unresolved_cell": {
+     "gain": 2.0,
+     "gamma": 1.0
+    }
+   },
+   "worlds": {
+    "stable_cell": [
+     {
+      "mean+second_moment": {
+       "INTERVENTION_RESPONSE": {
+        "count": 0,
+        "fraction_above_threshold": null,
+        "relative_max": null,
+        "relative_median": null,
+        "relative_min": null,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 0,
+        "fraction_above_threshold": null,
+        "relative_max": null,
+        "relative_median": null,
+        "relative_min": null,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [],
+        "floor": 1.8071550999738026e-74,
+        "floor_samples": [
+         1.8071550999738026e-74,
+         1.8071550999738026e-74,
+         1.8071550999738026e-74,
+         1.8071550999738026e-74
+        ],
+        "median_ratio": null
+       },
+       "report": {
+        "accepted": 0,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 31,
+        "rank": 1,
+        "rejected": 16,
+        "residual_max": null,
+        "residual_median": null,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "projection[0, 1]": {
+       "INTERVENTION_RESPONSE": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.014301285186815612,
+        "relative_median": 0.007548970265299877,
+        "relative_min": 0.0043215063680804855,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.02435742092881882,
+        "relative_median": 0.01649119661350202,
+        "relative_min": 0.009746274862361322,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [
+         3.2594017683259017e-32,
+         1.717130105330784e-32,
+         1.0761665507642033e-32,
+         2.8589488534263436e-32
+        ],
+        "floor": 3.7868214036334625e-74,
+        "floor_samples": [
+         3.7868214036334625e-74,
+         3.7868214036334625e-74,
+         3.7868214036334625e-74,
+         3.7868214036334625e-74
+        ],
+        "median_ratio": 2.288039479378564e-20
+       },
+       "report": {
+        "accepted": 16,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 30,
+        "rank": 2,
+        "rejected": 0,
+        "residual_max": 0.0,
+        "residual_median": 0.0,
+        "retraction_steps": 0,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     {
+      "mean+second_moment": {
+       "INTERVENTION_RESPONSE": {
+        "count": 0,
+        "fraction_above_threshold": null,
+        "relative_max": null,
+        "relative_median": null,
+        "relative_min": null,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 0,
+        "fraction_above_threshold": null,
+        "relative_max": null,
+        "relative_median": null,
+        "relative_min": null,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [],
+        "floor": 8.79903552060069e-77,
+        "floor_samples": [
+         8.79903552060069e-77,
+         8.79903552060069e-77,
+         8.79903552060069e-77,
+         8.79903552060069e-77
+        ],
+        "median_ratio": null
+       },
+       "report": {
+        "accepted": 0,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 31,
+        "rank": 1,
+        "rejected": 16,
+        "residual_max": null,
+        "residual_median": null,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "projection[0, 1]": {
+       "INTERVENTION_RESPONSE": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.01618884375266453,
+        "relative_median": 0.007505457357031042,
+        "relative_min": 0.003914772751864043,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.03977049388062662,
+        "relative_median": 0.01598855525378954,
+        "relative_min": 0.008273402345249203,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [
+         1.775662057159024e-32,
+         2.3789563825874193e-32,
+         1.3360213449273862e-32,
+         1.856654197738065e-32
+        ],
+        "floor": 1.5358400656524524e-75,
+        "floor_samples": [
+         1.5358400656524524e-75,
+         1.5358400656524524e-75,
+         1.5358400656524524e-75,
+         1.5358400656524524e-75
+        ],
+        "median_ratio": 1.8161581274485446e-20
+       },
+       "report": {
+        "accepted": 16,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 30,
+        "rank": 2,
+        "rejected": 0,
+        "residual_max": 0.0,
+        "residual_median": 0.0,
+        "retraction_steps": 0,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     {
+      "mean+second_moment": {
+       "INTERVENTION_RESPONSE": {
+        "count": 0,
+        "fraction_above_threshold": null,
+        "relative_max": null,
+        "relative_median": null,
+        "relative_min": null,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 0,
+        "fraction_above_threshold": null,
+        "relative_max": null,
+        "relative_median": null,
+        "relative_min": null,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [],
+        "floor": 6.81326757352432e-85,
+        "floor_samples": [
+         6.81326757352432e-85,
+         6.81326757352432e-85,
+         6.81326757352432e-85,
+         6.81326757352432e-85
+        ],
+        "median_ratio": null
+       },
+       "report": {
+        "accepted": 0,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 31,
+        "rank": 1,
+        "rejected": 16,
+        "residual_max": null,
+        "residual_median": null,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "projection[0, 1]": {
+       "INTERVENTION_RESPONSE": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.008659356098634968,
+        "relative_median": 0.005354164042059419,
+        "relative_min": 0.004046182161482142,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.02161058775078744,
+        "relative_median": 0.015196897265190572,
+        "relative_min": 0.007179781973836109,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [
+         1.1140902470754139e-35,
+         2.0636883409404425e-37,
+         5.532225116040229e-37,
+         2.755816581920334e-36
+        ],
+        "floor": 1.0113507067408013e-84,
+        "floor_samples": [
+         1.0113507067408013e-84,
+         1.0113507067408013e-84,
+         1.0113507067408013e-84,
+         1.0113507067408013e-84
+        ],
+        "median_ratio": 1.6545195467621783e-24
+       },
+       "report": {
+        "accepted": 16,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 30,
+        "rank": 2,
+        "rejected": 0,
+        "residual_max": 0.0,
+        "residual_median": 0.0,
+        "retraction_steps": 0,
+        "tolerance": 1e-09
+       }
+      }
+     }
+    ],
+    "unresolved_cell": [
+     {
+      "mean+second_moment": {
+       "INTERVENTION_RESPONSE": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.01221053358436552,
+        "relative_median": 0.008598197936679722,
+        "relative_min": 0.004359554792163243,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.0063361160574297425,
+        "relative_median": 0.003356292214791823,
+        "relative_min": 0.0015205054847081355,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [
+         0.0007154637448964152,
+         0.0016022793945734554,
+         0.0015009023859344865,
+         0.0019901918482629895
+        ],
+        "floor": 0.0008927680417256232,
+        "floor_samples": [
+         0.001693934728639776,
+         0.0006454268735680589,
+         0.0008981980771739967,
+         0.0008873380062772498
+        ],
+        "median_ratio": 1.7379552333156048
+       },
+       "report": {
+        "accepted": 16,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 30,
+        "rank": 2,
+        "rejected": 0,
+        "residual_max": 1.1102230246251565e-16,
+        "residual_median": 0.0,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "projection[0, 1]": {
+       "INTERVENTION_RESPONSE": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.03407535872310261,
+        "relative_median": 0.021663442107443635,
+        "relative_min": 0.013267539148791384,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.028199367931320007,
+        "relative_median": 0.015338605336910855,
+        "relative_min": 0.00781307781957626,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [
+         0.0008742146301901539,
+         0.0005714982445998385,
+         0.0030675236313577876,
+         0.0017873466011407088
+        ],
+        "floor": 0.0008179824159807868,
+        "floor_samples": [
+         0.0002596274947785466,
+         0.0011808814520183162,
+         0.002144099517201986,
+         0.0004550833799432574
+        ],
+        "median_ratio": 1.6269061408487409
+       },
+       "report": {
+        "accepted": 16,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 30,
+        "rank": 2,
+        "rejected": 0,
+        "residual_max": 0.0,
+        "residual_median": 0.0,
+        "retraction_steps": 0,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     {
+      "mean+second_moment": {
+       "INTERVENTION_RESPONSE": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.046437386307614584,
+        "relative_median": 0.0245297436824537,
+        "relative_min": 0.008851883672582725,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.00856484709112257,
+        "relative_median": 0.00513358888594005,
+        "relative_min": 0.002413443396775463,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [
+         0.0146430878662613,
+         0.019544559659782815,
+         0.03380116906741821,
+         0.005960288106582986
+        ],
+        "floor": 0.07669179157573497,
+        "floor_samples": [
+         0.07669179348416971,
+         0.07669179157573491,
+         0.07669179157573501,
+         0.07669179157573491
+        ],
+        "median_ratio": 0.22288987402441235
+       },
+       "report": {
+        "accepted": 16,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 30,
+        "rank": 2,
+        "rejected": 0,
+        "residual_max": 1.1443916996305594e-16,
+        "residual_median": 1.3877787807814457e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "projection[0, 1]": {
+       "INTERVENTION_RESPONSE": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.1173694563149095,
+        "relative_median": 0.04643776174276229,
+        "relative_min": 0.024765970755213144,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.025934185471371714,
+        "relative_median": 0.015802320706079145,
+        "relative_min": 0.008380421806258706,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [
+         1.2147599988828879,
+         1.0266703658558214,
+         0.25851724412421173,
+         1.2127462331036667
+        ],
+        "floor": 1.0266714948217048,
+        "floor_samples": [
+         1.026671515640805,
+         1.0266714948217048,
+         1.0266714948217048,
+         1.0266714948217048
+        ],
+        "median_ratio": 1.090619838115011
+       },
+       "report": {
+        "accepted": 16,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 30,
+        "rank": 2,
+        "rejected": 0,
+        "residual_max": 0.0,
+        "residual_median": 0.0,
+        "retraction_steps": 0,
+        "tolerance": 1e-09
+       }
+      }
+     },
+     {
+      "mean+second_moment": {
+       "INTERVENTION_RESPONSE": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.02672732423791842,
+        "relative_median": 0.013517345287971565,
+        "relative_min": 0.005345316402042151,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.00957493178543939,
+        "relative_median": 0.0034605006761309447,
+        "relative_min": 0.00185198245610374,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [
+         0.0036258951342855237,
+         0.005724764468297841,
+         0.0047080610003617475,
+         0.004352291038253267
+        ],
+        "floor": 0.0032477546472091464,
+        "floor_samples": [
+         0.003218495424402908,
+         0.0015670723263203692,
+         0.003277013870015385,
+         0.006743915693525438
+        ],
+        "median_ratio": 1.3948639941752892
+       },
+       "report": {
+        "accepted": 16,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 30,
+        "rank": 2,
+        "rejected": 0,
+        "residual_max": 1.1295700899707568e-16,
+        "residual_median": 1.3877787807814457e-17,
+        "retraction_steps": 6,
+        "tolerance": 1e-09
+       }
+      },
+      "projection[0, 1]": {
+       "INTERVENTION_RESPONSE": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.052161887772511364,
+        "relative_median": 0.03232650155635401,
+        "relative_min": 0.01913404032918545,
+        "threshold": 0.001
+       },
+       "K_STEP_TRAJECTORY": {
+        "count": 16,
+        "fraction_above_threshold": 1.0,
+        "relative_max": 0.02225034018030902,
+        "relative_median": 0.01270517306091232,
+        "relative_min": 0.008617703286988444,
+        "threshold": 0.001
+       },
+       "LONG_RUN_STATISTIC": {
+        "differences": [
+         0.009331630807139885,
+         0.01490459032194246,
+         0.011095505290541456,
+         0.00865831031312892
+        ],
+        "floor": 0.015117817105115804,
+        "floor_samples": [
+         0.019715937536980175,
+         0.0073970509738230964,
+         0.010519696673251432,
+         0.02671203910877481
+        ],
+        "median_ratio": 0.675598069339286
+       },
+       "report": {
+        "accepted": 16,
+        "attempted": 16,
+        "magnitude": 0.05,
+        "microscopic_dimension": 32,
+        "nominal_dimension": 2,
+        "null_dimension": 30,
+        "rank": 2,
+        "rejected": 0,
+        "residual_max": 0.0,
+        "residual_median": 0.0,
+        "retraction_steps": 0,
+        "tolerance": 1e-09
+       }
+      }
+     }
+    ]
+   }
+  },
+  "model_family": "tanh-rnn-nonreciprocal",
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.12.3"
+  },
+  "pass_rule": {
+   "hypothesis": "In the DEV-selected unresolved cell, coarse-preserving interventions change the K-step coarse trajectory (fraction above threshold >= 0.5) while the long-run coarse statistic stays within twice the within-trajectory sampling floor (median over 4 disjoint windows; median ratio <= 2).",
+   "long_run_median_ratio_max": 2.0,
+   "trajectory_fraction_min": 0.5
+  },
+  "schema": "elpis.research.ecs-dynamics.result.v1",
+  "scientific": "NOT_TESTED",
+  "source_commit": "7cd8158d4123220e376e99e852e6ac0c7987234b",
+  "source_digest": "0b7281806153c1446d4939e27737dd26f43916bcb9d5175afff68a54fe953974",
+  "sources": [
+   "arXiv:2609.19424 Sec. 3.8 statistics vs trajectories",
+   "arXiv:2609.29834 fibre ker DC (main text)"
+  ],
+  "spec_digest": "63e1540daba21e1c1d2b2a1ab3eec9073d7de4a51b29fe0a2590ee8ce62a9ec6",
+  "split": "DEV",
+  "target": "K_STEP_TRAJECTORY",
+  "version": 1,
+  "world_ids": [
+   "dev-0000",
+   "dev-0001",
+   "dev-0002"
+  ]
+ }
+}

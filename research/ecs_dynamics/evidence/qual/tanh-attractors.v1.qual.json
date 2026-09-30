@@ -1,0 +1,4232 @@
+{
+ "digest": "81c85083146cea4a9640ae284f555530f7a05ee3392e5b453ad6292c8e5dfdac",
+ "result": {
+  "coarse_representation": "projection[0, 1]",
+  "evidence": "INTERVENTION_SUPPORTED_RESULT",
+  "experiment": "tanh-attractors",
+  "findings": [
+   {
+    "evidence": "INTERVENTION_SUPPORTED_RESULT",
+    "outcome": "COUNTEREXAMPLE_FOUND",
+    "regime": "tanh probe d=32 gain=3.0 gamma=0.0, 8 QUAL worlds",
+    "representation": "C_0=projection[0,1] of the initial state",
+    "statement": "C_0=projection[0,1] of the initial state was tested for sufficiency with respect to target ATTRACTOR_CLASS under regime tanh probe d=32 gain=3.0 gamma=0.0, 8 QUAL worlds: a counterexample was found.",
+    "statistic": {
+     "resolved_pairs": 192,
+     "split_pairs": 90,
+     "worlds_with_split_pair_fraction": 1.0
+    },
+    "target": "ATTRACTOR_CLASS"
+   }
+  ],
+  "flags": {
+   "NO_PRODUCTION_NEURAL_CLAIM": true,
+   "NO_RUNTIME_AUTHORITY": true,
+   "RESEARCH_ONLY": true
+  },
+  "frozen_digest": "acc02ceeba20fecbc647d2d7b9625d458d40b1094f2e105e6bb845621f0f14e7",
+  "intervention_policy": "exact-linear-null-space",
+  "limitations": [
+   "synthetic regime only",
+   "finite-time, finite-size diagnostics",
+   "no statement about production ECS, trained models or Elpis neural components",
+   "sampled attractors for the initial conditions tried, not a census"
+  ],
+  "mechanics": "MECHANICS_PASS",
+  "metrics": {
+   "main": [
+    {
+     "cell": {
+      "gain": 3.0,
+      "gamma": 0.0
+     },
+     "inventory": {
+      "attractor_count_proxy": 20,
+      "attractors": [
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9991717576394733,
+         0.13679027165716054,
+         0.9985133792504464,
+         0.9999292247563896
+        ],
+        "representative_norm": 5.383037629610604,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9269020300310133,
+         0.9368852818528111,
+         -0.9992547664867687,
+         -0.9369810054170361
+        ],
+        "representative_norm": 5.333804366758201,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9865222778366521,
+         -0.9966469235020866,
+         -0.9907961438375732,
+         -0.9976153550829804
+        ],
+        "representative_norm": 5.50759618656802,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9996188041430765,
+         -0.9999530124774928,
+         -0.9999706937730755,
+         0.9998064234550655
+        ],
+        "representative_norm": 5.538479850353715,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9888433566030362,
+         -0.21828255029304972,
+         -0.9998767477729981,
+         -0.9767539248346038
+        ],
+        "representative_norm": 5.318221898218377,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9999741992815216,
+         0.8596931053097736,
+         0.9988060987319756,
+         -0.9924497122086092
+        ],
+        "representative_norm": 5.528247102927152,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9999339632368718,
+         -0.9376919302559173,
+         -0.999647226091797,
+         -0.99996268467485
+        ],
+        "representative_norm": 5.518904908339193,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999159162520387,
+         -0.5236449403905944,
+         -0.9227471586759068,
+         0.9999998585048652
+        ],
+        "representative_norm": 5.394184888400241,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.999988451617691,
+         -0.9916860919631151,
+         -0.9999991318865638,
+         0.9998913577876313
+        ],
+        "representative_norm": 5.512760990333251,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9759075441388705,
+         -0.7618677124830273,
+         -0.9979085832356631,
+         0.9987459640114705
+        ],
+        "representative_norm": 5.471877834636348,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.807518625092699,
+         -0.9806037111359102,
+         -0.9885264913945926,
+         -0.9974708739039485
+        ],
+        "representative_norm": 5.486767035083777,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9652468867115607,
+         -0.9841770412328773,
+         0.9961137652165689,
+         -0.9993367385679496
+        ],
+        "representative_norm": 5.421710126733454,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999976552054064,
+         -0.9997703440090056,
+         -0.9999997620470683,
+         0.9999997849828173
+        ],
+        "representative_norm": 5.411781460817109,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9969580883152507,
+         -0.9985500729601381,
+         0.986895842640437,
+         -0.9999943057997278
+        ],
+        "representative_norm": 5.4278319930668335,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9951558846674107,
+         -0.9965921873347517,
+         0.9999437944821501,
+         0.9843554240452147
+        ],
+        "representative_norm": 5.563618026474238,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999980986198921,
+         0.9996035533397455,
+         -0.9998414274076722,
+         0.9982726187477038
+        ],
+        "representative_norm": 5.33325844732406,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9988496174820348,
+         -0.9998582732319153,
+         0.9976847566022993,
+         0.9733131795786429
+        ],
+        "representative_norm": 5.46344457250704,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9989006484643003,
+         -0.9342220194585444,
+         -0.9976177122477894,
+         0.9999999823874535
+        ],
+        "representative_norm": 5.396348679956995,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9980438964208752,
+         0.9998462647480612,
+         0.9797710430848109,
+         0.9994491823792426
+        ],
+        "representative_norm": 5.557740294925029,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9999223337209813,
+         -0.9737780497444635,
+         0.9994863421725496,
+         -0.9992179158908151
+        ],
+        "representative_norm": 5.551278327006759,
+        "type": "PERIODIC"
+       }
+      ],
+      "basin_occupancy": [
+       0.08333333333333333,
+       0.08333333333333333,
+       0.08333333333333333,
+       0.08333333333333333,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664
+      ],
+      "fixed_points": 0,
+      "largest_basin_fraction": 0.08333333333333333,
+      "periodic_orbits": 20,
+      "periods": [
+       2
+      ],
+      "resolved_fraction": 1.0,
+      "samples": 24,
+      "unbounded_fraction": 0.0,
+      "unresolved_fraction": 0.0
+     },
+     "pairs": {
+      "max_preservation_residual": 0.0,
+      "resolved_pairs": 24,
+      "split_pairs": 13
+     }
+    },
+    {
+     "cell": {
+      "gain": 3.0,
+      "gamma": 0.0
+     },
+     "inventory": {
+      "attractor_count_proxy": 14,
+      "attractors": [
+       {
+        "basin_count": 4,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9999486077805835,
+         -0.9999921859744187,
+         -0.9930368313024245,
+         -0.9999914922603536
+        ],
+        "representative_norm": 5.429342687178026,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999265766395394,
+         0.9998146992286476,
+         0.9999712353272331,
+         0.9999384974198018
+        ],
+        "representative_norm": 5.431770101018769,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9581176638779024,
+         -0.8814657505958091,
+         -0.9998543398561095,
+         0.9961607175221046
+        ],
+        "representative_norm": 5.421417456221835,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9482081385564657,
+         0.9475602858655009,
+         -0.865773599385001,
+         0.9999940485000225
+        ],
+        "representative_norm": 5.437475713506692,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 3,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999541878148409,
+         0.9733368118311936,
+         0.9999997995367914,
+         0.9352304157465438
+        ],
+        "representative_norm": 5.3709715662572455,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.8044944702772382,
+         0.9999987487258762,
+         -0.9901061135491079,
+         -0.9501469424829875
+        ],
+        "representative_norm": 5.357360229502745,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.999953494564167,
+         0.99999810598339,
+         0.9999005919999999,
+         0.9998582616434485
+        ],
+        "representative_norm": 5.509850253891639,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9993455838503488,
+         -0.9979898492206405,
+         0.999983669996664,
+         -0.7780071910816535
+        ],
+        "representative_norm": 5.508795806236094,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9589015006384339,
+         0.999997432847283,
+         0.9691535134893619,
+         0.9999879080926368
+        ],
+        "representative_norm": 5.493710170812041,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9989168559068051,
+         -0.9915026860105838,
+         -0.999976641930106,
+         0.9559537352209966
+        ],
+        "representative_norm": 5.510169504146342,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9997122246674169,
+         0.9999973069307169,
+         0.9999294400110743,
+         0.9975942024459635
+        ],
+        "representative_norm": 5.300336958488031,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9996497455164856,
+         -0.999998775928107,
+         -0.999998598844432,
+         -0.9999804647752416
+        ],
+        "representative_norm": 5.470398169868015,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9766434889908635,
+         -0.9998794665759764,
+         -0.9983223413255232,
+         -0.9999462217844525
+        ],
+        "representative_norm": 5.419992779984094,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.917767618608808,
+         0.9996631916399837,
+         0.9995826898509467,
+         0.9995828988162285
+        ],
+        "representative_norm": 5.369559115731895,
+        "type": "PERIODIC"
+       }
+      ],
+      "basin_occupancy": [
+       0.16666666666666666,
+       0.125,
+       0.08333333333333333,
+       0.08333333333333333,
+       0.08333333333333333,
+       0.08333333333333333,
+       0.08333333333333333,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664
+      ],
+      "fixed_points": 0,
+      "largest_basin_fraction": 0.16666666666666666,
+      "periodic_orbits": 14,
+      "periods": [
+       2
+      ],
+      "resolved_fraction": 1.0,
+      "samples": 24,
+      "unbounded_fraction": 0.0,
+      "unresolved_fraction": 0.0
+     },
+     "pairs": {
+      "max_preservation_residual": 0.0,
+      "resolved_pairs": 24,
+      "split_pairs": 12
+     }
+    },
+    {
+     "cell": {
+      "gain": 3.0,
+      "gamma": 0.0
+     },
+     "inventory": {
+      "attractor_count_proxy": 21,
+      "attractors": [
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999822682782212,
+         -0.7818238037444776,
+         -0.9868151896399584,
+         -0.9999971598756694
+        ],
+        "representative_norm": 5.328572219776113,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.978359711242935,
+         -0.9988455091683652,
+         -0.993289701875786,
+         0.8798887600796282
+        ],
+        "representative_norm": 5.506452228680191,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999714188728842,
+         -0.9999998883404806,
+         -0.9982279344845244,
+         -0.3376340058035677
+        ],
+        "representative_norm": 5.251799573317732,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 3,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.999806570350036,
+         0.9999852947634946,
+         0.9997540539496553,
+         0.9451732878568836
+        ],
+        "representative_norm": 5.3541930272443725,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9993590766605839,
+         0.9865108899607458,
+         0.9998694011347068,
+         0.9999878537093458
+        ],
+        "representative_norm": 5.55646918845838,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999990835638445,
+         -0.9999937124523134,
+         -0.8935728520748139,
+         0.3832382733430548
+        ],
+        "representative_norm": 5.264212103339081,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9954495524629224,
+         -0.9999998531665364,
+         0.9954985061801989,
+         -0.658964879995741
+        ],
+        "representative_norm": 5.412907888765791,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.960412929699771,
+         0.9964234246644377,
+         0.9999999664470747,
+         0.9991203712705622
+        ],
+        "representative_norm": 5.436169120427669,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9994297025445319,
+         -0.994704092236253,
+         0.997014944037173,
+         0.9997379873602263
+        ],
+        "representative_norm": 5.576032680656205,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.997753279554478,
+         0.9992070798313045,
+         -0.9999998937797457,
+         -0.949405322600313
+        ],
+        "representative_norm": 5.367831937476644,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9513943200885534,
+         0.9988542107256342,
+         -0.9999999413047331,
+         -0.9995899806948109
+        ],
+        "representative_norm": 5.509953719188059,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999413539996523,
+         0.9999600403869157,
+         0.9998378133435044,
+         -0.842805249958382
+        ],
+        "representative_norm": 5.532576534779361,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9998154685006245,
+         0.9999085236818125,
+         0.9993602973439484,
+         0.9975402435975999
+        ],
+        "representative_norm": 5.53628346540954,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9998401929436184,
+         0.9995420734170228,
+         0.9999489314859737,
+         0.99659423097472
+        ],
+        "representative_norm": 5.4096319476886325,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9985419985345603,
+         0.9999490753535418,
+         0.999809755031714,
+         -0.9638569990920701
+        ],
+        "representative_norm": 5.368875328594459,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.985434479895414,
+         0.9999032087406707,
+         -0.995100959220926,
+         -0.999751330241705
+        ],
+        "representative_norm": 5.543788346558884,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999655144337624,
+         0.9978966626940179,
+         -0.9834842975919001,
+         -0.9899117355909285
+        ],
+        "representative_norm": 5.311953286202391,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9993784094756946,
+         -0.9873409303952078,
+         0.9996764439217632,
+         -0.7117053986819908
+        ],
+        "representative_norm": 5.3596416834254965,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999987191959494,
+         -0.9999922353336702,
+         -0.9084525845439689,
+         -0.9999326564191631
+        ],
+        "representative_norm": 5.485799272409673,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9985776116587806,
+         0.9999982184860237,
+         0.9879844964571838,
+         -0.8110371789695849
+        ],
+        "representative_norm": 5.357596001181717,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.984711123881461,
+         -0.722589356987471,
+         -0.9999576371046434,
+         -0.9979116347479908
+        ],
+        "representative_norm": 5.335755350125321,
+        "type": "PERIODIC"
+       }
+      ],
+      "basin_occupancy": [
+       0.125,
+       0.08333333333333333,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664
+      ],
+      "fixed_points": 0,
+      "largest_basin_fraction": 0.125,
+      "periodic_orbits": 21,
+      "periods": [
+       2
+      ],
+      "resolved_fraction": 1.0,
+      "samples": 24,
+      "unbounded_fraction": 0.0,
+      "unresolved_fraction": 0.0
+     },
+     "pairs": {
+      "max_preservation_residual": 0.0,
+      "resolved_pairs": 24,
+      "split_pairs": 12
+     }
+    },
+    {
+     "cell": {
+      "gain": 3.0,
+      "gamma": 0.0
+     },
+     "inventory": {
+      "attractor_count_proxy": 19,
+      "attractors": [
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999273261014908,
+         0.9592352649737168,
+         0.8155423074051946,
+         -0.9984639862945275
+        ],
+        "representative_norm": 5.446500881156485,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999873741036012,
+         -0.9999506645669327,
+         -0.9998406322995611,
+         -0.999990566959913
+        ],
+        "representative_norm": 5.41810977825378,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9997733998946776,
+         -0.9999934481449982,
+         -0.9996134582379826,
+         -0.9998321290984843
+        ],
+        "representative_norm": 5.460625055019302,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.8661026586825022,
+         -0.9999446273383045,
+         -0.9999871650851219,
+         -0.9999798395351397
+        ],
+        "representative_norm": 5.572735508290426,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.8731587553990673,
+         -0.9999998441743874,
+         -0.9985828785380629,
+         -0.9997915090440909
+        ],
+        "representative_norm": 5.377206386355404,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9958041771453108,
+         -0.9999951855158048,
+         0.9384112044401065,
+         -0.9964948804406807
+        ],
+        "representative_norm": 5.511901495359194,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9693222519471237,
+         0.9997758221338146,
+         0.9904703442179785,
+         0.9968880631089404
+        ],
+        "representative_norm": 5.472596394218954,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9988883987049961,
+         -0.9990239690808939,
+         -0.9996381090837245,
+         -0.9971923799810115
+        ],
+        "representative_norm": 5.508347721927852,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9986100579029032,
+         0.9250594462466698,
+         -0.9584990036822857,
+         -0.6235353467409083
+        ],
+        "representative_norm": 5.333584684002339,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9963083958307926,
+         -0.5222866225959111,
+         -0.7352033461623423,
+         -0.9954896039594009
+        ],
+        "representative_norm": 5.46007122733144,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 3,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999692195504839,
+         -0.9559419850115788,
+         0.9999938600816594,
+         -0.899779504364968
+        ],
+        "representative_norm": 5.433992880282614,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.7692864856783549,
+         -0.9999406073648047,
+         0.35972113733300204,
+         -0.9997284596259308
+        ],
+        "representative_norm": 5.454715188922344,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9998448889803868,
+         -0.9999999447838792,
+         0.7400935338003195,
+         -0.9757935014407306
+        ],
+        "representative_norm": 5.539180389211025,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.423452689605065,
+         -0.9998414528960519,
+         -0.9998865336339077,
+         -0.9999499355881849
+        ],
+        "representative_norm": 5.292824879937041,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9988934324156079,
+         -0.9987399499359793,
+         -0.74624722484199,
+         -0.9805958916846726
+        ],
+        "representative_norm": 5.5237433697344684,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999515020481948,
+         0.8979079777659354,
+         -0.9999076886605419,
+         -0.9972201832868671
+        ],
+        "representative_norm": 5.405013601983033,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999623899755774,
+         -0.9999923213287806,
+         0.9933273794212456,
+         -0.9840565404548601
+        ],
+        "representative_norm": 5.522355319962287,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.999995109237281,
+         0.8701968318793091,
+         -0.997441234490298,
+         -0.9903639106778654
+        ],
+        "representative_norm": 5.522950162950153,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.988167930044189,
+         -0.9990151554343347,
+         0.9177799489775142,
+         -0.999561805103868
+        ],
+        "representative_norm": 5.516151473718683,
+        "type": "PERIODIC"
+       }
+      ],
+      "basin_occupancy": [
+       0.125,
+       0.08333333333333333,
+       0.08333333333333333,
+       0.08333333333333333,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664
+      ],
+      "fixed_points": 0,
+      "largest_basin_fraction": 0.125,
+      "periodic_orbits": 19,
+      "periods": [
+       2
+      ],
+      "resolved_fraction": 1.0,
+      "samples": 24,
+      "unbounded_fraction": 0.0,
+      "unresolved_fraction": 0.0
+     },
+     "pairs": {
+      "max_preservation_residual": 0.0,
+      "resolved_pairs": 24,
+      "split_pairs": 13
+     }
+    },
+    {
+     "cell": {
+      "gain": 3.0,
+      "gamma": 0.0
+     },
+     "inventory": {
+      "attractor_count_proxy": 11,
+      "attractors": [
+       {
+        "basin_count": 3,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.999974961883236,
+         -0.9999981399761612,
+         0.999803850397291,
+         -0.9997280281655958
+        ],
+        "representative_norm": 5.482538151185963,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 7,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999640863278948,
+         -0.9999994012828461,
+         0.9993671546886156,
+         -0.9996367231897803
+        ],
+        "representative_norm": 5.610401320238445,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 3,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9979024088140862,
+         0.9999892436004235,
+         -0.999999284169349,
+         -0.9997577995835677
+        ],
+        "representative_norm": 5.301566215669701,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9783406975482545,
+         0.9999698936952925,
+         -0.9999941706982969,
+         -0.9998875674592554
+        ],
+        "representative_norm": 5.553036783423053,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9526238510792386,
+         0.9999954382932437,
+         0.9627052699808635,
+         0.9983302217864624
+        ],
+        "representative_norm": 5.507573058469075,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.813287203692543,
+         0.9997917992933072,
+         -0.9999512514195399,
+         -0.9996070043605282
+        ],
+        "representative_norm": 5.529944648425073,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9998042358793618,
+         0.9999999578260357,
+         -0.9999994858547722,
+         0.9933074055309181
+        ],
+        "representative_norm": 5.456655748140853,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.8989226397855165,
+         -0.9999996689411073,
+         0.9999994169774412,
+         0.8799920633578955
+        ],
+        "representative_norm": 5.495072046567025,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 3,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9868691488412421,
+         0.99966181944829,
+         -0.9995908008000647,
+         -0.999924202640676
+        ],
+        "representative_norm": 5.430798315537828,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9981353107810884,
+         -0.9946806084822072,
+         0.99792631900865,
+         -0.9999121746227961
+        ],
+        "representative_norm": 5.564252997973571,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999911423240428,
+         -0.9999998553486846,
+         0.9999468304556215,
+         -0.9998941867864983
+        ],
+        "representative_norm": 5.421117752112014,
+        "type": "PERIODIC"
+       }
+      ],
+      "basin_occupancy": [
+       0.2916666666666667,
+       0.125,
+       0.125,
+       0.125,
+       0.08333333333333333,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664
+      ],
+      "fixed_points": 0,
+      "largest_basin_fraction": 0.2916666666666667,
+      "periodic_orbits": 11,
+      "periods": [
+       2
+      ],
+      "resolved_fraction": 1.0,
+      "samples": 24,
+      "unbounded_fraction": 0.0,
+      "unresolved_fraction": 0.0
+     },
+     "pairs": {
+      "max_preservation_residual": 0.0,
+      "resolved_pairs": 24,
+      "split_pairs": 6
+     }
+    },
+    {
+     "cell": {
+      "gain": 3.0,
+      "gamma": 0.0
+     },
+     "inventory": {
+      "attractor_count_proxy": 20,
+      "attractors": [
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9999992318291963,
+         -0.9999998627141675,
+         -0.9195807395686318,
+         -0.965887760975059
+        ],
+        "representative_norm": 5.193421130690126,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999999509624722,
+         -0.9999766008085543,
+         0.9992547683031657,
+         -0.9994381422796826
+        ],
+        "representative_norm": 5.468209904784794,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9984207073364803,
+         0.9999606651024858,
+         -0.1776980690982248,
+         0.31311342759287397
+        ],
+        "representative_norm": 5.260202180850675,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999993344276489,
+         -0.9999993285181219,
+         0.9820586715789139,
+         -0.993929579071289
+        ],
+        "representative_norm": 5.342091438948155,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.99818745434581,
+         0.9995996596574903,
+         0.9913874892336915,
+         0.996136973958637
+        ],
+        "representative_norm": 5.482459961884652,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999954975685218,
+         -0.9999458119699487,
+         0.9439326036210058,
+         -0.9999985360903962
+        ],
+        "representative_norm": 5.442150232801753,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9997124915678711,
+         0.9999785392955776,
+         0.9980016786193069,
+         0.9968197054810235
+        ],
+        "representative_norm": 5.471915895658497,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 4,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9987687828146833,
+         0.9999987654234869,
+         0.96770585467746,
+         -0.8454320087999877
+        ],
+        "representative_norm": 5.502880461874557,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9917175890820586,
+         0.999999499415541,
+         0.9494424783803503,
+         0.9873942206538342
+        ],
+        "representative_norm": 5.482517993833712,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9379530932906333,
+         -0.9999997020091154,
+         -0.9506580130753961,
+         -0.9969408447521075
+        ],
+        "representative_norm": 5.520623551847026,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.8715051506800499,
+         -0.9996936839529005,
+         -0.8844226135151813,
+         -0.8322414381647054
+        ],
+        "representative_norm": 5.4093643211261355,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999917489474858,
+         0.9999958681510888,
+         0.8734344490729251,
+         0.9999900587975846
+        ],
+        "representative_norm": 5.392691032410244,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9995980799972999,
+         0.9999991429983341,
+         0.9912771841639029,
+         -0.9661899514757923
+        ],
+        "representative_norm": 5.3992034602660635,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999982731616274,
+         -0.9999333291253326,
+         -0.9986386714561712,
+         -0.9715369255650248
+        ],
+        "representative_norm": 5.577644960284455,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999971322697316,
+         -0.9982113016520154,
+         0.946189342252743,
+         -0.9997533984507352
+        ],
+        "representative_norm": 5.525892887876199,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999402283522294,
+         0.9999972995877356,
+         -0.9709611130640786,
+         0.8695944510248279
+        ],
+        "representative_norm": 5.444771497100962,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.999791340680915,
+         -0.9999997782613979,
+         -0.35644596282278146,
+         -0.9999987646782134
+        ],
+        "representative_norm": 5.36508272637328,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999982214998012,
+         -0.9999984323094365,
+         0.31933206757643995,
+         -0.9999923860069233
+        ],
+        "representative_norm": 5.480852501643542,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9999955910436774,
+         0.996967219302796,
+         0.9998804013800611,
+         0.9940656565221722
+        ],
+        "representative_norm": 5.439037096329773,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9996890799354148,
+         0.9999999137778098,
+         0.93893851357966,
+         0.9998348435218213
+        ],
+        "representative_norm": 5.544074721998327,
+        "type": "PERIODIC"
+       }
+      ],
+      "basin_occupancy": [
+       0.16666666666666666,
+       0.08333333333333333,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664
+      ],
+      "fixed_points": 0,
+      "largest_basin_fraction": 0.16666666666666666,
+      "periodic_orbits": 20,
+      "periods": [
+       2
+      ],
+      "resolved_fraction": 1.0,
+      "samples": 24,
+      "unbounded_fraction": 0.0,
+      "unresolved_fraction": 0.0
+     },
+     "pairs": {
+      "max_preservation_residual": 0.0,
+      "resolved_pairs": 24,
+      "split_pairs": 16
+     }
+    },
+    {
+     "cell": {
+      "gain": 3.0,
+      "gamma": 0.0
+     },
+     "inventory": {
+      "attractor_count_proxy": 20,
+      "attractors": [
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999633203359788,
+         0.9999999304183482,
+         0.9679821864514653,
+         -0.9994615245953616
+        ],
+        "representative_norm": 5.36240069848471,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9997350684812191,
+         -0.9998247649645227,
+         -0.9463025287163203,
+         0.6289403922972961
+        ],
+        "representative_norm": 5.4632604694822975,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9993142175782782,
+         0.9992970876391286,
+         -0.9370050956922442,
+         -0.9809240284435276
+        ],
+        "representative_norm": 5.4793268397022254,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 3,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999924033657638,
+         0.9998779960355388,
+         0.9909577645822413,
+         -0.9895299286926765
+        ],
+        "representative_norm": 5.513608539228118,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.997860193352314,
+         0.6876678767416365,
+         -0.9841871581250884,
+         -0.6024101007321052
+        ],
+        "representative_norm": 5.356476444647034,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9971045199427154,
+         -0.9997901933472899,
+         -0.9701273305263813,
+         0.9924460330111387
+        ],
+        "representative_norm": 5.5886815626104225,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 1,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9865231846337312,
+         -0.9999979727174425,
+         -0.9999649372407567,
+         0.5658600102733637
+        ],
+        "representative_norm": 5.411874640737982,
+        "type": "FIXED_POINT"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999720556816896,
+         -0.9993866627391804,
+         -0.9980782167690598,
+         0.7355076507452565
+        ],
+        "representative_norm": 5.323165457658588,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 1,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.8551516526109085,
+         -0.9998678822135751,
+         -0.991703590399473,
+         0.9600005247339712
+        ],
+        "representative_norm": 5.438269844444904,
+        "type": "FIXED_POINT"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999799741591552,
+         -0.9865500127666098,
+         0.7018614628920851,
+         -0.7612644575571588
+        ],
+        "representative_norm": 5.373402658778732,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9897999252395098,
+         0.9343672229017786,
+         -0.9931959936814069,
+         -0.9971317485294583
+        ],
+        "representative_norm": 5.444167465066044,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9987946696012245,
+         0.9999592786031161,
+         0.5848921396419895,
+         -0.9995537606417566
+        ],
+        "representative_norm": 5.4820079713908045,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999928608756147,
+         0.8871835654673978,
+         -0.8986926213650347,
+         -0.2645367832497864
+        ],
+        "representative_norm": 5.319382289385541,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999998531308321,
+         0.989318473201442,
+         0.990141481366653,
+         -0.716545537988552
+        ],
+        "representative_norm": 5.349693097322998,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999193560635905,
+         -0.961339605442483,
+         -0.9922276300881441,
+         -0.9991601651485981
+        ],
+        "representative_norm": 5.443020291103757,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999436538691362,
+         0.9997346583562824,
+         -0.982026069728468,
+         -0.9996529534587965
+        ],
+        "representative_norm": 5.449166911537247,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999985523547293,
+         -0.9974036895785365,
+         0.9595657557890976,
+         -0.9993600735271289
+        ],
+        "representative_norm": 5.4500363294281735,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 1,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9997619171611227,
+         -0.7375689678685834,
+         -0.9853838229778494,
+         -0.9999149881979653
+        ],
+        "representative_norm": 5.496354912480396,
+        "type": "FIXED_POINT"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9993445446176079,
+         0.9988372459103447,
+         0.9997425509489135,
+         -0.9998525131430457
+        ],
+        "representative_norm": 5.370978114348248,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9998838559780986,
+         0.9882054402201691,
+         -0.9978457771976742,
+         -0.9996846232118228
+        ],
+        "representative_norm": 5.423434277273136,
+        "type": "PERIODIC"
+       }
+      ],
+      "basin_occupancy": [
+       0.125,
+       0.08333333333333333,
+       0.08333333333333333,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664
+      ],
+      "fixed_points": 3,
+      "largest_basin_fraction": 0.125,
+      "periodic_orbits": 17,
+      "periods": [
+       2
+      ],
+      "resolved_fraction": 1.0,
+      "samples": 24,
+      "unbounded_fraction": 0.0,
+      "unresolved_fraction": 0.0
+     },
+     "pairs": {
+      "max_preservation_residual": 0.0,
+      "resolved_pairs": 24,
+      "split_pairs": 7
+     }
+    },
+    {
+     "cell": {
+      "gain": 3.0,
+      "gamma": 0.0
+     },
+     "inventory": {
+      "attractor_count_proxy": 22,
+      "attractors": [
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999863885587079,
+         0.9983109923479391,
+         -0.999738426248288,
+         -0.9729909513882508
+        ],
+        "representative_norm": 5.364642580798324,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9976860360899448,
+         0.9999995667717871,
+         0.9994340431457354,
+         -0.9910981272392393
+        ],
+        "representative_norm": 5.476963044780155,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.99820604219626,
+         -0.9999971017904757,
+         -0.8789755857021019,
+         0.9999877769409595
+        ],
+        "representative_norm": 5.510344423192323,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9891450938675859,
+         -0.9986945781789192,
+         0.9999707840340448,
+         0.9996207810743043
+        ],
+        "representative_norm": 5.32179519824721,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.977111426565154,
+         -0.9999999819307838,
+         -0.9711537186361573,
+         0.9995397310351487
+        ],
+        "representative_norm": 5.458811006303379,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999756682519897,
+         0.9999853878135462,
+         -0.9985349581390238,
+         -0.997726548631845
+        ],
+        "representative_norm": 5.528536284713897,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.99998736380707,
+         0.9728332831223663,
+         0.9998171528481224,
+         0.9987062786502644
+        ],
+        "representative_norm": 5.576956497973737,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9627454363065778,
+         -0.9999832783481868,
+         0.9966979996521445,
+         0.9884210925063496
+        ],
+        "representative_norm": 5.399113530948797,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.996240255281967,
+         -0.9972874052790385,
+         0.8558562114654725,
+         0.9999991812448696
+        ],
+        "representative_norm": 5.472593109645579,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999842214193774,
+         0.9891398468166763,
+         0.9998089511611882,
+         0.9877650232346566
+        ],
+        "representative_norm": 5.522792853539424,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9859853918282051,
+         0.9999988337073141,
+         -0.9601470388954176,
+         0.7414514606858971
+        ],
+        "representative_norm": 5.457141477925639,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999958066180155,
+         -0.9999786053812891,
+         -0.9732720832820286,
+         0.9999463971262276
+        ],
+        "representative_norm": 5.416099806363899,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 2,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9999322466799416,
+         -0.999999645239305,
+         0.9999898835094034,
+         0.9998996540311526
+        ],
+        "representative_norm": 5.438762782723784,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9996686060959217,
+         0.9978827847126797,
+         0.9931001537042101,
+         -0.9736714731095923
+        ],
+        "representative_norm": 5.410794741971225,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9853259883051342,
+         -0.999958478986299,
+         0.9999987896239874,
+         0.9806323420212911
+        ],
+        "representative_norm": 5.570132233891052,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9979167540448801,
+         -0.9999995663361556,
+         -0.9886281026433112,
+         0.9980882873128233
+        ],
+        "representative_norm": 5.386113764570847,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9991622116659219,
+         0.9990714392239378,
+         0.7044122025842224,
+         -0.9827906459909633
+        ],
+        "representative_norm": 5.429267450769228,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9999220700917356,
+         -0.9999828128945023,
+         -0.9878667911653886,
+         -0.9271799707909936
+        ],
+        "representative_norm": 5.30651325884417,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9604943928491516,
+         0.9995464453395914,
+         0.9993686571213908,
+         0.9999018947243465
+        ],
+        "representative_norm": 5.51001642835278,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9999810433047491,
+         0.993708126686964,
+         -0.9978184460363148,
+         -0.9824224089657994
+        ],
+        "representative_norm": 5.4009808602760065,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         0.9829354568689664,
+         -0.9999246746750129,
+         -0.9898566290176685,
+         0.9999997909982851
+        ],
+        "representative_norm": 5.437926110172858,
+        "type": "PERIODIC"
+       },
+       {
+        "basin_count": 1,
+        "period": 2,
+        "recovery": "RETURNS",
+        "representative_head": [
+         -0.9737553433452572,
+         0.9991456625915903,
+         -0.9996672632846046,
+         0.9997738372663793
+        ],
+        "representative_norm": 5.343165978858058,
+        "type": "PERIODIC"
+       }
+      ],
+      "basin_occupancy": [
+       0.08333333333333333,
+       0.08333333333333333,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664,
+       0.041666666666666664
+      ],
+      "fixed_points": 0,
+      "largest_basin_fraction": 0.08333333333333333,
+      "periodic_orbits": 22,
+      "periods": [
+       2
+      ],
+      "resolved_fraction": 1.0,
+      "samples": 24,
+      "unbounded_fraction": 0.0,
+      "unresolved_fraction": 0.0
+     },
+     "pairs": {
+      "max_preservation_residual": 0.0,
+      "resolved_pairs": 24,
+      "split_pairs": 11
+     }
+    }
+   ],
+   "mechanics_checks": {
+    "preservation_exact": true,
+    "resolved_pairs_exist": true
+   },
+   "reference_cells": [
+    [
+     {
+      "cell": {
+       "gain": 0.9,
+       "gamma": 0.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 5,
+       "attractors": [
+        {
+         "basin_count": 8,
+         "period": 1,
+         "recovery": "RETURNS",
+         "representative_head": [
+          0.41451281763279213,
+          0.07455106767969877,
+          0.9772832105633971,
+          0.9134733157572607
+         ],
+         "representative_norm": 4.176353478645734,
+         "type": "FIXED_POINT"
+        },
+        {
+         "basin_count": 8,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.6734295920476124,
+          -0.8442605106595471,
+          -0.9613693475231011,
+          0.6957361702529338
+         ],
+         "representative_norm": 3.9920183582209834,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.1253456895399268,
+          -0.7627120791219288,
+          -0.9334331690388525,
+          0.9471519980338081
+         ],
+         "representative_norm": 4.125755526831929,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 4,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          0.5402783460712189,
+          -0.03832725582651944,
+          -0.798243054786671,
+          0.8753143321990323
+         ],
+         "representative_norm": 4.081518657915623,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 1,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.4145128176327929,
+          -0.07455106767969857,
+          -0.9772832105633971,
+          -0.9134733157572607
+         ],
+         "representative_norm": 4.176353478645734,
+         "type": "FIXED_POINT"
+        }
+       ],
+       "basin_occupancy": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.16666666666666666,
+        0.08333333333333333,
+        0.08333333333333333
+       ],
+       "fixed_points": 2,
+       "largest_basin_fraction": 0.3333333333333333,
+       "periodic_orbits": 3,
+       "periods": [
+        2
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 0.9,
+       "gamma": 0.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 2,
+       "attractors": [
+        {
+         "basin_count": 10,
+         "period": 1,
+         "recovery": "RETURNS",
+         "representative_head": [
+          0.25640501653757886,
+          -0.6393335126141954,
+          -0.8384358521997934,
+          0.08795021079407453
+         ],
+         "representative_norm": 4.160109613408925,
+         "type": "FIXED_POINT"
+        },
+        {
+         "basin_count": 14,
+         "period": 1,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.2564050165375792,
+          0.6393335126141951,
+          0.8384358521997934,
+          -0.08795021079407403
+         ],
+         "representative_norm": 4.160109613408925,
+         "type": "FIXED_POINT"
+        }
+       ],
+       "basin_occupancy": [
+        0.5833333333333334,
+        0.4166666666666667
+       ],
+       "fixed_points": 2,
+       "largest_basin_fraction": 0.5833333333333334,
+       "periodic_orbits": 0,
+       "periods": [],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 0.9,
+       "gamma": 0.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 1,
+       "attractors": [
+        {
+         "basin_count": 24,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9286208477401832,
+          0.8690881320701767,
+          0.8616234811383497,
+          0.5828316436683383
+         ],
+         "representative_norm": 4.446217530747155,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        1.0
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 1.0,
+       "periodic_orbits": 1,
+       "periods": [
+        2
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 0.9,
+       "gamma": 0.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 3,
+       "attractors": [
+        {
+         "basin_count": 14,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          0.35032048653713105,
+          -0.7481863117545782,
+          -0.9440275007481305,
+          -0.8406008102378545
+         ],
+         "representative_norm": 4.231105143970194,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 7,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.7540049270839395,
+          0.7568498355564344,
+          0.9846662647214949,
+          -0.23264729730836645
+         ],
+         "representative_norm": 4.2401581011142175,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 3,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.2483823333858484,
+          -0.539181964220065,
+          -0.8277346238856254,
+          -0.6795552564740163
+         ],
+         "representative_norm": 4.059182496872712,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.5833333333333334,
+        0.2916666666666667,
+        0.125
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.5833333333333334,
+       "periodic_orbits": 3,
+       "periods": [
+        2
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 0.9,
+       "gamma": 0.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 1,
+       "attractors": [
+        {
+         "basin_count": 2,
+         "period": 1,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9870285764731946,
+          -0.793513079477073,
+          -0.47483580083233706,
+          0.9310059162685956
+         ],
+         "representative_norm": 3.9835941622417868,
+         "type": "FIXED_POINT"
+        }
+       ],
+       "basin_occupancy": [
+        0.08333333333333333
+       ],
+       "fixed_points": 1,
+       "largest_basin_fraction": 0.08333333333333333,
+       "periodic_orbits": 0,
+       "periods": [],
+       "resolved_fraction": 0.08333333333333333,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.9166666666666666
+      }
+     },
+     {
+      "cell": {
+       "gain": 0.9,
+       "gamma": 0.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 7,
+       "attractors": [
+        {
+         "basin_count": 7,
+         "period": 1,
+         "recovery": "RETURNS",
+         "representative_head": [
+          0.3912908698917674,
+          0.8541939805236147,
+          0.9789832480280096,
+          -0.22776674652345774
+         ],
+         "representative_norm": 4.062208809223034,
+         "type": "FIXED_POINT"
+        },
+        {
+         "basin_count": 1,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          0.5998121103925265,
+          0.9576091332816714,
+          0.9851602669070838,
+          -0.8168875065623833
+         ],
+         "representative_norm": 3.92597870683849,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 5,
+         "period": 1,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.39129086989176737,
+          -0.8541939805236147,
+          -0.9789832480280096,
+          0.22776674652345777
+         ],
+         "representative_norm": 4.062208809223034,
+         "type": "FIXED_POINT"
+        },
+        {
+         "basin_count": 1,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          0.49109370576165806,
+          0.9331390998457666,
+          0.9887595722174111,
+          -0.8686808266099877
+         ],
+         "representative_norm": 3.919342988769344,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 5,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.6819369167678033,
+          -0.6552608675511022,
+          -0.8321842505256448,
+          -0.9594351641793027
+         ],
+         "representative_norm": 3.949860998910975,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.7164280831440097,
+          -0.9357352247956868,
+          -0.9878230426856809,
+          0.7595617949999672
+         ],
+         "representative_norm": 3.954376614909771,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.6527361555693304,
+          -0.9407948018033585,
+          -0.9688116307974264,
+          0.8656369445658687
+         ],
+         "representative_norm": 4.015598255060071,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.2916666666666667,
+        0.20833333333333334,
+        0.20833333333333334,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664
+       ],
+       "fixed_points": 2,
+       "largest_basin_fraction": 0.2916666666666667,
+       "periodic_orbits": 5,
+       "periods": [
+        2
+       ],
+       "resolved_fraction": 0.875,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.125
+      }
+     },
+     {
+      "cell": {
+       "gain": 0.9,
+       "gamma": 0.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 2,
+       "attractors": [
+        {
+         "basin_count": 22,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.5133110989981666,
+          0.13271398910958132,
+          0.7397899711696659,
+          0.971236174450225
+         ],
+         "representative_norm": 4.408869399587252,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9005837838721521,
+          -0.42388837035146176,
+          -0.921852963444451,
+          0.6303118675668778
+         ],
+         "representative_norm": 4.235993811367119,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.9166666666666666,
+        0.08333333333333333
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.9166666666666666,
+       "periodic_orbits": 2,
+       "periods": [
+        2
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 0.9,
+       "gamma": 0.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 3,
+       "attractors": [
+        {
+         "basin_count": 21,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9159231193070866,
+          0.9002419264699281,
+          0.6871694858954512,
+          -0.9685258874831121
+         ],
+         "representative_norm": 4.1562536939543815,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.716208773987217,
+          0.9387369396630779,
+          0.33920627169816364,
+          0.9306629372775409
+         ],
+         "representative_norm": 3.911900341491719,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.3195324035642372,
+          0.9390069404646686,
+          -0.7413941800578779,
+          0.9437659452170235
+         ],
+         "representative_norm": 3.8438626745602402,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.875,
+        0.08333333333333333,
+        0.041666666666666664
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.875,
+       "periodic_orbits": 3,
+       "periods": [
+        2
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     }
+    ],
+    [
+     {
+      "cell": {
+       "gain": 2.5,
+       "gamma": 4.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 4,
+       "attractors": [
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9980495844514473,
+          -0.32816355183082646,
+          0.14545423918684325,
+          0.8418283778210063
+         ],
+         "representative_norm": 5.26623352809251,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 19,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9864544405139789,
+          0.9999926085798374,
+          -0.9836927551724034,
+          -0.7012631289624057
+         ],
+         "representative_norm": 5.32979934392526,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 3,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.936359555312433,
+          -0.998180526158819,
+          -0.7388438968345316,
+          0.7381365207399573
+         ],
+         "representative_norm": 5.33061014042277,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9613910470468586,
+          0.9984708048765589,
+          0.4851912711572168,
+          0.8065139530854151
+         ],
+         "representative_norm": 5.234642267547566,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.7916666666666666,
+        0.125,
+        0.041666666666666664,
+        0.041666666666666664
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.7916666666666666,
+       "periodic_orbits": 4,
+       "periods": [
+        4
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.5,
+       "gamma": 4.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 5,
+       "attractors": [
+        {
+         "basin_count": 19,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9981457047496459,
+          -0.9444769184428868,
+          -0.5557269844823369,
+          -0.9991139029372961
+         ],
+         "representative_norm": 5.465416166051068,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.995989329676448,
+          0.3430013533917141,
+          -0.05772170348799829,
+          -0.9913432685607526
+         ],
+         "representative_norm": 5.1714029202014915,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9996196185286631,
+          0.9823756651333305,
+          0.9942970055666871,
+          -0.9924481733846714
+         ],
+         "representative_norm": 5.186340425204285,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9998997611249071,
+          0.732131969377049,
+          0.9977467251521611,
+          0.9997437782427507
+         ],
+         "representative_norm": 5.332362523322045,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9995161062236982,
+          0.997333310040386,
+          0.9999639483067315,
+          0.9996067019504159
+         ],
+         "representative_norm": 5.392917186018485,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.7916666666666666,
+        0.08333333333333333,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.7916666666666666,
+       "periodic_orbits": 5,
+       "periods": [
+        4
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.5,
+       "gamma": 4.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 12,
+       "attractors": [
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9997125595106641,
+          0.6267113432005302,
+          -0.9999640392230743,
+          0.9856750053824962
+         ],
+         "representative_norm": 5.35930649550164,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9999975292646095,
+          0.9460047538478074,
+          -0.9979024982311645,
+          0.940690801283774
+         ],
+         "representative_norm": 5.21030184819878,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9354119534132149,
+          0.99868537173995,
+          0.9460883810427255,
+          -0.9967534551487239
+         ],
+         "representative_norm": 5.269623151614623,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 8,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.999730756011976,
+          -0.953324043041371,
+          -0.9907279505552331,
+          0.9947720307373148
+         ],
+         "representative_norm": 5.518965545161848,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9998034414494354,
+          -0.7639674223028309,
+          0.9980452918759423,
+          -0.9923995381060376
+         ],
+         "representative_norm": 5.3563006074867605,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9997840774157892,
+          0.9993758533282014,
+          -0.9983932616255556,
+          -0.20916692123861608
+         ],
+         "representative_norm": 5.210782703111486,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9788377803375319,
+          0.9342549470249754,
+          -0.8404835342983094,
+          0.9988234440073325
+         ],
+         "representative_norm": 5.275475337850661,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9958710047958577,
+          -0.9430825429514353,
+          0.9939984940659647,
+          0.9213859092472065
+         ],
+         "representative_norm": 5.225014073805818,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9991946520932643,
+          0.9096786189176349,
+          -0.9971371436836276,
+          0.7395108009527451
+         ],
+         "representative_norm": 5.3037105610419015,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9935874124918226,
+          0.9997703858718933,
+          -0.9820940922483326,
+          0.3414959654636851
+         ],
+         "representative_norm": 5.362050339333715,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9819744711038332,
+          0.9958701744370154,
+          -0.9307493168614727,
+          -0.9968757112558125
+         ],
+         "representative_norm": 5.423943394695441,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9990349041535852,
+          0.8247506911092014,
+          -0.9997759733604695,
+          0.9832241886883217
+         ],
+         "representative_norm": 5.449850442871531,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.3333333333333333,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.3333333333333333,
+       "periodic_orbits": 12,
+       "periods": [
+        4
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.5,
+       "gamma": 4.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 7,
+       "attractors": [
+        {
+         "basin_count": 10,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9831144817941384,
+          0.9997224824586436,
+          0.9970749392537822,
+          -0.9996284753305376
+         ],
+         "representative_norm": 5.560487399560198,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 4,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9968497265928914,
+          0.9052910084138137,
+          0.9991609454131384,
+          -0.9857148292728344
+         ],
+         "representative_norm": 5.240181867133631,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 4,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9901383577011225,
+          0.9994861302751175,
+          0.8857731080463274,
+          0.9976136535088181
+         ],
+         "representative_norm": 5.185127868052617,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 3,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9502130950470931,
+          -0.9997102651485968,
+          0.785721761899428,
+          -0.9994530769657136
+         ],
+         "representative_norm": 5.317861788959728,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.99797561319191,
+          0.9284848970920694,
+          0.9900252385795154,
+          0.9679472638076216
+         ],
+         "representative_norm": 5.153835396393848,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9945241942004662,
+          -0.6213363422925593,
+          0.9946663350274332,
+          -0.9991212931059753
+         ],
+         "representative_norm": 5.2509712941612445,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9900489093649399,
+          -0.8574355789582598,
+          0.9979076261924946,
+          -0.998247444916831
+         ],
+         "representative_norm": 5.321504906354156,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.4166666666666667,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.125,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.4166666666666667,
+       "periodic_orbits": 7,
+       "periods": [
+        4
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.5,
+       "gamma": 4.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 12,
+       "attractors": [
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9993640048077089,
+          -0.159731404994766,
+          0.9982988102291139,
+          -0.9925655119342871
+         ],
+         "representative_norm": 5.249294164389447,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.989375555804837,
+          -0.9192869938567025,
+          0.9400142713681404,
+          -0.9993667093626173
+         ],
+         "representative_norm": 5.1899167465488185,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9999542206861476,
+          -0.7944981941697834,
+          0.9973568886088695,
+          -0.9986245088251735
+         ],
+         "representative_norm": 5.329040796341522,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9674606793624726,
+          -0.9580198360679123,
+          0.9950419378164627,
+          -0.9985004550379832
+         ],
+         "representative_norm": 5.448966696261688,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9996043659650394,
+          -0.9002476969271854,
+          0.9977298930316837,
+          0.9903505114096867
+         ],
+         "representative_norm": 5.431286249002323,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 10,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9783407021930359,
+          -0.686260024265055,
+          0.998657632038479,
+          -0.9996081051739558
+         ],
+         "representative_norm": 5.383415705591341,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9999825343286177,
+          0.9230534175147517,
+          0.9997950468071144,
+          -0.9979266042178541
+         ],
+         "representative_norm": 5.386369985164672,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9996438410458863,
+          -0.9185184513738798,
+          0.9980685291592751,
+          -0.986817536740298
+         ],
+         "representative_norm": 5.461722660526719,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9755997267030364,
+          -0.7203644205762946,
+          0.9999285724112205,
+          -0.9877712171846603
+         ],
+         "representative_norm": 5.240432339453762,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9986162519685817,
+          -0.7224094950681548,
+          -0.9518029756503023,
+          -0.9800204975653067
+         ],
+         "representative_norm": 5.330860832541748,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9507314022128418,
+          -0.23174590982747678,
+          0.8510314680009214,
+          -0.9623527537636791
+         ],
+         "representative_norm": 5.329328136650089,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9748547250268231,
+          0.9851264755700336,
+          0.8380019826569596,
+          -0.9967842729562878
+         ],
+         "representative_norm": 5.377547425340134,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.4166666666666667,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.4166666666666667,
+       "periodic_orbits": 12,
+       "periods": [
+        4
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.5,
+       "gamma": 4.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 15,
+       "attractors": [
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9813624412585106,
+          -0.9998973201432366,
+          0.9993945922823911,
+          0.999582162258487
+         ],
+         "representative_norm": 5.3805144200025525,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 3,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9986688364574621,
+          -0.9994540451485618,
+          0.988055911140649,
+          0.9998879980963633
+         ],
+         "representative_norm": 5.391592453505181,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9672626071450465,
+          -0.9998702720259461,
+          0.8835840576349249,
+          0.9523211959344893
+         ],
+         "representative_norm": 5.251775871850102,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9975389207193028,
+          -0.9842007931123158,
+          0.6963553344442522,
+          0.9810654658651717
+         ],
+         "representative_norm": 5.250530669408047,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9999466348594866,
+          -0.9976179116968937,
+          -0.9730548844579344,
+          -0.979745244806969
+         ],
+         "representative_norm": 5.367899010973973,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9356525631073349,
+          -0.9919302887171252,
+          0.9981669255938999,
+          0.9941003000009966
+         ],
+         "representative_norm": 5.494004717677371,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9998290081455308,
+          -0.9957817859061696,
+          -0.7295728771094764,
+          -0.9949494970291569
+         ],
+         "representative_norm": 5.324294786817097,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9984994635503629,
+          0.9983272204968967,
+          -0.9985329980865608,
+          0.40930419411816815
+         ],
+         "representative_norm": 5.349356851121674,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 3,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9972459781306096,
+          0.9999925611254893,
+          0.8924011480210765,
+          -0.9461837762601847
+         ],
+         "representative_norm": 5.3367293421429824,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.997172635670474,
+          0.9999956522868751,
+          -0.6590635997250035,
+          -0.979290073398976
+         ],
+         "representative_norm": 5.3130881891802115,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9995734990169661,
+          0.9965631979663035,
+          -0.9818945777867037,
+          -0.5358220725431971
+         ],
+         "representative_norm": 5.112336055567337,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 3,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9803972404757884,
+          0.9999855162908184,
+          -0.4533779836515017,
+          -0.9699808876792511
+         ],
+         "representative_norm": 5.118759061008116,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9945395694358182,
+          -0.9424523320764248,
+          0.9957317538761643,
+          0.9998792747856096
+         ],
+         "representative_norm": 5.418031931995696,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.7455796192876937,
+          0.9832906790815358,
+          -0.9943021815392487,
+          -0.9620237974444136
+         ],
+         "representative_norm": 5.362725796930722,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9963722245349549,
+          0.9766305336007454,
+          -0.9954982479718731,
+          -0.9759912822408955
+         ],
+         "representative_norm": 5.310463865444525,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.125,
+        0.125,
+        0.125,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.125,
+       "periodic_orbits": 15,
+       "periods": [
+        4
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.5,
+       "gamma": 4.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 7,
+       "attractors": [
+        {
+         "basin_count": 3,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9999382418660585,
+          -0.9978362507408587,
+          -0.4163732711464575,
+          -0.8853738927340202
+         ],
+         "representative_norm": 5.222081675653002,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 4,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9993423442233843,
+          -0.9998163097438828,
+          -0.9801065716503117,
+          -0.481392646947441
+         ],
+         "representative_norm": 5.176124617723585,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.999972487318577,
+          0.9167777263648367,
+          0.997305627527586,
+          -0.8925185365672739
+         ],
+         "representative_norm": 5.314909053360503,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9982703122435254,
+          0.9967952727241651,
+          0.930598505773033,
+          0.4368386363332451
+         ],
+         "representative_norm": 5.200184784475068,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9998693365406917,
+          -0.9973495486980951,
+          -0.9365381247158195,
+          -0.9556630699295652
+         ],
+         "representative_norm": 5.246314513581292,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 10,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9999703109819209,
+          0.6017025590983687,
+          0.9987626287895535,
+          -0.9741995372974954
+         ],
+         "representative_norm": 5.277778348979077,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9993385147223928,
+          0.3069292708126455,
+          0.7656345457672249,
+          -0.9997354228522587
+         ],
+         "representative_norm": 5.071765507461512,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.4166666666666667,
+        0.16666666666666666,
+        0.125,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.041666666666666664
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.4166666666666667,
+       "periodic_orbits": 7,
+       "periods": [
+        4
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.5,
+       "gamma": 4.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 9,
+       "attractors": [
+        {
+         "basin_count": 3,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.999961920015153,
+          -0.9999266197070666,
+          0.9999920867656046,
+          -0.6083784767467159
+         ],
+         "representative_norm": 5.343276689364892,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 6,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.8397451477338472,
+          -0.9844974692625126,
+          -0.9995193651814995,
+          0.8699363180719782
+         ],
+         "representative_norm": 5.487973062207033,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9997422786505892,
+          -0.9999782707784232,
+          -0.9997106513189198,
+          0.7250396185766825
+         ],
+         "representative_norm": 5.400642288297658,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9996667146435146,
+          -0.9947621601371872,
+          0.9978856413344638,
+          -0.999989393438168
+         ],
+         "representative_norm": 5.4248630245709135,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 6,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9993072567360448,
+          -0.984774405858231,
+          0.9806908431130581,
+          -0.9999998318359096
+         ],
+         "representative_norm": 5.409956191379316,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9938876888774633,
+          -0.999792343012547,
+          -0.9997144010690608,
+          0.42954954248689664
+         ],
+         "representative_norm": 5.257111561374679,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9650461445851873,
+          0.9464485893435165,
+          -0.9998329099438367,
+          -0.9999435877951107
+         ],
+         "representative_norm": 5.343655118017233,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 2,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9998060023983611,
+          -0.9981150779055639,
+          -0.999973162268029,
+          0.9912184365446183
+         ],
+         "representative_norm": 5.36645484277777,
+         "type": "PERIODIC"
+        },
+        {
+         "basin_count": 1,
+         "period": 4,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9957550243979942,
+          -0.9956090063052231,
+          -0.9943166875299154,
+          -0.9999172336808956
+         ],
+         "representative_norm": 5.250550598641964,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        0.25,
+        0.25,
+        0.125,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.08333333333333333,
+        0.041666666666666664,
+        0.041666666666666664,
+        0.041666666666666664
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.25,
+       "periodic_orbits": 9,
+       "periods": [
+        4
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     }
+    ],
+    [
+     {
+      "cell": {
+       "gain": 2.0,
+       "gamma": 1.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 0,
+       "attractors": [],
+       "basin_occupancy": [],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.0,
+       "periodic_orbits": 0,
+       "periods": [],
+       "resolved_fraction": 0.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 1.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.0,
+       "gamma": 1.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 0,
+       "attractors": [],
+       "basin_occupancy": [],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.0,
+       "periodic_orbits": 0,
+       "periods": [],
+       "resolved_fraction": 0.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 1.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.0,
+       "gamma": 1.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 1,
+       "attractors": [
+        {
+         "basin_count": 24,
+         "period": 2,
+         "recovery": "RETURNS",
+         "representative_head": [
+          -0.9821505662498486,
+          0.5946761960147079,
+          0.21295389896207273,
+          0.16001274681257976
+         ],
+         "representative_norm": 4.454297944746494,
+         "type": "PERIODIC"
+        }
+       ],
+       "basin_occupancy": [
+        1.0
+       ],
+       "fixed_points": 0,
+       "largest_basin_fraction": 1.0,
+       "periodic_orbits": 1,
+       "periods": [
+        2
+       ],
+       "resolved_fraction": 1.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 0.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.0,
+       "gamma": 1.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 0,
+       "attractors": [],
+       "basin_occupancy": [],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.0,
+       "periodic_orbits": 0,
+       "periods": [],
+       "resolved_fraction": 0.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 1.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.0,
+       "gamma": 1.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 0,
+       "attractors": [],
+       "basin_occupancy": [],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.0,
+       "periodic_orbits": 0,
+       "periods": [],
+       "resolved_fraction": 0.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 1.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.0,
+       "gamma": 1.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 0,
+       "attractors": [],
+       "basin_occupancy": [],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.0,
+       "periodic_orbits": 0,
+       "periods": [],
+       "resolved_fraction": 0.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 1.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.0,
+       "gamma": 1.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 0,
+       "attractors": [],
+       "basin_occupancy": [],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.0,
+       "periodic_orbits": 0,
+       "periods": [],
+       "resolved_fraction": 0.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 1.0
+      }
+     },
+     {
+      "cell": {
+       "gain": 2.0,
+       "gamma": 1.0
+      },
+      "inventory": {
+       "attractor_count_proxy": 0,
+       "attractors": [],
+       "basin_occupancy": [],
+       "fixed_points": 0,
+       "largest_basin_fraction": 0.0,
+       "periodic_orbits": 0,
+       "periods": [],
+       "resolved_fraction": 0.0,
+       "samples": 24,
+       "unbounded_fraction": 0.0,
+       "unresolved_fraction": 1.0
+      }
+     }
+    ]
+   ],
+   "worlds_with_split_pair_fraction": 1.0
+  },
+  "model_family": "tanh-rnn-nonreciprocal",
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.12.3"
+  },
+  "pass_rule": {
+   "hypothesis": "In the DEV-selected multistable cell, the initial coarse state projection[0,1] is not sufficient for ATTRACTOR_CLASS: coarse-matched initial states reach different resolved attractors.",
+   "worlds_with_split_pair_fraction_min": 0.5
+  },
+  "schema": "elpis.research.ecs-dynamics.result.v1",
+  "scientific": "SUPPORTS_UNDER_FROZEN_SYNTHETIC_REGIME",
+  "source_commit": "9d012be925a53e252a2a29452d8c1692e9980b4e",
+  "source_digest": "0b7281806153c1446d4939e27737dd26f43916bcb9d5175afff68a54fe953974",
+  "sources": [
+   "LAB: conservative attractor inventory"
+  ],
+  "spec_digest": "fab3527a5635c81290e372973e37e1fc91d98aadacc8e4ae0cf2cb77a8e264f2",
+  "split": "QUAL",
+  "target": "ATTRACTOR_CLASS",
+  "version": 1,
+  "world_ids": [
+   "qual-0000",
+   "qual-0001",
+   "qual-0002",
+   "qual-0003",
+   "qual-0004",
+   "qual-0005",
+   "qual-0006",
+   "qual-0007"
+  ]
+ }
+}

@@ -1,0 +1,44 @@
+{
+ "digest": "7cf283495a082fd2a2a340a610d40c4b7eb32571a80d0133a9318e01f1d07ded",
+ "spec": {
+  "coarse_observable": "projection[0, 1]",
+  "delay_depth": 4,
+  "dev_worlds": 4,
+  "dimension": 32,
+  "fixed_point_tolerance": 1e-10,
+  "horizon": 600,
+  "intervention_protocol": "none",
+  "lyapunov_horizon": 0,
+  "max_period": 16,
+  "model_family": "tanh-rnn-nonreciprocal",
+  "name": "tanh-delay-ladder",
+  "parameters": {
+   "initial_conditions": 8,
+   "k_horizon": 5,
+   "lambda_grid": [
+    1e-06,
+    0.0001,
+    0.001,
+    0.01,
+    0.1,
+    1.0
+   ],
+   "seed_dim": 8,
+   "targets": [
+    "ONE_STEP_TRANSITION",
+    "K_STEP_TRAJECTORY",
+    "EVENT"
+   ]
+  },
+  "perturbation": 1e-06,
+  "protocol": {},
+  "qual_worlds": 8,
+  "recurrence_tolerance": 1e-08,
+  "schema": "elpis.research.ecs-dynamics.spec.v1",
+  "seed": 20260930,
+  "target": "ONE_STEP_TRANSITION",
+  "version": 1,
+  "warmup": 500,
+  "width": null
+ }
+}

@@ -1,0 +1,95 @@
+{
+ "digest": "9ef6087839a5744aed06c8687d4747fa9dbe0d2cf77dd408c4b517d2246dbf6f",
+ "result": {
+  "coarse_representation": "target overlaps m_t",
+  "evidence": "DESCRIPTIVE_RESULT",
+  "experiment": "associative-cycles",
+  "findings": [],
+  "flags": {
+   "NO_PRODUCTION_NEURAL_CLAIM": true,
+   "NO_RUNTIME_AUTHORITY": true,
+   "RESEARCH_ONLY": true
+  },
+  "frozen_digest": null,
+  "intervention_policy": "none",
+  "limitations": [
+   "synthetic regime only",
+   "finite-time, finite-size diagnostics",
+   "no statement about production ECS, trained models or Elpis neural components",
+   "N = 2000 microscopic networks; the paper uses N = 50,000-500,000",
+   "no capacity alpha_c is estimated"
+  ],
+  "mechanics": "MECHANICS_PASS",
+  "metrics": {
+   "choices": {
+    "regime": {
+     "alpha": 0.08,
+     "beta": 6.0,
+     "phi_pi": 0.2
+    }
+   },
+   "meanfield_classes": {
+    "0.25pi/3.0": {
+     "class": "UNRESOLVED_NONPERIODIC",
+     "norm_mean": 0.6411136954660462,
+     "period": null
+    },
+    "0.2pi/3.0": {
+     "class": "UNRESOLVED_NONPERIODIC",
+     "norm_mean": 0.7444658007670855,
+     "period": null
+    },
+    "0.2pi/6.0": {
+     "class": "UNRESOLVED_NONPERIODIC",
+     "norm_mean": 0.8515005155626211,
+     "period": null
+    }
+   },
+   "median_difference_table": {
+    "0.2/3.0/0.02": 0.06985137786308893,
+    "0.2/3.0/0.05": 0.5525300293228022,
+    "0.2/3.0/0.08": 0.1470259688936542,
+    "0.2/3.0/0.12": -0.022252702328491414,
+    "0.2/6.0/0.02": 0.051574038775731745,
+    "0.2/6.0/0.05": 0.5221306870213736,
+    "0.2/6.0/0.08": 0.5820732359605575,
+    "0.2/6.0/0.12": -0.0655139018509714,
+    "0.25/3.0/0.02": 0.10703755179901953,
+    "0.25/3.0/0.05": -0.04948763264321425,
+    "0.25/3.0/0.08": -0.019161177000003318,
+    "0.25/3.0/0.12": -0.03869150669644843
+   }
+  },
+  "model_family": "nonreciprocal-associative",
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.12.3"
+  },
+  "pass_rule": {
+   "hypothesis": "(a) The End-Matter Hopf line beta_c(phi) and frequency omega of arXiv:2609.07341 equal the modulus-one point and eigen-argument of the alpha=0 linearization. (b) The alpha=0 map decays to m=0 at 0.9 beta_c and does not settle to m=0 at 1.1 beta_c. (c) At the DEV-selected (phi, beta, alpha), uniform disorder eigenphases give higher retrieval than coherent ones in >= 75% of QUAL realizations, with median difference >= 0.1.",
+   "linearization_tol": 1e-12,
+   "median_difference_min": 0.1,
+   "uniform_wins_fraction_min": 0.75
+  },
+  "schema": "elpis.research.ecs-dynamics.result.v1",
+  "scientific": "NOT_TESTED",
+  "source_commit": "7cd8158d4123220e376e99e852e6ac0c7987234b",
+  "source_digest": "0b7281806153c1446d4939e27737dd26f43916bcb9d5175afff68a54fe953974",
+  "sources": [
+   "arXiv:2609.07341 Eqs. (1)-(3) model",
+   "arXiv:2609.07341 End Matter: alpha=0 map, beta_c(phi), omega",
+   "arXiv:2609.07341 Fig. 1 and Discussion: eigenphase decoherence and capacity"
+  ],
+  "spec_digest": "f3ae84bba1fcb19a5262611766a135e9642200266869a3eddad87b13f2aaa300",
+  "split": "DEV",
+  "target": "ATTRACTOR_CLASS",
+  "version": 1,
+  "world_ids": [
+   "dev-0000",
+   "dev-0001",
+   "dev-0002"
+  ]
+ }
+}

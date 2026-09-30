@@ -26,6 +26,7 @@ The single machine-readable system authority is
 | `src/elpis/evolution` | deterministic heredity, selection, gated promotion |
 | `src/elpis/inference` | inference behind contracts; the DSV4 driver on synthetic fixtures |
 | `src/elpis/runtime` | the one runtime composition over one ECS receipt history |
+| `research/ecs_dynamics` | RESEARCH_ONLY synthetic dynamics laboratory; not packaged, never imported by `src` ([results](docs/research/ECS_DYNAMICS_RESULTS.md)) |
 
 ## Build and test
 
