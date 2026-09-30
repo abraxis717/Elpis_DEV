@@ -22,7 +22,9 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
 * **No model quality claim.** The DSV4 driver runs only on deterministic
   synthetic fixtures (`tests/fixtures/inference`,
   `elpis.inference.drivers.dsv4.fixtures`). No trained table, tokenizer map or
-  production parameter artifact is present. Compatibility with DeepSeek V4.1,
+  production parameter artifact is present. A separately admitted real recipe
+  V4.1 tokenizer is supported; this does not change the synthetic target.
+  Compatibility with DeepSeek V4.1,
   Qwen or any other production model is **not** established. The upstream
   mechanisms the code follows are listed in `LICENSES/PROVENANCE.md`.
 * **Frozen address artifacts are synthetic.** The DSV4.1 and Qwen PLE address
@@ -40,10 +42,17 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
   is measured by inspecting state geometry, not process RSS. Free retrieval
   is not claimed: prefill re-reads admitted context every turn, and object
   resolution reads and verifies document blobs. Both costs are reported
-  separately. Admitted-context rendering is SYNTHETIC (byte to nibbles for
-  the fixture tokenizer); no production tokenization is claimed. The
+  separately. Admitted-context rendering supports both synthetic nibbles and
+  a digest-bound recipe V4.1 text tokenizer in distinct domains. Text transport
+  tests use an explicitly scripted token-emission double, not a trained model.
+  Parameter inspection is read-only preflight, not an executable production
+  intake: the production arithmetic driver remains unimplemented. The
   principal path is not numerically equivalent to the legacy compressed-KV
   kernel, and no quality comparison between them is claimed.
+* **Text output is inert.** `Runtime.run_text` records a finalized principal
+  commit and an output digest in ECS. It does not ingest generated text into
+  HACF. Post-sequence proposal/admission and canonical ECS-to-context projection
+  remain separate integration work. No geodesic-intelligence claim follows.
 
 ### Beta steering claims not carried forward
 

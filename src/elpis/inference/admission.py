@@ -17,11 +17,9 @@ It carries tokens, digests and counts only. There are no key/value tensors,
 hidden vectors or latents in it: context enters the model as ordinary input
 tokens, never as vectors added to activations.
 
-Rendering is the model's tokenizer applied to the admitted bytes. The only
-renderer here is SYNTHETIC: the DSV4 qualification fixture's ``synthetic-raw16``
-tokenizer has a 16-symbol vocabulary, and each byte renders as its two
-nibbles. It stands in for a production tokenizer, which public DEV does not
-have; any other tokenizer fails closed.
+Rendering is the model's tokenizer applied to the admitted bytes. Synthetic
+nibbles remain a fixture-only domain. Production text uses an explicitly
+admitted V4.1 tokenizer handle; it is never loaded during a sequence.
 """
 from __future__ import annotations
 
@@ -31,6 +29,7 @@ from elpis.substrate.digests import raw_sha256
 
 from .contracts import Code, digest_value, identity, integer, require
 from .structural import AddressProposal
+from .text import DSV41_RENDERER, V41Tokenizer
 
 __all__ = (
     "AdmittedObject", "ContextAdmission", "ContextBudget", "SYNTHETIC_NIBBLE16", "admit_context",
@@ -94,13 +93,20 @@ class ContextAdmission:
         for value in (self.context_snapshot, self.model, self.corpus):
             digest_value(value)
         require(type(self.tokenizer) is str and bool(self.tokenizer), detail="admission tokenizer")
-        require(self.renderer in _RENDERERS, Code.UNSUPPORTED, "admission renderer")
+        require(self.renderer in (*_RENDERERS, DSV41_RENDERER), Code.UNSUPPORTED, "admission renderer")
+        if self.renderer == DSV41_RENDERER:
+            digest_value(self.tokenizer)
+        else:
+            accepts, _, vocab = _RENDERERS[self.renderer]
+            require(accepts(self.tokenizer), Code.IDENTITY, "renderer/tokenizer")
         require(type(self.proposals) is tuple and all(type(p) is str for p in self.proposals),
                 detail="admission proposals")
         for proposal in self.proposals:
             digest_value(proposal)
         require(type(self.objects) is tuple and all(type(o) is AdmittedObject for o in self.objects),
                 detail="admitted objects")
+        if self.renderer != DSV41_RENDERER:
+            require(all(t < vocab for o in self.objects for t in o.tokens), detail="renderer vocabulary")
         require(len({o.object for o in self.objects}) == len(self.objects), detail="duplicate admitted object")
         integer(self.omitted)
         require(type(self.budget) is ContextBudget, detail="admission budget")
@@ -120,7 +126,7 @@ class ContextAdmission:
 
 
 def admit_context(*, model, tokenizer, context_snapshot, corpus, proposals, resolved, omitted, budget,
-                  renderer=SYNTHETIC_NIBBLE16) -> ContextAdmission:
+                  renderer=SYNTHETIC_NIBBLE16, text_tokenizer=None) -> ContextAdmission:
     """Build the admission from proposals and resolved object bytes.
 
     ``resolved`` is a tuple of ``(object digest, bytes)`` in the order the
@@ -129,9 +135,15 @@ def admit_context(*, model, tokenizer, context_snapshot, corpus, proposals, reso
     proposal must be bound to this snapshot and corpus. Objects are admitted
     whole, in order, while they fit the budget; the rest count as omitted.
     """
-    require(renderer in _RENDERERS, Code.UNSUPPORTED, "admission renderer")
-    accepts, render, _vocab = _RENDERERS[renderer]
-    require(type(tokenizer) is str and accepts(tokenizer), Code.UNSUPPORTED, "renderer/tokenizer")
+    if renderer == DSV41_RENDERER:
+        require(type(text_tokenizer) is V41Tokenizer and text_tokenizer.identity == tokenizer,
+                Code.IDENTITY, "admitted text tokenizer")
+        render = text_tokenizer.encode_content
+    else:
+        require(text_tokenizer is None, Code.IDENTITY, "synthetic renderer cannot use production tokenizer")
+        require(renderer in _RENDERERS, Code.UNSUPPORTED, "admission renderer")
+        accepts, render, _vocab = _RENDERERS[renderer]
+        require(type(tokenizer) is str and accepts(tokenizer), Code.UNSUPPORTED, "renderer/tokenizer")
     require(type(budget) is ContextBudget, detail="admission budget")
     require(type(proposals) is tuple and all(type(p) is AddressProposal for p in proposals),
             detail="admission proposals")
@@ -147,6 +159,9 @@ def admit_context(*, model, tokenizer, context_snapshot, corpus, proposals, reso
         require(type(entry) is tuple and len(entry) == 2 and type(entry[1]) is bytes, detail="resolved object")
         digest, data = entry
         require(digest in named, Code.IDENTITY, "resolved object was not proposed")
+        if len(objects) == budget.max_objects or size + len(data) > budget.max_bytes:
+            omitted += len(resolved) - index
+            break
         rendered = render(data)
         if (len(objects) == budget.max_objects or size + len(data) > budget.max_bytes or
                 tokens + len(rendered) > budget.max_tokens):

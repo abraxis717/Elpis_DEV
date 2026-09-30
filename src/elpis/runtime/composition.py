@@ -197,7 +197,7 @@ class Runtime:
     # -- context substrate: ingress -> adapter -> HACF resolution -> admission ------------
     def admit_context(self, *, ingress: QueryIngress, task: bytes, corpus_root: Path, corpus_manifest,
                       context_snapshot: str, model: str, tokenizer: str, budget: ContextBudget,
-                      max_document_bytes: int, rules: tuple = ()) -> ContextPreparation:
+                      max_document_bytes: int, rules: tuple = (), text_tokenizer=None) -> ContextPreparation:
         """Prepare the frozen context for the next sequence, at a turn boundary.
 
         ``corpus_manifest`` is the corpus manifest JSON the caller obtained from
@@ -221,10 +221,13 @@ class Runtime:
         resolved, omitted = resolve_chunks(corpus_root, manifest, claims, max_objects=budget.max_objects,
                                            max_text_bytes=budget.max_bytes,
                                            max_document_bytes=max_document_bytes)
+        from elpis.inference.admission import SYNTHETIC_NIBBLE16
+        from elpis.inference.text import DSV41_RENDERER
         admission = admit_context(model=model, tokenizer=tokenizer, context_snapshot=context_snapshot,
                                   corpus=result.corpus_manifest_digest, proposals=proposals,
                                   resolved=tuple((c.chunk_digest, c.text) for c in resolved),
-                                  omitted=omitted, budget=budget)
+                                  omitted=omitted, budget=budget, text_tokenizer=text_tokenizer,
+                                  renderer=DSV41_RENDERER if text_tokenizer is not None else SYNTHETIC_NIBBLE16)
         admission_record = self.history.record(ReceiptRecord.of(
             "structure", "context.admission", admission.digest,
             ingress=result.proposal_digest, corpus=admission.corpus, objects=str(len(admission.objects)),
@@ -233,6 +236,20 @@ class Runtime:
         return ContextPreparation(admission, result, ingress_record, admission_record)
 
     # -- inference: one principal sequence ------------------------------------------------
+    def run_text(self, engine, state, text, admission, *, tokenizer, request_id,
+                 max_new_tokens, expected_state, emit=None, thinking=False, effort=None,
+                 resident_experts=None):
+        """Encode chat before begin; stream inert text; commit after finalization.
+
+        Context comes from explicit bounded admission (including an explicitly
+        empty admission). No retrieval is implicit in an arbitrary chat string.
+        """
+        from .text import run_text
+        return run_text(self, engine, state, text, admission, tokenizer=tokenizer,
+                        request_id=request_id, max_new_tokens=max_new_tokens,
+                        expected_state=expected_state, emit=emit, thinking=thinking,
+                        effort=effort, resident_experts=resident_experts)
+
     def run_principal(self, engine: "PrincipalEngine", state, request, admission: ContextAdmission, *,
                       expected_state: str, emit=None, resident_experts=None
                       ) -> tuple["PrincipalResult", RecordedReceipt | None]:

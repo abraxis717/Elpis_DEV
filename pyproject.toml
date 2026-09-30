@@ -21,7 +21,8 @@ dependencies = []
 
 [project.optional-dependencies]
 inference = ["numpy>=1.26,<2"]
-test = ["pytest>=8", "numpy>=1.26,<2"]
+text = ["tokenizers==0.23.2"]
+test = ["pytest>=8", "numpy>=1.26,<2", "tokenizers==0.23.2"]
 
 [project.urls]
 Repository = "https://github.com/abraxis717/Elpis_DEV"
