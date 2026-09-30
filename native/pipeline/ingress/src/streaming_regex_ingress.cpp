@@ -865,6 +865,12 @@ extern "C" const char *elpis_streaming_regex_last_error_v1(void) {
     return elpis_streaming_regex_last_error_storage.c_str();
 }
 
+std::vector<std::string> elpis_regex_v2::grammar_expressions() {
+    std::vector<std::string> expressions;
+    for(const auto& p:patterns()) expressions.emplace_back(p.expr);
+    return expressions;
+}
+
 // V2 errors use static strings: reporting allocation failure cannot allocate.
 static thread_local const char* V2_ERROR="";
 struct elpis_streaming_regex_stream_v2 {
@@ -890,9 +896,7 @@ extern "C" int elpis_streaming_regex_stream_create_v2(
         return v2_failure(nullptr,ELPIS_STREAMING_REGEX_E_INVAL,"INVALID_OPTIONS");
     try {
         auto s=std::make_unique<elpis_streaming_regex_stream_v2>();
-        auto ps=patterns(); std::vector<std::string> expressions;
-        for(const auto& p:ps) expressions.emplace_back(p.expr);
-        s->lexer=std::make_unique<elpis_regex_v2::Lexer>(expressions,
+        s->lexer=std::make_unique<elpis_regex_v2::Lexer>(elpis_regex_v2::grammar_expressions(),
             options ? options->max_evidence : ELPIS_STREAMING_REGEX_DEFAULT_MAX_EVIDENCE_V2);
         if(options) s->limit=options->max_source_bytes;
         *out=s.release(); return 0;

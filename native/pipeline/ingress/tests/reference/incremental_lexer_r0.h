@@ -1,5 +1,7 @@
-#ifndef ELPIS_INCREMENTAL_LEXER_H
-#define ELPIS_INCREMENTAL_LEXER_H
+// FROZEN REFERENCE: the public-main (af417a9) V2 lexer, verbatim except for its
+// namespace. Test-only oracle for the rewritten engine; never linked into products.
+#ifndef ELPIS_INCREMENTAL_LEXER_R0_H
+#define ELPIS_INCREMENTAL_LEXER_R0_H
 #include "elpis/sha256.h"
 #include <array>
 #include <cstdint>
@@ -7,7 +9,7 @@
 #include <string>
 #include <vector>
 
-namespace elpis_regex_v2 {
+namespace elpis_regex_v2_r0 {
 constexpr size_t inline_limit = 4096;
 struct Match {
     size_t pattern = 0;
@@ -23,8 +25,6 @@ struct Stats {
     uint64_t peak_inline_bytes = 0, peak_capture_bytes = 0;
     uint64_t program_instructions = 0, evidence_count = 0;
 };
-// The fixed V2 grammar's expressions, in pattern order (internal; not exported).
-std::vector<std::string> grammar_expressions();
 class Lexer {
 public:
     Lexer(const std::vector<std::string>& expressions, uint32_t max_evidence);
