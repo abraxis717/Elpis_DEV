@@ -21,9 +21,9 @@ enum { ELPIS_EXEC_VECTOR_SHARD = 2u };
 
 typedef struct elpis_vector_executor elpis_vector_executor;
 
-/* workers: 0 = executor default, or explicit 1..4. The executor reserves that
- * many workers from the same module-wide four-worker budget used by all native
- * execution adapters. ELPIS_VEC_E_LIMIT means the worker budget is unavailable. */
+/* workers: 0 = executor default, or explicit 1..4: this executor's concurrency
+ * cap on the one module-wide execution pool (at most four threads) shared by all
+ * native execution adapters. Creation does not compete for private threads. */
 int elpis_vector_executor_create(elpis_vector_index *index, unsigned workers,
                                  elpis_vector_executor **out);
 void elpis_vector_executor_destroy(elpis_vector_executor *executor);

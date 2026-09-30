@@ -48,10 +48,16 @@ struct J {
     const A &arr() const { return std::get<A>(v); }
 };
 
+// Unescaped runs are appended in bulk; the escapes are unchanged.
 static void json_escape_append(std::string &out, const std::string &s) {
     out.push_back('"');
     static const char hex[]="0123456789abcdef";
-    for (unsigned char c : s) {
+    const char *run=s.data(), *end=s.data()+s.size();
+    for (const char *p=run; p<end; ++p) {
+        unsigned char c=static_cast<unsigned char>(*p);
+        if (c>=0x20 && c!='"' && c!='\\') continue;
+        out.append(run,static_cast<size_t>(p-run));
+        run=p+1;
         switch(c) {
             case '"': out += "\\\""; break;
             case '\\': out += "\\\\"; break;
@@ -61,18 +67,16 @@ static void json_escape_append(std::string &out, const std::string &s) {
             case '\r': out += "\\r"; break;
             case '\t': out += "\\t"; break;
             default:
-                if (c < 0x20) {
-                    out += "\\u00";
-                    out.push_back(hex[c >> 4]);
-                    out.push_back(hex[c & 15]);
-                } else {
-                    out.push_back((char)c);
-                }
+                out += "\\u00";
+                out.push_back(hex[c >> 4]);
+                out.push_back(hex[c & 15]);
         }
     }
+    out.append(run,static_cast<size_t>(end-run));
     out.push_back('"');
 }
 
+static void dump_object(const J::O &o, std::string &out);
 static void dump_into(const J &j, std::string &out) {
     if (std::holds_alternative<std::nullptr_t>(j.v)) { out += "null"; return; }
     if (auto p=std::get_if<bool>(&j.v)) { out += *p ? "true" : "false"; return; }
@@ -87,7 +91,9 @@ static void dump_into(const J &j, std::string &out) {
         out.push_back(']');
         return;
     }
-    const auto &o=std::get<J::O>(j.v);
+    dump_object(std::get<J::O>(j.v),out);
+}
+static void dump_object(const J::O &o, std::string &out) {
     out.push_back('{');
     bool first=true;
     for (const auto &kv:o) {
@@ -104,6 +110,18 @@ static std::string dump(const J &j) {
     std::string out;
     dump_into(j,out);
     return out;
+}
+
+// Sorts by canonical serialization, serializing each element once.
+static void sort_by_dump(std::vector<J> &v) {
+    std::vector<std::pair<std::string,size_t>> keys;
+    keys.reserve(v.size());
+    for (size_t i=0;i<v.size();++i) keys.emplace_back(dump(v[i]),i);
+    std::sort(keys.begin(),keys.end(),[](const auto &a,const auto &b){ return a.first<b.first; });
+    std::vector<J> sorted;
+    sorted.reserve(v.size());
+    for (const auto &k:keys) sorted.push_back(std::move(v[k.second]));
+    v=std::move(sorted);
 }
 
 static std::string hex_digest(const uint8_t d[32]) {
@@ -124,8 +142,10 @@ static std::string sha_bytes(const void *p, size_t n) {
 static std::string sha_string(const std::string &s) {
     return sha_bytes(s.data(),s.size());
 }
-static std::string sha_json(const J &j) {
-    return sha_string(dump(j));
+static std::string sha_json_object(const J::O &o) {
+    std::string out;
+    dump_object(o,out);
+    return sha_string(out);
 }
 
 static std::string python_number(const std::string &text) {
@@ -418,7 +438,7 @@ static J evidence_to_json(const Evidence &e,const std::string &source_sha) {
     bound["semantic_authority"]=false;
     bound["source_sha256"]=source_sha;
     bound["start_byte"]=J::num(std::to_string(e.start_byte));
-    std::string eid=sha_json(J(bound));
+    std::string eid=sha_json_object(bound);
     bound["evidence_id"]=eid;
     return J(std::move(bound));
 }
@@ -463,7 +483,7 @@ static J compose(const std::vector<J> &evidence,const std::string &source_sha) {
         std::vector<J> vals;
         for(auto &x:comparisons)
             vals.push_back(J(J::A{J(x.first),J::num(x.second)}));
-        std::sort(vals.begin(),vals.end(),[](const J&a,const J&b){return dump(a)<dump(b);});
+        sort_by_dump(vals);
         ambiguity.push_back(J(J::O{{"axis","comparison"},{"values",J(J::A(vals))}}));
     }
 
@@ -477,14 +497,14 @@ static J compose(const std::vector<J> &evidence,const std::string &source_sha) {
         for(auto &x:bounds) {
             vals.push_back(J(J::A{J(std::get<0>(x)),J(std::get<1>(x)),J(std::get<2>(x))}));
         }
-        std::sort(vals.begin(),vals.end(),[](const J&a,const J&b){return dump(a)<dump(b);});
+        sort_by_dump(vals);
         ambiguity.push_back(J(J::O{{"axis","bounds"},{"values",J(J::A(vals))}}));
     }
 
     if(relations.size()>1) {
         std::vector<J> vals;
         for(auto &x:relations) vals.push_back(J(J::A{J(x.first),J(x.second)}));
-        std::sort(vals.begin(),vals.end(),[](const J&a,const J&b){return dump(a)<dump(b);});
+        sort_by_dump(vals);
         ambiguity.push_back(J(J::O{{"axis","coalescence_relation"},{"values",J(J::A(vals))}}));
     }
     if(reducers.size()>1) {
@@ -516,8 +536,7 @@ static J compose(const std::vector<J> &evidence,const std::string &source_sha) {
         }
     }
 
-    std::sort(payload_candidates.begin(),payload_candidates.end(),
-              [](const J&a,const J&b){return dump(a)<dump(b);});
+    sort_by_dump(payload_candidates);
 
     J::A bound_candidates;
     for(const J &payload:payload_candidates) {
@@ -530,7 +549,7 @@ static J compose(const std::vector<J> &evidence,const std::string &source_sha) {
         row["schema"]=CANDIDATE_SCHEMA;
         row["semantic_authority"]=false;
         row["source_sha256"]=source_sha;
-        std::string cid=sha_json(J(row));
+        std::string cid=sha_json_object(row);
         row["candidate_id"]=cid;
         bound_candidates.push_back(J(std::move(row)));
     }
@@ -572,10 +591,12 @@ static J build_root(std::vector<Evidence>& raw, const std::string& source_sha, u
     for(const auto &e:raw)
         evidence.push_back(evidence_to_json(e,source_sha));
 
+    J composition=compose(evidence,source_sha);
+
     J::O ingress;
     ingress["admission_authority"]=false;
     ingress["candidate_status"]="PROPOSED_UNADMITTED";
-    ingress["evidence"]=J(evidence);
+    ingress["evidence"]=J(std::move(evidence));
     ingress["execution_authority"]=false;
     ingress["runtime_admission"]=false;
     ingress["schema"]=std::any_of(raw.begin(),raw.end(),[](const Evidence& e){ return e.text_omitted; })
@@ -584,10 +605,8 @@ static J build_root(std::vector<Evidence>& raw, const std::string& source_sha, u
     ingress["source_bytes"]=J::num(std::to_string(total_before));
     ingress["source_sha256"]=source_sha;
 
-    J composition=compose(evidence,source_sha);
-
     J::O root;
-    root["composition"]=composition;
+    root["composition"]=std::move(composition);
     root["ingress"]=J(std::move(ingress));
     return J(std::move(root));
 }
@@ -713,9 +732,19 @@ static std::unique_ptr<elpis_streaming_regex_result_v1> make_result(J root) {
         const auto &io=ingress.obj();
         const auto &co=composition.obj();
 
-        r->root_json=dump(r->root);
         r->ingress_json=dump(ingress);
         r->composition_json=dump(composition);
+        // dump(root), reusing the two members serialized above.
+        r->root_json.push_back('{');
+        for (const auto &kv:ro) {
+            if (r->root_json.size()>1) r->root_json.push_back(',');
+            json_escape_append(r->root_json,kv.first);
+            r->root_json.push_back(':');
+            if (&kv.second==&ingress) r->root_json+=r->ingress_json;
+            else if (&kv.second==&composition) r->root_json+=r->composition_json;
+            else dump_into(kv.second,r->root_json);
+        }
+        r->root_json.push_back('}');
         r->source_sha256=get_s(io,"source_sha256");
         r->source_bytes=(uint64_t)std::stoull(get_n(io,"source_bytes"));
         r->ambiguity_count=(uint32_t)co.at("ambiguities").arr().size();
@@ -865,6 +894,12 @@ extern "C" const char *elpis_streaming_regex_last_error_v1(void) {
     return elpis_streaming_regex_last_error_storage.c_str();
 }
 
+std::vector<std::string> elpis_regex_v2::grammar_expressions() {
+    std::vector<std::string> expressions;
+    for(const auto& p:patterns()) expressions.emplace_back(p.expr);
+    return expressions;
+}
+
 // V2 errors use static strings: reporting allocation failure cannot allocate.
 static thread_local const char* V2_ERROR="";
 struct elpis_streaming_regex_stream_v2 {
@@ -890,9 +925,7 @@ extern "C" int elpis_streaming_regex_stream_create_v2(
         return v2_failure(nullptr,ELPIS_STREAMING_REGEX_E_INVAL,"INVALID_OPTIONS");
     try {
         auto s=std::make_unique<elpis_streaming_regex_stream_v2>();
-        auto ps=patterns(); std::vector<std::string> expressions;
-        for(const auto& p:ps) expressions.emplace_back(p.expr);
-        s->lexer=std::make_unique<elpis_regex_v2::Lexer>(expressions,
+        s->lexer=std::make_unique<elpis_regex_v2::Lexer>(elpis_regex_v2::grammar_expressions(),
             options ? options->max_evidence : ELPIS_STREAMING_REGEX_DEFAULT_MAX_EVIDENCE_V2);
         if(options) s->limit=options->max_source_bytes;
         *out=s.release(); return 0;
