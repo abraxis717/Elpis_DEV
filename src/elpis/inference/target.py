@@ -187,6 +187,33 @@ class StreamRecord:
 
 
 @dataclass(frozen=True)
+class WindowState:
+    """Working state of a principal sequence: bounded, ephemeral, not durable.
+
+    ``keys``/``values`` hold at most ``local_window`` entries: transient
+    attention scratch, independent of how much context the system has
+    stored. There is no compressed pool, no pending buffer, no global index
+    and no token history; long-range context comes from admitted HACF content
+    at the next prefill. No digest: it never leaves the sequence.
+    """
+    position: int
+    history: History
+    keys: tuple = ()
+    values: tuple = ()
+    hidden: tuple[float,...] = ()
+    logits: tuple[float,...] = ()
+    step: 'WindowStep | None' = None
+
+
+@dataclass(frozen=True, slots=True)
+class WindowStep:
+    """What one principal step observed, kept for the commit trace (model data only)."""
+    token: int
+    rows: tuple
+    route: tuple[int,...]
+
+
+@dataclass(frozen=True)
 class StepReceipt:
     model: str
     tokenizer: str
@@ -228,6 +255,10 @@ class Target(Protocol):
     def initial_stream(self, context_snapshot: str) -> StreamingNeuralState: ...
 
     def resume_stream(self, state: NeuralState) -> StreamingNeuralState: ...
+
+    def window_initial(self) -> WindowState: ...
+
+    def window_step(self, state: WindowState, token: int, *, experts) -> WindowState: ...
 
     def finalize_stream(self, committed: NeuralState, records: tuple, *,
                         latents: tuple = ()) -> tuple[tuple[NeuralState, StepReceipt], ...]: ...

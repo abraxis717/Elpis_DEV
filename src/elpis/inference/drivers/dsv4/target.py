@@ -18,8 +18,8 @@ from ...global_context import (
     select_global_stream, selected_values,
 )
 from ...target import (
-    LatentInput, NeuralState, StepReceipt, StreamingNeuralState, StreamStep, Tensor,
-    numerical_profile, softmax, vector,
+    LatentInput, NeuralState, StepReceipt, StreamingNeuralState, StreamStep, Tensor, WindowState,
+    WindowStep, numerical_profile, softmax, vector,
 )
 
 
@@ -167,6 +167,49 @@ class CompactTarget:
                                rows=dict(self.rows.last_metrics),experts=dict(self.experts.last_metrics),
                                device_copy_ns=None)
         return out
+
+    def window_initial(self):
+        """Empty working state for a principal sequence."""
+        return WindowState(0,self.scheme.initial())
+
+    def window_step(self,state,token,*,experts):
+        """One principal step: model arithmetic over bounded scratch only.
+
+        Embedding plus the model-owned associative row memory (M), attention
+        over at most ``local_window`` transient keys and values, routed and
+        shared experts, logits. Unlike :meth:`step`/:meth:`stream_step` there
+        is no compressed KV, no global pool and no latent input: context
+        enters only as tokens admitted before the sequence began. No identity
+        is computed; admitted expert bytes are not re-hashed.
+        """
+        c=self.config; w={k:t.array() for k,t in self.weights.items()}
+        require(type(state) is WindowState,detail='window state')
+        require(type(experts) is ExpertAdmission and experts.bank is self.experts,Code.IDENTITY,'expert admission')
+        integer(token,0,c.vocab-1)
+        require(state.position<c.max_tokens,Code.LIMIT,'explicit target context capacity')
+        require(state.history.position==state.position,Code.STALE,'token/hash position')
+        hashed=self.scheme.stream_hash(state.history,(token,))
+        p=self.scheme.parameters
+        layer_index=p.layers.index(self.rows.table.bank.layer) if type(p) is DSV41Parameters else 0
+        row_ids=hashed.rows[0][layer_index]
+        memory=self.rows.lookup(tuple(RowIdentity(self.bank_identity,r) for r in row_ids)).mean(axis=0,dtype=np.float32)
+        x=w['embedding'][token].copy()+np.asarray(vector(memory),dtype='<f4')@self.projections['M'].weights.array()
+        key=x@w['k']; val=x@w['v']; query=x@w['q']
+        keys=(state.keys+(vector(key),))[-c.local_window:]
+        values=(state.values+(vector(val),))[-c.local_window:]
+        score=np.asarray(keys,dtype='<f4')@query/np.float32(c.dimension**.5)
+        local=softmax(score)@np.asarray(values,dtype='<f4')
+        hidden=np.tanh(x+local).astype('<f4')
+        route_logits=hidden@w['router']
+        indexes=sorted(range(len(c.expert_ids)),key=lambda i:(-float(route_logits[i]),c.expert_ids[i]))[:c.active_experts]
+        route=tuple(c.expert_ids[i] for i in indexes)
+        route_weights=tuple(float(v) for v in softmax(route_logits[indexes]))
+        hidden+=self.experts.execute_admitted(hidden,admission=experts,model=c.model,layer=c.layer,
+                                             route=route,weights=route_weights,shared=c.shared_experts)
+        logits=hidden@w['out']
+        require(np.all(np.isfinite(logits)),Code.ENCODING,'target logits')
+        return WindowState(state.position+1,hashed.history,keys,values,vector(hidden),vector(logits),
+                           WindowStep(token,hashed.rows[0],route))
 
     def finalize_stream(self,committed,records,*,latents=()):
         """Commit boundary: the (NeuralState, StepReceipt) chain :meth:`step` would have produced.
