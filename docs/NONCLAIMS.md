@@ -36,6 +36,14 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
   epochs, and only later epochs, under the frozen temporal/control contract
   and through the target's own latent-input path. No reasoning, quality,
   fitness or causal-effect claim is made.
+* **Context substrate.** Bounded resident model state is claimed, and it
+  is measured by inspecting state geometry, not process RSS. Free retrieval
+  is not claimed: prefill re-reads admitted context every turn, and object
+  resolution reads and verifies document blobs. Both costs are reported
+  separately. Admitted-context rendering is SYNTHETIC (byte to nibbles for
+  the fixture tokenizer); no production tokenization is claimed. The
+  principal path is not numerically equivalent to the legacy compressed-KV
+  kernel, and no quality comparison between them is claimed.
 
 ### Beta steering claims not carried forward
 

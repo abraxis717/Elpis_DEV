@@ -27,7 +27,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .contracts import Code, digest_value, identity, integer, raw_digest, require
+from elpis.substrate.digests import raw_sha256
+
+from .contracts import Code, digest_value, identity, integer, require
 from .structural import AddressProposal
 
 __all__ = (
@@ -63,7 +65,7 @@ class ContextBudget:
 @dataclass(frozen=True)
 class AdmittedObject:
     object: str               # HACF object (chunk) digest
-    content: str              # SHA-256 of the admitted bytes
+    content: str              # plain SHA-256 of the admitted bytes (HACF's norm_digest for chunk text)
     size: int                 # admitted byte count
     tokens: tuple[int, ...]   # model-visible rendering of those bytes
 
@@ -150,7 +152,7 @@ def admit_context(*, model, tokenizer, context_snapshot, corpus, proposals, reso
                 tokens + len(rendered) > budget.max_tokens):
             omitted += len(resolved) - index
             break
-        objects.append(AdmittedObject(digest, raw_digest(data), len(data), rendered))
+        objects.append(AdmittedObject(digest, raw_sha256(data).hexdigest(), len(data), rendered))
         size += len(data)
         tokens += len(rendered)
     return ContextAdmission(context_snapshot, model, tokenizer, renderer, corpus,
