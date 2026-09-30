@@ -383,8 +383,11 @@ static void *worker_main(void *arg) {
         r->metrics.backend_accepted += accepted;
         r->metrics.backend_fallback += fallback;
         r->metrics.backend_polls += polls;
+        /* Idle threads that slept while this context was at its cap ignored its
+         * deferred tasks; if this completion frees the cap, one re-arms. */
+        int uncapped = 0;
         if (polling) --r->polling;
-        else --r->running;
+        else uncapped = r->running-- == r->config.workers && r->parked;
         if (outcome == PARK && s->deferred && r->cancelling) {
             ++r->metrics.deferred;
             cancelled(r, s); /* shutdown already swept the parked list */
@@ -403,6 +406,7 @@ static void *worker_main(void *arg) {
             s->state = DONE;
             if (s->result.sequence == r->metrics.retired) pthread_cond_signal(&r->changed);
         }
+        if (uncapped) wake_one(NONE);
         if (r->closed && context_idle(r)) pthread_cond_broadcast(&r->drained);
     }
     unlock();
