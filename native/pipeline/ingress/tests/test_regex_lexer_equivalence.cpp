@@ -5,6 +5,8 @@
 // fails and how (exception class and message), and on success every match's
 // pattern, offsets, inline text, digest, omission flag and captures, plus the
 // byte count and source digest. The V2 result JSON is a pure function of these.
+// For spans past the window compaction threshold the oracle runs one chunking and
+// R1 must also reproduce that outcome for the other chunkings.
 //
 //   test_regex_lexer_equivalence [RANDOM_CASES] [SEED]
 #include "incremental_lexer.h"
@@ -70,20 +72,23 @@ std::string show(const std::string& s) {
     }
     return out + (s.size() > 300 ? "...(" + std::to_string(s.size()) + " bytes)" : "");
 }
-void check(const std::string& text, const std::vector<size_t>& cuts, uint32_t max_evidence) {
-    Outcome a = run<elpis_regex_v2_r0::Lexer, elpis_regex_v2_r0::RangeError, elpis_regex_v2_r0::Match>(
-        expressions, max_evidence, text, cuts);
-    Outcome b = run<elpis_regex_v2::Lexer, elpis_regex_v2::RangeError, elpis_regex_v2::Match>(
-        expressions, max_evidence, text, cuts);
+Outcome r1(const std::string& text, const std::vector<size_t>& cuts, uint32_t max_evidence) {
+    return run<elpis_regex_v2::Lexer, elpis_regex_v2::RangeError, elpis_regex_v2::Match>(expressions, max_evidence,
+                                                                                         text, cuts);
+}
+// `a` is the reference. The failing call is compared only for the same chunking.
+void compare(const Outcome& a, const Outcome& b, const std::string& text, const std::vector<size_t>& cuts,
+             uint32_t max_evidence, bool same_chunking) {
     ++cases;
     auto fail = [&](const std::string& what) {
-        std::cerr << "MISMATCH " << what << "\nmax_evidence=" << max_evidence << " cuts=" << cuts.size()
-                  << "\ntext=" << show(text) << "\nR0 error=" << a.error << " at " << a.failed_call
+        std::cerr << "MISMATCH " << what << (same_chunking ? "" : " (R1 chunking invariance)")
+                  << "\nmax_evidence=" << max_evidence << " cuts=" << cuts.size()
+                  << "\ntext=" << show(text) << "\nreference error=" << a.error << " at " << a.failed_call
                   << " matches=" << a.matches.size() << "\nR1 error=" << b.error << " at " << b.failed_call
                   << " matches=" << b.matches.size() << "\n";
         std::exit(1);
     };
-    if (a.error != b.error || a.failed_call != b.failed_call) fail("failure");
+    if (a.error != b.error || (same_chunking && a.failed_call != b.failed_call)) fail("failure");
     if (!a.error.empty()) { ++failures_compared; return; }
     if (a.bytes != b.bytes || a.source != b.source) fail("source");
     if (a.matches.size() != b.matches.size()) fail("match count");
@@ -96,6 +101,11 @@ void check(const std::string& text, const std::vector<size_t>& cuts, uint32_t ma
         if (x.captures != y.captures) fail("match captures " + std::to_string(i));
         ++matches_compared;
     }
+}
+void check(const std::string& text, const std::vector<size_t>& cuts, uint32_t max_evidence) {
+    Outcome a = run<elpis_regex_v2_r0::Lexer, elpis_regex_v2_r0::RangeError, elpis_regex_v2_r0::Match>(
+        expressions, max_evidence, text, cuts);
+    compare(a, r1(text, cuts, max_evidence), text, cuts, max_evidence, true);
 }
 std::vector<size_t> cuts_every(size_t size, size_t k) { return std::vector<size_t>(size / k + 1, k); }
 
@@ -198,9 +208,19 @@ int main(int argc, char** argv) {
                                                                                         "and hi",
                                      "touching" + ws + "endpoints do" + ws + "not merge",
                                      std::string(n, 'z') + " exactly 1 " + std::string(n, 'z')}) {
-            check(t, {}, 4096);
+            if (n <= 5000) {
+                check(t, {}, 4096);
+                check(t, cuts_every(t.size(), 4093), 4096);
+                check(t, cuts_every(t.size(), 1 + n / 3), 4096);
+                continue;
+            }
+            // Spans past one or more window compactions: the (slow) R0 oracle runs once,
+            // with feeds that straddle the window; R1 must give the same outcome for the
+            // other chunkings.
             check(t, cuts_every(t.size(), 4093), 4096);
-            check(t, cuts_every(t.size(), 1 + n / 3), 4096);
+            Outcome a = r1(t, cuts_every(t.size(), 4093), 4096);
+            compare(a, r1(t, {}, 4096), t, {}, 4096, false);
+            compare(a, r1(t, cuts_every(t.size(), 1 + n / 3), 4096), t, cuts_every(t.size(), 1 + n / 3), 4096, false);
         }
     }
     // Non-ASCII whitespace is never batched: the per-codepoint path must compact its window.
