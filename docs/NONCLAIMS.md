@@ -81,3 +81,20 @@ are not evidence that the contract has any effect.
   one-use promotion authority can change canonical state.
 * The historical Grid81 canonical fixture is a regression fixture, not a
   benchmark.
+
+## Research laboratories (`research/`)
+
+* `research/ecs_dynamics` is RESEARCH_ONLY with NO_RUNTIME_AUTHORITY. It is
+  not packaged, and no production module imports it (the boundary policy
+  forbids the import). Its tanh probe, cubic control and associative network
+  are synthetic. No result there is a claim about production ECS, a trained
+  model, the DSV4 fixture or any Elpis neural component.
+* Its dispositions ("supports under this frozen synthetic regime") hold only
+  for the frozen specification, seed and worlds recorded in
+  `research/ecs_dynamics/frozen` and `evidence/qual`. Diagnostics are
+  finite-time and attractors are sampled. No Lyapunov exponent, chaos or
+  bifurcation is claimed.
+* Paper-derived statements rest on user-supplied PDFs identified by SHA-256
+  and cited by equation in `docs/research/ECS_DYNAMICS_RESULTS.md`. The
+  public cubic control is not a reconstruction of the private Structural R0
+  reference family.
