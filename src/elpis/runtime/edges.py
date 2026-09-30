@@ -22,10 +22,11 @@ from elpis.inference.contracts import Code, ContractError, digest_value, require
 from elpis.inference.structural import AddressProposal, RouteRule
 from elpis.structure.retrieval.budget import RetrievalBudget
 from elpis.structure.retrieval.errors import RetrievalError
+from elpis.structure.retrieval.objects import ChunkClaim, ObjectResolutionError
 from elpis.structure.retrieval.validation import validate_bundle
 from elpis.substrate.digests import identity, raw_digest
 
-__all__ = ("from_regex_hacf", "from_retrieval_bundle")
+__all__ = ("from_regex_hacf", "from_retrieval_bundle", "object_claims")
 
 
 def _strict_object(pairs):
@@ -101,3 +102,33 @@ def from_retrieval_bundle(bundle, *, expected_query, expected_corpus, expected_b
         'HACF_R1', (), tuple(item.chunk_digest for item in bundle.items), (), None,
         (expected_bundle, bundle.graph_snapshot_digest, bundle.hacf_package_digest),
     )
+
+
+def object_claims(payload, *, expected_payload):
+    """Where each primary HACF hit of an ingress export says its chunk lives.
+
+    Claims come from the pinned export bytes in export order (retrieval rows,
+    then hits), the same order :func:`from_regex_hacf` gives proposal objects.
+    They are unverified; :func:`elpis.structure.retrieval.objects.resolve_chunks`
+    verifies each against the document bytes. Graph neighbours carry no
+    location and are not claimed.
+    """
+    require(type(payload) is bytes and len(payload) <= 4 << 20, detail='bounded ingress export')
+    require(raw_digest(payload) == expected_payload, Code.IDENTITY, 'ingress transport digest')
+    try:
+        result = json.loads(payload, object_pairs_hook=_strict_object, parse_constant=_reject_constant)
+    except (ValueError, UnicodeError) as exc:
+        raise ContractError(Code.INVALID, 'ingress JSON') from exc
+    hacf = result.get('hacf') if type(result) is dict else None
+    require(type(hacf) is dict and type(hacf.get('retrieval')) is list, detail='ingress schema')
+    claims = []
+    for row in hacf['retrieval']:
+        require(type(row) is dict and type(row.get('hacf_primary_hits')) is list, detail='structural route')
+        for hit in row['hacf_primary_hits']:
+            require(type(hit) is dict, detail='HACF candidate')
+            try:
+                claims.append(ChunkClaim(hit.get('chunk_digest'), hit.get('doc_digest'), hit.get('ordinal'),
+                                         hit.get('byte_start'), hit.get('byte_end')))
+            except ObjectResolutionError as exc:
+                raise ContractError(Code.INVALID, 'HACF candidate location') from exc
+    return tuple(claims)

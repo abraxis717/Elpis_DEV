@@ -583,6 +583,58 @@ carried forward (`docs/NONCLAIMS.md`).
   history yet.
 * **Greedy speculative verification only.**
 
+## Context substrate: HACF, not KV
+
+Regex/HACF is Elpis's context substrate. Keys and values are at most bounded,
+ephemeral model scratch inside one sequence; they are never memory, never
+cross a subsystem boundary and never persist in principal committed state.
+
+```
+historical / user / tool / system content
+  -> Regex ingress -> HACF (external store; digest-addressed chunks)
+  -> edge adapter (runtime.edges): proposals + chunk claims from the pinned export
+  -> object resolution (structure.retrieval.objects): pinned manifest, verified blob, elpis-chunk-v1
+  -> ContextAdmission (inference.admission): tokens, digests, budget; frozen
+  -> begin -> DSV4 window scratch -> token token ... -> EOS / YIELD -> finalize -> commit
+```
+
+All retrieval, resolution and admission happen at the turn boundary, before
+`begin`. While a principal sequence produces tokens, only `window_step` runs:
+no Regex, HACF, ECS, runtime edge, canonical identity or provenance.
+
+### Disposition of the DSV4 context structures
+
+| Structure | Category | Principal path |
+|---|---|---|
+| `local_keys` / `local_values` | bounded window, but committed across turns in `NeuralState` | `WindowState.keys/values`: at most `local_window`, sequence-local, dropped at finalize |
+| `pending` + `compress` | bounded buffer feeding the pool | removed |
+| `global_pool` / `GlobalCandidate` / `StreamCandidate` | persistent, growing compressed-KV context | removed |
+| `select_global*` / `IndexResult` / `IndexConfig` | sparse global KV index over the pool | removed |
+| `NeuralState.tokens` | token history, grows with all history | removed; per-sequence outputs only, bounded by the sequence budget |
+| n-gram `history` tail, `hidden`, `logits` | transient model arithmetic | kept in `WindowState` |
+| M projection over associative rows | model-owned addressed memory | kept |
+| G / X / R latent channels | alternate context and steering ingress | not accepted on the principal path |
+| `NeuralState`, `StepReceipt`, `native-kv-source`, `global-*`, `elpis.sot.*`, `elpis.r3sot.*` | persisted identity | unchanged; legacy transaction and legacy-identical sequence path only |
+
+### What is and is not equivalent
+
+With the same tokens and no latents, the principal kernel and the legacy
+kernel agree exactly on keys, values, address rows and the memory term at
+every step. Their hidden state and logits agree exactly while the legacy
+global selection is empty, and diverge once it is not. The removed term is
+exactly the compressed global KV. The principal path is qualified against
+an independent reference implementation of its own equations, not against
+the legacy kernel.
+
+### Cost
+
+Resident principal state is bounded: 339 canonical bytes of committed state
+and at most `local_window` scratch entries in the fixture, at every corpus
+size. The price is re-reading: every turn prefills its admitted context
+again, and resolution reads and verifies whole document blobs. The
+benchmark (`tests/integration/context_scaling_benchmark.py`) reports those
+costs separately, per boundary.
+
 ## Runtime: one composition over one history (`elpis.runtime`)
 
 There is one runtime composition. The beta's numbered runtime generations
