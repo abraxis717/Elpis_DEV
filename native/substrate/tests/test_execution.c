@@ -496,15 +496,91 @@ static void backend_nonblocking(void) {
     unsigned polls = atomic_load(&slow_polls);
     assert(polls >= 1 && polls < 1000);
     atomic_store(&backend_ready, 1);
-    elpis_exec_backend_notify(r);
+    elpis_exec_notify(r);
     drain_in_order(r, 0, 11);
     elpis_exec_get_metrics(r, &m);
     assert(m.backend_accepted == 1 && m.backend_fallback == 0 && m.parked == 0);
     elpis_exec_destroy(r);
 }
+/* Deferral: a CPU task whose resource is unavailable returns DEFER instead of
+ * sleeping. It never occupies a pool thread or its context's cap while parked. */
+static atomic_int resource;
+static atomic_uint defer_attempts;
+static elpis_exec_status waiter(const elpis_exec_buffer *b, size_t cap, elpis_exec_buffer **out) {
+    atomic_fetch_add(&defer_attempts, 1);
+    int now = atomic_fetch_add(&in_flight, 1) + 1, peak = atomic_load(&peak_flight);
+    while (now > peak && !atomic_compare_exchange_weak(&peak_flight, &peak, now)) {}
+    elpis_exec_status code = atomic_load(&resource) ? copy(b, cap, out) : ELPIS_EXEC_DEFER;
+    atomic_fetch_sub(&in_flight, 1);
+    return code;
+}
+static uint64_t mono_ms(void) {
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return (uint64_t)t.tv_sec * 1000 + (uint64_t)t.tv_nsec / 1000000;
+}
+static void deferral(void) {
+    /* A serial context: the deferred head does not hold the only unit of its cap. */
+    elpis_exec_runtime *r = create(1, 32);
+    atomic_store(&resource, 0); atomic_store(&defer_attempts, 0);
+    atomic_store(&in_flight, 0); atomic_store(&peak_flight, 0);
+    uint64_t begin = mono_ms();
+    assert(submit(r, 0, 0, waiter) == 0);
+    for (unsigned n = 1; n <= 10; ++n) submit(r, n, 0, light);
+    elpis_exec_metrics m;
+    unsigned tries = 0;
+    do { elpis_exec_get_metrics(r, &m); pause_ms(); } while (m.completed != 10 && ++tries < 20000);
+    assert(m.completed == 10 && m.queued == 0 && m.deferred >= 1);
+    elpis_exec_result early;
+    assert(elpis_exec_take(r, 0, &early) == ELPIS_EXEC_WOULD_BLOCK); /* order kept */
+    atomic_store(&resource, 1);
+    elpis_exec_notify(r);
+    drain_in_order(r, 0, 11);
+    uint64_t elapsed = mono_ms() - begin;
+    unsigned attempts = atomic_load(&defer_attempts);
+    elpis_exec_get_metrics(r, &m);
+    /* Re-runs are >=1 ms apart (no spinning) and the cap held throughout. */
+    assert(attempts >= 2 && m.deferred == attempts - 1 && attempts <= elapsed + 2);
+    assert(atomic_load(&peak_flight) == 1 && m.parked == 0);
+    elpis_exec_destroy(r);
+
+    /* A deferred task is cancelled like queued work: explicitly or by shutdown. */
+    r = create(2, 8);
+    atomic_store(&resource, 0);
+    uint64_t seq = submit(r, 0, 0, waiter), seq2 = submit(r, 1, 1, waiter);
+    elpis_exec_status code;
+    tries = 0;
+    do { code = elpis_exec_cancel(r, seq); if (code != ELPIS_EXEC_OK) pause_ms(); }
+    while (code != ELPIS_EXEC_OK && ++tries < 20000);
+    assert(code == ELPIS_EXEC_OK);
+    elpis_exec_result v = take(r);
+    assert(v.sequence == seq && v.status == ELPIS_EXEC_CANCELLED && !v.output);
+    tries = 0;
+    do { elpis_exec_get_metrics(r, &m); pause_ms(); } while (m.deferred < 3 && ++tries < 20000);
+    assert(elpis_exec_shutdown(r, 1) == ELPIS_EXEC_OK);
+    v = take(r);
+    assert(v.sequence == seq2 && v.status == ELPIS_EXEC_CANCELLED && !v.output);
+    elpis_exec_get_metrics(r, &m);
+    assert(m.cancelled == 2 && m.parked == 0 && m.running == 0);
+    elpis_exec_destroy(r);
+
+    /* Shutdown racing re-runs: a task that defers after the cancel sweep is
+     * cancelled rather than parked, so shutdown never waits on its resource. */
+    for (unsigned round = 0; round < 100; ++round) {
+        r = create(2, 8);
+        for (unsigned n = 0; n < 4; ++n) submit(r, n, n, waiter);
+        for (unsigned k = 0; k < round % 3; ++k) pause_ms();
+        assert(elpis_exec_shutdown(r, 1) == ELPIS_EXEC_OK);
+        for (unsigned n = 0; n < 4; ++n) {
+            v = take(r);
+            assert(v.sequence == n && v.status == ELPIS_EXEC_CANCELLED && !v.output);
+        }
+        elpis_exec_destroy(r);
+    }
+}
 int main(void) {
     validation(); deterministic(); ordered_pressure(); queued_cancel(); lifecycle(); contention(); accelerators();
-    bound_tasks(); scheduling(); backend_nonblocking();
-    puts("PASS execution: workers 1..4, order, pressure, cancellation, lifecycle, creation failure, contention, backend, bound tasks, shared pool, stealing, utilisation, caps, nonblocking backend");
+    bound_tasks(); scheduling(); backend_nonblocking(); deferral();
+    puts("PASS execution: workers 1..4, order, pressure, cancellation, lifecycle, creation failure, contention, backend, bound tasks, shared pool, stealing, utilisation, caps, nonblocking backend, deferral");
     return 0;
 }

@@ -10,7 +10,9 @@ typedef enum {
     ELPIS_EXEC_OK = 0, ELPIS_EXEC_INVALID = 1, ELPIS_EXEC_CLOSED = 2,
     ELPIS_EXEC_WOULD_BLOCK = 3, ELPIS_EXEC_CANCELLED = 4,
     ELPIS_EXEC_BACKEND_UNAVAILABLE = 5, ELPIS_EXEC_BACKEND_REJECTED = 6,
-    ELPIS_EXEC_INTERNAL = 7
+    ELPIS_EXEC_INTERNAL = 7,
+    /* Returned by a CPU operation only: see elpis_exec_compute. Never a result status. */
+    ELPIS_EXEC_DEFER = 8
 } elpis_exec_status;
 typedef struct elpis_exec_runtime elpis_exec_runtime;
 typedef struct elpis_exec_buffer elpis_exec_buffer;
@@ -31,7 +33,14 @@ void elpis_exec_buffer_release(elpis_exec_buffer *);
  * runtime. Return normally on failure (no pthread_exit/longjmp/exceptions).
  * Input is immutable and owned through return. Output is a separately owned
  * buffer <= max_output; transfer exactly one reference via *out, also on error.
- * Work must terminate; cancellation never interrupts arbitrary C code. */
+ * Work must terminate; cancellation never interrupts arbitrary C code.
+ * An operation must not sleep or spin waiting for a resource held elsewhere. If
+ * one is temporarily unavailable, and the operation has made no externally
+ * visible change, it returns ELPIS_EXEC_DEFER (any *out is released): the task
+ * is parked without occupying a pool thread and runs again, from the start, at
+ * least 1 ms later or at elpis_exec_notify. A deferred task counts as parked for
+ * shutdown and can be cancelled like queued work. The runtime does not bound the
+ * number of deferrals; the operation must (e.g. by a deadline of its own). */
 typedef elpis_exec_status (*elpis_exec_compute)(const elpis_exec_buffer *input,
                                                size_t max_output,
                                                elpis_exec_buffer **out);
@@ -39,7 +48,8 @@ typedef elpis_exec_status (*elpis_exec_compute)(const elpis_exec_buffer *input,
  * remain valid from successful submission through ordered retirement (or
  * shutdown). The runtime never dereferences, frees or retains it. Bound tasks
  * are CPU-only in R0; optional accelerator backends are not consulted. This
- * additive API leaves elpis_exec_task and elpis_exec_submit unchanged. */
+ * additive API leaves elpis_exec_task and elpis_exec_submit unchanged. The
+ * ELPIS_EXEC_DEFER contract of elpis_exec_compute applies unchanged. */
 typedef elpis_exec_status (*elpis_exec_bound_compute)(void *context,
                                                      const elpis_exec_buffer *input,
                                                      size_t max_output,
@@ -80,7 +90,7 @@ typedef struct {
  * token is parked and polled again by whichever pool thread is free, at least
  * 1 ms later, for at most backend_poll_limit polls in total before abort and
  * CPU fallback. A backend with a completion event (fence, eventfd, interrupt)
- * calls elpis_exec_backend_notify to make parked tokens due at once. */
+ * calls elpis_exec_notify to make parked tokens due at once. */
 typedef struct {
     void *context;
     elpis_exec_status (*init)(void *, uint64_t *capabilities);
@@ -115,10 +125,12 @@ typedef struct {
     unsigned workers, capacity, outstanding, high_water;
     uint64_t submitted, completed, retired, cancelled, queue_full;
     uint64_t queue_ns, compute_ns, backend_accepted, backend_fallback;
-    /* Current queued/running/parked-token counts; tasks executed off their lane;
+    /* Current queued/running/parked (backend tokens and deferred tasks) counts;
+     * tasks executed off their lane;
      * summed completion-to-retirement wait; backend polls and submit-to-terminal time. */
     unsigned queued, running, parked;
     uint64_t steals, retire_wait_ns, backend_polls, backend_wait_ns;
+    uint64_t deferred;        /* DEFER returns (each parks the task once) */
 } elpis_exec_metrics;
 /* Shared pool diagnostics. Times are CLOCK_MONOTONIC except cpu_ns
  * (CLOCK_THREAD_CPUTIME_ID of the pool thread while executing tasks). */
@@ -160,16 +172,20 @@ elpis_exec_status elpis_exec_submit_bound(elpis_exec_runtime *,
  * available after shutdown. */
 elpis_exec_status elpis_exec_take(elpis_exec_runtime *, unsigned wait_ms,
                                 elpis_exec_result *);
-/* Queued task cancellation only. Running/completed => WOULD_BLOCK; unknown =>
- * INVALID. Successful cancel still produces exactly one ordered completion. */
+/* Cancels queued or deferred (parked CPU) tasks only. Running/completed/parked
+ * backend token => WOULD_BLOCK; unknown => INVALID. Successful cancel still
+ * produces exactly one ordered completion. */
 elpis_exec_status elpis_exec_cancel(elpis_exec_runtime *, uint64_t sequence);
 void elpis_exec_get_metrics(elpis_exec_runtime *, elpis_exec_metrics *);
 void elpis_exec_get_pool_metrics(elpis_exec_pool_metrics *);
-/* Thread-safe; may be called from a backend's completion thread or handler. */
-void elpis_exec_backend_notify(elpis_exec_runtime *);
+/* Makes every parked token and deferred task of the context due now. Thread-safe;
+ * may be called from a backend's completion thread/handler or by whatever
+ * releases a resource a deferred task waits for. */
+void elpis_exec_notify(elpis_exec_runtime *);
 /* Single lifecycle owner; never call from workers or concurrently with another
  * shutdown/destroy. Submit/take/metrics/cancel may run concurrently with shutdown.
- * cancel_queued=0 drains; =1 cancels queued and lets running tasks finish. Waits
+ * cancel_queued=0 drains; =1 cancels queued and deferred tasks and lets running
+ * tasks and parked backend tokens finish. Waits
  * until this context has no queued, running or parked work, without needing a
  * consumer. Idempotent; rejects future submits. Destroy requires all other API
  * users stopped; releases unconsumed results; the last destroy joins the pool. */

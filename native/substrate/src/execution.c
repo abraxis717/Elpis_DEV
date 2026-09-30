@@ -21,12 +21,13 @@
  * `workers` value is its concurrency cap (at most that many of its CPU tasks run
  * at once) and the number of affinity lanes it maps to.
  *
- * A pool thread takes, in order: a parked accelerator token that is due for a
- * poll; the oldest task in its own lane (affinity preference) of any context
+ * A pool thread takes, in order: due parked work (an accelerator token to poll,
+ * or a deferred task to re-run while its context is below its cap); the oldest
+ * task in its own lane (affinity preference) of any context
  * below its cap; otherwise the oldest runnable task of any lane (stealing).
  * Affinity is therefore a locality hint only and never strands work: a thread
  * is idle only when no context below its cap has queued work and no parked
- * token is due. Retirement stays strictly in sequence order per context, but a
+ * work is due. Retirement stays strictly in sequence order per context, but a
  * slow task delays only publication, never the execution of later tasks.
  *
  * Synchronisation is one pool mutex held for short queue/slot transitions,
@@ -35,8 +36,10 @@
  * when the completed slot is that context's retirement head. Accelerator tokens
  * are never waited for inside a worker: an undecided token is parked and polled
  * again (at most backend_poll_limit polls in total, at least 1 ms apart) by
- * whichever thread is free, so CPU work runs meanwhile.
- * elpis_exec_backend_notify makes parked tokens due at once. */
+ * whichever thread is free, so CPU work runs meanwhile. Likewise a CPU task that
+ * finds a resource temporarily unavailable returns DEFER instead of sleeping; it
+ * is parked and re-run >=1 ms later by a free thread. elpis_exec_notify makes
+ * all parked work of a context due at once. */
 
 #define BUFFER_LIMIT ((size_t)64 * 1024 * 1024)
 #define RUNTIME_LIMIT ((size_t)512 * 1024 * 1024)
@@ -63,6 +66,7 @@ typedef struct {
     void *token;
     uint64_t accepted_ns, started_ns, backend_ns, next_poll_ns, ticket;
     unsigned next, lane, polls;
+    int deferred; /* the CPU operation returned DEFER; re-runs skip the backend */
     enum slot_state state;
 } slot;
 _Static_assert(sizeof(slot) % ISOLATION == 0, "slot stride");
@@ -77,7 +81,7 @@ struct elpis_exec_runtime {
     unsigned queued, running, parked, polling;
     pthread_cond_t changed, drained;
     alignas(ISOLATION) elpis_exec_metrics metrics;
-    int closed, joined, backend_initialized;
+    int closed, cancelling, joined, backend_initialized;
     struct elpis_exec_runtime *prev, *next;
 };
 
@@ -160,6 +164,7 @@ static unsigned available_cpus(void) {
 }
 
 /* ---- queues (pool.mu held) ------------------------------------------------- */
+static void cancelled(elpis_exec_runtime *r, slot *s);
 static void lane_push(elpis_exec_runtime *r, slot *s) {
     unsigned index = (unsigned)(s - r->slots), lane = s->lane;
     s->next = NONE;
@@ -174,8 +179,11 @@ static void lane_pop(elpis_exec_runtime *r, unsigned lane) {
     if (r->head[lane] == NONE) r->tail[lane] = NONE;
     --r->queued;
 }
+/* The parked list stays in due order (appends never move a due time earlier). */
 static void park(elpis_exec_runtime *r, slot *s, uint64_t due) {
     unsigned index = (unsigned)(s - r->slots);
+    if (r->parked_tail != NONE && r->slots[r->parked_tail].next_poll_ns > due)
+        due = r->slots[r->parked_tail].next_poll_ns;
     s->state = PARKED;
     s->next_poll_ns = due;
     s->next = NONE;
@@ -183,6 +191,17 @@ static void park(elpis_exec_runtime *r, slot *s, uint64_t due) {
     else r->slots[r->parked_tail].next = index;
     r->parked_tail = index;
     ++r->parked;
+}
+static void parked_unlink(elpis_exec_runtime *r, unsigned prev, unsigned at) {
+    if (prev == NONE) r->parked_head = r->slots[at].next;
+    else r->slots[prev].next = r->slots[at].next;
+    if (r->parked_tail == at) r->parked_tail = prev;
+    --r->parked;
+}
+/* A deferred CPU task counts against its context's cap when it runs again; a
+ * backend token poll does not. */
+static int parked_ready(const elpis_exec_runtime *r, const slot *s) {
+    return !s->deferred || r->running < r->config.workers;
 }
 static int context_idle(const elpis_exec_runtime *r) {
     return !r->queued && !r->running && !r->parked && !r->polling;
@@ -199,19 +218,21 @@ static void wake_one(unsigned preferred) {
 static void wake_all(void) {
     for (unsigned i = 0; i < pool.started; ++i) pthread_cond_signal(&pool.workers[i].wake);
 }
-/* Next work for pool thread `i`, or NULL. Marks the slot RUNNING or POLLING. */
+/* Next work for pool thread `i`, or NULL. Marks the slot RUNNING or POLLING.
+ * Due parked work (a backend token to poll, a deferred task to re-run) first. */
 static slot *pick(unsigned i, elpis_exec_runtime **owner, int *stolen) {
     uint64_t now = now_ns();
     for (elpis_exec_runtime *r = pool.contexts; r; r = r->next) {
-        if (r->parked_head == NONE) continue;
-        slot *s = &r->slots[r->parked_head];
-        if (s->next_poll_ns > now) continue;
-        r->parked_head = s->next;
-        if (r->parked_head == NONE) r->parked_tail = NONE;
-        --r->parked; ++r->polling;
-        s->state = POLLING;
-        *owner = r; *stolen = 0;
-        return s;
+        for (unsigned prev = NONE, at = r->parked_head; at != NONE; prev = at, at = r->slots[at].next) {
+            slot *s = &r->slots[at];
+            if (s->next_poll_ns > now) break;
+            if (!parked_ready(r, s)) continue;
+            parked_unlink(r, prev, at);
+            if (s->deferred) { ++r->running; s->state = RUNNING; }
+            else { ++r->polling; s->state = POLLING; }
+            *owner = r; *stolen = 0;
+            return s;
+        }
     }
     elpis_exec_runtime *best_r = NULL;
     unsigned best_lane = 0;
@@ -237,20 +258,34 @@ static slot *pick(unsigned i, elpis_exec_runtime **owner, int *stolen) {
     *owner = best_r; *stolen = best_lane != i;
     return s;
 }
+/* Earliest time parked work becomes runnable. A deferred task held back by its
+ * context's cap is not counted: the thread that finishes one of that context's
+ * running tasks picks it up. */
 static uint64_t earliest_poll(void) {
     uint64_t due = UINT64_MAX;
     for (elpis_exec_runtime *r = pool.contexts; r; r = r->next)
-        if (r->parked_head != NONE && r->slots[r->parked_head].next_poll_ns < due)
-            due = r->slots[r->parked_head].next_poll_ns;
+        for (unsigned at = r->parked_head; at != NONE; at = r->slots[at].next)
+            if (parked_ready(r, &r->slots[at])) {
+                if (r->slots[at].next_poll_ns < due) due = r->slots[at].next_poll_ns;
+                break;
+            }
     return due;
 }
 
 /* ---- execution (no lock held) ---------------------------------------------- */
 enum outcome { COMPLETE, PARK };
-static elpis_exec_status cpu(elpis_exec_runtime *r, slot *s) {
-    if (s->bound_compute)
-        return s->bound_compute(s->bound_context, s->input, r->config.max_output_bytes, &s->result.output);
-    return s->task.compute(s->input, r->config.max_output_bytes, &s->result.output);
+static enum outcome cpu(elpis_exec_runtime *r, slot *s) {
+    elpis_exec_status code = s->bound_compute
+        ? s->bound_compute(s->bound_context, s->input, r->config.max_output_bytes, &s->result.output)
+        : s->task.compute(s->input, r->config.max_output_bytes, &s->result.output);
+    if (code == ELPIS_EXEC_DEFER) {
+        elpis_exec_buffer_release(s->result.output);
+        s->result.output = NULL;
+        s->deferred = 1;
+        return PARK;
+    }
+    s->result.status = code;
+    return COMPLETE;
 }
 /* Accelerator exchange for a token that was just submitted or is due for a poll.
  * Mirrors R0 exactly in terminal behaviour: at most backend_poll_limit polls,
@@ -274,13 +309,12 @@ static enum outcome backend_poll(elpis_exec_runtime *r, slot *s, unsigned *fallb
     elpis_exec_buffer_release(*out);
     *out = NULL;
     ++*fallback;
-    s->result.status = cpu(r, s);
-    return COMPLETE;
+    return cpu(r, s);
 }
 static enum outcome execute(elpis_exec_runtime *r, slot *s, unsigned *accepted, unsigned *fallback,
                             uint64_t *polls) {
     if (s->state == POLLING) return backend_poll(r, s, fallback, polls);
-    if (!s->bound_compute && (s->task.flags & ELPIS_EXEC_PURE) &&
+    if (!s->deferred && !s->bound_compute && (s->task.flags & ELPIS_EXEC_PURE) &&
         (r->capabilities & (UINT64_C(1) << s->task.operation))) {
         void *token = NULL;
         s->backend_ns = now_ns();
@@ -296,8 +330,7 @@ static enum outcome execute(elpis_exec_runtime *r, slot *s, unsigned *accepted, 
         s->result.output = NULL;
         ++*fallback;
     }
-    s->result.status = cpu(r, s);
-    return COMPLETE;
+    return cpu(r, s);
 }
 static void finish(elpis_exec_runtime *r, slot *s) {
     if (s->result.status < ELPIS_EXEC_OK || s->result.status > ELPIS_EXEC_INTERNAL ||
@@ -343,18 +376,20 @@ static void *worker_main(void *arg) {
         lock();
         w->m.busy_ns += end - start;
         w->m.cpu_ns += cpu;
-        if (!polling) {
-            ++w->m.tasks;
-            w->m.steals += (uint64_t)stolen;
-            r->metrics.steals += (uint64_t)stolen;
-        }
+        if (outcome == COMPLETE) ++w->m.tasks;
+        w->m.steals += (uint64_t)stolen;
+        r->metrics.steals += (uint64_t)stolen;
         w->m.polls += polls;
         r->metrics.backend_accepted += accepted;
         r->metrics.backend_fallback += fallback;
         r->metrics.backend_polls += polls;
         if (polling) --r->polling;
         else --r->running;
-        if (outcome == PARK) {
+        if (outcome == PARK && s->deferred && r->cancelling) {
+            ++r->metrics.deferred;
+            cancelled(r, s); /* shutdown already swept the parked list */
+        } else if (outcome == PARK) {
+            if (s->deferred) ++r->metrics.deferred;
             park(r, s, end + POLL_INTERVAL_NS);
             wake_one(NONE); /* an idle thread re-arms its timed wait for the token */
         } else {
@@ -515,6 +550,7 @@ static elpis_exec_status admit(elpis_exec_runtime *r, const elpis_exec_task *t, 
         s->backend_ns = 0;
         s->token = NULL;
         s->polls = 0;
+        s->deferred = 0;
         s->ticket = pool.ticket++;
         s->lane = t->affinity % r->config.workers;
         lane_push(r, s);
@@ -572,13 +608,27 @@ elpis_exec_status elpis_exec_take(elpis_exec_runtime *r, unsigned ms, elpis_exec
     unlock();
     return code;
 }
+/* Queued work, or a deferred task waiting to run again (it has no backend token
+ * and is not executing), is unlinked and completed as CANCELLED. */
+static int cancellable(const slot *s) { return s->state == QUEUED || (s->state == PARKED && s->deferred); }
 static void cancel_locked(elpis_exec_runtime *r, slot *s) {
-    unsigned target = (unsigned)(s - r->slots), lane = s->lane, prev = NONE, at = r->head[lane];
-    while (at != target) { prev = at; at = r->slots[at].next; }
-    if (prev == NONE) r->head[lane] = s->next;
-    else r->slots[prev].next = s->next;
-    if (r->tail[lane] == target) r->tail[lane] = prev;
-    --r->queued;
+    unsigned target = (unsigned)(s - r->slots), prev = NONE;
+    if (s->state == PARKED) {
+        unsigned at = r->parked_head;
+        while (at != target) { prev = at; at = r->slots[at].next; }
+        parked_unlink(r, prev, target);
+    } else {
+        unsigned lane = s->lane, at = r->head[lane];
+        while (at != target) { prev = at; at = r->slots[at].next; }
+        if (prev == NONE) r->head[lane] = s->next;
+        else r->slots[prev].next = s->next;
+        if (r->tail[lane] == target) r->tail[lane] = prev;
+        --r->queued;
+    }
+    cancelled(r, s);
+}
+/* Completes an unlinked slot as CANCELLED. */
+static void cancelled(elpis_exec_runtime *r, slot *s) {
     elpis_exec_buffer_release(s->input);
     s->input = NULL;
     uint64_t now = now_ns();
@@ -598,7 +648,7 @@ elpis_exec_status elpis_exec_cancel(elpis_exec_runtime *r, uint64_t seq) {
     if (seq >= r->metrics.retired && seq < r->metrics.submitted) {
         slot *s = &r->slots[seq % r->config.capacity];
         code = ELPIS_EXEC_WOULD_BLOCK;
-        if (s->state == QUEUED) {
+        if (cancellable(s)) {
             cancel_locked(r, s);
             code = ELPIS_EXEC_OK;
             if (r->closed && context_idle(r)) pthread_cond_broadcast(&r->drained);
@@ -628,7 +678,7 @@ void elpis_exec_get_pool_metrics(elpis_exec_pool_metrics *out) {
     for (unsigned i = 0; i < pool.started; ++i) out->worker[i] = pool.workers[i].m;
     unlock();
 }
-void elpis_exec_backend_notify(elpis_exec_runtime *r) {
+void elpis_exec_notify(elpis_exec_runtime *r) {
     if (!r) return;
     lock();
     uint64_t now = now_ns();
@@ -641,8 +691,9 @@ elpis_exec_status elpis_exec_shutdown(elpis_exec_runtime *r, int cancel) {
     if (r->joined) return ELPIS_EXEC_OK;
     lock();
     r->closed = 1;
+    r->cancelling |= cancel;
     if (cancel) for (unsigned i = 0; i < r->config.capacity; ++i)
-        if (r->slots[i].state == QUEUED) cancel_locked(r, &r->slots[i]);
+        if (cancellable(&r->slots[i])) cancel_locked(r, &r->slots[i]);
     pthread_cond_broadcast(&r->changed);
     wake_all();
     while (!context_idle(r)) pthread_cond_wait(&r->drained, &pool.mu);
