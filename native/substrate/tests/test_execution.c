@@ -98,12 +98,17 @@ static void deterministic(void) {
 static pthread_mutex_t gate_mu = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t gate_cv = PTHREAD_COND_INITIALIZER;
 static int entered, released;
+static void wait_gates(int n) {
+    pthread_mutex_lock(&gate_mu);
+    while (entered < n) pthread_cond_wait(&gate_cv, &gate_mu);
+    pthread_mutex_unlock(&gate_mu);
+}
 static void reset_gate(void) {
     pthread_mutex_lock(&gate_mu); entered = released = 0; pthread_mutex_unlock(&gate_mu);
 }
 static elpis_exec_status gate(const elpis_exec_buffer *b, size_t cap, elpis_exec_buffer **out) {
     pthread_mutex_lock(&gate_mu);
-    entered = 1; pthread_cond_broadcast(&gate_cv);
+    ++entered; pthread_cond_broadcast(&gate_cv);
     while (!released) pthread_cond_wait(&gate_cv, &gate_mu);
     pthread_mutex_unlock(&gate_mu);
     return echo(b, cap, out);
@@ -116,6 +121,8 @@ static void wait_gate(void) {
 static void open_gate(void) {
     pthread_mutex_lock(&gate_mu); released = 1; pthread_cond_broadcast(&gate_cv); pthread_mutex_unlock(&gate_mu);
 }
+/* Retirement is ordered; execution is not. A blocked head delays publication only:
+ * later tasks, including one queued on the blocked task's own lane, still run. */
 static void ordered_pressure(void) {
     elpis_exec_runtime *r = create(2, 3);
     reset_gate();
@@ -124,8 +131,8 @@ static void ordered_pressure(void) {
     submit(r, 2, 0, echo);
     elpis_exec_metrics m;
     unsigned tries = 0;
-    do { elpis_exec_get_metrics(r, &m); pause_ms(); } while (!m.completed && ++tries < 10000);
-    assert(m.completed == 1); /* Later task finished, first still blocked. */
+    do { elpis_exec_get_metrics(r, &m); pause_ms(); } while (m.completed != 2 && ++tries < 10000);
+    assert(m.completed == 2 && m.running == 1 && m.steals >= 1);
     elpis_exec_result result;
     assert(elpis_exec_take(r, 0, &result) == ELPIS_EXEC_WOULD_BLOCK);
     assert(elpis_exec_take(r, 2, &result) == ELPIS_EXEC_WOULD_BLOCK);
@@ -136,16 +143,34 @@ static void ordered_pressure(void) {
     assert(elpis_exec_buffer_mutable_data(b));
     assert(elpis_exec_cancel(r, 0) == ELPIS_EXEC_WOULD_BLOCK);
     assert(elpis_exec_cancel(r, 1) == ELPIS_EXEC_WOULD_BLOCK);
+    assert(elpis_exec_cancel(r, 2) == ELPIS_EXEC_WOULD_BLOCK);
     assert(elpis_exec_cancel(r, 99) == ELPIS_EXEC_INVALID);
-    assert(elpis_exec_cancel(r, 2) == ELPIS_EXEC_OK);
     open_gate();
-    for (unsigned n = 0; n < 2; ++n) { result = take(r); check_result(&result, n, n); }
-    result = take(r);
-    assert(result.status == ELPIS_EXEC_CANCELLED && result.sequence == 2 && !result.output);
+    for (unsigned n = 0; n < 3; ++n) {
+        result = take(r);
+        assert(result.retire_ns <= (uint64_t)60 * 1000000000);
+        if (n) assert(result.worker != UINT32_MAX);
+        check_result(&result, n, n);
+    }
     assert(elpis_exec_submit(r, &t, &b, &seq) == ELPIS_EXEC_OK && seq == 3 && !b);
     result = take(r); check_result(&result, 3, 3);
     elpis_exec_get_metrics(r, &m);
-    assert(m.high_water == 3 && m.queue_full == 1 && m.cancelled == 1 && m.retired == 4);
+    assert(m.high_water == 3 && m.queue_full == 1 && m.cancelled == 0 && m.retired == 4);
+    elpis_exec_destroy(r);
+}
+/* Cancellation of genuinely queued work: every lane thread is blocked. */
+static void queued_cancel(void) {
+    elpis_exec_runtime *r = create(2, 4);
+    reset_gate();
+    submit(r, 0, 0, gate); submit(r, 1, 1, gate); wait_gates(2);
+    submit(r, 2, 0, echo);
+    assert(elpis_exec_cancel(r, 2) == ELPIS_EXEC_OK);
+    assert(elpis_exec_cancel(r, 2) == ELPIS_EXEC_WOULD_BLOCK);
+    open_gate();
+    elpis_exec_result v = take(r); check_result(&v, 0, 0);
+    v = take(r); check_result(&v, 1, 1);
+    v = take(r);
+    assert(v.status == ELPIS_EXEC_CANCELLED && v.sequence == 2 && !v.output && v.worker == UINT32_MAX);
     elpis_exec_destroy(r);
 }
 static void *close_cancel(void *arg) {
@@ -340,15 +365,20 @@ static void validation(void) {
         assert(elpis_exec_create(&c, &r) == ELPIS_EXEC_INTERNAL && !r);
     }
     fail_after = -1;
-    elpis_exec_runtime *one = create(2, 1), *two = create(2, 1);
-    c = config(1, 1);
-    assert(elpis_exec_create(&c, &r) == ELPIS_EXEC_WOULD_BLOCK && !r);
+    elpis_exec_pool_metrics pm;
+    elpis_exec_get_pool_metrics(&pm);
+    assert(pm.threads == 0 && pm.contexts == 0); /* failed creates left no threads */
+    /* Contexts share one pool: any number may be live, never more than four threads. */
+    elpis_exec_runtime *one = create(4, 1), *two = create(4, 1), *three = create(1, 1);
+    elpis_exec_get_pool_metrics(&pm);
+    assert(pm.threads == 4 && pm.contexts == 3);
     elpis_exec_shutdown(one, 0);
-    r = create(2, 1);
-    elpis_exec_destroy(one); /* Repeated shutdown must not release twice. */
-    elpis_exec_runtime *extra = NULL;
-    assert(elpis_exec_create(&c, &extra) == ELPIS_EXEC_WOULD_BLOCK && !extra);
-    elpis_exec_destroy(two); elpis_exec_destroy(r);
+    elpis_exec_destroy(one); /* Repeated shutdown is harmless. */
+    elpis_exec_get_pool_metrics(&pm);
+    assert(pm.threads == 4 && pm.contexts == 2);
+    elpis_exec_destroy(two); elpis_exec_destroy(three);
+    elpis_exec_get_pool_metrics(&pm);
+    assert(pm.threads == 0 && pm.contexts == 0); /* the last destroy joins the pool */
     r = create(0, 4);
     elpis_exec_metrics m; elpis_exec_get_metrics(r, &m); assert(m.workers >= 1 && m.workers <= 3);
     elpis_exec_buffer *b = value(55), *shared = b;
@@ -364,8 +394,117 @@ static void validation(void) {
     check_result(&v, 0, 55);
     elpis_exec_destroy(NULL);
 }
+/* ---- scheduling invariants --------------------------------------------------- */
+static atomic_int in_flight, peak_flight;
+static void spin_ms(unsigned ms) {
+    struct timespec a, b;
+    clock_gettime(CLOCK_MONOTONIC, &a);
+    do clock_gettime(CLOCK_MONOTONIC, &b);
+    while ((b.tv_sec - a.tv_sec) * 1000 + (b.tv_nsec - a.tv_nsec) / 1000000 < (long)ms);
+}
+static elpis_exec_status tracked(const elpis_exec_buffer *b, size_t cap, elpis_exec_buffer **out, unsigned ms) {
+    int now = atomic_fetch_add(&in_flight, 1) + 1, peak = atomic_load(&peak_flight);
+    while (now > peak && !atomic_compare_exchange_weak(&peak_flight, &peak, now)) {}
+    spin_ms(ms);
+    atomic_fetch_sub(&in_flight, 1);
+    return echo(b, cap, out);
+}
+static elpis_exec_status heavy(const elpis_exec_buffer *b, size_t cap, elpis_exec_buffer **out) {
+    return tracked(b, cap, out, 40);
+}
+static elpis_exec_status light(const elpis_exec_buffer *b, size_t cap, elpis_exec_buffer **out) {
+    return tracked(b, cap, out, 2);
+}
+static void drain_in_order(elpis_exec_runtime *r, unsigned first, unsigned count) {
+    for (unsigned n = first; n < first + count; ++n) { elpis_exec_result v = take(r); check_result(&v, n, n); }
+}
+static void scheduling(void) {
+    /* Skew: a blocked task and 40 more on the same lane. Every later task completes
+     * while the blocked one holds its lane thread (no stranding, no HOL execution). */
+    elpis_exec_runtime *r = create(4, 64);
+    reset_gate();
+    submit(r, 0, 0, gate); wait_gate();
+    for (unsigned n = 1; n <= 40; ++n) submit(r, n, 0, echo);
+    elpis_exec_metrics m;
+    unsigned tries = 0;
+    do { elpis_exec_get_metrics(r, &m); pause_ms(); } while (m.completed != 40 && ++tries < 20000);
+    assert(m.completed == 40 && m.running == 1 && m.queued == 0);
+    open_gate();
+    drain_in_order(r, 0, 41);
+    elpis_exec_destroy(r);
+
+    /* Utilisation: eight heavy tasks all on lane 0 run four at a time. */
+    r = create(4, 16);
+    atomic_store(&peak_flight, 0);
+    for (unsigned n = 0; n < 8; ++n) submit(r, n, 0, heavy);
+    unsigned used = 0;
+    for (unsigned n = 0; n < 8; ++n) {
+        elpis_exec_result v = take(r);
+        used |= 1u << v.worker;
+        check_result(&v, n, n);
+    }
+    assert(atomic_load(&peak_flight) == 4 && used == 0xfu);
+    elpis_exec_destroy(r);
+
+    /* Per-context cap: workers=1 keeps a context serial even when the pool is
+     * wider, while another context uses the rest of the pool at the same time. */
+    elpis_exec_runtime *wide = create(4, 16), *serial = create(1, 16);
+    atomic_store(&peak_flight, 0);
+    for (unsigned n = 0; n < 6; ++n) submit(serial, n, n, light);
+    drain_in_order(serial, 0, 6);
+    assert(atomic_load(&peak_flight) == 1);
+    atomic_store(&peak_flight, 0);
+    for (unsigned n = 0; n < 12; ++n) { submit(wide, n, n, light); submit(serial, 6 + n, n, light); }
+    drain_in_order(wide, 0, 12); drain_in_order(serial, 6, 12);
+    assert(atomic_load(&peak_flight) <= 4 && atomic_load(&peak_flight) >= 2);
+    elpis_exec_pool_metrics pm; elpis_exec_get_pool_metrics(&pm);
+    assert(pm.threads == 4 && pm.contexts == 2);
+    uint64_t tasks = 0;
+    for (unsigned i = 0; i < pm.threads; ++i) tasks += pm.worker[i].tasks;
+    assert(tasks >= 30);
+    elpis_exec_destroy(serial); elpis_exec_destroy(wide);
+}
+/* Nonblocking accelerator completion: an undecided token never occupies a worker. */
+static atomic_int backend_ready;
+static atomic_uint slow_polls;
+static elpis_exec_status slow_init(void *p, uint64_t *caps) { (void)p; *caps = UINT64_C(1) << 1; return ELPIS_EXEC_OK; }
+static elpis_exec_status slow_submit(void *p, const elpis_exec_task *t, const elpis_exec_buffer *b,
+                                     size_t cap, void **token) {
+    (void)p; (void)t; (void)cap; *token = (void *)b; return ELPIS_EXEC_OK;
+}
+static elpis_exec_status slow_poll(void *p, void *token, elpis_exec_buffer **out) {
+    (void)p; atomic_fetch_add(&slow_polls, 1);
+    if (!atomic_load(&backend_ready)) return ELPIS_EXEC_WOULD_BLOCK;
+    return copy(token, 1024, out);
+}
+static void slow_abort(void *p, void *token) { (void)p; (void)token; assert(0 && "no abort expected"); }
+static void slow_shutdown(void *p) { (void)p; }
+static void backend_nonblocking(void) {
+    elpis_exec_backend backend = {NULL, slow_init, slow_submit, slow_poll, slow_abort, slow_shutdown};
+    elpis_exec_config c = config(2, 16); c.backend = &backend; c.backend_poll_limit = 1000;
+    elpis_exec_runtime *r;
+    assert(elpis_exec_create(&c, &r) == ELPIS_EXEC_OK);
+    atomic_store(&backend_ready, 0); atomic_store(&slow_polls, 0);
+    elpis_exec_task t = {1, 9, 0, ELPIS_EXEC_PURE, 0, echo};
+    elpis_exec_buffer *b = value(0); uint64_t seq;
+    assert(elpis_exec_submit(r, &t, &b, &seq) == ELPIS_EXEC_OK && seq == 0);
+    for (unsigned n = 1; n <= 10; ++n) submit(r, n, 0, light); /* same lane as the token */
+    elpis_exec_metrics m;
+    unsigned tries = 0;
+    do { elpis_exec_get_metrics(r, &m); pause_ms(); } while (m.completed != 10 && ++tries < 20000);
+    assert(m.completed == 10 && m.parked == 1 && m.running == 0); /* CPU work ran; token parked */
+    unsigned polls = atomic_load(&slow_polls);
+    assert(polls >= 1 && polls < 1000);
+    atomic_store(&backend_ready, 1);
+    elpis_exec_backend_notify(r);
+    drain_in_order(r, 0, 11);
+    elpis_exec_get_metrics(r, &m);
+    assert(m.backend_accepted == 1 && m.backend_fallback == 0 && m.parked == 0);
+    elpis_exec_destroy(r);
+}
 int main(void) {
-    validation(); deterministic(); ordered_pressure(); lifecycle(); contention(); accelerators(); bound_tasks();
-    puts("PASS execution: workers 1..4, order, pressure, cancellation, lifecycle, creation failure, contention, backend, bound tasks");
+    validation(); deterministic(); ordered_pressure(); queued_cancel(); lifecycle(); contention(); accelerators();
+    bound_tasks(); scheduling(); backend_nonblocking();
+    puts("PASS execution: workers 1..4, order, pressure, cancellation, lifecycle, creation failure, contention, backend, bound tasks, shared pool, stealing, utilisation, caps, nonblocking backend");
     return 0;
 }
