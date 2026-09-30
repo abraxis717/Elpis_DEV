@@ -151,11 +151,14 @@ search then returns the serial digest, and races four executors against demotion
 wakeups, busy and idle wall time and thread CPU time; plus lock acquisitions,
 contended acquisitions and wait time.
 
-`benchmark_regex_execution WORKERS FAMILY TASKS` prints JSON. WORKERS=0 calls the
-original V2 API directly; 1..4 use the runtime. FAMILY is small or large; data derive
-from existing Regex fixtures including no-match, long whitespace, ambiguity and
-invalid UTF8. Setup and producer input copying are included. The runtime queue
-itself never copies inputs. Wall, process CPU, source/output bytes, throughput,
-time to first ordered result, p50/p95 retirement latency, compute/queue delay,
-high-water and process peak RSS are reported. Allocator calls inside the existing
-lexer are not instrumented. No inference acceleration is inferred from this test.
+`benchmark_regex_execution WORKERS FAMILY TASKS [CAPACITY]` prints JSON. WORKERS=0
+calls the original V2 API directly; 1..4 use the runtime. FAMILY is small, large or
+skew (one 1 MiB whitespace source ahead of small ones); data derive from existing
+Regex fixtures including no-match, long whitespace, ambiguity and invalid UTF8.
+Setup and producer input copying are included. The runtime queue itself never
+copies inputs. Wall, process CPU, source/output bytes, throughput, time to first
+ordered result, p50/p95/p99 end-to-end, compute, queue and retirement-wait latency,
+tasks completed before the head (skew), high-water, steals, pool lock
+acquisitions/contention/wait, per-thread tasks/steals/wakeups/busy/idle/CPU time
+and process peak RSS are reported. No inference acceleration is inferred from this
+test.
