@@ -638,19 +638,26 @@ struct Lexer::Impl {
     }
     void retire(size_t pi) {
         auto& ids=rows[pi];
-        while(!ids.empty() && pool[ids.front()].done) {
-            Candidate& f=pool[ids.front()];
-            if(!f.won) { release(ids.front()); ids.erase(ids.begin()); continue; }
+        // Retired candidates leave from the front: advance a head index and drop
+        // the released prefix once (also when materialization throws).
+        struct Prefix {
+            std::vector<uint32_t>& ids; size_t head=0;
+            ~Prefix() { ids.erase(ids.begin(),ids.begin()+static_cast<std::ptrdiff_t>(head)); }
+        } front{ids};
+        size_t& head=front.head;
+        while(head<ids.size() && pool[ids[head]].done) {
+            Candidate& f=pool[ids[head]];
+            if(!f.won) { release(ids[head]); ++head; continue; }
             uint64_t end=f.winner.end;
             if(evidence.size()>=limit) throw RangeError{};
             evidence.push_back(materialize(f,pi));
-            release(ids.front()); ids.erase(ids.begin());
-            ids.erase(std::remove_if(ids.begin(),ids.end(),[&](uint32_t id){
+            release(ids[head]); ++head;
+            ids.erase(std::remove_if(ids.begin()+static_cast<std::ptrdiff_t>(head),ids.end(),[&](uint32_t id){
                 if(pool[id].start>=end) return false;
                 release(id); return true;
             }),ids.end());
         }
-        ids.erase(std::remove_if(ids.begin(),ids.end(),[&](uint32_t id){
+        ids.erase(std::remove_if(ids.begin()+static_cast<std::ptrdiff_t>(head),ids.end(),[&](uint32_t id){
             if(!pool[id].done || pool[id].won) return false;
             release(id); return true;
         }),ids.end());
