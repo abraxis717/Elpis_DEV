@@ -26,7 +26,7 @@ static void make_path(char *buf, size_t sz, const char *dir, const char *fname) 
 
 int main(void) {
     int passed = 0, failed = 0;
-    const char *test_dir = "/tmp/elpis_embedding_storage_test";
+    const char *test_dir = "elpis_embedding_storage_test";
     char path[512];
 
     /* Clean test dir */

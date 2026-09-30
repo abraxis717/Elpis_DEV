@@ -54,18 +54,18 @@ extern int elpis_read_admission_receipt(const char *path, elpis_evidence_admissi
 extern int elpis_read_admission_layer(const char *path, elpis_evidence_admission_v1 *out);
 extern int elpis_read_typed_evidence_view(const char *path, elpis_typed_evidence_view_v1 *out);
 
-static const char *TEST_DIR = "/tmp/elpis_p4_test";
+static const char *TEST_DIR = "elpis_p4_test";
 
 static void setup(void) {
-    if (system("mkdir -p /tmp/elpis_p4_test") != 0 ||
-        system("rm -rf /tmp/elpis_p4_test/*") != 0) {
+    if (system("mkdir -p elpis_p4_test") != 0 ||
+        system("rm -rf elpis_p4_test/*") != 0) {
         fprintf(stderr, "test directory setup failed\n");
         exit(1);
     }
 }
 
 static void cleanup(void) {
-    if (system("rm -rf /tmp/elpis_p4_test") != 0)
+    if (system("rm -rf elpis_p4_test") != 0)
         fprintf(stderr, "test directory cleanup failed\n");
 }
 
@@ -84,7 +84,7 @@ static void test_typer_profile_roundtrip(void) {
                                           (const uint8_t *)&orig, sizeof(orig));
     TEST(write_ok, rc == 0);
 
-    rc = elpis_read_typer_profile("/tmp/elpis_p4_test/typer.bin", &loaded);
+    rc = elpis_read_typer_profile("elpis_p4_test/typer.bin", &loaded);
     TEST(read_ok, rc == 0);
     TEST(kind_match, loaded.provider_kind == orig.provider_kind);
     TEST(confidence_match, loaded.confidence_scale == orig.confidence_scale);
@@ -108,7 +108,7 @@ static void test_span_roundtrip(void) {
                                           (const uint8_t *)&orig, sizeof(orig));
     TEST(write_ok, rc == 0);
 
-    rc = elpis_read_evidence_span("/tmp/elpis_p4_test/span.bin", &loaded);
+    rc = elpis_read_evidence_span("elpis_p4_test/span.bin", &loaded);
     TEST(read_ok, rc == 0);
     TEST(start_match, loaded.byte_start == orig.byte_start);
     TEST(end_match, loaded.byte_end_exclusive == orig.byte_end_exclusive);
@@ -133,7 +133,7 @@ static void test_claim_candidate_roundtrip(void) {
                                           (const uint8_t *)&orig, sizeof(orig));
     TEST(write_ok, rc == 0);
 
-    rc = elpis_read_claim_candidate("/tmp/elpis_p4_test/claim.bin", &loaded);
+    rc = elpis_read_claim_candidate("elpis_p4_test/claim.bin", &loaded);
     TEST(read_ok, rc == 0);
     TEST(type_match, loaded.claim_type == orig.claim_type);
     TEST(polarity_match, loaded.claim_polarity == orig.claim_polarity);
@@ -149,7 +149,7 @@ static void test_policy_roundtrip(void) {
                                           (const uint8_t *)&orig, sizeof(orig));
     TEST(write_ok, rc == 0);
 
-    rc = elpis_read_admission_policy("/tmp/elpis_p4_test/policy.bin", &loaded);
+    rc = elpis_read_admission_policy("elpis_p4_test/policy.bin", &loaded);
     TEST(read_ok, rc == 0);
     TEST(strict_match, loaded.policy_flags == orig.policy_flags);
     TEST(ceiling_match, loaded.maximum_claim_authority == orig.maximum_claim_authority);
@@ -171,7 +171,7 @@ static void test_decision_roundtrip(void) {
                                           (const uint8_t *)&orig, sizeof(orig));
     TEST(write_ok, rc == 0);
 
-    rc = elpis_read_admission_decision("/tmp/elpis_p4_test/decision.bin", &loaded);
+    rc = elpis_read_admission_decision("elpis_p4_test/decision.bin", &loaded);
     TEST(read_ok, rc == 0);
     TEST(kind_match, loaded.candidate_kind == orig.candidate_kind);
     TEST(disposition_match, loaded.decision_disposition == orig.decision_disposition);
@@ -195,7 +195,7 @@ static void test_receipt_roundtrip(void) {
                                           (const uint8_t *)&orig, sizeof(orig));
     TEST(write_ok, rc == 0);
 
-    rc = elpis_read_admission_receipt("/tmp/elpis_p4_test/receipt.bin", &loaded);
+    rc = elpis_read_admission_receipt("elpis_p4_test/receipt.bin", &loaded);
     TEST(read_ok, rc == 0);
     TEST(provenance_status, loaded.graph_edge_provenance_status == GRAPH_PROVENANCE_UNAVAILABLE);
 }
@@ -221,7 +221,7 @@ static void test_admission_layer_roundtrip(void) {
                                           (const uint8_t *)&orig, sizeof(orig));
     TEST(write_ok, rc == 0);
 
-    rc = elpis_read_admission_layer("/tmp/elpis_p4_test/layer.bin", &loaded);
+    rc = elpis_read_admission_layer("elpis_p4_test/layer.bin", &loaded);
     TEST(read_ok, rc == 0);
     TEST(counts_match, loaded.admission_decision_count == orig.admission_decision_count);
 }
@@ -240,7 +240,7 @@ static void test_truncation_rejected(void) {
                                  (const uint8_t *)&orig, sizeof(orig));
 
     /* Truncate to half */
-    FILE *fp = fopen("/tmp/elpis_p4_test/truncated.bin", "r+b");
+    FILE *fp = fopen("elpis_p4_test/truncated.bin", "r+b");
     if (fp) {
         fseek(fp, sizeof(orig) / 2, SEEK_SET);
         if (ftruncate(fileno(fp), ftell(fp)) != 0) abort();
@@ -248,7 +248,7 @@ static void test_truncation_rejected(void) {
     }
 
     elpis_evidence_typer_profile_v1 loaded;
-    int rc = elpis_read_typer_profile("/tmp/elpis_p4_test/truncated.bin", &loaded);
+    int rc = elpis_read_typer_profile("elpis_p4_test/truncated.bin", &loaded);
     TEST(truncation_rejected, rc != 0);
 }
 

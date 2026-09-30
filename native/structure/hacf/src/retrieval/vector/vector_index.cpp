@@ -10,6 +10,7 @@
  *   - FMS_E_DIGEST from a corrupt cold replica surfaces as an integrity failure */
 
 #include "elpis/vector_index.h"
+#include "elpis/vector_execution.h"
 #include "elpis/sha256.h"
 
 #include <algorithm>
@@ -113,6 +114,13 @@ struct elpis_vector_index {
     /* Readers (search, inspect, verify, list) take a shared lock; admission and
      * close take it exclusively. FMS keeps its own lock for residency. */
     mutable std::shared_mutex mu;   /* mutable: const read accessors still lock */
+};
+
+struct elpis_vector_executor {
+    elpis_vector_index *index = nullptr;       /* borrowed; outlives executor */
+    elpis_exec_runtime *runtime = nullptr;
+    std::mutex search_mu;                      /* one ordered consumer */
+    bool broken = false;
 };
 
 namespace {
@@ -235,6 +243,136 @@ bool shares_chunk_digest(const uint8_t *a, uint64_t na, const uint8_t *b, uint64
         if (c < 0) i++; else j++;
     }
     return false;
+}
+
+
+struct ExecShardEnvelope {
+    int32_t status;
+    int32_t cause;
+    uint32_t count;
+    uint32_t reserved;
+    char detail[192];
+};
+
+struct ExecShardContext {
+    elpis_vector_index *index;
+    const ShardEntry *shard;
+    const float *query;
+    uint32_t dimensions;
+    uint32_t k;
+    const char *ns_filter;
+    const char *authority_filter;
+};
+
+int emit_exec_envelope(int status, int cause, const char *detail,
+                       const std::vector<elpis_vector_hit> &hits,
+                       size_t cap, elpis_exec_buffer **out) {
+    if (!out) return ELPIS_EXEC_INVALID;
+    *out = nullptr;
+    size_t bytes = sizeof(ExecShardEnvelope) + hits.size() * sizeof(elpis_vector_hit);
+    if (bytes > cap) return ELPIS_EXEC_INVALID;
+    elpis_exec_buffer *b = elpis_exec_buffer_alloc(bytes);
+    if (!b) return ELPIS_EXEC_INTERNAL;
+    unsigned char *dst = static_cast<unsigned char *>(elpis_exec_buffer_mutable_data(b));
+    if (!dst) { elpis_exec_buffer_release(b); return ELPIS_EXEC_INTERNAL; }
+    ExecShardEnvelope env{};
+    env.status = status;
+    env.cause = cause;
+    env.count = static_cast<uint32_t>(hits.size());
+    std::snprintf(env.detail, sizeof env.detail, "%s", detail ? detail : "");
+    std::memcpy(dst, &env, sizeof env);
+    if (!hits.empty())
+        std::memcpy(dst + sizeof env, hits.data(), hits.size() * sizeof(elpis_vector_hit));
+    *out = b;
+    return ELPIS_EXEC_OK;
+}
+
+elpis_exec_status vector_shard_compute(void *opaque, const elpis_exec_buffer *,
+                                       size_t cap, elpis_exec_buffer **out) {
+    ExecShardContext *ctx = static_cast<ExecShardContext *>(opaque);
+    if (!ctx || !ctx->index || !ctx->shard || !ctx->query || !out)
+        return ELPIS_EXEC_INVALID;
+    try {
+        elpis_vector_index *ix = ctx->index;
+        const ShardEntry &s = *ctx->shard;
+        void *p = nullptr;
+        std::lock_guard<std::mutex> shard_lk(*s.gate);
+        LeaseGuard g(ix->fms, s.id);
+        fms_status r = g.acquire(&p);
+        if (r != FMS_OK) {
+            std::vector<elpis_vector_hit> empty;
+            char detail[192];
+            std::snprintf(detail, sizeof detail,
+                          "shard could not be made WARM-resident: %s%s", fms_strerror(r),
+                          r == FMS_E_LIMIT
+                              ? " (WARM ceiling must exceed concurrent queries x largest shard)"
+                              : "");
+            return static_cast<elpis_exec_status>(
+                emit_exec_envelope(residency_status(r), r, detail, empty, cap, out));
+        }
+        if (g.tier() != FMS_WARM) {
+            std::vector<elpis_vector_hit> empty;
+            return static_cast<elpis_exec_status>(
+                emit_exec_envelope(ELPIS_VEC_E_RESIDENCY, 0,
+                                   "shard resident at an unexpected tier",
+                                   empty, cap, out));
+        }
+
+        const uint8_t *recs = static_cast<const uint8_t *>(p) + ELPIS_VSHARD_HEADER_BYTES;
+        const uint64_t n = s.hdr.vector_count;
+        std::vector<double> scores(n);
+        if (elpis_vector_score_block(recs, n, s.hdr.dimensions, ctx->query,
+                                     s.hdr.metric, scores.data()) != 0) {
+            std::vector<elpis_vector_hit> empty;
+            return static_cast<elpis_exec_status>(
+                emit_exec_envelope(ELPIS_VEC_E_QUERY, 0,
+                                   "scoring rejected the query", empty, cap, out));
+        }
+
+        std::vector<elpis_vector_hit> local;
+        local.reserve(static_cast<size_t>(std::min<uint64_t>(n, ctx->k)));
+        for (uint64_t i = 0; i < n; ++i) {
+            const char *ns = "", *au = "";
+            if (elpis_vshard_record_meta(p, s.bytes, i, &ns, &au) != 0) {
+                std::vector<elpis_vector_hit> empty;
+                return static_cast<elpis_exec_status>(
+                    emit_exec_envelope(ELPIS_VEC_E_INTEGRITY, 0,
+                                       "shard metadata map unreadable", empty, cap, out));
+            }
+            if (ctx->ns_filter && std::strcmp(ns, ctx->ns_filter) != 0) continue;
+            if (ctx->authority_filter && std::strcmp(au, ctx->authority_filter) != 0) continue;
+
+            elpis_vector_hit h{};
+            elpis_hex32(recs + i * ELPIS_VSHARD_RECORD_BYTES, h.chunk_digest);
+            elpis_hex32(recs + i * ELPIS_VSHARD_RECORD_BYTES + 32, h.doc_digest);
+            std::snprintf(h.shard_digest, sizeof h.shard_digest, "%s", s.digest);
+            std::snprintf(h.embedding_profile_digest, sizeof h.embedding_profile_digest,
+                          "%s", ix->profile_digest);
+            std::snprintf(h.ns, sizeof h.ns, "%s", ns);
+            std::snprintf(h.authority, sizeof h.authority, "%s", au);
+            double canonical_score = 0.0;
+            if (!canonical_index_score(scores[i], &canonical_score)) {
+                std::vector<elpis_vector_hit> empty;
+                return static_cast<elpis_exec_status>(
+                    emit_exec_envelope(ELPIS_VEC_E_INTEGRITY, 0,
+                                       "scoring produced a non-finite or out-of-domain value",
+                                       empty, cap, out));
+            }
+            h.score = canonical_score;
+            h.score_key = elpis_vector_score_key(canonical_score);
+            local.push_back(h);
+        }
+
+        std::sort(local.begin(), local.end(),
+                  [](const elpis_vector_hit &a, const elpis_vector_hit &b) {
+                      return elpis_vector_hit_compare(&a, &b) < 0;
+                  });
+        if (local.size() > ctx->k) local.resize(ctx->k);
+        return static_cast<elpis_exec_status>(
+            emit_exec_envelope(ELPIS_VEC_OK, 0, "ok", local, cap, out));
+    } catch (...) {
+        return ELPIS_EXEC_INTERNAL;
+    }
 }
 
 } // namespace
@@ -605,6 +743,204 @@ int elpis_vector_index_search(elpis_vector_index *ix, const elpis_vector_query *
                               elpis_vector_hit *hits, uint32_t *n_out) {
     if (!ix) return ELPIS_VEC_E_INVAL;
     return guard(ix, [&] { return search_impl(ix, q, hits, n_out); });
+}
+
+int elpis_vector_executor_create(elpis_vector_index *ix, unsigned workers,
+                                 elpis_vector_executor **out) {
+    if (!ix || !out || workers > 4) return ELPIS_VEC_E_INVAL;
+    *out = nullptr;
+    clear_err(ix);
+    try {
+        std::unique_ptr<elpis_vector_executor> vx(new elpis_vector_executor());
+        vx->index = ix;
+        const size_t max_output =
+            sizeof(ExecShardEnvelope) +
+            static_cast<size_t>(ELPIS_VECTOR_EXEC_MAX_K) * sizeof(elpis_vector_hit);
+        elpis_exec_config cfg{};
+        cfg.workers = workers;
+        cfg.capacity = ELPIS_VINDEX_MAX_SHARDS;
+        cfg.max_input_bytes = 1;
+        cfg.max_output_bytes = max_output;
+        elpis_exec_status erc = elpis_exec_create(&cfg, &vx->runtime);
+        if (erc != ELPIS_EXEC_OK) {
+            int status = erc == ELPIS_EXEC_WOULD_BLOCK ? ELPIS_VEC_E_LIMIT
+                                                       : ELPIS_VEC_E_INTERNAL;
+            return set_errf(ix, status, 0, "execution runtime create failed: %d",
+                            static_cast<int>(erc));
+        }
+        *out = vx.release();
+        return ELPIS_VEC_OK;
+    } catch (...) {
+        return set_err(ix, ELPIS_VEC_E_INTERNAL, 0,
+                       "allocation failed while creating vector executor");
+    }
+}
+
+void elpis_vector_executor_destroy(elpis_vector_executor *vx) {
+    if (!vx) return;
+    elpis_exec_destroy(vx->runtime);
+    delete vx;
+}
+
+void elpis_vector_executor_metrics(elpis_vector_executor *vx, elpis_exec_metrics *out) {
+    if (!vx || !out) return;
+    elpis_exec_get_metrics(vx->runtime, out);
+}
+
+int elpis_vector_executor_search(elpis_vector_executor *vx,
+                                 const elpis_vector_query *q,
+                                 elpis_vector_hit *hits, uint32_t *n_out) {
+    if (!vx || !vx->index) return ELPIS_VEC_E_INVAL;
+    elpis_vector_index *ix = vx->index;
+    return guard(ix, [&]() -> int {
+        if (!q || !n_out) return ELPIS_VEC_E_INVAL;
+        std::lock_guard<std::mutex> search_lk(vx->search_mu);
+        *n_out = 0;
+        clear_err(ix);
+        if (vx->broken)
+            return set_err(ix, ELPIS_VEC_E_INTERNAL, 0, "vector executor is closed after a transport failure");
+        if (q->k == 0) return ELPIS_VEC_OK;
+        if (q->k > ELPIS_VECTOR_EXEC_MAX_K)
+            return set_err(ix, ELPIS_VEC_E_LIMIT, 0, "parallel search k exceeds ELPIS_VECTOR_EXEC_MAX_K");
+        if (!q->vector || q->dimensions != ix->profile.dimensions)
+            return set_err(ix, ELPIS_VEC_E_QUERY, 0, "query dimension mismatch");
+        if (!elpis_vector_all_finite(q->vector, q->dimensions))
+            return set_err(ix, ELPIS_VEC_E_QUERY, 0, "query vector is not finite");
+        if (!hits) return ELPIS_VEC_E_INVAL;
+        if (!filter_valid_ns(q->ns_filter))
+            return set_err(ix, ELPIS_VEC_E_INVAL, 0, "search: invalid namespace filter");
+        if (!filter_valid_authority(q->authority_filter))
+            return set_err(ix, ELPIS_VEC_E_INVAL, 0, "search: invalid authority class filter");
+
+        std::vector<float> qv(q->vector, q->vector + q->dimensions);
+        if (elpis_vector_l2_normalize(qv.data(), q->dimensions) != 0)
+            return set_err(ix, ELPIS_VEC_E_QUERY, 0, "zero-norm query under an L2 profile");
+
+        std::shared_lock<std::shared_mutex> lk(ix->mu);
+        const size_t shard_count = ix->shards.size();
+        if (!shard_count) return ELPIS_VEC_OK;
+
+        std::vector<ExecShardContext> contexts(shard_count);
+        std::vector<elpis_exec_buffer *> inputs(shard_count, nullptr);
+        for (size_t i = 0; i < shard_count; ++i) {
+            inputs[i] = elpis_exec_buffer_alloc(1);
+            if (!inputs[i]) {
+                for (elpis_exec_buffer *b : inputs) elpis_exec_buffer_release(b);
+                return set_err(ix, ELPIS_VEC_E_INTERNAL, 0,
+                               "execution input allocation failed");
+            }
+            contexts[i] = ExecShardContext{
+                ix, &ix->shards[i], qv.data(), q->dimensions, q->k,
+                q->ns_filter, q->authority_filter
+            };
+        }
+
+        size_t submitted = 0;
+        for (; submitted < shard_count; ++submitted) {
+            elpis_exec_bound_task task{
+                ELPIS_EXEC_VECTOR_SHARD, 1u, static_cast<uint32_t>(submitted),
+                ELPIS_EXEC_PURE, static_cast<uint64_t>(submitted),
+                vector_shard_compute, &contexts[submitted]
+            };
+            uint64_t sequence = 0;
+            elpis_exec_status erc =
+                elpis_exec_submit_bound(vx->runtime, &task, &inputs[submitted], &sequence);
+            if (erc != ELPIS_EXEC_OK) {
+                for (size_t j = submitted; j < shard_count; ++j)
+                    elpis_exec_buffer_release(inputs[j]);
+                elpis_exec_shutdown(vx->runtime, 1);
+                vx->broken = true;
+                return set_errf(ix, ELPIS_VEC_E_INTERNAL, 0,
+                                "execution submit failed after %zu shards: %d",
+                                submitted, static_cast<int>(erc));
+            }
+        }
+
+        std::vector<elpis_vector_hit> pool;
+        pool.reserve(static_cast<size_t>(q->k) * shard_count);
+        int first_status = ELPIS_VEC_OK;
+        int first_cause = 0;
+        char first_detail[192] = {0};
+
+        for (size_t i = 0; i < shard_count; ++i) {
+            elpis_exec_result result{};
+            elpis_exec_status trc = elpis_exec_take(vx->runtime, 60000, &result);
+            if (trc != ELPIS_EXEC_OK) {
+                if (first_status == ELPIS_VEC_OK) {
+                    first_status = ELPIS_VEC_E_INTERNAL;
+                    std::snprintf(first_detail, sizeof first_detail,
+                                  "execution retirement failed: %d", static_cast<int>(trc));
+                }
+                elpis_exec_shutdown(vx->runtime, 1);
+                vx->broken = true;
+                break;
+            }
+            if (result.tag != i || result.operation != ELPIS_EXEC_VECTOR_SHARD ||
+                result.status != ELPIS_EXEC_OK || !result.output) {
+                if (first_status == ELPIS_VEC_OK) {
+                    first_status = ELPIS_VEC_E_INTERNAL;
+                    std::snprintf(first_detail, sizeof first_detail,
+                                  "execution result metadata/status invalid at shard %zu", i);
+                }
+                elpis_exec_buffer_release(result.output);
+                continue;
+            }
+
+            const size_t bytes = elpis_exec_buffer_size(result.output);
+            if (bytes < sizeof(ExecShardEnvelope)) {
+                if (first_status == ELPIS_VEC_OK) {
+                    first_status = ELPIS_VEC_E_INTERNAL;
+                    std::snprintf(first_detail, sizeof first_detail,
+                                  "execution result truncated at shard %zu", i);
+                }
+                elpis_exec_buffer_release(result.output);
+                continue;
+            }
+
+            const unsigned char *src =
+                static_cast<const unsigned char *>(elpis_exec_buffer_data(result.output));
+            ExecShardEnvelope env{};
+            std::memcpy(&env, src, sizeof env);
+            const size_t expected =
+                sizeof env + static_cast<size_t>(env.count) * sizeof(elpis_vector_hit);
+            if (env.count > q->k || expected != bytes) {
+                if (first_status == ELPIS_VEC_OK) {
+                    first_status = ELPIS_VEC_E_INTERNAL;
+                    std::snprintf(first_detail, sizeof first_detail,
+                                  "execution result envelope invalid at shard %zu", i);
+                }
+                elpis_exec_buffer_release(result.output);
+                continue;
+            }
+            if (env.status != ELPIS_VEC_OK) {
+                if (first_status == ELPIS_VEC_OK) {
+                    first_status = env.status;
+                    first_cause = env.cause;
+                    std::snprintf(first_detail, sizeof first_detail, "%s", env.detail);
+                }
+            } else if (env.count) {
+                const elpis_vector_hit *local =
+                    reinterpret_cast<const elpis_vector_hit *>(src + sizeof env);
+                pool.insert(pool.end(), local, local + env.count);
+            }
+            elpis_exec_buffer_release(result.output);
+        }
+
+        if (first_status != ELPIS_VEC_OK)
+            return set_err(ix, first_status, first_cause, first_detail);
+
+        std::sort(pool.begin(), pool.end(),
+                  [](const elpis_vector_hit &a, const elpis_vector_hit &b) {
+                      return elpis_vector_hit_compare(&a, &b) < 0;
+                  });
+        uint32_t n = static_cast<uint32_t>(std::min<size_t>(pool.size(), q->k));
+        for (uint32_t i = 0; i < n; ++i) {
+            hits[i] = pool[i];
+            hits[i].rank = i;
+        }
+        *n_out = n;
+        return ELPIS_VEC_OK;
+    });
 }
 
 int elpis_vector_index_verify(elpis_vector_index *ix, const char *shard_digest) {

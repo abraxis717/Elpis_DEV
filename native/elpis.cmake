@@ -80,7 +80,12 @@ function(elpis_add_test subsystem name)
   endif()
   _elpis_register(${subsystem} ${name} test)
   add_test(NAME ${subsystem}.${name} COMMAND ${name} ${T_ARGS})
-  set_tests_properties(${subsystem}.${name} PROPERTIES LABELS "${subsystem}")
+  # Test scratch belongs to the selected build tree, including in sandboxes.
+  # Isolation also prevents concurrent build configurations sharing temp names.
+  set(scratch "${CMAKE_CURRENT_BINARY_DIR}/test-state/${name}")
+  file(MAKE_DIRECTORY "${scratch}")
+  set_tests_properties(${subsystem}.${name} PROPERTIES
+    LABELS "${subsystem}" WORKING_DIRECTORY "${scratch}")
   if(T_TIMEOUT)
     set_tests_properties(${subsystem}.${name} PROPERTIES TIMEOUT ${T_TIMEOUT})
   endif()

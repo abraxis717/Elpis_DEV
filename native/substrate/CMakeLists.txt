@@ -5,6 +5,18 @@
 elpis_add_library(substrate elpis_hash STATIC src/sha256.c)
 target_include_directories(elpis_hash PUBLIC include)
 
+# One optional execution budget shared by native adapters; no global singleton.
+elpis_add_library(substrate elpis_execution SHARED src/execution.c)
+target_include_directories(elpis_execution PUBLIC include)
+target_link_libraries(elpis_execution PUBLIC Threads::Threads)
+
+elpis_add_test_library(substrate elpis_execution_test_support src/execution.c)
+target_compile_definitions(elpis_execution_test_support PRIVATE ELPIS_EXEC_TESTING=1)
+target_include_directories(elpis_execution_test_support PUBLIC include)
+target_link_libraries(elpis_execution_test_support PUBLIC Threads::Threads)
+elpis_add_test(substrate test_execution SOURCES tests/test_execution.c
+  LIBS elpis_execution_test_support TIMEOUT 60)
+
 elpis_add_library(substrate elpis_fms STATIC src/fms_core.c src/fms_pal_posix.c)
 target_include_directories(elpis_fms PUBLIC include)
 target_link_libraries(elpis_fms PUBLIC elpis_hash Threads::Threads)

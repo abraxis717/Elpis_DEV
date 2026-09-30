@@ -2,6 +2,7 @@
 #include "vector_test_support.h"
 
 #include "elpis/vector_index.h"
+#include "elpis/vector_execution.h"
 #include "elpis/vector_result.h"
 
 #include <algorithm>
@@ -353,6 +354,79 @@ static void case_filters() {
         CHECK(elpis_vector_hit_compare(&hits[i - 1], &hits[i]) <= 0, "filtered order broken at %u", i);
 }
 
+static void case_parallel_execution_parity() {
+    CASE("bounded executor shard scoring matches the serial oracle");
+    Env e;
+    if (!env_up(e, "exec", 32ull << 20)) { CHECK(false, "env"); return; }
+
+    std::vector<vecfix::Corpus> shards(4);
+    for (int i = 0; i < 4; ++i) {
+        char tag[32];
+        std::snprintf(tag, sizeof tag, "exec-%d", i);
+        shards[(size_t)i].build(tag, 64, e.emb);
+        char sd[65];
+        std::vector<uint8_t> image = vecfix::build_shard(shards[(size_t)i], kCorpusDg, sd);
+        CHECK(elpis_vector_index_add_shard_bytes(e.ix, image.data(), image.size(), nullptr) == 0,
+              "add shard %d: %s", i, elpis_vector_index_error(e.ix));
+    }
+
+    elpis_vector_query q{};
+    q.vector = shards[3].vec[17].data();
+    q.dimensions = D;
+    q.k = 16;
+
+    std::vector<elpis_vector_hit> serial(q.k), parallel(q.k);
+    uint32_t serial_n = 0;
+    CHECK(elpis_vector_index_search(e.ix, &q, serial.data(), &serial_n) == ELPIS_VEC_OK,
+          "serial search: %s", elpis_vector_index_error(e.ix));
+    char serial_digest[65];
+    CHECK(elpis_vector_result_digest(serial.data(), serial_n, serial_digest) == 0,
+          "serial digest");
+
+    for (unsigned workers = 1; workers <= 4; ++workers) {
+        elpis_vector_executor *executor = nullptr;
+        CHECK(elpis_vector_executor_create(e.ix, workers, &executor) == ELPIS_VEC_OK && executor,
+              "executor create workers=%u: %s", workers, elpis_vector_index_error(e.ix));
+        if (!executor) continue;
+
+        for (int repeat = 0; repeat < 2; ++repeat) {
+            uint32_t n = 0;
+            CHECK(elpis_vector_executor_search(executor, &q, parallel.data(), &n) == ELPIS_VEC_OK,
+                  "parallel search workers=%u repeat=%d: %s",
+                  workers, repeat, elpis_vector_index_error(e.ix));
+            char digest[65];
+            CHECK(elpis_vector_result_digest(parallel.data(), n, digest) == 0,
+                  "parallel digest workers=%u", workers);
+            CHECK(n == serial_n && std::strcmp(digest, serial_digest) == 0,
+                  "parallel parity workers=%u repeat=%d: %u/%s != %u/%s",
+                  workers, repeat, n, digest, serial_n, serial_digest);
+        }
+
+        elpis_exec_metrics metrics{};
+        elpis_vector_executor_metrics(executor, &metrics);
+        CHECK(metrics.workers == workers, "metrics workers=%u expected %u",
+              metrics.workers, workers);
+        CHECK(metrics.submitted == 8 && metrics.retired == 8,
+              "metrics submitted/retired=%llu/%llu",
+              (unsigned long long)metrics.submitted,
+              (unsigned long long)metrics.retired);
+        elpis_vector_executor_destroy(executor);
+    }
+
+    elpis_vector_executor *executor = nullptr;
+    CHECK(elpis_vector_executor_create(e.ix, 1, &executor) == ELPIS_VEC_OK && executor,
+          "limit executor create");
+    if (executor) {
+        elpis_vector_hit one{};
+        uint32_t n = 99;
+        q.k = ELPIS_VECTOR_EXEC_MAX_K + 1;
+        CHECK(elpis_vector_executor_search(executor, &q, &one, &n) == ELPIS_VEC_E_LIMIT,
+              "oversized k was not rejected");
+        CHECK(n == 0, "oversized k changed n_out to %u", n);
+        elpis_vector_executor_destroy(executor);
+    }
+}
+
 static void case_index_manifest() {
     CASE("index manifest is canonical and content-addressed");
     Env e;
@@ -392,6 +466,7 @@ int main(int argc, char **argv) {
     case_duplicate_across_shards();
     case_k_edges_and_bad_queries();
     case_filters();
+    case_parallel_execution_parity();
     case_index_manifest();
 
     std::printf("%d checks, %d failures\n", checks, fails);

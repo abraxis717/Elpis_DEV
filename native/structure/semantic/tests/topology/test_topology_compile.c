@@ -604,7 +604,7 @@ static int test_no_projector(void) {
 /* ─── Test: persistence roundtrip ─── */
 static int test_persistence_roundtrip(void) {
     TEST(persistence_roundtrip);
-    const char *path = "/tmp/p6_test_policy.bin";
+    const char *path = "p6_test_policy.bin";
 
     elpis_semantic_topology_policy_v1 policy;
     elpis_topology_policy_init(&policy);
