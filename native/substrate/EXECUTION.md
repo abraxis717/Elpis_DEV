@@ -17,12 +17,12 @@ A context's `workers` is its concurrency cap (at most that many of its CPU tasks
 run at once; `workers=1` keeps a context serial) and its number of affinity
 lanes. The fixed slot window counts queued, running, parked and
 finished/unretired tasks. Each lane is a FIFO list of slot indices (no malloc per
-insertion, no growing completion map). A pool thread takes, in order: a parked
-accelerator token that is due; the oldest task in its own lane of any context
-below its cap; otherwise the oldest runnable task of any lane of any context
+insertion, no growing completion map). A pool thread takes, in order: due parked
+work (an accelerator token to poll, or a deferred task to re-run while its context
+is below its cap); the oldest task in its own lane of any context below its cap; otherwise the oldest runnable task of any lane of any context
 (stealing, oldest first across contexts, so no context starves). Affinity is a
 locality preference only and can never strand work: a thread sleeps only when no
-context below its cap has queued work and no parked token is due. No task has a
+context below its cap has queued work and no parked work is due. No task has a
 hard-affinity requirement; one would need an explicit API. Capacity is 1..4096;
 input/output limits are each <=64 MiB and the maximum sum of retained
 input/output payloads is <=512 MiB per context. These limits exclude caller-owned
@@ -66,10 +66,23 @@ released only by ordered retirement, not compute completion. Each result reports
 the executing pool thread, its completion time and its completion-to-retirement
 wait.
 
-Cancellation unlinks only queued work and produces one ordered CANCELLED result.
-Running work returns WOULD_BLOCK and finishes normally. Shutdown closes admission,
-drains or cancels queued work, waits until the context has no queued, running or
-parked work and leaves results available. This does not require a consumer even
+## Deferral instead of waiting
+
+A CPU operation never sleeps or spins on a resource held elsewhere. When one is
+temporarily unavailable and the operation has made no externally visible change,
+it returns `ELPIS_EXEC_DEFER` (never a result status). The task is parked without
+holding a pool thread or its context's cap and runs again from the start, by
+whichever thread is free, at least 1 ms later or at once on `elpis_exec_notify`.
+Its sequence position is unchanged, so later results still wait for it to retire.
+The runtime does not bound deferrals; the operation does, with its own deadline
+(HACF: the existing 5 s residency deadline). `metrics.deferred` counts them.
+
+Cancellation unlinks queued work and deferred tasks waiting to run again and
+produces one ordered CANCELLED result. Running work and parked backend tokens
+return WOULD_BLOCK and finish normally. Shutdown closes admission, drains or
+cancels queued and deferred work (a task that defers after a cancelling shutdown
+began is cancelled, not parked), waits until the context has no queued, running
+or parked work and leaves results available. This does not require a consumer even
 with a full result window. One lifecycle owner must stop other API callers before
 destroy; the last destroy joins the pool. Callbacks must terminate normally;
 status failure is isolated, process faults/undefined behavior/pthread_exit are not.
@@ -85,7 +98,7 @@ configured number of times (<=1000). No worker ever sleeps or spins on a token:
 submit is followed by one poll, and an undecided token is parked and polled again
 by whichever pool thread is free, at least 1 ms later, while CPU work runs. A
 backend with a completion event (fence, eventfd, interrupt) calls
-`elpis_exec_backend_notify` to make its parked tokens due immediately. Terminal
+`elpis_exec_notify` to make its parked tokens due immediately. Terminal
 poll consumes the token. Exhausting the poll count calls abort, which MUST quiesce
 device access synchronously, before CPU fallback. Failed partial outputs are discarded. Side-effecting tasks never retry
 on this route. Backend callbacks must be bounded, thread-safe and nonblocking;
@@ -106,7 +119,11 @@ their compute function. There is no callback into Python or new Python thread po
 ECS mutation, append, fsync, replay application and inference token recurrence stay
 serial. HACF vector search schedules one bound task per immutable shard on the same
 pool; the per-shard gate now covers only WARM lease acquisition (residency work),
-so scoring runs outside it. Inference rows/experts remain outside this budget
+so scoring runs outside it. A shard task try-locks the gate and makes one FMS WARM
+READ lease attempt per run: a held gate, FMS BUSY (move in flight) or LIMIT
+(headroom pinned by other readers) defers the task instead of blocking or
+sleeping on a pool thread, within the same 5 s deadline. The serial search path
+still waits on the caller's own thread. Inference rows/experts remain outside this budget
 because existing Python/NumPy pools and numerical contracts need separate
 qualification.
 
@@ -122,8 +139,13 @@ initial absence, disappearance, timeout/quiescence and output equivalence. The
 scheduling tests require that 40 tasks queued on a blocked task's own lane all
 complete while it blocks; that eight long tasks on one lane run four at once on
 all four threads; that `workers=1` stays serial next to a wider context sharing the
-pool; that any number of contexts share at most four threads; and that CPU work
-completes while an undecided accelerator token stays parked, without abort.
+pool; that any number of contexts share at most four threads; that CPU work
+completes while an undecided accelerator token stays parked, without abort; and
+that a deferring task leaves a serial context's other work running, is re-run no
+more than once per millisecond, and is cancelled by cancel or a racing shutdown.
+`test_vector_concurrency` pins most of a tight WARM ceiling so every shard task is
+refused, checks that unrelated CPU work still runs on all four threads and that the
+search then returns the serial digest, and races four executors against demotion.
 
 `elpis_exec_get_pool_metrics` reports per pool thread: tasks, steals, polls,
 wakeups, busy and idle wall time and thread CPU time; plus lock acquisitions,

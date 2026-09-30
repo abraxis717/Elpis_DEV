@@ -67,6 +67,9 @@ struct ShardEntry {
  * deadlock still surfaces as a structured failure. */
 const int      kBusyDeadlineMs = 5000;
 const unsigned kBusyBackoffUs = 200;
+/* On the shared execution pool a shard task never sleeps for this: it makes one
+ * attempt per run and returns ELPIS_EXEC_DEFER, so the pool thread runs other
+ * work until the task is re-run (>=1 ms later). The deadline is the same. */
 
 /* Lease guard: releases on every path, including exceptions and early returns. */
 class LeaseGuard {
@@ -76,22 +79,26 @@ public:
     LeaseGuard(const LeaseGuard &) = delete;
     LeaseGuard &operator=(const LeaseGuard &) = delete;
 
-    fms_status acquire(void **ptr) {
-        /* FMS_WARM only. HACF vector never requests FMS_HOT. */
-        fms_status r = FMS_E_BUSY;
-        const auto deadline = std::chrono::steady_clock::now() +
-                              std::chrono::milliseconds(kBusyDeadlineMs);
-        for (;;) {
-            r = fms_lease_acquire(ctx_, id_, FMS_WARM, FMS_READ, &lease_);
-            if (r != FMS_E_BUSY && r != FMS_E_LIMIT) break;
-            lease_ = nullptr;
-            if (std::chrono::steady_clock::now() >= deadline) break;
-            std::this_thread::sleep_for(std::chrono::microseconds(kBusyBackoffUs));
-        }
+    /* One attempt. FMS_WARM only. HACF vector never requests FMS_HOT. */
+    fms_status try_acquire(void **ptr) {
+        fms_status r = fms_lease_acquire(ctx_, id_, FMS_WARM, FMS_READ, &lease_);
         if (r != FMS_OK) { lease_ = nullptr; return r; }
         *ptr = fms_lease_ptr(lease_);
         tier_ = fms_lease_tier(lease_);
         return FMS_OK;
+    }
+    /* Caller-thread path: retries BUSY/LIMIT with a short sleep until the deadline. */
+    fms_status acquire(void **ptr) {
+        fms_status r = FMS_E_BUSY;
+        const auto deadline = std::chrono::steady_clock::now() +
+                              std::chrono::milliseconds(kBusyDeadlineMs);
+        for (;;) {
+            r = try_acquire(ptr);
+            if (r != FMS_E_BUSY && r != FMS_E_LIMIT) break;
+            if (std::chrono::steady_clock::now() >= deadline) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(kBusyBackoffUs));
+        }
+        return r;
     }
     int tier() const { return tier_; }
     void reset() {
@@ -264,6 +271,11 @@ struct ExecShardContext {
     uint32_t k;
     const char *ns_filter;
     const char *authority_filter;
+    /* Set when a lease attempt is first refused (BUSY/LIMIT); the task is re-run
+     * by the pool, one attempt per run, until this passes. Only the one thread
+     * running the task touches it; the pool mutex orders successive runs. */
+    std::chrono::steady_clock::time_point busy_deadline;
+    bool busy;
 };
 
 int emit_exec_envelope(int status, int cause, const char *detail,
@@ -301,8 +313,19 @@ elpis_exec_status vector_shard_compute(void *opaque, const elpis_exec_buffer *,
         LeaseGuard g(ix->fms, s.id);
         fms_status r;
         {
-            std::lock_guard<std::mutex> shard_lk(*s.gate);   /* one promoter per shard */
-            r = g.acquire(&p);
+            /* One promoter per shard. Never block a pool thread on it: another
+             * task is promoting this shard (or verify is hashing it), run later. */
+            std::unique_lock<std::mutex> shard_lk(*s.gate, std::try_to_lock);
+            if (!shard_lk.owns_lock()) return ELPIS_EXEC_DEFER;
+            r = g.try_acquire(&p);
+        }
+        if (r == FMS_E_BUSY || r == FMS_E_LIMIT) {
+            const auto now = std::chrono::steady_clock::now();
+            if (!ctx->busy) {
+                ctx->busy = true;
+                ctx->busy_deadline = now + std::chrono::milliseconds(kBusyDeadlineMs);
+            }
+            if (now < ctx->busy_deadline) return ELPIS_EXEC_DEFER;
         }
         if (r != FMS_OK) {
             std::vector<elpis_vector_hit> empty;
@@ -839,7 +862,7 @@ int elpis_vector_executor_search(elpis_vector_executor *vx,
             }
             contexts[i] = ExecShardContext{
                 ix, &ix->shards[i], qv.data(), q->dimensions, q->k,
-                q->ns_filter, q->authority_filter
+                q->ns_filter, q->authority_filter, {}, false
             };
         }
 
