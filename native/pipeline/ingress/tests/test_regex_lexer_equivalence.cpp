@@ -5,10 +5,16 @@
 // fails and how (exception class and message), and on success every match's
 // pattern, offsets, inline text, digest, omission flag and captures, plus the
 // byte count and source digest. The V2 result JSON is a pure function of these.
-// For spans past the window compaction threshold the oracle runs one chunking and
-// R1 must also reproduce that outcome for the other chunkings.
+// Where the oracle runs one chunking, R1 must reproduce that outcome for every
+// other chunking too (the failing call index is compared only for the same one).
 //
-//   test_regex_lexer_equivalence [RANDOM_CASES] [SEED]
+// R0 is the slow engine R1 replaces, so the default (ctest) run bounds its work:
+// the oracle runs once per input and R1 covers the chunkings, spans stop just past
+// the inline-text limit, and 60 random cases. `full` runs the exhaustive campaign
+// (every chunking and split against the oracle, spans past window compaction, 400
+// random cases by default); use it for lexer changes and seeded fuzzing.
+//
+//   test_regex_lexer_equivalence [RANDOM_CASES] [SEED] [full]
 #include "incremental_lexer.h"
 #include "incremental_lexer_r0.h"
 #include <cstdio>
@@ -102,10 +108,26 @@ void compare(const Outcome& a, const Outcome& b, const std::string& text, const 
         ++matches_compared;
     }
 }
-void check(const std::string& text, const std::vector<size_t>& cuts, uint32_t max_evidence) {
-    Outcome a = run<elpis_regex_v2_r0::Lexer, elpis_regex_v2_r0::RangeError, elpis_regex_v2_r0::Match>(
+Outcome r0(const std::string& text, const std::vector<size_t>& cuts, uint32_t max_evidence) {
+    return run<elpis_regex_v2_r0::Lexer, elpis_regex_v2_r0::RangeError, elpis_regex_v2_r0::Match>(
         expressions, max_evidence, text, cuts);
+}
+void check(const std::string& text, const std::vector<size_t>& cuts, uint32_t max_evidence) {
+    compare(r0(text, cuts, max_evidence), r1(text, cuts, max_evidence), text, cuts, max_evidence, true);
+}
+// One oracle run with `cuts`; R1 must match it there and under every other chunking.
+void check_chunkings(const std::string& text, const std::vector<size_t>& cuts,
+                     const std::vector<std::vector<size_t>>& others, uint32_t max_evidence) {
+    Outcome a = r0(text, cuts, max_evidence);
     compare(a, r1(text, cuts, max_evidence), text, cuts, max_evidence, true);
+    for (const auto& c : others) compare(a, r1(text, c, max_evidence), text, c, max_evidence, false);
+}
+// No oracle: R1 must give the same outcome under every chunking.
+void check_r1_invariance(const std::string& text, const std::vector<std::vector<size_t>>& chunkings,
+                         uint32_t max_evidence) {
+    Outcome a = r1(text, chunkings[0], max_evidence);
+    for (size_t i = 1; i < chunkings.size(); ++i)
+        compare(a, r1(text, chunkings[i], max_evidence), text, chunkings[i], max_evidence, false);
 }
 std::vector<size_t> cuts_every(size_t size, size_t k) { return std::vector<size_t>(size / k + 1, k); }
 
@@ -165,7 +187,8 @@ std::vector<size_t> random_cuts(std::mt19937_64& r, size_t size) {
 }  // namespace
 
 int main(int argc, char** argv) {
-    size_t random_cases = argc > 1 ? std::stoul(argv[1]) : 400;
+    const bool full = argc > 3 && std::string(argv[3]) == "full";
+    size_t random_cases = argc > 1 ? std::stoul(argv[1]) : full ? 400 : 60;
     uint64_t seed = argc > 2 ? std::stoull(argv[2]) : 0x5eed0001u;
     expressions = elpis_regex_v2::grammar_expressions();
     // 1. Fixture corpus (test_regex_stream + execution fixtures), each with several chunkings.
@@ -195,19 +218,40 @@ int main(int argc, char** argv) {
         std::string("keep ") + std::string(128, 'a') + " from " + std::string(128, 'b') + " to " + std::string(128, 'c'),
         "touching may merge; maximum end.", "\xff invalid utf-8", "exactly 1\x80", "\xe2\x82", "exactly 1 \xed\xa0\x80"};
     for (const auto& text : corpus) {
-        check(text, {}, 4096);
-        for (size_t k : {1u, 2u, 7u, 13u}) check(text, cuts_every(text.size(), k), 4096);
-        for (size_t split = 0; split <= text.size() && text.size() < 200; ++split) check(text, {split}, 4096);
+        if (full) {
+            check(text, {}, 4096);
+            for (size_t k : {1u, 2u, 7u, 13u}) check(text, cuts_every(text.size(), k), 4096);
+            for (size_t split = 0; split <= text.size() && text.size() < 200; ++split) check(text, {split}, 4096);
+            continue;
+        }
+        std::vector<std::vector<size_t>> others;
+        for (size_t k : {1u, 2u, 7u, 13u}) others.push_back(cuts_every(text.size(), k));
+        for (size_t split = 0; split <= text.size() && text.size() < 200; ++split) others.push_back({split});
+        check_chunkings(text, {}, others, 4096);
     }
     // 2. Long spans: whitespace across the inline-text limit and the window, idle and
     //    word runs, captures that survive long whitespace, evidence limits.
     for (size_t n : {1u, 511u, 512u, 513u, 4087u, 4095u, 4096u, 4097u, 5000u, 20000u, 40000u}) {
         std::string ws;
         for (size_t i = 0; i < n; ++i) ws += spaces[i % 3 == 0 ? (i / 3) % spaces.size() : 0];
+        size_t variant = 0;
         for (const std::string& t : {"at" + ws + "least 1", "x" + ws + "is" + ws + "floor", "clamp v" + ws + "between lo" + ws +
                                                                                         "and hi",
                                      "touching" + ws + "endpoints do" + ws + "not merge",
                                      std::string(n, 'z') + " exactly 1 " + std::string(n, 'z')}) {
+            ++variant;
+            if (!full) {
+                // Oracle up to just past the inline-text limit (4096), two of the five
+                // shapes (plain \s+ run, captures across runs) at the 4k sizes; past
+                // window compaction R1 must be chunk-invariant.
+                std::vector<std::vector<size_t>> chunkings = {cuts_every(t.size(), 4093), {},
+                                                              cuts_every(t.size(), 1 + n / 3)};
+                if (n <= 513 || (n <= 4097 && n != 4087 && (variant == 1 || variant == 3)))
+                    check_chunkings(t, chunkings[0], {chunkings[1], chunkings[2]}, 4096);
+                else if (n > 5000 && (variant == 1 || variant == 5))
+                    check_r1_invariance(t, chunkings, 4096);
+                continue;
+            }
             if (n <= 5000) {
                 check(t, {}, 4096);
                 check(t, cuts_every(t.size(), 4093), 4096);
@@ -228,14 +272,24 @@ int main(int argc, char** argv) {
         std::string nbsp;
         for (size_t i = 0; i < n; ++i) nbsp += i % 2 ? "\xc2\xa0" : "\xe2\x80\x83";
         for (const std::string& t : {"at" + nbsp + "least 1", "x " + nbsp + "is floor", "clamp v" + nbsp + "between a and b"}) {
-            check(t, {}, 4096);
-            check(t, cuts_every(t.size(), 4099), 4096);
+            if (full) {
+                check(t, {}, 4096);
+                check(t, cuts_every(t.size(), 4099), 4096);
+            } else if (n == 3000) {
+                check_chunkings(t, cuts_every(t.size(), 4099), {{}}, 4096);
+            } else {
+                check_r1_invariance(t, {cuts_every(t.size(), 4099), {}}, 4096);
+            }
         }
     }
     {
+        const unsigned reps = full ? 300 : 60;
         std::string many;
-        for (unsigned i = 0; i < 300; ++i) many += "exactly 1; ";
-        for (uint32_t cap : {1u, 2u, 299u, 300u, 301u}) { check(many, {}, cap); check(many, cuts_every(many.size(), 17), cap); }
+        for (unsigned i = 0; i < reps; ++i) many += "exactly 1; ";
+        for (uint32_t cap : {1u, 2u, reps - 1, reps, reps + 1}) {
+            if (full) { check(many, {}, cap); check(many, cuts_every(many.size(), 17), cap); }
+            else check_chunkings(many, {}, {cuts_every(many.size(), 17)}, cap);
+        }
     }
     // 3. Randomized grammar-aware inputs, chunkings and evidence limits.
     std::mt19937_64 r(seed);
@@ -245,5 +299,6 @@ int main(int argc, char** argv) {
         check(text, random_cuts(r, text.size()), cap);
     }
     std::cout << "PASS R1/R0 lexer equivalence cases=" << cases << " matches=" << matches_compared
-              << " failures=" << failures_compared << " random=" << random_cases << " seed=" << seed << "\n";
+              << " failures=" << failures_compared << " random=" << random_cases << " seed=" << seed
+              << (full ? " full" : " bounded") << "\n";
 }

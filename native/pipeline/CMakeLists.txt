@@ -58,7 +58,7 @@ elpis_add_test_library(pipeline elpis_regex_lexer_reference ${ING}/tests/referen
 target_include_directories(elpis_regex_lexer_reference PUBLIC ${ING}/tests/reference)
 target_link_libraries(elpis_regex_lexer_reference PUBLIC elpis_hash PRIVATE PkgConfig::PCRE2)
 elpis_add_test(pipeline test_regex_lexer_equivalence SOURCES ${ING}/tests/test_regex_lexer_equivalence.cpp
-  LIBS elpis_regex_ingress elpis_regex_lexer_reference INCLUDES ${ING}/src TIMEOUT 1200)
+  LIBS elpis_regex_ingress elpis_regex_lexer_reference INCLUDES ${ING}/src TIMEOUT 300)
 elpis_add_test(pipeline test_regex_bounded_profile SOURCES ${ING}/tests/test_regex_bounded_profile.cpp
   LIBS elpis_regex_ingress)
 elpis_add_test(pipeline test_regex_stream SOURCES ${ING}/tests/test_regex_stream.cpp
