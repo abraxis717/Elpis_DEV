@@ -11,7 +11,7 @@
 static int test_iteration_policy_round_trip(void) {
     elpis_semantic_context_iteration_policy_v1 policy;
     elpis_context_iteration_policy_default(&policy);
-    const char *path = "/tmp/p5_test_policy.bin";
+    const char *path = "p5_test_policy.bin";
     remove(path);
     int rc = elpis_write_iteration_policy(path, &policy);
     if (rc != SEMANTIC_OK) { printf("FAIL: write: %d\n", rc); return 1; }
@@ -30,7 +30,7 @@ static int test_iteration_policy_round_trip(void) {
 static int test_bounded_view_policy_round_trip(void) {
     elpis_semantic_bounded_view_policy_v1 policy;
     elpis_bounded_view_policy_default(&policy);
-    const char *path = "/tmp/p5_test_bvp.bin";
+    const char *path = "p5_test_bvp.bin";
     int rc = elpis_write_bounded_view_policy(path, &policy);
     if (rc != SEMANTIC_OK) { printf("FAIL: write: %d\n", rc); return 1; }
     elpis_semantic_bounded_view_policy_v1 read_policy;
@@ -48,7 +48,7 @@ static int test_bounded_view_policy_round_trip(void) {
 static int test_truncation_rejected(void) {
     elpis_semantic_bounded_view_policy_v1 policy;
     elpis_bounded_view_policy_default(&policy);
-    const char *path = "/tmp/p5_test_trunc.bin";
+    const char *path = "p5_test_trunc.bin";
     FILE *f = fopen(path, "wb");
     if (f) { fwrite(&policy, 1, sizeof(policy) - 10, f); fclose(f); }
     elpis_semantic_bounded_view_policy_v1 read_policy;
@@ -62,7 +62,7 @@ static int test_truncation_rejected(void) {
 static int test_trailing_bytes_rejected(void) {
     elpis_semantic_bounded_view_policy_v1 policy;
     elpis_bounded_view_policy_default(&policy);
-    const char *path = "/tmp/p5_test_trail.bin";
+    const char *path = "p5_test_trail.bin";
     FILE *f = fopen(path, "wb");
     if (f) {
         fwrite(&policy, 1, sizeof(policy), f);
@@ -82,7 +82,7 @@ static int test_trailing_bytes_rejected(void) {
 static int test_field_width_corruption_rejected(void) {
     elpis_semantic_bounded_view_policy_v1 policy;
     elpis_bounded_view_policy_default(&policy);
-    const char *path = "/tmp/p5_test_corrupt.bin";
+    const char *path = "p5_test_corrupt.bin";
     elpis_write_bounded_view_policy(path, &policy);
     FILE *f = fopen(path, "r+b");
     if (f) {
@@ -100,7 +100,7 @@ static int test_field_width_corruption_rejected(void) {
 }
 
 static int test_preexisting_destination_preserved(void) {
-    const char *path = "/tmp/p5_test_existing.bin";
+    const char *path = "p5_test_existing.bin";
     FILE *f = fopen(path, "wb");
     if (f) {
         uint8_t sentinel[32];
@@ -120,7 +120,7 @@ static int test_endianness_equality(void) {
     /* Writer/reader use fixed-width BE encoding — endianness must match */
     elpis_semantic_context_iteration_policy_v1 policy;
     elpis_context_iteration_policy_default(&policy);
-    const char *path = "/tmp/p5_test_endian.bin";
+    const char *path = "p5_test_endian.bin";
     remove(path);
     int rc = elpis_write_iteration_policy(path, &policy);
     if (rc != SEMANTIC_OK) { printf("FAIL: endianness write: %d\n", rc); return 1; }

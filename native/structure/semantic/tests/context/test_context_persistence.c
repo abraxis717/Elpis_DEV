@@ -18,7 +18,7 @@ static int passed = 0, failed = 0;
 #define ASSERT_EQ(a, b) do { if ((a) == (b)) passed++; else { failed++; fprintf(stderr, "FAIL %s:%d %s != %s\n", __FILE__, __LINE__, #a, #b); } } while(0)
 #define ASSERT_DIGEST_EQ(a, b) do { if (memcmp((a)->bytes, (b)->bytes, HACF_DIGEST_BYTES) == 0) passed++; else { failed++; fprintf(stderr, "FAIL %s:%d digests differ\n", __FILE__, __LINE__); } } while(0)
 
-#define TEST_DIR "/tmp/p2_persistence_test"
+#define TEST_DIR "p2_persistence_test"
 #define SETUP_DIR() do { mkdir(TEST_DIR, 0755); } while(0)
 
 int main(void) {

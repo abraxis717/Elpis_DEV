@@ -704,7 +704,7 @@ static int test_handoff_identity_determinism(void) {
 /* ========================================================================= */
 
 static int test_policy_persistence_roundtrip(void) {
-    const char *path = "/tmp/p7_test_policy.bin";
+    const char *path = "p7_test_policy.bin";
     elpis_semantic_grid81_policy_v1 p1, p2;
     elpis_grid81_policy_init(&p1);
     if (elpis_write_grid81_policy(path, &p1) != SEMANTIC_OK) return 0;
@@ -713,7 +713,7 @@ static int test_policy_persistence_roundtrip(void) {
 }
 
 static int test_codebook_persistence_roundtrip(void) {
-    const char *path = "/tmp/p7_test_codebook.bin";
+    const char *path = "p7_test_codebook.bin";
     elpis_semantic_grid81_codebook_v1 c1, c2;
     elpis_grid81_codebook_init(&c1);
     if (elpis_write_grid81_codebook(path, &c1) != SEMANTIC_OK) return 0;
@@ -725,7 +725,7 @@ static int test_codebook_persistence_roundtrip(void) {
 }
 
 static int test_masks_persistence_roundtrip(void) {
-    const char *path = "/tmp/p7_test_masks.bin";
+    const char *path = "p7_test_masks.bin";
     elpis_semantic_grid81_masks_v1 m1, m2;
     elpis_grid81_masks_init(&m1);
     if (elpis_write_grid81_masks(path, &m1) != SEMANTIC_OK) return 0;
@@ -735,7 +735,7 @@ static int test_masks_persistence_roundtrip(void) {
 }
 
 static int test_compile_receipt_persistence_roundtrip(void) {
-    const char *path = "/tmp/p7_test_receipt.bin";
+    const char *path = "p7_test_receipt.bin";
     elpis_semantic_grid81_compile_receipt_v1 r1, r2;
     elpis_grid81_compile_receipt_init(&r1);
     r1.compile_disposition = GRID81_COMPILE_COMPLETE;
@@ -745,7 +745,7 @@ static int test_compile_receipt_persistence_roundtrip(void) {
 }
 
 static int test_handoff_persistence_roundtrip(void) {
-    const char *path = "/tmp/p7_test_handoff.bin";
+    const char *path = "p7_test_handoff.bin";
     elpis_semantic_grid81_handoff_v1 h1, h2;
     elpis_grid81_handoff_init(&h1);
     if (elpis_write_grid81_handoff(path, &h1) != SEMANTIC_OK) return 0;

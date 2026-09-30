@@ -52,7 +52,7 @@ elpis_add_library(structure elpis_vector STATIC
   ${HACF}/src/retrieval/vector/cpu_exact.cpp
   ${HACF}/src/retrieval/vector/vector_index.cpp
   ${HACF}/src/retrieval/vector/vector_manifest.cpp)
-target_link_libraries(elpis_vector PUBLIC elpis_embedding elpis_fms elpis_hash Threads::Threads)
+target_link_libraries(elpis_vector PUBLIC elpis_embedding elpis_fms elpis_hash elpis_execution Threads::Threads)
 target_compile_options(elpis_vector PRIVATE -ffp-contract=off)
 
 elpis_add_library(structure elpis_hybrid STATIC

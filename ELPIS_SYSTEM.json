@@ -44,6 +44,7 @@
       ],
       "native_targets": [
         "elpis_hash",
+        "elpis_execution",
         "elpis_fms",
         "elpis_fms_file_assets"
       ],
@@ -177,6 +178,7 @@
       ],
       "native_targets": [
         "elpis_regex_ingress",
+        "elpis_regex_execution",
         "elpis_query_ingress",
         "elpis_ingress_bridge"
       ],

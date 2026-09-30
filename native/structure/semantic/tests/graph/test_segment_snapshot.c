@@ -49,7 +49,7 @@ int test_atomic_no_replace_publication(void) {
     semantic_segment_record seg;
     semantic_segment_build(b, reg, &genesis, &seg);
 
-    const char *path = "/tmp/test_segment_atomic.sf";
+    const char *path = "test_segment_atomic.sf";
     unlink(path);
 
     char hex_out[65];
@@ -66,7 +66,7 @@ int test_atomic_no_replace_publication(void) {
 }
 
 int test_pre_existing_destination_preserved(void) {
-    const char *path = "/tmp/test_segment_existing.sf";
+    const char *path = "test_segment_existing.sf";
     FILE *f = fopen(path, "w");
     if (f) { fputs("existing", f); fclose(f); }
 
@@ -102,7 +102,7 @@ int test_segment_read_verify(void) {
     semantic_segment_record seg;
     semantic_segment_build(b, reg, &genesis, &seg);
 
-    const char *path = "/tmp/test_segment_read.sf";
+    const char *path = "test_segment_read.sf";
     unlink(path);
     char hex_out[65];
     int r = semantic_segment_write(&seg, b, path, hex_out);
@@ -121,7 +121,7 @@ int test_segment_read_verify(void) {
 }
 
 int test_corrupt_segment_rejected(void) {
-    const char *path = "/tmp/test_segment_corrupt.sf";
+    const char *path = "test_segment_corrupt.sf";
     unlink(path);
 
     FILE *f = fopen(path, "w");
@@ -136,7 +136,7 @@ int test_corrupt_segment_rejected(void) {
 }
 
 int test_corrupt_manifest_rejected(void) {
-    const char *path = "/tmp/test_manifest_corrupt.sf";
+    const char *path = "test_manifest_corrupt.sf";
     unlink(path);
 
     FILE *f = fopen(path, "w");
@@ -161,7 +161,7 @@ int test_segment_storage_audit(void) {
     semantic_segment_record seg;
     semantic_segment_build(b, reg, &genesis, &seg);
 
-    const char *path = "/tmp/test_segment_audit.sf";
+    const char *path = "test_segment_audit.sf";
     unlink(path);
     char hex_out[65];
     int r = semantic_segment_write(&seg, b, path, hex_out);
@@ -202,7 +202,7 @@ static int test_manifest_count_boundaries(void) {
     }
     /* Exercise serialized input through the public persistence reader too. */
     char path[128];
-    snprintf(path, sizeof(path), "/tmp/elpis-h02-%ld.sf", (long)getpid());
+    snprintf(path, sizeof(path), "elpis-h02-%ld.sf", (long)getpid());
     m->segment_count = SEMANTIC_MAX_SEGMENTS + 1;
     FILE *f = fopen(path, "wb");
     if (!f) { semantic_snapshot_destroy(m); return 1; }
@@ -227,7 +227,7 @@ static int test_manifest_read_transaction(void) {
     int failed = check(semantic_snapshot_finalize(valid) == SEMANTIC_OK,
                        "prepare manifest", 0);
     char path[128];
-    snprintf(path, sizeof(path), "/tmp/elpis-read-%ld.sf", (long)getpid());
+    snprintf(path, sizeof(path), "elpis-read-%ld.sf", (long)getpid());
     /* Valid, truncated, trailing bytes, and digest-corrupted records. */
     for (int kind = 0; kind < 4; ++kind) {
         memset(out, 0xa5, sizeof(*out));

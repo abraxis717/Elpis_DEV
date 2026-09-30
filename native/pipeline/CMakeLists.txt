@@ -17,6 +17,14 @@ elpis_add_library(pipeline elpis_regex_ingress STATIC
 target_include_directories(elpis_regex_ingress PUBLIC ${ING}/include PRIVATE ${ING}/src)
 target_link_libraries(elpis_regex_ingress PUBLIC elpis_hash PRIVATE PkgConfig::PCRE2)
 
+elpis_add_library(pipeline elpis_regex_execution STATIC ${ING}/src/regex_execution.c)
+target_include_directories(elpis_regex_execution PUBLIC ${ING}/include)
+target_link_libraries(elpis_regex_execution PUBLIC elpis_execution elpis_regex_ingress)
+elpis_add_test(pipeline test_regex_execution SOURCES ${ING}/tests/test_regex_execution.cpp
+  LIBS elpis_regex_execution TIMEOUT 600)
+elpis_add_test(pipeline benchmark_regex_execution SOURCES ${ING}/tests/benchmark_regex_execution.cpp
+  LIBS elpis_regex_execution ARGS 1 small 16 TIMEOUT 60)
+
 elpis_add_library(pipeline elpis_query_ingress STATIC
   ${ING}/src/regex_hacf_query_ingress.cpp
   ${ING}/src/query_local_proposal.c
