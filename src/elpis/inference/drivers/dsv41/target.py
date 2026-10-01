@@ -19,6 +19,7 @@ from .attention import AttentionState, SharedAttention
 from .config import TowerConfig
 from .engram import build_parameters
 from .layer import Layer
+from .native_backend import DSV41NativeBackend, NativeAttentionState
 from .numerics import F32, hc_pre, linear, rms, rope_frequencies
 from .parameters import ParameterManifest, TensorStore, TowerAdmission
 
@@ -42,8 +43,10 @@ class TowerState:
 
 class DSV41Target:
     def __init__(self, config, manifest, tokenizer, parameters, rows, provider, *, expected_manifest,
-                 resident_budget, staging_budget, state_budget):
+                 resident_budget, staging_budget, state_budget, native_backend=None):
         require(type(config) is TowerConfig and type(manifest) is ParameterManifest, detail="tower config/manifest")
+        require(native_backend is None or type(native_backend) is DSV41NativeBackend,
+                Code.IDENTITY, "DSV4.1 native backend")
         require(type(tokenizer) is V41Tokenizer and (tokenizer.identity, tokenizer.vocab_size) ==
                 (config.tokenizer, config.vocab), Code.IDENTITY, "tower tokenizer/vocabulary")
         require(type(parameters) is DSV41Parameters, Code.UNSUPPORTED, "DSV41 backbone address scheme")
@@ -79,14 +82,15 @@ class DSV41Target:
         require(persistent_work + scratch <= state_budget, Code.LIMIT, "sequence state/scratch budget")
         store = TensorStore(config, manifest, provider, expected_manifest=expected_manifest,
                             resident_budget=resident_budget, staging_budget=staging_budget)
-        self.config, self.store, self.scheme = config, store, scheme
+        self.config, self.store, self.scheme, self.native_backend = config, store, scheme, native_backend
         self.rows = MappingProxyType(dict(rows))
         self.numerical_profile = content_digest("elpis.inference.dsv41.numerical.v1", dict(
             profile=config.numerical_profile, execution=numerical_profile(), linear="einsum-optimize-false"))
         self.model_identity = content_digest("elpis.inference.dsv41.target.v1", dict(
             manifest=expected_manifest, architecture="elpis.inference.dsv41.tower-spec.v1"))
         frequencies = {compressed: rope_frequencies(config, compressed) for compressed in (False, True)}
-        self.layers = tuple(Layer(config, i, store, rows.get(i), frequencies[bool(config.compress_ratios[i])])
+        self.layers = tuple(Layer(config, i, store, rows.get(i), frequencies[bool(config.compress_ratios[i])],
+                                  native_backend=native_backend)
                             for i in range(config.layers))
         self._row_index = {layer: i for i, layer in enumerate(config.engram_layers)}
         self._initial_pre = np.zeros(config.hc_mult, dtype=F32)
@@ -103,8 +107,10 @@ class DSV41Target:
 
     def window_initial(self):
         c = self.config
-        return TowerState(self, 0, self.scheme.initial(),
-                          tuple(AttentionState.create(c, i) for i in range(c.layers)),
+        attention = (tuple(AttentionState.create(c, i) for i in range(c.layers))
+                     if self.native_backend is None else
+                     tuple(self.native_backend.create_attention_state(c, i) for i in range(c.layers)))
+        return TowerState(self, 0, self.scheme.initial(), attention,
                           np.empty((c.layers, c.hc_mult, c.dimension), dtype=F32),
                           np.empty(c.vocab, dtype=F32))
 
@@ -132,8 +138,11 @@ class DSV41Target:
             route.append(i * (c.expert_count + 1) + c.expert_count)  # shared expert trace code
             selections.append(selected)
         begin = perf_counter_ns()
-        hidden = rms(hc_pre(stream, pre), w["norm"], c.norm_eps)
-        linear(hidden, w["head"], out=state.logits)
+        if self.native_backend is None:
+            hidden = rms(hc_pre(stream, pre), w["norm"], c.norm_eps)
+            linear(hidden, w["head"], out=state.logits)
+        else:
+            self.native_backend.final_head(stream, pre, w["norm"], w["head"], state.logits, c)
         require(np.all(np.isfinite(state.logits)), Code.ENCODING, "tower logits")
         metrics["head_ns"] = perf_counter_ns() - begin
         state.history = hashed.history
@@ -150,6 +159,9 @@ class DSV41Target:
         """Sequence finalization hook; no caches survive in a retained sequence handle."""
         if state is not None:
             require(type(state) is TowerState and state.owner is self, Code.IDENTITY, "release tower state")
+            for attention in state.attention:
+                if type(attention) is NativeAttentionState:
+                    attention.close()
             state.attention = ()
             state.layer_streams = state.logits = np.empty(0, dtype=F32)
             state.selected = ()

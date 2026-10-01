@@ -46,5 +46,6 @@ include(native/elpis.cmake)
 add_subdirectory(native/substrate)
 add_subdirectory(native/structure)
 add_subdirectory(native/pipeline)
+add_subdirectory(native/inference)
 
 elpis_verify_targets()

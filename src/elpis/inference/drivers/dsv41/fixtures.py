@@ -30,7 +30,7 @@ def fixture_config(tokenizer, *, seed=1041, max_tokens=128):
         original_seq_len=32, rope_factor=4.0, swiglu_limit=10.0, route_scale=1.5)
 
 
-def make_fixture(provider, directory, tokenizer, *, seed=1041, config=None, parameters=None):
+def make_fixture(provider, directory, tokenizer, *, seed=1041, config=None, parameters=None, native_backend=None):
     """Create only fixture-owned raw files beneath the provider root."""
     directory = bounded_path(provider.root, directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -80,7 +80,8 @@ def make_fixture(provider, directory, tokenizer, *, seed=1041, config=None, para
     manifest = ParameterManifest(config.model, config.tokenizer, config.digest, parameters.digest,
                                  tuple((i, rows[i].table.bank.digest) for i in config.engram_layers), tuple(bindings))
     target = DSV41Target(config, manifest, tokenizer, parameters, rows, provider, expected_manifest=manifest.digest,
-                         resident_budget=64 << 20, staging_budget=1 << 16, state_budget=16 << 20)
+                         resident_budget=64 << 20, staging_budget=1 << 16, state_budget=16 << 20,
+                         native_backend=native_backend)
     metadata = dict(classification="PRODUCTION_SHAPED_FIXTURE", TRAINING="NONE", seed=seed,
                     model=target.model_identity, tokenizer=tokenizer.identity, config=config.digest,
                     manifest=manifest.digest, address=parameters.digest)

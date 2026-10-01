@@ -257,7 +257,9 @@
       "test_roots": [
         "tests/inference"
       ],
-      "native_targets": [],
+      "native_targets": [
+        "elpis_dsv41_native"
+      ],
       "depends_on": [
         "substrate"
       ],
