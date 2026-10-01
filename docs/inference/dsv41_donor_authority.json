@@ -1,0 +1,131 @@
+{
+  "schema": "elpis.dsv41.donor-authority.v1",
+  "root": "ElpisDonors",
+  "deepseek_revision": "UPSTREAM_REVISION_UNPINNED; exact local bytes authoritative",
+  "files": {
+    "DeepSeek4.1/00_V41_REFERENCE/inference/model.py": {
+      "sha256": "4e9ae23620edc8028ccc5d5fef552ab7fdc7dcd6f79608754fe9f67644056f65",
+      "bytes": 61549
+    },
+    "DeepSeek4.1/00_V41_REFERENCE/inference/engram.py": {
+      "sha256": "11f35ecbead8150c35aa002b3d180ef290b05a25afe883a11884f94d476d3897",
+      "bytes": 8138
+    },
+    "DeepSeek4.1/00_V41_REFERENCE/inference/kernel.py": {
+      "sha256": "1236c3507019ed176f5dba5e04bcea58867cf654818c6cf138ed4845398c2455",
+      "bytes": 23790
+    },
+    "DeepSeek4.1/00_V41_REFERENCE/inference/config.json": {
+      "sha256": "2e84f45cf1dac8c7fcbb200e96667d4b913275690668ed496f24c7747207a809",
+      "bytes": 1982
+    },
+    "DeepSeek4.1/00_V41_REFERENCE/inference/README.md": {
+      "sha256": "2834402823199ee24e9a42bdf36a0fc6daf94448f444cb062c042a057a798f1c",
+      "bytes": 2029
+    },
+    "DeepSeek4.1/00_V41_REFERENCE/LICENSE": {
+      "sha256": "f2c6c602815669d292889e5be8c802f2ed950653b77999b1584e8e6aed25d040",
+      "bytes": 1084
+    },
+    "Qwen3.8/nemo_reference/engram.py": {
+      "sha256": "656d223cad2d43db4286ac04b98a56416d8e0a915fc6ca1a1362658e23e46db4",
+      "bytes": 53625
+    },
+    "Qwen3.8/vllm_runtime/ngram_embedding.py": {
+      "sha256": "01c2cb7c691c9a8a448e57619fdb97bfe1c3230e7be3c92dd4642d3f7173a499",
+      "bytes": 35119
+    },
+    "Qwen3.8/vllm_runtime/ple_common.py": {
+      "sha256": "585fabb01a14f8071251e52891843cdc1340f75b4d7173abf4748e2ba8746b76",
+      "bytes": 3295
+    },
+    "Qwen3.8/vllm_runtime/ple_layer.py": {
+      "sha256": "704849dca1a5abaca978dd366e23f27ed327f2ee517a6589f1dfb03602782967",
+      "bytes": 16932
+    },
+    "Qwen3.8/vllm_runtime/ops/ple.py": {
+      "sha256": "68f3499f00c67742a8c3fcece071626d8d82e8a6e1c04e241922df61539d8e9b",
+      "bytes": 22832
+    },
+    "Qwen3.8/ds4_nvme/ds4_engram.c": {
+      "sha256": "44cd6fe5730d787d815878b73a05b6c917d5c157ab30daa32958159ee251a5ad",
+      "bytes": 11308
+    },
+    "Qwen3.8/ds4_nvme/ds4_engram.h": {
+      "sha256": "f84a264e0fe199d23a6f0c56fbbd19e222adc7009eed13c185af6403f68f7f5c",
+      "bytes": 2496
+    },
+    "Qwen3.8/SOURCE_REVISIONS.txt": {
+      "sha256": "d91e435ebc3934dc5b096861ac83a655951d0e05a51bcc0dab16f88d6f32f383",
+      "bytes": 619
+    },
+    "ZCode/SOURCE_REVISION.txt": {
+      "sha256": "2b1e63f3fb044523a9662c9655215071ba6e4ff399e385b84f8ae0d7da3294dc",
+      "bytes": 299
+    },
+    "ZCode/compaction/compact-active-helpers.ts": {
+      "sha256": "2ebbcf79189e7864f83c0c563970a6a93f026539f12aacc978079d8806f41db2",
+      "bytes": 4101
+    },
+    "ZCode/compaction/compact-active.ts": {
+      "sha256": "d58444a1570e4125f96897536307457096b7cc97b3b73509dd50ab242a7ffdd0",
+      "bytes": 27775
+    },
+    "ZCode/compaction/compact-contract.ts": {
+      "sha256": "e68b64fda4ed680b6b5ab9763832875846b1a732038320e492a7a2da2e923cf5",
+      "bytes": 11230
+    },
+    "ZCode/compaction/compact-persistence.ts": {
+      "sha256": "d074a5bf9e91d24fc2d0b6d7040edfad969d398bef5eda4f179dc930f23d7bb0",
+      "bytes": 15772
+    },
+    "ZCode/compaction/compact-prompt.ts": {
+      "sha256": "b1318080df3bec5f1ca77804fc9513cb50b7cd94d98b1c70cd81cede50e839c9",
+      "bytes": 8312
+    },
+    "ZCode/compaction/compact-session.ts": {
+      "sha256": "39da79d7e0a3e204a8dadc2969024b7b90ec9bff08f4b32ec907c1f4978e912f",
+      "bytes": 3186
+    },
+    "ZCode/compaction/compact.ts": {
+      "sha256": "480dce24e0c62af96cf1737fe70e7ac80770fcf87e86e3d187d8d151f108f3c8",
+      "bytes": 16397
+    },
+    "ZCode/context/context-builder.ts": {
+      "sha256": "eb86d012a9a9070b1837be23798390364318f35344bfa6ed9d9de8bcd19bf903",
+      "bytes": 12686
+    },
+    "ZCode/context/context-types.ts": {
+      "sha256": "f47a5f2fc1ea4327ea28eb74e60193e4f9154206df2c31970cef4d47accc6926",
+      "bytes": 4812
+    },
+    "ZCode/context/subagent-context-builder.ts": {
+      "sha256": "9a5f0084d9f98e849bc4f8d7f9a09646a05d8ed432e17e3282d21c075cdf4fd2",
+      "bytes": 6223
+    },
+    "ZCode/runtime/message-history.ts": {
+      "sha256": "ea1729ffc04ee9c2f3418d23896d387480ec4ead4f4ecedc2a0d6add3601d97a",
+      "bytes": 16114
+    },
+    "ZCode/runtime/model-token-limits.ts": {
+      "sha256": "da08ef8c597cc5ef3db62fa6c46beba2acb49757bc0089e8d2482d9cb05ddc7a",
+      "bytes": 2937
+    },
+    "ZCode/runtime/provider-request-messages.ts": {
+      "sha256": "8a4b5fb8df4bb91b33ad9e9131541981aa1325ae5ba8e6d6be45cdfb920861a9",
+      "bytes": 11795
+    },
+    "ZCode/state/session-fork.ts": {
+      "sha256": "e09bad82ac764e6f9dfcee9c549c768e6cd0c3a5297ff1aa3614a2b36c770438",
+      "bytes": 52464
+    },
+    "ZCode/state/workspace-checkpoint-persistence.ts": {
+      "sha256": "20077d7cc22568c043cecd6132477b40b88c67e056cba705ccac661d588e91a3",
+      "bytes": 9290
+    },
+    "ZCode/state/workspace-checkpoints.ts": {
+      "sha256": "4e26a9eb8f71fb1302d7f130666f2ac85d6e50210fb4ceaf26fedb0cb1873286",
+      "bytes": 11799
+    }
+  }
+}

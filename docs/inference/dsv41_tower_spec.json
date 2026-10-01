@@ -1,0 +1,125 @@
+{
+  "schema": "elpis.inference.dsv41.tower-spec.v1",
+  "status": "ARCHITECTURE_CONTRACT",
+  "primary_authority": "DeepSeek4.1/00_V41_REFERENCE/inference/model.py and engram.py",
+  "scope": "Single-sequence, single-rank text backbone; no weight serialization or checkpoint API",
+  "accepted_base": {
+    "branch": "feat/dsv41-text-boundary",
+    "commit": "5c62d358c8410e6740fd409d8e1a5c360a51cfda",
+    "tree": "8ae25ce728fb5b65bbe7c36450f4e697d57997ee",
+    "tokenizer": "a4ff8fefe87f25992ad0d20def12cc29d4fcbb06549d35e6f3329778e7ea16e1",
+    "tokenizer_sha256": "81f64d1248a68ce3663e07ab3ee48b851e5df0e32d27cb98e4c9a268151e8d99"
+  },
+  "geometry": {
+    "L": "positive layer count; compress_ratios has exactly L entries",
+    "D": "hidden dimension",
+    "H": "attention heads",
+    "A": "shared latent K/V head dimension, divisible by 32",
+    "R": "positive even rotary tail <= min(A, I)",
+    "Q": "query low-rank dimension",
+    "G": "output groups; H divisible by G",
+    "O": "output low-rank dimension per group",
+    "W": "local causal sliding window",
+    "T": "explicit maximum total tokens per sequence, including prefill and generation",
+    "J": "index query heads",
+    "I": "index head dimension, divisible by 32",
+    "K": "compressed-position top-k",
+    "C": "mHC copies",
+    "E": "routed experts per layer",
+    "k": "active routed experts, 1 <= k <= E",
+    "S": "exactly one shared expert, as asserted by donor MoE",
+    "F": "expert intermediate width",
+    "N": "maximum Engram order >= 2",
+    "B": "Engram heads per n-gram order",
+    "U": "Engram row width, divisible by 32 for donor row codec",
+    "V": "exact admitted tokenizer vocabulary, 129280 for accepted artifact"
+  },
+  "layer_order": [
+    "embed raw token; repeat embedding C times; initial pre_mix is one-hot copy zero",
+    "for each layer in ascending index: optional Engram write into residual copies",
+    "compute attention mHC mixes from current residual; collapse with PREVIOUS sublayer pre_mix",
+    "attention RMSNorm -> low-rank query + shared latent K/V -> local + optional compressed sparse attention -> grouped factorized O",
+    "attention hc_post: post[j]*attention + sum_i comb[i,j]*residual[i]",
+    "compute FFN mHC mixes from post-attention residual; collapse with attention pre_mix",
+    "FFN RMSNorm -> routed experts plus shared expert -> FFN hc_post",
+    "pass FFN pre_mix to next layer",
+    "collapse final stream with last FFN pre_mix -> final RMSNorm -> untied output head -> logits"
+  ],
+  "attention": {
+    "local": "q=RMSNorm(wq_a*x)*wq_b; k=v=RMSNorm(wkv*x); rotate tail; cache local K/V with E4M3/E8M0 group32 quant-dequant",
+    "compression": "ratio 0: local only; ratio 1: normalized projection; ratio >1: per-channel softmax pooling of wkv*x with wgate*x over completed groups, then norm",
+    "sharing": "latest preceding kv_source provides compressed K/V and index keys; latest index_source supplies selected positions; consumers must use the same ratio",
+    "indexer": "index key from UNROTATED compressed latent via wk+RMSNorm; RoPE at first position of group; FP4/E8M0 group32 key/query quant-dequant; sum_heads(relu(q dot k)*weights_proj(x)/sqrt(I*J))",
+    "candidate_prefilter": "candidate_source scores blocks by maximum; force newest reachable block; retain candidate_topk_blocks; later index sources mask other blocks",
+    "selection": "top min(K, completed_groups), sorted back into position order; score ties resolved by smaller position in Elpis (donor topk tie order is unspecified)",
+    "compressed_cache": "rotate latent after indexer reads it; FP4/E4M3 group16 quant-dequant; completed groups only, no future tokens",
+    "sparse_attention": "one softmax over local plus selected compressed positions and a learned sink per head; sink has zero value; inverse RoPE on output before grouped O",
+    "rope": "pure SWA uses rope_theta without YaRN; compressed layers use compress_rope_theta and parametric donor YaRN",
+    "state": "preallocated sequence-local rings, compressor partial groups, and at most floor(T/ratio) compressed/index entries per owner"
+  },
+  "engram": {
+    "map": "official tokenizer single-token decode; partial UTF-8 tokens keyed by raw spelling; NFKC,NFD,StripAccents,Lowercase,space normalization with U+E000 sentinel,Strip",
+    "multipliers": "NumPy default_rng(10007*layer); odd int64 multipliers bounded by compressed vocabulary",
+    "layout": "globally unique increasing primes per n-gram head from bucket_size; packed cumulative offsets per layer",
+    "hash": "existing DSV41_ENGRAM value-tail arithmetic; pad is compressed map of tokenizer pad; dead sentinel blocks all older history",
+    "write": "concatenate (N-1)*B rows, never mean; wkv -> C keys plus one shared value; branch-local RMS dot with q_weight*k_weight; sigmoid(copysign(sqrt(max(abs(dot),1e-6)),dot)); gated additive residual",
+    "storage": "existing immutable FMS RowEngine; single worker; F32 materialized rows or donor E4M3/E8M0/BF16 row codec"
+  },
+  "moe": {
+    "scores": "linear(x, gate.weight)/gate_temp; softmax, sigmoid, or sqrt(softplus)",
+    "selection": "top-k(scores + gate.bias); deterministic smaller-expert-id tie break",
+    "weights": "unbiased selected scores; normalize only if norm_topk_prob and k>1, denominator sum+1e-20; multiply route_scale",
+    "expert": "gate=w1*x, up=w3*x; optional gate upper clamp and symmetric up clamp; silu(gate)*up; multiply route weight BEFORE w2 projection",
+    "reduction": "routed experts in ascending expert ID, then one unweighted shared expert",
+    "residency": "only selected experts plus shared read during execution; one expert staged at a time; all identities and content bindings verified before begin"
+  },
+  "mhc": {
+    "mix": "linear(flatten(residual),hc_fn)*rsqrt(mean(flatten(residual)^2)+norm_eps)",
+    "pre": "sigmoid(mix_pre*scale[0]+base_pre)+hc_eps",
+    "post": "2*sigmoid(mix_post*scale[1]+base_post)",
+    "comb": "row softmax+hc_eps; column normalize with hc_eps; repeat row then column normalization sinkhorn_iters-1 times",
+    "orientation": "comb[input_copy,output_copy]"
+  },
+  "tensor_layout": {
+    "all_linear_weights": "row-major [out,in], y[o]=sum_i x[i]*w[o,i]; no implicit transpose/cast in intake",
+    "embed": "[V,D]",
+    "head": "[V,D], untied",
+    "norm": "[D]",
+    "layer.attn.wq_a": "[Q,D]",
+    "layer.attn.q_norm": "[Q]",
+    "layer.attn.wq_b": "[H*A,Q]",
+    "layer.attn.wkv": "[A,D]",
+    "layer.attn.kv_norm": "[A]",
+    "layer.attn.attn_sink": "[H]",
+    "layer.attn.wo_a": "[G*O,H*A/G], interpreted as [G,O,H*A/G]",
+    "layer.attn.wo_b": "[D,G*O]",
+    "kv_owner.compressor": "wkv[A,D], norm[A], wgate[A,D] only when ratio>1",
+    "index_source.indexer": "wq_b[J*I,Q], weights_proj[J,D]; kv_owner also wk[I,A], k_norm[I]",
+    "layer.mhc": "attn and ffn each: fn[(2+C)*C,C*D], base[(2+C)*C], scale[3]",
+    "layer.norms": "attn_norm[D], ffn_norm[D]",
+    "layer.router": "weight[E,D], bias[E]",
+    "layer.experts": "each routed ID and shared: w1[F,D], w3[F,D], w2[D,F]",
+    "engram_layer": "wkv[(C+1)*D,(N-1)*B*U], q_weight[C,D], k_weight[C,D]; separate bank [sum(primes),U]"
+  },
+  "numerics": {
+    "profile": "ELPIS_DSV41_F32_DONOR_CACHE_V1",
+    "parameters": "finite F32_LE, row-major; explicit byte lengths and digests; reject unsupported representations",
+    "arithmetic": "CPU F32 einsum without BLAS optimization; single caller thread, no new pool; donor cache quantization with nearest-even finite formats",
+    "not_claimed": "bitwise GPU/BF16/FP8 GEMM equivalence; packed quantized parameter intake; multi-rank execution",
+    "donor_constants": {"norm_eps_default": 1e-20, "hc_eps_default": 1e-6, "sinkhorn_iters_default": 20, "routing_normalization_epsilon": 1e-20, "engram_signed_sqrt_clamp": 1e-6, "fp8_group": 32, "index_fp4_group": 32, "compressed_fp4_group": 16}
+  },
+  "authority": {
+    "persistent": "immutable model/config/manifest/tokenizer/address identities; PrincipalState/commits; HACF context and ECS receipt history",
+    "sequence_local": "all attention/index/compressor/mHC scratch and address tail, per-step observations, output tokens",
+    "forbidden_persistence": "KV/index caches, activations and execution scratch as historical context; no learned output becomes authority",
+    "finalization": "release driver sequence scratch after commit/failure; receipts retain identities and bounded traces only",
+    "hot_loop_forbidden": ["HACF", "Regex ingress", "ECS", "runtime history", "structural resolution", "tokenizer loading", "canonical/provenance hashing", "network", "filesystem discovery"],
+    "fms": "explicit admitted asset byte-range reads allowed for required associative rows and selected experts; cold-page integrity remains substrate-owned"
+  },
+  "donor_boundaries": {
+    "Qwen": "address/row oracles only; existing QWEN38_PLE kept separately; do not import Qwen convolution or Gemma-style norm into DSV41 Engram",
+    "ZCode": "turn-scoped snapshot, causal source metadata, isolated forks and compaction boundaries already represented in Elpis; no application runtime or mid-sequence context update",
+    "excluded": ["vision", "DSpark/MTP drafting", "distributed tensor parallelism", "weight file formats", "training", "language quality"]
+  },
+  "fixture": {"classification": "PRODUCTION_SHAPED_FIXTURE", "TRAINING": "NONE", "requires": "real V4.1 vocabulary plus all backbone paths using tiny parametric geometry"}
+}
