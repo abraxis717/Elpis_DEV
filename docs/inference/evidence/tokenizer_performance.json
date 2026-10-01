@@ -1,0 +1,37 @@
+{
+  "schema": "elpis.text-boundary.measurement.v1",
+  "tokenizer": "a4ff8fefe87f25992ad0d20def12cc29d4fcbb06549d35e6f3329778e7ea16e1",
+  "sha256": "81f64d1248a68ce3663e07ab3ee48b851e5df0e32d27cb98e4c9a268151e8d99",
+  "vocabulary": 129280,
+  "workload": {
+    "bytes": 1600,
+    "prompt_tokens": 608,
+    "decoded_tokens": 600,
+    "repeats": 100
+  },
+  "median_load_ms": 621.689464,
+  "median_chat_encode_ms": 1.1051465,
+  "median_decode_ms": 0.448797,
+  "median_decode_ns_per_token": 747.995,
+  "p95_individual_decode_ns": 790,
+  "byte_material_python_bytes": 6175790,
+  "utf8_carry_bound_bytes": 3,
+  "hello_prompt_ids": [
+    0,
+    128803,
+    19923,
+    14,
+    3909,
+    62848,
+    16,
+    128804,
+    128822
+  ],
+  "model_tokens_per_second": null,
+  "model_prefill_ms": null,
+  "model_working_set_bytes": null,
+  "fms_hits": null,
+  "fms_misses": null,
+  "expert_activity": null,
+  "reason": "No compatible production model instantiated; tokenizer timing only."
+}

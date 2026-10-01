@@ -1,0 +1,194 @@
+Test project /mnt/primesauce/ChatGPT_Sandbox/Astra/work/verbal-boundary/build
+      Start  1: substrate.test_execution
+      Start  2: substrate.test_hash
+      Start  3: substrate.test_fms
+      Start  4: substrate.test_fms_concurrency
+ 1/92 Test  #2: substrate.test_hash ...........................   Passed    0.00 sec
+      Start  5: substrate.test_fms_adversarial
+ 2/92 Test  #5: substrate.test_fms_adversarial ................   Passed    0.01 sec
+      Start  6: structure.test_cascade
+ 3/92 Test  #6: structure.test_cascade ........................   Passed    0.00 sec
+      Start  7: structure.test_graph
+ 4/92 Test  #7: structure.test_graph ..........................   Passed    0.00 sec
+      Start  8: structure.test_corpus
+ 5/92 Test  #4: substrate.test_fms_concurrency ................   Passed    0.31 sec
+      Start  9: structure.test_chunking_adversarial
+ 6/92 Test  #9: structure.test_chunking_adversarial ...........   Passed    0.00 sec
+      Start 10: structure.test_embedding_provider
+ 7/92 Test #10: structure.test_embedding_provider .............   Passed    0.00 sec
+      Start 11: structure.test_vector_shard
+ 8/92 Test #11: structure.test_vector_shard ...................   Passed    0.03 sec
+      Start 12: structure.test_vector_search
+ 9/92 Test  #1: substrate.test_execution ......................   Passed    0.36 sec
+      Start 13: structure.test_vector_fms
+10/92 Test  #8: structure.test_corpus .........................   Passed    0.55 sec
+      Start 14: structure.test_vector_concurrency
+11/92 Test #12: structure.test_vector_search ..................   Passed    0.31 sec
+      Start 15: structure.test_vector_crosshost_fixture
+12/92 Test #15: structure.test_vector_crosshost_fixture .......   Passed    0.10 sec
+      Start 16: structure.test_vector_adversarial
+13/92 Test #13: structure.test_vector_fms .....................   Passed    0.42 sec
+      Start 17: structure.test_context_graph
+14/92 Test #17: structure.test_context_graph ..................   Passed    0.00 sec
+      Start 18: structure.test_hybrid_fusion
+15/92 Test #16: structure.test_vector_adversarial .............   Passed    0.13 sec
+      Start 19: structure.test_retrieval_bundle
+16/92 Test #18: structure.test_hybrid_fusion ..................   Passed    0.14 sec
+      Start 20: structure.test_hybrid_adversarial
+17/92 Test #19: structure.test_retrieval_bundle ...............   Passed    0.14 sec
+      Start 21: structure.test_hybrid_crosshost_fixture
+18/92 Test #20: structure.test_hybrid_adversarial .............   Passed    0.13 sec
+      Start 22: structure.test_hybrid_concurrency
+19/92 Test #21: structure.test_hybrid_crosshost_fixture .......   Passed    0.14 sec
+      Start 23: structure.test_semantic_identity
+20/92 Test #23: structure.test_semantic_identity ..............   Passed    0.00 sec
+      Start 24: structure.test_type_registry
+21/92 Test #24: structure.test_type_registry ..................   Passed    0.01 sec
+      Start 25: structure.test_hypergraph_builder
+22/92 Test #25: structure.test_hypergraph_builder .............   Passed    0.00 sec
+      Start 26: structure.test_hacf_mapping
+23/92 Test #26: structure.test_hacf_mapping ...................   Passed    0.01 sec
+      Start 27: structure.test_segment_snapshot
+24/92 Test #22: structure.test_hybrid_concurrency .............   Passed    0.20 sec
+      Start 28: structure.test_segment_payload
+25/92 Test #27: structure.test_segment_snapshot ...............   Passed    0.08 sec
+      Start 29: structure.test_snapshot_view
+26/92 Test  #3: substrate.test_fms ............................   Passed    1.28 sec
+      Start 30: structure.test_view_contract
+27/92 Test #28: structure.test_segment_payload ................   Passed    0.03 sec
+      Start 31: structure.test_embedding_view_contract
+28/92 Test #29: structure.test_snapshot_view ..................   Passed    0.01 sec
+      Start 32: structure.test_query_overlay
+29/92 Test #30: structure.test_view_contract ..................   Passed    0.01 sec
+      Start 33: structure.test_fresh_process_determinism
+30/92 Test #32: structure.test_query_overlay ..................   Passed    0.01 sec
+      Start 34: structure.test_embedding_profile
+31/92 Test #33: structure.test_fresh_process_determinism ......   Passed    0.01 sec
+      Start 35: structure.test_embedding_vector
+32/92 Test #31: structure.test_embedding_view_contract ........   Passed    0.02 sec
+      Start 36: structure.test_embedding_ref
+33/92 Test #34: structure.test_embedding_profile ..............   Passed    0.01 sec
+      Start 37: structure.test_embedding_collection
+34/92 Test #36: structure.test_embedding_ref ..................   Passed    0.01 sec
+35/92 Test #35: structure.test_embedding_vector ...............   Passed    0.01 sec
+      Start 38: structure.test_embedding_metric
+      Start 39: structure.test_embedding_neighborhood
+36/92 Test #37: structure.test_embedding_collection ...........   Passed    0.01 sec
+37/92 Test #38: structure.test_embedding_metric ...............   Passed    0.00 sec
+      Start 40: structure.test_embedding_storage
+      Start 41: structure.test_embedding_boundary
+38/92 Test #39: structure.test_embedding_neighborhood .........   Passed    0.01 sec
+      Start 42: structure.test_context_requirement
+39/92 Test #42: structure.test_context_requirement ............   Passed    0.00 sec
+      Start 43: structure.test_context_requirement_set
+40/92 Test #43: structure.test_context_requirement_set ........   Passed    0.00 sec
+      Start 44: structure.test_context_deficit_policy
+41/92 Test #41: structure.test_embedding_boundary .............   Passed    0.01 sec
+      Start 45: structure.test_context_evaluator
+42/92 Test #44: structure.test_context_deficit_policy .........   Passed    0.01 sec
+      Start 46: structure.test_context_persistence
+43/92 Test #45: structure.test_context_evaluator ..............   Passed    0.01 sec
+      Start 47: structure.test_retrieval_requirement
+44/92 Test #47: structure.test_retrieval_requirement ..........   Passed    0.00 sec
+      Start 48: structure.test_retrieval_requirement_bundle
+45/92 Test #48: structure.test_retrieval_requirement_bundle ...   Passed    0.00 sec
+      Start 49: structure.test_context_boundaries
+46/92 Test #49: structure.test_context_boundaries .............   Passed    0.00 sec
+      Start 50: structure.test_typer_profile
+47/92 Test #50: structure.test_typer_profile ..................   Passed    0.00 sec
+      Start 51: structure.test_evidence_span
+48/92 Test #51: structure.test_evidence_span ..................   Passed    0.00 sec
+      Start 52: structure.test_claim_candidate
+49/92 Test #52: structure.test_claim_candidate ................   Passed    0.00 sec
+      Start 53: structure.test_relation_candidate
+50/92 Test #53: structure.test_relation_candidate .............   Passed    0.00 sec
+      Start 54: structure.test_typing_bundle
+51/92 Test #54: structure.test_typing_bundle ..................   Passed    0.00 sec
+      Start 55: structure.test_admission_policy
+52/92 Test #55: structure.test_admission_policy ...............   Passed    0.00 sec
+      Start 56: structure.test_adjudicator
+53/92 Test #56: structure.test_adjudicator ....................   Passed    0.00 sec
+      Start 57: structure.test_admission_segment
+54/92 Test #57: structure.test_admission_segment ..............   Passed    0.00 sec
+      Start 58: structure.test_typed_evidence_view
+55/92 Test #58: structure.test_typed_evidence_view ............   Passed    0.00 sec
+      Start 59: structure.test_evidence_persistence
+56/92 Test #59: structure.test_evidence_persistence ...........   Passed    0.01 sec
+      Start 60: structure.test_evidence_determinism
+57/92 Test #60: structure.test_evidence_determinism ...........   Passed    0.00 sec
+      Start 61: structure.test_evidence_boundaries
+58/92 Test #46: structure.test_context_persistence ............   Passed    0.05 sec
+      Start 62: structure.test_context_rebind
+59/92 Test #61: structure.test_evidence_boundaries ............   Passed    0.01 sec
+      Start 63: structure.test_iteration_policy
+60/92 Test #62: structure.test_context_rebind .................   Passed    0.00 sec
+      Start 64: structure.test_iteration_state
+61/92 Test #63: structure.test_iteration_policy ...............   Passed    0.00 sec
+      Start 65: structure.test_context_reevaluation
+62/92 Test #64: structure.test_iteration_state ................   Passed    0.00 sec
+      Start 66: structure.test_context_progress
+63/92 Test #65: structure.test_context_reevaluation ...........   Passed    0.00 sec
+      Start 67: structure.test_bounded_view_policy
+64/92 Test #66: structure.test_context_progress ...............   Passed    0.00 sec
+      Start 68: structure.test_seed_construction
+65/92 Test #67: structure.test_bounded_view_policy ............   Passed    0.00 sec
+      Start 69: structure.test_candidate_enumeration
+66/92 Test #68: structure.test_seed_construction ..............   Passed    0.00 sec
+      Start 70: structure.test_bounded_selection
+67/92 Test #69: structure.test_candidate_enumeration ..........   Passed    0.00 sec
+      Start 71: structure.test_conflict_closure
+68/92 Test #40: structure.test_embedding_storage ..............   Passed    0.09 sec
+      Start 72: structure.test_provenance_closure
+69/92 Test #70: structure.test_bounded_selection ..............   Passed    0.01 sec
+      Start 73: structure.test_metric_nonauthority
+70/92 Test #71: structure.test_conflict_closure ...............   Passed    0.01 sec
+71/92 Test #72: structure.test_provenance_closure .............   Passed    0.00 sec
+      Start 74: structure.test_bounded_view_identity
+      Start 75: structure.test_downstream_handoff
+72/92 Test #73: structure.test_metric_nonauthority ............   Passed    0.01 sec
+      Start 76: structure.test_view_persistence
+73/92 Test #74: structure.test_bounded_view_identity ..........   Passed    0.01 sec
+      Start 77: structure.test_view_determinism
+74/92 Test #75: structure.test_downstream_handoff .............   Passed    0.01 sec
+      Start 78: structure.test_view_boundaries
+75/92 Test #77: structure.test_view_determinism ...............   Passed    0.00 sec
+      Start 79: structure.test_topology_compile
+76/92 Test #78: structure.test_view_boundaries ................   Passed    0.01 sec
+      Start 80: structure.test_grid81_compiler
+77/92 Test #76: structure.test_view_persistence ...............   Passed    0.02 sec
+      Start 81: structure.test_structural_observation
+78/92 Test #81: structure.test_structural_observation .........   Passed    0.01 sec
+      Start 82: pipeline.test_regex_execution
+79/92 Test #79: structure.test_topology_compile ...............   Passed    0.03 sec
+      Start 83: pipeline.benchmark_regex_execution
+80/92 Test #83: pipeline.benchmark_regex_execution ............   Passed    0.01 sec
+      Start 84: pipeline.test_regex_lexer_equivalence
+81/92 Test #82: pipeline.test_regex_execution .................   Passed    0.21 sec
+      Start 85: pipeline.test_regex_bounded_profile
+82/92 Test #80: structure.test_grid81_compiler ................   Passed    0.23 sec
+      Start 86: pipeline.test_regex_stream
+83/92 Test #14: structure.test_vector_concurrency .............   Passed    1.36 sec
+      Start 87: pipeline.test_regex_allocation
+84/92 Test #87: pipeline.test_regex_allocation ................   Passed    0.00 sec
+      Start 88: pipeline.test_regex_c_abi
+85/92 Test #88: pipeline.test_regex_c_abi .....................   Passed    0.00 sec
+      Start 89: pipeline.test_regex_memory
+86/92 Test #85: pipeline.test_regex_bounded_profile ...........   Passed    0.34 sec
+      Start 90: pipeline.test_query_local_batch
+87/92 Test #90: pipeline.test_query_local_batch ...............   Passed    0.01 sec
+      Start 91: pipeline.test_query_ingress_bounded
+88/92 Test #91: pipeline.test_query_ingress_bounded ...........   Passed    0.06 sec
+      Start 92: pipeline.test_query_ingress_composition
+89/92 Test #92: pipeline.test_query_ingress_composition .......   Passed    0.09 sec
+90/92 Test #89: pipeline.test_regex_memory ....................   Passed    0.28 sec
+91/92 Test #84: pipeline.test_regex_lexer_equivalence .........   Passed    0.92 sec
+92/92 Test #86: pipeline.test_regex_stream ....................   Passed    1.51 sec
+
+100% tests passed out of 92
+
+Label Time Summary:
+pipeline     =   3.43 sec*proc (11 tests)
+structure    =   4.48 sec*proc (76 tests)
+substrate    =   1.96 sec*proc (5 tests)
+
+Total Test time (real) =   3.17 sec

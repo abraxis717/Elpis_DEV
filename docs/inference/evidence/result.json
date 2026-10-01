@@ -1,0 +1,32 @@
+{
+  "disposition": "MECHANICS_NONQUAL",
+  "tokenizer_qualified": true,
+  "production_target_intake_complete": false,
+  "production_model_admitted": false,
+  "verbal_inference_demonstrated": false,
+  "blocker": "PRODUCTION_ARITHMETIC_DRIVER_AND_COMPATIBLE_TRAINED_ARTIFACTS",
+  "python_full": {
+    "passed": 2587,
+    "skipped": 10,
+    "deselected": 1
+  },
+  "donor_parity_followup": {
+    "passed": 10,
+    "skipped": 0
+  },
+  "text_focused": {
+    "passed": 32,
+    "skipped": 0
+  },
+  "native": {
+    "passed": 92,
+    "failed": 0
+  },
+  "environment_exclusion": "test_network_guard_is_active: sandbox rejects AF_INET socket construction; original test unchanged",
+  "hot_loop_hash_calls": 0,
+  "utf8_carry_bound_bytes": 3,
+  "native_source_changed": false,
+  "reference_repository_modified": false,
+  "production_assets_modified": false,
+  "remote_publication": false
+}
