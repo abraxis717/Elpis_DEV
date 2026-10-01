@@ -9,6 +9,34 @@ from elpis.substrate.boundary import RootCapability
 from elpis.substrate.synthetic import SyntheticFileAssets
 
 
+# Qualification mode: a skipped DSV4.1 test is never a pass. Both reference paths
+# must be bound, both suites must be collected, and any skip becomes a failure.
+QUALIFY = os.environ.get("ELPIS_DSV41_QUALIFY") == "1"
+_HERE = Path(__file__).parent
+
+
+def pytest_collection_modifyitems(session, config, items):
+    if not QUALIFY:
+        return
+    for name in ("ELPIS_V41_TOKENIZER", "ELPIS_TOWER_DONORS"):
+        if not os.environ.get(name):
+            raise pytest.UsageError(f"ELPIS_DSV41_QUALIFY=1 requires {name}")
+    ours = [i for i in items if Path(str(i.fspath)).parent == _HERE]
+    counts = {name: sum(Path(str(i.fspath)).name == name for i in ours)
+              for name in ("test_differential.py", "test_tower.py")}
+    if not all(counts.values()):
+        raise pytest.UsageError(f"ELPIS_DSV41_QUALIFY=1 collected {counts}; both suites are required")
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+    if QUALIFY and report.skipped and Path(str(item.fspath)).parent == _HERE:
+        report.outcome = "failed"
+        report.longrepr = f"ELPIS_DSV41_QUALIFY=1: a skip is not qualification: {report.longrepr}"
+
+
 @pytest.fixture(scope="session")
 def v41():
     path = os.environ.get("ELPIS_V41_TOKENIZER")
