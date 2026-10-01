@@ -54,16 +54,24 @@ typedef elpis_exec_status (*elpis_exec_bound_compute)(void *context,
                                                      const elpis_exec_buffer *input,
                                                      size_t max_output,
                                                      elpis_exec_buffer **out);
-enum { ELPIS_EXEC_PURE = 1u, ELPIS_EXEC_REGEX = 1u };
+enum {
+    ELPIS_EXEC_PURE = 1u,
+    /* Provider owns the operation. No implicit CPU fallback/retry is permitted.
+     * This is for stateful accelerator streams whose provider state may advance
+     * after an accepted submission. */
+    ELPIS_EXEC_BACKEND_ONLY = 2u,
+    ELPIS_EXEC_REGEX = 1u
+};
 typedef struct {
     uint32_t operation;       /* <64, capability bit; adapter defines semantics */
     uint32_t stage;
     uint32_t affinity;        /* locality hint: lane = affinity % workers. Preferred by that
                                  lane's pool thread, stolen by any idle one. Never pinning,
                                  never a correctness requirement. */
-    uint32_t flags;           /* PURE permits retry, never authority/side effects */
+    uint32_t flags;           /* PURE = opportunistic backend + CPU fallback.
+                                 BACKEND_ONLY = provider-owned stream, no fallback. */
     uint64_t tag;             /* caller identifier, echoed unchanged */
-    elpis_exec_compute compute;
+    elpis_exec_compute compute; /* required except BACKEND_ONLY; NULL there */
 } elpis_exec_task;
 typedef struct {
     uint32_t operation;
@@ -83,9 +91,16 @@ typedef struct {
  * no retained input/token. poll WOULD_BLOCK retains it; any terminal poll
  * consumes it and guarantees no later accesses. abort MUST synchronously
  * quiesce the token and relinquish ALL buffer access; only then may CPU retry.
- * Backend output must match the CPU oracle exactly. Partial output on any
- * failed poll is released. An invalid/hung backend violates this trusted ABI;
- * hardware integrations must prove their abort/fence contract before use.
+ * Backend output must match the corresponding CPU oracle exactly. Partial output
+ * on any failed poll is released. PURE tasks are opportunistic: backend
+ * rejection/failure/timeout falls back to their CPU compute callback.
+ * BACKEND_ONLY tasks are the stateful-stream mode: compute must be NULL, the
+ * backend must advertise the operation before admission, and every backend
+ * failure is terminal with no implicit CPU retry. After terminal failure/abort,
+ * a stateful provider stream must be discarded unless that provider's own
+ * separately qualified contract proves recovery. An invalid/hung backend
+ * violates this trusted ABI; hardware integrations must prove their abort/fence
+ * contract before use.
  * No worker ever sleeps on a token: submit is followed by one poll; an undecided
  * token is parked and polled again by whichever pool thread is free, at least
  * 1 ms later, for at most backend_poll_limit polls in total before abort and
@@ -154,7 +169,9 @@ elpis_exec_status elpis_exec_create(const elpis_exec_config *, elpis_exec_runtim
 /* Success consumes *input and sets it NULL. Failure leaves ownership intact.
  * Accepted sequence numbers are contiguous from zero; rejection consumes none.
  * Multiple producers supported. Their mutex acceptance order defines sequence.
- * No submit wait and no caller-assisted execution. */
+ * No submit wait and no caller-assisted execution. BACKEND_ONLY requires a
+ * configured backend advertising the operation; synchronous unavailability
+ * consumes neither the input nor a sequence number. */
 elpis_exec_status elpis_exec_submit(elpis_exec_runtime *, const elpis_exec_task *,
                                   elpis_exec_buffer **input, uint64_t *sequence);
 /* Bound-task variant for native adapters that operate on caller-owned state

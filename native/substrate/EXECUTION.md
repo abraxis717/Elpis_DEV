@@ -90,19 +90,48 @@ No arbitrary thread interruption is attempted.
 
 ## Optional backend
 
+The execution ABI is the accelerator port. It is deliberately vendor-neutral:
+the base Elpis build contains no CUDA/HIP/Metal/Vulkan SDK dependency, performs
+no accelerator enumeration and ships no device kernel. A host may attach an
+explicit provider built after Elpis for that user's substrate. The provider owns
+its device runtime and kernel implementation behind `elpis_exec_backend`.
+
 NULL backend means a zero capability mask and no initialization or poll. A supplied
 backend initializes once; failure disables routing but does not fail CPU startup.
-Only explicit PURE tasks with a supported operation bit are eligible. submit
-rejection retains no token. Only accepted tokens are polled, at most the
-configured number of times (<=1000). No worker ever sleeps or spins on a token:
-submit is followed by one poll, and an undecided token is parked and polled again
-by whichever pool thread is free, at least 1 ms later, while CPU work runs. A
-backend with a completion event (fence, eventfd, interrupt) calls
-`elpis_exec_notify` to make its parked tokens due immediately. Terminal
-poll consumes the token. Exhausting the poll count calls abort, which MUST quiesce
-device access synchronously, before CPU fallback. Failed partial outputs are discarded. Side-effecting tasks never retry
-on this route. Backend callbacks must be bounded, thread-safe and nonblocking;
-an actual device implementation must qualify these contracts and exact CPU parity.
+The provider advertises operation bits and receives only explicit tasks whose
+operation it supports.
+
+There are two disjoint task modes:
+
+- `ELPIS_EXEC_PURE`: opportunistic acceleration. The task has a CPU compute
+  callback. Backend rejection, terminal failure or poll timeout synchronously
+  quiesces the token and executes that CPU oracle. This mode is only for work
+  whose retry is semantically safe.
+- `ELPIS_EXEC_BACKEND_ONLY`: provider-owned/stateful stream work. The task has no
+  CPU callback. The operation must be advertised before admission; otherwise
+  submission is refused without consuming the input or a sequence number. Once
+  admitted, backend rejection/failure/timeout is terminal and **never** becomes a
+  CPU retry. `abort` only has to quiesce device access; it does not claim to roll
+  provider state back. An adapter using recurrent provider state must therefore
+  discard the stream after a terminal backend failure unless that provider has a
+  separately qualified recovery contract.
+
+Only accepted tokens are polled, at most the configured number of times (<=1000).
+No worker ever sleeps or spins on a token: submit is followed by one poll, and an
+undecided token is parked and polled again by whichever pool thread is free, at
+least 1 ms later, while CPU work runs. A backend with a completion event (fence,
+eventfd, interrupt) calls `elpis_exec_notify` to make its parked tokens due
+immediately. Failed partial outputs are discarded. Backend callbacks must be
+bounded, thread-safe and nonblocking. Every concrete accelerator provider must
+qualify its stream/lifecycle contract and numerical parity against the applicable
+CPU oracle before admission.
+
+For recurrent inference, the intended composition is one explicitly admitted
+provider stream with ordered submissions; the provider may retain device-resident
+weights and sequence state internally. Elpis exposes the stream boundary, not a
+vendor runtime. The post-compiled provider is where CUDA, HIP, Metal, an NPU SDK,
+or a future substrate belongs.
+
 The base build contains no real device backend, PCIe enumeration or vendor runtime.
 No performance or disappearance guarantees are claimed for an unqualified backend.
 
