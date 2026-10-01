@@ -110,3 +110,30 @@ def test_hot_reject_and_storage_limits(provider,fms_file_library):
         assert reject.stats()['pinned']==0
         other=replace(m,content='0'*64)
         with pytest.raises(ContractError,match='LIMIT'): reject.register(path,other,expected_manifest=other.digest)
+
+
+def test_manifest_is_public_read_only_inspection(provider):
+    f,path,m,a=provider
+    before=f.stats()
+    assert f.manifest(a)==m and f.manifest(a) is f.manifest(a)
+    with pytest.raises(Exception): f.manifest(a).size=1          # frozen dataclass
+    after=f.stats()
+    assert (after['reads'],after['pread_bytes'],after['pages'])==(before['reads'],before['pread_bytes'],before['pages'])
+    with pytest.raises(ContractError,match='MISSING'): f.manifest('0'*64)
+    with pytest.raises(ContractError,match='MISSING'): f.manifest(None)
+    f.close()
+    with pytest.raises(ContractError,match='CLOSED'): f.manifest(a)
+    f.close=lambda: None                                          # fixture teardown after explicit close
+
+
+def test_readinto_copies_once_into_caller_scratch(provider):
+    f,path,m,a=provider
+    scratch=bytearray(64)
+    with f.acquire(a,13,29) as lease:                    # spans two 16-byte pages
+        assert lease.readinto(memoryview(scratch)[5:34])==29
+        assert bytes(scratch[5:34])==lease.read()==bytes(range(13,42))
+        assert scratch[:5]==bytes(5) and scratch[34:]==bytes(30)
+        with pytest.raises(ContractError,match='INVALID'): lease.readinto(bytearray(28))
+        with pytest.raises(ContractError,match='INVALID'): lease.readinto(bytes(29))     # read-only
+    with pytest.raises(ContractError,match='CLOSED'): lease.readinto(bytearray(29))
+    assert f.stats()['pinned']==0

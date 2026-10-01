@@ -109,10 +109,9 @@ class TensorStore:
         for name, binding in bindings.items():
             require(binding.shape == expected[name], Code.ENCODING, "tensor geometry: " + name)
             if type(binding.source) is FileTensor:
-                source = binding.source
-                require(provider is not None and source.asset in provider._assets, Code.MISSING, "tensor file asset")
-                require(source.offset + binding.size <= provider._assets[source.asset][1].size,
-                        Code.ENCODING, "tensor asset range")
+                require(provider is not None, Code.MISSING, "tensor file asset")
+                asset = provider.manifest(binding.source.asset)
+                require(binding.source.offset + binding.size <= asset.size, Code.ENCODING, "tensor asset range")
         self.provider = provider
         self.bindings = MappingProxyType(bindings)
         self.manifest = manifest
@@ -125,9 +124,18 @@ class TensorStore:
         self.resident_bytes = sum(b.size for n, b in bindings.items()
                                   if ".ffn.experts." not in n or type(b.source) is Tensor)
         require(self.resident_bytes <= resident_budget, Code.LIMIT, "dense/resident parameter budget")
-        expert_size = 3 * config.dimension * config.expert_dim * 4
-        # Reserve for raw copies plus decoded arrays; one expert at a time.
-        require(expert_size * 3 <= staging_budget, Code.LIMIT, "one-expert staging budget")
+        # One bounded, reusable staging scratch sized to the largest file-backed expert (its
+        # w1/w3/w2 together). Experts are copied into it once per use; nothing else is
+        # materialized and no expert becomes resident.
+        groups = {}
+        for name, binding in bindings.items():
+            if ".ffn.experts." in name and type(binding.source) is FileTensor:
+                key = name.rsplit(".", 1)[0]
+                groups[key] = groups.get(key, 0) + binding.size
+        scratch = max(groups.values(), default=0)
+        require(scratch <= staging_budget, Code.LIMIT, "one-expert staging budget")
+        self._scratch = np.empty(scratch, dtype=np.uint8)
+        self._scratch_busy = False
         dense = {}
         for name, binding in sorted(bindings.items()):
             # Verify every file range once, without retaining every expert.
@@ -140,37 +148,87 @@ class TensorStore:
                 dense[name] = array
         self.dense = MappingProxyType(dense)
 
+    def _copy(self, asset, offset, size, out):
+        """Copy `size` bytes of `asset` at `offset` into writable `out` via FMS range leases.
+
+        A lease spans at most half the provider's native budget (headroom for other
+        leases), so a contiguous run normally costs one lease; FMS still verifies every
+        page digest on load.
+        """
+        page = self.provider.manifest(asset).page_size
+        pages = max(1, self.provider.warm_budget // (2 * page))
+        view = memoryview(out)
+        done = 0
+        while done < size:
+            count = min(size - done, (offset // page + pages) * page - offset)
+            with self.provider.acquire(asset, offset, count) as lease:
+                lease.readinto(view[done:done + count])
+            done += count
+            offset += count
+
+    def _fill(self, binding, out):
+        self._copy(binding.source.asset, binding.source.offset, binding.size, out)
+
     def _read(self, binding):
+        """Immutable bytes of one tensor (admission verification, oracle harness)."""
         if type(binding.source) is Tensor:
             return binding.source.data
-        source = binding.source
-        page = self.provider._assets[source.asset][1].page_size
-        data = bytearray()
-        offset = source.offset
-        while len(data) < binding.size:
-            count = min(binding.size - len(data), page - offset % page)
-            with self.provider.acquire(source.asset, offset, count) as lease:
-                data.extend(lease.read())
-            offset += count
-        return bytes(data)
+        out = bytearray(binding.size)
+        self._fill(binding, out)
+        return bytes(out)
 
     @contextmanager
     def expert(self, roles):
+        """Read-only views of one expert's tensors, valid only inside the with-block.
+
+        File-backed tensors are copied once into the store's reusable scratch; the views
+        alias it and must not be retained after exit.
+        """
         with self._lock:
-            reservation = sum(self.bindings[r].size for r in roles) * 3
+            require(not self._scratch_busy, Code.BUSY, "expert staging in use")
+            reservation = sum(self.bindings[r].size for r in roles if r not in self.dense)
             require(self.staged_bytes + reservation <= self.staging_budget, Code.LIMIT, "expert staging in use")
+            self._scratch_busy = True
             self.staged_bytes += reservation
             self.high_water = max(self.high_water, self.staged_bytes)
             start = perf_counter_ns()
             try:
-                arrays = tuple(self.dense[r] if r in self.dense else
-                               np.frombuffer(self._read(self.bindings[r]), dtype="<f4").reshape(self.bindings[r].shape)
-                               for r in roles)
+                # Byte-contiguous tensors of one asset (e.g. an expert's w1/w2/w3) are copied
+                # with one range lease; each role is then a read-only view at its offset.
+                files = sorted((r for r in roles if r not in self.dense),
+                               key=lambda r: (self.bindings[r].source.asset, self.bindings[r].source.offset))
+                views, at, run = {}, 0, []
+                def flush():
+                    nonlocal at
+                    first, last = self.bindings[run[0]].source, self.bindings[run[-1]]
+                    size = last.source.offset + last.size - first.offset
+                    region = self._scratch[at:at + size]
+                    self._copy(first.asset, first.offset, size, region)
+                    for r in run:
+                        b = self.bindings[r]
+                        rel = b.source.offset - first.offset
+                        view = region[rel:rel + b.size].view("<f4").reshape(b.shape)
+                        view.flags.writeable = False
+                        views[r] = view
+                    at += size
+                for r in files:
+                    b = self.bindings[r]
+                    if run:
+                        p = self.bindings[run[-1]]
+                        if p.source.asset == b.source.asset and p.source.offset + p.size == b.source.offset:
+                            run.append(r)
+                            continue
+                        flush()
+                    run = [r]
+                if run:
+                    flush()
+                arrays = tuple(self.dense[r] if r in self.dense else views[r] for r in roles)
                 self.last_materialize_ns += perf_counter_ns() - start
-                self.last_bytes += sum(self.bindings[r].size for r in roles if r not in self.dense)
+                self.last_bytes += reservation
                 yield arrays
             finally:
                 self.staged_bytes -= reservation
+                self._scratch_busy = False
 
 
 class TowerAdmission:

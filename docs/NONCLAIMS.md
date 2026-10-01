@@ -27,6 +27,19 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
   Compatibility with DeepSeek V4.1,
   Qwen or any other production model is **not** established. The upstream
   mechanisms the code follows are listed in `LICENSES/PROVENANCE.md`.
+* **The DSV4.1 tower is an architecture qualification, not a trained model.**
+  `elpis.inference.drivers.dsv41` is a production-shaped DSV4.1 arithmetic driver
+  (local/SWA and compressed sparse attention, Engram, mHC, routed and shared MoE).
+  Its mechanics are qualified against pinned DeepSeek V4.1 donor behavior: every
+  sublayer, layer residual stream and logit at every position, within F32
+  reduction-order tolerance (`docs/inference/DSV41_TOWER_QUALIFICATION.md`). Only
+  deterministic training-free fixtures (`TRAINING=NONE`) are exercised. No learned
+  production parameter artifact or trained Engram address table is admitted, so
+  generated text has no meaning and no language-quality, reasoning or
+  intelligence claim follows. Where the pinned donor's own decode path disagrees
+  with its prefill path (shared index keys of a filling compressor group), Elpis
+  follows the prefill/documented semantics. The NumPy F32 code is the reference
+  implementation, not a native hot-path backend.
 * **Frozen address artifacts are synthetic.** The DSV4.1 and Qwen PLE address
   vectors pinned by the tests are synthetic maps and constants. They pin the
   addressing arithmetic, not agreement with a trained model.
@@ -46,7 +59,7 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
   a digest-bound recipe V4.1 text tokenizer in distinct domains. Text transport
   tests use an explicitly scripted token-emission double, not a trained model.
   Parameter inspection is read-only preflight, not an executable production
-  intake: the production arithmetic driver remains unimplemented. The
+  intake: no learned production parameter artifact is admitted. The
   principal path is not numerically equivalent to the legacy compressed-KV
   kernel, and no quality comparison between them is claimed.
 * **Text output is inert.** `Runtime.run_text` records a finalized principal

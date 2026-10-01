@@ -171,6 +171,31 @@ def stable_topk():
         yield
 
 
+@contextmanager
+def owner_binds_index_keys(module):
+    """Test-harness correction for one pinned-donor decode defect (nothing else changes).
+
+    SharedAttentionRuntime documents that "every source writes before its consumers read",
+    but Indexer.forward rebinds `shared_attn.index_k` only when the owner just completed a
+    group. During decode, a compress_ratio > 1 owner whose group is still filling therefore
+    scores against whatever owner published last -- in the production layout, layer 20's
+    ratio-1 keys from the previous token -- and the donor's own prefill and decode paths
+    disagree at every group-starting position
+    (test_donor_decode_index_slot_defect_against_its_own_prefill). Here an owner binds its
+    own key cache every step, exactly as its prefill path does.
+    """
+    original = module.Indexer.forward
+    def forward(self, x, qr, latent, start_pos, offset):
+        if self.owns_k:
+            module.shared_attn.index_k = self.k_cache
+        return original(self, x, qr, latent, start_pos, offset)
+    module.Indexer.forward = forward
+    try:
+        yield
+    finally:
+        module.Indexer.forward = original
+
+
 def build_oracle(target, tokenizer):
     import torch
     from elpis.inference.contracts import RowIdentity

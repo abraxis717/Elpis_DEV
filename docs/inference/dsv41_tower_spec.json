@@ -49,6 +49,7 @@
     "local": "q=RMSNorm(wq_a*x)*wq_b; k=v=RMSNorm(wkv*x); rotate tail; cache local K/V with E4M3/E8M0 group32 quant-dequant",
     "compression": "ratio 0: local only; ratio 1: normalized projection; ratio >1: per-channel softmax pooling of wkv*x with wgate*x over completed groups, then norm",
     "sharing": "latest preceding kv_source provides compressed K/V and index keys; latest index_source supplies selected positions; consumers must use the same ratio",
+    "donor_decode_divergence": "pinned donor Indexer rebinds shared index keys only when an owner completes a group, so its decode path scores a filling ratio>1 group against the previous owner's keys and disagrees with its own prefill path; Elpis follows the prefill/documented semantics (each owner's own keys), qualified against the unmodified donor prefill at every position",
     "indexer": "index key from UNROTATED compressed latent via wk+RMSNorm; RoPE at first position of group; FP4/E8M0 group32 key/query quant-dequant; sum_heads(relu(q dot k)*weights_proj(x)/sqrt(I*J))",
     "candidate_prefilter": "candidate_source scores blocks by maximum; force newest reachable block; retain candidate_topk_blocks; later index sources mask other blocks",
     "selection": "top min(K, completed_groups), sorted back into position order; score ties resolved by smaller position in Elpis (donor topk tie order is unspecified)",
