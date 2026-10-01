@@ -231,14 +231,24 @@ class PrincipalEngine:
         require(sequence.done, Code.INVALID, "sequence still active; stop() it first")
         state = sequence._state
         if sequence._failure is not None:
+            self._release_work(sequence)
             return PrincipalResult(state, None, sequence._failure)
         trace = identity("principal-trace", tuple((s.token, s.rows, s.route) for s in sequence._steps))
         commit = PrincipalCommit(state.digest, sequence._admission.digest, sequence._request.digest,
                                  self.target.model_identity, self.target.numerical_profile, sequence._prefill,
                                  tuple(sequence._outputs), sequence._stop_reason, trace,
-                                 (self.target.config.local_window, self.target.config.dimension))
+                                 getattr(self.target, "principal_working_set",
+                                         (self.target.config.local_window, self.target.config.dimension)))
+        self._release_work(sequence)
         return PrincipalResult(PrincipalState(state.model, state.numerical_profile, state.context_snapshot,
                                               state.turn + 1, commit.digest), commit)
+
+    def _release_work(self, sequence):
+        """Optional driver lifecycle hook; legacy fixture behavior/identities stay unchanged."""
+        release = getattr(self.target, "release_window", None)
+        if release is not None:
+            release(sequence._work)
+            sequence._work = None
 
     def replay(self, state, request, admission, commit: PrincipalCommit) -> PrincipalResult:
         """Re-run a commit from its inputs; the result must be identical."""
