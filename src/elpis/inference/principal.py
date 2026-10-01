@@ -149,7 +149,16 @@ class PrincipalSequence:
         return self._work
 
     def _fail(self, exc):
+        """Typed failure: the sequence can never advance, so its working state is released now."""
         self._failure, self._done, self._stop_reason = exc.code.value, True, "FAILED"
+        self._engine._release_work(self)
+
+    def _abort(self):
+        """Unexpected exception: mark failed and release before the caller sees the raise."""
+        if self._failure is None:
+            self._failure = Code.INVALID.value
+        self._done, self._stop_reason = True, "FAILED"
+        self._engine._release_work(self)
 
     def _advance(self, token):
         self._work = self._engine.target.window_step(self._work, token, experts=self._experts)
@@ -168,7 +177,8 @@ class PrincipalSequence:
         except ContractError as exc:
             self._fail(exc)
             return None
-        except Exception as exc:
+        except BaseException as exc:
+            self._abort()
             raise typed_failure(exc) from exc
         self._outputs.append(token)
         if token in self._request.stop_tokens:
@@ -185,6 +195,23 @@ class PrincipalSequence:
         require(type(reason) is str and bool(reason), detail="stop reason")
         if not self._done:
             self._done, self._stop_reason = True, reason
+
+    def close(self) -> None:
+        """Explicit bounded cleanup for a sequence that will not be finalized.
+
+        Idempotent. Ends the sequence (stop reason CLOSED if still active) and
+        releases sequence-local driver state; finalize() remains possible.
+        Cleanup never depends on garbage collection.
+        """
+        if not self._done:
+            self._done, self._stop_reason = True, "CLOSED"
+        self._engine._release_work(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
 
 
 class PrincipalEngine:
@@ -221,7 +248,8 @@ class PrincipalEngine:
             sequence._prefill = len(prefill)
         except ContractError as exc:
             sequence._fail(exc)
-        except Exception as exc:
+        except BaseException as exc:
+            sequence._abort()
             raise typed_failure(exc) from exc
         return sequence
 
@@ -230,25 +258,29 @@ class PrincipalEngine:
         require(type(sequence) is PrincipalSequence and sequence._engine is self, Code.IDENTITY, "sequence engine")
         require(sequence.done, Code.INVALID, "sequence still active; stop() it first")
         state = sequence._state
-        if sequence._failure is not None:
+        try:
+            if sequence._failure is not None:
+                return PrincipalResult(state, None, sequence._failure)
+            trace = identity("principal-trace", tuple((s.token, s.rows, s.route) for s in sequence._steps))
+            commit = PrincipalCommit(state.digest, sequence._admission.digest, sequence._request.digest,
+                                     self.target.model_identity, self.target.numerical_profile, sequence._prefill,
+                                     tuple(sequence._outputs), sequence._stop_reason, trace,
+                                     getattr(self.target, "principal_working_set",
+                                             (self.target.config.local_window, self.target.config.dimension)))
+            return PrincipalResult(PrincipalState(state.model, state.numerical_profile, state.context_snapshot,
+                                                  state.turn + 1, commit.digest), commit)
+        finally:
             self._release_work(sequence)
-            return PrincipalResult(state, None, sequence._failure)
-        trace = identity("principal-trace", tuple((s.token, s.rows, s.route) for s in sequence._steps))
-        commit = PrincipalCommit(state.digest, sequence._admission.digest, sequence._request.digest,
-                                 self.target.model_identity, self.target.numerical_profile, sequence._prefill,
-                                 tuple(sequence._outputs), sequence._stop_reason, trace,
-                                 getattr(self.target, "principal_working_set",
-                                         (self.target.config.local_window, self.target.config.dimension)))
-        self._release_work(sequence)
-        return PrincipalResult(PrincipalState(state.model, state.numerical_profile, state.context_snapshot,
-                                              state.turn + 1, commit.digest), commit)
 
     def _release_work(self, sequence):
-        """Optional driver lifecycle hook; legacy fixture behavior/identities stay unchanged."""
+        """Optional driver lifecycle hook; legacy fixture behavior/identities stay unchanged.
+
+        Idempotent: the work handle is dropped after the first release.
+        """
         release = getattr(self.target, "release_window", None)
-        if release is not None:
-            release(sequence._work)
-            sequence._work = None
+        if release is not None and sequence._work is not None:
+            work, sequence._work = sequence._work, None
+            release(work)
 
     def replay(self, state, request, admission, commit: PrincipalCommit) -> PrincipalResult:
         """Re-run a commit from its inputs; the result must be identical."""

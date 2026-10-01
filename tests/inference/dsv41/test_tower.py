@@ -106,3 +106,78 @@ def test_two_sequences_have_isolated_attention_and_identical_replay(tower, v41):
     assert not np.array_equal(first.logits, second.logits)
     for state in (first, second, oracle):
         target.release_window(state)
+
+
+def _released(target, monkeypatch):
+    seen = []
+    original = target.release_window
+    def release(state):
+        seen.append(state)
+        original(state)
+    monkeypatch.setattr(target, "release_window", release)
+    return seen
+
+
+def _failing_step(target, monkeypatch, after, error):
+    calls = [0]
+    original = target.window_step
+    def step(state, token, *, experts):
+        calls[0] += 1
+        if calls[0] > after:
+            raise error
+        return original(state, token, experts=experts)
+    monkeypatch.setattr(target, "window_step", step)
+
+
+def _begin(target, v41, new_tokens=8):
+    engine = PrincipalEngine(target)
+    state = engine.initial(CONTEXT)
+    request = PrincipalRequest("life", v41.encode_chat((ChatMessage("user", "Lifecycle"),)), new_tokens, ())
+    return engine, state, request, admission(target, v41)
+
+
+def test_typed_failure_releases_tower_state_immediately(tower, v41, monkeypatch):
+    from elpis.inference.contracts import Code
+    target, _ = tower
+    engine, state, request, context = _begin(target, v41)
+    seen = _released(target, monkeypatch)
+    sequence = engine.begin(state, request, context, expected_state=state.digest)
+    work = sequence.working_state
+    _failing_step(target, monkeypatch, 0, ContractError(Code.LIMIT, "injected"))
+    assert sequence.next() is None and sequence.done and sequence.stop_reason == "FAILED"
+    assert seen == [work] and work.closed and sequence.working_state is None
+    result = engine.finalize(sequence)
+    assert result.commit is None and result.failure == "LIMIT" and seen == [work]
+
+
+@pytest.mark.parametrize("phase", ("prefill", "decode"))
+def test_unexpected_exception_releases_before_raising(tower, v41, monkeypatch, phase):
+    target, _ = tower
+    engine, state, request, context = _begin(target, v41)
+    seen = _released(target, monkeypatch)
+    if phase == "prefill":
+        _failing_step(target, monkeypatch, 3, RuntimeError("injected"))
+        with pytest.raises(RuntimeError):
+            engine.begin(state, request, context, expected_state=state.digest)
+    else:
+        sequence = engine.begin(state, request, context, expected_state=state.digest)
+        _failing_step(target, monkeypatch, 0, RuntimeError("injected"))
+        with pytest.raises(RuntimeError):
+            sequence.next()
+        assert sequence.done and sequence.stop_reason == "FAILED" and sequence.working_state is None
+        assert engine.finalize(sequence).commit is None
+    assert len(seen) == 1 and seen[0].closed and seen[0].nbytes == 0
+
+
+def test_abandoned_sequence_has_explicit_bounded_cleanup(tower, v41, monkeypatch):
+    target, _ = tower
+    engine, state, request, context = _begin(target, v41)
+    seen = _released(target, monkeypatch)
+    with engine.begin(state, request, context, expected_state=state.digest) as sequence:
+        work = sequence.working_state
+        sequence.next()
+    assert sequence.done and sequence.stop_reason == "CLOSED" and work.closed and seen == [work]
+    sequence.close()
+    result = engine.finalize(sequence)          # still a valid commit boundary, released once
+    assert result.commit.stop_reason == "CLOSED" and seen == [work]
+    assert not {"attention", "logits", "history", "layer_streams"} & {f.name for f in fields(type(result.state))}
