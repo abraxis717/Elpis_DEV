@@ -109,10 +109,9 @@ class TensorStore:
         for name, binding in bindings.items():
             require(binding.shape == expected[name], Code.ENCODING, "tensor geometry: " + name)
             if type(binding.source) is FileTensor:
-                source = binding.source
-                require(provider is not None and source.asset in provider._assets, Code.MISSING, "tensor file asset")
-                require(source.offset + binding.size <= provider._assets[source.asset][1].size,
-                        Code.ENCODING, "tensor asset range")
+                require(provider is not None, Code.MISSING, "tensor file asset")
+                asset = provider.manifest(binding.source.asset)
+                require(binding.source.offset + binding.size <= asset.size, Code.ENCODING, "tensor asset range")
         self.provider = provider
         self.bindings = MappingProxyType(bindings)
         self.manifest = manifest
@@ -144,7 +143,7 @@ class TensorStore:
         if type(binding.source) is Tensor:
             return binding.source.data
         source = binding.source
-        page = self.provider._assets[source.asset][1].page_size
+        page = self.provider.manifest(source.asset).page_size
         data = bytearray()
         offset = source.offset
         while len(data) < binding.size:

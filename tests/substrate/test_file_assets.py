@@ -110,3 +110,17 @@ def test_hot_reject_and_storage_limits(provider,fms_file_library):
         assert reject.stats()['pinned']==0
         other=replace(m,content='0'*64)
         with pytest.raises(ContractError,match='LIMIT'): reject.register(path,other,expected_manifest=other.digest)
+
+
+def test_manifest_is_public_read_only_inspection(provider):
+    f,path,m,a=provider
+    before=f.stats()
+    assert f.manifest(a)==m and f.manifest(a) is f.manifest(a)
+    with pytest.raises(Exception): f.manifest(a).size=1          # frozen dataclass
+    after=f.stats()
+    assert (after['reads'],after['pread_bytes'],after['pages'])==(before['reads'],before['pread_bytes'],before['pages'])
+    with pytest.raises(ContractError,match='MISSING'): f.manifest('0'*64)
+    with pytest.raises(ContractError,match='MISSING'): f.manifest(None)
+    f.close()
+    with pytest.raises(ContractError,match='CLOSED'): f.manifest(a)
+    f.close=lambda: None                                          # fixture teardown after explicit close

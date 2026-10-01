@@ -323,6 +323,17 @@ class FMSFileAssets:
             actual=max(actual_tiers)
             return RangeLease(self,parts,offset,length,('HOT','WARM')[actual])
 
+    def manifest(self,asset):
+        """Immutable manifest of an admitted asset (size, page size, page digests).
+
+        Read-only inspection: admission already verified every byte against the
+        independent authority; no range is read and no page is materialized.
+        """
+        with self._lock:
+            self._open()
+            require(type(asset) is str and asset in self._assets,Code.MISSING,'asset')
+            return self._assets[asset][1]
+
     def evict(self,asset=None):
         with self._lock:
             self._open()
