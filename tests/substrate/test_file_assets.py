@@ -124,3 +124,16 @@ def test_manifest_is_public_read_only_inspection(provider):
     f.close()
     with pytest.raises(ContractError,match='CLOSED'): f.manifest(a)
     f.close=lambda: None                                          # fixture teardown after explicit close
+
+
+def test_readinto_copies_once_into_caller_scratch(provider):
+    f,path,m,a=provider
+    scratch=bytearray(64)
+    with f.acquire(a,13,29) as lease:                    # spans two 16-byte pages
+        assert lease.readinto(memoryview(scratch)[5:34])==29
+        assert bytes(scratch[5:34])==lease.read()==bytes(range(13,42))
+        assert scratch[:5]==bytes(5) and scratch[34:]==bytes(30)
+        with pytest.raises(ContractError,match='INVALID'): lease.readinto(bytearray(28))
+        with pytest.raises(ContractError,match='INVALID'): lease.readinto(bytes(29))     # read-only
+    with pytest.raises(ContractError,match='CLOSED'): lease.readinto(bytearray(29))
+    assert f.stats()['pinned']==0

@@ -158,6 +158,27 @@ class RangeLease:
             require(self._active,Code.CLOSED,'released range lease')
             return b''.join(C.string_at(ptr+start,size) for _,_,ptr,start,size in self._parts)
 
+    def readinto(self,buffer):
+        """Copy the leased range into a caller-owned writable buffer of exactly `length` bytes.
+
+        One copy from the verified native pages, with no intermediate bytes objects, so a
+        caller can reuse bounded scratch instead of rebuilding a buffer per range.
+        """
+        with self._owner._lock:
+            require(self._active,Code.CLOSED,'released range lease')
+            view=memoryview(buffer)
+            require(view.contiguous and not view.readonly and view.nbytes==self.length,detail='readinto buffer')
+            view=view.cast('B')
+            target=(C.c_char*self.length).from_buffer(view)
+            try:
+                base=C.addressof(target); pos=0
+                for _,_,ptr,start,size in self._parts:
+                    C.memmove(base+pos,ptr+start,size); pos+=size
+            finally:
+                del target
+                view.release()
+            return self.length
+
     def bind_fence(self,fence):
         # CPU POSIX PAL has no device/fence facility. Never pretend completion.
         raise ContractError(Code.UNSUPPORTED,'CPU file-asset provider has no accelerator fences')
