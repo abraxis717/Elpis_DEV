@@ -8,7 +8,15 @@ from elpis.inference.drivers.dsv41.numerics import quant_dequant, hc_mixes, hc_p
 from elpis.inference.drivers.dsv41.moe import route, expert
 from elpis.inference.drivers.dsv41.attention import candidate_mask, sparse_attention
 from .donor_oracle import (load_model, load_engram, donor_args, TokenizerView, build_oracle,
-                           stable_topk, torch_cache_quant, torch_hc)
+                           owner_binds_index_keys, stable_topk, torch_cache_quant, torch_hc)
+
+# Tolerances for F32 tower comparisons: identical F32 operands, but reductions run in a
+# different order (NumPy einsum optimize=False vs Torch matmul/softmax kernels) across 7
+# layers of mHC/Sinkhorn, attention and MoE, so bitwise equality is not attainable.
+# Observed worst case on this fixture over 24 positions x 7 layers: 3.0e-7 absolute on
+# residual streams, 8.9e-7 on logits, argmax identical everywhere. ATOL leaves ~11x margin;
+# the donor decode defect below shows up at 1e-2..1e0, far outside it.
+RTOL, ATOL = 1e-4, 1e-5
 
 
 def test_exact_donor_compressed_map_layout_and_hash(v41, tower_config, address_parameters):
@@ -102,6 +110,103 @@ def test_hyperconnection_orientation_and_norms(tower_config):
                                    norm(torch.tensor(x)).numpy(), rtol=2e-6, atol=1e-7)
 
 
+def _layer_capture(model):
+    outputs = []
+    hooks = [layer.register_forward_hook(lambda _m, _a, out: outputs.append(out[0].detach().numpy().copy()))
+             for layer in model.layers]
+    return outputs, hooks
+
+
+def test_donor_decode_index_slot_defect_against_its_own_prefill(tower, v41):
+    """The unmodified donor disagrees with itself where a ratio>1 owner's group is filling.
+
+    Pins the donor behaviour the harness corrects: if a later donor revision changes it,
+    this fails and the correction must be revisited.
+    """
+    torch = pytest.importorskip("torch")
+    target, _ = tower
+    tokens = v41.encode("Hello, Elpis. Multi layer attention and memory exercise.") * 2
+    ratio = target.config.compress_ratios[target.config.kv_sources[0]]
+    assert ratio > 1
+    for position in (9, 10, 11, 12):
+        starts = (position + 1) % ratio != 0
+        results = []
+        for corrected in (False, True):
+            model, module = build_oracle(target, v41)
+            with torch.no_grad(), stable_topk():
+                _, prefill, _ = model(torch.tensor([tokens[:position + 1]]), 0)
+                model, module = build_oracle(target, v41)
+                model(torch.tensor([tokens[:position]]), 0)
+                if corrected:
+                    with owner_binds_index_keys(module):
+                        _, decode, _ = model(torch.tensor([[tokens[position]]]), position)
+                else:
+                    _, decode, _ = model(torch.tensor([[tokens[position]]]), position)
+            results.append(float((prefill - decode).abs().max()))
+        raw, corrected = results
+        assert corrected < ATOL, (position, corrected)
+        assert (raw > 1e-2) if starts else (raw < ATOL), (position, raw)
+
+
+def _sublayer_capture(target, model, monkeypatch):
+    """Last-position Engram/attention/MoE outputs of both towers, keyed (layer, mechanism)."""
+    elpis, donor = {}, {}
+    for i, layer in enumerate(target.layers):
+        for name, owner in (("attn", layer.attention), ("ffn", layer.moe), ("engram", layer.engram)):
+            if owner is None:
+                continue
+            def wrapped(*args, _f=owner.apply, _k=(i, name), **kwargs):
+                out = _f(*args, **kwargs)
+                elpis[_k] = (out[0] if type(out) is tuple else out).copy()
+                return out
+            monkeypatch.setattr(owner, "apply", wrapped)
+    hooks = []
+    for i, block in enumerate(model.layers):
+        for name, owner in (("attn", block.attn), ("ffn", block.ffn), ("engram", block.engram)):
+            if owner is not None:
+                hooks.append(owner.register_forward_hook(
+                    lambda _m, _a, out, _k=(i, name): donor.__setitem__(_k, out[0, -1].detach().numpy().copy())))
+    return elpis, donor, hooks
+
+
+def test_full_tower_matches_unmodified_donor_prefill_at_every_position(tower, v41, monkeypatch):
+    """Elpis incremental decode vs the unmodified donor prefill path on every prefix.
+
+    No harness correction: the donor's prefill path publishes every owner's keys before
+    its consumers read them. Every sublayer (pure SWA attention in layer 0; ratio-2 owner,
+    ratio-2 consumers, ratio-1 owner/candidate source and candidate-masked consumers;
+    Engram; routed+shared MoE), every layer's residual stream and the logits are compared.
+    """
+    torch = pytest.importorskip("torch")
+    target, _ = tower
+    model, module = build_oracle(target, v41)
+    tokens = v41.encode("Hello, Elpis. Multi layer attention and memory exercise.") * 2
+    state, experts = target.window_initial(), target.admit_stream()
+    outputs, hooks = _layer_capture(model)
+    elpis, donor, sub_hooks = _sublayer_capture(target, model, monkeypatch)
+    expected_keys = {(i, n) for i in range(target.config.layers) for n in ("attn", "ffn")} | {
+        (i, "engram") for i in target.config.engram_layers}
+    with torch.no_grad(), stable_topk():
+        for position, token in enumerate(tokens):
+            elpis.clear(); donor.clear()
+            target.window_step(state, token, experts=experts)
+            outputs.clear()
+            _, logits, _ = model(torch.tensor([tokens[:position + 1]]), 0)
+            assert set(elpis) == set(donor) == expected_keys
+            for key in sorted(expected_keys):
+                np.testing.assert_allclose(elpis[key], donor[key], rtol=RTOL, atol=ATOL,
+                                           err_msg=f"position={position} sublayer={key}")
+            assert len(outputs) == target.config.layers
+            for i, output in enumerate(outputs):
+                np.testing.assert_allclose(state.layer_streams[i], output[0, -1], rtol=RTOL, atol=ATOL,
+                                           err_msg=f"position={position} layer={i}")
+            np.testing.assert_allclose(state.logits, logits.numpy()[0], rtol=RTOL, atol=ATOL,
+                                       err_msg=f"position={position} logits")
+            assert int(np.argmax(state.logits)) == int(torch.argmax(logits))
+    for hook in hooks + sub_hooks:
+        hook.remove()
+
+
 def test_full_seven_layer_donor_prefill_decode_and_per_layer_streams(tower, v41):
     torch = pytest.importorskip("torch")
     target, _ = tower
@@ -117,17 +222,20 @@ def test_full_seven_layer_donor_prefill_decode_and_per_layer_streams(tower, v41)
              for layer in model.layers]
     with torch.no_grad(), stable_topk():
         _, logits, _ = model(torch.tensor([tokens[:cut]]), 0)
-        np.testing.assert_allclose(state.logits, logits.numpy()[0], rtol=1e-4, atol=1e-5)
+        np.testing.assert_allclose(state.logits, logits.numpy()[0], rtol=RTOL, atol=ATOL)
+        assert len(layer_outputs) == target.config.layers
         for i, output in enumerate(layer_outputs):
-            np.testing.assert_allclose(state.layer_streams[i], output[0,-1], rtol=1e-4, atol=1e-5)
+            np.testing.assert_allclose(state.layer_streams[i], output[0,-1], rtol=RTOL, atol=ATOL)
         for position, token in enumerate(tokens[cut:], cut):
             layer_outputs.clear()
             target.window_step(state, token, experts=experts)
-            _, logits, _ = model(torch.tensor([[token]]), position)
+            with owner_binds_index_keys(module):    # documented donor decode defect, see oracle
+                _, logits, _ = model(torch.tensor([[token]]), position)
+            assert len(layer_outputs) == target.config.layers
             for i, output in enumerate(layer_outputs):
-                np.testing.assert_allclose(state.layer_streams[i], output[0,0], rtol=1e-4, atol=1e-5,
+                np.testing.assert_allclose(state.layer_streams[i], output[0,0], rtol=RTOL, atol=ATOL,
                                            err_msg=f"position={position} layer={i}")
-            np.testing.assert_allclose(state.logits, logits.numpy()[0], rtol=1e-4, atol=1e-5)
+            np.testing.assert_allclose(state.logits, logits.numpy()[0], rtol=RTOL, atol=ATOL)
             assert int(np.argmax(state.logits)) == int(torch.argmax(logits))
     for hook in hooks:
         hook.remove()
