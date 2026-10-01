@@ -7,8 +7,8 @@ from .numerics import hc_mixes, hc_pre, hc_post, rms
 
 
 class Layer:
-    def __init__(self, c, layer, store, rows, freqs):
-        self.config = c
+    def __init__(self, c, layer, store, rows, freqs, native_backend=None):
+        self.config, self.layer, self.native_backend = c, layer, native_backend
         prefix = f"layers.{layer}."
         self.w = {name[len(prefix):]: value for name, value in store.dense.items() if name.startswith(prefix)}
         self.attention = Attention(c, layer, {k[5:]: v for k, v in self.w.items() if k.startswith("attn.")}, freqs)
@@ -17,6 +17,10 @@ class Layer:
             k[7:]: v for k, v in self.w.items() if k.startswith("engram.")})
 
     def apply(self, stream, pre_mix, attention_state, shared, position, row_ids, metrics):
+        if self.native_backend is not None:
+            return self.native_backend.apply_layer(
+                self, stream, pre_mix, attention_state, shared,
+                position, row_ids, metrics)
         c, w = self.config, self.w
         if self.engram is not None:
             start = perf_counter_ns()
