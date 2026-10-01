@@ -287,12 +287,27 @@ static enum outcome cpu(elpis_exec_runtime *r, slot *s) {
     s->result.status = code;
     return COMPLETE;
 }
+static elpis_exec_status backend_terminal_status(elpis_exec_status code) {
+    switch (code) {
+    case ELPIS_EXEC_INVALID:
+    case ELPIS_EXEC_BACKEND_UNAVAILABLE:
+    case ELPIS_EXEC_BACKEND_REJECTED:
+    case ELPIS_EXEC_INTERNAL:
+        return code;
+    default:
+        return ELPIS_EXEC_INTERNAL;
+    }
+}
 /* Accelerator exchange for a token that was just submitted or is due for a poll.
- * Mirrors R0 exactly in terminal behaviour: at most backend_poll_limit polls,
- * then a synchronous abort and CPU fallback; failed partial output discarded. */
+ * PURE tasks preserve the existing behaviour: terminal backend failure or timeout
+ * synchronously aborts/quiesces and falls back to the CPU oracle. BACKEND_ONLY
+ * tasks never retry on CPU because provider-owned stream state may already have
+ * advanced; failure is terminal and the owning adapter must discard that stream. */
 static enum outcome backend_poll(elpis_exec_runtime *r, slot *s, unsigned *fallback, uint64_t *polls) {
     elpis_exec_buffer **out = &s->result.output;
     elpis_exec_status code = r->backend.poll(r->backend.context, s->token, out);
+    int backend_only = (s->task.flags & ELPIS_EXEC_BACKEND_ONLY) != 0;
+    int timed_out = 0;
     ++*polls;
     ++s->polls;
     if (code == ELPIS_EXEC_WOULD_BLOCK) {
@@ -300,6 +315,7 @@ static enum outcome backend_poll(elpis_exec_runtime *r, slot *s, unsigned *fallb
         *out = NULL;
         if (s->polls < r->config.backend_poll_limit) return PARK;
         r->backend.abort(r->backend.context, s->token);
+        timed_out = 1;
     }
     s->token = NULL;
     if (code == ELPIS_EXEC_OK && (!*out || (*out)->size <= r->config.max_output_bytes)) {
@@ -308,13 +324,21 @@ static enum outcome backend_poll(elpis_exec_runtime *r, slot *s, unsigned *fallb
     }
     elpis_exec_buffer_release(*out);
     *out = NULL;
+    if (backend_only) {
+        s->result.status = timed_out ? ELPIS_EXEC_BACKEND_UNAVAILABLE
+                                     : (code == ELPIS_EXEC_OK ? ELPIS_EXEC_INTERNAL
+                                                              : backend_terminal_status(code));
+        return COMPLETE;
+    }
     ++*fallback;
     return cpu(r, s);
 }
 static enum outcome execute(elpis_exec_runtime *r, slot *s, unsigned *accepted, unsigned *fallback,
                             uint64_t *polls) {
     if (s->state == POLLING) return backend_poll(r, s, fallback, polls);
-    if (!s->deferred && !s->bound_compute && (s->task.flags & ELPIS_EXEC_PURE) &&
+    int backend_only = (s->task.flags & ELPIS_EXEC_BACKEND_ONLY) != 0;
+    int backend_candidate = (s->task.flags & ELPIS_EXEC_PURE) || backend_only;
+    if (!s->deferred && !s->bound_compute && backend_candidate &&
         (r->capabilities & (UINT64_C(1) << s->task.operation))) {
         void *token = NULL;
         s->backend_ns = now_ns();
@@ -328,7 +352,15 @@ static enum outcome execute(elpis_exec_runtime *r, slot *s, unsigned *accepted, 
         }
         elpis_exec_buffer_release(s->result.output);
         s->result.output = NULL;
+        if (backend_only) {
+            s->result.status = backend_terminal_status(code);
+            return COMPLETE;
+        }
         ++*fallback;
+    }
+    if (backend_only) {
+        s->result.status = ELPIS_EXEC_BACKEND_UNAVAILABLE;
+        return COMPLETE;
     }
     return cpu(r, s);
 }
@@ -535,6 +567,10 @@ static elpis_exec_status admit(elpis_exec_runtime *r, const elpis_exec_task *t, 
     lock();
     elpis_exec_status code = ELPIS_EXEC_OK;
     if (r->closed || r->metrics.submitted == UINT64_MAX) code = ELPIS_EXEC_CLOSED;
+    else if ((t->flags & ELPIS_EXEC_BACKEND_ONLY) &&
+             (!r->backend_initialized ||
+              !(r->capabilities & (UINT64_C(1) << t->operation))))
+        code = ELPIS_EXEC_BACKEND_UNAVAILABLE;
     else if (r->metrics.outstanding == r->config.capacity) {
         ++r->metrics.queue_full;
         code = ELPIS_EXEC_WOULD_BLOCK;
@@ -568,8 +604,13 @@ static elpis_exec_status admit(elpis_exec_runtime *r, const elpis_exec_task *t, 
 }
 elpis_exec_status elpis_exec_submit(elpis_exec_runtime *r, const elpis_exec_task *t,
                                   elpis_exec_buffer **input, uint64_t *sequence) {
-    if (!r || !t || !t->compute || t->operation >= 64 || (t->flags & ~ELPIS_EXEC_PURE) ||
+    const uint32_t allowed = ELPIS_EXEC_PURE | ELPIS_EXEC_BACKEND_ONLY;
+    if (!r || !t || t->operation >= 64 || (t->flags & ~allowed) ||
         !input || !*input || !sequence || (*input)->size > r->config.max_input_bytes)
+        return ELPIS_EXEC_INVALID;
+    int backend_only = (t->flags & ELPIS_EXEC_BACKEND_ONLY) != 0;
+    if ((backend_only && ((t->flags & ELPIS_EXEC_PURE) || t->compute)) ||
+        (!backend_only && !t->compute))
         return ELPIS_EXEC_INVALID;
     return admit(r, t, NULL, NULL, input, sequence);
 }

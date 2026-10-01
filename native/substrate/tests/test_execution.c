@@ -578,9 +578,156 @@ static void deferral(void) {
         elpis_exec_destroy(r);
     }
 }
+/* BACKEND_ONLY is the substrate-neutral hook for provider-owned recurrent state.
+ * It deliberately has no CPU callback: accepted provider state is never replayed
+ * implicitly on the host after a terminal backend failure. */
+typedef struct {
+    unsigned state;
+    int mode; /* 0 normal, 1 submit reject, 2 poll timeout */
+    int live;
+    atomic_uint init, submit, poll, abort, shutdown;
+} stream_fake;
+
+static elpis_exec_status stream_init(void *p, uint64_t *caps) {
+    stream_fake *f = p;
+    atomic_fetch_add(&f->init, 1);
+    *caps = UINT64_C(1) << 5;
+    return ELPIS_EXEC_OK;
+}
+static elpis_exec_status stream_submit(void *p, const elpis_exec_task *t,
+                                       const elpis_exec_buffer *b, size_t cap, void **token) {
+    stream_fake *f = p;
+    unsigned delta = 0;
+    atomic_fetch_add(&f->submit, 1);
+    assert(t->operation == 5 && t->flags == ELPIS_EXEC_BACKEND_ONLY && !t->compute);
+    assert(cap >= sizeof(unsigned) && elpis_exec_buffer_size(b) == sizeof(unsigned));
+    assert(!f->live);
+    if (f->mode == 1) return ELPIS_EXEC_BACKEND_REJECTED;
+    memcpy(&delta, elpis_exec_buffer_data(b), sizeof(delta));
+    f->state += delta; /* provider-owned recurrent state */
+    f->live = 1;
+    *token = f;
+    return ELPIS_EXEC_OK;
+}
+static elpis_exec_status stream_poll(void *p, void *token, elpis_exec_buffer **out) {
+    stream_fake *f = p;
+    atomic_fetch_add(&f->poll, 1);
+    assert(token == f && f->live);
+    if (f->mode == 2) return ELPIS_EXEC_WOULD_BLOCK;
+    *out = elpis_exec_buffer_alloc(sizeof(unsigned));
+    assert(*out);
+    memcpy(elpis_exec_buffer_mutable_data(*out), &f->state, sizeof(f->state));
+    f->live = 0;
+    return ELPIS_EXEC_OK;
+}
+static void stream_abort(void *p, void *token) {
+    stream_fake *f = p;
+    assert(token == f && f->live);
+    f->live = 0;
+    atomic_fetch_add(&f->abort, 1);
+}
+static void stream_shutdown(void *p) {
+    stream_fake *f = p;
+    assert(!f->live);
+    atomic_fetch_add(&f->shutdown, 1);
+}
+static elpis_exec_runtime *stream_runtime(stream_fake *f, unsigned polls) {
+    elpis_exec_backend backend = {f, stream_init, stream_submit, stream_poll, stream_abort, stream_shutdown};
+    elpis_exec_config c = config(1, 1);
+    c.backend = &backend;
+    c.backend_poll_limit = polls;
+    elpis_exec_runtime *r = NULL;
+    assert(elpis_exec_create(&c, &r) == ELPIS_EXEC_OK && r);
+    return r;
+}
+static void backend_only_stream(void) {
+    unsigned before = atomic_load(&cpu_calls);
+
+    /* Persistent provider state across sequential submissions; capacity=1 is the
+     * adapter's recurrence fence. No CPU callback exists or executes. */
+    stream_fake f = {0};
+    elpis_exec_runtime *r = stream_runtime(&f, 8);
+    unsigned deltas[] = {2, 3, 5}, expected = 0;
+    for (unsigned n = 0; n < 3; ++n) {
+        expected += deltas[n];
+        elpis_exec_task t = {5, 17, 0, ELPIS_EXEC_BACKEND_ONLY, n, NULL};
+        elpis_exec_buffer *b = value(deltas[n]);
+        uint64_t seq = UINT64_MAX;
+        assert(elpis_exec_submit(r, &t, &b, &seq) == ELPIS_EXEC_OK && !b && seq == n);
+        elpis_exec_result v = take(r);
+        unsigned got = 0;
+        assert(v.sequence == n && v.status == ELPIS_EXEC_OK && v.output);
+        memcpy(&got, elpis_exec_buffer_data(v.output), sizeof(got));
+        assert(got == expected);
+        elpis_exec_buffer_release(v.output);
+    }
+    assert(f.state == 10 && atomic_load(&cpu_calls) == before);
+    elpis_exec_metrics m;
+    elpis_exec_get_metrics(r, &m);
+    assert(m.backend_accepted == 3 && m.backend_fallback == 0 && m.submitted == 3);
+
+    /* Unsupported capability is refused before admission: no input consumption,
+     * no sequence allocation, so the caller may choose CPU before a provider
+     * stream begins. */
+    elpis_exec_task unsupported = {6, 17, 0, ELPIS_EXEC_BACKEND_ONLY, 99, NULL};
+    elpis_exec_buffer *b = value(1);
+    uint64_t seq = UINT64_MAX;
+    assert(elpis_exec_submit(r, &unsupported, &b, &seq) == ELPIS_EXEC_BACKEND_UNAVAILABLE);
+    assert(b && seq == UINT64_MAX);
+    elpis_exec_buffer_release(b);
+
+    /* Modes are intentionally disjoint, and BACKEND_ONLY cannot smuggle a CPU
+     * callback that would become an accidental retry path. */
+    elpis_exec_task mixed = {5, 17, 0, ELPIS_EXEC_PURE | ELPIS_EXEC_BACKEND_ONLY, 0, NULL};
+    b = value(1); seq = UINT64_MAX;
+    assert(elpis_exec_submit(r, &mixed, &b, &seq) == ELPIS_EXEC_INVALID && b);
+    elpis_exec_buffer_release(b);
+    elpis_exec_task callback = {5, 17, 0, ELPIS_EXEC_BACKEND_ONLY, 0, echo};
+    b = value(1); seq = UINT64_MAX;
+    assert(elpis_exec_submit(r, &callback, &b, &seq) == ELPIS_EXEC_INVALID && b);
+    elpis_exec_buffer_release(b);
+    elpis_exec_destroy(r);
+    assert(atomic_load(&f.shutdown) == 1);
+
+    /* No provider: synchronous unavailable and ownership retained. */
+    r = create(1, 1);
+    elpis_exec_task only = {5, 17, 0, ELPIS_EXEC_BACKEND_ONLY, 0, NULL};
+    b = value(1); seq = UINT64_MAX;
+    assert(elpis_exec_submit(r, &only, &b, &seq) == ELPIS_EXEC_BACKEND_UNAVAILABLE);
+    assert(b && seq == UINT64_MAX);
+    elpis_exec_buffer_release(b);
+    elpis_exec_destroy(r);
+
+    /* Provider rejection is terminal and never becomes a CPU call. */
+    stream_fake reject = {.mode = 1};
+    r = stream_runtime(&reject, 4);
+    b = value(7); seq = UINT64_MAX;
+    assert(elpis_exec_submit(r, &only, &b, &seq) == ELPIS_EXEC_OK && !b && seq == 0);
+    elpis_exec_result v = take(r);
+    assert(v.status == ELPIS_EXEC_BACKEND_REJECTED && !v.output);
+    elpis_exec_get_metrics(r, &m);
+    assert(m.backend_accepted == 0 && m.backend_fallback == 0 && reject.state == 0);
+    assert(atomic_load(&cpu_calls) == before);
+    elpis_exec_destroy(r);
+
+    /* Timeout aborts/quiesces but does not pretend provider state rolled back.
+     * The inference adapter must discard this stream rather than retry the token
+     * on CPU after provider state has advanced. */
+    stream_fake timeout = {.mode = 2};
+    r = stream_runtime(&timeout, 3);
+    b = value(7); seq = UINT64_MAX;
+    assert(elpis_exec_submit(r, &only, &b, &seq) == ELPIS_EXEC_OK && !b && seq == 0);
+    v = take(r);
+    assert(v.status == ELPIS_EXEC_BACKEND_UNAVAILABLE && !v.output);
+    elpis_exec_get_metrics(r, &m);
+    assert(m.backend_accepted == 1 && m.backend_fallback == 0);
+    assert(timeout.state == 7 && atomic_load(&timeout.abort) == 1);
+    assert(atomic_load(&timeout.poll) == 3 && atomic_load(&cpu_calls) == before);
+    elpis_exec_destroy(r);
+}
 int main(void) {
     validation(); deterministic(); ordered_pressure(); queued_cancel(); lifecycle(); contention(); accelerators();
-    bound_tasks(); scheduling(); backend_nonblocking(); deferral();
-    puts("PASS execution: workers 1..4, order, pressure, cancellation, lifecycle, creation failure, contention, backend, bound tasks, shared pool, stealing, utilisation, caps, nonblocking backend, deferral");
+    bound_tasks(); scheduling(); backend_nonblocking(); deferral(); backend_only_stream();
+    puts("PASS execution: workers 1..4, order, pressure, cancellation, lifecycle, creation failure, contention, backend, bound tasks, shared pool, stealing, utilisation, caps, nonblocking backend, deferral, backend-only stream");
     return 0;
 }
