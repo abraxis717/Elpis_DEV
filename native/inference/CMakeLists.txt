@@ -54,3 +54,31 @@ elpis_add_test(inference test_dsv41_layer_frame
   SOURCES tests/test_dsv41_layer_frame.c
   LIBS elpis_dsv41_native m
   TIMEOUT 30)
+
+# YTS-R0 (docs/inference/DSV41_PROVIDER_STREAM.md): TEST-ONLY reference provider
+# for the DSV4.1 Yielded Token Stream over the generic execution port. It
+# compiles the same qualified kernel sources with the same floating-point policy
+# and is registered as a test target, never as a production library. It does
+# not link the execution runtime: the host passes the runtime's buffer/notify
+# entry points at attach (dsv41_stream.h).
+add_library(elpis_dsv41_stream_reference_provider SHARED
+  tests/dsv41_reference_provider.c
+  src/dsv41_native.c
+  src/dsv41_attention_state.c
+  src/dsv41_local_attention.c
+  src/dsv41_compressed_attention.c
+  src/dsv41_moe_dispatch.c
+  src/dsv41_layer_frame.c)
+target_include_directories(elpis_dsv41_stream_reference_provider PRIVATE
+  include $<TARGET_PROPERTY:elpis_execution,INTERFACE_INCLUDE_DIRECTORIES>)
+target_link_libraries(elpis_dsv41_stream_reference_provider PRIVATE m Threads::Threads)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(elpis_dsv41_stream_reference_provider PRIVATE -ffp-contract=off)
+endif()
+_elpis_register(inference elpis_dsv41_stream_reference_provider test)
+
+elpis_add_test(inference test_dsv41_stream_provider
+  SOURCES tests/test_dsv41_stream_provider.c
+  LIBS elpis_dsv41_stream_reference_provider elpis_execution m Threads::Threads
+  INCLUDES include
+  TIMEOUT 300)

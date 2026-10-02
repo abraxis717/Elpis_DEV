@@ -11,7 +11,7 @@ import numpy as np
 
 from elpis.identity import content_digest
 from ...associative import AddressScheme, DSV41Parameters
-from ...contracts import Code, integer, require
+from ...contracts import Code, RowIdentity, integer, require
 from ...rows import RowEngine
 from ...target import WindowStep, numerical_profile
 from ...text import V41Tokenizer
@@ -20,6 +20,7 @@ from .config import TowerConfig
 from .engram import build_parameters
 from .layer import Layer
 from .native_backend import DSV41NativeBackend, NativeAttentionState
+from .provider_stream import DSV41StreamProvider, ProviderAttention
 from .numerics import F32, hc_pre, linear, rms, rope_frequencies
 from .parameters import ParameterManifest, TensorStore, TowerAdmission
 
@@ -35,6 +36,7 @@ class TowerState:
     step: WindowStep | None = None
     selected: tuple = ()
     closed: bool = False
+    provider: object = None  # YTS-R0 provider stream (provider-owned recurrent state)
 
     @property
     def nbytes(self):
@@ -43,10 +45,14 @@ class TowerState:
 
 class DSV41Target:
     def __init__(self, config, manifest, tokenizer, parameters, rows, provider, *, expected_manifest,
-                 resident_budget, staging_budget, state_budget, native_backend=None):
+                 resident_budget, staging_budget, state_budget, native_backend=None, provider_stream=None):
         require(type(config) is TowerConfig and type(manifest) is ParameterManifest, detail="tower config/manifest")
         require(native_backend is None or type(native_backend) is DSV41NativeBackend,
                 Code.IDENTITY, "DSV4.1 native backend")
+        require(provider_stream is None or type(provider_stream) is DSV41StreamProvider,
+                Code.IDENTITY, "DSV4.1 YTS-R0 provider")
+        require(native_backend is None or provider_stream is None, Code.UNSUPPORTED,
+                "one DSV4.1 execution backend per target")
         require(type(tokenizer) is V41Tokenizer and (tokenizer.identity, tokenizer.vocab_size) ==
                 (config.tokenizer, config.vocab), Code.IDENTITY, "tower tokenizer/vocabulary")
         require(type(parameters) is DSV41Parameters, Code.UNSUPPORTED, "DSV41 backbone address scheme")
@@ -92,6 +98,14 @@ class DSV41Target:
         self.layers = tuple(Layer(config, i, store, rows.get(i), frequencies[bool(config.compress_ratios[i])],
                                   native_backend=native_backend)
                             for i in range(config.layers))
+        self.provider_stream = provider_stream
+        if provider_stream is not None:
+            # The provider executes the tower; its pinned identity and kernel profile are part
+            # of the numerical identity, so its commits never replay on another backend.
+            provider_stream.admit(self, frequencies)
+            self.numerical_profile = content_digest("elpis.inference.dsv41.numerical.v1", dict(
+                profile=config.numerical_profile, execution=numerical_profile(), linear="einsum-optimize-false",
+                provider=provider_stream.profile))
         self._row_index = {layer: i for i, layer in enumerate(config.engram_layers)}
         self._initial_pre = np.zeros(config.hc_mult, dtype=F32)
         self._initial_pre[0] = 1
@@ -107,6 +121,11 @@ class DSV41Target:
 
     def window_initial(self):
         c = self.config
+        if self.provider_stream is not None:
+            stream = self.provider_stream.open_stream()
+            return TowerState(self, 0, self.scheme.initial(), tuple(ProviderAttention() for _ in range(c.layers)),
+                              np.full((c.layers, c.hc_mult, c.dimension), np.nan, dtype=F32),
+                              np.empty(c.vocab, dtype=F32), provider=stream)
         attention = (tuple(AttentionState.create(c, i) for i in range(c.layers))
                      if self.native_backend is None else
                      tuple(self.native_backend.create_attention_state(c, i) for i in range(c.layers)))
@@ -120,6 +139,8 @@ class DSV41Target:
         c, w = self.config, self.store.dense
         integer(token, 0, c.vocab - 1)
         require(state.position < c.max_tokens and state.position == state.history.position, Code.LIMIT, "tower position")
+        if self.provider_stream is not None:
+            return self._provider_step(state, token)
         start = perf_counter_ns()
         metrics = dict(engram_ns=0, attention_ns=0, mhc_norm_ns=0, moe_ns=0)
         self.store.last_materialize_ns = self.store.last_bytes = 0
@@ -155,10 +176,55 @@ class DSV41Target:
         self.last_metrics = metrics
         return state
 
+    def _provider_step(self, state, token):
+        """YTS-R0: host preparation (hash, every Engram row), then one provider token transaction."""
+        c, stream = self.config, state.provider
+        require(stream is not None and stream.state == "BOUNDARY", Code.STALE, "YTS-R0 provider stream")
+        start = perf_counter_ns()
+        self.store.last_materialize_ns = self.store.last_bytes = 0
+        try:
+            hashed = self.scheme.stream_hash(state.history, (token,))
+            address_ns = perf_counter_ns() - start
+            begin = perf_counter_ns()
+            segments = []
+            for layer in c.engram_layers:
+                engine = self.rows[layer]
+                ids = hashed.rows[0][self._row_index[layer]]
+                rows = engine.lookup(tuple(RowIdentity(engine.table.bank.digest, r) for r in ids))
+                segments.append((layer, np.ascontiguousarray(rows, dtype=F32)))
+            engram_ns = perf_counter_ns() - begin
+        except BaseException:
+            stream.release()  # PREPARING: the provider stream is untouched, so a normal release
+            raise
+        complete = stream.token(state.position, token, segments, self.store)
+        state.logits[:] = complete.logits
+        if complete.layer_streams is not None:
+            state.layer_streams[:] = complete.layer_streams
+        route = []
+        for i in range(c.layers):
+            route.extend(i * (c.expert_count + 1) + e for e in complete.selected[i])
+            route.append(i * (c.expert_count + 1) + c.expert_count)  # shared expert trace code
+        for attention, count in zip(state.attention, complete.counts):
+            attention.count = count
+        state.history = hashed.history
+        state.position += 1
+        state.step = WindowStep(token, hashed.rows[0], tuple(route))
+        state.selected = tuple(complete.positions)
+        metrics = dict(address_ns=address_ns, engram_ns=engram_ns, total_ns=perf_counter_ns() - start,
+                       expert_materialize_ns=self.store.last_materialize_ns, expert_file_bytes=self.store.last_bytes,
+                       staged_high_water=self.store.high_water, working_bytes=state.nbytes,
+                       compressed_positions=sum(a.count for a in state.attention))
+        metrics.update(stream.last)
+        self.last_metrics = metrics
+        return state
+
     def release_window(self, state):
         """Sequence finalization hook; no caches survive in a retained sequence handle."""
         if state is not None:
             require(type(state) is TowerState and state.owner is self, Code.IDENTITY, "release tower state")
+            if state.provider is not None:
+                state.provider.release()  # never raises: provider failure quarantines instead
+                state.provider = None
             for attention in state.attention:
                 if type(attention) is NativeAttentionState:
                     attention.close()

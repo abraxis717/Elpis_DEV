@@ -10,7 +10,8 @@ from elpis.substrate.synthetic import SyntheticFileAssets
 
 
 # Qualification mode: a skipped DSV4.1 test is never a pass. Both reference paths
-# must be bound, both suites must be collected, and any skip becomes a failure.
+# must be bound, the tower and YTS-R0 provider-stream suites must be collected,
+# and any skip becomes a failure.
 QUALIFY = os.environ.get("ELPIS_DSV41_QUALIFY") == "1"
 _HERE = Path(__file__).parent
 
@@ -23,9 +24,10 @@ def pytest_collection_modifyitems(session, config, items):
             raise pytest.UsageError(f"ELPIS_DSV41_QUALIFY=1 requires {name}")
     ours = [i for i in items if Path(str(i.fspath)).parent == _HERE]
     counts = {name: sum(Path(str(i.fspath)).name == name for i in ours)
-              for name in ("test_differential.py", "test_tower.py")}
+              for name in ("test_differential.py", "test_tower.py", "test_provider_stream.py",
+                           "test_provider_stream_faults.py")}
     if not all(counts.values()):
-        raise pytest.UsageError(f"ELPIS_DSV41_QUALIFY=1 collected {counts}; both suites are required")
+        raise pytest.UsageError(f"ELPIS_DSV41_QUALIFY=1 collected {counts}; every suite is required")
 
 
 @pytest.hookimpl(hookwrapper=True)
