@@ -231,6 +231,72 @@ class TensorStore:
                 self._scratch_busy = False
 
 
+    def expert_image(self, roles):
+        """Identity of one expert's canonical byte image: its roles concatenated in order.
+
+        Binding digests and sizes come from the admitted manifest; nothing is read.
+        An expert is either wholly resident or wholly file-backed.
+        """
+        require(type(roles) is tuple and len(roles) == 3 and all(r in self.bindings for r in roles),
+                Code.MISSING, "expert roles")
+        bindings = tuple(self.bindings[r] for r in roles)
+        resident = tuple(r in self.dense for r in roles)
+        require(all(resident) or not any(resident), Code.UNSUPPORTED, "expert residency is whole")
+        sizes = tuple(b.size for b in bindings)
+        return ExpertImage(roles, sizes, tuple(bytes.fromhex(b.digest) for b in bindings), sum(sizes),
+                           all(resident), tuple((b.dtype, b.layout) for b in bindings))
+
+    def stage_image_range(self, roles, offset, length, out):
+        """Copy bytes [offset, offset+length) of a file-backed expert's canonical image into ``out``.
+
+        ``out`` is a caller-owned writable buffer of exactly ``length`` bytes (e.g. an
+        execution-port request buffer). Bytes come only through FMS range leases, so FMS
+        verifies every page it loads; staging is accounted against the same budget and
+        busy guard as expert(). Nothing is retained after return and no host expert cache
+        exists.
+        """
+        image = self.expert_image(roles)
+        require(not image.resident, Code.UNSUPPORTED, "resident experts are not staged")
+        integer(offset)
+        integer(length, 1)
+        require(offset + length <= image.image_bytes, detail="expert image range")
+        view = memoryview(out)
+        require(view.contiguous and not view.readonly and view.nbytes == length, detail="staging buffer")
+        view = view.cast("B")
+        with self._lock:
+            require(not self._scratch_busy, Code.BUSY, "expert staging in use")
+            require(self.staged_bytes + length <= self.staging_budget, Code.LIMIT, "expert staging budget")
+            self._scratch_busy = True
+            self.staged_bytes += length
+            self.high_water = max(self.high_water, self.staged_bytes)
+            start = perf_counter_ns()
+            try:
+                at = pos = 0
+                for role, size in zip(roles, image.sizes):
+                    lo, hi = max(offset, at), min(offset + length, at + size)
+                    if lo < hi:
+                        source = self.bindings[role].source
+                        self._copy(source.asset, source.offset + (lo - at), hi - lo, view[pos:pos + hi - lo])
+                        pos += hi - lo
+                    at += size
+                self.last_materialize_ns += perf_counter_ns() - start
+                self.last_bytes += length
+            finally:
+                self.staged_bytes -= length
+                self._scratch_busy = False
+        return length
+
+
+@dataclass(frozen=True)
+class ExpertImage:
+    roles: tuple
+    sizes: tuple
+    digests: tuple          # 32-byte binding digests, role order
+    image_bytes: int
+    resident: bool
+    representation: tuple   # (dtype, layout) per role
+
+
 class TowerAdmission:
     __slots__ = ("target",)
 
