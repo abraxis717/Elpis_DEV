@@ -151,6 +151,15 @@ This is the only new attachment surface. It is DSV4.1-stream specific and narrow
 future generic post-compiled attachment layer can absorb it without changing YTS
 semantics.
 
+The host owns the attached context through detach. If runtime construction fails,
+it detaches that context; if runtime binding fails or raises, it first destroys the
+runtime (quiescing callbacks and notifications), then detaches. Successful owners
+must be closed explicitly. The sealed loader retains both DSOs and their sealed
+FDs for process lifetime, independently of Python object collection; close never
+unloads code. Generic Python runtime handles are borrowed until destroy, and
+post-destroy access is refused before entering C. Other API users must stop before
+destruction; these rules do not add concurrent close or multiple YTS streams.
+
 ## Reference provider (test-only)
 
 `native/inference/tests/dsv41_reference_provider.c` implements YTS-R0 behind the real

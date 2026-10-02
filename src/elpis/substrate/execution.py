@@ -146,7 +146,11 @@ class Result:
 
 
 class Runtime:
-    """One execution context with an attached backend. Single lifecycle owner."""
+    """One execution context with an attached backend. Single lifecycle owner.
+
+    Stop other API users before destroy. Handles are borrowed until destruction;
+    later calls reject closed state rather than passing freed storage to C.
+    """
 
     __slots__ = ("_owner", "_handle", "_config", "_backend", "closed")
 
@@ -162,6 +166,7 @@ class Runtime:
 
     @property
     def handle(self):
+        require(not self.closed, Code.CLOSED, "execution runtime destroyed")
         return self._handle.value
 
     def submit_backend_only(self, operation, stage, tag, buffer):
@@ -180,7 +185,7 @@ class Runtime:
     def take(self, wait_ms):
         """Ordered retirement. Returns (status, Result|None); output bytes are copied and released."""
         result = _Result()
-        rc = self._owner._lib.elpis_exec_take(self._handle, wait_ms, C.byref(result))
+        rc = self._owner._lib.elpis_exec_take(self.handle, wait_ms, C.byref(result))
         if rc != OK:
             return rc, None
         output = None
@@ -197,11 +202,11 @@ class Runtime:
 
     def metrics(self):
         m = _Metrics()
-        self._owner._lib.elpis_exec_get_metrics(self._handle, C.byref(m))
+        self._owner._lib.elpis_exec_get_metrics(self.handle, C.byref(m))
         return {name: getattr(m, name) for name, _ in _Metrics._fields_}
 
     def notify(self):
-        self._owner._lib.elpis_exec_notify(self._handle)
+        self._owner._lib.elpis_exec_notify(self.handle)
 
     def shutdown(self, cancel=True):
         if not self.closed:
@@ -211,4 +216,5 @@ class Runtime:
         """Shut down (runs backend.shutdown once) and free the context. Idempotent."""
         if not self.closed:
             self._owner._lib.elpis_exec_destroy(self._handle)
+            self._handle.value = None
             self.closed = True
