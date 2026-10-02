@@ -258,7 +258,8 @@
         "tests/inference"
       ],
       "native_targets": [
-        "elpis_dsv41_native"
+        "elpis_dsv41_native",
+        "elpis_dsv41_clock"
       ],
       "depends_on": [
         "substrate"

@@ -82,3 +82,21 @@ elpis_add_test(inference test_dsv41_stream_provider
   LIBS elpis_dsv41_stream_reference_provider elpis_execution m Threads::Threads
   INCLUDES include
   TIMEOUT 300)
+
+# Entry points are borrowed from the sealed runtime. Never link elpis_execution
+# into this DSO (including indirectly through a private static archive).
+elpis_add_library(inference elpis_dsv41_clock SHARED src/dsv41_clock.c)
+target_include_directories(elpis_dsv41_clock PUBLIC include
+  $<TARGET_PROPERTY:elpis_execution,INTERFACE_INCLUDE_DIRECTORIES>)
+target_link_libraries(elpis_dsv41_clock PRIVATE Threads::Threads)
+
+add_library(elpis_dsv41_clock_test_materializer SHARED tests/dsv41_clock_materializer.c)
+target_include_directories(elpis_dsv41_clock_test_materializer PRIVATE include
+  $<TARGET_PROPERTY:elpis_execution,INTERFACE_INCLUDE_DIRECTORIES>)
+_elpis_register(inference elpis_dsv41_clock_test_materializer test)
+
+elpis_add_test(inference test_dsv41_clock
+  SOURCES tests/test_dsv41_clock.c
+  LIBS elpis_dsv41_clock elpis_dsv41_clock_test_materializer
+       elpis_dsv41_stream_reference_provider elpis_execution m Threads::Threads
+  TIMEOUT 300)

@@ -149,6 +149,7 @@ class DSV41StreamProvider:
             self._detach(self._backend.context)
 
     def _usable(self):
+        require(self.state != "CLOCK_ACTIVE", Code.BUSY, "native clock owns the runtime")
         require(self.state not in ("QUARANTINED", "CLOSED"), Code.DEVICE if self.state == "QUARANTINED"
                 else Code.CLOSED, "YTS-R0 provider " + self.state.lower())
 
@@ -272,6 +273,8 @@ class DSV41StreamProvider:
 
     def close(self):
         """Release everything the provider holds. Idempotent; never raises on provider failure."""
+        if getattr(self, "_native_clock", None) is not None:
+            self._native_clock.close()
         if self.state in ("QUARANTINED", "CLOSED"):
             return
         try:
