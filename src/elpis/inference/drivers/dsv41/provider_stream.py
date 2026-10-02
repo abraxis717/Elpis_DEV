@@ -96,14 +96,20 @@ class DSV41StreamProvider:
         require(attach(C.byref(self._host), C.byref(self._backend)) == 0 and bool(self._backend.context),
                 Code.UNSUPPORTED, "YTS-R0 provider attach")
         self._lib, self._detach = lib, detach
+        self.runtime = None
         try:
             self.runtime = X.Runtime(self.exec, self._backend, workers=1, capacity=1,
                                      max_input_bytes=max_input_bytes, max_output_bytes=max_output_bytes,
                                      poll_limit=poll_limit)
+            require(bind(self._backend.context, self.runtime.handle) == 0, Code.UNSUPPORTED,
+                    "YTS-R0 runtime binding")
         except BaseException:
+            # Binding may already have retained the runtime for notifications.
+            # Quiesce callbacks/device work before freeing the provider context.
+            if self.runtime is not None:
+                self.runtime.destroy()
             detach(self._backend.context)
             raise
-        require(bind(self._backend.context, self.runtime.handle) == 0, Code.UNSUPPORTED, "YTS-R0 runtime binding")
         self.max_input_bytes, self.max_output_bytes = max_input_bytes, max_output_bytes
         self.requested_part_bytes, self.cache_bytes = part_bytes, expert_cache_bytes
         self.observe_layer_streams = bool(observe_layer_streams)
