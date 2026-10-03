@@ -36,6 +36,18 @@ elpis_add_test(ECS_G test_ecsg_executor
   LIBS elpis_ecsg_math m
   TIMEOUT 60)
 
+# The same parity suite against the baseline-ISA kernels only (no runtime
+# dispatch), so the clone the host does not select is qualified too.
+elpis_add_test(ECS_G test_ecsg_executor_baseline
+  SOURCES tests/test_ecsg_executor.c src/ecsg_executor.c src/ecsg_math.c src/ecsg_state.c
+  INCLUDES include
+  DEFINES ELPIS_ECSG_NO_CLONES
+  LIBS m
+  TIMEOUT 60)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(test_ecsg_executor_baseline PRIVATE -ffp-contract=off)
+endif()
+
 elpis_add_test(ECS_G test_ecsg_executor_txn
   SOURCES tests/test_ecsg_executor_txn.c
   LIBS elpis_ecsg_math m Threads::Threads

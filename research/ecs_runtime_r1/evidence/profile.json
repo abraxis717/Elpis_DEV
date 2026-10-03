@@ -1,0 +1,200 @@
+{
+ "after": {
+  "cmake": {
+   "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+   "CMAKE_C_COMPILER": "/usr/bin/gcc",
+   "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
+   "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O3 -g -DNDEBUG"
+  },
+  "driver_sha256": "fc14309bfe6b836304c3f2f88353aa9036eb7ad6468e9a7f15d3c327c5b2e31a",
+  "executor_source_sha256": "1d94739c52543da2080ccac2aeb640ef84b650161fa740c01f706b3f73b0fa8f",
+  "functions": {
+   "elpis_ecsg_executor_create": 1569,
+   "elpis_ecsg_executor_destroy": 24,
+   "elpis_ecsg_executor_learn": 405,
+   "elpis_ecsg_executor_learn_schedule": 1809,
+   "forward_rows": 10,
+   "g1_step": 10,
+   "g1_step.avx2": 167475600,
+   "learn_into.constprop.0": 161190,
+   "make.constprop.0": 78,
+   "plan": 70,
+   "row_sums.avx2": 12074400
+  },
+  "hottest_lines": [
+   {
+    "instructions": 33193800,
+    "share": 0.1773,
+    "source": "for (i = 0u; i < width; ++i) {"
+   },
+   {
+    "instructions": 27993600,
+    "share": 0.1495,
+    "source": "ga[i] += c * pr[i];"
+   },
+   {
+    "instructions": 24883200,
+    "share": 0.1329,
+    "source": "zk[i] += xa * wa[i];"
+   },
+   {
+    "instructions": 23500800,
+    "share": 0.1255,
+    "source": "for (i = 0u; i < width; ++i) {"
+   },
+   {
+    "instructions": 10713600,
+    "share": 0.0572,
+    "source": "for (a = 0u; a < dim; ++a) {"
+   },
+   {
+    "instructions": 10303200,
+    "share": 0.055,
+    "source": "s[k] += v[k * width + i];"
+   },
+   {
+    "instructions": 9331200,
+    "share": 0.0498,
+    "source": "zk[i] = 0.5 * z + 0.5 * z2 + 0.5 * z2 * z;"
+   },
+   {
+    "instructions": 7776000,
+    "share": 0.0415,
+    "source": "pr[i] = 0.5 + z + 1.5 * z * z;"
+   },
+   {
+    "instructions": 6525936,
+    "share": 0.0349,
+    "source": "./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms [/usr/lib/x86_64-linux-gnu/libc.so.6]"
+   },
+   {
+    "instructions": 5184000,
+    "share": 0.0277,
+    "source": "for (a = 0u; a < dim; ++a) {"
+   },
+   {
+    "instructions": 5022000,
+    "share": 0.0268,
+    "source": "for (i = 0u; i < width; ++i) {"
+   },
+   {
+    "instructions": 3110400,
+    "share": 0.0166,
+    "source": "const double c = x[r * dim + a] * er;"
+   }
+  ],
+  "instructions_per_step": 69348,
+  "label": "after: R1F exact-order vectorized kernel (avx2 clone selected)",
+  "learn_calls": 27,
+  "library_sha256": "1d385934926a8c366ddc7b60c6fe70c7bc46accc0680f0ab40fa620540b7fa0e",
+  "native_tree_dirty": true,
+  "shape": {
+   "dim": 6,
+   "rows": 64,
+   "steps": 100,
+   "width": 36
+  },
+  "source_head": "e5ef6f631c7d09bd2b255b244f912fbfe37894a2",
+  "steps": 2700,
+  "tool": "callgrind (valgrind 3.22)",
+  "total_instructions": 187238882
+ },
+ "before": {
+  "cmake": {
+   "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+   "CMAKE_C_COMPILER": "/usr/bin/gcc",
+   "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
+   "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O3 -g -DNDEBUG"
+  },
+  "driver_sha256": "927ec988ddeba6e4c7548ea42ad2f0a6dbd10d2bb012e5d7da211047e51e9951",
+  "executor_source_sha256": "17599f30c250e4ecc5aec437f786367e7460aa6da2b1370ffa8337d241866175",
+  "functions": {
+   "elpis_ecsg_executor_create": 1569,
+   "elpis_ecsg_executor_destroy": 24,
+   "elpis_ecsg_executor_learn": 405,
+   "elpis_ecsg_executor_learn_schedule": 1809,
+   "learn_into.constprop.0": 848369538,
+   "make.constprop.0": 73,
+   "plan": 62
+  },
+  "hottest_lines": [
+   {
+    "instructions": 223948800,
+    "share": 0.2638,
+    "source": "value += x[r * dim + a] * src[a * width + i];"
+   },
+   {
+    "instructions": 223948800,
+    "share": 0.2638,
+    "source": "sum += x[r * dim + a] * error[r] * phip(z[r * width + i]);"
+   },
+   {
+    "instructions": 112028400,
+    "share": 0.132,
+    "source": "return 0.5 + z + 1.5 * z * z;"
+   },
+   {
+    "instructions": 99532800,
+    "share": 0.1172,
+    "source": "for (a = 0u; a < dim; ++a) {"
+   },
+   {
+    "instructions": 43545735,
+    "share": 0.0513,
+    "source": "return 0.5 * z + 0.5 * z2 + 0.5 * z2 * z;"
+   },
+   {
+    "instructions": 39657600,
+    "share": 0.0467,
+    "source": "for (r = 0u; r < rows; ++r) {"
+   },
+   {
+    "instructions": 24883200,
+    "share": 0.0293,
+    "source": "if (!isfinite(value)) {"
+   },
+   {
+    "instructions": 19699200,
+    "share": 0.0232,
+    "source": "for (i = 0u; i < width; ++i) {"
+   },
+   {
+    "instructions": 18662400,
+    "share": 0.022,
+    "source": "double value = 0.0;"
+   },
+   {
+    "instructions": 12441600,
+    "share": 0.0147,
+    "source": "const double z2 = z * z;"
+   },
+   {
+    "instructions": 6220800,
+    "share": 0.0073,
+    "source": "z[r * width + i] = value;"
+   },
+   {
+    "instructions": 6220800,
+    "share": 0.0073,
+    "source": "prediction += phi(value);"
+   }
+  ],
+  "instructions_per_step": 314448,
+  "label": "before: R1C/R1D executor, reference loop order",
+  "learn_calls": 27,
+  "library_sha256": "f7ecab4f5afe6f0a8b82565500870055b2245e173f8350f5a22165f2fa89bf87",
+  "shape": {
+   "dim": 6,
+   "rows": 64,
+   "steps": 100,
+   "width": 36
+  },
+  "source_head": "e5ef6f631c7d09bd2b255b244f912fbfe37894a2",
+  "steps": 2700,
+  "tool": "callgrind (valgrind 3.22)",
+  "total_instructions": 849008829
+ },
+ "instructions_per_step_ratio": 4.53,
+ "label": "PERFORMANCE_ONLY NO_SCIENTIFIC_CLAIM",
+ "note": "callgrind instruction counts for the same driver run (exec_learn, d=6 N=36 R=64 K=100, 27 calls = 2700 steps); before = executor at R1E e5ef6f6 (reference loop order), after = R1F kernel (source bound by SHA-256)"
+}

@@ -16,8 +16,10 @@
  *                      `learn_w` stages direct learns, `txn_w` holds an
  *                      open transaction's candidate (roles rotate by
  *                      pointer exchange on commit)
- *   z                  max_rows*width pre-activations of the current step
+ *   grad               dim*width gradient accumulators of the current step
+ *   z                  max_rows*width phi'(z) of the current step
  *   error              max_rows residuals of the current step
+ *   row                ROW_BLOCK*width values of a block of rows (z, phi)
  *   x, y               admitted experience: max_rows*dim and max_rows
  *
  * Only `w` (with epoch) is persistent learned state. Everything else is
@@ -27,6 +29,7 @@
 enum {
     ARENA_ALIGN = 64u,
     ARENA_DOUBLES = ARENA_ALIGN / sizeof(double),
+    ROW_BLOCK = 8u,  /* rows whose sequential sums run as independent chains */
     SNAPSHOT_HEADER_BYTES = 40u
 };
 
@@ -40,8 +43,10 @@ struct elpis_ecsg_executor {
     double *w;
     double *learn_w;
     double *txn_w;
+    double *grad;
     double *z;
     double *error;
+    double *row;
     double *x;
     double *y;
     void *arena;
@@ -94,7 +99,7 @@ segment(size_t count, size_t *out)
 }
 
 typedef struct {
-    size_t w, z, error, x, y, total_bytes;
+    size_t w, z, error, row, x, y, total_bytes;
 } layout;
 
 static int
@@ -107,11 +112,13 @@ plan(size_t dim, size_t width, size_t max_rows, layout *out)
         !checked_mul(dim, width, &count) || !segment(count, &out->w) ||
         !checked_mul(max_rows, width, &count) || !segment(count, &out->z) ||
         !segment(max_rows, &out->error) ||
+        !checked_mul(width, (size_t)ROW_BLOCK, &count) || !segment(count, &out->row) ||
         !checked_mul(max_rows, dim, &count) || !segment(count, &out->x) ||
         !segment(max_rows, &out->y) ||
-        !checked_mul(out->w, 3u, &total) ||
+        !checked_mul(out->w, 4u, &total) ||
         !checked_add(total, out->z, &total) ||
         !checked_add(total, out->error, &total) ||
+        !checked_add(total, out->row, &total) ||
         !checked_add(total, out->x, &total) ||
         !checked_add(total, out->y, &total) ||
         !checked_mul(total, sizeof(double), &out->total_bytes)) {
@@ -131,10 +138,14 @@ carve(elpis_ecsg_executor *e, void *arena, const layout *l)
     p += l->w;
     e->txn_w = p;
     p += l->w;
+    e->grad = p;
+    p += l->w;
     e->z = p;
     p += l->z;
     e->error = p;
     p += l->error;
+    e->row = p;
+    p += l->row;
     e->x = p;
     p += l->x;
     e->y = p;
@@ -176,79 +187,212 @@ leave(elpis_ecsg_executor *e)
     atomic_flag_clear_explicit(&e->busy, memory_order_release);
 }
 
-static double
-phi(double z)
-{
-    const double z2 = z * z;
-    return 0.5 * z + 0.5 * z2 + 0.5 * z2 * z;
-}
+/*
+ * The two hot kernels are compiled for AVX2 and for the baseline ISA and
+ * chosen once at load time (GNU ifunc). Both builds perform exactly the same
+ * IEEE-754 operations on every element: vectorization runs independent
+ * elements side by side and never reassociates (-ffp-contract=off, no
+ * fast-math), so results do not depend on the selected clone. ThreadSanitizer
+ * builds use the baseline only: its runtime is not yet initialized when the
+ * loader runs ifunc resolvers.
+ */
+#if defined(__SANITIZE_THREAD__)
+#define ELPIS_ECSG_NO_CLONES 1
+#elif defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+#define ELPIS_ECSG_NO_CLONES 1
+#endif
+#endif
+#if defined(__x86_64__) && defined(__has_attribute) && !defined(ELPIS_ECSG_NO_CLONES)
+#if __has_attribute(target_clones)
+#define ECSG_HOT __attribute__((target_clones("avx2", "default")))
+#endif
+#endif
+#ifndef ECSG_HOT
+#define ECSG_HOT
+#endif
 
-static double
-phip(double z)
+/*
+ * sums[k] = v[k*width + 0] + v[k*width + 1] + ... (i ascending, from 0.0) for
+ * each of `block` rows: every row keeps the reference's sequential order; a
+ * full block runs its ROW_BLOCK sums as independent chains to hide latency.
+ */
+static ECSG_HOT void
+row_sums(size_t width, size_t block, const double *restrict v, double *restrict sums)
 {
-    return 0.5 + z + 1.5 * z * z;
+    size_t i;
+    size_t k;
+
+    if (block == ROW_BLOCK) {
+        double s[ROW_BLOCK];
+        for (k = 0u; k < ROW_BLOCK; ++k) {
+            s[k] = 0.0;
+        }
+        for (i = 0u; i < width; ++i) {
+            for (k = 0u; k < ROW_BLOCK; ++k) {
+                s[k] += v[k * width + i];
+            }
+        }
+        for (k = 0u; k < ROW_BLOCK; ++k) {
+            sums[k] = s[k];
+        }
+        return;
+    }
+    for (k = 0u; k < block; ++k) {
+        double s = 0.0;
+        for (i = 0u; i < width; ++i) {
+            s += v[k * width + i];
+        }
+        sums[k] = s;
+    }
 }
 
 /*
- * One G1 step, dst = src - lr * (2/rows) X^T [e * phi'(X src)], in exactly the
- * reference's order (ecsg_state.c elpis_ecsg_state_gd_step_f64) and with its
- * finiteness rule. src and dst may be the same buffer: z is complete before
- * any write, and each weight is read once, immediately before it is written.
- * X and y were validated at admission; W is finite by construction (initial
- * and restored W are validated, every written weight is checked). Returns 0
- * if a pre-activation, prediction, residual, gradient or weight is not finite.
+ * One G1 step, dst = src - lr * (2/rows) X^T [e * phi'(X src)], bitwise equal
+ * to the reference (ecsg_state.c elpis_ecsg_state_gd_step_f64). The loops are
+ * reordered so the inner loop runs over independent columns i, but every
+ * value is formed by the reference's operations in the reference's order:
+ *
+ *   z[r,i]   = 0.0 + x[r,0] w[0,i] + ... + x[r,dim-1] w[dim-1,i]  (a ascending)
+ *   pred[r]  = phi(z[r,0]) + ... + phi(z[r,width-1])               (i ascending, sequential;
+ *                                                                  ROW_BLOCK rows side by side)
+ *   e[r]     = pred[r] - y[r]
+ *   g[a,i]   = 0.0 + (x[0,a] e[0]) phi'(z[0,i]) + ...              (r ascending)
+ *   w'[a,i]  = w[a,i] - lr ((2/rows) g[a,i])
+ *
+ * phi'(z) is computed once per (r,i) instead of once per (a,r,i): the same
+ * value. Finiteness: a non-finite pre-activation makes phi(z), hence the
+ * row's prediction, non-finite (IEEE sums never return to finite), and a
+ * non-finite gradient makes the weight non-finite, so checking predictions,
+ * residuals and weights refuses exactly the steps the reference refuses.
+ * X and y were validated at admission; W is finite by construction.
+ *
+ * src and dst may be the same buffer: src is only read until every phi'(z)
+ * and gradient is formed, then each weight is read once immediately before
+ * it is written. Returns 0 on refusal (dst is then unspecified).
  */
-static int
+static ECSG_HOT int
 g1_step(size_t dim, size_t width, size_t rows,
-        const double *x, const double *y,
+        const double *restrict x, const double *restrict y,
         const double *src, double *dst,
-        double *z, double *error, double learning_rate)
+        double *restrict pz, double *restrict error, double *restrict row, double *restrict grad,
+        double learning_rate)
 {
     const double scale = 2.0 / (double)rows;
+    const size_t count = dim * width;
+    double check = 0.0;
     size_t r;
-    size_t i;
     size_t a;
+    size_t i;
 
-    for (r = 0u; r < rows; ++r) {
-        double prediction = 0.0;
+    for (r = 0u; r < rows; r += ROW_BLOCK) {
+        const size_t block = rows - r < ROW_BLOCK ? rows - r : ROW_BLOCK;
+        double prediction[ROW_BLOCK];
+        size_t k;
 
-        for (i = 0u; i < width; ++i) {
-            double value = 0.0;
+        for (k = 0u; k < block; ++k) {
+            const double *xr = x + (r + k) * dim;
+            double *restrict zk = row + k * width;
+            double *restrict pr = pz + (r + k) * width;
 
-            for (a = 0u; a < dim; ++a) {
-                value += x[r * dim + a] * src[a * width + i];
+            for (i = 0u; i < width; ++i) {
+                zk[i] = 0.0;
             }
-            if (!isfinite(value)) {
+            for (a = 0u; a < dim; ++a) {
+                const double xa = xr[a];
+                const double *wa = src + a * width;
+                for (i = 0u; i < width; ++i) {
+                    zk[i] += xa * wa[i];
+                }
+            }
+            for (i = 0u; i < width; ++i) {
+                const double z = zk[i];
+                const double z2 = z * z;
+                pr[i] = 0.5 + z + 1.5 * z * z;
+                zk[i] = 0.5 * z + 0.5 * z2 + 0.5 * z2 * z;
+            }
+        }
+        row_sums(width, block, row, prediction);
+        for (k = 0u; k < block; ++k) {
+            if (!isfinite(prediction[k])) {
                 return 0;
             }
-            z[r * width + i] = value;
-            prediction += phi(value);
-        }
-        if (!isfinite(prediction)) {
-            return 0;
-        }
-        error[r] = prediction - y[r];
-        if (!isfinite(error[r])) {
-            return 0;
+            error[r + k] = prediction[k] - y[r + k];
+            if (!isfinite(error[r + k])) {
+                return 0;
+            }
         }
     }
 
-    for (a = 0u; a < dim; ++a) {
-        for (i = 0u; i < width; ++i) {
-            const size_t wi = a * width + i;
-            double sum = 0.0;
-            double gradient;
-            double next;
-
-            for (r = 0u; r < rows; ++r) {
-                sum += x[r * dim + a] * error[r] * phip(z[r * width + i]);
+    for (i = 0u; i < count; ++i) {
+        grad[i] = 0.0;
+    }
+    for (r = 0u; r < rows; ++r) {
+        const double *restrict pr = pz + r * width;
+        const double er = error[r];
+        for (a = 0u; a < dim; ++a) {
+            const double c = x[r * dim + a] * er;
+            double *restrict ga = grad + a * width;
+            for (i = 0u; i < width; ++i) {
+                ga[i] += c * pr[i];
             }
-            gradient = scale * sum;
-            next = src[wi] - learning_rate * gradient;
-            if (!isfinite(gradient) || !isfinite(next)) {
+        }
+    }
+
+    for (i = 0u; i < count; ++i) {
+        const double next = src[i] - learning_rate * (scale * grad[i]);
+        check += next - next;  /* 0 for finite weights, NaN once any is not */
+        dst[i] = next;
+    }
+    return check == 0.0;
+}
+
+/*
+ * f_W(x) for each row, bitwise equal to the reference forward
+ * (ecsg_math.c elpis_ecsg_forward_f64): z[r,i] accumulates over a ascending
+ * from 0.0, the row total sums phi(z[r,i]) over i ascending. A non-finite x
+ * or z makes the row total non-finite, so checking totals refuses exactly
+ * what the reference refuses. Returns 0 on refusal (out is then unspecified).
+ */
+static ECSG_HOT int
+forward_rows(size_t dim, size_t width, size_t rows,
+             const double *restrict x, const double *w, double *restrict out, double *restrict row)
+{
+    size_t r;
+    size_t a;
+    size_t i;
+
+    for (r = 0u; r < rows; r += ROW_BLOCK) {
+        const size_t block = rows - r < ROW_BLOCK ? rows - r : ROW_BLOCK;
+        double total[ROW_BLOCK];
+        size_t k;
+
+        for (k = 0u; k < block; ++k) {
+            const double *xr = x + (r + k) * dim;
+            double *restrict zk = row + k * width;
+
+            for (i = 0u; i < width; ++i) {
+                zk[i] = 0.0;
+            }
+            for (a = 0u; a < dim; ++a) {
+                const double xa = xr[a];
+                const double *wa = w + a * width;
+                for (i = 0u; i < width; ++i) {
+                    zk[i] += xa * wa[i];
+                }
+            }
+            for (i = 0u; i < width; ++i) {
+                const double z = zk[i];
+                const double z2 = z * z;
+                zk[i] = 0.5 * z + 0.5 * z2 + 0.5 * z2 * z;
+            }
+        }
+        row_sums(width, block, row, total);
+        for (k = 0u; k < block; ++k) {
+            if (!isfinite(total[k])) {
                 return 0;
             }
-            dst[wi] = next;
+            out[r + k] = total[k];
         }
     }
     return 1;
@@ -471,21 +615,21 @@ elpis_ecsg_executor_forward(elpis_ecsg_executor *e,
                             size_t rows,
                             double *out)
 {
-    elpis_ecsg_math_status math;
+    elpis_ecsg_exec_status status = ELPIS_ECSG_EXEC_OK;
 
-    if (e == NULL || x == NULL || out == NULL || rows == 0u) {
+    if (e == NULL || x == NULL || out == NULL || rows == 0u || rows > SIZE_MAX / e->dim) {
         return ELPIS_ECSG_EXEC_INVALID;
     }
     if (!enter(e)) {
         return ELPIS_ECSG_EXEC_BUSY;
     }
     e->stats.forward_calls += 1u;
-    math = elpis_ecsg_forward_f64(e->w, e->dim, e->width, x, rows, out);
-    if (math == ELPIS_ECSG_MATH_NONFINITE) {
+    if (!forward_rows(e->dim, e->width, rows, x, e->w, out, e->row)) {
         e->stats.refusals += 1u;
+        status = ELPIS_ECSG_EXEC_NONFINITE;
     }
     leave(e);
-    return math_status(math);
+    return status;
 }
 
 /*
@@ -572,7 +716,7 @@ run_schedule(elpis_ecsg_executor *e,
         }
         for (k = 0u; k < steps; ++k) {
             const int ok = g1_step(e->dim, e->width, rows, e->x + offset * e->dim, e->y + offset,
-                                   src, dst, e->z, e->error, learning_rate);
+                                   src, dst, e->z, e->error, e->row, e->grad, learning_rate);
             done += 1u;
             e->stats.steps_executed += 1u;
             if (!ok) {
@@ -923,7 +1067,7 @@ elpis_ecsg_executor_txn_forward(elpis_ecsg_executor *e,
 {
     elpis_ecsg_exec_status status;
 
-    if (e == NULL || x == NULL || out == NULL || rows == 0u) {
+    if (e == NULL || x == NULL || out == NULL || rows == 0u || rows > SIZE_MAX / e->dim) {
         return ELPIS_ECSG_EXEC_INVALID;
     }
     if (!enter(e)) {
@@ -932,9 +1076,9 @@ elpis_ecsg_executor_txn_forward(elpis_ecsg_executor *e,
     status = txn_check(e, token);
     if (status == ELPIS_ECSG_EXEC_OK) {
         e->stats.forward_calls += 1u;
-        status = math_status(elpis_ecsg_forward_f64(txn_candidate(e), e->dim, e->width, x, rows, out));
-        if (status == ELPIS_ECSG_EXEC_NONFINITE) {
+        if (!forward_rows(e->dim, e->width, rows, x, txn_candidate(e), out, e->row)) {
             e->stats.refusals += 1u;
+            status = ELPIS_ECSG_EXEC_NONFINITE;
         }
     }
     leave(e);
