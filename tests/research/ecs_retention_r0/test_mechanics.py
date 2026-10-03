@@ -202,3 +202,29 @@ def test_implementation_binding_names_every_required_field():
     assert impl["library"]["sha256"] and impl["build"]["compiler"] and impl["build"]["cmake"]["CMAKE_BUILD_TYPE"]
     assert impl["numerical_profile"]["numpy"] and impl["lab_source_digest"] == P.source_digest()
     assert P.binding_mismatch(impl, impl) == []
+
+
+def test_the_freeze_record_keeps_every_digest_and_the_dev_rerun_must_reproduce(tmp_path, monkeypatch):
+    from research.ecs_retention_r0 import run as R
+    impl = P.implementation(_library_path())
+    body = {"experiment": R.NAME, "split": "DEV", "worlds": ["dev-0000"], **P.spec_digests(SPEC),
+            "implementation": impl, "choices": {"offset": 1.0, "selected": {"family": "C1", "lambda": 4.0},
+                                                "secondary": {"family": "C2", "lambda": 16.0}},
+            "candidate_table": {"C1:4.0": {"dev-0000": {"learn_seconds": 1.0, "nmse_A_after_B": 0.1}}}}
+    monkeypatch.setattr(R, "DEV_PATH", tmp_path / "dev.json")
+    monkeypatch.setattr(R, "DEV_RERUN_PATH", tmp_path / "dev.r2.json")
+    monkeypatch.setattr(R, "FROZEN_PATH", tmp_path / "frozen.json")
+    monkeypatch.setattr(R, "source_digest_at", lambda commit: impl["lab_source_digest"])
+    P.write(R.DEV_PATH, "dev", body)
+    R.freeze("0" * 40, _library_path())
+    frozen = P.load(R.FROZEN_PATH, "frozen")["body"]
+    digests = P.spec_digests(SPEC)
+    assert all(frozen[k] == digests[k] for k in ("spec", "pass_rule", "candidates_sha256"))
+    assert frozen["pass_rule_text"] == SPEC["pass_rule"] and frozen["dev_records"]
+    # Re-execution comparison ignores only the implementation binding and wall-clock timings.
+    other = json.loads(json.dumps(body))
+    other["candidate_table"]["C1:4.0"]["dev-0000"]["learn_seconds"] = 9.0
+    other["implementation"] = {"anything": 1}
+    assert R._results(other) == R._results(body)
+    other["candidate_table"]["C1:4.0"]["dev-0000"]["nmse_A_after_B"] = 0.2
+    assert R._results(other) != R._results(body)
