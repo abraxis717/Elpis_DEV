@@ -23,10 +23,10 @@ unavailable. There is no fallback. A supplied map must declare its
 classification, and every result carries it, so a fixture map
 (``TRAINING=NONE SEMANTICS=NONE``) is never mistaken for cognition.
 
-A turn is atomic: it runs on an independent fork of the ECS_G state and
-installs the identical transition on the caller's state only after the
-stimulus, the readout and the decode all succeeded. A refused turn leaves
-the state and epoch unchanged.
+A turn is atomic: it runs on an independent fork of the ECS_G state, and
+only after the stimulus, the readout and the decode all succeeded is the fork
+adopted as the caller's state in one commit (``WorldState.adopt``). A refused
+turn leaves the state and epoch unchanged.
 """
 from __future__ import annotations
 
@@ -140,12 +140,10 @@ def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
             raise CompositionError("DECODE", "decode must return in-vocabulary token IDs within the limit")
         decoder = tokenizer.decoder()
         rendered = "".join(decoder.push(t) for t in output) + decoder.finish()
-        expected = trial.snapshot()
+        try:
+            substrate.adopt(trial)  # one commit; refused if the state moved since the fork
+        except ECSGError as exc:
+            raise CompositionError("ECS_STALE", str(exc)) from exc
     finally:
-        trial.close()
-    # Install the identical, deterministic transition on the caller's state.
-    for x, y in stimulus.drives:
-        substrate.step(x, y, learning_rate)
-    if substrate.snapshot() != expected:
-        raise CompositionError("ECS_DIVERGED", "installed transition differs from the trial")
+        trial.close()  # no-op once adopted
     return TurnResult(tokens, output, rendered, readout, epoch_before, substrate.epoch, classification)

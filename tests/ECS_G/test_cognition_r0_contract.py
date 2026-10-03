@@ -24,7 +24,6 @@ from .test_math_r0 import REPO, _library_path
 DIM, WIDTH, LR = 6, 36, 0.002
 
 PENDING = {
-    "forward": "native state forward not exposed by the binding yet (K1)",
     "core": "Cognitive R0 core not implemented yet (K2)",
 }
 
