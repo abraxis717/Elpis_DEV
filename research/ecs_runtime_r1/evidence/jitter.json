@@ -1,0 +1,386 @@
+{
+ "binding": {
+  "bench_driver": {
+   "sha256": "693205236966a6dd809ab81400e0ed93f094ec7642d71f769ae49744ce2b8612"
+  },
+  "cmake": {
+   "CMAKE_BUILD_TYPE": "Release",
+   "CMAKE_C_COMPILER": "/usr/bin/gcc",
+   "CMAKE_C_FLAGS": "",
+   "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
+   "ELPIS_ENABLE_ASAN": "OFF",
+   "ELPIS_ENABLE_UBSAN": "OFF"
+  },
+  "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "dirty": false,
+  "head": "3afdae3458c271e7c7bdebc66c9e077bd1be24f9",
+  "library": {
+   "path": "native/ECS_G/libelpis_ecsg_math.so",
+   "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09"
+  },
+  "sources": {
+   "CMakeLists.txt": "870755ac89dd0adf8bf9993b1f682900037b6348d7a463eeb6d3501ea5528333",
+   "native/ECS_G/CMakeLists.txt": "efc53221770e9b9295ea1fe83919f504d799647af7d9e30bb7837911e14a1cfa",
+   "native/ECS_G/include/elpis/ecsg_executor.h": "67502a5e4cf3a14800760e661dac59dd17bbd736fcbb146e60faada0ee7ebde2",
+   "native/ECS_G/include/elpis/ecsg_math.h": "94f3c4e7a9bf26b08b267679c9b707e8376cc4e2867be760ac825760ce95f80e",
+   "native/ECS_G/include/elpis/ecsg_state.h": "34b173c4873fdac398876cf2eab426d88aca0884a3fa33640a570ae5c03a93c5",
+   "native/ECS_G/src/ecsg_executor.c": "1d94739c52543da2080ccac2aeb640ef84b650161fa740c01f706b3f73b0fa8f",
+   "native/ECS_G/src/ecsg_math.c": "fbfc48e5e36498df3dc8d33fa44620a61d697fa7bd00b8c7303929c4dc0cf235",
+   "native/ECS_G/src/ecsg_state.c": "c9887848fa0ddcfff71952a2010dd9968d980973cbe56cc0fa056c81f7b0b821",
+   "native/elpis.cmake": "6f2ff34f4438cb5762071f5495290287e79c3b885306a0d1388e4633cb7c8127",
+   "research/ecs_runtime_r1/bench.py": "12b8d4af50b78212f188d18df728f336537918949e5c15651d236c2d13d1f6bb",
+   "research/ecs_runtime_r1/native/ecsg_runtime_bench.c": "a86257f2e1523f94290484d6b61230f5dabd3e1997d063196ce064f1fd029573",
+   "research/ecs_runtime_r1/workloads.py": "0b6378d62720f4cbab576fb7e7b6ff3ada8ad25727864425cde02b60d1f917b6",
+   "src/elpis/ECS_G/cognition.py": "0cf4d058a5b4301f5cbea0dc0118a9444dbc28d5083a7f5a98f59249091ca99a",
+   "src/elpis/ECS_G/native.py": "236de9d77ac664903f9603d0b2317d123b63c2b87a62841a48f6220d00e5e99f",
+   "src/elpis/runtime/cognition.py": "9110776d1e03bff46b8ef2e1bfcb3121b5818366d1891a465d7cabc1288b19fd"
+  },
+  "tree": "192386b8a70f7b795a0092a15152a470db63fd82"
+ },
+ "environment": {
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+  "cpu_flags": [
+   "avx",
+   "avx2",
+   "avx512f",
+   "fma",
+   "sse2",
+   "sse4_2"
+  ],
+  "cpus": 4,
+  "implementation": "CPython",
+  "machine": "x86_64",
+  "platform": "Linux-6.18.44-fc-v64-x86_64-with-glibc2.39",
+  "python": "3.11.15"
+ },
+ "label": "PERFORMANCE_ONLY NO_SCIENTIFIC_CLAIM",
+ "native": [
+  {
+   "dim": 6,
+   "mode": "exec_forward",
+   "pinned": {
+    "calibration": {
+     "first_call_ns": 3226,
+     "max_ns": 31974,
+     "min_ns": 2384,
+     "p50_ns": 2387,
+     "p95_ns": 2388,
+     "p99_ns": 2460,
+     "p99_over_p50": 1.031,
+     "samples": 2000,
+     "thousand_iterations": 1
+    },
+    "operation": {
+     "first_call_ns": 11518,
+     "max_ns": 233795,
+     "min_ns": 3110,
+     "p50_ns": 3193,
+     "p95_ns": 3319,
+     "p99_ns": 6847,
+     "p99_over_p50": 2.144,
+     "samples": 2000
+    }
+   },
+   "rows": 64,
+   "steps": 1,
+   "unpinned": {
+    "calibration": {
+     "first_call_ns": 3190,
+     "max_ns": 76347,
+     "min_ns": 2384,
+     "p50_ns": 2387,
+     "p95_ns": 2415,
+     "p99_ns": 2701,
+     "p99_over_p50": 1.132,
+     "samples": 2000,
+     "thousand_iterations": 1
+    },
+    "operation": {
+     "first_call_ns": 10900,
+     "max_ns": 158976,
+     "min_ns": 3106,
+     "p50_ns": 3180,
+     "p95_ns": 3294,
+     "p99_ns": 7372,
+     "p99_over_p50": 2.318,
+     "samples": 2000
+    }
+   },
+   "width": 36
+  },
+  {
+   "dim": 6,
+   "mode": "exec_learn",
+   "pinned": {
+    "calibration": {
+     "first_call_ns": 7607,
+     "max_ns": 77436,
+     "min_ns": 7089,
+     "p50_ns": 7093,
+     "p95_ns": 7191,
+     "p99_ns": 11078,
+     "p99_over_p50": 1.562,
+     "samples": 2000,
+     "thousand_iterations": 3
+    },
+    "operation": {
+     "first_call_ns": 21098,
+     "max_ns": 57293,
+     "min_ns": 6606,
+     "p50_ns": 6754,
+     "p95_ns": 7008,
+     "p99_ns": 12645,
+     "p99_over_p50": 1.872,
+     "samples": 2000
+    }
+   },
+   "rows": 64,
+   "steps": 1,
+   "unpinned": {
+    "calibration": {
+     "first_call_ns": 7633,
+     "max_ns": 50650,
+     "min_ns": 7090,
+     "p50_ns": 7094,
+     "p95_ns": 7208,
+     "p99_ns": 11472,
+     "p99_over_p50": 1.617,
+     "samples": 2000,
+     "thousand_iterations": 3
+    },
+    "operation": {
+     "first_call_ns": 21259,
+     "max_ns": 61476,
+     "min_ns": 6566,
+     "p50_ns": 6711,
+     "p95_ns": 7048,
+     "p99_ns": 24517,
+     "p99_over_p50": 3.653,
+     "samples": 2000
+    }
+   },
+   "width": 36
+  },
+  {
+   "dim": 6,
+   "mode": "exec_learn",
+   "pinned": {
+    "calibration": {
+     "first_call_ns": 683893,
+     "max_ns": 1657514,
+     "min_ns": 658952,
+     "p50_ns": 682375,
+     "p95_ns": 725176,
+     "p99_ns": 751078,
+     "p99_over_p50": 1.101,
+     "samples": 2000,
+     "thousand_iterations": 280
+    },
+    "operation": {
+     "first_call_ns": 1333904,
+     "max_ns": 1961705,
+     "min_ns": 634165,
+     "p50_ns": 669738,
+     "p95_ns": 1283720,
+     "p99_ns": 1494453,
+     "p99_over_p50": 2.231,
+     "samples": 1136
+    }
+   },
+   "rows": 64,
+   "steps": 100,
+   "unpinned": {
+    "calibration": {
+     "first_call_ns": 696893,
+     "max_ns": 1209590,
+     "min_ns": 666856,
+     "p50_ns": 689627,
+     "p95_ns": 737906,
+     "p99_ns": 769512,
+     "p99_over_p50": 1.116,
+     "samples": 2000,
+     "thousand_iterations": 282
+    },
+    "operation": {
+     "first_call_ns": 1005081,
+     "max_ns": 2183122,
+     "min_ns": 636512,
+     "p50_ns": 674319,
+     "p95_ns": 943696,
+     "p99_ns": 1349937,
+     "p99_over_p50": 2.002,
+     "samples": 2000
+    }
+   },
+   "width": 36
+  },
+  {
+   "dim": 6,
+   "mode": "exec_learn",
+   "pinned": {
+    "calibration": {
+     "first_call_ns": 27603554,
+     "max_ns": 36143471,
+     "min_ns": 27452046,
+     "p50_ns": 27688674,
+     "p95_ns": 32237373,
+     "p99_ns": 36143471,
+     "p99_over_p50": 1.305,
+     "samples": 52,
+     "thousand_iterations": 11336
+    },
+    "operation": {
+     "first_call_ns": 28315093,
+     "max_ns": 50239466,
+     "min_ns": 26111035,
+     "p50_ns": 27069414,
+     "p95_ns": 36392977,
+     "p99_ns": 50239466,
+     "p99_over_p50": 1.856,
+     "samples": 55
+    }
+   },
+   "rows": 64,
+   "steps": 4000,
+   "unpinned": {
+    "calibration": {
+     "first_call_ns": 26980198,
+     "max_ns": 29878111,
+     "min_ns": 26763992,
+     "p50_ns": 26890196,
+     "p95_ns": 27870311,
+     "p99_ns": 29878111,
+     "p99_over_p50": 1.111,
+     "samples": 54,
+     "thousand_iterations": 11047
+    },
+    "operation": {
+     "first_call_ns": 26388919,
+     "max_ns": 28970153,
+     "min_ns": 26064050,
+     "p50_ns": 26379130,
+     "p95_ns": 27827160,
+     "p99_ns": 28970153,
+     "p99_over_p50": 1.098,
+     "samples": 57
+    }
+   },
+   "width": 36
+  },
+  {
+   "dim": 6,
+   "mode": "exec_learn",
+   "pinned": {
+    "calibration": {
+     "first_call_ns": 8429340,
+     "max_ns": 10197804,
+     "min_ns": 8338362,
+     "p50_ns": 8387903,
+     "p95_ns": 8751239,
+     "p99_ns": 9223128,
+     "p99_over_p50": 1.1,
+     "samples": 178,
+     "thousand_iterations": 3445
+    },
+    "operation": {
+     "first_call_ns": 8561209,
+     "max_ns": 10706937,
+     "min_ns": 8069464,
+     "p50_ns": 8227271,
+     "p95_ns": 8597897,
+     "p99_ns": 9428284,
+     "p99_over_p50": 1.146,
+     "samples": 177
+    }
+   },
+   "rows": 256,
+   "steps": 10,
+   "unpinned": {
+    "calibration": {
+     "first_call_ns": 8758418,
+     "max_ns": 9604397,
+     "min_ns": 8611393,
+     "p50_ns": 8691906,
+     "p95_ns": 8980519,
+     "p99_ns": 9350657,
+     "p99_over_p50": 1.076,
+     "samples": 172,
+     "thousand_iterations": 3564
+    },
+    "operation": {
+     "first_call_ns": 8814056,
+     "max_ns": 17099678,
+     "min_ns": 8114272,
+     "p50_ns": 8511954,
+     "p95_ns": 13363027,
+     "p99_ns": 15967753,
+     "p99_over_p50": 1.876,
+     "samples": 179
+    }
+   },
+   "width": 1152
+  }
+ ],
+ "python": [
+  {
+   "gc_disabled": {
+    "first_call_ns": 22651,
+    "max_ns": 268856,
+    "mean_ns": 8186.503,
+    "min_ns": 6112,
+    "p50_ns": 6596,
+    "p95_ns": 12572,
+    "p99_ns": 44832,
+    "p99_over_p50": 6.797,
+    "samples": 2000,
+    "throughput_per_s": 151607.0345664039,
+    "warmup": 200
+   },
+   "gc_enabled": {
+    "first_call_ns": 24155,
+    "max_ns": 76011,
+    "mean_ns": 7236.5195,
+    "min_ns": 6407,
+    "p50_ns": 6629,
+    "p95_ns": 10603,
+    "p99_ns": 22369,
+    "p99_over_p50": 3.374,
+    "samples": 2000,
+    "throughput_per_s": 150852.3155830442,
+    "warmup": 200
+   },
+   "operation": "Executor.forward_into",
+   "steps": 0
+  },
+  {
+   "gc_disabled": {
+    "first_call_ns": 121762,
+    "max_ns": 1547114,
+    "mean_ns": 79769.6065,
+    "min_ns": 68457,
+    "p50_ns": 69196,
+    "p95_ns": 113062,
+    "p99_ns": 200080,
+    "p99_over_p50": 2.891,
+    "samples": 2000,
+    "throughput_per_s": 14451.702410543961,
+    "warmup": 200
+   },
+   "gc_enabled": {
+    "first_call_ns": 245170,
+    "max_ns": 1468770,
+    "mean_ns": 77661.2115,
+    "min_ns": 68443,
+    "p50_ns": 69635,
+    "p95_ns": 104635,
+    "p99_ns": 148939,
+    "p99_over_p50": 2.139,
+    "samples": 2000,
+    "throughput_per_s": 14360.594528613485,
+    "warmup": 200
+   },
+   "operation": "Executor.learn",
+   "steps": 10
+  }
+ ]
+}
