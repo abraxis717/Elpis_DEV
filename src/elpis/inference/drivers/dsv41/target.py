@@ -22,7 +22,7 @@ from .layer import Layer
 from .native_backend import DSV41NativeBackend, NativeAttentionState
 from .provider_stream import DSV41StreamProvider, ProviderAttention
 from .numerics import F32, hc_pre, linear, rms, rope_frequencies
-from .parameters import ParameterManifest, TensorStore, TowerAdmission
+from .parameters import ConditioningProjection, ParameterManifest, TensorStore, TowerAdmission
 
 
 @dataclass
@@ -37,6 +37,7 @@ class TowerState:
     selected: tuple = ()
     closed: bool = False
     provider: object = None  # YTS-R0 provider stream (provider-owned recurrent state)
+    conditioning: object = None  # frozen projected turn conditioning [dimension], or None
 
     @property
     def nbytes(self):
@@ -45,7 +46,8 @@ class TowerState:
 
 class DSV41Target:
     def __init__(self, config, manifest, tokenizer, parameters, rows, provider, *, expected_manifest,
-                 resident_budget, staging_budget, state_budget, native_backend=None, provider_stream=None):
+                 resident_budget, staging_budget, state_budget, native_backend=None, provider_stream=None,
+                 conditioning_projection=None):
         require(type(config) is TowerConfig and type(manifest) is ParameterManifest, detail="tower config/manifest")
         require(native_backend is None or type(native_backend) is DSV41NativeBackend,
                 Code.IDENTITY, "DSV4.1 native backend")
@@ -53,6 +55,11 @@ class DSV41Target:
                 Code.IDENTITY, "DSV4.1 YTS-R0 provider")
         require(native_backend is None or provider_stream is None, Code.UNSUPPORTED,
                 "one DSV4.1 execution backend per target")
+        require(conditioning_projection is None or (
+                    type(conditioning_projection) is ConditioningProjection and
+                    conditioning_projection.model == config.model and
+                    conditioning_projection.tensor.shape[0] == config.dimension),
+                Code.IDENTITY, "DSV4.1 turn-conditioning projection")
         require(type(tokenizer) is V41Tokenizer and (tokenizer.identity, tokenizer.vocab_size) ==
                 (config.tokenizer, config.vocab), Code.IDENTITY, "tower tokenizer/vocabulary")
         require(type(parameters) is DSV41Parameters, Code.UNSUPPORTED, "DSV41 backbone address scheme")
@@ -92,8 +99,13 @@ class DSV41Target:
         self.rows = MappingProxyType(dict(rows))
         self.numerical_profile = content_digest("elpis.inference.dsv41.numerical.v1", dict(
             profile=config.numerical_profile, execution=numerical_profile(), linear="einsum-optimize-false"))
-        self.model_identity = content_digest("elpis.inference.dsv41.target.v1", dict(
-            manifest=expected_manifest, architecture="elpis.inference.dsv41.tower-spec.v1"))
+        identity_fields = dict(manifest=expected_manifest, architecture="elpis.inference.dsv41.tower-spec.v1")
+        if conditioning_projection is not None:
+            # Only a conditioned target changes identity; unconditioned identities are unchanged.
+            identity_fields["conditioning"] = conditioning_projection.digest
+        self.model_identity = content_digest("elpis.inference.dsv41.target.v1", identity_fields)
+        self.conditioning_projection = conditioning_projection
+        self._conditioning_weights = None if conditioning_projection is None else conditioning_projection.tensor.array()
         frequencies = {compressed: rope_frequencies(config, compressed) for compressed in (False, True)}
         self.layers = tuple(Layer(config, i, store, rows.get(i), frequencies[bool(config.compress_ratios[i])],
                                   native_backend=native_backend)
@@ -119,19 +131,35 @@ class DSV41Target:
                 "tower expert residency is declared by tensor bindings, not legacy overrides")
         return TowerAdmission(self)
 
-    def window_initial(self):
+    @property
+    def accepts_conditioning(self):
+        return self.conditioning_projection is not None
+
+    def conditioning_vector(self, conditioning):
+        """Project admitted turn conditioning once, at a sequence boundary. Read-only F32 [dimension]."""
+        from ...conditioning import TurnConditioning
+        require(self.conditioning_projection is not None, Code.UNSUPPORTED, "target admits no turn conditioning")
+        require(type(conditioning) is TurnConditioning and len(conditioning.values) ==
+                self.conditioning_projection.width, Code.ENCODING, "turn conditioning width")
+        vector = linear(np.asarray(conditioning.values, dtype=F32), self._conditioning_weights)
+        require(bool(np.all(np.isfinite(vector))), Code.ENCODING, "projected turn conditioning")
+        vector.flags.writeable = False
+        return vector
+
+    def window_initial(self, conditioning=None):
         c = self.config
+        vector = None if conditioning is None else self.conditioning_vector(conditioning)
         if self.provider_stream is not None:
-            stream = self.provider_stream.open_stream()
+            stream = self.provider_stream.open_stream(conditioning=vector)
             return TowerState(self, 0, self.scheme.initial(), tuple(ProviderAttention() for _ in range(c.layers)),
                               np.full((c.layers, c.hc_mult, c.dimension), np.nan, dtype=F32),
-                              np.empty(c.vocab, dtype=F32), provider=stream)
+                              np.empty(c.vocab, dtype=F32), provider=stream, conditioning=vector)
         attention = (tuple(AttentionState.create(c, i) for i in range(c.layers))
                      if self.native_backend is None else
                      tuple(self.native_backend.create_attention_state(c, i) for i in range(c.layers)))
         return TowerState(self, 0, self.scheme.initial(), attention,
                           np.empty((c.layers, c.hc_mult, c.dimension), dtype=F32),
-                          np.empty(c.vocab, dtype=F32))
+                          np.empty(c.vocab, dtype=F32), conditioning=vector)
 
     def window_step(self, state, token, *, experts):
         require(type(state) is TowerState and state.owner is self and not state.closed, Code.STALE, "tower sequence")
@@ -146,7 +174,8 @@ class DSV41Target:
         self.store.last_materialize_ns = self.store.last_bytes = 0
         hashed = self.scheme.stream_hash(state.history, (token,))
         metrics["address_ns"] = perf_counter_ns() - start
-        stream = np.broadcast_to(w["embed"][token], (c.hc_mult, c.dimension)).copy()
+        embedded = w["embed"][token] if state.conditioning is None else w["embed"][token] + state.conditioning
+        stream = np.broadcast_to(embedded, (c.hc_mult, c.dimension)).copy()
         pre = self._initial_pre
         shared = SharedAttention()
         route, selections = [], []

@@ -297,6 +297,33 @@ class ExpertImage:
     representation: tuple   # (dtype, layout) per role
 
 
+@dataclass(frozen=True)
+class ConditioningProjection:
+    """Target-bound projection of admitted turn conditioning onto the model dimension.
+
+    ``tensor`` is F32 row-major ``[dimension, conditioning_width]`` (donor
+    ``[out, in]`` layout). It is an explicit, digest-bound parameter of one
+    target, admitted at construction; no learned production projection ships,
+    so qualification uses a deterministic fixture. The projected vector is
+    added to the token embedding of every position of a conditioned sequence.
+    """
+    model: str
+    tensor: Tensor
+
+    def __post_init__(self):
+        require(type(self.model) is str and bool(self.model), detail="conditioning projection model")
+        require(type(self.tensor) is Tensor and len(self.tensor.shape) == 2, detail="conditioning projection tensor")
+
+    @property
+    def width(self):
+        return self.tensor.shape[1]
+
+    @property
+    def digest(self):
+        return content_digest("elpis.inference.dsv41.conditioning-projection.v1", dict(
+            model=self.model, shape=self.tensor.shape, tensor=self.tensor.digest))
+
+
 class TowerAdmission:
     __slots__ = ("target",)
 

@@ -14,7 +14,7 @@ from elpis.substrate.file_assets import bounded_path, inspect_asset
 from elpis.substrate.digests import raw_digest
 from .config import TowerConfig, tensor_shapes
 from .engram import build_parameters
-from .parameters import FileTensor, TensorBinding, ParameterManifest
+from .parameters import ConditioningProjection, FileTensor, TensorBinding, ParameterManifest
 from .target import DSV41Target
 
 
@@ -30,8 +30,15 @@ def fixture_config(tokenizer, *, seed=1041, max_tokens=128):
         original_seq_len=32, rope_factor=4.0, swiglu_limit=10.0, route_scale=1.5)
 
 
+def fixture_conditioning_projection(config, width, *, seed=8300, scale=0.05):
+    """Deterministic synthetic [dimension, width] turn-conditioning projection (TRAINING=NONE)."""
+    rng = np.random.default_rng(seed)
+    data = rng.normal(0, scale, (config.dimension, width)).astype("<f4")
+    return ConditioningProjection(config.model, Tensor((config.dimension, width), data.tobytes()))
+
+
 def make_fixture(provider, directory, tokenizer, *, seed=1041, config=None, parameters=None, native_backend=None,
-                 provider_stream=None):
+                 provider_stream=None, conditioning_projection=None):
     """Create only fixture-owned raw files beneath the provider root."""
     directory = bounded_path(provider.root, directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -82,7 +89,8 @@ def make_fixture(provider, directory, tokenizer, *, seed=1041, config=None, para
                                  tuple((i, rows[i].table.bank.digest) for i in config.engram_layers), tuple(bindings))
     target = DSV41Target(config, manifest, tokenizer, parameters, rows, provider, expected_manifest=manifest.digest,
                          resident_budget=64 << 20, staging_budget=1 << 16, state_budget=16 << 20,
-                         native_backend=native_backend, provider_stream=provider_stream)
+                         native_backend=native_backend, provider_stream=provider_stream,
+                         conditioning_projection=conditioning_projection)
     metadata = dict(classification="PRODUCTION_SHAPED_FIXTURE", TRAINING="NONE", seed=seed,
                     model=target.model_identity, tokenizer=tokenizer.identity, config=config.digest,
                     manifest=manifest.digest, address=parameters.digest)

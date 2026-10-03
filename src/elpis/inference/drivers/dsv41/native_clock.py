@@ -43,7 +43,8 @@ class Config(C.Structure):
         ("token_map", U32P), ("multipliers", U64P), ("primes", U64P), ("offsets", U64P)] + [
         (n, U64) for n in ("image_bytes", "part_bytes", "memory_budget")] + [(n, U32) for n in (
             "max_input_bytes", "max_output_bytes", "materialization_timeout_ms", "exchange_timeout_ms")] + [
-        ("prefill", U32P), ("stop_tokens", U32P)] + [(n, U32) for n in ("prefill_count", "stop_count", "max_new_tokens")]
+        ("prefill", U32P), ("stop_tokens", U32P)] + [(n, U32) for n in ("prefill_count", "stop_count", "max_new_tokens")] + [
+        ("conditioning", C.POINTER(C.c_float)), ("conditioning_count", U32), ("reserved2", U32)]  # CONFIG_V2 tail
 
 
 class Metrics(C.Structure):
@@ -97,7 +98,7 @@ class NativeMaterializer:
 class NativeClock:
     """Explicit opt-in coarse recurrence beside the unchanged Python oracle."""
     def __init__(self, target, materializer, root, library, *, authority, library_id,
-                 prefill, max_new_tokens, stop_tokens=(), memory_budget=128 << 20):
+                 prefill, max_new_tokens, stop_tokens=(), memory_budget=128 << 20, conditioning=None):
         provider, c, p = target.provider_stream, target.config, target.scheme.parameters
         require(provider is not None and provider.state == "READY" and provider.stream is None and provider.target is target,
                 Code.STALE, "idle admitted YTS runtime")
@@ -126,7 +127,9 @@ class NativeClock:
             self._keep.append(a)
             return a
 
-        x = Config(abi_version=1, runtime=provider.runtime.handle, materializer=materializer._table)
+        # CONFIG_V1 unless frozen turn conditioning is carried (sent once at STREAM_OPEN).
+        x = Config(abi_version=1 if conditioning is None else 2, runtime=provider.runtime.handle,
+                   materializer=materializer._table)
         entries = ("buffer_alloc", "buffer_mutable_data", "buffer_data", "buffer_size", "buffer_release",
                    "submit", "take", "get_metrics", "shutdown")
         x.host = Host(1, 0, *(C.cast(getattr(provider.exec._lib, "elpis_exec_" + n), VP).value for n in entries))
@@ -152,6 +155,12 @@ class NativeClock:
         x.exchange_timeout_ms = 60000
         x.prefill, x.stop_tokens = array(U32, prefill), array(U32, stop_tokens)
         x.prefill_count, x.stop_count, x.max_new_tokens = len(prefill), len(stop_tokens), max_new_tokens
+        if conditioning is not None:
+            require(provider.features & P.FEATURE_CONDITIONING and len(conditioning) == c.dimension,
+                    Code.UNSUPPORTED, "native clock conditioning")
+            x.conditioning = array(C.c_float, [float(v) for v in conditioning])
+            x.conditioning_count = c.dimension
+        self.conditioning = conditioning
         self._config, self._handle, self.closed = x, U64(), False
         _check(self._lib.elpis_dsv41_clock_create(C.byref(x), C.byref(self._handle)))
         provider._stream_ids = x.stream_id
@@ -221,17 +230,22 @@ class NativeClock:
         self.close()
 
 
-def run_principal(engine, state, request, admission, *, expected_state, clock_factory, stop_after=None):
+def run_principal(engine, state, request, admission, *, expected_state, clock_factory, stop_after=None,
+                  conditioning=None):
     """Coarse opt-in using the existing Principal finalizer (no provider commits).
 
     clock_factory(prefill, max_new_tokens, stop_tokens) is called ONLY during cold
     setup. It returns a NativeClock with native services. A materialization yield
     is returned to this control loop (R1: native staging pressure or a quiesce interrupt).
+    With admitted turn ``conditioning`` the target preprojects it once and the
+    factory receives ``conditioning=<model-dimension vector>`` (sent once at
+    STREAM_OPEN); without it the factory call is exactly the unconditioned one.
     """
     from ...admission import ContextAdmission
+    from ...conditioning import TurnConditioning
     from ...principal import PrincipalSequence, PrincipalState, PrincipalRequest
     from ...target import WindowStep
-    sequence = PrincipalSequence(engine, state, request, admission)
+    sequence = PrincipalSequence(engine, state, request, admission, conditioning)
     target, c = engine.target, engine.target.config
     try:
         require(type(state) is PrincipalState and type(request) is PrincipalRequest and
@@ -247,11 +261,19 @@ def run_principal(engine, state, request, admission, *, expected_state, clock_fa
         require(len(prefill) + request.max_new_tokens <= c.max_tokens, Code.LIMIT, "sequence token budget")
         require(stop_after is None or (type(stop_after) is int and 0 <= stop_after <= request.max_new_tokens),
                 detail="principal yield boundary")
-        with clock_factory(prefill, request.max_new_tokens, request.stop_tokens) as clock:
+        require(conditioning is None or (type(conditioning) is TurnConditioning and target.accepts_conditioning),
+                Code.UNSUPPORTED, "native principal turn conditioning")
+        vector = None if conditioning is None else target.conditioning_vector(conditioning)
+        factory_args = (prefill, request.max_new_tokens, request.stop_tokens)
+        with (clock_factory(*factory_args) if vector is None else
+              clock_factory(*factory_args, conditioning=vector)) as clock:
             require(type(clock) is NativeClock and clock.target is target and
                     tuple(clock._config.prefill[i] for i in range(clock._config.prefill_count)) == prefill and
                     tuple(clock._config.stop_tokens[i] for i in range(clock._config.stop_count)) == request.stop_tokens and
-                    clock._config.max_new_tokens == request.max_new_tokens,
+                    clock._config.max_new_tokens == request.max_new_tokens and
+                    clock._config.conditioning_count == (0 if vector is None else c.dimension) and
+                    (vector is None or tuple(clock._config.conditioning[i] for i in range(c.dimension)) ==
+                     tuple(float(v) for v in vector)),
                     Code.IDENTITY, "native principal clock binding")
             position = 0
             while True:
@@ -274,6 +296,7 @@ def run_principal(engine, state, request, admission, *, expected_state, clock_fa
             for e in (*selected, c.expert_count))) for t in traces]
         sequence._outputs = [t["token"] for t in traces[len(prefill):]]
         sequence._prefill = len(prefill)
+        sequence._final_logits = traces[-1]["complete"].logits
         sequence._done, sequence._stop_reason = True, "YIELD" if m["outcome"] == "STOPPED" else m["outcome"]
     except ContractError as exc:
         sequence._fail(exc)

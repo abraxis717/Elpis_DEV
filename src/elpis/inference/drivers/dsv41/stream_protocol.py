@@ -37,6 +37,7 @@ KIND_NAMES = {MODEL_ADMIT_BEGIN: "MODEL_ADMIT_BEGIN", MODEL_ADMIT_TENSOR: "MODEL
 
 FEATURE_CACHE = 1 << 0
 FEATURE_OBSERVE_LAYER_STREAMS = 1 << 1
+FEATURE_CONDITIONING = 1 << 2
 REPR_F32_LE_ROW_MAJOR_OUT_IN = 1
 LAYER_KV_OWNER, LAYER_INDEX_SOURCE, LAYER_ENGRAM = 1, 2, 4
 ADMIT_BEGIN_FIXED_BYTES = 27 * 4 + 4 + 5 * 4 + 2 * 4 + 2 * 8 + 32
@@ -174,8 +175,14 @@ def encode_admit_end(count):
     return struct.pack("<II", count, 0)
 
 
-def encode_stream_open(max_tokens, flags):
-    return struct.pack("<II", max_tokens, flags)
+def encode_stream_open(max_tokens, flags, conditioning=None):
+    """STREAM_OPEN body. With FEATURE_CONDITIONING, the frozen per-sequence F32 vector follows."""
+    require(bool(flags & FEATURE_CONDITIONING) == (conditioning is not None), detail="stream conditioning flag")
+    body = struct.pack("<II", max_tokens, flags)
+    if conditioning is not None:
+        vector = np.ascontiguousarray(conditioning, dtype="<f4").reshape(-1)
+        body += struct.pack("<II", vector.size, 0) + vector.tobytes()
+    return body
 
 
 def encode_token_begin(token, segments):

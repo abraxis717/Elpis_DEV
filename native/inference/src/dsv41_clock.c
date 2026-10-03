@@ -2,6 +2,7 @@
 #include "elpis/dsv41_clock.h"
 #include <math.h>
 #include <pthread.h>
+#include <stddef.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +18,7 @@ typedef struct {
     atomic_int cancelled;
     elpis_dsv41_clock_config_v1 c;
     elpis_dsv41_clock_metrics_v1 m;
+    float *conditioning; /* owned copy of c.conditioning, or NULL */
     uint8_t *request, *completes, *needed;
     uint64_t *rows, *times;
     uint32_t *tokens, *selected;
@@ -414,7 +416,7 @@ static void run(clock_state *s, uint32_t budget) {
 
 static void free_clock(clock_state *s) {
     free(s->request); free(s->completes); free(s->needed); free(s->selected);
-    free(s->rows); free(s->times); free(s->tokens); free(s);
+    free(s->rows); free(s->times); free(s->tokens); free(s->conditioning); free(s);
 }
 static int add_storage(uint64_t *n, uint64_t count, uint64_t unit) {
     if (count > MEMORY_LIMIT / unit || *n > MEMORY_LIMIT - count * unit) return 0;
@@ -422,7 +424,15 @@ static int add_storage(uint64_t *n, uint64_t count, uint64_t unit) {
 }
 uint32_t elpis_dsv41_clock_abi_version(void) { return ELPIS_DSV41_CLOCK_ABI_V1; }
 elpis_clock_code elpis_dsv41_clock_create(const elpis_dsv41_clock_config_v1 *c, elpis_dsv41_clock *out) {
-    if (!c || !out || *out || c->abi_version != 1 || c->reserved || !c->runtime ||
+    if (!c || !out || *out) return ELPIS_CLOCK_INVALID;
+    /* Never read past the layout the caller declared. */
+    elpis_dsv41_clock_config_v1 v;
+    memset(&v, 0, sizeof v);
+    if (c->abi_version == ELPIS_DSV41_CLOCK_CONFIG_V1) memcpy(&v, c, offsetof(elpis_dsv41_clock_config_v1, conditioning));
+    else if (c->abi_version == ELPIS_DSV41_CLOCK_CONFIG_V2) v = *c;
+    else return ELPIS_CLOCK_INVALID;
+    c = &v;
+    if (c->reserved || !c->runtime ||
         c->host.abi_version != 1 || c->host.reserved || !c->host.buffer_alloc || !c->host.buffer_mutable_data ||
         !c->host.buffer_data || !c->host.buffer_size || !c->host.buffer_release || !c->host.submit ||
         !c->host.take || !c->host.metrics || !c->host.shutdown || c->materializer.abi_version != 1 ||
@@ -432,7 +442,9 @@ elpis_clock_code elpis_dsv41_clock_create(const elpis_dsv41_clock_config_v1 *c, 
         !c->active_experts || c->active_experts > 63 || c->active_experts > c->expert_count ||
         c->expert_count > 65535 || !c->index_topk || c->index_topk > 65536 ||
         !c->dimension || c->dimension > 65536 || !c->hc_mult || c->hc_mult > 64 ||
-        !c->max_tokens || c->max_tokens > 1000000 || (c->features & ~3u) ||
+        !c->max_tokens || c->max_tokens > 1000000 || (c->features & ~7u) || c->reserved2 ||
+        (c->conditioning_count && (c->conditioning_count != c->dimension || !c->conditioning ||
+                                   !(c->features & S(FEATURE_CONDITIONING)))) ||
         !c->engram_count || c->engram_count > c->layers || c->order < 2 || c->order > 32 ||
         !c->heads || c->heads > 1024 || !c->row_dimension || c->row_dimension > 65536 || c->pad > INT32_MAX ||
         !c->ratios || !c->layer_flags || !c->resident || !c->engram_layers || !c->banks || !c->token_map ||
@@ -442,6 +454,7 @@ elpis_clock_code elpis_dsv41_clock_create(const elpis_dsv41_clock_config_v1 *c, 
         !c->materialization_timeout_ms || !c->exchange_timeout_ms || !c->prefill || !c->prefill_count ||
         c->prefill_count > c->max_tokens || c->max_new_tokens > c->max_tokens - c->prefill_count ||
         c->stop_count > c->vocab || (c->stop_count && !c->stop_tokens)) return ELPIS_CLOCK_INVALID;
+    for (uint32_t i = 0; i < c->conditioning_count; ++i) if (!isfinite(c->conditioning[i])) return ELPIS_CLOCK_INVALID;
     uint32_t max_id = c->pad;
     for (uint32_t i = 0; i < c->vocab; ++i) {
         if (c->token_map[i] > INT32_MAX) return ELPIS_CLOCK_INVALID;
@@ -471,6 +484,7 @@ elpis_clock_code elpis_dsv41_clock_create(const elpis_dsv41_clock_config_v1 *c, 
     if (c->features & S(FEATURE_OBSERVE_LAYER_STREAMS)) complete64 += (uint64_t)4 * c->layers * c->hc_mult * c->dimension;
     uint64_t request64 = 8 + c->engram_count * (16 + (uint64_t)columns * c->row_dimension * 4);
     if (request64 < S(SUPPLY_PREFIX_BYTES) + c->part_bytes) request64 = S(SUPPLY_PREFIX_BYTES) + c->part_bytes;
+    if (request64 < 16 + (uint64_t)4 * c->conditioning_count) request64 = 16 + (uint64_t)4 * c->conditioning_count;
     if (complete64 > MEMORY_LIMIT || request64 > MEMORY_LIMIT)
         return ELPIS_CLOCK_LIMIT;
     size_t complete = (size_t)complete64, request = (size_t)request64;
@@ -479,17 +493,21 @@ elpis_clock_code elpis_dsv41_clock_create(const elpis_dsv41_clock_config_v1 *c, 
     if (request + 128 > c->max_input_bytes || complete + 128 > c->max_output_bytes ||
         !add_storage(&bytes, total, complete) || !add_storage(&bytes, total, row_count * 8) ||
         !add_storage(&bytes, total, 12) || !add_storage(&bytes, c->layers, 1 + 4 * c->active_experts) ||
-        !add_storage(&bytes, 1, request) || bytes > c->memory_budget) return ELPIS_CLOCK_LIMIT;
+        !add_storage(&bytes, 1, request) || !add_storage(&bytes, c->conditioning_count, 4) ||
+        bytes > c->memory_budget) return ELPIS_CLOCK_LIMIT;
     clock_state *s = calloc(1, sizeof(*s));
     if (!s) return ELPIS_CLOCK_LIMIT;
-    s->c = *c; s->columns = columns; s->row_count = row_count; s->complete_bytes = complete;
+    s->c = *c; s->c.conditioning = NULL; s->columns = columns; s->row_count = row_count; s->complete_bytes = complete;
     s->request_bytes = request; s->total_tokens = total;
     s->request = malloc(request); s->completes = malloc(total * complete); s->rows = calloc(total * row_count, 8);
     s->tokens = calloc(total, 4); s->times = calloc(total, 8);
     s->selected = calloc((size_t)c->layers * c->active_experts, 4); s->needed = calloc(c->layers, 1);
-    if (!s->request || !s->completes || !s->rows || !s->tokens || !s->times || !s->selected || !s->needed) {
+    if (c->conditioning_count) s->conditioning = malloc((size_t)c->conditioning_count * 4);
+    if (!s->request || !s->completes || !s->rows || !s->tokens || !s->times || !s->selected || !s->needed ||
+        (c->conditioning_count && !s->conditioning)) {
         free_clock(s); return ELPIS_CLOCK_LIMIT;
     }
+    if (c->conditioning_count) memcpy(s->conditioning, c->conditioning, (size_t)c->conditioning_count * 4);
     for (uint32_t i = 0; i < c->order - 1; ++i) s->tail[i] = -1;
     s->m.sequence = c->sequence; s->m.storage_bytes = bytes;
     s->max_supplies = (uint64_t)c->layers * (c->active_experts + 1) * (1 + (c->image_bytes - 1) / c->part_bytes);
@@ -510,9 +528,18 @@ elpis_clock_code elpis_dsv41_clock_open(elpis_dsv41_clock id) {
     if (s->m.state != ELPIS_CLOCK_CREATED) rc = ELPIS_CLOCK_STALE;
     else if (atomic_load(&s->cancelled)) finish(s, ELPIS_CLOCK_CANCELLED, ELPIS_CLOCK_CLOSED);
     else {
-        w32(s->request, s->c.max_tokens); w32(s->request + 4, s->c.features & S(FEATURE_OBSERVE_LAYER_STREAMS));
+        uint32_t flags = s->c.features & S(FEATURE_OBSERVE_LAYER_STREAMS), body = 8, n = s->c.conditioning_count;
+        if (n) {  /* frozen turn conditioning, once per stream */
+            flags |= S(FEATURE_CONDITIONING);
+            w32(s->request + 8, n); w32(s->request + 12, 0);
+            for (uint32_t i = 0; i < n; ++i) {
+                uint32_t bits; memcpy(&bits, s->conditioning + i, 4); w32(s->request + 16 + 4 * (size_t)i, bits);
+            }
+            body = 16 + 4 * n;
+        }
+        w32(s->request, s->c.max_tokens); w32(s->request + 4, flags);
         elpis_exec_buffer *reply = NULL;
-        rc = exchange(s, S(STREAM_OPEN), NONE, 8, &reply);
+        rc = exchange(s, S(STREAM_OPEN), NONE, body, &reply);
         output_release(s, reply);
         if (rc == ELPIS_CLOCK_OK) { s->opened = 1; s->m.state = ELPIS_CLOCK_BOUNDARY; }
         else if (s->m.state != ELPIS_CLOCK_QUARANTINED) finish(s, ELPIS_CLOCK_FAILED, rc);

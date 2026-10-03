@@ -238,7 +238,8 @@ class DSV41StreamProvider:
         part = self.requested_part_bytes or min(store.staging_budget, limit)
         require(part <= store.staging_budget and part <= limit, Code.LIMIT, "expert part exceeds host staging budget")
         features = (P.FEATURE_CACHE if self.cache_bytes else 0) | (
-            P.FEATURE_OBSERVE_LAYER_STREAMS if self.observe_layer_streams else 0)
+            P.FEATURE_OBSERVE_LAYER_STREAMS if self.observe_layer_streams else 0) | (
+            P.FEATURE_CONDITIONING if getattr(target, "conditioning_projection", None) is not None else 0)
         self.manifest = P.digest_bytes(store.manifest.digest)
         before = self.totals["submissions"]
         self.exchange(P.MODEL_ADMIT_BEGIN, body=P.encode_admit_begin(
@@ -257,6 +258,9 @@ class DSV41StreamProvider:
         except ContractError as exc:
             raise self._quarantine(exc.code, str(exc)) from exc
         self.totals["admission_submissions"] = self.totals["submissions"] - before
+        if features & P.FEATURE_CONDITIONING and not ack.features & P.FEATURE_CONDITIONING:
+            self.exchange(P.MODEL_RELEASE)  # nothing sequence-level exists; leave the runtime reusable
+            raise ContractError(Code.UNSUPPORTED, "provider does not admit turn conditioning")
         self.target, self.features, self.resident = target, ack.features, frozenset(resident)
         self.part_bytes, self.image_bytes = part, 3 * c.expert_dim * c.dimension * 4
         self.profile = dict(protocol=PROTOCOL, provider_library=self.identity.sha256,
@@ -290,15 +294,21 @@ class DSV41StreamProvider:
 
     # ---------------------------------------------------------------- streams
 
-    def open_stream(self):
+    def open_stream(self, conditioning=None):
         require(self.state == "READY", Code.STALE if self.state != "QUARANTINED" else Code.DEVICE,
                 "YTS-R0 provider is not ready")
         require(self.stream is None, Code.UNSUPPORTED, "YTS-R0 R0 admits one active stream per runtime")
         self._stream_ids += 1
         stream = ProviderStream(self, self._stream_ids, secrets.randbits(64) | 1)
         observe = self.features & P.FEATURE_OBSERVE_LAYER_STREAMS
+        flags = observe
+        if conditioning is not None:
+            # Frozen turn conditioning travels once, at stream open; never per token.
+            require(self.features & P.FEATURE_CONDITIONING and len(conditioning) == self.target.config.dimension,
+                    Code.UNSUPPORTED, "YTS-R0 stream conditioning")
+            flags |= P.FEATURE_CONDITIONING
         _, body, _, _ = self.exchange(P.STREAM_OPEN, stream=stream,
-                                      body=P.encode_stream_open(self.target.config.max_tokens, observe))
+                                      body=P.encode_stream_open(self.target.config.max_tokens, flags, conditioning))
         try:
             stream.state_bytes = P.decode_opened(body)
         except ContractError as exc:

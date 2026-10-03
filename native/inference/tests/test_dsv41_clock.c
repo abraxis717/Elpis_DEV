@@ -22,11 +22,12 @@ typedef struct {
     uint64_t multipliers[EO], primes[HASH], offsets[HASH];
 } fixture;
 
+static uint32_t extra_features; /* admitted beyond cache, e.g. FEATURE_CONDITIONING */
 static void setup(fixture *f, size_t part, yts_ref_config faults, uint64_t cache) {
     memset(f, 0, sizeof(*f));
     attach(&f->provider, faults, faults.fault_kind == FAULT_POLL_TIMEOUT ? 3 : 1000);
     f->provider.part_bytes = part;
-    assert(admit(&f->provider, cache ? 1 : 0, cache, 777) == ELPIS_EXEC_OK);
+    assert(admit(&f->provider, (cache ? 1u : 0u) | extra_features, cache, 777) == ELPIS_EXEC_OK);
     uint64_t rng = 128;
     for (unsigned r = 0; r < 128; ++r) for (unsigned d = 0; d < ED; ++d) f->values[r][d] = unit(&rng);
     f->bank = (clock_test_bank){.layer=1, .dimension=ED, .rows=128, .values=(uint8_t *)f->values};
@@ -47,7 +48,7 @@ static void setup(fixture *f, size_t part, yts_ref_config faults, uint64_t cache
     for (unsigned i = 0; i < HASH; ++i) { f->primes[i] = 17; f->offsets[i] = i * 17; }
     f->c = (elpis_dsv41_clock_config_v1){.abi_version=1, .runtime=f->provider.r, .host=CLOCK_HOST,
         .sequence=f->provider.seq, .stream_id=1, .epoch=17, .vocab=V, .layers=NL, .active_experts=ACT,
-        .expert_count=E, .index_topk=K, .dimension=D, .hc_mult=HC, .max_tokens=T, .features=cache ? 1u : 0u,
+        .expert_count=E, .index_topk=K, .dimension=D, .hc_mult=HC, .max_tokens=T, .features=(cache ? 1u : 0u) | extra_features,
         .engram_count=1, .order=EO, .heads=EH, .row_dimension=ED, .ratios=RATIO, .layer_flags=FLAGS,
         .resident=f->resident, .engram_layers=&f->engram_layer, .banks=f->bank.bank, .token_map=f->mapping,
         .multipliers=f->multipliers, .primes=f->primes, .offsets=f->offsets, .image_bytes=sizeof(f->images[0]),
@@ -328,6 +329,64 @@ static void check_port_rejection(void) {
         teardown(&f);
     }
 }
+static void run_logits(fixture *f, float out[8][V]) {
+    create_open(f);
+    elpis_dsv41_clock_metrics_v1 m;
+    do { assert(elpis_dsv41_clock_advance(f->clock, T, &m) == ELPIS_CLOCK_OK); } while (m.outcome == ELPIS_CLOCK_PROGRESS);
+    assert(m.outcome == ELPIS_CLOCK_COMPLETE && m.position == 8);
+    for (uint32_t i = 0; i < 8; ++i) {
+        elpis_dsv41_clock_trace_v1 t;
+        assert(elpis_dsv41_clock_trace(f->clock, i, &t) == ELPIS_CLOCK_OK);
+        memcpy(out[i], t.complete + 72, V * 4);
+    }
+    teardown(f);
+}
+/* Frozen turn conditioning: CONFIG_V2 tail, sent once in STREAM_OPEN, never per token. */
+static void check_conditioning(void) {
+    static float plain[8][V], granted[8][V], conditioned[8][V], again[8][V];
+    float vector[D];
+    for (unsigned i = 0; i < D; ++i) vector[i] = 0.03125f * (float)((int)(i % 7) - 3);
+    fixture f;
+    setup(&f, 1152, (yts_ref_config){0, 0, 0, 0, -1}, 0); run_logits(&f, plain);
+    extra_features = ELPIS_DSV41_STREAM_FEATURE_CONDITIONING;
+    /* Granted but unused: V1 never reads the tail (even garbage), behavior is unchanged. */
+    setup(&f, 1152, (yts_ref_config){0, 0, 0, 0, -1}, 0);
+    f.c.conditioning = (const float *)(uintptr_t)1; f.c.conditioning_count = 99; f.c.reserved2 = 5;
+    run_logits(&f, granted);
+    assert(!memcmp(plain, granted, sizeof(plain)));
+    setup(&f, 1152, (yts_ref_config){0, 0, 0, 0, -1}, 0);
+    f.c.abi_version = ELPIS_DSV41_CLOCK_CONFIG_V2; f.c.conditioning = vector; f.c.conditioning_count = D;
+    run_logits(&f, conditioned);
+    assert(memcmp(plain, conditioned, sizeof(plain)));
+    setup(&f, 1152, (yts_ref_config){0, 0, 0, 0, -1}, 0);
+    f.c.abi_version = ELPIS_DSV41_CLOCK_CONFIG_V2; f.c.conditioning = vector; f.c.conditioning_count = D;
+    run_logits(&f, again);
+    assert(!memcmp(conditioned, again, sizeof(again)));
+    /* V2 with count 0 is exactly V1. */
+    setup(&f, 1152, (yts_ref_config){0, 0, 0, 0, -1}, 0);
+    f.c.abi_version = ELPIS_DSV41_CLOCK_CONFIG_V2;
+    run_logits(&f, again);
+    assert(!memcmp(plain, again, sizeof(again)));
+    /* Malformed tails are refused at create; nothing reaches the provider. */
+    float bad[D];
+    memcpy(bad, vector, sizeof(bad)); bad[3] = NAN;
+    for (unsigned k = 0; k < 6; ++k) {
+        setup(&f, 1152, (yts_ref_config){0, 0, 0, 0, -1}, 0);
+        f.c.abi_version = ELPIS_DSV41_CLOCK_CONFIG_V2; f.c.conditioning = vector; f.c.conditioning_count = D;
+        if (k == 0) f.c.conditioning_count = D - 1;
+        if (k == 1) f.c.conditioning = bad;
+        if (k == 2) f.c.conditioning = NULL;
+        if (k == 3) f.c.reserved2 = 1;
+        if (k == 4) f.c.abi_version = 3;
+        if (k == 5) f.c.features &= ~(uint32_t)ELPIS_DSV41_STREAM_FEATURE_CONDITIONING;
+        elpis_dsv41_clock id = 0;
+        assert(elpis_dsv41_clock_create(&f.c, &id) == ELPIS_CLOCK_INVALID && !id);
+        elpis_dsv41_clock_metrics_v1 none;
+        assert(elpis_dsv41_clock_metrics(id, &none) == ELPIS_CLOCK_STALE);
+        detach(&f.provider); counters_released();
+    }
+    extra_features = 0;
+}
 /* test_dsv41_clock_production.c reuses this fixture with its own main. */
 #ifdef DSV41_CLOCK_FIXTURE_ONLY
 #define DSV41_CLOCK_MAIN native_clock_r0_main
@@ -337,7 +396,7 @@ static void check_port_rejection(void) {
 int DSV41_CLOCK_MAIN(void) {
     check_recurrence(); check_host_boundaries(); check_faults(); check_limits_stop();
     check_parser_allocation(); check_concurrent_cancel(); check_handle_capacity();
-    check_port_rejection();
+    check_port_rejection(); check_conditioning();
     puts("PASS native clock: recurrence, chunk/cache/async invariance, host/provider faults, stop, bounds, stale handles");
     return 0;
 }

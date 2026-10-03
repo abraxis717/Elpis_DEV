@@ -232,6 +232,7 @@ typedef struct {
     uint64_t id, epoch;
     uint32_t position;
     int observe;
+    float *conditioning; /* frozen per-stream turn conditioning [dim], or NULL */
     elpis_dsv41_attention_state **attn;
     /* token continuation */
     int in_token, phase;
@@ -333,7 +334,7 @@ static void stream_free(stream *s, const model *m) {
                        s->stream_after, s->fp, s->fpost, s->fc, s->moe_x, s->moe_out, s->gate, s->up,
                        s->expert_out, s->stream_out, s->route_values, s->head_pre, s->head_hidden,
                        s->logits, s->layer_streams, s->engram_rows, s->frame_scratch, s->local_scratch,
-                       s->comp_scratch, s->weights};
+                       s->comp_scratch, s->weights, s->conditioning};
     for (size_t i = 0; i < sizeof(floats) / sizeof(floats[0]); ++i) free(floats[i]);
     uint32_t *words[] = {s->chosen, s->route_order, s->ordered, s->need, s->src, s->shared_selected,
                          s->selected_buf, s->trace_selected, s->trace_elided, s->trace_count,
@@ -563,6 +564,7 @@ static elpis_exec_status admit_begin(context *c, const elpis_dsv41_stream_header
     }
     if (!ok) { model_free(m); return ELPIS_EXEC_INVALID; }
     m->granted = m->features & (ELPIS_DSV41_STREAM_FEATURE_OBSERVE_LAYER_STREAMS |
+                                ELPIS_DSV41_STREAM_FEATURE_CONDITIONING |
                                 (m->cache_budget ? ELPIS_DSV41_STREAM_FEATURE_CACHE : 0u));
     memcpy(m->manifest, h->manifest_digest, 32);
     c->m = m;
@@ -663,14 +665,26 @@ static elpis_exec_status stream_open(context *c, const elpis_dsv41_stream_header
     model *m = c->m;
     if (!m || !m->ready || c->s || h->stream_id <= c->last_stream_id) return ELPIS_EXEC_INVALID;
     uint32_t max_tokens = rd_u32(r), flags = rd_u32(r);
-    if (r->bad || r->at != r->n || max_tokens != m->max_tokens ||
-        (flags & ~ELPIS_DSV41_STREAM_FEATURE_OBSERVE_LAYER_STREAMS) ||
-        ((flags & ELPIS_DSV41_STREAM_FEATURE_OBSERVE_LAYER_STREAMS) &&
-         !(m->granted & ELPIS_DSV41_STREAM_FEATURE_OBSERVE_LAYER_STREAMS)))
+    const uint32_t known = ELPIS_DSV41_STREAM_FEATURE_OBSERVE_LAYER_STREAMS | ELPIS_DSV41_STREAM_FEATURE_CONDITIONING;
+    if (r->bad || max_tokens != m->max_tokens || (flags & ~known) || ((flags & known) & ~m->granted))
         return ELPIS_EXEC_INVALID;
+    const uint8_t *conditioning = NULL;
+    if (flags & ELPIS_DSV41_STREAM_FEATURE_CONDITIONING) {
+        uint32_t count = rd_u32(r), reserved = rd_u32(r);
+        if (r->bad || count != m->dim || reserved) return ELPIS_EXEC_INVALID;
+        conditioning = rd_view(r, (size_t)count * 4);
+    }
+    if (r->bad || r->at != r->n) return ELPIS_EXEC_INVALID;
     stream *s = calloc(1, sizeof(*s));
     if (!s) return ELPIS_EXEC_INTERNAL;
     atomic_fetch_add(&c_streams, 1);
+    if (conditioning) {
+        s->conditioning = malloc(m->dim * sizeof(float));
+        if (!s->conditioning) { stream_free(s, m); return ELPIS_EXEC_INTERNAL; }
+        memcpy(s->conditioning, conditioning, m->dim * sizeof(float));
+        for (size_t i = 0; i < m->dim; ++i)
+            if (!isfinite(s->conditioning[i])) { stream_free(s, m); return ELPIS_EXEC_INVALID; }
+    }
     s->id = h->stream_id;
     c->last_stream_id = h->stream_id; /* stream identities are never reused */
     s->epoch = h->epoch;
@@ -1039,8 +1053,15 @@ static elpis_exec_status token_begin(context *c, const elpis_dsv41_stream_header
         prev = layer;
     }
     if (r->bad || r->at != r->n) return ELPIS_EXEC_INVALID;
-    for (size_t copy = 0; copy < m->hc; ++copy)
-        memcpy(s->cur + copy * m->dim, G(m, ELPIS_DSV41_ROLE_EMBED) + (size_t)token * m->dim, m->dim * 4);
+    const float *embed = G(m, ELPIS_DSV41_ROLE_EMBED) + (size_t)token * m->dim;
+    for (size_t copy = 0; copy < m->hc; ++copy) {
+        float *row = s->cur + copy * m->dim;
+        if (!s->conditioning) {
+            memcpy(row, embed, m->dim * 4);
+        } else {
+            for (size_t i = 0; i < m->dim; ++i) row[i] = embed[i] + s->conditioning[i]; /* one F32 add */
+        }
+    }
     memset(s->pre, 0, m->hc * 4);
     s->pre[0] = 1.0f;
     s->in_token = 1;

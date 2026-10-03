@@ -261,6 +261,7 @@ static elpis_exec_status admit(session *s, uint32_t features, uint64_t cache_byt
     const uint8_t *q = (const uint8_t *)elpis_exec_buffer_data(reply) + ELPIS_DSV41_STREAM_HEADER_BYTES + 32;
     uint32_t granted = get_u32(&q);
     assert(granted == (features & (ELPIS_DSV41_STREAM_FEATURE_OBSERVE_LAYER_STREAMS |
+                                   ELPIS_DSV41_STREAM_FEATURE_CONDITIONING |
                                    (cache_bytes ? ELPIS_DSV41_STREAM_FEATURE_CACHE : 0u))));
     elpis_exec_buffer_release(reply);
     return ELPIS_EXEC_OK;
