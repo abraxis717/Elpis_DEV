@@ -653,6 +653,39 @@ All retrieval, resolution and admission happen at the turn boundary, before
 `begin`. While a principal sequence produces tokens, only `window_step` runs:
 no Regex, HACF, ECS, runtime edge, canonical identity or provenance.
 
+### Turn conditioning and the ECS_G world model
+
+The principal path accepts one optional turn-level input and returns one
+turn-level output, both driver-neutral (`elpis.inference.conditioning`):
+
+* `TurnConditioning`: a bounded, finite vector plus an opaque provenance
+  digest, handed to `begin` and frozen for the whole sequence. The DSV4.1
+  target preprojects it once through an explicit, digest-bound
+  `ConditioningProjection` (`[dimension, width]` F32, part of the target's
+  model identity) and adds the projected vector to every token embedding:
+  on the host for NumPy and the sealed native backend, on the provider for
+  YTS-R0 (sent once at `STREAM_OPEN` under `FEATURE_CONDITIONING`; the
+  Native Clock carries it in its `CONFIG_V2` tail). Its digest is bound into
+  the `PrincipalCommit`; replay needs the same conditioning. Without it every
+  byte, identity and commit is the pre-integration one.
+* `TurnObservation`: for a committed sequence only, a token-identity-free
+  summary of the final next-token distribution (six sorted top
+  probabilities, tail mass, normalized entropy), bound to the commit digest.
+
+Inference never imports ECS_G; it knows only that it received admitted
+conditioning. The runtime owns the loop (`elpis.runtime.world_model`):
+
+```
+turn N commits -> TurnObservation -> DriveMap (explicit, digest-bound) -> (X, y)
+  -> ECS_G atomic gradient step W_N -> W_N+1 (exactly once per commit)
+  -> S3(W_N+1) frozen as TurnConditioning -> begin turn N+1
+```
+
+Nothing touches ECS_G while tokens stream. A failed or uncommitted turn never
+reaches the world model. ECS_G's `W` is the world state; the receipt history
+records only the conditioning digest on `principal.commit`, whose provenance
+names the ECS_G snapshot it was read from.
+
 ### Disposition of the DSV4 context structures
 
 | Structure | Category | Principal path |
@@ -724,6 +757,7 @@ entry point and is recorded only if that entry point committed:
 | `publish_canonical` | `publish_candidate` | publication receipt (replay records nothing new) |
 | `evolve` | `EvolutionPathGate.execute` over a projection of this history taken at call time | transition receipt of an admitted attempt |
 | `decode` | `InferenceEngine.execute` | committed decode receipt |
+| `run_principal` | `PrincipalEngine.begin` / `finalize` (optional `WorldModelLoop`: frozen ECS_G conditioning before, one ECS_G step after) | principal commit (with its conditioning digest when conditioned) |
 
 The evolution gate reasons over the runtime's own history. Because each
 recorded transition moves the history head, an assertion built against an
@@ -738,7 +772,9 @@ Each suite runs over the real native libraries and a real HACF corpus:
 * canonical writer;
 * evolution;
 * inference on the synthetic DSV4 fixture, where the live ingress export
-  becomes structural address proposals for a committed decode.
+  becomes structural address proposals for a committed decode;
+* the ECS_G world model across principal DSV4.1 turns
+  (`test_world_model_turns.py`).
 
 Each suite also checks that refused operations leave both the history and
 the subsystem state unchanged.

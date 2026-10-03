@@ -111,8 +111,8 @@
     },
     {
       "id": "ECS_G",
-      "status": "MATERIALIZED_INCOMPLETE",
-      "purpose": "Native geometric world model. ECS_G owns microscopic state W, exact cubic forward/S3 mathematics, deterministic atomic microscopic recurrence, and deterministic portable snapshot/restore. It has no legacy-component dependency and no runtime wiring in G2.",
+      "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
+      "purpose": "Native geometric world model. ECS_G owns microscopic state W, exact cubic forward/S3 mathematics, deterministic atomic microscopic recurrence, and deterministic portable snapshot/restore. It has no legacy-component dependency. A stdlib-only Python binding (elpis.ECS_G.native) exposes exactly that surface over a caller-loaded library; ECS_G imports no inference, runtime or ECS_C module.",
       "python_package": "elpis.ECS_G",
       "implementation_roots": [
         "src/elpis/ECS_G",
@@ -126,7 +126,7 @@
       ],
       "depends_on": [],
       "mutation_authority": "G1 may mutate only its own in-memory microscopic W through the explicit atomic cubic full-batch gradient step. Candidate W' is fully computed and finite-validated before installation; rejection leaves W and epoch unchanged. No ECS_C, HACF, inference, canonical or filesystem state may be mutated.",
-      "runtime_participation": "NONE at G2. ECS_G is a self-contained qualified subsystem ready for a separate runtime/inference integration phase.",
+      "runtime_participation": "The runtime composition (elpis.runtime.world_model.WorldModelLoop) owns one ECS_G world state. Before a principal turn begins it freezes S3(W_N) as admitted turn conditioning; after that turn commits it maps the committed turn observation through an explicit digest-bound drive map to one cubic drive (X, y) and applies exactly one atomic gradient step W_N -> W_N+1. Nothing touches ECS_G while tokens stream; a failed or uncommitted turn never reaches it.",
       "security_boundary": "Native state owns only finite binary64 W and an epoch counter. Step scratch is caller-owned. No filesystem, network, model invocation, ECS_C/HACF access, background threads or retained external pointers.",
       "protocol_identifiers_retained": [],
       "external_dependencies": [
@@ -134,11 +134,10 @@
       ],
       "model_dependency": "NONE",
       "uses_numpy": false,
-      "maturity": "G2 standalone ECS_G: native cubic/S3 kernel, owned microscopic state, atomic deterministic recurrence, epoch tracking, and portable snapshot/restore. Differential/native qualification covers the frozen d=6 widths N in {36,48,72}. Runtime wiring is intentionally out of scope.",
+      "maturity": "G2 standalone ECS_G: native cubic/S3 kernel, owned microscopic state, atomic deterministic recurrence, epoch tracking, and portable snapshot/restore. Differential/native qualification covers the frozen d=6 widths N in {36,48,72}. Turn-boundary runtime integration with the principal DSV4.1 path is mechanically qualified on deterministic fixtures (tests/integration/test_world_model_turns.py).",
       "incomplete_interfaces": [
-        "No DSV4.1-to-ECS_G observation mapping is defined.",
-        "No ECS_G-to-DSV4.1 future-context mapping is defined.",
-        "No runtime composition invokes ECS_G yet."
+        "The observation-to-drive map (DriveMap) and the S3-to-model-dimension conditioning projection are explicit, digest-bound parameters, but no learned production artifact exists for either; qualification uses deterministic fixtures, so no world-model quality claim follows.",
+        "Runtime.run_text and the coarse Native Clock entry point are not composed with the world-model loop by Runtime; the clock accepts the same frozen conditioning at the inference layer."
       ]
     },
     {
@@ -336,7 +335,7 @@
     {
       "id": "runtime",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "The one runtime composition: Runtime wires the subsystems explicitly around one durable receipt history (ReceiptHistory), an ECS kernel history founded with one history entity and one recorder entity per subsystem. It runs one subsystem operation at a time through that subsystem's own fail-closed entry point (pipeline ingress, structure retrieval-bundle admission, canonical Grid81 publication, the evolution path gate bound to a projection of the runtime's own history, and one inference decode transaction) and records the committed outcome as a kernel-attributed message. It owns the edge adapters (elpis.runtime.edges) that turn ingress exports and retrieval bundles into inference AddressProposals before a sequence begins. It composes the context-substrate path explicitly (admit_context: ingress -> edge adapter -> HACF object resolution -> ContextAdmission, recorded; run_principal: begin -> streamed tokens -> finalize, commit recorded) with nothing running during the token loop. It is not a numbered runtime generation. run_text renders and encodes chat before begin, streams incremental text alongside token emission, and records principal.commit then an inert text.output digest after finalization. No generated text is admitted as memory.",
+      "purpose": "The one runtime composition: Runtime wires the subsystems explicitly around one durable receipt history (ReceiptHistory), an ECS kernel history founded with one history entity and one recorder entity per subsystem. It runs one subsystem operation at a time through that subsystem's own fail-closed entry point (pipeline ingress, structure retrieval-bundle admission, canonical Grid81 publication, the evolution path gate bound to a projection of the runtime's own history, and one inference decode transaction) and records the committed outcome as a kernel-attributed message. It owns the edge adapters (elpis.runtime.edges) that turn ingress exports and retrieval bundles into inference AddressProposals before a sequence begins. It composes the context-substrate path explicitly (admit_context: ingress -> edge adapter -> HACF object resolution -> ContextAdmission, recorded; run_principal: begin -> streamed tokens -> finalize, commit recorded) with nothing running during the token loop. It is not a numbered runtime generation. run_text renders and encodes chat before begin, streams incremental text alongside token emission, and records principal.commit then an inert text.output digest after finalization. No generated text is admitted as memory. With an explicit WorldModelLoop, run_principal hands the frozen S3(W_N) of the native ECS_G world model to begin as admitted turn conditioning and, only after the commit is recorded, advances ECS_G exactly once from the committed turn observation.",
       "python_package": "elpis.runtime",
       "implementation_roots": [
         "src/elpis/runtime"
@@ -347,6 +346,7 @@
       "native_targets": [],
       "depends_on": [
         "ECS_C",
+        "ECS_G",
         "evolution",
         "inference",
         "pipeline",
@@ -357,12 +357,12 @@
       "runtime_participation": "This is the runtime composition.",
       "security_boundary": "The history directory is an explicit absolute path and the history is replay-validated on open (event chain, clock progression, state roots); a history founded with other entities, a record sent by the wrong recorder, or a non-canonical record payload is refused. Libraries, corpus roots, file assets, ledgers and promotion capabilities are supplied explicitly by the caller; the runtime opens no network connection and loads no model. The evolution gate receives a projection taken at call time, so an assertion bound to an older history head is rejected before anything executes.",
       "protocol_identifiers_retained": [
-        "New: elpis.runtime.history.v1 (history genesis label), elpis.runtime.receipt-record.v1 (record payload schema). The ECS identifiers it builds on (ecs.event.v1, ecs.message.v1, ecs.state_root.v3) are owned by elpis.ECS_C."
+        "New: elpis.runtime.history.v1 (history genesis label), elpis.runtime.receipt-record.v1 (record payload schema). The ECS identifiers it builds on (ecs.event.v1, ecs.message.v1, ecs.state_root.v3) are owned by elpis.ECS_C. New world-model loop domains: elpis.runtime.world-drive-map.v1, elpis.runtime.world-conditioning-provenance.v1."
       ],
       "external_dependencies": [],
       "model_dependency": "NONE_REQUIRED. Inference runs only on caller-supplied targets; the integration suite uses the synthetic DSV4 fixture.",
       "uses_numpy": false,
-      "maturity": "Integration qualified: five end-to-end suites over real native libraries and a real HACF corpus (ingress, structural memory, canonical writer, evolution, inference with the DSV4 fixture), including record idempotence, replay on reopen, tamper refusal, stale-history rejection and non-recording of refused operations.",
+      "maturity": "Integration qualified: five end-to-end suites over real native libraries and a real HACF corpus (ingress, structural memory, canonical writer, evolution, inference with the DSV4 fixture), including record idempotence, replay on reopen, tamper refusal, stale-history rejection and non-recording of refused operations. The ECS_G turn loop is qualified end to end on the DSV4.1 fixture: exactly one advance per committed turn, none for a failed one, next-turn-only visibility, frozen conditioning while streaming, no ECS_G call in the token loop, replay and snapshot/restore continuation.",
       "incomplete_interfaces": [
         "Ingress proposals are recorded but the query-local overlay itself is not persisted; recording carries its identity only.",
         "Steering epochs (steering.global_event_fields) are not yet recorded; the steered engine is composed by the caller, not by Runtime.",

@@ -65,7 +65,7 @@ This directory owns only ECS_G.
 It does not import or call ECS_C, HACF, inference, runtime, evolution, FMS,
 TRM, DarwinianMatrix, AnchorSpine, CNumPyCortex, or retired Elpis systems.
 
-The eventual integration boundary is:
+The integration boundary is:
 
     completed inference
             |
@@ -76,5 +76,9 @@ The eventual integration boundary is:
             v
       future inference
 
-The mapping between current DSV4.1 inference outputs and ECS_G recurrence
-inputs is deliberately not defined here.
+That mapping is deliberately not defined here. The runtime composition owns it
+(`src/elpis/runtime/world_model.py`): an explicit drive map turns a committed
+turn observation into one `(X, y)` for one atomic step, and `S3(W_t+1)` is
+admitted as frozen conditioning for the next principal turn. The Python binding
+(`src/elpis/ECS_G/native.py`) imports only the standard library and takes an
+already loaded library handle.
