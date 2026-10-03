@@ -112,28 +112,34 @@
     {
       "id": "ECS_G",
       "status": "MATERIALIZED_INCOMPLETE",
-      "purpose": "Geometric ECS namespace for the Entity Driven Evolutionary Network lineage: microscopic entity state, interaction geometry, coarse macrostates, recurrent dynamics, attractors, topology and geometric evolutionary state. The namespace is materialized, but the historical geometric implementation and scientific authority have not yet been restored into the live runtime.",
+      "purpose": "Geometric world-model subsystem. G0 materializes the frozen microscopic cubic ECS mathematics: authoritative microscopic state W, raw-sum S3=(mu,M,T3) collective projection, and the exact cubic forward-map identity. No production transition law or inference/runtime admission is established by G0.",
       "python_package": "elpis.ECS_G",
       "implementation_roots": [
-        "src/elpis/ECS_G"
+        "src/elpis/ECS_G",
+        "native/ECS_G"
       ],
       "test_roots": [
         "tests/ECS_G"
       ],
-      "native_targets": [],
+      "native_targets": [
+        "elpis_ecsg_math"
+      ],
       "depends_on": [],
-      "mutation_authority": "NONE at this stage. Materializing the ECS_G namespace grants no runtime, scientific, evolutionary, structural-mutation or inference authority.",
-      "runtime_participation": "NONE at this stage. The intended inter-inference geometric recurrence has not yet been restored or admitted.",
-      "security_boundary": "No executable geometric dynamics are admitted yet. Historical scientific authority must be provenance-bound and separately qualified before runtime integration.",
+      "mutation_authority": "NONE at G0. The native mathematical kernel is pure caller-owned arithmetic and exposes no state mutation or production transition law.",
+      "runtime_participation": "NONE at G0. Inter-inference ECS_G recurrence remains the next admission boundary after the mathematical kernel is qualified.",
+      "security_boundary": "Pure native arithmetic only: no allocation, I/O, threads, filesystem, network, model invocation, ECS_C/HACF access, or retained caller pointers.",
       "protocol_identifiers_retained": [],
-      "external_dependencies": [],
+      "external_dependencies": [
+        "libm"
+      ],
       "model_dependency": "NONE",
       "uses_numpy": false,
-      "maturity": "Namespace materialized only. Geometric ECS recovery from the pre-collapse scientific lineage is pending; no production ECS_G dynamics claim is made.",
+      "maturity": "G0 mathematical foundation implemented for differential qualification. The exact inherited d=6 science has S3 dimension 83 and qualified width evidence at N in {36,48,72}; G0 arithmetic itself is dimension/width generic and grants no broader scientific claim.",
       "incomplete_interfaces": [
-        "Historical geometric ECS implementation has not yet been recovered into this namespace.",
-        "No native C ECS_G target exists yet.",
-        "No inference-to-ECS_G or ECS_G-to-inference recurrence contract is admitted yet."
+        "No production ECS_G transition law is defined or admitted.",
+        "No inference-to-ECS_G observation contract is defined or admitted.",
+        "No ECS_G-to-inference projection transport is wired.",
+        "No runtime-owned persistent ECS_G state object exists yet."
       ]
     },
     {
