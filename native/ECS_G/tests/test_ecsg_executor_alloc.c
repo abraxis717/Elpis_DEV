@@ -83,6 +83,7 @@ main(void)
     elpis_ecsg_executor *e = NULL;
     elpis_ecsg_exec_transition t;
     elpis_ecsg_exec_stats st;
+    uint64_t token = 0u, epoch = 0u;
     size_t i;
     int round;
 
@@ -116,6 +117,22 @@ main(void)
         assert(elpis_ecsg_executor_project_s3(e, mu, m, t3) == ELPIS_ECSG_EXEC_OK);
         assert(elpis_ecsg_executor_snapshot_write(e, snap, sizeof(snap)) == ELPIS_ECSG_EXEC_OK);
         assert(elpis_ecsg_executor_stats(e, &st) == ELPIS_ECSG_EXEC_OK);
+        /* Transactions: begin, learn, readout, commit; stale; abort; refused learn. */
+        assert(elpis_ecsg_executor_txn_begin(e, &token) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_learn(e, token, x, y, ROWS, 0.002, 100u, &t) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_learn_schedule(e, token, x, y, drives, 2u, 0.002, &t) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_forward(e, token, x, ROWS, out) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_project_s3(e, token, mu, m, t3) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_epoch(e, token, &epoch) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_commit(e, token, &t) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_begin(e, &token) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_learn(e, x, y, ROWS, 0.002, 1u, &t) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_commit(e, token, &t) == ELPIS_ECSG_EXEC_STALE);
+        assert(elpis_ecsg_executor_txn_begin(e, &token) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_learn(e, token, x, y, ROWS, 0.002, 5u, &t) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_abort(e, token) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_begin(e, &token) == ELPIS_ECSG_EXEC_OK);
+        assert(elpis_ecsg_executor_txn_learn(e, token, x, y, ROWS, 1e6, 50u, &t) == ELPIS_ECSG_EXEC_NONFINITE);
     }
     counting = 0;
     assert(allocations == 0u && releases == 0u);

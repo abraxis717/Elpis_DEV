@@ -39,6 +39,10 @@ enum {
  * except an explicit reserve (cold path). Rows beyond max_rows are refused
  * with ELPIS_ECSG_EXEC_CAPACITY.
  *
+ * Transactions (txn_*) stage a candidate in a third W buffer and commit it by
+ * the same pointer exchange, refusing a candidate whose source state was
+ * replaced since it began (generation check, no hashing).
+ *
  * Concurrency: SINGLE_WRITER. The caller serializes every call on one
  * executor. Concurrent entry (including two concurrent queries) is detected
  * and refused with ELPIS_ECSG_EXEC_BUSY; no multi-writer atomicity and no
@@ -173,6 +177,69 @@ elpis_ecsg_executor_snapshot_write(elpis_ecsg_executor *exec, uint8_t *out, size
 
 elpis_ecsg_exec_status
 elpis_ecsg_executor_stats(elpis_ecsg_executor *exec, elpis_ecsg_exec_stats *out);
+
+/*
+ * Native candidate transaction: at most one open per executor.
+ *
+ * begin captures the source generation and returns a token. The candidate
+ * starts as the authoritative W; txn_learn advances it (K steps or a
+ * schedule) in the executor's candidate buffer, never touching the
+ * authoritative W; txn_forward and txn_project_s3 read it. commit installs
+ * the candidate by pointer exchange (epoch = candidate epoch, generation + 1)
+ * if no other commit replaced the source since begin; otherwise the
+ * transaction is discarded and STALE is returned. Every transaction call
+ * checks staleness first. A refused txn_learn discards the transaction.
+ * abort discards it; aborting a token that is no longer open is a no-op.
+ * Committing a transaction that learned nothing changes nothing. A direct
+ * learn while a transaction is open is allowed and makes it stale. begin
+ * while a transaction is open, and reserve, are refused with BUSY.
+ */
+elpis_ecsg_exec_status elpis_ecsg_executor_txn_begin(elpis_ecsg_executor *exec, uint64_t *token);
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_learn(elpis_ecsg_executor *exec,
+                              uint64_t token,
+                              const double *x,
+                              const double *y,
+                              size_t rows,
+                              double learning_rate,
+                              uint64_t steps,
+                              elpis_ecsg_exec_transition *transition);
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_learn_schedule(elpis_ecsg_executor *exec,
+                                       uint64_t token,
+                                       const double *x,
+                                       const double *y,
+                                       const elpis_ecsg_drive *drives,
+                                       size_t drive_count,
+                                       double learning_rate,
+                                       elpis_ecsg_exec_transition *transition);
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_forward(elpis_ecsg_executor *exec,
+                                uint64_t token,
+                                const double *x,
+                                size_t rows,
+                                double *out);
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_project_s3(elpis_ecsg_executor *exec,
+                                   uint64_t token,
+                                   double *mu,
+                                   double *m_packed,
+                                   double *t3_packed);
+
+/* Candidate epoch (source epoch + steps learned in the transaction). */
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_epoch(elpis_ecsg_executor *exec, uint64_t token, uint64_t *epoch);
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_commit(elpis_ecsg_executor *exec,
+                               uint64_t token,
+                               elpis_ecsg_exec_transition *transition);
+
+elpis_ecsg_exec_status elpis_ecsg_executor_txn_abort(elpis_ecsg_executor *exec, uint64_t token);
 
 #ifdef __cplusplus
 }

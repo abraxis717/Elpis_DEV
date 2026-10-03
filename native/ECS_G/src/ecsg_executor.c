@@ -13,7 +13,9 @@
  * Arena layout (one allocation, every segment 64-byte aligned):
  *
  *   w[0], w[1], w[2]   three dim*width W buffers; `w` is authoritative,
- *                      `learn_w` stages direct learns
+ *                      `learn_w` stages direct learns, `txn_w` holds an
+ *                      open transaction's candidate (roles rotate by
+ *                      pointer exchange on commit)
  *   z                  max_rows*width pre-activations of the current step
  *   error              max_rows residuals of the current step
  *   x, y               admitted experience: max_rows*dim and max_rows
@@ -37,13 +39,22 @@ struct elpis_ecsg_executor {
     uint64_t generation;
     double *w;
     double *learn_w;
-    double *spare_w;
+    double *txn_w;
     double *z;
     double *error;
     double *x;
     double *y;
     void *arena;
     size_t arena_bytes;
+    /* The open transaction, if any. */
+    int txn_open;
+    int txn_has_candidate;
+    uint64_t txn_token;
+    uint64_t txn_tokens_issued;
+    uint64_t txn_source_generation;
+    uint64_t txn_source_epoch;
+    uint64_t txn_epoch;
+    uint64_t txn_steps;
     elpis_ecsg_exec_stats stats;
     atomic_uint_fast64_t busy_refusals;
     atomic_flag busy;
@@ -118,7 +129,7 @@ carve(elpis_ecsg_executor *e, void *arena, const layout *l)
     p += l->w;
     e->learn_w = p;
     p += l->w;
-    e->spare_w = p;
+    e->txn_w = p;
     p += l->w;
     e->z = p;
     p += l->z;
@@ -140,6 +151,13 @@ all_finite(const double *v, size_t count)
         }
     }
     return 1;
+}
+
+static elpis_ecsg_exec_status
+math_status(elpis_ecsg_math_status math)
+{
+    return math == ELPIS_ECSG_MATH_OK ? ELPIS_ECSG_EXEC_OK
+         : math == ELPIS_ECSG_MATH_NONFINITE ? ELPIS_ECSG_EXEC_NONFINITE : ELPIS_ECSG_EXEC_INVALID;
 }
 
 static int
@@ -387,6 +405,10 @@ elpis_ecsg_executor_reserve(elpis_ecsg_executor *e, size_t max_rows)
     if (!enter(e)) {
         return ELPIS_ECSG_EXEC_BUSY;
     }
+    if (e->txn_open) {
+        leave(e);
+        return ELPIS_ECSG_EXEC_BUSY;
+    }
     if (max_rows <= e->max_rows) {
         leave(e);
         return ELPIS_ECSG_EXEC_OK;
@@ -463,8 +485,7 @@ elpis_ecsg_executor_forward(elpis_ecsg_executor *e,
         e->stats.refusals += 1u;
     }
     leave(e);
-    return math == ELPIS_ECSG_MATH_OK ? ELPIS_ECSG_EXEC_OK
-         : math == ELPIS_ECSG_MATH_NONFINITE ? ELPIS_ECSG_EXEC_NONFINITE : ELPIS_ECSG_EXEC_INVALID;
+    return math_status(math);
 }
 
 /*
@@ -565,6 +586,49 @@ run_schedule(elpis_ecsg_executor *e,
     return ELPIS_ECSG_EXEC_OK;
 }
 
+/*
+ * Validates, admits and runs a schedule from `src` into `dst` starting at
+ * `epoch` (entered executor). Fills the step accounting of *t.
+ */
+static elpis_ecsg_exec_status
+learn_into(elpis_ecsg_executor *e,
+           const double *x,
+           const double *y,
+           const elpis_ecsg_drive *drives,
+           size_t drive_count,
+           double learning_rate,
+           uint64_t epoch,
+           const double *src,
+           double *dst,
+           elpis_ecsg_exec_transition *t,
+           uint64_t *steps)
+{
+    elpis_ecsg_exec_status status;
+    size_t total_rows = 0u;
+
+    e->stats.learn_calls += 1u;
+    status = check_schedule(e, drives, drive_count, learning_rate, epoch, &total_rows, steps);
+    if (status == ELPIS_ECSG_EXEC_OK) {
+        status = admit(e, x, y, total_rows);
+    }
+    if (status == ELPIS_ECSG_EXEC_OK) {
+        status = run_schedule(e, drives, drive_count, total_rows, *steps, learning_rate, src, dst,
+                              &t->failed_step);
+    }
+    if (status == ELPIS_ECSG_EXEC_NONFINITE) {
+        e->stats.refusals += 1u;
+    }
+    return status;
+}
+
+static void
+exchange(double **a, double **b)
+{
+    double *swap = *a;
+    *a = *b;
+    *b = swap;
+}
+
 elpis_ecsg_exec_status
 elpis_ecsg_executor_learn_schedule(elpis_ecsg_executor *e,
                                    const double *x,
@@ -576,9 +640,7 @@ elpis_ecsg_executor_learn_schedule(elpis_ecsg_executor *e,
 {
     elpis_ecsg_exec_transition t;
     elpis_ecsg_exec_status status;
-    size_t total_rows = 0u;
-    uint64_t total_steps = 0u;
-    double *swap;
+    uint64_t steps = 0u;
 
     if (e == NULL || x == NULL || y == NULL) {
         return ELPIS_ECSG_EXEC_INVALID;
@@ -589,28 +651,16 @@ elpis_ecsg_executor_learn_schedule(elpis_ecsg_executor *e,
     memset(&t, 0, sizeof(t));
     t.epoch_before = t.epoch_after = e->epoch;
     t.generation_before = t.generation_after = e->generation;
-    e->stats.learn_calls += 1u;
-    status = check_schedule(e, drives, drive_count, learning_rate, e->epoch, &total_rows, &total_steps);
-    if (status == ELPIS_ECSG_EXEC_OK) {
-        status = admit(e, x, y, total_rows);
-    }
-    if (status == ELPIS_ECSG_EXEC_OK) {
-        status = run_schedule(e, drives, drive_count, total_rows, total_steps, learning_rate, e->w, e->learn_w,
-                              &t.failed_step);
-    }
+    status = learn_into(e, x, y, drives, drive_count, learning_rate, e->epoch, e->w, e->learn_w, &t, &steps);
     if (status == ELPIS_ECSG_EXEC_OK) {
         /* Commit: exchange buffers, never copy W. */
-        swap = e->w;
-        e->w = e->learn_w;
-        e->learn_w = swap;
-        e->epoch += total_steps;
+        exchange(&e->w, &e->learn_w);
+        e->epoch += steps;
         e->generation += 1u;
         e->stats.commits += 1u;
-        t.steps = total_steps;
+        t.steps = steps;
         t.epoch_after = e->epoch;
         t.generation_after = e->generation;
-    } else if (status == ELPIS_ECSG_EXEC_NONFINITE) {
-        e->stats.refusals += 1u;
     }
     if (transition != NULL) {
         *transition = t;
@@ -669,8 +719,7 @@ elpis_ecsg_executor_project_s3(elpis_ecsg_executor *e,
     }
     math = elpis_ecsg_project_s3_f64(e->w, e->dim, e->width, mu, m_packed, t3_packed);
     leave(e);
-    return math == ELPIS_ECSG_MATH_OK ? ELPIS_ECSG_EXEC_OK
-         : math == ELPIS_ECSG_MATH_NONFINITE ? ELPIS_ECSG_EXEC_NONFINITE : ELPIS_ECSG_EXEC_INVALID;
+    return math_status(math);
 }
 
 size_t
@@ -741,6 +790,250 @@ elpis_ecsg_executor_stats(elpis_ecsg_executor *e, elpis_ecsg_exec_stats *out)
     out->workspace_bytes = e->arena_bytes;
     out->max_rows = e->max_rows;
     out->busy_refusals = (uint64_t)atomic_load_explicit(&e->busy_refusals, memory_order_relaxed);
+    leave(e);
+    return ELPIS_ECSG_EXEC_OK;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Native candidate transactions.                                            */
+
+static void
+txn_discard(elpis_ecsg_executor *e)
+{
+    e->txn_open = 0;
+    e->txn_has_candidate = 0;
+    e->stats.txn_aborts += 1u;
+}
+
+/* Entered executor: the token must name the open transaction, whose source
+ * must still be the authoritative state. */
+static elpis_ecsg_exec_status
+txn_check(elpis_ecsg_executor *e, uint64_t token)
+{
+    if (!e->txn_open || token == 0u || token != e->txn_token) {
+        return ELPIS_ECSG_EXEC_INVALID;
+    }
+    if (e->generation != e->txn_source_generation) {
+        txn_discard(e);
+        e->stats.stale_refusals += 1u;
+        return ELPIS_ECSG_EXEC_STALE;
+    }
+    return ELPIS_ECSG_EXEC_OK;
+}
+
+static const double *
+txn_candidate(const elpis_ecsg_executor *e)
+{
+    return e->txn_has_candidate ? e->txn_w : e->w;
+}
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_begin(elpis_ecsg_executor *e, uint64_t *token)
+{
+    if (e == NULL || token == NULL) {
+        return ELPIS_ECSG_EXEC_INVALID;
+    }
+    if (!enter(e)) {
+        return ELPIS_ECSG_EXEC_BUSY;
+    }
+    if (e->txn_open) {
+        leave(e);
+        return ELPIS_ECSG_EXEC_BUSY;
+    }
+    e->txn_open = 1;
+    e->txn_has_candidate = 0;
+    e->txn_token = ++e->txn_tokens_issued;
+    e->txn_source_generation = e->generation;
+    e->txn_source_epoch = e->epoch;
+    e->txn_epoch = e->epoch;
+    e->txn_steps = 0u;
+    e->stats.txn_begins += 1u;
+    *token = e->txn_token;
+    leave(e);
+    return ELPIS_ECSG_EXEC_OK;
+}
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_learn_schedule(elpis_ecsg_executor *e,
+                                       uint64_t token,
+                                       const double *x,
+                                       const double *y,
+                                       const elpis_ecsg_drive *drives,
+                                       size_t drive_count,
+                                       double learning_rate,
+                                       elpis_ecsg_exec_transition *transition)
+{
+    elpis_ecsg_exec_transition t;
+    elpis_ecsg_exec_status status;
+    uint64_t steps = 0u;
+
+    if (e == NULL || x == NULL || y == NULL) {
+        return ELPIS_ECSG_EXEC_INVALID;
+    }
+    if (!enter(e)) {
+        return ELPIS_ECSG_EXEC_BUSY;
+    }
+    memset(&t, 0, sizeof(t));
+    t.generation_before = t.generation_after = e->generation;
+    status = txn_check(e, token);
+    if (status == ELPIS_ECSG_EXEC_OK) {
+        t.epoch_before = t.epoch_after = e->txn_epoch;
+        status = learn_into(e, x, y, drives, drive_count, learning_rate, e->txn_epoch, txn_candidate(e), e->txn_w,
+                            &t, &steps);
+        if (status == ELPIS_ECSG_EXEC_OK) {
+            e->txn_has_candidate = 1;
+            e->txn_epoch += steps;
+            e->txn_steps += steps;
+            t.steps = steps;
+            t.epoch_after = e->txn_epoch;
+        } else if (status == ELPIS_ECSG_EXEC_NONFINITE) {
+            txn_discard(e);  /* the candidate may be partially stepped */
+        }
+    }
+    if (transition != NULL) {
+        *transition = t;
+    }
+    leave(e);
+    return status;
+}
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_learn(elpis_ecsg_executor *e,
+                              uint64_t token,
+                              const double *x,
+                              const double *y,
+                              size_t rows,
+                              double learning_rate,
+                              uint64_t steps,
+                              elpis_ecsg_exec_transition *transition)
+{
+    elpis_ecsg_drive drive;
+
+    drive.rows = rows;
+    drive.steps = steps;
+    return elpis_ecsg_executor_txn_learn_schedule(e, token, x, y, &drive, 1u, learning_rate, transition);
+}
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_forward(elpis_ecsg_executor *e,
+                                uint64_t token,
+                                const double *x,
+                                size_t rows,
+                                double *out)
+{
+    elpis_ecsg_exec_status status;
+
+    if (e == NULL || x == NULL || out == NULL || rows == 0u) {
+        return ELPIS_ECSG_EXEC_INVALID;
+    }
+    if (!enter(e)) {
+        return ELPIS_ECSG_EXEC_BUSY;
+    }
+    status = txn_check(e, token);
+    if (status == ELPIS_ECSG_EXEC_OK) {
+        e->stats.forward_calls += 1u;
+        status = math_status(elpis_ecsg_forward_f64(txn_candidate(e), e->dim, e->width, x, rows, out));
+        if (status == ELPIS_ECSG_EXEC_NONFINITE) {
+            e->stats.refusals += 1u;
+        }
+    }
+    leave(e);
+    return status;
+}
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_project_s3(elpis_ecsg_executor *e,
+                                   uint64_t token,
+                                   double *mu,
+                                   double *m_packed,
+                                   double *t3_packed)
+{
+    elpis_ecsg_exec_status status;
+
+    if (e == NULL) {
+        return ELPIS_ECSG_EXEC_INVALID;
+    }
+    if (!enter(e)) {
+        return ELPIS_ECSG_EXEC_BUSY;
+    }
+    status = txn_check(e, token);
+    if (status == ELPIS_ECSG_EXEC_OK) {
+        status = math_status(elpis_ecsg_project_s3_f64(txn_candidate(e), e->dim, e->width, mu, m_packed, t3_packed));
+    }
+    leave(e);
+    return status;
+}
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_epoch(elpis_ecsg_executor *e, uint64_t token, uint64_t *epoch)
+{
+    elpis_ecsg_exec_status status;
+
+    if (e == NULL || epoch == NULL) {
+        return ELPIS_ECSG_EXEC_INVALID;
+    }
+    if (!enter(e)) {
+        return ELPIS_ECSG_EXEC_BUSY;
+    }
+    status = txn_check(e, token);
+    if (status == ELPIS_ECSG_EXEC_OK) {
+        *epoch = e->txn_epoch;
+    }
+    leave(e);
+    return status;
+}
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_commit(elpis_ecsg_executor *e,
+                               uint64_t token,
+                               elpis_ecsg_exec_transition *transition)
+{
+    elpis_ecsg_exec_transition t;
+    elpis_ecsg_exec_status status;
+
+    if (e == NULL) {
+        return ELPIS_ECSG_EXEC_INVALID;
+    }
+    if (!enter(e)) {
+        return ELPIS_ECSG_EXEC_BUSY;
+    }
+    memset(&t, 0, sizeof(t));
+    t.epoch_before = t.epoch_after = e->epoch;
+    t.generation_before = t.generation_after = e->generation;
+    status = txn_check(e, token);
+    if (status == ELPIS_ECSG_EXEC_OK) {
+        if (e->txn_has_candidate) {
+            /* Commit: exchange buffers, never copy W. */
+            exchange(&e->w, &e->txn_w);
+            e->epoch = e->txn_epoch;
+            e->generation += 1u;
+            e->stats.commits += 1u;
+        }
+        t.steps = e->txn_steps;
+        t.epoch_after = e->epoch;
+        t.generation_after = e->generation;
+        e->txn_open = 0;
+        e->txn_has_candidate = 0;
+    }
+    if (transition != NULL) {
+        *transition = t;
+    }
+    leave(e);
+    return status;
+}
+
+elpis_ecsg_exec_status
+elpis_ecsg_executor_txn_abort(elpis_ecsg_executor *e, uint64_t token)
+{
+    if (e == NULL || token == 0u) {
+        return ELPIS_ECSG_EXEC_INVALID;
+    }
+    if (!enter(e)) {
+        return ELPIS_ECSG_EXEC_BUSY;
+    }
+    if (e->txn_open && token == e->txn_token) {
+        txn_discard(e);
+    }
     leave(e);
     return ELPIS_ECSG_EXEC_OK;
 }

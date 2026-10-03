@@ -36,6 +36,11 @@ elpis_add_test(ECS_G test_ecsg_executor
   LIBS elpis_ecsg_math m
   TIMEOUT 60)
 
+elpis_add_test(ECS_G test_ecsg_executor_txn
+  SOURCES tests/test_ecsg_executor_txn.c
+  LIBS elpis_ecsg_math m Threads::Threads
+  TIMEOUT 120)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   # No allocation after creation: the executor and kernel sources are linked
   # into the test itself so -Wl,--wrap counts every allocation they make.
