@@ -64,7 +64,8 @@ def binding(build: Path) -> dict:
     except (OSError, IndexError):
         version = "unknown"
     return {"head": _git("rev-parse", "HEAD"), "tree": _git("rev-parse", "HEAD^{tree}"),
-            "dirty": bool(_git("status", "--porcelain", "--", "src", "native", "research/ecs_runtime_r1")),
+            "dirty": bool(_git("status", "--porcelain", "--", "src", "native", "research/ecs_runtime_r1",
+                               ":(exclude)research/ecs_runtime_r1/evidence")),
             "sources": files, "cmake": cache, "compiler": version,
             "library": {"path": str(library(build).relative_to(build)), "sha256": sha256(library(build))},
             "bench_driver": {"sha256": sha256(driver(build))}}

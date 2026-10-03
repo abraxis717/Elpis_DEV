@@ -69,6 +69,65 @@ must exist; list/tuple input is a convenience and does not set the
 performance ceiling. ECS_G stays standard-library only. A future native codec
 calls the executor ABI directly, without Python.
 
+## Implementation (R1C-R1F)
+
+`native/ECS_G/include/elpis/ecsg_executor.h` (executor ABI v1, in
+`libelpis_ecsg_math`) and `elpis.ECS_G.native.Executor` / `Transaction`
+realise this shape:
+
+* `forward`: one call, read-only; `learn` / `learn_schedule`: one call for
+  `K` steps (or an ordered schedule of drives), X/y copied and validated
+  once, step 1 reads the authoritative `W`, later steps update the staging
+  `W` in place, success commits by pointer exchange (epoch `+K`, generation
+  `+1`), any refusal changes nothing and reports the refusing step;
+* `txn_begin` / `txn_learn[_schedule]` / `txn_forward` / `txn_project_s3` /
+  `txn_epoch` / `txn_commit` / `txn_abort`: a candidate in a third `W`
+  buffer, committed by the same exchange or refused `STALE` when another
+  commit replaced its source (generation check; no snapshot, no hash);
+* SINGLE_WRITER is enforced by an atomic busy flag on every entry point
+  (`BUSY`); one transaction at a time;
+* the kernels keep the scalar reference's per-element floating-point order
+  (loops reordered over independent elements only, `-ffp-contract=off`, no
+  fast-math) and are therefore bitwise equal to it; they are compiled for
+  AVX2 and the baseline ISA and chosen at load time. No separately
+  qualified tolerance backend exists or is needed.
+
+`CognitiveCore.learn(K)` is one native learn call for every `K`; its
+default `Transition` receipt (domains unchanged) adds two snapshot reads and
+the experience digest around that call, and `receipt=False` returns the
+native `Commit` alone. The runtime turn is one native transaction.
+`WorldState` remains the scalar reference binding; its Python
+snapshot-hash `adopt` is gone.
+
+## Memory ownership (the FMS boundary)
+
+One executor owns one 64-byte-aligned arena, allocated at creation (and
+only again by an explicit `reserve`), of
+`8 x [4 dN + R_max N + R_max + 8N + R_max d + R_max]` bytes (each segment
+rounded up to 64 bytes) for dimension `d`, width `N` and admitted capacity
+`R_max`; `elpis_ecsg_executor_workspace_bytes` returns the exact figure
+(99,328 bytes for `d=6`, `N=36`, `R_max=256`).
+
+| buffer | size (doubles) | role | persisted |
+|---|---|---|---|
+| authoritative `W` | `dN` | the learned state | yes, with the epoch (snapshot bytes) |
+| staging `W` | `dN` | direct-learn candidate; exchanged on commit | no |
+| transaction `W` | `dN` | open transaction's candidate; exchanged on commit | no |
+| gradient | `dN` | per-step accumulators | no (scratch) |
+| `phi'(z)` | `R_max N` | per-step | no (scratch) |
+| residuals | `R_max` | per-step | no (scratch) |
+| row block | `8N` | forward/step row values | no (scratch) |
+| admitted `X`, `y` | `R_max (d + 1)` | the experience of the current call | no |
+
+Only the authoritative `W` and the epoch are state; which of the three `W`
+buffers holds it rotates on every commit, so nothing may hold its address.
+Identity is the snapshot bytes, never a pointer or a Python object. The
+generation counter is process-local commit bookkeeping for staleness and is
+not persisted. An external materializer (FMS) could later own the
+authoritative `W` and the epoch as one mutable asset of `8 dN + 8` bytes
+plus the snapshot header; everything else is reconstructible scratch. That
+edge is not implemented: current FMS materializes immutable verified assets.
+
 ## Measurement protocol
 
 Benchmarks are performance evidence, not scientific evidence, and never
@@ -97,7 +156,9 @@ reported.
 
 ## Commit order
 
-R1A contract, workloads and gates (this commit, no results) -> R1B baseline
-evidence -> R1C/R1D native executor and native commit -> R1E Python control
-plane -> R1F profile-guided optimization -> R1G differential, sanitizer and
-latency qualification -> R1H admit only the measured claims.
+R1A contract, workloads and gates (no results) -> R1B baseline evidence ->
+R1C/R1D native executor and native commit -> R1E Python control plane ->
+R1F profile-guided optimization -> R1G differential, sanitizer and latency
+qualification (tooling, then evidence measured at that clean head) -> R1H
+admit only the measured claims. Results:
+[`docs/performance/ECS_RUNTIME_R1.md`](performance/ECS_RUNTIME_R1.md).

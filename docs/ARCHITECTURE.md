@@ -501,8 +501,8 @@ model's output statistics.
 
 Cognitive R0 (`elpis.ECS_G.cognition.CognitiveCore`, [`COGNITION_R0.md`](COGNITION_R0.md))
 keeps two operations apart: QUERY, `x -> f_W(x)` by the native forward map of
-the current `W` (read-only), and LEARN, `(X, y) -> K` G1 steps on a fork
-committed by one atomic adoption. Under its frozen synthetic regime, ECS_G
+the current `W` (read-only), and LEARN, `(X, y) -> K` G1 steps in one native
+call committed by one native pointer exchange. Under its frozen synthetic regime, ECS_G
 supports stateful learned input-response computation: the learned behaviour
 lives in and follows `W`, survives snapshot and a clean process, and changes
 with experience. The same qualification found no retention under sequential
@@ -767,7 +767,7 @@ sequence or model text operation, and the mission gate pins this list.
 ```
 text --codec encode--> tokens
      --ECSCodecMap.encode (UNQUALIFIED)--> Stimulus: ordered ECS_G drives (X, y)
-     --ECS_G: one qualified atomic step per drive--> W_N -> W_N+k
+     --ECS_G: one qualified step per drive, one native transaction--> W_N -> W_N+k
      --readout: S3(W)--> Readout
      --ECSCodecMap.decode (UNQUALIFIED)--> tokens
      --codec decode--> text
@@ -778,8 +778,10 @@ No ECS<->DSV semantic codec is defined or qualified, so `run_turn` refuses with
 unavailable") unless a map is supplied explicitly. There is no fallback to a
 DSV model. A supplied map declares its classification and every result
 carries it; the only maps in the repository are `TRAINING=NONE SEMANTICS=NONE`
-test fixtures. A turn runs on a fork of the ECS_G state and installs the
-identical transition only when the whole turn succeeded.
+test fixtures. A turn is one native transaction of the ECS_G executor: all
+drives in one native call on a candidate, the readout from the candidate, and
+one native commit only when the whole turn succeeded (refused `ECS_STALE` if
+the state moved meanwhile).
 
 The evolution gate reasons over the runtime's own history. Because each
 recorded transition moves the history head, an assertion built against an

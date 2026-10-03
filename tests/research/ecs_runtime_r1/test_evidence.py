@@ -20,6 +20,7 @@ from research.ecs_runtime_r1 import workloads as WL
 from ...ECS_G.test_math_r0 import REPO
 
 EVIDENCE = REPO / "research" / "ecs_runtime_r1" / "evidence"
+REPORT = REPO / "docs" / "performance" / "ECS_RUNTIME_R1.md"
 # The measured code: the native executor and reference kernel, and the Python control plane.
 MEASURED = ("native/ECS_G/src/ecsg_executor.c", "native/ECS_G/src/ecsg_math.c", "native/ECS_G/src/ecsg_state.c",
             "native/ECS_G/include/elpis/ecsg_executor.h", "native/ECS_G/include/elpis/ecsg_math.h",
@@ -81,6 +82,15 @@ def test_every_registered_workload_and_mode_was_measured():
                                             "py_core_query")} <= measured
     for r in final["results"]:
         assert r["samples"] >= WL.MIN_SAMPLES and r["warmup"] >= WL.MIN_WARMUP and r["first_call_ns"] > 0
+
+
+def test_report_states_the_verdicts_the_evidence_yields():
+    verdicts = G.evaluate()
+    text = REPORT.read_text(encoding="utf-8")
+    for gate in ("material_speedup", "python_overhead_k_independent", "python_overhead_split_timing", "sanitizers"):
+        word = "PASS" if verdicts[gate]["pass"] else "FAIL"
+        assert f"`{gate}`: {word}" in text, (gate, word)
+    assert "PERFORMANCE_ONLY" in text and "NO_SCIENTIFIC_CLAIM" in text
 
 
 @pytest.mark.parametrize("name", ["baseline.json", "final.json", "jitter.json", "overhead.json", "sanitizers.json",

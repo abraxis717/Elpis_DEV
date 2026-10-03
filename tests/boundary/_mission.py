@@ -38,6 +38,11 @@ ECSG_KERNEL_PINS = {
     "native/ECS_G/src/ecsg_state.c": "c9887848fa0ddcfff71952a2010dd9968d980973cbe56cc0fa056c81f7b0b821",
     "native/ECS_G/include/elpis/ecsg_math.h": "94f3c4e7a9bf26b08b267679c9b707e8376cc4e2867be760ac825760ce95f80e",
     "native/ECS_G/include/elpis/ecsg_state.h": "34b173c4873fdac398876cf2eab426d88aca0884a3fa33640a570ae5c03a93c5",
+    # Runtime R1 executor: bitwise-qualified against the reference above
+    # (tests/ECS_G/test_executor_differential.py) and bound to its measured
+    # evidence (research/ecs_runtime_r1/evidence).
+    "native/ECS_G/src/ecsg_executor.c": "1d94739c52543da2080ccac2aeb640ef84b650161fa740c01f706b3f73b0fa8f",
+    "native/ECS_G/include/elpis/ecsg_executor.h": "67502a5e4cf3a14800760e661dac59dd17bbd736fcbb146e60faada0ee7ebde2",
 }
 
 _CODE_SUFFIXES = (".py", ".c", ".h", ".cpp", ".hpp", ".map")

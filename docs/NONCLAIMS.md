@@ -63,6 +63,15 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
   intake: no learned production parameter artifact is admitted. The
   principal path is not numerically equivalent to the legacy compressed-KV
   kernel, and no quality comparison between them is claimed.
+* **ECS Runtime R1 is engineering, not cognition.** Its numbers are
+  PERFORMANCE_ONLY, NO_SCIENTIFIC_CLAIM, measured on one shared virtual
+  machine with one compiler (`docs/performance/ECS_RUNTIME_R1.md`); they do
+  not transfer across hosts, and the scaling widths are not supported
+  cognition. The registered cross-process Python-overhead estimator failed as
+  registered and is reported so. The executor is SINGLE_WRITER: no
+  multi-writer or concurrent-reader claim. Bitwise parity is claimed against
+  the scalar reference only; no optimized backend with a different
+  accumulation order exists.
 * **Elpis does not generate text.** No ECS<->DSV semantic codec is defined or
   qualified, so the canonical turn (`Runtime.run_turn`) fails closed with
   `ECS_CODEC_UNQUALIFIED`. The only codec maps in the repository are
