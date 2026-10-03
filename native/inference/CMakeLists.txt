@@ -100,3 +100,34 @@ elpis_add_test(inference test_dsv41_clock
   LIBS elpis_dsv41_clock elpis_dsv41_clock_test_materializer
        elpis_dsv41_stream_reference_provider elpis_execution m Threads::Threads
   TIMEOUT 300)
+
+# Native Materializer R1 (docs/inference/DSV41_NATIVE_CLOCK.md): the production
+# Elpis host service behind elpis_dsv41_materializer_v1. It embeds the generic
+# substrate file-asset service and FMS core; it never links elpis_execution and
+# exposes no filesystem authority to the accelerator provider.
+elpis_add_library(inference elpis_dsv41_materializer SHARED src/dsv41_materializer.c)
+target_include_directories(elpis_dsv41_materializer PUBLIC include
+  $<TARGET_PROPERTY:elpis_execution,INTERFACE_INCLUDE_DIRECTORIES>)
+target_link_libraries(elpis_dsv41_materializer PRIVATE elpis_fms_file_service m Threads::Threads)
+target_link_options(elpis_dsv41_materializer PRIVATE
+  "LINKER:--version-script=${CMAKE_CURRENT_SOURCE_DIR}/src/dsv41_materializer.map" "LINKER:--no-undefined")
+set_target_properties(elpis_dsv41_materializer PROPERTIES
+  LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/dsv41_materializer.map)
+
+elpis_add_test_library(inference elpis_dsv41_materializer_test_support src/dsv41_materializer.c)
+target_include_directories(elpis_dsv41_materializer_test_support PUBLIC include
+  $<TARGET_PROPERTY:elpis_execution,INTERFACE_INCLUDE_DIRECTORIES>)
+target_link_libraries(elpis_dsv41_materializer_test_support PUBLIC elpis_fms_file_service_test_support m Threads::Threads)
+
+elpis_add_test(inference test_dsv41_materializer
+  SOURCES tests/test_dsv41_materializer.c
+  LIBS elpis_dsv41_materializer_test_support m Threads::Threads
+  TIMEOUT 300)
+
+# Native Clock + production materializer end to end over the real runtime and
+# the test-only reference provider (bitwise against the R0 test materializer).
+elpis_add_test(inference test_dsv41_clock_production
+  SOURCES tests/test_dsv41_clock_production.c
+  LIBS elpis_dsv41_clock elpis_dsv41_clock_test_materializer elpis_dsv41_materializer_test_support
+       elpis_dsv41_stream_reference_provider elpis_execution m Threads::Threads
+  TIMEOUT 300)

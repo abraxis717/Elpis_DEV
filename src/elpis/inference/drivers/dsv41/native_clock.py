@@ -4,7 +4,9 @@ Admission stays with DSV41StreamProvider. NativeMaterializer binds a service
 table from an independently pinned native object. NativeClock borrows exclusive
 runtime use until close; one advance can consume prefill and all generation.
 Trace decoding and Principal commits happen only after the coarse call returns.
-The production file-asset materializer is deliberately not implemented in R0.
+The production file-backed host service is Native Materializer R1
+(native_materializer.FileMaterializer -> NativeMaterializer); R0 tests keep the
+test-only materializer.
 """
 from __future__ import annotations
 
@@ -224,7 +226,7 @@ def run_principal(engine, state, request, admission, *, expected_state, clock_fa
 
     clock_factory(prefill, max_new_tokens, stop_tokens) is called ONLY during cold
     setup. It returns a NativeClock with native services. A materialization yield
-    is returned to this control loop; production service policy belongs in R1.
+    is returned to this control loop (R1: native staging pressure or a quiesce interrupt).
     """
     from ...admission import ContextAdmission
     from ...principal import PrincipalSequence, PrincipalState, PrincipalRequest
