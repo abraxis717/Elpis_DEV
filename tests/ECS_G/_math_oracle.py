@@ -83,3 +83,24 @@ def forward_s3(
         out[r] = 0.5 * linear + 0.5 * quadratic + 0.5 * cubic
 
     return out
+
+
+def loss(w: np.ndarray, x: np.ndarray, y: np.ndarray) -> float:
+    e = forward(w, x) - y
+    return float(np.mean(e * e))
+
+
+def grad(w: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    e = forward(w, x) - y
+    z = x @ w
+    phip = 0.5 + z + 1.5 * z * z
+    return (2.0 / len(x)) * x.T @ (e[:, None] * phip)
+
+
+def gd_step(
+    w: np.ndarray,
+    x: np.ndarray,
+    y: np.ndarray,
+    learning_rate: float = 0.002,
+) -> np.ndarray:
+    return w - learning_rate * grad(w, x, y)

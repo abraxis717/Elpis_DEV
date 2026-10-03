@@ -112,7 +112,7 @@
     {
       "id": "ECS_G",
       "status": "MATERIALIZED_INCOMPLETE",
-      "purpose": "Geometric world-model subsystem. G0 materializes the frozen microscopic cubic ECS mathematics: authoritative microscopic state W, raw-sum S3=(mu,M,T3) collective projection, and the exact cubic forward-map identity. No production transition law or inference/runtime admission is established by G0.",
+      "purpose": "Geometric world-model subsystem. G0 materializes the frozen microscopic cubic ECS mathematics; G1 adds an owned microscopic world state W and the exact deterministic full-batch cubic gradient recurrence inherited from the qualified Branch36 dynamical regime. S3=(mu,M,T3) remains a derived raw-sum macrostate; W remains authoritative.",
       "python_package": "elpis.ECS_G",
       "implementation_roots": [
         "src/elpis/ECS_G",
@@ -125,21 +125,21 @@
         "elpis_ecsg_math"
       ],
       "depends_on": [],
-      "mutation_authority": "NONE at G0. The native mathematical kernel is pure caller-owned arithmetic and exposes no state mutation or production transition law.",
-      "runtime_participation": "NONE at G0. Inter-inference ECS_G recurrence remains the next admission boundary after the mathematical kernel is qualified.",
-      "security_boundary": "Pure native arithmetic only: no allocation, I/O, threads, filesystem, network, model invocation, ECS_C/HACF access, or retained caller pointers.",
+      "mutation_authority": "G1 may mutate only its own in-memory microscopic W through the explicit atomic cubic full-batch gradient step. Candidate W' is fully computed and finite-validated before installation; rejection leaves W and epoch unchanged. No ECS_C, HACF, inference, canonical or filesystem state may be mutated.",
+      "runtime_participation": "NONE at G1. The stateful recurrence is qualified as an ECS_G primitive but no DSV4.1 observation adapter or runtime composition invokes it yet.",
+      "security_boundary": "Native state owns only finite binary64 W and an epoch counter. Step scratch is caller-owned. No filesystem, network, model invocation, ECS_C/HACF access, background threads or retained external pointers.",
       "protocol_identifiers_retained": [],
       "external_dependencies": [
         "libm"
       ],
       "model_dependency": "NONE",
       "uses_numpy": false,
-      "maturity": "G0 mathematical foundation implemented for differential qualification. The exact inherited d=6 science has S3 dimension 83 and qualified width evidence at N in {36,48,72}; G0 arithmetic itself is dimension/width generic and grants no broader scientific claim.",
+      "maturity": "G1 stateful recurrence candidate: G0 cubic/S3 arithmetic plus an owned microscopic state and atomic full-batch gradient transition. Differential qualification targets the exact d=6, N in {36,48,72}, no-width-normalization regime; runtime observation semantics remain unadmitted.",
       "incomplete_interfaces": [
-        "No production ECS_G transition law is defined or admitted.",
-        "No inference-to-ECS_G observation contract is defined or admitted.",
-        "No ECS_G-to-inference projection transport is wired.",
-        "No runtime-owned persistent ECS_G state object exists yet."
+        "No DSV4.1-to-ECS_G observation contract is defined or admitted.",
+        "No ECS_G-to-DSV4.1 projection transport is wired.",
+        "No runtime composition invokes ECS_G yet.",
+        "No durable ECS_G snapshot/persistence contract is admitted; ECS_C remains the continuity/history subsystem."
       ]
     },
     {
