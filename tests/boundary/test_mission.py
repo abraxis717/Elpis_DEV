@@ -148,3 +148,34 @@ def test_the_cognitive_turn_is_codec_then_ecs_then_codec():
     names = M.imports_of(REPO, path)
     assert any(M._under(n, "elpis.ECS_G") for n in names), names
     assert not [n for n in names if M._under(n, "elpis.inference") or M._under(n, "research")], names
+
+
+# Descriptions of the sidecar topology or of a DSV model as the cognitive
+# center. The authority and the design documents must not reintroduce them
+# (ELPIS_MISSION.md names them only to prohibit them).
+DRIFT_PHRASES = ("turn conditioning", "worldmodelloop", "drivemap", "conditioningprojection",
+                 "feature_conditioning", "principal cognitive", "cognitive center", "cognitive centre",
+                 "below every model", "completed inference", "runtime.run_text", "runtime.run_principal")
+
+
+@pytest.mark.parametrize("name", ["ELPIS_SYSTEM.json", "README.md", "docs/ARCHITECTURE.md",
+                                  "native/ECS_G/README.md", "docs/NONCLAIMS.md",
+                                  "docs/inference/DSV41_TEXT_BOUNDARY.md"])
+def test_authority_and_design_docs_describe_the_corrected_architecture(name):
+    text = (REPO / name).read_text(encoding="utf-8").lower()
+    found = [p for p in DRIFT_PHRASES if p in text]
+    assert not found, (name, found)
+
+
+def test_system_authority_encodes_the_mission():
+    system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
+    assert system["mission"]["authority"] == "docs/ELPIS_MISSION.md"
+    assert system["mission"]["gate"] == "tests/boundary/test_mission.py"
+    subs = {s["id"]: s for s in system["subsystems"]}
+    assert tuple(subs["inference"]["canonical_modules"]) == M.CODEC_MODULES
+    assert subs["ECS_G"]["depends_on"] == [] and not subs["ECS_G"].get("uses_numpy")
+    assert {"ECS_G", "ECS_C", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
+    assert "ECS_G" not in subs["inference"]["depends_on"] and "ECS_G" not in subs["ECS_C"]["depends_on"]
+    assert not [t for t in subs["inference"]["native_targets"] if "dsv41" in t]
+    assert set(system["research"]["native_targets"]) == {"elpis_dsv41_native", "elpis_dsv41_clock",
+                                                         "elpis_dsv41_materializer"}

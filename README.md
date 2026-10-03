@@ -6,6 +6,11 @@ controlled evolution and inference should interact so that computation
 follows structure the system has already accumulated. This is a research
 direction, not a capability claim; see [`docs/NONCLAIMS.md`](docs/NONCLAIMS.md).
 
+The division of responsibility is constitutional
+([`docs/ELPIS_MISSION.md`](docs/ELPIS_MISSION.md)): **DSV4 communicates, ECS
+computes and persists, FMS materializes, HACF structures memory, ECS_C
+preserves continuity.** DSV4 is the token boundary, not the brain.
+
 This repository is the clean development authority. It was built by a
 selective, audited migration from the Elpis beta repository. The per-path
 record is [`migration/BETA_MIGRATION.json`](migration/BETA_MIGRATION.json), and
@@ -19,14 +24,16 @@ The single machine-readable system authority is
 
 | Path | Subsystem |
 |---|---|
-| `src/elpis/substrate`, `native/substrate` | memory and residency below every model (FMS, PAL, file assets) |
-| `src/elpis/ECS_C` | identity, durable history, replay, projections |
+| `src/elpis/substrate`, `native/substrate` | resource authority, residency and materialization (FMS, PAL, file assets, execution port) |
+| `src/elpis/ECS_C` | identity, continuity, durable history, replay, projections |
+| `src/elpis/ECS_G`, `native/ECS_G` | qualified geometric/dynamical substrate primitive of the cognitive ECS (owned state `W`, `S3` observable, atomic recurrence, snapshots) |
 | `src/elpis/structure`, `native/structure` | HACF structural memory, semantic core, retrieval, Grid81 representation |
 | `src/elpis/pipeline`, `native/pipeline` | bounded Regex → HACF ingress; the canonical Grid81 writer path |
 | `src/elpis/evolution` | deterministic heredity, selection, gated promotion |
-| `src/elpis/inference` | inference behind contracts; the DSV4 driver on synthetic fixtures |
-| `src/elpis/runtime` | the one runtime composition over one ECS receipt history |
+| `src/elpis/inference` | the DSV4 communication codec (tokenizer, rendering); retained noncanonical model-execution mechanics for historical replay |
+| `src/elpis/runtime` | the one runtime composition: codec -> ECS -> codec (fails closed until the ECS codec is qualified), over one ECS_C history |
 | `research/ecs_dynamics` | RESEARCH_ONLY synthetic dynamics laboratory; not packaged, never imported by `src` ([results](docs/research/ECS_DYNAMICS_RESULTS.md)) |
+| `research/dsv41_tower` | RESEARCH_ONLY DSV4.1 transformer/MoE tower, native backend, provider stream, clock and materializer; donor/oracle qualification, not Elpis cognition |
 
 ## Build and test
 

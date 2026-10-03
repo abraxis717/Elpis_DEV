@@ -1,9 +1,19 @@
-# ECS_G — geometric world model
+# ECS_G — geometric dynamical substrate primitive
 
-`ECS_G` is Elpis_DEV's native geometric world-model subsystem.
+`ECS_G` is a qualified native geometric/dynamical substrate primitive for
+Elpis's cognitive ECS/EDEN system (`docs/ELPIS_MISSION.md`: DSV4
+communicates, ECS computes and persists).
 
 It is intentionally small and independent. It does not contain inference,
-history, retrieval, planning, evolution, or legacy Elpis component code.
+codec, history, retrieval, planning, evolution, or legacy Elpis component code.
+
+What is qualified, and what is not:
+
+- `W` is the authoritative microscopic state of this kernel.
+- `S3` is a derived coarse observable of `W`, not a second state.
+- The mathematics and state mechanics below are qualified in the frozen
+  `d=6`, `N in {36,48,72}` regime. Those experiments do not establish that
+  this small kernel alone is the entire eventual Elpis cognitive substrate.
 
 ## Authoritative state
 
@@ -62,19 +72,34 @@ or external subsystem state. Storage and provenance belong to the caller.
 
 This directory owns only ECS_G.
 
-It does not import or call ECS_C, HACF, inference, runtime, evolution, FMS,
-TRM, DarwinianMatrix, AnchorSpine, CNumPyCortex, or retired Elpis systems.
+It does not import or call ECS_C, HACF, inference, the DSV4 codec, runtime,
+evolution, FMS, TRM, DarwinianMatrix, AnchorSpine, CNumPyCortex, or retired
+Elpis systems.
 
-The eventual integration boundary is:
+The constitutional direction is:
 
-    completed inference
+    DSV4 encoded communication
             |
             v
-         ECS_G
-       W_t -> W_t+1
+        ECS / EDEN
+       active dynamics        (ECS_G: W_t -> W_t+1)
             |
             v
-      future inference
+        ECS readout           (S3(W), a coarse observable)
+            |
+            v
+       DSV4 decode
 
-The mapping between current DSV4.1 inference outputs and ECS_G recurrence
-inputs is deliberately not defined here.
+The runtime composition (`src/elpis/runtime/cognition.py`) orchestrates it.
+A stimulus enters ECS_G only in the kernel's qualified input form, ordered
+drives `(X, y)` applied as atomic gradient steps, and `S3(W)` is what ECS
+exposes to the decode boundary. The semantic maps between DSV4 token space
+and those drives and readouts are not defined or qualified anywhere in this
+repository, so the canonical turn fails closed without them.
+
+ECS_G is never a conditioning input to a DSV model and is never driven by a
+DSV model's output statistics. That sidecar topology (commits `f4e1f05`,
+`75313fb`) was removed from the canonical path.
+
+The Python binding (`src/elpis/ECS_G/native.py`) imports only the standard
+library and takes an already loaded library handle.

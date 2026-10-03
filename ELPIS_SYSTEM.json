@@ -10,7 +10,20 @@
     "release_authority": "NONE_DEFERRED",
     "publication": "NONE"
   },
-  "purpose": "Research direction: geodesic intelligence. Persistent structured state, memory topology, relational structure, bounded transformations, controlled evolution and inference interact so that computation follows structure already accumulated by the system instead of being reconstructed from an unstructured prompt. This is an architectural research direction, not a claim of general intelligence.",
+  "purpose": "Research direction: geodesic intelligence. DSV4 communicates; ECS/EDEN computes and persists; FMS materializes; HACF/structure organizes persistent structural memory; ECS_C records continuity (docs/ELPIS_MISSION.md). Computation is meant to happen in a persistent, evolving ECS substrate, entered and left through the DSV4 token boundary, not in a transformer. This is an architectural research direction, not a claim of general intelligence.",
+  "mission": {
+    "authority": "docs/ELPIS_MISSION.md",
+    "division": [
+      "DSV4 communicates.",
+      "ECS / EDEN computes and persists.",
+      "FMS materializes.",
+      "HACF / structure organizes persistent structural memory.",
+      "ECS_C records continuity and history."
+    ],
+    "canonical_dataflow": "text -> DSV4 encode -> admitted ECS stimulus -> ECS/EDEN dynamics -> ECS readout -> DSV4 decode -> text (runtime.cognition.run_turn)",
+    "prohibited": "ECS as a sidecar around a full DSV model: ECS state conditioning a DSV model, or ECS driven by a DSV model's output statistics (forensic: f4e1f05, 75313fb).",
+    "gate": "tests/boundary/test_mission.py"
+  },
   "donor": {
     "repository": "https://github.com/abraxis717/Elpis_beta",
     "migration_basis_commit": "8eda162712ebe291f2b88b6906366075859bc485",
@@ -32,7 +45,7 @@
     {
       "id": "substrate",
       "status": "OPERATIONAL",
-      "purpose": "Machine/OS substrate and memory management below every model: content hashing, FMS residency (HOT/WARM/COLD logical tiers over RAM/device/storage physical domains) with a POSIX platform abstraction layer, Linux descriptor capabilities, sealed native loading, deployment-pinned resource authority and verified file-backed assets materialized on demand into bounded residency; plus the vendor-neutral bounded native execution scheduler and explicit post-compiled accelerator backend port. The base build owns no vendor accelerator SDK or kernel.",
+      "purpose": "Machine/OS substrate, resource authority and materialization for Elpis: content hashing, FMS residency (HOT/WARM/COLD logical tiers over RAM/device/storage physical domains) with a POSIX platform abstraction layer, Linux descriptor capabilities, sealed native loading, deployment-pinned resource authority and verified file-backed assets materialized on demand into bounded residency; plus the vendor-neutral bounded native execution scheduler and explicit post-compiled accelerator backend port. The base build owns no vendor accelerator SDK or kernel. Its constitutional invariant is persistent logical capacity >= resident materialization >= actively executing materialization; its generic core names no DSV-specific tensor role (mission-gated).",
       "python_package": "elpis.substrate",
       "implementation_roots": [
         "src/elpis/substrate",
@@ -51,7 +64,7 @@
       ],
       "depends_on": [],
       "mutation_authority": "The substrate never mutates admitted external assets (no writable replicas). It owns only its own residency state: page registration, leases and eviction inside configured budgets. Admission requires a deployment-pinned catalog; inspection never creates authority.",
-      "runtime_participation": "Constructed by the runtime composition when file-backed memory is configured; consumed by inference (associative rows, experts, prefetch).",
+      "runtime_participation": "Constructed by the runtime composition when file-backed memory is configured. DSV-specific consumers (associative rows, experts and prefetch in the noncanonical model-execution mechanics; the research DSV4.1 materializer) are adapters outside the generic core.",
       "security_boundary": "Trusted root selected once; opens resolve beneath its descriptor with openat2 RESOLVE_BENEATH|RESOLVE_NO_SYMLINKS; native code is copied into a sealed memfd, digest-verified, then loaded. Linux only; other platforms fail closed.",
       "protocol_identifiers_retained": [
         "elpis.inference.raw-bytes.r0",
@@ -88,7 +101,7 @@
       "native_targets": [],
       "depends_on": [],
       "mutation_authority": "Only Kernel transitions (found/activate/dormant/terminate/message/step) mutate ECS state, each linearized under the kernel lock and committed as one framed event before the projection is installed. Projections (topology, context) are read-only. Entity-facing code sends only through kernel-bound EntityPort objects and cannot choose its sender.",
-      "runtime_participation": "The runtime composition owns one Kernel as the system's durable history; receipts of other subsystems are recorded there as messages. Projections feed inference context read-only.",
+      "runtime_participation": "The runtime composition owns one Kernel as the system's durable continuity history; committed outcomes of other subsystems are recorded there as messages. Its projections are read-only views of that history (the evolution gate reasons over one). ECS_C history is not active cognitive state and never substitutes for ECS_G.",
       "persistence": "Length-framed append-only event log with fsync durability boundary and complete-frame crash recovery; checkpoints are rollback-floor markers only.",
       "protocol_identifiers_retained": [
         "ecs.state_root.v3",
@@ -111,8 +124,8 @@
     },
     {
       "id": "ECS_G",
-      "status": "MATERIALIZED_INCOMPLETE",
-      "purpose": "Native geometric world model. ECS_G owns microscopic state W, exact cubic forward/S3 mathematics, deterministic atomic microscopic recurrence, and deterministic portable snapshot/restore. It has no legacy-component dependency and no runtime wiring in G2.",
+      "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
+      "purpose": "Qualified native geometric/dynamical substrate primitive of Elpis's cognitive ECS/EDEN system. ECS_G owns authoritative microscopic state W, exact cubic forward/S3 mathematics (S3 is a derived coarse observable), deterministic atomic microscopic recurrence, epoch tracking and deterministic portable snapshot/restore. A stdlib-only Python binding (elpis.ECS_G.native) exposes exactly that surface over a caller-loaded library. ECS_G imports no inference, codec, runtime or ECS_C module.",
       "python_package": "elpis.ECS_G",
       "implementation_roots": [
         "src/elpis/ECS_G",
@@ -126,7 +139,7 @@
       ],
       "depends_on": [],
       "mutation_authority": "G1 may mutate only its own in-memory microscopic W through the explicit atomic cubic full-batch gradient step. Candidate W' is fully computed and finite-validated before installation; rejection leaves W and epoch unchanged. No ECS_C, HACF, inference, canonical or filesystem state may be mutated.",
-      "runtime_participation": "NONE at G2. ECS_G is a self-contained qualified subsystem ready for a separate runtime/inference integration phase.",
+      "runtime_participation": "The runtime composition's canonical turn (elpis.runtime.cognition.run_turn) places ECS_G between DSV4 encode and DSV4 decode: an admitted stimulus enters only as ordered drives (X, y) applied as atomic gradient steps, and S3(W) is the readout handed to the decode boundary. The turn runs on a fork and installs the identical transition only when the whole turn succeeds. ECS_G is never a conditioning input to, or driven by, a DSV model.",
       "security_boundary": "Native state owns only finite binary64 W and an epoch counter. Step scratch is caller-owned. No filesystem, network, model invocation, ECS_C/HACF access, background threads or retained external pointers.",
       "protocol_identifiers_retained": [],
       "external_dependencies": [
@@ -134,11 +147,12 @@
       ],
       "model_dependency": "NONE",
       "uses_numpy": false,
-      "maturity": "G2 standalone ECS_G: native cubic/S3 kernel, owned microscopic state, atomic deterministic recurrence, epoch tracking, and portable snapshot/restore. Differential/native qualification covers the frozen d=6 widths N in {36,48,72}. Runtime wiring is intentionally out of scope.",
+      "maturity": "G2 standalone kernel: native cubic/S3 kernel, owned microscopic state, atomic deterministic recurrence, epoch tracking and portable snapshot/restore, differentially qualified in the frozen d=6 regime for widths N in {36,48,72}; kernel sources are digest-pinned by the mission gate. Those experiments qualify this kernel's mathematics and mechanics; they do not establish that this small kernel alone is the entire eventual Elpis cognitive substrate.",
       "incomplete_interfaces": [
-        "No DSV4.1-to-ECS_G observation mapping is defined.",
-        "No ECS_G-to-DSV4.1 future-context mapping is defined.",
-        "No runtime composition invokes ECS_G yet."
+        "No ECS<->DSV semantic codec is defined or qualified: neither how DSV4 tokens become an ECS stimulus nor how an ECS readout becomes tokens. The canonical turn fails closed (ECS_CODEC_UNQUALIFIED); text generation is unavailable.",
+        "Settling dynamics beyond the qualified drive step, multi-kernel/larger ECS/EDEN composition, and FMS-managed materialization of ECS state are not defined.",
+        "ECS turn transitions are not yet recorded in ECS_C (the history genesis has no ECS recorder role).",
+        "No HACF/structure -> ECS structural-relationship edge is defined."
       ]
     },
     {
@@ -170,7 +184,7 @@
         "substrate"
       ],
       "mutation_authority": "Structural memory is written only by its owner (corpus ingestion into a caller-owned state root). Retrieval, validation, views, topology and observations are read-only and grant no semantic truth, execution or admission authority. Canonical Grid81 state is read here but changed only by the pipeline's canonical writer path.",
-      "runtime_participation": "The runtime composition may own a HACF corpus/index; retrieval results become evidence envelopes consumable by the pipeline, the ECS history and inference structural proposals.",
+      "runtime_participation": "The runtime composition may own a HACF corpus/index. Retrieval results become evidence envelopes consumable by the pipeline and the ECS_C history; resolved objects can be rendered through the DSV4 codec (Runtime.admit_context). HACF's role is persistent structural memory, topology and provenance, not a model's context window; its edge into ECS is not yet defined.",
       "protocol_identifiers_retained": [
         "elpis.retrieval_bundle.v1",
         "elpis.retrieval_contract.v1",
@@ -220,7 +234,7 @@
         "substrate"
       ],
       "mutation_authority": "Ingress mutates nothing: it opens an existing HACF corpus, performs only lexical reads and never creates one, and every result carries zero semantic, admission, execution and runtime authority. Only elpis.pipeline.canonical.publisher changes canonical Grid81 state, and only with the exact one-use promotion capability object issued by elpis.pipeline.canonical.authority against an explicit operator approval digest. Adjudication, capability evaluation and promotion planning are read-only; consumption and application write only caller-owned shadow state and ledgers.",
-      "runtime_participation": "The runtime composition may run ingress on caller-supplied bytes against a corpus it owns and hand the proposal export to inference (structural address proposals); it may drive the writer stages in process. Nothing runs implicitly, and each stage consumes only the previous stage's typed output.",
+      "runtime_participation": "The runtime composition may run ingress on caller-supplied bytes against a corpus it owns; its edge adapters turn the proposal export into object claims and address proposals for structural-memory rendering. It may drive the writer stages in process. Nothing runs implicitly, and each stage consumes only the previous stage's typed output.",
       "security_boundary": "Ingress takes bytes, never paths to read; the bounded lexer refuses input beyond its carry profile before any evidence is built; the bridge library is loaded only from an explicit path, exports only its declared ABI (linker version script) and refuses symlinked, relative or absent corpus roots. The Python binding re-reads the four authority flags and refuses any result that claims authority. Fail closed at every stage: proposals and model output are never authority; the promotion plan is advisory and non-executable; the one-use promotion capability binds the source canonical digest and generation it was issued against, and the publisher re-reads the canonical root under an exclusive flock on its Canonical parent and refuses any other state, symlinked layout, or candidate inside the root; publication reserves a durable ledger entry, exchanges atomically with renameat2(RENAME_EXCHANGE) and verifies through the production reader; replay is idempotent and a consumed capability cannot be reused. Linux only.",
       "protocol_identifiers_retained": [
         "Ingress schemas: elpis.regex-lexical-evidence.v1/v2, elpis.regex-stream-ingress-result.v1/v2, elpis.regex-task-candidate.v1, elpis.regex-task-composition.v1, elpis.regex-hacf-context-proposal.r1 (with its digest-bound component value HACF_R3), elpis.semantic.query_local_proposal{,_set,_batch_receipt}.v1, elpis.semantic.query_local_representation_receipt.v1, elpis.live.regex-hacf.query-local.batch.r0.base; the C ABI symbol families elpis_streaming_regex_*, elpis_regex_hacf_query_ingress_*, elpis_query_local_proposal_*",
@@ -282,7 +296,7 @@
     {
       "id": "inference",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "Inference behind contracts, driver-neutral: typed target records (tensors, latent inputs, target state, step receipts) and a Target protocol a driver implements; n-gram associative addressing (DSV4.1 engram and Qwen PLE schemes) with bounded row lookup over substrate file assets; immutable context lifetimes/snapshots and sparse global candidate selection; digest-bound experts executed from file assets; physical prefetch predictions that can never select content; the structural address-proposal edge contract (inference never parses or validates slow-lane artifacts; the adapters live in elpis.runtime.edges); an atomic, replay-verified decode transaction; speculative drafting verified token by token by the target (greedy equivalence); a read-only observer over completed decode epochs with future-only latent steering applied through the target's own latent-input path. The first driver is DSV4 (drivers/dsv4: a compact target and an explicit synthetic fixture intake). Token streaming is a separate fast lane: sequence transactions (begin, then next per token, then finalize) validate committed input once, run only model arithmetic per token with no canonical or provenance identity and no re-hashing of admitted bytes, and build receipts, identities and the committed state at the finalization boundary, identical to the legacy transaction's. HACF, not KV, is the context substrate: the principal path (elpis.inference.principal) takes context only as a ContextAdmission (admitted HACF objects rendered to input tokens under an explicit object/byte/token budget, frozen for one sequence) and keeps keys/values only as bounded, ephemeral attention scratch (at most local_window entries) inside one sequence; its committed PrincipalState holds no K/V, compressed pool, global index or token history and does not grow with stored or attended context. The legacy transaction, the legacy-identical sequence path and their NeuralState/compressed-KV/G-X identities remain for historical replay only. A separate digest-bound DeepSeek recipe V4.1 text adapter encodes text/chat and incrementally decodes new token bytes with at most three carry bytes; tokenizer loading and encoding occur before begin. Read-only safetensors preflight inventories pinned artifacts but cannot instantiate a production driver.",
+      "purpose": "The DSV4 communication codec: the token boundary between human/token space and the ECS substrate, never cognition. Canonical codec modules: text (digest-bound DeepSeek recipe V4.1 tokenizer, chat/text rendering and incremental decoding with at most three carry bytes), contracts, admission and structural (budgeted, frozen token rendering of verified structural-memory objects). Everything else in elpis.inference is noncanonical DSV model-execution mechanics retained for historical replay of persisted identities and for qualification: the legacy compact DSV4 synthetic target, the atomic decode transaction, the sequence and principal paths, steering, speculative drafting, associative rows, experts, prefetch, global context and read-only safetensors preflight. The runtime never composes them (mission-gated). The production-shaped DSV4.1 tower is not here: it lives in research/dsv41_tower.",
       "python_package": "elpis.inference",
       "implementation_roots": [
         "src/elpis/inference"
@@ -294,8 +308,8 @@
       "depends_on": [
         "substrate"
       ],
-      "mutation_authority": "Only InferenceEngine.execute commits decode state, and only as one transaction against the exact expected state; a failed step commits nothing and replay re-executes the receipt chain to validate history. Every proposal record (address proposals, drafts, prefetch plans, steering observations/proposals/applications) is ProposalOnly with fixed zero semantic, admission, execution and mutation authority. Steering never mutates weights, context, tokens or logits: its only effect is one LatentInput on a later request, recorded by the transaction. Inference never writes ECS, structural memory or canonical state; model output is proposal, never authority. On the sequence path inputs are turn-scoped: a GREEDY continuation must carry exactly the running turn's latents and proposals, so slow-lane results (steering latents, structural proposals) enter only on a PREFILL turn boundary, never mid-trajectory.",
-      "runtime_participation": "The runtime composition constructs a driver target from explicitly supplied file assets (tests use the synthetic DSV4 fixture), passes structural address proposals from ingress or retrieval, runs decode transactions, and records their receipt digests in the ECS history.",
+      "mutation_authority": "The codec mutates nothing: it encodes, decodes and renders. It owns no ECS state and imports no ECS_G, ECS_C or runtime module (boundary- and mission-gated). The retained model-execution mechanics commit only their own decode/sequence state against an exact expected state; every proposal record is ProposalOnly with zero authority, and model output is never authority.",
+      "runtime_participation": "The runtime uses only the codec modules: the tokenizer's encode/decode at the canonical turn's token boundary and budgeted rendering of admitted structural memory. It runs no DSV model.",
       "security_boundary": "No network, no downloads and no implicit model: a target exists only from caller-supplied, digest-verified file assets registered through elpis.substrate beneath its trusted root, and every bank, expert, parameter artifact and projection is bound to the target's model identity. Prefetch predicts physical ranges only and cannot change which rows are read. Proposals arrive as already validated, digest-pinned AddressProposal values and are checked against the snapshot they are bound to. elpis.inference imports no ECS, structure, pipeline, evolution or runtime module, directly or transitively (boundary-tested). Fixed IEEE-754 binary64 arithmetic in steering; no hidden or global mutable recurrence state.",
       "protocol_identifiers_retained": [
         "Record identities in the elpis.inference.<kind>.r0 family: bank, tensor, target-config, target-model, target-step, neural-state, latent-input, latent-projection, native-kv-source, row-representation, dsv41.parameters, qwen38.parameters, ngram.history, ngram.result, context.{item,snapshot,compaction}, global-{candidate,pool,index.config,index.result}, expert-{bank,manifest}, prefetch-plan, structural-{address,rules}, r1-bundle-export (route key HACF_R1)",
@@ -309,28 +323,25 @@
         "NumPy",
         "tokenizers 0.23.2 (optional text extra; offline from_str only)"
       ],
-      "model_dependency": "NONE_REQUIRED. Drivers run on explicitly supplied file assets; the only parameter assets exercised are deterministic synthetic fixtures (tests/fixtures/inference, drivers/dsv4/fixtures.make_fixture, and the TRAINING=NONE drivers/dsv41/fixtures.make_fixture with the caller-supplied, digest-bound V4.1 tokenizer). No weights are shipped or downloaded, no learned production parameter artifact is admitted, and no model output is authority.",
+      "model_dependency": "NONE. The codec needs only the caller-supplied, digest-bound V4.1 tokenizer. The retained model-execution mechanics run on deterministic synthetic fixtures only (tests/fixtures/inference, drivers/dsv4/fixtures.make_fixture). No weights are shipped or downloaded, no learned parameter artifact is admitted, and no model output is authority.",
       "uses_numpy": true,
-      "maturity": "Mechanics qualified on synthetic fixtures: associative addressing (DSV4.1 and Qwen PLE frozen synthetic address artifacts), rows, context, global context, experts, prefetch, structural proposals and the retrieval-bundle adapter; decode transaction suites (atomicity, replay, determinism across processes and hash seeds, fault injection, adversarial requests); speculative greedy-equivalence; steering and steered-session suites (future-only delivery, TTL/hop/cycle guards, frozen-contract digests). No quality, reasoning or transfer claim (docs/NONCLAIMS.md). A production-shaped DSV4.1 arithmetic driver (drivers/dsv41: local/SWA and compressed sparse attention with the candidate/indexer stages, Engram, mHC, routed and shared MoE, layer sequencing, normalization and residual order) is mechanically qualified against the pinned DeepSeek V4.1 donor (docs/inference/dsv41_donor_authority.json) on a deterministic TRAINING=NONE fixture: every sublayer, every layer residual stream and the logits at every position, plus the PrincipalEngine sequence lifecycle (docs/inference/DSV41_TOWER_QUALIFICATION.md). The NumPy F32 implementation remains the architectural reference; the sealed CPU-native backend is qualified against it, while vendor accelerator implementations remain external to the base build and must enter through the substrate acceleration port. Above the unchanged generic execution port, the YTS-R0 provider stream (docs/inference/DSV41_PROVIDER_STREAM.md), Native Clock R0 and Native Materializer R1 (docs/inference/DSV41_NATIVE_CLOCK.md) are qualified with the test-only CPU reference provider: one native clock_advance runs prefill and generation, and with the sealed production materializer (elpis_dsv41_materializer) file-backed Engram row decoding, page verification, FMS leases and expert-range staging execute natively with zero Python callbacks, bitwise equal to the Python YTS/RowEngine/TensorStore/FMSFileAssets oracle, which remains.",
+      "maturity": "Codec qualified: the real V4.1 tokenizer's digest binding, chat/text rendering, incremental decoding and rendering of verified HACF objects (docs/inference/QUALIFICATION.md, DSV41_TEXT_BOUNDARY.md). The retained model-execution mechanics stay mechanically qualified on synthetic fixtures (no quality, reasoning or transfer claim; docs/NONCLAIMS.md).",
       "incomplete_interfaces": [
-        "No learned production parameter artifact or compatible trained Engram address table is admitted: the qualified DSV4.1 driver has only executed deterministic training-free fixtures, so no language-quality or intelligence claim follows. The NumPy F32 reference and sealed CPU-native backend are qualified. The YTS-R0 provider stream, Native Clock R0 and Native Materializer R1 are mechanically qualified against the Python oracle only with the test-only CPU reference provider; no vendor accelerator provider is attached or shipped. Parameter inventory is not production admission.",
-        "NeuralState and TargetConfig still carry DSV4-shaped fields (compressed KV, expert routing); a second driver will need them generalized behind the Target protocol.",
-        "CPU-native DSV4.1 is qualified, but no vendor accelerator implementation ships. Hardware acceleration must arrive through the substrate execution port as an explicitly admitted post-compiled provider; device-specific kernels and SDK dependencies remain outside the base Elpis build.",
-        "steering.global_event_fields() exposes the values an ECS integration would bind, but inference never records them; binding steering epochs into the ECS history is the runtime composition's job.",
-        "Speculative verification is greedy-equivalence only; no sampling-equivalent acceptance rule.",
-        "Sequence begin still validates the committed lineage with the legacy validator, which walks the whole receipt history before its validated-state cache check; this is paid once per sequence, not per token.",
-        "The legacy per-token transaction (InferenceEngine.execute) still computes identities on every token; it remains the replay oracle and is not the streaming path.",
-        "Speculative decoding and physical prefetch are not on the sequence lane yet; they run only through the legacy transaction.",
-        "Channel-X steering between GREEDY blocks of one trajectory survives only in the legacy steered engine (steered.SteeredInferenceEngine over InferenceEngine.execute), kept to reproduce historical elpis.r3sot/elpis.sot records; the sequence path admits steering latents only at a PREFILL turn boundary. Retiring or re-scoping the channel-X contract is pending.",
+        "The ECS<->DSV semantic codec is not defined or qualified (see ECS_G); the codec supplies only the token side of encode/decode.",
         "V4.1 text chat only; tool/image templates and model-specific stop extensions are unsupported. Full recipe framework integration is not imported.",
-        "The principal path's attention reach is the local window (the fixture's local_window is 4): admitted context influences generation through that window and the model-owned associative rows, not through a KV pool. It is intentionally not numerically equivalent to the legacy compressed-KV kernel; the difference is exactly the global compressed-KV term.",
-        "Prefill re-reads admitted context every turn: reconstruction cost replaces resident KV memory and is measured by tests/integration/context_scaling_benchmark.py."
+        "Retained model-execution mechanics keep persisted identity domains for historical replay; whether any of them is retired or moved to research is a separate decision."
+      ],
+      "canonical_modules": [
+        "elpis.inference.contracts",
+        "elpis.inference.text",
+        "elpis.inference.admission",
+        "elpis.inference.structural"
       ]
     },
     {
       "id": "runtime",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "The one runtime composition: Runtime wires the subsystems explicitly around one durable receipt history (ReceiptHistory), an ECS kernel history founded with one history entity and one recorder entity per subsystem. It runs one subsystem operation at a time through that subsystem's own fail-closed entry point (pipeline ingress, structure retrieval-bundle admission, canonical Grid81 publication, the evolution path gate bound to a projection of the runtime's own history, and one inference decode transaction) and records the committed outcome as a kernel-attributed message. It owns the edge adapters (elpis.runtime.edges) that turn ingress exports and retrieval bundles into inference AddressProposals before a sequence begins. It composes the context-substrate path explicitly (admit_context: ingress -> edge adapter -> HACF object resolution -> ContextAdmission, recorded; run_principal: begin -> streamed tokens -> finalize, commit recorded) with nothing running during the token loop. It is not a numbered runtime generation. run_text renders and encodes chat before begin, streams incremental text alongside token emission, and records principal.commit then an inert text.output digest after finalization. No generated text is admitted as memory.",
+      "purpose": "The one runtime composition. It orchestrates codec -> ECS -> codec (elpis.runtime.cognition.run_turn: DSV4 encode, admitted stimulus, ECS_G dynamics, S3 readout, DSV4 decode), failing closed with ECS_CODEC_UNQUALIFIED while no qualified ECS codec map exists. Around one durable continuity history (ReceiptHistory, an ECS_C kernel history founded with one history entity and one recorder entity per subsystem) it runs one subsystem operation at a time through that subsystem's own fail-closed entry point (pipeline ingress, structure retrieval-bundle admission, canonical Grid81 publication, the evolution path gate bound to a projection of the runtime's own history, and structural-memory rendering through the codec) and records the committed outcome as a kernel-attributed message. It owns the edge adapters (elpis.runtime.edges). It composes no DSV model execution: no decode transaction, principal sequence or model text generation (mission-gated). It is not a numbered runtime generation.",
       "python_package": "elpis.runtime",
       "implementation_roots": [
         "src/elpis/runtime"
@@ -357,16 +368,15 @@
       "external_dependencies": [],
       "model_dependency": "NONE_REQUIRED. Inference runs only on caller-supplied targets; the integration suite uses the synthetic DSV4 fixture.",
       "uses_numpy": false,
-      "maturity": "Integration qualified: five end-to-end suites over real native libraries and a real HACF corpus (ingress, structural memory, canonical writer, evolution, inference with the DSV4 fixture), including record idempotence, replay on reopen, tamper refusal, stale-history rejection and non-recording of refused operations.",
+      "maturity": "Integration qualified over real native libraries and a real HACF corpus (ingress, structural memory, canonical writer, evolution, structural-memory rendering), including record idempotence, replay on reopen, tamper refusal, stale-history rejection and non-recording of refused operations. The canonical turn is qualified for direction, atomicity, determinism, snapshot continuation, fail-closed refusal and the absence of any DSV model, using TRAINING=NONE SEMANTICS=NONE interface fixtures only.",
       "incomplete_interfaces": [
+        "No qualified ECS<->DSV semantic codec map exists; canonical text generation is unavailable by design.",
+        "ECS turn transitions are not recorded in the ECS_C history (no ECS recorder role in the genesis).",
+        "No HACF/structure -> ECS edge is defined; Runtime.admit_context renders structural memory through the codec but nothing canonical consumes the rendering yet.",
         "Ingress proposals are recorded but the query-local overlay itself is not persisted; recording carries its identity only.",
-        "Steering epochs (steering.global_event_fields) are not yet recorded; the steered engine is composed by the caller, not by Runtime.",
         "Canonical publication is recorded after the fact; the application and promotion stages before it are driven by the caller and not recorded.",
         "The runtime is single-process and same-process like the ECS kernel; no cross-process transport or service boundary.",
-        "record() re-reads the event log after each write; adequate at test scale, not an indexed store.",
-        "Sequence outputs are committed and recorded but not yet written back into HACF, so the next turn's retrieval does not yet see the previous turn's output unless the caller ingests it.",
-        "The only Python-reachable HACF builder is the retrieval bridge, which indexes at most 64 documents and 128 chunks; context-scaling measurements stay inside that ceiling although ingress and resolution open corpora of any size.",
-        "Text transport is qualified with a scripted emission double only. Canonical ECS-to-HACF/context projection and explicit post-sequence generated-content admission remain separate edges; caller supplies the context snapshot."
+        "record() re-reads the event log after each write; adequate at test scale, not an indexed store."
       ]
     }
   ],
@@ -501,7 +511,8 @@
     "Elpis is not claimed to be generally intelligent; 'geodesic intelligence' names a research direction.",
     "No release, tag or PyPI publication exists for this development repository; beta release authority was not migrated.",
     "Mechanics qualification (tests passing) is not scientific qualification and not runtime admission of any learned model.",
-    "Inference mechanics are qualified on synthetic fixtures only. The DSV4.1 tower's arithmetic is qualified against pinned donor behavior on a training-free fixture; it is not a trained model, and no compatibility with a learned production model, nor any quality, reasoning or steering-effect claim, follows (docs/NONCLAIMS.md)."
+    "The DSV4.1 tower in research/dsv41_tower is noncanonical donor/oracle/qualification code: its arithmetic is qualified against pinned donor behavior on a training-free fixture; it is not a trained model and not Elpis cognition.",
+    "No ECS<->DSV semantic codec is qualified; Elpis does not generate text. Interface fixtures are TRAINING=NONE SEMANTICS=NONE and are never presented as cognition."
   ],
   "post_migration_relocations": [
     {

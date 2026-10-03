@@ -89,33 +89,32 @@ ids = tokenizer.encode_chat((ChatMessage("user", "Hello, Elpis."),))
 # (0, 128803, 19923, 14, 3909, 62848, 16, 128804, 128822)
 ```
 
-`ChatMessage` is also exported from `elpis.inference.text`. With a compatible
-future target, the composition call is:
+`ChatMessage` is also exported from `elpis.inference.text`.
+
+This tokenizer is the token side of the DSV4 codec (docs/ELPIS_MISSION.md).
+The canonical turn, `Runtime.run_turn` (`elpis.runtime.cognition`), uses its
+`encode` and incremental `decoder()` at the boundary on either side of ECS:
 
 ```python
-result, record = runtime.run_text(
-    engine, state, "Hello, Elpis.", admission,
-    tokenizer=tokenizer, request_id="turn-1", max_new_tokens=64,
-    expected_state=state.digest, emit=print_chunk,
-)
+result = runtime.run_turn(world_state, "Hello, Elpis.", tokenizer=tokenizer,
+                          learning_rate=0.002)
+# CompositionError: ECS_CODEC_UNQUALIFIED: ECS codec mapping not yet
+# qualified; text generation unavailable
 ```
 
-`admission` comes from `Runtime.admit_context(..., text_tokenizer=tokenizer)` or
-an explicitly empty `admit_context` under the production renderer. The existing
-Regex ingress accepts its bounded task grammar; arbitrary chat is not silently
-sent through that grammar. Retrieval task, corpus pins and context snapshot stay
-explicit. The principal's prefill order stays `admission.tokens + request.prompt`.
-Whether a trained target supports that prefix order is part of its qualification.
-
-`run_text` validates model/tokenizer/vocabulary before begin. During a sequence,
-only model `next`, incremental byte decode and caller emission run. It measures
-encoding, prefill/admission, model steps, decode, emitter and finalization
-separately. Emission exceptions finalize the stopped sequence but record no
-successful receipt; already streamed text remains an uncommitted proposal.
-After success it records the existing principal commit and an inert text-output
-digest in ECS. It retains the exact PrincipalRequest for replay.
+No ECS<->DSV semantic codec map is qualified, so the turn fails closed. The
+former `run_text` runtime operation, which generated text by running a DSV model
+through the principal path, was removed by the mission correction: a DSV
+model is not Elpis's cognitive path. `Runtime.admit_context(...,
+text_tokenizer=tokenizer)` still renders verified structural-memory objects
+through this tokenizer.
 
 ## Production intake gap — exact mapping, not a rename
+
+*Historical analysis, kept for the record.* It lists what a production DSV
+tower would need behind the principal engine. Under the mission
+(docs/ELPIS_MISSION.md) a production DSV tower is not Elpis's cognitive path,
+so this table is not a roadmap.
 
 `Target` mixes legacy transaction/stream contracts with the principal methods.
 `PrincipalEngine` itself only needs config/model/numerical identity,

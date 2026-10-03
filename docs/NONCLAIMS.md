@@ -28,7 +28,8 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
   Qwen or any other production model is **not** established. The upstream
   mechanisms the code follows are listed in `LICENSES/PROVENANCE.md`.
 * **The DSV4.1 tower is an architecture qualification, not a trained model.**
-  `elpis.inference.drivers.dsv41` is a production-shaped DSV4.1 arithmetic driver
+  `research/dsv41_tower` (noncanonical; relocated out of the canonical tree) is a
+  production-shaped DSV4.1 arithmetic driver
   (local/SWA and compressed sparse attention, Engram, mHC, routed and shared MoE).
   Its mechanics are qualified against pinned DeepSeek V4.1 donor behavior: every
   sublayer, layer residual stream and logit at every position, within F32
@@ -62,10 +63,12 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
   intake: no learned production parameter artifact is admitted. The
   principal path is not numerically equivalent to the legacy compressed-KV
   kernel, and no quality comparison between them is claimed.
-* **Text output is inert.** `Runtime.run_text` records a finalized principal
-  commit and an output digest in ECS. It does not ingest generated text into
-  HACF. Post-sequence proposal/admission and canonical ECS-to-context projection
-  remain separate integration work. No geodesic-intelligence claim follows.
+* **Elpis does not generate text.** No ECS<->DSV semantic codec is defined or
+  qualified, so the canonical turn (`Runtime.run_turn`) fails closed with
+  `ECS_CODEC_UNQUALIFIED`. The only codec maps in the repository are
+  `TRAINING=NONE SEMANTICS=NONE` interface fixtures, never presented as
+  cognition. A mechanics pass is not a mission pass (`docs/ELPIS_MISSION.md`).
+  No geodesic-intelligence claim follows.
 
 ### Beta steering claims not carried forward
 
