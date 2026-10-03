@@ -22,7 +22,6 @@ LAB = REPO / "research" / "ecs_cognition_r0"
 
 # Strict xfail for what is not built yet; each later commit deletes its entries.
 PENDING = {
-    "core": "Cognitive R0 core not implemented yet (K2)",
     "lab": "Cognitive R0 qualification laboratory not created yet (K3)",
 }
 
