@@ -15,12 +15,21 @@ cognition".
   every workload and writes one evidence file that binds the git head and
   tree, the SHA-256 of every ECS_G source, header, binding and build file, the
   CMake configuration, the compiler and the exact shared-library SHA-256.
+* `profile.py`: callgrind instruction profile of the native K-step loop.
+* `jitter.py`: tail-latency investigation (executor vs a matched calibration
+  loop, pinned and unpinned; Python with and without the cyclic GC).
+* `overhead.py`: supplementary split-timing measurement of the Python
+  control plane (total call minus time inside the native call), plus a
+  cold-machine probe.
+* `sanitizers.py`: GCC ASan+UBSan and TSan builds running every ECS_G
+  native test, and the Python executor suites under ASan.
+* `gates.py`: evaluates the gates registered at R1A on the evidence.
 * `evidence/`: write-once evidence files (`open(..., "x")`).
 
 ```sh
 cmake -S . -B build/r1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc
 cmake --build build/r1 -j
-PYTHONPATH=src python -m research.ecs_runtime_r1.bench --build build/r1 --phase baseline \
+PYTHONPATH=src python -m research.ecs_runtime_r1.bench --build build/r1 --phase final \
     --out research/ecs_runtime_r1/evidence/<name>.json
 ```
 

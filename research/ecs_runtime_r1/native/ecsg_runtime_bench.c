@@ -15,6 +15,9 @@
  *   exec_learn   executor learn: <steps> fused steps, one call, one commit
  *   exec_txn     executor transaction: begin + learn(<steps>) + commit
  *   exec_cold    executor create (max_rows = rows) + destroy
+ *   calibrate    a dependent floating-point chain of <steps> x 1000 iterations,
+ *                no memory traffic or calls: its tail is the platform's own
+ *                jitter (scheduling, interrupts, frequency), for comparison
  *
  * Data: deterministic (splitmix64 + Box-Muller); W0 ~ N(0, (0.18 sqrt(36/N))^2),
  * X ~ N(0, 0.5^2), y = 0.9 f_W0(X). Values do not change the work performed.
@@ -166,6 +169,17 @@ static int run_once(bench *b, const char *mode)
             rc = elpis_ecsg_executor_txn_commit(b->exec, token, NULL);
         }
         return rc;
+    }
+    if (strcmp(mode, "calibrate") == 0) {
+        volatile double sink;
+        double acc = 1.0;
+        const size_t n = b->steps * 1000u;
+        for (k = 0; k < n; ++k) {
+            acc = acc * 1.0000001 + 1e-9;
+        }
+        sink = acc;
+        (void)sink;
+        return 0;
     }
     if (strcmp(mode, "exec_cold") == 0) {
         elpis_ecsg_executor *e = NULL;
