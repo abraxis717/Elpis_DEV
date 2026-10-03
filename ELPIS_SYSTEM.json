@@ -417,6 +417,10 @@
       {
         "path": "research/ecs_cognition_r0",
         "classification": "QUALIFICATION: ECS_G Cognitive R0 laboratory (DEV -> freeze -> QUAL, write-once evidence). Its harness, synthetic task and thresholds grant nothing; only the canonical core it exercises is admitted, with the claim limited to its frozen regime."
+      },
+      {
+        "path": "research/ecs_runtime_r1",
+        "classification": "PERFORMANCE_ONLY, NO_SCIENTIFIC_CLAIM: ECS Runtime R1 benchmark laboratory (fixed workloads, pre-registered gates, direct-native driver and harness, write-once performance evidence bound to sources and binary). Measures how ECS_G executes, never what it computes (docs/ECS_RUNTIME_R1.md)."
       }
     ],
     "native_targets": [
