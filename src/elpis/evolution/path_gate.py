@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from elpis.ecs.projection import ContextProjection
+from elpis.ECS_C.projection import ContextProjection
 
 from .digests import domain_digest, require_digest
 

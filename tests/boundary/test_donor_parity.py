@@ -76,7 +76,7 @@ if side == "donor":
     from elpis.canonical_identity import content_digest
 else:
     from elpis.evolution import EvolutionPathAssertion, HarnessManifest, content_map_digest
-    from elpis.ecs.kernel import Kernel
+    from elpis.ECS_C.kernel import Kernel
     from elpis.identity import content_digest
 a = EvolutionPathAssertion("ep", d("s"), 2, d("h"), d("p"), d("c"), d("y"), ("x/y",), 1, 2,
                            d("r"), d("e"), d("pj"), d("he"), d("root"))

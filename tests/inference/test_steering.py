@@ -1215,7 +1215,7 @@ def test_guard_request_lineage_control_state_fails_closed(rt):
 
 # ------------------------------------------------------------ lane-separation architecture guards (branch-local)
 # Subsystems the active inference path must never import.
-SLOW_LANE_MODULES = ('elpis.evolution', 'elpis.ecs', 'elpis.pipeline', 'elpis.runtime', 'elpis.structure.grid81')
+SLOW_LANE_MODULES = ('elpis.evolution', 'elpis.ECS_C', 'elpis.pipeline', 'elpis.runtime', 'elpis.structure.grid81')
 SLOW_LANE_PREFIXES = ()
 SLOW_LANE_TAGS = ('darwin', 'evolution')
 SLOW_LANE_ROOTS = tuple(str(REPO / 'src' / 'elpis' / name) for name in ('evolution', 'ecs', 'pipeline', 'runtime'))

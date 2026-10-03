@@ -1,8 +1,8 @@
 """A small real ECS history and its context projection for evolution tests."""
 from __future__ import annotations
 
-from elpis.ecs.kernel import Kernel
-from elpis.ecs.projection import ProjectionRequest, project_history
+from elpis.ECS_C.kernel import Kernel
+from elpis.ECS_C.projection import ProjectionRequest, project_history
 
 
 def ecs_projection(root):

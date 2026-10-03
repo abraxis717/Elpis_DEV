@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from elpis.ecs.errors import EcsError
+from elpis.ECS_C.errors import EcsError
 from elpis.runtime import HistoryError, Runtime, RuntimeConfig
 
 from .conftest import CONTRADICTION, POSITIVE
@@ -57,7 +57,7 @@ def test_reopen_replays_and_tampered_history_is_refused(tmp_path, ingress):
 
 
 def test_history_founded_for_another_purpose_is_refused(tmp_path):
-    from elpis.ecs.kernel import Kernel
+    from elpis.ECS_C.kernel import Kernel
     from elpis.runtime.history import HISTORY_GENESIS_LABEL
     path = tmp_path / "foreign"
     with Kernel(str(path), genesis_label=HISTORY_GENESIS_LABEL).open() as kernel:

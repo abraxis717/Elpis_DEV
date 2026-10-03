@@ -75,15 +75,15 @@
       ]
     },
     {
-      "id": "ecs",
+      "id": "ECS_C",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
       "purpose": "Persistent identity, continuity and history: deterministic entities and lifecycle, sender-bound local messaging, deterministic scheduling, one authoritative durable event history, canonical state roots, replay, checkpoints, crash recovery, read-only topology and context projections, and the frozen Structural R0 mutation grammar.",
-      "python_package": "elpis.ecs",
+      "python_package": "elpis.ECS_C",
       "implementation_roots": [
-        "src/elpis/ecs"
+        "src/elpis/ECS_C"
       ],
       "test_roots": [
-        "tests/ecs"
+        "tests/ECS_C"
       ],
       "native_targets": [],
       "depends_on": [],
@@ -107,6 +107,33 @@
       "incomplete_interfaces": [
         "Structural R0 mutations are executable and verified but not admitted as kernel transitions.",
         "Cross-process transport, federation and cross-process authority are deferred."
+      ]
+    },
+    {
+      "id": "ECS_G",
+      "status": "MATERIALIZED_INCOMPLETE",
+      "purpose": "Geometric ECS namespace for the Entity Driven Evolutionary Network lineage: microscopic entity state, interaction geometry, coarse macrostates, recurrent dynamics, attractors, topology and geometric evolutionary state. The namespace is materialized, but the historical geometric implementation and scientific authority have not yet been restored into the live runtime.",
+      "python_package": "elpis.ECS_G",
+      "implementation_roots": [
+        "src/elpis/ECS_G"
+      ],
+      "test_roots": [
+        "tests/ECS_G"
+      ],
+      "native_targets": [],
+      "depends_on": [],
+      "mutation_authority": "NONE at this stage. Materializing the ECS_G namespace grants no runtime, scientific, evolutionary, structural-mutation or inference authority.",
+      "runtime_participation": "NONE at this stage. The intended inter-inference geometric recurrence has not yet been restored or admitted.",
+      "security_boundary": "No executable geometric dynamics are admitted yet. Historical scientific authority must be provenance-bound and separately qualified before runtime integration.",
+      "protocol_identifiers_retained": [],
+      "external_dependencies": [],
+      "model_dependency": "NONE",
+      "uses_numpy": false,
+      "maturity": "Namespace materialized only. Geometric ECS recovery from the pre-collapse scientific lineage is pending; no production ECS_G dynamics claim is made.",
+      "incomplete_interfaces": [
+        "Historical geometric ECS implementation has not yet been recovered into this namespace.",
+        "No native C ECS_G target exists yet.",
+        "No inference-to-ECS_G or ECS_G-to-inference recurrence contract is admitted yet."
       ]
     },
     {
@@ -227,7 +254,7 @@
       ],
       "native_targets": [],
       "depends_on": [
-        "ecs"
+        "ECS_C"
       ],
       "mutation_authority": "Evolution records are immutable values; every state change returns a new population, organism or receipt and nothing is written in place. Selection and reproduction commit only against the exact revision the caller observed and reject atomically otherwise. Promotion writes a child workspace only at a caller-supplied, not-yet-existing destination, and only when its content matches the selected manifest. The path gate grants no authority beyond the single attempt it admits.",
       "runtime_participation": "The runtime composition may run gated evolution attempts against an ECS projection of its own history and record their transition receipts in that history.",
@@ -312,7 +339,7 @@
       ],
       "native_targets": [],
       "depends_on": [
-        "ecs",
+        "ECS_C",
         "evolution",
         "inference",
         "pipeline",
@@ -323,7 +350,7 @@
       "runtime_participation": "This is the runtime composition.",
       "security_boundary": "The history directory is an explicit absolute path and the history is replay-validated on open (event chain, clock progression, state roots); a history founded with other entities, a record sent by the wrong recorder, or a non-canonical record payload is refused. Libraries, corpus roots, file assets, ledgers and promotion capabilities are supplied explicitly by the caller; the runtime opens no network connection and loads no model. The evolution gate receives a projection taken at call time, so an assertion bound to an older history head is rejected before anything executes.",
       "protocol_identifiers_retained": [
-        "New: elpis.runtime.history.v1 (history genesis label), elpis.runtime.receipt-record.v1 (record payload schema). The ECS identifiers it builds on (ecs.event.v1, ecs.message.v1, ecs.state_root.v3) are owned by elpis.ecs."
+        "New: elpis.runtime.history.v1 (history genesis label), elpis.runtime.receipt-record.v1 (record payload schema). The ECS identifiers it builds on (ecs.event.v1, ecs.message.v1, ecs.state_root.v3) are owned by elpis.ECS_C."
       ],
       "external_dependencies": [],
       "model_dependency": "NONE_REQUIRED. Inference runs only on caller-supplied targets; the integration suite uses the synthetic DSV4 fixture.",
@@ -440,7 +467,7 @@
     "model_weights": "NEVER_COMMITTED_NEVER_DOWNLOADED_BY_BASE",
     "identifier_scan_exemptions": [
       {
-        "path": "src/elpis/ecs/structural_authority.py",
+        "path": "src/elpis/ECS_C/structural_authority.py",
         "reason": "Sealed Structural R0 authority bytes, digest-pinned and byte-identical to the donor; the only match is the phrase 'TRM or learned inference' inside the payload's list of explicitly NOT authorized operations."
       }
     ]
@@ -450,5 +477,17 @@
     "No release, tag or PyPI publication exists for this development repository; beta release authority was not migrated.",
     "Mechanics qualification (tests passing) is not scientific qualification and not runtime admission of any learned model.",
     "Inference mechanics are qualified on synthetic fixtures only. The DSV4.1 tower's arithmetic is qualified against pinned donor behavior on a training-free fixture; it is not a trained model, and no compatibility with a learned production model, nor any quality, reasoning or steering-effect claim, follows (docs/NONCLAIMS.md)."
+  ],
+  "post_migration_relocations": [
+    {
+      "from": "src/elpis/ecs",
+      "to": "src/elpis/ECS_C",
+      "reason": "Post-migration taxonomy correction: the existing continuity/history Entity-Component/System kernel was renamed ECS_C. Persisted ECS protocol identities remain unchanged."
+    },
+    {
+      "from": "tests/ecs",
+      "to": "tests/ECS_C",
+      "reason": "Test surface follows the post-migration ECS_C package rename; historical migration provenance remains unchanged."
+    }
   ]
 }

@@ -89,7 +89,7 @@ $S/bin/python -m research.ecs_dynamics.run dev                      # DEV worlds
 $S/bin/python -m research.ecs_dynamics.run freeze --commit 7cd8158d4123220e376e99e852e6ac0c7987234b
 $S/bin/python -m research.ecs_dynamics.run qual                     # once
 $S/bin/python -m research.ecs_dynamics.run status
-$S/bin/python -m pytest tests/research tests/boundary tests/ecs
+$S/bin/python -m pytest tests/research tests/boundary tests/ECS_C
 ```
 
 Numerical profile: Python 3.12.3 and NumPy 1.26.4, x86_64, IEEE-754 binary64.

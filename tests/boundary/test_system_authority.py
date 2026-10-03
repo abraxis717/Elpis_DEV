@@ -8,8 +8,8 @@ import pytest
 
 from ._system import REPO, SYSTEM, live_subsystems, repository_files, subsystem_ids
 
-EXPECTED_SUBSYSTEMS = ["substrate", "ecs", "structure", "pipeline", "evolution", "inference", "runtime"]
-STATUSES = {"PLANNED", "OPERATIONAL", "OPERATIONAL_INCOMPLETE_INTEGRATION"}
+EXPECTED_SUBSYSTEMS = ["substrate", "ECS_C", "ECS_G", "structure", "pipeline", "evolution", "inference", "runtime"]
+STATUSES = {"PLANNED", "MATERIALIZED_INCOMPLETE", "OPERATIONAL", "OPERATIONAL_INCOMPLETE_INTEGRATION"}
 
 
 def test_authority_schema_and_subsystem_set():

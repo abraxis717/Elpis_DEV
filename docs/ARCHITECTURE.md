@@ -167,7 +167,7 @@ there is no writable COLD replica; the CPU PAL has no accelerator fences.
 used by the substrate and inference. Callers branch on `Code` (`IDENTITY`,
 `INTEGRITY`, `LIMIT`, `BUSY`, `STALE`, …), never on message text.
 
-## ECS: identity, history and replay (`elpis.ecs`)
+## ECS_C: identity, continuity, history and replay (`elpis.ECS_C`)
 
 The ECS is the system's memory of *what happened*. It is a deterministic,
 same-process kernel.
@@ -237,7 +237,7 @@ rollback-floor markers: full replay remains authoritative.
 
 ### Structural R0
 
-`elpis.ecs.structural` is the frozen Structural R0 mutation grammar: a
+`elpis.ECS_C.structural` is the frozen Structural R0 mutation grammar: a
 participation mask over the exact nonzero columns of a frozen 6 × N binary64
 sidecar, with ABSTAIN / DISABLE_COLUMN / RESTORE_COLUMN as the only
 operations. Its sealed authority bytes are embedded and identified by logical

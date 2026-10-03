@@ -20,7 +20,7 @@ The single machine-readable system authority is
 | Path | Subsystem |
 |---|---|
 | `src/elpis/substrate`, `native/substrate` | memory and residency below every model (FMS, PAL, file assets) |
-| `src/elpis/ecs` | identity, durable history, replay, projections |
+| `src/elpis/ECS_C` | identity, durable history, replay, projections |
 | `src/elpis/structure`, `native/structure` | HACF structural memory, semantic core, retrieval, Grid81 representation |
 | `src/elpis/pipeline`, `native/pipeline` | bounded Regex → HACF ingress; the canonical Grid81 writer path |
 | `src/elpis/evolution` | deterministic heredity, selection, gated promotion |

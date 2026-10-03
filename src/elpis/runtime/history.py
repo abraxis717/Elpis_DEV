@@ -26,10 +26,10 @@ import json
 from pathlib import Path
 import re
 
-from elpis.ecs.entity import entity_id_from_founding, founding_record
-from elpis.ecs.kernel import Kernel
-from elpis.ecs.projection.contracts import ContextProjection, ProjectionRequest
-from elpis.ecs.projection.kernel_adapter import project_kernel_history
+from elpis.ECS_C.entity import entity_id_from_founding, founding_record
+from elpis.ECS_C.kernel import Kernel
+from elpis.ECS_C.projection.contracts import ContextProjection, ProjectionRequest
+from elpis.ECS_C.projection.kernel_adapter import project_kernel_history
 
 __all__ = (
     "HISTORY_GENESIS_LABEL", "RECORD_SCHEMA", "RECORDERS", "ROLES",

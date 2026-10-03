@@ -80,14 +80,14 @@ def test_production_code_never_imports_the_laboratory():
 
 
 def test_importing_ecs_does_not_load_the_laboratory_or_numpy():
-    probe = "import sys, elpis.ecs, elpis.ecs.kernel; print(sorted(m for m in sys.modules if m.startswith('research')))"
+    probe = "import sys, elpis.ECS_C, elpis.ECS_C.kernel; print(sorted(m for m in sys.modules if m.startswith('research')))"
     out = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, cwd=REPO,
                          env={"PYTHONPATH": str(REPO / "src"), "PYTHONDONTWRITEBYTECODE": "1"}, check=True)
     assert out.stdout.strip() == "[]"
 
 
 def test_neural_law_is_not_in_the_ecs_kernel_and_numpy_is_not_a_base_dependency():
-    kernel = (REPO / "src" / "elpis" / "ecs" / "kernel.py").read_text()
+    kernel = (REPO / "src" / "elpis" / "ECS_C" / "kernel.py").read_text()
     for token in ("tanh", "numpy", "research", "phi(z)"):
         assert token not in kernel
     import tomllib

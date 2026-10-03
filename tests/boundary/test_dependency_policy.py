@@ -114,7 +114,7 @@ def test_base_package_import_is_inert():
     assert "numpy" not in loaded and not loaded & set(POLICY["forbidden_python_imports"])
 
 
-SLOW_LANES = ("elpis.ecs", "elpis.structure", "elpis.pipeline", "elpis.evolution", "elpis.runtime")
+SLOW_LANES = ("elpis.ECS_C", "elpis.structure", "elpis.pipeline", "elpis.evolution", "elpis.runtime")
 
 
 def _inference_modules():

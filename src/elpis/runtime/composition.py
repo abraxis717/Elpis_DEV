@@ -41,7 +41,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from elpis.ecs.projection.contracts import ContextProjection, ProjectionRequest
+from elpis.ECS_C.projection.contracts import ContextProjection, ProjectionRequest
 from elpis.inference.admission import ContextAdmission, ContextBudget, admit_context
 from elpis.evolution.path_gate import EvolutionPathGate, GateExecuted, GateRejected
 from elpis.pipeline.canonical.publisher import CanonicalPublicationReceipt, publish_candidate

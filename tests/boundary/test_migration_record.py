@@ -33,11 +33,43 @@ def test_every_record_is_well_formed():
             assert record["migration_type"] == "NOT_MIGRATED", record
 
 
+def _current_destination(destination: str) -> str:
+    """Resolve an historical migration destination through later declared relocations."""
+    relocations = SYSTEM.get("post_migration_relocations", [])
+    matches = sorted(
+        (
+            (entry["from"], entry["to"])
+            for entry in relocations
+            if isinstance(entry, dict)
+            and type(entry.get("from")) is str
+            and type(entry.get("to")) is str
+        ),
+        key=lambda pair: len(pair[0]),
+        reverse=True,
+    )
+    for old, new in matches:
+        if destination == old:
+            return new
+        if destination.startswith(old + "/"):
+            return new + destination[len(old):]
+    return destination
+
+
 def test_landed_destinations_exist():
     missing = []
     for record in MIGRATION["records"]:
         if record["disposition"] in LANDED:
             for dest in record["destination"].split(" + "):
-                if not (REPO / dest.strip()).exists():
-                    missing.append(dest)
+                historical = dest.strip()
+                current = _current_destination(historical)
+                if not (REPO / current).exists():
+                    missing.append({"historical": historical, "current": current})
     assert not missing, missing
+
+
+def test_post_migration_relocations_are_real():
+    for entry in SYSTEM.get("post_migration_relocations", []):
+        assert set(entry) == {"from", "to", "reason"}
+        assert entry["from"] != entry["to"]
+        assert entry["reason"].strip()
+        assert (REPO / entry["to"]).exists(), entry
