@@ -165,3 +165,21 @@ def test_canonical_turn_with_the_admitted_v41_codec(api):
         result = run_turn(state, "Hello, Elpis.", tokenizer=v41, codec_map=fixture, learning_rate=RATE)
         assert result.input_tokens == v41.encode("Hello, Elpis.") and result.text == "probe"
         assert state.epoch == 2
+
+
+def test_a_turn_whose_state_moved_meanwhile_is_refused_not_half_installed(api):
+    """The trial is adopted in one commit only if the authoritative state is still the one it forked."""
+    with world(api) as state:
+        fixture = FixtureMap()
+        interloper = FixtureMap(steps=1)
+        decode = fixture.decode
+
+        def decode_while_state_moves(readout):
+            x, y = interloper.encode(tuple(b"interloper")).drives[0]
+            state.step(x, y, RATE)  # someone else commits a transition during the turn
+            return decode(readout)
+        fixture.decode = decode_while_state_moves
+        with pytest.raises(CompositionError) as info:
+            run_turn(state, "perturb", tokenizer=ByteTokens(), codec_map=fixture, learning_rate=RATE)
+        assert info.value.code == "ECS_STALE"
+        assert state.epoch == 1  # only the interloper's step; the turn installed nothing

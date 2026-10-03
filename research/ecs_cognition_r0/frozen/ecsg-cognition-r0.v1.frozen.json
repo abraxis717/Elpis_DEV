@@ -1,0 +1,61 @@
+{
+ "body": {
+  "choices": {
+   "steps": 4000
+  },
+  "dev_choice_rule": "steps = the smallest step_grid value at which every DEV world reaches nmse_A <= 0.25 and nmse_A <= 0.5 * nmse_A_init (stricter than the QUAL per-world rule); otherwise the largest value.",
+  "dev_evidence_digest": "12e3406775d00f11e31c58c2ae56b3469fbab45eb24742b9116106ca20ce0bb6",
+  "experiment": "ecsg-cognition-r0.v1",
+  "learning_criterion": "nmse <= 0.5 and nmse <= 0.5 * nmse_A_init",
+  "pass_rule": {
+   "A_learning": "every QUAL world: nmse_A_learned <= 0.5 and nmse_A_learned <= 0.5 * nmse_A_init; median over QUAL worlds of nmse_A_learned <= 0.25",
+   "B_state_causality": "every QUAL world: restoring the initial snapshot reproduces the initial responses bitwise; a fresh state created from the learned W values reproduces the learned responses bitwise; a state with W = 0 answers exactly 0 for every query",
+   "C_persistence": "every QUAL world: a clean process given only the learned snapshot bytes and the frozen specification reproduces the learned responses on the evaluation inputs bitwise",
+   "D_continual": "every QUAL world, learning experience B from the A-learned state: the state identity changes, the epoch advances by steps, the responses on B inputs change, nmse_B_after <= 0.5 and nmse_B_after <= 0.5 * nmse_B_before",
+   "D_retention_measured": "not a gate: retention = nmse_A_after_B / nmse_A_learned; class RETAINED if nmse_A_after_B <= 0.5 and <= 0.5 * nmse_A_init, else INTERFERENCE; flag CATASTROPHIC if nmse_A_after_B >= nmse_A_init",
+   "E_controls": "every QUAL world: (i) without learning the responses equal the initial responses and the epoch is 0; (ii) learning the same budget on permuted A targets fails the A learning criterion on the true targets; (iii) an untrained independent fresh state fails the A learning criterion; aggregate: median nmse_shuffled >= 4 * median nmse_A_learned; (iv) leak guard: C holds and the core's slots are exactly the native state and the rate",
+   "F_determinism": "the first QUAL world, learned twice in this process and once in a clean process from the specification alone, yields identical learned snapshot digests and transition receipts",
+   "G_microstate_authority": "every QUAL world: the PTE pair has S3 relative difference <= 1e-12 and response relative difference <= 1e-12 before learning, and after one identical learning step S3 relative difference >= 1e-9 and response relative difference >= 1e-9"
+  },
+  "qual_worlds": [
+   "qual-0000",
+   "qual-0001",
+   "qual-0002",
+   "qual-0003",
+   "qual-0004",
+   "qual-0005",
+   "qual-0006",
+   "qual-0007"
+  ],
+  "source_commit": "bdb8823aec62c83bebc6aeb0072dca3f4aa1a759",
+  "source_digest": "d107f1470c43b4753e568c7d20fc595d9d951d0c086fa73384f1cae2b08f46a3",
+  "spec": {
+   "dev_worlds": 4,
+   "dim": 6,
+   "init_scale": 0.18,
+   "input_scale": 0.5,
+   "learning_rate": 0.002,
+   "name": "ecsg-cognition-r0",
+   "pte_base_width": 32,
+   "pte_tail_scale": 0.125,
+   "qual_worlds": 8,
+   "region_offset": 0.5,
+   "seed": 20261003,
+   "step_grid": [
+    250,
+    500,
+    1000,
+    2000,
+    4000
+   ],
+   "teacher_scale": 0.5,
+   "teacher_width": 4,
+   "test_rows": 256,
+   "train_rows": 64,
+   "version": 1,
+   "width": 36
+  },
+  "spec_digest": "d5172e7af41410323b6e3bce8c69b87234d3f05c66975fd441cae88ff2c24670"
+ },
+ "digest": "71fba13cdea64551e5d08818e20a1b89cc8b76f0b2fc172ac317d711d9311eb1"
+}

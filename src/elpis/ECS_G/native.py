@@ -7,18 +7,26 @@ set empty: this module imports only the standard library, never numpy,
 inference, runtime or ECS_C.
 
 It exposes exactly the qualified native surface: owned microscopic state
-``W[dim, width]`` (binary64, row-major), its epoch, the raw-sum ``S3``
-projection, the explicit atomic cubic gradient step, and portable
-snapshot/restore. The mathematics live in C; nothing here re-implements them.
+``W[dim, width]`` (binary64, row-major), its epoch, the forward map
+``f_W(x)`` computed from the current state, the raw-sum ``S3`` projection, the
+explicit atomic cubic gradient step, and portable snapshot/restore. The
+mathematics live in C; nothing here re-implements them.
+
+``fork`` and ``adopt`` give one atomic commit of a candidate state: work runs on
+an independent fork, and ``adopt`` installs it into this state in a single
+handle exchange only if this state has not changed since the fork. Otherwise
+it is refused and this state is untouched; there is no partial installation.
 """
 from __future__ import annotations
 
 import ctypes as C
+import hashlib
 import math
 
 __all__ = ("ECSGError", "ECSGLibrary", "WorldState")
 
 _OK, _INVALID, _NONFINITE = 0, -1, -2
+_MAX_FORWARD_ROWS = 1 << 16
 _P = C.POINTER(C.c_double)
 _VP = C.c_void_p
 
@@ -62,6 +70,7 @@ class ECSGLibrary:
             "elpis_ecsg_state_epoch": ([_VP], C.c_uint64),
             "elpis_ecsg_state_copy_w": ([_VP, _P, C.c_size_t], C.c_int),
             "elpis_ecsg_state_project_s3_f64": ([_VP, _P, _P, _P], C.c_int),
+            "elpis_ecsg_state_forward_f64": ([_VP, _P, C.c_size_t, _P], C.c_int),
             "elpis_ecsg_state_gd_step_scratch_f64": ([C.c_size_t, C.c_size_t, C.c_size_t], C.c_size_t),
             "elpis_ecsg_state_gd_step_f64": ([_VP, _P, _P, C.c_size_t, C.c_double, _P, C.c_size_t], C.c_int),
             "elpis_ecsg_state_snapshot_size": ([_VP], C.c_size_t),
@@ -85,10 +94,10 @@ class ECSGLibrary:
 class WorldState:
     """One owned native ECS_G state. W is authoritative; S3 is its projection."""
 
-    __slots__ = ("_api", "_handle", "dim", "width")
+    __slots__ = ("_api", "_handle", "_origin", "dim", "width")
 
     def __init__(self, api, handle):
-        self._api, self._handle = api, handle
+        self._api, self._handle, self._origin = api, handle, None
         lib = api._lib
         self.dim, self.width = int(lib.elpis_ecsg_state_dim(handle)), int(lib.elpis_ecsg_state_width(handle))
 
@@ -125,6 +134,19 @@ class WorldState:
         _check(self._api._lib.elpis_ecsg_state_copy_w(self._live(), out, count), "copy W")
         return tuple(out)
 
+    def forward(self, x_rows):
+        """``f_W(x)`` for each query row, computed natively from the current W. Read-only."""
+        rows = tuple(x_rows)
+        if not 1 <= len(rows) <= _MAX_FORWARD_ROWS:
+            raise ECSGError("INVALID", "forward rows")
+        for row in rows:
+            if not isinstance(row, (tuple, list)) or len(row) != self.dim:
+                raise ECSGError("INVALID", "forward row width")
+        x = _doubles((v for row in rows for v in row), len(rows) * self.dim, "forward rows")
+        out = (C.c_double * len(rows))()
+        _check(self._api._lib.elpis_ecsg_state_forward_f64(self._live(), x, len(rows), out), "forward")
+        return tuple(out)
+
     def s3(self):
         """Packed raw-sum S3 = (mu, M upper-packed, T3 upper-packed), length s3_size(dim)."""
         lib, d = self._api._lib, self.dim
@@ -148,8 +170,37 @@ class WorldState:
                "gradient step")
 
     def fork(self):
-        """An independent copy of this state, through the native snapshot/restore surface."""
-        return WorldState.restore(self._api, self.snapshot())
+        """An independent copy of this state, through the native snapshot/restore surface.
+
+        The fork remembers this state and its exact snapshot, so it can later be
+        adopted back atomically (see :meth:`adopt`).
+        """
+        snapshot = self.snapshot()
+        trial = WorldState.restore(self._api, snapshot)
+        trial._origin = (self, hashlib.sha256(snapshot).hexdigest())
+        return trial
+
+    def adopt(self, candidate):
+        """Install a fork of this state as this state: one commit, or nothing.
+
+        Refused (this state unchanged, candidate untouched) unless ``candidate``
+        is a live fork of this very state and this state is still exactly the
+        state it was forked from. On success this state owns the candidate's
+        native state and the candidate is consumed.
+        """
+        if type(candidate) is not WorldState or candidate is self:
+            raise ECSGError("INVALID", "a WorldState fork is required")
+        origin = candidate._origin
+        if origin is None or origin[0] is not self or candidate._api is not self._api:
+            raise ECSGError("INVALID", "candidate is not a fork of this state")
+        candidate._live()
+        if (candidate.dim, candidate.width) != (self.dim, self.width):
+            raise ECSGError("INVALID", "candidate shape")
+        if hashlib.sha256(self.snapshot()).hexdigest() != origin[1]:
+            raise ECSGError("STALE", "this state changed after the fork")
+        old, self._handle = self._handle, candidate._handle
+        candidate._handle, candidate._origin = None, None
+        _check(self._api._lib.elpis_ecsg_state_destroy(C.byref(old)), "state destroy")
 
     def snapshot(self):
         lib, handle = self._api._lib, self._live()
@@ -161,7 +212,7 @@ class WorldState:
     def close(self):
         if self._handle is not None and self._handle.value:
             _check(self._api._lib.elpis_ecsg_state_destroy(C.byref(self._handle)), "state destroy")
-        self._handle = None
+        self._handle, self._origin = None, None
 
     def __enter__(self):
         return self

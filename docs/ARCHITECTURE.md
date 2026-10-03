@@ -4,7 +4,7 @@
 depend on and what they may mutate. This document explains the design those
 facts describe. Both answer to [`ELPIS_MISSION.md`](ELPIS_MISSION.md):
 
-    DSV4 COMMUNICATES.  ECS COMPUTES AND PERSISTS.  FMS MATERIALIZES.
+    DSV4 COMMUNICATES.  ECS COMPUTES, LEARNS AND PERSISTS.  FMS MATERIALIZES.
     HACF STRUCTURES MEMORY.  ECS_C PRESERVES CONTINUITY.
 
 The canonical cognitive dataflow is `text -> DSV4 encode -> ECS stimulus ->
@@ -498,6 +498,15 @@ ECS_G imports nothing beyond itself and the standard library. The runtime's
 canonical turn places it between DSV4 encode and DSV4 decode (see *Runtime*);
 it is never a conditioning input to a DSV model and never driven by a DSV
 model's output statistics.
+
+Cognitive R0 (`elpis.ECS_G.cognition.CognitiveCore`, [`COGNITION_R0.md`](COGNITION_R0.md))
+keeps two operations apart: QUERY, `x -> f_W(x)` by the native forward map of
+the current `W` (read-only), and LEARN, `(X, y) -> K` G1 steps on a fork
+committed by one atomic adoption. Under its frozen synthetic regime, ECS_G
+supports stateful learned input-response computation: the learned behaviour
+lives in and follows `W`, survives snapshot and a clean process, and changes
+with experience. The same qualification found no retention under sequential
+learning (interference in 8 of 8 worlds). No language claim follows.
 
 ## Inference: the DSV4 codec and retained model mechanics (`elpis.inference`)
 

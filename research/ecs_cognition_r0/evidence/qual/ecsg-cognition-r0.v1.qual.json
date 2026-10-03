@@ -1,0 +1,517 @@
+{
+ "body": {
+  "aggregate": {
+   "A_median_nmse_learned_le_0.25": true,
+   "E_median_shuffled_ge_4x_learned": true
+  },
+  "determinism": {
+   "clean_process_equal": true,
+   "in_process_repeat_equal": true
+  },
+  "experiment": "ecsg-cognition-r0.v1",
+  "frozen_digest": "71fba13cdea64551e5d08818e20a1b89cc8b76f0b2fc172ac317d711d9311eb1",
+  "gates": {
+   "A_learning": true,
+   "B_state_causality": true,
+   "C_persistence": true,
+   "D_continual": true,
+   "E_controls": true,
+   "F_determinism": true,
+   "G_microstate_authority": true
+  },
+  "leak_guard": {
+   "clean_process_replay_bitwise_all_worlds": true,
+   "core_slots_are_state_and_rate": true
+  },
+  "limitations": [
+   "Synthetic regression task (SEMANTICS=NONE): a realizable cubic teacher, d=6, N=36, 64 experience rows; no claim about language, meaning or general cognition.",
+   "One ECS_G kernel and its G1 full-batch gradient recurrence at the Branch36 reference rate; neither the cubic kernel, S3, nor gradient descent is promoted beyond this regime.",
+   "Sequential learning of a second experience is measured, not engineered: interference is reported as found.",
+   "Bitwise reproduction is claimed for one build and numerical profile, not across platforms."
+  ],
+  "mechanics": "MECHANICS_PASS",
+  "mechanics_checks": {
+   "qual-0000": {
+    "epoch_after_A": true,
+    "epoch_after_B": true,
+    "native_forward_matches_oracle": true,
+    "no_learning_epoch_zero": true,
+    "pte_microstates_differ": true
+   },
+   "qual-0001": {
+    "epoch_after_A": true,
+    "epoch_after_B": true,
+    "native_forward_matches_oracle": true,
+    "no_learning_epoch_zero": true,
+    "pte_microstates_differ": true
+   },
+   "qual-0002": {
+    "epoch_after_A": true,
+    "epoch_after_B": true,
+    "native_forward_matches_oracle": true,
+    "no_learning_epoch_zero": true,
+    "pte_microstates_differ": true
+   },
+   "qual-0003": {
+    "epoch_after_A": true,
+    "epoch_after_B": true,
+    "native_forward_matches_oracle": true,
+    "no_learning_epoch_zero": true,
+    "pte_microstates_differ": true
+   },
+   "qual-0004": {
+    "epoch_after_A": true,
+    "epoch_after_B": true,
+    "native_forward_matches_oracle": true,
+    "no_learning_epoch_zero": true,
+    "pte_microstates_differ": true
+   },
+   "qual-0005": {
+    "epoch_after_A": true,
+    "epoch_after_B": true,
+    "native_forward_matches_oracle": true,
+    "no_learning_epoch_zero": true,
+    "pte_microstates_differ": true
+   },
+   "qual-0006": {
+    "epoch_after_A": true,
+    "epoch_after_B": true,
+    "native_forward_matches_oracle": true,
+    "no_learning_epoch_zero": true,
+    "pte_microstates_differ": true
+   },
+   "qual-0007": {
+    "epoch_after_A": true,
+    "epoch_after_B": true,
+    "native_forward_matches_oracle": true,
+    "no_learning_epoch_zero": true,
+    "pte_microstates_differ": true
+   }
+  },
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.11.15"
+  },
+  "pass_rule": {
+   "A_learning": "every QUAL world: nmse_A_learned <= 0.5 and nmse_A_learned <= 0.5 * nmse_A_init; median over QUAL worlds of nmse_A_learned <= 0.25",
+   "B_state_causality": "every QUAL world: restoring the initial snapshot reproduces the initial responses bitwise; a fresh state created from the learned W values reproduces the learned responses bitwise; a state with W = 0 answers exactly 0 for every query",
+   "C_persistence": "every QUAL world: a clean process given only the learned snapshot bytes and the frozen specification reproduces the learned responses on the evaluation inputs bitwise",
+   "D_continual": "every QUAL world, learning experience B from the A-learned state: the state identity changes, the epoch advances by steps, the responses on B inputs change, nmse_B_after <= 0.5 and nmse_B_after <= 0.5 * nmse_B_before",
+   "D_retention_measured": "not a gate: retention = nmse_A_after_B / nmse_A_learned; class RETAINED if nmse_A_after_B <= 0.5 and <= 0.5 * nmse_A_init, else INTERFERENCE; flag CATASTROPHIC if nmse_A_after_B >= nmse_A_init",
+   "E_controls": "every QUAL world: (i) without learning the responses equal the initial responses and the epoch is 0; (ii) learning the same budget on permuted A targets fails the A learning criterion on the true targets; (iii) an untrained independent fresh state fails the A learning criterion; aggregate: median nmse_shuffled >= 4 * median nmse_A_learned; (iv) leak guard: C holds and the core's slots are exactly the native state and the rate",
+   "F_determinism": "the first QUAL world, learned twice in this process and once in a clean process from the specification alone, yields identical learned snapshot digests and transition receipts",
+   "G_microstate_authority": "every QUAL world: the PTE pair has S3 relative difference <= 1e-12 and response relative difference <= 1e-12 before learning, and after one identical learning step S3 relative difference >= 1e-9 and response relative difference >= 1e-9"
+  },
+  "per_world": {
+   "qual-0000": {
+    "B_identity_changed": true,
+    "B_responses_changed": true,
+    "after_B_snapshot": "5ca368e28f1cd5f7561eaede7534752666e3ea1fd07e73e33336741812e9ca3f",
+    "catastrophic": true,
+    "learned_responses_A": "be640e41668d4daa1db6f3cd6cfdb8106c4e46d90de8125417951a78dd4d6182",
+    "learned_snapshot": "8008360ba5464aedffc031c465a80761f3ad7220d2abb4d1e5223d2f500c0589",
+    "nmse_A_after_B": 1.2098390722140413,
+    "nmse_A_init": 0.9446539602679195,
+    "nmse_A_learned": 0.026824897273675784,
+    "nmse_B_after": 0.44236999121154863,
+    "nmse_B_before": 7.187365136136784,
+    "nmse_B_init": 1.7750173753552505,
+    "nmse_fresh": 1.0937532204376272,
+    "nmse_shuffled": 8.703335881693276,
+    "nmse_zero_state": 1.0534922963705924,
+    "no_learning_bitwise": true,
+    "oracle_rel": 5.435416634967168e-16,
+    "pte_response_rel_after": 0.0010446839991815995,
+    "pte_response_rel_before": 2.635942437039362e-16,
+    "pte_s3_rel_after": 0.0017671576964823302,
+    "pte_s3_rel_before": 0.0,
+    "receipt_A": "375c4f09b803ed4aca7cc22159d32c97f9c4a1ce5e2da1daf840d6a3ba00fba5",
+    "receipt_B": "164f0cd1c2d7f6c7450f9ef7ce9a32e3c92ea48a0c140d005bef79dec226caa5",
+    "reset_bitwise": true,
+    "retention": 45.10134968536483,
+    "retention_class": "INTERFERENCE",
+    "transplant_bitwise": true,
+    "zero_state_answers_zero": true
+   },
+   "qual-0001": {
+    "B_identity_changed": true,
+    "B_responses_changed": true,
+    "after_B_snapshot": "1bc12a3ed3beededb21c3428d4673beb2730e551a4cd626057bc0d62d06db642",
+    "catastrophic": true,
+    "learned_responses_A": "4d2530c6f97f26e2ebb60476ea7c0cd01fb2d83c6e2e1dbc7a38f0a7ac4052be",
+    "learned_snapshot": "f542b93541c44551c758c8e61fccb936fd443509755123ca174a6b13c2e3ea6c",
+    "nmse_A_after_B": 1.699965872497765,
+    "nmse_A_init": 1.0488976079513967,
+    "nmse_A_learned": 0.11257668759928988,
+    "nmse_B_after": 0.1257305322236333,
+    "nmse_B_before": 20.090213387321096,
+    "nmse_B_init": 2.638484879384173,
+    "nmse_fresh": 0.9030434851319451,
+    "nmse_shuffled": 1.445006035122973,
+    "nmse_zero_state": 1.0114808835174527,
+    "no_learning_bitwise": true,
+    "oracle_rel": 3.587249799819017e-16,
+    "pte_response_rel_after": 0.01000118600339362,
+    "pte_response_rel_before": 2.4146551067274263e-16,
+    "pte_s3_rel_after": 0.010832940661708125,
+    "pte_s3_rel_before": 0.0,
+    "receipt_A": "3377ce10a1e0095e21c4a731cd8bff42e23c91f49ea46a044735a0e3d54cd475",
+    "receipt_B": "babe84d8f28a60dc365d3547c59680f96bee5e6ddda2f14dce037031b2f53e05",
+    "reset_bitwise": true,
+    "retention": 15.100514225011612,
+    "retention_class": "INTERFERENCE",
+    "transplant_bitwise": true,
+    "zero_state_answers_zero": true
+   },
+   "qual-0002": {
+    "B_identity_changed": true,
+    "B_responses_changed": true,
+    "after_B_snapshot": "8be40bfac16fa87e41bf6e9a397527cecb4a473aca1d9502bb09d4867bb3d24b",
+    "catastrophic": true,
+    "learned_responses_A": "6f63c7892149604c01c217eebefe90c3ab5f6698f8d8bd0d7db0e535e5ad8b24",
+    "learned_snapshot": "975d2405a0f6f74916825e7ca68b8b72290a6e39f8707cd0df471a6b7eea926a",
+    "nmse_A_after_B": 3.184767407988646,
+    "nmse_A_init": 1.9017347014160852,
+    "nmse_A_learned": 0.16691278920052935,
+    "nmse_B_after": 0.11825097059752757,
+    "nmse_B_before": 1.7442878062561784,
+    "nmse_B_init": 1.142106786453882,
+    "nmse_fresh": 2.098324548099822,
+    "nmse_shuffled": 1.1816627367949968,
+    "nmse_zero_state": 1.1883167461613335,
+    "no_learning_bitwise": true,
+    "oracle_rel": 3.392993428139189e-16,
+    "pte_response_rel_after": 0.0021614851959253483,
+    "pte_response_rel_before": 1.4789877514341e-16,
+    "pte_s3_rel_after": 0.004019980878318159,
+    "pte_s3_rel_before": 0.0,
+    "receipt_A": "bbd425e9229f04e422f33db87649c9c6b3c459a84ceb731273fc3a5bc8e9207a",
+    "receipt_B": "73c116d71b3cc3b76a34beb4d196ad612618726c871ed258b89b4ae3991391e6",
+    "reset_bitwise": true,
+    "retention": 19.080427708642866,
+    "retention_class": "INTERFERENCE",
+    "transplant_bitwise": true,
+    "zero_state_answers_zero": true
+   },
+   "qual-0003": {
+    "B_identity_changed": true,
+    "B_responses_changed": true,
+    "after_B_snapshot": "1a7026f28c0c401a219acfa84af1e5655592c41e34cf712fae9d84820ccc00c3",
+    "catastrophic": true,
+    "learned_responses_A": "efa07f11505a0d5132a0ccd74f2f799a0da690edd15d9e7b4443b2f7b396988d",
+    "learned_snapshot": "20ab8662b09b550d599ec2e7a6e509b0f756d8e9b1a0335a5d926373c20776f3",
+    "nmse_A_after_B": 1.2506085511174192,
+    "nmse_A_init": 1.20984859366865,
+    "nmse_A_learned": 0.06806891086179014,
+    "nmse_B_after": 0.14791529506589776,
+    "nmse_B_before": 1.6010268590197672,
+    "nmse_B_init": 0.8733859740752191,
+    "nmse_fresh": 0.807621464769888,
+    "nmse_shuffled": 1.1647397867832634,
+    "nmse_zero_state": 1.426521768502637,
+    "no_learning_bitwise": true,
+    "oracle_rel": 3.245831281988682e-16,
+    "pte_response_rel_after": 0.0007336938992641818,
+    "pte_response_rel_before": 2.436285516364909e-16,
+    "pte_s3_rel_after": 0.0010549634656237077,
+    "pte_s3_rel_before": 1.1607867752915275e-16,
+    "receipt_A": "035985cf2f50547c638d4e5ff3965148edcf6e0ba33845456a571264c464677a",
+    "receipt_B": "90c56c5ebe984bf235e8f584970c6549b1db12d02df928c8a59ee4d655ff6127",
+    "reset_bitwise": true,
+    "retention": 18.372683436300388,
+    "retention_class": "INTERFERENCE",
+    "transplant_bitwise": true,
+    "zero_state_answers_zero": true
+   },
+   "qual-0004": {
+    "B_identity_changed": true,
+    "B_responses_changed": true,
+    "after_B_snapshot": "11a191d25c042ecde5366c189b19586a7b516fc0b53317e3e17444337b214eab",
+    "catastrophic": true,
+    "learned_responses_A": "ca93e36cd18956fc16351551bb5998d8854142f0e95630073f4f0af70376ba8d",
+    "learned_snapshot": "70eb7f2a64b2e5f829ea96061d2345b4b34cd001dfc78931c1b47535ea62706a",
+    "nmse_A_after_B": 1.470285826419643,
+    "nmse_A_init": 1.2777115566386712,
+    "nmse_A_learned": 0.02328857442438258,
+    "nmse_B_after": 0.03288858459989183,
+    "nmse_B_before": 15.4695974211728,
+    "nmse_B_init": 1.0796202773608345,
+    "nmse_fresh": 1.2569442507755826,
+    "nmse_shuffled": 2.0603371028570625,
+    "nmse_zero_state": 1.0818658712209481,
+    "no_learning_bitwise": true,
+    "oracle_rel": 1.1642824440031632e-16,
+    "pte_response_rel_after": 0.0020652864848916806,
+    "pte_response_rel_before": 2.962125982842721e-16,
+    "pte_s3_rel_after": 0.003249440999825156,
+    "pte_s3_rel_before": 0.0,
+    "receipt_A": "d8ced6a01a1d7a499d4fa2add6e37df26fc506ec4b82e1d817d4e0922303d277",
+    "receipt_B": "22021a312c360c03469f8ebd1e228016721de0943d519d8fa19eb0618aee6fd3",
+    "reset_bitwise": true,
+    "retention": 63.133354563785105,
+    "retention_class": "INTERFERENCE",
+    "transplant_bitwise": true,
+    "zero_state_answers_zero": true
+   },
+   "qual-0005": {
+    "B_identity_changed": true,
+    "B_responses_changed": true,
+    "after_B_snapshot": "7f4d149c278a7bbaaa6238877f4808187e80810e8c6db7814fa16b4d74fa1cdd",
+    "catastrophic": true,
+    "learned_responses_A": "0d8eb44a8a18f4dce6bc69bd5e2dfd1ef100438e9f4fef42db70b91ada3b5dc3",
+    "learned_snapshot": "f3f217ed4a3ce37eb15a44ac40c7804556e9f28cdb19bf17ccf23113b587d3fa",
+    "nmse_A_after_B": 1.2403785075720357,
+    "nmse_A_init": 0.9741341101179505,
+    "nmse_A_learned": 0.030125767231268592,
+    "nmse_B_after": 0.02878156438889438,
+    "nmse_B_before": 1.612657036541112,
+    "nmse_B_init": 1.4640608789002898,
+    "nmse_fresh": 0.9668192178621402,
+    "nmse_shuffled": 4.200717226160865,
+    "nmse_zero_state": 1.2731908671620797,
+    "no_learning_bitwise": true,
+    "oracle_rel": 4.225653373203307e-16,
+    "pte_response_rel_after": 0.0005521830491969899,
+    "pte_response_rel_before": 2.8297036178551795e-16,
+    "pte_s3_rel_after": 0.0010444528121411575,
+    "pte_s3_rel_before": 0.0,
+    "receipt_A": "a6387e6abcff02b8cb5a4837c37ec2c07cb21d0b3512ce21fc8b92de176469c1",
+    "receipt_B": "fa523bac081e0a3f584311b4b77b059f3f51821e5378ac05374c69e9e141c5db",
+    "reset_bitwise": true,
+    "retention": 41.17334167956404,
+    "retention_class": "INTERFERENCE",
+    "transplant_bitwise": true,
+    "zero_state_answers_zero": true
+   },
+   "qual-0006": {
+    "B_identity_changed": true,
+    "B_responses_changed": true,
+    "after_B_snapshot": "5a96e7f07758e239a2ec9093ea0f8807fe0164ae184aea470f0335e8663e1e30",
+    "catastrophic": false,
+    "learned_responses_A": "fdcf30384fab39c4b158c765586a367f511c7dce7723e8dafeadfa76b2e406eb",
+    "learned_snapshot": "fbdb89a42b9835ce836c1343c36827f259cc53a0f7208dbf80b83db0fb3974b9",
+    "nmse_A_after_B": 0.9111159600866847,
+    "nmse_A_init": 0.9432581253304914,
+    "nmse_A_learned": 0.024463395575331413,
+    "nmse_B_after": 0.08646532232535203,
+    "nmse_B_before": 2.4582114541599625,
+    "nmse_B_init": 3.789067430807242,
+    "nmse_fresh": 1.1900857260424476,
+    "nmse_shuffled": 1.6533788047793578,
+    "nmse_zero_state": 1.3196860915779962,
+    "no_learning_bitwise": true,
+    "oracle_rel": 1.928544404098638e-16,
+    "pte_response_rel_after": 0.0005611677619771506,
+    "pte_response_rel_before": 1.03008175069781e-16,
+    "pte_s3_rel_after": 0.0007423948386268488,
+    "pte_s3_rel_before": 0.0,
+    "receipt_A": "7998021e47e7cbd3e343934ffc2812e4db7927a55c79a3192711946d3138a14b",
+    "receipt_B": "d6e7871ac2ca6c0346c51ce6118080216113f2604028d1fa47347f94cdc4f582",
+    "reset_bitwise": true,
+    "retention": 37.24405131254317,
+    "retention_class": "INTERFERENCE",
+    "transplant_bitwise": true,
+    "zero_state_answers_zero": true
+   },
+   "qual-0007": {
+    "B_identity_changed": true,
+    "B_responses_changed": true,
+    "after_B_snapshot": "bfb2a6a5931487fcc29cccc71bab5c57c30c72fd86ca2196032b53570590e451",
+    "catastrophic": false,
+    "learned_responses_A": "d214b1aef90b2aca0b45ff81f6197e4a8f7fbc6d8cb56111b8d699f01a5a3e54",
+    "learned_snapshot": "0954e9a2c0eccfa3c35371044f0638d35f616574d6623ed41734121b7a60fc9b",
+    "nmse_A_after_B": 0.8274919874367935,
+    "nmse_A_init": 1.3181743402470567,
+    "nmse_A_learned": 0.03185886619740722,
+    "nmse_B_after": 0.06257295676461816,
+    "nmse_B_before": 1.5094903612727688,
+    "nmse_B_init": 1.2685907908491005,
+    "nmse_fresh": 0.8138494422227888,
+    "nmse_shuffled": 4.521482216782406,
+    "nmse_zero_state": 1.5099432158882768,
+    "no_learning_bitwise": true,
+    "oracle_rel": 2.486324064654734e-16,
+    "pte_response_rel_after": 0.0009605101590870991,
+    "pte_response_rel_before": 1.3767381305136997e-16,
+    "pte_s3_rel_after": 0.0013799015610027796,
+    "pte_s3_rel_before": 0.0,
+    "receipt_A": "d793f6e049a7570400e9898ee0b571ef62b66a859341828bd0f7fedad800ffc5",
+    "receipt_B": "79b0418c6beb2fdf0b2c2745bae34ae0dc64ceb097623ab2d29625978e9d97e0",
+    "reset_bitwise": true,
+    "retention": 25.973679738299584,
+    "retention_class": "INTERFERENCE",
+    "transplant_bitwise": true,
+    "zero_state_answers_zero": true
+   }
+  },
+  "per_world_gates": {
+   "qual-0000": {
+    "A_learning": true,
+    "B_state_causality": true,
+    "C_persistence": true,
+    "D_continual": true,
+    "E_controls": true,
+    "G_microstate_authority": true
+   },
+   "qual-0001": {
+    "A_learning": true,
+    "B_state_causality": true,
+    "C_persistence": true,
+    "D_continual": true,
+    "E_controls": true,
+    "G_microstate_authority": true
+   },
+   "qual-0002": {
+    "A_learning": true,
+    "B_state_causality": true,
+    "C_persistence": true,
+    "D_continual": true,
+    "E_controls": true,
+    "G_microstate_authority": true
+   },
+   "qual-0003": {
+    "A_learning": true,
+    "B_state_causality": true,
+    "C_persistence": true,
+    "D_continual": true,
+    "E_controls": true,
+    "G_microstate_authority": true
+   },
+   "qual-0004": {
+    "A_learning": true,
+    "B_state_causality": true,
+    "C_persistence": true,
+    "D_continual": true,
+    "E_controls": true,
+    "G_microstate_authority": true
+   },
+   "qual-0005": {
+    "A_learning": true,
+    "B_state_causality": true,
+    "C_persistence": true,
+    "D_continual": true,
+    "E_controls": true,
+    "G_microstate_authority": true
+   },
+   "qual-0006": {
+    "A_learning": true,
+    "B_state_causality": true,
+    "C_persistence": true,
+    "D_continual": true,
+    "E_controls": true,
+    "G_microstate_authority": true
+   },
+   "qual-0007": {
+    "A_learning": true,
+    "B_state_causality": true,
+    "C_persistence": true,
+    "D_continual": true,
+    "E_controls": true,
+    "G_microstate_authority": true
+   }
+  },
+  "persistence": {
+   "qual-0000": {
+    "bitwise": true,
+    "clean_process": "be640e41668d4daa1db6f3cd6cfdb8106c4e46d90de8125417951a78dd4d6182",
+    "in_process": "be640e41668d4daa1db6f3cd6cfdb8106c4e46d90de8125417951a78dd4d6182"
+   },
+   "qual-0001": {
+    "bitwise": true,
+    "clean_process": "4d2530c6f97f26e2ebb60476ea7c0cd01fb2d83c6e2e1dbc7a38f0a7ac4052be",
+    "in_process": "4d2530c6f97f26e2ebb60476ea7c0cd01fb2d83c6e2e1dbc7a38f0a7ac4052be"
+   },
+   "qual-0002": {
+    "bitwise": true,
+    "clean_process": "6f63c7892149604c01c217eebefe90c3ab5f6698f8d8bd0d7db0e535e5ad8b24",
+    "in_process": "6f63c7892149604c01c217eebefe90c3ab5f6698f8d8bd0d7db0e535e5ad8b24"
+   },
+   "qual-0003": {
+    "bitwise": true,
+    "clean_process": "efa07f11505a0d5132a0ccd74f2f799a0da690edd15d9e7b4443b2f7b396988d",
+    "in_process": "efa07f11505a0d5132a0ccd74f2f799a0da690edd15d9e7b4443b2f7b396988d"
+   },
+   "qual-0004": {
+    "bitwise": true,
+    "clean_process": "ca93e36cd18956fc16351551bb5998d8854142f0e95630073f4f0af70376ba8d",
+    "in_process": "ca93e36cd18956fc16351551bb5998d8854142f0e95630073f4f0af70376ba8d"
+   },
+   "qual-0005": {
+    "bitwise": true,
+    "clean_process": "0d8eb44a8a18f4dce6bc69bd5e2dfd1ef100438e9f4fef42db70b91ada3b5dc3",
+    "in_process": "0d8eb44a8a18f4dce6bc69bd5e2dfd1ef100438e9f4fef42db70b91ada3b5dc3"
+   },
+   "qual-0006": {
+    "bitwise": true,
+    "clean_process": "fdcf30384fab39c4b158c765586a367f511c7dce7723e8dafeadfa76b2e406eb",
+    "in_process": "fdcf30384fab39c4b158c765586a367f511c7dce7723e8dafeadfa76b2e406eb"
+   },
+   "qual-0007": {
+    "bitwise": true,
+    "clean_process": "d214b1aef90b2aca0b45ff81f6197e4a8f7fbc6d8cb56111b8d699f01a5a3e54",
+    "in_process": "d214b1aef90b2aca0b45ff81f6197e4a8f7fbc6d8cb56111b8d699f01a5a3e54"
+   }
+  },
+  "retention_measured": {
+   "qual-0000": {
+    "catastrophic": true,
+    "class": "INTERFERENCE",
+    "retention": 45.10134968536483
+   },
+   "qual-0001": {
+    "catastrophic": true,
+    "class": "INTERFERENCE",
+    "retention": 15.100514225011612
+   },
+   "qual-0002": {
+    "catastrophic": true,
+    "class": "INTERFERENCE",
+    "retention": 19.080427708642866
+   },
+   "qual-0003": {
+    "catastrophic": true,
+    "class": "INTERFERENCE",
+    "retention": 18.372683436300388
+   },
+   "qual-0004": {
+    "catastrophic": true,
+    "class": "INTERFERENCE",
+    "retention": 63.133354563785105
+   },
+   "qual-0005": {
+    "catastrophic": true,
+    "class": "INTERFERENCE",
+    "retention": 41.17334167956404
+   },
+   "qual-0006": {
+    "catastrophic": false,
+    "class": "INTERFERENCE",
+    "retention": 37.24405131254317
+   },
+   "qual-0007": {
+    "catastrophic": false,
+    "class": "INTERFERENCE",
+    "retention": 25.973679738299584
+   }
+  },
+  "scientific": "SUPPORTS_UNDER_FROZEN_SYNTHETIC_REGIME",
+  "source_commit": "bdb8823aec62c83bebc6aeb0072dca3f4aa1a759",
+  "source_digest": "d107f1470c43b4753e568c7d20fc595d9d951d0c086fa73384f1cae2b08f46a3",
+  "spec_digest": "d5172e7af41410323b6e3bce8c69b87234d3f05c66975fd441cae88ff2c24670",
+  "split": "QUAL",
+  "steps": 4000,
+  "worlds": [
+   "qual-0000",
+   "qual-0001",
+   "qual-0002",
+   "qual-0003",
+   "qual-0004",
+   "qual-0005",
+   "qual-0006",
+   "qual-0007"
+  ]
+ },
+ "digest": "9dfe55adab68bf578511a4e0a463aef318281e1f2ac1073ef3c20910cff10b7d"
+}
