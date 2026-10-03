@@ -422,6 +422,10 @@
       {
         "path": "research/ecs_runtime_r1",
         "classification": "PERFORMANCE_ONLY, NO_SCIENTIFIC_CLAIM: ECS Runtime R1 benchmark laboratory (fixed workloads, pre-registered gates, direct-native driver and harness, write-once performance evidence bound to sources and binary). Measures how ECS_G executes, never what it computes (docs/ECS_RUNTIME_R1.md)."
+      },
+      {
+        "path": "research/ecs_retention_r0",
+        "classification": "QUALIFICATION: ECS_G Retention R0 laboratory (RET0A specification -> RET0B DEV -> RET0C freeze -> RET0D QUAL once -> RET0E interpretation; write-once evidence bound to the exact sources and binary). RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, NO_LANGUAGE_CLAIM: its candidates, consolidation state and thresholds grant nothing; canonical ECS_G learning is unchanged."
       }
     ],
     "native_targets": [
