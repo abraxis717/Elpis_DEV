@@ -81,10 +81,9 @@ def materializer(rig, target):
         bind_symbol="elpis_dsv41_clock_test_materializer", context=C.byref(ctx), owner=keep), ctx
 
 
-def clock(rig, target, mat, prefill, count=0, stops=(), conditioning=None):
+def clock(rig, target, mat, prefill, count=0, stops=()):
     return NativeClock(target, mat, rig.workspace, rig.paths["elpis_dsv41_clock"], authority=rig.authority,
-                       library_id="elpis_dsv41_clock", prefill=prefill, max_new_tokens=count, stop_tokens=stops,
-                       conditioning=conditioning)
+                       library_id="elpis_dsv41_clock", prefill=prefill, max_new_tokens=count, stop_tokens=stops)
 
 
 @pytest.mark.parametrize("part,cache", [(128, 0), (1152, 0), (1152, 7 * 5 * 1152)])
@@ -207,52 +206,6 @@ def test_native_principal_commit_replay_stop_and_zero(rig):
         clock_factory=lambda prefill, count, stop: clock(rig, target, mat, prefill, count, stop), stop_after=3)
     assert actual == expected
     assert engine.replay(state, request, context, actual.commit) == expected
-
-
-def test_native_principal_turn_conditioning_matches_host_provider(rig):
-    """Frozen turn conditioning reaches the clock once (CONFIG_V2, STREAM_OPEN) and commits identically."""
-    from elpis.inference.admission import ContextAdmission, ContextBudget
-    from elpis.inference.conditioning import TurnConditioning
-    from elpis.inference.drivers.dsv41.fixtures import fixture_conditioning_projection
-    from elpis.inference.text import DSV41_RENDERER
-    projection = fixture_conditioning_projection(rig.config, 83)
-    p = rig.provider()
-    target = rig.provider_target(rig.fms(), "provider", p, conditioning_projection=projection)
-    assert p.features & P.FEATURE_CONDITIONING
-    engine = PrincipalEngine(target)
-    state = engine.initial(CONTEXT)
-    context = ContextAdmission(CONTEXT, target.model_identity, target.config.tokenizer, DSV41_RENDERER,
-                               "d" * 64, (), (), 0, ContextBudget(4, 4096, 2048))
-    request = PrincipalRequest("native-clock-conditioned", rig.tokens(2), 8)
-    conditioning = TurnConditioning(tuple(((i * 37) % 23 - 11) / 7.0 for i in range(83)), "e" * 64)
-
-    def host(c):
-        seq = engine.begin(state, request, context, expected_state=state.digest, conditioning=c)
-        list(seq)
-        return engine.finalize(seq)
-
-    expected, plain = host(conditioning), host(None)
-    assert expected.commit.conditioning == conditioning.digest and plain.commit.conditioning is None
-    seen = []
-
-    def factory(prefill, count, stop, **kwargs):
-        seen.append(kwargs)
-        return clock(rig, target, mat, prefill, count, stop, **kwargs)
-
-    mat, ctx = materializer(rig, target)
-    actual = run_principal(engine, state, request, context, expected_state=state.digest, clock_factory=factory,
-                           conditioning=conditioning)
-    assert actual == expected and actual.observation == expected.observation is not None
-    assert len(seen) == 1 and set(seen[0]) == {"conditioning"}
-    assert np.array_equal(seen[0]["conditioning"], target.conditioning_vector(conditioning))
-    mat, ctx = materializer(rig, target)
-    unconditioned = run_principal(engine, state, request, context, expected_state=state.digest, clock_factory=factory)
-    assert unconditioned == plain and seen[1] == {}
-    assert engine.replay(state, request, context, actual.commit, conditioning=conditioning) == expected
-    with pytest.raises(ContractError) as info:
-        engine.replay(state, request, context, actual.commit)
-    assert info.value.code == Code.IDENTITY
-    assert ctx.live == 0 and ctx.acquires == ctx.releases
 
 
 @pytest.mark.parametrize("call,code,repeat", [(1, 8, 0), (3, 8, 0), (3, 3, 0), (3, 10, 0), (3, 4, 0)])

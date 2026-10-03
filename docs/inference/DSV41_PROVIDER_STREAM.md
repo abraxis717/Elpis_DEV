@@ -37,13 +37,6 @@ STREAM_RELEASE -> RELEASED
 MODEL_RELEASE  -> MODEL_RELEASED
 ```
 
-`FEATURE_CONDITIONING` (bit 2) is requested at `MODEL_ADMIT_BEGIN` only for a target
-admitted with a turn-conditioning projection; a provider that does not grant it is
-released and the admission refused. A conditioned stream carries its frozen,
-host-projected F32 vector once, as the `STREAM_OPEN` tail (`u32 count = dimension,
-reserved; f32 values[count]`); the provider adds it to every token embedding with one
-F32 add, so provider and host stay bitwise equal. Token messages are unchanged.
-
 A materialization yield is the completed, successful result of a submission (a `NEED`).
 While Elpis reads FMS, no port token is outstanding. FMS work happens between
 submissions, on the principal thread. It never runs inside a provider callback or on a

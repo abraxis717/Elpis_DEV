@@ -12,16 +12,6 @@ generation without an interpreter callback. The optional `run_principal`
 control-plane helper validates Principal inputs and uses the existing
 `PrincipalEngine.finalize` only after native recurrence returns.
 
-Frozen turn conditioning uses the config layout `CONFIG_V2`
-(`abi_version = 2`): a tail of `const float *conditioning; uint32_t
-conditioning_count, reserved2`. `conditioning_count` is 0 or `dimension` and
-requires granted `FEATURE_CONDITIONING`; values must be finite. The clock copies
-them at create and sends them once in `STREAM_OPEN`, never per token. A
-`CONFIG_V1` caller passes the struct prefix ending at `max_new_tokens`; the clock
-never reads past it. The clock ABI version stays 1. `run_principal(...,
-conditioning=...)` preprojects through the target and calls the factory with
-`conditioning=<vector>` only when conditioned.
-
 ## Ownership and binding
 
 ```

@@ -40,12 +40,9 @@ class RawTokenTower:
     _provider_step = DSV41Target._provider_step
     release_window = DSV41Target.release_window
     admit_stream = DSV41Target.admit_stream
-    accepts_conditioning = DSV41Target.accepts_conditioning
-    conditioning_vector = DSV41Target.conditioning_vector
-    conditioning_projection = _conditioning_weights = None
 
 
-def target(rig, fms, name, native_backend=None, provider_stream=None, row_mutator=None, conditioning_projection=None):
+def target(rig, fms, name, native_backend=None, provider_stream=None, row_mutator=None):
     c, p = rig.config, rig.parameters
     directory = rig.workspace / name
     directory.mkdir(parents=True, exist_ok=True)
@@ -97,10 +94,6 @@ def target(rig, fms, name, native_backend=None, provider_stream=None, row_mutato
     t.layers = tuple(Layer(c, i, t.store, rows.get(i), frequencies[bool(c.compress_ratios[i])],
                            native_backend=native_backend) for i in range(c.layers))
     t.model_identity = content_digest("synthetic-clock-model", manifest.digest)
-    if conditioning_projection is not None:
-        t.conditioning_projection = conditioning_projection
-        t._conditioning_weights = conditioning_projection.tensor.array()
-        t.model_identity = content_digest("synthetic-clock-model", [manifest.digest, conditioning_projection.digest])
     t.numerical_profile = content_digest("synthetic-clock-numerics", c.numerical_profile)
     if provider_stream:
         provider_stream.admit(t, frequencies)

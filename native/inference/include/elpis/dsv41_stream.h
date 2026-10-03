@@ -69,10 +69,7 @@ enum {
 /* Feature bits negotiated by MODEL_ADMIT_BEGIN / ADMIT_ACK. */
 enum {
     ELPIS_DSV41_STREAM_FEATURE_CACHE = 1u << 0,
-    ELPIS_DSV41_STREAM_FEATURE_OBSERVE_LAYER_STREAMS = 1u << 1,
-    /* Frozen per-sequence turn conditioning: a model-dimension F32 vector sent
-     * once in STREAM_OPEN and added to every token embedding of that stream. */
-    ELPIS_DSV41_STREAM_FEATURE_CONDITIONING = 1u << 2
+    ELPIS_DSV41_STREAM_FEATURE_OBSERVE_LAYER_STREAMS = 1u << 1
 };
 
 /* Tensor representation tag carried by every tensor and expert payload. */
@@ -152,8 +149,7 @@ typedef struct {
  * ADMIT_PART_ACK       (empty)
  * ADMIT_ACK            u8 provider_profile_digest[32]; u32 features_granted, reserved;
  *                      u64 reserved_bytes
- * STREAM_OPEN          u32 max_tokens, flags (requested observation/conditioning features)
- *                      with FEATURE_CONDITIONING: u32 count (= dimension), reserved; f32 values[count]
+ * STREAM_OPEN          u32 max_tokens, flags (requested observation features)
  * OPENED               u64 state_bytes_reserved
  *
  * TOKEN_BEGIN

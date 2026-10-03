@@ -16,9 +16,6 @@ extern "C" {
  * during advance request cancel and return BUSY; join the caller and retry.
  * Destroy is idempotent. Other access to a destroyed handle returns STALE. */
 enum { ELPIS_DSV41_CLOCK_ABI_V1 = 1 };
-/* Config layout versions. V1 callers pass the struct prefix ending at
- * max_new_tokens; the clock never reads the V2 tail for them. */
-enum { ELPIS_DSV41_CLOCK_CONFIG_V1 = 1, ELPIS_DSV41_CLOCK_CONFIG_V2 = 2 };
 typedef uint64_t elpis_dsv41_clock;
 typedef enum {
     ELPIS_CLOCK_OK = 0, ELPIS_CLOCK_INVALID = 1, ELPIS_CLOCK_STALE = 2,
@@ -88,11 +85,6 @@ typedef struct {
     uint32_t max_input_bytes, max_output_bytes, materialization_timeout_ms, exchange_timeout_ms;
     const uint32_t *prefill, *stop_tokens;
     uint32_t prefill_count, stop_count, max_new_tokens;
-    /* CONFIG_V2 tail. Frozen per-sequence turn conditioning: conditioning_count
-     * is 0 (none) or dimension, requiring granted FEATURE_CONDITIONING. Values
-     * are finite F32, copied at create and sent once in STREAM_OPEN; never per token. */
-    const float *conditioning;
-    uint32_t conditioning_count, reserved2;
 } elpis_dsv41_clock_config_v1;
 typedef struct {
     /* code belongs to the sequence; provider_code records quarantine separately.

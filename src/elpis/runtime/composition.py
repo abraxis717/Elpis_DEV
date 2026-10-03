@@ -29,10 +29,7 @@ fail-closed entry point, and records the committed outcome in its history:
 * ``run_principal``: one principal sequence over an admission. ``begin``,
   then tokens handed to the caller's ``emit`` as they are produced, then
   ``finalize``. Nothing else runs while tokens stream; the commit is recorded
-  after finalization. With a ``world`` (:class:`~.world_model.WorldModelLoop`)
-  the frozen ``S3(W_N)`` conditioning is handed to ``begin`` and, only after a
-  commit is recorded, the ECS_G world advances exactly once to ``W_N+1`` for
-  the next turn.
+  after finalization.
 
 Nothing is chained implicitly. No hidden fallback widens authority: every
 check that refuses an operation is the owning subsystem's own check, and the
@@ -57,7 +54,6 @@ from elpis.substrate.digests import raw_digest
 
 from .edges import from_regex_hacf, object_claims
 from .history import HistoryError, ReceiptHistory, ReceiptRecord, RecordedReceipt
-from .world_model import WorldModelError, WorldModelLoop
 
 if TYPE_CHECKING:
     from elpis.inference.principal import PrincipalEngine, PrincipalResult
@@ -255,29 +251,17 @@ class Runtime:
                         effort=effort, resident_experts=resident_experts)
 
     def run_principal(self, engine: "PrincipalEngine", state, request, admission: ContextAdmission, *,
-                      expected_state: str, emit=None, resident_experts=None, world: WorldModelLoop | None = None
+                      expected_state: str, emit=None, resident_experts=None
                       ) -> tuple["PrincipalResult", RecordedReceipt | None]:
-        """Stream one principal sequence to ``emit``; record its commit after finalization.
-
-        ``world`` (optional) supplies this turn's frozen conditioning before
-        ``begin`` and advances once after the commit is recorded. A failed
-        turn records nothing and leaves the world unchanged. If the world
-        refuses the step, the commit stays recorded, W is unchanged, and
-        ``CompositionError("WORLD_MODEL")`` is raised.
-        """
+        """Stream one principal sequence to ``emit``; record its commit after finalization."""
         from elpis.inference.principal import PrincipalEngine
 
         if type(engine) is not PrincipalEngine:
             raise TypeError("run_principal takes a PrincipalEngine")
         if emit is not None and not callable(emit):
             raise TypeError("emit must be callable")
-        if world is not None and type(world) is not WorldModelLoop:
-            raise TypeError("world must be a WorldModelLoop")
-        conditioning = None if world is None else world.turn_conditioning()
-        sequence = (engine.begin(state, request, admission, expected_state=expected_state,
-                                 resident_experts=resident_experts) if conditioning is None else
-                    engine.begin(state, request, admission, expected_state=expected_state,
-                                 resident_experts=resident_experts, conditioning=conditioning))
+        sequence = engine.begin(state, request, admission, expected_state=expected_state,
+                                resident_experts=resident_experts)
         for token in sequence:
             if emit is not None:
                 emit(token)
@@ -285,15 +269,8 @@ class Runtime:
         if result.commit is None:
             return result, None
         commit = result.commit
-        bindings = {} if commit.conditioning is None else {"conditioning": commit.conditioning}
-        record = self.history.record(ReceiptRecord.of(
+        return result, self.history.record(ReceiptRecord.of(
             "inference", "principal.commit", commit.digest,
             admission=commit.admission, request=commit.request, state=commit.state,
-            outputs=str(len(commit.outputs)), stop=commit.stop_reason, **bindings,
+            outputs=str(len(commit.outputs)), stop=commit.stop_reason,
         ))
-        if world is not None:
-            try:
-                world.advance(result)
-            except WorldModelError as exc:
-                raise CompositionError("WORLD_MODEL", str(exc)) from exc
-        return result, record
