@@ -4,7 +4,7 @@
 
     text --codec encode--> tokens
          --ECS codec map encode (UNQUALIFIED)--> Stimulus: ordered ECS_G drives (X, y)
-         --ECS_G: one qualified atomic step per drive--> W_N -> W_N+k
+         --ECS_G: one qualified step per drive, one native transaction--> W_N -> W_N+k
          --readout: S3(W), the kernel's qualified coarse observable--> Readout
          --ECS codec map decode (UNQUALIFIED)--> tokens
          --codec decode--> text
@@ -23,18 +23,25 @@ unavailable. There is no fallback. A supplied map must declare its
 classification, and every result carries it, so a fixture map
 (``TRAINING=NONE SEMANTICS=NONE``) is never mistaken for cognition.
 
-A turn is atomic: it runs on an independent fork of the ECS_G state, and
-only after the stimulus, the readout and the decode all succeeded is the fork
-adopted as the caller's state in one commit (``WorldState.adopt``). A refused
-turn leaves the state and epoch unchanged.
+A turn is atomic: it runs as one native transaction of the ECS_G executor
+(``Executor.transaction``). The ordered drives are applied to the candidate in
+one native call; the readout is taken from the candidate; only after the
+stimulus, the readout and the decode all succeeded is the candidate committed
+(one native pointer exchange), and the commit is refused as ``ECS_STALE`` if
+another commit replaced the source state meanwhile (a native generation
+check). A refused turn leaves the state and epoch unchanged. Admitting more
+experience rows than the executor's capacity grows it explicitly before the
+transaction begins (cold path).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import chain
 import math
+from operator import itemgetter
 from typing import Protocol
 
-from elpis.ECS_G.native import ECSGError, WorldState
+from elpis.ECS_G.native import ECSGError, Executor
 
 from .composition import CompositionError
 
@@ -51,7 +58,8 @@ class Stimulus:
 
     ``drives`` is an ordered tuple of ``(X, y)``: ``X`` a tuple of rows of
     ``dim`` finite floats, ``y`` a tuple of finite floats, one per row. Each
-    drive is applied as one atomic ECS_G gradient step.
+    drive is applied as one ECS_G gradient step; the turn commits them all or
+    none.
     """
     drives: tuple
 
@@ -100,10 +108,6 @@ class TurnResult:
     codec: str          # the ECS codec map's declared classification
 
 
-def _readout(state):
-    return Readout(state.s3(), state.epoch, state.dim, state.width)
-
-
 def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
              max_output_tokens=256) -> TurnResult:
     """One canonical turn. Fails closed without a qualified ECS codec map."""
@@ -112,8 +116,8 @@ def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
     classification = getattr(codec_map, "classification", None)
     if type(classification) is not str or not classification:
         raise CompositionError("CODEC_MAP", "an ECS codec map must declare its classification")
-    if type(substrate) is not WorldState:
-        raise CompositionError("ECS_STATE", "ECS_G WorldState required")
+    if type(substrate) is not Executor:
+        raise CompositionError("ECS_STATE", "ECS_G Executor required")
     if type(text) is not str:
         raise CompositionError("INPUT", "text must be str")
     if type(learning_rate) is not float or not math.isfinite(learning_rate) or learning_rate <= 0:
@@ -125,15 +129,21 @@ def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
     stimulus = codec_map.encode(tokens)
     if type(stimulus) is not Stimulus:
         raise CompositionError("STIMULUS", "the ECS codec map must return a Stimulus")
-    epoch_before = substrate.epoch
-    trial = substrate.fork()
+    drives = stimulus.drives
+    x = tuple(chain.from_iterable(map(itemgetter(0), drives)))
+    y = tuple(chain.from_iterable(map(itemgetter(1), drives)))
     try:
+        if len(y) > substrate.max_rows:
+            substrate.reserve(len(y))  # explicit cold-path growth, before the transaction
+        txn = substrate.transaction()
+    except ECSGError as exc:
+        raise CompositionError("ECS_REFUSED", str(exc)) from exc
+    with txn:  # aborted unless committed
         try:
-            for x, y in stimulus.drives:
-                trial.step(x, y, learning_rate)
+            stepped = txn.learn_schedule(x, y, map(len, map(itemgetter(1), drives)), learning_rate)
+            readout = Readout(txn.s3(), stepped.epoch_after, substrate.dim, substrate.width)
         except ECSGError as exc:
             raise CompositionError("ECS_REFUSED", str(exc)) from exc
-        readout = _readout(trial)
         output = codec_map.decode(readout)
         if (type(output) is not tuple or len(output) > max_output_tokens
                 or not all(type(t) is int and 0 <= t < vocab for t in output)):
@@ -141,9 +151,8 @@ def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
         decoder = tokenizer.decoder()
         rendered = "".join(decoder.push(t) for t in output) + decoder.finish()
         try:
-            substrate.adopt(trial)  # one commit; refused if the state moved since the fork
+            committed = txn.commit()  # one native commit; refused if the state moved since begin
         except ECSGError as exc:
-            raise CompositionError("ECS_STALE", str(exc)) from exc
-    finally:
-        trial.close()  # no-op once adopted
-    return TurnResult(tokens, output, rendered, readout, epoch_before, substrate.epoch, classification)
+            raise CompositionError("ECS_STALE" if exc.code == "STALE" else "ECS_REFUSED", str(exc)) from exc
+    return TurnResult(tokens, output, rendered, readout, committed.epoch_before, committed.epoch_after,
+                      classification)

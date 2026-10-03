@@ -46,8 +46,8 @@ R0 makes **no** claim that:
 | | QUERY | LEARN |
 |---|---|---|
 | input | query rows `x` (`rows x dim`, finite) | experience `(X, y)` |
-| computation | `f_W(x)` by `elpis_ecsg_state_forward_f64` on the current authoritative `W` | `K` qualified G1 steps on a fork of `W` |
-| effect | none: read-only | one atomic adoption of the candidate: `W -> W'`, epoch `+K` |
+| computation | `f_W(x)` by the native executor forward (bitwise the reference `elpis_ecsg_forward_f64`) on the current authoritative `W`, one native call | `K` qualified G1 steps in one native executor call (bitwise `K` reference steps) |
+| effect | none: read-only | one native commit of the candidate: `W -> W'`, epoch `+K` |
 | failure | refused; nothing changes | refused; authoritative `W` and epoch unchanged |
 
 A response is never "a state mutation" and never "S3". Learning is never
@@ -109,12 +109,20 @@ evidence. A failure is recorded as it is. It measures:
 
 ## Canonical surface
 
-* `elpis.ECS_G.native.WorldState.forward(x_rows)`: the qualified native
-  forward map on the current state; `fork()` / `adopt(candidate)`: one atomic
-  commit of a candidate state, refused if the state moved since the fork.
-* `elpis.ECS_G.cognition.CognitiveCore`: `query`, `learn(..., steps=K)`
-  returning a `Transition` receipt, `snapshot` / `restore`, `identity`,
+* `elpis.ECS_G.native.Executor`: the runtime form of the state
+  ([`ECS_RUNTIME_R1.md`](ECS_RUNTIME_R1.md)): `forward` / `forward_into`,
+  `learn(X, y, rate, K)` (one native call), `transaction()` (native
+  candidate, commit refused `STALE` if the state moved since it began).
+  `WorldState` is the scalar reference state the executor is bitwise equal
+  to.
+* `elpis.ECS_G.cognition.CognitiveCore`: `query` / `query_into`,
+  `learn(..., steps=K)` returning a `Transition` receipt (or the native
+  `Commit` with `receipt=False`), `snapshot` / `restore`, `identity`,
   `epoch`, `s3` (diagnostic).
+
+Since Runtime R1 the core runs on the native executor; all 8 QUAL worlds
+reproduce their recorded measurements exactly
+(`tests/research/ecs_cognition_r0/test_lab.py`).
 
 Only these mechanics are promoted. The laboratory harness, the synthetic
 task, its teachers and its thresholds stay in `research/` and grant nothing.

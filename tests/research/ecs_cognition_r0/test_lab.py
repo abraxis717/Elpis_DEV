@@ -55,9 +55,16 @@ def test_interference_is_reported_as_found():
     assert f"catastrophic in {catastrophic} of {len(classes)}" in text
 
 
-@pytest.mark.parametrize("world", ["qual-0000", "qual-0007"])
+QUAL_WORLDS = tuple(load(R.QUAL_PATH, "qual")["body"]["worlds"])
+
+
+@pytest.mark.parametrize("world", QUAL_WORLDS)
 def test_qual_measurements_reproduce_exactly(world):
-    """Re-running a QUAL world reproduces its recorded measurements bit for bit (same numerical profile)."""
+    """Re-running every QUAL world reproduces its recorded measurements bit for bit (same numerical profile).
+
+    This is also the regression guard for the ECS_G runtime: the cognitive core now runs on the native
+    executor, and the frozen R0 evidence must still come out exactly.
+    """
     qual = load(R.QUAL_PATH, "qual")["body"]
     if qual["numerical_profile"]["numpy"].split(".")[:2] != np.__version__.split(".")[:2]:
         pytest.skip(f"evidence recorded with numpy {qual['numerical_profile']['numpy']}; reproduction is exact "

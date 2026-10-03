@@ -1,0 +1,70 @@
+{
+ "configs": {
+  "gcc-asan-ubsan": {
+   "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+   "ctest_returncode": 0,
+   "flags": [
+    "-DELPIS_ENABLE_ASAN=ON",
+    "-DELPIS_ENABLE_UBSAN=ON"
+   ],
+   "python_under_asan": {
+    "deselected": [
+     "tests/ECS_G/test_executor_binding.py::test_a_clean_process_runs_the_executor_with_no_model_or_numpy"
+    ],
+    "returncode": 0,
+    "sanitizer_reports": [],
+    "suites": [
+     "tests/ECS_G/test_executor_binding.py",
+     "tests/ECS_G/test_executor_differential.py"
+    ],
+    "summary": {
+     "errors": 0,
+     "failures": 0,
+     "skipped": 0,
+     "tests": 226
+    }
+   },
+   "sanitizer_reports": [],
+   "tests": {
+    "test_ecsg_executor": "Passed",
+    "test_ecsg_executor_alloc": "Passed",
+    "test_ecsg_executor_baseline": "Passed",
+    "test_ecsg_executor_txn": "Passed",
+    "test_ecsg_math": "Passed",
+    "test_ecsg_snapshot": "Passed",
+    "test_ecsg_state": "Passed"
+   }
+  },
+  "gcc-tsan": {
+   "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+   "ctest_returncode": 0,
+   "flags": [
+    "-DELPIS_ENABLE_TSAN=ON"
+   ],
+   "sanitizer_reports": [],
+   "tests": {
+    "test_ecsg_executor": "Passed",
+    "test_ecsg_executor_alloc": "Passed",
+    "test_ecsg_executor_baseline": "Passed",
+    "test_ecsg_executor_txn": "Passed",
+    "test_ecsg_math": "Passed",
+    "test_ecsg_snapshot": "Passed",
+    "test_ecsg_state": "Passed"
+   }
+  }
+ },
+ "dirty": false,
+ "head": "3afdae3458c271e7c7bdebc66c9e077bd1be24f9",
+ "label": "ENGINEERING_EVIDENCE NO_SCIENTIFIC_CLAIM",
+ "sources": {
+  "native/ECS_G/src/ecsg_executor.c": "1d94739c52543da2080ccac2aeb640ef84b650161fa740c01f706b3f73b0fa8f",
+  "native/ECS_G/src/ecsg_math.c": "fbfc48e5e36498df3dc8d33fa44620a61d697fa7bd00b8c7303929c4dc0cf235",
+  "native/ECS_G/src/ecsg_state.c": "c9887848fa0ddcfff71952a2010dd9968d980973cbe56cc0fa056c81f7b0b821",
+  "native/ECS_G/tests/test_ecsg_executor.c": "692148c35dac380dee3096691ed241b697e0b3d403894c514c3ee423c6a1bb62",
+  "native/ECS_G/tests/test_ecsg_executor_alloc.c": "98255f9a0139c9c59ae7bcbd1a91125f8408e4f4612c92945a0db6c99323a5b7",
+  "native/ECS_G/tests/test_ecsg_executor_txn.c": "19b43f38b81864caa1a1951affe7a23bf9e5d0fa94bcc8f942651f60979fbb56",
+  "native/ECS_G/tests/test_ecsg_math.c": "fc0201ced465bb0c08b9f6126f2414cf49cc41cceb9f105aba3cc20cc2bd996d",
+  "native/ECS_G/tests/test_ecsg_snapshot.c": "d6100c3d3a4b5f8e31a0a4ee8d8ed737d4ab44c081e0286b9ca0a62f3dd74d01",
+  "native/ECS_G/tests/test_ecsg_state.c": "a5db8b2685c6e5d8aa5ad5484b79fb1d826943432a12ed08ddfdf34aa3e2e39d"
+ }
+}

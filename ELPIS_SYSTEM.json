@@ -125,7 +125,7 @@
     {
       "id": "ECS_G",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "Qualified native geometric/dynamical substrate primitive of Elpis's cognitive ECS/EDEN system. ECS_G owns authoritative microscopic state W, exact cubic forward/S3 mathematics (S3 is a derived coarse observable), deterministic atomic microscopic recurrence, epoch tracking and deterministic portable snapshot/restore. A stdlib-only Python binding (elpis.ECS_G.native) exposes exactly that surface over a caller-loaded library, including the state forward map and an atomic fork/adopt commit. Cognitive R0 (elpis.ECS_G.cognition.CognitiveCore) keeps QUERY (x -> f_W(x) from the current W, read-only) distinct from LEARN ((X, y) -> K G1 steps on a fork -> one atomic adoption). ECS_G imports no inference, codec, runtime or ECS_C module.",
+      "purpose": "Qualified native geometric/dynamical substrate primitive of Elpis's cognitive ECS/EDEN system. ECS_G owns authoritative microscopic state W, exact cubic forward/S3 mathematics (S3 is a derived coarse observable), deterministic atomic microscopic recurrence, epoch tracking and deterministic portable snapshot/restore. A native executor (ecsg_executor.h, docs/ECS_RUNTIME_R1.md) is the runtime form of the state: one-call query, one-call fused K-step learn, native candidate transactions committed by pointer exchange with generation staleness, SINGLE_WRITER enforced, no allocation after creation, bitwise equal to the scalar reference. A stdlib-only Python binding (elpis.ECS_G.native) controls it over a caller-loaded library (Executor, Transaction; WorldState is the scalar reference binding). Cognitive R0 (elpis.ECS_G.cognition.CognitiveCore) keeps QUERY (x -> f_W(x) from the current W, read-only, one native call) distinct from LEARN ((X, y) -> K G1 steps in one native call -> one native commit). ECS_G imports no inference, codec, runtime or ECS_C module.",
       "python_package": "elpis.ECS_G",
       "implementation_roots": [
         "src/elpis/ECS_G",
@@ -138,22 +138,23 @@
         "elpis_ecsg_math"
       ],
       "depends_on": [],
-      "mutation_authority": "Only ECS_G's own in-memory microscopic W changes, through the explicit atomic cubic full-batch gradient step; candidate W' is fully computed and finite-validated before installation and rejection leaves W and epoch unchanged. A multi-step learning transition runs on a fork and is installed by one handle exchange (WorldState.adopt), refused unless the authoritative state is unchanged since the fork. QUERY never mutates. No ECS_C, HACF, inference, canonical or filesystem state may be mutated.",
-      "runtime_participation": "The runtime composition's canonical turn (elpis.runtime.cognition.run_turn) places ECS_G between DSV4 encode and DSV4 decode: an admitted stimulus enters only as ordered drives (X, y) applied as atomic gradient steps, and S3(W) is the readout handed to the decode boundary. The turn runs on a fork and installs the identical transition only when the whole turn succeeds. ECS_G is never a conditioning input to, or driven by, a DSV model.",
-      "security_boundary": "Native state owns only finite binary64 W and an epoch counter. Step scratch is caller-owned. No filesystem, network, model invocation, ECS_C/HACF access, background threads or retained external pointers.",
+      "mutation_authority": "Only ECS_G's own in-memory microscopic W changes, through the qualified cubic full-batch gradient step. In the executor every candidate W' is computed in a staging or transaction buffer and installed by one pointer exchange (epoch + K, generation + 1); any refusal leaves W, epoch and generation unchanged, and a transaction whose source state was replaced by another commit is refused (STALE, a generation check). The scalar reference state keeps its single explicit atomic step. QUERY never mutates. No ECS_C, HACF, inference, canonical or filesystem state may be mutated.",
+      "runtime_participation": "The runtime composition's canonical turn (elpis.runtime.cognition.run_turn) places ECS_G between DSV4 encode and DSV4 decode: an admitted stimulus enters only as ordered drives (X, y), applied in one native executor transaction (one step per drive in one native call), and S3(W) of the candidate is the readout handed to the decode boundary; the candidate is committed natively only when the whole turn succeeds. ECS_G is never a conditioning input to, or driven by, a DSV model.",
+      "security_boundary": "Native state owns finite binary64 W, an epoch and a commit generation. The executor owns one 64-byte-aligned workspace arena allocated at creation (and only by an explicit reserve), copies and validates admitted experience before computing, retains no caller pointer, and refuses concurrent entry (SINGLE_WRITER, BUSY). Reference step scratch is caller-owned. No filesystem, network, model invocation, ECS_C/HACF access, background threads, callbacks or logging.",
       "protocol_identifiers_retained": [],
       "external_dependencies": [
         "libm"
       ],
       "model_dependency": "NONE",
       "uses_numpy": false,
-      "maturity": "G2 standalone kernel: native cubic/S3 kernel, owned microscopic state, atomic deterministic recurrence, epoch tracking and portable snapshot/restore, differentially qualified in the frozen d=6 regime for widths N in {36,48,72}; kernel sources are digest-pinned by the mission gate. Cognitive R0: ECS_G supports stateful learned input-response computation under the qualified Cognitive R0 regime (research/ecs_cognition_r0 v1, frozen 71fba13c, QUAL 9dfe55ad: SUPPORTS_UNDER_FROZEN_SYNTHETIC_REGIME on all gates A-G, 8 QUAL worlds, synthetic task, SEMANTICS=NONE). The same QUAL found interference under sequential learning in 8 of 8 worlds (catastrophic in 6). None of this establishes that this small kernel alone is the entire eventual Elpis cognitive substrate, nor any language capability.",
+      "maturity": "G2 standalone kernel: native cubic/S3 kernel, owned microscopic state, atomic deterministic recurrence, epoch tracking and portable snapshot/restore, differentially qualified in the frozen d=6 regime for widths N in {36,48,72}; kernel sources are digest-pinned by the mission gate. Runtime R1 (docs/ECS_RUNTIME_R1.md, docs/performance/ECS_RUNTIME_R1.md): a native executor, bitwise equal to the reference and digest-pinned with it, runs QUERY in one native call and a K-step LEARN in one native call with native commit and generation staleness, SINGLE_WRITER, no allocation after creation; measured PERFORMANCE_ONLY on one shared VM: R0 step 6.7 us vs 24.8 us for the reference loop order, CognitiveCore.learn 3.8x (K=10) to 16.7x (K=4000) faster than the pre-nativeization binding, ASan/UBSan/TSan clean. The registered cross-process Python-overhead estimator failed as registered (noise-limited); split timing passes. Cognitive R0: ECS_G supports stateful learned input-response computation under the qualified Cognitive R0 regime (research/ecs_cognition_r0 v1, frozen 71fba13c, QUAL 9dfe55ad: SUPPORTS_UNDER_FROZEN_SYNTHETIC_REGIME on all gates A-G, 8 QUAL worlds, synthetic task, SEMANTICS=NONE). The same QUAL found interference under sequential learning in 8 of 8 worlds (catastrophic in 6). None of this establishes that this small kernel alone is the entire eventual Elpis cognitive substrate, nor any language capability.",
       "incomplete_interfaces": [
         "No ECS<->DSV semantic codec is defined or qualified: neither how DSV4 tokens become an ECS stimulus nor how an ECS readout becomes tokens. The canonical turn fails closed (ECS_CODEC_UNQUALIFIED); text generation is unavailable.",
         "No retention under sequential learning: the qualified recurrence overwrites earlier experience (Cognitive R0 QUAL). Consolidation or any other mechanism is unqualified.",
         "Settling dynamics beyond the qualified drive step, multi-kernel/larger ECS/EDEN composition, and FMS-managed materialization of mutable ECS state are not defined (current FMS materializes immutable verified assets).",
         "ECS transitions are not yet recorded in ECS_C (Cognitive R0 returns Transition receipts; the history genesis has no ECS recorder role).",
-        "No HACF/structure -> ECS structural-relationship edge is defined."
+        "No HACF/structure -> ECS structural-relationship edge is defined.",
+        "Runtime R1 admits SINGLE_WRITER only: overlapping calls on one executor are refused (BUSY), never serialized; no multi-writer or concurrent-reader semantics."
       ]
     },
     {
@@ -417,6 +418,10 @@
       {
         "path": "research/ecs_cognition_r0",
         "classification": "QUALIFICATION: ECS_G Cognitive R0 laboratory (DEV -> freeze -> QUAL, write-once evidence). Its harness, synthetic task and thresholds grant nothing; only the canonical core it exercises is admitted, with the claim limited to its frozen regime."
+      },
+      {
+        "path": "research/ecs_runtime_r1",
+        "classification": "PERFORMANCE_ONLY, NO_SCIENTIFIC_CLAIM: ECS Runtime R1 benchmark laboratory (fixed workloads, pre-registered gates, direct-native driver and harness, write-once performance evidence bound to sources and binary). Measures how ECS_G executes, never what it computes (docs/ECS_RUNTIME_R1.md)."
       }
     ],
     "native_targets": [

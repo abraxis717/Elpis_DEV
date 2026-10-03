@@ -1,0 +1,274 @@
+{
+ "binding": {
+  "bench_driver": {
+   "sha256": "693205236966a6dd809ab81400e0ed93f094ec7642d71f769ae49744ce2b8612"
+  },
+  "cmake": {
+   "CMAKE_BUILD_TYPE": "Release",
+   "CMAKE_C_COMPILER": "/usr/bin/gcc",
+   "CMAKE_C_FLAGS": "",
+   "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
+   "ELPIS_ENABLE_ASAN": "OFF",
+   "ELPIS_ENABLE_UBSAN": "OFF"
+  },
+  "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "dirty": false,
+  "head": "3afdae3458c271e7c7bdebc66c9e077bd1be24f9",
+  "library": {
+   "path": "native/ECS_G/libelpis_ecsg_math.so",
+   "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09"
+  },
+  "sources": {
+   "CMakeLists.txt": "870755ac89dd0adf8bf9993b1f682900037b6348d7a463eeb6d3501ea5528333",
+   "native/ECS_G/CMakeLists.txt": "efc53221770e9b9295ea1fe83919f504d799647af7d9e30bb7837911e14a1cfa",
+   "native/ECS_G/include/elpis/ecsg_executor.h": "67502a5e4cf3a14800760e661dac59dd17bbd736fcbb146e60faada0ee7ebde2",
+   "native/ECS_G/include/elpis/ecsg_math.h": "94f3c4e7a9bf26b08b267679c9b707e8376cc4e2867be760ac825760ce95f80e",
+   "native/ECS_G/include/elpis/ecsg_state.h": "34b173c4873fdac398876cf2eab426d88aca0884a3fa33640a570ae5c03a93c5",
+   "native/ECS_G/src/ecsg_executor.c": "1d94739c52543da2080ccac2aeb640ef84b650161fa740c01f706b3f73b0fa8f",
+   "native/ECS_G/src/ecsg_math.c": "fbfc48e5e36498df3dc8d33fa44620a61d697fa7bd00b8c7303929c4dc0cf235",
+   "native/ECS_G/src/ecsg_state.c": "c9887848fa0ddcfff71952a2010dd9968d980973cbe56cc0fa056c81f7b0b821",
+   "native/elpis.cmake": "6f2ff34f4438cb5762071f5495290287e79c3b885306a0d1388e4633cb7c8127",
+   "research/ecs_runtime_r1/bench.py": "12b8d4af50b78212f188d18df728f336537918949e5c15651d236c2d13d1f6bb",
+   "research/ecs_runtime_r1/native/ecsg_runtime_bench.c": "a86257f2e1523f94290484d6b61230f5dabd3e1997d063196ce064f1fd029573",
+   "research/ecs_runtime_r1/workloads.py": "0b6378d62720f4cbab576fb7e7b6ff3ada8ad25727864425cde02b60d1f917b6",
+   "src/elpis/ECS_G/cognition.py": "0cf4d058a5b4301f5cbea0dc0118a9444dbc28d5083a7f5a98f59249091ca99a",
+   "src/elpis/ECS_G/native.py": "236de9d77ac664903f9603d0b2317d123b63c2b87a62841a48f6220d00e5e99f",
+   "src/elpis/runtime/cognition.py": "9110776d1e03bff46b8ef2e1bfcb3121b5818366d1891a465d7cabc1288b19fd"
+  },
+  "tree": "192386b8a70f7b795a0092a15152a470db63fd82"
+ },
+ "cold_probe": {
+  "after_1ms_idle": {
+   "after_native_p50_ns": 2800.5,
+   "before_native_p50_ns": 10299.5
+  },
+  "after_27ms_idle": {
+   "after_native_p50_ns": 11438.0,
+   "before_native_p50_ns": 73230.0
+  },
+  "back_to_back": {
+   "after_native_p50_ns": 988.5,
+   "before_native_p50_ns": 2841.0
+  }
+ },
+ "environment": {
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+  "cpu_flags": [
+   "avx",
+   "avx2",
+   "avx512f",
+   "fma",
+   "sse2",
+   "sse4_2"
+  ],
+  "cpus": 4,
+  "implementation": "CPython",
+  "machine": "x86_64",
+  "platform": "Linux-6.18.44-fc-v64-x86_64-with-glibc2.39",
+  "python": "3.11.15"
+ },
+ "label": "PERFORMANCE_ONLY NO_SCIENTIFIC_CLAIM SUPPLEMENTARY",
+ "method": "split timing: total Python call minus time inside the native learn call, per call",
+ "per_workload": {
+  "r0-learn-K1": {
+   "py_core_learn": {
+    "calls": 400,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 9034.0,
+    "overhead_p50_ns": 295090.0,
+    "overhead_p95_ns": 372764,
+    "total_p50_ns": 304667.0
+   },
+   "py_core_learn_buffer": {
+    "calls": 400,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 8383.0,
+    "overhead_p50_ns": 4113.5,
+    "overhead_p95_ns": 5205,
+    "total_p50_ns": 12498.5
+   },
+   "py_core_learn_noreceipt": {
+    "calls": 400,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 8309.0,
+    "overhead_p50_ns": 20792.0,
+    "overhead_p95_ns": 28271,
+    "total_p50_ns": 29091.0
+   },
+   "py_exec_learn": {
+    "calls": 400,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 8270.5,
+    "overhead_p50_ns": 4091.0,
+    "overhead_p95_ns": 7043,
+    "total_p50_ns": 12353.0
+   }
+  },
+  "r0-learn-K10": {
+   "py_core_learn": {
+    "calls": 400,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 67663.0,
+    "overhead_p50_ns": 298793.0,
+    "overhead_p95_ns": 359626,
+    "total_p50_ns": 370894.0
+   },
+   "py_core_learn_buffer": {
+    "calls": 400,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 65686.0,
+    "overhead_p50_ns": 4325.5,
+    "overhead_p95_ns": 9900,
+    "total_p50_ns": 70029.5
+   },
+   "py_core_learn_noreceipt": {
+    "calls": 400,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 65738.5,
+    "overhead_p50_ns": 20949.0,
+    "overhead_p95_ns": 29659,
+    "total_p50_ns": 86746.0
+   },
+   "py_exec_learn": {
+    "calls": 400,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 65217.5,
+    "overhead_p50_ns": 4389.0,
+    "overhead_p95_ns": 10025,
+    "total_p50_ns": 69800.5
+   }
+  },
+  "r0-learn-K100": {
+   "py_core_learn": {
+    "calls": 200,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 661811.0,
+    "overhead_p50_ns": 316584.5,
+    "overhead_p95_ns": 371403,
+    "total_p50_ns": 979951.5
+   },
+   "py_core_learn_buffer": {
+    "calls": 200,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 660884.0,
+    "overhead_p50_ns": 10962.5,
+    "overhead_p95_ns": 14608,
+    "total_p50_ns": 672555.5
+   },
+   "py_core_learn_noreceipt": {
+    "calls": 200,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 663823.0,
+    "overhead_p50_ns": 30576.0,
+    "overhead_p95_ns": 45570,
+    "total_p50_ns": 694105.5
+   },
+   "py_exec_learn": {
+    "calls": 200,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 661603.0,
+    "overhead_p50_ns": 10926.0,
+    "overhead_p95_ns": 16036,
+    "total_p50_ns": 672345.5
+   }
+  },
+  "r0-learn-K1000": {
+   "py_core_learn": {
+    "calls": 60,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 6605335.5,
+    "overhead_p50_ns": 376637.5,
+    "overhead_p95_ns": 487586,
+    "total_p50_ns": 6983150.5
+   },
+   "py_core_learn_buffer": {
+    "calls": 60,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 6646357.0,
+    "overhead_p50_ns": 31689.5,
+    "overhead_p95_ns": 96034,
+    "total_p50_ns": 6685847.0
+   },
+   "py_core_learn_noreceipt": {
+    "calls": 60,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 6615441.0,
+    "overhead_p50_ns": 47247.5,
+    "overhead_p95_ns": 103155,
+    "total_p50_ns": 6661220.0
+   },
+   "py_exec_learn": {
+    "calls": 60,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 6606640.5,
+    "overhead_p50_ns": 19414.5,
+    "overhead_p95_ns": 44467,
+    "total_p50_ns": 6627692.0
+   }
+  },
+  "r0-learn-K4000": {
+   "py_core_learn": {
+    "calls": 30,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 26437478.0,
+    "overhead_p50_ns": 506508.0,
+    "overhead_p95_ns": 562961,
+    "total_p50_ns": 26950672.5
+   },
+   "py_core_learn_buffer": {
+    "calls": 30,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 26796393.5,
+    "overhead_p50_ns": 79721.5,
+    "overhead_p95_ns": 89605,
+    "total_p50_ns": 26888386.0
+   },
+   "py_core_learn_noreceipt": {
+    "calls": 30,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 26461507.0,
+    "overhead_p50_ns": 100645.5,
+    "overhead_p95_ns": 135741,
+    "total_p50_ns": 26578212.5
+   },
+   "py_exec_learn": {
+    "calls": 30,
+    "native_calls_per_call": 1.0,
+    "native_p50_ns": 26643369.0,
+    "overhead_p50_ns": 69453.0,
+    "overhead_p95_ns": 83049,
+    "total_p50_ns": 26710707.5
+   }
+  }
+ },
+ "registered_rule_on_split_timing": {
+  "py_core_learn": {
+   "limit_ns": 697586.0,
+   "overhead_K10_ns": 298793.0,
+   "overhead_K4000_ns": 506508.0,
+   "pass": true
+  },
+  "py_core_learn_buffer": {
+   "limit_ns": 108651.0,
+   "overhead_K10_ns": 4325.5,
+   "overhead_K4000_ns": 79721.5,
+   "pass": true
+  },
+  "py_core_learn_noreceipt": {
+   "limit_ns": 141898.0,
+   "overhead_K10_ns": 20949.0,
+   "overhead_K4000_ns": 100645.5,
+   "pass": true
+  },
+  "py_exec_learn": {
+   "limit_ns": 108778.0,
+   "overhead_K10_ns": 4389.0,
+   "overhead_K4000_ns": 69453.0,
+   "pass": true
+  }
+ },
+ "wrapper": {
+  "inner_measured_ns": 124.0,
+  "wrapped_noop_call_ns": 359.74585
+ }
+}

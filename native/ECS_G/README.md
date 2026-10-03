@@ -85,9 +85,33 @@ Not established: language or meaning; retention under sequential learning
 anything about the cubic kernel, `d=6`/`N=36`, `S3` or gradient descent beyond
 that regime.
 
-The Python surface is `WorldState.forward`, `fork`/`adopt` (one atomic
-commit) and `elpis.ECS_G.cognition.CognitiveCore` (`query`, `learn`,
-`snapshot`/`restore`). The native kernel is unchanged.
+The Python surface is `elpis.ECS_G.cognition.CognitiveCore` (`query`,
+`learn`, `snapshot`/`restore`) over the native executor below; `WorldState`
+is the scalar reference binding. The reference kernel is unchanged.
+
+## Runtime R1 executor (`ecsg_executor.h`)
+
+The runtime form of an ECS_G state (`docs/ECS_RUNTIME_R1.md`). One executor
+owns the authoritative `W`, staging and transaction `W` buffers, scratch and
+an admitted-experience capacity in one arena allocated at creation; no
+operation allocates afterwards except an explicit `reserve`.
+
+- `forward`: one call, read-only.
+- `learn` / `learn_schedule`: `K` G1 steps (or ordered drives) in one call;
+  X/y admitted once; any refusal leaves `W`, epoch and generation unchanged;
+  success commits by pointer exchange (epoch `+K`).
+- `txn_*`: a native candidate, committed by the same exchange or refused
+  `STALE` when another commit replaced its source (generation check).
+- SINGLE_WRITER: overlapping entry is refused with `BUSY`.
+
+Its kernels keep the reference's per-element floating-point order and are
+bitwise equal to `ecsg_math.c`/`ecsg_state.c` (C tests in dispatched and
+baseline-ISA builds, a randomized Python differential, all 8 Cognitive R0
+QUAL worlds reproduced). Measured (PERFORMANCE_ONLY,
+`docs/performance/ECS_RUNTIME_R1.md`): an R0 step (d=6, N=36, R=64) in
+6.7 us native vs 24.8 us for the reference loop order; `CognitiveCore.learn`
+3.8x to 16.7x faster than before R1 for K = 10..4000. Its sources are pinned
+with the kernel by the mission gate.
 
 ## Boundary
 
