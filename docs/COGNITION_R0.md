@@ -8,9 +8,17 @@ learns and persists.** R0 asks one bounded question:
 > relationship through its qualified recurrence, and use that state to
 > compute later responses?
 
-**Status: NOT YET QUALIFIED.** The claim below is admitted only if the frozen
-QUAL of `research/ecs_cognition_r0` supports it. Until then it is a
-hypothesis with an implementation, not a result.
+**Status: QUALIFIED under the frozen synthetic Cognitive R0 regime.**
+ECS_G supports stateful learned input-response computation under the
+qualified Cognitive R0 regime: `research/ecs_cognition_r0` v1, frozen authority
+`71fba13cdea64551e5d08818e20a1b89cc8b76f0b2fc172ac317d711d9311eb1`, QUAL evidence
+`9dfe55adab68bf578511a4e0a463aef318281e1f2ac1073ef3c20910cff10b7d`
+(`MECHANICS_PASS`, `SUPPORTS_UNDER_FROZEN_SYNTHETIC_REGIME`; all gates A-G on 8
+QUAL worlds). Results: [`docs/research/COGNITION_R0_RESULTS.md`](research/COGNITION_R0_RESULTS.md).
+
+The same QUAL found that plain sequential learning **does not retain**: learning
+a second experience interfered with the first in 8 of 8 worlds,
+catastrophically in 6 of 8. R0 establishes no continual-learning property.
 
 ## The limited claim
 
@@ -99,6 +107,18 @@ evidence. A failure is recorded as it is. It measures:
   identically but diverge after the same learning step, so `W`, not `S3`, is
   authoritative.
 
+## Canonical surface
+
+* `elpis.ECS_G.native.WorldState.forward(x_rows)`: the qualified native
+  forward map on the current state; `fork()` / `adopt(candidate)`: one atomic
+  commit of a candidate state, refused if the state moved since the fork.
+* `elpis.ECS_G.cognition.CognitiveCore`: `query`, `learn(..., steps=K)`
+  returning a `Transition` receipt, `snapshot` / `restore`, `identity`,
+  `epoch`, `s3` (diagnostic).
+
+Only these mechanics are promoted. The laboratory harness, the synthetic
+task, its teachers and its thresholds stay in `research/` and grant nothing.
+
 ## Missing edges
 
 * **ECS <-> DSV semantic codec**: not defined; text generation unavailable.
@@ -108,3 +128,5 @@ evidence. A failure is recorded as it is. It measures:
 * **HACF -> ECS**: no structural-memory edge into ECS is qualified.
 * **ECS_C**: transitions return receipts but are not recorded in the history;
   cognition does not depend on history or replay.
+* **Retention**: no mechanism protects earlier learning from later
+  experience; the qualified recurrence alone forgets.

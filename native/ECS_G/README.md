@@ -68,6 +68,27 @@ G2 adds deterministic portable snapshot/restore for exactly:
 The snapshot API performs no file I/O and embeds no timestamps, paths, hashes,
 or external subsystem state. Storage and provenance belong to the caller.
 
+## Cognitive R0 (qualified under its frozen synthetic regime)
+
+ECS_G supports stateful learned input-response computation under the
+qualified Cognitive R0 regime (`docs/COGNITION_R0.md`,
+`docs/research/COGNITION_R0_RESULTS.md`): one state learns a bounded synthetic
+input -> response relationship into `W` through the G1 recurrence, and answers
+later queries with the native forward map of that `W`. The learned behaviour
+follows `W` (reset, transplant, zero), survives snapshot and a clean process
+bitwise, changes with further experience and is deterministic. Two
+microstates with identical `S3` diverge after one identical learning step, so
+`W`, not `S3`, is authoritative.
+
+Not established: language or meaning; retention under sequential learning
+(the QUAL found interference in 8 of 8 worlds, catastrophic in 6 of 8);
+anything about the cubic kernel, `d=6`/`N=36`, `S3` or gradient descent beyond
+that regime.
+
+The Python surface is `WorldState.forward`, `fork`/`adopt` (one atomic
+commit) and `elpis.ECS_G.cognition.CognitiveCore` (`query`, `learn`,
+`snapshot`/`restore`). The native kernel is unchanged.
+
 ## Boundary
 
 This directory owns only ECS_G.

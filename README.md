@@ -8,7 +8,7 @@ direction, not a capability claim; see [`docs/NONCLAIMS.md`](docs/NONCLAIMS.md).
 
 The division of responsibility is constitutional
 ([`docs/ELPIS_MISSION.md`](docs/ELPIS_MISSION.md)): **DSV4 communicates, ECS
-computes and persists, FMS materializes, HACF structures memory, ECS_C
+computes, learns and persists, FMS materializes, HACF structures memory, ECS_C
 preserves continuity.** DSV4 is the token boundary, not the brain.
 
 This repository is the clean development authority. It was built by a
