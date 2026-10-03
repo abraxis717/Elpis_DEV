@@ -290,11 +290,7 @@
       "test_roots": [
         "tests/inference"
       ],
-      "native_targets": [
-        "elpis_dsv41_native",
-        "elpis_dsv41_clock",
-        "elpis_dsv41_materializer"
-      ],
+      "native_targets": [],
       "depends_on": [
         "substrate"
       ],
@@ -389,6 +385,29 @@
     "research": "research laboratories (RESEARCH_ONLY, NO_RUNTIME_AUTHORITY; not packaged, never imported by src)",
     "src": "python implementation",
     "tests": "tests"
+  },
+  "research": {
+    "role": "Noncanonical research, donor-oracle and qualification code. RESEARCH_ONLY, NO_RUNTIME_AUTHORITY: never packaged, never imported by src/, never part of the Elpis cognitive path (docs/ELPIS_MISSION.md).",
+    "roots": [
+      "research",
+      "tests/research",
+      "docs/research"
+    ],
+    "components": [
+      {
+        "path": "research/ecs_dynamics",
+        "classification": "RESEARCH: ECS dynamics laboratory."
+      },
+      {
+        "path": "research/dsv41_tower",
+        "classification": "FULL DSV COGNITIVE TOWER + DONOR/ORACLE/QUALIFICATION: the production-shaped DSV4.1 transformer/MoE/Engram tower with its sealed CPU-native backend, YTS-R0 provider stream, Native Clock R0 and the DSV-specific Native Materializer R1. Relocated out of the canonical tree by the mission correction; mechanically qualified against the pinned donor, never Elpis cognition."
+      }
+    ],
+    "native_targets": [
+      "elpis_dsv41_native",
+      "elpis_dsv41_clock",
+      "elpis_dsv41_materializer"
+    ]
   },
   "boundary_policy": {
     "forbidden_top_level_paths": [

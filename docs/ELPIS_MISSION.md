@@ -87,6 +87,20 @@ remain in public history as evidence and are removed from the canonical path.
 | structure / HACF | persistent structural memory, topology, representation, provenance | be defined solely as a context-window supplier for a model |
 | runtime | orchestrates codec -> ECS -> codec and records committed outcomes in ECS_C | route cognition through a DSV model |
 
+## Classification of existing machinery
+
+| Machinery | Classification | Where |
+|---|---|---|
+| V4.1 tokenizer, chat/text rendering, incremental decode (`text.py`), codec contracts (`contracts.py`), budgeted rendering of admitted structural memory (`admission.py`, `structural.py`) | CODEC / COMMUNICATION (canonical) | `src/elpis/inference` |
+| execution port, descriptor capabilities, resource authority, FMS file service and HOT/WARM/COLD residency | GENERIC SUBSTRATE (canonical) | `src/elpis/substrate`, `native/substrate` |
+| production-shaped DSV4.1 tower (attention, Engram, mHC, routed/shared MoE, layer recurrence), sealed CPU-native backend, YTS-R0 provider stream, Native Clock R0, DSV-specific Native Materializer R1, donor differentials | FULL DSV COGNITIVE TOWER + DONOR / ORACLE / QUALIFICATION (noncanonical) | `research/dsv41_tower` (Python and native), `tests/research/dsv41_tower`, `docs/research/dsv41_tower` |
+| legacy DSV4 compact synthetic target, decode transaction, sequence path, principal engine, steering, speculative drafting, associative rows, experts, prefetch, global context, safetensors preflight | DSV MODEL-EXECUTION MECHANICS, retained for historical replay of persisted identities and qualification (noncanonical; never composed by the runtime) | `src/elpis/inference` outside the codec modules |
+| ECS_G-as-DSV-conditioning (`TurnConditioning`, `ConditioningProjection`, `FEATURE_CONDITIONING`, `WorldModelLoop`, `DriveMap`) | OBSOLETE SIDECAR INTEGRATION (removed) | public history only (`f4e1f05`, `75313fb`) |
+
+The runtime reaches `elpis.inference` only through the codec modules; the
+mission gate enforces it. `research/` is never packaged and never imported by
+`src/`.
+
 ## Mechanics pass is not mission pass
 
 A test proving that a module behaves according to its own specification is a

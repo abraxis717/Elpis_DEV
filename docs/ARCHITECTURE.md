@@ -617,10 +617,10 @@ carried forward (`docs/NONCLAIMS.md`).
 The Python implementation (NumPy tower, YTS host adapter, `RowEngine`,
 `TensorStore`, `FMSFileAssets`) remains the oracle. Opt-in native paths:
 
-* **YTS-R0** (`docs/inference/DSV41_PROVIDER_STREAM.md`): one provider stream
+* **YTS-R0** (`docs/research/dsv41_tower/DSV41_PROVIDER_STREAM.md`): one provider stream
   per runtime over the unchanged generic execution port; host-prepared rows
   and bounded expert parts flow in, the provider owns recurrent state.
-* **Native Clock R0** (`docs/inference/DSV41_NATIVE_CLOCK.md`): one
+* **Native Clock R0** (`docs/research/dsv41_tower/DSV41_NATIVE_CLOCK.md`): one
   `clock_advance` drives prefill and generation — address hashing, YTS
   codec/submit/take, validation, argmax and stop logic — without entering
   Python.

@@ -1,7 +1,11 @@
-"""HACF is the context substrate: ingress -> adapter -> verified objects -> admission -> prefill.
+"""Structural memory rendered through the codec: ingress -> adapter -> verified HACF objects -> admission.
 
 Everything here runs over real native libraries: a real HACF corpus, the real
-Regex/HACF ingress, verified document blobs, and the synthetic DSV4 fixture.
+Regex/HACF ingress and verified document blobs. The runtime part is
+``Runtime.admit_context``. Where a model consumes the admission, it is the
+synthetic DSV4 fixture driven directly through the noncanonical principal
+engine, as a mechanics check of bounded resident state and slow-lane
+isolation; the runtime composes no model execution (docs/ELPIS_MISSION.md).
 """
 from __future__ import annotations
 
@@ -105,7 +109,7 @@ def prepare(runtime, ingress_library, corpus_root, manifest, engine, budget=BUDG
                                      budget=budget, max_document_bytes=1 << 20)
 
 
-def test_ingress_to_prefill_through_verified_hacf_context(runtime, ingress_library, substrate, model):
+def test_ingress_to_admission_through_verified_hacf_objects(runtime, ingress_library, substrate, model):
     corpus_root, manifest = substrate
     engine, resident = model
     prepared = prepare(runtime, ingress_library, corpus_root, manifest, engine)
@@ -126,14 +130,14 @@ def test_ingress_to_prefill_through_verified_hacf_context(runtime, ingress_libra
 
     state = engine.initial(CONTEXT)
     request = PrincipalRequest("turn-1", (1, 2), 12)
-    emitted = []
-    result, record = runtime.run_principal(engine, state, request, admission, expected_state=state.digest,
-                                           emit=emitted.append, resident_experts=resident)
+    sequence = engine.begin(state, request, admission, expected_state=state.digest, resident_experts=resident)
+    emitted = list(sequence)
+    result = engine.finalize(sequence)
     assert result.commit.outputs == tuple(emitted) and len(emitted) == 12
     assert result.commit.admission == admission.digest
     assert result.commit.prefill == len(admission.tokens) + len(request.prompt)
-    assert [r.record.kind for r in runtime.history.records()] == ["ingress.proposal", "context.admission",
-                                                                   "principal.commit"]
+    # The runtime records the structural-memory rendering only; it runs and records no model.
+    assert [r.record.kind for r in runtime.history.records()] == ["ingress.proposal", "context.admission"]
     assert engine.replay(state, request, admission, result.commit).commit == result.commit
 
 
@@ -201,8 +205,8 @@ def test_resident_model_state_stays_bounded_as_hacf_grows(retrieval_library, ing
 _FORBIDDEN = ("key", "value", "kv", "latent", "hidden", "pool", "tensor", "logit", "vector")
 
 
-@pytest.mark.parametrize("function", [composition.Runtime.admit_context, composition.Runtime.run_principal,
-                                      edges.object_claims, edges.from_regex_hacf, PrincipalEngine.begin])
+@pytest.mark.parametrize("function", [composition.Runtime.admit_context, edges.object_claims,
+                                      edges.from_regex_hacf, PrincipalEngine.begin])
 def test_runtime_boundary_takes_no_kv_or_vectors(function):
     names = list(inspect.signature(function).parameters)
     assert not [n for n in names if any(bad in n.lower() for bad in _FORBIDDEN)], names

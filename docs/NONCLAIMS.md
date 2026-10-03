@@ -32,7 +32,7 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
   (local/SWA and compressed sparse attention, Engram, mHC, routed and shared MoE).
   Its mechanics are qualified against pinned DeepSeek V4.1 donor behavior: every
   sublayer, layer residual stream and logit at every position, within F32
-  reduction-order tolerance (`docs/inference/DSV41_TOWER_QUALIFICATION.md`). Only
+  reduction-order tolerance (`docs/research/dsv41_tower/DSV41_TOWER_QUALIFICATION.md`). Only
   deterministic training-free fixtures (`TRAINING=NONE`) are exercised. No learned
   production parameter artifact or trained Engram address table is admitted, so
   generated text has no meaning and no language-quality, reasoning or

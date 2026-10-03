@@ -18,18 +18,18 @@ fail-closed entry point, and records the committed outcome in its history:
   own history taken at call time. An assertion built against an older history
   head is rejected before anything runs, and a transition receipt is recorded
   only for an admitted attempt.
-* ``decode``: one inference decode transaction. Only a committed decode
-  receipt is recorded; a typed failure leaves the history unchanged.
-* ``admit_context``: the context-substrate path before a sequence. Pipeline
-  ingress on the turn's bytes, then the edge adapter (address proposals and
-  chunk claims from the pinned export), then HACF object resolution
-  (verified document bytes, recomputed chunk identity, pinned corpus
-  manifest), then inference context admission under an explicit budget. The
-  ingress proposal and the admission are recorded.
-* ``run_principal``: one principal sequence over an admission. ``begin``,
-  then tokens handed to the caller's ``emit`` as they are produced, then
-  ``finalize``. Nothing else runs while tokens stream; the commit is recorded
-  after finalization.
+* ``admit_context``: structural memory rendered through the DSV4 codec.
+  Pipeline ingress on the turn's bytes, then the edge adapter (address
+  proposals and chunk claims from the pinned export), then HACF object
+  resolution (verified document bytes, recomputed chunk identity, pinned
+  corpus manifest), then a budgeted, frozen token rendering. The ingress
+  proposal and the admission are recorded. It is a communication operation:
+  it does not make HACF a context window for a model.
+
+The runtime composes no DSV model execution (docs/ELPIS_MISSION.md: DSV4
+communicates, ECS computes). Model decode transactions and principal
+sequences are noncanonical inference mechanics; the runtime neither runs nor
+records them.
 
 Nothing is chained implicitly. No hidden fallback widens authority: every
 check that refuses an operation is the owning subsystem's own check, and the
@@ -39,8 +39,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
-
 from elpis.ECS_C.projection.contracts import ContextProjection, ProjectionRequest
 from elpis.inference.admission import ContextAdmission, ContextBudget, admit_context
 from elpis.evolution.path_gate import EvolutionPathGate, GateExecuted, GateRejected
@@ -54,10 +52,6 @@ from elpis.substrate.digests import raw_digest
 
 from .edges import from_regex_hacf, object_claims
 from .history import HistoryError, ReceiptHistory, ReceiptRecord, RecordedReceipt
-
-if TYPE_CHECKING:
-    from elpis.inference.principal import PrincipalEngine, PrincipalResult
-    from elpis.inference.transaction import DecodeResult, InferenceEngine
 
 __all__ = ("CompositionError", "ContextPreparation", "Runtime", "RuntimeConfig")
 
@@ -176,29 +170,11 @@ class Runtime:
             outcome=receipt.attempt_outcome,
         ))
 
-    # -- inference: one decode transaction ---------------------------------------------
-    def decode(self, engine: "InferenceEngine", state, request, *, expected_state: str,
-               prefetch_enabled: bool = False) -> tuple["DecodeResult", RecordedReceipt | None]:
-        from elpis.inference.transaction import InferenceEngine
-
-        if type(engine) is not InferenceEngine:
-            raise TypeError("decode takes an InferenceEngine")
-        result = engine.execute(state, request, expected_state=expected_state,
-                                prefetch_enabled=prefetch_enabled)
-        receipt = result.receipt
-        if receipt.terminal != "COMMITTED":
-            return result, None
-        return result, self.history.record(ReceiptRecord.of(
-            "inference", "inference.decode", receipt.digest,
-            request=receipt.request, model=receipt.model,
-            input_state=receipt.input_state, output_state=receipt.output_state,
-        ))
-
-    # -- context substrate: ingress -> adapter -> HACF resolution -> admission ------------
+    # -- structure -> codec: ingress -> adapter -> HACF resolution -> rendering ----------
     def admit_context(self, *, ingress: QueryIngress, task: bytes, corpus_root: Path, corpus_manifest,
                       context_snapshot: str, model: str, tokenizer: str, budget: ContextBudget,
                       max_document_bytes: int, rules: tuple = (), text_tokenizer=None) -> ContextPreparation:
-        """Prepare the frozen context for the next sequence, at a turn boundary.
+        """Resolve proposed HACF objects and render them, frozen, through the DSV4 codec.
 
         ``corpus_manifest`` is the corpus manifest JSON the caller obtained from
         its HACF handle; it must hash to the digest the ingress result pins.
@@ -234,43 +210,3 @@ class Runtime:
             omitted=str(admission.omitted), tokens=str(len(admission.tokens)),
         ))
         return ContextPreparation(admission, result, ingress_record, admission_record)
-
-    # -- inference: one principal sequence ------------------------------------------------
-    def run_text(self, engine, state, text, admission, *, tokenizer, request_id,
-                 max_new_tokens, expected_state, emit=None, thinking=False, effort=None,
-                 resident_experts=None):
-        """Encode chat before begin; stream inert text; commit after finalization.
-
-        Context comes from explicit bounded admission (including an explicitly
-        empty admission). No retrieval is implicit in an arbitrary chat string.
-        """
-        from .text import run_text
-        return run_text(self, engine, state, text, admission, tokenizer=tokenizer,
-                        request_id=request_id, max_new_tokens=max_new_tokens,
-                        expected_state=expected_state, emit=emit, thinking=thinking,
-                        effort=effort, resident_experts=resident_experts)
-
-    def run_principal(self, engine: "PrincipalEngine", state, request, admission: ContextAdmission, *,
-                      expected_state: str, emit=None, resident_experts=None
-                      ) -> tuple["PrincipalResult", RecordedReceipt | None]:
-        """Stream one principal sequence to ``emit``; record its commit after finalization."""
-        from elpis.inference.principal import PrincipalEngine
-
-        if type(engine) is not PrincipalEngine:
-            raise TypeError("run_principal takes a PrincipalEngine")
-        if emit is not None and not callable(emit):
-            raise TypeError("emit must be callable")
-        sequence = engine.begin(state, request, admission, expected_state=expected_state,
-                                resident_experts=resident_experts)
-        for token in sequence:
-            if emit is not None:
-                emit(token)
-        result = engine.finalize(sequence)
-        if result.commit is None:
-            return result, None
-        commit = result.commit
-        return result, self.history.record(ReceiptRecord.of(
-            "inference", "principal.commit", commit.digest,
-            admission=commit.admission, request=commit.request, state=commit.state,
-            outputs=str(len(commit.outputs)), stop=commit.stop_reason,
-        ))

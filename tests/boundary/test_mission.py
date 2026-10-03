@@ -20,9 +20,6 @@ from ._system import REPO
 # commit deletes the entries it fixes; strict xfail turns a fixed check that is
 # still listed here into a failure, so this table cannot go stale.
 PENDING = {
-    "runtime_model_execution": "runtime still composes DSV model execution (removed by C2)",
-    "canonical_tower": "DSV4.1 tower still in the canonical tree (relocated by C2)",
-    "runtime_closure": "runtime still imports DSV model machinery (removed by C2)",
     "fail_closed_turn": "no codec -> ECS -> codec turn yet (established by C3)",
 }
 
