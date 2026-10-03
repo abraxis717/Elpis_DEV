@@ -11,6 +11,10 @@
  *   ref_step     one reference elpis_ecsg_state_gd_step_f64 (preallocated scratch)
  *   ref_learn    <steps> reference steps in a C loop on one state (preallocated scratch)
  *   ref_cold     reference state create + destroy
+ *   exec_forward executor forward (one call)
+ *   exec_learn   executor learn: <steps> fused steps, one call, one commit
+ *   exec_txn     executor transaction: begin + learn(<steps>) + commit
+ *   exec_cold    executor create (max_rows = rows) + destroy
  *
  * Data: deterministic (splitmix64 + Box-Muller); W0 ~ N(0, (0.18 sqrt(36/N))^2),
  * X ~ N(0, 0.5^2), y = 0.9 f_W0(X). Values do not change the work performed.
@@ -24,6 +28,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "elpis/ecsg_executor.h"
 #include "elpis/ecsg_state.h"
 
 static uint64_t rng_state = UINT64_C(20261004);
@@ -76,6 +81,7 @@ typedef struct {
     double *w0, *x, *y, *out, *scratch;
     size_t scratch_count;
     elpis_ecsg_state *state;
+    elpis_ecsg_executor *exec;
 } bench;
 
 static void die(const char *what)
@@ -114,6 +120,9 @@ static void setup(bench *b)
     if (!b->scratch) {
         die("scratch");
     }
+    if (elpis_ecsg_executor_create(b->dim, b->width, b->rows, b->w0, &b->exec) != ELPIS_ECSG_EXEC_OK) {
+        die("executor setup");
+    }
 }
 
 static int run_once(bench *b, const char *mode)
@@ -139,6 +148,29 @@ static int run_once(bench *b, const char *mode)
         elpis_ecsg_state *s = NULL;
         const int rc = elpis_ecsg_state_create(b->dim, b->width, b->w0, &s);
         elpis_ecsg_state_destroy(&s);
+        return rc;
+    }
+    if (strcmp(mode, "exec_forward") == 0) {
+        return elpis_ecsg_executor_forward(b->exec, b->x, b->rows, b->out);
+    }
+    if (strcmp(mode, "exec_learn") == 0) {
+        return elpis_ecsg_executor_learn(b->exec, b->x, b->y, b->rows, 0.002, b->steps, NULL);
+    }
+    if (strcmp(mode, "exec_txn") == 0) {
+        uint64_t token = 0u;
+        int rc = elpis_ecsg_executor_txn_begin(b->exec, &token);
+        if (rc == ELPIS_ECSG_EXEC_OK) {
+            rc = elpis_ecsg_executor_txn_learn(b->exec, token, b->x, b->y, b->rows, 0.002, b->steps, NULL);
+        }
+        if (rc == ELPIS_ECSG_EXEC_OK) {
+            rc = elpis_ecsg_executor_txn_commit(b->exec, token, NULL);
+        }
+        return rc;
+    }
+    if (strcmp(mode, "exec_cold") == 0) {
+        elpis_ecsg_executor *e = NULL;
+        const int rc = elpis_ecsg_executor_create(b->dim, b->width, b->rows, b->w0, &e);
+        elpis_ecsg_executor_destroy(&e);
         return rc;
     }
     die("unknown mode");
@@ -211,6 +243,7 @@ int main(int argc, char **argv)
            (unsigned long long)pct(samples, n, 0.95), (unsigned long long)pct(samples, n, 0.99),
            (unsigned long long)samples[n - 1], mean);
     elpis_ecsg_state_destroy(&b.state);
+    elpis_ecsg_executor_destroy(&b.exec);
     free(b.w0); free(b.x); free(b.y); free(b.out); free(b.scratch); free(samples);
     return 0;
 }

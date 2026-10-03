@@ -20,7 +20,7 @@ import sys
 import numpy as np
 import pytest
 
-from elpis.ECS_G.native import ECSGLibrary, WorldState
+from elpis.ECS_G.native import ECSGLibrary, Executor
 from elpis.runtime.cognition import CODEC_UNQUALIFIED, Readout, run_turn
 from elpis.runtime.composition import CompositionError
 
@@ -42,7 +42,7 @@ def initial_w(seed=36):
 
 def world(api, w=None):
     w = initial_w() if w is None else w
-    return WorldState.create(api, DIM, WIDTH, w.reshape(-1).tolist())
+    return Executor.create(api, DIM, WIDTH, w.reshape(-1).tolist())
 
 
 def test_canonical_turn_fails_closed_without_a_qualified_codec(api, runtime):
@@ -109,7 +109,7 @@ def test_turns_are_deterministic_and_snapshots_continue(api):
         assert ra == rb and a.snapshot() == b.snapshot()
     with world(api) as live:
         run_turn(live, texts[0], tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
-        with WorldState.restore(api, live.snapshot()) as resumed:
+        with Executor.restore(api, live.snapshot()) as resumed:
             for t in texts[1:]:
                 x = run_turn(live, t, tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
                 y = run_turn(resumed, t, tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
@@ -120,11 +120,11 @@ def test_turns_are_deterministic_and_snapshots_continue(api):
 _NO_DSV_PROBE = r"""
 import ctypes, json, sys
 sys.path.insert(0, sys.argv[1])
-from elpis.ECS_G.native import ECSGLibrary, WorldState
+from elpis.ECS_G.native import ECSGLibrary, Executor
 from elpis.runtime.cognition import run_turn
 from tests.integration._turn_fixtures import ByteTokens, FixtureMap
 api = ECSGLibrary(ctypes.CDLL(sys.argv[2]))
-with WorldState.create(api, 6, 36, [0.01 * (i % 13 - 6) for i in range(216)]) as state:
+with Executor.create(api, 6, 36, [0.01 * (i % 13 - 6) for i in range(216)]) as state:
     result = run_turn(state, "an ECS transition", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=0.002)
     epoch = state.epoch
 print(json.dumps({"epoch": epoch, "text": result.text, "codec": sys.argv[3:],
@@ -168,7 +168,7 @@ def test_canonical_turn_with_the_admitted_v41_codec(api):
 
 
 def test_a_turn_whose_state_moved_meanwhile_is_refused_not_half_installed(api):
-    """The trial is adopted in one commit only if the authoritative state is still the one it forked."""
+    """The candidate commits natively only if the authoritative state is still the one the turn began from."""
     with world(api) as state:
         fixture = FixtureMap()
         interloper = FixtureMap(steps=1)
@@ -176,7 +176,7 @@ def test_a_turn_whose_state_moved_meanwhile_is_refused_not_half_installed(api):
 
         def decode_while_state_moves(readout):
             x, y = interloper.encode(tuple(b"interloper")).drives[0]
-            state.step(x, y, RATE)  # someone else commits a transition during the turn
+            state.learn(x, y, RATE)  # someone else commits a transition during the turn
             return decode(readout)
         fixture.decode = decode_while_state_moves
         with pytest.raises(CompositionError) as info:

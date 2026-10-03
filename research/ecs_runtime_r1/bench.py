@@ -12,6 +12,7 @@ shared-library SHA-256 it measured. Timings are performance evidence only.
 from __future__ import annotations
 
 import argparse
+from array import array
 import ctypes
 import hashlib
 import json
@@ -157,30 +158,37 @@ def data(w: dict, api):
 
 
 def python_modes(phase: str) -> dict:
-    """Mode name -> (kind, factory(api, w, data) returning a zero-argument op)."""
+    """Mode name -> (kind, factory(api, w, data) returning a zero-argument op).
+
+    ``baseline`` is the pre-nativeization binding (fork/adopt, per-step Python),
+    measured at R1A 3568a77 and only runnable on that binding; ``final`` is
+    the executor control plane.
+    """
     from elpis.ECS_G.cognition import CognitiveCore
-    from elpis.ECS_G.native import WorldState
+    from elpis.ECS_G import native
+    WorldState = native.WorldState
     lr = WL.LEARNING_RATE
 
-    def state_forward(api, w, d):
-        s = WorldState.create(api, w["dim"], w["width"], d[0])
-        return lambda: s.forward(d[1])
-
-    def state_step(api, w, d):
-        s = WorldState.create(api, w["dim"], w["width"], d[0])
-        return lambda: s.step(d[1], d[2], lr)
+    def core(api, w, d):
+        return CognitiveCore.create(api, w["dim"], w["width"], d[0], learning_rate=lr)
 
     def core_query(api, w, d):
-        c = CognitiveCore.create(api, w["dim"], w["width"], d[0], learning_rate=lr)
+        c = core(api, w, d)
         return lambda: c.query(d[1])
 
     def core_learn(api, w, d):
-        c = CognitiveCore.create(api, w["dim"], w["width"], d[0], learning_rate=lr)
+        c = core(api, w, d)
         return lambda: c.learn(d[1], d[2], steps=w["steps"])
 
-    modes = {"py_state_forward": ("query", state_forward), "py_core_query": ("query", core_query),
-             "py_state_step": ("step", state_step), "py_core_learn": ("learn", core_learn)}
     if phase == "baseline":
+        def state_forward(api, w, d):
+            s = WorldState.create(api, w["dim"], w["width"], d[0])
+            return lambda: s.forward(d[1])
+
+        def state_step(api, w, d):
+            s = WorldState.create(api, w["dim"], w["width"], d[0])
+            return lambda: s.step(d[1], d[2], lr)
+
         def snapshot(api, w, d):
             s = WorldState.create(api, w["dim"], w["width"], d[0])
             return lambda: s.snapshot()
@@ -193,13 +201,85 @@ def python_modes(phase: str) -> dict:
             with WorldState.create(api, w["dim"], w["width"], d[0]) as s:
                 blob = s.snapshot()
             return lambda: WorldState.restore(api, blob).close()
-        modes.update({"py_state_snapshot": ("state", snapshot), "py_state_fork_adopt": ("state", fork_adopt),
-                      "py_state_restore": ("state", restore)})
-    return modes
+        return {"py_state_forward": ("query", state_forward), "py_core_query": ("query", core_query),
+                "py_state_step": ("step", state_step), "py_core_learn": ("learn", core_learn),
+                "py_state_snapshot": ("state", snapshot), "py_state_fork_adopt": ("state", fork_adopt),
+                "py_state_restore": ("state", restore)}
+
+    Executor = native.Executor
+
+    def buffers(d):
+        return array("d", [v for row in d[1] for v in row]), array("d", d[2]), array("d", bytes(8 * len(d[2])))
+
+    def executor(api, w, d):
+        return Executor.create(api, w["dim"], w["width"], d[0], max_rows=max(w["rows"], native.DEFAULT_MAX_ROWS))
+
+    def exec_forward(api, w, d):
+        e = executor(api, w, d)
+        return lambda: e.forward(d[1])
+
+    def exec_forward_into(api, w, d):
+        e, (x, _, out) = executor(api, w, d), buffers(d)
+        return lambda: e.forward_into(x, out)
+
+    def core_query_into(api, w, d):
+        c, (x, _, out) = core(api, w, d), buffers(d)
+        return lambda: c.query_into(x, out)
+
+    def exec_learn(api, w, d):
+        e, (x, y, _) = executor(api, w, d), buffers(d)
+        return lambda: e.learn(x, y, lr, w["steps"])
+
+    def core_learn_noreceipt(api, w, d):
+        c = core(api, w, d)
+        return lambda: c.learn(d[1], d[2], steps=w["steps"], receipt=False)
+
+    def core_learn_buffer(api, w, d):
+        c, (x, y, _) = core(api, w, d), buffers(d)
+        return lambda: c.learn(x, y, steps=w["steps"], receipt=False)
+
+    def exec_snapshot(api, w, d):
+        e = executor(api, w, d)
+        return lambda: e.snapshot()
+
+    def exec_txn(api, w, d):
+        e, (x, y, _) = executor(api, w, d), buffers(d)
+
+        def op():
+            with e.transaction() as txn:
+                txn.learn(x, y, lr)
+                txn.commit()
+        return op
+
+    def exec_restore(api, w, d):
+        with executor(api, w, d) as e:
+            blob = e.snapshot()
+        return lambda: Executor.restore(api, blob).close()
+    return {"py_exec_forward": ("query", exec_forward), "py_exec_forward_into": ("query", exec_forward_into),
+            "py_core_query": ("query", core_query), "py_core_query_into": ("query", core_query_into),
+            "py_exec_learn": ("learn", exec_learn), "py_core_learn": ("learn", core_learn),
+            "py_core_learn_noreceipt": ("learn", core_learn_noreceipt),
+            "py_core_learn_buffer": ("learn", core_learn_buffer),
+            "py_exec_snapshot": ("state", exec_snapshot), "py_exec_txn": ("state", exec_txn),
+            "py_exec_restore": ("state", exec_restore)}
 
 
 NATIVE_MODES = {"baseline": {"query": ["ref_forward"], "step": ["ref_step"], "learn": ["ref_learn"],
-                             "state": ["ref_cold"]}}
+                             "state": ["ref_cold"]},
+                "final": {"query": ["ref_forward", "exec_forward"], "step": ["ref_step"],
+                          "learn": ["ref_learn", "exec_learn", "exec_txn"], "state": ["ref_cold", "exec_cold"]}}
+
+
+def memory(api, w: dict) -> dict:
+    """Bytes owned per state: the reference (W, plus scratch the old binding allocated per Python step) and the
+    executor workspace (allocated once at creation)."""
+    d, n, r = w["dim"], w["width"], w["rows"]
+    out = {"workload": w["id"], "w_bytes": 8 * d * n, "reference_step_scratch_bytes": 8 * (r * n + r + d * n)}
+    if hasattr(api, "workspace_bytes"):
+        from elpis.ECS_G.native import DEFAULT_MAX_ROWS
+        out["executor_workspace_bytes"] = api.workspace_bytes(d, n, r)
+        out["executor_default_workspace_bytes"] = api.workspace_bytes(d, n, max(r, DEFAULT_MAX_ROWS))
+    return out
 
 
 def _progress(result: dict) -> None:
@@ -232,7 +312,8 @@ def run(build: Path, phase: str, only: str | None) -> dict:
                 _progress(results[-1])
     return {"label": "PERFORMANCE_ONLY NO_SCIENTIFIC_CLAIM", "phase": phase, "binding": binding(build),
             "environment": environment(), "workloads": WL.workloads(), "gates": WL.GATES,
-            "thresholds": WL.THRESHOLDS, "results": results}
+            "thresholds": WL.THRESHOLDS, "results": results,
+            "memory": [memory(api, w) for w in WL.workloads() if not only or only in w["id"]]}
 
 
 def main(argv=None) -> int:

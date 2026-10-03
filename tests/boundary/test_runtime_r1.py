@@ -24,7 +24,6 @@ TURN = REPO / "src" / "elpis" / "runtime" / "cognition.py"
 
 # Strict xfail for what is not built yet; each later commit deletes its entries.
 PENDING = {
-    "executor": "R1E: the Python control plane moves onto the native executor",
 }
 
 

@@ -1,10 +1,11 @@
 """Cognitive R0 contract, behavioural part (docs/COGNITION_R0.md): ECS response depends on ECS state.
 
 Not "DSV code was not imported" but: a query is the native forward map of the
-current authoritative W. It equals f_W computed by an independent native state
-holding the same W, follows W through learning, returns when W is restored,
-vanishes when W is replaced, and cannot be produced once the native forward
-call is unavailable. Learning is atomic, and the core keeps no state beside W.
+current authoritative W. It equals f_W computed by an independent reference
+state holding the same W, follows W through learning, returns when W is
+restored, vanishes when W is replaced, and cannot be produced once the native
+executor forward is unavailable. Learning is atomic, and the core keeps no
+state beside W.
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ import sys
 import numpy as np
 import pytest
 
-from elpis.ECS_G.native import ECSGError, ECSGLibrary, WorldState
+from elpis.ECS_G.native import ECSGError, ECSGLibrary, Executor, WorldState
 
 from ._math_oracle import forward, gd_step
 from .test_math_r0 import REPO, _library_path
@@ -51,43 +52,50 @@ def _experience(seed=7, rows=16):
 def test_binding_forward_is_the_native_state_forward(api):
     w = _w()
     x, _ = _experience()
-    with WorldState.create(api, DIM, WIDTH, w.reshape(-1).tolist()) as state:
-        out = state.forward(x.tolist())
-        assert type(out) is tuple and len(out) == len(x) and all(type(v) is float for v in out)
-        np.testing.assert_allclose(out, forward(w, x), rtol=1e-12, atol=1e-12)
-        y = forward(_w(5), x)
-        state.step(x.tolist(), y.tolist(), LR)
-        np.testing.assert_allclose(state.forward(x.tolist()), forward(gd_step(w, x, y, LR), x), rtol=1e-11, atol=1e-12)
-        for bad in ([], [[0.0] * (DIM - 1)], [[float("nan")] * DIM], [[1e300] * DIM]):
-            with pytest.raises(ECSGError):
-                state.forward(bad)
+    for cls in (WorldState, Executor):
+        with cls.create(api, DIM, WIDTH, w.reshape(-1).tolist()) as state:
+            out = state.forward(x.tolist())
+            assert type(out) is tuple and len(out) == len(x) and all(type(v) is float for v in out)
+            np.testing.assert_allclose(out, forward(w, x), rtol=1e-12, atol=1e-12)
+            y = forward(_w(5), x)
+            if cls is WorldState:
+                state.step(x.tolist(), y.tolist(), LR)
+            else:
+                state.learn(x.tolist(), y.tolist(), LR)
+            np.testing.assert_allclose(state.forward(x.tolist()), forward(gd_step(w, x, y, LR), x),
+                                       rtol=1e-11, atol=1e-12)
+            for bad in ([], [[0.0] * (DIM - 1)], [[float("nan")] * DIM], [[1e300] * DIM]):
+                with pytest.raises(ECSGError):
+                    state.forward(bad)
 
 
 @pending("forward")
-def test_adoption_is_one_atomic_commit_or_nothing(api):
+def test_a_candidate_commits_natively_in_one_exchange_or_not_at_all(api):
     x, y = _experience()
-    with WorldState.create(api, DIM, WIDTH, _w().reshape(-1).tolist()) as state:
+    with Executor.create(api, DIM, WIDTH, _w().reshape(-1).tolist()) as state:
         before = state.snapshot()
-        candidate = state.fork()
-        for _ in range(3):
-            candidate.step(x.tolist(), y.tolist(), LR)
-        expected = candidate.snapshot()
-        assert state.snapshot() == before                    # nothing installed yet
-        state.adopt(candidate)
-        assert state.snapshot() == expected and state.epoch == 3
+        with state.transaction() as candidate:
+            candidate.learn(x.tolist(), y.tolist(), LR, steps=3)
+            assert state.snapshot() == before                # nothing installed yet
+            committed = candidate.commit()
+        assert (committed.epoch_after, committed.generation_after, state.epoch) == (3, 1, 3)
+        with WorldState.create(api, DIM, WIDTH, _w().reshape(-1).tolist()) as reference:
+            for _ in range(3):
+                reference.step(x.tolist(), y.tolist(), LR)
+            assert state.snapshot() == reference.snapshot()  # bitwise the qualified recurrence
         with pytest.raises(ECSGError):
-            candidate.s3()                                   # the candidate was consumed
-        stale = state.fork()
-        state.step(x.tolist(), y.tolist(), LR)               # authoritative state moved after the fork
-        moved = state.snapshot()
-        with pytest.raises(ECSGError):
-            state.adopt(stale)
+            candidate.s3()                                   # the transaction is spent
+        with state.transaction() as stale:
+            stale.learn(x.tolist(), y.tolist(), LR)
+            state.learn(x.tolist(), y.tolist(), LR)          # authoritative state moved after begin
+            moved = state.snapshot()
+            with pytest.raises(ECSGError) as info:
+                stale.commit()
+            assert info.value.code == "STALE"
         assert state.snapshot() == moved
-        with WorldState.create(api, DIM, WIDTH, _w(9).reshape(-1).tolist()) as stranger:
-            with pytest.raises(ECSGError):
-                state.adopt(stranger)                        # not a fork of this state
-        assert state.snapshot() == moved
-        stale.close()
+        with state.transaction() as abandoned:
+            abandoned.learn(x.tolist(), y.tolist(), LR, steps=2)
+        assert state.snapshot() == moved                     # leaving the block uncommitted aborts
 
 
 @pending("core")
@@ -114,7 +122,7 @@ def test_ecs_response_depends_on_ecs_state(api, monkeypatch):
 
         def unavailable(self, rows):
             raise ECSGError("UNAVAILABLE", "native forward withheld")
-        monkeypatch.setattr(WorldState, "forward", unavailable)
+        monkeypatch.setattr(Executor, "forward", unavailable)
         with pytest.raises(ECSGError):
             core.query(q.tolist())                                         # no answer without ECS_G forward
 
