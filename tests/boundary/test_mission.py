@@ -20,7 +20,6 @@ from ._system import REPO
 # commit deletes the entries it fixes; strict xfail turns a fixed check that is
 # still listed here into a failure, so this table cannot go stale.
 PENDING = {
-    "fail_closed_turn": "no codec -> ECS -> codec turn yet (established by C3)",
 }
 
 
@@ -128,3 +127,24 @@ def test_runtime_import_closure_loads_no_dsv_model_machinery():
              and not any(m == c or m.startswith(c + ".") for c in M.CODEC_MODULES)]
     assert not model, model
     assert not [m for m in loaded if m == "research" or m.startswith("research.")]
+
+
+# Runtime operations. A new operation is an architectural decision: adding one
+# (for example a model decode or a model text path) must update this list,
+# which is reviewed against docs/ELPIS_MISSION.md.
+RUNTIME_OPERATIONS = {"open", "close", "run_ingress", "admit_retrieval", "publish_canonical",
+                      "history_projection", "evolve", "admit_context", "run_turn"}
+
+
+def test_runtime_composes_no_model_operation():
+    import elpis.runtime.composition as composition
+    public = {n for n in vars(composition.Runtime) if not n.startswith("_")}
+    assert public == RUNTIME_OPERATIONS, sorted(public ^ RUNTIME_OPERATIONS)
+
+
+def test_the_cognitive_turn_is_codec_then_ecs_then_codec():
+    """The canonical turn module depends on ECS_G and on no inference module at all."""
+    path = REPO / "src" / "elpis" / "runtime" / "cognition.py"
+    names = M.imports_of(REPO, path)
+    assert any(M._under(n, "elpis.ECS_G") for n in names), names
+    assert not [n for n in names if M._under(n, "elpis.inference") or M._under(n, "research")], names

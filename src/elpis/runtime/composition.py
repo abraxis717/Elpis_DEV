@@ -31,6 +31,10 @@ communicates, ECS computes). Model decode transactions and principal
 sequences are noncanonical inference mechanics; the runtime neither runs nor
 records them.
 
+* ``run_turn``: the canonical cognitive turn, codec -> ECS -> codec
+  (:mod:`elpis.runtime.cognition`). Without a qualified ECS codec map it
+  refuses with ``ECS_CODEC_UNQUALIFIED``: text generation is unavailable.
+
 Nothing is chained implicitly. No hidden fallback widens authority: every
 check that refuses an operation is the owning subsystem's own check, and the
 runtime adds a record only after that check passed.
@@ -210,3 +214,14 @@ class Runtime:
             omitted=str(admission.omitted), tokens=str(len(admission.tokens)),
         ))
         return ContextPreparation(admission, result, ingress_record, admission_record)
+
+    # -- cognition: DSV4 codec -> ECS -> DSV4 codec ------------------------------------------
+    def run_turn(self, substrate, text, *, tokenizer, codec_map=None, learning_rate=None, max_output_tokens=256):
+        """The canonical turn (elpis.runtime.cognition.run_turn). Fails closed without a qualified codec map.
+
+        Nothing is recorded: ECS turn transitions have no recorder role in this
+        history yet (an incomplete interface, ELPIS_SYSTEM.json).
+        """
+        from .cognition import run_turn
+        return run_turn(substrate, text, tokenizer=tokenizer, codec_map=codec_map, learning_rate=learning_rate,
+                        max_output_tokens=max_output_tokens)

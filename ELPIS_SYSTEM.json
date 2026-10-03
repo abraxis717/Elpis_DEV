@@ -341,6 +341,7 @@
       "native_targets": [],
       "depends_on": [
         "ECS_C",
+        "ECS_G",
         "evolution",
         "inference",
         "pipeline",

@@ -147,6 +147,10 @@ class WorldState:
         _check(lib.elpis_ecsg_state_gd_step_f64(self._live(), x, target, rows, learning_rate, scratch, count),
                "gradient step")
 
+    def fork(self):
+        """An independent copy of this state, through the native snapshot/restore surface."""
+        return WorldState.restore(self._api, self.snapshot())
+
     def snapshot(self):
         lib, handle = self._api._lib, self._live()
         size = int(lib.elpis_ecsg_state_snapshot_size(handle))

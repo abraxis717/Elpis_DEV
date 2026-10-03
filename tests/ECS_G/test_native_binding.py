@@ -90,3 +90,14 @@ def test_binding_imports_no_numpy_inference_runtime_or_ecs_c():
     loaded = set(importlib.import_module("json").loads(out))
     assert not any(m.startswith("numpy") for m in loaded)
     assert loaded <= {"elpis", "elpis.ECS_G", "elpis.ECS_G.native"}, loaded
+
+
+def test_fork_is_an_independent_identical_copy(api):
+    with WorldState.create(api, DIM, WIDTH, _initial(5).reshape(-1).tolist()) as a:
+        x, y = _drive(30)
+        a.step(x.tolist(), y.tolist(), LR)
+        with a.fork() as b:
+            assert b.snapshot() == a.snapshot() and b.epoch == a.epoch == 1
+            x, y = _drive(31)
+            b.step(x.tolist(), y.tolist(), LR)
+            assert b.epoch == 2 and a.epoch == 1 and b.w() != a.w()
