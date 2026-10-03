@@ -88,6 +88,32 @@ elpis_ecsg_state_gd_step_f64(elpis_ecsg_state *state,
                              double *scratch,
                              size_t scratch_count);
 
+/*
+ * Deterministic portable snapshot R0.
+ *
+ * Snapshot bytes contain only:
+ *   magic/version, dim, width, epoch, W
+ *
+ * Integer fields and binary64 payloads are encoded little-endian.
+ * No checksum, path, timestamp, allocator state or external authority is
+ * embedded. Callers may hash/store the resulting bytes as their own concern.
+ *
+ * Restore constructs a new independent state. Invalid/truncated/non-finite
+ * snapshots fail closed and return no state.
+ */
+size_t
+elpis_ecsg_state_snapshot_size(const elpis_ecsg_state *state);
+
+elpis_ecsg_math_status
+elpis_ecsg_state_snapshot_write(const elpis_ecsg_state *state,
+                                uint8_t *out,
+                                size_t out_size);
+
+elpis_ecsg_math_status
+elpis_ecsg_state_snapshot_restore(const uint8_t *data,
+                                  size_t data_size,
+                                  elpis_ecsg_state **out);
+
 #ifdef __cplusplus
 }
 #endif

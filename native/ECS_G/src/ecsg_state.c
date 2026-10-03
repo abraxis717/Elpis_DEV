@@ -327,3 +327,189 @@ elpis_ecsg_state_gd_step_f64(elpis_ecsg_state *state,
 
     return ELPIS_ECSG_MATH_OK;
 }
+
+/* ------------------------------------------------------------------------- */
+/* Deterministic portable snapshot R0.                                       */
+
+enum {
+    ELPIS_ECSG_SNAPSHOT_HEADER_BYTES = 40u
+};
+
+static const uint8_t ELPIS_ECSG_SNAPSHOT_MAGIC[8] = {
+    'E', 'L', 'P', 'I', 'S', 'G', '0', '1'
+};
+
+static void
+write_u32_le(uint8_t *out, uint32_t value)
+{
+    out[0] = (uint8_t)(value & UINT32_C(0xff));
+    out[1] = (uint8_t)((value >> 8u) & UINT32_C(0xff));
+    out[2] = (uint8_t)((value >> 16u) & UINT32_C(0xff));
+    out[3] = (uint8_t)((value >> 24u) & UINT32_C(0xff));
+}
+
+static uint32_t
+read_u32_le(const uint8_t *in)
+{
+    return ((uint32_t)in[0]) |
+           ((uint32_t)in[1] << 8u) |
+           ((uint32_t)in[2] << 16u) |
+           ((uint32_t)in[3] << 24u);
+}
+
+static void
+write_u64_le(uint8_t *out, uint64_t value)
+{
+    unsigned shift;
+
+    for (shift = 0u; shift < 64u; shift += 8u) {
+        out[shift / 8u] = (uint8_t)((value >> shift) & UINT64_C(0xff));
+    }
+}
+
+static uint64_t
+read_u64_le(const uint8_t *in)
+{
+    uint64_t value = UINT64_C(0);
+    unsigned shift;
+
+    for (shift = 0u; shift < 64u; shift += 8u) {
+        value |= ((uint64_t)in[shift / 8u]) << shift;
+    }
+    return value;
+}
+
+size_t
+elpis_ecsg_state_snapshot_size(const elpis_ecsg_state *state)
+{
+    size_t count;
+    size_t payload;
+    size_t total;
+
+    if (state == NULL ||
+        !checked_mul_size(state->dim, state->width, &count) ||
+        !checked_mul_size(count, sizeof(double), &payload) ||
+        !checked_add_size((size_t)ELPIS_ECSG_SNAPSHOT_HEADER_BYTES,
+                          payload,
+                          &total)) {
+        return 0u;
+    }
+
+    return total;
+}
+
+elpis_ecsg_math_status
+elpis_ecsg_state_snapshot_write(const elpis_ecsg_state *state,
+                                uint8_t *out,
+                                size_t out_size)
+{
+    size_t required;
+    size_t count;
+    size_t i;
+
+    if (state == NULL || out == NULL) {
+        return ELPIS_ECSG_MATH_INVALID;
+    }
+
+    required = elpis_ecsg_state_snapshot_size(state);
+    if (required == 0u || out_size < required ||
+        !checked_mul_size(state->dim, state->width, &count)) {
+        return ELPIS_ECSG_MATH_INVALID;
+    }
+
+    memcpy(out, ELPIS_ECSG_SNAPSHOT_MAGIC, sizeof(ELPIS_ECSG_SNAPSHOT_MAGIC));
+    write_u32_le(out + 8u, UINT32_C(1));
+    write_u32_le(out + 12u, UINT32_C(0));
+    write_u64_le(out + 16u, (uint64_t)state->dim);
+    write_u64_le(out + 24u, (uint64_t)state->width);
+    write_u64_le(out + 32u, state->epoch);
+
+    for (i = 0u; i < count; ++i) {
+        uint64_t bits = UINT64_C(0);
+        memcpy(&bits, &state->w[i], sizeof(bits));
+        write_u64_le(out + ELPIS_ECSG_SNAPSHOT_HEADER_BYTES + i * 8u, bits);
+    }
+
+    return ELPIS_ECSG_MATH_OK;
+}
+
+elpis_ecsg_math_status
+elpis_ecsg_state_snapshot_restore(const uint8_t *data,
+                                  size_t data_size,
+                                  elpis_ecsg_state **out)
+{
+    uint64_t dim64;
+    uint64_t width64;
+    uint64_t epoch;
+    size_t dim;
+    size_t width;
+    size_t count;
+    size_t payload;
+    size_t required;
+    double *w = NULL;
+    elpis_ecsg_state *state = NULL;
+    size_t i;
+    elpis_ecsg_math_status status;
+
+    if (out == NULL) {
+        return ELPIS_ECSG_MATH_INVALID;
+    }
+    *out = NULL;
+
+    if (data == NULL ||
+        data_size < (size_t)ELPIS_ECSG_SNAPSHOT_HEADER_BYTES ||
+        memcmp(data, ELPIS_ECSG_SNAPSHOT_MAGIC,
+               sizeof(ELPIS_ECSG_SNAPSHOT_MAGIC)) != 0 ||
+        read_u32_le(data + 8u) != UINT32_C(1) ||
+        read_u32_le(data + 12u) != UINT32_C(0)) {
+        return ELPIS_ECSG_MATH_INVALID;
+    }
+
+    dim64 = read_u64_le(data + 16u);
+    width64 = read_u64_le(data + 24u);
+    epoch = read_u64_le(data + 32u);
+
+    if (dim64 == UINT64_C(0) || width64 == UINT64_C(0) ||
+        dim64 > (uint64_t)SIZE_MAX || width64 > (uint64_t)SIZE_MAX) {
+        return ELPIS_ECSG_MATH_INVALID;
+    }
+
+    dim = (size_t)dim64;
+    width = (size_t)width64;
+
+    if (!checked_mul_size(dim, width, &count) ||
+        !checked_mul_size(count, sizeof(double), &payload) ||
+        !checked_add_size((size_t)ELPIS_ECSG_SNAPSHOT_HEADER_BYTES,
+                          payload,
+                          &required) ||
+        required != data_size) {
+        return ELPIS_ECSG_MATH_INVALID;
+    }
+
+    w = (double *)malloc(payload);
+    if (w == NULL) {
+        return ELPIS_ECSG_MATH_INVALID;
+    }
+
+    for (i = 0u; i < count; ++i) {
+        const uint64_t bits =
+            read_u64_le(data + ELPIS_ECSG_SNAPSHOT_HEADER_BYTES + i * 8u);
+        memcpy(&w[i], &bits, sizeof(bits));
+
+        if (!isfinite(w[i])) {
+            free(w);
+            return ELPIS_ECSG_MATH_NONFINITE;
+        }
+    }
+
+    status = elpis_ecsg_state_create(dim, width, w, &state);
+    free(w);
+
+    if (status != ELPIS_ECSG_MATH_OK) {
+        return status;
+    }
+
+    state->epoch = epoch;
+    *out = state;
+    return ELPIS_ECSG_MATH_OK;
+}

@@ -24,3 +24,8 @@ elpis_add_test(ECS_G test_ecsg_state
   SOURCES tests/test_ecsg_state.c
   LIBS elpis_ecsg_math m
   TIMEOUT 30)
+
+elpis_add_test(ECS_G test_ecsg_snapshot
+  SOURCES tests/test_ecsg_snapshot.c
+  LIBS elpis_ecsg_math m
+  TIMEOUT 30)

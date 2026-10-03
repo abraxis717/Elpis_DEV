@@ -112,7 +112,7 @@
     {
       "id": "ECS_G",
       "status": "MATERIALIZED_INCOMPLETE",
-      "purpose": "Geometric world-model subsystem. G0 materializes the frozen microscopic cubic ECS mathematics; G1 adds an owned microscopic world state W and the exact deterministic full-batch cubic gradient recurrence inherited from the qualified Branch36 dynamical regime. S3=(mu,M,T3) remains a derived raw-sum macrostate; W remains authoritative.",
+      "purpose": "Native geometric world model. ECS_G owns microscopic state W, exact cubic forward/S3 mathematics, deterministic atomic microscopic recurrence, and deterministic portable snapshot/restore. It has no legacy-component dependency and no runtime wiring in G2.",
       "python_package": "elpis.ECS_G",
       "implementation_roots": [
         "src/elpis/ECS_G",
@@ -126,7 +126,7 @@
       ],
       "depends_on": [],
       "mutation_authority": "G1 may mutate only its own in-memory microscopic W through the explicit atomic cubic full-batch gradient step. Candidate W' is fully computed and finite-validated before installation; rejection leaves W and epoch unchanged. No ECS_C, HACF, inference, canonical or filesystem state may be mutated.",
-      "runtime_participation": "NONE at G1. The stateful recurrence is qualified as an ECS_G primitive but no DSV4.1 observation adapter or runtime composition invokes it yet.",
+      "runtime_participation": "NONE at G2. ECS_G is a self-contained qualified subsystem ready for a separate runtime/inference integration phase.",
       "security_boundary": "Native state owns only finite binary64 W and an epoch counter. Step scratch is caller-owned. No filesystem, network, model invocation, ECS_C/HACF access, background threads or retained external pointers.",
       "protocol_identifiers_retained": [],
       "external_dependencies": [
@@ -134,12 +134,11 @@
       ],
       "model_dependency": "NONE",
       "uses_numpy": false,
-      "maturity": "G1 stateful recurrence candidate: G0 cubic/S3 arithmetic plus an owned microscopic state and atomic full-batch gradient transition. Differential qualification targets the exact d=6, N in {36,48,72}, no-width-normalization regime; runtime observation semantics remain unadmitted.",
+      "maturity": "G2 standalone ECS_G: native cubic/S3 kernel, owned microscopic state, atomic deterministic recurrence, epoch tracking, and portable snapshot/restore. Differential/native qualification covers the frozen d=6 widths N in {36,48,72}. Runtime wiring is intentionally out of scope.",
       "incomplete_interfaces": [
-        "No DSV4.1-to-ECS_G observation contract is defined or admitted.",
-        "No ECS_G-to-DSV4.1 projection transport is wired.",
-        "No runtime composition invokes ECS_G yet.",
-        "No durable ECS_G snapshot/persistence contract is admitted; ECS_C remains the continuity/history subsystem."
+        "No DSV4.1-to-ECS_G observation mapping is defined.",
+        "No ECS_G-to-DSV4.1 future-context mapping is defined.",
+        "No runtime composition invokes ECS_G yet."
       ]
     },
     {
