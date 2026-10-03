@@ -1,0 +1,32 @@
+{
+ "body": {
+  "spec": {
+   "dev_worlds": 4,
+   "dim": 6,
+   "init_scale": 0.18,
+   "input_scale": 0.5,
+   "learning_rate": 0.002,
+   "name": "ecsg-cognition-r0",
+   "pte_base_width": 32,
+   "pte_tail_scale": 0.125,
+   "qual_worlds": 8,
+   "region_offset": 0.5,
+   "seed": 20261003,
+   "step_grid": [
+    250,
+    500,
+    1000,
+    2000,
+    4000
+   ],
+   "teacher_scale": 0.5,
+   "teacher_width": 4,
+   "test_rows": 256,
+   "train_rows": 64,
+   "version": 1,
+   "width": 36
+  },
+  "spec_digest": "d5172e7af41410323b6e3bce8c69b87234d3f05c66975fd441cae88ff2c24670"
+ },
+ "digest": "daf65a267dbd09c01f0cbe726644eb2202727d808f3ae256baf167de0b694c0b"
+}

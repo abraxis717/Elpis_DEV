@@ -1,0 +1,276 @@
+{
+ "body": {
+  "choices": {
+   "steps": 4000
+  },
+  "curves": {
+   "dev-0000": {
+    "0": 2.2952118448793133,
+    "1000": 0.285954449934886,
+    "2000": 0.2530738215948961,
+    "250": 0.3394696893246217,
+    "4000": 0.20550347732300986,
+    "500": 0.314259919117368
+   },
+   "dev-0001": {
+    "0": 1.0310652539801661,
+    "1000": 0.09639764047758453,
+    "2000": 0.07907884007873985,
+    "250": 0.12880399833198278,
+    "4000": 0.05800432613150196,
+    "500": 0.1111003617053819
+   },
+   "dev-0002": {
+    "0": 0.7955943766577082,
+    "1000": 0.09462176892842833,
+    "2000": 0.05843456547762222,
+    "250": 0.21091080765789888,
+    "4000": 0.043791839599074844,
+    "500": 0.15305294846538026
+   },
+   "dev-0003": {
+    "0": 1.928722988084193,
+    "1000": 0.3840169499514638,
+    "2000": 0.29272437446403843,
+    "250": 0.619050254473324,
+    "4000": 0.22576353488411738,
+    "500": 0.49191128091684055
+   }
+  },
+  "dev_choice_rule": "steps = the smallest step_grid value at which every DEV world reaches nmse_A <= 0.25 and nmse_A <= 0.5 * nmse_A_init (stricter than the QUAL per-world rule); otherwise the largest value.",
+  "experiment": "ecsg-cognition-r0.v1",
+  "informational_aggregate": {
+   "A_median_nmse_learned_le_0.25": true,
+   "E_median_shuffled_ge_4x_learned": true
+  },
+  "informational_evaluation_at_choice": {
+   "dev-0000": {
+    "checks": {
+     "epoch_after_A": true,
+     "epoch_after_B": true,
+     "native_forward_matches_oracle": true,
+     "no_learning_epoch_zero": true,
+     "pte_microstates_differ": true
+    },
+    "gates": {
+     "A_learning": true,
+     "B_state_causality": true,
+     "D_continual": true,
+     "E_controls": true,
+     "G_microstate_authority": true
+    },
+    "metrics": {
+     "B_identity_changed": true,
+     "B_responses_changed": true,
+     "after_B_snapshot": "7b23020a6dd8bf3bb69ba10ef2cf02a2e9f3d38ec8705a4477d8ce37281fe332",
+     "catastrophic": true,
+     "learned_responses_A": "78625bfdd5952a2da538d1ca04db7e3392c83f229b6edf1f57d1bd4794437211",
+     "learned_snapshot": "9893f280e390598d663853b5f16bbed6a20c6ed49abfb74252e8ca346a10f7d5",
+     "nmse_A_after_B": 4.3268579980392055,
+     "nmse_A_init": 2.2952118448793133,
+     "nmse_A_learned": 0.20550347732300986,
+     "nmse_B_after": 0.03228003094292348,
+     "nmse_B_before": 1.3177371141717844,
+     "nmse_B_init": 0.8030400865877555,
+     "nmse_fresh": 1.627882619304286,
+     "nmse_shuffled": 11.434866557217779,
+     "nmse_zero_state": 1.00960356410036,
+     "no_learning_bitwise": true,
+     "oracle_rel": 2.152158753819664e-16,
+     "pte_response_rel_after": 0.0023987441413919524,
+     "pte_response_rel_before": 2.331999055793915e-16,
+     "pte_s3_rel_after": 0.004470944496340011,
+     "pte_s3_rel_before": 0.0,
+     "receipt_A": "430411263447ca0dbc2735dfe331a77ae03e2b7a0e193a3fc613d81d2af62ede",
+     "receipt_B": "0018f3482757b6b2ea0b15b0350a29297927956b41ab60ee0ce0ab934c4025dc",
+     "reset_bitwise": true,
+     "retention": 21.054913787362636,
+     "retention_class": "INTERFERENCE",
+     "transplant_bitwise": true,
+     "zero_state_answers_zero": true
+    }
+   },
+   "dev-0001": {
+    "checks": {
+     "epoch_after_A": true,
+     "epoch_after_B": true,
+     "native_forward_matches_oracle": true,
+     "no_learning_epoch_zero": true,
+     "pte_microstates_differ": true
+    },
+    "gates": {
+     "A_learning": true,
+     "B_state_causality": true,
+     "D_continual": true,
+     "E_controls": true,
+     "G_microstate_authority": true
+    },
+    "metrics": {
+     "B_identity_changed": true,
+     "B_responses_changed": true,
+     "after_B_snapshot": "a057ba43ef4bc417ef33067d5ba062e2ff7ac7bc43948a50df2efc30c56b3300",
+     "catastrophic": false,
+     "learned_responses_A": "d8241cbcc8da412aa741713044c2fd7037e87d9981b6063cdf268e6143173ebf",
+     "learned_snapshot": "15cd129ff593429a1d95fdc6f6e92b4fb862d7d470985a881266305b11d458cf",
+     "nmse_A_after_B": 0.8594084874607556,
+     "nmse_A_init": 1.0310652539801661,
+     "nmse_A_learned": 0.05800432613150196,
+     "nmse_B_after": 0.05092018983893062,
+     "nmse_B_before": 3.109981265507733,
+     "nmse_B_init": 0.92824396811103,
+     "nmse_fresh": 1.1933525935290938,
+     "nmse_shuffled": 3.6246962832212692,
+     "nmse_zero_state": 1.281353395295514,
+     "no_learning_bitwise": true,
+     "oracle_rel": 5.290454751524623e-16,
+     "pte_response_rel_after": 0.000691907823869122,
+     "pte_response_rel_before": 1.9596307979145443e-16,
+     "pte_s3_rel_after": 0.0008620878927252193,
+     "pte_s3_rel_before": 0.0,
+     "receipt_A": "9b26a7b505479d93ade34ae635af4f86007e93aa7f09fe8f1c983ead4a8c65e3",
+     "receipt_B": "00c9a8e467a946bdaccd8057ee1bc46d9dd9b8ed6032dcdda392aabfb09401b2",
+     "reset_bitwise": true,
+     "retention": 14.81628259092926,
+     "retention_class": "INTERFERENCE",
+     "transplant_bitwise": true,
+     "zero_state_answers_zero": true
+    }
+   },
+   "dev-0002": {
+    "checks": {
+     "epoch_after_A": true,
+     "epoch_after_B": true,
+     "native_forward_matches_oracle": true,
+     "no_learning_epoch_zero": true,
+     "pte_microstates_differ": true
+    },
+    "gates": {
+     "A_learning": true,
+     "B_state_causality": true,
+     "D_continual": true,
+     "E_controls": true,
+     "G_microstate_authority": true
+    },
+    "metrics": {
+     "B_identity_changed": true,
+     "B_responses_changed": true,
+     "after_B_snapshot": "1ad6ba4333597b12a70b6b3997231e5b10c0c02d7575f1c2ffe71958f9043b3e",
+     "catastrophic": true,
+     "learned_responses_A": "1e53ccb4f62d8d4e847dfac4eda0ad82647970a7ca74a6c8a47e57fe5db71209",
+     "learned_snapshot": "9ec854ce50c968d6c1b991165a3bd182b53a6b0cb3edb5a2d20181fef98d85b3",
+     "nmse_A_after_B": 1.4138863746050518,
+     "nmse_A_init": 0.7955943766577082,
+     "nmse_A_learned": 0.043791839599074844,
+     "nmse_B_after": 0.2925204537240676,
+     "nmse_B_before": 2.346872214777019,
+     "nmse_B_init": 1.2905103664130853,
+     "nmse_fresh": 1.3427792661430464,
+     "nmse_shuffled": 1.6665575215322976,
+     "nmse_zero_state": 1.3239671936101838,
+     "no_learning_bitwise": true,
+     "oracle_rel": 3.5704545057951096e-16,
+     "pte_response_rel_after": 0.0015466368653167827,
+     "pte_response_rel_before": 1.8028505797226481e-16,
+     "pte_s3_rel_after": 0.002960041846806931,
+     "pte_s3_rel_before": 0.0,
+     "receipt_A": "0b723595f4764d578c78c296f503cb05fbd662d3433551dc54ee613e0f077e6e",
+     "receipt_B": "392a57ee8e8b9b2987ff207951da145aa13cc1c26410873ab0ed345c2cf82454",
+     "reset_bitwise": true,
+     "retention": 32.28652615531872,
+     "retention_class": "INTERFERENCE",
+     "transplant_bitwise": true,
+     "zero_state_answers_zero": true
+    }
+   },
+   "dev-0003": {
+    "checks": {
+     "epoch_after_A": true,
+     "epoch_after_B": true,
+     "native_forward_matches_oracle": true,
+     "no_learning_epoch_zero": true,
+     "pte_microstates_differ": true
+    },
+    "gates": {
+     "A_learning": true,
+     "B_state_causality": true,
+     "D_continual": true,
+     "E_controls": true,
+     "G_microstate_authority": true
+    },
+    "metrics": {
+     "B_identity_changed": true,
+     "B_responses_changed": true,
+     "after_B_snapshot": "b0039cc1051443786bcff72ff80762a42ed525fdfb8708f2d1f11db9e30dc5b3",
+     "catastrophic": true,
+     "learned_responses_A": "b72f73707d74d5ff02baea9e1e7e01ce893d594656952c4b17635adb3f182043",
+     "learned_snapshot": "1c722912511dcc392bd714a255340d1841d8d9cb34670dc5fb1d579731e7b856",
+     "nmse_A_after_B": 6.71976297014333,
+     "nmse_A_init": 1.928722988084193,
+     "nmse_A_learned": 0.22576353488411738,
+     "nmse_B_after": 0.1224900830582742,
+     "nmse_B_before": 0.9441657398895013,
+     "nmse_B_init": 1.2166934955406268,
+     "nmse_fresh": 4.191672037540847,
+     "nmse_shuffled": 2.6880447785781434,
+     "nmse_zero_state": 1.1382152045328764,
+     "no_learning_bitwise": true,
+     "oracle_rel": 1.9962225420106513e-16,
+     "pte_response_rel_after": 0.003228064918061581,
+     "pte_response_rel_before": 1.9244215046234655e-16,
+     "pte_s3_rel_after": 0.004642595434663235,
+     "pte_s3_rel_before": 0.0,
+     "receipt_A": "2bc183ae3c696cb8930ee5e17e28c2c9c5e4e937c124c94ea9de65c92108aaf6",
+     "receipt_B": "04634958e6b662d9597812021c46d7417482f2a2fc984fc5034ad305415a61a5",
+     "reset_bitwise": true,
+     "retention": 29.764607351636883,
+     "retention_class": "INTERFERENCE",
+     "transplant_bitwise": true,
+     "zero_state_answers_zero": true
+    }
+   }
+  },
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.11.15"
+  },
+  "source_commit": "201d4f36e92dacd282791b0d7736ddede21ab293+uncommitted-lab-source",
+  "source_digest": "d107f1470c43b4753e568c7d20fc595d9d951d0c086fa73384f1cae2b08f46a3",
+  "spec": {
+   "dev_worlds": 4,
+   "dim": 6,
+   "init_scale": 0.18,
+   "input_scale": 0.5,
+   "learning_rate": 0.002,
+   "name": "ecsg-cognition-r0",
+   "pte_base_width": 32,
+   "pte_tail_scale": 0.125,
+   "qual_worlds": 8,
+   "region_offset": 0.5,
+   "seed": 20261003,
+   "step_grid": [
+    250,
+    500,
+    1000,
+    2000,
+    4000
+   ],
+   "teacher_scale": 0.5,
+   "teacher_width": 4,
+   "test_rows": 256,
+   "train_rows": 64,
+   "version": 1,
+   "width": 36
+  },
+  "spec_digest": "d5172e7af41410323b6e3bce8c69b87234d3f05c66975fd441cae88ff2c24670",
+  "split": "DEV",
+  "worlds": [
+   "dev-0000",
+   "dev-0001",
+   "dev-0002",
+   "dev-0003"
+  ]
+ },
+ "digest": "12e3406775d00f11e31c58c2ae56b3469fbab45eb24742b9116106ca20ce0bb6"
+}
