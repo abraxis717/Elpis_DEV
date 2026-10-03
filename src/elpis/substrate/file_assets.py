@@ -221,6 +221,7 @@ class FMSFileAssets:
             self._boundary.close()
             raise
         self.warm_budget=warm_bytes; self.staging_budget=staging_bytes; self.storage_budget=storage_bytes
+        self.max_pages=max_pages; self.hot_absent_policy=hot_absent_policy
         self._lock=RLock(); self._assets={}; self._pages=OrderedDict(); self._pins={}; self._closed=False
         self.telemetry={'semantic_bytes':0,'pread_bytes':0,'reads':0,'hits':0,'misses':0,
                         'read_ns':0,'integrity_ns':0,'staging_ns':0,'staging_high_water':0,
@@ -354,6 +355,23 @@ class FMSFileAssets:
             self._open()
             require(type(asset) is str and asset in self._assets,Code.MISSING,'asset')
             return self._assets[asset][1]
+
+    def transfer_asset(self,asset,receiver):
+        """Cold control plane only: lend one admitted descriptor to a native receiver.
+
+        ``receiver(fd, manifest, stamp)`` runs under the provider lock while the
+        descriptor is open and its identity stamp has just been re-checked. The
+        receiver must duplicate the descriptor (it is only borrowed for the call)
+        and must not resolve any path. No authority is created: the manifest and
+        stamp are the ones bound by register() against the pinned catalog.
+        """
+        with self._lock:
+            self._open()
+            require(type(asset) is str and asset in self._assets,Code.MISSING,'asset')
+            require(callable(receiver),detail='native descriptor receiver')
+            fd,m,stamp=self._assets[asset]
+            require(_stamp(os.fstat(fd))==stamp,Code.INTEGRITY,'changed backing file')
+            return receiver(fd,m,stamp)
 
     def evict(self,asset=None):
         with self._lock:

@@ -1,4 +1,4 @@
-# DSV4.1 Native Clock R0
+# DSV4.1 Native Clock R0 and Native Materializer R1
 
 The opt-in native clock is a recurrence controller, not another numerical
 backend or scheduler. The Python YTS, target and Principal implementations
@@ -19,6 +19,7 @@ Pinned Python control-plane owner
   +-- sealed execution DSO --> runtime --> attached provider context/model/cache
   +-- sealed clock DSO --> bounded clock state/trace storage
   +-- sealed Elpis materializer DSO --> host service context and authority
+        (R1 production: elpis_dsv41_materializer, see "Native Materializer R1")
 ```
 
 The clock DSO does **not** link `elpis_execution`. Its host table contains the
@@ -133,10 +134,10 @@ directly at this boundary. No neural primitive is exposed as a clock event.
 The clock lowers active-token `AddressScheme.stream_hash`: mapped-token
 history, dead-tail blocking, pad substitution, signed-int64-bounded products,
 XOR, modulus, offsets and layer/column order. Cold normalization, prime-layout
-construction and bank identity stay with authority intake. Row codecs and
-BF16 rounding have **not** been reimplemented.
+construction and bank identity stay with authority intake. The R1 production
+materializer (below) natively implements the row codecs and BF16 rounding.
 
-The test-only materializer receives cold-verified decoded banks and canonical
+The R0 test-only materializer receives cold-verified decoded banks and canonical
 expert images. It exercises bounded part supply and leases, not a production
 host expert cache. Its complete resident backing is an explicit synthetic-test
 condition. The provider can still use one bounded expert slot and optional
@@ -176,10 +177,166 @@ it makes no tokenizer/donor-environment claim. Required production/donor skips
 are not qualification passes. Compiler, sanitizer and environment outcomes must
 be reported with the run's external evidence, not inferred from checked-in code.
 
-R1 still needs a sealed Elpis file-asset service: transfer already-pinned asset
-descriptors/page maps, perform native bounded verified page loads and FMS lease
-accounting, implement ordered row acquisition with the exact FP8/E8M0/BF16
-decoder, and stage canonical expert ranges under the existing budgets. It must
-qualify corruption, pressure, lease cancellation/quiescence and numerical parity.
-There is no production Python-free file-materialization claim in R0, and no
-accelerator speedup claim from the CPU reference provider.
+Native Clock R0 itself makes no production Python-free file-materialization
+claim and no accelerator speedup claim from the CPU reference provider. The
+production file-backed path is Native Materializer R1.
+
+## Native Materializer R1
+
+`native/inference/include/elpis/dsv41_materializer.h` (ABI v1) is the sealed
+production Elpis host service behind the **unchanged** `elpis_dsv41_materializer_v1`
+table; the clock, YTS wire protocol and generic execution port are unchanged.
+It is the pinned library `elpis_dsv41_materializer`, embedding the
+substrate-generic native file-asset page service (`fms_file_service.h`) and
+FMS core; its exported surface is only the materializer ABI and the pure row
+codec (linker version script).
+
+### Two phases
+
+1. **Cold admission (Python control plane, `FileMaterializer`).** Inputs are
+   the admitted target's `FMSFileAssets`, `RowEngine` tables and `TensorStore`
+   bindings. For each row table and file-backed expert asset,
+   `FMSFileAssets.transfer_asset` lends the retained descriptor (stamp
+   re-checked under the provider lock) with the pinned size, page size, page
+   map and identity stamp bound by `register` against the deployment catalog.
+   The service duplicates it (`F_DUPFD_CLOEXEC`), refuses writable,
+   non-regular, changed or mis-mapped objects, and never sees a path. Banks
+   (layer, pinned bank digest, rows, dimension, codec, asset, offset,
+   RowEngine bounds) and experts (three `(asset, offset, size)` roles and
+   admitted binding digests, exact canonical image geometry) are added, then
+   `seal` ends admission. Admission creates no authority; it consumes
+   `FMSFileAssets`'.
+2. **Runtime (native).** `rows`, `expert`, `release`, `quiesce` only. No
+   discovery, no admission, no Python.
+
+### Ownership
+
+```
+Python control plane (cold only)
+  FMSFileAssets --transfer_asset (borrowed fd)--> FileMaterializer --create/admit/seal--+
+  RowEngine / TensorStore records ---------------------------------------------------- |
+                                                                                       v
+elpis_dsv41_materializer identity (64 live, never reused; clock context = identity)
+  +-- file service: duplicated read-only fds, page maps, stamps, private FMS ctx
+  |      (WARM budget, max pages, page-staging bound, LRU page table, range leases)
+  +-- banks, expert table, one row scratch, one expert staging slot
+NativeClock --table--> rows/expert/release/quiesce        provider: decoded bytes only
+```
+
+The accelerator provider receives neither the table, the descriptors, page
+maps, asset identities nor FMS authority. It cannot select page maps or
+ranges: the clock requests only validated `(layer, expert, offset, length)`
+from a NEED that it has already checked against residency and the plan.
+
+### Runtime semantics (exactly the Python oracle)
+
+* **Pages** (`FMSFileAssets._load/acquire`): stamp check on every load (also on
+  resident hits) → `INTEGRITY`; bounded `pread` loop, `EINTR` retried, zero-byte
+  return or error → `IO`; page digest mismatch → `INTEGRITY` (nothing
+  registered); stamp re-check → `INTEGRITY`; FMS registration refused
+  (NOMEM/LIMIT/UNSUPPORTED) → evict the least-recently-used unleased page and
+  retry, none → `LIMIT`; a range wider than the WARM budget → `LIMIT`. Any
+  failure releases every lease the call acquired; loaded pages may stay
+  resident, unleased.
+* **Rows** (`RowEngine.lookup` + `decode_row`): batch and output bounds →
+  `LIMIT`; bank identity/dimension → `INTEGRITY` (Python `IDENTITY`); row
+  outside the bank → `INVALID`; sorted, deduplicated physical reads; output in
+  request order, F32 little-endian. `F32_LE` copies bits and rejects
+  non-finite values. `DS4_E4M3_E8M0_BF16` rejects codes with `(c & 127) == 127`
+  and scale 255, decodes `ldexp(base, scale-127)` with sign, rejects overflow,
+  applies the uint32 BF16 round-to-nearest-even of the oracle and rejects
+  non-finite results; all as `ENCODING`.
+* **Experts** (`TensorStore.stage_image_range/_copy`): canonical
+  `w1 || w3 || w2` ranges across tensor and page boundaries, copied through
+  range leases of at most half the WARM budget; `length > staging budget` →
+  `LIMIT`; a borrowed span outstanding → `BUSY`; out-of-range/invalid →
+  `INVALID`; resident experts → `INTEGRITY` (never staged). The span carries
+  the three admitted binding digests. One bounded staging slot; no host
+  expert cache.
+
+Clock codes are the clock ABI's; Python `IDENTITY` maps to `INTEGRITY`,
+`MISSING`/`UNSUPPORTED` to `INVALID`.
+
+### Spans, leases, cancellation and lifecycle
+
+FMS page leases never outlive a call: a successful acquisition copies verified
+bytes into service-owned scratch and returns a span whose lease is a
+generation token. At most one span is borrowed at a time.
+
+| Operation | Contract |
+|---|---|
+| `rows`/`expert` OK | One span borrowed; no FMS lease outstanding. |
+| BUSY / DEFER / LIMIT / failure | Nothing retained (no span, no lease). |
+| `release` | Exactly once; a stale or forged span is a counted no-op. |
+| `quiesce` | Bounded, synchronous, idempotent: interrupts in-flight acquisitions at their next page boundary (they return DEFER retaining nothing), waits for them, invalidates any borrowed span and leaves no FMS lease. The service stays usable. |
+| `destroy` | BUSY while a call is in flight or a span is borrowed (and interrupts in-flight work); idempotent for issued identities; STALE otherwise. |
+| After destroy | Every table entry returns STALE or is a no-op without dereferencing freed memory; a clock bound to it fails STALE. |
+
+Clock cancellation is unchanged (observed between row blocks/submissions).
+The materializer adds interruption only through `quiesce`/`destroy`.
+Independent services share nothing mutable; the identity table mutex is held
+only for lookup, never across I/O.
+
+### Failure dispositions through the clock
+
+| Fault | Clock outcome / state | Resources |
+|---|---|---|
+| Changed or truncated row asset | FAILED `INTEGRITY`, RELEASED (before TOKEN_BEGIN) | no span/lease; model retained |
+| Changed/truncated/corrupt expert asset | FAILED `INTEGRITY`, DISCARDED | no span/lease; model retained |
+| Invalid FP8 code / E8M0 scale / overflow | FAILED `ENCODING`, RELEASED | no span/lease |
+| Expert staging pressure past deadline | MATERIALIZATION_NEEDED, then FAILED `LIMIT`, DISCARDED | no span/lease |
+| Destroyed service | FAILED `STALE`, RELEASED | no dereference |
+| Provider/STREAM_RELEASE failure | QUARANTINED, logical result preserved | service quiesced, no span/lease |
+| Cancellation before/after acquisition | CANCELLED (RELEASED/DISCARDED) | no span/lease |
+
+### Bounds and accounting
+
+WARM budget, max pages, page staging (`page_size <= min(staging/4, warm)`),
+page-map storage, range-lease table, expert staging budget, row scratch and
+the identity table are fixed at create. Statistics report resident
+current/high-water and pinned bytes, page hits/misses, `pread` bytes and
+calls, semantic bytes, row/expert bytes, page and span leases, evictions,
+forced releases and per-acquisition latency/resident samples. Buffered `pread`
+does **not** charge or bound the Linux page cache.
+
+### Qualification
+
+* `substrate.test_fms_file_service`: raw-digest identity against Python,
+  admission refusals (bad/closed descriptor, writable, directory, pipe,
+  stamp, geometry, staging bound, allocation failure, descriptor closure),
+  LRU order, all-pages-leased and over-budget `LIMIT`, eviction `BUSY`, stale
+  range handles, interrupted/short/EIO/fragmented reads, corrupt page,
+  changed and truncated objects, interrupt, concurrency.
+* `inference.test_dsv41_materializer`: exhaustive codec (every code × scale)
+  against an independently formulated reference, rows/experts/lifecycle,
+  faults, quiesce/destroy races, independent instances.
+* `inference.test_dsv41_clock_production`: real runtime + reference provider;
+  bitwise COMPLETE bodies, tokens and row identities against the R0 test
+  materializer for F32 and FP8 banks, parts 128/1152, provider cache, and a
+  concurrent quiesce race; fault table above.
+* `tests/inference/dsv41/test_native_materializer.py`: exhaustive codec
+  differential against `decode_row`; rows and expert ranges bitwise against
+  `RowEngine.lookup`/`stage_image_range` with equal hits, misses, `pread`
+  bytes, reads, semantic bytes, lease counts and LRU resident page order
+  (including eviction pressure); complete Native Clock runs bitwise against
+  the Python YTS oracle and the native backend under traps on
+  `AddressScheme.stream_hash`, `RowEngine.lookup`, `FMSFileAssets.acquire/_load`,
+  `RangeLease.read/readinto`, `TensorStore.stage_image_range/_copy`,
+  `DSV41StreamProvider.exchange`, `os.pread` and host arithmetic, with a
+  profiler positive control and zero Python frames during `clock_advance`;
+  Principal commit/replay/stop/YIELD equality; fault dispositions equal to
+  the oracle; provider and release faults; lifecycle/stale/busy; concurrent
+  independent instances; characterization.
+
+R1 changes no tolerance: tower arithmetic keeps the existing qualification;
+row and expert bytes are exact.
+
+### Nonclaims
+
+No vendor accelerator provider ships; all provider runs use the test-only CPU
+reference provider. No learned parameter artifact or trained Engram table is
+admitted: R1 qualifies the runtime path on deterministic fixtures, not model
+quality. The Python implementation remains the oracle. Characterization
+numbers are CPU-reference measurements, not speed claims. Linux page-cache
+bytes are not accounted. Cold admission, authority and final Principal
+result construction stay in Python by design.

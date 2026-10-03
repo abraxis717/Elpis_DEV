@@ -46,7 +46,8 @@
         "elpis_hash",
         "elpis_execution",
         "elpis_fms",
-        "elpis_fms_file_assets"
+        "elpis_fms_file_assets",
+        "elpis_fms_file_service"
       ],
       "depends_on": [],
       "mutation_authority": "The substrate never mutates admitted external assets (no writable replicas). It owns only its own residency state: page registration, leases and eviction inside configured budgets. Admission requires a deployment-pinned catalog; inspection never creates authority.",
@@ -66,7 +67,7 @@
       ],
       "model_dependency": "NONE",
       "uses_numpy": false,
-      "maturity": "Mechanics qualified: native FMS invariant/concurrency/adversarial suites, Python admission/lease/eviction/adversarial path suites, and bounded execution scheduling with opportunistic PURE backend fallback plus terminal BACKEND_ONLY provider-stream semantics.",
+      "maturity": "Mechanics qualified: native FMS invariant/concurrency/adversarial suites, Python admission/lease/eviction/adversarial path suites, the native file-asset page service (elpis_fms_file_service: transferred read-only descriptors, native page verification, FMS leases and LRU eviction differentially equal to FMSFileAssets), and bounded execution scheduling with opportunistic PURE backend fallback plus terminal BACKEND_ONLY provider-stream semantics.",
       "incomplete_interfaces": [
         "COLD tier for file assets is external immutable storage only; no writable cold replica is implemented.",
         "Buffered pread accounting does not charge or bound the Linux page cache.",
@@ -259,7 +260,8 @@
       ],
       "native_targets": [
         "elpis_dsv41_native",
-        "elpis_dsv41_clock"
+        "elpis_dsv41_clock",
+        "elpis_dsv41_materializer"
       ],
       "depends_on": [
         "substrate"
@@ -281,9 +283,9 @@
       ],
       "model_dependency": "NONE_REQUIRED. Drivers run on explicitly supplied file assets; the only parameter assets exercised are deterministic synthetic fixtures (tests/fixtures/inference, drivers/dsv4/fixtures.make_fixture, and the TRAINING=NONE drivers/dsv41/fixtures.make_fixture with the caller-supplied, digest-bound V4.1 tokenizer). No weights are shipped or downloaded, no learned production parameter artifact is admitted, and no model output is authority.",
       "uses_numpy": true,
-      "maturity": "Mechanics qualified on synthetic fixtures: associative addressing (DSV4.1 and Qwen PLE frozen synthetic address artifacts), rows, context, global context, experts, prefetch, structural proposals and the retrieval-bundle adapter; decode transaction suites (atomicity, replay, determinism across processes and hash seeds, fault injection, adversarial requests); speculative greedy-equivalence; steering and steered-session suites (future-only delivery, TTL/hop/cycle guards, frozen-contract digests). No quality, reasoning or transfer claim (docs/NONCLAIMS.md). A production-shaped DSV4.1 arithmetic driver (drivers/dsv41: local/SWA and compressed sparse attention with the candidate/indexer stages, Engram, mHC, routed and shared MoE, layer sequencing, normalization and residual order) is mechanically qualified against the pinned DeepSeek V4.1 donor (docs/inference/dsv41_donor_authority.json) on a deterministic TRAINING=NONE fixture: every sublayer, every layer residual stream and the logits at every position, plus the PrincipalEngine sequence lifecycle (docs/inference/DSV41_TOWER_QUALIFICATION.md). The NumPy F32 implementation remains the architectural reference; the sealed CPU-native backend is qualified against it, while vendor accelerator implementations remain external to the base build and must enter through the substrate acceleration port.",
+      "maturity": "Mechanics qualified on synthetic fixtures: associative addressing (DSV4.1 and Qwen PLE frozen synthetic address artifacts), rows, context, global context, experts, prefetch, structural proposals and the retrieval-bundle adapter; decode transaction suites (atomicity, replay, determinism across processes and hash seeds, fault injection, adversarial requests); speculative greedy-equivalence; steering and steered-session suites (future-only delivery, TTL/hop/cycle guards, frozen-contract digests). No quality, reasoning or transfer claim (docs/NONCLAIMS.md). A production-shaped DSV4.1 arithmetic driver (drivers/dsv41: local/SWA and compressed sparse attention with the candidate/indexer stages, Engram, mHC, routed and shared MoE, layer sequencing, normalization and residual order) is mechanically qualified against the pinned DeepSeek V4.1 donor (docs/inference/dsv41_donor_authority.json) on a deterministic TRAINING=NONE fixture: every sublayer, every layer residual stream and the logits at every position, plus the PrincipalEngine sequence lifecycle (docs/inference/DSV41_TOWER_QUALIFICATION.md). The NumPy F32 implementation remains the architectural reference; the sealed CPU-native backend is qualified against it, while vendor accelerator implementations remain external to the base build and must enter through the substrate acceleration port. Above the unchanged generic execution port, the YTS-R0 provider stream (docs/inference/DSV41_PROVIDER_STREAM.md), Native Clock R0 and Native Materializer R1 (docs/inference/DSV41_NATIVE_CLOCK.md) are qualified with the test-only CPU reference provider: one native clock_advance runs prefill and generation, and with the sealed production materializer (elpis_dsv41_materializer) file-backed Engram row decoding, page verification, FMS leases and expert-range staging execute natively with zero Python callbacks, bitwise equal to the Python YTS/RowEngine/TensorStore/FMSFileAssets oracle, which remains.",
       "incomplete_interfaces": [
-        "No learned production parameter artifact or compatible trained Engram address table is admitted: the qualified DSV4.1 driver has only executed deterministic training-free fixtures, so no language-quality or intelligence claim follows. The NumPy F32 reference and sealed CPU-native backend are qualified; accelerator-stream integration is still pending. Parameter inventory is not production admission.",
+        "No learned production parameter artifact or compatible trained Engram address table is admitted: the qualified DSV4.1 driver has only executed deterministic training-free fixtures, so no language-quality or intelligence claim follows. The NumPy F32 reference and sealed CPU-native backend are qualified. The YTS-R0 provider stream, Native Clock R0 and Native Materializer R1 are mechanically qualified against the Python oracle only with the test-only CPU reference provider; no vendor accelerator provider is attached or shipped. Parameter inventory is not production admission.",
         "NeuralState and TargetConfig still carry DSV4-shaped fields (compressed KV, expert routing); a second driver will need them generalized behind the Target protocol.",
         "CPU-native DSV4.1 is qualified, but no vendor accelerator implementation ships. Hardware acceleration must arrive through the substrate execution port as an explicitly admitted post-compiled provider; device-specific kernels and SDK dependencies remain outside the base Elpis build.",
         "steering.global_event_fields() exposes the values an ECS integration would bind, but inference never records them; binding steering epochs into the ECS history is the runtime composition's job.",

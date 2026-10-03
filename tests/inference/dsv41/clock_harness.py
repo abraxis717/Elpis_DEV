@@ -42,7 +42,7 @@ class RawTokenTower:
     admit_stream = DSV41Target.admit_stream
 
 
-def target(rig, fms, name, native_backend=None, provider_stream=None):
+def target(rig, fms, name, native_backend=None, provider_stream=None, row_mutator=None):
     c, p = rig.config, rig.parameters
     directory = rig.workspace / name
     directory.mkdir(parents=True, exist_ok=True)
@@ -72,6 +72,8 @@ def target(rig, fms, name, native_backend=None, provider_stream=None):
         codes = rng.integers(0, 96, (n, c.engram_dim), dtype=np.uint8)
         codes |= rng.integers(0, 2, codes.shape, dtype=np.uint8) * 128
         scales = np.full((n, c.engram_dim // 32), 119, dtype=np.uint8)
+        if row_mutator is not None:  # adversarial stored codes; admission still verifies the bytes
+            codes, scales = row_mutator(codes, scales)
         path = directory / f"rows-{layer}.dat"
         path.write_bytes(np.concatenate((codes, scales), axis=1).tobytes())
         asset = inspect_asset(fms.root, path, 4096)

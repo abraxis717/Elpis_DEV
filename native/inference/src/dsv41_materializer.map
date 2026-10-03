@@ -1,0 +1,11 @@
+/* Exported surface of libelpis_dsv41_materializer: the cold admission/control
+ * ABI, the clock-table factory and the pure row codec. The embedded substrate
+ * file-asset service, FMS core and SHA-256 stay local, so they can neither be
+ * called around the materializer nor interposed. */
+{
+  global:
+    elpis_dsv41_materializer_*;
+    elpis_dsv41_row_*;
+  local:
+    *;
+};

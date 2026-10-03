@@ -133,6 +133,31 @@ External, immutable files such as weight banks or memory tables are
 `SyntheticFileAssets` self-authorizes generated test fixtures. The production
 constructor rejects its `synthetic-test` provenance.
 
+### Native file-asset page service (`native/substrate`, `fms_file_service.h`)
+
+The runtime half of file-backed assets, for native hosts that must not call
+back into Python (the DSV4.1 Native Materializer R1 embeds it). It creates no
+authority and resolves no path:
+
+1. Cold admission receives an already-open, already-authorized read-only
+   regular-file descriptor from `FMSFileAssets.transfer_asset`, together with
+   the pinned size, page size, page map and identity stamp recorded by
+   `register`. The service duplicates the descriptor (`F_DUPFD_CLOEXEC`) and
+   owns only the duplicate; writable, non-regular, changed or mis-mapped
+   objects are refused.
+2. A page load re-checks the stamp, reads with bounded `pread` (`EINTR`
+   retried, a zero-byte read is `IO`), verifies the exact
+   `elpis.inference.raw-bytes.r0` page digest, re-checks the stamp, and only
+   then registers the verified bytes as one FMS ABI v2 WARM object.
+3. Each service owns one private FMS context: FMS ABI v2 remains the residency
+   authority. Range leases pin pages; leased pages are never evicted; the
+   victim is the least-recently-used unleased page, chosen only when FMS
+   refuses a registration — the same policy, counters and failure codes as
+   `FMSFileAssets`, verified differentially against it.
+
+The same nonclaims apply: buffered `pread` leaves the Linux page cache
+uncharged and unbounded.
+
 Nonclaims: the Linux page cache is not charged or bounded (buffered `pread`);
 there is no writable COLD replica; the CPU PAL has no accelerator fences.
 
@@ -577,11 +602,37 @@ carried forward (`docs/NONCLAIMS.md`).
   parameter artifact exists here.
 * **DSV4-shaped records.** `NeuralState` and `TargetConfig` still carry
   DSV4-shaped fields. A second driver will need them generalized.
-* **CPU/NumPy only.** There is no GPU or native kernel path.
+* **No vendor accelerator.** The NumPy F32 tower is the reference; a sealed
+  CPU-native DSV4.1 backend, the YTS-R0 provider stream over the generic
+  execution port, Native Clock R0 and Native Materializer R1 are qualified
+  against it using the **test-only** CPU reference provider. No vendor
+  accelerator provider and no learned parameter artifact ship (see below).
 * **Steering is not in the ECS.** `global_event_fields` exposes what an ECS
   integration would bind, but no steering event is recorded in the ECS
   history yet.
 * **Greedy speculative verification only.**
+
+### DSV4.1 native recurrence (`drivers/dsv41`, `native/inference`)
+
+The Python implementation (NumPy tower, YTS host adapter, `RowEngine`,
+`TensorStore`, `FMSFileAssets`) remains the oracle. Opt-in native paths:
+
+* **YTS-R0** (`docs/inference/DSV41_PROVIDER_STREAM.md`): one provider stream
+  per runtime over the unchanged generic execution port; host-prepared rows
+  and bounded expert parts flow in, the provider owns recurrent state.
+* **Native Clock R0** (`docs/inference/DSV41_NATIVE_CLOCK.md`): one
+  `clock_advance` drives prefill and generation — address hashing, YTS
+  codec/submit/take, validation, argmax and stop logic — without entering
+  Python.
+* **Native Materializer R1** (same document): the production Elpis host
+  service behind the clock's materializer table. Cold admission transfers
+  pinned descriptors, page maps and bindings from Python; at runtime the
+  native file-asset page service, the FP8/E8M0/BF16 row decoder and canonical
+  `w1 || w3 || w2` expert staging run natively. With it, the production-shaped
+  file-backed recurrence executes no Python inside `clock_advance`
+  (qualified with Python traps and a profiler positive control). The
+  accelerator provider never receives descriptors, page maps or FMS
+  authority.
 
 ## Context substrate: HACF, not KV
 

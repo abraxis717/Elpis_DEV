@@ -328,7 +328,13 @@ static void check_port_rejection(void) {
         teardown(&f);
     }
 }
-int main(void) {
+/* test_dsv41_clock_production.c reuses this fixture with its own main. */
+#ifdef DSV41_CLOCK_FIXTURE_ONLY
+#define DSV41_CLOCK_MAIN native_clock_r0_main
+#else
+#define DSV41_CLOCK_MAIN main
+#endif
+int DSV41_CLOCK_MAIN(void) {
     check_recurrence(); check_host_boundaries(); check_faults(); check_limits_stop();
     check_parser_allocation(); check_concurrent_cancel(); check_handle_capacity();
     check_port_rejection();
