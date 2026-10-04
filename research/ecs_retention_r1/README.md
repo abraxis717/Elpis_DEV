@@ -2,11 +2,11 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `NO_LANGUAGE_CLAIM` · `SYNTHETIC` · `SEMANTICS=NONE` · `PREREGISTERED`
 
-**Status: RET1B, laboratory mechanics.** The laboratory implements the RET1A
-specification (`protocol.py`, `numerics.py`, `task.py`, `engine.py`,
-`experiment.py`, `run.py`); its mechanics tests use test-* worlds only. There is
-no DEV or QUAL evidence, no frozen record, no selected candidate and no result.
-Canonical ECS_G learning is unchanged.
+**Status: RET1C, DEV ended `TASK_INVALID_ON_DEV`.** The registered task rule
+(controls only) found no valid arm-S input scale, so no candidate or reference
+was run on DEV, nothing is frozen and QUAL does not run
+(`evidence/dev/ecsg-retention-r1.v1.dev.json`). Canonical ECS_G learning is
+unchanged.
 
 ## Question
 
