@@ -8,15 +8,13 @@ document states the disposition the evidence yields and claims no more.
 """
 from __future__ import annotations
 
-import ctypes
 import json
+import os
 import subprocess
+import sys
 
 import pytest
 
-from elpis.ECS_G.native import ECSGLibrary
-
-from research.ecs_retention_r0 import experiment as X
 from research.ecs_retention_r0 import protocol as P
 from research.ecs_retention_r0 import run as R
 
@@ -97,18 +95,37 @@ def _strip_timing(value):
     return value
 
 
+# Runs in a fresh interpreter whose BLAS/OpenMP thread counts are fixed in the environment before NumPy loads.
+# In-process, an earlier test may already have loaded NumPy with a multi-threaded OpenBLAS while the environment
+# (and hence the recorded profile) says 1; LAPACK least squares (the representability ceiling) then differs in its
+# last bits. QUAL itself ran with the laboratory package imported before NumPy (effective single thread).
+_REPRODUCE = """
+import ctypes, json, sys
+from elpis.ECS_G.native import ECSGLibrary
+from research.ecs_retention_r0 import experiment as X, protocol as P, run as R
+library, world = sys.argv[1], sys.argv[2]
+qual = P.load(R.QUAL_PATH, "qual")["body"]
+stale = P.binding_mismatch(qual["implementation"], P.implementation(library))
+if stale:
+    got = None
+else:
+    lab = X.Lab(ECSGLibrary(ctypes.CDLL(library)), P.load_spec())
+    got = json.loads(P.canonical_json(X.qual_world(lab, world, qual["choices"])))
+sys.stdout.write(json.dumps({"stale": stale, "world": got}))
+"""
+
+
 @pytest.mark.parametrize("world", ["qual-0000", "qual-0013", "qual-0020"])
 def test_qual_measurements_reproduce_exactly(world):
     """A QUAL world re-run gives its recorded measurements bit for bit (same implementation and profile)."""
-    current = P.implementation(_library_path())
-    stale = P.binding_mismatch(QUAL["body"]["implementation"], current)
-    stale = [s for s in stale if s != "lab_source_digest"] + (["lab_source_digest"] if "lab_source_digest" in stale
-                                                              else [])
-    if stale:
-        pytest.skip(f"evidence bound to a different implementation or profile: {stale}")
-    lab = X.Lab(ECSGLibrary(ctypes.CDLL(str(_library_path()))), P.load_spec())
-    got = json.loads(P.canonical_json(X.qual_world(lab, world, QUAL["body"]["choices"])))
-    assert _strip_timing(got) == _strip_timing(QUAL["body"]["per_world"][world])
+    env = dict(os.environ, PYTHONPATH=f"{REPO / 'src'}{os.pathsep}{REPO}", PYTHONDONTWRITEBYTECODE="1",
+               OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
+    out = subprocess.run([sys.executable, "-c", _REPRODUCE, str(_library_path()), world], cwd=REPO, env=env,
+                         capture_output=True, text=True, check=True)
+    result = json.loads(out.stdout)
+    if result["stale"]:
+        pytest.skip(f"evidence bound to a different implementation or profile: {result['stale']}")
+    assert _strip_timing(result["world"]) == _strip_timing(QUAL["body"]["per_world"][world])
 
 
 def test_results_report_the_disposition_and_stay_bounded():

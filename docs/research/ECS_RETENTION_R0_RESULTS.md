@@ -73,6 +73,20 @@ gate verdict (which carries `worlds: <count>`) is spread after the list in
 measurement, gate or disposition is affected. The evidence is write-once and
 was not rewritten.
 
+Numerical-profile limitation (found in RET0E): the recorded profile states
+the BLAS/OpenMP thread *environment*, not the thread count OpenBLAS actually
+uses. The laboratory pins the environment when its package is imported; that
+takes effect only if NumPy has not been loaded yet. Under the QUAL entry point
+(`python -m research.ecs_retention_r0.run`) the package loads first and
+OpenBLAS ran single-threaded (checked with `openblas_get_num_threads`). In a
+process that loaded NumPy earlier (a full pytest session), OpenBLAS keeps its
+default thread count while the environment reads 1. Re-running QUAL worlds
+in such a process changes only the representability ceiling (LAPACK least
+squares), and only in its last one or two bits. Every native result and `W`
+digest is unaffected. The evidence tests therefore reproduce QUAL worlds in a
+fresh interpreter with the environment fixed at start. A future version
+should record the effective thread count.
+
 ## DEV (8 DEV worlds) and frozen choices
 
 * Task rule: rehearsal met both criteria in 3/8, 6/8 and 6/8 DEV worlds at
