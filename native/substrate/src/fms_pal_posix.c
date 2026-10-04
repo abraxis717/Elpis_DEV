@@ -242,6 +242,15 @@ fms_pal *fms_pal_posix_create(const char *cold_root) {
 
 const char *fms_pal_posix_token_path(const fms_cold_token *t) { return t ? t->path : NULL; }
 
+fms_ctx *elpis_fms_create_posix(const fms_config *cfg, const char *root) {
+    fms_pal *pal = fms_pal_posix_create(root);
+    fms_ctx *ctx;
+    if (!pal) return NULL;
+    ctx = fms_create(cfg, pal);
+    if (!ctx) pal->destroy(pal->self);
+    return ctx;
+}
+
 /* File-backed inference owns external COLD descriptors in Python. Its native
  * page cache needs RAM only: no scratch directory and no native path handling. */
 fms_pal *fms_pal_posix_create_ram_only(void) {

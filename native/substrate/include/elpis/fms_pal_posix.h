@@ -14,6 +14,9 @@ extern "C" {
  * fms_create(); if the context is never created, call pal->destroy(pal->self). */
 fms_pal *fms_pal_posix_create(const char *cold_root);
 
+/* Convenience lifecycle constructor; disposes the PAL if FMS rejects cfg. */
+fms_ctx *elpis_fms_create_posix(const fms_config *cfg, const char *cold_root);
+
 /* RAM-only page cache: performs no filesystem operations, no COLD capability. */
 fms_pal *fms_pal_posix_create_ram_only(void);
 

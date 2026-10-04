@@ -148,3 +148,11 @@ DSV model's output statistics. That sidecar topology (commits `f4e1f05`,
 
 The Python binding (`src/elpis/ECS_G/native.py`) imports only the standard
 library and takes an already loaded library handle.
+
+## Mutable FMS R0 residency
+
+The separate `elpis_ecsg_fms` library stores the existing portable ECS_G
+snapshot bytes as generic FMS objects. It uses only the public Runtime R1 executor
+ABI; `ecsg_executor.c`, its Python binding and the canonical cognitive turn are not
+modified. An open transaction retains one executor and one FMS WRITE lease; direct
+operations restore a transient executor. See `docs/ECS_MUTABLE_FMS_R0.md`.

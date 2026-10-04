@@ -173,7 +173,7 @@ def test_system_authority_encodes_the_mission():
     assert system["mission"]["gate"] == "tests/boundary/test_mission.py"
     subs = {s["id"]: s for s in system["subsystems"]}
     assert tuple(subs["inference"]["canonical_modules"]) == M.CODEC_MODULES
-    assert subs["ECS_G"]["depends_on"] == [] and not subs["ECS_G"].get("uses_numpy")
+    assert subs["ECS_G"]["depends_on"] == ["substrate"] and not subs["ECS_G"].get("uses_numpy")
     assert {"ECS_G", "ECS_C", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
     assert "ECS_G" not in subs["inference"]["depends_on"] and "ECS_G" not in subs["ECS_C"]["depends_on"]
     assert not [t for t in subs["inference"]["native_targets"] if "dsv41" in t]
