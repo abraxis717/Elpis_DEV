@@ -83,4 +83,60 @@ Not supported or not tested:
 * No language, meaning or general cognition; the task has no semantics.
 * No promotion of the cubic kernel, `d=6`/`N=36`, `S3`, the G1 recurrence or
   the Branch36 rate beyond this regime.
-* Bitwise reproduction is established for one build and numerical profile.
+* Bitwise reproduction is established for one build and numerical profile,
+  and only with an FMA OpenBLAS kernel. The v1 profile records neither the
+  kernel nor the binary (see Reproduction contract).
+
+## Reproduction contract (CE0, after QUAL; the evidence is unchanged)
+
+Main went red twice after Runtime R1 merged (`61f81e6`, CI run 37161622841,
+Python 3.11): `test_qual_measurements_reproduce_exactly` failed in all 8 QUAL
+worlds. Metrics differed only in their last bits (e.g. `nmse_A_init`
+1.2098485936686503 against the recorded 1.20984859366865), but every learned
+snapshot, receipt and response digest changed. The same tree passed on another
+runner with the same image, CPython 3.11.16 and NumPy 1.26.4 (run 37161299328).
+Python 3.12 passed in both runs. So the runner, not the Python version, decided
+the outcome.
+
+Cause: NumPy's bundled OpenBLAS (wheel 1.26.4) chooses its DGEMM kernel per CPU
+at load time. It falls back to the generic Prescott kernel on CPUs it does not
+recognize, such as Emerald Rapids (family 6, model 207). The non-FMA kernels
+(Prescott, Nehalem, Sandybridge, Core2) round the teacher targets `X @ W`
+differently in the last bit. Learning carries that perturbation into different
+`W` bytes. Forcing those kernels with `OPENBLAS_CORETYPE` reproduces the CI
+values exactly, digests included: qual-0003 learned snapshot `59e2f304`,
+receipt `89468702`. The FMA kernels (Haswell, Zen, SkylakeX, Cooperlake)
+reproduce the record exactly. The native executor is not involved. Its parity
+with the scalar reference is bitwise on every host tested, AVX2 and baseline
+clones alike.
+
+The v1 record binds Python, NumPy, machine and float format. It does not bind
+the native binary, the compiler, the CPU or the BLAS kernel. Its profile is
+therefore necessary but not sufficient for bitwise replay. The test suite now
+keeps four questions apart:
+
+| question | test | contract |
+|---|---|---|
+| evidence integrity | `test_lab.py` (byte pins, digests, freeze binding) | always; byte-for-byte |
+| current implementation correctness | `tests/ECS_G`, `tests/research/ecs_runtime_r1`, native ctest | always; bitwise executor = reference on this host |
+| historical replay | `test_lab.py::test_qual_measurements_reproduce_exactly` | bitwise; demanded only when Python, NumPy and machine equal the recorded ones exactly and the OpenBLAS kernel is one of Haswell, Zen, SkylakeX, Cooperlake (that kernel condition was established after QUAL and is not in the record); skipped with the reason otherwise |
+| current-runtime scientific regression | `test_runtime_regression.py` | never skipped for a host or profile; all 8 QUAL worlds |
+
+The regression recomputes every gate (A–G), the aggregate rules, mechanics and
+the disposition by the frozen procedure, and requires them to equal the
+record. It also requires each world's interference class and catastrophic
+flag to equal the record. Each numeric metric must satisfy
+`|current - recorded| <= 1e-12 + 1e-9 |recorded|`. That tolerance was fixed
+before use:
+- The largest deviation measured with each kernel class forced is 5e-15
+  relative on nmse and retention metrics, and 4e-13 relative on the PTE
+  post-step differences. On ULP-scale quantities it is 4e-16 absolute. No
+  class, flag or gate changed. That leaves at least 2,600× headroom.
+- The tolerance is still seven orders of magnitude tighter than the smallest
+  relative margin of any recorded gated metric from its threshold (3.4%).
+
+The regression compares no snapshot, receipt or response digest with the
+record. Those are bitwise identities of one host's arithmetic. The bitwise
+properties the pass rule demands (reset, transplant, zero state, clean-process
+persistence, determinism) are re-established on the host, current against
+current.
