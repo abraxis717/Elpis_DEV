@@ -1,0 +1,121 @@
+{
+ "body": {
+  "candidates_sha256": "8fb5df87a202d2571828006c76f82b3cf1f19a14f50e53cfa069eb9a33fa6073",
+  "choices": {
+   "offset": 1.0,
+   "secondary": {
+    "family": "C2",
+    "lambda": 16.0
+   },
+   "selected": {
+    "family": "C1",
+    "lambda": 4.0
+   }
+  },
+  "dev_evidence_digest": "d06c89765d85415f502f3be805e2bd9df20fe98f767b8c5898385bb9a98198af",
+  "dev_records": [
+   "1cc6bf68d72f27f54bcf708a24d336b18221f7ecf2456d418610e2d4d1996e3b",
+   "d06c89765d85415f502f3be805e2bd9df20fe98f767b8c5898385bb9a98198af"
+  ],
+  "dev_worlds": [
+   "dev-0000",
+   "dev-0001",
+   "dev-0002",
+   "dev-0003",
+   "dev-0004",
+   "dev-0005",
+   "dev-0006",
+   "dev-0007"
+  ],
+  "experiment": "ecsg-retention-r0.v1",
+  "implementation": {
+   "base_commit": "23c841daebc20c5ea6a2574ccf6f5095d8d23bc1",
+   "build": {
+    "cmake": {
+     "CMAKE_BUILD_TYPE": "Release",
+     "CMAKE_C_COMPILER": "/usr/bin/gcc",
+     "CMAKE_C_FLAGS": "",
+     "CMAKE_C_FLAGS_DEBUG": "-g",
+     "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
+     "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O2 -g -DNDEBUG",
+     "ELPIS_ENABLE_ASAN": "OFF",
+     "ELPIS_ENABLE_TSAN": "OFF",
+     "ELPIS_ENABLE_UBSAN": "OFF"
+    },
+    "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+   },
+   "dirty": false,
+   "files": {
+    "native/ECS_G/include/elpis/ecsg_executor.h": "67502a5e4cf3a14800760e661dac59dd17bbd736fcbb146e60faada0ee7ebde2",
+    "native/ECS_G/include/elpis/ecsg_math.h": "94f3c4e7a9bf26b08b267679c9b707e8376cc4e2867be760ac825760ce95f80e",
+    "native/ECS_G/include/elpis/ecsg_state.h": "34b173c4873fdac398876cf2eab426d88aca0884a3fa33640a570ae5c03a93c5",
+    "native/ECS_G/src/ecsg_executor.c": "1d94739c52543da2080ccac2aeb640ef84b650161fa740c01f706b3f73b0fa8f",
+    "native/ECS_G/src/ecsg_math.c": "fbfc48e5e36498df3dc8d33fa44620a61d697fa7bd00b8c7303929c4dc0cf235",
+    "native/ECS_G/src/ecsg_state.c": "c9887848fa0ddcfff71952a2010dd9968d980973cbe56cc0fa056c81f7b0b821",
+    "src/elpis/ECS_G/cognition.py": "0cf4d058a5b4301f5cbea0dc0118a9444dbc28d5083a7f5a98f59249091ca99a",
+    "src/elpis/ECS_G/native.py": "236de9d77ac664903f9603d0b2317d123b63c2b87a62841a48f6220d00e5e99f"
+   },
+   "lab_source_digest": "1e217564fd3022735ff86337d04962d2b03bc6f7cdbbf45e9991c9e3b2049160",
+   "library": {
+    "path": "/tmp/claude-0/-home-user-Elpis-DEV/fe60d3b5-b30f-58cc-9f9d-7e3a5f31b7d8/scratchpad/ecsg/ret0/native/ECS_G/libelpis_ecsg_math.so",
+    "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09"
+   },
+   "numerical_profile": {
+    "float": "IEEE-754 binary64",
+    "machine": "x86_64",
+    "numpy": "1.26.4",
+    "python": "3.11.15",
+    "threads": {
+     "MKL_NUM_THREADS": "1",
+     "OMP_NUM_THREADS": "1",
+     "OPENBLAS_NUM_THREADS": "1"
+    }
+   },
+   "tree": "db3b5823e212a923181edc4c70250af009c106dd"
+  },
+  "lab_commit": "23c841da",
+  "lab_source_digest": "1e217564fd3022735ff86337d04962d2b03bc6f7cdbbf45e9991c9e3b2049160",
+  "pass_rule": "b2b21cc495ae68a01ffbcfc1f87f785042278a3377ec6cd9d925e686478de729",
+  "pass_rule_text": {
+   "A_acquisition": "every QUAL world LEARNED_A; median over QUAL worlds of nmse_A_after_A <= 0.25",
+   "B_acquisition": "selected candidate: every QUAL world LEARNED_B",
+   "C_retention": "selected candidate: every QUAL world RETAINED_A (central gate)",
+   "D_joint_state": "selected candidate: A and B are answered by one final W per world (one executor created from W_AB answers both; recorded state digest); no task label at query",
+   "E_state_causality": "selected candidate, every QUAL world: (i) an executor restored from the snapshot of the executor holding W_AB reproduces its A and B responses bitwise; (ii) an executor created from W0 reproduces the untaught responses bitwise; (iii) ablation state_removed (same engine, consolidation term removed): not RETAINED_A in at least 75% of QUAL worlds, and the candidate's median nmse_A_after_B <= 0.5 x the ablation's median nmse_A_after_B",
+   "F_no_external_answer_store": "selected candidate: its consolidation is computed from W_A and A's experienced inputs only (no targets reach it) and its queries read only W; checked structurally and recorded",
+   "G_determinism": "selected candidate, world qual-0000: the full pipeline run twice in process and once in a clean process from the frozen specification yields identical final W digests and identical metrics",
+   "H_negative_baseline": "M0: not RETAINED_A in at least 75% of QUAL worlds and median retention_ratio >= 10",
+   "I_control_honesty": "M1 is reported separately as EXTERNAL_MEMORY_CONTROL and is never the selected candidate",
+   "J_capacity_accounting": "every mechanism reports extra_state_bytes and compute_overhead",
+   "disposition": "MECHANICS_FAIL if any mechanics check fails. Else RETENTION_SUPPORTED_UNDER_FROZEN_SYNTHETIC_REGIME (OUTCOME_A) if A-J hold for the selected candidate. Else PARTIAL_REDUCTION (OUTCOME_C) if the selected candidate's median retention_ratio <= 0.5 x M0's median retention_ratio; else REPLAY_ONLY (OUTCOME_B) if M1 is LEARNED_B and RETAINED_A in every QUAL world; else NO_MATERIAL_IMPROVEMENT (OUTCOME_D). M1's own result is always reported. A failure is recorded as it is; a repair is a new experiment version."
+  },
+  "qual_worlds": [
+   "qual-0000",
+   "qual-0001",
+   "qual-0002",
+   "qual-0003",
+   "qual-0004",
+   "qual-0005",
+   "qual-0006",
+   "qual-0007",
+   "qual-0008",
+   "qual-0009",
+   "qual-0010",
+   "qual-0011",
+   "qual-0012",
+   "qual-0013",
+   "qual-0014",
+   "qual-0015",
+   "qual-0016",
+   "qual-0017",
+   "qual-0018",
+   "qual-0019",
+   "qual-0020",
+   "qual-0021",
+   "qual-0022",
+   "qual-0023"
+  ],
+  "spec": "a87da8b4d8e39d1b836bfd10da4e513b4aa252497748fc5f93754c34863b00b2"
+ },
+ "digest": "2b4e0618813b2cf5ec77dbcb02957c4ee87b67befa5fb1ed111dd3f6fd4a2547"
+}

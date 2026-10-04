@@ -1,0 +1,113 @@
+{
+ "analytic_flops_per_step": {
+  "C1_extra": 42506,
+  "C2_extra": 864,
+  "G1": 82944
+ },
+ "candidates_sha256": "8fb5df87a202d2571828006c76f82b3cf1f19a14f50e53cfa069eb9a33fa6073",
+ "canonical_executor": {
+  "M0_learn_B_64_rows": {
+   "max_s": 0.033290552999915235,
+   "min_s": 0.02683574000002409,
+   "p50_s": 0.02754731800018817,
+   "p95_s": 0.031558823000068514,
+   "p99_s": 0.033290552999915235,
+   "samples": 28
+  },
+  "M1_learn_AuB_128_rows": {
+   "max_s": 0.05648601999996572,
+   "min_s": 0.051692000000002736,
+   "p50_s": 0.053577187999962916,
+   "p95_s": 0.056458137999925384,
+   "p99_s": 0.05648601999996572,
+   "samples": 28
+  }
+ },
+ "implementation": {
+  "base_commit": "f1251ca2b6906e24162e6ede1dfe2e19613a13c2",
+  "build": {
+   "cmake": {
+    "CMAKE_BUILD_TYPE": "Release",
+    "CMAKE_C_COMPILER": "/usr/bin/gcc",
+    "CMAKE_C_FLAGS": "",
+    "CMAKE_C_FLAGS_DEBUG": "-g",
+    "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
+    "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O2 -g -DNDEBUG",
+    "ELPIS_ENABLE_ASAN": "OFF",
+    "ELPIS_ENABLE_TSAN": "OFF",
+    "ELPIS_ENABLE_UBSAN": "OFF"
+   },
+   "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+  },
+  "dirty": false,
+  "files": {
+   "native/ECS_G/include/elpis/ecsg_executor.h": "67502a5e4cf3a14800760e661dac59dd17bbd736fcbb146e60faada0ee7ebde2",
+   "native/ECS_G/include/elpis/ecsg_math.h": "94f3c4e7a9bf26b08b267679c9b707e8376cc4e2867be760ac825760ce95f80e",
+   "native/ECS_G/include/elpis/ecsg_state.h": "34b173c4873fdac398876cf2eab426d88aca0884a3fa33640a570ae5c03a93c5",
+   "native/ECS_G/src/ecsg_executor.c": "1d94739c52543da2080ccac2aeb640ef84b650161fa740c01f706b3f73b0fa8f",
+   "native/ECS_G/src/ecsg_math.c": "fbfc48e5e36498df3dc8d33fa44620a61d697fa7bd00b8c7303929c4dc0cf235",
+   "native/ECS_G/src/ecsg_state.c": "c9887848fa0ddcfff71952a2010dd9968d980973cbe56cc0fa056c81f7b0b821",
+   "src/elpis/ECS_G/cognition.py": "0cf4d058a5b4301f5cbea0dc0118a9444dbc28d5083a7f5a98f59249091ca99a",
+   "src/elpis/ECS_G/native.py": "236de9d77ac664903f9603d0b2317d123b63c2b87a62841a48f6220d00e5e99f"
+  },
+  "lab_source_digest": "1e217564fd3022735ff86337d04962d2b03bc6f7cdbbf45e9991c9e3b2049160",
+  "library": {
+   "path": "/tmp/claude-0/-home-user-Elpis-DEV/fe60d3b5-b30f-58cc-9f9d-7e3a5f31b7d8/scratchpad/ecsg/ret0/native/ECS_G/libelpis_ecsg_math.so",
+   "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09"
+  },
+  "numerical_profile": {
+   "float": "IEEE-754 binary64",
+   "machine": "x86_64",
+   "numpy": "1.26.4",
+   "python": "3.11.15",
+   "threads": {
+    "MKL_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1"
+   }
+  },
+  "tree": "12db4650519cbd38027050b1a85e769cf7ad79a4"
+ },
+ "label": "PERFORMANCE_ONLY NO_SCIENTIFIC_CLAIM",
+ "laboratory_engine": {
+  "C1_lambda_4.0": {
+   "max_s": 1.29146806499989,
+   "min_s": 1.1528245429999515,
+   "p50_s": 1.190845882000076,
+   "p95_s": 1.29146806499989,
+   "p99_s": 1.29146806499989,
+   "samples": 7
+  },
+  "C2_lambda_16.0": {
+   "max_s": 0.31387773699998434,
+   "min_s": 0.2780307630000607,
+   "p50_s": 0.29240485299987995,
+   "p95_s": 0.31387773699998434,
+   "p99_s": 0.31387773699998434,
+   "samples": 7
+  },
+  "without_consolidation": {
+   "max_s": 0.23769039900003008,
+   "min_s": 0.19609617099990828,
+   "p50_s": 0.20339759300009064,
+   "p95_s": 0.23769039900003008,
+   "p99_s": 0.23769039900003008,
+   "samples": 7
+  }
+ },
+ "offset": 1.0,
+ "pass_rule": "b2b21cc495ae68a01ffbcfc1f87f785042278a3377ec6cd9d925e686478de729",
+ "per_step_scratch_bytes": {
+  "C1": 51064,
+  "C2": 1728
+ },
+ "spec": "a87da8b4d8e39d1b836bfd10da4e513b4aa252497748fc5f93754c34863b00b2",
+ "state_bytes": {
+  "C1_H_b": 28552,
+  "C2_Omega_A": 3456,
+  "M1_stored_experience": 3584,
+  "W": 1728
+ },
+ "steps": 4000,
+ "world": "dev-0000"
+}

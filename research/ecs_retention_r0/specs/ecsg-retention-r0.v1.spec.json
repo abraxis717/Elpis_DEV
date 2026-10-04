@@ -1,0 +1,166 @@
+{
+ "binding_requirements": [
+  "repository base commit and tree, dirty flag",
+  "retention laboratory source digest (research/ecs_retention_r0/*.py) and CANDIDATES.md SHA-256",
+  "spec digest and pass-rule digest",
+  "SHA-256 of src/elpis/ECS_G/native.py and src/elpis/ECS_G/cognition.py",
+  "SHA-256 of native/ECS_G/include/elpis/ecsg_math.h, ecsg_state.h, ecsg_executor.h",
+  "SHA-256 of native/ECS_G/src/ecsg_math.c, ecsg_state.c, ecsg_executor.c",
+  "SHA-256 of the loaded libelpis_ecsg_math shared library",
+  "compiler identity and version, build type and C flags of the build that produced it",
+  "numerical profile: numpy version, Python version, machine, BLAS/OpenMP thread settings (single-threaded)"
+ ],
+ "dev_rules": {
+  "candidate": "at the chosen offset, for every candidate configuration (C1 and C2 at every grid lambda) on every DEV world: count DEV worlds with LEARNED_B and RETAINED_A. Select the configuration with the largest count; ties by the smallest median over DEV worlds of (nmse_A_after_B + nmse_B_after), then by smaller extra_state_bytes, then by grid order (C1 before C2, smaller lambda first). The best configuration of the other family by the same rule is the secondary candidate. M1 is never selected.",
+  "nothing_else": "DEV chooses only the offset, the selected configuration and the secondary configuration. The step budget, rate, thresholds, grids and gates are fixed here.",
+  "task": "for offset in offset_grid in order: run M0 (W_A) and M1 on every DEV world; choose the first offset at which every DEV world is LEARNED_A and M1 is LEARNED_B and RETAINED_A in every DEV world. If no offset qualifies, choose the offset with the most DEV worlds satisfying all three (ties: smaller offset) and record REPLAY_INFEASIBLE_ON_DEV."
+ },
+ "labels": [
+  "RESEARCH_ONLY",
+  "NO_RUNTIME_AUTHORITY",
+  "NO_LANGUAGE_CLAIM",
+  "SYNTHETIC",
+  "SEMANTICS=NONE"
+ ],
+ "mechanics_checks": {
+  "binding": "every evidence record binds the implementation fields in binding_requirements and QUAL refuses if any differs from the frozen values",
+  "engine_equivalence": "the laboratory engine with the consolidation term removed reproduces the canonical core's W_AB bitwise from W_A, every QUAL world",
+  "feature_identity": "1/2 phi(x) . S3(W) equals the canonical forward map within 1e-10 relative on the evaluation inputs of every QUAL world at W_A",
+  "no_baseline_refusal": "M0 and M1 learn without refusal in every QUAL world",
+  "pte_microstate": "two microstates with identical S3 (the Cognitive R0 PTE construction on axis 0 from W0), each with its own consolidation built from A's experienced inputs (identical for C1), diverge after one identical selected-candidate step on B (S3 relative difference >= 1e-9): W remains authoritative",
+  "shared_W_A": "W_A is bitwise identical across mechanisms in every QUAL world"
+ },
+ "mechanisms": {
+  "C1": {
+   "class": "CANDIDATE",
+   "definition": "CANDIDATES.md C1 (coarse S3-space functional consolidation)",
+   "grid": {
+    "lambda": [
+     0.25,
+     0.5,
+     1.0,
+     2.0,
+     4.0
+    ]
+   }
+  },
+  "C2": {
+   "class": "CANDIDATE",
+   "definition": "CANDIDATES.md C2 (local per-weight consolidation)",
+   "grid": {
+    "lambda": [
+     1.0,
+     4.0,
+     16.0,
+     64.0,
+     256.0
+    ]
+   }
+  },
+  "M0": {
+   "class": "NEGATIVE_BASELINE",
+   "definition": "plain sequential G1 through the canonical core: W_A = G1^K(W0; A), W_AB = G1^K(W_A; B)"
+  },
+  "M1": {
+   "class": "EXTERNAL_MEMORY_CONTROL",
+   "definition": "W_AB = G1^K(W_A; A u B), one 128-row batch through the canonical executor",
+   "eligible_for_selection": false
+  },
+  "O": {
+   "class": "EXPERIMENT_ONLY",
+   "definition": "unconstrained least-squares representability ceiling in S3 coordinates (analysis only)"
+  }
+ },
+ "metrics": {
+  "CATASTROPHIC_A": "nmse_A_after_B >= nmse_A_init",
+  "LEARNED_A": "nmse_A_after_A <= 0.5 and nmse_A_after_A <= 0.5 * nmse_A_init",
+  "LEARNED_B": "nmse_B_after <= 0.5 and nmse_B_after <= 0.5 * nmse_B_before",
+  "RETAINED_A": "nmse_A_after_B <= 0.5 and nmse_A_after_B <= 0.5 * nmse_A_init (the Cognitive R0 RETAINED class)",
+  "acquisition_B": "nmse_B_before - nmse_B_after",
+  "compute_overhead": "laboratory-engine wall time of learning B divided by the same engine's time for lambda = 0, plus analytic extra floating-point operations per step",
+  "extra_state_bytes": "exact float64 bytes of the mechanism's additional mutable state (CANDIDATES.md)",
+  "nmse": "mean over the test_rows held-out rows of (f_W(x) - y)^2 divided by the population variance of those held-out targets",
+  "nmse_A_after_A": "nmse(W_A, A)",
+  "nmse_A_after_B": "nmse(W_AB, A)",
+  "nmse_A_init": "nmse(W0, A)",
+  "nmse_B_after": "nmse(W_AB, B)",
+  "nmse_B_before": "nmse(W_A, B)",
+  "nmse_B_init": "nmse(W0, B)",
+  "retention_ratio": "nmse_A_after_B / nmse_A_after_A",
+  "state_change": "||W_AB - W_A||_F / ||W_A||_F"
+ },
+ "name": "ecsg-retention-r0",
+ "offset_grid": [
+  0.5,
+  1.0,
+  1.5
+ ],
+ "pass_rule": {
+  "A_acquisition": "every QUAL world LEARNED_A; median over QUAL worlds of nmse_A_after_A <= 0.25",
+  "B_acquisition": "selected candidate: every QUAL world LEARNED_B",
+  "C_retention": "selected candidate: every QUAL world RETAINED_A (central gate)",
+  "D_joint_state": "selected candidate: A and B are answered by one final W per world (one executor created from W_AB answers both; recorded state digest); no task label at query",
+  "E_state_causality": "selected candidate, every QUAL world: (i) an executor restored from the snapshot of the executor holding W_AB reproduces its A and B responses bitwise; (ii) an executor created from W0 reproduces the untaught responses bitwise; (iii) ablation state_removed (same engine, consolidation term removed): not RETAINED_A in at least 75% of QUAL worlds, and the candidate's median nmse_A_after_B <= 0.5 x the ablation's median nmse_A_after_B",
+  "F_no_external_answer_store": "selected candidate: its consolidation is computed from W_A and A's experienced inputs only (no targets reach it) and its queries read only W; checked structurally and recorded",
+  "G_determinism": "selected candidate, world qual-0000: the full pipeline run twice in process and once in a clean process from the frozen specification yields identical final W digests and identical metrics",
+  "H_negative_baseline": "M0: not RETAINED_A in at least 75% of QUAL worlds and median retention_ratio >= 10",
+  "I_control_honesty": "M1 is reported separately as EXTERNAL_MEMORY_CONTROL and is never the selected candidate",
+  "J_capacity_accounting": "every mechanism reports extra_state_bytes and compute_overhead",
+  "disposition": "MECHANICS_FAIL if any mechanics check fails. Else RETENTION_SUPPORTED_UNDER_FROZEN_SYNTHETIC_REGIME (OUTCOME_A) if A-J hold for the selected candidate. Else PARTIAL_REDUCTION (OUTCOME_C) if the selected candidate's median retention_ratio <= 0.5 x M0's median retention_ratio; else REPLAY_ONLY (OUTCOME_B) if M1 is LEARNED_B and RETAINED_A in every QUAL world; else NO_MATERIAL_IMPROVEMENT (OUTCOME_D). M1's own result is always reported. A failure is recorded as it is; a repair is a new experiment version."
+ },
+ "question": "Can one ECS_G state acquire experience B while retaining experience A, and what state does that require?",
+ "regime": {
+  "dim": 6,
+  "init_scale": 0.18,
+  "input_scale": 0.5,
+  "learning_rate": 0.002,
+  "note": "the Cognitive R0 v1 regime (d, N, initialization, rate, teachers, input scale, rows, step budget) for comparability",
+  "steps": 4000,
+  "teacher_scale": 0.5,
+  "teacher_width": 4,
+  "test_rows": 256,
+  "train_rows": 64,
+  "width": 36
+ },
+ "secondary": {
+  "ablations": "mismatched_statistics and uninformed_statistics for the selected candidate (CANDIDATES.md); reported, not gating",
+  "ceiling": "O per world; reported",
+  "performance": "PERFORMANCE_ONLY NO_SCIENTIFIC_CLAIM: canonical executor learn latency for M0/M1 and laboratory-engine latency per candidate; not part of the disposition",
+  "sequence": "A -> B -> C -> D at the chosen offset for M0, M1 (rehearsal of every earlier experience), the selected and the secondary candidate (cumulative consolidation); nmse of every seen task after every stage; counts of RETAINED and LEARNED tasks at the end. Descriptive, not gating."
+ },
+ "seed": 20261011,
+ "shared_procedure": [
+  "W_A is computed once per world through the canonical core (CognitiveCore.learn, K steps on A) and is bitwise identical for every mechanism",
+  "candidate consolidation is computed at W_A from A's experienced inputs only (never targets)",
+  "candidate learning of B: every step is the canonical native G1 step (an executor created from the current W performs one learn step) followed by subtracting rate x the candidate's consolidation gradient evaluated at the pre-step W: W_{t+1} = G1(W_t) - eta * grad P(W_t), K steps at the frozen rate; a refused native step or any non-finite value refuses the whole learn and W_AB = W_A (canonical refusal semantics), recorded as refused",
+  "every response used by any metric is the canonical native forward map (elpis.ECS_G.native.Executor.forward) of the evaluated W",
+  "one final W per world and mechanism answers both A and B queries; no task label reaches a query"
+ ],
+ "splits": {
+  "dev_worlds": 8,
+  "ids": "DEV: dev-0000..dev-0007; QUAL: qual-0000..qual-0023; mechanics tests use test-* ids only",
+  "isolation": "DEV runs refuse once frozen; QUAL refuses unless frozen and runs once; QUAL worlds are never evaluated before the freeze",
+  "qual_worlds": 24,
+  "rng": "every random draw is a function of (seed, experiment name, world id, stream); worlds are disjoint by id; no global RNG"
+ },
+ "tasks": {
+  "A": {
+   "axis": 0,
+   "sign": 1
+  },
+  "B": {
+   "axis": 0,
+   "sign": -1
+  },
+  "C": {
+   "axis": 1,
+   "sign": 1
+  },
+  "D": {
+   "axis": 1,
+   "sign": -1
+  },
+  "definition": "task t: an independent cubic ridge teacher (teacher_width columns, entries N(0, teacher_scale^2)); inputs N(sign * offset * e_axis, input_scale^2 I); train_rows experience rows and test_rows held-out rows, all per world from the frozen RNG streams"
+ },
+ "version": 1
+}

@@ -137,4 +137,7 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
 * **ECS_C**: transitions return receipts but are not recorded in the history;
   cognition does not depend on history or replay.
 * **Retention**: no mechanism protects earlier learning from later
-  experience; the qualified recurrence alone forgets.
+  experience; the qualified recurrence alone forgets. Retention R0
+  (`docs/research/ECS_RETENTION_R0_RESULTS.md`, RESEARCH_ONLY) found only a
+  partial reduction of forgetting at a cost in acquisition; nothing is
+  qualified or canonical.
