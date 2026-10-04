@@ -81,7 +81,11 @@ jobs:
       ELPIS_REQUIRE_NATIVE: "1"
       ELPIS_NATIVE_BUILD: ${{ github.workspace }}/build
     steps:
+      # Full history: the evidence chronology gates (Retention R0 RET0A -> RET0D, the
+      # mission gate's forensic commits) read git history; a shallow clone cannot see it.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
@@ -106,6 +110,8 @@ jobs:
       ELPIS_NATIVE_BUILD: ${{ github.workspace }}/build
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -134,6 +140,63 @@ jobs:
               raise SystemExit('network reachable inside the isolation namespace')
           "
           run_isolated /tmp/elpis-venv/bin/python -m pytest
+
+  authority:
+    # Scientific authority gate (docs/CI_POLICY.md). Not a replacement for the full
+    # suites above: a focused, declared-environment run of the evidence and
+    # reproduction contracts, with the effective numerical environment printed.
+    name: Scientific authority
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+      ELPIS_REQUIRE_NATIVE: "1"
+      ELPIS_NATIVE_BUILD: ${{ github.workspace }}/build
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y $NATIVE_DEPS
+      - name: Native build (libraries loaded by Python)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+      - name: Declared environment (NumPy pinned to the version the evidence recorded)
+        run: |
+          python -m venv /tmp/elpis-venv
+          /tmp/elpis-venv/bin/python -m pip install --upgrade pip
+          /tmp/elpis-venv/bin/python -m pip install ".[test]" "numpy==1.26.4"
+      - name: Effective numerical environment
+        run: |
+          /tmp/elpis-venv/bin/python - <<'EOF'
+          import platform
+          import numpy
+          from tests.research._blas import openblas_core, openblas_threads
+          print("python", platform.python_version(), "| numpy", numpy.__version__, "| machine", platform.machine())
+          print("OpenBLAS core", openblas_core(), "| effective threads", openblas_threads())
+          EOF
+          grep -m1 "model name" /proc/cpuinfo
+          grep -m1 -E "^model[[:space:]]" /proc/cpuinfo
+          echo "shallow: $(git rev-parse --is-shallow-repository)"
+      - name: Current executor equals the scalar reference (native, AVX2 and baseline clones)
+        run: ctest --test-dir build --output-on-failure -R "^ECS_G\."
+      - name: Evidence integrity, chronology, replay contracts, current-runtime regressions
+        run: >-
+          /tmp/elpis-venv/bin/python -m pytest -rs
+          tests/research/ecs_cognition_r0
+          tests/research/ecs_retention_r0
+          tests/research/ecs_runtime_r1
+          tests/ECS_G
+          tests/boundary/test_cognition_r0.py
+          tests/boundary/test_runtime_r1.py
+          tests/boundary/test_mission.py
 
   native:
     name: Native (${{ matrix.compiler }}, ${{ matrix.build }})
