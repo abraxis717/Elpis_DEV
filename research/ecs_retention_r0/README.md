@@ -47,5 +47,9 @@ From the repository root, with a Release native build
 
 `dev`, `freeze` and `qual` refuse to run again (the records exist); a changed
 experiment is a new version. The evidence tests re-run three QUAL worlds and
-require bit-identical measurements when the bound implementation and
-numerical profile are present, and skip otherwise.
+require bit-identical measurements under the full v1 binding, an AVX-512
+OpenBLAS kernel (Cooperlake or SkylakeX) and an effective single BLAS thread;
+otherwise they skip with the reason. `test_runtime_regression.py` re-runs all
+24 QUAL worlds on any host and requires the recorded gates, disposition and
+per-mechanism counts exactly (never skipped). See the results document,
+"Reproduction contract and portability".

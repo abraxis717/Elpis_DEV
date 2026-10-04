@@ -3,8 +3,9 @@
 The specification and candidates predate DEV (proven from the git history, which CI checks out in
 full); the frozen laboratory source is the source in this tree; the write-once records are byte-identical
 to the ones written; every DEV and QUAL record carries the full implementation binding; QUAL worlds
-reproduce their recorded measurements exactly when the bound implementation is the one present; the
-results document states the disposition the evidence yields and claims no more.
+reproduce their recorded measurements exactly when the bound implementation, numerical profile and a
+reproducing OpenBLAS kernel are present; the results document states the disposition the evidence yields
+and claims no more. The recorded disposition on whatever host runs the suite is test_runtime_regression.py.
 """
 from __future__ import annotations
 
@@ -135,33 +136,52 @@ def _strip_timing(value):
 # In-process, an earlier test may already have loaded NumPy with a multi-threaded OpenBLAS while the environment
 # (and hence the recorded profile) says 1; LAPACK least squares (the representability ceiling) then differs in its
 # last bits. QUAL itself ran with the laboratory package imported before NumPy (effective single thread).
+# OpenBLAS kernel families under which the v1 QUAL bytes reproduce exactly, established after the fact (CE0)
+# by forcing each family with OPENBLAS_CORETYPE on Cooper Lake and Emerald Rapids hosts: the AVX-512 kernels
+# reproduce; Haswell/Zen (AVX2+FMA) and the non-FMA kernels do not. Not part of the v1 binding, which records
+# the thread environment but neither the kernel nor the effective thread count.
+REPRODUCING_OPENBLAS_CORES = ("Cooperlake", "SkylakeX")
+
 _REPRODUCE = """
 import ctypes, json, sys
 from elpis.ECS_G.native import ECSGLibrary
 from research.ecs_retention_r0 import experiment as X, protocol as P, run as R
-library, world = sys.argv[1], sys.argv[2]
+from tests.research._blas import openblas_core, openblas_threads
+library, world, cores = sys.argv[1], sys.argv[2], sys.argv[3].split(",")
 qual = P.load(R.QUAL_PATH, "qual")["body"]
 stale = P.binding_mismatch(qual["implementation"], P.implementation(library))
+core, threads = openblas_core(), openblas_threads()
+if core not in cores:
+    stale.append(f"OpenBLAS core {core} outside the reproducing kernels {cores} (established after the fact)")
+if threads != 1:
+    stale.append(f"effective OpenBLAS threads {threads} although the thread environment reads 1")
 if stale:
     got = None
 else:
     lab = X.Lab(ECSGLibrary(ctypes.CDLL(library)), P.load_spec())
     got = json.loads(P.canonical_json(X.qual_world(lab, world, qual["choices"])))
-sys.stdout.write(json.dumps({"stale": stale, "world": got}))
+sys.stdout.write(json.dumps({"stale": stale, "world": got, "core": core, "threads": threads}))
 """
 
 
 @pytest.mark.parametrize("world", ["qual-0000", "qual-0013", "qual-0020"])
 def test_qual_measurements_reproduce_exactly(world):
-    """A QUAL world re-run gives its recorded measurements bit for bit (same implementation and profile)."""
+    """HISTORICAL REPLAY: a QUAL world re-run gives its recorded measurements bit for bit.
+
+    Demanded only under the full v1 binding (laboratory source, bound sources, library SHA-256, build,
+    numerical profile), a reproducing OpenBLAS kernel and an effective single BLAS thread, in a fresh
+    interpreter whose thread environment is fixed before NumPy loads (RET0E.3).
+    """
     env = dict(os.environ, PYTHONPATH=f"{REPO / 'src'}{os.pathsep}{REPO}", PYTHONDONTWRITEBYTECODE="1",
                OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
-    out = subprocess.run([sys.executable, "-c", _REPRODUCE, str(_library_path()), world], cwd=REPO, env=env,
-                         capture_output=True, text=True, check=True)
+    out = subprocess.run([sys.executable, "-c", _REPRODUCE, str(_library_path()), world,
+                          ",".join(REPRODUCING_OPENBLAS_CORES)], cwd=REPO, env=env, capture_output=True, text=True,
+                         check=True)
     result = json.loads(out.stdout)
     if result["stale"]:
-        pytest.skip(f"evidence bound to a different implementation or profile: {result['stale']}")
-    assert _strip_timing(result["world"]) == _strip_timing(QUAL["body"]["per_world"][world])
+        pytest.skip(f"HISTORICAL_REPLAY_ENVIRONMENT_MISMATCH: exact replay of v1 QUAL bytes is demanded only under "
+                    f"the recorded binding and a reproducing kernel: {result['stale']}")
+    assert _strip_timing(result["world"]) == _strip_timing(QUAL["body"]["per_world"][world]), result["core"]
 
 
 def test_results_report_the_disposition_and_stay_bounded():
