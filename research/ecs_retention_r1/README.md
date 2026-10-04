@@ -2,11 +2,11 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `NO_LANGUAGE_CLAIM` · `SYNTHETIC` · `SEMANTICS=NONE` · `PREREGISTERED`
 
-**Status: RET1A only.** This directory holds the scientific question, the
-candidate definitions, the DEV selection rule and the QUAL pass rule. It has no
-laboratory code, no candidate implementation, no DEV or QUAL evidence, no frozen
-record, no selected candidate and no result. Canonical ECS_G learning is
-unchanged.
+**Status: RET1B, laboratory mechanics.** The laboratory implements the RET1A
+specification (`protocol.py`, `numerics.py`, `task.py`, `engine.py`,
+`experiment.py`, `run.py`); its mechanics tests use test-* worlds only. There is
+no DEV or QUAL evidence, no frozen record, no selected candidate and no result.
+Canonical ECS_G learning is unchanged.
 
 ## Question
 
@@ -124,3 +124,32 @@ digest and the spec, pass-rule and `CANDIDATES.md` digests. Four questions are
 kept apart: evidence integrity, implementation/reference correctness,
 historical bitwise replay (only under a matching binding, never a scientific
 gate), and the current-runtime regression (never skipped).
+
+## Laboratory (RET1B)
+
+Every candidate step is the canonical native G1 step of the current `W` (an
+executor created from `W` performs one learn step), followed by the
+mechanism's correction at the pre-step `W`; with the mechanism removed the
+engine is bitwise the canonical core. Learning an experience and consolidating
+it are one atomic transition. The complete declared state (`W`, epoch and the
+persistent consolidation state) serializes deterministically
+(`engine.serialize`), which is what the transplant gate restores.
+
+Implementation decision recorded before DEV: the registered PTE construction
+(the R0 pair, differing on coordinate 0, stepped on B) is evaluated on the
+arm-R world of each QUAL world, where B lies on axis 0 as in R0. In arm S, B's
+inputs vanish on coordinate 0, so a B step never reads or moves that row and
+the construction is structurally degenerate; it is recorded there as
+descriptive only.
+
+## Commands
+
+From the repository root, with a Release native build:
+
+    export PYTHONPATH=src:.
+    python -m research.ecs_retention_r1.run status
+    python -m research.ecs_retention_r1.run dev --library <build>/native/ECS_G/libelpis_ecsg_math.so
+    ELPIS_NATIVE_BUILD=<build> ELPIS_REQUIRE_NATIVE=1 python -m pytest -q tests/research/ecs_retention_r1
+
+`dev`, `freeze` and `qual` write once and refuse to run again; a changed
+experiment is a new version.
