@@ -111,3 +111,32 @@ def test_dev_controls_reproduce_exactly_under_the_recorded_binding():
     for rule, rows in zip(DEV["body"]["task_rule"], result["rows"]):
         for wid, row in rows.items():
             assert row == rule["worlds"][wid], (rule["input_scale"], wid)
+
+
+RESULTS = REPO / "docs" / "research" / "ECS_RETENTION_R1_RESULTS.md"
+OVERCLAIMS = ("retention is solved", "retention_supported", "outcome_a", "elpis now remembers",
+              "continual learning is achieved", "understands language", "promoted to canonical")
+
+
+def test_results_report_the_disposition_and_claim_no_more():
+    text = RESULTS.read_text(encoding="utf-8")
+    for needle in ("TASK_INVALID_ON_DEV", DEV["digest"], DEV["body"]["implementation"]["library"]["sha256"],
+                   RET1B_COMMIT[:7], "NO_CANONICAL_PROMOTION", "No candidate is", "SEMANTICS=NONE",
+                   "R1 v1 established nothing about any retention mechanism", "new experiment version"):
+        assert needle in text, needle
+    lowered = text.lower()
+    for overclaim in OVERCLAIMS:
+        assert overclaim not in lowered.replace("`retention_supported` for a candidate whose state caused nothing",
+                                                ""), overclaim
+
+
+def test_authority_pointers_state_the_recorded_disposition():
+    system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
+    component = next(c for c in system["research"]["components"] if c["path"] == "research/ecs_retention_r1")
+    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
+    interface = next(i for i in ecsg["incomplete_interfaces"] if "Retention R1" in i)
+    cognition = (REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8")
+    for text in (component["classification"], interface, cognition.split("Retention R1", 1)[1].split("\n\n", 1)[0]):
+        assert "TASK_INVALID_ON_DEV" in text
+        assert "OUTCOME_A" not in text and "RETENTION_SUPPORTED" not in text
+    assert "no candidate" in component["classification"].lower()

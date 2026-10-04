@@ -2,11 +2,9 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `NO_LANGUAGE_CLAIM` · `SYNTHETIC` · `SEMANTICS=NONE` · `PREREGISTERED`
 
-**Status: RET1C, DEV ended `TASK_INVALID_ON_DEV`.** The registered task rule
-(controls only) found no valid arm-S input scale, so no candidate or reference
-was run on DEV, nothing is frozen and QUAL does not run
-(`evidence/dev/ecsg-retention-r1.v1.dev.json`). Canonical ECS_G learning is
-unchanged.
+**Status: closed at RET1F. Disposition `TASK_INVALID_ON_DEV`.** No candidate was
+evaluated, nothing was frozen, QUAL did not run, and no mechanism is qualified or
+promoted (NO_CANONICAL_PROMOTION). Canonical ECS_G learning is unchanged.
 
 ## Question
 
@@ -153,3 +151,20 @@ From the repository root, with a Release native build:
 
 `dev`, `freeze` and `qual` write once and refuse to run again; a changed
 experiment is a new version.
+
+
+## Result
+
+DEV (`evidence/dev/ecsg-retention-r1.v1.dev.json`, record `76815470...`) ended
+`TASK_INVALID_ON_DEV`. At every registered arm-S input scale (1.25, 1.0, 0.75)
+the controls showed that the primary arm is not a valid retention test:
+
+- plain sequential G1 already held the whole sequence (5/8, 8/8 and 8/8 DEV
+  worlds; median earlier-experience nmse at D 0.03 to 0.04);
+- later experiences carried too little novel variance (V3 failed);
+- at 1.25 plain G1 failed to learn D in 2 worlds.
+
+Under the specification, no candidate or reference was run, nothing was
+selected, frozen or qualified. R1 v1 says nothing for or against K1, K2, K3 or
+C1R. Full interpretation: `docs/research/ECS_RETENTION_R1_RESULTS.md`. A repair
+is a new experiment version.
