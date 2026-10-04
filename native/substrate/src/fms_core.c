@@ -572,7 +572,9 @@ static fms_status pin_at(fms_ctx *c, slot_t *s, int want, unsigned mode, void **
          * failure is not corruption: the CPU copy is still authoritative, so
          * the object stays where it is and the caller is told which tier it
          * actually got. hop_up() has already counted the fallback. */
-        if (r == FMS_E_DIGEST) { s->pin_count--; return r; }
+        if (r == FMS_E_DIGEST || (r != FMS_OK && s->tier == FMS_COLD)) {
+            s->pin_count--; return r;
+        }
         if (r != FMS_OK) { if (r != FMS_E_DEVICE) c->st.forced_placements++; break; }
     }
     s->last_access_ns = now; s->access_count++;

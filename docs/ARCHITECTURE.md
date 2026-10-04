@@ -817,3 +817,13 @@ the subsystem state unchanged.
   before canonical publication are driven by the caller and not recorded.
 * **Single process.** There is no cross-process transport. `record()`
   re-reads the event log after each write.
+
+## ECS_G mutable FMS residency (R0)
+
+`docs/ECS_MUTABLE_FMS_R0.md` defines the additive mutable-state residency adapter.
+An idle logical ECS_G state is the existing portable W+epoch snapshot stored as a
+generic FMS object. Direct operations restore the unchanged Runtime R1 executor
+transiently; transactions retain one executor and WRITE lease. Successful mutation
+publishes one complete replacement snapshot. FMS owns placement and verified cold
+replicas but no cognitive semantics. This is single-process CPU residency mechanics,
+not a new learning law, persistent catalog or crash-durable commit protocol.

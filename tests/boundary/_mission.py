@@ -137,7 +137,7 @@ def canonical_tower(root: Path) -> list[str]:
 
 
 def ecs_independence(root: Path) -> list[str]:
-    """(4) ECS_G imports nothing beyond itself and the standard library; its C includes only itself."""
+    """(4) ECS mathematics is independent; only the residency adapter may use generic FMS."""
     out = []
     for path in _python(root, "ECS_G"):
         for name in imports_of(root, path):
@@ -149,7 +149,15 @@ def ecs_independence(root: Path) -> list[str]:
     for path in sorted(base.rglob("*")) if base.is_dir() else []:
         if path.suffix in (".c", ".h"):
             for inc in re.findall(r'#\s*include\s*"([^"]+)"', path.read_text(encoding="utf-8")):
-                if not inc.startswith("elpis/ecsg_"):
+                relative = str(path.relative_to(base))
+                allowed = {
+                    "include/elpis/ecsg_fms.h": {"elpis/fms.h"},
+                    "src/ecsg_fms.c": {"elpis/sha256.h"},
+                    "tests/test_ecsg_fms.c": {"elpis/fms_pal_posix.h"},
+                    "tests/test_ecsg_fms_alloc.c": {"elpis/fms_pal_posix.h"},
+                    "tests/test_ecsg_fms_performance.c": {"elpis/fms_pal_posix.h"},
+                }
+                if not inc.startswith("elpis/ecsg_") and inc not in allowed.get(relative, set()):
                     out.append(f"{path.relative_to(root)}: includes {inc}")
     return out
 
@@ -186,6 +194,9 @@ def fms_genericity(root: Path) -> list[str]:
                 match = DSV_ROLES.search(code)
                 if match:
                     out.append(f"{path.relative_to(root)}: {match.group(0)}")
+                semantic = re.search(r"(?i)\b(ecsg_\w*|elpis_ecsg_\w*|g1|s3|retention)\b", code)
+                if semantic:
+                    out.append(f"{path.relative_to(root)}: ECS semantics {semantic.group(0)}")
     return out
 
 

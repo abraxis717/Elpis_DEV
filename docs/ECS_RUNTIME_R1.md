@@ -123,10 +123,13 @@ Only the authoritative `W` and the epoch are state; which of the three `W`
 buffers holds it rotates on every commit, so nothing may hold its address.
 Identity is the snapshot bytes, never a pointer or a Python object. The
 generation counter is process-local commit bookkeeping for staleness and is
-not persisted. An external materializer (FMS) could later own the
-authoritative `W` and the epoch as one mutable asset of `8 dN + 8` bytes
-plus the snapshot header; everything else is reconstructible scratch. That
-edge is not implemented: current FMS materializes immutable verified assets.
+not persisted. Mutable FMS R0 now provides that edge through a separate adapter
+([`ECS_MUTABLE_FMS_R0.md`](ECS_MUTABLE_FMS_R0.md)). FMS owns the existing
+portable `W` + epoch snapshot bytes between operations; the adapter restores
+this unchanged Runtime R1 executor through its public ABI, and publishes a
+complete new snapshot only after a successful mutation. The measured Runtime
+R1 executor source and Python control plane remain unchanged. R0 does not claim
+restart discovery or crash-durable cognitive commits.
 
 ## Measurement protocol
 
