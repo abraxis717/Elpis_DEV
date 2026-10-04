@@ -145,4 +145,6 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
   experience; the qualified recurrence alone forgets. Retention R0
   (`docs/research/ECS_RETENTION_R0_RESULTS.md`, RESEARCH_ONLY) found only a
   partial reduction of forgetting at a cost in acquisition; nothing is
-  qualified or canonical.
+  qualified or canonical. Retention R1 (`research/ecs_retention_r1`,
+  RESEARCH_ONLY) is preregistered: specification and pass rule only, no
+  result.
