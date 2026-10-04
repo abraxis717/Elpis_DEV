@@ -85,7 +85,57 @@ in such a process changes only the representability ceiling (LAPACK least
 squares), and only in its last one or two bits. Every native result and `W`
 digest is unaffected. The evidence tests therefore reproduce QUAL worlds in a
 fresh interpreter with the environment fixed at start. A future version
-should record the effective thread count.
+should record the effective thread count. Since CE2.1 the replay test also
+reads the effective count in the replay process and requires 1.
+
+### Reproduction contract and portability (CE2.1, after QUAL; the evidence is unchanged)
+
+The v1 binding covers the laboratory source, the eight bound sources, the
+library SHA-256, the build, and the numerical profile: NumPy, Python, machine,
+float format and the thread *environment*. It does not cover the OpenBLAS
+kernel family, the effective thread count, or the CPU. NumPy's bundled
+OpenBLAS chooses its kernel per CPU, and on CPUs it does not recognize it
+falls back to the generic Prescott kernel. One such CPU is Emerald Rapids
+(family 6, model 207), which this VM moved to during the CI correction.
+
+A post-QUAL audit re-ran all 24 QUAL worlds with one kernel of each class
+forced: Cooperlake, Haswell and Prescott (`OPENBLAS_CORETYPE`, single
+thread). SkylakeX, Zen and Sandybridge were checked on three worlds
+(qual-0000, -0013, -0020), and each gave exactly the same results as the other
+member of its class:
+
+| kernel class | W digests changed (of 192: 8 per world, 24 worlds) | largest relative change | gates, mechanics, disposition, counts |
+|---|---|---|---|
+| AVX-512 (Cooperlake, SkylakeX); the recording host | 0 (bitwise) | 0 | identical |
+| AVX2+FMA (Haswell, Zen) | 66 | 23% (selected candidate, A->B->C->D stage D, task C); 11% (mismatched ablation, B after) | identical |
+| non-FMA (Prescott, Sandybridge; the fallback) | 192 (all) | 23% (same); 15% (mismatched ablation, A after B) | identical |
+
+Under all three classes, these were identical to the record: the gate table,
+the mechanics, `PARTIAL_REDUCTION` / `OUTCOME_C`, and for every mechanism the
+counts of worlds that retained A, learned B, held both, were catastrophic, or
+refused a learn (M0 0/24/0/18/0, C1 18/10/7/0/0, C2 9/11/3/10/6, M1
+15/15/9/0/0; ablations removed 0/24/0/18/0, mismatched 4/12/1/16/0, isotropic
+7/4/2/6/0). The A->B->C->D median of tasks held at the end (1 for every
+mechanism) was also identical. Two descriptive quantities did change:
+- the mismatched ablation's median error on A after B: 2.892 recorded, 2.891
+  under Haswell, 3.117 under Prescott;
+- C1's total number of tasks held at the end, 28 recorded and 27 under both
+  other classes (qual-0015).
+
+The medians, ratios and other floats in this report are therefore the
+recording host's arithmetic (an AVX-512 OpenBLAS kernel). The conclusions rest
+on the gates and counts, which did not move in this audit. The suite keeps the
+questions apart:
+
+| question | test | contract |
+|---|---|---|
+| evidence integrity | `test_evidence.py` (byte pins, digests, binding, chronology from full git history) | always |
+| historical replay | `test_evidence.py::test_qual_measurements_reproduce_exactly` (3 worlds) | bitwise; demanded only under the full v1 binding, with OpenBLAS kernel Cooperlake or SkylakeX and an effective single thread, in a fresh interpreter (that kernel condition was established after QUAL and is not in the record); skipped with the reason otherwise |
+| current-runtime regression | `test_runtime_regression.py` (all 24 worlds) | never skipped for a host or profile; gates, mechanics, disposition, outcome, every per-mechanism count and the sequence medians must equal the record exactly; no float or `W` digest is compared |
+
+Future experiment versions should record effective runtime properties next
+to the environment strings: the OpenBLAS kernel name, the effective thread
+count, the CPU model and flags, and NumPy's build configuration.
 
 ## DEV (8 DEV worlds) and frozen choices
 
@@ -226,7 +276,9 @@ Not supported:
   function in most worlds. A retention mechanism cannot exceed the capacity
   of the state it protects.
 * No language, meaning or general cognition; synthetic task, SEMANTICS=NONE.
-* Bitwise reproduction is established for one build and numerical profile.
+* Bitwise reproduction is established for one build, numerical profile and
+  AVX-512 OpenBLAS kernel; the conclusions (gates, counts, disposition) held
+  under every kernel class audited (Reproduction contract and portability).
 
 ## Open questions
 

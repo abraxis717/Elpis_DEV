@@ -120,9 +120,14 @@ evidence. A failure is recorded as it is. It measures:
   `Commit` with `receipt=False`), `snapshot` / `restore`, `identity`,
   `epoch`, `s3` (diagnostic).
 
-Since Runtime R1 the core runs on the native executor; all 8 QUAL worlds
-reproduce their recorded measurements exactly
-(`tests/research/ecs_cognition_r0/test_lab.py`).
+Since Runtime R1 the core runs on the native executor. On every host, the
+current runtime reaches the recorded gates, disposition and interference
+classes, with every metric within the declared tolerance (1e-9 relative)
+(`tests/research/ecs_cognition_r0/test_runtime_regression.py`, never
+skipped). The recorded QUAL bytes are reproduced exactly only under the
+recorded numerical profile and an FMA OpenBLAS kernel
+(`test_lab.py::test_qual_measurements_reproduce_exactly`; see
+`docs/research/COGNITION_R0_RESULTS.md`, Reproduction contract).
 
 Only these mechanics are promoted. The laboratory harness, the synthetic
 task, its teachers and its thresholds stay in `research/` and grant nothing.

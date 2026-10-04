@@ -180,8 +180,14 @@ p99, 4.64). Investigation (`evidence/jitter.json`):
   shape/rate combinations (dispatched AVX2 and baseline-ISA builds), 160 seeded random Python cases
   with refusals where the reference refuses (10 of 160), and 40
   schedule/transaction cases; snapshots are byte-identical.
-* Cognitive R0: all 8 QUAL worlds reproduce their recorded measurements
-  exactly on the executor core (was 2 of 8 checked before R1).
+* Cognitive R0: all 8 QUAL worlds reproduced their recorded measurements
+  exactly on the executor core, on the measurement VM (was 2 of 8 checked
+  before R1). That holds only with an FMA OpenBLAS kernel. On CI runners
+  where NumPy's OpenBLAS falls back to a non-FMA kernel, the digests differ,
+  with metrics in the last bits (CE0 correction; see
+  `docs/research/COGNITION_R0_RESULTS.md`, Reproduction contract). The
+  cross-host guard is `test_runtime_regression.py`: recorded gates and
+  disposition, metrics within 1e-9 relative.
 * Failure atomicity after at least one step, epoch +K, generation +1, read-only
   query, staleness, bounds (overflow, capacity, step count, rate, non-finite
   input, epoch headroom, destroyed handles, BUSY) are tested natively and

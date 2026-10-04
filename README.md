@@ -18,7 +18,9 @@ the reasoning is in [`docs/MIGRATION.md`](docs/MIGRATION.md).
 
 The single machine-readable system authority is
 [`ELPIS_SYSTEM.json`](ELPIS_SYSTEM.json). The design is described in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Merges follow
+[`docs/CI_POLICY.md`](docs/CI_POLICY.md): no merge while any workflow run for
+the head commit is red.
 
 ## Layout
 

@@ -1,13 +1,15 @@
 """Retention R0 evidence guards: chronology, frozen authority, write-once evidence, exact reproduction, honest report.
 
-The specification and candidates predate DEV; the frozen laboratory source is
-the source in this tree; every DEV and QUAL record carries the full
-implementation binding; QUAL worlds reproduce their recorded measurements
-exactly when the bound implementation is the one present; the results
-document states the disposition the evidence yields and claims no more.
+The specification and candidates predate DEV (proven from the git history, which CI checks out in
+full); the frozen laboratory source is the source in this tree; the write-once records are byte-identical
+to the ones written; every DEV and QUAL record carries the full implementation binding; QUAL worlds
+reproduce their recorded measurements exactly when the bound implementation, numerical profile and a
+reproducing OpenBLAS kernel are present; the results document states the disposition the evidence yields
+and claims no more. The recorded disposition on whatever host runs the suite is test_runtime_regression.py.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -25,8 +27,32 @@ FROZEN = P.load(R.FROZEN_PATH, "frozen")
 QUAL = P.load(R.QUAL_PATH, "qual")
 
 
-def _git(*args):
-    return subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True).stdout.strip()
+# SHA-256 of each write-once record as written (one commit each: e444814, e35ffdc, 57f238b, 71eb4e3, f7b6ab6).
+EVIDENCE_SHA256 = {
+    "specs/ecsg-retention-r0.v1.spec.json": "4317c658472c2c992c44d5f1d0c4a1fd69679c957b5a4848b091f03d8ad89d40",
+    "evidence/dev/ecsg-retention-r0.v1.dev.json": "9857f3bbb47152415a862d219d84ddae083e122b95c51ee86aa1e3e321bde95f",
+    "evidence/dev/ecsg-retention-r0.v1.dev.r2.json": "4a51e3629a7d58dd50932b4eaaadad5dde9a3ab4cba87d8d363d1839d8067453",
+    "frozen/ecsg-retention-r0.v1.frozen.json": "c54bebeab17dad336c000ecbd332b796d9a1f1b0152319d423a15f0c45b222bf",
+    "evidence/qual/ecsg-retention-r0.v1.qual.json": "b7864fdbae08383b05f4f6ce9fe03979297895f92fbc356ed013e3807b74020b",
+}
+# The pre-registered order (newest last) and the step that must have added each record.
+CHRONOLOGY = ("RET0A.1", "RET0B", "RET0C", "RET0D")
+ADDED_BY = (("specs/ecsg-retention-r0.v1.spec.json", "RET0A.1"),
+            ("evidence/dev/ecsg-retention-r0.v1.dev.json", "RET0B"),
+            ("frozen/ecsg-retention-r0.v1.frozen.json", "RET0C"),
+            ("evidence/qual/ecsg-retention-r0.v1.qual.json", "RET0D"))
+HISTORY_INCOMPLETE = "RETENTION_AUTHORITY_HISTORY_INCOMPLETE"
+CHRONOLOGY_VIOLATED = "RETENTION_CHRONOLOGY_VIOLATED"
+
+
+def _git(*args) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True)
+
+
+@pytest.mark.parametrize("name", sorted(EVIDENCE_SHA256))
+def test_write_once_evidence_bytes_are_unchanged(name):
+    data = (R.ROOT / name).read_bytes()
+    assert hashlib.sha256(data).hexdigest() == EVIDENCE_SHA256[name], f"{name} changed after it was written"
 
 
 def test_frozen_authority_still_matches_the_laboratory_and_specification():
@@ -39,24 +65,35 @@ def test_frozen_authority_still_matches_the_laboratory_and_specification():
 
 
 def test_the_specification_predates_dev_and_the_freeze_predates_qual():
-    log = _git("log", "--format=%H %s", "--", "research/ecs_retention_r0").splitlines()
-    if not log:
-        pytest.skip("not a git checkout")
+    """RET0A.1 (specification) before RET0B (DEV) before RET0C (freeze) before RET0D (QUAL), from git history.
+
+    CI checks out full history (``fetch-depth: 0``) in every job that runs this. A shallow or malformed
+    checkout fails here by name, listing what it cannot see, never with a bare lookup error.
+    """
+    inside = _git("rev-parse", "--is-inside-work-tree")
+    if inside.returncode != 0 or inside.stdout.strip() != "true":
+        pytest.fail(f"{HISTORY_INCOMPLETE}: {REPO} is not a git checkout "
+                    f"({(inside.stderr or inside.stdout).strip()}); the chronology gate needs the repository history")
+    shallow = _git("rev-parse", "--is-shallow-repository").stdout.strip() == "true"
+    where = " in a shallow checkout; check out full history (actions/checkout fetch-depth: 0)" if shallow else ""
+    log = _git("log", "--format=%H %s", "--", "research/ecs_retention_r0").stdout.splitlines()
     order = {}
     for i, line in enumerate(log):
-        subject = line.split(" ", 1)[1]
-        if subject.startswith("RET0"):
-            order.setdefault(subject.split(" ", 1)[0], i)
-    # git log is newest first: a larger index is older.
-    assert order["RET0A.1"] > order["RET0B"] > order["RET0C"] > order["RET0D"]
-    first_spec = _git("log", "--diff-filter=A", "--format=%s", "--",
-                      "research/ecs_retention_r0/specs/ecsg-retention-r0.v1.spec.json")
-    assert first_spec.startswith("RET0A.1")
-    for path, step in (("evidence/dev/ecsg-retention-r0.v1.dev.json", "RET0B "),
-                       ("frozen/ecsg-retention-r0.v1.frozen.json", "RET0C"),
-                       ("evidence/qual/ecsg-retention-r0.v1.qual.json", "RET0D")):
-        assert _git("log", "--diff-filter=A", "--format=%s", "--",
-                    f"research/ecs_retention_r0/{path}").startswith(step), path
+        tag = line.partition(" ")[2].split(" ", 1)[0]
+        if tag.startswith("RET0"):
+            order.setdefault(tag, i)
+    missing = [m for m in CHRONOLOGY if m not in order]
+    assert not missing, (f"{HISTORY_INCOMPLETE}: missing {', '.join(missing)} among the {len(log)} visible "
+                         f"commit(s) touching research/ecs_retention_r0{where}")
+    # git log is newest first: an older step has a larger index.
+    ranks = [order[m] for m in CHRONOLOGY]
+    assert ranks == sorted(ranks, reverse=True), f"{CHRONOLOGY_VIOLATED}: {dict(zip(CHRONOLOGY, ranks))}"
+    for path, step in ADDED_BY:
+        adds = _git("log", "--diff-filter=A", "--format=%s", "--",
+                    f"research/ecs_retention_r0/{path}").stdout.splitlines()
+        assert adds, f"{HISTORY_INCOMPLETE}: no visible commit adds research/ecs_retention_r0/{path}{where}"
+        assert [s.split(" ", 1)[0] for s in adds] == [step], (
+            f"{CHRONOLOGY_VIOLATED}: {path} added by {adds!r}; expected exactly one commit, {step}")
 
 
 def test_dev_records_chain_and_qual_is_bound_to_the_freeze():
@@ -99,33 +136,52 @@ def _strip_timing(value):
 # In-process, an earlier test may already have loaded NumPy with a multi-threaded OpenBLAS while the environment
 # (and hence the recorded profile) says 1; LAPACK least squares (the representability ceiling) then differs in its
 # last bits. QUAL itself ran with the laboratory package imported before NumPy (effective single thread).
+# OpenBLAS kernel families under which the v1 QUAL bytes reproduce exactly, established after the fact (CE0)
+# by forcing each family with OPENBLAS_CORETYPE on Cooper Lake and Emerald Rapids hosts: the AVX-512 kernels
+# reproduce; Haswell/Zen (AVX2+FMA) and the non-FMA kernels do not. Not part of the v1 binding, which records
+# the thread environment but neither the kernel nor the effective thread count.
+REPRODUCING_OPENBLAS_CORES = ("Cooperlake", "SkylakeX")
+
 _REPRODUCE = """
 import ctypes, json, sys
 from elpis.ECS_G.native import ECSGLibrary
 from research.ecs_retention_r0 import experiment as X, protocol as P, run as R
-library, world = sys.argv[1], sys.argv[2]
+from tests.research._blas import openblas_core, openblas_threads
+library, world, cores = sys.argv[1], sys.argv[2], sys.argv[3].split(",")
 qual = P.load(R.QUAL_PATH, "qual")["body"]
 stale = P.binding_mismatch(qual["implementation"], P.implementation(library))
+core, threads = openblas_core(), openblas_threads()
+if core not in cores:
+    stale.append(f"OpenBLAS core {core} outside the reproducing kernels {cores} (established after the fact)")
+if threads != 1:
+    stale.append(f"effective OpenBLAS threads {threads} although the thread environment reads 1")
 if stale:
     got = None
 else:
     lab = X.Lab(ECSGLibrary(ctypes.CDLL(library)), P.load_spec())
     got = json.loads(P.canonical_json(X.qual_world(lab, world, qual["choices"])))
-sys.stdout.write(json.dumps({"stale": stale, "world": got}))
+sys.stdout.write(json.dumps({"stale": stale, "world": got, "core": core, "threads": threads}))
 """
 
 
 @pytest.mark.parametrize("world", ["qual-0000", "qual-0013", "qual-0020"])
 def test_qual_measurements_reproduce_exactly(world):
-    """A QUAL world re-run gives its recorded measurements bit for bit (same implementation and profile)."""
+    """HISTORICAL REPLAY: a QUAL world re-run gives its recorded measurements bit for bit.
+
+    Demanded only under the full v1 binding (laboratory source, bound sources, library SHA-256, build,
+    numerical profile), a reproducing OpenBLAS kernel and an effective single BLAS thread, in a fresh
+    interpreter whose thread environment is fixed before NumPy loads (RET0E.3).
+    """
     env = dict(os.environ, PYTHONPATH=f"{REPO / 'src'}{os.pathsep}{REPO}", PYTHONDONTWRITEBYTECODE="1",
                OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
-    out = subprocess.run([sys.executable, "-c", _REPRODUCE, str(_library_path()), world], cwd=REPO, env=env,
-                         capture_output=True, text=True, check=True)
+    out = subprocess.run([sys.executable, "-c", _REPRODUCE, str(_library_path()), world,
+                          ",".join(REPRODUCING_OPENBLAS_CORES)], cwd=REPO, env=env, capture_output=True, text=True,
+                         check=True)
     result = json.loads(out.stdout)
     if result["stale"]:
-        pytest.skip(f"evidence bound to a different implementation or profile: {result['stale']}")
-    assert _strip_timing(result["world"]) == _strip_timing(QUAL["body"]["per_world"][world])
+        pytest.skip(f"HISTORICAL_REPLAY_ENVIRONMENT_MISMATCH: exact replay of v1 QUAL bytes is demanded only under "
+                    f"the recorded binding and a reproducing kernel: {result['stale']}")
+    assert _strip_timing(result["world"]) == _strip_timing(QUAL["body"]["per_world"][world]), result["core"]
 
 
 def test_results_report_the_disposition_and_stay_bounded():
