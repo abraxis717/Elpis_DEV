@@ -52,7 +52,18 @@ NATIVE_DOMAIN = "elpis.research.ecs-k1-native"
 
 # The only native qualification records that may admit K1 into canonical code: each one byte-pinned, with the
 # plan, the clean harness commit and the R3 authority it must be bound to. Empty until a plan version qualifies.
-ADMITTED_NATIVE_RECORDS: dict = {}
+ADMITTED_NATIVE_RECORDS: dict = {
+    "research/ecs_k1_native/evidence/ecsg-k1-native.v2.attestation.json": {
+        "sha256": "73863d9b91e45e710c94bc3a13f752e82b3dbc0472b0dc6cf09a8e2f461de836",
+        "experiment": "ecsg-k1-native.v2",
+        "plan": "research/ecs_k1_native/specs/ecsg-k1-native.v2.plan.json",
+        "plan_sha256": "6720e607d887f1a49545e3e5a6cfdc8b641991795a990f8fdd2157b0b86ea7eb",
+        "harness_commit": "f720e4a906b0f9c1190536e6123de9c7f4e6160e",
+        "r3_qual_digest": "7e9417b3fbe74329c34bc83daf24bfdf3dcf2ea01ce9d500791ba7e2e08a2627",
+        "raw_evidence_sha256": "c96fa766b61bd05ceb9181ef0566123e6ba6a0afbca7e10367eaf580421994c2",
+        "raw_qualification_digest": "fbea9d43e11706d789c6aac575d3412b0a6ada0c83bd4c0872d2ef2c55cf03aa",
+    },
+}
 
 
 def _sha256(path: Path) -> str:
@@ -66,21 +77,43 @@ def native_digest(kind: str, value) -> str:
 
 
 def native_record_admitted(repo: Path, relative: str, pin: dict) -> bool:
-    """Every binding of one admitted record: bytes, internal digest, plan, harness commit, R3 authority, verdict."""
+    """Admit only the byte-pinned K1N-v2 attestation, bound to the immutable plan,
+    clean harness, R3 authority and externally retained raw qualification identity."""
     path = repo / relative
     plan = repo / pin["plan"]
-    if not path.is_file() or not plan.is_file() or _sha256(path) != pin["sha256"]:
+
+    if not path.is_file() or not plan.is_file():
         return False
-    record = json.loads(path.read_bytes())
-    body = record.get("body", {})
-    impl = body.get("implementation", {})
-    return (record.get("digest") == pin["digest"] == native_digest("qualification", body)
-            and body.get("experiment") == pin["experiment"]
-            and _sha256(plan) == pin["plan_sha256"] == impl.get("plan_sha256")
-            and body.get("plan_digest") == native_digest("plan", json.loads(plan.read_bytes()))
-            and impl.get("base_commit") == pin["harness_commit"] and impl.get("dirty") is False
-            and body.get("r3_qual_digest") == pin["r3_qual_digest"] and r3_outcome_a(repo)
-            and body.get("verdict") == "QUALIFIED")
+
+    if _sha256(path) != pin["sha256"]:
+        return False
+
+    if _sha256(plan) != pin["plan_sha256"]:
+        return False
+
+    try:
+        att = json.loads(path.read_bytes())
+    except (OSError, json.JSONDecodeError):
+        return False
+
+    gates = att.get("gates", {})
+
+    return (
+        att.get("schema") == "elpis.ecsg.k1n2.qualification-attestation.v1"
+        and att.get("experiment") == pin["experiment"]
+        and att.get("verdict") == "QUALIFIED"
+        and att.get("run_complete") is True
+        and att.get("failed_gates") == []
+        and set(gates) == {"E1", "E2", "E3", "E4", "E5", "L1", "L2", "D1_Q", "D1_F"}
+        and all(gates.values())
+        and att.get("world_counts") == {"Q": 32, "F": 32}
+        and att.get("plan_sha256") == pin["plan_sha256"]
+        and att.get("harness_commit") == pin["harness_commit"]
+        and att.get("r3_qual_digest") == pin["r3_qual_digest"]
+        and att.get("raw_evidence_sha256") == pin["raw_evidence_sha256"]
+        and att.get("raw_qualification_digest") == pin["raw_qualification_digest"]
+        and r3_outcome_a(repo)
+    )
 
 
 def native_qualified(repo: Path) -> bool:
