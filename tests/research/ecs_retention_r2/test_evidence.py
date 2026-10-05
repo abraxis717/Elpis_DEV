@@ -21,6 +21,7 @@ from ...ECS_G.test_math_r0 import REPO, _library_path
 
 # SHA-256 of each write-once record as written.
 EVIDENCE_SHA256 = {
+    "evidence/qual/ecsg-retention-r2.v1.qual.json": "e1be3bf6a572a06a0d99994fc6dff758883d286c8da125aa713d95525cb56869",
     "frozen/ecsg-retention-r2.v1.frozen.json": "03fc60974ef7bbfae20e3d15a214796214c29171ddd3cca47037e448840824da",
     "evidence/dev/ecsg-retention-r2.v1.dev.json": "beb9c18abd15bd06bd81d30ee9d58ee2e4b1b14df9029c577fadbe015647a221",
 }
@@ -106,3 +107,79 @@ def test_frozen_authority_binds_dev_and_the_laboratory():
     assert P.binding_mismatch(DEV["body"]["implementation"], body["implementation"]) == []
     assert body["pass_rule_text"] == spec["pass_rule"] and body["qual_world_ids"] == list(P.world_ids(spec, "QUAL"))
     assert body["robustness_cores"] == ["Prescott", "Haswell"]
+
+
+QUAL = P.load(R.QUAL_PATH, "qual")
+
+
+def test_qual_is_bound_to_the_freeze_and_ran_on_disjoint_worlds():
+    q, frozen = QUAL["body"], FROZEN["body"]
+    assert q["frozen_digest"] == FROZEN["digest"] and q["choices"] == frozen["choices"]
+    assert q["world_ids"] == frozen["qual_world_ids"] and q["world_count"] == 24 == len(q["per_world"])
+    assert not set(q["world_ids"]) & set(DEV["body"]["world_ids"])
+    assert not q["implementation"]["dirty"] and P.binding_mismatch(frozen["implementation"], q["implementation"]) == []
+    assert q["implementation"]["numerical_profile"]["blas"]["threads"] == 1
+    assert set(q["robustness"]) == {"Prescott", "Haswell"}
+    assert all(v["core_in_effect"] == core and v["threads"] == 1 for core, v in q["robustness"].items())
+
+
+def test_recorded_verdict_follows_from_the_recorded_rows_and_the_registered_rule():
+    q = QUAL["body"]
+    spec = P.load_spec()
+    verdict = X.gates(q["per_world"], spec, q["choices"], q["determinism"], q["transplant_probe"])
+    for key in ("validity", "mechanics", "gates", "disposition", "outcome", "counts"):
+        assert P.plain(verdict[key]) == q["pre_robustness_verdict"][key], key
+    robust_ok = all(v["identical"] for v in q["robustness"].values())
+    assert robust_ok == all(v["comparable"] == q["pre_robustness_verdict"] for v in q["robustness"].values())
+    assert q["gates"] == dict(q["pre_robustness_verdict"]["gates"], M_numerical_robustness=robust_ok)
+    sel = q["choices"]["selected"]["candidate"]
+    rows = lambda k: [q["per_world"][w]["P"]["mechanisms"][k] for w in q["world_ids"]]  # noqa: E731
+    final = X.disposition(q["validity"], q["mechanics"], q["gates"], rows(sel), rows("M0"), rows("M1"),
+                          spec["thresholds"])
+    assert (final["disposition"], final["outcome"]) == (q["disposition"], q["outcome"])
+
+
+def test_qual_disposition_is_recorded_as_found():
+    q = QUAL["body"]
+    assert q["disposition"] == "PARTIAL_REDUCTION" and q["outcome"] == "OUTCOME_C"
+    assert all(q["mechanics"].values()) and all(q["validity"].values())
+    failed = sorted(k for k, v in q["gates"].items() if not v)
+    assert failed == ["G_state_causality", "L_native_feasibility", "M_numerical_robustness"]
+    assert q["choices"] == {"hidden_gain": 2.0, "selected": {"candidate": "K3"}}
+
+
+_QUAL_REPLAY = """
+import ctypes, json, sys
+import research.ecs_retention_r2
+from elpis.ECS_G.native import ECSGLibrary
+from research.ecs_retention_r2 import experiment as X, protocol as P, run as R
+library, world = sys.argv[1], sys.argv[2]
+q = P.load(R.QUAL_PATH, "qual")["body"]
+stale = P.binding_mismatch(q["implementation"], P.implementation(library))
+got = None
+if not stale:
+    lab = X.Lab(ECSGLibrary(ctypes.CDLL(library)), P.load_spec())
+    got = P.plain(X.qual_world(lab, world, q["choices"]))
+sys.stdout.write(json.dumps({"stale": stale, "world": got}))
+"""
+
+
+def _strip_timing(value):
+    if isinstance(value, dict):
+        return {k: _strip_timing(v) for k, v in value.items() if k != "learn_seconds"}
+    if isinstance(value, list):
+        return [_strip_timing(v) for v in value]
+    return value
+
+
+def test_a_qual_world_reproduces_exactly_under_the_recorded_binding():
+    """HISTORICAL REPLAY (bitwise) of one QUAL world; only under the full recorded binding."""
+    env = dict(os.environ, PYTHONPATH=f"{REPO / 'src'}{os.pathsep}{REPO}", PYTHONDONTWRITEBYTECODE="1",
+               OPENBLAS_NUM_THREADS="1", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
+    out = subprocess.run([sys.executable, "-c", _QUAL_REPLAY, str(_library_path()), "qual-0007"], cwd=REPO, env=env,
+                         capture_output=True, text=True, check=True)
+    result = json.loads(out.stdout)
+    if result["stale"]:
+        pytest.skip(f"HISTORICAL_REPLAY_ENVIRONMENT_MISMATCH: bitwise QUAL replay is demanded only under the "
+                    f"recorded binding: {result['stale']}")
+    assert _strip_timing(result["world"]) == _strip_timing(QUAL["body"]["per_world"]["qual-0007"])

@@ -2,11 +2,8 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `NO_LANGUAGE_CLAIM` · `SYNTHETIC` · `SEMANTICS=NONE` · `PREREGISTERED`
 
-**Status: RET2D, frozen.** The control-only task rule passed
-V1-V6 at hidden gain 2.0 on every DEV world, and the registered candidate rule
-selected K3 (`evidence/dev/ecsg-retention-r2.v1.dev.json`). The authority is frozen
-(`frozen/ecsg-retention-r2.v1.frozen.json`); QUAL has not run. Canonical ECS_G learning is
-unchanged.
+**Status: RET2E, QUAL ran once** (`evidence/qual/ecsg-retention-r2.v1.qual.json`).
+The interpretation is RET2F. Canonical ECS_G learning is unchanged.
 
 ## Question
 
