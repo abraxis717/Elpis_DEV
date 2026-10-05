@@ -156,6 +156,14 @@ def ecs_independence(root: Path) -> list[str]:
                     "tests/test_ecsg_fms.c": {"elpis/fms_pal_posix.h"},
                     "tests/test_ecsg_fms_alloc.c": {"elpis/fms_pal_posix.h"},
                     "tests/test_ecsg_fms_performance.c": {"elpis/fms_pal_posix.h"},
+                    # Native K1 runtime (docs/ECS_K1_RUNTIME.md): SHA-256 envelope digests, the private K1/residency
+                    # interface, and generic FMS for its residency adapter only.
+                    "src/ecsg_k1.c": {"elpis/sha256.h", "ecsg_k1_internal.h"},
+                    "src/ecsg_k1_fms.c": {"elpis/sha256.h", "ecsg_k1_internal.h"},
+                    "include/elpis/ecsg_k1_fms.h": {"elpis/fms.h"},
+                    "tests/test_ecsg_k1_fms.c": {"elpis/fms_pal.h", "elpis/fms_pal_posix.h"},
+                    "tests/test_ecsg_k1_fms_alloc.c": {"elpis/fms_pal_posix.h"},
+                    "tests/test_ecsg_k1_performance.c": {"elpis/fms_pal_posix.h"},
                 }
                 if not inc.startswith("elpis/ecsg_") and inc not in allowed.get(relative, set()):
                     out.append(f"{path.relative_to(root)}: includes {inc}")

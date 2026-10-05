@@ -25,6 +25,8 @@ import subprocess
 
 import pytest
 
+from .._k1_promotion import admitted, field_admitted
+
 REPO = Path(__file__).resolve().parents[3]
 ROOT = REPO / "research" / "ecs_retention_r1"
 LAB = "research/ecs_retention_r1"
@@ -359,9 +361,11 @@ def test_no_canonical_retention_mechanism_is_promoted():
     sources = sorted((REPO / "src" / "elpis" / "ECS_G").rglob("*.py")) + sorted(
         p for p in (REPO / "native" / "ECS_G").rglob("*") if p.suffix in (".c", ".h"))
     assert sources
-    offenders = [str(p.relative_to(REPO)) for p in sources if vocabulary.search(p.read_text(encoding="utf-8"))]
+    exempt = admitted(REPO)          # tests/research/_k1_promotion.py: the K1 milestone, only after R3 OUTCOME_A
+    offenders = [str(p.relative_to(REPO)) for p in sources if vocabulary.search(p.read_text(encoding="utf-8"))
+                 and str(p.relative_to(REPO)) not in exempt]
     assert not offenders, offenders
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
     ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
     for key in ("purpose", "mutation_authority", "runtime_participation"):
-        assert not vocabulary.search(ecsg[key]), key
+        assert field_admitted(REPO, ecsg[key], vocabulary), key

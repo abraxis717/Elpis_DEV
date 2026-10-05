@@ -1,0 +1,197 @@
+#ifndef ELPIS_ECSG_K1_H
+#define ELPIS_ECSG_K1_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*
+ * ECS_G native consolidation runtime: K1 (docs/ECS_K1_RUNTIME.md).
+ *
+ * The qualified mechanism is Retention R3's K1 (OUTCOME_A,
+ * docs/research/ECS_RETENTION_R3_RESULTS.md). One K1 state owns the complete
+ * cognitive state
+ *
+ *     W[dim, width]   epoch   H (packed symmetric F x F)   a[F]
+ *
+ * with F = |S3| (83 at dim 6), plus non-authoritative scratch and a candidate
+ * for transactions. The law, exactly as qualified:
+ *
+ *   CONSOLIDATE(X):  H <- H + Sigma(X),  Sigma = (1/n) sum_r phi(x_r) phi(x_r)^T
+ *                    a <- S3(W)          (no target ever enters)
+ *   LEARN step:      W <- G1(W; X, y) - eta J(W)^T u,  u = 1/2 H (S3(W) - a),
+ *                    u evaluated at the pre-step W
+ *   QUERY:           f_W(X), reads W only; H and a never touch a query
+ *
+ * G1 and the forward map are computed in the reference's per-element order, so
+ * a state whose H is zero (fresh, reset, or a W-only import) learns and answers
+ * bitwise as the Runtime R1 executor does.
+ *
+ * QUERY is one call (state + X -> f_W(X)), read-only, no allocation. LEARN is
+ * one call for K steps (no per-step crossing): X and y are admitted once, the K
+ * loop runs natively on staging buffers, any refusal leaves the complete state
+ * unchanged, success commits W' and epoch + K together. CONSOLIDATE is one call
+ * and commits H' and a' together. A transaction stages a complete candidate
+ * (W, epoch, H, a) and commits all four at once, or nothing.
+ *
+ * Memory: create/restore allocate the object and one 64-byte-aligned arena;
+ * no operation allocates afterwards except an explicit reserve (cold path).
+ *
+ * Concurrency: SINGLE_WRITER per state; concurrent entry is refused (BUSY).
+ * Distinct states are independent and share nothing.
+ *
+ * Persistent format (ELPIS K1 retained-state envelope v1), all integers and
+ * binary64 values little-endian, explicit layout:
+ *
+ *   0   magic "ELPISGK1"                 8 bytes
+ *   8   version (u32) = 1                12  mechanism (u32) = 1 (K1)
+ *   16  dim (u64)    24 width (u64)      32  features F (u64)
+ *   40  epoch (u64)  48 provenance (u64) 56  reserved (u64) = 0
+ *   64  W (dim*width f64) | H packed upper, row-major (F(F+1)/2 f64) | a (F f64)
+ *   end SHA-256 of every preceding byte (32 bytes)
+ *
+ * Restore refuses a wrong magic, version, mechanism, shape, size, provenance,
+ * reserved field, checksum or any non-finite value. A canonical ELPISG01
+ * W-only snapshot is not a retained state: import_w_only admits it only as an
+ * UNCONSOLIDATED state (H = 0, a = 0, provenance UNCONSOLIDATED_IMPORT).
+ */
+
+enum {
+    ELPIS_ECSG_K1_ABI_V1 = 1u,
+    ELPIS_ECSG_K1_FORMAT_VERSION = 1u,
+    ELPIS_ECSG_K1_MECHANISM = 1u,
+    ELPIS_ECSG_K1_HEADER_BYTES = 64u,
+    ELPIS_ECSG_K1_DIGEST_BYTES = 32u
+};
+
+typedef enum {
+    ELPIS_ECSG_K1_OK = 0,
+    ELPIS_ECSG_K1_INVALID = -1,    /* bad arguments, handle, shape or token */
+    ELPIS_ECSG_K1_NONFINITE = -2,  /* non-finite input or intermediate */
+    ELPIS_ECSG_K1_STALE = -3,      /* the transaction's source was replaced */
+    ELPIS_ECSG_K1_BUSY = -4,       /* concurrent entry, or reserve with an open transaction */
+    ELPIS_ECSG_K1_CAPACITY = -5,   /* more rows than the admitted capacity */
+    ELPIS_ECSG_K1_NOMEM = -6,      /* allocation failed (create, restore, reserve only) */
+    ELPIS_ECSG_K1_CORRUPT = -7     /* a retained-state envelope failed validation */
+} elpis_ecsg_k1_status;
+
+typedef enum {
+    ELPIS_ECSG_K1_COMPLETE = 0,               /* created, restored or consolidated */
+    ELPIS_ECSG_K1_RESET = 1,                  /* H and a emptied by reset */
+    ELPIS_ECSG_K1_UNCONSOLIDATED_IMPORT = 2   /* imported from a W-only ELPISG01 snapshot */
+} elpis_ecsg_k1_provenance;
+
+typedef struct elpis_ecsg_k1 elpis_ecsg_k1;
+
+typedef struct {
+    uint64_t epoch_before;
+    uint64_t epoch_after;
+    uint64_t generation_before;
+    uint64_t generation_after;
+    uint64_t steps;        /* steps applied by this transition */
+    uint64_t failed_step;  /* 1-based step that refused (nothing committed); 0 otherwise */
+} elpis_ecsg_k1_transition;
+
+typedef struct {
+    size_t workspace_bytes;      /* arena bytes currently owned */
+    size_t max_rows;
+    uint64_t heap_allocations;   /* create, restore and reserve only */
+    uint64_t forward_calls;
+    uint64_t learn_calls;
+    uint64_t steps_executed;
+    uint64_t corrected_steps;    /* steps that applied a non-zero K1 correction */
+    uint64_t consolidations;
+    uint64_t commits;
+    uint64_t refusals;
+    uint64_t txn_begins;
+    uint64_t txn_aborts;
+    uint64_t stale_refusals;
+    uint64_t busy_refusals;
+} elpis_ecsg_k1_counters;
+
+uint32_t elpis_ecsg_k1_abi_version(void);
+
+/* Sizes (0 on an invalid shape or overflow). */
+size_t elpis_ecsg_k1_features(size_t dim);
+size_t elpis_ecsg_k1_payload_bytes(size_t dim, size_t width);   /* W, H packed, a */
+size_t elpis_ecsg_k1_image_bytes(size_t dim, size_t width);     /* header + payload */
+size_t elpis_ecsg_k1_envelope_bytes(size_t dim, size_t width);  /* image + SHA-256 */
+size_t elpis_ecsg_k1_workspace_bytes(size_t dim, size_t width, size_t max_rows);
+
+/* A complete state from W with an empty consolidation (H = 0, a = 0). */
+elpis_ecsg_k1_status
+elpis_ecsg_k1_create(size_t dim, size_t width, size_t max_rows, const double *initial_w, elpis_ecsg_k1 **out);
+
+/* A complete state from a retained-state envelope (validated). */
+elpis_ecsg_k1_status
+elpis_ecsg_k1_restore(const uint8_t *envelope, size_t size, size_t max_rows, elpis_ecsg_k1 **out);
+
+/* A canonical ELPISG01 W-only snapshot, admitted only as UNCONSOLIDATED. */
+elpis_ecsg_k1_status
+elpis_ecsg_k1_import_w_only(const uint8_t *snapshot, size_t size, size_t max_rows, elpis_ecsg_k1 **out);
+
+elpis_ecsg_k1_status elpis_ecsg_k1_destroy(elpis_ecsg_k1 **state);
+elpis_ecsg_k1_status elpis_ecsg_k1_reserve(elpis_ecsg_k1 *state, size_t max_rows);
+
+size_t elpis_ecsg_k1_dim(const elpis_ecsg_k1 *state);
+size_t elpis_ecsg_k1_width(const elpis_ecsg_k1 *state);
+size_t elpis_ecsg_k1_max_rows(const elpis_ecsg_k1 *state);
+uint64_t elpis_ecsg_k1_epoch(const elpis_ecsg_k1 *state);
+uint64_t elpis_ecsg_k1_generation(const elpis_ecsg_k1 *state);
+uint32_t elpis_ecsg_k1_provenance_of(const elpis_ecsg_k1 *state);
+
+/* QUERY: out[r] = f_W(x_r). Reads W only. */
+elpis_ecsg_k1_status
+elpis_ecsg_k1_forward(elpis_ecsg_k1 *state, const double *x, size_t rows, double *out);
+
+/* LEARN: `steps` K1 steps on (x, y), committed as one transition (W, epoch). */
+elpis_ecsg_k1_status
+elpis_ecsg_k1_learn(elpis_ecsg_k1 *state, const double *x, const double *y, size_t rows,
+                    double learning_rate, uint64_t steps, elpis_ecsg_k1_transition *transition);
+
+/* CONSOLIDATE: H <- H + Sigma(x), a <- S3(W). Inputs only; committed together. */
+elpis_ecsg_k1_status
+elpis_ecsg_k1_consolidate(elpis_ecsg_k1 *state, const double *x, size_t rows,
+                          elpis_ecsg_k1_transition *transition);
+
+/* RESET: H <- 0, a <- 0; W and epoch kept; provenance RESET. */
+elpis_ecsg_k1_status elpis_ecsg_k1_reset(elpis_ecsg_k1 *state, elpis_ecsg_k1_transition *transition);
+
+/* Copies of the authoritative state (cold path; for qualification and export). */
+elpis_ecsg_k1_status elpis_ecsg_k1_copy_w(elpis_ecsg_k1 *state, double *out, size_t count);
+elpis_ecsg_k1_status elpis_ecsg_k1_copy_h_packed(elpis_ecsg_k1 *state, double *out, size_t count);
+elpis_ecsg_k1_status elpis_ecsg_k1_copy_a(elpis_ecsg_k1 *state, double *out, size_t count);
+
+size_t elpis_ecsg_k1_snapshot_size(const elpis_ecsg_k1 *state);
+elpis_ecsg_k1_status elpis_ecsg_k1_snapshot_write(elpis_ecsg_k1 *state, uint8_t *out, size_t size);
+
+elpis_ecsg_k1_status elpis_ecsg_k1_stats(elpis_ecsg_k1 *state, elpis_ecsg_k1_counters *out);
+
+/*
+ * Transactions: at most one open per state. begin stages a candidate copy of
+ * the complete state; learn, consolidate and forward act on the candidate;
+ * commit installs W, epoch, H and a together (generation + 1) unless another
+ * commit replaced the source since begin (STALE, candidate discarded). A
+ * refused candidate operation discards the transaction. abort discards it.
+ */
+elpis_ecsg_k1_status elpis_ecsg_k1_txn_begin(elpis_ecsg_k1 *state, uint64_t *token);
+elpis_ecsg_k1_status
+elpis_ecsg_k1_txn_learn(elpis_ecsg_k1 *state, uint64_t token, const double *x, const double *y, size_t rows,
+                        double learning_rate, uint64_t steps, elpis_ecsg_k1_transition *transition);
+elpis_ecsg_k1_status
+elpis_ecsg_k1_txn_consolidate(elpis_ecsg_k1 *state, uint64_t token, const double *x, size_t rows);
+elpis_ecsg_k1_status
+elpis_ecsg_k1_txn_forward(elpis_ecsg_k1 *state, uint64_t token, const double *x, size_t rows, double *out);
+elpis_ecsg_k1_status elpis_ecsg_k1_txn_epoch(elpis_ecsg_k1 *state, uint64_t token, uint64_t *epoch);
+elpis_ecsg_k1_status
+elpis_ecsg_k1_txn_commit(elpis_ecsg_k1 *state, uint64_t token, elpis_ecsg_k1_transition *transition);
+elpis_ecsg_k1_status elpis_ecsg_k1_txn_abort(elpis_ecsg_k1 *state, uint64_t token);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

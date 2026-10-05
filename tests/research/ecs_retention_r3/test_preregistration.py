@@ -23,6 +23,8 @@ import subprocess
 
 import pytest
 
+from .._k1_promotion import admitted
+
 REPO = Path(__file__).resolve().parents[3]
 LAB = "research/ecs_retention_r3"
 ROOT = REPO / LAB
@@ -341,10 +343,13 @@ def test_no_result_is_claimed_before_terminal_evidence():
 
 
 def test_no_canonical_retention_mechanism_before_an_r3_outcome_a_record():
-    if _qual_outcome() == "OUTCOME_A":
-        pytest.skip("an R3 OUTCOME_A record exists; the native milestone is governed by its own qualification")
+    """Before OUTCOME_A no canonical file names a retention mechanism; after it, only the K1 milestone's files do
+    (tests/research/_k1_promotion.py)."""
     vocabulary = re.compile(r"(?i)consolidat|retention|laplace|fibre|recondition|rehears")
     sources = sorted((REPO / "src" / "elpis" / "ECS_G").rglob("*.py")) + sorted(
         p for p in (REPO / "native" / "ECS_G").rglob("*") if p.suffix in (".c", ".h"))
-    offenders = [str(p.relative_to(REPO)) for p in sources if vocabulary.search(p.read_text(encoding="utf-8"))]
+    exempt = admitted(REPO)
+    assert bool(exempt) == (_qual_outcome() == "OUTCOME_A")
+    offenders = [str(p.relative_to(REPO)) for p in sources if vocabulary.search(p.read_text(encoding="utf-8"))
+                 and str(p.relative_to(REPO)) not in exempt]
     assert not offenders, offenders

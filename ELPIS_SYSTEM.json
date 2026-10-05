@@ -136,7 +136,9 @@
       ],
       "native_targets": [
         "elpis_ecsg_math",
-        "elpis_ecsg_fms"
+        "elpis_ecsg_fms",
+        "elpis_ecsg_k1",
+        "elpis_ecsg_k1_fms"
       ],
       "depends_on": [
         "substrate"
