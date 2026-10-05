@@ -2,11 +2,11 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `NO_LANGUAGE_CLAIM` · `SYNTHETIC` · `SEMANTICS=NONE` · `PREREGISTERED`
 
-**Status: RET2B, laboratory mechanics.** The laboratory (`protocol.py`,
-`numerics.py`, `task.py`, `engine.py`, `experiment.py`, `run.py`) implements the
-RET2A specification; its mechanics tests use test-* worlds only. There is no DEV
-or QUAL evidence, no frozen record, no selected candidate and no result.
-Canonical ECS_G learning is unchanged.
+**Status: RET2C, DEV accepted the task.** The control-only task rule passed
+V1-V6 at hidden gain 2.0 on every DEV world, and the registered candidate rule
+selected K3 (`evidence/dev/ecsg-retention-r2.v1.dev.json`). DEV is not a
+result: nothing is frozen and QUAL has not run. Canonical ECS_G learning is
+unchanged.
 
 ## Question
 
