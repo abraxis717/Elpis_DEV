@@ -154,3 +154,7 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
   task and ended `PARTIAL_REDUCTION`: the selected candidate retained every
   experience in 24/24 QUAL worlds, but the causality, native-feasibility and
   numerical-robustness gates failed, so nothing is qualified or canonical.
+
+* **Retention R3** (`research/ecs_retention_r3`, RESEARCH_ONLY) is preregistered: a
+  confirmatory experiment on K1 alone, with the reset challenge read before any later
+  experience can re-teach; no result, and no retention mechanism is canonical.
