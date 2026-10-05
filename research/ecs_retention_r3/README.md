@@ -2,8 +2,10 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `NO_LANGUAGE_CLAIM` · `SYNTHETIC` · `SEMANTICS=NONE` · `PREREGISTERED` · `CONFIRMATORY`
 
-**Status: RET3E, QUAL ran once** (`evidence/qual/ecsg-retention-r3.v1.qual.json`).
-The interpretation is RET3F.
+**Status: closed at RET3F. Disposition `RETENTION_SUPPORTED_UNDER_FROZEN_SYNTHETIC_REGIME`
+(`OUTCOME_A`).** K1 is qualified for the native milestone. It is not canonical
+until that milestone merges with its own differential qualification. Canonical
+ECS_G learning is unchanged by this experiment.
 Canonical ECS_G learning is unchanged.
 
 ## Question
@@ -37,7 +39,7 @@ RET3A  preregistration
 RET3B  laboratory mechanics (test-* worlds only)
 RET3C  DEV (control-only task check; then the K1 DEV rule)
 RET3D  freeze
-RET3E  QUAL once (with the numerical-robustness children)   <- this step
+RET3E  QUAL once (with the numerical-robustness children)
 RET3F  interpretation
 ```
 
@@ -79,6 +81,33 @@ Implementation decisions recorded before DEV:
   no uninformed or mismatched ablation, so no random stream is passed.
 - **W-only snapshots.** These are read with the `ELPISG01` R0 layout (magic,
   version, dim, width, epoch, W) and checked against the expected shape.
+
+## Result
+
+**DEV** (8 worlds, record `de81e79e...`) ended `K1_PROCEEDS`. The task was
+valid: M0 held 0/8 and M1 held 8/8. K1 held 8/8, and the reset challenge was
+degraded in 8/8. The authority was frozen at RET3D (`541a2cdd...`).
+
+**QUAL** (32 worlds, record `7e9417b3...`, run once):
+
+| | sequence held | median earlier-experience nmse at D |
+|---|---|---|
+| M0 plain G1 | 0/32 | 0.690 |
+| M1 rehearsal | 32/32 | 0.0030 |
+| C1R | 24/32 | 0.041 |
+| **K1** | **32/32** | **0.0013** |
+
+The causal tests:
+- state removal held 0/32;
+- the reset challenge at the C boundary was degraded in 31/32, with median
+  ratio 263;
+- the full-state transplant was bitwise in 32/32;
+- the W-only negative control passed 32/32.
+
+Gates A–L all hold. Gate L's decision record was identical under Prescott and
+Haswell. The disposition is `OUTCOME_A`.
+
+Full interpretation: `docs/research/ECS_RETENTION_R3_RESULTS.md`.
 
 ## Commands (from RET3B)
 

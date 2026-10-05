@@ -191,3 +191,43 @@ def test_a_qual_world_reproduces_exactly_under_the_recorded_binding():
         pytest.skip(f"HISTORICAL_REPLAY_ENVIRONMENT_MISMATCH: bitwise QUAL replay is demanded only under the "
                     f"recorded binding: {result['stale']}")
     assert _strip_timing(result["world"]) == _strip_timing(QUAL["body"]["per_world"]["r3qual-0011"])
+
+
+# --- RET3F: the interpretation and the authority pointers state the record and claim no more ------------------------
+
+RESULTS = REPO / "docs" / "research" / "ECS_RETENTION_R3_RESULTS.md"
+OVERCLAIMS = ("retention is solved", "elpis now remembers", "continual learning is achieved", "understands language",
+              "k1 is canonical", "is now canonical", "general memory")
+
+
+def test_results_report_the_recorded_disposition_and_claim_no_more():
+    text = " ".join(RESULTS.read_text(encoding="utf-8").split())
+    q = QUAL["body"]
+    for needle in ("RETENTION_SUPPORTED_UNDER_FROZEN_SYNTHETIC_REGIME", "OUTCOME_A", DEV["digest"], FROZEN["digest"],
+                   QUAL["digest"], q["implementation"]["library"]["sha256"], RET3B_COMMIT[:7], "SEMANTICS=NONE",
+                   "K1 is qualified for the native milestone", "changes no canonical code by itself",
+                   "no retention mechanism is canonical", "RESET_DEGRADED 31/32", "does not make K1 canonical",
+                   "PARTIAL_REDUCTION"):
+        assert needle in text, needle
+    lowered = text.lower()
+    for overclaim in OVERCLAIMS:
+        assert overclaim not in lowered, overclaim
+    c = q["counts"]
+    for name in ("M0", "M1", "C1R", "K1"):
+        assert f"| {c[name]['SEQUENCE_HELD']} |" in text, name
+
+
+def test_authority_pointers_state_the_recorded_disposition_and_no_canonical_promotion_yet():
+    system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
+    component = next(c for c in system["research"]["components"] if c["path"] == "research/ecs_retention_r3")
+    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
+    interface = next(i for i in ecsg["incomplete_interfaces"] if i.startswith("Retention R3"))
+    cognition = (REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8")
+    cognition = cognition.split("**Retention R3**", 1)[1].split("\n\n", 1)[0]
+    readme = (R.ROOT / "README.md").read_text(encoding="utf-8")
+    for where, text in (("component", component["classification"]), ("ECS_G interface", interface),
+                        ("COGNITION_R0", cognition), ("README", readme)):
+        flat = " ".join(text.split())
+        assert "OUTCOME_A" in flat, where
+        assert "native" in flat and "milestone" in flat and ("not canonical" in flat or "no retention mechanism is canonical" in flat), where
+    assert component["classification"].startswith("QUALIFIED (RESEARCH)")
