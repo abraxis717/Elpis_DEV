@@ -1,0 +1,73 @@
+"""K1 runtime hot-path gate, static part (docs/ECS_K1_RUNTIME.md).
+
+PYTHON MAY CONTROL THE ECS. PYTHON MUST NOT EXECUTE THE ECS HOT PATH.
+
+``elpis.ECS_G.k1`` admits, calls native code once and packages: no loop on a query, learn, consolidate or commit path,
+no step-count loop anywhere, no cognitive mathematics, no NumPy. The residency adapter keeps FMS generic: it uses the
+public FMS API only, and FMS names no K1 vocabulary. The behavioural half lives in tests/ECS_G/test_k1_runtime.py and
+the native tests (ctest ECS_G.test_ecsg_k1*).
+"""
+from __future__ import annotations
+
+import ast
+import re
+
+import pytest
+
+from . import _mission as M
+from ._system import REPO
+
+K1 = REPO / "src" / "elpis" / "ECS_G" / "k1.py"
+ADAPTER = REPO / "native" / "ECS_G" / "src" / "ecsg_k1_fms.c"
+HOT = ("K1State.query", "K1State.query_into", "K1State.learn", "K1State.consolidate", "K1State.reset",
+       "K1Transaction.learn", "K1Transaction.consolidate", "K1Transaction.query", "K1Transaction.commit",
+       "K1FMSRuntime.query", "K1FMSRuntime.query_into", "K1FMSRuntime.learn", "K1FMSRuntime.consolidate",
+       "_FMSTransaction.learn", "_FMSTransaction.consolidate", "_FMSTransaction.query", "_FMSTransaction.commit")
+LOOPS = (ast.For, ast.AsyncFor, ast.While, ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+
+
+def _functions(path):
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    found = {}
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef):
+            for item in node.body:
+                if isinstance(item, ast.FunctionDef):
+                    found[f"{node.name}.{item.name}"] = item
+        elif isinstance(node, ast.FunctionDef):
+            found[node.name] = node
+    return tree, found
+
+
+@pytest.mark.parametrize("name", HOT)
+def test_hot_path_functions_never_iterate_in_python(name):
+    _, functions = _functions(K1)
+    assert name in functions, name
+    loops = [type(n).__name__ for n in ast.walk(functions[name]) if isinstance(n, LOOPS)]
+    assert not loops, f"{name} iterates in Python: {loops}"
+
+
+def test_no_step_count_loop_and_no_cognitive_mathematics_in_the_control_plane():
+    tree, _ = _functions(K1)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.For, ast.comprehension)) and isinstance(node.iter, ast.Call) and \
+                isinstance(node.iter.func, ast.Name) and node.iter.func.id == "range":
+            raise AssertionError(f"k1.py:{node.lineno} ranges in Python")
+    code = "\n".join(line.split("#", 1)[0] for line in K1.read_text(encoding="utf-8").splitlines())
+    for forbidden in (r"\bmath\.", r"\*\*\s*3", r"\bsum\(", r"\bnumpy\b", r"\bs3_vjp\b", r"\bjacobian\b"):
+        assert not re.search(forbidden, code), forbidden
+    imports = M.imports_of(REPO, K1)
+    roots = {name if name.startswith("elpis.") else name.split(".", 1)[0] for name in imports}
+    roots = {"elpis.ECS_G.native" if name.startswith("elpis.ECS_G.native") else name for name in roots}
+    assert roots <= {"__future__", "ctypes", "struct", "types", "elpis.ECS_G.native"}, imports
+
+
+def test_residency_adapter_uses_public_fms_and_keeps_fms_generic():
+    source = ADAPTER.read_text(encoding="utf-8")
+    for call in ("fms_acquire(", "fms_release(", "fms_register(", "fms_unregister(", "fms_query("):
+        assert call in source, call
+    for forbidden in ("fms_core", "slot_t", "PyObject", "DSV", "elpis_ecsg_executor_restore", "fopen(", "pwrite("):
+        assert forbidden not in source, forbidden
+    assert not M.fms_genericity(REPO)
+    assert not M.ecs_independence(REPO)
+    assert not M.ecsg_kernel_unchanged(REPO), "the pinned Runtime R1 kernel sources must not change"

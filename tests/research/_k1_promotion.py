@@ -1,0 +1,102 @@
+"""The single admitted exception to the Retention R1/R2/R3 canonical-vocabulary guards.
+
+Those guards assert that canonical ECS_G code names no retention mechanism (consolidation, protection,
+reconditioning, rehearsal) while none has qualified. Retention R3 ended OUTCOME_A, which its preregistration names
+as the condition for a native K1 milestone; that milestone must itself pass its differential qualification
+(research/ecs_k1_native). Only when both hold may exactly the milestone's files use the vocabulary; every other
+canonical ECS_G file, and every R1/R2/R3 record, specification and verdict, is unchanged.
+
+The exception is void unless the R3 QUAL record is byte-for-byte the recorded one (sha256 pinned here, as in
+tests/research/ecs_retention_r3/test_evidence.py) and states OUTCOME_A, and one of ADMITTED_NATIVE_RECORDS verifies
+completely (byte pin, internal digest, plan, clean harness commit, R3 binding) and states QUALIFIED. A file merely
+claiming "QUALIFIED" admits nothing. ecsg-k1-native.v1 recorded NOT_QUALIFIED (docs/research/ECS_K1_NATIVE_RESULTS.md)
+and is never admitted; while the K1 files exist without an admitted record, the R1/R2/R3 guards fail by design.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from pathlib import Path
+
+R3_QUAL = Path("research/ecs_retention_r3/evidence/qual/ecsg-retention-r3.v1.qual.json")
+R3_QUAL_SHA256 = "83ce2d61f30bb2927e1288995de5eb00ce41ff48767d54faedde88c8266c20e6"
+
+K1_FILES = frozenset({
+    "src/elpis/ECS_G/k1.py",
+    "native/ECS_G/include/elpis/ecsg_k1.h",
+    "native/ECS_G/include/elpis/ecsg_k1_fms.h",
+    "native/ECS_G/src/ecsg_k1.c",
+    "native/ECS_G/src/ecsg_k1_fms.c",
+    "native/ECS_G/src/ecsg_k1_internal.h",
+    "native/ECS_G/tests/test_ecsg_k1.c",
+    "native/ECS_G/tests/test_ecsg_k1_alloc.c",
+    "native/ECS_G/tests/test_ecsg_k1_fms.c",
+    "native/ECS_G/tests/test_ecsg_k1_fms_alloc.c",
+    "native/ECS_G/tests/test_ecsg_k1_fms_faults.c",
+    "native/ECS_G/tests/test_ecsg_k1_performance.c",
+})
+
+
+def r3_outcome_a(repo: Path) -> bool:
+    path = repo / R3_QUAL
+    if not path.is_file():
+        return False
+    data = path.read_bytes()
+    if hashlib.sha256(data).hexdigest() != R3_QUAL_SHA256:
+        return False
+    return json.loads(data)["body"]["outcome"] == "OUTCOME_A"
+
+
+NATIVE_DOMAIN = "elpis.research.ecs-k1-native"
+
+# The only native qualification records that may admit K1 into canonical code: each one byte-pinned, with the
+# plan, the clean harness commit and the R3 authority it must be bound to. Empty until a plan version qualifies.
+ADMITTED_NATIVE_RECORDS: dict = {}
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def native_digest(kind: str, value) -> str:
+    """The research/ecs_k1_native record digest (domain-separated SHA-256 of canonical JSON), without NumPy."""
+    canonical = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
+    return hashlib.sha256(f"{NATIVE_DOMAIN}.{kind}.v1".encode("ascii") + b"\0" + canonical.encode("ascii")).hexdigest()
+
+
+def native_record_admitted(repo: Path, relative: str, pin: dict) -> bool:
+    """Every binding of one admitted record: bytes, internal digest, plan, harness commit, R3 authority, verdict."""
+    path = repo / relative
+    plan = repo / pin["plan"]
+    if not path.is_file() or not plan.is_file() or _sha256(path) != pin["sha256"]:
+        return False
+    record = json.loads(path.read_bytes())
+    body = record.get("body", {})
+    impl = body.get("implementation", {})
+    return (record.get("digest") == pin["digest"] == native_digest("qualification", body)
+            and body.get("experiment") == pin["experiment"]
+            and _sha256(plan) == pin["plan_sha256"] == impl.get("plan_sha256")
+            and body.get("plan_digest") == native_digest("plan", json.loads(plan.read_bytes()))
+            and impl.get("base_commit") == pin["harness_commit"] and impl.get("dirty") is False
+            and body.get("r3_qual_digest") == pin["r3_qual_digest"] and r3_outcome_a(repo)
+            and body.get("verdict") == "QUALIFIED")
+
+
+def native_qualified(repo: Path) -> bool:
+    """A specifically admitted, fully bound native qualification record states QUALIFIED. Any other file under
+    research/ecs_k1_native/evidence, whatever it claims, admits nothing."""
+    return any(native_record_admitted(repo, relative, pin) for relative, pin in ADMITTED_NATIVE_RECORDS.items())
+
+
+def admitted(repo: Path) -> frozenset:
+    """Repository-relative files that may name the K1 mechanism: the K1 milestone's, and only after R3 OUTCOME_A
+    and a QUALIFIED native differential qualification."""
+    return K1_FILES if r3_outcome_a(repo) and native_qualified(repo) else frozenset()
+
+
+def field_admitted(repo: Path, text: str, vocabulary: re.Pattern) -> bool:
+    """An ELPIS_SYSTEM.json ECS_G field may use the vocabulary only after R3 OUTCOME_A, and only in sentences that
+    name K1."""
+    sentences = [s for s in re.split(r"(?<=[.;])\s+", text) if vocabulary.search(s)]
+    return not sentences or (r3_outcome_a(repo) and native_qualified(repo) and all("K1" in s for s in sentences))

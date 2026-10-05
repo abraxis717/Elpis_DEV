@@ -160,3 +160,8 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
   consolidation retained every experience in 32/32 QUAL worlds and was causal
   (removal and reset lose it, transplant restores it). K1 is eligible for the native
   milestone; until that milestone merges, no retention mechanism is canonical.
+
+* **Native K1 milestone** (`research/ecs_k1_native`, `docs/research/ECS_K1_NATIVE_RESULTS.md`):
+  its preregistered differential qualification against the R3 record is `NOT_QUALIFIED`
+  (2 of 32 worlds outside the planned float tolerances; every exact comparison and the R3
+  decision record reproduced). It is not promoted, and no retention mechanism is canonical.

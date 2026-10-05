@@ -1,0 +1,170 @@
+{
+  "authority": {
+    "k1n_v1": {
+      "plan": "research/ecs_k1_native/specs/ecsg-k1-native.v1.plan.json",
+      "record": "research/ecs_k1_native/evidence/ecsg-k1-native.v1.qualification.json",
+      "record_sha256": "df730b5f1542faace08fad9079bdae403c049b5d051b29a3a0bc73409018f374",
+      "verdict": "NOT_QUALIFIED"
+    },
+    "r3_frozen": {
+      "digest": "541a2cdd8350c7fe875be9c08e944d6af387a15359723c6b6de58f0163ac3bc5",
+      "path": "research/ecs_retention_r3/frozen/ecsg-retention-r3.v1.frozen.json",
+      "sha256": "7be80fee34142a6b226eaf57d9fec2aba21c397d40faa65eb96bde9d2d4b39e2"
+    },
+    "r3_qual": {
+      "digest": "7e9417b3fbe74329c34bc83daf24bfdf3dcf2ea01ce9d500791ba7e2e08a2627",
+      "outcome": "OUTCOME_A",
+      "path": "research/ecs_retention_r3/evidence/qual/ecsg-retention-r3.v1.qual.json",
+      "sha256": "83ce2d61f30bb2927e1288995de5eb00ce41ff48767d54faedde88c8266c20e6"
+    },
+    "r3_spec": {
+      "path": "research/ecs_retention_r3/specs/ecsg-retention-r3.v1.spec.json",
+      "sha256": "3900d6a9e995885ac888b1ebda5d52bb13df415b20879dab82f401b3910c9e33"
+    }
+  },
+  "bounded_numerics": {
+    "L1_local_horizon": {
+      "justification": "a 16-step horizon admits no macroscopic amplification of rounding (the long-horizon amplification v1 observed needs thousands of steps); the bound sits about five orders above double rounding of the correction",
+      "rule": "from the identical complete state of every boundary A, B and C (the native envelope, decoded exactly into the R3 laboratory's K1 state: W, H unpacked, a), 16 K1 steps of the next experience natively and in the unchanged R3 laboratory engine: max|W_native - W_lab| / max(1, max|W_lab|) <= 1e-10",
+      "sets": [
+        "Q",
+        "F"
+      ]
+    },
+    "L2_consolidation": {
+      "justification": "a single closed-form computation; no dynamics",
+      "rule": "at every boundary, the native (H, a) equals the laboratory consolidation of the same inputs applied to the native pre-consolidation state (previous native H; the native W of the boundary): relative difference <= 1e-12 for H and for a",
+      "sets": [
+        "Q",
+        "F"
+      ]
+    }
+  },
+  "decision_equivalence": {
+    "D1_F": "the same substitution into the same-host laboratory rows of every F world gives a decision record equal, in every key and every per-world row, to the laboratory's own decision record (laboratory determinism: two fresh laboratory runs of the first F world reproduce its recorded stages; laboratory transplant probe: every in-process laboratory transplant continuation bitwise)",
+    "D1_Q": "native rows (K1, state removal, reset challenge, W-only control, transplant, state semantics) and the same-host control rows (M0, M1 through the canonical core; removed C1R and C1R's shared W_A through the unchanged laboratory) substituted into the recorded R3 per-world rows; the unchanged R3 gates (experiment.gates) with the native determinism and clean-process transplant results give a decision record equal to the recorded R3 pre-robustness decision record in every key (validity, mechanics, gates, disposition, outcome, controls) and every per-world K1 and causality row; the final disposition with the recorded gate L is OUTCOME_A",
+    "decision_bearing": [
+      "LEARNED",
+      "RETAINED",
+      "CATASTROPHIC",
+      "HELD",
+      "SEQUENCE_HELD",
+      "RESET_DEGRADED",
+      "state_removed",
+      "W-only control",
+      "transplant",
+      "M0 control",
+      "M1 control",
+      "validity",
+      "mechanics",
+      "gates",
+      "disposition",
+      "outcome"
+    ]
+  },
+  "descriptive_only": [
+    "per-stage nmse differences between native and laboratory rows (F) and recorded rows (Q)",
+    "L1 and L2 maxima",
+    "the F laboratory's own disposition and outcome",
+    "timings"
+  ],
+  "disclosures": [
+    "The same-host invariants and D1_Q (set Q) were exercised during development of the K1N2-A corrections, on this host and under two forced kernels in a development-only simulation; set Q's native behaviour was already fully disclosed by v1. No F world has been built.",
+    "The local horizon (16 steps) and the bounds 1e-10 / 1e-12 are fixed here without measurement on any world."
+  ],
+  "exact_invariants": {
+    "E1_per_world": {
+      "checks": [
+        "k1_disabled_equals_samehost_g1: a never-consolidated native state learning A..D from w0 equals the same-host canonical Runtime R1 G1 sequence (CognitiveCore) bitwise at every boundary, and the same-host M0 row's W digests; no corrected step",
+        "w_a_equals_samehost_canonical: native W after A equals the same-host canonical W_A bitwise",
+        "query_equals_runtime_r1_forward: every native query equals the Runtime R1 executor forward map of the same W bitwise",
+        "epoch_and_provenance: epochs 4000/8000/12000/16000 and provenance COMPLETE at every boundary",
+        "envelope_round_trip: restore then snapshot is bitwise at every boundary",
+        "resident_equals_standalone: the FMS-resident run equals the standalone run bitwise (envelopes)",
+        "reset_mechanics: reset after B keeps W and epoch bitwise, empties H and a, provenance RESET; learn C with no correction; read at C; no D",
+        "w_only_semantics: the Runtime R1 snapshot of W_B imports UNCONSOLIDATED (H = a = 0, W bitwise, different envelope) and learning C from it equals the reset branch bitwise",
+        "transplant_in_process: the B envelope restored and continued through C and D equals the uninterrupted run bitwise",
+        "state_semantics: full and reset B states answer every query bitwise identically",
+        "nothing_refused: no canonical or native step refused"
+      ],
+      "harness": "research/ecs_k1_native/samehost.world_samehost",
+      "sets": [
+        "Q",
+        "F"
+      ]
+    },
+    "E2_determinism": "two fresh native runs of the first world of each set give envelopes bitwise identical to each other and to the worker's run",
+    "E3_clean_transplant": "every world's B envelope, continued through C and D in one clean child process, equals the uninterrupted run bitwise (both sets)",
+    "E4_native_suite": "the qualification build's native K1 tests pass: ctest -R '^ECS_G\\.test_ecsg_k1' (refusal atomicity and the transaction refusal contract, complete-state commit, envelope and hostile-input refusal, provenance, SINGLE_WRITER and race-free getters, FMS residency and fault reconciliation, no hot allocation, structural performance gates)",
+    "E5_structural": "through the Python control plane on one F world: exactly one native crossing per operation for learn with K = 1, 10 and 4000, query, consolidate, and each transaction call; the K1 heap-allocation counter unchanged across all warm operations"
+  },
+  "forbidden": [
+    "CPU-model branches",
+    "forced BLAS kernels (OPENBLAS_CORETYPE)",
+    "per-host expected outputs",
+    "post-hoc tolerances",
+    "per-world tolerances or exception lists",
+    "using r3qual-0019, r3qual-0028 or any v1 outcome to tune anything",
+    "editing any R3 or K1N-v1 file"
+  ],
+  "frozen": "The K1 law, the native mechanism, the R3 task law, regime, thresholds, gates and disposition rules are frozen; no mechanism or model is tuned.",
+  "motivation": "K1N-v1 established, as a general property, that on some K1 trajectories rounding-scale perturbations of the R3 reference itself are amplified macroscopically over thousands of steps, and that R3 task data is BLAS-kernel dependent. v2 therefore (1) takes every reference on the host that runs the comparison, (2) decides on exact invariants and decision-bearing quantities, (3) checks numerical agreement only where it is mathematically bounded (one consolidation; a short local horizon from an identical state), and (4) adds a fresh validation set. Nothing in v2 was tuned on any v1 world or outcome; there is no per-world tolerance and no exception list.",
+  "name": "ecsg-k1-native",
+  "question": "Does the corrected native K1 implementation reproduce the scientifically decision-bearing Retention R3 behaviour and all required runtime/state invariants, without demanding unstable long-horizon coordinate identity between numerically different implementations?",
+  "runs": "once, from a clean tree whose harness commit follows this plan's commit, writing evidence/ecsg-k1-native.v2.qualification.json exclusively; tests/research/ecs_k1_native/test_runtime_regression.py re-runs the same-host Q invariants and D1_Q on every CI host",
+  "semantics": "NONE",
+  "supersedes_for_promotion": "ecsg-k1-native.v1, which stays NOT_QUALIFIED as recorded (its plan, harness, evidence and interpretation are unchanged and are never admitted)",
+  "verdict": {
+    "NOT_QUALIFIED": "anything else; recorded as found; no rerun, no threshold change",
+    "QUALIFIED": "E1 on every world of Q and F, E2, E3, E4, E5, L1, L2, D1_Q (including OUTCOME_A) and D1_F all hold"
+  },
+  "version": 2,
+  "world_sets": {
+    "F": {
+      "construction": "research/ecs_retention_r3/task.build_world(R3 specification, id, R3 hidden gain): seed 20261206, name ecsg-retention-r3, streams keyed by the world id; disjoint from every r3dev-*, r3qual-* and test-* id. None of these worlds is built, run or inspected before the qualification run.",
+      "count": 32,
+      "ids": [
+        "k1n2-0000",
+        "k1n2-0001",
+        "k1n2-0002",
+        "k1n2-0003",
+        "k1n2-0004",
+        "k1n2-0005",
+        "k1n2-0006",
+        "k1n2-0007",
+        "k1n2-0008",
+        "k1n2-0009",
+        "k1n2-0010",
+        "k1n2-0011",
+        "k1n2-0012",
+        "k1n2-0013",
+        "k1n2-0014",
+        "k1n2-0015",
+        "k1n2-0016",
+        "k1n2-0017",
+        "k1n2-0018",
+        "k1n2-0019",
+        "k1n2-0020",
+        "k1n2-0021",
+        "k1n2-0022",
+        "k1n2-0023",
+        "k1n2-0024",
+        "k1n2-0025",
+        "k1n2-0026",
+        "k1n2-0027",
+        "k1n2-0028",
+        "k1n2-0029",
+        "k1n2-0030",
+        "k1n2-0031"
+      ],
+      "reference": "the unchanged R3 laboratory (research/ecs_retention_r3/experiment.qual_world) on the same host",
+      "what": "a fresh deterministic validation set under the frozen R3 regime"
+    },
+    "Q": {
+      "count": 32,
+      "ids_from": "r3_qual.body.world_ids",
+      "reference": "the frozen R3 decision record (pre-robustness), recorded",
+      "what": "every R3 QUAL world, recorded order"
+    }
+  }
+}

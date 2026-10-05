@@ -195,10 +195,12 @@ jobs:
           tests/research/ecs_retention_r1
           tests/research/ecs_retention_r2
           tests/research/ecs_retention_r3
+          tests/research/ecs_k1_native
           tests/research/ecs_runtime_r1
           tests/ECS_G
           tests/boundary/test_cognition_r0.py
           tests/boundary/test_runtime_r1.py
+          tests/boundary/test_k1_runtime.py
           tests/boundary/test_mission.py
 
   native:
