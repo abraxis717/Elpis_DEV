@@ -21,6 +21,7 @@ from ...ECS_G.test_math_r0 import REPO, _library_path
 
 # SHA-256 of each write-once record as written.
 EVIDENCE_SHA256 = {
+    "frozen/ecsg-retention-r2.v1.frozen.json": "03fc60974ef7bbfae20e3d15a214796214c29171ddd3cca47037e448840824da",
     "evidence/dev/ecsg-retention-r2.v1.dev.json": "beb9c18abd15bd06bd81d30ee9d58ee2e4b1b14df9029c577fadbe015647a221",
 }
 DEV = P.load(R.DEV_PATH, "dev")
@@ -90,3 +91,18 @@ def test_dev_controls_reproduce_exactly_under_the_recorded_binding():
                     f"recorded binding: {result['stale']}")
     for wid, row in result["rows"].items():
         assert row == DEV["body"]["task_rule"][-1]["worlds"][wid], wid
+
+
+FROZEN = P.load(R.FROZEN_PATH, "frozen")
+
+
+def test_frozen_authority_binds_dev_and_the_laboratory():
+    body = FROZEN["body"]
+    spec = P.load_spec()
+    assert all(body[k] == v for k, v in P.spec_digests(spec).items())
+    assert body["dev_evidence_digest"] == DEV["digest"] and body["choices"] == DEV["body"]["choices"]
+    assert body["lab_commit"] == RET2B_COMMIT and body["lab_source_digest"] == P.source_digest_at(RET2B_COMMIT)
+    assert body["lab_source_digest"] == P.source_digest()          # no laboratory change after the freeze
+    assert P.binding_mismatch(DEV["body"]["implementation"], body["implementation"]) == []
+    assert body["pass_rule_text"] == spec["pass_rule"] and body["qual_world_ids"] == list(P.world_ids(spec, "QUAL"))
+    assert body["robustness_cores"] == ["Prescott", "Haswell"]
