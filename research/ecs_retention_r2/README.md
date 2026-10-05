@@ -2,10 +2,11 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `NO_LANGUAGE_CLAIM` · `SYNTHETIC` · `SEMANTICS=NONE` · `PREREGISTERED`
 
-**Status: RET2A only.** This directory holds the question, the task family, the
-candidates, the thresholds, the DEV rules and the QUAL pass rule. It has no
-laboratory code, no DEV or QUAL evidence, no frozen record, no selected
-candidate and no result. Canonical ECS_G learning is unchanged.
+**Status: RET2B, laboratory mechanics.** The laboratory (`protocol.py`,
+`numerics.py`, `task.py`, `engine.py`, `experiment.py`, `run.py`) implements the
+RET2A specification; its mechanics tests use test-* worlds only. There is no DEV
+or QUAL evidence, no frozen record, no selected candidate and no result.
+Canonical ECS_G learning is unchanged.
 
 ## Question
 
@@ -108,3 +109,26 @@ Validity failures give `TASK_INVALID_UNDER_QUAL`, never a pass.
   verbatim.
 
 Both are write-once (`tests/research/ecs_retention_r2`).
+
+## Laboratory (RET2B)
+
+The mechanisms are the R1 implementation, unchanged in mathematics. The
+engine applies the canonical native G1 step, then the correction at the
+pre-step `W`; with the mechanism removed it is bitwise the canonical core.
+
+Implementation decisions recorded before DEV:
+
+- **K2 projection.** `C^T (C C^T)^+ C` is computed from the singular value
+  decomposition of `C` (keep `s_i^2 > 1e-12 s_max^2`, the registered Gram
+  cutoff). This is the same operator. Forming `(C C^T)^+` from the Gram
+  eigendecomposition squared the condition number, and the registered `1e-10`
+  constraint check was then met only marginally (`1.005e-10` on one test
+  world).
+- **PTE pair.** The pair lies along B's aliased axis (`task.pte`).
+
+## Commands
+
+    export PYTHONPATH=src:.
+    python -m research.ecs_retention_r2.run status
+    python -m research.ecs_retention_r2.run dev --library <build>/native/ECS_G/libelpis_ecsg_math.so
+    ELPIS_NATIVE_BUILD=<build> ELPIS_REQUIRE_NATIVE=1 python -m pytest -q tests/research/ecs_retention_r2
