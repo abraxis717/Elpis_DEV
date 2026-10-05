@@ -1,5 +1,44 @@
 # Native K1 differential qualification — results
 
+## Current authority: K1N-v2 QUALIFIED
+
+K1N-v2 was preregistered before execution and ran once from clean harness
+`f720e4a906b0f9c1190536e6123de9c7f4e6160e`. It evaluated all 32 frozen R3 Q worlds and 32 fresh F worlds.
+
+All registered v2 gates passed:
+
+- E1: same-host exact runtime/state invariants
+- E2: native determinism
+- E3: clean-process transplant
+- E4: native K1 suite
+- E5: structural runtime constraints
+- L1: registered 16-step local numerical agreement
+- L2: registered consolidation numerical agreement
+- D1_Q: exact frozen R3 decision-record equivalence, preserving `OUTCOME_A`
+- D1_F: exact same-host laboratory decision-record equivalence on fresh worlds
+
+Verdict: **QUALIFIED**.
+
+Native K1 is therefore canonical under
+`research/ecs_k1_native/evidence/ecsg-k1-native.v2.attestation.json`.
+
+The attestation binds:
+
+- clean harness: `f720e4a906b0f9c1190536e6123de9c7f4e6160e`
+- raw evidence SHA-256: `c96fa766b61bd05ceb9181ef0566123e6ba6a0afbca7e10367eaf580421994c2`
+- raw qualification digest: `fbea9d43e11706d789c6aac575d3412b0a6ada0c83bd4c0872d2ef2c55cf03aa`
+- frozen v2 plan and Retention R3 authority
+
+The verbose raw qualification evidence remains preserved outside Git under its
+recorded SHA-256. No K1N-v2 scientific run was repeated during repository
+promotion.
+
+K1N-v1 remains permanently **NOT_QUALIFIED**. Its historical record and
+interpretation are preserved below unchanged.
+
+## Historical K1N-v1 result
+
+
 `ecsg-k1-native.v1` (`research/ecs_k1_native`). Plan: [PLAN.md](../../research/ecs_k1_native/PLAN.md)
 (K1N-B, committed before any differential evidence). Record:
 `research/ecs_k1_native/evidence/ecsg-k1-native.v1.qualification.json` (digest `0c1c5543…`, run once from the

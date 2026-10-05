@@ -8,7 +8,8 @@ ABI.
 
 - The law is Retention R3's K1, `OUTCOME_A` (`docs/research/ECS_RETENTION_R3_RESULTS.md`).
 - Native qualification v1 is `NOT_QUALIFIED` (`docs/research/ECS_K1_NATIVE_RESULTS.md`, historical and unchanged).
-- Native qualification v2 is in `research/ecs_k1_native` (`PLAN_V2.md`).
+- Native qualification v2 is **QUALIFIED** under the frozen `research/ecs_k1_native/PLAN_V2.md`: E1-E5, L1, L2, D1_Q and D1_F all passed on 32 Q and 32 fresh F worlds.
+- Native K1 is canonical through `research/ecs_k1_native/evidence/ecsg-k1-native.v2.attestation.json`, which binds the frozen plan, clean harness, Retention R3 authority and preserved raw qualification identity.
 
 The canonical status is in `ELPIS_SYSTEM.json` (ECS_G) and `tests/research/_k1_promotion.py`.
 
