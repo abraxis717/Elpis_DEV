@@ -271,8 +271,98 @@ here.
 | evidence integrity | `tests/research/ecs_retention_r2/test_evidence.py` (byte pins and digests for DEV, freeze and QUAL; binding to RET2B and the freeze; disjoint worlds; recorded verdicts recomputed from recorded rows by the registered rule) | always |
 | implementation correctness | `test_mechanics.py` (test-* worlds); `ctest -R ^ECS_G.` | always |
 | historical replay | `test_evidence.py` (DEV controls; QUAL world `qual-0007`) | bitwise, only under the recorded implementation and numerical binding; skipped with the reason otherwise; never a scientific gate |
-| current-runtime regression | `test_runtime_regression.py` (every QUAL world re-run from the frozen choices) | never skipped: validity, mechanics, gates A-L, disposition, outcome and every count equal to the recorded pre-robustness verdict |
+| current-runtime regression | `test_runtime_regression.py` (every QUAL world re-run from the frozen choices, natural kernel of the host) | never skipped. As corrected by RR2-CR0 (below): validity, mechanics, gates A-L, disposition, outcome, the selected candidate and every count row equal to the recorded pre-robustness verdict, except the rows the QUAL record itself showed kernel-sensitive, whose deviations are reported. The v1 clause demanded every count. |
+| contract of the regression | `_runtime_contract.py`, `test_runtime_contract.py` | always; no NumPy, no native library |
 | chronology | `test_preregistration.py` | from full git history |
+
+### Corrective note RR2-CR0: the current-runtime clause (after RET2F; the evidence and the result are unchanged)
+
+**What failed.** PR #24 merged R2 into `main` as `af5b4c0`. Its CI failed on the
+exact PR head `eb252ba`:
+
+- push run #88: Python 3.11, Python without network and Scientific authority;
+- pull-request run #89: Python 3.12 and Python without network.
+
+Post-merge run #90 on `main` failed Python 3.11, Python 3.12 and Python without
+network. Every native configuration, both sanitizers, Boundary and Donor parity
+were green.
+
+In every failing log inspected, the only failing test was
+`test_runtime_regression.py::test_current_runtime_reaches_the_recorded_qual_verdict`.
+Every failing job whose log names its kernel reported OpenBLAS core `Zen`: run
+#88 Scientific authority, and run #90 Python 3.11 and Python without network.
+Run #90 Python 3.12 shows the identical row diff. The Scientific authority job
+passed in run #90, where it ran on `Cooperlake`.
+
+On `Zen`, validity, mechanics, gates A-L, disposition and outcome matched the
+record, and so did every count row except two:
+
+| row | key | recorded (primary QUAL host) | current (`Zen`) |
+|---|---|---|---|
+| `K2` | `SEQUENCE_HELD`, `HELD_D`, `LEARNED_D`, `RETAINED_A@D`, `RETAINED_B@D`, `RETAINED_C@D` | 23 | 24 |
+| `K2` | `CATASTROPHIC_any` | 1 | 0 |
+| `ablation:uninformed_statistics` | `HELD_D` | 6 | 5 |
+| `ablation:uninformed_statistics` | `RETAINED_A@D` | 9 | 8 |
+
+The `Zen` values of both rows are exactly those of the recorded Haswell
+robustness child. The `K2` values are also exactly those of the Prescott child.
+
+**Why.** RET2E had already observed these two rows changing under forced
+kernels. That observation is why gate M failed and why `NUMERICALLY_FRAGILE` is
+true. The v1 current-runtime clause nevertheless required every count on an
+arbitrary host to equal the primary QUAL host.
+
+The registered robustness test had falsified count invariance for those rows,
+so the original clause proved too strong for heterogeneous hosts. The R2
+reproduction contract contained two incompatible expectations, and a mixed CI
+fleet exposed them.
+
+The classification is **TEST-CONTRACT / EVIDENCE-REPRODUCTION-CONTRACT
+defect**. It is not an implementation failure and not a new scientific
+failure. The specification, CANDIDATES.md and every R2 record are unchanged and
+still pinned. The historical clause stays recorded here; it is not edited away.
+
+**The corrected contract** separates three questions:
+
+1. **Evidence integrity:** immutable and exact. Byte pins, digests,
+   chronology, the frozen binding and the registered verdict recomputed from
+   recorded rows, unchanged.
+2. **Historical replay:** bitwise only under the full recorded environment
+   binding, unchanged.
+3. **Current-runtime regression:** never skipped. It runs on whatever host it
+   is given, with that host's own BLAS kernel; nothing forces or emulates the
+   QUAL host's kernel.
+   - **Exact:** validity, mechanics, gates A-L, disposition (`PARTIAL_REDUCTION`),
+     outcome (`OUTCOME_C`), the frozen selected candidate (K3), the set of
+     count rows, and every count row the QUAL record did not show to be
+     kernel-sensitive. This covers K3, M0, M1, C1R, K1 and every gating
+     ablation. Spelled out: K3 holds every world, `state_removed` reproduces
+     M0, and M1 holds every world.
+   - **Exempt from primary-host equality, and only from that:**
+     `KNOWN_R2_NUMERICALLY_FRAGILE_SECONDARY_ROWS`.
+     - These are the rows on which the QUAL record's own robustness children
+       differ from its primary run: `K2` and `ablation:uninformed_statistics`.
+     - They are derived from the record, not chosen after observing CI.
+     - The contract refuses a record that would exempt the selected candidate,
+       a control or a gating ablation.
+     - The rows must keep their shape and stay within the world count.
+     - Any deviation is reported as the recorded finding, not hidden.
+   - **Any other row changing fails.** A row the record never showed to be
+     kernel-sensitive is a new finding.
+
+**What does not change.** Gate M stays **FAILED**: across the registered
+robustness kernels, not every registered count stayed invariant. The answer to
+that question is still no, and it is not rewritten into a selected-candidate
+gate. These are also unchanged:
+
+- `NUMERICALLY_FRAGILE` stays true.
+- Gates G and L stay failed.
+- The disposition stays `PARTIAL_REDUCTION` (`OUTCOME_C`).
+- No candidate is eligible: NO_CANONICAL_PROMOTION.
+
+The regression computes none of these and cannot relax them. No Elpis runtime,
+ECS_G, FMS or laboratory behaviour depends on the CPU or the BLAS kernel. The
+recorded kernel identity delimits historical bitwise replay only.
 
 ## Consequences for the canonical system
 
