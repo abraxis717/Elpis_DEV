@@ -21,10 +21,12 @@ from ...ECS_G.test_math_r0 import REPO, _library_path
 
 # SHA-256 of each write-once record as written.
 EVIDENCE_SHA256 = {
+    "frozen/ecsg-retention-r3.v1.frozen.json": "7be80fee34142a6b226eaf57d9fec2aba21c397d40faa65eb96bde9d2d4b39e2",
     "evidence/dev/ecsg-retention-r3.v1.dev.json": "20a7ff116348da6e1bf8e0ab00a498dcc73bef9fa007ffacb935c94a1d3ed964",
 }
 DEV = P.load(R.DEV_PATH, "dev")
 RET3B_COMMIT = "35408879720a6d697ce07dcb6c19fedbd37845cd"
+FROZEN = P.load(R.FROZEN_PATH, "frozen")
 
 
 @pytest.mark.parametrize("name", sorted(EVIDENCE_SHA256))
@@ -98,3 +100,19 @@ def test_a_dev_world_reproduces_exactly_under_the_recorded_binding():
     body = DEV["body"]
     assert _strip_timing(result["world"]["controls"]) == _strip_timing(body["task_check"]["worlds"]["r3dev-0003"])
     assert _strip_timing(result["world"]["k1"]) == _strip_timing(body["k1_worlds"]["r3dev-0003"])
+
+
+def test_frozen_authority_binds_dev_the_laboratory_and_the_qual_worlds():
+    f = FROZEN["body"]
+    assert f["dev_evidence_digest"] == DEV["digest"] and f["lab_commit"] == RET3B_COMMIT
+    assert f["lab_source_digest"] == DEV["body"]["implementation"]["lab_source_digest"]
+    assert P.binding_mismatch(DEV["body"]["implementation"], f["implementation"]) == []
+    assert not f["implementation"]["dirty"]
+    for key in ("spec", "pass_rule", "candidates_sha256"):
+        assert f[key] == P.spec_digests(R.SPEC)[key], key
+    assert f["qual_world_ids"] == list(P.world_ids(R.SPEC, "QUAL")) and len(f["qual_world_ids"]) == 32
+    assert not set(f["qual_world_ids"]) & set(f["dev_world_ids"])
+    assert f["task_parameters"] == R.SPEC["task"] and f["thresholds"] == R.SPEC["thresholds"]
+    assert f["regime"] == R.SPEC["regime"] and f["pass_rule_text"] == R.SPEC["pass_rule"]
+    assert f["k1_state_format"] == "elpis.research.ecs-retention-r3.state.v1"
+    assert f["robustness_cores"] == ["Prescott", "Haswell"]
