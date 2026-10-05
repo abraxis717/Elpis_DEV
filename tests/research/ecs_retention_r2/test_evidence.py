@@ -183,3 +183,45 @@ def test_a_qual_world_reproduces_exactly_under_the_recorded_binding():
         pytest.skip(f"HISTORICAL_REPLAY_ENVIRONMENT_MISMATCH: bitwise QUAL replay is demanded only under the "
                     f"recorded binding: {result['stale']}")
     assert _strip_timing(result["world"]) == _strip_timing(QUAL["body"]["per_world"]["qual-0007"])
+
+
+# --- RET2F: the interpretation and the authority pointers state the record and claim no more ------------------------
+
+RESULTS = REPO / "docs" / "research" / "ECS_RETENTION_R2_RESULTS.md"
+OVERCLAIMS = ("retention is solved", "retention_supported", "outcome_a", "elpis now remembers",
+              "continual learning is achieved", "understands language", "promoted to canonical")
+FAILED_GATES = ("G state causality", "L native feasibility", "M numerical robustness")
+
+
+def test_results_report_the_recorded_disposition_and_claim_no_more():
+    text = RESULTS.read_text(encoding="utf-8")
+    body = QUAL["body"]
+    for needle in ("PARTIAL_REDUCTION", "OUTCOME_C", "NO_CANONICAL_PROMOTION", "No candidate is qualified",
+                   "SEMANTICS=NONE", "new experiment version", "K3 (selected)", "post hoc",
+                   DEV["digest"], P.load(R.FROZEN_PATH, "frozen")["digest"], QUAL["digest"],
+                   body["implementation"]["library"]["sha256"], RET2B_COMMIT[:7], body["implementation"]["base_commit"][:7],
+                   *FAILED_GATES):
+        assert needle in text, needle
+    lowered = text.lower()
+    for overclaim in OVERCLAIMS:
+        assert overclaim not in lowered, overclaim
+    counts = body["counts"]
+    for name in ("M0", "M1", "C1R", "K1", "K2", "K3"):
+        assert f"| {counts[name]['SEQUENCE_HELD']} |" in text, name
+    assert f"in **{counts['ablation:consolidation_reset_at_B']['both_retained_at_D']}/24**" in text
+
+
+def test_authority_pointers_state_the_recorded_disposition():
+    system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
+    component = next(c for c in system["research"]["components"] if c["path"] == "research/ecs_retention_r2")
+    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
+    interface = next(i for i in ecsg["incomplete_interfaces"] if "Retention R2" in i).split("Retention R2", 1)[1]
+    cognition = (REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8")
+    cognition = cognition.split("Retention R2", 1)[1].split("\n\n", 1)[0]
+    readme = (R.ROOT / "README.md").read_text(encoding="utf-8")
+    for where, text in (("component", component["classification"]), ("ECS_G interface", interface),
+                        ("COGNITION_R0", cognition), ("README", readme)):
+        assert "PARTIAL_REDUCTION" in text, where
+        assert "OUTCOME_A" not in text and "RETENTION_SUPPORTED" not in text, where
+        assert "qualified or canonical" in text or "NO_CANONICAL_PROMOTION" in text, where
+    assert component["classification"].startswith("QUALIFICATION, NOT QUALIFIED")

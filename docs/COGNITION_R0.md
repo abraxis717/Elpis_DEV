@@ -149,5 +149,8 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
   RESEARCH_ONLY; `docs/research/ECS_RETENTION_R1_RESULTS.md`) stopped at DEV
   as `TASK_INVALID_ON_DEV`: its primary task was not a valid retention test, so
   no candidate was evaluated and nothing is qualified or canonical. Retention R2
-  (`research/ecs_retention_r2`, RESEARCH_ONLY) is preregistered: a new
-  aliasing-conflict task with the R1 mechanisms unchanged; no result.
+  v1 (`research/ecs_retention_r2`, RESEARCH_ONLY;
+  `docs/research/ECS_RETENTION_R2_RESULTS.md`) ran on a valid aliasing-conflict
+  task and ended `PARTIAL_REDUCTION`: the selected candidate retained every
+  experience in 24/24 QUAL worlds, but the causality, native-feasibility and
+  numerical-robustness gates failed, so nothing is qualified or canonical.

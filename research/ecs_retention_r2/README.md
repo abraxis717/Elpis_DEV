@@ -2,8 +2,11 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `NO_LANGUAGE_CLAIM` · `SYNTHETIC` · `SEMANTICS=NONE` · `PREREGISTERED`
 
-**Status: RET2E, QUAL ran once** (`evidence/qual/ecsg-retention-r2.v1.qual.json`).
-The interpretation is RET2F. Canonical ECS_G learning is unchanged.
+**Status: closed at RET2F. Disposition `PARTIAL_REDUCTION` (`OUTCOME_C`).** The
+task was valid; the selected candidate K3 retained every experience in 24/24 QUAL
+worlds, but gates G (consolidation-reset clause), L (cold-path cost) and M
+(numerical robustness) failed. No mechanism is qualified or promoted
+(NO_CANONICAL_PROMOTION). Canonical ECS_G learning is unchanged.
 
 ## Question
 
@@ -53,7 +56,7 @@ design analysis are in `CANDIDATES.md`.
 ## Chronology
 
 ```
-RET2A  question + task + candidates + thresholds + pass rule   <- this step
+RET2A  question + task + candidates + thresholds + pass rule
   |
 RET2B  laboratory mechanics (test-* worlds only)
   |
@@ -122,6 +125,37 @@ Implementation decisions recorded before DEV:
   constraint check was then met only marginally (`1.005e-10` on one test
   world).
 - **PTE pair.** The pair lies along B's aliased axis (`task.pte`).
+
+## Result
+
+DEV (`evidence/dev/ecsg-retention-r2.v1.dev.json`, record `b9911cd4...`): the
+control-only task rule found the task valid at hidden gain 2.0 (V1-V6; plain G1
+held the sequence in 0/8 DEV worlds, median earlier-experience nmse 0.895). The
+candidate rule selected K3 (8/8 held, lowest median final nmse). Frozen at RET2D
+(`38c8e2e3...`).
+
+QUAL (`evidence/qual/ecsg-retention-r2.v1.qual.json`, record `e14b59bd...`, 24
+worlds, run once):
+
+| | sequence held | median earlier-experience nmse at D |
+|---|---|---|
+| M0 plain G1 | 1/24 | 0.539 |
+| M1 rehearsal | 24/24 | 0.0018 |
+| C1R | 21/24 | 0.030 |
+| K3 (selected) | 24/24 | 0.00041 |
+
+Gates A-F and H-K pass. Three fail:
+
+- **G:** after a consolidation reset at B, A and B were still retained at D in
+  24/24 worlds (limit 25%);
+- **L:** K3's reconditioning costs up to `1.49e10` operations per consolidation
+  (limit `1e10`);
+- **M:** one K2 world and one ablation count changed under forced Prescott and
+  Haswell kernels.
+
+Disposition `PARTIAL_REDUCTION` (`OUTCOME_C`). Full interpretation:
+`docs/research/ECS_RETENTION_R2_RESULTS.md`. Any follow-up is a new experiment
+version.
 
 ## Commands
 
