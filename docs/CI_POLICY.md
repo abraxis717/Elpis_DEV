@@ -12,7 +12,12 @@ Authority: this document governs when work may merge into `main`. It sits under
    run for the same head is a red head. This happened at Runtime R1: head
    `2799f83` was green in pull-request run 37161299328 and red in push run
    37161274480, it was merged anyway, and `main` stayed red (`61f81e6`, run
-   37161622841).
+   37161622841). It happened again at Retention R2. Pull request #24 (head
+   `eb252ba`) was red on its exact head in push run #88 (37265079205) and
+   pull-request run #89 (37265083925). It was merged anyway as `af5b4c0`, and
+   post-merge run #90 (37265111688) was red. That violated rules 1, 4 and 5.
+   History was not rewritten. `main` is corrected forward (corrective RR2-CR0,
+   `docs/research/ECS_RETENTION_R2_RESULTS.md`).
 3. **Same tree, different verdicts means nondeterminism.** If the same source
    tree yields one green and one red run, classify it as
    NONDETERMINISTIC / ENVIRONMENT-SENSITIVE and investigate before merging. Do
