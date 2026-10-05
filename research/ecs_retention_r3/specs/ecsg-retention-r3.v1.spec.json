@@ -1,0 +1,428 @@
+{
+ "authored_at": "RET3A",
+ "base": {
+  "main": "1b5474bdd033aa8a32cb5ca3aa4a06d98bb337bb",
+  "repository": "https://github.com/abraxis717/Elpis_DEV"
+ },
+ "causality": {
+  "full_state_transplant_at_B": "serialize the complete K1 state (W, epoch, H, a) after B into deterministic bytes, restore it into a fresh engine, learn C and D; compare W and state digests with the uninterrupted run at C and D; also once in a clean process (first QUAL world)",
+  "reset_challenge": {
+   "RESET_DEGRADED_world": "e_reset >= 10 x e_uninterrupted and e_reset >= 0.05",
+   "comparison": "the uninterrupted K1 run evaluated at the same boundary (W_C after C, before D)",
+   "design_note": "the closed R2 record (K3 reset at B, rows read at C, post hoc in the R2 results) showed e_reset/e_uninterrupted >= 21 and e_reset >= 0.036 in all 24 R2 QUAL worlds; R3's criterion was fixed before any R3 data: an order of magnitude relative loss and an absolute floor of 5% of target variance (23 of the 24 R2 rows meet it); the 75% world fraction mirrors R2's 25% limit",
+   "measure": "protected error e = mean(nmse_A, nmse_B) at the C boundary; reset_ratio = e_reset / e_uninterrupted",
+   "no_reteaching": "the reset branch contains no stage after C; the causality verdict reads only the C boundary; mechanically checked (the reset record has exactly stage C)",
+   "procedure": [
+    "learn A (canonical core, shared W_A); consolidate A",
+    "learn B with K1; consolidate B",
+    "snapshot the complete state (W_B, epoch_B, H_B, a_B)",
+    "RESET: H <- 0, a <- 0; keep W_B and epoch_B bitwise",
+    "learn the registered interfering experience C (steps_per_experience K1 steps; with H = 0 every K1 correction is zero: C is learned without protection inherited from A and B)",
+    "IMMEDIATELY evaluate A and B (and C) at W_C^reset",
+    "STOP: no D, no further consolidation is evaluated in this branch"
+   ]
+  },
+  "state_removed": "the K1 engine with its correction and consolidation removed (bitwise the canonical core, mechanics engine_equivalence) run through A -> B -> C -> D",
+  "w_only_negative_control_at_B": "take the canonical W-only snapshot (Executor.snapshot, ELPISG01) of W_B; import it: the result must be flagged UNCONSOLIDATED with H = 0 and a = 0, its state digest must differ from the complete state's, and learning C from it must reproduce the reset challenge bitwise and differ from the uninterrupted run; it is never counted as a retained-state transplant"
+ },
+ "chronology": {
+  "RET3A": "question, inherited choices, causality design, thresholds, budgets, DEV rules, pass rule, guard and pointers; no laboratory, no DEV or QUAL world evaluated",
+  "RET3B": "laboratory mechanics and mechanics tests on test-* worlds only",
+  "RET3C": "DEV on DEV worlds only: control-only task check, then (if valid) the K1 DEV rule",
+  "RET3D": "freeze: digests, laboratory source and commit, implementation and numerical binding, QUAL world list, K1 state format, thresholds",
+  "RET3E": "QUAL once (the numerical-robustness children are part of that one execution)",
+  "RET3F": "interpretation; authority pointers updated only to the measured claims",
+  "commit_tags": "every commit of a step has a subject beginning with its tag (RET3A ... RET3F); records are added only by their step, after their predecessor; RET3F may follow RET3C directly after TASK_INVALID_ON_DEV or K1_STOPPED_ON_DEV",
+  "no_modification_after_freeze": "no scientific implementation change after RET3D; QUAL refuses on any binding difference"
+ },
+ "classes": {
+  "CATASTROPHIC_t_at_s": "for t before s: nmse_t(W_s) >= nmse_t(W0)",
+  "HELD_at_s": "LEARNED_s and RETAINED_t_at_s for every t before s",
+  "LEARNED_s": "nmse_s(W_s) <= 0.5 and nmse_s(W_s) <= 0.5 * nmse_s(W_prev), W_prev the state before experience s (W0 for A)",
+  "PAIR_HELD": "pairwise (R0 compatible): LEARNED_B and RETAINED_A_at_B",
+  "RETAINED_t_at_s": "for t before s: nmse_t(W_s) <= 0.5 and nmse_t(W_s) <= 0.5 * nmse_t(W0)",
+  "SEQUENCE_HELD": "HELD_at_s for every stage s in A, B, C, D"
+ },
+ "dev_rules": {
+  "k1": "only if the task is valid: K1, C1R and the causality branches on every DEV world. K1 PROCEEDS iff, over the DEV worlds: every world LEARNED at every stage and RETAINED for every earlier experience; no CATASTROPHIC; median final_mean_nmse <= 0.25; state_removed SEQUENCE_HELD in at most 25% and median final_earlier_mean_nmse >= 2 x K1's; RESET_DEGRADED in at least 75% and median reset_ratio >= 10; full-state transplant bitwise in every world; W-only negative control in every world; the native budget holds. Otherwise K1_STOPPED_ON_DEV: stop (no freeze, no QUAL, NO_CANONICAL_PROMOTION)",
+  "nothing_else": "DEV chooses nothing: no gain, no candidate, no threshold, no step count. Its only outcomes are TASK_INVALID_ON_DEV, K1_STOPPED_ON_DEV or K1_PROCEEDS",
+  "task": "controls only (M0, M1, O, WSTAR) on the 8 DEV worlds at the inherited hidden gain 2.0: V1 witness exact (nmse <= 1e-20); V2 M0 SEQUENCE_HELD in at most 25% of DEV worlds, median final_earlier_mean_nmse >= 0.5 and median A_end_ratio >= 10; V3 nmse_s(O_prev) >= 0.5 for every DEV world and stage B, C, D; V4 M0 LEARNED at every stage in every DEV world; V5 M1 SEQUENCE_HELD in every DEV world; V6 stage-ceiling nmse <= 1e-6 on every experience seen so far. Any failure: TASK_INVALID_ON_DEV, stop (no K1 run, no freeze, no QUAL)"
+ },
+ "evidence_contract": {
+  "1_evidence_integrity": "always: SHA-256 pins of every write-once record, record digests, chronology from full git history",
+  "2_implementation_correctness": "always, on any host: laboratory mechanics tests on test-* worlds; the executor equals the scalar reference bitwise (ctest ECS_G.*)",
+  "3_historical_replay": "bitwise re-run of recorded QUAL worlds, demanded only when the full binding including the effective BLAS kernel, thread count, CPU flag class and library SHA-256 matches; otherwise skipped as HISTORICAL_REPLAY_ENVIRONMENT_MISMATCH with the reason; never a scientific gate",
+  "4_current_runtime_regression": "never skipped; runs on the host's natural BLAS kernel (no forcing, no CPU branch, no per-host table): all QUAL worlds re-run and the decision record (pass_rule.decision_record) must equal the recorded one; descriptive quantities are not compared. If gate L failed, the RR2-CR0 principle applies: only rows the QUAL record itself shows kernel-sensitive are exempt from host equality, and never a decision-bearing K1 row (that failure is already R3's result)",
+  "portability": "forbidden everywhere: CPU-model branches, kernel-specific behaviour, OPENBLAS_CORETYPE in ordinary CI, per-host expected outputs, post-hoc tolerances; forced kernels exist only inside the one QUAL execution (gate L)"
+ },
+ "labels": [
+  "RESEARCH_ONLY",
+  "NO_RUNTIME_AUTHORITY",
+  "NO_LANGUAGE_CLAIM",
+  "SYNTHETIC",
+  "SEMANTICS=NONE",
+  "PREREGISTERED",
+  "CONFIRMATORY"
+ ],
+ "lineage": {
+  "corrective_authority": "RR2-CR0 (docs/research/ECS_RETENTION_R2_RESULTS.md, corrective note; tests/research/ecs_retention_r2/_runtime_contract.py): historical replay is bound to its recorded numerical environment; the current-runtime regression runs on the host's natural kernel and checks the scientific result; untouched",
+  "inherited_from_closed_r2": {
+   "classes": "R2 spec classes and class thresholds (0.5 absolute, 0.5 relative), unchanged",
+   "controls": "M0, M1, O, WSTAR, C1R definitions of the R2 spec, unchanged",
+   "hidden_gain": 2.0,
+   "k1_law": "R2 spec mechanisms.K1, unchanged (lambda 1; H <- H + Sigma_t, a <- S3(W_t); u = 1/2 H (S3(W) - a); W <- G1(W) - eta J(W)^T u at the pre-step W)",
+   "numerical_binding": "R2 spec numerical_binding fields, with this laboratory's sources",
+   "regime": "R2 spec regime, unchanged",
+   "task_family": "aliased hidden ridges (R2 spec task), unchanged except the gain is a fixed parameter"
+  },
+  "new_in_r3": "every DEV and QUAL observation (fresh, disjoint worlds); nothing observed in R3 informed RET3A",
+  "predecessor": "research/ecs_retention_r2 v1: PARTIAL_REDUCTION (OUTCOME_C), NO_CANONICAL_PROMOTION; frozen 38c8e2e369713bb8f9b7623bcc316274d03aa46c7d93acf074ac529dc82686c0, QUAL e14b59bddd92de17dafdbfaddabc2ce68a75e74549c930cc84b34f3f0b1b79f3; closed and untouched; R3 does not rescue, rerun or reinterpret it",
+  "r2_defect_repaired": "R2 gate G(iv) reset K3's consolidation state after B and judged A/B retention at D; D overlaps A's plane and re-taught what the unprotected C step damaged (R2 results, post hoc: both retained after C in 13/24, at D in 24/24). R3 measures the reset challenge at the first post-interference boundary, before any later experience",
+  "r2_spec_sha256": "b9930ab6580c11f690319eae2fd888ee1139287b40e4c8097766424a0e96f1df",
+  "why_k1_only": {
+   "K2": "23/24 and kernel-dependent (R2 gate M; RR2-CR0); not reintroduced",
+   "K3_vs_K1": "MICROSTATE_EFFECT false; ablation fibre_removed (K3 without reconditioning = K1) held 24/24; K3's reconditioning failed R2 gate L (cold path up to 1.49e10 ops > 1e10)",
+   "closed_r2_counts_of_24": {
+    "C1R": 21,
+    "K1": 24,
+    "K2": 23,
+    "K3": 24,
+    "M0": 1,
+    "M1": 24
+   },
+   "consequence": "K1 is the simplest R2 mechanism that held every QUAL world; R3 is a confirmatory test of K1 alone. K2 and K3 are referenced historically only and never run"
+  }
+ },
+ "mechanics_checks": {
+  "consolidation_interface": "structural: consolidation accepts (W, experienced inputs) only; no target, label or task identity parameter; K1 consolidation is closed form (no iteration, no reconditioning, no retraction)",
+  "consolidation_state_shapes_learning": "every QUAL world: one K1 step on C from the complete state and from the reset state yield different W",
+  "effective_single_thread": "the QUAL process and every child report an effective OpenBLAS thread count of 1",
+  "engine_equivalence": "K1 and C1R engines with the mechanism removed reproduce M0 bitwise at every stage, every QUAL world",
+  "feature_identity": "1/2 phi(x) . S3(W) equals the canonical forward map within 1e-10 relative on the held-out inputs of every experience at W_A, every QUAL world",
+  "gradient_identity": "first QUAL world at W_A: the K1 and C1R corrections equal the derivative of their declared quantities by central differences within 1e-6 relative",
+  "no_baseline_refusal": "M0 and M1 learn without refusal in every QUAL world",
+  "pte_microstate": "two microstates with identical S3 (task.pte: the R0 PTE values along B's aliased axis b; S3 relative difference <= 1e-12), each with its own consolidation built from A's experienced inputs, diverge after one identical K1 step on B (S3 relative difference >= 1e-9), every QUAL world",
+  "query_ignores_consolidation_state": "every QUAL world at B: the complete K1 state and the reset state (identical W, H = a = 0) answer every experience's held-out inputs bitwise identically",
+  "reset_mechanics": "every QUAL world: the reset keeps W_B and epoch_B bitwise and sets H = 0, a = 0",
+  "shared_W_A": "W_A is bitwise identical across mechanisms in every QUAL world",
+  "witness_exact": "W* answers every experience's held-out inputs with nmse <= 1e-20, every QUAL world"
+ },
+ "mechanisms": {
+  "C1R": {
+   "class": "REFERENCE",
+   "consolidation_inputs": [
+    "W",
+    "experienced_inputs"
+   ],
+   "definition": "R0 C1 unchanged: lambda 4; H += Sigma_t, b += Sigma_t S3(W_t) after each experience; correction J^T u, u = (lambda / 2)(H S3(W) - b)",
+   "eligible_for_selection": false,
+   "hyperparameters": {
+    "lambda": 4.0
+   },
+   "role": "REFERENCE; reported only; never eligible; decides nothing in R3 except the descriptive qualifiers",
+   "state": {
+    "cognitive": [
+     "W",
+     "H",
+     "b",
+     "epoch"
+    ],
+    "control": [
+     "rate",
+     "budget",
+     "lambda"
+    ],
+    "derived": [
+     "S3",
+     "u"
+    ],
+    "external_memory": "none",
+    "extra_persistent_bytes": 28552
+   }
+  },
+  "K1": {
+   "class": "SOLE_ELIGIBLE_MECHANISM",
+   "consolidation_inputs": [
+    "W",
+    "experienced_inputs"
+   ],
+   "definition": "consolidation after experience t: H <- H + Sigma_t, a <- S3(W_t); learning step: W <- G1(W) - eta J(W)^T u, u = 1/2 H (S3(W) - a), evaluated at the pre-step W",
+   "eligible_for_selection": true,
+   "family": "slow consolidated state: exact functional consolidation (S3 Laplace, re-anchored)",
+   "hyperparameter_origin": "derived (F2/F3): each experience's mean loss counts once; not tuned",
+   "hyperparameters": {
+    "lambda": 1.0
+   },
+   "selection": "none: K1 is fixed at RET3A; DEV selects nothing",
+   "state": {
+    "cognitive": [
+     "W",
+     "H",
+     "a",
+     "epoch"
+    ],
+    "control": [
+     "rate",
+     "budget",
+     "lambda"
+    ],
+    "derived": [
+     "S3",
+     "u",
+     "U_2",
+     "U_3"
+    ],
+    "external_memory": "none",
+    "extra_persistent_bytes": 28552
+   }
+  },
+  "M0": {
+   "class": "NEGATIVE_BASELINE",
+   "definition": "plain sequential G1 through the canonical core: W_t = G1^K(W_{t-1}; t)",
+   "eligible_for_selection": false,
+   "state": {
+    "cognitive": [
+     "W",
+     "epoch"
+    ],
+    "external_memory": "none",
+    "extra_persistent_bytes": 0
+   }
+  },
+  "M1": {
+   "class": "EXTERNAL_MEMORY_CONTROL",
+   "definition": "cumulative rehearsal: at stage t, G1^K(W_{t-1}; every experience so far) as one batch through the canonical executor",
+   "eligible_for_selection": false,
+   "state": {
+    "cognitive": [
+     "W",
+     "epoch"
+    ],
+    "external_memory": "every experience (X, y): 3,584 bytes per experience, growing",
+    "extra_persistent_bytes": 0
+   }
+  },
+  "O": {
+   "class": "EXPERIMENT_ONLY",
+   "definition": "unconstrained minimum-norm least-squares coefficients c (f = 1/2 phi . c) on the training rows of the experiences seen so far (stage ceiling) and on the experiences before t (O_prev, novelty)",
+   "eligible_for_selection": false
+  },
+  "WSTAR": {
+   "class": "EXPERIMENT_ONLY",
+   "definition": "realizability witness W* = [T* | 0] (task.witness)",
+   "eligible_for_selection": false
+  }
+ },
+ "metrics": {
+  "A_end_ratio": "nmse_A(W_D) / nmse_A(W_A)",
+  "final_earlier_mean_nmse": "mean over A, B, C of nmse_t(W_D)",
+  "final_mean_nmse": "mean over A, B, C, D of nmse_t(W_D)",
+  "learn_seconds": "laboratory wall time (PERFORMANCE_ONLY; never part of a gate)",
+  "nmse": "mean over the test_rows held-out rows of (f_W(x) - y)^2 divided by the population variance of those held-out targets"
+ },
+ "name": "ecsg-retention-r3",
+ "native_budget": {
+  "g1_ops_per_step_at_R64": 82944,
+  "k1_consolidation_ops": "analytic: R F (features) + R F (F + 1) (packed Sigma) + F (F + 1) / 2 (H) + N (d + 2P + 3T) (S3)",
+  "k1_hot_path_extra_ops_per_step": 42506,
+  "k1_persistent_extra_bytes": 28552,
+  "origin": "analytic counts of the K1 law at the registered regime (closed-form; independent of any R3 observation); budgets fixed here before data: hot path at most one G1 step's cost, consolidation at most 1e8 operations"
+ },
+ "nonclaims": [
+  "no claim about language, meaning or general cognition; synthetic regression, SEMANTICS=NONE",
+  "no claim beyond d = 6, N = 36, the qualified cubic kernel, G1 as the base step and this task family",
+  "no claim about K2, K3 or any other mechanism",
+  "an OUTCOME_A makes K1 eligible for the native milestone; it changes no canonical code by itself"
+ ],
+ "numerical_binding": {
+  "required_fields": [
+   "python_version_and_implementation",
+   "numpy_version",
+   "numpy_build_configuration (BLAS and LAPACK names, versions, ILP64)",
+   "blas_implementation_and_version",
+   "effective_blas_kernel_core (read in-process after NumPy loads)",
+   "effective_blas_thread_count (read in-process; must be 1)",
+   "blas_and_openmp_thread_environment",
+   "cpu_model_family_model_and_flags (sse4_2, avx, avx2, fma, avx512f)",
+   "machine_architecture_os_and_libc",
+   "float_format (IEEE-754 binary64)",
+   "compiler_identity_and_version",
+   "cmake_build_type_and_c_flags (all configurations, ECS_G target options, sanitizer switches)",
+   "native_library_path_and_sha256 (libelpis_ecsg_math)",
+   "bound_source_sha256 (src/elpis/ECS_G/native.py, cognition.py; native/ECS_G headers and sources; native/ECS_G/CMakeLists.txt; top-level CMakeLists.txt)",
+   "laboratory_source_digest (research/ecs_retention_r3 Python sources)",
+   "spec_digest, pass_rule_digest and PREREGISTRATION.md sha256",
+   "git_base_commit_tree_and_dirty_flag"
+  ],
+  "rules": [
+   "BLAS and OpenMP thread counts are pinned to 1 before NumPy loads; the effective count is read and must be 1, or DEV, freeze and QUAL refuse",
+   "QUAL refuses if any bound field differs from the frozen binding, if the tree is dirty, if NumPy is not OpenBLAS-backed, or if the host lacks AVX2 and FMA (needed to force the robustness kernels)",
+   "the QUAL record keeps the world id list and the world count under different keys (R0 record defect)"
+  ]
+ },
+ "pass_rule": {
+  "A_current_stage_acquisition": "every QUAL world LEARNED_A under the shared W_A, median nmse_A(W_A) <= 0.25; K1: every QUAL world LEARNED_s at every stage B, C, D",
+  "B_sequential_retention": "K1: every QUAL world RETAINED_t_at_s for every stage s and earlier t (SEQUENCE_HELD everywhere)",
+  "C_no_catastrophic_forgetting": "K1: no CATASTROPHIC_t_at_s in any QUAL world",
+  "D_joint_quality": "K1: median over QUAL worlds of final_mean_nmse <= 0.25",
+  "E_single_joint_state": "K1: at every stage one executor created from W_s answers all four experiences' held-out inputs; no task label reaches a query or a learning step (structural)",
+  "F_declared_state_causality": "(i) state_removed SEQUENCE_HELD in at most 25% of QUAL worlds and its median final_earlier_mean_nmse >= 2 x K1's; (ii) reset challenge: RESET_DEGRADED in at least 75% of QUAL worlds and median reset_ratio >= 10, read at the C boundary only; (iii) no re-teaching: every reset record ends at C",
+  "G_no_external_answer_store": "consolidation receives W and the current experience's inputs only (structural); persistent extra bytes identical after every stage; no row stored beyond the current learn call; queries read W only",
+  "H_deterministic_state": "first QUAL world: the K1 pipeline twice in process and once in a clean process yields identical W and state digests and metrics at every stage",
+  "I_transplant_and_reset_behaviour": "every QUAL world: full-state transplant at B continues bitwise (W and state digests at C and D) and restores the identical state digest; the clean-process transplant probe is bitwise; the W-only negative control is flagged UNCONSOLIDATED, has a different state digest, reproduces the reset branch bitwise at C and differs from the uninterrupted run",
+  "J_capacity_accounting": "K1 and C1R report persistent extra bytes and analytic operations per stage; M1 reports stored-experience bytes; K1 persistent extra bytes = 28,552 at every stage",
+  "K_native_feasibility": "K1: analytic hot-path extra operations per step <= 1.0 x G1's (82,944 at R = 64); analytic operations per consolidation <= 1e8; persistent extra state fixed at 28,552 bytes (H packed, a), independent of the number of experiences; no stored rows, targets or task labels; closed-form consolidation (no iterative loop, no fibre reconditioning, no retraction); no hidden external state",
+  "L_numerical_robustness": "within the one QUAL execution, child processes recompute the decision record with OpenBLAS forced to the Prescott and the Haswell kernel (single thread); every field of the decision record must equal the primary run's",
+  "decision_record": {
+   "definition": "validity booleans; mechanics booleans; gates A-K; disposition; outcome; per QUAL world: K1 LEARNED_s, RETAINED_t_at_s, CATASTROPHIC_t_at_s, HELD_s, SEQUENCE_HELD; per QUAL world: state_removed SEQUENCE_HELD, RESET_DEGRADED, transplant bitwise, W-only control pass; counts: M0 SEQUENCE_HELD and LEARNED-at-every-stage, M1 SEQUENCE_HELD",
+   "descriptive_not_compared": "C1R rows, every float, every W or state digest, timings, medians: they decide nothing in R3 and need not be kernel-invariant",
+   "principle": "stated before data: numerical robustness covers every decision-bearing R3 quantity and nothing else; any K1 decision-bearing kernel sensitivity fails R3"
+  },
+  "disposition": "MECHANICS_FAIL if any mechanics check fails. Else TASK_INVALID_UNDER_QUAL (OUTCOME_V) if any validity condition fails. Else RETENTION_SUPPORTED_UNDER_FROZEN_SYNTHETIC_REGIME (OUTCOME_A) if gates A-L all hold. Else PARTIAL_REDUCTION (OUTCOME_C) if K1 is SEQUENCE_HELD in more QUAL worlds than M0 and its median final_earlier_mean_nmse <= 0.5 x M0's. Else REPLAY_ONLY (OUTCOME_B) if M1 is SEQUENCE_HELD in every QUAL world. Else NO_MATERIAL_IMPROVEMENT (OUTCOME_D). DEV may end earlier as TASK_INVALID_ON_DEV or K1_STOPPED_ON_DEV (no freeze, no QUAL). Only OUTCOME_A permits the native milestone; anything else is NO_CANONICAL_PROMOTION and R3 stops. A failure is recorded as it is",
+  "qualifiers": {
+   "CAPACITY_SCOPE": "always: retention is claimed only for jointly realizable aliasing-conflict sequences of this family",
+   "EXCEEDS_R0_REFERENCE": "K1 is SEQUENCE_HELD in more QUAL worlds than C1R, or in as many with a smaller median final_mean_nmse",
+   "NUMERICALLY_FRAGILE": "gate L failed",
+   "R0_REFERENCE_ALSO_SUFFICIENT": "C1R meets the K1 criteria of gates A (B, C, D stages), B, C and D"
+  }
+ },
+ "predictions": {
+  "P1": "the inherited task is valid on fresh DEV worlds (M0 forgets, M1 holds)",
+  "P2": "K1 SEQUENCE_HELD in every QUAL world (R2: 24/24)",
+  "P3": "the immediate reset challenge degrades protected function in most worlds",
+  "P4": "state_removed reproduces M0 bitwise",
+  "P5": "K1's decision record is kernel invariant (R2: K1 counts invariant under Prescott, Haswell and Zen)",
+  "note": "pre-registered expectations; not gates"
+ },
+ "promotion": {
+  "condition": "OUTCOME_A only",
+  "milestone": "a native, FMS-materialized K1 runtime: native QUERY (W only), native K-step LEARN (G1 + K1 correction, no Python loop), native CONSOLIDATE (Sigma, H, a; no target), native transactions committing (W, epoch, H, a) atomically, a new versioned retained-state envelope (ELPISG01 W-only snapshots import only as UNCONSOLIDATED), generic FMS residency with a warm path over resident state, differential qualification against every R3 QUAL world, K1-disabled parity with Runtime R1 G1, sanitizer, allocation and performance evidence; on a separate integration branch from the exact RET3F head",
+  "otherwise": "NO_CANONICAL_PROMOTION; R3 stops"
+ },
+ "question": {
+  "not_asked": [
+   "which mechanism is best (no candidate search; K1 is the only eligible mechanism)",
+   "anything about K2 or K3 (closed in R2; not run in R3)",
+   "capacity-limited regimes, other task families, larger d, language or meaning"
+  ],
+  "primary": "Does fixed-size K1 consolidation, (W, epoch, H, a) with the exact K1 law of the closed R1/R2 lineage, causally preserve previously acquired function under genuine sequential interference (the R2 aliasing-conflict family on fresh worlds), robustly across the registered numerical kernels and within a preregistered native-runtime budget?"
+ },
+ "regime": {
+  "dim": 6,
+  "features": 83,
+  "init_scale": 0.18,
+  "learning_rate": 0.002,
+  "note": "the Cognitive R0 / Retention R0 v1 constants (d, N, initialization, rate, step budget, rows, teacher family) for comparability",
+  "order": [
+   "A",
+   "B",
+   "C",
+   "D"
+  ],
+  "steps_per_experience": 4000,
+  "teacher_scale": 0.5,
+  "teacher_width": 4,
+  "test_rows": 256,
+  "train_rows": 64,
+  "width": 36
+ },
+ "seed": 20261206,
+ "shared_procedure": [
+  "stage A is learned through the canonical core (CognitiveCore.learn, steps_per_experience steps) and W_A is bitwise identical for every mechanism",
+  "every K1 (and C1R) learning step is the canonical native G1 step of the current W on the current experience (an executor created from W performs one learn step) followed by the K1 (and C1R)'s correction evaluated at the pre-step W; with the correction removed the procedure is bitwise the canonical core",
+  "learning one experience and consolidating it are one atomic transition: a refused step or any non-finite value leaves W and the consolidation state as they were before the experience, recorded as refused; the sequence continues",
+  "consolidation receives the current W and the experienced inputs of the current experience only; no target, label or task identity reaches it",
+  "every response used by any metric is the canonical native forward map (elpis.ECS_G.native.Executor.forward) of the evaluated W; one executor per evaluated W answers the held-out inputs of every experience; no task label, example, target or consolidation state reaches a query",
+  "after every stage the per-experience nmse of all four experiences, the W digest, the consolidation-state digest and persistent extra bytes, the refusal and the laboratory learn time are recorded"
+ ],
+ "splits": {
+  "dev_worlds": 8,
+  "disjointness": "seed 20261206 and name ecsg-retention-r3 differ from R2's (20261105, ecsg-retention-r2) and every R3 id differs from every R2 id: no R2 DEV or QUAL world is an R3 world",
+  "ids": "DEV: r3dev-0000..r3dev-0007; QUAL: r3qual-0000..r3qual-0031; mechanics tests use test-* ids only",
+  "isolation": "no DEV world before RET3B is committed; K1 is not run on DEV before the control-only task check passes; DEV refuses once frozen; QUAL refuses unless frozen and runs once; QUAL worlds are never evaluated before the freeze",
+  "qual_worlds": 32,
+  "rng": "every random draw is a function of (seed, experiment name, world id, stream) (R2 streams); no global RNG"
+ },
+ "state_classes": {
+  "COGNITIVE_STATE": "authoritative, mutable, persistent; shapes responses or learning",
+  "CONTROL_STATE": "fixed program parameters",
+  "DERIVED": "a function of cognitive state, recomputable",
+  "EXPERIMENT_ONLY": "exists only to construct or evaluate the test",
+  "EXTERNAL_MEMORY_CONTROL": "stored experience; never eligible for selection or promotion",
+  "SCRATCH": "per-step or per-call workspace"
+ },
+ "state_semantics": {
+  "authoritative_state": [
+   "W",
+   "epoch",
+   "H",
+   "a"
+  ],
+  "consequence": "two states with identical W and different (H, a) answer every query identically and may learn differently; both facts are mechanics checks",
+  "learning": "reads W, H, a and the current experience (X, y); H and a shape future learning only",
+  "query": "reads W only: f_W(x) = 1/2 phi(x) . S3(W) through the canonical native forward map",
+  "w_only_import": "a W-only snapshot (canonical ELPISG01: W and its epoch) imported into the laboratory is an UNCONSOLIDATED K1 state (H = 0, a = 0, flagged), never a retained state"
+ },
+ "task": {
+  "aliasing_angle_degrees": 45.0,
+  "basis": "Q = q(R) of a 6 x 6 matrix of i.i.d. N(0, 1) from stream basis, with columns multiplied by the sign of the corresponding diagonal of R (Haar orthogonal); q1..q6 are its columns",
+  "hidden_gain": 2.0,
+  "hidden_gain_origin": "INHERITED from closed R2 evidence: R2's control-only DEV task rule chose 2.0 (DEV record b9911cd4e7d0113923ef55470bf20dc6c3c3c41ae360dd6e5f3734edf1f1fd20) and R2 QUAL validity held at 2.0. R3 freezes it here; no grid, no search. R3 DEV re-certifies validity on fresh worlds with controls only and stops (TASK_INVALID_ON_DEV) if it fails; it never changes the gain",
+  "input_scale": 1.0,
+  "inputs": "x = M_t z, z ~ N(0, input_scale^2 I_3) from streams inputs-<t>-<train|test>; input_scale fixed",
+  "mismatched_plane": "[q4, q5, q6]; stream mismatch-<t> is still drawn by the world builder (inherited) but no R3 measurement uses it",
+  "name": "aliased hidden ridges",
+  "planes": {
+   "A": "[q1, q2, q3]",
+   "B": "[cos(theta) q1 + sin(theta) q4, q2, q3]",
+   "C": "[q1, cos(theta) q2 + sin(theta) q5, q3]",
+   "D": "[q1, q2, cos(theta) q3 + sin(theta) q6]"
+  },
+  "properties": [
+   "witness exact",
+   "aliasing on every later plane",
+   "hidden ridge of each later experience vanishes on every earlier plane",
+   "every G1 entity update lies in the current plane",
+   "joint least-squares ceiling exact"
+  ],
+  "pte": "base W0[:, :32]; tail entities 0.125 v b for the R0 PTE value sets (0, 4, 7, 11) and (1, 2, 9, 10), with b = cos(theta) q1 + sin(theta) q4 the aliased axis of B; identical S3 and a B step that reads the differing coordinate",
+  "role": "PRIMARY_GATING (the only arm); inherited family, fresh worlds",
+  "teacher": "T* = [r_A, g q4, g q5, g q6]; r_A = S z / |S z| with S = [q1 q2 q3] and z ~ N(0, I_3) from stream teacher-A; targets g*(x) = sum_j phi(x . t*_j)",
+  "witness": "W* = [T* | 0] (dim x width): answers every experience exactly"
+ },
+ "thresholds": {
+  "ablation_max_sequence_held_fraction": 0.25,
+  "ablation_min_median_factor": 2.0,
+  "baseline_max_sequence_held_fraction": 0.25,
+  "baseline_min_median_A_end_ratio": 10.0,
+  "baseline_min_median_final_earlier_nmse": 0.5,
+  "capacity_max_ceiling_nmse": 1e-06,
+  "class_nmse_absolute": 0.5,
+  "class_nmse_relative": 0.5,
+  "feature_identity_relative": 1e-10,
+  "first_acquisition_median_nmse": 0.25,
+  "gradient_identity_relative": 1e-06,
+  "joint_quality_median_final_mean_nmse": 0.25,
+  "native_consolidation_max_ops": 100000000,
+  "native_hot_path_max_g1_multiple": 1.0,
+  "native_persistent_extra_bytes": 28552,
+  "novelty_min_nmse": 0.5,
+  "partial_reduction_max_median_factor": 0.5,
+  "pte_s3_after_min": 1e-09,
+  "pte_s3_before_max": 1e-12,
+  "qual_validity_min_fraction": 0.75,
+  "reset_min_absolute_nmse": 0.05,
+  "reset_min_degraded_fraction": 0.75,
+  "reset_min_factor": 10.0,
+  "reset_min_median_ratio": 10.0,
+  "witness_max_nmse": 1e-20
+ },
+ "validity": {
+  "V2_forgetting": "M0 SEQUENCE_HELD in at most 25% of QUAL worlds, median final_earlier_mean_nmse >= 0.5 and median A_end_ratio >= 10",
+  "V3_novelty": "nmse_s(O_prev) >= 0.5 in at least 75% of (QUAL world, stage s in B, C, D) pairs",
+  "V5_rehearsal_feasibility": "M1 SEQUENCE_HELD in at least 75% of QUAL worlds",
+  "V6_capacity": "every QUAL world, every stage: stage-ceiling nmse <= 1e-6 on every experience seen so far",
+  "role": "decides whether QUAL tests retention at all; a failure is TASK_INVALID_UNDER_QUAL, never a pass"
+ },
+ "version": 1
+}

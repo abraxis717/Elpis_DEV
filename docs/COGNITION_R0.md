@@ -154,3 +154,9 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
   task and ended `PARTIAL_REDUCTION`: the selected candidate retained every
   experience in 24/24 QUAL worlds, but the causality, native-feasibility and
   numerical-robustness gates failed, so nothing is qualified or canonical.
+
+* **Retention R3** (`research/ecs_retention_r3`, RESEARCH_ONLY;
+  `docs/research/ECS_RETENTION_R3_RESULTS.md`) ended `OUTCOME_A`: fixed-size K1
+  consolidation retained every experience in 32/32 QUAL worlds and was causal
+  (removal and reset lose it, transplant restores it). K1 is eligible for the native
+  milestone; until that milestone merges, no retention mechanism is canonical.
