@@ -22,7 +22,11 @@ extern "C" {
  *
  * There is no per-operation restore, executor construction, deserialization or serialization. A failed operation
  * changes no resident byte (K1 stages outside the image and installs only on success). A transaction holds its
- * WRITE pin from begin to commit/abort and commits W, epoch, H and a together.
+ * WRITE pin from begin to commit/abort and commits W, epoch, H and a together. Transaction refusals follow the
+ * contract of ecsg_k1.h exactly: INVALID/CAPACITY/BUSY keep the transaction (and its pin) open; STALE, or NONFINITE
+ * from learn/consolidate, discards it and releases the pin. A failed FMS release keeps the pin it still holds
+ * (consistent, retried by the next operation and by close; a held READ pin never serves a write) and never turns a
+ * committed result into a refusal.
  *
  * Return codes: K1 codes -1..-7, or (-100 + fms_status). Same-state calls are SINGLE_WRITER (BUSY); distinct
  * states share no cognitive lock. The runtime takes ownership of a supplied empty FMS context on success.

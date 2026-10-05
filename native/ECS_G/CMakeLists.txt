@@ -28,6 +28,11 @@ elpis_add_test(ECS_G test_ecsg_k1_fms
   LIBS elpis_ecsg_k1_fms elpis_ecsg_k1 elpis_ecsg_math Threads::Threads m
   TIMEOUT 120)
 
+elpis_add_test(ECS_G test_ecsg_k1_performance
+  SOURCES tests/test_ecsg_k1_performance.c
+  LIBS elpis_ecsg_k1_fms elpis_ecsg_k1 elpis_ecsg_math m
+  TIMEOUT 600)
+
 elpis_add_test(ECS_G test_ecsg_k1
   SOURCES tests/test_ecsg_k1.c
   LIBS elpis_ecsg_k1 elpis_ecsg_math elpis_hash Threads::Threads m
