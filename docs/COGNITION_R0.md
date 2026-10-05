@@ -119,6 +119,9 @@ evidence. A failure is recorded as it is. It measures:
   `learn(..., steps=K)` returning a `Transition` receipt (or the native
   `Commit` with `receipt=False`), `snapshot` / `restore`, `identity`,
   `epoch`, `s3` (diagnostic).
+* `elpis.ECS_G.k1.K1State` and `K1FMSRuntime`: canonical native K1 state `(W, epoch, H, a)`,
+  query, learning, consolidation, complete-state transactions and FMS residency
+  ([`ECS_K1_RUNTIME.md`](ECS_K1_RUNTIME.md)); admitted by K1N-v2 **QUALIFIED**.
 
 Since Runtime R1 the core runs on the native executor. On every host, the
 current runtime reaches the recorded gates, disposition and interference
@@ -135,17 +138,16 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
 ## Missing edges
 
 * **ECS <-> DSV semantic codec**: not defined; text generation unavailable.
-* **FMS**: current FMS materializes immutable, digest-verified file assets.
-  It cannot yet hold mutable ECS state; `W` lives in native ECS_G memory and
-  persists through its snapshot bytes.
+* **FMS**: native K1 uses generic FMS for mutable WARM/COLD state residency.
+  Restart discovery and crash-durable cognitive commits remain unqualified.
 * **HACF -> ECS**: no structural-memory edge into ECS is qualified.
 * **ECS_C**: transitions return receipts but are not recorded in the history;
   cognition does not depend on history or replay.
-* **Retention**: no mechanism protects earlier learning from later
-  experience; the qualified recurrence alone forgets. Retention R0
+* **Retention history**: the qualified G1 recurrence alone forgets earlier
+  experience. Retention R0
   (`docs/research/ECS_RETENTION_R0_RESULTS.md`, RESEARCH_ONLY) found only a
   partial reduction of forgetting at a cost in acquisition; nothing is
-  qualified or canonical. Retention R1 v1 (`research/ecs_retention_r1`,
+  qualified or canonical from R0. Retention R1 v1 (`research/ecs_retention_r1`,
   RESEARCH_ONLY; `docs/research/ECS_RETENTION_R1_RESULTS.md`) stopped at DEV
   as `TASK_INVALID_ON_DEV`: its primary task was not a valid retention test, so
   no candidate was evaluated and nothing is qualified or canonical. Retention R2
@@ -158,10 +160,12 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
 * **Retention R3** (`research/ecs_retention_r3`, RESEARCH_ONLY;
   `docs/research/ECS_RETENTION_R3_RESULTS.md`) ended `OUTCOME_A`: fixed-size K1
   consolidation retained every experience in 32/32 QUAL worlds and was causal
-  (removal and reset lose it, transplant restores it). K1 is eligible for the native
-  milestone; until that milestone merges, no retention mechanism is canonical.
+  (removal and reset lose it, transplant restores it). The R3 laboratory is not canonical.
+  Its native K1 milestone is canonical under the separate K1N-v2 qualification.
 
 * **Native K1 milestone** (`research/ecs_k1_native`, `docs/research/ECS_K1_NATIVE_RESULTS.md`):
-  its preregistered differential qualification against the R3 record is `NOT_QUALIFIED`
+  K1N-v1 remains historical `NOT_QUALIFIED`
   (2 of 32 worlds outside the planned float tolerances; every exact comparison and the R3
-  decision record reproduced). It is not promoted, and no retention mechanism is canonical.
+  decision record reproduced). K1N-v2 is **QUALIFIED**: E1–E5, L1, L2, D1_Q and D1_F passed
+  on 32 Q and 32 fresh F worlds. Native K1 is canonical under the exact v2 record admitted
+  by `tests/research/_k1_promotion.py`; R3 stays `OUTCOME_A`.
