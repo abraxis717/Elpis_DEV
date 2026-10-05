@@ -141,27 +141,19 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
 * **HACF -> ECS**: no structural-memory edge into ECS is qualified.
 * **ECS_C**: transitions return receipts but are not recorded in the history;
   cognition does not depend on history or replay.
-* **Retention**: no mechanism protects earlier learning from later
-  experience; the qualified recurrence alone forgets. Retention R0
-  (`docs/research/ECS_RETENTION_R0_RESULTS.md`, RESEARCH_ONLY) found only a
-  partial reduction of forgetting at a cost in acquisition; nothing is
-  qualified or canonical. Retention R1 v1 (`research/ecs_retention_r1`,
-  RESEARCH_ONLY; `docs/research/ECS_RETENTION_R1_RESULTS.md`) stopped at DEV
-  as `TASK_INVALID_ON_DEV`: its primary task was not a valid retention test, so
-  no candidate was evaluated and nothing is qualified or canonical. Retention R2
-  v1 (`research/ecs_retention_r2`, RESEARCH_ONLY;
-  `docs/research/ECS_RETENTION_R2_RESULTS.md`) ran on a valid aliasing-conflict
-  task and ended `PARTIAL_REDUCTION`: the selected candidate retained every
-  experience in 24/24 QUAL worlds, but the causality, native-feasibility and
-  numerical-robustness gates failed, so nothing is qualified or canonical.
-
+* **Retention history**: the qualified G1 recurrence alone forgets earlier
+  experience. Retention R0 ended `PARTIAL_REDUCTION / OUTCOME_C`; Retention R1
+  stopped `TASK_INVALID_ON_DEV`; Retention R2 ended
+  `PARTIAL_REDUCTION / OUTCOME_C`. None of those lines promoted a canonical
+  retention mechanism.
 * **Retention R3** (`research/ecs_retention_r3`, RESEARCH_ONLY;
   `docs/research/ECS_RETENTION_R3_RESULTS.md`) ended `OUTCOME_A`: fixed-size K1
-  consolidation retained every experience in 32/32 QUAL worlds and was causal
-  (removal and reset lose it, transplant restores it). K1 is eligible for the native
-  milestone; until that milestone merges, no retention mechanism is canonical.
-
-* **Native K1 milestone** (`research/ecs_k1_native`, `docs/research/ECS_K1_NATIVE_RESULTS.md`):
-  its preregistered differential qualification against the R3 record is `NOT_QUALIFIED`
-  (2 of 32 worlds outside the planned float tolerances; every exact comparison and the R3
-  decision record reproduced). It is not promoted, and no retention mechanism is canonical.
+  consolidation retained every experience in 32/32 QUAL worlds and passed its
+  registered causal and robustness gates. The R3 laboratory remains research
+  authority, not runtime authority.
+* **Native K1 milestone** (`research/ecs_k1_native`,
+  `docs/research/ECS_K1_NATIVE_RESULTS.md`): K1N-v1 remains historical
+  `NOT_QUALIFIED`. K1N-v2 is **QUALIFIED**: E1-E5, L1, L2, D1_Q and D1_F all
+  passed on 32 frozen Q worlds and 32 fresh F worlds. Native K1 is canonical
+  through the exact admitted v2 attestation in
+  `research/ecs_k1_native/evidence/ecsg-k1-native.v2.attestation.json`.
