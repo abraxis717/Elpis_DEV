@@ -93,6 +93,22 @@ def _qual_exists() -> bool:
     return qual.is_dir() and any(qual.glob("*.json"))
 
 
+def _dev_stopped() -> bool:
+    """The registered early stop (spec dev_rules.task): DEV ended TASK_INVALID_ON_DEV, so no freeze and no QUAL.
+
+    Only then may the interpretation (RET1F) follow DEV (RET1C) directly; any frozen or QUAL record beside it
+    is itself a chronology violation.
+    """
+    dev = REPO / LAB / "evidence" / "dev"
+    records = sorted(dev.glob("*.json")) if dev.is_dir() else []
+    stopped = any(json.loads(r.read_bytes())["body"].get("disposition") == "TASK_INVALID_ON_DEV" for r in records)
+    if stopped:
+        frozen = REPO / LAB / "frozen"
+        assert not (frozen.is_dir() and any(frozen.glob("*.json"))) and not _qual_exists(), (
+            f"{CHRONOLOGY_VIOLATED}: frozen or QUAL evidence exists after TASK_INVALID_ON_DEV")
+    return stopped
+
+
 # --- the preregistration itself --------------------------------------------------------------------------------
 
 
@@ -295,6 +311,8 @@ def test_records_appear_only_after_their_chronological_step():
             assert len(adds) == 1 and _is_step(_tag(adds[0][41:]), step), (
                 f"{PREMATURE_RESULT}: {record} added by {[a[41:] for a in adds]}; expected one {step} commit")
             added_at = order[adds[0][:40]]
+            if location == RESULTS and _dev_stopped():
+                predecessor = "RET1C"    # the registered early stop: interpretation follows DEV directly
             before = [order[sha] for sha, tag in lab_history if _is_step(tag, predecessor)]
             assert before and min(before) > added_at, (
                 f"{PREMATURE_RESULT}: {record} ({step}) has no {predecessor} commit before it")
@@ -309,8 +327,9 @@ def _after(text: str, marker: str) -> str:
 
 
 def test_no_result_is_claimed_before_qual_evidence():
-    if _qual_exists():
-        pytest.skip("QUAL evidence exists; result claims are governed by the RET1F interpretation tests")
+    if _qual_exists() or _dev_stopped():
+        pytest.skip("terminal evidence exists (QUAL, or DEV ended TASK_INVALID_ON_DEV); result claims are "
+                    "governed by the RET1F interpretation tests")
     assert not (REPO / RESULTS).exists(), f"{PREMATURE_RESULT}: {RESULTS} exists without QUAL evidence"
     assert not set(SPEC) & {"choices", "selected", "results", "disposition_recorded", "outcome"}
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))

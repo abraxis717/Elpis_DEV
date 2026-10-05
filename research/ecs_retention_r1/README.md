@@ -2,11 +2,9 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `NO_LANGUAGE_CLAIM` · `SYNTHETIC` · `SEMANTICS=NONE` · `PREREGISTERED`
 
-**Status: RET1A only.** This directory holds the scientific question, the
-candidate definitions, the DEV selection rule and the QUAL pass rule. It has no
-laboratory code, no candidate implementation, no DEV or QUAL evidence, no frozen
-record, no selected candidate and no result. Canonical ECS_G learning is
-unchanged.
+**Status: closed at RET1F. Disposition `TASK_INVALID_ON_DEV`.** No candidate was
+evaluated, nothing was frozen, QUAL did not run, and no mechanism is qualified or
+promoted (NO_CANONICAL_PROMOTION). Canonical ECS_G learning is unchanged.
 
 ## Question
 
@@ -124,3 +122,49 @@ digest and the spec, pass-rule and `CANDIDATES.md` digests. Four questions are
 kept apart: evidence integrity, implementation/reference correctness,
 historical bitwise replay (only under a matching binding, never a scientific
 gate), and the current-runtime regression (never skipped).
+
+## Laboratory (RET1B)
+
+Every candidate step is the canonical native G1 step of the current `W` (an
+executor created from `W` performs one learn step), followed by the
+mechanism's correction at the pre-step `W`; with the mechanism removed the
+engine is bitwise the canonical core. Learning an experience and consolidating
+it are one atomic transition. The complete declared state (`W`, epoch and the
+persistent consolidation state) serializes deterministically
+(`engine.serialize`), which is what the transplant gate restores.
+
+Implementation decision recorded before DEV: the registered PTE construction
+(the R0 pair, differing on coordinate 0, stepped on B) is evaluated on the
+arm-R world of each QUAL world, where B lies on axis 0 as in R0. In arm S, B's
+inputs vanish on coordinate 0, so a B step never reads or moves that row and
+the construction is structurally degenerate; it is recorded there as
+descriptive only.
+
+## Commands
+
+From the repository root, with a Release native build:
+
+    export PYTHONPATH=src:.
+    python -m research.ecs_retention_r1.run status
+    python -m research.ecs_retention_r1.run dev --library <build>/native/ECS_G/libelpis_ecsg_math.so
+    ELPIS_NATIVE_BUILD=<build> ELPIS_REQUIRE_NATIVE=1 python -m pytest -q tests/research/ecs_retention_r1
+
+`dev`, `freeze` and `qual` write once and refuse to run again; a changed
+experiment is a new version.
+
+
+## Result
+
+DEV (`evidence/dev/ecsg-retention-r1.v1.dev.json`, record `76815470...`) ended
+`TASK_INVALID_ON_DEV`. At every registered arm-S input scale (1.25, 1.0, 0.75)
+the controls showed that the primary arm is not a valid retention test:
+
+- plain sequential G1 already held the whole sequence (5/8, 8/8 and 8/8 DEV
+  worlds; median earlier-experience nmse at D 0.03 to 0.04);
+- later experiences carried too little novel variance (V3 failed);
+- at 1.25 plain G1 failed to learn D in 2 worlds.
+
+Under the specification, no candidate or reference was run, nothing was
+selected, frozen or qualified. R1 v1 says nothing for or against K1, K2, K3 or
+C1R. Full interpretation: `docs/research/ECS_RETENTION_R1_RESULTS.md`. A repair
+is a new experiment version.
