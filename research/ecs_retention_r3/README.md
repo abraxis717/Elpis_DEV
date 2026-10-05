@@ -2,9 +2,8 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `NO_LANGUAGE_CLAIM` · `SYNTHETIC` · `SEMANTICS=NONE` · `PREREGISTERED` · `CONFIRMATORY`
 
-**Status: RET3A, preregistered.** There is no laboratory, no DEV or QUAL world
-has been evaluated, and there is no result. Canonical ECS_G learning is
-unchanged.
+**Status: RET3B, laboratory mechanics.** No DEV or QUAL world has been
+evaluated, and there is no result. Canonical ECS_G learning is unchanged.
 
 ## Question
 
@@ -33,8 +32,8 @@ The design is explained in `PREREGISTRATION.md`. The authority is
 ## Chronology
 
 ```
-RET3A  preregistration                      <- this step
-RET3B  laboratory mechanics (test-* worlds only)
+RET3A  preregistration
+RET3B  laboratory mechanics (test-* worlds only)     <- this step
 RET3C  DEV (control-only task check; then the K1 DEV rule)
 RET3D  freeze
 RET3E  QUAL once (with the numerical-robustness children)
@@ -44,6 +43,41 @@ RET3F  interpretation
 `TASK_INVALID_ON_DEV` or `K1_STOPPED_ON_DEV` ends the experiment at RET3C;
 RET3F may follow it. Only `OUTCOME_A` permits the native K1 milestone. Anything
 else is NO_CANONICAL_PROMOTION.
+
+## Laboratory (RET3B)
+
+The engine is the R2 laboratory's K1 and C1R, unchanged in mathematics. K2 and
+K3 are not present, and `engine.make` refuses them. Every K1 step is the
+canonical native G1 step, then the K1 correction at the pre-step W. With the K1
+state absent (`H = 0`) or removed, the engine is bitwise the canonical core.
+
+The complete state `(W, epoch, H, a)` serializes to deterministic bytes:
+- `engine.reset` empties H and a and keeps W and the epoch;
+- `engine.import_w_only` turns a canonical `ELPISG01` snapshot into an
+  UNCONSOLIDATED state and refuses anything else;
+- `engine.query` reads W only.
+
+Implementation decisions recorded before DEV:
+
+- **`consolidation_state_shapes_learning`.** The specification words this check
+  as "one K1 step on C from the complete state and from the reset state yield
+  different W". From the consolidated state at B, that first step is identical
+  by construction:
+  - consolidation sets `a = S3(W_B)`;
+  - so the K1 correction at the anchor is `u = 1/2 H (S3(W_B) - a) = 0`.
+
+  The literal reading would fail in every world for a reason unrelated to the
+  question. The laboratory therefore compares the learning of experience C
+  from the two states. That is exactly what the uninterrupted run and the reset
+  branch already compute: the check reads W after C.
+
+  `test_mechanics.py` proves both facts: the zero correction at the anchor
+  with an identical first step, and divergence over later steps. The decision
+  was made and committed at RET3B, before any DEV world.
+- **Consolidation interface.** Consolidation takes `(W, inputs)` only. R3 has
+  no uninformed or mismatched ablation, so no random stream is passed.
+- **W-only snapshots.** These are read with the `ELPISG01` R0 layout (magic,
+  version, dim, width, epoch, W) and checked against the expected shape.
 
 ## Commands (from RET3B)
 
