@@ -13,6 +13,5 @@ const uint8_t *ecsg_k1_internal_image(const elpis_ecsg_k1 *state);
 elpis_ecsg_k1_status ecsg_k1_internal_check_envelope(const uint8_t *envelope, size_t size, size_t *dim, size_t *width);
 elpis_ecsg_k1_status ecsg_k1_internal_decode(const elpis_ecsg_k1 *state, const uint8_t *envelope, uint8_t *image);
 void ecsg_k1_internal_encode(const elpis_ecsg_k1 *state, const uint8_t *image, uint8_t *out);
-void ecsg_k1_internal_set_generation(elpis_ecsg_k1 *state, uint64_t generation);
 
 #endif

@@ -30,7 +30,7 @@ elpis_add_test(ECS_G test_ecsg_k1_fms
 
 elpis_add_test(ECS_G test_ecsg_k1
   SOURCES tests/test_ecsg_k1.c
-  LIBS elpis_ecsg_k1 elpis_ecsg_math Threads::Threads m
+  LIBS elpis_ecsg_k1 elpis_ecsg_math elpis_hash Threads::Threads m
   TIMEOUT 120)
 
 # Mutable ECS_G residency is additive. Keep the Runtime R1 measured library
@@ -136,4 +136,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang
   target_compile_options(test_ecsg_k1_fms_alloc PRIVATE -ffp-contract=off)
   target_link_options(test_ecsg_k1_fms_alloc PRIVATE
     "LINKER:--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=aligned_alloc,--wrap=posix_memalign")
+  # K1 residency: a failed FMS release is reconciled (link-time injected failure).
+  elpis_add_test(ECS_G test_ecsg_k1_fms_faults
+    SOURCES tests/test_ecsg_k1_fms_faults.c src/ecsg_k1_fms.c src/ecsg_k1.c src/ecsg_math.c
+            ../substrate/src/sha256.c ../substrate/src/fms_core.c ../substrate/src/fms_pal_posix.c
+    INCLUDES include src ../substrate/include
+    LIBS m Threads::Threads
+    TIMEOUT 60)
+  target_compile_options(test_ecsg_k1_fms_faults PRIVATE -ffp-contract=off)
+  target_link_options(test_ecsg_k1_fms_faults PRIVATE "LINKER:--wrap=fms_release")
 endif()

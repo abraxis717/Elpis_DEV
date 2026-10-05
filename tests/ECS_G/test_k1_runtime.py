@@ -184,3 +184,142 @@ def test_fms_warm_path_runs_over_resident_bytes(libs, tmp_path):
         info = r.inspect(sid)
         assert info["tier"] == 1 and info["lease_count"] == 0 and info["epoch"] == 250
         r.close_state(sid)
+
+
+def test_transaction_refusal_contract_recoverable_then_commit(libs):
+    """INVALID and CAPACITY are refused before the candidate is touched: the transaction stays open and a valid
+    retry commits. NONFINITE from learn or consolidate discards it. Authority never changes on a refusal."""
+    _, k1 = libs
+    w, x, y = data(17)
+    with K1State.create(k1, D, N, w, max_rows=8) as s, K1State.create(k1, D, N, w, max_rows=8) as direct:
+        big_x, big_y = data(18, rows=16)[1:]
+        x8, y8 = x[:8 * D], y[:8]
+        before = s.snapshot()
+        t = s.transaction()
+        with pytest.raises(K1Error) as exc:
+            t.learn(big_x, big_y, 0.002, 5)
+        assert exc.value.code == "CAPACITY" and t._open
+        with pytest.raises(K1Error) as exc:
+            t.consolidate(big_x)
+        assert exc.value.code == "CAPACITY" and t._open
+        assert s.snapshot() == before
+        t.learn(x8, y8, 0.002, 5)
+        t.consolidate(x8)
+        t.commit()
+        direct.learn(x8, y8, 0.002, 5)
+        direct.consolidate(x8)
+        assert s.snapshot() == direct.snapshot()
+        bad = array("d", x8)
+        bad[2] = float("nan")
+        t = s.transaction()
+        with pytest.raises(K1Error) as exc:
+            t.learn(bad, y8, 0.002, 3)
+        assert exc.value.code == "NONFINITE" and not t._open
+        with pytest.raises(K1Error):
+            t.commit()
+        t = s.transaction()
+        with pytest.raises(K1Error) as exc:
+            t.learn(x8, y8, 1e9, 30)
+        assert exc.value.code == "NONFINITE" and not t._open
+        assert s.snapshot() == direct.snapshot()
+        with s.transaction() as t:   # a fresh transaction opens: nothing was left behind
+            t.learn(x8, y8, 0.002, 1)
+
+
+def test_fms_transaction_refusal_contract_matches(libs, tmp_path):
+    _, k1 = libs
+    adapter = ctypes.CDLL(str(_beside("libelpis_ecsg_k1_fms.so")))
+    w, x, y = data(19)
+    big_x, big_y = data(20, rows=16)[1:]
+    x8, y8 = x[:8 * D], y[:8]
+    image = k1.envelope_bytes(D, N) - 32
+    with Context(adapter, warm_bytes=8 * image, cold_bytes=10 ** 6, max_objects=4,
+                 cold_root=tmp_path / "cold") as ctx, K1FMSRuntime(k1, ctx, adapter, max_states=2) as r, \
+            K1State.create(k1, D, N, w, max_rows=8) as ref:
+        sid = r.register(b"\x02" * 32, D, N, w, max_rows=8)
+        t = r.transaction(sid)
+        with pytest.raises(K1Error) as exc:
+            t.learn(big_x, big_y, 0.002, 5)
+        assert exc.value.code == "CAPACITY" and t._open
+        info = r.inspect(sid)
+        assert info["transaction_open"] == 1 and info["lease_count"] == 1
+        t.learn(x8, y8, 0.002, 5)
+        t.commit()
+        ref.learn(x8, y8, 0.002, 5)
+        assert r.snapshot(sid) == ref.snapshot()
+        t = r.transaction(sid)
+        with pytest.raises(K1Error) as exc:
+            t.learn(x8, y8, 1e9, 30)
+        assert exc.value.code == "NONFINITE" and not t._open
+        info = r.inspect(sid)
+        assert info["transaction_open"] == 0 and info["lease_count"] == 0
+        assert r.snapshot(sid) == ref.snapshot()
+        r.close_state(sid)
+
+
+def test_provenance_transitions_and_hostile_imports(libs):
+    api, k1 = libs
+    w, x, y = data(21)
+    with K1State.create(k1, D, N, w) as s:
+        s.reset()
+        s.reset()
+        assert s.provenance == "RESET"
+        s.learn(x, y, 0.002, 2)
+        assert s.provenance == "RESET"
+        s.consolidate(x)
+        assert s.provenance == "COMPLETE"
+    with Executor.create(api, D, N, w) as e, K1State.import_w_only(k1, e.snapshot()) as imp:
+        assert imp.provenance == "UNCONSOLIDATED_IMPORT"
+        imp.consolidate(x)
+        assert imp.provenance == "COMPLETE"
+    tiny = bytearray(40 + 8 * 64)
+    tiny[:8] = b"ELPISG01"
+    tiny[8] = 1
+    tiny[16] = 64     # dim 64, width 1: a 552-byte request for a multi-GB state
+    tiny[24] = 1
+    with pytest.raises(K1Error) as exc:
+        K1State.import_w_only(k1, bytes(tiny))
+    assert exc.value.code == "CAPACITY"
+    assert k1.workspace_bytes(64, 1, 1) == 0 and k1.envelope_bytes(64, 1) == 0
+
+
+class _Counting:
+    """Counts native crossings per bound K1 symbol."""
+
+    def __init__(self, namespace):
+        self.calls = {}
+        for name, fn in vars(namespace).copy().items():
+            setattr(namespace, name, self._wrap(name, fn))
+
+    def _wrap(self, name, fn):
+        def call(*args):
+            self.calls[name] = self.calls.get(name, 0) + 1
+            return fn(*args)
+        return call
+
+
+def test_one_native_crossing_per_operation_and_none_proportional_to_k():
+    k1 = K1Library(ctypes.CDLL(str(_beside("libelpis_ecsg_k1.so"))))
+    counter = _Counting(k1._k)
+    w, x, y = data(23)
+    with K1State.create(k1, D, N, w, max_rows=R) as s:
+        for steps in (1, 10, 1000):
+            counter.calls.clear()
+            s.learn(x, y, 0.002, steps)
+            assert counter.calls == {"learn": 1}, (steps, counter.calls)
+        for op, expected in ((lambda: s.query(x), {"forward": 1}), (lambda: s.consolidate(x), {"consolidate": 1}),
+                             (lambda: s.reset(), {"reset": 1})):
+            counter.calls.clear()
+            op()
+            assert counter.calls == expected, counter.calls
+        counter.calls.clear()
+        with s.transaction() as t:
+            t.learn(x, y, 0.002, 500)
+            t.consolidate(x)
+            t.commit()
+        assert counter.calls == {"txn_begin": 1, "txn_learn": 1, "txn_consolidate": 1, "txn_commit": 1}
+        before = s.stats()["heap_allocations"]
+        for _ in range(200):
+            s.query(x)
+        s.learn(x, y, 0.002, 50)
+        assert s.stats()["heap_allocations"] == before   # no hot allocation after create/reserve

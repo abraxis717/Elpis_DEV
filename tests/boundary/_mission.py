@@ -161,7 +161,9 @@ def ecs_independence(root: Path) -> list[str]:
                     "src/ecsg_k1.c": {"elpis/sha256.h", "ecsg_k1_internal.h"},
                     "src/ecsg_k1_fms.c": {"elpis/sha256.h", "ecsg_k1_internal.h"},
                     "include/elpis/ecsg_k1_fms.h": {"elpis/fms.h"},
+                    "tests/test_ecsg_k1.c": {"elpis/sha256.h"},
                     "tests/test_ecsg_k1_fms.c": {"elpis/fms_pal.h", "elpis/fms_pal_posix.h"},
+                    "tests/test_ecsg_k1_fms_faults.c": {"elpis/fms_pal_posix.h"},
                     "tests/test_ecsg_k1_fms_alloc.c": {"elpis/fms_pal_posix.h"},
                     "tests/test_ecsg_k1_performance.c": {"elpis/fms_pal_posix.h"},
                 }

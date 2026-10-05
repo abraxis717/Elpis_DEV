@@ -1,10 +1,12 @@
 /* Native K1 runtime mechanics (docs/ECS_K1_RUNTIME.md). */
 #include "elpis/ecsg_executor.h"
 #include "elpis/ecsg_k1.h"
+#include "elpis/sha256.h"
 
 #include <assert.h>
 #include <math.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -282,6 +284,269 @@ static void test_single_writer_refuses_concurrent_entry(void)
     elpis_ecsg_k1_destroy(&other);
 }
 
+static void put64(uint8_t *p, uint64_t v)
+{
+    unsigned i;
+    for (i = 0u; i < 8u; ++i) {
+        p[i] = (uint8_t)(v >> (8u * i));
+    }
+}
+
+/* Recompute the trailer after a deliberate header/payload edit: the checksum is integrity, not authority. */
+static void reseal(uint8_t *e, size_t n)
+{
+    elpis_sha256(e, n - 32u, e + n - 32u);
+}
+
+static void test_transaction_refusal_contract(void)
+{
+    elpis_ecsg_k1 *s = fresh(), *direct = fresh();
+    uint64_t tok = 0, epoch = 0;
+    double bad[R * D], o[R], huge[R * D];
+    uint8_t *before;
+    size_t nb = envelope(s, &before), i;
+    /* recoverable: CAPACITY and INVALID are refused before the candidate is touched; the transaction stays open */
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, X, Y, R + 1, 0.002, 5, NULL) == ELPIS_ECSG_K1_CAPACITY);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, X, Y, R, -1.0, 5, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, X, NULL, R, 0.002, 5, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, X, Y, R, 0.002, 0, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_consolidate(s, tok, X, R + 1) == ELPIS_ECSG_K1_CAPACITY);
+    assert(elpis_ecsg_k1_txn_consolidate(s, tok, NULL, R) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_learn(s, tok + 1u, X, Y, R, 0.002, 5, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_epoch(s, tok, &epoch) == 0 && epoch == 0u);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, X, Y, R, 0.002, 5, NULL) == 0);   /* retry succeeds */
+    assert(elpis_ecsg_k1_txn_consolidate(s, tok, X, R) == 0);
+    {
+        uint8_t *mid;
+        size_t nm = envelope(s, &mid);
+        assert(nm == nb && memcmp(mid, before, nb) == 0);   /* no refusal touched authority */
+        free(mid);
+    }
+    /* a non-finite query of the candidate is read-only: the transaction stays open */
+    for (i = 0; i < R * D; ++i) {
+        huge[i] = 1e200;
+    }
+    assert(elpis_ecsg_k1_txn_forward(s, tok, huge, R, o) == ELPIS_ECSG_K1_NONFINITE);
+    assert(elpis_ecsg_k1_txn_abort(s, tok + 7u) == ELPIS_ECSG_K1_INVALID);   /* a wrong token aborts nothing */
+    assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == 0);
+    assert(elpis_ecsg_k1_learn(direct, X, Y, R, 0.002, 5, NULL) == 0 && elpis_ecsg_k1_consolidate(direct, X, R, NULL) == 0);
+    assert(same_state(s, direct));
+    assert(elpis_ecsg_k1_txn_abort(s, tok) == 0);   /* nothing open: idempotent */
+    /* fatal: NONFINITE input or arithmetic discards the transaction; authority unchanged */
+    memcpy(bad, X, sizeof(bad));
+    bad[5] = NAN;
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, bad, Y, R, 0.002, 5, NULL) == ELPIS_ECSG_K1_NONFINITE);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, X, Y, R, 0.002, 5, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, X2, Y2, R, 1e9, 20, NULL) == ELPIS_ECSG_K1_NONFINITE);
+    assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+    assert(elpis_ecsg_k1_txn_consolidate(s, tok, bad, R) == ELPIS_ECSG_K1_NONFINITE);
+    assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(same_state(s, direct));
+    free(before);
+    elpis_ecsg_k1_destroy(&s);
+    elpis_ecsg_k1_destroy(&direct);
+}
+
+static void test_hostile_dimensions_are_refused_before_allocation(void)
+{
+    elpis_ecsg_k1 *s = NULL, *ok = fresh();
+    uint8_t snap[40 + 8 * 4];
+    uint8_t *e;
+    size_t n;
+    static double w[64 * 8];
+    /* declared byte budgets bind before anything is sized or allocated */
+    assert(elpis_ecsg_k1_image_bytes(64, 1) == 0u && elpis_ecsg_k1_workspace_bytes(64, 1, 1) == 0u);
+    assert(elpis_ecsg_k1_envelope_bytes(SIZE_MAX, 1) == 0u && elpis_ecsg_k1_image_bytes(6, SIZE_MAX) == 0u);
+    assert(elpis_ecsg_k1_workspace_bytes(D, N, SIZE_MAX) == 0u);
+    assert(elpis_ecsg_k1_workspace_bytes(D, N, (size_t)1 << 40) == 0u);
+    assert(elpis_ecsg_k1_image_bytes(D, N) > 0u && elpis_ecsg_k1_image_bytes(D, N) <= ELPIS_ECSG_K1_MAX_IMAGE_BYTES);
+    assert(elpis_ecsg_k1_create(64, 8, R, w, &s) == ELPIS_ECSG_K1_CAPACITY && s == NULL);
+    assert(elpis_ecsg_k1_create(0, 8, R, w, &s) == ELPIS_ECSG_K1_INVALID && s == NULL);
+    assert(elpis_ecsg_k1_create(D, N, SIZE_MAX, W0, &s) == ELPIS_ECSG_K1_CAPACITY && s == NULL);
+    assert(elpis_ecsg_k1_reserve(ok, SIZE_MAX / 2u) == ELPIS_ECSG_K1_CAPACITY && elpis_ecsg_k1_max_rows(ok) == R);
+    /* a tiny W-only snapshot claiming dim 64 cannot request a multi-GB state */
+    memset(snap, 0, sizeof(snap));
+    memcpy(snap, "ELPISG01", 8);
+    snap[8] = 1u;
+    put64(snap + 16, 64u);
+    put64(snap + 24, 1u);
+    assert(elpis_ecsg_k1_import_w_only(snap, 40 + 8 * 64, R, &s) == ELPIS_ECSG_K1_CAPACITY && s == NULL);
+    put64(snap + 16, 2u);
+    put64(snap + 24, UINT64_MAX / 2u);   /* d * w * 8 would wrap */
+    assert(elpis_ecsg_k1_import_w_only(snap, sizeof(snap), R, &s) == ELPIS_ECSG_K1_CAPACITY && s == NULL);
+    put64(snap + 24, UINT64_MAX);
+    assert(elpis_ecsg_k1_import_w_only(snap, sizeof(snap), R, &s) == ELPIS_ECSG_K1_CAPACITY && s == NULL);
+    put64(snap + 16, 0u);
+    assert(elpis_ecsg_k1_import_w_only(snap, sizeof(snap), R, &s) == ELPIS_ECSG_K1_CORRUPT && s == NULL);
+    /* hostile envelope headers, resealed so that only the bounds can refuse them */
+    n = envelope(ok, &e);
+    put64(e + 16, 64u);
+    put64(e + 24, 1u);
+    reseal(e, n);
+    assert(elpis_ecsg_k1_restore(e, n, R, &s) == ELPIS_ECSG_K1_CAPACITY && s == NULL);
+    put64(e + 16, 6u);
+    put64(e + 24, UINT64_MAX);
+    reseal(e, n);
+    assert(elpis_ecsg_k1_restore(e, n, R, &s) == ELPIS_ECSG_K1_CAPACITY && s == NULL);
+    put64(e + 24, (uint64_t)1 << 61);
+    reseal(e, n);
+    assert(elpis_ecsg_k1_restore(e, n, R, &s) == ELPIS_ECSG_K1_CAPACITY && s == NULL);
+    put64(e + 24, 37u);   /* a plausible shape whose size does not match */
+    reseal(e, n);
+    assert(elpis_ecsg_k1_restore(e, n, R, &s) == ELPIS_ECSG_K1_CORRUPT && s == NULL);
+    free(e);
+    elpis_ecsg_k1_destroy(&ok);
+}
+
+static void test_resealed_envelopes_are_still_validated(void)
+{
+    elpis_ecsg_k1 *s = fresh(), *r = NULL;
+    uint8_t *e;
+    double nan = NAN;
+    size_t n;
+    assert(elpis_ecsg_k1_learn(s, X, Y, R, 0.002, 9, NULL) == 0 && elpis_ecsg_k1_consolidate(s, X, R, NULL) == 0);
+    n = envelope(s, &e);
+    /* a recomputed checksum is integrity only: the semantic checks still refuse */
+    e[48] = 7u;   /* provenance */
+    reseal(e, n);
+    assert(elpis_ecsg_k1_restore(e, n, R, &r) == ELPIS_ECSG_K1_CORRUPT && r == NULL);
+    e[48] = 0u;
+    e[56] = 1u;   /* reserved */
+    reseal(e, n);
+    assert(elpis_ecsg_k1_restore(e, n, R, &r) == ELPIS_ECSG_K1_CORRUPT && r == NULL);
+    e[56] = 0u;
+    put64(e + 32, 84u);   /* feature count */
+    reseal(e, n);
+    assert(elpis_ecsg_k1_restore(e, n, R, &r) == ELPIS_ECSG_K1_CORRUPT && r == NULL);
+    put64(e + 32, 83u);
+    {
+        uint64_t bits;
+        memcpy(&bits, &nan, sizeof(bits));
+        put64(e + 64 + 8 * 3, bits);   /* a non-finite W entry */
+    }
+    reseal(e, n);
+    assert(elpis_ecsg_k1_restore(e, n, R, &r) == ELPIS_ECSG_K1_CORRUPT && r == NULL);
+    free(e);
+    elpis_ecsg_k1_destroy(&s);
+}
+
+static void test_provenance_transitions(void)
+{
+    elpis_ecsg_executor *ex = NULL;
+    elpis_ecsg_k1 *s = fresh(), *imp = NULL;
+    uint8_t snap[40 + WC * 8];
+    uint64_t tok = 0;
+    assert(elpis_ecsg_k1_provenance_of(s) == ELPIS_ECSG_K1_COMPLETE);
+    assert(elpis_ecsg_k1_reset(s, NULL) == 0 && elpis_ecsg_k1_reset(s, NULL) == 0);   /* repeated reset */
+    assert(elpis_ecsg_k1_provenance_of(s) == ELPIS_ECSG_K1_RESET);
+    assert(elpis_ecsg_k1_learn(s, X, Y, R, 0.002, 3, NULL) == 0);
+    assert(elpis_ecsg_k1_provenance_of(s) == ELPIS_ECSG_K1_RESET);   /* learning never changes provenance */
+    assert(elpis_ecsg_k1_consolidate(s, X, R, NULL) == 0);
+    assert(elpis_ecsg_k1_provenance_of(s) == ELPIS_ECSG_K1_COMPLETE);   /* consolidation completes the state */
+    assert(elpis_ecsg_executor_create(D, N, R, W0, &ex) == 0 && elpis_ecsg_executor_snapshot_write(ex, snap, sizeof(snap)) == 0);
+    assert(elpis_ecsg_k1_import_w_only(snap, sizeof(snap), R, &imp) == 0);
+    assert(elpis_ecsg_k1_provenance_of(imp) == ELPIS_ECSG_K1_UNCONSOLIDATED_IMPORT);
+    /* a consolidation inside a transaction completes the state only when committed */
+    assert(elpis_ecsg_k1_txn_begin(imp, &tok) == 0 && elpis_ecsg_k1_txn_consolidate(imp, tok, X, R) == 0);
+    assert(elpis_ecsg_k1_provenance_of(imp) == ELPIS_ECSG_K1_UNCONSOLIDATED_IMPORT);
+    assert(elpis_ecsg_k1_txn_commit(imp, tok, NULL) == 0);
+    assert(elpis_ecsg_k1_provenance_of(imp) == ELPIS_ECSG_K1_COMPLETE);
+    elpis_ecsg_executor_destroy(&ex);
+    elpis_ecsg_k1_destroy(&imp);
+    elpis_ecsg_k1_destroy(&s);
+}
+
+static void test_epoch_overflow_is_refused_and_recoverable(void)
+{
+    elpis_ecsg_k1 *s = fresh(), *r = NULL;
+    uint8_t *e;
+    uint64_t tok = 0;
+    size_t n = envelope(s, &e);
+    put64(e + 40, UINT64_MAX - 2u);
+    reseal(e, n);
+    assert(elpis_ecsg_k1_restore(e, n, R, &r) == 0 && elpis_ecsg_k1_epoch(r) == UINT64_MAX - 2u);
+    assert(elpis_ecsg_k1_learn(r, X, Y, R, 0.002, 3, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_begin(r, &tok) == 0);
+    assert(elpis_ecsg_k1_txn_learn(r, tok, X, Y, R, 0.002, 3, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_learn(r, tok, X, Y, R, 0.002, 2, NULL) == 0);   /* still open: a valid retry */
+    assert(elpis_ecsg_k1_txn_commit(r, tok, NULL) == 0 && elpis_ecsg_k1_epoch(r) == UINT64_MAX);
+    free(e);
+    elpis_ecsg_k1_destroy(&r);
+    elpis_ecsg_k1_destroy(&s);
+}
+
+typedef struct {
+    elpis_ecsg_k1 *s;
+    volatile int stop;
+    unsigned long reads;
+} watch_arg;
+
+/* Inspection while another thread mutates: getters are atomic loads, stats is guarded (OK or BUSY). */
+static void *watcher(void *p)
+{
+    watch_arg *a = (watch_arg *)p;
+    elpis_ecsg_k1_counters c;
+    uint64_t last_generation = 0u;
+    while (!__atomic_load_n(&a->stop, __ATOMIC_ACQUIRE)) {
+        const uint64_t g = elpis_ecsg_k1_generation(a->s);
+        const uint32_t prov = elpis_ecsg_k1_provenance_of(a->s);
+        int rc;
+        assert(g >= last_generation);
+        last_generation = g;
+        assert(prov <= ELPIS_ECSG_K1_UNCONSOLIDATED_IMPORT);
+        (void)elpis_ecsg_k1_epoch(a->s);
+        assert(elpis_ecsg_k1_max_rows(a->s) >= R);
+        rc = elpis_ecsg_k1_stats(a->s, &c);
+        assert(rc == ELPIS_ECSG_K1_OK || rc == ELPIS_ECSG_K1_BUSY);
+        a->reads += 1u;
+    }
+    return NULL;
+}
+
+/* The writer retries BUSY: the watcher's guarded stats call legitimately overlaps it (SINGLE_WRITER). */
+#define UNTIL_NOT_BUSY(expr) \
+    do {                     \
+        rc = (expr);         \
+    } while (rc == ELPIS_ECSG_K1_BUSY)
+
+static void test_getters_race_free_with_a_writer(void)
+{
+    elpis_ecsg_k1 *s = fresh();
+    pthread_t t;
+    watch_arg a = {s, 0, 0u};
+    uint64_t tok = 0;
+    int i;
+    int rc;
+    assert(!pthread_create(&t, NULL, watcher, &a));
+    for (i = 0; i < 40; ++i) {
+        UNTIL_NOT_BUSY(elpis_ecsg_k1_learn(s, X, Y, R, 0.002, 2, NULL));
+        assert(rc == 0);
+        UNTIL_NOT_BUSY(elpis_ecsg_k1_consolidate(s, X, R, NULL));
+        assert(rc == 0);
+        UNTIL_NOT_BUSY(elpis_ecsg_k1_txn_begin(s, &tok));
+        assert(rc == 0);
+        UNTIL_NOT_BUSY(elpis_ecsg_k1_txn_learn(s, tok, X2, Y2, R, 0.002, 2, NULL));
+        assert(rc == 0);
+        UNTIL_NOT_BUSY(elpis_ecsg_k1_txn_commit(s, tok, NULL));
+        assert(rc == 0);
+        if (i % 10 == 0) {
+            UNTIL_NOT_BUSY(elpis_ecsg_k1_reset(s, NULL));
+            assert(rc == 0);
+            UNTIL_NOT_BUSY(elpis_ecsg_k1_reserve(s, (size_t)(R + i + 1)));
+            assert(rc == 0);
+        }
+    }
+    __atomic_store_n(&a.stop, 1, __ATOMIC_RELEASE);
+    pthread_join(t, NULL);
+    assert(a.reads > 0u && elpis_ecsg_k1_epoch(s) == 160u && elpis_ecsg_k1_generation(s) == 124u);
+    elpis_ecsg_k1_destroy(&s);
+}
+
 int main(void)
 {
     fixture();
@@ -294,7 +559,14 @@ int main(void)
     test_w_only_snapshot_is_unconsolidated_and_never_a_retained_state();
     test_reset_keeps_w_and_epoch();
     test_single_writer_refuses_concurrent_entry();
+    test_transaction_refusal_contract();
+    test_hostile_dimensions_are_refused_before_allocation();
+    test_resealed_envelopes_are_still_validated();
+    test_provenance_transitions();
+    test_epoch_overflow_is_refused_and_recoverable();
+    test_getters_race_free_with_a_writer();
     printf("ecsg_k1: Runtime R1 parity at H = 0, K1 law shape, refusal atomicity, complete-state transactions, "
-           "envelope integrity, W-only import, reset, SINGLE_WRITER\n");
+           "envelope integrity, W-only import, reset, SINGLE_WRITER, the transaction refusal contract, hostile "
+           "dimensions, resealed envelopes, provenance transitions, epoch overflow, race-free getters\n");
     return 0;
 }

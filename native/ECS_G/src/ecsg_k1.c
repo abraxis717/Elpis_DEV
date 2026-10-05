@@ -35,7 +35,7 @@
 enum {
     ARENA_ALIGN = 64u,
     ROW_BLOCK = 8u,
-    MAX_DIM = 64u,
+    MAX_DIM = ELPIS_ECSG_K1_MAX_DIM,
     G01_HEADER = 40u
 };
 
@@ -85,6 +85,11 @@ struct elpis_ecsg_k1 {
     elpis_ecsg_k1_counters stats;
     atomic_uint_fast64_t busy_refusals;
     atomic_flag busy;
+    /* Published by the single writer after each committed transition; read by the unguarded getters. */
+    atomic_uint_fast64_t pub_epoch;
+    atomic_uint_fast64_t pub_generation;
+    atomic_uint_fast32_t pub_provenance;
+    atomic_size_t pub_max_rows;
 };
 
 /* --- checked arithmetic and layout ------------------------------------------------------------------------- */
@@ -107,10 +112,43 @@ static int add_ok(size_t a, size_t b, size_t *out)
     return 1;
 }
 
-static int shape_ok(size_t dim, size_t width)
+/* A uint64 from a serialized header as size_t, refusing values the host cannot represent (no cast first). */
+static int u64_size(uint64_t v, size_t *out)
+{
+    const size_t narrowed = (size_t)v;
+    if ((uint64_t)narrowed != v) {
+        return 0;
+    }
+    *out = narrowed;
+    return 1;
+}
+
+static size_t packed_count(size_t features)
+{
+    return features * (features + 1u) / 2u;   /* features <= |S3(64)| = 47904: no overflow */
+}
+
+/* OK, INVALID (not a shape) or CAPACITY (an overflow, or an image beyond ELPIS_ECSG_K1_MAX_IMAGE_BYTES). Every
+ * product and sum is checked; nothing is allocated here. */
+static elpis_ecsg_k1_status shape_status(size_t dim, size_t width, size_t *image_bytes)
 {
     size_t count;
-    return dim >= 1u && dim <= MAX_DIM && width >= 1u && mul_ok(dim, width, &count) && count <= (SIZE_MAX / 64u);
+    size_t f;
+    size_t doubles;
+    size_t bytes;
+    if (dim < 1u || dim > MAX_DIM || width < 1u) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    f = elpis_ecsg_s3_size(dim);
+    if (f == 0u || !mul_ok(dim, width, &count) || !add_ok(count, packed_count(f), &doubles) ||
+        !add_ok(doubles, f, &doubles) || !mul_ok(doubles, sizeof(double), &bytes) ||
+        !add_ok(bytes, ELPIS_ECSG_K1_HEADER_BYTES, &bytes) || bytes > (size_t)ELPIS_ECSG_K1_MAX_IMAGE_BYTES) {
+        return ELPIS_ECSG_K1_CAPACITY;
+    }
+    if (image_bytes != NULL) {
+        *image_bytes = bytes;
+    }
+    return ELPIS_ECSG_K1_OK;
 }
 
 size_t elpis_ecsg_k1_features(size_t dim)
@@ -121,37 +159,22 @@ size_t elpis_ecsg_k1_features(size_t dim)
     return elpis_ecsg_s3_size(dim);
 }
 
-static size_t packed_count(size_t features)
+size_t elpis_ecsg_k1_image_bytes(size_t dim, size_t width)
 {
-    return features * (features + 1u) / 2u;
+    size_t image = 0u;
+    return shape_status(dim, width, &image) == ELPIS_ECSG_K1_OK ? image : 0u;
 }
 
 size_t elpis_ecsg_k1_payload_bytes(size_t dim, size_t width)
 {
-    size_t f;
-    size_t doubles;
-    size_t total;
-    if (!shape_ok(dim, width)) {
-        return 0u;
-    }
-    f = elpis_ecsg_k1_features(dim);
-    if (!add_ok(dim * width, packed_count(f), &doubles) || !add_ok(doubles, f, &doubles) ||
-        !mul_ok(doubles, sizeof(double), &total)) {
-        return 0u;
-    }
-    return total;
-}
-
-size_t elpis_ecsg_k1_image_bytes(size_t dim, size_t width)
-{
-    size_t payload = elpis_ecsg_k1_payload_bytes(dim, width);
-    return payload == 0u ? 0u : payload + ELPIS_ECSG_K1_HEADER_BYTES;
+    size_t image = elpis_ecsg_k1_image_bytes(dim, width);
+    return image == 0u ? 0u : image - ELPIS_ECSG_K1_HEADER_BYTES;
 }
 
 size_t elpis_ecsg_k1_envelope_bytes(size_t dim, size_t width)
 {
     size_t image = elpis_ecsg_k1_image_bytes(dim, width);
-    return image == 0u ? 0u : image + ELPIS_ECSG_K1_DIGEST_BYTES;
+    return image == 0u ? 0u : image + ELPIS_ECSG_K1_DIGEST_BYTES;   /* image <= 64 MiB */
 }
 
 typedef struct {
@@ -170,38 +193,58 @@ static int segment(size_t bytes, size_t *offset, size_t *cursor)
     return add_ok(*cursor, rounded, cursor);
 }
 
-static int plan(size_t dim, size_t width, size_t max_rows, layout *l)
+/* Bytes of `count` elements of `size`, rounded to the arena alignment, appended at *cursor (all checked). */
+static int seg(size_t count, size_t size, size_t *offset, size_t *cursor)
 {
-    const size_t f = elpis_ecsg_k1_features(dim);
-    const size_t p = dim * (dim + 1u) / 2u;
-    const size_t t = f - dim - p;
-    const size_t w = dim * width;
-    size_t cursor = 0u;
-    size_t pz;
+    size_t bytes;
+    return mul_ok(count, size, &bytes) && segment(bytes, offset, cursor);
+}
+
+/* The arena layout: OK, INVALID (shape or max_rows = 0) or CAPACITY (overflow, or beyond the byte budgets). */
+static elpis_ecsg_k1_status plan(size_t dim, size_t width, size_t max_rows, layout *l)
+{
+    size_t image = 0u;
+    size_t f;
+    size_t p;
+    size_t t;
+    size_t w;
     size_t xrows;
-    if (!shape_ok(dim, width) || max_rows == 0u || f == 0u || !mul_ok(max_rows, width, &pz) ||
-        !mul_ok(pz, sizeof(double), &pz) || !mul_ok(max_rows, dim, &xrows) ||
-        !mul_ok(xrows, sizeof(double), &xrows)) {
-        return 0;
+    size_t pzrows;
+    size_t cursor = 0u;
+    const elpis_ecsg_k1_status rc = shape_status(dim, width, &image);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
     }
-    return segment(w * 8u, &l->cur, &cursor) && segment(w * 8u, &l->nxt, &cursor) &&
-           segment(w * 8u, &l->grad, &cursor) && segment(w * 8u, &l->vjp, &cursor) &&
-           segment(pz, &l->pz, &cursor) && segment(max_rows * 8u, &l->error, &cursor) &&
-           segment(ROW_BLOCK * width * 8u, &l->row, &cursor) && segment(f * 8u, &l->s3, &cursor) &&
-           segment(f * 8u, &l->diff, &cursor) && segment(f * 8u, &l->u, &cursor) &&
-           segment(dim * dim * 8u, &l->u2, &cursor) && segment(f * 8u, &l->phi, &cursor) &&
-           segment(packed_count(f) * 8u, &l->stage_h, &cursor) && segment(f * 8u, &l->stage_a, &cursor) &&
-           segment(elpis_ecsg_k1_image_bytes(dim, width), &l->cand, &cursor) &&
-           segment(xrows, &l->x, &cursor) && segment(max_rows * 8u, &l->y, &cursor) &&
-           segment(p * 2u * sizeof(uint16_t), &l->pairs, &cursor) &&
-           segment(t * 3u * sizeof(uint16_t), &l->triples, &cursor) && segment(p * 8u, &l->m2, &cursor) &&
-           segment(t * 8u, &l->m3, &cursor) && (l->total = cursor, 1);
+    if (max_rows == 0u) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    f = elpis_ecsg_k1_features(dim);
+    p = dim * (dim + 1u) / 2u;
+    t = f - dim - p;
+    w = dim * width;   /* checked by shape_status */
+    if (!mul_ok(max_rows, dim, &xrows) || !mul_ok(max_rows, width, &pzrows)) {
+        return ELPIS_ECSG_K1_CAPACITY;
+    }
+    if (!(seg(w, 8u, &l->cur, &cursor) && seg(w, 8u, &l->nxt, &cursor) && seg(w, 8u, &l->grad, &cursor) &&
+          seg(w, 8u, &l->vjp, &cursor) && seg(pzrows, 8u, &l->pz, &cursor) && seg(max_rows, 8u, &l->error, &cursor) &&
+          seg(width, ROW_BLOCK * 8u, &l->row, &cursor) && seg(f, 8u, &l->s3, &cursor) &&
+          seg(f, 8u, &l->diff, &cursor) && seg(f, 8u, &l->u, &cursor) && seg(dim * dim, 8u, &l->u2, &cursor) &&
+          seg(f, 8u, &l->phi, &cursor) && seg(packed_count(f), 8u, &l->stage_h, &cursor) &&
+          seg(f, 8u, &l->stage_a, &cursor) && seg(image, 1u, &l->cand, &cursor) &&
+          seg(xrows, 8u, &l->x, &cursor) && seg(max_rows, 8u, &l->y, &cursor) &&
+          seg(p, 2u * sizeof(uint16_t), &l->pairs, &cursor) && seg(t, 3u * sizeof(uint16_t), &l->triples, &cursor) &&
+          seg(p, 8u, &l->m2, &cursor) && seg(t, 8u, &l->m3, &cursor)) ||
+        cursor > (size_t)ELPIS_ECSG_K1_MAX_WORKSPACE_BYTES) {
+        return ELPIS_ECSG_K1_CAPACITY;
+    }
+    l->total = cursor;
+    return ELPIS_ECSG_K1_OK;
 }
 
 size_t elpis_ecsg_k1_workspace_bytes(size_t dim, size_t width, size_t max_rows)
 {
     layout l;
-    return plan(dim, width, max_rows, &l) ? l.total : 0u;
+    return plan(dim, width, max_rows, &l) == ELPIS_ECSG_K1_OK ? l.total : 0u;
 }
 
 static void carve(elpis_ecsg_k1 *s, uint8_t *arena, const layout *l)
@@ -355,6 +398,17 @@ static int enter(elpis_ecsg_k1 *s)
 static void leave(elpis_ecsg_k1 *s)
 {
     atomic_flag_clear_explicit(&s->busy, memory_order_release);
+}
+
+/* The writer publishes epoch, generation, provenance and max_rows after each committed transition. */
+static void publish(elpis_ecsg_k1 *s)
+{
+    atomic_store_explicit(&s->pub_generation, s->generation, memory_order_release);
+    atomic_store_explicit(&s->pub_max_rows, s->max_rows, memory_order_release);
+    if (s->image != NULL) {
+        atomic_store_explicit(&s->pub_epoch, image_epoch(s->image), memory_order_release);
+        atomic_store_explicit(&s->pub_provenance, image_provenance(s->image), memory_order_release);
+    }
 }
 
 /* --- kernels: G1 and forward in the reference's per-element order (as the Runtime R1 executor) ------------- */
@@ -704,12 +758,14 @@ static elpis_ecsg_k1_status make(size_t dim, size_t width, size_t max_rows, int 
     layout l;
     elpis_ecsg_k1 *s;
     void *arena;
+    elpis_ecsg_k1_status rc;
     if (out == NULL) {
         return ELPIS_ECSG_K1_INVALID;
     }
     *out = NULL;
-    if (!plan(dim, width, max_rows, &l)) {
-        return ELPIS_ECSG_K1_INVALID;
+    rc = plan(dim, width, max_rows, &l);   /* every size checked and bounded before any allocation */
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
     }
     s = (elpis_ecsg_k1 *)calloc(1u, sizeof(*s));
     if (s == NULL) {
@@ -748,6 +804,10 @@ static elpis_ecsg_k1_status make(size_t dim, size_t width, size_t max_rows, int 
         s->stats.heap_allocations += 1u;
     }
     atomic_init(&s->busy_refusals, 0u);
+    atomic_init(&s->pub_epoch, 0u);
+    atomic_init(&s->pub_generation, 0u);
+    atomic_init(&s->pub_provenance, 0u);
+    atomic_init(&s->pub_max_rows, max_rows);
     atomic_flag_clear(&s->busy);
     *out = s;
     return ELPIS_ECSG_K1_OK;
@@ -767,8 +827,12 @@ elpis_ecsg_k1_create(size_t dim, size_t width, size_t max_rows, const double *in
         return ELPIS_ECSG_K1_INVALID;
     }
     *out = NULL;
-    if (initial_w == NULL || !shape_ok(dim, width)) {
+    if (initial_w == NULL) {
         return ELPIS_ECSG_K1_INVALID;
+    }
+    rc = shape_status(dim, width, NULL);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
     }
     if (!all_finite(initial_w, dim * width)) {
         return ELPIS_ECSG_K1_NONFINITE;
@@ -779,6 +843,7 @@ elpis_ecsg_k1_create(size_t dim, size_t width, size_t max_rows, const double *in
     }
     write_header(s, s->image, 0u, ELPIS_ECSG_K1_COMPLETE);
     memcpy(img_w(s, s->image), initial_w, s->w_count * sizeof(double));
+    publish(s);
     *out = s;
     return ELPIS_ECSG_K1_OK;
 }
@@ -801,30 +866,37 @@ static int read_doubles(const uint8_t *src, size_t count, double *dst)
 static elpis_ecsg_k1_status check_envelope(const uint8_t *e, size_t size, size_t *dim, size_t *width)
 {
     uint8_t digest[32];
-    uint64_t d;
-    uint64_t w;
-    size_t expected;
+    size_t d = 0u;
+    size_t w = 0u;
+    size_t image = 0u;
+    elpis_ecsg_k1_status rc;
     if (e == NULL || size < ELPIS_ECSG_K1_HEADER_BYTES + ELPIS_ECSG_K1_DIGEST_BYTES) {
         return ELPIS_ECSG_K1_CORRUPT;
     }
-    d = get_u64(e + 16u);
-    w = get_u64(e + 24u);
     if (memcmp(e, K1_MAGIC, 8u) != 0 || get_u32(e + 8u) != ELPIS_ECSG_K1_FORMAT_VERSION ||
-        get_u32(e + 12u) != ELPIS_ECSG_K1_MECHANISM || d == 0u || d > MAX_DIM || w == 0u ||
-        !shape_ok((size_t)d, (size_t)w) || get_u64(e + 32u) != elpis_ecsg_k1_features((size_t)d) ||
-        get_u64(e + 48u) > ELPIS_ECSG_K1_UNCONSOLIDATED_IMPORT || get_u64(e + 56u) != 0u) {
+        get_u32(e + 12u) != ELPIS_ECSG_K1_MECHANISM) {
         return ELPIS_ECSG_K1_CORRUPT;
     }
-    expected = elpis_ecsg_k1_envelope_bytes((size_t)d, (size_t)w);
-    if (expected == 0u || size != expected) {
+    /* Serialized dimensions are validated as uint64 before any narrowing, then bounded by the byte budget
+     * before anything is sized or allocated. */
+    if (!u64_size(get_u64(e + 16u), &d) || !u64_size(get_u64(e + 24u), &w)) {
+        return ELPIS_ECSG_K1_CAPACITY;
+    }
+    rc = shape_status(d, w, &image);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc == ELPIS_ECSG_K1_INVALID ? ELPIS_ECSG_K1_CORRUPT : rc;
+    }
+    if (get_u64(e + 32u) != (uint64_t)elpis_ecsg_k1_features(d) ||
+        get_u64(e + 48u) > ELPIS_ECSG_K1_UNCONSOLIDATED_IMPORT || get_u64(e + 56u) != 0u ||
+        size != image + ELPIS_ECSG_K1_DIGEST_BYTES) {
         return ELPIS_ECSG_K1_CORRUPT;
     }
     elpis_sha256(e, size - ELPIS_ECSG_K1_DIGEST_BYTES, digest);
     if (!elpis_digest_equal(digest, e + size - ELPIS_ECSG_K1_DIGEST_BYTES)) {
         return ELPIS_ECSG_K1_CORRUPT;
     }
-    *dim = (size_t)d;
-    *width = (size_t)w;
+    *dim = d;
+    *width = w;
     return ELPIS_ECSG_K1_OK;
 }
 
@@ -861,6 +933,7 @@ elpis_ecsg_k1_restore(const uint8_t *envelope, size_t size, size_t max_rows, elp
         (void)elpis_ecsg_k1_destroy(&s);
         return rc;
     }
+    publish(s);
     *out = s;
     return ELPIS_ECSG_K1_OK;
 }
@@ -868,8 +941,8 @@ elpis_ecsg_k1_restore(const uint8_t *envelope, size_t size, size_t max_rows, elp
 elpis_ecsg_k1_status
 elpis_ecsg_k1_import_w_only(const uint8_t *snap, size_t size, size_t max_rows, elpis_ecsg_k1 **out)
 {
-    uint64_t d;
-    uint64_t w;
+    size_t d = 0u;
+    size_t w = 0u;
     elpis_ecsg_k1 *s = NULL;
     elpis_ecsg_k1_status rc;
     if (out == NULL) {
@@ -880,13 +953,17 @@ elpis_ecsg_k1_import_w_only(const uint8_t *snap, size_t size, size_t max_rows, e
         get_u32(snap + 12u) != 0u) {
         return ELPIS_ECSG_K1_CORRUPT;
     }
-    d = get_u64(snap + 16u);
-    w = get_u64(snap + 24u);
-    if (d == 0u || d > MAX_DIM || w == 0u || !shape_ok((size_t)d, (size_t)w) ||
-        size != G01_HEADER + (size_t)d * (size_t)w * 8u) {
+    if (!u64_size(get_u64(snap + 16u), &d) || !u64_size(get_u64(snap + 24u), &w)) {
+        return ELPIS_ECSG_K1_CAPACITY;
+    }
+    rc = shape_status(d, w, NULL);   /* bounded before the size check and before any allocation */
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc == ELPIS_ECSG_K1_INVALID ? ELPIS_ECSG_K1_CORRUPT : rc;
+    }
+    if (size != G01_HEADER + d * w * 8u) {   /* d * w * 8 < the image budget: no overflow */
         return ELPIS_ECSG_K1_CORRUPT;
     }
-    rc = make((size_t)d, (size_t)w, max_rows, 1, &s);
+    rc = make(d, w, max_rows, 1, &s);
     if (rc != ELPIS_ECSG_K1_OK) {
         return rc;
     }
@@ -895,6 +972,7 @@ elpis_ecsg_k1_import_w_only(const uint8_t *snap, size_t size, size_t max_rows, e
         (void)elpis_ecsg_k1_destroy(&s);
         return ELPIS_ECSG_K1_CORRUPT;
     }
+    publish(s);
     *out = s;
     return ELPIS_ECSG_K1_OK;
 }
@@ -923,6 +1001,7 @@ elpis_ecsg_k1_status elpis_ecsg_k1_reserve(elpis_ecsg_k1 *s, size_t max_rows)
     layout l;
     void *arena;
     uint8_t *old;
+    elpis_ecsg_k1_status rc;
     if (s == NULL) {
         return ELPIS_ECSG_K1_INVALID;
     }
@@ -937,9 +1016,10 @@ elpis_ecsg_k1_status elpis_ecsg_k1_reserve(elpis_ecsg_k1 *s, size_t max_rows)
         leave(s);
         return ELPIS_ECSG_K1_OK;
     }
-    if (!plan(s->dim, s->width, max_rows, &l)) {
+    rc = plan(s->dim, s->width, max_rows, &l);
+    if (rc != ELPIS_ECSG_K1_OK) {
         leave(s);
-        return ELPIS_ECSG_K1_INVALID;
+        return rc;
     }
     arena = aligned_alloc(ARENA_ALIGN, l.total);
     if (arena == NULL) {
@@ -955,23 +1035,37 @@ elpis_ecsg_k1_status elpis_ecsg_k1_reserve(elpis_ecsg_k1 *s, size_t max_rows)
     s->max_rows = max_rows;
     s->stats.heap_allocations += 1u;
     free(old);
+    publish(s);
     leave(s);
     return ELPIS_ECSG_K1_OK;
 }
 
 size_t elpis_ecsg_k1_dim(const elpis_ecsg_k1 *s) { return s == NULL ? 0u : s->dim; }
 size_t elpis_ecsg_k1_width(const elpis_ecsg_k1 *s) { return s == NULL ? 0u : s->width; }
-size_t elpis_ecsg_k1_max_rows(const elpis_ecsg_k1 *s) { return s == NULL ? 0u : s->max_rows; }
-uint64_t elpis_ecsg_k1_generation(const elpis_ecsg_k1 *s) { return s == NULL ? 0u : s->generation; }
+/* Unguarded getters: atomic loads of the values the writer last published (no data race with a writer). */
+static elpis_ecsg_k1 *published(const elpis_ecsg_k1 *s)
+{
+    return (elpis_ecsg_k1 *)(uintptr_t)s;
+}
+
+size_t elpis_ecsg_k1_max_rows(const elpis_ecsg_k1 *s)
+{
+    return s == NULL ? 0u : atomic_load_explicit(&published(s)->pub_max_rows, memory_order_acquire);
+}
+
+uint64_t elpis_ecsg_k1_generation(const elpis_ecsg_k1 *s)
+{
+    return s == NULL ? 0u : (uint64_t)atomic_load_explicit(&published(s)->pub_generation, memory_order_acquire);
+}
 
 uint64_t elpis_ecsg_k1_epoch(const elpis_ecsg_k1 *s)
 {
-    return s == NULL || s->image == NULL ? 0u : image_epoch(s->image);
+    return s == NULL ? 0u : (uint64_t)atomic_load_explicit(&published(s)->pub_epoch, memory_order_acquire);
 }
 
 uint32_t elpis_ecsg_k1_provenance_of(const elpis_ecsg_k1 *s)
 {
-    return s == NULL || s->image == NULL ? 0u : image_provenance(s->image);
+    return s == NULL ? 0u : (uint32_t)atomic_load_explicit(&published(s)->pub_provenance, memory_order_acquire);
 }
 
 /* --- operations ---------------------------------------------------------------------------------------------- */
@@ -1058,6 +1152,7 @@ static elpis_ecsg_k1_status consolidate_on(elpis_ecsg_k1 *s, uint8_t *image, con
     }
     memcpy(img_h(s, image), s->stage_h, s->h_count * sizeof(double));
     memcpy(img_a(s, image), s->stage_a, s->features * sizeof(double));
+    put_u64(image + 48u, ELPIS_ECSG_K1_COMPLETE);   /* a consolidated (W, epoch, H, a) is complete */
     s->stats.consolidations += 1u;
     return ELPIS_ECSG_K1_OK;
 }
@@ -1099,6 +1194,7 @@ elpis_ecsg_k1_learn(elpis_ecsg_k1 *s, const double *x, const double *y, size_t r
     if (rc == ELPIS_ECSG_K1_OK) {
         s->generation += 1u;   /* an open transaction's source is now replaced: it will be STALE */
         s->stats.commits += 1u;
+        publish(s);
         fill(t, e0, image_epoch(s->image), g0, s->generation, steps, 0u);
     } else {
         fill(t, e0, e0, g0, g0, 0u, failed);
@@ -1125,6 +1221,7 @@ elpis_ecsg_k1_consolidate(elpis_ecsg_k1 *s, const double *x, size_t rows, elpis_
     if (rc == ELPIS_ECSG_K1_OK) {
         s->generation += 1u;
         s->stats.commits += 1u;
+        publish(s);
     }
     fill(t, e0, e0, g0, s->generation, 0u, 0u);
     leave(s);
@@ -1147,6 +1244,7 @@ elpis_ecsg_k1_status elpis_ecsg_k1_reset(elpis_ecsg_k1 *s, elpis_ecsg_k1_transit
     put_u64(s->image + 48u, ELPIS_ECSG_K1_RESET);
     s->generation += 1u;
     s->stats.commits += 1u;
+    publish(s);
     fill(t, e0, e0, g0, s->generation, 0u, 0u);
     leave(s);
     return ELPIS_ECSG_K1_OK;
@@ -1243,6 +1341,16 @@ static elpis_ecsg_k1_status txn_check(elpis_ecsg_k1 *s, uint64_t token)
     return ELPIS_ECSG_K1_OK;
 }
 
+/* The refusal contract (ecsg_k1.h): NONFINITE from a candidate-mutating call discards the transaction;
+ * INVALID and CAPACITY are refused before the candidate is touched and leave it open and unchanged. */
+static void discard_on(elpis_ecsg_k1 *s, elpis_ecsg_k1_status rc)
+{
+    if (rc == ELPIS_ECSG_K1_NONFINITE) {
+        s->txn_open = 0;
+        s->stats.txn_aborts += 1u;
+    }
+}
+
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_begin(elpis_ecsg_k1 *s, uint64_t *token)
 {
     if (s == NULL || s->image == NULL || token == NULL) {
@@ -1283,8 +1391,7 @@ elpis_ecsg_k1_txn_learn(elpis_ecsg_k1 *s, uint64_t token, const double *x, const
         e0 = image_epoch(s->cand);
         rc = learn_on(s, s->cand, x, y, rows, rate, steps, &failed);
         if (rc != ELPIS_ECSG_K1_OK) {
-            s->txn_open = 0;   /* a refused candidate operation discards the transaction */
-            s->stats.txn_aborts += 1u;
+            discard_on(s, rc);   /* INVALID/CAPACITY: refused before the candidate was touched; stays open */
             fill(t, e0, e0, s->generation, s->generation, 0u, failed);
         } else {
             fill(t, e0, image_epoch(s->cand), s->generation, s->generation, steps, 0u);
@@ -1308,8 +1415,7 @@ elpis_ecsg_k1_txn_consolidate(elpis_ecsg_k1 *s, uint64_t token, const double *x,
     if (rc == ELPIS_ECSG_K1_OK) {
         rc = consolidate_on(s, s->cand, x, rows);
         if (rc != ELPIS_ECSG_K1_OK) {
-            s->txn_open = 0;
-            s->stats.txn_aborts += 1u;
+            discard_on(s, rc);
         }
     }
     leave(s);
@@ -1370,6 +1476,7 @@ elpis_ecsg_k1_status elpis_ecsg_k1_txn_commit(elpis_ecsg_k1 *s, uint64_t token, 
         s->generation += 1u;
         s->stats.commits += 1u;
         s->txn_open = 0;
+        publish(s);
         fill(t, e0, image_epoch(s->image), g0, s->generation, image_epoch(s->image) - e0, 0u);
     }
     leave(s);
@@ -1378,18 +1485,24 @@ elpis_ecsg_k1_status elpis_ecsg_k1_txn_commit(elpis_ecsg_k1 *s, uint64_t token, 
 
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_abort(elpis_ecsg_k1 *s, uint64_t token)
 {
+    elpis_ecsg_k1_status rc;
     if (s == NULL) {
         return ELPIS_ECSG_K1_INVALID;
     }
     if (!enter(s)) {
         return ELPIS_ECSG_K1_BUSY;
     }
-    if (s->txn_open && token == s->txn_token) {
-        s->txn_open = 0;
-        s->stats.txn_aborts += 1u;
+    rc = ELPIS_ECSG_K1_OK;   /* nothing open: abort is idempotent */
+    if (s->txn_open) {
+        if (token == 0u || token != s->txn_token) {
+            rc = ELPIS_ECSG_K1_INVALID;   /* a wrong token aborts nothing */
+        } else {
+            s->txn_open = 0;
+            s->stats.txn_aborts += 1u;
+        }
     }
     leave(s);
-    return ELPIS_ECSG_K1_OK;
+    return rc;
 }
 
 /* --- internal interface for the residency adapter (ecsg_k1_internal.h) ------------------------------------- */
@@ -1402,6 +1515,9 @@ elpis_ecsg_k1_status ecsg_k1_internal_create_bound(size_t dim, size_t width, siz
 void ecsg_k1_internal_bind(elpis_ecsg_k1 *s, uint8_t *image)
 {
     s->image = image;
+    if (image != NULL) {
+        publish(s);   /* the resident image's epoch and provenance */
+    }
 }
 
 size_t ecsg_k1_internal_image_bytes(const elpis_ecsg_k1 *s)
@@ -1422,9 +1538,4 @@ elpis_ecsg_k1_status ecsg_k1_internal_check_envelope(const uint8_t *e, size_t si
 elpis_ecsg_k1_status ecsg_k1_internal_decode(const elpis_ecsg_k1 *s, const uint8_t *envelope, uint8_t *image)
 {
     return decode_envelope(s, envelope, image);
-}
-
-void ecsg_k1_internal_set_generation(elpis_ecsg_k1 *s, uint64_t generation)
-{
-    s->generation = generation;
 }

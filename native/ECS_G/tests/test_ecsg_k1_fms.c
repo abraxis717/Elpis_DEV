@@ -358,6 +358,92 @@ static void test_independent_states_share_no_cognitive_lock(void)
     OK(elpis_ecsg_k1_fms_destroy(&r));
 }
 
+/* The refusal contract of ecsg_k1.h, through the adapter: recoverable refusals keep the transaction (and its WRITE
+ * pin) open; fatal ones discard it and release the pin; authority never changes on a refusal. */
+static void test_transaction_refusal_contract(void)
+{
+    elpis_ecsg_k1_fms *r = runtime_with(NULL, "k1-txn", (uint64_t)IMAGE * 4u, 2);
+    elpis_ecsg_k1 *ref = NULL;
+    uint8_t *got = malloc(ENVELOPE), *want = malloc(ENVELOPE);
+    uint64_t a = state(r, 21), tok = 0;
+    elpis_ecsg_k1_fms_info info;
+    double bad[R * D];
+    OK(elpis_ecsg_k1_create(D, N, R, W0, &ref));
+    OK(elpis_ecsg_k1_fms_txn_begin(r, a, &tok));
+    assert(elpis_ecsg_k1_fms_txn_learn(r, a, tok, X, Y, R + 1, 0.002, 5, NULL) == ELPIS_ECSG_K1_CAPACITY);
+    assert(elpis_ecsg_k1_fms_txn_learn(r, a, tok, X, Y, R, -1.0, 5, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_fms_txn_consolidate(r, a, tok, X, R + 1) == ELPIS_ECSG_K1_CAPACITY);
+    OK(elpis_ecsg_k1_fms_inspect(r, a, &info));
+    assert(info.transaction_open == 1u && info.lease_count == 1u);   /* still open, still pinned for writing */
+    OK(elpis_ecsg_k1_fms_txn_learn(r, a, tok, X, Y, R, 0.002, 5, NULL));   /* retry */
+    OK(elpis_ecsg_k1_fms_txn_consolidate(r, a, tok, X, R));
+    assert(elpis_ecsg_k1_fms_txn_abort(r, a, tok + 1u) == ELPIS_ECSG_K1_INVALID);   /* wrong token: nothing */
+    OK(elpis_ecsg_k1_fms_txn_commit(r, a, tok, NULL));
+    OK(elpis_ecsg_k1_learn(ref, X, Y, R, 0.002, 5, NULL));
+    OK(elpis_ecsg_k1_consolidate(ref, X, R, NULL));
+    envelope_of(r, a, got);
+    standalone_envelope(ref, want);
+    assert(!memcmp(got, want, ENVELOPE));
+    OK(elpis_ecsg_k1_fms_txn_abort(r, a, tok));   /* nothing open: OK */
+    /* fatal: NONFINITE discards the transaction and releases its pin */
+    memcpy(bad, X, sizeof(bad));
+    bad[3] = NAN;
+    OK(elpis_ecsg_k1_fms_txn_begin(r, a, &tok));
+    assert(elpis_ecsg_k1_fms_txn_learn(r, a, tok, bad, Y, R, 0.002, 5, NULL) == ELPIS_ECSG_K1_NONFINITE);
+    OK(elpis_ecsg_k1_fms_inspect(r, a, &info));
+    assert(info.transaction_open == 0u && info.lease_count == 0u);
+    assert(elpis_ecsg_k1_fms_txn_commit(r, a, tok, NULL) == ELPIS_ECSG_K1_INVALID);
+    OK(elpis_ecsg_k1_fms_txn_begin(r, a, &tok));
+    assert(elpis_ecsg_k1_fms_txn_learn(r, a, tok, X2, Y2, R, 1e9, 20, NULL) == ELPIS_ECSG_K1_NONFINITE);
+    OK(elpis_ecsg_k1_fms_inspect(r, a, &info));
+    assert(info.transaction_open == 0u && info.lease_count == 0u);
+    envelope_of(r, a, got);
+    assert(!memcmp(got, want, ENVELOPE));
+    elpis_ecsg_k1_destroy(&ref);
+    OK(elpis_ecsg_k1_fms_close(r, &a));
+    OK(elpis_ecsg_k1_fms_destroy(&r));
+    free(got);
+    free(want);
+}
+
+/* Hostile serialized dimensions are refused before registration or allocation; an imported state that is then
+ * consolidated is COMPLETE. */
+static void test_hostile_imports_and_provenance(void)
+{
+    elpis_ecsg_k1_fms *r = runtime_with(NULL, "k1-hostile", (uint64_t)IMAGE * 4u, 2);
+    elpis_ecsg_k1_fms_metrics m;
+    elpis_ecsg_executor *e = NULL;
+    elpis_ecsg_k1_fms_info info;
+    uint8_t tiny[40 + 8 * 64], snap[40 + WC * 8], key[32] = {31};
+    uint64_t id = 0;
+    unsigned i;
+    memset(tiny, 0, sizeof(tiny));
+    memcpy(tiny, "ELPISG01", 8);
+    tiny[8] = 1u;
+    tiny[16] = 64u;   /* dim 64, width 1: a 552-byte request for a multi-GB K1 state */
+    tiny[24] = 1u;
+    assert(elpis_ecsg_k1_fms_import_w_only(r, key, tiny, sizeof(tiny), R, &id) == ELPIS_ECSG_K1_CAPACITY && id == 0u);
+    for (i = 0; i < 8u; ++i) tiny[24 + i] = 0xffu;   /* width UINT64_MAX */
+    tiny[16] = 2u;
+    assert(elpis_ecsg_k1_fms_import_w_only(r, key, tiny, sizeof(tiny), R, &id) == ELPIS_ECSG_K1_CAPACITY && id == 0u);
+    OK(elpis_ecsg_k1_fms_stats(r, &m));
+    assert(m.states == 0u && m.residency.objects == 0u);
+    OK(elpis_ecsg_executor_create(D, N, R, W0, &e));
+    OK(elpis_ecsg_executor_snapshot_write(e, snap, sizeof(snap)));
+    OK(elpis_ecsg_k1_fms_import_w_only(r, key, snap, sizeof(snap), R, &id));
+    OK(elpis_ecsg_k1_fms_inspect(r, id, &info));
+    assert(info.provenance == ELPIS_ECSG_K1_UNCONSOLIDATED_IMPORT);
+    OK(elpis_ecsg_k1_fms_consolidate(r, id, X, R, NULL));
+    OK(elpis_ecsg_k1_fms_inspect(r, id, &info));
+    assert(info.provenance == ELPIS_ECSG_K1_COMPLETE);
+    OK(elpis_ecsg_k1_fms_reset(r, id, NULL));
+    OK(elpis_ecsg_k1_fms_inspect(r, id, &info));
+    assert(info.provenance == ELPIS_ECSG_K1_RESET);
+    elpis_ecsg_executor_destroy(&e);
+    OK(elpis_ecsg_k1_fms_close(r, &id));
+    OK(elpis_ecsg_k1_fms_destroy(&r));
+}
+
 int main(void)
 {
     fixture();
@@ -368,7 +454,10 @@ int main(void)
     test_refusals_leave_the_complete_state_unchanged();
     test_envelopes_and_w_only_imports();
     test_independent_states_share_no_cognitive_lock();
+    test_transaction_refusal_contract();
+    test_hostile_imports_and_provenance();
     printf("ecsg_k1_fms: resident K1 = standalone K1; warm path over resident bytes; COLD->WARM; pinning; "
-           "refusals leave the complete state unchanged; envelopes and W-only imports\n");
+           "refusals leave the complete state unchanged; envelopes and W-only imports; the transaction refusal "
+           "contract; hostile imports; provenance\n");
     return 0;
 }

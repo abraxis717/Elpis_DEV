@@ -26,6 +26,13 @@ _CODES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY
           -101: "FMS_INVALID", -102: "NOMEM", -103: "MISSING", -104: "BUSY", -105: "UNSUPPORTED", -106: "IO",
           -107: "CAPACITY", -108: "STATE", -109: "DIGEST", -110: "DEVICE", -111: "TIMEOUT"}
 PROVENANCE = {0: "COMPLETE", 1: "RESET", 2: "UNCONSOLIDATED_IMPORT"}
+_STALE, _NONFINITE = -3, -2
+
+
+def _discards(rc, mutating):
+    """The refusal contract of ecsg_k1.h: STALE, or NONFINITE from a candidate-mutating call, discards the
+    transaction; INVALID, CAPACITY and BUSY leave it open and unchanged (the call may be retried)."""
+    return rc == _STALE or (mutating and rc == _NONFINITE)
 
 
 class K1Error(ECSGError):
@@ -324,10 +331,10 @@ class K1Transaction:
             raise K1Error("INVALID", "K1 transaction closed")
         return self._state._live()
 
-    def _settle(self, rc, what, step=0):
+    def _settle(self, rc, what, step=0, mutating=False):
         if rc != 0:
-            if rc not in (-1, -4, -5):
-                self._open = False   # STALE or a refused candidate operation discarded the transaction
+            if _discards(rc, mutating):
+                self._open = False
             raise _refused(rc, what, step)
 
     def learn(self, x_rows, y, learning_rate, steps=1):
@@ -336,12 +343,13 @@ class K1Transaction:
         t = _Transition()
         rc = k.txn_learn(self._live(), self._token, x, _admit_vector(y, rows, "y"), rows, _rate(learning_rate),
                          _steps(steps), C.byref(t))
-        self._settle(rc, "K1 transaction learn", int(t.failed_step))
+        self._settle(rc, "K1 transaction learn", int(t.failed_step), mutating=True)
         return _commit(t)
 
     def consolidate(self, x_rows):
         x, rows = _admit_rows(x_rows, self._state._dim, "X")
-        self._settle(self._state._k.txn_consolidate(self._live(), self._token, x, rows), "K1 transaction consolidate")
+        self._settle(self._state._k.txn_consolidate(self._live(), self._token, x, rows), "K1 transaction consolidate",
+                     mutating=True)
 
     def query(self, x_rows):
         x, rows = _admit_rows(x_rows, self._state._dim, "X")
@@ -357,7 +365,8 @@ class K1Transaction:
     def commit(self):
         t = _Transition()
         rc = self._state._k.txn_commit(self._live(), self._token, C.byref(t))
-        self._open = False
+        if rc == 0 or _discards(rc, False):
+            self._open = False
         if rc != 0:
             raise _refused(rc, "K1 transaction commit")
         return _commit(t)
@@ -571,9 +580,9 @@ class _FMSTransaction:
     def __init__(self, runtime, state_id, token):
         self._r, self._id, self._token, self._open = runtime, state_id, token, True
 
-    def _settle(self, rc, what, step=0):
+    def _settle(self, rc, what, step=0, mutating=False):
         if rc != 0:
-            if rc not in (-1, -4, -5):
+            if _discards(rc, mutating):
                 self._open = False
             raise _refused(rc, what, step)
 
@@ -582,13 +591,13 @@ class _FMSTransaction:
         t = _Transition()
         rc = self._r._f.txn_learn(self._r._live(), self._id, self._token, x, _admit_vector(y, rows, "y"), rows,
                                   _rate(learning_rate), _steps(steps), C.byref(t))
-        self._settle(rc, "K1 FMS transaction learn", int(t.failed_step))
+        self._settle(rc, "K1 FMS transaction learn", int(t.failed_step), mutating=True)
         return _commit(t)
 
     def consolidate(self, x_rows):
         x, rows = _admit_rows(x_rows, self._r._dim(self._id), "X")
         self._settle(self._r._f.txn_consolidate(self._r._live(), self._id, self._token, x, rows),
-                     "K1 FMS transaction consolidate")
+                     "K1 FMS transaction consolidate", mutating=True)
 
     def query(self, x_rows):
         x, rows = _admit_rows(x_rows, self._r._dim(self._id), "X")
@@ -600,7 +609,8 @@ class _FMSTransaction:
     def commit(self):
         t = _Transition()
         rc = self._r._f.txn_commit(self._r._live(), self._id, self._token, C.byref(t))
-        self._open = False
+        if rc == 0 or _discards(rc, False):
+            self._open = False
         if rc != 0:
             raise _refused(rc, "K1 FMS transaction commit")
         return _commit(t)

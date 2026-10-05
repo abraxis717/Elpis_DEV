@@ -15,8 +15,9 @@
 typedef struct {
     uint64_t id;
     fms_id object;
-    int pinned;
-    uint8_t *image;
+    int pinned;      /* this adapter holds one FMS pin on the object */
+    int pin_write;   /* ... acquired with FMS_WRITE (dirty, cold replica invalidated) */
+    uint8_t *image;  /* valid while pinned: a pinned object cannot move */
     elpis_ecsg_k1 *k1;
     int txn_open;
     uint64_t txn_external_token;
@@ -114,16 +115,46 @@ static void high_water(elpis_ecsg_k1_fms *r)
     pthread_mutex_unlock(&r->mu);
 }
 
+/* Drop this adapter's pin. On a release failure the pin is kept (FMS still holds it, so the image cannot move
+ * and the pointer stays valid): the slot remains internally consistent and the release is retried by the next
+ * operation or by close. The workspace is unbound either way. */
+static int release(elpis_ecsg_k1_fms *r, slot *s)
+{
+    int rc;
+    ecsg_k1_internal_bind(s->k1, NULL);
+    if (!s->pinned) {
+        s->image = NULL;
+        return ELPIS_ECSG_K1_OK;
+    }
+    rc = fms_release(r->fms, s->object);
+    if (rc < 0) {
+        s->info.lease_failures += 1u;
+        return fm(rc);
+    }
+    s->pinned = 0;
+    s->pin_write = 0;
+    s->image = NULL;
+    return ELPIS_ECSG_K1_OK;
+}
+
 /* Pin the resident image WARM (FMS materializes COLD -> WARM when needed; that is the only allocating path) and
  * bind the workspace to it. A CPU operation needs no accelerator fence, so the unfenced pin is used: on a WARM
- * object it allocates nothing. */
+ * object it allocates nothing. A pin this adapter already holds (an open transaction's WRITE pin, or one whose
+ * release failed) is reused when it grants the access asked for; a READ pin is never reused for a write. */
 static int acquire(elpis_ecsg_k1_fms *r, slot *s, unsigned mode)
 {
     void *ptr = NULL;
     uint64_t start;
     int rc;
-    if (s->pinned) {   /* an open transaction holds a WRITE pin: the image cannot move */
-        return s->image != NULL ? ELPIS_ECSG_K1_OK : fm(FMS_E_STATE);
+    if (s->pinned) {
+        if (s->pin_write || mode != FMS_WRITE) {
+            ecsg_k1_internal_bind(s->k1, s->image);
+            return ELPIS_ECSG_K1_OK;
+        }
+        rc = release(r, s);   /* a held READ pin cannot serve a write: drop it first */
+        if (rc != ELPIS_ECSG_K1_OK) {
+            return rc;
+        }
     }
     start = now_ns();
     rc = fms_acquire(r->fms, s->object, FMS_WARM, mode, &ptr);
@@ -133,30 +164,16 @@ static int acquire(elpis_ecsg_k1_fms *r, slot *s, unsigned mode)
         return fm(rc);
     }
     s->pinned = 1;
+    s->pin_write = mode == FMS_WRITE;
     s->image = (uint8_t *)ptr;
     if (rc != FMS_WARM || s->image == NULL) {
-        (void)fms_release(r->fms, s->object);
-        s->pinned = 0;
-        s->image = NULL;
+        (void)release(r, s);
         s->info.lease_failures += 1u;
         return fm(FMS_E_STATE);
     }
     s->info.acquisitions += 1u;
     ecsg_k1_internal_bind(s->k1, s->image);
     return ELPIS_ECSG_K1_OK;
-}
-
-static int release(elpis_ecsg_k1_fms *r, slot *s)
-{
-    int rc;
-    ecsg_k1_internal_bind(s->k1, NULL);
-    s->image = NULL;
-    if (!s->pinned) {
-        return ELPIS_ECSG_K1_OK;
-    }
-    rc = fms_release(r->fms, s->object);
-    s->pinned = 0;
-    return fm(rc);
 }
 
 static void observe(slot *s)
@@ -377,9 +394,14 @@ int elpis_ecsg_k1_fms_close(elpis_ecsg_k1_fms *r, uint64_t *id)
     if (rc != ELPIS_ECSG_K1_OK) {
         return rc;
     }
-    if (s->pinned || s->txn_open) {
+    if (s->txn_open) {
         give(r, s);
         return ELPIS_ECSG_K1_BUSY;
+    }
+    rc = release(r, s);   /* a pin left by a failed release is retried here */
+    if (rc != ELPIS_ECSG_K1_OK) {
+        give(r, s);
+        return rc;
     }
     rc = fms_unregister(r->fms, s->object);
     if (rc != FMS_OK) {
@@ -632,13 +654,18 @@ static int txn_take(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, slot **ou
     return ELPIS_ECSG_K1_OK;
 }
 
-/* After a candidate operation: a stale or refused candidate is discarded by K1; release the pin with it. */
-static int txn_settle(elpis_ecsg_k1_fms *r, slot *s, int rc)
+/* After a candidate operation, the refusal contract of ecsg_k1.h: STALE, or NONFINITE from a candidate-mutating
+ * call, has discarded the native transaction; release its pin with it. INVALID, CAPACITY and BUSY leave the
+ * transaction open and unchanged. */
+static int txn_fatal(int rc, int mutating)
 {
-    if (rc != ELPIS_ECSG_K1_OK && rc != ELPIS_ECSG_K1_INVALID && rc != ELPIS_ECSG_K1_CAPACITY &&
-        rc != ELPIS_ECSG_K1_BUSY) {
+    return rc == ELPIS_ECSG_K1_STALE || (mutating && rc == ELPIS_ECSG_K1_NONFINITE);
+}
+
+static int txn_settle(elpis_ecsg_k1_fms *r, slot *s, int rc, int mutating)
+{
+    if (txn_fatal(rc, mutating)) {
         s->info.aborts += 1u;
-        s->txn_open = 0;
         clear_transaction(r, s, 0);
     }
     give(r, s);
@@ -689,7 +716,7 @@ int elpis_ecsg_k1_fms_txn_learn(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t toke
     start = now_ns();
     rc = elpis_ecsg_k1_txn_learn(s->k1, s->txn_native_token, x, y, rows, rate, steps, t);
     s->info.learn_ns += now_ns() - start;
-    return txn_settle(r, s, rc);
+    return txn_settle(r, s, rc, 1);
 }
 
 int elpis_ecsg_k1_fms_txn_consolidate(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, const double *x,
@@ -704,7 +731,7 @@ int elpis_ecsg_k1_fms_txn_consolidate(elpis_ecsg_k1_fms *r, uint64_t id, uint64_
     start = now_ns();
     rc = elpis_ecsg_k1_txn_consolidate(s->k1, s->txn_native_token, x, rows);
     s->info.consolidate_ns += now_ns() - start;
-    return txn_settle(r, s, rc);
+    return txn_settle(r, s, rc, 1);
 }
 
 int elpis_ecsg_k1_fms_txn_forward(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, const double *x, size_t rows,
@@ -719,11 +746,7 @@ int elpis_ecsg_k1_fms_txn_forward(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t to
     start = now_ns();
     rc = elpis_ecsg_k1_txn_forward(s->k1, s->txn_native_token, x, rows, out);
     s->info.query_ns += now_ns() - start;
-    if (rc == ELPIS_ECSG_K1_NONFINITE) {   /* a refused query does not discard the candidate */
-        give(r, s);
-        return rc;
-    }
-    return txn_settle(r, s, rc);
+    return txn_settle(r, s, rc, 0);   /* read-only: only STALE discards */
 }
 
 int elpis_ecsg_k1_fms_txn_epoch(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, uint64_t *epoch)
@@ -734,7 +757,7 @@ int elpis_ecsg_k1_fms_txn_epoch(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t toke
         return rc;
     }
     rc = elpis_ecsg_k1_txn_epoch(s->k1, s->txn_native_token, epoch);
-    return txn_settle(r, s, rc);
+    return txn_settle(r, s, rc, 0);
 }
 
 int elpis_ecsg_k1_fms_txn_commit(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, elpis_ecsg_k1_transition *t)

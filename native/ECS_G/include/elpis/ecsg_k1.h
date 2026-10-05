@@ -39,9 +39,21 @@ extern "C" {
  *
  * Memory: create/restore allocate the object and one 64-byte-aligned arena;
  * no operation allocates afterwards except an explicit reserve (cold path).
+ * Every size is computed with checked arithmetic and bounded before any
+ * allocation: an image (header + W + H + a) above ELPIS_ECSG_K1_MAX_IMAGE_BYTES
+ * or a workspace above ELPIS_ECSG_K1_MAX_WORKSPACE_BYTES is refused with
+ * CAPACITY, whatever a caller or a serialized header asks for.
  *
- * Concurrency: SINGLE_WRITER per state; concurrent entry is refused (BUSY).
- * Distinct states are independent and share nothing.
+ * Concurrency: SINGLE_WRITER per state; every operation (queries included)
+ * enters one guard and a concurrent entry is refused (BUSY). The getters
+ * epoch, generation, provenance_of and max_rows never enter it: they read
+ * values the writer publishes atomically after each committed transition (each
+ * value is current as of some committed transition; they are not a joint
+ * snapshot). dim and width are immutable. Distinct states share nothing.
+ *
+ * Provenance: create, restore of a COMPLETE envelope and every successful
+ * consolidation (direct or committed) give COMPLETE; reset gives RESET; a
+ * W-only import gives UNCONSOLIDATED_IMPORT. LEARN never changes provenance.
  *
  * Persistent format (ELPIS K1 retained-state envelope v1), all integers and
  * binary64 values little-endian, explicit layout:
@@ -64,7 +76,10 @@ enum {
     ELPIS_ECSG_K1_FORMAT_VERSION = 1u,
     ELPIS_ECSG_K1_MECHANISM = 1u,
     ELPIS_ECSG_K1_HEADER_BYTES = 64u,
-    ELPIS_ECSG_K1_DIGEST_BYTES = 32u
+    ELPIS_ECSG_K1_DIGEST_BYTES = 32u,
+    ELPIS_ECSG_K1_MAX_DIM = 64u,                   /* index-table bound; the byte budgets bind first */
+    ELPIS_ECSG_K1_MAX_IMAGE_BYTES = 67108864u,     /* 64 MiB: header + W + H packed + a */
+    ELPIS_ECSG_K1_MAX_WORKSPACE_BYTES = 268435456u /* 256 MiB: scratch, candidate, admitted rows */
 };
 
 typedef enum {
@@ -73,7 +88,7 @@ typedef enum {
     ELPIS_ECSG_K1_NONFINITE = -2,  /* non-finite input or intermediate */
     ELPIS_ECSG_K1_STALE = -3,      /* the transaction's source was replaced */
     ELPIS_ECSG_K1_BUSY = -4,       /* concurrent entry, or reserve with an open transaction */
-    ELPIS_ECSG_K1_CAPACITY = -5,   /* more rows than the admitted capacity */
+    ELPIS_ECSG_K1_CAPACITY = -5,   /* more rows than reserved, or a shape beyond the declared byte budgets */
     ELPIS_ECSG_K1_NOMEM = -6,      /* allocation failed (create, restore, reserve only) */
     ELPIS_ECSG_K1_CORRUPT = -7     /* a retained-state envelope failed validation */
 } elpis_ecsg_k1_status;
@@ -114,7 +129,7 @@ typedef struct {
 
 uint32_t elpis_ecsg_k1_abi_version(void);
 
-/* Sizes (0 on an invalid shape or overflow). */
+/* Sizes (0 on an invalid shape, an overflow, or a size beyond the declared budgets). */
 size_t elpis_ecsg_k1_features(size_t dim);
 size_t elpis_ecsg_k1_payload_bytes(size_t dim, size_t width);   /* W, H packed, a */
 size_t elpis_ecsg_k1_image_bytes(size_t dim, size_t width);     /* header + payload */
@@ -174,8 +189,19 @@ elpis_ecsg_k1_status elpis_ecsg_k1_stats(elpis_ecsg_k1 *state, elpis_ecsg_k1_cou
  * Transactions: at most one open per state. begin stages a candidate copy of
  * the complete state; learn, consolidate and forward act on the candidate;
  * commit installs W, epoch, H and a together (generation + 1) unless another
- * commit replaced the source since begin (STALE, candidate discarded). A
- * refused candidate operation discards the transaction. abort discards it.
+ * commit replaced the source since begin (STALE, candidate discarded).
+ *
+ * Refusal contract (the status decides; identical in the FMS adapter and the
+ * Python control plane):
+ *   INVALID, CAPACITY, BUSY   recoverable: refused before the candidate is
+ *                             touched; the transaction stays open and unchanged
+ *                             and the call may be retried.
+ *   STALE                     fatal: the transaction is discarded.
+ *   NONFINITE                 fatal from txn_learn and txn_consolidate (non-finite
+ *                             input or arithmetic): discarded. A NONFINITE query
+ *                             (txn_forward) is read-only and discards nothing.
+ * The authoritative state never changes on any refusal. abort with no open
+ * transaction is OK; abort with a wrong token is INVALID and changes nothing.
  */
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_begin(elpis_ecsg_k1 *state, uint64_t *token);
 elpis_ecsg_k1_status
