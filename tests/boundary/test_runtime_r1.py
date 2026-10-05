@@ -103,7 +103,9 @@ def test_commit_is_native_not_a_python_snapshot_hash_swap():
 
 
 @pending("executor")
-def test_runtime_turn_commits_through_a_native_executor_transaction():
+def test_runtime_turn_commits_through_a_native_transaction():
+    """The canonical turn's substrate is now native K1 (tests/boundary/test_k1_runtime.py); its commit stays one
+    native transaction commit, never a Python fork/adopt/step."""
     _, functions = _functions(TURN)
     calls = set().union(*(_calls(f) for f in functions.values()))
     assert "transaction" in calls and "commit" in calls

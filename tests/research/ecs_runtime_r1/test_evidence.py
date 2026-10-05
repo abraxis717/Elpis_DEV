@@ -21,11 +21,14 @@ from ...ECS_G.test_math_r0 import REPO
 
 EVIDENCE = REPO / "research" / "ecs_runtime_r1" / "evidence"
 REPORT = REPO / "docs" / "performance" / "ECS_RUNTIME_R1.md"
-# The measured code: the native executor and reference kernel, and the Python control plane.
+# The measured code: the native executor and reference kernel, and the Python control plane the recorded modes ran.
 MEASURED = ("native/ECS_G/src/ecsg_executor.c", "native/ECS_G/src/ecsg_math.c", "native/ECS_G/src/ecsg_state.c",
             "native/ECS_G/include/elpis/ecsg_executor.h", "native/ECS_G/include/elpis/ecsg_math.h",
-            "native/ECS_G/include/elpis/ecsg_state.h", "src/elpis/ECS_G/native.py", "src/elpis/ECS_G/cognition.py",
-            "src/elpis/runtime/cognition.py")
+            "native/ECS_G/include/elpis/ecsg_state.h", "src/elpis/ECS_G/native.py", "src/elpis/ECS_G/cognition.py")
+# Bound for provenance only: the bench recorded the runtime turn module's digest, but no recorded mode ran the turn
+# (every mode is ref_*, exec_* or py_* over the executor and CognitiveCore). Since the canonical turn moved to native
+# K1 (integration/canonical-k1-turn-r0) this module is no longer Runtime R1 code; the recorded digest stays as written.
+PROVENANCE_ONLY = ("src/elpis/runtime/cognition.py",)
 REFERENCE = ("native/ECS_G/src/ecsg_math.c", "native/ECS_G/src/ecsg_state.c", "native/ECS_G/include/elpis/ecsg_math.h",
              "native/ECS_G/include/elpis/ecsg_state.h")
 
@@ -59,6 +62,15 @@ def test_final_evidence_measured_the_code_in_this_tree():
     assert all(sanitizer_sources[rel] == _sha(rel) for rel in sanitizer_sources)
     profile = _load("profile.json")
     assert profile["after"]["executor_source_sha256"] == _sha("native/ECS_G/src/ecsg_executor.c")
+
+
+def test_provenance_only_sources_were_never_measured():
+    """The exclusion above is justified only while no recorded mode exercises the runtime turn."""
+    for name in ("final.json", "jitter.json", "overhead.json"):
+        report = _load(name)
+        assert all(rel in report["binding"]["sources"] for rel in PROVENANCE_ONLY), name
+        modes = {r["mode"] for r in report.get("results", [])}
+        assert all(m.startswith(("ref_", "exec_", "py_core_", "py_exec_")) for m in modes), (name, sorted(modes))
 
 
 def test_baseline_measured_the_same_scalar_reference_before_nativeization():

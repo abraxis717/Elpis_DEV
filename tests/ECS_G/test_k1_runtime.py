@@ -323,3 +323,53 @@ def test_one_native_crossing_per_operation_and_none_proportional_to_k():
             s.query(x)
         s.learn(x, y, 0.002, 50)
         assert s.stats()["heap_allocations"] == before   # no hot allocation after create/reserve
+
+
+def _schedule(x, y, steps, rows_each):
+    """Native-ready buffers for consecutive experiences of ``rows_each`` rows (test setup, cold)."""
+    sched = array("Q")
+    for s in steps:
+        sched.extend((rows_each, s))
+    return x, y, sched
+
+
+def test_experience_schedule_equals_ordered_learn_then_consolidate(libs):
+    _, k1 = libs
+    w, x, y = data(31)
+    _, x2, y2 = data(32)
+    xs, ys = array("d", x[:32 * D]) + array("d", x2[:32 * D]), array("d", y[:32]) + array("d", y2[:32])
+    xs, ys, sched = _schedule(xs, ys, (5, 9), 32)
+    with K1State.create(k1, D, N, w, max_rows=R) as s, K1State.create(k1, D, N, w, max_rows=R) as ref:
+        with s.transaction() as t:
+            prepared = t.run_schedule(xs, ys, sched, 0.002)
+            t.commit()
+        with ref.transaction() as t:
+            t.learn(x[:32 * D], y[:32], 0.002, 5)
+            t.consolidate(x[:32 * D])
+            t.learn(x2[:32 * D], y2[:32], 0.002, 9)
+            t.consolidate(x2[:32 * D])
+            t.commit()
+        assert s.snapshot() == ref.snapshot()
+        assert (prepared.epoch_before, prepared.epoch_after, prepared.experiences) == (0, 14, 2)
+        assert prepared.s3 == s.a()   # a <- S3(W) of the last experience = S3 of the final W
+
+
+def test_schedule_refusals_follow_the_transaction_contract(libs):
+    _, k1 = libs
+    w, x, y = data(33)
+    xs, ys, sched = _schedule(x, y, (4, 4), R // 2)
+    with K1State.create(k1, D, N, w, max_rows=R) as s:
+        before = s.snapshot()
+        t = s.transaction()
+        with pytest.raises(K1Error) as exc:   # rows sum does not match: recoverable, still open
+            t.run_schedule(xs, ys, array("Q", [R // 2, 4, R // 2 + 1, 4]), 0.002)
+        assert exc.value.code == "INVALID" and t._open
+        with pytest.raises(K1Error) as exc:   # more rows than reserved: recoverable
+            t.run_schedule(array("d", x) + array("d", x), array("d", y) + array("d", y), array("Q", [2 * R, 1]), 0.002)
+        assert exc.value.code == "CAPACITY" and t._open
+        bad = array("d", xs)
+        bad[R // 2 * D + 1] = float("inf")
+        with pytest.raises(K1Error) as exc:   # non-finite: fatal, discarded
+            t.run_schedule(bad, ys, sched, 0.002)
+        assert exc.value.code == "NONFINITE" and not t._open
+        assert s.snapshot() == before
