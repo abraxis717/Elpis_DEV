@@ -1,0 +1,788 @@
+{
+ "ablations": {
+  "consolidation_reset_at_B": "gating (G iv): keep W after B, empty the consolidation state, continue C, D with the candidate engine",
+  "extended_state_transplant_at_B": "gating (G iii): serialize W snapshot bytes plus consolidation state and control constants after B, restore into a fresh engine, continue C, D",
+  "fibre_removed": "reported, K3 selected: the K1 run (microstate-only contrast)",
+  "mismatched_statistics": "reported: every consolidation uses inputs from the never-observed plane task.mismatched_plane (own stream) instead of the experience's",
+  "per_experience_anchors": "reported, K1 selected: C1's anchoring law at lambda = 1",
+  "state_removed": "gating (G ii): same engine, mechanism removed from the start; bitwise M0",
+  "uninformed_statistics": "reported: K1/K3 use (tr Sigma_t / F) I; K2 a uniformly random protected subspace of the same dimension (own stream)"
+ },
+ "analysis": {
+  "aliasing": "conflict requires a direction A observes and B's update moves that B cannot distinguish from a direction A cannot see; on P_B a ridge along q4 and one along q1 are the same function",
+  "design_analysis": "controls only (M0, M1, O, WSTAR) on design-* worlds from a scratch generator unrelated to this seed and streams; no candidate, reference or consolidation mechanism was run during design; summary in CANDIDATES.md section 3; not evidence",
+  "identifiability": "the union identifies every hidden ridge; the joint least-squares ceiling is exact; rehearsal steers the new ridge to the hidden axis",
+  "lemma": "for targets consistent with one realizable s*, sequential G1 on B can change A's function only along directions B's update moves, A observes and B's data do not constrain",
+  "r1_failure": "R1 arm S: B moved only its own rows and its loss pinned the shared coordinates to A's values",
+  "structural_conflict": "every G1 entity update during B lies in P_B, so the hidden ridge grows along b, half of which is q1: a spurious ridge on A's plane that B's loss cannot see",
+  "structural_novelty": "the hidden ridge of each later experience vanishes on every earlier plane"
+ },
+ "authored_at": "RET2A",
+ "base": {
+  "main": "fb1a96db6eb10f02f6b87cb5dfd2f490ab1ba0c5",
+  "repository": "https://github.com/abraxis717/Elpis_DEV"
+ },
+ "chronology": {
+  "RET2A": "question, task, candidates, thresholds, DEV rules, pass rule, preregistration guard and authority pointers; no laboratory, no DEV or QUAL world evaluated",
+  "RET2B": "laboratory mechanics and mechanics tests on test-* worlds only",
+  "RET2C": "DEV on DEV worlds only: task rule (controls only), then, if a gain qualified, the candidate rule",
+  "RET2D": "freeze: digests, laboratory source and commit, full implementation and numerical binding, DEV choices, QUAL world list",
+  "RET2E": "QUAL once (numerical-robustness children are part of that one execution)",
+  "RET2F": "interpretation; authority updated only to the measured claims",
+  "commit_tags": "every commit of a step has a subject beginning with its tag (RET2A, RET2A.1, ...); write-once records are added by exactly one commit of their step",
+  "early_stop": "TASK_INVALID_ON_DEV ends the experiment at RET2C: no RET2D, no RET2E; RET2F may follow RET2C",
+  "order": [
+   "RET2A",
+   "RET2B",
+   "RET2C",
+   "RET2D",
+   "RET2E",
+   "RET2F"
+  ],
+  "post_dev_lab_change": "a laboratory change after DEV evidence exists is admitted only if a re-execution reproduces every recorded DEV result exactly (only the implementation binding and timings may differ); otherwise the experiment is a new version"
+ },
+ "classes": {
+  "CATASTROPHIC_t_at_s": "for t before s: nmse_t(W_s) >= nmse_t(W0)",
+  "HELD_at_s": "LEARNED_s and RETAINED_t_at_s for every t before s",
+  "LEARNED_s": "nmse_s(W_s) <= 0.5 and nmse_s(W_s) <= 0.5 * nmse_s(W_prev), W_prev the state before experience s (W0 for A)",
+  "PAIR_HELD": "pairwise (R0 compatible): LEARNED_B and RETAINED_A_at_B",
+  "RETAINED_t_at_s": "for t before s: nmse_t(W_s) <= 0.5 and nmse_t(W_s) <= 0.5 * nmse_t(W0)",
+  "SEQUENCE_HELD": "HELD_at_s for every stage s in A, B, C, D"
+ },
+ "dev_rules": {
+  "candidate": "only if an input scale was chosen: run K1, K2, K3, C1R, M0 and M1 through the full sequence on every DEV world. Rank K1, K2, K3 by (1) the number of DEV worlds SEQUENCE_HELD, descending; (2) the median over DEV worlds of final_mean_nmse, ascending; (3) extra_persistent_bytes, ascending; (4) analytic hot-path extra operations per step, ascending; (5) the order K1, K2, K3. The first is the selected candidate. C1R, M0 and M1 are never selected; no candidate is excluded for a zero count",
+  "nothing_else": "DEV chooses only the hidden gain and the selected candidate. Steps, rate, rows, angle, input scale, planes, hyperparameters, procedure constants, thresholds, ablations and gates are fixed here",
+  "task": "controls only (M0, M1, O, WSTAR; no candidate, no reference): for hidden_gain in hidden_gain_grid in order, on every DEV world, check V1 realizability (WSTAR nmse <= 1e-20 on every experience), V2 real forgetting (M0 SEQUENCE_HELD in at most 25% of DEV worlds, median over DEV worlds of M0 final_earlier_mean_nmse >= 0.5 and median A_end_ratio >= 10), V3 novelty (every DEV world and every stage s in B, C, D: nmse_s(O_prev) >= 0.5), V4 learnability (M0 LEARNED_s at every stage of every DEV world), V5 joint solvability (M1 SEQUENCE_HELD in every DEV world), V6 capacity (every DEV world, every stage: the stage ceiling has nmse <= 1e-6 on every experience seen so far). Choose the first hidden_gain satisfying V1-V6. If none does: TASK_INVALID_ON_DEV; the DEV record holds the control results; no candidate or reference is run; no freeze; a revised design is a new version"
+ },
+ "evidence_contract": {
+  "1_evidence_integrity": "always: SHA-256 pins of every write-once record, record digests, chronology from full git history",
+  "2_implementation_correctness": "always, on any host: laboratory mechanics tests on test-* worlds; the executor equals the scalar reference bitwise (ctest ECS_G.*)",
+  "3_historical_replay": "bitwise re-run of recorded QUAL worlds, demanded only when the full binding including the effective BLAS kernel, thread count, CPU flag class and library SHA-256 matches; otherwise skipped as HISTORICAL_REPLAY_ENVIRONMENT_MISMATCH with the reason; never a scientific gate",
+  "4_current_runtime_regression": "never skipped: all QUAL worlds re-run on the current runtime of whatever host; validity, mechanics, gates, disposition, outcome and per-mechanism counts must equal the record; no float or W digest is compared"
+ },
+ "excluded_families": {
+  "attractor_settling_dynamics": "the qualified recurrence has no autonomous dynamics between experiences",
+  "capacity_expansion": "more entities do not expand the class (F4); real expansion needs a new kernel with its own qualification; R2 removes capacity by construction (witness, exact joint ceiling, V6)",
+  "episodic_gradient_compatibility": "needs stored examples (external memory); at the anchor the first-order past gradient vanishes, so compatibility is the second-order subspace condition of K2",
+  "exact_target_statistic_accumulation": "mean(y phi) is a sufficient statistic of the targets, i.e. a compressed answer store; consolidation reads state and experienced inputs only",
+  "low_rank_protected_subspace_with_chosen_rank": "H is 83 x 83 at d = 6; a chosen rank would be an unmotivated grid; exact numerical rank is K2; low rank is the larger-d scaling question",
+  "modular_or_recruitable_subpopulation_capacity": "F4: no capacity gain for any N; recruits at w = 0 move only linear coefficients first; without past-input memory no retention (F6), with it a restricted K1/K2",
+  "pseudo_rehearsal_generative_replay": "needs a generator outside ECS_G or stored inputs; H already is the exact input-moment summary",
+  "selective_state_dependent_plasticity_per_weight_or_entity": "R0 C2 tested the best-informed local form (3/24 both, divergent cumulatively); by F5 importance is not local to weights or entities; included in function coordinates (K2) and microstate form (K3)",
+  "slow_fast_learned_state": "the exact slow state for this kernel is the sufficient statistic (K1); splitting W into slow and fast entity populations changes neither the function class nor the information about the past",
+  "sparse_entity_local_learning": "an uninformed restriction of the tangent kernel; no sparsity to exploit in the dense d = 6 kernel; informed versions reduce to K2",
+  "topology_mediated_retention": "no topology or HACF -> ECS edge is defined or qualified; S3 is permutation-invariant; a new ontology not derived from the R0 failure"
+ },
+ "fms_implications": {
+  "common_finding": "every candidate keeps W as the only query-time state and adds one fixed-size, learning-time-only block that must be co-versioned with W: resident during LEARN, cold otherwise, committed atomically with W",
+  "per_mechanism": {
+   "C1R": {
+    "independently_materializable": "yes; learning-time only",
+    "locality_granularity": "as K1",
+    "persist_with_W": "H, b",
+    "reconstructible_scratch": "u, S3, J",
+    "size": "fixed, 28,552 B"
+   },
+   "K1": {
+    "independently_materializable": "yes; QUERY never reads it",
+    "locality_granularity": "one global dense block committed atomically with W; no per-entity paging",
+    "persist_with_W": "H, a, co-versioned with W and the epoch",
+    "reconstructible_scratch": "u, U_2, U_3, S3, J",
+    "size": "fixed, 28,552 B at d = 6, O(d^6)"
+   },
+   "K2": {
+    "independently_materializable": "yes; learning-time only",
+    "locality_granularity": "global dense block, atomic with W",
+    "persist_with_W": "H",
+    "reconstructible_scratch": "U, J, C, Gram, factor",
+    "size": "fixed, 27,888 B (+ derived cache <= 55,112 B)"
+   },
+   "K3": {
+    "independently_materializable": "yes; learning-time only",
+    "locality_granularity": "as K1; reconditioning is a W commit",
+    "persist_with_W": "H, a",
+    "reconstructible_scratch": "as K1 plus optimizer scratch",
+    "size": "fixed, 28,552 B"
+   }
+  },
+  "required_fields": [
+   "persist_with_W",
+   "reconstructible_scratch",
+   "size",
+   "independently_materializable",
+   "locality_granularity"
+  ],
+  "scope": "recorded for the future mutable-FMS design; no FMS code in R1"
+ },
+ "labels": [
+  "RESEARCH_ONLY",
+  "NO_RUNTIME_AUTHORITY",
+  "NO_LANGUAGE_CLAIM",
+  "SYNTHETIC",
+  "SEMANTICS=NONE",
+  "PREREGISTERED"
+ ],
+ "lineage": {
+  "predecessor": "research/ecs_retention_r1 (v1, TASK_INVALID_ON_DEV, DEV record 768154701166e4b041c2b5d9440bde8289739f9cb9ca609adb0fb1fe5159543a); closed and untouched",
+  "r1_spec_sha256_source": "research/ecs_retention_r1/specs/ecsg-retention-r1.v1.spec.json",
+  "reused_unchanged": [
+   "mechanisms",
+   "state_classes",
+   "state_accounting",
+   "runtime_feasibility",
+   "fms_implications",
+   "excluded_families",
+   "classes",
+   "metrics",
+   "numerical_binding",
+   "evidence_contract",
+   "promotion_eligibility"
+  ]
+ },
+ "mechanics_checks": {
+  "consolidation_interface": "structural: consolidation interfaces accept (W, experienced inputs) and no target parameter",
+  "effective_single_thread": "the QUAL process and every child report an effective OpenBLAS thread count of 1",
+  "engine_equivalence": "every candidate engine with its mechanism removed reproduces the canonical M0 sequence bitwise at every stage, every QUAL world",
+  "feature_identity": "1/2 phi(x) . S3(W) equals the canonical forward map within 1e-10 relative on the held-out inputs of every experience at W_A, every QUAL world",
+  "fibre_function_preservation": "K3, every reconditioning in every QUAL world (all K3 runs): S3 within 1e-12 relative and every response on every experience's held-out inputs within 1e-10 relative",
+  "gradient_identity": "on world qual-0000 at W_A, each candidate correction equals the derivative of its declared quantity (K1/C1R: Q; K3: Omega) by central differences within 1e-6 relative; K2: C(W) applied to the projected step is zero within 1e-10 relative to |C(W) Delta|",
+  "no_baseline_refusal": "M0 and M1 learn without refusal in every QUAL world",
+  "pte_microstate": "two microstates with identical S3 (task.pte: the R0 PTE values along B's aliased axis b; S3 relative difference <= 1e-12), each with its own consolidation built from A's experienced inputs, diverge after one identical selected-candidate step on B (S3 relative difference >= 1e-9), every QUAL world",
+  "shared_W_A": "W_A is bitwise identical across mechanisms in every QUAL world",
+  "witness_exact": "W* answers every experience's held-out inputs with nmse <= 1e-20, every QUAL world"
+ },
+ "mechanisms": {
+  "C1R": {
+   "class": "REFERENCE",
+   "consolidation_inputs": [
+    "W",
+    "experienced_inputs"
+   ],
+   "definition": "R0 C1 unchanged: lambda 4; H += Sigma_t, b += Sigma_t S3(W_t) after each experience; correction J^T u, u = (lambda / 2)(H S3(W) - b)",
+   "eligible_for_selection": false,
+   "hyperparameters": {
+    "lambda": 4.0
+   },
+   "state": {
+    "cognitive": [
+     "W",
+     "H",
+     "b",
+     "epoch"
+    ],
+    "control": [
+     "rate",
+     "budget",
+     "lambda"
+    ],
+    "derived": [
+     "S3",
+     "u"
+    ],
+    "external_memory": "none",
+    "extra_persistent_bytes": 28552
+   }
+  },
+  "K1": {
+   "class": "CANDIDATE",
+   "consolidation_inputs": [
+    "W",
+    "experienced_inputs"
+   ],
+   "definition": "consolidation after experience t: H <- H + Sigma_t, a <- S3(W_t); learning step: W <- G1(W) - eta J(W)^T u, u = 1/2 H (S3(W) - a), evaluated at the pre-step W",
+   "eligible_for_selection": true,
+   "family": "slow consolidated state: exact functional consolidation (S3 Laplace, re-anchored)",
+   "hyperparameter_origin": "derived (F2/F3): each experience's mean loss counts once; not tuned",
+   "hyperparameters": {
+    "lambda": 1.0
+   },
+   "state": {
+    "cognitive": [
+     "W",
+     "H",
+     "a",
+     "epoch"
+    ],
+    "control": [
+     "rate",
+     "budget",
+     "lambda"
+    ],
+    "derived": [
+     "S3",
+     "u",
+     "U_2",
+     "U_3"
+    ],
+    "external_memory": "none",
+    "extra_persistent_bytes": 28552
+   }
+  },
+  "K2": {
+   "class": "CANDIDATE",
+   "consolidation_inputs": [
+    "W",
+    "experienced_inputs"
+   ],
+   "definition": "consolidation: H <- H + Sigma_t; U = eigenvectors of H with eigenvalue > 1e-9 x the largest; learning step: Delta = G1(W) - W, C = U^T J(W), W <- W + Delta - C^T (C C^T)^+ C Delta (relative eigenvalue cutoff 1e-12)",
+   "eligible_for_selection": true,
+   "family": "protected functional subspace / constrained update directions (hard first-order constraint through the current Jacobian)",
+   "hyperparameter_origin": "numerical-rank cutoffs, fixed; not tuned",
+   "hyperparameters": {
+    "gram_pseudoinverse_cutoff": 1e-12,
+    "protected_eigenvalue_cutoff": 1e-09
+   },
+   "state": {
+    "cognitive": [
+     "W",
+     "H",
+     "epoch"
+    ],
+    "control": [
+     "rate",
+     "budget",
+     "cutoffs"
+    ],
+    "derived": [
+     "U",
+     "J",
+     "C",
+     "gram",
+     "factor"
+    ],
+    "external_memory": "none",
+    "extra_persistent_bytes": 27888
+   }
+  },
+  "K3": {
+   "class": "CANDIDATE",
+   "consolidation_inputs": [
+    "W",
+    "experienced_inputs"
+   ],
+   "definition": "K1, plus after each consolidation a function-preserving reconditioning: minimize Omega(W) = |P K(W) (I - P)|_F^2 / |K(W)|_F^2 (K = J J^T, P = U U^T with U as K2) over {W' : S3(W') = S3(W_t)}; a = S3 of the reconditioned W",
+   "eligible_for_selection": true,
+   "family": "microstate (fibre) reconditioning over K1",
+   "hyperparameter_origin": "lambda derived as K1; procedure constants fixed; not tuned",
+   "hyperparameters": {
+    "lambda": 1.0
+   },
+   "procedure": {
+    "acceptance": "retraction succeeded and Omega decreased",
+    "direction": "Euclidean gradient of Omega projected onto ker J(W) (J^T (J J^T)^+ J removed, relative cutoff 1e-12), normalized; step alpha |W|_F",
+    "initial_relative_step": 0.01,
+    "max_iterations": 200,
+    "retraction": "minimum-norm Gauss-Newton W <- W + J^T (J J^T)^+ (s - S3(W)), at most 10 iterations, success iff max |S3(W) - s| <= 1e-13 max(1, max |s|)",
+    "step_on_rejection": "halve",
+    "stop_after_consecutive_rejections": 20
+   },
+   "state": {
+    "cognitive": [
+     "W",
+     "H",
+     "a",
+     "epoch"
+    ],
+    "control": [
+     "rate",
+     "budget",
+     "lambda",
+     "procedure"
+    ],
+    "derived": [
+     "S3",
+     "u",
+     "U_2",
+     "U_3",
+     "P",
+     "K",
+     "Omega",
+     "retraction"
+    ],
+    "external_memory": "none",
+    "extra_persistent_bytes": 28552
+   }
+  },
+  "M0": {
+   "class": "NEGATIVE_BASELINE",
+   "definition": "plain sequential G1 through the canonical core: W_t = G1^K(W_{t-1}; t)",
+   "eligible_for_selection": false,
+   "state": {
+    "cognitive": [
+     "W",
+     "epoch"
+    ],
+    "external_memory": "none",
+    "extra_persistent_bytes": 0
+   }
+  },
+  "M1": {
+   "class": "EXTERNAL_MEMORY_CONTROL",
+   "definition": "cumulative rehearsal: at stage t, G1^K(W_{t-1}; every experience so far) as one batch through the canonical executor",
+   "eligible_for_selection": false,
+   "state": {
+    "cognitive": [
+     "W",
+     "epoch"
+    ],
+    "external_memory": "every experience (X, y): 3,584 bytes per experience, growing",
+    "extra_persistent_bytes": 0
+   }
+  },
+  "O": {
+   "class": "EXPERIMENT_ONLY",
+   "definition": "unconstrained minimum-norm least-squares coefficients c (f = 1/2 phi . c) on the training rows of the experiences seen so far (stage ceiling) and on the experiences before t (O_prev, novelty)",
+   "eligible_for_selection": false
+  },
+  "WSTAR": {
+   "class": "EXPERIMENT_ONLY",
+   "definition": "realizability witness W* = [T* | 0] (task.witness)",
+   "eligible_for_selection": false
+  }
+ },
+ "metrics": {
+  "A_end_ratio": "nmse_A(W_D) / nmse_A(W_A)",
+  "K2_protected_dimension_s": "k after the consolidation of stage s",
+  "K3_fibre_displacement_s": "|W_reconditioned - W_s|_F / |W_s|_F and Omega before/after",
+  "analytic_extra_ops_per_step": "closed-form count at the regime (CANDIDATES.md section 11)",
+  "final_earlier_mean_nmse": "mean over A, B, C of nmse_t(W_D)",
+  "final_mean_nmse": "mean over A, B, C, D of nmse_t(W_D)",
+  "learn_seconds": "laboratory wall time (PERFORMANCE_ONLY; never part of a gate)",
+  "nmse": "mean over the test_rows held-out rows of (f_W(x) - y)^2 divided by the population variance of those held-out targets",
+  "persistent_extra_bytes_s": "exact binary64 bytes of the mechanism's declared extra persistent state after stage s",
+  "retention_ratio_t_at_s": "nmse_t(W_s) / nmse_t(W_t)",
+  "state_change_s": "|W_s - W_prev|_F / |W_prev|_F"
+ },
+ "name": "ecsg-retention-r2",
+ "nonclaims": [
+  "no claim about language, meaning or general cognition; synthetic regression, SEMANTICS=NONE",
+  "no claim beyond d = 6, N = 36, the qualified cubic kernel and G1 as the base step",
+  "no claim about capacity-limited regimes or other task families",
+  "an OUTCOME_A makes a candidate eligible for a canonical milestone; it changes no canonical code"
+ ],
+ "numerical_binding": {
+  "required_fields": [
+   "python_version_and_implementation",
+   "numpy_version",
+   "numpy_build_configuration (BLAS and LAPACK names, versions, ILP64)",
+   "blas_implementation_and_version",
+   "effective_blas_kernel_core (read in-process after NumPy loads)",
+   "effective_blas_thread_count (read in-process; must be 1)",
+   "blas_and_openmp_thread_environment",
+   "cpu_model_family_model_and_flags (sse4_2, avx, avx2, fma, avx512f)",
+   "machine_architecture_os_and_libc",
+   "float_format (IEEE-754 binary64)",
+   "compiler_identity_and_version",
+   "cmake_build_type_and_c_flags (all configurations, ECS_G target options, sanitizer switches)",
+   "native_library_path_and_sha256 (libelpis_ecsg_math)",
+   "bound_source_sha256 (src/elpis/ECS_G/native.py, cognition.py; native/ECS_G headers and sources; native/ECS_G/CMakeLists.txt; top-level CMakeLists.txt)",
+   "laboratory_source_digest (research/ecs_retention_r1 Python sources)",
+   "spec_digest, pass_rule_digest and CANDIDATES.md sha256",
+   "git_base_commit_tree_and_dirty_flag"
+  ],
+  "rules": [
+   "BLAS and OpenMP thread counts are pinned to 1 before NumPy loads; the effective count is read and must be 1, or DEV, freeze and QUAL refuse",
+   "QUAL refuses if any bound field differs from the frozen binding, if the tree is dirty, if NumPy is not OpenBLAS-backed, or if the host lacks AVX2 and FMA (needed to force the robustness kernels)",
+   "the QUAL record keeps the world id list and the world count under different keys (R0 record defect)"
+  ]
+ },
+ "pass_rule": {
+  "A_first_acquisition": "every QUAL world LEARNED_A under the shared W_A; median over QUAL worlds of nmse_A(W_A) <= 0.25",
+  "B_stage_acquisition": "selected candidate: every QUAL world LEARNED_s at every stage s in B, C, D",
+  "C_sequence_retention": "selected candidate: every QUAL world RETAINED_t_at_s for every stage s and every earlier t (central gate; with B: every QUAL world SEQUENCE_HELD)",
+  "D_no_catastrophe": "selected candidate: no CATASTROPHIC_t_at_s in any QUAL world, stage or earlier experience",
+  "E_joint_quality": "selected candidate: median over QUAL worlds of final_mean_nmse <= 0.25",
+  "F_joint_state": "selected candidate: at every stage one executor created from W_s answers all four experiences' held-out inputs (state digest recorded); no task label reaches a query (structural)",
+  "G_state_causality": "selected candidate, every QUAL world: (i) an executor restored from the snapshot of the executor holding W_D reproduces its responses bitwise and an executor created from W0 reproduces the untaught responses bitwise; (ii) ablation state_removed: SEQUENCE_HELD in at most 25% of QUAL worlds and its median final_earlier_mean_nmse >= 2 x the candidate's; (iii) ablation extended_state_transplant_at_B continues bitwise equal to the uninterrupted run in every QUAL world (and in a clean process for qual-0000); (iv) ablation consolidation_reset_at_B: A and B both RETAINED at D in at most 25% of QUAL worlds",
+  "H_no_external_answer_store": "selected candidate: (i) consolidation receives W and the current experience's inputs only (structural; no target, label or task identity); (ii) no row is stored beyond the current learn call; (iii) persistent_extra_bytes identical after every stage; (iv) every query reads W only",
+  "I_determinism": "selected candidate, world qual-0000: the full pipeline twice in process and once in a clean process from the frozen specification yields identical W and consolidation-state digests at every stage and identical metrics",
+  "J_control_honesty": "M1 is reported as EXTERNAL_MEMORY_CONTROL and C1R as REFERENCE; neither is the selected candidate",
+  "K_capacity_accounting": "every mechanism reports persistent extra bytes per stage, analytic per-step operations and (M1) stored-experience bytes",
+  "L_native_feasibility": "selected candidate: persistent state fixed-size and independent of the number of experiences and of N beyond W; analytic hot-path extra operations per step <= 64 x G1's (82,944 at R = 64); cold-path operations per consolidation <= 1e10; no stored rows; recorded in the evidence",
+  "M_numerical_robustness": "the QUAL computation that decides validity, mechanics and gates is repeated, within the one QUAL execution, in child processes with OpenBLAS forced to the Prescott and the Haswell kernel (single thread); validity, mechanics, gates, disposition, outcome and every per-mechanism count equal the primary run's (no float or W digest compared)",
+  "disposition": "MECHANICS_FAIL if any mechanics check fails. Else TASK_INVALID_UNDER_QUAL (OUTCOME_V) if any validity condition fails. Else RETENTION_SUPPORTED_UNDER_FROZEN_SYNTHETIC_REGIME (OUTCOME_A) if gates A-M hold for the selected candidate. Else PARTIAL_REDUCTION (OUTCOME_C) if the selected candidate is SEQUENCE_HELD in more QUAL worlds than M0 and its median final_earlier_mean_nmse <= 0.5 x M0's. Else REPLAY_ONLY (OUTCOME_B) if M1 is SEQUENCE_HELD in every QUAL world. Else NO_MATERIAL_IMPROVEMENT (OUTCOME_D). DEV may end earlier as TASK_INVALID_ON_DEV (no freeze, no QUAL). M1, C1R and the non-selected candidates are always reported and never change the disposition. Only the DEV-selected candidate can obtain OUTCOME_A; no other mechanism can be promoted from this experiment. A failure is recorded as it is; a repair is a new experiment version",
+  "qualifiers": {
+   "CAPACITY_SCOPE": "always: retention is claimed only for jointly realizable aliasing-conflict sequences of this family",
+   "EXCEEDS_R0_REFERENCE": "the selected candidate is SEQUENCE_HELD in more QUAL worlds than C1R, or in as many with a smaller median final_mean_nmse",
+   "MICROSTATE_EFFECT": "K3 and K1 differ in SEQUENCE_HELD count or by more than 2x in median final_earlier_mean_nmse (reported whichever is selected)",
+   "NUMERICALLY_FRAGILE": "gate M failed",
+   "R0_REFERENCE_ALSO_SUFFICIENT": "C1R meets gates B, C, D and E"
+  }
+ },
+ "predictions": {
+  "P1": "M1 SEQUENCE_HELD in most QUAL worlds",
+  "P2": "K1 SEQUENCE_HELD in at least as many worlds as M1 (joint-training objective without stored rows)",
+  "P3": "K2 retains through first-order protection; its risks are acquisition of the hidden ridge and second-order drift",
+  "P4": "K3 versus K1: no difference",
+  "P5": "C1R favours earlier experiences; acquisition is its risk",
+  "P6": "state_removed reproduces M0 bitwise",
+  "note": "pre-registered expectations; not gates"
+ },
+ "promotion_eligibility": {
+  "10_bounded_native_form": [
+   "L_native_feasibility"
+  ],
+  "1_new_experience_acquired": [
+   "A_first_acquisition",
+   "B_stage_acquisition"
+  ],
+  "2_prior_function_retained": [
+   "C_sequence_retention",
+   "D_no_catastrophe",
+   "E_joint_quality"
+  ],
+  "3_caused_by_declared_state": [
+   "G_state_causality"
+  ],
+  "4_reset_loses_it": [
+   "G_state_causality"
+  ],
+  "5_transplant_restores_it": [
+   "G_state_causality"
+  ],
+  "6_one_state_no_task_label": [
+   "F_joint_state"
+  ],
+  "7_no_external_answer_store": [
+   "H_no_external_answer_store"
+  ],
+  "8_persistent_state_accounted": [
+   "H_no_external_answer_store",
+   "K_capacity_accounting",
+   "G_state_causality"
+  ],
+  "9_determinism_and_regressions": [
+   "I_determinism",
+   "M_numerical_robustness",
+   "repository current-runtime regressions green in CI on the QUAL head"
+  ],
+  "note": "all ten are required for eligibility; eligibility is not promotion (a canonical milestone needs the native form, snapshot evolution, an FMS edge and its own qualification)"
+ },
+ "question": {
+  "primary": "On a jointly realizable, aliasing-conflict sequence A -> B -> C -> D in which plain sequential G1 materially overwrites earlier function and every later experience is novel, which declared ECS_G cognitive state and update law (K1, K2, K3) lets one ECS_G state acquire each experience while retaining every earlier one, with no stored experience and no task label at query, and is that retention caused by the declared state?",
+  "secondary": [
+   "Does the R0 mechanism (C1, lambda 4), unchanged, already suffice on this task?",
+   "At identical function and consolidation state, does the microstate change retention (K3 versus K1)?"
+  ]
+ },
+ "regime": {
+  "dim": 6,
+  "features": 83,
+  "init_scale": 0.18,
+  "learning_rate": 0.002,
+  "note": "the Cognitive R0 / Retention R0 v1 constants (d, N, initialization, rate, step budget, rows, teacher family) for comparability",
+  "order": [
+   "A",
+   "B",
+   "C",
+   "D"
+  ],
+  "steps_per_experience": 4000,
+  "teacher_scale": 0.5,
+  "teacher_width": 4,
+  "test_rows": 256,
+  "train_rows": 64,
+  "width": 36
+ },
+ "runtime_feasibility": {
+  "g1_ops_per_step_at_R64": 82944,
+  "law": "PYTHON MAY CONTROL THE ECS. PYTHON MAY NOT EXECUTE THE ECS HOT PATH.",
+  "per_mechanism": {
+   "C1R": {
+    "additional_resident_state": "H, b (28,552 B)",
+    "additional_transaction_buffers": "candidate H, b; scratch u, U_2, U_3",
+    "cold_path_ops_per_consolidation": "O(R F^2)",
+    "executor_change": "fused correction in the K-step loop; consolidation at learn-transaction end",
+    "fms_compatible_materialization": "fixed block, learning-time only",
+    "hot_path_extra_ops_per_step": 42506,
+    "per_entity_local_state": "none",
+    "per_step_global_reductions": "S3(W); F x F mat-vec",
+    "snapshot_format_evolution": "W, epoch and a typed consolidation block",
+    "sparse_topological_traversal": "none",
+    "state_growth": "none"
+   },
+   "K1": {
+    "additional_resident_state": "H, a (28,552 B)",
+    "additional_transaction_buffers": "candidate H, a; scratch u, U_2, U_3",
+    "cold_path_ops_per_consolidation": "O(R F^2)",
+    "executor_change": "fused correction in the K-step loop; consolidation at learn-transaction end",
+    "fms_compatible_materialization": "fixed block, learning-time only",
+    "hot_path_extra_ops_per_step": 42506,
+    "per_entity_local_state": "none",
+    "per_step_global_reductions": "S3(W); F x F mat-vec",
+    "snapshot_format_evolution": "W, epoch and a typed consolidation block",
+    "sparse_topological_traversal": "none",
+    "state_growth": "none"
+   },
+   "K2": {
+    "additional_resident_state": "H (27,888 B); derived U (<= 55,112 B)",
+    "additional_transaction_buffers": "candidate H, U; scratch J (143 KB), C, Gram",
+    "cold_path_ops_per_consolidation": "O(R F^2 + F^3)",
+    "executor_change": "per-step Jacobian, Gram, deterministic factorization and projection kernels; deterministic symmetric eigensolver at consolidation",
+    "fms_compatible_materialization": "fixed block, learning-time only",
+    "hot_path_extra_ops_per_step": "about 1.4e6 at k = 48; at most about 3.2e6 at k = F",
+    "per_entity_local_state": "none",
+    "per_step_global_reductions": "C C^T over all entities; C Delta",
+    "snapshot_format_evolution": "W, epoch and a typed consolidation block",
+    "sparse_topological_traversal": "none",
+    "state_growth": "none"
+   },
+   "K3": {
+    "additional_resident_state": "H, a (28,552 B)",
+    "additional_transaction_buffers": "as K1 plus optimizer scratch; reconditioned W in the candidate buffer",
+    "cold_path_ops_per_consolidation": "at most about 4e9",
+    "executor_change": "as K1 plus a bounded native fibre optimizer at consolidation",
+    "fms_compatible_materialization": "fixed block, learning-time only",
+    "hot_path_extra_ops_per_step": 42506,
+    "per_entity_local_state": "none",
+    "per_step_global_reductions": "as K1",
+    "snapshot_format_evolution": "as K1 plus a commit rule for a function-preserving microstate change (open)",
+    "sparse_topological_traversal": "none",
+    "state_growth": "none"
+   }
+  },
+  "required_fields": [
+   "executor_change",
+   "additional_resident_state",
+   "per_step_global_reductions",
+   "per_entity_local_state",
+   "sparse_topological_traversal",
+   "state_growth",
+   "additional_transaction_buffers",
+   "snapshot_format_evolution",
+   "fms_compatible_materialization",
+   "hot_path_extra_ops_per_step",
+   "cold_path_ops_per_consolidation"
+  ],
+  "scope": "declared requirements of an eventual native form; nothing is implemented natively in R1"
+ },
+ "secondary": {
+  "all_candidates": "K1, K2, K3 and C1R run through the sequence on every QUAL world and reported with the same classes (descriptive except for the selected candidate)",
+  "performance": "PERFORMANCE_ONLY NO_SCIENTIFIC_CLAIM: laboratory learn time per mechanism and analytic operation counts; never part of a gate"
+ },
+ "seed": 20261105,
+ "shared_procedure": [
+  "stage A is learned through the canonical core (CognitiveCore.learn, steps_per_experience steps) and W_A is bitwise identical for every mechanism",
+  "every candidate learning step is the canonical native G1 step of the current W on the current experience (an executor created from W performs one learn step) followed by the candidate's correction evaluated at the pre-step W; with the correction removed the procedure is bitwise the canonical core",
+  "learning one experience and consolidating it are one atomic transition: a refused step or any non-finite value leaves W and the consolidation state as they were before the experience, recorded as refused; the sequence continues",
+  "consolidation receives the current W and the experienced inputs of the current experience only; no target, label or task identity reaches it",
+  "every response used by any metric is the canonical native forward map (elpis.ECS_G.native.Executor.forward) of the evaluated W; one executor per evaluated W answers the held-out inputs of every experience; no task label, example, target or consolidation state reaches a query",
+  "after every stage the per-experience nmse of all four experiences, the W digest, the consolidation-state digest and persistent extra bytes, the refusal and the laboratory learn time are recorded"
+ ],
+ "splits": {
+  "dev_worlds": 8,
+  "ids": "DEV: dev-0000..dev-0007; QUAL: qual-0000..qual-0023; mechanics tests use test-* ids only",
+  "isolation": "candidates and the reference are not evaluated on DEV before the task rule has chosen a valid hidden gain; DEV refuses once frozen; QUAL refuses unless frozen and runs once; QUAL worlds are never evaluated before the freeze; no DEV world before RET2B is committed",
+  "qual_worlds": 24,
+  "rng": "every random draw is a function of (seed, experiment name, world id, stream); streams: init, basis, teacher-A, inputs-<t>-<train|test>, mismatch-<t>, uninformed-<t>; no global RNG"
+ },
+ "starting_point": {
+  "retention_r0": {
+   "disposition": "PARTIAL_REDUCTION (OUTCOME_C)",
+   "evidence_untouched": true,
+   "frozen_digest": "2b4e0618813b2cf5ec77dbcb02957c4ee87b67befa5fb1ed111dd3f6fd4a2547",
+   "joint_ceiling_feasible_worlds": "8 of 24",
+   "qual_digest": "f8e631163e8280398b8d36df903c6dc0017f521350404bb503d0d6a15efdce68",
+   "recorded_counts_of_24": {
+    "C1_lambda_4_selected": {
+     "both": 7,
+     "catastrophic_A": 0,
+     "learned_B": 10,
+     "retained_A": 18
+    },
+    "C2_lambda_16": {
+     "both": 3,
+     "catastrophic_A": 10,
+     "learned_B": 11,
+     "retained_A": 9
+    },
+    "M0": {
+     "both": 0,
+     "catastrophic_A": 18,
+     "learned_B": 24,
+     "retained_A": 0
+    },
+    "M1_rehearsal": {
+     "both": 9,
+     "catastrophic_A": 0,
+     "learned_B": 15,
+     "retained_A": 15
+    }
+   }
+  },
+  "retention_r1": {
+   "dev_record_digest": "768154701166e4b041c2b5d9440bde8289739f9cb9ca609adb0fb1fe5159543a",
+   "disposition": "TASK_INVALID_ON_DEV",
+   "finding": "arm S was jointly realizable but plain G1 held the sequence in 5/8, 8/8, 8/8 DEV worlds (median earlier-experience nmse at D 0.03-0.04) and novelty was below 0.25; no candidate was evaluated"
+  }
+ },
+ "state_accounting": {
+  "W_bytes": 1728,
+  "basis": "binary64; H packed symmetric F(F+1)/2 = 3486 values at F = 83; W = d N = 216 values",
+  "per_mechanism": {
+   "C1R": {
+    "authoritative_mutable": "W, H, b, epoch",
+    "control": "rate, budget, lambda = 4",
+    "derived": "S3, u",
+    "experiment_only": "teachers, targets, held-out rows",
+    "external_memory": "none",
+    "fms": "as K1",
+    "learning_time_dependencies": "W, H, b, current experience",
+    "native_runtime": "as K1",
+    "persistence": "(W, epoch, H, b) atomically",
+    "query_time_dependencies": "W",
+    "scaling": "O(d^6) fixed"
+   },
+   "K1": {
+    "authoritative_mutable": "W, H, a, epoch",
+    "control": "rate, budget, lambda = 1",
+    "derived": "S3, u, U_2, U_3",
+    "experiment_only": "teachers, targets, held-out rows",
+    "external_memory": "none",
+    "fms": "one fixed global block co-versioned with W; learning-time only",
+    "learning_time_dependencies": "W, H, a, current experience",
+    "native_runtime": "fused correction in the executor K-step loop; consolidation at transaction end",
+    "persistence": "(W, epoch, H, a) atomically; W without (H, a) is a consolidation reset",
+    "query_time_dependencies": "W",
+    "scaling": "O(d^6) fixed; independent of N and experiences"
+   },
+   "K2": {
+    "authoritative_mutable": "W, H, epoch",
+    "control": "rate, budget, cutoffs",
+    "derived": "U, J, C, Gram, factor",
+    "experiment_only": "teachers, targets, held-out rows",
+    "external_memory": "none",
+    "fms": "one fixed global block co-versioned with W; learning-time only",
+    "learning_time_dependencies": "W, H (via U), current experience",
+    "native_runtime": "per-step Jacobian, Gram, deterministic factorization and projection",
+    "persistence": "(W, epoch, H) atomically",
+    "query_time_dependencies": "W",
+    "scaling": "O(d^6) fixed; per-step work grows with k <= F"
+   },
+   "K3": {
+    "authoritative_mutable": "W (reconditioned), H, a, epoch",
+    "control": "as K1 plus procedure constants",
+    "derived": "as K1 plus P, K, Omega, retraction",
+    "experiment_only": "teachers, targets, held-out rows",
+    "external_memory": "none",
+    "fms": "as K1; reconditioning is a W commit",
+    "learning_time_dependencies": "as K1 plus reconditioning",
+    "native_runtime": "as K1 plus a bounded native fibre optimizer at consolidation",
+    "persistence": "as K1",
+    "query_time_dependencies": "W",
+    "scaling": "O(d^6) fixed; cold path bounded per consolidation"
+   },
+   "M0": {
+    "authoritative_mutable": "W, epoch",
+    "control": "rate, budget",
+    "derived": "S3",
+    "experiment_only": "teachers, targets, held-out rows",
+    "external_memory": "none",
+    "fms": "W as today",
+    "learning_time_dependencies": "W, current experience",
+    "native_runtime": "canonical executor",
+    "persistence": "(W, epoch)",
+    "query_time_dependencies": "W",
+    "scaling": "d N"
+   },
+   "M1": {
+    "authoritative_mutable": "W, epoch",
+    "control": "rate, budget",
+    "derived": "S3",
+    "experiment_only": "teachers, targets, held-out rows",
+    "external_memory": "every experience (X, y)",
+    "fms": "external memory; never a cognitive asset",
+    "learning_time_dependencies": "W, all stored experience",
+    "native_runtime": "canonical executor",
+    "persistence": "stored experience outside ECS state",
+    "query_time_dependencies": "W",
+    "scaling": "grows linearly with experiences"
+   }
+  },
+  "required_fields_per_mechanism": [
+   "authoritative_mutable",
+   "derived",
+   "control",
+   "experiment_only",
+   "external_memory",
+   "scaling",
+   "query_time_dependencies",
+   "learning_time_dependencies",
+   "persistence",
+   "native_runtime",
+   "fms"
+  ],
+  "scaling": "H, a, b are O(F^2) = O(d^6), independent of N, of the number of experiences and of entities; M1 grows linearly with experiences"
+ },
+ "state_classes": {
+  "COGNITIVE_STATE": "authoritative, mutable, persistent; shapes responses or learning",
+  "CONTROL_STATE": "fixed program parameters",
+  "DERIVED": "a function of cognitive state, recomputable",
+  "EXPERIMENT_ONLY": "exists only to construct or evaluate the test",
+  "EXTERNAL_MEMORY_CONTROL": "stored experience; never eligible for selection or promotion",
+  "SCRATCH": "per-step or per-call workspace"
+ },
+ "task": {
+  "aliasing_angle_degrees": 45.0,
+  "basis": "Q = q(R) of a 6 x 6 matrix of i.i.d. N(0, 1) from stream basis, with columns multiplied by the sign of the corresponding diagonal of R (Haar orthogonal); q1..q6 are its columns",
+  "hidden_gain_grid": [
+   2.0,
+   2.5,
+   1.5
+  ],
+  "input_scale": 1.0,
+  "inputs": "x = M_t z, z ~ N(0, input_scale^2 I_3) from streams inputs-<t>-<train|test>; input_scale fixed",
+  "mismatched_plane": "[q4, q5, q6] (never observed); mismatched consolidation inputs x = [q4 q5 q6] z with z ~ N(0, input_scale^2 I_3) from stream mismatch-<t>",
+  "name": "aliased hidden ridges",
+  "planes": {
+   "A": "[q1, q2, q3]",
+   "B": "[cos(theta) q1 + sin(theta) q4, q2, q3]",
+   "C": "[q1, cos(theta) q2 + sin(theta) q5, q3]",
+   "D": "[q1, q2, cos(theta) q3 + sin(theta) q6]"
+  },
+  "properties": [
+   "witness exact",
+   "aliasing on every later plane",
+   "hidden ridge of each later experience vanishes on every earlier plane",
+   "every G1 entity update lies in the current plane",
+   "joint least-squares ceiling exact"
+  ],
+  "pte": "base W0[:, :32]; tail entities 0.125 v b for the R0 PTE value sets (0, 4, 7, 11) and (1, 2, 9, 10), with b = cos(theta) q1 + sin(theta) q4 the aliased axis of B; identical S3 and a B step that reads the differing coordinate",
+  "role": "PRIMARY_GATING (the only arm)",
+  "teacher": "T* = [r_A, g q4, g q5, g q6]; r_A = S z / |S z| with S = [q1 q2 q3] and z ~ N(0, I_3) from stream teacher-A; targets g*(x) = sum_j phi(x . t*_j)",
+  "witness": "W* = [T* | 0] (dim x width): answers every experience exactly"
+ },
+ "thresholds": {
+  "ablation_max_sequence_held_fraction": 0.25,
+  "ablation_min_median_factor": 2.0,
+  "baseline_max_sequence_held_fraction": 0.25,
+  "baseline_min_median_A_end_ratio": 10.0,
+  "baseline_min_median_final_earlier_nmse": 0.5,
+  "candidate_world_fraction": 1.0,
+  "capacity_max_ceiling_nmse": 1e-06,
+  "class_nmse_absolute": 0.5,
+  "class_nmse_relative": 0.5,
+  "feature_identity_relative": 1e-10,
+  "fibre_response_relative": 1e-10,
+  "fibre_s3_relative": 1e-12,
+  "first_acquisition_median_nmse": 0.25,
+  "joint_quality_median_final_mean_nmse": 0.25,
+  "native_cold_path_max_ops_per_consolidation": 10000000000.0,
+  "native_hot_path_max_g1_multiple": 64,
+  "novelty_min_nmse": 0.5,
+  "partial_reduction_max_median_factor": 0.5,
+  "pte_s3_after_min": 1e-09,
+  "pte_s3_before_max": 1e-12,
+  "qual_validity_min_fraction": 0.75,
+  "reset_max_both_retained_fraction": 0.25,
+  "witness_max_nmse": 1e-20
+ },
+ "validity": {
+  "V2_forgetting": "M0 SEQUENCE_HELD in at most 25% of QUAL worlds, median final_earlier_mean_nmse >= 0.5 and median A_end_ratio >= 10",
+  "V3_novelty": "nmse_s(O_prev) >= 0.5 in at least 75% of (QUAL world, stage s in B, C, D) pairs",
+  "V5_rehearsal_feasibility": "M1 SEQUENCE_HELD in at least 75% of QUAL worlds",
+  "V6_capacity": "every QUAL world, every stage: stage-ceiling nmse <= 1e-6 on every experience seen so far",
+  "role": "decides whether QUAL tests retention at all; a failure is TASK_INVALID_UNDER_QUAL, never a pass"
+ },
+ "version": 1
+}
