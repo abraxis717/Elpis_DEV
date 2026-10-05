@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 import shutil
 
+import pytest
+
 from .._k1_promotion import (ADMITTED_NATIVE_RECORDS, K1_FILES, R3_QUAL, admitted, native_digest,
                              native_qualified, native_record_admitted, r3_outcome_a)
 
@@ -61,3 +63,11 @@ def test_a_tampered_admitted_record_is_refused(tmp_path):
         data[len(data) // 2] ^= 1
         (root / relative).write_bytes(bytes(data))
         assert not native_record_admitted(root, relative, pin)
+
+
+@pytest.mark.parametrize("binding", ("sha256", "raw_sha256", "digest", "experiment", "plan", "plan_sha256",
+                                      "harness_commit", "r3_qual_digest"))
+def test_every_admission_binding_is_required(binding):
+    for relative, pin in ADMITTED_NATIVE_RECORDS.items():
+        wrong = dict(pin, **{binding: "not-the-admitted-authority"})
+        assert not native_record_admitted(REPO, relative, wrong), binding

@@ -86,6 +86,8 @@ def clean_transplant(library: Path, per_world: dict) -> dict:
     child = json.loads(out.stdout)
     bitwise = {w: child[w] == {t: per_world[w]["envelopes_sha256"][t] for t in ("C", "D")} for w in per_world}
     return {"worlds": len(bitwise), "bitwise": all(bitwise.values()),
+            "child": child,
+            "reference": {w: {t: per_world[w]["envelopes_sha256"][t] for t in ("C", "D")} for w in per_world},
             "failed": sorted(w for w, ok in bitwise.items() if not ok)}
 
 

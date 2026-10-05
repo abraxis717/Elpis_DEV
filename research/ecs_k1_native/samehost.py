@@ -65,8 +65,9 @@ def world_samehost(nat: D.Native, lab: X.Lab, wid: str, recorded_rows: dict) -> 
                         for run in (zero, main) for t in STAGES)
     boundaries = all(main["stages"][t]["epoch"] == steps * (i + 1) and main["stages"][t]["provenance"] == "COMPLETE"
                      for i, t in enumerate(STAGES))
-    round_trip = all(D.continue_from(nat, main["stages"][t]["envelope"], world, rate, steps, stages=())["restored"]
-                     == main["stages"][t]["envelope"] for t in STAGES)
+    restored = {t: D.continue_from(nat, main["stages"][t]["envelope"], world, rate, steps, stages=())["restored"]
+                for t in STAGES}
+    round_trip = all(restored[t] == main["stages"][t]["envelope"] for t in STAGES)
 
     k1_row = D._row(P["mechanisms"]["K1"], main, th, k1=True)
     removed_row = D._row(P["removed"]["K1"], zero, th, k1=False)
@@ -105,7 +106,41 @@ def world_samehost(nat: D.Native, lab: X.Lab, wid: str, recorded_rows: dict) -> 
         controls["M0"]["stages"][t]["W_digest"] == E.w_digest(canonical[t]["W"]) for t in STAGES)
     rows = {"K1": k1_row, "removed_K1": removed_row, "reset_challenge": reset, "transplant": transplant,
             "w_only": w_only, "state_semantics": semantics, "controls": controls}
+    # Raw witnesses for v2; the comparisons and the historical regression are unchanged.
+    evidence = {
+        "canonical": {t: {"W_digest": E.w_digest(canonical[t]["W"]),
+                           "refused": canonical[t]["refused"]} for t in STAGES},
+        "zero": {t: {"W_digest": E.w_digest(zero["stages"][t]["W"]),
+                      "stats": zero["stages"][t]["stats"]} for t in STAGES},
+        "boundaries": {t: {"epoch": main["stages"][t]["epoch"],
+                            "provenance": main["stages"][t]["provenance"],
+                            "stats": main["stages"][t]["stats"],
+                            "envelope": main["stages"][t]["envelope"].hex(),
+                            "restored_sha256": hashlib.sha256(restored[t]).hexdigest(),
+                            "resident_sha256": hashlib.sha256(resident[t]).hexdigest()}
+                       for t in STAGES},
+        "queries": {name: {t: {"native": run["stages"][t]["responses"].tolist(),
+                                "canonical": E.responses(lab.api, run["stages"][t]["W"], heldout).tolist()}
+                            for t in STAGES} for name, run in (("zero", zero), ("main", main))},
+        "reset_corrected_steps": reset_corrected,
+    }
+    # Preserve the reset/import operands as well as their measured predicates.
+    def state_values(state):
+        return {"W": list(state.w()), "epoch": state.epoch, "H": list(state.h_packed()),
+                "a": list(state.a()), "provenance": state.provenance,
+                "envelope_sha256": hashlib.sha256(state.snapshot()).hexdigest(),
+                "query": list(state.query(D._mv(heldout)))}
+    with D.K1State.restore(nat.k1, env_b) as state:
+        evidence["full_B"] = state_values(state)
+        state.reset()
+        evidence["reset_B"] = state_values(state)
+    W_b = main["stages"]["B"]["W"]
+    with D.Executor.create(nat.api, *W_b.shape, D._mv(W_b)) as executor:
+        snapshot = executor.snapshot()
+    with D.K1State.import_w_only(nat.k1, snapshot) as state:
+        evidence["w_only_B"] = state_values(state)
     return {"world": wid, "checks": checks, "pass": all(checks.values()), "rows": rows,
+            "evidence": evidence,
             "envelopes_sha256": {t: hashlib.sha256(main["stages"][t]["envelope"]).hexdigest() for t in STAGES},
             "_b_envelope": env_b, "_main": main}
 

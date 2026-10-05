@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import lzma
 import re
 from pathlib import Path
 
@@ -51,8 +52,19 @@ def r3_outcome_a(repo: Path) -> bool:
 NATIVE_DOMAIN = "elpis.research.ecs-k1-native"
 
 # The only native qualification records that may admit K1 into canonical code: each one byte-pinned, with the
-# plan, the clean harness commit and the R3 authority it must be bound to. Empty until a plan version qualifies.
-ADMITTED_NATIVE_RECORDS: dict = {}
+# plan, the clean harness commit and the R3 authority it must be bound to. V1 is never admitted.
+ADMITTED_NATIVE_RECORDS: dict = {
+    "research/ecs_k1_native/evidence/ecsg-k1-native.v2.qualification.json.xz": {
+        "sha256": "5dfea53ee8937c7c7adbc4dc295ede6a161213a8cc111702b150cf1635eb49fd",
+        "raw_sha256": "c96fa766b61bd05ceb9181ef0566123e6ba6a0afbca7e10367eaf580421994c2",
+        "digest": "fbea9d43e11706d789c6aac575d3412b0a6ada0c83bd4c0872d2ef2c55cf03aa",
+        "experiment": "ecsg-k1-native.v2",
+        "plan": "research/ecs_k1_native/specs/ecsg-k1-native.v2.plan.json",
+        "plan_sha256": "6720e607d887f1a49545e3e5a6cfdc8b641991795a990f8fdd2157b0b86ea7eb",
+        "harness_commit": "f720e4a906b0f9c1190536e6123de9c7f4e6160e",
+        "r3_qual_digest": "7e9417b3fbe74329c34bc83daf24bfdf3dcf2ea01ce9d500791ba7e2e08a2627",
+    },
+}
 
 
 def _sha256(path: Path) -> str:
@@ -71,7 +83,20 @@ def native_record_admitted(repo: Path, relative: str, pin: dict) -> bool:
     plan = repo / pin["plan"]
     if not path.is_file() or not plan.is_file() or _sha256(path) != pin["sha256"]:
         return False
-    record = json.loads(path.read_bytes())
+    stored = path.read_bytes()
+    try:
+        if path.suffix == ".xz":
+            if "raw_sha256" not in pin:
+                return False
+            raw = lzma.decompress(stored)
+            if hashlib.sha256(raw).hexdigest() != pin["raw_sha256"]:
+                return False
+        else:
+            raw = stored
+    except (lzma.LZMAError, OSError):
+        return False
+
+    record = json.loads(raw)
     body = record.get("body", {})
     impl = body.get("implementation", {})
     return (record.get("digest") == pin["digest"] == native_digest("qualification", body)

@@ -1,5 +1,39 @@
 # Native K1 differential qualification — results
 
+## Current authority: K1N-v2 QUALIFIED
+
+The preregistered [v2 plan](../../research/ecs_k1_native/PLAN_V2.md) ran once from clean harness commit
+`f720e4a906b0f9c1190536e6123de9c7f4e6160e`, with the host's natural numerical kernel and single-thread constraints.
+All nine gates passed on Q (all 32 frozen R3 QUAL worlds) and F (the first evaluation of
+`k1n2-0000..0031`). No threshold, world, scientific implementation or qualification rule changed after the harness
+commit. Native K1 is canonical through the exact record admitted in `tests/research/_k1_promotion.py`.
+
+Record: `research/ecs_k1_native/evidence/ecsg-k1-native.v2.qualification.json.xz`.
+
+- SHA-256: `c96fa766b61bd05ceb9181ef0566123e6ba6a0afbca7e10367eaf580421994c2`
+- Internal qualification digest: `fbea9d43e11706d789c6aac575d3412b0a6ada0c83bd4c0872d2ef2c55cf03aa`
+- E1–E3: every registered same-host invariant, native determinism and clean-process transplant passed.
+- E4–E5: all six native K1 tests passed; every measured Python operation crossed into native code once,
+  including K = 1, 10 and 4000; the warm heap-allocation counter stayed unchanged.
+- L1: maximum 16-step W relative difference `6.220227869312611e-16` (bound `1e-10`).
+- L2: maximum H relative difference `4.41867780689024e-16` and a difference `7.128190578946582e-16`
+  (bound `1e-12` each).
+- D1_Q: exact frozen R3 decision-record equivalence, including final `OUTCOME_A`.
+- D1_F: exact same-host laboratory decision-record equivalence on every key and world; laboratory determinism
+  and transplant passed. The F laboratory's descriptive outcome was `OUTCOME_A`.
+
+Retention R3 remains **OUTCOME_A**. K1N-v1 remains permanently **NOT_QUALIFIED**; its record and the historical
+interpretation below are unchanged. Long-horizon coordinate differences are descriptive under v2.
+
+Current-host regression (Q only; never reruns F):
+
+```
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONPATH=src:. \
+python -m research.ecs_k1_native.regression --library build/native/ECS_G/libelpis_ecsg_math.so
+```
+
+## Historical K1N-v1 interpretation (unchanged)
+
 `ecsg-k1-native.v1` (`research/ecs_k1_native`). Plan: [PLAN.md](../../research/ecs_k1_native/PLAN.md)
 (K1N-B, committed before any differential evidence). Record:
 `research/ecs_k1_native/evidence/ecsg-k1-native.v1.qualification.json` (digest `0c1c5543…`, run once from the
@@ -72,3 +106,21 @@ PYTHONPATH=src:. python -m research.ecs_k1_native.run check --library build/nati
 PYTHONPATH=src:. python -m research.ecs_k1_native.diagnose --library build/native/ECS_G/libelpis_ecsg_math.so
 pytest tests/research/ecs_k1_native
 ```
+
+
+## K1N-v2 evidence archival
+
+The one-shot K1N-v2 qualification emitted a verbose JSON record. Git stores
+an exact lossless XZ archive of those bytes rather than the ~99 MiB plaintext
+representation.
+
+- decompressed raw SHA-256: `c96fa766b61bd05ceb9181ef0566123e6ba6a0afbca7e10367eaf580421994c2`
+- raw internal qualification digest: `fbea9d43e11706d789c6aac575d3412b0a6ada0c83bd4c0872d2ef2c55cf03aa`
+- archive SHA-256: `5dfea53ee8937c7c7adbc4dc295ede6a161213a8cc111702b150cf1635eb49fd`
+
+Admission verifies the archive bytes, decompresses them, verifies the original
+raw SHA-256, verifies the original internal qualification digest and all
+registered authority bindings, and only then accepts `QUALIFIED`.
+
+No scientific run was repeated and no plan, threshold, gate, world, result or
+verdict was changed by archival compression.
