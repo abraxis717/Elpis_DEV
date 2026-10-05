@@ -2,8 +2,9 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `NO_LANGUAGE_CLAIM` · `SYNTHETIC` · `SEMANTICS=NONE` · `PREREGISTERED` · `CONFIRMATORY`
 
-**Status: RET3B, laboratory mechanics.** No DEV or QUAL world has been
-evaluated, and there is no result. Canonical ECS_G learning is unchanged.
+**Status: RET3C, DEV recorded** (`evidence/dev/ecsg-retention-r3.v1.dev.json`:
+`K1_PROCEEDS`). No QUAL world has been evaluated, and there is no result.
+Canonical ECS_G learning is unchanged.
 
 ## Question
 
@@ -33,8 +34,8 @@ The design is explained in `PREREGISTRATION.md`. The authority is
 
 ```
 RET3A  preregistration
-RET3B  laboratory mechanics (test-* worlds only)     <- this step
-RET3C  DEV (control-only task check; then the K1 DEV rule)
+RET3B  laboratory mechanics (test-* worlds only)
+RET3C  DEV (control-only task check; then the K1 DEV rule)   <- this step
 RET3D  freeze
 RET3E  QUAL once (with the numerical-robustness children)
 RET3F  interpretation
