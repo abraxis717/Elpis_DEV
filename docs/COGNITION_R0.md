@@ -66,9 +66,9 @@ model output may participate in answering a query.
 
 ## The runtime scaffold is not R0 semantics
 
-`src/elpis/runtime/cognition.py` (`Stimulus` as ordered `(X, y)` drives,
-`Readout` as `S3(W)`) is the fail-closed mechanical boundary for a future
-semantic codec. It does not define cognition. R0 uses `(X, y)` because it is
+`src/elpis/runtime/cognition.py` (`Stimulus` as a native-ready ordered
+experience schedule executed by native K1, `Readout` as `S3` of the candidate
+`W`) is the fail-closed mechanical boundary for a future semantic codec. It does not define cognition. R0 uses `(X, y)` because it is
 the qualified recurrence's actual input and `f_W(x)` because it is the
 qualified forward map; neither choice is promoted beyond R0. Production text
 generation stays fail-closed.

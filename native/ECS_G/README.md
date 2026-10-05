@@ -135,10 +135,11 @@ The constitutional direction is:
             v
        DSV4 decode
 
-The runtime composition (`src/elpis/runtime/cognition.py`) orchestrates it.
-A stimulus enters ECS_G only in the kernel's qualified input form, ordered
-drives `(X, y)` applied as atomic gradient steps, and `S3(W)` is what ECS
-exposes to the decode boundary. The semantic maps between DSV4 token space
+The runtime composition (`src/elpis/runtime/cognition.py`) orchestrates it
+over native K1 (`docs/ECS_K1_RUNTIME.md`). A stimulus enters only as a
+native-ready ordered experience schedule; one native K1 call learns and
+consolidates every experience on a transaction candidate of `(W, epoch, H, a)`,
+and `S3` of the candidate `W` is what ECS exposes to the decode boundary. The semantic maps between DSV4 token space
 and those drives and readouts are not defined or qualified anywhere in this
 repository, so the canonical turn fails closed without them.
 

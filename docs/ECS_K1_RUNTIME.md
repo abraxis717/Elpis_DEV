@@ -51,6 +51,21 @@ or the reverse.
 - `txn_commit` installs W, epoch, H and a in one copy and advances the generation.
 - A direct transition after begin replaces the source, and the candidate is then refused as `STALE`.
 
+**Experience schedule** (`txn_run_schedule`, and `elpis_ecsg_k1_fms_txn_run_schedule` on a resident state). One
+native call applies an ordered schedule of up to 64 experiences to the open transaction's candidate. Each experience
+is the qualified K1 transition as Retention R3 defines it: its K1 learning steps on its rows, then the consolidation
+of the same rows. The call then returns `S3` of the final candidate `W` (the readout) and the candidate epochs.
+
+- `X` (all rows in order, `rows x dim`) and `y` are contiguous binary64.
+- The descriptors are `(rows, steps)` pairs.
+- The whole schedule is validated with checked arithmetic before the candidate is touched:
+  - experience count, rows and steps, each `rows <= max_rows`;
+  - the exact row total, step-total and epoch overflow;
+  - the readout size, the rate, and input finiteness.
+- `INVALID` and `CAPACITY` found there are recoverable. Non-finite input, or non-finite arithmetic in any
+  experience, discards the candidate.
+- It allocates nothing.
+
 **Refusal contract.** The status decides, and native, the FMS adapter and Python implement it identically:
 
 | status | fate of the transaction |
@@ -63,6 +78,35 @@ or the reverse.
 - `txn_abort` with nothing open is OK.
 - `txn_abort` with a wrong token is `INVALID` and changes nothing.
 - No refusal changes the authoritative state.
+
+## The canonical turn (`elpis.runtime.cognition.run_turn`)
+
+Native K1 is the canonical retained-state cognitive substrate of the turn, standalone (`K1State`) or FMS-resident
+(`K1FMSState`, a typed handle on one resident state). The Runtime R1 `Executor` remains a qualified primitive and
+the K1-disabled reference; it is not accepted by the turn.
+
+```
+codec encode -> admitted Stimulus (contiguous x, y; (rows, steps) schedule)
+  -> txn_begin -> txn_run_schedule: every experience learned (K1 steps) then consolidated, S3 of the candidate W
+  -> codec map decode (UNQUALIFIED) -> token validation -> codec decode
+  -> txn_commit of the complete (W, epoch, H, a), or abort
+```
+
+The data plane is native. A turn is three native crossings whatever the number of experiences, rows or K1 steps,
+and the prepared hot path allocates nothing, standalone or FMS-warm. The FMS warm turn never restores, serializes or
+copies the retained state.
+
+Any refusal before the commit leaves `(W, epoch, H, a)` byte-for-byte unchanged. This covers:
+
+- a codec map refusal;
+- a malformed stimulus;
+- a non-finite middle experience;
+- a decode refusal;
+- a stale source (`ECS_STALE`).
+
+Without a supplied ECS codec map the turn fails with `ECS_CODEC_UNQUALIFIED` before touching any state. No ECS<->DSV
+semantic codec is qualified. ECS turn transitions are not recorded into ECS_C, which remains a separate incomplete
+interface.
 
 ## Retained-state envelope `ELPISGK1` v1
 

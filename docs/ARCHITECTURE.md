@@ -757,7 +757,7 @@ entry point and is recorded only if that entry point committed:
 | `publish_canonical` | `publish_candidate` | publication receipt (replay records nothing new) |
 | `evolve` | `EvolutionPathGate.execute` over a projection of this history taken at call time | transition receipt of an admitted attempt |
 | `admit_context` | ingress, edge adapter, `resolve_chunks`, codec rendering | ingress proposal and the rendering |
-| `run_turn` | codec -> ECS_G -> codec (`elpis.runtime.cognition`) | nothing yet (no ECS recorder role) |
+| `run_turn` | codec -> native K1 (ECS_G) -> codec (`elpis.runtime.cognition`) | nothing yet (no ECS recorder role) |
 
 The runtime composes no DSV model execution: there is no decode, principal
 sequence or model text operation, and the mission gate pins this list.
@@ -766,11 +766,13 @@ sequence or model text operation, and the mission gate pins this list.
 
 ```
 text --codec encode--> tokens
-     --ECSCodecMap.encode (UNQUALIFIED)--> Stimulus: ordered ECS_G drives (X, y)
-     --ECS_G: one qualified step per drive, one native transaction--> W_N -> W_N+k
-     --readout: S3(W)--> Readout
+     --ECSCodecMap.encode (UNQUALIFIED)--> Stimulus: native-ready ordered experience schedule
+     --native K1 transaction candidate: per experience, K1 learning steps then consolidation (one native call)-->
+       candidate (W, epoch, H, a)
+     --readout: S3 of the candidate W, computed natively--> Readout
      --ECSCodecMap.decode (UNQUALIFIED)--> tokens
      --codec decode--> text
+     --one native commit of the complete (W, epoch, H, a) candidate
 ```
 
 No ECS<->DSV semantic codec is defined or qualified, so `run_turn` refuses with
@@ -778,10 +780,13 @@ No ECS<->DSV semantic codec is defined or qualified, so `run_turn` refuses with
 unavailable") unless a map is supplied explicitly. There is no fallback to a
 DSV model. A supplied map declares its classification and every result
 carries it; the only maps in the repository are `TRAINING=NONE SEMANTICS=NONE`
-test fixtures. A turn is one native transaction of the ECS_G executor: all
-drives in one native call on a candidate, the readout from the candidate, and
-one native commit only when the whole turn succeeded (refused `ECS_STALE` if
-the state moved meanwhile).
+test fixtures. The substrate is native K1 (`docs/ECS_K1_RUNTIME.md`), standalone
+(`K1State`) or FMS-resident (`K1FMSState`, no per-turn restore). A turn is one
+native K1 transaction: the whole experience schedule and the readout in one
+native call on the candidate, then one native commit of `(W, epoch, H, a)` only
+when the whole turn succeeded (refused `ECS_STALE` if the state moved
+meanwhile). The Runtime R1 executor remains a qualified primitive and the
+K1-disabled reference; it is not the substrate of the canonical turn.
 
 The evolution gate reasons over the runtime's own history. Because each
 recorded transition moves the history head, an assertion built against an
