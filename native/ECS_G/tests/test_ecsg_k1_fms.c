@@ -444,6 +444,59 @@ static void test_hostile_imports_and_provenance(void)
     OK(elpis_ecsg_k1_fms_destroy(&r));
 }
 
+/* The canonical turn over the resident state: the experience schedule equals the standalone one bitwise (state and
+ * readout), under the transaction's WRITE pin; a discarding refusal releases the pin; authority unchanged. */
+static void test_experience_schedule_resident_equals_standalone(void)
+{
+    static double xs[2 * R * D], ys[2 * R], bad[2 * R * D];
+    const elpis_ecsg_k1_experience sched[2] = {{R, 6}, {R / 2, 11}};
+    elpis_ecsg_k1_fms *r = runtime_with(NULL, "k1-schedule", (uint64_t)IMAGE * 4u, 2);
+    elpis_ecsg_k1 *ref = NULL;
+    elpis_ecsg_k1_schedule_result res, rres;
+    elpis_ecsg_k1_fms_info info;
+    uint8_t *got = malloc(ENVELOPE), *want = malloc(ENVELOPE);
+    uint64_t a = state(r, 41), tok = 0, rtok = 0;
+    double s3[83], rs3[83];
+    size_t i;
+    memcpy(xs, X, sizeof(X));
+    memcpy(xs + R * D, X2, sizeof(X2));
+    memcpy(ys, Y, sizeof(Y));
+    memcpy(ys + R, Y2, sizeof(Y2));
+    OK(elpis_ecsg_k1_create(D, N, R, W0, &ref));
+    for (i = 0; i < 3; ++i) {
+        OK(elpis_ecsg_k1_fms_txn_begin(r, a, &tok));
+        assert(elpis_ecsg_k1_fms_txn_run_schedule(r, a, tok, xs, ys, R + R / 2, sched, 2, 0.002, s3, 83, &res) == 0);
+        OK(elpis_ecsg_k1_fms_txn_commit(r, a, tok, NULL));
+        OK(elpis_ecsg_k1_txn_begin(ref, &rtok));
+        assert(elpis_ecsg_k1_txn_run_schedule(ref, rtok, xs, ys, R + R / 2, sched, 2, 0.002, rs3, 83, &rres) == 0);
+        OK(elpis_ecsg_k1_txn_commit(ref, rtok, NULL));
+        assert(!memcmp(s3, rs3, sizeof(s3)) && res.epoch_after == rres.epoch_after);
+        envelope_of(r, a, got);
+        standalone_envelope(ref, want);
+        assert(!memcmp(got, want, ENVELOPE));
+    }
+    /* recoverable refusal keeps the transaction and its WRITE pin; a non-finite experience discards both */
+    OK(elpis_ecsg_k1_fms_txn_begin(r, a, &tok));
+    assert(elpis_ecsg_k1_fms_txn_run_schedule(r, a, tok, xs, ys, R + R / 2 + 1, sched, 2, 0.002, s3, 83, &res) ==
+           ELPIS_ECSG_K1_INVALID);
+    OK(elpis_ecsg_k1_fms_inspect(r, a, &info));
+    assert(info.transaction_open == 1u && info.lease_count == 1u);
+    memcpy(bad, xs, sizeof(bad));
+    for (i = 0; i < R * D; ++i) bad[R * D + i] = 1e150;
+    assert(elpis_ecsg_k1_fms_txn_run_schedule(r, a, tok, bad, ys, R + R / 2, sched, 2, 0.002, s3, 83, &res) ==
+           ELPIS_ECSG_K1_NONFINITE);
+    assert(res.failed_experience == 2u);
+    OK(elpis_ecsg_k1_fms_inspect(r, a, &info));
+    assert(info.transaction_open == 0u && info.lease_count == 0u);
+    envelope_of(r, a, got);
+    assert(!memcmp(got, want, ENVELOPE));
+    elpis_ecsg_k1_destroy(&ref);
+    OK(elpis_ecsg_k1_fms_close(r, &a));
+    OK(elpis_ecsg_k1_fms_destroy(&r));
+    free(got);
+    free(want);
+}
+
 int main(void)
 {
     fixture();
@@ -456,8 +509,9 @@ int main(void)
     test_independent_states_share_no_cognitive_lock();
     test_transaction_refusal_contract();
     test_hostile_imports_and_provenance();
+    test_experience_schedule_resident_equals_standalone();
     printf("ecsg_k1_fms: resident K1 = standalone K1; warm path over resident bytes; COLD->WARM; pinning; "
            "refusals leave the complete state unchanged; envelopes and W-only imports; the transaction refusal "
-           "contract; hostile imports; provenance\n");
+           "contract; hostile imports; provenance; the experience schedule (resident = standalone)\n");
     return 0;
 }

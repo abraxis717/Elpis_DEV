@@ -760,6 +760,24 @@ int elpis_ecsg_k1_fms_txn_epoch(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t toke
     return txn_settle(r, s, rc, 0);
 }
 
+int elpis_ecsg_k1_fms_txn_run_schedule(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, const double *x,
+                                       const double *y, size_t total_rows, const elpis_ecsg_k1_experience *schedule,
+                                       size_t experiences, double rate, double *s3_out, size_t s3_count,
+                                       elpis_ecsg_k1_schedule_result *result)
+{
+    slot *s;
+    uint64_t start;
+    int rc = txn_take(r, id, token, &s);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
+    }
+    start = now_ns();
+    rc = elpis_ecsg_k1_txn_run_schedule(s->k1, s->txn_native_token, x, y, total_rows, schedule, experiences, rate,
+                                        s3_out, s3_count, result);
+    s->info.learn_ns += now_ns() - start;
+    return txn_settle(r, s, rc, 1);
+}
+
 int elpis_ecsg_k1_fms_txn_commit(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, elpis_ecsg_k1_transition *t)
 {
     slot *s;

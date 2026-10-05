@@ -53,6 +53,14 @@ int main(void)
     assert(elpis_ecsg_k1_txn_consolidate(s, tok, X, R) == 0);
     assert(elpis_ecsg_k1_txn_forward(s, tok, X, R, O) == 0);
     assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == 0);
+    {   /* the canonical turn's experience schedule: begin -> schedule (learn + consolidate per experience,
+         * S3 readout) -> commit, allocating nothing */
+        const elpis_ecsg_k1_experience sched[3] = {{R / 2, 30}, {R / 2, 20}, {R / 4, 10}};
+        double s3[83];
+        assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+        assert(elpis_ecsg_k1_txn_run_schedule(s, tok, X, Y, R / 2 + R / 2 + R / 4, sched, 3, 0.002, s3, 83, NULL) == 0);
+        assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == 0);
+    }
     assert(elpis_ecsg_k1_reset(s, NULL) == 0);
     assert(elpis_ecsg_k1_snapshot_write(s, ENV, sizeof(ENV)) == 0);
     assert(elpis_ecsg_k1_copy_w(s, w, WC) == 0);
