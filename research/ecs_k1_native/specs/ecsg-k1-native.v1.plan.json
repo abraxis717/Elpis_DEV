@@ -1,0 +1,98 @@
+{
+  "authority": {
+    "closed": "The R3 specification, freeze, DEV and QUAL records and the R3 laboratory are read, never edited. Cognitive R0, Runtime R1, Retention R0/R1/R2 and RR2-CR0 are not touched.",
+    "r3_frozen": {
+      "digest": "541a2cdd8350c7fe875be9c08e944d6af387a15359723c6b6de58f0163ac3bc5",
+      "path": "research/ecs_retention_r3/frozen/ecsg-retention-r3.v1.frozen.json",
+      "sha256": "7be80fee34142a6b226eaf57d9fec2aba21c397d40faa65eb96bde9d2d4b39e2"
+    },
+    "r3_interpretation_commit": "9ea6f0c86194a185ac33812b0332ae506a9f69cf",
+    "r3_qual": {
+      "digest": "7e9417b3fbe74329c34bc83daf24bfdf3dcf2ea01ce9d500791ba7e2e08a2627",
+      "outcome": "OUTCOME_A",
+      "path": "research/ecs_retention_r3/evidence/qual/ecsg-retention-r3.v1.qual.json",
+      "sha256": "83ce2d61f30bb2927e1288995de5eb00ce41ff48767d54faedde88c8266c20e6"
+    },
+    "r3_spec": {
+      "path": "research/ecs_retention_r3/specs/ecsg-retention-r3.v1.spec.json",
+      "sha256": "3900d6a9e995885ac888b1ebda5d52bb13df415b20879dab82f401b3910c9e33"
+    }
+  },
+  "comparisons": {
+    "boundaries": "after A, B, C and D (each consolidated): epoch exact (4000, 8000, 12000, 16000); provenance COMPLETE; W, packed H and a within tolerance of the recomputed reference; the native query of W on every experience's held-out inputs within tolerance of the reference responses; native nmse of every experience within tolerance of the recorded nmse; nothing refused",
+    "classification": "the R3 classes (LEARNED, RETAINED, CATASTROPHIC, HELD, SEQUENCE_HELD, PAIR_HELD) recomputed from native nmse equal the recorded K1 classes exactly",
+    "determinism": "two fresh native runs of the first QUAL world give bitwise identical envelopes at every boundary",
+    "disposition": "the R3 gates (experiment.gates, unchanged) applied to the recorded per-world record with the native K1 rows, the native K1-disabled rows (state removal) and the native causal branches substituted give validity, mechanics, gates A-K, disposition, outcome and controls equal to the recorded pre-robustness decision record, and every per-world K1 and causality row equal to the recorded one",
+    "reset_challenge": "restore the native envelope after B, reset: W and epoch bitwise kept, H = 0, a = 0, provenance RESET; learn C, evaluate at the C boundary, stop (no D, no consolidation): e_reset within nmse tolerance of the recorded e_reset; RESET_DEGRADED and both_retained_at_C equal the recorded values exactly",
+    "resident_equals_standalone": "the FMS-resident sequence yields envelopes bitwise equal to the standalone sequence at every boundary",
+    "state_semantics": "at B the full native state and its reset answer every held-out query bitwise identically; learning C from them differs",
+    "transplant_continuation": "the native envelope after B, restored in a fresh state and continued through C and D (same transactions), gives envelopes bitwise equal to the uninterrupted native run at C and D, in process and in a separate clean process",
+    "w_a": "the native W after learning A from w0 equals the recorded K1 W_A digest bitwise",
+    "w_only_negative_control": "the Runtime R1 ELPISG01 snapshot of native W_B imports as UNCONSOLIDATED_IMPORT (H = 0, a = 0, W bitwise, envelope differs from the full B envelope); learning C from it equals the native reset branch bitwise and differs from the uninterrupted native C state; pass equals the recorded pass",
+    "zero_k1_parity": "a native K1 state that is never consolidated (H = 0, a = 0) learns A, B, C, D from w0: its W digest equals the recorded M0 W digest at every boundary of every world, bitwise; no step is corrected. K1-disabled execution is Runtime R1 G1."
+  },
+  "disclosures": [
+    "Before this plan the native law was compared with the R3 laboratory on one world outside both R3 splits (id test-0003; development smoke in a scratch script, not recorded): W relative difference 7.5e-15 after 4000 corrected steps, H and a at rounding level. No R3 DEV or QUAL world had been run through native K1.",
+    "The native unit tests (native/ECS_G/tests/test_ecsg_k1*.c, tests/ECS_G/test_k1_runtime.py) use synthetic data only."
+  ],
+  "exact": [
+    "epoch",
+    "provenance",
+    "zero_k1_parity digests",
+    "w_a digest",
+    "every class",
+    "RESET_DEGRADED",
+    "both_retained_at_C",
+    "w_only pass",
+    "transplant envelopes",
+    "resident envelopes",
+    "state_semantics",
+    "determinism",
+    "decision record",
+    "disposition",
+    "outcome"
+  ],
+  "forbidden": [
+    "CPU-model branches",
+    "forced BLAS kernels (OPENBLAS_CORETYPE)",
+    "per-host expected outputs",
+    "post-hoc tolerances",
+    "editing any R3 file"
+  ],
+  "name": "ecsg-k1-native",
+  "native_paths": {
+    "control": "elpis.ECS_G.k1 (Python control plane: one native call per operation)",
+    "resident": "elpis_ecsg_k1_fms: the same sequence on an FMS-resident state (pin, native K1 on resident bytes, unpin)",
+    "standalone": "elpis_ecsg_k1: each experience is one transaction (txn_begin, txn_learn of 4000 steps in one call, txn_consolidate of the experience inputs, txn_commit)"
+  },
+  "nmse_relative_difference": "|native - recorded| / max(recorded, 1e-12)",
+  "purpose": "Differential qualification of the native K1 runtime (libelpis_ecsg_k1, libelpis_ecsg_k1_fms) against the frozen Retention R3 science. Nativeization may not change OUTCOME_A.",
+  "reference": {
+    "recomputed": "the unchanged R3 laboratory (research/ecs_retention_r3) recomputed in the same process for the quantities the record keeps only as digests (W, packed H, a, responses); whether that recomputation reproduces the recorded K1 state digests bitwise is reported, not decided on",
+    "recorded": "the R3 QUAL record: per-stage nmse, classes, digests, causal results and the decision record"
+  },
+  "regime": "inherited unchanged from the R3 specification: d = 6, N = 36, F = 83, G1 rate 0.002, 4000 steps per experience, 64 rows, hidden gain 2.0",
+  "relative_difference": "max |native - reference| / max(1, max |reference|) over all entries",
+  "runs": "the qualification runs once from this plan and writes its record exclusively; tests/research/ecs_k1_native re-runs the differential on the current runtime (never skipped for a host difference) against the same tolerances",
+  "semantics": "NONE",
+  "tolerance_rationale": "The native K1 correction sums the same terms in a different order than the NumPy laboratory (packed symmetric mat-vec and an index-table S3 VJP); differences are rounding only. The tolerances are fixed here, before any R3 QUAL world is run through native K1, and are not host-specific: the same values bind every host and the current-runtime regression.",
+  "tolerances": {
+    "a_relative": 1e-09,
+    "e_reset_relative": 1e-07,
+    "h_relative": 1e-09,
+    "nmse_relative": 1e-07,
+    "query_relative": 1e-09,
+    "w_relative": 1e-09
+  },
+  "verdict": {
+    "NOT_QUALIFIED": "anything else; the native milestone is not promoted and the failure is recorded as found",
+    "QUALIFIED": "every comparison holds on every QUAL world and the substituted decision record reproduces OUTCOME_A"
+  },
+  "version": 1,
+  "worlds": {
+    "count": 32,
+    "data": "rebuilt from the R3 specification by research/ecs_retention_r3/task.py (seeded, deterministic)",
+    "ids_from": "r3_qual.body.world_ids",
+    "set": "every R3 QUAL world, in the recorded order"
+  }
+}
