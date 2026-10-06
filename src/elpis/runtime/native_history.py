@@ -97,8 +97,25 @@ def _text(value) -> str:
     return bytes(value).split(b"\x00", 1)[0].decode("ascii")
 
 
+class SegmentPolicy(C.Structure):
+    _fields_ = [("max_segment_bytes", C.c_uint64), ("max_segment_frames", C.c_uint64)]
+
+
+SEGMENT_FULL = -11
+SEGMENT_MISMATCH = -12
+_UINT64_MAX = (1 << 64) - 1
+
+
 class NativeHistorySession:
-    """Owning Python handle over one ``elpis_ecsc_runtime_session``."""
+    """Owning Python handle over one bounded ``elpis_ecsc_runtime_session``.
+
+    The session owns exactly one ACTIVE SEGMENT of a compacted history. The
+    caller supplies the replay-validated state at the segment head, the global
+    event count (== logical clock), the segment base (global index of the
+    segment's first frame) and the finite segment policy. Native ECS_C
+    re-verifies the state root, that the segment holds exactly
+    ``event_count - segment_base`` frames, and that it is within policy.
+    """
 
     _ERRORS = {
         -1: "INVALID",
@@ -111,24 +128,36 @@ class NativeHistorySession:
         -8: "APPEND_UNCERTAIN",
         -9: "NOT_READY",
         -10: "PARTIAL_COMMIT",
+        SEGMENT_FULL: "SEGMENT_FULL",
+        SEGMENT_MISMATCH: "SEGMENT_MISMATCH",
     }
 
     def __init__(
         self,
         library_path: str | Path,
-        log_path: str | Path,
+        segment_path: str | Path,
         state,
         event_digest: str,
         event_count: int,
+        *,
+        segment_base: int,
+        max_segment_bytes: int,
+        max_segment_frames: int,
     ) -> None:
         library_path = Path(library_path)
-        log_path = Path(log_path)
+        segment_path = Path(segment_path)
 
         if not library_path.is_absolute() or not library_path.is_file():
             raise NativeHistoryError(-1, "LIBRARY_PATH")
 
-        if not log_path.is_absolute():
+        if not segment_path.is_absolute():
             raise NativeHistoryError(-1, "LOG_PATH")
+
+        for value in (event_count, segment_base, max_segment_bytes, max_segment_frames):
+            if type(value) is not int or not 0 <= value < _UINT64_MAX:
+                raise NativeHistoryError(-1, "SESSION_OPEN:ARGUMENT")
+        if max_segment_bytes == 0 or max_segment_frames == 0:
+            raise NativeHistoryError(-1, "SESSION_OPEN:POLICY")
 
         try:
             self._lib = C.CDLL(str(library_path))
@@ -136,7 +165,7 @@ class NativeHistorySession:
             raise NativeHistoryError(-4, "LIBRARY_LOAD") from exc
 
         self.library_path = library_path
-        self.log_path = log_path
+        self.log_path = segment_path
         self._handle = C.c_void_p()
 
         self._bind()
@@ -144,15 +173,18 @@ class NativeHistorySession:
         root, keepalive = _state_root_ctypes_view(
             state.state_root()
         )
+        policy = SegmentPolicy(max_segment_bytes, max_segment_frames)
 
-        path = str(log_path).encode("utf-8")
+        path = str(segment_path).encode("utf-8")
 
-        rc = self._lib.elpis_ecsc_runtime_session_open(
+        rc = self._lib.elpis_ecsc_runtime_session_open_segment(
             path,
             len(path),
             C.byref(root),
             event_digest.encode("ascii"),
             event_count,
+            segment_base,
+            C.byref(policy),
             C.byref(self._handle),
         )
 
@@ -171,15 +203,22 @@ class NativeHistorySession:
     def _bind(self) -> None:
         vp = C.c_void_p
 
-        self._lib.elpis_ecsc_runtime_session_open.argtypes = [
+        self._lib.elpis_ecsc_runtime_session_open_segment.argtypes = [
             C.c_char_p,
             C.c_size_t,
             C.POINTER(StateRoot),
             C.c_char_p,
             C.c_uint64,
+            C.c_uint64,
+            C.POINTER(SegmentPolicy),
             C.POINTER(vp),
         ]
-        self._lib.elpis_ecsc_runtime_session_open.restype = C.c_int
+        self._lib.elpis_ecsc_runtime_session_open_segment.restype = C.c_int
+
+        for name in ("segment_base", "segment_bytes", "segment_frames"):
+            fn = getattr(self._lib, "elpis_ecsc_runtime_session_" + name)
+            fn.argtypes = [vp]
+            fn.restype = C.c_uint64
 
         self._lib.elpis_ecsc_runtime_session_close.argtypes = [
             vp,
@@ -220,6 +259,27 @@ class NativeHistorySession:
                 self._handle
             )
         )
+
+    def _segment_value(self, name: str) -> int:
+        if not self._handle:
+            raise NativeHistoryError(-9, name.upper() + ":CLOSED")
+        value = int(getattr(self._lib, "elpis_ecsc_runtime_session_" + name)(self._handle))
+        if value == _UINT64_MAX:
+            raise NativeHistoryError(-9, name.upper() + ":NOT_READY")
+        return value
+
+    @property
+    def segment_base(self) -> int:
+        return self._segment_value("segment_base")
+
+    @property
+    def segment_bytes(self) -> int:
+        """Bytes of the owned segment (complete-frame prefix)."""
+        return self._segment_value("segment_bytes")
+
+    @property
+    def segment_frames(self) -> int:
+        return self._segment_value("segment_frames")
 
     @property
     def state_root(self) -> str:

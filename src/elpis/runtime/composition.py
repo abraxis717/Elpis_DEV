@@ -58,7 +58,7 @@ from elpis.substrate.digests import raw_digest
 from elpis.ECS_G.k1 import K1Error
 
 from .edges import from_regex_hacf, object_claims
-from .history import HistoryError, ReceiptHistory, ReceiptRecord, RecordedReceipt
+from .history import HistoryError, ReceiptHistory, ReceiptRecord, RecordedReceipt, RuntimeHistoryPolicy
 
 __all__ = ("CompositionError", "ContextPreparation", "Runtime", "RuntimeConfig")
 
@@ -83,12 +83,20 @@ class ContextPreparation:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """Runtime-owned durable history and its explicit native ECS_C writer."""
+    """Runtime-owned bounded durable history and its explicit native ECS_C writer.
+
+    ``history_policy`` is the finite storage policy of the history directory
+    (segment, checkpoint and total directory bounds). It always has finite
+    values; there is no unlimited setting.
+    """
 
     history_dir: Path
     history_native_library: Path | None = None
+    history_policy: RuntimeHistoryPolicy = RuntimeHistoryPolicy()
 
     def __post_init__(self):
+        if type(self.history_policy) is not RuntimeHistoryPolicy:
+            raise HistoryError("HISTORY_POLICY", "history_policy must be a RuntimeHistoryPolicy")
         if not isinstance(self.history_dir, Path) or not self.history_dir.is_absolute():
             raise HistoryError("HISTORY_PATH", "history_dir must be an absolute Path")
         if self.history_native_library is not None:
@@ -111,6 +119,7 @@ class Runtime:
         self.history = ReceiptHistory(
             config.history_dir,
             native_library=config.history_native_library,
+            policy=config.history_policy,
         )
         self._turn_continuity_fault: str | None = None
         self._turn_substrate = None
@@ -237,79 +246,17 @@ class Runtime:
         return ContextPreparation(admission, result, ingress_record, admission_record)
 
 
-    @staticmethod
-    def _digest_text(value):
-        if type(value) is not str or len(value) != 64:
-            return None
-        try:
-            bytes.fromhex(value)
-        except ValueError:
-            return None
-        return value
-
     def _cognition_chain_tip(self):
-        continuity = [
-            item.record
-            for item in self.history.records()
-            if item.record.subsystem == "ecs_g"
-            and item.record.kind in ("cognition.anchor", "cognition.turn")
-        ]
+        """Tip of the durable K1 lineage from the history's fixed-size fold.
 
-        if not continuity:
-            return None
-
-        expected = None
-        anchored = False
-
-        for index, record in enumerate(continuity):
-            bindings = dict(record.bindings)
-
-            if record.kind == "cognition.anchor":
-                state = self._digest_text(bindings.get("state"))
-
-                if state is None or record.digest != state or bindings.get("mechanism") != "1":
-                    raise CompositionError(
-                        "HISTORY_CONTINUITY_INVALID",
-                        "malformed cognition.anchor receipt",
-                    )
-
-                if anchored or index != 0:
-                    raise CompositionError(
-                        "HISTORY_CONTINUITY_INVALID",
-                        "cognition.anchor must be the first and only anchor",
-                    )
-
-                expected = state
-                anchored = True
-                continue
-
-            before = self._digest_text(bindings.get("state_before"))
-            after = self._digest_text(bindings.get("state_after"))
-
-            if (
-                before is None
-                or after is None
-                or bindings.get("mechanism") != "1"
-            ):
-                raise CompositionError(
-                    "HISTORY_CONTINUITY_INVALID",
-                    "malformed cognition.turn state identity",
-                )
-
-            if expected is None:
-                expected = after
-                anchored = True
-                continue
-
-            if before != expected:
-                raise CompositionError(
-                    "HISTORY_CONTINUITY_INVALID",
-                    "cognition.turn state_before does not continue the durable K1 lineage",
-                )
-
-            expected = after
-
-        return expected
+        The fold (carried across compaction in the checkpoint) applies the
+        same lineage rules to every continuity receipt ever recorded; restart
+        never re-reads retired receipts.
+        """
+        try:
+            return self.history.cognition_tip()
+        except HistoryError as exc:
+            raise CompositionError(exc.code, str(exc)) from exc
 
     def anchor_cognition(self, substrate):
         if self._turn_continuity_fault is not None:
