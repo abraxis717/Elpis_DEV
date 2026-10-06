@@ -296,22 +296,64 @@ def _turn_continuity(committed, *, stimulus_digest, readout_digest,
     )
 
 
+def _validate_turn_request(substrate, text, *, codec_map=None, learning_rate=None,
+                           max_output_tokens=256):
+    """Validate the canonical turn request without reading or mutating K1 state."""
+    if codec_map is None:
+        raise CompositionError(CODEC_UNQUALIFIED, UNQUALIFIED_DETAIL)
+
+    classification = getattr(codec_map, "classification", None)
+
+    if type(classification) is not str or not classification:
+        raise CompositionError(
+            "CODEC_MAP",
+            "an ECS codec map must declare its classification",
+        )
+
+    if type(substrate) not in _SUBSTRATES:
+        raise CompositionError(
+            "ECS_STATE",
+            "a native K1 state (K1State or K1FMSState) is required",
+        )
+
+    if type(text) is not str:
+        raise CompositionError(
+            "INPUT",
+            "text must be str",
+        )
+
+    if (
+        type(learning_rate) is not float
+        or not math.isfinite(learning_rate)
+        or learning_rate <= 0
+    ):
+        raise CompositionError(
+            "LEARNING_RATE",
+            "explicit positive finite learning rate",
+        )
+
+    if (
+        type(max_output_tokens) is not int
+        or not 0 <= max_output_tokens <= _MAX_TOKENS
+    ):
+        raise CompositionError(
+            "OUTPUT_LIMIT",
+            "0..4096 output tokens",
+        )
+
+    return classification
+
+
 def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
              max_output_tokens=256) -> TurnResult:
     """One canonical turn over a native K1 state. Fails closed without a qualified ECS codec map."""
-    if codec_map is None:
-        raise CompositionError(CODEC_UNQUALIFIED, UNQUALIFIED_DETAIL)
-    classification = getattr(codec_map, "classification", None)
-    if type(classification) is not str or not classification:
-        raise CompositionError("CODEC_MAP", "an ECS codec map must declare its classification")
-    if type(substrate) not in _SUBSTRATES:
-        raise CompositionError("ECS_STATE", "a native K1 state (K1State or K1FMSState) is required")
-    if type(text) is not str:
-        raise CompositionError("INPUT", "text must be str")
-    if type(learning_rate) is not float or not math.isfinite(learning_rate) or learning_rate <= 0:
-        raise CompositionError("LEARNING_RATE", "explicit positive finite learning rate")
-    if type(max_output_tokens) is not int or not 0 <= max_output_tokens <= _MAX_TOKENS:
-        raise CompositionError("OUTPUT_LIMIT", "0..4096 output tokens")
+    classification = _validate_turn_request(
+        substrate,
+        text,
+        codec_map=codec_map,
+        learning_rate=learning_rate,
+        max_output_tokens=max_output_tokens,
+    )
     vocab = tokenizer.vocab_size
     tokens = tuple(tokenizer.encode(text))
     stimulus = codec_map.encode(tokens)

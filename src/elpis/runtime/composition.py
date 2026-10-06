@@ -111,9 +111,12 @@ class Runtime:
             native_library=config.history_native_library,
         )
         self._turn_continuity_fault: str | None = None
+        self._turn_substrate = None
 
     def open(self) -> "Runtime":
         self.history.open()
+        self._turn_continuity_fault = None
+        self._turn_substrate = None
         return self
 
     def close(self) -> None:
@@ -231,6 +234,179 @@ class Runtime:
         ))
         return ContextPreparation(admission, result, ingress_record, admission_record)
 
+
+    @staticmethod
+    def _digest_text(value):
+        if type(value) is not str or len(value) != 64:
+            return None
+        try:
+            bytes.fromhex(value)
+        except ValueError:
+            return None
+        return value
+
+    def _cognition_chain_tip(self):
+        continuity = [
+            item.record
+            for item in self.history.records()
+            if item.record.subsystem == "ecs_g"
+            and item.record.kind in ("cognition.anchor", "cognition.turn")
+        ]
+
+        if not continuity:
+            return None
+
+        expected = None
+        anchored = False
+
+        for index, record in enumerate(continuity):
+            bindings = dict(record.bindings)
+
+            if record.kind == "cognition.anchor":
+                state = self._digest_text(bindings.get("state"))
+
+                if state is None or record.digest != state or bindings.get("mechanism") != "1":
+                    raise CompositionError(
+                        "HISTORY_CONTINUITY_INVALID",
+                        "malformed cognition.anchor receipt",
+                    )
+
+                if anchored or index != 0:
+                    raise CompositionError(
+                        "HISTORY_CONTINUITY_INVALID",
+                        "cognition.anchor must be the first and only anchor",
+                    )
+
+                expected = state
+                anchored = True
+                continue
+
+            before = self._digest_text(bindings.get("state_before"))
+            after = self._digest_text(bindings.get("state_after"))
+
+            if (
+                before is None
+                or after is None
+                or bindings.get("mechanism") != "1"
+            ):
+                raise CompositionError(
+                    "HISTORY_CONTINUITY_INVALID",
+                    "malformed cognition.turn state identity",
+                )
+
+            if expected is None:
+                expected = after
+                anchored = True
+                continue
+
+            if before != expected:
+                raise CompositionError(
+                    "HISTORY_CONTINUITY_INVALID",
+                    "cognition.turn state_before does not continue the durable K1 lineage",
+                )
+
+            expected = after
+
+        return expected
+
+    def anchor_cognition(self, substrate):
+        if self._turn_continuity_fault is not None:
+            raise CompositionError(
+                self._turn_continuity_fault,
+                "runtime cognition is fail-stopped pending restart/reconciliation",
+            )
+
+        if self._cognition_chain_tip() is not None:
+            raise CompositionError(
+                "COGNITION_ALREADY_ANCHORED",
+                "durable cognition continuity already exists",
+            )
+
+        try:
+            state = substrate.state_digest()
+        except (AttributeError, TypeError) as exc:
+            raise CompositionError(
+                "ECS_STATE",
+                "a native K1 state with state_digest() is required",
+            ) from exc
+        except K1Error as exc:
+            raise CompositionError("ECS_REFUSED", str(exc)) from exc
+
+        if type(state) is not bytes or len(state) != 32:
+            raise CompositionError(
+                "ECS_STATE",
+                "K1 state_digest() must return 32 bytes",
+            )
+
+        state_hex = state.hex()
+
+        record = ReceiptRecord.of(
+            "ecs_g",
+            "cognition.anchor",
+            state_hex,
+            mechanism="1",
+            state=state_hex,
+        )
+
+        try:
+            self.history.record(record)
+        except HistoryError as exc:
+            native_code = getattr(exc.__cause__, "code", None)
+
+            if exc.code == "NATIVE_HISTORY_RECORD" and native_code in (-8, -10):
+                code = "HISTORY_UNCERTAIN_BEFORE_ECS_COMMIT"
+                self._turn_continuity_fault = code
+            else:
+                code = "HISTORY_REFUSED_BEFORE_ECS_COMMIT"
+
+            raise CompositionError(code, str(exc)) from exc
+
+        self._turn_substrate = substrate
+        return record
+
+    def _reconcile_cognition_substrate(self, substrate):
+        if self._turn_substrate is not None:
+            if substrate is not self._turn_substrate:
+                raise CompositionError(
+                    "COGNITION_SUBSTRATE_SWITCH",
+                    "one open Runtime owns one K1 cognition lineage",
+                )
+            return
+
+        expected = self._cognition_chain_tip()
+
+        if expected is None:
+            raise CompositionError(
+                "COGNITION_UNANCHORED",
+                "anchor_cognition(substrate) is required before the first managed K1 turn",
+            )
+
+        try:
+            current = substrate.state_digest()
+        except (AttributeError, TypeError) as exc:
+            raise CompositionError(
+                "ECS_STATE",
+                "a native K1 state with state_digest() is required",
+            ) from exc
+        except K1Error as exc:
+            raise CompositionError("ECS_REFUSED", str(exc)) from exc
+
+        if type(current) is not bytes or len(current) != 32:
+            raise CompositionError(
+                "ECS_STATE",
+                "K1 state_digest() must return 32 bytes",
+            )
+
+        if current.hex() != expected:
+            self._turn_continuity_fault = "HISTORY_STATE_MISMATCH"
+            raise CompositionError(
+                self._turn_continuity_fault,
+                "current K1 retained state does not match durable cognition continuity",
+            )
+
+        self._turn_substrate = substrate
+
+
     # -- cognition: DSV4 codec -> ECS -> DSV4 codec -> ECS_C continuity -----------------------
     def run_turn(self, substrate, text, *, tokenizer, codec_map=None, learning_rate=None, max_output_tokens=256):
         """Commit one canonical K1 turn, then record exactly one ``ecs_g / cognition.turn`` receipt."""
@@ -240,7 +416,17 @@ class Runtime:
                 "runtime cognition is fail-stopped pending restart/reconciliation",
             )
 
-        from .cognition import run_turn
+        from .cognition import _validate_turn_request, run_turn
+
+        _validate_turn_request(
+            substrate,
+            text,
+            codec_map=codec_map,
+            learning_rate=learning_rate,
+            max_output_tokens=max_output_tokens,
+        )
+
+        self._reconcile_cognition_substrate(substrate)
 
         result = run_turn(
             substrate,
