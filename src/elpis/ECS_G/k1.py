@@ -19,8 +19,8 @@ from types import SimpleNamespace
 from .native import (DEFAULT_MAX_ROWS, Commit, ECSGError, _P, _U8P, _VP, _admit_out, _admit_rows, _admit_vector,
                      _rate, _steps, _view)
 
-__all__ = ("K1Error", "K1FMSRuntime", "K1FMSState", "K1Library", "K1State", "K1Transaction", "MAX_EXPERIENCES",
-           "PROVENANCE")
+__all__ = ("CommitIdentity", "K1Error", "K1FMSRuntime", "K1FMSState", "K1Library", "K1State", "K1Transaction",
+           "MAX_EXPERIENCES", "PROVENANCE")
 
 _U64 = C.c_uint64
 _CODES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT",
@@ -50,6 +50,40 @@ class _Transition(C.Structure):
                 ("generation_after", _U64), ("steps", _U64), ("failed_step", _U64)]
 
 
+class CommitIdentity(tuple):
+    """Immutable committed-K1 transition plus exact retained-state identities."""
+
+    __slots__ = ()
+
+    def __new__(cls, commit, state_before_digest, state_after_digest):
+        return tuple.__new__(
+            cls,
+            (
+                commit,
+                state_before_digest,
+                state_after_digest,
+            ),
+        )
+
+    @property
+    def commit(self):
+        return self[0]
+
+    @property
+    def state_before_digest(self):
+        return self[1]
+
+    @property
+    def state_after_digest(self):
+        return self[2]
+
+
+class _CommitIdentity(C.Structure):
+    _fields_ = [("transition", _Transition),
+                ("state_before_digest", C.c_uint8 * 32),
+                ("state_after_digest", C.c_uint8 * 32)]
+
+
 class _Counters(C.Structure):
     _fields_ = [("workspace_bytes", C.c_size_t), ("max_rows", C.c_size_t), ("heap_allocations", _U64),
                 ("forward_calls", _U64), ("learn_calls", _U64), ("steps_executed", _U64),
@@ -68,6 +102,7 @@ class _Info(C.Structure):
 
 
 _TP = C.POINTER(_Transition)
+_CIP = C.POINTER(_CommitIdentity)
 
 
 class _Experience(C.Structure):
@@ -113,6 +148,14 @@ def _prepared(result, s3, features):
 
 def _commit(t):
     return Commit(t.epoch_before, t.epoch_after, t.generation_before, t.generation_after, t.steps)
+
+
+def _commit_identity(identity):
+    return CommitIdentity(
+        _commit(identity.transition),
+        bytes(identity.state_before_digest),
+        bytes(identity.state_after_digest),
+    )
 
 
 def _record(record):
@@ -164,6 +207,7 @@ _K1_ABI = {
     "txn_forward": ([_VP, _U64, _P, C.c_size_t, _P], C.c_int),
     "txn_epoch": ([_VP, _U64, C.POINTER(_U64)], C.c_int),
     "txn_commit": ([_VP, _U64, _TP], C.c_int),
+    "txn_commit_identity": ([_VP, _U64, _CIP], C.c_int),
     "txn_abort": ([_VP, _U64], C.c_int),
     "txn_run_schedule": ([_VP, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P, C.c_size_t, _SRP], C.c_int),
 }
@@ -430,6 +474,17 @@ class K1Transaction:
             raise _refused(rc, "K1 transaction commit")
         return _commit(t)
 
+
+    def commit_identity(self):
+        """Commit once and return transition metadata plus exact retained-state identities."""
+        identity = _CommitIdentity()
+        rc = self._state._k.txn_commit_identity(self._live(), self._token, C.byref(identity))
+        if rc == 0 or _discards(rc, False):
+            self._open = False
+        if rc != 0:
+            raise _refused(rc, "K1 transaction commit identity")
+        return _commit_identity(identity)
+
     def abort(self):
         if self._open:
             self._open = False
@@ -467,6 +522,7 @@ _FMS_ABI = {
     "txn_consolidate": ([_VP, _U64, _U64, _P, C.c_size_t], C.c_int),
     "txn_forward": ([_VP, _U64, _U64, _P, C.c_size_t, _P], C.c_int),
     "txn_commit": ([_VP, _U64, _U64, _TP], C.c_int),
+    "txn_commit_identity": ([_VP, _U64, _U64, _CIP], C.c_int),
     "txn_abort": ([_VP, _U64, _U64], C.c_int),
     "txn_run_schedule": ([_VP, _U64, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P, C.c_size_t, _SRP],
                          C.c_int),
@@ -697,6 +753,19 @@ class _FMSTransaction:
         if rc != 0:
             raise _refused(rc, "K1 FMS transaction commit")
         return _commit(t)
+
+
+    def commit_identity(self):
+        """Commit resident K1 once under its WRITE pin and return exact retained-state identities."""
+        identity = _CommitIdentity()
+        rc = self._r._f.txn_commit_identity(
+            self._r._live(), self._id, self._token, C.byref(identity)
+        )
+        if rc == 0 or _discards(rc, False):
+            self._open = False
+        if rc != 0:
+            raise _refused(rc, "K1 FMS transaction commit identity")
+        return _commit_identity(identity)
 
     def abort(self):
         if self._open:

@@ -116,6 +116,8 @@ int elpis_ecsg_k1_fms_txn_forward(elpis_ecsg_k1_fms *, uint64_t id, uint64_t tok
 int elpis_ecsg_k1_fms_txn_epoch(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token, uint64_t *epoch);
 int elpis_ecsg_k1_fms_txn_commit(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token,
                                  elpis_ecsg_k1_transition *transition);
+int elpis_ecsg_k1_fms_txn_commit_identity(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token,
+                                          elpis_ecsg_k1_commit_identity *identity);
 int elpis_ecsg_k1_fms_txn_abort(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token);
 
 /* The experience schedule of ecsg_k1.h on the resident candidate, under the transaction's WRITE pin: one call learns

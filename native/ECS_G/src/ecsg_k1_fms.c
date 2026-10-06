@@ -778,27 +778,56 @@ int elpis_ecsg_k1_fms_txn_run_schedule(elpis_ecsg_k1_fms *r, uint64_t id, uint64
     return txn_settle(r, s, rc, 1);
 }
 
-int elpis_ecsg_k1_fms_txn_commit(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, elpis_ecsg_k1_transition *t)
+
+static int
+fms_txn_commit_common(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token,
+                      elpis_ecsg_k1_transition *t,
+                      elpis_ecsg_k1_commit_identity *identity)
 {
     slot *s;
     uint64_t start;
     int rc = txn_take(r, id, token, &s);
+
     if (rc != ELPIS_ECSG_K1_OK) {
         return rc;
     }
+
     start = now_ns();
-    rc = elpis_ecsg_k1_txn_commit(s->k1, s->txn_native_token, t);   /* one copy of W, epoch, H, a */
+    if (identity != NULL) {
+        rc = elpis_ecsg_k1_txn_commit_identity(s->k1, s->txn_native_token, identity);
+    } else {
+        rc = elpis_ecsg_k1_txn_commit(s->k1, s->txn_native_token, t);
+    }
     s->info.commit_ns += now_ns() - start;
+
     if (rc == ELPIS_ECSG_K1_OK) {
         s->info.commits += 1u;
         observe(s);
     } else {
         s->info.aborts += 1u;
     }
+
     s->txn_open = 0;
     clear_transaction(r, s, 0);
     give(r, s);
     return rc;
+}
+
+int
+elpis_ecsg_k1_fms_txn_commit(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token,
+                             elpis_ecsg_k1_transition *t)
+{
+    return fms_txn_commit_common(r, id, token, t, NULL);
+}
+
+int
+elpis_ecsg_k1_fms_txn_commit_identity(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token,
+                                      elpis_ecsg_k1_commit_identity *identity)
+{
+    if (identity == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    return fms_txn_commit_common(r, id, token, NULL, identity);
 }
 
 int elpis_ecsg_k1_fms_txn_abort(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token)
