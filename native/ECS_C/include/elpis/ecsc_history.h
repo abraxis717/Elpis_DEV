@@ -376,7 +376,15 @@ enum {
     ELPIS_ECSC_APPEND_ROLLED_BACK = -7,
     ELPIS_ECSC_APPEND_UNCERTAIN = -8,
     ELPIS_ECSC_NOT_READY = -9,
-    ELPIS_ECSC_PARTIAL_COMMIT = -10
+    ELPIS_ECSC_PARTIAL_COMMIT = -10,
+    /*
+     * Bounded-segment dispositions (additive). SEGMENT_FULL is returned
+     * BEFORE any byte is appended: the session stays usable and its state is
+     * unchanged; the owner must compact and reopen. SEGMENT_MISMATCH means
+     * the supplied global/base counts do not describe the segment file.
+     */
+    ELPIS_ECSC_SEGMENT_FULL = -11,
+    ELPIS_ECSC_SEGMENT_MISMATCH = -12
 };
 
 typedef struct elpis_ecsc_log elpis_ecsc_log;
@@ -591,6 +599,57 @@ int elpis_ecsc_runtime_session_state_root_digest(
 );
 
 uint64_t elpis_ecsc_runtime_session_event_count(
+    const elpis_ecsc_runtime_session *session
+);
+
+/*
+ * Bounded active-segment ownership (additive ABI).
+ *
+ * A compacted runtime history keeps ONE global logical history: the segment
+ * file holds only the events at global indices >= segment_base, with their
+ * original global indices; the retired prefix is represented by a verified
+ * compaction checkpoint whose state is the supplied validated_state.
+ *
+ * Open requires:
+ *   global_event_count == validated_state->logical_clock      (else INVALID)
+ *   segment_base <= global_event_count                         (else SEGMENT_MISMATCH)
+ *   segment frame count == global_event_count - segment_base   (else SEGMENT_MISMATCH)
+ *   policy finite and non-zero                                 (else INVALID)
+ *   segment bytes/frames within policy                         (else SEGMENT_FULL)
+ *
+ * After open, every record checks the PLANNED frame sizes against the policy
+ * before mutation: if the two framed events would not fit, SEGMENT_FULL is
+ * returned with no append, no state change and no poisoning. All other
+ * failure classes and poisoning rules are exactly those of
+ * elpis_ecsc_runtime_session_record. event_count() reports the GLOBAL count.
+ */
+typedef struct elpis_ecsc_segment_policy {
+    uint64_t max_segment_bytes;
+    uint64_t max_segment_frames;
+} elpis_ecsc_segment_policy;
+
+int elpis_ecsc_runtime_session_open_segment(
+    const char *segment_path,
+    size_t segment_path_len,
+    const elpis_ecsc_state_root_view *validated_state,
+    const char current_event_digest[64],
+    uint64_t global_event_count,
+    uint64_t segment_base,
+    const elpis_ecsc_segment_policy *policy,
+    elpis_ecsc_runtime_session **out_session
+);
+
+/* UINT64_MAX when the session is NULL. */
+uint64_t elpis_ecsc_runtime_session_segment_base(
+    const elpis_ecsc_runtime_session *session
+);
+
+/* UINT64_MAX when the session is NULL, poisoned or has no open segment. */
+uint64_t elpis_ecsc_runtime_session_segment_bytes(
+    const elpis_ecsc_runtime_session *session
+);
+
+uint64_t elpis_ecsc_runtime_session_segment_frames(
     const elpis_ecsc_runtime_session *session
 );
 
