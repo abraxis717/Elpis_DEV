@@ -957,3 +957,924 @@ int elpis_ecsc_event_frame_write(
     *out_written = need;
     return ELPIS_ECSC_OK;
 }
+
+typedef struct event_sink {
+    uint8_t *out;
+    size_t cap;
+    size_t pos;
+    elpis_sha256_ctx *hash;
+} event_sink;
+
+static int es_put(event_sink *s, const void *data, size_t n)
+{
+    size_t next;
+    int rc;
+
+    if (s == NULL || (data == NULL && n != 0u)) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    rc = checked_add(s->pos, n, &next);
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    if (s->out != NULL) {
+        if (next > s->cap) {
+            return ELPIS_ECSC_CAPACITY;
+        }
+        if (n != 0u) {
+            memcpy(s->out + s->pos, data, n);
+        }
+    }
+
+    if (s->hash != NULL && n != 0u) {
+        elpis_sha256_update(s->hash, data, n);
+    }
+
+    s->pos = next;
+    return ELPIS_ECSC_OK;
+}
+
+static int es_literal(event_sink *s, const char *text)
+{
+    if (text == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+    return es_put(s, text, strlen(text));
+}
+
+static int es_u64(event_sink *s, uint64_t value)
+{
+    char text[20];
+    size_t n = u64_decimal(value, text);
+    return es_put(s, text, n);
+}
+
+static int es_hex_payload(
+    event_sink *s,
+    const void *data,
+    size_t size
+)
+{
+    static const char h[] = "0123456789abcdef";
+    const uint8_t *p = (const uint8_t *)data;
+    size_t i;
+    int rc;
+
+    if (data == NULL && size != 0u) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    for (i = 0u; i < size; ++i) {
+        char pair[2];
+
+        pair[0] = h[p[i] >> 4];
+        pair[1] = h[p[i] & 0x0fu];
+
+        rc = es_put(s, pair, sizeof pair);
+        if (rc != ELPIS_ECSC_OK) {
+            return rc;
+        }
+    }
+
+    return ELPIS_ECSC_OK;
+}
+
+typedef struct enqueue_event_context {
+    const char *sender;
+    const char *receiver;
+    uint64_t sequence;
+    const void *payload;
+    size_t payload_size;
+    uint64_t logical_clock;
+    char message_id[65];
+    char payload_content_digest[65];
+} enqueue_event_context;
+
+typedef struct processed_event_context {
+    const char *receiver;
+    const char *message_id;
+} processed_event_context;
+
+static int encode_event_envelope(
+    event_sink *s,
+    const enqueue_event_context *ctx
+)
+{
+    int rc;
+
+    rc = es_literal(s, "{\"logical_clock\":");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(s, ctx->logical_clock);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, ",\"message_id\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(s, ctx->message_id, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, "\",\"payload_digest\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(s, ctx->payload_content_digest, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, "\",\"payload_hex\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_hex_payload(s, ctx->payload, ctx->payload_size);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, "\",\"receiver_entity_id\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(s, ctx->receiver, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        s,
+        "\",\"schema\":\"ecs.message.v1\","
+        "\"sender_entity_id\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(s, ctx->sender, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, "\",\"sequence\":");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(s, ctx->sequence);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    return es_literal(s, "}");
+}
+
+static int encode_enqueue_payload(
+    event_sink *s,
+    const void *opaque
+)
+{
+    const enqueue_event_context *ctx =
+        (const enqueue_event_context *)opaque;
+    int rc;
+
+    rc = es_literal(s, "{\"envelope\":");
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = encode_event_envelope(s, ctx);
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    return es_literal(s, "}");
+}
+
+static int encode_processed_payload(
+    event_sink *s,
+    const void *opaque
+)
+{
+    const processed_event_context *ctx =
+        (const processed_event_context *)opaque;
+    int rc;
+
+    rc = es_literal(s, "{\"message_id\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(s, ctx->message_id, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, "\",\"receiver_entity_id\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(s, ctx->receiver, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    return es_literal(s, "\"}");
+}
+
+typedef int (*payload_encoder_fn)(
+    event_sink *,
+    const void *
+);
+
+static int digest_payload(
+    payload_encoder_fn encoder,
+    const void *ctx,
+    char out_digest[65]
+)
+{
+    event_sink sink;
+    elpis_sha256_ctx hash;
+    uint8_t digest[32];
+    int rc;
+
+    if (encoder == NULL || out_digest == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    elpis_sha256_init(&hash);
+
+    sink.out = NULL;
+    sink.cap = 0u;
+    sink.pos = 0u;
+    sink.hash = &hash;
+
+    rc = encoder(&sink, ctx);
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    elpis_sha256_final(&hash, digest);
+    elpis_hex32(digest, out_digest);
+
+    return ELPIS_ECSC_OK;
+}
+
+static int event_transaction(
+    event_sink *s,
+    const char *prefix,
+    const char message_id[64]
+)
+{
+    int rc;
+
+    rc = es_put(s, prefix, strlen(prefix));
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    return es_put(s, message_id, 64u);
+}
+
+static int encode_message_event_object(
+    event_sink *s,
+    int include_after_root,
+    int include_event_digest,
+    const char *event_kind,
+    const char *transaction_prefix,
+    const char entity_id[64],
+    const char message_id[64],
+    uint64_t event_index,
+    uint64_t logical_clock,
+    payload_encoder_fn payload_encoder,
+    const void *payload_context,
+    const char payload_digest[64],
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    const char event_digest[64]
+)
+{
+    int rc;
+
+    rc = es_literal(s, "{");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    if (include_after_root) {
+        rc = es_literal(s, "\"after_state_root\":\"");
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_put(s, after_state_root, 64u);
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_literal(s, "\",");
+        if (rc != ELPIS_ECSC_OK) return rc;
+    }
+
+    rc = es_literal(s, "\"before_state_root\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(s, before_state_root, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, "\",\"entity_id\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(s, entity_id, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    if (include_event_digest) {
+        rc = es_literal(s, "\",\"event_digest\":\"");
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_put(s, event_digest, 64u);
+        if (rc != ELPIS_ECSC_OK) return rc;
+    }
+
+    rc = es_literal(s, "\",\"event_index\":");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(s, event_index);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, ",\"event_kind\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(s, event_kind, strlen(event_kind));
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, "\",\"logical_clock\":");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(s, logical_clock);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, ",\"payload\":");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = payload_encoder(s, payload_context);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, ",\"payload_digest\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(s, payload_digest, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(s, "\",\"prev_event_digest\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(s, prev_event_digest, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        s,
+        "\",\"schema\":\"ecs.event.v1\","
+        "\"transaction_id\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = event_transaction(
+        s,
+        transaction_prefix,
+        message_id
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    return es_literal(s, "\"}");
+}
+
+static int digest_message_event(
+    const char *domain,
+    int include_after_root,
+    const char *event_kind,
+    const char *transaction_prefix,
+    const char entity_id[64],
+    const char message_id[64],
+    uint64_t event_index,
+    uint64_t logical_clock,
+    payload_encoder_fn payload_encoder,
+    const void *payload_context,
+    const char payload_digest[64],
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    char out_digest[65]
+)
+{
+    event_sink sink;
+    elpis_sha256_ctx hash;
+    uint8_t digest[32];
+    int rc;
+
+    if (domain == NULL || out_digest == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    elpis_sha256_init(&hash);
+
+    sink.out = NULL;
+    sink.cap = 0u;
+    sink.pos = 0u;
+    sink.hash = &hash;
+
+    rc = es_literal(&sink, "{\"domain\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(&sink, domain, strlen(domain));
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(&sink, "\",\"payload\":");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = encode_message_event_object(
+        &sink,
+        include_after_root,
+        0,
+        event_kind,
+        transaction_prefix,
+        entity_id,
+        message_id,
+        event_index,
+        logical_clock,
+        payload_encoder,
+        payload_context,
+        payload_digest,
+        before_state_root,
+        after_state_root,
+        prev_event_digest,
+        NULL
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(&sink, "}");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    elpis_sha256_final(&hash, digest);
+    elpis_hex32(digest, out_digest);
+
+    return ELPIS_ECSC_OK;
+}
+
+static int validate_committed_event_inputs(
+    const char entity_id[64],
+    uint64_t event_index,
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64]
+)
+{
+    if (!valid_entity_id(entity_id) ||
+        !is_digest(before_state_root, 64u) ||
+        !is_digest(after_state_root, 64u) ||
+        !is_digest(prev_event_digest, 64u) ||
+        event_index >= ELPIS_ECSC_MAX_INT) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    return ELPIS_ECSC_OK;
+}
+
+static int build_message_event(
+    int enqueue,
+    const char *sender_entity_id,
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    const char supplied_message_id[64],
+    uint64_t event_index,
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    uint8_t *out,
+    size_t out_capacity,
+    size_t *out_written,
+    char out_event_digest[65],
+    char out_intent_digest[65],
+    char out_message_id[65]
+)
+{
+    enqueue_event_context enqueue_ctx;
+    processed_event_context processed_ctx;
+    payload_encoder_fn encoder;
+    const void *payload_ctx;
+    const char *event_kind;
+    const char *transaction_prefix;
+    const char *message_id;
+    uint64_t logical_clock;
+    char payload_digest[65];
+    char sender_copy[65];
+    char receiver_copy[65];
+    char supplied_message_id_copy[65];
+    char before_state_root_copy[65];
+    char after_state_root_copy[65];
+    char prev_event_digest_copy[65];
+    event_sink sink;
+    int rc;
+
+    if (out_written == NULL ||
+        out_event_digest == NULL ||
+        out_intent_digest == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    /*
+     * Validate and snapshot every fixed-size input before writing any output.
+     *
+     * This deliberately permits natural event chaining where the caller uses
+     * the previous call's out_event_digest buffer as this call's
+     * prev_event_digest while also reusing it for the new out_event_digest.
+     */
+    rc = validate_committed_event_inputs(
+        receiver_entity_id,
+        event_index,
+        before_state_root,
+        after_state_root,
+        prev_event_digest
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    memcpy(receiver_copy, receiver_entity_id, 64u);
+    receiver_copy[64] = '\0';
+
+    memcpy(before_state_root_copy, before_state_root, 64u);
+    before_state_root_copy[64] = '\0';
+
+    memcpy(after_state_root_copy, after_state_root, 64u);
+    after_state_root_copy[64] = '\0';
+
+    memcpy(prev_event_digest_copy, prev_event_digest, 64u);
+    prev_event_digest_copy[64] = '\0';
+
+    if (enqueue) {
+        if (sender_entity_id == NULL ||
+            out_message_id == NULL) {
+            return ELPIS_ECSC_INVALID;
+        }
+
+        rc = valid_message_inputs(
+            sender_entity_id,
+            receiver_entity_id,
+            sequence,
+            payload,
+            payload_size
+        );
+        if (rc != ELPIS_ECSC_OK) {
+            return rc;
+        }
+
+        memcpy(sender_copy, sender_entity_id, 64u);
+        sender_copy[64] = '\0';
+    } else {
+        if (!is_digest(supplied_message_id, 64u)) {
+            return ELPIS_ECSC_INVALID;
+        }
+
+        memcpy(
+            supplied_message_id_copy,
+            supplied_message_id,
+            64u
+        );
+        supplied_message_id_copy[64] = '\0';
+    }
+
+    *out_written = 0u;
+    out_event_digest[0] = '\0';
+    out_intent_digest[0] = '\0';
+
+    if (out_message_id != NULL) {
+        out_message_id[0] = '\0';
+    }
+
+    logical_clock = event_index + UINT64_C(1);
+
+    if (enqueue) {
+        enqueue_ctx.sender = sender_copy;
+        enqueue_ctx.receiver = receiver_copy;
+        enqueue_ctx.sequence = sequence;
+        enqueue_ctx.payload = payload;
+        enqueue_ctx.payload_size = payload_size;
+        enqueue_ctx.logical_clock = logical_clock;
+
+        rc = elpis_ecsc_message_id(
+            sender_entity_id,
+            receiver_entity_id,
+            sequence,
+            payload,
+            payload_size,
+            enqueue_ctx.message_id,
+            enqueue_ctx.payload_content_digest
+        );
+        if (rc != ELPIS_ECSC_OK) {
+            return rc;
+        }
+
+        memcpy(
+            out_message_id,
+            enqueue_ctx.message_id,
+            65u
+        );
+
+        encoder = encode_enqueue_payload;
+        payload_ctx = &enqueue_ctx;
+        event_kind = "MESSAGE_ENQUEUED";
+        transaction_prefix = "ENQ:";
+        message_id = enqueue_ctx.message_id;
+    } else {
+        processed_ctx.receiver = receiver_copy;
+        processed_ctx.message_id = supplied_message_id_copy;
+
+        encoder = encode_processed_payload;
+        payload_ctx = &processed_ctx;
+        event_kind = "MESSAGE_PROCESSED";
+        transaction_prefix = "PROC:";
+        message_id = supplied_message_id_copy;
+    }
+
+    rc = digest_payload(
+        encoder,
+        payload_ctx,
+        payload_digest
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = digest_message_event(
+        "ecs.event.intent.v1",
+        0,
+        event_kind,
+        transaction_prefix,
+        receiver_copy,
+        message_id,
+        event_index,
+        logical_clock,
+        encoder,
+        payload_ctx,
+        payload_digest,
+        before_state_root_copy,
+        after_state_root_copy,
+        prev_event_digest_copy,
+        out_intent_digest
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = digest_message_event(
+        "ecs.event.v1",
+        1,
+        event_kind,
+        transaction_prefix,
+        receiver_copy,
+        message_id,
+        event_index,
+        logical_clock,
+        encoder,
+        payload_ctx,
+        payload_digest,
+        before_state_root_copy,
+        after_state_root_copy,
+        prev_event_digest_copy,
+        out_event_digest
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    sink.out = out;
+    sink.cap = out_capacity;
+    sink.pos = 0u;
+    sink.hash = NULL;
+
+    rc = encode_message_event_object(
+        &sink,
+        1,
+        1,
+        event_kind,
+        transaction_prefix,
+        receiver_copy,
+        message_id,
+        event_index,
+        logical_clock,
+        encoder,
+        payload_ctx,
+        payload_digest,
+        before_state_root_copy,
+        after_state_root_copy,
+        prev_event_digest_copy,
+        out_event_digest
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    *out_written = sink.pos;
+    return ELPIS_ECSC_OK;
+}
+
+static int message_event_size_common(
+    int enqueue,
+    const char *sender_entity_id,
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    const char supplied_message_id[64],
+    uint64_t event_index,
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    size_t *out_size
+)
+{
+    char event_digest[65];
+    char intent_digest[65];
+    char message_id[65];
+    size_t written = 0u;
+    int rc;
+
+    if (out_size == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    *out_size = 0u;
+
+    rc = build_message_event(
+        enqueue,
+        sender_entity_id,
+        receiver_entity_id,
+        sequence,
+        payload,
+        payload_size,
+        supplied_message_id,
+        event_index,
+        before_state_root,
+        after_state_root,
+        prev_event_digest,
+        NULL,
+        0u,
+        &written,
+        event_digest,
+        intent_digest,
+        enqueue ? message_id : NULL
+    );
+
+    if (rc == ELPIS_ECSC_OK) {
+        *out_size = written;
+    }
+
+    return rc;
+}
+
+int elpis_ecsc_enqueue_event_size(
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    uint64_t event_index,
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    size_t *out_size
+)
+{
+    return message_event_size_common(
+        1,
+        sender_entity_id,
+        receiver_entity_id,
+        sequence,
+        payload,
+        payload_size,
+        NULL,
+        event_index,
+        before_state_root,
+        after_state_root,
+        prev_event_digest,
+        out_size
+    );
+}
+
+int elpis_ecsc_enqueue_event_write(
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    uint64_t event_index,
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    uint8_t *out,
+    size_t out_capacity,
+    size_t *out_written,
+    char out_event_digest[65],
+    char out_intent_digest[65],
+    char out_message_id[65]
+)
+{
+    size_t need = 0u;
+    int rc;
+
+    rc = elpis_ecsc_enqueue_event_size(
+        sender_entity_id,
+        receiver_entity_id,
+        sequence,
+        payload,
+        payload_size,
+        event_index,
+        before_state_root,
+        after_state_root,
+        prev_event_digest,
+        &need
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    if (out == NULL || need > out_capacity) {
+        return ELPIS_ECSC_CAPACITY;
+    }
+
+    return build_message_event(
+        1,
+        sender_entity_id,
+        receiver_entity_id,
+        sequence,
+        payload,
+        payload_size,
+        NULL,
+        event_index,
+        before_state_root,
+        after_state_root,
+        prev_event_digest,
+        out,
+        out_capacity,
+        out_written,
+        out_event_digest,
+        out_intent_digest,
+        out_message_id
+    );
+}
+
+int elpis_ecsc_processed_event_size(
+    const char receiver_entity_id[64],
+    const char message_id[64],
+    uint64_t event_index,
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    size_t *out_size
+)
+{
+    return message_event_size_common(
+        0,
+        NULL,
+        receiver_entity_id,
+        0u,
+        NULL,
+        0u,
+        message_id,
+        event_index,
+        before_state_root,
+        after_state_root,
+        prev_event_digest,
+        out_size
+    );
+}
+
+int elpis_ecsc_processed_event_write(
+    const char receiver_entity_id[64],
+    const char message_id[64],
+    uint64_t event_index,
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    uint8_t *out,
+    size_t out_capacity,
+    size_t *out_written,
+    char out_event_digest[65],
+    char out_intent_digest[65]
+)
+{
+    size_t need = 0u;
+    int rc;
+
+    rc = elpis_ecsc_processed_event_size(
+        receiver_entity_id,
+        message_id,
+        event_index,
+        before_state_root,
+        after_state_root,
+        prev_event_digest,
+        &need
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    if (out == NULL || need > out_capacity) {
+        return ELPIS_ECSC_CAPACITY;
+    }
+
+    return build_message_event(
+        0,
+        NULL,
+        receiver_entity_id,
+        0u,
+        NULL,
+        0u,
+        message_id,
+        event_index,
+        before_state_root,
+        after_state_root,
+        prev_event_digest,
+        out,
+        out_capacity,
+        out_written,
+        out_event_digest,
+        out_intent_digest,
+        NULL
+    );
+}

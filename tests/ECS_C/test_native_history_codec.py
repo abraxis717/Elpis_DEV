@@ -431,3 +431,400 @@ def test_native_message_rejects_noncanonical_entity_id(lib):
     )
 
     assert rc == -1
+
+
+def _bind_phase_c(lib):
+    lib.elpis_ecsc_enqueue_event_size.argtypes = [
+        C.c_char_p,
+        C.c_char_p,
+        C.c_uint64,
+        C.c_void_p,
+        C.c_size_t,
+        C.c_uint64,
+        C.c_char_p,
+        C.c_char_p,
+        C.c_char_p,
+        C.POINTER(C.c_size_t),
+    ]
+    lib.elpis_ecsc_enqueue_event_size.restype = C.c_int
+
+    lib.elpis_ecsc_enqueue_event_write.argtypes = [
+        C.c_char_p,
+        C.c_char_p,
+        C.c_uint64,
+        C.c_void_p,
+        C.c_size_t,
+        C.c_uint64,
+        C.c_char_p,
+        C.c_char_p,
+        C.c_char_p,
+        C.POINTER(C.c_uint8),
+        C.c_size_t,
+        C.POINTER(C.c_size_t),
+        C.POINTER(C.c_char),
+        C.POINTER(C.c_char),
+        C.POINTER(C.c_char),
+    ]
+    lib.elpis_ecsc_enqueue_event_write.restype = C.c_int
+
+    lib.elpis_ecsc_processed_event_size.argtypes = [
+        C.c_char_p,
+        C.c_char_p,
+        C.c_uint64,
+        C.c_char_p,
+        C.c_char_p,
+        C.c_char_p,
+        C.POINTER(C.c_size_t),
+    ]
+    lib.elpis_ecsc_processed_event_size.restype = C.c_int
+
+    lib.elpis_ecsc_processed_event_write.argtypes = [
+        C.c_char_p,
+        C.c_char_p,
+        C.c_uint64,
+        C.c_char_p,
+        C.c_char_p,
+        C.c_char_p,
+        C.POINTER(C.c_uint8),
+        C.c_size_t,
+        C.POINTER(C.c_size_t),
+        C.POINTER(C.c_char),
+        C.POINTER(C.c_char),
+    ]
+    lib.elpis_ecsc_processed_event_write.restype = C.c_int
+
+
+def _native_enqueue_event(
+    lib,
+    *,
+    sender,
+    receiver,
+    sequence,
+    payload,
+    event_index,
+    before,
+    after,
+    previous,
+):
+    _bind_phase_c(lib)
+
+    payload_buf, payload_ptr = _payload_ptr(payload)
+
+    size = C.c_size_t()
+
+    assert (
+        lib.elpis_ecsc_enqueue_event_size(
+            sender.encode("ascii"),
+            receiver.encode("ascii"),
+            sequence,
+            payload_ptr,
+            len(payload),
+            event_index,
+            before.encode("ascii"),
+            after.encode("ascii"),
+            previous.encode("ascii"),
+            C.byref(size),
+        )
+        == 0
+    )
+
+    out = (C.c_uint8 * size.value)()
+    written = C.c_size_t()
+    event_digest = (C.c_char * 65)()
+    intent_digest = (C.c_char * 65)()
+    message_id = (C.c_char * 65)()
+
+    assert (
+        lib.elpis_ecsc_enqueue_event_write(
+            sender.encode("ascii"),
+            receiver.encode("ascii"),
+            sequence,
+            payload_ptr,
+            len(payload),
+            event_index,
+            before.encode("ascii"),
+            after.encode("ascii"),
+            previous.encode("ascii"),
+            out,
+            len(out),
+            C.byref(written),
+            event_digest,
+            intent_digest,
+            message_id,
+        )
+        == 0
+    )
+
+    return (
+        bytes(out[: written.value]),
+        bytes(event_digest).split(b"\x00", 1)[0].decode("ascii"),
+        bytes(intent_digest).split(b"\x00", 1)[0].decode("ascii"),
+        bytes(message_id).split(b"\x00", 1)[0].decode("ascii"),
+    )
+
+
+def _native_processed_event(
+    lib,
+    *,
+    receiver,
+    message_id,
+    event_index,
+    before,
+    after,
+    previous,
+):
+    _bind_phase_c(lib)
+
+    size = C.c_size_t()
+
+    assert (
+        lib.elpis_ecsc_processed_event_size(
+            receiver.encode("ascii"),
+            message_id.encode("ascii"),
+            event_index,
+            before.encode("ascii"),
+            after.encode("ascii"),
+            previous.encode("ascii"),
+            C.byref(size),
+        )
+        == 0
+    )
+
+    out = (C.c_uint8 * size.value)()
+    written = C.c_size_t()
+    event_digest = (C.c_char * 65)()
+    intent_digest = (C.c_char * 65)()
+
+    assert (
+        lib.elpis_ecsc_processed_event_write(
+            receiver.encode("ascii"),
+            message_id.encode("ascii"),
+            event_index,
+            before.encode("ascii"),
+            after.encode("ascii"),
+            previous.encode("ascii"),
+            out,
+            len(out),
+            C.byref(written),
+            event_digest,
+            intent_digest,
+        )
+        == 0
+    )
+
+    return (
+        bytes(out[: written.value]),
+        bytes(event_digest).split(b"\x00", 1)[0].decode("ascii"),
+        bytes(intent_digest).split(b"\x00", 1)[0].decode("ascii"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("sequence", "payload", "event_index"),
+    [
+        (1, b"x", 0),
+        (7, b'{"receipt":"alpha"}', 10),
+        (91, bytes(range(256)), 1234),
+    ],
+)
+def test_native_enqueue_event_is_exact_python_authority(
+    lib, sequence, payload, event_index
+):
+    from elpis.ECS_C.bus import seal_envelope
+    from elpis.ECS_C.entity import (
+        entity_id_from_founding,
+        founding_record,
+    )
+    from elpis.ECS_C.persistence import (
+        build_event,
+        event_intent_digest,
+    )
+
+    genesis = "9" * 64
+
+    sender = entity_id_from_founding(
+        founding_record(0, "sender", genesis)
+    )
+    receiver = entity_id_from_founding(
+        founding_record(1, "receiver", genesis)
+    )
+
+    before = "1" * 64
+    after = "2" * 64
+    previous = "3" * 64
+    clock = event_index + 1
+
+    env = seal_envelope(
+        sender,
+        receiver,
+        sequence,
+        payload,
+        clock,
+    )
+
+    expected = build_event(
+        event_index=event_index,
+        logical_clock=clock,
+        transaction_id=f"ENQ:{env.message_id}",
+        event_kind="MESSAGE_ENQUEUED",
+        entity_id=receiver,
+        payload={"envelope": env.to_dict()},
+        before_state_root=before,
+        after_state_root=after,
+        prev_event_digest=previous,
+    )
+
+    (
+        native_bytes,
+        native_event_digest,
+        native_intent_digest,
+        native_message_id,
+    ) = _native_enqueue_event(
+        lib,
+        sender=sender,
+        receiver=receiver,
+        sequence=sequence,
+        payload=payload,
+        event_index=event_index,
+        before=before,
+        after=after,
+        previous=previous,
+    )
+
+    assert native_message_id == env.message_id
+    assert native_event_digest == expected["event_digest"]
+    assert native_intent_digest == event_intent_digest(expected)
+    assert native_bytes == canonical.canonical_bytes(expected)
+
+
+@pytest.mark.parametrize("event_index", [1, 11, 999])
+def test_native_processed_event_is_exact_python_authority(
+    lib, event_index
+):
+    from elpis.ECS_C.entity import (
+        entity_id_from_founding,
+        founding_record,
+    )
+    from elpis.ECS_C.persistence import (
+        build_event,
+        event_intent_digest,
+    )
+
+    genesis = "8" * 64
+    receiver = entity_id_from_founding(
+        founding_record(1, "receiver", genesis)
+    )
+
+    message_id = "a" * 64
+    before = "4" * 64
+    after = "5" * 64
+    previous = "6" * 64
+    clock = event_index + 1
+
+    expected = build_event(
+        event_index=event_index,
+        logical_clock=clock,
+        transaction_id=f"PROC:{message_id}",
+        event_kind="MESSAGE_PROCESSED",
+        entity_id=receiver,
+        payload={
+            "message_id": message_id,
+            "receiver_entity_id": receiver,
+        },
+        before_state_root=before,
+        after_state_root=after,
+        prev_event_digest=previous,
+    )
+
+    (
+        native_bytes,
+        native_event_digest,
+        native_intent_digest,
+    ) = _native_processed_event(
+        lib,
+        receiver=receiver,
+        message_id=message_id,
+        event_index=event_index,
+        before=before,
+        after=after,
+        previous=previous,
+    )
+
+    assert native_event_digest == expected["event_digest"]
+    assert native_intent_digest == event_intent_digest(expected)
+    assert native_bytes == canonical.canonical_bytes(expected)
+
+
+def test_native_committed_event_refuses_index_overflow(lib):
+    _bind_phase_c(lib)
+
+    size = C.c_size_t(999)
+
+    rc = lib.elpis_ecsc_processed_event_size(
+        b"1" * 64,
+        b"2" * 64,
+        (1 << 63) - 1,
+        b"3" * 64,
+        b"4" * 64,
+        b"5" * 64,
+        C.byref(size),
+    )
+
+    assert rc == -1
+    assert size.value == 0
+
+
+def test_processed_event_allows_prev_digest_output_buffer_reuse(lib):
+    """Natural native chaining may reuse last event digest as next prev/output."""
+
+    _bind_phase_c(lib)
+
+    receiver = b"2" * 64
+    message_id = b"a" * 64
+    before = b"3" * 64
+    after = b"4" * 64
+
+    # Same storage is deliberately used as both prev_event_digest input and
+    # out_event_digest output.
+    chained_digest = (C.c_char * 65)()
+    chained_digest.value = b"5" * 64
+
+    size = C.c_size_t()
+
+    assert (
+        lib.elpis_ecsc_processed_event_size(
+            receiver,
+            message_id,
+            7,
+            before,
+            after,
+            C.cast(chained_digest, C.c_char_p),
+            C.byref(size),
+        )
+        == 0
+    )
+
+    out = (C.c_uint8 * size.value)()
+    written = C.c_size_t()
+    intent = (C.c_char * 65)()
+
+    assert (
+        lib.elpis_ecsc_processed_event_write(
+            receiver,
+            message_id,
+            7,
+            before,
+            after,
+            C.cast(chained_digest, C.c_char_p),
+            out,
+            len(out),
+            C.byref(written),
+            chained_digest,
+            intent,
+        )
+        == 0
+    )
+
+    assert written.value == size.value
+    assert len(bytes(chained_digest).split(b"\x00", 1)[0]) == 64
+    assert len(bytes(intent).split(b"\x00", 1)[0]) == 64

@@ -332,6 +332,129 @@ static void test_message_and_frame_refusals(void)
     assert(written == 0u);
 }
 
+
+static void test_committed_message_events(void)
+{
+    static const char sender[] =
+        "11111111111111111111111111111111"
+        "11111111111111111111111111111111";
+
+    static const char receiver[] =
+        "22222222222222222222222222222222"
+        "22222222222222222222222222222222";
+
+    static const char before_root[] =
+        "33333333333333333333333333333333"
+        "33333333333333333333333333333333";
+
+    static const char after_root[] =
+        "44444444444444444444444444444444"
+        "44444444444444444444444444444444";
+
+    static const char previous[] =
+        "55555555555555555555555555555555"
+        "55555555555555555555555555555555";
+
+    static const uint8_t payload[] = "receipt";
+
+    uint8_t event[4096];
+    size_t need = 0u;
+    size_t written = 0u;
+    char event_digest[65];
+    char intent_digest[65];
+    char message_id[65];
+
+    assert(
+        elpis_ecsc_enqueue_event_size(
+            sender,
+            receiver,
+            3u,
+            payload,
+            sizeof payload - 1u,
+            9u,
+            before_root,
+            after_root,
+            previous,
+            &need
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(need > 0u && need < sizeof event);
+
+    assert(
+        elpis_ecsc_enqueue_event_write(
+            sender,
+            receiver,
+            3u,
+            payload,
+            sizeof payload - 1u,
+            9u,
+            before_root,
+            after_root,
+            previous,
+            event,
+            sizeof event,
+            &written,
+            event_digest,
+            intent_digest,
+            message_id
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(written == need);
+    assert(written < sizeof event);
+    event[written] = 0u;
+
+    assert(strlen(event_digest) == 64u);
+    assert(strlen(intent_digest) == 64u);
+    assert(strlen(message_id) == 64u);
+
+    assert(
+        strstr(
+            (const char *)event,
+            "\"event_kind\":\"MESSAGE_ENQUEUED\""
+        ) != NULL
+    );
+
+    assert(
+        elpis_ecsc_processed_event_size(
+            receiver,
+            message_id,
+            10u,
+            after_root,
+            before_root,
+            event_digest,
+            &need
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(
+        elpis_ecsc_processed_event_write(
+            receiver,
+            message_id,
+            10u,
+            after_root,
+            before_root,
+            event_digest,
+            event,
+            sizeof event,
+            &written,
+            event_digest,
+            intent_digest
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(written < sizeof event);
+    event[written] = 0u;
+
+    assert(
+        strstr(
+            (const char *)event,
+            "\"event_kind\":\"MESSAGE_PROCESSED\""
+        ) != NULL
+    );
+}
+
 int main(void)
 {
     test_receipt_payload();
@@ -340,6 +463,7 @@ int main(void)
     test_rejects_bad_utf8();
     test_message_envelope_and_frame();
     test_message_and_frame_refusals();
+    test_committed_message_events();
 
     puts("PASS_ECSC_HISTORY_CODEC");
     return 0;

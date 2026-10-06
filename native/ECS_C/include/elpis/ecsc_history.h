@@ -150,6 +150,77 @@ int elpis_ecsc_event_frame_write(
     size_t *out_written
 );
 
+
+/*
+ * Exact committed MESSAGE_ENQUEUED event construction for the live ECS_C
+ * protocol.
+ *
+ * logical_clock is derived as event_index + 1. transaction_id is derived as
+ * ENQ:<message_id>. The envelope and event payload are constructed natively.
+ *
+ * before/after/prev are lowercase 64-hex canonical ECS_C digests.
+ */
+int elpis_ecsc_enqueue_event_size(
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    uint64_t event_index,
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    size_t *out_size
+);
+
+int elpis_ecsc_enqueue_event_write(
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    uint64_t event_index,
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    uint8_t *out,
+    size_t out_capacity,
+    size_t *out_written,
+    char out_event_digest[65],
+    char out_intent_digest[65],
+    char out_message_id[65]
+);
+
+/*
+ * Exact committed MESSAGE_PROCESSED event construction.
+ *
+ * transaction_id is PROC:<message_id>. entity_id and
+ * receiver_entity_id are the receiver.
+ */
+int elpis_ecsc_processed_event_size(
+    const char receiver_entity_id[64],
+    const char message_id[64],
+    uint64_t event_index,
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    size_t *out_size
+);
+
+int elpis_ecsc_processed_event_write(
+    const char receiver_entity_id[64],
+    const char message_id[64],
+    uint64_t event_index,
+    const char before_state_root[64],
+    const char after_state_root[64],
+    const char prev_event_digest[64],
+    uint8_t *out,
+    size_t out_capacity,
+    size_t *out_written,
+    char out_event_digest[65],
+    char out_intent_digest[65]
+);
+
 #ifdef __cplusplus
 }
 #endif
