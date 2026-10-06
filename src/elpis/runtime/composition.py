@@ -55,6 +55,8 @@ from elpis.structure.retrieval.objects import CorpusManifest, resolve_chunks
 from elpis.structure.retrieval.validation import validate_bundle
 from elpis.substrate.digests import raw_digest
 
+from elpis.ECS_G.k1 import K1Error
+
 from .edges import from_regex_hacf, object_claims
 from .history import HistoryError, ReceiptHistory, ReceiptRecord, RecordedReceipt
 
