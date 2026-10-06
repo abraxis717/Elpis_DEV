@@ -459,6 +459,78 @@ uint64_t elpis_ecsc_log_frame_count(
     const elpis_ecsc_log *log
 );
 
+
+/*
+ * Exact state digest for the runtime history receiver after one or more
+ * MESSAGE_PROCESSED transitions:
+ *
+ *   state_digest(entity_id, version, {"delivered": delivered})
+ */
+int elpis_ecsc_delivered_state_digest(
+    const char entity_id[64],
+    uint64_t version,
+    uint64_t delivered,
+    char out_state_digest[65]
+);
+
+typedef struct elpis_ecsc_runtime_record_plan_result {
+    uint64_t sequence;
+
+    uint64_t enqueue_event_index;
+    uint64_t processed_event_index;
+    uint64_t final_logical_clock;
+
+    uint64_t final_history_state_version;
+    uint64_t final_delivered;
+
+    size_t enqueue_event_size;
+    size_t processed_event_size;
+
+    char message_id[65];
+
+    char enqueue_state_root[65];
+    char final_state_root[65];
+
+    char enqueue_event_digest[65];
+    char processed_event_digest[65];
+
+    char final_history_state_digest[65];
+} elpis_ecsc_runtime_record_plan_result;
+
+/*
+ * Pure transition planner for one quiescent runtime-history receipt.
+ *
+ * Input authority:
+ *   - a fully validated current ecs.state_root.v3 projection;
+ *   - the current committed event digest;
+ *   - one ACTIVE recorder identity;
+ *   - the ACTIVE history receiver identity;
+ *   - canonical receipt payload bytes.
+ *
+ * Output:
+ *   MESSAGE_ENQUEUED and MESSAGE_PROCESSED canonical event bytes plus the
+ *   exact resulting state identities.
+ *
+ * This function performs NO file I/O and mutates no caller-owned projection.
+ * It is the state-transition layer later composed with elpis_ecsc_log_*.
+ */
+int elpis_ecsc_runtime_record_plan(
+    const elpis_ecsc_state_root_view *current,
+    const char current_event_digest[64],
+    const char sender_entity_id[64],
+    const char history_entity_id[64],
+    const void *receipt_payload,
+    size_t receipt_payload_size,
+
+    uint8_t *enqueue_event,
+    size_t enqueue_capacity,
+
+    uint8_t *processed_event,
+    size_t processed_capacity,
+
+    elpis_ecsc_runtime_record_plan_result *out
+);
+
 #ifdef __cplusplus
 }
 #endif

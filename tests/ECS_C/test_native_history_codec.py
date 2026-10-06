@@ -1908,3 +1908,477 @@ def test_native_log_accepts_incomplete_payload_only_as_recovery_tail(
         lib.elpis_ecsc_log_close(log)
 
     assert path.read_bytes() == b""
+
+
+class RuntimeRecordPlanResult(C.Structure):
+    _fields_ = [
+        ("sequence", C.c_uint64),
+        ("enqueue_event_index", C.c_uint64),
+        ("processed_event_index", C.c_uint64),
+        ("final_logical_clock", C.c_uint64),
+        ("final_history_state_version", C.c_uint64),
+        ("final_delivered", C.c_uint64),
+        ("enqueue_event_size", C.c_size_t),
+        ("processed_event_size", C.c_size_t),
+        ("message_id", C.c_char * 65),
+        ("enqueue_state_root", C.c_char * 65),
+        ("final_state_root", C.c_char * 65),
+        ("enqueue_event_digest", C.c_char * 65),
+        ("processed_event_digest", C.c_char * 65),
+        ("final_history_state_digest", C.c_char * 65),
+    ]
+
+
+def _bind_phase_g2a(lib):
+    lib.elpis_ecsc_delivered_state_digest.argtypes = [
+        C.c_char_p,
+        C.c_uint64,
+        C.c_uint64,
+        C.POINTER(C.c_char),
+    ]
+    lib.elpis_ecsc_delivered_state_digest.restype = C.c_int
+
+    lib.elpis_ecsc_runtime_record_plan.argtypes = [
+        C.POINTER(StateRoot),
+        C.c_char_p,
+        C.c_char_p,
+        C.c_char_p,
+        C.c_void_p,
+        C.c_size_t,
+        C.c_void_p,
+        C.c_size_t,
+        C.c_void_p,
+        C.c_size_t,
+        C.POINTER(RuntimeRecordPlanResult),
+    ]
+    lib.elpis_ecsc_runtime_record_plan.restype = C.c_int
+
+
+def _char_array_text(value):
+    return bytes(value).split(b"\x00", 1)[0].decode("ascii")
+
+
+def _state_root_ctypes_view(root):
+    keepalive = []
+
+    def keep_bytes(value, encoding="ascii"):
+        raw = value.encode(encoding)
+        keepalive.append(raw)
+        return raw
+
+    entity_values = []
+
+    for entity in root["entities"]:
+        payload = entity["payload"]
+
+        assert set(payload).issubset({"delivered"})
+
+        entity_values.append(
+            StateEntity(
+                keep_bytes(entity["registry_key"]),
+                keep_bytes(entity["entity_id"]),
+                keep_bytes(entity["label"], "utf-8"),
+                len(entity["label"].encode("utf-8")),
+                entity["founding_index"],
+                keep_bytes(entity["founding_digest"]),
+                keep_bytes(entity["state_entity_id"]),
+                keep_bytes(entity["prev_state_digest"]),
+                _LIFECYCLE_CODE[entity["lifecycle"]],
+                entity["state_version"],
+                keep_bytes(entity["state_digest"]),
+                1 if "delivered" in payload else 0,
+                payload.get("delivered", 0),
+            )
+        )
+
+    if entity_values:
+        EntityArray = StateEntity * len(entity_values)
+        entities = EntityArray(*entity_values)
+        keepalive.append(entities)
+
+        entity_ptr = C.cast(
+            entities,
+            C.POINTER(StateEntity),
+        )
+    else:
+        entity_ptr = C.POINTER(StateEntity)()
+
+    mailbox_values = []
+
+    for mailbox in root["mailboxes"]:
+        env_values = []
+
+        for env in mailbox["contents"]:
+            payload = bytes.fromhex(env["payload_hex"])
+
+            payload_buf = (
+                C.c_uint8 * len(payload)
+            ).from_buffer_copy(payload)
+
+            keepalive.append(payload_buf)
+
+            env_values.append(
+                StateEnvelope(
+                    env["logical_clock"],
+                    keep_bytes(env["message_id"]),
+                    keep_bytes(env["payload_digest"]),
+                    C.cast(payload_buf, C.c_void_p),
+                    len(payload),
+                    keep_bytes(env["receiver_entity_id"]),
+                    keep_bytes(env["sender_entity_id"]),
+                    env["sequence"],
+                )
+            )
+
+        if env_values:
+            EnvelopeArray = StateEnvelope * len(env_values)
+            envelopes = EnvelopeArray(*env_values)
+            keepalive.append(envelopes)
+
+            env_ptr = C.cast(
+                envelopes,
+                C.POINTER(StateEnvelope),
+            )
+        else:
+            env_ptr = C.POINTER(StateEnvelope)()
+
+        mailbox_values.append(
+            StateMailbox(
+                keep_bytes(mailbox["mailbox_key"]),
+                keep_bytes(mailbox["receiver_entity_id"]),
+                mailbox["capacity"],
+                env_ptr,
+                len(env_values),
+            )
+        )
+
+    if mailbox_values:
+        MailboxArray = StateMailbox * len(mailbox_values)
+        mailboxes = MailboxArray(*mailbox_values)
+        keepalive.append(mailboxes)
+
+        mailbox_ptr = C.cast(
+            mailboxes,
+            C.POINTER(StateMailbox),
+        )
+    else:
+        mailbox_ptr = C.POINTER(StateMailbox)()
+
+    watermark_values = [
+        StateWatermark(
+            keep_bytes(sender),
+            sequence,
+        )
+        for sender, sequence
+        in sorted(root["watermarks"].items())
+    ]
+
+    if watermark_values:
+        WatermarkArray = StateWatermark * len(
+            watermark_values
+        )
+
+        watermarks = WatermarkArray(
+            *watermark_values
+        )
+
+        keepalive.append(watermarks)
+
+        watermark_ptr = C.cast(
+            watermarks,
+            C.POINTER(StateWatermark),
+        )
+    else:
+        watermark_ptr = C.POINTER(StateWatermark)()
+
+    native = StateRoot(
+        keep_bytes(root["genesis_digest"]),
+        keep_bytes(root["history_digest"]),
+        root["logical_clock"],
+        root["mailbox_capacity"],
+        root["mailbox_default_capacity"],
+        root["next_founding_index"],
+        entity_ptr,
+        len(entity_values),
+        mailbox_ptr,
+        len(mailbox_values),
+        watermark_ptr,
+        len(watermark_values),
+    )
+
+    keepalive.append(native)
+
+    return native, keepalive
+
+
+def _native_runtime_record_plan(
+    lib,
+    state,
+    current_event_digest,
+    sender,
+    receiver,
+    payload,
+):
+    _bind_phase_g2a(lib)
+
+    native_root, keepalive = _state_root_ctypes_view(
+        state.state_root()
+    )
+
+    payload_buf = (
+        C.c_uint8 * len(payload)
+    ).from_buffer_copy(payload)
+
+    keepalive.append(payload_buf)
+
+    enqueue = (C.c_uint8 * 262144)()
+    processed = (C.c_uint8 * 262144)()
+
+    result = RuntimeRecordPlanResult()
+
+    rc = lib.elpis_ecsc_runtime_record_plan(
+        C.byref(native_root),
+        current_event_digest.encode("ascii"),
+        sender.encode("ascii"),
+        receiver.encode("ascii"),
+        C.cast(payload_buf, C.c_void_p),
+        len(payload),
+        C.cast(enqueue, C.c_void_p),
+        len(enqueue),
+        C.cast(processed, C.c_void_p),
+        len(processed),
+        C.byref(result),
+    )
+
+    assert rc == 0
+
+    return {
+        "sequence": result.sequence,
+        "enqueue_event_index": result.enqueue_event_index,
+        "processed_event_index": result.processed_event_index,
+        "final_logical_clock": result.final_logical_clock,
+        "final_history_state_version":
+            result.final_history_state_version,
+        "final_delivered": result.final_delivered,
+        "message_id":
+            _char_array_text(result.message_id),
+        "enqueue_state_root":
+            _char_array_text(result.enqueue_state_root),
+        "final_state_root":
+            _char_array_text(result.final_state_root),
+        "enqueue_event_digest":
+            _char_array_text(result.enqueue_event_digest),
+        "processed_event_digest":
+            _char_array_text(result.processed_event_digest),
+        "final_history_state_digest":
+            _char_array_text(
+                result.final_history_state_digest
+            ),
+        "enqueue_event":
+            bytes(enqueue[:result.enqueue_event_size]),
+        "processed_event":
+            bytes(processed[:result.processed_event_size]),
+    }
+
+
+def test_native_delivered_state_digest_matches_python(lib):
+    from elpis.ECS_C.entity import state_digest
+
+    _bind_phase_g2a(lib)
+
+    entity_id = "7" * 64
+
+    for version, delivered in (
+        (1, 1),
+        (2, 2),
+        (17, 16),
+        ((1 << 63) - 1, (1 << 63) - 1),
+    ):
+        out = (C.c_char * 65)()
+
+        assert (
+            lib.elpis_ecsc_delivered_state_digest(
+                entity_id.encode("ascii"),
+                version,
+                delivered,
+                out,
+            )
+            == 0
+        )
+
+        assert _char65_text(out) == state_digest(
+            entity_id,
+            version,
+            {"delivered": delivered},
+        )
+
+
+def test_native_runtime_record_plan_exactly_matches_python_two_event_transition(
+    lib,
+    tmp_path,
+):
+    from elpis.ECS_C import canonical
+    from elpis.ECS_C.kernel import Kernel
+    from elpis.runtime.history import (
+        HISTORY_GENESIS_LABEL,
+        ROLES,
+        ReceiptRecord,
+    )
+
+    storage = tmp_path / "record-plan"
+
+    kernel = Kernel(
+        str(storage),
+        genesis_label=HISTORY_GENESIS_LABEL,
+    )
+
+    kernel.open()
+
+    try:
+        ids = {}
+
+        for role in ROLES:
+            ids[role] = kernel.found_entity(role)
+
+        kernel.run_until_quiescent()
+
+        sender = ids["ecs_g"]
+        receiver = ids["history"]
+
+        port = kernel.entity_port(sender)
+
+        for ordinal in (1, 2):
+            record = ReceiptRecord.of(
+                "ecs_g",
+                "cognition.turn",
+                format(ordinal, "064x"),
+                epoch_before=str(ordinal - 1),
+                epoch_after=str(ordinal),
+                mechanism="native-k1",
+            )
+
+            payload = record.payload()
+
+            state_before = kernel.state
+            events_before = kernel.events()
+
+            head = events_before[-1]["event_digest"]
+
+            native = _native_runtime_record_plan(
+                lib,
+                state_before,
+                head,
+                sender,
+                receiver,
+                payload,
+            )
+
+            message_id = port.propose(
+                receiver,
+                payload,
+            )
+
+            # Exactly one queued receipt exists now.
+            enqueue_event = kernel.events()[-1]
+
+            assert kernel.step() == 1
+
+            processed_event = kernel.events()[-1]
+
+            assert kernel.step() == 0
+
+            assert native["message_id"] == message_id
+
+            assert native["sequence"] == ordinal
+
+            assert (
+                native["enqueue_event_index"]
+                == enqueue_event["event_index"]
+            )
+
+            assert (
+                native["processed_event_index"]
+                == processed_event["event_index"]
+            )
+
+            assert (
+                native["enqueue_event"]
+                == canonical.canonical_bytes(
+                    enqueue_event
+                )
+            )
+
+            assert (
+                native["processed_event"]
+                == canonical.canonical_bytes(
+                    processed_event
+                )
+            )
+
+            assert (
+                native["enqueue_event_digest"]
+                == enqueue_event["event_digest"]
+            )
+
+            assert (
+                native["processed_event_digest"]
+                == processed_event["event_digest"]
+            )
+
+            assert (
+                native["enqueue_state_root"]
+                == enqueue_event["after_state_root"]
+            )
+
+            assert (
+                native["final_state_root"]
+                == processed_event["after_state_root"]
+            )
+
+            assert (
+                native["final_state_root"]
+                == kernel.state_root_digest()
+            )
+
+            state_after = kernel.state
+
+            history = state_after.registry.get(
+                receiver
+            )
+
+            assert (
+                native["final_logical_clock"]
+                == state_after.logical_clock
+            )
+
+            assert (
+                native["final_history_state_version"]
+                == history.state.version
+            )
+
+            assert (
+                native["final_history_state_digest"]
+                == history.state.state_digest
+            )
+
+            assert history.state.payload == {
+                "delivered": ordinal
+            }
+
+            assert (
+                native["final_delivered"]
+                == ordinal
+            )
+
+            assert (
+                state_after.watermarks.get(sender)
+                == ordinal
+            )
+
+            assert (
+                state_after.mailboxes.box(receiver).peek()
+                is None
+            )
+
+    finally:
+        kernel.close()

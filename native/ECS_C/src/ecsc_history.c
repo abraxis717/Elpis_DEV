@@ -3118,3 +3118,781 @@ int elpis_ecsc_state_root_digest(
         out_digest
     );
 }
+
+int elpis_ecsc_delivered_state_digest(
+    const char entity_id[64],
+    uint64_t version,
+    uint64_t delivered,
+    char out_state_digest[65]
+)
+{
+    event_sink sink;
+    elpis_sha256_ctx hash;
+    int rc;
+
+    if (out_state_digest == NULL ||
+        !is_digest(entity_id, 64u) ||
+        version == 0u ||
+        version > ELPIS_ECSC_MAX_INT ||
+        delivered == 0u ||
+        delivered > ELPIS_ECSC_MAX_INT) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    out_state_digest[0] = '\0';
+
+    elpis_sha256_init(&hash);
+
+    sink.out = NULL;
+    sink.cap = 0u;
+    sink.pos = 0u;
+    sink.hash = &hash;
+
+    /*
+     * domain_digest(
+     *   "ecs.entity.state.v1",
+     *   {
+     *     "entity_id": ...,
+     *     "payload": {"delivered": N},
+     *     "schema": "ecs.entity.state.v1",
+     *     "version": V
+     *   }
+     * )
+     */
+    rc = es_literal(
+        &sink,
+        "{\"domain\":\"ecs.entity.state.v1\","
+        "\"payload\":{\"entity_id\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        &sink,
+        entity_id,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        &sink,
+        "\",\"payload\":{\"delivered\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(
+        &sink,
+        delivered
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        &sink,
+        "},\"schema\":\"ecs.entity.state.v1\","
+        "\"version\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(
+        &sink,
+        version
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        &sink,
+        "}}"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    return finish_stream_digest(
+        &hash,
+        out_state_digest
+    );
+}
+
+static int runtime_find_entity(
+    const elpis_ecsc_state_root_view *root,
+    const char entity_id[64],
+    size_t *out_index
+)
+{
+    size_t i;
+
+    if (root == NULL ||
+        entity_id == NULL ||
+        out_index == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    for (i = 0u; i < root->entity_count; ++i) {
+        if (memcmp(
+                root->entities[i].entity_id,
+                entity_id,
+                64u
+            ) == 0) {
+            *out_index = i;
+            return ELPIS_ECSC_OK;
+        }
+    }
+
+    return ELPIS_ECSC_INVALID;
+}
+
+static int runtime_copy_entities(
+    const elpis_ecsc_state_root_view *root,
+    elpis_ecsc_state_entity_view *out
+)
+{
+    if (root == NULL ||
+        (root->entity_count != 0u &&
+         out == NULL)) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    if (root->entity_count != 0u) {
+        memcpy(
+            out,
+            root->entities,
+            root->entity_count * sizeof *out
+        );
+    }
+
+    return ELPIS_ECSC_OK;
+}
+
+static int runtime_prepare_mailboxes(
+    const elpis_ecsc_state_root_view *current,
+    const char history_entity_id[64],
+    const elpis_ecsc_state_envelope_view *envelope,
+    int queued,
+    elpis_ecsc_state_mailbox_view out[1],
+    size_t *out_count
+)
+{
+    uint64_t capacity;
+
+    if (current == NULL ||
+        history_entity_id == NULL ||
+        out == NULL ||
+        out_count == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    /*
+     * Runtime ReceiptHistory owns exactly one possible mailbox: history.
+     * Before the first record it does not yet exist. Once created it remains
+     * materialized and empty between records.
+     */
+    if (current->mailbox_count > 1u) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    if (current->mailbox_count == 1u) {
+        const elpis_ecsc_state_mailbox_view *existing =
+            &current->mailboxes[0];
+
+        if (memcmp(
+                existing->mailbox_key,
+                history_entity_id,
+                64u
+            ) != 0 ||
+            memcmp(
+                existing->receiver_entity_id,
+                history_entity_id,
+                64u
+            ) != 0 ||
+            existing->content_count != 0u) {
+            return ELPIS_ECSC_INVALID;
+        }
+
+        capacity = existing->capacity;
+    } else {
+        capacity = current->mailbox_capacity;
+    }
+
+    out[0].mailbox_key = history_entity_id;
+    out[0].receiver_entity_id = history_entity_id;
+    out[0].capacity = capacity;
+
+    if (queued) {
+        if (envelope == NULL) {
+            return ELPIS_ECSC_INVALID;
+        }
+
+        out[0].contents = envelope;
+        out[0].content_count = 1u;
+    } else {
+        out[0].contents = NULL;
+        out[0].content_count = 0u;
+    }
+
+    *out_count = 1u;
+    return ELPIS_ECSC_OK;
+}
+
+static int runtime_prepare_watermarks(
+    const elpis_ecsc_state_root_view *current,
+    const char sender_entity_id[64],
+    elpis_ecsc_state_watermark_view out[
+        ELPIS_ECSC_RUNTIME_MAX_WATERMARKS
+    ],
+    size_t *out_count,
+    uint64_t *out_sequence
+)
+{
+    size_t i;
+    size_t insert_at = 0u;
+    int found = 0;
+    uint64_t previous = 0u;
+
+    if (current == NULL ||
+        sender_entity_id == NULL ||
+        out == NULL ||
+        out_count == NULL ||
+        out_sequence == NULL ||
+        current->watermark_count >=
+            ELPIS_ECSC_RUNTIME_MAX_WATERMARKS) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    for (i = 0u; i < current->watermark_count; ++i) {
+        int cmp = memcmp(
+            current->watermarks[i].sender_entity_id,
+            sender_entity_id,
+            64u
+        );
+
+        if (cmp < 0) {
+            insert_at = i + 1u;
+        } else if (cmp == 0) {
+            found = 1;
+            insert_at = i;
+            previous =
+                current->watermarks[i].sequence;
+            break;
+        } else {
+            break;
+        }
+    }
+
+    if (previous >= ELPIS_ECSC_MAX_INT) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    *out_sequence = previous + 1u;
+
+    if (found) {
+        memcpy(
+            out,
+            current->watermarks,
+            current->watermark_count *
+                sizeof *out
+        );
+
+        out[insert_at].sender_entity_id =
+            sender_entity_id;
+
+        out[insert_at].sequence =
+            *out_sequence;
+
+        *out_count =
+            current->watermark_count;
+
+        return ELPIS_ECSC_OK;
+    }
+
+    if (insert_at != 0u) {
+        memcpy(
+            out,
+            current->watermarks,
+            insert_at * sizeof *out
+        );
+    }
+
+    out[insert_at].sender_entity_id =
+        sender_entity_id;
+
+    out[insert_at].sequence =
+        *out_sequence;
+
+    if (insert_at < current->watermark_count) {
+        memcpy(
+            out + insert_at + 1u,
+            current->watermarks + insert_at,
+            (current->watermark_count - insert_at) *
+                sizeof *out
+        );
+    }
+
+    *out_count =
+        current->watermark_count + 1u;
+
+    return ELPIS_ECSC_OK;
+}
+
+static const char ELPIS_ECSC_ZERO_DIGEST[65] =
+    "00000000000000000000000000000000"
+    "00000000000000000000000000000000";
+
+int elpis_ecsc_runtime_record_plan(
+    const elpis_ecsc_state_root_view *current,
+    const char current_event_digest[64],
+    const char sender_entity_id[64],
+    const char history_entity_id[64],
+    const void *receipt_payload,
+    size_t receipt_payload_size,
+
+    uint8_t *enqueue_event,
+    size_t enqueue_capacity,
+
+    uint8_t *processed_event,
+    size_t processed_capacity,
+
+    elpis_ecsc_runtime_record_plan_result *out
+)
+{
+    elpis_ecsc_state_entity_view entities[
+        ELPIS_ECSC_RUNTIME_MAX_ENTITIES
+    ];
+
+    elpis_ecsc_state_mailbox_view mailboxes[1];
+
+    elpis_ecsc_state_watermark_view watermarks[
+        ELPIS_ECSC_RUNTIME_MAX_WATERMARKS
+    ];
+
+    elpis_ecsc_state_envelope_view envelope;
+
+    elpis_ecsc_state_root_view enqueue_root;
+    elpis_ecsc_state_root_view processed_root;
+
+    size_t sender_index;
+    size_t history_index;
+    size_t mailbox_count = 0u;
+    size_t watermark_count = 0u;
+
+    uint64_t sequence;
+    uint64_t delivered_before;
+    uint64_t delivered_after;
+    uint64_t next_version;
+
+    char before_root[65];
+    char payload_digest[65];
+    char message_id[65];
+    char writer_message_id[65];
+
+    char enqueue_intent[65];
+    char enqueue_digest[65];
+    char enqueue_after_root[65];
+
+    char processed_intent[65];
+    char processed_digest[65];
+    char processed_after_root[65];
+
+    char history_prev_digest[65];
+    char history_next_digest[65];
+
+    size_t enqueue_written = 0u;
+    size_t processed_written = 0u;
+
+    int rc;
+
+    if (out == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    memset(out, 0, sizeof *out);
+
+    if (current == NULL ||
+        !is_digest(current_event_digest, 64u) ||
+        !is_digest(sender_entity_id, 64u) ||
+        !is_digest(history_entity_id, 64u) ||
+        receipt_payload == NULL ||
+        receipt_payload_size == 0u ||
+        receipt_payload_size >
+            ELPIS_ECSC_MAX_PAYLOAD_BYTES ||
+        enqueue_event == NULL ||
+        processed_event == NULL ||
+        current->entity_count == 0u ||
+        current->entity_count >
+            ELPIS_ECSC_RUNTIME_MAX_ENTITIES ||
+        current->logical_clock >
+            ELPIS_ECSC_MAX_INT - 2u) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    rc = validate_state_root_view(current);
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = runtime_find_entity(
+        current,
+        sender_entity_id,
+        &sender_index
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = runtime_find_entity(
+        current,
+        history_entity_id,
+        &history_index
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    if (sender_index == history_index ||
+        current->entities[sender_index].lifecycle !=
+            ELPIS_ECSC_LIFECYCLE_ACTIVE ||
+        current->entities[history_index].lifecycle !=
+            ELPIS_ECSC_LIFECYCLE_ACTIVE) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    rc = elpis_ecsc_state_root_digest(
+        current,
+        before_root
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = runtime_prepare_watermarks(
+        current,
+        sender_entity_id,
+        watermarks,
+        &watermark_count,
+        &sequence
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = elpis_ecsc_message_id(
+        sender_entity_id,
+        history_entity_id,
+        sequence,
+        receipt_payload,
+        receipt_payload_size,
+        message_id,
+        payload_digest
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    memset(&envelope, 0, sizeof envelope);
+
+    envelope.logical_clock =
+        current->logical_clock + 1u;
+
+    envelope.message_id = message_id;
+    envelope.payload_digest = payload_digest;
+    envelope.payload = receipt_payload;
+    envelope.payload_size = receipt_payload_size;
+    envelope.receiver_entity_id =
+        history_entity_id;
+    envelope.sender_entity_id =
+        sender_entity_id;
+    envelope.sequence = sequence;
+
+    rc = runtime_prepare_mailboxes(
+        current,
+        history_entity_id,
+        &envelope,
+        1,
+        mailboxes,
+        &mailbox_count
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    /*
+     * First obtain the enqueue intent digest. after_state_root is excluded
+     * from event-intent identity, so the zero sentinel is sufficient here.
+     */
+    rc = elpis_ecsc_enqueue_event_write(
+        sender_entity_id,
+        history_entity_id,
+        sequence,
+        receipt_payload,
+        receipt_payload_size,
+        current->logical_clock,
+        before_root,
+        ELPIS_ECSC_ZERO_DIGEST,
+        current_event_digest,
+        enqueue_event,
+        enqueue_capacity,
+        &enqueue_written,
+        enqueue_digest,
+        enqueue_intent,
+        writer_message_id
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    if (memcmp(
+            writer_message_id,
+            message_id,
+            64u
+        ) != 0) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    enqueue_root = *current;
+    enqueue_root.logical_clock =
+        current->logical_clock + 1u;
+    enqueue_root.history_digest =
+        enqueue_intent;
+    enqueue_root.mailboxes =
+        mailboxes;
+    enqueue_root.mailbox_count =
+        mailbox_count;
+    enqueue_root.watermarks =
+        watermarks;
+    enqueue_root.watermark_count =
+        watermark_count;
+
+    rc = elpis_ecsc_state_root_digest(
+        &enqueue_root,
+        enqueue_after_root
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    /*
+     * Rebuild the final canonical enqueue event now that its after-root is
+     * known.
+     */
+    rc = elpis_ecsc_enqueue_event_write(
+        sender_entity_id,
+        history_entity_id,
+        sequence,
+        receipt_payload,
+        receipt_payload_size,
+        current->logical_clock,
+        before_root,
+        enqueue_after_root,
+        current_event_digest,
+        enqueue_event,
+        enqueue_capacity,
+        &enqueue_written,
+        enqueue_digest,
+        enqueue_intent,
+        writer_message_id
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    if (memcmp(
+            writer_message_id,
+            message_id,
+            64u
+        ) != 0) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    /*
+     * Prepare the processed projection:
+     * - history mailbox remains materialized but becomes empty;
+     * - watermark remains advanced;
+     * - receiver state version/delivery counter advances once.
+     */
+    rc = runtime_copy_entities(
+        current,
+        entities
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    if (entities[history_index].has_delivered != 0u) {
+        delivered_before =
+            entities[history_index].delivered;
+    } else {
+        delivered_before = 0u;
+    }
+
+    if (delivered_before >= ELPIS_ECSC_MAX_INT ||
+        entities[history_index].state_version >=
+            ELPIS_ECSC_MAX_INT) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    delivered_after =
+        delivered_before + 1u;
+
+    next_version =
+        entities[history_index].state_version + 1u;
+
+    memcpy(
+        history_prev_digest,
+        entities[history_index].state_digest,
+        64u
+    );
+    history_prev_digest[64] = '\0';
+
+    rc = elpis_ecsc_delivered_state_digest(
+        history_entity_id,
+        next_version,
+        delivered_after,
+        history_next_digest
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    entities[history_index].prev_state_digest =
+        history_prev_digest;
+
+    entities[history_index].state_version =
+        next_version;
+
+    entities[history_index].state_digest =
+        history_next_digest;
+
+    entities[history_index].has_delivered = 1u;
+    entities[history_index].delivered =
+        delivered_after;
+
+    rc = runtime_prepare_mailboxes(
+        current,
+        history_entity_id,
+        NULL,
+        0,
+        mailboxes,
+        &mailbox_count
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    /*
+     * Obtain processed intent first, again with zero after-root.
+     */
+    rc = elpis_ecsc_processed_event_write(
+        history_entity_id,
+        message_id,
+        current->logical_clock + 1u,
+        enqueue_after_root,
+        ELPIS_ECSC_ZERO_DIGEST,
+        enqueue_digest,
+        processed_event,
+        processed_capacity,
+        &processed_written,
+        processed_digest,
+        processed_intent
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    processed_root = *current;
+    processed_root.logical_clock =
+        current->logical_clock + 2u;
+    processed_root.history_digest =
+        processed_intent;
+    processed_root.entities =
+        entities;
+    processed_root.mailboxes =
+        mailboxes;
+    processed_root.mailbox_count =
+        mailbox_count;
+    processed_root.watermarks =
+        watermarks;
+    processed_root.watermark_count =
+        watermark_count;
+
+    rc = elpis_ecsc_state_root_digest(
+        &processed_root,
+        processed_after_root
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = elpis_ecsc_processed_event_write(
+        history_entity_id,
+        message_id,
+        current->logical_clock + 1u,
+        enqueue_after_root,
+        processed_after_root,
+        enqueue_digest,
+        processed_event,
+        processed_capacity,
+        &processed_written,
+        processed_digest,
+        processed_intent
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    out->sequence = sequence;
+
+    out->enqueue_event_index =
+        current->logical_clock;
+
+    out->processed_event_index =
+        current->logical_clock + 1u;
+
+    out->final_logical_clock =
+        current->logical_clock + 2u;
+
+    out->final_history_state_version =
+        next_version;
+
+    out->final_delivered =
+        delivered_after;
+
+    out->enqueue_event_size =
+        enqueue_written;
+
+    out->processed_event_size =
+        processed_written;
+
+    memcpy(
+        out->message_id,
+        message_id,
+        65u
+    );
+
+    memcpy(
+        out->enqueue_state_root,
+        enqueue_after_root,
+        65u
+    );
+
+    memcpy(
+        out->final_state_root,
+        processed_after_root,
+        65u
+    );
+
+    memcpy(
+        out->enqueue_event_digest,
+        enqueue_digest,
+        65u
+    );
+
+    memcpy(
+        out->processed_event_digest,
+        processed_digest,
+        65u
+    );
+
+    memcpy(
+        out->final_history_state_digest,
+        history_next_digest,
+        65u
+    );
+
+    return ELPIS_ECSC_OK;
+}
