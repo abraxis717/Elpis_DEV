@@ -232,3 +232,180 @@ def test_receipt_history_without_native_library_is_replay_only(
 
     finally:
         replay.close()
+
+
+
+def _enqueue_only_prefix(storage: Path, record: ReceiptRecord):
+    history = ReceiptHistory(storage).open()
+    try:
+        before = tuple(history._kernel.events())
+
+        message_id = history._ports[record.subsystem].propose(
+            history.history_entity,
+            record.payload(),
+        )
+
+        after = tuple(history._kernel.events())
+
+        assert len(after) == len(before) + 1
+        assert after[:-1] == before
+        assert after[-1]["event_kind"] == "MESSAGE_ENQUEUED"
+
+        return message_id, len(after)
+    finally:
+        history.close()
+
+
+def test_native_writer_reopen_completes_enqueue_only_prefix(tmp_path):
+    storage = tmp_path / "partial-prefix"
+    record = _record(41)
+
+    message_id, prefix_count = _enqueue_only_prefix(
+        storage,
+        record,
+    )
+
+    writer = ReceiptHistory(
+        storage,
+        native_library=_native_library(),
+    ).open()
+
+    try:
+        assert writer._native is not None
+        assert not writer._ports
+
+        matching = [
+            item
+            for item in writer.records()
+            if item.record == record
+        ]
+
+        assert len(matching) == 1
+        assert matching[0].message_id == message_id
+    finally:
+        writer.close()
+
+    replay = ReceiptHistory(storage).open()
+    try:
+        events = tuple(replay._kernel.events())
+
+        assert len(events) == prefix_count + 1
+        assert events[-2]["event_kind"] == "MESSAGE_ENQUEUED"
+        assert events[-1]["event_kind"] == "MESSAGE_PROCESSED"
+
+        matching = [
+            item
+            for item in replay.records()
+            if item.record == record
+        ]
+        assert len(matching) == 1
+        assert matching[0].message_id == message_id
+    finally:
+        replay.close()
+
+
+def test_native_writer_reopen_recovery_is_idempotent(tmp_path):
+    storage = tmp_path / "partial-prefix-idempotent"
+    record = _record(42)
+
+    _, prefix_count = _enqueue_only_prefix(
+        storage,
+        record,
+    )
+
+    first = ReceiptHistory(
+        storage,
+        native_library=_native_library(),
+    ).open()
+    first.close()
+
+    replay = ReceiptHistory(storage).open()
+    try:
+        recovered_count = len(replay._kernel.events())
+    finally:
+        replay.close()
+
+    assert recovered_count == prefix_count + 1
+
+    second = ReceiptHistory(
+        storage,
+        native_library=_native_library(),
+    ).open()
+    second.close()
+
+    replay = ReceiptHistory(storage).open()
+    try:
+        events = tuple(replay._kernel.events())
+
+        assert len(events) == recovered_count
+        assert events[-1]["event_kind"] == "MESSAGE_PROCESSED"
+        assert len([
+            item
+            for item in replay.records()
+            if item.record == record
+        ]) == 1
+    finally:
+        replay.close()
+
+
+def test_replay_only_history_never_runs_nonquiescent_recovery(tmp_path, monkeypatch):
+    storage = tmp_path / "partial-prefix-replay-only"
+    record = _record(43)
+
+    _, prefix_count = _enqueue_only_prefix(
+        storage,
+        record,
+    )
+
+    from elpis.ECS_C.kernel import Kernel
+
+    calls = []
+    original = Kernel.run_until_quiescent
+
+    def observed(self, *args, **kwargs):
+        calls.append(self)
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(
+        Kernel,
+        "run_until_quiescent",
+        observed,
+    )
+
+    replay = ReceiptHistory(storage).open()
+    try:
+        events = tuple(replay._kernel.events())
+
+        assert len(events) == prefix_count
+        assert events[-1]["event_kind"] == "MESSAGE_ENQUEUED"
+        assert calls == []
+    finally:
+        replay.close()
+
+
+def test_native_hot_record_path_still_does_not_use_python_scheduler(
+    tmp_path,
+    monkeypatch,
+):
+    storage = tmp_path / "hot-path-remains-native"
+
+    history = ReceiptHistory(
+        storage,
+        native_library=_native_library(),
+    ).open()
+
+    try:
+        def forbidden(*_args, **_kwargs):
+            raise AssertionError("PYTHON_SCHEDULER_USED_ON_NATIVE_HOT_PATH")
+
+        monkeypatch.setattr(
+            history._kernel,
+            "run_until_quiescent",
+            forbidden,
+        )
+
+        one = history.record(_record(44))
+
+        assert one.record == _record(44)
+    finally:
+        history.close()

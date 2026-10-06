@@ -161,6 +161,43 @@ class ReceiptHistory:
         )
         self._native: NativeHistorySession | None = None
 
+    def _recover_native_nonquiescent_prefix(self, kernel) -> bool:
+        if self._native_library is None:
+            return False
+
+        before = tuple(kernel.events())
+
+        if not before or before[-1]["event_kind"] != "MESSAGE_ENQUEUED":
+            return False
+
+        if len(before) >= 2 and before[-2]["event_kind"] == "MESSAGE_ENQUEUED":
+            raise HistoryError(
+                "NATIVE_HISTORY_RECOVERY",
+                "multiple unresolved enqueue events are outside the runtime recovery contract",
+            )
+
+        try:
+            kernel.run_until_quiescent()
+        except Exception as exc:
+            raise HistoryError(
+                "NATIVE_HISTORY_RECOVERY",
+                str(exc),
+            ) from exc
+
+        after = tuple(kernel.events())
+
+        if (
+            len(after) != len(before) + 1
+            or after[:len(before)] != before
+            or after[-1]["event_kind"] != "MESSAGE_PROCESSED"
+        ):
+            raise HistoryError(
+                "NATIVE_HISTORY_RECOVERY",
+                "canonical replay did not resolve exactly one enqueue-only prefix",
+            )
+
+        return True
+
     def _native_handoff(self) -> None:
         if self._native_library is None:
             return
@@ -313,6 +350,13 @@ class ReceiptHistory:
                 role: kernel.entity_port(self._ids[role])
                 for role in RECORDERS
             }
+
+            # Explicit native-writer reopen may encounter the exact
+            # enqueue-only durable prefix left by PARTIAL_COMMIT or a
+            # resolved APPEND_UNCERTAIN outcome. Canonical Python replay
+            # finishes that already-durable message before writer handoff.
+            self._recover_native_nonquiescent_prefix(kernel)
+
             self._records = self._read_records()
             self._record_index = {
                 item.record: item
