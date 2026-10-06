@@ -1045,3 +1045,539 @@ def test_native_runtime_role_identity_set_matches_python(
 
     assert native == python
     assert len(set(native)) == len(roles)
+
+
+class StateEntity(C.Structure):
+    _fields_ = [
+        ("registry_key", C.c_char_p),
+        ("entity_id", C.c_char_p),
+        ("label", C.c_char_p),
+        ("label_len", C.c_size_t),
+        ("founding_index", C.c_uint64),
+        ("founding_digest", C.c_char_p),
+        ("state_entity_id", C.c_char_p),
+        ("prev_state_digest", C.c_char_p),
+        ("lifecycle", C.c_uint32),
+        ("state_version", C.c_uint64),
+        ("state_digest", C.c_char_p),
+        ("has_delivered", C.c_uint32),
+        ("delivered", C.c_uint64),
+    ]
+
+
+class StateEnvelope(C.Structure):
+    _fields_ = [
+        ("logical_clock", C.c_uint64),
+        ("message_id", C.c_char_p),
+        ("payload_digest", C.c_char_p),
+        ("payload", C.c_void_p),
+        ("payload_size", C.c_size_t),
+        ("receiver_entity_id", C.c_char_p),
+        ("sender_entity_id", C.c_char_p),
+        ("sequence", C.c_uint64),
+    ]
+
+
+class StateMailbox(C.Structure):
+    _fields_ = [
+        ("mailbox_key", C.c_char_p),
+        ("receiver_entity_id", C.c_char_p),
+        ("capacity", C.c_uint64),
+        ("contents", C.POINTER(StateEnvelope)),
+        ("content_count", C.c_size_t),
+    ]
+
+
+class StateWatermark(C.Structure):
+    _fields_ = [
+        ("sender_entity_id", C.c_char_p),
+        ("sequence", C.c_uint64),
+    ]
+
+
+class StateRoot(C.Structure):
+    _fields_ = [
+        ("genesis_digest", C.c_char_p),
+        ("history_digest", C.c_char_p),
+        ("logical_clock", C.c_uint64),
+        ("mailbox_capacity", C.c_uint64),
+        ("mailbox_default_capacity", C.c_uint64),
+        ("next_founding_index", C.c_uint64),
+        ("entities", C.POINTER(StateEntity)),
+        ("entity_count", C.c_size_t),
+        ("mailboxes", C.POINTER(StateMailbox)),
+        ("mailbox_count", C.c_size_t),
+        ("watermarks", C.POINTER(StateWatermark)),
+        ("watermark_count", C.c_size_t),
+    ]
+
+
+_LIFECYCLE_CODE = {
+    "FOUNDED": 1,
+    "ACTIVE": 2,
+    "DORMANT": 3,
+    "TERMINATED": 4,
+}
+
+
+def _bind_phase_e(lib):
+    lib.elpis_ecsc_state_root_digest.argtypes = [
+        C.POINTER(StateRoot),
+        C.POINTER(C.c_char),
+    ]
+    lib.elpis_ecsc_state_root_digest.restype = C.c_int
+
+
+def _native_root_from_python_root(lib, root):
+    _bind_phase_e(lib)
+
+    keepalive = []
+
+    def keep_bytes(value, encoding="ascii"):
+        raw = value.encode(encoding)
+        keepalive.append(raw)
+        return raw
+
+    entity_values = []
+
+    for entity in root["entities"]:
+        payload = entity["payload"]
+
+        assert set(payload).issubset({"delivered"})
+
+        entity_values.append(
+            StateEntity(
+                keep_bytes(entity["registry_key"]),
+                keep_bytes(entity["entity_id"]),
+                keep_bytes(entity["label"], "utf-8"),
+                len(entity["label"].encode("utf-8")),
+                entity["founding_index"],
+                keep_bytes(entity["founding_digest"]),
+                keep_bytes(entity["state_entity_id"]),
+                keep_bytes(entity["prev_state_digest"]),
+                _LIFECYCLE_CODE[entity["lifecycle"]],
+                entity["state_version"],
+                keep_bytes(entity["state_digest"]),
+                1 if "delivered" in payload else 0,
+                payload.get("delivered", 0),
+            )
+        )
+
+    if entity_values:
+        EntityArray = StateEntity * len(entity_values)
+        entities = EntityArray(*entity_values)
+        keepalive.append(entities)
+        entity_ptr = C.cast(
+            entities,
+            C.POINTER(StateEntity),
+        )
+    else:
+        entity_ptr = C.POINTER(StateEntity)()
+
+    mailbox_values = []
+
+    for mailbox in root["mailboxes"]:
+        env_values = []
+
+        for env in mailbox["contents"]:
+            payload = bytes.fromhex(env["payload_hex"])
+            payload_buf = (
+                C.c_uint8 * len(payload)
+            ).from_buffer_copy(payload)
+
+            keepalive.append(payload_buf)
+
+            env_values.append(
+                StateEnvelope(
+                    env["logical_clock"],
+                    keep_bytes(env["message_id"]),
+                    keep_bytes(env["payload_digest"]),
+                    C.cast(payload_buf, C.c_void_p),
+                    len(payload),
+                    keep_bytes(
+                        env["receiver_entity_id"]
+                    ),
+                    keep_bytes(
+                        env["sender_entity_id"]
+                    ),
+                    env["sequence"],
+                )
+            )
+
+        if env_values:
+            EnvelopeArray = (
+                StateEnvelope * len(env_values)
+            )
+            envelopes = EnvelopeArray(*env_values)
+            keepalive.append(envelopes)
+
+            env_ptr = C.cast(
+                envelopes,
+                C.POINTER(StateEnvelope),
+            )
+        else:
+            env_ptr = C.POINTER(StateEnvelope)()
+
+        mailbox_values.append(
+            StateMailbox(
+                keep_bytes(mailbox["mailbox_key"]),
+                keep_bytes(
+                    mailbox["receiver_entity_id"]
+                ),
+                mailbox["capacity"],
+                env_ptr,
+                len(env_values),
+            )
+        )
+
+    if mailbox_values:
+        MailboxArray = StateMailbox * len(
+            mailbox_values
+        )
+        mailboxes = MailboxArray(*mailbox_values)
+        keepalive.append(mailboxes)
+
+        mailbox_ptr = C.cast(
+            mailboxes,
+            C.POINTER(StateMailbox),
+        )
+    else:
+        mailbox_ptr = C.POINTER(StateMailbox)()
+
+    watermark_values = [
+        StateWatermark(
+            keep_bytes(sender),
+            sequence,
+        )
+        for sender, sequence
+        in sorted(root["watermarks"].items())
+    ]
+
+    if watermark_values:
+        WatermarkArray = StateWatermark * len(
+            watermark_values
+        )
+        watermarks = WatermarkArray(
+            *watermark_values
+        )
+        keepalive.append(watermarks)
+
+        watermark_ptr = C.cast(
+            watermarks,
+            C.POINTER(StateWatermark),
+        )
+    else:
+        watermark_ptr = (
+            C.POINTER(StateWatermark)()
+        )
+
+    native_root = StateRoot(
+        keep_bytes(root["genesis_digest"]),
+        keep_bytes(root["history_digest"]),
+        root["logical_clock"],
+        root["mailbox_capacity"],
+        root["mailbox_default_capacity"],
+        root["next_founding_index"],
+        entity_ptr,
+        len(entity_values),
+        mailbox_ptr,
+        len(mailbox_values),
+        watermark_ptr,
+        len(watermark_values),
+    )
+
+    out = (C.c_char * 65)()
+
+    rc = lib.elpis_ecsc_state_root_digest(
+        C.byref(native_root),
+        out,
+    )
+
+    assert rc == 0
+
+    return _char65_text(out)
+
+
+def _assert_native_root_matches(lib, state):
+    from elpis.ECS_C.persistence import (
+        state_root_digest,
+    )
+
+    root = state.state_root()
+
+    assert (
+        _native_root_from_python_root(
+            lib,
+            root,
+        )
+        == state_root_digest(root)
+    )
+
+
+def test_native_state_root_matches_empty_v2_state(
+    lib,
+):
+    from elpis.ECS_C.persistence import (
+        genesis_descriptor_digest,
+    )
+    from elpis.ECS_C.replay import initial_state
+    from elpis.ECS_C.scheduler import SCHEDULER_V2
+
+    genesis = genesis_descriptor_digest(
+        "elpis.runtime.history.v1",
+        SCHEDULER_V2,
+    )
+
+    state = initial_state(
+        genesis,
+        mailbox_capacity=16,
+        scheduler_protocol=SCHEDULER_V2,
+    )
+
+    _assert_native_root_matches(
+        lib,
+        state,
+    )
+
+
+def test_native_state_root_matches_runtime_history_evolution(
+    lib,
+    tmp_path,
+):
+    from elpis.ECS_C.kernel import Kernel
+    from elpis.runtime.history import (
+        HISTORY_GENESIS_LABEL,
+        ROLES,
+        ReceiptRecord,
+    )
+
+    storage = (
+        tmp_path /
+        "native-state-root-differential"
+    )
+
+    kernel = Kernel(
+        str(storage),
+        genesis_label=HISTORY_GENESIS_LABEL,
+    )
+
+    kernel.open()
+
+    try:
+        # Empty v2 history.
+        _assert_native_root_matches(
+            lib,
+            kernel.state,
+        )
+
+        # Existing five-role runtime authority.
+        ids = {}
+
+        for role in ROLES:
+            ids[role] = kernel.found_entity(role)
+
+        kernel.run_until_quiescent()
+
+        _assert_native_root_matches(
+            lib,
+            kernel.state,
+        )
+
+        # Exact deterministic legacy extension shape:
+        # append one normal ECS founding transition for ecs_g,
+        # then its normal activation transition.
+        ids["ecs_g"] = kernel.found_entity("ecs_g")
+
+        _assert_native_root_matches(
+            lib,
+            kernel.state,
+        )
+
+        kernel.run_until_quiescent()
+
+        _assert_native_root_matches(
+            lib,
+            kernel.state,
+        )
+
+        # Runtime receipt payload is legal protocol bytes even though
+        # ReceiptRecord cannot yet admit ecs_g as a recorder.
+        receipt_payload = (
+            b'{"bindings":{"epoch_after":"1"},'
+            b'"digest":"'
+            + b"a" * 64
+            + b'","kind":"cognition.turn",'
+            b'"schema":"elpis.runtime.receipt-record.v1",'
+            b'"subsystem":"ecs_g"}'
+        )
+
+        port = kernel.entity_port(
+            ids["ecs_g"]
+        )
+
+        message_id = port.propose(
+            ids["history"],
+            receipt_payload,
+        )
+
+        assert len(message_id) == 64
+
+        # MESSAGE_ENQUEUED:
+        # watermark + one queued envelope.
+        _assert_native_root_matches(
+            lib,
+            kernel.state,
+        )
+
+        # MESSAGE_PROCESSED:
+        # queue remains materialized but empty;
+        # history state gains delivered=1.
+        assert kernel.step() == 1
+
+        _assert_native_root_matches(
+            lib,
+            kernel.state,
+        )
+
+        state = kernel.state
+
+        history = state.registry.get(
+            ids["history"]
+        )
+
+        assert history.state.payload == {
+            "delivered": 1
+        }
+
+        assert (
+            state.watermarks.get(ids["ecs_g"])
+            == 1
+        )
+
+        assert (
+            state.mailboxes.box(
+                ids["history"]
+            ).peek()
+            is None
+        )
+
+    finally:
+        kernel.close()
+
+
+def test_native_state_root_rejects_reordered_projection(
+    lib,
+):
+    from elpis.ECS_C.persistence import (
+        genesis_descriptor_digest,
+    )
+    from elpis.ECS_C.replay import initial_state
+    from elpis.ECS_C.scheduler import SCHEDULER_V2
+
+    _bind_phase_e(lib)
+
+    genesis = genesis_descriptor_digest(
+        "elpis.runtime.history.v1",
+        SCHEDULER_V2,
+    )
+
+    state = initial_state(
+        genesis,
+        scheduler_protocol=SCHEDULER_V2,
+    )
+
+    root = state.state_root()
+
+    # Empty projection has no reorder surface. Add explicit
+    # fake structurally-valid entities and deliberately reverse
+    # their registry-key order.
+    ids = [
+        "1" * 64,
+        "2" * 64,
+    ]
+
+    entities = []
+
+    for index, entity_id in enumerate(ids):
+        entities.append(
+            {
+                "registry_key": entity_id,
+                "entity_id": entity_id,
+                "label": f"r{index}",
+                "founding_index": index,
+                "founding_digest": entity_id,
+                "state_entity_id": entity_id,
+                "prev_state_digest": "0" * 64,
+                "lifecycle": "ACTIVE",
+                "state_version": 1,
+                "state_digest": (
+                    "a" if index == 0 else "b"
+                ) * 64,
+                "payload": {},
+            }
+        )
+
+    root["entities"] = list(
+        reversed(entities)
+    )
+    root["next_founding_index"] = 2
+
+    keepalive = []
+
+    def kb(value):
+        raw = value.encode("ascii")
+        keepalive.append(raw)
+        return raw
+
+    values = []
+
+    for entity in root["entities"]:
+        values.append(
+            StateEntity(
+                kb(entity["registry_key"]),
+                kb(entity["entity_id"]),
+                kb(entity["label"]),
+                len(entity["label"]),
+                entity["founding_index"],
+                kb(entity["founding_digest"]),
+                kb(entity["state_entity_id"]),
+                kb(entity["prev_state_digest"]),
+                2,
+                entity["state_version"],
+                kb(entity["state_digest"]),
+                0,
+                0,
+            )
+        )
+
+    Array = StateEntity * 2
+    array = Array(*values)
+    keepalive.append(array)
+
+    native_root = StateRoot(
+        kb(root["genesis_digest"]),
+        kb(root["history_digest"]),
+        root["logical_clock"],
+        root["mailbox_capacity"],
+        root["mailbox_default_capacity"],
+        root["next_founding_index"],
+        C.cast(
+            array,
+            C.POINTER(StateEntity),
+        ),
+        2,
+        C.POINTER(StateMailbox)(),
+        0,
+        C.POINTER(StateWatermark)(),
+        0,
+    )
+
+    out = (C.c_char * 65)()
+
+    assert (
+        lib.elpis_ecsc_state_root_digest(
+            C.byref(native_root),
+            out,
+        )
+        == -1
+    )

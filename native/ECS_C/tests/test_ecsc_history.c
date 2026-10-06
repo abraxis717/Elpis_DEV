@@ -554,6 +554,93 @@ static void test_history_identity_refusals(void)
     );
 }
 
+
+static void test_runtime_state_root_empty(void)
+{
+    elpis_ecsc_state_root_view root;
+    char digest[65];
+
+    memset(&root, 0, sizeof root);
+
+    root.genesis_digest =
+        "11111111111111111111111111111111"
+        "11111111111111111111111111111111";
+
+    root.history_digest =
+        "00000000000000000000000000000000"
+        "00000000000000000000000000000000";
+
+    root.logical_clock = 0u;
+    root.mailbox_capacity = 16u;
+    root.mailbox_default_capacity = 16u;
+    root.next_founding_index = 0u;
+
+    assert(
+        elpis_ecsc_state_root_digest(
+            &root,
+            digest
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(strlen(digest) == 64u);
+}
+
+static void test_runtime_state_root_refuses_unsorted_entities(void)
+{
+    elpis_ecsc_state_entity_view entities[2];
+    elpis_ecsc_state_root_view root;
+    char digest[65];
+
+    memset(entities, 0, sizeof entities);
+    memset(&root, 0, sizeof root);
+
+    entities[0].registry_key =
+        "22222222222222222222222222222222"
+        "22222222222222222222222222222222";
+    entities[0].entity_id = entities[0].registry_key;
+    entities[0].label = "b";
+    entities[0].label_len = 1u;
+    entities[0].founding_index = 0u;
+    entities[0].founding_digest = entities[0].entity_id;
+    entities[0].state_entity_id = entities[0].entity_id;
+    entities[0].prev_state_digest =
+        "00000000000000000000000000000000"
+        "00000000000000000000000000000000";
+    entities[0].lifecycle =
+        ELPIS_ECSC_LIFECYCLE_ACTIVE;
+    entities[0].state_version = 1u;
+    entities[0].state_digest =
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+    entities[1] = entities[0];
+    entities[1].registry_key =
+        "11111111111111111111111111111111"
+        "11111111111111111111111111111111";
+    entities[1].entity_id = entities[1].registry_key;
+    entities[1].founding_digest = entities[1].entity_id;
+    entities[1].state_entity_id = entities[1].entity_id;
+
+    root.genesis_digest =
+        "33333333333333333333333333333333"
+        "33333333333333333333333333333333";
+    root.history_digest =
+        "00000000000000000000000000000000"
+        "00000000000000000000000000000000";
+    root.mailbox_capacity = 16u;
+    root.mailbox_default_capacity = 16u;
+    root.next_founding_index = 2u;
+    root.entities = entities;
+    root.entity_count = 2u;
+
+    assert(
+        elpis_ecsc_state_root_digest(
+            &root,
+            digest
+        ) == ELPIS_ECSC_INVALID
+    );
+}
+
 int main(void)
 {
     test_receipt_payload();
@@ -565,6 +652,8 @@ int main(void)
     test_committed_message_events();
     test_history_identity_primitives();
     test_history_identity_refusals();
+    test_runtime_state_root_empty();
+    test_runtime_state_root_refuses_unsorted_entities();
 
     puts("PASS_ECSC_HISTORY_CODEC");
     return 0;

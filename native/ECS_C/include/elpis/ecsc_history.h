@@ -272,6 +272,101 @@ int elpis_ecsc_initial_state_digest(
     char out_state_digest[65]
 );
 
+
+enum {
+    ELPIS_ECSC_LIFECYCLE_FOUNDED = 1,
+    ELPIS_ECSC_LIFECYCLE_ACTIVE = 2,
+    ELPIS_ECSC_LIFECYCLE_DORMANT = 3,
+    ELPIS_ECSC_LIFECYCLE_TERMINATED = 4
+};
+
+typedef struct elpis_ecsc_state_entity_view {
+    const char *registry_key;
+    const char *entity_id;
+
+    const char *label;
+    size_t label_len;
+
+    uint64_t founding_index;
+    const char *founding_digest;
+
+    const char *state_entity_id;
+    const char *prev_state_digest;
+
+    uint32_t lifecycle;
+    uint64_t state_version;
+    const char *state_digest;
+
+    /* Runtime-history entity payload is either {} or {"delivered":N}. */
+    uint32_t has_delivered;
+    uint64_t delivered;
+} elpis_ecsc_state_entity_view;
+
+typedef struct elpis_ecsc_state_envelope_view {
+    uint64_t logical_clock;
+
+    const char *message_id;
+    const char *payload_digest;
+
+    const void *payload;
+    size_t payload_size;
+
+    const char *receiver_entity_id;
+    const char *sender_entity_id;
+
+    uint64_t sequence;
+} elpis_ecsc_state_envelope_view;
+
+typedef struct elpis_ecsc_state_mailbox_view {
+    const char *mailbox_key;
+    const char *receiver_entity_id;
+
+    uint64_t capacity;
+
+    const elpis_ecsc_state_envelope_view *contents;
+    size_t content_count;
+} elpis_ecsc_state_mailbox_view;
+
+typedef struct elpis_ecsc_state_watermark_view {
+    const char *sender_entity_id;
+    uint64_t sequence;
+} elpis_ecsc_state_watermark_view;
+
+typedef struct elpis_ecsc_state_root_view {
+    const char *genesis_digest;
+    const char *history_digest;
+
+    uint64_t logical_clock;
+    uint64_t mailbox_capacity;
+    uint64_t mailbox_default_capacity;
+    uint64_t next_founding_index;
+
+    const elpis_ecsc_state_entity_view *entities;
+    size_t entity_count;
+
+    const elpis_ecsc_state_mailbox_view *mailboxes;
+    size_t mailbox_count;
+
+    const elpis_ecsc_state_watermark_view *watermarks;
+    size_t watermark_count;
+} elpis_ecsc_state_root_view;
+
+/*
+ * Exact native equivalent of:
+ *
+ *   state_root_digest(build_state_root(...))
+ *
+ * for the bounded runtime-history projection.
+ *
+ * The caller supplies already-materialized ECS_C projection fields. This
+ * function is serialization/content-identity authority only: it does not
+ * mutate history and does not infer missing state.
+ */
+int elpis_ecsc_state_root_digest(
+    const elpis_ecsc_state_root_view *view,
+    char out_digest[65]
+);
+
 #ifdef __cplusplus
 }
 #endif

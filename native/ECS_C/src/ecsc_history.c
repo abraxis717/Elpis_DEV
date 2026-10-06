@@ -2274,3 +2274,847 @@ int elpis_ecsc_initial_state_digest(
         out_state_digest
     );
 }
+
+#define ELPIS_ECSC_RUNTIME_MAX_ENTITIES 64u
+#define ELPIS_ECSC_RUNTIME_MAX_MAILBOXES 64u
+#define ELPIS_ECSC_RUNTIME_MAX_WATERMARKS 64u
+#define ELPIS_ECSC_RUNTIME_MAX_MAILBOX_CONTENTS 64u
+
+static int digest_ptr_valid(const char *value)
+{
+    return value != NULL && is_digest(value, 64u);
+}
+
+static int ordered_digest_keys(
+    const char *left,
+    const char *right
+)
+{
+    if (left == NULL || right == NULL) {
+        return 0;
+    }
+    return memcmp(left, right, 64u) < 0;
+}
+
+static const char *lifecycle_name(uint32_t lifecycle)
+{
+    switch (lifecycle) {
+        case ELPIS_ECSC_LIFECYCLE_FOUNDED:
+            return "FOUNDED";
+        case ELPIS_ECSC_LIFECYCLE_ACTIVE:
+            return "ACTIVE";
+        case ELPIS_ECSC_LIFECYCLE_DORMANT:
+            return "DORMANT";
+        case ELPIS_ECSC_LIFECYCLE_TERMINATED:
+            return "TERMINATED";
+        default:
+            return NULL;
+    }
+}
+
+static int validate_state_entity(
+    const elpis_ecsc_state_entity_view *entity
+)
+{
+    const char *lifecycle;
+
+    if (entity == NULL ||
+        !digest_ptr_valid(entity->registry_key) ||
+        !digest_ptr_valid(entity->entity_id) ||
+        !digest_ptr_valid(entity->founding_digest) ||
+        !digest_ptr_valid(entity->state_entity_id) ||
+        !digest_ptr_valid(entity->prev_state_digest) ||
+        !digest_ptr_valid(entity->state_digest) ||
+        entity->label == NULL ||
+        entity->label_len == 0u ||
+        entity->label_len > ELPIS_ECSC_MAX_STRING_BYTES ||
+        entity->founding_index > ELPIS_ECSC_MAX_INT ||
+        entity->state_version > ELPIS_ECSC_MAX_INT ||
+        entity->delivered > ELPIS_ECSC_MAX_INT ||
+        (entity->has_delivered != 0u &&
+         entity->has_delivered != 1u)) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    lifecycle = lifecycle_name(entity->lifecycle);
+    if (lifecycle == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    /*
+     * Runtime-history projection invariants.
+     * These are true for ECS_C EntityRecord.state_root_projection().
+     */
+    if (memcmp(
+            entity->registry_key,
+            entity->entity_id,
+            64u
+        ) != 0 ||
+        memcmp(
+            entity->entity_id,
+            entity->founding_digest,
+            64u
+        ) != 0 ||
+        memcmp(
+            entity->entity_id,
+            entity->state_entity_id,
+            64u
+        ) != 0) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    return ELPIS_ECSC_OK;
+}
+
+static int validate_state_envelope(
+    const elpis_ecsc_state_envelope_view *env
+)
+{
+    char expected_mid[65];
+    char expected_payload_digest[65];
+    int rc;
+
+    if (env == NULL ||
+        !digest_ptr_valid(env->message_id) ||
+        !digest_ptr_valid(env->payload_digest) ||
+        !digest_ptr_valid(env->receiver_entity_id) ||
+        !digest_ptr_valid(env->sender_entity_id) ||
+        env->logical_clock == 0u ||
+        env->logical_clock > ELPIS_ECSC_MAX_INT ||
+        env->sequence == 0u ||
+        env->sequence > ELPIS_ECSC_MAX_INT ||
+        env->payload == NULL ||
+        env->payload_size == 0u ||
+        env->payload_size > ELPIS_ECSC_MAX_PAYLOAD_BYTES) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    rc = elpis_ecsc_message_id(
+        env->sender_entity_id,
+        env->receiver_entity_id,
+        env->sequence,
+        env->payload,
+        env->payload_size,
+        expected_mid,
+        expected_payload_digest
+    );
+
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    if (memcmp(
+            expected_mid,
+            env->message_id,
+            64u
+        ) != 0 ||
+        memcmp(
+            expected_payload_digest,
+            env->payload_digest,
+            64u
+        ) != 0) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    return ELPIS_ECSC_OK;
+}
+
+static int validate_state_root_view(
+    const elpis_ecsc_state_root_view *view
+)
+{
+    size_t i;
+    size_t j;
+
+    if (view == NULL ||
+        !digest_ptr_valid(view->genesis_digest) ||
+        !digest_ptr_valid(view->history_digest) ||
+        view->logical_clock > ELPIS_ECSC_MAX_INT ||
+        view->mailbox_capacity == 0u ||
+        view->mailbox_capacity > ELPIS_ECSC_MAX_INT ||
+        view->mailbox_default_capacity == 0u ||
+        view->mailbox_default_capacity > ELPIS_ECSC_MAX_INT ||
+        view->next_founding_index > ELPIS_ECSC_MAX_INT ||
+        view->entity_count > ELPIS_ECSC_RUNTIME_MAX_ENTITIES ||
+        view->mailbox_count > ELPIS_ECSC_RUNTIME_MAX_MAILBOXES ||
+        view->watermark_count > ELPIS_ECSC_RUNTIME_MAX_WATERMARKS ||
+        (view->entities == NULL &&
+         view->entity_count != 0u) ||
+        (view->mailboxes == NULL &&
+         view->mailbox_count != 0u) ||
+        (view->watermarks == NULL &&
+         view->watermark_count != 0u)) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    for (i = 0u; i < view->entity_count; ++i) {
+        if (validate_state_entity(
+                &view->entities[i]
+            ) != ELPIS_ECSC_OK) {
+            return ELPIS_ECSC_INVALID;
+        }
+
+        if (i != 0u &&
+            !ordered_digest_keys(
+                view->entities[i - 1u].registry_key,
+                view->entities[i].registry_key
+            )) {
+            return ELPIS_ECSC_INVALID;
+        }
+    }
+
+    for (i = 0u; i < view->mailbox_count; ++i) {
+        const elpis_ecsc_state_mailbox_view *box =
+            &view->mailboxes[i];
+
+        if (!digest_ptr_valid(box->mailbox_key) ||
+            !digest_ptr_valid(box->receiver_entity_id) ||
+            memcmp(
+                box->mailbox_key,
+                box->receiver_entity_id,
+                64u
+            ) != 0 ||
+            box->capacity == 0u ||
+            box->capacity > ELPIS_ECSC_MAX_INT ||
+            box->content_count >
+                ELPIS_ECSC_RUNTIME_MAX_MAILBOX_CONTENTS ||
+            box->content_count > box->capacity ||
+            (box->contents == NULL &&
+             box->content_count != 0u)) {
+            return ELPIS_ECSC_INVALID;
+        }
+
+        if (i != 0u &&
+            !ordered_digest_keys(
+                view->mailboxes[i - 1u].mailbox_key,
+                box->mailbox_key
+            )) {
+            return ELPIS_ECSC_INVALID;
+        }
+
+        for (j = 0u; j < box->content_count; ++j) {
+            if (validate_state_envelope(
+                    &box->contents[j]
+                ) != ELPIS_ECSC_OK ||
+                memcmp(
+                    box->contents[j].receiver_entity_id,
+                    box->receiver_entity_id,
+                    64u
+                ) != 0) {
+                return ELPIS_ECSC_INVALID;
+            }
+        }
+    }
+
+    for (i = 0u; i < view->watermark_count; ++i) {
+        const elpis_ecsc_state_watermark_view *wm =
+            &view->watermarks[i];
+
+        if (!digest_ptr_valid(wm->sender_entity_id) ||
+            wm->sequence == 0u ||
+            wm->sequence > ELPIS_ECSC_MAX_INT) {
+            return ELPIS_ECSC_INVALID;
+        }
+
+        if (i != 0u &&
+            !ordered_digest_keys(
+                view->watermarks[i - 1u].sender_entity_id,
+                wm->sender_entity_id
+            )) {
+            return ELPIS_ECSC_INVALID;
+        }
+    }
+
+    return ELPIS_ECSC_OK;
+}
+
+static int encode_state_envelope(
+    event_sink *sink,
+    const elpis_ecsc_state_envelope_view *env
+)
+{
+    int rc;
+
+    rc = es_literal(
+        sink,
+        "{\"logical_clock\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(
+        sink,
+        env->logical_clock
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        ",\"message_id\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        env->message_id,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"payload_digest\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        env->payload_digest,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"payload_hex\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_hex_payload(
+        sink,
+        env->payload,
+        env->payload_size
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"receiver_entity_id\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        env->receiver_entity_id,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"schema\":\"ecs.message.v1\","
+        "\"sender_entity_id\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        env->sender_entity_id,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"sequence\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(
+        sink,
+        env->sequence
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    return es_literal(
+        sink,
+        "}"
+    );
+}
+
+static int encode_state_entity(
+    event_sink *sink,
+    const elpis_ecsc_state_entity_view *entity
+)
+{
+    const char *lifecycle =
+        lifecycle_name(entity->lifecycle);
+
+    int rc;
+
+    rc = es_literal(
+        sink,
+        "{\"entity_id\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        entity->entity_id,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"founding_digest\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        entity->founding_digest,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"founding_index\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(
+        sink,
+        entity->founding_index
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        ",\"label\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_json_string_utf8(
+        sink,
+        entity->label,
+        entity->label_len
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        ",\"lifecycle\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        lifecycle,
+        strlen(lifecycle)
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"payload\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    if (entity->has_delivered != 0u) {
+        rc = es_literal(
+            sink,
+            "{\"delivered\":"
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_u64(
+            sink,
+            entity->delivered
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_literal(
+            sink,
+            "}"
+        );
+    } else {
+        rc = es_literal(
+            sink,
+            "{}"
+        );
+    }
+
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        ",\"prev_state_digest\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        entity->prev_state_digest,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"registry_key\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        entity->registry_key,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"state_digest\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        entity->state_digest,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"state_entity_id\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        entity->state_entity_id,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"state_version\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(
+        sink,
+        entity->state_version
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    return es_literal(
+        sink,
+        "}"
+    );
+}
+
+static int encode_state_root_payload(
+    event_sink *sink,
+    const elpis_ecsc_state_root_view *view
+)
+{
+    size_t i;
+    size_t j;
+    int rc;
+
+    /*
+     * canonical key order for ecs.state_root.v3:
+     *
+     * entities
+     * genesis_digest
+     * history_digest
+     * logical_clock
+     * mailbox_capacity
+     * mailbox_default_capacity
+     * mailboxes
+     * next_founding_index
+     * scheduler_state
+     * schema
+     * watermarks
+     */
+    rc = es_literal(
+        sink,
+        "{\"entities\":["
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    for (i = 0u; i < view->entity_count; ++i) {
+        if (i != 0u) {
+            rc = es_literal(
+                sink,
+                ","
+            );
+            if (rc != ELPIS_ECSC_OK) return rc;
+        }
+
+        rc = encode_state_entity(
+            sink,
+            &view->entities[i]
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+    }
+
+    rc = es_literal(
+        sink,
+        "],\"genesis_digest\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        view->genesis_digest,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"history_digest\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_put(
+        sink,
+        view->history_digest,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        "\",\"logical_clock\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(
+        sink,
+        view->logical_clock
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        ",\"mailbox_capacity\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(
+        sink,
+        view->mailbox_capacity
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        ",\"mailbox_default_capacity\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(
+        sink,
+        view->mailbox_default_capacity
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        ",\"mailboxes\":["
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    for (i = 0u; i < view->mailbox_count; ++i) {
+        const elpis_ecsc_state_mailbox_view *box =
+            &view->mailboxes[i];
+
+        if (i != 0u) {
+            rc = es_literal(
+                sink,
+                ","
+            );
+            if (rc != ELPIS_ECSC_OK) return rc;
+        }
+
+        rc = es_literal(
+            sink,
+            "{\"capacity\":"
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_u64(
+            sink,
+            box->capacity
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_literal(
+            sink,
+            ",\"contents\":["
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        for (j = 0u; j < box->content_count; ++j) {
+            if (j != 0u) {
+                rc = es_literal(
+                    sink,
+                    ","
+                );
+                if (rc != ELPIS_ECSC_OK) return rc;
+            }
+
+            rc = encode_state_envelope(
+                sink,
+                &box->contents[j]
+            );
+            if (rc != ELPIS_ECSC_OK) return rc;
+        }
+
+        rc = es_literal(
+            sink,
+            "],\"mailbox_key\":\""
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_put(
+            sink,
+            box->mailbox_key,
+            64u
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_literal(
+            sink,
+            "\",\"receiver_entity_id\":\""
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_put(
+            sink,
+            box->receiver_entity_id,
+            64u
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_literal(
+            sink,
+            "\"}"
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+    }
+
+    rc = es_literal(
+        sink,
+        "],\"next_founding_index\":"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_u64(
+        sink,
+        view->next_founding_index
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = es_literal(
+        sink,
+        ",\"scheduler_state\":{},"
+        "\"schema\":\"ecs.state_root.v3\","
+        "\"watermarks\":{"
+    );
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    for (i = 0u; i < view->watermark_count; ++i) {
+        if (i != 0u) {
+            rc = es_literal(
+                sink,
+                ","
+            );
+            if (rc != ELPIS_ECSC_OK) return rc;
+        }
+
+        rc = es_literal(
+            sink,
+            "\""
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_put(
+            sink,
+            view->watermarks[i].sender_entity_id,
+            64u
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_literal(
+            sink,
+            "\":"
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+
+        rc = es_u64(
+            sink,
+            view->watermarks[i].sequence
+        );
+        if (rc != ELPIS_ECSC_OK) return rc;
+    }
+
+    return es_literal(
+        sink,
+        "}}"
+    );
+}
+
+int elpis_ecsc_state_root_digest(
+    const elpis_ecsc_state_root_view *view,
+    char out_digest[65]
+)
+{
+    event_sink sink;
+    elpis_sha256_ctx hash;
+    int rc;
+
+    if (out_digest == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    out_digest[0] = '\0';
+
+    rc = validate_state_root_view(view);
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    elpis_sha256_init(&hash);
+
+    sink.out = NULL;
+    sink.cap = 0u;
+    sink.pos = 0u;
+    sink.hash = &hash;
+
+    rc = es_literal(
+        &sink,
+        "{\"domain\":\"ecs.state_root.v1\","
+        "\"payload\":"
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = encode_state_root_payload(
+        &sink,
+        view
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_literal(
+        &sink,
+        "}"
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    return finish_stream_digest(
+        &hash,
+        out_digest
+    );
+}
