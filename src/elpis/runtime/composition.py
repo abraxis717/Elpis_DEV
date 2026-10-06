@@ -110,6 +110,7 @@ class Runtime:
             config.history_dir,
             native_library=config.history_native_library,
         )
+        self._turn_continuity_fault: str | None = None
 
     def open(self) -> "Runtime":
         self.history.open()
@@ -230,13 +231,61 @@ class Runtime:
         ))
         return ContextPreparation(admission, result, ingress_record, admission_record)
 
-    # -- cognition: DSV4 codec -> ECS -> DSV4 codec ------------------------------------------
+    # -- cognition: DSV4 codec -> ECS -> DSV4 codec -> ECS_C continuity -----------------------
     def run_turn(self, substrate, text, *, tokenizer, codec_map=None, learning_rate=None, max_output_tokens=256):
-        """The canonical turn (elpis.runtime.cognition.run_turn). Fails closed without a qualified codec map.
+        """Commit one canonical K1 turn, then record exactly one ``ecs_g / cognition.turn`` receipt."""
+        if self._turn_continuity_fault is not None:
+            raise CompositionError(
+                self._turn_continuity_fault,
+                "runtime cognition is fail-stopped pending restart/reconciliation",
+            )
 
-        Nothing is recorded: ECS turn transitions have no recorder role in this
-        history yet (an incomplete interface, ELPIS_SYSTEM.json).
-        """
         from .cognition import run_turn
-        return run_turn(substrate, text, tokenizer=tokenizer, codec_map=codec_map, learning_rate=learning_rate,
-                        max_output_tokens=max_output_tokens)
+
+        result = run_turn(
+            substrate,
+            text,
+            tokenizer=tokenizer,
+            codec_map=codec_map,
+            learning_rate=learning_rate,
+            max_output_tokens=max_output_tokens,
+        )
+
+        continuity = result.continuity
+        if continuity is None:
+            self._turn_continuity_fault = "HISTORY_REFUSED_AFTER_ECS_COMMIT"
+            raise CompositionError(
+                self._turn_continuity_fault,
+                "committed K1 turn has no continuity identity",
+            )
+
+        record = ReceiptRecord.of(
+            "ecs_g",
+            "cognition.turn",
+            continuity.digest,
+            codec=continuity.codec,
+            epoch_after=str(continuity.epoch_after),
+            epoch_before=str(continuity.epoch_before),
+            generation_after=str(continuity.generation_after),
+            generation_before=str(continuity.generation_before),
+            input_tokens=continuity.input_tokens_digest,
+            mechanism=continuity.mechanism,
+            output_tokens=continuity.output_tokens_digest,
+            readout=continuity.readout_digest,
+            state_after=continuity.state_after_digest,
+            state_before=continuity.state_before_digest,
+            stimulus=continuity.stimulus_digest,
+        )
+
+        try:
+            self.history.record(record)
+        except HistoryError as exc:
+            native_code = getattr(exc.__cause__, "code", None)
+            if exc.code == "NATIVE_HISTORY_RECORD" and native_code in (-8, -10):
+                code = "HISTORY_UNCERTAIN_AFTER_ECS_COMMIT"
+            else:
+                code = "HISTORY_REFUSED_AFTER_ECS_COMMIT"
+            self._turn_continuity_fault = code
+            raise CompositionError(code, str(exc)) from exc
+
+        return result

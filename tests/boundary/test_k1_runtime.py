@@ -90,7 +90,8 @@ def test_the_canonical_turn_runs_the_experience_schedule_natively():
     _, functions = _functions(TURN)
     turn = functions["run_turn"]
     calls = _calls(turn)
-    assert {"transaction", "run_schedule", "commit"} <= calls, calls
+    assert {"transaction", "run_schedule", "commit_identity"} <= calls, calls
+    assert "commit" not in calls, calls
     assert not calls & ECS_DATA_PLANE, calls & ECS_DATA_PLANE
     # The only Python iteration in the turn is over the decoded output token IDs (the token boundary).
     for node in ast.walk(turn):

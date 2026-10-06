@@ -340,7 +340,7 @@ def test_one_schedule_crossing_per_turn_whatever_experiences_or_steps(experience
         heap = state.stats()["heap_allocations"]
         counter.calls.clear()
         run_turn(state, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
-        assert counter.calls == {"max_rows": 1, "txn_begin": 1, "txn_run_schedule": 1, "txn_commit": 1}, counter.calls
+        assert counter.calls == {"max_rows": 1, "txn_begin": 1, "txn_run_schedule": 1, "txn_commit_identity": 1}, counter.calls
         assert state.stats()["heap_allocations"] == heap   # no allocation on the prepared hot path
     with _Resident(k1, adapter, tmp_path) as resident:
         fcounter = _Counting(resident._r._f)
@@ -349,5 +349,218 @@ def test_one_schedule_crossing_per_turn_whatever_experiences_or_steps(experience
         fcounter.calls.clear()
         run_turn(resident, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
         # no restore, no snapshot, no import, no copy of W/H/a: begin, one schedule, commit
-        assert fcounter.calls == {"txn_begin": 1, "txn_run_schedule": 1, "txn_commit": 1}, fcounter.calls
+        assert fcounter.calls == {"txn_begin": 1, "txn_run_schedule": 1, "txn_commit_identity": 1}, fcounter.calls
         assert resident._r.k1_stats(resident.id)["heap_allocations"] == heap   # no allocation on the warm path
+
+
+
+def test_canonical_turn_exposes_commit_bound_continuity_identity(k1):
+    with world(k1) as state:
+        before = state.snapshot()
+        result = run_turn(
+            state,
+            "continuity",
+            tokenizer=ByteTokens(),
+            codec_map=FixtureMap(),
+            learning_rate=RATE,
+        )
+        after = state.snapshot()
+
+        continuity = result.continuity
+        assert continuity is not None
+        assert continuity.mechanism == "1"
+        assert continuity.epoch_before == result.epoch_before
+        assert continuity.epoch_after == result.epoch_after
+        assert continuity.generation_after == continuity.generation_before + 1
+        assert continuity.state_before_digest == before[-32:].hex()
+        assert continuity.state_after_digest == after[-32:].hex()
+        assert len(continuity.digest) == 64
+        int(continuity.digest, 16)
+
+
+def test_runtime_turn_records_exactly_one_ecsg_cognition_turn_receipt(
+    k1,
+    history_library,
+    tmp_path,
+):
+    from elpis.runtime import Runtime, RuntimeConfig
+    from elpis.runtime.history import ReceiptHistory
+
+    history_dir = tmp_path / "cognition-turn-history"
+
+    with world(k1) as state:
+        with Runtime(
+            RuntimeConfig(
+                history_dir,
+                history_native_library=history_library,
+            )
+        ) as runtime:
+            before_records = len(runtime.history.records())
+            result = runtime.run_turn(
+                state,
+                "persist me",
+                tokenizer=ByteTokens(),
+                codec_map=FixtureMap(),
+                learning_rate=RATE,
+            )
+
+            records = runtime.history.records()
+            assert len(records) == before_records + 1
+            record = records[-1].record
+            continuity = result.continuity
+
+            assert continuity is not None
+            assert record.subsystem == "ecs_g"
+            assert record.kind == "cognition.turn"
+            assert record.digest == continuity.digest
+
+            bindings = dict(record.bindings)
+            assert set(bindings) == {
+                "codec",
+                "epoch_after",
+                "epoch_before",
+                "generation_after",
+                "generation_before",
+                "input_tokens",
+                "mechanism",
+                "output_tokens",
+                "readout",
+                "state_after",
+                "state_before",
+                "stimulus",
+            }
+            assert bindings["mechanism"] == continuity.mechanism
+            assert bindings["epoch_before"] == str(continuity.epoch_before)
+            assert bindings["epoch_after"] == str(continuity.epoch_after)
+            assert bindings["generation_before"] == str(continuity.generation_before)
+            assert bindings["generation_after"] == str(continuity.generation_after)
+            assert bindings["state_before"] == continuity.state_before_digest
+            assert bindings["state_after"] == continuity.state_after_digest
+            assert bindings["stimulus"] == continuity.stimulus_digest
+            assert bindings["readout"] == continuity.readout_digest
+            assert bindings["input_tokens"] == continuity.input_tokens_digest
+            assert bindings["output_tokens"] == continuity.output_tokens_digest
+            assert bindings["codec"] == continuity.codec
+
+    replay = ReceiptHistory(history_dir).open()
+    try:
+        matching = [
+            item
+            for item in replay.records()
+            if item.record.subsystem == "ecs_g"
+            and item.record.kind == "cognition.turn"
+            and item.record.digest == result.continuity.digest
+        ]
+        assert len(matching) == 1
+    finally:
+        replay.close()
+
+
+@pytest.mark.parametrize(
+    ("native_code", "expected"),
+    (
+        (-7, "HISTORY_REFUSED_AFTER_ECS_COMMIT"),
+        (-8, "HISTORY_UNCERTAIN_AFTER_ECS_COMMIT"),
+        (-10, "HISTORY_UNCERTAIN_AFTER_ECS_COMMIT"),
+    ),
+)
+def test_post_commit_history_failure_is_asymmetric_and_fail_stops_future_turns(
+    k1,
+    tmp_path,
+    monkeypatch,
+    native_code,
+    expected,
+):
+    from elpis.runtime import Runtime, RuntimeConfig
+    from elpis.runtime.history import HistoryError
+    from elpis.runtime.native_history import NativeHistoryError
+
+    runtime = Runtime(RuntimeConfig(tmp_path / f"history-failure-{abs(native_code)}"))
+    calls = []
+
+    def fail(record):
+        calls.append(record)
+        cause = NativeHistoryError(native_code, "RECORD:TEST")
+        raise HistoryError("NATIVE_HISTORY_RECORD", str(cause)) from cause
+
+    monkeypatch.setattr(runtime.history, "record", fail)
+
+    with world(k1) as state:
+        before = state.snapshot()
+
+        with pytest.raises(CompositionError) as info:
+            runtime.run_turn(
+                state,
+                "commit then fail history",
+                tokenizer=ByteTokens(),
+                codec_map=FixtureMap(),
+                learning_rate=RATE,
+            )
+
+        assert info.value.code == expected
+        committed = state.snapshot()
+        assert committed != before
+        assert len(calls) == 1
+        assert calls[0].subsystem == "ecs_g"
+        assert calls[0].kind == "cognition.turn"
+
+        with pytest.raises(CompositionError) as second:
+            runtime.run_turn(
+                state,
+                "must not continue",
+                tokenizer=ByteTokens(),
+                codec_map=FixtureMap(),
+                learning_rate=RATE,
+            )
+
+        assert second.value.code == expected
+        assert state.snapshot() == committed
+        assert len(calls) == 1
+
+
+def test_post_commit_non_native_history_refusal_is_definite_and_fail_stop(
+    k1,
+    tmp_path,
+    monkeypatch,
+):
+    from elpis.runtime import Runtime, RuntimeConfig
+    from elpis.runtime.history import HistoryError
+
+    runtime = Runtime(RuntimeConfig(tmp_path / "history-closed-after-commit"))
+    calls = []
+
+    def fail(record):
+        calls.append(record)
+        raise HistoryError("HISTORY_CLOSED")
+
+    monkeypatch.setattr(runtime.history, "record", fail)
+
+    with world(k1) as state:
+        before = state.snapshot()
+
+        with pytest.raises(CompositionError) as info:
+            runtime.run_turn(
+                state,
+                "definite history refusal",
+                tokenizer=ByteTokens(),
+                codec_map=FixtureMap(),
+                learning_rate=RATE,
+            )
+
+        assert info.value.code == "HISTORY_REFUSED_AFTER_ECS_COMMIT"
+        committed = state.snapshot()
+        assert committed != before
+        assert len(calls) == 1
+
+        with pytest.raises(CompositionError) as second:
+            runtime.run_turn(
+                state,
+                "blocked",
+                tokenizer=ByteTokens(),
+                codec_map=FixtureMap(),
+                learning_rate=RATE,
+            )
+
+        assert second.value.code == "HISTORY_REFUSED_AFTER_ECS_COMMIT"
+        assert state.snapshot() == committed
+        assert len(calls) == 1
