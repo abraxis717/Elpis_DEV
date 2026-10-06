@@ -40,7 +40,13 @@ from elpis.structure.retrieval.objects import ObjectResolutionError, normalize
 from elpis.substrate.synthetic import SyntheticFileAssets
 
 from ..inference.test_token_stream_kernel import Recorder
+from ..conftest import require_native_library
 from .conftest import POSITIVE
+
+
+def _history_library():
+    """The native ECS_C runtime-history writer: a writable runtime history requires it explicitly."""
+    return require_native_library("elpis_ecsc_history")
 
 NS = "elpis.docs"
 CONTEXT = initial_snapshot().digest
@@ -185,7 +191,7 @@ def test_resident_model_state_stays_bounded_as_hacf_grows(retrieval_library, ing
         corpus_root, manifest = build(retrieval_library, root, extra)
         chunks = json.loads(manifest)["chunk_count"]
         sizes.append(sum(d["size_bytes"] for d in json.loads(manifest)["documents"]))
-        with Runtime(RuntimeConfig(root / "history")) as runtime:
+        with Runtime(RuntimeConfig(root / "history", history_native_library=_history_library())) as runtime:
             admission = prepare(runtime, ingress_library, corpus_root, manifest, engine).admission
             state = engine.initial(CONTEXT)
             sequence = engine.begin(state, PrincipalRequest("r", (1,), 20), admission,
@@ -226,7 +232,7 @@ def test_tampered_blob_or_wrong_manifest_refuses_admission(ingress_library, subs
         data = bytearray(blob.read_bytes())
         data[-1] ^= 1
         blob.write_bytes(bytes(data))
-    with Runtime(RuntimeConfig(tmp_path / "history")) as runtime:
+    with Runtime(RuntimeConfig(tmp_path / "history", history_native_library=_history_library())) as runtime:
         with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
             prepare(runtime, ingress_library, copy, manifest, engine)
         with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
