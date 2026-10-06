@@ -2,8 +2,8 @@
 
 The history is an ordinary ECS kernel history. At genesis it founds, in a
 fixed order, one ``history`` entity and one recorder entity per subsystem
-(``pipeline``, ``structure``, ``evolution``, ``inference``). A receipt is
-recorded as one message from the subsystem's recorder to the history entity,
+(``pipeline``, ``structure``, ``evolution``, ``inference``, ``ecs_g``).
+A receipt is recorded as one message from the subsystem's recorder to the history entity,
 so the sender is kernel-attributed and cannot be chosen by the record.
 
 Recording is not admission. A record carries the digest of something its
@@ -38,7 +38,20 @@ __all__ = (
 
 HISTORY_GENESIS_LABEL = "elpis.runtime.history.v1"
 RECORD_SCHEMA = "elpis.runtime.receipt-record.v1"
-ROLES = ("history", "pipeline", "structure", "evolution", "inference")
+
+# Historical runtime-history topology admitted before ECS_G turn continuity.
+# It remains an opening/migration authority only; new/opened histories converge
+# to ROLES exactly.
+_LEGACY_ROLES = (
+    "history",
+    "pipeline",
+    "structure",
+    "evolution",
+    "inference",
+)
+
+# Canonical runtime-history topology.
+ROLES = _LEGACY_ROLES + ("ecs_g",)
 RECORDERS = ROLES[1:]
 
 _DIGEST = re.compile(r"[0-9a-f]{64}\Z")
@@ -141,18 +154,56 @@ class ReceiptHistory:
         kernel = self._kernel.open()
         try:
             genesis = kernel.state.genesis_digest
-            expected = [entity_id_from_founding(founding_record(i, role, genesis))
-                        for i, role in enumerate(ROLES)]
-            if not kernel.entity_ids():
+
+            expected = [
+                entity_id_from_founding(
+                    founding_record(i, role, genesis)
+                )
+                for i, role in enumerate(ROLES)
+            ]
+
+            expected_legacy = expected[:len(_LEGACY_ROLES)]
+            existing = kernel.entity_ids()
+
+            if not existing:
+                # New history: materialize the current six-role authority.
                 for role in ROLES:
                     kernel.found_entity(role)
                 kernel.run_until_quiescent()
-            # Each expected id is derived from (founding index, role, genesis), so set
-            # equality proves both the founding order and the labels.
+
+            elif sorted(existing) == sorted(expected_legacy):
+                # Deterministic one-way compatibility migration.
+                #
+                # A valid legacy history is already fully replay-validated by
+                # Kernel.open(). Add only the one missing fixed recorder using
+                # normal ECS_C transitions. Activate it explicitly so migration
+                # is exactly FOUND + ACTIVATE and cannot accidentally consume an
+                # unrelated ready item.
+                ecs_g = kernel.found_entity("ecs_g")
+
+                if ecs_g != expected[-1]:
+                    raise HistoryError(
+                        "FOREIGN_HISTORY",
+                        "ecs_g founding identity differs from runtime authority",
+                    )
+
+                kernel.activate(ecs_g)
+
+            # Each expected ID is derived from (founding index, role, genesis).
+            # Set equality therefore proves both the founding order and labels.
+            # Any six-role near-match, extra role, missing role or different
+            # founding order is foreign and is never repaired.
             if sorted(kernel.entity_ids()) != sorted(expected):
-                raise HistoryError("FOREIGN_HISTORY", "founding entities differ from the runtime roles")
+                raise HistoryError(
+                    "FOREIGN_HISTORY",
+                    "founding entities differ from the runtime roles",
+                )
+
             self._ids = dict(zip(ROLES, expected))
-            self._ports = {role: kernel.entity_port(self._ids[role]) for role in RECORDERS}
+            self._ports = {
+                role: kernel.entity_port(self._ids[role])
+                for role in RECORDERS
+            }
             self._records = self._read_records()
         except BaseException:
             self.close()
