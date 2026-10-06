@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,23 @@ LEGACY_ROLES = (
     "evolution",
     "inference",
 )
+
+
+def _native_library() -> Path:
+    root = Path(
+        os.environ["ELPIS_NATIVE_BUILD"]
+    ).resolve()
+
+    matches = sorted(
+        p
+        for p in root.rglob(
+            "libelpis_ecsc_history.so"
+        )
+        if p.is_file()
+    )
+
+    assert len(matches) == 1
+    return matches[0]
 
 
 def _legacy_history_with_one_record(storage: Path):
@@ -185,9 +203,15 @@ def test_ecs_g_recording_is_idempotent_after_migration(tmp_path):
 
     _legacy_history_with_one_record(storage)
 
-    history = ReceiptHistory(storage).open()
+    history = ReceiptHistory(
+        storage,
+        native_library=_native_library(),
+    ).open()
 
     try:
+        assert history._native is not None
+        assert not history._ports
+
         record = ReceiptRecord.of(
             "ecs_g",
             "cognition.turn",
@@ -197,11 +221,11 @@ def test_ecs_g_recording_is_idempotent_after_migration(tmp_path):
             mechanism="native-k1",
         )
 
-        before = len(history._kernel.events())
+        before = history._native.event_count
 
         first = history.record(record)
 
-        after_first = len(history._kernel.events())
+        after_first = history._native.event_count
 
         assert after_first == before + 2
         assert first.record == record
@@ -209,12 +233,12 @@ def test_ecs_g_recording_is_idempotent_after_migration(tmp_path):
         second = history.record(record)
 
         assert second == first
-        assert len(history._kernel.events()) == after_first
+        assert history._native.event_count == after_first
 
     finally:
         history.close()
 
-    # The record survives canonical replay/reopen exactly once.
+    # Canonical replay sees the native-written receipt exactly once.
     history = ReceiptHistory(storage).open()
 
     try:
@@ -225,6 +249,7 @@ def test_ecs_g_recording_is_idempotent_after_migration(tmp_path):
         ]
 
         assert len(matches) == 1
+        assert matches[0] == first
     finally:
         history.close()
 

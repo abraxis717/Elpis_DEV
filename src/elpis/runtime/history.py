@@ -438,32 +438,7 @@ class ReceiptHistory:
 
             return recorded
 
-        if not self._ports:
-            raise HistoryError("HISTORY_CLOSED")
-
-        message_id = self._ports[
-            record.subsystem
-        ].propose(
-            self.history_entity,
-            record.payload(),
-        )
-
-        self._kernel.run_until_quiescent()
-        self._records = self._read_records()
-        self._record_index = {
-            item.record: item
-            for item in self._records
-        }
-
-        recorded = self._records[-1]
-
-        if (
-            recorded.message_id != message_id
-            or recorded.record != record
-        ):
-            raise HistoryError(
-                "RECORD_NOT_DURABLE",
-                message_id,
-            )
-
-        return recorded
+        # Once runtime history ownership has been handed to the native
+        # session there is deliberately no Python write fallback.  If the
+        # native owner is absent, this object is not an authorized writer.
+        raise HistoryError("HISTORY_CLOSED")

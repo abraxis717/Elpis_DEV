@@ -81,13 +81,24 @@ class ContextPreparation:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """Everything the runtime itself owns: the location of its durable history."""
+    """Runtime-owned durable history and its explicit native ECS_C writer."""
 
     history_dir: Path
+    history_native_library: Path | None = None
 
     def __post_init__(self):
         if not isinstance(self.history_dir, Path) or not self.history_dir.is_absolute():
             raise HistoryError("HISTORY_PATH", "history_dir must be an absolute Path")
+        if self.history_native_library is not None:
+            if (
+                not isinstance(self.history_native_library, Path)
+                or not self.history_native_library.is_absolute()
+                or not self.history_native_library.is_file()
+            ):
+                raise HistoryError(
+                    "NATIVE_HISTORY_LIBRARY",
+                    "history_native_library must be an existing absolute Path",
+                )
 
 
 class Runtime:
@@ -95,7 +106,10 @@ class Runtime:
         if type(config) is not RuntimeConfig:
             raise TypeError("config must be a RuntimeConfig")
         self.config = config
-        self.history = ReceiptHistory(config.history_dir)
+        self.history = ReceiptHistory(
+            config.history_dir,
+            native_library=config.history_native_library,
+        )
 
     def open(self) -> "Runtime":
         self.history.open()

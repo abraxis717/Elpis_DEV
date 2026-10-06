@@ -175,3 +175,60 @@ def test_native_handoff_rejects_lock_conflict_without_sidecar_history(
             ).open()
     finally:
         first.close()
+
+
+def test_runtime_config_explicitly_owns_native_history_writer(
+    tmp_path,
+):
+    from elpis.runtime import Runtime, RuntimeConfig
+
+    library = _native_library()
+
+    config = RuntimeConfig(
+        tmp_path / "runtime-history",
+        history_native_library=library,
+    )
+
+    runtime = Runtime(config).open()
+
+    try:
+        assert runtime.config.history_native_library == library
+        assert runtime.history._native is not None
+        assert not runtime.history._ports
+
+        recorded = runtime.history.record(_record(1))
+
+        assert recorded.record == _record(1)
+        assert recorded.event_index == 12
+
+    finally:
+        runtime.close()
+
+
+def test_receipt_history_without_native_library_is_replay_only(
+    tmp_path,
+):
+    storage = tmp_path / "history"
+
+    writer = ReceiptHistory(
+        storage,
+        native_library=_native_library(),
+    ).open()
+
+    try:
+        committed = writer.record(_record(1))
+    finally:
+        writer.close()
+
+    replay = ReceiptHistory(storage).open()
+
+    try:
+        assert replay.records() == (committed,)
+
+        with pytest.raises(Exception, match="HISTORY_CLOSED"):
+            replay.record(_record(2))
+
+        assert replay.records() == (committed,)
+
+    finally:
+        replay.close()
