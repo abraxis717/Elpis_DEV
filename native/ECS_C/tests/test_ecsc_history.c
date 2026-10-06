@@ -1,6 +1,11 @@
+#define _GNU_SOURCE
 #include "elpis/ecsc_history.h"
 
 #include <assert.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -641,6 +646,253 @@ static void test_runtime_state_root_refuses_unsorted_entities(void)
     );
 }
 
+
+static void test_durable_log_core(void)
+{
+    static const uint8_t event[] = "{\"x\":1}";
+
+    char path[] =
+        "/tmp/elpis_ecsc_log_XXXXXX";
+
+    elpis_ecsc_log *log = NULL;
+    elpis_ecsc_log *second = NULL;
+    elpis_ecsc_log_scan scan;
+
+    struct stat st;
+
+    uint8_t header[8];
+    uint8_t body[sizeof event - 1u];
+
+    int fd;
+
+    fd = mkstemp(path);
+    assert(fd >= 0);
+    assert(close(fd) == 0);
+    assert(unlink(path) == 0);
+
+    assert(
+        elpis_ecsc_log_open(
+            path,
+            strlen(path),
+            &log
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(log != NULL);
+
+    assert(
+        elpis_ecsc_log_open(
+            path,
+            strlen(path),
+            &second
+        ) == ELPIS_ECSC_LOCKED
+    );
+
+    assert(second == NULL);
+
+    assert(
+        elpis_ecsc_log_append_event_bytes(
+            log,
+            event,
+            sizeof event - 1u
+        ) == ELPIS_ECSC_NOT_READY
+    );
+
+    assert(
+        elpis_ecsc_log_recover_scan(
+            log,
+            &scan
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(scan.total_size == 0u);
+    assert(scan.complete_prefix == 0u);
+    assert(scan.frame_count == 0u);
+    assert(scan.has_incomplete_tail == 0u);
+
+    assert(
+        elpis_ecsc_log_finish_recovery(
+            log,
+            0u
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(
+        elpis_ecsc_log_append_event_bytes(
+            log,
+            event,
+            sizeof event - 1u
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(
+        elpis_ecsc_log_frame_count(log)
+        == 1u
+    );
+
+    assert(
+        elpis_ecsc_log_size(log)
+        == 8u + sizeof event - 1u
+    );
+
+    elpis_ecsc_log_close(log);
+    log = NULL;
+
+    fd = open(path, O_RDONLY);
+    assert(fd >= 0);
+
+    assert(
+        read(fd, header, sizeof header)
+        == (ssize_t)sizeof header
+    );
+
+    assert(
+        read(fd, body, sizeof body)
+        == (ssize_t)sizeof body
+    );
+
+    assert(close(fd) == 0);
+
+    assert(
+        header[0] == 0u &&
+        header[1] == 0u &&
+        header[2] == 0u &&
+        header[3] == 0u &&
+        header[4] == 0u &&
+        header[5] == 0u &&
+        header[6] == 0u &&
+        header[7] == sizeof event - 1u
+    );
+
+    assert(
+        memcmp(
+            body,
+            event,
+            sizeof body
+        ) == 0
+    );
+
+    /*
+     * Simulate a crash after three bytes of the next length prefix.
+     * All-zero prefix bytes are a possible beginning of a legal bounded
+     * length and are therefore recoverable debris, not corruption.
+     */
+    fd = open(
+        path,
+        O_WRONLY | O_APPEND
+    );
+    assert(fd >= 0);
+
+    {
+        static const uint8_t tail[3] = {
+            0u, 0u, 0u
+        };
+
+        assert(
+            write(fd, tail, sizeof tail)
+            == (ssize_t)sizeof tail
+        );
+    }
+
+    assert(fsync(fd) == 0);
+    assert(close(fd) == 0);
+
+    assert(
+        elpis_ecsc_log_open(
+            path,
+            strlen(path),
+            &log
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(
+        elpis_ecsc_log_recover_scan(
+            log,
+            &scan
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(scan.frame_count == 1u);
+    assert(scan.has_incomplete_tail == 1u);
+
+    assert(
+        scan.complete_prefix
+        == 8u + sizeof event - 1u
+    );
+
+    assert(
+        scan.total_size
+        == scan.complete_prefix + 3u
+    );
+
+    /*
+     * A smaller semantic prefix is never permission to erase a complete
+     * structurally framed record.
+     */
+    assert(
+        elpis_ecsc_log_finish_recovery(
+            log,
+            0u
+        ) == ELPIS_ECSC_CORRUPT
+    );
+
+    assert(
+        elpis_ecsc_log_finish_recovery(
+            log,
+            scan.complete_prefix
+        ) == ELPIS_ECSC_OK
+    );
+
+    elpis_ecsc_log_close(log);
+    log = NULL;
+
+    assert(stat(path, &st) == 0);
+
+    assert(
+        (uint64_t)st.st_size
+        == 8u + sizeof event - 1u
+    );
+
+    /*
+     * A complete header declaring an impossible zero-length frame is
+     * corruption, not recoverable crash residue.
+     */
+    fd = open(
+        path,
+        O_WRONLY | O_TRUNC
+    );
+    assert(fd >= 0);
+
+    memset(header, 0, sizeof header);
+
+    assert(
+        write(fd, header, sizeof header)
+        == (ssize_t)sizeof header
+    );
+
+    assert(fsync(fd) == 0);
+    assert(close(fd) == 0);
+
+    assert(
+        elpis_ecsc_log_open(
+            path,
+            strlen(path),
+            &log
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(
+        elpis_ecsc_log_recover_scan(
+            log,
+            &scan
+        ) == ELPIS_ECSC_CORRUPT
+    );
+
+    elpis_ecsc_log_close(log);
+
+    assert(unlink(path) == 0);
+}
+
 int main(void)
 {
     test_receipt_payload();
@@ -654,6 +906,7 @@ int main(void)
     test_history_identity_refusals();
     test_runtime_state_root_empty();
     test_runtime_state_root_refuses_unsorted_entities();
+    test_durable_log_core();
 
     puts("PASS_ECSC_HISTORY_CODEC");
     return 0;

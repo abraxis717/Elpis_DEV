@@ -1581,3 +1581,330 @@ def test_native_state_root_rejects_reordered_projection(
         )
         == -1
     )
+
+
+class NativeLogScan(C.Structure):
+    _fields_ = [
+        ("total_size", C.c_uint64),
+        ("complete_prefix", C.c_uint64),
+        ("frame_count", C.c_uint64),
+        ("has_incomplete_tail", C.c_uint32),
+    ]
+
+
+def _bind_phase_f1(lib):
+    lib.elpis_ecsc_log_open.argtypes = [
+        C.c_char_p,
+        C.c_size_t,
+        C.POINTER(C.c_void_p),
+    ]
+    lib.elpis_ecsc_log_open.restype = C.c_int
+
+    lib.elpis_ecsc_log_close.argtypes = [
+        C.c_void_p,
+    ]
+    lib.elpis_ecsc_log_close.restype = None
+
+    lib.elpis_ecsc_log_recover_scan.argtypes = [
+        C.c_void_p,
+        C.POINTER(NativeLogScan),
+    ]
+    lib.elpis_ecsc_log_recover_scan.restype = C.c_int
+
+    lib.elpis_ecsc_log_finish_recovery.argtypes = [
+        C.c_void_p,
+        C.c_uint64,
+    ]
+    lib.elpis_ecsc_log_finish_recovery.restype = C.c_int
+
+    lib.elpis_ecsc_log_append_event_bytes.argtypes = [
+        C.c_void_p,
+        C.c_void_p,
+        C.c_size_t,
+    ]
+    lib.elpis_ecsc_log_append_event_bytes.restype = C.c_int
+
+    lib.elpis_ecsc_log_size.argtypes = [
+        C.c_void_p,
+    ]
+    lib.elpis_ecsc_log_size.restype = C.c_uint64
+
+    lib.elpis_ecsc_log_frame_count.argtypes = [
+        C.c_void_p,
+    ]
+    lib.elpis_ecsc_log_frame_count.restype = C.c_uint64
+
+
+def _native_log_open(lib, path):
+    _bind_phase_f1(lib)
+
+    raw = str(path).encode("utf-8")
+    handle = C.c_void_p()
+
+    rc = lib.elpis_ecsc_log_open(
+        raw,
+        len(raw),
+        C.byref(handle),
+    )
+
+    return rc, handle
+
+
+def test_native_log_exact_append_and_crash_tail_recovery(
+    lib,
+    tmp_path,
+):
+    import struct
+
+    _bind_phase_f1(lib)
+
+    path = tmp_path / "events.log"
+
+    rc, log = _native_log_open(lib, path)
+
+    assert rc == 0
+    assert log.value is not None
+
+    try:
+        second_rc, second = _native_log_open(
+            lib,
+            path,
+        )
+
+        assert second_rc == -5
+        assert second.value is None
+
+        event = canonical.canonical_bytes(
+            {
+                "a": 1,
+                "z": "receipt",
+            }
+        )
+
+        event_buf = (
+            C.c_uint8 * len(event)
+        ).from_buffer_copy(event)
+
+        # Recovery must be explicitly completed.
+        assert (
+            lib.elpis_ecsc_log_append_event_bytes(
+                log,
+                C.cast(event_buf, C.c_void_p),
+                len(event),
+            )
+            == -9
+        )
+
+        scan = NativeLogScan()
+
+        assert (
+            lib.elpis_ecsc_log_recover_scan(
+                log,
+                C.byref(scan),
+            )
+            == 0
+        )
+
+        assert scan.total_size == 0
+        assert scan.complete_prefix == 0
+        assert scan.frame_count == 0
+        assert scan.has_incomplete_tail == 0
+
+        assert (
+            lib.elpis_ecsc_log_finish_recovery(
+                log,
+                0,
+            )
+            == 0
+        )
+
+        assert (
+            lib.elpis_ecsc_log_append_event_bytes(
+                log,
+                C.cast(event_buf, C.c_void_p),
+                len(event),
+            )
+            == 0
+        )
+
+        expected = (
+            struct.pack(">Q", len(event))
+            + event
+        )
+
+        assert path.read_bytes() == expected
+
+        assert (
+            lib.elpis_ecsc_log_size(log)
+            == len(expected)
+        )
+
+        assert (
+            lib.elpis_ecsc_log_frame_count(log)
+            == 1
+        )
+
+    finally:
+        lib.elpis_ecsc_log_close(log)
+
+    # Crash debris: partial next frame prefix.
+    with path.open("ab") as fh:
+        fh.write(b"\x00\x00\x00")
+        fh.flush()
+
+        import os
+        os.fsync(fh.fileno())
+
+    rc, log = _native_log_open(lib, path)
+    assert rc == 0
+
+    try:
+        scan = NativeLogScan()
+
+        assert (
+            lib.elpis_ecsc_log_recover_scan(
+                log,
+                C.byref(scan),
+            )
+            == 0
+        )
+
+        assert scan.frame_count == 1
+        assert scan.has_incomplete_tail == 1
+
+        expected_prefix = len(expected)
+
+        assert (
+            scan.complete_prefix
+            == expected_prefix
+        )
+
+        assert (
+            scan.total_size
+            == expected_prefix + 3
+        )
+
+        # Complete frames may not be erased as "recovery".
+        assert (
+            lib.elpis_ecsc_log_finish_recovery(
+                log,
+                0,
+            )
+            == -6
+        )
+
+        # Caller says every complete frame was semantically validated.
+        assert (
+            lib.elpis_ecsc_log_finish_recovery(
+                log,
+                expected_prefix,
+            )
+            == 0
+        )
+
+    finally:
+        lib.elpis_ecsc_log_close(log)
+
+    assert path.read_bytes() == expected
+
+
+def test_native_log_recovery_refuses_impossible_frame_length(
+    lib,
+    tmp_path,
+):
+    import struct
+
+    path = tmp_path / "events.log"
+
+    # Complete length prefix: zero is never legal.
+    path.write_bytes(struct.pack(">Q", 0))
+
+    rc, log = _native_log_open(lib, path)
+    assert rc == 0
+
+    try:
+        scan = NativeLogScan()
+
+        assert (
+            lib.elpis_ecsc_log_recover_scan(
+                log,
+                C.byref(scan),
+            )
+            == -6
+        )
+    finally:
+        lib.elpis_ecsc_log_close(log)
+
+
+def test_native_log_recovery_refuses_oversize_frame_length(
+    lib,
+    tmp_path,
+):
+    import struct
+
+    path = tmp_path / "events.log"
+
+    path.write_bytes(
+        struct.pack(">Q", 262145)
+    )
+
+    rc, log = _native_log_open(lib, path)
+    assert rc == 0
+
+    try:
+        scan = NativeLogScan()
+
+        assert (
+            lib.elpis_ecsc_log_recover_scan(
+                log,
+                C.byref(scan),
+            )
+            == -6
+        )
+    finally:
+        lib.elpis_ecsc_log_close(log)
+
+
+def test_native_log_accepts_incomplete_payload_only_as_recovery_tail(
+    lib,
+    tmp_path,
+):
+    import struct
+
+    path = tmp_path / "events.log"
+
+    path.write_bytes(
+        struct.pack(">Q", 10)
+        + b"abc"
+    )
+
+    rc, log = _native_log_open(lib, path)
+    assert rc == 0
+
+    try:
+        scan = NativeLogScan()
+
+        assert (
+            lib.elpis_ecsc_log_recover_scan(
+                log,
+                C.byref(scan),
+            )
+            == 0
+        )
+
+        assert scan.complete_prefix == 0
+        assert scan.frame_count == 0
+        assert scan.has_incomplete_tail == 1
+
+        assert (
+            lib.elpis_ecsc_log_finish_recovery(
+                log,
+                0,
+            )
+            == 0
+        )
+
+    finally:
+        lib.elpis_ecsc_log_close(log)
+
+    assert path.read_bytes() == b""

@@ -367,6 +367,98 @@ int elpis_ecsc_state_root_digest(
     char out_digest[65]
 );
 
+
+/* Native durable-log status codes. */
+enum {
+    ELPIS_ECSC_IO = -4,
+    ELPIS_ECSC_LOCKED = -5,
+    ELPIS_ECSC_CORRUPT = -6,
+    ELPIS_ECSC_APPEND_ROLLED_BACK = -7,
+    ELPIS_ECSC_APPEND_UNCERTAIN = -8,
+    ELPIS_ECSC_NOT_READY = -9
+};
+
+typedef struct elpis_ecsc_log elpis_ecsc_log;
+
+typedef struct elpis_ecsc_log_scan {
+    uint64_t total_size;
+    uint64_t complete_prefix;
+    uint64_t frame_count;
+    uint32_t has_incomplete_tail;
+} elpis_ecsc_log_scan;
+
+/*
+ * Open one ECS_C event log as its exclusive local owner.
+ *
+ * The parent directory must already exist. The file is created mode 0600 if
+ * absent. A non-blocking exclusive flock prevents a second owner.
+ *
+ * Open starts in recovery mode. No append is permitted until:
+ *
+ *   recover_scan
+ *   semantic validation by the owner
+ *   finish_recovery(validated_complete_prefix)
+ */
+int elpis_ecsc_log_open(
+    const char *path,
+    size_t path_len,
+    elpis_ecsc_log **out_log
+);
+
+void elpis_ecsc_log_close(
+    elpis_ecsc_log *log
+);
+
+/*
+ * Structural bounded scan only.
+ *
+ * It recognizes complete ECS_C 8-byte-big-endian frames and an incomplete
+ * crash tail. It intentionally does NOT declare complete frame payloads
+ * semantically valid.
+ */
+int elpis_ecsc_log_recover_scan(
+    elpis_ecsc_log *log,
+    elpis_ecsc_log_scan *out_scan
+);
+
+/*
+ * Authorize recovery only after the caller has semantically validated every
+ * complete frame discovered by recover_scan().
+ *
+ * validated_complete_prefix MUST equal the structural complete prefix. A
+ * smaller value is corruption, not permission to erase a complete frame.
+ *
+ * If an incomplete trailing frame exists, it is truncated and fsynced here.
+ */
+int elpis_ecsc_log_finish_recovery(
+    elpis_ecsc_log *log,
+    uint64_t validated_complete_prefix
+);
+
+/*
+ * Durable append of one already-canonical, already-semantically-validated
+ * ECS_C event payload. This function owns framing/write/fsync.
+ *
+ * Ordinary I/O failure:
+ *   restore previous length + fsync -> ELPIS_ECSC_APPEND_ROLLED_BACK
+ *
+ * Failed rollback or failed rollback fsync:
+ *   close/poison owner -> ELPIS_ECSC_APPEND_UNCERTAIN
+ */
+int elpis_ecsc_log_append_event_bytes(
+    elpis_ecsc_log *log,
+    const void *canonical_event,
+    size_t canonical_event_size
+);
+
+uint64_t elpis_ecsc_log_size(
+    const elpis_ecsc_log *log
+);
+
+uint64_t elpis_ecsc_log_frame_count(
+    const elpis_ecsc_log *log
+);
+
 #ifdef __cplusplus
 }
 #endif

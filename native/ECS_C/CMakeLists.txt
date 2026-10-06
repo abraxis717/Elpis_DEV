@@ -6,6 +6,7 @@
 
 elpis_add_library(ECS_C elpis_ecsc_history SHARED
   src/ecsc_history.c
+  src/ecsc_log.c
 )
 target_include_directories(elpis_ecsc_history
   PUBLIC include
