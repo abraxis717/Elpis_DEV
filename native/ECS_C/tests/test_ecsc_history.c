@@ -455,6 +455,105 @@ static void test_committed_message_events(void)
     );
 }
 
+
+static void test_history_identity_primitives(void)
+{
+    char genesis_v1[65];
+    char genesis_v2[65];
+    char entity[65];
+    char initial_state[65];
+
+    assert(
+        elpis_ecsc_genesis_digest(
+            "elpis.runtime.history.v1",
+            sizeof("elpis.runtime.history.v1") - 1u,
+            ELPIS_ECSC_SCHEDULER_V1,
+            genesis_v1
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(
+        elpis_ecsc_genesis_digest(
+            "elpis.runtime.history.v1",
+            sizeof("elpis.runtime.history.v1") - 1u,
+            ELPIS_ECSC_SCHEDULER_V2,
+            genesis_v2
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(strlen(genesis_v1) == 64u);
+    assert(strlen(genesis_v2) == 64u);
+
+    /* Scheduler protocol is part of genesis authority. */
+    assert(strcmp(genesis_v1, genesis_v2) != 0);
+
+    assert(
+        elpis_ecsc_entity_id(
+            0u,
+            "history",
+            sizeof("history") - 1u,
+            genesis_v2,
+            entity
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(strlen(entity) == 64u);
+
+    assert(
+        elpis_ecsc_initial_state_digest(
+            entity,
+            initial_state
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(strlen(initial_state) == 64u);
+}
+
+static void test_history_identity_refusals(void)
+{
+    char out[65];
+    char invalid_digest[65];
+
+    memset(invalid_digest, 'g', 64u);
+    invalid_digest[64] = '\0';
+
+    assert(
+        elpis_ecsc_genesis_digest(
+            "",
+            0u,
+            ELPIS_ECSC_SCHEDULER_V2,
+            out
+        ) == ELPIS_ECSC_INVALID
+    );
+
+    assert(
+        elpis_ecsc_genesis_digest(
+            "history",
+            sizeof("history") - 1u,
+            99u,
+            out
+        ) == ELPIS_ECSC_INVALID
+    );
+
+    assert(
+        elpis_ecsc_entity_id(
+            UINT64_MAX,
+            "history",
+            sizeof("history") - 1u,
+            "11111111111111111111111111111111"
+            "11111111111111111111111111111111",
+            out
+        ) == ELPIS_ECSC_INVALID
+    );
+
+    assert(
+        elpis_ecsc_initial_state_digest(
+            invalid_digest,
+            out
+        ) == ELPIS_ECSC_INVALID
+    );
+}
+
 int main(void)
 {
     test_receipt_payload();
@@ -464,6 +563,8 @@ int main(void)
     test_message_envelope_and_frame();
     test_message_and_frame_refusals();
     test_committed_message_events();
+    test_history_identity_primitives();
+    test_history_identity_refusals();
 
     puts("PASS_ECSC_HISTORY_CODEC");
     return 0;

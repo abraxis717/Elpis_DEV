@@ -1878,3 +1878,399 @@ int elpis_ecsc_processed_event_write(
         NULL
     );
 }
+
+#define ELPIS_ECSC_MAX_STRING_BYTES 1024u
+
+#define ELPIS_ECSC_SCHED_V1 \
+    "active-mailbox-fifo/entity-id-before-founded-activation.v1"
+
+#define ELPIS_ECSC_SCHED_V2 \
+    "active-mailbox-global-arrival/founding-index-activation.v2"
+
+static int es_json_string_utf8(
+    event_sink *s,
+    const char *value,
+    size_t size
+)
+{
+    const unsigned char *p =
+        (const unsigned char *)value;
+
+    size_t offset = 0u;
+    size_t used = 0u;
+    uint32_t cp = 0u;
+    int rc;
+
+    if (s == NULL ||
+        (value == NULL && size != 0u)) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    rc = es_literal(s, "\"");
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    while (offset < size) {
+        rc = utf8_next(
+            p + offset,
+            size - offset,
+            &used,
+            &cp
+        );
+
+        if (rc != ELPIS_ECSC_OK) {
+            return rc;
+        }
+
+        if (cp == (uint32_t)'"') {
+            rc = es_literal(s, "\\\"");
+        } else if (cp == (uint32_t)'\\') {
+            rc = es_literal(s, "\\\\");
+        } else if (cp == UINT32_C(0x08)) {
+            rc = es_literal(s, "\\b");
+        } else if (cp == UINT32_C(0x09)) {
+            rc = es_literal(s, "\\t");
+        } else if (cp == UINT32_C(0x0a)) {
+            rc = es_literal(s, "\\n");
+        } else if (cp == UINT32_C(0x0c)) {
+            rc = es_literal(s, "\\f");
+        } else if (cp == UINT32_C(0x0d)) {
+            rc = es_literal(s, "\\r");
+        } else if (cp < UINT32_C(0x20)) {
+            char escaped[6];
+
+            escaped[0] = '\\';
+            escaped[1] = 'u';
+            escaped[2] = '0';
+            escaped[3] = '0';
+            escaped[4] =
+                hex_digit((unsigned)(cp >> 4));
+            escaped[5] =
+                hex_digit((unsigned)cp);
+
+            rc = es_put(
+                s,
+                escaped,
+                sizeof escaped
+            );
+        } else {
+            /*
+             * canonical.canonical_bytes uses ensure_ascii=False.
+             * Therefore valid non-ASCII UTF-8 is preserved byte-for-byte.
+             */
+            rc = es_put(
+                s,
+                p + offset,
+                used
+            );
+        }
+
+        if (rc != ELPIS_ECSC_OK) {
+            return rc;
+        }
+
+        offset += used;
+    }
+
+    return es_literal(s, "\"");
+}
+
+static int finish_stream_digest(
+    elpis_sha256_ctx *hash,
+    char out_digest[65]
+)
+{
+    uint8_t digest[32];
+
+    if (hash == NULL || out_digest == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    elpis_sha256_final(hash, digest);
+    elpis_hex32(digest, out_digest);
+
+    return ELPIS_ECSC_OK;
+}
+
+int elpis_ecsc_genesis_digest(
+    const char *genesis_label,
+    size_t genesis_label_len,
+    uint32_t scheduler_protocol,
+    char out_digest[65]
+)
+{
+    const char *scheduler;
+    event_sink sink;
+    elpis_sha256_ctx hash;
+    int rc;
+
+    if (out_digest == NULL ||
+        genesis_label == NULL ||
+        genesis_label_len == 0u ||
+        genesis_label_len > ELPIS_ECSC_MAX_STRING_BYTES) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    out_digest[0] = '\0';
+
+    if (scheduler_protocol ==
+        ELPIS_ECSC_SCHEDULER_V1) {
+        scheduler = ELPIS_ECSC_SCHED_V1;
+    } else if (scheduler_protocol ==
+               ELPIS_ECSC_SCHEDULER_V2) {
+        scheduler = ELPIS_ECSC_SCHED_V2;
+    } else {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    elpis_sha256_init(&hash);
+
+    sink.out = NULL;
+    sink.cap = 0u;
+    sink.pos = 0u;
+    sink.hash = &hash;
+
+    rc = es_literal(
+        &sink,
+        "{\"domain\":\"ecs.genesis.v1\","
+        "\"payload\":{\"genesis_label\":"
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_json_string_utf8(
+        &sink,
+        genesis_label,
+        genesis_label_len
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    /*
+     * Canonical key ordering inside protocol:
+     *
+     * lifecycle
+     * max_frame_bytes
+     * max_int
+     * max_payload_bytes
+     * max_string_bytes
+     * revision
+     * scheduler
+     */
+    rc = es_literal(
+        &sink,
+        ",\"protocol\":{"
+        "\"lifecycle\":"
+        "\"founded-active-dormant-terminal.v1\","
+        "\"max_frame_bytes\":262144,"
+        "\"max_int\":9223372036854775807,"
+        "\"max_payload_bytes\":65536,"
+        "\"max_string_bytes\":1024,"
+        "\"revision\":\"ecs.m1a.integration.v3\","
+        "\"scheduler\":"
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_json_string_utf8(
+        &sink,
+        scheduler,
+        strlen(scheduler)
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_literal(
+        &sink,
+        "},\"schema_version\":1}}"
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    return finish_stream_digest(
+        &hash,
+        out_digest
+    );
+}
+
+int elpis_ecsc_entity_id(
+    uint64_t founding_index,
+    const char *label,
+    size_t label_len,
+    const char genesis_digest[64],
+    char out_entity_id[65]
+)
+{
+    event_sink sink;
+    elpis_sha256_ctx hash;
+    int rc;
+
+    if (out_entity_id == NULL ||
+        label == NULL ||
+        label_len == 0u ||
+        label_len > ELPIS_ECSC_MAX_STRING_BYTES ||
+        founding_index > ELPIS_ECSC_MAX_INT ||
+        !is_digest(genesis_digest, 64u)) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    out_entity_id[0] = '\0';
+
+    elpis_sha256_init(&hash);
+
+    sink.out = NULL;
+    sink.cap = 0u;
+    sink.pos = 0u;
+    sink.hash = &hash;
+
+    /*
+     * domain_digest(
+     *   "ecs.entity.founded.v1",
+     *   {
+     *     "schema": "ecs.entity.founding.v1",
+     *     "founding_index": ...,
+     *     "label": ...,
+     *     "genesis_digest": ...
+     *   }
+     * )
+     *
+     * canonical JSON sorts the founding-record keys:
+     *
+     * founding_index
+     * genesis_digest
+     * label
+     * schema
+     */
+    rc = es_literal(
+        &sink,
+        "{\"domain\":\"ecs.entity.founded.v1\","
+        "\"payload\":{\"founding_index\":"
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_u64(
+        &sink,
+        founding_index
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_literal(
+        &sink,
+        ",\"genesis_digest\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_put(
+        &sink,
+        genesis_digest,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_literal(
+        &sink,
+        "\",\"label\":"
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_json_string_utf8(
+        &sink,
+        label,
+        label_len
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_literal(
+        &sink,
+        ",\"schema\":\"ecs.entity.founding.v1\"}}"
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    return finish_stream_digest(
+        &hash,
+        out_entity_id
+    );
+}
+
+int elpis_ecsc_initial_state_digest(
+    const char entity_id[64],
+    char out_state_digest[65]
+)
+{
+    event_sink sink;
+    elpis_sha256_ctx hash;
+    int rc;
+
+    if (out_state_digest == NULL ||
+        !is_digest(entity_id, 64u)) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    out_state_digest[0] = '\0';
+
+    elpis_sha256_init(&hash);
+
+    sink.out = NULL;
+    sink.cap = 0u;
+    sink.pos = 0u;
+    sink.hash = &hash;
+
+    /*
+     * _state_record(entity_id, 0, {})
+     *
+     * canonical keys:
+     * entity_id, payload, schema, version
+     */
+    rc = es_literal(
+        &sink,
+        "{\"domain\":\"ecs.entity.state.v1\","
+        "\"payload\":{\"entity_id\":\""
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_put(
+        &sink,
+        entity_id,
+        64u
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = es_literal(
+        &sink,
+        "\",\"payload\":{},"
+        "\"schema\":\"ecs.entity.state.v1\","
+        "\"version\":0}}"
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    return finish_stream_digest(
+        &hash,
+        out_state_digest
+    );
+}

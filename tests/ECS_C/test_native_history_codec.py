@@ -828,3 +828,220 @@ def test_processed_event_allows_prev_digest_output_buffer_reuse(lib):
     assert written.value == size.value
     assert len(bytes(chained_digest).split(b"\x00", 1)[0]) == 64
     assert len(bytes(intent).split(b"\x00", 1)[0]) == 64
+
+
+def _bind_phase_d(lib):
+    lib.elpis_ecsc_genesis_digest.argtypes = [
+        C.c_char_p,
+        C.c_size_t,
+        C.c_uint32,
+        C.POINTER(C.c_char),
+    ]
+    lib.elpis_ecsc_genesis_digest.restype = C.c_int
+
+    lib.elpis_ecsc_entity_id.argtypes = [
+        C.c_uint64,
+        C.c_char_p,
+        C.c_size_t,
+        C.c_char_p,
+        C.POINTER(C.c_char),
+    ]
+    lib.elpis_ecsc_entity_id.restype = C.c_int
+
+    lib.elpis_ecsc_initial_state_digest.argtypes = [
+        C.c_char_p,
+        C.POINTER(C.c_char),
+    ]
+    lib.elpis_ecsc_initial_state_digest.restype = C.c_int
+
+
+def _char65_text(buf):
+    return bytes(buf).split(b"\x00", 1)[0].decode("ascii")
+
+
+@pytest.mark.parametrize(
+    ("scheduler_code", "scheduler"),
+    [
+        (
+            1,
+            "active-mailbox-fifo/"
+            "entity-id-before-founded-activation.v1",
+        ),
+        (
+            2,
+            "active-mailbox-global-arrival/"
+            "founding-index-activation.v2",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "label",
+    [
+        "elpis.runtime.history.v1",
+        "history-test",
+        "hist-é-😀",
+    ],
+)
+def test_native_genesis_identity_is_exact_python_authority(
+    lib, scheduler_code, scheduler, label
+):
+    from elpis.ECS_C.persistence import (
+        genesis_descriptor_digest,
+    )
+
+    _bind_phase_d(lib)
+
+    raw = label.encode("utf-8")
+    out = (C.c_char * 65)()
+
+    assert (
+        lib.elpis_ecsc_genesis_digest(
+            raw,
+            len(raw),
+            scheduler_code,
+            out,
+        )
+        == 0
+    )
+
+    assert _char65_text(out) == genesis_descriptor_digest(
+        label,
+        scheduler,
+    )
+
+
+@pytest.mark.parametrize(
+    ("index", "label"),
+    [
+        (0, "history"),
+        (1, "pipeline"),
+        (2, "structure"),
+        (3, "evolution"),
+        (4, "inference"),
+        (5, "ecs_g"),
+        (9, "role-é-😀"),
+        ((1 << 63) - 1, "max-index"),
+    ],
+)
+def test_native_entity_identity_is_exact_python_authority(
+    lib, index, label
+):
+    from elpis.ECS_C.entity import (
+        entity_id_from_founding,
+        founding_record,
+        initial_state_digest,
+    )
+    from elpis.ECS_C.persistence import (
+        genesis_descriptor_digest,
+    )
+    from elpis.ECS_C.scheduler import SCHEDULER_V2
+
+    _bind_phase_d(lib)
+
+    genesis = genesis_descriptor_digest(
+        "elpis.runtime.history.v1",
+        SCHEDULER_V2,
+    )
+
+    label_raw = label.encode("utf-8")
+
+    out_entity = (C.c_char * 65)()
+
+    assert (
+        lib.elpis_ecsc_entity_id(
+            index,
+            label_raw,
+            len(label_raw),
+            genesis.encode("ascii"),
+            out_entity,
+        )
+        == 0
+    )
+
+    native_entity = _char65_text(out_entity)
+
+    expected_entity = entity_id_from_founding(
+        founding_record(
+            index,
+            label,
+            genesis,
+        )
+    )
+
+    assert native_entity == expected_entity
+
+    out_state = (C.c_char * 65)()
+
+    assert (
+        lib.elpis_ecsc_initial_state_digest(
+            native_entity.encode("ascii"),
+            out_state,
+        )
+        == 0
+    )
+
+    assert _char65_text(out_state) == initial_state_digest(
+        expected_entity
+    )
+
+
+def test_native_runtime_role_identity_set_matches_python(
+    lib,
+):
+    from elpis.ECS_C.entity import (
+        entity_id_from_founding,
+        founding_record,
+    )
+    from elpis.ECS_C.persistence import (
+        genesis_descriptor_digest,
+    )
+    from elpis.ECS_C.scheduler import SCHEDULER_V2
+
+    _bind_phase_d(lib)
+
+    roles = (
+        "history",
+        "pipeline",
+        "structure",
+        "evolution",
+        "inference",
+        "ecs_g",
+    )
+
+    genesis = genesis_descriptor_digest(
+        "elpis.runtime.history.v1",
+        SCHEDULER_V2,
+    )
+
+    native = []
+
+    for index, role in enumerate(roles):
+        role_raw = role.encode("ascii")
+        out = (C.c_char * 65)()
+
+        assert (
+            lib.elpis_ecsc_entity_id(
+                index,
+                role_raw,
+                len(role_raw),
+                genesis.encode("ascii"),
+                out,
+            )
+            == 0
+        )
+
+        native.append(_char65_text(out))
+
+    python = [
+        entity_id_from_founding(
+            founding_record(
+                index,
+                role,
+                genesis,
+            )
+        )
+        for index, role in enumerate(roles)
+    ]
+
+    assert native == python
+    assert len(set(native)) == len(roles)

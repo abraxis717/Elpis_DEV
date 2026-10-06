@@ -221,6 +221,57 @@ int elpis_ecsc_processed_event_write(
     char out_intent_digest[65]
 );
 
+
+enum {
+    ELPIS_ECSC_SCHEDULER_V1 = 1,
+    ELPIS_ECSC_SCHEDULER_V2 = 2
+};
+
+/*
+ * Exact ECS_C genesis descriptor identity.
+ *
+ * Equivalent to:
+ *
+ *   persistence.genesis_descriptor_digest(
+ *       genesis_label,
+ *       scheduler_protocol=<selected protocol>
+ *   )
+ *
+ * Current protocol constants are bound exactly. This is content identity,
+ * not authentication.
+ */
+int elpis_ecsc_genesis_digest(
+    const char *genesis_label,
+    size_t genesis_label_len,
+    uint32_t scheduler_protocol,
+    char out_digest[65]
+);
+
+/*
+ * Exact identity of one founded ECS_C entity:
+ *
+ *   entity_id_from_founding(
+ *       founding_record(index, label, genesis_digest)
+ *   )
+ */
+int elpis_ecsc_entity_id(
+    uint64_t founding_index,
+    const char *label,
+    size_t label_len,
+    const char genesis_digest[64],
+    char out_entity_id[65]
+);
+
+/*
+ * Exact canonical version-0 entity-state identity:
+ *
+ *   initial_state_digest(entity_id)
+ */
+int elpis_ecsc_initial_state_digest(
+    const char entity_id[64],
+    char out_state_digest[65]
+);
+
 #ifdef __cplusplus
 }
 #endif
