@@ -75,6 +75,27 @@ static int fsync_checked(int fd)
     }
 }
 
+static int ftruncate_checked(
+    int fd,
+    uint64_t size
+)
+{
+    for (;;) {
+        if (ftruncate(
+                fd,
+                (off_t)size
+            ) == 0) {
+            return ELPIS_ECSC_OK;
+        }
+
+        if (errno == EINTR) {
+            continue;
+        }
+
+        return ELPIS_ECSC_IO;
+    }
+}
+
 static int pread_all(
     int fd,
     void *buffer,
@@ -295,10 +316,10 @@ static int rollback_append(
     uint64_t start
 )
 {
-    if (ftruncate(
+    if (ftruncate_checked(
             log->fd,
-            (off_t)start
-        ) != 0) {
+            start
+        ) != ELPIS_ECSC_OK) {
         return poison_uncertain(log);
     }
 
@@ -603,10 +624,10 @@ int elpis_ecsc_log_finish_recovery(
 
     if (log->complete_prefix !=
         current_size) {
-        if (ftruncate(
+        if (ftruncate_checked(
                 log->fd,
-                (off_t)log->complete_prefix
-            ) != 0) {
+                log->complete_prefix
+            ) != ELPIS_ECSC_OK) {
             return ELPIS_ECSC_IO;
         }
 

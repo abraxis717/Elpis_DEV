@@ -18,3 +18,16 @@ elpis_add_test(ECS_C test_ecsc_history
   SOURCES tests/test_ecsc_history.c
   LIBS elpis_ecsc_history
 )
+
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  # Test-only syscall fault injection. Compile the durability source directly
+  # into the test so GNU ld --wrap intercepts its write/fsync/ftruncate calls.
+  # No fault hooks enter the production shared library.
+  elpis_add_test(ECS_C test_ecsc_log_faults
+    SOURCES tests/test_ecsc_log_faults.c src/ecsc_log.c
+    INCLUDES include
+    TIMEOUT 60)
+  target_link_options(test_ecsc_log_faults PRIVATE
+    "LINKER:--wrap=write,--wrap=fsync,--wrap=ftruncate")
+endif()
