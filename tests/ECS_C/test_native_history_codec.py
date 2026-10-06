@@ -1923,6 +1923,7 @@ class RuntimeRecordPlanResult(C.Structure):
         ("message_id", C.c_char * 65),
         ("enqueue_state_root", C.c_char * 65),
         ("final_state_root", C.c_char * 65),
+        ("final_history_digest", C.c_char * 65),
         ("enqueue_event_digest", C.c_char * 65),
         ("processed_event_digest", C.c_char * 65),
         ("final_history_state_digest", C.c_char * 65),
@@ -2166,6 +2167,8 @@ def _native_runtime_record_plan(
             _char_array_text(result.enqueue_state_root),
         "final_state_root":
             _char_array_text(result.final_state_root),
+        "final_history_digest":
+            _char_array_text(result.final_history_digest),
         "enqueue_event_digest":
             _char_array_text(result.enqueue_event_digest),
         "processed_event_digest":
@@ -2342,6 +2345,11 @@ def test_native_runtime_record_plan_exactly_matches_python_two_event_transition(
 
             state_after = kernel.state
 
+            assert (
+                native["final_history_digest"]
+                == state_after.history_digest
+            )
+
             history = state_after.registry.get(
                 receiver
             )
@@ -2382,3 +2390,257 @@ def test_native_runtime_record_plan_exactly_matches_python_two_event_transition(
 
     finally:
         kernel.close()
+
+
+def _bind_phase_g2b1(lib):
+    _bind_phase_g2a(lib)
+
+    lib.elpis_ecsc_runtime_session_open.argtypes = [
+        C.c_char_p,
+        C.c_size_t,
+        C.POINTER(StateRoot),
+        C.c_char_p,
+        C.c_uint64,
+        C.POINTER(C.c_void_p),
+    ]
+    lib.elpis_ecsc_runtime_session_open.restype = C.c_int
+
+    lib.elpis_ecsc_runtime_session_close.argtypes = [
+        C.c_void_p,
+    ]
+    lib.elpis_ecsc_runtime_session_close.restype = None
+
+    lib.elpis_ecsc_runtime_session_record.argtypes = [
+        C.c_void_p,
+        C.c_char_p,
+        C.c_char_p,
+        C.c_void_p,
+        C.c_size_t,
+        C.POINTER(RuntimeRecordPlanResult),
+    ]
+    lib.elpis_ecsc_runtime_session_record.restype = C.c_int
+
+    lib.elpis_ecsc_runtime_session_state_root_digest.argtypes = [
+        C.c_void_p,
+        C.POINTER(C.c_char),
+    ]
+    lib.elpis_ecsc_runtime_session_state_root_digest.restype = C.c_int
+
+    lib.elpis_ecsc_runtime_session_event_count.argtypes = [
+        C.c_void_p,
+    ]
+    lib.elpis_ecsc_runtime_session_event_count.restype = C.c_uint64
+
+
+def _create_six_role_history(storage):
+    from elpis.ECS_C.kernel import Kernel
+    from elpis.runtime.history import (
+        HISTORY_GENESIS_LABEL,
+        ROLES,
+    )
+
+    kernel = Kernel(
+        str(storage),
+        genesis_label=HISTORY_GENESIS_LABEL,
+    )
+
+    kernel.open()
+
+    ids = {}
+
+    for role in ROLES:
+        ids[role] = kernel.found_entity(role)
+
+    kernel.run_until_quiescent()
+
+    return kernel, ids
+
+
+def test_native_runtime_session_durably_matches_python_replay(
+    lib,
+    tmp_path,
+):
+    from elpis.ECS_C.kernel import Kernel
+    from elpis.runtime.history import (
+        HISTORY_GENESIS_LABEL,
+        ReceiptRecord,
+    )
+
+    _bind_phase_g2b1(lib)
+
+    native_storage = tmp_path / "native-session"
+    oracle_storage = tmp_path / "python-oracle"
+
+    native_kernel, native_ids = _create_six_role_history(
+        native_storage
+    )
+
+    seed_state = native_kernel.state
+    seed_events = native_kernel.events()
+
+    seed_event_count = len(seed_events)
+    seed_head = seed_events[-1]["event_digest"]
+
+    native_log_path = str(native_kernel.log_path)
+
+    native_kernel.close()
+
+    oracle_kernel, oracle_ids = _create_six_role_history(
+        oracle_storage
+    )
+
+    assert native_ids == oracle_ids
+    assert oracle_kernel.events() == seed_events
+
+    sender = native_ids["ecs_g"]
+    receiver = native_ids["history"]
+
+    native_root, keepalive = _state_root_ctypes_view(
+        seed_state.state_root()
+    )
+
+    session = C.c_void_p()
+
+    path_bytes = native_log_path.encode("utf-8")
+
+    assert (
+        lib.elpis_ecsc_runtime_session_open(
+            path_bytes,
+            len(path_bytes),
+            C.byref(native_root),
+            seed_head.encode("ascii"),
+            seed_event_count,
+            C.byref(session),
+        )
+        == 0
+    )
+
+    assert session.value is not None
+
+    try:
+        oracle_port = oracle_kernel.entity_port(
+            oracle_ids["ecs_g"]
+        )
+
+        for ordinal in (1, 2):
+            record = ReceiptRecord.of(
+                "ecs_g",
+                "cognition.turn",
+                format(ordinal, "064x"),
+                epoch_before=str(ordinal - 1),
+                epoch_after=str(ordinal),
+                mechanism="native-k1",
+            )
+
+            payload = record.payload()
+
+            payload_buf = (
+                C.c_uint8 * len(payload)
+            ).from_buffer_copy(payload)
+
+            result = RuntimeRecordPlanResult()
+
+            assert (
+                lib.elpis_ecsc_runtime_session_record(
+                    session,
+                    sender.encode("ascii"),
+                    receiver.encode("ascii"),
+                    C.cast(
+                        payload_buf,
+                        C.c_void_p,
+                    ),
+                    len(payload),
+                    C.byref(result),
+                )
+                == 0
+            )
+
+            expected_mid = oracle_port.propose(
+                oracle_ids["history"],
+                payload,
+            )
+
+            assert oracle_kernel.step() == 1
+            assert oracle_kernel.step() == 0
+
+            assert (
+                _char_array_text(result.message_id)
+                == expected_mid
+            )
+
+            assert (
+                lib.elpis_ecsc_runtime_session_event_count(
+                    session
+                )
+                == seed_event_count + (2 * ordinal)
+            )
+
+            root_out = (C.c_char * 65)()
+
+            assert (
+                lib.elpis_ecsc_runtime_session_state_root_digest(
+                    session,
+                    root_out,
+                )
+                == 0
+            )
+
+            assert (
+                _char65_text(root_out)
+                == _char_array_text(
+                    result.final_state_root
+                )
+            )
+
+            assert (
+                _char_array_text(
+                    result.final_history_digest
+                )
+                == oracle_kernel.state.history_digest
+            )
+
+            assert (
+                _char65_text(root_out)
+                == oracle_kernel.state_root_digest()
+            )
+
+    finally:
+        lib.elpis_ecsc_runtime_session_close(
+            session
+        )
+
+    oracle_events = oracle_kernel.events()
+    oracle_root = oracle_kernel.state_root_digest()
+
+    oracle_kernel.close()
+
+    replay = Kernel(
+        str(native_storage),
+        genesis_label=HISTORY_GENESIS_LABEL,
+    )
+
+    replay.open()
+
+    try:
+        assert replay.events() == oracle_events
+        assert replay.state_root_digest() == oracle_root
+
+        state = replay.state
+
+        history = state.registry.get(
+            native_ids["history"]
+        )
+
+        assert history.state.payload == {
+            "delivered": 2
+        }
+
+        assert state.watermarks.get(sender) == 2
+
+        assert (
+            state.mailboxes.box(receiver).peek()
+            is None
+        )
+
+    finally:
+        replay.close()

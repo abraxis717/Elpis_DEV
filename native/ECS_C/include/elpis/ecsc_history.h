@@ -375,7 +375,8 @@ enum {
     ELPIS_ECSC_CORRUPT = -6,
     ELPIS_ECSC_APPEND_ROLLED_BACK = -7,
     ELPIS_ECSC_APPEND_UNCERTAIN = -8,
-    ELPIS_ECSC_NOT_READY = -9
+    ELPIS_ECSC_NOT_READY = -9,
+    ELPIS_ECSC_PARTIAL_COMMIT = -10
 };
 
 typedef struct elpis_ecsc_log elpis_ecsc_log;
@@ -490,6 +491,7 @@ typedef struct elpis_ecsc_runtime_record_plan_result {
 
     char enqueue_state_root[65];
     char final_state_root[65];
+    char final_history_digest[65];
 
     char enqueue_event_digest[65];
     char processed_event_digest[65];
@@ -529,6 +531,67 @@ int elpis_ecsc_runtime_record_plan(
     size_t processed_capacity,
 
     elpis_ecsc_runtime_record_plan_result *out
+);
+
+
+/*
+ * Native durable runtime-history session.
+ *
+ * The seed state must already have been fully semantically validated by the
+ * canonical ECS_C replay authority and must be quiescent: every materialized
+ * mailbox is empty. The native owner then acquires events.log, structurally
+ * verifies the validated event count, and owns all later appends.
+ *
+ * No sidecar history authority is created.
+ */
+typedef struct elpis_ecsc_runtime_session
+    elpis_ecsc_runtime_session;
+
+int elpis_ecsc_runtime_session_open(
+    const char *log_path,
+    size_t log_path_len,
+    const elpis_ecsc_state_root_view *validated_state,
+    const char current_event_digest[64],
+    uint64_t validated_event_count,
+    elpis_ecsc_runtime_session **out_session
+);
+
+void elpis_ecsc_runtime_session_close(
+    elpis_ecsc_runtime_session *session
+);
+
+/*
+ * One native receipt operation.
+ *
+ * Success durably appends exactly:
+ *   MESSAGE_ENQUEUED
+ *   MESSAGE_PROCESSED
+ *
+ * APPEND_ROLLED_BACK on the first append leaves the session usable and the
+ * pre-call state authoritative.
+ *
+ * If the enqueue is durably committed but the processed append definitely
+ * rolls back, PARTIAL_COMMIT is returned and the session is poisoned. Reopen
+ * and canonical replay are then required.
+ *
+ * Any indeterminate append also poisons the session.
+ */
+int elpis_ecsc_runtime_session_record(
+    elpis_ecsc_runtime_session *session,
+    const char sender_entity_id[64],
+    const char history_entity_id[64],
+    const void *receipt_payload,
+    size_t receipt_payload_size,
+    elpis_ecsc_runtime_record_plan_result *out
+);
+
+int elpis_ecsc_runtime_session_state_root_digest(
+    const elpis_ecsc_runtime_session *session,
+    char out_digest[65]
+);
+
+uint64_t elpis_ecsc_runtime_session_event_count(
+    const elpis_ecsc_runtime_session *session
 );
 
 #ifdef __cplusplus

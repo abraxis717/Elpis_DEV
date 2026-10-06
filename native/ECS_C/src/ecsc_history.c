@@ -3877,6 +3877,12 @@ int elpis_ecsc_runtime_record_plan(
     );
 
     memcpy(
+        out->final_history_digest,
+        processed_intent,
+        65u
+    );
+
+    memcpy(
         out->enqueue_event_digest,
         enqueue_digest,
         65u
