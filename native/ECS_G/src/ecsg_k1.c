@@ -1340,6 +1340,25 @@ elpis_ecsg_k1_status elpis_ecsg_k1_snapshot_write(elpis_ecsg_k1 *s, uint8_t *out
     return ELPIS_ECSG_K1_OK;
 }
 
+elpis_ecsg_k1_status
+elpis_ecsg_k1_state_digest(
+    elpis_ecsg_k1 *s,
+    uint8_t out[ELPIS_ECSG_K1_DIGEST_BYTES]
+)
+{
+    if (s == NULL || s->image == NULL || out == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (!enter(s)) {
+        return ELPIS_ECSG_K1_BUSY;
+    }
+
+    retained_state_digest(s, s->image, out);
+
+    leave(s);
+    return ELPIS_ECSG_K1_OK;
+}
+
 elpis_ecsg_k1_status elpis_ecsg_k1_stats(elpis_ecsg_k1 *s, elpis_ecsg_k1_counters *out)
 {
     if (s == NULL || out == NULL) {

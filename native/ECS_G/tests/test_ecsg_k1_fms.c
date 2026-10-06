@@ -543,6 +543,29 @@ static void test_experience_schedule_resident_equals_standalone(void)
     free(want);
 }
 
+
+static void test_state_digest_matches_resident_snapshot_trailer(void)
+{
+    elpis_ecsg_k1_fms *r = runtime_with(NULL, "k1-state-digest", (uint64_t)IMAGE * 4u, 2);
+    uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES];
+    uint8_t *snapshot = malloc(ENVELOPE);
+    uint64_t id = state(r, 43);
+
+    assert(snapshot);
+    envelope_of(r, id, snapshot);
+    OK(elpis_ecsg_k1_fms_state_digest(r, id, digest));
+
+    assert(!memcmp(
+        digest,
+        snapshot + ENVELOPE - ELPIS_ECSG_K1_DIGEST_BYTES,
+        ELPIS_ECSG_K1_DIGEST_BYTES
+    ));
+
+    OK(elpis_ecsg_k1_fms_close(r, &id));
+    OK(elpis_ecsg_k1_fms_destroy(&r));
+    free(snapshot);
+}
+
 int main(void)
 {
     fixture();
@@ -561,4 +584,5 @@ int main(void)
            "refusals leave the complete state unchanged; envelopes and W-only imports; the transaction refusal "
            "contract; hostile imports; provenance; the experience schedule (resident = standalone)\n");
     return 0;
+    test_state_digest_matches_resident_snapshot_trailer();
 }

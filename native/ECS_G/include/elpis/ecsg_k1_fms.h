@@ -105,6 +105,8 @@ int elpis_ecsg_k1_fms_copy_w(elpis_ecsg_k1_fms *, uint64_t id, double *out, size
 int elpis_ecsg_k1_fms_copy_h_packed(elpis_ecsg_k1_fms *, uint64_t id, double *out, size_t count);
 int elpis_ecsg_k1_fms_copy_a(elpis_ecsg_k1_fms *, uint64_t id, double *out, size_t count);
 int elpis_ecsg_k1_fms_snapshot_write(elpis_ecsg_k1_fms *, uint64_t id, uint8_t *out, size_t size);
+int elpis_ecsg_k1_fms_state_digest(elpis_ecsg_k1_fms *, uint64_t id,
+                                   uint8_t out[ELPIS_ECSG_K1_DIGEST_BYTES]);
 
 int elpis_ecsg_k1_fms_txn_begin(elpis_ecsg_k1_fms *, uint64_t id, uint64_t *token);
 int elpis_ecsg_k1_fms_txn_learn(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token, const double *x, const double *y,

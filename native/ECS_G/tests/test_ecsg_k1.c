@@ -762,6 +762,26 @@ static void test_schedule_validation_touches_nothing(void)
     elpis_ecsg_k1_destroy(&ref);
 }
 
+
+static void test_state_digest_matches_snapshot_trailer(void)
+{
+    elpis_ecsg_k1 *s = fresh();
+    uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES];
+    uint8_t *snapshot = NULL;
+    size_t bytes;
+
+    bytes = envelope(s, &snapshot);
+    assert(elpis_ecsg_k1_state_digest(s, digest) == ELPIS_ECSG_K1_OK);
+    assert(!memcmp(
+        digest,
+        snapshot + bytes - ELPIS_ECSG_K1_DIGEST_BYTES,
+        ELPIS_ECSG_K1_DIGEST_BYTES
+    ));
+
+    free(snapshot);
+    elpis_ecsg_k1_destroy(&s);
+}
+
 int main(void)
 {
     fixture();
@@ -788,4 +808,5 @@ int main(void)
            "dimensions, resealed envelopes, provenance transitions, epoch overflow, race-free getters, the experience schedule (= ordered txn learn/consolidate, S3 readout, "
            "whole-schedule validation, discard on non-finite, stale)\n");
     return 0;
+    test_state_digest_matches_snapshot_trailer();
 }

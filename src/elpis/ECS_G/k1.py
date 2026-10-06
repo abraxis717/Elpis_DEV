@@ -200,6 +200,7 @@ _K1_ABI = {
     "copy_a": ([_VP, _P, C.c_size_t], C.c_int),
     "snapshot_size": ([_VP], C.c_size_t),
     "snapshot_write": ([_VP, _U8P, C.c_size_t], C.c_int),
+    "state_digest": ([_VP, _U8P], C.c_int),
     "stats": ([_VP, C.POINTER(_Counters)], C.c_int),
     "txn_begin": ([_VP, C.POINTER(_U64)], C.c_int),
     "txn_learn": ([_VP, _U64, _P, _P, C.c_size_t, C.c_double, _U64, _TP], C.c_int),
@@ -389,6 +390,13 @@ class K1State:
             raise _refused(rc, "K1 snapshot")
         return bytes(out)
 
+    def state_digest(self):
+        out = (C.c_uint8 * 32)()
+        rc = self._k.state_digest(self._live(), out)
+        if rc != 0:
+            raise _refused(rc, "K1 state digest")
+        return bytes(out)
+
     def stats(self):
         s = _Counters()
         rc = self._k.stats(self._live(), C.byref(s))
@@ -517,6 +525,7 @@ _FMS_ABI = {
     "reset": ([_VP, _U64, _TP], C.c_int),
     "copy_w": ([_VP, _U64, _P, C.c_size_t], C.c_int),
     "snapshot_write": ([_VP, _U64, _U8P, C.c_size_t], C.c_int),
+    "state_digest": ([_VP, _U64, _U8P], C.c_int),
     "txn_begin": ([_VP, _U64, C.POINTER(_U64)], C.c_int),
     "txn_learn": ([_VP, _U64, _U64, _P, _P, C.c_size_t, C.c_double, _U64, _TP], C.c_int),
     "txn_consolidate": ([_VP, _U64, _U64, _P, C.c_size_t], C.c_int),
@@ -666,6 +675,13 @@ class K1FMSRuntime:
         rc = self._f.snapshot_write(self._live(), state_id, out, size)
         if rc != 0:
             raise _refused(rc, "K1 FMS snapshot")
+        return bytes(out)
+
+    def state_digest(self, state_id):
+        out = (C.c_uint8 * 32)()
+        rc = self._f.state_digest(self._live(), state_id, out)
+        if rc != 0:
+            raise _refused(rc, "K1 FMS state digest")
         return bytes(out)
 
     def reserve(self, state_id, max_rows):
@@ -827,3 +843,6 @@ class K1FMSState:
 
     def snapshot(self):
         return self._r.snapshot(self._id)
+
+    def state_digest(self):
+        return self._r.state_digest(self._id)

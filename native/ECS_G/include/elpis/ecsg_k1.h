@@ -189,6 +189,10 @@ elpis_ecsg_k1_status elpis_ecsg_k1_copy_a(elpis_ecsg_k1 *state, double *out, siz
 
 size_t elpis_ecsg_k1_snapshot_size(const elpis_ecsg_k1 *state);
 elpis_ecsg_k1_status elpis_ecsg_k1_snapshot_write(elpis_ecsg_k1 *state, uint8_t *out, size_t size);
+elpis_ecsg_k1_status elpis_ecsg_k1_state_digest(
+    elpis_ecsg_k1 *state,
+    uint8_t out[ELPIS_ECSG_K1_DIGEST_BYTES]
+);
 
 elpis_ecsg_k1_status elpis_ecsg_k1_stats(elpis_ecsg_k1 *state, elpis_ecsg_k1_counters *out);
 
