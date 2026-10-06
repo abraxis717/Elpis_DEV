@@ -12,12 +12,12 @@ from elpis.ECS_C.bus import DEFAULT_MAILBOX_CAPACITY
 from elpis.ECS_C.errors import EcsError
 from elpis.ECS_C.limits import MAX_FRAME_BYTES
 from elpis.ECS_C.persistence import GENESIS_PREV_DIGEST, verify_event_fields, verify_event_link
-from elpis.ECS_C.replay import initial_state, replay_from_events
+from elpis.ECS_C.replay import StreamReplay, initial_state, replay_from_events
 from elpis.ECS_C.scheduler import SCHEDULER_V1
 
 from .contracts import (
     ContextProjection, HistoryBinding, ProjectedEvent, ProjectionError,
-    ProjectionRequest,
+    ProjectionRequest, RetainedHistoryBinding,
 )
 
 
@@ -131,19 +131,31 @@ def project_verified_events(
     Stop emitting at the first budget failure (canonical prefix), but continue
     validation/counting. This deliberately does not pack smaller later events.
     """
-    if type(source) is not HistoryBinding or type(request) is not ProjectionRequest:
+    if (type(source) not in (HistoryBinding, RetainedHistoryBinding)
+            or type(request) is not ProjectionRequest):
         raise ProjectionError("INVALID_SOURCE_OR_REQUEST")
     if not isinstance(events, Iterable) or isinstance(events, (str, bytes, bytearray)):
         raise ProjectionError("EVENT_ITERABLE_REQUIRED")
     matches = _matcher(request)
-    previous_digest = GENESIS_PREV_DIGEST
-    count = total = 0
+    total = 0
     used = 2  # JSON array brackets, including the zero-record result.
     selected: list[ProjectedEvent] = []
     exhausted: tuple[str, ...] = ()
     try:
-        previous_root = initial_state(source.genesis_digest, source.mailbox_capacity,
-                                      source.scheduler_protocol).state_root_digest()
+        if type(source) is RetainedHistoryBinding:
+            # Retained window: the stream starts at the floor and links to the
+            # verified checkpoint coordinates. A request that reaches into the
+            # retired prefix is refused, never answered from the tail.
+            if request.clock_min <= source.retention_floor:
+                raise ProjectionError("BELOW_RETENTION_FLOOR")
+            count = source.retention_floor
+            previous_digest = source.floor_event_digest
+            previous_root = source.floor_state_root
+        else:
+            count = 0
+            previous_digest = GENESIS_PREV_DIGEST
+            previous_root = initial_state(source.genesis_digest, source.mailbox_capacity,
+                                          source.scheduler_protocol).state_root_digest()
         for candidate in events:
             if count >= source.event_count:
                 raise ProjectionError("SOURCE_EVENT_COUNT_MISMATCH")
@@ -180,3 +192,51 @@ def project_verified_events(
     except EcsError as exc:
         raise ProjectionError(f"HISTORY_REJECTED: {exc}") from exc
     return ContextProjection(source, request, tuple(selected), total, used, exhausted)
+
+
+def project_retained_history(
+    base,
+    events: Sequence[Mapping[str, Any]],
+    request: ProjectionRequest,
+) -> ContextProjection:
+    """Qualify a compacted history's retained window, then project it read-only.
+
+    ``base`` is the verified :class:`elpis.ECS_C.compaction.CompactionCheckpoint`
+    the window continues; ``events`` are the retained events in global order.
+    Every retained event is semantically replayed from the base state (bounded
+    by the window). With a zero floor this is exactly :func:`project_history`.
+    Otherwise the result binds the floor (RetainedHistoryBinding, schema
+    ``ecs.context-projection.retained.v1``) and requests reaching at or below
+    the floor fail closed with ``BELOW_RETENTION_FLOOR``.
+    """
+    from elpis.ECS_C.compaction import CompactionCheckpoint
+
+    if type(base) is not CompactionCheckpoint:
+        raise ProjectionError("INVALID_RETAINED_BASE")
+    if type(request) is not ProjectionRequest:
+        raise ProjectionError("INVALID_REQUEST")
+    if not isinstance(events, Sequence) or isinstance(events, (str, bytes, bytearray)):
+        raise ProjectionError("MATERIALIZED_SEQUENCE_REQUIRED")
+    if base.event_count == 0:
+        return project_history(base.genesis_digest, events, request,
+                               mailbox_capacity=base.mailbox_capacity,
+                               scheduler_protocol=base.scheduler_protocol)
+    if request.clock_min <= base.event_count:
+        raise ProjectionError("BELOW_RETENTION_FLOOR")
+    try:
+        replay = StreamReplay(base.kernel_state(), base.event_count, base.head_event_digest)
+        ordered = []
+        for event in events:
+            record, _raw = _snapshot(event)
+            replay.apply(record)
+            ordered.append(record)
+        source = RetainedHistoryBinding(
+            base.genesis_digest, base.mailbox_capacity, base.scheduler_protocol,
+            replay.event_count, replay.head_event_digest, replay.state_root_digest,
+            base.event_count, base.head_event_digest, base.state_root_digest,
+        )
+        return project_verified_events(iter(ordered), source, request)
+    except ProjectionError:
+        raise
+    except EcsError as exc:
+        raise ProjectionError(f"HISTORY_REJECTED: {exc}") from exc
