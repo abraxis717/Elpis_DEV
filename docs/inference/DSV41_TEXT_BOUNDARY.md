@@ -96,7 +96,7 @@ The canonical turn, `Runtime.run_turn` (`elpis.runtime.cognition`), uses its
 `encode` and incremental `decoder()` at the boundary on either side of ECS:
 
 ```python
-result = runtime.run_turn(world_state, "Hello, Elpis.", tokenizer=tokenizer,
+result = runtime.run_turn(k1_state, "Hello, Elpis.", tokenizer=tokenizer,
                           learning_rate=0.002)
 # CompositionError: ECS_CODEC_UNQUALIFIED: ECS codec mapping not yet
 # qualified; text generation unavailable

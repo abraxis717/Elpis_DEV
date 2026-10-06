@@ -90,6 +90,28 @@ static int fms_txn_cycle(elpis_ecsg_k1_fms *r, uint64_t id)
     return elpis_ecsg_k1_fms_txn_commit(r, id, tok, NULL);
 }
 
+/* The canonical turn's ECS part: begin -> the whole experience schedule (K1 steps + consolidation per experience,
+ * S3 readout of the candidate) in one call -> commit. 8 experiences of 8 rows x 10 steps. */
+static const elpis_ecsg_k1_experience TURN[8] = {{8, 10}, {8, 10}, {8, 10}, {8, 10}, {8, 10}, {8, 10}, {8, 10}, {8, 10}};
+
+static int turn_cycle(elpis_ecsg_k1 *s)
+{
+    uint64_t tok = 0;
+    double s3[83];
+    if (elpis_ecsg_k1_txn_begin(s, &tok) != 0) return -1;
+    if (elpis_ecsg_k1_txn_run_schedule(s, tok, X, Y, R, TURN, 8, 0.002, s3, 83, NULL) != 0) return -1;
+    return elpis_ecsg_k1_txn_commit(s, tok, NULL);
+}
+
+static int fms_turn_cycle(elpis_ecsg_k1_fms *r, uint64_t id)
+{
+    uint64_t tok = 0;
+    double s3[83];
+    if (elpis_ecsg_k1_fms_txn_begin(r, id, &tok) != 0) return -1;
+    if (elpis_ecsg_k1_fms_txn_run_schedule(r, id, tok, X, Y, R, TURN, 8, 0.002, s3, 83, NULL) != 0) return -1;
+    return elpis_ecsg_k1_fms_txn_commit(r, id, tok, NULL);
+}
+
 static int restore_once(const uint8_t *env, size_t n)
 {
     elpis_ecsg_k1 *s = NULL;
@@ -154,6 +176,7 @@ int main(void)
     }
     TIME("standalone consolidate (64 rows)", 0.0, elpis_ecsg_k1_consolidate(s, X, R, NULL));
     TIME("standalone txn begin+learn10+cons+commit", 10.0, txn_cycle(s));
+    TIME("standalone turn: 8 experiences x 10 steps", 80.0, turn_cycle(s));
     TIME("standalone snapshot", 0.0, elpis_ecsg_k1_snapshot_write(s, env, envelope_bytes));
     assert(heap(s) == h0 && "a warm standalone operation allocated");
     TIME("standalone restore (create+decode)", 0.0, restore_once(env, envelope_bytes));
@@ -168,6 +191,7 @@ int main(void)
     TIME("fms warm learn K=10", 10.0, elpis_ecsg_k1_fms_learn(r, id, X, Y, R, 0.002, 10, NULL));
     TIME("fms warm consolidate", 0.0, elpis_ecsg_k1_fms_consolidate(r, id, X, R, NULL));
     TIME("fms warm txn begin+learn10+cons+commit", 10.0, fms_txn_cycle(r, id));
+    TIME("fms warm turn: 8 experiences x 10 steps", 80.0, fms_turn_cycle(r, id));
     TIME("fms warm snapshot", 0.0, elpis_ecsg_k1_fms_snapshot_write(r, id, env, envelope_bytes));
     assert(fms_heap(r, id) == h0 && "a warm FMS operation allocated in the K1 workspace (or rebuilt a state)");
     assert(elpis_ecsg_k1_fms_close(r, &id) == 0 && elpis_ecsg_k1_fms_destroy(&r) == 0);

@@ -118,6 +118,14 @@ int elpis_ecsg_k1_fms_txn_commit(elpis_ecsg_k1_fms *, uint64_t id, uint64_t toke
                                  elpis_ecsg_k1_transition *transition);
 int elpis_ecsg_k1_fms_txn_abort(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token);
 
+/* The experience schedule of ecsg_k1.h on the resident candidate, under the transaction's WRITE pin: one call learns
+ * and consolidates every experience natively and returns S3 of the final candidate W. Same validation and refusal
+ * contract as elpis_ecsg_k1_txn_run_schedule; a discarding refusal releases the pin. */
+int elpis_ecsg_k1_fms_txn_run_schedule(elpis_ecsg_k1_fms *runtime, uint64_t id, uint64_t token, const double *x,
+                                       const double *y, size_t total_rows, const elpis_ecsg_k1_experience *schedule,
+                                       size_t experiences, double learning_rate, double *s3_out, size_t s3_count,
+                                       elpis_ecsg_k1_schedule_result *result);
+
 #ifdef __cplusplus
 }
 #endif

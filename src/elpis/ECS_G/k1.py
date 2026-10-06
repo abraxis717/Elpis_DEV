@@ -17,9 +17,10 @@ from struct import unpack_from as _unpack_from
 from types import SimpleNamespace
 
 from .native import (DEFAULT_MAX_ROWS, Commit, ECSGError, _P, _U8P, _VP, _admit_out, _admit_rows, _admit_vector,
-                     _rate, _steps)
+                     _rate, _steps, _view)
 
-__all__ = ("K1Error", "K1FMSRuntime", "K1Library", "K1State", "K1Transaction", "PROVENANCE")
+__all__ = ("K1Error", "K1FMSRuntime", "K1FMSState", "K1Library", "K1State", "K1Transaction", "MAX_EXPERIENCES",
+           "PROVENANCE")
 
 _U64 = C.c_uint64
 _CODES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT",
@@ -67,6 +68,47 @@ class _Info(C.Structure):
 
 
 _TP = C.POINTER(_Transition)
+
+
+class _Experience(C.Structure):
+    _fields_ = [("rows", _U64), ("steps", _U64)]
+
+
+class _ScheduleResult(C.Structure):
+    _fields_ = [("epoch_before", _U64), ("epoch_after", _U64), ("experiences_applied", _U64),
+                ("failed_experience", _U64), ("failed_step", _U64)]
+
+
+_EP = C.POINTER(_Experience)
+_SRP = C.POINTER(_ScheduleResult)
+MAX_EXPERIENCES = 64
+
+
+def _admit_schedule(x, y, schedule, dim):
+    """The native-ready experience schedule: X (total rows x dim binary64), y (total rows binary64) and the
+    descriptors (a uint64 buffer of (rows, steps) pairs, at most MAX_EXPERIENCES). Contiguous buffers cross as they
+    are; nothing is walked in Python. Spans, counts and finiteness are validated natively before any mutation."""
+    xs, values = _view(x, "X")
+    ys, rows = _view(y, "y")
+    if xs is None or ys is None:
+        raise K1Error("INVALID", "X and y: C-contiguous binary64 buffers")
+    try:
+        view = memoryview(schedule)
+    except TypeError as exc:
+        raise K1Error("INVALID", "schedule: a uint64 buffer of (rows, steps) pairs") from exc
+    if view.format not in ("Q", "<Q", "=Q") or view.itemsize != 8 or view.ndim != 1 or not view.c_contiguous:
+        raise K1Error("INVALID", "schedule: a uint64 buffer of (rows, steps) pairs")
+    pairs = len(view) // 2
+    if len(view) != 2 * pairs or not 1 <= pairs <= MAX_EXPERIENCES or values != rows * dim:
+        raise K1Error("INVALID", "schedule: 1..64 (rows, steps) pairs over rows x dim inputs")
+    descriptors = (_Experience * pairs).from_buffer_copy(view) if view.readonly else \
+        (_Experience * pairs).from_buffer(view)
+    return xs, ys, rows, descriptors, pairs
+
+
+def _prepared(result, s3, features):
+    return SimpleNamespace(s3=_unpack_from(f"{features}d", s3), epoch_before=int(result.epoch_before),
+                           epoch_after=int(result.epoch_after), experiences=int(result.experiences_applied))
 
 
 def _commit(t):
@@ -123,6 +165,7 @@ _K1_ABI = {
     "txn_epoch": ([_VP, _U64, C.POINTER(_U64)], C.c_int),
     "txn_commit": ([_VP, _U64, _TP], C.c_int),
     "txn_abort": ([_VP, _U64], C.c_int),
+    "txn_run_schedule": ([_VP, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P, C.c_size_t, _SRP], C.c_int),
 }
 
 
@@ -155,11 +198,12 @@ def _bytes_view(data, what):
 class K1State:
     """One standalone native K1 state ``(W, epoch, H, a)``. SINGLE_WRITER (an overlapping call is BUSY)."""
 
-    __slots__ = ("_k", "_handle", "_dim", "_width")
+    __slots__ = ("_k", "_handle", "_dim", "_width", "_features")
 
     def __init__(self, library, handle):
         self._k, self._handle = library._k, handle
         self._dim, self._width = int(self._k.dim(handle)), int(self._k.width(handle))
+        self._features = int(self._k.features(self._dim))
 
     @classmethod
     def create(cls, library, dim, width, initial_w, *, max_rows=DEFAULT_MAX_ROWS):
@@ -203,6 +247,10 @@ class K1State:
     @property
     def width(self):
         return self._width
+
+    @property
+    def max_rows(self):
+        return int(self._k.max_rows(self._live()))
 
     @property
     def epoch(self):
@@ -357,6 +405,17 @@ class K1Transaction:
         self._settle(self._state._k.txn_forward(self._live(), self._token, x, rows, out), "K1 transaction query")
         return _unpack_from(f"{rows}d", out)
 
+    def run_schedule(self, x, y, schedule, learning_rate):
+        """The ordered experience schedule on the candidate, one native call: per experience, its K1 steps then the
+        consolidation of its rows; returns S3 of the final candidate W (the readout) and the candidate epochs."""
+        state = self._state
+        xs, ys, rows, descriptors, pairs = _admit_schedule(x, y, schedule, state._dim)
+        s3, result = (C.c_double * state._features)(), _ScheduleResult()
+        rc = state._k.txn_run_schedule(self._live(), self._token, xs, ys, rows, descriptors, pairs,
+                                       _rate(learning_rate), s3, state._features, C.byref(result))
+        self._settle(rc, "K1 transaction schedule", int(result.failed_step), mutating=True)
+        return _prepared(result, s3, state._features)
+
     def epoch(self):
         value = _U64()
         self._settle(self._state._k.txn_epoch(self._live(), self._token, C.byref(value)), "K1 transaction epoch")
@@ -409,6 +468,8 @@ _FMS_ABI = {
     "txn_forward": ([_VP, _U64, _U64, _P, C.c_size_t, _P], C.c_int),
     "txn_commit": ([_VP, _U64, _U64, _TP], C.c_int),
     "txn_abort": ([_VP, _U64, _U64], C.c_int),
+    "txn_run_schedule": ([_VP, _U64, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P, C.c_size_t, _SRP],
+                         C.c_int),
 }
 
 
@@ -452,7 +513,7 @@ class K1FMSRuntime:
                               _admit_vector(initial_w, dim * width, "initial W"), C.byref(out))
         if rc != 0:
             raise _refused(rc, "K1 FMS register")
-        self._shape[out.value] = (dim, width)
+        self._shape[out.value] = (dim, width, self._k1.features(dim), max_rows)
         return int(out.value)
 
     def _install(self, fn, key, data, what, max_rows):
@@ -461,7 +522,7 @@ class K1FMSRuntime:
         if rc != 0:
             raise _refused(rc, "K1 FMS " + what)
         info = self.inspect(out.value)
-        self._shape[out.value] = (info["dim"], info["width"])
+        self._shape[out.value] = (info["dim"], info["width"], self._k1.features(info["dim"]), info["max_rows"])
         return int(out.value)
 
     def restore(self, key, envelope, *, max_rows=DEFAULT_MAX_ROWS):
@@ -551,6 +612,18 @@ class K1FMSRuntime:
             raise _refused(rc, "K1 FMS snapshot")
         return bytes(out)
 
+    def reserve(self, state_id, max_rows):
+        """Grow one state's admitted row capacity (cold path; refused while a transaction is open)."""
+        rc = self._f.reserve(self._live(), state_id, max_rows)
+        if rc != 0:
+            raise _refused(rc, "K1 FMS reserve")
+        dim, width, features, current = self._shape[state_id]
+        self._shape[state_id] = (dim, width, features, max(current, max_rows))
+
+    def state(self, state_id):
+        """A typed handle on one resident state (for the canonical turn and other control code)."""
+        return K1FMSState(self, state_id)
+
     def transaction(self, state_id):
         token = _U64()
         rc = self._f.txn_begin(self._live(), state_id, C.byref(token))
@@ -606,6 +679,16 @@ class _FMSTransaction:
                      "K1 FMS transaction query")
         return _unpack_from(f"{rows}d", out)
 
+    def run_schedule(self, x, y, schedule, learning_rate):
+        """The experience schedule on the resident candidate, one native call (see K1Transaction.run_schedule)."""
+        dim, _, features, _ = self._r._shape[self._id]
+        xs, ys, rows, descriptors, pairs = _admit_schedule(x, y, schedule, dim)
+        s3, result = (C.c_double * features)(), _ScheduleResult()
+        rc = self._r._f.txn_run_schedule(self._r._live(), self._id, self._token, xs, ys, rows, descriptors, pairs,
+                                         _rate(learning_rate), s3, features, C.byref(result))
+        self._settle(rc, "K1 FMS transaction schedule", int(result.failed_step), mutating=True)
+        return _prepared(result, s3, features)
+
     def commit(self):
         t = _Transition()
         rc = self._r._f.txn_commit(self._r._live(), self._id, self._token, C.byref(t))
@@ -627,3 +710,51 @@ class _FMSTransaction:
 
     def __exit__(self, *exc):
         self.abort()
+
+
+class K1FMSState:
+    """A typed handle on one FMS-resident K1 state: its runtime and logical id. It holds no cognitive state and no
+    mathematics; every operation is the runtime's (pin -> native K1 over the resident bytes -> unpin)."""
+
+    __slots__ = ("_r", "_id")
+
+    def __init__(self, runtime, state_id):
+        if type(runtime) is not K1FMSRuntime or state_id not in runtime._shape:
+            raise K1Error("INVALID", "a K1FMSRuntime and one of its registered state ids are required")
+        self._r, self._id = runtime, state_id
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def dim(self):
+        return self._r._shape[self._id][0]
+
+    @property
+    def width(self):
+        return self._r._shape[self._id][1]
+
+    @property
+    def max_rows(self):
+        return self._r._shape[self._id][3]
+
+    @property
+    def epoch(self):
+        return self._r.inspect(self._id)["epoch"]
+
+    @property
+    def provenance(self):
+        return self._r.inspect(self._id)["provenance"]
+
+    def reserve(self, max_rows):
+        self._r.reserve(self._id, max_rows)
+
+    def transaction(self):
+        return self._r.transaction(self._id)
+
+    def query(self, x_rows):
+        return self._r.query(self._id, x_rows)
+
+    def snapshot(self):
+        return self._r.snapshot(self._id)

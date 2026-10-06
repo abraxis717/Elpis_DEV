@@ -216,6 +216,52 @@ elpis_ecsg_k1_status
 elpis_ecsg_k1_txn_commit(elpis_ecsg_k1 *state, uint64_t token, elpis_ecsg_k1_transition *transition);
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_abort(elpis_ecsg_k1 *state, uint64_t token);
 
+/*
+ * Experience schedule (the qualified K1 experience law, Retention R3): an
+ * ordered sequence of experiences; for each, `steps` K1 learning steps on its
+ * rows, then the consolidation of the same rows (inputs only):
+ *
+ *     for t in 1..n:   W, epoch <- learn(X_t, y_t, steps_t)    (K1 law)
+ *                      H <- H + Sigma(X_t),  a <- S3(W)        (consolidation)
+ *
+ * txn_run_schedule applies the whole schedule to the open transaction's
+ * candidate in one native call, then writes S3 of the final candidate W
+ * (the readout) to s3_out (s3_count = F). X holds every experience's rows in
+ * order (total_rows x dim, row-major), y their targets; experience t uses the
+ * next schedule[t].rows rows. The authoritative state is not touched: commit
+ * or abort decides.
+ *
+ * The complete schedule is validated before the candidate is touched
+ * (pointers, 1 <= experiences <= ELPIS_ECSG_K1_MAX_EXPERIENCES, every rows and
+ * steps >= 1, rows <= max_rows, the rows summing exactly to total_rows, the
+ * total steps fitting the epoch, s3_count = F, a finite rate >= 0, every
+ * input finite), all with checked arithmetic. INVALID and CAPACITY found there
+ * are recoverable: the transaction stays open and unchanged. NONFINITE input,
+ * or NONFINITE arithmetic in any experience, discards the transaction (the
+ * refusal contract above); result->failed_experience names the experience
+ * (1-based), failed_step the step within it (0: its consolidation).
+ */
+enum { ELPIS_ECSG_K1_MAX_EXPERIENCES = 64u };
+
+typedef struct {
+    uint64_t rows;    /* consecutive rows of X and y */
+    uint64_t steps;   /* K1 learning steps on them, then one consolidation */
+} elpis_ecsg_k1_experience;
+
+typedef struct {
+    uint64_t epoch_before;          /* candidate epoch before the schedule */
+    uint64_t epoch_after;           /* candidate epoch after it (epoch_before on refusal) */
+    uint64_t experiences_applied;   /* learned and consolidated */
+    uint64_t failed_experience;     /* 1-based; 0 when none failed */
+    uint64_t failed_step;           /* 1-based within the failed experience; 0 otherwise */
+} elpis_ecsg_k1_schedule_result;
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_txn_run_schedule(elpis_ecsg_k1 *state, uint64_t token, const double *x, const double *y,
+                               size_t total_rows, const elpis_ecsg_k1_experience *schedule, size_t experiences,
+                               double learning_rate, double *s3_out, size_t s3_count,
+                               elpis_ecsg_k1_schedule_result *result);
+
 #ifdef __cplusplus
 }
 #endif

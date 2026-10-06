@@ -32,8 +32,9 @@ sequences are noncanonical inference mechanics; the runtime neither runs nor
 records them.
 
 * ``run_turn``: the canonical cognitive turn, codec -> ECS -> codec
-  (:mod:`elpis.runtime.cognition`). Without a qualified ECS codec map it
-  refuses with ``ECS_CODEC_UNQUALIFIED``: text generation is unavailable.
+  (:mod:`elpis.runtime.cognition`), over a native K1 state (standalone or
+  FMS-resident). Without a qualified ECS codec map it refuses with
+  ``ECS_CODEC_UNQUALIFIED``: text generation is unavailable.
 
 Nothing is chained implicitly. No hidden fallback widens authority: every
 check that refuses an operation is the owning subsystem's own check, and the

@@ -73,6 +73,13 @@ int main(void)
     assert(elpis_ecsg_k1_fms_txn_consolidate(r, id, tok, X, R) == 0);
     assert(elpis_ecsg_k1_fms_txn_forward(r, id, tok, X, R, O) == 0);
     assert(elpis_ecsg_k1_fms_txn_commit(r, id, tok, NULL) == 0);
+    {   /* the canonical turn over the resident state: begin -> schedule -> commit, allocating nothing */
+        const elpis_ecsg_k1_experience sched[2] = {{R / 2, 25}, {R / 2, 15}};
+        double s3[83];
+        assert(elpis_ecsg_k1_fms_txn_begin(r, id, &tok) == 0);
+        assert(elpis_ecsg_k1_fms_txn_run_schedule(r, id, tok, X, Y, R, sched, 2, 0.002, s3, 83, NULL) == 0);
+        assert(elpis_ecsg_k1_fms_txn_commit(r, id, tok, NULL) == 0);
+    }
     assert(elpis_ecsg_k1_fms_reset(r, id, NULL) == 0);
     assert(elpis_ecsg_k1_fms_snapshot_write(r, id, env, sizeof(env)) == 0);
     assert(allocations == before && "a warm K1 operation through FMS allocated");

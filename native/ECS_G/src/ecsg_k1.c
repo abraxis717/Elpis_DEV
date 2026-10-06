@@ -1505,6 +1505,102 @@ elpis_ecsg_k1_status elpis_ecsg_k1_txn_abort(elpis_ecsg_k1 *s, uint64_t token)
     return rc;
 }
 
+/* --- the experience schedule ---------------------------------------------------------------------------------- */
+
+/* Validates a complete schedule before anything is touched: OK, INVALID, CAPACITY or NONFINITE (input). */
+static elpis_ecsg_k1_status schedule_check(const elpis_ecsg_k1 *s, const double *x, const double *y,
+                                           size_t total_rows, const elpis_ecsg_k1_experience *schedule,
+                                           size_t experiences, double rate, const double *s3_out, size_t s3_count,
+                                           uint64_t epoch)
+{
+    size_t rows_seen = 0u;
+    size_t values;
+    uint64_t steps_seen = 0u;
+    size_t i;
+    if (x == NULL || y == NULL || schedule == NULL || s3_out == NULL || experiences < 1u ||
+        experiences > ELPIS_ECSG_K1_MAX_EXPERIENCES || s3_count != s->features || total_rows < 1u ||
+        !isfinite(rate) || rate < 0.0) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    for (i = 0u; i < experiences; ++i) {
+        size_t rows;
+        if (schedule[i].rows < 1u || schedule[i].steps < 1u) {
+            return ELPIS_ECSG_K1_INVALID;
+        }
+        if (!u64_size(schedule[i].rows, &rows) || rows > s->max_rows) {
+            return ELPIS_ECSG_K1_CAPACITY;
+        }
+        if (!add_ok(rows_seen, rows, &rows_seen) || schedule[i].steps > UINT64_MAX - steps_seen) {
+            return ELPIS_ECSG_K1_INVALID;
+        }
+        steps_seen += schedule[i].steps;
+    }
+    if (rows_seen != total_rows || steps_seen > UINT64_MAX - epoch || !mul_ok(total_rows, s->dim, &values)) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (!all_finite(x, values) || !all_finite(y, total_rows)) {
+        return ELPIS_ECSG_K1_NONFINITE;
+    }
+    return ELPIS_ECSG_K1_OK;
+}
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_txn_run_schedule(elpis_ecsg_k1 *s, uint64_t token, const double *x, const double *y,
+                               size_t total_rows, const elpis_ecsg_k1_experience *schedule, size_t experiences,
+                               double rate, double *s3_out, size_t s3_count, elpis_ecsg_k1_schedule_result *result)
+{
+    elpis_ecsg_k1_schedule_result r;
+    elpis_ecsg_k1_status rc;
+    if (s == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    memset(&r, 0, sizeof(r));
+    if (!enter(s)) {
+        return ELPIS_ECSG_K1_BUSY;
+    }
+    rc = txn_check(s, token);
+    if (rc == ELPIS_ECSG_K1_OK) {
+        r.epoch_before = r.epoch_after = image_epoch(s->cand);
+        rc = schedule_check(s, x, y, total_rows, schedule, experiences, rate, s3_out, s3_count, r.epoch_before);
+        if (rc == ELPIS_ECSG_K1_OK) {
+            size_t offset = 0u;
+            size_t i;
+            for (i = 0u; i < experiences && rc == ELPIS_ECSG_K1_OK; ++i) {
+                const size_t rows = (size_t)schedule[i].rows;   /* validated: fits and <= max_rows */
+                const double *xt = x + offset * s->dim;
+                uint64_t failed = 0u;
+                rc = learn_on(s, s->cand, xt, y + offset, rows, rate, schedule[i].steps, &failed);
+                if (rc == ELPIS_ECSG_K1_OK) {
+                    rc = consolidate_on(s, s->cand, xt, rows);
+                }
+                if (rc != ELPIS_ECSG_K1_OK) {
+                    r.failed_experience = (uint64_t)i + 1u;
+                    r.failed_step = failed;
+                } else {
+                    r.experiences_applied += 1u;
+                    offset += rows;
+                }
+            }
+            if (rc != ELPIS_ECSG_K1_OK) {
+                /* The candidate was mutated: it is poisoned whatever the status (after validation only
+                 * NONFINITE arithmetic can occur here). */
+                s->txn_open = 0;
+                s->stats.txn_aborts += 1u;
+            } else {
+                r.epoch_after = image_epoch(s->cand);
+                s3_of(s, img_w(s, s->cand), s3_out);   /* the readout: S3 of the final candidate W */
+            }
+        } else {
+            discard_on(s, rc);   /* INVALID/CAPACITY: nothing touched, still open; NONFINITE input: discarded */
+        }
+    }
+    if (result != NULL) {
+        *result = r;
+    }
+    leave(s);
+    return rc;
+}
+
 /* --- internal interface for the residency adapter (ecsg_k1_internal.h) ------------------------------------- */
 
 elpis_ecsg_k1_status ecsg_k1_internal_create_bound(size_t dim, size_t width, size_t max_rows, elpis_ecsg_k1 **out)

@@ -1,6 +1,7 @@
 /* Native K1 runtime mechanics (docs/ECS_K1_RUNTIME.md). */
 #include "elpis/ecsg_executor.h"
 #include "elpis/ecsg_k1.h"
+#include "elpis/ecsg_math.h"
 #include "elpis/sha256.h"
 
 #include <assert.h>
@@ -547,6 +548,183 @@ static void test_getters_race_free_with_a_writer(void)
     elpis_ecsg_k1_destroy(&s);
 }
 
+/* The experience schedule equals the existing transaction operations applied in order, bitwise; its readout is the
+ * native S3 projection of the final candidate W; it is validated whole before the candidate is touched. */
+static void schedule_reference(elpis_ecsg_k1 *s, const elpis_ecsg_k1_experience *e, size_t n, const double *x,
+                               const double *y)
+{
+    uint64_t tok = 0;
+    size_t i, off = 0;
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+    for (i = 0; i < n; ++i) {
+        assert(elpis_ecsg_k1_txn_learn(s, tok, x + off * D, y + off, (size_t)e[i].rows, 0.002, e[i].steps, NULL) == 0);
+        assert(elpis_ecsg_k1_txn_consolidate(s, tok, x + off * D, (size_t)e[i].rows) == 0);
+        off += (size_t)e[i].rows;
+    }
+    assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == 0);
+}
+
+static void test_experience_schedule(void)
+{
+    static double xs[3 * R * D], ys[3 * R];
+    const elpis_ecsg_k1_experience one[1] = {{R, 7}};
+    const elpis_ecsg_k1_experience three[3] = {{R, 5}, {R / 2, 9}, {R, 3}};
+    elpis_ecsg_k1 *s = fresh(), *ref = fresh();
+    elpis_ecsg_k1_schedule_result res;
+    double s3[83], w[WC], proj[83], a[83];
+    uint64_t tok = 0;
+    size_t i;
+    memcpy(xs, X, sizeof(X));
+    memcpy(xs + R * D, X2, sizeof(X2));
+    memcpy(xs + 2 * R * D, X, sizeof(X));
+    memcpy(ys, Y, sizeof(Y));
+    memcpy(ys + R, Y2, sizeof(Y2));
+    memcpy(ys + 2 * R, Y, sizeof(Y));
+    /* one experience: = txn_learn -> txn_consolidate; with H = 0 the learning is Runtime R1 G1 */
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, R, one, 1, 0.002, s3, 83, &res) == 0);
+    assert(res.epoch_before == 0u && res.epoch_after == 7u && res.experiences_applied == 1u && !res.failed_experience);
+    assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == 0);
+    schedule_reference(ref, one, 1, xs, ys);
+    assert(same_state(s, ref));
+    assert(elpis_ecsg_k1_copy_w(s, w, WC) == 0);
+    elpis_ecsg_project_s3_f64(w, D, N, proj, proj + D, proj + D + 21);
+    assert(memcmp(s3, proj, sizeof(s3)) == 0);                 /* readout = native S3 of the candidate W */
+    assert(elpis_ecsg_k1_copy_a(s, a, 83) == 0 && memcmp(a, proj, sizeof(a)) == 0);   /* a <- S3(W_t) */
+    {
+        elpis_ecsg_executor *e = NULL;
+        double we[WC];
+        assert(elpis_ecsg_executor_create(D, N, R, W0, &e) == 0);
+        assert(elpis_ecsg_executor_learn(e, X, Y, R, 0.002, 7, NULL) == 0);
+        assert(elpis_ecsg_executor_copy_w(e, we, WC) == 0 && memcmp(w, we, sizeof(w)) == 0);
+        elpis_ecsg_executor_destroy(&e);
+    }
+    /* three ordered experiences with different rows and steps: = the same operations in order, bitwise */
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, R + R / 2 + R, three, 3, 0.002, s3, 83, &res) == 0);
+    assert(res.epoch_before == 7u && res.epoch_after == 7u + 17u && res.experiences_applied == 3u);
+    assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == 0);
+    schedule_reference(ref, three, 3, xs, ys);
+    assert(same_state(s, ref) && elpis_ecsg_k1_epoch(s) == 24u);
+    assert(elpis_ecsg_k1_copy_w(s, w, WC) == 0);
+    elpis_ecsg_project_s3_f64(w, D, N, proj, proj + D, proj + D + 21);
+    assert(memcmp(s3, proj, sizeof(s3)) == 0);
+    elpis_ecsg_k1_destroy(&s);
+    elpis_ecsg_k1_destroy(&ref);
+    (void)i;
+}
+
+static void test_schedule_validation_touches_nothing(void)
+{
+    static double xs[2 * R * D], ys[2 * R], bad[2 * R * D];
+    const elpis_ecsg_k1_experience two[2] = {{R, 4}, {R, 4}};
+    elpis_ecsg_k1_experience e[2];
+    elpis_ecsg_k1 *s = fresh(), *ref = fresh();
+    elpis_ecsg_k1_schedule_result res;
+    double s3[83];
+    uint64_t tok = 0;
+    uint8_t *before;
+    size_t nb;
+    elpis_ecsg_k1_experience many[ELPIS_ECSG_K1_MAX_EXPERIENCES + 1];
+    size_t i;
+    memcpy(xs, X, sizeof(X));
+    memcpy(xs + R * D, X2, sizeof(X2));
+    memcpy(ys, Y, sizeof(Y));
+    memcpy(ys + R, Y2, sizeof(Y2));
+    for (i = 0; i < ELPIS_ECSG_K1_MAX_EXPERIENCES + 1u; ++i) { many[i].rows = 1u; many[i].steps = 1u; }
+    nb = envelope(s, &before);
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+    /* recoverable, pre-mutation: INVALID or CAPACITY; the transaction stays open and the candidate untouched */
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, two, 0, 0.002, s3, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, ELPIS_ECSG_K1_MAX_EXPERIENCES + 1u, many,
+                                          ELPIS_ECSG_K1_MAX_EXPERIENCES + 1u, 0.002, s3, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R - 1, two, 2, 0.002, s3, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, two, 2, 0.002, s3, 82, &res) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, two, 2, -1.0, s3, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, two, 2, NAN, s3, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, NULL, ys, 2 * R, two, 2, 0.002, s3, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, NULL, 2, 0.002, s3, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, two, 2, 0.002, NULL, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok + 9u, xs, ys, 2 * R, two, 2, 0.002, s3, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    e[0].rows = R; e[0].steps = 0u; e[1] = two[1];
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, e, 2, 0.002, s3, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    e[0].rows = 0u; e[0].steps = 4u;
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, R, e, 2, 0.002, s3, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    e[0].rows = R + 1u;   /* more rows than reserved */
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, e, 1, 0.002, s3, 83, &res) == ELPIS_ECSG_K1_CAPACITY);
+    e[0].rows = UINT64_MAX;   /* hostile: unrepresentable / wrapping row spans */
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, e, 2, 0.002, s3, 83, &res) == ELPIS_ECSG_K1_CAPACITY);
+    e[0].rows = R; e[0].steps = UINT64_MAX; e[1].rows = R; e[1].steps = 2u;   /* the step total wraps */
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, e, 2, 0.002, s3, 83, &res) == ELPIS_ECSG_K1_INVALID);
+    e[0].steps = 4u; e[1].steps = 4u;
+    {
+        uint8_t *mid;
+        size_t nm = envelope(s, &mid);
+        assert(nm == nb && memcmp(mid, before, nb) == 0);
+        free(mid);
+    }
+    free(before);
+    elpis_ecsg_k1_destroy(&s);
+    s = fresh();
+    nb = envelope(s, &before);
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+    for (i = 0; i < 3; ++i) {   /* still open after recoverable refusals; then a valid schedule commits */
+        assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R + 1, two, 2, 0.002, s3, 83, &res) ==
+               ELPIS_ECSG_K1_INVALID);
+    }
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, two, 2, 0.002, s3, 83, &res) == 0);
+    assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == 0);
+    schedule_reference(ref, two, 2, xs, ys);
+    assert(same_state(s, ref));
+    /* fatal: a non-finite input in the second experience discards the transaction before anything ran */
+    memcpy(bad, xs, sizeof(bad));
+    bad[R * D + 5] = NAN;
+    {
+        uint8_t *auth;
+        size_t na = envelope(s, &auth);
+        assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+        assert(elpis_ecsg_k1_txn_run_schedule(s, tok, bad, ys, 2 * R, two, 2, 0.002, s3, 83, &res) ==
+               ELPIS_ECSG_K1_NONFINITE);
+        assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == ELPIS_ECSG_K1_INVALID);
+        /* fatal: non-finite arithmetic in the second experience (the first already mutated the candidate) */
+        for (i = 0; i < R * D; ++i) bad[R * D + i] = 1e150;
+        assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+        assert(elpis_ecsg_k1_txn_run_schedule(s, tok, bad, ys, 2 * R, two, 2, 0.002, s3, 83, &res) ==
+               ELPIS_ECSG_K1_NONFINITE);
+        assert(res.failed_experience == 2u && res.experiences_applied == 1u && res.epoch_after == res.epoch_before);
+        assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == ELPIS_ECSG_K1_INVALID);
+        {
+            uint8_t *now;
+            size_t nn = envelope(s, &now);
+            assert(nn == na && memcmp(now, auth, na) == 0);   /* authority byte-for-byte unchanged */
+            free(now);
+        }
+        free(auth);
+    }
+    /* the step total must fit the candidate epoch */
+    {
+        elpis_ecsg_k1 *late = NULL;
+        uint8_t *env;
+        size_t ne = envelope(s, &env);
+        put64(env + 40, UINT64_MAX - 7u);
+        reseal(env, ne);
+        assert(elpis_ecsg_k1_restore(env, ne, R, &late) == 0 && elpis_ecsg_k1_txn_begin(late, &tok) == 0);
+        assert(elpis_ecsg_k1_txn_run_schedule(late, tok, xs, ys, 2 * R, two, 2, 0.002, s3, 83, &res) ==
+               ELPIS_ECSG_K1_INVALID);   /* 8 steps > UINT64_MAX - epoch */
+        assert(elpis_ecsg_k1_txn_abort(late, tok) == 0);
+        elpis_ecsg_k1_destroy(&late);
+        free(env);
+    }
+    /* stale: a direct transition replaces the source; the scheduled candidate is refused, never half-installed */
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, xs, ys, 2 * R, two, 2, 0.002, s3, 83, &res) == 0);
+    assert(elpis_ecsg_k1_learn(s, X, Y, R, 0.002, 1, NULL) == 0);
+    assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == ELPIS_ECSG_K1_STALE);
+    free(before);
+    elpis_ecsg_k1_destroy(&s);
+    elpis_ecsg_k1_destroy(&ref);
+}
+
 int main(void)
 {
     fixture();
@@ -565,8 +743,11 @@ int main(void)
     test_provenance_transitions();
     test_epoch_overflow_is_refused_and_recoverable();
     test_getters_race_free_with_a_writer();
+    test_experience_schedule();
+    test_schedule_validation_touches_nothing();
     printf("ecsg_k1: Runtime R1 parity at H = 0, K1 law shape, refusal atomicity, complete-state transactions, "
            "envelope integrity, W-only import, reset, SINGLE_WRITER, the transaction refusal contract, hostile "
-           "dimensions, resealed envelopes, provenance transitions, epoch overflow, race-free getters\n");
+           "dimensions, resealed envelopes, provenance transitions, epoch overflow, race-free getters, the experience schedule (= ordered txn learn/consolidate, S3 readout, "
+           "whole-schedule validation, discard on non-finite, stale)\n");
     return 0;
 }
