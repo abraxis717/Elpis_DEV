@@ -142,12 +142,204 @@ static void test_rejects_bad_utf8(void)
     );
 }
 
+
+static void test_message_envelope_and_frame(void)
+{
+    static const char sender[] =
+        "11111111111111111111111111111111"
+        "11111111111111111111111111111111";
+
+    static const char receiver[] =
+        "22222222222222222222222222222222"
+        "22222222222222222222222222222222";
+
+    static const uint8_t payload[] = "{\"x\":1}";
+
+    static const char expected_payload_digest[] =
+        "e82fca748aced016cdc5c2b9dfbf0dfd"
+        "4ce3187e0f4a33d71bfaa7e4619423ef";
+
+    static const char expected_message_id[] =
+        "7f3771bdab5943d0098f704020e9c516"
+        "b77a318b4fc8eb7fc81aa4818ab47d8e";
+
+    static const char expected_envelope[] =
+        "{\"logical_clock\":11,"
+        "\"message_id\":\"7f3771bdab5943d0098f704020e9c516b77a318b4fc8eb7fc81aa4818ab47d8e\","
+        "\"payload_digest\":\"e82fca748aced016cdc5c2b9dfbf0dfd4ce3187e0f4a33d71bfaa7e4619423ef\","
+        "\"payload_hex\":\"7b2278223a317d\","
+        "\"receiver_entity_id\":\"2222222222222222222222222222222222222222222222222222222222222222\","
+        "\"schema\":\"ecs.message.v1\","
+        "\"sender_entity_id\":\"1111111111111111111111111111111111111111111111111111111111111111\","
+        "\"sequence\":7}";
+
+    char message_id[65];
+    char payload_digest[65];
+    uint8_t envelope[1024];
+    uint8_t frame[2048];
+    size_t envelope_size = 0u;
+    size_t written = 0u;
+    size_t frame_size = 0u;
+
+    assert(
+        elpis_ecsc_message_id(
+            sender,
+            receiver,
+            7u,
+            payload,
+            sizeof payload - 1u,
+            message_id,
+            payload_digest
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(strcmp(message_id, expected_message_id) == 0);
+    assert(strcmp(payload_digest, expected_payload_digest) == 0);
+
+    assert(
+        elpis_ecsc_envelope_size(
+            sender,
+            receiver,
+            7u,
+            payload,
+            sizeof payload - 1u,
+            11u,
+            &envelope_size
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(envelope_size == sizeof expected_envelope - 1u);
+
+    assert(
+        elpis_ecsc_envelope_write(
+            sender,
+            receiver,
+            7u,
+            payload,
+            sizeof payload - 1u,
+            11u,
+            envelope,
+            sizeof envelope,
+            &written,
+            message_id,
+            payload_digest
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(written == envelope_size);
+    assert(memcmp(envelope, expected_envelope, written) == 0);
+
+    assert(
+        elpis_ecsc_event_frame_size(
+            written,
+            &frame_size
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(frame_size == written + 8u);
+
+    assert(
+        elpis_ecsc_event_frame_write(
+            envelope,
+            written,
+            frame,
+            sizeof frame,
+            &frame_size
+        ) == ELPIS_ECSC_OK
+    );
+
+    assert(frame_size == written + 8u);
+
+    assert(frame[0] == 0u);
+    assert(frame[1] == 0u);
+    assert(frame[2] == 0u);
+    assert(frame[3] == 0u);
+    assert(frame[4] == 0u);
+    assert(frame[5] == 0u);
+    assert(frame[6] == 0x01u);
+    assert(frame[7] == 0xacu);
+
+    assert(memcmp(frame + 8u, envelope, written) == 0);
+}
+
+static void test_message_and_frame_refusals(void)
+{
+    static const char sender[] =
+        "11111111111111111111111111111111"
+        "11111111111111111111111111111111";
+
+    static const char receiver[] =
+        "22222222222222222222222222222222"
+        "22222222222222222222222222222222";
+
+    static const uint8_t payload[] = "x";
+
+    char message_id[65];
+    char payload_digest[65];
+    uint8_t out[32];
+    size_t written = 99u;
+    size_t size = 99u;
+
+    assert(
+        elpis_ecsc_message_id(
+            sender,
+            receiver,
+            0u,
+            payload,
+            sizeof payload - 1u,
+            message_id,
+            payload_digest
+        ) == ELPIS_ECSC_INVALID
+    );
+
+    assert(
+        elpis_ecsc_message_id(
+            sender,
+            receiver,
+            UINT64_MAX,
+            payload,
+            sizeof payload - 1u,
+            message_id,
+            payload_digest
+        ) == ELPIS_ECSC_INVALID
+    );
+
+    assert(
+        elpis_ecsc_event_frame_size(
+            0u,
+            &size
+        ) == ELPIS_ECSC_INVALID
+    );
+    assert(size == 0u);
+
+    assert(
+        elpis_ecsc_event_frame_size(
+            262145u,
+            &size
+        ) == ELPIS_ECSC_INVALID
+    );
+    assert(size == 0u);
+
+    assert(
+        elpis_ecsc_event_frame_write(
+            payload,
+            sizeof payload - 1u,
+            out,
+            8u,
+            &written
+        ) == ELPIS_ECSC_CAPACITY
+    );
+    assert(written == 0u);
+}
+
 int main(void)
 {
     test_receipt_payload();
     test_rejects_unsorted_bindings();
     test_digest_bytes();
     test_rejects_bad_utf8();
+    test_message_envelope_and_frame();
+    test_message_and_frame_refusals();
 
     puts("PASS_ECSC_HISTORY_CODEC");
     return 0;

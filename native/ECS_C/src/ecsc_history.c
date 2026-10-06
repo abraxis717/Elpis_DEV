@@ -557,3 +557,403 @@ int elpis_ecsc_digest_bytes(
 
     return ELPIS_ECSC_OK;
 }
+
+#define ELPIS_ECSC_MAX_INT UINT64_C(9223372036854775807)
+#define ELPIS_ECSC_MAX_PAYLOAD_BYTES 65536u
+#define ELPIS_ECSC_MAX_FRAME_BYTES 262144u
+
+static size_t u64_decimal(uint64_t value, char out[20])
+{
+    char reverse[20];
+    size_t n = 0u;
+    size_t i;
+
+    do {
+        reverse[n++] = (char)('0' + (value % UINT64_C(10)));
+        value /= UINT64_C(10);
+    } while (value != 0u);
+
+    for (i = 0u; i < n; ++i) {
+        out[i] = reverse[n - i - 1u];
+    }
+
+    return n;
+}
+
+static int valid_entity_id(const char id[64])
+{
+    return is_digest(id, 64u);
+}
+
+static int valid_message_inputs(
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size
+)
+{
+    if (!valid_entity_id(sender_entity_id) ||
+        !valid_entity_id(receiver_entity_id) ||
+        sequence == 0u ||
+        sequence > ELPIS_ECSC_MAX_INT ||
+        payload == NULL ||
+        payload_size == 0u ||
+        payload_size > ELPIS_ECSC_MAX_PAYLOAD_BYTES) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    return ELPIS_ECSC_OK;
+}
+
+int elpis_ecsc_message_id(
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    char out_message_id[65],
+    char out_payload_digest[65]
+)
+{
+    static const char prefix[] =
+        "{\"domain\":\"ecs.message.v1\",\"payload\":{"
+        "\"payload_digest\":\"";
+    static const char receiver_key[] =
+        "\",\"receiver_entity_id\":\"";
+    static const char sender_key[] =
+        "\",\"sender_entity_id\":\"";
+    static const char sequence_key[] =
+        "\",\"sequence\":";
+    static const char suffix[] = "}}";
+
+    elpis_sha256_ctx ctx;
+    uint8_t digest[32];
+    char sequence_ascii[20];
+    size_t sequence_len;
+    int rc;
+
+    if (out_message_id == NULL || out_payload_digest == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    out_message_id[0] = '\0';
+    out_payload_digest[0] = '\0';
+
+    rc = valid_message_inputs(
+        sender_entity_id,
+        receiver_entity_id,
+        sequence,
+        payload,
+        payload_size
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    rc = elpis_ecsc_digest_bytes(
+        payload,
+        payload_size,
+        out_payload_digest
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    sequence_len = u64_decimal(sequence, sequence_ascii);
+
+    elpis_sha256_init(&ctx);
+    elpis_sha256_update(&ctx, prefix, sizeof prefix - 1u);
+    elpis_sha256_update(&ctx, out_payload_digest, 64u);
+    elpis_sha256_update(&ctx, receiver_key, sizeof receiver_key - 1u);
+    elpis_sha256_update(&ctx, receiver_entity_id, 64u);
+    elpis_sha256_update(&ctx, sender_key, sizeof sender_key - 1u);
+    elpis_sha256_update(&ctx, sender_entity_id, 64u);
+    elpis_sha256_update(&ctx, sequence_key, sizeof sequence_key - 1u);
+    elpis_sha256_update(&ctx, sequence_ascii, sequence_len);
+    elpis_sha256_update(&ctx, suffix, sizeof suffix - 1u);
+    elpis_sha256_final(&ctx, digest);
+
+    elpis_hex32(digest, out_message_id);
+    return ELPIS_ECSC_OK;
+}
+
+static int encode_envelope(
+    writer *w,
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    uint64_t logical_clock,
+    char out_message_id[65],
+    char out_payload_digest[65]
+)
+{
+    static const char payload_hex_chars[] = "0123456789abcdef";
+    const uint8_t *bytes = (const uint8_t *)payload;
+    char sequence_ascii[20];
+    char clock_ascii[20];
+    size_t sequence_len;
+    size_t clock_len;
+    size_t i;
+    int rc;
+
+    if (w == NULL ||
+        logical_clock > ELPIS_ECSC_MAX_INT ||
+        out_message_id == NULL ||
+        out_payload_digest == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    rc = elpis_ecsc_message_id(
+        sender_entity_id,
+        receiver_entity_id,
+        sequence,
+        payload,
+        payload_size,
+        out_message_id,
+        out_payload_digest
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    sequence_len = u64_decimal(sequence, sequence_ascii);
+    clock_len = u64_decimal(logical_clock, clock_ascii);
+
+    rc = put_literal(w, "{\"logical_clock\":");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = put_bytes(w, clock_ascii, clock_len);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = put_literal(w, ",\"message_id\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = put_bytes(w, out_message_id, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = put_literal(w, "\",\"payload_digest\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = put_bytes(w, out_payload_digest, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = put_literal(w, "\",\"payload_hex\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    for (i = 0u; i < payload_size; ++i) {
+        char pair[2];
+
+        pair[0] = payload_hex_chars[bytes[i] >> 4];
+        pair[1] = payload_hex_chars[bytes[i] & 0x0fu];
+
+        rc = put_bytes(w, pair, sizeof pair);
+        if (rc != ELPIS_ECSC_OK) return rc;
+    }
+
+    rc = put_literal(w, "\",\"receiver_entity_id\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = put_bytes(w, receiver_entity_id, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = put_literal(w, "\",\"schema\":\"ecs.message.v1\","
+                         "\"sender_entity_id\":\"");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = put_bytes(w, sender_entity_id, 64u);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = put_literal(w, "\",\"sequence\":");
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    rc = put_bytes(w, sequence_ascii, sequence_len);
+    if (rc != ELPIS_ECSC_OK) return rc;
+
+    return put_c(w, '}');
+}
+
+int elpis_ecsc_envelope_size(
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    uint64_t logical_clock,
+    size_t *out_size
+)
+{
+    writer w = {NULL, 0u, 0u};
+    char message_id[65];
+    char payload_digest[65];
+    int rc;
+
+    if (out_size == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    *out_size = 0u;
+
+    rc = encode_envelope(
+        &w,
+        sender_entity_id,
+        receiver_entity_id,
+        sequence,
+        payload,
+        payload_size,
+        logical_clock,
+        message_id,
+        payload_digest
+    );
+
+    if (rc == ELPIS_ECSC_OK) {
+        *out_size = w.pos;
+    }
+
+    return rc;
+}
+
+int elpis_ecsc_envelope_write(
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    uint64_t logical_clock,
+    uint8_t *out,
+    size_t out_capacity,
+    size_t *out_written,
+    char out_message_id[65],
+    char out_payload_digest[65]
+)
+{
+    size_t need = 0u;
+    writer w;
+    int rc;
+
+    if (out_written == NULL ||
+        out_message_id == NULL ||
+        out_payload_digest == NULL ||
+        (out == NULL && out_capacity != 0u)) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    *out_written = 0u;
+    out_message_id[0] = '\0';
+    out_payload_digest[0] = '\0';
+
+    rc = elpis_ecsc_envelope_size(
+        sender_entity_id,
+        receiver_entity_id,
+        sequence,
+        payload,
+        payload_size,
+        logical_clock,
+        &need
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    if (need > out_capacity || (need != 0u && out == NULL)) {
+        return ELPIS_ECSC_CAPACITY;
+    }
+
+    w.out = out;
+    w.cap = out_capacity;
+    w.pos = 0u;
+
+    rc = encode_envelope(
+        &w,
+        sender_entity_id,
+        receiver_entity_id,
+        sequence,
+        payload,
+        payload_size,
+        logical_clock,
+        out_message_id,
+        out_payload_digest
+    );
+
+    if (rc == ELPIS_ECSC_OK) {
+        *out_written = w.pos;
+    }
+
+    return rc;
+}
+
+int elpis_ecsc_event_frame_size(
+    size_t canonical_event_size,
+    size_t *out_size
+)
+{
+    if (out_size == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    *out_size = 0u;
+
+    if (canonical_event_size == 0u ||
+        canonical_event_size > ELPIS_ECSC_MAX_FRAME_BYTES) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    if (canonical_event_size > SIZE_MAX - 8u) {
+        return ELPIS_ECSC_CAPACITY;
+    }
+
+    *out_size = canonical_event_size + 8u;
+    return ELPIS_ECSC_OK;
+}
+
+int elpis_ecsc_event_frame_write(
+    const void *canonical_event,
+    size_t canonical_event_size,
+    uint8_t *out,
+    size_t out_capacity,
+    size_t *out_written
+)
+{
+    size_t need = 0u;
+    uint64_t n;
+    size_t i;
+    int rc;
+
+    if (out_written == NULL ||
+        canonical_event == NULL ||
+        out == NULL) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    *out_written = 0u;
+
+    rc = elpis_ecsc_event_frame_size(
+        canonical_event_size,
+        &need
+    );
+    if (rc != ELPIS_ECSC_OK) {
+        return rc;
+    }
+
+    if (need > out_capacity) {
+        return ELPIS_ECSC_CAPACITY;
+    }
+
+    n = (uint64_t)canonical_event_size;
+
+    for (i = 0u; i < 8u; ++i) {
+        out[7u - i] = (uint8_t)(n & UINT64_C(0xff));
+        n >>= 8;
+    }
+
+    memcpy(
+        out + 8u,
+        canonical_event,
+        canonical_event_size
+    );
+
+    *out_written = need;
+    return ELPIS_ECSC_OK;
+}

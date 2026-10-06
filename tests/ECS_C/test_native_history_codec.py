@@ -194,3 +194,240 @@ def test_native_refuses_unsorted_binding_names(lib):
 
     assert rc == -1
     assert size.value == 0
+
+
+def _bind_phase_b(lib):
+    lib.elpis_ecsc_message_id.argtypes = [
+        C.c_char_p,
+        C.c_char_p,
+        C.c_uint64,
+        C.c_void_p,
+        C.c_size_t,
+        C.POINTER(C.c_char),
+        C.POINTER(C.c_char),
+    ]
+    lib.elpis_ecsc_message_id.restype = C.c_int
+
+    lib.elpis_ecsc_envelope_size.argtypes = [
+        C.c_char_p,
+        C.c_char_p,
+        C.c_uint64,
+        C.c_void_p,
+        C.c_size_t,
+        C.c_uint64,
+        C.POINTER(C.c_size_t),
+    ]
+    lib.elpis_ecsc_envelope_size.restype = C.c_int
+
+    lib.elpis_ecsc_envelope_write.argtypes = [
+        C.c_char_p,
+        C.c_char_p,
+        C.c_uint64,
+        C.c_void_p,
+        C.c_size_t,
+        C.c_uint64,
+        C.POINTER(C.c_uint8),
+        C.c_size_t,
+        C.POINTER(C.c_size_t),
+        C.POINTER(C.c_char),
+        C.POINTER(C.c_char),
+    ]
+    lib.elpis_ecsc_envelope_write.restype = C.c_int
+
+    lib.elpis_ecsc_event_frame_size.argtypes = [
+        C.c_size_t,
+        C.POINTER(C.c_size_t),
+    ]
+    lib.elpis_ecsc_event_frame_size.restype = C.c_int
+
+    lib.elpis_ecsc_event_frame_write.argtypes = [
+        C.c_void_p,
+        C.c_size_t,
+        C.POINTER(C.c_uint8),
+        C.c_size_t,
+        C.POINTER(C.c_size_t),
+    ]
+    lib.elpis_ecsc_event_frame_write.restype = C.c_int
+
+
+def _payload_ptr(raw: bytes):
+    buf = (C.c_uint8 * len(raw)).from_buffer_copy(raw)
+    return buf, C.cast(buf, C.c_void_p)
+
+
+@pytest.mark.parametrize(
+    ("sequence", "logical_clock", "payload"),
+    [
+        (1, 1, b"x"),
+        (7, 11, b'{"x":1}'),
+        (2**31 + 17, 2**32 + 9, bytes(range(256))),
+        ((1 << 63) - 1, (1 << 63) - 1, b"\x00\xffreceipt"),
+    ],
+)
+def test_native_message_and_envelope_match_python_authority(
+    lib, sequence, logical_clock, payload
+):
+    from elpis.ECS_C.bus import message_id, payload_digest, seal_envelope
+    from elpis.ECS_C.entity import entity_id_from_founding, founding_record
+
+    _bind_phase_b(lib)
+
+    genesis = "a" * 64
+
+    sender = entity_id_from_founding(
+        founding_record(0, "sender", genesis)
+    )
+    receiver = entity_id_from_founding(
+        founding_record(1, "receiver", genesis)
+    )
+
+    payload_buf, payload_ptr = _payload_ptr(payload)
+
+    native_mid = (C.c_char * 65)()
+    native_pd = (C.c_char * 65)()
+
+    assert (
+        lib.elpis_ecsc_message_id(
+            sender.encode("ascii"),
+            receiver.encode("ascii"),
+            sequence,
+            payload_ptr,
+            len(payload),
+            native_mid,
+            native_pd,
+        )
+        == 0
+    )
+
+    mid = bytes(native_mid).split(b"\x00", 1)[0].decode("ascii")
+    pd = bytes(native_pd).split(b"\x00", 1)[0].decode("ascii")
+
+    assert pd == payload_digest(payload)
+    assert mid == message_id(sender, sequence, receiver, payload)
+
+    expected = seal_envelope(
+        sender,
+        receiver,
+        sequence,
+        payload,
+        logical_clock,
+    ).canonical_bytes()
+
+    native_size = C.c_size_t()
+
+    assert (
+        lib.elpis_ecsc_envelope_size(
+            sender.encode("ascii"),
+            receiver.encode("ascii"),
+            sequence,
+            payload_ptr,
+            len(payload),
+            logical_clock,
+            C.byref(native_size),
+        )
+        == 0
+    )
+
+    assert native_size.value == len(expected)
+
+    out = (C.c_uint8 * native_size.value)()
+    written = C.c_size_t()
+
+    assert (
+        lib.elpis_ecsc_envelope_write(
+            sender.encode("ascii"),
+            receiver.encode("ascii"),
+            sequence,
+            payload_ptr,
+            len(payload),
+            logical_clock,
+            out,
+            len(out),
+            C.byref(written),
+            native_mid,
+            native_pd,
+        )
+        == 0
+    )
+
+    assert written.value == len(expected)
+    assert bytes(out) == expected
+
+
+@pytest.mark.parametrize(
+    "canonical_event",
+    [
+        b"{}",
+        b'{"a":1}',
+        canonical.canonical_bytes(
+            {
+                "schema": canonical.EVENT_SCHEMA,
+                "event_index": 0,
+                "logical_clock": 1,
+            }
+        ),
+    ],
+)
+def test_native_event_frame_matches_python_length_prefix(
+    lib, canonical_event
+):
+    import struct
+
+    _bind_phase_b(lib)
+
+    source = (C.c_uint8 * len(canonical_event)).from_buffer_copy(
+        canonical_event
+    )
+
+    size = C.c_size_t()
+
+    assert (
+        lib.elpis_ecsc_event_frame_size(
+            len(canonical_event),
+            C.byref(size),
+        )
+        == 0
+    )
+
+    assert size.value == 8 + len(canonical_event)
+
+    out = (C.c_uint8 * size.value)()
+    written = C.c_size_t()
+
+    assert (
+        lib.elpis_ecsc_event_frame_write(
+            C.cast(source, C.c_void_p),
+            len(canonical_event),
+            out,
+            len(out),
+            C.byref(written),
+        )
+        == 0
+    )
+
+    expected = struct.pack(">Q", len(canonical_event)) + canonical_event
+
+    assert written.value == len(expected)
+    assert bytes(out) == expected
+
+
+def test_native_message_rejects_noncanonical_entity_id(lib):
+    _bind_phase_b(lib)
+
+    payload = b"x"
+    payload_buf, payload_ptr = _payload_ptr(payload)
+
+    out_mid = (C.c_char * 65)()
+    out_pd = (C.c_char * 65)()
+
+    rc = lib.elpis_ecsc_message_id(
+        b"NOT_AN_ENTITY_ID",
+        b"2" * 64,
+        1,
+        payload_ptr,
+        len(payload),
+        out_mid,
+        out_pd,
+    )
+
+    assert rc == -1

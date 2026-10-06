@@ -80,6 +80,76 @@ int elpis_ecsc_digest_bytes(
     char out_hex[65]
 );
 
+
+/*
+ * Native equivalent of ECS_C.bus.message_id() for canonical ECS entity IDs.
+ *
+ * The runtime history path deals in actual ECS entity identities, which are
+ * lowercase 64-hex content IDs. Sequence is the committed per-sender sequence.
+ */
+int elpis_ecsc_message_id(
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    char out_message_id[65],
+    char out_payload_digest[65]
+);
+
+/*
+ * Exact canonical bytes of ECS_C.bus.Envelope.to_dict().
+ *
+ * The envelope is sealed from trusted sender identity + receiver + sequence +
+ * payload + commit logical clock. No caller-supplied message/payload digest is
+ * accepted.
+ */
+int elpis_ecsc_envelope_size(
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    uint64_t logical_clock,
+    size_t *out_size
+);
+
+int elpis_ecsc_envelope_write(
+    const char sender_entity_id[64],
+    const char receiver_entity_id[64],
+    uint64_t sequence,
+    const void *payload,
+    size_t payload_size,
+    uint64_t logical_clock,
+    uint8_t *out,
+    size_t out_capacity,
+    size_t *out_written,
+    char out_message_id[65],
+    char out_payload_digest[65]
+);
+
+/*
+ * ECS_C persistence frame:
+ *
+ *     uint64 big-endian canonical-event-byte-length
+ *     canonical event bytes
+ *
+ * This primitive frames already-canonical event bytes. Event semantic
+ * construction/verification is a later layer.
+ */
+int elpis_ecsc_event_frame_size(
+    size_t canonical_event_size,
+    size_t *out_size
+);
+
+int elpis_ecsc_event_frame_write(
+    const void *canonical_event,
+    size_t canonical_event_size,
+    uint8_t *out,
+    size_t out_capacity,
+    size_t *out_written
+);
+
 #ifdef __cplusplus
 }
 #endif
