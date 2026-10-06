@@ -93,13 +93,18 @@
       "purpose": "Persistent identity, continuity and history: deterministic entities and lifecycle, sender-bound local messaging, deterministic scheduling, one authoritative durable event history, canonical state roots, replay, checkpoints, crash recovery, read-only topology and context projections, and the frozen Structural R0 mutation grammar.",
       "python_package": "elpis.ECS_C",
       "implementation_roots": [
-        "src/elpis/ECS_C"
+        "src/elpis/ECS_C",
+        "native/ECS_C"
       ],
       "test_roots": [
         "tests/ECS_C"
       ],
-      "native_targets": [],
-      "depends_on": [],
+      "native_targets": [
+        "elpis_ecsc_history"
+      ],
+      "depends_on": [
+        "substrate"
+      ],
       "mutation_authority": "Only Kernel transitions (found/activate/dormant/terminate/message/step) mutate ECS state, each linearized under the kernel lock and committed as one framed event before the projection is installed. Projections (topology, context) are read-only. Entity-facing code sends only through kernel-bound EntityPort objects and cannot choose its sender.",
       "runtime_participation": "The runtime composition owns one Kernel as the system's durable continuity history; committed outcomes of other subsystems are recorded there as messages. Its projections are read-only views of that history (the evolution gate reasons over one). ECS_C history is not active cognitive state and never substitutes for ECS_G.",
       "persistence": "Length-framed append-only event log with fsync durability boundary and complete-frame crash recovery; checkpoints are rollback-floor markers only.",
