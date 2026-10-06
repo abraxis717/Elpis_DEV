@@ -30,6 +30,7 @@ from elpis.ECS_C.entity import entity_id_from_founding, founding_record
 from elpis.ECS_C.kernel import Kernel
 from elpis.ECS_C.projection.contracts import ContextProjection, ProjectionRequest
 from elpis.ECS_C.projection.kernel_adapter import project_kernel_history
+from elpis.runtime.native_history import NativeHistoryError, NativeHistorySession
 
 __all__ = (
     "HISTORY_GENESIS_LABEL", "RECORD_SCHEMA", "RECORDERS", "ROLES",
@@ -138,7 +139,12 @@ class RecordedReceipt:
 class ReceiptHistory:
     """Owning handle on the durable history; not thread-shared beyond the kernel lock."""
 
-    def __init__(self, storage_dir: str | Path):
+    def __init__(
+        self,
+        storage_dir: str | Path,
+        *,
+        native_library: str | Path | None = None,
+    ):
         storage_dir = Path(storage_dir)
         if not storage_dir.is_absolute():
             raise HistoryError("HISTORY_PATH", "storage directory must be absolute")
@@ -147,6 +153,109 @@ class ReceiptHistory:
         self._ids: dict[str, str] = {}
         self._ports = {}
         self._records: list[RecordedReceipt] = []
+        self._record_index: dict[ReceiptRecord, RecordedReceipt] = {}
+        self._native_library = (
+            Path(native_library)
+            if native_library is not None
+            else None
+        )
+        self._native: NativeHistorySession | None = None
+
+    def _native_handoff(self) -> None:
+        if self._native_library is None:
+            return
+        if self._native is not None:
+            raise HistoryError("NATIVE_HISTORY_STATE", "already open")
+
+        kernel = self._kernel
+        state = kernel.state
+        events = kernel.events()
+
+        if not events:
+            raise HistoryError(
+                "NATIVE_HISTORY_STATE",
+                "history has no committed head",
+            )
+
+        head = events[-1]["event_digest"]
+        event_count = len(events)
+        log_path = kernel.log_path
+
+        # The Python kernel must relinquish flock ownership before the native
+        # durable owner opens exactly the same events.log.
+        kernel.close()
+        self._ports = {}
+
+        try:
+            self._native = NativeHistorySession(
+                self._native_library,
+                log_path,
+                state,
+                head,
+                event_count,
+            )
+        except NativeHistoryError as exc:
+            raise HistoryError(
+                "NATIVE_HISTORY_OPEN",
+                str(exc),
+            ) from exc
+
+    def _python_read_window(self):
+        """Temporarily return log ownership to canonical Python replay.
+
+        This is a read-side/cold operation used by ``projection()``.  The
+        committed record hot path never enters it.
+        """
+        if self._native is None:
+            return None
+
+        self._native.close()
+        self._native = None
+
+        try:
+            self._kernel.open()
+        except BaseException:
+            raise
+
+        return True
+
+    def _close_python_read_window(self, active) -> None:
+        if not active:
+            return
+
+        try:
+            if self._native_library is None:
+                return
+
+            state = self._kernel.state
+            events = self._kernel.events()
+
+            if not events:
+                raise HistoryError(
+                    "NATIVE_HISTORY_STATE",
+                    "history lost committed head",
+                )
+
+            head = events[-1]["event_digest"]
+            count = len(events)
+            log_path = self._kernel.log_path
+
+        finally:
+            self._kernel.close()
+
+        try:
+            self._native = NativeHistorySession(
+                self._native_library,
+                log_path,
+                state,
+                head,
+                count,
+            )
+        except NativeHistoryError as exc:
+            raise HistoryError(
+                "NATIVE_HISTORY_REOPEN",
+                str(exc),
+            ) from exc
 
     # -- lifecycle ---------------------------------------------------------------
     def open(self) -> "ReceiptHistory":
@@ -205,12 +314,20 @@ class ReceiptHistory:
                 for role in RECORDERS
             }
             self._records = self._read_records()
+            self._record_index = {
+                item.record: item
+                for item in self._records
+            }
+            self._native_handoff()
         except BaseException:
             self.close()
             raise
         return self
 
     def close(self) -> None:
+        if self._native is not None:
+            self._native.close()
+            self._native = None
         self._kernel.close()
         self._ports = {}
 
@@ -223,6 +340,14 @@ class ReceiptHistory:
     # -- reads -------------------------------------------------------------------
     @property
     def state_root(self) -> str:
+        if self._native is not None:
+            try:
+                return self._native.state_root
+            except NativeHistoryError as exc:
+                raise HistoryError(
+                    "NATIVE_HISTORY_STATE_ROOT",
+                    str(exc),
+                ) from exc
         return self._kernel.state_root_digest()
 
     @property
@@ -237,7 +362,18 @@ class ReceiptHistory:
         if request is None:
             request = ProjectionRequest(receiver_ids=(self.history_entity,),
                                         event_kinds=("MESSAGE_ENQUEUED",))
-        return project_kernel_history(self._kernel, request)
+
+        read_window = self._python_read_window()
+
+        try:
+            return project_kernel_history(
+                self._kernel,
+                request,
+            )
+        finally:
+            self._close_python_read_window(
+                read_window
+            )
 
     def _read_records(self) -> list[RecordedReceipt]:
         senders = {entity: role for role, entity in self._ids.items() if role in RECORDERS}
@@ -261,16 +397,73 @@ class ReceiptHistory:
     # -- the one write -----------------------------------------------------------
     def record(self, record: ReceiptRecord) -> RecordedReceipt:
         if type(record) is not ReceiptRecord:
-            raise HistoryError("RECORD_TYPE", type(record).__name__)
-        for existing in self._records:
-            if existing.record == record:
-                return existing
+            raise HistoryError(
+                "RECORD_TYPE",
+                type(record).__name__,
+            )
+
+        existing = self._record_index.get(record)
+
+        if existing is not None:
+            return existing
+
+        if self._native is not None:
+            try:
+                result = self._native.record(
+                    self._ids[record.subsystem],
+                    self.history_entity,
+                    record.payload(),
+                )
+            except NativeHistoryError as exc:
+                raise HistoryError(
+                    "NATIVE_HISTORY_RECORD",
+                    str(exc),
+                ) from exc
+
+            recorded = RecordedReceipt(
+                record=record,
+                message_id=bytes(
+                    result.message_id
+                ).split(b"\\x00", 1)[0].decode("ascii"),
+                event_index=int(
+                    result.enqueue_event_index
+                ),
+                event_digest=bytes(
+                    result.enqueue_event_digest
+                ).split(b"\\x00", 1)[0].decode("ascii"),
+            )
+
+            self._records.append(recorded)
+            self._record_index[record] = recorded
+
+            return recorded
+
         if not self._ports:
             raise HistoryError("HISTORY_CLOSED")
-        message_id = self._ports[record.subsystem].propose(self.history_entity, record.payload())
+
+        message_id = self._ports[
+            record.subsystem
+        ].propose(
+            self.history_entity,
+            record.payload(),
+        )
+
         self._kernel.run_until_quiescent()
         self._records = self._read_records()
+        self._record_index = {
+            item.record: item
+            for item in self._records
+        }
+
         recorded = self._records[-1]
-        if recorded.message_id != message_id or recorded.record != record:
-            raise HistoryError("RECORD_NOT_DURABLE", message_id)
+
+        if (
+            recorded.message_id != message_id
+            or recorded.record != record
+        ):
+            raise HistoryError(
+                "RECORD_NOT_DURABLE",
+                message_id,
+            )
+
         return recorded
