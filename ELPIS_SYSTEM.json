@@ -447,6 +447,10 @@
       {
         "path": "research/ecs_k1_native",
         "classification": "QUALIFIED (NATIVE K1 v2): ecsg-k1-native.v2 ran once from clean harness f720e4a906b0f9c1190536e6123de9c7f4e6160e. E1-E5, L1, L2, D1_Q and D1_F all passed on 32 Q and 32 fresh F worlds. Native K1 is canonical through the exact admitted attestation research/ecs_k1_native/evidence/ecsg-k1-native.v2.attestation.json. K1N-v1 remains historical NOT_QUALIFIED; Retention R3 remains OUTCOME_A. No claim extends beyond the frozen synthetic regime."
+      },
+      {
+        "path": "research/hecs_r0",
+        "classification": "RESEARCH_ONLY, PREREGISTERED: H-ECS R0 hierarchical ECS world-model laboratory (a Rust crate over the existing native K1 C ABI; one K1 state per level; DEV calibration -> DEV -> QUAL once, write-once evidence). Not on the canonical path; no codec, no HACF edge, no runtime authority (research/hecs_r0/PREREGISTRATION.md)."
       }
     ],
     "native_targets": [

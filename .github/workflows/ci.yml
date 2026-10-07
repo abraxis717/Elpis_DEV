@@ -235,6 +235,11 @@ jobs:
           timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
           timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
           timeout 600 cargo test --offline --locked --release
+      - name: H-ECS R0 research crate format and lint (its tests run under ctest -L hecs in the native jobs)
+        working-directory: research/hecs_r0/rust
+        run: |
+          cargo fmt --check
+          timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
 
   native:
     name: Native (${{ matrix.compiler }}, ${{ matrix.build }})
