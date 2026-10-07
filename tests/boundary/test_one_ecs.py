@@ -63,7 +63,16 @@ def test_dependency_directions_keep_runtime_as_the_only_composer():
                                       ("elpis.inference", "elpis.runtime", "elpis.continuity", "research"))]
     continuity = _imports("continuity")
     assert not [n for n in continuity if _under(n, "elpis") and not _under(n, "elpis.continuity")]
-    assert not [n for n in continuity if n.split(".")[0] in ("ctypes", "numpy", "research")]
+    assert not [n for n in continuity if n.split(".")[0] in ("numpy", "research")]
+    # The continuity authority is the Rust crate: it depends on nothing but the Rust standard library, and it
+    # knows nothing of ECS, K1 execution, runtime or inference (it stores a K1 digest, never K1 state).
+    crate = REPO / "native/continuity"
+    cargo = (crate / "Cargo.toml").read_text()
+    assert re.search(r"(?ms)^\[dependencies\]\s*(?:#[^\n]*\n\s*)*(?=^\[|\Z)", cargo), "no crate dependencies"
+    assert "[build-dependencies]" not in cargo and "[dev-dependencies]" not in cargo
+    rust = "\n".join(p.read_text() for p in (crate / "src").rglob("*.rs"))
+    for foreign in ("elpis_ecsg", "ecsg_", "extern crate", "#[link(", "dsv", "inference"):
+        assert foreign not in rust, foreign
     inference = _imports("inference")
     assert not [n for n in inference if _under(n, "elpis.ECS") or _under(n, "elpis.continuity")]
     cognition = imports_of(REPO, REPO / "src/elpis/runtime/cognition.py")
@@ -109,8 +118,17 @@ def test_continuity_surface_is_current_authority_only():
     from elpis.continuity import ContinuityStore
 
     public = {n for n in vars(ContinuityStore) if not n.startswith("_")}
+    # testing_fault / testing_counters reach only the separately built testing library; the production
+    # library has no such symbols and the adapter refuses them (tests/continuity/test_adapter.py).
     assert public == {"open", "close", "snapshot", "anchor_cognition", "commit_cognition_transition",
-                      "reserve_evolution_assertion", "commit_evolution_transition"}
+                      "reserve_evolution_assertion", "commit_evolution_transition", "testing_fault",
+                      "testing_counters"}
+    header = (REPO / "native/continuity/include/elpis/continuity.h").read_text()
+    exported = set(re.findall(r"\b(elpis_continuity_\w+)\s*\(", header))
+    assert exported == {f"elpis_continuity_{n}" for n in (
+        "abi_version", "record_size", "code_name", "evolution_digest", "record_encode", "record_decode",
+        "store_create", "store_destroy", "store_open", "store_close", "store_snapshot", "anchor_cognition",
+        "commit_cognition", "reserve_evolution", "finalize_evolution")}, exported
     banned = re.compile(r"(?i)\b(entit(?:y|ies)|mailbox\w*|scheduler\w*|topology|projection\w*|replay\w*|"
                         r"compact\w*|segment\w*|retention\w*|events?|event_log|receipt_history|propose\w*)\b")
     for path in (REPO / "src/elpis/continuity").rglob("*.py"):
@@ -129,6 +147,14 @@ def test_continuity_surface_is_current_authority_only():
                 names.add(node.asname or node.name)
         found = [n for n in names if banned.search(n.replace("_", " "))]
         assert not found, (path, found)
+    for path in (REPO / "native/continuity/src").rglob("*.rs"):
+        if path.name == "tests.rs":
+            continue
+        # Rust identifiers (fn/struct/enum/variant/field names); comments and string data excluded.
+        code = re.sub(r"//[^\n]*|\"(?:\\.|[^\"\\])*\"", "", path.read_text())
+        found = [n for n in re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", code) if banned.search(
+            re.sub(r"(?<=[a-z])(?=[A-Z])", " ", n).replace("_", " "))]
+        assert not found, (path, sorted(set(found)))
 
 
 # -- the residue scan ----------------------------------------------------------------------------------

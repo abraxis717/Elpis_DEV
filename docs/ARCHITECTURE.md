@@ -179,7 +179,7 @@ there is no writable COLD replica; the CPU PAL has no accelerator fences.
 used by the substrate and inference. Callers branch on `Code` (`IDENTITY`,
 `INTEGRITY`, `LIMIT`, `BUSY`, `STALE`, …), never on message text.
 
-## Continuity: minimal durable runtime authority (`elpis.continuity`)
+## Continuity: minimal durable runtime authority (`native/continuity`, `elpis.continuity`)
 
 Continuity holds the current durable lineage/authority the runtime must
 verify on restart, and nothing else. [`CONTINUITY.md`](CONTINUITY.md) is the
@@ -200,15 +200,28 @@ history kernel.
   A failed write is `CONTINUITY_PUBLICATION_REFUSED` (previous authority
   intact); a failed sync is `CONTINUITY_PUBLICATION_UNCERTAIN` (store closed;
   reopen resolves to exactly one complete record).
-* **API.** `ContinuityStore(directory)`: `open`, `close`, `snapshot`,
-  `anchor_cognition(digest)`, `commit_cognition_transition(before, after)`,
-  `reserve_evolution_assertion(expected, assertion_digest)`,
-  `commit_evolution_transition(expected_pending, receipt_digest)`. Each transition
-  is compare-and-publish against the current record.
+* **Implementation.** The authority is Rust (`native/continuity`, one crate,
+  standard library only) behind a stable C ABI, `include/elpis/continuity.h`
+  ABI v1: pure `record_encode` / `record_decode` / `evolution_digest`, and a
+  store handle with `open`, `close`, `snapshot`, `anchor_cognition`,
+  `commit_cognition`, `reserve_evolution` and `finalize_evolution`. Each
+  transition is compare-and-publish against the current record.
+  `EvolutionState` is `Idle {revision, head}` or `Pending {revision, head,
+  assertion}`; an idle authority cannot carry an assertion.
+* **Python.** `elpis.continuity` is a thin `ctypes` adapter over that ABI
+  (`ContinuityLibrary(path)`, `ContinuityStore(library, directory)` with
+  `anchor_cognition`, `commit_cognition_transition`,
+  `reserve_evolution_assertion`, `commit_evolution_transition`). It holds no
+  durable state and owns no format, transition law or digest; malformed
+  Python inputs reach the library as NULL and are refused there.
+* **Testing library.** `libelpis_continuity_testing.so` is the same crate
+  built with fault injection (death at named steps; refused, torn and
+  uncertain publications) and I/O counters. The production library exports
+  no test symbols.
 * **Ownership.** A directory `flock` admits one owner (`CONTINUITY_LOCKED`).
-  Continuity imports only the standard library: no ECS, runtime, inference
-  or native code. It holds no entities, mailboxes, schedulers, projections,
-  topology, event log, compaction or retention.
+  Continuity knows nothing of ECS, K1 execution, runtime or inference: it
+  stores a K1 digest, never K1 state. It holds no entities, mailboxes,
+  schedulers, projections, topology, event log, compaction or retention.
 
 Stable codes: `CONTINUITY_UNINITIALIZED`, `CONTINUITY_UNANCHORED`,
 `CONTINUITY_ALREADY_ANCHORED`, `CONTINUITY_STATE_MISMATCH`,
@@ -216,7 +229,8 @@ Stable codes: `CONTINUITY_UNINITIALIZED`, `CONTINUITY_UNANCHORED`,
 `CONTINUITY_PUBLICATION_UNCERTAIN`, `CONTINUITY_LOCKED`,
 `CONTINUITY_AUTHORITY_MISMATCH`, `CONTINUITY_EVOLUTION_PENDING`,
 `CONTINUITY_EVOLUTION_NOT_PENDING`, `CONTINUITY_EXHAUSTED`, plus `CONTINUITY_INVALID`,
-`CONTINUITY_PATH`, `CONTINUITY_OPEN` and `CONTINUITY_LEGACY_STORAGE`.
+`CONTINUITY_PATH`, `CONTINUITY_OPEN`, `CONTINUITY_LEGACY_STORAGE` and
+`CONTINUITY_IO` (an operating-system failure outside publication).
 
 ## Pipeline: ingress and canonical publication (`elpis.pipeline`, `native/pipeline`)
 
@@ -705,7 +719,7 @@ There is one runtime composition. The beta's numbered runtime generations
 
 ### Composition
 
-`Runtime(RuntimeConfig(continuity_dir))` owns only its continuity store and
+`Runtime(RuntimeConfig(continuity_dir, continuity_library))` owns only its continuity store and
 the edge adapters (`elpis.runtime.edges`) that turn ingress exports and
 retrieval bundles into object claims and address proposals for
 structural-memory rendering. The caller supplies everything else explicitly:

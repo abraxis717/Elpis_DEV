@@ -367,9 +367,10 @@ def test_canonical_turn_exposes_the_commit_bound_retained_state_identities(k1):
 
 # -- runtime lineage through continuity (docs/CONTINUITY.md) -------------------------------------
 
-def _config(path):
+def _config(path, testing=False):
     from elpis.runtime import RuntimeConfig
-    return RuntimeConfig(path)
+    from ..conftest import require_continuity_library
+    return RuntimeConfig(path, require_continuity_library(testing=testing))
 
 
 def test_runtime_turn_publishes_exactly_the_new_expected_k1_identity(k1, tmp_path):
@@ -460,30 +461,22 @@ def test_mismatched_restart_fails_before_k1_mutation(k1, tmp_path):
             assert info.value.code == "CONTINUITY_STATE_MISMATCH"
 
 
-@pytest.mark.parametrize("failure", ["write", "sync"])
-def test_k1_commit_then_failed_publication_keeps_k1_and_fail_stops(k1, tmp_path, monkeypatch, failure):
+# Testing-library faults (native/continuity): 2 write fails, 5 sync fails with the bytes lost,
+# 6 sync fails although the record is durable.
+@pytest.mark.parametrize("failure", ["write", "sync-lost", "sync-durable"])
+def test_k1_commit_then_failed_publication_keeps_k1_and_fail_stops(k1, tmp_path, failure):
     """The crash law: the K1 commit stands; restart sees old authority and refuses the moved state."""
-    from elpis.continuity import store as continuity_store
     from elpis.runtime import Runtime
 
     with world(k1) as state:
-        with Runtime(_config(tmp_path / "c")) as runtime:
+        with Runtime(_config(tmp_path / "c", testing=True)) as runtime:
             anchored = runtime.anchor_cognition(state)
-
-            def fail(*_args):
-                raise OSError(5, "EIO")
-
-            if failure == "write":
-                monkeypatch.setattr(continuity_store.os, "pwrite", fail)
-                expected = "CONTINUITY_PUBLICATION_REFUSED"
-            else:
-                monkeypatch.setattr(continuity_store.os, "fdatasync", fail, raising=False)
-                monkeypatch.setattr(continuity_store.os, "fsync", fail)
-                expected = "CONTINUITY_PUBLICATION_UNCERTAIN"
+            action = {"write": 2, "sync-lost": 5, "sync-durable": 6}[failure]
+            runtime.continuity.testing_fault(1, action)
+            expected = "CONTINUITY_PUBLICATION_REFUSED" if failure == "write" else "CONTINUITY_PUBLICATION_UNCERTAIN"
             with pytest.raises(CompositionError) as info:
                 runtime.run_turn(state, "commit then fail", tokenizer=ByteTokens(), codec_map=FixtureMap(),
                                  learning_rate=RATE)
-            monkeypatch.undo()
             assert info.value.code == expected
             committed = state.snapshot()
             # K1 committed and is never rolled back.
@@ -496,6 +489,7 @@ def test_k1_commit_then_failed_publication_keeps_k1_and_fail_stops(k1, tmp_path,
             durable = restarted.continuity.snapshot().k1_state_digest
             if durable == anchored.k1_state_digest:
                 # Old durable authority: the moved K1 state is a mismatch, refused before mutation.
+                assert failure != "sync-durable"
                 with pytest.raises(CompositionError) as info:
                     restarted.run_turn(state, "after restart", tokenizer=ByteTokens(), codec_map=FixtureMap(),
                                        learning_rate=RATE)
@@ -503,7 +497,7 @@ def test_k1_commit_then_failed_publication_keeps_k1_and_fail_stops(k1, tmp_path,
                 assert state.snapshot() == committed
             else:
                 # New durable authority (the synced-unknown write did land): resume.
-                assert durable == committed[-32:]
+                assert failure == "sync-durable" and durable == committed[-32:]
                 restarted.run_turn(state, "after restart", tokenizer=ByteTokens(), codec_map=FixtureMap(),
                                    learning_rate=RATE)
 

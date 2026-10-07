@@ -99,7 +99,15 @@ digests stay as persisted identities: the code checks itself against them at
 import time. They identify *which* contract the mechanics implement. They
 are not evidence that the contract has any effect.
 
-## Continuity (`elpis.continuity`)
+## Continuity (`native/continuity`, `elpis.continuity`)
+
+* **Byte parity, not a new format.** The Rust authority reproduces vectors
+  frozen from the qualified Python implementation (PR #36) and keeps format
+  v2 unchanged. Parity covers the frozen records and the frozen store session;
+  it is not a proof of equivalence for every possible input sequence.
+* **Python is not removed from production.** Only the continuity authority
+  moved to Rust. The runtime composition is still Python and reaches the
+  library through a `ctypes` adapter. A build needs a Rust toolchain.
 
 * **Current authority, not history.** Continuity holds one fixed-size record
   (two 176-byte slots, 352 bytes in total, whatever the runtime lifetime):

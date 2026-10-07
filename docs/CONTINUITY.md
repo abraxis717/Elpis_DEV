@@ -1,9 +1,18 @@
-# Continuity: minimal durable runtime authority (`elpis.continuity`)
+# Continuity: minimal durable runtime authority (`native/continuity`, `elpis.continuity`)
 
 Continuity records the current durable lineage and authority that the runtime
 needs for safe restart. It is not an ECS, not context memory, not an event
 database, not topology, not a message bus and not an audit ledger. It retains
 no history: it holds one fixed-size current-authority record.
+
+The authority is implemented in Rust (`native/continuity`: one crate, the
+standard library only) and reached through a stable C ABI
+(`include/elpis/continuity.h`, ABI v1). Every law below — record format,
+digests, slot selection, locking, publication and the evolution transitions —
+is the Rust code's. `elpis.continuity` is a thin Python adapter over the ABI
+that owns no state, format, transition law or digest. The Rust implementation
+reproduces, byte for byte, vectors frozen from the qualified Python
+implementation it replaced (`native/continuity/tests/fixtures`).
 
 There is one ECS (`elpis.ECS`, `native/ECS`): the cognitive/dynamical
 substrate that owns `W`, epoch, `H`, `a`, recurrence, learning, consolidation,
@@ -224,9 +233,11 @@ migration or license to reset authority.
 The managed canonical turn is: codec -> one native K1 transaction (experience
 schedule and readout) -> decode -> native commit -> one continuity
 publication. `tests/integration/test_runtime_hot_path.py` checks dynamically,
-on every run, that continuity adds no native crossing to the canonical turn
-and that its filesystem work per turn is exactly one 176-byte `pwrite` and
-one `fdatasync`. `tests/boundary/test_one_ecs.py` checks statically that the
+on every run, that the canonical turn's K1 crossings are unchanged, that
+continuity is exactly one crossing into its library (`commit_cognition`),
+that Python performs no file I/O, and that the library's filesystem work per
+turn is exactly one 176-byte `pwrite` and one `fdatasync` (testing-library
+I/O counters). `tests/boundary/test_one_ecs.py` checks statically that the
 turn reaches no receipt, history, event, scheduler, projection or compaction
 machinery.
 
