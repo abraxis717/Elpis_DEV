@@ -1,0 +1,218 @@
+{
+  "name": "hecs-r0.v1",
+  "labels": [
+    "RESEARCH_ONLY",
+    "NO_RUNTIME_AUTHORITY",
+    "NO_LANGUAGE_CLAIM",
+    "SYNTHETIC",
+    "SEMANTICS=NONE",
+    "PREREGISTERED"
+  ],
+  "base_seed": 20261007,
+  "dev_seeds": [0, 1, 2, 3],
+  "qual_seeds": [100, 101, 102, 103, 104, 105, 106, 107],
+  "worlds": [
+    {
+      "kind": "SEPARATED",
+      "kappa": 0.04,
+      "slow_noise": 0.005,
+      "rho": -0.7,
+      "second_std": 0.5,
+      "obs_noise": 0.01
+    },
+    {
+      "kind": "MATCHED",
+      "kappa": 0.04,
+      "slow_noise": 0.005,
+      "rho": 0.995,
+      "second_std": 0.5,
+      "obs_noise": 0.01
+    }
+  ],
+  "data": {
+    "train_episodes": 16,
+    "test_episodes": 8,
+    "episode_steps": 256,
+    "exploration": "uniform actions in [-1, 1] held for 1..=8 steps"
+  },
+  "ecs": {
+    "primitive": "native K1 (elpis_ecsg_k1), one state per level; LEARN only (H stays 0: exact G1)",
+    "dim": 6,
+    "input": "[z0, z1, b, sel0, sel1, 1]; target z'_k",
+    "init_scale": 0.18,
+    "base_rate": 0.002,
+    "rate_rule": "base_rate * 36 / width",
+    "batch_transitions": 128,
+    "steps_per_call": 25,
+    "max_rows": 512,
+    "calibration_steps": [6000, 24000, 96000]
+  },
+  "encoders": {
+    "level1": "whitening of the observation (every condition)",
+    "temporal_shared": "none: the window's last lower latent (window 1)",
+    "hierarchical_distinct": "affine 4 -> 2, two most predictable whitened directions of the window (linear one-tick predictor residual vs input covariance)",
+    "action_pooling": "mean of the lower actions over the stride"
+  },
+  "conditions": [
+    {
+      "name": "FLAT_N36",
+      "representation": "FLAT",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 36,
+          "horizon": 16
+        }
+      ],
+      "planner_k": [8, 32, 128]
+    },
+    {
+      "name": "FLAT_N72",
+      "representation": "FLAT",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 72,
+          "horizon": 16
+        }
+      ],
+      "planner_k": [8, 32, 128]
+    },
+    {
+      "name": "FLAT_N108",
+      "representation": "FLAT",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 108,
+          "horizon": 16
+        }
+      ],
+      "planner_k": [8, 32, 128]
+    },
+    {
+      "name": "TEMPORAL_SHARED_L2",
+      "representation": "TEMPORAL_SHARED",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 36,
+          "horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 1,
+          "width": 36,
+          "horizon": 4
+        }
+      ],
+      "planner_k": [16, 64, 256]
+    },
+    {
+      "name": "TEMPORAL_SHARED_L3",
+      "representation": "TEMPORAL_SHARED",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 36,
+          "horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 1,
+          "width": 36,
+          "horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 1,
+          "width": 36,
+          "horizon": 4
+        }
+      ],
+      "planner_k": [11, 43, 171]
+    },
+    {
+      "name": "HIERARCHICAL_DISTINCT_L2",
+      "representation": "HIERARCHICAL_DISTINCT",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 36,
+          "horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 2,
+          "width": 36,
+          "horizon": 4
+        }
+      ],
+      "planner_k": [16, 64, 256]
+    },
+    {
+      "name": "HIERARCHICAL_DISTINCT_L3",
+      "representation": "HIERARCHICAL_DISTINCT",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 36,
+          "horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 2,
+          "width": 36,
+          "horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 2,
+          "width": 36,
+          "horizon": 4
+        }
+      ],
+      "planner_k": [11, 43, 171]
+    }
+  ],
+  "measurements": {
+    "horizons": [1, 2, 4, 8],
+    "probes": "ridge (1e-3) linear probe, latent -> s and f at the window-end time; fit on train, NMSE on test",
+    "attractors": "free run at b = 0 from a 5 x 5 grid on [-2, 2]^2 for 200 steps"
+  },
+  "planning": {
+    "episodes": 24,
+    "steps": 64,
+    "replan_every": 4,
+    "flat_horizon": 16,
+    "flat_block": 4,
+    "success_tolerance": 0.1,
+    "min_goal_distance": 0.8,
+    "start_range": 0.9,
+    "goal": "observation rendered from (s_goal, f_goal), f_goal drawn from the second factor's stationary law",
+    "oracle_k": 32
+  },
+  "gates": {
+    "V1_L1_ONE_STEP_NMSE_MAX": 0.25,
+    "V2_ORACLE_SUCCESS_MIN": 0.8,
+    "V3_L1_PROBE_NMSE_MAX": 0.1,
+    "V4_SEPARATED_CENTROID_RATIO_MIN": 4.0,
+    "V4_MATCHED_CENTROID_RATIO_MAX": 1.5,
+    "H1_FAST_LOSS_MIN": 0.3,
+    "H1_SLOW_RETAINED_MAX": 0.2,
+    "H1_SEED_FRACTION_MIN": 0.75,
+    "H1C_CONTROL_MARGIN_MIN": 0.2,
+    "H1T_SHARED_LOSS_MAX": 0.1,
+    "H2A_OVER_WIDTH_MIN": 0.15,
+    "H2B_OVER_TEMPORAL_MIN": 0.1,
+    "H2_BUDGETS_REQUIRED": 2,
+    "DEPTH_EFFECT": 0.05
+  }
+}
