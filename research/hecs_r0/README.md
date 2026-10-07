@@ -7,6 +7,9 @@ temporal scales, with and without distinct learned representations between level
 scaling of one ECS. Question, design, gates and dispositions: [`PREREGISTRATION.md`](PREREGISTRATION.md).
 Results: [`docs/research/HECS_R0_RESULTS.md`](../../docs/research/HECS_R0_RESULTS.md).
 
+**Status: closed `TASK_INVALID_ON_DEV`** at DEV calibration (the preregistered V1 threshold lies below the
+SEPARATED world's achievable one-step error). No DEV run or QUAL run exists; R0 is not rescued.
+
 Not on the canonical path: nothing in `src/` imports or calls it, and it has no ECS<->DSV codec, no HACF
 edge and no runtime authority.
 
@@ -16,8 +19,7 @@ edge and no runtime authority.
 |---|---|
 | `rust/` | the `hecs_r0` crate (standard library only): hierarchy spec and bounded controller, encoders, K1 binding, world, planner, measurements, gates |
 | `specs/hecs-r0.v1.spec.json` | the frozen specification (`hecs spec` must reproduce it byte for byte) |
-| `evidence/dev/` | DEV calibration and DEV run |
-| `evidence/qual/` | the one QUAL run |
+| `evidence/dev/` | DEV calibration (the study stopped there) |
 
 ## Test lanes
 

@@ -182,3 +182,9 @@ are not evidence that the contract has any effect.
   and cited by equation in `docs/research/ECS_DYNAMICS_RESULTS.md`. The
   public cubic control is not a reconstruction of the private Structural R0
   reference family.
+* `research/hecs_r0` (H-ECS R0, hierarchical ECS world models) is RESEARCH_ONLY with
+  NO_RUNTIME_AUTHORITY and closed `TASK_INVALID_ON_DEV`
+  (`docs/research/HECS_R0_RESULTS.md`). It stopped at DEV calibration: its
+  preregistered V1 threshold lay below the SEPARATED world's achievable one-step
+  error. No hierarchy, abstraction, planning, width or depth claim follows, positive
+  or negative. ECS is not claimed to be a JEPA.

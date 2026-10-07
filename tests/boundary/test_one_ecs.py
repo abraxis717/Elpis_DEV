@@ -266,6 +266,7 @@ NATIVE_ABI_FILES = {
     "research/hecs_r0/rust/src/spec.rs": _HECS_K1,
     "research/hecs_r0/rust/src/tests.rs": _HECS_K1,
     "research/hecs_r0/specs/hecs-r0.v1.spec.json": _HECS_K1,
+    "research/hecs_r0/evidence/dev/hecs-r0.v1.calibration.json": _HECS_K1,
 }
 
 
