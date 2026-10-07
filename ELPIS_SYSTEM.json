@@ -90,19 +90,24 @@
     {
       "id": "ECS_C",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "Persistent identity, continuity and history: deterministic entities and lifecycle, sender-bound local messaging, deterministic scheduling, one authoritative durable event history, canonical state roots, replay, checkpoints, crash recovery, read-only topology and context projections, and the frozen Structural R0 mutation grammar.",
+      "purpose": "Persistent identity, continuity and history: deterministic entities and lifecycle, sender-bound local messaging, deterministic scheduling, one authoritative durable event history, canonical state roots, replay, checkpoints, state-bearing compaction checkpoints with crash-safe bounded generations, crash recovery, read-only topology and context projections (complete-history or explicitly retained-window), and the frozen Structural R0 mutation grammar.",
       "python_package": "elpis.ECS_C",
       "implementation_roots": [
-        "src/elpis/ECS_C"
+        "src/elpis/ECS_C",
+        "native/ECS_C"
       ],
       "test_roots": [
         "tests/ECS_C"
       ],
-      "native_targets": [],
-      "depends_on": [],
-      "mutation_authority": "Only Kernel transitions (found/activate/dormant/terminate/message/step) mutate ECS state, each linearized under the kernel lock and committed as one framed event before the projection is installed. Projections (topology, context) are read-only. Entity-facing code sends only through kernel-bound EntityPort objects and cannot choose its sender.",
+      "native_targets": [
+        "elpis_ecsc_history"
+      ],
+      "depends_on": [
+        "substrate"
+      ],
+      "mutation_authority": "Only Kernel transitions (found/activate/dormant/terminate/message/step) mutate ECS state, each linearized under the kernel lock and committed as one framed event before the projection is installed. Projections (topology, context) are read-only. Entity-facing code sends only through kernel-bound EntityPort objects and cannot choose its sender. A compaction checkpoint is never a mutation: it captures an already-committed quiescent or non-quiescent state and is verified by exact root reconstruction before use.",
       "runtime_participation": "The runtime composition owns one Kernel as the system's durable continuity history; committed outcomes of other subsystems are recorded there as messages. Its projections are read-only views of that history (the evolution gate reasons over one). ECS_C history is not active cognitive state and never substitutes for ECS_G.",
-      "persistence": "Length-framed append-only event log with fsync durability boundary and complete-frame crash recovery; checkpoints are rollback-floor markers only.",
+      "persistence": "Length-framed append-only event log with fsync durability boundary and complete-frame crash recovery. Uncompacted layout: one log, full replay from genesis, ecs.checkpoint.v1 rollback-floor markers only. Compacted layout: one published generation = a verified state-bearing ecs.compaction-checkpoint.v1 base plus one active segment carrying the following events at their original global indices; restart rebuilds the base and stream-replays only the segment; the generation switch is a crash-safe MANIFEST rename (ecs.generation-manifest.v1) with every write admitted against a finite directory budget first. Below a non-zero retention floor, complete-history reads (events, topology) refuse.",
       "protocol_identifiers_retained": [
         "ecs.state_root.v3",
         "ecs.event.v1",
@@ -111,7 +116,11 @@
         "active-mailbox-fifo/entity-id-before-founded-activation.v1",
         "active-mailbox-global-arrival/founding-index-activation.v2",
         "elpis.ecs.r0.*",
-        "elpis.ecs.structural_r0.*"
+        "elpis.ecs.structural_r0.*",
+        "ecs.compaction-checkpoint.v1",
+        "ecs.generation-manifest.v1",
+        "ecs.context-projection.v1",
+        "ecs.context-projection.retained.v1"
       ],
       "external_dependencies": [],
       "model_dependency": "NONE",
@@ -369,24 +378,23 @@
         "structure",
         "substrate"
       ],
-      "mutation_authority": "The runtime writes only its own ECS receipt history, and only through ReceiptHistory.record: one message from the owning subsystem's recorder entity to the history entity, appended only after that subsystem's own operation committed or published. Recording is idempotent and grants the recorded thing no authority. Every other state change (canonical publication, decode state, evolution receipts) is made by the owning subsystem's entry point with the caller's explicit inputs; the runtime adds no authority and no fallback.",
+      "mutation_authority": "The runtime writes only its own bounded ECS receipt history, and only through ReceiptHistory.record: one message from the owning subsystem's recorder entity to the history entity, appended by the native ECS_C session only after that subsystem's own operation committed or published (no Python write fallback). Exact duplicate detection is guaranteed only within the retained window (an equal record there returns the existing entry and appends nothing); a record equal to one retired below the retention floor is recorded again. Recording grants the recorded thing no authority. Compaction rewrites no event: it checkpoints committed state and publishes a new generation. Every other state change (canonical publication, decode state, evolution receipts) is made by the owning subsystem's entry point with the caller's explicit inputs; the runtime adds no authority and no fallback.",
       "runtime_participation": "This is the runtime composition.",
-      "security_boundary": "The history directory is an explicit absolute path and the history is replay-validated on open (event chain, clock progression, state roots); a history founded with other entities, a record sent by the wrong recorder, or a non-canonical record payload is refused. Libraries, corpus roots, file assets, ledgers and promotion capabilities are supplied explicitly by the caller; the runtime opens no network connection and loads no model. The evolution gate receives a projection taken at call time, so an assertion bound to an older history head is rejected before anything executes.",
+      "security_boundary": "The history directory is an explicit absolute path owned exclusively (LOCK flock) and bounded by a finite RuntimeHistoryPolicy (segment, checkpoint and total directory bytes; no unlimited value). On open the published generation's compaction checkpoint is verified by exact state-root reconstruction and the active segment is replay-validated from it (event chain, global indices, clock progression, state roots); unknown directory entries, manifest/checkpoint mismatches and inconsistent native global/base/local counts are refused; a history founded with other entities, a record sent by the wrong recorder, or a non-canonical record payload is refused. Libraries, corpus roots, file assets, ledgers and promotion capabilities are supplied explicitly by the caller; the runtime opens no network connection and loads no model. The evolution gate receives a projection taken at call time, so an assertion bound to an older history head is rejected before anything executes; below a retention floor that projection is an explicitly retained-window projection that binds the floor.",
       "protocol_identifiers_retained": [
-        "New: elpis.runtime.history.v1 (history genesis label), elpis.runtime.receipt-record.v1 (record payload schema). The ECS identifiers it builds on (ecs.event.v1, ecs.message.v1, ecs.state_root.v3) are owned by elpis.ECS_C."
+        "New: elpis.runtime.history.v1 (history genesis label), elpis.runtime.receipt-record.v1 (record payload schema), elpis.runtime.history-summary.v1 (bounded compaction-checkpoint extension), elpis.runtime.cognition-continuity.v1 (fixed-size ECS_G lineage summary). The ECS identifiers it builds on (ecs.event.v1, ecs.message.v1, ecs.state_root.v3, ecs.compaction-checkpoint.v1, ecs.generation-manifest.v1, ecs.context-projection.retained.v1) are owned by elpis.ECS_C."
       ],
       "external_dependencies": [],
       "model_dependency": "NONE_REQUIRED. Inference runs only on caller-supplied targets; the integration suite uses the synthetic DSV4 fixture.",
       "uses_numpy": false,
-      "maturity": "Integration qualified over real native libraries and a real HACF corpus (ingress, structural memory, canonical writer, evolution, structural-memory rendering), including record idempotence, replay on reopen, tamper refusal, stale-history rejection and non-recording of refused operations. The canonical turn is qualified for direction, atomicity, determinism, snapshot continuation, fail-closed refusal and the absence of any DSV model, using TRAINING=NONE SEMANTICS=NONE interface fixtures only.",
+      "maturity": "Integration qualified over real native libraries and a real HACF corpus (ingress, structural memory, canonical writer, evolution, structural-memory rendering), including retained-window record idempotence, replay on reopen, tamper refusal, stale-history rejection and non-recording of refused operations. The bounded history is qualified for finite directory bytes across repeated compactions (measured at every generation-switch step), bounded resident record window, restart replay bounded by the active segment (instrumented), exact global continuation (index, clock, chain, roots, watermarks, native global count), K1 lineage continuity across compaction, a process-crash matrix over every switch step, a native segment/fault matrix, retained-window projection and legacy migration. The canonical turn is qualified for direction, atomicity, determinism, snapshot continuation, fail-closed refusal and the absence of any DSV model, using TRAINING=NONE SEMANTICS=NONE interface fixtures only.",
       "incomplete_interfaces": [
         "No qualified ECS<->DSV semantic codec map exists; canonical text generation is unavailable by design.",
-        "ECS turn transitions are not recorded in the ECS_C history (no ECS recorder role in the genesis).",
         "No HACF/structure -> ECS edge is defined; Runtime.admit_context renders structural memory through the codec but nothing canonical consumes the rendering yet.",
         "Ingress proposals are recorded but the query-local overlay itself is not persisted; recording carries its identity only.",
         "Canonical publication is recorded after the fact; the application and promotion stages before it are driven by the caller and not recorded.",
         "The runtime is single-process and same-process like the ECS kernel; no cross-process transport or service boundary.",
-        "record() re-reads the event log after each write; adequate at test scale, not an indexed store."
+        "Events below the retention floor exist only as compaction-checkpoint state: they cannot be listed, projected, topology-folded or used for duplicate detection; lifetime record idempotence is not provided."
       ]
     }
   ],
@@ -550,7 +558,8 @@
     "No release, tag or PyPI publication exists for this development repository; beta release authority was not migrated.",
     "Mechanics qualification (tests passing) is not scientific qualification and not runtime admission of any learned model.",
     "The DSV4.1 tower in research/dsv41_tower is noncanonical donor/oracle/qualification code: its arithmetic is qualified against pinned donor behavior on a training-free fixture; it is not a trained model and not Elpis cognition.",
-    "No ECS<->DSV semantic codec is qualified; Elpis does not generate text. Interface fixtures are TRAINING=NONE SEMANTICS=NONE and are never presented as cognition."
+    "No ECS<->DSV semantic codec is qualified; Elpis does not generate text. Interface fixtures are TRAINING=NONE SEMANTICS=NONE and are never presented as cognition.",
+    "The bounded ECS_C runtime history bounds the logical bytes of its own directory under a finite policy; filesystem block/metadata overhead, power-loss behaviour beyond the stated fsync/rename ordering, and cross-process access are not claimed. Events, records and duplicate detection below the retention floor are not available; there is no lifetime replay or lifetime idempotence."
   ],
   "post_migration_relocations": [
     {

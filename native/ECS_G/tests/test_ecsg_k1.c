@@ -180,6 +180,43 @@ static void test_transactions_commit_the_complete_state_or_nothing(void)
     elpis_ecsg_k1_destroy(&direct);
 }
 
+
+static void test_transaction_commit_identity_matches_envelope(void)
+{
+    elpis_ecsg_k1 *s = fresh();
+    elpis_ecsg_k1_commit_identity identity;
+    uint8_t *before = NULL, *after = NULL;
+    uint64_t tok = 0u;
+    size_t nb, na;
+
+    nb = envelope(s, &before);
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, X, Y, R, 0.002, 7, NULL) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_txn_consolidate(s, tok, X, R) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_txn_commit_identity(s, tok, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_commit_identity(s, tok, &identity) == ELPIS_ECSG_K1_OK);
+
+    na = envelope(s, &after);
+    assert(nb == na);
+    assert(!memcmp(identity.state_before_digest,
+                   before + nb - ELPIS_ECSG_K1_DIGEST_BYTES,
+                   ELPIS_ECSG_K1_DIGEST_BYTES));
+    assert(!memcmp(identity.state_after_digest,
+                   after + na - ELPIS_ECSG_K1_DIGEST_BYTES,
+                   ELPIS_ECSG_K1_DIGEST_BYTES));
+    assert(memcmp(identity.state_before_digest,
+                  identity.state_after_digest,
+                  ELPIS_ECSG_K1_DIGEST_BYTES) != 0);
+    assert(identity.transition.epoch_before == 0u);
+    assert(identity.transition.epoch_after == 7u);
+    assert(identity.transition.generation_before == 0u);
+    assert(identity.transition.generation_after == 1u);
+
+    free(before);
+    free(after);
+    elpis_ecsg_k1_destroy(&s);
+}
+
 static void test_envelope_round_trip_and_corruption(void)
 {
     elpis_ecsg_k1 *s = fresh(), *r = NULL;
@@ -725,6 +762,26 @@ static void test_schedule_validation_touches_nothing(void)
     elpis_ecsg_k1_destroy(&ref);
 }
 
+
+static void test_state_digest_matches_snapshot_trailer(void)
+{
+    elpis_ecsg_k1 *s = fresh();
+    uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES];
+    uint8_t *snapshot = NULL;
+    size_t bytes;
+
+    bytes = envelope(s, &snapshot);
+    assert(elpis_ecsg_k1_state_digest(s, digest) == ELPIS_ECSG_K1_OK);
+    assert(!memcmp(
+        digest,
+        snapshot + bytes - ELPIS_ECSG_K1_DIGEST_BYTES,
+        ELPIS_ECSG_K1_DIGEST_BYTES
+    ));
+
+    free(snapshot);
+    elpis_ecsg_k1_destroy(&s);
+}
+
 int main(void)
 {
     fixture();
@@ -733,6 +790,7 @@ int main(void)
     test_consolidation_changes_learning_not_query();
     test_refusals_leave_the_complete_state_unchanged();
     test_transactions_commit_the_complete_state_or_nothing();
+    test_transaction_commit_identity_matches_envelope();
     test_envelope_round_trip_and_corruption();
     test_w_only_snapshot_is_unconsolidated_and_never_a_retained_state();
     test_reset_keeps_w_and_epoch();
@@ -750,4 +808,5 @@ int main(void)
            "dimensions, resealed envelopes, provenance transitions, epoch overflow, race-free getters, the experience schedule (= ordered txn learn/consolidate, S3 readout, "
            "whole-schedule validation, discard on non-finite, stale)\n");
     return 0;
+    test_state_digest_matches_snapshot_trailer();
 }

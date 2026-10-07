@@ -63,7 +63,7 @@ from functools import wraps
 
 from .limits import MAX_INT
 from .persistence import AppendRolledBackError
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping
 
 from . import canonical
 from .bus import (
@@ -96,6 +96,8 @@ from .errors import (
     MailboxFullError,
     MissingReceiverError,
     PersistenceError,
+    RetentionFloorError,
+    StorageCapacityError,
     TerminatedEntityError,
     TerminatedReceiverError,
     WrongAuthorityError,
@@ -113,7 +115,7 @@ from .persistence import (
     state_root_digest,
 )
 from .port import EntityPort, _check_port_live, _check_sender_active
-from .replay import KernelState, replay_from_events, replay_with_checkpoint
+from .replay import KernelState, StreamReplay, replay_from_events, replay_with_checkpoint
 from .topology import (
     TopologyProjection,
     _project_topology_from_validated_state,
@@ -133,6 +135,9 @@ from .scheduler import (
     SCHEDULER_V2,
     order_ready,
 )
+
+if TYPE_CHECKING:
+    from .compaction import CompactionCheckpoint
 
 LOG_FILENAME = "events.log"
 CHECKPOINT_FILENAME = "checkpoint.bin"
@@ -169,6 +174,10 @@ class Kernel:
         genesis_label: str = "ecs-m1a-genesis",
         mailbox_capacity: int = DEFAULT_MAILBOX_CAPACITY,
             scheduler_protocol: str | None = None,
+        *,
+        log_path: str | None = None,
+        base: "CompactionCheckpoint | None" = None,
+        max_log_bytes: int | None = None,
 ) -> None:
         if isinstance(mailbox_capacity, bool) or not isinstance(
             mailbox_capacity, int
@@ -183,10 +192,8 @@ class Kernel:
         # state root. Opening an existing non-empty history with a different
         # capacity fails state-root/genesis authority reconciliation.
         self._mailbox_capacity = mailbox_capacity
-        self.log_path = os.path.join(storage_dir, LOG_FILENAME)
+        self.log_path = log_path if log_path is not None else os.path.join(storage_dir, LOG_FILENAME)
         self.cp_path = os.path.join(storage_dir, CHECKPOINT_FILENAME)
-        self._log = EventLog(self.log_path)
-        self._checkpoints = CheckpointStore(self.cp_path)
         self._state: KernelState | None = None
         self._genesis_digest = genesis_descriptor_digest(genesis_label)
         if (
@@ -196,6 +203,33 @@ class Kernel:
             raise PersistenceError("SCHEDULER_PROTOCOL_INVALID")
         self._requested_scheduler_protocol = scheduler_protocol
         self._scheduler_protocol = SCHEDULER_V1
+        # Compacted-history (base) mode. The verified compaction checkpoint is
+        # the base of ONE continuing global history: the segment at log_path
+        # holds only the events after it, with their original global indices.
+        self._base = base
+        if base is not None:
+            from .compaction import CompactionCheckpoint
+            if type(base) is not CompactionCheckpoint or log_path is None:
+                raise PersistenceError("COMPACTED_BASE_REQUIRES_CHECKPOINT_AND_SEGMENT")
+            if base.genesis_label != genesis_label or base.mailbox_capacity != mailbox_capacity:
+                raise WrongAuthorityError("COMPACTED_BASE_CONFIGURATION_MISMATCH")
+            if scheduler_protocol is not None and scheduler_protocol != base.scheduler_protocol:
+                raise WrongAuthorityError("SCHEDULER_PROTOCOL_MISMATCH: requested profile does not match compacted base")
+            self._scheduler_protocol = base.scheduler_protocol
+            self._genesis_digest = base.genesis_digest
+            self._log = EventLog(
+                self.log_path,
+                base_count=base.event_count,
+                base_head=base.head_event_digest,
+                base_root=base.state_root_digest,
+                create=False,
+                max_bytes=max_log_bytes,
+            )
+        else:
+            if max_log_bytes is not None:
+                raise PersistenceError("LOG_BOUND_REQUIRES_COMPACTED_BASE")
+            self._log = EventLog(self.log_path)
+        self._checkpoints = CheckpointStore(self.cp_path)
         # Kernel epoch: incremented on every successful open() and on close().
         # Entity ports bind to an epoch; a port from a previous epoch is stale.
         self._epoch = 0
@@ -207,6 +241,20 @@ class Kernel:
     @property
     def mailbox_capacity(self):
         return self._mailbox_capacity
+
+    @property
+    def retention_floor(self) -> int:
+        """Global index of the first event still physically retained.
+
+        0 for an uncompacted history. Events below the floor were retired into
+        the verified compaction base and are never synthesized.
+        """
+        return 0 if self._base is None else self._base.event_count
+
+    @property
+    def retained_base(self):
+        """The verified CompactionCheckpoint this kernel continues, or None."""
+        return self._base
 
     @property
     def genesis_label(self):
@@ -287,6 +335,20 @@ class Kernel:
             try:
                 self._log.close()
                 self._log.open()
+                if self._base is not None:
+                    # Bounded restart: rebuild the base state from the verified
+                    # checkpoint, then STREAM-replay only the active segment.
+                    # Nothing below the floor is read or materialized.
+                    replay = StreamReplay(
+                        self._base.kernel_state(),
+                        self._base.event_count,
+                        self._base.head_event_digest,
+                    )
+                    self._log.scan_events(replay.apply, recovery=True)
+                    self._log.finish_recovery()
+                    self._state = replay.state
+                    self._opened = True
+                    return self
                 events = self._log.read_events(recovery=True)
                 self._bind_scheduler_protocol(events)
                 cp = self._checkpoints.read()
@@ -387,7 +449,9 @@ class Kernel:
         try:
             self._log.append_event(event)
             self._install(post_state)
-        except AppendRolledBackError:
+        except (AppendRolledBackError, StorageCapacityError):
+            # Definitely not appended: rolled back durably, or refused by the
+            # segment bound before any byte was written. State is unchanged.
             raise
         except BaseException:
             # A full frame may already exist. Hide the projection and require
@@ -647,6 +711,11 @@ class Kernel:
     def checkpoint(self) -> Checkpoint | None:
         """Write a coherent advisory marker at the current transition boundary."""
         state = self._require_state()
+        if self._base is not None:
+            raise PersistenceError(
+                "CHECKPOINT_MARKER_UNSUPPORTED: a compacted history is based on a "
+                "state-bearing compaction checkpoint, not the v1 marker"
+            )
         if not state.logical_clock:
             return None
         cp = Checkpoint(self._log.event_count() - 1, self._log.head_event_digest(),
@@ -671,12 +740,49 @@ class Kernel:
 
     @_serialized
     def events(self) -> list[dict]:
+        """The COMPLETE committed history from genesis.
+
+        Fails closed with RetentionFloorError on a compacted history whose
+        retired prefix no longer exists: a retained tail is never presented
+        as the complete history. Use ``retained_events()`` for the tail.
+        """
+        self._require_state()
+        if self.retention_floor:
+            raise RetentionFloorError(
+                f"BELOW_RETENTION_FLOOR: events() requires the complete history; "
+                f"retention_floor={self.retention_floor}"
+            )
+        try:
+            return self._log.read_events()
+        except BaseException:
+            self.close()
+            raise
+
+    @_serialized
+    def retained_events(self) -> list[dict]:
+        """Events at global indices >= retention_floor (the active segment)."""
         self._require_state()
         try:
             return self._log.read_events()
         except BaseException:
             self.close()
             raise
+
+    @_serialized
+    def scan_retained_events(self, visit) -> int:
+        """Stream the retained events through ``visit`` without materializing."""
+        self._require_state()
+        try:
+            return self._log.scan_events(visit)
+        except BaseException:
+            self.close()
+            raise
+
+    @_serialized
+    def segment_bytes(self) -> int:
+        """Bytes of the retained log file (the active segment)."""
+        self._require_state()
+        return self._log.size()
 
     @_serialized
     def topology_projection(self) -> TopologyProjection:
@@ -693,6 +799,13 @@ class Kernel:
         ``project_topology`` still full-replays arbitrary histories.
         """
         state = self._require_state()
+        if self.retention_floor:
+            # Topology is a fold over the COMPLETE history. It is refused,
+            # never approximated from a retained tail.
+            raise RetentionFloorError(
+                "TOPOLOGY_REQUIRES_COMPLETE_HISTORY: "
+                f"retention_floor={self.retention_floor}"
+            )
         try:
             events = tuple(self._log.read_events())
         except BaseException:

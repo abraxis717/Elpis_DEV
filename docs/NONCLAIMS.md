@@ -99,6 +99,50 @@ digests stay as persisted identities: the code checks itself against them at
 import time. They identify *which* contract the mechanics implement. They
 are not evidence that the contract has any effect.
 
+## ECS_C history and the runtime receipt history
+
+* **Bounded means logical directory bytes under a finite policy.**
+  `RuntimeHistoryPolicy` bounds the logical size of the files in the history
+  directory. The bound covers the active segment, the checkpoint, and the
+  compaction headroom (one in-flight checkpoint and manifest). Filesystem
+  block, inode and journal overhead are not bounded. Peak usage is measured
+  at every generation-switch step in the tests, not derived from a
+  filesystem model.
+* **No lifetime history.** Once a prefix is compacted, its events no longer
+  exist. They survive only as the verified compaction checkpoint's state.
+  None of the following reaches below the retention floor, and each refuses
+  rather than answering from the tail:
+  * listing records;
+  * projecting events;
+  * folding topology;
+  * detecting duplicates.
+
+  Exact duplicate detection is guaranteed only within the retained window.
+  No lifetime idempotence, no probabilistic membership structure and no
+  archive exist.
+* **Content identity, not authentication.** The compaction checkpoint,
+  manifest and event digests are integrity evidence only. Whoever can write
+  the directory can replace a whole generation consistently.
+
+  A compacted base with an empty segment binds its terminal event digest only
+  through the checkpoint's own digest. No later event links to it yet.
+* **Crash model.** The crash matrix simulates process death at each named
+  generation-switch step. Under power loss, durability rests on the stated
+  `fsync`, rename and directory-`fsync` ordering of the host filesystem. A
+  power loss between the manifest rename and its directory `fsync` may expose
+  either generation, and both are complete until cleanup. Stronger
+  power-failure atomicity is not claimed.
+* **One-time legacy migration is not bounded restart.** Migrating a legacy
+  `events.log` validates it once through the original whole-log replay
+  (memory proportional to that log). Every later open is bounded by the
+  active segment.
+* **Not cognitive state.** The checkpoint and the fixed-size cognition
+  continuity summary are ECS_C bookkeeping about receipts. They carry no K1
+  state and grant no authority over ECS_G.
+* **Single process, single owner.** The directory flock excludes a second
+  owner. It provides no cross-process transport, federation or shared-reader
+  semantics.
+
 ## Evolution (`elpis.evolution`)
 
 * The historical `elpis.rsi.*` identifiers on promotion records are persisted

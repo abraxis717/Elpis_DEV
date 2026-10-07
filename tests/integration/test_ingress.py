@@ -40,14 +40,22 @@ def test_same_input_is_recorded_once(runtime, ingress):
     assert again == first and len(runtime.history.records()) == 1
 
 
-def test_reopen_replays_and_tampered_history_is_refused(tmp_path, ingress):
-    config = RuntimeConfig(tmp_path / "history")
+def test_reopen_replays_and_tampered_history_is_refused(
+    tmp_path,
+    ingress,
+    history_library,
+):
+    config = RuntimeConfig(
+        tmp_path / "history",
+        history_native_library=history_library,
+    )
     with Runtime(config) as rt:
         _, recorded = rt.run_ingress(ingress, POSITIVE)
         root = rt.history.state_root
     with Runtime(config) as rt:
         assert rt.history.records() == (recorded,) and rt.history.state_root == root
-    log = config.history_dir / "events.log"
+        # The durable events live in the published generation's active segment.
+        log = rt.history.segment_path
     data = bytearray(log.read_bytes())
     index = data.index(b"ingress.proposal".hex().encode())
     data[index] ^= 0x01
@@ -56,11 +64,19 @@ def test_reopen_replays_and_tampered_history_is_refused(tmp_path, ingress):
         Runtime(config).open()
 
 
-def test_history_founded_for_another_purpose_is_refused(tmp_path):
+def test_history_founded_for_another_purpose_is_refused(
+    tmp_path,
+    history_library,
+):
     from elpis.ECS_C.kernel import Kernel
     from elpis.runtime.history import HISTORY_GENESIS_LABEL
     path = tmp_path / "foreign"
     with Kernel(str(path), genesis_label=HISTORY_GENESIS_LABEL).open() as kernel:
         kernel.found_entity("something-else")
     with pytest.raises(HistoryError, match="FOREIGN_HISTORY"):
-        Runtime(RuntimeConfig(path)).open()
+        Runtime(
+            RuntimeConfig(
+                path,
+                history_native_library=history_library,
+            )
+        ).open()

@@ -116,6 +116,52 @@ static void test_resident_k1_equals_standalone(void)
     free(b);
 }
 
+
+static void test_commit_identity_matches_resident_envelope(void)
+{
+    elpis_ecsg_k1_fms *r = runtime_with(NULL, "k1-identity", (uint64_t)IMAGE * 4u, 2);
+    elpis_ecsg_k1_commit_identity identity;
+    elpis_ecsg_k1_fms_info info;
+    uint8_t *before = malloc(ENVELOPE), *after = malloc(ENVELOPE);
+    uint64_t id = state(r, 42), tok = 0u;
+
+    assert(before && after);
+    envelope_of(r, id, before);
+
+    OK(elpis_ecsg_k1_fms_txn_begin(r, id, &tok));
+    OK(elpis_ecsg_k1_fms_txn_learn(r, id, tok, X, Y, R, 0.002, 9, NULL));
+    OK(elpis_ecsg_k1_fms_txn_consolidate(r, id, tok, X, R));
+
+    assert(elpis_ecsg_k1_fms_txn_commit_identity(r, id, tok, NULL) == ELPIS_ECSG_K1_INVALID);
+    OK(elpis_ecsg_k1_fms_inspect(r, id, &info));
+    assert(info.transaction_open == 1u && info.lease_count == 1u);
+
+    OK(elpis_ecsg_k1_fms_txn_commit_identity(r, id, tok, &identity));
+    envelope_of(r, id, after);
+
+    assert(!memcmp(identity.state_before_digest,
+                   before + ENVELOPE - ELPIS_ECSG_K1_DIGEST_BYTES,
+                   ELPIS_ECSG_K1_DIGEST_BYTES));
+    assert(!memcmp(identity.state_after_digest,
+                   after + ENVELOPE - ELPIS_ECSG_K1_DIGEST_BYTES,
+                   ELPIS_ECSG_K1_DIGEST_BYTES));
+    assert(memcmp(identity.state_before_digest,
+                  identity.state_after_digest,
+                  ELPIS_ECSG_K1_DIGEST_BYTES) != 0);
+    assert(identity.transition.epoch_before == 0u);
+    assert(identity.transition.epoch_after == 9u);
+    assert(identity.transition.generation_before == 0u);
+    assert(identity.transition.generation_after == 1u);
+
+    OK(elpis_ecsg_k1_fms_inspect(r, id, &info));
+    assert(info.transaction_open == 0u && info.lease_count == 0u);
+
+    OK(elpis_ecsg_k1_fms_close(r, &id));
+    OK(elpis_ecsg_k1_fms_destroy(&r));
+    free(before);
+    free(after);
+}
+
 /* Warm path: no restore, no workspace growth, no FMS movement across many operations. */
 static void test_warm_path_operates_over_resident_bytes(void)
 {
@@ -497,11 +543,35 @@ static void test_experience_schedule_resident_equals_standalone(void)
     free(want);
 }
 
+
+static void test_state_digest_matches_resident_snapshot_trailer(void)
+{
+    elpis_ecsg_k1_fms *r = runtime_with(NULL, "k1-state-digest", (uint64_t)IMAGE * 4u, 2);
+    uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES];
+    uint8_t *snapshot = malloc(ENVELOPE);
+    uint64_t id = state(r, 43);
+
+    assert(snapshot);
+    envelope_of(r, id, snapshot);
+    OK(elpis_ecsg_k1_fms_state_digest(r, id, digest));
+
+    assert(!memcmp(
+        digest,
+        snapshot + ENVELOPE - ELPIS_ECSG_K1_DIGEST_BYTES,
+        ELPIS_ECSG_K1_DIGEST_BYTES
+    ));
+
+    OK(elpis_ecsg_k1_fms_close(r, &id));
+    OK(elpis_ecsg_k1_fms_destroy(&r));
+    free(snapshot);
+}
+
 int main(void)
 {
     fixture();
     assert(elpis_ecsg_k1_fms_abi_version() == ELPIS_ECSG_K1_FMS_ABI_V1);
     test_resident_k1_equals_standalone();
+    test_commit_identity_matches_resident_envelope();
     test_warm_path_operates_over_resident_bytes();
     test_cold_materialization_and_pinning();
     test_refusals_leave_the_complete_state_unchanged();
@@ -514,4 +584,5 @@ int main(void)
            "refusals leave the complete state unchanged; envelopes and W-only imports; the transaction refusal "
            "contract; hostile imports; provenance; the experience schedule (resident = standalone)\n");
     return 0;
+    test_state_digest_matches_resident_snapshot_trailer();
 }

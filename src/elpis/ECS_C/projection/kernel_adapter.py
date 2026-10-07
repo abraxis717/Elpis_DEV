@@ -11,7 +11,7 @@ from elpis.ECS_C.kernel import Kernel
 from elpis.ECS_C.persistence import genesis_descriptor_digest
 
 from .contracts import ContextProjection, ProjectionRequest
-from .projector import project_history
+from .projector import project_history, project_retained_history
 
 
 def project_kernel_history(
@@ -39,6 +39,16 @@ def project_kernel_history(
     genesis_label = kernel.genesis_label
     mailbox_capacity = kernel.mailbox_capacity
     scheduler_protocol = kernel.scheduler_protocol
+
+    if kernel.retention_floor:
+        # Compacted history: only the retained window exists as events. The
+        # projection is replay-qualified from the verified checkpoint base and
+        # binds the floor; it never presents the window as complete history.
+        return project_retained_history(
+            kernel.retained_base,
+            kernel.retained_events(),
+            request,
+        )
 
     # Public serialized read.  It fails closed if the Kernel is not open and
     # verifies the durable event log before returning detached records.

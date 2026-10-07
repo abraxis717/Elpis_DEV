@@ -520,7 +520,8 @@ int elpis_ecsg_k1_fms_reserve(elpis_ecsg_k1_fms *r, uint64_t id, size_t rows)
 
 /* --- direct operations: pin -> native operation over the resident bytes -> unpin --------------------- */
 
-typedef enum { OP_FORWARD, OP_LEARN, OP_CONSOLIDATE, OP_RESET, OP_COPY_W, OP_COPY_H, OP_COPY_A, OP_SNAPSHOT } op_kind;
+typedef enum { OP_FORWARD, OP_LEARN, OP_CONSOLIDATE, OP_RESET, OP_COPY_W, OP_COPY_H, OP_COPY_A,
+               OP_SNAPSHOT, OP_STATE_DIGEST } op_kind;
 
 typedef struct {
     op_kind kind;
@@ -554,6 +555,8 @@ static int run_op(elpis_ecsg_k1 *k1, const op_args *a)
         return elpis_ecsg_k1_copy_a(k1, a->out, a->count);
     case OP_SNAPSHOT:
         return elpis_ecsg_k1_snapshot_write(k1, a->bytes, a->count);
+    case OP_STATE_DIGEST:
+        return elpis_ecsg_k1_state_digest(k1, a->bytes);
     }
     return ELPIS_ECSG_K1_INVALID;
 }
@@ -636,6 +639,22 @@ int elpis_ecsg_k1_fms_copy_a(elpis_ecsg_k1_fms *r, uint64_t id, double *out, siz
 int elpis_ecsg_k1_fms_snapshot_write(elpis_ecsg_k1_fms *r, uint64_t id, uint8_t *out, size_t size)
 {
     op_args a = {OP_SNAPSHOT, NULL, NULL, 0u, 0.0, 0u, NULL, size, out, NULL};
+    return direct(r, id, &a);
+}
+
+int
+elpis_ecsg_k1_fms_state_digest(
+    elpis_ecsg_k1_fms *r,
+    uint64_t id,
+    uint8_t out[ELPIS_ECSG_K1_DIGEST_BYTES]
+)
+{
+    op_args a = {0};
+    if (out == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    a.kind = OP_STATE_DIGEST;
+    a.bytes = out;
     return direct(r, id, &a);
 }
 
@@ -778,27 +797,56 @@ int elpis_ecsg_k1_fms_txn_run_schedule(elpis_ecsg_k1_fms *r, uint64_t id, uint64
     return txn_settle(r, s, rc, 1);
 }
 
-int elpis_ecsg_k1_fms_txn_commit(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, elpis_ecsg_k1_transition *t)
+
+static int
+fms_txn_commit_common(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token,
+                      elpis_ecsg_k1_transition *t,
+                      elpis_ecsg_k1_commit_identity *identity)
 {
     slot *s;
     uint64_t start;
     int rc = txn_take(r, id, token, &s);
+
     if (rc != ELPIS_ECSG_K1_OK) {
         return rc;
     }
+
     start = now_ns();
-    rc = elpis_ecsg_k1_txn_commit(s->k1, s->txn_native_token, t);   /* one copy of W, epoch, H, a */
+    if (identity != NULL) {
+        rc = elpis_ecsg_k1_txn_commit_identity(s->k1, s->txn_native_token, identity);
+    } else {
+        rc = elpis_ecsg_k1_txn_commit(s->k1, s->txn_native_token, t);
+    }
     s->info.commit_ns += now_ns() - start;
+
     if (rc == ELPIS_ECSG_K1_OK) {
         s->info.commits += 1u;
         observe(s);
     } else {
         s->info.aborts += 1u;
     }
+
     s->txn_open = 0;
     clear_transaction(r, s, 0);
     give(r, s);
     return rc;
+}
+
+int
+elpis_ecsg_k1_fms_txn_commit(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token,
+                             elpis_ecsg_k1_transition *t)
+{
+    return fms_txn_commit_common(r, id, token, t, NULL);
+}
+
+int
+elpis_ecsg_k1_fms_txn_commit_identity(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token,
+                                      elpis_ecsg_k1_commit_identity *identity)
+{
+    if (identity == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    return fms_txn_commit_common(r, id, token, NULL, identity);
 }
 
 int elpis_ecsg_k1_fms_txn_abort(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token)

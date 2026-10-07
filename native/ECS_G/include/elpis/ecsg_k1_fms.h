@@ -105,6 +105,8 @@ int elpis_ecsg_k1_fms_copy_w(elpis_ecsg_k1_fms *, uint64_t id, double *out, size
 int elpis_ecsg_k1_fms_copy_h_packed(elpis_ecsg_k1_fms *, uint64_t id, double *out, size_t count);
 int elpis_ecsg_k1_fms_copy_a(elpis_ecsg_k1_fms *, uint64_t id, double *out, size_t count);
 int elpis_ecsg_k1_fms_snapshot_write(elpis_ecsg_k1_fms *, uint64_t id, uint8_t *out, size_t size);
+int elpis_ecsg_k1_fms_state_digest(elpis_ecsg_k1_fms *, uint64_t id,
+                                   uint8_t out[ELPIS_ECSG_K1_DIGEST_BYTES]);
 
 int elpis_ecsg_k1_fms_txn_begin(elpis_ecsg_k1_fms *, uint64_t id, uint64_t *token);
 int elpis_ecsg_k1_fms_txn_learn(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token, const double *x, const double *y,
@@ -116,6 +118,8 @@ int elpis_ecsg_k1_fms_txn_forward(elpis_ecsg_k1_fms *, uint64_t id, uint64_t tok
 int elpis_ecsg_k1_fms_txn_epoch(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token, uint64_t *epoch);
 int elpis_ecsg_k1_fms_txn_commit(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token,
                                  elpis_ecsg_k1_transition *transition);
+int elpis_ecsg_k1_fms_txn_commit_identity(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token,
+                                          elpis_ecsg_k1_commit_identity *identity);
 int elpis_ecsg_k1_fms_txn_abort(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token);
 
 /* The experience schedule of ecsg_k1.h on the resident candidate, under the transaction's WRITE pin: one call learns

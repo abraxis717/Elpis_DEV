@@ -37,6 +37,7 @@ int main(void)
     size_t i;
     double w[WC];
     elpis_ecsg_k1_counters st;
+    elpis_ecsg_k1_commit_identity identity;
     for (i = 0; i < WC; ++i) W0[i] = 0.01 * (double)((i * 37u) % 23u) - 0.1;
     for (i = 0; i < R * D; ++i) X[i] = 0.02 * (double)((i * 11u) % 29u) - 0.3;
     for (i = 0; i < R; ++i) Y[i] = 0.1 * X[i * D] - 0.05 * X[i * D + 2];
@@ -59,7 +60,7 @@ int main(void)
         double s3[83];
         assert(elpis_ecsg_k1_txn_begin(s, &tok) == 0);
         assert(elpis_ecsg_k1_txn_run_schedule(s, tok, X, Y, 3 * (R / 4), sched, 3, 0.002, s3, 83, NULL) == 0);
-        assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == 0);
+        assert(elpis_ecsg_k1_txn_commit_identity(s, tok, &identity) == 0);
     }
     assert(elpis_ecsg_k1_reset(s, NULL) == 0);
     assert(elpis_ecsg_k1_snapshot_write(s, ENV, sizeof(ENV)) == 0);

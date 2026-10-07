@@ -34,6 +34,11 @@ def ingress_library():
 
 
 @pytest.fixture(scope="module")
+def history_library():
+    return require_native_library("elpis_ecsc_history")
+
+
+@pytest.fixture(scope="module")
 def corpus(retrieval_library, tmp_path_factory):
     """Structural memory: one HACF corpus and vector index, owned by this module."""
     state = tmp_path_factory.mktemp("structural-memory")
@@ -49,7 +54,10 @@ def ingress(ingress_library, corpus):
 
 
 @pytest.fixture
-def runtime(tmp_path_factory):
-    config = RuntimeConfig(tmp_path_factory.mktemp("runtime") / "history")
+def runtime(tmp_path_factory, history_library):
+    config = RuntimeConfig(
+        tmp_path_factory.mktemp("runtime") / "history",
+        history_native_library=history_library,
+    )
     with Runtime(config) as rt:
         yield rt

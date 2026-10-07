@@ -1297,6 +1297,36 @@ void ecsg_k1_internal_encode(const elpis_ecsg_k1 *s, const uint8_t *image, uint8
     elpis_sha256(out, s->image_bytes, out + s->image_bytes);
 }
 
+static void retained_state_digest(const elpis_ecsg_k1 *s, const uint8_t *image,
+                                  uint8_t out[ELPIS_ECSG_K1_DIGEST_BYTES])
+{
+    const size_t doubles = s->w_count + s->h_count + s->features;
+    const double *v = img_w(s, (uint8_t *)(uintptr_t)image);
+    elpis_sha256_ctx ctx;
+    uint8_t words[1024];
+    size_t used = 0u;
+    size_t i;
+
+    elpis_sha256_init(&ctx);
+    elpis_sha256_update(&ctx, image, ELPIS_ECSG_K1_HEADER_BYTES);
+
+    for (i = 0u; i < doubles; ++i) {
+        uint64_t bits;
+        memcpy(&bits, &v[i], sizeof(bits));
+        put_u64(words + used, bits);
+        used += 8u;
+        if (used == sizeof(words)) {
+            elpis_sha256_update(&ctx, words, used);
+            used = 0u;
+        }
+    }
+
+    if (used != 0u) {
+        elpis_sha256_update(&ctx, words, used);
+    }
+    elpis_sha256_final(&ctx, out);
+}
+
 elpis_ecsg_k1_status elpis_ecsg_k1_snapshot_write(elpis_ecsg_k1 *s, uint8_t *out, size_t size)
 {
     if (s == NULL || s->image == NULL || out == NULL || size < elpis_ecsg_k1_snapshot_size(s)) {
@@ -1306,6 +1336,25 @@ elpis_ecsg_k1_status elpis_ecsg_k1_snapshot_write(elpis_ecsg_k1 *s, uint8_t *out
         return ELPIS_ECSG_K1_BUSY;
     }
     ecsg_k1_internal_encode(s, s->image, out);
+    leave(s);
+    return ELPIS_ECSG_K1_OK;
+}
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_state_digest(
+    elpis_ecsg_k1 *s,
+    uint8_t out[ELPIS_ECSG_K1_DIGEST_BYTES]
+)
+{
+    if (s == NULL || s->image == NULL || out == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (!enter(s)) {
+        return ELPIS_ECSG_K1_BUSY;
+    }
+
+    retained_state_digest(s, s->image, out);
+
     leave(s);
     return ELPIS_ECSG_K1_OK;
 }
@@ -1457,30 +1506,66 @@ elpis_ecsg_k1_status elpis_ecsg_k1_txn_epoch(elpis_ecsg_k1 *s, uint64_t token, u
     return rc;
 }
 
-elpis_ecsg_k1_status elpis_ecsg_k1_txn_commit(elpis_ecsg_k1 *s, uint64_t token, elpis_ecsg_k1_transition *t)
+
+static elpis_ecsg_k1_status
+txn_commit_common(elpis_ecsg_k1 *s, uint64_t token, elpis_ecsg_k1_transition *t,
+                  uint8_t before[ELPIS_ECSG_K1_DIGEST_BYTES],
+                  uint8_t after[ELPIS_ECSG_K1_DIGEST_BYTES])
 {
     elpis_ecsg_k1_status rc;
     uint64_t e0;
     uint64_t g0;
+
     if (s == NULL) {
         return ELPIS_ECSG_K1_INVALID;
     }
     if (!enter(s)) {
         return ELPIS_ECSG_K1_BUSY;
     }
+
     rc = txn_check(s, token);
     if (rc == ELPIS_ECSG_K1_OK) {
+        if (before != NULL) {
+            retained_state_digest(s, s->image, before);
+        }
+
         e0 = image_epoch(s->image);
         g0 = s->generation;
-        memcpy(s->image, s->cand, s->image_bytes);   /* W, epoch, H and a together */
+        memcpy(s->image, s->cand, s->image_bytes);
         s->generation += 1u;
         s->stats.commits += 1u;
         s->txn_open = 0;
         publish(s);
-        fill(t, e0, image_epoch(s->image), g0, s->generation, image_epoch(s->image) - e0, 0u);
+        fill(t, e0, image_epoch(s->image), g0, s->generation,
+             image_epoch(s->image) - e0, 0u);
+
+        if (after != NULL) {
+            retained_state_digest(s, s->image, after);
+        }
     }
+
     leave(s);
     return rc;
+}
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_txn_commit(elpis_ecsg_k1 *s, uint64_t token, elpis_ecsg_k1_transition *t)
+{
+    return txn_commit_common(s, token, t, NULL, NULL);
+}
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_txn_commit_identity(elpis_ecsg_k1 *s, uint64_t token,
+                                  elpis_ecsg_k1_commit_identity *identity)
+{
+    if (identity == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+
+    memset(identity, 0, sizeof(*identity));
+    return txn_commit_common(s, token, &identity->transition,
+                             identity->state_before_digest,
+                             identity->state_after_digest);
 }
 
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_abort(elpis_ecsg_k1 *s, uint64_t token)

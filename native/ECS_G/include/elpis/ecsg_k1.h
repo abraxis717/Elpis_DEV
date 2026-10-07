@@ -110,6 +110,13 @@ typedef struct {
     uint64_t failed_step;  /* 1-based step that refused (nothing committed); 0 otherwise */
 } elpis_ecsg_k1_transition;
 
+
+typedef struct {
+    elpis_ecsg_k1_transition transition;
+    uint8_t state_before_digest[ELPIS_ECSG_K1_DIGEST_BYTES];
+    uint8_t state_after_digest[ELPIS_ECSG_K1_DIGEST_BYTES];
+} elpis_ecsg_k1_commit_identity;
+
 typedef struct {
     size_t workspace_bytes;      /* arena bytes currently owned */
     size_t max_rows;
@@ -182,6 +189,10 @@ elpis_ecsg_k1_status elpis_ecsg_k1_copy_a(elpis_ecsg_k1 *state, double *out, siz
 
 size_t elpis_ecsg_k1_snapshot_size(const elpis_ecsg_k1 *state);
 elpis_ecsg_k1_status elpis_ecsg_k1_snapshot_write(elpis_ecsg_k1 *state, uint8_t *out, size_t size);
+elpis_ecsg_k1_status elpis_ecsg_k1_state_digest(
+    elpis_ecsg_k1 *state,
+    uint8_t out[ELPIS_ECSG_K1_DIGEST_BYTES]
+);
 
 elpis_ecsg_k1_status elpis_ecsg_k1_stats(elpis_ecsg_k1 *state, elpis_ecsg_k1_counters *out);
 
@@ -214,6 +225,9 @@ elpis_ecsg_k1_txn_forward(elpis_ecsg_k1 *state, uint64_t token, const double *x,
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_epoch(elpis_ecsg_k1 *state, uint64_t token, uint64_t *epoch);
 elpis_ecsg_k1_status
 elpis_ecsg_k1_txn_commit(elpis_ecsg_k1 *state, uint64_t token, elpis_ecsg_k1_transition *transition);
+elpis_ecsg_k1_status
+elpis_ecsg_k1_txn_commit_identity(elpis_ecsg_k1 *state, uint64_t token,
+                                  elpis_ecsg_k1_commit_identity *identity);
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_abort(elpis_ecsg_k1 *state, uint64_t token);
 
 /*
