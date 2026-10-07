@@ -1,0 +1,24 @@
+[package]
+name = "elpis_continuity"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+description = "Elpis continuity: the fixed-size durable runtime authority (two-slot register v2) behind a stable C ABI."
+license = "UNLICENSED"
+publish = false
+
+# No dependencies: the standard library only.
+[dependencies]
+
+[lib]
+name = "elpis_continuity"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# Test-only fault injection and I/O counters, compiled into a separate library
+# (libelpis_continuity_testing.so). The production library never contains them.
+testing = []
+
+[profile.release]
+panic = "abort"
+debug = false

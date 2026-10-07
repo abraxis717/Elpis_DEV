@@ -98,6 +98,16 @@ function(elpis_add_test subsystem name)
   endif()
 endfunction()
 
+# elpis_add_cargo_target(<subsystem> <name> library|test <output>): a library built by
+# cargo through an add_custom_command producing <output>. Attributed like any other target
+# (a "library" must be declared in ELPIS_SYSTEM.json); compiler flags do not apply.
+function(elpis_add_cargo_target subsystem name kind output)
+  add_custom_target(${name} ALL DEPENDS "${output}")
+  _elpis_live_subsystem(${subsystem} _index)
+  set_property(GLOBAL APPEND PROPERTY ELPIS_REGISTERED_TARGETS "${name}")
+  set_target_properties(${name} PROPERTIES ELPIS_SUBSYSTEM "${subsystem}" ELPIS_KIND "${kind}")
+endfunction()
+
 function(_elpis_collect_targets dir out)
   get_property(targets DIRECTORY "${dir}" PROPERTY BUILDSYSTEM_TARGETS)
   get_property(subdirs DIRECTORY "${dir}" PROPERTY SUBDIRECTORIES)
