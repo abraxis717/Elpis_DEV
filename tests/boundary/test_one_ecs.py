@@ -256,6 +256,7 @@ NATIVE_ABI_FILES = {
     "tests/boundary/test_mutable_fms.py": _ABI_TEST,
     "tests/integration/test_codec_ecs_turn.py": _ABI_TEST,
     "tests/integration/test_runtime_hot_path.py": _ABI_TEST,
+    "native/continuity/qualify.sh": "Builds the ECS K1 libraries (native target names) the continuity runtime tests load.",
 }
 
 
