@@ -55,6 +55,14 @@ def _current_destination(destination: str) -> str:
     return destination
 
 
+def _retired(path: str) -> bool:
+    """A destination later removed by a declared, reasoned architectural retirement."""
+    for entry in SYSTEM.get("post_migration_retirements", []):
+        if path == entry["path"] or path.startswith(entry["path"] + "/"):
+            return True
+    return False
+
+
 def test_landed_destinations_exist():
     missing = []
     for record in MIGRATION["records"]:
@@ -62,7 +70,7 @@ def test_landed_destinations_exist():
             for dest in record["destination"].split(" + "):
                 historical = dest.strip()
                 current = _current_destination(historical)
-                if not (REPO / current).exists():
+                if not (REPO / current).exists() and not _retired(current):
                     missing.append({"historical": historical, "current": current})
     assert not missing, missing
 
@@ -73,3 +81,10 @@ def test_post_migration_relocations_are_real():
         assert entry["from"] != entry["to"]
         assert entry["reason"].strip()
         assert (REPO / entry["to"]).exists(), entry
+
+
+def test_post_migration_retirements_are_real_removals():
+    for entry in SYSTEM.get("post_migration_retirements", []):
+        assert set(entry) == {"path", "reason"}
+        assert entry["reason"].strip()
+        assert not (REPO / entry["path"]).exists(), entry

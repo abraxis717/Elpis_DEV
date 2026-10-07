@@ -75,7 +75,9 @@ if side == "donor":
     from elpis_ecs.kernel import Kernel
     from elpis.canonical_identity import content_digest
 else:
-    from elpis.evolution import EvolutionPathAssertion, HarnessManifest, content_map_digest
+    # v0 is a retired persisted assertion schema; its identity stays computable.
+    from elpis.evolution import EvolutionPathAssertionV0 as EvolutionPathAssertion
+    from elpis.evolution import HarnessManifest, content_map_digest
     from elpis.ECS_C.kernel import Kernel
     from elpis.identity import content_digest
 a = EvolutionPathAssertion("ep", d("s"), 2, d("h"), d("p"), d("c"), d("y"), ("x/y",), 1, 2,

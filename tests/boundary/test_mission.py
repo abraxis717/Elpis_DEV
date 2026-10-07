@@ -133,12 +133,14 @@ def test_runtime_import_closure_loads_no_dsv_model_machinery():
 # (for example a model decode or a model text path) must update this list,
 # which is reviewed against docs/ELPIS_MISSION.md.
 #
-# ``anchor_cognition`` is the explicit, one-time ECS_C continuity bootstrap of the
-# canonical K1 turn: it reads the caller's K1 retained-state identity and records
-# one ``ecs_g / cognition.anchor`` receipt. It executes no model, mutates no K1
-# state and is never invoked implicitly (reconciliation never creates an anchor).
+# ``anchor_cognition`` is the explicit, one-time continuity bootstrap of the
+# canonical K1 turn: it reads the caller's K1 retained-state identity and
+# publishes it as the expected lineage identity. It executes no model, mutates
+# no K1 state and is never invoked implicitly (reconciliation never anchors).
+# ``evolution_authority`` reads the current evolution authority an assertion
+# must be bound to; it writes nothing.
 RUNTIME_OPERATIONS = {"open", "close", "run_ingress", "admit_retrieval", "publish_canonical",
-                      "history_projection", "evolve", "admit_context", "run_turn", "anchor_cognition"}
+                      "evolution_authority", "evolve", "admit_context", "run_turn", "anchor_cognition"}
 
 
 def test_runtime_composes_no_model_operation():
@@ -179,7 +181,8 @@ def test_system_authority_encodes_the_mission():
     subs = {s["id"]: s for s in system["subsystems"]}
     assert tuple(subs["inference"]["canonical_modules"]) == M.CODEC_MODULES
     assert subs["ECS_G"]["depends_on"] == ["substrate"] and not subs["ECS_G"].get("uses_numpy")
-    assert {"ECS_G", "ECS_C", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
+    assert {"ECS_G", "continuity", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
+    assert "ECS_C" not in subs["runtime"]["depends_on"] and not subs["continuity"]["depends_on"]
     assert "ECS_G" not in subs["inference"]["depends_on"] and "ECS_G" not in subs["ECS_C"]["depends_on"]
     assert not [t for t in subs["inference"]["native_targets"] if "dsv41" in t]
     assert set(system["research"]["native_targets"]) == {"elpis_dsv41_native", "elpis_dsv41_clock",

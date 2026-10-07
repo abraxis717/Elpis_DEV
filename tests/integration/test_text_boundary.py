@@ -32,7 +32,7 @@ def test_real_hacf_content_is_rendered_by_the_admitted_tokenizer(runtime, tokeni
                                      text_tokenizer=tokenizer)
     admission = prepared.admission
     assert admission.renderer == DSV41_RENDERER and admission.objects
-    assert [r.record.kind for r in runtime.history.records()] == ["ingress.proposal", "context.admission"]
+    assert prepared.ingress.batch_published and runtime.continuity.snapshot().generation == 1
 
 
 def test_context_budget_and_tokenizer_binding(tokenizer):

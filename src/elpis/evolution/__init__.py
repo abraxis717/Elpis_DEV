@@ -6,8 +6,8 @@
   the lifecycle law and atomic, energy-conserving asexual reproduction;
 * ``fitness`` — exact integer scalarization of measured outcomes;
 * ``selection`` — deterministic, self-verified truncation selection;
-* ``path_gate`` — one bounded attempt per admitted, ECS-history-bound path
-  assertion, recorded as a chained transition receipt;
+* ``path_gate`` — one bounded attempt per admitted path assertion bound to the
+  current evolution authority, recorded as a chained transition receipt;
 * ``promotion`` — evaluation-gated promotion of a candidate workspace over its
   incumbent and atomic materialization of the selected child.
 
@@ -25,8 +25,10 @@ from .organism import OrganismState, ResourceQuantity
 from .path_gate import (
     GENESIS_DIGEST,
     EvolutionAttempt,
+    EvolutionAuthorityBinding,
     EvolutionGateError,
     EvolutionPathAssertion,
+    EvolutionPathAssertionV0,
     EvolutionPathGate,
     GateExecuted,
     GateRejected,
@@ -61,7 +63,8 @@ from .selection import (
 
 __all__ = [
     "BirthRequest", "CandidateRecord", "EvaluationEvidence", "EvolutionAttempt",
-    "EvolutionGateError", "EvolutionPathAssertion", "EvolutionPathGate", "FitnessObservation",
+    "EvolutionAuthorityBinding", "EvolutionGateError", "EvolutionPathAssertion",
+    "EvolutionPathAssertionV0", "EvolutionPathGate", "FitnessObservation",
     "FitnessPolicyV1", "GENESIS_DIGEST", "GateExecuted", "GateRejected", "Genotype",
     "HarnessManifest", "IntegerGene", "LifecycleState", "LineageIdentity", "MutationEvent",
     "MutationPolicyV1", "MutationResult", "OrganismFitnessRecord", "OrganismState",

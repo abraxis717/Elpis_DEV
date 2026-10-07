@@ -1,21 +1,30 @@
-"""Evolution path gate: one bounded, history-bound attempt per admitted assertion.
+"""Evolution path gate: one bounded attempt per admitted, authority-bound assertion.
 
 A path assertion binds the caller's view of an evolution episode (state digest,
-attempt index and head), the ECS history projection it reasoned over, an edit
-budget, a component scope, a resource budget and an evaluation contract. The
-gate re-checks every binding against the live state and projection; a
-rejected assertion executes nothing. An admitted assertion executes exactly one
-attempt, which must report back an :class:`EvolutionAttempt`, and yields a
-content-addressed :class:`PathTransitionReceipt` chained to the previous one.
+attempt index and head), the current **evolution authority** it was built
+against, an edit budget, a component scope, a resource budget and an evaluation
+contract. The gate re-checks every binding against the live state and the
+supplied current authority; a rejected assertion executes nothing. An admitted
+assertion executes exactly one attempt, which must report back an
+:class:`EvolutionAttempt`, and yields a content-addressed
+:class:`PathTransitionReceipt` chained to the previous one.
 
-Assertion and receipt payloads keep their persisted schema and field names.
+The evolution authority (:class:`EvolutionAuthorityBinding`) is the current
+head of admitted path transitions as the composing runtime holds it durably
+(``elpis.continuity``). Once an admitted transition advances it, every
+assertion built against the earlier authority is stale, so one assertion can
+never execute twice. The gate depends on no history, projection or storage
+component: it compares the binding it is given.
+
+``elpis.evolution-path-assertion.v1`` is the assertion schema. The retired
+``v0`` schema bound an event-history projection; its identity remains
+computable (:class:`EvolutionPathAssertionV0`) but the gate refuses it.
+Receipt payloads keep their persisted schema and field names.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Callable
-
-from elpis.ECS_C.projection import ContextProjection
 
 from .digests import domain_digest, require_digest
 
@@ -24,7 +33,107 @@ GENESIS_DIGEST = "0" * 64
 
 
 @dataclass(frozen=True)
+class EvolutionAuthorityBinding:
+    """The current evolution authority an assertion is bound to (identity data, not a credential)."""
+
+    revision: int
+    digest: str
+
+    def __post_init__(self) -> None:
+        if type(self.revision) is not int or self.revision < 0:
+            raise ValueError("invalid evolution authority revision")
+        require_digest(self.digest)
+
+
+def _check_common(assertion) -> None:
+    if not assertion.episode_id:
+        raise ValueError("episode_id required")
+    if type(assertion.structural_attempt_index) is not int or assertion.structural_attempt_index < 0:
+        raise ValueError("invalid structural_attempt_index")
+    if type(assertion.edit_count) is not int or assertion.edit_count < 0:
+        raise ValueError("invalid edit_count")
+    if type(assertion.edit_budget) is not int or assertion.edit_budget < 0:
+        raise ValueError("invalid edit_budget")
+    if type(assertion.component_scope) is not tuple or any(
+        type(x) is not str or not x for x in assertion.component_scope
+    ):
+        raise ValueError("invalid component_scope")
+    for value in (
+        assertion.episode_state_digest,
+        assertion.previous_structural_attempt_digest,
+        assertion.previous_path_receipt_digest,
+        assertion.candidate_manifest_digest,
+        assertion.hypothesis_digest,
+        assertion.resource_budget_digest,
+        assertion.evaluation_contract_digest,
+    ):
+        require_digest(value)
+
+
+def _common_payload(assertion) -> dict:
+    return {
+        "episode_id": assertion.episode_id,
+        "episode_state_digest": assertion.episode_state_digest,
+        "structural_attempt_index": assertion.structural_attempt_index,
+        "previous_structural_attempt_digest": assertion.previous_structural_attempt_digest,
+        "previous_path_receipt_digest": assertion.previous_path_receipt_digest,
+        "candidate_manifest_digest": assertion.candidate_manifest_digest,
+        "hypothesis_digest": assertion.hypothesis_digest,
+        "component_scope": list(assertion.component_scope),
+        "edit_count": assertion.edit_count,
+        "edit_budget": assertion.edit_budget,
+        "resource_budget_digest": assertion.resource_budget_digest,
+        "evaluation_contract_digest": assertion.evaluation_contract_digest,
+    }
+
+
+@dataclass(frozen=True)
 class EvolutionPathAssertion:
+    """``elpis.evolution-path-assertion.v1``: bound to the current evolution authority."""
+
+    episode_id: str
+    episode_state_digest: str
+    structural_attempt_index: int
+    previous_structural_attempt_digest: str
+    previous_path_receipt_digest: str
+    candidate_manifest_digest: str
+    hypothesis_digest: str
+    component_scope: tuple[str, ...]
+    edit_count: int
+    edit_budget: int
+    resource_budget_digest: str
+    evaluation_contract_digest: str
+    evolution_authority_revision: int
+    evolution_authority_digest: str
+
+    def __post_init__(self) -> None:
+        _check_common(self)
+        if type(self.evolution_authority_revision) is not int or self.evolution_authority_revision < 0:
+            raise ValueError("invalid evolution_authority_revision")
+        require_digest(self.evolution_authority_digest)
+
+    def payload(self) -> dict:
+        return {
+            "schema": "elpis.evolution-path-assertion.v1",
+            **_common_payload(self),
+            "evolution_authority_revision": self.evolution_authority_revision,
+            "evolution_authority_digest": self.evolution_authority_digest,
+        }
+
+    @property
+    def digest(self) -> str:
+        return domain_digest("elpis.evolution-path-assertion.v1", self.payload())
+
+
+@dataclass(frozen=True)
+class EvolutionPathAssertionV0:
+    """RETIRED ``elpis.evolution-path-assertion.v0`` (event-history projection binding).
+
+    Kept only so the persisted identity of existing v0 assertions stays
+    computable. The gate refuses every v0 assertion (``ASSERTION_SCHEMA_RETIRED``);
+    its history fields are never reinterpreted as continuity bindings.
+    """
+
     episode_id: str
     episode_state_digest: str
     structural_attempt_index: int
@@ -42,47 +151,15 @@ class EvolutionPathAssertion:
     history_final_state_root: str
 
     def __post_init__(self) -> None:
-        if not self.episode_id:
-            raise ValueError("episode_id required")
-        if type(self.structural_attempt_index) is not int or self.structural_attempt_index < 0:
-            raise ValueError("invalid structural_attempt_index")
-        if type(self.edit_count) is not int or self.edit_count < 0:
-            raise ValueError("invalid edit_count")
-        if type(self.edit_budget) is not int or self.edit_budget < 0:
-            raise ValueError("invalid edit_budget")
-        if type(self.component_scope) is not tuple or any(
-            type(x) is not str or not x for x in self.component_scope
-        ):
-            raise ValueError("invalid component_scope")
-        for value in (
-            self.episode_state_digest,
-            self.previous_structural_attempt_digest,
-            self.previous_path_receipt_digest,
-            self.candidate_manifest_digest,
-            self.hypothesis_digest,
-            self.resource_budget_digest,
-            self.evaluation_contract_digest,
-            self.history_projection_digest,
-            self.history_head_event_digest,
-            self.history_final_state_root,
-        ):
+        _check_common(self)
+        for value in (self.history_projection_digest, self.history_head_event_digest,
+                      self.history_final_state_root):
             require_digest(value)
 
     def payload(self) -> dict:
         return {
             "schema": "elpis.evolution-path-assertion.v0",
-            "episode_id": self.episode_id,
-            "episode_state_digest": self.episode_state_digest,
-            "structural_attempt_index": self.structural_attempt_index,
-            "previous_structural_attempt_digest": self.previous_structural_attempt_digest,
-            "previous_path_receipt_digest": self.previous_path_receipt_digest,
-            "candidate_manifest_digest": self.candidate_manifest_digest,
-            "hypothesis_digest": self.hypothesis_digest,
-            "component_scope": list(self.component_scope),
-            "edit_count": self.edit_count,
-            "edit_budget": self.edit_budget,
-            "resource_budget_digest": self.resource_budget_digest,
-            "evaluation_contract_digest": self.evaluation_contract_digest,
+            **_common_payload(self),
             "history_projection_digest": self.history_projection_digest,
             "history_head_event_digest": self.history_head_event_digest,
             "history_final_state_root": self.history_final_state_root,
@@ -208,12 +285,14 @@ class EvolutionPathGate:
         self,
         assertion: EvolutionPathAssertion,
         state: Any,
-        projection: ContextProjection,
+        authority: EvolutionAuthorityBinding,
     ) -> str | None:
-        if not isinstance(assertion, EvolutionPathAssertion):
+        if type(assertion) is EvolutionPathAssertionV0:
+            return "ASSERTION_SCHEMA_RETIRED"
+        if type(assertion) is not EvolutionPathAssertion:
             return "ASSERTION_INVALID"
-        if not isinstance(projection, ContextProjection):
-            return "HISTORY_PROJECTION_INVALID"
+        if type(authority) is not EvolutionAuthorityBinding:
+            return "EVOLUTION_AUTHORITY_INVALID"
         if assertion.episode_id != state.episode_id:
             return "EPISODE_ID_MISMATCH"
         if assertion.episode_state_digest != state.digest():
@@ -235,12 +314,10 @@ class EvolutionPathGate:
             return "RESOURCE_BUDGET_MISMATCH"
         if assertion.evaluation_contract_digest != self.evaluation_contract_digest:
             return "EVALUATION_CONTRACT_MISMATCH"
-        if assertion.history_projection_digest != projection.projection_digest:
-            return "HISTORY_PROJECTION_MISMATCH"
-        if assertion.history_head_event_digest != projection.source.head_event_digest:
-            return "HISTORY_HEAD_MISMATCH"
-        if assertion.history_final_state_root != projection.source.final_state_root:
-            return "HISTORY_ROOT_MISMATCH"
+        if assertion.evolution_authority_revision != authority.revision:
+            return "STALE_EVOLUTION_AUTHORITY"
+        if assertion.evolution_authority_digest != authority.digest:
+            return "EVOLUTION_AUTHORITY_MISMATCH"
         return None
 
     def execute(
@@ -248,11 +325,11 @@ class EvolutionPathGate:
         *,
         assertion: EvolutionPathAssertion,
         state: Any,
-        projection: ContextProjection,
+        authority: EvolutionAuthorityBinding,
         advance: Callable[..., EvolutionAttempt],
         advance_kwargs: dict[str, Any],
     ) -> GateRejected | GateExecuted:
-        reason = self.reject_reason(assertion, state, projection)
+        reason = self.reject_reason(assertion, state, authority)
         if reason is not None:
             return GateRejected(False, reason, 0)
 

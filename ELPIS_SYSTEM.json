@@ -319,9 +319,7 @@
         "tests/evolution"
       ],
       "native_targets": [],
-      "depends_on": [
-        "ECS_C"
-      ],
+      "depends_on": [],
       "mutation_authority": "Evolution records are immutable values; every state change returns a new population, organism or receipt and nothing is written in place. Selection and reproduction commit only against the exact revision the caller observed and reject atomically otherwise. Promotion writes a child workspace only at a caller-supplied, not-yet-existing destination, and only when its content matches the selected manifest. The path gate grants no authority beyond the single attempt it admits.",
       "runtime_participation": "The runtime composition may run gated evolution attempts against an ECS projection of its own history and record their transition receipts in that history.",
       "security_boundary": "No implicit randomness (mutation seeds derive from lineage content), no model, no numerics, no network. Selection accepts no externally proposed solution and recomputes every fitness score. The path gate type-checks the history projection and executes nothing for a rejected assertion. Promotion refuses symlinks and special files in workspaces and edit paths outside the child.",
@@ -398,8 +396,8 @@
       ],
       "native_targets": [],
       "depends_on": [
-        "ECS_C",
         "ECS_G",
+        "continuity",
         "evolution",
         "inference",
         "pipeline",
@@ -599,6 +597,12 @@
       "from": "tests/ecs",
       "to": "tests/ECS_C",
       "reason": "Test surface follows the post-migration ECS_C package rename; historical migration provenance remains unchanged."
+    }
+  ],
+  "post_migration_retirements": [
+    {
+      "path": "tests/evolution/_history.py",
+      "reason": "The evolution path gate no longer binds an event-history projection (docs/CONTINUITY.md): the helper that built one from the retired history kernel has no surviving purpose. Its migration provenance stays in migration/BETA_MIGRATION.json."
     }
   ]
 }

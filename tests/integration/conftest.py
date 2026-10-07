@@ -1,7 +1,7 @@
 """Integration fixtures: real native libraries, a real HACF corpus and one runtime.
 
 Every fixture is explicit: libraries are loaded from the build tree by path,
-the corpus is built into a test-owned state root, and the runtime's history
+the corpus is built into a test-owned state root, and the runtime's continuity
 lives in a test-owned directory. When ELPIS_REQUIRE_NATIVE=1 a missing
 library is a failure, never a skip.
 """
@@ -34,11 +34,6 @@ def ingress_library():
 
 
 @pytest.fixture(scope="module")
-def history_library():
-    return require_native_library("elpis_ecsc_history")
-
-
-@pytest.fixture(scope="module")
 def corpus(retrieval_library, tmp_path_factory):
     """Structural memory: one HACF corpus and vector index, owned by this module."""
     state = tmp_path_factory.mktemp("structural-memory")
@@ -54,10 +49,7 @@ def ingress(ingress_library, corpus):
 
 
 @pytest.fixture
-def runtime(tmp_path_factory, history_library):
-    config = RuntimeConfig(
-        tmp_path_factory.mktemp("runtime") / "history",
-        history_native_library=history_library,
-    )
+def runtime(tmp_path_factory):
+    config = RuntimeConfig(tmp_path_factory.mktemp("runtime") / "continuity")
     with Runtime(config) as rt:
         yield rt

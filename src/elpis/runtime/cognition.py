@@ -36,13 +36,10 @@ refused as ``ECS_STALE`` if another commit replaced the source state meanwhile (
 refused turn leaves ``(W, epoch, H, a)`` byte-for-byte unchanged. Admitting more rows per experience than the
 state's capacity grows it explicitly before the transaction begins (cold path).
 
-ECS turn transitions are not recorded into ECS_C here (ELPIS_SYSTEM.json: an incomplete interface).
+This module performs no durable writes. The runtime composition publishes the committed transition's
+retained-state identity to ``elpis.continuity`` (docs/CONTINUITY.md).
 """
 from __future__ import annotations
-import hashlib
-import struct
-import sys
-
 from array import array
 from dataclasses import dataclass, field
 import math
@@ -158,23 +155,6 @@ class ECSCodecMap(Protocol):
 
 
 @dataclass(frozen=True)
-class TurnContinuity:
-    digest: str
-    mechanism: str
-    epoch_before: int
-    epoch_after: int
-    generation_before: int
-    generation_after: int
-    state_before_digest: str
-    state_after_digest: str
-    stimulus_digest: str
-    readout_digest: str
-    input_tokens_digest: str
-    output_tokens_digest: str
-    codec: str
-
-
-@dataclass(frozen=True)
 class TurnResult:
     input_tokens: tuple
     output_tokens: tuple
@@ -183,117 +163,9 @@ class TurnResult:
     epoch_before: int
     epoch_after: int
     codec: str          # the ECS codec map's declared classification
-    continuity: TurnContinuity | None = field(default=None, compare=False)
-
-
-
-_TURN_MECHANISM = "1"
-_TURN_DOMAIN = "elpis.runtime.cognition.turn.v1"
-_STIMULUS_DOMAIN = "elpis.runtime.cognition.stimulus.v1"
-_READOUT_DOMAIN = "elpis.runtime.cognition.readout.v1"
-_INPUT_TOKENS_DOMAIN = "elpis.runtime.cognition.input-tokens.v1"
-_OUTPUT_TOKENS_DOMAIN = "elpis.runtime.cognition.output-tokens.v1"
-
-
-def _identity_start(domain):
-    h = hashlib.sha256()
-    h.update(domain.encode("ascii"))
-    h.update(b"\0")
-    return h
-
-
-def _identity_blob(h, name, data):
-    label = name.encode("ascii")
-    view = memoryview(data)
-    if view.format != "B":
-        view = view.cast("B")
-    h.update(struct.pack("<I", len(label)))
-    h.update(label)
-    h.update(struct.pack("<Q", len(view)))
-    h.update(view)
-
-
-def _identity_text(h, name, value):
-    _identity_blob(h, name, value.encode("utf-8"))
-
-
-def _identity_u64(h, name, value):
-    if type(value) is not int or not 0 <= value < 1 << 64:
-        raise CompositionError("TURN_IDENTITY", f"{name}: uint64")
-    _identity_blob(h, name, struct.pack("<Q", value))
-
-
-def _canonical_native_buffer(value):
-    view = memoryview(value)
-    if sys.byteorder == "little":
-        return view.cast("B")
-    owned = value[:]
-    owned.byteswap()
-    return memoryview(owned).cast("B")
-
-
-def _stimulus_identity(stimulus):
-    h = _identity_start(_STIMULUS_DOMAIN)
-    _identity_u64(h, "dim", stimulus.dim)
-    _identity_blob(h, "x", _canonical_native_buffer(stimulus.x))
-    _identity_blob(h, "y", _canonical_native_buffer(stimulus.y))
-    _identity_blob(h, "schedule", _canonical_native_buffer(stimulus.schedule))
-    return h.hexdigest()
-
-
-def _readout_identity(readout):
-    h = _identity_start(_READOUT_DOMAIN)
-    _identity_u64(h, "epoch", readout.epoch)
-    _identity_u64(h, "dim", readout.dim)
-    _identity_u64(h, "width", readout.width)
-    for value in readout.s3:
-        _identity_blob(h, "s3", struct.pack("<d", value))
-    return h.hexdigest()
-
-
-def _tokens_identity(domain, tokens):
-    h = _identity_start(domain)
-    _identity_u64(h, "count", len(tokens))
-    for token in tokens:
-        _identity_u64(h, "token", token)
-    return h.hexdigest()
-
-
-def _turn_continuity(committed, *, stimulus_digest, readout_digest,
-                     input_tokens_digest, output_tokens_digest, codec):
-    transition = committed.commit
-    before = committed.state_before_digest.hex()
-    after = committed.state_after_digest.hex()
-
-    h = _identity_start(_TURN_DOMAIN)
-    _identity_text(h, "mechanism", _TURN_MECHANISM)
-    _identity_u64(h, "epoch_before", transition.epoch_before)
-    _identity_u64(h, "epoch_after", transition.epoch_after)
-    _identity_u64(h, "generation_before", transition.generation_before)
-    _identity_u64(h, "generation_after", transition.generation_after)
-    _identity_text(h, "state_before", before)
-    _identity_text(h, "state_after", after)
-    _identity_text(h, "stimulus", stimulus_digest)
-    _identity_text(h, "readout", readout_digest)
-    _identity_text(h, "input_tokens", input_tokens_digest)
-    _identity_text(h, "output_tokens", output_tokens_digest)
-    _identity_text(h, "codec", codec)
-
-    return TurnContinuity(
-        h.hexdigest(),
-        _TURN_MECHANISM,
-        transition.epoch_before,
-        transition.epoch_after,
-        transition.generation_before,
-        transition.generation_after,
-        before,
-        after,
-        stimulus_digest,
-        readout_digest,
-        input_tokens_digest,
-        output_tokens_digest,
-        codec,
-    )
+    # Exact K1 retained-state identities (state_digest) of the committed transition, from the native commit.
+    state_before_digest: bytes | None = field(default=None, compare=False)
+    state_after_digest: bytes | None = field(default=None, compare=False)
 
 
 def _validate_turn_request(substrate, text, *, codec_map=None, learning_rate=None,
@@ -380,21 +252,10 @@ def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
             raise CompositionError("DECODE", "decode must return in-vocabulary token IDs within the limit")
         decoder = tokenizer.decoder()
         rendered = "".join(decoder.push(t) for t in output) + decoder.finish()
-        stimulus_digest = _stimulus_identity(stimulus)
-        readout_digest = _readout_identity(readout)
-        input_tokens_digest = _tokens_identity(_INPUT_TOKENS_DOMAIN, tokens)
-        output_tokens_digest = _tokens_identity(_OUTPUT_TOKENS_DOMAIN, output)
         try:
             committed = txn.commit_identity()  # third crossing: commit plus exact retained-state identities
         except K1Error as exc:
             raise CompositionError("ECS_STALE" if exc.code == "STALE" else "ECS_REFUSED", str(exc)) from exc
-        continuity = _turn_continuity(
-            committed,
-            stimulus_digest=stimulus_digest,
-            readout_digest=readout_digest,
-            input_tokens_digest=input_tokens_digest,
-            output_tokens_digest=output_tokens_digest,
-            codec=classification,
-        )
     return TurnResult(tokens, output, rendered, readout, committed.commit.epoch_before,
-                      committed.commit.epoch_after, classification, continuity)
+                      committed.commit.epoch_after, classification,
+                      committed.state_before_digest, committed.state_after_digest)
