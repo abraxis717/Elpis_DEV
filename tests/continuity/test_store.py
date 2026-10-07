@@ -69,11 +69,19 @@ def test_explicit_anchor_then_transitions_and_restart(tmp_path):
 def test_evolution_authority_advances_and_refuses_stale_expectations(tmp_path):
     with ContinuityStore(tmp_path / "c") as store:
         a0 = store.snapshot().evolution
-        a1 = store.commit_evolution_transition(a0, _h(1)).evolution
+        assert _code(lambda: store.commit_evolution_transition(a0, _h(1))) == "CONTINUITY_EVOLUTION_NOT_PENDING"
+        pending = store.reserve_evolution_assertion(a0, _h(100)).evolution
+        assert pending == EvolutionAuthority(0, a0.head, _h(100))
+        assert pending.digest != a0.digest
+        impostor = EvolutionAuthority(pending.revision, pending.head, _h(999))
+        assert _code(lambda: store.commit_evolution_transition(impostor, _h(1))) == "CONTINUITY_AUTHORITY_MISMATCH"
+        assert _code(lambda: store.reserve_evolution_assertion(pending, _h(101))) == "CONTINUITY_EVOLUTION_PENDING"
+        assert _code(lambda: store.commit_evolution_transition(pending, "0" * 64)) == "CONTINUITY_INVALID"
+        assert _code(lambda: store.commit_evolution_transition(pending, "XYZ")) == "CONTINUITY_INVALID"
+        a1 = store.commit_evolution_transition(pending, _h(1)).evolution
         assert a1 == EvolutionAuthority(1, _h(1)) and a1.digest != a0.digest
-        assert _code(lambda: store.commit_evolution_transition(a0, _h(2))) == "CONTINUITY_AUTHORITY_MISMATCH"
-        assert _code(lambda: store.commit_evolution_transition(a1, "0" * 64)) == "CONTINUITY_INVALID"
-        assert _code(lambda: store.commit_evolution_transition(a1, "XYZ")) == "CONTINUITY_INVALID"
+        assert _code(lambda: store.commit_evolution_transition(pending, _h(1))) == "CONTINUITY_AUTHORITY_MISMATCH"
+        assert _code(lambda: store.reserve_evolution_assertion(a0, _h(2))) == "CONTINUITY_AUTHORITY_MISMATCH"
         assert store.snapshot().evolution == a1
 
 
@@ -94,10 +102,11 @@ def test_storage_is_two_fixed_slots_whatever_the_number_of_updates(tmp_path):
         for n in range(1, 2001):
             store.commit_cognition_transition(_d(n - 1), _d(n))
             if n % 7 == 0:
-                store.commit_evolution_transition(store.snapshot().evolution, _h(n))
+                pending = store.reserve_evolution_assertion(store.snapshot().evolution, _h(n)).evolution
+                store.commit_evolution_transition(pending, _h(n))
             assert _files(path) == [(SLOT_NAMES[0], RECORD_SIZE), (SLOT_NAMES[1], RECORD_SIZE)]
         assert store.snapshot().generation > 2000
-    assert sum(size for _, size in _files(path)) == 2 * RECORD_SIZE == 272
+    assert sum(size for _, size in _files(path)) == 2 * RECORD_SIZE == 352
 
 
 def test_resident_state_does_not_grow(tmp_path):
@@ -112,6 +121,9 @@ def test_resident_state_does_not_grow(tmp_path):
         before = footprint()
         for n in range(1, 501):
             store.commit_cognition_transition(_d(n - 1), _d(n))
+            pending = store.reserve_evolution_assertion(store.snapshot().evolution, _h(n)).evolution
+            assert not any(isinstance(v, (list, dict, set, bytearray)) for v in vars(pending).values())
+            store.commit_evolution_transition(pending, _h(n))
         assert footprint() == before
         assert sorted(vars(store)) == ["_current", "_fds", "_lock", "_poisoned", "_slot", "directory"]
 
@@ -327,7 +339,102 @@ def test_the_component_has_no_history_or_ecs_surface():
 
     public = {n for n in dir(ContinuityStore) if not n.startswith("_")}
     assert public == {"open", "close", "snapshot", "anchor_cognition", "commit_cognition_transition",
-                      "commit_evolution_transition"}
+                      "reserve_evolution_assertion", "commit_evolution_transition"}
     for name in ("record", "records", "events", "projection", "topology", "entity_port", "propose",
                  "run_until_quiescent", "scheduler", "compact"):
         assert not hasattr(ContinuityStore, name) and name not in C.__all__
+
+def test_many_evolution_reservations_have_constant_state_and_restart_work(tmp_path, monkeypatch):
+    path = tmp_path / "c"
+
+    def shape(value):
+        # Traverse retained object state, not just the store's immediate attributes.
+        assert not isinstance(value, (list, dict, set, bytearray))
+        if hasattr(value, "__dict__"):
+            return tuple((key, shape(item)) for key, item in vars(value).items())
+        if isinstance(value, tuple):
+            return tuple(shape(item) for item in value)
+        return type(value), sys.getsizeof(value)
+
+    with ContinuityStore(path) as store:
+        first_idle = first_pending = None
+        for n in range(1000):
+            pending = store.reserve_evolution_assertion(store.snapshot().evolution, _h(n)).evolution
+            if first_pending is None:
+                first_pending = shape(store)
+            assert shape(store) == first_pending
+            store.commit_evolution_transition(pending, _h(n))
+            if first_idle is None:
+                first_idle = shape(store)
+            assert shape(store) == first_idle
+            assert _files(path) == [(SLOT_NAMES[0], 176), (SLOT_NAMES[1], 176)]
+        pending = store.reserve_evolution_assertion(store.snapshot().evolution, _h(1000)).evolution
+    reads = []
+    real = os.pread
+    monkeypatch.setattr(S.os, "pread", lambda fd, n, off: reads.append(n) or real(fd, n, off))
+    for _ in range(3):
+        with ContinuityStore(path) as store:
+            assert store.snapshot().evolution == pending
+        assert reads == [RECORD_SIZE, RECORD_SIZE]
+        reads.clear()
+    assert sum(size for _, size in _files(path)) == 352
+
+
+@pytest.mark.parametrize("bad", [None, b"x" * 32, "", "F" * 64, "x" * 64])
+def test_invalid_reservation_identity_never_changes_authority(tmp_path, bad):
+    with ContinuityStore(tmp_path / "c") as store:
+        before = store.snapshot()
+        assert _code(lambda: store.reserve_evolution_assertion(before.evolution, bad)) == "CONTINUITY_INVALID"
+        assert store.snapshot() == before
+
+
+def test_pending_record_schema_is_explicit_and_fixed_size():
+    from elpis.continuity import record as R
+    idle = ContinuitySnapshot(1, None, EvolutionAuthority(0, "0" * 64))
+    pending = ContinuitySnapshot(2, None, EvolutionAuthority(0, "0" * 64, _h(1)))
+    for snap, state in ((idle, 0), (pending, 1)):
+        raw = encode_record(snap)
+        assert len(raw) == RECORD_SIZE == 176
+        assert raw[:8] == b"ELPCONT\x02" and raw[8:10] == b"\x00\x02"
+        assert raw[104] == state and raw[105:112] == bytes(7)
+        assert raw[112:144] == (bytes.fromhex(_h(1)) if state else bytes(32))
+        assert decode_record(raw) == snap
+    for offset, byte in ((104, 2), (105, 1), (112, 1)):
+        raw = bytearray(encode_record(idle))
+        raw[offset] = byte
+        raw[-32:] = R._checksum(bytes(raw[:-32]))
+        assert _code(lambda: decode_record(bytes(raw))) == "CONTINUITY_CORRUPT"
+
+
+def test_old_record_format_is_refused_without_reinterpretation(tmp_path):
+    import struct
+    body = struct.pack(">8sH6sQB7s32sQ32s", b"ELPCONT\x01", 1, bytes(6),
+                       1, 0, bytes(7), bytes(32), 0, bytes(32))
+    old = body + hashlib.sha256(b"elpis.continuity.register.v1\x00" + body).digest()
+    path = tmp_path / "old"
+    _write_slots(path, old, bytes(136))
+    assert _code(ContinuityStore(path).open) == "CONTINUITY_CORRUPT"
+    assert (path / SLOT_NAMES[0]).read_bytes() == old
+    assert (path / SLOT_NAMES[1]).read_bytes() == bytes(136)
+
+
+def test_reservation_refuses_counter_exhaustion_before_execution(tmp_path):
+    path = tmp_path / "c"
+    maximum = (1 << 63) - 1
+    idle = ContinuitySnapshot(maximum - 1, None, EvolutionAuthority(0, "0" * 64))
+    _write_slots(path, encode_record(idle), bytes(RECORD_SIZE))
+    with ContinuityStore(path) as store:
+        assert _code(lambda: store.reserve_evolution_assertion(idle.evolution, _h(1))) == "CONTINUITY_EXHAUSTED"
+        assert store.snapshot() == idle
+
+
+def test_cognition_publications_preserve_pending_identity(tmp_path):
+    path = tmp_path / "c"
+    with ContinuityStore(path) as store:
+        pending = store.reserve_evolution_assertion(store.snapshot().evolution, _h(1)).evolution
+        store.anchor_cognition(_d(0))
+        for n in range(1, 5):
+            assert store.commit_cognition_transition(_d(n - 1), _d(n)).evolution == pending
+    with ContinuityStore(path) as store:
+        assert store.snapshot().evolution == pending
+        assert store.snapshot().k1_state_digest == _d(4)

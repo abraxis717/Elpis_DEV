@@ -58,12 +58,12 @@ A continuity directory contains exactly two files:
     continuity.a
     continuity.b
 
-Each holds one record of exactly 136 bytes:
+Each holds one record of exactly 176 bytes:
 
 | Offset | Size | Field |
 |---|---|---|
-| 0 | 8 | magic `ELPCONT\x01` |
-| 8 | 2 | format version (1) |
+| 0 | 8 | magic `ELPCONT\x02` |
+| 8 | 2 | format version (2) |
 | 10 | 6 | reserved, zero |
 | 16 | 8 | generation (monotonic, >= 1) |
 | 24 | 1 | cognition state: 0 unanchored, 1 anchored |
@@ -71,13 +71,16 @@ Each holds one record of exactly 136 bytes:
 | 32 | 32 | K1 retained-state digest (zero when unanchored) |
 | 64 | 8 | evolution revision |
 | 72 | 32 | evolution head: last admitted path-transition receipt digest (zero at revision 0) |
-| 104 | 32 | SHA-256 over `elpis.continuity.register.v1\0` and bytes 0..103 |
+| 104 | 1 | evolution state: 0 idle, 1 pending |
+| 105 | 7 | reserved, zero |
+| 112 | 32 | reserved assertion digest (zero bytes when idle) |
+| 144 | 32 | SHA-256 over `elpis.continuity.register.v2\0` and bytes 0..143 |
 
 A record that is all zero bytes is an empty slot, permitted only as the
 never-written second slot. The current authority is the valid record with the
 higher generation. Two valid records with the same generation, or no valid
 record, fail closed with `CONTINUITY_CORRUPT`. The maximum durable size is
-therefore 272 bytes, whatever the runtime lifetime.
+therefore 352 bytes, whatever the runtime lifetime.
 
 ## Publication (crash law)
 
@@ -101,7 +104,7 @@ fsyncs both. It then renames b, then a, and syncs the directory. The
 existence of `continuity.a` is the initialization point: leftover `*.tmp`
 files without it are discarded and initialization restarts.
 
-Restart reads exactly the two 136-byte slots: constant work and constant
+Restart reads exactly the two 176-byte slots: constant work and constant
 memory, independent of how many turns or transitions were ever published.
 
 ## K1 restart law
@@ -121,20 +124,82 @@ handle.
 
 ## Evolution binding
 
-`EvolutionAuthority(revision, head)` is the current head of admitted
-evolution path transitions. Its digest is a domain-separated SHA-256 over the
-revision and head.
+`EvolutionAuthority(revision, head, pending_assertion)` holds exactly one
+current authority. `pending_assertion=None` means EVOLUTION_IDLE; a 64-hex
+assertion digest means EVOLUTION_PENDING. Revision and head remain unchanged
+during reservation. No attempt payload, result, receipt object or collection
+is retained.
 
-An `elpis.evolution-path-assertion.v1` assertion binds that digest and
-revision. The gate refuses any assertion whose authority is not the current
-one. After an admitted attempt the runtime publishes revision + 1 with the
-transition receipt's digest as the new head. An assertion built against
-revision N is therefore rejected once revision N + 1 exists, and no history
-projection is involved.
+Its digest uses `elpis.continuity.evolution-authority.v2\0`, followed by
+the big-endian 8-byte revision, 32-byte head, 1-byte state and 32-byte assertion
+identity (zeros when idle). State distinguishes idle from a pending zero digest.
 
-`elpis.evolution-path-assertion.v0` (history-projection fields) is a retired
-persisted schema. Its identity is still computable, but the gate refuses it
-with `ASSERTION_SCHEMA_RETIRED`.
+The runtime performs these steps:
+
+1. Validate the assertion against the current idle authority and episode.
+   The assertion's predecessor claim must equal the trusted authority head.
+2. `reserve_evolution_assertion(expected_idle, assertion_digest)` publishes
+   pending authority durably before any `advance()` call.
+3. Execute the attempt once. Exceptions, cancellation and invalid result
+   contracts leave pending authority; they never establish that retry is safe.
+4. `commit_evolution_transition(expected_pending, receipt_digest)` compares
+   the complete pending authority, then publishes idle revision + 1 with the
+   result receipt digest as head.
+
+Both methods return a `ContinuitySnapshot`. Exhausted revision/generation
+space is refused before reservation. The public store surface is `open`,
+`close`, `snapshot`, `anchor_cognition`, `commit_cognition_transition`,
+`reserve_evolution_assertion`, `commit_evolution_transition`.
+
+### Evolution failure law
+
+| Failure point | Executions | Authority after reopen |
+|---|---:|---|
+| Reservation write refused or torn | 0 | Previous idle |
+| Reservation durability uncertain | 0 | Previous idle or exact pending reservation |
+| Reservation durable; process dies before execution | 0 | Pending; no automatic retry |
+| Attempt runs; final publication refused or torn | 1 | Pending |
+| Attempt runs; final durability uncertain | 1 | Pending or next idle |
+| Attempt runs; final publication succeeds | 1 | Next idle revision/head |
+
+An uncertain final publication can have reached durable storage despite a
+failed sync acknowledgment. Reopening may therefore select the next idle
+record. It must never restore the *previous idle* authority after a durable
+reservation. Pending refuses all evolution with `CONTINUITY_EVOLUTION_PENDING`;
+next idle rejects the old revision with `STALE_EVOLUTION_AUTHORITY`.
+The runtime fail-stops after publication errors. Repeated restart never clears
+a pending identity. K1 transitions preserve the evolution fields unchanged.
+
+### Explicit reconciliation
+
+Read `store.snapshot().evolution` to inspect pending authority.
+`commit_evolution_transition(expected_pending, receipt_digest)` is also the
+minimal typed reconciliation primitive: a trusted caller must independently
+establish the completed result and supply its receipt digest. It checks the
+entire pending authority, advances exactly once and never invokes `advance`.
+The caller is responsible for verifying that the result belongs to the
+reserved assertion and predecessor; continuity stores only fixed-size identities.
+
+There is no cancellation, reset-to-idle, automatic retry or automatic external
+side-effect reconciliation. If the result cannot be established, authority
+remains pending. After a runtime fault, close/reopen before explicit
+reconciliation. Never erase/reinitialize the directory to bypass pending.
+
+### Path predecessor and persisted schemas
+
+`EvolutionAuthorityBinding(revision, digest, head)` comes from runtime's
+continuity authority. The gate refuses a conflicting assertion predecessor
+with `PATH_PREDECESSOR_MISMATCH` before reservation or execution, and derives
+`PathTransitionReceipt.previous_path_receipt_digest` from that trusted head.
+
+The existing assertion v1 and receipt v0 payloads, digest domains and field
+meanings are unchanged. Admission is stricter; unsafe predecessor claims are
+refused rather than reinterpreted. Standalone gate callers must provide a
+trusted binding and manage reservation themselves; durable at-most-once
+execution is the composed Runtime contract.
+
+Assertion v0 (history-projection fields) remains retired. Its identity is
+computable, but the gate refuses it with `ASSERTION_SCHEMA_RETIRED`.
 
 ## Legacy storage
 
@@ -147,19 +212,29 @@ contained it, read its cognition tip, and start a continuity store with an
 explicit anchor of that K1 state. The evolution authority of a migrated store
 starts at revision 0, because no `v1` assertion predates continuity.
 
+The previous 136-byte register format v1 is refused with
+`CONTINUITY_CORRUPT` (slot size); its bytes are never reinterpreted, resized or
+automatically upgraded. A v1 store cannot prove whether a failed unpublished
+attempt ran. Migrating existing authority requires explicit offline
+reconciliation of external effects; this repair provides no automatic
+migration or license to reset authority.
+
 ## Hot path
 
 The managed canonical turn is: codec -> one native K1 transaction (experience
 schedule and readout) -> decode -> native commit -> one continuity
 publication. `tests/integration/test_runtime_hot_path.py` checks dynamically,
 on every run, that continuity adds no native crossing to the canonical turn
-and that its filesystem work per turn is exactly one 136-byte `pwrite` and
+and that its filesystem work per turn is exactly one 176-byte `pwrite` and
 one `fdatasync`. `tests/boundary/test_one_ecs.py` checks statically that the
 turn reaches no receipt, history, event, scheduler, projection or compaction
 machinery.
 
+The current record-size consequence is 176 bytes written per turn and 352
+bytes total. No new latency measurements are claimed for format v2.
+
 One measurement of a warm managed turn, before (`e05b33a`, receipt history)
-and after (this design), on the same host (Linux VM, ext4, Release build;
+and after (the original 136-byte format-v1 design), on the same host (Linux VM, ext4, Release build;
 fixture map with one experience and one step; strace over 500 turns, latency
 over 1000 turns). Latency figures are single-host observations, not a
 performance claim.

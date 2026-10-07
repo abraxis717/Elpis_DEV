@@ -38,7 +38,7 @@ class FakeState:
 @pytest.fixture(scope="module")
 def projection():
     # The current evolution authority the assertion is built against (revision 4).
-    return EvolutionAuthorityBinding(4, d("evolution-authority-4"))
+    return EvolutionAuthorityBinding(4, d("evolution-authority-4"), d("path-head"))
 
 
 def state():
@@ -77,6 +77,7 @@ def gate():
 @pytest.mark.parametrize(
     ("changes", "expected"),
     [
+        ({"previous_path_receipt_digest": d("forged")}, "PATH_PREDECESSOR_MISMATCH"),
         ({"episode_id": "wrong"}, "EPISODE_ID_MISMATCH"),
         ({"episode_state_digest": d("stale")}, "STALE_EPISODE_STATE"),
         ({"structural_attempt_index": 3}, "STRUCTURAL_ATTEMPT_INDEX_MISMATCH"),
@@ -108,7 +109,7 @@ def test_look_alike_authority_is_not_a_binding(projection):
 
 def test_an_assertion_built_against_revision_n_is_refused_at_n_plus_one(projection):
     """Stale-authority protection: no history projection is involved."""
-    advanced = EvolutionAuthorityBinding(projection.revision + 1, d("evolution-authority-5"))
+    advanced = EvolutionAuthorityBinding(projection.revision + 1, d("evolution-authority-5"), d("next-head"))
     result = gate().execute(assertion=assertion(projection), state=state(), authority=advanced,
                             advance=lambda **kw: pytest.fail("must not run"), advance_kwargs={})
     assert isinstance(result, GateRejected) and result.reason == "STALE_EVOLUTION_AUTHORITY"
@@ -164,11 +165,12 @@ def test_receipts_chain_by_digest(projection):
     first = gate().execute(assertion=assertion(projection), state=state(), authority=projection,
                            advance=make_advance("ATTEMPT_COMMITTED"), advance_kwargs={}).receipt
     s2 = FakeState("episode-0", 3, d("attempt-new"), d("state-after-ATTEMPT_COMMITTED"))
+    next_authority = EvolutionAuthorityBinding(projection.revision + 1, d("authority-next"), first.receipt_digest)
     second = gate().execute(
-        assertion=assertion(projection, episode_state_digest=s2.digest(), structural_attempt_index=3,
+        assertion=assertion(next_authority, episode_state_digest=s2.digest(), structural_attempt_index=3,
                             previous_structural_attempt_digest=s2.previous_structural_attempt_digest,
                             previous_path_receipt_digest=first.receipt_digest),
-        state=s2, authority=projection, advance=make_advance("ATTEMPT_REJECTED"),
+        state=s2, authority=next_authority, advance=make_advance("ATTEMPT_REJECTED"),
         advance_kwargs={}).receipt
     assert second.previous_path_receipt_digest == first.receipt_digest
 
@@ -180,3 +182,13 @@ def test_gate_configuration_is_validated():
     with pytest.raises(ValueError):
         EvolutionPathGate(allowed_component_scopes=("x",), resource_budget_digest="R" * 64,
                           evaluation_contract_digest=d("e"))
+
+
+def test_persisted_v1_assertion_and_v0_receipt_identities_are_unchanged(projection):
+    from elpis.evolution.path_gate import PathTransitionReceipt
+    # Computed using the gate at corrective base 233cf82533e0ee1f0fe97c435eb768e2163ef6fa.
+    a = assertion(projection)
+    assert a.digest == "8881e7e19419c7bca787572b3028147855d07c42656603e651d40190ab49a3a7"
+    receipt = PathTransitionReceipt(a.digest, state().digest(), d("attempt"), d("result"),
+                                    d("after"), "ATTEMPT_COMMITTED", None, d("path-head"))
+    assert receipt.receipt_digest == "2c9dc7d579a4bcdeb7b71e7899f7231a1e0f7b4ebfe612b43e22a82480925216"

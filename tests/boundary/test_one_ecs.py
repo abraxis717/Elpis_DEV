@@ -110,7 +110,7 @@ def test_continuity_surface_is_current_authority_only():
 
     public = {n for n in vars(ContinuityStore) if not n.startswith("_")}
     assert public == {"open", "close", "snapshot", "anchor_cognition", "commit_cognition_transition",
-                      "commit_evolution_transition"}
+                      "reserve_evolution_assertion", "commit_evolution_transition"}
     banned = re.compile(r"(?i)\b(entit(?:y|ies)|mailbox\w*|scheduler\w*|topology|projection\w*|replay\w*|"
                         r"compact\w*|segment\w*|retention\w*|events?|event_log|receipt_history|propose\w*)\b")
     for path in (REPO / "src/elpis/continuity").rglob("*.py"):

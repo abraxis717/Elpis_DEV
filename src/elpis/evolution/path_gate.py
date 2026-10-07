@@ -11,15 +11,18 @@ assertion executes exactly one attempt, which must report back an
 
 The evolution authority (:class:`EvolutionAuthorityBinding`) is the current
 head of admitted path transitions as the composing runtime holds it durably
-(``elpis.continuity``). Once an admitted transition advances it, every
-assertion built against the earlier authority is stale, so one assertion can
-never execute twice. The gate depends on no history, projection or storage
-component: it compares the binding it is given.
+(``elpis.continuity``). The runtime durably reserves an assertion before
+executing it and finalizes the reservation afterwards. Pending authority refuses execution;
+an advanced revision refuses stale assertions. The gate depends on no history,
+projection or storage component: it compares the binding it is given.
 
 ``elpis.evolution-path-assertion.v1`` is the assertion schema. The retired
 ``v0`` schema bound an event-history projection; its identity remains
 computable (:class:`EvolutionPathAssertionV0`) but the gate refuses it.
-Receipt payloads keep their persisted schema and field names.
+Assertion and receipt payloads keep their persisted schemas and identities.
+The existing predecessor claim must equal the trusted binding's head; the
+receipt derives its predecessor from that head. Standalone gate execution
+requires the composing owner to reserve authority durably first.
 """
 from __future__ import annotations
 
@@ -38,11 +41,13 @@ class EvolutionAuthorityBinding:
 
     revision: int
     digest: str
+    head: str
 
     def __post_init__(self) -> None:
         if type(self.revision) is not int or self.revision < 0:
             raise ValueError("invalid evolution authority revision")
         require_digest(self.digest)
+        require_digest(self.head)
 
 
 def _check_common(assertion) -> None:
@@ -318,6 +323,8 @@ class EvolutionPathGate:
             return "STALE_EVOLUTION_AUTHORITY"
         if assertion.evolution_authority_digest != authority.digest:
             return "EVOLUTION_AUTHORITY_MISMATCH"
+        if assertion.previous_path_receipt_digest != authority.head:
+            return "PATH_PREDECESSOR_MISMATCH"
         return None
 
     def execute(
@@ -345,6 +352,6 @@ class EvolutionPathGate:
             episode_state_after_digest=result.state_after.digest(),
             attempt_outcome=result.outcome,
             close_receipt_digest=result.close_receipt_digest,
-            previous_path_receipt_digest=assertion.previous_path_receipt_digest,
+            previous_path_receipt_digest=authority.head,
         )
         return GateExecuted(True, result, receipt, 1)

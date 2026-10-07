@@ -2,8 +2,8 @@
 
 Continuity records the current durable lineage/authority the runtime needs:
 the expected K1 retained-state identity of the ECS lineage, and the current
-head of admitted evolution path transitions. It is one fixed-size record in a
-two-slot crash-safe register (docs/CONTINUITY.md).
+head of admitted evolution path transitions and one pending assertion identity.
+It is one fixed-size record in a two-slot crash-safe register (docs/CONTINUITY.md).
 
 It is not an ECS, not context memory, not an event history, not topology, not
 a message bus and not an audit ledger. It imports no ECS, inference, runtime

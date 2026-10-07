@@ -188,11 +188,12 @@ history kernel.
 
 * **State.** One record: generation, the committed K1 retained-state digest
   (`state_digest()`, binding `W`, epoch, `H`, `a`) or "unanchored", and the
-  evolution authority `(revision, head)`, where head is the digest of the last
-  admitted path-transition receipt.
-* **Layout.** Two fixed 136-byte slot files, `continuity.a` and
+  evolution authority `(revision, head, pending_assertion)`, where head is the
+  last finalized path-transition receipt digest and pending_assertion is either
+  absent (idle) or one reserved assertion digest (pending).
+* **Layout.** Two fixed 176-byte slot files, `continuity.a` and
   `continuity.b`, each a checksummed record. The higher valid generation is
-  the current authority. Durable size is 272 bytes for any lifetime; restart
+  the current authority. Durable size is 352 bytes for any lifetime; restart
   reads two slots.
 * **Publication.** The next record is written in place into the
   non-current slot and `fdatasync`ed: one write, one sync, no rename, no log.
@@ -201,7 +202,8 @@ history kernel.
   reopen resolves to exactly one complete record).
 * **API.** `ContinuityStore(directory)`: `open`, `close`, `snapshot`,
   `anchor_cognition(digest)`, `commit_cognition_transition(before, after)`,
-  `commit_evolution_transition(expected, receipt_digest)`. Each transition
+  `reserve_evolution_assertion(expected, assertion_digest)`,
+  `commit_evolution_transition(expected_pending, receipt_digest)`. Each transition
   is compare-and-publish against the current record.
 * **Ownership.** A directory `flock` admits one owner (`CONTINUITY_LOCKED`).
   Continuity imports only the standard library: no ECS, runtime, inference
@@ -212,7 +214,8 @@ Stable codes: `CONTINUITY_UNINITIALIZED`, `CONTINUITY_UNANCHORED`,
 `CONTINUITY_ALREADY_ANCHORED`, `CONTINUITY_STATE_MISMATCH`,
 `CONTINUITY_CORRUPT`, `CONTINUITY_PUBLICATION_REFUSED`,
 `CONTINUITY_PUBLICATION_UNCERTAIN`, `CONTINUITY_LOCKED`,
-`CONTINUITY_AUTHORITY_MISMATCH`, plus `CONTINUITY_INVALID`,
+`CONTINUITY_AUTHORITY_MISMATCH`, `CONTINUITY_EVOLUTION_PENDING`,
+`CONTINUITY_EVOLUTION_NOT_PENDING`, `CONTINUITY_EXHAUSTED`, plus `CONTINUITY_INVALID`,
 `CONTINUITY_PATH`, `CONTINUITY_OPEN` and `CONTINUITY_LEGACY_STORAGE`.
 
 ## Pipeline: ingress and canonical publication (`elpis.pipeline`, `native/pipeline`)
@@ -403,11 +406,17 @@ An `EvolutionPathAssertion` (`elpis.evolution-path-assertion.v1`) binds:
 
 The gate re-checks every binding against the live state and the current
 authority (`STALE_EVOLUTION_AUTHORITY`, `EVOLUTION_AUTHORITY_MISMATCH`). A
-rejected assertion executes nothing. An admitted one executes exactly one
+rejected assertion executes nothing. Before execution, the runtime durably
+reserves the exact assertion identity. A pending authority refuses further
+evolution until explicit reconciliation. An admitted one executes one
 attempt, which must return a typed `EvolutionAttempt`. The result is a
 `PathTransitionReceipt` chained to the previous receipt by digest; the
 runtime then advances the authority to revision + 1 with that receipt's
-digest as head. The gate imports no storage.
+digest as head. The receipt predecessor comes from the trusted authority
+binding's head; a conflicting assertion claim is refused before reservation.
+An uncertain final publication may reopen pending or at the next idle
+revision, both forbidding re-execution. See CONTINUITY.md for reconciliation.
+The gate imports no storage.
 
 The retired v0 schema (history projection digest, head event digest, final
 state root) stays as `EvolutionPathAssertionV0` so its persisted identity
@@ -759,7 +768,7 @@ K1-disabled reference; it is not the substrate of the canonical turn.
 
 The canonical hot path is codec -> K1 transaction (schedule and readout in
 one native call) -> decode -> native commit -> one continuity publication
-(one 136-byte `pwrite` and one `fdatasync`). It adds no native crossings to
+(one 176-byte `pwrite` and one `fdatasync`). It adds no native crossings to
 the K1 turn and reaches no receipt, event, scheduler, projection or
 compaction machinery (`tests/boundary/test_one_ecs.py`).
 

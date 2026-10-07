@@ -4,7 +4,7 @@
 one continuity publication. Measured on a warm turn:
 
 * native K1 crossings are exactly those of the bare canonical turn (continuity adds none);
-* filesystem work is one ``pwrite`` of one 136-byte record and one ``fdatasync``: no open, rename, fsync,
+* filesystem work is one ``pwrite`` of one 176-byte record and one ``fdatasync``: no open, rename, fsync,
   directory sync, read or unlink;
 * no retired history, receipt, event, scheduler or projection module is loaded;
 * the durable footprint is unchanged by the turn (two fixed slots).
@@ -82,8 +82,8 @@ def test_managed_turn_adds_no_native_crossing_and_one_fixed_publication(experien
         assert managed_crossings == bare_crossings, (managed_crossings, bare_crossings)
         # Exactly one in-place fixed-size write and one data sync.
         assert fs.calls == {"pwrite": 1, "fdatasync": 1}, fs.calls
-        assert fs.bytes_written == RECORD_SIZE == 136
+        assert fs.bytes_written == RECORD_SIZE == 176
         assert sorted((p.name, p.stat().st_size) for p in (tmp_path / "continuity").iterdir()) == footprint
-        assert footprint == [("continuity.a", 136), ("continuity.b", 136)]
+        assert footprint == [("continuity.a", 176), ("continuity.b", 176)]
 
     assert not [m for m in sys.modules if m.startswith(_RETIRED_MODULES)]

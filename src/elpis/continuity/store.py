@@ -270,11 +270,35 @@ class ContinuityStore:
             raise ContinuityError("CONTINUITY_STATE_MISMATCH", "transition does not start from the expected K1 identity")
         return self._publish(ContinuitySnapshot(current.generation + 1, after, current.evolution))
 
-    def commit_evolution_transition(self, expected: EvolutionAuthority, receipt_digest: str) -> ContinuitySnapshot:
-        """Advance the evolution authority from ``expected`` to the admitted receipt."""
+    def reserve_evolution_assertion(self, expected: EvolutionAuthority,
+                                   assertion_digest: str) -> ContinuitySnapshot:
+        """Durably reserve one exact assertion before the caller may execute it."""
         current = self._require()
         if type(expected) is not EvolutionAuthority or expected != current.evolution:
             raise ContinuityError("CONTINUITY_AUTHORITY_MISMATCH", "evolution authority moved")
+        if expected.pending_assertion is not None:
+            raise ContinuityError("CONTINUITY_EVOLUTION_PENDING", "explicit reconciliation required")
+        if type(assertion_digest) is not str or len(assertion_digest) != 64 or any(
+                c not in "0123456789abcdef" for c in assertion_digest):
+            raise ContinuityError("CONTINUITY_INVALID", "a 64-hex assertion digest is required")
+        # Refuse exhaustion before an irreversible attempt, not at finalization.
+        if current.generation >= (1 << 63) - 2 or expected.revision == (1 << 63) - 1:
+            raise ContinuityError("CONTINUITY_EXHAUSTED", "no capacity to reserve and finalize")
+        pending = EvolutionAuthority(expected.revision, expected.head, assertion_digest)
+        return self._publish(ContinuitySnapshot(current.generation + 1, current.k1_state_digest, pending))
+
+    def commit_evolution_transition(self, expected: EvolutionAuthority, receipt_digest: str) -> ContinuitySnapshot:
+        """Finalize the exact pending authority with an explicitly established result.
+
+        Also the explicit reconciliation primitive after restart: the caller
+        must establish the completed result externally. Never retries an
+        attempt or clears a reservation back to its previous idle authority.
+        """
+        current = self._require()
+        if type(expected) is not EvolutionAuthority or expected != current.evolution:
+            raise ContinuityError("CONTINUITY_AUTHORITY_MISMATCH", "evolution authority moved")
+        if expected.pending_assertion is None:
+            raise ContinuityError("CONTINUITY_EVOLUTION_NOT_PENDING", "reserve before execution")
         if receipt_digest == "0" * 64:
             raise ContinuityError("CONTINUITY_INVALID", "a path-transition receipt digest is required")
         try:

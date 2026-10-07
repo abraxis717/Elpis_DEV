@@ -92,7 +92,7 @@ remain in public history as evidence and are removed from the canonical path.
 | DSV4 codec (`elpis.inference` codec modules) | communication: text/bytes <-> tokens, vocabulary identity, bounded rendering; the token side of encode/decode | own ECS state; run an autonomous transformer/MoE cognition path |
 | substrate / FMS | generic resource authority, residency and materialization: persistent logical capacity >= resident materialization >= active materialization | require DSV-specific tensor roles in its generic core; decide semantics |
 | structure / HACF | persistent structural memory, topology, representation, provenance | be defined solely as a context-window supplier for a model |
-| runtime | orchestrates codec -> ECS -> codec and, after each native K1 commit, publishes the new K1 state digest to continuity (one 136-byte slot write and one fdatasync) | route cognition through a DSV model; record per-turn receipts or event history |
+| runtime | orchestrates codec -> ECS -> codec and, after each native K1 commit, publishes the new K1 state digest to continuity (one 176-byte slot write and one fdatasync) | route cognition through a DSV model; record per-turn receipts or event history |
 
 ## Classification of existing machinery
 
