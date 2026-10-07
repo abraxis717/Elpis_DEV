@@ -79,3 +79,76 @@ def test_design_evidence_is_design_only_and_computes_no_hypothesis():
         for instance in row["instances"]:
             assert set(instance) == {"world", "seed", "validity", "v1", "l1_probe_nmse_slow_fast", "centroid_ratio",
                                      "oracle_success", "refused", "seconds"}
+
+
+# -- evidence: the decisions follow the frozen law from their own numbers -----------------------------------------
+
+EVIDENCE = LAB / "evidence"
+
+
+def _load(rel: str) -> dict:
+    return json.loads((EVIDENCE / rel).read_text())
+
+
+def _v1(d: dict, g: dict) -> bool:
+    return (d["linear_reference"] <= (1 - g["V1A_MIN_EXPLAINED"]) * d["constant_baseline"]
+            and abs(d["linear_reference"] - d["analytic_floor"]) <= g["V1B_FLOOR_TOL_ABS"] + g["V1B_FLOOR_TOL_REL"]
+            * d["analytic_floor"]
+            and d["ecs_one_step"] != float("inf")
+            and d["constant_baseline"] - d["ecs_one_step"] >= g["V1C_MIN_CAPTURE"] * (d["constant_baseline"]
+                                                                                     - d["linear_reference"]))
+
+
+def test_calibration_follows_the_rule():
+    c = _load("dev/hecs-r1.v1.calibration.json")
+    assert c["spec"] == SPEC and c["phase"] == "DEV_CALIBRATION"
+    chosen = None
+    for row in c["grid"]:
+        assert {i["seed"] for i in row["instances"]} == set(SPEC["dev_seeds"])
+        assert row["v1_all"] == all(_v1(i["validity"], SPEC["gates"]) and not i["refused"] for i in row["instances"])
+        if row["v1_all"]:
+            chosen = row["steps"]
+            break
+    assert chosen == c["chosen_steps"] == 6000 and c["disposition"] == "CALIBRATED"
+
+
+def _evaluation_is_recomputed(phase: str, seeds_key: str) -> dict:
+    run = _load(f"{phase}/hecs-r1.v1.{phase}.json")
+    assert run["spec"] == SPEC and run["phase"] == phase.upper() and run["training_steps"] == 6000
+    for world in run["worlds"]:
+        # EVIDENCE_PROVENANCE: the run evidence records each u64 seed as a signed i64 (`seed as i64`); the
+        # computation used the u64 seed. Decoded exactly here; the write-once evidence is never rewritten.
+        assert [s["seed"] % 2**64 for s in world["seeds"]] == [int(x) for x in SPEC[seeds_key]]
+    validity = run["evaluation"]["validity"]
+    instances = validity["V1_instances"]
+    assert len(instances) == 2 * len(SPEC[seeds_key])
+    assert validity["V1"] == all(_v1(d, SPEC["gates"]) for d in instances)
+    return run
+
+
+def test_dev_is_valid_and_authorized_qual():
+    dev = _evaluation_is_recomputed("dev", "dev_seeds")
+    assert dev["evaluation"]["validity"]["valid"] is True
+
+
+def test_qual_ran_once_and_is_task_invalid_by_v1c_alone():
+    qual = _evaluation_is_recomputed("qual", "qual_seeds")
+    ev = qual["evaluation"]
+    assert ev["disposition"] == "TASK_INVALID" and ev["validity"]["valid"] is False
+    failing = [d for d in ev["validity"]["V1_instances"] if not _v1(d, SPEC["gates"])]
+    assert len(failing) == 1 and failing[0]["C_ecs_adequate"] is False
+    assert failing[0]["A_reference_predictable"] and failing[0]["B_reference_at_floor"]
+    assert all(ev["validity"][k] for k in ("V2", "V3", "V4", "V5_no_refusal"))
+    # Write-once: exactly one QUAL evidence file; nothing beyond DESIGN, calibration, DEV and QUAL.
+    assert sorted(p.relative_to(EVIDENCE).as_posix() for p in EVIDENCE.rglob("*.json")) == [
+        "design/hecs-r1.v1.design.json", "dev/hecs-r1.v1.calibration.json", "dev/hecs-r1.v1.dev.json",
+        "qual/hecs-r1.v1.qual.json"]
+
+
+def test_results_report_the_disposition_and_withhold_integration():
+    text = (REPO / "docs" / "research" / "HECS_R1_RESULTS.md").read_text()
+    for needle in ("`TASK_INVALID`", "NOT_AUTHORIZED", "NO_CANONICAL_PROMOTION", "not adjudicated", "5c57dec"):
+        assert needle in text, needle
+    # No hierarchy controller was integrated: nothing outside research names the laboratory's crates.
+    for path in (REPO / "src").rglob("*.py"):
+        assert "hecs_r1" not in path.read_text() and "hecs_r0" not in path.read_text(), path

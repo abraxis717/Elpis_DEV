@@ -7,6 +7,10 @@ valid task-validity law: an analytic floor, a held-out best-linear reference and
 reference, on fresh SHA-256-derived seeds. Question, design, gates, stop laws and the integration law:
 [`PREREGISTRATION.md`](PREREGISTRATION.md). Source equivalence with R0: [`SOURCE_EQUIVALENCE.json`](SOURCE_EQUIVALENCE.json).
 
+**Status: closed `TASK_INVALID` at QUAL** ([`docs/research/HECS_R1_RESULTS.md`](../../docs/research/HECS_R1_RESULTS.md)).
+DEV calibrated at 6000 K1 steps and was valid; the one QUAL run failed V1C (ECS adequacy) in 1 of 16 instances.
+The hypotheses were not adjudicated; no integration is authorized.
+
 Not on the canonical path: nothing in `src/` imports or calls it, and it has no ECS<->DSV codec, no HACF edge
 and no runtime authority.
 
