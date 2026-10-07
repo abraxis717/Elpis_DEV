@@ -5,7 +5,8 @@ find_program(ELPIS_CARGO cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/b
 # In a sanitizer build the K1 library depends on the sanitizer runtime, which must be the first library of the
 # (uninstrumented) Rust test process that dlopens it. A generated runner preloads the runtime into the test
 # executable only (cargo's target runner), so cargo and rustc themselves stay unsanitized. Under TSan it also
-# appends tsan.supp to the caller's TSAN_OPTIONS.
+# appends to the caller's TSAN_OPTIONS: ignore_noninstrumented_modules=1 (TSan judges only instrumented code,
+# i.e. K1; the Rust test harness synchronizes through uninstrumented std atomics TSan cannot see) and tsan.supp.
 set(_hecs_runner)
 if(ELPIS_ENABLE_ASAN OR ELPIS_ENABLE_TSAN)
   if(ELPIS_ENABLE_TSAN)
@@ -21,7 +22,7 @@ if(ELPIS_ENABLE_ASAN OR ELPIS_ENABLE_TSAN)
   set(_hecs_tsan_options)
   if(ELPIS_ENABLE_TSAN)
     set(_hecs_tsan_options
-        "TSAN_OPTIONS=\"\${TSAN_OPTIONS:+\$TSAN_OPTIONS:}suppressions=${CMAKE_CURRENT_SOURCE_DIR}/tsan.supp\"\n")
+        "TSAN_OPTIONS=\"\${TSAN_OPTIONS:+\$TSAN_OPTIONS:}ignore_noninstrumented_modules=1:suppressions=${CMAKE_CURRENT_SOURCE_DIR}/tsan.supp\"\n")
   endif()
   set(_hecs_runner_script "${CMAKE_CURRENT_BINARY_DIR}/sanitizer-runner.sh")
   file(WRITE "${_hecs_runner_script}"

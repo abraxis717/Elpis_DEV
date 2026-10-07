@@ -5,6 +5,8 @@ Two policies apply to every test:
 * Network access is forbidden. Any attempt to open an INET/INET6 connection or
   resolve a host name fails the test. (CI additionally runs the core suite in a
   network namespace with only loopback, which covers subprocesses too.)
+* Lanes (``tests/lanes.py``): a bare ``pytest`` runs the FAST lane only; ``--lane`` selects
+  one lane (or ``all``); explicit test paths run what they name.
 * Native libraries are explicit. Tests that need a compiled Elpis library read
   it from the build tree named by ``ELPIS_NATIVE_BUILD`` (default: ``build`` in
   the repository root). When ``ELPIS_REQUIRE_NATIVE=1`` a missing library is a
@@ -20,6 +22,29 @@ import socket
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def pytest_addoption(parser):
+    parser.addoption("--lane", choices=("fast", "stress", "scientific", "historical", "all"), default=None,
+                     help="run one qualification lane (tests/lanes.py); a bare `pytest` runs `fast`")
+
+
+def pytest_collection_modifyitems(config, items):
+    from tests.lanes import lane_of
+
+    lane = config.getoption("--lane")
+    if lane is None:
+        if config.option.file_or_dir:
+            return  # explicit paths: run exactly what was named
+        lane = "fast"
+    if lane == "all":
+        return
+    keep, drop = [], []
+    for item in items:
+        (keep if lane_of(item.nodeid) == lane else drop).append(item)
+    if drop:
+        config.hook.pytest_deselected(items=drop)
+        items[:] = keep
 
 
 class NetworkAccessForbidden(RuntimeError):

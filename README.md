@@ -34,15 +34,16 @@ the head commit is red.
 | `src/elpis/pipeline`, `native/pipeline` | bounded Regex → HACF ingress; the canonical Grid81 writer path |
 | `src/elpis/evolution` | deterministic heredity, selection, gated promotion |
 | `src/elpis/inference` | the DSV4 communication codec (tokenizer, rendering); retained noncanonical model-execution mechanics for historical replay |
-| `src/elpis/runtime` | the one runtime composition: codec -> ECS -> codec (fails closed until the ECS codec is qualified), bound to one continuity register |
+| `native/runtime` | RuntimeCore, the runtime's systems authority in Rust behind a stable C ABI (`include/elpis/runtime.h`): lifecycle, fail-stop, the embedded continuity store, K1 lineage binding, the managed turn's native K1 transaction and the evolution reservation ([spec](docs/RUNTIME_CORE.md)) |
+| `src/elpis/runtime` | the one runtime composition: codec -> ECS -> codec (fails closed until the ECS codec is qualified); a thin facade over RuntimeCore |
 | `research/ecs_dynamics` | RESEARCH_ONLY synthetic dynamics laboratory; not packaged, never imported by `src` ([results](docs/research/ECS_DYNAMICS_RESULTS.md)) |
 | `research/dsv41_tower` | RESEARCH_ONLY DSV4.1 transformer/MoE tower, native backend, provider stream, clock and materializer; donor/oracle qualification, not Elpis cognition |
 
 ## Build and test
 
 The native build needs CMake, a C11/C++17 compiler, pkg-config, SQLite 3,
-PCRE2 and a Rust toolchain (cargo and rustc >= 1.89, for `native/continuity`; no
-crates are downloaded). On Manjaro:
+PCRE2 and a Rust toolchain (cargo and rustc >= 1.89, for `native/continuity` and
+`native/runtime`; no crates are downloaded). On Manjaro:
 `sudo pacman -S --needed base-devel cmake pkgconf sqlite pcre2 rust`.
 
 ```bash
@@ -51,8 +52,20 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 
 python -m pip install ".[test]"
-ELPIS_NATIVE_BUILD=$PWD/build ELPIS_REQUIRE_NATIVE=1 python -m pytest
+ELPIS_NATIVE_BUILD=$PWD/build ELPIS_REQUIRE_NATIVE=1 python -m pytest   # the FAST lane
 ```
+
+The developer-fast command, bounded and with live output (warm build check, every
+ctest test and the FAST pytest lane; 46 s warm on a 4-core VM):
+
+```bash
+tests/qualify.sh fast build
+```
+
+A bare `pytest` runs the FAST lane only. The other lanes are explicit:
+`tests/qualify.sh stress|scientific|historical|all build` (or `pytest --lane ...`).
+Ownership of every test by a lane and of every lane by a CI job:
+[docs/CI_POLICY.md](docs/CI_POLICY.md#lanes).
 
 Continuity alone, bounded and with live output (Rust, C ABI, Python adapter and
 the runtime paths that publish to it):
