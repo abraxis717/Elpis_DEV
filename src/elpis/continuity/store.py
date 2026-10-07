@@ -220,7 +220,7 @@ class ContinuityStore:
         if self._poisoned is not None:
             raise ContinuityError(self._poisoned, "the continuity store must be reopened")
         if self._current is None or self._fds is None:
-            raise ContinuityError("CONTINUITY_CLOSED")
+            raise ContinuityError("CONTINUITY_UNINITIALIZED", "the continuity store is not open")
         return self._current
 
     def snapshot(self) -> ContinuitySnapshot:

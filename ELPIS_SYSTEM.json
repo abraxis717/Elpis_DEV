@@ -10,7 +10,7 @@
     "release_authority": "NONE_DEFERRED",
     "publication": "NONE"
   },
-  "purpose": "Research direction: geodesic intelligence. DSV4 communicates; ECS/EDEN computes, learns and persists; FMS materializes; HACF/structure organizes persistent structural memory; ECS_C records continuity (docs/ELPIS_MISSION.md). Computation is meant to happen in a persistent, evolving ECS substrate, entered and left through the DSV4 token boundary, not in a transformer. This is an architectural research direction, not a claim of general intelligence.",
+  "purpose": "Research direction: geodesic intelligence. DSV4 communicates; ECS/EDEN computes, learns and persists; FMS materializes; HACF/structure organizes persistent structural memory; continuity binds the minimal durable runtime lineage/authority (docs/ELPIS_MISSION.md). Computation is meant to happen in a persistent, evolving ECS substrate, entered and left through the DSV4 token boundary, not in a transformer. This is an architectural research direction, not a claim of general intelligence.",
   "mission": {
     "authority": "docs/ELPIS_MISSION.md",
     "division": [
@@ -18,7 +18,7 @@
       "ECS / EDEN computes, learns and persists.",
       "FMS materializes.",
       "HACF / structure organizes persistent structural memory.",
-      "ECS_C records continuity and history."
+      "Continuity binds minimal durable runtime lineage/authority."
     ],
     "canonical_dataflow": "text -> DSV4 encode -> admitted ECS stimulus -> ECS/EDEN dynamics -> ECS readout -> DSV4 decode -> text (runtime.cognition.run_turn)",
     "prohibited": "ECS as a sidecar around a full DSV model: ECS state conditioning a DSV model, or ECS driven by a DSV model's output statistics (forensic: f4e1f05, 75313fb).",
@@ -88,53 +88,9 @@
       ]
     },
     {
-      "id": "ECS_C",
-      "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "Persistent identity, continuity and history: deterministic entities and lifecycle, sender-bound local messaging, deterministic scheduling, one authoritative durable event history, canonical state roots, replay, checkpoints, state-bearing compaction checkpoints with crash-safe bounded generations, crash recovery, read-only topology and context projections (complete-history or explicitly retained-window), and the frozen Structural R0 mutation grammar.",
-      "python_package": "elpis.ECS_C",
-      "implementation_roots": [
-        "src/elpis/ECS_C",
-        "native/ECS_C"
-      ],
-      "test_roots": [
-        "tests/ECS_C"
-      ],
-      "native_targets": [
-        "elpis_ecsc_history"
-      ],
-      "depends_on": [
-        "substrate"
-      ],
-      "mutation_authority": "Only Kernel transitions (found/activate/dormant/terminate/message/step) mutate ECS state, each linearized under the kernel lock and committed as one framed event before the projection is installed. Projections (topology, context) are read-only. Entity-facing code sends only through kernel-bound EntityPort objects and cannot choose its sender. A compaction checkpoint is never a mutation: it captures an already-committed quiescent or non-quiescent state and is verified by exact root reconstruction before use.",
-      "runtime_participation": "The runtime composition owns one Kernel as the system's durable continuity history; committed outcomes of other subsystems are recorded there as messages. Its projections are read-only views of that history (the evolution gate reasons over one). ECS_C history is not active cognitive state and never substitutes for ECS.",
-      "persistence": "Length-framed append-only event log with fsync durability boundary and complete-frame crash recovery. Uncompacted layout: one log, full replay from genesis, ecs.checkpoint.v1 rollback-floor markers only. Compacted layout: one published generation = a verified state-bearing ecs.compaction-checkpoint.v1 base plus one active segment carrying the following events at their original global indices; restart rebuilds the base and stream-replays only the segment; the generation switch is a crash-safe MANIFEST rename (ecs.generation-manifest.v1) with every write admitted against a finite directory budget first. Below a non-zero retention floor, complete-history reads (events, topology) refuse.",
-      "protocol_identifiers_retained": [
-        "ecs.state_root.v3",
-        "ecs.event.v1",
-        "ecs.genesis.v1",
-        "ecs.m1a.integration.v3",
-        "active-mailbox-fifo/entity-id-before-founded-activation.v1",
-        "active-mailbox-global-arrival/founding-index-activation.v2",
-        "elpis.ecs.r0.*",
-        "elpis.ecs.structural_r0.*",
-        "ecs.compaction-checkpoint.v1",
-        "ecs.generation-manifest.v1",
-        "ecs.context-projection.v1",
-        "ecs.context-projection.retained.v1"
-      ],
-      "external_dependencies": [],
-      "model_dependency": "NONE",
-      "uses_numpy": false,
-      "maturity": "Mechanics qualified in-process (same-process POSIX model). No cross-process transport or authority.",
-      "incomplete_interfaces": [
-        "Structural R0 mutations are executable and verified but not admitted as kernel transitions.",
-        "Cross-process transport, federation and cross-process authority are deferred."
-      ]
-    },
-    {
       "id": "ECS",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "The one canonical ECS: the ECS/EDEN-facing cognitive/dynamical substrate of Elpis. It owns authoritative microscopic state W, exact cubic forward/S3 mathematics (S3 is a derived coarse observable), deterministic atomic microscopic recurrence, epoch tracking and deterministic portable snapshot/restore. A native executor (ecsg_executor.h, docs/ECS_RUNTIME_R1.md) is the runtime form of the state: one-call query, one-call fused K-step learn, native candidate transactions committed by pointer exchange with generation staleness, SINGLE_WRITER enforced, no allocation after creation, bitwise equal to the scalar reference. A stdlib-only Python binding (elpis.ECS.native) controls it over a caller-loaded library (Executor, Transaction; WorldState is the scalar reference binding). Cognitive R0 (elpis.ECS.cognition.CognitiveCore) keeps QUERY (x -> f_W(x) from the current W, read-only, one native call) distinct from LEARN ((X, y) -> K G1 steps in one native call -> one native commit). ECS imports no inference, codec, runtime or ECS_C module. Mutable FMS R0 is an additive residency adapter: authoritative idle ECS snapshots are generic FMS objects, while execution restores the unchanged qualified Runtime R1 executor through its public ABI. Native K1 is the canonical retained-state runtime under the ecsg-k1-native.v2 QUALIFIED authority, with complete authoritative state (W, epoch, H, a), native learning/consolidation, complete-state transactions and generic FMS residency.",
+      "purpose": "The one canonical ECS: the ECS/EDEN-facing cognitive/dynamical substrate of Elpis. It owns authoritative microscopic state W, exact cubic forward/S3 mathematics (S3 is a derived coarse observable), deterministic atomic microscopic recurrence, epoch tracking and deterministic portable snapshot/restore. A native executor (ecsg_executor.h, docs/ECS_RUNTIME_R1.md) is the runtime form of the state: one-call query, one-call fused K-step learn, native candidate transactions committed by pointer exchange with generation staleness, SINGLE_WRITER enforced, no allocation after creation, bitwise equal to the scalar reference. A stdlib-only Python binding (elpis.ECS.native) controls it over a caller-loaded library (Executor, Transaction; WorldState is the scalar reference binding). Cognitive R0 (elpis.ECS.cognition.CognitiveCore) keeps QUERY (x -> f_W(x) from the current W, read-only, one native call) distinct from LEARN ((X, y) -> K G1 steps in one native call -> one native commit). ECS imports no inference, codec, runtime or continuity module. Mutable FMS R0 is an additive residency adapter: authoritative idle ECS snapshots are generic FMS objects, while execution restores the unchanged qualified Runtime R1 executor through its public ABI. Native K1 is the canonical retained-state runtime under the ecsg-k1-native.v2 QUALIFIED authority, with complete authoritative state (W, epoch, H, a), native learning/consolidation, complete-state transactions and generic FMS residency.",
       "python_package": "elpis.ECS",
       "implementation_roots": [
         "src/elpis/ECS",
@@ -152,7 +108,7 @@
       "depends_on": [
         "substrate"
       ],
-      "mutation_authority": "Only ECS cognitive state changes through the qualified cubic full-batch gradient step. Existing Runtime R1 executor semantics remain unchanged. In Mutable FMS R0 an FMS object owns the complete portable W+epoch snapshot between operations; ECS computes a complete candidate and publishes a complete replacement only on successful commit. QUERY never mutates cognitive state. FMS may mutate only its own residency and verified cold-replica state; it never decides learning semantics. No ECS_C, HACF, inference or canonical state is mutated by ECS.",
+      "mutation_authority": "Only ECS cognitive state changes through the qualified cubic full-batch gradient step. Existing Runtime R1 executor semantics remain unchanged. In Mutable FMS R0 an FMS object owns the complete portable W+epoch snapshot between operations; ECS computes a complete candidate and publishes a complete replacement only on successful commit. QUERY never mutates cognitive state. FMS may mutate only its own residency and verified cold-replica state; it never decides learning semantics. No continuity, HACF, inference or canonical state is mutated by ECS.",
       "runtime_participation": "The runtime composition's canonical turn (elpis.runtime.cognition.run_turn) places ECS between DSV4 encode and DSV4 decode over a native K1 state (K1State, or the FMS-resident K1FMSState). An admitted stimulus enters only as a native-ready ordered experience schedule (contiguous X and y, and (rows, steps) descriptors); one native K1 call learns and consolidates every experience on a transaction candidate of (W, epoch, H, a) and returns S3 of the candidate W, the readout handed to the decode boundary; the complete K1 candidate is committed natively only when the whole turn succeeds. ECS is never a conditioning input to, or driven by, a DSV model. The Runtime R1 Executor remains a qualified primitive and the K1-disabled reference, but it is not the substrate of the canonical turn. The FMS-resident K1 path runs the same turn over the resident bytes, with no per-turn restore or serialization.",
       "security_boundary": "The qualified Runtime R1 executor remains SINGLE_WRITER and retains its existing allocation, validation and callback rules. Mutable FMS R0 adds numeric logical-state handles, an exclusive per-state guard and generic FMS leases. No raw FMS pointer escapes the native adapter. A direct operation restores a transient executor while the lease is held; an open transaction retains one executor and one WRITE lease until commit or abort. ECS itself performs no path discovery; POSIX cold storage is owned by the substrate FMS/PAL capability supplied by the caller.",
       "protocol_identifiers_retained": [
@@ -232,7 +188,7 @@
         "substrate"
       ],
       "mutation_authority": "Structural memory is written only by its owner (corpus ingestion into a caller-owned state root). Retrieval, validation, views, topology and observations are read-only and grant no semantic truth, execution or admission authority. Canonical Grid81 state is read here but changed only by the pipeline's canonical writer path.",
-      "runtime_participation": "The runtime composition may own a HACF corpus/index. Retrieval results become evidence envelopes consumable by the pipeline and the ECS_C history; resolved objects can be rendered through the DSV4 codec (Runtime.admit_context). HACF's role is persistent structural memory, topology and provenance, not a model's context window; its edge into ECS is not yet defined.",
+      "runtime_participation": "The runtime composition may own a HACF corpus/index. Retrieval results become evidence envelopes consumable by the pipeline; resolved objects can be rendered through the DSV4 codec (Runtime.admit_context). HACF's role is persistent structural memory, topology and provenance, not a model's context window; its edge into ECS is not yet defined.",
       "protocol_identifiers_retained": [
         "elpis.retrieval_bundle.v1",
         "elpis.retrieval_contract.v1",
@@ -301,7 +257,7 @@
       "maturity": "Mechanics qualified. Ingress: native suites (bounded profile, streaming, allocation failure injection, C ABI, memory bound, atomic query-local batch, bounded prepublication with identities pinned byte-identical to the donor, streaming/whole-input composition parity), Python differential properties and binding tests; an 18,000-case differential run matched the donor lexer byte for byte at migration. Mechanics qualified: per-stage suites (adjudication, capability authority, consumption, application incl. crash-recovery and cross-process CAS contention, promotion gates and recomputation, promotion authority, candidate construction, publisher protocol incl. concurrent readers, process contention and root aliasing) plus six stage-to-stage integration tests and the full writer chain from a historical canonical fixture.",
       "incomplete_interfaces": [
         "The ingress bridge library is loaded by explicit path but is not yet digest-pinned through elpis.substrate authority.",
-        "The query-local overlay is published in memory per call; it is not yet persisted into a semantic snapshot or recorded in the ECS history.",
+        "The query-local overlay is published in memory per call; it is not yet persisted into a semantic snapshot.",
         "Promotion gate evaluation reads the historical phase-evidence directory layout (consumption/application/application-evidence reports); no in-repo stage emits that layout yet, so an end-to-end promotion from live stages can bind application identity in memory but cannot pass the gates without a phase-evidence writer.",
         "Two durable ledger schemas coexist: v1 (publication ledger, required by the publisher) and v2 (artifact-bound application ledger); they are distinct persisted identities and are not merged.",
         "Adjudication consumes structural groups for a caller-pinned row count; there is no streaming or incremental adjudication.",
@@ -322,21 +278,21 @@
       "native_targets": [],
       "depends_on": [],
       "mutation_authority": "Evolution records are immutable values; every state change returns a new population, organism or receipt and nothing is written in place. Selection and reproduction commit only against the exact revision the caller observed and reject atomically otherwise. Promotion writes a child workspace only at a caller-supplied, not-yet-existing destination, and only when its content matches the selected manifest. The path gate grants no authority beyond the single attempt it admits.",
-      "runtime_participation": "The runtime composition may run gated evolution attempts against an ECS projection of its own history and record their transition receipts in that history.",
-      "security_boundary": "No implicit randomness (mutation seeds derive from lineage content), no model, no numerics, no network. Selection accepts no externally proposed solution and recomputes every fitness score. The path gate type-checks the history projection and executes nothing for a rejected assertion. Promotion refuses symlinks and special files in workspaces and edit paths outside the child.",
+      "runtime_participation": "The runtime composition may run gated evolution attempts bound to the current evolution authority held by continuity; an admitted attempt advances that authority to its transition receipt digest, so a stale assertion executes nothing.",
+      "security_boundary": "No implicit randomness (mutation seeds derive from lineage content), no model, no numerics, no network. Selection accepts no externally proposed solution and recomputes every fitness score. The path gate type-checks the supplied evolution authority binding and executes nothing for a rejected or retired-schema assertion. Promotion refuses symlinks and special files in workspaces and edit paths outside the child.",
       "protocol_identifiers_retained": [
         "Life record schemas: darwinian.life.{genotype,lineage,mutation-*,organism-state,population-state,fitness-*,reproduction-*}.v1 and their canonical JSON encoding (ASCII, sorted keys)",
-        "Path gate: elpis.evolution-path-assertion.v0, elpis.evolution-path-transition-receipt.v0 (including the field names structural_attempt_digest and refinement_result_digest)",
+        "Path gate: elpis.evolution-path-assertion.v1 (current; binds the evolution authority revision and digest), elpis.evolution-path-assertion.v0 (retired persisted schema, identity computable, refused by the gate), elpis.evolution-path-transition-receipt.v0 (including the field names structural_attempt_digest and refinement_result_digest)",
         "Promotion: elpis.rsi.harness-manifest.v0, elpis.rsi.evaluation-evidence.v0, elpis.rsi.selection-receipt.v0, elpis.rsi.component-content-map.v0 (historical identifiers; no self-improvement claim)"
       ],
       "external_dependencies": [],
       "model_dependency": "NONE",
       "uses_numpy": false,
-      "maturity": "Mechanics qualified: heredity, mutation, reproduction and fitness suites from the donor; new truncation-selection suite covering every rejection path; path-gate suite over a real ECS kernel history with digests identical to the donor gate; promotion and atomic-materialization suites including symlink and path-escape refusal.",
+      "maturity": "Mechanics qualified: heredity, mutation, reproduction and fitness suites from the donor; new truncation-selection suite covering every rejection path; path-gate suite over the evolution authority binding (stale revision, digest mismatch, retired v0) with v0 persisted digests identical to the donor gate; promotion and atomic-materialization suites including symlink and path-escape refusal.",
       "incomplete_interfaces": [
         "No environment produces fitness observations: the donor's ecological lattice was Torch-backed and TRM-driven and is retired, so observations are supplied by the caller.",
         "Promotion evaluation evidence (held-out, OOD and calibration deltas) is supplied by the caller; no in-repo evaluator produces it.",
-        "Path-gate transition receipts are returned to the caller; recording them in the ECS history is the runtime composition's job."
+        "Path-gate transition receipts are returned to the caller; the runtime composition keeps only the latest admitted receipt digest as the evolution authority in continuity."
       ]
     },
     {
@@ -354,7 +310,7 @@
       "depends_on": [
         "substrate"
       ],
-      "mutation_authority": "The codec mutates nothing: it encodes, decodes and renders. It owns no ECS state and imports no ECS, ECS_C or runtime module (boundary- and mission-gated). The retained model-execution mechanics commit only their own decode/sequence state against an exact expected state; every proposal record is ProposalOnly with zero authority, and model output is never authority.",
+      "mutation_authority": "The codec mutates nothing: it encodes, decodes and renders. It owns no ECS state and imports no ECS, continuity or runtime module (boundary- and mission-gated). The retained model-execution mechanics commit only their own decode/sequence state against an exact expected state; every proposal record is ProposalOnly with zero authority, and model output is never authority.",
       "runtime_participation": "The runtime uses only the codec modules: the tokenizer's encode/decode at the canonical turn's token boundary and budgeted rendering of admitted structural memory. It runs no DSV model.",
       "security_boundary": "No network, no downloads and no implicit model: a target exists only from caller-supplied, digest-verified file assets registered through elpis.substrate beneath its trusted root, and every bank, expert, parameter artifact and projection is bound to the target's model identity. Prefetch predicts physical ranges only and cannot change which rows are read. Proposals arrive as already validated, digest-pinned AddressProposal values and are checked against the snapshot they are bound to. elpis.inference imports no ECS, structure, pipeline, evolution or runtime module, directly or transitively (boundary-tested). Fixed IEEE-754 binary64 arithmetic in steering; no hidden or global mutable recurrence state.",
       "protocol_identifiers_retained": [
@@ -387,7 +343,7 @@
     {
       "id": "runtime",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "The one runtime composition. It orchestrates codec -> ECS -> codec (elpis.runtime.cognition.run_turn: DSV4 encode, admitted stimulus, ECS dynamics, S3 readout, DSV4 decode), failing closed with ECS_CODEC_UNQUALIFIED while no qualified ECS codec map exists. Around one durable continuity history (ReceiptHistory, an ECS_C kernel history founded with one history entity and one recorder entity per subsystem) it runs one subsystem operation at a time through that subsystem's own fail-closed entry point (pipeline ingress, structure retrieval-bundle admission, canonical Grid81 publication, the evolution path gate bound to a projection of the runtime's own history, and structural-memory rendering through the codec) and records the committed outcome as a kernel-attributed message. It owns the edge adapters (elpis.runtime.edges). It composes no DSV model execution: no decode transaction, principal sequence or model text generation (mission-gated). It is not a numbered runtime generation.",
+      "purpose": "The one runtime composition. It orchestrates codec -> ECS -> codec (elpis.runtime.cognition.run_turn: DSV4 encode, admitted stimulus, ECS dynamics, S3 readout, DSV4 decode), failing closed with ECS_CODEC_UNQUALIFIED while no qualified ECS codec map exists. It composes the one ECS and the continuity component: the first managed K1 lineage is anchored explicitly, every committed turn publishes its new expected K1 retained-state identity, and evolution attempts are bound to the current evolution authority. It runs one subsystem operation at a time through that subsystem's own fail-closed entry point (pipeline ingress, structure retrieval-bundle admission, canonical Grid81 publication, the evolution path gate, and structural-memory rendering through the codec) and returns that subsystem's result; it keeps no receipts and no history. It owns the edge adapters (elpis.runtime.edges). It composes no DSV model execution: no decode transaction, principal sequence or model text generation (mission-gated). It is not a numbered runtime generation.",
       "python_package": "elpis.runtime",
       "implementation_roots": [
         "src/elpis/runtime"
@@ -405,23 +361,22 @@
         "structure",
         "substrate"
       ],
-      "mutation_authority": "The runtime writes only its own bounded ECS receipt history, and only through ReceiptHistory.record: one message from the owning subsystem's recorder entity to the history entity, appended by the native ECS_C session only after that subsystem's own operation committed or published (no Python write fallback). Exact duplicate detection is guaranteed only within the retained window (an equal record there returns the existing entry and appends nothing); a record equal to one retired below the retention floor is recorded again. Recording grants the recorded thing no authority. Compaction rewrites no event: it checkpoints committed state and publishes a new generation. Every other state change (canonical publication, decode state, evolution receipts) is made by the owning subsystem's entry point with the caller's explicit inputs; the runtime adds no authority and no fallback.",
+      "mutation_authority": "The runtime writes only its continuity directory, and only through ContinuityStore: the explicit K1 lineage anchor, the expected K1 identity after each committed K1 turn, and the evolution authority after each admitted attempt. A failed or uncertain continuity publication never rolls back a committed K1 turn; it fail-stops the runtime until reopen. Every other state change (canonical publication and its ledger, decode state, evolution receipts) is made by the owning subsystem's entry point with the caller's explicit inputs; the runtime adds no authority, no fallback and no audit record.",
       "runtime_participation": "This is the runtime composition.",
-      "security_boundary": "The history directory is an explicit absolute path owned exclusively (LOCK flock) and bounded by a finite RuntimeHistoryPolicy (segment, checkpoint and total directory bytes; no unlimited value). On open the published generation's compaction checkpoint is verified by exact state-root reconstruction and the active segment is replay-validated from it (event chain, global indices, clock progression, state roots); unknown directory entries, manifest/checkpoint mismatches and inconsistent native global/base/local counts are refused; a history founded with other entities, a record sent by the wrong recorder, or a non-canonical record payload is refused. Libraries, corpus roots, file assets, ledgers and promotion capabilities are supplied explicitly by the caller; the runtime opens no network connection and loads no model. The evolution gate receives a projection taken at call time, so an assertion bound to an older history head is rejected before anything executes; below a retention floor that projection is an explicitly retained-window projection that binds the floor.",
+      "security_boundary": "The continuity directory is an explicit absolute path owned exclusively (directory flock); its two fixed slots are verified on open and a corrupt, ambiguous, foreign or retired receipt-history layout is refused. A supplied K1 state whose retained-state identity differs from the durable expectation is refused before any K1 mutation (CONTINUITY_STATE_MISMATCH); there is no implicit anchor and no synthesized transition. Libraries, corpus roots, file assets, ledgers and promotion capabilities are supplied explicitly by the caller; the runtime opens no network connection and loads no model. An evolution assertion built against an older evolution authority is rejected before anything executes.",
       "protocol_identifiers_retained": [
-        "New: elpis.runtime.history.v1 (history genesis label), elpis.runtime.receipt-record.v1 (record payload schema), elpis.runtime.history-summary.v1 (bounded compaction-checkpoint extension), elpis.runtime.cognition-continuity.v1 (fixed-size ECS lineage summary). The ECS identifiers it builds on (ecs.event.v1, ecs.message.v1, ecs.state_root.v3, ecs.compaction-checkpoint.v1, ecs.generation-manifest.v1, ecs.context-projection.retained.v1) are owned by elpis.ECS_C."
+        "None of its own: the runtime builds on elpis.continuity.register.v1 and elpis.continuity.evolution-authority.v1 (owned by continuity) and the ECS ABI."
       ],
       "external_dependencies": [],
       "model_dependency": "NONE_REQUIRED. Inference runs only on caller-supplied targets; the integration suite uses the synthetic DSV4 fixture.",
       "uses_numpy": false,
-      "maturity": "Integration qualified over real native libraries and a real HACF corpus (ingress, structural memory, canonical writer, evolution, structural-memory rendering), including retained-window record idempotence, replay on reopen, tamper refusal, stale-history rejection and non-recording of refused operations. The bounded history is qualified for finite directory bytes across repeated compactions (measured at every generation-switch step), bounded resident record window, restart replay bounded by the active segment (instrumented), exact global continuation (index, clock, chain, roots, watermarks, native global count), K1 lineage continuity across compaction, a process-crash matrix over every switch step, a native segment/fault matrix, retained-window projection and legacy migration. The canonical turn is qualified for direction, atomicity, determinism, snapshot continuation, fail-closed refusal and the absence of any DSV model, using TRAINING=NONE SEMANTICS=NONE interface fixtures only.",
+      "maturity": "Integration qualified over real native libraries and a real HACF corpus (ingress, structural memory, canonical writer, evolution, structural-memory rendering), including continuity untouched by subsystem operations, explicit K1 anchor, matched restart, mismatched restart refused before K1 mutation, K1 commit with failed continuity publication kept and fail-stopped, evolution stale-authority rejection across restart, and legacy receipt-history refusal. The canonical turn is qualified for direction, atomicity, determinism, snapshot continuation, fail-closed refusal and the absence of any DSV model, using TRAINING=NONE SEMANTICS=NONE interface fixtures only.",
       "incomplete_interfaces": [
         "No qualified ECS<->DSV semantic codec map exists; canonical text generation is unavailable by design.",
         "No HACF/structure -> ECS edge is defined; Runtime.admit_context renders structural memory through the codec but nothing canonical consumes the rendering yet.",
-        "Ingress proposals are recorded but the query-local overlay itself is not persisted; recording carries its identity only.",
-        "Canonical publication is recorded after the fact; the application and promotion stages before it are driven by the caller and not recorded.",
-        "The runtime is single-process and same-process like the ECS kernel; no cross-process transport or service boundary.",
-        "Events below the retention floor exist only as compaction-checkpoint state: they cannot be listed, projected, topology-folded or used for duplicate detection; lifetime record idempotence is not provided."
+        "The query-local ingress overlay is not persisted; it lives in the returned ingress result only.",
+        "The runtime is single-process; no cross-process transport or service boundary.",
+        "No audit trail of runtime operations is kept (by design): ingress, retrieval, publication and admission results are returned, not recorded."
       ]
     }
   ],
@@ -573,12 +528,7 @@
     ],
     "network_access_in_tests": "FORBIDDEN",
     "model_weights": "NEVER_COMMITTED_NEVER_DOWNLOADED_BY_BASE",
-    "identifier_scan_exemptions": [
-      {
-        "path": "src/elpis/ECS_C/structural_authority.py",
-        "reason": "Sealed Structural R0 authority bytes, digest-pinned and byte-identical to the donor; the only match is the phrase 'TRM or learned inference' inside the payload's list of explicitly NOT authorized operations."
-      }
-    ]
+    "identifier_scan_exemptions": []
   },
   "nonclaims": [
     "Elpis is not claimed to be generally intelligent; 'geodesic intelligence' names a research direction.",
@@ -586,21 +536,18 @@
     "Mechanics qualification (tests passing) is not scientific qualification and not runtime admission of any learned model.",
     "The DSV4.1 tower in research/dsv41_tower is noncanonical donor/oracle/qualification code: its arithmetic is qualified against pinned donor behavior on a training-free fixture; it is not a trained model and not Elpis cognition.",
     "No ECS<->DSV semantic codec is qualified; Elpis does not generate text. Interface fixtures are TRAINING=NONE SEMANTICS=NONE and are never presented as cognition.",
-    "The bounded ECS_C runtime history bounds the logical bytes of its own directory under a finite policy; filesystem block/metadata overhead, power-loss behaviour beyond the stated fsync/rename ordering, and cross-process access are not claimed. Events, records and duplicate detection below the retention floor are not available; there is no lifetime replay or lifetime idempotence."
+    "Continuity is integrity-checked current authority, not authentication and not history: whoever can write its directory can replace both slots consistently; power-loss behaviour beyond the stated write/fdatasync ordering and cross-process access are not claimed; no event, receipt or audit trail of runtime operations exists."
   ],
-  "post_migration_relocations": [
+  "post_migration_relocations": [],
+  "post_migration_retirements": [
     {
-      "from": "src/elpis/ecs",
-      "to": "src/elpis/ECS_C",
-      "reason": "Post-migration taxonomy correction: the existing continuity/history Entity-Component/System kernel was renamed ECS_C. Persisted ECS protocol identities remain unchanged."
+      "path": "src/elpis/ecs",
+      "reason": "The beta event-history kernel (the retired continuity-history kernel) was abolished: Elpis has one ECS (elpis.ECS) and a minimal continuity component (docs/CONTINUITY.md records the consumer census). Its Structural R0 grammar had no canonical consumer and was removed with it; migration provenance and git history keep both."
     },
     {
-      "from": "tests/ecs",
-      "to": "tests/ECS_C",
-      "reason": "Test surface follows the post-migration ECS_C package rename; historical migration provenance remains unchanged."
-    }
-  ],
-  "post_migration_retirements": [
+      "path": "tests/ecs",
+      "reason": "Qualification of the abolished event-history kernel; deleted with it (docs/CONTINUITY.md)."
+    },
     {
       "path": "tests/evolution/_history.py",
       "reason": "The evolution path gate no longer binds an event-history projection (docs/CONTINUITY.md): the helper that built one from the retired history kernel has no surviving purpose. Its migration provenance stays in migration/BETA_MIGRATION.json."

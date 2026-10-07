@@ -115,7 +115,7 @@ def test_the_canonical_turn_substrate_is_native_k1_with_no_model_framework():
     names = M.imports_of(REPO, TURN)
     assert any(n.startswith("elpis.ECS.k1") for n in names), names
     assert not [n for n in names if n.startswith("elpis.ECS.native")], names   # not the Runtime R1 Executor
-    for root in ("numpy", "torch", "elpis.inference", "research", "elpis.ECS_C"):
+    for root in ("numpy", "torch", "elpis.inference", "research", "elpis.continuity"):
         assert not [n for n in names if n == root or n.startswith(root + ".")], (root, names)
     code = "\n".join(line.split("#", 1)[0] for line in TURN.read_text(encoding="utf-8").splitlines())
     for forbidden in (r"\bmath\.(exp|tanh|sqrt)", r"\*\*\s*3", r"\bs3_vjp\b", r"\bjacobian\b", r"\bSigma\b ="):

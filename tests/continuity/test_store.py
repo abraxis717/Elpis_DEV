@@ -319,7 +319,7 @@ def test_relative_path_and_bad_digests_are_refused(tmp_path):
     with ContinuityStore(tmp_path / "c") as store:
         assert _code(lambda: store.anchor_cognition(b"short")) == "CONTINUITY_INVALID"
         assert _code(lambda: store.commit_cognition_transition(_d(0), "x" * 32)) == "CONTINUITY_INVALID"
-    assert _code(ContinuityStore(tmp_path / "c").snapshot) == "CONTINUITY_CLOSED"
+    assert _code(ContinuityStore(tmp_path / "c").snapshot) == "CONTINUITY_UNINITIALIZED"
 
 
 def test_the_component_has_no_history_or_ecs_surface():

@@ -182,8 +182,8 @@ def test_system_authority_encodes_the_mission():
     assert tuple(subs["inference"]["canonical_modules"]) == M.CODEC_MODULES
     assert subs["ECS"]["depends_on"] == ["substrate"] and not subs["ECS"].get("uses_numpy")
     assert {"ECS", "continuity", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
-    assert "ECS_C" not in subs["runtime"]["depends_on"] and not subs["continuity"]["depends_on"]
-    assert "ECS" not in subs["inference"]["depends_on"] and "ECS" not in subs["ECS_C"]["depends_on"]
+    assert not subs["continuity"]["depends_on"] and "continuity" not in subs["ECS"]["depends_on"]
+    assert "ECS" not in subs["inference"]["depends_on"] and "continuity" not in subs["inference"]["depends_on"]
     assert not [t for t in subs["inference"]["native_targets"] if "dsv41" in t]
     assert set(system["research"]["native_targets"]) == {"elpis_dsv41_native", "elpis_dsv41_clock",
                                                          "elpis_dsv41_materializer"}

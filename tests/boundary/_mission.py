@@ -177,7 +177,7 @@ def codec_independence(root: Path) -> list[str]:
     out = []
     for path in _python(root, "inference"):
         for name in imports_of(root, path):
-            for lane in ("elpis.ECS", "elpis.ECS_C", "elpis.runtime", "research"):
+            for lane in ("elpis.ECS", "elpis.continuity", "elpis.runtime", "research"):
                 if _under(name, lane):
                     out.append(f"{path.relative_to(root)}: imports {name}")
         if re.search(r"\bWorldState\b|\becsg_", path.read_text(encoding="utf-8")):
@@ -185,10 +185,10 @@ def codec_independence(root: Path) -> list[str]:
     return out
 
 
-def ecs_c_separation(root: Path) -> list[str]:
-    """(6) Continuity history (ECS_C) and active geometric state (ECS) do not depend on each other."""
+def ecs_continuity_separation(root: Path) -> list[str]:
+    """(6) The one ECS and continuity (not an ECS) do not depend on each other; the runtime composes both."""
     out = []
-    for package, other in (("ECS_C", "elpis.ECS"), ("ECS", "elpis.ECS_C")):
+    for package, other in (("continuity", "elpis.ECS"), ("ECS", "elpis.continuity")):
         for path in _python(root, package):
             out += [f"{path.relative_to(root)}: imports {n}" for n in imports_of(root, path) if _under(n, other)]
     return out
@@ -228,7 +228,7 @@ STATIC_CHECKS = {
     "canonical_tower": canonical_tower,
     "ecs_independence": ecs_independence,
     "codec_independence": codec_independence,
-    "ecs_c_separation": ecs_c_separation,
+    "ecs_continuity_separation": ecs_continuity_separation,
     "fms_genericity": fms_genericity,
     "ecsg_kernel_unchanged": ecsg_kernel_unchanged,
 }

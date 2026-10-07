@@ -67,35 +67,24 @@ def test_historical_grid81_canonical_fixture_is_byte_identical(donor):
 
 
 _PROBE = r"""
-import hashlib, json, sys, tempfile
+import hashlib, json, sys
 side = sys.argv[1]
 d = lambda s: hashlib.sha256(s.encode()).hexdigest()
 if side == "donor":
     from elpis_evolution_path_gate import EvolutionPathAssertion, HarnessManifest, content_map_digest
-    from elpis_ecs.kernel import Kernel
     from elpis.canonical_identity import content_digest
 else:
     # v0 is a retired persisted assertion schema; its identity stays computable.
     from elpis.evolution import EvolutionPathAssertionV0 as EvolutionPathAssertion
     from elpis.evolution import HarnessManifest, content_map_digest
-    from elpis.ECS_C.kernel import Kernel
     from elpis.identity import content_digest
 a = EvolutionPathAssertion("ep", d("s"), 2, d("h"), d("p"), d("c"), d("y"), ("x/y",), 1, 2,
                            d("r"), d("e"), d("pj"), d("he"), d("root"))
 m = HarnessManifest(1, d("parent"), d("cand"), d("path"), d("edit"),
                     (("a.txt", d("a")), ("b/c.txt", d("b"))), d("cfg"), d("tool"), d("pol"), d("build"))
-with tempfile.TemporaryDirectory() as tmp:
-    with Kernel(tmp).open() as k:
-        x = k.found_entity("population"); y = k.found_entity("environment")
-        k.run_until_quiescent()
-        k.entity_port(y).propose(x, b"observation")
-        k.run_until_quiescent()
-        root = k.state_root_digest()
-        heads = [e["event_digest"] for e in k.events()]
 print(json.dumps({"assertion": a.digest, "manifest": m.digest,
                   "content_map": content_map_digest((("a", d("a")),)),
-                  "identity": content_digest("elpis.parity.v1", {"k": [1, "x", None]}),
-                  "ecs_state_root": root, "ecs_events": heads}, sort_keys=True))
+                  "identity": content_digest("elpis.parity.v1", {"k": [1, "x", None]})}, sort_keys=True))
 """
 
 
@@ -108,6 +97,9 @@ def _probe(side: str, paths: list[Path]) -> dict:
 
 
 def test_persisted_identities_match_the_donor(donor):
+    # The beta event kernel's state-root parity was dropped with the kernel itself (docs/CONTINUITY.md):
+    # continuity is not an event kernel and persists no donor-shaped identity.
+    # (The donor path list keeps the donor's own ECS runtime because its gate module may import it.)
     theirs = _probe("donor", [donor / "components/EvolutionPathGate/src", donor / "ECS/runtime", donor / "src"])
     ours = _probe("ours", [REPO / "src"])
     assert ours == theirs
