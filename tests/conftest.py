@@ -89,6 +89,34 @@ def require_native_library(stem: str) -> Path:
     return found
 
 
+def require_continuity_library(testing: bool = False) -> Path:
+    """The Rust continuity library at its exact build path (native/continuity).
+
+    Located by path, never by search: the cargo target directories inside the build tree
+    also contain files named libelpis_continuity.so (including the testing build).
+    """
+    name = "libelpis_continuity_testing.so" if testing else "libelpis_continuity.so"
+    path = native_build_dir() / "native" / "continuity" / name
+    if not path.is_file():
+        message = f"{name} not built under {native_build_dir()}; build with `cmake --build build`"
+        if native_required():
+            pytest.fail(message)
+        pytest.skip(message + " (never an implicit PASS)")
+    return path
+
+
+@pytest.fixture(scope="session")
+def continuity_library() -> Path:
+    """Production continuity library path (no test hooks)."""
+    return require_continuity_library()
+
+
+@pytest.fixture(scope="session")
+def continuity_testing_library() -> Path:
+    """Testing continuity library path: the same authority plus fault injection and I/O counters."""
+    return require_continuity_library(testing=True)
+
+
 @pytest.fixture
 def native_workspace(tmp_path_factory):
     """A private workspace root for descriptor-capability tests.

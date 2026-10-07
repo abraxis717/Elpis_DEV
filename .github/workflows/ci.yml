@@ -217,6 +217,25 @@ jobs:
           tests/boundary/test_k1_runtime.py
           tests/boundary/test_mission.py
 
+  continuity:
+    # The Rust continuity authority (native/continuity): format, lint and its bounded deterministic suite.
+    # Every native and Python job also builds it through CMake and runs `ctest -L continuity`.
+    name: Continuity (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain
+        run: |
+          rustup component add rustfmt clippy
+          cargo --version && rustc --version
+      - name: Format, lint and test (no crates; bounded)
+        working-directory: native/continuity
+        run: |
+          cargo fmt --check
+          timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
+          timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
+          timeout 600 cargo test --offline --locked --release
+
   native:
     name: Native (${{ matrix.compiler }}, ${{ matrix.build }})
     runs-on: ubuntu-latest

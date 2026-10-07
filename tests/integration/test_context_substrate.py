@@ -147,7 +147,9 @@ TRAPPED = [
     (edges, "from_regex_hacf"), (edges, "object_claims"), (edges, "from_retrieval_bundle"),
     (composition, "from_regex_hacf"), (composition, "object_claims"), (composition, "resolve_chunks"),
     (composition, "admit_context"), (objects_module, "resolve_chunks"), (objects_module, "_read_document"),
-    (admission_module, "admit_context"), (ContinuityStore, "_publish"), (boundary.RootCapability, "open_file"),
+    (admission_module, "admit_context"), (ContinuityStore, "anchor_cognition"),
+    (ContinuityStore, "commit_cognition_transition"), (ContinuityStore, "reserve_evolution_assertion"),
+    (ContinuityStore, "commit_evolution_transition"), (boundary.RootCapability, "open_file"),
     (elpis.identity, "content_digest"), (digests, "content_digest"), (digests, "identity"), (digests, "raw_digest"),
 ]
 
@@ -177,7 +179,7 @@ def test_once_begun_the_token_loop_cannot_reach_any_slow_lane(runtime, ingress_l
 
 
 def test_resident_model_state_stays_bounded_as_hacf_grows(retrieval_library, ingress_library, model,
-                                                          tmp_path_factory):
+                                                          tmp_path_factory, continuity_library):
     engine, resident = model
     shapes, peaks, admitted, sizes = set(), [], [], []
     for extra in (0, 1, 2):
@@ -185,7 +187,7 @@ def test_resident_model_state_stays_bounded_as_hacf_grows(retrieval_library, ing
         corpus_root, manifest = build(retrieval_library, root, extra)
         chunks = json.loads(manifest)["chunk_count"]
         sizes.append(sum(d["size_bytes"] for d in json.loads(manifest)["documents"]))
-        with Runtime(RuntimeConfig(root / "continuity")) as runtime:
+        with Runtime(RuntimeConfig(root / "continuity", continuity_library)) as runtime:
             admission = prepare(runtime, ingress_library, corpus_root, manifest, engine).admission
             state = engine.initial(CONTEXT)
             sequence = engine.begin(state, PrincipalRequest("r", (1,), 20), admission,
@@ -216,7 +218,8 @@ def test_preparation_record_carries_no_model_state():
     assert {f.name for f in fields(ContextPreparation)} == {"admission", "ingress"}
 
 
-def test_tampered_blob_or_wrong_manifest_refuses_admission(ingress_library, substrate, model, tmp_path):
+def test_tampered_blob_or_wrong_manifest_refuses_admission(ingress_library, substrate, model, tmp_path,
+                                                           continuity_library):
     corpus_root, manifest = substrate
     engine, _ = model
     copy = tmp_path / "corpus"
@@ -225,7 +228,7 @@ def test_tampered_blob_or_wrong_manifest_refuses_admission(ingress_library, subs
         data = bytearray(blob.read_bytes())
         data[-1] ^= 1
         blob.write_bytes(bytes(data))
-    with Runtime(RuntimeConfig(tmp_path / "continuity")) as runtime:
+    with Runtime(RuntimeConfig(tmp_path / "continuity", continuity_library)) as runtime:
         with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
             prepare(runtime, ingress_library, copy, manifest, engine)
         with pytest.raises(ObjectResolutionError, match="INTEGRITY"):

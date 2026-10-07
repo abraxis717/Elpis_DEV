@@ -134,23 +134,30 @@
     {
       "id": "continuity",
       "status": "OPERATIONAL",
-      "purpose": "Continuity records the current durable lineage/authority needed for safe restart: the expected K1 retained-state identity of the ECS lineage (explicitly anchored, advanced only by committed turns) and the current head of admitted evolution path transitions plus one pending assertion identity. One fixed-size 176-byte record in a two-slot crash-safe register (docs/CONTINUITY.md). It is not an ECS, not context memory, not an event history, not topology, not a message bus and not an audit ledger.",
+      "purpose": "Continuity records the current durable lineage/authority needed for safe restart: the expected K1 retained-state identity of the ECS lineage (explicitly anchored, advanced only by committed turns) and the current head of admitted evolution path transitions plus one pending assertion identity. One fixed-size 176-byte record in a two-slot crash-safe register (docs/CONTINUITY.md). The authority is implemented in Rust (native/continuity) behind a stable C ABI (include/elpis/continuity.h); elpis.continuity is a thin Python adapter over that ABI and owns no format, transition law or digest. It is not an ECS, not context memory, not an event history, not topology, not a message bus and not an audit ledger.",
       "python_package": "elpis.continuity",
       "implementation_roots": [
+        "native/continuity",
         "src/elpis/continuity"
       ],
       "test_roots": [
+        "native/continuity/src/tests.rs",
+        "native/continuity/tests",
         "tests/continuity"
       ],
-      "native_targets": [],
+      "native_targets": [
+        "elpis_continuity"
+      ],
       "depends_on": [],
-      "mutation_authority": "ContinuityStore.anchor_cognition (once, explicit), commit_cognition_transition (only from the current expected K1 identity), reserve_evolution_assertion (idle to pending before execution) and commit_evolution_transition (only from the exact current pending authority to the next idle revision). Each publishes one complete next record into the non-current slot and fdatasyncs it; nothing else writes the directory.",
+      "mutation_authority": "The Rust store (elpis_continuity_*): anchor_cognition (once, explicit), commit_cognition (only from the current expected K1 identity), reserve_evolution (idle to pending before execution) and finalize_evolution (only from the exact current pending authority to the next idle revision). Each publishes one complete next record into the non-current slot and fdatasyncs it; nothing else writes the directory.",
       "runtime_participation": "The runtime composes it: one store per Runtime. The canonical K1 turn publishes the new expected K1 identity after the one native K1 commit; evolution validates, durably reserves its assertion, executes once, and finalizes pending authority.",
       "persistence": "Exactly two fixed 176-byte slot files; the valid record with the higher generation is the authority. Constant storage (352 bytes), constant restart work (two reads) and constant resident memory. No log, no replay, no compaction, no retained history.",
       "protocol_identifiers_retained": [
         "New: elpis.continuity.register.v2 (record checksum domain, magic ELPCONT\\x02 v2), elpis.continuity.evolution-authority.v2 (evolution authority digest domain)."
       ],
-      "external_dependencies": [],
+      "external_dependencies": [
+        "Build only: a Rust toolchain (cargo, rustc >= 1.89). No crates: the standard library only."
+      ],
       "model_dependency": "NONE",
       "uses_numpy": false,
       "maturity": "Qualified for fixed storage, fixed resident state, fixed restart work, process death at every publication and initialization step, torn writes, refused and uncertain publication, corruption, legacy-layout refusal and exclusive ownership.",

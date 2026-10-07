@@ -36,8 +36,8 @@ def test_same_input_is_deterministic(runtime, ingress):
     assert again.proposal_digest == first.proposal_digest
 
 
-def test_reopen_keeps_continuity_and_tampered_continuity_is_refused(tmp_path, ingress):
-    config = RuntimeConfig(tmp_path / "continuity")
+def test_reopen_keeps_continuity_and_tampered_continuity_is_refused(tmp_path, ingress, continuity_library):
+    config = RuntimeConfig(tmp_path / "continuity", continuity_library)
     with Runtime(config) as rt:
         rt.run_ingress(ingress, POSITIVE)
         before = rt.continuity.snapshot()
@@ -53,10 +53,10 @@ def test_reopen_keeps_continuity_and_tampered_continuity_is_refused(tmp_path, in
     assert info.value.code == "CONTINUITY_CORRUPT"
 
 
-def test_retired_receipt_history_directory_is_refused(tmp_path):
+def test_retired_receipt_history_directory_is_refused(tmp_path, continuity_library):
     path = tmp_path / "legacy"
     path.mkdir()
     (path / "MANIFEST").write_bytes(b"retired receipt-history layout")
     with pytest.raises(CompositionError) as info:
-        Runtime(RuntimeConfig(path)).open()
+        Runtime(RuntimeConfig(path, continuity_library)).open()
     assert info.value.code == "CONTINUITY_LEGACY_STORAGE"

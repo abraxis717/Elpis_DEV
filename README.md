@@ -29,7 +29,7 @@ the head commit is red.
 |---|---|
 | `src/elpis/substrate`, `native/substrate` | resource authority, residency and materialization (FMS, PAL, file assets, execution port) |
 | `src/elpis/ECS`, `native/ECS` | the one canonical ECS: cognitive/dynamical substrate (state `W`, epoch, `H`, `a`; `S3` observable; recurrence, learning, consolidation, readout; native K1 transactions, snapshots, FMS residency) |
-| `src/elpis/continuity` | minimal durable runtime authority: a fixed-size two-slot register of the committed K1 state digest and the evolution authority ([spec](docs/CONTINUITY.md)) |
+| `native/continuity`, `src/elpis/continuity` | minimal durable runtime authority in Rust behind a stable C ABI (`include/elpis/continuity.h`): a fixed-size two-slot register of the committed K1 state digest and the evolution authority ([spec](docs/CONTINUITY.md)); `elpis.continuity` is a thin Python adapter |
 | `src/elpis/structure`, `native/structure` | HACF structural memory, semantic core, retrieval, Grid81 representation |
 | `src/elpis/pipeline`, `native/pipeline` | bounded Regex → HACF ingress; the canonical Grid81 writer path |
 | `src/elpis/evolution` | deterministic heredity, selection, gated promotion |
@@ -40,8 +40,10 @@ the head commit is red.
 
 ## Build and test
 
-The native build needs CMake, a C11/C++17 compiler, pkg-config, SQLite 3 and
-PCRE2. On Manjaro: `sudo pacman -S --needed base-devel cmake pkgconf sqlite pcre2`.
+The native build needs CMake, a C11/C++17 compiler, pkg-config, SQLite 3,
+PCRE2 and a Rust toolchain (cargo and rustc >= 1.89, for `native/continuity`; no
+crates are downloaded). On Manjaro:
+`sudo pacman -S --needed base-devel cmake pkgconf sqlite pcre2 rust`.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -50,6 +52,13 @@ ctest --test-dir build --output-on-failure
 
 python -m pip install ".[test]"
 ELPIS_NATIVE_BUILD=$PWD/build ELPIS_REQUIRE_NATIVE=1 python -m pytest
+```
+
+Continuity alone, bounded and with live output (Rust, C ABI, Python adapter and
+the runtime paths that publish to it):
+
+```bash
+native/continuity/qualify.sh build
 ```
 
 Base installation has no mandatory Python runtime dependencies and never

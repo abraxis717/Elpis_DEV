@@ -6,11 +6,21 @@ import hashlib
 
 import pytest
 
-from elpis.continuity import store as continuity_store
+from elpis.continuity import ContinuityProcessDeath
 from elpis.evolution import EvolutionAttempt, EvolutionPathAssertion, EvolutionPathGate, GateExecuted, GateRejected
 from elpis.runtime import CompositionError, Runtime, RuntimeConfig
 
+from ..conftest import require_continuity_library
 from .conftest import POSITIVE
+
+SLOTS = ("continuity.a", "continuity.b")
+# Testing-library fault actions (native/continuity, elpis_continuity_testing_fault).
+DIE, WRITE_FAIL, TORN_FAIL, SYNC_FAIL_LOST, SYNC_FAIL_DURABLE = 1, 2, 3, 5, 6
+STEPS = {"publish.begin": 0, "publish.written": 1, "publish.synced": 2}
+
+
+def config_at(tmp_path, testing=False):
+    return RuntimeConfig(tmp_path / "continuity", require_continuity_library(testing=testing))
 
 
 def d(label: str) -> str:
@@ -86,7 +96,7 @@ def test_attempts_advance_the_durable_evolution_authority(runtime, ingress):
 
 
 def test_evolution_authority_survives_restart(tmp_path):
-    config = RuntimeConfig(tmp_path / "continuity")
+    config = config_at(tmp_path)
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
     with Runtime(config) as rt:
         first = rt.evolve(GATE, assertion=assertion(episode, rt.evolution_authority(), "0" * 64),
@@ -100,23 +110,18 @@ def test_evolution_authority_survives_restart(tmp_path):
         assert isinstance(rejected, GateRejected)
 
 
-def test_reservation_refusal_executes_nothing_and_fail_stops_evolution(tmp_path, monkeypatch):
-    config = RuntimeConfig(tmp_path / "continuity")
+def test_reservation_refusal_executes_nothing_and_fail_stops_evolution(tmp_path):
+    config = config_at(tmp_path, testing=True)
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
     with Runtime(config) as rt:
         before = rt.evolution_authority()
         calls = []
-
-        def fail(fd, data, offset):
-            raise OSError(28, "ENOSPC")
-
-        monkeypatch.setattr(continuity_store.os, "pwrite", fail)
+        rt.continuity.testing_fault(1, WRITE_FAIL)
         with pytest.raises(CompositionError) as info:
             rt.evolve(GATE, assertion=assertion(episode, before, "0" * 64), state=episode,
                       advance=lambda **kw: calls.append(kw), advance_kwargs={})
         assert calls == []
         assert info.value.code == "CONTINUITY_PUBLICATION_REFUSED"
-        monkeypatch.undo()
         with pytest.raises(CompositionError) as info:
             rt.evolution_authority()
         assert info.value.code == "CONTINUITY_PUBLICATION_REFUSED"
@@ -125,60 +130,36 @@ def test_reservation_refusal_executes_nothing_and_fail_stops_evolution(tmp_path,
 
 @pytest.mark.parametrize("phase", ["reservation", "finalization"])
 @pytest.mark.parametrize("failure", ["refused", "torn", "uncertain-lost", "uncertain-durable"])
-def test_publication_failure_never_reexecutes(tmp_path, monkeypatch, phase, failure):
+def test_publication_failure_never_reexecutes(tmp_path, phase, failure):
     """Exercise both outcomes of uncertain publication, including lost dirty bytes."""
-    config = RuntimeConfig(tmp_path / "continuity")
+    config = config_at(tmp_path, testing=True)
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
     calls = 0
-    receipt = None
+    receipts = []
     with Runtime(config) as rt:
         initial = rt.continuity.snapshot().evolution
         a = assertion(episode, rt.evolution_authority(), initial.head)
-        real_write = continuity_store.os.pwrite
-        real_sync = continuity_store._sync_fd
-        writes = 0
-        target = None
-        old_bytes = None
-
-        def write(fd, data, offset):
-            nonlocal writes, target, old_bytes, receipt
-            writes += 1
-            if writes == (1 if phase == "reservation" else 2):
-                target = fd
-                old_bytes = continuity_store.os.pread(fd, len(data), 0)
-                from elpis.continuity.record import decode_record
-                candidate = decode_record(bytes(data))
-                if phase == "finalization":
-                    receipt = candidate.evolution.head
-                if failure == "refused":
-                    raise OSError(28, "ENOSPC")
-                if failure == "torn":
-                    real_write(fd, bytes(data[:80]), offset)
-                    raise OSError(5, "partial write")
-            return real_write(fd, data, offset)
-
-        def sync(fd):
-            if fd == target and failure.startswith("uncertain"):
-                if failure == "uncertain-lost":
-                    # Model a power loss dropping the unsynced target bytes.
-                    real_write(fd, old_bytes, 0)
-                real_sync(fd)
-                raise OSError(5, "sync outcome unknown")
-            return real_sync(fd)
+        library = rt.continuity.library
 
         def counted_advance(**kw):
             nonlocal calls
             # This assertion executes only with the exact reservation durable.
             snap = rt.continuity.snapshot()
             assert snap.evolution.pending_assertion == a.digest
-            from elpis.continuity.record import decode_record
-            assert any(decode_record((config.continuity_dir / name).read_bytes()) == snap
-                       for name in continuity_store.SLOT_NAMES)
+            assert any(library.decode_record((config.continuity_dir / name).read_bytes()) == snap for name in SLOTS)
             calls += 1
             return advance(**kw, label="1")
 
-        monkeypatch.setattr(continuity_store.os, "pwrite", write)
-        monkeypatch.setattr(continuity_store, "_sync_fd", sync)
+        finalize = rt.continuity.commit_evolution_transition
+
+        def captured_finalize(expected, receipt_digest):
+            receipts.append(receipt_digest)  # the executed attempt's receipt, as the gate produced it
+            return finalize(expected, receipt_digest)
+
+        rt.continuity.commit_evolution_transition = captured_finalize
+        action, arg = {"refused": (WRITE_FAIL, 0), "torn": (TORN_FAIL, 80), "uncertain-lost": (SYNC_FAIL_LOST, 0),
+                       "uncertain-durable": (SYNC_FAIL_DURABLE, 0)}[failure]
+        rt.continuity.testing_fault(1 if phase == "reservation" else 2, action, arg)
         with pytest.raises(CompositionError) as info:
             rt.evolve(GATE, assertion=a, state=episode, advance=counted_advance, advance_kwargs={})
         code = "CONTINUITY_PUBLICATION_UNCERTAIN" if failure.startswith("uncertain") else "CONTINUITY_PUBLICATION_REFUSED"
@@ -186,7 +167,6 @@ def test_publication_failure_never_reexecutes(tmp_path, monkeypatch, phase, fail
         assert calls == (0 if phase == "reservation" else 1)
         with pytest.raises(CompositionError, match=code):
             rt.evolve(GATE, assertion=a, state=episode, advance=counted_advance, advance_kwargs={})
-        monkeypatch.undo()
 
     expected_pending = ((phase == "reservation" and failure == "uncertain-durable")
                         or (phase == "finalization" and failure != "uncertain-durable"))
@@ -202,7 +182,7 @@ def test_publication_failure_never_reexecutes(tmp_path, monkeypatch, phase, fail
                     rt.evolution_authority()
             elif phase == "finalization":
                 assert authority.pending_assertion is None
-                assert authority.revision == initial.revision + 1 and authority.head == receipt
+                assert authority.revision == initial.revision + 1 and authority.head == receipts[0]
                 result = rt.evolve(GATE, assertion=a, state=episode,
                                    advance=counted_advance, advance_kwargs={})
                 assert isinstance(result, GateRejected) and result.reason == "STALE_EVOLUTION_AUTHORITY"
@@ -213,7 +193,7 @@ def test_publication_failure_never_reexecutes(tmp_path, monkeypatch, phase, fail
 
 @pytest.mark.parametrize("bad_result", [False, True])
 def test_advance_exception_or_invalid_result_preserves_pending(tmp_path, bad_result):
-    config = RuntimeConfig(tmp_path / "continuity")
+    config = config_at(tmp_path)
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
     calls = 0
 
@@ -239,7 +219,7 @@ def test_advance_exception_or_invalid_result_preserves_pending(tmp_path, bad_res
 
 def test_explicit_reconciliation_finalizes_once_without_execution(tmp_path, monkeypatch):
     from elpis.continuity import ContinuityError
-    config = RuntimeConfig(tmp_path / "continuity")
+    config = config_at(tmp_path)
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
     with Runtime(config) as rt:
         a = assertion(episode, rt.evolution_authority(), "0" * 64)
@@ -271,7 +251,7 @@ def test_explicit_reconciliation_finalizes_once_without_execution(tmp_path, monk
 
 
 def test_forged_predecessor_refused_before_reservation_or_execution(tmp_path, monkeypatch):
-    with Runtime(RuntimeConfig(tmp_path / "continuity")) as rt:
+    with Runtime(config_at(tmp_path)) as rt:
         episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
         # Test genesis and a nonzero authoritative head.
         for n in range(2):
@@ -290,36 +270,24 @@ def test_forged_predecessor_refused_before_reservation_or_execution(tmp_path, mo
 
 @pytest.mark.parametrize("phase", ["reservation", "finalization"])
 @pytest.mark.parametrize("step", ["publish.begin", "publish.written", "publish.synced"])
-def test_process_death_during_evolution_publication(tmp_path, monkeypatch, phase, step):
-    class Death(BaseException):
-        pass
-
-    config = RuntimeConfig(tmp_path / "continuity")
+def test_process_death_during_evolution_publication(tmp_path, phase, step):
+    config = config_at(tmp_path, testing=True)
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
     calls = 0
     rt = Runtime(config).open()
     a = assertion(episode, rt.evolution_authority(), "0" * 64)
-    publications = 0
-
-    def die(name):
-        nonlocal publications
-        if name == "publish.begin":
-            publications += 1
-        if publications == (1 if phase == "reservation" else 2) and name == step:
-            raise Death()
 
     def counted(**kw):
         nonlocal calls
         calls += 1
         return advance(**kw, label="1")
 
-    monkeypatch.setattr(continuity_store, "_crash_point", die)
+    rt.continuity.testing_fault(1 if phase == "reservation" else 2, DIE, STEPS[step])
     try:
-        with pytest.raises(Death):
+        with pytest.raises(ContinuityProcessDeath):
             rt.evolve(GATE, assertion=a, state=episode, advance=counted, advance_kwargs={})
     finally:
         rt.close()
-    monkeypatch.undo()
     assert calls == (0 if phase == "reservation" else 1)
     for _ in range(3):
         with Runtime(config) as rt:

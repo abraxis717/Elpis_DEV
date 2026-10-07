@@ -42,7 +42,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from elpis.continuity import ContinuityError, ContinuitySnapshot, ContinuityStore
+from elpis.continuity import ContinuityError, ContinuityLibrary, ContinuitySnapshot, ContinuityStore
 from elpis.ECS.k1 import K1Error
 from elpis.evolution.path_gate import (
     EvolutionAuthorityBinding,
@@ -82,13 +82,19 @@ class ContextPreparation:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """The runtime's continuity directory (an explicit absolute path)."""
+    """The runtime's continuity directory and the continuity library (explicit absolute paths).
+
+    ``continuity_library`` is the built ``libelpis_continuity.so`` (native/continuity), loaded by
+    explicit path like every Elpis native library.
+    """
 
     continuity_dir: Path
+    continuity_library: Path
 
     def __post_init__(self):
-        if not isinstance(self.continuity_dir, Path) or not self.continuity_dir.is_absolute():
-            raise CompositionError("CONTINUITY_PATH", "continuity_dir must be an absolute Path")
+        for value in (self.continuity_dir, self.continuity_library):
+            if not isinstance(value, Path) or not value.is_absolute():
+                raise CompositionError("CONTINUITY_PATH", "continuity paths must be absolute Paths")
 
 
 def _k1_identity(substrate) -> bytes:
@@ -108,7 +114,10 @@ class Runtime:
         if type(config) is not RuntimeConfig:
             raise TypeError("config must be a RuntimeConfig")
         self.config = config
-        self.continuity = ContinuityStore(config.continuity_dir)
+        try:
+            self.continuity = ContinuityStore(ContinuityLibrary(config.continuity_library), config.continuity_dir)
+        except ContinuityError as exc:
+            raise CompositionError(exc.code, str(exc)) from exc
         # A continuity publication that did not become certain after an ECS
         # commit (or a lineage mismatch) fail-stops lineage-dependent work
         # until the runtime is reopened and reconciled.
