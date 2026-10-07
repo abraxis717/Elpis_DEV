@@ -48,7 +48,7 @@ def _imports(path):
 
 
 @pending("core")
-def test_cognitive_core_lives_in_ecs_g_and_imports_only_ecs_g_and_stdlib():
+def test_cognitive_core_lives_in_the_ecs_and_imports_only_the_ecs_and_stdlib():
     assert CORE.is_file()
     stdlib = set(sys.stdlib_module_names)
     for name in _imports(CORE):
@@ -77,6 +77,6 @@ def test_cognition_qualification_lab_uses_no_other_model():
         assert not FORBIDDEN_NAMES.search(code), (path.name, FORBIDDEN_NAMES.search(code).group(0))
 
 
-def test_ecs_g_package_stays_dependency_free():
+def test_ecs_package_stays_dependency_free():
     """ECS (binding and any cognition) imports nothing beyond itself and the standard library."""
     assert not M.ecs_independence(REPO)

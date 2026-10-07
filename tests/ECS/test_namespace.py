@@ -1,10 +1,10 @@
-"""Materialized ECS namespace carries no runtime authority yet."""
+"""Importing the ECS package is inert: it loads no numpy and exposes no implicit kernel or step."""
 
 import importlib
 import sys
 
 
-def test_ecs_g_namespace_is_materialized_and_inert():
+def test_ecs_namespace_import_is_inert():
     before = set(sys.modules)
     module = importlib.import_module("elpis.ECS")
     after = set(sys.modules)

@@ -133,10 +133,10 @@ def test_continuity_surface_is_current_authority_only():
 
 # -- the residue scan ----------------------------------------------------------------------------------
 
-# A retired subsystem token: ECS_C / ECS_G / ecsc / ecsg / ECSC / ECSG as a word or identifier part. It is not part
+# A retired subsystem token: ECS_C / ECS_G / ecs_c / ecs_g / ecsc / ecsg / ECSC / ECSG as a word or identifier part. It is not part
 # of a longer word (``ECS_CODEC_UNQUALIFIED`` and ``ECSCodecMap`` are other names) except as a CamelCase prefix
 # (``ECSGLibrary``).
-RETIRED_TOKEN = re.compile(r"(?<![A-Za-z0-9])(?:ECS_[CG]|ecs[cg]|ECS[CG])(?:(?![A-Za-z0-9])|(?=[A-Z][a-z]))")
+RETIRED_TOKEN = re.compile(r"(?<![A-Za-z0-9])(?:ECS_[CG]|ecs_[cg]|ecs[cg]|ECS[CG])(?:(?![A-Za-z0-9])|(?=[A-Z][a-z]))")
 
 # The retained, qualified native ECS ABI and persisted protocol identifiers (docs/ARCHITECTURE.md, ECS section;
 # ELPIS_SYSTEM.json ``protocol_identifiers_retained``). These are identifier *forms*; they are accepted only inside
@@ -229,6 +229,7 @@ NATIVE_ABI_FILES = {
     "tests/boundary/test_k1_state_digest.py": _ABI_TEST,
     "tests/boundary/test_mutable_fms.py": _ABI_TEST,
     "tests/integration/test_codec_ecs_turn.py": _ABI_TEST,
+    "tests/integration/test_runtime_hot_path.py": _ABI_TEST,
 }
 
 

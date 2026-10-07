@@ -82,7 +82,7 @@ def test_closed_state_is_refused(api):
         state.s3()
 
 
-def test_binding_imports_no_numpy_inference_runtime_or_ecs_c():
+def test_binding_imports_no_numpy_inference_runtime_or_continuity():
     probe = ("import json, sys; import elpis.ECS.native; "
              "print(json.dumps(sorted(m for m in sys.modules if m.startswith(('numpy', 'elpis')))))")
     out = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, check=True,

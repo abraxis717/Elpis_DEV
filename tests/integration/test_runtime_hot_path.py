@@ -48,8 +48,8 @@ class _CountingOS:
         return call
 
 
-_RETIRED_MODULES = ("elpis.ECS_C", "elpis.ECS_G", "elpis.runtime.history", "elpis.runtime.native_history",
-                    "elpis.runtime.continuity")
+# The retired receipt-history modules (the retired packages themselves are absent: tests/boundary/test_one_ecs.py).
+_RETIRED_MODULES = ("elpis.runtime.history", "elpis.runtime.native_history", "elpis.runtime.continuity")
 
 
 @pytest.mark.parametrize("experiences,steps", [(1, 1), (8, 60)])
