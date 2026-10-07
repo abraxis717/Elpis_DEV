@@ -39,10 +39,10 @@ def test_scientific_authority_job_runs_the_evidence_suites_in_a_declared_environ
     block = _jobs()["authority"]
     assert "name: Scientific authority" in block
     for suite in ("tests/research/ecs_cognition_r0", "tests/research/ecs_retention_r0",
-                  "tests/research/ecs_runtime_r1", "tests/ECS_G"):
+                  "tests/research/ecs_runtime_r1", "tests/ECS"):
         assert suite in block, suite
     assert '"numpy==1.26.4"' in block and 'OPENBLAS_NUM_THREADS: "1"' in block
-    assert re.search(r'ctest .*-R "\^ECS_G', block), "native executor/reference tests not run"
+    assert re.search(r'ctest .*-R "\^ECS', block), "native executor/reference tests not run"
 
 
 def test_policy_states_the_merge_rules():

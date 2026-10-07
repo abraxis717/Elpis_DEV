@@ -1,4 +1,4 @@
-"""The ECS_G Python binding exposes exactly the qualified native state surface."""
+"""The ECS Python binding exposes exactly the qualified native state surface."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import sys
 import numpy as np
 import pytest
 
-from elpis.ECS_G.native import ECSGError, ECSGLibrary, WorldState
+from elpis.ECS.native import ECSGError, ECSGLibrary, WorldState
 
 from ._math_oracle import gd_step, project_s3
 from .test_math_r0 import REPO, _library_path
@@ -83,13 +83,13 @@ def test_closed_state_is_refused(api):
 
 
 def test_binding_imports_no_numpy_inference_runtime_or_ecs_c():
-    probe = ("import json, sys; import elpis.ECS_G.native; "
+    probe = ("import json, sys; import elpis.ECS.native; "
              "print(json.dumps(sorted(m for m in sys.modules if m.startswith(('numpy', 'elpis')))))")
     out = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, check=True,
                          env={"PYTHONPATH": str(REPO / "src")}).stdout
     loaded = set(importlib.import_module("json").loads(out))
     assert not any(m.startswith("numpy") for m in loaded)
-    assert loaded <= {"elpis", "elpis.ECS_G", "elpis.ECS_G.native"}, loaded
+    assert loaded <= {"elpis", "elpis.ECS", "elpis.ECS.native"}, loaded
 
 
 def test_fork_is_an_independent_identical_copy(api):

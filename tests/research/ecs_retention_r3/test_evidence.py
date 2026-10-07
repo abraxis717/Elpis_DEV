@@ -17,7 +17,7 @@ from research.ecs_retention_r3 import experiment as X
 from research.ecs_retention_r3 import protocol as P
 from research.ecs_retention_r3 import run as R
 
-from ...ECS_G.test_math_r0 import REPO, _library_path
+from ...ECS.test_math_r0 import REPO, _library_path
 
 # SHA-256 of each write-once record as written.
 EVIDENCE_SHA256 = {
@@ -64,8 +64,10 @@ def test_dev_verdicts_follow_from_the_recorded_rows_and_the_registered_rules():
 _DEV_REPLAY = """
 import ctypes, json, sys
 import research.ecs_retention_r3
-from elpis.ECS_G.native import ECSGLibrary
+from elpis.ECS.native import ECSGLibrary
 from research.ecs_retention_r3 import experiment as X, protocol as P, run as R
+from tests.research._renamed_sources import apply_renamed_lab_binding
+apply_renamed_lab_binding(P)
 library, world = sys.argv[1], sys.argv[2]
 dev = P.load(R.DEV_PATH, "dev")["body"]
 stale = P.binding_mismatch(dev["implementation"], P.implementation(library))
@@ -172,8 +174,10 @@ def test_qual_disposition_is_recorded_as_found():
 _QUAL_REPLAY = """
 import ctypes, json, sys
 import research.ecs_retention_r3
-from elpis.ECS_G.native import ECSGLibrary
+from elpis.ECS.native import ECSGLibrary
 from research.ecs_retention_r3 import experiment as X, protocol as P, run as R
+from tests.research._renamed_sources import apply_renamed_lab_binding
+apply_renamed_lab_binding(P)
 library, world = sys.argv[1], sys.argv[2]
 q = P.load(R.QUAL_PATH, "qual")["body"]
 stale = P.binding_mismatch(q["implementation"], P.implementation(library))
@@ -220,12 +224,12 @@ def test_results_report_the_recorded_disposition_and_claim_no_more():
 def test_authority_pointers_state_the_recorded_disposition_and_no_canonical_promotion_yet():
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
     component = next(c for c in system["research"]["components"] if c["path"] == "research/ecs_retention_r3")
-    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
+    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS")
     interface = next(i for i in ecsg["incomplete_interfaces"] if i.startswith("Retention R3"))
     cognition = (REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8")
     cognition = cognition.split("**Retention R3**", 1)[1].split("\n\n", 1)[0]
     readme = (R.ROOT / "README.md").read_text(encoding="utf-8")
-    for where, text in (("component", component["classification"]), ("ECS_G interface", interface),
+    for where, text in (("component", component["classification"]), ("ECS interface", interface),
                         ("COGNITION_R0", cognition), ("README", readme)):
         flat = " ".join(text.split())
         assert "OUTCOME_A" in flat, where

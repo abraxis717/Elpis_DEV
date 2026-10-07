@@ -18,7 +18,7 @@ import sys
 import warnings
 
 from . import _runtime_contract as C
-from ...ECS_G.test_math_r0 import REPO, _library_path
+from ...ECS.test_math_r0 import REPO, _library_path
 
 _RUN = """
 import json, sys

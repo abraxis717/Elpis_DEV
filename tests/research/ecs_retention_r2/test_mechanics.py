@@ -21,18 +21,27 @@ import sys
 import numpy as np
 import pytest
 
-from elpis.ECS_G.native import ECSGLibrary
+from elpis.ECS.native import ECSGLibrary
 
 from research.ecs_retention_r2 import engine as E
 from research.ecs_retention_r2 import experiment as X
 from research.ecs_retention_r2 import protocol as P
 from research.ecs_retention_r2 import task as T
 
-from ...ECS_G.test_math_r0 import REPO, _library_path
+from .._renamed_sources import current_path, renamed_lab_binding
+from ...ECS.test_math_r0 import REPO, _library_path
 
 SPEC = P.load_spec()
 IDX = T.indices(SPEC["regime"]["dim"])
 LAB_DIR = REPO / "research" / "ecs_retention_r2"
+
+
+
+@pytest.fixture(autouse=True)
+def _renamed_binding(monkeypatch):
+    """The frozen laboratory binds the pre-rename layout; point it at the renamed tree in memory only."""
+    for attr, value in renamed_lab_binding(P).items():
+        monkeypatch.setattr(P, attr, value)
 
 
 def _short_spec(steps=40) -> dict:
@@ -266,7 +275,9 @@ def test_write_once_records_and_binding(tmp_path):
         P.write(path, "dev", {"x": 2})
     impl = P.implementation(_library_path())
     assert {"files", "library", "build", "numerical_profile", "lab_source_digest"} <= set(impl)
-    assert "native/ECS_G/src/ecsg_executor.c" in impl["files"] and "src/elpis/ECS_G/native.py" in impl["files"]
+    # Closed laboratory: its frozen binding names the pre-rename layout; under the one stated rename
+    # (tests/research/_renamed_sources.py, applied in memory by the fixture above) it binds the canonical ECS.
+    assert "native/ECS/src/ecsg_executor.c" in impl["files"] and "src/elpis/ECS/native.py" in impl["files"]
     prof = impl["numerical_profile"]
     for key in ("python", "numpy", "numpy_build", "blas", "cpu", "machine", "thread_environment"):
         assert key in prof, key

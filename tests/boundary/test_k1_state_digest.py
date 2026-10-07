@@ -4,7 +4,7 @@ import ctypes as C
 import os
 from pathlib import Path
 
-from elpis.ECS_G.k1 import K1Library, K1State
+from elpis.ECS.k1 import K1Library, K1State
 
 
 def _library() -> K1Library:

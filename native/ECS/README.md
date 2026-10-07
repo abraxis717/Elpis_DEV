@@ -1,6 +1,6 @@
-# ECS_G — geometric dynamical substrate primitive
+# ECS — geometric dynamical substrate primitive
 
-`ECS_G` is a qualified native geometric/dynamical substrate primitive for
+`ECS` is a qualified native geometric/dynamical substrate primitive for
 Elpis's cognitive ECS/EDEN system (`docs/ELPIS_MISSION.md`: DSV4
 communicates, ECS computes and persists).
 
@@ -70,7 +70,7 @@ or external subsystem state. Storage and provenance belong to the caller.
 
 ## Cognitive R0 (qualified under its frozen synthetic regime)
 
-ECS_G supports stateful learned input-response computation under the
+ECS supports stateful learned input-response computation under the
 qualified Cognitive R0 regime (`docs/COGNITION_R0.md`,
 `docs/research/COGNITION_R0_RESULTS.md`): one state learns a bounded synthetic
 input -> response relationship into `W` through the G1 recurrence, and answers
@@ -85,13 +85,13 @@ Not established: language or meaning; retention under sequential learning
 anything about the cubic kernel, `d=6`/`N=36`, `S3` or gradient descent beyond
 that regime.
 
-The Python surface is `elpis.ECS_G.cognition.CognitiveCore` (`query`,
+The Python surface is `elpis.ECS.cognition.CognitiveCore` (`query`,
 `learn`, `snapshot`/`restore`) over the native executor below; `WorldState`
 is the scalar reference binding. The reference kernel is unchanged.
 
 ## Runtime R1 executor (`ecsg_executor.h`)
 
-The runtime form of an ECS_G state (`docs/ECS_RUNTIME_R1.md`). One executor
+The runtime form of an ECS state (`docs/ECS_RUNTIME_R1.md`). One executor
 owns the authoritative `W`, staging and transaction `W` buffers, scratch and
 an admitted-experience capacity in one arena allocated at creation; no
 operation allocates afterwards except an explicit `reserve`.
@@ -115,7 +115,7 @@ with the kernel by the mission gate.
 
 ## Boundary
 
-This directory owns only ECS_G.
+This directory owns only ECS.
 
 It does not import or call ECS_C, HACF, inference, the DSV4 codec, runtime,
 evolution, FMS, TRM, DarwinianMatrix, AnchorSpine, CNumPyCortex, or retired
@@ -127,7 +127,7 @@ The constitutional direction is:
             |
             v
         ECS / EDEN
-       active dynamics        (ECS_G: W_t -> W_t+1)
+       active dynamics        (ECS: W_t -> W_t+1)
             |
             v
         ECS readout           (S3(W), a coarse observable)
@@ -143,16 +143,16 @@ and `S3` of the candidate `W` is what ECS exposes to the decode boundary. The se
 and those drives and readouts are not defined or qualified anywhere in this
 repository, so the canonical turn fails closed without them.
 
-ECS_G is never a conditioning input to a DSV model and is never driven by a
+ECS is never a conditioning input to a DSV model and is never driven by a
 DSV model's output statistics. That sidecar topology (commits `f4e1f05`,
 `75313fb`) was removed from the canonical path.
 
-The Python binding (`src/elpis/ECS_G/native.py`) imports only the standard
+The Python binding (`src/elpis/ECS/native.py`) imports only the standard
 library and takes an already loaded library handle.
 
 ## Mutable FMS R0 residency
 
-The separate `elpis_ecsg_fms` library stores the existing portable ECS_G
+The separate `elpis_ecsg_fms` library stores the existing portable ECS
 snapshot bytes as generic FMS objects. It uses only the public Runtime R1 executor
 ABI; `ecsg_executor.c`, its Python binding and the canonical cognitive turn are not
 modified. An open transaction retains one executor and one FMS WRITE lease; direct

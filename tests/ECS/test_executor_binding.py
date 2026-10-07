@@ -20,8 +20,8 @@ import time
 import numpy as np
 import pytest
 
-from elpis.ECS_G.cognition import CognitiveCore, Transition
-from elpis.ECS_G.native import Commit, ECSGError, ECSGLibrary, Executor, WorldState
+from elpis.ECS.cognition import CognitiveCore, Transition
+from elpis.ECS.native import Commit, ECSGError, ECSGLibrary, Executor, WorldState
 
 from .test_math_r0 import REPO, _library_path
 
@@ -296,8 +296,8 @@ def test_capacity_is_explicit_and_closed_executors_refuse(api):
 _CLEAN = r"""
 import ctypes, json, sys
 from array import array
-from elpis.ECS_G.native import ECSGLibrary, Executor
-from elpis.ECS_G.cognition import CognitiveCore
+from elpis.ECS.native import ECSGLibrary, Executor
+from elpis.ECS.cognition import CognitiveCore
 api = ECSGLibrary(ctypes.CDLL(sys.argv[1]))
 x = array("d", [0.1 * ((i * 7) % 11 - 5) for i in range(12 * 6)])
 y = array("d", [0.05 * (r % 5 - 2) for r in range(12)])
@@ -322,5 +322,5 @@ def test_a_clean_process_runs_the_executor_with_no_model_or_numpy():
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
     assert report["changed"] and report["epoch"] == 100
-    assert set(report["modules"]) <= {"elpis", "elpis.ECS_G", "elpis.ECS_G.native", "elpis.ECS_G.cognition"}, \
+    assert set(report["modules"]) <= {"elpis", "elpis.ECS", "elpis.ECS.native", "elpis.ECS.cognition"}, \
         report["modules"]

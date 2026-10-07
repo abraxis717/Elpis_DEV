@@ -7,7 +7,7 @@
 * RET2A commits contain no implementation or result and touch no R0/R1 evidence;
 * a DEV, frozen, QUAL or results record exists only if one commit of its step added it after its predecessor
   (the registered early stop TASK_INVALID_ON_DEV lets RET2F follow RET2C directly);
-* until terminal evidence exists, no authority pointer claims an R2 result; no canonical ECS_G code names a
+* until terminal evidence exists, no authority pointer claims an R2 result; no canonical ECS code names a
   retention mechanism.
 """
 from __future__ import annotations
@@ -251,11 +251,11 @@ def test_no_result_is_claimed_before_terminal_evidence():
     assert not (REPO / RESULTS).exists(), f"{PREMATURE_RESULT}: {RESULTS} exists without terminal evidence"
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
     component = next(c for c in system["research"]["components"] if c["path"] == LAB)
-    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
+    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS")
     interface = next(i for i in ecsg["incomplete_interfaces"] if "Retention R2" in i)
     cognition = (REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8")
     pointers = {"component": component["classification"],
-                "ECS_G interface": interface.split("Retention R2", 1)[1],
+                "ECS interface": interface.split("Retention R2", 1)[1],
                 "COGNITION_R0": cognition.split("Retention R2", 1)[1].split("\n\n", 1)[0]}
     assert component["classification"].startswith("PREREGISTERED")
     for where, text in pointers.items():
@@ -268,8 +268,8 @@ def test_no_result_is_claimed_before_terminal_evidence():
 
 def test_no_canonical_retention_mechanism_is_promoted():
     vocabulary = re.compile(r"(?i)consolidat|retention|laplace|fibre|recondition|rehears")
-    sources = sorted((REPO / "src" / "elpis" / "ECS_G").rglob("*.py")) + sorted(
-        p for p in (REPO / "native" / "ECS_G").rglob("*") if p.suffix in (".c", ".h"))
+    sources = sorted((REPO / "src" / "elpis" / "ECS").rglob("*.py")) + sorted(
+        p for p in (REPO / "native" / "ECS").rglob("*") if p.suffix in (".c", ".h"))
     exempt = admitted(REPO)          # tests/research/_k1_promotion.py: the K1 milestone, only after R3 OUTCOME_A
     offenders = [str(p.relative_to(REPO)) for p in sources if vocabulary.search(p.read_text(encoding="utf-8"))
                  and str(p.relative_to(REPO)) not in exempt]

@@ -20,13 +20,13 @@ import sys
 import numpy as np
 import pytest
 
-from elpis.ECS_G.k1 import K1FMSRuntime, K1Library, K1State
-from elpis.ECS_G.native import ECSGLibrary, Executor
+from elpis.ECS.k1 import K1FMSRuntime, K1Library, K1State
+from elpis.ECS.native import ECSGLibrary, Executor
 from elpis.runtime.cognition import CODEC_UNQUALIFIED, Readout, Stimulus, run_turn
 from elpis.runtime.composition import CompositionError
 from elpis.substrate.residency import Context
 
-from ..ECS_G.test_math_r0 import REPO, _library_path
+from ..ECS.test_math_r0 import REPO, _library_path
 from ._turn_fixtures import FIXTURE, ByteTokens, FixtureMap
 
 DIM, WIDTH, RATE = 6, 36, 0.002
@@ -35,7 +35,7 @@ DIM, WIDTH, RATE = 6, 36, 0.002
 def _beside(name):
     path = Path(_library_path()).with_name(name)
     if not path.is_file():
-        raise AssertionError(f"{name} not built beside the ECS_G library: {path}")
+        raise AssertionError(f"{name} not built beside the ECS library: {path}")
     return path
 
 
@@ -251,7 +251,7 @@ _NO_DSV_PROBE = r"""
 import ctypes, json, sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from elpis.ECS_G.k1 import K1Library, K1State
+from elpis.ECS.k1 import K1Library, K1State
 from elpis.runtime.cognition import run_turn
 from tests.integration._turn_fixtures import ByteTokens, FixtureMap
 k1 = K1Library(ctypes.CDLL(str(Path(sys.argv[2]).with_name("libelpis_ecsg_k1.so"))))

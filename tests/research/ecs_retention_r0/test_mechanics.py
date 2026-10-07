@@ -14,14 +14,15 @@ import json
 import numpy as np
 import pytest
 
-from elpis.ECS_G.native import ECSGLibrary
+from elpis.ECS.native import ECSGLibrary
 
 from research.ecs_retention_r0 import engine as E
 from research.ecs_retention_r0 import experiment as X
 from research.ecs_retention_r0 import protocol as P
 from research.ecs_retention_r0 import task as T
 
-from ...ECS_G.test_math_r0 import _library_path
+from .._renamed_sources import renamed_lab_binding
+from ...ECS.test_math_r0 import _library_path
 
 SPEC = P.load_spec()
 IDX = T.indices(SPEC["regime"]["dim"])
@@ -35,6 +36,14 @@ def api():
 @pytest.fixture(scope="module")
 def world():
     return T.build_world(SPEC, "test-0000", 0.5)
+
+
+
+@pytest.fixture(autouse=True)
+def _renamed_binding(monkeypatch):
+    """The frozen laboratory binds the pre-rename layout; point it at the renamed tree in memory only."""
+    for attr, value in renamed_lab_binding(P).items():
+        monkeypatch.setattr(P, attr, value)
 
 
 def _small_spec(steps=40):

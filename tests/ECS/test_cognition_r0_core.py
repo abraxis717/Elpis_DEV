@@ -6,8 +6,8 @@ import ctypes
 import numpy as np
 import pytest
 
-from elpis.ECS_G.cognition import CognitiveCore, Transition, experience_digest
-from elpis.ECS_G.native import ECSGError, ECSGLibrary, WorldState
+from elpis.ECS.cognition import CognitiveCore, Transition, experience_digest
+from elpis.ECS.native import ECSGError, ECSGLibrary, WorldState
 
 from ._math_oracle import forward, gd_step
 from .test_math_r0 import _library_path

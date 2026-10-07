@@ -2,13 +2,13 @@
 
 PYTHON MAY CONTROL THE ECS. PYTHON MUST NOT EXECUTE THE ECS HOT PATH.
 
-The Python control plane of ECS_G (``elpis.ECS_G.native`` executor binding,
-``elpis.ECS_G.cognition``) and the runtime turn admit, call native code once
+The Python control plane of ECS (``elpis.ECS.native`` executor binding,
+``elpis.ECS.cognition``) and the runtime turn admit, call native code once
 and package. They contain no loop on the query/learn/commit path, never step
 the state from Python, and never commit by comparing Python snapshot hashes.
 The behavioural half (one native call per learn whatever K, no steady-state
 allocation, native commit and staleness) lives next to the native library in
-tests/ECS_G.
+tests/ECS.
 """
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ import pytest
 
 from ._system import REPO
 
-NATIVE = REPO / "src" / "elpis" / "ECS_G" / "native.py"
-CORE = REPO / "src" / "elpis" / "ECS_G" / "cognition.py"
+NATIVE = REPO / "src" / "elpis" / "ECS" / "native.py"
+CORE = REPO / "src" / "elpis" / "ECS" / "cognition.py"
 TURN = REPO / "src" / "elpis" / "runtime" / "cognition.py"
 
 # Strict xfail for what is not built yet; each later commit deletes its entries.

@@ -17,7 +17,7 @@ import sys
 import numpy as np
 import pytest
 
-from elpis.ECS_G.native import ECSGError, ECSGLibrary, Executor, WorldState
+from elpis.ECS.native import ECSGError, ECSGLibrary, Executor, WorldState
 
 from ._math_oracle import forward, gd_step
 from .test_math_r0 import REPO, _library_path
@@ -100,7 +100,7 @@ def test_a_candidate_commits_natively_in_one_exchange_or_not_at_all(api):
 
 @pending("core")
 def test_ecs_response_depends_on_ecs_state(api, monkeypatch):
-    from elpis.ECS_G.cognition import CognitiveCore
+    from elpis.ECS.cognition import CognitiveCore
     x, y = _experience()
     q = np.random.default_rng(99).normal(0.0, 0.5, size=(32, DIM))
     w0 = _w()
@@ -124,12 +124,12 @@ def test_ecs_response_depends_on_ecs_state(api, monkeypatch):
             raise ECSGError("UNAVAILABLE", "native forward withheld")
         monkeypatch.setattr(Executor, "forward", unavailable)
         with pytest.raises(ECSGError):
-            core.query(q.tolist())                                         # no answer without ECS_G forward
+            core.query(q.tolist())                                         # no answer without ECS forward
 
 
 @pending("core")
 def test_learning_is_atomic_and_the_core_keeps_nothing_but_w(api):
-    from elpis.ECS_G.cognition import CognitiveCore
+    from elpis.ECS.cognition import CognitiveCore
     x, y = _experience()
     with CognitiveCore.create(api, DIM, WIDTH, _w().reshape(-1).tolist(), learning_rate=LR) as core:
         assert not hasattr(core, "__dict__") and set(CognitiveCore.__slots__) == {"_state", "learning_rate"}
@@ -141,8 +141,8 @@ def test_learning_is_atomic_and_the_core_keeps_nothing_but_w(api):
 
 _CLEAN = r"""
 import ctypes, json, sys
-from elpis.ECS_G.native import ECSGLibrary
-from elpis.ECS_G.cognition import CognitiveCore
+from elpis.ECS.native import ECSGLibrary
+from elpis.ECS.cognition import CognitiveCore
 api = ECSGLibrary(ctypes.CDLL(sys.argv[1]))
 x = [[0.1 * ((r * 7 + a) % 11 - 5) for a in range(6)] for r in range(12)]
 y = [0.05 * (r % 5 - 2) for r in range(12)]
@@ -162,5 +162,5 @@ def test_a_clean_process_learns_and_answers_with_no_model_machinery():
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
     assert report["changed"]
-    assert set(report["modules"]) <= {"elpis", "elpis.ECS_G", "elpis.ECS_G.native", "elpis.ECS_G.cognition"}, \
+    assert set(report["modules"]) <= {"elpis", "elpis.ECS", "elpis.ECS.native", "elpis.ECS.cognition"}, \
         report["modules"]

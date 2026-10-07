@@ -1,7 +1,7 @@
-# ECS_G native K1 runtime
+# ECS native K1 runtime
 
 `SEMANTICS=NONE` · `NO_LANGUAGE_CLAIM`. This document covers what is implemented in
-`native/ECS_G/include/elpis/ecsg_k1.h`, `ecsg_k1_fms.h` and `src/elpis/ECS_G/k1.py`. The headers are the normative
+`native/ECS/include/elpis/ecsg_k1.h`, `ecsg_k1_fms.h` and `src/elpis/ECS/k1.py`. The headers are the normative
 ABI.
 
 **Qualification:**
@@ -11,7 +11,7 @@ ABI.
 - Native qualification v2 is **QUALIFIED** under the frozen `research/ecs_k1_native/PLAN_V2.md`: E1-E5, L1, L2, D1_Q and D1_F all passed on 32 Q and 32 fresh F worlds.
 - Native K1 is canonical through `research/ecs_k1_native/evidence/ecsg-k1-native.v2.attestation.json`, which binds the frozen plan, clean harness, Retention R3 authority and preserved raw qualification identity.
 
-The canonical status is in `ELPIS_SYSTEM.json` (ECS_G) and `tests/research/_k1_promotion.py`.
+The canonical status is in `ELPIS_SYSTEM.json` (ECS) and `tests/research/_k1_promotion.py`.
 
 ## State
 
@@ -198,7 +198,7 @@ copies and snapshots pin READ; writes pin WRITE, which marks the object dirty an
 is retried by the next operation and by close. A held READ pin never serves a write. A committed result is never
 reported as refused (`test_ecsg_k1_fms_faults`).
 
-## Python control plane (`elpis.ECS_G.k1`)
+## Python control plane (`elpis.ECS.k1`)
 
 `K1State`, `K1Transaction`, `K1FMSRuntime`. Each method admits its arguments, makes one native call whatever K,
 and packages the result:
@@ -207,7 +207,7 @@ and packages the result:
 - it has no loop on a hot path;
 - it uses no NumPy.
 
-`tests/boundary/test_k1_runtime.py` checks this statically, and `tests/ECS_G/test_k1_runtime.py` counts native
+`tests/boundary/test_k1_runtime.py` checks this statically, and `tests/ECS/test_k1_runtime.py` counts native
 crossings.
 
 ## Nonclaims

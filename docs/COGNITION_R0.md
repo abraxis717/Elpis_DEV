@@ -4,12 +4,12 @@ Authority for the first cognitive milestone under
 [`ELPIS_MISSION.md`](ELPIS_MISSION.md): **DSV4 communicates; ECS computes,
 learns and persists.** R0 asks one bounded question:
 
-> Can the ECS_G state itself acquire and retain a bounded input -> response
+> Can the ECS state itself acquire and retain a bounded input -> response
 > relationship through its qualified recurrence, and use that state to
 > compute later responses?
 
 **Status: QUALIFIED under the frozen synthetic Cognitive R0 regime.**
-ECS_G supports stateful learned input-response computation under the
+ECS supports stateful learned input-response computation under the
 qualified Cognitive R0 regime: `research/ecs_cognition_r0` v1, frozen authority
 `71fba13cdea64551e5d08818e20a1b89cc8b76f0b2fc172ac317d711d9311eb1`, QUAL evidence
 `9dfe55adab68bf578511a4e0a463aef318281e1f2ac1073ef3c20910cff10b7d`
@@ -22,7 +22,7 @@ catastrophically in 6 of 8. R0 establishes no continual-learning property.
 
 ## The limited claim
 
-* ECS_G state `W` is the learned computational state.
+* ECS state `W` is the learned computational state.
 * The native forward map computes responses from `W`.
 * The qualified G1 recurrence can modify `W` from experience.
 * Cognitive R0 tests stateful learning and recall in ECS-native numerical
@@ -33,7 +33,7 @@ R0 makes **no** claim that:
 * anything here understands, encodes or produces natural language;
 * the current cubic kernel (`phi(z) = 0.5z + 0.5z^2 + 0.5z^3`,
   `f_W(x) = sum_i phi(x . w_i)`) is the final architecture;
-* `d = 6`, `N = 36` or a single ECS_G kernel is the eventual ECS/EDEN
+* `d = 6`, `N = 36` or a single ECS kernel is the eventual ECS/EDEN
   organism;
 * `S3(W)` is globally sufficient state (it determines the instantaneous
   forward map of this family, not its future transitions);
@@ -56,7 +56,7 @@ A response is never "a state mutation" and never "S3". Learning is never
 ## What is learned state
 
 The only learned, mutable state is `W` (with its epoch), owned by the native
-ECS_G state. A snapshot persists exactly `W` and the epoch. The learning rate
+ECS state. A snapshot persists exactly `W` and the epoch. The learning rate
 and the step budget are fixed program parameters, not learned state.
 Transition receipts are returned to the caller and not retained. `S3` is a
 diagnostic projection only; nothing is run from `S3` alone.
@@ -78,8 +78,8 @@ generation stays fail-closed.
 R0 cannot be satisfied by importing or calling `research/dsv41_tower`,
 `DSV41Target`, principal model execution, transformer attention, MoE/expert
 inference, or any external learned predictor. `tests/boundary/test_cognition_r0.py`
-and `tests/ECS_G/test_cognition_r0_contract.py` enforce that the cognitive
-core imports nothing but ECS_G and the standard library, that a clean process
+and `tests/ECS/test_cognition_r0_contract.py` enforce that the cognitive
+core imports nothing but ECS and the standard library, that a clean process
 learns and answers with no model machinery loaded, and that responses depend
 on ECS state: they follow `W`, change when `W` changes, return when `W` is
 restored and vanish when `W` is replaced.
@@ -109,13 +109,13 @@ evidence. A failure is recorded as it is. It measures:
 
 ## Canonical surface
 
-* `elpis.ECS_G.native.Executor`: the runtime form of the state
+* `elpis.ECS.native.Executor`: the runtime form of the state
   ([`ECS_RUNTIME_R1.md`](ECS_RUNTIME_R1.md)): `forward` / `forward_into`,
   `learn(X, y, rate, K)` (one native call), `transaction()` (native
   candidate, commit refused `STALE` if the state moved since it began).
   `WorldState` is the scalar reference state the executor is bitwise equal
   to.
-* `elpis.ECS_G.cognition.CognitiveCore`: `query` / `query_into`,
+* `elpis.ECS.cognition.CognitiveCore`: `query` / `query_into`,
   `learn(..., steps=K)` returning a `Transition` receipt (or the native
   `Commit` with `receipt=False`), `snapshot` / `restore`, `identity`,
   `epoch`, `s3` (diagnostic).
@@ -136,7 +136,7 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
 
 * **ECS <-> DSV semantic codec**: not defined; text generation unavailable.
 * **FMS**: current FMS materializes immutable, digest-verified file assets.
-  It cannot yet hold mutable ECS state; `W` lives in native ECS_G memory and
+  It cannot yet hold mutable ECS state; `W` lives in native ECS memory and
   persists through its snapshot bytes.
 * **HACF -> ECS**: no structural-memory edge into ECS is qualified.
 * **ECS_C**: transitions return receipts but are not recorded in the history;

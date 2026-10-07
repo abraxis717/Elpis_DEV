@@ -17,7 +17,8 @@ import pytest
 from research.ecs_runtime_r1 import gates as G
 from research.ecs_runtime_r1 import workloads as WL
 
-from ...ECS_G.test_math_r0 import REPO
+from ...ECS.test_math_r0 import REPO
+from .._renamed_sources import current_path, measured_file_is_current
 
 EVIDENCE = REPO / "research" / "ecs_runtime_r1" / "evidence"
 REPORT = REPO / "docs" / "performance" / "ECS_RUNTIME_R1.md"
@@ -34,7 +35,8 @@ REFERENCE = ("native/ECS_G/src/ecsg_math.c", "native/ECS_G/src/ecsg_state.c", "n
 
 
 def _sha(rel):
-    return hashlib.sha256((REPO / rel).read_bytes()).hexdigest()
+    """SHA-256 of the current file a recorded path names (the ECS rename is path-only for C)."""
+    return hashlib.sha256((REPO / current_path(rel)).read_bytes()).hexdigest()
 
 
 def _load(name):
@@ -55,8 +57,10 @@ def test_evidence_is_labelled_and_bound_to_a_clean_tree():
 
 def test_final_evidence_measured_the_code_in_this_tree():
     for name in ("final.json", "jitter.json", "overhead.json"):
-        sources = _load(name)["binding"]["sources"]
-        stale = [rel for rel in MEASURED if sources.get(rel) != _sha(rel)]
+        binding = _load(name)["binding"]
+        sources = binding["sources"]
+        stale = [rel for rel in MEASURED
+                 if not measured_file_is_current(rel, sources.get(rel, ""), binding["head"])]
         assert not stale, f"{name} measured different code; re-measure: {stale}"
     sanitizer_sources = _load("sanitizers.json")["sources"]
     assert all(sanitizer_sources[rel] == _sha(rel) for rel in sanitizer_sources)

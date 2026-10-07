@@ -14,7 +14,7 @@ import random
 
 import pytest
 
-from elpis.ECS_G.native import ECSGError, ECSGLibrary, Executor, WorldState
+from elpis.ECS.native import ECSGError, ECSGLibrary, Executor, WorldState
 
 from .test_math_r0 import _library_path
 

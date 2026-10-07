@@ -42,7 +42,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from elpis.continuity import ContinuityError, ContinuitySnapshot, ContinuityStore
-from elpis.ECS_G.k1 import K1Error
+from elpis.ECS.k1 import K1Error
 from elpis.evolution.path_gate import (
     EvolutionAuthorityBinding,
     EvolutionPathGate,

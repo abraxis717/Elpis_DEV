@@ -521,9 +521,9 @@ schema identifiers are historical and carry no self-improvement claim.
 * **The caller records receipts.** Transition receipts are returned rather
   than recorded; the runtime composition records them in the ECS history.
 
-## ECS_G: geometric dynamical substrate primitive (`elpis.ECS_G`, `native/ECS_G`)
+## ECS: geometric dynamical substrate primitive (`elpis.ECS`, `native/ECS`)
 
-ECS_G is a qualified native primitive of the cognitive ECS/EDEN substrate. It
+ECS is a qualified native primitive of the cognitive ECS/EDEN substrate. It
 owns the authoritative microscopic state `W in R^(d x N)` (binary64), the exact
 cubic forward map, the derived coarse observable `S3 = (mu, M, T3)` (83 values
 for `d=6`), one deterministic atomic recurrence (an explicit-rate cubic
@@ -531,17 +531,17 @@ full-batch gradient step on a drive `(X, y)`), an epoch counter and portable
 snapshot/restore. The mathematics is qualified in the frozen `d=6`,
 `N in {36,48,72}` regime; that does not make this small kernel the entire
 eventual cognitive substrate. The kernel sources are digest-pinned by the
-mission gate. See [`native/ECS_G/README.md`](../native/ECS_G/README.md).
+mission gate. See [`native/ECS/README.md`](../native/ECS/README.md).
 
-ECS_G imports nothing beyond itself and the standard library. The runtime's
+ECS imports nothing beyond itself and the standard library. The runtime's
 canonical turn places it between DSV4 encode and DSV4 decode (see *Runtime*);
 it is never a conditioning input to a DSV model and never driven by a DSV
 model's output statistics.
 
-Cognitive R0 (`elpis.ECS_G.cognition.CognitiveCore`, [`COGNITION_R0.md`](COGNITION_R0.md))
+Cognitive R0 (`elpis.ECS.cognition.CognitiveCore`, [`COGNITION_R0.md`](COGNITION_R0.md))
 keeps two operations apart: QUERY, `x -> f_W(x)` by the native forward map of
 the current `W` (read-only), and LEARN, `(X, y) -> K` G1 steps in one native
-call committed by one native pointer exchange. Under its frozen synthetic regime, ECS_G
+call committed by one native pointer exchange. Under its frozen synthetic regime, ECS
 supports stateful learned input-response computation: the learned behaviour
 lives in and follows `W`, survives snapshot and a clean process, and changes
 with experience. The same qualification found no retention under sequential
@@ -836,7 +836,7 @@ migrated deterministically, either verbatim as generation 1's segment (hard
 link) or as a head checkpoint when larger than the segment policy. They are
 removed only after publication and never replayed again.
 
-The ECS_G K1 lineage (`cognition.anchor` / `cognition.turn` receipts) is
+The ECS K1 lineage (`cognition.anchor` / `cognition.turn` receipts) is
 folded into a fixed-size `CognitionContinuity` summary. The summary is
 carried across compaction in the checkpoint, so restart reconciliation never
 reads retired receipts.
@@ -858,7 +858,7 @@ entry point and is recorded only if that entry point committed:
 | `evolve` | `EvolutionPathGate.execute` over a projection of this history taken at call time | transition receipt of an admitted attempt |
 | `admit_context` | ingress, edge adapter, `resolve_chunks`, codec rendering | ingress proposal and the rendering |
 | `anchor_cognition` | the K1 state's `state_digest()` (no K1 mutation) | one explicit `ecs_g` / `cognition.anchor` |
-| `run_turn` | codec -> native K1 (ECS_G) -> codec (`elpis.runtime.cognition`) | one `ecs_g` / `cognition.turn` per committed turn |
+| `run_turn` | codec -> native K1 (ECS) -> codec (`elpis.runtime.cognition`) | one `ecs_g` / `cognition.turn` per committed turn |
 
 The runtime composes no DSV model execution: there is no decode, principal
 sequence or model text operation, and the mission gate pins this list.
@@ -924,10 +924,10 @@ the subsystem state unchanged.
   the compaction checkpoint's state. They cannot be listed, projected,
   topology-folded or used for duplicate detection.
 
-## ECS_G mutable FMS residency (R0)
+## ECS mutable FMS residency (R0)
 
 `docs/ECS_MUTABLE_FMS_R0.md` defines the additive mutable-state residency adapter.
-An idle logical ECS_G state is the existing portable W+epoch snapshot stored as a
+An idle logical ECS state is the existing portable W+epoch snapshot stored as a
 generic FMS object. Direct operations restore the unchanged Runtime R1 executor
 transiently; transactions retain one executor and WRITE lease. Successful mutation
 publishes one complete replacement snapshot. FMS owns placement and verified cold

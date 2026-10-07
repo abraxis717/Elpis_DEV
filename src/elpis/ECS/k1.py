@@ -8,7 +8,7 @@ PYTHON MAY CONTROL THE ECS; IT MAY NOT EXECUTE THE HOT PATH. Every method here a
 native call and packages the result: a query is one call, a ``K``-step learn is one call (the ``K`` loop, the G1
 step, S3, the Jacobian contraction and the ``H`` mat-vec are native), a consolidation is one call, and a
 transaction commits ``W``, epoch, ``H`` and ``a`` together natively. Nothing here computes cognitive mathematics.
-Like ``elpis.ECS_G.native`` this module imports only the standard library and that binding.
+Like ``elpis.ECS.native`` this module imports only the standard library and that binding.
 """
 from __future__ import annotations
 

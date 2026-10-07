@@ -31,18 +31,18 @@ SIDECAR_IDENTIFIERS = re.compile(
 # DSV-specific tensor roles the generic substrate core must never name.
 DSV_ROLES = re.compile(r"(?i)(dsv4|deepseek|engram|\bmoe\b|\bexperts?\b|\bw[123]\b)")
 
-# The qualified ECS_G kernel. Changing these sources requires an explicit,
+# The qualified ECS kernel. Changing these sources requires an explicit,
 # reviewed update of the pins together with the kernel qualification.
 ECSG_KERNEL_PINS = {
-    "native/ECS_G/src/ecsg_math.c": "fbfc48e5e36498df3dc8d33fa44620a61d697fa7bd00b8c7303929c4dc0cf235",
-    "native/ECS_G/src/ecsg_state.c": "c9887848fa0ddcfff71952a2010dd9968d980973cbe56cc0fa056c81f7b0b821",
-    "native/ECS_G/include/elpis/ecsg_math.h": "94f3c4e7a9bf26b08b267679c9b707e8376cc4e2867be760ac825760ce95f80e",
-    "native/ECS_G/include/elpis/ecsg_state.h": "34b173c4873fdac398876cf2eab426d88aca0884a3fa33640a570ae5c03a93c5",
+    "native/ECS/src/ecsg_math.c": "fbfc48e5e36498df3dc8d33fa44620a61d697fa7bd00b8c7303929c4dc0cf235",
+    "native/ECS/src/ecsg_state.c": "c9887848fa0ddcfff71952a2010dd9968d980973cbe56cc0fa056c81f7b0b821",
+    "native/ECS/include/elpis/ecsg_math.h": "94f3c4e7a9bf26b08b267679c9b707e8376cc4e2867be760ac825760ce95f80e",
+    "native/ECS/include/elpis/ecsg_state.h": "34b173c4873fdac398876cf2eab426d88aca0884a3fa33640a570ae5c03a93c5",
     # Runtime R1 executor: bitwise-qualified against the reference above
-    # (tests/ECS_G/test_executor_differential.py) and bound to its measured
+    # (tests/ECS/test_executor_differential.py) and bound to its measured
     # evidence (research/ecs_runtime_r1/evidence).
-    "native/ECS_G/src/ecsg_executor.c": "1d94739c52543da2080ccac2aeb640ef84b650161fa740c01f706b3f73b0fa8f",
-    "native/ECS_G/include/elpis/ecsg_executor.h": "67502a5e4cf3a14800760e661dac59dd17bbd736fcbb146e60faada0ee7ebde2",
+    "native/ECS/src/ecsg_executor.c": "1d94739c52543da2080ccac2aeb640ef84b650161fa740c01f706b3f73b0fa8f",
+    "native/ECS/include/elpis/ecsg_executor.h": "67502a5e4cf3a14800760e661dac59dd17bbd736fcbb146e60faada0ee7ebde2",
 }
 
 _CODE_SUFFIXES = (".py", ".c", ".h", ".cpp", ".hpp", ".map")
@@ -139,13 +139,13 @@ def canonical_tower(root: Path) -> list[str]:
 def ecs_independence(root: Path) -> list[str]:
     """(4) ECS mathematics is independent; only the residency adapter may use generic FMS."""
     out = []
-    for path in _python(root, "ECS_G"):
+    for path in _python(root, "ECS"):
         for name in imports_of(root, path):
-            if _under(name, "elpis") and not _under(name, "elpis.ECS_G"):
+            if _under(name, "elpis") and not _under(name, "elpis.ECS"):
                 out.append(f"{path.relative_to(root)}: imports {name}")
             if _under(name, "numpy") or _under(name, "research"):
                 out.append(f"{path.relative_to(root)}: imports {name}")
-    base = root / "native" / "ECS_G"
+    base = root / "native" / "ECS"
     for path in sorted(base.rglob("*")) if base.is_dir() else []:
         if path.suffix in (".c", ".h"):
             for inc in re.findall(r'#\s*include\s*"([^"]+)"', path.read_text(encoding="utf-8")):
@@ -177,18 +177,18 @@ def codec_independence(root: Path) -> list[str]:
     out = []
     for path in _python(root, "inference"):
         for name in imports_of(root, path):
-            for lane in ("elpis.ECS_G", "elpis.ECS_C", "elpis.runtime", "research"):
+            for lane in ("elpis.ECS", "elpis.ECS_C", "elpis.runtime", "research"):
                 if _under(name, lane):
                     out.append(f"{path.relative_to(root)}: imports {name}")
         if re.search(r"\bWorldState\b|\becsg_", path.read_text(encoding="utf-8")):
-            out.append(f"{path.relative_to(root)}: references ECS_G state")
+            out.append(f"{path.relative_to(root)}: references ECS state")
     return out
 
 
 def ecs_c_separation(root: Path) -> list[str]:
-    """(6) Continuity history (ECS_C) and active geometric state (ECS_G) do not depend on each other."""
+    """(6) Continuity history (ECS_C) and active geometric state (ECS) do not depend on each other."""
     out = []
-    for package, other in (("ECS_C", "elpis.ECS_G"), ("ECS_G", "elpis.ECS_C")):
+    for package, other in (("ECS_C", "elpis.ECS"), ("ECS", "elpis.ECS_C")):
         for path in _python(root, package):
             out += [f"{path.relative_to(root)}: imports {n}" for n in imports_of(root, path) if _under(n, other)]
     return out
@@ -211,7 +211,7 @@ def fms_genericity(root: Path) -> list[str]:
 
 
 def ecsg_kernel_unchanged(root: Path) -> list[str]:
-    """(10) The qualified ECS_G kernel sources match their pinned digests."""
+    """(10) The qualified ECS kernel sources match their pinned digests."""
     out = []
     for name, digest in ECSG_KERNEL_PINS.items():
         path = root / name

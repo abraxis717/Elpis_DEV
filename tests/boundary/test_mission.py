@@ -48,7 +48,7 @@ def test_gate_rejects_the_sidecar_topology(tmp_path):
     _write(tmp_path, "src/elpis/__init__.py", "")
     _write(tmp_path, "src/elpis/runtime/__init__.py", "")
     _write(tmp_path, "src/elpis/runtime/world_model.py",
-           "from elpis.ECS_G.native import WorldState\n"
+           "from elpis.ECS.native import WorldState\n"
            "from elpis.inference.conditioning import TurnConditioning, TurnObservation\n"
            "class WorldModelLoop:\n    pass\n")
     _write(tmp_path, "src/elpis/runtime/composition.py",
@@ -150,10 +150,10 @@ def test_runtime_composes_no_model_operation():
 
 
 def test_the_cognitive_turn_is_codec_then_ecs_then_codec():
-    """The canonical turn module depends on ECS_G and on no inference module at all."""
+    """The canonical turn module depends on ECS and on no inference module at all."""
     path = REPO / "src" / "elpis" / "runtime" / "cognition.py"
     names = M.imports_of(REPO, path)
-    assert any(M._under(n, "elpis.ECS_G") for n in names), names
+    assert any(M._under(n, "elpis.ECS") for n in names), names
     assert not [n for n in names if M._under(n, "elpis.inference") or M._under(n, "research")], names
 
 
@@ -166,7 +166,7 @@ DRIFT_PHRASES = ("turn conditioning", "worldmodelloop", "drivemap", "conditionin
 
 
 @pytest.mark.parametrize("name", ["ELPIS_SYSTEM.json", "README.md", "docs/ARCHITECTURE.md",
-                                  "native/ECS_G/README.md", "docs/NONCLAIMS.md",
+                                  "native/ECS/README.md", "docs/NONCLAIMS.md",
                                   "docs/inference/DSV41_TEXT_BOUNDARY.md"])
 def test_authority_and_design_docs_describe_the_corrected_architecture(name):
     text = (REPO / name).read_text(encoding="utf-8").lower()
@@ -180,10 +180,10 @@ def test_system_authority_encodes_the_mission():
     assert system["mission"]["gate"] == "tests/boundary/test_mission.py"
     subs = {s["id"]: s for s in system["subsystems"]}
     assert tuple(subs["inference"]["canonical_modules"]) == M.CODEC_MODULES
-    assert subs["ECS_G"]["depends_on"] == ["substrate"] and not subs["ECS_G"].get("uses_numpy")
-    assert {"ECS_G", "continuity", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
+    assert subs["ECS"]["depends_on"] == ["substrate"] and not subs["ECS"].get("uses_numpy")
+    assert {"ECS", "continuity", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
     assert "ECS_C" not in subs["runtime"]["depends_on"] and not subs["continuity"]["depends_on"]
-    assert "ECS_G" not in subs["inference"]["depends_on"] and "ECS_G" not in subs["ECS_C"]["depends_on"]
+    assert "ECS" not in subs["inference"]["depends_on"] and "ECS" not in subs["ECS_C"]["depends_on"]
     assert not [t for t in subs["inference"]["native_targets"] if "dsv41" in t]
     assert set(system["research"]["native_targets"]) == {"elpis_dsv41_native", "elpis_dsv41_clock",
                                                          "elpis_dsv41_materializer"}

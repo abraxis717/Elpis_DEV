@@ -1,4 +1,4 @@
-"""Mutable ECS_G logical states backed by generic FMS residency.
+"""Mutable ECS logical states backed by generic FMS residency.
 
 This module is an additive control plane over the existing qualified Executor.
 The native adapter owns materialization and state publication.  Python performs

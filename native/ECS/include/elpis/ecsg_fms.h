@@ -8,9 +8,9 @@
 extern "C" {
 #endif
 
-/* Mutable ECS_G residency adapter ABI v1.
+/* Mutable ECS residency adapter ABI v1.
  *
- * The authoritative mutable FMS object is the existing portable ECS_G
+ * The authoritative mutable FMS object is the existing portable ECS
  * snapshot byte sequence (ELPISG01 header + epoch + W). No new cognitive
  * serialization exists. The adapter restores the already-qualified public
  * executor for a direct operation, publishes a completed snapshot atomically

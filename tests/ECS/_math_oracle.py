@@ -1,4 +1,4 @@
-"""Test-only oracle for the frozen ECS_G cubic/S3 mathematics."""
+"""Test-only oracle for the frozen ECS cubic/S3 mathematics."""
 
 from __future__ import annotations
 

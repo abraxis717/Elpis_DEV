@@ -1,4 +1,4 @@
-# ECS_G native K1 runtime: performance
+# ECS native K1 runtime: performance
 
 `PERFORMANCE_ONLY` · `NO_SCIENTIFIC_CLAIM`. Contract: [`docs/ECS_K1_RUNTIME.md`](../ECS_K1_RUNTIME.md).
 
@@ -8,9 +8,9 @@ The gates are structural and are enforced by tests on every CI configuration:
 | gate | evidence |
 |---|---|
 | no allocation after create/reserve on any warm operation | link-time allocator interposition on every allocator (`test_ecsg_k1_alloc`, `test_ecsg_k1_fms_alloc`); the K1 heap counter is unchanged across every measured warm loop (`test_ecsg_k1_performance`) |
-| one native call per operation, whatever K; none proportional to K | `tests/ECS_G/test_k1_runtime.py::test_one_native_crossing_per_operation_and_none_proportional_to_k` (K = 1, 10, 1000: exactly one `learn` crossing); `research/ecs_k1_native/overhead.py` reports one crossing per call |
+| one native call per operation, whatever K; none proportional to K | `tests/ECS/test_k1_runtime.py::test_one_native_crossing_per_operation_and_none_proportional_to_k` (K = 1, 10, 1000: exactly one `learn` crossing); `research/ecs_k1_native/overhead.py` reports one crossing per call |
 | no transient executor or state per warm query | the warm path pins and binds the persistent workspace. Its heap counter does not move, and the adapter calls no executor API (`tests/boundary/test_k1_runtime.py`). |
-| sanitizers | gcc ASan+UBSan and gcc TSan run the whole ECS_G native suite, including every K1 test |
+| sanitizers | gcc ASan+UBSan and gcc TSan run the whole ECS native suite, including every K1 test |
 
 ## Measured on
 

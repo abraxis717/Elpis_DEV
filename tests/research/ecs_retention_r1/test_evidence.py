@@ -22,7 +22,7 @@ import pytest
 from research.ecs_retention_r1 import protocol as P
 from research.ecs_retention_r1 import run as R
 
-from ...ECS_G.test_math_r0 import REPO, _library_path
+from ...ECS.test_math_r0 import REPO, _library_path
 
 # SHA-256 of each write-once record as written.
 EVIDENCE_SHA256 = {
@@ -84,8 +84,10 @@ def test_no_freeze_and_no_qual_after_task_invalid_on_dev():
 _REPLAY = """
 import ctypes, json, sys
 import research.ecs_retention_r1
-from elpis.ECS_G.native import ECSGLibrary
+from elpis.ECS.native import ECSGLibrary
 from research.ecs_retention_r1 import experiment as X, protocol as P, run as R
+from tests.research._renamed_sources import apply_renamed_lab_binding
+apply_renamed_lab_binding(P)
 library = sys.argv[1]
 dev = P.load(R.DEV_PATH, "dev")["body"]
 stale = P.binding_mismatch(dev["implementation"], P.implementation(library))
@@ -133,7 +135,7 @@ def test_results_report_the_disposition_and_claim_no_more():
 def test_authority_pointers_state_the_recorded_disposition():
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
     component = next(c for c in system["research"]["components"] if c["path"] == "research/ecs_retention_r1")
-    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
+    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS")
     interface = next(i for i in ecsg["incomplete_interfaces"] if "Retention R1" in i)
     cognition = (REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8")
     for text in (component["classification"], interface, cognition.split("Retention R1", 1)[1].split("\n\n", 1)[0]):

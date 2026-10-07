@@ -1,4 +1,4 @@
-"""Cognitive R0: ECS-native stateful query and learning on one ECS_G state.
+"""Cognitive R0: ECS-native stateful query and learning on one ECS state.
 
 See docs/COGNITION_R0.md. Two distinct operations on one authoritative state:
 
@@ -9,7 +9,7 @@ See docs/COGNITION_R0.md. Two distinct operations on one authoritative state:
   transition: ``W -> W'``, epoch ``+K``. A refused step leaves ``W`` and the
   epoch unchanged.
 
-The only learned state is ``W`` with its epoch, owned by the native ECS_G
+The only learned state is ``W`` with its epoch, owned by the native ECS
 executor. The core holds that executor and a fixed learning rate, nothing
 else: no examples, labels, caches or receipts. :meth:`CognitiveCore.s3` is a
 diagnostic projection; nothing runs from ``S3`` alone, and snapshots persist
@@ -102,13 +102,13 @@ def _identity(snapshot):
 
 
 class CognitiveCore:
-    """One ECS_G executor that answers queries from W and learns into W."""
+    """One ECS executor that answers queries from W and learns into W."""
 
     __slots__ = ("_state", "learning_rate")
 
     def __init__(self, state, *, learning_rate):
         if type(state) is not Executor:
-            raise ECSGError("INVALID", "an ECS_G Executor is required")
+            raise ECSGError("INVALID", "an ECS Executor is required")
         if type(learning_rate) is not float or not math.isfinite(learning_rate) or learning_rate <= 0:
             raise ECSGError("INVALID", "explicit positive finite learning rate")
         state._live()
@@ -156,7 +156,7 @@ class CognitiveCore:
         """LEARN: ``steps`` qualified G1 steps on ``(X, y)`` in one native call, committed atomically.
 
         Returns a :class:`Transition` receipt, or with ``receipt=False`` the
-        native :class:`~elpis.ECS_G.native.Commit` alone.
+        native :class:`~elpis.ECS.native.Commit` alone.
         """
         if type(steps) is not int or not 1 <= steps <= _MAX_STEPS:
             raise ECSGError("INVALID", "steps must be 1..100000")

@@ -15,7 +15,7 @@ import sys
 from research.ecs_retention_r1 import protocol as P
 from research.ecs_retention_r1 import run as R
 
-from ...ECS_G.test_math_r0 import REPO, _library_path
+from ...ECS.test_math_r0 import REPO, _library_path
 
 DEV = P.load(R.DEV_PATH, "dev")["body"]
 VERDICT_KEYS = ("V1_witness", "V2_forgetting", "V3_novelty", "V4_learnability", "valid", "M0_sequence_held",
@@ -24,7 +24,7 @@ VERDICT_KEYS = ("V1_witness", "V2_forgetting", "V3_novelty", "V4_learnability", 
 _RUN = """
 import ctypes, json, sys
 import research.ecs_retention_r1
-from elpis.ECS_G.native import ECSGLibrary
+from elpis.ECS.native import ECSGLibrary
 from research.ecs_retention_r1 import experiment as X, numerics, protocol as P
 library = sys.argv[1]
 spec = P.load_spec()

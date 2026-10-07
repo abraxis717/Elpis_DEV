@@ -114,7 +114,7 @@ def test_base_package_import_is_inert():
     assert "numpy" not in loaded and not loaded & set(POLICY["forbidden_python_imports"])
 
 
-SLOW_LANES = ("elpis.ECS_C", "elpis.ECS_G", "elpis.structure", "elpis.pipeline", "elpis.evolution", "elpis.runtime")
+SLOW_LANES = ("elpis.ECS_C", "elpis.ECS", "elpis.structure", "elpis.pipeline", "elpis.evolution", "elpis.runtime")
 
 
 def _inference_modules():
@@ -122,7 +122,7 @@ def _inference_modules():
 
 
 def test_inference_token_lane_imports_no_slow_lane_statically():
-    """The token lane (all of elpis.inference) names no ECS_C, ECS_G, structure, pipeline, evolution or runtime module."""
+    """The token lane (all of elpis.inference) names no ECS_C, ECS, structure, pipeline, evolution or runtime module."""
     offenders = []
     for path in _inference_modules():
         for name in imported_modules(path):

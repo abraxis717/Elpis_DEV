@@ -1,4 +1,4 @@
-"""Mutable ECS_G FMS residency mechanics; no scientific claims."""
+"""Mutable ECS FMS residency mechanics; no scientific claims."""
 from array import array
 import ctypes
 import hashlib
@@ -8,9 +8,9 @@ import struct
 
 import pytest
 
-from elpis.ECS_G.native import ECSGLibrary, ECSGError, Executor
-from elpis.ECS_G.cognition import CognitiveCore
-from elpis.ECS_G.residency import FMSRuntime
+from elpis.ECS.native import ECSGLibrary, ECSGError, Executor
+from elpis.ECS.cognition import CognitiveCore
+from elpis.ECS.residency import FMSRuntime
 from elpis.substrate.residency import Context
 from .test_math_r0 import _library_path
 
@@ -20,7 +20,7 @@ def _adapter_path():
     candidate = math.with_name("libelpis_ecsg_fms.so")
     if candidate.is_file():
         return candidate
-    raise AssertionError(f"mutable FMS adapter not built beside ECS_G library: {candidate}")
+    raise AssertionError(f"mutable FMS adapter not built beside ECS library: {candidate}")
 
 
 @pytest.fixture

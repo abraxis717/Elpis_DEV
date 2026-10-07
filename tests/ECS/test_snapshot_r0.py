@@ -1,4 +1,4 @@
-"""Portable deterministic snapshot qualification for ECS_G state."""
+"""Portable deterministic snapshot qualification for ECS state."""
 
 from __future__ import annotations
 

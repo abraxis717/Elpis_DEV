@@ -18,7 +18,7 @@ import sys
 from research.ecs_retention_r3 import protocol as P
 from research.ecs_retention_r3 import run as R
 
-from ...ECS_G.test_math_r0 import REPO, _library_path
+from ...ECS.test_math_r0 import REPO, _library_path
 
 QUAL = P.load(R.QUAL_PATH, "qual")["body"]
 

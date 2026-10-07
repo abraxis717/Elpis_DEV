@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 /*
- * ECS_G native consolidation runtime: K1 (docs/ECS_K1_RUNTIME.md).
+ * ECS native consolidation runtime: K1 (docs/ECS_K1_RUNTIME.md).
  *
  * The qualified mechanism is Retention R3's K1 (OUTCOME_A,
  * docs/research/ECS_RETENTION_R3_RESULTS.md). One K1 state owns the complete

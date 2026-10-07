@@ -138,7 +138,7 @@ are not evidence that the contract has any effect.
   active segment.
 * **Not cognitive state.** The checkpoint and the fixed-size cognition
   continuity summary are ECS_C bookkeeping about receipts. They carry no K1
-  state and grant no authority over ECS_G.
+  state and grant no authority over ECS.
 * **Single process, single owner.** The directory flock excludes a second
   owner. It provides no cross-process transport, federation or shared-reader
   semantics.

@@ -1,4 +1,4 @@
-"""Differential qualification for ECS_G G1 stateful microscopic recurrence."""
+"""Differential qualification for ECS G1 stateful microscopic recurrence."""
 
 from __future__ import annotations
 

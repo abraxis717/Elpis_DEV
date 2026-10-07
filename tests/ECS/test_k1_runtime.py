@@ -12,8 +12,8 @@ import random
 
 import pytest
 
-from elpis.ECS_G.k1 import K1Error, K1FMSRuntime, K1Library, K1State
-from elpis.ECS_G.native import ECSGLibrary, Executor
+from elpis.ECS.k1 import K1Error, K1FMSRuntime, K1Library, K1State
+from elpis.ECS.native import ECSGLibrary, Executor
 from elpis.substrate.residency import Context
 
 from .test_math_r0 import _library_path
@@ -24,7 +24,7 @@ D, N, R = 6, 36, 64
 def _beside(name):
     path = Path(_library_path()).with_name(name)
     if not path.is_file():
-        raise AssertionError(f"{name} not built beside the ECS_G library: {path}")
+        raise AssertionError(f"{name} not built beside the ECS library: {path}")
     return path
 
 

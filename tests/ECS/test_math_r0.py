@@ -1,4 +1,4 @@
-"""Differential qualification for the native ECS_G cubic/S3 kernel."""
+"""Differential qualification for the native ECS cubic/S3 kernel."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ def _library_path() -> Path:
             f"expected exactly one libelpis_ecsg_math.so under {root}, got {matches}"
         )
 
-    pytest.skip(f"native ECS_G math library unavailable under {root}")
+    pytest.skip(f"native ECS math library unavailable under {root}")
 
 
 @pytest.fixture(scope="module")

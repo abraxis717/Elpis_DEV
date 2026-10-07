@@ -12,8 +12,8 @@
          --atomic native commit of the complete (W, epoch, H, a) candidate
 
 The ECS substrate of the canonical turn is native K1 (docs/ECS_K1_RUNTIME.md), the retained-state mechanism
-Retention R3 qualified and K1N-v2 qualified natively: a standalone :class:`~elpis.ECS_G.k1.K1State` or an
-FMS-resident :class:`~elpis.ECS_G.k1.K1FMSState`. Each experience is the qualified K1 transition, learn then
+Retention R3 qualified and K1N-v2 qualified natively: a standalone :class:`~elpis.ECS.k1.K1State` or an
+FMS-resident :class:`~elpis.ECS.k1.K1FMSState`. Each experience is the qualified K1 transition, learn then
 consolidate (``H <- H + Sigma(X_t)``, ``a <- S3(W_t)``; inputs only). The Runtime R1 ``Executor`` remains a
 qualified primitive and the K1-disabled reference, but it is not the substrate of this turn.
 
@@ -45,7 +45,7 @@ from dataclasses import dataclass, field
 import math
 from typing import Protocol
 
-from elpis.ECS_G.k1 import MAX_EXPERIENCES, K1Error, K1FMSState, K1State
+from elpis.ECS.k1 import MAX_EXPERIENCES, K1Error, K1FMSState, K1State
 
 from .composition import CompositionError
 

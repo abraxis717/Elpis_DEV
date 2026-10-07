@@ -1,15 +1,15 @@
-"""Python binding to the native ECS_G kernel (``native/ECS_G``).
+"""Python binding to the native ECS kernel (``native/ECS``).
 
 The binding owns no loading policy: the caller passes an already loaded
 ``libelpis_ecsg_math`` handle (for example one opened through the substrate's
-sealed loader by the runtime). ECS_G therefore keeps its declared dependency
+sealed loader by the runtime). ECS therefore keeps its declared dependency
 set empty: this module imports only the standard library, never numpy,
-inference, runtime or ECS_C.
+inference, runtime or continuity.
 
 Two native surfaces, one mathematics (it lives in C; nothing here
 re-implements it):
 
-* :class:`Executor` is the runtime form of an ECS_G state
+* :class:`Executor` is the runtime form of an ECS state
   (``ecsg_executor.h``, docs/ECS_RUNTIME_R1.md). Python controls it and never
   executes its hot path: a query is one native call, a ``K``-step learn is one
   native call (the ``K`` loop is native), and a candidate commits natively by
@@ -48,7 +48,7 @@ _VP = C.c_void_p
 
 
 class ECSGError(ValueError):
-    """A native ECS_G call refused its input (state is unchanged)."""
+    """A native ECS call refused its input (state is unchanged)."""
 
     def __init__(self, code: str, detail: str = "", *, step: int = 0):
         self.code, self.step = code, step
@@ -150,7 +150,7 @@ class _ExecutorABI:
 
 
 class ECSGLibrary:
-    """Typed view of one loaded ECS_G library (math v1, state v1, executor v1)."""
+    """Typed view of one loaded ECS library (math v1, state v1, executor v1)."""
 
     __slots__ = ("_lib", "_x")
 
@@ -159,7 +159,7 @@ class ECSGLibrary:
             try:
                 fn = getattr(lib, name)
             except AttributeError as exc:
-                raise ECSGError("UNSUPPORTED", "ECS_G symbol " + name) from exc
+                raise ECSGError("UNSUPPORTED", "ECS symbol " + name) from exc
             fn.argtypes, fn.restype = args, result
             return fn
 
@@ -170,7 +170,7 @@ class ECSGLibrary:
             setattr(x, attr, bind("elpis_ecsg_executor_" + suffix, args, result))
         if (lib.elpis_ecsg_math_abi_version() != 1 or lib.elpis_ecsg_state_abi_version() != 1
                 or x.abi_version() != 1):
-            raise ECSGError("UNSUPPORTED", "ECS_G ABI version")
+            raise ECSGError("UNSUPPORTED", "ECS ABI version")
         self._lib, self._x = lib, x
 
     def s3_size(self, dim):
@@ -300,7 +300,7 @@ def _commit(t):
 
 
 class Executor:
-    """One native ECS_G executor (ecsg_executor.h): the runtime form of an ECS_G state.
+    """One native ECS executor (ecsg_executor.h): the runtime form of an ECS state.
 
     Owns, natively, the authoritative ``W``, staging and candidate buffers,
     scratch and the admitted-experience capacity (``max_rows``). Identity is
@@ -340,7 +340,7 @@ class Executor:
 
     def _live(self):
         if self._handle is None or not self._handle.value:
-            raise ECSGError("CLOSED", "ECS_G executor closed")
+            raise ECSGError("CLOSED", "ECS executor closed")
         return self._handle
 
     @property
@@ -560,7 +560,7 @@ def _s3_buffers(api, d):
 
 
 class WorldState:
-    """The scalar reference ECS_G state. W is authoritative; S3 is its projection.
+    """The scalar reference ECS state. W is authoritative; S3 is its projection.
 
     Correctness authority for the executor, one explicit step per call. Not
     the runtime path: runtime callers use :class:`Executor`.
@@ -593,7 +593,7 @@ class WorldState:
 
     def _live(self):
         if self._handle is None or not self._handle.value:
-            raise ECSGError("CLOSED", "ECS_G state closed")
+            raise ECSGError("CLOSED", "ECS state closed")
         return self._handle
 
     @property

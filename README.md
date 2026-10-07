@@ -28,7 +28,7 @@ the head commit is red.
 |---|---|
 | `src/elpis/substrate`, `native/substrate` | resource authority, residency and materialization (FMS, PAL, file assets, execution port) |
 | `src/elpis/ECS_C` | identity, continuity, durable history, replay, projections |
-| `src/elpis/ECS_G`, `native/ECS_G` | qualified geometric/dynamical substrate primitive of the cognitive ECS (owned state `W`, `S3` observable, atomic recurrence, snapshots) |
+| `src/elpis/ECS`, `native/ECS` | qualified geometric/dynamical substrate primitive of the cognitive ECS (owned state `W`, `S3` observable, atomic recurrence, snapshots) |
 | `src/elpis/structure`, `native/structure` | HACF structural memory, semantic core, retrieval, Grid81 representation |
 | `src/elpis/pipeline`, `native/pipeline` | bounded Regex → HACF ingress; the canonical Grid81 writer path |
 | `src/elpis/evolution` | deterministic heredity, selection, gated promotion |
