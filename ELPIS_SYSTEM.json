@@ -134,7 +134,7 @@
     {
       "id": "continuity",
       "status": "OPERATIONAL",
-      "purpose": "Continuity records the current durable lineage/authority needed for safe restart: the expected K1 retained-state identity of the ECS lineage (explicitly anchored, advanced only by committed turns) and the current head of admitted evolution path transitions. One fixed-size 136-byte record in a two-slot crash-safe register (docs/CONTINUITY.md). It is not an ECS, not context memory, not an event history, not topology, not a message bus and not an audit ledger.",
+      "purpose": "Continuity records the current durable lineage/authority needed for safe restart: the expected K1 retained-state identity of the ECS lineage (explicitly anchored, advanced only by committed turns) and the current head of admitted evolution path transitions plus one pending assertion identity. One fixed-size 176-byte record in a two-slot crash-safe register (docs/CONTINUITY.md). It is not an ECS, not context memory, not an event history, not topology, not a message bus and not an audit ledger.",
       "python_package": "elpis.continuity",
       "implementation_roots": [
         "src/elpis/continuity"
@@ -144,11 +144,11 @@
       ],
       "native_targets": [],
       "depends_on": [],
-      "mutation_authority": "ContinuityStore.anchor_cognition (once, explicit), commit_cognition_transition (only from the current expected K1 identity) and commit_evolution_transition (only from the current evolution authority). Each publishes one complete next record into the non-current slot and fdatasyncs it; nothing else writes the directory.",
-      "runtime_participation": "The runtime composes it: one store per Runtime. The canonical K1 turn publishes the new expected K1 identity after the one native K1 commit; evolution binds and advances the evolution authority.",
-      "persistence": "Exactly two fixed 136-byte slot files; the valid record with the higher generation is the authority. Constant storage (272 bytes), constant restart work (two reads) and constant resident memory. No log, no replay, no compaction, no retained history.",
+      "mutation_authority": "ContinuityStore.anchor_cognition (once, explicit), commit_cognition_transition (only from the current expected K1 identity), reserve_evolution_assertion (idle to pending before execution) and commit_evolution_transition (only from the exact current pending authority to the next idle revision). Each publishes one complete next record into the non-current slot and fdatasyncs it; nothing else writes the directory.",
+      "runtime_participation": "The runtime composes it: one store per Runtime. The canonical K1 turn publishes the new expected K1 identity after the one native K1 commit; evolution validates, durably reserves its assertion, executes once, and finalizes pending authority.",
+      "persistence": "Exactly two fixed 176-byte slot files; the valid record with the higher generation is the authority. Constant storage (352 bytes), constant restart work (two reads) and constant resident memory. No log, no replay, no compaction, no retained history.",
       "protocol_identifiers_retained": [
-        "New: elpis.continuity.register.v1 (record checksum domain, magic ELPCONT\\x01 v1), elpis.continuity.evolution-authority.v1 (evolution authority digest domain)."
+        "New: elpis.continuity.register.v2 (record checksum domain, magic ELPCONT\\x02 v2), elpis.continuity.evolution-authority.v2 (evolution authority digest domain)."
       ],
       "external_dependencies": [],
       "model_dependency": "NONE",
@@ -282,7 +282,7 @@
       "security_boundary": "No implicit randomness (mutation seeds derive from lineage content), no model, no numerics, no network. Selection accepts no externally proposed solution and recomputes every fitness score. The path gate type-checks the supplied evolution authority binding and executes nothing for a rejected or retired-schema assertion. Promotion refuses symlinks and special files in workspaces and edit paths outside the child.",
       "protocol_identifiers_retained": [
         "Life record schemas: darwinian.life.{genotype,lineage,mutation-*,organism-state,population-state,fitness-*,reproduction-*}.v1 and their canonical JSON encoding (ASCII, sorted keys)",
-        "Path gate: elpis.evolution-path-assertion.v1 (current; binds the evolution authority revision and digest), elpis.evolution-path-assertion.v0 (retired persisted schema, identity computable, refused by the gate), elpis.evolution-path-transition-receipt.v0 (including the field names structural_attempt_digest and refinement_result_digest)",
+        "Path gate: elpis.evolution-path-assertion.v1 (current; binds the evolution authority revision and digest; predecessor must equal the trusted authority head), elpis.evolution-path-assertion.v0 (retired persisted schema, identity computable, refused by the gate), elpis.evolution-path-transition-receipt.v0 (including the field names structural_attempt_digest and refinement_result_digest)",
         "Promotion: elpis.rsi.harness-manifest.v0, elpis.rsi.evaluation-evidence.v0, elpis.rsi.selection-receipt.v0, elpis.rsi.component-content-map.v0 (historical identifiers; no self-improvement claim)"
       ],
       "external_dependencies": [],
@@ -365,7 +365,7 @@
       "runtime_participation": "This is the runtime composition.",
       "security_boundary": "The continuity directory is an explicit absolute path owned exclusively (directory flock); its two fixed slots are verified on open and a corrupt, ambiguous, foreign or retired receipt-history layout is refused. A supplied K1 state whose retained-state identity differs from the durable expectation is refused before any K1 mutation (CONTINUITY_STATE_MISMATCH); there is no implicit anchor and no synthesized transition. Libraries, corpus roots, file assets, ledgers and promotion capabilities are supplied explicitly by the caller; the runtime opens no network connection and loads no model. An evolution assertion built against an older evolution authority is rejected before anything executes.",
       "protocol_identifiers_retained": [
-        "None of its own: the runtime builds on elpis.continuity.register.v1 and elpis.continuity.evolution-authority.v1 (owned by continuity) and the ECS ABI."
+        "None of its own: the runtime builds on elpis.continuity.register.v2 and elpis.continuity.evolution-authority.v2 (owned by continuity) and the ECS ABI."
       ],
       "external_dependencies": [],
       "model_dependency": "NONE_REQUIRED. Inference runs only on caller-supplied targets; the integration suite uses the synthetic DSV4 fixture.",

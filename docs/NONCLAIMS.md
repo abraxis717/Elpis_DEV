@@ -102,11 +102,17 @@ are not evidence that the contract has any effect.
 ## Continuity (`elpis.continuity`)
 
 * **Current authority, not history.** Continuity holds one fixed-size record
-  (two 136-byte slots, 272 bytes in total, whatever the runtime lifetime):
+  (two 176-byte slots, 352 bytes in total, whatever the runtime lifetime):
   the committed K1 retained-state digest and the evolution authority
-  `(revision, head)`. It keeps no turn log, no receipts, no events and no
+  `(revision, head, pending_assertion)`. It keeps no turn log, no receipts, no events and no
   audit trail. Nothing in it can answer what happened before the current
   authority. Per-turn diagnostics live only on the returned turn result.
+* **At-most-once, not automatic recovery.** Runtime reserves the exact
+  assertion before execution. Pending authority refuses further evolution;
+  the caller must establish the result externally before explicit finalization.
+  An uncertain final publication may reopen pending or at the next idle
+  revision; neither permits the old assertion to execute again. There is no
+  automatic retry, pending reset or external-side-effect reconciliation.
 * **Integrity, not authentication.** The record checksum detects torn or
   corrupted slots. It does not authenticate the writer: whoever can write the
   directory can replace the register consistently. The K1 digest binds the

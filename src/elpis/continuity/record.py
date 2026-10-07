@@ -15,13 +15,13 @@ __all__ = (
     "decode_record", "encode_record",
 )
 
-MAGIC = b"ELPCONT\x01"
-FORMAT_VERSION = 1
-_DOMAIN = b"elpis.continuity.register.v1\x00"
-_EVOLUTION_DOMAIN = b"elpis.continuity.evolution-authority.v1\x00"
+MAGIC = b"ELPCONT\x02"
+FORMAT_VERSION = 2
+_DOMAIN = b"elpis.continuity.register.v2\x00"
+_EVOLUTION_DOMAIN = b"elpis.continuity.evolution-authority.v2\x00"
 # magic, version, reserved(6), generation, cognition state, reserved(7), k1 digest,
-# evolution revision, evolution head.
-_BODY = struct.Struct(">8sH6sQB7s32sQ32s")
+# evolution revision, evolution head, evolution state, reserved(7), assertion identity.
+_BODY = struct.Struct(">8sH6sQB7s32sQ32sB7s32s")
 RECORD_SIZE = _BODY.size + 32
 ZERO_DIGEST = bytes(32)
 _MAX_U63 = (1 << 63) - 1
@@ -41,10 +41,11 @@ def _checksum(body: bytes) -> bytes:
 
 @dataclass(frozen=True)
 class EvolutionAuthority:
-    """Current head of admitted evolution path transitions."""
+    """Current evolution head, idle or reserved for one exact assertion."""
 
     revision: int
     head: str  # 64-hex digest of the last admitted path-transition receipt, zeros at revision 0
+    pending_assertion: str | None = None  # None: idle; otherwise reserved assertion digest
 
     def __post_init__(self):
         if type(self.revision) is not int or not 0 <= self.revision <= _MAX_U63:
@@ -55,11 +56,19 @@ class EvolutionAuthority:
         if (self.revision == 0) != (self.head == "0" * 64):
             raise ContinuityError("CONTINUITY_CORRUPT", "evolution genesis")
 
+        if self.pending_assertion is not None and (
+                type(self.pending_assertion) is not str or len(self.pending_assertion) != 64
+                or any(c not in "0123456789abcdef" for c in self.pending_assertion)):
+            raise ContinuityError("CONTINUITY_CORRUPT", "pending assertion identity")
+
     @property
     def digest(self) -> str:
         """Content identity the evolution gate binds (integrity, not authentication)."""
         return hashlib.sha256(_EVOLUTION_DOMAIN + struct.pack(">Q", self.revision)
-                              + bytes.fromhex(self.head)).hexdigest()
+                              + bytes.fromhex(self.head)
+                              + bytes([self.pending_assertion is not None])
+                              + (bytes.fromhex(self.pending_assertion)
+                                 if self.pending_assertion is not None else ZERO_DIGEST)).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -93,7 +102,10 @@ def _body(snapshot: ContinuitySnapshot) -> bytes:
     anchored = snapshot.k1_state_digest is not None
     return _BODY.pack(MAGIC, FORMAT_VERSION, bytes(6), snapshot.generation, 1 if anchored else 0, bytes(7),
                       snapshot.k1_state_digest if anchored else ZERO_DIGEST,
-                      snapshot.evolution.revision, bytes.fromhex(snapshot.evolution.head))
+                      snapshot.evolution.revision, bytes.fromhex(snapshot.evolution.head),
+                      int(snapshot.evolution.pending_assertion is not None), bytes(7),
+                      bytes.fromhex(snapshot.evolution.pending_assertion)
+                      if snapshot.evolution.pending_assertion is not None else ZERO_DIGEST)
 
 
 def encode_record(snapshot: ContinuitySnapshot) -> bytes:
@@ -110,9 +122,15 @@ def decode_record(raw: bytes) -> ContinuitySnapshot | None:
     body, checksum = raw[:_BODY.size], raw[_BODY.size:]
     if _checksum(body) != checksum:
         raise ContinuityError("CONTINUITY_CORRUPT", "record checksum")
-    magic, version, reserved, generation, cognition, pad, k1, revision, head = _BODY.unpack(body)
+    (magic, version, reserved, generation, cognition, pad, k1, revision, head,
+     evolution_state, evolution_pad, pending) = _BODY.unpack(body)
     if magic != MAGIC or version != FORMAT_VERSION or reserved != bytes(6) or pad != bytes(7):
         raise ContinuityError("CONTINUITY_CORRUPT", "record header")
     if cognition not in (0, 1) or (cognition == 0 and k1 != ZERO_DIGEST):
         raise ContinuityError("CONTINUITY_CORRUPT", "cognition field")
-    return ContinuitySnapshot(generation, k1 if cognition else None, EvolutionAuthority(revision, head.hex()))
+    if (evolution_state not in (0, 1) or evolution_pad != bytes(7)
+            or (evolution_state == 0 and pending != ZERO_DIGEST)):
+        raise ContinuityError("CONTINUITY_CORRUPT", "evolution reservation field")
+    return ContinuitySnapshot(generation, k1 if cognition else None,
+                              EvolutionAuthority(revision, head.hex(),
+                                                 pending.hex() if evolution_state else None))

@@ -6,7 +6,6 @@
 #include <fcntl.h>
 #include <math.h>
 #include <pthread.h>
-#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -264,34 +263,74 @@ static void faults(void) {
     puts("registration, capacity, promotion allocation, cold read/digest/write failures PASS");
 }
 
-typedef struct { elpis_ecsg_fms *r; uint64_t id; atomic_int entered,done; } worker;
+/* Deterministic BUSY contract. State A is COLD, so any operation on A promotes it through the PAL's cold_get,
+ * which FMS calls with its own lock dropped while the ECS slot for A is already held. A test PAL hook parks the
+ * worker inside that cold_get (gate) until the observer has probed: the worker provably holds exclusive authority
+ * over A for the whole probe window. No sleeps, no retries, no scheduler assumptions. */
+static pthread_mutex_t gate_mu = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t gate_cv = PTHREAD_COND_INITIALIZER;
+static int gate_armed, gate_entered, gate_open;
+static int (*posix_cold_get)(void *, const fms_cold_token *, void *, uint64_t);
+static int gated_cold_get(void *self, const fms_cold_token *t, void *dst, uint64_t bytes) {
+    pthread_mutex_lock(&gate_mu);
+    if (gate_armed) {
+        gate_armed = 0;              /* only the worker's promotion of A is parked */
+        gate_entered = 1;
+        pthread_cond_broadcast(&gate_cv);
+        while (!gate_open) pthread_cond_wait(&gate_cv, &gate_mu);
+    }
+    pthread_mutex_unlock(&gate_mu);
+    return posix_cold_get(self, t, dst, bytes);
+}
+typedef struct { elpis_ecsg_fms *r; uint64_t id; } worker;
 static void *learn_worker(void *arg) {
-    worker *a=arg;
-    atomic_store(&a->entered,1);
-    int rc;
-    do { rc=elpis_ecsg_fms_learn(a->r,a->id,x,y,64,0.002,2000,NULL); } while(rc==-4);
-    assert(!rc); atomic_store(&a->done,1); return NULL;
+    worker *a = arg;
+    /* No retry: nothing else touches A before the gate opens, so the slot is free and the learn must succeed. */
+    OK(elpis_ecsg_fms_learn(a->r, a->id, x, y, 64, 0.002, 20, NULL));
+    return NULL;
 }
 static void concurrency(void) {
     data();
-    elpis_ecsg_fms *r=runtime("concurrency",BYTES*2,4);
-    worker a={.r=r,.id=state(r,1,36)};
-    atomic_init(&a.entered,0); atomic_init(&a.done,0);
-    uint64_t other=state(r,2,36);
-    pthread_t th; assert(!pthread_create(&th,NULL,learn_worker,&a));
-    unsigned busy=0; double out[64];
-    while(!atomic_load(&a.entered)) {}
-    while(!atomic_load(&a.done)) {
-        int rc=elpis_ecsg_fms_forward(r,a.id,x,64,out);
-        assert(!rc || rc==-4); if(rc==-4) ++busy;
-        OK(elpis_ecsg_fms_forward(r,other,x,64,out));
-        OK(elpis_ecsg_fms_pump(r));
-        struct timespec t={0,100000}; nanosleep(&t,NULL);
-    }
-    assert(!pthread_join(th,NULL)); assert(busy);
-    OK(elpis_ecsg_fms_close(r,&a.id)); OK(elpis_ecsg_fms_close(r,&other));
+    fms_pal *pal = fms_pal_posix_create("concurrency"); assert(pal);
+    posix_cold_get = pal->cold_get; pal->cold_get = gated_cold_get;
+    fms_config cfg = config(BYTES * 3, 4);
+    fms_ctx *ctx = fms_create(&cfg, pal); assert(ctx);
+    elpis_ecsg_fms *r = NULL; OK(elpis_ecsg_fms_create(ctx, 4, &r));
+    worker a = {.r = r, .id = state(r, 1, 36)};
+    uint64_t other = state(r, 2, 36), third = state(r, 3, 36);
+    OK(elpis_ecsg_fms_pump(r));      /* 3/3 of WARM > high water: the oldest state (A) is demoted to COLD */
+    elpis_ecsg_fms_info ia, ib, ic;
+    OK(elpis_ecsg_fms_inspect(r, a.id, &ia)); OK(elpis_ecsg_fms_inspect(r, other, &ib));
+    OK(elpis_ecsg_fms_inspect(r, third, &ic));
+    assert(ia.tier == FMS_COLD && ib.tier == FMS_WARM && ic.tier == FMS_WARM);
+
+    pthread_mutex_lock(&gate_mu); gate_armed = 1; gate_entered = gate_open = 0; pthread_mutex_unlock(&gate_mu);
+    pthread_t th; assert(!pthread_create(&th, NULL, learn_worker, &a));
+    pthread_mutex_lock(&gate_mu);
+    while (!gate_entered) pthread_cond_wait(&gate_cv, &gate_mu);
+    pthread_mutex_unlock(&gate_mu);
+
+    /* The worker now holds exclusive authority over A (inside its promotion). */
+    double out[64]; uint64_t token = 0;
+    assert(elpis_ecsg_fms_forward(r, a.id, x, 64, out) == -4);
+    assert(elpis_ecsg_fms_learn(r, a.id, x, y, 64, 0.002, 1, NULL) == -4);
+    assert(elpis_ecsg_fms_txn_begin(r, a.id, &token) == -4 && !token);
+    /* Independent states stay usable and pump is safe while A's promotion is in flight. */
+    OK(elpis_ecsg_fms_forward(r, other, x, 64, out));
+    OK(elpis_ecsg_fms_pump(r));
+    OK(elpis_ecsg_fms_forward(r, third, x, 64, out));
+    OK(elpis_ecsg_fms_forward(r, other, x, 64, out));
+
+    pthread_mutex_lock(&gate_mu); gate_open = 1; pthread_cond_broadcast(&gate_cv); pthread_mutex_unlock(&gate_mu);
+    assert(!pthread_join(th, NULL));
+    /* Released: A is usable again and carries the worker's committed learn. */
+    OK(elpis_ecsg_fms_forward(r, a.id, x, 64, out));
+    OK(elpis_ecsg_fms_inspect(r, a.id, &ia)); assert(ia.epoch == 20 && !ia.lease_count);
+    elpis_ecsg_fms_metrics m; OK(elpis_ecsg_fms_stats(r, &m)); assert(!m.leases && m.states == 3);
+    OK(elpis_ecsg_fms_close(r, &a.id)); OK(elpis_ecsg_fms_close(r, &other)); OK(elpis_ecsg_fms_close(r, &third));
     OK(elpis_ecsg_fms_destroy(&r));
-    printf("same-state BUSY=%u; independent state and concurrent pump PASS\n",busy);
+    puts("same-state BUSY (forward, learn, txn_begin) while A is held; independent states and pump during the "
+         "hold; A usable after release PASS");
 }
 int main(void) {
     assert(elpis_ecsg_fms_abi_version()==1);

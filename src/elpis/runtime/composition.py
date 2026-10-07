@@ -19,8 +19,9 @@ entry point and returns that subsystem's result:
   corpus manifest), then a budgeted, frozen token rendering. It is a
   communication operation: it does not make HACF a context window for a model.
 * ``evolve``: the evolution path gate, bound to the current evolution
-  authority held by continuity (``evolution_authority``). An admitted attempt
-  advances that authority, so a stale assertion executes nothing.
+  authority held by continuity (``evolution_authority``). The exact assertion
+  is durably reserved before execution and finalized afterwards. Pending
+  authority and stale assertions execute nothing.
 * ``anchor_cognition`` / ``run_turn``: the canonical cognitive turn, codec ->
   ECS -> codec (:mod:`elpis.runtime.cognition`), over a native K1 state of the
   one ECS. The first managed lineage is anchored explicitly. Each committed
@@ -165,25 +166,40 @@ class Runtime:
     def evolution_authority(self) -> EvolutionAuthorityBinding:
         """The current evolution authority an assertion must be built against."""
         authority = self._snapshot().evolution
-        return EvolutionAuthorityBinding(authority.revision, authority.digest)
+        if authority.pending_assertion is not None:
+            raise CompositionError("CONTINUITY_EVOLUTION_PENDING", "explicit reconciliation required")
+        return EvolutionAuthorityBinding(authority.revision, authority.digest, authority.head)
 
     def evolve(self, gate: EvolutionPathGate, *, assertion, state, advance, advance_kwargs
                ) -> GateRejected | GateExecuted:
         if type(gate) is not EvolutionPathGate:
             raise TypeError("evolve takes an EvolutionPathGate")
         current = self._snapshot().evolution
-        binding = EvolutionAuthorityBinding(current.revision, current.digest)
-        result = gate.execute(assertion=assertion, state=state, authority=binding,
-                              advance=advance, advance_kwargs=advance_kwargs)
-        if not isinstance(result, GateExecuted):
-            return result
+        if current.pending_assertion is not None:
+            raise CompositionError("CONTINUITY_EVOLUTION_PENDING", "explicit reconciliation required")
+        binding = EvolutionAuthorityBinding(current.revision, current.digest, current.head)
+        reason = gate.reject_reason(assertion, state, binding)
+        if reason is not None:
+            return GateRejected(False, reason, 0)
         try:
-            self.continuity.commit_evolution_transition(current, result.receipt.receipt_digest)
+            pending = self.continuity.reserve_evolution_assertion(current, assertion.digest).evolution
         except ContinuityError as exc:
-            # The attempt ran; its authority advance is not certain. Never
-            # report success and never re-admit until reconciled by reopen.
             self._continuity_fault = exc.code
-            raise CompositionError(exc.code, "evolution attempt executed; continuity not advanced") from exc
+            raise CompositionError(exc.code, "evolution reservation failed; no attempt executed") from exc
+        try:
+            result = gate.execute(assertion=assertion, state=state, authority=binding,
+                                  advance=advance, advance_kwargs=advance_kwargs)
+            if not isinstance(result, GateExecuted):
+                raise CompositionError("CONTINUITY_EVOLUTION_PENDING", "admission changed after reservation")
+            self.continuity.commit_evolution_transition(pending, result.receipt.receipt_digest)
+        except ContinuityError as exc:
+            self._continuity_fault = exc.code
+            raise CompositionError(exc.code, "evolution attempt executed; finalization not certain") from exc
+        except BaseException:
+            # Even an exception or an invalid result may follow an external
+            # effect. Preserve the reservation; never infer that retry is safe.
+            self._continuity_fault = "CONTINUITY_EVOLUTION_PENDING"
+            raise
         return result
 
     # -- structure -> codec: ingress -> adapter -> HACF resolution -> rendering ----------
