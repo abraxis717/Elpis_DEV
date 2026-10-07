@@ -175,6 +175,34 @@
       ]
     },
     {
+      "id": "continuity",
+      "status": "OPERATIONAL",
+      "purpose": "Continuity records the current durable lineage/authority needed for safe restart: the expected K1 retained-state identity of the ECS lineage (explicitly anchored, advanced only by committed turns) and the current head of admitted evolution path transitions. One fixed-size 136-byte record in a two-slot crash-safe register (docs/CONTINUITY.md). It is not an ECS, not context memory, not an event history, not topology, not a message bus and not an audit ledger.",
+      "python_package": "elpis.continuity",
+      "implementation_roots": [
+        "src/elpis/continuity"
+      ],
+      "test_roots": [
+        "tests/continuity"
+      ],
+      "native_targets": [],
+      "depends_on": [],
+      "mutation_authority": "ContinuityStore.anchor_cognition (once, explicit), commit_cognition_transition (only from the current expected K1 identity) and commit_evolution_transition (only from the current evolution authority). Each publishes one complete next record into the non-current slot and fdatasyncs it; nothing else writes the directory.",
+      "runtime_participation": "The runtime composes it: one store per Runtime. The canonical K1 turn publishes the new expected K1 identity after the one native K1 commit; evolution binds and advances the evolution authority.",
+      "persistence": "Exactly two fixed 136-byte slot files; the valid record with the higher generation is the authority. Constant storage (272 bytes), constant restart work (two reads) and constant resident memory. No log, no replay, no compaction, no retained history.",
+      "protocol_identifiers_retained": [
+        "New: elpis.continuity.register.v1 (record checksum domain, magic ELPCONT\\x01 v1), elpis.continuity.evolution-authority.v1 (evolution authority digest domain)."
+      ],
+      "external_dependencies": [],
+      "model_dependency": "NONE",
+      "uses_numpy": false,
+      "maturity": "Qualified for fixed storage, fixed resident state, fixed restart work, process death at every publication and initialization step, torn writes, refused and uncertain publication, corruption, legacy-layout refusal and exclusive ownership.",
+      "incomplete_interfaces": [
+        "Single process, single owner (directory flock); no cross-process transport or shared readers.",
+        "Integrity evidence only: whoever can write the directory can replace both slots consistently."
+      ]
+    },
+    {
       "id": "structure",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
       "purpose": "Structural memory and representation: HACF content-addressed cascade/graph identity, chunked content-addressed corpus, FMS-resident exact vector index, context graph and deterministic hybrid retrieval; the native semantic core (typed hypergraph, snapshots and query overlays, context-deficit control, retrieval materialization, evidence typing/admission, bounded semantic views, semantic topology IR, Grid81 structural packets, structural observations); the Python retrieval stage producing validated evidence envelopes; the bounded Grid81 representation (D4 structural semantics, typed projection with orbit identity, structural-group evidence/proposals/orderings/conflicts) and the read-only canonical Grid81 reader with its runtime reduction; digest-addressed chunk resolution (elpis.structure.retrieval.objects): a chunk digest resolves to text only through the pinned corpus manifest, a content-addressed document blob opened through the substrate RootCapability, HACF normalization and the recomputed elpis-chunk-v1 identity.",
