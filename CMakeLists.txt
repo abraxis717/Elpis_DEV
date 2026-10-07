@@ -44,10 +44,9 @@ find_package(Threads REQUIRED)
 include(native/elpis.cmake)
 
 add_subdirectory(native/substrate)
-add_subdirectory(native/ECS_C)
 add_subdirectory(native/structure)
 add_subdirectory(native/pipeline)
-add_subdirectory(native/ECS_G)
+add_subdirectory(native/ECS)
 # Noncanonical research code: built and qualified, never part of the cognitive path.
 add_subdirectory(research/dsv41_tower/native)
 add_subdirectory(research/ecs_runtime_r1/native)

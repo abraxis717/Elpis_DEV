@@ -1,7 +1,7 @@
 # ECS Runtime R1: measured results
 
 PERFORMANCE_ONLY. NO_SCIENTIFIC_CLAIM. This report admits what the evidence in
-`research/ecs_runtime_r1/evidence/` measured about how ECS_G executes. It says
+`research/ecs_runtime_r1/evidence/` measured about how ECS executes. It says
 nothing about cognition. Contract and gates:
 [`docs/ECS_RUNTIME_R1.md`](../ECS_RUNTIME_R1.md) (gates registered at R1A
 `3568a77`, before any measurement).
@@ -14,10 +14,10 @@ nothing about cognition. Contract and gates:
 | baseline head | `3568a77f` (R1A), clean tree, pre-nativeization binding |
 | library | `libelpis_ecsg_math.so` SHA-256 `2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09` (baseline: `11fe7a56...`) |
 | bench driver | SHA-256 `69320523...` |
-| compiler, profile | gcc 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1), `Release`, `-O3 -DNDEBUG`; ECS_G `-ffp-contract=off`; hot kernels `target_clones("avx2","default")` |
+| compiler, profile | gcc 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1), `Release`, `-O3 -DNDEBUG`; ECS `-ffp-contract=off`; hot kernels `target_clones("avx2","default")` |
 | host | Intel Xeon @ 2.80 GHz, 4 vCPUs, AVX2/AVX-512/FMA available, Linux 6.18 (shared VM), glibc 2.39 |
-| Python | CPython 3.11.15, ECS_G binding standard-library only |
-| source digests | every ECS_G source, header, binding and build file, per evidence file (`binding.sources`); `tests/research/ecs_runtime_r1/test_evidence.py` fails if the measured code changes |
+| Python | CPython 3.11.15, ECS binding standard-library only |
+| source digests | every ECS source, header, binding and build file, per evidence file (`binding.sources`); `tests/research/ecs_runtime_r1/test_evidence.py` fails if the measured code changes |
 
 Sampling: per measurement an explicit warmup, then 20-2000 individually timed
 samples within a 1.5 s budget; the first (cold) call is reported separately.
@@ -53,7 +53,7 @@ time the public API in process.
   interposition on every allocator; zero allocations in query, learn,
   schedules, refusals and every transaction path). `scalar_parity`: PASS
   (bitwise; see Correctness).
-* `sanitizers`: PASS. gcc ASan+UBSan and gcc TSan: all 7 ECS_G native tests;
+* `sanitizers`: PASS. gcc ASan+UBSan and gcc TSan: all 7 ECS native tests;
   226 Python executor and differential tests under ASan.
 * `jitter_investigation`: done; 11 short operations exceed p99/p50 = 3 (see
   Tail latency).

@@ -1,10 +1,10 @@
 """Cognitive R0 anti-drift gate, static part (docs/COGNITION_R0.md).
 
-ECS is the model: the cognitive core lives in ECS_G and depends on nothing but
-ECS_G and the standard library, and neither it nor its qualification can be
+ECS is the model: the cognitive core lives in ECS and depends on nothing but
+ECS and the standard library, and neither it nor its qualification can be
 satisfied by a DSV model, attention, MoE/experts or an external learned
 predictor. The behavioural half (responses depend on ECS state) is in
-tests/ECS_G/test_cognition_r0_contract.py, next to the native library.
+tests/ECS/test_cognition_r0_contract.py, next to the native library.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ import pytest
 from . import _mission as M
 from ._system import REPO
 
-CORE = REPO / "src" / "elpis" / "ECS_G" / "cognition.py"
+CORE = REPO / "src" / "elpis" / "ECS" / "cognition.py"
 LAB = REPO / "research" / "ecs_cognition_r0"
 
 # Strict xfail for what is not built yet; each later commit deletes its entries.
@@ -48,7 +48,7 @@ def _imports(path):
 
 
 @pending("core")
-def test_cognitive_core_lives_in_ecs_g_and_imports_only_ecs_g_and_stdlib():
+def test_cognitive_core_lives_in_the_ecs_and_imports_only_the_ecs_and_stdlib():
     assert CORE.is_file()
     stdlib = set(sys.stdlib_module_names)
     for name in _imports(CORE):
@@ -56,7 +56,7 @@ def test_cognitive_core_lives_in_ecs_g_and_imports_only_ecs_g_and_stdlib():
             assert name in (".native",), name
             continue
         top = name.split(".")[0]
-        assert top in stdlib or name == "elpis.ECS_G.native", name
+        assert top in stdlib or name == "elpis.ECS.native", name
 
 
 @pending("core")
@@ -77,6 +77,6 @@ def test_cognition_qualification_lab_uses_no_other_model():
         assert not FORBIDDEN_NAMES.search(code), (path.name, FORBIDDEN_NAMES.search(code).group(0))
 
 
-def test_ecs_g_package_stays_dependency_free():
-    """ECS_G (binding and any cognition) imports nothing beyond itself and the standard library."""
+def test_ecs_package_stays_dependency_free():
+    """ECS (binding and any cognition) imports nothing beyond itself and the standard library."""
     assert not M.ecs_independence(REPO)

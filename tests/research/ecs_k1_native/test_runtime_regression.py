@@ -15,7 +15,7 @@ import os
 import subprocess
 import sys
 
-from ...ECS_G.test_math_r0 import REPO, _library_path
+from ...ECS.test_math_r0 import REPO, _library_path
 
 
 def test_current_runtime_same_host_invariants_and_the_r3_decision_record():

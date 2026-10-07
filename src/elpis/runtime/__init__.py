@@ -1,10 +1,10 @@
-"""The runtime composition: one composition root and one durable receipt history.
+"""The runtime composition: one composition root around one continuity authority.
 
-``Runtime`` (``composition``) wires the subsystems explicitly around one ECS
-kernel history (``history``). There is exactly one runtime composition; the
-beta's numbered runtime generations are retired.
+``Runtime`` (``composition``) wires the subsystems explicitly. It composes the
+one ECS (``elpis.ECS``) for the canonical turn and ``elpis.continuity`` for the
+minimal durable lineage/authority restart needs. There is exactly one runtime
+composition; the beta's numbered runtime generations are retired.
 """
-from .composition import Runtime, RuntimeConfig
-from .history import HistoryError, ReceiptHistory, ReceiptRecord, RecordedReceipt
+from .composition import CompositionError, ContextPreparation, Runtime, RuntimeConfig
 
-__all__ = ("HistoryError", "ReceiptHistory", "ReceiptRecord", "RecordedReceipt", "Runtime", "RuntimeConfig")
+__all__ = ("CompositionError", "ContextPreparation", "Runtime", "RuntimeConfig")

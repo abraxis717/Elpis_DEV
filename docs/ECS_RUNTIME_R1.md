@@ -3,7 +3,7 @@
 Authority for making the ECS execute like a model runtime, under
 [`ELPIS_MISSION.md`](ELPIS_MISSION.md) (DSV4 communicates; ECS computes, learns
 and persists) and [`COGNITION_R0.md`](COGNITION_R0.md) (ECS is the model). R1 is
-systems engineering. It changes how the qualified ECS_G computation executes,
+systems engineering. It changes how the qualified ECS computation executes,
 never what it computes.
 
 ## The invariant
@@ -23,7 +23,7 @@ proportional to `K`; per-element conversions in the fast path; cognition
 through Python callbacks.
 
 Forbidden inside the native critical path (query and state transition): JSON,
-Python objects, SHA-256, filesystem I/O, ECS_C history writes, HACF traversal,
+Python objects, SHA-256, filesystem I/O, continuity or history writes, HACF traversal,
 logging, model calls, callbacks, tokenization, snapshot serialization, and
 heap allocation after executor creation.
 
@@ -33,7 +33,7 @@ The qualified mathematics: `phi(z) = 0.5z + 0.5z^2 + 0.5z^3`,
 `f_W(x) = sum_i phi(x . w_i)`, the G1 step
 `W' = W - eta (2/R) X^T [e * phi'(XW)]` with `e = f_W(X) - y`, microscopic `W` as
 authority, `S3` as a diagnostic, the snapshot format, epoch semantics and
-failure atomicity. `native/ECS_G/src/ecsg_math.c` and `ecsg_state.c` remain the
+failure atomicity. `native/ECS/src/ecsg_math.c` and `ecsg_state.c` remain the
 scalar reference and correctness authority (digest-pinned by the mission
 gate). An executor that keeps the reference's per-element floating-point
 order must be bitwise equal to it. Any backend that changes accumulation order
@@ -42,7 +42,7 @@ before the runtime may select it. Cognitive R0 v1 evidence is never rewritten.
 
 ## Required runtime shape
 
-A native executor under `native/ECS_G` owns, for one ECS_G state:
+A native executor under `native/ECS` owns, for one ECS state:
 
 * authoritative `W`, staging/candidate `W`, reusable scratch, admitted
   capacity, epoch and a commit generation;
@@ -66,13 +66,13 @@ with `K`; a caller that wants no receipt pays for none. A runtime turn with
 several ordered drives is one native transaction: begin, one native learn
 over all drives, readout, commit or abort. A contiguous-buffer path (`array('d')`, `memoryview`)
 must exist; list/tuple input is a convenience and does not set the
-performance ceiling. ECS_G stays standard-library only. A future native codec
+performance ceiling. ECS stays standard-library only. A future native codec
 calls the executor ABI directly, without Python.
 
 ## Implementation (R1C-R1F)
 
-`native/ECS_G/include/elpis/ecsg_executor.h` (executor ABI v1, in
-`libelpis_ecsg_math`) and `elpis.ECS_G.native.Executor` / `Transaction`
+`native/ECS/include/elpis/ecsg_executor.h` (executor ABI v1, in
+`libelpis_ecsg_math`) and `elpis.ECS.native.Executor` / `Transaction`
 realise this shape:
 
 * `forward`: one call, read-only; `learn` / `learn_schedule`: one call for

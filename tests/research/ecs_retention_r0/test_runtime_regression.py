@@ -29,13 +29,13 @@ import pytest
 from research.ecs_retention_r0 import protocol as P
 from research.ecs_retention_r0 import run as R
 
-from ...ECS_G.test_math_r0 import REPO, _library_path
+from ...ECS.test_math_r0 import REPO, _library_path
 
 QUAL = P.load(R.QUAL_PATH, "qual")["body"]
 
 _RUN = """
 import ctypes, json, statistics, sys
-from elpis.ECS_G.native import ECSGLibrary
+from elpis.ECS.native import ECSGLibrary
 from research.ecs_retention_r0 import experiment as X, protocol as P, run as R
 from tests.research._blas import openblas_core, openblas_threads
 library = sys.argv[1]

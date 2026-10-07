@@ -8,7 +8,7 @@ import pytest
 
 from ._system import REPO, SYSTEM, live_subsystems, repository_files, subsystem_ids
 
-EXPECTED_SUBSYSTEMS = ["substrate", "ECS_C", "ECS_G", "structure", "pipeline", "evolution", "inference", "runtime"]
+EXPECTED_SUBSYSTEMS = ["substrate", "ECS", "continuity", "structure", "pipeline", "evolution", "inference", "runtime"]
 STATUSES = {"PLANNED", "MATERIALIZED_INCOMPLETE", "OPERATIONAL", "OPERATIONAL_INCOMPLETE_INTEGRATION"}
 
 

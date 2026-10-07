@@ -1,14 +1,14 @@
-# ECS_G Mutable FMS R0
+# ECS Mutable FMS R0
 
 `MECHANICS_ONLY` · `NO_SCIENTIFIC_CLAIM` · `NO_NEW_LEARNING_LAW`
 
 Mutable FMS R0 is an additive residency adapter for the already-qualified
-ECS_G Runtime R1 executor. It changes where an idle logical ECS state is
-materialized; it does not change what ECS_G computes.
+ECS Runtime R1 executor. It changes where an idle logical ECS state is
+materialized; it does not change what ECS computes.
 
 ## Authority
 
-The learned state remains the existing portable ECS_G snapshot:
+The learned state remains the existing portable ECS snapshot:
 
     ELPISG01 header | d | N | epoch | W (little-endian binary64)
 
@@ -79,7 +79,7 @@ transaction stale, matching Runtime R1 semantics.
 
 ## Python boundary
 
-`elpis.ECS_G.residency.FMSRuntime` is a control-plane factory. It returns an
+`elpis.ECS.residency.FMSRuntime` is a control-plane factory. It returns an
 actual existing `Executor` object whose ABI table targets the native residency
 adapter. `CognitiveCore` and the canonical runtime therefore use their existing
 Executor interface unchanged. Python does not execute rows, entities or
@@ -123,7 +123,7 @@ Mutable FMS R0 does not establish:
 - a durable catalog of logical identities;
 - crash-durable cognitive commits;
 - multi-writer semantics;
-- device/HOT execution of ECS_G;
+- device/HOT execution of ECS;
 - larger or multi-kernel EDEN dynamics;
 - HACF-to-ECS cognition;
-- ECS_C recording of cognitive transitions.
+- a history of cognitive transitions (continuity binds only the current K1 identity).

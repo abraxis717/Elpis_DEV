@@ -1,7 +1,7 @@
 """Cognitive R0 scientific regression on the current runtime. Never skipped for a host or profile difference.
 
 ``test_lab.py`` keeps evidence integrity (always) and historical replay (bitwise, only under the recorded
-numerical profile) apart; current executor-vs-reference parity lives in tests/ECS_G,
+numerical profile) apart; current executor-vs-reference parity lives in tests/ECS,
 tests/research/ecs_runtime_r1 and the native ctest suite. This module asks the remaining question: does the
 current runtime, on whatever host runs it, still reach the recorded Cognitive R0 result?
 
@@ -39,12 +39,12 @@ import sys
 
 import pytest
 
-from elpis.ECS_G.native import ECSGLibrary
+from elpis.ECS.native import ECSGLibrary
 from research.ecs_cognition_r0 import experiment as E
 from research.ecs_cognition_r0 import run as R
 from research.ecs_cognition_r0.protocol import load
 
-from ...ECS_G.test_math_r0 import _library_path
+from ...ECS.test_math_r0 import _library_path
 
 REL_TOL = 1e-9
 ABS_TOL = 1e-12

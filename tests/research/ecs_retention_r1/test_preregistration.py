@@ -9,7 +9,7 @@ before any laboratory code or result, and no result can be claimed before its ch
   touch no Retention R0 or Cognitive R0 evidence;
 * a later record (DEV, frozen, QUAL, results) may exist only if exactly one commit of its own step added it,
   after a commit of the step before it;
-* until QUAL evidence exists, no authority pointer claims a result, and no canonical ECS_G code names a
+* until QUAL evidence exists, no authority pointer claims a result, and no canonical ECS code names a
   retention mechanism.
 
 The history checks need full git history (CI checks out fetch-depth 0). A shallow or missing history fails
@@ -336,12 +336,12 @@ def test_no_result_is_claimed_before_qual_evidence():
     assert not set(SPEC) & {"choices", "selected", "results", "disposition_recorded", "outcome"}
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
     component = next(c for c in system["research"]["components"] if c["path"] == LAB)
-    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
+    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS")
     interface = next(i for i in ecsg["incomplete_interfaces"] if "Retention R1" in i)
     # The authority pointers to R1: each says preregistered and names no outcome.
     pointers = {
         "ELPIS_SYSTEM.json research component": component["classification"],
-        "ELPIS_SYSTEM.json ECS_G interface": interface.split("Retention R1", 1)[1],
+        "ELPIS_SYSTEM.json ECS interface": interface.split("Retention R1", 1)[1],
         "docs/COGNITION_R0.md": _after((REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8"),
                                        "Retention R1"),
     }
@@ -356,16 +356,16 @@ def test_no_result_is_claimed_before_qual_evidence():
 
 
 def test_no_canonical_retention_mechanism_is_promoted():
-    """Canonical ECS_G learning is unchanged: no consolidation, protection or reconditioning in canonical code."""
+    """Canonical ECS learning is unchanged: no consolidation, protection or reconditioning in canonical code."""
     vocabulary = re.compile(r"(?i)consolidat|retention|laplace|fibre|recondition|rehears")
-    sources = sorted((REPO / "src" / "elpis" / "ECS_G").rglob("*.py")) + sorted(
-        p for p in (REPO / "native" / "ECS_G").rglob("*") if p.suffix in (".c", ".h"))
+    sources = sorted((REPO / "src" / "elpis" / "ECS").rglob("*.py")) + sorted(
+        p for p in (REPO / "native" / "ECS").rglob("*") if p.suffix in (".c", ".h"))
     assert sources
     exempt = admitted(REPO)          # tests/research/_k1_promotion.py: the K1 milestone, only after R3 OUTCOME_A
     offenders = [str(p.relative_to(REPO)) for p in sources if vocabulary.search(p.read_text(encoding="utf-8"))
                  and str(p.relative_to(REPO)) not in exempt]
     assert not offenders, offenders
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
-    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
+    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS")
     for key in ("purpose", "mutation_authority", "runtime_participation"):
         assert field_admitted(REPO, ecsg[key], vocabulary), key

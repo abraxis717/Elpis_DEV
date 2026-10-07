@@ -4,8 +4,8 @@ import ctypes as C
 import os
 from pathlib import Path
 
-import elpis.ECS_G.k1 as k1_module
-from elpis.ECS_G.k1 import CommitIdentity, K1Library, K1Transaction
+import elpis.ECS.k1 as k1_module
+from elpis.ECS.k1 import CommitIdentity, K1Library, K1Transaction
 
 
 def _native_library() -> Path:

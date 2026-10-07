@@ -1,10 +1,10 @@
 """The single admitted exception to the Retention R1/R2/R3 canonical-vocabulary guards.
 
-Those guards assert that canonical ECS_G code names no retention mechanism (consolidation, protection,
+Those guards assert that canonical ECS code names no retention mechanism (consolidation, protection,
 reconditioning, rehearsal) while none has qualified. Retention R3 ended OUTCOME_A, which its preregistration names
 as the condition for a native K1 milestone; that milestone must itself pass its differential qualification
 (research/ecs_k1_native). Only when both hold may exactly the milestone's files use the vocabulary; every other
-canonical ECS_G file, and every R1/R2/R3 record, specification and verdict, is unchanged.
+canonical ECS file, and every R1/R2/R3 record, specification and verdict, is unchanged.
 
 The exception is void unless the R3 QUAL record is byte-for-byte the recorded one (sha256 pinned here, as in
 tests/research/ecs_retention_r3/test_evidence.py) and states OUTCOME_A, and one of ADMITTED_NATIVE_RECORDS verifies
@@ -23,18 +23,18 @@ R3_QUAL = Path("research/ecs_retention_r3/evidence/qual/ecsg-retention-r3.v1.qua
 R3_QUAL_SHA256 = "83ce2d61f30bb2927e1288995de5eb00ce41ff48767d54faedde88c8266c20e6"
 
 K1_FILES = frozenset({
-    "src/elpis/ECS_G/k1.py",
-    "native/ECS_G/include/elpis/ecsg_k1.h",
-    "native/ECS_G/include/elpis/ecsg_k1_fms.h",
-    "native/ECS_G/src/ecsg_k1.c",
-    "native/ECS_G/src/ecsg_k1_fms.c",
-    "native/ECS_G/src/ecsg_k1_internal.h",
-    "native/ECS_G/tests/test_ecsg_k1.c",
-    "native/ECS_G/tests/test_ecsg_k1_alloc.c",
-    "native/ECS_G/tests/test_ecsg_k1_fms.c",
-    "native/ECS_G/tests/test_ecsg_k1_fms_alloc.c",
-    "native/ECS_G/tests/test_ecsg_k1_fms_faults.c",
-    "native/ECS_G/tests/test_ecsg_k1_performance.c",
+    "src/elpis/ECS/k1.py",
+    "native/ECS/include/elpis/ecsg_k1.h",
+    "native/ECS/include/elpis/ecsg_k1_fms.h",
+    "native/ECS/src/ecsg_k1.c",
+    "native/ECS/src/ecsg_k1_fms.c",
+    "native/ECS/src/ecsg_k1_internal.h",
+    "native/ECS/tests/test_ecsg_k1.c",
+    "native/ECS/tests/test_ecsg_k1_alloc.c",
+    "native/ECS/tests/test_ecsg_k1_fms.c",
+    "native/ECS/tests/test_ecsg_k1_fms_alloc.c",
+    "native/ECS/tests/test_ecsg_k1_fms_faults.c",
+    "native/ECS/tests/test_ecsg_k1_performance.c",
 })
 
 
@@ -129,7 +129,7 @@ def admitted(repo: Path) -> frozenset:
 
 
 def field_admitted(repo: Path, text: str, vocabulary: re.Pattern) -> bool:
-    """An ELPIS_SYSTEM.json ECS_G field may use the vocabulary only after R3 OUTCOME_A, and only in sentences that
+    """An ELPIS_SYSTEM.json ECS field may use the vocabulary only after R3 OUTCOME_A, and only in sentences that
     name K1."""
     sentences = [s for s in re.split(r"(?<=[.;])\s+", text) if vocabulary.search(s)]
     return not sentences or (r3_outcome_a(repo) and native_qualified(repo) and all("K1" in s for s in sentences))

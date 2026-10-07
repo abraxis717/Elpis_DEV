@@ -34,19 +34,13 @@ from elpis.inference.principal import PrincipalEngine, PrincipalRequest
 from elpis.pipeline.ingress import QueryIngress
 from elpis.runtime import Runtime, RuntimeConfig
 from elpis.runtime.composition import ContextPreparation
-from elpis.runtime.history import ReceiptHistory
+from elpis.continuity import ContinuityStore
 from elpis.structure.retrieval.hacf import build_corpus_and_index
 from elpis.structure.retrieval.objects import ObjectResolutionError, normalize
 from elpis.substrate.synthetic import SyntheticFileAssets
 
 from ..inference.test_token_stream_kernel import Recorder
-from ..conftest import require_native_library
 from .conftest import POSITIVE
-
-
-def _history_library():
-    """The native ECS_C runtime-history writer: a writable runtime history requires it explicitly."""
-    return require_native_library("elpis_ecsc_history")
 
 NS = "elpis.docs"
 CONTEXT = initial_snapshot().digest
@@ -142,8 +136,8 @@ def test_ingress_to_admission_through_verified_hacf_objects(runtime, ingress_lib
     assert result.commit.outputs == tuple(emitted) and len(emitted) == 12
     assert result.commit.admission == admission.digest
     assert result.commit.prefill == len(admission.tokens) + len(request.prompt)
-    # The runtime records the structural-memory rendering only; it runs and records no model.
-    assert [r.record.kind for r in runtime.history.records()] == ["ingress.proposal", "context.admission"]
+    # The runtime renders structural memory only; it runs no model and writes no continuity.
+    assert runtime.continuity.snapshot().generation == 1
     assert engine.replay(state, request, admission, result.commit).commit == result.commit
 
 
@@ -153,7 +147,7 @@ TRAPPED = [
     (edges, "from_regex_hacf"), (edges, "object_claims"), (edges, "from_retrieval_bundle"),
     (composition, "from_regex_hacf"), (composition, "object_claims"), (composition, "resolve_chunks"),
     (composition, "admit_context"), (objects_module, "resolve_chunks"), (objects_module, "_read_document"),
-    (admission_module, "admit_context"), (ReceiptHistory, "record"), (boundary.RootCapability, "open_file"),
+    (admission_module, "admit_context"), (ContinuityStore, "_publish"), (boundary.RootCapability, "open_file"),
     (elpis.identity, "content_digest"), (digests, "content_digest"), (digests, "identity"), (digests, "raw_digest"),
 ]
 
@@ -191,7 +185,7 @@ def test_resident_model_state_stays_bounded_as_hacf_grows(retrieval_library, ing
         corpus_root, manifest = build(retrieval_library, root, extra)
         chunks = json.loads(manifest)["chunk_count"]
         sizes.append(sum(d["size_bytes"] for d in json.loads(manifest)["documents"]))
-        with Runtime(RuntimeConfig(root / "history", history_native_library=_history_library())) as runtime:
+        with Runtime(RuntimeConfig(root / "continuity")) as runtime:
             admission = prepare(runtime, ingress_library, corpus_root, manifest, engine).admission
             state = engine.initial(CONTEXT)
             sequence = engine.begin(state, PrincipalRequest("r", (1,), 20), admission,
@@ -219,8 +213,7 @@ def test_runtime_boundary_takes_no_kv_or_vectors(function):
 
 
 def test_preparation_record_carries_no_model_state():
-    assert {f.name for f in fields(ContextPreparation)} == {"admission", "ingress", "ingress_record",
-                                                           "admission_record"}
+    assert {f.name for f in fields(ContextPreparation)} == {"admission", "ingress"}
 
 
 def test_tampered_blob_or_wrong_manifest_refuses_admission(ingress_library, substrate, model, tmp_path):
@@ -232,13 +225,12 @@ def test_tampered_blob_or_wrong_manifest_refuses_admission(ingress_library, subs
         data = bytearray(blob.read_bytes())
         data[-1] ^= 1
         blob.write_bytes(bytes(data))
-    with Runtime(RuntimeConfig(tmp_path / "history", history_native_library=_history_library())) as runtime:
+    with Runtime(RuntimeConfig(tmp_path / "continuity")) as runtime:
         with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
             prepare(runtime, ingress_library, copy, manifest, engine)
         with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
             prepare(runtime, ingress_library, corpus_root, json.dumps({"documents": []}), engine)
-        kinds = [r.record.kind for r in runtime.history.records()]
-    assert "context.admission" not in kinds and kinds.count("ingress.proposal") >= 1
+        assert runtime.continuity.snapshot().generation == 1
 
 
 def test_scaling_benchmark_reports_bounded_state_and_separate_costs(monkeypatch):

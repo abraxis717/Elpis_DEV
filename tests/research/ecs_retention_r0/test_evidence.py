@@ -20,7 +20,7 @@ import pytest
 from research.ecs_retention_r0 import protocol as P
 from research.ecs_retention_r0 import run as R
 
-from ...ECS_G.test_math_r0 import REPO, _library_path
+from ...ECS.test_math_r0 import REPO, _library_path
 
 RESULTS = REPO / "docs" / "research" / "ECS_RETENTION_R0_RESULTS.md"
 FROZEN = P.load(R.FROZEN_PATH, "frozen")
@@ -144,8 +144,10 @@ REPRODUCING_OPENBLAS_CORES = ("Cooperlake", "SkylakeX")
 
 _REPRODUCE = """
 import ctypes, json, sys
-from elpis.ECS_G.native import ECSGLibrary
+from elpis.ECS.native import ECSGLibrary
 from research.ecs_retention_r0 import experiment as X, protocol as P, run as R
+from tests.research._renamed_sources import apply_renamed_lab_binding
+apply_renamed_lab_binding(P)
 from tests.research._blas import openblas_core, openblas_threads
 library, world, cores = sys.argv[1], sys.argv[2], sys.argv[3].split(",")
 qual = P.load(R.QUAL_PATH, "qual")["body"]

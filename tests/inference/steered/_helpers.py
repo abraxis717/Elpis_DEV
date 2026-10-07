@@ -15,7 +15,7 @@ SRC_PATHS = [str(REPO / 'src')]
 AUTHORITY = ('semantic_authority', 'admission_authority', 'execution_authority', 'mutation_authority',
              'runtime_admission')
 # Subsystems the steered decoding path must never touch.
-SLOW_LANE_MODULES = ('elpis.evolution', 'elpis.ECS_C', 'elpis.pipeline', 'elpis.runtime', 'elpis.structure.grid81')
+SLOW_LANE_MODULES = ('elpis.evolution', 'elpis.ECS', 'elpis.continuity', 'elpis.pipeline', 'elpis.runtime', 'elpis.structure.grid81')
 SLOW_LANE_PREFIXES = ()
 SLOW_LANE_TAGS = ('darwin', 'evolution')
 SLOW_LANE_ROOTS = tuple(str(REPO / 'src' / 'elpis' / name) for name in ('evolution', 'ecs', 'pipeline', 'runtime'))

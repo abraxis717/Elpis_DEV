@@ -1,11 +1,14 @@
-"""Evolution end to end: gated attempts bound to the runtime's own ECS history, receipts recorded."""
+"""Evolution end to end: gated attempts bound to the runtime's current evolution authority (continuity)."""
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 import hashlib
 
+import pytest
+
+from elpis.continuity import store as continuity_store
 from elpis.evolution import EvolutionAttempt, EvolutionPathAssertion, EvolutionPathGate, GateExecuted, GateRejected
-from elpis.runtime import ReceiptRecord
+from elpis.runtime import CompositionError, Runtime, RuntimeConfig
 
 from .conftest import POSITIVE
 
@@ -29,7 +32,7 @@ GATE = EvolutionPathGate(allowed_component_scopes=("evolution/population",),
                          resource_budget_digest=d("budget"), evaluation_contract_digest=d("contract"))
 
 
-def assertion(episode, projection, previous_receipt):
+def assertion(episode, authority, previous_receipt):
     return EvolutionPathAssertion(
         episode_id=episode.episode_id, episode_state_digest=episode.digest(),
         structural_attempt_index=episode.structural_attempt_index,
@@ -37,9 +40,7 @@ def assertion(episode, projection, previous_receipt):
         previous_path_receipt_digest=previous_receipt, candidate_manifest_digest=d("candidate"),
         hypothesis_digest=d("hypothesis"), component_scope=("evolution/population",), edit_count=1,
         edit_budget=2, resource_budget_digest=d("budget"), evaluation_contract_digest=d("contract"),
-        history_projection_digest=projection.projection_digest,
-        history_head_event_digest=projection.source.head_event_digest,
-        history_final_state_root=projection.source.final_state_root)
+        evolution_authority_revision=authority.revision, evolution_authority_digest=authority.digest)
 
 
 def advance(*, state, label):
@@ -48,44 +49,74 @@ def advance(*, state, label):
     return EvolutionAttempt(after, d("attempt-" + label), d("result-" + label), "ATTEMPT_COMMITTED")
 
 
-def test_attempts_chain_through_the_runtime_history(runtime, ingress):
-    runtime.run_ingress(ingress, POSITIVE)  # the history the first attempt reasons over is not empty
+def test_attempts_advance_the_durable_evolution_authority(runtime, ingress):
+    runtime.run_ingress(ingress, POSITIVE)  # unrelated operations do not move the evolution authority
+    authority0 = runtime.evolution_authority()
+    assert authority0.revision == 0
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
-    first_assertion = assertion(episode, runtime.history_projection(), d("path-genesis"))
-    first, recorded = runtime.evolve(GATE, assertion=first_assertion, state=episode, advance=advance,
-                                     advance_kwargs={"label": "1"})
+    first_assertion = assertion(episode, authority0, d("path-genesis"))
+    first = runtime.evolve(GATE, assertion=first_assertion, state=episode, advance=advance,
+                           advance_kwargs={"label": "1"})
     assert isinstance(first, GateExecuted) and first.advance_calls == 1
-    assert recorded.record == ReceiptRecord.of(
-        "evolution", "evolution.path-transition", first.receipt.receipt_digest,
-        assertion=first_assertion.digest, history_projection=first_assertion.history_projection_digest,
-        outcome="ATTEMPT_COMMITTED")
+    authority1 = runtime.evolution_authority()
+    assert authority1.revision == 1 and authority1.digest != authority0.digest
+    assert runtime.continuity.snapshot().evolution.head == first.receipt.receipt_digest
 
-    # The history moved (the transition itself was recorded): the old binding is stale.
+    # An assertion built against revision 0 is stale at revision 1, whatever else matches.
     episode = first.result.state_after
-    stale = assertion(episode, runtime.history_projection(), first.receipt.receipt_digest)
-    stale = replace(stale, history_projection_digest=first_assertion.history_projection_digest,
-                    history_head_event_digest=first_assertion.history_head_event_digest,
-                    history_final_state_root=first_assertion.history_final_state_root)
     calls = []
-    rejected, none = runtime.evolve(GATE, assertion=stale, state=episode,
-                                    advance=lambda **kw: calls.append(kw), advance_kwargs={})
-    assert isinstance(rejected, GateRejected) and none is None and calls == []
-    assert rejected.reason in ("HISTORY_PROJECTION_MISMATCH", "HISTORY_HEAD_MISMATCH")
+    stale = assertion(episode, authority0, first.receipt.receipt_digest)
+    rejected = runtime.evolve(GATE, assertion=stale, state=episode,
+                              advance=lambda **kw: calls.append(kw), advance_kwargs={})
+    assert isinstance(rejected, GateRejected) and calls == []
+    assert rejected.reason == "STALE_EVOLUTION_AUTHORITY"
+    assert runtime.evolution_authority() == authority1
 
-    fresh = assertion(episode, runtime.history_projection(), first.receipt.receipt_digest)
-    second, recorded2 = runtime.evolve(GATE, assertion=fresh, state=episode, advance=advance,
-                                       advance_kwargs={"label": "2"})
+    # Replaying the first assertion executes nothing either.
+    replay = runtime.evolve(GATE, assertion=first_assertion, state=Episode("episode", 0, d("genesis-attempt"),
+                                                                            d("state-0")),
+                            advance=lambda **kw: calls.append(kw), advance_kwargs={})
+    assert isinstance(replay, GateRejected) and calls == []
+
+    second = runtime.evolve(GATE, assertion=assertion(episode, authority1, first.receipt.receipt_digest),
+                            state=episode, advance=advance, advance_kwargs={"label": "2"})
     assert isinstance(second, GateExecuted)
     assert second.receipt.previous_path_receipt_digest == first.receipt.receipt_digest
-    kinds = [r.record.kind for r in runtime.history.records()]
-    assert kinds == ["ingress.proposal", "evolution.path-transition", "evolution.path-transition"]
-    assert recorded2.event_index > recorded.event_index
+    assert runtime.evolution_authority().revision == 2
 
 
-def test_projection_of_the_history_is_read_only_and_exact(runtime, ingress):
-    runtime.run_ingress(ingress, POSITIVE)
-    root = runtime.history.state_root
-    one = runtime.history_projection()
-    two = runtime.history_projection()
-    assert one.projection_digest == two.projection_digest and runtime.history.state_root == root
-    assert len(one.records) == len(runtime.history.records()) == 1
+def test_evolution_authority_survives_restart(tmp_path):
+    config = RuntimeConfig(tmp_path / "continuity")
+    episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
+    with Runtime(config) as rt:
+        first = rt.evolve(GATE, assertion=assertion(episode, rt.evolution_authority(), d("path-genesis")),
+                          state=episode, advance=advance, advance_kwargs={"label": "1"})
+        authority = rt.evolution_authority()
+    with Runtime(config) as rt:
+        assert rt.evolution_authority() == authority
+        stale = assertion(first.result.state_after, type(authority)(0, "0" * 64), first.receipt.receipt_digest)
+        rejected = rt.evolve(GATE, assertion=stale, state=first.result.state_after,
+                             advance=lambda **kw: pytest.fail("must not run"), advance_kwargs={})
+        assert isinstance(rejected, GateRejected)
+
+
+def test_failed_authority_publication_fail_stops_evolution(tmp_path, monkeypatch):
+    config = RuntimeConfig(tmp_path / "continuity")
+    episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
+    with Runtime(config) as rt:
+        before = rt.evolution_authority()
+
+        def fail(fd, data, offset):
+            raise OSError(28, "ENOSPC")
+
+        monkeypatch.setattr(continuity_store.os, "pwrite", fail)
+        with pytest.raises(CompositionError) as info:
+            rt.evolve(GATE, assertion=assertion(episode, before, d("path-genesis")), state=episode,
+                      advance=advance, advance_kwargs={"label": "1"})
+        assert info.value.code == "CONTINUITY_PUBLICATION_REFUSED"
+        monkeypatch.undo()
+        with pytest.raises(CompositionError) as info:
+            rt.evolution_authority()
+        assert info.value.code == "CONTINUITY_PUBLICATION_REFUSED"
+    with Runtime(config) as rt:
+        assert rt.evolution_authority() == before

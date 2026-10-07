@@ -1,7 +1,11 @@
-"""Public-ECS coarse collision, and proof that the laboratory has no authority over production code or state."""
+"""Proof that the laboratory has no authority over production code or state.
+
+The laboratory's public-kernel collision experiment (``ecs_collision.py``) ran on the event-history
+kernel that Elpis has since abolished (docs/CONTINUITY.md). The laboratory source stays byte-frozen and its
+recorded results stay historical, but that experiment can no longer be executed and is not tested here.
+"""
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -9,61 +13,10 @@ import sys
 
 import pytest
 
-from research.ecs_dynamics import ecs_collision as E
 from research.ecs_dynamics.export import DynamicsObservation
 from research.ecs_dynamics.results import ExperimentResult, ResultError
 
 REPO = Path(__file__).resolve().parents[3]
-
-
-def test_minimal_pair_shares_coarse_state_and_diverges_on_targets():
-    labels, a, b = E.MINIMAL_PAIR
-    r = E.compare_pair(labels, a, b, depth=1, rounds=2)
-    assert r["histories_distinct"] and not r["full_equal"]
-    assert r["coarse_equal"] and r["weak_equal"]
-    assert r["event_differs"] and r["trajectory_differs"]
-    assert r["first_divergent_round"] == 1 and not r["endpoint_differs"]  # diverges, then re-converges
-    assert not r["delay_equal"]  # C_{t-1} tells the two histories apart
-    assert r["analysis_read_only"]
-
-
-def test_identical_histories_do_not_diverge():
-    labels, a, _ = E.MINIMAL_PAIR
-    r = E.compare_pair(labels, a, a, depth=1, rounds=2)
-    assert r["coarse_equal"] and r["full_equal"] and not r["event_differs"] and not r["trajectory_differs"]
-
-
-def _tree_digest(root: Path) -> str:
-    h = hashlib.sha256()
-    for p in sorted(root.rglob("*")):
-        if p.is_file():
-            h.update(p.relative_to(root).as_posix().encode() + b"\0" + p.read_bytes())
-    return h.hexdigest()
-
-
-def test_futures_run_on_copies_and_never_touch_the_original_history():
-    labels, a, _ = E.MINIMAL_PAIR
-    h = E.History(labels, a)
-    try:
-        before = _tree_digest(Path(h.path))
-        E.next_processed_edge(h)
-        E.reply_policy_future(h, 2)
-        h.prefix_coarse(1)
-        assert _tree_digest(Path(h.path)) == before
-    finally:
-        h.cleanup()
-    assert not Path(h.root).exists()
-
-
-def test_coarse_state_drops_only_the_projection_binding_digest():
-    labels, a, _ = E.MINIMAL_PAIR
-    h = E.History(labels, a)
-    try:
-        c = E.coarse_state(h.analysis)
-        assert "topology_digest" not in c
-        assert set(h.analysis.to_dict()) - set(c) == {"topology_digest"}
-    finally:
-        h.cleanup()
 
 
 # --- no authority mutation --------------------------------------------------------------------
@@ -80,16 +33,25 @@ def test_production_code_never_imports_the_laboratory():
 
 
 def test_importing_ecs_does_not_load_the_laboratory_or_numpy():
-    probe = "import sys, elpis.ECS_C, elpis.ECS_C.kernel; print(sorted(m for m in sys.modules if m.startswith('research')))"
+    probe = ("import sys, elpis.ECS, elpis.ECS.native, elpis.ECS.k1, elpis.continuity; "
+             "print(sorted(m for m in sys.modules if m.startswith('research') or m.startswith('numpy')))")
     out = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, cwd=REPO,
                          env={"PYTHONPATH": str(REPO / "src"), "PYTHONDONTWRITEBYTECODE": "1"}, check=True)
     assert out.stdout.strip() == "[]"
 
 
-def test_neural_law_is_not_in_the_ecs_kernel_and_numpy_is_not_a_base_dependency():
-    kernel = (REPO / "src" / "elpis" / "ECS_C" / "kernel.py").read_text()
-    for token in ("tanh", "numpy", "research", "phi(z)"):
-        assert token not in kernel
+def test_neural_law_is_not_in_the_ecs_or_continuity_and_numpy_is_not_a_base_dependency():
+    import ast
+
+    for root in ("ECS", "continuity"):
+        for path in (REPO / "src" / "elpis" / root).rglob("*.py"):
+            tree = ast.parse(path.read_text())
+            imported = {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
+            imported |= {node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
+            assert not [n for n in imported if n.split(".")[0] in ("numpy", "research")], path
+            names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+            names |= {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)}
+            assert "tanh" not in names, path
     import tomllib
     project = tomllib.loads((REPO / "pyproject.toml").read_text())["project"]
     assert not any(dep.lower().startswith("numpy") for dep in project.get("dependencies", []))

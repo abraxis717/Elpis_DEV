@@ -4,7 +4,7 @@ Three questions are kept apart (docs/research/COGNITION_R0_RESULTS.md, "Reproduc
 
 * evidence integrity (always tested here): the frozen records are byte-identical to the ones written at
   DEV / freeze / QUAL time and internally consistent;
-* current implementation correctness (tests/ECS_G, tests/research/ecs_runtime_r1, the native ctest suite):
+* current implementation correctness (tests/ECS, tests/research/ecs_runtime_r1, the native ctest suite):
   the executor equals the scalar reference bitwise on the host that runs the tests;
 * historical replay (``test_qual_measurements_reproduce_exactly``): the current process reproduces the
   recorded QUAL bytes. Demanded bitwise only under the numerical profile the evidence recorded.
@@ -19,12 +19,12 @@ import hashlib
 
 import pytest
 
-from elpis.ECS_G.native import ECSGLibrary
+from elpis.ECS.native import ECSGLibrary
 from research.ecs_cognition_r0 import experiment as E
 from research.ecs_cognition_r0 import run as R
 from research.ecs_cognition_r0.protocol import load, numerical_profile, source_digest
 
-from ...ECS_G.test_math_r0 import REPO, _library_path
+from ...ECS.test_math_r0 import REPO, _library_path
 from .._blas import openblas_core
 
 RESULTS = REPO / "docs" / "research" / "COGNITION_R0_RESULTS.md"
@@ -144,10 +144,10 @@ def test_admitted_claims_cite_the_evidence_and_stay_bounded():
     authority = (REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8")
     assert qual_digest in authority and frozen_digest in authority
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
-    ecs_g = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
+    ecs_g = next(s for s in system["subsystems"] if s["id"] == "ECS")
     assert qual_digest[:8] in ecs_g["maturity"] and frozen_digest[:8] in ecs_g["maturity"]
     assert "under the qualified Cognitive R0 regime" in ecs_g["maturity"]
-    for name in ("docs/COGNITION_R0.md", "docs/research/COGNITION_R0_RESULTS.md", "native/ECS_G/README.md",
+    for name in ("docs/COGNITION_R0.md", "docs/research/COGNITION_R0_RESULTS.md", "native/ECS/README.md",
                  "docs/ARCHITECTURE.md", "README.md", "ELPIS_SYSTEM.json"):
         text = (REPO / name).read_text(encoding="utf-8").lower()
         assert not [o for o in OVERCLAIMS if o in text], name

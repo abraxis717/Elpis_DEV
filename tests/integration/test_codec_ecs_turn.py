@@ -20,13 +20,13 @@ import sys
 import numpy as np
 import pytest
 
-from elpis.ECS_G.k1 import K1FMSRuntime, K1Library, K1State
-from elpis.ECS_G.native import ECSGLibrary, Executor
+from elpis.ECS.k1 import K1FMSRuntime, K1Library, K1State
+from elpis.ECS.native import ECSGLibrary, Executor
 from elpis.runtime.cognition import CODEC_UNQUALIFIED, Readout, Stimulus, run_turn
 from elpis.runtime.composition import CompositionError
 from elpis.substrate.residency import Context
 
-from ..ECS_G.test_math_r0 import REPO, _library_path
+from ..ECS.test_math_r0 import REPO, _library_path
 from ._turn_fixtures import FIXTURE, ByteTokens, FixtureMap
 
 DIM, WIDTH, RATE = 6, 36, 0.002
@@ -35,7 +35,7 @@ DIM, WIDTH, RATE = 6, 36, 0.002
 def _beside(name):
     path = Path(_library_path()).with_name(name)
     if not path.is_file():
-        raise AssertionError(f"{name} not built beside the ECS_G library: {path}")
+        raise AssertionError(f"{name} not built beside the ECS library: {path}")
     return path
 
 
@@ -110,7 +110,7 @@ def test_canonical_turn_fails_closed_without_a_qualified_codec(k1, runtime):
             assert info.value.code == CODEC_UNQUALIFIED == "ECS_CODEC_UNQUALIFIED"
             assert "text generation unavailable" in str(info.value)
         assert state.snapshot() == before and state.epoch == 0
-    assert runtime.history.records() == ()
+    assert not runtime.continuity.snapshot().anchored
 
 
 def test_the_executor_is_no_longer_the_canonical_turn_substrate(api):
@@ -251,7 +251,7 @@ _NO_DSV_PROBE = r"""
 import ctypes, json, sys
 from pathlib import Path
 sys.path.insert(0, sys.argv[1])
-from elpis.ECS_G.k1 import K1Library, K1State
+from elpis.ECS.k1 import K1Library, K1State
 from elpis.runtime.cognition import run_turn
 from tests.integration._turn_fixtures import ByteTokens, FixtureMap
 k1 = K1Library(ctypes.CDLL(str(Path(sys.argv[2]).with_name("libelpis_ecsg_k1.so"))))
@@ -355,442 +355,170 @@ def test_one_schedule_crossing_per_turn_whatever_experiences_or_steps(experience
 
 
 
-def test_canonical_turn_exposes_commit_bound_continuity_identity(k1):
+def test_canonical_turn_exposes_the_commit_bound_retained_state_identities(k1):
     with world(k1) as state:
         before = state.snapshot()
-        result = run_turn(
-            state,
-            "continuity",
-            tokenizer=ByteTokens(),
-            codec_map=FixtureMap(),
-            learning_rate=RATE,
-        )
+        result = run_turn(state, "continuity", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
         after = state.snapshot()
-
-        continuity = result.continuity
-        assert continuity is not None
-        assert continuity.mechanism == "1"
-        assert continuity.epoch_before == result.epoch_before
-        assert continuity.epoch_after == result.epoch_after
-        assert continuity.generation_after == continuity.generation_before + 1
-        assert continuity.state_before_digest == before[-32:].hex()
-        assert continuity.state_after_digest == after[-32:].hex()
-        assert len(continuity.digest) == 64
-        int(continuity.digest, 16)
+        # The exact K1 retained-state identities (ELPISGK1 trailers) of the committed transition.
+        assert result.state_before_digest == before[-32:]
+        assert result.state_after_digest == after[-32:] == state.state_digest()
 
 
-def test_runtime_turn_records_exactly_one_ecsg_cognition_turn_receipt(
-    k1,
-    history_library,
-    tmp_path,
-):
-    from elpis.runtime import Runtime, RuntimeConfig
-    from elpis.runtime.history import ReceiptHistory
+# -- runtime lineage through continuity (docs/CONTINUITY.md) -------------------------------------
 
-    history_dir = tmp_path / "cognition-turn-history"
+def _config(path):
+    from elpis.runtime import RuntimeConfig
+    return RuntimeConfig(path)
+
+
+def test_runtime_turn_publishes_exactly_the_new_expected_k1_identity(k1, tmp_path):
+    from elpis.runtime import Runtime
 
     with world(k1) as state:
-        with Runtime(
-            RuntimeConfig(
-                history_dir,
-                history_native_library=history_library,
-            )
-        ) as runtime:
-            anchor = runtime.anchor_cognition(state)
-            before_turns = len([
-                item for item in runtime.history.records()
-                if item.record.subsystem == "ecs_g"
-                and item.record.kind == "cognition.turn"
-            ])
-
-            result = runtime.run_turn(
-                state,
-                "persist me",
-                tokenizer=ByteTokens(),
-                codec_map=FixtureMap(),
-                learning_rate=RATE,
-            )
-
-            turn_records = [
-                item for item in runtime.history.records()
-                if item.record.subsystem == "ecs_g"
-                and item.record.kind == "cognition.turn"
-            ]
-            assert len(turn_records) == before_turns + 1
-            assert anchor.kind == "cognition.anchor"
-            record = turn_records[-1].record
-            continuity = result.continuity
-
-            assert continuity is not None
-            assert record.subsystem == "ecs_g"
-            assert record.kind == "cognition.turn"
-            assert record.digest == continuity.digest
-
-            bindings = dict(record.bindings)
-            assert set(bindings) == {
-                "codec",
-                "epoch_after",
-                "epoch_before",
-                "generation_after",
-                "generation_before",
-                "input_tokens",
-                "mechanism",
-                "output_tokens",
-                "readout",
-                "state_after",
-                "state_before",
-                "stimulus",
-            }
-            assert bindings["mechanism"] == continuity.mechanism
-            assert bindings["epoch_before"] == str(continuity.epoch_before)
-            assert bindings["epoch_after"] == str(continuity.epoch_after)
-            assert bindings["generation_before"] == str(continuity.generation_before)
-            assert bindings["generation_after"] == str(continuity.generation_after)
-            assert bindings["state_before"] == continuity.state_before_digest
-            assert bindings["state_after"] == continuity.state_after_digest
-            assert bindings["stimulus"] == continuity.stimulus_digest
-            assert bindings["readout"] == continuity.readout_digest
-            assert bindings["input_tokens"] == continuity.input_tokens_digest
-            assert bindings["output_tokens"] == continuity.output_tokens_digest
-            assert bindings["codec"] == continuity.codec
-
-    replay = ReceiptHistory(history_dir).open()
-    try:
-        matching = [
-            item
-            for item in replay.records()
-            if item.record.subsystem == "ecs_g"
-            and item.record.kind == "cognition.turn"
-            and item.record.digest == result.continuity.digest
-        ]
-        assert len(matching) == 1
-    finally:
-        replay.close()
+        with Runtime(_config(tmp_path / "c")) as runtime:
+            anchored = runtime.anchor_cognition(state)
+            assert anchored.k1_state_digest == state.state_digest()
+            result = runtime.run_turn(state, "one", tokenizer=ByteTokens(), codec_map=FixtureMap(),
+                                      learning_rate=RATE)
+            snap = runtime.continuity.snapshot()
+            assert snap.k1_state_digest == result.state_after_digest == state.state_digest()
+            assert snap.generation == anchored.generation + 1
+            # Nothing else is durable: no generation, epochs or token identities.
+            assert snap.evolution == anchored.evolution
 
 
-@pytest.mark.parametrize(
-    ("native_code", "expected"),
-    (
-        (-7, "HISTORY_REFUSED_AFTER_ECS_COMMIT"),
-        (-8, "HISTORY_UNCERTAIN_AFTER_ECS_COMMIT"),
-        (-10, "HISTORY_UNCERTAIN_AFTER_ECS_COMMIT"),
-    ),
-)
-def test_post_commit_history_failure_is_asymmetric_and_fail_stops_future_turns(
-    k1,
-    tmp_path,
-    monkeypatch,
-    native_code,
-    expected,
-):
-    from elpis.runtime import Runtime, RuntimeConfig
-    from elpis.runtime.history import HistoryError
-    from elpis.runtime.native_history import NativeHistoryError
-
-    runtime = Runtime(RuntimeConfig(tmp_path / f"history-failure-{abs(native_code)}"))
-    calls = []
-
-    def fail(record):
-        calls.append(record)
-
-        if record.kind == "cognition.anchor":
-            return object()
-
-        cause = NativeHistoryError(native_code, "RECORD:TEST")
-        raise HistoryError("NATIVE_HISTORY_RECORD", str(cause)) from cause
-
-    monkeypatch.setattr(runtime.history, "record", fail)
-
-    with world(k1) as state:
-        runtime.anchor_cognition(state)
-        before = state.snapshot()
-
-        with pytest.raises(CompositionError) as info:
-            runtime.run_turn(
-                state,
-                "commit then fail history",
-                tokenizer=ByteTokens(),
-                codec_map=FixtureMap(),
-                learning_rate=RATE,
-            )
-
-        assert info.value.code == expected
-        committed = state.snapshot()
-        assert committed != before
-        turn_calls = [record for record in calls if record.kind == "cognition.turn"]
-        assert len(turn_calls) == 1
-        assert turn_calls[0].subsystem == "ecs_g"
-
-        with pytest.raises(CompositionError) as second:
-            runtime.run_turn(
-                state,
-                "must not continue",
-                tokenizer=ByteTokens(),
-                codec_map=FixtureMap(),
-                learning_rate=RATE,
-            )
-
-        assert second.value.code == expected
-        assert state.snapshot() == committed
-        assert len([record for record in calls if record.kind == "cognition.turn"]) == 1
-
-
-def test_post_commit_non_native_history_refusal_is_definite_and_fail_stop(
-    k1,
-    tmp_path,
-    monkeypatch,
-):
-    from elpis.runtime import Runtime, RuntimeConfig
-    from elpis.runtime.history import HistoryError
-
-    runtime = Runtime(RuntimeConfig(tmp_path / "history-closed-after-commit"))
-    calls = []
-
-    def fail(record):
-        calls.append(record)
-
-        if record.kind == "cognition.anchor":
-            return object()
-
-        raise HistoryError("HISTORY_CLOSED")
-
-    monkeypatch.setattr(runtime.history, "record", fail)
-
-    with world(k1) as state:
-        runtime.anchor_cognition(state)
-        before = state.snapshot()
-
-        with pytest.raises(CompositionError) as info:
-            runtime.run_turn(
-                state,
-                "definite history refusal",
-                tokenizer=ByteTokens(),
-                codec_map=FixtureMap(),
-                learning_rate=RATE,
-            )
-
-        assert info.value.code == "HISTORY_REFUSED_AFTER_ECS_COMMIT"
-        committed = state.snapshot()
-        assert committed != before
-        assert len([record for record in calls if record.kind == "cognition.turn"]) == 1
-
-        with pytest.raises(CompositionError) as second:
-            runtime.run_turn(
-                state,
-                "blocked",
-                tokenizer=ByteTokens(),
-                codec_map=FixtureMap(),
-                learning_rate=RATE,
-            )
-
-        assert second.value.code == "HISTORY_REFUSED_AFTER_ECS_COMMIT"
-        assert state.snapshot() == committed
-        assert len([record for record in calls if record.kind == "cognition.turn"]) == 1
-
-
-
-def test_runtime_refuses_unanchored_cognition_before_k1_mutation(
-    k1,
-    history_library,
-    tmp_path,
-):
-    from elpis.runtime import Runtime, RuntimeConfig
+def test_runtime_refuses_unanchored_cognition_before_k1_mutation(k1, tmp_path):
+    from elpis.runtime import Runtime
 
     with world(k1) as state:
         before = state.snapshot()
-
-        with Runtime(
-            RuntimeConfig(
-                tmp_path / "unanchored",
-                history_native_library=history_library,
-            )
-        ) as runtime:
+        with Runtime(_config(tmp_path / "unanchored")) as runtime:
             with pytest.raises(CompositionError) as info:
-                runtime.run_turn(
-                    state,
-                    "must anchor first",
-                    tokenizer=ByteTokens(),
-                    codec_map=FixtureMap(),
-                    learning_rate=RATE,
-                )
-
-            assert info.value.code == "COGNITION_UNANCHORED"
+                runtime.run_turn(state, "must anchor first", tokenizer=ByteTokens(), codec_map=FixtureMap(),
+                                 learning_rate=RATE)
+            assert info.value.code == "CONTINUITY_UNANCHORED"
             assert state.snapshot() == before
-            assert not [
-                item for item in runtime.history.records()
-                if item.record.subsystem == "ecs_g"
-                and item.record.kind in ("cognition.anchor", "cognition.turn")
-            ]
+            assert not runtime.continuity.snapshot().anchored  # no implicit anchor, ever
 
 
-def test_explicit_cognition_anchor_is_durable_and_does_not_mutate_k1(
-    k1,
-    history_library,
-    tmp_path,
-):
-    from elpis.runtime import Runtime, RuntimeConfig
-    from elpis.runtime.history import ReceiptHistory
-
-    history_dir = tmp_path / "anchor"
+def test_explicit_anchor_is_durable_once_and_does_not_mutate_k1(k1, tmp_path):
+    from elpis.runtime import Runtime
 
     with world(k1) as state:
         before = state.snapshot()
-        expected = state.state_digest().hex()
-
-        with Runtime(
-            RuntimeConfig(
-                history_dir,
-                history_native_library=history_library,
-            )
-        ) as runtime:
-            record = runtime.anchor_cognition(state)
-
-            assert record.subsystem == "ecs_g"
-            assert record.kind == "cognition.anchor"
-            assert record.digest == expected
-            assert dict(record.bindings) == {
-                "mechanism": "1",
-                "state": expected,
-            }
+        with Runtime(_config(tmp_path / "anchor")) as runtime:
+            runtime.anchor_cognition(state)
             assert state.snapshot() == before
-
-    replay = ReceiptHistory(history_dir).open()
-    try:
-        anchors = [
-            item.record
-            for item in replay.records()
-            if item.record.subsystem == "ecs_g"
-            and item.record.kind == "cognition.anchor"
-        ]
-        assert len(anchors) == 1
-        assert anchors[0].digest == expected
-    finally:
-        replay.close()
+            with pytest.raises(CompositionError) as info:
+                runtime.anchor_cognition(state)
+            assert info.value.code == "CONTINUITY_ALREADY_ANCHORED"
+        with Runtime(_config(tmp_path / "anchor")) as restarted:
+            assert restarted.continuity.snapshot().k1_state_digest == before[-32:]
+            with pytest.raises(CompositionError) as info:
+                restarted.anchor_cognition(state)
+            assert info.value.code == "CONTINUITY_ALREADY_ANCHORED"
 
 
-def test_quiescent_restart_reconciles_same_state_without_new_anchor(
-    k1,
-    history_library,
-    tmp_path,
-):
-    from elpis.runtime import Runtime, RuntimeConfig
-
-    history_dir = tmp_path / "restart-match"
+def test_matched_restart_resumes_without_a_new_anchor(k1, tmp_path):
+    from elpis.runtime import Runtime
 
     with world(k1) as state:
-        with Runtime(
-            RuntimeConfig(
-                history_dir,
-                history_native_library=history_library,
-            )
-        ) as first:
+        with Runtime(_config(tmp_path / "c")) as first:
             first.anchor_cognition(state)
-
-        with Runtime(
-            RuntimeConfig(
-                history_dir,
-                history_native_library=history_library,
-            )
-        ) as restarted:
-            anchors_before = len([
-                item for item in restarted.history.records()
-                if item.record.subsystem == "ecs_g"
-                and item.record.kind == "cognition.anchor"
-            ])
-
-            result = restarted.run_turn(
-                state,
-                "resume",
-                tokenizer=ByteTokens(),
-                codec_map=FixtureMap(),
-                learning_rate=RATE,
-            )
-
-            assert result.continuity is not None
-
-            anchors_after = len([
-                item for item in restarted.history.records()
-                if item.record.subsystem == "ecs_g"
-                and item.record.kind == "cognition.anchor"
-            ])
-
-            assert anchors_after == anchors_before == 1
+            first.run_turn(state, "before restart", tokenizer=ByteTokens(), codec_map=FixtureMap(),
+                           learning_rate=RATE)
+            generation = first.continuity.snapshot().generation
+        with Runtime(_config(tmp_path / "c")) as restarted:
+            result = restarted.run_turn(state, "resume", tokenizer=ByteTokens(), codec_map=FixtureMap(),
+                                        learning_rate=RATE)
+            snap = restarted.continuity.snapshot()
+            assert snap.k1_state_digest == result.state_after_digest
+            assert snap.generation == generation + 1  # one transition, no anchor
 
 
-def test_quiescent_restart_state_mismatch_fails_before_mutation(
-    k1,
-    history_library,
-    tmp_path,
-):
-    from elpis.runtime import Runtime, RuntimeConfig
-
-    history_dir = tmp_path / "restart-mismatch"
+def test_mismatched_restart_fails_before_k1_mutation(k1, tmp_path):
+    from elpis.runtime import Runtime
 
     with world(k1) as anchored, world(k1) as other:
-        with Runtime(
-            RuntimeConfig(
-                history_dir,
-                history_native_library=history_library,
-            )
-        ) as first:
+        with Runtime(_config(tmp_path / "c")) as first:
             first.anchor_cognition(anchored)
-
-        run_turn(
-            other,
-            "out of band",
-            tokenizer=ByteTokens(),
-            codec_map=FixtureMap(),
-            learning_rate=RATE,
-        )
+        run_turn(other, "out of band", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
         before = other.snapshot()
-
-        with Runtime(
-            RuntimeConfig(
-                history_dir,
-                history_native_library=history_library,
-            )
-        ) as restarted:
+        with Runtime(_config(tmp_path / "c")) as restarted:
+            durable = restarted.continuity.snapshot()
             with pytest.raises(CompositionError) as info:
-                restarted.run_turn(
-                    other,
-                    "must refuse",
-                    tokenizer=ByteTokens(),
-                    codec_map=FixtureMap(),
-                    learning_rate=RATE,
-                )
-
-            assert info.value.code == "HISTORY_STATE_MISMATCH"
+                restarted.run_turn(other, "must refuse", tokenizer=ByteTokens(), codec_map=FixtureMap(),
+                                   learning_rate=RATE)
+            assert info.value.code == "CONTINUITY_STATE_MISMATCH"
             assert other.snapshot() == before
+            # Fail-stopped, and nothing synthesized.
+            assert restarted.continuity.snapshot() == durable
+            with pytest.raises(CompositionError) as info:
+                restarted.run_turn(anchored, "still stopped", tokenizer=ByteTokens(), codec_map=FixtureMap(),
+                                   learning_rate=RATE)
+            assert info.value.code == "CONTINUITY_STATE_MISMATCH"
 
 
-def test_open_runtime_refuses_switching_k1_lineage_handles(
-    k1,
-    history_library,
-    tmp_path,
-):
-    from elpis.runtime import Runtime, RuntimeConfig
+@pytest.mark.parametrize("failure", ["write", "sync"])
+def test_k1_commit_then_failed_publication_keeps_k1_and_fail_stops(k1, tmp_path, monkeypatch, failure):
+    """The crash law: the K1 commit stands; restart sees old authority and refuses the moved state."""
+    from elpis.continuity import store as continuity_store
+    from elpis.runtime import Runtime
+
+    with world(k1) as state:
+        with Runtime(_config(tmp_path / "c")) as runtime:
+            anchored = runtime.anchor_cognition(state)
+
+            def fail(*_args):
+                raise OSError(5, "EIO")
+
+            if failure == "write":
+                monkeypatch.setattr(continuity_store.os, "pwrite", fail)
+                expected = "CONTINUITY_PUBLICATION_REFUSED"
+            else:
+                monkeypatch.setattr(continuity_store.os, "fdatasync", fail, raising=False)
+                monkeypatch.setattr(continuity_store.os, "fsync", fail)
+                expected = "CONTINUITY_PUBLICATION_UNCERTAIN"
+            with pytest.raises(CompositionError) as info:
+                runtime.run_turn(state, "commit then fail", tokenizer=ByteTokens(), codec_map=FixtureMap(),
+                                 learning_rate=RATE)
+            monkeypatch.undo()
+            assert info.value.code == expected
+            committed = state.snapshot()
+            # K1 committed and is never rolled back.
+            assert state.epoch > 0 and committed[-32:] != anchored.k1_state_digest
+            with pytest.raises(CompositionError) as info:  # fail-stopped: no further K1 mutation
+                runtime.run_turn(state, "again", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
+            assert info.value.code == expected
+            assert state.snapshot() == committed
+        with Runtime(_config(tmp_path / "c")) as restarted:
+            durable = restarted.continuity.snapshot().k1_state_digest
+            if durable == anchored.k1_state_digest:
+                # Old durable authority: the moved K1 state is a mismatch, refused before mutation.
+                with pytest.raises(CompositionError) as info:
+                    restarted.run_turn(state, "after restart", tokenizer=ByteTokens(), codec_map=FixtureMap(),
+                                       learning_rate=RATE)
+                assert info.value.code == "CONTINUITY_STATE_MISMATCH"
+                assert state.snapshot() == committed
+            else:
+                # New durable authority (the synced-unknown write did land): resume.
+                assert durable == committed[-32:]
+                restarted.run_turn(state, "after restart", tokenizer=ByteTokens(), codec_map=FixtureMap(),
+                                   learning_rate=RATE)
+
+
+def test_open_runtime_refuses_switching_k1_lineage_handles(k1, tmp_path):
+    from elpis.runtime import Runtime
 
     with world(k1) as first_state, world(k1) as second_state:
-        with Runtime(
-            RuntimeConfig(
-                tmp_path / "switch",
-                history_native_library=history_library,
-            )
-        ) as runtime:
+        with Runtime(_config(tmp_path / "switch")) as runtime:
             runtime.anchor_cognition(first_state)
-
             first_before = first_state.snapshot()
             second_before = second_state.snapshot()
-
             with pytest.raises(CompositionError) as info:
-                runtime.run_turn(
-                    second_state,
-                    "wrong lineage",
-                    tokenizer=ByteTokens(),
-                    codec_map=FixtureMap(),
-                    learning_rate=RATE,
-                )
-
+                runtime.run_turn(second_state, "wrong lineage", tokenizer=ByteTokens(), codec_map=FixtureMap(),
+                                 learning_rate=RATE)
             assert info.value.code == "COGNITION_SUBSTRATE_SWITCH"
             assert first_state.snapshot() == first_before
             assert second_state.snapshot() == second_before

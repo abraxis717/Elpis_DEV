@@ -99,49 +99,41 @@ digests stay as persisted identities: the code checks itself against them at
 import time. They identify *which* contract the mechanics implement. They
 are not evidence that the contract has any effect.
 
-## ECS_C history and the runtime receipt history
+## Continuity (`elpis.continuity`)
 
-* **Bounded means logical directory bytes under a finite policy.**
-  `RuntimeHistoryPolicy` bounds the logical size of the files in the history
-  directory. The bound covers the active segment, the checkpoint, and the
-  compaction headroom (one in-flight checkpoint and manifest). Filesystem
-  block, inode and journal overhead are not bounded. Peak usage is measured
-  at every generation-switch step in the tests, not derived from a
-  filesystem model.
-* **No lifetime history.** Once a prefix is compacted, its events no longer
-  exist. They survive only as the verified compaction checkpoint's state.
-  None of the following reaches below the retention floor, and each refuses
-  rather than answering from the tail:
-  * listing records;
-  * projecting events;
-  * folding topology;
-  * detecting duplicates.
-
-  Exact duplicate detection is guaranteed only within the retained window.
-  No lifetime idempotence, no probabilistic membership structure and no
-  archive exist.
-* **Content identity, not authentication.** The compaction checkpoint,
-  manifest and event digests are integrity evidence only. Whoever can write
-  the directory can replace a whole generation consistently.
-
-  A compacted base with an empty segment binds its terminal event digest only
-  through the checkpoint's own digest. No later event links to it yet.
-* **Crash model.** The crash matrix simulates process death at each named
-  generation-switch step. Under power loss, durability rests on the stated
-  `fsync`, rename and directory-`fsync` ordering of the host filesystem. A
-  power loss between the manifest rename and its directory `fsync` may expose
-  either generation, and both are complete until cleanup. Stronger
+* **Current authority, not history.** Continuity holds one fixed-size record
+  (two 136-byte slots, 272 bytes in total, whatever the runtime lifetime):
+  the committed K1 retained-state digest and the evolution authority
+  `(revision, head)`. It keeps no turn log, no receipts, no events and no
+  audit trail. Nothing in it can answer what happened before the current
+  authority. Per-turn diagnostics live only on the returned turn result.
+* **Integrity, not authentication.** The record checksum detects torn or
+  corrupted slots. It does not authenticate the writer: whoever can write the
+  directory can replace the register consistently. The K1 digest binds the
+  identity of a K1 state, not its provenance.
+* **Crash model.** The crash matrix simulates process death and torn writes
+  at every named publication and initialization step, and failed writes and
+  failed `fdatasync`. Durability under power loss rests on the host
+  filesystem honouring `fdatasync` for an in-place, fixed-size write and on
+  the rename and directory-`fsync` ordering at initialization. A torn sector
+  is detected by the checksum and resolves to the other slot; stronger
   power-failure atomicity is not claimed.
-* **One-time legacy migration is not bounded restart.** Migrating a legacy
-  `events.log` validates it once through the original whole-log replay
-  (memory proportional to that log). Every later open is bounded by the
-  active segment.
-* **Not cognitive state.** The checkpoint and the fixed-size cognition
-  continuity summary are ECS_C bookkeeping about receipts. They carry no K1
-  state and grant no authority over ECS_G.
-* **Single process, single owner.** The directory flock excludes a second
-  owner. It provides no cross-process transport, federation or shared-reader
-  semantics.
+* **No rollback, no synthesis.** If publication fails after a native K1
+  commit, the K1 commit stands and the runtime fail-stops with the
+  publication code. Restart verifies the supplied K1 state against the
+  durable identity and refuses a mismatch before any mutation. No missing
+  turn is replayed or synthesized; recovering from a mismatch is an explicit
+  operator decision outside the runtime.
+* **Single process, single owner.** A directory `flock` excludes a second
+  owner on the same host. There is no cross-process transport, federation,
+  replication or shared-reader semantics. One open runtime owns one K1
+  lineage.
+* **Not cognitive state.** Continuity holds a digest of the K1 state, never
+  the state. ECS owns `W`, epoch, `H` and `a`, their snapshots and FMS
+  residency. Continuity grants no authority over ECS mathematics.
+* **Legacy storage is refused, not converted.** The retired receipt-history
+  layout is detected and refused. Conversion is an offline step documented
+  in `docs/CONTINUITY.md`.
 
 ## Evolution (`elpis.evolution`)
 

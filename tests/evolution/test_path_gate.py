@@ -1,4 +1,4 @@
-"""The evolution path gate admits one bounded attempt per exact, history-bound assertion."""
+"""The evolution path gate admits one bounded attempt per exact, authority-bound assertion."""
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
@@ -9,15 +9,15 @@ import pytest
 
 from elpis.evolution import (
     EvolutionAttempt,
+    EvolutionAuthorityBinding,
     EvolutionGateError,
     EvolutionPathAssertion,
+    EvolutionPathAssertionV0,
     EvolutionPathGate,
     GateExecuted,
     GateRejected,
 )
 from elpis.evolution.digests import domain_digest
-
-from ._history import ecs_projection
 
 
 def d(label: str) -> str:
@@ -36,8 +36,9 @@ class FakeState:
 
 
 @pytest.fixture(scope="module")
-def projection(tmp_path_factory):
-    return ecs_projection(tmp_path_factory.mktemp("history") / "kernel")
+def projection():
+    # The current evolution authority the assertion is built against (revision 4).
+    return EvolutionAuthorityBinding(4, d("evolution-authority-4"))
 
 
 def state():
@@ -59,9 +60,8 @@ def assertion(projection, **overrides):
         edit_budget=2,
         resource_budget_digest=d("resource-budget"),
         evaluation_contract_digest=d("evaluation-contract"),
-        history_projection_digest=projection.projection_digest,
-        history_head_event_digest=projection.source.head_event_digest,
-        history_final_state_root=projection.source.final_state_root,
+        evolution_authority_revision=projection.revision,
+        evolution_authority_digest=projection.digest,
     )
     return replace(base, **overrides)
 
@@ -86,25 +86,47 @@ def gate():
         ({"component_scope": ("evolution/other",)}, "COMPONENT_SCOPE_NOT_ALLOWED"),
         ({"resource_budget_digest": d("other-resource")}, "RESOURCE_BUDGET_MISMATCH"),
         ({"evaluation_contract_digest": d("other-eval")}, "EVALUATION_CONTRACT_MISMATCH"),
-        ({"history_projection_digest": d("other-projection")}, "HISTORY_PROJECTION_MISMATCH"),
-        ({"history_head_event_digest": d("other-head")}, "HISTORY_HEAD_MISMATCH"),
-        ({"history_final_state_root": d("other-root")}, "HISTORY_ROOT_MISMATCH"),
+        ({"evolution_authority_revision": 3}, "STALE_EVOLUTION_AUTHORITY"),
+        ({"evolution_authority_digest": d("other-authority")}, "EVOLUTION_AUTHORITY_MISMATCH"),
     ],
 )
 def test_fail_closed_before_advance(projection, changes, expected):
     calls = []
     result = gate().execute(assertion=assertion(projection, **changes), state=state(),
-                            projection=projection, advance=lambda **kw: calls.append(kw),
+                            authority=projection, advance=lambda **kw: calls.append(kw),
                             advance_kwargs={})
     assert isinstance(result, GateRejected)
     assert result.reason == expected and result.advance_calls == 0 and calls == []
 
 
-def test_look_alike_projection_is_not_a_history_binding(projection):
-    fake = SimpleNamespace(projection_digest=projection.projection_digest, source=projection.source)
-    result = gate().execute(assertion=assertion(projection), state=state(), projection=fake,
+def test_look_alike_authority_is_not_a_binding(projection):
+    fake = SimpleNamespace(revision=projection.revision, digest=projection.digest)
+    result = gate().execute(assertion=assertion(projection), state=state(), authority=fake,
                             advance=lambda **kw: pytest.fail("must not run"), advance_kwargs={})
-    assert isinstance(result, GateRejected) and result.reason == "HISTORY_PROJECTION_INVALID"
+    assert isinstance(result, GateRejected) and result.reason == "EVOLUTION_AUTHORITY_INVALID"
+
+
+def test_an_assertion_built_against_revision_n_is_refused_at_n_plus_one(projection):
+    """Stale-authority protection: no history projection is involved."""
+    advanced = EvolutionAuthorityBinding(projection.revision + 1, d("evolution-authority-5"))
+    result = gate().execute(assertion=assertion(projection), state=state(), authority=advanced,
+                            advance=lambda **kw: pytest.fail("must not run"), advance_kwargs={})
+    assert isinstance(result, GateRejected) and result.reason == "STALE_EVOLUTION_AUTHORITY"
+
+
+def test_retired_v0_assertions_keep_their_identity_but_are_refused(projection):
+    s = state()
+    v0 = EvolutionPathAssertionV0(
+        s.episode_id, s.digest(), s.structural_attempt_index, s.previous_structural_attempt_digest,
+        d("path-head"), d("candidate"), d("hypothesis"), ("evolution/population",), 1, 2,
+        d("resource-budget"), d("evaluation-contract"), d("projection"), d("head"), d("root"))
+    assert v0.payload()["schema"] == "elpis.evolution-path-assertion.v0"
+    assert v0.digest == domain_digest("elpis.evolution-path-assertion.v0", v0.payload())
+    result = gate().execute(assertion=v0, state=s, authority=projection,
+                            advance=lambda **kw: pytest.fail("must not run"), advance_kwargs={})
+    assert isinstance(result, GateRejected) and result.reason == "ASSERTION_SCHEMA_RETIRED"
+    v1 = assertion(projection)
+    assert v1.payload()["schema"] == "elpis.evolution-path-assertion.v1" and v1.digest != v0.digest
 
 
 def make_advance(outcome: str, close=None):
@@ -117,7 +139,7 @@ def make_advance(outcome: str, close=None):
 
 @pytest.mark.parametrize("outcome", ["ATTEMPT_COMMITTED", "ATTEMPT_REJECTED"])
 def test_admitted_attempt_is_bound_without_reinterpretation(projection, outcome):
-    result = gate().execute(assertion=assertion(projection), state=state(), projection=projection,
+    result = gate().execute(assertion=assertion(projection), state=state(), authority=projection,
                             advance=make_advance(outcome), advance_kwargs={"opaque": "value"})
     assert isinstance(result, GateExecuted)
     assert result.admitted is True and result.advance_calls == 1
@@ -134,19 +156,19 @@ def test_admitted_attempt_is_bound_without_reinterpretation(projection, outcome)
 
 def test_attempt_must_report_a_typed_result(projection):
     with pytest.raises(EvolutionGateError):
-        gate().execute(assertion=assertion(projection), state=state(), projection=projection,
+        gate().execute(assertion=assertion(projection), state=state(), authority=projection,
                        advance=lambda **kw: {"state": "anything"}, advance_kwargs={})
 
 
 def test_receipts_chain_by_digest(projection):
-    first = gate().execute(assertion=assertion(projection), state=state(), projection=projection,
+    first = gate().execute(assertion=assertion(projection), state=state(), authority=projection,
                            advance=make_advance("ATTEMPT_COMMITTED"), advance_kwargs={}).receipt
     s2 = FakeState("episode-0", 3, d("attempt-new"), d("state-after-ATTEMPT_COMMITTED"))
     second = gate().execute(
         assertion=assertion(projection, episode_state_digest=s2.digest(), structural_attempt_index=3,
                             previous_structural_attempt_digest=s2.previous_structural_attempt_digest,
                             previous_path_receipt_digest=first.receipt_digest),
-        state=s2, projection=projection, advance=make_advance("ATTEMPT_REJECTED"),
+        state=s2, authority=projection, advance=make_advance("ATTEMPT_REJECTED"),
         advance_kwargs={}).receipt
     assert second.previous_path_receipt_digest == first.receipt_digest
 

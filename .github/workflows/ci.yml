@@ -38,9 +38,9 @@ jobs:
           EOF
       # The native libraries are built only after base neutrality was proved: a
       # CMake build installs no Python distribution, so it cannot change that
-      # result. Boundary tests that bind native ECS_G/ECS_C ABIs (K1 commit and
-      # state identity, the runtime-history session) load them from this build,
-      # the same convention as the Python and authority jobs.
+      # result. Boundary tests that bind the native ECS ABI (K1 commit and state
+      # identity) load it from this build, the same convention as the Python and
+      # authority jobs.
       - name: Native build dependencies
         run: sudo apt-get update && sudo apt-get install -y $NATIVE_DEPS
       - name: Native build (libraries loaded by boundary tests)
@@ -200,7 +200,7 @@ jobs:
           grep -m1 -E "^model[[:space:]]" /proc/cpuinfo
           echo "shallow: $(git rev-parse --is-shallow-repository)"
       - name: Current executor equals the scalar reference (native, AVX2 and baseline clones)
-        run: ctest --test-dir build --output-on-failure -R "^ECS_G\."
+        run: ctest --test-dir build --output-on-failure -R "^ECS\."
       - name: Evidence integrity, chronology, replay contracts, current-runtime regressions
         run: >-
           /tmp/elpis-venv/bin/python -m pytest -rs
@@ -211,7 +211,7 @@ jobs:
           tests/research/ecs_retention_r3
           tests/research/ecs_k1_native
           tests/research/ecs_runtime_r1
-          tests/ECS_G
+          tests/ECS
           tests/boundary/test_cognition_r0.py
           tests/boundary/test_runtime_r1.py
           tests/boundary/test_k1_runtime.py
