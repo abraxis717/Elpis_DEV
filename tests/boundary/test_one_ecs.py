@@ -224,6 +224,7 @@ _ABI_NATIVE = "Native ECS source, build or test: declares, implements or links t
 _ABI_BINDING = "ECS binding: loads the native ABI and names persisted schema and digest-domain identifiers."
 _ABI_TEST = "Exercises or pins the native ABI and persisted protocol identifiers."
 _HECS_K1 = "H-ECS R0 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
+_RUNTIME_K1 = "RuntimeCore reaches K1 only through tables of the qualified native ABI's entry points (elpis_ecsg_k1)."
 
 # Files that may contain retired tokens only as NATIVE_ABI_FORM identifiers.
 NATIVE_ABI_FILES = {
@@ -276,6 +277,15 @@ NATIVE_ABI_FILES = {
     "tests/integration/test_codec_ecs_turn.py": _ABI_TEST,
     "tests/integration/test_runtime_hot_path.py": _ABI_TEST,
     "native/continuity/qualify.sh": "Builds the ECS K1 libraries (native target names) the continuity runtime tests load.",
+    "docs/RUNTIME_CORE.md": _RUNTIME_K1,
+    "native/runtime/CMakeLists.txt": _RUNTIME_K1,
+    "native/runtime/include/elpis/runtime.h": _RUNTIME_K1,
+    "native/runtime/src/ffi.rs": _RUNTIME_K1,
+    "native/runtime/src/lib.rs": _RUNTIME_K1,
+    "native/runtime/src/substrate.rs": _RUNTIME_K1,
+    "native/runtime/src/tests.rs": _RUNTIME_K1,
+    "native/runtime/tests/test_runtime_abi.c": _RUNTIME_K1,
+    "src/elpis/runtime/core.py": _RUNTIME_K1,
     "research/hecs_r0/CMakeLists.txt": _HECS_K1,
     "research/hecs_r0/PREREGISTRATION.md": _HECS_K1,
     "research/hecs_r0/README.md": _HECS_K1,
