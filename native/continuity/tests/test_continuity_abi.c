@@ -18,6 +18,12 @@
 _Static_assert(sizeof(elpis_continuity_evolution) == 80, "evolution ABI size");
 _Static_assert(sizeof(elpis_continuity_snapshot) == 192, "snapshot ABI size");
 
+/* dir + "/" + name into out; the result must fit (checked, never silently truncated). */
+static void join(char *out, size_t size, const char *dir, const char *name) {
+    int n = snprintf(out, size, "%s/%s", dir, name);
+    assert(n > 0 && (size_t)n < size);
+}
+
 static void unhex(const char *s, uint8_t *out, size_t n) {
     assert(strlen(s) == 2 * n);
     for (size_t i = 0; i < n; ++i) assert(sscanf(s + 2 * i, "%2hhx", &out[i]) == 1);
@@ -25,7 +31,7 @@ static void unhex(const char *s, uint8_t *out, size_t n) {
 
 static void records(const char *fixtures) {
     char path[4096];
-    snprintf(path, sizeof(path), "%s/continuity_v2_vectors.txt", fixtures);
+    join(path, sizeof(path), fixtures, "continuity_v2_vectors.txt");
     FILE *f = fopen(path, "r");
     assert(f);
     char line[4096];
@@ -84,7 +90,7 @@ static void remove_tree(const char *dir) {
     char p[4096];
     while ((e = readdir(d))) {
         if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
-        snprintf(p, sizeof(p), "%s/%s", dir, e->d_name);
+        join(p, sizeof(p), dir, e->d_name);
         unlink(p);
     }
     closedir(d);
@@ -93,7 +99,7 @@ static void remove_tree(const char *dir) {
 
 static void slot(const char *dir, const char *name, char *hex_out) {
     char p[4096];
-    snprintf(p, sizeof(p), "%s/%s", dir, name);
+    join(p, sizeof(p), dir, name);
     FILE *f = fopen(p, "rb");
     assert(f);
     uint8_t b[ELPIS_CONTINUITY_RECORD_SIZE];
@@ -104,9 +110,9 @@ static void slot(const char *dir, const char *name, char *hex_out) {
 
 static void session(const char *fixtures, const char *scratch) {
     char dir[4096], path[4096], line[4096];
-    snprintf(dir, sizeof(dir), "%s/abi-session", scratch);
+    join(dir, sizeof(dir), scratch, "abi-session");
     remove_tree(dir);
-    snprintf(path, sizeof(path), "%s/continuity_v2_sequence.txt", fixtures);
+    join(path, sizeof(path), fixtures, "continuity_v2_sequence.txt");
     FILE *f = fopen(path, "r");
     assert(f);
     elpis_continuity_store *s = NULL;
@@ -154,7 +160,7 @@ static void session(const char *fixtures, const char *scratch) {
 
 static void contract(const char *scratch) {
     char dir[4096];
-    snprintf(dir, sizeof(dir), "%s/abi-contract", scratch);
+    join(dir, sizeof(dir), scratch, "abi-contract");
     remove_tree(dir);
     assert(elpis_continuity_abi_version() == ELPIS_CONTINUITY_ABI_V1);
     assert(elpis_continuity_record_size() == ELPIS_CONTINUITY_RECORD_SIZE);
@@ -210,7 +216,7 @@ static void contract(const char *scratch) {
     elpis_continuity_store_destroy(&s); /* idempotent on NULL */
     struct stat st;
     char p[4096];
-    snprintf(p, sizeof(p), "%s/continuity.a", dir);
+    join(p, sizeof(p), dir, "continuity.a");
     assert(!stat(p, &st) && st.st_size == ELPIS_CONTINUITY_RECORD_SIZE);
     remove_tree(dir);
     puts("C ABI contract: codes, lifecycle, lock, cognition, reservation and finalization PASS");
