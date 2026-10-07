@@ -217,10 +217,11 @@ _K1_ABI = {
 class K1Library:
     """Typed view of one loaded ``libelpis_ecsg_k1`` (K1 ABI v1)."""
 
-    __slots__ = ("_k",)
+    __slots__ = ("_k", "_lib")
 
     def __init__(self, lib):
         self._k = _bind(lib, "elpis_ecsg_k1_", _K1_ABI)
+        self._lib = lib  # the loaded library itself: its entry points for native callers (RuntimeCore)
         if self._k.abi_version() != 1:
             raise K1Error("UNSUPPORTED", "K1 ABI version")
 
@@ -243,10 +244,10 @@ def _bytes_view(data, what):
 class K1State:
     """One standalone native K1 state ``(W, epoch, H, a)``. SINGLE_WRITER (an overlapping call is BUSY)."""
 
-    __slots__ = ("_k", "_handle", "_dim", "_width", "_features")
+    __slots__ = ("_k", "_lib", "_handle", "_dim", "_width", "_features")
 
     def __init__(self, library, handle):
-        self._k, self._handle = library._k, handle
+        self._k, self._lib, self._handle = library._k, library._lib, handle
         self._dim, self._width = int(self._k.dim(handle)), int(self._k.width(handle))
         self._features = int(self._k.features(self._dim))
 
@@ -558,6 +559,7 @@ class K1FMSRuntime:
             raise K1Error("INVALID", "state capacity")
         self._k1 = k1_library
         self._f = _bind(library, "elpis_ecsg_k1_fms_", _FMS_ABI)
+        self._lib = library  # the loaded adapter itself: its entry points for native callers (RuntimeCore)
         if self._f.abi_version() != 1:
             raise K1Error("UNSUPPORTED", "K1 FMS ABI")
         self._handle = _VP()

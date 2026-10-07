@@ -138,9 +138,10 @@ def test_runtime_import_closure_loads_no_dsv_model_machinery():
 # publishes it as the expected lineage identity. It executes no model, mutates
 # no K1 state and is never invoked implicitly (reconciliation never anchors).
 # ``evolution_authority`` reads the current evolution authority an assertion
-# must be bound to; it writes nothing.
+# must be bound to; it writes nothing. ``fault`` reads RuntimeCore's fail-stop
+# disposition (native/runtime); it writes nothing.
 RUNTIME_OPERATIONS = {"open", "close", "run_ingress", "admit_retrieval", "publish_canonical",
-                      "evolution_authority", "evolve", "admit_context", "run_turn", "anchor_cognition"}
+                      "evolution_authority", "evolve", "admit_context", "run_turn", "anchor_cognition", "fault"}
 
 
 def test_runtime_composes_no_model_operation():

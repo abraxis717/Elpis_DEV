@@ -1,4 +1,9 @@
-"""Evolution end to end: gated attempts bound to the runtime's current evolution authority (continuity)."""
+"""Evolution end to end: gated attempts bound to the runtime's current evolution authority.
+
+The gate validates and executes at the boundary; RuntimeCore (native/runtime) owns the durable reservation,
+the finalization and the fail-stop. Everything below is observed through RuntimeCore: the continuity record,
+its testing faults, and the gate's own result.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,7 +15,7 @@ from elpis.continuity import ContinuityProcessDeath
 from elpis.evolution import EvolutionAttempt, EvolutionPathAssertion, EvolutionPathGate, GateExecuted, GateRejected
 from elpis.runtime import CompositionError, Runtime, RuntimeConfig
 
-from ..conftest import require_continuity_library
+from ..conftest import require_runtime_library
 from .conftest import POSITIVE
 
 SLOTS = ("continuity.a", "continuity.b")
@@ -20,7 +25,7 @@ STEPS = {"publish.begin": 0, "publish.written": 1, "publish.synced": 2}
 
 
 def config_at(tmp_path, testing=False):
-    return RuntimeConfig(tmp_path / "continuity", require_continuity_library(testing=testing))
+    return RuntimeConfig(tmp_path / "continuity", require_runtime_library(testing=testing))
 
 
 def d(label: str) -> str:
@@ -51,6 +56,20 @@ def assertion(episode, authority, previous_receipt):
         hypothesis_digest=d("hypothesis"), component_scope=("evolution/population",), edit_count=1,
         edit_budget=2, resource_budget_digest=d("budget"), evaluation_contract_digest=d("contract"),
         evolution_authority_revision=authority.revision, evolution_authority_digest=authority.digest)
+
+
+def capture_receipts(monkeypatch):
+    """Record the receipt digest of every attempt the gate executes (observation only)."""
+    receipts = []
+    execute = EvolutionPathGate.execute
+
+    def recording(self, **kw):
+        result = execute(self, **kw)
+        receipts.append(result.receipt.receipt_digest)
+        return result
+
+    monkeypatch.setattr(EvolutionPathGate, "execute", recording)
+    return receipts
 
 
 def advance(*, state, label):
@@ -130,12 +149,12 @@ def test_reservation_refusal_executes_nothing_and_fail_stops_evolution(tmp_path)
 
 @pytest.mark.parametrize("phase", ["reservation", "finalization"])
 @pytest.mark.parametrize("failure", ["refused", "torn", "uncertain-lost", "uncertain-durable"])
-def test_publication_failure_never_reexecutes(tmp_path, phase, failure):
+def test_publication_failure_never_reexecutes(tmp_path, monkeypatch, phase, failure):
     """Exercise both outcomes of uncertain publication, including lost dirty bytes."""
     config = config_at(tmp_path, testing=True)
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
     calls = 0
-    receipts = []
+    receipts = capture_receipts(monkeypatch)
     with Runtime(config) as rt:
         initial = rt.continuity.snapshot().evolution
         a = assertion(episode, rt.evolution_authority(), initial.head)
@@ -150,13 +169,6 @@ def test_publication_failure_never_reexecutes(tmp_path, phase, failure):
             calls += 1
             return advance(**kw, label="1")
 
-        finalize = rt.continuity.commit_evolution_transition
-
-        def captured_finalize(expected, receipt_digest):
-            receipts.append(receipt_digest)  # the executed attempt's receipt, as the gate produced it
-            return finalize(expected, receipt_digest)
-
-        rt.continuity.commit_evolution_transition = captured_finalize
         action, arg = {"refused": (WRITE_FAIL, 0), "torn": (TORN_FAIL, 80), "uncertain-lost": (SYNC_FAIL_LOST, 0),
                        "uncertain-durable": (SYNC_FAIL_DURABLE, 0)}[failure]
         rt.continuity.testing_fault(1 if phase == "reservation" else 2, action, arg)
@@ -219,22 +231,17 @@ def test_advance_exception_or_invalid_result_preserves_pending(tmp_path, bad_res
 
 def test_explicit_reconciliation_finalizes_once_without_execution(tmp_path, monkeypatch):
     from elpis.continuity import ContinuityError
-    config = config_at(tmp_path)
+    config = config_at(tmp_path, testing=True)
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
+    # The completed receipt, as an external reconciler could establish it. RuntimeCore never persists this
+    # value or infers a result after a publication failure.
+    receipts = capture_receipts(monkeypatch)
     with Runtime(config) as rt:
         a = assertion(episode, rt.evolution_authority(), "0" * 64)
-        # Capture the completed receipt as an external reconciler could. Runtime
-        # never persists this object or infers a result after a publication failure.
-        completed = None
-
-        def fail(expected, receipt_digest):
-            nonlocal completed
-            completed = receipt_digest
-            raise ContinuityError("CONTINUITY_PUBLICATION_REFUSED")
-
-        monkeypatch.setattr(rt.continuity, "commit_evolution_transition", fail)
-        with pytest.raises(CompositionError):
+        rt.continuity.testing_fault(2, WRITE_FAIL)  # the finalization's publication is refused
+        with pytest.raises(CompositionError, match="CONTINUITY_PUBLICATION_REFUSED"):
             rt.evolve(GATE, assertion=a, state=episode, advance=advance, advance_kwargs={"label": "1"})
+    [completed] = receipts
     with Runtime(config) as rt:
         pending = rt.continuity.snapshot().evolution
         assert pending.pending_assertion == a.digest
@@ -243,6 +250,7 @@ def test_explicit_reconciliation_finalizes_once_without_execution(tmp_path, monk
         assert final.pending_assertion is None
         with pytest.raises(ContinuityError, match="CONTINUITY_AUTHORITY_MISMATCH"):
             rt.continuity.commit_evolution_transition(pending, completed)
+        assert rt.fault is None  # an operator refusal, not a fail-stop
         result = rt.evolve(GATE, assertion=a, state=episode,
                            advance=lambda **kw: pytest.fail("must not run"), advance_kwargs={})
         assert isinstance(result, GateRejected) and result.reason == "STALE_EVOLUTION_AUTHORITY"
@@ -250,19 +258,18 @@ def test_explicit_reconciliation_finalizes_once_without_execution(tmp_path, monk
         assert rt.continuity.snapshot().evolution == final
 
 
-def test_forged_predecessor_refused_before_reservation_or_execution(tmp_path, monkeypatch):
+def test_forged_predecessor_refused_before_reservation_or_execution(tmp_path):
     with Runtime(config_at(tmp_path)) as rt:
         episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
         # Test genesis and a nonzero authoritative head.
         for n in range(2):
             authority = rt.evolution_authority()
+            durable = rt.continuity.snapshot()
             a = assertion(episode, authority, d("forged-predecessor"))
-            with monkeypatch.context() as patch:
-                patch.setattr(rt.continuity, "reserve_evolution_assertion",
-                              lambda *args: pytest.fail("must not reserve"))
-                result = rt.evolve(GATE, assertion=a, state=episode,
-                                   advance=lambda **kw: pytest.fail("must not execute"), advance_kwargs={})
+            result = rt.evolve(GATE, assertion=a, state=episode,
+                               advance=lambda **kw: pytest.fail("must not execute"), advance_kwargs={})
             assert isinstance(result, GateRejected) and result.reason == "PATH_PREDECESSOR_MISMATCH"
+            assert rt.continuity.snapshot() == durable  # nothing reserved: no publication at all
             good = rt.evolve(GATE, assertion=assertion(episode, authority, authority.head),
                              state=episode, advance=advance, advance_kwargs={"label": str(n)})
             assert good.receipt.previous_path_receipt_digest == authority.head

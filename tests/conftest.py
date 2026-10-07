@@ -105,6 +105,27 @@ def require_continuity_library(testing: bool = False) -> Path:
     return path
 
 
+def require_runtime_library(testing: bool = False) -> Path:
+    """The Rust RuntimeCore library at its exact build path (native/runtime); it embeds continuity.
+
+    Located by path, never by search (the cargo target directories hold same-named files).
+    """
+    name = "libelpis_runtime_testing.so" if testing else "libelpis_runtime.so"
+    path = native_build_dir() / "native" / "runtime" / name
+    if not path.is_file():
+        message = f"{name} not built under {native_build_dir()}; build with `cmake --build build`"
+        if native_required():
+            pytest.fail(message)
+        pytest.skip(message + " (never an implicit PASS)")
+    return path
+
+
+@pytest.fixture(scope="session")
+def runtime_library() -> Path:
+    """Production RuntimeCore library path (no test hooks)."""
+    return require_runtime_library()
+
+
 @pytest.fixture(scope="session")
 def continuity_library() -> Path:
     """Production continuity library path (no test hooks)."""

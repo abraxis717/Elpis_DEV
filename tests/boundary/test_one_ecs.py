@@ -73,6 +73,17 @@ def test_dependency_directions_keep_runtime_as_the_only_composer():
     rust = "\n".join(p.read_text() for p in (crate / "src").rglob("*.rs"))
     for foreign in ("elpis_ecsg", "ecsg_", "extern crate", "#[link(", "dsv", "inference"):
         assert foreign not in rust, foreign
+    # RuntimeCore embeds the continuity crate and nothing else; it links no ECS code (K1 is reached only through
+    # caller-supplied function tables) and knows nothing of inference or DSV.
+    runtime_crate = REPO / "native/runtime"
+    cargo = (runtime_crate / "Cargo.toml").read_text()
+    deps = cargo[cargo.index("[dependencies]"):].split("\n[", 1)[0]
+    assert re.findall(r"(?m)^(\w+)\s*=", deps) == ["elpis_continuity"], deps
+    assert "[build-dependencies]" not in cargo and "[dev-dependencies]" not in cargo
+    rust = "\n".join(line.split("//")[0] for p in (runtime_crate / "src").rglob("*.rs")
+                     for line in p.read_text().splitlines())   # code only: doc comments cite the K1 ABI it mirrors
+    for foreign in ("elpis_ecsg", "extern crate", "#[link(", "dlopen", "dsv", "inference"):
+        assert foreign not in rust, foreign
     inference = _imports("inference")
     assert not [n for n in inference if _under(n, "elpis.ECS") or _under(n, "elpis.continuity")]
     cognition = imports_of(REPO, REPO / "src/elpis/runtime/cognition.py")
@@ -93,11 +104,18 @@ FORBIDDEN_HOT_PATH = re.compile(
 def test_the_canonical_turn_has_no_history_machinery_statically():
     import elpis.runtime.cognition as cognition
     from elpis.runtime.composition import Runtime
+    from elpis.runtime.core import RuntimeCore, describe
 
-    for source in (inspect.getsource(cognition), inspect.getsource(Runtime.run_turn),
-                   inspect.getsource(Runtime._reconcile_cognition_substrate)):
+    for source in (inspect.getsource(cognition), inspect.getsource(Runtime.run_turn), inspect.getsource(describe),
+                   inspect.getsource(RuntimeCore.turn_begin), inspect.getsource(RuntimeCore.turn_commit),
+                   inspect.getsource(RuntimeCore.turn_abort)):
         code = ast.unparse(_strip_docstrings(ast.parse(_dedent(source))))
         assert not FORBIDDEN_HOT_PATH.findall(code), FORBIDDEN_HOT_PATH.findall(code)
+    # RuntimeCore's managed turn (Rust): lineage, the native transaction and one publication, nothing else.
+    core = (REPO / "native/runtime/src/core.rs").read_text()
+    turn = core[core.index("// -- K1 lineage"):core.index("// -- evolution")]
+    code = "\n".join(line.split("//")[0] for line in turn.splitlines())
+    assert not FORBIDDEN_HOT_PATH.findall(code), FORBIDDEN_HOT_PATH.findall(code)
 
 
 def _dedent(source: str) -> str:

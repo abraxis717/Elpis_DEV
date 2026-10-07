@@ -49,7 +49,7 @@ def ingress(ingress_library, corpus):
 
 
 @pytest.fixture
-def runtime(tmp_path_factory, continuity_library):
-    config = RuntimeConfig(tmp_path_factory.mktemp("runtime") / "continuity", continuity_library)
+def runtime(tmp_path_factory, runtime_library):
+    config = RuntimeConfig(tmp_path_factory.mktemp("runtime") / "continuity", runtime_library)
     with Runtime(config) as rt:
         yield rt

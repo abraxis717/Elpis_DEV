@@ -208,6 +208,8 @@ history kernel.
   transition is compare-and-publish against the current record.
   `EvolutionState` is `Idle {revision, head}` or `Pending {revision, head,
   assertion}`; an idle authority cannot carry an assertion.
+* **Embedding.** RuntimeCore (`native/runtime`) embeds the store as a crate and
+  re-exports this C ABI from `libelpis_runtime.so`: one implementation.
 * **Python.** `elpis.continuity` is a thin `ctypes` adapter over that ABI
   (`ContinuityLibrary(path)`, `ContinuityStore(library, directory)` with
   `anchor_cognition`, `commit_cognition_transition`,
@@ -719,8 +721,10 @@ There is one runtime composition. The beta's numbered runtime generations
 
 ### Composition
 
-`Runtime(RuntimeConfig(continuity_dir, continuity_library))` owns only its continuity store and
-the edge adapters (`elpis.runtime.edges`) that turn ingress exports and
+`Runtime(RuntimeConfig(continuity_dir, runtime_library))` is a facade over RuntimeCore
+(`native/runtime`, Rust; docs/RUNTIME_CORE.md), which owns the runtime's lifecycle, fail-stop,
+continuity store, K1 lineage binding, the managed turn's native K1 transaction and the evolution
+reservation. The facade keeps only the edge adapters (`elpis.runtime.edges`) that turn ingress exports and
 retrieval bundles into object claims and address proposals for
 structural-memory rendering. The caller supplies everything else explicitly:
 library paths, corpus roots, file assets, ledgers and capabilities. Each
