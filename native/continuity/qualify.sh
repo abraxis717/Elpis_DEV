@@ -19,10 +19,10 @@ step "configure ($build)" 300
 timeout 300 cmake -S "$repo" -B "$build" -DCMAKE_BUILD_TYPE=Release >/dev/null
 step "build continuity, K1 and ingress/retrieval libraries" 900
 timeout 900 cmake --build "$build" --parallel --target elpis_continuity elpis_continuity_testing \
-    test_continuity_abi elpis_ecsg_k1 elpis_ecsg_k1_fms elpis_ingress_bridge elpis_retrieval_bridge
+    test_continuity_abi elpis_runtime elpis_runtime_testing test_runtime_abi elpis_ecsg_k1 elpis_ecsg_k1_fms elpis_ingress_bridge elpis_retrieval_bridge
 
-step "Rust qualification and C ABI (ctest -L continuity)" 300
-timeout 300 ctest --test-dir "$build" -L continuity --output-on-failure
+step "Rust qualification and C ABI (ctest -L 'continuity|runtime')" 300
+timeout 300 ctest --test-dir "$build" -L "continuity|runtime" --output-on-failure
 
 step "Python adapter and runtime continuity paths (pytest)" 300
 cd "$repo"

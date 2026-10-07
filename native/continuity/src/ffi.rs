@@ -56,7 +56,7 @@ fn rc(result: Result<(), Code>) -> i32 {
     }
 }
 
-fn to_c_evolution(e: &EvolutionState) -> CEvolution {
+pub fn to_c_evolution(e: &EvolutionState) -> CEvolution {
     CEvolution {
         revision: e.revision(),
         head: e.head(),
@@ -66,7 +66,8 @@ fn to_c_evolution(e: &EvolutionState) -> CEvolution {
     }
 }
 
-fn to_c(s: &Snapshot) -> CSnapshot {
+/// The C form of a snapshot (shared with crates that embed the store and expose their own C ABI).
+pub fn to_c(s: &Snapshot) -> CSnapshot {
     let (anchored, k1) = match s.cognition() {
         Cognition::Unanchored => (0, ZERO),
         Cognition::Anchored(d) => (1, d),
@@ -84,7 +85,7 @@ fn to_c(s: &Snapshot) -> CSnapshot {
 
 /// A well-formed evolution authority, or `Corrupt` (malformed flag/reserved bytes, an idle authority
 /// carrying an assertion, counter bounds or the genesis rule).
-fn from_c_evolution(e: &CEvolution) -> Result<EvolutionState, Code> {
+pub fn from_c_evolution(e: &CEvolution) -> Result<EvolutionState, Code> {
     if e.reserved != [0; 7] {
         return Err(Code::Corrupt);
     }
@@ -311,8 +312,7 @@ pub unsafe extern "C" fn elpis_continuity_finalize_evolution(
 #[cfg(feature = "testing")]
 mod testing {
     use super::*;
-    use crate::store::probe::{Counters, Fault};
-    use crate::store::Step;
+    use crate::store::probe::Counters;
 
     /// Arm one fault for the `publication`-th publication from now (0: the next open's initialization).
     /// Actions: 0 clear, 1 die at step `arg`, 2 write fails, 3 torn write of `arg` bytes then refusal,
@@ -328,22 +328,7 @@ mod testing {
             Ok(s) => s,
             Err(c) => return c as i32,
         };
-        let fault = match action {
-            0 => None,
-            1 => match Step::from_u32(arg as u32) {
-                Some(step) => Some(Fault::Die(step)),
-                None => return Code::Invalid as i32,
-            },
-            2 => Some(Fault::WriteFail),
-            3 => Some(Fault::TornFail(arg as usize)),
-            4 => Some(Fault::TornDie(arg as usize)),
-            5 => Some(Fault::SyncFailLost),
-            6 => Some(Fault::SyncFailDurable),
-            _ => return Code::Invalid as i32,
-        };
-        s.probe.publications = 0;
-        s.probe.plan = fault.map(|f| (publication, f));
-        0
+        rc(s.testing_arm(publication, action, arg))
     }
 
     /// Copy the store's I/O counters; reset them when `reset` is nonzero.
@@ -360,10 +345,7 @@ mod testing {
         if out.is_null() {
             return Code::Invalid as i32;
         }
-        *out = s.probe.counters;
-        if reset != 0 {
-            s.probe.counters = Counters::default();
-        }
+        *out = s.testing_counters(reset != 0);
         0
     }
 }

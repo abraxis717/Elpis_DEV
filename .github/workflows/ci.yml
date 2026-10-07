@@ -218,9 +218,10 @@ jobs:
           tests/boundary/test_mission.py
 
   continuity:
-    # The Rust continuity authority (native/continuity): format, lint and its bounded deterministic suite.
-    # Every native and Python job also builds it through CMake and runs `ctest -L continuity`.
-    name: Continuity (Rust)
+    # The Rust systems core: the continuity authority (native/continuity) and RuntimeCore (native/runtime):
+    # format, lint and their bounded deterministic suites. Every native job also builds both through CMake and
+    # runs `ctest -L continuity` and `ctest -L runtime` (RuntimeCore's C ABI over real native K1).
+    name: Continuity and RuntimeCore (Rust)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -235,6 +236,13 @@ jobs:
           timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
           timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
           timeout 600 cargo test --offline --locked --release
+      - name: RuntimeCore format, lint and test (embeds continuity; bounded)
+        working-directory: native/runtime
+        run: |
+          cargo fmt --check
+          timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
+          timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
+          timeout 600 cargo test --offline --locked --release --features testing
       - name: H-ECS R0 research crate format and lint (its tests run under ctest -L hecs in the native jobs)
         working-directory: research/hecs_r0/rust
         run: |

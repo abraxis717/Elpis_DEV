@@ -179,6 +179,36 @@ impl Store {
         _op(&mut self.probe.counters, _bytes);
     }
 
+    /// Testing builds only: arm one fault for the `publication`-th publication from now (0: the next open's
+    /// initialization). Actions: 0 clear, 1 die at step `arg`, 2 write fails, 3 torn write of `arg` bytes then
+    /// refusal, 4 torn write of `arg` bytes then death, 5 sync fails with the bytes lost, 6 sync fails but durable.
+    #[cfg(any(test, feature = "testing"))]
+    pub fn testing_arm(&mut self, publication: u64, action: u32, arg: u64) -> Result<(), Code> {
+        let fault = match action {
+            0 => None,
+            1 => Some(Fault::Die(Step::from_u32(arg as u32).ok_or(Code::Invalid)?)),
+            2 => Some(Fault::WriteFail),
+            3 => Some(Fault::TornFail(arg as usize)),
+            4 => Some(Fault::TornDie(arg as usize)),
+            5 => Some(Fault::SyncFailLost),
+            6 => Some(Fault::SyncFailDurable),
+            _ => return Err(Code::Invalid),
+        };
+        self.probe.publications = 0;
+        self.probe.plan = fault.map(|f| (publication, f));
+        Ok(())
+    }
+
+    /// Testing builds only: the store's I/O counters, reset when `reset`.
+    #[cfg(any(test, feature = "testing"))]
+    pub fn testing_counters(&mut self, reset: bool) -> probe::Counters {
+        let counters = self.probe.counters;
+        if reset {
+            self.probe.counters = probe::Counters::default();
+        }
+        counters
+    }
+
     // -- lifecycle -----------------------------------------------------------------------------------
 
     pub fn open(&mut self) -> Result<Snapshot, Code> {

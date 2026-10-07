@@ -1,0 +1,468 @@
+//! RuntimeCore: the one state machine behind an open Elpis runtime.
+//!
+//! ```text
+//!   closed --open--> open --close--> closed
+//!                     |
+//!                     +-- fail-stop (a continuity code): every lineage- or authority-dependent operation is
+//!                         refused with that code until close + open (restart reconciles against continuity)
+//! ```
+//!
+//! Laws (each is a test in `tests.rs`):
+//! * K1 lineage: the first managed lineage is anchored explicitly at the state's retained identity; an open
+//!   runtime binds its lineage to one native state, verified once against the durable expected identity
+//!   (a mismatch fail-stops); another state is refused (`COGNITION_SUBSTRATE_SWITCH`) without a native call.
+//! * Managed turn: begin -> one native schedule on the candidate -> (the boundary decodes) -> native commit ->
+//!   one continuity publication of the committed identity. A K1 commit is final and never rolled back: a
+//!   publication that is refused or uncertain fail-stops the runtime; restart sees either the old authority
+//!   (the moved state is then a mismatch) or the new one. Every refusal before the commit leaves the complete
+//!   retained state byte-for-byte unchanged (the native transaction law).
+//! * Evolution: one attempt at a time. Its assertion is durably reserved before the boundary may execute it
+//!   and finalized with the executed receipt; a failed reservation or finalization fail-stops, and an attempt
+//!   the boundary could not complete leaves the durable reservation pending (fail-stop
+//!   `CONTINUITY_EVOLUTION_PENDING`); execution is never retried or inferred.
+//! * Nothing else is durable or retained: no history, receipts, events or trajectory.
+
+use std::path::Path;
+
+use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, Store};
+
+use crate::code::{Error, Rt};
+use crate::substrate::{
+    features, CommitIdentity, Experience, K1Ops, Key, ScheduleOutcome, K1_CAPACITY, K1_FMS_CAPACITY, K1_NONFINITE,
+    K1_STALE, MAX_EXPERIENCES,
+};
+
+/// Native crossings and publications RuntimeCore performed (diagnostics; never authority).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Counters {
+    pub k1_state_digests: u64,
+    pub k1_reserves: u64,
+    pub k1_txn_begins: u64,
+    pub k1_run_schedules: u64,
+    pub k1_commits: u64,
+    pub k1_aborts: u64,
+    pub publications: u64,
+}
+
+/// An admitted, native-ready stimulus: `x` holds `y.len()` rows of the state's dimension, row-major.
+pub struct Stimulus<'a> {
+    pub x: &'a [f64],
+    pub y: &'a [f64],
+    pub schedule: &'a [Experience],
+    pub rate: f64,
+}
+
+/// A refusal and the native evidence behind it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Refusal {
+    pub error: Error,
+    /// The K1 status that caused it (0: no native refusal was involved).
+    pub k1_status: i32,
+    pub schedule: ScheduleOutcome,
+    /// The committed K1 transition when the refusal came after the native commit (publication failure).
+    pub committed: Option<Box<CommitIdentity>>,
+}
+
+impl From<Error> for Refusal {
+    fn from(error: Error) -> Self {
+        Refusal { error, k1_status: 0, schedule: ScheduleOutcome::default(), committed: None }
+    }
+}
+
+impl From<Code> for Refusal {
+    fn from(c: Code) -> Self {
+        Error::from(c).into()
+    }
+}
+
+impl From<Rt> for Refusal {
+    fn from(r: Rt) -> Self {
+        Error::from(r).into()
+    }
+}
+
+fn ecs(error: Rt, k1_status: i32, schedule: ScheduleOutcome) -> Refusal {
+    Refusal { error: error.into(), k1_status, schedule, committed: None }
+}
+
+/// The open managed turn: the bound substrate and its native transaction token.
+struct OpenTurn {
+    key: Key,
+    token: u64,
+}
+
+pub struct Core {
+    store: Store,
+    open: bool,
+    fault: Option<Code>,
+    bound: Option<Key>,
+    turn: Option<OpenTurn>,
+    evolution: Option<EvolutionState>,
+    counters: Counters,
+}
+
+impl Core {
+    /// A closed runtime over one continuity directory (an absolute path).
+    pub fn new(continuity_dir: &Path) -> Result<Core, Error> {
+        Ok(Core {
+            store: Store::new(continuity_dir)?,
+            open: false,
+            fault: None,
+            bound: None,
+            turn: None,
+            evolution: None,
+            counters: Counters::default(),
+        })
+    }
+
+    // -- lifecycle ----------------------------------------------------------------------------------------
+
+    /// Open (or reopen after a fail-stop): the store resolves the current authority; nothing is bound.
+    pub fn open(&mut self) -> Result<Snapshot, Error> {
+        let snapshot = self.store.open()?;
+        self.reset();
+        self.open = true;
+        Ok(snapshot)
+    }
+
+    /// Close. An open managed turn is forgotten without a native call: the caller that began it aborts it.
+    pub fn close(&mut self) {
+        self.store.close();
+        self.reset();
+        self.open = false;
+    }
+
+    fn reset(&mut self) {
+        self.fault = None;
+        self.bound = None;
+        self.turn = None;
+        self.evolution = None;
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.open
+    }
+
+    /// The fail-stop disposition, if any.
+    pub fn fault(&self) -> Option<Code> {
+        self.fault
+    }
+
+    fn live(&self) -> Result<(), Error> {
+        if !self.open {
+            return Err(Rt::Closed.into());
+        }
+        match self.fault {
+            Some(code) => Err(code.into()),
+            None => Ok(()),
+        }
+    }
+
+    /// The current durable authority (readable while fail-stopped: it is what restart will see).
+    pub fn snapshot(&self) -> Result<Snapshot, Error> {
+        if !self.open {
+            return Err(Rt::Closed.into());
+        }
+        Ok(self.store.snapshot()?)
+    }
+
+    pub fn counters(&mut self, reset: bool) -> Counters {
+        let c = self.counters;
+        if reset {
+            self.counters = Counters::default();
+        }
+        c
+    }
+
+    // -- K1 lineage -----------------------------------------------------------------------------------------
+
+    fn digest(&mut self, sub: &mut dyn K1Ops) -> Result<Digest, Refusal> {
+        let mut out = [0u8; 32];
+        self.counters.k1_state_digests += 1;
+        match sub.state_digest(&mut out) {
+            0 => Ok(out),
+            rc => Err(ecs(Rt::EcsState, rc, ScheduleOutcome::default())),
+        }
+    }
+
+    /// Explicitly anchor the first managed K1 lineage at the state's retained identity (reads K1 only).
+    pub fn anchor(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<Snapshot, Refusal> {
+        self.live()?;
+        if self.store.snapshot()?.cognition() != Cognition::Unanchored {
+            return Err(Code::AlreadyAnchored.into());
+        }
+        let identity = self.digest(sub)?;
+        match self.store.anchor_cognition(Some(&identity)) {
+            Ok(s) => {
+                self.counters.publications += 1;
+                self.bound = Some(key);
+                Ok(s)
+            }
+            Err(code) => {
+                if matches!(code, Code::PublicationUncertain | Code::TestingProcessDeath) {
+                    self.fault = Some(code);
+                }
+                Err(code.into())
+            }
+        }
+    }
+
+    /// Bind the lineage to this state, or verify it is the bound one.
+    fn reconcile(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(), Refusal> {
+        if let Some(bound) = self.bound {
+            return if bound == key { Ok(()) } else { Err(Rt::SubstrateSwitch.into()) };
+        }
+        let expected = match self.store.snapshot()?.cognition() {
+            Cognition::Unanchored => return Err(Code::Unanchored.into()),
+            Cognition::Anchored(d) => d,
+        };
+        if self.digest(sub)? != expected {
+            self.fault = Some(Code::StateMismatch);
+            return Err(Code::StateMismatch.into());
+        }
+        self.bound = Some(key);
+        Ok(())
+    }
+
+    // -- the managed canonical turn -----------------------------------------------------------------------------
+
+    /// Verify the lineage, begin the native transaction and run the whole schedule on its candidate (one native
+    /// call; capacity beyond the state's reservation grows it on the cold path first). `s3` receives the readout.
+    /// The transaction stays open for [`Core::turn_commit`] or [`Core::turn_abort`].
+    pub fn turn_begin(
+        &mut self,
+        sub: &mut dyn K1Ops,
+        key: Key,
+        stimulus: &Stimulus,
+        s3: &mut [f64],
+    ) -> Result<ScheduleOutcome, Refusal> {
+        self.live()?;
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        let rows = stimulus.y.len();
+        let schedule = stimulus.schedule;
+        if schedule.is_empty()
+            || schedule.len() > MAX_EXPERIENCES
+            || rows == 0
+            || rows.checked_mul(key.dim) != Some(stimulus.x.len())
+            || s3.len() != features(key.dim)
+        {
+            return Err(Rt::Invalid.into());
+        }
+        self.reconcile(sub, key)?;
+        let (token, result) = self.run_schedule(sub, stimulus, s3)?;
+        self.turn = Some(OpenTurn { key, token });
+        Ok(result)
+    }
+
+    fn begin(&mut self, sub: &mut dyn K1Ops) -> Result<u64, Refusal> {
+        let mut token = 0u64;
+        self.counters.k1_txn_begins += 1;
+        match sub.txn_begin(&mut token) {
+            0 => Ok(token),
+            rc => Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
+        }
+    }
+
+    fn abort(&mut self, sub: &mut dyn K1Ops, token: u64) {
+        self.counters.k1_aborts += 1;
+        // The authoritative state is unchanged whatever abort returns (a discarded or unknown token).
+        let _ = sub.txn_abort(token);
+    }
+
+    fn schedule_once(
+        &mut self,
+        sub: &mut dyn K1Ops,
+        token: u64,
+        stimulus: &Stimulus,
+        s3: &mut [f64],
+    ) -> (i32, ScheduleOutcome) {
+        let mut result = ScheduleOutcome::default();
+        self.counters.k1_run_schedules += 1;
+        let rc = sub.txn_run_schedule(token, stimulus.x, stimulus.y, stimulus.schedule, stimulus.rate, s3, &mut result);
+        (rc, result)
+    }
+
+    fn run_schedule(
+        &mut self,
+        sub: &mut dyn K1Ops,
+        stimulus: &Stimulus,
+        s3: &mut [f64],
+    ) -> Result<(u64, ScheduleOutcome), Refusal> {
+        let mut token = self.begin(sub)?;
+        let (mut rc, mut result) = self.schedule_once(sub, token, stimulus, s3);
+        if rc == K1_CAPACITY || rc == K1_FMS_CAPACITY {
+            // Recoverable and checked before the candidate is touched: the transaction is open and unchanged.
+            // Grow the reservation outside any transaction (cold path), then run the schedule once more.
+            self.abort(sub, token);
+            let rows = stimulus.schedule.iter().map(|e| e.rows).max().unwrap_or(0);
+            let rows = usize::try_from(rows).map_err(|_| Refusal::from(Rt::Invalid))?;
+            self.counters.k1_reserves += 1;
+            let reserved = sub.reserve(rows);
+            if reserved != 0 {
+                return Err(ecs(Rt::EcsRefused, reserved, ScheduleOutcome::default()));
+            }
+            token = self.begin(sub)?;
+            (rc, result) = self.schedule_once(sub, token, stimulus, s3);
+        }
+        if rc != 0 {
+            // STALE, or NONFINITE from the candidate-mutating schedule, discards the transaction natively;
+            // every other refusal leaves it open, and the turn aborts it.
+            if rc != K1_STALE && rc != K1_NONFINITE {
+                self.abort(sub, token);
+            }
+            return Err(ecs(Rt::EcsRefused, rc, result));
+        }
+        Ok((token, result))
+    }
+
+    fn take_turn(&mut self, key: Key) -> Result<OpenTurn, Refusal> {
+        match &self.turn {
+            Some(turn) if turn.key == key => Ok(self.turn.take().expect("open turn")),
+            _ => Err(Rt::TurnNotOpen.into()),
+        }
+    }
+
+    /// Commit the open turn natively, then publish the committed identity to continuity. A publication that
+    /// fails fail-stops the runtime; the K1 commit stands (the refusal carries it).
+    pub fn turn_commit(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(CommitIdentity, Snapshot), Refusal> {
+        if !self.open {
+            return Err(Rt::Closed.into());
+        }
+        let turn = self.take_turn(key)?;
+        if let Some(code) = self.fault {
+            self.abort(sub, turn.token);
+            return Err(code.into());
+        }
+        let mut identity = CommitIdentity::default();
+        self.counters.k1_commits += 1;
+        let rc = sub.txn_commit_identity(turn.token, &mut identity);
+        if rc != 0 {
+            // STALE discards the transaction natively; any other refusal leaves it open.
+            if rc != K1_STALE {
+                self.abort(sub, turn.token);
+            }
+            let error = if rc == K1_STALE { Rt::EcsStale } else { Rt::EcsRefused };
+            return Err(ecs(error, rc, ScheduleOutcome::default()));
+        }
+        match self.store.commit_cognition(Some(&identity.state_before_digest), Some(&identity.state_after_digest)) {
+            Ok(snapshot) => {
+                self.counters.publications += 1;
+                Ok((identity, snapshot))
+            }
+            Err(code) => {
+                self.fault = Some(code);
+                Err(Refusal { committed: Some(Box::new(identity)), ..Refusal::from(code) })
+            }
+        }
+    }
+
+    /// Abort the open turn: nothing is installed.
+    pub fn turn_abort(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(), Refusal> {
+        let turn = self.take_turn(key)?;
+        self.abort(sub, turn.token);
+        Ok(())
+    }
+
+    // -- evolution ------------------------------------------------------------------------------------------------
+
+    /// The current idle evolution authority an assertion must be built against.
+    pub fn evolution_authority(&self) -> Result<Snapshot, Error> {
+        self.live()?;
+        let snapshot = self.store.snapshot()?;
+        if snapshot.evolution().assertion().is_some() {
+            return Err(Code::EvolutionPending.into());
+        }
+        Ok(snapshot)
+    }
+
+    /// Durably reserve the exact assertion against the authority the caller validated it with. Only after
+    /// this returns may the boundary execute the attempt, once.
+    pub fn evolution_reserve(&mut self, observed: &EvolutionState, assertion: &Digest) -> Result<Snapshot, Error> {
+        self.live()?;
+        if self.evolution.is_some() {
+            return Err(Rt::EvolutionInFlight.into());
+        }
+        if self.store.snapshot()?.evolution().assertion().is_some() {
+            return Err(Code::EvolutionPending.into());
+        }
+        match self.store.reserve_evolution(Some(observed), Some(assertion)) {
+            Ok(snapshot) => {
+                self.counters.publications += 1;
+                self.evolution = Some(snapshot.evolution());
+                Ok(snapshot)
+            }
+            Err(code) => {
+                // Nothing executed; whether the reservation became durable is for restart to resolve.
+                self.fault = Some(code);
+                Err(code.into())
+            }
+        }
+    }
+
+    /// Finalize the attempt in flight with the receipt its execution produced.
+    pub fn evolution_finalize(&mut self, receipt: &Digest) -> Result<Snapshot, Error> {
+        if !self.open {
+            return Err(Rt::Closed.into());
+        }
+        let pending = self.evolution.take().ok_or(Rt::EvolutionNotInFlight)?;
+        if let Some(code) = self.fault {
+            return Err(code.into());
+        }
+        match self.store.finalize_evolution(Some(&pending), Some(receipt)) {
+            Ok(snapshot) => {
+                self.counters.publications += 1;
+                Ok(snapshot)
+            }
+            Err(code) => {
+                // The attempt executed; its finalization is not certain. Never re-executed.
+                self.fault = Some(code);
+                Err(code.into())
+            }
+        }
+    }
+
+    /// The boundary could not complete the attempt in flight (an exception or an invalid result may follow an
+    /// external effect): the durable reservation stays pending and the runtime fail-stops.
+    pub fn evolution_abandon(&mut self) -> Result<(), Error> {
+        if self.evolution.take().is_none() {
+            return Err(Rt::EvolutionNotInFlight.into());
+        }
+        self.fault.get_or_insert(Code::EvolutionPending);
+        Ok(())
+    }
+
+    /// Explicit reconciliation: finalize a durable pending authority with an externally established receipt.
+    pub fn evolution_reconcile(&mut self, expected: &EvolutionState, receipt: &Digest) -> Result<Snapshot, Error> {
+        self.live()?;
+        if self.evolution.is_some() {
+            return Err(Rt::EvolutionInFlight.into());
+        }
+        match self.store.finalize_evolution(Some(expected), Some(receipt)) {
+            Ok(snapshot) => {
+                self.counters.publications += 1;
+                Ok(snapshot)
+            }
+            Err(code) => {
+                if matches!(code, Code::PublicationRefused | Code::PublicationUncertain | Code::TestingProcessDeath) {
+                    self.fault = Some(code);
+                }
+                Err(code.into())
+            }
+        }
+    }
+
+    // -- testing builds -------------------------------------------------------------------------------------------
+
+    #[cfg(feature = "testing")]
+    pub fn testing_arm(&mut self, publication: u64, action: u32, arg: u64) -> Result<(), Error> {
+        Ok(self.store.testing_arm(publication, action, arg)?)
+    }
+
+    #[cfg(feature = "testing")]
+    pub fn testing_continuity_counters(&mut self, reset: bool) -> elpis_continuity::store::probe::Counters {
+        self.store.testing_counters(reset)
+    }
+}

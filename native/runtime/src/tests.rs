@@ -1,0 +1,578 @@
+//! RuntimeCore laws against a deterministic in-memory stand-in for one native K1 state.
+//!
+//! The stand-in follows the refusal contract of `ecsg_k1.h` (CAPACITY/INVALID keep the transaction open,
+//! NONFINITE from the schedule and STALE discard it, a commit installs the complete candidate or nothing) but
+//! computes nothing of K1's mathematics; the real native state is exercised by the Python integration lane
+//! (tests/integration). Fault injection needs the `testing` feature (`cargo test --features testing`).
+
+use std::path::PathBuf;
+
+use elpis_continuity::{Code, Cognition, EvolutionState};
+
+use crate::code::{Error, Rt};
+use crate::core::{Core, Counters, Stimulus};
+use crate::substrate::{
+    features, CommitIdentity, Digest, Experience, K1Ops, Key, ScheduleOutcome, K1_CAPACITY, K1_NONFINITE, K1_STALE,
+};
+
+const DIM: usize = 2;
+
+struct Txn {
+    token: u64,
+    generation: u64,
+    w: Vec<f64>,
+    epoch: u64,
+}
+
+/// One retained "state": W, epoch and a generation that every commit advances.
+struct Fake {
+    w: Vec<f64>,
+    epoch: u64,
+    generation: u64,
+    max_rows: usize,
+    txn: Option<Txn>,
+    next_token: u64,
+    digest_fails: bool,
+    calls: Vec<&'static str>,
+}
+
+impl Fake {
+    fn new(seed: f64) -> Fake {
+        Fake {
+            w: vec![seed, -seed, 0.5],
+            epoch: 0,
+            generation: 0,
+            max_rows: 8,
+            txn: None,
+            next_token: 1,
+            digest_fails: false,
+            calls: Vec::new(),
+        }
+    }
+
+    fn identity(&self) -> Digest {
+        // FNV-1a over the retained values, widened to 32 bytes: an identity, not a cryptographic digest.
+        let mut out = [0u8; 32];
+        let mut h: u64 = 0xcbf29ce484222325;
+        for v in self.w.iter().map(|v| v.to_bits()).chain([self.epoch]) {
+            for b in v.to_le_bytes() {
+                h = (h ^ b as u64).wrapping_mul(0x100000001b3);
+            }
+        }
+        for (i, chunk) in out.chunks_mut(8).enumerate() {
+            chunk.copy_from_slice(&(h.rotate_left(i as u32 * 7) ^ i as u64).to_le_bytes());
+        }
+        out
+    }
+
+    /// Someone else commits a transition (the state moves out of band).
+    fn interlope(&mut self) {
+        self.w[0] += 1.0;
+        self.epoch += 1;
+        self.generation += 1;
+    }
+
+    fn retained(&self) -> (Vec<u64>, u64) {
+        (self.w.iter().map(|v| v.to_bits()).collect(), self.epoch)
+    }
+}
+
+impl K1Ops for Fake {
+    fn state_digest(&mut self, out: &mut Digest) -> i32 {
+        self.calls.push("state_digest");
+        if self.digest_fails {
+            return -1;
+        }
+        *out = self.identity();
+        0
+    }
+
+    fn reserve(&mut self, max_rows: usize) -> i32 {
+        self.calls.push("reserve");
+        if self.txn.is_some() {
+            return -4;
+        }
+        self.max_rows = self.max_rows.max(max_rows);
+        0
+    }
+
+    fn txn_begin(&mut self, token: &mut u64) -> i32 {
+        self.calls.push("txn_begin");
+        if self.txn.is_some() {
+            return -4;
+        }
+        *token = self.next_token;
+        self.next_token += 1;
+        self.txn = Some(Txn { token: *token, generation: self.generation, w: self.w.clone(), epoch: self.epoch });
+        0
+    }
+
+    fn txn_run_schedule(
+        &mut self,
+        token: u64,
+        x: &[f64],
+        y: &[f64],
+        schedule: &[Experience],
+        rate: f64,
+        s3: &mut [f64],
+        result: &mut ScheduleOutcome,
+    ) -> i32 {
+        self.calls.push("txn_run_schedule");
+        let max_rows = self.max_rows;
+        let txn = match self.txn.as_mut() {
+            Some(t) if t.token == token => t,
+            _ => return -1,
+        };
+        if s3.len() != features(DIM) || schedule.iter().map(|e| e.rows).sum::<u64>() != y.len() as u64 {
+            return -1;
+        }
+        if schedule.iter().any(|e| e.rows as usize > max_rows) {
+            return K1_CAPACITY;
+        }
+        if x.iter().chain(y).any(|v| !v.is_finite()) {
+            self.txn = None;
+            return K1_NONFINITE;
+        }
+        result.epoch_before = txn.epoch;
+        for e in schedule {
+            txn.epoch += e.steps;
+        }
+        txn.w[0] += rate * x.iter().sum::<f64>();
+        txn.w[2] += rate * y.iter().sum::<f64>();
+        result.epoch_after = txn.epoch;
+        result.experiences_applied = schedule.len() as u64;
+        s3.fill(txn.w[0]);
+        0
+    }
+
+    fn txn_commit_identity(&mut self, token: u64, out: &mut CommitIdentity) -> i32 {
+        self.calls.push("txn_commit_identity");
+        let txn = match self.txn.take() {
+            Some(t) if t.token == token => t,
+            other => {
+                self.txn = other;
+                return -1;
+            }
+        };
+        if txn.generation != self.generation {
+            return K1_STALE;
+        }
+        out.state_before_digest = self.identity();
+        out.transition.epoch_before = self.epoch;
+        out.transition.generation_before = self.generation;
+        self.w = txn.w;
+        self.epoch = txn.epoch;
+        self.generation += 1;
+        out.transition.epoch_after = self.epoch;
+        out.transition.generation_after = self.generation;
+        out.state_after_digest = self.identity();
+        0
+    }
+
+    fn txn_abort(&mut self, token: u64) -> i32 {
+        self.calls.push("txn_abort");
+        match &self.txn {
+            Some(t) if t.token == token => {
+                self.txn = None;
+                0
+            }
+            Some(_) => -1,
+            None => 0,
+        }
+    }
+}
+
+fn key(owner: u64) -> Key {
+    Key { kind: 1, handle: 0x1000 + owner as usize, id: 0, owner, dim: DIM }
+}
+
+struct Input {
+    x: Vec<f64>,
+    y: Vec<f64>,
+    schedule: Vec<Experience>,
+}
+
+fn input(rows: u64, steps: u64) -> Input {
+    let n = rows as usize;
+    Input {
+        x: (0..n * DIM).map(|i| 0.01 * (i as f64 + 1.0)).collect(),
+        y: (0..n).map(|i| 0.1 * i as f64).collect(),
+        schedule: vec![Experience { rows, steps }; 1],
+    }
+}
+
+fn stimulus(i: &Input) -> Stimulus<'_> {
+    Stimulus { x: &i.x, y: &i.y, schedule: &i.schedule, rate: 0.01 }
+}
+
+fn turn(core: &mut Core, sub: &mut Fake, k: Key) -> Result<CommitIdentity, Error> {
+    let i = input(4, 3);
+    let mut s3 = vec![0.0; features(DIM)];
+    core.turn_begin(sub, k, &stimulus(&i), &mut s3).map_err(|r| r.error)?;
+    core.turn_commit(sub, k).map(|(id, _)| id).map_err(|r| r.error)
+}
+
+struct Dir(PathBuf);
+
+impl Dir {
+    fn new(name: &str) -> Dir {
+        let p = std::env::temp_dir().join(format!("elpis-runtime-{}-{}", std::process::id(), name));
+        let _ = std::fs::remove_dir_all(&p);
+        Dir(p)
+    }
+
+    fn core(&self) -> Core {
+        let mut c = Core::new(&self.0).expect("absolute");
+        c.open().expect("open");
+        c
+    }
+}
+
+impl Drop for Dir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+fn anchored(core: &Core) -> Option<Digest> {
+    match core.snapshot().unwrap().cognition() {
+        Cognition::Unanchored => None,
+        Cognition::Anchored(d) => Some(d),
+    }
+}
+
+#[test]
+fn features_is_the_k1_readout_length() {
+    assert_eq!(
+        (features(0), features(1), features(2), features(6), features(64), features(65)),
+        (0, 3, 9, 83, 47904, 0)
+    );
+}
+
+#[test]
+fn a_closed_runtime_refuses_everything() {
+    let dir = Dir::new("closed");
+    let mut core = Core::new(&dir.0).unwrap();
+    let mut sub = Fake::new(0.1);
+    assert_eq!(core.anchor(&mut sub, key(1)).unwrap_err().error, Rt::Closed.into());
+    assert_eq!(core.evolution_authority().unwrap_err(), Rt::Closed.into());
+    assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Rt::Closed.into());
+    assert!(sub.calls.is_empty());
+    assert!(Core::new(std::path::Path::new("relative")).is_err());
+}
+
+#[test]
+fn anchor_is_explicit_once_reads_k1_only_and_binds() {
+    let dir = Dir::new("anchor");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    let before = sub.retained();
+    let initial = core.snapshot().unwrap().generation();
+    let s = core.anchor(&mut sub, key(1)).unwrap();
+    assert_eq!(s.generation(), initial + 1);
+    assert_eq!(anchored(&core), Some(sub.identity()));
+    assert_eq!((sub.retained(), sub.calls.as_slice()), (before, ["state_digest"].as_slice()));
+    assert_eq!(core.anchor(&mut sub, key(1)).unwrap_err().error, Code::AlreadyAnchored.into());
+    assert_eq!(core.fault(), None);
+}
+
+#[test]
+fn an_unanchored_turn_is_refused_before_any_k1_call() {
+    let dir = Dir::new("unanchored");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::Unanchored.into());
+    assert!(sub.calls.is_empty() && sub.epoch == 0);
+    assert_eq!(anchored(&core), None);
+}
+
+#[test]
+fn a_turn_publishes_exactly_the_committed_identity_with_three_k1_crossings() {
+    let dir = Dir::new("turn");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    turn(&mut core, &mut sub, key(1)).unwrap(); // warm
+    sub.calls.clear();
+    core.counters(true);
+    let generation = core.snapshot().unwrap().generation();
+    let id = turn(&mut core, &mut sub, key(1)).unwrap();
+    assert_eq!(id.state_after_digest, sub.identity());
+    assert_eq!(anchored(&core), Some(sub.identity()));
+    assert_eq!(core.snapshot().unwrap().generation(), generation + 1);
+    // The warm managed turn: begin, one schedule, commit; no digest (the binding holds), one publication.
+    assert_eq!(sub.calls, ["txn_begin", "txn_run_schedule", "txn_commit_identity"]);
+    let expected =
+        Counters { k1_txn_begins: 1, k1_run_schedules: 1, k1_commits: 1, publications: 1, ..Counters::default() };
+    assert_eq!(core.counters(false), expected);
+}
+
+#[test]
+fn restart_resumes_on_the_matching_state_with_one_identity_check() {
+    let dir = Dir::new("restart");
+    let mut sub = Fake::new(0.1);
+    {
+        let mut core = dir.core();
+        core.anchor(&mut sub, key(1)).unwrap();
+        turn(&mut core, &mut sub, key(1)).unwrap();
+    }
+    let mut core = dir.core();
+    let generation = core.snapshot().unwrap().generation();
+    sub.calls.clear();
+    turn(&mut core, &mut sub, key(7)).unwrap(); // a fresh runtime binds whichever matching wrapper it is given
+    assert_eq!(sub.calls[0], "state_digest");
+    assert_eq!(core.snapshot().unwrap().generation(), generation + 1);
+}
+
+#[test]
+fn a_mismatched_state_fail_stops_before_any_mutation() {
+    let dir = Dir::new("mismatch");
+    let mut sub = Fake::new(0.1);
+    dir.core().anchor(&mut sub, key(1)).unwrap();
+    let mut other = Fake::new(0.2);
+    let mut core = dir.core();
+    let durable = core.snapshot().unwrap();
+    let before = other.retained();
+    assert_eq!(turn(&mut core, &mut other, key(2)).unwrap_err(), Code::StateMismatch.into());
+    assert_eq!((other.retained(), other.calls.as_slice()), (before, ["state_digest"].as_slice()));
+    assert_eq!(core.fault(), Some(Code::StateMismatch));
+    // Fail-stopped for every lineage-dependent operation, the matching state included; nothing synthesized.
+    assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::StateMismatch.into());
+    assert_eq!(core.evolution_authority().unwrap_err(), Code::StateMismatch.into());
+    assert_eq!(core.snapshot().unwrap(), durable);
+    // Reopen reconciles: the matching state resumes.
+    core.close();
+    core.open().unwrap();
+    turn(&mut core, &mut sub, key(1)).unwrap();
+}
+
+#[test]
+fn an_open_runtime_refuses_another_state_without_a_native_call() {
+    let dir = Dir::new("switch");
+    let mut core = dir.core();
+    let (mut first, mut second) = (Fake::new(0.1), Fake::new(0.1)); // identical bytes, different owner
+    core.anchor(&mut first, key(1)).unwrap();
+    assert_eq!(turn(&mut core, &mut second, key(2)).unwrap_err(), Rt::SubstrateSwitch.into());
+    assert!(second.calls.is_empty());
+    assert_eq!(core.fault(), None); // a refusal, not a fail-stop
+                                    // A reused handle address under another owner is another state.
+    let reused = Key { owner: 9, ..key(1) };
+    assert_eq!(turn(&mut core, &mut second, reused).unwrap_err(), Rt::SubstrateSwitch.into());
+    turn(&mut core, &mut first, key(1)).unwrap();
+}
+
+#[test]
+fn refusals_before_the_commit_leave_the_retained_state_unchanged() {
+    let dir = Dir::new("refusals");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    turn(&mut core, &mut sub, key(1)).unwrap();
+    let durable = core.snapshot().unwrap();
+    let before = sub.retained();
+    let mut s3 = vec![0.0; features(DIM)];
+
+    // NONFINITE input: discarded natively, no abort crossing.
+    let mut poison = input(2, 1);
+    poison.x[1] = f64::NAN;
+    sub.calls.clear();
+    let r = core.turn_begin(&mut sub, key(1), &stimulus(&poison), &mut s3).unwrap_err();
+    assert_eq!((r.error, r.k1_status), (Rt::EcsRefused.into(), K1_NONFINITE));
+    assert_eq!(sub.calls, ["txn_begin", "txn_run_schedule"]);
+
+    // Malformed buffers are refused before any native call.
+    sub.calls.clear();
+    let bad = Input { x: vec![0.0; 3], ..input(2, 1) };
+    assert_eq!(core.turn_begin(&mut sub, key(1), &stimulus(&bad), &mut s3).unwrap_err().error, Rt::Invalid.into());
+    let mut short = vec![0.0; 2];
+    assert_eq!(
+        core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &mut short).unwrap_err().error,
+        Rt::Invalid.into()
+    );
+    assert!(sub.calls.is_empty());
+
+    // The boundary aborts (a decode refusal): nothing installed.
+    core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &mut s3).unwrap();
+    assert_eq!(
+        core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &mut s3).unwrap_err().error,
+        Rt::TurnOpen.into()
+    );
+    assert_eq!(core.turn_commit(&mut sub, key(2)).unwrap_err().error, Rt::TurnNotOpen.into());
+    core.turn_abort(&mut sub, key(1)).unwrap();
+    assert_eq!(core.turn_abort(&mut sub, key(1)).unwrap_err().error, Rt::TurnNotOpen.into());
+
+    // The source state moved during the turn: STALE, the candidate is discarded natively.
+    core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &mut s3).unwrap();
+    sub.interlope();
+    let moved = sub.retained();
+    let r = core.turn_commit(&mut sub, key(1)).unwrap_err();
+    assert_eq!((r.error, r.k1_status, r.committed), (Rt::EcsStale.into(), K1_STALE, None));
+    assert!(sub.txn.is_none() && sub.retained() == moved && moved != before);
+    assert_eq!(core.snapshot().unwrap(), durable); // nothing published
+    assert_eq!(core.fault(), None);
+}
+
+#[test]
+fn rows_beyond_the_reservation_grow_it_on_the_cold_path() {
+    let dir = Dir::new("capacity");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    sub.calls.clear();
+    let big = input(12, 2);
+    let mut s3 = vec![0.0; features(DIM)];
+    core.turn_begin(&mut sub, key(1), &stimulus(&big), &mut s3).unwrap();
+    core.turn_commit(&mut sub, key(1)).unwrap();
+    assert_eq!(
+        sub.calls,
+        [
+            "txn_begin",
+            "txn_run_schedule",
+            "txn_abort",
+            "reserve",
+            "txn_begin",
+            "txn_run_schedule",
+            "txn_commit_identity"
+        ]
+    );
+    assert_eq!(sub.max_rows, 12);
+}
+
+#[test]
+fn evolution_reserves_executes_once_and_finalizes() {
+    let dir = Dir::new("evolution");
+    let mut core = dir.core();
+    let authority = core.evolution_authority().unwrap().evolution();
+    let assertion = [7u8; 32];
+    let pending = core.evolution_reserve(&authority, &assertion).unwrap().evolution();
+    assert_eq!(pending.assertion(), Some(assertion));
+    assert_eq!(core.evolution_reserve(&authority, &assertion).unwrap_err(), Rt::EvolutionInFlight.into());
+    let done = core.evolution_finalize(&[9u8; 32]).unwrap().evolution();
+    assert_eq!((done.revision(), done.head(), done.assertion()), (1, [9u8; 32], None));
+    assert_eq!(core.evolution_finalize(&[9u8; 32]).unwrap_err(), Rt::EvolutionNotInFlight.into());
+    // A stale observation cannot reserve; it fail-stops (nothing executed).
+    assert_eq!(core.evolution_reserve(&authority, &assertion).unwrap_err(), Code::AuthorityMismatch.into());
+    assert_eq!(core.fault(), Some(Code::AuthorityMismatch));
+}
+
+#[test]
+fn an_abandoned_attempt_stays_pending_and_is_reconciled_explicitly_once() {
+    let dir = Dir::new("abandon");
+    let assertion = [3u8; 32];
+    {
+        let mut core = dir.core();
+        let authority = core.evolution_authority().unwrap().evolution();
+        core.evolution_reserve(&authority, &assertion).unwrap();
+        core.evolution_abandon().unwrap();
+        assert_eq!(core.fault(), Some(Code::EvolutionPending));
+        assert_eq!(core.evolution_authority().unwrap_err(), Code::EvolutionPending.into());
+    }
+    let mut core = dir.core();
+    let pending = core.snapshot().unwrap().evolution();
+    assert_eq!(pending.assertion(), Some(assertion));
+    assert_eq!(core.evolution_authority().unwrap_err(), Code::EvolutionPending.into());
+    assert_eq!(core.evolution_reserve(&pending, &assertion).unwrap_err(), Code::EvolutionPending.into());
+    assert_eq!(core.fault(), None);
+    let done = core.evolution_reconcile(&pending, &[5u8; 32]).unwrap().evolution();
+    assert_eq!(done, EvolutionState::idle(1, [5u8; 32]).unwrap());
+    assert_eq!(core.evolution_reconcile(&pending, &[5u8; 32]).unwrap_err(), Code::AuthorityMismatch.into());
+    assert_eq!(core.fault(), None); // an operator refusal, not a fail-stop
+    assert_eq!(core.evolution_authority().unwrap().evolution(), done);
+}
+
+#[cfg(feature = "testing")]
+mod faults {
+    use super::*;
+
+    const DIE: u32 = 1;
+    const WRITE_FAIL: u32 = 2;
+    const SYNC_FAIL_LOST: u32 = 5;
+    const SYNC_FAIL_DURABLE: u32 = 6;
+
+    #[test]
+    fn a_failed_publication_after_the_k1_commit_keeps_k1_and_fail_stops() {
+        for (action, expected, durable_new) in [
+            (WRITE_FAIL, Code::PublicationRefused, false),
+            (SYNC_FAIL_LOST, Code::PublicationUncertain, false),
+            (SYNC_FAIL_DURABLE, Code::PublicationUncertain, true),
+        ] {
+            let dir = Dir::new(&format!("publication-{action}"));
+            let mut sub = Fake::new(0.1);
+            let anchor = {
+                let mut core = dir.core();
+                core.anchor(&mut sub, key(1)).unwrap();
+                let anchor = anchored(&core).unwrap();
+                core.testing_arm(1, action, 0).unwrap();
+                let i = input(4, 3);
+                let mut s3 = vec![0.0; features(DIM)];
+                core.turn_begin(&mut sub, key(1), &stimulus(&i), &mut s3).unwrap();
+                let r = core.turn_commit(&mut sub, key(1)).unwrap_err();
+                assert_eq!(r.error, expected.into());
+                // The K1 commit stands and is reported.
+                assert_eq!(r.committed.unwrap().state_after_digest, sub.identity());
+                assert_ne!(sub.identity(), anchor);
+                let committed = sub.retained();
+                sub.calls.clear();
+                assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), expected.into());
+                assert!(sub.calls.is_empty() && sub.retained() == committed);
+                anchor
+            };
+            let mut core = dir.core();
+            if durable_new {
+                assert_eq!(anchored(&core), Some(sub.identity()));
+                turn(&mut core, &mut sub, key(1)).unwrap();
+            } else {
+                assert_eq!(anchored(&core), Some(anchor));
+                assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::StateMismatch.into());
+            }
+        }
+    }
+
+    #[test]
+    fn evolution_publication_failures_fail_stop_and_never_reexecute() {
+        for phase in [1u64, 2] {
+            let dir = Dir::new(&format!("evolution-fault-{phase}"));
+            let mut core = dir.core();
+            let authority = core.evolution_authority().unwrap().evolution();
+            core.testing_arm(phase, WRITE_FAIL, 0).unwrap();
+            let reserved = core.evolution_reserve(&authority, &[1u8; 32]);
+            if phase == 1 {
+                assert_eq!(reserved.unwrap_err(), Code::PublicationRefused.into());
+                assert_eq!(core.evolution_finalize(&[2u8; 32]).unwrap_err(), Rt::EvolutionNotInFlight.into());
+            } else {
+                reserved.unwrap();
+                assert_eq!(core.evolution_finalize(&[2u8; 32]).unwrap_err(), Code::PublicationRefused.into());
+            }
+            assert_eq!(core.fault(), Some(Code::PublicationRefused));
+            assert_eq!(core.evolution_authority().unwrap_err(), Code::PublicationRefused.into());
+            drop(core);
+            let core = dir.core();
+            let e = core.snapshot().unwrap().evolution();
+            assert_eq!(e.assertion().is_some(), phase == 2); // a refused finalization leaves the reservation
+        }
+    }
+
+    #[test]
+    fn process_death_during_publication_fail_stops() {
+        let dir = Dir::new("death");
+        let mut core = dir.core();
+        let authority = core.evolution_authority().unwrap().evolution();
+        core.testing_arm(1, DIE, 1).unwrap(); // after the record is written, before it is synced
+        assert_eq!(core.evolution_reserve(&authority, &[1u8; 32]).unwrap_err(), Code::TestingProcessDeath.into());
+        assert_eq!(core.fault(), Some(Code::TestingProcessDeath));
+    }
+
+    #[test]
+    fn a_warm_managed_turn_writes_one_record_and_syncs_once() {
+        let dir = Dir::new("io");
+        let mut core = dir.core();
+        let mut sub = Fake::new(0.1);
+        core.anchor(&mut sub, key(1)).unwrap();
+        turn(&mut core, &mut sub, key(1)).unwrap();
+        core.testing_continuity_counters(true);
+        turn(&mut core, &mut sub, key(1)).unwrap();
+        let io = core.testing_continuity_counters(false);
+        assert_eq!((io.opens, io.preads, io.pwrites, io.pwrite_bytes, io.data_syncs), (0, 0, 1, 176, 1));
+        assert_eq!((io.dir_syncs, io.renames, io.unlinks), (0, 0, 0));
+    }
+}
