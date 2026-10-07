@@ -1,0 +1,131 @@
+{
+  "schema": "elpis.hecs-r1.source-equivalence.v1",
+  "r0_root": "research/hecs_r0/rust",
+  "r1_root": "research/hecs_r1/rust",
+  "r0_authority": "closed (TASK_INVALID_ON_DEV); never edited by R1",
+  "files": [
+    {
+      "path": "Cargo.lock",
+      "r0_sha256": "162e27c420f4e93916818727cf01d8fe59a838867b02f2670309fc5da2d5cb99",
+      "r1_sha256": "c0936a1fa8287c388567a1b778784a5070f94325d6506cedef619203f8d57f6f",
+      "status": "MODIFIED",
+      "reason": "package name hecs_r1 (no dependencies either way)"
+    },
+    {
+      "path": "Cargo.toml",
+      "r0_sha256": "59642d96a3b2d382ff027c0781da7d6390e8ccd626a81945ae87089bc2521962",
+      "r1_sha256": "fd051a6b763b810c7612e4fe6cd65d390f660a61b1a40b6dda47ad4f2896eb65",
+      "status": "MODIFIED",
+      "reason": "package hecs_r1, binary hecs1, description"
+    },
+    {
+      "path": "rustfmt.toml",
+      "r0_sha256": "93ed1668bb2ca659e88711456b72320bf2f53369ecf278c4a61af0cb63cc3a1e",
+      "r1_sha256": "93ed1668bb2ca659e88711456b72320bf2f53369ecf278c4a61af0cb63cc3a1e",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/analysis.rs",
+      "r0_sha256": "9494cd721d33bdb16d462b017657f7e1684d1e3228039aa3e9f3bbe2be7a6ede",
+      "r1_sha256": "9494cd721d33bdb16d462b017657f7e1684d1e3228039aa3e9f3bbe2be7a6ede",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/encoder.rs",
+      "r0_sha256": "4fff51068698e05c6514866bf44a8be499dd0dc40b7af0ef36a8ad7d13f781dd",
+      "r1_sha256": "4fff51068698e05c6514866bf44a8be499dd0dc40b7af0ef36a8ad7d13f781dd",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/experiment.rs",
+      "r0_sha256": "f4daddb01535bf8eaf9b51d258b344a650f7f5305d347c8c35657c261b8a0895",
+      "r1_sha256": "d04e472bd46714dda79075c6cb04eb0d0866ad059c95663d9d7bbfe96c021f97",
+      "status": "MODIFIED",
+      "reason": "R1 validity diagnostics replace the absolute V1; per-level adequacy reported; level-1-only path for DESIGN and calibration; oracle scores the path; evaluate applies the R1 law"
+    },
+    {
+      "path": "src/hierarchy.rs",
+      "r0_sha256": "e49ebc91527de9c1e706582552c9731366b51444cb7de258c7384516a3441f87",
+      "r1_sha256": "e49ebc91527de9c1e706582552c9731366b51444cb7de258c7384516a3441f87",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/json.rs",
+      "r0_sha256": "0721be60afe561fa594818e51fdbe94926e5d5707cb8ee869cf6464d848a4a76",
+      "r1_sha256": "0721be60afe561fa594818e51fdbe94926e5d5707cb8ee869cf6464d848a4a76",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/k1.rs",
+      "r0_sha256": "764a18760b57237830b301dc54496d012dea7e3716d80b4540411cd9aac66caa",
+      "r1_sha256": "764a18760b57237830b301dc54496d012dea7e3716d80b4540411cd9aac66caa",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/lib.rs",
+      "r0_sha256": "0db70144ca40ec49e8f9b42b2076bbee58966524d0a00a0f808326dcd8218faf",
+      "r1_sha256": "f5034a4eb35752738c736681014e17c8121ee9632c358ab975c9b6649d2969f4",
+      "status": "MODIFIED",
+      "reason": "crate documentation; adds the validity module"
+    },
+    {
+      "path": "src/linalg.rs",
+      "r0_sha256": "16de2e399197f13c70800c4983b862d3a7e8f4c946c4c04b9ca0ae3318529a17",
+      "r1_sha256": "16de2e399197f13c70800c4983b862d3a7e8f4c946c4c04b9ca0ae3318529a17",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/main.rs",
+      "r0_sha256": "b51a0711ad4a0c31e93a7e806ed5aef148e4506ad03c7a356dffc0f726430e7f",
+      "r1_sha256": "eb5155b3d680f98e47f309638020786e9fa8661478ccbe22e80c02d7f20b78d5",
+      "status": "MODIFIED",
+      "reason": "hecs1: design command added; calibrate applies the R1 V1 law via the run's own level-1 model"
+    },
+    {
+      "path": "src/model.rs",
+      "r0_sha256": "e15641570fc0a5a6358b410aceef086923281579366a6ead616a6d5989c11124",
+      "r1_sha256": "e15641570fc0a5a6358b410aceef086923281579366a6ead616a6d5989c11124",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/planner.rs",
+      "r0_sha256": "e60de68bf1456907974eafc5b9dacb917e0b0296af7e3547260ab309cec1f531",
+      "r1_sha256": "452153591c1095f244474e27ae2f81c453eef4dec603f40db73c7bd8082f7b5b",
+      "status": "MODIFIED",
+      "reason": "goal-directed plans scored by the summed path distance (cost_path), not the endpoint (DESIGN: oracle 0.50-0.75 < V2 0.8 with the endpoint cost)"
+    },
+    {
+      "path": "src/rng.rs",
+      "r0_sha256": "321f4f28448a0e0b0f003aced4e692cf92f2c937911a56d16190da93c22853d8",
+      "r1_sha256": "321f4f28448a0e0b0f003aced4e692cf92f2c937911a56d16190da93c22853d8",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/spec.rs",
+      "r0_sha256": "5e77ee4802d97845bdb69c2c129c8126c06e915896a19f79dd5311ad2c17a1ca",
+      "r1_sha256": "2eae70544eef8c1971f5f34045fb15cd102c1d4f4ca4d5afcdb7b7a51d38e249",
+      "status": "MODIFIED",
+      "reason": "R1 name, SHA-256-derived seeds (DEV, QUAL, DESIGN), V1 law (A, B, C), V4 MATCHED bound 2.0, stop and integration laws"
+    },
+    {
+      "path": "src/tests.rs",
+      "r0_sha256": "22470ebbcafab6889d75069dc6c14eed36d79d0384b1b7d16018352db1102f93",
+      "r1_sha256": "5837130967a07598b47ee5bfebbf0a868ac3c505b48e768072956c032736f0e9",
+      "status": "MODIFIED",
+      "reason": "R1 spec path and wording; validity and seed tests added"
+    },
+    {
+      "path": "src/world.rs",
+      "r0_sha256": "d75d714eb0d9f960d554b487cef40ee8d77b5c0cac84de9f05fa9e58dede2d56",
+      "r1_sha256": "d75d714eb0d9f960d554b487cef40ee8d77b5c0cac84de9f05fa9e58dede2d56",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/validity.rs",
+      "r0_sha256": null,
+      "r1_sha256": "b16531de72eebe482cf6636300661daae8cdf5022f3d08ab8c6b772f3a2499bb",
+      "status": "NEW",
+      "reason": "analytic floor, linear reference, constant and persistence baselines, the V1 law"
+    }
+  ]
+}

@@ -456,6 +456,10 @@
       {
         "path": "research/hecs_r0",
         "classification": "RESEARCH_ONLY, PREREGISTERED: H-ECS R0 hierarchical ECS world-model laboratory (a Rust crate over the existing native K1 C ABI; one K1 state per level; DEV calibration -> DEV -> QUAL once, write-once evidence). Not on the canonical path; no codec, no HACF edge, no runtime authority (research/hecs_r0/PREREGISTRATION.md)."
+      },
+      {
+        "path": "research/hecs_r1",
+        "classification": "RESEARCH_ONLY: H-ECS R1, the preregistered successor of the invalid R0 (TASK_INVALID_ON_DEV). R0's hierarchy laboratory (one native K1 state per level through the existing C ABI) copied with source equivalence, with a valid task-validity law (analytic floor, held-out linear reference, ECS adequacy) on fresh SHA-256-derived seeds. No runtime authority; makes nothing canonical; only QUAL OUTCOME_A authorizes an experimental, noncanonical integration."
       }
     ],
     "native_targets": [
