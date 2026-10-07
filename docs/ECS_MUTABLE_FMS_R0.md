@@ -126,4 +126,4 @@ Mutable FMS R0 does not establish:
 - device/HOT execution of ECS;
 - larger or multi-kernel EDEN dynamics;
 - HACF-to-ECS cognition;
-- ECS_C recording of cognitive transitions.
+- a history of cognitive transitions (continuity binds only the current K1 identity).

@@ -37,7 +37,7 @@ or hypothetical future use did not count as a consumer.
 | Context projections over event history (`ContextProjection`, `ProjectionRequest`, retained bindings) | `Runtime.history_projection`, `evolve`, gate | Only row 2 | Covered by row 2 | - | - | - | **DELETE** |
 | Topology / topology analysis over event history | none in the runtime; frozen research collision experiment | None | None | - | - | - | **DELETE**. HACF/structure owns structural topology. |
 | Structural R0 mutation grammar and sealed authority bytes | no canonical runtime consumer (own tests only; never admitted as transitions) | None | None | - | - | - | **DELETE** from the live package; the beta migration record and git history keep its provenance |
-| Native receipt codec, log, runtime session (`elpis_ecsc_history`) | the receipt history only | None | None | - | - | - | **DELETE**: continuity needs no native code |
+| Native receipt codec, log, runtime session (the retired native history library) | the receipt history only | None | None | - | - | - | **DELETE**: continuity needs no native code |
 
 ## K1 identity rule
 
@@ -146,3 +146,30 @@ documented offline step: run the retired runtime at the last commit that
 contained it, read its cognition tip, and start a continuity store with an
 explicit anchor of that K1 state. The evolution authority of a migrated store
 starts at revision 0, because no `v1` assertion predates continuity.
+
+## Hot path
+
+The managed canonical turn is: codec -> one native K1 transaction (experience
+schedule and readout) -> decode -> native commit -> one continuity
+publication. `tests/integration/test_runtime_hot_path.py` checks dynamically,
+on every run, that continuity adds no native crossing to the canonical turn
+and that its filesystem work per turn is exactly one 136-byte `pwrite` and
+one `fdatasync`. `tests/boundary/test_one_ecs.py` checks statically that the
+turn reaches no receipt, history, event, scheduler, projection or compaction
+machinery.
+
+One measurement of a warm managed turn, before (`e05b33a`, receipt history)
+and after (this design), on the same host (Linux VM, ext4, Release build;
+fixture map with one experience and one step; strace over 500 turns, latency
+over 1000 turns). Latency figures are single-host observations, not a
+performance claim.
+
+| Per warm `Runtime.run_turn` | Before | After |
+|---|---|---|
+| native K1 crossings | 4 (`max_rows`, `txn_begin`, `txn_run_schedule`, `txn_commit_identity`) | 4 (same) |
+| other native crossings | 1 (the retired native history library's record call) | 0 |
+| filesystem syscalls | 4 `write`, 2 `fsync`, 2 `fstat` | 1 `pwrite64`, 1 `fdatasync` |
+| bytes written | 3731 (mean) | 136 |
+| durable store after 503 turns | 1,890,477 bytes, growing to the policy bound | 272 bytes, constant |
+| latency p50 / p90 / p99 (us) | 1749 / 2392 / 3487 | 616 / 794 / 1157 |
+| bare `run_turn` p50 (us), same process | 445 | 361 |

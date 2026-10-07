@@ -7,9 +7,10 @@ follows structure the system has already accumulated. This is a research
 direction, not a capability claim; see [`docs/NONCLAIMS.md`](docs/NONCLAIMS.md).
 
 The division of responsibility is constitutional
-([`docs/ELPIS_MISSION.md`](docs/ELPIS_MISSION.md)): **DSV4 communicates, ECS
-computes, learns and persists, FMS materializes, HACF structures memory, ECS_C
-preserves continuity.** DSV4 is the token boundary, not the brain.
+([`docs/ELPIS_MISSION.md`](docs/ELPIS_MISSION.md)): **DSV4 communicates. ECS /
+EDEN computes, learns and persists. FMS materializes. HACF / structure
+organizes persistent structural memory. Continuity binds minimal durable
+runtime lineage/authority.** DSV4 is the token boundary, not the brain.
 
 This repository is the clean development authority. It was built by a
 selective, audited migration from the Elpis beta repository. The per-path
@@ -27,13 +28,13 @@ the head commit is red.
 | Path | Subsystem |
 |---|---|
 | `src/elpis/substrate`, `native/substrate` | resource authority, residency and materialization (FMS, PAL, file assets, execution port) |
-| `src/elpis/ECS_C` | identity, continuity, durable history, replay, projections |
-| `src/elpis/ECS`, `native/ECS` | qualified geometric/dynamical substrate primitive of the cognitive ECS (owned state `W`, `S3` observable, atomic recurrence, snapshots) |
+| `src/elpis/ECS`, `native/ECS` | the one canonical ECS: cognitive/dynamical substrate (state `W`, epoch, `H`, `a`; `S3` observable; recurrence, learning, consolidation, readout; native K1 transactions, snapshots, FMS residency) |
+| `src/elpis/continuity` | minimal durable runtime authority: a fixed-size two-slot register of the committed K1 state digest and the evolution authority ([spec](docs/CONTINUITY.md)) |
 | `src/elpis/structure`, `native/structure` | HACF structural memory, semantic core, retrieval, Grid81 representation |
 | `src/elpis/pipeline`, `native/pipeline` | bounded Regex → HACF ingress; the canonical Grid81 writer path |
 | `src/elpis/evolution` | deterministic heredity, selection, gated promotion |
 | `src/elpis/inference` | the DSV4 communication codec (tokenizer, rendering); retained noncanonical model-execution mechanics for historical replay |
-| `src/elpis/runtime` | the one runtime composition: codec -> ECS -> codec (fails closed until the ECS codec is qualified), over one ECS_C history |
+| `src/elpis/runtime` | the one runtime composition: codec -> ECS -> codec (fails closed until the ECS codec is qualified), bound to one continuity register |
 | `research/ecs_dynamics` | RESEARCH_ONLY synthetic dynamics laboratory; not packaged, never imported by `src` ([results](docs/research/ECS_DYNAMICS_RESULTS.md)) |
 | `research/dsv41_tower` | RESEARCH_ONLY DSV4.1 transformer/MoE tower, native backend, provider stream, clock and materializer; donor/oracle qualification, not Elpis cognition |
 

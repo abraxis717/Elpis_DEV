@@ -23,7 +23,7 @@ proportional to `K`; per-element conversions in the fast path; cognition
 through Python callbacks.
 
 Forbidden inside the native critical path (query and state transition): JSON,
-Python objects, SHA-256, filesystem I/O, ECS_C history writes, HACF traversal,
+Python objects, SHA-256, filesystem I/O, continuity or history writes, HACF traversal,
 logging, model calls, callbacks, tokenization, snapshot serialization, and
 heap allocation after executor creation.
 

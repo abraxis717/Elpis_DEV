@@ -139,8 +139,9 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
   It cannot yet hold mutable ECS state; `W` lives in native ECS memory and
   persists through its snapshot bytes.
 * **HACF -> ECS**: no structural-memory edge into ECS is qualified.
-* **ECS_C**: transitions return receipts but are not recorded in the history;
-  cognition does not depend on history or replay.
+* **Continuity**: transitions return receipts; durable continuity keeps only the
+  current K1 retained-state digest (docs/CONTINUITY.md). Cognition does not
+  depend on any history or replay.
 * **Retention**: no mechanism protects earlier learning from later
   experience; the qualified recurrence alone forgets. Retention R0
   (`docs/research/ECS_RETENTION_R0_RESULTS.md`, RESEARCH_ONLY) found only a

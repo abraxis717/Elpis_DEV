@@ -4,8 +4,12 @@
 depend on and what they may mutate. This document explains the design those
 facts describe. Both answer to [`ELPIS_MISSION.md`](ELPIS_MISSION.md):
 
-    DSV4 COMMUNICATES.  ECS COMPUTES, LEARNS AND PERSISTS.  FMS MATERIALIZES.
-    HACF STRUCTURES MEMORY.  ECS_C PRESERVES CONTINUITY.
+    DSV4 COMMUNICATES.  ECS / EDEN COMPUTES, LEARNS AND PERSISTS.
+    FMS MATERIALIZES.  HACF / STRUCTURE ORGANIZES PERSISTENT STRUCTURAL MEMORY.
+    CONTINUITY BINDS MINIMAL DURABLE RUNTIME LINEAGE/AUTHORITY.
+
+There is one ECS (`elpis.ECS`, `native/ECS`). Continuity (`elpis.continuity`)
+is not an ECS: it is a fixed-size register of the current durable authority.
 
 The canonical cognitive dataflow is `text -> DSV4 encode -> ECS stimulus ->
 ECS/EDEN dynamics -> ECS readout -> DSV4 decode -> text`. ECS as a sidecar
@@ -72,8 +76,8 @@ request -> derive_query (NFKC, bounded, no model inference)
 ```
 
 The envelope is a **structured observation**. It states retrieval provenance
-and never claims truth. The ECS history, the pipeline and inference
-(`AddressProposal`) can all consume it.
+and never claims truth. The pipeline and inference (`AddressProposal`) can
+consume it.
 
 ### Grid81 representation (`elpis.structure.grid81`)
 
@@ -175,131 +179,41 @@ there is no writable COLD replica; the CPU PAL has no accelerator fences.
 used by the substrate and inference. Callers branch on `Code` (`IDENTITY`,
 `INTEGRITY`, `LIMIT`, `BUSY`, `STALE`, …), never on message text.
 
-## ECS_C: identity, continuity, history and replay (`elpis.ECS_C`)
+## Continuity: minimal durable runtime authority (`elpis.continuity`)
 
-The ECS is the system's memory of *what happened*. It is a deterministic,
-same-process kernel.
+Continuity holds the current durable lineage/authority the runtime must
+verify on restart, and nothing else. [`CONTINUITY.md`](CONTINUITY.md) is the
+full specification, including the consumer census that retired the event
+history kernel.
 
-### Entities and messaging
+* **State.** One record: generation, the committed K1 retained-state digest
+  (`state_digest()`, binding `W`, epoch, `H`, `a`) or "unanchored", and the
+  evolution authority `(revision, head)`, where head is the digest of the last
+  admitted path-transition receipt.
+* **Layout.** Two fixed 136-byte slot files, `continuity.a` and
+  `continuity.b`, each a checksummed record. The higher valid generation is
+  the current authority. Durable size is 272 bytes for any lifetime; restart
+  reads two slots.
+* **Publication.** The next record is written in place into the
+  non-current slot and `fdatasync`ed: one write, one sync, no rename, no log.
+  A failed write is `CONTINUITY_PUBLICATION_REFUSED` (previous authority
+  intact); a failed sync is `CONTINUITY_PUBLICATION_UNCERTAIN` (store closed;
+  reopen resolves to exactly one complete record).
+* **API.** `ContinuityStore(directory)`: `open`, `close`, `snapshot`,
+  `anchor_cognition(digest)`, `commit_cognition_transition(before, after)`,
+  `commit_evolution_transition(expected, receipt_digest)`. Each transition
+  is compare-and-publish against the current record.
+* **Ownership.** A directory `flock` admits one owner (`CONTINUITY_LOCKED`).
+  Continuity imports only the standard library: no ECS, runtime, inference
+  or native code. It holds no entities, mailboxes, schedulers, projections,
+  topology, event log, compaction or retention.
 
-An entity is founded from a canonical founding record. Its `entity_id` is
-domain-separated content identity: an identifier, not a credential. The
-lifecycle is `FOUNDED -> ACTIVE <-> DORMANT -> TERMINATED`. Terminated
-identities are never recycled.
-
-Entity-facing messaging goes through an `EntityPort` that the kernel binds to
-one entity and one live kernel epoch. `EntityPort.propose(receiver, payload)`
-has no sender parameter: sender identity, per-sender sequence and commit clock
-are assigned by the kernel. This is an API-level same-process guarantee, not
-isolation from hostile code that already holds the kernel object.
-
-Mailboxes are bounded FIFOs whose capacity is bound into the genesis
-authority. Per-sender sequences are monotonic and replay-checked. No
-transport-level at-least-once or exactly-once claim is made.
-
-### One authoritative history
-
-The event log is the single authoritative mutable history. Entity, mailbox and
-watermark state are projections of committed events. A mutation is linearized
-under the kernel lock:
-
-```text
-read projection -> clone post-state -> validate/apply -> advance clock
--> construct canonical event -> compute after-root -> append framed event
--> durability boundary (fsync) -> install projection -> return
-```
-
-The log is length-framed (8-byte big-endian length + canonical UTF-8 JSON).
-Recovery distinguishes a complete valid event, an incomplete trailing crash
-frame (recoverably truncated) and complete-but-corrupt history (fails closed).
-When a durable outcome cannot be proven, the live kernel is invalidated and
-must be reopened. The append is a *recoverable framed append*, not a
-syscall-level atomic transaction.
-
-### State roots and replay
-
-The state root (`ecs.state_root.v3`) binds genesis, history digest, logical
-clock, next founding index, mailbox capacity, the full entity registry,
-mailbox contents, sender watermarks and scheduler inputs. The design rule:
-anything that can change a future accepted transition is root-bound.
-
-```text
-genesis/configuration authority + ordered committed event bytes
-    = exactly one reconstructed kernel state
-```
-
-Replay re-applies every transition's preconditions and effects. It does not
-trust a stored after-root because its syntax is valid. The `ecs.checkpoint.v1`
-checkpoint of an uncompacted kernel is a local rollback-floor marker only:
-full replay from genesis remains authoritative for that layout.
-
-### Compacted histories (bounded storage)
-
-A history can instead be opened on a verified **compaction base**:
-`elpis.ECS_C.compaction.CompactionCheckpoint` (`ecs.compaction-checkpoint.v1`)
-plus one **segment** file holding only the events after it.
-
-* The checkpoint is state-bearing and distinct from the marker. It binds
-  schema, genesis label and digest, scheduler protocol, mailbox capacity,
-  global event count (= logical clock), terminal event digest, history
-  digest, the complete `ecs.state_root.v3` record (next founding index,
-  registry, mailboxes with contents, watermarks) plus each entity's
-  `causing_event_id`, and a bounded opaque extension. Its identity is a
-  domain-separated digest. It is verified before use by rebuilding the kernel
-  state and requiring the exact recorded root. It is ECS_C mechanical state,
-  not cognitive state.
-* Segment events keep their **global** coordinates. The first one has
-  `event_index == base count` and links to the checkpoint's terminal event
-  digest and state root. Nothing is renumbered, and the logical clock,
-  watermarks, versions and history digest continue monotonically.
-* `Kernel(..., log_path=, base=)` rebuilds the base state and
-  stream-replays only the segment (`StreamReplay`; `EventLog.scan_events`
-  never materializes the file).
-* `Kernel.retention_floor` is the first retained global index. Below a
-  non-zero floor `events()` and `topology_projection()` refuse with
-  `RetentionFloorError`; `retained_events()` returns the window.
-* `elpis.ECS_C.generations` publishes one generation (checkpoint, segment)
-  per directory through a crash-safe MANIFEST switch:
-  1. write and fsync the checkpoint;
-  2. create and fsync the segment;
-  3. fsync the directory;
-  4. write and fsync `MANIFEST.tmp`;
-  5. atomically rename it to `MANIFEST` (publication);
-  6. fsync the directory again;
-  7. only then remove the previous generation.
-
-  A crash before the rename reopens the old generation and one after it the
-  new one. Every write is admitted against the directory budget first.
-
-### Projections
-
-* **Topology** (`topology`, `topology_analysis`): interaction-derived,
-  read-only structural views of committed history.
-* **Context projection** (`projection`): bounded, canonical selection of
-  committed events for a consumer. `project_history` independently replays
-  the history it is given. `project_kernel_history` reads a live kernel only
-  through public surfaces. Projections have no mutation, model, network or
-  execution authority, and they are the ECS side of the ECS → inference
-  context path.
-
-### Structural R0
-
-`elpis.ECS_C.structural` is the frozen Structural R0 mutation grammar: a
-participation mask over the exact nonzero columns of a frozen 6 × N binary64
-sidecar, with ABSTAIN / DISABLE_COLUMN / RESTORE_COLUMN as the only
-operations. Its sealed authority bytes are embedded and identified by logical
-anchors. The grammar is executable and verified, but **the kernel does not yet
-admit Structural R0 mutations as transitions**. That bridge is an incomplete
-interface.
-
-### Protocol identifiers
-
-Persisted identifiers keep their historical spelling because replay and data
-identity depend on them: `ecs.state_root.v3`, `ecs.event.v1`,
-`ecs.genesis.v1`, the genesis protocol revision `ecs.m1a.integration.v3`, both
-scheduler protocol strings, and every `elpis.ecs.r0.*` /
-`elpis.ecs.structural_r0.*` domain. Beta *phase* names such as M1A were
-removed from the code and docs everywhere else.
+Stable codes: `CONTINUITY_UNINITIALIZED`, `CONTINUITY_UNANCHORED`,
+`CONTINUITY_ALREADY_ANCHORED`, `CONTINUITY_STATE_MISMATCH`,
+`CONTINUITY_CORRUPT`, `CONTINUITY_PUBLICATION_REFUSED`,
+`CONTINUITY_PUBLICATION_UNCERTAIN`, `CONTINUITY_LOCKED`,
+`CONTINUITY_AUTHORITY_MISMATCH`, plus `CONTINUITY_INVALID`,
+`CONTINUITY_PATH`, `CONTINUITY_OPEN` and `CONTINUITY_LEGACY_STORAGE`.
 
 ## Pipeline: ingress and canonical publication (`elpis.pipeline`, `native/pipeline`)
 
@@ -431,8 +345,7 @@ are not signatures.
 * **The ingress library is not digest-pinned.** It is loaded by explicit
   path only, not yet through substrate authority.
 * **Query-local overlays are transient.** Each one lives only in memory for
-  the duration of a call. It is not persisted into a semantic snapshot or
-  recorded in the ECS history.
+  the duration of a call. It is not persisted into a semantic snapshot.
 
 ### Protocol identifiers
 
@@ -479,20 +392,27 @@ trusted a caller-claimed optimality gap.
 
 ### Path gate
 
-An `EvolutionPathAssertion` binds:
+An `EvolutionPathAssertion` (`elpis.evolution-path-assertion.v1`) binds:
 
 * the episode state digest, attempt index and attempt head;
 * an edit count within an edit budget;
 * a component scope;
 * a resource budget and an evaluation contract;
-* the exact ECS history the caller reasoned over (projection digest, head
-  event digest and final state root of a real `ContextProjection`).
+* the evolution authority the caller reasoned over: its revision and digest
+  (`EvolutionAuthorityBinding`, read from continuity).
 
-The gate re-checks every binding against the live state. A rejected assertion
-executes nothing. An admitted one executes exactly one attempt, which must
-return a typed `EvolutionAttempt`. The result is a `PathTransitionReceipt`
-chained to the previous receipt by digest. Assertion and receipt records are
-byte-identical to the beta gate's.
+The gate re-checks every binding against the live state and the current
+authority (`STALE_EVOLUTION_AUTHORITY`, `EVOLUTION_AUTHORITY_MISMATCH`). A
+rejected assertion executes nothing. An admitted one executes exactly one
+attempt, which must return a typed `EvolutionAttempt`. The result is a
+`PathTransitionReceipt` chained to the previous receipt by digest; the
+runtime then advances the authority to revision + 1 with that receipt's
+digest as head. The gate imports no storage.
+
+The retired v0 schema (history projection digest, head event digest, final
+state root) stays as `EvolutionPathAssertionV0` so its persisted identity
+remains computable. The gate refuses it with `ASSERTION_SCHEMA_RETIRED`; v0
+is never reinterpreted as v1.
 
 ### Promotion
 
@@ -518,12 +438,15 @@ schema identifiers are historical and carry no self-improvement claim.
 * **No in-repo fitness environment.** No environment produces fitness
   observations; the beta's Torch lattice ecology is retired.
 * **No in-repo evaluator.** Nothing produces promotion evaluation evidence.
-* **The caller records receipts.** Transition receipts are returned rather
-  than recorded; the runtime composition records them in the ECS history.
+* **No receipt history.** Transition receipts are returned to the caller.
+  Continuity keeps only the digest of the last admitted one as the authority
+  head.
 
-## ECS: geometric dynamical substrate primitive (`elpis.ECS`, `native/ECS`)
+## ECS: the one canonical cognitive/dynamical substrate (`elpis.ECS`, `native/ECS`)
 
-ECS is a qualified native primitive of the cognitive ECS/EDEN substrate. It
+ECS is the one canonical ECS of Elpis: the ECS/EDEN-facing cognitive and
+dynamical substrate. Its qualified native kernel is a primitive of that
+substrate. It
 owns the authoritative microscopic state `W in R^(d x N)` (binary64), the exact
 cubic forward map, the derived coarse observable `S3 = (mu, M, T3)` (83 values
 for `d=6`), one deterministic atomic recurrence (an explicit-rate cubic
@@ -533,7 +456,15 @@ snapshot/restore. The mathematics is qualified in the frozen `d=6`,
 eventual cognitive substrate. The kernel sources are digest-pinned by the
 mission gate. See [`native/ECS/README.md`](../native/ECS/README.md).
 
-ECS imports nothing beyond itself and the standard library. The runtime's
+ECS imports nothing beyond itself and the standard library: no inference,
+codec, runtime or continuity module. Its native ABI keeps its qualified
+identifiers (`elpis_ecsg_*`, `ELPIS_ECSG_*`, `elpis/ecsg_*.h`,
+`libelpis_ecsg_*`, the `ELPISG01`/`ELPISGK1` snapshot formats and the
+`ECSGLibrary`/`ECSGError` binding names): they are byte-bound by the Runtime
+R1 and K1 qualification evidence and are protocol identity, not a second
+ECS. Native K1 ([`ECS_K1_RUNTIME.md`](ECS_K1_RUNTIME.md)) is the canonical
+retained-state runtime: complete state `(W, epoch, H, a)`, native learning
+and consolidation, complete-state transactions and generic FMS residency. The runtime's
 canonical turn places it between DSV4 encode and DSV4 decode (see *Runtime*);
 it is never a conditioning input to a DSV model and never driven by a DSV
 model's output statistics.
@@ -685,8 +616,8 @@ carried forward (`docs/NONCLAIMS.md`).
 * **DSV4-shaped records.** `NeuralState` and `TargetConfig` still carry
   DSV4-shaped fields. A second driver will need them generalized.
 * **Steering is not in the ECS.** `global_event_fields` exposes what an ECS
-  integration would bind, but no steering event is recorded in the ECS
-  history yet.
+  integration would bind, but nothing in the ECS or continuity binds a
+  steering event.
 * **Greedy speculative verification only.**
 
 ### The DSV4.1 tower is research, not runtime
@@ -758,110 +689,47 @@ again, and resolution reads and verifies whole document blobs. The
 benchmark (`tests/integration/context_scaling_benchmark.py`) reports those
 costs separately, per boundary.
 
-## Runtime: one composition over one history (`elpis.runtime`)
+## Runtime: one composition over one continuity authority (`elpis.runtime`)
 
 There is one runtime composition. The beta's numbered runtime generations
 (R0–R4, R3SOT) are retired.
 
-### Receipt history
-
-`ReceiptHistory` is an ordinary ECS kernel history with a fixed genesis
-(`elpis.runtime.history.v1`). At genesis it founds, in order, one `history`
-entity and one recorder entity for each of `pipeline`, `structure`,
-`evolution`, `inference` and `ecs_g`. A legacy five-role history is upgraded
-once by exactly one FOUND + ACTIVATE of `ecs_g`.
-
-Recording a receipt sends one message from the owning subsystem's recorder
-to the history entity. The kernel attributes the sender, so a record cannot
-claim another subsystem. The payload is a canonical
-`elpis.runtime.receipt-record.v1` record: subsystem, kind, digest and named
-bindings. Native ECS_C owns every append. There is no Python propose
-fallback and no Python scheduler on the write path.
-
-**Bounded storage.** The history directory is governed by a finite
-`RuntimeHistoryPolicy`, with no unlimited value and finite defaults:
-
-* `max_segment_bytes` 8 MiB;
-* `max_segment_events` 32768;
-* `max_checkpoint_bytes` 64 KiB;
-* `max_directory_bytes` 9 MiB, which must be at least segment +
-  2 x checkpoint + 2 x manifest.
-
-The directory holds exactly `LOCK`, `MANIFEST`, `g<N>.ckpt` and `g<N>.seg`
-between operations. The native session (`open_segment`) is given the global
-count, the segment base and the policy.
-
-1. It checks the planned frame sizes before every mutation and returns the
-   non-mutating disposition `SEGMENT_FULL` when a receipt would not fit.
-2. On `SEGMENT_FULL`, `ReceiptHistory` closes the native session and checks
-   the segment by bounded Python replay.
-3. It checkpoints the quiescent state, publishes generation N+1, reopens
-   native, and retries that exact receipt once.
-4. Nothing is archived. A K1 turn is never repeated, because recording
-   follows the committed turn.
-
-Failure codes:
-
-* `HISTORY_STORAGE_CAPACITY`: a receipt does not fit an empty segment, or a
-  write would exceed the directory budget.
-* `HISTORY_COMPACTION_REQUIRED`: the segment is over policy at a
-  non-quiescent boundary.
-* `HISTORY_COMPACTION_FAILED`: fail-stop. The last published generation is
-  never deleted.
-* `HISTORY_CHECKPOINT_INVALID`, `HISTORY_GENERATION_MISMATCH`,
-  `HISTORY_NATIVE_SEGMENT_MISMATCH`: inconsistent stored artifacts or counts.
-* `HISTORY_LEGACY_MIGRATION_FAILED`: the legacy layout could not be migrated.
-
-**Retention.** `retention_floor` is the first retained global event index.
-
-* `records()` returns the complete record list only while the floor is 0.
-  Otherwise it refuses with `HISTORY_BELOW_RETENTION_FLOOR`;
-  `retained_records()` returns the window.
-* Exact duplicate detection (an equal record returns the existing entry and
-  appends nothing) is guaranteed **only within the retained window**. A record
-  equal to a retired one is recorded again.
-* With a floor, the default `projection()` selects the retained window
-  (`clock_min = floor + 1`). Its result binds the floor
-  (`RetainedHistoryBinding`, schema `ecs.context-projection.retained.v1`).
-  An explicit request at or below the floor refuses.
-
-**Opening** rebuilds the base from the verified checkpoint and stream-replays
-only the bounded segment. It never replays lifetime history, and it refuses a
-history founded differently, a record from the wrong recorder or a
-non-canonical payload. An enqueue-only prefix left by `PARTIAL_COMMIT` is
-completed by the canonical Python replay path at native-writer open.
-
-**Legacy layouts** (`events.log` + `checkpoint.bin`) are validated once and
-migrated deterministically, either verbatim as generation 1's segment (hard
-link) or as a head checkpoint when larger than the segment policy. They are
-removed only after publication and never replayed again.
-
-The ECS K1 lineage (`cognition.anchor` / `cognition.turn` receipts) is
-folded into a fixed-size `CognitionContinuity` summary. The summary is
-carried across compaction in the checkpoint, so restart reconciliation never
-reads retired receipts.
-
 ### Composition
 
-`Runtime` owns only its history and the edge adapters (`elpis.runtime.edges`)
-that turn ingress exports and retrieval bundles into object claims and
-address proposals for structural-memory rendering. The caller supplies
-everything else explicitly: library paths, corpus roots, file assets, ledgers
-and capabilities. Each operation goes through its subsystem's own fail-closed
-entry point and is recorded only if that entry point committed:
+`Runtime(RuntimeConfig(continuity_dir))` owns only its continuity store and
+the edge adapters (`elpis.runtime.edges`) that turn ingress exports and
+retrieval bundles into object claims and address proposals for
+structural-memory rendering. The caller supplies everything else explicitly:
+library paths, corpus roots, file assets, ledgers and capabilities. Each
+operation goes through its subsystem's own fail-closed entry point and
+returns that subsystem's result. There are no generic receipts and no
+history:
 
-| Operation | Subsystem entry point | Recorded |
+| Operation | Subsystem entry point | Durable effect in continuity |
 |---|---|---|
-| `run_ingress` | `QueryIngress.run` | published zero-authority proposal batch |
-| `admit_retrieval` | `validate_bundle` | valid retrieval bundle |
-| `publish_canonical` | `publish_candidate` | publication receipt (replay records nothing new) |
-| `evolve` | `EvolutionPathGate.execute` over a projection of this history taken at call time | transition receipt of an admitted attempt |
-| `admit_context` | ingress, edge adapter, `resolve_chunks`, codec rendering | ingress proposal and the rendering |
-| `anchor_cognition` | the K1 state's `state_digest()` (no K1 mutation) | one explicit `ecs_g` / `cognition.anchor` |
-| `run_turn` | codec -> native K1 (ECS) -> codec (`elpis.runtime.cognition`) | one `ecs_g` / `cognition.turn` per committed turn |
+| `run_ingress` | `QueryIngress.run` | none |
+| `admit_retrieval` | `validate_bundle` | none |
+| `publish_canonical` | `publish_candidate` | none (the pipeline ledger owns publication durability and replay) |
+| `evolution_authority` | continuity snapshot | none (read) |
+| `evolve` | `EvolutionPathGate.execute` bound to the current evolution authority | admitted attempt: revision + 1, head = transition receipt digest |
+| `admit_context` | ingress, edge adapter, `resolve_chunks`, codec rendering | none |
+| `anchor_cognition` | the K1 state's `state_digest()` (no K1 mutation) | explicit anchor of the first managed K1 lineage |
+| `run_turn` | codec -> native K1 (ECS) -> codec (`elpis.runtime.cognition`) | the committed turn's new K1 state digest |
 
 The runtime composes no DSV model execution: there is no decode, principal
 sequence or model text operation, and the mission gate pins this list.
+
+### K1 restart law
+
+The first managed lineage is anchored explicitly; nothing anchors
+implicitly. Before a turn mutates a K1 state, the runtime compares its
+`state_digest()` with the durable identity: unanchored refuses with
+`CONTINUITY_UNANCHORED`, a different state with `CONTINUITY_STATE_MISMATCH`,
+and a second substrate object in the same open runtime with
+`COGNITION_SUBSTRATE_SWITCH`. After the native commit the runtime publishes
+`before -> after`. If publication fails, the committed K1 state is not rolled
+back and no turn is synthesized: the runtime fail-stops with the publication
+code, and restart resolves through the comparison above.
 
 ### The canonical turn
 
@@ -889,9 +757,15 @@ when the whole turn succeeded (refused `ECS_STALE` if the state moved
 meanwhile). The Runtime R1 executor remains a qualified primitive and the
 K1-disabled reference; it is not the substrate of the canonical turn.
 
-The evolution gate reasons over the runtime's own history. Because each
-recorded transition moves the history head, an assertion built against an
-older head is rejected before anything runs.
+The canonical hot path is codec -> K1 transaction (schedule and readout in
+one native call) -> decode -> native commit -> one continuity publication
+(one 136-byte `pwrite` and one `fdatasync`). It adds no native crossings to
+the K1 turn and reaches no receipt, event, scheduler, projection or
+compaction machinery (`tests/boundary/test_one_ecs.py`).
+
+The evolution gate binds the current evolution authority. Each admitted
+transition advances it, so an assertion built against an older revision is
+rejected before anything runs.
 
 ### Integration suites (`tests/integration`)
 
@@ -904,7 +778,7 @@ Each suite runs over the real native libraries and a real HACF corpus:
 * structural-memory rendering through the codec;
 * the canonical codec -> ECS -> codec turn (`test_codec_ecs_turn.py`).
 
-Each suite also checks that refused operations leave both the history and
+Each suite also checks that refused operations leave both continuity and
 the subsystem state unchanged.
 
 ### Incomplete interfaces
@@ -913,16 +787,12 @@ the subsystem state unchanged.
   the ECS<->DSV semantic maps are defined and qualified.
 * **No HACF -> ECS edge.** Structural memory is rendered through the codec,
   but nothing canonical consumes it yet.
-* **Proposals only, not overlays.** Ingress overlays are recorded by
-  identity only and are not persisted.
-* **No steering epochs.** Steering epochs are not recorded, and the steered
-  engine is composed by the caller.
-* **Only publication is recorded.** The application and promotion stages
-  before canonical publication are driven by the caller and not recorded.
+* **Proposals only, not overlays.** Ingress overlays are not persisted.
+* **No steering epochs.** The steered engine is composed by the caller.
+* **No audit trail.** Runtime operations are not logged. Continuity holds
+  only the current authority; per-turn diagnostics live on the returned
+  result.
 * **Single process.** There is no cross-process transport.
-* **Retained window only.** Events below the retention floor exist only as
-  the compaction checkpoint's state. They cannot be listed, projected,
-  topology-folded or used for duplicate detection.
 
 ## ECS mutable FMS residency (R0)
 

@@ -105,8 +105,8 @@ Any refusal before the commit leaves `(W, epoch, H, a)` byte-for-byte unchanged.
 - a stale source (`ECS_STALE`).
 
 Without a supplied ECS codec map the turn fails with `ECS_CODEC_UNQUALIFIED` before touching any state. No ECS<->DSV
-semantic codec is qualified. ECS turn transitions are not recorded into ECS_C, which remains a separate incomplete
-interface.
+semantic codec is qualified. After each committed turn the runtime publishes the new `state_digest()` to continuity
+(docs/CONTINUITY.md); no turn history is recorded.
 
 ## Retained-state envelope `ELPISGK1` v1
 

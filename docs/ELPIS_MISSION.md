@@ -11,10 +11,17 @@ its mechanics are qualified.
     ECS / EDEN COMPUTES, LEARNS AND PERSISTS.
     FMS MATERIALIZES.
     HACF / STRUCTURE ORGANIZES PERSISTENT STRUCTURAL MEMORY.
-    ECS_C RECORDS CONTINUITY AND HISTORY.
+    CONTINUITY BINDS MINIMAL DURABLE RUNTIME LINEAGE/AUTHORITY.
 
 DSV4 is not the brain. It is the encode/decode boundary between human/token
 space and Elpis's internal computational substrate.
+
+There is one ECS (`elpis.ECS`, `native/ECS`). Continuity is not an ECS and not
+a history: it is a fixed-size, crash-safe register holding only the current
+durable authority the runtime must verify (the committed K1 state digest and
+the evolution authority head). It has no entities, mailboxes, schedulers,
+projections, topology, event log, compaction or retention
+(`docs/CONTINUITY.md`).
 
 ## The topology
 
@@ -80,12 +87,12 @@ remain in public history as evidence and are removed from the canonical path.
 
 | Subsystem | Role | Must not |
 |---|---|---|
-| ECS (ECS/EDEN-facing geometric substrate) | owns active microscopic dynamical state (`W`), its qualified recurrence, coarse observables (`S3`) and snapshots; a qualified primitive of the cognitive substrate | import inference, codec, runtime or ECS_C; be an auxiliary conditioning vector for a model |
-| ECS_C | identity, continuity, durable event history, replay, checkpoints | hold or substitute for active cognitive state |
+| ECS (ECS/EDEN-facing geometric substrate) | owns active microscopic dynamical state (`W`), its qualified recurrence, coarse observables (`S3`) and snapshots; a qualified primitive of the cognitive substrate | import inference, codec, runtime or continuity; be an auxiliary conditioning vector for a model |
+| continuity (`elpis.continuity`) | the current durable runtime lineage/authority: one fixed-size two-slot register binding the committed K1 state digest and the evolution authority (revision, head); fail-closed restart verification | hold or substitute for active cognitive state; keep history, events, entities, schedules, projections or topology; import ECS, runtime, inference or native code |
 | DSV4 codec (`elpis.inference` codec modules) | communication: text/bytes <-> tokens, vocabulary identity, bounded rendering; the token side of encode/decode | own ECS state; run an autonomous transformer/MoE cognition path |
 | substrate / FMS | generic resource authority, residency and materialization: persistent logical capacity >= resident materialization >= active materialization | require DSV-specific tensor roles in its generic core; decide semantics |
 | structure / HACF | persistent structural memory, topology, representation, provenance | be defined solely as a context-window supplier for a model |
-| runtime | orchestrates codec -> ECS -> codec and records committed outcomes in ECS_C | route cognition through a DSV model |
+| runtime | orchestrates codec -> ECS -> codec and, after each native K1 commit, publishes the new K1 state digest to continuity (one 136-byte slot write and one fdatasync) | route cognition through a DSV model; record per-turn receipts or event history |
 
 ## Classification of existing machinery
 
@@ -134,9 +141,9 @@ canonical code (`src/`, `native/`; `research/` is noncanonical):
 2. the runtime imports DSV model-execution machinery (anything in
    `elpis.inference` beyond the codec modules);
 3. a DSV4.1 tower module exists in the canonical tree;
-4. ECS depends on inference, runtime or ECS_C;
-5. the codec depends on ECS, ECS_C or the runtime;
-6. ECS_C and ECS depend on each other;
+4. ECS depends on inference, runtime or continuity;
+5. the codec depends on ECS, continuity or the runtime;
+6. continuity and ECS depend on each other;
 7. the generic substrate names DSV-specific tensor roles;
 8. the canonical text turn does not fail closed without a qualified codec map;
 9. the gate itself no longer rejects the forensic sidecar topology;

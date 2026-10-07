@@ -117,7 +117,7 @@ with the kernel by the mission gate.
 
 This directory owns only ECS.
 
-It does not import or call ECS_C, HACF, inference, the DSV4 codec, runtime,
+It does not import or call continuity, HACF, inference, the DSV4 codec, runtime,
 evolution, FMS, TRM, DarwinianMatrix, AnchorSpine, CNumPyCortex, or retired
 Elpis systems.
 

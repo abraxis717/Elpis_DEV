@@ -33,7 +33,7 @@ DSV_ROLES = re.compile(r"(?i)(dsv4|deepseek|engram|\bmoe\b|\bexperts?\b|\bw[123]
 
 # The qualified ECS kernel. Changing these sources requires an explicit,
 # reviewed update of the pins together with the kernel qualification.
-ECSG_KERNEL_PINS = {
+ECS_KERNEL_PINS = {
     "native/ECS/src/ecsg_math.c": "fbfc48e5e36498df3dc8d33fa44620a61d697fa7bd00b8c7303929c4dc0cf235",
     "native/ECS/src/ecsg_state.c": "c9887848fa0ddcfff71952a2010dd9968d980973cbe56cc0fa056c81f7b0b821",
     "native/ECS/include/elpis/ecsg_math.h": "94f3c4e7a9bf26b08b267679c9b707e8376cc4e2867be760ac825760ce95f80e",
@@ -213,7 +213,7 @@ def fms_genericity(root: Path) -> list[str]:
 def ecsg_kernel_unchanged(root: Path) -> list[str]:
     """(10) The qualified ECS kernel sources match their pinned digests."""
     out = []
-    for name, digest in ECSG_KERNEL_PINS.items():
+    for name, digest in ECS_KERNEL_PINS.items():
         path = root / name
         if not path.is_file():
             out.append(f"{name}: missing")
