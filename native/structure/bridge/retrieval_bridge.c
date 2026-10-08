@@ -1,13 +1,17 @@
-/* retrieval_bridge.c — narrow C ABI over HACF structural memory for Python.
+/* retrieval_bridge.c — narrow C ABI over HACF structural memory for Python
+ * (retrieval_bridge.h, ABI v2).
  *
  * Builds a bounded content-addressed corpus, a deterministic embedding
- * profile, an FMS-resident exact vector index, and runs deterministic hybrid
- * (lexical + dense + context-graph) retrieval, returning a canonical
- * RetrievalBundle JSON plus its identity digests. Loaded by
- * elpis.structure.retrieval.hacf through an explicit library path.
+ * profile, an FMS-resident exact vector index and, when the caller supplies
+ * explicit edges, one immutable context graph; runs deterministic hybrid
+ * (lexical + dense, plus bounded one-hop context with a graph) retrieval,
+ * returning a canonical RetrievalBundle JSON plus its identity digests. Loaded
+ * by elpis.structure.retrieval.hacf through an explicit library path.
  *
- * All operations are read-only after corpus/index creation.
+ * All operations are read-only after environment creation.
  */
+
+#include "retrieval_bridge.h"
 
 #include "elpis/chunking.h"
 #include "elpis/corpus.h"
@@ -31,6 +35,10 @@
 #define RETRIEVAL_E_LIMIT (-2)
 #define RETRIEVAL_E_INVAL (-3)
 #define RETRIEVAL_E_IO (-4)
+#define RETRIEVAL_E_GRAPH (-5)
+
+static const char kZeroDigest[65] =
+    "0000000000000000000000000000000000000000000000000000000000000000";
 
 typedef struct {
     char label[64];
@@ -40,12 +48,14 @@ typedef struct {
     char auth[32];
 } cr_t;
 
-typedef struct elpis_retrieval_env {
+struct elpis_retrieval_env {
     elpis_corpus       *corpus;
     elpis_embedder     *embedder;
     fms_ctx            *fms;
     elpis_vector_index *index;
+    elpis_context_graph *graph;   /* NULL: graph disabled */
     elpis_embedding_profile profile;
+    char graph_digest[65];
 
     char corpus_digest[65];
     char shard_digest[65];
@@ -59,7 +69,11 @@ typedef struct elpis_retrieval_env {
 
     void *shard_bytes;
     size_t shard_len;
-} elpis_retrieval_env_t;
+};
+
+uint32_t elpis_retrieval_bridge_abi_version(void) {
+    return ELPIS_RETRIEVAL_BRIDGE_ABI_VERSION;
+}
 
 static int mkdirp(const char *p) {
     if (!p || !*p) return RETRIEVAL_E_INVAL;
@@ -85,6 +99,7 @@ static int mkdirp(const char *p) {
 static void elpis_retrieval_env_cleanup(elpis_retrieval_env_t *env) {
     if (!env) return;
     if (env->index) elpis_vector_index_destroy(env->index);
+    if (env->graph) elpis_context_graph_destroy(env->graph);
     if (env->fms) fms_destroy(env->fms);
     if (env->embedder) elpis_embedder_destroy(env->embedder);
     if (env->corpus) elpis_corpus_close(env->corpus);
@@ -140,14 +155,51 @@ int elpis_retrieval_checked_manifest_copy(
     return 0;
 }
 
+/* The context graph, built once from the caller's explicit edges after the
+ * corpus exists: the native graph law refuses malformed digests, a zero edge
+ * type, authority above 3 and self-edges (exact duplicates collapse), then every
+ * endpoint must resolve to an admitted chunk of this corpus. */
+static int build_graph(elpis_retrieval_env_t *env, const elpis_context_edge_input *edges,
+                       uint32_t edge_count, char error_buf[256]) {
+    if (elpis_context_graph_create(edge_count ? edges : NULL, edge_count, &env->graph) != 0) {
+        env->graph = NULL;
+        if (error_buf) snprintf(error_buf, 256, "E_GRAPH: context graph rejected");
+        return RETRIEVAL_E_GRAPH;
+    }
+    for (uint32_t i = 0; i < edge_count; i++) {
+        elpis_chunk_ref ref;
+        if (elpis_corpus_chunk_lookup(env->corpus, edges[i].subject_chunk_digest, &ref) != 0 ||
+            elpis_corpus_chunk_lookup(env->corpus, edges[i].object_chunk_digest, &ref) != 0) {
+            if (error_buf) snprintf(error_buf, 256, "E_GRAPH: edge %u endpoint is not an admitted corpus chunk", i);
+            return RETRIEVAL_E_GRAPH;
+        }
+    }
+    if (elpis_context_graph_digest(env->graph, env->graph_digest) != 0) {
+        if (error_buf) snprintf(error_buf, 256, "E_GRAPH: context graph identity failed");
+        return RETRIEVAL_E_GRAPH;
+    }
+    return 0;
+}
+
 elpis_retrieval_env_t *elpis_retrieval_env_create(const char *state_root,
                          const char **labels, const char **texts,
                          const char **namespaces, const char **authorities,
-                         int n_docs, char error_buf[256]) {
+                         int n_docs,
+                         int with_graph,
+                         const elpis_context_edge_input *edges,
+                         uint32_t edge_count,
+                         char error_buf[256]) {
     if (error_buf) error_buf[0] = '\0';
     if (!state_root || n_docs < 0 ||
-        (n_docs > 0 && (!labels || !texts || !namespaces || !authorities))) {
+        (n_docs > 0 && (!labels || !texts || !namespaces || !authorities)) ||
+        (with_graph != 0 && with_graph != 1) ||
+        (!with_graph && (edges || edge_count)) ||
+        (edge_count && !edges)) {
         if (error_buf) snprintf(error_buf, 256, "E_INVAL: invalid create arguments");
+        return NULL;
+    }
+    if (edge_count > ELPIS_CGRAPH_MAX_EDGES) {
+        if (error_buf) snprintf(error_buf, 256, "E_LIMIT: edge_count exceeds %u", ELPIS_CGRAPH_MAX_EDGES);
         return NULL;
     }
     if (n_docs > RETRIEVAL_MAX_DOCS) {
@@ -163,6 +215,7 @@ elpis_retrieval_env_t *elpis_retrieval_env_create(const char *state_root,
         if (error_buf) snprintf(error_buf, 256, "E_NOMEM: environment allocation failed");
         return NULL;
     }
+    memcpy(env->graph_digest, kZeroDigest, sizeof kZeroDigest);
 
     char corpus_dir[512];
     int path_rc = path_join(corpus_dir, sizeof corpus_dir, state_root, "corpus");
@@ -277,6 +330,11 @@ elpis_retrieval_env_t *elpis_retrieval_env_create(const char *state_root,
                        strlen(refs[ci].authority) + 1);
             }
         }
+    }
+
+    if (with_graph && build_graph(env, edges, edge_count, error_buf) != 0) {
+        elpis_retrieval_env_cleanup(env);
+        return NULL;
     }
 
     if (elpis_embedder_fixture_create(ELPIS_NORM_L2, &env->embedder) != 0)
@@ -409,17 +467,63 @@ int elpis_retrieval_env_embed(elpis_retrieval_env_t *env, const char *text, int 
     return elpis_embedder_embed(env->embedder, text, text_len, out, out_dim);
 }
 
+const char *elpis_retrieval_env_graph_digest(elpis_retrieval_env_t *env) {
+    return env ? env->graph_digest : "";
+}
+
+uint32_t elpis_retrieval_env_graph_edge_count(elpis_retrieval_env_t *env) {
+    return env && env->graph ? elpis_context_graph_edge_count(env->graph) : 0u;
+}
+
+/* The graph fields of the one native policy: the default (elpis_hybrid_policy_default) or the caller's
+ * selection per field; graph-disabled environments keep them 0 so the v1 policy identity holds. */
+static int graph_fields(const elpis_retrieval_env_t *env, const elpis_retrieval_graph_policy *gp,
+                        elpis_hybrid_policy *policy) {
+    if (!env->graph) {
+        if (gp) return -1;
+        policy->graph_seed_limit = 0;
+        policy->graph_neighbors_per_seed = 0;
+        return 0;
+    }
+    if (!gp) {
+        if (policy->graph_seed_limit > policy->primary_limit) policy->graph_seed_limit = policy->primary_limit;
+        return 0;
+    }
+    if (gp->graph_seed_limit != ELPIS_RETRIEVAL_POLICY_DEFAULT) {
+        policy->graph_seed_limit = gp->graph_seed_limit;
+    } else if (policy->graph_seed_limit > policy->primary_limit) {
+        policy->graph_seed_limit = policy->primary_limit;
+    }
+    if (gp->graph_neighbors_per_seed != ELPIS_RETRIEVAL_POLICY_DEFAULT)
+        policy->graph_neighbors_per_seed = gp->graph_neighbors_per_seed;
+    if (gp->min_graph_authority != ELPIS_RETRIEVAL_POLICY_DEFAULT)
+        policy->min_graph_authority = gp->min_graph_authority;
+    return 0;
+}
+
+static void digest_out(char *out, const char digest[65]) {
+    if (out) {
+        memcpy(out, digest, 64);
+        out[64] = '\0';
+    }
+}
+
 int elpis_retrieval_env_retrieve(elpis_retrieval_env_t *env,
                     const char *query_text,
                     const float *query_vector, int query_dim,
                     uint32_t lexical_limit, uint32_t dense_limit,
                     uint32_t primary_limit, uint32_t total_limit,
+                    const char *namespace_filter,
+                    const char *authority_filter,
+                    const elpis_retrieval_graph_policy *graph_policy,
                     char *bundle_json_out, int bundle_json_cap,
                     char *bundle_digest_out,
                     char *query_digest_out,
                     char *corpus_manifest_digest_out,
                     char *vindex_manifest_digest_out,
+                    char *graph_snapshot_digest_out,
                     char *fusion_policy_digest_out,
+                    char *hacf_package_digest_out,
                     int *item_count_out,
                     char error_buf[256]) {
     if (!env || !env->corpus || !env->index) {
@@ -438,14 +542,16 @@ int elpis_retrieval_env_retrieve(elpis_retrieval_env_t *env,
     policy.dense_limit = dense_limit;
     policy.primary_limit = primary_limit;
     policy.total_limit = total_limit;
-    policy.graph_seed_limit = 0;
-    policy.graph_neighbors_per_seed = 0;
+    if (graph_fields(env, graph_policy, &policy) != 0) {
+        if (error_buf) snprintf(error_buf, 256, "E_INVAL: graph policy without a context graph");
+        return RETRIEVAL_E_INVAL;
+    }
     if (elpis_hybrid_policy_validate(&policy) != 0) {
         snprintf(error_buf, 256, "policy invalid"); return -1;
     }
 
     elpis_hybrid_retriever *retriever = NULL;
-    if (elpis_hybrid_retriever_create(env->corpus, env->index, NULL, &policy, &retriever) != 0) {
+    if (elpis_hybrid_retriever_create(env->corpus, env->index, env->graph, &policy, &retriever) != 0) {
         snprintf(error_buf, 256, "retriever_create failed"); return -1;
     }
 
@@ -454,13 +560,13 @@ int elpis_retrieval_env_retrieve(elpis_retrieval_env_t *env,
     q.text = query_text;
     q.vector = query_vector;
     q.dimensions = (uint32_t)query_dim;
-    q.namespace_filter = NULL;
-    q.authority_filter = NULL;
+    q.namespace_filter = namespace_filter;
+    q.authority_filter = authority_filter;
 
     elpis_retrieval_bundle *bundle = NULL;
     int rc = elpis_hybrid_retrieve(retriever, &q, &bundle);
     if (rc != 0) {
-        snprintf(error_buf, 256, "retrieve rc=%d", rc);
+        snprintf(error_buf, 256, "retrieve rc=%d: %s", rc, elpis_hybrid_retriever_error(retriever));
         elpis_hybrid_retriever_destroy(retriever);
         return rc;
     }
@@ -494,10 +600,12 @@ int elpis_retrieval_env_retrieve(elpis_retrieval_env_t *env,
 
     char qd[65], cmd[65], vid[65], gsd[65], fpd[65], hpd[65];
     elpis_retrieval_bundle_identity(bundle, qd, cmd, vid, gsd, fpd, bd, hpd);
-    if (query_digest_out)      { memcpy(query_digest_out, qd, 64); query_digest_out[64] = '\0'; }
-    if (corpus_manifest_digest_out) { memcpy(corpus_manifest_digest_out, cmd, 64); corpus_manifest_digest_out[64] = '\0'; }
-    if (vindex_manifest_digest_out) { memcpy(vindex_manifest_digest_out, vid, 64); vindex_manifest_digest_out[64] = '\0'; }
-    if (fusion_policy_digest_out)   { memcpy(fusion_policy_digest_out, fpd, 64); fusion_policy_digest_out[64] = '\0'; }
+    digest_out(query_digest_out, qd);
+    digest_out(corpus_manifest_digest_out, cmd);
+    digest_out(vindex_manifest_digest_out, vid);
+    digest_out(graph_snapshot_digest_out, gsd);   /* the bundle's own graph identity (zeros: no graph) */
+    digest_out(fusion_policy_digest_out, fpd);
+    digest_out(hacf_package_digest_out, hpd);
 
     if (item_count_out) *item_count_out = (int)elpis_retrieval_bundle_item_count(bundle);
 

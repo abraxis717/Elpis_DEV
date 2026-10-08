@@ -228,7 +228,9 @@ class TestHacfRetrieval:
         query_digest = ctypes.create_string_buffer(65)
         corpus_manifest_digest = ctypes.create_string_buffer(65)
         vindex_manifest_digest = ctypes.create_string_buffer(65)
+        graph_snapshot_digest = ctypes.create_string_buffer(65)
         fusion_policy_digest = ctypes.create_string_buffer(65)
+        hacf_package_digest = ctypes.create_string_buffer(65)
         item_count = ctypes.c_int(0)
         err = ctypes.create_string_buffer(256)
 
@@ -241,13 +243,18 @@ class TestHacfRetrieval:
             50,
             30,
             60,
+            None,
+            None,
+            None,
             json_buf,
             1,
             bundle_digest,
             query_digest,
             corpus_manifest_digest,
             vindex_manifest_digest,
+            graph_snapshot_digest,
             fusion_policy_digest,
+            hacf_package_digest,
             ctypes.byref(item_count),
             err,
         )
