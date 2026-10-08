@@ -91,9 +91,12 @@ hierarchy without a distinct representation abstracts nothing (by construction i
 - **Width** (raw width benefit): wider single ECS states plan worse (N36 ≥ N72 ≥ N108 at most points) and
   have larger multi-step errors.
 - **Temporal decomposition**: TEMPORAL_SHARED_L2 is the best learned planner in QUAL at every compute point.
-- **Distinct representation**: HIERARCHICAL_DISTINCT plans worst. Its level-1 subgoal tracking error is larger
-  (normalized squared distance 1.2–1.4, against 0.5 for the temporal hierarchy). A subgoal in a space without
-  the fast factor is matched by a level-1 planner whose goal distance still counts it.
+- **Distinct representation**: HIERARCHICAL_DISTINCT plans worst. Its subgoal tracking error is larger
+  (normalized squared level-2-space distance between the state reached and the subgoal level 1 was steered to:
+  1.2–1.4, against 0.5 for the temporal hierarchy). The poor planning is real; **its cause is unresolved**.
+  Plausible causes, none tested by R1: unstable upper- or lower-level world-model rollouts, poor generated
+  subgoals, the goal construction (each upper goal latent is the encoding of a window of identical lower goal
+  latents), or other multi-step prediction failures. (Corrected; see "Corrections" below.)
 - **Depth**: TEMPORAL_SHARED L1 → L2 IMPROVES in QUAL and is NO_CHANGE in DEV; L2 → L3 DEGRADES in QUAL.
   HIERARCHICAL_DISTINCT L1 → L2 DEGRADES in both.
 
@@ -145,3 +148,13 @@ question is the larger obstacle to any planning claim. Neither change may be app
   is not evidence against hierarchy, and it is not evidence for it.
 - **Research only.** No canonical promotion, no runtime authority, no codec, no HACF edge, no continuity use and
   no language claim. ECS is not a JEPA; nothing here bears on H-JEPA's results.
+
+## Corrections
+
+- **Distinct-hierarchy planning cause (documentation only).** An earlier version of the "Distinct representation"
+  observation attributed HIERARCHICAL_DISTINCT's poor planning partly to a level-1 planner whose goal distance
+  "still counts" the fast factor that the upper representation dropped. That is inconsistent with the planner:
+  `research/hecs_r1/rust/src/planner.rs` encodes each lower-level predicted window through the upper encoder,
+  `dist2(&encoders[l + 1].encode(&r[upper.stride - upper.window..upper.stride]), &subgoal)`, before comparing it
+  with the upper-space subgoal. The unsupported causal sentence was removed. No evidence, measurement, gate or
+  disposition changed: R1 remains `TASK_INVALID` at QUAL, with the hypotheses not adjudicated.
