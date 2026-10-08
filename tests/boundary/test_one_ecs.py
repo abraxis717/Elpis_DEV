@@ -289,6 +289,7 @@ NATIVE_ABI_FILES = {
     "native/runtime/src/substrate.rs": _RUNTIME_K1,
     "native/runtime/src/tests.rs": _RUNTIME_K1,
     "native/runtime/tests/test_runtime_abi.c": _RUNTIME_K1,
+    "native/runtime/tests/test_runtime_lifecycle.c": _RUNTIME_K1,
     "src/elpis/runtime/core.py": _RUNTIME_K1,
     "research/hecs_r1/CMakeLists.txt": _HECS_R1_K1,
     "research/hecs_r1/README.md": _HECS_R1_K1,
