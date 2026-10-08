@@ -245,3 +245,76 @@ def test_design_record_supports_the_frozen_thresholds():
     assert task["oracle_success_min"] >= GATES["V2_ORACLE_SUCCESS_MIN"] and task["l1_probe_nmse_max"] <= GATES["V3_L1_PROBE_NMSE_MAX"]
     assert task["centroid_ratio_range"]["SEPARATED"][0] >= GATES["V4_SEPARATED_CENTROID_RATIO_MIN"]
     assert task["centroid_ratio_range"]["MATCHED"][1] <= GATES["V4_MATCHED_CENTROID_RATIO_MAX"]
+
+
+# == DEV: calibration and run follow the frozen law from the record's own numbers ===================================
+
+def _task_flags(tv: dict) -> dict:
+    flags = {
+        "T1": tv["T1A_explained_by_linear_min"] >= GATES["T1A_MIN_EXPLAINED"] and tv["T1B_tolerance_slack_min"] >= 0,
+        "T3A": all(v >= GATES["T3A_MIN_EXPLAINED"] for v in tv["T3A_explained_by_linear_min"].values()),
+        "T3B": all(v <= GATES["T3B_MAX_LINEAR_OVER_GENERATOR"] for v in tv["T3B_linear_over_generator_max"].values()),
+        "V2": all(v >= GATES["V2_ORACLE_SUCCESS_MIN"] for v in tv["V2_oracle_success_mean"].values()),
+        "V3": tv["V3_l1_probe_nmse_max"] <= GATES["V3_L1_PROBE_NMSE_MAX"],
+        "V4": (tv["V4_centroid_ratio_mean"]["SEPARATED"] >= GATES["V4_SEPARATED_CENTROID_RATIO_MIN"]
+               and tv["V4_centroid_ratio_mean"]["MATCHED"] <= GATES["V4_MATCHED_CENTROID_RATIO_MAX"]),
+        "V5_no_refusal": tv["V5_refusals"] == 0,
+    }
+    flags["valid"] = all(flags.values())
+    return flags
+
+
+def _seed_meets_m(world: dict, i: int) -> bool:
+    return all(world["by_pair"][k]["min_capture_by_seed"][i] >= GATES["M_MIN_CAPTURE"]
+               and world["by_pair"][k]["max_numerical_escape_by_seed"][i] <= GATES["M_MAX_ESCAPED"] for k in BINDING_KEYS)
+
+
+def _law_is_recomputed(record: dict, phase: str) -> dict:
+    """Recompute every flag the frozen law derives (task validity, S1, M, M informativeness) and return them."""
+    assert record["task_validity"]["flags"] == _task_flags(record["task_validity"])
+    assert record["task_validity"]["instances"] == 2 * len(_seeds(phase))
+    s1 = {w: all(min(record["one_step"][w][k]) >= GATES["S1_MIN_CAPTURE"] for k in BINDING_KEYS) for w in WORLDS}
+    assert record["one_step"]["S1"] == s1
+    ms = record["multistep"]
+    m = {}
+    for w in WORLDS:
+        world = ms[w]
+        assert [(k, world["by_pair"][k]["consumed_horizon"]) for k in world["by_pair"]] == BINDING
+        n = len(_seeds(phase))
+        assert all(len(v) == n for p in world["by_pair"].values() for v in p.values() if isinstance(v, list))
+        meets = [_seed_meets_m(world, i) for i in range(n)]
+        assert world["seeds"] == n and world["seeds_meeting_every_binding"] == sum(meets)
+        # The listed failures are exactly the (seed, pair) entries that miss a bound.
+        missed = {(_seeds(phase)[i], k) for i in range(n) for k in BINDING_KEYS
+                  if world["by_pair"][k]["min_capture_by_seed"][i] < GATES["M_MIN_CAPTURE"]
+                  or world["by_pair"][k]["max_numerical_escape_by_seed"][i] > GATES["M_MAX_ESCAPED"]}
+        assert {(f["seed"], f["pair"]) for f in world["failures"]} == missed
+        m[w] = all(meets) and GATES["M_SEED_FRACTION"] == 1.0
+        assert ms["M_informative"][w] == (ms["persistence_capture_max"][w] < GATES["M_MIN_CAPTURE"])
+    assert ms["M"] == m
+    return {"valid": record["task_validity"]["flags"]["valid"], "S1": s1, "M": m}
+
+
+def test_dev_calibration_and_run_follow_the_frozen_law():
+    dev = _record("dev")
+    cal = dev["calibration"]
+    grid = SPEC["ecs"]["calibration_steps"]
+    previous, converged_at = None, None
+    for g, row in enumerate(cal["by_budget"]):
+        assert row["steps"] == grid[g]
+        imp = row["max_binding_improvement_from_previous"]
+        if previous is None:
+            assert imp is None and row["previous_converged"] is False
+        else:
+            assert row["previous_converged"] == (imp <= GATES["CAL_MAX_IMPROVEMENT"])
+            if row["previous_converged"]:
+                converged_at = g - 1
+                assert g == len(cal["by_budget"]) - 1, "the search stops once the chosen budget is measured"
+        previous = row
+    assert converged_at is not None and cal["converged_steps"] == grid[converged_at]
+    assert cal["chosen_steps"] == grid[converged_at + GATES["CAL_GRID_STEPS_ABOVE"]] == 96000
+    assert cal["disposition"] == "CALIBRATED" and dev["training_steps"] == cal["chosen_steps"]
+    law = _law_is_recomputed(dev, "dev")
+    assert dev["binding"] is False and dev["disposition"] == ("QUAL_AUTHORIZED" if law["valid"] else "TASK_INVALID_ON_DEV")
+    assert dev["disposition"] == "QUAL_AUTHORIZED"
+    assert dev["hierarchy_outcome"] == "NOT_ADJUDICATED" and dev["integration_authorized"] is False

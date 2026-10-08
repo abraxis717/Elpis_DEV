@@ -1,0 +1,226 @@
+{
+  "schema": "elpis.hecs-r2.record.v1",
+  "phase": "DEV",
+  "disposition": "QUAL_AUTHORIZED",
+  "specification": {"path": "specs/hecs-r2.v1.spec.json", "name": "hecs-r2.v1", "sha256": "2d942f162f938aaa58878afeb7745603f0994e5b1352edd074c4f2d0091935fa"},
+  "raw_evidence": [
+    {
+      "name": "hecs-r2.v1.calibration.json",
+      "sha256": "db4f375d68fe7b0c5ea55ff248a2092ff89f0ad56bddee9419207fc112ad0c00",
+      "bytes": 80322,
+      "committed": false,
+      "phase": "DEV_CALIBRATION"
+    },
+    {
+      "name": "hecs-r2.v1.dev.json",
+      "sha256": "5dac78e9eccb4af58afb9bd30771ece8ffc5157044ec8ccf0a66f98551ae35b8",
+      "bytes": 1409992,
+      "committed": false,
+      "phase": "DEV"
+    }
+  ],
+  "raw_evidence_policy": "Raw runner output is telemetry and is not committed. It is identified here by SHA-256 and byte count; every number below is copied from it (decisive values exactly, descriptive values rounded to 4 decimals).",
+  "execution": {
+    "source_original_commit": "aa918b37eeb17b1b24d6809be25acbabb8472504",
+    "final_compact_history_commit": "6f9cb6b08ed8c19a416f03da821438851cefdd06",
+    "lineage": "aa918b3 belongs to the pre-cleanup PR #40 lineage and is not in the final history. Both DEV outputs were written by the hecs2 binary built from its tree, whose hecs2 sources are byte-identical to those of the final compact-history freeze commit named here (per-file SHA-256 below; git tree of research/hecs_r2/rust at execution 209abff6113912ca7a980299ca2430ba72136aa8). Calibration ran first; the run used its chosen budget.",
+    "hecs2_sources_sha256": {
+      "Cargo.lock": "1ebc8d90479de75a43d35a982674cb4fcd26c81d97a332ad3c2b2668eb0118e6",
+      "Cargo.toml": "5ef432a6bdb917f1d6cc59f9d7b8d94ddf5b39f372cf3b008baf54d9669cdf04",
+      "src/analysis.rs": "9494cd721d33bdb16d462b017657f7e1684d1e3228039aa3e9f3bbe2be7a6ede",
+      "src/encoder.rs": "4fff51068698e05c6514866bf44a8be499dd0dc40b7af0ef36a8ad7d13f781dd",
+      "src/experiment.rs": "a5cc130a608ba5ab18b3c728ba9558b685285160cd96a9a9c3bb67f5ae57c106",
+      "src/hierarchy.rs": "e49ebc91527de9c1e706582552c9731366b51444cb7de258c7384516a3441f87",
+      "src/json.rs": "0721be60afe561fa594818e51fdbe94926e5d5707cb8ee869cf6464d848a4a76",
+      "src/k1.rs": "764a18760b57237830b301dc54496d012dea7e3716d80b4540411cd9aac66caa",
+      "src/lib.rs": "d025fdce6ed5c68aef08f4bd86a2e62a41c0c2ff0526a0dc4a8d0c52dd47de15",
+      "src/linalg.rs": "16de2e399197f13c70800c4983b862d3a7e8f4c946c4c04b9ca0ae3318529a17",
+      "src/main.rs": "bfec6dd39905568a6e2c91851ff4d2518b04ea0c9155cba018e235f8c4722a81",
+      "src/model.rs": "e15641570fc0a5a6358b410aceef086923281579366a6ead616a6d5989c11124",
+      "src/multistep.rs": "e1119c31026d5851837dd679e075949c2a5c9ca35af58adb1e69b3a545dbdd7f",
+      "src/planner.rs": "452153591c1095f244474e27ae2f81c453eef4dec603f40db73c7bd8082f7b5b",
+      "src/rng.rs": "321f4f28448a0e0b0f003aced4e692cf92f2c937911a56d16190da93c22853d8",
+      "src/spec.rs": "f0e584fc64b51a7c7df988eb8bbb4d66f2eab666314d5411e3244ac3d8e63983",
+      "src/validity.rs": "b16531de72eebe482cf6636300661daae8cdf5022f3d08ab8c6b772f3a2499bb",
+      "src/world.rs": "d75d714eb0d9f960d554b487cef40ee8d77b5c0cac84de9f05fa9e58dede2d56"
+    },
+    "test_module": {
+      "path": "src/tests.rs",
+      "sha256_at_execution": "2d94d222d55e02209cd0bf976f6edb9a38122c1fd6f7a3aa689073edcc3331d6",
+      "note": "#[cfg(test)] only, never compiled into hecs2; changed by the hygiene cleanup to verify these records instead of the raw output"
+    }
+  },
+  "mathematical_donor": "fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb",
+  "seeds": ["14754993789186315071", "12154359753255553410", "6287278211154781243", "10323661857439540229"],
+  "references": [
+    {"world": "SEPARATED", "seed": "14754993789186315071", "references_sha256": "5a2e209aa9b551c622eedae41cdd4c44fd6d19ed31a7ad4a9f1eb60c64f33c14"},
+    {"world": "SEPARATED", "seed": "12154359753255553410", "references_sha256": "01942a75e52f0a5be2cb8905f53b2ded82cfba1850d202c421ff955db744abe1"},
+    {"world": "SEPARATED", "seed": "6287278211154781243", "references_sha256": "6d4d8057545aaa398fc6f406df2d9cb0aa85989aa97a10361656675438aa8952"},
+    {"world": "SEPARATED", "seed": "10323661857439540229", "references_sha256": "c5b46200666692c5f8c78b1e391df30f899ebdc44e2c37073c9ef96b95fbef22"},
+    {"world": "MATCHED", "seed": "14754993789186315071", "references_sha256": "20184078c308d5771ad37d246e7abb325bdb268b693da665b543b25d5129d632"},
+    {"world": "MATCHED", "seed": "12154359753255553410", "references_sha256": "73074d75af33858382a8b9cfd51b887e43f05c9a3741b9d695496bf5df090708"},
+    {"world": "MATCHED", "seed": "6287278211154781243", "references_sha256": "f5c89290177936bb112fad6aaa56ceec8a916d4c9ad4406babf1ddf70c1a40bc"},
+    {"world": "MATCHED", "seed": "10323661857439540229", "references_sha256": "751d178d44f7f2e02f15d802ec74b330b40647bd764fa9c778f2472d034588e4"}
+  ],
+  "engine": {
+    "k1_library": "libelpis_ecsg_k1.so",
+    "k1_library_sha256": "a7dd1f6415e57a34a4f62ff978764176be8e89493fedb8afd42e80340d85c3b8",
+    "k1_abi_version": 1,
+    "native_ecs_tree": "c0e7a78d24424875c0b2ef0095ea63c0dab2f42b",
+    "c_compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "build_type": "Release",
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+    "host": "Linux x86_64",
+    "hecs2_binary_sha256": "6130aff50fbcb81da2488372defafb3c8ea80ad0d4efc761e2dec0e40785c0d3",
+    "hecs2_rebuild_check": "hecs2 rebuilt from the sources of final_compact_history_commit (rustc 1.97.0, cargo build --release --offline --locked, fresh target directory) has SHA-256 6130aff50fbcb81da2488372defafb3c8ea80ad0d4efc761e2dec0e40785c0d3: byte-identical to the executed binary"
+  },
+  "calibration": {
+    "budgets_measured": [6000, 24000, 96000],
+    "by_budget": [
+      {"steps": 6000, "binding_min_capture": 0.9631336111233871, "max_binding_improvement_from_previous": null, "previous_converged": false},
+      {
+        "steps": 24000,
+        "binding_min_capture": 0.9666307894023222,
+        "max_binding_improvement_from_previous": 0.03232004302699587,
+        "previous_converged": false
+      },
+      {
+        "steps": 96000,
+        "binding_min_capture": 0.966376552169644,
+        "max_binding_improvement_from_previous": 0.002220607157076615,
+        "previous_converged": true
+      }
+    ],
+    "converged_steps": 24000,
+    "chosen_steps": 96000,
+    "disposition": "CALIBRATED"
+  },
+  "training_steps": 96000,
+  "binding": false,
+  "task_validity": {
+    "instances": 8,
+    "T1A_explained_by_linear_min": 0.7332345356822634,
+    "T1B_tolerance_slack_min": 0.005580410871379308,
+    "T3A_explained_by_linear_min": {"SEPARATED": 0.4808595221159947, "MATCHED": 0.8747551532575224},
+    "T3B_linear_over_generator_max": {"SEPARATED": 1.0381680797977846, "MATCHED": 1.1150483055366043},
+    "V2_oracle_success_mean": {"SEPARATED": 1.0, "MATCHED": 1.0},
+    "V3_l1_probe_nmse_max": 0.0005846124856641264,
+    "V4_centroid_ratio_mean": {"SEPARATED": 30.30329017218337, "MATCHED": 1.4587309560543271},
+    "V5_refusals": 0,
+    "flags": {"T1": true, "T3A": true, "T3B": true, "V2": true, "V3": true, "V4": true, "V5_no_refusal": true, "valid": true}
+  },
+  "one_step": {
+    "SEPARATED": {
+      "L1/N72": [0.9989887130788907, 0.9995145421551556, 0.9968889211213117, 0.9989402981257057],
+      "L1/N36": [0.9980941663704477, 0.9994054776593703, 0.9974061265332648, 0.9989094642571964],
+      "TS/L2": [0.9847384292752234, 0.9959403216112329, 0.991286837682167, 0.966376552169644],
+      "HD/L2": [0.9961381786807543, 0.9814826978752038, 1.002888968805347, 0.99399867353776]
+    },
+    "MATCHED": {
+      "L1/N72": [0.9998136009606581, 0.9997837704539279, 0.9999370175264741, 0.9998865188554978],
+      "L1/N36": [0.9999458709557172, 0.9999610975043125, 0.9998651187257717, 0.9998745564849766],
+      "TS/L2": [0.999328732141224, 1.0000683210763337, 0.998721505841756, 0.9995363382645936],
+      "HD/L2": [0.9975423940726369, 0.9999454962132742, 0.9993081848170701, 0.9976491311038251]
+    },
+    "S1": {"SEPARATED": true, "MATCHED": true}
+  },
+  "multistep": {
+    "SEPARATED": {
+      "seeds": 4,
+      "seeds_meeting_every_binding": 1,
+      "by_pair": {
+        "L1/N72": {
+          "consumed_horizon": 16,
+          "min_capture_by_seed": [0.9877757541083828, 0.9750733807630331, 0.9929529011150375, 0.9868075939020481],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0]
+        },
+        "L1/N36": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [0.9960784690893065, 0.9994054776593703, 0.9946681439555943, 0.9916265636384799],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0]
+        },
+        "TS/L2": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [0.9775416155541161, 0.97565064125723, 0.984538600889088, 0.9334776634108447],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0]
+        },
+        "HD/L2": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [0.9696016187137637, -0.8328500046227466, -2.655831316081776, 0.49256422837373287],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0]
+        }
+      },
+      "failures": [
+        {
+          "seed": "12154359753255553410",
+          "pair": "HD/L2",
+          "consumed_horizon": 4,
+          "h": 4,
+          "free_running_capture": -0.8328500046227466,
+          "numerical_escape": 0.0
+        },
+        {
+          "seed": "6287278211154781243",
+          "pair": "HD/L2",
+          "consumed_horizon": 4,
+          "h": 4,
+          "free_running_capture": -2.655831316081776,
+          "numerical_escape": 0.0
+        },
+        {
+          "seed": "10323661857439540229",
+          "pair": "HD/L2",
+          "consumed_horizon": 4,
+          "h": 4,
+          "free_running_capture": 0.49256422837373287,
+          "numerical_escape": 0.0
+        }
+      ]
+    },
+    "MATCHED": {
+      "seeds": 4,
+      "seeds_meeting_every_binding": 3,
+      "by_pair": {
+        "L1/N72": {
+          "consumed_horizon": 16,
+          "min_capture_by_seed": [0.9726199030422772, 0.15307007406660672, 0.9935075476715813, 0.9843445796950924],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0]
+        },
+        "L1/N36": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [0.9991961684782189, 0.9994446809790228, 0.9978222038533798, 0.9980341958648374],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0]
+        },
+        "TS/L2": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [0.991601526828167, 0.9996979431283322, 0.9880047398930066, 0.9941044866569194],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0]
+        },
+        "HD/L2": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [0.9788517361921739, 0.9985892273159044, 0.9943825844428367, 0.9771846454268625],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0]
+        }
+      },
+      "failures": [
+        {
+          "seed": "12154359753255553410",
+          "pair": "L1/N72",
+          "consumed_horizon": 16,
+          "h": 16,
+          "free_running_capture": 0.15307007406660672,
+          "numerical_escape": 0.0
+        }
+      ]
+    },
+    "M": {"SEPARATED": false, "MATCHED": false},
+    "persistence_capture_max": {"SEPARATED": 0.5881154793762449, "MATCHED": 0.9943582543781059},
+    "M_informative": {"SEPARATED": true, "MATCHED": false}
+  },
+  "hierarchy_outcome": "NOT_ADJUDICATED",
+  "integration_authorized": false,
+  "descriptive": {
+    "note": "DEV values are non-binding (the law was frozen before them); quoted by docs/research/HECS_R2_RESULTS.md.",
+    "separated_hd_l2_jacobian_spectral_radius_mean_by_seed": [0.9733, 1.0916, 1.0934, 1.0973]
+  }
+}
