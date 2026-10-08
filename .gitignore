@@ -31,3 +31,9 @@ htmlcov/
 
 .DS_Store
 *.swp
+
+# H-ECS R2 raw runner output is telemetry, never committed evidence (research/hecs_r2/README.md).
+hecs-r2.v1.design.json
+hecs-r2.v1.calibration.json
+hecs-r2.v1.dev.json
+hecs-r2.v1.qual.json

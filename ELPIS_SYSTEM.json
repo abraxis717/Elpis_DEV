@@ -460,6 +460,10 @@
       {
         "path": "research/hecs_r1",
         "classification": "RESEARCH_ONLY: H-ECS R1, the preregistered successor of the invalid R0 (TASK_INVALID_ON_DEV). R0's hierarchy laboratory (one native K1 state per level through the existing C ABI) copied with source equivalence, with a valid task-validity law (analytic floor, held-out linear reference, ECS adequacy) on fresh SHA-256-derived seeds. Closed TASK_INVALID at QUAL (docs/research/HECS_R1_RESULTS.md): hypotheses not adjudicated, integration NOT_AUTHORIZED. No runtime authority; makes nothing canonical; only QUAL OUTCOME_A authorizes an experimental, noncanonical integration."
+      },
+      {
+        "path": "research/hecs_r2",
+        "classification": "RESEARCH_ONLY, WORLD_MODEL_INVALID: H-ECS R2, a fresh experiment after the closed R0 (TASK_INVALID_ON_DEV) and R1 (TASK_INVALID), preregistered in 6f9cb6b (pre-cleanup lineage: 05be551; convergence calibration, S1, M at every consumed horizon on every seed, finite-horizon derivative-product diagnostics; openai/math fd4aeeb2 as mathematical provenance only). DEV calibrated at 96000 K1 steps and was valid; the single QUAL run was task valid and one-step valid in every instance, but M failed in SEPARATED (2 of 8 worlds below free-running capture 0.90 at a consumed horizon; no numerical escape) (docs/research/HECS_R2_RESULTS.md). Hierarchy hypotheses not adjudicated (not a hierarchy result); integration NOT_AUTHORIZED. R1's crate reused with source equivalence; one native K1 state per level through the existing C ABI. No runtime authority; makes nothing canonical."
       }
     ],
     "native_targets": [

@@ -206,6 +206,7 @@ FROZEN_EVIDENCE = {
     "research/__init__.py": "Frozen-laboratory import name elpis.ECS_G resolved to elpis.ECS, research-only.",
     "tests/boundary/test_one_ecs.py": "This gate names the retired tokens it rejects.",
     "research/hecs_r1/evidence/": "H-ECS R1 write-once evidence: each file embeds the frozen specification (K1 ABI name).",
+    "research/hecs_r2/evidence/": "H-ECS R2 compact phase records: each names the K1 library it ran against (K1 ABI name).",
 }
 
 # Native sources whose exact bytes are recorded by research/ecs_runtime_r1/evidence (measured and sanitized
@@ -226,6 +227,7 @@ _ABI_BINDING = "ECS binding: loads the native ABI and names persisted schema and
 _ABI_TEST = "Exercises or pins the native ABI and persisted protocol identifiers."
 _HECS_K1 = "H-ECS R0 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
 _HECS_R1_K1 = "H-ECS R1 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
+_HECS_R2_K1 = "H-ECS R2 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
 _RUNTIME_K1 = "RuntimeCore reaches K1 only through tables of the qualified native ABI's entry points (elpis_ecsg_k1)."
 
 # Files that may contain retired tokens only as NATIVE_ABI_FORM identifiers.
@@ -295,6 +297,13 @@ NATIVE_ABI_FILES = {
     "research/hecs_r1/rust/src/spec.rs": _HECS_R1_K1,
     "research/hecs_r1/rust/src/tests.rs": _HECS_R1_K1,
     "research/hecs_r1/specs/hecs-r1.v1.spec.json": _HECS_R1_K1,
+    "research/hecs_r2/CMakeLists.txt": _HECS_R2_K1,
+    "research/hecs_r2/README.md": _HECS_R2_K1,
+    "research/hecs_r2/specs/hecs-r2.v1.spec.json": _HECS_R2_K1,
+    "research/hecs_r2/rust/src/k1.rs": _HECS_R2_K1,
+    "research/hecs_r2/rust/src/main.rs": _HECS_R2_K1,
+    "research/hecs_r2/rust/src/spec.rs": _HECS_R2_K1,
+    "research/hecs_r2/rust/src/tests.rs": _HECS_R2_K1,
     "research/hecs_r0/CMakeLists.txt": _HECS_K1,
     "research/hecs_r0/PREREGISTRATION.md": _HECS_K1,
     "research/hecs_r0/README.md": _HECS_K1,

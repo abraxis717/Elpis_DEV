@@ -1,0 +1,5 @@
+# ThreadSanitizer suppressions for research.hecs_r2_mechanics in the TSan build (see CMakeLists.txt).
+# The Rust test process is not instrumented: libtest's result channel (std::sync::mpmc) synchronizes through
+# atomics TSan cannot observe, so its hand-off of a completed test is reported as a race. Only that channel is
+# suppressed; K1 itself is instrumented, and the tests still create and drive K1 states on parallel threads.
+race:*sync*mpmc*

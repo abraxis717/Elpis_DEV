@@ -1,0 +1,194 @@
+{
+  "schema": "elpis.hecs-r2.record.v1",
+  "phase": "DESIGN",
+  "result": "FREEZE_AUTHORIZED",
+  "result_note": "DESIGN chose the definitions and thresholds. The preregistration and specification are frozen with this record in the HECS-R2-B commit (pre-cleanup lineage: 05be5511b3d9d863f825e3e8ba53ed15ca7d4fdb), before any DEV observation.",
+  "specification": {"path": "specs/hecs-r2.v1.spec.json", "name": "hecs-r2.v1", "sha256": "2d942f162f938aaa58878afeb7745603f0994e5b1352edd074c4f2d0091935fa"},
+  "raw_evidence": [
+    {
+      "name": "hecs-r2.v1.design.json",
+      "sha256": "fb786f4fa6691c950afdd856c251dd937433b8bec65c80b34425a682c05a95bd",
+      "bytes": 457980,
+      "committed": false,
+      "phase": "DESIGN"
+    }
+  ],
+  "raw_evidence_policy": "Raw runner output is telemetry and is not committed. It is identified here by SHA-256 and byte count; every number below is copied from it (decisive values exactly, descriptive values rounded to 4 decimals).",
+  "execution": {
+    "source_original_commit": "b4b84ed45f1503e4324abd50f5bd5e7b2320b47b",
+    "final_compact_history_commit": "b4b84ed45f1503e4324abd50f5bd5e7b2320b47b",
+    "lineage": "b4b84ed is in the final history unchanged. The hecs2 binary that wrote the DESIGN output was built from it (binary not retained). The frozen sources differ from it only in evaluate() reporting (src/experiment.rs, +10 lines, M informativeness, added in 6270b0c), which DESIGN never calls.",
+    "hecs2_sources_sha256": {
+      "Cargo.lock": "1ebc8d90479de75a43d35a982674cb4fcd26c81d97a332ad3c2b2668eb0118e6",
+      "Cargo.toml": "5ef432a6bdb917f1d6cc59f9d7b8d94ddf5b39f372cf3b008baf54d9669cdf04",
+      "src/analysis.rs": "9494cd721d33bdb16d462b017657f7e1684d1e3228039aa3e9f3bbe2be7a6ede",
+      "src/encoder.rs": "4fff51068698e05c6514866bf44a8be499dd0dc40b7af0ef36a8ad7d13f781dd",
+      "src/experiment.rs": "2de9e007ebaea37da44b6c84788804b249579292c5436fa33d2ad9e401520214",
+      "src/hierarchy.rs": "e49ebc91527de9c1e706582552c9731366b51444cb7de258c7384516a3441f87",
+      "src/json.rs": "0721be60afe561fa594818e51fdbe94926e5d5707cb8ee869cf6464d848a4a76",
+      "src/k1.rs": "764a18760b57237830b301dc54496d012dea7e3716d80b4540411cd9aac66caa",
+      "src/lib.rs": "d025fdce6ed5c68aef08f4bd86a2e62a41c0c2ff0526a0dc4a8d0c52dd47de15",
+      "src/linalg.rs": "16de2e399197f13c70800c4983b862d3a7e8f4c946c4c04b9ca0ae3318529a17",
+      "src/main.rs": "bfec6dd39905568a6e2c91851ff4d2518b04ea0c9155cba018e235f8c4722a81",
+      "src/model.rs": "e15641570fc0a5a6358b410aceef086923281579366a6ead616a6d5989c11124",
+      "src/multistep.rs": "e1119c31026d5851837dd679e075949c2a5c9ca35af58adb1e69b3a545dbdd7f",
+      "src/planner.rs": "452153591c1095f244474e27ae2f81c453eef4dec603f40db73c7bd8082f7b5b",
+      "src/rng.rs": "321f4f28448a0e0b0f003aced4e692cf92f2c937911a56d16190da93c22853d8",
+      "src/spec.rs": "f0e584fc64b51a7c7df988eb8bbb4d66f2eab666314d5411e3244ac3d8e63983",
+      "src/validity.rs": "b16531de72eebe482cf6636300661daae8cdf5022f3d08ab8c6b772f3a2499bb",
+      "src/world.rs": "d75d714eb0d9f960d554b487cef40ee8d77b5c0cac84de9f05fa9e58dede2d56"
+    },
+    "test_module": {
+      "path": "src/tests.rs",
+      "sha256_at_execution": "2d94d222d55e02209cd0bf976f6edb9a38122c1fd6f7a3aa689073edcc3331d6",
+      "note": "#[cfg(test)] only, never compiled into hecs2; changed by the hygiene cleanup to verify these records instead of the raw output"
+    },
+    "sources_differing_from_final": {"src/experiment.rs": "evaluate() reporting only (+10 lines in 6270b0c: M informativeness); never called by DESIGN"}
+  },
+  "mathematical_donor": "fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb",
+  "seeds": ["8318582482988895235", "48883900885208620", "1842212770792861585", "15282691279643327234"],
+  "references": [
+    {"world": "SEPARATED", "seed": "8318582482988895235", "references_sha256": "6cc6534aa8a5663ba715862aa750220cec0f5f513987f85d56b43c549fde7e29"},
+    {"world": "SEPARATED", "seed": "48883900885208620", "references_sha256": "0e300ad42af62010cb38048684dc0b7132395fe55c4c6ba41970abf18fbbb6ce"},
+    {"world": "SEPARATED", "seed": "1842212770792861585", "references_sha256": "2b8b8704f860c3ff9e04643dfc39e0a95b386c778a756d3b358677c27cb92443"},
+    {"world": "SEPARATED", "seed": "15282691279643327234", "references_sha256": "6939ff1abb6c60cf63e230cabb04c7e758e12be51c615d75444d25add636c25e"},
+    {"world": "MATCHED", "seed": "8318582482988895235", "references_sha256": "09222bfdcd4a7047c4620f28a85d72a77ccbfd913f02e7333587e458e25c69b1"},
+    {"world": "MATCHED", "seed": "48883900885208620", "references_sha256": "11b753a0c379995cd4c6a797c801e4d69f6c58f57b32da20662a01454e7d809e"},
+    {"world": "MATCHED", "seed": "1842212770792861585", "references_sha256": "407d667c403a1c548418528703fd74e434d14c65debfceb8e5f23092c3092e60"},
+    {"world": "MATCHED", "seed": "15282691279643327234", "references_sha256": "cc84afcd75c0894653a04dfbe5bf0c87b05e92ef6ef907a093ccb17642043139"}
+  ],
+  "engine": {
+    "k1_library": "libelpis_ecsg_k1.so",
+    "k1_library_sha256": "a7dd1f6415e57a34a4f62ff978764176be8e89493fedb8afd42e80340d85c3b8",
+    "k1_abi_version": 1,
+    "native_ecs_tree": "c0e7a78d24424875c0b2ef0095ea63c0dab2f42b",
+    "c_compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "build_type": "Release",
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+    "host": "Linux x86_64",
+    "hecs2_binary_sha256": null
+  },
+  "calibration_grid": [6000, 24000, 96000, 384000],
+  "findings": [
+    {
+      "id": "ONE_STEP_CAPTURE_PLATEAUS_PER_INSTANCE",
+      "finding": "One-step capture plateaus per instance at a level set by the data and the model's bias, not by the training budget.",
+      "measured": {
+        "max_binding_improvement_96000_to_384000": 0.0005,
+        "ts_l2_separated_capture_at_384000_by_instance": [0.9802, 0.9909, 0.993, 1.002],
+        "l1_n36_capture_at_384000_min": 0.9908,
+        "level3_capture_at_384000_min": {"TS/L3": 0.9512, "HD/L3": 0.9648}
+      },
+      "law": "Calibration measures training convergence; absolute one-step adequacy is the separate stage S1."
+    },
+    {
+      "id": "PROVISIONAL_0_99_EVERYWHERE_CALIBRATION_REJECTED",
+      "finding": "The provisional rule (capture >= 0.99 at every level, then one grid step up) is met at no budget.",
+      "measured": {
+        "budgets": [6000, 24000, 96000, 384000],
+        "min_capture_over_every_level_by_budget": [0.9619, 0.9577, 0.9533, 0.9512]
+      },
+      "law": "Rejected; replaced by the convergence rule (CAL_MAX_IMPROVEMENT, CAL_GRID_STEPS_ABOVE)."
+    },
+    {
+      "id": "CONVERGENCE_TOLERANCE_SUPPORTED",
+      "finding": "The largest binding-level improvement per 4x grid step falls below the tolerance before the grid ends.",
+      "measured": {
+        "max_binding_improvement_by_step": [0.0154, 0.006, 0.0005]
+      },
+      "law": "CAL_MAX_IMPROVEMENT = 0.005 with CAL_GRID_STEPS_ABOVE = 1."
+    },
+    {
+      "id": "S1_THRESHOLD_BETWEEN_UNTRAINED_AND_CONVERGED",
+      "finding": "S1 separates an untrained model from the converged regime without cutting into it.",
+      "measured": {
+        "untrained_capture_range_binding_levels": [-68.441, -1.0533],
+        "untrained_capture_range_every_level": [-249.3389, -1.0533],
+        "converged_binding_capture_min": 0.9802,
+        "S1_binding_at_every_budget": true
+      },
+      "law": "S1_MIN_CAPTURE = 0.95."
+    },
+    {
+      "id": "ANALYTIC_FLOOR_DIAGNOSTIC_ONLY",
+      "finding": "Beyond one step the unclipped analytic floor is not a usable gate: the linear-to-floor ratio spreads with sampling noise and clipping. (DESIGN round 1, whose output was not committed, also found the provisional floor-based T3B failing in 4 of 8 instances at TS/L3; preregistration section 13.)",
+      "measured": {
+        "binding_linear_over_floor_range": [0.9439, 1.1319],
+        "ts_l3_linear_over_floor_range": [0.8222, 1.4136],
+        "one_step_linear_over_floor_range": [0.9605, 1.0534]
+      },
+      "law": "F_h is DIAGNOSTIC_ONLY beyond one step; at one step T1B keeps R1's floor gate."
+    },
+    {
+      "id": "CLIPPING_NON_NEGLIGIBLE",
+      "finding": "Clip events occur in a substantial fraction of consumed windows.",
+      "measured": {
+        "binding_clip_fraction_range": {
+          "SEPARATED": [0.0786, 0.2746],
+          "MATCHED": [0.0568, 0.1516]
+        },
+        "ts_l3_h4_clip_fraction_max": 0.5577,
+        "one_step_clip_fraction_range": [0.0381, 0.1094]
+      },
+      "law": "Option A (clipping negligible) is not defensible beyond one step."
+    },
+    {
+      "id": "T3B_MEASURED_CLIPPING_AWARE_GENERATOR",
+      "finding": "On the same targets the iterated linear reference stays close to the measured clipping-aware generator plug-in.",
+      "measured": {
+        "binding_linear_over_generator_range": {
+          "SEPARATED": [1.0005, 1.0244],
+          "MATCHED": [1.016, 1.0787]
+        },
+        "binding_t3a_explained_by_linear_min": 0.4434,
+        "t1_every_instance_and_budget": true,
+        "t3a_and_t3b_every_binding_pair": true
+      },
+      "law": "T3B: L_h <= 1.20 G_h on the same targets (option C with the generator, option B, as the reference)."
+    },
+    {
+      "id": "MATCHED_M_NON_INFORMATIVE",
+      "finding": "A correct predictor clears M widely; in MATCHED the trivial persistence predictor already clears it.",
+      "measured": {
+        "binding_persistence_capture_range": {
+          "SEPARATED": [-0.2958, 0.6275],
+          "MATCHED": [0.936, 0.9929]
+        },
+        "binding_generator_capture_range": [1.0003, 1.0135]
+      },
+      "law": "M binds in SEPARATED; MATCHED M is reported with M_informative_MATCHED and never read as usefulness."
+    },
+    {
+      "id": "TANGENT_AND_EXCURSION_DESCRIPTIVE",
+      "finding": "The true process is tangent-neutral and the valid references leave the training box, so neither tangent growth nor domain excursion gives a principled gate.",
+      "measured": {
+        "binding_generator_sigma_max_range": [1.0, 1.003],
+        "binding_linear_sigma_max_max": 0.9908,
+        "binding_truth_domain_excursion_max": {"value": 0.0943, "world": "MATCHED", "pair": "HD/L2"},
+        "binding_linear_domain_excursion_max": {"value": 0.1844, "world": "SEPARATED", "pair": "HD/L2"}
+      },
+      "law": "Tangent growth, perturbation amplification and domain excursion are diagnostics, never gates."
+    },
+    {
+      "id": "M_EVERY_SEED",
+      "finding": "A near-correct predictor's per-seed capture varies far less than M's margin, so a per-seed failure reflects the model; the provisional 75% seed rule made the claim weaker than its wording.",
+      "measured": {
+        "binding_generator_capture_range": [1.0003, 1.0135]
+      },
+      "law": "M_SEED_FRACTION = 1: M must hold in every seed."
+    },
+    {
+      "id": "DESIGN_TASK_VALID",
+      "finding": "The task is valid on DESIGN under the frozen law.",
+      "measured": {
+        "oracle_success_min": 1.0,
+        "l1_probe_nmse_max": 0.0006,
+        "centroid_ratio_range": {
+          "SEPARATED": [30.191, 37.5453],
+          "MATCHED": [1.2447, 1.5154]
+        }
+      },
+      "law": "Task validity gates T1, T3, V2-V5 as frozen."
+    }
+  ]
+}

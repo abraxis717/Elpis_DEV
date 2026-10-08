@@ -1,0 +1,148 @@
+{
+  "schema": "elpis.hecs-r2.source-equivalence.v1",
+  "r1_root": "research/hecs_r1/rust",
+  "r2_root": "research/hecs_r2/rust",
+  "r1_authority": "closed (TASK_INVALID at QUAL); never edited by R2",
+  "ecs_mathematics": "unchanged: the native K1 library and its C ABI are used as built; k1.rs and model.rs are R1's bytes",
+  "mathematical_donor": {
+    "repository": "https://github.com/openai/math",
+    "commit": "fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb",
+    "paths": {
+      "lean/OAI/Dynamics/StandardMap/Lyapunov/Definitions.lean": "84763f0bb734438c71e7cfad1d9edd2255f9552b87f6424bfc7a3e0521899ebb",
+      "lean/OAI/Dynamics/StandardMap/Lyapunov/DerivativeGrowth.lean": "5a2bf95786f304a268987e13b97c3b0fc2879a5e83a6072e0ae0a90dd546f8b7",
+      "lean/OAI/Dynamics/StandardMap/Lyapunov/ActualLyapunov.lean": "dce95068c137c24ab1a10cd090f99304a9db8b6cbfbf69fcf31b52962ec58a3a",
+      "lean/OAI/Dynamics/StandardMap/Lyapunov/Subadditive.lean": "e90ad8d3ad3d96b48502e4ac9e06ab0df98713a6f0a3178cf2216027b2cd0826"
+    },
+    "use": "mathematical structure only: ordered derivative products (chain rule for iterates), operator norms and their submultiplicativity, the coordinate-change bound on log-norms, and the conditions (invariant measure, integrability, almost-everywhere convergence) an asymptotic Lyapunov claim needs; no code, no Standard Map conclusion and no asymptotic claim is transferred to ECS"
+  },
+  "files": [
+    {
+      "path": "Cargo.lock",
+      "r1_sha256": "c0936a1fa8287c388567a1b778784a5070f94325d6506cedef619203f8d57f6f",
+      "r2_sha256": "1ebc8d90479de75a43d35a982674cb4fcd26c81d97a332ad3c2b2668eb0118e6",
+      "status": "MODIFIED",
+      "reason": "package name hecs_r2 (no dependencies either way)"
+    },
+    {
+      "path": "Cargo.toml",
+      "r1_sha256": "fd051a6b763b810c7612e4fe6cd65d390f660a61b1a40b6dda47ad4f2896eb65",
+      "r2_sha256": "5ef432a6bdb917f1d6cc59f9d7b8d94ddf5b39f372cf3b008baf54d9669cdf04",
+      "status": "MODIFIED",
+      "reason": "package hecs_r2, binary hecs2, description"
+    },
+    {
+      "path": "rustfmt.toml",
+      "r1_sha256": "93ed1668bb2ca659e88711456b72320bf2f53369ecf278c4a61af0cb63cc3a1e",
+      "r2_sha256": "93ed1668bb2ca659e88711456b72320bf2f53369ecf278c4a61af0cb63cc3a1e",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/analysis.rs",
+      "r1_sha256": "9494cd721d33bdb16d462b017657f7e1684d1e3228039aa3e9f3bbe2be7a6ede",
+      "r2_sha256": "9494cd721d33bdb16d462b017657f7e1684d1e3228039aa3e9f3bbe2be7a6ede",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/encoder.rs",
+      "r1_sha256": "4fff51068698e05c6514866bf44a8be499dd0dc40b7af0ef36a8ad7d13f781dd",
+      "r2_sha256": "4fff51068698e05c6514866bf44a8be499dd0dc40b7af0ef36a8ad7d13f781dd",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/experiment.rs",
+      "r1_sha256": "d04e472bd46714dda79075c6cb04eb0d0866ad059c95663d9d7bbfe96c021f97",
+      "r2_sha256": "a5cc130a608ba5ab18b3c728ba9558b685285160cd96a9a9c3bb67f5ae57c106",
+      "status": "MODIFIED",
+      "reason": "R1's world data, pool training streams, probes, planning episodes and oracle kept verbatim; build_pool split into level_sequences (the same lifted data, before training) and training; every level reports R2's multi-step block (multistep) next to R1's one-step adequacy; references() gathers every ECS-free quantity (references, clip accounting, T3, oracle, probes, centroids); clip_flags from the world's truth; design_instance and calibration_instance replace level1_validity (untrained and per-budget one-step adequacy, the convergence quantity); evaluate applies R2's law (task validity T1/T3/V2-V5, S1, M over the binding pairs, H2); seeds recorded as decimal strings (R1 recorded them through i64)"
+    },
+    {
+      "path": "src/hierarchy.rs",
+      "r1_sha256": "e49ebc91527de9c1e706582552c9731366b51444cb7de258c7384516a3441f87",
+      "r2_sha256": "e49ebc91527de9c1e706582552c9731366b51444cb7de258c7384516a3441f87",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/json.rs",
+      "r1_sha256": "0721be60afe561fa594818e51fdbe94926e5d5707cb8ee869cf6464d848a4a76",
+      "r2_sha256": "0721be60afe561fa594818e51fdbe94926e5d5707cb8ee869cf6464d848a4a76",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/k1.rs",
+      "r1_sha256": "764a18760b57237830b301dc54496d012dea7e3716d80b4540411cd9aac66caa",
+      "r2_sha256": "764a18760b57237830b301dc54496d012dea7e3716d80b4540411cd9aac66caa",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/lib.rs",
+      "r1_sha256": "f5034a4eb35752738c736681014e17c8121ee9632c358ab975c9b6649d2969f4",
+      "r2_sha256": "d025fdce6ed5c68aef08f4bd86a2e62a41c0c2ff0526a0dc4a8d0c52dd47de15",
+      "status": "MODIFIED",
+      "reason": "R2 crate documentation; declares the new multistep module"
+    },
+    {
+      "path": "src/linalg.rs",
+      "r1_sha256": "16de2e399197f13c70800c4983b862d3a7e8f4c946c4c04b9ca0ae3318529a17",
+      "r2_sha256": "16de2e399197f13c70800c4983b862d3a7e8f4c946c4c04b9ca0ae3318529a17",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/main.rs",
+      "r1_sha256": "eb5155b3d680f98e47f309638020786e9fa8661478ccbe22e80c02d7f20b78d5",
+      "r2_sha256": "bfec6dd39905568a6e2c91851ff4d2518b04ea0c9155cba018e235f8c4722a81",
+      "status": "MODIFIED",
+      "reason": "binary hecs2; design records R2's DESIGN quantities; calibrate applies the convergence rule with a grid-step margin; run passes the phase to the law (DEV non-binding, QUAL binding); seeds as decimal strings"
+    },
+    {
+      "path": "src/model.rs",
+      "r1_sha256": "e15641570fc0a5a6358b410aceef086923281579366a6ead616a6d5989c11124",
+      "r2_sha256": "e15641570fc0a5a6358b410aceef086923281579366a6ead616a6d5989c11124",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/multistep.rs",
+      "r1_sha256": null,
+      "r2_sha256": "e1119c31026d5851837dd679e075949c2a5c9ca35af58adb1e69b3a545dbdd7f",
+      "status": "NEW",
+      "reason": "NEW: free-running and teacher-forced multi-step measurement; iterated linear, generator (clipping included), constant and persistence references and the unclipped analytic h-step floor (diagnostic); NUMERICAL_ESCAPE and DOMAIN_EXCURSION (training envelope); planner-candidate rollouts; perturbation amplification; the exact K1 state Jacobian from W and ordered derivative products on the teacher and free-running paths (finite-time tangent growth); the generic rollout-error recurrence"
+    },
+    {
+      "path": "src/planner.rs",
+      "r1_sha256": "452153591c1095f244474e27ae2f81c453eef4dec603f40db73c7bd8082f7b5b",
+      "r2_sha256": "452153591c1095f244474e27ae2f81c453eef4dec603f40db73c7bd8082f7b5b",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/rng.rs",
+      "r1_sha256": "321f4f28448a0e0b0f003aced4e692cf92f2c937911a56d16190da93c22853d8",
+      "r2_sha256": "321f4f28448a0e0b0f003aced4e692cf92f2c937911a56d16190da93c22853d8",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/spec.rs",
+      "r1_sha256": "2eae70544eef8c1971f5f34045fb15cd102c1d4f4ca4d5afcdb7b7a51d38e249",
+      "r2_sha256": "f0e584fc64b51a7c7df988eb8bbb4d66f2eab666314d5411e3244ac3d8e63983",
+      "status": "MODIFIED",
+      "reason": "R2 specification: name, fresh SHA-256 seeds recorded as strings, horizons and consumed horizons, binding pairs, task validity T1/T3/V2-V5, convergence calibration rule, S1, M gate, H2 law, stop and integration laws; no status label inside the specification"
+    },
+    {
+      "path": "src/tests.rs",
+      "r1_sha256": "5837130967a07598b47ee5bfebbf0a868ac3c505b48e768072956c032736f0e9",
+      "r2_sha256": "d2ac9cd3e6cd0861b1dd15704650b0f7ea68a8fa5da32a20539402f732fffc9a",
+      "status": "MODIFIED",
+      "reason": "R2 mechanics tests: specification path, seed freshness against R0 and R1 and exact decimal records, consumed horizons, multi-step instrumentation, exact K1 tangent against native FORWARD, the non-normal counterexample, sigma_max and submultiplicativity, the rollout-error recurrence, clip flags and the domain, an end-to-end mechanics run, recorded-seed reproduction against the compact phase records (SHA-256 of every ECS-free references block; raw runner output is never committed)"
+    },
+    {
+      "path": "src/validity.rs",
+      "r1_sha256": "b16531de72eebe482cf6636300661daae8cdf5022f3d08ab8c6b772f3a2499bb",
+      "r2_sha256": "b16531de72eebe482cf6636300661daae8cdf5022f3d08ab8c6b772f3a2499bb",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "src/world.rs",
+      "r1_sha256": "d75d714eb0d9f960d554b487cef40ee8d77b5c0cac84de9f05fa9e58dede2d56",
+      "r2_sha256": "d75d714eb0d9f960d554b487cef40ee8d77b5c0cac84de9f05fa9e58dede2d56",
+      "status": "IDENTICAL"
+    }
+  ]
+}
