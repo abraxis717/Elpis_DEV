@@ -1,18 +1,21 @@
 //! hecs2: the H-ECS R2 command line (research/hecs_r2/README.md).
 //!
-//!   hecs2 spec                                       the preregistered specification (JSON)
+//!   hecs2 spec                                       the specification (JSON; frozen once committed)
 //!   hecs2 design --k1 LIB [--out FILE]               DESIGN seeds only: references, oracle, one-step adequacy
-//!   hecs2 calibrate --k1 LIB [--out FILE]            DEV calibration of the training budget (margin rule)
+//!   hecs2 calibrate --k1 LIB [--out FILE]            DEV calibration of the training budget (convergence rule)
 //!   hecs2 run --phase dev|qual --steps N --k1 LIB --out FILE
 //!
-//! Derived from R1's `hecs1` (research/hecs_r1/rust/src/main.rs): `design` and `calibrate` apply R2's task
-//! validity and calibration rule over every level (`experiment::design_instance`, `calibration_instance`);
-//! `run` passes the phase to R2's law (DEV non-binding, QUAL binding).
+//! Derived from R1's `hecs1` (research/hecs_r1/rust/src/main.rs): `design` records R2's DESIGN quantities and
+//! `calibrate` applies R2's convergence rule (`experiment::design_instance`, `calibration_instance`); `run` passes
+//! the phase to R2's law (DEV non-binding, QUAL binding).
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use hecs_r2::experiment::{calibration_instance, design_instance, evaluate, run_seed};
+use hecs_r2::experiment::{
+    binding_improvement, binding_min, calibration_instance, design_instance, evaluate, run_seed,
+};
 use hecs_r2::json::Json;
 use hecs_r2::k1::K1;
 use hecs_r2::spec::{self, gates};
@@ -37,9 +40,9 @@ fn load(args: &[String]) -> K1 {
 }
 
 /// DESIGN: on the DESIGN seeds only, every level's references at every horizon (no ECS), T3, the oracle (V2),
-/// probes (V3), centroids (V4) and, at every grid budget, T1 and every level's one-step adequacy (T2, the
-/// calibration margin, V5). No ECS prediction beyond one step and no ECS planning: no multi-step or hypothesis
-/// quantity is computed.
+/// probes (V3), centroids (V4) and, untrained and at every grid budget, T1 and every level's one-step adequacy
+/// (S1, the calibration's convergence quantity, V5). No ECS prediction beyond one step and no ECS planning: no
+/// multi-step, tangent or hypothesis quantity of an ECS is computed.
 fn design(args: &[String]) {
     let k1 = load(args);
     let started = Instant::now();
@@ -71,38 +74,49 @@ fn design(args: &[String]) {
     );
 }
 
-/// DEV calibration: B* is the smallest grid budget at which every DEV instance holds T1 and every level's
-/// one-step capture >= CAL_MIN_CAPTURE; the chosen budget is CAL_GRID_STEPS_ABOVE grid values above B*.
+/// DEV calibration (convergence with a margin): B* is the smallest grid budget from which one more grid step
+/// improves no binding level's one-step capture, in any DEV instance, by more than CAL_MAX_IMPROVEMENT; the chosen
+/// budget is CAL_GRID_STEPS_ABOVE grid values above B*. The search stops once that budget is measured.
 fn calibrate(args: &[String]) {
     let k1 = load(args);
     let started = Instant::now();
     let mut rows = Vec::new();
+    let mut previous: Option<Vec<HashMap<String, f64>>> = None;
     let mut smallest = None;
     for (gi, steps) in spec::CALIBRATION_STEPS.into_iter().enumerate() {
         let mut instances = Vec::new();
-        let mut all = true;
+        let mut caps = Vec::new();
         for kind in spec::WORLDS {
             for seed in spec::DEV_SEEDS {
-                let (j, ok) = calibration_instance(&k1, kind, seed, steps)
+                let (j, c) = calibration_instance(&k1, kind, seed, steps)
                     .unwrap_or_else(|e| panic!("{} seed {seed}: {e}", kind.name()));
                 eprintln!(
-                    "[hecs2] calibrate steps {steps} {} {seed}: {}",
+                    "[hecs2] calibrate steps {steps} {} {seed}: binding min capture {:.4}",
                     kind.name(),
-                    if ok { "margin" } else { "no margin" }
+                    binding_min(&c)
                 );
-                all &= ok;
                 instances.push(j);
+                caps.push(c);
             }
         }
+        let improvement = previous
+            .as_ref()
+            .map(|p| p.iter().zip(&caps).map(|(a, b)| binding_improvement(a, b)).fold(f64::NEG_INFINITY, f64::max));
+        let converged = improvement.is_some_and(|d| d <= gates::CAL_MAX_IMPROVEMENT);
         rows.push(Json::obj(vec![
             ("steps", Json::Int(steps as i64)),
             ("instances", Json::Arr(instances)),
-            ("all_calibrated", Json::Bool(all)),
+            ("max_binding_improvement_from_previous", improvement.map_or(Json::Null, Json::Num)),
+            ("previous_converged", Json::Bool(converged)),
         ]));
-        if all {
-            smallest = Some(gi);
+        if converged {
+            smallest = Some(gi - 1);
+        }
+        let target = smallest.map(|b| b + gates::CAL_GRID_STEPS_ABOVE);
+        if target.is_some_and(|t| t <= gi) {
             break;
         }
+        previous = Some(caps);
     }
     let chosen = smallest.and_then(|i| spec::CALIBRATION_STEPS.get(i + gates::CAL_GRID_STEPS_ABOVE)).copied();
     eprintln!("[hecs2] calibration done in {:.1}s: chosen {chosen:?}", started.elapsed().as_secs_f64());
@@ -114,12 +128,13 @@ fn calibrate(args: &[String]) {
             (
                 "rule",
                 Json::str(
-                    "B* = the smallest grid budget at which every DEV instance holds T1 and every level's one-step \
-                     capture >= CAL_MIN_CAPTURE; chosen = the grid value CAL_GRID_STEPS_ABOVE above B*",
+                    "B* = the smallest grid budget from which one more grid step improves no binding level's one-step \
+                     capture, in any DEV instance, by more than CAL_MAX_IMPROVEMENT; chosen = the grid value \
+                     CAL_GRID_STEPS_ABOVE above B*",
                 ),
             ),
             ("grid", Json::Arr(rows)),
-            ("smallest_margin_steps", smallest.map_or(Json::Null, |i| Json::Int(spec::CALIBRATION_STEPS[i] as i64))),
+            ("converged_steps", smallest.map_or(Json::Null, |i| Json::Int(spec::CALIBRATION_STEPS[i] as i64))),
             ("chosen_steps", chosen.map_or(Json::Null, |s| Json::Int(s as i64))),
             ("disposition", Json::str(if chosen.is_some() { "CALIBRATED" } else { "TASK_INVALID_ON_DEV" })),
         ]),

@@ -240,12 +240,30 @@ pub fn frame<'a>(key: &str, env_stride: usize, data: &'a WorldData) -> Frame<'a>
     }
 }
 
-/// T3 at one (level, consumed horizon): (T3A, T3B). T3B applies to observation levels only (true elsewhere).
+/// T3 at one (level, consumed horizon): (T3A, T3B). T3A: the iterated linear reference still removes a fraction of
+/// the constant error. T3B (observation levels; true elsewhere, where no generator frame exists): on the same
+/// held-out targets, the iterated linear reference is within a fixed factor of the measured generator plug-in
+/// (clipping included), so capture relative to it is capture relative to a near-achievable reference. The
+/// unclipped analytic floor is not consulted (a consistency diagnostic only).
 pub fn t3_holds(r: &RefStats, observation: bool) -> (bool, bool) {
     use gates::*;
     let a = r.explained() >= T3A_MIN_EXPLAINED;
-    let b = !observation || r.floor.is_some_and(|f| (r.linear - f).abs() <= T3B_FLOOR_TOL_ABS + T3B_FLOOR_TOL_REL * f);
+    let b = !observation || r.generator.is_some_and(|g| r.linear <= T3B_MAX_LINEAR_OVER_GENERATOR * g);
     (a, b)
+}
+
+/// Observation levels: per held-out sequence and level step, whether the world clipped the slow factor at any
+/// environment step inside that level step (the clamp leaves exactly +-1).
+pub fn clip_flags(data: &WorldData, env_stride: usize, test: &[LevelSequence]) -> Vec<Vec<bool>> {
+    data.test
+        .iter()
+        .zip(test)
+        .map(|(traj, seq)| {
+            (0..seq.b.len())
+                .map(|t| (t * env_stride + 1..=(t + 1) * env_stride).any(|j| traj.truth[j].s.abs() == 1.0))
+                .collect()
+        })
+        .collect()
 }
 
 fn key_tag(key: &str) -> u64 {
@@ -281,10 +299,19 @@ pub fn refs_json(rs: &[RefStats]) -> Json {
                     ("starts", Json::Int(r.starts as i64)),
                     ("linear", Json::Num(r.linear)),
                     ("constant", Json::Num(r.constant)),
+                    ("persistence", Json::Num(r.persistence)),
                     ("generator", opt(r.generator)),
                     ("analytic_floor", opt(r.floor)),
                     ("explained_by_linear", Json::Num(r.explained())),
                     ("generator_capture", opt(r.generator_capture())),
+                    ("persistence_capture", Json::Num(r.persistence_capture())),
+                    ("clip_fraction", opt(r.clip_fraction)),
+                    ("linear_unclipped", opt(r.linear_unclipped)),
+                    ("generator_unclipped", opt(r.generator_unclipped)),
+                    ("truth_excursion", Json::Num(r.truth_excursion)),
+                    ("linear_excursion", Json::Num(r.linear_excursion)),
+                    ("linear_sigma_max_product", Json::Num(r.linear_sigma)),
+                    ("generator_sigma_max_product_median", opt(r.generator_sigma_median)),
                 ])
             })
             .collect(),
@@ -305,13 +332,37 @@ pub fn horizons_json(hs: &[HorizonStats]) -> Json {
                     ("constant", Json::Num(h.constant)),
                     ("generator", opt(h.generator)),
                     ("analytic_floor", opt(h.floor)),
+                    ("persistence", Json::Num(h.persistence)),
                     ("capture", Json::Num(h.capture)),
                     ("norm_ratio", Json::Num(h.norm_ratio)),
+                    ("numerical_escape", Json::Num(h.ecs_escaped)),
+                    ("domain_excursion", Json::Num(h.ecs_excursion)),
+                    ("truth_domain_excursion", Json::Num(h.truth_excursion)),
+                    ("linear_domain_excursion", Json::Num(h.linear_excursion)),
                     ("passive_escaped", Json::Num(h.passive_escaped)),
+                    ("planner_candidate_numerical_escape", Json::Num(h.candidate_escaped)),
+                    ("planner_candidate_domain_excursion", Json::Num(h.candidate_excursion)),
                     ("amplification_median", Json::Num(h.amp_median)),
                     ("amplification_p90", Json::Num(h.amp_p90)),
                     ("amplification_over_10", Json::Num(h.amp_over_10)),
                     ("linear_amplification_median", Json::Num(h.linear_amp_median)),
+                    (
+                        "tangent",
+                        Json::obj(vec![
+                            ("teacher_sigma_max_median", Json::Num(h.tangent.teacher_median)),
+                            ("teacher_sigma_max_p90", Json::Num(h.tangent.teacher_p90)),
+                            ("teacher_sigma_max_over_1", Json::Num(h.tangent.teacher_over_1)),
+                            ("teacher_growth_rate_median", Json::Num(h.tangent.teacher_gamma_median)),
+                            ("free_sigma_max_median", Json::Num(h.tangent.free_median)),
+                            ("free_sigma_max_p90", Json::Num(h.tangent.free_p90)),
+                            ("free_sigma_max_over_1", Json::Num(h.tangent.free_over_1)),
+                            ("free_growth_rate_median", Json::Num(h.tangent.free_gamma_median)),
+                            ("free_path_defined", Json::Num(h.tangent.free_defined)),
+                            ("linear_sigma_max_product", Json::Num(h.linear_sigma)),
+                            ("generator_sigma_max_product_median", opt(h.generator_sigma_median)),
+                            ("first_order_recursion_ratio_median", Json::Num(h.tangent.recursion_ratio_median)),
+                        ]),
+                    ),
                 ])
             })
             .collect(),
@@ -328,8 +379,9 @@ pub struct LevelMetrics {
     pub horizons: Vec<HorizonStats>,
     pub probe_s: f64,
     pub probe_f: f64,
-    /// Empirical one-step Jacobian spectral radius: (mean, median, fraction > 1); the linear reference's.
-    pub jacobian: (f64, f64, f64),
+    /// The exact one-step state Jacobian at held-out states: (mean spectral radius, median spectral radius,
+    /// fraction of radii > 1, median sigma_max); the linear reference's spectral radius. Descriptive only.
+    pub jacobian: (f64, f64, f64, f64),
     pub linear_radius: f64,
 }
 
@@ -417,6 +469,18 @@ pub fn consumed_pairs() -> Vec<(String, String, usize)> {
     out
 }
 
+/// The (level key, consumed horizon) pairs of the planning comparison's conditions (spec::H2_CONDITIONS), each
+/// once: they bind T3, S1 and M.
+pub fn binding_pairs() -> Vec<(String, usize)> {
+    let mut out: Vec<(String, usize)> = Vec::new();
+    for (c, key, h) in consumed_pairs() {
+        if spec::H2_CONDITIONS.contains(&c.as_str()) && !out.contains(&(key.clone(), h)) {
+            out.push((key, h));
+        }
+    }
+    out
+}
+
 pub fn references(data: &WorldData, seed: u64, kind: WorldKind) -> References {
     let centroid = |f: fn(&Truth) -> f64| -> f64 {
         data.train.iter().map(|t| spectral_centroid(&t.truth.iter().map(f).collect::<Vec<_>>())).sum::<f64>()
@@ -427,7 +491,9 @@ pub fn references(data: &WorldData, seed: u64, kind: WorldKind) -> References {
     let (mut keys, mut refs, mut level_json) = (Vec::new(), HashMap::new(), Vec::new());
     let mut l1_probe = (f64::NAN, f64::NAN);
     for d in level_sequences(data) {
-        let r = multistep::references(&d.train, &d.test, frame(&d.key, d.env_stride, data), &spec::HORIZONS);
+        let clips = observation_level(&d.key).then(|| clip_flags(data, d.env_stride, &d.test));
+        let fr = frame(&d.key, d.env_stride, data);
+        let r = multistep::references(&d.train, &d.test, fr, &spec::HORIZONS, clips.as_deref());
         let entry = PoolEntry {
             key: d.key.clone(),
             encoder: d.encoder,
@@ -457,14 +523,20 @@ pub fn references(data: &WorldData, seed: u64, kind: WorldKind) -> References {
             let r = ref_at(&refs[&key], h);
             let (a, b) = t3_holds(r, observation_level(&key));
             Json::obj(vec![
-                ("condition", Json::str(c)),
+                ("condition", Json::str(&c)),
                 ("key", Json::str(&key)),
                 ("h", Json::Int(h as i64)),
+                ("binding", Json::Bool(spec::H2_CONDITIONS.contains(&c.as_str()))),
                 ("explained_by_linear", Json::Num(r.explained())),
                 ("linear", Json::Num(r.linear)),
                 ("constant", Json::Num(r.constant)),
+                ("persistence", Json::Num(r.persistence)),
                 ("generator", opt(r.generator)),
+                ("linear_over_generator", opt(r.generator.map(|g| r.linear / g))),
                 ("analytic_floor", opt(r.floor)),
+                ("persistence_capture", Json::Num(r.persistence_capture())),
+                ("generator_capture", opt(r.generator_capture())),
+                ("clip_fraction", opt(r.clip_fraction)),
                 ("T3A", Json::Bool(a)),
                 ("T3B", Json::Bool(b)),
             ])
@@ -485,14 +557,15 @@ pub fn references(data: &WorldData, seed: u64, kind: WorldKind) -> References {
     References { json, keys, refs, oracle, l1_probe, centroid_ratio: cf / cs }
 }
 
-/// Every trained level's one-step adequacy (ecs, linear, constant, capture, refusal) and the smallest capture
-/// over the pool (negative infinity on a refusal or a divergence).
-fn one_step_levels(pool: &mut [PoolEntry]) -> Result<(Json, f64), K1Error> {
-    let (mut rows, mut min) = (Vec::new(), f64::INFINITY);
+/// Every trained level's one-step adequacy (ecs, linear, constant, capture, refusal) and the captures by key
+/// (negative infinity on a refusal or a divergence).
+fn one_step_levels(pool: &mut [PoolEntry]) -> Result<(Json, HashMap<String, f64>), K1Error> {
+    let (mut rows, mut caps) = (Vec::new(), HashMap::new());
     for e in pool.iter_mut() {
         let (ecs, linear, constant) = one_step(e)?;
         let c = if e.trace.refused.is_some() { f64::NEG_INFINITY } else { capture(ecs, linear, constant) };
-        min = if c.is_nan() { f64::NEG_INFINITY } else { min.min(c) };
+        let c = if c.is_nan() { f64::NEG_INFINITY } else { c };
+        caps.insert(e.key.clone(), c);
         rows.push(Json::obj(vec![
             ("key", Json::str(&e.key)),
             ("ecs_one_step", Json::Num(ecs)),
@@ -502,47 +575,89 @@ fn one_step_levels(pool: &mut [PoolEntry]) -> Result<(Json, f64), K1Error> {
             ("refused", e.trace.refused.as_ref().map_or(Json::Null, Json::str)),
         ]));
     }
-    Ok((Json::Arr(rows), min))
+    Ok((Json::Arr(rows), caps))
 }
 
-/// DESIGN, one world instance: `references` (no ECS) and, at every grid budget, T1 and every trained level's
-/// one-step adequacy (T2 and the calibration margin) and refusals (V5). No ECS prediction beyond one step and
-/// no planning with an ECS: no multi-step or hypothesis quantity is computed.
+/// The binding level keys (each once).
+pub fn binding_levels() -> Vec<String> {
+    let mut keys: Vec<String> = Vec::new();
+    for (k, _) in binding_pairs() {
+        if !keys.contains(&k) {
+            keys.push(k);
+        }
+    }
+    keys
+}
+
+/// The smallest one-step capture over the binding levels.
+pub fn binding_min(caps: &HashMap<String, f64>) -> f64 {
+    binding_levels().iter().map(|k| caps[k]).fold(f64::INFINITY, f64::min)
+}
+
+/// The largest improvement of a binding level's one-step capture from `before` to `after` (infinite when either
+/// is not finite: a refusal or divergence is never converged).
+pub fn binding_improvement(before: &HashMap<String, f64>, after: &HashMap<String, f64>) -> f64 {
+    binding_levels()
+        .iter()
+        .map(|k| if before[k].is_finite() && after[k].is_finite() { after[k] - before[k] } else { f64::INFINITY })
+        .fold(f64::NEG_INFINITY, f64::max)
+}
+
+/// DESIGN, one world instance: `references` (no ECS); the one-step adequacy of every level untrained (epoch 0)
+/// and at every grid budget, with T1, the binding minimum (S1) and the binding improvement from the previous
+/// budget (the calibration's convergence quantity). No ECS prediction beyond one step and no planning with an
+/// ECS: no multi-step, tangent or hypothesis quantity of an ECS is computed.
 pub fn design_instance(k1: &K1, kind: WorldKind, seed: u64) -> Result<Json, K1Error> {
     let data = world_data(kind, seed);
     let refs = references(&data, seed, kind);
+    let (untrained, untrained_caps) = one_step_levels(&mut build_pool(k1, &data, 0, seed, kind)?)?;
     let mut grid = Vec::new();
+    let mut previous: Option<HashMap<String, f64>> = None;
     for steps in spec::CALIBRATION_STEPS {
         let mut pool = build_pool(k1, &data, steps, seed, kind)?;
         let l1 = find(&pool, "L1/N36");
         let d = diagnostics(&mut pool[l1], &data)?;
-        let (levels, min) = one_step_levels(&mut pool)?;
+        let (levels, caps) = one_step_levels(&mut pool)?;
+        let min = binding_min(&caps);
         grid.push(Json::obj(vec![
             ("steps", Json::Int(steps as i64)),
             ("t1", diagnostics_json(&d)),
             ("T1", Json::Bool(t1_holds(&d))),
             ("levels", levels),
-            ("min_capture", Json::Num(min)),
-            ("T2", Json::Bool(min >= gates::T2_MIN_CAPTURE)),
-            ("calibration_margin", Json::Bool(t1_holds(&d) && min >= gates::CAL_MIN_CAPTURE)),
+            ("binding_min_capture", Json::Num(min)),
+            ("S1_binding", Json::Bool(min >= gates::S1_MIN_CAPTURE)),
+            (
+                "binding_improvement_from_previous",
+                previous.as_ref().map_or(Json::Null, |p| Json::Num(binding_improvement(p, &caps))),
+            ),
         ]));
+        previous = Some(caps);
     }
     Ok(Json::obj(vec![
         ("world", Json::str(kind.name())),
         ("seed", Json::str(seed.to_string())),
         ("references", refs.json),
+        (
+            "untrained",
+            Json::obj(vec![("levels", untrained), ("binding_min_capture", Json::Num(binding_min(&untrained_caps)))]),
+        ),
         ("grid", Json::Arr(grid)),
     ]))
 }
 
-/// DEV calibration, one world instance at one budget: T1 and the calibration margin on every level.
-pub fn calibration_instance(k1: &K1, kind: WorldKind, seed: u64, steps: u64) -> Result<(Json, bool), K1Error> {
+/// DEV calibration, one world instance at one budget: T1 and every level's one-step adequacy; returns the
+/// captures by key for the convergence rule.
+pub fn calibration_instance(
+    k1: &K1,
+    kind: WorldKind,
+    seed: u64,
+    steps: u64,
+) -> Result<(Json, HashMap<String, f64>), K1Error> {
     let data = world_data(kind, seed);
     let mut pool = build_pool(k1, &data, steps, seed, kind)?;
     let l1 = find(&pool, "L1/N36");
     let d = diagnostics(&mut pool[l1], &data)?;
-    let (levels, min) = one_step_levels(&mut pool)?;
-    let ok = t1_holds(&d) && min >= gates::CAL_MIN_CAPTURE;
+    let (levels, caps) = one_step_levels(&mut pool)?;
     Ok((
         Json::obj(vec![
             ("world", Json::str(kind.name())),
@@ -550,10 +665,9 @@ pub fn calibration_instance(k1: &K1, kind: WorldKind, seed: u64, steps: u64) -> 
             ("t1", diagnostics_json(&d)),
             ("T1", Json::Bool(t1_holds(&d))),
             ("levels", levels),
-            ("min_capture", Json::Num(min)),
-            ("calibrated", Json::Bool(ok)),
+            ("binding_min_capture", Json::Num(binding_min(&caps))),
         ]),
-        ok,
+        caps,
     ))
 }
 
@@ -571,8 +685,9 @@ fn level_report(
     let fr = frame(&entry.key, entry.env_stride, data);
     let path = [seed, kind_tag(kind), 7, key_tag(&entry.key)];
     let model = entry.model.as_mut().unwrap();
-    let horizons = multistep::horizons(model, &entry.train, &entry.test, fr, &spec::HORIZONS, &path)?;
-    let jacobian = multistep::jacobians(model, &entry.test)?;
+    let clips = observation_level(&entry.key).then(|| clip_flags(data, entry.env_stride, &entry.test));
+    let horizons = multistep::horizons(model, &entry.train, &entry.test, fr, &spec::HORIZONS, clips.as_deref(), &path)?;
+    let jacobian = multistep::one_step_jacobians(&multistep::EcsTangent::of(model)?, &entry.test);
     let linear_radius = multistep::Linear::fit(&entry.train).spectral_radius();
     let att = attractors(model)?;
     let digest = model.ecs.digest()?;
@@ -602,7 +717,8 @@ fn level_report(
             Json::obj(vec![
                 ("ecs_spectral_radius_mean", Json::Num(jacobian.0)),
                 ("ecs_spectral_radius_median", Json::Num(jacobian.1)),
-                ("ecs_fraction_over_1", Json::Num(jacobian.2)),
+                ("ecs_spectral_radius_fraction_over_1", Json::Num(jacobian.2)),
+                ("ecs_sigma_max_median", Json::Num(jacobian.3)),
                 ("linear_spectral_radius", Json::Num(linear_radius)),
             ]),
         ),
@@ -1012,58 +1128,64 @@ fn cond<'a>(r: &'a SeedResult, name: &str) -> &'a CondResult {
     r.conds.iter().find(|c| c.name == name).unwrap()
 }
 
-/// Task validity of one instance: (T1, T2, T3A, T3B).
-pub fn instance_validity(r: &SeedResult) -> (bool, bool, bool, bool) {
+/// Task validity of one instance: (T1, T3A, T3B); T3 over the binding pairs.
+pub fn instance_validity(r: &SeedResult) -> (bool, bool, bool) {
     let t1 = t1_holds(&r.t1);
-    let t2 = !r.refused && r.keys.iter().all(|k| r.levels.get(k).is_some_and(|m| m.capture1 >= gates::T2_MIN_CAPTURE));
     let (mut t3a, mut t3b) = (true, true);
-    for (_, key, h) in consumed_pairs() {
+    for (key, h) in binding_pairs() {
         let (a, b) = t3_holds(ref_at(&r.refs[&key], h), observation_level(&key));
         t3a &= a;
         t3b &= b;
     }
-    (t1, t2, t3a, t3b)
+    (t1, t3a, t3b)
 }
 
-/// M for one condition over one world's seeds: (M-valid, evidence).
-pub fn m_condition(rs: &[SeedResult], c: &HierarchySpec) -> (bool, Json) {
+/// S1 on one instance: every binding level trained without refusal and with one-step capture >= S1_MIN_CAPTURE.
+pub fn s1_holds(r: &SeedResult) -> bool {
+    binding_levels().iter().all(|k| r.levels.get(k).is_some_and(|m| m.capture1 >= gates::S1_MIN_CAPTURE))
+}
+
+/// M over (level key, consumed horizon) pairs on one world's seeds: every pair, every measured horizon up to its
+/// consumed horizon, capture >= M_MIN_CAPTURE and numerical escape <= M_MAX_ESCAPED; M holds when at least
+/// M_SEED_FRACTION of the seeds meet every bound. Returns (M, per-seed verdicts, evidence).
+pub fn m_pairs(rs: &[SeedResult], pairs: &[(String, usize)]) -> (bool, Vec<bool>, Json) {
     use gates::*;
     let mut seed_ok = vec![true; rs.len()];
-    let (mut means_ok, mut levels) = (true, Vec::new());
-    for (l, key) in level_keys(c).iter().enumerate() {
-        let h = spec::consumed_horizon(c, l);
-        let (caps, escs): (Vec<f64>, Vec<f64>) = rs
-            .iter()
-            .map(|r| r.levels.get(key).map_or((f64::NAN, 1.0), |m| (m.at(h).capture, m.at(h).ecs_escaped)))
-            .unzip();
-        let (mc, me) = (mean(&caps), mean(&escs));
-        let ok = mc >= M_MIN_CAPTURE && me <= M_MAX_ESCAPED;
-        means_ok &= ok;
-        for (i, (c, e)) in caps.iter().zip(&escs).enumerate() {
-            seed_ok[i] &= *c >= M_MIN_CAPTURE && *e <= M_MAX_ESCAPED;
+    let mut rows = Vec::new();
+    for (key, consumed) in pairs {
+        for &h in spec::HORIZONS.iter().filter(|&&h| h <= *consumed) {
+            let (caps, escs): (Vec<f64>, Vec<f64>) = rs
+                .iter()
+                .map(|r| r.levels.get(key).map_or((f64::NAN, 1.0), |m| (m.at(h).capture, m.at(h).ecs_escaped)))
+                .unzip();
+            for (i, (c, e)) in caps.iter().zip(&escs).enumerate() {
+                seed_ok[i] &= *c >= M_MIN_CAPTURE && *e <= M_MAX_ESCAPED;
+            }
+            rows.push(Json::obj(vec![
+                ("key", Json::str(key)),
+                ("consumed_horizon", Json::Int(*consumed as i64)),
+                ("h", Json::Int(h as i64)),
+                ("capture_by_seed", Json::nums(&caps)),
+                ("numerical_escape_by_seed", Json::nums(&escs)),
+                ("capture_mean", Json::Num(mean(&caps))),
+                ("numerical_escape_mean", Json::Num(mean(&escs))),
+            ]));
         }
-        levels.push(Json::obj(vec![
-            ("key", Json::str(key)),
-            ("h", Json::Int(h as i64)),
-            ("capture_by_seed", Json::nums(&caps)),
-            ("escaped_by_seed", Json::nums(&escs)),
-            ("capture_mean", Json::Num(mc)),
-            ("escaped_mean", Json::Num(me)),
-            ("means_meet_M", Json::Bool(ok)),
-        ]));
     }
-    let frac = seed_ok.iter().filter(|o| **o).count() as f64 / rs.len() as f64;
-    let valid = means_ok && frac >= M_SEED_FRACTION;
-    (
-        valid,
-        Json::obj(vec![
-            ("condition", Json::str(&c.name)),
-            ("levels", Json::Arr(levels)),
-            ("seed_meets_M_at_every_level", Json::Arr(seed_ok.iter().map(|b| Json::Bool(*b)).collect())),
-            ("seed_fraction", Json::Num(frac)),
-            ("M", Json::Bool(valid)),
-        ]),
-    )
+    let frac = seed_ok.iter().filter(|o| **o).count() as f64 / rs.len().max(1) as f64;
+    let valid = !rs.is_empty() && frac >= M_SEED_FRACTION;
+    let json = Json::obj(vec![
+        ("rows", Json::Arr(rows)),
+        ("seed_meets_M", Json::Arr(seed_ok.iter().map(|b| Json::Bool(*b)).collect())),
+        ("seed_fraction", Json::Num(frac)),
+        ("M", Json::Bool(valid)),
+    ]);
+    (valid, seed_ok, json)
+}
+
+/// A condition's own (level key, consumed horizon) pairs.
+pub fn condition_pairs(c: &HierarchySpec) -> Vec<(String, usize)> {
+    level_keys(c).into_iter().enumerate().map(|(l, k)| (k, spec::consumed_horizon(c, l))).collect()
 }
 
 /// The multi-step diagnosis of one world: per pool level and horizon, medians over the seeds (finite values)
@@ -1098,9 +1220,23 @@ fn diagnosis(rs: &[SeedResult]) -> Json {
                                 Json::Num(mean(&ms.iter().map(|m| m.at(h).passive_escaped).collect::<Vec<_>>())),
                             ),
                             ("norm_ratio", Json::Num(med(|s| s.norm_ratio))),
+                            ("domain_excursion", Json::Num(med(|s| s.ecs_excursion))),
+                            ("truth_domain_excursion", Json::Num(med(|s| s.truth_excursion))),
+                            ("planner_candidate_numerical_escape", Json::Num(med(|s| s.candidate_escaped))),
+                            ("planner_candidate_domain_excursion", Json::Num(med(|s| s.candidate_excursion))),
                             ("amplification_median", Json::Num(med(|s| s.amp_median))),
                             ("linear_amplification_median", Json::Num(med(|s| s.linear_amp_median))),
                             ("amplification_over_10", Json::Num(med(|s| s.amp_over_10))),
+                            ("teacher_sigma_max_median", Json::Num(med(|s| s.tangent.teacher_median))),
+                            ("free_sigma_max_median", Json::Num(med(|s| s.tangent.free_median))),
+                            ("teacher_growth_rate_median", Json::Num(med(|s| s.tangent.teacher_gamma_median))),
+                            ("free_growth_rate_median", Json::Num(med(|s| s.tangent.free_gamma_median))),
+                            ("linear_sigma_max_product", Json::Num(med(|s| s.linear_sigma))),
+                            (
+                                "generator_sigma_max_product",
+                                Json::Num(med(|s| s.generator_sigma_median.unwrap_or(f64::NAN))),
+                            ),
+                            ("first_order_recursion_ratio", Json::Num(med(|s| s.tangent.recursion_ratio_median))),
                         ])
                     })
                     .collect();
@@ -1110,9 +1246,10 @@ fn diagnosis(rs: &[SeedResult]) -> Json {
                     ("one_step_capture", Json::Num(median(&ms.iter().map(|m| m.capture1).collect::<Vec<_>>()))),
                     ("jacobian_radius_mean", Json::Num(median(&ms.iter().map(|m| m.jacobian.0).collect::<Vec<_>>()))),
                     (
-                        "jacobian_fraction_over_1",
+                        "jacobian_radius_fraction_over_1",
                         Json::Num(median(&ms.iter().map(|m| m.jacobian.2).collect::<Vec<_>>())),
                     ),
+                    ("jacobian_sigma_max", Json::Num(median(&ms.iter().map(|m| m.jacobian.3).collect::<Vec<_>>()))),
                     ("linear_radius", Json::Num(median(&ms.iter().map(|m| m.linear_radius).collect::<Vec<_>>()))),
                     ("by_horizon", Json::Arr(by_h)),
                 ])
@@ -1121,40 +1258,48 @@ fn diagnosis(rs: &[SeedResult]) -> Json {
     )
 }
 
-/// Gates and disposition over one phase's seeds (both worlds). `binding` is true for QUAL only: DEV applies
-/// task validity (TASK_INVALID_ON_DEV or QUAL_AUTHORIZED) and reports M and H2 as non-binding values.
+/// Gates and disposition over one phase's seeds (both worlds). `binding` is true for QUAL only: DEV applies task
+/// validity (TASK_INVALID_ON_DEV or QUAL_AUTHORIZED) and reports S1, M and H2 as non-binding values.
 pub fn evaluate(sep: &[SeedResult], mat: &[SeedResult], binding: bool) -> Json {
     use gates::*;
     let both: Vec<&SeedResult> = sep.iter().chain(mat).collect();
-    let per: Vec<(bool, bool, bool, bool)> = both.iter().map(|r| instance_validity(r)).collect();
+    let per: Vec<(bool, bool, bool)> = both.iter().map(|r| instance_validity(r)).collect();
     let t1 = per.iter().all(|v| v.0);
-    let t2 = per.iter().all(|v| v.1);
-    let t3a = per.iter().all(|v| v.2);
-    let t3b = per.iter().all(|v| v.3);
+    let t3a = per.iter().all(|v| v.1);
+    let t3b = per.iter().all(|v| v.2);
     let oracle = |rs: &[SeedResult]| mean(&rs.iter().map(|r| r.oracle).collect::<Vec<_>>());
     let ratio = |rs: &[SeedResult]| mean(&rs.iter().map(|r| r.centroid_ratio).collect::<Vec<_>>());
     let v2 = oracle(sep) >= V2_ORACLE_SUCCESS && oracle(mat) >= V2_ORACLE_SUCCESS;
     let v3 = both.iter().all(|r| r.l1_probe.0 <= V3_L1_PROBE_NMSE && r.l1_probe.1 <= V3_L1_PROBE_NMSE);
     let v4 = ratio(sep) >= V4_SEPARATED_CENTROID_RATIO && ratio(mat) <= V4_MATCHED_CENTROID_RATIO;
     let v5 = both.iter().all(|r| !r.refused);
-    let valid = t1 && t2 && t3a && t3b && v2 && v3 && v4 && v5;
+    let valid = t1 && t3a && t3b && v2 && v3 && v4 && v5;
 
-    // M: every condition in each world; the H2 conditions in SEPARATED decide whether H2 is adjudicated.
-    let conds = spec::conditions();
-    let m_world = |rs: &[SeedResult]| -> (Vec<(String, bool)>, Json) {
-        let (flags, json): (Vec<(String, bool)>, Vec<Json>) = conds
-            .iter()
-            .map(|c| {
-                let (ok, j) = m_condition(rs, c);
-                ((c.name.clone(), ok), j)
-            })
-            .unzip();
-        (flags, Json::Arr(json))
+    // S1 and M per world over the binding pairs; every condition's own M is reported.
+    let s1 = |rs: &[SeedResult]| -> (bool, Vec<bool>) {
+        let v: Vec<bool> = rs.iter().map(s1_holds).collect();
+        (!v.is_empty() && v.iter().all(|x| *x), v)
     };
-    let (m_sep, m_sep_json) = m_world(sep);
-    let (m_mat, m_mat_json) = m_world(mat);
-    let m_of = |flags: &[(String, bool)], name: &str| flags.iter().find(|(n, _)| n == name).unwrap().1;
-    let m_h2 = spec::H2_CONDITIONS.iter().all(|n| m_of(&m_sep, n));
+    let (s1_sep, s1_sep_seeds) = s1(sep);
+    let (s1_mat, s1_mat_seeds) = s1(mat);
+    let pairs = binding_pairs();
+    let (m_sep, _, m_sep_json) = m_pairs(sep, &pairs);
+    let (m_mat, _, m_mat_json) = m_pairs(mat, &pairs);
+    let conds = spec::conditions();
+    let by_condition = |rs: &[SeedResult]| -> Json {
+        Json::Arr(
+            conds
+                .iter()
+                .map(|c| {
+                    let (ok, _, _) = m_pairs(rs, &condition_pairs(c));
+                    let s1c = rs.iter().all(|r| {
+                        level_keys(c).iter().all(|k| r.levels.get(k).is_some_and(|m| m.capture1 >= S1_MIN_CAPTURE))
+                    });
+                    Json::obj(vec![("condition", Json::str(&c.name)), ("S1", Json::Bool(s1c)), ("M", Json::Bool(ok))])
+                })
+                .collect(),
+        )
+    };
 
     let succ = |name: &str, b: usize| mean(&sep.iter().map(|r| cond(r, name).success[b]).collect::<Vec<_>>());
     let diff = |a: &str, b: &str| -> Vec<f64> { (0..3).map(|k| succ(a, k) - succ(b, k)).collect() };
@@ -1162,11 +1307,9 @@ pub fn evaluate(sep: &[SeedResult], mat: &[SeedResult], binding: bool) -> Json {
     let h2b_by = diff("HIERARCHICAL_DISTINCT_L2", "TEMPORAL_SHARED_L2");
     let h2c_by = diff("TEMPORAL_SHARED_L2", "FLAT_N72");
     let holds = |v: &[f64], t: f64| v.iter().filter(|d| **d >= t).count() >= H2_BUDGETS_REQUIRED;
-    let (h2a, h2b, h2c) = (
-        holds(&h2a_by, H2A_DISTINCT_OVER_WIDTH),
-        holds(&h2b_by, H2B_DISTINCT_OVER_TEMPORAL),
-        holds(&h2c_by, H2C_TEMPORAL_OVER_WIDTH),
-    );
+    let h2a = holds(&h2a_by, H2A_DISTINCT_OVER_WIDTH);
+    let h2b = holds(&h2b_by, H2B_DISTINCT_OVER_TEMPORAL);
+    let h2c = holds(&h2c_by, H2C_TEMPORAL_OVER_WIDTH);
     let class = |d: f64| {
         if d >= DEPTH_EFFECT {
             "IMPROVES"
@@ -1182,18 +1325,18 @@ pub fn evaluate(sep: &[SeedResult], mat: &[SeedResult], binding: bool) -> Json {
             ("success_L1_L2_L3_middle_budget", Json::nums(&s)),
             ("L2_vs_L1", Json::str(class(s[1] - s[0]))),
             ("L3_vs_L2", Json::str(class(s[2] - s[1]))),
-            ("M_separated_L2_L3", Json::Arr(names[1..].iter().map(|n| Json::Bool(m_of(&m_sep, n))).collect())),
         ])
     };
     let width: Vec<f64> = ["FLAT_N36", "FLAT_N72", "FLAT_N108"].iter().map(|n| succ(n, 1)).collect();
 
-    let adjudicated = binding && valid && m_h2;
-    let disposition = match (binding, valid, m_h2) {
-        (false, false, _) => "TASK_INVALID_ON_DEV",
-        (false, true, _) => "QUAL_AUTHORIZED",
-        (true, false, _) => "TASK_INVALID",
-        (true, true, false) => "WORLD_MODEL_INVALID",
-        (true, true, true) => "HIERARCHY_ADJUDICATED",
+    let adjudicated = binding && valid && s1_sep && m_sep;
+    let disposition = match (binding, valid, s1_sep, m_sep) {
+        (false, false, _, _) => "TASK_INVALID_ON_DEV",
+        (false, true, _, _) => "QUAL_AUTHORIZED",
+        (true, false, _, _) => "TASK_INVALID",
+        (true, true, false, _) => "ONE_STEP_MODEL_INVALID",
+        (true, true, true, false) => "WORLD_MODEL_INVALID",
+        (true, true, true, true) => "HIERARCHY_ADJUDICATED",
     };
     let outcome = if !adjudicated {
         "NOT_ADJUDICATED"
@@ -1216,6 +1359,12 @@ pub fn evaluate(sep: &[SeedResult], mat: &[SeedResult], binding: bool) -> Json {
                 ("seed", Json::str(r.seed.to_string())),
                 ("t1", diagnostics_json(&r.t1)),
                 ("T1", Json::Bool(v.0)),
+                ("T3A", Json::Bool(v.1)),
+                ("T3B", Json::Bool(v.2)),
+                ("oracle_success", Json::Num(r.oracle)),
+                ("l1_probe_nmse_slow_fast", Json::nums(&[r.l1_probe.0, r.l1_probe.1])),
+                ("centroid_ratio", Json::Num(r.centroid_ratio)),
+                ("refused", Json::Bool(r.refused)),
                 (
                     "one_step_capture_by_level",
                     Json::Arr(
@@ -1230,24 +1379,27 @@ pub fn evaluate(sep: &[SeedResult], mat: &[SeedResult], binding: bool) -> Json {
                             .collect(),
                     ),
                 ),
-                ("T2", Json::Bool(v.1)),
-                ("T3A", Json::Bool(v.2)),
-                ("T3B", Json::Bool(v.3)),
-                ("oracle_success", Json::Num(r.oracle)),
-                ("l1_probe_nmse_slow_fast", Json::nums(&[r.l1_probe.0, r.l1_probe.1])),
-                ("centroid_ratio", Json::Num(r.centroid_ratio)),
-                ("refused", Json::Bool(r.refused)),
+                ("S1", Json::Bool(s1_holds(r))),
             ])
         })
         .collect();
+    let flags = |v: &[bool]| Json::Arr(v.iter().map(|b| Json::Bool(*b)).collect());
     Json::obj(vec![
         ("binding", Json::Bool(binding)),
+        (
+            "binding_pairs",
+            Json::Arr(
+                pairs
+                    .iter()
+                    .map(|(k, h)| Json::obj(vec![("key", Json::str(k)), ("consumed_horizon", Json::Int(*h as i64))]))
+                    .collect(),
+            ),
+        ),
         (
             "task_validity",
             Json::obj(vec![
                 ("instances", Json::Arr(instances)),
                 ("T1", Json::Bool(t1)),
-                ("T2", Json::Bool(t2)),
                 ("T3A", Json::Bool(t3a)),
                 ("T3B", Json::Bool(t3b)),
                 ("V2_oracle_success", Json::nums(&[oracle(sep), oracle(mat)])),
@@ -1260,11 +1412,23 @@ pub fn evaluate(sep: &[SeedResult], mat: &[SeedResult], binding: bool) -> Json {
             ]),
         ),
         (
+            "one_step",
+            Json::obj(vec![
+                ("S1_SEPARATED", Json::Bool(s1_sep)),
+                ("S1_SEPARATED_by_seed", flags(&s1_sep_seeds)),
+                ("S1_MATCHED", Json::Bool(s1_mat)),
+                ("S1_MATCHED_by_seed", flags(&s1_mat_seeds)),
+            ]),
+        ),
+        (
             "multistep",
             Json::obj(vec![
                 ("SEPARATED", m_sep_json),
                 ("MATCHED", m_mat_json),
-                ("M_separated_h2_conditions", Json::Bool(m_h2)),
+                ("M_SEPARATED", Json::Bool(m_sep)),
+                ("M_MATCHED", Json::Bool(m_mat)),
+                ("by_condition_SEPARATED", by_condition(sep)),
+                ("by_condition_MATCHED", by_condition(mat)),
             ]),
         ),
         ("diagnosis", Json::obj(vec![("SEPARATED", diagnosis(sep)), ("MATCHED", diagnosis(mat))])),
@@ -1279,25 +1443,10 @@ pub fn evaluate(sep: &[SeedResult], mat: &[SeedResult], binding: bool) -> Json {
                 ("H2B", Json::Bool(h2b)),
                 ("H2C", Json::Bool(h2c)),
                 ("width_success_n36_n72_n108_middle_budget", Json::nums(&width)),
-                (
-                    "width_M_separated_n36_n72_n108",
-                    Json::Arr(
-                        ["FLAT_N36", "FLAT_N72", "FLAT_N108"].iter().map(|n| Json::Bool(m_of(&m_sep, n))).collect(),
-                    ),
-                ),
                 ("depth_temporal_shared", depth(["FLAT_N36", "TEMPORAL_SHARED_L2", "TEMPORAL_SHARED_L3"])),
                 (
                     "depth_hierarchical_distinct",
                     depth(["FLAT_N36", "HIERARCHICAL_DISTINCT_L2", "HIERARCHICAL_DISTINCT_L3"]),
-                ),
-                (
-                    "M_matched_by_condition",
-                    Json::Arr(
-                        m_mat
-                            .iter()
-                            .map(|(n, ok)| Json::obj(vec![("condition", Json::str(n)), ("M", Json::Bool(*ok))]))
-                            .collect(),
-                    ),
                 ),
             ]),
         ),

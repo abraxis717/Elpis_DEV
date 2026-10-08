@@ -1,14 +1,17 @@
-//! The preregistered H-ECS R2 specification (research/hecs_r2/PREREGISTRATION.md). Single source of every
-//! parameter, condition, seed, gate and stop law. `hecs2 spec` renders it; the committed
-//! specs/hecs-r2.v1.spec.json must equal that rendering byte for byte, and every evidence file embeds it.
+//! The H-ECS R2 specification: single source of every parameter, condition, seed, gate and stop law. `hecs2 spec`
+//! renders it. Status: DESIGN/MECHANICS, NOT_FROZEN. It becomes the preregistered authority only when the
+//! rendering is committed as specs/hecs-r2.v1.spec.json together with the DESIGN evidence and
+//! research/hecs_r2/PREREGISTRATION.md (one freeze commit); from then on the committed file must equal the
+//! rendering byte for byte, and every evidence file embeds it. The status is a property of that commit, not a
+//! label inside the specification.
 //!
 //! Derived from the R1 specification (research/hecs_r1/rust/src/spec.rs). Unchanged from R1: the worlds, the
 //! data, the ECS primitive and its one-step training, the encoders, the seven conditions, the compute budgets,
 //! the planner and its oracle, and the V2, V3, V4 (R1's corrected MATCHED bound) and V5 thresholds. New in R2:
 //! the name and fresh seeds (recorded as decimal strings); the horizons and the horizon each planner consumes;
-//! task validity extended to every level's one-step adequacy and to each consumed horizon; a calibration rule
-//! with a margin; the primary multi-step gate M; planning hypotheses that are adjudicated only when M holds;
-//! and the stop and integration laws.
+//! task validity at the consumed horizons of the planning comparison (T3); a convergence calibration rule with a
+//! margin; one-step constituent validity (S1); the primary multi-step gate M; planning hypotheses that are
+//! adjudicated only when S1 and M hold; and the stop and integration laws.
 
 use crate::hierarchy::{HierarchySpec, LevelSpec, Representation};
 use crate::json::Json;
@@ -126,42 +129,43 @@ pub fn budgets(spec: &HierarchySpec) -> [usize; 3] {
     }
 }
 
-/// Preregistered gate thresholds.
+/// Gate thresholds (DESIGN-determined; frozen with the specification).
 pub mod gates {
     // -- task validity (every instance, both worlds) ----------------------------------------------------------
     /// T1A: level 1's held-out linear reference removes at least this fraction of the constant baseline's
     /// one-step error (R1's V1A).
     pub const T1A_MIN_EXPLAINED: f64 = 0.5;
-    /// T1B: |level-1 linear reference - analytic floor| <= abs + rel * floor, one step (R1's V1B).
+    /// T1B: level 1, one step: |linear reference - analytic floor| <= abs + rel * floor (R1's V1B; at one step the
+    /// unclipped floor and sampling noise are within this tolerance on DESIGN).
     pub const T1B_FLOOR_TOL_ABS: f64 = 0.005;
     pub const T1B_FLOOR_TOL_REL: f64 = 0.15;
-    /// T2 (training adequacy): every trained level model, one step, no divergence and capture >= this.
-    pub const T2_MIN_CAPTURE: f64 = 0.98;
-    /// T3A: at each consumed horizon the iterated linear reference removes at least this fraction of the
-    /// constant baseline's error (the horizon still carries predictable structure).
+    /// T3A: at every binding (level, consumed horizon), the iterated linear reference removes at least this
+    /// fraction of the constant baseline's error (the horizon still carries predictable structure).
     pub const T3A_MIN_EXPLAINED: f64 = 0.25;
-    /// T3B: at each consumed horizon of level 1 and the temporal-shared levels, |iterated linear reference -
-    /// analytic floor| <= abs + rel * floor (the reference is the generator's floor there too).
-    pub const T3B_FLOOR_TOL_ABS: f64 = 0.01;
-    pub const T3B_FLOOR_TOL_REL: f64 = 0.15;
+    /// T3B: at every binding observation (level, consumed horizon), on the same held-out targets, the iterated
+    /// linear reference's error is at most this multiple of the generator plug-in's (clipping included).
+    pub const T3B_MAX_LINEAR_OVER_GENERATOR: f64 = 1.20;
     pub const V2_ORACLE_SUCCESS: f64 = 0.8;
     pub const V3_L1_PROBE_NMSE: f64 = 0.1;
     pub const V4_SEPARATED_CENTROID_RATIO: f64 = 4.0;
     pub const V4_MATCHED_CENTROID_RATIO: f64 = 2.0;
-    // -- calibration ----------------------------------------------------------------------------------------
-    /// The calibration margin: every DEV instance and every level's one-step capture at least this (above
-    /// T2's 0.98), with T1 holding; the chosen budget is then one grid step above the smallest such budget.
-    pub const CAL_MIN_CAPTURE: f64 = 0.99;
+    // -- calibration: training convergence with a margin -----------------------------------------------------
+    /// B* is the smallest grid budget from which one more grid step (4x the training) improves no binding level's
+    /// one-step capture, in any DEV instance, by more than this; the chosen budget is CAL_GRID_STEPS_ABOVE grid
+    /// steps above B* (so the chosen budget is past measured convergence).
+    pub const CAL_MAX_IMPROVEMENT: f64 = 0.005;
     pub const CAL_GRID_STEPS_ABOVE: usize = 1;
-    // -- M: multi-step validity (the primary question) --------------------------------------------------------
-    /// At the consumed horizon: free-running capture (constant - ecs) / (constant - linear) at least this ...
+    // -- S1: one-step constituent validity (binding levels, every seed, SEPARATED decides) ----------------------
+    /// Every binding level model: no divergence and one-step capture >= this.
+    pub const S1_MIN_CAPTURE: f64 = 0.95;
+    // -- M: multi-step validity, the primary question (binding levels, every seed, SEPARATED decides) -----------
+    /// At every measured horizon up to and including the consumed horizon: free-running capture at least this ...
     pub const M_MIN_CAPTURE: f64 = 0.90;
-    /// ... and escaped (non-finite or beyond the escape bound) rollouts at most this fraction.
+    /// ... and NUMERICAL_ESCAPE (non-finite or beyond the escape bound) at most this fraction of the rollouts.
     pub const M_MAX_ESCAPED: f64 = 0.01;
-    /// A condition is M-valid in a world when, for every level, the seed means meet both bounds and at least
-    /// this fraction of seeds meet both at every level.
-    pub const M_SEED_FRACTION: f64 = 0.75;
-    // -- H2: planning (SEPARATED), adjudicated only if M holds there for every H2 condition -------------------
+    /// The fraction of seeds that must meet both bounds at every binding level and horizon: every seed.
+    pub const M_SEED_FRACTION: f64 = 1.0;
+    // -- H2: planning (SEPARATED), adjudicated only if S1 and M hold there ------------------------------------
     pub const H2A_DISTINCT_OVER_WIDTH: f64 = 0.15;
     pub const H2B_DISTINCT_OVER_TEMPORAL: f64 = 0.10;
     pub const H2C_TEMPORAL_OVER_WIDTH: f64 = 0.10;
@@ -221,8 +225,8 @@ pub fn to_json() -> Json {
     let num = |v: f64| Json::Num(v);
     Json::obj(vec![
         ("name", Json::str(NAME)),
-        ("labels", Json::Arr(["RESEARCH_ONLY", "NO_RUNTIME_AUTHORITY", "NO_LANGUAGE_CLAIM", "SYNTHETIC", "SEMANTICS=NONE",
-            "PREREGISTERED"].iter().map(|s| Json::str(*s)).collect())),
+        ("labels", Json::Arr(["RESEARCH_ONLY", "NO_RUNTIME_AUTHORITY", "NO_LANGUAGE_CLAIM", "SYNTHETIC", "SEMANTICS=NONE"]
+            .iter().map(|s| Json::str(*s)).collect())),
         ("question", Json::str("Can the qualified ECS/K1 world-model primitive, trained one step ahead, produce a multi-step predictive object stable enough for planning at the horizons H-ECS consumes? Hierarchy is adjudicated only if it can.")),
         ("base_seed", Json::str(BASE_SEED.to_string())),
         ("seed_derivation", Json::str(SEED_DERIVATION)),
@@ -258,13 +262,17 @@ pub fn to_json() -> Json {
         ("conditions", Json::Arr(conds)),
         ("measurements", Json::obj(vec![
             ("horizons", Json::ints(&HORIZONS)),
-            ("free_running", Json::str("open-loop rollouts with the true level actions from every held-out start; escaped (non-finite or any |z| > 1e3) rollouts stop and are counted")),
+            ("free_running", Json::str("open-loop rollouts with the true level actions from every held-out start")),
+            ("numerical_escape", Json::str("a rollout state that is non-finite or has any |z| > 1e3 (whitened units): a catastrophic-divergence sentinel; the rollout stops and is counted")),
+            ("domain_excursion", Json::str("a rollout state outside the level's training envelope (the axis-aligned box of every training latent, no margin) at some step <= h; reported with the truth's and the linear reference's own excursion; descriptive")),
             ("teacher_forced", Json::str("the one-step prediction of the same target from the true previous latent")),
-            ("references", Json::str("iterated one-step linear reference (fit on training data only); generator dynamics from the latent's factor estimate (level 1, temporal-shared levels); analytic h-step floor (same levels); constant baseline (training mean)")),
+            ("references", Json::str("iterated one-step linear reference (training data only); generator plug-in (true dynamics, clipping included, from the latent's factor estimate; level 1 and temporal-shared levels); constant and persistence baselines; unclipped analytic h-step floor (consistency diagnostic only)")),
             ("capture", Json::str("(constant - ecs_free) / (constant - linear) at horizon h")),
-            ("diagnostics", Json::str("norm ratio, passive (b = 0) escape, perturbation amplification (eps 1e-4, 256 starts), empirical one-step Jacobian spectral radius (256 held-out states); reported, never gates")),
+            ("tangent", Json::str("exact state Jacobians J_t = D_z G(z_t, b_t) of the level's K1 map (from W via copy_w); ordered derivative products P_h = J_{t+h-1}...J_t on the teacher path (true states) and the free-running path (the model's own predictions), sigma_max(P_h) and the finite-time growth rate log sigma_max(P_h) / h, on 256 diagnostic starts, against the linear map's sigma_max(A^h) and the generator's product; descriptive, not Lyapunov exponents")),
+            ("other_diagnostics", Json::str("norm ratio, passive (b = 0) escape, planner-candidate rollouts (escape, excursion), direct perturbation amplification (eps 1e-4), one-step Jacobian spectral radius, first-order error recursion along the free path; descriptive")),
             ("probes", Json::str("ridge (1e-3) linear probe, latent -> s and f at the window-end time; fit on train, NMSE on test")),
             ("attractors", Json::str("free run at b = 0 from a 5 x 5 grid on [-2, 2]^2 for 200 steps")),
+            ("donor", Json::str("finite-horizon derivative-product reasoning after openai/math fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb, lean/OAI/Dynamics/StandardMap/Lyapunov/{Definitions,DerivativeGrowth,ActualLyapunov,Subadditive}.lean; no Standard Map conclusion is transferred")),
         ])),
         ("planning", Json::obj(vec![
             ("episodes", Json::Int(PLAN_EPISODES as i64)),
@@ -283,16 +291,15 @@ pub fn to_json() -> Json {
             ("T1A_MIN_EXPLAINED", num(T1A_MIN_EXPLAINED)),
             ("T1B_FLOOR_TOL_ABS", num(T1B_FLOOR_TOL_ABS)),
             ("T1B_FLOOR_TOL_REL", num(T1B_FLOOR_TOL_REL)),
-            ("T2_MIN_CAPTURE", num(T2_MIN_CAPTURE)),
             ("T3A_MIN_EXPLAINED", num(T3A_MIN_EXPLAINED)),
-            ("T3B_FLOOR_TOL_ABS", num(T3B_FLOOR_TOL_ABS)),
-            ("T3B_FLOOR_TOL_REL", num(T3B_FLOOR_TOL_REL)),
+            ("T3B_MAX_LINEAR_OVER_GENERATOR", num(T3B_MAX_LINEAR_OVER_GENERATOR)),
             ("V2_ORACLE_SUCCESS_MIN", num(V2_ORACLE_SUCCESS)),
             ("V3_L1_PROBE_NMSE_MAX", num(V3_L1_PROBE_NMSE)),
             ("V4_SEPARATED_CENTROID_RATIO_MIN", num(V4_SEPARATED_CENTROID_RATIO)),
             ("V4_MATCHED_CENTROID_RATIO_MAX", num(V4_MATCHED_CENTROID_RATIO)),
-            ("CAL_MIN_CAPTURE", num(CAL_MIN_CAPTURE)),
+            ("CAL_MAX_IMPROVEMENT", num(CAL_MAX_IMPROVEMENT)),
             ("CAL_GRID_STEPS_ABOVE", Json::Int(CAL_GRID_STEPS_ABOVE as i64)),
+            ("S1_MIN_CAPTURE", num(S1_MIN_CAPTURE)),
             ("M_MIN_CAPTURE", num(M_MIN_CAPTURE)),
             ("M_MAX_ESCAPED", num(M_MAX_ESCAPED)),
             ("M_SEED_FRACTION", num(M_SEED_FRACTION)),
@@ -303,15 +310,17 @@ pub fn to_json() -> Json {
             ("DEPTH_EFFECT", num(DEPTH_EFFECT)),
         ])),
         ("laws", Json::Arr([
-            "TASK VALIDITY (every instance, both worlds): T1A, T1B (level 1, one step); T2 (every trained level, one step); T3A at every (condition, level, consumed horizon); T3B at the consumed horizons of level 1 and the temporal-shared levels; V2 (oracle mean per world); V3; V4 (means); V5 (no K1 refusal)",
-            "CALIBRATION (DEV): B* = the smallest grid budget at which every DEV instance has T1 and every level's one-step capture >= CAL_MIN_CAPTURE; the chosen budget is the grid value CAL_GRID_STEPS_ABOVE above B*; no such B*, or no grid value above it: TASK_INVALID_ON_DEV, stop",
-            "DEV RUN at the chosen budget: task validity fails: TASK_INVALID_ON_DEV, stop; else QUAL is authorized (DEV M and H2 values are non-binding)",
+            "BINDING: the planning comparison's conditions FLAT_N72, TEMPORAL_SHARED_L2 and HIERARCHICAL_DISTINCT_L2 bind T3, S1 and M through their (level, consumed horizon) pairs (L1/N72, 16), (L1/N36, 4), (TS/L2, 4), (HD/L2, 4); every other condition and level is reported, not gated",
+            "TASK VALIDITY (every instance, both worlds): T1A, T1B (level 1, one step); T3A at every binding pair; T3B at every binding observation pair (L_h <= T3B_MAX_LINEAR_OVER_GENERATOR * G_h on the same targets; the analytic floor is a diagnostic); V2 (oracle mean per world); V3; V4 (means); V5 (no K1 refusal in any level's training)",
+            "CALIBRATION (DEV): over the grid, B* = the smallest budget b_i such that, from b_i to b_(i+1), no binding level of any DEV instance improves its one-step capture by more than CAL_MAX_IMPROVEMENT (a refusal or divergence is never converged); the chosen budget is the grid value CAL_GRID_STEPS_ABOVE above B*; none: TASK_INVALID_ON_DEV, stop",
+            "DEV RUN at the chosen budget: task validity fails: TASK_INVALID_ON_DEV, stop; else QUAL is authorized (DEV S1, M and H2 values are non-binding)",
             "QUAL, once, at the DEV budget: task validity fails: TASK_INVALID",
-            "M (QUAL): condition c is M-valid in a world iff for every level l of c at its consumed horizon the seed-mean capture >= M_MIN_CAPTURE and the seed-mean escaped fraction <= M_MAX_ESCAPED, and at least M_SEED_FRACTION of the seeds meet both at every level",
-            "M fails in SEPARATED for any H2 condition: WORLD_MODEL_INVALID; the hierarchy hypotheses are not adjudicated",
-            "else HIERARCHY_ADJUDICATED: H2A, H2B, H2C on SEPARATED success at the three compute points; width and depth reported",
+            "S1 (QUAL, SEPARATED): every binding level of every seed: no divergence and one-step capture >= S1_MIN_CAPTURE; fails: ONE_STEP_MODEL_INVALID (M reported, hierarchy not adjudicated)",
+            "M (QUAL, SEPARATED): every binding level of every seed (M_SEED_FRACTION = 1), at every measured horizon h <= its consumed horizon: free-running capture >= M_MIN_CAPTURE and numerical escape <= M_MAX_ESCAPED; fails: WORLD_MODEL_INVALID (hierarchy not adjudicated; not a hierarchy result)",
+            "S1 and M are reported for MATCHED and for every non-binding condition; DOMAIN_EXCURSION, teacher-forced error, derivative-product growth and perturbation amplification are diagnostics, never gates",
+            "else HIERARCHY_ADJUDICATED: H2A, H2B, H2C on SEPARATED success at the three compute points; outcome DISTINCT_ADVANTAGE (H2A and H2B), else TEMPORAL_ADVANTAGE (H2C), else UNATTRIBUTED_ADVANTAGE (H2A), else NO_ADVANTAGE_OVER_WIDTH; width and depth reported",
             "INTEGRATION (experimental, noncanonical) is authorized only by HIERARCHY_ADJUDICATED with H2A and H2B both holding",
-            "no gate, threshold, world parameter, budget, seed, horizon or condition changes after DEV data exist; a mechanics failure after the freeze is classified MECHANICS_FAILURE and repaired in the smallest mechanical layer, never in the scientific object",
+            "no gate, threshold, world parameter, budget, grid, seed, horizon or condition changes after DEV data exist; a mechanics defect found after the freeze is MECHANICS_FAILURE, repaired in the smallest mechanical layer, never in the scientific object; a defect that stops a phase before its evidence exists is repaired and the phase run from its recorded seeds; written evidence is never rescued by a rerun (no second QUAL)",
         ].iter().map(|s| Json::str(*s)).collect())),
     ])
 }

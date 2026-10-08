@@ -6,6 +6,7 @@
 
 use crate::encoder::Encoder;
 use crate::hierarchy::{lift, Controller, LevelSequence};
+use crate::json::Json;
 use crate::k1::K1;
 use crate::model::{LevelModel, Transition, LATENT};
 use crate::planner::{plan_flat, plan_hierarchical};
@@ -320,11 +321,16 @@ fn rollouts_stop_at_escape_and_the_iterated_linear_reference_is_exact_on_a_linea
     let mut rng = Rng::new(22, &[]);
     let (train, test) =
         (vec![linear_sequence(&mut rng, 300), linear_sequence(&mut rng, 300)], vec![linear_sequence(&mut rng, 300)]);
-    let refs = references(&train, &test, Frame::Opaque, &[1, 2, 4, 8, 16]);
+    let refs = references(&train, &test, Frame::Opaque, &[1, 2, 4, 8, 16], None);
+    let a = [[0.5, -0.2], [0.1, 0.7]];
     for r in &refs {
         assert!(r.linear < 1e-12, "h {}: {}", r.h, r.linear);
-        assert!(r.constant > 0.1 && r.generator.is_none() && r.floor.is_none());
+        assert!(r.constant > 0.1 && r.generator.is_none() && r.floor.is_none() && r.clip_fraction.is_none());
         assert_eq!(r.starts, 300 + 1 - r.h);
+        // The linear reference's tangent product is A^h of the exact map (rows: outputs, columns: inputs).
+        let ah = crate::multistep::ordered_products(&vec![a; r.h])[r.h - 1];
+        // (The ridge fit recovers the exact coefficients to ~1e-7, consistent with its NMSE below 1e-12.)
+        assert!((r.linear_sigma - crate::multistep::sigma_max(&ah)).abs() < 1e-6, "h {}", r.h);
     }
 }
 
@@ -336,7 +342,10 @@ fn the_multistep_references_at_one_step_are_r1s_and_the_generator_sits_at_its_fl
     for kind in spec::WORLDS {
         let data = world_data(kind, 5);
         for d in level_sequences(&data) {
-            let rs = references(&d.train, &d.test, frame(&d.key, d.env_stride, &data), &spec::HORIZONS);
+            let clips = crate::experiment::observation_level(&d.key)
+                .then(|| crate::experiment::clip_flags(&data, d.env_stride, &d.test));
+            let rs =
+                references(&d.train, &d.test, frame(&d.key, d.env_stride, &data), &spec::HORIZONS, clips.as_deref());
             let one = &rs[0];
             let rel = |a: f64, b: f64| (a - b).abs() <= 1e-9 * b.abs().max(1e-12);
             // h = 1 is R1's one-step reference and baseline, on the same examples.
@@ -380,7 +389,7 @@ fn spectral_radius_is_exact_on_constructed_matrices() {
 #[test]
 fn level_sequences_are_the_trained_pool_and_free_running_at_one_step_is_teacher_forced() {
     use crate::experiment::{build_pool, frame, level_sequences, world_data};
-    use crate::multistep::{horizons, jacobians};
+    use crate::multistep::{horizons, one_step_jacobians, EcsTangent};
     let Some(lib) = k1() else { return };
     let data = world_data(WorldKind::Separated, 6);
     let mut pool = build_pool(&lib, &data, 500, 6, WorldKind::Separated).unwrap();
@@ -395,7 +404,8 @@ fn level_sequences_are_the_trained_pool_and_free_running_at_one_step_is_teacher_
     let fr = frame(&e.key, e.env_stride, &data);
     let model = e.model.as_mut().unwrap();
     let digest = model.ecs.digest().unwrap();
-    let hs = horizons(model, &e.train, &e.test, fr, &[1, 2, 4], &[1]).unwrap();
+    let clips = crate::experiment::clip_flags(&data, e.env_stride, &e.test);
+    let hs = horizons(model, &e.train, &e.test, fr, &[1, 2, 4], Some(&clips), &[1]).unwrap();
     // Measuring never learns: the level state is unchanged.
     assert_eq!(model.ecs.digest().unwrap(), digest);
     assert_eq!(hs[0].ecs_free, hs[0].ecs_teacher);
@@ -420,8 +430,228 @@ fn level_sequences_are_the_trained_pool_and_free_running_at_one_step_is_teacher_
         assert!((s.ecs_teacher - sum / n as f64 / var).abs() <= 1e-9 * s.ecs_teacher, "h {}", s.h);
         assert!(s.ecs_escaped == 0.0 && s.capture.is_finite() && s.amp_median.is_finite());
     }
-    let (mean, median, over) = jacobians(model, &e.test).unwrap();
-    assert!(mean.is_finite() && median.is_finite() && (0.0..=1.0).contains(&over));
+    // At h = 1 the free-running and teacher paths start at the same true state: identical one-step products;
+    // the first-order recursion is exact (its residual is the one-step error itself).
+    assert_eq!(hs[0].tangent.teacher_median, hs[0].tangent.free_median);
+    assert!((hs[0].tangent.recursion_ratio_median - 1.0).abs() < 1e-12);
+    assert!(hs.iter().all(|s| s.tangent.teacher_median.is_finite() && s.tangent.free_defined == 1.0));
+    assert!(hs.iter().all(|s| s.ecs_excursion >= 0.0 && s.candidate_escaped >= 0.0 && s.persistence > 0.0));
+    let (mean, median, over, sigma) = one_step_jacobians(&EcsTangent::of(model).unwrap(), &e.test);
+    assert!(mean.is_finite() && median.is_finite() && (0.0..=1.0).contains(&over) && sigma >= median);
+}
+
+#[test]
+fn spectral_radius_does_not_control_derivative_products_of_non_normal_maps() {
+    use crate::multistep::{mat_mul, ordered_products, sigma_max, spectral_radius};
+    // A = [[a, K], [0, a]], B = [[a, 0], [K, a]]: both eigenvalues a, strictly inside the unit circle.
+    let (a, k) = (0.5, 10.0);
+    let ma = [[a, k], [0.0, a]];
+    let mb = [[a, 0.0], [k, a]];
+    assert!(spectral_radius(&ma) == 0.5 && spectral_radius(&mb) == 0.5);
+    // The two-step derivative product of the path (A first, then B) is B A = [[a^2, aK], [Ka, K^2 + a^2]].
+    let p = ordered_products(&[ma, mb]);
+    assert_eq!(p[1], mat_mul(&mb, &ma));
+    assert_eq!(p[1], [[0.25, 5.0], [5.0, 100.25]]);
+    // rho(A) rho(B) = 0.25, yet the product amplifies a tangent vector by more than 100.
+    assert!(sigma_max(&p[1]) > 100.0 && spectral_radius(&ma) * spectral_radius(&mb) < 0.3);
+    // Each one-step map is already non-normal: its 2-norm (about K) is far above its spectral radius.
+    assert!(sigma_max(&ma) > 10.0 && sigma_max(&mb) > 10.0);
+}
+
+#[test]
+fn sigma_max_is_the_induced_two_norm_and_is_submultiplicative() {
+    use crate::multistep::{mat_mul, sigma_max};
+    let mut rng = Rng::new(31, &[]);
+    for _ in 0..200 {
+        let m = |rng: &mut Rng| [[rng.normal(), rng.normal()], [rng.normal(), rng.normal()]];
+        let (x, y) = (m(&mut rng), m(&mut rng));
+        // Largest eigenvalue of X^T X, independently.
+        let g = [
+            [x[0][0] * x[0][0] + x[1][0] * x[1][0], x[0][0] * x[0][1] + x[1][0] * x[1][1]],
+            [x[0][1] * x[0][0] + x[1][1] * x[1][0], x[0][1] * x[0][1] + x[1][1] * x[1][1]],
+        ];
+        let (tr, det) = (g[0][0] + g[1][1], g[0][0] * g[1][1] - g[0][1] * g[1][0]);
+        let lmax = tr / 2.0 + (tr * tr / 4.0 - det).max(0.0).sqrt();
+        assert!((sigma_max(&x) - lmax.sqrt()).abs() <= 1e-9 * lmax.sqrt().max(1.0));
+        // ||X Y|| <= ||X|| ||Y||: log sigma_max of a derivative product is subadditive along a path.
+        assert!(sigma_max(&mat_mul(&x, &y)) <= sigma_max(&x) * sigma_max(&y) * (1.0 + 1e-12));
+    }
+    let (c, s) = (0.7f64.cos(), 0.7f64.sin());
+    assert!((sigma_max(&[[c, -s], [s, c]]) - 1.0).abs() < 1e-12);
+}
+
+#[test]
+fn the_rollout_error_recurrence_bounds_constructed_trajectories() {
+    use crate::multistep::{constant_bound, mat_mul, recurrence_bound, sigma_max};
+    // The recurrence and its closed forms (L != 1 and L == 1).
+    for l in [0.5, 1.0, 1.5] {
+        let b = recurrence_bound(&[0.01; 16], &[l; 16]);
+        for h in 1..=16 {
+            assert!((b[h - 1] - constant_bound(0.01, l, h)).abs() <= 1e-12 * b[h - 1].max(1.0), "L {l} h {h}");
+        }
+    }
+    assert!((constant_bound(0.01, 1.0, 16) - 0.16).abs() < 1e-15);
+    // The sum form for varying eps_i and L_j: e_h = sum_i eps_i prod_{i<j<h} L_j.
+    let (eps, lip) = ([0.3, 0.1, 0.2, 0.05], [2.0, 0.5, 1.5, 3.0]);
+    let b = recurrence_bound(&eps, &lip);
+    for h in 1..=4 {
+        let direct: f64 = (0..h).map(|i| eps[i] * lip[i + 1..h].iter().product::<f64>()).sum();
+        assert!((b[h - 1] - direct).abs() < 1e-12);
+    }
+    // Tight case: G(x) = L x, F(x) = L x + c with c along a fixed direction; the error equals the bound.
+    // General linear case: G(x) = A x with ||A|| = L (a scaled rotation), F = G + c: the error stays below it.
+    let rot = |a: f64, l: f64| [[l * a.cos(), -l * a.sin()], [l * a.sin(), l * a.cos()]];
+    for (m, tight) in [(rot(0.0, 1.5), true), (rot(0.9, 1.5), false), (rot(0.4, 0.8), false)] {
+        let l = sigma_max(&m);
+        let c = [1e-3, 0.0];
+        let (mut x, mut y) = ([0.3, -0.2], [0.3, -0.2]);
+        let bound = recurrence_bound(&[1e-3; 16], &[l; 16]);
+        let ident = mat_mul(&m, &[[1.0, 0.0], [0.0, 1.0]]);
+        for h in 1..=16 {
+            x = [ident[0][0] * x[0] + ident[0][1] * x[1] + c[0], ident[1][0] * x[0] + ident[1][1] * x[1] + c[1]];
+            y = [ident[0][0] * y[0] + ident[0][1] * y[1], ident[1][0] * y[0] + ident[1][1] * y[1]];
+            let e = ((x[0] - y[0]).powi(2) + (x[1] - y[1]).powi(2)).sqrt();
+            assert!(e <= bound[h - 1] * (1.0 + 1e-12), "h {h}: {e} > {}", bound[h - 1]);
+            if tight {
+                assert!((e - bound[h - 1]).abs() <= 1e-12 * bound[h - 1]);
+            }
+        }
+    }
+    // Excellent one-step prediction does not imply usable recursion: a one-step discrepancy of 1e-3 under an
+    // expanding model map (L = 1.5) is attained as a 16-step error above 1 (the tight case above).
+    assert!(constant_bound(1e-3, 1.5, 16) > 1.0);
+    // A nonlinear contraction (G 1-Lipschitz in each coordinate) with a bounded discrepancy: e_h <= h eps.
+    let g = |v: [f64; 2]| [v[0].sin(), (0.5 * v[1]).tanh()];
+    let (mut x, mut y) = ([1.0, -1.0], [1.0, -1.0]);
+    for h in 1..=16 {
+        let gx = g(x);
+        x = [gx[0] + 1e-3 * (h as f64).cos(), gx[1] + 1e-3 * (h as f64).sin()];
+        y = g(y);
+        let e = ((x[0] - y[0]).powi(2) + (x[1] - y[1]).powi(2)).sqrt();
+        assert!(e <= constant_bound(1e-3, 1.0, h) * (1.0 + 1e-12));
+    }
+}
+
+#[test]
+fn clip_flags_domain_and_generator_tangent_follow_their_definitions() {
+    use crate::experiment::{clip_flags, level_sequences, world_data};
+    use crate::multistep::{Domain, Generator, Step};
+    let data = world_data(WorldKind::Separated, 5);
+    let seqs = level_sequences(&data);
+    let l1 = &seqs[0];
+    let flags = clip_flags(&data, 1, &l1.test);
+    let mut events = 0;
+    for (traj, f) in data.test.iter().zip(&flags) {
+        for (t, flag) in f.iter().enumerate() {
+            assert_eq!(*flag, traj.truth[t + 1].s.abs() == 1.0);
+            events += *flag as usize;
+        }
+    }
+    assert!(events > 0, "the exploration reaches the clipping boundary");
+    let ts = seqs.iter().find(|d| d.key == "TS/L2").unwrap();
+    let ts_flags = clip_flags(&data, 4, &ts.test);
+    for (f4, f1) in ts_flags.iter().zip(&flags) {
+        for (t, flag) in f4.iter().enumerate() {
+            assert_eq!(*flag, f1[4 * t..4 * t + 4].iter().any(|x| *x));
+        }
+    }
+    // The training envelope contains every training latent and nothing beyond its bounds.
+    let dom = Domain::of(&l1.train);
+    assert!(l1.train.iter().all(|s| s.z.iter().all(|z| dom.contains(z))));
+    assert!(!dom.contains(&[dom.hi[0] + 1e-9, dom.lo[1]]));
+    // The generator's tangent equals centered differences of its own map where the slow factor is not clipped.
+    let mut gen = Generator::new(&data.world, &data.enc1, 1);
+    for (z, b) in [([0.1, -0.2], 0.3), ([-0.4, 0.5], -0.7), ([0.0, 0.0], 0.0)] {
+        let j = gen.jacobian(&z, b);
+        for input in 0..2 {
+            let (mut zp, mut zm) = (z, z);
+            zp[input] += 1e-6;
+            zm[input] -= 1e-6;
+            let out = gen.step(&[(zp, b), (zm, b)]).unwrap();
+            let (p, m) = (out[0].unwrap(), out[1].unwrap());
+            for k in 0..2 {
+                assert!((j[k][input] - (p[k] - m[k]) / 2e-6).abs() < 1e-6, "{k} {input}");
+            }
+        }
+    }
+}
+
+#[test]
+fn the_exact_k1_tangent_reproduces_native_forward_and_its_differences() {
+    use crate::multistep::EcsTangent;
+    let Some(lib) = k1() else { return };
+    let mut rng = Rng::new(12, &[]);
+    let mut model = LevelModel::new(&lib, 36, 512, 0.18, &mut rng).unwrap();
+    let data: Vec<Transition> = (0..256)
+        .map(|_| {
+            let z = [rng.normal(), rng.normal()];
+            let b = rng.range(-1.0, 1.0);
+            Transition { z, b, next: [0.9 * z[0] + 0.1 * b, 0.4 * z[1] - 0.2 * z[0]] }
+        })
+        .collect();
+    assert!(model.train(&data, &spec::train_spec(2000)).refused.is_none());
+    let tangent = EcsTangent::of(&mut model).unwrap();
+    for (z, b) in [([0.3, -0.4], 0.5), ([-1.2, 0.7], -1.0), ([0.0, 0.0], 0.0), ([1.5, 1.5], 0.25)] {
+        let native = model.predict(&[(z, b)]).unwrap()[0];
+        let mine = tangent.value(&z, b);
+        for k in 0..2 {
+            assert!((native[k] - mine[k]).abs() <= 1e-12 * native[k].abs().max(1.0), "value {k}");
+        }
+        let j = tangent.jacobian(&z, b);
+        for input in 0..2 {
+            let (mut zp, mut zm) = (z, z);
+            zp[input] += 1e-5;
+            zm[input] -= 1e-5;
+            let out = model.predict(&[(zp, b), (zm, b)]).unwrap();
+            for k in 0..2 {
+                let fd = (out[0][k] - out[1][k]) / 2e-5;
+                assert!(
+                    (j[k][input] - fd).abs() <= 1e-6 * fd.abs().max(1.0),
+                    "J[{k}][{input}] {} vs {fd}",
+                    j[k][input]
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_whole_seed_runs_and_the_law_reads_its_own_numbers() {
+    // Mechanics only: seed 5 is outside every R2 partition, the budget is far below the grid, and no value is
+    // asserted beyond structure and the law's internal consistency.
+    use crate::experiment::{binding_pairs, evaluate, m_pairs, run_seed, s1_holds};
+    let Some(lib) = k1() else { return };
+    let sep = vec![run_seed(&lib, WorldKind::Separated, 5, 200).unwrap()];
+    let mat = vec![run_seed(&lib, WorldKind::Matched, 5, 200).unwrap()];
+    assert_eq!(
+        binding_pairs(),
+        vec![("L1/N72".into(), 16), ("L1/N36".into(), 4), ("TS/L2".into(), 4), ("HD/L2".into(), 4)]
+    );
+    let (m, seeds, json) = m_pairs(&sep, &binding_pairs());
+    assert_eq!(m, seeds.iter().all(|s| *s));
+    let Json::Obj(fields) = &json else { panic!() };
+    let Json::Arr(rows) = &fields[0].1 else { panic!() };
+    assert_eq!(rows.len(), 5 + 3 * 3, "every measured horizon up to each consumed horizon");
+    for binding in [false, true] {
+        let ev = evaluate(&sep, &mat, binding).render();
+        let disposition = ev.split("\"disposition\": \"").nth(1).unwrap().split('"').next().unwrap().to_string();
+        let allowed: &[&str] = if binding {
+            &["TASK_INVALID", "ONE_STEP_MODEL_INVALID", "WORLD_MODEL_INVALID", "HIERARCHY_ADJUDICATED"]
+        } else {
+            &["TASK_INVALID_ON_DEV", "QUAL_AUTHORIZED"]
+        };
+        assert!(allowed.contains(&disposition.as_str()), "{disposition}");
+        assert!(ev.contains("\"hierarchy_outcome\"") && ev.contains("\"integration_authorized\""));
+        if !binding {
+            assert!(
+                ev.contains("\"hierarchy_outcome\": \"NOT_ADJUDICATED\"")
+                    && ev.contains("\"integration_authorized\": false")
+            );
+        }
+    }
+    // The recorded seed is a decimal string inside the seed's own record.
+    assert!(sep[0].json.render().contains("\"seed\": \"5\""));
+    let _ = s1_holds(&sep[0]);
 }
 
 /// Whitespace-free text (the evidence is pretty-printed at a depth the fragment does not know).

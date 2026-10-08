@@ -4,6 +4,17 @@
   "r2_root": "research/hecs_r2/rust",
   "r1_authority": "closed (TASK_INVALID at QUAL); never edited by R2",
   "ecs_mathematics": "unchanged: the native K1 library and its C ABI are used as built; k1.rs and model.rs are R1's bytes",
+  "mathematical_donor": {
+    "repository": "https://github.com/openai/math",
+    "commit": "fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb",
+    "paths": {
+      "lean/OAI/Dynamics/StandardMap/Lyapunov/Definitions.lean": "84763f0bb734438c71e7cfad1d9edd2255f9552b87f6424bfc7a3e0521899ebb",
+      "lean/OAI/Dynamics/StandardMap/Lyapunov/DerivativeGrowth.lean": "5a2bf95786f304a268987e13b97c3b0fc2879a5e83a6072e0ae0a90dd546f8b7",
+      "lean/OAI/Dynamics/StandardMap/Lyapunov/ActualLyapunov.lean": "dce95068c137c24ab1a10cd090f99304a9db8b6cbfbf69fcf31b52962ec58a3a",
+      "lean/OAI/Dynamics/StandardMap/Lyapunov/Subadditive.lean": "e90ad8d3ad3d96b48502e4ac9e06ab0df98713a6f0a3178cf2216027b2cd0826"
+    },
+    "use": "mathematical structure only: ordered derivative products (chain rule for iterates), operator norms and their submultiplicativity, the coordinate-change bound on log-norms, and the conditions (invariant measure, integrability, almost-everywhere convergence) an asymptotic Lyapunov claim needs; no code, no Standard Map conclusion and no asymptotic claim is transferred to ECS"
+  },
   "files": [
     {
       "path": "Cargo.lock",
@@ -40,9 +51,9 @@
     {
       "path": "src/experiment.rs",
       "r1_sha256": "d04e472bd46714dda79075c6cb04eb0d0866ad059c95663d9d7bbfe96c021f97",
-      "r2_sha256": "dc5e7cc269b9c0c1907fcd48a0c9cc025da89c48847c4da9662e10f3758e2dbd",
+      "r2_sha256": "2de9e007ebaea37da44b6c84788804b249579292c5436fa33d2ad9e401520214",
       "status": "MODIFIED",
-      "reason": "R1's world data, pool training streams, probes, planning episodes and oracle kept verbatim; build_pool split into level_sequences (the same lifted data, before training) and training; every level reports R2's multi-step block (multistep) next to R1's one-step adequacy; references() gathers every ECS-free quantity (references, T3, oracle, probes, centroids); design_instance and calibration_instance replace level1_validity and cover every level; evaluate applies R2's law (task validity T1-T3/V2-V5, then M, then H2); seeds recorded as decimal strings (R1 recorded them through i64)"
+      "reason": "R1's world data, pool training streams, probes, planning episodes and oracle kept verbatim; build_pool split into level_sequences (the same lifted data, before training) and training; every level reports R2's multi-step block (multistep) next to R1's one-step adequacy; references() gathers every ECS-free quantity (references, clip accounting, T3, oracle, probes, centroids); clip_flags from the world's truth; design_instance and calibration_instance replace level1_validity (untrained and per-budget one-step adequacy, the convergence quantity); evaluate applies R2's law (task validity T1/T3/V2-V5, S1, M over the binding pairs, H2); seeds recorded as decimal strings (R1 recorded them through i64)"
     },
     {
       "path": "src/hierarchy.rs",
@@ -78,9 +89,9 @@
     {
       "path": "src/main.rs",
       "r1_sha256": "eb5155b3d680f98e47f309638020786e9fa8661478ccbe22e80c02d7f20b78d5",
-      "r2_sha256": "6bae1dba911e908770b26ab71989a75822e658bd3176d7c949c15aada1bddeab",
+      "r2_sha256": "bfec6dd39905568a6e2c91851ff4d2518b04ea0c9155cba018e235f8c4722a81",
       "status": "MODIFIED",
-      "reason": "binary hecs2; design and calibrate apply R2's per-level task validity and margin rule; run passes the phase to the law (DEV non-binding, QUAL binding); seeds as decimal strings"
+      "reason": "binary hecs2; design records R2's DESIGN quantities; calibrate applies the convergence rule with a grid-step margin; run passes the phase to the law (DEV non-binding, QUAL binding); seeds as decimal strings"
     },
     {
       "path": "src/model.rs",
@@ -91,9 +102,9 @@
     {
       "path": "src/multistep.rs",
       "r1_sha256": null,
-      "r2_sha256": "c57a3df91998b48ef2ba2895cae134a09eb8e9fb8f34254347b98d9bd4a7c41d",
+      "r2_sha256": "e1119c31026d5851837dd679e075949c2a5c9ca35af58adb1e69b3a545dbdd7f",
       "status": "NEW",
-      "reason": "NEW: free-running and teacher-forced multi-step measurement, iterated linear, generator and analytic h-step floor references, escape, perturbation amplification and Jacobian diagnostics"
+      "reason": "NEW: free-running and teacher-forced multi-step measurement; iterated linear, generator (clipping included), constant and persistence references and the unclipped analytic h-step floor (diagnostic); NUMERICAL_ESCAPE and DOMAIN_EXCURSION (training envelope); planner-candidate rollouts; perturbation amplification; the exact K1 state Jacobian from W and ordered derivative products on the teacher and free-running paths (finite-time tangent growth); the generic rollout-error recurrence"
     },
     {
       "path": "src/planner.rs",
@@ -110,16 +121,16 @@
     {
       "path": "src/spec.rs",
       "r1_sha256": "2eae70544eef8c1971f5f34045fb15cd102c1d4f4ca4d5afcdb7b7a51d38e249",
-      "r2_sha256": "dfe308847d9da7502c9523779d53115dfcb0ace2701b43802b4525c870732b5a",
+      "r2_sha256": "f0e584fc64b51a7c7df988eb8bbb4d66f2eab666314d5411e3244ac3d8e63983",
       "status": "MODIFIED",
-      "reason": "R2 specification: name, fresh SHA-256 seeds recorded as strings, horizons and consumed horizons, task validity T1-T3, calibration margin rule, M gate, H2 law, stop and integration laws"
+      "reason": "R2 specification: name, fresh SHA-256 seeds recorded as strings, horizons and consumed horizons, binding pairs, task validity T1/T3/V2-V5, convergence calibration rule, S1, M gate, H2 law, stop and integration laws; no status label inside the specification"
     },
     {
       "path": "src/tests.rs",
       "r1_sha256": "5837130967a07598b47ee5bfebbf0a868ac3c505b48e768072956c032736f0e9",
-      "r2_sha256": "6986e19c5c4c7e76c56c4b3c5f8c544789053668a08311774c7482cc1fd8f1b9",
+      "r2_sha256": "2d94d222d55e02209cd0bf976f6edb9a38122c1fd6f7a3aa689073edcc3331d6",
       "status": "MODIFIED",
-      "reason": "R2 mechanics tests: R2 specification path, seed freshness against R0 and R1 and exact decimal records, consumed horizons, multi-step instrumentation, recorded-seed reproduction of evidence"
+      "reason": "R2 mechanics tests: specification path, seed freshness against R0 and R1 and exact decimal records, consumed horizons, multi-step instrumentation, exact K1 tangent against native FORWARD, the non-normal counterexample, sigma_max and submultiplicativity, the rollout-error recurrence, clip flags and the domain, an end-to-end mechanics run, recorded-seed reproduction"
     },
     {
       "path": "src/validity.rs",
