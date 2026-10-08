@@ -1,7 +1,7 @@
 #ifndef ELPIS_RUNTIME_H
 #define ELPIS_RUNTIME_H
 
-/* Elpis RuntimeCore C ABI v1 (docs/RUNTIME_CORE.md), implemented in Rust (native/runtime).
+/* Elpis RuntimeCore C ABI v2 (docs/RUNTIME_CORE.md), implemented in Rust (native/runtime).
  *
  * One runtime handle owns one continuity directory and the mutable systems authority of an open Elpis
  * runtime: lifecycle, fail-stop, the binding of its K1 lineage to one native K1 state, the managed canonical
@@ -12,6 +12,20 @@
  * RuntimeCore links no ECS code: the native K1 state is reached through the caller's K1 function table (the
  * entries of ecsg_k1.h or ecsg_k1_fms.h; a K1 status is an int-sized enum and a state handle an opaque
  * pointer). It computes no ECS mathematics and touches no ECS byte.
+ *
+ * Turn lifecycle (v2). A successful turn_begin opens one native K1 transaction. RuntimeCore ends it with exactly one
+ * terminal native action, the commit or an abort, before it forgets the turn; there is no third disposition. An
+ * explicit turn_abort, a refused commit, close, and destroy all abort it; open on an open runtime is refused and
+ * keeps it. An abort refused BUSY (a concurrent overlapping call on the state) is retried until the state admits it.
+ * An implicit abort installs nothing and publishes nothing: W, epoch, generation, H, a, the retained-state digest
+ * and continuity are unchanged, and the state takes the next transaction.
+ *
+ * Substrate lifetime (v2). To end the turn on every path, RuntimeCore retains the descriptor's handle, resident id
+ * and txn_abort entry (copied; never any other entry) from a successful turn_begin until the turn ends. The native
+ * state must stay live, and its library loaded, for that interval; outside it, a descriptor need only be live for
+ * the call. The K1 FMS adapter enforces this natively: a resident state with an open transaction cannot be closed
+ * and its runtime cannot be destroyed while a state is registered (both BUSY). A standalone K1 state's owner must
+ * not destroy it while a turn on it is open (ecsg_k1.h frees a state whatever transaction it holds).
  *
  * The library also exports the continuity C ABI (elpis/continuity.h) of the store it embeds.
  *
@@ -28,7 +42,7 @@ extern "C" {
 #endif
 
 enum {
-    ELPIS_RUNTIME_ABI_V1 = 1u,
+    ELPIS_RUNTIME_ABI_V2 = 2u,
     ELPIS_RUNTIME_OK = 0,
     ELPIS_RUNTIME_INVALID = 64,                  /* malformed argument */
     ELPIS_RUNTIME_CLOSED = 65,                   /* the runtime is not open */
@@ -144,9 +158,10 @@ const char *elpis_runtime_code_name(int code);
 
 /* Lifecycle. create takes an absolute continuity directory path of `len` bytes. */
 int elpis_runtime_create(const uint8_t *path, size_t len, elpis_runtime **out);
-void elpis_runtime_destroy(elpis_runtime **runtime);
-int elpis_runtime_open(elpis_runtime *runtime, elpis_continuity_snapshot *out);   /* also reopens after a fail-stop */
-void elpis_runtime_close(elpis_runtime *runtime);   /* an open turn is forgotten: its caller aborts it */
+void elpis_runtime_destroy(elpis_runtime **runtime);   /* aborts an open turn natively, then frees */
+/* Opens a closed runtime (close + open clears a fail-stop); an open one is refused (CONTINUITY_OPEN), turn kept. */
+int elpis_runtime_open(elpis_runtime *runtime, elpis_continuity_snapshot *out);
+void elpis_runtime_close(elpis_runtime *runtime);   /* aborts an open turn natively: nothing installed */
 int elpis_runtime_fault(elpis_runtime *runtime);     /* 0, or the fail-stop disposition */
 int elpis_runtime_snapshot(elpis_runtime *runtime, elpis_continuity_snapshot *out);
 int elpis_runtime_read_counters(elpis_runtime *runtime, elpis_runtime_counters *out, int reset);
@@ -159,7 +174,9 @@ int elpis_runtime_anchor(elpis_runtime *runtime, const elpis_runtime_substrate *
  * fail-stops), begins the native transaction and runs the whole schedule on its candidate in one native call
  * (x: y_len rows of dim values; s3_len = elpis_runtime_features(dim)). Then exactly one of commit (native
  * commit, then one continuity publication; a failed publication fail-stops and out->committed reports the
- * standing K1 commit) or abort. */
+ * standing K1 commit) or abort. A commit refused natively, or on a fail-stopped runtime, aborts the turn. abort
+ * ends the described substrate's turn through the capability retained at begin; another substrate is refused
+ * (RUNTIME_TURN_NOT_OPEN) and the turn stays open. */
 int elpis_runtime_turn_begin(elpis_runtime *runtime, const elpis_runtime_substrate *substrate, const double *x,
                              size_t x_len, const double *y, size_t y_len, const elpis_runtime_experience *schedule,
                              size_t experiences, double learning_rate, double *s3_out, size_t s3_len,

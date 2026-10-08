@@ -8,7 +8,15 @@
 //! Every pointer argument is either NULL (refused with `RUNTIME_INVALID`, or the documented meaning) or valid
 //! for its declared size: 32 bytes for a digest, `len` elements for a buffer, one struct otherwise. Runtime
 //! handles come from `elpis_runtime_create` and are used until `elpis_runtime_destroy`. A substrate
-//! descriptor's handle and function table must be live for the duration of the call.
+//! descriptor's handle and function table must be live for the duration of the call; the table is copied.
+//!
+//! Substrate lifetime (ABI v2): a successful `elpis_runtime_turn_begin` opens a native K1 transaction that
+//! RuntimeCore ends with exactly one terminal native action, the commit or an abort, before it forgets the turn.
+//! To end it on every path (commit, abort, a refused commit, close, reopen, destroy) it retains the descriptor's
+//! handle, resident id and `txn_abort` entry from that begin until the turn ends. The native state must stay live,
+//! and its library loaded, for that whole interval. The K1 FMS adapter enforces this itself (a resident state with
+//! an open transaction cannot be closed, and its runtime cannot be destroyed while a state is registered); a
+//! standalone K1 state must not be destroyed by its owner while a turn on it is open.
 #![allow(clippy::missing_safety_doc)]
 
 use std::ffi::{c_char, OsStr};
@@ -23,7 +31,7 @@ use crate::code::{Error, Rt};
 use crate::core::{Core, Counters, Refusal, Stimulus};
 use crate::substrate::{features, CSubstrate, CommitIdentity, Experience, Native, ScheduleOutcome};
 
-pub const ABI_VERSION: u32 = 1;
+pub const ABI_VERSION: u32 = 2;
 
 /// Opaque runtime handle.
 pub struct ElpisRuntime(Mutex<Core>);
@@ -139,7 +147,7 @@ pub unsafe extern "C" fn elpis_runtime_create(path: *const u8, len: usize, out: 
     rc(Core::new(dir).map(|core| *out = Box::into_raw(Box::new(ElpisRuntime(Mutex::new(core))))))
 }
 
-/// Close (if open) and free a runtime; sets `*rt` to NULL.
+/// Close (if open) and free a runtime; sets `*rt` to NULL. An open managed turn is aborted natively first.
 #[no_mangle]
 pub unsafe extern "C" fn elpis_runtime_destroy(rt: *mut *mut ElpisRuntime) {
     if !rt.is_null() && !(*rt).is_null() {
@@ -148,12 +156,14 @@ pub unsafe extern "C" fn elpis_runtime_destroy(rt: *mut *mut ElpisRuntime) {
     }
 }
 
-/// Open, or reopen after a fail-stop: resolves the current authority, binds nothing.
+/// Open, or reopen after close (a fail-stop is cleared by close + open): resolves the current authority, binds
+/// nothing. An already open runtime is refused (`CONTINUITY_OPEN`) and keeps its open turn.
 #[no_mangle]
 pub unsafe extern "C" fn elpis_runtime_open(rt: *mut ElpisRuntime, out: *mut CSnapshot) -> i32 {
     rc(runtime(rt).and_then(|mut core| core.open()).map(|s| snapshot_out(out, &s)))
 }
 
+/// Close (a closed runtime is unchanged). An open managed turn is aborted natively first: nothing installed.
 #[no_mangle]
 pub unsafe extern "C" fn elpis_runtime_close(rt: *mut ElpisRuntime) {
     if let Ok(mut core) = runtime(rt) {
@@ -290,13 +300,13 @@ pub unsafe extern "C" fn elpis_runtime_turn_commit(
     code
 }
 
-/// Abort the open turn: nothing is installed.
+/// Abort the open turn of the described substrate (through the capability retained at begin): nothing is
+/// installed. Another substrate is refused (`RUNTIME_TURN_NOT_OPEN`) and the turn stays open.
 #[no_mangle]
 pub unsafe extern "C" fn elpis_runtime_turn_abort(rt: *mut ElpisRuntime, sub: *const CSubstrate) -> i32 {
     let run = || -> Result<(), Error> {
-        let mut native = substrate(sub)?;
-        let key = native.key();
-        runtime(rt)?.turn_abort(&mut native, key).map_err(|r| r.error)
+        let key = substrate(sub)?.key();
+        runtime(rt)?.turn_abort(key).map_err(|r| r.error)
     };
     rc(run())
 }

@@ -6,13 +6,15 @@
 //! (tests/integration). Fault injection needs the `testing` feature (`cargo test --features testing`).
 
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use elpis_continuity::{Code, Cognition, EvolutionState};
 
 use crate::code::{Error, Rt};
 use crate::core::{Core, Counters, Stimulus};
 use crate::substrate::{
-    features, CommitIdentity, Digest, Experience, K1Ops, Key, ScheduleOutcome, K1_CAPACITY, K1_NONFINITE, K1_STALE,
+    features, CommitIdentity, Digest, Experience, K1Ops, Key, ScheduleOutcome, TxnAbort, K1_BUSY, K1_CAPACITY,
+    K1_NONFINITE, K1_STALE,
 };
 
 const DIM: usize = 2;
@@ -25,7 +27,7 @@ struct Txn {
 }
 
 /// One retained "state": W, epoch and a generation that every commit advances.
-struct Fake {
+struct State {
     w: Vec<f64>,
     epoch: u64,
     generation: u64,
@@ -33,23 +35,14 @@ struct Fake {
     txn: Option<Txn>,
     next_token: u64,
     digest_fails: bool,
+    /// The next aborts refused BUSY (a concurrent overlapping call that did nothing).
+    busy_aborts: u32,
+    /// A recoverable commit refusal that leaves the transaction open (0: none).
+    refuse_commit: i32,
     calls: Vec<&'static str>,
 }
 
-impl Fake {
-    fn new(seed: f64) -> Fake {
-        Fake {
-            w: vec![seed, -seed, 0.5],
-            epoch: 0,
-            generation: 0,
-            max_rows: 8,
-            txn: None,
-            next_token: 1,
-            digest_fails: false,
-            calls: Vec::new(),
-        }
-    }
-
+impl State {
     fn identity(&self) -> Digest {
         // FNV-1a over the retained values, widened to 32 bytes: an identity, not a cryptographic digest.
         let mut out = [0u8; 32];
@@ -65,45 +58,128 @@ impl Fake {
         out
     }
 
+    fn abort(&mut self, token: u64) -> i32 {
+        self.calls.push("txn_abort");
+        if self.busy_aborts > 0 {
+            self.busy_aborts -= 1;
+            return K1_BUSY;
+        }
+        match &self.txn {
+            Some(t) if t.token == token => {
+                self.txn = None;
+                0
+            }
+            Some(_) => -1,
+            None => 0,
+        }
+    }
+}
+
+/// The caller's handle on one stand-in state; RuntimeCore's retained abort capability shares the same state, as
+/// a retained native handle names the same native state.
+struct Fake(Arc<Mutex<State>>);
+
+impl Fake {
+    fn new(seed: f64) -> Fake {
+        Fake(Arc::new(Mutex::new(State {
+            w: vec![seed, -seed, 0.5],
+            epoch: 0,
+            generation: 0,
+            max_rows: 8,
+            txn: None,
+            next_token: 1,
+            digest_fails: false,
+            busy_aborts: 0,
+            refuse_commit: 0,
+            calls: Vec::new(),
+        })))
+    }
+
+    fn state(&self) -> MutexGuard<'_, State> {
+        self.0.lock().unwrap()
+    }
+
+    fn identity(&self) -> Digest {
+        self.state().identity()
+    }
+
+    fn calls(&self) -> Vec<&'static str> {
+        self.state().calls.clone()
+    }
+
+    fn clear_calls(&self) {
+        self.state().calls.clear();
+    }
+
+    fn txn_open(&self) -> bool {
+        self.state().txn.is_some()
+    }
+
+    fn epoch(&self) -> u64 {
+        self.state().epoch
+    }
+
+    fn generation(&self) -> u64 {
+        self.state().generation
+    }
+
+    fn max_rows(&self) -> usize {
+        self.state().max_rows
+    }
+
     /// Someone else commits a transition (the state moves out of band).
-    fn interlope(&mut self) {
-        self.w[0] += 1.0;
-        self.epoch += 1;
-        self.generation += 1;
+    fn interlope(&self) {
+        let mut s = self.state();
+        s.w[0] += 1.0;
+        s.epoch += 1;
+        s.generation += 1;
     }
 
     fn retained(&self) -> (Vec<u64>, u64) {
-        (self.w.iter().map(|v| v.to_bits()).collect(), self.epoch)
+        let s = self.state();
+        (s.w.iter().map(|v| v.to_bits()).collect(), s.epoch)
+    }
+}
+
+struct FakeAbort(Arc<Mutex<State>>);
+
+impl TxnAbort for FakeAbort {
+    fn txn_abort(&mut self, token: u64) -> i32 {
+        self.0.lock().unwrap().abort(token)
     }
 }
 
 impl K1Ops for Fake {
     fn state_digest(&mut self, out: &mut Digest) -> i32 {
-        self.calls.push("state_digest");
-        if self.digest_fails {
+        let mut s = self.state();
+        s.calls.push("state_digest");
+        if s.digest_fails {
             return -1;
         }
-        *out = self.identity();
+        *out = s.identity();
         0
     }
 
     fn reserve(&mut self, max_rows: usize) -> i32 {
-        self.calls.push("reserve");
-        if self.txn.is_some() {
-            return -4;
+        let mut s = self.state();
+        s.calls.push("reserve");
+        if s.txn.is_some() {
+            return K1_BUSY;
         }
-        self.max_rows = self.max_rows.max(max_rows);
+        s.max_rows = s.max_rows.max(max_rows);
         0
     }
 
     fn txn_begin(&mut self, token: &mut u64) -> i32 {
-        self.calls.push("txn_begin");
-        if self.txn.is_some() {
-            return -4;
+        let mut s = self.state();
+        s.calls.push("txn_begin");
+        if s.txn.is_some() {
+            return K1_BUSY;
         }
-        *token = self.next_token;
-        self.next_token += 1;
-        self.txn = Some(Txn { token: *token, generation: self.generation, w: self.w.clone(), epoch: self.epoch });
+        *token = s.next_token;
+        s.next_token += 1;
+        let txn = Txn { token: *token, generation: s.generation, w: s.w.clone(), epoch: s.epoch };
+        s.txn = Some(txn);
         0
     }
 
@@ -117,9 +193,10 @@ impl K1Ops for Fake {
         s3: &mut [f64],
         result: &mut ScheduleOutcome,
     ) -> i32 {
-        self.calls.push("txn_run_schedule");
-        let max_rows = self.max_rows;
-        let txn = match self.txn.as_mut() {
+        let mut s = self.state();
+        s.calls.push("txn_run_schedule");
+        let max_rows = s.max_rows;
+        let txn = match s.txn.as_mut() {
             Some(t) if t.token == token => t,
             _ => return -1,
         };
@@ -130,7 +207,7 @@ impl K1Ops for Fake {
             return K1_CAPACITY;
         }
         if x.iter().chain(y).any(|v| !v.is_finite()) {
-            self.txn = None;
+            s.txn = None;
             return K1_NONFINITE;
         }
         result.epoch_before = txn.epoch;
@@ -146,39 +223,39 @@ impl K1Ops for Fake {
     }
 
     fn txn_commit_identity(&mut self, token: u64, out: &mut CommitIdentity) -> i32 {
-        self.calls.push("txn_commit_identity");
-        let txn = match self.txn.take() {
+        let mut s = self.state();
+        s.calls.push("txn_commit_identity");
+        if s.refuse_commit != 0 {
+            return std::mem::take(&mut s.refuse_commit);
+        }
+        let txn = match s.txn.take() {
             Some(t) if t.token == token => t,
             other => {
-                self.txn = other;
+                s.txn = other;
                 return -1;
             }
         };
-        if txn.generation != self.generation {
+        if txn.generation != s.generation {
             return K1_STALE;
         }
-        out.state_before_digest = self.identity();
-        out.transition.epoch_before = self.epoch;
-        out.transition.generation_before = self.generation;
-        self.w = txn.w;
-        self.epoch = txn.epoch;
-        self.generation += 1;
-        out.transition.epoch_after = self.epoch;
-        out.transition.generation_after = self.generation;
-        out.state_after_digest = self.identity();
+        out.state_before_digest = s.identity();
+        out.transition.epoch_before = s.epoch;
+        out.transition.generation_before = s.generation;
+        s.w = txn.w;
+        s.epoch = txn.epoch;
+        s.generation += 1;
+        out.transition.epoch_after = s.epoch;
+        out.transition.generation_after = s.generation;
+        out.state_after_digest = s.identity();
         0
     }
 
     fn txn_abort(&mut self, token: u64) -> i32 {
-        self.calls.push("txn_abort");
-        match &self.txn {
-            Some(t) if t.token == token => {
-                self.txn = None;
-                0
-            }
-            Some(_) => -1,
-            None => 0,
-        }
+        self.state().abort(token)
+    }
+
+    fn retain_abort(&self) -> Box<dyn TxnAbort> {
+        Box::new(FakeAbort(Arc::clone(&self.0)))
     }
 }
 
@@ -257,7 +334,7 @@ fn a_closed_runtime_refuses_everything() {
     assert_eq!(core.anchor(&mut sub, key(1)).unwrap_err().error, Rt::Closed.into());
     assert_eq!(core.evolution_authority().unwrap_err(), Rt::Closed.into());
     assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Rt::Closed.into());
-    assert!(sub.calls.is_empty());
+    assert!(sub.calls().is_empty());
     assert!(Core::new(std::path::Path::new("relative")).is_err());
 }
 
@@ -271,7 +348,7 @@ fn anchor_is_explicit_once_reads_k1_only_and_binds() {
     let s = core.anchor(&mut sub, key(1)).unwrap();
     assert_eq!(s.generation(), initial + 1);
     assert_eq!(anchored(&core), Some(sub.identity()));
-    assert_eq!((sub.retained(), sub.calls.as_slice()), (before, ["state_digest"].as_slice()));
+    assert_eq!((sub.retained(), sub.calls()), (before, vec!["state_digest"]));
     assert_eq!(core.anchor(&mut sub, key(1)).unwrap_err().error, Code::AlreadyAnchored.into());
     assert_eq!(core.fault(), None);
 }
@@ -282,7 +359,7 @@ fn an_unanchored_turn_is_refused_before_any_k1_call() {
     let mut core = dir.core();
     let mut sub = Fake::new(0.1);
     assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::Unanchored.into());
-    assert!(sub.calls.is_empty() && sub.epoch == 0);
+    assert!(sub.calls().is_empty() && sub.epoch() == 0);
     assert_eq!(anchored(&core), None);
 }
 
@@ -293,7 +370,7 @@ fn a_turn_publishes_exactly_the_committed_identity_with_three_k1_crossings() {
     let mut sub = Fake::new(0.1);
     core.anchor(&mut sub, key(1)).unwrap();
     turn(&mut core, &mut sub, key(1)).unwrap(); // warm
-    sub.calls.clear();
+    sub.clear_calls();
     core.counters(true);
     let generation = core.snapshot().unwrap().generation();
     let id = turn(&mut core, &mut sub, key(1)).unwrap();
@@ -301,7 +378,7 @@ fn a_turn_publishes_exactly_the_committed_identity_with_three_k1_crossings() {
     assert_eq!(anchored(&core), Some(sub.identity()));
     assert_eq!(core.snapshot().unwrap().generation(), generation + 1);
     // The warm managed turn: begin, one schedule, commit; no digest (the binding holds), one publication.
-    assert_eq!(sub.calls, ["txn_begin", "txn_run_schedule", "txn_commit_identity"]);
+    assert_eq!(sub.calls(), ["txn_begin", "txn_run_schedule", "txn_commit_identity"]);
     let expected =
         Counters { k1_txn_begins: 1, k1_run_schedules: 1, k1_commits: 1, publications: 1, ..Counters::default() };
     assert_eq!(core.counters(false), expected);
@@ -318,9 +395,9 @@ fn restart_resumes_on_the_matching_state_with_one_identity_check() {
     }
     let mut core = dir.core();
     let generation = core.snapshot().unwrap().generation();
-    sub.calls.clear();
+    sub.clear_calls();
     turn(&mut core, &mut sub, key(7)).unwrap(); // a fresh runtime binds whichever matching wrapper it is given
-    assert_eq!(sub.calls[0], "state_digest");
+    assert_eq!(sub.calls()[0], "state_digest");
     assert_eq!(core.snapshot().unwrap().generation(), generation + 1);
 }
 
@@ -334,7 +411,7 @@ fn a_mismatched_state_fail_stops_before_any_mutation() {
     let durable = core.snapshot().unwrap();
     let before = other.retained();
     assert_eq!(turn(&mut core, &mut other, key(2)).unwrap_err(), Code::StateMismatch.into());
-    assert_eq!((other.retained(), other.calls.as_slice()), (before, ["state_digest"].as_slice()));
+    assert_eq!((other.retained(), other.calls()), (before, vec!["state_digest"]));
     assert_eq!(core.fault(), Some(Code::StateMismatch));
     // Fail-stopped for every lineage-dependent operation, the matching state included; nothing synthesized.
     assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::StateMismatch.into());
@@ -353,7 +430,7 @@ fn an_open_runtime_refuses_another_state_without_a_native_call() {
     let (mut first, mut second) = (Fake::new(0.1), Fake::new(0.1)); // identical bytes, different owner
     core.anchor(&mut first, key(1)).unwrap();
     assert_eq!(turn(&mut core, &mut second, key(2)).unwrap_err(), Rt::SubstrateSwitch.into());
-    assert!(second.calls.is_empty());
+    assert!(second.calls().is_empty());
     assert_eq!(core.fault(), None); // a refusal, not a fail-stop
                                     // A reused handle address under another owner is another state.
     let reused = Key { owner: 9, ..key(1) };
@@ -375,13 +452,13 @@ fn refusals_before_the_commit_leave_the_retained_state_unchanged() {
     // NONFINITE input: discarded natively, no abort crossing.
     let mut poison = input(2, 1);
     poison.x[1] = f64::NAN;
-    sub.calls.clear();
+    sub.clear_calls();
     let r = core.turn_begin(&mut sub, key(1), &stimulus(&poison), &mut s3).unwrap_err();
     assert_eq!((r.error, r.k1_status), (Rt::EcsRefused.into(), K1_NONFINITE));
-    assert_eq!(sub.calls, ["txn_begin", "txn_run_schedule"]);
+    assert_eq!(sub.calls(), ["txn_begin", "txn_run_schedule"]);
 
     // Malformed buffers are refused before any native call.
-    sub.calls.clear();
+    sub.clear_calls();
     let bad = Input { x: vec![0.0; 3], ..input(2, 1) };
     assert_eq!(core.turn_begin(&mut sub, key(1), &stimulus(&bad), &mut s3).unwrap_err().error, Rt::Invalid.into());
     let mut short = vec![0.0; 2];
@@ -389,7 +466,7 @@ fn refusals_before_the_commit_leave_the_retained_state_unchanged() {
         core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &mut short).unwrap_err().error,
         Rt::Invalid.into()
     );
-    assert!(sub.calls.is_empty());
+    assert!(sub.calls().is_empty());
 
     // The boundary aborts (a decode refusal): nothing installed.
     core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &mut s3).unwrap();
@@ -398,8 +475,8 @@ fn refusals_before_the_commit_leave_the_retained_state_unchanged() {
         Rt::TurnOpen.into()
     );
     assert_eq!(core.turn_commit(&mut sub, key(2)).unwrap_err().error, Rt::TurnNotOpen.into());
-    core.turn_abort(&mut sub, key(1)).unwrap();
-    assert_eq!(core.turn_abort(&mut sub, key(1)).unwrap_err().error, Rt::TurnNotOpen.into());
+    core.turn_abort(key(1)).unwrap();
+    assert_eq!(core.turn_abort(key(1)).unwrap_err().error, Rt::TurnNotOpen.into());
 
     // The source state moved during the turn: STALE, the candidate is discarded natively.
     core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &mut s3).unwrap();
@@ -407,7 +484,7 @@ fn refusals_before_the_commit_leave_the_retained_state_unchanged() {
     let moved = sub.retained();
     let r = core.turn_commit(&mut sub, key(1)).unwrap_err();
     assert_eq!((r.error, r.k1_status, r.committed), (Rt::EcsStale.into(), K1_STALE, None));
-    assert!(sub.txn.is_none() && sub.retained() == moved && moved != before);
+    assert!(!sub.txn_open() && sub.retained() == moved && moved != before);
     assert_eq!(core.snapshot().unwrap(), durable); // nothing published
     assert_eq!(core.fault(), None);
 }
@@ -418,13 +495,13 @@ fn rows_beyond_the_reservation_grow_it_on_the_cold_path() {
     let mut core = dir.core();
     let mut sub = Fake::new(0.1);
     core.anchor(&mut sub, key(1)).unwrap();
-    sub.calls.clear();
+    sub.clear_calls();
     let big = input(12, 2);
     let mut s3 = vec![0.0; features(DIM)];
     core.turn_begin(&mut sub, key(1), &stimulus(&big), &mut s3).unwrap();
     core.turn_commit(&mut sub, key(1)).unwrap();
     assert_eq!(
-        sub.calls,
+        sub.calls(),
         [
             "txn_begin",
             "txn_run_schedule",
@@ -435,7 +512,7 @@ fn rows_beyond_the_reservation_grow_it_on_the_cold_path() {
             "txn_commit_identity"
         ]
     );
-    assert_eq!(sub.max_rows, 12);
+    assert_eq!(sub.max_rows(), 12);
 }
 
 #[test]
@@ -480,6 +557,244 @@ fn an_abandoned_attempt_stays_pending_and_is_reconciled_explicitly_once() {
     assert_eq!(core.evolution_authority().unwrap().evolution(), done);
 }
 
+// -- turn lifecycle: an open native transaction is never forgotten ------------------------------------------------
+
+/// What an implicit abort must leave untouched: the retained K1 state, its generation and digest, and continuity.
+struct Witness {
+    retained: (Vec<u64>, u64),
+    generation: u64,
+    identity: Digest,
+    durable: elpis_continuity::Snapshot,
+}
+
+fn witness(core: &Core, sub: &Fake) -> Witness {
+    Witness {
+        retained: sub.retained(),
+        generation: sub.generation(),
+        identity: sub.identity(),
+        durable: core.snapshot().unwrap(),
+    }
+}
+
+fn unchanged(w: &Witness, dir: &Dir, sub: &Fake) {
+    assert_eq!((sub.retained(), sub.generation(), sub.identity()), (w.retained.clone(), w.generation, w.identity));
+    // Continuity as restart will see it: the committed identity of the last committed turn, nothing newer.
+    let mut fresh = Core::new(&dir.0).unwrap();
+    assert_eq!(fresh.open().unwrap(), w.durable);
+}
+
+/// An anchored runtime with one committed turn and a second turn begun (schedule ran on the candidate).
+fn begun(dir: &Dir) -> (Core, Fake, Witness) {
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    turn(&mut core, &mut sub, key(1)).unwrap();
+    let w = witness(&core, &sub);
+    let i = input(4, 3);
+    let mut s3 = vec![0.0; features(DIM)];
+    core.turn_begin(&mut sub, key(1), &stimulus(&i), &mut s3).unwrap();
+    assert!(core.turn_is_open() && sub.txn_open());
+    core.counters(true);
+    sub.clear_calls();
+    (core, sub, w)
+}
+
+fn aborts(core: &mut Core) -> u64 {
+    core.counters(false).k1_aborts
+}
+
+#[test]
+fn an_explicit_abort_ends_the_turn_once_and_installs_nothing() {
+    let dir = Dir::new("life-abort");
+    let (mut core, mut sub, w) = begun(&dir);
+    core.turn_abort(key(1)).unwrap();
+    assert_eq!((sub.calls(), aborts(&mut core)), (vec!["txn_abort"], 1));
+    assert!(!core.turn_is_open() && !sub.txn_open());
+    core.close();
+    assert_eq!(sub.calls(), ["txn_abort"]); // close finds nothing left to end
+    unchanged(&w, &dir, &sub);
+    core.open().unwrap();
+    turn(&mut core, &mut sub, key(1)).unwrap();
+}
+
+#[test]
+fn a_commit_ends_the_turn_without_an_abort() {
+    let dir = Dir::new("life-commit");
+    let (mut core, mut sub, w) = begun(&dir);
+    let (id, snapshot) = core.turn_commit(&mut sub, key(1)).unwrap();
+    assert_eq!((sub.calls(), aborts(&mut core)), (vec!["txn_commit_identity"], 0));
+    assert!(!core.turn_is_open() && !sub.txn_open());
+    assert_eq!((id.state_before_digest, id.state_after_digest), (w.identity, sub.identity()));
+    assert_eq!(sub.generation(), w.generation + 1);
+    assert_eq!(snapshot.cognition(), Cognition::Anchored(sub.identity()));
+    drop(core);
+    assert_eq!(sub.calls(), ["txn_commit_identity"]);
+}
+
+#[test]
+fn close_aborts_an_open_turn_natively_and_changes_no_authority() {
+    let dir = Dir::new("life-close");
+    let (mut core, mut sub, w) = begun(&dir);
+    core.close();
+    assert_eq!((sub.calls(), aborts(&mut core)), (vec!["txn_abort"], 1));
+    assert!(!core.turn_is_open() && !sub.txn_open() && !core.is_open());
+    unchanged(&w, &dir, &sub);
+    // The same live state takes the next turn: a transaction can begin again.
+    core.open().unwrap();
+    turn(&mut core, &mut sub, key(1)).unwrap();
+    assert_eq!(sub.generation(), w.generation + 1);
+}
+
+#[test]
+fn destruction_aborts_an_open_turn_natively_and_changes_no_authority() {
+    let dir = Dir::new("life-drop");
+    let (core, mut sub, w) = begun(&dir);
+    drop(core);
+    assert_eq!(sub.calls(), ["txn_abort"]);
+    assert!(!sub.txn_open());
+    unchanged(&w, &dir, &sub);
+    let mut core = dir.core();
+    turn(&mut core, &mut sub, key(1)).unwrap();
+}
+
+#[test]
+fn reopening_an_open_runtime_is_refused_and_keeps_the_turn() {
+    let dir = Dir::new("life-reopen");
+    let (mut core, mut sub, w) = begun(&dir);
+    assert_eq!(core.open().unwrap_err(), Code::Open.into());
+    assert!(sub.calls().is_empty() && core.turn_is_open() && sub.txn_open());
+    // Not forgotten: the turn is still the caller's to finish.
+    core.turn_commit(&mut sub, key(1)).unwrap();
+    assert_eq!((aborts(&mut core), sub.generation()), (0, w.generation + 1));
+}
+
+#[test]
+fn close_then_open_after_a_fail_stop_aborts_the_open_turn() {
+    let dir = Dir::new("life-failstop");
+    let (mut core, mut sub, w) = begun(&dir);
+    // An evolution attempt completes; a reservation against the authority it replaced fail-stops, turn open.
+    let stale = core.evolution_authority().unwrap().evolution();
+    core.evolution_reserve(&stale, &[1u8; 32]).unwrap();
+    core.evolution_finalize(&[2u8; 32]).unwrap();
+    let durable = core.snapshot().unwrap();
+    assert_eq!(core.evolution_reserve(&stale, &[3u8; 32]).unwrap_err(), Code::AuthorityMismatch.into());
+    assert_eq!(core.fault(), Some(Code::AuthorityMismatch));
+    assert!(core.turn_is_open() && sub.txn_open());
+    core.close();
+    assert_eq!((sub.calls(), aborts(&mut core)), (vec!["txn_abort"], 1));
+    assert!(!sub.txn_open());
+    let w = Witness { durable, ..w };
+    unchanged(&w, &dir, &sub);
+    core.open().unwrap();
+    assert_eq!(core.fault(), None);
+    turn(&mut core, &mut sub, key(1)).unwrap();
+}
+
+#[test]
+fn a_fail_stopped_commit_aborts_the_turn() {
+    let dir = Dir::new("life-failstop-commit");
+    let (mut core, mut sub, w) = begun(&dir);
+    let authority = core.evolution_authority().unwrap().evolution();
+    let current = core.evolution_reserve(&authority, &[1u8; 32]).unwrap();
+    core.evolution_abandon().unwrap(); // fail-stop CONTINUITY_EVOLUTION_PENDING, the turn still open
+    let r = core.turn_commit(&mut sub, key(1)).unwrap_err();
+    assert_eq!((r.error, r.committed), (Code::EvolutionPending.into(), None));
+    assert_eq!((sub.calls(), aborts(&mut core)), (vec!["txn_abort"], 1));
+    assert!(!core.turn_is_open() && !sub.txn_open());
+    let w = Witness { durable: current, ..w };
+    core.close();
+    unchanged(&w, &dir, &sub);
+}
+
+#[test]
+fn a_recoverable_commit_refusal_aborts_the_open_transaction() {
+    let dir = Dir::new("life-commit-refused");
+    let (mut core, mut sub, w) = begun(&dir);
+    sub.state().refuse_commit = K1_BUSY; // the transaction stays open natively
+    let r = core.turn_commit(&mut sub, key(1)).unwrap_err();
+    assert_eq!((r.error, r.k1_status, r.committed), (Rt::EcsRefused.into(), K1_BUSY, None));
+    assert_eq!(sub.calls(), ["txn_commit_identity", "txn_abort"]);
+    assert!(!core.turn_is_open() && !sub.txn_open());
+    core.close();
+    unchanged(&w, &dir, &sub);
+}
+
+#[test]
+fn an_abort_refused_busy_is_retried_until_it_ends_the_transaction() {
+    for path in ["abort", "close", "drop"] {
+        let dir = Dir::new(&format!("life-busy-{path}"));
+        let (mut core, sub, w) = begun(&dir);
+        sub.state().busy_aborts = 2;
+        match path {
+            "abort" => {
+                core.turn_abort(key(1)).unwrap();
+                core.close();
+            }
+            "close" => core.close(),
+            _ => drop(core),
+        }
+        assert_eq!(sub.calls(), ["txn_abort"; 3]);
+        assert!(!sub.txn_open());
+        unchanged(&w, &dir, &sub);
+    }
+}
+
+#[test]
+fn another_substrates_abort_is_refused_and_the_turn_stays_open_until_close() {
+    let dir = Dir::new("life-wrong-key");
+    let (mut core, sub, w) = begun(&dir);
+    assert_eq!(core.turn_abort(key(2)).unwrap_err().error, Rt::TurnNotOpen.into());
+    assert!(sub.calls().is_empty() && core.turn_is_open() && sub.txn_open());
+    core.close();
+    assert_eq!(sub.calls(), ["txn_abort"]);
+    unchanged(&w, &dir, &sub);
+}
+
+#[test]
+fn lifecycle_without_a_turn_makes_no_native_call() {
+    let dir = Dir::new("life-idle");
+    let mut sub = Fake::new(0.1);
+    let mut core = Core::new(&dir.0).unwrap();
+    core.close(); // close of a never-opened runtime
+    core.open().unwrap();
+    core.anchor(&mut sub, key(1)).unwrap();
+    sub.clear_calls();
+    core.close();
+    core.close(); // double close
+    core.open().unwrap(); // open -> close -> open
+    core.close();
+    core.open().unwrap();
+    drop(core); // destroy with no turn
+    assert!(sub.calls().is_empty());
+    assert_eq!(Core::new(&dir.0).unwrap().counters(false), Counters::default());
+    // Double close after a turn: one abort, then nothing.
+    let dir = Dir::new("life-idle-turn");
+    let (mut core, sub, _) = begun(&dir);
+    core.close();
+    core.close();
+    drop(core);
+    assert_eq!(sub.calls(), ["txn_abort"]);
+}
+
+#[test]
+fn a_cold_path_abort_refused_busy_is_retried_before_the_reservation_grows() {
+    let dir = Dir::new("life-capacity-busy");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    sub.state().busy_aborts = 1;
+    sub.clear_calls();
+    let big = input(12, 2);
+    let mut s3 = vec![0.0; features(DIM)];
+    core.turn_begin(&mut sub, key(1), &stimulus(&big), &mut s3).unwrap();
+    assert_eq!(
+        sub.calls(),
+        ["txn_begin", "txn_run_schedule", "txn_abort", "txn_abort", "reserve", "txn_begin", "txn_run_schedule"]
+    );
+    core.turn_abort(key(1)).unwrap();
+    assert!(!sub.txn_open());
+}
+
 #[cfg(feature = "testing")]
 mod faults {
     use super::*;
@@ -512,9 +827,9 @@ mod faults {
                 assert_eq!(r.committed.unwrap().state_after_digest, sub.identity());
                 assert_ne!(sub.identity(), anchor);
                 let committed = sub.retained();
-                sub.calls.clear();
+                sub.clear_calls();
                 assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), expected.into());
-                assert!(sub.calls.is_empty() && sub.retained() == committed);
+                assert!(sub.calls().is_empty() && sub.retained() == committed);
                 anchor
             };
             let mut core = dir.core();

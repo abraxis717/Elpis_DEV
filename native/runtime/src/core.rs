@@ -16,6 +16,12 @@
 //!   publication that is refused or uncertain fail-stops the runtime; restart sees either the old authority
 //!   (the moved state is then a mismatch) or the new one. Every refusal before the commit leaves the complete
 //!   retained state byte-for-byte unchanged (the native transaction law).
+//! * Turn lifecycle: once a native transaction is open, exactly one terminal native action ends it before
+//!   RuntimeCore forgets the turn: the commit, or an abort. There is no third disposition. An explicit
+//!   `turn_abort`, a refused commit, `close`, a reopen and destruction (`Drop`) all abort through the capability
+//!   retained at begin ([`crate::substrate::TxnAbort`]); an abort refused BUSY (a concurrent overlapping call) is
+//!   retried, never dropped. An implicit abort installs nothing and publishes nothing: the authoritative K1 state
+//!   (W, epoch, generation, H, a), its retained-state digest and continuity are unchanged.
 //! * Evolution: one attempt at a time. Its assertion is durably reserved before the boundary may execute it
 //!   and finalized with the executed receipt; a failed reservation or finalization fail-stops, and an attempt
 //!   the boundary could not complete leaves the durable reservation pending (fail-stop
@@ -28,8 +34,8 @@ use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, Store}
 
 use crate::code::{Error, Rt};
 use crate::substrate::{
-    features, CommitIdentity, Experience, K1Ops, Key, ScheduleOutcome, K1_CAPACITY, K1_FMS_CAPACITY, K1_NONFINITE,
-    K1_STALE, MAX_EXPERIENCES,
+    features, CommitIdentity, Experience, K1Ops, Key, ScheduleOutcome, TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_CAPACITY,
+    K1_NONFINITE, K1_STALE, MAX_EXPERIENCES,
 };
 
 /// Native crossings and publications RuntimeCore performed (diagnostics; never authority).
@@ -86,10 +92,26 @@ fn ecs(error: Rt, k1_status: i32, schedule: ScheduleOutcome) -> Refusal {
     Refusal { error: error.into(), k1_status, schedule, committed: None }
 }
 
-/// The open managed turn: the bound substrate and its native transaction token.
+/// The open managed turn: the bound substrate, its native transaction token and the retained capability that
+/// ends that transaction (abort only). It exists exactly while the native transaction is open.
 struct OpenTurn {
     key: Key,
     token: u64,
+    abort: Box<dyn TxnAbort>,
+}
+
+/// The one terminal abort of an open native transaction (one crossing per attempt, counted). BUSY is a concurrent
+/// overlapping call on the same state that did nothing: the transaction is still open, so the abort is retried
+/// until the state admits it. Any other status leaves no transaction of this token open (aborted now, or
+/// already discarded natively); the authoritative state is unchanged whatever it returns.
+fn terminate(counters: &mut Counters, mut abort: impl FnMut() -> i32) {
+    loop {
+        counters.k1_aborts += 1;
+        if abort() != K1_BUSY {
+            return;
+        }
+        std::thread::yield_now();
+    }
 }
 
 pub struct Core {
@@ -118,7 +140,8 @@ impl Core {
 
     // -- lifecycle ----------------------------------------------------------------------------------------
 
-    /// Open (or reopen after a fail-stop): the store resolves the current authority; nothing is bound.
+    /// Open (or reopen after close): the store resolves the current authority; nothing is bound. An open runtime
+    /// is refused (`CONTINUITY_OPEN`) and keeps everything, its open turn included.
     pub fn open(&mut self) -> Result<Snapshot, Error> {
         let snapshot = self.store.open()?;
         self.reset();
@@ -126,18 +149,36 @@ impl Core {
         Ok(snapshot)
     }
 
-    /// Close. An open managed turn is forgotten without a native call: the caller that began it aborts it.
+    /// Close. An open managed turn is aborted natively first (nothing installed, nothing published).
     pub fn close(&mut self) {
-        self.store.close();
         self.reset();
+        self.store.close();
         self.open = false;
     }
 
+    /// Forget the open runtime's bindings. Never forgets an open native transaction: it ends it first.
     fn reset(&mut self) {
+        self.end_turn();
         self.fault = None;
         self.bound = None;
-        self.turn = None;
         self.evolution = None;
+    }
+
+    /// Abort the open managed turn, if any, through the capability retained at its begin.
+    fn end_turn(&mut self) {
+        if let Some(turn) = self.turn.take() {
+            self.terminate(turn);
+        }
+    }
+
+    fn terminate(&mut self, turn: OpenTurn) {
+        let OpenTurn { token, mut abort, .. } = turn;
+        terminate(&mut self.counters, || abort.txn_abort(token));
+    }
+
+    /// Whether a managed turn (an open native transaction) is held.
+    pub fn turn_is_open(&self) -> bool {
+        self.turn.is_some()
     }
 
     pub fn is_open(&self) -> bool {
@@ -252,8 +293,9 @@ impl Core {
             return Err(Rt::Invalid.into());
         }
         self.reconcile(sub, key)?;
+        let abort = sub.retain_abort();
         let (token, result) = self.run_schedule(sub, stimulus, s3)?;
-        self.turn = Some(OpenTurn { key, token });
+        self.turn = Some(OpenTurn { key, token, abort });
         Ok(result)
     }
 
@@ -266,10 +308,9 @@ impl Core {
         }
     }
 
+    /// Abort a transaction this call opened (before it became the turn): the same terminal law.
     fn abort(&mut self, sub: &mut dyn K1Ops, token: u64) {
-        self.counters.k1_aborts += 1;
-        // The authoritative state is unchanged whatever abort returns (a discarded or unknown token).
-        let _ = sub.txn_abort(token);
+        terminate(&mut self.counters, || sub.txn_abort(token));
     }
 
     fn schedule_once(
@@ -326,14 +367,16 @@ impl Core {
     }
 
     /// Commit the open turn natively, then publish the committed identity to continuity. A publication that
-    /// fails fail-stops the runtime; the K1 commit stands (the refusal carries it).
+    /// fails fail-stops the runtime; the K1 commit stands (the refusal carries it). A fail-stopped runtime, or a
+    /// refused commit, aborts the turn instead: either way the turn has ended when this returns, unless it was
+    /// refused before the turn was taken (`RUNTIME_CLOSED`, `RUNTIME_TURN_NOT_OPEN`).
     pub fn turn_commit(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(CommitIdentity, Snapshot), Refusal> {
         if !self.open {
             return Err(Rt::Closed.into());
         }
         let turn = self.take_turn(key)?;
         if let Some(code) = self.fault {
-            self.abort(sub, turn.token);
+            self.terminate(turn);
             return Err(code.into());
         }
         let mut identity = CommitIdentity::default();
@@ -342,7 +385,7 @@ impl Core {
         if rc != 0 {
             // STALE discards the transaction natively; any other refusal leaves it open.
             if rc != K1_STALE {
-                self.abort(sub, turn.token);
+                self.terminate(turn);
             }
             let error = if rc == K1_STALE { Rt::EcsStale } else { Rt::EcsRefused };
             return Err(ecs(error, rc, ScheduleOutcome::default()));
@@ -359,10 +402,11 @@ impl Core {
         }
     }
 
-    /// Abort the open turn: nothing is installed.
-    pub fn turn_abort(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(), Refusal> {
+    /// Abort the open turn of this substrate: nothing is installed. Another substrate's key is refused
+    /// (`RUNTIME_TURN_NOT_OPEN`) and leaves the turn open.
+    pub fn turn_abort(&mut self, key: Key) -> Result<(), Refusal> {
         let turn = self.take_turn(key)?;
-        self.abort(sub, turn.token);
+        self.terminate(turn);
         Ok(())
     }
 
@@ -464,5 +508,13 @@ impl Core {
     #[cfg(feature = "testing")]
     pub fn testing_continuity_counters(&mut self, reset: bool) -> elpis_continuity::store::probe::Counters {
         self.store.testing_counters(reset)
+    }
+}
+
+impl Drop for Core {
+    /// Destruction ends an open managed turn exactly as `close` does: one native abort through the retained
+    /// capability, never a forgotten transaction. The embedded store releases itself.
+    fn drop(&mut self) {
+        self.end_turn();
     }
 }
