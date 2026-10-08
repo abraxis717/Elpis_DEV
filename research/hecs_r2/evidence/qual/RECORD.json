@@ -1,0 +1,428 @@
+{
+  "schema": "elpis.hecs-r2.record.v1",
+  "phase": "QUAL",
+  "result": {
+    "TASK_VALIDITY": "VALID",
+    "ONE_STEP_VALIDITY": "VALID",
+    "PLANNING_TASK_VALIDITY": "VALID",
+    "SEPARATED_M_RESULT": "FAIL",
+    "MATCHED_M_RESULT": "NOMINAL_PASS",
+    "M_informative_MATCHED": false,
+    "HIERARCHY_HYPOTHESES_ADJUDICATED": false,
+    "hierarchy_outcome": "NOT_ADJUDICATED",
+    "INTEGRATION_AUTHORIZED": false,
+    "SCIENTIFIC_DISPOSITION": "WORLD_MODEL_INVALID"
+  },
+  "specification": {"path": "specs/hecs-r2.v1.spec.json", "name": "hecs-r2.v1", "sha256": "2d942f162f938aaa58878afeb7745603f0994e5b1352edd074c4f2d0091935fa"},
+  "raw_evidence": [
+    {
+      "name": "hecs-r2.v1.qual.json",
+      "sha256": "5377637677672a6e03f323baf4fa9fefec58c17bf5dfae119a818db3a472d9ac",
+      "bytes": 2690878,
+      "committed": false,
+      "phase": "QUAL"
+    }
+  ],
+  "raw_evidence_policy": "Raw runner output is telemetry and is not committed. It is identified here by SHA-256 and byte count; every number below is copied from it (decisive values exactly, descriptive values rounded to 4 decimals).",
+  "execution": {
+    "source_original_commit": "c1d38d220f4bc557d7b52d03dcc680e37306451e",
+    "final_compact_history_commit": "cd5e587e20bbb3f05ac5d0e29786d9b1466dcf88",
+    "lineage": "c1d38d2 belongs to the pre-cleanup PR #40 lineage and is not in the final history. The QUAL output was written once by the hecs2 binary built from its tree, whose hecs2 sources are byte-identical to those of the final compact-history DEV commit named here (per-file SHA-256 below; git tree of research/hecs_r2/rust at execution 209abff6113912ca7a980299ca2430ba72136aa8).",
+    "hecs2_sources_sha256": {
+      "Cargo.lock": "1ebc8d90479de75a43d35a982674cb4fcd26c81d97a332ad3c2b2668eb0118e6",
+      "Cargo.toml": "5ef432a6bdb917f1d6cc59f9d7b8d94ddf5b39f372cf3b008baf54d9669cdf04",
+      "src/analysis.rs": "9494cd721d33bdb16d462b017657f7e1684d1e3228039aa3e9f3bbe2be7a6ede",
+      "src/encoder.rs": "4fff51068698e05c6514866bf44a8be499dd0dc40b7af0ef36a8ad7d13f781dd",
+      "src/experiment.rs": "a5cc130a608ba5ab18b3c728ba9558b685285160cd96a9a9c3bb67f5ae57c106",
+      "src/hierarchy.rs": "e49ebc91527de9c1e706582552c9731366b51444cb7de258c7384516a3441f87",
+      "src/json.rs": "0721be60afe561fa594818e51fdbe94926e5d5707cb8ee869cf6464d848a4a76",
+      "src/k1.rs": "764a18760b57237830b301dc54496d012dea7e3716d80b4540411cd9aac66caa",
+      "src/lib.rs": "d025fdce6ed5c68aef08f4bd86a2e62a41c0c2ff0526a0dc4a8d0c52dd47de15",
+      "src/linalg.rs": "16de2e399197f13c70800c4983b862d3a7e8f4c946c4c04b9ca0ae3318529a17",
+      "src/main.rs": "bfec6dd39905568a6e2c91851ff4d2518b04ea0c9155cba018e235f8c4722a81",
+      "src/model.rs": "e15641570fc0a5a6358b410aceef086923281579366a6ead616a6d5989c11124",
+      "src/multistep.rs": "e1119c31026d5851837dd679e075949c2a5c9ca35af58adb1e69b3a545dbdd7f",
+      "src/planner.rs": "452153591c1095f244474e27ae2f81c453eef4dec603f40db73c7bd8082f7b5b",
+      "src/rng.rs": "321f4f28448a0e0b0f003aced4e692cf92f2c937911a56d16190da93c22853d8",
+      "src/spec.rs": "f0e584fc64b51a7c7df988eb8bbb4d66f2eab666314d5411e3244ac3d8e63983",
+      "src/validity.rs": "b16531de72eebe482cf6636300661daae8cdf5022f3d08ab8c6b772f3a2499bb",
+      "src/world.rs": "d75d714eb0d9f960d554b487cef40ee8d77b5c0cac84de9f05fa9e58dede2d56"
+    },
+    "test_module": {
+      "path": "src/tests.rs",
+      "sha256_at_execution": "2d94d222d55e02209cd0bf976f6edb9a38122c1fd6f7a3aa689073edcc3331d6",
+      "note": "#[cfg(test)] only, never compiled into hecs2; changed by the hygiene cleanup to verify these records instead of the raw output"
+    }
+  },
+  "mathematical_donor": "fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb",
+  "seeds": [
+    "1081895251583953854",
+    "2761248050979241786",
+    "10349694206428623058",
+    "4316384433055186278",
+    "17377210329154756622",
+    "1947799111408248483",
+    "2136955805524040833",
+    "17712258514216225143"
+  ],
+  "references": [
+    {"world": "SEPARATED", "seed": "1081895251583953854", "references_sha256": "b8834b16271fd64f8259754da84abd8dd53ec80f749cd5669f45fa39be977b9a"},
+    {"world": "SEPARATED", "seed": "2761248050979241786", "references_sha256": "9bb41688e03804773c3472db18316b74a6ac3e8b431837a4ffabd7c2ca940e03"},
+    {"world": "SEPARATED", "seed": "10349694206428623058", "references_sha256": "a9e6c91a0bf40f923d0b6548009ac8cbd91590a48cd2efe587aec2eefe36a102"},
+    {"world": "SEPARATED", "seed": "4316384433055186278", "references_sha256": "87670a6f75bcfff8297461159de84909a76889ec95c0228eee64c9023d6c37ad"},
+    {"world": "SEPARATED", "seed": "17377210329154756622", "references_sha256": "2cc60e946bf8baa39e49f5bad4bf2d0ec99e3649d74dc0df96c72dfb34ad57b8"},
+    {"world": "SEPARATED", "seed": "1947799111408248483", "references_sha256": "e96a1423cf31d06df1346fee3a5dd3220f2713e3383228f591f78db9766e09d6"},
+    {"world": "SEPARATED", "seed": "2136955805524040833", "references_sha256": "ebcd9d986d3e2a25139a5561bdf4800af290bdce2b86646a8830b98c1613cc1c"},
+    {"world": "SEPARATED", "seed": "17712258514216225143", "references_sha256": "36c3d1a58a473f2906e5506bb48e890dff35ce73642a6de331c9b786fc2c79b3"},
+    {"world": "MATCHED", "seed": "1081895251583953854", "references_sha256": "d612e6c1bdbca97b8515f8083d9ff7b21661c99a44034d36eddfa46ec7a2322b"},
+    {"world": "MATCHED", "seed": "2761248050979241786", "references_sha256": "8e33ec56a754549c9a761fc67af3713b88f290c43e31e510c27801acb6fa6430"},
+    {"world": "MATCHED", "seed": "10349694206428623058", "references_sha256": "78c2c2466b305b635e037cbcfdf82e1ab60bdb13dc540b334b2807390f0a0d91"},
+    {"world": "MATCHED", "seed": "4316384433055186278", "references_sha256": "dbfaae57e83056adc15571a321e5c0d4eeb1fa54f4a976b909e2451c91a66f56"},
+    {"world": "MATCHED", "seed": "17377210329154756622", "references_sha256": "85480cc7f4d2614a0448b938f5e7594e766d208b0dc68dde9f45189672474de8"},
+    {"world": "MATCHED", "seed": "1947799111408248483", "references_sha256": "498df90e2867e9a70490ce6a933de32a085bab4f46dd5a4bbf08d2778f2cc488"},
+    {"world": "MATCHED", "seed": "2136955805524040833", "references_sha256": "2e4827dfc29030fa0240a554300c6d907d554263328376c9e7d913e0f82ba807"},
+    {"world": "MATCHED", "seed": "17712258514216225143", "references_sha256": "25b7950d302e0a0cffe8996f62d5702d6e19db1f53b6ae71abf5deff6a5a2d84"}
+  ],
+  "engine": {
+    "k1_library": "libelpis_ecsg_k1.so",
+    "k1_library_sha256": "a7dd1f6415e57a34a4f62ff978764176be8e89493fedb8afd42e80340d85c3b8",
+    "k1_abi_version": 1,
+    "native_ecs_tree": "c0e7a78d24424875c0b2ef0095ea63c0dab2f42b",
+    "c_compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "build_type": "Release",
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+    "host": "Linux x86_64",
+    "hecs2_binary_sha256": "6130aff50fbcb81da2488372defafb3c8ea80ad0d4efc761e2dec0e40785c0d3",
+    "hecs2_rebuild_check": "hecs2 rebuilt from the sources of final_compact_history_commit (rustc 1.97.0, cargo build --release --offline --locked, fresh target directory) has SHA-256 6130aff50fbcb81da2488372defafb3c8ea80ad0d4efc761e2dec0e40785c0d3: byte-identical to the executed binary"
+  },
+  "authorization": {"dev_record": "evidence/dev/RECORD.json", "dev_disposition": "QUAL_AUTHORIZED", "qual_runs": 1},
+  "training_steps": 96000,
+  "binding": true,
+  "task_validity": {
+    "instances": 16,
+    "T1A_explained_by_linear_min": 0.6683440820292464,
+    "T1B_tolerance_slack_min": 0.005554343683195453,
+    "T3A_explained_by_linear_min": {"SEPARATED": 0.319979561479409, "MATCHED": 0.8651415328912428},
+    "T3B_linear_over_generator_max": {"SEPARATED": 1.0319839672355626, "MATCHED": 1.162243767852833},
+    "V2_oracle_success_mean": {"SEPARATED": 1.0, "MATCHED": 1.0},
+    "V3_l1_probe_nmse_max": 0.0008711620404905673,
+    "V4_centroid_ratio_mean": {"SEPARATED": 34.85294976359049, "MATCHED": 1.466965039170043},
+    "V5_refusals": 0,
+    "flags": {"T1": true, "T3A": true, "T3B": true, "V2": true, "V3": true, "V4": true, "V5_no_refusal": true, "valid": true}
+  },
+  "one_step": {
+    "SEPARATED": {
+      "L1/N72": [
+        0.9991372014632356,
+        0.9990614039324391,
+        0.9993667307927394,
+        1.0000032303215263,
+        0.997452302766191,
+        0.999539817014528,
+        0.999004970419616,
+        0.9954062563526955
+      ],
+      "L1/N36": [
+        0.9988740489818989,
+        0.9992038635434486,
+        0.9938329384355945,
+        0.9987941588410163,
+        0.9980240433079502,
+        0.9997813055507484,
+        0.9997484103007567,
+        0.9977936990357449
+      ],
+      "TS/L2": [
+        0.994216199171329,
+        0.9839399583068541,
+        0.986019537562849,
+        0.9764933997400812,
+        0.9903825797506804,
+        0.9816224286616805,
+        0.9940549639961979,
+        1.004126250186841
+      ],
+      "HD/L2": [
+        1.0116841518785125,
+        1.0039184599578654,
+        1.0039581307391765,
+        1.0015646615224871,
+        0.9990969544053495,
+        0.9979151519884013,
+        0.9965308603494731,
+        1.0127638430169952
+      ]
+    },
+    "MATCHED": {
+      "L1/N72": [
+        0.9999146583395677,
+        0.9999950627925034,
+        1.0000015989953432,
+        0.999925758951202,
+        0.9996796151129743,
+        0.9999591168614285,
+        0.9999155183659976,
+        0.9999372230800052
+      ],
+      "L1/N36": [
+        1.0000069409076129,
+        0.9999578552752301,
+        0.9999646436162475,
+        0.9999234414434413,
+        0.9999671434033006,
+        0.9999332207712491,
+        0.9999565210988776,
+        0.9999346381112809
+      ],
+      "TS/L2": [
+        0.9995614379489008,
+        0.9997663539138828,
+        1.0004464846024967,
+        1.0002528203144838,
+        0.9979238967492247,
+        0.9995106037760192,
+        0.9997785945003707,
+        0.9989711384986786
+      ],
+      "HD/L2": [
+        0.999135814090399,
+        1.000000271346133,
+        0.9993494221791763,
+        0.9996481064228335,
+        0.9891061488901842,
+        0.999779370328117,
+        1.0000258405312445,
+        0.9993980822074868
+      ]
+    },
+    "S1": {"SEPARATED": true, "MATCHED": true},
+    "non_binding_min_separated": {"TS/L3": 0.9266, "HD/L3": 0.7919}
+  },
+  "multistep": {
+    "SEPARATED": {
+      "seeds": 8,
+      "seeds_meeting_every_binding": 6,
+      "by_pair": {
+        "L1/N72": {
+          "consumed_horizon": 16,
+          "min_capture_by_seed": [
+            0.9699383098648008,
+            0.9746008887033203,
+            0.9783479992910854,
+            0.9929071607488863,
+            0.9928654959187965,
+            0.9872933108194653,
+            0.9581725354241707,
+            0.8838711505394924
+          ],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        },
+        "L1/N36": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [
+            0.9976703871574499,
+            0.9943263270823081,
+            0.9938329384355945,
+            0.9947849367208701,
+            0.9942563773297867,
+            0.9982249045006132,
+            0.9959267793741304,
+            0.9977936990357449
+          ],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        },
+        "TS/L2": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [
+            0.9799696144797931,
+            0.9749233128733596,
+            0.9715588140594323,
+            0.9764933997400812,
+            0.9721701437486245,
+            0.9816224286616805,
+            0.9868053492199438,
+            0.9965108451220561
+          ],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        },
+        "HD/L2": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [
+            0.988272074566692,
+            0.8937803646938752,
+            0.9440295064042277,
+            0.9699504189599136,
+            0.9480054096980514,
+            0.9936164246839977,
+            0.906910298746741,
+            0.9896379894444173
+          ],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        }
+      },
+      "failures": [
+        {
+          "seed": "2761248050979241786",
+          "pair": "HD/L2",
+          "consumed_horizon": 4,
+          "h": 4,
+          "free_running_capture": 0.8937803646938752,
+          "numerical_escape": 0.0
+        },
+        {
+          "seed": "17712258514216225143",
+          "pair": "L1/N72",
+          "consumed_horizon": 16,
+          "h": 16,
+          "free_running_capture": 0.8838711505394924,
+          "numerical_escape": 0.0
+        }
+      ]
+    },
+    "MATCHED": {
+      "seeds": 8,
+      "seeds_meeting_every_binding": 8,
+      "by_pair": {
+        "L1/N72": {
+          "consumed_horizon": 16,
+          "min_capture_by_seed": [
+            0.9886066701559534,
+            0.9999587821993619,
+            1.0000015989953432,
+            0.9870143205412396,
+            0.9378406887768417,
+            0.998349971554457,
+            0.9876296509078071,
+            0.9867431939492438
+          ],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        },
+        "L1/N36": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [
+            1.0000069409076129,
+            0.999392482478682,
+            0.9994517121262104,
+            0.998490030788237,
+            0.9995579301426326,
+            0.9991508153169294,
+            0.9995282125145619,
+            0.9988568900494417
+          ],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        },
+        "TS/L2": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [
+            0.9938103820692716,
+            0.9959746605258137,
+            1.0004464846024967,
+            1.0002528203144838,
+            0.9761693287250865,
+            0.9924183481021994,
+            0.9995753500825237,
+            0.9845136383500919
+          ],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        },
+        "HD/L2": {
+          "consumed_horizon": 4,
+          "min_capture_by_seed": [
+            0.9906116119558267,
+            1.000000271346133,
+            0.990599257111219,
+            0.9971731813790592,
+            0.9237525924376793,
+            0.999779370328117,
+            1.0000258405312445,
+            0.9901528933200521
+          ],
+          "max_numerical_escape_by_seed": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        }
+      },
+      "failures": []
+    },
+    "M": {"SEPARATED": false, "MATCHED": true},
+    "persistence_capture_max": {"SEPARATED": 0.6098055865434634, "MATCHED": 0.9972041513706766},
+    "M_informative": {"SEPARATED": true, "MATCHED": false}
+  },
+  "planning": {
+    "adjudicated": false,
+    "note": "descriptive only: not adjudicated because M failed in SEPARATED",
+    "success_mean_separated_by_compute_point": {
+      "FLAT_N36": [0.7188, 0.6823, 0.75],
+      "FLAT_N72": [0.7135, 0.7188, 0.7083],
+      "FLAT_N108": [0.7448, 0.7552, 0.7812],
+      "TEMPORAL_SHARED_L2": [0.6198, 0.6302, 0.6667],
+      "TEMPORAL_SHARED_L3": [0.2344, 0.25, 0.2812],
+      "HIERARCHICAL_DISTINCT_L2": [0.0104, 0.2188, 0.2656],
+      "HIERARCHICAL_DISTINCT_L3": [0.0156, 0.0781, 0.1667]
+    }
+  },
+  "by_condition_separated": {
+    "FLAT_N36": {"S1": true, "M": false},
+    "FLAT_N72": {"S1": true, "M": false},
+    "FLAT_N108": {"S1": true, "M": true},
+    "TEMPORAL_SHARED_L2": {"S1": true, "M": true},
+    "TEMPORAL_SHARED_L3": {"S1": false, "M": true},
+    "HIERARCHICAL_DISTINCT_L2": {"S1": true, "M": false},
+    "HIERARCHICAL_DISTINCT_L3": {"S1": false, "M": false}
+  },
+  "diagnostics": {
+    "note": "Descriptive, never gates (SEPARATED, whitened level coordinates); quoted by docs/research/HECS_R2_RESULTS.md, which interprets them.",
+    "failing_pairs": [
+      {
+        "seed": "2761248050979241786",
+        "pair": "HD/L2",
+        "h": 4,
+        "one_step": {"ecs": 0.3413, "linear": 0.344, "capture": 1.0039},
+        "free_running": 0.4057,
+        "linear": 0.3358,
+        "domain_excursion": 0.0205,
+        "amplification_median": 0.5086,
+        "teacher_sigma_max": {"median": 1.4923, "p90": 2.0547, "over_1": 0.6976, "growth_rate_median": 0.1001},
+        "free_sigma_max": {"median": 1.1604, "p90": 1.9584, "over_1": 0.5766, "growth_rate_median": 0.0372},
+        "linear_sigma_max": 0.9514,
+        "generator_sigma_max_median": null
+      },
+      {
+        "seed": "17712258514216225143",
+        "pair": "L1/N72",
+        "h": 16,
+        "one_step": {"ecs": 0.2305, "linear": 0.2268, "capture": 0.9954},
+        "free_running": 0.5063,
+        "linear": 0.4367,
+        "domain_excursion": 0.0,
+        "amplification_median": 0.3932,
+        "teacher_sigma_max": {"median": 0.5963, "p90": 0.7351, "over_1": 0.0, "growth_rate_median": -0.0323},
+        "free_sigma_max": {"median": 0.6003, "p90": 0.7034, "over_1": 0.0, "growth_rate_median": -0.0319},
+        "linear_sigma_max": 0.9312,
+        "generator_sigma_max_median": 1.0
+      }
+    ],
+    "first_order_recursion_ratio_range_binding": [0.9864, 1.0064],
+    "contracting_pairs_h4_median_over_seeds": {
+      "L1/N36": {"teacher_sigma_max_median": 0.9854, "free_sigma_max_median": 0.9793},
+      "TS/L2": {"teacher_sigma_max_median": 0.9621, "free_sigma_max_median": 0.9578}
+    },
+    "domain_excursion_at_consumed_horizon_by_seed": {
+      "L1/N72": {
+        "ecs": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        "truth": [0.0083, 0.0, 0.0342, 0.0, 0.0, 0.0088, 0.0187, 0.0]
+      },
+      "L1/N36": {
+        "ecs": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        "truth": [0.002, 0.0, 0.0089, 0.0, 0.0, 0.0025, 0.0059, 0.0]
+      },
+      "TS/L2": {
+        "ecs": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        "truth": [0.0082, 0.0082, 0.0082, 0.0164, 0.0082, 0.0082, 0.0082, 0.0246]
+      },
+      "HD/L2": {
+        "ecs": [0.0061, 0.0205, 0.0348, 0.0041, 0.1352, 0.0205, 0.1578, 0.002],
+        "truth": [0.0164, 0.0164, 0.0246, 0.0082, 0.0328, 0.0266, 0.0082, 0.0123]
+      }
+    },
+    "beyond_consumed_horizons": {"hd_l2_h16_numerical_escape_max": 0.148, "hd_l3_h16_domain_excursion_max": 0.5, "hd_l3_h16_starts": 8}
+  }
+}

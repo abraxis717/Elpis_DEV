@@ -318,3 +318,45 @@ def test_dev_calibration_and_run_follow_the_frozen_law():
     assert dev["binding"] is False and dev["disposition"] == ("QUAL_AUTHORIZED" if law["valid"] else "TASK_INVALID_ON_DEV")
     assert dev["disposition"] == "QUAL_AUTHORIZED"
     assert dev["hierarchy_outcome"] == "NOT_ADJUDICATED" and dev["integration_authorized"] is False
+
+
+# == QUAL: once, at the DEV budget; the disposition follows the frozen law ==========================================
+
+def _expected_disposition(law: dict) -> str:
+    if not law["valid"]:
+        return "TASK_INVALID"
+    if not law["S1"]["SEPARATED"]:
+        return "ONE_STEP_MODEL_INVALID"
+    if not law["M"]["SEPARATED"]:
+        return "WORLD_MODEL_INVALID"
+    return "HIERARCHY_ADJUDICATED"
+
+
+def test_qual_ran_once_at_the_dev_budget_and_is_world_model_invalid():
+    dev, qual = _record("dev"), _record("qual")
+    assert qual["authorization"] == {"dev_record": "evidence/dev/RECORD.json", "dev_disposition": dev["disposition"],
+                                     "qual_runs": 1}
+    assert dev["disposition"] == "QUAL_AUTHORIZED" and qual["training_steps"] == dev["training_steps"] == 96000
+    assert qual["binding"] is True
+    law = _law_is_recomputed(qual, "qual")
+    disposition = _expected_disposition(law)
+    assert disposition == qual["result"]["SCIENTIFIC_DISPOSITION"] == "WORLD_MODEL_INVALID"
+    # The two decisive SEPARATED failures, below the frozen bound with no numerical escape; 6 of 8 seeds meet M.
+    sep = qual["multistep"]["SEPARATED"]
+    failures = {(f["seed"], f["pair"], f["consumed_horizon"]): f for f in sep["failures"]}
+    assert set(failures) == {("2761248050979241786", "HD/L2", 4), ("17712258514216225143", "L1/N72", 16)}
+    assert round(failures[("2761248050979241786", "HD/L2", 4)]["free_running_capture"], 3) == 0.894
+    assert round(failures[("17712258514216225143", "L1/N72", 16)]["free_running_capture"], 3) == 0.884
+    assert (sep["seeds_meeting_every_binding"], sep["seeds"]) == (6, 8)
+    for w in WORLDS:
+        assert all(e == 0 for p in qual["multistep"][w]["by_pair"].values() for e in p["max_numerical_escape_by_seed"])
+    # MATCHED meets M only nominally: persistence already clears the bound there.
+    assert qual["multistep"]["M"]["MATCHED"] and not qual["multistep"]["M_informative"]["MATCHED"]
+    assert qual["result"] == {
+        "TASK_VALIDITY": "VALID", "ONE_STEP_VALIDITY": "VALID", "PLANNING_TASK_VALIDITY": "VALID",
+        "SEPARATED_M_RESULT": "FAIL", "MATCHED_M_RESULT": "NOMINAL_PASS", "M_informative_MATCHED": False,
+        "HIERARCHY_HYPOTHESES_ADJUDICATED": False, "hierarchy_outcome": "NOT_ADJUDICATED",
+        "INTEGRATION_AUTHORIZED": False, "SCIENTIFIC_DISPOSITION": "WORLD_MODEL_INVALID"}
+    assert qual["planning"]["adjudicated"] is False
+    # Write-once: exactly one record per phase and nothing else.
+    assert sorted(p.relative_to(EVIDENCE).as_posix() for p in EVIDENCE.rglob("*") if p.is_file()) == RECORDS
