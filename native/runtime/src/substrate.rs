@@ -4,6 +4,12 @@
 //! table of its library (`ecsg_k1.h` for a standalone state, `ecsg_k1_fms.h` for an FMS-resident one), the
 //! declared input dimension and the caller identity of the handle's owner. Every [`K1Ops`] call is exactly one
 //! native K1 crossing; RuntimeCore computes no ECS mathematics and touches no ECS byte.
+//!
+//! From a successful managed-turn begin until that turn ends, RuntimeCore retains one capability over the state:
+//! [`TxnAbort`], the native `txn_abort` of the turn's transaction (a copy of the descriptor's handle, resident id
+//! and abort entry; never commit, schedule or any other operation). It is what ends the turn when the runtime is
+//! closed, reopened or destroyed without an explicit commit or abort, so an open native transaction is never
+//! forgotten. The C ABI (v2) makes the substrate's lifetime explicit: the state must stay live until the turn ends.
 
 use std::ffi::{c_int, c_void};
 
@@ -13,6 +19,8 @@ pub type Digest = [u8; 32];
 pub const K1_OK: i32 = 0;
 pub const K1_NONFINITE: i32 = -2;
 pub const K1_STALE: i32 = -3;
+/// A concurrent overlapping call on the same state: refused before anything was done (transient by contract).
+pub const K1_BUSY: i32 = -4;
 pub const K1_CAPACITY: i32 = -5;
 /// The FMS adapter's capacity refusal (`-100 + FMS_CAPACITY`).
 pub const K1_FMS_CAPACITY: i32 = -107;
@@ -88,6 +96,17 @@ pub trait K1Ops {
         result: &mut ScheduleOutcome,
     ) -> i32;
     fn txn_commit_identity(&mut self, token: u64, out: &mut CommitIdentity) -> i32;
+    fn txn_abort(&mut self, token: u64) -> i32;
+    /// The owned abort capability over this same native state, retained by RuntimeCore from a successful turn
+    /// begin until that turn ends. It may outlive the call that produced it, but never the open transaction it
+    /// ends: the native state is live for exactly that interval (the substrate lifetime contract, runtime.h).
+    fn retain_abort(&self) -> Box<dyn TxnAbort>;
+}
+
+/// The one operation RuntimeCore retains across calls: ending the open managed turn's native transaction.
+pub trait TxnAbort: Send {
+    /// `txn_abort` of the K1 ABI: OK (aborted, or no transaction open), INVALID (not this token's transaction),
+    /// BUSY (a concurrent overlapping call; nothing done).
     fn txn_abort(&mut self, token: u64) -> i32;
 }
 
@@ -183,24 +202,32 @@ pub struct CSubstrate {
     pub api: *const c_void,
 }
 
+#[derive(Clone, Copy)]
 enum Table {
     K1(K1Api),
     Fms(K1FmsApi),
 }
 
-/// A validated descriptor: a [`K1Ops`] over the caller's native function table.
+/// A validated descriptor: a [`K1Ops`] over the caller's native function table (copied by value).
+#[derive(Clone, Copy)]
 pub struct Native {
     key: Key,
     handle: *mut c_void,
     table: Table,
 }
 
+// SAFETY: a `Native` is a native state handle plus the K1 library's own entry points. The K1 and K1 FMS ABIs may
+// be called from any thread: each state guards itself (an overlapping call is refused BUSY, never a data race).
+// RuntimeCore moves a retained copy only together with the runtime handle that serializes its calls.
+unsafe impl Send for Native {}
+
 impl Native {
     /// Validate a descriptor (no native call). `None` for anything malformed.
     ///
     /// # Safety
-    /// `d.api` must point to the table its `kind` names, and `d.handle` must stay a live state of that library
-    /// for as long as the returned value is used.
+    /// `d.api` must point to the table its `kind` names (it is copied), and `d.handle` must stay a live state of
+    /// that library, with the library loaded, for as long as the returned value or a capability retained from it
+    /// ([`K1Ops::retain_abort`]) is used.
     pub unsafe fn from_c(d: &CSubstrate) -> Option<Native> {
         let dim = usize::try_from(d.dim).ok()?;
         if d.reserved != 0 || d.handle.is_null() || d.api.is_null() || features(dim) == 0 {
@@ -321,6 +348,16 @@ impl K1Ops for Native {
         }
     }
 
+    fn txn_abort(&mut self, token: u64) -> i32 {
+        TxnAbort::txn_abort(self, token)
+    }
+
+    fn retain_abort(&self) -> Box<dyn TxnAbort> {
+        Box::new(*self)
+    }
+}
+
+impl TxnAbort for Native {
     fn txn_abort(&mut self, token: u64) -> i32 {
         unsafe {
             match &self.table {

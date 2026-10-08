@@ -1,6 +1,6 @@
 # RuntimeCore: the runtime's systems authority in Rust
 
-`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v1) owns the mutable systems
+`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v2) owns the mutable systems
 authority of an open Elpis runtime. `elpis.runtime.Runtime` is its compatibility facade.
 
 ## What RuntimeCore owns
@@ -49,10 +49,28 @@ loaded library, a C or C++ host passes them directly (`native/runtime/tests/test
 dimension is verified natively: K1 compares the readout length it implies with the state's own before it reads
 any input byte (`schedule_check`).
 
+### Substrate lifetime (ABI v2)
+
+Outside a managed turn a descriptor need only be live for the call. A successful `turn_begin` opens a native K1
+transaction, and to end it on every path RuntimeCore retains, until the turn ends, an abort-only capability over
+the state: a copy of the descriptor's handle, resident id and `txn_abort` entry (never commit, schedule or any
+other entry). The native state must stay live, and its library loaded, for that interval. This is the v2 change
+from v1, under which a turn could be forgotten and the state then destroyed; the bump makes a v1 caller refuse to
+load the library rather than inherit the new obligation silently.
+
+* FMS-resident K1: enforced natively by the adapter (`ecsg_k1_fms.h`): a resident state with an open transaction
+  cannot be closed and its runtime cannot be destroyed while a state is registered (both `BUSY`), so the retained
+  handle and id are live for as long as the transaction RuntimeCore holds is open.
+* Standalone K1: `elpis_ecsg_k1_destroy` frees a state whatever transaction it holds, so the owner must not destroy
+  it while a turn on it is open. The Python adapter satisfies this: native K1 handles are freed only by an explicit
+  `close` (no finalizer frees them), and `Runtime` keeps the bound state's owner alive until RuntimeCore has ended
+  the turn (`close` and `open` release it only afterwards).
+
 ## Laws
 
 Each law is a test in `native/runtime/src/tests.rs` (deterministic in-memory K1 stand-in, continuity fault
-injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c` and `tests/integration`.
+injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c`,
+`native/runtime/tests/test_runtime_lifecycle.c` and `tests/integration`.
 
 * **Anchor.** The first managed lineage is anchored explicitly at the state's retained identity; RuntimeCore
   reads the identity only. A second anchor is `CONTINUITY_ALREADY_ANCHORED`.
@@ -65,6 +83,18 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
   publication. Capacity beyond the reservation is grown on the cold path (abort, `reserve`, begin again).
   Every refusal before the commit leaves `(W, epoch, H, a)` byte-for-byte unchanged; a stale source is
   `ECS_STALE`.
+* **Turn lifecycle.** Once a native transaction is open, exactly one terminal native action ends it before
+  RuntimeCore forgets the turn: the commit, or an abort. There is no third disposition. `turn_abort`, a commit
+  refused natively or on a fail-stopped runtime, `close`, and destruction (`elpis_runtime_destroy`, Rust `Drop`,
+  Python `RuntimeCore.__del__`) all abort it through the retained capability; `open` on an open runtime is refused
+  (`CONTINUITY_OPEN`) and keeps it; `turn_abort` with another substrate is refused and keeps it. An abort refused
+  `BUSY` (a concurrent overlapping call on the same state, which did nothing) is retried until the state admits
+  it, never dropped. An implicit abort installs nothing and publishes nothing: `(W, epoch, generation, H, a)`, the
+  retained-state digest and continuity are unchanged; the state takes the next transaction, and an FMS-resident
+  state's transaction WRITE pin is released. Proven over a stand-in (`tests.rs`, including the `BUSY` retry) and
+  over real standalone and FMS-resident K1 (`native/runtime/tests/test_runtime_lifecycle.c`,
+  `tests/integration/test_runtime_lifecycle.py`): abort, commit, close, double close, destroy, reopen, fail-stop
+  then close, and lifecycle calls without a turn (no native call).
 * **Crash law.** A K1 commit is never rolled back. A refused or uncertain publication fail-stops; restart sees
   the old authority (the moved state is a mismatch) or, when the uncertain write landed, the new one.
 * **Evolution.** One attempt in flight. Reserve (durable, before execution) -> execute once at the boundary ->
@@ -88,8 +118,8 @@ writes one 176-byte record and syncs once; Python performs no file I/O. The unma
 
 * `libelpis_runtime.so` (production) and `libelpis_runtime_testing.so` (+ continuity fault injection and I/O
   counters), built offline by CMake through `cargo rustc` (the SONAME is set on the final link only).
-* `ctest -L runtime`: `runtime.cargo_test` (the Rust law suite) and `runtime.test_runtime_abi` (C ABI over real
-  K1). CI lints and tests the crate in the Rust job and runs both tests in every native job (gcc/clang, Debug/
+* `ctest -L runtime`: `runtime.cargo_test` (the Rust law suite), `runtime.test_runtime_abi` (C ABI over real
+  K1) and `runtime.test_runtime_lifecycle` (the turn lifecycle over real standalone and FMS-resident K1). CI lints and tests the crate in the Rust job and runs both tests in every native job (gcc/clang, Debug/
   Release, ASan+UBSan, TSan).
 
 ## Non-claims

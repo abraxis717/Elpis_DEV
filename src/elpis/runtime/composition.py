@@ -150,11 +150,14 @@ class Runtime:
         self._bound_owner = None
 
     def open(self) -> "Runtime":
-        self._bound_owner = None
+        # An open runtime is refused and keeps its turn, so the owner is released only once RuntimeCore opened
+        # (unbound) and can retain nothing of it.
         self._core.open()
+        self._bound_owner = None
         return self
 
     def close(self) -> None:
+        # RuntimeCore aborts an open managed turn natively before the bound owner is released.
         self._core.close()
         self._bound_owner = None
 

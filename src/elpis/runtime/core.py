@@ -9,6 +9,14 @@ calls no K1 function: it hands RuntimeCore the K1 library's own entry points and
 The substrate descriptor names the native state, its library's entry points, its declared dimension (verified
 natively) and the identity of the Python object that owns the handle (``owner``). The caller keeps that owner
 alive while it is bound, so its identity cannot be reused by another state (lifetime only; no decision).
+
+Turn lifecycle (ABI v2). Once ``turn_begin`` has opened a native K1 transaction, RuntimeCore ends it with exactly
+one native commit or abort before it forgets the turn: ``turn_commit``, ``turn_abort``, ``close`` and destruction
+(``__del__`` -> ``elpis_runtime_destroy``) all end it natively; ``open`` on an open runtime is refused and keeps it.
+To do so RuntimeCore retains the state's handle and abort entry until the turn ends, so the native state must stay
+live for that interval. Native K1 handles are freed only by an explicit ``close`` (no finalizer frees them), the
+FMS adapter refuses to close a resident state with an open transaction, and the facade keeps the bound owner
+alive; a standalone ``K1State`` must not be closed while a managed turn on it is open.
 """
 from __future__ import annotations
 
@@ -35,7 +43,7 @@ from .errors import CompositionError
 
 __all__ = ("RuntimeCore", "RuntimeLibrary", "TurnBegun")
 
-_ABI_VERSION = 1
+_ABI_VERSION = 2
 _TESTING_PROCESS_DEATH = 255
 _U64 = C.c_uint64
 _K1_NAMES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT"}
@@ -220,6 +228,7 @@ class RuntimeCore:
         self._f = library._lib
 
     def __del__(self):
+        # Destruction aborts an open managed turn natively before the handle is freed (RuntimeCore's Drop).
         handle = getattr(self, "_handle", None)
         if handle is not None and handle.value:
             self.library._lib.elpis_runtime_destroy(C.byref(handle))
@@ -234,6 +243,7 @@ class RuntimeCore:
         return self._snapshot("open")
 
     def close(self) -> None:
+        """Close; an open managed turn is aborted natively first (nothing installed, nothing published)."""
         self._f.elpis_runtime_close(self._handle)
 
     def fault(self) -> str | None:

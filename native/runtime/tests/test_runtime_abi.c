@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
     assert(argc == 2);
     for (int i = 0; i < ROWS * DIM; ++i) X[i] = (double)((i * 5) % 11 - 5) / 16.0;
     for (int i = 0; i < ROWS; ++i) Y[i] = (double)(i % 3 - 1) / 8.0;
-    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V1);
+    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V2);
     assert(elpis_runtime_features(DIM) == elpis_ecsg_k1_features(DIM));
     for (size_t d = 1; d <= 64; ++d) assert(elpis_runtime_features(d) == elpis_ecsg_k1_features(d));
     assert(!strcmp(elpis_runtime_code_name(ELPIS_RUNTIME_SUBSTRATE_SWITCH), "COGNITION_SUBSTRATE_SWITCH"));

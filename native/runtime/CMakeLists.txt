@@ -47,6 +47,17 @@ elpis_add_test(runtime test_runtime_abi
   TIMEOUT 60)
 add_dependencies(test_runtime_abi elpis_runtime)
 
+# The turn lifecycle law over real native K1, standalone and FMS-resident (a real FMS context): an open native
+# transaction is ended by exactly one commit or abort on every path (abort, commit, close, destroy, reopen,
+# fail-stop + close), the authority is unchanged by an implicit abort and the resident WRITE pin is released.
+elpis_add_test(runtime test_runtime_lifecycle
+  SOURCES tests/test_runtime_lifecycle.c
+  INCLUDES "${_crate}/include" "${_continuity}/include"
+  LIBS "${_prod}" elpis_ecsg_k1_fms elpis_ecsg_k1
+  ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_lifecycle"
+  TIMEOUT 120)
+add_dependencies(test_runtime_lifecycle elpis_runtime)
+
 # The Rust law suite (lifecycle, lineage, turn, evolution and the continuity crash law through RuntimeCore).
 add_test(NAME runtime.cargo_test
   COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/cargo-test"
