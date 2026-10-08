@@ -9,8 +9,10 @@ vs distinct-representation levels) is adjudicated only if it does. Question, des
 integration law: [`PREREGISTRATION.md`](PREREGISTRATION.md). Source equivalence with R1:
 [`SOURCE_EQUIVALENCE.json`](SOURCE_EQUIVALENCE.json).
 
-**Status: preregistered.** The DESIGN record is committed with the frozen specification; DEV and QUAL follow the
-frozen law.
+**Status: closed `WORLD_MODEL_INVALID` at QUAL** ([`docs/research/HECS_R2_RESULTS.md`](../../docs/research/HECS_R2_RESULTS.md)).
+Frozen in `6f9cb6b` (pre-cleanup lineage: `05be551`); DEV calibrated at 96000 K1 steps and was valid (`QUAL_AUTHORIZED`); the one QUAL run was task
+valid and one-step valid (S1) in every instance, but in SEPARATED 2 of 8 worlds fell below the frozen free-running
+capture bound at a consumed horizon. The hierarchy hypotheses were not adjudicated; no integration is authorized.
 
 Not on the canonical path: nothing in `src/` imports or calls it, and it has no ECS<->DSV codec, no HACF edge
 and no runtime authority.

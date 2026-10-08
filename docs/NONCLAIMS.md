@@ -196,3 +196,15 @@ are not evidence that the contract has any effect.
   fast-factor loss seen at distinct upper levels comes from a fixed linear encoder,
   not from ECS learning. No hierarchy integration was authorized, and H-ECS is not
   canonical.
+* `research/hecs_r2` (H-ECS R2, multi-step validity of ECS world models, then
+  hierarchy) is RESEARCH_ONLY with NO_RUNTIME_AUTHORITY and closed
+  `WORLD_MODEL_INVALID` at QUAL (`docs/research/HECS_R2_RESULTS.md`). Task validity
+  and one-step constituent validity (S1) held in every instance, but in SEPARATED
+  2 of 8 fresh worlds fell below the frozen free-running capture bound at a horizon
+  the planners consume. The hierarchy hypotheses were not adjudicated: no
+  hierarchy, width, temporal, representation or depth claim follows, and
+  `WORLD_MODEL_INVALID` is not a hierarchy failure. MATCHED's nominal M is not
+  evidence of usefulness (persistence reaches it). Finite-time tangent growth rates
+  are not Lyapunov exponents, and no chaos, entropy or hyperbolicity claim is made;
+  the openai/math donor supplied mathematical structure only. No integration was
+  authorized, and H-ECS is not canonical.

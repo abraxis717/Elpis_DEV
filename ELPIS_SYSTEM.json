@@ -463,7 +463,7 @@
       },
       {
         "path": "research/hecs_r2",
-        "classification": "RESEARCH_ONLY, PREREGISTERED: H-ECS R2, a fresh experiment after the closed R0 (TASK_INVALID_ON_DEV) and R1 (TASK_INVALID). Primary question: whether the ECS/K1 world model, trained one step ahead, gives a multi-step predictive object stable enough at the horizons the H-ECS planners consume (free-running vs teacher-forced, iterated linear, generator and analytic h-step floor references, escape and amplification diagnostics); the hierarchy hypotheses are adjudicated only if it does. R1's crate reused with source equivalence; one native K1 state per level through the existing C ABI. No runtime authority; makes nothing canonical."
+        "classification": "RESEARCH_ONLY, WORLD_MODEL_INVALID: H-ECS R2, a fresh experiment after the closed R0 (TASK_INVALID_ON_DEV) and R1 (TASK_INVALID), preregistered in 6f9cb6b (pre-cleanup lineage: 05be551; convergence calibration, S1, M at every consumed horizon on every seed, finite-horizon derivative-product diagnostics; openai/math fd4aeeb2 as mathematical provenance only). DEV calibrated at 96000 K1 steps and was valid; the single QUAL run was task valid and one-step valid in every instance, but M failed in SEPARATED (2 of 8 worlds below free-running capture 0.90 at a consumed horizon; no numerical escape) (docs/research/HECS_R2_RESULTS.md). Hierarchy hypotheses not adjudicated (not a hierarchy result); integration NOT_AUTHORIZED. R1's crate reused with source equivalence; one native K1 state per level through the existing C ABI. No runtime authority; makes nothing canonical."
       }
     ],
     "native_targets": [

@@ -360,3 +360,25 @@ def test_qual_ran_once_at_the_dev_budget_and_is_world_model_invalid():
     assert qual["planning"]["adjudicated"] is False
     # Write-once: exactly one record per phase and nothing else.
     assert sorted(p.relative_to(EVIDENCE).as_posix() for p in EVIDENCE.rglob("*") if p.is_file()) == RECORDS
+
+
+# == Results: the report states the recorded disposition and withholds hierarchy and integration ===================
+
+def test_results_report_the_frozen_disposition_and_withhold_hierarchy_and_integration():
+    qual = _record("qual")
+    text = (REPO / "docs" / "research" / "HECS_R2_RESULTS.md").read_text()
+    for needle in (f"`{qual['result']['SCIENTIFIC_DISPOSITION']}`", "NOT_AUTHORIZED", "NO_CANONICAL_PROMOTION",
+                   "not adjudicated", "05be551", "is **not** a hierarchy result", "not a Lyapunov exponent",
+                   "M_informative_MATCHED", DONOR):
+        assert needle in text, needle
+    for f in qual["multistep"]["SEPARATED"]["failures"]:
+        assert f["seed"] in text and f"{f['free_running_capture']:.3f}" in text
+    for raw in qual["raw_evidence"]:
+        assert raw["sha256"][:8] in text
+    system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text())
+    entry = next(c for c in system["research"]["components"] if c["path"] == "research/hecs_r2")
+    assert entry["classification"].startswith(f"RESEARCH_ONLY, {qual['result']['SCIENTIFIC_DISPOSITION']}:")
+    # No hierarchy controller was integrated: nothing outside research names the laboratory's crates.
+    for path in (REPO / "src").rglob("*.py"):
+        body = path.read_text()
+        assert "hecs_r2" not in body and "hecs_r1" not in body and "hecs_r0" not in body, path
