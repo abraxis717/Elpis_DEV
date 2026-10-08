@@ -31,9 +31,36 @@ Authority: this document governs when work may merge into `main`. It sits under
 
 ## Required jobs
 
-Boundary · Donor parity · Python 3.11 · Python 3.12 · Python without network ·
-Native (gcc, Debug) · Native (gcc, Release) · Native (clang, Debug) ·
-Native (clang, Release) · Native ASan+UBSan · Native TSan · Scientific authority.
+Boundary · Donor parity · Python 3.11 · Python 3.12 · Python stress and historical ·
+Python without network · Continuity and RuntimeCore (Rust) · Native (gcc, Debug) ·
+Native (gcc, Release) · Native (clang, Debug) · Native (clang, Release) ·
+Native ASan+UBSan · Native TSan · Scientific authority.
+
+## Lanes
+
+Every test has exactly one lane (`tests/lanes.py`, first matching rule), and every
+lane has an owning job (`tests/boundary/test_ci_policy.py` proves both):
+
+| Lane | Contents | Owner | Local command |
+|---|---|---|---|
+| FAST | production contracts, runtime, continuity adapter, boundary, small integration | Python 3.11, Python 3.12 (`pytest --lane fast`) | `pytest` (the default) or `tests/qualify.sh fast` |
+| NATIVE | ECS, K1, FMS, continuity, RuntimeCore, H-ECS mechanics, native research mechanics (ctest) | Native gcc/clang Debug/Release | `tests/qualify.sh native` |
+| SCIENTIFIC | frozen ECS science, retention and H-ECS evidence, replay | Scientific authority (`pytest --lane scientific`) | `tests/qualify.sh scientific` |
+| STRESS | ASan+UBSan and TSan builds; multi-process contention, exhaustive fault matrices, scaling | Native ASan+UBSan, Native TSan; Python stress and historical (`pytest --lane stress`) | `tests/qualify.sh stress` |
+| HISTORICAL / RESEARCH | DSV4.1 tower, ECS dynamics laboratory, retained noncanonical model-execution mechanics; donor parity | Python stress and historical (`pytest --lane historical`); Donor parity | `tests/qualify.sh historical` |
+
+A bare `pytest` runs FAST only, so ordinary local qualification never executes the
+research corpus by accident. Python without network runs every Python lane
+(`--lane all`). Explicit test paths run exactly what they name. Every local step runs
+under a hard wall-clock limit with live output. Warm `tests/qualify.sh fast` (native
+build check, all ctest, the FAST pytest lane) took 46 s on a 4-core VM, of
+which the FAST pytest lane is about 38 s.
+
+No test may assert a wall-clock ratio, sleep to order events, or be re-run until
+green. A test that does (for example the latency ratio that once lived in
+`research/dsv41_tower/native/tests/test_dsv41_stream_provider.c`) is a
+TEST-CONTRACT DEFECT: the measurement is printed, and the asserted law stays the
+deterministic one.
 
 These should also be required status checks in the repository's branch
 protection for `main`. That setting lives in GitHub, outside this repository.

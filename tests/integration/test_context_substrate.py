@@ -179,7 +179,7 @@ def test_once_begun_the_token_loop_cannot_reach_any_slow_lane(runtime, ingress_l
 
 
 def test_resident_model_state_stays_bounded_as_hacf_grows(retrieval_library, ingress_library, model,
-                                                          tmp_path_factory, continuity_library):
+                                                          tmp_path_factory, runtime_library):
     engine, resident = model
     shapes, peaks, admitted, sizes = set(), [], [], []
     for extra in (0, 1, 2):
@@ -187,7 +187,7 @@ def test_resident_model_state_stays_bounded_as_hacf_grows(retrieval_library, ing
         corpus_root, manifest = build(retrieval_library, root, extra)
         chunks = json.loads(manifest)["chunk_count"]
         sizes.append(sum(d["size_bytes"] for d in json.loads(manifest)["documents"]))
-        with Runtime(RuntimeConfig(root / "continuity", continuity_library)) as runtime:
+        with Runtime(RuntimeConfig(root / "continuity", runtime_library)) as runtime:
             admission = prepare(runtime, ingress_library, corpus_root, manifest, engine).admission
             state = engine.initial(CONTEXT)
             sequence = engine.begin(state, PrincipalRequest("r", (1,), 20), admission,
@@ -219,7 +219,7 @@ def test_preparation_record_carries_no_model_state():
 
 
 def test_tampered_blob_or_wrong_manifest_refuses_admission(ingress_library, substrate, model, tmp_path,
-                                                           continuity_library):
+                                                           runtime_library):
     corpus_root, manifest = substrate
     engine, _ = model
     copy = tmp_path / "corpus"
@@ -228,7 +228,7 @@ def test_tampered_blob_or_wrong_manifest_refuses_admission(ingress_library, subs
         data = bytearray(blob.read_bytes())
         data[-1] ^= 1
         blob.write_bytes(bytes(data))
-    with Runtime(RuntimeConfig(tmp_path / "continuity", continuity_library)) as runtime:
+    with Runtime(RuntimeConfig(tmp_path / "continuity", runtime_library)) as runtime:
         with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
             prepare(runtime, ingress_library, copy, manifest, engine)
         with pytest.raises(ObjectResolutionError, match="INTEGRITY"):

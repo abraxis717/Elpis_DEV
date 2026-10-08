@@ -48,9 +48,11 @@ add_subdirectory(native/structure)
 add_subdirectory(native/pipeline)
 add_subdirectory(native/ECS)
 add_subdirectory(native/continuity)
+add_subdirectory(native/runtime)
 # Noncanonical research code: built and qualified, never part of the cognitive path.
 add_subdirectory(research/dsv41_tower/native)
 add_subdirectory(research/ecs_runtime_r1/native)
 add_subdirectory(research/hecs_r0)
+add_subdirectory(research/hecs_r1)
 
 elpis_verify_targets()

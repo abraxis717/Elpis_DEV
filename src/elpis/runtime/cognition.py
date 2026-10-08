@@ -36,8 +36,10 @@ refused as ``ECS_STALE`` if another commit replaced the source state meanwhile (
 refused turn leaves ``(W, epoch, H, a)`` byte-for-byte unchanged. Admitting more rows per experience than the
 state's capacity grows it explicitly before the transaction begins (cold path).
 
-This module performs no durable writes. The runtime composition publishes the committed transition's
-retained-state identity to ``elpis.continuity`` (docs/CONTINUITY.md).
+This module performs no durable writes and holds no state. :func:`run_turn` is the unmanaged turn over a native K1
+state (no continuity); the managed turn, :meth:`elpis.runtime.Runtime.run_turn`, shares this module's boundary
+(request validation, encode, decode) and hands the native transaction and its continuity publication to RuntimeCore
+(native/runtime, docs/RUNTIME_CORE.md).
 """
 from __future__ import annotations
 from array import array
@@ -47,7 +49,7 @@ from typing import Protocol
 
 from elpis.ECS.k1 import MAX_EXPERIENCES, K1Error, K1FMSState, K1State
 
-from .composition import CompositionError
+from .errors import CompositionError
 
 __all__ = ("CODEC_UNQUALIFIED", "ECSCodecMap", "Readout", "Stimulus", "TurnResult", "run_turn")
 
@@ -216,9 +218,31 @@ def _validate_turn_request(substrate, text, *, codec_map=None, learning_rate=Non
     return classification
 
 
+def _encode(substrate, text, tokenizer, codec_map):
+    """The boundary's encode: text -> tokens -> an admitted Stimulus of the state's dimension."""
+    tokens = tuple(tokenizer.encode(text))
+    stimulus = codec_map.encode(tokens)
+    if type(stimulus) is not Stimulus:
+        raise CompositionError("STIMULUS", "the ECS codec map must return a Stimulus")
+    if stimulus.dim != substrate.dim:
+        raise CompositionError("STIMULUS", "the stimulus dimension must match the ECS state")
+    return tokens, stimulus
+
+
+def _decode(codec_map, readout, tokenizer, max_output_tokens):
+    """The boundary's decode: readout -> in-vocabulary token IDs within the limit -> text."""
+    vocab = tokenizer.vocab_size
+    output = codec_map.decode(readout)
+    if (type(output) is not tuple or len(output) > max_output_tokens
+            or not all(type(t) is int and 0 <= t < vocab for t in output)):
+        raise CompositionError("DECODE", "decode must return in-vocabulary token IDs within the limit")
+    decoder = tokenizer.decoder()
+    return output, "".join(decoder.push(t) for t in output) + decoder.finish()
+
+
 def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
              max_output_tokens=256) -> TurnResult:
-    """One canonical turn over a native K1 state. Fails closed without a qualified ECS codec map."""
+    """One unmanaged canonical turn over a native K1 state. Fails closed without a qualified ECS codec map."""
     classification = _validate_turn_request(
         substrate,
         text,
@@ -226,14 +250,8 @@ def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
         learning_rate=learning_rate,
         max_output_tokens=max_output_tokens,
     )
-    vocab = tokenizer.vocab_size
-    tokens = tuple(tokenizer.encode(text))
-    stimulus = codec_map.encode(tokens)
-    if type(stimulus) is not Stimulus:
-        raise CompositionError("STIMULUS", "the ECS codec map must return a Stimulus")
+    tokens, stimulus = _encode(substrate, text, tokenizer, codec_map)
     dim, width = substrate.dim, substrate.width
-    if stimulus.dim != dim:
-        raise CompositionError("STIMULUS", "the stimulus dimension must match the ECS state")
     try:
         if stimulus.max_experience_rows > substrate.max_rows:
             substrate.reserve(stimulus.max_experience_rows)  # explicit cold-path growth, before the transaction
@@ -246,12 +264,7 @@ def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
         except K1Error as exc:
             raise CompositionError("ECS_REFUSED", str(exc)) from exc
         readout = Readout(prepared.s3, prepared.epoch_after, dim, width)
-        output = codec_map.decode(readout)
-        if (type(output) is not tuple or len(output) > max_output_tokens
-                or not all(type(t) is int and 0 <= t < vocab for t in output)):
-            raise CompositionError("DECODE", "decode must return in-vocabulary token IDs within the limit")
-        decoder = tokenizer.decoder()
-        rendered = "".join(decoder.push(t) for t in output) + decoder.finish()
+        output, rendered = _decode(codec_map, readout, tokenizer, max_output_tokens)
         try:
             committed = txn.commit_identity()  # third crossing: commit plus exact retained-state identities
         except K1Error as exc:

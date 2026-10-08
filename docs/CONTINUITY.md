@@ -129,7 +129,7 @@ corrupt / ambiguous register       -> CONTINUITY_CORRUPT
 A K1 commit is never rolled back because publication failed. The runtime
 fail-stops with the publication code, and restart resolves through the law
 above. No missing turn is synthesized. One open `Runtime` owns one K1 lineage
-handle.
+handle; the binding and the fail-stop are RuntimeCore's (docs/RUNTIME_CORE.md).
 
 ## Evolution binding
 
@@ -230,16 +230,15 @@ migration or license to reset authority.
 
 ## Hot path
 
-The managed canonical turn is: codec -> one native K1 transaction (experience
-schedule and readout) -> decode -> native commit -> one continuity
-publication. `tests/integration/test_runtime_hot_path.py` checks dynamically,
-on every run, that the canonical turn's K1 crossings are unchanged, that
-continuity is exactly one crossing into its library (`commit_cognition`),
-that Python performs no file I/O, and that the library's filesystem work per
-turn is exactly one 176-byte `pwrite` and one `fdatasync` (testing-library
-I/O counters). `tests/boundary/test_one_ecs.py` checks statically that the
-turn reaches no receipt, history, event, scheduler, projection or compaction
-machinery.
+The managed canonical turn is: codec -> RuntimeCore (one native K1 transaction: experience schedule and
+readout) -> decode -> RuntimeCore (native commit, one continuity publication). Since this branch the store is
+embedded in RuntimeCore (native/runtime, docs/RUNTIME_CORE.md), which owns the fail-stop and the K1 lineage
+binding. `tests/integration/test_runtime_hot_path.py` checks dynamically, on every run, that Python makes no K1
+call and three crossings into RuntimeCore, that RuntimeCore's K1 crossings are the transaction's own (begin,
+one schedule, commit) with exactly one publication, that Python performs no file I/O, and that the store's
+filesystem work per turn is exactly one 176-byte `pwrite` and one `fdatasync` (testing-library I/O counters).
+`tests/boundary/test_one_ecs.py` checks statically that the turn, in Python and in RuntimeCore, reaches no
+receipt, history, event, scheduler, projection or compaction machinery.
 
 The current record-size consequence is 176 bytes written per turn and 352
 bytes total. No new latency measurements are claimed for format v2.

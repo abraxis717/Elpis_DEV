@@ -4,25 +4,28 @@
 #   libelpis_continuity_testing.so  the same authority plus fault injection and I/O counters
 # Both are built offline from Cargo.lock (no dependencies beyond the Rust standard library).
 
+# The shared libraries carry a stable SONAME (passed to the final link only, so a crate that embeds this
+# one never inherits it), so C callers can link them by name.
 find_program(ELPIS_CARGO cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin" REQUIRED)
 
 set(_crate "${CMAKE_CURRENT_SOURCE_DIR}")
 file(GLOB _rust_sources CONFIGURE_DEPENDS "${_crate}/src/*.rs")
-set(_crate_inputs ${_rust_sources} "${_crate}/Cargo.toml" "${_crate}/Cargo.lock" "${_crate}/build.rs")
+set(_crate_inputs ${_rust_sources} "${_crate}/Cargo.toml" "${_crate}/Cargo.lock")
 set(_prod "${CMAKE_CURRENT_BINARY_DIR}/libelpis_continuity.so")
 set(_testing "${CMAKE_CURRENT_BINARY_DIR}/libelpis_continuity_testing.so")
 
 add_custom_command(OUTPUT "${_prod}"
   COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/cargo"
-          "${ELPIS_CARGO}" build --offline --locked --release --lib --manifest-path "${_crate}/Cargo.toml"
+          "${ELPIS_CARGO}" rustc --offline --locked --release --lib --manifest-path "${_crate}/Cargo.toml"
+          -- -C "link-arg=-Wl,-soname,libelpis_continuity.so"
   COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/cargo/release/libelpis_continuity.so" "${_prod}"
   DEPENDS ${_crate_inputs}
   COMMENT "cargo: libelpis_continuity.so (production)"
   VERBATIM)
 add_custom_command(OUTPUT "${_testing}"
   COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/cargo-testing"
-          "${ELPIS_CARGO}" build --offline --locked --release --lib --features testing
-          --manifest-path "${_crate}/Cargo.toml"
+          "${ELPIS_CARGO}" rustc --offline --locked --release --lib --features testing
+          --manifest-path "${_crate}/Cargo.toml" -- -C "link-arg=-Wl,-soname,libelpis_continuity.so"
   COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/cargo-testing/release/libelpis_continuity.so" "${_testing}"
   DEPENDS ${_crate_inputs}
   COMMENT "cargo: libelpis_continuity_testing.so (fault injection)"

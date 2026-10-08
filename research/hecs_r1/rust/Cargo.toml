@@ -1,0 +1,23 @@
+[package]
+name = "hecs_r1"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+description = "H-ECS R1: hierarchical ECS world models, successor to the invalid R0 (RESEARCH_ONLY laboratory)."
+license = "UNLICENSED"
+publish = false
+
+# No dependencies: the standard library only. The ECS is the native K1 library, loaded by explicit path.
+[dependencies]
+
+[lib]
+name = "hecs_r1"
+path = "src/lib.rs"
+doctest = false  # doc comments carry formulas, not examples
+
+[[bin]]
+name = "hecs1"
+path = "src/main.rs"
+
+[profile.release]
+debug = false

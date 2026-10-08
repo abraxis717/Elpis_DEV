@@ -1,10 +1,12 @@
 """The managed canonical turn's hot path, measured dynamically (docs/CONTINUITY.md, docs/ARCHITECTURE.md).
 
-``Runtime.run_turn`` is codec -> one native K1 transaction (schedule and readout) -> decode -> native commit ->
-one continuity publication. Measured on a warm turn:
+``Runtime.run_turn`` is codec -> RuntimeCore (one native K1 transaction: begin, schedule and readout) -> decode ->
+RuntimeCore (native commit, one continuity publication). Measured on a warm turn:
 
-* native K1 crossings are exactly those of the bare canonical turn;
-* continuity adds exactly one crossing into the Rust continuity library (the publication);
+* Python makes no K1 call at all and three crossings into RuntimeCore: the fail-stop probe, turn begin and turn
+  commit;
+* RuntimeCore's K1 crossings are those of the bare canonical turn's transaction (begin, one schedule, commit):
+  no identity read (the binding holds), no reservation, no abort; and it publishes once;
 * Python performs no file I/O at all; the library's filesystem work is one ``pwrite`` of one 176-byte record
   and one ``fdatasync``: no open, rename, directory sync, read or unlink (testing-library I/O counters);
 * no retired history, receipt, event, scheduler or projection module is loaded;
@@ -24,7 +26,7 @@ from elpis.ECS.k1 import K1Library
 from elpis.runtime import Runtime, RuntimeConfig
 from elpis.runtime.cognition import run_turn
 
-from ..conftest import require_continuity_library
+from ..conftest import require_runtime_library
 from ._turn_fixtures import ByteTokens, FixtureMap
 from .test_codec_ecs_turn import RATE, _beside, _Counting, world
 
@@ -70,7 +72,7 @@ _RETIRED_MODULES = ("elpis.runtime.history", "elpis.runtime.native_history", "el
 
 
 @pytest.mark.parametrize("experiences,steps", [(1, 1), (8, 60)])
-def test_managed_turn_adds_no_native_crossing_and_one_fixed_publication(experiences, steps, tmp_path, monkeypatch):
+def test_managed_turn_is_two_runtimecore_crossings_and_one_fixed_publication(experiences, steps, tmp_path, monkeypatch):
     k1 = K1Library(ctypes.CDLL(str(_beside("libelpis_ecsg_k1.so"))))
     fixture = dict(experiences=experiences, steps=steps)
     counter = _Counting(k1._k)
@@ -82,26 +84,33 @@ def test_managed_turn_adds_no_native_crossing_and_one_fixed_publication(experien
         run_turn(bare, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
         bare_crossings = dict(counter.calls)
 
-    config = RuntimeConfig(tmp_path / "continuity", require_continuity_library(testing=True))
+    config = RuntimeConfig(tmp_path / "continuity", require_runtime_library(testing=True))
     with world(k1) as state, Runtime(config) as runtime:
         runtime.anchor_cognition(state)
         runtime.run_turn(state, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
         footprint = sorted((p.name, p.stat().st_size) for p in (tmp_path / "continuity").iterdir())
         runtime.continuity.testing_counters(reset=True)
-        continuity_calls = _CountingSymbols(runtime.continuity.library._lib, "elpis_continuity_")
+        runtime._core.counters(reset=True)
+        core_calls = _CountingSymbols(runtime._core._f, "elpis_runtime_")
         counter.calls.clear()
         with monkeypatch.context() as patch:
             fs = _CountingOS(patch)
             result = runtime.run_turn(state, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture),
                                       learning_rate=RATE)
-        managed_crossings, turn_continuity_calls = dict(counter.calls), dict(continuity_calls.calls)
+        python_k1_calls, turn_core_calls = dict(counter.calls), dict(core_calls.calls)
+        native = runtime._core.counters()
         io = runtime.continuity.testing_counters()
 
         assert result.state_after_digest == state.state_digest() == runtime.continuity.snapshot().k1_state_digest
-        # The K1 crossings are the canonical turn's own (the restart check reads the digest the native commit
-        # already returned); continuity is one crossing into its library, the publication itself.
-        assert managed_crossings == bare_crossings, (managed_crossings, bare_crossings)
-        assert turn_continuity_calls == {"elpis_continuity_commit_cognition": 1}, turn_continuity_calls
+        # Python calls K1 not at all; it crosses into RuntimeCore three times (the fail-stop probe, begin, commit).
+        assert python_k1_calls == {}, python_k1_calls
+        assert turn_core_calls == {"elpis_runtime_fault": 1, "elpis_runtime_turn_begin": 1,
+                                   "elpis_runtime_turn_commit": 1}, turn_core_calls
+        # RuntimeCore's K1 crossings are the bare turn's transaction: begin, one schedule, commit.
+        assert {k: bare_crossings.get(k, 0) for k in ("txn_begin", "txn_run_schedule", "txn_commit_identity")} == \
+            {"txn_begin": 1, "txn_run_schedule": 1, "txn_commit_identity": 1}, bare_crossings
+        assert native == {"k1_state_digests": 0, "k1_reserves": 0, "k1_txn_begins": 1, "k1_run_schedules": 1,
+                          "k1_commits": 1, "k1_aborts": 0, "publications": 1}, native
         # Python does no file I/O; the library writes one complete fixed-size record and syncs it once.
         assert fs.calls == {}, fs.calls
         assert io == {"opens": 0, "preads": 0, "pread_bytes": 0, "pwrites": 1, "pwrite_bytes": 176,

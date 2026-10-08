@@ -350,15 +350,20 @@
     {
       "id": "runtime",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "The one runtime composition. It orchestrates codec -> ECS -> codec (elpis.runtime.cognition.run_turn: DSV4 encode, admitted stimulus, ECS dynamics, S3 readout, DSV4 decode), failing closed with ECS_CODEC_UNQUALIFIED while no qualified ECS codec map exists. It composes the one ECS and the continuity component: the first managed K1 lineage is anchored explicitly, every committed turn publishes its new expected K1 retained-state identity, and evolution attempts are bound to the current evolution authority. It runs one subsystem operation at a time through that subsystem's own fail-closed entry point (pipeline ingress, structure retrieval-bundle admission, canonical Grid81 publication, the evolution path gate, and structural-memory rendering through the codec) and returns that subsystem's result; it keeps no receipts and no history. It owns the edge adapters (elpis.runtime.edges). It composes no DSV model execution: no decode transaction, principal sequence or model text generation (mission-gated). It is not a numbered runtime generation.",
+      "purpose": "The one runtime composition. Its mutable systems authority (lifecycle, fail-stop, the embedded continuity store, the K1 lineage binding, the managed turn's native K1 transaction and its continuity publication, and the evolution reservation) is RuntimeCore (native/runtime, Rust, C ABI include/elpis/runtime.h; docs/RUNTIME_CORE.md); elpis.runtime.Runtime is its thin facade. It orchestrates codec -> ECS -> codec (elpis.runtime.cognition.run_turn: DSV4 encode, admitted stimulus, ECS dynamics, S3 readout, DSV4 decode), failing closed with ECS_CODEC_UNQUALIFIED while no qualified ECS codec map exists. It composes the one ECS and the continuity component: the first managed K1 lineage is anchored explicitly, every committed turn publishes its new expected K1 retained-state identity, and evolution attempts are bound to the current evolution authority. It runs one subsystem operation at a time through that subsystem's own fail-closed entry point (pipeline ingress, structure retrieval-bundle admission, canonical Grid81 publication, the evolution path gate, and structural-memory rendering through the codec) and returns that subsystem's result; it keeps no receipts and no history. It owns the edge adapters (elpis.runtime.edges). It composes no DSV model execution: no decode transaction, principal sequence or model text generation (mission-gated). It is not a numbered runtime generation.",
       "python_package": "elpis.runtime",
       "implementation_roots": [
+        "native/runtime",
         "src/elpis/runtime"
       ],
       "test_roots": [
+        "native/runtime/src/tests.rs",
+        "native/runtime/tests",
         "tests/integration"
       ],
-      "native_targets": [],
+      "native_targets": [
+        "elpis_runtime"
+      ],
       "depends_on": [
         "ECS",
         "continuity",
@@ -368,7 +373,7 @@
         "structure",
         "substrate"
       ],
-      "mutation_authority": "The runtime writes only its continuity directory, and only through ContinuityStore: the explicit K1 lineage anchor, the expected K1 identity after each committed K1 turn, and the evolution authority after each admitted attempt. A failed or uncertain continuity publication never rolls back a committed K1 turn; it fail-stops the runtime until reopen. Every other state change (canonical publication and its ledger, decode state, evolution receipts) is made by the owning subsystem's entry point with the caller's explicit inputs; the runtime adds no authority, no fallback and no audit record.",
+      "mutation_authority": "RuntimeCore (native/runtime) writes only the continuity directory, through the embedded continuity store: the explicit K1 lineage anchor, the expected K1 identity after each committed K1 turn, and the evolution authority (reservation, then finalization) around each admitted attempt. A failed or uncertain continuity publication never rolls back a committed K1 turn; it fail-stops RuntimeCore until reopen. The Python facade holds no authority state. Every other state change (canonical publication and its ledger, decode state, evolution receipts) is made by the owning subsystem's entry point with the caller's explicit inputs; the runtime adds no authority, no fallback and no audit record.",
       "runtime_participation": "This is the runtime composition.",
       "security_boundary": "The continuity directory is an explicit absolute path owned exclusively (directory flock); its two fixed slots are verified on open and a corrupt, ambiguous, foreign or retired receipt-history layout is refused. A supplied K1 state whose retained-state identity differs from the durable expectation is refused before any K1 mutation (CONTINUITY_STATE_MISMATCH); there is no implicit anchor and no synthesized transition. Libraries, corpus roots, file assets, ledgers and promotion capabilities are supplied explicitly by the caller; the runtime opens no network connection and loads no model. An evolution assertion built against an older evolution authority is rejected before anything executes.",
       "protocol_identifiers_retained": [
@@ -451,6 +456,10 @@
       {
         "path": "research/hecs_r0",
         "classification": "RESEARCH_ONLY, PREREGISTERED: H-ECS R0 hierarchical ECS world-model laboratory (a Rust crate over the existing native K1 C ABI; one K1 state per level; DEV calibration -> DEV -> QUAL once, write-once evidence). Not on the canonical path; no codec, no HACF edge, no runtime authority (research/hecs_r0/PREREGISTRATION.md)."
+      },
+      {
+        "path": "research/hecs_r1",
+        "classification": "RESEARCH_ONLY: H-ECS R1, the preregistered successor of the invalid R0 (TASK_INVALID_ON_DEV). R0's hierarchy laboratory (one native K1 state per level through the existing C ABI) copied with source equivalence, with a valid task-validity law (analytic floor, held-out linear reference, ECS adequacy) on fresh SHA-256-derived seeds. Closed TASK_INVALID at QUAL (docs/research/HECS_R1_RESULTS.md): hypotheses not adjudicated, integration NOT_AUTHORIZED. No runtime authority; makes nothing canonical; only QUAL OUTCOME_A authorizes an experimental, noncanonical integration."
       }
     ],
     "native_targets": [

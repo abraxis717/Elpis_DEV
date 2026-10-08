@@ -188,3 +188,11 @@ are not evidence that the contract has any effect.
   preregistered V1 threshold lay below the SEPARATED world's achievable one-step
   error. No hierarchy, abstraction, planning, width or depth claim follows, positive
   or negative. ECS is not claimed to be a JEPA.
+* `research/hecs_r1` (H-ECS R1, R0's successor with a valid task-validity law) is
+  RESEARCH_ONLY with NO_RUNTIME_AUTHORITY and closed `TASK_INVALID` at QUAL
+  (`docs/research/HECS_R1_RESULTS.md`): its DEV run was valid, and its single QUAL run
+  failed V1C ECS adequacy in 1 of 16 instances. The hypotheses were not adjudicated,
+  so no hierarchy, abstraction, planning, width or depth claim follows. The
+  fast-factor loss seen at distinct upper levels comes from a fixed linear encoder,
+  not from ECS learning. No hierarchy integration was authorized, and H-ECS is not
+  canonical.

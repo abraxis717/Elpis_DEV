@@ -1,4 +1,4 @@
-"""The one runtime composition: explicit subsystem wiring around one continuity authority.
+"""The one runtime composition: explicit subsystem wiring around RuntimeCore.
 
 ``Runtime`` does not own models, corpora, canonical roots or targets. The
 caller constructs each of them explicitly (explicit library paths, corpus
@@ -19,9 +19,9 @@ entry point and returns that subsystem's result:
   corpus manifest), then a budgeted, frozen token rendering. It is a
   communication operation: it does not make HACF a context window for a model.
 * ``evolve``: the evolution path gate, bound to the current evolution
-  authority held by continuity (``evolution_authority``). The exact assertion
-  is durably reserved before execution and finalized afterwards. Pending
-  authority and stale assertions execute nothing.
+  authority (``evolution_authority``). The exact assertion is durably reserved
+  before execution and finalized afterwards. Pending authority and stale
+  assertions execute nothing.
 * ``anchor_cognition`` / ``run_turn``: the canonical cognitive turn, codec ->
   ECS -> codec (:mod:`elpis.runtime.cognition`), over a native K1 state of the
   one ECS. The first managed lineage is anchored explicitly. Each committed
@@ -29,8 +29,21 @@ entry point and returns that subsystem's result:
   Without a qualified ECS codec map the turn refuses with
   ``ECS_CODEC_UNQUALIFIED``: text generation is unavailable.
 
-There are no generic receipts and no history. ``elpis.continuity`` holds only
-the current authority restart and evolution need (docs/CONTINUITY.md).
+THE AUTHORITY IS RUNTIMECORE'S, NOT THIS MODULE'S. Every mutable systems decision
+of an open runtime belongs to RuntimeCore (native/runtime, Rust; docs/RUNTIME_CORE.md):
+its lifecycle and fail-stop disposition, the continuity store, the binding of the
+K1 lineage to one native state and its verification against continuity, the
+managed turn's native K1 transaction (begin, schedule, commit or abort) with its
+continuity publication, and the evolution attempt's durable reservation and
+finalization. This module is the compatibility facade: it validates requests at
+the language boundary (token codec, ECS codec map, evolution gate), hands
+RuntimeCore native-ready values and raises the code RuntimeCore returns. It holds
+no fail-stop flag, no lineage state, no transaction and no authority value; the
+only state it keeps is a reference that keeps the bound K1 state's owner alive
+(lifetime, not authority).
+
+There are no generic receipts and no history. Continuity holds only the current
+authority restart and evolution need (docs/CONTINUITY.md).
 
 The runtime composes no DSV model execution (docs/ELPIS_MISSION.md: DSV4
 communicates, ECS computes). Nothing is chained implicitly. No hidden
@@ -42,8 +55,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from elpis.continuity import ContinuityError, ContinuityLibrary, ContinuitySnapshot, ContinuityStore
-from elpis.ECS.k1 import K1Error
+from elpis.continuity import ContinuityError, ContinuitySnapshot, EvolutionAuthority
 from elpis.evolution.path_gate import (
     EvolutionAuthorityBinding,
     EvolutionPathGate,
@@ -59,17 +71,11 @@ from elpis.structure.retrieval.objects import CorpusManifest, resolve_chunks
 from elpis.structure.retrieval.validation import validate_bundle
 from elpis.substrate.digests import raw_digest
 
+from .core import RuntimeCore, RuntimeLibrary, describe
 from .edges import from_regex_hacf, object_claims
+from .errors import CompositionError
 
-__all__ = ("CompositionError", "ContextPreparation", "Runtime", "RuntimeConfig")
-
-
-class CompositionError(RuntimeError):
-    """A composed operation was refused by one of its stages (fail closed)."""
-
-    def __init__(self, code: str, detail: str = ""):
-        self.code = code
-        super().__init__(f"{code}: {detail}" if detail else code)
+__all__ = ("CompositionError", "ContextPreparation", "Runtime", "RuntimeConfig", "RuntimeContinuity")
 
 
 @dataclass(frozen=True)
@@ -82,31 +88,54 @@ class ContextPreparation:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """The runtime's continuity directory and the continuity library (explicit absolute paths).
+    """The runtime's continuity directory and the RuntimeCore library (explicit absolute paths).
 
-    ``continuity_library`` is the built ``libelpis_continuity.so`` (native/continuity), loaded by
-    explicit path like every Elpis native library.
+    ``runtime_library`` is the built ``libelpis_runtime.so`` (native/runtime), loaded by explicit
+    path like every Elpis native library. It embeds the continuity authority (native/continuity).
     """
 
     continuity_dir: Path
-    continuity_library: Path
+    runtime_library: Path
 
     def __post_init__(self):
-        for value in (self.continuity_dir, self.continuity_library):
+        for value in (self.continuity_dir, self.runtime_library):
             if not isinstance(value, Path) or not value.is_absolute():
-                raise CompositionError("CONTINUITY_PATH", "continuity paths must be absolute Paths")
+                raise CompositionError("RUNTIME_PATH", "runtime paths must be absolute Paths")
 
 
-def _k1_identity(substrate) -> bytes:
-    try:
-        digest = substrate.state_digest()
-    except (AttributeError, TypeError) as exc:
-        raise CompositionError("ECS_STATE", "a native K1 state with state_digest() is required") from exc
-    except K1Error as exc:
-        raise CompositionError("ECS_REFUSED", str(exc)) from exc
-    if type(digest) is not bytes or len(digest) != 32:
-        raise CompositionError("ECS_STATE", "K1 state_digest() must return 32 bytes")
-    return digest
+class RuntimeContinuity:
+    """The open runtime's continuity authority as RuntimeCore exposes it. It holds nothing.
+
+    ``snapshot`` reads the current durable record (also while fail-stopped: it is what restart
+    sees). ``commit_evolution_transition`` is the explicit reconciliation of a durable pending
+    evolution authority with an externally established receipt. The testing library adds fault
+    injection and the store's I/O counters. ``library`` is the record codec of the same library.
+    Refusals raise :class:`~elpis.continuity.ContinuityError` with RuntimeCore's stable code.
+    """
+
+    def __init__(self, core: RuntimeCore):
+        self._core = core
+        self.library = core.library.continuity
+        self.directory = core.directory
+
+    @staticmethod
+    def _call(fn, *args):
+        try:
+            return fn(*args)
+        except CompositionError as exc:
+            raise ContinuityError(exc.code, str(exc)) from exc
+
+    def snapshot(self) -> ContinuitySnapshot:
+        return self._call(self._core.snapshot)
+
+    def commit_evolution_transition(self, expected: EvolutionAuthority, receipt_digest: str) -> ContinuitySnapshot:
+        return self._call(self._core.evolution_reconcile, expected, receipt_digest)
+
+    def testing_fault(self, publication: int, action: int, arg: int = 0) -> None:
+        self._call(self._core.testing_fault, publication, action, arg)
+
+    def testing_counters(self, reset: bool = False) -> dict[str, int]:
+        return self._call(self._core.testing_io_counters, reset)
 
 
 class Runtime:
@@ -114,27 +143,20 @@ class Runtime:
         if type(config) is not RuntimeConfig:
             raise TypeError("config must be a RuntimeConfig")
         self.config = config
-        try:
-            self.continuity = ContinuityStore(ContinuityLibrary(config.continuity_library), config.continuity_dir)
-        except ContinuityError as exc:
-            raise CompositionError(exc.code, str(exc)) from exc
-        # A continuity publication that did not become certain after an ECS
-        # commit (or a lineage mismatch) fail-stops lineage-dependent work
-        # until the runtime is reopened and reconciled.
-        self._continuity_fault: str | None = None
-        self._turn_substrate = None
+        self._core = RuntimeCore(RuntimeLibrary(config.runtime_library), config.continuity_dir)
+        self.continuity = RuntimeContinuity(self._core)
+        # Keeps the owner of the bound K1 state alive, so its identity cannot be reused while
+        # RuntimeCore holds the binding (lifetime only: RuntimeCore decides the binding).
+        self._bound_owner = None
 
     def open(self) -> "Runtime":
-        try:
-            self.continuity.open()
-        except ContinuityError as exc:
-            raise CompositionError(exc.code, str(exc)) from exc
-        self._continuity_fault = None
-        self._turn_substrate = None
+        self._bound_owner = None
+        self._core.open()
         return self
 
     def close(self) -> None:
-        self.continuity.close()
+        self._core.close()
+        self._bound_owner = None
 
     def __enter__(self) -> "Runtime":
         return self.open()
@@ -142,14 +164,10 @@ class Runtime:
     def __exit__(self, *exc) -> None:
         self.close()
 
-    def _snapshot(self) -> ContinuitySnapshot:
-        if self._continuity_fault is not None:
-            raise CompositionError(self._continuity_fault,
-                                   "runtime is fail-stopped pending restart/reconciliation")
-        try:
-            return self.continuity.snapshot()
-        except ContinuityError as exc:
-            raise CompositionError(exc.code, str(exc)) from exc
+    @property
+    def fault(self) -> str | None:
+        """RuntimeCore's fail-stop disposition (None while live)."""
+        return self._core.fault()
 
     # -- pipeline: bounded ingress ---------------------------------------------------
     def run_ingress(self, ingress: QueryIngress, task: bytes) -> QueryIngressResult:
@@ -174,41 +192,35 @@ class Runtime:
     # -- evolution: gated attempts bound to the current evolution authority -------------
     def evolution_authority(self) -> EvolutionAuthorityBinding:
         """The current evolution authority an assertion must be built against."""
-        authority = self._snapshot().evolution
-        if authority.pending_assertion is not None:
-            raise CompositionError("CONTINUITY_EVOLUTION_PENDING", "explicit reconciliation required")
+        authority = self._core.evolution_authority().evolution
         return EvolutionAuthorityBinding(authority.revision, authority.digest, authority.head)
 
     def evolve(self, gate: EvolutionPathGate, *, assertion, state, advance, advance_kwargs
                ) -> GateRejected | GateExecuted:
+        """Validate (the gate), reserve (RuntimeCore), execute once (the gate), finalize (RuntimeCore).
+
+        RuntimeCore refuses while fail-stopped or pending, durably reserves the exact assertion
+        before anything executes and fail-stops on any reservation or finalization failure. An
+        attempt that raises or returns an invalid result may already have had an external effect:
+        RuntimeCore keeps its reservation pending and fail-stops; nothing is retried or inferred.
+        """
         if type(gate) is not EvolutionPathGate:
             raise TypeError("evolve takes an EvolutionPathGate")
-        current = self._snapshot().evolution
-        if current.pending_assertion is not None:
-            raise CompositionError("CONTINUITY_EVOLUTION_PENDING", "explicit reconciliation required")
+        current = self._core.evolution_authority().evolution
         binding = EvolutionAuthorityBinding(current.revision, current.digest, current.head)
         reason = gate.reject_reason(assertion, state, binding)
         if reason is not None:
             return GateRejected(False, reason, 0)
-        try:
-            pending = self.continuity.reserve_evolution_assertion(current, assertion.digest).evolution
-        except ContinuityError as exc:
-            self._continuity_fault = exc.code
-            raise CompositionError(exc.code, "evolution reservation failed; no attempt executed") from exc
+        self._core.evolution_reserve(current, assertion.digest)
         try:
             result = gate.execute(assertion=assertion, state=state, authority=binding,
                                   advance=advance, advance_kwargs=advance_kwargs)
             if not isinstance(result, GateExecuted):
                 raise CompositionError("CONTINUITY_EVOLUTION_PENDING", "admission changed after reservation")
-            self.continuity.commit_evolution_transition(pending, result.receipt.receipt_digest)
-        except ContinuityError as exc:
-            self._continuity_fault = exc.code
-            raise CompositionError(exc.code, "evolution attempt executed; finalization not certain") from exc
         except BaseException:
-            # Even an exception or an invalid result may follow an external
-            # effect. Preserve the reservation; never infer that retry is safe.
-            self._continuity_fault = "CONTINUITY_EVOLUTION_PENDING"
+            self._core.evolution_abandon()
             raise
+        self._core.evolution_finalize(result.receipt.receipt_digest)
         return result
 
     # -- structure -> codec: ingress -> adapter -> HACF resolution -> rendering ----------
@@ -251,62 +263,42 @@ class Runtime:
     def anchor_cognition(self, substrate) -> ContinuitySnapshot:
         """Explicitly anchor the first managed K1 lineage at the substrate's retained state.
 
-        Reads the K1 identity only; never mutates K1. Refused if a lineage is
+        RuntimeCore reads the K1 identity only and never mutates K1. Refused if a lineage is
         already anchored.
         """
-        if self._snapshot().anchored:
-            raise CompositionError("CONTINUITY_ALREADY_ANCHORED", "durable K1 lineage already exists")
-        identity = _k1_identity(substrate)
-        try:
-            anchored = self.continuity.anchor_cognition(identity)
-        except ContinuityError as exc:
-            if exc.code == "CONTINUITY_PUBLICATION_UNCERTAIN":
-                self._continuity_fault = exc.code
-            raise CompositionError(exc.code, "no K1 mutation happened") from exc
-        self._turn_substrate = substrate
+        descriptor, owner = describe(substrate)
+        anchored = self._core.anchor(descriptor)
+        self._bound_owner = owner
         return anchored
 
-    def _reconcile_cognition_substrate(self, substrate) -> None:
-        if self._turn_substrate is not None:
-            if substrate is not self._turn_substrate:
-                raise CompositionError("COGNITION_SUBSTRATE_SWITCH", "one open Runtime owns one K1 lineage")
-            return
-        expected = self._snapshot().k1_state_digest
-        if expected is None:
-            raise CompositionError(
-                "CONTINUITY_UNANCHORED",
-                "anchor_cognition(substrate) is required before the first managed K1 turn",
-            )
-        if _k1_identity(substrate) != expected:
-            self._continuity_fault = "CONTINUITY_STATE_MISMATCH"
-            raise CompositionError(
-                self._continuity_fault,
-                "current K1 retained state does not match the durable expected identity",
-            )
-        self._turn_substrate = substrate
-
-    # -- cognition: DSV4 codec -> ECS -> DSV4 codec -> continuity ---------------------------
+    # -- cognition: DSV4 codec -> ECS (RuntimeCore) -> DSV4 codec ---------------------------
     def run_turn(self, substrate, text, *, tokenizer, codec_map=None, learning_rate=None, max_output_tokens=256):
-        """Commit one canonical K1 turn, then publish its new expected K1 identity to continuity."""
-        if self._continuity_fault is not None:
-            raise CompositionError(self._continuity_fault,
-                                   "runtime is fail-stopped pending restart/reconciliation")
+        """One managed canonical turn.
 
-        from .cognition import _validate_turn_request, run_turn
+        The boundary validates the request, encodes the text and the stimulus and decodes the
+        readout. RuntimeCore verifies the K1 lineage, runs the native K1 transaction on its
+        candidate, commits it after the decode succeeded and publishes the committed identity to
+        continuity, fail-stopping when that publication is not certain. A refused or aborted turn
+        installs nothing.
+        """
+        self._core.require_live()
 
-        _validate_turn_request(substrate, text, codec_map=codec_map, learning_rate=learning_rate,
-                               max_output_tokens=max_output_tokens)
-        self._reconcile_cognition_substrate(substrate)
+        from .cognition import Readout, TurnResult, _decode, _encode, _validate_turn_request
 
-        result = run_turn(substrate, text, tokenizer=tokenizer, codec_map=codec_map,
-                          learning_rate=learning_rate, max_output_tokens=max_output_tokens)
-
-        # The K1 commit is final. Publication either makes its retained-state
-        # identity the durable expectation or fail-stops the runtime; a K1
-        # commit is never rolled back and no transition is ever synthesized.
+        classification = _validate_turn_request(substrate, text, codec_map=codec_map, learning_rate=learning_rate,
+                                                max_output_tokens=max_output_tokens)
+        descriptor, owner = describe(substrate)
+        tokens, stimulus = _encode(substrate, text, tokenizer, codec_map)
+        if self._bound_owner is None:
+            self._bound_owner = owner   # whatever RuntimeCore binds at this begin stays alive
+        begun = self._core.turn_begin(descriptor, stimulus, learning_rate)
         try:
-            self.continuity.commit_cognition_transition(result.state_before_digest, result.state_after_digest)
-        except ContinuityError as exc:
-            self._continuity_fault = exc.code
-            raise CompositionError(exc.code, "K1 turn committed; continuity publication failed") from exc
-        return result
+            readout = Readout(begun.s3, begun.epoch_after, substrate.dim, substrate.width)
+            output, rendered = _decode(codec_map, readout, tokenizer, max_output_tokens)
+        except BaseException:
+            self._core.turn_abort(descriptor)
+            raise
+        committed, _ = self._core.turn_commit(descriptor)
+        return TurnResult(tokens, output, rendered, readout, committed.commit.epoch_before,
+                          committed.commit.epoch_after, classification, committed.state_before_digest,
+                          committed.state_after_digest)

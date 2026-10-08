@@ -1,0 +1,25 @@
+[package]
+name = "elpis_runtime"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+description = "Elpis RuntimeCore: runtime lifecycle, fail-stop, K1 lineage binding, managed K1 turns and evolution reservation over the continuity authority, behind a stable C ABI."
+license = "UNLICENSED"
+publish = false
+
+# The continuity authority is embedded as a Rust crate (one implementation, no second store); nothing else.
+[dependencies]
+elpis_continuity = { path = "../continuity" }
+
+[lib]
+name = "elpis_runtime"
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[features]
+# Test-only continuity fault injection and I/O counters, compiled into libelpis_runtime_testing.so only.
+testing = ["elpis_continuity/testing"]
+
+[profile.release]
+panic = "abort"
+debug = false

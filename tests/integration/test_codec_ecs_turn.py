@@ -369,8 +369,8 @@ def test_canonical_turn_exposes_the_commit_bound_retained_state_identities(k1):
 
 def _config(path, testing=False):
     from elpis.runtime import RuntimeConfig
-    from ..conftest import require_continuity_library
-    return RuntimeConfig(path, require_continuity_library(testing=testing))
+    from ..conftest import require_runtime_library
+    return RuntimeConfig(path, require_runtime_library(testing=testing))
 
 
 def test_runtime_turn_publishes_exactly_the_new_expected_k1_identity(k1, tmp_path):
@@ -516,3 +516,46 @@ def test_open_runtime_refuses_switching_k1_lineage_handles(k1, tmp_path):
             assert info.value.code == "COGNITION_SUBSTRATE_SWITCH"
             assert first_state.snapshot() == first_before
             assert second_state.snapshot() == second_before
+
+
+def test_managed_fms_resident_turns_equal_managed_standalone_turns(k1, adapter, tmp_path):
+    """RuntimeCore drives an FMS-resident state through the FMS adapter's table, bitwise like a standalone one."""
+    from elpis.runtime import Runtime
+
+    with world(k1, max_rows=4) as standalone, _Resident(k1, adapter, tmp_path, max_rows=4) as resident:
+        with Runtime(_config(tmp_path / "a")) as ra, Runtime(_config(tmp_path / "b")) as rb:
+            ra.anchor_cognition(standalone)
+            rb.anchor_cognition(resident)
+            for i, text in enumerate(("first", "a second, longer turn")):
+                fixture = dict(experiences=1 + i, steps=2 + i, rows=4 + 8 * i)   # the second grows capacity
+                a = ra.run_turn(standalone, text, tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture),
+                                learning_rate=RATE)
+                b = rb.run_turn(resident, text, tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture),
+                                learning_rate=RATE)
+                assert a == b and a.state_after_digest == b.state_after_digest
+                assert standalone.snapshot() == resident.snapshot()
+                assert rb.continuity.snapshot().k1_state_digest == resident.state_digest()
+            # RuntimeCore grew both reservations natively on the cold path.
+            assert standalone.max_rows >= 12 and resident._r.inspect(resident.id)["max_rows"] >= 12
+            before = resident.snapshot()
+            with pytest.raises(CompositionError) as info:
+                rb.run_turn(resident, "decode", tokenizer=ByteTokens(), learning_rate=RATE,
+                            codec_map=FixtureMap(reply=(999,)))
+            assert info.value.code == "DECODE" and resident.snapshot() == before
+            info = resident._r.inspect(resident.id)
+            assert info["transaction_open"] == 0 and info["lease_count"] == 0   # aborted; no pin left behind
+            # A second wrapper of the same resident state is the same bound state (same owner and id).
+            rb.run_turn(resident._r.state(resident.id), "again", tokenizer=ByteTokens(), codec_map=FixtureMap(),
+                        learning_rate=RATE)
+
+
+def test_a_closed_bound_state_is_refused_without_a_native_call(k1, tmp_path):
+    from elpis.runtime import Runtime
+
+    state = world(k1)
+    with Runtime(_config(tmp_path / "closed")) as runtime:
+        runtime.anchor_cognition(state)
+        state.close()
+        with pytest.raises(CompositionError) as info:
+            runtime.run_turn(state, "closed", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
+        assert info.value.code == "ECS_STATE" and runtime.fault is None

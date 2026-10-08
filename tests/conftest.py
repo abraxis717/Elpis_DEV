@@ -5,6 +5,8 @@ Two policies apply to every test:
 * Network access is forbidden. Any attempt to open an INET/INET6 connection or
   resolve a host name fails the test. (CI additionally runs the core suite in a
   network namespace with only loopback, which covers subprocesses too.)
+* Lanes (``tests/lanes.py``): a bare ``pytest`` runs the FAST lane only; ``--lane`` selects
+  one lane (or ``all``); explicit test paths run what they name.
 * Native libraries are explicit. Tests that need a compiled Elpis library read
   it from the build tree named by ``ELPIS_NATIVE_BUILD`` (default: ``build`` in
   the repository root). When ``ELPIS_REQUIRE_NATIVE=1`` a missing library is a
@@ -20,6 +22,29 @@ import socket
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def pytest_addoption(parser):
+    parser.addoption("--lane", choices=("fast", "stress", "scientific", "historical", "all"), default=None,
+                     help="run one qualification lane (tests/lanes.py); a bare `pytest` runs `fast`")
+
+
+def pytest_collection_modifyitems(config, items):
+    from tests.lanes import lane_of
+
+    lane = config.getoption("--lane")
+    if lane is None:
+        if config.option.file_or_dir:
+            return  # explicit paths: run exactly what was named
+        lane = "fast"
+    if lane == "all":
+        return
+    keep, drop = [], []
+    for item in items:
+        (keep if lane_of(item.nodeid) == lane else drop).append(item)
+    if drop:
+        config.hook.pytest_deselected(items=drop)
+        items[:] = keep
 
 
 class NetworkAccessForbidden(RuntimeError):
@@ -103,6 +128,27 @@ def require_continuity_library(testing: bool = False) -> Path:
             pytest.fail(message)
         pytest.skip(message + " (never an implicit PASS)")
     return path
+
+
+def require_runtime_library(testing: bool = False) -> Path:
+    """The Rust RuntimeCore library at its exact build path (native/runtime); it embeds continuity.
+
+    Located by path, never by search (the cargo target directories hold same-named files).
+    """
+    name = "libelpis_runtime_testing.so" if testing else "libelpis_runtime.so"
+    path = native_build_dir() / "native" / "runtime" / name
+    if not path.is_file():
+        message = f"{name} not built under {native_build_dir()}; build with `cmake --build build`"
+        if native_required():
+            pytest.fail(message)
+        pytest.skip(message + " (never an implicit PASS)")
+    return path
+
+
+@pytest.fixture(scope="session")
+def runtime_library() -> Path:
+    """Production RuntimeCore library path (no test hooks)."""
+    return require_runtime_library()
 
 
 @pytest.fixture(scope="session")

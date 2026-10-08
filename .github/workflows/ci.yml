@@ -114,8 +114,42 @@ jobs:
           python -m venv /tmp/elpis-venv
           /tmp/elpis-venv/bin/python -m pip install --upgrade pip
           /tmp/elpis-venv/bin/python -m pip install ".[test]"
-      - name: Test suite
-        run: /tmp/elpis-venv/bin/python -m pytest
+      - name: FAST lane (tests/lanes.py; the research corpus has its own lanes and jobs)
+        run: /tmp/elpis-venv/bin/python -m pytest --lane fast --durations=10
+
+  lanes:
+    # The STRESS and HISTORICAL Python lanes (tests/lanes.py): multi-process contention, exhaustive fault
+    # matrices and scaling; the DSV4.1 tower, the ECS dynamics laboratory and the retained model-execution
+    # mechanics. Owned here so the Python 3.11 / 3.12 jobs run the FAST lane only.
+    name: Python stress and historical
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+      ELPIS_REQUIRE_NATIVE: "1"
+      ELPIS_NATIVE_BUILD: ${{ github.workspace }}/build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y $NATIVE_DEPS
+      - name: Native build (libraries loaded by Python)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+      - name: Clean install
+        run: |
+          python -m venv /tmp/elpis-venv
+          /tmp/elpis-venv/bin/python -m pip install --upgrade pip
+          /tmp/elpis-venv/bin/python -m pip install ".[test]"
+      - name: STRESS lane
+        run: timeout 1800 /tmp/elpis-venv/bin/python -m pytest -rs --lane stress --durations=10
+      - name: HISTORICAL lane
+        run: timeout 1800 /tmp/elpis-venv/bin/python -m pytest -rs --lane historical --durations=10
 
   airgap:
     name: Python without network
@@ -137,7 +171,7 @@ jobs:
           cmake --build build --parallel
           python -m venv /tmp/elpis-venv
           /tmp/elpis-venv/bin/python -m pip install ".[test]"
-      - name: Full suite in a network namespace with no interfaces up
+      - name: Every Python lane in a network namespace with no interfaces up
         run: |
           run_isolated() {
             sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
@@ -153,7 +187,7 @@ jobs:
           else:
               raise SystemExit('network reachable inside the isolation namespace')
           "
-          run_isolated /tmp/elpis-venv/bin/python -m pytest
+          run_isolated /tmp/elpis-venv/bin/python -m pytest --lane all
 
   authority:
     # Scientific authority gate (docs/CI_POLICY.md). Not a replacement for the full
@@ -201,16 +235,11 @@ jobs:
           echo "shallow: $(git rev-parse --is-shallow-repository)"
       - name: Current executor equals the scalar reference (native, AVX2 and baseline clones)
         run: ctest --test-dir build --output-on-failure -R "^ECS\."
-      - name: Evidence integrity, chronology, replay contracts, current-runtime regressions
+      - name: SCIENTIFIC lane (evidence integrity, chronology, replay contracts of every laboratory; tests/lanes.py)
+        run: /tmp/elpis-venv/bin/python -m pytest -rs --lane scientific --durations=10
+      - name: Current-runtime regressions behind the evidence (declared environment)
         run: >-
           /tmp/elpis-venv/bin/python -m pytest -rs
-          tests/research/ecs_cognition_r0
-          tests/research/ecs_retention_r0
-          tests/research/ecs_retention_r1
-          tests/research/ecs_retention_r2
-          tests/research/ecs_retention_r3
-          tests/research/ecs_k1_native
-          tests/research/ecs_runtime_r1
           tests/ECS
           tests/boundary/test_cognition_r0.py
           tests/boundary/test_runtime_r1.py
@@ -218,9 +247,10 @@ jobs:
           tests/boundary/test_mission.py
 
   continuity:
-    # The Rust continuity authority (native/continuity): format, lint and its bounded deterministic suite.
-    # Every native and Python job also builds it through CMake and runs `ctest -L continuity`.
-    name: Continuity (Rust)
+    # The Rust systems core: the continuity authority (native/continuity) and RuntimeCore (native/runtime):
+    # format, lint and their bounded deterministic suites. Every native job also builds both through CMake and
+    # runs `ctest -L continuity` and `ctest -L runtime` (RuntimeCore's C ABI over real native K1).
+    name: Continuity and RuntimeCore (Rust)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -235,8 +265,20 @@ jobs:
           timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
           timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
           timeout 600 cargo test --offline --locked --release
+      - name: RuntimeCore format, lint and test (embeds continuity; bounded)
+        working-directory: native/runtime
+        run: |
+          cargo fmt --check
+          timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
+          timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
+          timeout 600 cargo test --offline --locked --release --features testing
       - name: H-ECS R0 research crate format and lint (its tests run under ctest -L hecs in the native jobs)
         working-directory: research/hecs_r0/rust
+        run: |
+          cargo fmt --check
+          timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
+      - name: H-ECS R1 research crate format and lint (its tests run under ctest -L hecs in the native jobs)
+        working-directory: research/hecs_r1/rust
         run: |
           cargo fmt --check
           timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
