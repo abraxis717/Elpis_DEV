@@ -128,9 +128,9 @@
     {
       "path": "src/tests.rs",
       "r1_sha256": "5837130967a07598b47ee5bfebbf0a868ac3c505b48e768072956c032736f0e9",
-      "r2_sha256": "2d94d222d55e02209cd0bf976f6edb9a38122c1fd6f7a3aa689073edcc3331d6",
+      "r2_sha256": "d2ac9cd3e6cd0861b1dd15704650b0f7ea68a8fa5da32a20539402f732fffc9a",
       "status": "MODIFIED",
-      "reason": "R2 mechanics tests: specification path, seed freshness against R0 and R1 and exact decimal records, consumed horizons, multi-step instrumentation, exact K1 tangent against native FORWARD, the non-normal counterexample, sigma_max and submultiplicativity, the rollout-error recurrence, clip flags and the domain, an end-to-end mechanics run, recorded-seed reproduction"
+      "reason": "R2 mechanics tests: specification path, seed freshness against R0 and R1 and exact decimal records, consumed horizons, multi-step instrumentation, exact K1 tangent against native FORWARD, the non-normal counterexample, sigma_max and submultiplicativity, the rollout-error recurrence, clip flags and the domain, an end-to-end mechanics run, recorded-seed reproduction against the compact phase records (SHA-256 of every ECS-free references block; raw runner output is never committed)"
     },
     {
       "path": "src/validity.rs",

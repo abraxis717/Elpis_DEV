@@ -1,0 +1,282 @@
+{
+  "name": "hecs-r2.v1",
+  "labels": [
+    "RESEARCH_ONLY",
+    "NO_RUNTIME_AUTHORITY",
+    "NO_LANGUAGE_CLAIM",
+    "SYNTHETIC",
+    "SEMANTICS=NONE"
+  ],
+  "question": "Can the qualified ECS/K1 world-model primitive, trained one step ahead, produce a multi-step predictive object stable enough for planning at the horizons H-ECS consumes? Hierarchy is adjudicated only if it can.",
+  "base_seed": "20261007",
+  "seed_derivation": "u64 big-endian of SHA-256(\"elpis.hecs-r2.<phase>.v1:<index>\")[0..8]",
+  "design_seeds": [
+    "8318582482988895235",
+    "48883900885208620",
+    "1842212770792861585",
+    "15282691279643327234"
+  ],
+  "dev_seeds": [
+    "14754993789186315071",
+    "12154359753255553410",
+    "6287278211154781243",
+    "10323661857439540229"
+  ],
+  "qual_seeds": [
+    "1081895251583953854",
+    "2761248050979241786",
+    "10349694206428623058",
+    "4316384433055186278",
+    "17377210329154756622",
+    "1947799111408248483",
+    "2136955805524040833",
+    "17712258514216225143"
+  ],
+  "worlds": [
+    {
+      "kind": "SEPARATED",
+      "kappa": 0.04,
+      "slow_noise": 0.005,
+      "rho": -0.7,
+      "second_std": 0.5,
+      "obs_noise": 0.01
+    },
+    {
+      "kind": "MATCHED",
+      "kappa": 0.04,
+      "slow_noise": 0.005,
+      "rho": 0.995,
+      "second_std": 0.5,
+      "obs_noise": 0.01
+    }
+  ],
+  "data": {
+    "train_episodes": 16,
+    "test_episodes": 8,
+    "episode_steps": 256,
+    "exploration": "uniform actions in [-1, 1] held for 1..=8 steps"
+  },
+  "ecs": {
+    "primitive": "native K1 (elpis_ecsg_k1), one state (W, epoch, H, a) per level; LEARN only (H stays 0: exact G1); W is the authority, S3 never stands in for it",
+    "dim": 6,
+    "input": "[z0, z1, b, sel0, sel1, 1]; target z'_k",
+    "training": "one step ahead (teacher-forced transitions), unchanged from R0/R1",
+    "init_scale": 0.18,
+    "base_rate": 0.002,
+    "rate_rule": "base_rate * 36 / width",
+    "batch_transitions": 128,
+    "steps_per_call": 25,
+    "max_rows": 512,
+    "calibration_steps": [6000, 24000, 96000, 384000]
+  },
+  "encoders": {
+    "level1": "whitening of the observation (every condition)",
+    "temporal_shared": "none: the window's last lower latent (window 1)",
+    "hierarchical_distinct": "affine 4 -> 2, two most predictable whitened directions of the window (closed form, fixed before the ECS trains): any abstraction it shows is the encoder's, not learned by the ECS",
+    "action_pooling": "mean of the lower actions over the stride"
+  },
+  "conditions": [
+    {
+      "name": "FLAT_N36",
+      "representation": "FLAT",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 36,
+          "horizon": 16,
+          "consumed_horizon": 16
+        }
+      ],
+      "planner_k": [8, 32, 128]
+    },
+    {
+      "name": "FLAT_N72",
+      "representation": "FLAT",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 72,
+          "horizon": 16,
+          "consumed_horizon": 16
+        }
+      ],
+      "planner_k": [8, 32, 128]
+    },
+    {
+      "name": "FLAT_N108",
+      "representation": "FLAT",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 108,
+          "horizon": 16,
+          "consumed_horizon": 16
+        }
+      ],
+      "planner_k": [8, 32, 128]
+    },
+    {
+      "name": "TEMPORAL_SHARED_L2",
+      "representation": "TEMPORAL_SHARED",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 36,
+          "horizon": 4,
+          "consumed_horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 1,
+          "width": 36,
+          "horizon": 4,
+          "consumed_horizon": 4
+        }
+      ],
+      "planner_k": [16, 64, 256]
+    },
+    {
+      "name": "TEMPORAL_SHARED_L3",
+      "representation": "TEMPORAL_SHARED",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 36,
+          "horizon": 4,
+          "consumed_horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 1,
+          "width": 36,
+          "horizon": 4,
+          "consumed_horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 1,
+          "width": 36,
+          "horizon": 4,
+          "consumed_horizon": 4
+        }
+      ],
+      "planner_k": [11, 43, 171]
+    },
+    {
+      "name": "HIERARCHICAL_DISTINCT_L2",
+      "representation": "HIERARCHICAL_DISTINCT",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 36,
+          "horizon": 4,
+          "consumed_horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 2,
+          "width": 36,
+          "horizon": 4,
+          "consumed_horizon": 4
+        }
+      ],
+      "planner_k": [16, 64, 256]
+    },
+    {
+      "name": "HIERARCHICAL_DISTINCT_L3",
+      "representation": "HIERARCHICAL_DISTINCT",
+      "levels": [
+        {
+          "stride": 1,
+          "window": 1,
+          "width": 36,
+          "horizon": 4,
+          "consumed_horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 2,
+          "width": 36,
+          "horizon": 4,
+          "consumed_horizon": 4
+        },
+        {
+          "stride": 4,
+          "window": 2,
+          "width": 36,
+          "horizon": 4,
+          "consumed_horizon": 4
+        }
+      ],
+      "planner_k": [11, 43, 171]
+    }
+  ],
+  "measurements": {
+    "horizons": [1, 2, 4, 8, 16],
+    "free_running": "open-loop rollouts with the true level actions from every held-out start",
+    "numerical_escape": "a rollout state that is non-finite or has any |z| > 1e3 (whitened units): a catastrophic-divergence sentinel; the rollout stops and is counted",
+    "domain_excursion": "a rollout state outside the level's training envelope (the axis-aligned box of every training latent, no margin) at some step <= h; reported with the truth's and the linear reference's own excursion; descriptive",
+    "teacher_forced": "the one-step prediction of the same target from the true previous latent",
+    "references": "iterated one-step linear reference (training data only); generator plug-in (true dynamics, clipping included, from the latent's factor estimate; level 1 and temporal-shared levels); constant and persistence baselines; unclipped analytic h-step floor (consistency diagnostic only)",
+    "capture": "(constant - ecs_free) / (constant - linear) at horizon h",
+    "tangent": "exact state Jacobians J_t = D_z G(z_t, b_t) of the level's K1 map (from W via copy_w); ordered derivative products P_h = J_{t+h-1}...J_t on the teacher path (true states) and the free-running path (the model's own predictions), sigma_max(P_h) and the finite-time growth rate log sigma_max(P_h) / h, on 256 diagnostic starts, against the linear map's sigma_max(A^h) and the generator's product; descriptive, not Lyapunov exponents",
+    "other_diagnostics": "norm ratio, passive (b = 0) escape, planner-candidate rollouts (escape, excursion), direct perturbation amplification (eps 1e-4), one-step Jacobian spectral radius, first-order error recursion along the free path; descriptive",
+    "probes": "ridge (1e-3) linear probe, latent -> s and f at the window-end time; fit on train, NMSE on test",
+    "attractors": "free run at b = 0 from a 5 x 5 grid on [-2, 2]^2 for 200 steps",
+    "donor": "finite-horizon derivative-product reasoning after openai/math fd4aeeb2ee4fc729c18d98444fed42fd0529eeeb, lean/OAI/Dynamics/StandardMap/Lyapunov/{Definitions,DerivativeGrowth,ActualLyapunov,Subadditive}.lean; no Standard Map conclusion is transferred"
+  },
+  "planning": {
+    "episodes": 24,
+    "steps": 64,
+    "replan_every": 4,
+    "flat_horizon": 16,
+    "flat_block": 4,
+    "cost": "summed squared distance of every predicted state to the goal (R1's path cost); subgoal tracking scored at the tick",
+    "success_tolerance": 0.1,
+    "min_goal_distance": 0.8,
+    "start_range": 0.9,
+    "goal": "observation rendered from (s_goal, f_goal), f_goal drawn from the second factor's stationary law",
+    "oracle_k": 32
+  },
+  "gates": {
+    "T1A_MIN_EXPLAINED": 0.5,
+    "T1B_FLOOR_TOL_ABS": 0.005,
+    "T1B_FLOOR_TOL_REL": 0.15,
+    "T3A_MIN_EXPLAINED": 0.25,
+    "T3B_MAX_LINEAR_OVER_GENERATOR": 1.2,
+    "V2_ORACLE_SUCCESS_MIN": 0.8,
+    "V3_L1_PROBE_NMSE_MAX": 0.1,
+    "V4_SEPARATED_CENTROID_RATIO_MIN": 4.0,
+    "V4_MATCHED_CENTROID_RATIO_MAX": 2.0,
+    "CAL_MAX_IMPROVEMENT": 0.005,
+    "CAL_GRID_STEPS_ABOVE": 1,
+    "S1_MIN_CAPTURE": 0.95,
+    "M_MIN_CAPTURE": 0.9,
+    "M_MAX_ESCAPED": 0.01,
+    "M_SEED_FRACTION": 1.0,
+    "H2A_DISTINCT_OVER_WIDTH": 0.15,
+    "H2B_DISTINCT_OVER_TEMPORAL": 0.1,
+    "H2C_TEMPORAL_OVER_WIDTH": 0.1,
+    "H2_BUDGETS_REQUIRED": 2,
+    "DEPTH_EFFECT": 0.05
+  },
+  "laws": [
+    "BINDING: the planning comparison's conditions FLAT_N72, TEMPORAL_SHARED_L2 and HIERARCHICAL_DISTINCT_L2 bind T3, S1 and M through their (level, consumed horizon) pairs (L1/N72, 16), (L1/N36, 4), (TS/L2, 4), (HD/L2, 4); every other condition and level is reported, not gated",
+    "TASK VALIDITY (every instance, both worlds): T1A, T1B (level 1, one step); T3A at every binding pair; T3B at every binding observation pair (L_h <= T3B_MAX_LINEAR_OVER_GENERATOR * G_h on the same targets; the analytic floor is a diagnostic); V2 (oracle mean per world); V3; V4 (means); V5 (no K1 refusal in any level's training)",
+    "CALIBRATION (DEV): over the grid, B* = the smallest budget b_i such that, from b_i to b_(i+1), no binding level of any DEV instance improves its one-step capture by more than CAL_MAX_IMPROVEMENT (a refusal or divergence is never converged); the chosen budget is the grid value CAL_GRID_STEPS_ABOVE above B*; none: TASK_INVALID_ON_DEV, stop",
+    "DEV RUN at the chosen budget: task validity fails: TASK_INVALID_ON_DEV, stop; else QUAL is authorized (DEV S1, M and H2 values are non-binding)",
+    "QUAL, once, at the DEV budget: task validity fails: TASK_INVALID",
+    "S1 (QUAL, SEPARATED): every binding level of every seed: no divergence and one-step capture >= S1_MIN_CAPTURE; fails: ONE_STEP_MODEL_INVALID (M reported, hierarchy not adjudicated)",
+    "M (QUAL, SEPARATED): every binding level of every seed (M_SEED_FRACTION = 1), at every measured horizon h <= its consumed horizon: free-running capture >= M_MIN_CAPTURE and numerical escape <= M_MAX_ESCAPED; fails: WORLD_MODEL_INVALID (hierarchy not adjudicated; not a hierarchy result)",
+    "S1 and M are reported for MATCHED and for every non-binding condition; DOMAIN_EXCURSION, teacher-forced error, derivative-product growth and perturbation amplification are diagnostics, never gates",
+    "else HIERARCHY_ADJUDICATED: H2A, H2B, H2C on SEPARATED success at the three compute points; outcome DISTINCT_ADVANTAGE (H2A and H2B), else TEMPORAL_ADVANTAGE (H2C), else UNATTRIBUTED_ADVANTAGE (H2A), else NO_ADVANTAGE_OVER_WIDTH; width and depth reported",
+    "INTEGRATION (experimental, noncanonical) is authorized only by HIERARCHY_ADJUDICATED with H2A and H2B both holding",
+    "no gate, threshold, world parameter, budget, grid, seed, horizon or condition changes after DEV data exist; a mechanics defect found after the freeze is MECHANICS_FAILURE, repaired in the smallest mechanical layer, never in the scientific object; a defect that stops a phase before its evidence exists is repaired and the phase run from its recorded seeds; written evidence is never rescued by a rerun (no second QUAL)"
+  ]
+}
