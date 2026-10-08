@@ -51,7 +51,7 @@
     {
       "path": "src/experiment.rs",
       "r1_sha256": "d04e472bd46714dda79075c6cb04eb0d0866ad059c95663d9d7bbfe96c021f97",
-      "r2_sha256": "2de9e007ebaea37da44b6c84788804b249579292c5436fa33d2ad9e401520214",
+      "r2_sha256": "a5cc130a608ba5ab18b3c728ba9558b685285160cd96a9a9c3bb67f5ae57c106",
       "status": "MODIFIED",
       "reason": "R1's world data, pool training streams, probes, planning episodes and oracle kept verbatim; build_pool split into level_sequences (the same lifted data, before training) and training; every level reports R2's multi-step block (multistep) next to R1's one-step adequacy; references() gathers every ECS-free quantity (references, clip accounting, T3, oracle, probes, centroids); clip_flags from the world's truth; design_instance and calibration_instance replace level1_validity (untrained and per-budget one-step adequacy, the convergence quantity); evaluate applies R2's law (task validity T1/T3/V2-V5, S1, M over the binding pairs, H2); seeds recorded as decimal strings (R1 recorded them through i64)"
     },

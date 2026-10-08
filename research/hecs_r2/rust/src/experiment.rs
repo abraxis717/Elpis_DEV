@@ -1285,6 +1285,12 @@ pub fn evaluate(sep: &[SeedResult], mat: &[SeedResult], binding: bool) -> Json {
     let pairs = binding_pairs();
     let (m_sep, _, m_sep_json) = m_pairs(sep, &pairs);
     let (m_mat, _, m_mat_json) = m_pairs(mat, &pairs);
+    // M is informative in a world only where the trivial persistence predictor cannot reach its capture bound.
+    let persistence_max = |rs: &[SeedResult]| -> f64 {
+        rs.iter()
+            .flat_map(|r| pairs.iter().map(move |(k, h)| ref_at(&r.refs[k], *h).persistence_capture()))
+            .fold(f64::NEG_INFINITY, f64::max)
+    };
     let conds = spec::conditions();
     let by_condition = |rs: &[SeedResult]| -> Json {
         Json::Arr(
@@ -1427,6 +1433,10 @@ pub fn evaluate(sep: &[SeedResult], mat: &[SeedResult], binding: bool) -> Json {
                 ("MATCHED", m_mat_json),
                 ("M_SEPARATED", Json::Bool(m_sep)),
                 ("M_MATCHED", Json::Bool(m_mat)),
+                ("persistence_capture_max_SEPARATED", Json::Num(persistence_max(sep))),
+                ("persistence_capture_max_MATCHED", Json::Num(persistence_max(mat))),
+                ("M_informative_SEPARATED", Json::Bool(persistence_max(sep) < M_MIN_CAPTURE)),
+                ("M_informative_MATCHED", Json::Bool(persistence_max(mat) < M_MIN_CAPTURE)),
                 ("by_condition_SEPARATED", by_condition(sep)),
                 ("by_condition_MATCHED", by_condition(mat)),
             ]),
