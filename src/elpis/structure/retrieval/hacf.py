@@ -1,15 +1,25 @@
 """HACF structural memory from Python: a thin ctypes layer over the native bridge.
 
 Provides:
-  - ``RetrievalLibrary(path)``: explicitly loaded ``libelpis_retrieval_bridge``;
-  - ``build_corpus_and_index`` -> ``HacfHandle`` (owning handle, deterministic cleanup);
+  - ``RetrievalLibrary(path)``: explicitly loaded ``libelpis_retrieval_bridge`` (bridge ABI v2);
+  - ``ContextEdge``: one explicit, provenance-bearing context-graph edge between two HACF chunks;
+  - ``build_corpus_and_index`` -> ``HacfHandle`` (owning handle, deterministic cleanup), optionally with one
+    immutable context graph built once from explicit edges;
   - ``hybrid_retrieve`` -> canonical bundle JSON plus identity digests;
   - ``bundle_from_json`` -> ``RetrievalBundle``.
 
 The library path is always supplied by the caller. There is no environment
 variable lookup and no repository-relative fallback. All operations are
-read-only after corpus/index creation.
-"""
+read-only after environment creation.
+
+Context graph (native ``elpis_context_graph``). Edges are externally supplied, admitted structural facts
+(subject chunk, object chunk, provenance digest, nonzero edge type, authority 0..3); the bridge never infers one
+from embeddings, lexical overlap, rank, document adjacency or model output. Chunk digests are HACF's own
+content-addressed identities (learned from HACF, e.g. a retrieval bundle over the same documents). The graph is
+built once per environment, owned and destroyed with it, and its identity is invariant under edge order (exact
+duplicates collapse). A malformed digest, self-edge or an endpoint that is not an admitted chunk of the
+environment's corpus refuses construction. Retrieval mechanics and policy stay native (``elpis_hybrid_policy``):
+Python only selects its graph fields. Without a graph the environment is exactly the lexical+dense one it was."""
 
 from __future__ import annotations
 
@@ -17,13 +27,42 @@ import ctypes
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from .contracts import RetrievalBundle, RetrievalItem, _digest
 from .errors import HybridRetrievalError, RetrievalLibraryError
 
 ELPIS_EMBEDDING_DIM = 384
 BUNDLE_JSON_CAP = 1 << 18  # 256 KiB buffer for bundle JSON
+BRIDGE_ABI_VERSION = 2
+ZERO_DIGEST = "0" * 64      # the native identity of "no context graph"
+_POLICY_DEFAULT = 0xFFFFFFFF  # ELPIS_RETRIEVAL_POLICY_DEFAULT: keep the native default of that field
+_HEX = frozenset("0123456789abcdef")
+
+
+class ContextEdge(ctypes.Structure):
+    """One explicit context-graph edge (``elpis_context_edge_input``): subject -> object, with provenance."""
+
+    _fields_ = [("subject_chunk_digest", ctypes.c_char * 65), ("object_chunk_digest", ctypes.c_char * 65),
+                ("provenance_digest", ctypes.c_char * 65), ("edge_type", ctypes.c_uint32),
+                ("authority", ctypes.c_uint32)]
+
+    @classmethod
+    def of(cls, subject: str, obj: str, provenance: str, edge_type: int, authority: int) -> "ContextEdge":
+        """Typed construction; the native graph law re-checks everything at environment construction."""
+        for value in (subject, obj, provenance):
+            if type(value) is not str or len(value) != 64 or not set(value) <= _HEX:
+                raise HybridRetrievalError("GRAPH_EDGE_INVALID", "edge digests are 64 lowercase hex")
+        if type(edge_type) is not int or not 0 < edge_type < 2 ** 32:
+            raise HybridRetrievalError("GRAPH_EDGE_INVALID", "edge type is a nonzero u32")
+        if type(authority) is not int or not 0 <= authority <= 3:
+            raise HybridRetrievalError("GRAPH_EDGE_INVALID", "edge authority is 0..3")
+        return cls(subject.encode(), obj.encode(), provenance.encode(), edge_type, authority)
+
+
+class _GraphPolicy(ctypes.Structure):
+    _fields_ = [("graph_seed_limit", ctypes.c_uint32), ("graph_neighbors_per_seed", ctypes.c_uint32),
+                ("min_graph_authority", ctypes.c_uint32)]
 
 
 class RetrievalLibrary:
@@ -40,6 +79,14 @@ class RetrievalLibrary:
         self.path = path
         self.lib = lib
 
+        try:
+            version = lib.elpis_retrieval_bridge_abi_version
+        except AttributeError as e:
+            raise RetrievalLibraryError("ABI_MISMATCH", "retrieval bridge predates ABI v2") from e
+        version.restype, version.argtypes = ctypes.c_uint32, []
+        if version() != BRIDGE_ABI_VERSION:
+            raise RetrievalLibraryError("ABI_MISMATCH", f"retrieval bridge ABI {version()} != {BRIDGE_ABI_VERSION}")
+
         lib.elpis_retrieval_env_create.restype = ctypes.c_void_p
         lib.elpis_retrieval_env_create.argtypes = [
             ctypes.c_char_p,                   # state_root
@@ -48,6 +95,9 @@ class RetrievalLibrary:
             ctypes.POINTER(ctypes.c_char_p),   # namespaces
             ctypes.POINTER(ctypes.c_char_p),   # authorities
             ctypes.c_int,                      # n_docs
+            ctypes.c_int,                      # with_graph
+            ctypes.POINTER(ContextEdge),       # edges
+            ctypes.c_uint32,                   # edge_count
             ctypes.c_char_p,                   # error_buf[256]
         ]
         lib.elpis_retrieval_env_destroy.restype = None
@@ -67,13 +117,18 @@ class RetrievalLibrary:
             ctypes.c_uint32,                   # dense_limit
             ctypes.c_uint32,                   # primary_limit
             ctypes.c_uint32,                   # total_limit
+            ctypes.c_char_p,                   # namespace_filter (NULL = all)
+            ctypes.c_char_p,                   # authority_filter (NULL = all)
+            ctypes.POINTER(_GraphPolicy),      # graph_policy (NULL = native default / disabled)
             ctypes.c_char_p,                   # bundle_json_out
             ctypes.c_int,                      # bundle_json_cap
             ctypes.c_char_p,                   # bundle_digest_out[65]
             ctypes.c_char_p,                   # query_digest_out[65]
             ctypes.c_char_p,                   # corpus_manifest_digest_out[65]
             ctypes.c_char_p,                   # vindex_manifest_digest_out[65]
+            ctypes.c_char_p,                   # graph_snapshot_digest_out[65]
             ctypes.c_char_p,                   # fusion_policy_digest_out[65]
+            ctypes.c_char_p,                   # hacf_package_digest_out[65]
             ctypes.POINTER(ctypes.c_int),      # item_count_out
             ctypes.c_char_p,                   # error_buf[256]
         ]
@@ -82,10 +137,12 @@ class RetrievalLibrary:
             ctypes.c_char_p, ctypes.c_char_p, ctypes.c_size_t,
             ctypes.POINTER(ctypes.c_size_t), ctypes.c_char_p,
         ]
-        for getter in ("corpus_digest", "shard_digest", "corpus_manifest", "vindex_manifest"):
+        for getter in ("corpus_digest", "shard_digest", "corpus_manifest", "vindex_manifest", "graph_digest"):
             fn = getattr(lib, "elpis_retrieval_env_" + getter)
             fn.restype = ctypes.c_char_p
             fn.argtypes = [ctypes.c_void_p]
+        lib.elpis_retrieval_env_graph_edge_count.restype = ctypes.c_uint32
+        lib.elpis_retrieval_env_graph_edge_count.argtypes = [ctypes.c_void_p]
 
 
 class HacfHandle:
@@ -98,6 +155,8 @@ class HacfHandle:
         self.corpus_digest = ""
         self.shard_digest = ""
         self.vindex_manifest_json = ""
+        self.graph_snapshot_digest = ZERO_DIGEST   # the environment's context graph identity (zeros: none)
+        self.graph_edge_count = 0
 
     @property
     def _valid(self) -> bool:
@@ -123,14 +182,22 @@ def build_corpus_and_index(
     library: RetrievalLibrary,
     state_root: str | Path,
     documents: list[tuple[str, str, str, str]],
+    edges: Iterable[ContextEdge] | None = None,
 ) -> HacfHandle:
-    """Build a complete HACF corpus + vector index from documents.
+    """Build a complete HACF corpus + vector index from documents, and optionally one context graph.
 
     Args:
         library: explicitly loaded retrieval bridge.
         state_root: directory owned by this corpus (corpus state, cold storage).
         documents: ``(label, text, namespace, authority)`` tuples.
+        edges: ``None`` for no context graph (lexical + dense retrieval); otherwise the explicit
+            :class:`ContextEdge` facts of the environment's one immutable graph (an empty iterable is an
+            empty graph). Every endpoint must be an admitted chunk of these documents.
     """
+    edge_list = None if edges is None else list(edges)
+    if edge_list is not None and not all(type(e) is ContextEdge for e in edge_list):
+        raise HybridRetrievalError("GRAPH_EDGE_INVALID", "edges must be ContextEdge values")
+    edge_array = (ContextEdge * len(edge_list))(*edge_list) if edge_list else None
     lib = library.lib
     sorted_docs = sorted(documents, key=lambda x: x[0])
     n = len(sorted_docs)
@@ -143,7 +210,7 @@ def build_corpus_and_index(
     ptr = lib.elpis_retrieval_env_create(
         str(state_root).encode("utf-8"),
         labels, texts, namespaces, authorities,
-        n, err_buf,
+        n, int(edge_list is not None), edge_array, len(edge_list or ()), err_buf,
     )
     if not ptr:
         raise HybridRetrievalError("ENV_CREATE_FAILED", _text(err_buf.value) or "unknown")
@@ -158,6 +225,8 @@ def build_corpus_and_index(
     handle.corpus_digest = _text(lib.elpis_retrieval_env_corpus_digest(ptr))
     handle.shard_digest = _text(lib.elpis_retrieval_env_shard_digest(ptr))
     handle.vindex_manifest_json = _text(lib.elpis_retrieval_env_vindex_manifest(ptr))
+    handle.graph_snapshot_digest = _text(lib.elpis_retrieval_env_graph_digest(ptr))
+    handle.graph_edge_count = int(lib.elpis_retrieval_env_graph_edge_count(ptr))
     return handle
 
 
@@ -169,14 +238,36 @@ def hybrid_retrieve(
     dense_limit: int = 50,
     primary_limit: int = 30,
     total_limit: int = 60,
+    *,
+    namespace_filter: str | None = None,
+    authority_filter: str | None = None,
+    graph_seed_limit: int | None = None,
+    graph_neighbors_per_seed: int | None = None,
+    min_graph_authority: int | None = None,
 ) -> dict[str, Any]:
-    """Execute deterministic hybrid retrieval against the prepared corpus/index.
+    """Execute deterministic hybrid retrieval against the prepared corpus/index (and graph, if any).
 
-    Returns bundle JSON, its digests, item count and the parsed bundle data.
+    ``namespace_filter`` / ``authority_filter`` are exact native query filters (``None``: all). The graph
+    arguments select fields of the native ``elpis_hybrid_policy``; ``None`` keeps the native default (seed limit
+    bounded by ``primary_limit``). They are refused without a context graph, whose policy keeps them disabled.
+
+    Returns bundle JSON, its digests (the graph snapshot and HACF package digests as the native bundle carries
+    them), item count and the parsed bundle data.
     """
     if not handle._valid:
         raise HybridRetrievalError("NO_ENVIRONMENT", "Handle has no valid corpus/index")
     lib = handle.library.lib
+    graph_fields = (graph_seed_limit, graph_neighbors_per_seed, min_graph_authority)
+    graph_policy = None
+    if any(v is not None for v in graph_fields):
+        if not all(v is None or (type(v) is int and 0 <= v < _POLICY_DEFAULT) for v in graph_fields):
+            raise HybridRetrievalError("POLICY_INVALID", "graph policy fields are u32 values")
+        graph_policy = ctypes.byref(_GraphPolicy(*(_POLICY_DEFAULT if v is None else v for v in graph_fields)))
+    filters = []
+    for value in (namespace_filter, authority_filter):
+        if value is not None and type(value) is not str:
+            raise HybridRetrievalError("QUERY_INVALID", "filters are str or None")
+        filters.append(None if value is None else value.encode("utf-8"))
 
     if query_vector is None:
         vec = (ctypes.c_float * ELPIS_EMBEDDING_DIM)()
@@ -192,7 +283,9 @@ def hybrid_retrieve(
     query_digest_buf = ctypes.create_string_buffer(65)
     corpus_manifest_digest_buf = ctypes.create_string_buffer(65)
     vindex_manifest_digest_buf = ctypes.create_string_buffer(65)
+    graph_snapshot_digest_buf = ctypes.create_string_buffer(65)
     fusion_policy_digest_buf = ctypes.create_string_buffer(65)
+    hacf_package_digest_buf = ctypes.create_string_buffer(65)
     item_count = ctypes.c_int(0)
     err_buf = ctypes.create_string_buffer(256)
 
@@ -202,12 +295,15 @@ def hybrid_retrieve(
         vec_ptr, len(query_vector),
         lexical_limit, dense_limit,
         primary_limit, total_limit,
+        filters[0], filters[1], graph_policy,
         json_buf, BUNDLE_JSON_CAP,
         bundle_digest_buf,
         query_digest_buf,
         corpus_manifest_digest_buf,
         vindex_manifest_digest_buf,
+        graph_snapshot_digest_buf,
         fusion_policy_digest_buf,
+        hacf_package_digest_buf,
         ctypes.byref(item_count),
         err_buf,
     )
@@ -215,6 +311,10 @@ def hybrid_retrieve(
         raise HybridRetrievalError(f"HACF_RETRIEVE_{rc}", _text(err_buf.value) or "unknown")
 
     json_str = _text(json_buf.value)
+    data = json.loads(json_str) if json_str else {}
+    graph_digest = _text(graph_snapshot_digest_buf.value)
+    if data.get("graph_snapshot_digest") != graph_digest or graph_digest != handle.graph_snapshot_digest:
+        raise HybridRetrievalError("IDENTITY_MISMATCH", "bundle graph identity is not the environment's graph")
     return {
         "bundle_json": json_str,
         "bundle_digest": _text(bundle_digest_buf.value),
@@ -222,10 +322,10 @@ def hybrid_retrieve(
         "query_digest": _text(query_digest_buf.value),
         "corpus_manifest_digest": _text(corpus_manifest_digest_buf.value),
         "vector_index_manifest_digest": _text(vindex_manifest_digest_buf.value),
-        "graph_snapshot_digest": "",  # no context graph in this bridge
+        "graph_snapshot_digest": graph_digest,
         "fusion_policy_digest": _text(fusion_policy_digest_buf.value),
-        "hacf_package_digest": "",
-        "data": json.loads(json_str) if json_str else {},
+        "hacf_package_digest": _text(hacf_package_digest_buf.value),
+        "data": data,
     }
 
 

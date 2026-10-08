@@ -1,8 +1,10 @@
 """RetrievalBundle validation: the gate before any consumer sees retrieved evidence.
 
 Validates schema identity, query binding, epoch consistency, rank ordering,
-chunk identity, text presence, dedup, budget bounds, and provenance fields.
-Fails closed on any violation.
+chunk identity, text presence, dedup, budget bounds, and provenance fields:
+a context item must belong to a bundle that carries a context-graph identity,
+sit one hop from an earlier primary item and name its edge type and the graph
+source. Fails closed on any violation.
 """
 
 from __future__ import annotations
@@ -69,6 +71,8 @@ def validate_bundle(
 
     # 5. Rank ordering and item validation
     seen_chunk_digests: set[str] = set()
+    primary_chunk_digests: set[str] = set()
+    graph_bound = _graph_identity(bundle.graph_snapshot_digest)
     total_bytes = 0
 
     for rank, item in enumerate(bundle.items):
@@ -144,6 +148,12 @@ def validate_bundle(
                         f"Primary item {rank} has non-zero graph_parent_digest",
                     )
 
+        # Context: bound to the bundle's context graph, one hop from an earlier primary item, by a typed edge.
+        if item.item_kind == _CONTEXT or item.graph_hop == 1:
+            _check_context(item, rank, graph_bound, primary_chunk_digests)
+        else:
+            primary_chunk_digests.add(item.chunk_digest)
+
         total_bytes += item.text_bytes
 
     # 6. Budget enforcement
@@ -176,6 +186,33 @@ def validate_bundle(
         return _make_budget_decision(budget, counts, total_bytes)
 
     return None
+
+
+_CONTEXT = 2
+_GRAPH_SOURCE = 0x04   # ELPIS_RSRC_GRAPH
+_HEX = frozenset("0123456789abcdef")
+
+
+def _graph_identity(digest: str) -> bool:
+    """Whether a graph participated: a canonical, nonzero context-graph snapshot digest."""
+    return len(digest) == 64 and set(digest) <= _HEX and digest != "0" * 64
+
+
+def _check_context(item: RetrievalItem, rank: int, graph_bound: bool, primaries: set[str]) -> None:
+    if not graph_bound:
+        raise BundleValidationError(
+            "GRAPH_PROVENANCE_UNBOUND",
+            f"Context item {rank} in a bundle without a context-graph identity",
+        )
+    if item.item_kind != _CONTEXT or item.graph_hop != 1 or item.graph_parent_digest not in primaries:
+        raise BundleValidationError(
+            "GRAPH_PARENT_UNBOUND",
+            f"Context item {rank} is not one hop from an earlier primary item",
+        )
+    if item.edge_type == 0:
+        raise BundleValidationError("GRAPH_EDGE_UNBOUND", f"Context item {rank} has no edge type")
+    if not item.source_mask & _GRAPH_SOURCE:
+        raise BundleValidationError("GRAPH_SOURCE_UNBOUND", f"Context item {rank} lacks the graph source")
 
 
 def _make_budget_decision(

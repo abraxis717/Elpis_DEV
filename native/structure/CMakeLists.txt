@@ -290,3 +290,10 @@ set_target_properties(elpis_retrieval_bridge PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(elpis_retrieval_bridge PRIVATE
   elpis_hybrid elpis_vector elpis_embedding elpis_corpus elpis_chunking elpis_fms
   elpis_cascade elpis_hash SQLite::SQLite3 Threads::Threads ${ELPIS_LIBM})
+
+# The bridge's context graph (retrieval_bridge.h, ABI v2): construction from explicit edges, refusal paths that
+# release everything (leak-checked in the sanitizer jobs), one-hop retrieval with the graph identity, destruction.
+elpis_add_test(structure test_retrieval_bridge_graph
+  SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/bridge/tests/test_retrieval_bridge_graph.c
+  LIBS elpis_retrieval_bridge INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/bridge ${HACF}/include
+  ARGS ${STATE}/retrieval-bridge-graph-state TIMEOUT 120)

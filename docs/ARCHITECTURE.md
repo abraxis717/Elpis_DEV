@@ -71,9 +71,22 @@ spelling `elpis.semantic.grid81.sudoku_template.v1`.
 request -> derive_query (NFKC, bounded, no model inference)
 -> hybrid_retrieve via the explicitly loaded native bridge
 -> RetrievalBundle -> validate_bundle (schema, query/corpus binding, ranks,
-   dedup, frozen text, <= 1 context hop) + check_budget
+   dedup, frozen text, <= 1 context hop, context bound to the graph and an
+   earlier primary) + check_budget
 -> EvidenceEnvelope (ordered references, frozen texts, provenance)
 ```
+
+The bridge (`native/structure/bridge/retrieval_bridge.h`, ABI v2) builds one
+retrieval epoch per environment: the corpus, its vector index and, when the
+caller supplies explicit `ContextEdge` facts (subject and object chunk,
+provenance digest, edge type, authority), one immutable context graph built
+once, owned and destroyed with the environment. No edge is ever inferred from
+text, embeddings or ranks; an edge whose endpoint is not an admitted chunk of
+the corpus refuses construction. Retrieval is the native hybrid retriever under
+one `elpis_hybrid_policy` (Python only selects its graph fields), and the
+bundle carries the graph's snapshot digest (64 zeros without a graph). Without
+a graph the environment's identities are exactly the lexical + dense ones of
+ABI v1.
 
 The envelope is a **structured observation**. It states retrieval provenance
 and never claims truth. The pipeline and inference (`AddressProposal`) can

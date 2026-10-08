@@ -177,6 +177,7 @@
       ],
       "test_roots": [
         "tests/structure",
+        "native/structure/bridge/tests",
         "native/structure/hacf/tests",
         "native/structure/semantic/tests"
       ],
@@ -211,11 +212,11 @@
       ],
       "model_dependency": "NONE",
       "uses_numpy": false,
-      "maturity": "Mechanics qualified: HACF corpus/vector/hybrid suites incl. cross-host golden fixtures, adversarial and concurrency tests; semantic core suites incl. source-boundary scans and fresh-process determinism; Python retrieval and evidence tests over the native bridge.",
+      "maturity": "Mechanics qualified: HACF corpus/vector/hybrid suites incl. cross-host golden fixtures, adversarial and concurrency tests; semantic core suites incl. source-boundary scans and fresh-process determinism; Python retrieval and evidence tests over the native bridge, including bounded one-hop context-graph retrieval through it (explicit edges, seed/neighbor/total limits, authority floor, namespace and exact-authority filters, dedupe, source-mask composition, permutation-invariant graph identity propagated into the bundle, endpoint/malformed/self-edge refusal, graph-disabled identities pinned equal to bridge ABI v1).",
       "incomplete_interfaces": [
         "The retrieval bridge library is loaded by explicit path but is not yet digest-pinned through elpis.substrate authority.",
         "Native semantic ABI records keep beta stage prefixes (P2..P8) in struct field names; renaming them is deferred to the next native ABI version.",
-        "The retrieval bridge builds no context graph; hybrid retrieval through it is lexical + dense only.",
+        "The retrieval bridge takes context-graph edges only as explicitly supplied facts between chunks of its own corpus (ContextEdge, keyed by HACF chunk digests); no canonical producer of such structural-relationship edges is defined yet, and no semantic-hypergraph -> context-graph mapping feeds it.",
         "Three D4 conventions coexist (structural semantics, typed projection, structural groups); each is bound into persisted orbit identities, so they are proven set-equivalent by test rather than unified.",
         "Structural-group and typed-projection packages each keep their own canonical-JSON helper; the encodings are digest-bound and are not merged.",
         "Chunk resolution verifies document bytes and recomputes the elpis-chunk-v1 identity but does not re-derive the chunker's segmentation (the native chunker is not exposed to Python): a self-consistent claim over a sub-range of a real document resolves to that document's own verified bytes."
