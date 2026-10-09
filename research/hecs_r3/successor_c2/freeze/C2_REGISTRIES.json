@@ -1,0 +1,33 @@
+{
+ "law_dev": "u64 big-endian of SHA-256(ASCII(\"HECS|R3-SUCCESSOR|C2|V1|DEV|\" + decimal(i)))[0..8]",
+ "dev_seeds": [
+  "684004886576317082",
+  "1703137016795210571",
+  "10088827697117853828",
+  "8960933697477120594",
+  "134760612940272399",
+  "7871577751992445249",
+  "17179523806848842400",
+  "13174565413729237818"
+ ],
+ "dev_rejections": [],
+ "qual_seeds": [
+  "10405860717610874745",
+  "17760219202278299362",
+  "14564880931009575015",
+  "15447012595138726224",
+  "8070250311440129494",
+  "7015268779680225457",
+  "12995885642664273032",
+  "4683001325509031006",
+  "5700582020531935958",
+  "15439875992717053813",
+  "2654106804044592861",
+  "1474235648324239766"
+ ],
+ "qual_source": "R3_BN_ADMISSION.json qual_seeds_reserved (never executed), designated by the operator",
+ "exclusion_listed_values": 93,
+ "exclusion_total_values": 929,
+ "design_seed_law": "u64 big-endian of SHA-256(ASCII(\"ELPIS/HECS/R4/C2/DESIGN/V1/\" + decimal(i)))[0..8], i=0..79",
+ "design_seed_count": 80
+}

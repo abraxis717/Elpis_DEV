@@ -211,6 +211,8 @@ FROZEN_EVIDENCE = {
         "H-ECS R3 successor frozen boundary: the digest-pinned supervisor source names the K1 library (K1 ABI name).",
     "research/hecs_r3/closure/successor_dev_8_of_8/reconstruction/":
         "H-ECS R3 successor reconstruction record: the adapter source names the K1 library it ran (K1 ABI name).",
+    "research/hecs_r3/successor_c2/freeze/source/supervisor/":
+        "H-ECS R3 successor C2 frozen supervisor source: names the K1 library it runs (K1 ABI name).",
 }
 
 # Native sources whose exact bytes are recorded by research/ecs_runtime_r1/evidence (measured and sanitized

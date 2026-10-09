@@ -1,0 +1,945 @@
+{
+ "design_margin_note": "0.92 is a DESIGN selection margin only; the qualification thresholds remain S1>=0.95, M capture>=0.90, escape<=0.01",
+ "diagnosis": "C0/C1 fail only HD/L2 ROLLOUT h=4; the one-step-trained G1 is free-run expansive on a sub-population of worlds (seed 2: G1 h4 capture -4.09); the 256-update rollout fine-tune (rate 0.0005, clip 10) is under-converged (h4 still rising at update 256; clip active on spikes); on fresh DESIGN worlds C0 fails HD/L2 in 25% (10/40) and 31% (15/48) of worlds, so the pathology is a lower-tail sub-population, not one seed.",
+ "full_hierarchy_design_c2_engine": {
+  "10020622807999064613": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=10020622807999064613 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=27.412937087573116 CENTROID_MATCHED=1.5806865835842125 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "b78121f933a5d487f134cad214406e871ec2e565e15851238b0349457f690972",
+    "observations.tsv": "5aa8343577a010c13afe3325018439200579ac1cf00101b2c97d8deea029ee9a",
+    "tasks.tsv": "20c88ca199cf62b12504f8c8c9ff53b7c749346665b6ba37e88ce018d6399793",
+    "v5.tsv": "71556b974dbcb6f256b7f5d3cdab19c4a9c134b6bdf925047b4f076fbab14a67"
+   }
+  },
+  "10218839900352766930": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=10218839900352766930 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=30.66515896157038 CENTROID_MATCHED=1.636233744344146 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "6339ec402236db294205a83bbf54365cc524808bba8bef899227ff9c226f520b",
+    "observations.tsv": "7c7ab17c84d5c6dcc660196159ef8c93cbcb52e53eaacb9d5671c764a63723f9",
+    "tasks.tsv": "af4b0f4b12cd92d9d264b9d9ac5773b6265d7a7da7194c2b8e459e83050c0113",
+    "v5.tsv": "618a974a46aad6ff497dd9f0fa2b218163c2abf2b2f1c6e7c182c90bb849ac70"
+   }
+  },
+  "11303363347497014005": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=11303363347497014005 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=30.716405746672383 CENTROID_MATCHED=1.5670474526045624 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "c125b5d83d3f512e30507c0e652ae2693294814b864c418d5e723d5d277242b8",
+    "observations.tsv": "74c38cc4779e0e6eef3cca7275f0533796ec30d3e92544c970ca46d6affb69bd",
+    "tasks.tsv": "3996492a589a2c606717c8a41eac34cd97aaa0efb375751d21eb57a9b20b42e2",
+    "v5.tsv": "1c568df2e04a3ce3459884136a3a1b61140701339893f289feb53a38fb8cb76e"
+   }
+  },
+  "11399254726240393649": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=11399254726240393649 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=29.066506594379437 CENTROID_MATCHED=1.6931481819631582 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "511b52088f71fd2b837cc1f0659bf344c4e3a46f1c2c5b9e433d41bf35a6682b",
+    "observations.tsv": "f246fff6a74d78ee9caf2fd8dce5df6fec6e354f7cbfc9a2374ba09befb3ed0d",
+    "tasks.tsv": "20b0ba3ad8cd1b0eae159f188a2541351b4ab11a5079d8eb96eb789ed7006e69",
+    "v5.tsv": "75967320022fc86e10948b38587e3a7c7f59e6f2512d2acf3bbfe20e19d6d00f"
+   }
+  },
+  "11606864289157803942": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=11606864289157803942 TASK_LOCAL=0 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=36.76178447630312 CENTROID_MATCHED=1.6422049085019073 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "1cc3ac37df43f7db4c3fbda60d0ac20e25320fe15ec5181b6c597e1394c15832",
+    "observations.tsv": "6d22e9e947ccb59d2da9454c307d1c41b8b6663acbae1a97a87bc4eee1326871",
+    "tasks.tsv": "1a899b2b6253d67391b98ee73684a2d3edc56a55df670642a852b6541724ca9f",
+    "v5.tsv": "25b2130a53dae5d283ce3c96391f3043f7f932d3bd4b91eaccf1c07878a404a3"
+   }
+  },
+  "11726798197953135546": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=11726798197953135546 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=0.9583333333333334 ORACLE_MATCHED=1 CENTROID_SEPARATED=36.79795328179315 CENTROID_MATCHED=1.19031721571026 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "d210f5fe4d2b27728e782cea43f1f9190a1246d9ebb644583139f43e20a8dda9",
+    "observations.tsv": "46f64b022402a6c9f4b25a9a9f26c4be1229c5b22fd51128b0b719c9a4c08558",
+    "tasks.tsv": "4bc7ba35cf3ccdbf30484cb709c174c0c8558401f9618b742a66a38f60e67835",
+    "v5.tsv": "78b2e26ca9f73c01b7eb5269778dad8941f188f1b996439f55a8bb8ff60c3c21"
+   }
+  },
+  "12140784377885735312": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=12140784377885735312 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=29.848259393701618 CENTROID_MATCHED=1.2793473342912252 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "a282acf545ff3e4db65f5097a8381ad6f3b1811bbb9efe17e3950914d1e730cb",
+    "observations.tsv": "0fbcb5ba254c940d5221c3de1f9e02eda93d1ac9263575a6709f01992b9bf2de",
+    "tasks.tsv": "7ebe3c1645eda6255ff33ad26649b01dea8308a36afc45cae1ee57040d2fa61b",
+    "v5.tsv": "6d99ab4e1cd69714e04e70ee3254944bb76ee9c444c91e47305a6eca229d9079"
+   }
+  },
+  "12328403873285598181": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=12328403873285598181 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=34.84322319379884 CENTROID_MATCHED=1.298792058520744 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "d7accceb94822d4d1e085d3ec0fa1f2831642a3c9e0e3d342560e8dd19465089",
+    "observations.tsv": "424861028563f4aafa92421b8675721b543e658a13d469444fdee3be8ba8af4b",
+    "tasks.tsv": "fa780e11836ddb5f56319b119ca60d7c33db9689df49f32f37241253b67dc575",
+    "v5.tsv": "67ba7f9b83ae9ece3c4f751b35ebecd86109730353ed30846b262c5fc2ee0c9e"
+   }
+  },
+  "12362933478936696350": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=12362933478936696350 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=31.03192697326441 CENTROID_MATCHED=1.169391805680009 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "e2865f069cf13378eb1f090209f043fcf071dfa40e8b2643d2ffdf44d7b8eb32",
+    "observations.tsv": "51499b7581b1eee35085215d86ae263235abc87e6624deee7ec5a797f3a98b3d",
+    "tasks.tsv": "c01e3fb8a994ec31124452276445a7714f035c11f116437e3d5469f21b5ad284",
+    "v5.tsv": "6a9530cc4a8c21c19f88b51181dfaed1ad0de90ad03fca18baee6e80d535e4d6"
+   }
+  },
+  "12454198899673045862": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=12454198899673045862 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=33.499182430813 CENTROID_MATCHED=1.3494304151064982 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "16d14751642f874907963f9085c16250f37a87b45dae46757996753e9123f19f",
+    "observations.tsv": "9057e11cbb09fcdb242242416c2352874f69ad931251999b06a2357175ce0684",
+    "tasks.tsv": "a963dc47ac0fcee3efadee72b84585fe2bad55734b57c0a73c24b140ad6a5a07",
+    "v5.tsv": "66cc2bec86e7650e0cc45efd6f2b139b5f36e10f0c66fe83c87ca30548aa6985"
+   }
+  },
+  "1247333204029564521": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=1247333204029564521 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=26.5270991071026 CENTROID_MATCHED=1.2892959594275364 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "ee23d44b95c16c348d94e7946e00d9f590b93b63845e8ec85eb147c7864522c2",
+    "observations.tsv": "f763c36a8df9c7de39a8e8a39db8fe8433c112f3686c1ac93932bf52dafb3a25",
+    "tasks.tsv": "1add258721419ee3459eb2def8b9e5990294a2d1ae3a866111408035703dd18e",
+    "v5.tsv": "c2619667ed2e9a7145a6f2c8ec64280064c1fbb1c04ac1c7ee56b8dfd07c98c4"
+   }
+  },
+  "13435277428770159042": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=13435277428770159042 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=31.903295001246978 CENTROID_MATCHED=1.1624430630895062 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "418df293758fcb86f470bb654c9537350f1ed96d3155cc14adeb2672befa4b4e",
+    "observations.tsv": "2321aae6c09865fc2494e62f7d4583320b3444f49247e59fc177b671c57fb805",
+    "tasks.tsv": "6f64fca84ed0be842b6668fa5f242e8ccaf52e1765d0446bd476be003cedf0e8",
+    "v5.tsv": "fa7b916409148901741652422a6464c894429847611c04c415276f401ef19208"
+   }
+  },
+  "14389706659556127922": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=14389706659556127922 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=36.45526988627261 CENTROID_MATCHED=1.0808016525576738 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "1deffd8b803eb91b0893927a9e7ea40f8e326f7fd2413d18185deedca62a6367",
+    "observations.tsv": "67a19eb7a3af52a1f1b4758d466bd2958833ce68dc6c270244d9c45ef20ebe40",
+    "tasks.tsv": "ba91cb196e79b46f5881d98cd04ac27b6870a9eaca592c2df90ba83b651cab8c",
+    "v5.tsv": "9a0e621c84101edbe8041b3ae8e5714a8569441df1303ea05efd58c07d131311"
+   }
+  },
+  "14509330658689380832": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=14509330658689380832 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=0.9583333333333334 CENTROID_SEPARATED=27.72670811583339 CENTROID_MATCHED=1.3263095589467153 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "a78e060e06abaf3f4be5d38a9a6d57acc028e1c01b91960ac50e1bb02a0704f0",
+    "observations.tsv": "23632f992232a0df2c90259d60ebbfc61381afa297fa2922349d19a3e6963913",
+    "tasks.tsv": "e9bc3dff1dfbb5ecac94b818db04a9dcab3fd0f1697886dbe65de38d8427b582",
+    "v5.tsv": "c70b9011f1298033d3b6bdfcc1492529fa1c9f587c4e68d201a8107e42ef700c"
+   }
+  },
+  "14615940519944714443": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=14615940519944714443 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=39.349380732132246 CENTROID_MATCHED=1.0805679142841589 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "5185ba35c709340fb73fae3d1eea107bc88ae55884fc89005ebe720fd507e6e2",
+    "observations.tsv": "8c4c236dac6d74eeec9011f1bb138afdc6e00ff80db47971e33bce49976f354b",
+    "tasks.tsv": "9cae413aea6adf6cb2c467412389484fee67673750fe59494399d4a3237b4d9e",
+    "v5.tsv": "a5246045f4b03cdc0920d99e4c323ce80bc4cc18fb37ad6b8448bbf334bd3666"
+   }
+  },
+  "14927215977200197164": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=14927215977200197164 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=29.092833586737594 CENTROID_MATCHED=1.6500523540043255 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "11b8089253a8a923d8c3b9e0f65fa349a2a5efac1a06f99341e73835d746d5e0",
+    "observations.tsv": "d17c79d5688d3f32bb26eb23144fe794c538d504808587e6c1bd21265bd7908e",
+    "tasks.tsv": "ff234a67190d722cfd1d76fd43d51a02716791ea3a6f049a9f1b7f80943e8891",
+    "v5.tsv": "65a5112b20d90d6acc9b37e87a234798ee32596a4d070da1301ad059b8170247"
+   }
+  },
+  "14959204928275709391": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=14959204928275709391 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=0.9583333333333334 CENTROID_SEPARATED=30.80733732867284 CENTROID_MATCHED=1.3591481567378318 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "1287c170945d45fe13908d9349c179dae12f7f47cc68be9d0e779b1a623fd889",
+    "observations.tsv": "634cdec05d17d961f2e9ed6bd13017deba79f673d406da96d91d7ec27795f626",
+    "tasks.tsv": "1dc05406d982ab2165f7496aa5c9fa44b856e6d78b4d68517a1517b51acc0d59",
+    "v5.tsv": "de63d6a82a1f485fcc739492ee4784b950d5f7d1d73f8a5cfeea4a84c9cb1484"
+   }
+  },
+  "15106577130366307718": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=15106577130366307718 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=31.27984392559649 CENTROID_MATCHED=1.2381889744984977 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "31b36be2bc372e1c99e3d774ec920e11a245a8065d38432849ba72b4c97e030f",
+    "observations.tsv": "1a9428fc7aa31031ed1b787f3b2a8c3db2bc5a2b504348b6787c5af21e82bd92",
+    "tasks.tsv": "8a25e5a58c785fa8e8e0fc784d924d8d0ffd2a6d669b22d8f0a499490ec13f5f",
+    "v5.tsv": "235e6193b08a383a16d4da9fd6f3e7c8bf43844c2981c7f87f3e4befde646e3b"
+   }
+  },
+  "15483355346944449004": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=15483355346944449004 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=30.20220263115844 CENTROID_MATCHED=1.6167500416504113 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "8a2e66ab89eca65ae4e1a0335f0856a620a4a22deabaa34b040ae1d03d64efd5",
+    "observations.tsv": "89e85e0d94f1eca59124a8eba7cc9f84ddbde5f41ca704aedfeefa6daafe1e0c",
+    "tasks.tsv": "62b2ff14dca248fb2d2570bd77acacf59082da69c8a296c58ccf737148de630f",
+    "v5.tsv": "7453909ee4a6400adc55ea7fae65c3c1fe7ed5ec66546b530f7e55a86430efcd"
+   }
+  },
+  "1625645163749891754": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=1625645163749891754 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=26.63632265335657 CENTROID_MATCHED=1.2468460539916562 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "b145370ce729e5fa53d3ab7eda8f2369ad94153395daed31b8a459795f641b62",
+    "observations.tsv": "7a7a9635b474c77b7214c85d63dd477e64294acfa8f584b7006d6dce1b5d820e",
+    "tasks.tsv": "b2dcd49ec7be7b5941a2b2f1d368b609e9a0f0591a69da3a04bf1e8303715033",
+    "v5.tsv": "30ff1f2818a1e48c0865edb1f3699cd708d5bd44e87e4cc775e0b6cc0187691d"
+   }
+  },
+  "16646679870467640307": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=16646679870467640307 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=30.055316035337672 CENTROID_MATCHED=1.3622155600160348 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "235c8476de766db56df2a651d2884c18d19333660d17b08a5724e5b2e8b129d8",
+    "observations.tsv": "c570eae69bd35c0d8e3f938d6a3b445184541301e29ae218fef8322214a4e411",
+    "tasks.tsv": "67d43988f52e81e37d5f97c1dc3fb3a173c5811f27be73ee5971df48bf4d0733",
+    "v5.tsv": "9c00428abd950f568e24cd435293a9bbb21402c75e3f38a9153a2cd5da69e685"
+   }
+  },
+  "1670612226536148635": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=1670612226536148635 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=0.9583333333333334 CENTROID_SEPARATED=35.09816440237539 CENTROID_MATCHED=1.1599061547702691 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "419d65893d6505dda2f7bacc450a6bdf98eb8495dc4fde7ff5529ee66e6147fb",
+    "observations.tsv": "9613fb40154e72d251ede29b094f234a6995a8067ef3fe7b101927139881eba3",
+    "tasks.tsv": "68939bac168dfc3790fb4b5c58502d28577692b1968b5d3fe1ffb86a8615b450",
+    "v5.tsv": "26bf04b4c0190c7aa8cfad9e054b580e937573b03666fb8a3c96eca97dc1b4f3"
+   }
+  },
+  "1738576510759200441": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=1738576510759200441 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=0.9583333333333334 CENTROID_SEPARATED=27.954485669483834 CENTROID_MATCHED=1.2024076109802448 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "8b004445d1a82907364b3e71080004be11c2182389dec9506b94920cb5f8307a",
+    "observations.tsv": "6ac07c20dc60c2679a8963758f2f4c27f2cec495b1b651896e8892eeec3b9ef0",
+    "tasks.tsv": "c60df1bb67985d01c66c1b193903111f51551db947532d687b5e935ddb45ad68",
+    "v5.tsv": "23ce23f4ea2aeb0605797150eb71d107178cd201f192283e424c43d4deb1ff3d"
+   }
+  },
+  "17965098536180451274": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=17965098536180451274 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=30.930732977480954 CENTROID_MATCHED=1.7062155581126728 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "dc551e256b8292d9f302c30816eeae648c0ea622eddca10136fd6267b420edad",
+    "observations.tsv": "684ded16fa53697764ae5248ed070b99cad0a160f7400314d8940170899d3928",
+    "tasks.tsv": "2dba3d45479624506d77c3f3e085015e089f48d73be99ea8e22b6426a585ff6d",
+    "v5.tsv": "f08ed1a431914eeb96a33a113ebfe28bd1d5b1be69bdfaacfb3f6fce31be0d77"
+   }
+  },
+  "18188608517393740922": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=18188608517393740922 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=33.921451034092385 CENTROID_MATCHED=1.471717353544718 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "b60207e8890d8ea240ec0df31aedeb6ff81c3d122142dc6981375b52fa9d836c",
+    "observations.tsv": "7afc478a5950c5403a8fe1af903d24fe6d96f9187b673137e13fad83024fe943",
+    "tasks.tsv": "5306657fbcdc33184104cdf1ccc814c1eb1b23179d3052ebfb5c0c541a9d6b55",
+    "v5.tsv": "578cd997494e6f8ea803ea982d00d5472414ff73c1f0717fc42c26bbd1a917ab"
+   }
+  },
+  "18332851828369524923": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=18332851828369524923 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=0.9583333333333334 ORACLE_MATCHED=1 CENTROID_SEPARATED=33.99569425082143 CENTROID_MATCHED=1.3229197946033846 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "da7c22a324c8cde081d50354e1e4a87750ff93eb284e3f4005cb61742b62e630",
+    "observations.tsv": "20e84994100718329b143b53ae2d6e723fc1f93a387323ac53df8a4a9fa74b6f",
+    "tasks.tsv": "2003c11488b8ec25fcde433481e202b1cda863cf15ab911c37698775281b6ea7",
+    "v5.tsv": "9c9ff743ab644e120911c9d9da2ee98679374a94d65d0a903d0274c50f994954"
+   }
+  },
+  "3831937027727860121": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=3831937027727860121 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=0.9583333333333334 CENTROID_SEPARATED=30.400452331639027 CENTROID_MATCHED=1.4030143945284836 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "2d77b1575d5d52b5291916e334e92f766da1c9a9ff08b7dd999edc63979bc941",
+    "observations.tsv": "e4319c36ea8553f10e1c1507c1c23eb52571e7795e6ea5827e243180812904d9",
+    "tasks.tsv": "cc3460c365676f2fd3a86ffb8ea9f42b23ed5fa7ac62613fce10e3ac0e4ee3d9",
+    "v5.tsv": "83cbc5047de937f438311357310af7257f1241f6cc218e1c57cff3deac899c9f"
+   }
+  },
+  "6660137436172448199": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=6660137436172448199 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=0.9583333333333334 ORACLE_MATCHED=1 CENTROID_SEPARATED=29.315116582553756 CENTROID_MATCHED=1.142570013651952 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "369d430f6a4dfd54b4eae5f716c7bc2c6147125abf4314c9cbd28aae944bbb77",
+    "observations.tsv": "047eefaafaf9027f47e8e7f6455f9267eef08fabcc15c8fdfb7961ff05eb338e",
+    "tasks.tsv": "1278a1a28d3d543b60ef777ade179dbb5640e60a9cf25397f527493f5405bfd7",
+    "v5.tsv": "ef38e1d02cf9c33f99bbf073da9bfe32bcf334631f7f3dbe05ced283565623d0"
+   }
+  },
+  "6698121413167257876": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=6698121413167257876 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=39.45396584246654 CENTROID_MATCHED=1.1932903455497874 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "a37f5189cf5fa69740c67d86c8e778729fcdf6ece06a350376d6b197108185ed",
+    "observations.tsv": "8d4e53c13947b727a7b8dd13e53ebce3284f69646e92c46aa8d04bf218857374",
+    "tasks.tsv": "53d0a98d42909c77f1d07bf12751afe6c9db1b5ffae00b741b136e82387035bd",
+    "v5.tsv": "793943b4822ae4c060adce7f393e2caa17ccc2146eeee033b9749f553953dfbf"
+   }
+  },
+  "7528444836364809664": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=7528444836364809664 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=0.9583333333333334 ORACLE_MATCHED=1 CENTROID_SEPARATED=29.421826603005456 CENTROID_MATCHED=1.6163054314219558 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "6a0524ee92e2e3b004ee8a7e41a185d95e94acefc62b4826cb74b209d51cc180",
+    "observations.tsv": "fc04f602f93804567c40356fdb047b0aefa600fed3cc8a5fe44313f93915e367",
+    "tasks.tsv": "bcd95ff797eb22c8df9643edcbd7f486b38b08dd40a0d305c1c748b9800668fe",
+    "v5.tsv": "b763f4392df242615caa944f9f7da42a5cb2fb83fa887a30a07baa254e33862c"
+   }
+  },
+  "8697713301463759594": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=8697713301463759594 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=29.45869178758019 CENTROID_MATCHED=1.4714470750221134 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "1037896cdfe53f8ea4b359fe63be54d28d401966e90daf310659eb6bdbc91843",
+    "observations.tsv": "900488c668e07efcc98b5491c5505d8f7c59e63daec974310ebf5070e8c919db",
+    "tasks.tsv": "baff0cf8b7dcdffa719365f5cc172b3538602716a57718b7d746b0b9fe1baeb5",
+    "v5.tsv": "7282dc011203088720ec19855d4d0e902c66c0218ed0c19d1ae72b27d692fc5c"
+   }
+  },
+  "8739139052020342775": {
+   "observer": "R3_BP_PER_SEED candidate=C2 seed=8739139052020342775 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=28.68374840189828 CENTROID_MATCHED=1.2346124312603952 SCIENCE_RELEASE=NO",
+   "raw_sha256": {
+    "events.tsv": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+    "metrics.tsv": "f53e0054d607bbb485d503a2206674fe62b5d177e93f125f1dbc147b4e37e8bb",
+    "observations.tsv": "a0342c00e8e6bbcd482561a953f6a30a7beae24f1702a341506b000e38570016",
+    "tasks.tsv": "42e2cd6d84723045f2039b3edaba1ebef76c5791a024ef1ca43b86a2931e814e",
+    "v5.tsv": "baf1894cec03381c57f728d6256f98c6c13953cb6645a358a28bdbaf93d0a22b"
+   }
+  }
+ },
+ "harness": {
+  "identities": [
+   "weighted_rollout_gradient with [1, 0.37/3, 0.37/3, 0.37/3] == objective_gradient(Rollout) bitwise (C0 rows identical)",
+   "c2_step with terminal weight 0 == C0 rollout bitwise"
+  ],
+  "source": "r4_design_harness.rs (HD/L2-only; engine binding code verbatim); release profile",
+  "validation": "G1, TEACHER, C0-ROLLOUT and C1-ROLLOUT HD/L2 metric rows bit-identical to the committed successor evidence on all 8 burned worlds"
+ },
+ "lineage": {
+  "burned_successor_dev_worlds_used_as_design": [
+   "15007341021985616615",
+   "12334837942893278080",
+   "5526746150047008937",
+   "2644957107391819373",
+   "14747431184225333660",
+   "2338945401063472337",
+   "2859738232811479868",
+   "229129266962718901"
+  ],
+  "closure_commit": "d26c78b78b4cbedbc412f6a410076f15bdadf350"
+ },
+ "schema": "HECS_R3_SUCCESSOR_C2_DESIGN_RECORD_V1",
+ "screens": {
+  "holdout1": {
+   "description": "48 held-out DESIGN worlds (indices 32..79), not used for selection",
+   "variants": {
+    "C0": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9194193759648472,
+     "median_M8_unbound": 0.5522616399915581,
+     "min_M1": 0.9904612273257646,
+     "min_M2": 0.9606049795451401,
+     "min_M4": 0.5943722751116944,
+     "min_S1": 0.9904612273257646,
+     "optimizer_failures": 0,
+     "worlds": 48,
+     "worlds_M4_ge_0.92": 32,
+     "worlds_all_HD_L2_gates_pass": 33,
+     "worst_world": "7374165149280285233"
+    },
+    "C2,nw=6,wt=0.4,upd=4096": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.99231758806159,
+     "median_M8_unbound": 0.9700151399264946,
+     "min_M1": 0.9935438195211748,
+     "min_M2": 0.9865271120129228,
+     "min_M4": 0.9681063865869818,
+     "min_S1": 0.9935438195211748,
+     "optimizer_failures": 0,
+     "worlds": 48,
+     "worlds_M4_ge_0.92": 48,
+     "worlds_all_HD_L2_gates_pass": 48,
+     "worst_world": "339734665872032576"
+    },
+    "C2,nw=6,wt=1.0,upd=4096": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9986024792150766,
+     "median_M8_unbound": 0.9936133325115774,
+     "min_M1": 0.9891015407846991,
+     "min_M2": 0.9901297993244231,
+     "min_M4": 0.976373665826192,
+     "min_S1": 0.9891015407846991,
+     "optimizer_failures": 0,
+     "worlds": 48,
+     "worlds_M4_ge_0.92": 48,
+     "worlds_all_HD_L2_gates_pass": 48,
+     "worst_world": "339734665872032576"
+    },
+    "W,nw=6,coef=1:0.5:0.5:1.5,upd=4096": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 1.0012882940730476,
+     "median_M8_unbound": 0.9982492846849262,
+     "min_M1": 0.9862820894385115,
+     "min_M2": 0.9905299450448255,
+     "min_M4": 0.9814801741319452,
+     "min_S1": 0.9862820894385115,
+     "optimizer_failures": 0,
+     "worlds": 48,
+     "worlds_M4_ge_0.92": 48,
+     "worlds_all_HD_L2_gates_pass": 48,
+     "worst_world": "339734665872032576"
+    }
+   }
+  },
+  "probe_hard": {
+   "description": "4 hardest worlds: trajectories (diagnostic)",
+   "variants": {
+    "C2,nw=16,wt=0.4,upd=1024,ckpt=256": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.8980007708147911,
+     "median_M8_unbound": -1017.3916861860384,
+     "min_M1": 1.0030347665399932,
+     "min_M2": 0.9875055655807791,
+     "min_M4": 0.8706761029915335,
+     "min_S1": 1.0030347665399932,
+     "optimizer_failures": 0,
+     "worlds": 4,
+     "worlds_M4_ge_0.92": 1,
+     "worlds_all_HD_L2_gates_pass": 2,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=0,upd=4096,ckpt=512": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9159674985170272,
+     "median_M8_unbound": -144.6305523858377,
+     "min_M1": 0.9977360087826249,
+     "min_M2": 0.9852988003021,
+     "min_M4": 0.8956439227997941,
+     "min_S1": 0.9977360087826249,
+     "optimizer_failures": 0,
+     "worlds": 4,
+     "worlds_M4_ge_0.92": 1,
+     "worlds_all_HD_L2_gates_pass": 3,
+     "worst_world": "1247333204029564521"
+    },
+    "C2,nw=6,wt=0.4,upd=4096,ckpt=512": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9715326379585932,
+     "median_M8_unbound": -12.783411040156755,
+     "min_M1": 0.9929605810236727,
+     "min_M2": 0.9839411926660342,
+     "min_M4": 0.9596273541708901,
+     "min_S1": 0.9929605810236727,
+     "optimizer_failures": 0,
+     "worlds": 4,
+     "worlds_M4_ge_0.92": 4,
+     "worlds_all_HD_L2_gates_pass": 4,
+     "worst_world": "1247333204029564521"
+    },
+    "C2,nw=6,wt=1.0,upd=2048,ckpt=256": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9650425792925077,
+     "median_M8_unbound": -11.397081126885372,
+     "min_M1": 0.9958666602530961,
+     "min_M2": 0.9857784294561746,
+     "min_M4": 0.9513236796631875,
+     "min_S1": 0.9958666602530961,
+     "optimizer_failures": 0,
+     "worlds": 4,
+     "worlds_M4_ge_0.92": 4,
+     "worlds_all_HD_L2_gates_pass": 4,
+     "worst_world": "18188608517393740922"
+    },
+    "W,nw=6,coef=1:0.5:0.5:1.5,upd=2048,ckpt=256": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9761220014953491,
+     "median_M8_unbound": 0.6570312848019682,
+     "min_M1": 0.9955360587650107,
+     "min_M2": 0.9871603996888484,
+     "min_M4": 0.9630253781334746,
+     "min_S1": 0.9955360587650107,
+     "optimizer_failures": 0,
+     "worlds": 4,
+     "worlds_M4_ge_0.92": 4,
+     "worlds_all_HD_L2_gates_pass": 4,
+     "worst_world": "18188608517393740922"
+    }
+   }
+  },
+  "screen1": {
+   "description": "8 burned successor DEV worlds (DESIGN): terminal weight, budget, windows",
+   "variants": {
+    "C0": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9406664148216266,
+     "median_M8_unbound": -91.65792975730005,
+     "min_M1": 0.9922620845998698,
+     "min_M2": 0.9662221166271224,
+     "min_M4": 0.8529768527391456,
+     "min_S1": 0.9922620845998698,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 6,
+     "worlds_all_HD_L2_gates_pass": 7,
+     "worst_world": "5526746150047008937"
+    },
+    "C1": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9466541873319909,
+     "median_M8_unbound": -0.4883344456981387,
+     "min_M1": 0.9927353820471065,
+     "min_M2": 0.9705785902766036,
+     "min_M4": 0.8685551895096904,
+     "min_S1": 0.9927353820471065,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 7,
+     "worlds_all_HD_L2_gates_pass": 7,
+     "worst_world": "5526746150047008937"
+    },
+    "C2,nw=6,wt=0,upd=512": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9522943823684478,
+     "median_M8_unbound": -26.86074299907025,
+     "min_M1": 0.991596252886819,
+     "min_M2": 0.9712810983423671,
+     "min_M4": 0.8963219218332668,
+     "min_S1": 0.991596252886819,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 7,
+     "worlds_all_HD_L2_gates_pass": 7,
+     "worst_world": "5526746150047008937"
+    },
+    "C2,nw=6,wt=0.1": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.945805209789134,
+     "median_M8_unbound": -308.962969797082,
+     "min_M1": 0.9913509087114523,
+     "min_M2": 0.9672602014557519,
+     "min_M4": 0.8679287393515013,
+     "min_S1": 0.9913509087114523,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 7,
+     "worlds_all_HD_L2_gates_pass": 7,
+     "worst_world": "5526746150047008937"
+    },
+    "C2,nw=6,wt=0.2": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9492543823108144,
+     "median_M8_unbound": -74.82757094565727,
+     "min_M1": 0.9906065120294475,
+     "min_M2": 0.9683906262067573,
+     "min_M4": 0.8787872941319543,
+     "min_S1": 0.9906065120294475,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 7,
+     "worlds_all_HD_L2_gates_pass": 7,
+     "worst_world": "5526746150047008937"
+    },
+    "C2,nw=6,wt=0.2,upd=1024": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9697648715477195,
+     "median_M8_unbound": 0.7184638835389507,
+     "min_M1": 0.9937175605076454,
+     "min_M2": 0.9832185350988101,
+     "min_M4": 0.9446844828198192,
+     "min_S1": 0.9937175605076454,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 8,
+     "worlds_all_HD_L2_gates_pass": 8,
+     "worst_world": "229129266962718901"
+    },
+    "C2,nw=6,wt=0.2,upd=512": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9608861615064671,
+     "median_M8_unbound": -2.161243255528604,
+     "min_M1": 0.9910848454242176,
+     "min_M2": 0.9766441100879861,
+     "min_M4": 0.9215262115012598,
+     "min_S1": 0.9910848454242176,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 8,
+     "worlds_all_HD_L2_gates_pass": 8,
+     "worst_world": "5526746150047008937"
+    },
+    "C2,nw=6,wt=0.4": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9538381262076936,
+     "median_M8_unbound": -7.647911937355414,
+     "min_M1": 0.9892326024968366,
+     "min_M2": 0.9704310724576473,
+     "min_M4": 0.89401832840071,
+     "min_S1": 0.9892326024968366,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 7,
+     "worlds_all_HD_L2_gates_pass": 7,
+     "worst_world": "5526746150047008937"
+    },
+    "C2,nw=6,wt=0.4,upd=512": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.965992976891871,
+     "median_M8_unbound": -0.3032003453807353,
+     "min_M1": 0.9905058509280358,
+     "min_M2": 0.9799252418535676,
+     "min_M4": 0.9373798844675915,
+     "min_S1": 0.9905058509280358,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 8,
+     "worlds_all_HD_L2_gates_pass": 8,
+     "worst_world": "5526746150047008937"
+    },
+    "C2,nw=6,wt=0.8": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9593161966727711,
+     "median_M8_unbound": -5.551098548396005,
+     "min_M1": 0.988496526055536,
+     "min_M2": 0.9752192111961219,
+     "min_M4": 0.9128377373530463,
+     "min_S1": 0.988496526055536,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 7,
+     "worlds_all_HD_L2_gates_pass": 8,
+     "worst_world": "5526746150047008937"
+    },
+    "C2,nw=8,wt=0.2": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9501054180837247,
+     "median_M8_unbound": -0.32830093327969,
+     "min_M1": 0.9930308007829118,
+     "min_M2": 0.9738535226299889,
+     "min_M4": 0.879067180338792,
+     "min_S1": 0.9930308007829118,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 7,
+     "worlds_all_HD_L2_gates_pass": 7,
+     "worst_world": "5526746150047008937"
+    },
+    "C2,nw=8,wt=0.4": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9547103691012316,
+     "median_M8_unbound": 0.19772482861565577,
+     "min_M1": 0.9921560528348138,
+     "min_M2": 0.976434342971485,
+     "min_M4": 0.8978362228659479,
+     "min_S1": 0.9921560528348138,
+     "optimizer_failures": 0,
+     "worlds": 8,
+     "worlds_M4_ge_0.92": 7,
+     "worlds_all_HD_L2_gates_pass": 7,
+     "worst_world": "5526746150047008937"
+    }
+   }
+  },
+  "screen2": {
+   "description": "40 worlds (32 DESIGN + 8 burned): weight x budget grid with C0/C1 references",
+   "variants": {
+    "C0": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.8533527242174075,
+     "median_M8_unbound": 0.9064561369899535,
+     "min_M1": 0.9882247012711108,
+     "min_M2": 0.9662221166271224,
+     "min_M4": -1.235908071038353,
+     "min_S1": 0.9882247012711108,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 25,
+     "worlds_all_HD_L2_gates_pass": 30,
+     "worst_world": "18188608517393740922"
+    },
+    "C1": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.8988659535881708,
+     "median_M8_unbound": 0.912566918241005,
+     "min_M1": 0.9890487706540723,
+     "min_M2": 0.9705785902766036,
+     "min_M4": -0.022550634357513137,
+     "min_S1": 0.9890487706540723,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 27,
+     "worlds_all_HD_L2_gates_pass": 31,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=0,upd=1024": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9390230730254598,
+     "median_M8_unbound": 0.9111706010743197,
+     "min_M1": 0.9903664398609402,
+     "min_M2": 0.9783149126898644,
+     "min_M4": 0.4737015989546312,
+     "min_S1": 0.9903664398609402,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 33,
+     "worlds_all_HD_L2_gates_pass": 34,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=0.1,upd=1024": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9518994360130305,
+     "median_M8_unbound": 0.9202978173110008,
+     "min_M1": 0.9902373702210306,
+     "min_M2": 0.979362084315888,
+     "min_M4": 0.6747237824328899,
+     "min_S1": 0.9902373702210306,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 34,
+     "worlds_all_HD_L2_gates_pass": 35,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=0.1,upd=512": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9176249945695598,
+     "median_M8_unbound": 0.9295627358488292,
+     "min_M1": 0.990973377772741,
+     "min_M2": 0.9742961903794662,
+     "min_M4": -0.0389576224321412,
+     "min_S1": 0.990973377772741,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 30,
+     "worlds_all_HD_L2_gates_pass": 31,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=0.2,upd=1024": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9596143644295011,
+     "median_M8_unbound": 0.926535843787295,
+     "min_M1": 0.9900867654917718,
+     "min_M2": 0.9804134840582942,
+     "min_M4": 0.7806905368000111,
+     "min_S1": 0.9900867654917718,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 35,
+     "worlds_all_HD_L2_gates_pass": 35,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=0.2,upd=512": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9216498441056216,
+     "median_M8_unbound": 0.9340467374447765,
+     "min_M1": 0.9904608581116978,
+     "min_M2": 0.9766441100879861,
+     "min_M4": -0.10273943213061204,
+     "min_S1": 0.9904608581116978,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 31,
+     "worlds_all_HD_L2_gates_pass": 34,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=0.2,upd=768": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9439365634271564,
+     "median_M8_unbound": 0.9317699231241804,
+     "min_M1": 0.9889676701157794,
+     "min_M2": 0.9817210101685235,
+     "min_M4": 0.6434066603330612,
+     "min_S1": 0.9889676701157794,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 32,
+     "worlds_all_HD_L2_gates_pass": 36,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=0.4,upd=1024": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.968552640452529,
+     "median_M8_unbound": 0.934175741141887,
+     "min_M1": 0.9897613124694778,
+     "min_M2": 0.9822079497337577,
+     "min_M4": 0.8762974147349423,
+     "min_S1": 0.9897613124694778,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 36,
+     "worlds_all_HD_L2_gates_pass": 37,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=0.4,upd=512": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9294227540918306,
+     "median_M8_unbound": 0.9395858684583805,
+     "min_M1": 0.9894340306573175,
+     "min_M2": 0.97530327641216,
+     "min_M4": -0.06925064328181493,
+     "min_S1": 0.9894340306573175,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 31,
+     "worlds_all_HD_L2_gates_pass": 34,
+     "worst_world": "18188608517393740922"
+    }
+   }
+  },
+  "screen3": {
+   "description": "40 worlds: long-budget variants",
+   "variants": {
+    "C2,nw=6,wt=0.2,upd=4096": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9852189891687977,
+     "median_M8_unbound": 0.9590873496679342,
+     "min_M1": 0.9903060269304284,
+     "min_M2": 0.9843649987131572,
+     "min_M4": 0.9418630029212928,
+     "min_S1": 0.9903060269304284,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 40,
+     "worlds_all_HD_L2_gates_pass": 40,
+     "worst_world": "1247333204029564521"
+    },
+    "C2,nw=6,wt=0.4,upd=2048": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9813205423448332,
+     "median_M8_unbound": 0.9542402921136786,
+     "min_M1": 0.9898488990985768,
+     "min_M2": 0.9842201484068138,
+     "min_M4": 0.9202389389221883,
+     "min_S1": 0.9898488990985768,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 40,
+     "worlds_all_HD_L2_gates_pass": 40,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=0.4,upd=4096": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9904793683768809,
+     "median_M8_unbound": 0.9697312002543007,
+     "min_M1": 0.9888148950388259,
+     "min_M2": 0.9839411926660342,
+     "min_M4": 0.9596273541708901,
+     "min_S1": 0.9888148950388259,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 40,
+     "worlds_all_HD_L2_gates_pass": 40,
+     "worst_world": "1247333204029564521"
+    },
+    "C2,nw=6,wt=0.4,upd=8192": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9964675667999107,
+     "median_M8_unbound": 0.9831193016818349,
+     "min_M1": 0.9877756319746329,
+     "min_M2": 0.9862554603169481,
+     "min_M4": 0.9626576721673691,
+     "min_S1": 0.9877756319746329,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 40,
+     "worlds_all_HD_L2_gates_pass": 40,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=1.0,upd=2048": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9908410984780981,
+     "median_M8_unbound": 0.969117396371927,
+     "min_M1": 0.9873661957125807,
+     "min_M2": 0.9838575144931769,
+     "min_M4": 0.9513236796631875,
+     "min_S1": 0.9873661957125807,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 40,
+     "worlds_all_HD_L2_gates_pass": 40,
+     "worst_world": "18188608517393740922"
+    },
+    "C2,nw=6,wt=1.0,upd=4096": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9974218718563606,
+     "median_M8_unbound": 0.9831215696553958,
+     "min_M1": 0.9860411651949276,
+     "min_M2": 0.9843210293758962,
+     "min_M4": 0.9717534995854232,
+     "min_S1": 0.9860411651949276,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 40,
+     "worlds_all_HD_L2_gates_pass": 40,
+     "worst_world": "18188608517393740922"
+    },
+    "W,nw=6,coef=1:0.5:0.5:1.5,upd=2048": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 0.9960291571237971,
+     "median_M8_unbound": 0.9860347131832043,
+     "min_M1": 0.9851965696526942,
+     "min_M2": 0.9839194112323579,
+     "min_M4": 0.9630253781334746,
+     "min_S1": 0.9851965696526942,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 40,
+     "worlds_all_HD_L2_gates_pass": 40,
+     "worst_world": "18188608517393740922"
+    },
+    "W,nw=6,coef=1:0.5:0.5:1.5,upd=4096": {
+     "max_bound_escape": 0.0,
+     "mean_M4": 1.0008679800346028,
+     "median_M8_unbound": 0.9943365602986193,
+     "min_M1": 0.983955102718589,
+     "min_M2": 0.9847209033311878,
+     "min_M4": 0.9737562765365287,
+     "min_S1": 0.983955102718589,
+     "optimizer_failures": 0,
+     "worlds": 40,
+     "worlds_M4_ge_0.92": 40,
+     "worlds_all_HD_L2_gates_pass": 40,
+     "worst_world": "18188608517393740922"
+    }
+   }
+  }
+ },
+ "seed_law_design": "u64 big-endian of SHA-256(ASCII(\"ELPIS/HECS/R4/C2/DESIGN/V1/\" + decimal(i)))[0..8]; i=0..31 DESIGN-train, i=32..79 DESIGN-holdout",
+ "selected": {
+  "C2_BASE_LAMBDA": 0.37,
+  "C2_TERMINAL_WEIGHT": 1.0,
+  "C2_UPDATES": 4096,
+  "C2_WINDOWS": 6,
+  "holdout": {
+   "max_bound_escape": 0.0,
+   "mean_M4": 0.9986024792150766,
+   "median_M8_unbound": 0.9936133325115774,
+   "min_M1": 0.9891015407846991,
+   "min_M2": 0.9901297993244231,
+   "min_M4": 0.976373665826192,
+   "min_S1": 0.9891015407846991,
+   "optimizer_failures": 0,
+   "worlds": 48,
+   "worlds_M4_ge_0.92": 48,
+   "worlds_all_HD_L2_gates_pass": 48,
+   "worst_world": "339734665872032576"
+  },
+  "train_min_M4": 0.9717534995854232
+ },
+ "selection_rule": "declared after screen3 and before holdout1: within the C2 family (unchanged R3 rollout objective + true-target terminal anchor; update budget the only other axis; 6 C0 windows), maximise the minimum HD/L2 h4 capture over the 40 DESIGN-train worlds, all HD/L2 gates passing; then confirm on 48 held-out DESIGN worlds",
+ "status": "DESIGN_ONLY_NO_SCIENTIFIC_AUTHORITY"
+}
