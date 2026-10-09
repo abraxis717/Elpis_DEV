@@ -1,0 +1,19 @@
+{
+  "cold_rebuild_verified": false,
+  "reconstructed_sources": false,
+  "runtime_artifacts": false,
+  "schema": "HECS_R3_CA_ORIGINAL_SOURCE_ONLY_R0",
+  "science_run": false,
+  "source_sha256": {
+    "build/Cargo.lock": "1ebc8d90479de75a43d35a982674cb4fcd26c81d97a332ad3c2b2668eb0118e6",
+    "build/Cargo.toml": "5ef432a6bdb917f1d6cc59f9d7b8d94ddf5b39f372cf3b008baf54d9669cdf04",
+    "engines/r3_bn_c0_dev_engine.rs": "2426143228444895fe5d7e9be74bd3c0141e5771c5626b512d2096215b3a23b7",
+    "engines/r3_bn_c1_dev_engine.rs": "360d81b899bece6bd344c67e0362eaa879b7bcf2aada42c5d5307cf6d9108fa0",
+    "engines/support/r3_ax_c1.rs": "461ecb9f203be79b00b50ccead08cd6cfcab5322e38979dc0981839c03a8e3b2",
+    "engines/support/r3_bd_emitter.rs": "35bdfb020db3adcf74465360d84dd08399bd97c55f0a801249b72294b6c64064",
+    "engines/support/r3_training_core.rs": "51488b07c8a5677c2b06737c5922b6b5c5919440110d37f5d75c2245b3dfc103",
+    "observer/r3_bp_observer.rs": "c63f71f5a4f0730c93ba82219fc6e597cc52b74147224b65160e67d8b45d2183"
+  },
+  "status": "UNRESOLVED_DEV_3_OF_8",
+  "upstream_archive_commit": "eb5be799f7e1a8e2b6d2cb84ddf729c3a7cbd924"
+}
