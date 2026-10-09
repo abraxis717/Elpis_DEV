@@ -207,6 +207,10 @@ FROZEN_EVIDENCE = {
     "tests/boundary/test_one_ecs.py": "This gate names the retired tokens it rejects.",
     "research/hecs_r1/evidence/": "H-ECS R1 write-once evidence: each file embeds the frozen specification (K1 ABI name).",
     "research/hecs_r2/evidence/": "H-ECS R2 compact phase records: each names the K1 library it ran against (K1 ABI name).",
+    "research/hecs_r3/unresolved/successor_dev_3_of_8/frozen_boundary/":
+        "H-ECS R3 successor frozen boundary: the digest-pinned supervisor source names the K1 library (K1 ABI name).",
+    "research/hecs_r3/closure/successor_dev_8_of_8/reconstruction/":
+        "H-ECS R3 successor reconstruction record: the adapter source names the K1 library it ran (K1 ABI name).",
 }
 
 # Native sources whose exact bytes are recorded by research/ecs_runtime_r1/evidence (measured and sanitized
