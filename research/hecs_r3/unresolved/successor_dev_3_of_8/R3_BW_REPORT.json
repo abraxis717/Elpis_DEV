@@ -1,0 +1,120 @@
+{
+  "allowed_next_choices": [
+    "halt with explicit monotonic universal-gate failure, preserve five unused DEV slots, do not call it a complete eight-seed cohort",
+    "complete frozen seeds 3..7 sequentially ONLY for full preregistered cohort characterization; it cannot rescue failed universal gate"
+  ],
+  "br_admission_sha256": "3425bc453a2d9b53c54f8e054dffd8e4d4cfa09e7f23a3307cb6fb507780ca5c",
+  "bv_offline_json_sha256": "1f677452e9890eb0f47eb94f705ed427df0e86b1fa3586ec2f84482970c46d0b",
+  "consumed_dev_pair_indices": [
+    0,
+    1,
+    2
+  ],
+  "dev_authority_sha256": "cffe1fffab6e26e16e30e4d03fd72727ab55ffe115487703b10715989335a516",
+  "disposition": "C0_AND_C1_DEV_UNIVERSAL_VALIDITY_UNSATISFIABLE",
+  "formal_eight_seed_cohort_verdict": "NOT_MATERIALIZED",
+  "frozen_protocol_sha256": "9ad9d1d35ce40756aaac91c47a1f26e635265e6115576f820b16d0d000ca262a",
+  "git_mutation_authorized": false,
+  "host_r3_bv_observer_readmission": "PASS_REPORTED_IN_UPLOADED_LOG",
+  "next_scientific_launch_authorized_by_this_handoff": false,
+  "offline_report_reused_by_bv": true,
+  "protocol_early_stop_authorization": "NOT_EXPLICIT",
+  "qual_authorized": false,
+  "r4_authorized": false,
+  "schema": "HECS_R3_SUCCESSOR_DEV_CONCLUSIVE_EARLY_GATE_FAILURE_HANDOFF_R0",
+  "scientific_data": [
+    {
+      "candidates": {
+        "C0": {
+          "M_failed_entries": 0,
+          "M_pass": true,
+          "S1_pass": true,
+          "hd_l2_h4_capture": 0.9777302523343981,
+          "hd_l2_h4_escape": 0.0,
+          "task_local_pass": true
+        },
+        "C1": {
+          "M_failed_entries": 0,
+          "M_pass": true,
+          "S1_pass": true,
+          "hd_l2_h4_capture": 0.9772411280912127,
+          "hd_l2_h4_escape": 0.0,
+          "task_local_pass": true
+        }
+      },
+      "capture_delta_C1_minus_C0": -0.0004891242431854792,
+      "commit_sha256": "a731f84c5d77aa556d261e28075c777439839bfb630007e841ebcf18bee85c26",
+      "index": 0,
+      "seed": "15007341021985616615"
+    },
+    {
+      "candidates": {
+        "C0": {
+          "M_failed_entries": 0,
+          "M_pass": true,
+          "S1_pass": true,
+          "hd_l2_h4_capture": 0.9180048262359963,
+          "hd_l2_h4_escape": 0.0,
+          "task_local_pass": true
+        },
+        "C1": {
+          "M_failed_entries": 0,
+          "M_pass": true,
+          "S1_pass": true,
+          "hd_l2_h4_capture": 0.9336881711571918,
+          "hd_l2_h4_escape": 0.0,
+          "task_local_pass": true
+        }
+      },
+      "capture_delta_C1_minus_C0": 0.015683344921195497,
+      "commit_sha256": "5c48e9ec9446578d4030731fc06a1b437646fcd0317fd4fa0fcd5ed082aeabfd",
+      "index": 1,
+      "seed": "12334837942893278080"
+    },
+    {
+      "candidates": {
+        "C0": {
+          "M_failed_entries": 1,
+          "M_pass": false,
+          "S1_pass": true,
+          "hd_l2_h4_capture": 0.8529768527391456,
+          "hd_l2_h4_escape": 0.0,
+          "task_local_pass": true
+        },
+        "C1": {
+          "M_failed_entries": 1,
+          "M_pass": false,
+          "S1_pass": true,
+          "hd_l2_h4_capture": 0.8685551895096904,
+          "hd_l2_h4_escape": 0.0,
+          "task_local_pass": true
+        }
+      },
+      "capture_delta_C1_minus_C0": 0.015578336770544765,
+      "commit_sha256": "f5992e836342e1ac11daf7063101a34cc119d23a366e067fa7214adb4e55cf0b",
+      "index": 2,
+      "seed": "5526746150047008937"
+    }
+  ],
+  "source_archive_sha256": {
+    "R3_BU_RAW_DEBRIEF": "76bbd1cd64f957c37e58bfac866da15be50335ab01f649afa6a43ce7733b3ea7",
+    "R3_BV_HOST_ADMISSION": "8be5554720156993374f3368c5931b3809a84f354b73942bad913f136135a214"
+  },
+  "study_limitations": [
+    "C1 varies HD/L2 window count and consistency loss together",
+    "C1 and C0 are not compute-matched",
+    "three out of eight prospective DEV worlds executed",
+    "report is not a frozen eight-seed cohort gate"
+  ],
+  "thresholds": {
+    "M_capture_min": 0.9,
+    "M_escape_max": 0.01
+  },
+  "unstarted_dev_pair_indices_as_of_bv_census": [
+    3,
+    4,
+    5,
+    6,
+    7
+  ]
+}

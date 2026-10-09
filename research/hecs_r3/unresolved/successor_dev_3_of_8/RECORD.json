@@ -1,0 +1,87 @@
+{
+  "candidate_universal_M_validity": {
+    "C0": "FAILED_BY_SEED_2",
+    "C1": "FAILED_BY_SEED_2"
+  },
+  "captured_results": [
+    {
+      "HD_L2_h4_capture": 0.9777302523343981,
+      "HD_L2_h4_escape": 0.0,
+      "M_pass": true,
+      "candidate": "C0",
+      "commit_sha256": "a731f84c5d77aa556d261e28075c777439839bfb630007e841ebcf18bee85c26",
+      "index": 0,
+      "seed": "15007341021985616615"
+    },
+    {
+      "HD_L2_h4_capture": 0.9772411280912127,
+      "HD_L2_h4_escape": 0.0,
+      "M_pass": true,
+      "candidate": "C1",
+      "commit_sha256": "a731f84c5d77aa556d261e28075c777439839bfb630007e841ebcf18bee85c26",
+      "index": 0,
+      "seed": "15007341021985616615"
+    },
+    {
+      "HD_L2_h4_capture": 0.9180048262359963,
+      "HD_L2_h4_escape": 0.0,
+      "M_pass": true,
+      "candidate": "C0",
+      "commit_sha256": "5c48e9ec9446578d4030731fc06a1b437646fcd0317fd4fa0fcd5ed082aeabfd",
+      "index": 1,
+      "seed": "12334837942893278080"
+    },
+    {
+      "HD_L2_h4_capture": 0.9336881711571918,
+      "HD_L2_h4_escape": 0.0,
+      "M_pass": true,
+      "candidate": "C1",
+      "commit_sha256": "5c48e9ec9446578d4030731fc06a1b437646fcd0317fd4fa0fcd5ed082aeabfd",
+      "index": 1,
+      "seed": "12334837942893278080"
+    },
+    {
+      "HD_L2_h4_capture": 0.8529768527391456,
+      "HD_L2_h4_escape": 0.0,
+      "M_pass": false,
+      "candidate": "C0",
+      "commit_sha256": "f5992e836342e1ac11daf7063101a34cc119d23a366e067fa7214adb4e55cf0b",
+      "index": 2,
+      "seed": "5526746150047008937"
+    },
+    {
+      "HD_L2_h4_capture": 0.8685551895096904,
+      "HD_L2_h4_escape": 0.0,
+      "M_pass": false,
+      "candidate": "C1",
+      "commit_sha256": "f5992e836342e1ac11daf7063101a34cc119d23a366e067fa7214adb4e55cf0b",
+      "index": 2,
+      "seed": "5526746150047008937"
+    }
+  ],
+  "commit_chain_sha256": [
+    "a731f84c5d77aa556d261e28075c777439839bfb630007e841ebcf18bee85c26",
+    "5c48e9ec9446578d4030731fc06a1b437646fcd0317fd4fa0fcd5ed082aeabfd",
+    "f5992e836342e1ac11daf7063101a34cc119d23a366e067fa7214adb4e55cf0b"
+  ],
+  "completed_committed_dev_pairs": 3,
+  "early_stop_authority": "NOT_EXPLICIT",
+  "formal_eight_seed_cohort_verdict": "NOT_MATERIALIZED",
+  "frozen_release_authority_sha256": "cffe1fffab6e26e16e30e4d03fd72727ab55ffe115487703b10715989335a516",
+  "git_publication_authorization": "explicit operator instruction 2026-10-09; research-only archival scope",
+  "note": "The released BQ authority contains NO_GIT_MUTATION=YES for science itself; this later separately authorized Git archival copy does not modify that frozen authority.",
+  "original_primary_evidence_path": "/mnt/primesauce/Elpis_DEV/build/hecs_r3_successor_dev_science_r0",
+  "production_integration_authorized": false,
+  "registered_dev_pair_count": 8,
+  "repository_copy_not_primary_authority": true,
+  "research_only": true,
+  "schema": "HECS_R3_SUCCESSOR_UNRESOLVED_DEV_3_OF_8_PUBLIC_SNAPSHOT_V1",
+  "successor_qual_authorized": false,
+  "unstarted_dev_pair_indices": [
+    3,
+    4,
+    5,
+    6,
+    7
+  ]
+}

@@ -1,0 +1,75 @@
+CHILD_STDOUT PHASE=R3_SUCCESSOR_FROZEN_DEV candidate=C0 COMPUTE_MATCHED=NO
+CHILD_STDOUT FULL_BUDGET_NATIVE_G1=96000; R3_TREATMENT_UPDATES=256
+CHILD_STDOUT SUCCESSOR_CANDIDATE=C0 C1_LAMBDA4=0.1 C0_BASELINE_NO_C1=YES NO_SUPERIORITY_CLAIM
+CHILD_STDOUT R3_BN_SUCCESSOR_DEV_SEED_BEGIN candidate=C0 index=1 seed=12334837942893278080
+CHILD_STDOUT R3_L_BINDING_BEGIN index=1 seed=12334837942893278080 key=L1/N72 h=16
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=L1/N72 update=64/256 surrogate_teacher=12386304 surrogate_rollout=12386304
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=L1/N72 update=128/256 surrogate_teacher=24772608 surrogate_rollout=24772608
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=L1/N72 update=192/256 surrogate_teacher=37158912 surrogate_rollout=37158912
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=L1/N72 update=256/256 surrogate_teacher=49545216 surrogate_rollout=49545216
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=L1/N72 arm=G1 all R2 horizons 1,2,4,8,16
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=L1/N72 arm=G1 S1_capture=1.000154
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=L1/N72 arm=TEACHER all R2 horizons 1,2,4,8,16
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=L1/N72 arm=TEACHER S1_capture=1.000245
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=L1/N72 arm=ROLLOUT all R2 horizons 1,2,4,8,16
+CHILD_STDOUT ROW seed=12334837942893278080 key=L1/N72 h=16 G1_h=6.42623751e-1 teacher_h=6.42591345e-1 rollout_h=6.41817892e-1 rollout_minus_teacher=-7.73453223e-4 G1_work=21233664000 matched_surrogate=49545216 exact_flops_matched=NO
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=L1/N72 arm=ROLLOUT S1_capture=1.000009
+CHILD_STDOUT R3_L_BINDING_DONE index=1 key=L1/N72
+CHILD_STDOUT R3_L_BINDING_BEGIN index=1 seed=12334837942893278080 key=L1/N36 h=4
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=L1/N36 update=64/256 surrogate_teacher=1548288 surrogate_rollout=1548288
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=L1/N36 update=128/256 surrogate_teacher=3096576 surrogate_rollout=3096576
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=L1/N36 update=192/256 surrogate_teacher=4644864 surrogate_rollout=4644864
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=L1/N36 update=256/256 surrogate_teacher=6193152 surrogate_rollout=6193152
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=L1/N36 arm=G1 all R2 horizons 1,2,4,8,16
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=L1/N36 arm=G1 S1_capture=1.000352
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=L1/N36 arm=TEACHER all R2 horizons 1,2,4,8,16
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=L1/N36 arm=TEACHER S1_capture=1.000631
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=L1/N36 arm=ROLLOUT all R2 horizons 1,2,4,8,16
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=L1/N36 arm=ROLLOUT S1_capture=1.000454
+CHILD_STDOUT ROW seed=12334837942893278080 key=L1/N36 h=4 G1_h=6.21880368e-1 teacher_h=6.21201915e-1 rollout_h=6.21192959e-1 rollout_minus_teacher=-8.95599521e-6 G1_work=10616832000 matched_surrogate=6193152 exact_flops_matched=NO
+CHILD_STDOUT R3_L_BINDING_DONE index=1 key=L1/N36
+CHILD_STDOUT R3_L_BINDING_BEGIN index=1 seed=12334837942893278080 key=TS/L2 h=4
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=TS/L2 update=64/256 surrogate_teacher=1548288 surrogate_rollout=1548288
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=TS/L2 update=128/256 surrogate_teacher=3096576 surrogate_rollout=3096576
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=TS/L2 update=192/256 surrogate_teacher=4644864 surrogate_rollout=4644864
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=TS/L2 update=256/256 surrogate_teacher=6193152 surrogate_rollout=6193152
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=TS/L2 arm=G1 all R2 horizons 1,2,4,8,16
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=TS/L2 arm=G1 S1_capture=0.995076
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=TS/L2 arm=TEACHER all R2 horizons 1,2,4,8,16
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=TS/L2 arm=TEACHER S1_capture=0.994908
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=TS/L2 arm=ROLLOUT all R2 horizons 1,2,4,8,16
+CHILD_STDOUT ROW seed=12334837942893278080 key=TS/L2 h=4 G1_h=6.61737632e-1 teacher_h=6.61951994e-1 rollout_h=6.62240728e-1 rollout_minus_teacher=+2.88734324e-4 G1_work=10616832000 matched_surrogate=6193152 exact_flops_matched=NO
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=TS/L2 arm=ROLLOUT S1_capture=0.994473
+CHILD_STDOUT R3_L_BINDING_DONE index=1 key=TS/L2
+CHILD_STDOUT R3_L_BINDING_BEGIN index=1 seed=12334837942893278080 key=HD/L2 h=4
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=HD/L2 update=64/256 surrogate_teacher=1548288 surrogate_rollout=1548288
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=HD/L2 update=128/256 surrogate_teacher=3096576 surrogate_rollout=3096576
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=HD/L2 update=192/256 surrogate_teacher=4644864 surrogate_rollout=4644864
+CHILD_STDERR [r3-design-candidate] seed=12334837942893278080 key=HD/L2 update=256/256 surrogate_teacher=6193152 surrogate_rollout=6193152
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=HD/L2 arm=G1 all R2 horizons 1,2,4,8,16
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=HD/L2 arm=G1 S1_capture=1.010332
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=HD/L2 arm=TEACHER all R2 horizons 1,2,4,8,16
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=HD/L2 arm=TEACHER S1_capture=1.011866
+CHILD_STDERR [r3-r2-observer] begin seed=12334837942893278080 key=HD/L2 arm=ROLLOUT all R2 horizons 1,2,4,8,16
+CHILD_STDOUT ROW seed=12334837942893278080 key=HD/L2 h=4 G1_h=6.96953008e-1 teacher_h=5.01638296e-1 rollout_h=4.26615842e-1 rollout_minus_teacher=-7.50224540e-2 G1_work=10616832000 matched_surrogate=6193152 exact_flops_matched=NO
+CHILD_STDERR [r3-r2-observer] complete seed=12334837942893278080 key=HD/L2 arm=ROLLOUT S1_capture=1.012352
+CHILD_STDOUT R3_L_BINDING_DONE index=1 key=HD/L2
+CHILD_STDERR [hecs]   train L1/N36 (96000 steps)
+CHILD_STDERR [hecs]   train L1/N72 (96000 steps)
+CHILD_STDERR [hecs]   train L1/N108 (96000 steps)
+CHILD_STDERR [hecs]   train TS/L2 (96000 steps)
+CHILD_STDERR [hecs]   train TS/L3 (96000 steps)
+CHILD_STDERR [hecs]   train HD/L2 (96000 steps)
+CHILD_STDERR [hecs]   train HD/L3 (96000 steps)
+CHILD_STDOUT PASS_R3_L_V5_FULL_BUDGET_CENSUS seed=12334837942893278080 world=SEPARATED levels=7 no_refusal=1
+CHILD_STDERR [hecs]   train L1/N36 (96000 steps)
+CHILD_STDERR [hecs]   train L1/N72 (96000 steps)
+CHILD_STDERR [hecs]   train L1/N108 (96000 steps)
+CHILD_STDERR [hecs]   train TS/L2 (96000 steps)
+CHILD_STDERR [hecs]   train TS/L3 (96000 steps)
+CHILD_STDERR [hecs]   train HD/L2 (96000 steps)
+CHILD_STDERR [hecs]   train HD/L3 (96000 steps)
+CHILD_STDOUT PASS_R3_L_V5_FULL_BUDGET_CENSUS seed=12334837942893278080 world=MATCHED levels=7 no_refusal=1
+CHILD_STDOUT R3_BN_SUCCESSOR_DEV_SEED_COMPLETE candidate=C0 index=1 seed=12334837942893278080
+CHILD_STDOUT PASS_R3_O_ENGINE_EXECUTION_MODE mode=--successor-dev-c0-one-seed
+CHILD_STDOUT SCIENTIFIC_RUN_COMPLETE_PENDING_EXTERNAL_EVIDENCE_ACCEPTANCE
