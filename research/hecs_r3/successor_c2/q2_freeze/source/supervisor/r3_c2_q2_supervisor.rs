@@ -244,7 +244,7 @@ fn run_seed(project:&Path,proto:&Path,supervisor_bin:&Path,phase:&str,index:usiz
  let slot=work.join(format!("seed_{}",index));
  need(!exists(&slot),"STARTED_SEED_REPLAY_REFUSED")?;
  // Re-admit the entire predecessor prefix before reserving a new seed.
- let last=prefix(project,ph,index,&pseal)?;
+ let last=prefix(project,phase,index,&pseal)?;
  if !exists(&work){fs::create_dir(&work).map_err(|e|ioerr("SCIENCE_ROOT_CREATE",e))?;sync_dir(work.parent().ok_or("ROOT_PARENT")?)?;}
  mkdir_new(&slot)?;
  let q=slot.join("STARTED_UNCOMMITTED");mkdir_new(&q)?;
@@ -287,7 +287,7 @@ fn close(project:&Path,proto:&Path,supervisor_bin:&Path,phase:&str)->R<()> {
  let pseal=approval(project,proto,supervisor_bin,phase)?;
  let dpath=disposition_path(project,phase);
  need(!exists(&dpath),"DISPOSITION_REPLAY_REFUSED")?;
- let last=prefix(project,ph,seeds.len(),&pseal)?.ok_or("EMPTY_REGISTRY")?;
+ let last=prefix(project,phase,seeds.len(),&pseal)?.ok_or("EMPTY_REGISTRY")?;
  // Cohort view: plain copies of the committed five-file sets (the observer refuses symlinks).
  let view=project.join(format!("build/hecs_r3_successor_c2_{}_cohort_r0",phase.to_ascii_lowercase()));
  mkdir_new(&view)?;
