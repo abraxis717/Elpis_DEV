@@ -366,3 +366,12 @@ endif()
 elpis_add_test(structure test_hgram_assoc
   SOURCES ${HACF}/tests/kernel/test_hgram_assoc.c
   LIBS elpis_cascade TIMEOUT 45)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # Test-only mutation trap: proves every association write stays inside the
+  # provisioned extent (portable, unlike host st_blocks accounting).
+  target_compile_definitions(test_hgram_assoc PRIVATE HGRAM_WRITE_TRAP=1)
+  target_link_options(test_hgram_assoc PRIVATE
+    "-Wl,--wrap=pwrite" "-Wl,--wrap=write" "-Wl,--wrap=ftruncate" "-Wl,--wrap=fallocate"
+    "-Wl,--wrap=posix_fallocate" "-Wl,--wrap=open" "-Wl,--wrap=openat" "-Wl,--wrap=__openat_2"
+    "-Wl,--wrap=renameat" "-Wl,--wrap=unlinkat")
+endif()

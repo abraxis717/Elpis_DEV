@@ -14,6 +14,84 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#ifdef HGRAM_WRITE_TRAP
+#include <stdarg.h>
+/* Test-only mutation trap (link-time --wrap, Linux only; see CMakeLists).
+ * Boundedness is proven from the mutations this process issues, not from host
+ * filesystem block accounting: st_blocks may legitimately change while every
+ * write stays in place (unwritten-extent conversion, extent-tree metadata,
+ * CoW, snapshots), and Elpis does not control that accounting. */
+static struct {
+    int armed;
+    unsigned pwrites, writes, resizes, creates, renames, unlinks, preallocs;
+    uint64_t lo, hi;                 /* lowest offset / highest end written */
+    uint64_t prealloc_off, prealloc_len;
+} trap;
+static void trap_arm(void) { memset(&trap,0,sizeof trap); trap.lo=UINT64_MAX; trap.armed=1; }
+static int creating(int flags) {
+    return (flags&(O_CREAT|O_APPEND|O_TRUNC))!=0 || (flags&O_TMPFILE)==O_TMPFILE;
+}
+static int needs_mode(int flags) { return (flags&O_CREAT)!=0 || (flags&O_TMPFILE)==O_TMPFILE; }
+ssize_t __real_pwrite(int fd,const void *b,size_t n,off_t off);
+ssize_t __wrap_pwrite(int fd,const void *b,size_t n,off_t off) {
+    if(trap.armed) {
+        trap.pwrites++;
+        if((uint64_t)off<trap.lo) trap.lo=(uint64_t)off;
+        if((uint64_t)off+n>trap.hi) trap.hi=(uint64_t)off+n;
+    }
+    return __real_pwrite(fd,b,n,off);
+}
+ssize_t __real_write(int fd,const void *b,size_t n);
+ssize_t __wrap_write(int fd,const void *b,size_t n) {
+    if(trap.armed) trap.writes++;
+    return __real_write(fd,b,n);
+}
+int __real_ftruncate(int fd,off_t len);
+int __wrap_ftruncate(int fd,off_t len) {
+    if(trap.armed) trap.resizes++;
+    return __real_ftruncate(fd,len);
+}
+int __real_fallocate(int fd,int mode,off_t off,off_t len);
+int __wrap_fallocate(int fd,int mode,off_t off,off_t len) {
+    if(trap.armed) trap.resizes++;
+    return __real_fallocate(fd,mode,off,len);
+}
+int __real_posix_fallocate(int fd,off_t off,off_t len);
+int __wrap_posix_fallocate(int fd,off_t off,off_t len) {
+    if(trap.armed) { trap.preallocs++; trap.prealloc_off=(uint64_t)off; trap.prealloc_len=(uint64_t)len; }
+    return __real_posix_fallocate(fd,off,len);
+}
+int __real_open(const char *p,int flags,...);
+int __wrap_open(const char *p,int flags,...) {
+    mode_t m=0;
+    if(needs_mode(flags)) { va_list ap; va_start(ap,flags); m=(mode_t)va_arg(ap,int); va_end(ap); }
+    if(trap.armed && creating(flags)) trap.creates++;
+    return __real_open(p,flags,m);
+}
+int __real_openat(int dfd,const char *p,int flags,...);
+int __wrap_openat(int dfd,const char *p,int flags,...) {
+    mode_t m=0;
+    if(needs_mode(flags)) { va_list ap; va_start(ap,flags); m=(mode_t)va_arg(ap,int); va_end(ap); }
+    if(trap.armed && creating(flags)) trap.creates++;
+    return __real_openat(dfd,p,flags,m);
+}
+int __real___openat_2(int dfd,const char *p,int flags);
+int __wrap___openat_2(int dfd,const char *p,int flags) {
+    if(trap.armed && creating(flags)) trap.creates++;
+    return __real___openat_2(dfd,p,flags);
+}
+int __real_renameat(int ofd,const char *o,int nfd,const char *n);
+int __wrap_renameat(int ofd,const char *o,int nfd,const char *n) {
+    if(trap.armed) trap.renames++;
+    return __real_renameat(ofd,o,nfd,n);
+}
+int __real_unlinkat(int dfd,const char *p,int flags);
+int __wrap_unlinkat(int dfd,const char *p,int flags) {
+    if(trap.armed) trap.unlinks++;
+    return __real_unlinkat(dfd,p,flags);
+}
+#endif
+
 static void join(char *out,size_t cap,const char *dir,const char *leaf) {
     int n=snprintf(out,cap,"%s/%s",dir,leaf);
     assert(n>0 && (size_t)n<cap);
@@ -70,7 +148,20 @@ int main(void) {
     elpis_hgram_info info={0};
     elpis_hgram_assoc_record a={0},b={0};
     assert(elpis_hgram_assoc_get(bin,key,&a)==ELPIS_HGRAM_INVALID);
+#ifdef HGRAM_WRITE_TRAP
+    trap_arm();
+#endif
     assert(elpis_hgram_init_once(bin,1,&info)==ELPIS_HGRAM_CREATED);
+#ifdef HGRAM_WRITE_TRAP
+    /* Explicit provisioning: one exclusive create, exactly one full-range
+     * physical preallocation (never a sparse resize), header-only writes. */
+    assert(trap.creates==1 && trap.preallocs==1);
+    assert(trap.prealloc_off==0 && trap.prealloc_len==1048576);
+    assert(trap.resizes==0 && trap.writes==0 && trap.renames==0);
+    assert(trap.lo==0 && trap.hi==ELPIS_HGRAM_HEADER_BYTES);
+    /* Association phase: every mutation must stay inside the provisioned extent. */
+    trap_arm();
+#endif
     struct stat initial,after;
     assert(stat(bin,&initial)==0);
     assert(initial.st_size==1048576);
@@ -108,7 +199,7 @@ int main(void) {
     assert(elpis_hgram_assoc_get(bin,key,&b)==ELPIS_HGRAM_ASSOC_OK);
     assert(b.generation==2);
     assert(elpis_hgram_probe(bin,&info)==ELPIS_HGRAM_EXISTS);
-    /* Stress 1000 sequential in-place revisions. No append/files/extra extents.
+    /* Stress 1000 sequential in-place revisions. No append, resize or new files.
      * Useful data for unrelated key must survive all revisions. */
     for(uint64_t i=2;i<=1001;i++) {
         memset(value,(int)(i&255),sizeof value);
@@ -117,10 +208,23 @@ int main(void) {
     }
     assert(elpis_hgram_assoc_get(bin,key,&b)==ELPIS_HGRAM_ASSOC_OK);
     assert(b.generation==2);
+#ifdef HGRAM_WRITE_TRAP
+    trap.armed=0;
+    /* Process-controlled boundedness of every association update: in-place
+     * pwrites strictly inside the provisioned extent and after the header; no
+     * resize, create/append/truncate, rename, unlink, preallocation or stream
+     * write. */
+    assert(trap.pwrites>0);
+    assert(trap.lo>=ELPIS_HGRAM_HEADER_BYTES && trap.hi<=(uint64_t)initial.st_size);
+    assert(trap.resizes==0 && trap.creates==0 && trap.renames==0 && trap.unlinks==0);
+    assert(trap.preallocs==0 && trap.writes==0);
+#endif
     assert(stat(bin,&after)==0);
     assert(after.st_size==initial.st_size);
-    assert(after.st_blocks==initial.st_blocks);
     assert(file_count(dir)==1);
+    /* Physical block accounting belongs to the host filesystem: reported, not gated. */
+    printf("ELPIS_HGRAM_ASSOC_PHYSICAL_BLOCKS initial=%lld after=%lld DIAGNOSTIC_ONLY\n",
+           (long long)initial.st_blocks,(long long)after.st_blocks);
     /* A second independent descriptor/process cannot race a locked writer. */
     int locked=open(bin,O_RDWR|O_CLOEXEC);assert(locked>=0);
     assert(flock(locked,LOCK_EX|LOCK_NB)==0);
