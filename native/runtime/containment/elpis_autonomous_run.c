@@ -24,9 +24,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+/* Headers shipped with CI may predate ABI v5; the kernel runtime gate below
+ * remains mandatory. Linux UAPI defines IOCTL_DEV as bit 15. */
 #ifndef LANDLOCK_ACCESS_FS_IOCTL_DEV
-#error "Landlock ABI v5 UAPI required for autonomous containment"
+#define LANDLOCK_ACCESS_FS_IOCTL_DEV (1ULL << 15)
 #endif
+_Static_assert(LANDLOCK_ACCESS_FS_IOCTL_DEV == (1ULL << 15),
+               "unexpected Landlock ioctl device access bit");
 
 #define CONTINUITY_SLOT_BYTES 176u
 
