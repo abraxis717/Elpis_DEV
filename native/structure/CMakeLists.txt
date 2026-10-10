@@ -330,7 +330,8 @@ elpis_add_library(structure elpis_retrieval_bridge SHARED ${CMAKE_CURRENT_SOURCE
 set_target_properties(elpis_retrieval_bridge PROPERTIES LINKER_LANGUAGE CXX)
 # Python calls only the elpis_retrieval_env_* entry points; ordinary static
 # linking pulls exactly the objects they reach.
-target_link_libraries(elpis_retrieval_bridge PRIVATE
+# elpis_semantic supplies only the Track C v1 projection (and the record validators it calls).
+target_link_libraries(elpis_retrieval_bridge PRIVATE elpis_semantic
   elpis_hybrid elpis_vector elpis_embedding elpis_corpus elpis_chunking elpis_fms
   elpis_cascade elpis_hash SQLite::SQLite3 Threads::Threads ${ELPIS_LIBM})
 
@@ -348,6 +349,14 @@ elpis_add_test(structure test_retrieval_bridge_graph
   SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/bridge/tests/test_retrieval_bridge_graph.c
   LIBS elpis_retrieval_bridge INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/bridge ${HACF}/include
   ARGS ${STATE}/retrieval-bridge-graph-state TIMEOUT 120)
+
+# Track C v1 through the bridge: admitted claim->claim relation proofs (exact record images) projected against an
+# epoch's own corpus into context edges, all-or-nothing; the edges build a graph-bearing epoch. The same binary
+# emits valid fixture proofs (--emit) for tests/structure/test_semantic_context_adapter.py.
+elpis_add_test(structure test_retrieval_semantic_projection
+  SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/bridge/tests/test_retrieval_semantic_projection.c
+  LIBS elpis_retrieval_bridge elpis_semantic elpis_corpus
+  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/bridge ${HACF}/include TIMEOUT 60)
 
 # HACF's one user-provisioned, physically preallocated associative-state file.
 # The initializer runs only on explicit operator invocation. No inference-time

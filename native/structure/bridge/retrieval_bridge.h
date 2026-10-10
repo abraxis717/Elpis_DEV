@@ -96,6 +96,59 @@ int elpis_retrieval_env_retrieve(elpis_retrieval_env_t *env,
                                  int *item_count_out,
                                  char error_buf[256]);
 
+/* -- Track C v1 adapter: admitted semantic relation -> verified context edges ------------------------------
+ * Scope ADMITTED_CLAIM_TO_CLAIM_PRIMARY_WITNESSES_ONLY (elpis_semantic_cgraph_project_v1). Each proof is an
+ * explicit, independently admitted claim -> claim relation whose two endpoints carry PRIMARY retrieval-item
+ * witnesses; its records are supplied as exact ABI v1 record images (fixed-size, pointer-free structs; every
+ * length must equal elpis_retrieval_semantic_record_bytes(kind)). The caller supplies the admission layer and
+ * the trusted base snapshot digest: a self-made layer grants nothing. Every proof is verified natively against
+ * THIS epoch's own corpus (chunk identity and exact primary item text). All-or-nothing: on any refusal nothing
+ * is written to edges_out. Read-only: no corpus write, no persistence, no text- or embedding-derived relation,
+ * no inference and no ECS interface. The edges are for an explicit structural-memory construction step (a new
+ * epoch over the same documents built with them); the bridge never invokes this on its own. */
+typedef struct elpis_retrieval_blob {
+    const void *bytes;
+    size_t len;
+} elpis_retrieval_blob;
+
+typedef struct elpis_retrieval_semantic_endpoint_v1 {
+    elpis_retrieval_blob decision;     /* elpis_evidence_admission_decision_v1 image */
+    elpis_retrieval_blob receipt;      /* elpis_evidence_admission_receipt_v1 image */
+    elpis_retrieval_blob span;         /* elpis_evidence_span_v1 image */
+    elpis_retrieval_blob attachment;   /* elpis_retrieval_item_attachment_v1 image */
+    elpis_retrieval_blob item_text;    /* the primary item's exact text, 1..65535 bytes */
+} elpis_retrieval_semantic_endpoint_v1;
+
+typedef struct elpis_retrieval_semantic_proof_v1 {
+    elpis_retrieval_blob admission_layer;              /* elpis_evidence_admission_v1 image */
+    elpis_retrieval_blob trusted_base_snapshot_digest; /* 32 bytes */
+    elpis_retrieval_blob relation;                     /* elpis_evidence_relation_candidate_v1 image */
+    elpis_retrieval_blob relation_decision;
+    elpis_retrieval_blob relation_receipt;
+    elpis_retrieval_semantic_endpoint_v1 source;
+    elpis_retrieval_semantic_endpoint_v1 target;
+} elpis_retrieval_semantic_proof_v1;
+
+enum {
+    ELPIS_RETRIEVAL_RECORD_ADMISSION_LAYER = 1,
+    ELPIS_RETRIEVAL_RECORD_DECISION = 2,
+    ELPIS_RETRIEVAL_RECORD_RECEIPT = 3,
+    ELPIS_RETRIEVAL_RECORD_SPAN = 4,
+    ELPIS_RETRIEVAL_RECORD_ATTACHMENT = 5,
+    ELPIS_RETRIEVAL_RECORD_RELATION = 6
+};
+
+/* Exact image size of one record kind (0 for an unknown kind). */
+size_t elpis_retrieval_semantic_record_bytes(uint32_t kind);
+
+/* Project count proofs (count <= ELPIS_CGRAPH_MAX_EDGES) into edges_out[0..count). Returns 0, or nonzero with
+ * error_buf naming the first refused proof; edges_out is then untouched. */
+int elpis_retrieval_env_project_semantic_edges(elpis_retrieval_env_t *env,
+                                               const elpis_retrieval_semantic_proof_v1 *proofs,
+                                               uint32_t count,
+                                               elpis_context_edge_input *edges_out,
+                                               char error_buf[256]);
+
 #ifdef __cplusplus
 }
 #endif
