@@ -12,6 +12,7 @@ import pytest
 
 from elpis.runtime.composition import CompositionError
 from elpis.runtime.core import RuntimeCore, RuntimeLibrary, describe
+from elpis.runtime.fuel import CEILING
 
 from ._turn_fixtures import ByteTokens, FixtureMap
 from .test_codec_ecs_turn import RATE, _config, _Resident, adapter, k1, world  # noqa: F401 (fixtures)
@@ -82,12 +83,12 @@ def test_an_open_turn_is_ended_natively_on_every_lifecycle_path(subject, path, t
     core = _core(directory)
     descriptor, _owner = describe(subject.state)
     core.anchor(descriptor)
-    core.turn_begin(descriptor, _stimulus("first"), RATE)
+    core.turn_begin(descriptor, _stimulus("first"), RATE, CEILING)
     core.turn_commit(descriptor)
     record = core.snapshot()
     before, aborts = subject.retained(), subject.native_aborts()
 
-    core.turn_begin(descriptor, _stimulus(), RATE)   # the schedule ran on the candidate; nothing committed
+    core.turn_begin(descriptor, _stimulus(), RATE, CEILING)   # the schedule ran on the candidate; nothing committed
     if subject.resident:
         assert subject.info()["transaction_open"] == 1 and subject.info()["lease_count"] == 1
         with pytest.raises(Exception, match="BUSY"):   # the adapter's own lifetime guard while the turn is open
@@ -135,7 +136,7 @@ def test_an_open_turn_is_ended_natively_on_every_lifecycle_path(subject, path, t
     subject.released()
     # The same live state takes the next managed turn over the resumed lineage.
     core = _core(directory)
-    core.turn_begin(descriptor, _stimulus("next"), RATE)
+    core.turn_begin(descriptor, _stimulus("next"), RATE, CEILING)
     identity, _ = core.turn_commit(descriptor)
     assert identity.state_before_digest == before[1] and subject.state.epoch > before[2]
     core.close()
@@ -147,7 +148,7 @@ def test_a_commit_ends_the_turn_without_an_abort(subject, tmp_path):
     descriptor, _owner = describe(subject.state)
     core.anchor(descriptor)
     aborts = subject.native_aborts()
-    core.turn_begin(descriptor, _stimulus(), RATE)
+    core.turn_begin(descriptor, _stimulus(), RATE, CEILING)
     identity, snapshot = core.turn_commit(descriptor)
     assert core.counters()["k1_aborts"] == 0 and subject.native_aborts() == aborts
     assert snapshot.k1_state_digest == identity.state_after_digest == subject.state.state_digest()
@@ -179,7 +180,7 @@ def test_the_facade_releases_the_bound_owner_only_after_the_turn_is_ended(k1, tm
         runtime = Runtime(_config(tmp_path / "facade")).open()
         runtime.anchor_cognition(state)
         descriptor, _owner = describe(state)
-        runtime._core.turn_begin(descriptor, _stimulus(), RATE)   # an interrupted turn, left open
+        runtime._core.turn_begin(descriptor, _stimulus(), RATE, CEILING)   # an interrupted turn, left open
         aborts = state.stats()["txn_aborts"]
         assert runtime._bound_owner is state
         runtime.close()

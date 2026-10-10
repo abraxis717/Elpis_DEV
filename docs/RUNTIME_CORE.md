@@ -45,7 +45,7 @@ typedef struct {
 ```
 
 `api` is a table of the K1 library's own functions (`state_digest`, `reserve`, `txn_begin`,
-`txn_run_schedule`, `txn_commit_identity`, `txn_abort`, `query_identity`); the Python adapter takes their addresses from the
+`txn_run_schedule`, `txn_commit_identity`, `txn_abort`, `query_identity`, `shape`); the Python adapter takes their addresses from the
 loaded library, a C or C++ host passes them directly (`native/runtime/tests/test_runtime_abi.c`). The declared
 dimension is verified natively: K1 compares the readout length it implies with the state's own before it reads
 any input byte (`schedule_check`).
@@ -88,6 +88,17 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
   turn is open (`RUNTIME_TURN_OPEN`). It begins no transaction, commits nothing and publishes nothing: W, epoch,
   H, a, the generation and both continuity slots are byte-for-byte unchanged (`tests/integration/test_query_learn.py`).
   ABI v3 added the entry to both K1 tables and the `k1_queries` counter.
+* **Total fuel.** Every QUERY and LEARN is admitted against a budget of totals (`elpis_runtime_budget`: experiences,
+  rows, rows of one experience (also the reserve ceiling), K1 learning steps, ECS work units, query rows) before the
+  identity check, any reserve, the transaction or a candidate mutation; a refusal is `COGNITION_FUEL_EXCEEDED` and
+  is not a fail-stop. The budget can only narrow the compiled ceiling (`elpis_runtime_fuel_ceiling`: 64
+  experiences, 16384 rows, 256 rows per experience, 2^20 steps, 2^30 work units, 4096 query rows), and the Python
+  boundary refuses a library whose ceiling differs. An ECS work unit is one multiply-accumulate-class operation
+  of the K1 kernels as counted by a fixed integer formula (`native/runtime/src/fuel.rs`, `elpis.runtime.fuel`;
+  tested equal): a K1 step on r rows is `2rdw + 2dwF + F^2`, a consolidation `rF^2 + dwF`, a QUERY `rdw`. It is
+  a deterministic proxy, not wall-clock. **No deadline is claimed**: the K1 ABI is synchronous and has no
+  cooperative cancellation point, so a running schedule cannot be preempted; preemptive deadlines are a missing
+  interface. RuntimeCore reads the state's immutable shape once per state (`shape`, cold path) to count width.
 * **Turn (LEARN).** begin -> one native schedule on the candidate -> (boundary decodes) -> native commit -> one
   publication. Capacity beyond the reservation is grown on the cold path (abort, `reserve`, begin again).
   Every refusal before the commit leaves `(W, epoch, H, a)` byte-for-byte unchanged; a stale source is

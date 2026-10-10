@@ -17,6 +17,7 @@ pub type Digest = [u8; 32];
 
 /// K1 status values (`elpis_ecsg_k1_status`); the FMS adapter returns them too, or `-100 + fms_status`.
 pub const K1_OK: i32 = 0;
+pub const K1_INVALID: i32 = -1;
 pub const K1_NONFINITE: i32 = -2;
 pub const K1_STALE: i32 = -3;
 /// A concurrent overlapping call on the same state: refused before anything was done (transient by contract).
@@ -101,6 +102,8 @@ pub trait K1Ops {
     /// dimension, and `digest` = the retained-state identity of the same authoritative state, in one native call.
     /// Read-only: no transaction, no commit, nothing written to the retained state.
     fn query_identity(&mut self, dim: usize, x: &[f64], out: &mut [f64], digest: &mut Digest) -> i32;
+    /// The state's immutable shape `(dim, width)` (`shape`): read-only, no guard.
+    fn shape(&mut self, dim: &mut usize, width: &mut usize) -> i32;
     /// The owned abort capability over this same native state, retained by RuntimeCore from a successful turn
     /// begin until that turn ends. It may outlive the call that produced it, but never the open transaction it
     /// ends: the native state is live for exactly that interval (the substrate lifetime contract, runtime.h).
@@ -182,6 +185,7 @@ pub struct K1Api {
     pub txn_commit_identity: Option<unsafe extern "C" fn(*mut c_void, u64, *mut CommitIdentity) -> Status>,
     pub txn_abort: Option<unsafe extern "C" fn(*mut c_void, u64) -> Status>,
     pub query_identity: Option<K1QueryIdentity>,
+    pub shape: Option<unsafe extern "C" fn(*mut c_void, *mut usize, *mut usize) -> Status>,
 }
 
 /// The function table of the K1 FMS adapter (`ecsg_k1_fms.h`): the same operations on one resident state id.
@@ -195,6 +199,7 @@ pub struct K1FmsApi {
     pub txn_commit_identity: Option<unsafe extern "C" fn(*mut c_void, u64, u64, *mut CommitIdentity) -> Status>,
     pub txn_abort: Option<unsafe extern "C" fn(*mut c_void, u64, u64) -> Status>,
     pub query_identity: Option<K1FmsQueryIdentity>,
+    pub shape: Option<unsafe extern "C" fn(*mut c_void, u64, *mut usize, *mut usize) -> Status>,
 }
 
 /// `elpis_runtime_substrate`: one native K1 state as the caller describes it.
@@ -255,7 +260,8 @@ impl Native {
                     && t.txn_run_schedule.is_some()
                     && t.txn_commit_identity.is_some()
                     && t.txn_abort.is_some()
-                    && t.query_identity.is_some();
+                    && t.query_identity.is_some()
+                    && t.shape.is_some();
                 complete.then_some(Table::K1(t))?
             }
             KIND_K1_FMS => {
@@ -266,7 +272,8 @@ impl Native {
                     && t.txn_run_schedule.is_some()
                     && t.txn_commit_identity.is_some()
                     && t.txn_abort.is_some()
-                    && t.query_identity.is_some();
+                    && t.query_identity.is_some()
+                    && t.shape.is_some();
                 complete.then_some(Table::Fms(t))?
             }
             _ => return None,
@@ -387,6 +394,15 @@ impl K1Ops for Native {
                     out.as_mut_ptr(),
                     digest.as_mut_ptr(),
                 ),
+            }
+        }
+    }
+
+    fn shape(&mut self, dim: &mut usize, width: &mut usize) -> i32 {
+        unsafe {
+            match &self.table {
+                Table::K1(t) => t.shape.expect(TABLE)(self.handle, dim, width),
+                Table::Fms(t) => t.shape.expect(TABLE)(self.handle, self.key.id, dim, width),
             }
         }
     }

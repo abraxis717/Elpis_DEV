@@ -12,12 +12,15 @@ use elpis_continuity::{Code, Cognition, EvolutionState};
 
 use crate::code::{Error, Rt};
 use crate::core::{Core, Counters, Stimulus};
+use crate::fuel::{self, Budget, CEILING};
 use crate::substrate::{
     features, CommitIdentity, Digest, Experience, K1Ops, Key, ScheduleOutcome, TxnAbort, K1_BUSY, K1_CAPACITY,
     K1_NONFINITE, K1_STALE,
 };
 
 const DIM: usize = 2;
+/// The stand-in's declared width (fuel admission reads it natively once per state).
+const WIDTH: usize = 3;
 
 struct Txn {
     token: u64,
@@ -271,6 +274,14 @@ impl K1Ops for Fake {
         0
     }
 
+    fn shape(&mut self, dim: &mut usize, width: &mut usize) -> i32 {
+        let mut s = self.state();
+        s.calls.push("shape");
+        *dim = DIM;
+        *width = WIDTH;
+        0
+    }
+
     fn retain_abort(&self) -> Box<dyn TxnAbort> {
         Box::new(FakeAbort(Arc::clone(&self.0)))
     }
@@ -279,7 +290,7 @@ impl K1Ops for Fake {
 fn query(core: &mut Core, sub: &mut Fake, k: Key, rows: usize) -> Result<(Vec<f64>, Digest), Error> {
     let x: Vec<f64> = (0..rows * DIM).map(|i| 0.25 * (i as f64 + 1.0)).collect();
     let mut out = vec![f64::NAN; rows];
-    let digest = core.query(sub, k, &x, &mut out).map_err(|r| r.error)?;
+    let digest = core.query(sub, k, &x, &mut out, &CEILING).map_err(|r| r.error)?;
     Ok((out, digest))
 }
 
@@ -309,7 +320,7 @@ fn stimulus(i: &Input) -> Stimulus<'_> {
 fn turn(core: &mut Core, sub: &mut Fake, k: Key) -> Result<CommitIdentity, Error> {
     let i = input(4, 3);
     let mut s3 = vec![0.0; features(DIM)];
-    core.turn_begin(sub, k, &stimulus(&i), &mut s3).map_err(|r| r.error)?;
+    core.turn_begin(sub, k, &stimulus(&i), &CEILING, &mut s3).map_err(|r| r.error)?;
     core.turn_commit(sub, k).map(|(id, _)| id).map_err(|r| r.error)
 }
 
@@ -421,7 +432,7 @@ fn restart_resumes_on_the_matching_state_with_one_identity_check() {
     let generation = core.snapshot().unwrap().generation();
     sub.clear_calls();
     turn(&mut core, &mut sub, key(7)).unwrap(); // a fresh runtime binds whichever matching wrapper it is given
-    assert_eq!(sub.calls()[0], "state_digest");
+    assert_eq!(sub.calls()[..2], ["shape", "state_digest"]); // read-only: fuel admission, then identity
     assert_eq!(core.snapshot().unwrap().generation(), generation + 1);
 }
 
@@ -435,7 +446,8 @@ fn a_mismatched_state_fail_stops_before_any_mutation() {
     let durable = core.snapshot().unwrap();
     let before = other.retained();
     assert_eq!(turn(&mut core, &mut other, key(2)).unwrap_err(), Code::StateMismatch.into());
-    assert_eq!((other.retained(), other.calls()), (before, vec!["state_digest"]));
+    // Read-only crossings only: the shape (fuel admission) and the identity.
+    assert_eq!((other.retained(), other.calls()), (before, vec!["shape", "state_digest"]));
     assert_eq!(core.fault(), Some(Code::StateMismatch));
     // Fail-stopped for every lineage-dependent operation, the matching state included; nothing synthesized.
     assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::StateMismatch.into());
@@ -477,25 +489,28 @@ fn refusals_before_the_commit_leave_the_retained_state_unchanged() {
     let mut poison = input(2, 1);
     poison.x[1] = f64::NAN;
     sub.clear_calls();
-    let r = core.turn_begin(&mut sub, key(1), &stimulus(&poison), &mut s3).unwrap_err();
+    let r = core.turn_begin(&mut sub, key(1), &stimulus(&poison), &CEILING, &mut s3).unwrap_err();
     assert_eq!((r.error, r.k1_status), (Rt::EcsRefused.into(), K1_NONFINITE));
     assert_eq!(sub.calls(), ["txn_begin", "txn_run_schedule"]);
 
     // Malformed buffers are refused before any native call.
     sub.clear_calls();
     let bad = Input { x: vec![0.0; 3], ..input(2, 1) };
-    assert_eq!(core.turn_begin(&mut sub, key(1), &stimulus(&bad), &mut s3).unwrap_err().error, Rt::Invalid.into());
+    assert_eq!(
+        core.turn_begin(&mut sub, key(1), &stimulus(&bad), &CEILING, &mut s3).unwrap_err().error,
+        Rt::Invalid.into()
+    );
     let mut short = vec![0.0; 2];
     assert_eq!(
-        core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &mut short).unwrap_err().error,
+        core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &CEILING, &mut short).unwrap_err().error,
         Rt::Invalid.into()
     );
     assert!(sub.calls().is_empty());
 
     // The boundary aborts (a decode refusal): nothing installed.
-    core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &mut s3).unwrap();
+    core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &CEILING, &mut s3).unwrap();
     assert_eq!(
-        core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &mut s3).unwrap_err().error,
+        core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &CEILING, &mut s3).unwrap_err().error,
         Rt::TurnOpen.into()
     );
     assert_eq!(core.turn_commit(&mut sub, key(2)).unwrap_err().error, Rt::TurnNotOpen.into());
@@ -503,7 +518,7 @@ fn refusals_before_the_commit_leave_the_retained_state_unchanged() {
     assert_eq!(core.turn_abort(key(1)).unwrap_err().error, Rt::TurnNotOpen.into());
 
     // The source state moved during the turn: STALE, the candidate is discarded natively.
-    core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &mut s3).unwrap();
+    core.turn_begin(&mut sub, key(1), &stimulus(&input(2, 1)), &CEILING, &mut s3).unwrap();
     sub.interlope();
     let moved = sub.retained();
     let r = core.turn_commit(&mut sub, key(1)).unwrap_err();
@@ -522,11 +537,12 @@ fn rows_beyond_the_reservation_grow_it_on_the_cold_path() {
     sub.clear_calls();
     let big = input(12, 2);
     let mut s3 = vec![0.0; features(DIM)];
-    core.turn_begin(&mut sub, key(1), &stimulus(&big), &mut s3).unwrap();
+    core.turn_begin(&mut sub, key(1), &stimulus(&big), &CEILING, &mut s3).unwrap();
     core.turn_commit(&mut sub, key(1)).unwrap();
     assert_eq!(
         sub.calls(),
         [
+            "shape",
             "txn_begin",
             "txn_run_schedule",
             "txn_abort",
@@ -616,7 +632,7 @@ fn begun(dir: &Dir) -> (Core, Fake, Witness) {
     let w = witness(&core, &sub);
     let i = input(4, 3);
     let mut s3 = vec![0.0; features(DIM)];
-    core.turn_begin(&mut sub, key(1), &stimulus(&i), &mut s3).unwrap();
+    core.turn_begin(&mut sub, key(1), &stimulus(&i), &CEILING, &mut s3).unwrap();
     assert!(core.turn_is_open() && sub.txn_open());
     core.counters(true);
     sub.clear_calls();
@@ -810,10 +826,19 @@ fn a_cold_path_abort_refused_busy_is_retried_before_the_reservation_grows() {
     sub.clear_calls();
     let big = input(12, 2);
     let mut s3 = vec![0.0; features(DIM)];
-    core.turn_begin(&mut sub, key(1), &stimulus(&big), &mut s3).unwrap();
+    core.turn_begin(&mut sub, key(1), &stimulus(&big), &CEILING, &mut s3).unwrap();
     assert_eq!(
         sub.calls(),
-        ["txn_begin", "txn_run_schedule", "txn_abort", "txn_abort", "reserve", "txn_begin", "txn_run_schedule"]
+        [
+            "shape",
+            "txn_begin",
+            "txn_run_schedule",
+            "txn_abort",
+            "txn_abort",
+            "reserve",
+            "txn_begin",
+            "txn_run_schedule"
+        ]
     );
     core.turn_abort(key(1)).unwrap();
     assert!(!sub.txn_open());
@@ -844,7 +869,7 @@ mod faults {
                 core.testing_arm(1, action, 0).unwrap();
                 let i = input(4, 3);
                 let mut s3 = vec![0.0; features(DIM)];
-                core.turn_begin(&mut sub, key(1), &stimulus(&i), &mut s3).unwrap();
+                core.turn_begin(&mut sub, key(1), &stimulus(&i), &CEILING, &mut s3).unwrap();
                 let r = core.turn_commit(&mut sub, key(1)).unwrap_err();
                 assert_eq!(r.error, expected.into());
                 // The K1 commit stands and is reported.
@@ -931,8 +956,14 @@ fn a_query_answers_from_the_anchored_state_and_changes_nothing() {
     let (answer, identity) = query(&mut core, &mut sub, key(1), 3).unwrap();
     assert_eq!(identity, sub.identity());
     assert!(answer.iter().all(|v| v.is_finite()));
-    // One native crossing; no digest-then-forward window, no transaction, no commit, no publication.
-    assert_eq!(sub.calls(), ["query_identity"]);
+    // Cold: the state's shape is read once (fuel admission); then one native crossing answers and identifies.
+    assert_eq!(sub.calls(), ["shape", "query_identity"]);
+    assert_eq!(core.counters(false), Counters { k1_queries: 1, k1_shapes: 1, ..Counters::default() });
+    // Warm: one native crossing; no digest-then-forward window, no transaction, no commit, no publication.
+    sub.clear_calls();
+    core.counters(true);
+    let (warm, _) = query(&mut core, &mut sub, key(1), 3).unwrap();
+    assert_eq!((sub.calls(), warm), (vec!["query_identity"], answer.clone()));
     assert_eq!(core.counters(false), Counters { k1_queries: 1, ..Counters::default() });
     assert_eq!((sub.retained(), sub.generation(), sub.txn_open()), (retained, generation, false));
     assert_eq!(core.snapshot().unwrap(), durable);
@@ -965,7 +996,7 @@ fn a_query_of_a_state_the_lineage_never_committed_fail_stops_and_withholds_the_a
     let mut other = Fake::new(0.2);
     let x = vec![0.5; 2 * DIM];
     let mut out = vec![7.0; 2];
-    let refused = core.query(&mut other, key(2), &x, &mut out).unwrap_err();
+    let refused = core.query(&mut other, key(2), &x, &mut out, &CEILING).unwrap_err();
     assert_eq!(refused.error, Code::StateMismatch.into());
     assert_eq!(out, [0.0, 0.0]);
     assert_eq!(core.fault(), Some(Code::StateMismatch));
@@ -996,13 +1027,13 @@ fn a_refused_query_changes_nothing_and_does_not_fail_stop() {
     core.anchor(&mut sub, key(1)).unwrap();
     let (retained, durable) = (sub.retained(), core.snapshot().unwrap());
     let mut out = vec![1.0; 1];
-    let refused = core.query(&mut sub, key(1), &[f64::NAN, 0.0], &mut out).unwrap_err();
+    let refused = core.query(&mut sub, key(1), &[f64::NAN, 0.0], &mut out, &CEILING).unwrap_err();
     assert_eq!((refused.error, refused.k1_status), (Rt::EcsRefused.into(), K1_NONFINITE));
     assert_eq!(out, [0.0]);
     // Malformed shapes are refused before any native call.
     sub.clear_calls();
-    assert_eq!(core.query(&mut sub, key(1), &[0.0; 3], &mut out).unwrap_err().error, Rt::Invalid.into());
-    assert_eq!(core.query(&mut sub, key(1), &[], &mut []).unwrap_err().error, Rt::Invalid.into());
+    assert_eq!(core.query(&mut sub, key(1), &[0.0; 3], &mut out, &CEILING).unwrap_err().error, Rt::Invalid.into());
+    assert_eq!(core.query(&mut sub, key(1), &[], &mut [], &CEILING).unwrap_err().error, Rt::Invalid.into());
     assert!(sub.calls().is_empty());
     assert_eq!((sub.retained(), core.snapshot().unwrap(), core.fault()), (retained, durable, None));
 }
@@ -1015,11 +1046,118 @@ fn a_query_is_refused_while_a_managed_turn_is_open_and_another_state_is_a_switch
     core.anchor(&mut sub, key(1)).unwrap();
     let i = input(2, 1);
     let mut s3 = vec![0.0; features(DIM)];
-    core.turn_begin(&mut sub, key(1), &stimulus(&i), &mut s3).unwrap();
+    core.turn_begin(&mut sub, key(1), &stimulus(&i), &CEILING, &mut s3).unwrap();
     assert_eq!(query(&mut core, &mut sub, key(1), 1).unwrap_err(), Rt::TurnOpen.into());
     core.turn_abort(key(1)).unwrap();
     let mut other = Fake::new(0.1);
     other.clear_calls();
     assert_eq!(query(&mut core, &mut other, key(2), 1).unwrap_err(), Rt::SubstrateSwitch.into());
     assert!(other.calls().is_empty());
+}
+
+// -- total cognitive fuel ------------------------------------------------------------------------------------------
+
+/// The work-unit formula, written out independently of `fuel.rs` (a second derivation the tests compare against).
+fn units(dim: u128, width: u128, schedule: &[(u128, u128)]) -> u128 {
+    let f = dim + dim * (dim + 1) / 2 + dim * (dim + 1) * (dim + 2) / 6;
+    schedule
+        .iter()
+        .map(|&(r, k)| k * (2 * r * dim * width + 2 * dim * width * f + f * f) + (r * f * f + dim * width * f))
+        .sum()
+}
+
+#[test]
+fn work_units_are_the_documented_integer_formula() {
+    let s = |v: &[(u64, u64)]| v.iter().map(|&(rows, steps)| Experience { rows, steps }).collect::<Vec<_>>();
+    for (dim, width, sched) in
+        [(6usize, 36usize, vec![(4u64, 3u64), (4, 3)]), (2, 3, vec![(1, 1)]), (6, 36, vec![(256, 1 << 20)])]
+    {
+        let want =
+            units(dim as u128, width as u128, &sched.iter().map(|&(r, k)| (r as u128, k as u128)).collect::<Vec<_>>());
+        assert_eq!(fuel::schedule_units(dim, width, &s(&sched)).map(u128::from), Some(want));
+    }
+    // The fixture turn of the integration tests (2 experiences x 4 rows x 3 steps on 6 x 36).
+    assert_eq!(fuel::schedule_units(6, 36, &s(&[(4, 3), (4, 3)])), Some(357_806));
+    assert_eq!(fuel::query_units(6, 36, 3), Some(648));
+    // Totals beyond u64 are refused, never wrapped.
+    assert_eq!(fuel::schedule_units(64, usize::MAX / 2, &s(&[(1, 1)])), None);
+    assert_eq!(fuel::schedule_units(6, 36, &s(&[(u64::MAX, 1)])), None);
+    assert_eq!(fuel::schedule_units(6, 36, &s(&[(1, u64::MAX)])), None);
+    assert_eq!(fuel::query_units(6, usize::MAX, 2), None);
+    assert_eq!(fuel::schedule_units(0, 36, &s(&[(1, 1)])), None);
+    assert_eq!(fuel::schedule_units(6, 36, &[]), None);
+}
+
+#[test]
+fn budgets_bind_totals_at_their_exact_integer_boundary() {
+    let sched = [Experience { rows: 4, steps: 3 }, Experience { rows: 4, steps: 3 }];
+    let need = fuel::schedule_units(DIM, WIDTH, &sched).unwrap();
+    let at = Budget { max_work_units: need, ..CEILING };
+    assert_eq!(fuel::admit_schedule(&at, DIM, WIDTH, &sched), Ok(need));
+    let under = Budget { max_work_units: need - 1, ..CEILING };
+    assert_eq!(fuel::admit_schedule(&under, DIM, WIDTH, &sched), Err(fuel::Over::WorkUnits));
+    for (budget, over) in [
+        (Budget { max_steps: 5, ..CEILING }, fuel::Over::Steps),
+        (Budget { max_rows: 7, ..CEILING }, fuel::Over::Rows),
+        (Budget { max_experience_rows: 3, ..CEILING }, fuel::Over::ExperienceRows),
+        (Budget { max_experiences: 1, ..CEILING }, fuel::Over::Experiences),
+        (Budget { max_work_units: CEILING.max_work_units + 1, ..CEILING }, fuel::Over::Budget),
+        (Budget { max_steps: 0, ..CEILING }, fuel::Over::Budget),
+    ] {
+        assert_eq!(fuel::admit_schedule(&budget, DIM, WIDTH, &sched), Err(over));
+    }
+    assert_eq!(fuel::admit_schedule(&Budget { max_steps: 6, max_rows: 8, ..CEILING }, DIM, WIDTH, &sched), Ok(need));
+    // The per-field bounds alone admit 64 x 2^20 steps; the totals do not.
+    let huge = vec![Experience { rows: 256, steps: 1 << 20 }; 64];
+    assert!(fuel::admit_schedule(&CEILING, 6, 36, &huge).is_err());
+    assert_eq!(fuel::admit_query(&Budget { max_query_rows: 2, ..CEILING }, DIM, WIDTH, 3), Err(fuel::Over::QueryRows));
+    assert_eq!(
+        fuel::admit_query(&Budget { max_query_rows: 3, ..CEILING }, DIM, WIDTH, 3),
+        Ok(3 * (DIM * WIDTH) as u64)
+    );
+}
+
+#[test]
+fn excessive_work_is_refused_before_reserve_begin_schedule_commit_and_publication() {
+    let dir = Dir::new("fuel");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    let durable = core.snapshot().unwrap();
+    let retained = sub.retained();
+    let big = input(12, 2); // beyond the stand-in's 8 reserved rows: admitted, it would reserve
+    let need = fuel::schedule_units(DIM, WIDTH, big_schedule(&big)).unwrap();
+    for budget in [
+        Budget { max_work_units: need - 1, ..CEILING },
+        Budget { max_steps: 1, ..CEILING },
+        Budget { max_experience_rows: 11, ..CEILING },
+        Budget { max_query_rows: CEILING.max_query_rows + 1, ..CEILING },
+    ] {
+        sub.clear_calls();
+        core.counters(true);
+        let mut s3 = vec![0.0; features(DIM)];
+        let refused = core.turn_begin(&mut sub, key(1), &stimulus(&big), &budget, &mut s3).unwrap_err();
+        assert_eq!(refused.error, Rt::Fuel.into());
+        // No reserve, no transaction, no schedule, no commit, no publication; at most the read-only shape.
+        assert!(sub.calls().iter().all(|c| *c == "shape"), "{:?}", sub.calls());
+        let c = core.counters(false);
+        assert_eq!((c.k1_reserves, c.k1_txn_begins, c.k1_run_schedules, c.k1_commits, c.publications), (0, 0, 0, 0, 0));
+        assert_eq!((sub.max_rows(), sub.retained(), sub.txn_open()), (8, retained.clone(), false));
+        assert_eq!((core.snapshot().unwrap(), core.fault(), core.turn_is_open()), (durable, None, false));
+    }
+    // A query beyond its rows is refused before the native query.
+    sub.clear_calls();
+    let x = vec![0.5; 3 * DIM];
+    let mut out = vec![0.0; 3];
+    let refused = core.query(&mut sub, key(1), &x, &mut out, &Budget { max_query_rows: 2, ..CEILING }).unwrap_err();
+    assert_eq!(refused.error, Rt::Fuel.into());
+    assert!(!sub.calls().contains(&"query_identity"));
+    // Within its budget the same schedule runs.
+    let mut s3 = vec![0.0; features(DIM)];
+    core.turn_begin(&mut sub, key(1), &stimulus(&big), &Budget { max_work_units: need, ..CEILING }, &mut s3).unwrap();
+    core.turn_commit(&mut sub, key(1)).unwrap();
+}
+
+fn big_schedule(i: &Input) -> &[Experience] {
+    &i.schedule
 }

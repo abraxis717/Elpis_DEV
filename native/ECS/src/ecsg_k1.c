@@ -1041,6 +1041,15 @@ elpis_ecsg_k1_status elpis_ecsg_k1_reserve(elpis_ecsg_k1 *s, size_t max_rows)
 }
 
 size_t elpis_ecsg_k1_dim(const elpis_ecsg_k1 *s) { return s == NULL ? 0u : s->dim; }
+elpis_ecsg_k1_status elpis_ecsg_k1_shape(const elpis_ecsg_k1 *s, size_t *dim, size_t *width)
+{
+    if (s == NULL || dim == NULL || width == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    *dim = s->dim;     /* immutable for the state's lifetime: no guard */
+    *width = s->width;
+    return ELPIS_ECSG_K1_OK;
+}
 size_t elpis_ecsg_k1_width(const elpis_ecsg_k1 *s) { return s == NULL ? 0u : s->width; }
 /* Unguarded getters: atomic loads of the values the writer last published (no data race with a writer). */
 static elpis_ecsg_k1 *published(const elpis_ecsg_k1 *s)

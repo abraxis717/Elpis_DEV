@@ -20,7 +20,8 @@ _Static_assert(sizeof(elpis_runtime_schedule_result) == sizeof(elpis_ecsg_k1_sch
 _Static_assert(sizeof(elpis_runtime_commit_identity) == sizeof(elpis_ecsg_k1_commit_identity), "identity layout");
 _Static_assert(sizeof(elpis_runtime_turn_begin_result) == 48, "begin result ABI size");
 _Static_assert(sizeof(elpis_runtime_turn_commit_result) == 120, "commit result ABI size");
-_Static_assert(sizeof(elpis_runtime_counters) == 64, "counters ABI size");
+_Static_assert(sizeof(elpis_runtime_counters) == 72, "counters ABI size");
+_Static_assert(sizeof(elpis_runtime_budget) == 48, "budget ABI size");
 _Static_assert(sizeof(elpis_runtime_query_result) == 40, "query result ABI size");
 
 static int k1_digest(void *s, uint8_t out[32]) { return elpis_ecsg_k1_state_digest(s, out); }
@@ -39,9 +40,10 @@ static int k1_abort(void *s, uint64_t token) { return elpis_ecsg_k1_txn_abort(s,
 static int k1_query(void *s, size_t dim, const double *x, size_t rows, double *out, uint8_t digest[32]) {
     return elpis_ecsg_k1_query_identity(s, dim, x, rows, out, digest);
 }
+static int k1_shape(void *s, size_t *dim, size_t *width) { return elpis_ecsg_k1_shape(s, dim, width); }
 
 static const elpis_runtime_k1_api API = {k1_digest, k1_reserve, k1_begin, k1_schedule, k1_commit, k1_abort,
-                                          k1_query};
+                                          k1_query, k1_shape};
 
 static elpis_ecsg_k1 *state(double seed) {
     double w[DIM * WIDTH];
@@ -58,13 +60,14 @@ static elpis_runtime_substrate sub(elpis_ecsg_k1 *s, uint64_t owner, uint64_t di
 
 static void digest(elpis_ecsg_k1 *s, uint8_t out[32]) { assert(elpis_ecsg_k1_state_digest(s, out) == ELPIS_ECSG_K1_OK); }
 
+static elpis_runtime_budget BUDGET;
 static double X[ROWS * DIM], Y[ROWS];
 static const elpis_runtime_experience SCHEDULE[2] = {{2, 3}, {2, 5}};
 
 static int turn(elpis_runtime *rt, const elpis_runtime_substrate *d, elpis_runtime_turn_commit_result *out) {
     double s3[83];
     elpis_runtime_turn_begin_result begun;
-    int rc = elpis_runtime_turn_begin(rt, d, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, s3, 83, &begun);
+    int rc = elpis_runtime_turn_begin(rt, d, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, &BUDGET, s3, 83, &begun);
     if (rc != ELPIS_RUNTIME_OK) return rc;
     assert(begun.schedule.experiences_applied == 2 && begun.schedule.epoch_after == begun.schedule.epoch_before + 8);
     elpis_continuity_snapshot snap;
@@ -76,6 +79,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < ROWS * DIM; ++i) X[i] = (double)((i * 5) % 11 - 5) / 16.0;
     for (int i = 0; i < ROWS; ++i) Y[i] = (double)(i % 3 - 1) / 8.0;
     assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V3);
+    assert(elpis_runtime_fuel_ceiling(&BUDGET) == ELPIS_RUNTIME_OK);
     assert(elpis_runtime_features(DIM) == elpis_ecsg_k1_features(DIM));
     for (size_t d = 1; d <= 64; ++d) assert(elpis_runtime_features(d) == elpis_ecsg_k1_features(d));
     assert(!strcmp(elpis_runtime_code_name(ELPIS_RUNTIME_SUBSTRATE_SWITCH), "COGNITION_SUBSTRATE_SWITCH"));
@@ -124,13 +128,13 @@ int main(int argc, char **argv) {
     elpis_runtime_substrate wrong = sub(a, 1, DIM - 1);
     double s3[83];
     elpis_runtime_turn_begin_result begun;
-    assert(elpis_runtime_turn_begin(rt, &wrong, X, ROWS * (DIM - 1), Y, ROWS, SCHEDULE, 2, 0.002, s3,
+    assert(elpis_runtime_turn_begin(rt, &wrong, X, ROWS * (DIM - 1), Y, ROWS, SCHEDULE, 2, 0.002, &BUDGET, s3,
                                     elpis_runtime_features(DIM - 1), &begun) == ELPIS_RUNTIME_SUBSTRATE_SWITCH);
 
     /* Begin then abort: nothing installed. */
     digest(a, before);
-    OK(elpis_runtime_turn_begin(rt, &da, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, s3, 83, &begun));
-    assert(elpis_runtime_turn_begin(rt, &da, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, s3, 83, &begun) ==
+    OK(elpis_runtime_turn_begin(rt, &da, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, &BUDGET, s3, 83, &begun));
+    assert(elpis_runtime_turn_begin(rt, &da, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, &BUDGET, s3, 83, &begun) ==
            ELPIS_RUNTIME_TURN_OPEN);
     OK(elpis_runtime_turn_abort(rt, &da));
     digest(a, now);
@@ -138,7 +142,7 @@ int main(int argc, char **argv) {
 
     /* Non-finite input: ECS_REFUSED with the K1 status, state unchanged. */
     X[3] = 1.0 / 0.0;
-    assert(elpis_runtime_turn_begin(rt, &da, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, s3, 83, &begun) ==
+    assert(elpis_runtime_turn_begin(rt, &da, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, &BUDGET, s3, 83, &begun) ==
            ELPIS_RUNTIME_ECS_REFUSED);
     assert(begun.k1_status == ELPIS_ECSG_K1_NONFINITE);
     X[3] = 0.25;
@@ -155,7 +159,7 @@ int main(int argc, char **argv) {
         OK(elpis_runtime_snapshot(rt, &durable));
         const uint64_t epoch = elpis_ecsg_k1_epoch(a), generation = elpis_ecsg_k1_generation(a);
         OK(elpis_runtime_read_counters(rt, &(elpis_runtime_counters){0}, 1));
-        OK(elpis_runtime_query(rt, &da, q, 2 * DIM, answer, 2, &queried));
+        OK(elpis_runtime_query(rt, &da, q, 2 * DIM, answer, 2, &BUDGET, &queried));
         assert(elpis_ecsg_k1_forward(a, q, 2, direct) == ELPIS_ECSG_K1_OK);
         assert(!memcmp(answer, direct, sizeof(direct)));
         digest(a, now);
@@ -168,11 +172,53 @@ int main(int argc, char **argv) {
         assert(c.k1_queries == 1 && c.k1_txn_begins == 0 && c.k1_commits == 0 && c.publications == 0);
         /* A declared dimension that is not the state's own is refused natively before any input is read. */
         elpis_runtime_substrate short_dim = sub(a, 1, DIM - 1);
-        assert(elpis_runtime_query(rt, &short_dim, q, 2 * (DIM - 1), answer, 2, &queried) ==
+        assert(elpis_runtime_query(rt, &short_dim, q, 2 * (DIM - 1), answer, 2, &BUDGET, &queried) ==
                ELPIS_RUNTIME_SUBSTRATE_SWITCH);
         /* Another state is a switch, refused without a native call. */
-        assert(elpis_runtime_query(rt, &db, q, 2 * DIM, answer, 2, &queried) == ELPIS_RUNTIME_SUBSTRATE_SWITCH);
+        assert(elpis_runtime_query(rt, &db, q, 2 * DIM, answer, 2, &BUDGET, &queried) == ELPIS_RUNTIME_SUBSTRATE_SWITCH);
         assert(elpis_runtime_fault(rt) == 0);
+    }
+
+    /* Total fuel: the work units are the documented integer formula, and a schedule beyond its budget is refused
+     * before any reserve, transaction, schedule, commit or publication. */
+    {
+        uint64_t units = 0;
+        const uint64_t F = 83, dw = DIM * WIDTH;
+        const uint64_t want = 3 * (2 * 2 * dw + 2 * dw * F + F * F) + (2 * F * F + dw * F) +
+                              5 * (2 * 2 * dw + 2 * dw * F + F * F) + (2 * F * F + dw * F);
+        OK(elpis_runtime_work_units(DIM, WIDTH, SCHEDULE, 2, &units));
+        assert(units == want);
+        assert(elpis_runtime_work_units(0, WIDTH, SCHEDULE, 2, &units) == ELPIS_RUNTIME_INVALID);
+        const elpis_runtime_experience overflow[1] = {{UINT64_MAX, 2}};
+        assert(elpis_runtime_work_units(DIM, WIDTH, overflow, 1, &units) == ELPIS_RUNTIME_INVALID);
+        OK(elpis_runtime_query_work_units(DIM, WIDTH, 2, &units));
+        assert(units == 2 * dw);
+
+        elpis_runtime_budget tight = BUDGET;
+        tight.max_work_units = want - 1;
+        elpis_ecsg_k1_counters k1_before, k1_after;
+        elpis_runtime_counters c;
+        assert(elpis_ecsg_k1_stats(a, &k1_before) == ELPIS_ECSG_K1_OK);
+        digest(a, before);
+        OK(elpis_runtime_read_counters(rt, &c, 1));
+        assert(elpis_runtime_turn_begin(rt, &da, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, &tight, s3, 83,
+                                        &begun) == ELPIS_RUNTIME_FUEL);
+        elpis_runtime_budget wide = BUDGET;
+        wide.max_steps += 1;   /* beyond the ceiling: refused too */
+        assert(elpis_runtime_turn_begin(rt, &da, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, &wide, s3, 83,
+                                        &begun) == ELPIS_RUNTIME_FUEL);
+        assert(elpis_runtime_turn_begin(rt, &da, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, NULL, s3, 83,
+                                        &begun) == ELPIS_RUNTIME_INVALID);
+        OK(elpis_runtime_read_counters(rt, &c, 0));
+        assert(c.k1_reserves == 0 && c.k1_txn_begins == 0 && c.k1_run_schedules == 0 && c.k1_commits == 0);
+        assert(c.publications == 0 && elpis_runtime_fault(rt) == 0);
+        assert(elpis_ecsg_k1_stats(a, &k1_after) == ELPIS_ECSG_K1_OK);
+        assert(k1_after.txn_begins == k1_before.txn_begins && k1_after.heap_allocations == k1_before.heap_allocations);
+        digest(a, now);
+        assert(!memcmp(before, now, 32));
+        tight.max_work_units = want;   /* exactly enough: admitted */
+        OK(elpis_runtime_turn_begin(rt, &da, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, &tight, s3, 83, &begun));
+        OK(elpis_runtime_turn_abort(rt, &da));
     }
 
     /* Evolution: reserve, finalize. */
@@ -215,7 +261,7 @@ int main(int argc, char **argv) {
     elpis_runtime_substrate lying = sub(b, 3, DIM - 1);
     OK(elpis_runtime_anchor(rt, &lying, &snap));
     digest(b, before);
-    assert(elpis_runtime_turn_begin(rt, &lying, X, ROWS * (DIM - 1), Y, ROWS, SCHEDULE, 2, 0.002, s3,
+    assert(elpis_runtime_turn_begin(rt, &lying, X, ROWS * (DIM - 1), Y, ROWS, SCHEDULE, 2, 0.002, &BUDGET, s3,
                                     elpis_runtime_features(DIM - 1), &begun) == ELPIS_RUNTIME_ECS_REFUSED);
     assert(begun.k1_status == ELPIS_ECSG_K1_INVALID);
     digest(b, now);

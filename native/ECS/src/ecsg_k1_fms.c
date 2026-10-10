@@ -443,6 +443,22 @@ int elpis_ecsg_k1_fms_inspect(elpis_ecsg_k1_fms *r, uint64_t id, elpis_ecsg_k1_f
     return fm(rc);
 }
 
+int elpis_ecsg_k1_fms_shape(elpis_ecsg_k1_fms *r, uint64_t id, size_t *dim, size_t *width)
+{
+    slot *s;
+    int rc;
+    if (dim == NULL || width == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    rc = take(r, id, &s);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
+    }
+    rc = elpis_ecsg_k1_shape(s->k1, dim, width);
+    give(r, s);
+    return rc;
+}
+
 int elpis_ecsg_k1_fms_k1_stats(elpis_ecsg_k1_fms *r, uint64_t id, elpis_ecsg_k1_counters *out)
 {
     slot *s;

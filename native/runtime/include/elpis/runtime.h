@@ -60,6 +60,8 @@ enum {
     ELPIS_RUNTIME_TURN_NOT_OPEN = 72,
     ELPIS_RUNTIME_EVOLUTION_IN_FLIGHT = 73,
     ELPIS_RUNTIME_EVOLUTION_NOT_IN_FLIGHT = 74,
+    ELPIS_RUNTIME_FUEL = 75,                     /* COGNITION_FUEL_EXCEEDED: outside the fuel budget (or the budget
+                                                    outside the ceiling); refused before reserve or any transaction */
     ELPIS_RUNTIME_SUBSTRATE_K1 = 1,              /* standalone K1 state (ecsg_k1.h) */
     ELPIS_RUNTIME_SUBSTRATE_K1_FMS = 2           /* FMS-resident K1 state (ecsg_k1_fms.h) */
 };
@@ -104,6 +106,7 @@ typedef struct {
     int (*txn_commit_identity)(void *state, uint64_t token, elpis_runtime_commit_identity *identity);
     int (*txn_abort)(void *state, uint64_t token);
     int (*query_identity)(void *state, size_t dim, const double *x, size_t rows, double *out, uint8_t digest[32]);
+    int (*shape)(void *state, size_t *dim, size_t *width);
 } elpis_runtime_k1_api;
 
 /* The K1 FMS adapter's functions (runtime = elpis_ecsg_k1_fms *, id = the resident state). */
@@ -119,6 +122,7 @@ typedef struct {
     int (*txn_abort)(void *runtime, uint64_t id, uint64_t token);
     int (*query_identity)(void *runtime, uint64_t id, size_t dim, const double *x, size_t rows, double *out,
                           uint8_t digest[32]);
+    int (*shape)(void *runtime, uint64_t id, size_t *dim, size_t *width);
 } elpis_runtime_k1_fms_api;
 
 /* One native K1 state. `owner` is the caller's identity for the object owning `handle`; it must stay unique
@@ -162,13 +166,36 @@ typedef struct {
     uint64_t k1_aborts;
     uint64_t publications;
     uint64_t k1_queries;
+    uint64_t k1_shapes;
 } elpis_runtime_counters;
+
+/* Total cognitive fuel (docs/RUNTIME_CORE.md). One operation's totals; every field >= 1 and at most the compiled
+ * ceiling (elpis_runtime_fuel_ceiling). An ECS work unit is one multiply-accumulate-class operation of the K1
+ * kernels as counted by a fixed integer formula of (dim, width, rows, steps), not wall-clock:
+ *   K1 learning step on r rows: 2*r*d*w + 2*d*w*F + F*F;  consolidation of r rows: r*F*F + d*w*F;
+ *   experience (r, k): k*step(r) + consolidation(r);  QUERY of r rows: r*d*w;  F = elpis_runtime_features(d).
+ * Checked arithmetic: a total beyond uint64 is refused, never wrapped. No wall-clock deadline is claimed: the K1
+ * ABI is synchronous with no cooperative cancellation point; fuel bounds an operation before it starts. */
+typedef struct {
+    uint64_t max_experiences;
+    uint64_t max_rows;              /* total rows of one schedule */
+    uint64_t max_experience_rows;   /* rows of one experience; also the reserve (capacity) ceiling */
+    uint64_t max_steps;             /* total K1 learning steps of one schedule */
+    uint64_t max_work_units;
+    uint64_t max_query_rows;
+} elpis_runtime_budget;
 
 typedef struct elpis_runtime elpis_runtime;
 
 uint32_t elpis_runtime_abi_version(void);
 /* The S3 readout length for an input dimension (elpis_ecsg_k1_features); 0 outside 1..64. */
 size_t elpis_runtime_features(size_t dim);
+/* The compiled fuel ceiling; ECS work units of a schedule or of a QUERY (RUNTIME_INVALID on an invalid shape or
+ * a total beyond uint64). Pure functions. */
+int elpis_runtime_fuel_ceiling(elpis_runtime_budget *out);
+int elpis_runtime_work_units(size_t dim, size_t width, const elpis_runtime_experience *schedule, size_t experiences,
+                             uint64_t *out);
+int elpis_runtime_query_work_units(size_t dim, size_t width, size_t rows, uint64_t *out);
 /* Static name of any code ("RUNTIME_OK" for 0), or NULL for an unknown value. */
 const char *elpis_runtime_code_name(int code);
 
@@ -187,13 +214,16 @@ int elpis_runtime_anchor(elpis_runtime *runtime, const elpis_runtime_substrate *
                          elpis_continuity_snapshot *out);
 
 /* QUERY: the canonical read-only operation. x holds `rows` rows of the descriptor's dimension
- * (x_len = rows * dim); out receives `rows` values f_W(x_r). The lineage must be anchored and the state's identity
+ * (x_len = rows * dim); out receives `rows` values f_W(x_r). Admitted under `budget` (query rows, work units)
+ * before the native query (RUNTIME_FUEL). The lineage must be anchored and the state's identity
  * must equal the durable expected identity (bound on first use; a mismatch fail-stops, out is zeroed). Refused while
  * a managed turn is open (RUNTIME_TURN_OPEN). Nothing is begun, committed, published or written. */
 int elpis_runtime_query(elpis_runtime *runtime, const elpis_runtime_substrate *substrate, const double *x,
-                        size_t x_len, double *out, size_t rows, elpis_runtime_query_result *result);
+                        size_t x_len, double *out, size_t rows, const elpis_runtime_budget *budget,
+                        elpis_runtime_query_result *result);
 
-/* LEARN: the managed canonical turn. begin verifies the lineage (binding the state on first use; a mismatch
+/* LEARN: the managed canonical turn. begin admits the schedule's total fuel under `budget` (RUNTIME_FUEL) before
+ * the identity check, any reserve or the transaction, then verifies the lineage (binding the state on first use; a mismatch
  * fail-stops), begins the native transaction and runs the whole schedule on its candidate in one native call
  * (x: y_len rows of dim values; s3_len = elpis_runtime_features(dim)). Then exactly one of commit (native
  * commit, then one continuity publication; a failed publication fail-stops and out->committed reports the
@@ -202,8 +232,8 @@ int elpis_runtime_query(elpis_runtime *runtime, const elpis_runtime_substrate *s
  * (RUNTIME_TURN_NOT_OPEN) and the turn stays open. */
 int elpis_runtime_turn_begin(elpis_runtime *runtime, const elpis_runtime_substrate *substrate, const double *x,
                              size_t x_len, const double *y, size_t y_len, const elpis_runtime_experience *schedule,
-                             size_t experiences, double learning_rate, double *s3_out, size_t s3_len,
-                             elpis_runtime_turn_begin_result *out);
+                             size_t experiences, double learning_rate, const elpis_runtime_budget *budget,
+                             double *s3_out, size_t s3_len, elpis_runtime_turn_begin_result *out);
 int elpis_runtime_turn_commit(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
                               elpis_runtime_turn_commit_result *out, elpis_continuity_snapshot *snapshot);
 int elpis_runtime_turn_abort(elpis_runtime *runtime, const elpis_runtime_substrate *substrate);

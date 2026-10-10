@@ -27,10 +27,13 @@ pub enum Rt {
     EvolutionInFlight = 73,
     /// No evolution attempt is in flight.
     EvolutionNotInFlight = 74,
+    /// The operation is outside its cognitive fuel budget (or the budget outside the ceiling); refused before
+    /// any reserve, transaction or K1 mutation.
+    Fuel = 75,
 }
 
 impl Rt {
-    pub const ALL: [Rt; 10] = [
+    pub const ALL: [Rt; 11] = [
         Rt::Invalid,
         Rt::Closed,
         Rt::SubstrateSwitch,
@@ -41,6 +44,7 @@ impl Rt {
         Rt::TurnNotOpen,
         Rt::EvolutionInFlight,
         Rt::EvolutionNotInFlight,
+        Rt::Fuel,
     ];
 
     pub fn name(self) -> &'static str {
@@ -55,6 +59,7 @@ impl Rt {
             Rt::TurnNotOpen => "RUNTIME_TURN_NOT_OPEN",
             Rt::EvolutionInFlight => "RUNTIME_EVOLUTION_IN_FLIGHT",
             Rt::EvolutionNotInFlight => "RUNTIME_EVOLUTION_NOT_IN_FLIGHT",
+            Rt::Fuel => "COGNITION_FUEL_EXCEEDED",
         }
     }
 

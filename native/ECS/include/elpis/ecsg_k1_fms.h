@@ -91,6 +91,8 @@ int elpis_ecsg_k1_fms_close(elpis_ecsg_k1_fms *, uint64_t *id);
 
 int elpis_ecsg_k1_fms_inspect(elpis_ecsg_k1_fms *, uint64_t id, elpis_ecsg_k1_fms_info *out);
 int elpis_ecsg_k1_fms_k1_stats(elpis_ecsg_k1_fms *, uint64_t id, elpis_ecsg_k1_counters *out);
+/* The immutable shape (dim, width) of a resident state. */
+int elpis_ecsg_k1_fms_shape(elpis_ecsg_k1_fms *, uint64_t id, size_t *dim, size_t *width);
 int elpis_ecsg_k1_fms_stats(elpis_ecsg_k1_fms *, elpis_ecsg_k1_fms_metrics *out);
 int elpis_ecsg_k1_fms_pump(elpis_ecsg_k1_fms *);
 int elpis_ecsg_k1_fms_reserve(elpis_ecsg_k1_fms *, uint64_t id, size_t rows);

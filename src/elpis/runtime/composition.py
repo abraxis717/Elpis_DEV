@@ -312,13 +312,15 @@ class Runtime:
         self._core.require_live()
 
         from .cognition import QueryReadout, QueryResult, _decode_query, _encode_query, _validate_query_request
+        from .fuel import admit_query
 
         codec_map, classification = _validate_query_request(substrate, request, self._codec_pin())
         descriptor, owner = describe(substrate)
         tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, codec_map)
+        admit_query(stimulus, substrate.dim, substrate.width, request.budget, request.max_output_tokens)
         if self._bound_owner is None:
             self._bound_owner = owner   # whatever RuntimeCore binds at this query stays alive
-        values, digest = self._core.query(descriptor, stimulus)
+        values, digest = self._core.query(descriptor, stimulus, request.budget)   # RuntimeCore re-admits natively
         readout = QueryReadout(values, substrate.dim, substrate.width, digest)
         output, rendered = _decode_query(codec_map, readout, request.tokenizer, request.max_output_tokens)
         return QueryResult(tokens, output, rendered, readout, classification)
@@ -334,13 +336,15 @@ class Runtime:
         self._core.require_live()
 
         from .cognition import LearnResult, _encode, _validate_learn_request
+        from .fuel import admit_learn
 
         codec_map, classification, authority = _validate_learn_request(substrate, request, self._codec_pin())
         descriptor, owner = describe(substrate)
         tokens, stimulus = _encode(substrate, request.text, request.tokenizer, codec_map)
+        admit_learn(stimulus, substrate.dim, substrate.width, authority.budget)
         if self._bound_owner is None:
             self._bound_owner = owner   # whatever RuntimeCore binds at this begin stays alive
-        self._core.turn_begin(descriptor, stimulus, authority.learning_rate)
+        self._core.turn_begin(descriptor, stimulus, authority.learning_rate, authority.budget)
         committed, _ = self._core.turn_commit(descriptor)
         return LearnResult(tokens, stimulus.experiences, committed.commit.epoch_before, committed.commit.epoch_after,
                            classification, authority.grant, committed.state_before_digest,
@@ -358,16 +362,17 @@ class Runtime:
         """
         self._core.require_live()
 
-        from .cognition import Readout, TurnResult, _decode, _encode, _validate_turn_request
+        from .cognition import Readout, TurnResult, _admit_turn, _decode, _encode, _validate_turn_request
 
         codec_map, classification, authority = _validate_turn_request(
             substrate, text, codec=codec, authority=authority, max_output_tokens=max_output_tokens,
             deployment_pin=self._codec_pin())
         descriptor, owner = describe(substrate)
         tokens, stimulus = _encode(substrate, text, tokenizer, codec_map)
+        _admit_turn(substrate, stimulus, authority, max_output_tokens)
         if self._bound_owner is None:
             self._bound_owner = owner   # whatever RuntimeCore binds at this begin stays alive
-        begun = self._core.turn_begin(descriptor, stimulus, authority.learning_rate)
+        begun = self._core.turn_begin(descriptor, stimulus, authority.learning_rate, authority.budget)
         try:
             readout = Readout(begun.s3, begun.epoch_after, substrate.dim, substrate.width)
             output, rendered = _decode(codec_map, readout, tokenizer, max_output_tokens)

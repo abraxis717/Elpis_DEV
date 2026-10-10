@@ -68,6 +68,7 @@ from elpis.ECS.k1 import MAX_EXPERIENCES, K1Error, K1FMSState, K1State
 from . import codec_authority as _ca
 from .codec_authority import AdmittedCodec
 from .errors import CompositionError
+from .fuel import CEILING, CognitiveBudget, admit_learn, admit_query
 
 __all__ = ("CODEC_UNQUALIFIED", "LEGACY_LEARNED_TURN", "CognitiveOperation", "ECSCodecMap", "ECSQueryCodecMap",
            "LearnAuthority", "LearnRequest", "LearnResult", "QueryReadout", "QueryRequest", "QueryResult",
@@ -235,15 +236,20 @@ class LearnAuthority:
 
     QUERY has no parameter that can carry it, and no LEARN entry point runs without it. It binds the program
     parameters of the learning law that are not learned state (docs/COGNITION_R0.md): the explicit positive finite
-    learning rate. ``grant`` names who granted it and why (a non-empty statement; it is reported, never
-    interpreted). It is not a credential against an in-process caller, which can construct one: it makes learning
-    an explicit act at every call site instead of a side effect of answering.
+    learning rate, and the total fuel one LEARN may use (``budget``: experiences, rows, the reserve ceiling,
+    learning steps and ECS work units, admitted before any reserve or transaction; at most the canonical ceiling).
+    ``grant`` names who granted it and why (a non-empty statement; it is reported, never interpreted). It is not a
+    credential against an in-process caller, which can construct one: it makes learning an explicit act at every
+    call site instead of a side effect of answering.
     """
 
     learning_rate: float
     grant: str
+    budget: CognitiveBudget = CEILING
 
     def __post_init__(self):
+        if type(self.budget) is not CognitiveBudget:
+            raise CompositionError("LEARN_AUTHORITY", "budget must be a CognitiveBudget")
         rate = self.learning_rate
         if type(rate) is not float or not math.isfinite(rate) or rate <= 0:
             raise CompositionError("LEARNING_RATE", "explicit positive finite learning rate")
@@ -259,8 +265,13 @@ class QueryRequest:
     tokenizer: object
     codec: AdmittedCodec | None = None
     max_output_tokens: int = 256
+    budget: CognitiveBudget = CEILING   # query rows, output tokens, ECS work units; admitted before the native query
 
     operation = CognitiveOperation.QUERY
+
+    def __post_init__(self):
+        if type(self.budget) is not CognitiveBudget:
+            raise CompositionError("OPERATION", "a QUERY carries a CognitiveBudget, never learning authority")
 
 
 @dataclass(frozen=True)
@@ -389,6 +400,13 @@ def _validate_turn_request(substrate, text, *, codec=None, authority=None, max_o
     return codec_map, classification, authority
 
 
+def _admit_turn(substrate, stimulus, authority, max_output_tokens):
+    """The legacy learned turn's fuel: its LEARN schedule and its decoded output, under the authority's budget."""
+    admit_learn(stimulus, substrate.dim, substrate.width, authority.budget)
+    if max_output_tokens > authority.budget.max_output_tokens:
+        raise CompositionError("COGNITION_FUEL_EXCEEDED", "output tokens")
+
+
 def _encode(substrate, text, tokenizer, codec_map):
     """LEARN encode: text -> tokens -> an admitted experience Stimulus of the state's dimension."""
     tokens = tuple(tokenizer.encode(text))
@@ -440,6 +458,7 @@ def run_query(substrate, request: QueryRequest) -> QueryResult:
     """
     codec_map, classification = _validate_query_request(substrate, request)
     tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, codec_map)
+    admit_query(stimulus, substrate.dim, substrate.width, request.budget, request.max_output_tokens)
     try:
         values, digest = substrate.query_identity(stimulus.x)
     except K1Error as exc:
@@ -454,6 +473,7 @@ def run_learn(substrate, request: LearnRequest) -> LearnResult:
     atomically (``W``, epoch, ``H``, ``a`` together) or not at all. Three native crossings."""
     codec_map, classification, authority = _validate_learn_request(substrate, request)
     tokens, stimulus = _encode(substrate, request.text, request.tokenizer, codec_map)
+    admit_learn(stimulus, substrate.dim, substrate.width, authority.budget)   # before any reserve or transaction
     committed = _learn_native(substrate, stimulus, authority.learning_rate, None)[1]
     return LearnResult(tokens, stimulus.experiences, committed.commit.epoch_before, committed.commit.epoch_after,
                        classification, authority.grant, committed.state_before_digest, committed.state_after_digest)
@@ -490,6 +510,7 @@ def run_turn(substrate, text, *, tokenizer, codec=None, authority=None, max_outp
     codec_map, classification, authority = _validate_turn_request(substrate, text, codec=codec, authority=authority,
                                                                   max_output_tokens=max_output_tokens)
     tokens, stimulus = _encode(substrate, text, tokenizer, codec_map)
+    _admit_turn(substrate, stimulus, authority, max_output_tokens)   # before any reserve or transaction
 
     def decode(prepared):  # between the schedule and the commit: the candidate commits only after the decode
         readout = Readout(prepared.s3, prepared.epoch_after, substrate.dim, substrate.width)

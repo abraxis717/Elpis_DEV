@@ -43,6 +43,7 @@ from elpis.ECS.k1 import CommitIdentity, K1Error, K1FMSState, K1State
 from elpis.ECS.native import Commit
 
 from .errors import CompositionError
+from .fuel import CEILING as _FUEL_CEILING
 
 __all__ = ("RuntimeCore", "RuntimeLibrary", "TurnBegun")
 
@@ -85,11 +86,16 @@ class _Query(C.Structure):
 
 class _Counters(C.Structure):
     _fields_ = [(n, _U64) for n in ("k1_state_digests", "k1_reserves", "k1_txn_begins", "k1_run_schedules",
-                                    "k1_commits", "k1_aborts", "publications", "k1_queries")]
+                                    "k1_commits", "k1_aborts", "publications", "k1_queries", "k1_shapes")]
+
+
+class _Budget(C.Structure):
+    _fields_ = [(n, _U64) for n in ("max_experiences", "max_rows", "max_experience_rows", "max_steps",
+                                    "max_work_units", "max_query_rows")]
 
 
 _API_ENTRIES = ("state_digest", "reserve", "txn_begin", "txn_run_schedule", "txn_commit_identity", "txn_abort",
-                "query_identity")
+                "query_identity", "shape")
 
 
 class _K1Api(C.Structure):
@@ -101,7 +107,8 @@ class _Substrate(C.Structure):
                 ("owner", _U64), ("dim", _U64), ("api", C.c_void_p)]
 
 
-assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 120 and C.sizeof(_Counters) == 64
+assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 120 and C.sizeof(_Counters) == 72
+assert C.sizeof(_Budget) == 48
 assert C.sizeof(_Query) == 40
 
 
@@ -176,9 +183,12 @@ class RuntimeLibrary:
             "snapshot": [P, S],
             "read_counters": [P, C.POINTER(_Counters), C.c_int],
             "anchor": [P, C.POINTER(_Substrate), S],
-            "query": [P, C.POINTER(_Substrate), D, C.c_size_t, D, C.c_size_t, C.POINTER(_Query)],
+            "query": [P, C.POINTER(_Substrate), D, C.c_size_t, D, C.c_size_t, C.POINTER(_Budget), C.POINTER(_Query)],
             "turn_begin": [P, C.POINTER(_Substrate), D, C.c_size_t, D, C.c_size_t, C.POINTER(_Experience),
-                           C.c_size_t, C.c_double, D, C.c_size_t, C.POINTER(_Begin)],
+                           C.c_size_t, C.c_double, C.POINTER(_Budget), D, C.c_size_t, C.POINTER(_Begin)],
+            "fuel_ceiling": [C.POINTER(_Budget)],
+            "work_units": [C.c_size_t, C.c_size_t, C.POINTER(_Experience), C.c_size_t, C.POINTER(_U64)],
+            "query_work_units": [C.c_size_t, C.c_size_t, C.c_size_t, C.POINTER(_U64)],
             "turn_commit": [P, C.POINTER(_Substrate), C.POINTER(_Commit), S],
             "turn_abort": [P, C.POINTER(_Substrate)],
             "evolution_authority": [P, S],
@@ -197,6 +207,10 @@ class RuntimeLibrary:
         if self.testing:
             lib.elpis_runtime_testing_fault.argtypes = [P, C.c_uint64, C.c_uint32, C.c_uint64]
             lib.elpis_runtime_testing_io_counters.argtypes = [P, C.POINTER(_IOCounters), C.c_int]
+        ceiling = _Budget()
+        if lib.elpis_runtime_fuel_ceiling(C.byref(ceiling)) != 0 or \
+                tuple(getattr(ceiling, n) for n, _ in _Budget._fields_) != _FUEL_CEILING.native_fields():
+            raise CompositionError("RUNTIME_INVALID", "the compiled fuel ceiling is not the canonical one")
         self.path = path
         self.continuity = ContinuityLibrary(path)
         self._lib = lib
@@ -208,6 +222,19 @@ class RuntimeLibrary:
         if n is None:
             n = self._features[dim] = int(self._lib.elpis_runtime_features(dim))
         return n
+
+    def work_units(self, dim: int, width: int, schedule) -> int:
+        """Native ECS work units of a ``(rows, steps)`` uint64 schedule buffer (the fuel authority's formula)."""
+        n = len(schedule) // 2
+        out = _U64()
+        self.check(self._lib.elpis_runtime_work_units(dim, width, (_Experience * n).from_buffer_copy(schedule), n,
+                                                      C.byref(out)))
+        return int(out.value)
+
+    def query_work_units(self, dim: int, width: int, rows: int) -> int:
+        out = _U64()
+        self.check(self._lib.elpis_runtime_query_work_units(dim, width, rows, C.byref(out)))
+        return int(out.value)
 
     def code(self, rc: int) -> str:
         name = self._lib.elpis_runtime_code_name(rc)
@@ -277,28 +304,29 @@ class RuntimeCore:
     def anchor(self, descriptor) -> ContinuitySnapshot:
         return self._snapshot("anchor", C.byref(descriptor), detail="no K1 mutation happened")
 
-    def query(self, descriptor, stimulus) -> tuple[tuple, bytes]:
+    def query(self, descriptor, stimulus, budget) -> tuple[tuple, bytes]:
         """QUERY (read-only): ``(f_W(x) per row, retained-state identity)`` from the lineage's authoritative state.
 
-        One call into RuntimeCore, one native K1 crossing; nothing is begun, committed or published.
+        One call into RuntimeCore, one native K1 crossing (after a one-time read of the state's shape); nothing is
+        begun, committed or published. RuntimeCore admits the query rows and work units under ``budget`` first.
         """
         rows = stimulus.rows
         out, result = (C.c_double * rows)(), _Query()
         x = (C.c_double * len(stimulus.x)).from_buffer(stimulus.x)
         rc = self._f.elpis_runtime_query(self._handle, C.byref(descriptor), x, len(stimulus.x), out, rows,
-                                         C.byref(result))
+                                         C.byref(_Budget(*budget.native_fields())), C.byref(result))
         self.library.check(rc, "", result.k1_status)
         return _unpack_from(f"{rows}d", out), bytes(result.state_digest)
 
-    def turn_begin(self, descriptor, stimulus, learning_rate: float) -> TurnBegun:
+    def turn_begin(self, descriptor, stimulus, learning_rate: float, budget) -> TurnBegun:
         features = self.library.features(descriptor.dim)
         s3, out = (C.c_double * max(features, 1))(), _Begin()
         x = (C.c_double * len(stimulus.x)).from_buffer(stimulus.x)
         y = (C.c_double * len(stimulus.y)).from_buffer(stimulus.y)
         schedule = (_Experience * stimulus.experiences).from_buffer(stimulus.schedule)
         rc = self._f.elpis_runtime_turn_begin(self._handle, C.byref(descriptor), x, len(stimulus.x), y,
-                                              len(stimulus.y), schedule, stimulus.experiences, learning_rate, s3,
-                                              features, C.byref(out))
+                                              len(stimulus.y), schedule, stimulus.experiences, learning_rate,
+                                              C.byref(_Budget(*budget.native_fields())), s3, features, C.byref(out))
         self.library.check(rc, "", out.k1_status)
         return TurnBegun(_unpack_from(f"{features}d", s3), int(out.schedule.epoch_before),
                          int(out.schedule.epoch_after))

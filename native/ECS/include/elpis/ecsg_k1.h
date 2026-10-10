@@ -160,6 +160,8 @@ elpis_ecsg_k1_status elpis_ecsg_k1_reserve(elpis_ecsg_k1 *state, size_t max_rows
 
 size_t elpis_ecsg_k1_dim(const elpis_ecsg_k1 *state);
 size_t elpis_ecsg_k1_width(const elpis_ecsg_k1 *state);
+/* The immutable shape (dim, width) of a state, as one status-returning call (for function tables). */
+elpis_ecsg_k1_status elpis_ecsg_k1_shape(const elpis_ecsg_k1 *state, size_t *dim, size_t *width);
 size_t elpis_ecsg_k1_max_rows(const elpis_ecsg_k1 *state);
 uint64_t elpis_ecsg_k1_epoch(const elpis_ecsg_k1 *state);
 uint64_t elpis_ecsg_k1_generation(const elpis_ecsg_k1 *state);

@@ -153,7 +153,10 @@ def test_a_learning_authority_is_explicit_and_bounded():
             LearnAuthority(0.002, grant)
         assert info.value.code == "LEARN_AUTHORITY"
     with pytest.raises(TypeError):
-        QueryRequest("q", ByteTokens(), FixtureMap(), 256, LEARN)   # a query has no slot for learning authority
+        QueryRequest("q", ByteTokens(), admitted(FixtureMap()), authority=LEARN)   # no slot for learning authority
+    with pytest.raises(CompositionError) as info:
+        QueryRequest("q", ByteTokens(), admitted(FixtureMap()), 256, LEARN)       # nor smuggled into another slot
+    assert info.value.code == "OPERATION"
     assert QueryRequest.operation is CognitiveOperation.QUERY and LearnRequest.operation is CognitiveOperation.LEARN
 
 

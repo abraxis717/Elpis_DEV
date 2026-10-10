@@ -36,9 +36,10 @@ use std::path::Path;
 use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, Store};
 
 use crate::code::{Error, Rt};
+use crate::fuel::{self, Budget};
 use crate::substrate::{
     features, CommitIdentity, Experience, K1Ops, Key, ScheduleOutcome, TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_CAPACITY,
-    K1_NONFINITE, K1_STALE, MAX_EXPERIENCES,
+    K1_INVALID, K1_NONFINITE, K1_STALE, MAX_EXPERIENCES,
 };
 
 /// Native crossings and publications RuntimeCore performed (diagnostics; never authority).
@@ -53,6 +54,7 @@ pub struct Counters {
     pub k1_aborts: u64,
     pub publications: u64,
     pub k1_queries: u64,
+    pub k1_shapes: u64,
 }
 
 /// An admitted, native-ready stimulus: `x` holds `y.len()` rows of the state's dimension, row-major.
@@ -123,6 +125,8 @@ pub struct Core {
     open: bool,
     fault: Option<Code>,
     bound: Option<Key>,
+    /// The width read natively for one state (immutable for that state's lifetime); fuel admission needs it.
+    shape: Option<(Key, usize)>,
     turn: Option<OpenTurn>,
     evolution: Option<EvolutionState>,
     counters: Counters,
@@ -136,6 +140,7 @@ impl Core {
             open: false,
             fault: None,
             bound: None,
+            shape: None,
             turn: None,
             evolution: None,
             counters: Counters::default(),
@@ -165,6 +170,7 @@ impl Core {
         self.end_turn();
         self.fault = None;
         self.bound = None;
+        self.shape = None;
         self.evolution = None;
     }
 
@@ -270,6 +276,26 @@ impl Core {
         Ok(())
     }
 
+    /// The state's width, read natively once per state (cold path; a pure getter) and verified against the declared
+    /// dimension: a state of another dimension is refused (`ECS_REFUSED`, K1 `INVALID`) before any input is read.
+    fn width(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<usize, Refusal> {
+        if let Some((cached, width)) = self.shape {
+            if cached == key {
+                return Ok(width);
+            }
+        }
+        let (mut dim, mut width) = (0usize, 0usize);
+        self.counters.k1_shapes += 1;
+        match sub.shape(&mut dim, &mut width) {
+            0 if dim == key.dim && width > 0 => {
+                self.shape = Some((key, width));
+                Ok(width)
+            }
+            0 => Err(ecs(Rt::EcsRefused, K1_INVALID, ScheduleOutcome::default())),
+            rc => Err(ecs(Rt::EcsState, rc, ScheduleOutcome::default())),
+        }
+    }
+
     // -- the canonical read-only QUERY ---------------------------------------------------------------------------
 
     /// QUERY: `f_W(x)` from the lineage's authoritative K1 state, read-only (docs/COGNITION_R0.md).
@@ -281,7 +307,14 @@ impl Core {
     /// is never returned. No transaction is opened, nothing is committed or published, and nothing durable or
     /// retained changes: W, epoch, H, a, continuity. `out` receives the answer (one value per row; zeroed on any
     /// refusal). Returns the retained-state identity the answer was computed from.
-    pub fn query(&mut self, sub: &mut dyn K1Ops, key: Key, x: &[f64], out: &mut [f64]) -> Result<Digest, Refusal> {
+    pub fn query(
+        &mut self,
+        sub: &mut dyn K1Ops,
+        key: Key,
+        x: &[f64],
+        out: &mut [f64],
+        budget: &Budget,
+    ) -> Result<Digest, Refusal> {
         self.live()?;
         if self.turn.is_some() {
             return Err(Rt::TurnOpen.into());
@@ -297,6 +330,8 @@ impl Core {
             Cognition::Unanchored => return Err(Code::Unanchored.into()),
             Cognition::Anchored(d) => d,
         };
+        let width = self.width(sub, key)?;
+        fuel::admit_query(budget, key.dim, width, rows).map_err(|_| Refusal::from(Rt::Fuel))?;
         let mut identity = [0u8; 32];
         self.counters.k1_queries += 1;
         let rc = sub.query_identity(key.dim, x, out, &mut identity);
@@ -323,6 +358,7 @@ impl Core {
         sub: &mut dyn K1Ops,
         key: Key,
         stimulus: &Stimulus,
+        budget: &Budget,
         s3: &mut [f64],
     ) -> Result<ScheduleOutcome, Refusal> {
         self.live()?;
@@ -331,14 +367,25 @@ impl Core {
         }
         let rows = stimulus.y.len();
         let schedule = stimulus.schedule;
+        let scheduled = schedule.iter().try_fold(0u64, |n, e| n.checked_add(e.rows));
         if schedule.is_empty()
             || schedule.len() > MAX_EXPERIENCES
             || rows == 0
+            || scheduled != Some(rows as u64)
             || rows.checked_mul(key.dim) != Some(stimulus.x.len())
             || s3.len() != features(key.dim)
         {
             return Err(Rt::Invalid.into());
         }
+        if matches!(self.bound, Some(bound) if bound != key) {
+            return Err(Rt::SubstrateSwitch.into());
+        }
+        if self.store.snapshot()?.cognition() == Cognition::Unanchored {
+            return Err(Code::Unanchored.into());
+        }
+        // Total fuel, before the identity check, any reserve, the transaction or a candidate mutation.
+        let width = self.width(sub, key)?;
+        fuel::admit_schedule(budget, key.dim, width, schedule).map_err(|_| Refusal::from(Rt::Fuel))?;
         self.reconcile(sub, key)?;
         let abort = sub.retain_abort();
         let (token, result) = self.run_schedule(sub, stimulus, s3)?;
