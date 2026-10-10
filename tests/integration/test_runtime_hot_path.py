@@ -27,7 +27,7 @@ from elpis.runtime import Runtime, RuntimeConfig
 from elpis.runtime.cognition import run_turn
 
 from ..conftest import require_runtime_library
-from ._turn_fixtures import LEARN, ByteTokens, FixtureMap
+from ._turn_fixtures import LEARN, TEST_CODEC_PIN, ByteTokens, FixtureMap, admitted
 from .test_codec_ecs_turn import RATE, _beside, _Counting, world
 
 _OS_CALLS = ("open", "close", "pwrite", "write", "pread", "read", "fsync", "fdatasync", "rename", "replace", "unlink",
@@ -79,24 +79,24 @@ def test_managed_turn_is_two_runtimecore_crossings_and_one_fixed_publication(exp
 
     # The bare canonical turn: the reference crossing count.
     with world(k1) as bare:
-        run_turn(bare, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
+        run_turn(bare, "warm", tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)
         counter.calls.clear()
-        run_turn(bare, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
+        run_turn(bare, "turn", tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)
         bare_crossings = dict(counter.calls)
 
-    config = RuntimeConfig(tmp_path / "continuity", require_runtime_library(testing=True))
+    config = RuntimeConfig(tmp_path / "continuity", require_runtime_library(testing=True), TEST_CODEC_PIN)
     with world(k1) as state, Runtime(config) as runtime:
         runtime.anchor_cognition(state)
-        runtime.run_turn(state, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
+        runtime.run_turn(state, "warm", tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)
         footprint = sorted((p.name, p.stat().st_size) for p in (tmp_path / "continuity").iterdir())
         runtime.continuity.testing_counters(reset=True)
         runtime._core.counters(reset=True)
+        codec = admitted(FixtureMap(**fixture))   # admission is the cold path (it measures the codec's source)
         core_calls = _CountingSymbols(runtime._core._f, "elpis_runtime_")
         counter.calls.clear()
         with monkeypatch.context() as patch:
             fs = _CountingOS(patch)
-            result = runtime.run_turn(state, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture),
-                                      authority=LEARN)
+            result = runtime.run_turn(state, "turn", tokenizer=ByteTokens(), codec=codec, authority=LEARN)
         python_k1_calls, turn_core_calls = dict(counter.calls), dict(core_calls.calls)
         native = runtime._core.counters()
         io = runtime.continuity.testing_counters()

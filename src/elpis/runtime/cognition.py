@@ -38,10 +38,13 @@ K1-disabled reference; it is not accepted here.
 The codec only crosses the token boundary: ``tokenizer`` supplies ``encode(text)``, ``decoder()`` and
 ``vocab_size``. No DSV model, parameter bank or transformer recurrence is involved, and none is imported.
 
-No ECS<->DSV semantic codec is defined or qualified in this repository. Without an explicitly supplied codec map
-every operation refuses with ``ECS_CODEC_UNQUALIFIED`` before touching anything: text generation is unavailable.
-There is no fallback. A supplied map must declare its classification, and every result carries it, so a fixture
-map (``TRAINING=NONE SEMANTICS=NONE``) is never mistaken for cognition.
+No ECS<->DSV semantic codec is defined or qualified in this repository. Without an explicitly supplied codec every
+operation refuses with ``ECS_CODEC_UNQUALIFIED`` before touching anything: text generation is unavailable. There is
+no fallback. A codec map never authorizes itself: an operation runs it only as an
+:class:`~elpis.runtime.codec_authority.AdmittedCodec`, bound to an independently pinned codec authority that grants
+it the operation's capabilities (QUERY encode/decode, LEARN encode, legacy LEARN decode) and fixes the
+classification every result carries; the map's own ``classification`` is reporting metadata that must match it. The
+only admitted maps in the repository are ``TEST_ONLY TRAINING=NONE SEMANTICS=NONE`` interface fixtures.
 
 PYTHON MAY CONTROL THE ECS; IT MAY NOT EXECUTE THE ECS HOT PATH. A query is one native crossing; a LEARN is three
 (begin, the whole schedule on the candidate, commit) whatever the number of experiences, rows or K1 steps. Inputs
@@ -62,6 +65,8 @@ from typing import Protocol
 
 from elpis.ECS.k1 import MAX_EXPERIENCES, K1Error, K1FMSState, K1State
 
+from . import codec_authority as _ca
+from .codec_authority import AdmittedCodec
 from .errors import CompositionError
 
 __all__ = ("CODEC_UNQUALIFIED", "LEGACY_LEARNED_TURN", "CognitiveOperation", "ECSCodecMap", "ECSQueryCodecMap",
@@ -248,11 +253,11 @@ class LearnAuthority:
 
 @dataclass(frozen=True)
 class QueryRequest:
-    """A QUERY: ``text`` through ``tokenizer`` and the QUERY side of ``codec_map``. Nothing in it can learn."""
+    """A QUERY: ``text`` through ``tokenizer`` and the QUERY side of an admitted ``codec``. Nothing in it can learn."""
 
     text: str
     tokenizer: object
-    codec_map: object = None
+    codec: AdmittedCodec | None = None
     max_output_tokens: int = 256
 
     operation = CognitiveOperation.QUERY
@@ -260,11 +265,12 @@ class QueryRequest:
 
 @dataclass(frozen=True)
 class LearnRequest:
-    """A LEARN: ``text`` through ``tokenizer`` and the LEARN encode of ``codec_map``, under explicit ``authority``."""
+    """A LEARN: ``text`` through ``tokenizer`` and the LEARN encode of an admitted ``codec``, under explicit
+    ``authority``."""
 
     text: str
     tokenizer: object
-    codec_map: object = None
+    codec: AdmittedCodec | None = None
     authority: LearnAuthority | None = None
 
     operation = CognitiveOperation.LEARN
@@ -276,7 +282,7 @@ class QueryResult:
     output_tokens: tuple
     text: str
     readout: QueryReadout
-    codec: str          # the ECS codec map's declared classification
+    codec: str          # the classification the codec authority admitted
     operation: CognitiveOperation = CognitiveOperation.QUERY
 
     @property
@@ -291,7 +297,7 @@ class LearnResult:
     experiences: int
     epoch_before: int
     epoch_after: int
-    codec: str          # the ECS codec map's declared classification
+    codec: str          # the classification the codec authority admitted
     grant: str          # the learning authority's grant
     state_before_digest: bytes
     state_after_digest: bytes
@@ -307,7 +313,7 @@ class TurnResult:
     readout: Readout
     epoch_before: int
     epoch_after: int
-    codec: str          # the ECS codec map's declared classification
+    codec: str          # the classification the codec authority admitted
     # Exact K1 retained-state identities (state_digest) of the committed transition, from the native commit.
     state_before_digest: bytes | None = field(default=None, compare=False)
     state_after_digest: bytes | None = field(default=None, compare=False)
@@ -317,14 +323,14 @@ class TurnResult:
 
 # --- the boundary: validation, encode, decode (shared by the managed operations) --------------------------------
 
-def _classification(codec_map):
-    """The codec map's declared classification; refuses (fail closed) before anything else without a map."""
-    if codec_map is None:
+def _admitted(codec, needed, deployment_pin):
+    """The admitted codec map and its admitted classification; refuses (fail closed) before anything else without a
+    codec, and before any ECS call without a valid, sufficient admission."""
+    if codec is None:
         raise CompositionError(CODEC_UNQUALIFIED, UNQUALIFIED_DETAIL)
-    classification = getattr(codec_map, "classification", None)
-    if type(classification) is not str or not classification:
-        raise CompositionError("CODEC_MAP", "an ECS codec map must declare its classification")
-    return classification
+    if type(codec) is not AdmittedCodec:
+        raise CompositionError("CODEC_UNADMITTED", "an ECS codec map runs only as an independently AdmittedCodec")
+    return codec.require(needed, deployment_pin), codec.classification
 
 
 def _validate_common(substrate, text):
@@ -347,38 +353,40 @@ def _validate_authority(authority):
     return authority
 
 
-def _validate_query_request(substrate, request):
-    """Validate a QUERY without reading or mutating K1 state; returns the codec map's classification."""
+def _validate_query_request(substrate, request, deployment_pin=None):
+    """Validate a QUERY without reading or mutating K1 state; returns (codec map, admitted classification)."""
     if type(request) is not QueryRequest:
         raise CompositionError("OPERATION", "a QUERY takes a QueryRequest")
-    classification = _classification(request.codec_map)
+    if request.codec is None:
+        raise CompositionError(CODEC_UNQUALIFIED, UNQUALIFIED_DETAIL)
     _validate_common(substrate, request.text)
     _validate_output_limit(request.max_output_tokens)
-    if not callable(getattr(request.codec_map, "encode_query", None)) or \
-            not callable(getattr(request.codec_map, "decode_query", None)):
-        raise CompositionError("CODEC_MAP", "the ECS codec map defines no QUERY encode/decode")
-    return classification
+    return _admitted(request.codec, _ca.QUERY, deployment_pin)
 
 
-def _validate_learn_request(substrate, request):
-    """Validate a LEARN without reading or mutating K1 state; returns (classification, authority)."""
+def _validate_learn_request(substrate, request, deployment_pin=None):
+    """Validate a LEARN without reading or mutating K1 state; returns (codec map, classification, authority)."""
     if type(request) is not LearnRequest:
         raise CompositionError("OPERATION", "a LEARN takes a LearnRequest")
-    classification = _classification(request.codec_map)
+    if request.codec is None:
+        raise CompositionError(CODEC_UNQUALIFIED, UNQUALIFIED_DETAIL)
     authority = _validate_authority(request.authority)
     _validate_common(substrate, request.text)
-    if not callable(getattr(request.codec_map, "encode", None)):
-        raise CompositionError("CODEC_MAP", "the ECS codec map defines no LEARN encode")
-    return classification, authority
+    codec_map, classification = _admitted(request.codec, _ca.LEARN, deployment_pin)
+    return codec_map, classification, authority
 
 
-def _validate_turn_request(substrate, text, *, codec_map=None, authority=None, max_output_tokens=256):
-    """Validate the legacy learned turn without reading or mutating K1 state; returns (classification, authority)."""
-    classification = _classification(codec_map)
+def _validate_turn_request(substrate, text, *, codec=None, authority=None, max_output_tokens=256,
+                           deployment_pin=None):
+    """Validate the legacy learned turn without reading or mutating K1 state; returns (codec map, classification,
+    authority)."""
+    if codec is None:
+        raise CompositionError(CODEC_UNQUALIFIED, UNQUALIFIED_DETAIL)
     authority = _validate_authority(authority)
     _validate_common(substrate, text)
     _validate_output_limit(max_output_tokens)
-    return classification, authority
+    codec_map, classification = _admitted(codec, _ca.LEGACY_LEARNED_TURN_CAPABILITIES, deployment_pin)
+    return codec_map, classification, authority
 
 
 def _encode(substrate, text, tokenizer, codec_map):
@@ -430,22 +438,22 @@ def run_query(substrate, request: QueryRequest) -> QueryResult:
     Fails closed without a qualified ECS codec map. Nothing is written: W, epoch, H, a and the generation are
     unchanged whether the query succeeds or is refused.
     """
-    classification = _validate_query_request(substrate, request)
-    tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, request.codec_map)
+    codec_map, classification = _validate_query_request(substrate, request)
+    tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, codec_map)
     try:
         values, digest = substrate.query_identity(stimulus.x)
     except K1Error as exc:
         raise CompositionError("ECS_REFUSED", str(exc)) from exc
     readout = QueryReadout(values, substrate.dim, substrate.width, digest)
-    output, rendered = _decode_query(request.codec_map, readout, request.tokenizer, request.max_output_tokens)
+    output, rendered = _decode_query(codec_map, readout, request.tokenizer, request.max_output_tokens)
     return QueryResult(tokens, output, rendered, readout, classification)
 
 
 def run_learn(substrate, request: LearnRequest) -> LearnResult:
     """One unmanaged LEARN under explicit authority: the experience schedule on a native candidate, committed
     atomically (``W``, epoch, ``H``, ``a`` together) or not at all. Three native crossings."""
-    classification, authority = _validate_learn_request(substrate, request)
-    tokens, stimulus = _encode(substrate, request.text, request.tokenizer, request.codec_map)
+    codec_map, classification, authority = _validate_learn_request(substrate, request)
+    tokens, stimulus = _encode(substrate, request.text, request.tokenizer, codec_map)
     committed = _learn_native(substrate, stimulus, authority.learning_rate, None)[1]
     return LearnResult(tokens, stimulus.experiences, committed.commit.epoch_before, committed.commit.epoch_after,
                        classification, authority.grant, committed.state_before_digest, committed.state_after_digest)
@@ -472,14 +480,15 @@ def _learn_native(substrate, stimulus, learning_rate, between):
     return decoded, committed
 
 
-def run_turn(substrate, text, *, tokenizer, codec_map=None, authority=None, max_output_tokens=256) -> TurnResult:
+def run_turn(substrate, text, *, tokenizer, codec=None, authority=None, max_output_tokens=256) -> TurnResult:
     """LEGACY learned turn (unmanaged): a LEARN under explicit authority whose S3 readout is decoded to text.
 
     Kept for the replay of the original synthetic scaffold; it is never a query. Fails closed without a qualified
-    ECS codec map, and refuses ``LEARN_UNAUTHORIZED`` without a :class:`LearnAuthority`.
+    ECS codec, refuses ``LEARN_UNAUTHORIZED`` without a :class:`LearnAuthority`, and needs a codec admitted for
+    LEARN encode and LEARN decode.
     """
-    classification, authority = _validate_turn_request(substrate, text, codec_map=codec_map, authority=authority,
-                                                       max_output_tokens=max_output_tokens)
+    codec_map, classification, authority = _validate_turn_request(substrate, text, codec=codec, authority=authority,
+                                                                  max_output_tokens=max_output_tokens)
     tokens, stimulus = _encode(substrate, text, tokenizer, codec_map)
 
     def decode(prepared):  # between the schedule and the commit: the candidate commits only after the decode

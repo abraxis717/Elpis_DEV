@@ -18,16 +18,16 @@ from elpis.runtime.cognition import (CognitiveOperation, LearnAuthority, LearnRe
                                      QueryResult, QueryStimulus, run_learn, run_query, run_turn)
 from elpis.runtime.composition import CompositionError
 
-from ._turn_fixtures import LEARN, ByteTokens, FixtureMap
+from ._turn_fixtures import LEARN, ByteTokens, FixtureMap, admitted, fixture_authority
 from .test_codec_ecs_turn import DIM, _config, _Resident, adapter, k1, world  # noqa: F401 (module fixtures)
 
 
-def _query(codec_map=None, text="what is f_W here?", max_output_tokens=256):
-    return QueryRequest(text, ByteTokens(), FixtureMap() if codec_map is None else codec_map, max_output_tokens)
+def _query(fixture=None, text="what is f_W here?", max_output_tokens=256):
+    return QueryRequest(text, ByteTokens(), admitted(FixtureMap() if fixture is None else fixture), max_output_tokens)
 
 
-def _learn(text="an experience", authority=LEARN, codec_map=None):
-    return LearnRequest(text, ByteTokens(), FixtureMap() if codec_map is None else codec_map, authority)
+def _learn(text="an experience", authority=LEARN, fixture=None):
+    return LearnRequest(text, ByteTokens(), admitted(FixtureMap() if fixture is None else fixture), authority)
 
 
 class _Subject:
@@ -103,25 +103,22 @@ def test_the_answer_follows_w_and_never_h_or_a(k1):
 def test_a_refused_query_changes_nothing(subject, case):
     _warm(subject.state)
     before = subject.retained()
-    fixture = FixtureMap(reply=(300,) if case == "decode_out_of_vocab" else b"x" * 9)
+    mode = {"wrong_dim": "wrong_query_dim", "nonfinite_row": "nonfinite_query", "not_a_query": "not_a_query"}
+    fixture = FixtureMap(reply=(300,) if case == "decode_out_of_vocab" else b"x" * 9, mode=mode.get(case))
+    request = _query(fixture, max_output_tokens=4 if case == "decode_over_limit" else 256)
     if case == "unclassified":
         fixture.classification = ""
-    if case == "no_query_side":
-        fixture.encode_query = None
-    if case == "wrong_dim":
-        fixture.encode_query = lambda tokens: QueryStimulus(array("d", [0.1] * 5), dim=5)
-    if case == "nonfinite_row":
-        fixture.encode_query = lambda tokens: QueryStimulus(array("d", [float("inf")] * DIM), dim=DIM)
-    if case == "not_a_query":
-        fixture.encode_query = lambda tokens: fixture.encode(tokens)   # a LEARN stimulus is not a query
-    request = _query(fixture, max_output_tokens=4 if case == "decode_over_limit" else 256)
+    if case == "no_query_side":   # admitted for LEARN only: no QUERY capability
+        request = QueryRequest("q", ByteTokens(), admitted(fixture, fixture_authority(
+            fixture, capabilities=("LEARN_ENCODE", "LEARN_DECODE"))))
     if case == "no_codec":
         request = QueryRequest("q", ByteTokens())
     if case == "learn_request":
         request = _learn()
-    expected = {"no_codec": "ECS_CODEC_UNQUALIFIED", "unclassified": "CODEC_MAP", "no_query_side": "CODEC_MAP",
-                "learn_request": "OPERATION", "wrong_dim": "STIMULUS", "nonfinite_row": "ECS_REFUSED",
-                "decode_out_of_vocab": "DECODE", "decode_over_limit": "DECODE", "not_a_query": "STIMULUS"}[case]
+    expected = {"no_codec": "ECS_CODEC_UNQUALIFIED", "unclassified": "CODEC_CLASSIFICATION",
+                "no_query_side": "CODEC_CAPABILITY", "learn_request": "OPERATION", "wrong_dim": "STIMULUS",
+                "nonfinite_row": "ECS_REFUSED", "decode_out_of_vocab": "DECODE", "decode_over_limit": "DECODE",
+                "not_a_query": "STIMULUS"}[case]
     with pytest.raises(CompositionError) as info:
         run_query(subject.state, request)
     assert info.value.code == expected
@@ -134,15 +131,15 @@ def test_a_refused_query_changes_nothing(subject, case):
 def test_learn_without_explicit_authority_is_refused_before_any_state_is_touched(subject, case):
     before = subject.retained()
     fixture = FixtureMap()
-    request = {"none": _learn(authority=None, codec_map=fixture), "query_request": _query(fixture),
-               "not_an_authority": _learn(authority=0.002, codec_map=fixture)}[case]
+    request = {"none": _learn(authority=None, fixture=fixture), "query_request": _query(fixture),
+               "not_an_authority": _learn(authority=0.002, fixture=fixture)}[case]
     with pytest.raises(CompositionError) as info:
         run_learn(subject.state, request)
     assert info.value.code == {"none": "LEARN_UNAUTHORIZED", "query_request": "OPERATION",
                                "not_an_authority": "LEARN_AUTHORITY"}[case]
     assert subject.retained() == before and fixture.calls == []   # not even encoded
     with pytest.raises(CompositionError) as info:              # the legacy learned turn is a LEARN too
-        run_turn(subject.state, "x", tokenizer=ByteTokens(), codec_map=fixture)
+        run_turn(subject.state, "x", tokenizer=ByteTokens(), codec=admitted(fixture))
     assert info.value.code == "LEARN_UNAUTHORIZED" and subject.retained() == before
 
 
@@ -163,14 +160,14 @@ def test_a_learning_authority_is_explicit_and_bounded():
 def test_learn_commits_the_whole_schedule_atomically_and_equals_the_legacy_learned_turn(k1):
     with world(k1) as a, world(k1) as b:
         learned = run_learn(a, _learn("the same experience"))
-        legacy = run_turn(b, "the same experience", tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)
+        legacy = run_turn(b, "the same experience", tokenizer=ByteTokens(), codec=admitted(FixtureMap()), authority=LEARN)
         assert type(learned) is LearnResult and learned.operation is CognitiveOperation.LEARN
         assert a.snapshot() == b.snapshot() and learned.state_after_digest == a.state_digest()
         assert (learned.epoch_before, learned.epoch_after, learned.experiences) == (0, 6, 2)
         assert learned.grant == LEARN.grant and legacy.state_after_digest == learned.state_after_digest
         before = a.snapshot()
         with pytest.raises(CompositionError) as info:   # a non-finite middle experience: nothing installed
-            run_learn(a, _learn("poison", codec_map=FixtureMap(experiences=3, poison_experience=1)))
+            run_learn(a, _learn("poison", fixture=FixtureMap(experiences=3, poison_experience=1)))
         assert info.value.code == "ECS_REFUSED" and a.snapshot() == before
 
 
@@ -202,9 +199,8 @@ def test_a_refused_managed_query_changes_no_state_and_no_continuity_byte(subject
     with Runtime(_config(tmp_path / "c")) as runtime:
         runtime.anchor_cognition(subject.state)
         before, slots, durable = subject.retained(), _slots(runtime), runtime.continuity.snapshot()
-        fixture = FixtureMap(reply=(300,) if case == "decode_out_of_vocab" else b"ok")
-        if case == "nonfinite_row":
-            fixture.encode_query = lambda tokens: QueryStimulus(array("d", [float("nan")] * DIM), dim=DIM)
+        fixture = FixtureMap(reply=(300,) if case == "decode_out_of_vocab" else b"ok",
+                             mode="nonfinite_query" if case == "nonfinite_row" else None)
         request = {"no_codec": QueryRequest("q", ByteTokens()), "learn_request": _learn()}.get(case, _query(fixture))
         with pytest.raises(CompositionError) as info:
             runtime.run_query(subject.state, request)

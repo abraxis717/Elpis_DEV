@@ -93,19 +93,30 @@ class ContextPreparation:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """The runtime's continuity directory and the RuntimeCore library (explicit absolute paths).
+    """The runtime's continuity directory and the RuntimeCore library (explicit absolute paths), and the deployment
+    pin of the codec admission authority.
 
     ``runtime_library`` is the built ``libelpis_runtime.so`` (native/runtime), loaded by explicit
     path like every Elpis native library. It embeds the continuity authority (native/continuity).
+
+    ``codec_authority_sha256`` is the independent SHA-256 pin of the one codec authority catalog
+    (``elpis.runtime.codec_authority``) whose admissions this runtime's cognitive operations accept. It is
+    deployment configuration, never derived from a codec. Without it every managed cognitive operation that is
+    given a codec refuses (``CODEC_AUTHORITY``).
     """
 
     continuity_dir: Path
     runtime_library: Path
+    codec_authority_sha256: str | None = None
 
     def __post_init__(self):
         for value in (self.continuity_dir, self.runtime_library):
             if not isinstance(value, Path) or not value.is_absolute():
                 raise CompositionError("RUNTIME_PATH", "runtime paths must be absolute Paths")
+        pin = self.codec_authority_sha256
+        if pin is not None and (type(pin) is not str or len(pin) != 64
+                                or any(c not in "0123456789abcdef" for c in pin)):
+            raise CompositionError("CODEC_AUTHORITY", "codec_authority_sha256: 64 lowercase hex characters")
 
 
 class RuntimeContinuity:
@@ -284,6 +295,11 @@ class Runtime:
         self._bound_owner = owner
         return anchored
 
+    def _codec_pin(self) -> str:
+        """The deployment pin every admitted codec's authority must match; ``""`` (matches nothing) when none is
+        configured, so admission refuses (``CODEC_AUTHORITY``) after the fail-closed missing-codec check."""
+        return self.config.codec_authority_sha256 or ""
+
     # -- cognition: QUERY (read-only) ---------------------------------------------------------------------------
     def run_query(self, substrate, request):
         """One managed QUERY (docs/COGNITION_R0.md): read-only.
@@ -297,14 +313,14 @@ class Runtime:
 
         from .cognition import QueryReadout, QueryResult, _decode_query, _encode_query, _validate_query_request
 
-        classification = _validate_query_request(substrate, request)
+        codec_map, classification = _validate_query_request(substrate, request, self._codec_pin())
         descriptor, owner = describe(substrate)
-        tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, request.codec_map)
+        tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, codec_map)
         if self._bound_owner is None:
             self._bound_owner = owner   # whatever RuntimeCore binds at this query stays alive
         values, digest = self._core.query(descriptor, stimulus)
         readout = QueryReadout(values, substrate.dim, substrate.width, digest)
-        output, rendered = _decode_query(request.codec_map, readout, request.tokenizer, request.max_output_tokens)
+        output, rendered = _decode_query(codec_map, readout, request.tokenizer, request.max_output_tokens)
         return QueryResult(tokens, output, rendered, readout, classification)
 
     # -- cognition: LEARN (explicit authority) -------------------------------------------------------------------
@@ -319,9 +335,9 @@ class Runtime:
 
         from .cognition import LearnResult, _encode, _validate_learn_request
 
-        classification, authority = _validate_learn_request(substrate, request)
+        codec_map, classification, authority = _validate_learn_request(substrate, request, self._codec_pin())
         descriptor, owner = describe(substrate)
-        tokens, stimulus = _encode(substrate, request.text, request.tokenizer, request.codec_map)
+        tokens, stimulus = _encode(substrate, request.text, request.tokenizer, codec_map)
         if self._bound_owner is None:
             self._bound_owner = owner   # whatever RuntimeCore binds at this begin stays alive
         self._core.turn_begin(descriptor, stimulus, authority.learning_rate)
@@ -331,7 +347,7 @@ class Runtime:
                            committed.state_after_digest)
 
     # -- cognition: LEGACY learned turn (LEARN + S3 decode) --------------------------------------------------------
-    def run_turn(self, substrate, text, *, tokenizer, codec_map=None, authority=None, max_output_tokens=256):
+    def run_turn(self, substrate, text, *, tokenizer, codec=None, authority=None, max_output_tokens=256):
         """One managed LEGACY learned turn: a LEARN under explicit authority whose S3 readout is decoded.
 
         Kept for the replay of the original synthetic scaffold (``LEGACY_LEARNED_TURN``); it is never a query. The
@@ -344,8 +360,9 @@ class Runtime:
 
         from .cognition import Readout, TurnResult, _decode, _encode, _validate_turn_request
 
-        classification, authority = _validate_turn_request(substrate, text, codec_map=codec_map, authority=authority,
-                                                           max_output_tokens=max_output_tokens)
+        codec_map, classification, authority = _validate_turn_request(
+            substrate, text, codec=codec, authority=authority, max_output_tokens=max_output_tokens,
+            deployment_pin=self._codec_pin())
         descriptor, owner = describe(substrate)
         tokens, stimulus = _encode(substrate, text, tokenizer, codec_map)
         if self._bound_owner is None:
