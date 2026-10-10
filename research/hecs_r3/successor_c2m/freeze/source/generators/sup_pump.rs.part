@@ -1,0 +1,21 @@
+fn pump<T:Read+Send+'static>(reader:T,log:Arc<Mutex<File>>,label:&'static str)->thread::JoinHandle<R<()>>{
+ thread::spawn(move||{
+  let mut br=BufReader::new(reader);let mut line=Vec::new();
+  loop {line.clear();let n=br.read_until(b'\n',&mut line).map_err(|e|ioerr("STREAM_READ",e))?;
+   if n==0 {break;}
+   {let mut f=log.lock().map_err(|_|"LOG_LOCK")?;f.write_all(label.as_bytes()).and_then(|_|f.write_all(b" ")).and_then(|_|f.write_all(&line)).map_err(|e|ioerr("LOG_WRITE",e))?;}
+   print!("{} {}",label,String::from_utf8_lossy(&line));io::stdout().flush().map_err(|e|ioerr("LIVE_STDOUT",e))?;
+  }Ok(())
+ })
+}
+fn command_live(mut cmd:Command,logpath:&Path)->R<i32>{
+ let lf=OpenOptions::new().write(true).create_new(true).open(logpath).map_err(|e|ioerr("CHILD_LOG_CREATE",e))?;
+ let log=Arc::new(Mutex::new(lf));cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+ let mut child=cmd.spawn().map_err(|e|ioerr("CHILD_SPAWN",e))?;
+ let so=child.stdout.take().ok_or("NO_STDOUT_PIPE")?;let se=child.stderr.take().ok_or("NO_STDERR_PIPE")?;
+ let o=pump(so,log.clone(),"CHILD_STDOUT");let e=pump(se,log.clone(),"CHILD_STDERR");
+ let status=child.wait().map_err(|e|ioerr("CHILD_WAIT",e))?;
+ o.join().map_err(|_|"STDOUT_THREAD_PANIC")??;e.join().map_err(|_|"STDERR_THREAD_PANIC")??;
+ log.lock().map_err(|_|"LOG_LOCK")?.sync_all().map_err(|e|ioerr("LOG_SYNC",e))?;
+ Ok(status.code().unwrap_or(-15))
+}

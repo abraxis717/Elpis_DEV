@@ -1,0 +1,289 @@
+{
+ "criterion": "byte identity of all 30 committed raw TSVs (5 per arm, pairs 0..2), of all 6 observer streams, and per-label line identity of all 6 child streams; known HD/L2 h4 captures",
+ "historical_artifact_sha256": {
+  "C0_engine": "69a374c3259dae8d79151af3f3e78e262c1587f6b2d268d05dc33fcb48172130",
+  "C1_engine": "0bc42613ed2c5407260bb65738f94ef9c2f44fd958e32d5cc66a2bbaf4b422b5",
+  "native_k1": "a9bf232ddc108dd920fade613cf3901327ebc876717b410d549ec9a1c2551c8b",
+  "observer": "3c93e9122033b5401120a4a58c65de0bd7f23818cebc24cca0cfa3460b2af495"
+ },
+ "historical_binaries_reproduced": false,
+ "qualified_exact_identity": true,
+ "reconstructed_artifact_sha256": {
+  "C0_engine": "d2ec51455329b52612a5dca568e94b2fdd99b3e7d10b00e3527fdfd81fbeeefd",
+  "C1_engine": "e137ac103180ace84d94c0d17600d5a667ee13dbb8354b7b838296eabef45e57",
+  "native_k1": "8d8b7ffcf37039a4af85d8d5a8017406b2e13044ae1045477118ce76fdb8db9d",
+  "observer": "a878fd56c9eb44f7517533a406ce773e3cb6cfc46e97864ca2ddedda5d86c298"
+ },
+ "schema": "HECS_R3_SUCCESSOR_DEV_COLD_REBUILD_QUALIFICATION_V1",
+ "seeds": {
+  "0": {
+   "C0": {
+    "child_stream": {
+     "byte_identical": true,
+     "committed_sha256": "62d8486dfc13fdcba60e67928906a94da5904e01cbf4e674e23a9d51b722782d",
+     "reproduced_sha256": "62d8486dfc13fdcba60e67928906a94da5904e01cbf4e674e23a9d51b722782d",
+     "stderr_lines_identical": true,
+     "stdout_lines_identical": true
+    },
+    "events.tsv": {
+     "committed_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+     "identical": true,
+     "reproduced_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429"
+    },
+    "hd_l2_h4_matches_known_capture": true,
+    "hd_l2_rollout_h4_M_capture": 0.9777302523343981,
+    "hd_l2_rollout_h4_M_pass_flag": "1",
+    "metrics.tsv": {
+     "committed_sha256": "1a49d04483861cb4171c9f4901734c24bc39b8d2ecc482cf205376b2c8bcbf19",
+     "identical": true,
+     "reproduced_sha256": "1a49d04483861cb4171c9f4901734c24bc39b8d2ecc482cf205376b2c8bcbf19"
+    },
+    "observations.tsv": {
+     "committed_sha256": "87b5340749effa346719eb9e2905c72ae4c0571fb3ab1531c24d188f25ee4a3c",
+     "identical": true,
+     "reproduced_sha256": "87b5340749effa346719eb9e2905c72ae4c0571fb3ab1531c24d188f25ee4a3c"
+    },
+    "observer_line": "CHILD_STDOUT R3_BP_PER_SEED candidate=C0 seed=15007341021985616615 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=36.186660273415136 CENTROID_MATCHED=1.175616275890971 SCIENCE_RELEASE=NO",
+    "observer_stream": {
+     "committed_sha256": "174dd5a6fb2677e543ae4d5da7b6b0b5a7fe9c7a79b0ba46ae7310a849861815",
+     "identical": true,
+     "reproduced_sha256": "174dd5a6fb2677e543ae4d5da7b6b0b5a7fe9c7a79b0ba46ae7310a849861815"
+    },
+    "tasks.tsv": {
+     "committed_sha256": "16b2f0b8d35f6b46f4ae68b56b9ed781c081fdfc168d5f2cac05bb2b07aecc18",
+     "identical": true,
+     "reproduced_sha256": "16b2f0b8d35f6b46f4ae68b56b9ed781c081fdfc168d5f2cac05bb2b07aecc18"
+    },
+    "v5.tsv": {
+     "committed_sha256": "cc0607c46fd7c8304c764a8910b603b8c9eae5bfdd39b53eba4050ddef104396",
+     "identical": true,
+     "reproduced_sha256": "cc0607c46fd7c8304c764a8910b603b8c9eae5bfdd39b53eba4050ddef104396"
+    }
+   },
+   "C1": {
+    "child_stream": {
+     "byte_identical": false,
+     "committed_sha256": "6c03da647543708203c064f016a3b5a8f002782cb0ca25b41083d697086ebe0e",
+     "reproduced_sha256": "5bd8f350c8a197084072608abb41fefecb76d21eeb462bae0562a3b1611a8426",
+     "stderr_lines_identical": true,
+     "stdout_lines_identical": true
+    },
+    "events.tsv": {
+     "committed_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+     "identical": true,
+     "reproduced_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429"
+    },
+    "hd_l2_h4_matches_known_capture": true,
+    "hd_l2_rollout_h4_M_capture": 0.9772411280912127,
+    "hd_l2_rollout_h4_M_pass_flag": "1",
+    "metrics.tsv": {
+     "committed_sha256": "344355b6e44cb7348035c580c10dcd1292e5236186b6c8def37ce203d70549bb",
+     "identical": true,
+     "reproduced_sha256": "344355b6e44cb7348035c580c10dcd1292e5236186b6c8def37ce203d70549bb"
+    },
+    "observations.tsv": {
+     "committed_sha256": "c7683f390189a40f1cf7c40a0eae247060e4e74773880530465648d11bcff9d6",
+     "identical": true,
+     "reproduced_sha256": "c7683f390189a40f1cf7c40a0eae247060e4e74773880530465648d11bcff9d6"
+    },
+    "observer_line": "CHILD_STDOUT R3_BP_PER_SEED candidate=C1 seed=15007341021985616615 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=36.186660273415136 CENTROID_MATCHED=1.175616275890971 SCIENCE_RELEASE=NO",
+    "observer_stream": {
+     "committed_sha256": "ef96e6634a96bc1408d952a7c65b2631fc09dd9e5e5ec585a1e3e1194779b297",
+     "identical": true,
+     "reproduced_sha256": "ef96e6634a96bc1408d952a7c65b2631fc09dd9e5e5ec585a1e3e1194779b297"
+    },
+    "tasks.tsv": {
+     "committed_sha256": "16b2f0b8d35f6b46f4ae68b56b9ed781c081fdfc168d5f2cac05bb2b07aecc18",
+     "identical": true,
+     "reproduced_sha256": "16b2f0b8d35f6b46f4ae68b56b9ed781c081fdfc168d5f2cac05bb2b07aecc18"
+    },
+    "v5.tsv": {
+     "committed_sha256": "cc0607c46fd7c8304c764a8910b603b8c9eae5bfdd39b53eba4050ddef104396",
+     "identical": true,
+     "reproduced_sha256": "cc0607c46fd7c8304c764a8910b603b8c9eae5bfdd39b53eba4050ddef104396"
+    }
+   },
+   "archived_commit_sha256": "a731f84c5d77aa556d261e28075c777439839bfb630007e841ebcf18bee85c26"
+  },
+  "1": {
+   "C0": {
+    "child_stream": {
+     "byte_identical": false,
+     "committed_sha256": "6c07e6874bea652b3d3d52b090f4cf21e3f635c8ab164c07e2658c18d11fc72e",
+     "reproduced_sha256": "7a5fa6d0aad6d0f7965bf00e704f312a7039271225d8bce1e35e97b7f4b1cbff",
+     "stderr_lines_identical": true,
+     "stdout_lines_identical": true
+    },
+    "events.tsv": {
+     "committed_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+     "identical": true,
+     "reproduced_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429"
+    },
+    "hd_l2_h4_matches_known_capture": true,
+    "hd_l2_rollout_h4_M_capture": 0.9180048262359963,
+    "hd_l2_rollout_h4_M_pass_flag": "1",
+    "metrics.tsv": {
+     "committed_sha256": "4ecbc2725d367aba0e5a6460d9873f6ec0bb61b4a15a9d0940a03e91da3bf59a",
+     "identical": true,
+     "reproduced_sha256": "4ecbc2725d367aba0e5a6460d9873f6ec0bb61b4a15a9d0940a03e91da3bf59a"
+    },
+    "observations.tsv": {
+     "committed_sha256": "0773ef62d927861c0a5fa8a90a70552eea0f1a638037740d9a35c53f1ac56dda",
+     "identical": true,
+     "reproduced_sha256": "0773ef62d927861c0a5fa8a90a70552eea0f1a638037740d9a35c53f1ac56dda"
+    },
+    "observer_line": "CHILD_STDOUT R3_BP_PER_SEED candidate=C0 seed=12334837942893278080 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=0.9583333333333334 ORACLE_MATCHED=1 CENTROID_SEPARATED=31.140023130088 CENTROID_MATCHED=1.4640053227849203 SCIENCE_RELEASE=NO",
+    "observer_stream": {
+     "committed_sha256": "84eba841549947af92a0bdddd790085647e33dc5b9892fac3eb5ce11ec35c9b1",
+     "identical": true,
+     "reproduced_sha256": "84eba841549947af92a0bdddd790085647e33dc5b9892fac3eb5ce11ec35c9b1"
+    },
+    "tasks.tsv": {
+     "committed_sha256": "5455a6f541f517078d71604ac77e59505a91c9019730a613d79b4d6dbf5ba3d2",
+     "identical": true,
+     "reproduced_sha256": "5455a6f541f517078d71604ac77e59505a91c9019730a613d79b4d6dbf5ba3d2"
+    },
+    "v5.tsv": {
+     "committed_sha256": "7d5590a4c70eb9afb2f5c8a5bc6a2e979922c4f6255c3b34da3a54719ed5c20e",
+     "identical": true,
+     "reproduced_sha256": "7d5590a4c70eb9afb2f5c8a5bc6a2e979922c4f6255c3b34da3a54719ed5c20e"
+    }
+   },
+   "C1": {
+    "child_stream": {
+     "byte_identical": false,
+     "committed_sha256": "7bd0b5696f8c4d2547609240f943d99b23383b52ed0e51702e63673c2f735ee4",
+     "reproduced_sha256": "b7952f0b4c7935da5edad1abae4b07c269c8fc805f7f0808a44703578aeea879",
+     "stderr_lines_identical": true,
+     "stdout_lines_identical": true
+    },
+    "events.tsv": {
+     "committed_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+     "identical": true,
+     "reproduced_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429"
+    },
+    "hd_l2_h4_matches_known_capture": true,
+    "hd_l2_rollout_h4_M_capture": 0.9336881711571918,
+    "hd_l2_rollout_h4_M_pass_flag": "1",
+    "metrics.tsv": {
+     "committed_sha256": "6a4417ea71a47d1fc9dc30cb7166871df0c25d22bc70b013760965e39c968af6",
+     "identical": true,
+     "reproduced_sha256": "6a4417ea71a47d1fc9dc30cb7166871df0c25d22bc70b013760965e39c968af6"
+    },
+    "observations.tsv": {
+     "committed_sha256": "ee1617a4acdf98aada47a5c936d6d497a40e4138ccd7051aa13af0176962668a",
+     "identical": true,
+     "reproduced_sha256": "ee1617a4acdf98aada47a5c936d6d497a40e4138ccd7051aa13af0176962668a"
+    },
+    "observer_line": "CHILD_STDOUT R3_BP_PER_SEED candidate=C1 seed=12334837942893278080 TASK_LOCAL=1 V3=1 S1=1 M=1 M_FAILED=0 EVENTS=0 ORACLE_SEPARATED=0.9583333333333334 ORACLE_MATCHED=1 CENTROID_SEPARATED=31.140023130088 CENTROID_MATCHED=1.4640053227849203 SCIENCE_RELEASE=NO",
+    "observer_stream": {
+     "committed_sha256": "0c32fba603f7512c65e0da7dcd00a533f94ea6e1c1b24f7c124877bd77c65733",
+     "identical": true,
+     "reproduced_sha256": "0c32fba603f7512c65e0da7dcd00a533f94ea6e1c1b24f7c124877bd77c65733"
+    },
+    "tasks.tsv": {
+     "committed_sha256": "5455a6f541f517078d71604ac77e59505a91c9019730a613d79b4d6dbf5ba3d2",
+     "identical": true,
+     "reproduced_sha256": "5455a6f541f517078d71604ac77e59505a91c9019730a613d79b4d6dbf5ba3d2"
+    },
+    "v5.tsv": {
+     "committed_sha256": "7d5590a4c70eb9afb2f5c8a5bc6a2e979922c4f6255c3b34da3a54719ed5c20e",
+     "identical": true,
+     "reproduced_sha256": "7d5590a4c70eb9afb2f5c8a5bc6a2e979922c4f6255c3b34da3a54719ed5c20e"
+    }
+   },
+   "archived_commit_sha256": "5c48e9ec9446578d4030731fc06a1b437646fcd0317fd4fa0fcd5ed082aeabfd"
+  },
+  "2": {
+   "C0": {
+    "child_stream": {
+     "byte_identical": true,
+     "committed_sha256": "eaa2c1070537cc595051c719033daecce40fd9e37547c7244943b4a874d5017c",
+     "reproduced_sha256": "eaa2c1070537cc595051c719033daecce40fd9e37547c7244943b4a874d5017c",
+     "stderr_lines_identical": true,
+     "stdout_lines_identical": true
+    },
+    "events.tsv": {
+     "committed_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+     "identical": true,
+     "reproduced_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429"
+    },
+    "hd_l2_h4_matches_known_capture": true,
+    "hd_l2_rollout_h4_M_capture": 0.8529768527391456,
+    "hd_l2_rollout_h4_M_pass_flag": "0",
+    "metrics.tsv": {
+     "committed_sha256": "fb202a328b0270d509916cb23595432cbce1545eb91c09995cf6482355707d11",
+     "identical": true,
+     "reproduced_sha256": "fb202a328b0270d509916cb23595432cbce1545eb91c09995cf6482355707d11"
+    },
+    "observations.tsv": {
+     "committed_sha256": "a340c1622f3b8a78ffb050625050e2c67d2fbfb8ba561cf96d7ab51594625dc0",
+     "identical": true,
+     "reproduced_sha256": "a340c1622f3b8a78ffb050625050e2c67d2fbfb8ba561cf96d7ab51594625dc0"
+    },
+    "observer_line": "CHILD_STDOUT R3_BP_PER_SEED candidate=C0 seed=5526746150047008937 TASK_LOCAL=1 V3=1 S1=1 M=0 M_FAILED=1 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=36.56917524601839 CENTROID_MATCHED=1.2874533614433068 SCIENCE_RELEASE=NO",
+    "observer_stream": {
+     "committed_sha256": "99decd1960526efe6b4885c6e12dd40e61cea00496f1e31cc07e701b0f7d06d3",
+     "identical": true,
+     "reproduced_sha256": "99decd1960526efe6b4885c6e12dd40e61cea00496f1e31cc07e701b0f7d06d3"
+    },
+    "tasks.tsv": {
+     "committed_sha256": "a9d7fc6249c707ed8b27f4d550aa18a79881f8dcff096d7977b50cc69fe4ed5a",
+     "identical": true,
+     "reproduced_sha256": "a9d7fc6249c707ed8b27f4d550aa18a79881f8dcff096d7977b50cc69fe4ed5a"
+    },
+    "v5.tsv": {
+     "committed_sha256": "bf206f8a29382dab4e6a0845844ccefa497e01b9eede9fb1174bb694c5fcca87",
+     "identical": true,
+     "reproduced_sha256": "bf206f8a29382dab4e6a0845844ccefa497e01b9eede9fb1174bb694c5fcca87"
+    }
+   },
+   "C1": {
+    "child_stream": {
+     "byte_identical": false,
+     "committed_sha256": "fa6f9699819a452fac3a4b0318a8dd502e8c5cf901d71ebab879069825691457",
+     "reproduced_sha256": "6ba418869bdf19c9fadc8cbfdb71c769bad2bc8276a3356b234646f0302be76a",
+     "stderr_lines_identical": true,
+     "stdout_lines_identical": true
+    },
+    "events.tsv": {
+     "committed_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429",
+     "identical": true,
+     "reproduced_sha256": "a9de0cfebcf6a9ab12b32199378d679cff02aea45a00e4562bdb67ec9a6c0429"
+    },
+    "hd_l2_h4_matches_known_capture": true,
+    "hd_l2_rollout_h4_M_capture": 0.8685551895096904,
+    "hd_l2_rollout_h4_M_pass_flag": "0",
+    "metrics.tsv": {
+     "committed_sha256": "66af19f23bce69808ce5e7e4ad457e7f461a598d768e8102d6aa85586da29db4",
+     "identical": true,
+     "reproduced_sha256": "66af19f23bce69808ce5e7e4ad457e7f461a598d768e8102d6aa85586da29db4"
+    },
+    "observations.tsv": {
+     "committed_sha256": "a6b0a8d23692b156408a0c474d265b29fb7a79c11f19b97f8955c31309f4ad51",
+     "identical": true,
+     "reproduced_sha256": "a6b0a8d23692b156408a0c474d265b29fb7a79c11f19b97f8955c31309f4ad51"
+    },
+    "observer_line": "CHILD_STDOUT R3_BP_PER_SEED candidate=C1 seed=5526746150047008937 TASK_LOCAL=1 V3=1 S1=1 M=0 M_FAILED=1 EVENTS=0 ORACLE_SEPARATED=1 ORACLE_MATCHED=1 CENTROID_SEPARATED=36.56917524601839 CENTROID_MATCHED=1.2874533614433068 SCIENCE_RELEASE=NO",
+    "observer_stream": {
+     "committed_sha256": "764db0a8d6a7186a6664c5ffeedf95a1343e0fa82d2b71b1f4caf20f012d1586",
+     "identical": true,
+     "reproduced_sha256": "764db0a8d6a7186a6664c5ffeedf95a1343e0fa82d2b71b1f4caf20f012d1586"
+    },
+    "tasks.tsv": {
+     "committed_sha256": "a9d7fc6249c707ed8b27f4d550aa18a79881f8dcff096d7977b50cc69fe4ed5a",
+     "identical": true,
+     "reproduced_sha256": "a9d7fc6249c707ed8b27f4d550aa18a79881f8dcff096d7977b50cc69fe4ed5a"
+    },
+    "v5.tsv": {
+     "committed_sha256": "bf206f8a29382dab4e6a0845844ccefa497e01b9eede9fb1174bb694c5fcca87",
+     "identical": true,
+     "reproduced_sha256": "bf206f8a29382dab4e6a0845844ccefa497e01b9eede9fb1174bb694c5fcca87"
+    }
+   },
+   "archived_commit_sha256": "f5992e836342e1ac11daf7063101a34cc119d23a366e067fa7214adb4e55cf0b"
+  }
+ },
+ "source_closure_commit": "6776cd4c18c83f9bf75b6ddabfa22428cb2ff090",
+ "toolchain": "rustc 1.97.0 (2d8144b78 2026-07-07); cargo 1.97.0 (c980f4866 2026-06-30); cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0; cmake 3.28.3"
+}

@@ -1,0 +1,37 @@
+{
+ "schema": "HECS_R3_SUCCESSOR_C2_Q2_REGISTRY_V1",
+ "law": "u64 big-endian of SHA-256(ASCII(\"HECS|R3-SUCCESSOR|C2|Q2|QUAL|\" + decimal(i)))[0..8], i = 0, 1, ...; reject 0, any excluded value or a duplicate",
+ "qual_q2_seeds": [
+  "614105602224108045",
+  "13431973024848494695",
+  "8015593928169052856",
+  "4368982056838705008",
+  "12192592809587942193",
+  "97214863508322549",
+  "6955956690753739111",
+  "18105131785740719551",
+  "17684696095471157875",
+  "11665294448906309688",
+  "16885114571500087964",
+  "12577501025278960659"
+ ],
+ "rejections": [],
+ "excluded": "every H-ECS registry in Git (113 listed values incl. the spent Q1 QUAL registry and C2 DEV), and the first 4096 indices of every known domain (hecs-r1/r2/r3 design/dev/qual, R3-AM DESIGN/DEV/QUAL/EXPLORATORY, C2 DEV, C2 DESIGN)",
+ "exclusion_set_size": 61457,
+ "spent_q1_registry": [
+  "10405860717610874745",
+  "17760219202278299362",
+  "14564880931009575015",
+  "15447012595138726224",
+  "8070250311440129494",
+  "7015268779680225457",
+  "12995885642664273032",
+  "4683001325509031006",
+  "5700582020531935958",
+  "15439875992717053813",
+  "2654106804044592861",
+  "1474235648324239766"
+ ],
+ "world_outcomes_inspected": false,
+ "task_screening": false
+}

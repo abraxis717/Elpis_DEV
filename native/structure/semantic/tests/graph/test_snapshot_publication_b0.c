@@ -118,7 +118,8 @@ static int test_symlink_and_race(void) {
         if(pid==0) {
             close(gate[1]);
             char c;
-            (void)read(gate[0],&c,1);
+            /* EOF (the parent closing the write end) releases every child. */
+            if (read(gate[0],&c,1) < 0) _exit(4);
             close(gate[0]);
             char out[65]; memset(out,'X',sizeof(out));
             int rc=semantic_snapshot_publish_cas(m,dir,out);

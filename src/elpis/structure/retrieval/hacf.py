@@ -27,8 +27,9 @@ import ctypes
 import hashlib
 import json
 import threading
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 
 from .contracts import RetrievalBundle, RetrievalItem, _digest
 from elpis.substrate.contracts import ContractError
@@ -66,6 +67,53 @@ class ContextEdge(ctypes.Structure):
 class _GraphPolicy(ctypes.Structure):
     _fields_ = [("graph_seed_limit", ctypes.c_uint32), ("graph_neighbors_per_seed", ctypes.c_uint32),
                 ("min_graph_authority", ctypes.c_uint32)]
+
+
+# -- Track C v1: admitted semantic relation -> verified context edges (retrieval_bridge.h) ---------------------
+# The proofs are opaque, exact ABI v1 record images produced by the native semantic admission layer. Python never
+# interprets their fields: it checks their exact sizes and hands them to the bridge, which re-validates every
+# identity, the admission membership and the primary witnesses against the epoch's own corpus.
+SEMANTIC_PROJECTION_SCOPE = "ADMITTED_CLAIM_TO_CLAIM_PRIMARY_WITNESSES_ONLY"
+_RECORD_KINDS = {"admission_layer": 1, "decision": 2, "receipt": 3, "span": 4, "attachment": 5, "relation": 6}
+
+
+class _Blob(ctypes.Structure):
+    _fields_ = [("bytes", ctypes.c_void_p), ("len", ctypes.c_size_t)]
+
+
+class _EndpointImages(ctypes.Structure):
+    _fields_ = [(name, _Blob) for name in ("decision", "receipt", "span", "attachment", "item_text")]
+
+
+class _ProofImages(ctypes.Structure):
+    _fields_ = [(name, _Blob) for name in ("admission_layer", "trusted_base_snapshot_digest", "relation",
+                                           "relation_decision", "relation_receipt")] + [
+        ("source", _EndpointImages), ("target", _EndpointImages)]
+
+
+@dataclass(frozen=True)
+class SemanticEndpointWitness:
+    """One claim endpoint: its admission decision and receipt, PRIMARY span and retrieval-item attachment record
+    images, and the exact primary item text."""
+    decision: bytes
+    receipt: bytes
+    span: bytes
+    attachment: bytes
+    item_text: bytes
+
+
+@dataclass(frozen=True)
+class SemanticRelationProof:
+    """One independently admitted claim -> claim relation with its admission layer and trusted base snapshot.
+
+    Supplied by an explicit structural-memory construction step; never inferred, never created here."""
+    admission_layer: bytes
+    trusted_base_snapshot_digest: bytes
+    relation: bytes
+    relation_decision: bytes
+    relation_receipt: bytes
+    source: SemanticEndpointWitness
+    target: SemanticEndpointWitness
 
 
 class RetrievalLibrary:
@@ -154,6 +202,16 @@ class RetrievalLibrary:
             fn.argtypes = [ctypes.c_void_p]
         lib.elpis_retrieval_env_graph_edge_count.restype = ctypes.c_uint32
         lib.elpis_retrieval_env_graph_edge_count.argtypes = [ctypes.c_void_p]
+        lib.elpis_retrieval_semantic_record_bytes.restype = ctypes.c_size_t
+        lib.elpis_retrieval_semantic_record_bytes.argtypes = [ctypes.c_uint32]
+        lib.elpis_retrieval_env_project_semantic_edges.restype = ctypes.c_int
+        lib.elpis_retrieval_env_project_semantic_edges.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(_ProofImages), ctypes.c_uint32, ctypes.POINTER(ContextEdge),
+            ctypes.c_char_p]
+        self.record_bytes = {name: int(lib.elpis_retrieval_semantic_record_bytes(kind))
+                             for name, kind in _RECORD_KINDS.items()}
+        if not all(self.record_bytes.values()):
+            raise RetrievalLibraryError("ABI_MISMATCH", "semantic record image sizes unavailable")
 
 
 class HacfHandle:
@@ -223,11 +281,80 @@ class HacfHandle:
             raise HybridRetrievalError("INTEGRITY", "volatile document digest mismatch")
         return result
 
+    def project_semantic_edges(self, proofs: Sequence[SemanticRelationProof]) -> tuple[ContextEdge, ...]:
+        """Track C v1: verify admitted claim -> claim relation proofs against THIS epoch's corpus, all-or-nothing.
+
+        Returns one ContextEdge per proof (subject/object = the two primary chunks, provenance = the audited
+        witness chain digest). Read-only: nothing is written, persisted or inferred. The edges are meant for a new
+        epoch over the same documents (:func:`build_semantic_context_epoch`); this epoch's graph never changes.
+        """
+        proofs = tuple(proofs)
+        if not all(type(p) is SemanticRelationProof for p in proofs):
+            raise HybridRetrievalError("PROJECTION_INVALID", "proofs must be SemanticRelationProof values")
+        sizes = self.library.record_bytes
+        keep: list[Any] = []
+
+        def blob(data, size=None):
+            if type(data) is not bytes or (size is not None and len(data) != size) or not data:
+                raise HybridRetrievalError("PROJECTION_INVALID", "record image of the wrong type or size")
+            buf = ctypes.create_string_buffer(data, len(data))
+            keep.append(buf)
+            return _Blob(ctypes.cast(buf, ctypes.c_void_p), len(data))
+
+        def endpoint(e):
+            if type(e) is not SemanticEndpointWitness:
+                raise HybridRetrievalError("PROJECTION_INVALID", "endpoints must be SemanticEndpointWitness values")
+            return _EndpointImages(blob(e.decision, sizes["decision"]), blob(e.receipt, sizes["receipt"]),
+                                   blob(e.span, sizes["span"]), blob(e.attachment, sizes["attachment"]),
+                                   blob(e.item_text))
+
+        images = (_ProofImages * max(len(proofs), 1))()
+        for i, p in enumerate(proofs):
+            images[i] = _ProofImages(blob(p.admission_layer, sizes["admission_layer"]),
+                                     blob(p.trusted_base_snapshot_digest, 32), blob(p.relation, sizes["relation"]),
+                                     blob(p.relation_decision, sizes["decision"]),
+                                     blob(p.relation_receipt, sizes["receipt"]),
+                                     endpoint(p.source), endpoint(p.target))
+        edges = (ContextEdge * max(len(proofs), 1))()
+        error = ctypes.create_string_buffer(256)
+        with self._guard:
+            if not self._valid:
+                raise HybridRetrievalError("HANDLE_CLOSED", "retrieval epoch already destroyed")
+            rc = self.library.lib.elpis_retrieval_env_project_semantic_edges(
+                self._ptr, images, len(proofs), edges, error)
+        if rc != 0:
+            raise HybridRetrievalError("PROJECTION_REFUSED", _text(error.value) or "refused")
+        return tuple(ContextEdge.from_buffer_copy(edges[i]) for i in range(len(proofs)))
+
     def __enter__(self) -> "HacfHandle":
         return self
 
     def __exit__(self, *args: Any) -> None:
         self.destroy()
+
+    def __del__(self) -> None:
+        # Lifetime safety net: an epoch dropped without destroy() must not keep its native corpus, vector index
+        # and shard resident for the life of the process. A live borrow keeps this handle reachable through its
+        # ingress (QueryIngress._owner), so none can exist here.
+        try:
+            self.destroy()
+        except Exception:
+            pass
+
+
+def build_semantic_context_epoch(library: RetrievalLibrary, state_root: str | Path,
+                                 documents: list[tuple[str, str, str, str]],
+                                 proofs: Sequence[SemanticRelationProof]) -> HacfHandle:
+    """An explicit structural-memory construction step (Track C v1, never invoked per turn).
+
+    Projects the admitted claim -> claim relation proofs against a graph-less epoch over ``documents`` (where the
+    primary witnesses are verified against the actual chunks), releases it, and returns a new volatile epoch over
+    the same documents carrying exactly those edges as its one immutable context graph, for bounded one-hop
+    retrieval. No relation is inferred; nothing is persisted.
+    """
+    with build_corpus_and_index(library, state_root, documents) as witness_epoch:
+        edges = witness_epoch.project_semantic_edges(proofs)
+    return build_corpus_and_index(library, state_root, documents, edges=edges)
 
 
 def _text(value: bytes | None) -> str:

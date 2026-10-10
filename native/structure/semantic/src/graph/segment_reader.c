@@ -95,6 +95,10 @@ static int read_segment_checked(const char *path,
     uint32_t op_count = 0;
     hacf_digest *inventory_candidate = NULL;
     uint32_t inventory_length = 0;
+    /* Declared before the first goto so every path to done sees them
+     * initialized; they are published only on SEMANTIC_OK. */
+    uint32_t target_matches = 0;
+    uint32_t typed_count = 0;
     if (fread(&candidate, sizeof(candidate), 1, f) != 1) goto done;
     rc = SEMANTIC_E_INVAL;
     if (candidate.abi_version != SEMANTIC_SEGMENT_ABI_VERSION) goto done;
@@ -173,8 +177,6 @@ static int read_segment_checked(const char *path,
         !digest_equal(&next, &candidate.hacf_next_snapshot)) goto done;
     /* Count a target only after every record, reference and graph projection
      * has been verified. One opened FILE*, no path-based second read. */
-    uint32_t target_matches = 0;
-    uint32_t typed_count = 0;
     if (typed_node_type) {
         for (uint32_t i = 0; i < records.node_count; ++i) {
             if (records.nodes[i].node_type == *typed_node_type &&

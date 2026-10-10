@@ -1,0 +1,44 @@
+// H-ECS R3 successor C2 scientific supervisor (DEV and QUAL); std only. RESEARCH_ONLY.
+// Derived from the frozen R3-BQ supervisor (source 35df429c...): SHA-256, file safety, write-once, replay refusal,
+// child stream capture, START/COMMIT/FAULT formats and the prefix chain are verbatim; the slot holds the single
+// candidate C2. A release binds every artifact identity; QUAL release additionally requires the committed DEV
+// disposition DEV_WORLD_MODEL_VALID_CONDITIONAL_QUAL_ELIGIBLE. No retry, replay, rescue or retuning exists here.
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, BufRead, BufReader, Read, Write};
+use std::path::{Path,PathBuf};
+use std::process::{Command,Stdio};
+use std::sync::{Arc,Mutex};
+use std::thread;
+
+const ROOT:&str="/mnt/primesauce/Elpis_DEV";
+const NAMES:[&str;5]=["observations.tsv","metrics.tsv","tasks.tsv","v5.tsv","events.tsv"];
+const ARM:&str="C2";
+const DEV:[u64;8]=[@@DEV@@];
+const QUAL:[u64;12]=[@@QUAL@@];
+const ENGINE:&str="build/hecs_r3_successor_c2_engine_r0/r3_bn_c2_dev_engine";
+const OBSERVER:&str="build/hecs_r3_successor_c2_engine_r0/r3_c2_observer";
+const K1:&str="build/hecs_r3_k1/native/ECS/libelpis_ecsg_k1.so";
+// Pinned artifact identities (frozen at C2 freeze; a drift refuses the release and every run).
+const ENGINE_SHA256:&str="@@ENGINE@@";
+const OBSERVER_SHA256:&str="@@OBSERVER@@";
+const K1_SHA256:&str="@@K1@@";
+const PROTOCOL_SHA256:&str="@@PROTOCOL@@";
+const DESIGN_RECORD_SHA256:&str="@@DESIGN@@";
+// Pinned source identities of the built artifacts (paths relative to the project root).
+const SOURCES:[(&str,&str,&str);9]=[
+ ("ENGINE_SOURCE_SHA256_C2","build/hecs_r3_successor_c2_engine_r0/native_source/src/bin/r3_bn_c2_dev_engine.rs","@@SRC_ENGINE@@"),
+ ("C2_TERMINAL_SOURCE_SHA256","build/hecs_r3_successor_c2_engine_r0/native_source/src/bin/support/r3_c2_terminal.rs","@@SRC_TERMINAL@@"),
+ ("TRAINING_CORE_SOURCE_SHA256","build/hecs_r3_successor_c2_engine_r0/native_source/src/bin/support/r3_training_core.rs","51488b07c8a5677c2b06737c5922b6b5c5919440110d37f5d75c2245b3dfc103"),
+ ("EMITTER_SOURCE_SHA256","build/hecs_r3_successor_c2_engine_r0/native_source/src/bin/support/r3_bd_emitter.rs","35bdfb020db3adcf74465360d84dd08399bd97c55f0a801249b72294b6c64064"),
+ ("CARGO_TOML_SHA256","build/hecs_r3_successor_c2_engine_r0/native_source/Cargo.toml","5ef432a6bdb917f1d6cc59f9d7b8d94ddf5b39f372cf3b008baf54d9669cdf04"),
+ ("CARGO_LOCK_SHA256","build/hecs_r3_successor_c2_engine_r0/native_source/Cargo.lock","1ebc8d90479de75a43d35a982674cb4fcd26c81d97a332ad3c2b2668eb0118e6"),
+ ("OBSERVER_SOURCE_SHA256","build/hecs_r3_successor_c2_engine_r0/r3_c2_observer.rs","@@SRC_OBSERVER@@"),
+ ("PROTOCOL_COPY_SHA256","evidence/hecs_r3_successor_c2/PROTOCOL_R3_C2.md","@@PROTOCOL@@"),
+ ("REGISTRIES_SHA256","evidence/hecs_r3_successor_c2/C2_REGISTRIES.json","@@REGISTRIES@@")];
+// hecs_r2 library source tree: sha256 over "<file> <sha256>\n" for every src/*.rs, sorted by file name.
+const LIB_TREE_SHA256:&str="@@LIBTREE@@";
+const LIB_BUILT:&str="build/hecs_r3_successor_c2_engine_r0/native_source/src";
+const LIB_REPOSITORY:&str="research/hecs_r2/rust/src";
+const RECONSTRUCTION_QUALIFICATION_SHA256:&str="b9a8b5a60137b4c9e3b510eb874179127decf0e11cebf87e41b862a0d69a16e8";
+const SRC_BYTES:&[u8]=include_bytes!("r3_c2_supervisor.rs");
+type R<T>=Result<T,String>;

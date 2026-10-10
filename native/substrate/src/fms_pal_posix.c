@@ -11,18 +11,30 @@
  *
  * Load verifies size and digest before returning any data. A mismatch is
  * reported as FMS_PAL_EDIGEST and no bytes are handed back.
+ *
+ * Finite physical envelope. Cold tokens are process-local: no API re-adopts a
+ * cold file after its owner exits, and fms_destroy drops every live object.
+ * The PAL therefore owns its cold root exclusively (a directory flock held
+ * for the PAL's lifetime; a second live owner is refused) and, on open,
+ * reclaims every file it alone names (".fms-tmp-XXXXXX" from an interrupted
+ * commit, "<sha256 hex>.<serial>.blob" from a crashed owner). Anything else
+ * in the root is left untouched. The live footprint is bounded by the FMS
+ * cold budget and object capacity; crashes cannot accumulate files.
  */
 #define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE 1
 
 #include "elpis/fms_pal_posix.h"
 #include "elpis/sha256.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
@@ -213,16 +225,60 @@ static void bundle_destroy(void *self) {
     free(b);
 }
 
+/* Names only this PAL ever creates in its cold root. */
+static int is_hex_lower(char ch) { return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'); }
+static int is_owned_cold_name(const char *n) {
+    static const char tmp[] = ".fms-tmp-";
+    if (strncmp(n, tmp, sizeof tmp - 1) == 0) return strlen(n) == sizeof tmp - 1 + 6;
+    for (int i = 0; i < 64; ++i) if (!is_hex_lower(n[i])) return 0;
+    if (n[64] != '.') return 0;
+    const char *d = n + 65;
+    size_t digits = 0;
+    while (d[digits] >= '0' && d[digits] <= '9') ++digits;
+    return digits >= 1 && digits <= 20 && strcmp(d + digits, ".blob") == 0;
+}
+
+/* Unlink every regular file this PAL names; called only while holding the
+ * exclusive root lock, so none of them can belong to a live owner. */
+static int reclaim_orphans(int dirfd) {
+    int scan = openat(dirfd, ".", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (scan < 0) return -1;
+    DIR *d = fdopendir(scan);
+    if (!d) { close(scan); return -1; }
+    int removed = 0, rc = 0;
+    struct dirent *e;
+    while ((e = readdir(d)) != NULL) {
+        if (!is_owned_cold_name(e->d_name)) continue;
+        struct stat st;
+        if (fstatat(dirfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) { rc = -1; break; }
+        if (!S_ISREG(st.st_mode)) continue;
+        if (unlinkat(dirfd, e->d_name, 0) != 0) { rc = -1; break; }
+        removed = 1;
+    }
+    closedir(d);
+    if (rc == 0 && removed && fsync(dirfd) != 0) rc = -1;
+    return rc;
+}
+
 fms_pal *fms_pal_posix_create(const char *cold_root) {
     if (!cold_root || !*cold_root) return NULL;
     if (mkdir_p(cold_root) != 0) return NULL;
+    int dirfd = open(cold_root, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (dirfd < 0) return NULL;
+    /* One live owner per cold root; released when the PAL closes dirfd. */
+    if (flock(dirfd, LOCK_EX | LOCK_NB) != 0 || reclaim_orphans(dirfd) != 0) {
+        close(dirfd);
+        return NULL;
+    }
 
     posix_bundle *b = (posix_bundle *)calloc(1, sizeof *b);
-    if (!b) return NULL;
+    if (!b) { close(dirfd); return NULL; }
     b->state.root = strdup(cold_root);
-    if (!b->state.root) { free(b); return NULL; }
-    if (pthread_mutex_init(&b->state.mu, NULL) != 0) { free(b->state.root); free(b); return NULL; }
-    b->state.dirfd = open(cold_root, O_RDONLY | O_DIRECTORY);
+    if (!b->state.root) { free(b); close(dirfd); return NULL; }
+    if (pthread_mutex_init(&b->state.mu, NULL) != 0) {
+        free(b->state.root); free(b); close(dirfd); return NULL;
+    }
+    b->state.dirfd = dirfd;
 
     fms_pal *p = &b->pal;
     p->self = &b->state;

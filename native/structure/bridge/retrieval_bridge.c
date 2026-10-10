@@ -22,6 +22,8 @@
 #include "elpis/vector_index.h"
 #include "elpis/vector_shard.h"
 #include "elpis/sha256.h"
+#include "elpis_semantic/identity.h"
+#include "elpis_semantic/semantic_context_projection.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -75,6 +77,113 @@ struct elpis_retrieval_env {
  * and never calls elpis_corpus_close on it. */
 void *elpis_retrieval_env_borrow_corpus(elpis_retrieval_env_t *env) {
     return env ? (void *)env->corpus : NULL;
+}
+
+size_t elpis_retrieval_semantic_record_bytes(uint32_t kind) {
+    switch (kind) {
+    case ELPIS_RETRIEVAL_RECORD_ADMISSION_LAYER: return sizeof(elpis_evidence_admission_v1);
+    case ELPIS_RETRIEVAL_RECORD_DECISION: return sizeof(elpis_evidence_admission_decision_v1);
+    case ELPIS_RETRIEVAL_RECORD_RECEIPT: return sizeof(elpis_evidence_admission_receipt_v1);
+    case ELPIS_RETRIEVAL_RECORD_SPAN: return sizeof(elpis_evidence_span_v1);
+    case ELPIS_RETRIEVAL_RECORD_ATTACHMENT: return sizeof(elpis_retrieval_item_attachment_v1);
+    case ELPIS_RETRIEVAL_RECORD_RELATION: return sizeof(elpis_evidence_relation_candidate_v1);
+    default: return 0;
+    }
+}
+
+/* Aligned private copies of one proof's record images; the projection reads only these. */
+typedef struct semantic_endpoint_copy {
+    elpis_evidence_admission_decision_v1 decision;
+    elpis_evidence_admission_receipt_v1 receipt;
+    elpis_evidence_span_v1 span;
+    elpis_retrieval_item_attachment_v1 attachment;
+} semantic_endpoint_copy;
+typedef struct semantic_proof_copy {
+    elpis_evidence_admission_v1 layer;
+    hacf_digest snapshot;
+    elpis_evidence_relation_candidate_v1 relation;
+    elpis_evidence_admission_decision_v1 relation_decision;
+    elpis_evidence_admission_receipt_v1 relation_receipt;
+    semantic_endpoint_copy source, target;
+} semantic_proof_copy;
+
+static int copy_image(void *dst, size_t size, const elpis_retrieval_blob *b) {
+    if (!b->bytes || b->len != size) return -1;
+    memcpy(dst, b->bytes, size);
+    return 0;
+}
+
+static int copy_endpoint(semantic_endpoint_copy *c, const elpis_retrieval_semantic_endpoint_v1 *e,
+                         elpis_semantic_cgraph_endpoint_v1 *out) {
+    if (copy_image(&c->decision, sizeof c->decision, &e->decision) ||
+        copy_image(&c->receipt, sizeof c->receipt, &e->receipt) ||
+        copy_image(&c->span, sizeof c->span, &e->span) ||
+        copy_image(&c->attachment, sizeof c->attachment, &e->attachment) ||
+        !e->item_text.bytes || e->item_text.len == 0 || e->item_text.len > 65535u) return -1;
+    out->decision = &c->decision;
+    out->receipt = &c->receipt;
+    out->span = &c->span;
+    out->attachment = &c->attachment;
+    out->item_text = (const uint8_t *)e->item_text.bytes;
+    out->item_text_bytes = (uint32_t)e->item_text.len;
+    return 0;
+}
+
+int elpis_retrieval_env_project_semantic_edges(elpis_retrieval_env_t *env,
+                                               const elpis_retrieval_semantic_proof_v1 *proofs,
+                                               uint32_t count,
+                                               elpis_context_edge_input *edges_out,
+                                               char error_buf[256]) {
+    if (error_buf) error_buf[0] = '\0';
+    if (!env || !env->corpus || !edges_out || (count && !proofs)) {
+        if (error_buf) snprintf(error_buf, 256, "E_INVAL: projection arguments");
+        return -1;
+    }
+    if (count > ELPIS_CGRAPH_MAX_EDGES) {
+        if (error_buf) snprintf(error_buf, 256, "E_LIMIT: %u proofs exceed %u", count, ELPIS_CGRAPH_MAX_EDGES);
+        return -1;
+    }
+    if (!count) return 0;
+    elpis_context_edge_input *edges = calloc(count, sizeof *edges);
+    semantic_proof_copy *c = calloc(1, sizeof *c);
+    int rc = 0;
+    if (!edges || !c) {
+        if (error_buf) snprintf(error_buf, 256, "E_NOMEM: projection");
+        rc = -1;
+    }
+    for (uint32_t i = 0; rc == 0 && i < count; ++i) {
+        const elpis_retrieval_semantic_proof_v1 *in = &proofs[i];
+        elpis_semantic_cgraph_projection_v1 p;
+        memset(&p, 0, sizeof p);
+        memset(c, 0, sizeof *c);
+        if (copy_image(&c->layer, sizeof c->layer, &in->admission_layer) ||
+            copy_image(&c->snapshot, sizeof c->snapshot, &in->trusted_base_snapshot_digest) ||
+            copy_image(&c->relation, sizeof c->relation, &in->relation) ||
+            copy_image(&c->relation_decision, sizeof c->relation_decision, &in->relation_decision) ||
+            copy_image(&c->relation_receipt, sizeof c->relation_receipt, &in->relation_receipt) ||
+            copy_endpoint(&c->source, &in->source, &p.source) ||
+            copy_endpoint(&c->target, &in->target, &p.target)) {
+            if (error_buf) snprintf(error_buf, 256, "E_RECORD: proof %u record image size", i);
+            rc = -1;
+            break;
+        }
+        p.admission_layer = &c->layer;
+        p.trusted_base_snapshot_digest = &c->snapshot;
+        p.relation = &c->relation;
+        p.relation_decision = &c->relation_decision;
+        p.relation_receipt = &c->relation_receipt;
+        p.corpus = env->corpus;
+        elpis_semantic_cgraph_audit_v1 audit;
+        int prc = elpis_semantic_cgraph_project_v1(&p, &edges[i], &audit);
+        if (prc != SEMANTIC_OK) {
+            if (error_buf) snprintf(error_buf, 256, "E_PROOF: proof %u refused (%d)", i, prc);
+            rc = -1;
+        }
+    }
+    if (rc == 0) memcpy(edges_out, edges, (size_t)count * sizeof *edges);
+    free(c);
+    free(edges);
+    return rc;
 }
 
 int elpis_retrieval_env_copy_document(elpis_retrieval_env_t *env, const char *digest,
