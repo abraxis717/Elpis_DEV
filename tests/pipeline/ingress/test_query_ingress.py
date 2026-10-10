@@ -24,6 +24,7 @@ from elpis.pipeline.ingress import (
 from elpis.structure.retrieval.hacf import RetrievalLibrary, build_corpus_and_index
 
 from ...conftest import require_native_library
+from ...structure.native_bridge_fixture import pin_bridge
 
 DOCS = [
     ("spec", "Intervals whose touching endpoints may merge keep the maximum end.", "elpis.docs", "canonical"),
@@ -36,16 +37,31 @@ ZERO_AUTHORITY = ("semantic_authority", "admission_authority", "execution_author
 
 
 @pytest.fixture(scope="module")
-def library():
-    return IngressLibrary(require_native_library("elpis_ingress_bridge"))
+def library(tmp_path_factory):
+    # TEST-ONLY copied artifact and locally pinned test catalog; no production fallback.
+    path, root, authority = pin_bridge(
+        require_native_library("elpis_ingress_bridge"),
+        tmp_path_factory.mktemp("sealed-query-ingress"), "elpis_ingress_bridge")
+    return IngressLibrary(path, root=root, authority=authority)
 
 
 @pytest.fixture(scope="module")
 def corpus_root(tmp_path_factory):
-    retrieval = RetrievalLibrary(require_native_library("elpis_retrieval_bridge"))
+    path, root, authority = pin_bridge(
+        require_native_library("elpis_retrieval_bridge"),
+        tmp_path_factory.mktemp("sealed-query-retrieval"), "elpis_retrieval_bridge")
+    retrieval = RetrievalLibrary(path, root=root, authority=authority)
     state = tmp_path_factory.mktemp("ingress-state")
-    build_corpus_and_index(retrieval, state, DOCS).destroy()
-    return state / "corpus"
+    def _tree():
+        return tuple(sorted(str(p.relative_to(state)) for p in state.rglob("*")))
+    before = _tree()
+    handle = build_corpus_and_index(retrieval, state, DOCS)
+    try:
+        assert _tree() == before, "HACF construction created disk artifacts"
+        yield handle
+        assert _tree() == before, "HACF ingress created disk artifacts"
+    finally:
+        handle.destroy()
 
 
 @pytest.fixture
@@ -109,17 +125,16 @@ def test_input_beyond_the_bounded_profile_publishes_nothing(ingress):
 
 
 def test_ingress_never_mutates_the_corpus(library, corpus_root):
-    def snapshot():
-        return {p.name: p.read_bytes() for p in sorted((corpus_root / "corpus").rglob("*")) if p.is_file()}
-
-    before_blobs = snapshot()
+    before_manifest = corpus_root.corpus_manifest_json
+    before_digest = corpus_root.corpus_digest
     with QueryIngress(library, corpus_root) as handle:
         counts = handle.corpus_counts()
         manifest = handle.run(POSITIVE).corpus_manifest_digest
         handle.run(CONTRADICTION)
         assert handle.corpus_counts() == counts == (2, 2)
         assert handle.run(POSITIVE).corpus_manifest_digest == manifest
-    assert snapshot() == before_blobs
+    assert corpus_root.corpus_manifest_json == before_manifest
+    assert corpus_root.corpus_digest == before_digest == manifest
 
 
 def test_context_edges_reach_the_proposal(library, corpus_root, ingress):
@@ -160,12 +175,16 @@ def test_no_corpus_is_ever_created(library, tmp_path):
 
 
 def test_symlinked_or_relative_corpus_root_is_refused(library, corpus_root, tmp_path):
+    # Legacy path-mode negatives. Neither value is a HACF handle.
+    placeholder = tmp_path / "not-a-corpus"
+    placeholder.mkdir()
     link = tmp_path / "link"
-    link.symlink_to(corpus_root, target_is_directory=True)
+    link.symlink_to(placeholder, target_is_directory=True)
     with pytest.raises(IngressError):
         QueryIngress(library, link)
-    with pytest.raises(IngressError):
-        QueryIngress(library, Path(os.path.relpath(corpus_root)))
+    with pytest.raises(IngressError) as info:
+        QueryIngress(library, Path("relative-corpus"))
+    assert info.value.code == "INVALID"
 
 
 def test_closed_handle_refuses_work(library, corpus_root):

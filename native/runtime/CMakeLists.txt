@@ -63,3 +63,22 @@ add_test(NAME runtime.cargo_test
   COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/cargo-test"
           "${ELPIS_CARGO}" test --offline --locked --release --features testing --manifest-path "${_crate}/Cargo.toml")
 set_tests_properties(runtime.cargo_test PROPERTIES LABELS runtime TIMEOUT 600)
+
+# Explicit opt-in Linux autonomous launcher. Linux Landlock+seccomp is the
+# process-wide enforcement boundary; without invocation it grants no protection.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_executable(elpis_autonomous_run containment/elpis_autonomous_run.c)
+  # The native target verifier registers every target. This is a production
+  # executable, not a test or a manifest-declared native library; there is no
+  # elpis_add_executable() wrapper in native/elpis.cmake. Use its registry.
+  _elpis_register(runtime elpis_autonomous_run executable)
+  target_compile_definitions(elpis_autonomous_run PRIVATE _GNU_SOURCE=1)
+
+  # The shared elpis_add_test() helper handles subsystem registration, CTest
+  # naming, test scratch, Release assertions, warnings and timeout.
+  elpis_add_test(runtime test_autonomous_containment
+    SOURCES tests/test_autonomous_containment.c
+    ARGS $<TARGET_FILE:elpis_autonomous_run>
+    TIMEOUT 30)
+  target_compile_definitions(test_autonomous_containment PRIVATE _GNU_SOURCE=1)
+endif()

@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
     /* ---- 1. ingest the committed corpus ---------------------------------- */
     CASE("committed corpus ingests to stable identities");
     elpis_corpus *corpus = nullptr;
-    CHECK(elpis_corpus_open((base + "/state").c_str(), &corpus) == 0, "corpus open");
+    CHECK(elpis_corpus_open_ephemeral(&corpus) == 0, "corpus open");
     if (!corpus) return 1;
 
     for (size_t i = 0; i < sizeof kFiles / sizeof *kFiles; i++) {

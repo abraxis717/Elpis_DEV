@@ -21,6 +21,7 @@
 #define ELPIS_RETRIEVAL_BRIDGE_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #include "elpis/context_graph.h"
 
@@ -61,6 +62,12 @@ elpis_retrieval_env_t *elpis_retrieval_env_create(const char *state_root,
                                                   uint32_t edge_count,
                                                   char error_buf[256]);
 void elpis_retrieval_env_destroy(elpis_retrieval_env_t *env);
+/* Borrowed, unowned native pointer. Only valid while env remains alive.
+ * The ingress bridge MUST NOT close it and Python owns the lifetime. */
+void *elpis_retrieval_env_borrow_corpus(elpis_retrieval_env_t *env);
+/* Bounded verified document read: copies into caller memory, never filesystem. */
+int elpis_retrieval_env_copy_document(elpis_retrieval_env_t *env, const char *digest,
+                                     void *dst, size_t capacity, size_t *actual);
 
 /* The graph snapshot digest (64 zeros without a graph) and its edge count. */
 const char *elpis_retrieval_env_graph_digest(elpis_retrieval_env_t *env);

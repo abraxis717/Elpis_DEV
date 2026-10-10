@@ -22,9 +22,10 @@ static std::string identity(const elpis_regex_hacf_query_ingress_result_v1* r) {
     return out;
 }
 int main(int argc,char** argv) {
+    (void)argv;
     req(argc==2,"state root required");
     elpis_corpus* corpus=nullptr; elpis_context_graph* graph=nullptr;
-    req(elpis_corpus_open(argv[1],&corpus)==0,"corpus");
+    req(elpis_corpus_open_ephemeral(&corpus)==0,"corpus");
     req(elpis_context_graph_create(nullptr,0,&graph)==0,"graph");
     elpis_regex_hacf_query_ingress_result_v1* out=nullptr;
     req(elpis_regex_hacf_query_ingress_from_regex_result_v2(nullptr,corpus,graph,&out)==-1 && !out,"null Regex result");

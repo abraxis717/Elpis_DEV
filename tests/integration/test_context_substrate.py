@@ -14,7 +14,6 @@ from dataclasses import fields
 import hashlib
 import inspect
 import json
-import shutil
 
 import pytest
 
@@ -83,13 +82,16 @@ def corpus_documents(scale):
 def build(retrieval_library, root, extra=0):
     handle = build_corpus_and_index(retrieval_library, root, corpus_documents(extra))
     manifest = handle.corpus_manifest_json
-    handle.destroy()
-    return root / "corpus", manifest
+    assert not (root / "corpus").exists()
+    assert not (root / "cold").exists()
+    return handle, manifest
 
 
 @pytest.fixture(scope="module")
 def substrate(retrieval_library, tmp_path_factory):
-    return build(retrieval_library, tmp_path_factory.mktemp("context-substrate"))
+    pair = build(retrieval_library, tmp_path_factory.mktemp("context-substrate"))
+    yield pair
+    pair[0].destroy()
 
 
 @pytest.fixture
@@ -103,10 +105,28 @@ def model(native_workspace, fms_file_library):
 
 def prepare(runtime, ingress_library, corpus_root, manifest, engine, budget=BUDGET):
     with QueryIngress(ingress_library, corpus_root) as ingress:
-        return runtime.admit_context(ingress=ingress, task=POSITIVE, corpus_root=corpus_root,
+        return runtime.admit_context(ingress=ingress, task=POSITIVE, corpus_root=None,
                                      corpus_manifest=manifest, context_snapshot=CONTEXT,
                                      model=engine.target.model_identity, tokenizer=engine.target.config.tokenizer,
-                                     budget=budget, max_document_bytes=1 << 20)
+                                     budget=budget, max_document_bytes=1 << 20,
+                                     hacf_handle=corpus_root)
+
+
+def test_borrowed_ingress_never_creates_files_and_prevents_owner_destruction(retrieval_library,
+                                                                                  ingress_library, tmp_path):
+    from elpis.structure.retrieval.errors import HybridRetrievalError
+    root = tmp_path / "must-stay-absent"
+    handle = build_corpus_and_index(retrieval_library, root, corpus_documents(0))
+    try:
+        for _ in range(16):
+            with QueryIngress(ingress_library, handle) as ingress:
+                assert ingress.corpus_counts()[0] == 3
+                with pytest.raises(HybridRetrievalError, match="HANDLE_BUSY"):
+                    handle.destroy()
+                ingress.run(POSITIVE)
+        assert not root.exists(), "HACF created a persistent directory during borrowed ingress"
+    finally:
+        handle.destroy()
 
 
 def test_ingress_to_admission_through_verified_hacf_objects(runtime, ingress_library, substrate, model):
@@ -119,7 +139,10 @@ def test_ingress_to_admission_through_verified_hacf_objects(runtime, ingress_lib
     assert admission.objects and all(o.object in hits for o in admission.objects)
     assert any(hits[o.object]["ordinal"] > 0 and hits[o.object]["byte_start"] > 0 for o in admission.objects), \
         "a later chunk of the multi-chunk document must be admitted"
-    blobs = {d: (corpus_root / "corpus" / f"{d}.blob").read_bytes() for d in {h["doc_digest"] for h in hits.values()}}
+    from elpis.structure.retrieval.objects import CorpusManifest
+    pinned = CorpusManifest.verified(manifest, expected_digest=corpus_root.corpus_digest)
+    blobs = {d: corpus_root.read_document(d, pinned.document(d).size_bytes)
+             for d in {h["doc_digest"] for h in hits.values()}}
     for obj in admission.objects:
         hit = hits[obj.object]
         text = normalize(blobs[hit["doc_digest"]][hit["byte_start"]:hit["byte_end"]])
@@ -199,6 +222,7 @@ def test_resident_model_state_stays_bounded_as_hacf_grows(retrieval_library, ing
         shapes.add(tuple((f.name, type(getattr(result.state, f.name)).__name__) for f in fields(result.state)))
         peaks.append(peak)
         admitted.append((chunks, len(admission.objects), len(admission.tokens)))
+        corpus_root.destroy()
     assert admitted[-1][0] >= 10 * admitted[0][0] and sizes[-1] >= 100 * sizes[0]  # HACF really grew
     assert len(shapes) == 1 and max(peaks) <= engine.target.config.local_window
     assert all(objs <= BUDGET.max_objects and toks <= BUDGET.max_tokens for _, objs, toks in admitted)
@@ -218,19 +242,20 @@ def test_preparation_record_carries_no_model_state():
     assert {f.name for f in fields(ContextPreparation)} == {"admission", "ingress"}
 
 
-def test_tampered_blob_or_wrong_manifest_refuses_admission(ingress_library, substrate, model, tmp_path,
-                                                           runtime_library):
+def test_tampered_volatile_source_or_wrong_manifest_refuses_admission(ingress_library, substrate, model,
+                                                                      tmp_path, runtime_library, monkeypatch):
     corpus_root, manifest = substrate
     engine, _ = model
-    copy = tmp_path / "corpus"
-    shutil.copytree(corpus_root, copy)
-    for blob in (copy / "corpus").glob("*.blob"):
-        data = bytearray(blob.read_bytes())
-        data[-1] ^= 1
-        blob.write_bytes(bytes(data))
+    authentic = corpus_root.read_document
+    def tamper(digest, size):
+        data = bytearray(authentic(digest, size))
+        if data: data[0] ^= 1
+        return bytes(data)
     with Runtime(RuntimeConfig(tmp_path / "continuity", runtime_library)) as runtime:
-        with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
-            prepare(runtime, ingress_library, copy, manifest, engine)
+        with monkeypatch.context() as scope:
+            scope.setattr(corpus_root, "read_document", tamper)
+            with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
+                prepare(runtime, ingress_library, corpus_root, manifest, engine)
         with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
             prepare(runtime, ingress_library, corpus_root, json.dumps({"documents": []}), engine)
         assert runtime.continuity.snapshot().generation == 1

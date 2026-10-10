@@ -10,8 +10,8 @@ authority flags are zero by construction. This binding re-reads them and
 refuses any result that claims otherwise. Ambiguous lexical evidence is
 rejected before any batch is built.
 
-The library path is always supplied by the caller: there is no environment
-variable lookup and no repository-relative fallback. The corpus root must hold
+The library path, trusted root and independently pinned deployment authority are all required:
+there is no environment variable lookup and no repository-relative fallback. The corpus root must hold
 an existing HACF corpus. The bridge never creates one and never mutates it.
 """
 
@@ -22,6 +22,13 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
+from elpis.structure.retrieval.hacf import HacfHandle
+
+from elpis.substrate.contracts import ContractError
+from elpis.structure.native_loader import load_structure_bridge
+
+from elpis.substrate.contracts import ContractError
+from elpis.structure.native_loader import load_structure_bridge
 
 BRIDGE_ABI_VERSION = 1
 REGEX_ABI_VERSION = 1
@@ -87,14 +94,16 @@ def _sig(fn, argtypes, restype):
 
 
 class IngressLibrary:
-    """One explicitly loaded ``libelpis_ingress_bridge``."""
+    """One deployment-pinned, substrate-sealed ``libelpis_ingress_bridge``."""
 
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, *, root=None, authority=None) -> None:
         path = Path(path)
         if not path.is_absolute() or not path.is_file():
             raise IngressError("LIB_NOT_FOUND", str(path))
         try:
-            lib = ctypes.CDLL(str(path))
+            lib = load_structure_bridge(root, path, authority, 'elpis_ingress_bridge')
+        except ContractError as exc:
+            raise IngressError("LIB_AUTHORITY", str(exc)) from exc
         except OSError as exc:
             raise IngressError("LIB_LOAD_FAILED", str(exc)) from exc
         self.path = path
@@ -102,13 +111,21 @@ class IngressLibrary:
         pvp = ctypes.POINTER(vp)
         r = "elpis_streaming_regex_"
         q = "elpis_regex_hacf_query_ingress_"
-        self.bridge_abi = _sig(lib.elpis_ingress_bridge_abi_version, [], u32)
-        self.regex_abi = _sig(getattr(lib, r + "abi_version_v1"), [], u32)
-        self.query_abi = _sig(getattr(lib, q + "abi_version_v1"), [], u32)
+        try:
+            bridge_version = getattr(lib, "elpis_ingress_bridge_abi_version")
+            regex_version = getattr(lib, r + "abi_version_v1")
+            query_version = getattr(lib, q + "abi_version_v1")
+        except AttributeError as exc:
+            raise IngressError("ABI_MISMATCH", "ingress ABI version symbol missing") from exc
+        self.bridge_abi = _sig(bridge_version, [], u32)
+        self.regex_abi = _sig(regex_version, [], u32)
+        self.query_abi = _sig(query_version, [], u32)
         if (self.bridge_abi(), self.regex_abi(), self.query_abi()) != (
                 BRIDGE_ABI_VERSION, REGEX_ABI_VERSION, QUERY_ABI_VERSION):
             raise IngressError("ABI_MISMATCH", str(path))
 
+        self.env_open_borrowed = _sig(lib.elpis_ingress_env_open_borrowed,
+            [vp, ctypes.POINTER(ContextEdge), u32, pvp, cp], ctypes.c_int)
         self.parse_v1 = _sig(getattr(lib, r + "parse_bytes_v1"), [cp, sz, sz, sz, pvp], ctypes.c_int)
         self.stream_create = _sig(getattr(lib, r + "stream_create_v2"), [vp, pvp], ctypes.c_int)
         self.stream_feed = _sig(getattr(lib, r + "stream_feed_v2"), [vp, cp, sz], ctypes.c_int)
@@ -308,11 +325,13 @@ def _copy_query(lib: IngressLibrary, result: ctypes.c_void_p) -> QueryIngressRes
 class QueryIngress:
     """Owning handle: an existing HACF corpus plus one immutable context graph."""
 
-    def __init__(self, library: IngressLibrary, corpus_root: str | Path,
+    def __init__(self, library: IngressLibrary, corpus_root: str | Path | HacfHandle,
                  edges: Iterable[ContextEdge] = ()) -> None:
-        corpus_root = Path(corpus_root)
-        if not corpus_root.is_absolute():
-            raise IngressError("INVALID", "corpus root must be absolute")
+        owner = corpus_root if type(corpus_root) is HacfHandle else None
+        if owner is None:
+            corpus_root = Path(corpus_root)
+            if not corpus_root.is_absolute():
+                raise IngressError("INVALID", "corpus root must be absolute")
         edge_list = list(edges)
         if not all(type(e) is ContextEdge for e in edge_list):
             raise IngressError("INVALID", "edges must be ContextEdge")
@@ -320,11 +339,25 @@ class QueryIngress:
         self.library = library
         self._env = ctypes.c_void_p()
         error = ctypes.create_string_buffer(256)
-        rc = library.env_open(str(corpus_root).encode(), array, len(edge_list), ctypes.byref(self._env), error)
+        self._owner = None
+        if owner is None:
+            rc = library.env_open(str(corpus_root).encode(), array, len(edge_list), ctypes.byref(self._env), error)
+        else:
+            borrowed = owner._borrow_corpus()  # lease before native call releases the GIL
+            try:
+                rc = library.env_open_borrowed(borrowed, array, len(edge_list),
+                                               ctypes.byref(self._env), error)
+            except BaseException:
+                owner._release_borrow()
+                raise
         if rc != 0:
+            if owner is not None:
+                owner._release_borrow()
             self._env = ctypes.c_void_p()
             raise IngressError("CORPUS" if rc == -2 else "GRAPH" if rc == -3 else "INVALID",
                                error.value.decode("utf-8", "replace"))
+        if owner is not None:
+            self._owner = owner
 
     def run(self, task: bytes, *, chunk_size: int = DEFAULT_CHUNK_BYTES) -> QueryIngressResult:
         if not self._env:
@@ -355,6 +388,9 @@ class QueryIngress:
         if self._env:
             self.library.env_close(self._env)
             self._env = ctypes.c_void_p()
+        if self._owner is not None:
+            self._owner._release_borrow()
+            self._owner = None
 
     def __enter__(self) -> "QueryIngress":
         return self

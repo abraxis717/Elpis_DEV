@@ -305,6 +305,7 @@ static void oversized_rejection(
 }
 
 int main(int argc, char **argv) {
+    (void)argv;
     req(
         argc == 2,
         "usage: test_query_ingress_bounded STATE_ROOT");
@@ -315,7 +316,7 @@ int main(int argc, char **argv) {
     CorpusGuard corpus;
 
     req(
-        elpis_corpus_open(argv[1], &corpus.p) == 0,
+        elpis_corpus_open_ephemeral(&corpus.p) == 0,
         "failed to open qualification corpus");
 
     req(corpus.p != nullptr, "corpus returned null");

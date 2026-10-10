@@ -229,7 +229,8 @@ class Runtime:
     # -- structure -> codec: ingress -> adapter -> HACF resolution -> rendering ----------
     def admit_context(self, *, ingress: QueryIngress, task: bytes, corpus_root: Path, corpus_manifest,
                       context_snapshot: str, model: str, tokenizer: str, budget: ContextBudget,
-                      max_document_bytes: int, rules: tuple = (), text_tokenizer=None) -> ContextPreparation:
+                      max_document_bytes: int, rules: tuple = (), text_tokenizer=None,
+                      hacf_handle=None) -> ContextPreparation:
         """Resolve proposed HACF objects and render them, frozen, through the DSV4 codec.
 
         ``corpus_manifest`` is the corpus manifest JSON the caller obtained from
@@ -250,9 +251,13 @@ class Runtime:
                                     rules=rules)
         claims = object_claims(payload, expected_payload=pin)
         manifest = CorpusManifest.verified(corpus_manifest, expected_digest=result.corpus_manifest_digest)
+        if hacf_handle is not None and ingress._owner is not hacf_handle:
+            raise CompositionError("CORPUS_IDENTITY", "ingress is not borrowed from the same HACF epoch")
+        if ingress._owner is not None and hacf_handle is None:
+            raise CompositionError("CORPUS_IDENTITY", "borrowed ingress requires its source handle")
         resolved, omitted = resolve_chunks(corpus_root, manifest, claims, max_objects=budget.max_objects,
                                            max_text_bytes=budget.max_bytes,
-                                           max_document_bytes=max_document_bytes)
+                                           max_document_bytes=max_document_bytes, source_handle=hacf_handle)
         from elpis.inference.admission import SYNTHETIC_NIBBLE16
         from elpis.inference.text import DSV41_RENDERER
         admission = admit_context(model=model, tokenizer=tokenizer, context_snapshot=context_snapshot,

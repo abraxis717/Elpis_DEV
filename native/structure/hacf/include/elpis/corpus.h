@@ -34,7 +34,9 @@ typedef struct elpis_hit {
     uint64_t byte_end;
 } elpis_hit;
 
-int         elpis_corpus_open(const char *state_root, elpis_corpus **out);
+/* One bounded retrieval epoch, wholly in RAM: no directory, SQLite file,
+ * WAL, immutable blob, manifest file, temp file, or FMS cold store. */
+int         elpis_corpus_open_ephemeral(elpis_corpus **out);
 void        elpis_corpus_close(elpis_corpus *c);
 const char *elpis_corpus_error(const elpis_corpus *c);
 
@@ -80,8 +82,6 @@ int elpis_corpus_chunk_lookup(elpis_corpus *c, const char *chunk_digest,
                               elpis_chunk_ref *out);
 
 int elpis_corpus_manifest_json(elpis_corpus *c, char **json, char digest[65]);
-int elpis_corpus_manifest_write(elpis_corpus *c, const char *path,
-                                char digest[65]);
 void elpis_free(void *p);
 
 #ifdef __cplusplus

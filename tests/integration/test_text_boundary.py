@@ -25,11 +25,11 @@ def empty_admission(tokenizer, model="a" * 64):
 
 
 def test_real_hacf_content_is_rendered_by_the_admitted_tokenizer(runtime, tokenizer, ingress, corpus):
-    prepared = runtime.admit_context(ingress=ingress, task=POSITIVE, corpus_root=corpus[1],
+    prepared = runtime.admit_context(ingress=ingress, task=POSITIVE, corpus_root=None,
                                      corpus_manifest=corpus[0].corpus_manifest_json,
                                      context_snapshot=CONTEXT, model="a" * 64, tokenizer=tokenizer.identity,
                                      budget=ContextBudget(4, 4096, 2048), max_document_bytes=1 << 20,
-                                     text_tokenizer=tokenizer)
+                                     text_tokenizer=tokenizer, hacf_handle=corpus[0])
     admission = prepared.admission
     assert admission.renderer == DSV41_RENDERER and admission.objects
     assert prepared.ingress.batch_published and runtime.continuity.snapshot().generation == 1

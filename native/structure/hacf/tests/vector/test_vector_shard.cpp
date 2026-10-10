@@ -167,21 +167,13 @@ static void case_roundtrip() {
 }
 
 static void case_file_io() {
-    CASE("shard files are immutable on disk");
+    CASE("shard representation remains memory-only");
     Fixture f = make_fixture(4);
     char dg[65];
     std::vector<uint8_t> img = build_ok(f, dg);
-    std::string path = base + "/shard-a.vshard";
-    CHECK(elpis_vshard_write(path.c_str(), img.data(), img.size()) == 0, "write");
-    CHECK(elpis_vshard_write(path.c_str(), img.data(), img.size()) != 0, "overwrite was allowed");
-
-    void *rb = nullptr;
-    size_t rn = 0;
-    CHECK(elpis_vshard_read_file(path.c_str(), &rb, &rn) == 0, "read back");
-    CHECK(rn == img.size() && std::memcmp(rb, img.data(), rn) == 0, "file differs from memory image");
     char reason[64] = {0};
-    CHECK(elpis_vshard_verify(rb, rn, nullptr, reason, sizeof reason) == 0, "file failed verify: %s", reason);
-    std::free(rb);
+    CHECK(elpis_vshard_verify(img.data(),img.size(),nullptr,reason,sizeof reason)==0,
+          "RAM shard failed verify: %s",reason);
 }
 
 static void case_rejections() {

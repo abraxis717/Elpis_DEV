@@ -6,23 +6,19 @@
 
 #include <sqlite3.h>
 
-#include <cerrno>
-#include <climits>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <fcntl.h>
 #include <string>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <vector>
+#include <unordered_map>
+#include <utility>
 
 struct elpis_corpus {
     sqlite3 *db = nullptr;
-    std::string root;
-    std::string blobs;
     std::string error;
+    size_t ephemeral_bytes = 0;
+    std::unordered_map<std::string, std::vector<unsigned char>> memory_docs;
 };
 
 namespace {
@@ -61,76 +57,6 @@ bool valid_media(const char *s) {
     return s && (!std::strcmp(s,ELPIS_MT_TEXT) || !std::strcmp(s,ELPIS_MT_MARKDOWN) ||
                  !std::strcmp(s,ELPIS_MT_CODE) || !std::strcmp(s,ELPIS_MT_JSON) ||
                  !std::strcmp(s,ELPIS_MT_JSONL));
-}
-
-int mkdir_one(const std::string &p) {
-    if (::mkdir(p.c_str(),0700)==0 || errno==EEXIST) return 0;
-    return -1;
-}
-
-int mkdir_p(const std::string &p) {
-    if (p.empty()) return -1;
-    std::string cur;
-    if (p[0]=='/') cur="/";
-    size_t i=0;
-    while (i<p.size()) {
-        while (i<p.size() && p[i]=='/') ++i;
-        size_t j=i; while (j<p.size() && p[j]!='/') ++j;
-        if (j==i) break;
-        if (cur.size()>1 && cur.back()!='/') cur.push_back('/');
-        cur.append(p,i,j-i);
-        if (mkdir_one(cur)!=0) return -1;
-        i=j;
-    }
-    return 0;
-}
-
-int write_all(int fd, const void *data, size_t len) {
-    const unsigned char *p=(const unsigned char *)data;
-    while (len) {
-        ssize_t n=::write(fd,p,len);
-        if (n<0) { if (errno==EINTR) continue; return -1; }
-        if (n==0) return -1;
-        p+=(size_t)n; len-=(size_t)n;
-    }
-    return 0;
-}
-
-int read_all(int fd, void *data, size_t len) {
-    unsigned char *p=(unsigned char *)data;
-    while (len) {
-        ssize_t n=::read(fd,p,len);
-        if (n<0) { if (errno==EINTR) continue; return -1; }
-        if (n==0) return -1;
-        p+=(size_t)n; len-=(size_t)n;
-    }
-    return 0;
-}
-
-int fsync_parent(const std::string &path) {
-    size_t slash=path.find_last_of('/');
-    std::string parent=slash==std::string::npos ? "." : path.substr(0,slash);
-    int fd=::open(parent.c_str(),O_RDONLY|O_DIRECTORY);
-    if (fd<0) return -1;
-    int rc=::fsync(fd); ::close(fd); return rc;
-}
-
-int write_blob_atomic(elpis_corpus *c, const std::string &final,
-                      const void *bytes, size_t len) {
-    if (::access(final.c_str(),F_OK)==0) return 0;
-    std::string tmp=c->blobs+"/.ingest-XXXXXX";
-    std::vector<char> name(tmp.begin(),tmp.end()); name.push_back('\0');
-    int fd=::mkstemp(name.data());
-    if (fd<0) { set_error(c,"mkstemp failed"); return -1; }
-    int rc=0;
-    if (write_all(fd,bytes,len)!=0 || ::fsync(fd)!=0) rc=-1;
-    if (::close(fd)!=0) rc=-1;
-    if (rc==0 && ::rename(name.data(),final.c_str())!=0) {
-        if (errno==EEXIST) ::unlink(name.data()); else rc=-1;
-    }
-    if (rc==0 && fsync_parent(final)!=0) rc=-1;
-    if (rc!=0) { ::unlink(name.data()); set_error(c,"atomic blob write failed"); }
-    return rc;
 }
 
 int exec_sql(elpis_corpus *c, const char *sql) {
@@ -175,22 +101,6 @@ std::string literal_fts_query(const char *q) {
     out.push_back('\"'); return out;
 }
 
-int file_digest(const std::string &path, uint64_t expected, char out[65]) {
-    int fd=::open(path.c_str(),O_RDONLY);
-    if(fd<0) return -1;
-    struct stat st{};
-    if(::fstat(fd,&st)!=0 || (uint64_t)st.st_size!=expected) { ::close(fd); return -1; }
-    elpis_sha256_ctx h; elpis_sha256_init(&h);
-    unsigned char buf[65536];
-    for (;;) {
-        ssize_t n=::read(fd,buf,sizeof buf);
-        if(n<0){ if(errno==EINTR) continue; ::close(fd); return -1; }
-        if(n==0) break;
-        elpis_sha256_update(&h,buf,(size_t)n);
-    }
-    ::close(fd); uint8_t d[32]; elpis_sha256_final(&h,d); elpis_hex32(d,out); return 0;
-}
-
 void copy_text(char *dst, size_t cap, const unsigned char *src) {
     if (!dst || !cap) return;
     if (!src) { dst[0]=0; return; }
@@ -201,15 +111,14 @@ void copy_text(char *dst, size_t cap, const unsigned char *src) {
 
 extern "C" {
 
-int elpis_corpus_open(const char *state_root, elpis_corpus **out) {
-    if (!state_root || !*state_root || !out) return -1;
+/* HACF corpus is volatile-only. Persistent corpus import, SQLite files, WAL,
+ * document blobs and manifest publication have been retired entirely. */
+int elpis_corpus_open_ephemeral(elpis_corpus **out) {
+    if (!out) return -1;
     *out=nullptr;
     elpis_corpus *c=new(std::nothrow) elpis_corpus;
-    if(!c) return -1;
-    c->root=state_root; c->blobs=c->root+"/corpus";
-    if(mkdir_p(c->root)!=0 || mkdir_p(c->blobs)!=0) { delete c; return -1; }
-    std::string dbpath=c->root+"/metadata.sqlite";
-    if (sqlite3_open_v2(dbpath.c_str(), &c->db,
+    if (!c) return -1;
+    if (sqlite3_open_v2(":memory:", &c->db,
                         SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX,
                         nullptr) != SQLITE_OK) {
         if (c->db) sqlite3_close(c->db);
@@ -217,7 +126,8 @@ int elpis_corpus_open(const char *state_root, elpis_corpus **out) {
         return -1;
     }
     sqlite3_busy_timeout(c->db,5000);
-    if(exec_sql(c,"PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;")!=0 ||
+    const char *pragma = "PRAGMA foreign_keys=ON; PRAGMA temp_store=MEMORY; PRAGMA journal_mode=MEMORY;";
+    if(exec_sql(c,pragma)!=0 ||
        exec_sql(c,
         "CREATE TABLE IF NOT EXISTS documents("
         " digest TEXT PRIMARY KEY CHECK(length(digest)=64),"
@@ -251,6 +161,11 @@ int elpis_corpus_ingest_bytes(elpis_corpus *c, const void *bytes, size_t len,
                               const elpis_ingest_meta *m, elpis_ingest_result *out) {
     if(!c || (!bytes && len) || !m || !out) return -1;
     std::memset(out,0,sizeof *out); c->error.clear();
+    /* Exact per-epoch and per-document RAM admission; reject BEFORE hashing,
+     * chunking or allocating. No append and no capacity auto-expansion. */
+    if (len > (1u<<20)) {
+        set_error(c,"ephemeral HACF document byte budget exceeded"); return -1;
+    }
     if(!valid_token(m->ns,95) || !valid_authority(m->authority) || !valid_media(m->media_type) ||
        !valid_token(m->origin,4096)) { set_error(c,"invalid ingestion metadata"); return -1; }
     uint8_t dg[32]; elpis_sha256(bytes,len,dg); elpis_hex32(dg,out->doc_digest);
@@ -261,6 +176,9 @@ int elpis_corpus_ingest_bytes(elpis_corpus *c, const void *bytes, size_t len,
     int sr=sqlite3_step(exists.p);
     if(sr==SQLITE_ROW) { out->duplicate=1; out->chunk_count=(uint32_t)sqlite3_column_int64(exists.p,0); return 0; }
     if(sr!=SQLITE_DONE) { set_sql_error(c,"duplicate check"); return -1; }
+    if (len > (8u<<20) - c->ephemeral_bytes) {
+        set_error(c,"ephemeral HACF epoch byte budget exceeded"); return -1;
+    }
 
     elpis_chunk_profile prof; elpis_chunk_profile_default(&prof);
     elpis_chunk *chunks=nullptr; size_t n_chunks=0;
@@ -269,10 +187,15 @@ int elpis_corpus_ingest_bytes(elpis_corpus *c, const void *bytes, size_t len,
     }
     char pd[65];
     if(elpis_chunk_profile_digest_checked(&prof,m->media_type,pd)!=0) { elpis_chunks_free(chunks); return -1; }
-    std::string blob=c->blobs+"/"+out->doc_digest+".blob";
-    if(write_blob_atomic(c,blob,bytes,len)!=0) { elpis_chunks_free(chunks); return -1; }
+    std::vector<unsigned char> copy(len);
+    if (len) std::memcpy(copy.data(),bytes,len);
+    c->memory_docs.emplace(out->doc_digest,std::move(copy));
 
-    if(exec_sql(c,"BEGIN IMMEDIATE;")!=0) { elpis_chunks_free(chunks); ::unlink(blob.c_str()); return -1; }
+    if(exec_sql(c,"BEGIN IMMEDIATE;")!=0) {
+        elpis_chunks_free(chunks);
+        c->memory_docs.erase(out->doc_digest);
+        return -1;
+    }
     bool ok=true;
     Stmt idoc, ichunk, ifts;
     ok &= prepare(c,idoc,"INSERT INTO documents(digest,bytes,media_type,namespace,authority,origin,chunk_profile_digest) VALUES(?1,?2,?3,?4,?5,?6,?7);")==0;
@@ -301,9 +224,13 @@ int elpis_corpus_ingest_bytes(elpis_corpus *c, const void *bytes, size_t len,
         ok=sqlite3_step(ifts.p)==SQLITE_DONE;
     }
     if(ok && exec_sql(c,"COMMIT;")==0) {
-        out->chunk_count=(uint32_t)n_chunks; out->duplicate=0; elpis_chunks_free(chunks); return 0;
+        out->chunk_count=(uint32_t)n_chunks; out->duplicate=0;
+        c->ephemeral_bytes+=len;
+        elpis_chunks_free(chunks); return 0;
     }
-    set_sql_error(c,"ingestion transaction"); exec_sql(c,"ROLLBACK;"); ::unlink(blob.c_str()); elpis_chunks_free(chunks); return -1;
+    set_sql_error(c,"ingestion transaction"); exec_sql(c,"ROLLBACK;");
+    c->memory_docs.erase(out->doc_digest);
+    elpis_chunks_free(chunks); return -1;
 }
 
 int elpis_corpus_counts(elpis_corpus *c, uint64_t *documents, uint64_t *chunks) {
@@ -355,13 +282,17 @@ int elpis_corpus_document_bytes(elpis_corpus *c, const char *digest, void **out,
     Stmt s; if(prepare(c,s,"SELECT bytes FROM documents WHERE digest=?1;")!=0) return -1;
     sqlite3_bind_text(s.p,1,digest,-1,SQLITE_STATIC); if(sqlite3_step(s.p)!=SQLITE_ROW) return -1;
     uint64_t n=(uint64_t)sqlite3_column_int64(s.p,0); if(n>SIZE_MAX) return -1;
-    std::string path=c->blobs+"/"+digest+".blob";
-    int fd=::open(path.c_str(),O_RDONLY); if(fd<0) { set_error(c,"document blob missing"); return -1; }
-    struct stat st{}; if(::fstat(fd,&st)!=0 || (uint64_t)st.st_size!=n) { ::close(fd); set_error(c,"document size mismatch"); return -1; }
-    void *p=std::malloc(n ? (size_t)n : 1); if(!p){::close(fd);return -1;}
-    if(n && read_all(fd,p,(size_t)n)!=0){std::free(p);::close(fd);return -1;} ::close(fd);
-    uint8_t dg[32]; char hex[65]; elpis_sha256(p,(size_t)n,dg); elpis_hex32(dg,hex);
-    if(std::strcmp(hex,digest)!=0){ std::memset(p,0,(size_t)n); std::free(p); set_error(c,"document digest mismatch"); return -1; }
+    auto it=c->memory_docs.find(digest);
+    if(it==c->memory_docs.end() || it->second.size()!=n) {
+        set_error(c,"ephemeral document missing or size mismatch"); return -1;
+    }
+    const auto &v=it->second;
+    uint8_t dg[32]; char hex[65];
+    elpis_sha256(v.data(),v.size(),dg); elpis_hex32(dg,hex);
+    if(std::strcmp(hex,digest)!=0) { set_error(c,"ephemeral document digest mismatch"); return -1; }
+    void *p=std::malloc(n ? (size_t)n : 1);
+    if(!p) return -1;
+    if(n) std::memcpy(p,v.data(),(size_t)n);
     *out=p; *len=(size_t)n; return 0;
 }
 
@@ -384,8 +315,13 @@ int elpis_corpus_verify(elpis_corpus *c, uint64_t *ok, uint64_t *bad,
     Stmt s; if(prepare(c,s,"SELECT digest,bytes FROM documents ORDER BY digest;")!=0)return -1;
     for(;;){int rc=sqlite3_step(s.p);if(rc==SQLITE_DONE)break;if(rc!=SQLITE_ROW)return -1;
         const char *d=(const char *)sqlite3_column_text(s.p,0);uint64_t n=(uint64_t)sqlite3_column_int64(s.p,1);
-        std::string path=c->blobs+"/"+d+".blob";char got[65];
-        if(file_digest(path,n,got)==0 && std::strcmp(got,d)==0)++good;
+        char got[65]; int digest_rc=-1;
+        auto it=c->memory_docs.find(d);
+        if(it!=c->memory_docs.end() && it->second.size()==n) {
+            uint8_t bytes_hash[32]; elpis_sha256(it->second.data(),it->second.size(),bytes_hash);
+            elpis_hex32(bytes_hash,got); digest_rc=0;
+        }
+        if(digest_rc==0 && std::strcmp(got,d)==0)++good;
         else {++broken;if(first_bad&&first_bad_cap&&first_bad[0]==0)std::snprintf(first_bad,first_bad_cap,"%s",d);}
     }
     if (ok) *ok = good;
@@ -526,15 +462,6 @@ int elpis_corpus_manifest_json(elpis_corpus *c, char **out, char digest[65]) {
     j+="]";j+=",\"document_count\":"+std::to_string(docs)+",\"schema\":\"elpis-corpus-manifest-v1\"}";
     uint8_t dg[32];elpis_sha256(j.data(),j.size(),dg);elpis_hex32(dg,digest);
     char *p=(char *)std::malloc(j.size()+1);if(!p)return -1;std::memcpy(p,j.data(),j.size());p[j.size()]=0;*out=p;return 0;
-}
-
-int elpis_corpus_manifest_write(elpis_corpus *c, const char *path, char digest[65]) {
-    if (!c || !path || !*path || !digest) return -1;
-    char *j = nullptr;
-    if (elpis_corpus_manifest_json(c, &j, digest) != 0) return -1;
-    size_t n=std::strlen(j);int fd=::open(path,O_WRONLY|O_CREAT|O_EXCL,0444);if(fd<0){std::free(j);return -1;}
-    int rc=(write_all(fd,j,n)==0&&::fsync(fd)==0&&::close(fd)==0&&fsync_parent(path)==0)?0:-1;
-    if(rc!=0){::close(fd);::unlink(path);}std::free(j);return rc;
 }
 
 void elpis_free(void *p){std::free(p);}

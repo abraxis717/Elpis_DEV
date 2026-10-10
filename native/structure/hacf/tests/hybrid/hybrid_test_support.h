@@ -48,7 +48,7 @@ struct Env {
             {"gamma", "gamma vector semantic neighbor", "elpis.code", "canonical"},
             {"delta", "delta unrelated background note", "elpis.notes", "advisory"}
         };
-        if (elpis_corpus_open((root + "/corpus").c_str(), &corpus) != 0) return -1;
+        if (elpis_corpus_open_ephemeral(&corpus) != 0) return -1;
         for (const D &d : docs) {
             elpis_ingest_meta m{};
             m.ns = d.ns; m.authority = d.auth; m.media_type = ELPIS_MT_TEXT; m.origin = d.label;

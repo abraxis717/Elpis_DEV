@@ -6,15 +6,11 @@
 #include "elpis/sha256.h"
 #include "hybrid_internal.h"
 
-#include <cerrno>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <fcntl.h>
 #include <string>
 #include <memory>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <utility>
 #include <vector>
 
@@ -64,19 +60,6 @@ static std::string hex_bytes(const char *s, size_t n) {
     }
     return o;
 }
-
-static int write_all(int fd, const void *data, size_t n) {
-    const uint8_t *p = (const uint8_t *)data;
-    while (n) {
-        ssize_t w = ::write(fd, p, n);
-        if (w < 0) { if (errno == EINTR) continue; return -1; }
-        if (w == 0) return -1;
-        p += (size_t)w;
-        n -= (size_t)w;
-    }
-    return 0;
-}
-
 
 } // namespace
 
@@ -268,39 +251,6 @@ int elpis_retrieval_bundle_json(const elpis_retrieval_bundle *b,
     *json_out = p;
     std::memcpy(digest_out, b->bundle_digest, 65);
     return 0;
-}
-
-int elpis_retrieval_bundle_write(const elpis_retrieval_bundle *b, const char *path,
-                                 char digest_out[65]) {
-    if (!b || !path || !*path || !digest_out) return -1;
-    try {
-        std::string p(path);
-        size_t slash = p.find_last_of('/');
-        std::string dir = slash == std::string::npos ? "." : p.substr(0, slash);
-        std::string tmpl = dir + "/.retrieval-bundle-XXXXXX";
-        std::vector<char> tmp(tmpl.begin(), tmpl.end());
-        tmp.push_back(0);
-        int fd = ::mkstemp(tmp.data());
-        if (fd < 0) return -1;
-        auto fail = [&](int open_fd) {
-            if (open_fd >= 0) ::close(open_fd);
-            ::unlink(tmp.data());
-            return -1;
-        };
-        if (write_all(fd, b->json.data(), b->json.size()) != 0 || ::fsync(fd) != 0)
-            return fail(fd);
-        if (::close(fd) != 0) return fail(-1);
-        if (::link(tmp.data(), path) != 0) return fail(-1);
-        (void)::unlink(tmp.data());
-        int dfd = ::open(dir.c_str(), O_RDONLY | O_DIRECTORY);
-        if (dfd < 0) return -1;
-        if (::fsync(dfd) != 0) { ::close(dfd); return -1; }
-        if (::close(dfd) != 0) return -1;
-        std::memcpy(digest_out, b->bundle_digest, 65);
-        return 0;
-    } catch (...) {
-        return -1;
-    }
 }
 
 } // extern C

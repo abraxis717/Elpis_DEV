@@ -26,6 +26,7 @@ from elpis.structure.retrieval.hacf import (
 from elpis.structure.retrieval.validation import validate_bundle
 
 from ..conftest import require_native_library
+from .native_bridge_fixture import pin_bridge
 
 DOCS = [
     ("alpha", "alpha engine exact retrieval anchor", "elpis.docs", "canonical"),
@@ -59,8 +60,11 @@ V1_BUNDLE = {
 
 
 @pytest.fixture(scope="module")
-def library():
-    return RetrievalLibrary(require_native_library("elpis_retrieval_bridge"))
+def library(tmp_path_factory):
+    path, root, authority = pin_bridge(require_native_library("elpis_retrieval_bridge"),
+                                       tmp_path_factory.mktemp("sealed-context-graph"),
+                                       "elpis_retrieval_bridge")
+    return RetrievalLibrary(path, root=root, authority=authority)
 
 
 @pytest.fixture(scope="module")
@@ -366,10 +370,11 @@ def test_the_environment_owns_and_destroys_its_graph(library, tmp_path, chunk):
     assert len(digests) == 1
 
 
-def test_a_library_without_the_v2_bridge_abi_is_refused():
-    other = require_native_library("elpis_ingress_bridge")
+def test_a_library_without_the_v2_bridge_abi_is_refused(tmp_path):
+    path, root, authority = pin_bridge(require_native_library("elpis_ingress_bridge"),
+                                       tmp_path, "elpis_retrieval_bridge")
     with pytest.raises(RetrievalLibraryError) as info:
-        RetrievalLibrary(other)
+        RetrievalLibrary(path, root=root, authority=authority)
     assert info.value.code == "ABI_MISMATCH"
 
 

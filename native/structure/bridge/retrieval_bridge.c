@@ -71,29 +71,29 @@ struct elpis_retrieval_env {
     size_t shard_len;
 };
 
-uint32_t elpis_retrieval_bridge_abi_version(void) {
-    return ELPIS_RETRIEVAL_BRIDGE_ABI_VERSION;
+/* Epoch ownership stays with retrieval. Ingress receives a borrowed pointer
+ * and never calls elpis_corpus_close on it. */
+void *elpis_retrieval_env_borrow_corpus(elpis_retrieval_env_t *env) {
+    return env ? (void *)env->corpus : NULL;
 }
 
-static int mkdirp(const char *p) {
-    if (!p || !*p) return RETRIEVAL_E_INVAL;
-
-    char tmp[1024];
-    int written = snprintf(tmp, sizeof tmp, "%s", p);
-    if (written < 0 || (size_t)written >= sizeof tmp) return RETRIEVAL_E_LIMIT;
-
-    for (char *c = tmp + 1; *c; c++) {
-        if (*c != '/') continue;
-        *c = '\0';
-        if (mkdir(tmp, 0755) != 0 && errno != EEXIST) {
-            *c = '/';
-            return RETRIEVAL_E_IO;
-        }
-        *c = '/';
+int elpis_retrieval_env_copy_document(elpis_retrieval_env_t *env, const char *digest,
+                                     void *dst, size_t capacity, size_t *actual) {
+    if (actual) *actual=0;
+    if (!env || !env->corpus || !digest || !dst || !actual || capacity > (1u<<20)) return -1;
+    void *bytes=NULL; size_t size=0;
+    if (elpis_corpus_document_bytes(env->corpus,digest,&bytes,&size)!=0) return -1;
+    int rc=-1;
+    if (size<=capacity) {
+        if(size) memcpy(dst,bytes,size);
+        *actual=size; rc=0;
     }
+    elpis_free(bytes);
+    return rc;
+}
 
-    if (mkdir(tmp, 0755) != 0 && errno != EEXIST) return RETRIEVAL_E_IO;
-    return 0;
+uint32_t elpis_retrieval_bridge_abi_version(void) {
+    return ELPIS_RETRIEVAL_BRIDGE_ABI_VERSION;
 }
 
 static void elpis_retrieval_env_cleanup(elpis_retrieval_env_t *env) {
@@ -112,14 +112,6 @@ static elpis_retrieval_env_t *elpis_retrieval_env_fail(
     if (error_buf) snprintf(error_buf, 256, "%s: %s", code, detail);
     elpis_retrieval_env_cleanup(env);
     return NULL;
-}
-
-static int path_join(
-    char *out, size_t out_cap, const char *root, const char *leaf) {
-    if (!out || out_cap == 0 || !root || !leaf) return RETRIEVAL_E_INVAL;
-    int written = snprintf(out, out_cap, "%s/%s", root, leaf);
-    if (written < 0 || (size_t)written >= out_cap) return RETRIEVAL_E_LIMIT;
-    return 0;
 }
 
 int elpis_retrieval_checked_manifest_copy(
@@ -202,11 +194,18 @@ elpis_retrieval_env_t *elpis_retrieval_env_create(const char *state_root,
         if (error_buf) snprintf(error_buf, 256, "E_LIMIT: edge_count exceeds %u", ELPIS_CGRAPH_MAX_EDGES);
         return NULL;
     }
+    /* No implicit disk-backed state, even if caller passes a state_root.
+     * Input bytes are finite and checked before strlen-dependent ingestion. */
     if (n_docs > RETRIEVAL_MAX_DOCS) {
         if (error_buf) {
             snprintf(error_buf, 256, "E_LIMIT: n_docs=%d exceeds %d",
                      n_docs, RETRIEVAL_MAX_DOCS);
         }
+        return NULL;
+    }
+
+    if (strlen(state_root) >= 512) {
+        if (error_buf) snprintf(error_buf,256,"E_LIMIT: state_root exceeds former native path boundary");
         return NULL;
     }
 
@@ -217,20 +216,10 @@ elpis_retrieval_env_t *elpis_retrieval_env_create(const char *state_root,
     }
     memcpy(env->graph_digest, kZeroDigest, sizeof kZeroDigest);
 
-    char corpus_dir[512];
-    int path_rc = path_join(corpus_dir, sizeof corpus_dir, state_root, "corpus");
-    if (path_rc == RETRIEVAL_E_LIMIT)
-        return elpis_retrieval_env_fail(env, error_buf, "E_LIMIT", "corpus path exceeds native boundary");
-    if (path_rc != 0)
-        return elpis_retrieval_env_fail(env, error_buf, "E_INVAL", "invalid corpus path");
-    int mkdir_rc = mkdirp(corpus_dir);
-    if (mkdir_rc == RETRIEVAL_E_LIMIT)
-        return elpis_retrieval_env_fail(env, error_buf, "E_LIMIT", "corpus mkdir path exceeds native boundary");
-    if (mkdir_rc != 0)
-        return elpis_retrieval_env_fail(env, error_buf, "E_IO", "corpus mkdir failed");
-
-    if (elpis_corpus_open(corpus_dir, &env->corpus) != 0)
-        return elpis_retrieval_env_fail(env, error_buf, "E_NATIVE", "corpus_open failed");
+    /* The inference retrieval epoch is volatile: no corpus directory,
+     * copied blob, persistent SQLite metadata, WAL, or temporary journal. */
+    if (elpis_corpus_open_ephemeral(&env->corpus) != 0)
+        return elpis_retrieval_env_fail(env, error_buf, "E_NATIVE", "ephemeral corpus_open failed");
 
     for (int i = 0; i < n_docs; i++) {
         if (!labels[i] || !texts[i] || !namespaces[i] || !authorities[i])
@@ -383,33 +372,22 @@ elpis_retrieval_env_t *elpis_retrieval_env_create(const char *state_root,
     for (int i = 0; i < n_inputs; i++) free((void *)inputs[i].vector);
 
     {
-        char cold_root[512];
-        path_rc = path_join(cold_root, sizeof cold_root, state_root, "cold");
-        if (path_rc == RETRIEVAL_E_LIMIT)
-            return elpis_retrieval_env_fail(env, error_buf, "E_LIMIT", "cold path exceeds native boundary");
-        if (path_rc != 0)
-            return elpis_retrieval_env_fail(env, error_buf, "E_INVAL", "invalid cold path");
-        mkdir_rc = mkdirp(cold_root);
-        if (mkdir_rc == RETRIEVAL_E_LIMIT)
-            return elpis_retrieval_env_fail(env, error_buf, "E_LIMIT", "cold mkdir path exceeds native boundary");
-        if (mkdir_rc != 0)
-            return elpis_retrieval_env_fail(env, error_buf, "E_IO", "cold mkdir failed");
-
-        fms_pal *pal = fms_pal_posix_create(cold_root);
+        /* Reuse the already present RAM-only PAL; never create COLD blobs. */
+        fms_pal *pal = fms_pal_posix_create_ram_only();
         if (!pal)
-            return elpis_retrieval_env_fail(env, error_buf, "E_NATIVE", "fms_pal failed");
+            return elpis_retrieval_env_fail(env, error_buf, "E_NATIVE", "ram_only fms_pal failed");
 
         fms_config cfg;
         memset(&cfg, 0, sizeof cfg);
         cfg.tier_budget[FMS_WARM] = 16ull << 20;
-        cfg.tier_budget[FMS_COLD] = 512ull << 20;
+        cfg.tier_budget[FMS_COLD] = 0;
         cfg.domain_ceiling[FMS_DOM_RAM] = 16ull << 20;
-        cfg.domain_ceiling[FMS_DOM_STORAGE] = 512ull << 20;
+        cfg.domain_ceiling[FMS_DOM_STORAGE] = 0;
         cfg.high_wm = 0.90f;
         cfg.low_wm = 0.70f;
         cfg.max_objects = 64;
         cfg.hot_absent_policy = FMS_REJECT;
-        cfg.cold_absent_policy = FMS_FOLD_DOWN;
+        cfg.cold_absent_policy = FMS_REJECT;
         env->fms = fms_create(&cfg, pal);
         if (!env->fms)
             return elpis_retrieval_env_fail(env, error_buf, "E_NATIVE", "fms_create failed");
