@@ -49,6 +49,7 @@ from elpis.substrate.synthetic import SyntheticFileAssets
 from tests.conftest import find_native_library
 from tests.integration.conftest import POSITIVE
 from tests.integration.test_context_substrate import SCALES, corpus_documents
+from tests.structure.native_bridge_fixture import pin_bridge
 
 BUDGET = ContextBudget(max_objects=6, max_bytes=1200, max_tokens=2400)
 CONTEXT = initial_snapshot().digest
@@ -71,12 +72,11 @@ def measure(scale, workspace, engine, resident, retrieval, ingress_library):
     root = workspace / f"scale-{scale}"
     handle = build_corpus_and_index(retrieval, root, corpus_documents(scale))
     manifest_json = handle.corpus_manifest_json
-    handle.destroy()
-    corpus_root = root / "corpus"
+    corpus_root = None
     manifest_doc = json.loads(manifest_json)
     timings = {k: [] for k in ("ingress", "resolve", "admit", "begin_prefill", "per_token", "finalize")}
     for _ in range(REPEATS):
-        with QueryIngress(ingress_library, corpus_root) as ingress:
+        with QueryIngress(ingress_library, handle) as ingress:
             t0 = time.perf_counter()
             result = ingress.run(POSITIVE)
             t1 = time.perf_counter()
@@ -89,7 +89,8 @@ def measure(scale, workspace, engine, resident, retrieval, ingress_library):
         t2 = time.perf_counter()
         manifest = CorpusManifest.verified(manifest_json, expected_digest=result.corpus_manifest_digest)
         resolved, omitted = resolve_chunks(corpus_root, manifest, claims, max_objects=BUDGET.max_objects,
-                                           max_text_bytes=BUDGET.max_bytes, max_document_bytes=1 << 22)
+                                           max_text_bytes=BUDGET.max_bytes, max_document_bytes=1 << 22,
+                                           source_handle=handle)
         t3 = time.perf_counter()
         admission = admit_context(model=engine.target.model_identity, tokenizer=engine.target.config.tokenizer,
                                   context_snapshot=CONTEXT, corpus=result.corpus_manifest_digest,
@@ -111,6 +112,7 @@ def measure(scale, workspace, engine, resident, retrieval, ingress_library):
                            ("begin_prefill", t5 - t4), ("per_token", (t6 - t5) / GENERATE),
                            ("finalize", t7 - t6)):
             timings[key].append(value)
+    handle.destroy()
     config = engine.target.config
     history_tokens = 2 * sum(d["size_bytes"] for d in manifest_doc["documents"])
     return {
@@ -145,8 +147,19 @@ def run(scales=tuple(SCALES)):
         try:
             target, resident, _ = make_fixture(provider, workspace / "dsv4")
             engine = PrincipalEngine(target)
-            retrieval = RetrievalLibrary(_library("elpis_retrieval_bridge"))
-            ingress_library = IngressLibrary(_library("elpis_ingress_bridge"))
+            # The benchmark is a test-only consumer. The two independently
+            # named fixture pins are bound to copied ELFs under its workspace;
+            # production cannot generate authority from a candidate artifact.
+            retrieval_path, retrieval_root, retrieval_authority = pin_bridge(
+                _library("elpis_retrieval_bridge"), workspace / "native" / "sealed-retrieval",
+                "elpis_retrieval_bridge")
+            ingress_path, ingress_root, ingress_authority = pin_bridge(
+                _library("elpis_ingress_bridge"), workspace / "native" / "sealed-ingress",
+                "elpis_ingress_bridge")
+            retrieval = RetrievalLibrary(retrieval_path, root=retrieval_root,
+                                         authority=retrieval_authority)
+            ingress_library = IngressLibrary(ingress_path, root=ingress_root,
+                                             authority=ingress_authority)
             return [measure(s, workspace, engine, resident, retrieval, ingress_library) for s in scales]
         finally:
             provider.close()

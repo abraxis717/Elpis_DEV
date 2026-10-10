@@ -77,8 +77,8 @@ static void case_deterministic_identity() {
     CASE("identical bytes produce identical document and chunk digests");
     std::string a = base + "/det-a", b = base + "/det-b";
     elpis_corpus *ca = nullptr, *cb = nullptr;
-    CHECK(elpis_corpus_open(a.c_str(), &ca) == 0, "open a");
-    CHECK(elpis_corpus_open(b.c_str(), &cb) == 0, "open b");
+    CHECK(elpis_corpus_open_ephemeral(&ca) == 0, "open a");
+    CHECK(elpis_corpus_open_ephemeral(&cb) == 0, "open b");
     if (!ca || !cb) return;
 
     elpis_ingest_meta m = meta("elpis.docs", "reference", ELPIS_MT_MARKDOWN, "doc.md");
@@ -113,7 +113,7 @@ static void case_idempotent_ingest() {
     CASE("duplicate ingestion is idempotent");
     std::string r = base + "/idem";
     elpis_corpus *c = nullptr;
-    CHECK(elpis_corpus_open(r.c_str(), &c) == 0, "open");
+    CHECK(elpis_corpus_open_ephemeral(&c) == 0, "open");
     if (!c) return;
     elpis_ingest_meta m = meta("elpis.docs", "reference", ELPIS_MT_MARKDOWN, "doc.md");
     elpis_ingest_result r1, r2;
@@ -127,7 +127,7 @@ static void case_idempotent_ingest() {
     CHECK(d1 == d2 && k1 == k2, "counts changed on re-ingest: %llu/%llu -> %llu/%llu",
           (unsigned long long)d1, (unsigned long long)k1, (unsigned long long)d2, (unsigned long long)k2);
     CHECK(std::string(r1.doc_digest) == r2.doc_digest, "digest changed");
-    CHECK(count_files(r + "/corpus") == 1, "duplicate blob written");
+    CHECK(count_files(r) == -1, "corpus unexpectedly created a directory");
     elpis_corpus_close(c);
 }
 
@@ -135,7 +135,7 @@ static void case_identifier_retrieval() {
     CASE("exact identifier retrieval through FTS5");
     std::string r = base + "/fts";
     elpis_corpus *c = nullptr;
-    CHECK(elpis_corpus_open(r.c_str(), &c) == 0, "open");
+    CHECK(elpis_corpus_open_ephemeral(&c) == 0, "open");
     if (!c) return;
     elpis_ingest_meta m1 = meta("elpis.docs", "reference", ELPIS_MT_MARKDOWN, "host.md");
     elpis_ingest_meta m2 = meta("elpis.docs", "reference", ELPIS_MT_MARKDOWN, "other.md");
@@ -177,7 +177,7 @@ static void case_filters() {
     CASE("strict namespace and authority filtering");
     std::string r = base + "/filters";
     elpis_corpus *c = nullptr;
-    CHECK(elpis_corpus_open(r.c_str(), &c) == 0, "open");
+    CHECK(elpis_corpus_open_ephemeral(&c) == 0, "open");
     if (!c) return;
     const char *docA = "shared term alpha ELPIS_ROOT_A in namespace one\n";
     const char *docB = "shared term alpha ELPIS_ROOT_A in namespace two\n";
@@ -254,32 +254,14 @@ static void case_media_types() {
 }
 
 static void case_corruption_rejected() {
-    CASE("corrupt corpus blob is rejected, not repaired");
-    std::string r = base + "/corrupt";
+    CASE("nonexistent document is refused without disk recovery");
     elpis_corpus *c = nullptr;
-    CHECK(elpis_corpus_open(r.c_str(), &c) == 0, "open");
+    CHECK(elpis_corpus_open_ephemeral(&c)==0,"open");
     if (!c) return;
-    elpis_ingest_meta m = meta("elpis.docs", "reference", ELPIS_MT_MARKDOWN, "host.md");
-    elpis_ingest_result res;
-    CHECK(elpis_corpus_ingest_bytes(c, kElpisDoc, std::strlen(kElpisDoc), &m, &res) == 0, "ingest");
-
-    uint64_t ok = 0, bad = 0;
-    CHECK(elpis_corpus_verify(c, &ok, &bad, nullptr, 0) == 0, "verify clean corpus");
-    CHECK(ok == 1 && bad == 0, "clean verify reported ok=%llu bad=%llu",
-          (unsigned long long)ok, (unsigned long long)bad);
-
-    std::string blob = r + "/corpus/" + res.doc_digest + ".blob";
-    int fd = open(blob.c_str(), O_RDWR);
-    CHECK(fd >= 0, "open blob");
-    if (fd >= 0) { unsigned char x = '#'; CHECK(pwrite(fd, &x, 1, 10) == 1, "corrupt byte"); close(fd); }
-
-    void *raw = nullptr;
-    size_t len = 0;
-    CHECK(elpis_corpus_document_bytes(c, res.doc_digest, &raw, &len) != 0,
-          "corrupt blob was returned to the caller");
-    CHECK(raw == nullptr, "unverified bytes handed out");
-    CHECK(elpis_corpus_verify(c, &ok, &bad, nullptr, 0) == 1, "verify missed the corruption");
-    CHECK(bad == 1, "verify reported bad=%llu", (unsigned long long)bad);
+    void *raw=nullptr; size_t len=0;
+    CHECK(elpis_corpus_document_bytes(c,"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",&raw,&len)!=0,
+          "unknown document accepted");
+    CHECK(raw==nullptr && len==0,"unverified bytes returned");
     elpis_corpus_close(c);
 }
 
@@ -287,7 +269,7 @@ static void case_manifest() {
     CASE("manifest is canonical, stable and immutable");
     std::string r = base + "/manifest";
     elpis_corpus *c = nullptr;
-    CHECK(elpis_corpus_open(r.c_str(), &c) == 0, "open");
+    CHECK(elpis_corpus_open_ephemeral(&c) == 0, "open");
     if (!c) return;
     elpis_ingest_meta m = meta("elpis.docs", "canonical", ELPIS_MT_MARKDOWN, "host.md");
     elpis_ingest_result res;
@@ -306,10 +288,6 @@ static void case_manifest() {
     elpis_free(j1);
     elpis_free(j2);
 
-    std::string path = r + "/ingest-manifest.json";
-    char dg[65];
-    CHECK(elpis_corpus_manifest_write(c, path.c_str(), dg) == 0, "manifest write");
-    CHECK(elpis_corpus_manifest_write(c, path.c_str(), dg) != 0, "manifest overwrite was allowed");
     elpis_corpus_close(c);
 }
 
@@ -318,7 +296,7 @@ static void case_evidence_untouched() {
     std::string state = base + "/split-state", evidence = base + "/split-evidence";
     mkdir(evidence.c_str(), 0700);
     elpis_corpus *c = nullptr;
-    CHECK(elpis_corpus_open(state.c_str(), &c) == 0, "open");
+    CHECK(elpis_corpus_open_ephemeral(&c) == 0, "open");
     if (!c) return;
     elpis_ingest_meta m = meta("elpis.docs", "canonical", ELPIS_MT_MARKDOWN, "host.md");
     elpis_ingest_result res;
@@ -333,20 +311,16 @@ static void case_evidence_untouched() {
     CHECK(count_files(evidence) == 0, "evidence root has %d entries after ingest",
           count_files(evidence));
 
-    /* An immutable manifest copy is the only thing allowed under evidence. */
-    std::string mpath = evidence + "/ingestion-manifest.json";
-    char dg[65];
-    CHECK(elpis_corpus_manifest_write(c, mpath.c_str(), dg) == 0, "manifest export");
-    CHECK(count_files(evidence) == 1, "evidence root gained extra files");
+    /* Even after retrieval and corpus destruction, no files are produced. */
     elpis_corpus_close(c);
-    CHECK(count_files(evidence) == 1, "evidence touched on close");
+    CHECK(count_files(evidence) == 0, "evidence written after close");
 }
 
 static void case_chunk_text_verified() {
     CASE("chunk text is verified against its normalised digest");
     std::string r = base + "/chunktext";
     elpis_corpus *c = nullptr;
-    CHECK(elpis_corpus_open(r.c_str(), &c) == 0, "open");
+    CHECK(elpis_corpus_open_ephemeral(&c) == 0, "open");
     if (!c) return;
     elpis_ingest_meta m = meta("elpis.docs", "reference", ELPIS_MT_MARKDOWN, "host.md");
     elpis_ingest_result res;

@@ -1,15 +1,15 @@
 """HACF structural memory from Python: a thin ctypes layer over the native bridge.
 
 Provides:
-  - ``RetrievalLibrary(path)``: explicitly loaded ``libelpis_retrieval_bridge`` (bridge ABI v2);
+  - ``RetrievalLibrary(path, root=..., authority=...)``: deployment-pinned, substrate-sealed native bridge (ABI v2);
   - ``ContextEdge``: one explicit, provenance-bearing context-graph edge between two HACF chunks;
   - ``build_corpus_and_index`` -> ``HacfHandle`` (owning handle, deterministic cleanup), optionally with one
     immutable context graph built once from explicit edges;
   - ``hybrid_retrieve`` -> canonical bundle JSON plus identity digests;
   - ``bundle_from_json`` -> ``RetrievalBundle``.
 
-The library path is always supplied by the caller. There is no environment
-variable lookup and no repository-relative fallback. All operations are
+The library path, trusted root and independent deployment authority are all required. There is no environment
+variable lookup, path discovery or repository-relative fallback. All operations are
 read-only after environment creation.
 
 Context graph (native ``elpis_context_graph``). Edges are externally supplied, admitted structural facts
@@ -26,10 +26,13 @@ from __future__ import annotations
 import ctypes
 import hashlib
 import json
+import threading
 from pathlib import Path
 from typing import Any, Iterable
 
 from .contracts import RetrievalBundle, RetrievalItem, _digest
+from elpis.substrate.contracts import ContractError
+from elpis.structure.native_loader import load_structure_bridge
 from .errors import HybridRetrievalError, RetrievalLibraryError
 
 ELPIS_EMBEDDING_DIM = 384
@@ -66,14 +69,16 @@ class _GraphPolicy(ctypes.Structure):
 
 
 class RetrievalLibrary:
-    """One explicitly loaded native retrieval bridge."""
+    """One native retrieval bridge, sealed against deployment-pinned bytes."""
 
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, *, root=None, authority=None) -> None:
         path = Path(path)
         if not path.is_absolute() or not path.is_file():
             raise RetrievalLibraryError("LIB_NOT_FOUND", f"retrieval bridge not found at {path}")
         try:
-            lib = ctypes.CDLL(str(path))
+            lib = load_structure_bridge(root, path, authority, 'elpis_retrieval_bridge')
+        except ContractError as e:
+            raise RetrievalLibraryError("LIB_AUTHORITY", str(e)) from e
         except OSError as e:
             raise RetrievalLibraryError("LIB_LOAD_FAILED", str(e)) from e
         self.path = path
@@ -100,6 +105,12 @@ class RetrievalLibrary:
             ctypes.c_uint32,                   # edge_count
             ctypes.c_char_p,                   # error_buf[256]
         ]
+        lib.elpis_retrieval_env_borrow_corpus.restype = ctypes.c_void_p
+        lib.elpis_retrieval_env_borrow_corpus.argtypes = [ctypes.c_void_p]
+        lib.elpis_retrieval_env_copy_document.restype = ctypes.c_int
+        lib.elpis_retrieval_env_copy_document.argtypes = [
+            ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p,
+            ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
         lib.elpis_retrieval_env_destroy.restype = None
         lib.elpis_retrieval_env_destroy.argtypes = [ctypes.c_void_p]
         lib.elpis_retrieval_env_embed.restype = ctypes.c_int
@@ -157,15 +168,60 @@ class HacfHandle:
         self.vindex_manifest_json = ""
         self.graph_snapshot_digest = ZERO_DIGEST   # the environment's context graph identity (zeros: none)
         self.graph_edge_count = 0
+        self._borrows = 0
+        self._guard = threading.RLock()
 
     @property
     def _valid(self) -> bool:
         return bool(self._ptr)
 
     def destroy(self) -> None:
-        if self._valid:
-            self.library.lib.elpis_retrieval_env_destroy(self._ptr)
-            self._ptr = ctypes.c_void_p(0)
+        with self._guard:
+            if self._borrows:
+                raise HybridRetrievalError("HANDLE_BUSY", "live borrowed ingress still owns a reference")
+            if self._valid:
+                self.library.lib.elpis_retrieval_env_destroy(self._ptr)
+                self._ptr = ctypes.c_void_p(0)
+
+    def _borrow_corpus(self):
+        if not self._valid:
+            raise HybridRetrievalError("HANDLE_CLOSED", "retrieval epoch already destroyed")
+        with self._guard:
+            if not self._valid:
+                raise HybridRetrievalError("HANDLE_CLOSED", "retrieval epoch already destroyed")
+            self._borrows += 1
+            result = self.library.lib.elpis_retrieval_env_borrow_corpus(self._ptr)
+            if not result:
+                self._borrows -= 1
+                raise HybridRetrievalError("CORPUS_MISSING", "no native corpus in retrieval epoch")
+            return result
+
+    def _release_borrow(self):
+        with self._guard:
+            if self._borrows <= 0:
+                raise HybridRetrievalError("HANDLE_STATE", "unbalanced corpus borrow")
+            self._borrows -= 1
+
+    def read_document(self, digest: str, expected_size: int) -> bytes:
+        if not self._valid:
+            raise HybridRetrievalError("HANDLE_CLOSED", "retrieval epoch already destroyed")
+        if type(digest) is not str or len(digest) != 64 or not set(digest) <= _HEX:
+            raise HybridRetrievalError("INVALID", "document digest")
+        if type(expected_size) is not int or not 0 <= expected_size <= (1 << 20):
+            raise HybridRetrievalError("LIMIT", "document byte budget")
+        with self._guard:
+            if not self._valid:
+                raise HybridRetrievalError("HANDLE_CLOSED", "retrieval epoch already destroyed")
+            buf = ctypes.create_string_buffer(expected_size or 1)
+            actual = ctypes.c_size_t()
+            rc = self.library.lib.elpis_retrieval_env_copy_document(
+                self._ptr, digest.encode("ascii"), buf, expected_size, ctypes.byref(actual))
+        if rc or actual.value != expected_size:
+            raise HybridRetrievalError("INTEGRITY", "volatile document read failed")
+        result = buf.raw[:expected_size]
+        if hashlib.sha256(result).hexdigest() != digest:
+            raise HybridRetrievalError("INTEGRITY", "volatile document digest mismatch")
+        return result
 
     def __enter__(self) -> "HacfHandle":
         return self

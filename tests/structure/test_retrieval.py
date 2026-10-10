@@ -32,6 +32,7 @@ from elpis.structure.retrieval.query import derive_query
 from elpis.structure.retrieval.validation import validate_bundle
 
 from ..conftest import require_native_library
+from .native_bridge_fixture import pin_bridge
 
 DOCS = [
     ("alpha", "alpha engine exact retrieval anchor", "elpis.docs", "canonical"),
@@ -44,8 +45,11 @@ BUDGET = RetrievalBudget()
 
 
 @pytest.fixture(scope="module")
-def library():
-    return RetrievalLibrary(require_native_library("elpis_retrieval_bridge"))
+def library(tmp_path_factory):
+    path, root, authority = pin_bridge(require_native_library("elpis_retrieval_bridge"),
+                                       tmp_path_factory.mktemp("sealed-retrieval"),
+                                       "elpis_retrieval_bridge")
+    return RetrievalLibrary(path, root=root, authority=authority)
 
 
 @pytest.fixture(scope="module")

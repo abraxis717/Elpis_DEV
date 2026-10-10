@@ -285,7 +285,7 @@ static void case_filter_validation() {
     CASE("4: invalid namespace and authority filters fail, they do not return empty");
     std::string root = base + "/filters";
     elpis_corpus *corpus = nullptr;
-    CHECK(elpis_corpus_open((root + "/state").c_str(), &corpus) == 0, "corpus open");
+    CHECK(elpis_corpus_open_ephemeral(&corpus) == 0, "corpus open");
     if (!corpus) return;
 
     const char *body = "ELPIS_ROOT_A is the active root filesystem for this host.\n";
@@ -374,55 +374,15 @@ static void case_filter_validation() {
 /* --------------------------------------------------------------- case 5 --- */
 
 static void case_atomic_publication() {
-    CASE("5: shard publication is atomically no-replace under two concurrent writers");
-    std::string dir = base + "/publish";
-    vecfix::mkdirp(dir);
+    CASE("5: vector shard is built and verified in RAM");
     elpis_embedder *emb = nullptr;
-    elpis_embedder_fixture_create(ELPIS_NORM_L2, &emb);
-    char d1[65], d2[65];
-    std::vector<uint8_t> A = build_ns_shard(emb, "pub-a", "aaa", 6, d1);
-    std::vector<uint8_t> B = build_ns_shard(emb, "pub-b", "bbb", 6, d2);
-    CHECK(!A.empty() && !B.empty(), "build");
-    if (A.empty() || B.empty()) { elpis_embedder_destroy(emb); return; }
-
-    std::string path = dir + "/contested.vshard";
-    std::atomic<int> ok_a{0}, ok_b{0};
-    std::thread ta([&] { ok_a = elpis_vshard_write(path.c_str(), A.data(), A.size()) == 0 ? 1 : 0; });
-    std::thread tb([&] { ok_b = elpis_vshard_write(path.c_str(), B.data(), B.size()) == 0 ? 1 : 0; });
-    ta.join();
-    tb.join();
-
-    CHECK(ok_a + ok_b == 1, "exactly one writer must win, got a=%d b=%d", ok_a.load(), ok_b.load());
-
-    /* The winner's bytes must be complete and verifiable. */
-    void *rb = nullptr;
-    size_t rn = 0;
-    CHECK(elpis_vshard_read_file(path.c_str(), &rb, &rn) == 0, "read published shard");
-    if (rb) {
-        elpis_vshard_header h;
-        char reason[64] = {0};
-        CHECK(elpis_vshard_verify(rb, rn, &h, reason, sizeof reason) == 0,
-              "published shard failed verification: %s", reason);
-        bool is_a = rn == A.size() && std::memcmp(rb, A.data(), rn) == 0;
-        bool is_b = rn == B.size() && std::memcmp(rb, B.data(), rn) == 0;
-        CHECK(is_a || is_b, "published bytes match neither writer: torn publication");
-        CHECK(is_a == (ok_a.load() == 1), "the file does not belong to the writer that reported success");
-        std::free(rb);
-    }
-
-    /* A later write to the same path always fails. */
-    CHECK(elpis_vshard_write(path.c_str(), A.data(), A.size()) != 0, "overwrite allowed");
-
-    /* No temporary files survive on any path. */
-    int leftovers = 0;
-    DIR *dh = opendir(dir.c_str());
-    if (dh) {
-        struct dirent *e;
-        while ((e = readdir(dh)))
-            if (std::strncmp(e->d_name, ".vshard-", 8) == 0) leftovers++;
-        closedir(dh);
-    }
-    CHECK(leftovers == 0, "%d temporary file(s) left behind", leftovers);
+    CHECK(elpis_embedder_fixture_create(ELPIS_NORM_L2,&emb)==0,"embedder");
+    if (!emb) return;
+    char dg[65];
+    std::vector<uint8_t> img=build_ns_shard(emb,"ram-only","aaa",6,dg);
+    char reason[64]{};
+    CHECK(!img.empty() && elpis_vshard_verify(img.data(),img.size(),nullptr,reason,sizeof reason)==0,
+          "in-memory shard invalid: %s",reason);
     elpis_embedder_destroy(emb);
 }
 

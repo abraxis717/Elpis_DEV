@@ -15,6 +15,7 @@ import pytest
 from elpis.pipeline.ingress import IngressError, IngressLibrary, lex, lex_stream
 
 from ...conftest import require_native_library
+from ...structure.native_bridge_fixture import pin_bridge
 
 PHRASES = [
     "at least +1.25", "strictly greater than -2.5", "at most .5", "strictly less than 2",
@@ -25,8 +26,12 @@ PHRASES = [
 
 
 @pytest.fixture(scope="module")
-def library():
-    return IngressLibrary(require_native_library("elpis_ingress_bridge"))
+def library(tmp_path_factory):
+    # TEST-ONLY pin of an isolated native fixture; never deployment authority.
+    path, root, authority = pin_bridge(
+        require_native_library("elpis_ingress_bridge"),
+        tmp_path_factory.mktemp("sealed-regex-ingress"), "elpis_ingress_bridge")
+    return IngressLibrary(path, root=root, authority=authority)
 
 
 def _canonical(value):

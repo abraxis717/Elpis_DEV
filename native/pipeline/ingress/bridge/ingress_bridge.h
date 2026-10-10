@@ -30,11 +30,17 @@ typedef struct elpis_ingress_env elpis_ingress_env;
 
 uint32_t elpis_ingress_bridge_abi_version(void);
 
-/* Opens an EXISTING HACF corpus: corpus_root must be a real directory holding
- * a regular metadata.sqlite (no symlinks). No corpus is ever created. The
- * context graph is built once from the supplied immutable edges (NULL + 0 for
- * an empty graph). */
+/* Retired disk-backed ingress entry point: always refuses. Use the borrowed
+ * in-memory corpus entry point; no filesystem fallback is available. */
 int elpis_ingress_env_open(const char *corpus_root,
+                           const elpis_context_edge_input *edges,
+                           uint32_t edge_count,
+                           elpis_ingress_env **out,
+                           char error[ELPIS_INGRESS_BRIDGE_ERROR_BYTES]);
+
+/* Borrow an already-built volatile corpus. The caller guarantees its owning
+ * retrieval environment outlives this handle. No path or storage access. */
+int elpis_ingress_env_open_borrowed(void *corpus,
                            const elpis_context_edge_input *edges,
                            uint32_t edge_count,
                            elpis_ingress_env **out,

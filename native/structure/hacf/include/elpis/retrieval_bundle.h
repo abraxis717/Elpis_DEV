@@ -62,9 +62,6 @@ int elpis_retrieval_bundle_identity(const elpis_retrieval_bundle *b,
 int elpis_retrieval_bundle_json(const elpis_retrieval_bundle *b,
                                 char **json_out, char digest_out[65]);
 
-/* Immutable O_EXCL export with file+directory fsync. */
-int elpis_retrieval_bundle_write(const elpis_retrieval_bundle *b, const char *path,
-                                 char digest_out[65]);
 
 #ifdef __cplusplus
 }

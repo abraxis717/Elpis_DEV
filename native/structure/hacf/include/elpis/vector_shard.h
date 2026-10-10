@@ -72,8 +72,6 @@ int elpis_vshard_build(const elpis_vshard_input *records, uint64_t count,
                        const char *corpus_manifest_digest,
                        void **bytes_out, size_t *len_out, char shard_digest_out[65]);
 
-/* Write a built shard to path. Refuses to overwrite: shards are immutable. */
-int elpis_vshard_write(const char *path, const void *bytes, size_t len);
 int elpis_vshard_read_file(const char *path, void **bytes_out, size_t *len_out);
 
 /* Full structural and cryptographic verification. Returns 0 only when every

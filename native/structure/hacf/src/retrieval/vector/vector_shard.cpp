@@ -548,69 +548,6 @@ int elpis_vshard_build(const elpis_vshard_input *records, uint64_t count,
     }
 }
 
-static int vshard_write_impl(const char *path, const void *bytes, size_t len) {
-    if (!path || !bytes) return -1;
-
-    /* Publication must be atomically no-replace. A stat() guard followed by
-     * rename() is not: another writer can create the destination in the window
-     * between them, and POSIX rename() then silently replaces it. link() fails
-     * with EEXIST atomically instead, so exactly one of two concurrent writers
-     * to the same destination can win and the winner's bytes are never
-     * clobbered. renameat2(RENAME_NOREPLACE) would also do, but it is Linux
-     * only and needs a fallback anyway. */
-    std::string p(path);
-    size_t slash = p.find_last_of('/');
-    std::string dir = slash == std::string::npos ? std::string(".") : p.substr(0, slash);
-    std::string tmpl = dir + "/.vshard-XXXXXX";
-    std::vector<char> t(tmpl.begin(), tmpl.end());
-    t.push_back(0);
-    int fd = mkstemp(t.data());
-    if (fd < 0) return -1;
-
-    auto cleanup_fail = [&](int fd_open) -> int {
-        if (fd_open >= 0) close(fd_open);
-        unlink(t.data());                       /* temporaries never survive a failure */
-        return -1;
-    };
-
-    const uint8_t *q = (const uint8_t *)bytes;
-    size_t left = len;
-    while (left) {
-        ssize_t w = write(fd, q, left);
-        if (w <= 0) {
-            if (w < 0 && errno == EINTR) continue;
-            return cleanup_fail(fd);
-        }
-        q += (size_t)w;
-        left -= (size_t)w;
-    }
-    if (fsync(fd) != 0) return cleanup_fail(fd);
-    if (close(fd) != 0) return cleanup_fail(-1);
-
-    if (link(t.data(), path) != 0) {
-        /* EEXIST here is the no-overwrite guarantee doing its job. */
-        unlink(t.data());
-        return -1;
-    }
-    if (unlink(t.data()) != 0) { /* destination is already published; keep going */ }
-
-    int dfd = open(dir.c_str(), O_RDONLY | O_DIRECTORY);
-    if (dfd < 0) return -1;
-    /* A directory fsync failure means the publication may not survive a crash,
-     * so it is reported rather than ignored. */
-    if (fsync(dfd) != 0) { close(dfd); return -1; }
-    if (close(dfd) != 0) return -1;
-    return 0;
-}
-
-int elpis_vshard_write(const char *path, const void *bytes, size_t len) {
-    try {
-        return vshard_write_impl(path, bytes, len);
-    } catch (...) {
-        return -1;
-    }
-}
-
 int elpis_vshard_read_file(const char *path, void **bytes_out, size_t *len_out) {
     if (!path || !bytes_out || !len_out) return -1;
     int fd = open(path, O_RDONLY);

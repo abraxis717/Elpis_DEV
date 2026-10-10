@@ -367,14 +367,17 @@ static int test_manifest_write_validation(void) {
                         memcmp(readback, published, sizeof(*published)) == 0,
                         "rejected write preserves destination", kind);
     }
-    /* Valid successor publication still replaces the manifest atomically. */
+    /* A valid successor MUST NOT overwrite a pre-existing manifest path.
+     * This corrects the predecessor's mutable-snapshot expectation. */
     *m = *published;
     m->assertion_count++;
     failed |= check(semantic_snapshot_finalize(m) == SEMANTIC_OK &&
-                    semantic_snapshot_write(m, path, hex) == SEMANTIC_OK &&
+                    semantic_snapshot_write(m, path, hex) == SEMANTIC_E_DUPLICATE &&
                     semantic_snapshot_read(path, readback) == SEMANTIC_OK &&
-                    memcmp(readback, m, sizeof(*m)) == 0,
-                    "valid successor replaces manifest", 4);
+                    memcmp(readback, published, sizeof(*published)) == 0,
+                    "valid successor cannot replace manifest", 4);
+    failed |= check(strcmp(hex, expected) == 0,
+                    "duplicate must not overwrite digest output", 4);
     unlink(path);
     failed |= check(semantic_snapshot_write(published, "./missing-snapshot-dir/file", hex) ==
                     SEMANTIC_E_IO, "publication IO failure", 5);

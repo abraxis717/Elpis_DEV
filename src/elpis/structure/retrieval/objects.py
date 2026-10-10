@@ -35,6 +35,7 @@ import hashlib
 import json
 import os
 import re
+from contextlib import nullcontext
 
 from elpis.substrate.boundary import RootCapability, read_exact
 from elpis.substrate.contracts import ContractError
@@ -165,14 +166,18 @@ class ResolvedChunk:
     text: bytes
 
 
-def _read_document(capability, document: CorpusDocument, max_document_bytes: int) -> bytes:
+def _read_document(capability, document: CorpusDocument, max_document_bytes: int,
+                   source_path: str) -> bytes:
     if document.size_bytes > max_document_bytes:
         raise ObjectResolutionError("LIMIT", "document exceeds the resolution budget")
     try:
-        fd = capability.open_file(f"corpus/{document.digest}.blob")
+        # Resolve the original authorized resource in place; never manufacture
+        # a digest-named corpus blob. RootCapability enforces confined read-only
+        # resolution and refuses symlink traversal.
+        fd = capability.open_file(source_path)
     except ContractError as exc:
         raise ObjectResolutionError("MISSING" if exc.code.value == "MISSING" else "INTEGRITY",
-                                    "document blob could not be opened beneath the corpus root") from exc
+                                    "source document could not be opened beneath the authorized root") from exc
     try:
         size = os.fstat(fd).st_size
         if size != document.size_bytes:
@@ -186,7 +191,7 @@ def _read_document(capability, document: CorpusDocument, max_document_bytes: int
 
 
 def resolve_chunks(corpus_root, manifest: CorpusManifest, claims, *, max_objects: int,
-                   max_text_bytes: int, max_document_bytes: int):
+                   max_text_bytes: int, max_document_bytes: int, source_paths=None, source_handle=None):
     """Resolve claims in order into verified chunks under explicit bounds.
 
     Duplicate chunk digests are resolved once, at their first position. The
@@ -201,17 +206,33 @@ def resolve_chunks(corpus_root, manifest: CorpusManifest, claims, *, max_objects
         _count(value, what, 1)
     if type(claims) is not tuple or not all(type(c) is ChunkClaim for c in claims):
         raise ObjectResolutionError("INVALID", "claims must be a tuple of ChunkClaim")
+    # Explicit caller-provided digest -> relative original path bindings.
+    # Legacy blob mode stays available only to callers explicitly resolving
+    # an already-existing imported corpus. Neither branch creates a file.
+    if source_paths is not None:
+        if type(source_paths) is not dict:
+            raise ObjectResolutionError("INVALID", "source_paths must be an explicit dict")
+        for digest, path in source_paths.items():
+            _digest(digest, "source binding digest")
+            if type(path) is not str or not path or path.startswith("/") or                any(part in ("", ".", "..") for part in path.split("/")):
+                raise ObjectResolutionError("INVALID", "source binding must be a confined relative path")
+    if source_handle is not None:
+        if source_paths is not None or not source_handle._valid or source_handle.corpus_digest != manifest.digest:
+            raise ObjectResolutionError("INTEGRITY", "volatile corpus owner or manifest mismatch")
     distinct, seen = [], set()
     for claim in claims:
         if claim.chunk_digest not in seen:
             seen.add(claim.chunk_digest)
             distinct.append(claim)
     resolved, used, documents = [], 0, {}
-    try:
-        capability = RootCapability(corpus_root)
-    except ContractError as exc:
-        raise ObjectResolutionError("MISSING", "corpus root could not be opened") from exc
-    with capability:
+    if source_handle is None:
+        try:
+            capability = RootCapability(corpus_root)
+        except ContractError as exc:
+            raise ObjectResolutionError("MISSING", "corpus root could not be opened") from exc
+    else:
+        capability = None
+    with (capability if capability is not None else nullcontext()):
         for claim in distinct:
             if len(resolved) == max_objects:
                 break
@@ -219,7 +240,24 @@ def resolve_chunks(corpus_root, manifest: CorpusManifest, claims, *, max_objects
             if claim.ordinal >= document.chunk_count or claim.byte_end > document.size_bytes:
                 raise ObjectResolutionError("INTEGRITY", "chunk claim outside its document")
             if claim.doc_digest not in documents:
-                documents[claim.doc_digest] = _read_document(capability, document, max_document_bytes)
+                if source_paths is None:
+                    path = f"corpus/{document.digest}.blob"  # historical operator-owned imported corpus
+                else:
+                    path = source_paths.get(document.digest)
+                    if path is None:
+                        raise ObjectResolutionError("MISSING", "no authorized source binding for document")
+                if source_handle is not None:
+                    if document.size_bytes > max_document_bytes:
+                        raise ObjectResolutionError("LIMIT", "document exceeds the resolution budget")
+                    try:
+                        data = source_handle.read_document(document.digest, document.size_bytes)
+                    except Exception as exc:
+                        raise ObjectResolutionError("INTEGRITY", "volatile document failed verification") from exc
+                    if hashlib.sha256(data).hexdigest() != document.digest:
+                        raise ObjectResolutionError("INTEGRITY", "volatile document digest mismatch")
+                    documents[claim.doc_digest] = data
+                else:
+                    documents[claim.doc_digest] = _read_document(capability, document, max_document_bytes, path)
             text = normalize(documents[claim.doc_digest][claim.byte_start:claim.byte_end])
             norm_digest = hashlib.sha256(text).hexdigest()
             if chunk_identity(claim.doc_digest, claim.ordinal, claim.byte_start, claim.byte_end,
