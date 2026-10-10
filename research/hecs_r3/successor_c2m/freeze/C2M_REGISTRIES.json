@@ -1,0 +1,35 @@
+{
+ "schema": "HECS_R3_SUCCESSOR_C2M_REGISTRIES_V1",
+ "law": "u64 big-endian of SHA-256(ASCII(\"HECS|R3-SUCCESSOR|C2M|V1|<DEV|QUAL>|\" + decimal(i)))[0..8]; reject 0, excluded or duplicate (DEV derived first; QUAL also excludes DEV)",
+ "dev_seeds": [
+  "3026087485748800130",
+  "18141439934309087477",
+  "9319718912410262497",
+  "9241799731562815980",
+  "17732475088898873395",
+  "12648860549377394537",
+  "9683002453119710777",
+  "17340380087289641708"
+ ],
+ "qual_seeds": [
+  "23736088829194958",
+  "314983234690735201",
+  "9185389333842790495",
+  "2082485464272837759",
+  "8043185496620002812",
+  "10298743995255560025",
+  "2735567580835909447",
+  "17219295647349482050",
+  "6842485810361635716",
+  "15223772355772246603",
+  "6098512807412675775",
+  "1313101975958806204"
+ ],
+ "dev_rejections": [],
+ "qual_rejections": [],
+ "excluded_listed_values": 113,
+ "exclusion_set_size": 65553,
+ "excluded": "every H-ECS registry in Git incl. C2 DEV, spent C2 Q1, executed C2 Q2; first 4096 indices of every known domain incl. C2 DESIGN/DEV/Q2",
+ "world_outcomes_inspected": false,
+ "task_screening": false
+}

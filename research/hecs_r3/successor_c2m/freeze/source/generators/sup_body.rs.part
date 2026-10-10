@@ -1,0 +1,198 @@
+fn phase_of(p:&str)->R<(&'static str,&'static [u64],&'static str,&'static str,&'static str)>{match p{
+ "DEV"=>Ok(("DEV",&DEV,"build/hecs_r3_successor_c2_dev_r0","--successor-dev-c2-one-seed","C2_DEV")),
+ "QUAL"=>Ok(("QUAL",&QUAL,"build/hecs_r3_successor_c2_qual_r0","--successor-qual-c2-one-seed","C2_QUAL")),
+ _=>fail("UNKNOWN_PHASE")}}
+fn seal_path(project:&Path,phase:&str)->PathBuf{project.join(format!("evidence/hecs_r3_successor_c2/release/{}_AUTHORITY.txt",phase))}
+fn disposition_path(project:&Path,phase:&str)->PathBuf{project.join(format!("evidence/hecs_r3_successor_c2/{}_DISPOSITION.txt",phase))}
+fn lib_tree(dir:&Path)->R<String>{
+ safe_dir(dir)?;
+ let mut names=Vec::new();
+ for e in fs::read_dir(dir).map_err(|e|ioerr("LIB_READDIR",e))? {
+  let e=e.map_err(|e|ioerr("LIB_DIRENT",e))?;let n=e.file_name().into_string().map_err(|_|"LIB_NON_UTF8")?;
+  if n.ends_with(".rs") {names.push(n);}
+ }
+ names.sort();
+ need(!names.is_empty(),"LIB_EMPTY")?;
+ let mut text=String::new();
+ for n in names {text.push_str(&format!("{} {}\n",n,sha_file(&dir.join(&n))?));}
+ Ok(sha256(text.as_bytes()))
+}
+fn release(project:&Path,proto:&Path,supervisor_bin:&Path,phase:&str)->R<String>{
+ need(project==Path::new(ROOT),"PROJECT_ROOT")?;
+ safe_dir(project)?;
+ let (ph,seeds,_,_,_)=phase_of(phase)?;
+ need(sha_file(&project.join(ENGINE))?==ENGINE_SHA256,"ENGINE_BINARY_DRIFT")?;
+ need(sha_file(&project.join(OBSERVER))?==OBSERVER_SHA256,"OBSERVER_BINARY_DRIFT")?;
+ need(sha_file(&project.join(K1))?==K1_SHA256,"K1_DRIFT")?;
+ need(sha_file(proto)?==PROTOCOL_SHA256,"PROTOCOL_DRIFT")?;
+ need(sha_file(&project.join("evidence/hecs_r3_successor_c2/DESIGN_RECORD.json"))?==DESIGN_RECORD_SHA256,"DESIGN_RECORD_DRIFT")?;
+ let exe=std::env::current_exe().map_err(|e|ioerr("CURRENT_EXE",e))?;
+ need(fs::canonicalize(&exe).map_err(|e|ioerr("EXE_CANONICAL",e))?==fs::canonicalize(supervisor_bin).map_err(|e|ioerr("BIN_CANONICAL",e))?,"SUPERVISOR_EXECUTABLE_IDENTITY")?;
+ let seed_text=seeds.iter().map(u64::to_string).collect::<Vec<_>>().join(",");
+ let mut t=format!(concat!(
+  "HECS_R3_SUCCESSOR_C2_RELEASE_V1\nPHASE={}\nCANDIDATES=C2\n",
+  "ENGINE_BINARY_SHA256_C2={}\nOBSERVER_BINARY_SHA256={}\nNATIVE_K1_SHA256={}\nPROTOCOL_SHA256={}\n",
+  "SUPERVISOR_SOURCE_SHA256={}\nSUPERVISOR_BINARY_SHA256={}\nDESIGN_RECORD_SHA256={}\n",
+  "RECONSTRUCTION_QUALIFICATION_SHA256={}\nSEEDS={}\n",
+  "NATIVE_G1_STEPS=96000\nTREATMENT_UPDATES=256\nC2_BINDING=HD/L2\nC2_UPDATES=4096\nC2_TERMINAL_WEIGHT=1.0\n",
+  "C2_WINDOWS=6\nC2_BASE_LAMBDA=0.37\nCOMPUTE_MATCHED=NO\n",
+  "GATE=TASK_S1_0.95_M_0.90_ESCAPE_0.01_EVERY_SEED_BINDING_HORIZON\n"),
+  ph,ENGINE_SHA256,OBSERVER_SHA256,K1_SHA256,PROTOCOL_SHA256,sha256(SRC_BYTES),sha_file(supervisor_bin)?,
+  DESIGN_RECORD_SHA256,RECONSTRUCTION_QUALIFICATION_SHA256,seed_text);
+ for (key,path,hash) in SOURCES {
+  need(sha_file(&project.join(path))?==hash,"SOURCE_DRIFT")?;
+  t.push_str(&format!("{}={}\n",key,hash));
+ }
+ need(lib_tree(&project.join(LIB_BUILT))?==LIB_TREE_SHA256,"LIB_TREE_DRIFT")?;
+ need(lib_tree(&project.join(LIB_REPOSITORY))?==LIB_TREE_SHA256,"LIB_REPOSITORY_DRIFT")?;
+ t.push_str(&format!("HECS_R2_LIB_TREE_SHA256={}\n",LIB_TREE_SHA256));
+ if ph=="QUAL" {
+  let d=checked_file(&disposition_path(project,"DEV")).map_err(|_|"DEV_DISPOSITION_ABSENT")?;
+  let text=String::from_utf8(d.clone()).map_err(|_|"DEV_DISPOSITION_UTF8")?;
+  need(text.lines().any(|l|l=="DISPOSITION=DEV_WORLD_MODEL_VALID_CONDITIONAL_QUAL_ELIGIBLE"),"DEV_NOT_PASSED_QUAL_REFUSED")?;
+  t.push_str(&format!("DEV_DISPOSITION_SHA256={}\n",sha256(&d)));
+  t.push_str("OPERATOR_AUTHORIZATION=ONE_QUAL_EXECUTION_CONDITIONAL_ON_FRESH_DEV_PASS_EVERY_SEED\n");
+ } else {
+  t.push_str("OPERATOR_AUTHORIZATION=ONE_FRESH_DEV_EXECUTION_OF_THE_FROZEN_C2_CANDIDATE\nNO_QUAL_AUTHORIZATION=YES\n");
+ }
+ t.push_str("NO_RETUNING=YES\nNO_REPLAY=YES\nNO_R4_AUTHORIZATION=YES\nNO_INTEGRATION_AUTHORIZATION=YES\n");
+ Ok(t)
+}
+fn write_release(project:&Path,proto:&Path,supervisor_bin:&Path,phase:&str)->R<()> {
+ let (_,_,work,_,_)=phase_of(phase)?;
+ let expected=release(project,proto,supervisor_bin,phase)?;
+ let p=seal_path(project,phase);
+ need(!exists(&p),"RELEASE_REPLAY_REFUSED")?;
+ need(!exists(&project.join(work)),"RELEASE_AFTER_START_REFUSED")?;
+ write_once(&p,&expected)?;
+ println!("PASS_R3_C2_WRITE_ONCE_RELEASE phase={} sha256={}",phase,sha256(expected.as_bytes()));
+ Ok(())
+}
+fn approval(project:&Path,proto:&Path,supervisor_bin:&Path,phase:&str)->R<String>{
+ let expected=release(project,proto,supervisor_bin,phase)?;
+ need(checked_file(&seal_path(project,phase)).map_err(|_|"PHASE_NOT_RELEASED")?==expected.as_bytes(),"RELEASE_CHANGED")?;
+ Ok(sha256(expected.as_bytes()))
+}
+fn start_text(phase:&str,index:usize,seed:u64,pred:&str,pseal:&str)->String{
+ format!("HECS_R3_SUCCESSOR_C2_SEED_START_V1\nPHASE={}\nINDEX={}\nSEED={}\nPREDECESSOR_COMMIT_SHA256={}\nRELEASE_SHA256={}\n",phase,index,seed,pred,pseal)
+}
+fn verify_commit(slot:&Path,phase:&str,index:usize,seed:u64,pred:Option<&str>,pseal:&str)->R<String>{
+ let committed=slot.join("COMMITTED");safe_dir(&committed)?;
+ let start=checked_file(&committed.join("START.txt"))?;
+ need(start==start_text(phase,index,seed,pred.unwrap_or("NONE"),pseal).as_bytes(),"COMMITTED_START_DRIFT")?;
+ let mut record=format!("HECS_R3_SUCCESSOR_C2_SEED_COMMIT_V1\nSTART_SHA256={}\n",sha256(&start));
+ let directory=committed.join("raw").join(ARM);safe_dir(&directory)?;
+ for name in NAMES {record.push_str(&format!("{}_{}_SHA256={}\n",ARM,name,sha_file(&directory.join(name))?));}
+ record.push_str(&format!("{}_CHILD_LOG_SHA256={}\n",ARM,sha_file(&committed.join(format!("{}_CHILD_STREAM.log",ARM)))?));
+ record.push_str(&format!("{}_OBSERVER_LOG_SHA256={}\n",ARM,sha_file(&committed.join(format!("{}_OBSERVER_STREAM.log",ARM)))?));
+ need(checked_file(&committed.join("COMMIT.txt"))?==record.as_bytes(),"COMMITTED_RECORD_DRIFT")?;
+ Ok(sha256(record.as_bytes()))
+}
+fn prefix(project:&Path,phase:&str,upto:usize,pseal:&str)->R<Option<String>>{
+ let (ph,seeds,work,_,_)=phase_of(phase)?;
+ let mut last:Option<String>=None;
+ for i in 0..upto {
+  last=Some(verify_commit(&project.join(work).join(format!("seed_{}",i)),ph,i,seeds[i],last.as_deref(),pseal)?);
+ }
+ Ok(last)
+}
+fn run_seed(project:&Path,proto:&Path,supervisor_bin:&Path,phase:&str,index:usize)->R<()> {
+ let (ph,seeds,work_rel,mode,_)=phase_of(phase)?;
+ need(index<seeds.len(),"SEED_INDEX_OUT_OF_RANGE")?;
+ let pseal=approval(project,proto,supervisor_bin,phase)?;
+ need(!exists(&disposition_path(project,phase)),"PHASE_ALREADY_CLOSED")?;
+ let work=project.join(work_rel);
+ let slot=work.join(format!("seed_{}",index));
+ need(!exists(&slot),"STARTED_SEED_REPLAY_REFUSED")?;
+ // Re-admit the entire predecessor prefix before reserving a new seed.
+ let last=prefix(project,ph,index,&pseal)?;
+ if !exists(&work){fs::create_dir(&work).map_err(|e|ioerr("SCIENCE_ROOT_CREATE",e))?;sync_dir(work.parent().ok_or("ROOT_PARENT")?)?;}
+ mkdir_new(&slot)?;
+ let q=slot.join("STARTED_UNCOMMITTED");mkdir_new(&q)?;
+ write_once(&q.join("START.txt"),&start_text(ph,index,seeds[index],last.as_deref().unwrap_or("NONE"),&pseal))?;
+ let outcome=(||->R<()> {
+  mkdir_new(&q.join("raw"))?;
+  let raw=q.join("raw").join(ARM);mkdir_new(&raw)?;
+  let mut c=Command::new(project.join(ENGINE));
+  c.arg(mode).arg(project.join(K1));
+  for f in NAMES{c.arg(raw.join(f));}c.arg(index.to_string());
+  c.current_dir("/").env_remove("R3_BD_MECHANICS_EMIT_ROOT").env_remove("R3_BD_INJECT_EMITTER_FAULT");
+  println!("R3_C2_SCIENTIFIC_CHILD_START phase={} candidate={} index={} seed={}",ph,ARM,index,seeds[index]);
+  let rc=command_live(c,&q.join(format!("{}_CHILD_STREAM.log",ARM)))?;
+  need(rc==0,"SCIENTIFIC_CHILD_NONZERO_TERMINAL")?;
+  let mut obs=Command::new(project.join(OBSERVER));
+  obs.arg("--one").arg(&raw).arg(ARM).arg(seeds[index].to_string()).current_dir("/");
+  let result=command_live(obs,&q.join(format!("{}_OBSERVER_STREAM.log",ARM)))?;
+  need(result==0,"SCIENTIFIC_EVIDENCE_INVALID_TERMINAL")?;
+  let mut commit=format!("HECS_R3_SUCCESSOR_C2_SEED_COMMIT_V1\nSTART_SHA256={}\n",sha_file(&q.join("START.txt"))?);
+  for f in NAMES{commit.push_str(&format!("{}_{}_SHA256={}\n",ARM,f,sha_file(&raw.join(f))?));}
+  commit.push_str(&format!("{}_CHILD_LOG_SHA256={}\n",ARM,sha_file(&q.join(format!("{}_CHILD_STREAM.log",ARM)))?));
+  commit.push_str(&format!("{}_OBSERVER_LOG_SHA256={}\n",ARM,sha_file(&q.join(format!("{}_OBSERVER_STREAM.log",ARM)))?));
+  write_once(&q.join("COMMIT.txt"),&commit)?;
+  fs::rename(&q,slot.join("COMMITTED")).map_err(|e|ioerr("ATOMIC_COMMIT_RENAME",e))?;
+  sync_dir(&slot)?;
+  let admitted=verify_commit(&slot,ph,index,seeds[index],last.as_deref(),&pseal)?;
+  println!("PASS_R3_C2_ONE_SHOT_SCIENTIFIC_SEED_COMMITTED phase={} index={} commit_sha256={} GIT=NO",ph,index,admitted);
+  Ok(())
+ })();
+ if let Err(ref why)=outcome {
+  if exists(&q) && !exists(&q.join("FAULT.txt")) {
+   let fault=format!("HECS_R3_SUCCESSOR_C2_SEED_TERMINAL_V1\nPHASE={}\nINDEX={}\nSEED={}\nSTART_SHA256={}\nREASON={}\nREPLAY_PERMITTED=NO\n",ph,index,seeds[index],sha_file(&q.join("START.txt")).unwrap_or_else(|_|"START_MISSING".into()),why);
+   if let Err(err)=write_once(&q.join("FAULT.txt"),&fault){eprintln!("R3_C2_FAULT_RECORD_UNCERTAIN {}",err);}
+  }
+ }
+ outcome
+}
+fn close(project:&Path,proto:&Path,supervisor_bin:&Path,phase:&str)->R<()> {
+ let (ph,seeds,work_rel,_,registry)=phase_of(phase)?;
+ let pseal=approval(project,proto,supervisor_bin,phase)?;
+ let dpath=disposition_path(project,phase);
+ need(!exists(&dpath),"DISPOSITION_REPLAY_REFUSED")?;
+ let last=prefix(project,ph,seeds.len(),&pseal)?.ok_or("EMPTY_REGISTRY")?;
+ // Cohort view: plain copies of the committed five-file sets (the observer refuses symlinks).
+ let view=project.join(format!("build/hecs_r3_successor_c2_{}_cohort_r0",ph.to_ascii_lowercase()));
+ mkdir_new(&view)?;
+ for i in 0..seeds.len() {
+  let d=view.join(format!("seed_{}",i));mkdir_new(&d)?;let a=d.join(ARM);mkdir_new(&a)?;
+  for f in NAMES {
+   let src=project.join(work_rel).join(format!("seed_{}",i)).join("COMMITTED").join("raw").join(ARM).join(f);
+   let bytes=checked_file(&src)?;
+   let mut out=OpenOptions::new().write(true).create_new(true).open(a.join(f)).map_err(|e|ioerr("VIEW_CREATE",e))?;
+   out.write_all(&bytes).and_then(|_|out.sync_all()).map_err(|e|ioerr("VIEW_WRITE",e))?;
+  }
+ }
+ let mut obs=Command::new(project.join(OBSERVER));
+ obs.arg("--cohort").arg(&view).arg(ARM).arg(registry).current_dir("/");
+ // The observer refuses unknown entries in the cohort root, so its stream log lives one level up.
+ let logq=project.join(format!("build/hecs_r3_successor_c2_{}_cohort_r0.log",ph.to_ascii_lowercase()));
+ let rc=command_live(obs,&logq)?;
+ need(rc==0,"COHORT_OBSERVER_REFUSED")?;
+ let log=String::from_utf8(checked_file(&logq)?).map_err(|_|"COHORT_LOG_UTF8")?;
+ let line=log.lines().find(|l|l.starts_with(&format!("CHILD_STDOUT R3_BP_FULL_{}_PHASE ",ph))).ok_or("COHORT_PHASE_LINE_ABSENT")?;
+ let disposition=line.split_whitespace().find_map(|w|w.strip_prefix("DISPOSITION=")).ok_or("COHORT_DISPOSITION_ABSENT")?;
+ let record=format!("HECS_R3_SUCCESSOR_C2_DISPOSITION_V1\nPHASE={}\nRELEASE_SHA256={}\nLAST_COMMIT_SHA256={}\nCOHORT_OBSERVER_LOG_SHA256={}\nDISPOSITION={}\n",
+  ph,pseal,last,sha_file(&logq)?,disposition);
+ write_once(&dpath,&record)?;
+ println!("PASS_R3_C2_PHASE_CLOSED phase={} disposition={} record_sha256={}",ph,disposition,sha256(record.as_bytes()));
+ Ok(())
+}
+fn selftest()->R<()> {
+ need(sha256(b"")=="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","SHA256_EMPTY")?;
+ need(sha256(b"abc")=="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad","SHA256_ABC")?;
+ need(sha256(&vec![b'a';1_000_000])=="cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0","SHA256_MILLION_A")?;
+ let all:Vec<u64>=DEV.iter().chain(QUAL.iter()).copied().collect();
+ need(all.iter().copied().collect::<std::collections::HashSet<_>>().len()==20,"SEED_DUPLICATES")?;
+ println!("PASS_R3_C2_SHA256_SEED_AND_EXCLUSIVE_RECORD_SELFTEST");Ok(())
+}
+fn main(){
+ let a=std::env::args().collect::<Vec<_>>();
+ let outcome=match a.as_slice(){
+  [_,m] if m=="--selftest"=>selftest(),
+  [_,m,ph,p,proto,bin] if m=="--write-release"=>write_release(Path::new(p),Path::new(proto),Path::new(bin),ph),
+  [_,m,ph,p,proto,bin] if m=="--verify-release"=>approval(Path::new(p),Path::new(proto),Path::new(bin),ph).map(|s|println!("PASS_R3_C2_RELEASE_VERIFIED phase={} sha256={}",ph,s)),
+  [_,m,ph,p,proto,bin,i] if m=="--run-seed"=>i.parse::<usize>().map_err(|_|"INVALID_INDEX".into()).and_then(|n|run_seed(Path::new(p),Path::new(proto),Path::new(bin),ph,n)),
+  [_,m,ph,p,proto,bin] if m=="--close"=>close(Path::new(p),Path::new(proto),Path::new(bin),ph),
+  _=>fail("USAGE: r3_c2_supervisor --selftest | --write-release|--verify-release|--close PHASE PROJECT PROTOCOL BINARY | --run-seed PHASE PROJECT PROTOCOL BINARY INDEX"),
+ };
+ if let Err(e)=outcome {eprintln!("MECHANICS_OR_SCIENCE_REFUSAL_R3_C2={}",e);std::process::exit(1)}
+}
