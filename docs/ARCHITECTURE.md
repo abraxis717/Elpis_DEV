@@ -279,10 +279,12 @@ task bytes
   `REJECTED_PRE_BATCH_AMBIGUITY`. No proposal set, segment, overlay or receipt
   exists for it.
 * **Python binding.** Python loads one library, `libelpis_ingress_bridge`,
-  from an explicit path. A linker version script limits its exports to the
-  bridge, the lexer ABI and the query-ingress result ABI. The bridge opens
-  only an existing corpus: symlinked, relative or absent roots are refused,
-  and it never creates a corpus. The binding re-reads the authority flags and
+  only through deployment-pinned, substrate-sealed authority
+  (`elpis.structure.native_loader`). A linker version script limits its
+  exports to the bridge, the lexer ABI and the query-ingress result ABI.
+  Persistent ingress is retired (`elpis_ingress_env_open` refuses): ingress
+  borrows the corpus of one live, volatile HACF retrieval epoch and never
+  creates or mutates a corpus. The binding re-reads the authority flags and
   refuses any result that claims authority.
 * **Parity.** At migration, the bounded composition identities were
   byte-identical to the donor, and they are pinned in
@@ -374,8 +376,6 @@ are not signatures.
   and the migration fixed it, so phase disposition is always unestablished.
 * **The only canonical state is historical.** The one canonical generation is
   a historical test fixture, and no in-repo producer creates a genesis state.
-* **The ingress library is not digest-pinned.** It is loaded by explicit
-  path only, not yet through substrate authority.
 * **Query-local overlays are transient.** Each one lives only in memory for
   the duration of a call. It is not persisted into a semantic snapshot.
 
@@ -670,6 +670,10 @@ path composes it.
 ## Structural memory through the codec, and the retained principal path
 
 HACF is Elpis's persistent structural memory, not a model's context window.
+Its autonomous retrieval path persists nothing: a retrieval epoch is volatile
+and diskless (in-memory corpus, RAM-only FMS tiers), and persistent structural
+writers (the operator-provisioned fixed-capacity H-gram, semantic admission and
+snapshot publication) are explicit operator operations, never a runtime turn.
 `Runtime.admit_context` resolves proposed HACF objects (verified bytes,
 recomputed chunk identity, pinned corpus manifest) and renders them, budgeted
 and frozen, through the DSV4 codec; that is a communication operation. No
