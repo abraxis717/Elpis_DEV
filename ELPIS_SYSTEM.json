@@ -465,6 +465,10 @@
       {
         "path": "research/hecs_r2",
         "classification": "RESEARCH_ONLY, WORLD_MODEL_INVALID: H-ECS R2, a fresh experiment after the closed R0 (TASK_INVALID_ON_DEV) and R1 (TASK_INVALID), preregistered in 6f9cb6b (pre-cleanup lineage: 05be551; convergence calibration, S1, M at every consumed horizon on every seed, finite-horizon derivative-product diagnostics; openai/math fd4aeeb2 as mathematical provenance only). DEV calibrated at 96000 K1 steps and was valid; the single QUAL run was task valid and one-step valid in every instance, but M failed in SEPARATED (2 of 8 worlds below free-running capture 0.90 at a consumed horizon; no numerical escape) (docs/research/HECS_R2_RESULTS.md). Hierarchy hypotheses not adjudicated (not a hierarchy result); integration NOT_AUTHORIZED. R1's crate reused with source equivalence; one native K1 state per level through the existing C ABI. No runtime authority; makes nothing canonical."
+      },
+      {
+        "path": "research/hecs_r3",
+        "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, NO_RUNTIME_READINESS_CLAIM: H-ECS R3 successor lineage (frozen write-once evidence; docs/research/HECS_R3_RESULTS.md). CONSTITUENT WORLD-MODEL LAW = QUALIFIED UNDER FROZEN REGIME: C2 (true-target terminal rollout anchoring, HD/L2) DEV 8/8 and C2-Q2 QUAL 12/12 WORLD_MODEL_VALID; matched family C2M (the same offline LEARN law at every H2 constituent, w_T(h)=(4/h)^1.5) DEV 8/8 and QUAL 12/12 WORLD_MODEL_VALID. HIERARCHY HYPOTHESIS = ADJUDICATED NEGATIVE: the R2 H2 law over the matched qualified constituents gives NO_ADVANTAGE_OVER_WIDTH (flat L1/N72 outperforms TS/L2 and HD/L2 at matched planning compute). HIERARCHY INTEGRATION = NOT AUTHORIZED; no H-ECS hierarchical runtime is canonical. C2/C2M is a learning law from observed trajectories, not a query-time method. Not on the canonical path; no codec, no HACF edge."
       }
     ],
     "native_targets": [
