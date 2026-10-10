@@ -53,5 +53,7 @@ elpis_add_test(substrate test_fms_concurrency SOURCES tests/test_fms_concurrency
   LIBS elpis_fms_test_pal ARGS ${CMAKE_CURRENT_BINARY_DIR}/fms-concurrency-state)
 elpis_add_test(substrate test_fms_adversarial SOURCES tests/test_fms_adversarial.c
   LIBS elpis_fms_test_pal ARGS ${CMAKE_CURRENT_BINARY_DIR}/fms-adversarial-state)
+elpis_add_test(substrate test_fms_cold_reclaim SOURCES tests/test_fms_cold_reclaim.c
+  LIBS elpis_fms ARGS ${CMAKE_CURRENT_BINARY_DIR}/fms-cold-reclaim-state)
 elpis_add_test(substrate test_fms_file_service SOURCES tests/test_fms_file_service.c
   LIBS elpis_fms_file_service_test_support Threads::Threads TIMEOUT 120)

@@ -529,7 +529,11 @@ static void case_replica_reuse(void) {
 
 static void case_two_contexts(void) {
     CASE("two contexts, two PALs, no shared global state");
-    const char *r1 = mkroot("c13a"), *r2 = mkroot("c13b");
+    /* mkroot() returns one static buffer: copy each root so the two PALs
+     * really own two distinct cold roots (one live owner per root). */
+    char r1[640], r2[640];
+    snprintf(r1, sizeof r1, "%s", mkroot("c13a"));
+    snprintf(r2, sizeof r2, "%s", mkroot("c13b"));
     fms_pal_test_opts o1; memset(&o1, 0, sizeof o1); o1.cold_root = r1;
     fms_pal_test_opts o2; memset(&o2, 0, sizeof o2); o2.cold_root = r2;
     o2.emulate_device = 1; o2.device_domain = FMS_DOM_DEVICE;
