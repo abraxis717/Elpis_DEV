@@ -367,15 +367,26 @@ are not signatures.
 
 ### Incomplete interfaces
 
-* **Promotion gates need an evidence writer.** Gate evaluation still reads
-  the historical phase-evidence directory layout. Application identity can be
-  bound in memory (`bind_g53c_application_identity`), but no in-repo stage
-  writes the gate evidence yet.
+* **Promotion gates need qualification evidence, not a stage writer.** Gate
+  evaluation reads the historical G53B/G53C/G53D phase-evidence layout:
+  three-seed determinism, mutation results, atomicity, replay, authority and
+  non-mutation audits, and post-qualification verification. Those come from a
+  multi-seed qualification procedure. A live stage that wrote the layout would
+  forge them. Application identity can be bound in memory
+  (`bind_g53c_application_identity`), but passing the gates from live stages
+  needs either the qualification procedure in the repository or gates
+  redefined over live-stage evidence. That is an architectural decision.
 * **The historical markdown disposition is gone.** Human-readable reports
   never supply a phase disposition. The donor did this despite its own test,
   and the migration fixed it, so phase disposition is always unestablished.
 * **The only canonical state is historical.** The one canonical generation is
   a historical test fixture, and no in-repo producer creates a genesis state.
+  The in-repo authority issues a promotion capability only against an
+  existing canonical digest. The fixture's generation 1 (`GENESIS` prior
+  binding) came from the donor G5-3I harness, whose capability is bound to
+  preflight, qualification-report and readiness-seal artifacts that are
+  produced outside this repository. A genesis constructor needs either that
+  harness or a new, explicitly approved genesis authority binding.
 * **Query-local overlays are transient.** Each one lives only in memory for
   the duration of a call. It is not persisted into a semantic snapshot.
 
@@ -762,6 +773,37 @@ history:
 
 The runtime composes no DSV model execution: there is no decode, principal
 sequence or model text operation, and the mission gate pins this list.
+
+### Autonomous persistence
+
+There is zero autonomously ever-expanding Elpis-owned persistence.
+`elpis.runtime.persistence` classifies every persistent writer reachable
+from the runtime exactly once, and every public `Runtime` operation as
+autonomous or operator:
+
+* `FIXED_CAPACITY_AUTONOMOUS`: the two continuity slots, and the FMS cold
+  store. The cold store is bounded by the cold budget and object capacity
+  fixed at `Context` creation. Its root has one live owner, and a crashed
+  owner's files are reclaimed.
+* `OPERATOR_EXPLICIT_BOUNDED`: each write needs an explicit operator act.
+  - canonical publication, with its ledgers and candidate construction;
+  - evolution materialization;
+  - the H-gram, which is operator-provisioned and fully preallocated and is
+    written only by preapproved in-place updates;
+  - semantic admission and snapshot publication.
+* `OFFLINE_RESEARCH_ONLY`: synthetic fixture generators and research
+  laboratories.
+* `PROHIBITED_FROM_AUTONOMOUS_RUNTIME`: a persistent HACF corpus or ingress
+  (retired), and any persistent log sink.
+
+The HACF retrieval epoch is volatile and diskless. A process launched under
+`elpis_autonomous_run` cannot create, truncate or grow files; its only
+optional writable grant is the two continuity slots.
+`tests/boundary/test_autonomous_persistence.py` binds the table to the code.
+`tests/integration/test_autonomous_no_growth.py` runs an epoch, ingress, an
+anchor and canonical turns on real libraries under a write trap: they leave
+exactly the two 176-byte slots. Repeated epoch create/destroy holds file
+descriptors, threads and live handles constant.
 
 ### K1 restart law
 

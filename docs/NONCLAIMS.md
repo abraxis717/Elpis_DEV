@@ -165,6 +165,21 @@ are not evidence that the contract has any effect.
   one-use promotion authority can change canonical state.
 * The historical Grid81 canonical fixture is a regression fixture, not a
   benchmark.
+* HACF is not complete. Implemented: A (deployment-pinned, substrate-sealed
+  bridge loading) and C v1 (an admitted claim-to-claim relation with PRIMARY
+  witnesses projected onto one chunk context edge; scope
+  `ADMITTED_CLAIM_TO_CLAIM_PRIMARY_WITNESSES_ONLY`). B (admission and immutable
+  snapshot publication) is explicit, operator-governed mechanics, not autonomous
+  persistence. Volatile, diskless retrieval epochs are the canonical autonomous
+  retrieval path. The H-gram is a fixed-capacity, operator-provisioned
+  associative store with no learning authority. There is no arbitrary semantic
+  hyperedge projection, no natural-language relation extraction, no semantic
+  codec and no HACF->ECS or ECS->HACF edge.
+* Global autonomous unlimited persistence is prohibited. The autonomous runtime
+  path may write only the two fixed continuity slots and a capacity-bounded FMS
+  cold store; every other persistent writer is operator-explicit, offline or
+  prohibited (`elpis.runtime.persistence`). This is a property of the code
+  paths, proven by tests; it is not a claim about host filesystem accounting.
 
 ## Research laboratories (`research/`)
 
@@ -208,3 +223,11 @@ are not evidence that the contract has any effect.
   are not Lyapunov exponents, and no chaos, entropy or hyperbolicity claim is made;
   the openai/math donor supplied mathematical structure only. No integration was
   authorized, and H-ECS is not canonical.
+* `research/hecs_r3` (H-ECS R3 successor lineage) is RESEARCH_ONLY with
+  NO_RUNTIME_AUTHORITY (`docs/research/HECS_R3_RESULTS.md`). The C2/C2M
+  constituent world-model learning law is `WORLD_MODEL_VALID` under its frozen
+  regime: it is an offline learning law from observed trajectories, not a
+  query-time method. The hierarchy hypothesis, adjudicated over matched
+  qualified constituents, is negative (`NO_ADVANTAGE_OVER_WIDTH`). Hierarchy
+  integration is NOT AUTHORIZED, no H-ECS or EDEN hierarchical runtime is
+  canonical, and no runtime readiness is claimed.

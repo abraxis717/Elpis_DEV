@@ -59,8 +59,9 @@ WRITERS: tuple[PersistentWriter, ...] = (
     PersistentWriter(
         "canonical_grid81_publication", O, ("elpis.pipeline.canonical.publisher:publish_candidate",), (),
         "Requires the exact one-use promotion capability issued against an explicit operator approval digest. "
-        "The canonical root is exchanged atomically and the previous snapshot is removed; one fixed recovery "
-        "journal; one ledger row per approved publication."),
+        "Each approved publication adds one append-only generation file and one ledger row; the canonical root is "
+        "exchanged atomically and the previous snapshot removed; one fixed recovery journal. Growth is bounded by "
+        "the number of operator approvals, never by autonomous activity."),
     PersistentWriter(
         "publication_ledger_v1", O,
         ("elpis.pipeline.application.durable_ledger:DurableApplicationLedger.append",), (),
