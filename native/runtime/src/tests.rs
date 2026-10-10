@@ -254,9 +254,33 @@ impl K1Ops for Fake {
         self.state().abort(token)
     }
 
+    fn query_identity(&mut self, dim: usize, x: &[f64], out: &mut [f64], digest: &mut Digest) -> i32 {
+        let mut s = self.state();
+        s.calls.push("query_identity");
+        if dim != DIM || x.len() != out.len() * DIM {
+            return -1;
+        }
+        if x.iter().any(|v| !v.is_finite()) {
+            return K1_NONFINITE;
+        }
+        // Reads the retained values only (a stand-in answer, not K1's forward map).
+        for (r, o) in out.iter_mut().enumerate() {
+            *o = s.w[0] * x[r * DIM] + s.w[1] * x[r * DIM + 1] + s.w[2];
+        }
+        *digest = s.identity();
+        0
+    }
+
     fn retain_abort(&self) -> Box<dyn TxnAbort> {
         Box::new(FakeAbort(Arc::clone(&self.0)))
     }
+}
+
+fn query(core: &mut Core, sub: &mut Fake, k: Key, rows: usize) -> Result<(Vec<f64>, Digest), Error> {
+    let x: Vec<f64> = (0..rows * DIM).map(|i| 0.25 * (i as f64 + 1.0)).collect();
+    let mut out = vec![f64::NAN; rows];
+    let digest = core.query(sub, k, &x, &mut out).map_err(|r| r.error)?;
+    Ok((out, digest))
 }
 
 fn key(owner: u64) -> Key {
@@ -890,4 +914,112 @@ mod faults {
         assert_eq!((io.opens, io.preads, io.pwrites, io.pwrite_bytes, io.data_syncs), (0, 0, 1, 176, 1));
         assert_eq!((io.dir_syncs, io.renames, io.unlinks), (0, 0, 0));
     }
+}
+
+// -- QUERY: the canonical read-only operation ---------------------------------------------------------------------
+
+#[test]
+fn a_query_answers_from_the_anchored_state_and_changes_nothing() {
+    let dir = Dir::new("query");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    let (retained, generation) = (sub.retained(), sub.generation());
+    let durable = core.snapshot().unwrap();
+    sub.clear_calls();
+    core.counters(true);
+    let (answer, identity) = query(&mut core, &mut sub, key(1), 3).unwrap();
+    assert_eq!(identity, sub.identity());
+    assert!(answer.iter().all(|v| v.is_finite()));
+    // One native crossing; no digest-then-forward window, no transaction, no commit, no publication.
+    assert_eq!(sub.calls(), ["query_identity"]);
+    assert_eq!(core.counters(false), Counters { k1_queries: 1, ..Counters::default() });
+    assert_eq!((sub.retained(), sub.generation(), sub.txn_open()), (retained, generation, false));
+    assert_eq!(core.snapshot().unwrap(), durable);
+    // Deterministic and repeatable: the same state answers the same way.
+    assert_eq!(query(&mut core, &mut sub, key(1), 3).unwrap(), (answer, identity));
+    assert_eq!(core.snapshot().unwrap(), durable);
+    assert_eq!(core.fault(), None);
+}
+
+#[test]
+fn a_query_never_publishes_and_never_anchors() {
+    let dir = Dir::new("query-unanchored");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    let durable = core.snapshot().unwrap();
+    assert_eq!(query(&mut core, &mut sub, key(1), 2).unwrap_err(), Code::Unanchored.into());
+    assert!(sub.calls().is_empty());
+    assert_eq!(core.snapshot().unwrap(), durable);
+    assert_eq!(anchored(&core), None);
+    assert_eq!(core.fault(), None);
+}
+
+#[test]
+fn a_query_of_a_state_the_lineage_never_committed_fail_stops_and_withholds_the_answer() {
+    let dir = Dir::new("query-mismatch");
+    let mut sub = Fake::new(0.1);
+    dir.core().anchor(&mut sub, key(1)).unwrap();
+    let mut core = dir.core();
+    let durable = core.snapshot().unwrap();
+    let mut other = Fake::new(0.2);
+    let x = vec![0.5; 2 * DIM];
+    let mut out = vec![7.0; 2];
+    let refused = core.query(&mut other, key(2), &x, &mut out).unwrap_err();
+    assert_eq!(refused.error, Code::StateMismatch.into());
+    assert_eq!(out, [0.0, 0.0]);
+    assert_eq!(core.fault(), Some(Code::StateMismatch));
+    assert_eq!(core.snapshot().unwrap(), durable);
+    // Fail-stopped: the matching state is refused too until reopen.
+    assert_eq!(query(&mut core, &mut sub, key(1), 1).unwrap_err(), Code::StateMismatch.into());
+}
+
+#[test]
+fn a_query_of_a_bound_state_moved_out_of_band_fail_stops() {
+    let dir = Dir::new("query-moved");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    query(&mut core, &mut sub, key(1), 1).unwrap();
+    sub.interlope();
+    let durable = core.snapshot().unwrap();
+    assert_eq!(query(&mut core, &mut sub, key(1), 1).unwrap_err(), Code::StateMismatch.into());
+    assert_eq!(core.fault(), Some(Code::StateMismatch));
+    assert_eq!(core.snapshot().unwrap(), durable);
+}
+
+#[test]
+fn a_refused_query_changes_nothing_and_does_not_fail_stop() {
+    let dir = Dir::new("query-refused");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    let (retained, durable) = (sub.retained(), core.snapshot().unwrap());
+    let mut out = vec![1.0; 1];
+    let refused = core.query(&mut sub, key(1), &[f64::NAN, 0.0], &mut out).unwrap_err();
+    assert_eq!((refused.error, refused.k1_status), (Rt::EcsRefused.into(), K1_NONFINITE));
+    assert_eq!(out, [0.0]);
+    // Malformed shapes are refused before any native call.
+    sub.clear_calls();
+    assert_eq!(core.query(&mut sub, key(1), &[0.0; 3], &mut out).unwrap_err().error, Rt::Invalid.into());
+    assert_eq!(core.query(&mut sub, key(1), &[], &mut []).unwrap_err().error, Rt::Invalid.into());
+    assert!(sub.calls().is_empty());
+    assert_eq!((sub.retained(), core.snapshot().unwrap(), core.fault()), (retained, durable, None));
+}
+
+#[test]
+fn a_query_is_refused_while_a_managed_turn_is_open_and_another_state_is_a_switch() {
+    let dir = Dir::new("query-turn");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    let i = input(2, 1);
+    let mut s3 = vec![0.0; features(DIM)];
+    core.turn_begin(&mut sub, key(1), &stimulus(&i), &mut s3).unwrap();
+    assert_eq!(query(&mut core, &mut sub, key(1), 1).unwrap_err(), Rt::TurnOpen.into());
+    core.turn_abort(key(1)).unwrap();
+    let mut other = Fake::new(0.1);
+    other.clear_calls();
+    assert_eq!(query(&mut core, &mut other, key(2), 1).unwrap_err(), Rt::SubstrateSwitch.into());
+    assert!(other.calls().is_empty());
 }

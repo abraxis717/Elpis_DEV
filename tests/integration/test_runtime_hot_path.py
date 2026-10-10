@@ -27,7 +27,7 @@ from elpis.runtime import Runtime, RuntimeConfig
 from elpis.runtime.cognition import run_turn
 
 from ..conftest import require_runtime_library
-from ._turn_fixtures import ByteTokens, FixtureMap
+from ._turn_fixtures import LEARN, ByteTokens, FixtureMap
 from .test_codec_ecs_turn import RATE, _beside, _Counting, world
 
 _OS_CALLS = ("open", "close", "pwrite", "write", "pread", "read", "fsync", "fdatasync", "rename", "replace", "unlink",
@@ -79,15 +79,15 @@ def test_managed_turn_is_two_runtimecore_crossings_and_one_fixed_publication(exp
 
     # The bare canonical turn: the reference crossing count.
     with world(k1) as bare:
-        run_turn(bare, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
+        run_turn(bare, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
         counter.calls.clear()
-        run_turn(bare, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
+        run_turn(bare, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
         bare_crossings = dict(counter.calls)
 
     config = RuntimeConfig(tmp_path / "continuity", require_runtime_library(testing=True))
     with world(k1) as state, Runtime(config) as runtime:
         runtime.anchor_cognition(state)
-        runtime.run_turn(state, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
+        runtime.run_turn(state, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
         footprint = sorted((p.name, p.stat().st_size) for p in (tmp_path / "continuity").iterdir())
         runtime.continuity.testing_counters(reset=True)
         runtime._core.counters(reset=True)
@@ -96,7 +96,7 @@ def test_managed_turn_is_two_runtimecore_crossings_and_one_fixed_publication(exp
         with monkeypatch.context() as patch:
             fs = _CountingOS(patch)
             result = runtime.run_turn(state, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture),
-                                      learning_rate=RATE)
+                                      authority=LEARN)
         python_k1_calls, turn_core_calls = dict(counter.calls), dict(core_calls.calls)
         native = runtime._core.counters()
         io = runtime.continuity.testing_counters()
@@ -110,7 +110,7 @@ def test_managed_turn_is_two_runtimecore_crossings_and_one_fixed_publication(exp
         assert {k: bare_crossings.get(k, 0) for k in ("txn_begin", "txn_run_schedule", "txn_commit_identity")} == \
             {"txn_begin": 1, "txn_run_schedule": 1, "txn_commit_identity": 1}, bare_crossings
         assert native == {"k1_state_digests": 0, "k1_reserves": 0, "k1_txn_begins": 1, "k1_run_schedules": 1,
-                          "k1_commits": 1, "k1_aborts": 0, "publications": 1}, native
+                          "k1_commits": 1, "k1_aborts": 0, "publications": 1, "k1_queries": 0}, native
         # Python does no file I/O; the library writes one complete fixed-size record and syncs it once.
         assert fs.calls == {}, fs.calls
         assert io == {"opens": 0, "preads": 0, "pread_bytes": 0, "pwrites": 1, "pwrite_bytes": 176,

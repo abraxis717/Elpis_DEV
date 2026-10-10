@@ -20,7 +20,8 @@ _Static_assert(sizeof(elpis_runtime_schedule_result) == sizeof(elpis_ecsg_k1_sch
 _Static_assert(sizeof(elpis_runtime_commit_identity) == sizeof(elpis_ecsg_k1_commit_identity), "identity layout");
 _Static_assert(sizeof(elpis_runtime_turn_begin_result) == 48, "begin result ABI size");
 _Static_assert(sizeof(elpis_runtime_turn_commit_result) == 120, "commit result ABI size");
-_Static_assert(sizeof(elpis_runtime_counters) == 56, "counters ABI size");
+_Static_assert(sizeof(elpis_runtime_counters) == 64, "counters ABI size");
+_Static_assert(sizeof(elpis_runtime_query_result) == 40, "query result ABI size");
 
 static int k1_digest(void *s, uint8_t out[32]) { return elpis_ecsg_k1_state_digest(s, out); }
 static int k1_reserve(void *s, size_t rows) { return elpis_ecsg_k1_reserve(s, rows); }
@@ -35,8 +36,12 @@ static int k1_commit(void *s, uint64_t token, elpis_runtime_commit_identity *ide
     return elpis_ecsg_k1_txn_commit_identity(s, token, (elpis_ecsg_k1_commit_identity *)identity);
 }
 static int k1_abort(void *s, uint64_t token) { return elpis_ecsg_k1_txn_abort(s, token); }
+static int k1_query(void *s, size_t dim, const double *x, size_t rows, double *out, uint8_t digest[32]) {
+    return elpis_ecsg_k1_query_identity(s, dim, x, rows, out, digest);
+}
 
-static const elpis_runtime_k1_api API = {k1_digest, k1_reserve, k1_begin, k1_schedule, k1_commit, k1_abort};
+static const elpis_runtime_k1_api API = {k1_digest, k1_reserve, k1_begin, k1_schedule, k1_commit, k1_abort,
+                                          k1_query};
 
 static elpis_ecsg_k1 *state(double seed) {
     double w[DIM * WIDTH];
@@ -70,7 +75,7 @@ int main(int argc, char **argv) {
     assert(argc == 2);
     for (int i = 0; i < ROWS * DIM; ++i) X[i] = (double)((i * 5) % 11 - 5) / 16.0;
     for (int i = 0; i < ROWS; ++i) Y[i] = (double)(i % 3 - 1) / 8.0;
-    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V2);
+    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V3);
     assert(elpis_runtime_features(DIM) == elpis_ecsg_k1_features(DIM));
     for (size_t d = 1; d <= 64; ++d) assert(elpis_runtime_features(d) == elpis_ecsg_k1_features(d));
     assert(!strcmp(elpis_runtime_code_name(ELPIS_RUNTIME_SUBSTRATE_SWITCH), "COGNITION_SUBSTRATE_SWITCH"));
@@ -139,6 +144,36 @@ int main(int argc, char **argv) {
     X[3] = 0.25;
     digest(a, now);
     assert(!memcmp(before, now, 32));
+
+    /* QUERY: read-only. The answer is K1's own forward map of the authoritative state, reported against its
+     * identity; W, epoch, H, a (the retained-state digest), the generation and continuity are unchanged. */
+    {
+        double q[2 * DIM], answer[2], direct[2];
+        for (int i = 0; i < 2 * DIM; ++i) q[i] = (double)(i % 5 - 2) / 8.0;
+        elpis_runtime_query_result queried;
+        elpis_continuity_snapshot durable, after;
+        OK(elpis_runtime_snapshot(rt, &durable));
+        const uint64_t epoch = elpis_ecsg_k1_epoch(a), generation = elpis_ecsg_k1_generation(a);
+        OK(elpis_runtime_read_counters(rt, &(elpis_runtime_counters){0}, 1));
+        OK(elpis_runtime_query(rt, &da, q, 2 * DIM, answer, 2, &queried));
+        assert(elpis_ecsg_k1_forward(a, q, 2, direct) == ELPIS_ECSG_K1_OK);
+        assert(!memcmp(answer, direct, sizeof(direct)));
+        digest(a, now);
+        assert(!memcmp(queried.state_digest, now, 32) && !memcmp(now, before, 32));
+        assert(elpis_ecsg_k1_epoch(a) == epoch && elpis_ecsg_k1_generation(a) == generation);
+        OK(elpis_runtime_snapshot(rt, &after));
+        assert(!memcmp(&durable, &after, sizeof(after)));
+        elpis_runtime_counters c;
+        OK(elpis_runtime_read_counters(rt, &c, 0));
+        assert(c.k1_queries == 1 && c.k1_txn_begins == 0 && c.k1_commits == 0 && c.publications == 0);
+        /* A declared dimension that is not the state's own is refused natively before any input is read. */
+        elpis_runtime_substrate short_dim = sub(a, 1, DIM - 1);
+        assert(elpis_runtime_query(rt, &short_dim, q, 2 * (DIM - 1), answer, 2, &queried) ==
+               ELPIS_RUNTIME_SUBSTRATE_SWITCH);
+        /* Another state is a switch, refused without a native call. */
+        assert(elpis_runtime_query(rt, &db, q, 2 * DIM, answer, 2, &queried) == ELPIS_RUNTIME_SUBSTRATE_SWITCH);
+        assert(elpis_runtime_fault(rt) == 0);
+    }
 
     /* Evolution: reserve, finalize. */
     OK(elpis_runtime_evolution_authority(rt, &snap));

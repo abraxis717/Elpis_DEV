@@ -192,6 +192,7 @@ _K1_ABI = {
     "generation": ([_VP], _U64),
     "provenance_of": ([_VP], C.c_uint32),
     "forward": ([_VP, _P, C.c_size_t, _P], C.c_int),
+    "query_identity": ([_VP, C.c_size_t, _P, C.c_size_t, _P, _U8P], C.c_int),
     "learn": ([_VP, _P, _P, C.c_size_t, C.c_double, _U64, _TP], C.c_int),
     "consolidate": ([_VP, _P, C.c_size_t, _TP], C.c_int),
     "reset": ([_VP, _TP], C.c_int),
@@ -330,6 +331,16 @@ class K1State:
         if rc != 0:
             raise _refused(rc, "K1 query")
         return rows
+
+    def query_identity(self, x_rows):
+        """QUERY bound to its identity: ``(f_W(X), state_digest)`` of the same authoritative state, one native call.
+        Read-only: nothing is written."""
+        x, rows = _admit_rows(x_rows, self._dim, "X")
+        out, digest = (C.c_double * rows)(), (C.c_uint8 * 32)()
+        rc = self._k.query_identity(self._live(), self._dim, x, rows, out, digest)
+        if rc != 0:
+            raise _refused(rc, "K1 query")
+        return _unpack_from(f"{rows}d", out), bytes(digest)
 
     def learn(self, x_rows, y, learning_rate, steps=1):
         """``steps`` K1 steps (G1 + the K1 correction) in one native call, committed as one transition."""
@@ -521,6 +532,7 @@ _FMS_ABI = {
     "pump": ([_VP], C.c_int),
     "reserve": ([_VP, _U64, C.c_size_t], C.c_int),
     "forward": ([_VP, _U64, _P, C.c_size_t, _P], C.c_int),
+    "query_identity": ([_VP, _U64, C.c_size_t, _P, C.c_size_t, _P, _U8P], C.c_int),
     "learn": ([_VP, _U64, _P, _P, C.c_size_t, C.c_double, _U64, _TP], C.c_int),
     "consolidate": ([_VP, _U64, _P, C.c_size_t, _TP], C.c_int),
     "reset": ([_VP, _U64, _TP], C.c_int),
@@ -646,6 +658,16 @@ class K1FMSRuntime:
         if rc != 0:
             raise _refused(rc, "K1 FMS query")
         return rows
+
+    def query_identity(self, state_id, x_rows):
+        """QUERY bound to its identity on a resident state (READ pin): ``(f_W(X), state_digest)``, one call."""
+        dim = self._dim(state_id)
+        x, rows = _admit_rows(x_rows, dim, "X")
+        out, digest = (C.c_double * rows)(), (C.c_uint8 * 32)()
+        rc = self._f.query_identity(self._live(), state_id, dim, x, rows, out, digest)
+        if rc != 0:
+            raise _refused(rc, "K1 FMS query")
+        return _unpack_from(f"{rows}d", out), bytes(digest)
 
     def learn(self, state_id, x_rows, y, learning_rate, steps=1):
         x, rows = _admit_rows(x_rows, self._dim(state_id), "X")
@@ -842,6 +864,9 @@ class K1FMSState:
 
     def query(self, x_rows):
         return self._r.query(self._id, x_rows)
+
+    def query_identity(self, x_rows):
+        return self._r.query_identity(self._id, x_rows)
 
     def snapshot(self):
         return self._r.snapshot(self._id)

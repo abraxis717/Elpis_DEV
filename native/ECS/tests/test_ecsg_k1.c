@@ -782,6 +782,53 @@ static void test_state_digest_matches_snapshot_trailer(void)
     elpis_ecsg_k1_destroy(&s);
 }
 
+/* QUERY bound to its identity: bitwise the forward map and the retained-state digest of the same state, read-only
+ * (W, epoch, H, a, the generation and an open transaction untouched), and refused on a declared shape that is not
+ * the state's own before any input is read. */
+static void test_query_identity_is_read_only(void)
+{
+    elpis_ecsg_k1 *s = fresh();
+    uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES], expected[ELPIS_ECSG_K1_DIGEST_BYTES], *before, *after;
+    double answer[R], direct[R];
+    uint64_t tok = 0;
+    size_t n;
+
+    assert(elpis_ecsg_k1_learn(s, X, Y, R, 0.002, 7, NULL) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_consolidate(s, X, R, NULL) == ELPIS_ECSG_K1_OK);   /* H, a != 0 */
+    n = envelope(s, &before);
+    const uint64_t epoch = elpis_ecsg_k1_epoch(s), generation = elpis_ecsg_k1_generation(s);
+    assert(elpis_ecsg_k1_query_identity(s, D, X2, R, answer, digest) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_forward(s, X2, R, direct) == ELPIS_ECSG_K1_OK);
+    assert(!memcmp(answer, direct, sizeof(direct)));
+    assert(elpis_ecsg_k1_state_digest(s, expected) == ELPIS_ECSG_K1_OK && !memcmp(digest, expected, sizeof(digest)));
+    (void)envelope(s, &after);
+    assert(!memcmp(before, after, n) && elpis_ecsg_k1_epoch(s) == epoch && elpis_ecsg_k1_generation(s) == generation);
+    free(after);
+
+    /* Wrong declared shape, missing digest or rows, non-finite input: refused, nothing written. */
+    memset(digest, 0xAB, sizeof(digest));
+    assert(elpis_ecsg_k1_query_identity(s, D - 1, X2, R, answer, digest) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_query_identity(s, D, X2, R, answer, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_query_identity(s, D, X2, 0, answer, digest) == ELPIS_ECSG_K1_INVALID);
+    {
+        double bad[D] = {0.0, 1.0 / 0.0, 0.0, 0.0, 0.0, 0.0};
+        assert(elpis_ecsg_k1_query_identity(s, D, bad, 1, answer, digest) == ELPIS_ECSG_K1_NONFINITE);
+    }
+    for (size_t i = 0; i < sizeof(digest); ++i) assert(digest[i] == 0xAB);   /* written only on success */
+
+    /* An open transaction is untouched: the query reads the authoritative state, and the transaction commits. */
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, X, Y, R, 0.002, 3, NULL) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_query_identity(s, D, X2, R, answer, digest) == ELPIS_ECSG_K1_OK);
+    assert(!memcmp(answer, direct, sizeof(direct)) && !memcmp(digest, expected, sizeof(digest)));
+    assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == ELPIS_ECSG_K1_OK);
+    (void)envelope(s, &after);
+    assert(memcmp(before, after, n) != 0);
+    free(after);
+    free(before);
+    elpis_ecsg_k1_destroy(&s);
+}
+
 int main(void)
 {
     fixture();
@@ -803,10 +850,12 @@ int main(void)
     test_getters_race_free_with_a_writer();
     test_experience_schedule();
     test_schedule_validation_touches_nothing();
+    test_state_digest_matches_snapshot_trailer();
+    test_query_identity_is_read_only();
     printf("ecsg_k1: Runtime R1 parity at H = 0, K1 law shape, refusal atomicity, complete-state transactions, "
            "envelope integrity, W-only import, reset, SINGLE_WRITER, the transaction refusal contract, hostile "
            "dimensions, resealed envelopes, provenance transitions, epoch overflow, race-free getters, the experience schedule (= ordered txn learn/consolidate, S3 readout, "
-           "whole-schedule validation, discard on non-finite, stale)\n");
+           "whole-schedule validation, discard on non-finite, stale), the retained-state digest, read-only QUERY with "
+           "its identity\n");
     return 0;
-    test_state_digest_matches_snapshot_trailer();
 }

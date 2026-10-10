@@ -10,6 +10,9 @@ The substrate descriptor names the native state, its library's entry points, its
 natively) and the identity of the Python object that owns the handle (``owner``). The caller keeps that owner
 alive while it is bound, so its identity cannot be reused by another state (lifetime only; no decision).
 
+QUERY (ABI v3) is read-only: ``query`` answers from the lineage's authoritative state with one native K1 crossing that
+also identifies it, and opens no transaction. LEARN is the managed turn.
+
 Turn lifecycle (ABI v2). Once ``turn_begin`` has opened a native K1 transaction, RuntimeCore ends it with exactly
 one native commit or abort before it forgets the turn: ``turn_commit``, ``turn_abort``, ``close`` and destruction
 (``__del__`` -> ``elpis_runtime_destroy``) all end it natively; ``open`` on an open runtime is refused and keeps it.
@@ -43,7 +46,7 @@ from .errors import CompositionError
 
 __all__ = ("RuntimeCore", "RuntimeLibrary", "TurnBegun")
 
-_ABI_VERSION = 2
+_ABI_VERSION = 3
 _TESTING_PROCESS_DEATH = 255
 _U64 = C.c_uint64
 _K1_NAMES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT"}
@@ -76,12 +79,17 @@ class _Commit(C.Structure):
     _fields_ = [("identity", _Identity), ("committed", C.c_uint32), ("k1_status", C.c_int32)]
 
 
+class _Query(C.Structure):
+    _fields_ = [("state_digest", C.c_uint8 * 32), ("k1_status", C.c_int32), ("reserved", C.c_uint32)]
+
+
 class _Counters(C.Structure):
     _fields_ = [(n, _U64) for n in ("k1_state_digests", "k1_reserves", "k1_txn_begins", "k1_run_schedules",
-                                    "k1_commits", "k1_aborts", "publications")]
+                                    "k1_commits", "k1_aborts", "publications", "k1_queries")]
 
 
-_API_ENTRIES = ("state_digest", "reserve", "txn_begin", "txn_run_schedule", "txn_commit_identity", "txn_abort")
+_API_ENTRIES = ("state_digest", "reserve", "txn_begin", "txn_run_schedule", "txn_commit_identity", "txn_abort",
+                "query_identity")
 
 
 class _K1Api(C.Structure):
@@ -93,7 +101,8 @@ class _Substrate(C.Structure):
                 ("owner", _U64), ("dim", _U64), ("api", C.c_void_p)]
 
 
-assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 120 and C.sizeof(_Counters) == 56
+assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 120 and C.sizeof(_Counters) == 64
+assert C.sizeof(_Query) == 40
 
 
 def _api(lib, prefix):
@@ -167,6 +176,7 @@ class RuntimeLibrary:
             "snapshot": [P, S],
             "read_counters": [P, C.POINTER(_Counters), C.c_int],
             "anchor": [P, C.POINTER(_Substrate), S],
+            "query": [P, C.POINTER(_Substrate), D, C.c_size_t, D, C.c_size_t, C.POINTER(_Query)],
             "turn_begin": [P, C.POINTER(_Substrate), D, C.c_size_t, D, C.c_size_t, C.POINTER(_Experience),
                            C.c_size_t, C.c_double, D, C.c_size_t, C.POINTER(_Begin)],
             "turn_commit": [P, C.POINTER(_Substrate), C.POINTER(_Commit), S],
@@ -266,6 +276,19 @@ class RuntimeCore:
     # -- K1 lineage and the managed turn ----------------------------------------------------------------------------
     def anchor(self, descriptor) -> ContinuitySnapshot:
         return self._snapshot("anchor", C.byref(descriptor), detail="no K1 mutation happened")
+
+    def query(self, descriptor, stimulus) -> tuple[tuple, bytes]:
+        """QUERY (read-only): ``(f_W(x) per row, retained-state identity)`` from the lineage's authoritative state.
+
+        One call into RuntimeCore, one native K1 crossing; nothing is begun, committed or published.
+        """
+        rows = stimulus.rows
+        out, result = (C.c_double * rows)(), _Query()
+        x = (C.c_double * len(stimulus.x)).from_buffer(stimulus.x)
+        rc = self._f.elpis_runtime_query(self._handle, C.byref(descriptor), x, len(stimulus.x), out, rows,
+                                         C.byref(result))
+        self.library.check(rc, "", result.k1_status)
+        return _unpack_from(f"{rows}d", out), bytes(result.state_digest)
 
     def turn_begin(self, descriptor, stimulus, learning_rate: float) -> TurnBegun:
         features = self.library.features(descriptor.dim)

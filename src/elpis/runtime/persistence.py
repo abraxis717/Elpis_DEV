@@ -117,7 +117,10 @@ WRITERS: tuple[PersistentWriter, ...] = (
 # FIXED_CAPACITY_AUTONOMOUS writers; operator operations require explicit authority from their caller.
 AUTONOMOUS_OPERATIONS = frozenset({
     "open", "close", "fault", "run_ingress", "admit_retrieval", "admit_context",
-    "anchor_cognition", "run_turn", "evolution_authority",
+    "anchor_cognition", "evolution_authority",
+    "run_query",           # read-only: writes nothing at all
+    "run_learn",           # explicit LearnAuthority; writes only the fixed continuity slots
+    "run_turn",            # LEGACY learned turn: a LEARN (explicit LearnAuthority); fixed continuity slots only
 })
 OPERATOR_OPERATIONS = frozenset({
     "publish_canonical",   # one-use promotion capability against an operator approval digest

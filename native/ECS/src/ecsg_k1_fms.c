@@ -521,7 +521,7 @@ int elpis_ecsg_k1_fms_reserve(elpis_ecsg_k1_fms *r, uint64_t id, size_t rows)
 /* --- direct operations: pin -> native operation over the resident bytes -> unpin --------------------- */
 
 typedef enum { OP_FORWARD, OP_LEARN, OP_CONSOLIDATE, OP_RESET, OP_COPY_W, OP_COPY_H, OP_COPY_A,
-               OP_SNAPSHOT, OP_STATE_DIGEST } op_kind;
+               OP_SNAPSHOT, OP_STATE_DIGEST, OP_QUERY_IDENTITY } op_kind;
 
 typedef struct {
     op_kind kind;
@@ -557,6 +557,8 @@ static int run_op(elpis_ecsg_k1 *k1, const op_args *a)
         return elpis_ecsg_k1_snapshot_write(k1, a->bytes, a->count);
     case OP_STATE_DIGEST:
         return elpis_ecsg_k1_state_digest(k1, a->bytes);
+    case OP_QUERY_IDENTITY:
+        return elpis_ecsg_k1_query_identity(k1, a->count, a->x, a->rows, a->out, a->bytes);
     }
     return ELPIS_ECSG_K1_INVALID;
 }
@@ -576,7 +578,8 @@ static int direct(elpis_ecsg_k1_fms *r, uint64_t id, const op_args *a)
         give(r, s);
         return rc;
     }
-    timer = a->kind == OP_FORWARD ? &s->info.query_ns : a->kind == OP_LEARN ? &s->info.learn_ns
+    timer = a->kind == OP_FORWARD || a->kind == OP_QUERY_IDENTITY ? &s->info.query_ns
+          : a->kind == OP_LEARN ? &s->info.learn_ns
           : a->kind == OP_CONSOLIDATE ? &s->info.consolidate_ns : &s->info.commit_ns;
     start = now_ns();
     rc = run_op(s->k1, a);
@@ -655,6 +658,16 @@ elpis_ecsg_k1_fms_state_digest(
     }
     a.kind = OP_STATE_DIGEST;
     a.bytes = out;
+    return direct(r, id, &a);
+}
+
+int elpis_ecsg_k1_fms_query_identity(elpis_ecsg_k1_fms *r, uint64_t id, size_t dim, const double *x, size_t rows,
+                                     double *out, uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES])
+{
+    op_args a = {OP_QUERY_IDENTITY, x, NULL, rows, 0.0, 0u, out, dim, digest, NULL};
+    if (digest == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
     return direct(r, id, &a);
 }
 

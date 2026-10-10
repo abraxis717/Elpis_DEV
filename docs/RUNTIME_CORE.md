@@ -1,6 +1,6 @@
 # RuntimeCore: the runtime's systems authority in Rust
 
-`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v2) owns the mutable systems
+`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v3) owns the mutable systems
 authority of an open Elpis runtime. `elpis.runtime.Runtime` is its compatibility facade.
 
 ## What RuntimeCore owns
@@ -11,7 +11,8 @@ authority of an open Elpis runtime. `elpis.runtime.Runtime` is its compatibility
 | Fail-stop disposition | `Runtime._continuity_fault` | `Core.fault` (a continuity code); every lineage- or authority-dependent call refuses with it until reopen |
 | Continuity store | a Python `ContinuityStore` handle | the `elpis_continuity::Store`, embedded as a crate (one implementation; the library also exports the continuity C ABI) |
 | K1 lineage binding | `Runtime._turn_substrate` and `_reconcile_cognition_substrate` | `Core.bound` (`Key`: kind, native handle, resident id, owner identity, dimension), verified once against the durable expected identity |
-| Managed turn's native transaction | Python sequenced `txn_begin`, `run_schedule`, `commit_identity`, abort | `turn_begin` (lineage check, begin, one schedule, cold-path capacity growth) and `turn_commit` / `turn_abort` |
+| Managed QUERY (read-only) | none (the turn was the only cognitive operation) | `query`: lineage check and one native `query_identity` (the answer `f_W(x)` and the identity of the state that computed it); no transaction, no commit, no publication |
+| Managed LEARN (the turn's native transaction) | Python sequenced `txn_begin`, `run_schedule`, `commit_identity`, abort | `turn_begin` (lineage check, begin, one schedule, cold-path capacity growth) and `turn_commit` / `turn_abort` |
 | Continuity publication of a committed turn | Python `commit_cognition_transition` + fault flag | `turn_commit` publishes or fail-stops; the refusal still reports the standing K1 commit |
 | Evolution reservation / finalization | Python reserve, execute, finalize, fault on exception | `evolution_reserve` / `evolution_finalize` / `evolution_abandon` / `evolution_reconcile`: one attempt in flight |
 
@@ -44,7 +45,7 @@ typedef struct {
 ```
 
 `api` is a table of the K1 library's own functions (`state_digest`, `reserve`, `txn_begin`,
-`txn_run_schedule`, `txn_commit_identity`, `txn_abort`); the Python adapter takes their addresses from the
+`txn_run_schedule`, `txn_commit_identity`, `txn_abort`, `query_identity`); the Python adapter takes their addresses from the
 loaded library, a C or C++ host passes them directly (`native/runtime/tests/test_runtime_abi.c`). The declared
 dimension is verified natively: K1 compares the readout length it implies with the state's own before it reads
 any input byte (`schedule_check`).
@@ -79,7 +80,15 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
   `CONTINUITY_STATE_MISMATCH` and fail-stops; both before any K1 mutation. A bound runtime refuses any other
   state, by handle or owner, with `COGNITION_SUBSTRATE_SWITCH` and no native call. A warm turn reads no
   identity: the binding holds and continuity verifies `before` at publication.
-* **Turn.** begin -> one native schedule on the candidate -> (boundary decodes) -> native commit -> one
+* **QUERY.** Read-only (docs/COGNITION_R0.md). One native call (`query_identity`) answers `f_W(x)` from the
+  authoritative state and returns that same state's retained-state identity under one K1 guard, so no operation
+  can move the state between the answer and its identity. The identity must equal the durable expected identity:
+  unanchored is `CONTINUITY_UNANCHORED`; any other state, including the bound one moved out of band, is
+  `CONTINUITY_STATE_MISMATCH` (fail-stop) and the answer is withheld (zeroed). A query is refused while a managed
+  turn is open (`RUNTIME_TURN_OPEN`). It begins no transaction, commits nothing and publishes nothing: W, epoch,
+  H, a, the generation and both continuity slots are byte-for-byte unchanged (`tests/integration/test_query_learn.py`).
+  ABI v3 added the entry to both K1 tables and the `k1_queries` counter.
+* **Turn (LEARN).** begin -> one native schedule on the candidate -> (boundary decodes) -> native commit -> one
   publication. Capacity beyond the reservation is grown on the cold path (abort, `reserve`, begin again).
   Every refusal before the commit leaves `(W, epoch, H, a)` byte-for-byte unchanged; a stale source is
   `ECS_STALE`.
@@ -107,6 +116,9 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
 * **Concurrency.** A handle serializes its calls with one lock; no call blocks on another runtime.
 
 ## Hot path
+
+A managed `Runtime.run_query` is one Python crossing into RuntimeCore for the query (after the fail-stop probe) and
+one K1 crossing (`query_identity`); the store does no I/O.
 
 A warm managed `Runtime.run_turn` (`tests/integration/test_runtime_hot_path.py`, every run): Python makes no K1
 call and three crossings into RuntimeCore (the fail-stop probe, `turn_begin`, `turn_commit`); RuntimeCore makes

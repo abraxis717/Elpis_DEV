@@ -22,11 +22,16 @@ entry point and returns that subsystem's result:
   authority (``evolution_authority``). The exact assertion is durably reserved
   before execution and finalized afterwards. Pending authority and stale
   assertions execute nothing.
-* ``anchor_cognition`` / ``run_turn``: the canonical cognitive turn, codec ->
-  ECS -> codec (:mod:`elpis.runtime.cognition`), over a native K1 state of the
-  one ECS. The first managed lineage is anchored explicitly. Each committed
-  turn publishes its new expected K1 retained-state identity to continuity.
-  Without a qualified ECS codec map the turn refuses with
+* ``anchor_cognition``: the explicit anchor of the first managed K1 lineage.
+* ``run_query``: the canonical read-only QUERY, codec -> ``f_W(x)`` of the
+  authoritative K1 state -> codec (:mod:`elpis.runtime.cognition`). No state
+  change: nothing is begun, committed or published.
+* ``run_learn``: the canonical LEARN under an explicit ``LearnAuthority``: the
+  admitted experience schedule committed atomically, then its new expected K1
+  retained-state identity published to continuity.
+* ``run_turn``: the LEGACY learned turn (LEARN, then the decode of its S3
+  readout), kept for replay; it needs the same explicit learning authority.
+  Without a qualified ECS codec map every cognitive operation refuses with
   ``ECS_CODEC_UNQUALIFIED``: text generation is unavailable.
 
 THE AUTHORITY IS RUNTIMECORE'S, NOT THIS MODULE'S. Every mutable systems decision
@@ -279,27 +284,73 @@ class Runtime:
         self._bound_owner = owner
         return anchored
 
-    # -- cognition: DSV4 codec -> ECS (RuntimeCore) -> DSV4 codec ---------------------------
-    def run_turn(self, substrate, text, *, tokenizer, codec_map=None, learning_rate=None, max_output_tokens=256):
-        """One managed canonical turn.
+    # -- cognition: QUERY (read-only) ---------------------------------------------------------------------------
+    def run_query(self, substrate, request):
+        """One managed QUERY (docs/COGNITION_R0.md): read-only.
 
-        The boundary validates the request, encodes the text and the stimulus and decodes the
-        readout. RuntimeCore verifies the K1 lineage, runs the native K1 transaction on its
-        candidate, commits it after the decode succeeded and publishes the committed identity to
-        continuity, fail-stopping when that publication is not certain. A refused or aborted turn
-        installs nothing.
+        The boundary validates the :class:`~elpis.runtime.cognition.QueryRequest` and encodes the query rows.
+        RuntimeCore answers ``f_W(x)`` from the lineage's authoritative K1 state in one native call that also
+        identifies the state; the identity must be the durable expected one (a mismatch fail-stops and the answer is
+        withheld). Nothing is begun, committed, published or written: W, epoch, H, a and continuity are unchanged.
+        """
+        self._core.require_live()
+
+        from .cognition import QueryReadout, QueryResult, _decode_query, _encode_query, _validate_query_request
+
+        classification = _validate_query_request(substrate, request)
+        descriptor, owner = describe(substrate)
+        tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, request.codec_map)
+        if self._bound_owner is None:
+            self._bound_owner = owner   # whatever RuntimeCore binds at this query stays alive
+        values, digest = self._core.query(descriptor, stimulus)
+        readout = QueryReadout(values, substrate.dim, substrate.width, digest)
+        output, rendered = _decode_query(request.codec_map, readout, request.tokenizer, request.max_output_tokens)
+        return QueryResult(tokens, output, rendered, readout, classification)
+
+    # -- cognition: LEARN (explicit authority) -------------------------------------------------------------------
+    def run_learn(self, substrate, request):
+        """One managed LEARN under an explicit :class:`~elpis.runtime.cognition.LearnAuthority`.
+
+        RuntimeCore verifies the K1 lineage, runs the admitted experience schedule on a native candidate, commits it
+        atomically and publishes the new retained-state identity to continuity, fail-stopping when that publication
+        is not certain. A refused LEARN installs nothing.
+        """
+        self._core.require_live()
+
+        from .cognition import LearnResult, _encode, _validate_learn_request
+
+        classification, authority = _validate_learn_request(substrate, request)
+        descriptor, owner = describe(substrate)
+        tokens, stimulus = _encode(substrate, request.text, request.tokenizer, request.codec_map)
+        if self._bound_owner is None:
+            self._bound_owner = owner   # whatever RuntimeCore binds at this begin stays alive
+        self._core.turn_begin(descriptor, stimulus, authority.learning_rate)
+        committed, _ = self._core.turn_commit(descriptor)
+        return LearnResult(tokens, stimulus.experiences, committed.commit.epoch_before, committed.commit.epoch_after,
+                           classification, authority.grant, committed.state_before_digest,
+                           committed.state_after_digest)
+
+    # -- cognition: LEGACY learned turn (LEARN + S3 decode) --------------------------------------------------------
+    def run_turn(self, substrate, text, *, tokenizer, codec_map=None, authority=None, max_output_tokens=256):
+        """One managed LEGACY learned turn: a LEARN under explicit authority whose S3 readout is decoded.
+
+        Kept for the replay of the original synthetic scaffold (``LEGACY_LEARNED_TURN``); it is never a query. The
+        boundary validates the request, encodes the text and the stimulus and decodes the readout. RuntimeCore
+        verifies the K1 lineage, runs the native K1 transaction on its candidate, commits it after the decode
+        succeeded and publishes the committed identity to continuity, fail-stopping when that publication is not
+        certain. A refused or aborted turn installs nothing.
         """
         self._core.require_live()
 
         from .cognition import Readout, TurnResult, _decode, _encode, _validate_turn_request
 
-        classification = _validate_turn_request(substrate, text, codec_map=codec_map, learning_rate=learning_rate,
-                                                max_output_tokens=max_output_tokens)
+        classification, authority = _validate_turn_request(substrate, text, codec_map=codec_map, authority=authority,
+                                                           max_output_tokens=max_output_tokens)
         descriptor, owner = describe(substrate)
         tokens, stimulus = _encode(substrate, text, tokenizer, codec_map)
         if self._bound_owner is None:
             self._bound_owner = owner   # whatever RuntimeCore binds at this begin stays alive
-        begun = self._core.turn_begin(descriptor, stimulus, learning_rate)
+        begun = self._core.turn_begin(descriptor, stimulus, authority.learning_rate)
         try:
             readout = Readout(begun.s3, begun.epoch_after, substrate.dim, substrate.width)
             output, rendered = _decode(codec_map, readout, tokenizer, max_output_tokens)

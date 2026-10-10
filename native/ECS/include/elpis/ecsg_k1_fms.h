@@ -107,6 +107,10 @@ int elpis_ecsg_k1_fms_copy_a(elpis_ecsg_k1_fms *, uint64_t id, double *out, size
 int elpis_ecsg_k1_fms_snapshot_write(elpis_ecsg_k1_fms *, uint64_t id, uint8_t *out, size_t size);
 int elpis_ecsg_k1_fms_state_digest(elpis_ecsg_k1_fms *, uint64_t id,
                                    uint8_t out[ELPIS_ECSG_K1_DIGEST_BYTES]);
+/* elpis_ecsg_k1_query_identity on the resident state under a READ pin: the answer and the retained-state identity
+ * of the same authoritative bytes, in one call. Read-only (nothing dirtied, no transaction touched). */
+int elpis_ecsg_k1_fms_query_identity(elpis_ecsg_k1_fms *, uint64_t id, size_t dim, const double *x, size_t rows,
+                                     double *out, uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES]);
 
 int elpis_ecsg_k1_fms_txn_begin(elpis_ecsg_k1_fms *, uint64_t id, uint64_t *token);
 int elpis_ecsg_k1_fms_txn_learn(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token, const double *x, const double *y,

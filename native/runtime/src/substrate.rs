@@ -97,6 +97,10 @@ pub trait K1Ops {
     ) -> i32;
     fn txn_commit_identity(&mut self, token: u64, out: &mut CommitIdentity) -> i32;
     fn txn_abort(&mut self, token: u64) -> i32;
+    /// QUERY bound to its identity (`query_identity`): `out[r] = f_W(x_r)` for `out.len()` rows of the declared
+    /// dimension, and `digest` = the retained-state identity of the same authoritative state, in one native call.
+    /// Read-only: no transaction, no commit, nothing written to the retained state.
+    fn query_identity(&mut self, dim: usize, x: &[f64], out: &mut [f64], digest: &mut Digest) -> i32;
     /// The owned abort capability over this same native state, retained by RuntimeCore from a successful turn
     /// begin until that turn ends. It may outlive the call that produced it, but never the open transaction it
     /// ends: the native state is live for exactly that interval (the substrate lifetime contract, runtime.h).
@@ -160,6 +164,13 @@ pub type K1FmsRunSchedule = unsafe extern "C" fn(
     *mut ScheduleOutcome,
 ) -> Status;
 
+/// `elpis_ecsg_k1_query_identity`.
+pub type K1QueryIdentity = unsafe extern "C" fn(*mut c_void, usize, *const f64, usize, *mut f64, *mut u8) -> Status;
+
+/// `elpis_ecsg_k1_fms_query_identity`.
+pub type K1FmsQueryIdentity =
+    unsafe extern "C" fn(*mut c_void, u64, usize, *const f64, usize, *mut f64, *mut u8) -> Status;
+
 /// The function table of a standalone K1 library (`ecsg_k1.h`). Every entry is required.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -170,6 +181,7 @@ pub struct K1Api {
     pub txn_run_schedule: Option<K1RunSchedule>,
     pub txn_commit_identity: Option<unsafe extern "C" fn(*mut c_void, u64, *mut CommitIdentity) -> Status>,
     pub txn_abort: Option<unsafe extern "C" fn(*mut c_void, u64) -> Status>,
+    pub query_identity: Option<K1QueryIdentity>,
 }
 
 /// The function table of the K1 FMS adapter (`ecsg_k1_fms.h`): the same operations on one resident state id.
@@ -182,6 +194,7 @@ pub struct K1FmsApi {
     pub txn_run_schedule: Option<K1FmsRunSchedule>,
     pub txn_commit_identity: Option<unsafe extern "C" fn(*mut c_void, u64, u64, *mut CommitIdentity) -> Status>,
     pub txn_abort: Option<unsafe extern "C" fn(*mut c_void, u64, u64) -> Status>,
+    pub query_identity: Option<K1FmsQueryIdentity>,
 }
 
 /// `elpis_runtime_substrate`: one native K1 state as the caller describes it.
@@ -241,7 +254,8 @@ impl Native {
                     && t.txn_begin.is_some()
                     && t.txn_run_schedule.is_some()
                     && t.txn_commit_identity.is_some()
-                    && t.txn_abort.is_some();
+                    && t.txn_abort.is_some()
+                    && t.query_identity.is_some();
                 complete.then_some(Table::K1(t))?
             }
             KIND_K1_FMS => {
@@ -251,7 +265,8 @@ impl Native {
                     && t.txn_begin.is_some()
                     && t.txn_run_schedule.is_some()
                     && t.txn_commit_identity.is_some()
-                    && t.txn_abort.is_some();
+                    && t.txn_abort.is_some()
+                    && t.query_identity.is_some();
                 complete.then_some(Table::Fms(t))?
             }
             _ => return None,
@@ -350,6 +365,30 @@ impl K1Ops for Native {
 
     fn txn_abort(&mut self, token: u64) -> i32 {
         TxnAbort::txn_abort(self, token)
+    }
+
+    fn query_identity(&mut self, dim: usize, x: &[f64], out: &mut [f64], digest: &mut Digest) -> i32 {
+        unsafe {
+            match &self.table {
+                Table::K1(t) => t.query_identity.expect(TABLE)(
+                    self.handle,
+                    dim,
+                    x.as_ptr(),
+                    out.len(),
+                    out.as_mut_ptr(),
+                    digest.as_mut_ptr(),
+                ),
+                Table::Fms(t) => t.query_identity.expect(TABLE)(
+                    self.handle,
+                    self.key.id,
+                    dim,
+                    x.as_ptr(),
+                    out.len(),
+                    out.as_mut_ptr(),
+                    digest.as_mut_ptr(),
+                ),
+            }
+        }
     }
 
     fn retain_abort(&self) -> Box<dyn TxnAbort> {

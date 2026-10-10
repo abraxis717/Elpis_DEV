@@ -11,7 +11,10 @@
 //! * K1 lineage: the first managed lineage is anchored explicitly at the state's retained identity; an open
 //!   runtime binds its lineage to one native state, verified once against the durable expected identity
 //!   (a mismatch fail-stops); another state is refused (`COGNITION_SUBSTRATE_SWITCH`) without a native call.
-//! * Managed turn: begin -> one native schedule on the candidate -> (the boundary decodes) -> native commit ->
+//! * QUERY: read-only. One native call answers `f_W(x)` and identifies the state it answered from; the identity
+//!   must be the durable expected one (a mismatch fail-stops and the answer is withheld). No transaction, no
+//!   commit, no publication: the retained state and continuity are unchanged.
+//! * Managed turn (LEARN): begin -> one native schedule on the candidate -> (the boundary decodes) -> native commit ->
 //!   one continuity publication of the committed identity. A K1 commit is final and never rolled back: a
 //!   publication that is refused or uncertain fail-stops the runtime; restart sees either the old authority
 //!   (the moved state is then a mismatch) or the new one. Every refusal before the commit leaves the complete
@@ -49,6 +52,7 @@ pub struct Counters {
     pub k1_commits: u64,
     pub k1_aborts: u64,
     pub publications: u64,
+    pub k1_queries: u64,
 }
 
 /// An admitted, native-ready stimulus: `x` holds `y.len()` rows of the state's dimension, row-major.
@@ -264,6 +268,49 @@ impl Core {
         }
         self.bound = Some(key);
         Ok(())
+    }
+
+    // -- the canonical read-only QUERY ---------------------------------------------------------------------------
+
+    /// QUERY: `f_W(x)` from the lineage's authoritative K1 state, read-only (docs/COGNITION_R0.md).
+    ///
+    /// One native crossing answers and identifies in one guarded K1 call (`query_identity`), so the answer and the
+    /// identity it is checked against come from the same bytes. The identity must equal the durable expected
+    /// identity: an unanchored lineage is refused (`CONTINUITY_UNANCHORED`); a state this lineage never committed
+    /// (another state, or the bound one moved out of band) fail-stops (`CONTINUITY_STATE_MISMATCH`) and its answer
+    /// is never returned. No transaction is opened, nothing is committed or published, and nothing durable or
+    /// retained changes: W, epoch, H, a, continuity. `out` receives the answer (one value per row; zeroed on any
+    /// refusal). Returns the retained-state identity the answer was computed from.
+    pub fn query(&mut self, sub: &mut dyn K1Ops, key: Key, x: &[f64], out: &mut [f64]) -> Result<Digest, Refusal> {
+        self.live()?;
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        let rows = out.len();
+        if rows == 0 || rows.checked_mul(key.dim) != Some(x.len()) {
+            return Err(Rt::Invalid.into());
+        }
+        if matches!(self.bound, Some(bound) if bound != key) {
+            return Err(Rt::SubstrateSwitch.into());
+        }
+        let expected = match self.store.snapshot()?.cognition() {
+            Cognition::Unanchored => return Err(Code::Unanchored.into()),
+            Cognition::Anchored(d) => d,
+        };
+        let mut identity = [0u8; 32];
+        self.counters.k1_queries += 1;
+        let rc = sub.query_identity(key.dim, x, out, &mut identity);
+        if rc != 0 {
+            out.fill(0.0);
+            return Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default()));
+        }
+        if identity != expected {
+            out.fill(0.0);
+            self.fault = Some(Code::StateMismatch);
+            return Err(Code::StateMismatch.into());
+        }
+        self.bound = Some(key);
+        Ok(identity)
     }
 
     // -- the managed canonical turn -----------------------------------------------------------------------------

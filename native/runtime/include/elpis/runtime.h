@@ -1,7 +1,7 @@
 #ifndef ELPIS_RUNTIME_H
 #define ELPIS_RUNTIME_H
 
-/* Elpis RuntimeCore C ABI v2 (docs/RUNTIME_CORE.md), implemented in Rust (native/runtime).
+/* Elpis RuntimeCore C ABI v3 (docs/RUNTIME_CORE.md), implemented in Rust (native/runtime).
  *
  * One runtime handle owns one continuity directory and the mutable systems authority of an open Elpis
  * runtime: lifecycle, fail-stop, the binding of its K1 lineage to one native K1 state, the managed canonical
@@ -12,6 +12,12 @@
  * RuntimeCore links no ECS code: the native K1 state is reached through the caller's K1 function table (the
  * entries of ecsg_k1.h or ecsg_k1_fms.h; a K1 status is an int-sized enum and a state handle an opaque
  * pointer). It computes no ECS mathematics and touches no ECS byte.
+ *
+ * QUERY and LEARN (v3). QUERY (elpis_runtime_query) is read-only: one native call answers f_W(x) from the lineage's
+ * authoritative K1 state together with that state's retained-state identity, which must equal the durable expected
+ * identity (a mismatch fail-stops and the answer is withheld). It opens no transaction, commits nothing and publishes
+ * nothing. LEARN is the managed turn below: begin, the experience schedule on a candidate, commit, one publication.
+ * v3 adds the query entry to both K1 function tables and the query counter; a v2 caller refuses to load it.
  *
  * Turn lifecycle (v2). A successful turn_begin opens one native K1 transaction. RuntimeCore ends it with exactly one
  * terminal native action, the commit or an abort, before it forgets the turn; there is no third disposition. An
@@ -42,7 +48,7 @@ extern "C" {
 #endif
 
 enum {
-    ELPIS_RUNTIME_ABI_V2 = 2u,
+    ELPIS_RUNTIME_ABI_V3 = 3u,
     ELPIS_RUNTIME_OK = 0,
     ELPIS_RUNTIME_INVALID = 64,                  /* malformed argument */
     ELPIS_RUNTIME_CLOSED = 65,                   /* the runtime is not open */
@@ -97,6 +103,7 @@ typedef struct {
                             double *s3_out, size_t s3_count, elpis_runtime_schedule_result *result);
     int (*txn_commit_identity)(void *state, uint64_t token, elpis_runtime_commit_identity *identity);
     int (*txn_abort)(void *state, uint64_t token);
+    int (*query_identity)(void *state, size_t dim, const double *x, size_t rows, double *out, uint8_t digest[32]);
 } elpis_runtime_k1_api;
 
 /* The K1 FMS adapter's functions (runtime = elpis_ecsg_k1_fms *, id = the resident state). */
@@ -110,6 +117,8 @@ typedef struct {
                             elpis_runtime_schedule_result *result);
     int (*txn_commit_identity)(void *runtime, uint64_t id, uint64_t token, elpis_runtime_commit_identity *identity);
     int (*txn_abort)(void *runtime, uint64_t id, uint64_t token);
+    int (*query_identity)(void *runtime, uint64_t id, size_t dim, const double *x, size_t rows, double *out,
+                          uint8_t digest[32]);
 } elpis_runtime_k1_fms_api;
 
 /* One native K1 state. `owner` is the caller's identity for the object owning `handle`; it must stay unique
@@ -133,6 +142,12 @@ typedef struct {
 } elpis_runtime_turn_begin_result;
 
 typedef struct {
+    uint8_t state_digest[32];   /* the retained-state identity the answer was computed from; zero on refusal */
+    int32_t k1_status;          /* the K1 status behind an ECS_* refusal; 0 otherwise */
+    uint32_t reserved;
+} elpis_runtime_query_result;
+
+typedef struct {
     elpis_runtime_commit_identity identity;
     uint32_t committed;     /* 1: the native commit happened (also when its publication then failed) */
     int32_t k1_status;
@@ -146,6 +161,7 @@ typedef struct {
     uint64_t k1_commits;
     uint64_t k1_aborts;
     uint64_t publications;
+    uint64_t k1_queries;
 } elpis_runtime_counters;
 
 typedef struct elpis_runtime elpis_runtime;
@@ -170,7 +186,14 @@ int elpis_runtime_read_counters(elpis_runtime *runtime, elpis_runtime_counters *
 int elpis_runtime_anchor(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
                          elpis_continuity_snapshot *out);
 
-/* The managed canonical turn. begin verifies the lineage (binding the state on first use; a mismatch
+/* QUERY: the canonical read-only operation. x holds `rows` rows of the descriptor's dimension
+ * (x_len = rows * dim); out receives `rows` values f_W(x_r). The lineage must be anchored and the state's identity
+ * must equal the durable expected identity (bound on first use; a mismatch fail-stops, out is zeroed). Refused while
+ * a managed turn is open (RUNTIME_TURN_OPEN). Nothing is begun, committed, published or written. */
+int elpis_runtime_query(elpis_runtime *runtime, const elpis_runtime_substrate *substrate, const double *x,
+                        size_t x_len, double *out, size_t rows, elpis_runtime_query_result *result);
+
+/* LEARN: the managed canonical turn. begin verifies the lineage (binding the state on first use; a mismatch
  * fail-stops), begins the native transaction and runs the whole schedule on its candidate in one native call
  * (x: y_len rows of dim values; s3_len = elpis_runtime_features(dim)). Then exactly one of commit (native
  * commit, then one continuity publication; a failed publication fail-stops and out->committed reports the

@@ -169,6 +169,15 @@ uint32_t elpis_ecsg_k1_provenance_of(const elpis_ecsg_k1 *state);
 elpis_ecsg_k1_status
 elpis_ecsg_k1_forward(elpis_ecsg_k1 *state, const double *x, size_t rows, double *out);
 
+/* QUERY bound to its identity (the canonical read-only operation, docs/COGNITION_R0.md): in one guarded call,
+ * out[r] = f_W(x_r) and digest = the retained-state identity (elpis_ecsg_k1_state_digest) of the same
+ * authoritative state. `dim` must equal the state's own (INVALID otherwise, before any input is read). Nothing
+ * is written: W, epoch, H, a, the generation and any open transaction are untouched. The digest is written only
+ * on success. */
+elpis_ecsg_k1_status
+elpis_ecsg_k1_query_identity(elpis_ecsg_k1 *state, size_t dim, const double *x, size_t rows, double *out,
+                             uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES]);
+
 /* LEARN: `steps` K1 steps on (x, y), committed as one transition (W, epoch). */
 elpis_ecsg_k1_status
 elpis_ecsg_k1_learn(elpis_ecsg_k1 *state, const double *x, const double *y, size_t rows,

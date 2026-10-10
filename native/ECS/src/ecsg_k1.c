@@ -1359,6 +1359,27 @@ elpis_ecsg_k1_state_digest(
     return ELPIS_ECSG_K1_OK;
 }
 
+/* QUERY bound to its exact retained-state identity, in one guarded call: no other operation can move the state
+ * between the answer and the identity it is reported against. Reads W (forward) and the image (digest) only. */
+elpis_ecsg_k1_status
+elpis_ecsg_k1_query_identity(elpis_ecsg_k1 *s, size_t dim, const double *x, size_t rows, double *out,
+                             uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES])
+{
+    elpis_ecsg_k1_status rc;
+    if (s == NULL || s->image == NULL || digest == NULL || dim != s->dim) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (!enter(s)) {
+        return ELPIS_ECSG_K1_BUSY;
+    }
+    rc = forward_on(s, s->image, x, rows, out);
+    if (rc == ELPIS_ECSG_K1_OK) {
+        retained_state_digest(s, s->image, digest);
+    }
+    leave(s);
+    return rc;
+}
+
 elpis_ecsg_k1_status elpis_ecsg_k1_stats(elpis_ecsg_k1 *s, elpis_ecsg_k1_counters *out)
 {
     if (s == NULL || out == NULL) {

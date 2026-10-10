@@ -36,7 +36,11 @@ static int k1_commit(void *s, uint64_t token, elpis_runtime_commit_identity *ide
     return elpis_ecsg_k1_txn_commit_identity(s, token, (elpis_ecsg_k1_commit_identity *)identity);
 }
 static int k1_abort(void *s, uint64_t token) { return elpis_ecsg_k1_txn_abort(s, token); }
-static const elpis_runtime_k1_api K1_API = {k1_digest, k1_reserve, k1_begin, k1_schedule, k1_commit, k1_abort};
+static int k1_query(void *s, size_t dim, const double *x, size_t rows, double *out, uint8_t digest[32]) {
+    return elpis_ecsg_k1_query_identity(s, dim, x, rows, out, digest);
+}
+static const elpis_runtime_k1_api K1_API = {k1_digest, k1_reserve, k1_begin, k1_schedule, k1_commit, k1_abort,
+                                          k1_query};
 
 static int fms_digest(void *r, uint64_t id, uint8_t out[32]) { return elpis_ecsg_k1_fms_state_digest(r, id, out); }
 static int fms_reserve(void *r, uint64_t id, size_t rows) { return elpis_ecsg_k1_fms_reserve(r, id, rows); }
@@ -51,8 +55,12 @@ static int fms_commit(void *r, uint64_t id, uint64_t token, elpis_runtime_commit
     return elpis_ecsg_k1_fms_txn_commit_identity(r, id, token, (elpis_ecsg_k1_commit_identity *)identity);
 }
 static int fms_abort(void *r, uint64_t id, uint64_t token) { return elpis_ecsg_k1_fms_txn_abort(r, id, token); }
+static int fms_query_identity_entry(void *r, uint64_t id, size_t dim, const double *x, size_t rows, double *out,
+                                    uint8_t digest[32]) {
+    return elpis_ecsg_k1_fms_query_identity(r, id, dim, x, rows, out, digest);
+}
 static const elpis_runtime_k1_fms_api FMS_API = {fms_digest, fms_reserve, fms_begin, fms_schedule, fms_commit,
-                                                 fms_abort};
+                                                 fms_abort, fms_query_identity_entry};
 
 static double W0[DIM * WIDTH], X[ROWS * DIM], Y[ROWS];
 static const elpis_runtime_experience SCHEDULE[2] = {{2, 3}, {2, 5}};
@@ -355,7 +363,7 @@ int main(int argc, char **argv) {
     char cmd[3200];
     assert(snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", SCRATCH) < (int)sizeof(cmd));
     assert(system(cmd) == 0);
-    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V2);
+    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V3);
     for (int i = 0; i < DIM * WIDTH; ++i) W0[i] = 0.2 * (double)((i * 7) % 13 - 6) / 13.0;
     for (int i = 0; i < ROWS * DIM; ++i) X[i] = (double)((i * 5) % 11 - 5) / 16.0;
     for (int i = 0; i < ROWS; ++i) Y[i] = (double)(i % 3 - 1) / 8.0;

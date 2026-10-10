@@ -40,6 +40,7 @@ or the reverse.
 | operation | law | notes |
 |---|---|---|
 | QUERY `forward(X)` | `f_W(x) = 1/2 phi(x) . S3(W)` | Reads W only; H and a never enter. Bitwise the Runtime R1 executor's forward map. No allocation. |
+| QUERY with identity `query_identity(dim, X)` | `f_W(x)` and `state_digest()` | One guarded call: the answer and the retained-state identity of the same authoritative state. `dim` must be the state's own (INVALID before any input is read). Writes nothing; an open transaction is untouched. No allocation. The canonical read-only QUERY (`elpis.runtime.cognition.run_query`, RuntimeCore `query`). |
 | LEARN `learn(X, y, eta, K)` | `W <- G1(W; X, y) - eta J(W)^T u` with `u = 1/2 H (S3(W) - a)` at the pre-step W | K steps in one call: no per-step crossing, no Python loop. With `H = 0` the step is bitwise Runtime R1 G1. Success commits W and `epoch + K`; any refusal commits nothing. |
 | CONSOLIDATE `consolidate(X)` | `H <- H + (1/n) sum phi(x) phi(x)^T`, `a <- S3(W)` | Inputs only; no target enters. Closed form. Commits H and a together, and the provenance becomes COMPLETE. |
 | RESET `reset()` | `H <- 0`, `a <- 0` | W and epoch are kept. Provenance RESET. |
@@ -79,9 +80,15 @@ of the same rows. The call then returns `S3` of the final candidate `W` (the rea
 - `txn_abort` with a wrong token is `INVALID` and changes nothing.
 - No refusal changes the authoritative state.
 
-## The canonical turn (`elpis.runtime.cognition.run_turn`)
+## The canonical operations (`elpis.runtime.cognition`)
 
-Native K1 is the canonical retained-state cognitive substrate of the turn, standalone (`K1State`) or FMS-resident
+QUERY and LEARN are separate operations (docs/COGNITION_R0.md). QUERY (`run_query`, `QueryRequest`) is one native
+call, `query_identity`: read-only, no transaction. LEARN (`run_learn`, `LearnRequest`) requires an explicit
+`LearnAuthority` and is the transaction below without a decode; it returns the committed transition and its
+retained-state identities. The legacy learned turn (`run_turn`, `LEGACY_LEARNED_TURN`) is a LEARN whose S3 readout
+is decoded; it needs the same authority.
+
+Native K1 is the canonical retained-state cognitive substrate of these operations, standalone (`K1State`) or FMS-resident
 (`K1FMSState`, a typed handle on one resident state). The Runtime R1 `Executor` remains a qualified primitive and
 the K1-disabled reference; it is not accepted by the turn.
 

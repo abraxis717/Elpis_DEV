@@ -46,6 +46,10 @@ int main(void)
     assert(elpis_ecsg_k1_reserve(s, R) == ELPIS_ECSG_K1_OK);     /* the cold path */
     before = allocations;
     assert(elpis_ecsg_k1_forward(s, X, R, O) == 0);
+    {
+        uint8_t digest[32];
+        assert(elpis_ecsg_k1_query_identity(s, D, X, R, O, digest) == 0);   /* QUERY with identity */
+    }
     assert(elpis_ecsg_k1_learn(s, X, Y, R, 0.002, 200, NULL) == 0);
     assert(elpis_ecsg_k1_consolidate(s, X, R, NULL) == 0);
     assert(elpis_ecsg_k1_learn(s, X, Y, R, 0.002, 200, NULL) == 0);

@@ -31,7 +31,7 @@ use crate::code::{Error, Rt};
 use crate::core::{Core, Counters, Refusal, Stimulus};
 use crate::substrate::{features, CSubstrate, CommitIdentity, Experience, Native, ScheduleOutcome};
 
-pub const ABI_VERSION: u32 = 2;
+pub const ABI_VERSION: u32 = 3;
 
 /// Opaque runtime handle.
 pub struct ElpisRuntime(Mutex<Core>);
@@ -57,9 +57,21 @@ pub struct CTurnCommit {
     pub k1_status: i32,
 }
 
+/// `elpis_runtime_query_result`.
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct CQuery {
+    /// The retained-state identity the answer was computed from (zero on refusal).
+    pub state_digest: Digest,
+    /// The K1 status behind an `ECS_*` refusal (0 otherwise).
+    pub k1_status: i32,
+    pub reserved: u32,
+}
+
+const _: () = assert!(std::mem::size_of::<CQuery>() == 40);
 const _: () = assert!(std::mem::size_of::<CTurnBegin>() == 48);
 const _: () = assert!(std::mem::size_of::<CTurnCommit>() == 120);
-const _: () = assert!(std::mem::size_of::<Counters>() == 56);
+const _: () = assert!(std::mem::size_of::<Counters>() == 64);
 
 fn rc(result: Result<(), Error>) -> i32 {
     match result {
@@ -214,6 +226,40 @@ pub unsafe extern "C" fn elpis_runtime_anchor(
         runtime(rt)?.anchor(&mut native, key).map_err(|r| r.error)
     };
     rc(run().map(|s| snapshot_out(out, &s)))
+}
+
+/// QUERY: answer `f_W(x)` for `rows` rows of the descriptor's dimension (`x_len = rows * dim`) from the lineage's
+/// authoritative K1 state, read-only: no transaction, no commit, no publication. `out` receives `rows` values;
+/// `result->state_digest` the retained-state identity they were computed from (it equals the durable expected
+/// identity, or the call is refused and `out` is zeroed).
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_query(
+    rt: *mut ElpisRuntime,
+    sub: *const CSubstrate,
+    x: *const f64,
+    x_len: usize,
+    out: *mut f64,
+    rows: usize,
+    result: *mut CQuery,
+) -> i32 {
+    let run = || -> Result<Digest, Refusal> {
+        let mut native = substrate(sub)?;
+        let key = native.key();
+        let x = slice(x, x_len)?;
+        if out.is_null() {
+            return Err(Rt::Invalid.into());
+        }
+        let out = std::slice::from_raw_parts_mut(out, rows);
+        runtime(rt)?.query(&mut native, key, x, out)
+    };
+    let (value, code) = match run() {
+        Ok(state_digest) => (CQuery { state_digest, k1_status: 0, reserved: 0 }, 0),
+        Err(r) => (CQuery { k1_status: r.k1_status, ..CQuery::default() }, r.error.code()),
+    };
+    if !result.is_null() {
+        *result = value;
+    }
+    code
 }
 
 unsafe fn refusal_begin(out: *mut CTurnBegin, r: &Refusal) -> i32 {

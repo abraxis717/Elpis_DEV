@@ -27,7 +27,7 @@ from elpis.runtime.composition import CompositionError
 from elpis.substrate.residency import Context
 
 from ..ECS.test_math_r0 import REPO, _library_path
-from ._turn_fixtures import FIXTURE, ByteTokens, FixtureMap
+from ._turn_fixtures import FIXTURE, LEARN, ByteTokens, FixtureMap
 
 DIM, WIDTH, RATE = 6, 36, 0.002
 
@@ -103,8 +103,8 @@ def explicit(k1, stimulus, w=None):
 def test_canonical_turn_fails_closed_without_a_qualified_codec(k1, runtime):
     with world(k1) as state:
         before = state.snapshot()
-        for call in (lambda: run_turn(state, "Hello, Elpis.", tokenizer=ByteTokens(), learning_rate=RATE),
-                     lambda: runtime.run_turn(state, "Hello, Elpis.", tokenizer=ByteTokens(), learning_rate=RATE)):
+        for call in (lambda: run_turn(state, "Hello, Elpis.", tokenizer=ByteTokens(), authority=LEARN),
+                     lambda: runtime.run_turn(state, "Hello, Elpis.", tokenizer=ByteTokens(), authority=LEARN)):
             with pytest.raises(CompositionError) as info:
                 call()
             assert info.value.code == CODEC_UNQUALIFIED == "ECS_CODEC_UNQUALIFIED"
@@ -116,7 +116,7 @@ def test_canonical_turn_fails_closed_without_a_qualified_codec(k1, runtime):
 def test_the_executor_is_no_longer_the_canonical_turn_substrate(api):
     with Executor.create(api, DIM, WIDTH, initial_w().reshape(-1).tolist()) as executor:
         with pytest.raises(CompositionError) as info:
-            run_turn(executor, "x", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
+            run_turn(executor, "x", tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)
         assert info.value.code == "ECS_STATE" and executor.epoch == 0
 
 
@@ -125,7 +125,7 @@ def test_turn_runs_codec_then_native_k1_experiences_then_codec(api, k1, runtime)
     with world(k1) as state:
         runtime.anchor_cognition(state)
         result = runtime.run_turn(state, "Hello, Elpis.", tokenizer=ByteTokens(), codec_map=fixture,
-                                  learning_rate=RATE)
+                                  authority=LEARN)
         assert [name for name, _ in fixture.calls] == ["encode", "decode"]
         assert fixture.calls[0][1] == result.input_tokens == tuple(b"Hello, Elpis.")
         # Decode sees the readout of the candidate the stimulus produced, never the prior state.
@@ -149,7 +149,7 @@ def test_turn_runs_codec_then_native_k1_experiences_then_codec(api, k1, runtime)
 def test_one_experience_with_empty_retained_state_is_runtime_r1_g1(api, k1):
     fixture = FixtureMap(experiences=1, steps=9)
     with world(k1) as state:
-        run_turn(state, "one experience", tokenizer=ByteTokens(), codec_map=fixture, learning_rate=RATE)
+        run_turn(state, "one experience", tokenizer=ByteTokens(), codec_map=fixture, authority=LEARN)
         stimulus = fixture.encode(tuple(b"one experience"))
         with Executor.create(api, DIM, WIDTH, initial_w().reshape(-1).tolist(), max_rows=64) as g1:
             g1.learn(memoryview(stimulus.x), memoryview(stimulus.y), RATE, 9)
@@ -167,21 +167,21 @@ def test_a_refused_turn_leaves_the_complete_k1_state_untouched(k1, case):
         fixture.classification = ""
     if case == "wrong_dim":
         fixture.encode = lambda tokens: Stimulus(array("d", [0.1] * 5), array("d", [0.0]), array("Q", [1, 1]), dim=5)
-    kwargs = dict(tokenizer=ByteTokens(), codec_map=fixture, learning_rate=RATE,
+    kwargs = dict(tokenizer=ByteTokens(), codec_map=fixture, authority=LEARN,
                   max_output_tokens=4 if case == "decode_over_limit" else 256)
     if case == "bad_rate":
-        kwargs["learning_rate"] = float("nan")
+        kwargs["authority"] = None
     expected = {"ecs_refused_middle_experience": "ECS_REFUSED", "decode_out_of_vocab": "DECODE",
                 "decode_over_limit": "DECODE", "not_a_stimulus": "STIMULUS", "unclassified_map": "CODEC_MAP",
-                "bad_rate": "LEARNING_RATE", "wrong_dim": "STIMULUS"}[case]
+                "bad_rate": "LEARN_UNAUTHORIZED", "wrong_dim": "STIMULUS"}[case]
     with world(k1) as state:
-        run_turn(state, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)  # H, a != 0
+        run_turn(state, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)  # H, a != 0
         before, epoch = state.snapshot(), state.epoch
         with pytest.raises(CompositionError) as info:
             run_turn(state, "perturb", **kwargs)
         assert info.value.code == expected
         assert state.snapshot() == before and state.epoch == epoch   # W, epoch, H, a byte-for-byte
-        run_turn(state, "after", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)  # not stuck
+        run_turn(state, "after", tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)  # not stuck
 
 
 def test_stimulus_admission_is_bounded_and_explicit():
@@ -205,15 +205,15 @@ def test_stimulus_admission_is_bounded_and_explicit():
 def test_turns_are_deterministic_and_retained_snapshots_continue(k1):
     texts = ("first", "second turn", "third")
     with world(k1) as a, world(k1) as b:
-        ra = [run_turn(a, t, tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE) for t in texts]
-        rb = [run_turn(b, t, tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE) for t in texts]
+        ra = [run_turn(a, t, tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN) for t in texts]
+        rb = [run_turn(b, t, tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN) for t in texts]
         assert ra == rb and a.snapshot() == b.snapshot()
     with world(k1) as live:
-        run_turn(live, texts[0], tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
+        run_turn(live, texts[0], tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)
         with K1State.restore(k1, live.snapshot()) as resumed:
             for t in texts[1:]:
-                x = run_turn(live, t, tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
-                y = run_turn(resumed, t, tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
+                x = run_turn(live, t, tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)
+                y = run_turn(resumed, t, tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)
                 assert x == y
             assert live.snapshot() == resumed.snapshot() and live.epoch == 18
 
@@ -223,17 +223,17 @@ def test_fms_resident_turns_equal_standalone_turns_bitwise(k1, adapter, tmp_path
     with world(k1) as standalone, _Resident(k1, adapter, tmp_path) as resident:
         for i, text in enumerate(texts):
             fixture = dict(experiences=1 + i, steps=2 + i)
-            a = run_turn(standalone, text, tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
-            b = run_turn(resident, text, tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
+            a = run_turn(standalone, text, tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
+            b = run_turn(resident, text, tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
             assert a == b
             assert standalone.snapshot() == resident.snapshot()
         before = resident.snapshot()
         with pytest.raises(CompositionError) as info:
-            run_turn(resident, "poison", tokenizer=ByteTokens(), learning_rate=RATE,
+            run_turn(resident, "poison", tokenizer=ByteTokens(), authority=LEARN,
                      codec_map=FixtureMap(experiences=3, poison_experience=1))
         assert info.value.code == "ECS_REFUSED" and resident.snapshot() == before
         with pytest.raises(CompositionError) as info:
-            run_turn(resident, "decode", tokenizer=ByteTokens(), learning_rate=RATE, codec_map=FixtureMap(reply=(999,)))
+            run_turn(resident, "decode", tokenizer=ByteTokens(), authority=LEARN, codec_map=FixtureMap(reply=(999,)))
         assert info.value.code == "DECODE" and resident.snapshot() == before
         info = resident._r.inspect(resident.id)
         assert info["transaction_open"] == 0 and info["lease_count"] == 0   # no pin left behind
@@ -242,7 +242,7 @@ def test_fms_resident_turns_equal_standalone_turns_bitwise(k1, adapter, tmp_path
 def test_fms_rows_beyond_capacity_grow_on_the_cold_path(k1, adapter, tmp_path):
     with _Resident(k1, adapter, tmp_path, max_rows=4) as resident, world(k1, max_rows=4) as standalone:
         for state in (resident, standalone):
-            run_turn(state, "rows", tokenizer=ByteTokens(), codec_map=FixtureMap(rows=12), learning_rate=RATE)
+            run_turn(state, "rows", tokenizer=ByteTokens(), codec_map=FixtureMap(rows=12), authority=LEARN)
             assert state.max_rows >= 12
         assert resident.snapshot() == standalone.snapshot()
 
@@ -253,10 +253,10 @@ from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from elpis.ECS.k1 import K1Library, K1State
 from elpis.runtime.cognition import run_turn
-from tests.integration._turn_fixtures import ByteTokens, FixtureMap
+from tests.integration._turn_fixtures import LEARN, ByteTokens, FixtureMap
 k1 = K1Library(ctypes.CDLL(str(Path(sys.argv[2]).with_name("libelpis_ecsg_k1.so"))))
 with K1State.create(k1, 6, 36, [0.01 * (i % 13 - 6) for i in range(216)]) as state:
-    result = run_turn(state, "an ECS transition", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=0.002)
+    result = run_turn(state, "an ECS transition", tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)
     epoch = state.epoch
 print(json.dumps({"epoch": epoch, "text": result.text, "codec": sys.argv[3:],
                   "modules": sorted(m for m in sys.modules if m.startswith(("elpis", "research", "numpy", "torch")))}))
@@ -290,10 +290,10 @@ def test_canonical_turn_with_the_admitted_v41_codec(k1):
         v41 = V41Tokenizer.load(root, Path(path).name, expected_sha256=RECIPE_SHA256)
     with world(k1) as state:
         with pytest.raises(CompositionError) as info:
-            run_turn(state, "Hello, Elpis.", tokenizer=v41, learning_rate=RATE)
+            run_turn(state, "Hello, Elpis.", tokenizer=v41, authority=LEARN)
         assert info.value.code == CODEC_UNQUALIFIED and state.epoch == 0
         fixture = FixtureMap(reply=v41.encode("probe"))
-        result = run_turn(state, "Hello, Elpis.", tokenizer=v41, codec_map=fixture, learning_rate=RATE)
+        result = run_turn(state, "Hello, Elpis.", tokenizer=v41, codec_map=fixture, authority=LEARN)
         assert result.input_tokens == v41.encode("Hello, Elpis.") and result.text == "probe"
         assert state.epoch == 6
 
@@ -310,7 +310,7 @@ def test_a_turn_whose_state_moved_meanwhile_is_refused_not_half_installed(k1):
             return decode(readout)
         fixture.decode = decode_while_state_moves
         with pytest.raises(CompositionError) as info:
-            run_turn(state, "perturb", tokenizer=ByteTokens(), codec_map=fixture, learning_rate=RATE)
+            run_turn(state, "perturb", tokenizer=ByteTokens(), codec_map=fixture, authority=LEARN)
         assert info.value.code == "ECS_STALE"
         assert state.epoch == 1 and not any(state.h_packed())  # only the interloper's step; the turn installed nothing
 
@@ -337,18 +337,18 @@ def test_one_schedule_crossing_per_turn_whatever_experiences_or_steps(experience
     counter = _Counting(k1._k)
     fixture = dict(experiences=experiences, steps=steps)
     with world(k1) as state:
-        run_turn(state, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
+        run_turn(state, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
         heap = state.stats()["heap_allocations"]
         counter.calls.clear()
-        run_turn(state, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
+        run_turn(state, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
         assert counter.calls == {"max_rows": 1, "txn_begin": 1, "txn_run_schedule": 1, "txn_commit_identity": 1}, counter.calls
         assert state.stats()["heap_allocations"] == heap   # no allocation on the prepared hot path
     with _Resident(k1, adapter, tmp_path) as resident:
         fcounter = _Counting(resident._r._f)
-        run_turn(resident, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
+        run_turn(resident, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
         heap = resident._r.k1_stats(resident.id)["heap_allocations"]
         fcounter.calls.clear()
-        run_turn(resident, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
+        run_turn(resident, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), authority=LEARN)
         # no restore, no snapshot, no import, no copy of W/H/a: begin, one schedule, commit
         assert fcounter.calls == {"txn_begin": 1, "txn_run_schedule": 1, "txn_commit_identity": 1}, fcounter.calls
         assert resident._r.k1_stats(resident.id)["heap_allocations"] == heap   # no allocation on the warm path
@@ -358,7 +358,7 @@ def test_one_schedule_crossing_per_turn_whatever_experiences_or_steps(experience
 def test_canonical_turn_exposes_the_commit_bound_retained_state_identities(k1):
     with world(k1) as state:
         before = state.snapshot()
-        result = run_turn(state, "continuity", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
+        result = run_turn(state, "continuity", tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)
         after = state.snapshot()
         # The exact K1 retained-state identities (ELPISGK1 trailers) of the committed transition.
         assert result.state_before_digest == before[-32:]
@@ -381,7 +381,7 @@ def test_runtime_turn_publishes_exactly_the_new_expected_k1_identity(k1, tmp_pat
             anchored = runtime.anchor_cognition(state)
             assert anchored.k1_state_digest == state.state_digest()
             result = runtime.run_turn(state, "one", tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                                      learning_rate=RATE)
+                                      authority=LEARN)
             snap = runtime.continuity.snapshot()
             assert snap.k1_state_digest == result.state_after_digest == state.state_digest()
             assert snap.generation == anchored.generation + 1
@@ -397,7 +397,7 @@ def test_runtime_refuses_unanchored_cognition_before_k1_mutation(k1, tmp_path):
         with Runtime(_config(tmp_path / "unanchored")) as runtime:
             with pytest.raises(CompositionError) as info:
                 runtime.run_turn(state, "must anchor first", tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                                 learning_rate=RATE)
+                                 authority=LEARN)
             assert info.value.code == "CONTINUITY_UNANCHORED"
             assert state.snapshot() == before
             assert not runtime.continuity.snapshot().anchored  # no implicit anchor, ever
@@ -428,11 +428,11 @@ def test_matched_restart_resumes_without_a_new_anchor(k1, tmp_path):
         with Runtime(_config(tmp_path / "c")) as first:
             first.anchor_cognition(state)
             first.run_turn(state, "before restart", tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                           learning_rate=RATE)
+                           authority=LEARN)
             generation = first.continuity.snapshot().generation
         with Runtime(_config(tmp_path / "c")) as restarted:
             result = restarted.run_turn(state, "resume", tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                                        learning_rate=RATE)
+                                        authority=LEARN)
             snap = restarted.continuity.snapshot()
             assert snap.k1_state_digest == result.state_after_digest
             assert snap.generation == generation + 1  # one transition, no anchor
@@ -444,20 +444,20 @@ def test_mismatched_restart_fails_before_k1_mutation(k1, tmp_path):
     with world(k1) as anchored, world(k1) as other:
         with Runtime(_config(tmp_path / "c")) as first:
             first.anchor_cognition(anchored)
-        run_turn(other, "out of band", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
+        run_turn(other, "out of band", tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)
         before = other.snapshot()
         with Runtime(_config(tmp_path / "c")) as restarted:
             durable = restarted.continuity.snapshot()
             with pytest.raises(CompositionError) as info:
                 restarted.run_turn(other, "must refuse", tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                                   learning_rate=RATE)
+                                   authority=LEARN)
             assert info.value.code == "CONTINUITY_STATE_MISMATCH"
             assert other.snapshot() == before
             # Fail-stopped, and nothing synthesized.
             assert restarted.continuity.snapshot() == durable
             with pytest.raises(CompositionError) as info:
                 restarted.run_turn(anchored, "still stopped", tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                                   learning_rate=RATE)
+                                   authority=LEARN)
             assert info.value.code == "CONTINUITY_STATE_MISMATCH"
 
 
@@ -476,13 +476,13 @@ def test_k1_commit_then_failed_publication_keeps_k1_and_fail_stops(k1, tmp_path,
             expected = "CONTINUITY_PUBLICATION_REFUSED" if failure == "write" else "CONTINUITY_PUBLICATION_UNCERTAIN"
             with pytest.raises(CompositionError) as info:
                 runtime.run_turn(state, "commit then fail", tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                                 learning_rate=RATE)
+                                 authority=LEARN)
             assert info.value.code == expected
             committed = state.snapshot()
             # K1 committed and is never rolled back.
             assert state.epoch > 0 and committed[-32:] != anchored.k1_state_digest
             with pytest.raises(CompositionError) as info:  # fail-stopped: no further K1 mutation
-                runtime.run_turn(state, "again", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
+                runtime.run_turn(state, "again", tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)
             assert info.value.code == expected
             assert state.snapshot() == committed
         with Runtime(_config(tmp_path / "c")) as restarted:
@@ -492,14 +492,14 @@ def test_k1_commit_then_failed_publication_keeps_k1_and_fail_stops(k1, tmp_path,
                 assert failure != "sync-durable"
                 with pytest.raises(CompositionError) as info:
                     restarted.run_turn(state, "after restart", tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                                       learning_rate=RATE)
+                                       authority=LEARN)
                 assert info.value.code == "CONTINUITY_STATE_MISMATCH"
                 assert state.snapshot() == committed
             else:
                 # New durable authority (the synced-unknown write did land): resume.
                 assert failure == "sync-durable" and durable == committed[-32:]
                 restarted.run_turn(state, "after restart", tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                                   learning_rate=RATE)
+                                   authority=LEARN)
 
 
 def test_open_runtime_refuses_switching_k1_lineage_handles(k1, tmp_path):
@@ -512,7 +512,7 @@ def test_open_runtime_refuses_switching_k1_lineage_handles(k1, tmp_path):
             second_before = second_state.snapshot()
             with pytest.raises(CompositionError) as info:
                 runtime.run_turn(second_state, "wrong lineage", tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                                 learning_rate=RATE)
+                                 authority=LEARN)
             assert info.value.code == "COGNITION_SUBSTRATE_SWITCH"
             assert first_state.snapshot() == first_before
             assert second_state.snapshot() == second_before
@@ -529,9 +529,9 @@ def test_managed_fms_resident_turns_equal_managed_standalone_turns(k1, adapter, 
             for i, text in enumerate(("first", "a second, longer turn")):
                 fixture = dict(experiences=1 + i, steps=2 + i, rows=4 + 8 * i)   # the second grows capacity
                 a = ra.run_turn(standalone, text, tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture),
-                                learning_rate=RATE)
+                                authority=LEARN)
                 b = rb.run_turn(resident, text, tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture),
-                                learning_rate=RATE)
+                                authority=LEARN)
                 assert a == b and a.state_after_digest == b.state_after_digest
                 assert standalone.snapshot() == resident.snapshot()
                 assert rb.continuity.snapshot().k1_state_digest == resident.state_digest()
@@ -539,14 +539,14 @@ def test_managed_fms_resident_turns_equal_managed_standalone_turns(k1, adapter, 
             assert standalone.max_rows >= 12 and resident._r.inspect(resident.id)["max_rows"] >= 12
             before = resident.snapshot()
             with pytest.raises(CompositionError) as info:
-                rb.run_turn(resident, "decode", tokenizer=ByteTokens(), learning_rate=RATE,
+                rb.run_turn(resident, "decode", tokenizer=ByteTokens(), authority=LEARN,
                             codec_map=FixtureMap(reply=(999,)))
             assert info.value.code == "DECODE" and resident.snapshot() == before
             info = resident._r.inspect(resident.id)
             assert info["transaction_open"] == 0 and info["lease_count"] == 0   # aborted; no pin left behind
             # A second wrapper of the same resident state is the same bound state (same owner and id).
             rb.run_turn(resident._r.state(resident.id), "again", tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                        learning_rate=RATE)
+                        authority=LEARN)
 
 
 def test_a_closed_bound_state_is_refused_without_a_native_call(k1, tmp_path):
@@ -557,5 +557,5 @@ def test_a_closed_bound_state_is_refused_without_a_native_call(k1, tmp_path):
         runtime.anchor_cognition(state)
         state.close()
         with pytest.raises(CompositionError) as info:
-            runtime.run_turn(state, "closed", tokenizer=ByteTokens(), codec_map=FixtureMap(), learning_rate=RATE)
+            runtime.run_turn(state, "closed", tokenizer=ByteTokens(), codec_map=FixtureMap(), authority=LEARN)
         assert info.value.code == "ECS_STATE" and runtime.fault is None

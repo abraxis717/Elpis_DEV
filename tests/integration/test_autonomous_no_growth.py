@@ -20,7 +20,7 @@ from elpis.runtime import persistence as P
 from elpis.structure.retrieval.hacf import HacfHandle, build_corpus_and_index
 
 from ..conftest import require_runtime_library
-from ._turn_fixtures import ByteTokens, FixtureMap
+from ._turn_fixtures import LEARN, ByteTokens, FixtureMap
 from .conftest import DOCS, POSITIVE
 from .test_codec_ecs_turn import RATE, k1, world  # noqa: F401  (k1 is a module pytest fixture)
 
@@ -83,7 +83,7 @@ def test_ordinary_autonomous_path_leaves_only_the_two_continuity_slots(retrieval
                     runtime.anchor_cognition(state)
                     for text in ("one", "two", "three"):
                         runtime.run_turn(state, text, tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                                         learning_rate=RATE)
+                                         authority=LEARN)
         finally:
             handle.destroy()
     assert trap.events == [], trap.events

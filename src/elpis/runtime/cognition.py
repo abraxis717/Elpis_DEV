@@ -1,49 +1,62 @@
-"""The canonical cognitive turn: DSV4 codec -> ECS -> DSV4 codec (docs/ELPIS_MISSION.md).
+"""The canonical cognitive operations: DSV4 codec -> ECS -> DSV4 codec (docs/ELPIS_MISSION.md, docs/COGNITION_R0.md).
 
-::
+Cognitive R0 defines two different operations, and this module keeps them apart by type, by entry point and by the
+native calls each one can reach:
 
-    text --codec encode--> tokens
-         --ECS codec map encode (UNQUALIFIED)--> Stimulus: a native-ready ordered experience schedule
-         --native K1 candidate: per experience, its K1 learning steps, then the consolidation of its rows-->
-           (W, epoch, H, a) candidate
-         --readout: S3 of the candidate W, the kernel's qualified coarse observable, computed natively--> Readout
-         --ECS codec map decode (UNQUALIFIED)--> tokens
-         --codec decode--> text
-         --atomic native commit of the complete (W, epoch, H, a) candidate
+* **QUERY** (:class:`QueryRequest`, :func:`run_query`, :meth:`elpis.runtime.Runtime.run_query`): read-only. ::
 
-The ECS substrate of the canonical turn is native K1 (docs/ECS_K1_RUNTIME.md), the retained-state mechanism
-Retention R3 qualified and K1N-v2 qualified natively: a standalone :class:`~elpis.ECS.k1.K1State` or an
-FMS-resident :class:`~elpis.ECS.k1.K1FMSState`. Each experience is the qualified K1 transition, learn then
-consolidate (``H <- H + Sigma(X_t)``, ``a <- S3(W_t)``; inputs only). The Runtime R1 ``Executor`` remains a
-qualified primitive and the K1-disabled reference, but it is not the substrate of this turn.
+      text --codec encode--> tokens --QUERY encode (UNQUALIFIED)--> QueryStimulus: query rows x
+           --native K1 query: f_W(x) by the qualified forward map of the authoritative W, together with the
+             retained-state identity of that same state (one guarded native call)--> QueryReadout
+           --QUERY decode (UNQUALIFIED)--> tokens --codec decode--> text
+
+  STATE CHANGE = NONE. A query never learns, never consolidates, never advances the epoch, never writes W, H or a,
+  opens no transaction and publishes nothing to continuity. Its answer is ``f_W(x)``, never ``S3`` and never a
+  lookup of training data: nothing but the authoritative K1 state and the query rows enters it.
+
+* **LEARN** (:class:`LearnRequest`, :func:`run_learn`, :meth:`elpis.runtime.Runtime.run_learn`): requires an
+  explicit :class:`LearnAuthority`. ::
+
+      text --codec encode--> tokens --LEARN encode (UNQUALIFIED)--> Stimulus: ordered experience schedule
+           --native K1 transaction candidate: per experience, its K1 learning steps, then the consolidation of
+             its rows (one native call)--> (W, epoch, H, a) candidate
+           --atomic native commit of the complete candidate, or nothing
+           --(managed) one continuity publication of the new retained-state identity
+
+  A LEARN returns the committed transition and its exact retained-state identities. It produces no text: a
+  response is a QUERY.
+
+* **Legacy learned turn** (:func:`run_turn`, :meth:`elpis.runtime.Runtime.run_turn`): the original synthetic
+  scaffold, LEARN followed by the decode of ``S3`` of the candidate W (the kernel's coarse observable) into tokens.
+  It is kept, explicitly classified ``LEGACY_LEARNED_TURN``, for the replay of its tests and identities. It is a
+  LEARN: it needs the same explicit :class:`LearnAuthority`, and it is never a query.
+
+The ECS substrate is native K1 (docs/ECS_K1_RUNTIME.md): a standalone :class:`~elpis.ECS.k1.K1State` or an
+FMS-resident :class:`~elpis.ECS.k1.K1FMSState`. The Runtime R1 ``Executor`` remains a qualified primitive and the
+K1-disabled reference; it is not accepted here.
 
 The codec only crosses the token boundary: ``tokenizer`` supplies ``encode(text)``, ``decoder()`` and
-``vocab_size`` (the digest-bound V4.1 tokenizer, ``elpis.inference.text.V41Tokenizer``, in production). No DSV
-model, parameter bank or transformer recurrence is involved, and none is imported.
+``vocab_size``. No DSV model, parameter bank or transformer recurrence is involved, and none is imported.
 
-No ECS<->DSV semantic codec is defined or qualified in this repository: neither how tokens perturb ECS state nor
-how ECS state is read out as tokens. Without an explicitly supplied :class:`ECSCodecMap`, :func:`run_turn` refuses
-with ``ECS_CODEC_UNQUALIFIED`` before touching anything: text generation is unavailable. There is no fallback. A
-supplied map must declare its classification, and every result carries it, so a fixture map
-(``TRAINING=NONE SEMANTICS=NONE``) is never mistaken for cognition.
+No ECS<->DSV semantic codec is defined or qualified in this repository. Without an explicitly supplied codec map
+every operation refuses with ``ECS_CODEC_UNQUALIFIED`` before touching anything: text generation is unavailable.
+There is no fallback. A supplied map must declare its classification, and every result carries it, so a fixture
+map (``TRAINING=NONE SEMANTICS=NONE``) is never mistaken for cognition.
 
-PYTHON MAY CONTROL THE ECS; IT MAY NOT EXECUTE THE ECS HOT PATH. A turn is three native crossings whatever the
-number of experiences, rows or K1 steps: begin a transaction; run the whole experience schedule on the candidate
-and read S3 of the candidate W (one call); commit or abort. The schedule crosses as contiguous buffers; nothing in
-this module walks an ECS scalar, a row, a feature or a step. The decode happens between the schedule and the
-commit; the candidate commits only after the stimulus, the readout and the decode all succeeded, and the commit is
-refused as ``ECS_STALE`` if another commit replaced the source state meanwhile (a native generation check). A
-refused turn leaves ``(W, epoch, H, a)`` byte-for-byte unchanged. Admitting more rows per experience than the
-state's capacity grows it explicitly before the transaction begins (cold path).
+PYTHON MAY CONTROL THE ECS; IT MAY NOT EXECUTE THE ECS HOT PATH. A query is one native crossing; a LEARN is three
+(begin, the whole schedule on the candidate, commit) whatever the number of experiences, rows or K1 steps. Inputs
+cross as contiguous buffers; nothing in this module walks an ECS scalar, a row, a feature or a step. A refused
+operation leaves ``(W, epoch, H, a)`` byte-for-byte unchanged.
 
-This module performs no durable writes and holds no state. :func:`run_turn` is the unmanaged turn over a native K1
-state (no continuity); the managed turn, :meth:`elpis.runtime.Runtime.run_turn`, shares this module's boundary
-(request validation, encode, decode) and hands the native transaction and its continuity publication to RuntimeCore
+This module performs no durable writes and holds no state. Its functions are the unmanaged operations over a native
+K1 state (no continuity); the managed operations of :class:`elpis.runtime.Runtime` share this module's boundary
+(request validation, encode, decode) and hand the native work and its continuity publication to RuntimeCore
 (native/runtime, docs/RUNTIME_CORE.md).
 """
 from __future__ import annotations
 from array import array
 from dataclasses import dataclass, field
+from enum import Enum
 import math
 from typing import Protocol
 
@@ -51,12 +64,23 @@ from elpis.ECS.k1 import MAX_EXPERIENCES, K1Error, K1FMSState, K1State
 
 from .errors import CompositionError
 
-__all__ = ("CODEC_UNQUALIFIED", "ECSCodecMap", "Readout", "Stimulus", "TurnResult", "run_turn")
+__all__ = ("CODEC_UNQUALIFIED", "LEGACY_LEARNED_TURN", "CognitiveOperation", "ECSCodecMap", "ECSQueryCodecMap",
+           "LearnAuthority", "LearnRequest", "LearnResult", "QueryReadout", "QueryRequest", "QueryResult",
+           "QueryStimulus", "Readout", "Stimulus", "TurnResult", "run_learn", "run_query", "run_turn")
 
 CODEC_UNQUALIFIED = "ECS_CODEC_UNQUALIFIED"
 UNQUALIFIED_DETAIL = "ECS codec mapping not yet qualified; text generation unavailable"
+LEGACY_LEARNED_TURN = "LEGACY_LEARNED_TURN"
 _MAX_ROWS, _MAX_STEPS, _MAX_TOKENS, _MAX_DIM = 256, 1 << 20, 4096, 64
+MAX_QUERY_ROWS = 4096
 _SUBSTRATES = (K1State, K1FMSState)
+
+
+class CognitiveOperation(str, Enum):
+    """The two cognitive operations of Cognitive R0. They are different operations, not modes of one."""
+
+    QUERY = "QUERY"     # f_W(x) from the authoritative state; state change none
+    LEARN = "LEARN"     # an admitted experience schedule committed atomically under explicit authority
 
 
 def _owned(values, fmt, what):
@@ -74,7 +98,7 @@ def _owned(values, fmt, what):
 
 @dataclass(frozen=True, init=False)
 class Stimulus:
-    """An admitted, native-ready ECS stimulus: an ordered experience schedule in the kernel's only qualified input
+    """An admitted, native-ready LEARN stimulus: an ordered experience schedule in the kernel's only qualified input
     form.
 
     * ``x``: every experience's input rows in order, row-major binary64 (``rows x dim`` values);
@@ -84,7 +108,7 @@ class Stimulus:
 
     Admission validates shapes and bounds over the bounded schedule metadata and takes owned contiguous copies;
     finiteness is checked natively before the candidate is touched. Each experience is learned (its K1 steps) and
-    then consolidated (its rows) natively; the turn commits all of them or none.
+    then consolidated (its rows) natively; the operation commits all of them or none.
     """
     x: array
     y: array
@@ -115,7 +139,7 @@ class Stimulus:
     @classmethod
     def from_experiences(cls, experiences, *, dim):
         """Cold-path convenience (tests, tooling): ``((X rows, y, steps), ...)`` packed once into the native-ready
-        form. Not used by :func:`run_turn`, which consumes an admitted Stimulus only."""
+        form. Not used by the operations, which consume an admitted Stimulus only."""
         if type(experiences) is not tuple or not 1 <= len(experiences) <= MAX_EXPERIENCES:
             raise CompositionError("STIMULUS", "1..64 experiences")
         x, y, schedule = array("d"), array("d"), array("Q")
@@ -136,17 +160,51 @@ class Stimulus:
         return cls(x, y, schedule, dim=dim)
 
 
+@dataclass(frozen=True, init=False)
+class QueryStimulus:
+    """An admitted, native-ready QUERY input: ``rows`` query rows of ``dim`` binary64 values, row-major.
+
+    A query carries no target, no schedule and no learning parameter: there is nothing in it that could make it a
+    LEARN. Admission takes an owned contiguous copy; finiteness is checked natively.
+    """
+    x: array
+    dim: int
+    rows: int
+
+    def __init__(self, x, *, dim):
+        if type(dim) is not int or not 1 <= dim <= _MAX_DIM:
+            raise CompositionError("STIMULUS", "dim: 1..64")
+        xs = _owned(x, "d", "x")
+        rows = len(xs) // dim
+        if len(xs) != rows * dim or not 1 <= rows <= MAX_QUERY_ROWS:
+            raise CompositionError("STIMULUS", f"query: 1..{MAX_QUERY_ROWS} rows of dim values")
+        for name, value in (("x", xs), ("dim", dim), ("rows", rows)):
+            object.__setattr__(self, name, value)
+
+
 @dataclass(frozen=True)
 class Readout:
-    """What ECS exposes to the decode boundary: S3(W) of the candidate and the state it was read from."""
+    """LEGACY learned turn: what ECS exposed to its decode, ``S3(W)`` of the candidate and the state it was read
+    from. ``S3`` is a diagnostic coarse observable; it is not a query response."""
     s3: tuple
     epoch: int
     dim: int
     width: int
 
 
+@dataclass(frozen=True)
+class QueryReadout:
+    """What a QUERY exposes to its decode: ``f_W(x)`` per query row, computed natively from the authoritative W,
+    and the retained-state identity (``state_digest``) of the state that computed it."""
+    values: tuple
+    dim: int
+    width: int
+    state_digest: bytes
+
+
 class ECSCodecMap(Protocol):
-    """The missing ECS<->DSV semantic codec. No qualified implementation exists."""
+    """The missing ECS<->DSV semantic codec, LEARN side: ``encode`` (tokens -> experience schedule) and, for the
+    legacy learned turn only, ``decode`` (S3 readout -> tokens). No qualified implementation exists."""
 
     classification: str
 
@@ -155,9 +213,94 @@ class ECSCodecMap(Protocol):
     def decode(self, readout: Readout) -> tuple: ...
 
 
+class ECSQueryCodecMap(Protocol):
+    """The missing ECS<->DSV semantic codec, QUERY side: tokens -> query rows, ``f_W(x)`` -> tokens. No qualified
+    implementation exists."""
+
+    classification: str
+
+    def encode_query(self, tokens: tuple) -> QueryStimulus: ...
+
+    def decode_query(self, readout: QueryReadout) -> tuple: ...
+
+
+@dataclass(frozen=True)
+class LearnAuthority:
+    """Explicit learning authority: without it nothing learns.
+
+    QUERY has no parameter that can carry it, and no LEARN entry point runs without it. It binds the program
+    parameters of the learning law that are not learned state (docs/COGNITION_R0.md): the explicit positive finite
+    learning rate. ``grant`` names who granted it and why (a non-empty statement; it is reported, never
+    interpreted). It is not a credential against an in-process caller, which can construct one: it makes learning
+    an explicit act at every call site instead of a side effect of answering.
+    """
+
+    learning_rate: float
+    grant: str
+
+    def __post_init__(self):
+        rate = self.learning_rate
+        if type(rate) is not float or not math.isfinite(rate) or rate <= 0:
+            raise CompositionError("LEARNING_RATE", "explicit positive finite learning rate")
+        if type(self.grant) is not str or not self.grant.strip():
+            raise CompositionError("LEARN_AUTHORITY", "a learning grant must state who granted it and why")
+
+
+@dataclass(frozen=True)
+class QueryRequest:
+    """A QUERY: ``text`` through ``tokenizer`` and the QUERY side of ``codec_map``. Nothing in it can learn."""
+
+    text: str
+    tokenizer: object
+    codec_map: object = None
+    max_output_tokens: int = 256
+
+    operation = CognitiveOperation.QUERY
+
+
+@dataclass(frozen=True)
+class LearnRequest:
+    """A LEARN: ``text`` through ``tokenizer`` and the LEARN encode of ``codec_map``, under explicit ``authority``."""
+
+    text: str
+    tokenizer: object
+    codec_map: object = None
+    authority: LearnAuthority | None = None
+
+    operation = CognitiveOperation.LEARN
+
+
+@dataclass(frozen=True)
+class QueryResult:
+    input_tokens: tuple
+    output_tokens: tuple
+    text: str
+    readout: QueryReadout
+    codec: str          # the ECS codec map's declared classification
+    operation: CognitiveOperation = CognitiveOperation.QUERY
+
+    @property
+    def state_digest(self) -> bytes:
+        """The retained-state identity the answer was computed from (unchanged by the query)."""
+        return self.readout.state_digest
+
+
+@dataclass(frozen=True)
+class LearnResult:
+    input_tokens: tuple
+    experiences: int
+    epoch_before: int
+    epoch_after: int
+    codec: str          # the ECS codec map's declared classification
+    grant: str          # the learning authority's grant
+    state_before_digest: bytes
+    state_after_digest: bytes
+    operation: CognitiveOperation = CognitiveOperation.LEARN
+
 
 @dataclass(frozen=True)
 class TurnResult:
+    """LEGACY learned turn result."""
     input_tokens: tuple
     output_tokens: tuple
     text: str
@@ -168,58 +311,78 @@ class TurnResult:
     # Exact K1 retained-state identities (state_digest) of the committed transition, from the native commit.
     state_before_digest: bytes | None = field(default=None, compare=False)
     state_after_digest: bytes | None = field(default=None, compare=False)
+    operation: CognitiveOperation = field(default=CognitiveOperation.LEARN, compare=False)
+    surface: str = field(default=LEGACY_LEARNED_TURN, compare=False)
 
 
-def _validate_turn_request(substrate, text, *, codec_map=None, learning_rate=None,
-                           max_output_tokens=256):
-    """Validate the canonical turn request without reading or mutating K1 state."""
+# --- the boundary: validation, encode, decode (shared by the managed operations) --------------------------------
+
+def _classification(codec_map):
+    """The codec map's declared classification; refuses (fail closed) before anything else without a map."""
     if codec_map is None:
         raise CompositionError(CODEC_UNQUALIFIED, UNQUALIFIED_DETAIL)
-
     classification = getattr(codec_map, "classification", None)
-
     if type(classification) is not str or not classification:
-        raise CompositionError(
-            "CODEC_MAP",
-            "an ECS codec map must declare its classification",
-        )
-
-    if type(substrate) not in _SUBSTRATES:
-        raise CompositionError(
-            "ECS_STATE",
-            "a native K1 state (K1State or K1FMSState) is required",
-        )
-
-    if type(text) is not str:
-        raise CompositionError(
-            "INPUT",
-            "text must be str",
-        )
-
-    if (
-        type(learning_rate) is not float
-        or not math.isfinite(learning_rate)
-        or learning_rate <= 0
-    ):
-        raise CompositionError(
-            "LEARNING_RATE",
-            "explicit positive finite learning rate",
-        )
-
-    if (
-        type(max_output_tokens) is not int
-        or not 0 <= max_output_tokens <= _MAX_TOKENS
-    ):
-        raise CompositionError(
-            "OUTPUT_LIMIT",
-            "0..4096 output tokens",
-        )
-
+        raise CompositionError("CODEC_MAP", "an ECS codec map must declare its classification")
     return classification
 
 
+def _validate_common(substrate, text):
+    if type(substrate) not in _SUBSTRATES:
+        raise CompositionError("ECS_STATE", "a native K1 state (K1State or K1FMSState) is required")
+    if type(text) is not str:
+        raise CompositionError("INPUT", "text must be str")
+
+
+def _validate_output_limit(max_output_tokens):
+    if type(max_output_tokens) is not int or not 0 <= max_output_tokens <= _MAX_TOKENS:
+        raise CompositionError("OUTPUT_LIMIT", "0..4096 output tokens")
+
+
+def _validate_authority(authority):
+    if authority is None:
+        raise CompositionError("LEARN_UNAUTHORIZED", "LEARN requires an explicit LearnAuthority")
+    if type(authority) is not LearnAuthority:
+        raise CompositionError("LEARN_AUTHORITY", "authority must be a LearnAuthority")
+    return authority
+
+
+def _validate_query_request(substrate, request):
+    """Validate a QUERY without reading or mutating K1 state; returns the codec map's classification."""
+    if type(request) is not QueryRequest:
+        raise CompositionError("OPERATION", "a QUERY takes a QueryRequest")
+    classification = _classification(request.codec_map)
+    _validate_common(substrate, request.text)
+    _validate_output_limit(request.max_output_tokens)
+    if not callable(getattr(request.codec_map, "encode_query", None)) or \
+            not callable(getattr(request.codec_map, "decode_query", None)):
+        raise CompositionError("CODEC_MAP", "the ECS codec map defines no QUERY encode/decode")
+    return classification
+
+
+def _validate_learn_request(substrate, request):
+    """Validate a LEARN without reading or mutating K1 state; returns (classification, authority)."""
+    if type(request) is not LearnRequest:
+        raise CompositionError("OPERATION", "a LEARN takes a LearnRequest")
+    classification = _classification(request.codec_map)
+    authority = _validate_authority(request.authority)
+    _validate_common(substrate, request.text)
+    if not callable(getattr(request.codec_map, "encode", None)):
+        raise CompositionError("CODEC_MAP", "the ECS codec map defines no LEARN encode")
+    return classification, authority
+
+
+def _validate_turn_request(substrate, text, *, codec_map=None, authority=None, max_output_tokens=256):
+    """Validate the legacy learned turn without reading or mutating K1 state; returns (classification, authority)."""
+    classification = _classification(codec_map)
+    authority = _validate_authority(authority)
+    _validate_common(substrate, text)
+    _validate_output_limit(max_output_tokens)
+    return classification, authority
+
+
 def _encode(substrate, text, tokenizer, codec_map):
-    """The boundary's encode: text -> tokens -> an admitted Stimulus of the state's dimension."""
+    """LEARN encode: text -> tokens -> an admitted experience Stimulus of the state's dimension."""
     tokens = tuple(tokenizer.encode(text))
     stimulus = codec_map.encode(tokens)
     if type(stimulus) is not Stimulus:
@@ -229,10 +392,19 @@ def _encode(substrate, text, tokenizer, codec_map):
     return tokens, stimulus
 
 
-def _decode(codec_map, readout, tokenizer, max_output_tokens):
-    """The boundary's decode: readout -> in-vocabulary token IDs within the limit -> text."""
+def _encode_query(substrate, text, tokenizer, codec_map):
+    """QUERY encode: text -> tokens -> admitted query rows of the state's dimension."""
+    tokens = tuple(tokenizer.encode(text))
+    stimulus = codec_map.encode_query(tokens)
+    if type(stimulus) is not QueryStimulus:
+        raise CompositionError("STIMULUS", "the QUERY encode must return a QueryStimulus")
+    if stimulus.dim != substrate.dim:
+        raise CompositionError("STIMULUS", "the query dimension must match the ECS state")
+    return tokens, stimulus
+
+
+def _render(output, tokenizer, max_output_tokens):
     vocab = tokenizer.vocab_size
-    output = codec_map.decode(readout)
     if (type(output) is not tuple or len(output) > max_output_tokens
             or not all(type(t) is int and 0 <= t < vocab for t in output)):
         raise CompositionError("DECODE", "decode must return in-vocabulary token IDs within the limit")
@@ -240,18 +412,47 @@ def _decode(codec_map, readout, tokenizer, max_output_tokens):
     return output, "".join(decoder.push(t) for t in output) + decoder.finish()
 
 
-def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
-             max_output_tokens=256) -> TurnResult:
-    """One unmanaged canonical turn over a native K1 state. Fails closed without a qualified ECS codec map."""
-    classification = _validate_turn_request(
-        substrate,
-        text,
-        codec_map=codec_map,
-        learning_rate=learning_rate,
-        max_output_tokens=max_output_tokens,
-    )
-    tokens, stimulus = _encode(substrate, text, tokenizer, codec_map)
-    dim, width = substrate.dim, substrate.width
+def _decode(codec_map, readout, tokenizer, max_output_tokens):
+    """LEGACY decode: S3 readout -> in-vocabulary token IDs within the limit -> text."""
+    return _render(codec_map.decode(readout), tokenizer, max_output_tokens)
+
+
+def _decode_query(codec_map, readout, tokenizer, max_output_tokens):
+    """QUERY decode: f_W(x) -> in-vocabulary token IDs within the limit -> text."""
+    return _render(codec_map.decode_query(readout), tokenizer, max_output_tokens)
+
+
+# --- the unmanaged operations over a native K1 state (no continuity) ----------------------------------------------
+
+def run_query(substrate, request: QueryRequest) -> QueryResult:
+    """One unmanaged QUERY: read-only, one native call (``f_W(x)`` and the identity of the state that answered).
+
+    Fails closed without a qualified ECS codec map. Nothing is written: W, epoch, H, a and the generation are
+    unchanged whether the query succeeds or is refused.
+    """
+    classification = _validate_query_request(substrate, request)
+    tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, request.codec_map)
+    try:
+        values, digest = substrate.query_identity(stimulus.x)
+    except K1Error as exc:
+        raise CompositionError("ECS_REFUSED", str(exc)) from exc
+    readout = QueryReadout(values, substrate.dim, substrate.width, digest)
+    output, rendered = _decode_query(request.codec_map, readout, request.tokenizer, request.max_output_tokens)
+    return QueryResult(tokens, output, rendered, readout, classification)
+
+
+def run_learn(substrate, request: LearnRequest) -> LearnResult:
+    """One unmanaged LEARN under explicit authority: the experience schedule on a native candidate, committed
+    atomically (``W``, epoch, ``H``, ``a`` together) or not at all. Three native crossings."""
+    classification, authority = _validate_learn_request(substrate, request)
+    tokens, stimulus = _encode(substrate, request.text, request.tokenizer, request.codec_map)
+    committed = _learn_native(substrate, stimulus, authority.learning_rate, None)[1]
+    return LearnResult(tokens, stimulus.experiences, committed.commit.epoch_before, committed.commit.epoch_after,
+                       classification, authority.grant, committed.state_before_digest, committed.state_after_digest)
+
+
+def _learn_native(substrate, stimulus, learning_rate, between):
+    """begin -> one native schedule on the candidate -> ``between(prepared)`` -> commit, or abort on any refusal."""
     try:
         if stimulus.max_experience_rows > substrate.max_rows:
             substrate.reserve(stimulus.max_experience_rows)  # explicit cold-path growth, before the transaction
@@ -263,12 +464,29 @@ def run_turn(substrate, text, *, tokenizer, codec_map=None, learning_rate=None,
             prepared = txn.run_schedule(stimulus.x, stimulus.y, stimulus.schedule, learning_rate)
         except K1Error as exc:
             raise CompositionError("ECS_REFUSED", str(exc)) from exc
-        readout = Readout(prepared.s3, prepared.epoch_after, dim, width)
-        output, rendered = _decode(codec_map, readout, tokenizer, max_output_tokens)
+        decoded = between(prepared) if between is not None else None
         try:
             committed = txn.commit_identity()  # third crossing: commit plus exact retained-state identities
         except K1Error as exc:
             raise CompositionError("ECS_STALE" if exc.code == "STALE" else "ECS_REFUSED", str(exc)) from exc
+    return decoded, committed
+
+
+def run_turn(substrate, text, *, tokenizer, codec_map=None, authority=None, max_output_tokens=256) -> TurnResult:
+    """LEGACY learned turn (unmanaged): a LEARN under explicit authority whose S3 readout is decoded to text.
+
+    Kept for the replay of the original synthetic scaffold; it is never a query. Fails closed without a qualified
+    ECS codec map, and refuses ``LEARN_UNAUTHORIZED`` without a :class:`LearnAuthority`.
+    """
+    classification, authority = _validate_turn_request(substrate, text, codec_map=codec_map, authority=authority,
+                                                       max_output_tokens=max_output_tokens)
+    tokens, stimulus = _encode(substrate, text, tokenizer, codec_map)
+
+    def decode(prepared):  # between the schedule and the commit: the candidate commits only after the decode
+        readout = Readout(prepared.s3, prepared.epoch_after, substrate.dim, substrate.width)
+        return readout, _decode(codec_map, readout, tokenizer, max_output_tokens)
+
+    (readout, (output, rendered)), committed = _learn_native(substrate, stimulus, authority.learning_rate, decode)
     return TurnResult(tokens, output, rendered, readout, committed.commit.epoch_before,
                       committed.commit.epoch_after, classification,
                       committed.state_before_digest, committed.state_after_digest)

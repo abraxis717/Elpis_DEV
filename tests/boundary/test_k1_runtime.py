@@ -10,7 +10,9 @@ the native tests (ctest ECS.test_ecsg_k1*).
 from __future__ import annotations
 
 import ast
+import inspect
 import re
+import textwrap
 
 import pytest
 
@@ -86,18 +88,45 @@ def _calls(node):
     return {n.func.attr for n in ast.walk(node) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
 
 
-def test_the_canonical_turn_runs_the_experience_schedule_natively():
+# LEARN-side native calls: none may be reachable from the QUERY path, which must be read-only.
+LEARN_NATIVE = {"transaction", "run_schedule", "commit_identity", "commit", "reserve", "learn", "consolidate",
+                "reset", "restore", "txn_begin", "turn_begin", "turn_commit", "_learn_native"}
+
+
+def test_learn_runs_the_experience_schedule_natively():
     _, functions = _functions(TURN)
-    turn = functions["run_turn"]
-    calls = _calls(turn)
+    native = functions["_learn_native"]
+    calls = _calls(native)
     assert {"transaction", "run_schedule", "commit_identity"} <= calls, calls
     assert "commit" not in calls, calls
     assert not calls & ECS_DATA_PLANE, calls & ECS_DATA_PLANE
-    # The only Python iteration in the turn is over the decoded output token IDs (the token boundary).
-    for node in ast.walk(turn):
-        if isinstance(node, (ast.For, ast.comprehension)):
-            assert isinstance(node.iter, ast.Name) and node.iter.id == "output", ast.unparse(node.iter)
-        assert not isinstance(node, (ast.While, ast.AsyncFor)), ast.unparse(node)
+    assert not [n for n in ast.walk(native) if isinstance(n, LOOPS)], "the native LEARN sequence iterates"
+    # Both LEARN surfaces (canonical and legacy) reach K1 only through it.
+    for name in ("run_learn", "run_turn"):
+        calls = _calls(functions[name]) | {n.func.id for n in ast.walk(functions[name])
+                                           if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+        assert "_learn_native" in calls, name
+        assert not calls & (ECS_DATA_PLANE | {"transaction", "run_schedule", "commit_identity"}), name
+        # The only Python iteration on a LEARN surface is over the decoded output token IDs (the token boundary).
+        for node in ast.walk(functions[name]):
+            assert not isinstance(node, (ast.For, ast.While, ast.AsyncFor)), (name, ast.unparse(node))
+
+
+def test_query_is_one_read_only_native_call_and_never_learns():
+    _, functions = _functions(TURN)
+    query = functions["run_query"]
+    attrs = _calls(query)
+    names = {n.func.id for n in ast.walk(query) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+    assert "query_identity" in attrs, attrs
+    assert not (attrs | names) & LEARN_NATIVE, (attrs | names) & LEARN_NATIVE
+    assert not attrs & ECS_DATA_PLANE, attrs & ECS_DATA_PLANE
+    assert not [n for n in ast.walk(query) if isinstance(n, (ast.For, ast.While, ast.AsyncFor))]
+    # The managed QUERY reaches RuntimeCore's read-only query only: no begin, no commit, no abort.
+    from elpis.runtime.composition import Runtime
+    managed = ast.parse(textwrap.dedent(inspect.getsource(Runtime.run_query)))
+    attrs = _calls(managed)
+    assert "query" in attrs and not attrs & {"turn_begin", "turn_commit", "turn_abort", "anchor",
+                                             "evolution_reserve"}, attrs
 
 
 def test_stimulus_admission_never_walks_ecs_values():
