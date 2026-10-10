@@ -23,6 +23,8 @@ pub const K1_STALE: i32 = -3;
 /// A concurrent overlapping call on the same state: refused before anything was done (transient by contract).
 pub const K1_BUSY: i32 = -4;
 pub const K1_CAPACITY: i32 = -5;
+/// The state is managed under another lease (`ELPIS_ECSG_K1_LEASED`): refused before anything was touched.
+pub const K1_LEASED: i32 = -8;
 /// The FMS adapter's capacity refusal (`-100 + FMS_CAPACITY`).
 pub const K1_FMS_CAPACITY: i32 = -107;
 
@@ -81,13 +83,30 @@ pub fn features(dim: usize) -> usize {
 }
 
 /// The native operations a runtime needs on one retained K1 state. Each returns the K1 status.
+/// The native operations a runtime needs on one retained K1 state. Each returns the K1 status.
+///
+/// Every mutating operation is a *leased* entry point (ecsg_k1.h, "Managed ownership"): it presents RuntimeCore's
+/// lease, and the state refuses it (`LEASED`) unless that lease holds the state. While RuntimeCore holds the lease
+/// the state refuses every unmanaged mutating entry point, so the bound state cannot move outside the lineage.
 pub trait K1Ops {
     fn state_digest(&mut self, out: &mut Digest) -> i32;
-    fn reserve(&mut self, max_rows: usize) -> i32;
-    fn txn_begin(&mut self, token: &mut u64) -> i32;
+    /// The state's immutable shape `(dim, width)` (`shape`): read-only, no guard.
+    fn shape(&mut self, dim: &mut usize, width: &mut usize) -> i32;
+    /// QUERY bound to its identity (`query_identity`): `out[r] = f_W(x_r)` for `out.len()` rows of the declared
+    /// dimension, and `digest` = the retained-state identity of the same authoritative state, in one native call.
+    /// Read-only: no transaction, no commit, nothing written to the retained state.
+    fn query_identity(&mut self, dim: usize, x: &[f64], out: &mut [f64], digest: &mut Digest) -> i32;
+    /// Claim the state for `lease` (replacing any other lease; BUSY while a transaction is open).
+    fn lease_claim(&mut self, lease: u64) -> i32;
+    /// Release the state if `lease` holds it.
+    fn lease_release(&mut self, lease: u64) -> i32;
+    fn reserve(&mut self, lease: u64, max_rows: usize) -> i32;
+    /// Begin a transaction and write the retained-state identity of exactly the source it copied (one call).
+    fn txn_begin(&mut self, lease: u64, source: &mut Digest, token: &mut u64) -> i32;
     #[allow(clippy::too_many_arguments)]
     fn txn_run_schedule(
         &mut self,
+        lease: u64,
         token: u64,
         x: &[f64],
         y: &[f64],
@@ -96,14 +115,8 @@ pub trait K1Ops {
         s3: &mut [f64],
         result: &mut ScheduleOutcome,
     ) -> i32;
-    fn txn_commit_identity(&mut self, token: u64, out: &mut CommitIdentity) -> i32;
+    fn txn_commit_identity(&mut self, lease: u64, token: u64, out: &mut CommitIdentity) -> i32;
     fn txn_abort(&mut self, token: u64) -> i32;
-    /// QUERY bound to its identity (`query_identity`): `out[r] = f_W(x_r)` for `out.len()` rows of the declared
-    /// dimension, and `digest` = the retained-state identity of the same authoritative state, in one native call.
-    /// Read-only: no transaction, no commit, nothing written to the retained state.
-    fn query_identity(&mut self, dim: usize, x: &[f64], out: &mut [f64], digest: &mut Digest) -> i32;
-    /// The state's immutable shape `(dim, width)` (`shape`): read-only, no guard.
-    fn shape(&mut self, dim: &mut usize, width: &mut usize) -> i32;
     /// The owned abort capability over this same native state, retained by RuntimeCore from a successful turn
     /// begin until that turn ends. It may outlive the call that produced it, but never the open transaction it
     /// ends: the native state is live for exactly that interval (the substrate lifetime contract, runtime.h).
@@ -135,10 +148,12 @@ pub const KIND_K1: u32 = 1;
 pub const KIND_K1_FMS: u32 = 2;
 
 type Status = c_int;
+type State = *mut c_void;
 
-/// `elpis_ecsg_k1_txn_run_schedule`.
+/// `elpis_ecsg_k1_leased_txn_run_schedule`.
 pub type K1RunSchedule = unsafe extern "C" fn(
-    *mut c_void,
+    State,
+    u64,
     u64,
     *const f64,
     *const f64,
@@ -151,9 +166,10 @@ pub type K1RunSchedule = unsafe extern "C" fn(
     *mut ScheduleOutcome,
 ) -> Status;
 
-/// `elpis_ecsg_k1_fms_txn_run_schedule`.
+/// `elpis_ecsg_k1_fms_leased_txn_run_schedule`.
 pub type K1FmsRunSchedule = unsafe extern "C" fn(
-    *mut c_void,
+    State,
+    u64,
     u64,
     u64,
     *const f64,
@@ -168,38 +184,41 @@ pub type K1FmsRunSchedule = unsafe extern "C" fn(
 ) -> Status;
 
 /// `elpis_ecsg_k1_query_identity`.
-pub type K1QueryIdentity = unsafe extern "C" fn(*mut c_void, usize, *const f64, usize, *mut f64, *mut u8) -> Status;
+pub type K1QueryIdentity = unsafe extern "C" fn(State, usize, *const f64, usize, *mut f64, *mut u8) -> Status;
 
 /// `elpis_ecsg_k1_fms_query_identity`.
-pub type K1FmsQueryIdentity =
-    unsafe extern "C" fn(*mut c_void, u64, usize, *const f64, usize, *mut f64, *mut u8) -> Status;
+pub type K1FmsQueryIdentity = unsafe extern "C" fn(State, u64, usize, *const f64, usize, *mut f64, *mut u8) -> Status;
 
 /// The function table of a standalone K1 library (`ecsg_k1.h`). Every entry is required.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct K1Api {
-    pub state_digest: Option<unsafe extern "C" fn(*mut c_void, *mut u8) -> Status>,
-    pub reserve: Option<unsafe extern "C" fn(*mut c_void, usize) -> Status>,
-    pub txn_begin: Option<unsafe extern "C" fn(*mut c_void, *mut u64) -> Status>,
-    pub txn_run_schedule: Option<K1RunSchedule>,
-    pub txn_commit_identity: Option<unsafe extern "C" fn(*mut c_void, u64, *mut CommitIdentity) -> Status>,
-    pub txn_abort: Option<unsafe extern "C" fn(*mut c_void, u64) -> Status>,
+    pub state_digest: Option<unsafe extern "C" fn(State, *mut u8) -> Status>,
+    pub shape: Option<unsafe extern "C" fn(State, *mut usize, *mut usize) -> Status>,
     pub query_identity: Option<K1QueryIdentity>,
-    pub shape: Option<unsafe extern "C" fn(*mut c_void, *mut usize, *mut usize) -> Status>,
+    pub lease_claim: Option<unsafe extern "C" fn(State, u64) -> Status>,
+    pub lease_release: Option<unsafe extern "C" fn(State, u64) -> Status>,
+    pub leased_reserve: Option<unsafe extern "C" fn(State, u64, usize) -> Status>,
+    pub leased_txn_begin: Option<unsafe extern "C" fn(State, u64, *mut u8, *mut u64) -> Status>,
+    pub leased_txn_run_schedule: Option<K1RunSchedule>,
+    pub leased_txn_commit_identity: Option<unsafe extern "C" fn(State, u64, u64, *mut CommitIdentity) -> Status>,
+    pub txn_abort: Option<unsafe extern "C" fn(State, u64) -> Status>,
 }
 
 /// The function table of the K1 FMS adapter (`ecsg_k1_fms.h`): the same operations on one resident state id.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct K1FmsApi {
-    pub state_digest: Option<unsafe extern "C" fn(*mut c_void, u64, *mut u8) -> Status>,
-    pub reserve: Option<unsafe extern "C" fn(*mut c_void, u64, usize) -> Status>,
-    pub txn_begin: Option<unsafe extern "C" fn(*mut c_void, u64, *mut u64) -> Status>,
-    pub txn_run_schedule: Option<K1FmsRunSchedule>,
-    pub txn_commit_identity: Option<unsafe extern "C" fn(*mut c_void, u64, u64, *mut CommitIdentity) -> Status>,
-    pub txn_abort: Option<unsafe extern "C" fn(*mut c_void, u64, u64) -> Status>,
+    pub state_digest: Option<unsafe extern "C" fn(State, u64, *mut u8) -> Status>,
+    pub shape: Option<unsafe extern "C" fn(State, u64, *mut usize, *mut usize) -> Status>,
     pub query_identity: Option<K1FmsQueryIdentity>,
-    pub shape: Option<unsafe extern "C" fn(*mut c_void, u64, *mut usize, *mut usize) -> Status>,
+    pub lease_claim: Option<unsafe extern "C" fn(State, u64, u64) -> Status>,
+    pub lease_release: Option<unsafe extern "C" fn(State, u64, u64) -> Status>,
+    pub leased_reserve: Option<unsafe extern "C" fn(State, u64, u64, usize) -> Status>,
+    pub leased_txn_begin: Option<unsafe extern "C" fn(State, u64, u64, *mut u8, *mut u64) -> Status>,
+    pub leased_txn_run_schedule: Option<K1FmsRunSchedule>,
+    pub leased_txn_commit_identity: Option<unsafe extern "C" fn(State, u64, u64, u64, *mut CommitIdentity) -> Status>,
+    pub txn_abort: Option<unsafe extern "C" fn(State, u64, u64) -> Status>,
 }
 
 /// `elpis_runtime_substrate`: one native K1 state as the caller describes it.
@@ -213,8 +232,7 @@ pub struct CSubstrate {
     /// The resident state id (kind 2); 0 for a standalone state.
     pub id: u64,
     pub owner: u64,
-    /// The state's input dimension, 1..=64. K1 verifies it natively: the readout length it implies must equal
-    /// the state's own before any input byte is read.
+    /// The state's input dimension, 1..=64, verified natively against the state's shape before any input is read.
     pub dim: u64,
     /// `const elpis_runtime_k1_api *` (kind 1) or `const elpis_runtime_k1_fms_api *` (kind 2).
     pub api: *const c_void,
@@ -239,6 +257,21 @@ pub struct Native {
 // RuntimeCore moves a retained copy only together with the runtime handle that serializes its calls.
 unsafe impl Send for Native {}
 
+macro_rules! complete {
+    ($t:expr) => {
+        $t.state_digest.is_some()
+            && $t.shape.is_some()
+            && $t.query_identity.is_some()
+            && $t.lease_claim.is_some()
+            && $t.lease_release.is_some()
+            && $t.leased_reserve.is_some()
+            && $t.leased_txn_begin.is_some()
+            && $t.leased_txn_run_schedule.is_some()
+            && $t.leased_txn_commit_identity.is_some()
+            && $t.txn_abort.is_some()
+    };
+}
+
 impl Native {
     /// Validate a descriptor (no native call). `None` for anything malformed.
     ///
@@ -254,27 +287,11 @@ impl Native {
         let table = match d.kind {
             KIND_K1 if d.id == 0 => {
                 let t = *(d.api as *const K1Api);
-                let complete = t.state_digest.is_some()
-                    && t.reserve.is_some()
-                    && t.txn_begin.is_some()
-                    && t.txn_run_schedule.is_some()
-                    && t.txn_commit_identity.is_some()
-                    && t.txn_abort.is_some()
-                    && t.query_identity.is_some()
-                    && t.shape.is_some();
-                complete.then_some(Table::K1(t))?
+                complete!(t).then_some(Table::K1(t))?
             }
             KIND_K1_FMS => {
                 let t = *(d.api as *const K1FmsApi);
-                let complete = t.state_digest.is_some()
-                    && t.reserve.is_some()
-                    && t.txn_begin.is_some()
-                    && t.txn_run_schedule.is_some()
-                    && t.txn_commit_identity.is_some()
-                    && t.txn_abort.is_some()
-                    && t.query_identity.is_some()
-                    && t.shape.is_some();
-                complete.then_some(Table::Fms(t))?
+                complete!(t).then_some(Table::Fms(t))?
             }
             _ => return None,
         };
@@ -290,36 +307,51 @@ impl Native {
 // The entries were checked present by `from_c`; `expect` documents that invariant.
 const TABLE: &str = "validated K1 function table";
 
+/// One native call through the validated table: `$k1` for a standalone state, `$fms` (with the resident id) for
+/// an FMS-resident one.
+macro_rules! call {
+    ($self:ident, $entry:ident, ($($arg:expr),*)) => {
+        unsafe {
+            match &$self.table {
+                Table::K1(t) => t.$entry.expect(TABLE)($self.handle $(, $arg)*),
+                Table::Fms(t) => t.$entry.expect(TABLE)($self.handle, $self.key.id $(, $arg)*),
+            }
+        }
+    };
+}
+
 impl K1Ops for Native {
     fn state_digest(&mut self, out: &mut Digest) -> i32 {
-        unsafe {
-            match &self.table {
-                Table::K1(t) => t.state_digest.expect(TABLE)(self.handle, out.as_mut_ptr()),
-                Table::Fms(t) => t.state_digest.expect(TABLE)(self.handle, self.key.id, out.as_mut_ptr()),
-            }
-        }
+        call!(self, state_digest, (out.as_mut_ptr()))
     }
 
-    fn reserve(&mut self, max_rows: usize) -> i32 {
-        unsafe {
-            match &self.table {
-                Table::K1(t) => t.reserve.expect(TABLE)(self.handle, max_rows),
-                Table::Fms(t) => t.reserve.expect(TABLE)(self.handle, self.key.id, max_rows),
-            }
-        }
+    fn shape(&mut self, dim: &mut usize, width: &mut usize) -> i32 {
+        call!(self, shape, (dim, width))
     }
 
-    fn txn_begin(&mut self, token: &mut u64) -> i32 {
-        unsafe {
-            match &self.table {
-                Table::K1(t) => t.txn_begin.expect(TABLE)(self.handle, token),
-                Table::Fms(t) => t.txn_begin.expect(TABLE)(self.handle, self.key.id, token),
-            }
-        }
+    fn query_identity(&mut self, dim: usize, x: &[f64], out: &mut [f64], digest: &mut Digest) -> i32 {
+        call!(self, query_identity, (dim, x.as_ptr(), out.len(), out.as_mut_ptr(), digest.as_mut_ptr()))
+    }
+
+    fn lease_claim(&mut self, lease: u64) -> i32 {
+        call!(self, lease_claim, (lease))
+    }
+
+    fn lease_release(&mut self, lease: u64) -> i32 {
+        call!(self, lease_release, (lease))
+    }
+
+    fn reserve(&mut self, lease: u64, max_rows: usize) -> i32 {
+        call!(self, leased_reserve, (lease, max_rows))
+    }
+
+    fn txn_begin(&mut self, lease: u64, source: &mut Digest, token: &mut u64) -> i32 {
+        call!(self, leased_txn_begin, (lease, source.as_mut_ptr(), token))
     }
 
     fn txn_run_schedule(
         &mut self,
+        lease: u64,
         token: u64,
         x: &[f64],
         y: &[f64],
@@ -328,83 +360,31 @@ impl K1Ops for Native {
         s3: &mut [f64],
         result: &mut ScheduleOutcome,
     ) -> i32 {
-        unsafe {
-            match &self.table {
-                Table::K1(t) => t.txn_run_schedule.expect(TABLE)(
-                    self.handle,
-                    token,
-                    x.as_ptr(),
-                    y.as_ptr(),
-                    y.len(),
-                    schedule.as_ptr(),
-                    schedule.len(),
-                    rate,
-                    s3.as_mut_ptr(),
-                    s3.len(),
-                    result,
-                ),
-                Table::Fms(t) => t.txn_run_schedule.expect(TABLE)(
-                    self.handle,
-                    self.key.id,
-                    token,
-                    x.as_ptr(),
-                    y.as_ptr(),
-                    y.len(),
-                    schedule.as_ptr(),
-                    schedule.len(),
-                    rate,
-                    s3.as_mut_ptr(),
-                    s3.len(),
-                    result,
-                ),
-            }
-        }
+        call!(
+            self,
+            leased_txn_run_schedule,
+            (
+                lease,
+                token,
+                x.as_ptr(),
+                y.as_ptr(),
+                y.len(),
+                schedule.as_ptr(),
+                schedule.len(),
+                rate,
+                s3.as_mut_ptr(),
+                s3.len(),
+                result
+            )
+        )
     }
 
-    fn txn_commit_identity(&mut self, token: u64, out: &mut CommitIdentity) -> i32 {
-        unsafe {
-            match &self.table {
-                Table::K1(t) => t.txn_commit_identity.expect(TABLE)(self.handle, token, out),
-                Table::Fms(t) => t.txn_commit_identity.expect(TABLE)(self.handle, self.key.id, token, out),
-            }
-        }
+    fn txn_commit_identity(&mut self, lease: u64, token: u64, out: &mut CommitIdentity) -> i32 {
+        call!(self, leased_txn_commit_identity, (lease, token, out))
     }
 
     fn txn_abort(&mut self, token: u64) -> i32 {
         TxnAbort::txn_abort(self, token)
-    }
-
-    fn query_identity(&mut self, dim: usize, x: &[f64], out: &mut [f64], digest: &mut Digest) -> i32 {
-        unsafe {
-            match &self.table {
-                Table::K1(t) => t.query_identity.expect(TABLE)(
-                    self.handle,
-                    dim,
-                    x.as_ptr(),
-                    out.len(),
-                    out.as_mut_ptr(),
-                    digest.as_mut_ptr(),
-                ),
-                Table::Fms(t) => t.query_identity.expect(TABLE)(
-                    self.handle,
-                    self.key.id,
-                    dim,
-                    x.as_ptr(),
-                    out.len(),
-                    out.as_mut_ptr(),
-                    digest.as_mut_ptr(),
-                ),
-            }
-        }
-    }
-
-    fn shape(&mut self, dim: &mut usize, width: &mut usize) -> i32 {
-        unsafe {
-            match &self.table {
-                Table::K1(t) => t.shape.expect(TABLE)(self.handle, dim, width),
-                Table::Fms(t) => t.shape.expect(TABLE)(self.handle, self.key.id, dim, width),
-            }
-        }
     }
 
     fn retain_abort(&self) -> Box<dyn TxnAbort> {
@@ -414,11 +394,6 @@ impl K1Ops for Native {
 
 impl TxnAbort for Native {
     fn txn_abort(&mut self, token: u64) -> i32 {
-        unsafe {
-            match &self.table {
-                Table::K1(t) => t.txn_abort.expect(TABLE)(self.handle, token),
-                Table::Fms(t) => t.txn_abort.expect(TABLE)(self.handle, self.key.id, token),
-            }
-        }
+        call!(self, txn_abort, (token))
     }
 }

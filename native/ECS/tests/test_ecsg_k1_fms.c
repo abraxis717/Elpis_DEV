@@ -566,6 +566,56 @@ static void test_state_digest_matches_resident_snapshot_trailer(void)
     free(snapshot);
 }
 
+/* Managed ownership of a resident state: refused unmanaged writes take no WRITE pin (the object is not dirtied,
+ * its cold replica survives); the holder's leased entry points work over the resident bytes. */
+static void test_managed_lease_resident(void)
+{
+    elpis_ecsg_k1_fms *r = runtime_with(NULL, "k1-lease", (uint64_t)IMAGE * 8u, 2);
+    uint64_t id = state(r, 9), tok = 0, lease = 0;
+    uint8_t *before = malloc(ENVELOPE), *after = malloc(ENVELOPE), source[32], digest[32];
+    elpis_ecsg_k1_fms_info info0, info1;
+    elpis_ecsg_k1_commit_identity cid;
+    const elpis_ecsg_k1_experience sched[1] = {{R / 2, 2}};
+    double s3[83];
+    const uint64_t L = 0xabc;
+    assert(before && after);
+    OK(elpis_ecsg_k1_fms_pump(r));   /* settle residency (a cold replica, if the policy makes one) */
+    envelope_of(r, id, before);
+    OK(elpis_ecsg_k1_fms_state_digest(r, id, digest));
+    OK(elpis_ecsg_k1_fms_lease_claim(r, id, L));
+    OK(elpis_ecsg_k1_fms_lease_of(r, id, &lease));
+    assert(lease == L);
+    OK(elpis_ecsg_k1_fms_inspect(r, id, &info0));
+    assert(elpis_ecsg_k1_fms_learn(r, id, X, Y, R, 0.002, 1, NULL) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_fms_consolidate(r, id, X, R, NULL) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_fms_reset(r, id, NULL) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_fms_reserve(r, id, 2 * R) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_fms_txn_begin(r, id, &tok) == ELPIS_ECSG_K1_LEASED);
+    OK(elpis_ecsg_k1_fms_inspect(r, id, &info1));
+    assert(info1.cold_replica == info0.cold_replica && info1.lease_count == 0u && info1.transaction_open == 0u);
+    assert(info1.commits == info0.commits && info1.generation == info0.generation);
+    envelope_of(r, id, after);
+    assert(!memcmp(before, after, ENVELOPE));
+    /* The holder, over the resident bytes; plain calls on its transaction are refused and leave it open. */
+    OK(elpis_ecsg_k1_fms_leased_txn_begin(r, id, L, source, &tok));
+    assert(!memcmp(source, digest, 32));
+    assert(elpis_ecsg_k1_fms_txn_run_schedule(r, id, tok, X, Y, R / 2, sched, 1, 0.002, s3, 83, NULL) ==
+           ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_fms_txn_commit_identity(r, id, tok, &cid) == ELPIS_ECSG_K1_LEASED);
+    OK(elpis_ecsg_k1_fms_inspect(r, id, &info1));
+    assert(info1.transaction_open == 1u);
+    OK(elpis_ecsg_k1_fms_leased_txn_run_schedule(r, id, L, tok, X, Y, R / 2, sched, 1, 0.002, s3, 83, NULL));
+    OK(elpis_ecsg_k1_fms_leased_txn_commit_identity(r, id, L, tok, &cid));
+    assert(!memcmp(cid.state_before_digest, digest, 32));
+    assert(elpis_ecsg_k1_fms_lease_release(r, id, L + 1) == ELPIS_ECSG_K1_LEASED);
+    OK(elpis_ecsg_k1_fms_lease_release(r, id, L));
+    OK(elpis_ecsg_k1_fms_learn(r, id, X, Y, R, 0.002, 1, NULL));   /* unmanaged again */
+    OK(elpis_ecsg_k1_fms_close(r, &id));
+    OK(elpis_ecsg_k1_fms_destroy(&r));
+    free(before);
+    free(after);
+}
+
 int main(void)
 {
     fixture();
@@ -580,9 +630,11 @@ int main(void)
     test_transaction_refusal_contract();
     test_hostile_imports_and_provenance();
     test_experience_schedule_resident_equals_standalone();
+    test_state_digest_matches_resident_snapshot_trailer();
+    test_managed_lease_resident();
     printf("ecsg_k1_fms: resident K1 = standalone K1; warm path over resident bytes; COLD->WARM; pinning; "
            "refusals leave the complete state unchanged; envelopes and W-only imports; the transaction refusal "
-           "contract; hostile imports; provenance; the experience schedule (resident = standalone)\n");
+           "contract; hostile imports; provenance; the experience schedule (resident = standalone); the resident "
+           "retained-state digest; the managed lease\n");
     return 0;
-    test_state_digest_matches_resident_snapshot_trailer();
 }

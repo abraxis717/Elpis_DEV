@@ -226,16 +226,30 @@ def test_a_managed_query_of_an_unanchored_or_foreign_state_is_refused_and_writes
         assert info.value.code == "COGNITION_SUBSTRATE_SWITCH"
 
 
-def test_a_managed_query_of_a_state_moved_out_of_band_fail_stops_and_withholds_the_answer(k1, tmp_path):
+def test_an_unmanaged_learn_on_a_bound_state_is_refused_and_the_managed_query_continues(k1, tmp_path):
+    with world(k1) as state, Runtime(_config(tmp_path / "c")) as runtime:
+        runtime.anchor_cognition(state)
+        answer = runtime.run_query(state, _query())
+        before, slots, durable = state.snapshot(), _slots(runtime), runtime.continuity.snapshot()
+        with pytest.raises(CompositionError) as info:
+            run_learn(state, _learn("out of band"))   # an unmanaged LEARN on the bound state
+        assert info.value.code == "ECS_LEASED"
+        assert (state.snapshot(), _slots(runtime), runtime.continuity.snapshot()) == (before, slots, durable)
+        assert runtime.run_query(state, _query()) == answer and runtime.fault is None
+
+
+def test_a_managed_query_of_a_state_moved_after_release_fail_stops_and_withholds_the_answer(k1, tmp_path):
     with world(k1) as state, Runtime(_config(tmp_path / "c")) as runtime:
         runtime.anchor_cognition(state)
         runtime.run_query(state, _query())
-        run_learn(state, _learn("out of band"))   # an unmanaged LEARN on the bound state
+        runtime.release(state)                    # given back: unmanaged again, outside the lineage
+        run_learn(state, _learn("out of band"))
         slots, durable = _slots(runtime), runtime.continuity.snapshot()
         with pytest.raises(CompositionError) as info:
             runtime.run_query(state, _query())
         assert info.value.code == "CONTINUITY_STATE_MISMATCH" and runtime.fault == "CONTINUITY_STATE_MISMATCH"
         assert _slots(runtime) == slots and runtime.continuity.snapshot() == durable
+        assert state.managed_lease == 0           # a state that is not the lineage is never claimed
 
 
 def test_managed_learn_needs_authority_and_publishes_exactly_its_commit(subject, tmp_path):

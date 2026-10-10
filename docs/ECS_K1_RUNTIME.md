@@ -73,6 +73,7 @@ of the same rows. The call then returns `S3` of the final candidate `W` (the rea
 |---|---|
 | `INVALID`, `CAPACITY`, `BUSY` | Refused before the candidate is touched. The transaction stays open and unchanged; retry is allowed. |
 | `STALE` | Discarded. |
+| `LEASED` | Refused before anything is touched: a managed owner holds the state (below). The transaction stays open. |
 | `NONFINITE` from `txn_learn` / `txn_consolidate` | Discarded (non-finite input or arithmetic). |
 | `NONFINITE` from `txn_forward` | Read-only; nothing is discarded. |
 
@@ -171,6 +172,20 @@ LEARN never changes provenance.
   allocation.
 - No query, learn, consolidation, transaction, reset or snapshot allocates (link-time allocator interposition:
   `test_ecsg_k1_alloc`, `test_ecsg_k1_fms_alloc`).
+
+## Managed ownership
+
+A managed owner (RuntimeCore) claims a state with a nonzero 64-bit lease (`lease_claim`; `BUSY` while a transaction
+is open; a claim replaces any other lease). While leased, every unmanaged mutating entry point refuses with
+`LEASED` (-8) before touching anything: `learn`, `consolidate`, `reset`, `reserve`, `txn_begin`, and `txn_learn`,
+`txn_consolidate`, `txn_run_schedule`, `txn_commit`, `txn_commit_identity` on a transaction begun under the lease
+(it stays open). The owner uses `leased_reserve`, `leased_txn_begin` (which also writes the retained-state identity
+of exactly the source it copied), `leased_txn_run_schedule` and `leased_txn_commit_identity`. Reads (`forward`,
+`query_identity`, copies, snapshot, digest, stats, getters, `txn_forward`, `txn_epoch`) and `txn_abort` stay open
+to anyone. The FMS adapter delegates to the resident K1 object and refuses an unmanaged write before taking a WRITE
+pin (the object is not dirtied). The lease is not part of the retained state, the envelope or the digest, and it
+changes no numerical law: a leased schedule is bitwise the unleased one (`test_ecsg_k1`, `test_ecsg_k1_fms`). It is
+an aliasing defence, not a secret.
 
 ## Concurrency
 

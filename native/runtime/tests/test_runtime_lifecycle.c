@@ -12,6 +12,8 @@
 #include "elpis/ecsg_k1_fms.h"
 #include "elpis/fms_pal_posix.h"
 #include "elpis/runtime.h"
+#define ELPIS_TEST_K1_FMS
+#include "k1_tables.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -23,49 +25,6 @@
 enum { DIM = 6, WIDTH = 36, ROWS = 4, S3 = 83 };
 
 /* Typed wrappers: the K1 and K1 FMS entry points as RuntimeCore's function tables (no casts of function types). */
-static int k1_digest(void *s, uint8_t out[32]) { return elpis_ecsg_k1_state_digest(s, out); }
-static int k1_reserve(void *s, size_t rows) { return elpis_ecsg_k1_reserve(s, rows); }
-static int k1_begin(void *s, uint64_t *token) { return elpis_ecsg_k1_txn_begin(s, token); }
-static int k1_schedule(void *s, uint64_t token, const double *x, const double *y, size_t rows,
-                       const elpis_runtime_experience *schedule, size_t n, double rate, double *s3, size_t s3n,
-                       elpis_runtime_schedule_result *result) {
-    return elpis_ecsg_k1_txn_run_schedule(s, token, x, y, rows, (const elpis_ecsg_k1_experience *)schedule, n, rate,
-                                          s3, s3n, (elpis_ecsg_k1_schedule_result *)result);
-}
-static int k1_commit(void *s, uint64_t token, elpis_runtime_commit_identity *identity) {
-    return elpis_ecsg_k1_txn_commit_identity(s, token, (elpis_ecsg_k1_commit_identity *)identity);
-}
-static int k1_abort(void *s, uint64_t token) { return elpis_ecsg_k1_txn_abort(s, token); }
-static int k1_query(void *s, size_t dim, const double *x, size_t rows, double *out, uint8_t digest[32]) {
-    return elpis_ecsg_k1_query_identity(s, dim, x, rows, out, digest);
-}
-static int k1_shape(void *s, size_t *dim, size_t *width) { return elpis_ecsg_k1_shape(s, dim, width); }
-static const elpis_runtime_k1_api K1_API = {k1_digest, k1_reserve, k1_begin, k1_schedule, k1_commit, k1_abort,
-                                          k1_query, k1_shape};
-
-static int fms_digest(void *r, uint64_t id, uint8_t out[32]) { return elpis_ecsg_k1_fms_state_digest(r, id, out); }
-static int fms_reserve(void *r, uint64_t id, size_t rows) { return elpis_ecsg_k1_fms_reserve(r, id, rows); }
-static int fms_begin(void *r, uint64_t id, uint64_t *token) { return elpis_ecsg_k1_fms_txn_begin(r, id, token); }
-static int fms_schedule(void *r, uint64_t id, uint64_t token, const double *x, const double *y, size_t rows,
-                        const elpis_runtime_experience *schedule, size_t n, double rate, double *s3, size_t s3n,
-                        elpis_runtime_schedule_result *result) {
-    return elpis_ecsg_k1_fms_txn_run_schedule(r, id, token, x, y, rows, (const elpis_ecsg_k1_experience *)schedule,
-                                              n, rate, s3, s3n, (elpis_ecsg_k1_schedule_result *)result);
-}
-static int fms_commit(void *r, uint64_t id, uint64_t token, elpis_runtime_commit_identity *identity) {
-    return elpis_ecsg_k1_fms_txn_commit_identity(r, id, token, (elpis_ecsg_k1_commit_identity *)identity);
-}
-static int fms_abort(void *r, uint64_t id, uint64_t token) { return elpis_ecsg_k1_fms_txn_abort(r, id, token); }
-static int fms_query_identity_entry(void *r, uint64_t id, size_t dim, const double *x, size_t rows, double *out,
-                                    uint8_t digest[32]) {
-    return elpis_ecsg_k1_fms_query_identity(r, id, dim, x, rows, out, digest);
-}
-static int fms_shape(void *r, uint64_t id, size_t *dim, size_t *width) {
-    return elpis_ecsg_k1_fms_shape(r, id, dim, width);
-}
-static const elpis_runtime_k1_fms_api FMS_API = {fms_digest, fms_reserve, fms_begin, fms_schedule, fms_commit,
-                                                 fms_abort, fms_query_identity_entry, fms_shape};
-
 static elpis_runtime_budget BUDGET;
 static double W0[DIM * WIDTH], X[ROWS * DIM], Y[ROWS];
 static const elpis_runtime_experience SCHEDULE[2] = {{2, 3}, {2, 5}};
@@ -152,11 +111,26 @@ static int same(retained a, retained b) {
     return !memcmp(a.digest, b.digest, 32) && a.epoch == b.epoch && a.generation == b.generation;
 }
 
+/* A probe transaction begin under whatever lease holds the state (the lease is no secret, ecsg_k1.h): it observes
+ * whether a transaction is open without being refused as an unmanaged caller of a managed state. */
+static int probe_begin(const subject *s, uint64_t *token) {
+    uint8_t source[32];
+    uint64_t lease = 0;
+    if (!s->resident) {
+        lease = elpis_ecsg_k1_lease_of(s->k1);
+        return lease ? elpis_ecsg_k1_leased_txn_begin(s->k1, lease, source, token)
+                     : elpis_ecsg_k1_txn_begin(s->k1, token);
+    }
+    assert(elpis_ecsg_k1_fms_lease_of(s->fms, s->id, &lease) == ELPIS_ECSG_K1_OK);
+    return lease ? elpis_ecsg_k1_fms_leased_txn_begin(s->fms, s->id, lease, source, token)
+                 : elpis_ecsg_k1_fms_txn_begin(s->fms, s->id, token);
+}
+
 /* Whether the state holds an open native transaction; for a resident state also the pins it holds. */
 static int txn_open(const subject *s, uint32_t *leases) {
     if (!s->resident) {
         uint64_t token = 0;
-        int rc = elpis_ecsg_k1_txn_begin(s->k1, &token);   /* BUSY exactly while another transaction is open */
+        int rc = probe_begin(s, &token);   /* BUSY exactly while another transaction is open */
         if (rc == ELPIS_ECSG_K1_OK) {
             assert(elpis_ecsg_k1_txn_abort(s->k1, token) == ELPIS_ECSG_K1_OK);
             return 0;
@@ -177,7 +151,7 @@ static void released(const subject *s) {
     if (s->resident) {
         assert(leases == 0);
         uint64_t token = 0;
-        assert(elpis_ecsg_k1_fms_txn_begin(s->fms, s->id, &token) == ELPIS_ECSG_K1_OK);
+        assert(probe_begin(s, &token) == ELPIS_ECSG_K1_OK);
         assert(txn_open(s, &leases) && leases == 1);   /* the transaction's WRITE pin */
         assert(elpis_ecsg_k1_fms_txn_abort(s->fms, s->id, token) == ELPIS_ECSG_K1_OK);
         assert(!txn_open(s, &leases) && leases == 0);

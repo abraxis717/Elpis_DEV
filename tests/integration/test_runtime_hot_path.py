@@ -111,7 +111,7 @@ def test_managed_turn_is_two_runtimecore_crossings_and_one_fixed_publication(exp
             {"txn_begin": 1, "txn_run_schedule": 1, "txn_commit_identity": 1}, bare_crossings
         assert native == {"k1_state_digests": 0, "k1_reserves": 0, "k1_txn_begins": 1, "k1_run_schedules": 1,
                           "k1_commits": 1, "k1_aborts": 0, "publications": 1, "k1_queries": 0,
-                          "k1_shapes": 0}, native
+                          "k1_shapes": 0, "k1_lease_claims": 0}, native
         # Python does no file I/O; the library writes one complete fixed-size record and syncs it once.
         assert fs.calls == {}, fs.calls
         assert io == {"opens": 0, "preads": 0, "pread_bytes": 0, "pwrites": 1, "pwrite_bytes": 176,

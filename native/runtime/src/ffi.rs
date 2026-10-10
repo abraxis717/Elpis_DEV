@@ -10,6 +10,10 @@
 //! handles come from `elpis_runtime_create` and are used until `elpis_runtime_destroy`. A substrate
 //! descriptor's handle and function table must be live for the duration of the call; the table is copied.
 //!
+//! Managed ownership (ABI v3): RuntimeCore claims every K1 state it binds with its own lease (ecsg_k1.h "Managed
+//! ownership"), so the bound state refuses every unmanaged mutation, and re-establishes the state's exact
+//! retained-state identity inside every managed transaction begin. `elpis_runtime_release` gives the state back.
+//!
 //! Substrate lifetime (ABI v2): a successful `elpis_runtime_turn_begin` opens a native K1 transaction that
 //! RuntimeCore ends with exactly one terminal native action, the commit or an abort, before it forgets the turn.
 //! To end it on every path (commit, abort, a refused commit, close, reopen, destroy) it retains the descriptor's
@@ -72,7 +76,7 @@ pub struct CQuery {
 const _: () = assert!(std::mem::size_of::<CQuery>() == 40);
 const _: () = assert!(std::mem::size_of::<CTurnBegin>() == 48);
 const _: () = assert!(std::mem::size_of::<CTurnCommit>() == 120);
-const _: () = assert!(std::mem::size_of::<Counters>() == 72);
+const _: () = assert!(std::mem::size_of::<Counters>() == 80);
 const _: () = assert!(std::mem::size_of::<Budget>() == 48);
 
 fn rc(result: Result<(), Error>) -> i32 {
@@ -399,6 +403,18 @@ pub unsafe extern "C" fn elpis_runtime_turn_commit(
         *out = result;
     }
     code
+}
+
+/// Release managed ownership of the bound state (its K1 lease) and unbind it, so its owner may use it unmanaged.
+/// Refused while a managed turn is open; a state that is not the bound one is refused; nothing bound is OK.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_release(rt: *mut ElpisRuntime, sub: *const CSubstrate) -> i32 {
+    let run = || -> Result<(), Error> {
+        let mut native = substrate(sub)?;
+        let key = native.key();
+        runtime(rt)?.release(&mut native, key).map_err(|r| r.error)
+    };
+    rc(run())
 }
 
 /// Abort the open turn of the described substrate (through the capability retained at begin): nothing is

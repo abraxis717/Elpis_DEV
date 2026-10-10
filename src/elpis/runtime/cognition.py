@@ -479,24 +479,31 @@ def run_learn(substrate, request: LearnRequest) -> LearnResult:
                        classification, authority.grant, committed.state_before_digest, committed.state_after_digest)
 
 
+def _ecs_refusal(exc):
+    """The boundary code of a native K1 refusal: a state held by a managed owner is ``ECS_LEASED``."""
+    return {"STALE": "ECS_STALE", "LEASED": "ECS_LEASED"}.get(exc.code, "ECS_REFUSED")
+
+
 def _learn_native(substrate, stimulus, learning_rate, between):
-    """begin -> one native schedule on the candidate -> ``between(prepared)`` -> commit, or abort on any refusal."""
+    """begin -> one native schedule on the candidate -> ``between(prepared)`` -> commit, or abort on any refusal.
+
+    Unmanaged: a state held by a managed owner (RuntimeCore's lease) refuses it before anything is touched."""
     try:
         if stimulus.max_experience_rows > substrate.max_rows:
             substrate.reserve(stimulus.max_experience_rows)  # explicit cold-path growth, before the transaction
         txn = substrate.transaction()
     except K1Error as exc:
-        raise CompositionError("ECS_REFUSED", str(exc)) from exc
+        raise CompositionError(_ecs_refusal(exc), str(exc)) from exc
     with txn:  # aborted unless committed
         try:  # one native call: every experience learned and consolidated, then S3 of the candidate W
             prepared = txn.run_schedule(stimulus.x, stimulus.y, stimulus.schedule, learning_rate)
         except K1Error as exc:
-            raise CompositionError("ECS_REFUSED", str(exc)) from exc
+            raise CompositionError(_ecs_refusal(exc), str(exc)) from exc
         decoded = between(prepared) if between is not None else None
         try:
             committed = txn.commit_identity()  # third crossing: commit plus exact retained-state identities
         except K1Error as exc:
-            raise CompositionError("ECS_STALE" if exc.code == "STALE" else "ECS_REFUSED", str(exc)) from exc
+            raise CompositionError(_ecs_refusal(exc), str(exc)) from exc
     return decoded, committed
 
 

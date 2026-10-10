@@ -118,6 +118,7 @@ WRITERS: tuple[PersistentWriter, ...] = (
 AUTONOMOUS_OPERATIONS = frozenset({
     "open", "close", "fault", "run_ingress", "admit_retrieval", "admit_context",
     "anchor_cognition", "evolution_authority",
+    "release",             # gives a bound K1 state back (its managed lease); writes nothing
     "run_query",           # read-only: writes nothing at all
     "run_learn",           # explicit LearnAuthority; writes only the fixed continuity slots
     "run_turn",            # LEGACY learned turn: a LEARN (explicit LearnAuthority); fixed continuity slots only

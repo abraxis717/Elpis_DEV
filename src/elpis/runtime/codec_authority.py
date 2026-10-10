@@ -161,7 +161,8 @@ def _entry(data, provenance) -> CodecEntry:
         _refuse("CODEC_AUTHORITY", "an unqualified codec may not be classified QUALIFIED")
     if provenance == "test-fixture" and qualification is not CodecQualification.TEST_ONLY:
         _refuse("CODEC_AUTHORITY", "a test-fixture authority admits TEST_ONLY codecs only")
-    return CodecEntry(data["codec_id"], data["implementation"], _digest(data["implementation_sha256"], "implementation"),
+    return CodecEntry(data["codec_id"], data["implementation"],
+                      _digest(data["implementation_sha256"], "implementation"),
                       _digest(data["parameters_sha256"], "parameters"), capabilities, classification, qualification,
                       record, data["status"])
 

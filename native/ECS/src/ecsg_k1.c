@@ -82,6 +82,10 @@ struct elpis_ecsg_k1 {
     uint64_t txn_token;
     uint64_t txn_tokens_issued;
     uint64_t txn_source_generation;
+    /* Managed ownership (docs/RUNTIME_CORE.md): 0, or the lease of the one managed owner. While leased, only the
+     * leased entry points mutate; txn_lease is the lease the open transaction was begun under (0: unmanaged). */
+    uint64_t lease;
+    uint64_t txn_lease;
     elpis_ecsg_k1_counters stats;
     atomic_uint_fast64_t busy_refusals;
     atomic_flag busy;
@@ -90,6 +94,7 @@ struct elpis_ecsg_k1 {
     atomic_uint_fast64_t pub_generation;
     atomic_uint_fast32_t pub_provenance;
     atomic_size_t pub_max_rows;
+    atomic_uint_fast64_t pub_lease;
 };
 
 /* --- checked arithmetic and layout ------------------------------------------------------------------------- */
@@ -808,6 +813,7 @@ static elpis_ecsg_k1_status make(size_t dim, size_t width, size_t max_rows, int 
     atomic_init(&s->pub_generation, 0u);
     atomic_init(&s->pub_provenance, 0u);
     atomic_init(&s->pub_max_rows, max_rows);
+    atomic_init(&s->pub_lease, 0u);
     atomic_flag_clear(&s->busy);
     *out = s;
     return ELPIS_ECSG_K1_OK;
@@ -996,7 +1002,7 @@ elpis_ecsg_k1_status elpis_ecsg_k1_destroy(elpis_ecsg_k1 **state)
     return ELPIS_ECSG_K1_OK;
 }
 
-elpis_ecsg_k1_status elpis_ecsg_k1_reserve(elpis_ecsg_k1 *s, size_t max_rows)
+static elpis_ecsg_k1_status reserve_as(elpis_ecsg_k1 *s, uint64_t caller, size_t max_rows)
 {
     layout l;
     void *arena;
@@ -1007,6 +1013,10 @@ elpis_ecsg_k1_status elpis_ecsg_k1_reserve(elpis_ecsg_k1 *s, size_t max_rows)
     }
     if (!enter(s)) {
         return ELPIS_ECSG_K1_BUSY;
+    }
+    if (s->lease != caller) {
+        leave(s);
+        return ELPIS_ECSG_K1_LEASED;
     }
     if (s->txn_open) {
         leave(s);
@@ -1038,6 +1048,16 @@ elpis_ecsg_k1_status elpis_ecsg_k1_reserve(elpis_ecsg_k1 *s, size_t max_rows)
     publish(s);
     leave(s);
     return ELPIS_ECSG_K1_OK;
+}
+
+elpis_ecsg_k1_status elpis_ecsg_k1_reserve(elpis_ecsg_k1 *s, size_t max_rows)
+{
+    return reserve_as(s, 0u, max_rows);
+}
+
+elpis_ecsg_k1_status elpis_ecsg_k1_leased_reserve(elpis_ecsg_k1 *s, uint64_t lease, size_t max_rows)
+{
+    return lease == 0u ? ELPIS_ECSG_K1_INVALID : reserve_as(s, lease, max_rows);
 }
 
 size_t elpis_ecsg_k1_dim(const elpis_ecsg_k1 *s) { return s == NULL ? 0u : s->dim; }
@@ -1197,6 +1217,10 @@ elpis_ecsg_k1_learn(elpis_ecsg_k1 *s, const double *x, const double *y, size_t r
     if (!enter(s)) {
         return ELPIS_ECSG_K1_BUSY;
     }
+    if (s->lease != 0u) {   /* a managed state mutates only through its owner's leased entry points */
+        leave(s);
+        return ELPIS_ECSG_K1_LEASED;
+    }
     e0 = image_epoch(s->image);
     g0 = s->generation;
     rc = learn_on(s, s->image, x, y, rows, rate, steps, &failed);   /* staged in cur/nxt; installed on success */
@@ -1224,6 +1248,10 @@ elpis_ecsg_k1_consolidate(elpis_ecsg_k1 *s, const double *x, size_t rows, elpis_
     if (!enter(s)) {
         return ELPIS_ECSG_K1_BUSY;
     }
+    if (s->lease != 0u) {
+        leave(s);
+        return ELPIS_ECSG_K1_LEASED;
+    }
     e0 = image_epoch(s->image);
     g0 = s->generation;
     rc = consolidate_on(s, s->image, x, rows);   /* staged in stage_h/stage_a, installed only on success */
@@ -1246,6 +1274,10 @@ elpis_ecsg_k1_status elpis_ecsg_k1_reset(elpis_ecsg_k1 *s, elpis_ecsg_k1_transit
     }
     if (!enter(s)) {
         return ELPIS_ECSG_K1_BUSY;
+    }
+    if (s->lease != 0u) {
+        leave(s);
+        return ELPIS_ECSG_K1_LEASED;
     }
     e0 = image_epoch(s->image);
     g0 = s->generation;
@@ -1420,6 +1452,16 @@ static elpis_ecsg_k1_status txn_check(elpis_ecsg_k1 *s, uint64_t token)
     return ELPIS_ECSG_K1_OK;
 }
 
+/* txn_check for a candidate-mutating call by `caller` (0: an unmanaged call): a transaction begun under a lease is
+ * mutated and committed only through its owner's leased entry points (LEASED, nothing touched, still open). */
+static elpis_ecsg_k1_status txn_check_as(elpis_ecsg_k1 *s, uint64_t caller, uint64_t token)
+{
+    if (s->txn_open && s->txn_lease != caller) {
+        return ELPIS_ECSG_K1_LEASED;
+    }
+    return txn_check(s, token);
+}
+
 /* The refusal contract (ecsg_k1.h): NONFINITE from a candidate-mutating call discards the transaction;
  * INVALID and CAPACITY are refused before the candidate is touched and leave it open and unchanged. */
 static void discard_on(elpis_ecsg_k1 *s, elpis_ecsg_k1_status rc)
@@ -1430,7 +1472,8 @@ static void discard_on(elpis_ecsg_k1 *s, elpis_ecsg_k1_status rc)
     }
 }
 
-elpis_ecsg_k1_status elpis_ecsg_k1_txn_begin(elpis_ecsg_k1 *s, uint64_t *token)
+static elpis_ecsg_k1_status
+txn_begin_as(elpis_ecsg_k1 *s, uint64_t caller, uint8_t source_digest[ELPIS_ECSG_K1_DIGEST_BYTES], uint64_t *token)
 {
     if (s == NULL || s->image == NULL || token == NULL) {
         return ELPIS_ECSG_K1_INVALID;
@@ -1438,18 +1481,87 @@ elpis_ecsg_k1_status elpis_ecsg_k1_txn_begin(elpis_ecsg_k1 *s, uint64_t *token)
     if (!enter(s)) {
         return ELPIS_ECSG_K1_BUSY;
     }
+    if (s->lease != caller) {
+        leave(s);
+        return ELPIS_ECSG_K1_LEASED;
+    }
     if (s->txn_open) {
         leave(s);
         return ELPIS_ECSG_K1_BUSY;
     }
     memcpy(s->cand, s->image, s->image_bytes);
+    if (source_digest != NULL) {
+        retained_state_digest(s, s->image, source_digest);   /* the identity of exactly the source copied */
+    }
     s->txn_open = 1;
+    s->txn_lease = caller;
     s->txn_token = ++s->txn_tokens_issued;
     s->txn_source_generation = s->generation;
     s->stats.txn_begins += 1u;
     *token = s->txn_token;
     leave(s);
     return ELPIS_ECSG_K1_OK;
+}
+
+elpis_ecsg_k1_status elpis_ecsg_k1_txn_begin(elpis_ecsg_k1 *s, uint64_t *token)
+{
+    return txn_begin_as(s, 0u, NULL, token);
+}
+
+elpis_ecsg_k1_status elpis_ecsg_k1_leased_txn_begin(elpis_ecsg_k1 *s, uint64_t lease,
+                                                    uint8_t source_digest[ELPIS_ECSG_K1_DIGEST_BYTES],
+                                                    uint64_t *token)
+{
+    if (lease == 0u || source_digest == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    return txn_begin_as(s, lease, source_digest, token);
+}
+
+/* --- managed ownership --------------------------------------------------------------------------------------- */
+
+elpis_ecsg_k1_status elpis_ecsg_k1_lease_claim(elpis_ecsg_k1 *s, uint64_t lease)
+{
+    if (s == NULL || lease == 0u) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (!enter(s)) {
+        return ELPIS_ECSG_K1_BUSY;
+    }
+    if (s->txn_open) {   /* never adopt or orphan an open transaction */
+        leave(s);
+        return ELPIS_ECSG_K1_BUSY;
+    }
+    s->lease = lease;    /* a claim replaces any previous lease: its holder's next leased call is refused */
+    atomic_store_explicit(&s->pub_lease, lease, memory_order_release);
+    leave(s);
+    return ELPIS_ECSG_K1_OK;
+}
+
+elpis_ecsg_k1_status elpis_ecsg_k1_lease_release(elpis_ecsg_k1 *s, uint64_t lease)
+{
+    elpis_ecsg_k1_status rc = ELPIS_ECSG_K1_OK;
+    if (s == NULL || lease == 0u) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (!enter(s)) {
+        return ELPIS_ECSG_K1_BUSY;
+    }
+    if (s->lease != lease) {
+        rc = ELPIS_ECSG_K1_LEASED;
+    } else if (s->txn_open) {
+        rc = ELPIS_ECSG_K1_BUSY;
+    } else {
+        s->lease = 0u;
+        atomic_store_explicit(&s->pub_lease, 0u, memory_order_release);
+    }
+    leave(s);
+    return rc;
+}
+
+uint64_t elpis_ecsg_k1_lease_of(const elpis_ecsg_k1 *s)
+{
+    return s == NULL ? 0u : atomic_load_explicit(&((elpis_ecsg_k1 *)(uintptr_t)s)->pub_lease, memory_order_acquire);
 }
 
 elpis_ecsg_k1_status
@@ -1465,7 +1577,7 @@ elpis_ecsg_k1_txn_learn(elpis_ecsg_k1 *s, uint64_t token, const double *x, const
     if (!enter(s)) {
         return ELPIS_ECSG_K1_BUSY;
     }
-    rc = txn_check(s, token);
+    rc = txn_check_as(s, 0u, token);
     if (rc == ELPIS_ECSG_K1_OK) {
         e0 = image_epoch(s->cand);
         rc = learn_on(s, s->cand, x, y, rows, rate, steps, &failed);
@@ -1490,7 +1602,7 @@ elpis_ecsg_k1_txn_consolidate(elpis_ecsg_k1 *s, uint64_t token, const double *x,
     if (!enter(s)) {
         return ELPIS_ECSG_K1_BUSY;
     }
-    rc = txn_check(s, token);
+    rc = txn_check_as(s, 0u, token);
     if (rc == ELPIS_ECSG_K1_OK) {
         rc = consolidate_on(s, s->cand, x, rows);
         if (rc != ELPIS_ECSG_K1_OK) {
@@ -1538,7 +1650,7 @@ elpis_ecsg_k1_status elpis_ecsg_k1_txn_epoch(elpis_ecsg_k1 *s, uint64_t token, u
 
 
 static elpis_ecsg_k1_status
-txn_commit_common(elpis_ecsg_k1 *s, uint64_t token, elpis_ecsg_k1_transition *t,
+txn_commit_common(elpis_ecsg_k1 *s, uint64_t caller, uint64_t token, elpis_ecsg_k1_transition *t,
                   uint8_t before[ELPIS_ECSG_K1_DIGEST_BYTES],
                   uint8_t after[ELPIS_ECSG_K1_DIGEST_BYTES])
 {
@@ -1553,7 +1665,7 @@ txn_commit_common(elpis_ecsg_k1 *s, uint64_t token, elpis_ecsg_k1_transition *t,
         return ELPIS_ECSG_K1_BUSY;
     }
 
-    rc = txn_check(s, token);
+    rc = txn_check_as(s, caller, token);
     if (rc == ELPIS_ECSG_K1_OK) {
         if (before != NULL) {
             retained_state_digest(s, s->image, before);
@@ -1581,21 +1693,34 @@ txn_commit_common(elpis_ecsg_k1 *s, uint64_t token, elpis_ecsg_k1_transition *t,
 elpis_ecsg_k1_status
 elpis_ecsg_k1_txn_commit(elpis_ecsg_k1 *s, uint64_t token, elpis_ecsg_k1_transition *t)
 {
-    return txn_commit_common(s, token, t, NULL, NULL);
+    return txn_commit_common(s, 0u, token, t, NULL, NULL);
 }
 
-elpis_ecsg_k1_status
-elpis_ecsg_k1_txn_commit_identity(elpis_ecsg_k1 *s, uint64_t token,
-                                  elpis_ecsg_k1_commit_identity *identity)
+static elpis_ecsg_k1_status
+txn_commit_identity_as(elpis_ecsg_k1 *s, uint64_t caller, uint64_t token, elpis_ecsg_k1_commit_identity *identity)
 {
     if (identity == NULL) {
         return ELPIS_ECSG_K1_INVALID;
     }
 
     memset(identity, 0, sizeof(*identity));
-    return txn_commit_common(s, token, &identity->transition,
+    return txn_commit_common(s, caller, token, &identity->transition,
                              identity->state_before_digest,
                              identity->state_after_digest);
+}
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_txn_commit_identity(elpis_ecsg_k1 *s, uint64_t token,
+                                  elpis_ecsg_k1_commit_identity *identity)
+{
+    return txn_commit_identity_as(s, 0u, token, identity);
+}
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_txn_commit_identity(elpis_ecsg_k1 *s, uint64_t lease, uint64_t token,
+                                         elpis_ecsg_k1_commit_identity *identity)
+{
+    return lease == 0u ? ELPIS_ECSG_K1_INVALID : txn_commit_identity_as(s, lease, token, identity);
 }
 
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_abort(elpis_ecsg_k1 *s, uint64_t token)
@@ -1659,10 +1784,10 @@ static elpis_ecsg_k1_status schedule_check(const elpis_ecsg_k1 *s, const double 
     return ELPIS_ECSG_K1_OK;
 }
 
-elpis_ecsg_k1_status
-elpis_ecsg_k1_txn_run_schedule(elpis_ecsg_k1 *s, uint64_t token, const double *x, const double *y,
-                               size_t total_rows, const elpis_ecsg_k1_experience *schedule, size_t experiences,
-                               double rate, double *s3_out, size_t s3_count, elpis_ecsg_k1_schedule_result *result)
+static elpis_ecsg_k1_status
+run_schedule_as(elpis_ecsg_k1 *s, uint64_t caller, uint64_t token, const double *x, const double *y,
+                size_t total_rows, const elpis_ecsg_k1_experience *schedule, size_t experiences,
+                double rate, double *s3_out, size_t s3_count, elpis_ecsg_k1_schedule_result *result)
 {
     elpis_ecsg_k1_schedule_result r;
     elpis_ecsg_k1_status rc;
@@ -1673,7 +1798,7 @@ elpis_ecsg_k1_txn_run_schedule(elpis_ecsg_k1 *s, uint64_t token, const double *x
     if (!enter(s)) {
         return ELPIS_ECSG_K1_BUSY;
     }
-    rc = txn_check(s, token);
+    rc = txn_check_as(s, caller, token);
     if (rc == ELPIS_ECSG_K1_OK) {
         r.epoch_before = r.epoch_after = image_epoch(s->cand);
         rc = schedule_check(s, x, y, total_rows, schedule, experiences, rate, s3_out, s3_count, r.epoch_before);
@@ -1714,6 +1839,26 @@ elpis_ecsg_k1_txn_run_schedule(elpis_ecsg_k1 *s, uint64_t token, const double *x
     }
     leave(s);
     return rc;
+}
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_txn_run_schedule(elpis_ecsg_k1 *s, uint64_t token, const double *x, const double *y,
+                               size_t total_rows, const elpis_ecsg_k1_experience *schedule, size_t experiences,
+                               double rate, double *s3_out, size_t s3_count, elpis_ecsg_k1_schedule_result *result)
+{
+    return run_schedule_as(s, 0u, token, x, y, total_rows, schedule, experiences, rate, s3_out, s3_count, result);
+}
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_txn_run_schedule(elpis_ecsg_k1 *s, uint64_t lease, uint64_t token, const double *x,
+                                      const double *y, size_t total_rows, const elpis_ecsg_k1_experience *schedule,
+                                      size_t experiences, double rate, double *s3_out, size_t s3_count,
+                                      elpis_ecsg_k1_schedule_result *result)
+{
+    if (lease == 0u) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    return run_schedule_as(s, lease, token, x, y, total_rows, schedule, experiences, rate, s3_out, s3_count, result);
 }
 
 /* --- internal interface for the residency adapter (ecsg_k1_internal.h) ------------------------------------- */

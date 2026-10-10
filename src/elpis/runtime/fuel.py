@@ -66,7 +66,7 @@ CEILING = CognitiveBudget()
 
 
 def features(dim: int) -> int:
-    """The S3 length of input dimension ``dim`` (``elpis_ecsg_k1_features``); 0 outside 1..64."""
+    """The S3 length of input dimension ``dim`` (the K1 feature count); 0 outside 1..64."""
     if type(dim) is not int or not 1 <= dim <= 64:
         return 0
     return dim + dim * (dim + 1) // 2 + dim * (dim + 1) * (dim + 2) // 6

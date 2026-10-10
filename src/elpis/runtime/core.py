@@ -50,7 +50,8 @@ __all__ = ("RuntimeCore", "RuntimeLibrary", "TurnBegun")
 _ABI_VERSION = 3
 _TESTING_PROCESS_DEATH = 255
 _U64 = C.c_uint64
-_K1_NAMES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT"}
+_K1_NAMES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT",
+             -8: "LEASED"}
 
 
 class _Experience(C.Structure):
@@ -86,7 +87,8 @@ class _Query(C.Structure):
 
 class _Counters(C.Structure):
     _fields_ = [(n, _U64) for n in ("k1_state_digests", "k1_reserves", "k1_txn_begins", "k1_run_schedules",
-                                    "k1_commits", "k1_aborts", "publications", "k1_queries", "k1_shapes")]
+                                    "k1_commits", "k1_aborts", "publications", "k1_queries", "k1_shapes",
+                                    "k1_lease_claims")]
 
 
 class _Budget(C.Structure):
@@ -94,8 +96,10 @@ class _Budget(C.Structure):
                                     "max_work_units", "max_query_rows")]
 
 
-_API_ENTRIES = ("state_digest", "reserve", "txn_begin", "txn_run_schedule", "txn_commit_identity", "txn_abort",
-                "query_identity", "shape")
+# The K1 library's own entry points RuntimeCore calls, in the ABI v3 table order. Every mutating entry is a leased
+# one (ecsg_k1.h, "Managed ownership").
+_API_ENTRIES = ("state_digest", "shape", "query_identity", "lease_claim", "lease_release", "leased_reserve",
+                "leased_txn_begin", "leased_txn_run_schedule", "leased_txn_commit_identity", "txn_abort")
 
 
 class _K1Api(C.Structure):
@@ -107,7 +111,7 @@ class _Substrate(C.Structure):
                 ("owner", _U64), ("dim", _U64), ("api", C.c_void_p)]
 
 
-assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 120 and C.sizeof(_Counters) == 72
+assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 120 and C.sizeof(_Counters) == 80
 assert C.sizeof(_Budget) == 48
 assert C.sizeof(_Query) == 40
 
@@ -191,6 +195,7 @@ class RuntimeLibrary:
             "query_work_units": [C.c_size_t, C.c_size_t, C.c_size_t, C.POINTER(_U64)],
             "turn_commit": [P, C.POINTER(_Substrate), C.POINTER(_Commit), S],
             "turn_abort": [P, C.POINTER(_Substrate)],
+            "release": [P, C.POINTER(_Substrate)],
             "evolution_authority": [P, S],
             "evolution_reserve": [P, E, P, S],
             "evolution_finalize": [P, P, S],
@@ -345,6 +350,10 @@ class RuntimeCore:
 
     def turn_abort(self, descriptor) -> None:
         self.library.check(self._f.elpis_runtime_turn_abort(self._handle, C.byref(descriptor)))
+
+    def release(self, descriptor) -> None:
+        """Release the bound state (its K1 lease) and unbind it: its owner may use it unmanaged again."""
+        self.library.check(self._f.elpis_runtime_release(self._handle, C.byref(descriptor)))
 
     # -- evolution ----------------------------------------------------------------------------------------------------
     def evolution_authority(self) -> ContinuitySnapshot:

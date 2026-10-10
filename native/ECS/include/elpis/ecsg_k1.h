@@ -90,7 +90,8 @@ typedef enum {
     ELPIS_ECSG_K1_BUSY = -4,       /* concurrent entry, or reserve with an open transaction */
     ELPIS_ECSG_K1_CAPACITY = -5,   /* more rows than reserved, or a shape beyond the declared byte budgets */
     ELPIS_ECSG_K1_NOMEM = -6,      /* allocation failed (create, restore, reserve only) */
-    ELPIS_ECSG_K1_CORRUPT = -7     /* a retained-state envelope failed validation */
+    ELPIS_ECSG_K1_CORRUPT = -7,    /* a retained-state envelope failed validation */
+    ELPIS_ECSG_K1_LEASED = -8      /* the state is managed by another owner: refused before anything is touched */
 } elpis_ecsg_k1_status;
 
 typedef enum {
@@ -242,6 +243,36 @@ elpis_ecsg_k1_txn_commit_identity(elpis_ecsg_k1 *state, uint64_t token,
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_abort(elpis_ecsg_k1 *state, uint64_t token);
 
 /*
+ * Managed ownership (docs/RUNTIME_CORE.md). A managed owner (RuntimeCore) claims a state with a nonzero 64-bit
+ * lease. While a state is leased, every unmanaged mutating entry point refuses with LEASED before touching
+ * anything: learn, consolidate, reset, reserve and txn_begin, and txn_learn, txn_consolidate, txn_run_schedule,
+ * txn_commit and txn_commit_identity on a transaction begun under the lease. The owner mutates only through the
+ * leased_* entry points, which present the lease. Read-only entry points stay available to anyone (forward,
+ * query_identity, copies, snapshot, state_digest, stats, getters, txn_forward, txn_epoch), and txn_abort ends
+ * any transaction (an abort installs nothing). No operation changes the numerical law; the lease is not part of
+ * the retained state, its envelope or its digest, and restore/create/import give an unleased state.
+ *
+ *   lease_claim     sets the lease (lease != 0); BUSY while a transaction is open. A claim replaces any other
+ *                   lease, whose holder's next leased call is then refused LEASED (the owner detects it).
+ *   lease_release   clears the lease if `lease` holds it (LEASED otherwise; BUSY while a transaction is open).
+ *   lease_of        the current lease (0: unmanaged); an atomic load, no guard.
+ *   leased_txn_begin  txn_begin for the lease holder, also writing the retained-state identity of exactly the
+ *                   source the candidate was copied from (one guarded call).
+ *
+ * The lease is an aliasing defence between cooperating local callers, not a secret: in-process code can read or
+ * replace it. It authenticates nothing. */
+elpis_ecsg_k1_status elpis_ecsg_k1_lease_claim(elpis_ecsg_k1 *state, uint64_t lease);
+elpis_ecsg_k1_status elpis_ecsg_k1_lease_release(elpis_ecsg_k1 *state, uint64_t lease);
+uint64_t elpis_ecsg_k1_lease_of(const elpis_ecsg_k1 *state);
+elpis_ecsg_k1_status elpis_ecsg_k1_leased_reserve(elpis_ecsg_k1 *state, uint64_t lease, size_t max_rows);
+elpis_ecsg_k1_status elpis_ecsg_k1_leased_txn_begin(elpis_ecsg_k1 *state, uint64_t lease,
+                                                    uint8_t source_digest[ELPIS_ECSG_K1_DIGEST_BYTES],
+                                                    uint64_t *token);
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_txn_commit_identity(elpis_ecsg_k1 *state, uint64_t lease, uint64_t token,
+                                         elpis_ecsg_k1_commit_identity *identity);
+
+/*
  * Experience schedule (the qualified K1 experience law, Retention R3): an
  * ordered sequence of experiences; for each, `steps` K1 learning steps on its
  * rows, then the consolidation of the same rows (inputs only):
@@ -286,6 +317,12 @@ elpis_ecsg_k1_txn_run_schedule(elpis_ecsg_k1 *state, uint64_t token, const doubl
                                size_t total_rows, const elpis_ecsg_k1_experience *schedule, size_t experiences,
                                double learning_rate, double *s3_out, size_t s3_count,
                                elpis_ecsg_k1_schedule_result *result);
+/* txn_run_schedule for the lease holder of a transaction begun with leased_txn_begin. */
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_txn_run_schedule(elpis_ecsg_k1 *state, uint64_t lease, uint64_t token, const double *x,
+                                      const double *y, size_t total_rows, const elpis_ecsg_k1_experience *schedule,
+                                      size_t experiences, double learning_rate, double *s3_out, size_t s3_count,
+                                      elpis_ecsg_k1_schedule_result *result);
 
 #ifdef __cplusplus
 }

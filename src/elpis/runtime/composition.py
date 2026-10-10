@@ -162,20 +162,43 @@ class Runtime:
         self._core = RuntimeCore(RuntimeLibrary(config.runtime_library), config.continuity_dir)
         self.continuity = RuntimeContinuity(self._core)
         # Keeps the owner of the bound K1 state alive, so its identity cannot be reused while
-        # RuntimeCore holds the binding (lifetime only: RuntimeCore decides the binding).
+        # RuntimeCore holds the binding (lifetime only: RuntimeCore decides the binding), and the bound
+        # state itself, so close can give it back (release its managed lease).
         self._bound_owner = None
+        self._bound_substrate = None
 
     def open(self) -> "Runtime":
         # An open runtime is refused and keeps its turn, so the owner is released only once RuntimeCore opened
         # (unbound) and can retain nothing of it.
         self._core.open()
-        self._bound_owner = None
+        self._bound_owner = self._bound_substrate = None
         return self
 
     def close(self) -> None:
+        """Give the bound K1 state back (end any open managed turn on it natively, release its managed lease), then
+        close RuntimeCore. A state its owner already closed has nothing to give back."""
+        substrate, self._bound_substrate = self._bound_substrate, None
+        if substrate is not None:
+            try:
+                descriptor, _ = describe(substrate)
+            except CompositionError:
+                descriptor = None   # the owner closed the state: its lease went with it
+            if descriptor is not None:
+                for step in (self._core.turn_abort, self._core.release):
+                    try:
+                        step(descriptor)
+                    except CompositionError:
+                        pass        # no open turn; closed or fail-stopped runtime; a lease another owner took
         # RuntimeCore aborts an open managed turn natively before the bound owner is released.
         self._core.close()
         self._bound_owner = None
+
+    def release(self, substrate) -> None:
+        """Give the bound K1 state back: RuntimeCore releases its managed lease and unbinds it, so its owner may
+        use it unmanaged (outside this lineage) again; the next cognitive operation binds and verifies again."""
+        descriptor, _ = describe(substrate)
+        self._core.release(descriptor)
+        self._bound_owner = self._bound_substrate = None
 
     def __enter__(self) -> "Runtime":
         return self.open()
@@ -292,7 +315,7 @@ class Runtime:
         """
         descriptor, owner = describe(substrate)
         anchored = self._core.anchor(descriptor)
-        self._bound_owner = owner
+        self._bound_owner, self._bound_substrate = owner, substrate
         return anchored
 
     def _codec_pin(self) -> str:
@@ -319,7 +342,7 @@ class Runtime:
         tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, codec_map)
         admit_query(stimulus, substrate.dim, substrate.width, request.budget, request.max_output_tokens)
         if self._bound_owner is None:
-            self._bound_owner = owner   # whatever RuntimeCore binds at this query stays alive
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this query binds stays alive
         values, digest = self._core.query(descriptor, stimulus, request.budget)   # RuntimeCore re-admits natively
         readout = QueryReadout(values, substrate.dim, substrate.width, digest)
         output, rendered = _decode_query(codec_map, readout, request.tokenizer, request.max_output_tokens)
@@ -343,7 +366,7 @@ class Runtime:
         tokens, stimulus = _encode(substrate, request.text, request.tokenizer, codec_map)
         admit_learn(stimulus, substrate.dim, substrate.width, authority.budget)
         if self._bound_owner is None:
-            self._bound_owner = owner   # whatever RuntimeCore binds at this begin stays alive
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
         self._core.turn_begin(descriptor, stimulus, authority.learning_rate, authority.budget)
         committed, _ = self._core.turn_commit(descriptor)
         return LearnResult(tokens, stimulus.experiences, committed.commit.epoch_before, committed.commit.epoch_after,
@@ -371,7 +394,7 @@ class Runtime:
         tokens, stimulus = _encode(substrate, text, tokenizer, codec_map)
         _admit_turn(substrate, stimulus, authority, max_output_tokens)
         if self._bound_owner is None:
-            self._bound_owner = owner   # whatever RuntimeCore binds at this begin stays alive
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
         begun = self._core.turn_begin(descriptor, stimulus, authority.learning_rate, authority.budget)
         try:
             readout = Readout(begun.s3, begun.epoch_after, substrate.dim, substrate.width)

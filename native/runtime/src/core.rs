@@ -32,15 +32,24 @@
 //! * Nothing else is durable or retained: no history, receipts, events or trajectory.
 
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, Store};
 
 use crate::code::{Error, Rt};
 use crate::fuel::{self, Budget};
 use crate::substrate::{
-    features, CommitIdentity, Experience, K1Ops, Key, ScheduleOutcome, TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_CAPACITY,
-    K1_INVALID, K1_NONFINITE, K1_STALE, MAX_EXPERIENCES,
+    features, CommitIdentity, Digest as K1Digest, Experience, K1Ops, Key, ScheduleOutcome, TxnAbort, K1_BUSY,
+    K1_CAPACITY, K1_FMS_CAPACITY, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE, MAX_EXPERIENCES,
 };
+
+/// The next managed lease: unique and nonzero per RuntimeCore in this process (an aliasing defence between
+/// cooperating callers, not a secret; the K1 header's "Managed ownership").
+fn next_lease() -> u64 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    let n = NEXT.fetch_add(1, Ordering::Relaxed);
+    (u64::from(std::process::id()) << 40) ^ n | 1 << 63
+}
 
 /// Native crossings and publications RuntimeCore performed (diagnostics; never authority).
 #[repr(C)]
@@ -55,6 +64,7 @@ pub struct Counters {
     pub publications: u64,
     pub k1_queries: u64,
     pub k1_shapes: u64,
+    pub k1_lease_claims: u64,
 }
 
 /// An admitted, native-ready stimulus: `x` holds `y.len()` rows of the state's dimension, row-major.
@@ -122,6 +132,8 @@ fn terminate(counters: &mut Counters, mut abort: impl FnMut() -> i32) {
 
 pub struct Core {
     store: Store,
+    /// This runtime's managed lease: claimed on every state it binds, presented on every K1 mutation.
+    lease: u64,
     open: bool,
     fault: Option<Code>,
     bound: Option<Key>,
@@ -137,6 +149,7 @@ impl Core {
     pub fn new(continuity_dir: &Path) -> Result<Core, Error> {
         Ok(Core {
             store: Store::new(continuity_dir)?,
+            lease: next_lease(),
             open: false,
             fault: None,
             bound: None,
@@ -244,6 +257,7 @@ impl Core {
             return Err(Code::AlreadyAnchored.into());
         }
         let identity = self.digest(sub)?;
+        self.claim(sub)?;
         match self.store.anchor_cognition(Some(&identity)) {
             Ok(s) => {
                 self.counters.publications += 1;
@@ -251,6 +265,7 @@ impl Core {
                 Ok(s)
             }
             Err(code) => {
+                let _ = sub.lease_release(self.lease); // nothing was bound
                 if matches!(code, Code::PublicationUncertain | Code::TestingProcessDeath) {
                     self.fault = Some(code);
                 }
@@ -259,21 +274,68 @@ impl Core {
         }
     }
 
-    /// Bind the lineage to this state, or verify it is the bound one.
+    /// Claim managed ownership of the state (its K1 lease). Refused, without a fail-stop, while an unmanaged
+    /// transaction is open on it (BUSY): the state is not adopted mid-transaction.
+    fn claim(&mut self, sub: &mut dyn K1Ops) -> Result<(), Refusal> {
+        self.counters.k1_lease_claims += 1;
+        match sub.lease_claim(self.lease) {
+            0 => Ok(()),
+            rc => Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
+        }
+    }
+
+    /// The durable expected identity of the anchored lineage.
+    fn expected(&self) -> Result<Digest, Refusal> {
+        match self.store.snapshot()?.cognition() {
+            Cognition::Unanchored => Err(Code::Unanchored.into()),
+            Cognition::Anchored(d) => Ok(d),
+        }
+    }
+
+    /// The bound state is not provably the lineage (its identity differs from the durable one, or its managed
+    /// lease was taken): fail-stop. Nothing outside the lineage is ever built upon or published.
+    fn lineage_lost(&mut self, k1_status: i32) -> Refusal {
+        self.fault = Some(Code::StateMismatch);
+        Refusal { k1_status, ..Refusal::from(Code::StateMismatch) }
+    }
+
+    /// Bind the lineage to this state (verified against the durable identity, then claimed under this runtime's
+    /// lease), or verify it is the bound one.
     fn reconcile(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(), Refusal> {
         if let Some(bound) = self.bound {
             return if bound == key { Ok(()) } else { Err(Rt::SubstrateSwitch.into()) };
         }
-        let expected = match self.store.snapshot()?.cognition() {
-            Cognition::Unanchored => return Err(Code::Unanchored.into()),
-            Cognition::Anchored(d) => d,
-        };
+        let expected = self.expected()?;
         if self.digest(sub)? != expected {
             self.fault = Some(Code::StateMismatch);
             return Err(Code::StateMismatch.into());
         }
+        self.claim(sub)?;
         self.bound = Some(key);
         Ok(())
+    }
+
+    /// Release managed ownership of the bound state (its lease) and unbind it, so its owner may use it unmanaged
+    /// again. Refused while a managed turn is open; another state is refused (`RUNTIME_TURN_NOT_OPEN`-like
+    /// `COGNITION_SUBSTRATE_SWITCH`). A lease already taken by another owner is reported, and the state unbound.
+    pub fn release(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(), Refusal> {
+        if !self.open {
+            return Err(Rt::Closed.into());
+        }
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        match self.bound {
+            Some(bound) if bound == key => {}
+            Some(_) => return Err(Rt::SubstrateSwitch.into()),
+            None => return Ok(()),
+        }
+        self.bound = None;
+        self.shape = None;
+        match sub.lease_release(self.lease) {
+            0 => Ok(()),
+            rc => Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
+        }
     }
 
     /// The state's width, read natively once per state (cold path; a pure getter) and verified against the declared
@@ -315,6 +377,21 @@ impl Core {
         out: &mut [f64],
         budget: &Budget,
     ) -> Result<Digest, Refusal> {
+        let answered = self.query_inner(sub, key, x, out, budget);
+        if answered.is_err() {
+            out.fill(0.0); // no answer leaves a refused query, whatever refused it
+        }
+        answered
+    }
+
+    fn query_inner(
+        &mut self,
+        sub: &mut dyn K1Ops,
+        key: Key,
+        x: &[f64],
+        out: &mut [f64],
+        budget: &Budget,
+    ) -> Result<Digest, Refusal> {
         self.live()?;
         if self.turn.is_some() {
             return Err(Rt::TurnOpen.into());
@@ -326,25 +403,19 @@ impl Core {
         if matches!(self.bound, Some(bound) if bound != key) {
             return Err(Rt::SubstrateSwitch.into());
         }
-        let expected = match self.store.snapshot()?.cognition() {
-            Cognition::Unanchored => return Err(Code::Unanchored.into()),
-            Cognition::Anchored(d) => d,
-        };
+        let expected = self.expected()?;
         let width = self.width(sub, key)?;
         fuel::admit_query(budget, key.dim, width, rows).map_err(|_| Refusal::from(Rt::Fuel))?;
+        self.reconcile(sub, key)?;
         let mut identity = [0u8; 32];
         self.counters.k1_queries += 1;
         let rc = sub.query_identity(key.dim, x, out, &mut identity);
         if rc != 0 {
-            out.fill(0.0);
             return Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default()));
         }
         if identity != expected {
-            out.fill(0.0);
-            self.fault = Some(Code::StateMismatch);
-            return Err(Code::StateMismatch.into());
+            return Err(self.lineage_lost(0));
         }
-        self.bound = Some(key);
         Ok(identity)
     }
 
@@ -393,11 +464,21 @@ impl Core {
         Ok(result)
     }
 
+    /// Begin the managed transaction under this runtime's lease and re-establish, inside the same guarded K1 call,
+    /// the exact retained-state identity of the source the candidate was copied from: it must be the durable
+    /// expected identity. A lost lease (another owner claimed the state) or another identity fail-stops before the
+    /// candidate is touched; the transaction just opened is aborted.
     fn begin(&mut self, sub: &mut dyn K1Ops) -> Result<u64, Refusal> {
-        let mut token = 0u64;
+        let expected = self.expected()?;
+        let (mut token, mut source): (u64, K1Digest) = (0, [0u8; 32]);
         self.counters.k1_txn_begins += 1;
-        match sub.txn_begin(&mut token) {
-            0 => Ok(token),
+        match sub.txn_begin(self.lease, &mut source, &mut token) {
+            0 if source == expected => Ok(token),
+            0 => {
+                self.abort(sub, token);
+                Err(self.lineage_lost(0))
+            }
+            K1_LEASED => Err(self.lineage_lost(K1_LEASED)),
             rc => Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
         }
     }
@@ -416,7 +497,16 @@ impl Core {
     ) -> (i32, ScheduleOutcome) {
         let mut result = ScheduleOutcome::default();
         self.counters.k1_run_schedules += 1;
-        let rc = sub.txn_run_schedule(token, stimulus.x, stimulus.y, stimulus.schedule, stimulus.rate, s3, &mut result);
+        let rc = sub.txn_run_schedule(
+            self.lease,
+            token,
+            stimulus.x,
+            stimulus.y,
+            stimulus.schedule,
+            stimulus.rate,
+            s3,
+            &mut result,
+        );
         (rc, result)
     }
 
@@ -435,9 +525,10 @@ impl Core {
             let rows = stimulus.schedule.iter().map(|e| e.rows).max().unwrap_or(0);
             let rows = usize::try_from(rows).map_err(|_| Refusal::from(Rt::Invalid))?;
             self.counters.k1_reserves += 1;
-            let reserved = sub.reserve(rows);
-            if reserved != 0 {
-                return Err(ecs(Rt::EcsRefused, reserved, ScheduleOutcome::default()));
+            match sub.reserve(self.lease, rows) {
+                0 => {}
+                K1_LEASED => return Err(self.lineage_lost(K1_LEASED)),
+                rc => return Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
             }
             token = self.begin(sub)?;
             (rc, result) = self.schedule_once(sub, token, stimulus, s3);
@@ -475,7 +566,7 @@ impl Core {
         }
         let mut identity = CommitIdentity::default();
         self.counters.k1_commits += 1;
-        let rc = sub.txn_commit_identity(turn.token, &mut identity);
+        let rc = sub.txn_commit_identity(self.lease, turn.token, &mut identity);
         if rc != 0 {
             // STALE discards the transaction natively; any other refusal leaves it open.
             if rc != K1_STALE {

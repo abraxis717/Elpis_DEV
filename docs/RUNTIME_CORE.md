@@ -44,8 +44,9 @@ typedef struct {
 } elpis_runtime_substrate;
 ```
 
-`api` is a table of the K1 library's own functions (`state_digest`, `reserve`, `txn_begin`,
-`txn_run_schedule`, `txn_commit_identity`, `txn_abort`, `query_identity`, `shape`); the Python adapter takes their addresses from the
+`api` is a table of the K1 library's own functions (`state_digest`, `shape`, `query_identity`, `lease_claim`,
+`lease_release`, `leased_reserve`, `leased_txn_begin`, `leased_txn_run_schedule`, `leased_txn_commit_identity`,
+`txn_abort`); the Python adapter takes their addresses from the
 loaded library, a C or C++ host passes them directly (`native/runtime/tests/test_runtime_abi.c`). The declared
 dimension is verified natively: K1 compares the readout length it implies with the state's own before it reads
 any input byte (`schedule_check`).
@@ -74,12 +75,26 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
 `native/runtime/tests/test_runtime_lifecycle.c` and `tests/integration`.
 
 * **Anchor.** The first managed lineage is anchored explicitly at the state's retained identity; RuntimeCore
-  reads the identity only. A second anchor is `CONTINUITY_ALREADY_ANCHORED`.
-* **Bind and verify.** The first turn after open binds the lineage to the supplied state after comparing its
-  identity with the durable expectation: unanchored is `CONTINUITY_UNANCHORED` (no fail-stop), a mismatch is
-  `CONTINUITY_STATE_MISMATCH` and fail-stops; both before any K1 mutation. A bound runtime refuses any other
-  state, by handle or owner, with `COGNITION_SUBSTRATE_SWITCH` and no native call. A warm turn reads no
-  identity: the binding holds and continuity verifies `before` at publication.
+  reads the identity only (and claims the state, below). A second anchor is `CONTINUITY_ALREADY_ANCHORED`.
+* **Bind and verify.** The first operation after open (QUERY or LEARN) binds the lineage to the supplied state
+  after comparing its identity with the durable expectation: unanchored is `CONTINUITY_UNANCHORED` (no fail-stop),
+  a mismatch is `CONTINUITY_STATE_MISMATCH` and fail-stops; both before any K1 mutation. A bound runtime refuses
+  any other state, by handle or owner, with `COGNITION_SUBSTRATE_SWITCH` and no native call.
+* **Managed ownership.** Binding claims the state under this runtime's K1 lease (the K1 header's "Managed
+  ownership"; `lease_claim` refuses `BUSY`, without a fail-stop, while an unmanaged transaction is open). From then
+  on the state refuses every unmanaged mutating entry point (`LEASED`, before anything is touched): direct learn,
+  consolidate, reset and reserve, an unmanaged transaction begin, and the plain candidate calls on a leased
+  transaction. RuntimeCore mutates only through the `leased_*` entries, and every managed transaction begin
+  re-establishes the state's exact retained-state identity inside the same guarded K1 call
+  (`leased_txn_begin` returns the identity of exactly the source it copied), even on a warm binding. A bound
+  state that is not provably the lineage (another identity: the begin is aborted; or its lease taken by another
+  owner: refused natively) fail-stops with `CONTINUITY_STATE_MISMATCH` before the schedule touches the candidate:
+  nothing outside the lineage is built on or published. `release` (`elpis_runtime_release`; the Python facade's
+  `close` and `release`) gives the state back; `close` without a descriptor does not touch the state. Reads stay
+  open to anyone. The lease is an aliasing defence between cooperating local callers, not a secret or a
+  credential: in-process code can replace it (and the owner then fail-stops). Before this law an out-of-band
+  mutation was accepted by K1 and the next managed LEARN committed on top of it before publication refused it
+  (`tests/integration/test_managed_ownership.py`).
 * **QUERY.** Read-only (docs/COGNITION_R0.md). One native call (`query_identity`) answers `f_W(x)` from the
   authoritative state and returns that same state's retained-state identity under one K1 guard, so no operation
   can move the state between the answer and its identity. The identity must equal the durable expected identity:

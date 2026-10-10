@@ -5,6 +5,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "elpis/ecsg_k1.h"
 #include "elpis/runtime.h"
+#include "k1_tables.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -15,35 +16,11 @@
 
 enum { DIM = 6, WIDTH = 36, ROWS = 4 };
 
-_Static_assert(sizeof(elpis_runtime_experience) == sizeof(elpis_ecsg_k1_experience), "experience layout");
-_Static_assert(sizeof(elpis_runtime_schedule_result) == sizeof(elpis_ecsg_k1_schedule_result), "schedule layout");
-_Static_assert(sizeof(elpis_runtime_commit_identity) == sizeof(elpis_ecsg_k1_commit_identity), "identity layout");
 _Static_assert(sizeof(elpis_runtime_turn_begin_result) == 48, "begin result ABI size");
 _Static_assert(sizeof(elpis_runtime_turn_commit_result) == 120, "commit result ABI size");
-_Static_assert(sizeof(elpis_runtime_counters) == 72, "counters ABI size");
+_Static_assert(sizeof(elpis_runtime_counters) == 80, "counters ABI size");
 _Static_assert(sizeof(elpis_runtime_budget) == 48, "budget ABI size");
 _Static_assert(sizeof(elpis_runtime_query_result) == 40, "query result ABI size");
-
-static int k1_digest(void *s, uint8_t out[32]) { return elpis_ecsg_k1_state_digest(s, out); }
-static int k1_reserve(void *s, size_t rows) { return elpis_ecsg_k1_reserve(s, rows); }
-static int k1_begin(void *s, uint64_t *token) { return elpis_ecsg_k1_txn_begin(s, token); }
-static int k1_schedule(void *s, uint64_t token, const double *x, const double *y, size_t rows,
-                       const elpis_runtime_experience *schedule, size_t n, double rate, double *s3, size_t s3n,
-                       elpis_runtime_schedule_result *result) {
-    return elpis_ecsg_k1_txn_run_schedule(s, token, x, y, rows, (const elpis_ecsg_k1_experience *)schedule, n, rate,
-                                          s3, s3n, (elpis_ecsg_k1_schedule_result *)result);
-}
-static int k1_commit(void *s, uint64_t token, elpis_runtime_commit_identity *identity) {
-    return elpis_ecsg_k1_txn_commit_identity(s, token, (elpis_ecsg_k1_commit_identity *)identity);
-}
-static int k1_abort(void *s, uint64_t token) { return elpis_ecsg_k1_txn_abort(s, token); }
-static int k1_query(void *s, size_t dim, const double *x, size_t rows, double *out, uint8_t digest[32]) {
-    return elpis_ecsg_k1_query_identity(s, dim, x, rows, out, digest);
-}
-static int k1_shape(void *s, size_t *dim, size_t *width) { return elpis_ecsg_k1_shape(s, dim, width); }
-
-static const elpis_runtime_k1_api API = {k1_digest, k1_reserve, k1_begin, k1_schedule, k1_commit, k1_abort,
-                                          k1_query, k1_shape};
 
 static elpis_ecsg_k1 *state(double seed) {
     double w[DIM * WIDTH];
@@ -54,7 +31,7 @@ static elpis_ecsg_k1 *state(double seed) {
 }
 
 static elpis_runtime_substrate sub(elpis_ecsg_k1 *s, uint64_t owner, uint64_t dim) {
-    elpis_runtime_substrate d = {ELPIS_RUNTIME_SUBSTRATE_K1, 0, s, 0, owner, dim, &API};
+    elpis_runtime_substrate d = {ELPIS_RUNTIME_SUBSTRATE_K1, 0, s, 0, owner, dim, &K1_API};
     return d;
 }
 
@@ -267,6 +244,42 @@ int main(int argc, char **argv) {
     digest(b, now);
     assert(!memcmp(before, now, 32) && elpis_ecsg_k1_epoch(b) == 0);
     elpis_runtime_destroy(&rt);
+    /* Managed ownership: a bound state refuses every unmanaged mutation (LEASED) and is unchanged; the managed
+     * lineage continues; release gives the state back. */
+    {
+        char dir3[4200];
+        assert(snprintf(dir3, sizeof(dir3), "%s3", dir) < (int)sizeof(dir3));
+        assert(snprintf(cmd, sizeof(cmd), "rm -rf '%s'", dir3) < (int)sizeof(cmd));
+        assert(system(cmd) == 0);
+        OK(elpis_runtime_create((const uint8_t *)dir3, strlen(dir3), &rt));
+        OK(elpis_runtime_open(rt, &snap));
+        elpis_ecsg_k1 *c = state(0.4);
+        elpis_runtime_substrate dc = sub(c, 9, DIM);
+        assert(elpis_ecsg_k1_lease_of(c) == 0);
+        OK(elpis_runtime_anchor(rt, &dc, &snap));
+        assert(elpis_ecsg_k1_lease_of(c) != 0);
+        OK(turn(rt, &dc, &committed));
+        digest(c, before);
+        uint64_t token = 0;
+        elpis_ecsg_k1_transition t;
+        assert(elpis_ecsg_k1_learn(c, X, Y, ROWS, 0.002, 1, &t) == ELPIS_ECSG_K1_LEASED);
+        assert(elpis_ecsg_k1_consolidate(c, X, ROWS, &t) == ELPIS_ECSG_K1_LEASED);
+        assert(elpis_ecsg_k1_reset(c, &t) == ELPIS_ECSG_K1_LEASED);
+        assert(elpis_ecsg_k1_reserve(c, 64) == ELPIS_ECSG_K1_LEASED);
+        assert(elpis_ecsg_k1_txn_begin(c, &token) == ELPIS_ECSG_K1_LEASED);
+        assert(elpis_ecsg_k1_lease_release(c, 12345) == ELPIS_ECSG_K1_LEASED);   /* not the holder */
+        digest(c, now);
+        assert(!memcmp(before, now, 32) && elpis_ecsg_k1_max_rows(c) == 8);
+        OK(turn(rt, &dc, &committed));   /* the managed lineage continues */
+        assert(elpis_runtime_fault(rt) == 0);
+        OK(elpis_runtime_release(rt, &dc));
+        assert(elpis_ecsg_k1_lease_of(c) == 0);
+        assert(elpis_ecsg_k1_learn(c, X, Y, ROWS, 0.002, 1, &t) == ELPIS_ECSG_K1_OK);   /* unmanaged again */
+        assert(turn(rt, &dc, &committed) == ELPIS_CONTINUITY_STATE_MISMATCH);         /* and outside the lineage */
+        assert(elpis_ecsg_k1_lease_of(c) == 0);
+        elpis_runtime_destroy(&rt);
+        assert(elpis_ecsg_k1_destroy(&c) == ELPIS_ECSG_K1_OK);
+    }
     assert(elpis_ecsg_k1_destroy(&a) == ELPIS_ECSG_K1_OK && elpis_ecsg_k1_destroy(&b) == ELPIS_ECSG_K1_OK);
     puts("runtime ABI: PASS");
     return 0;

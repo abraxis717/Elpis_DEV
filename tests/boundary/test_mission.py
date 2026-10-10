@@ -142,7 +142,7 @@ def test_runtime_import_closure_loads_no_dsv_model_machinery():
 # disposition (native/runtime); it writes nothing.
 RUNTIME_OPERATIONS = {"open", "close", "run_ingress", "admit_retrieval", "publish_canonical",
                       "evolution_authority", "evolve", "admit_context", "run_turn", "anchor_cognition", "fault",
-                      "run_query", "run_learn"}
+                      "run_query", "run_learn", "release"}
 
 
 def test_runtime_composes_no_model_operation():

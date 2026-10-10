@@ -829,6 +829,86 @@ static void test_query_identity_is_read_only(void)
     elpis_ecsg_k1_destroy(&s);
 }
 
+/* Managed ownership: a leased state refuses every unmanaged mutation before touching anything, stays readable, and
+ * is mutated only through the holder's leased entry points; the lease is not retained state. */
+static void test_managed_lease(void)
+{
+    elpis_ecsg_k1 *s = fresh();
+    uint8_t *before, *after, source[ELPIS_ECSG_K1_DIGEST_BYTES], digest[ELPIS_ECSG_K1_DIGEST_BYTES];
+    uint64_t tok = 0, other = 0;
+    double out[R], s3[83];
+    const elpis_ecsg_k1_experience sched[1] = {{R / 2, 3}};
+    elpis_ecsg_k1_commit_identity id;
+    size_t n;
+    const uint64_t L = 0x5eed, M = 0x7777;
+
+    assert(elpis_ecsg_k1_lease_of(s) == 0u);
+    assert(elpis_ecsg_k1_lease_claim(s, 0u) == ELPIS_ECSG_K1_INVALID);
+    n = envelope(s, &before);
+    assert(elpis_ecsg_k1_state_digest(s, digest) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_lease_claim(s, L) == ELPIS_ECSG_K1_OK && elpis_ecsg_k1_lease_of(s) == L);
+    /* The lease is not retained state: envelope and digest unchanged. */
+    (void)envelope(s, &after);
+    assert(!memcmp(before, after, n));
+    free(after);
+    {
+        uint8_t again[ELPIS_ECSG_K1_DIGEST_BYTES];
+        assert(elpis_ecsg_k1_state_digest(s, again) == ELPIS_ECSG_K1_OK && !memcmp(again, digest, sizeof(again)));
+    }
+    /* Every unmanaged mutation is refused, nothing touched; reads stay available. */
+    assert(elpis_ecsg_k1_learn(s, X, Y, R, 0.002, 2, NULL) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_consolidate(s, X, R, NULL) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_reset(s, NULL) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_reserve(s, 2 * R) == ELPIS_ECSG_K1_LEASED && elpis_ecsg_k1_max_rows(s) == R);
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_leased_txn_begin(s, M, source, &tok) == ELPIS_ECSG_K1_LEASED);   /* another lease */
+    assert(elpis_ecsg_k1_leased_reserve(s, M, 2 * R) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_forward(s, X, R, out) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_query_identity(s, D, X, R, out, digest) == ELPIS_ECSG_K1_OK);
+    (void)envelope(s, &after);
+    assert(!memcmp(before, after, n) && elpis_ecsg_k1_generation(s) == 0u);
+    free(after);
+    /* The holder: a leased begin reports exactly the source it copied; plain calls on its transaction are refused
+     * and leave it open; reads on it and an abort are anyone's. */
+    assert(elpis_ecsg_k1_leased_txn_begin(s, L, source, &tok) == ELPIS_ECSG_K1_OK);
+    assert(!memcmp(source, digest, sizeof(source)));
+    assert(elpis_ecsg_k1_lease_claim(s, M) == ELPIS_ECSG_K1_BUSY);         /* never adopt an open transaction */
+    assert(elpis_ecsg_k1_lease_release(s, L) == ELPIS_ECSG_K1_BUSY);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, X, Y, R, 0.002, 1, NULL) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_txn_consolidate(s, tok, X, R) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_txn_run_schedule(s, tok, X, Y, R / 2, sched, 1, 0.002, s3, 83, NULL) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_txn_commit(s, tok, NULL) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_txn_commit_identity(s, tok, &id) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_leased_txn_run_schedule(s, M, tok, X, Y, R / 2, sched, 1, 0.002, s3, 83, NULL) ==
+           ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_txn_forward(s, tok, X, R, out) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_leased_txn_run_schedule(s, L, tok, X, Y, R / 2, sched, 1, 0.002, s3, 83, NULL) ==
+           ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_leased_txn_commit_identity(s, L, tok, &id) == ELPIS_ECSG_K1_OK);
+    assert(!memcmp(id.state_before_digest, digest, sizeof(digest)) && elpis_ecsg_k1_epoch(s) == 3u);
+    /* Bitwise the unleased law: the same schedule on an unleased twin. */
+    {
+        elpis_ecsg_k1 *twin = fresh();
+        assert(elpis_ecsg_k1_txn_begin(twin, &other) == ELPIS_ECSG_K1_OK);
+        assert(elpis_ecsg_k1_txn_run_schedule(twin, other, X, Y, R / 2, sched, 1, 0.002, s3, 83, NULL) == 0);
+        assert(elpis_ecsg_k1_txn_commit(twin, other, NULL) == ELPIS_ECSG_K1_OK);
+        assert(same_state(s, twin));
+        elpis_ecsg_k1_destroy(&twin);
+    }
+    /* An abort by anyone installs nothing. */
+    assert(elpis_ecsg_k1_leased_txn_begin(s, L, source, &tok) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_txn_abort(s, tok) == ELPIS_ECSG_K1_OK);
+    /* A claim replaces the lease: the previous holder is refused from then on. Release needs the holder. */
+    assert(elpis_ecsg_k1_lease_claim(s, M) == ELPIS_ECSG_K1_OK && elpis_ecsg_k1_lease_of(s) == M);
+    assert(elpis_ecsg_k1_leased_txn_begin(s, L, source, &tok) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_lease_release(s, L) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_lease_release(s, M) == ELPIS_ECSG_K1_OK && elpis_ecsg_k1_lease_of(s) == 0u);
+    assert(elpis_ecsg_k1_learn(s, X, Y, R, 0.002, 1, NULL) == ELPIS_ECSG_K1_OK);   /* unmanaged again */
+    assert(elpis_ecsg_k1_leased_txn_begin(s, L, source, &tok) == ELPIS_ECSG_K1_LEASED);
+    free(before);
+    elpis_ecsg_k1_destroy(&s);
+}
+
 int main(void)
 {
     fixture();
@@ -852,10 +932,11 @@ int main(void)
     test_schedule_validation_touches_nothing();
     test_state_digest_matches_snapshot_trailer();
     test_query_identity_is_read_only();
+    test_managed_lease();
     printf("ecsg_k1: Runtime R1 parity at H = 0, K1 law shape, refusal atomicity, complete-state transactions, "
            "envelope integrity, W-only import, reset, SINGLE_WRITER, the transaction refusal contract, hostile "
            "dimensions, resealed envelopes, provenance transitions, epoch overflow, race-free getters, the experience schedule (= ordered txn learn/consolidate, S3 readout, "
            "whole-schedule validation, discard on non-finite, stale), the retained-state digest, read-only QUERY with "
-           "its identity\n");
+           "its identity, the managed lease\n");
     return 0;
 }

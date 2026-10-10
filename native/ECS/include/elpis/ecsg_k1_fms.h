@@ -128,6 +128,23 @@ int elpis_ecsg_k1_fms_txn_commit_identity(elpis_ecsg_k1_fms *, uint64_t id, uint
                                           elpis_ecsg_k1_commit_identity *identity);
 int elpis_ecsg_k1_fms_txn_abort(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token);
 
+/* Managed ownership of a resident state (ecsg_k1.h, "Managed ownership"): the lease of its K1 object. While
+ * leased, the unmanaged mutating entry points of this adapter are refused LEASED (the resident K1 object refuses
+ * them) and the owner uses the leased_* variants; a refused leased call leaves the owner's transaction open. */
+int elpis_ecsg_k1_fms_lease_claim(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease);
+int elpis_ecsg_k1_fms_lease_release(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease);
+int elpis_ecsg_k1_fms_lease_of(elpis_ecsg_k1_fms *, uint64_t id, uint64_t *lease);
+int elpis_ecsg_k1_fms_leased_reserve(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease, size_t rows);
+int elpis_ecsg_k1_fms_leased_txn_begin(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease,
+                                       uint8_t source_digest[ELPIS_ECSG_K1_DIGEST_BYTES], uint64_t *token);
+int elpis_ecsg_k1_fms_leased_txn_commit_identity(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease, uint64_t token,
+                                                 elpis_ecsg_k1_commit_identity *identity);
+int elpis_ecsg_k1_fms_leased_txn_run_schedule(elpis_ecsg_k1_fms *runtime, uint64_t id, uint64_t lease, uint64_t token,
+                                              const double *x, const double *y, size_t total_rows,
+                                              const elpis_ecsg_k1_experience *schedule, size_t experiences,
+                                              double learning_rate, double *s3_out, size_t s3_count,
+                                              elpis_ecsg_k1_schedule_result *result);
+
 /* The experience schedule of ecsg_k1.h on the resident candidate, under the transaction's WRITE pin: one call learns
  * and consolidates every experience natively and returns S3 of the final candidate W. Same validation and refusal
  * contract as elpis_ecsg_k1_txn_run_schedule; a discarding refusal releases the pin. */

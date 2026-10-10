@@ -8,6 +8,8 @@ WRITE pin is released. The fixture map is TRAINING=NONE SEMANTICS=NONE: interfac
 """
 from __future__ import annotations
 
+import ctypes as C
+
 import pytest
 
 from elpis.runtime.composition import CompositionError
@@ -41,15 +43,33 @@ class _Subject:
     def native_aborts(self):
         return self.info()["aborts"] if self.resident else self.state.stats()["txn_aborts"]
 
+    def probe_begin(self):
+        """Begin a transaction under whatever managed lease holds the state (the lease is no secret):
+        it observes whether one is open without being refused as an unmanaged caller. Returns the abort."""
+        lease, token, source = self.state.managed_lease, C.c_uint64(), (C.c_uint8 * 32)()
+        if not lease:
+            txn = self.state.transaction()   # BUSY while another transaction is open
+            return txn.abort
+        if self.resident:
+            r = self.state._r
+            rc = r._f.leased_txn_begin(r._live(), self.state.id, lease, source, C.byref(token))
+            abort = lambda: r._f.txn_abort(r._live(), self.state.id, token.value)
+        else:
+            k = self.state._k
+            rc = k.leased_txn_begin(self.state._live(), lease, source, C.byref(token))
+            abort = lambda: k.txn_abort(self.state._live(), token.value)
+        assert rc == 0, rc
+        return abort
+
     def released(self):
         """No transaction open (and, resident, no pin held); another transaction begins and aborts cleanly."""
         if self.resident:
             info = self.info()
             assert info["transaction_open"] == 0 and info["lease_count"] == 0
-        txn = self.state.transaction()   # BUSY while another transaction is open
+        abort = self.probe_begin()
         if self.resident:
             assert self.info()["transaction_open"] == 1 and self.info()["lease_count"] == 1
-        txn.abort()
+        assert abort() in (None, 0)
 
 
 def _core(path):

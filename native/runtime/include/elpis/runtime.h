@@ -19,6 +19,13 @@
  * nothing. LEARN is the managed turn below: begin, the experience schedule on a candidate, commit, one publication.
  * v3 adds the query entry to both K1 function tables and the query counter; a v2 caller refuses to load it.
  *
+ * Managed ownership (v3). Binding a state (anchor, or the first QUERY or LEARN after open) verifies its retained-state
+ * identity against the durable one and claims it under this runtime's K1 lease: from then on the state refuses every
+ * unmanaged mutation (ELPIS_ECSG_K1_LEASED), and every managed transaction begin re-establishes the state's exact
+ * identity inside the same guarded K1 call. A bound state that is not provably the lineage (another identity, or
+ * its lease taken by another owner) fail-stops with CONTINUITY_STATE_MISMATCH before anything is built on it or
+ * published. elpis_runtime_release gives the state back (unbound, unleased); close does not touch the state.
+ *
  * Turn lifecycle (v2). A successful turn_begin opens one native K1 transaction. RuntimeCore ends it with exactly one
  * terminal native action, the commit or an abort, before it forgets the turn; there is no third disposition. An
  * explicit turn_abort, a refused commit, close, and destroy all abort it; open on an open runtime is refused and
@@ -95,34 +102,43 @@ typedef struct {
     uint8_t state_after_digest[32];
 } elpis_runtime_commit_identity;
 
-/* The standalone K1 functions RuntimeCore calls (state = elpis_ecsg_k1 *). Every entry is required. */
+/* The standalone K1 functions RuntimeCore calls (state = elpis_ecsg_k1 *). Every entry is required. Every mutating
+ * entry is a leased one (ecsg_k1.h, "Managed ownership"): RuntimeCore claims each state it binds with its own lease,
+ * so the bound state refuses every unmanaged mutation, and presents that lease on every mutation it makes. */
 typedef struct {
     int (*state_digest)(void *state, uint8_t out[32]);
-    int (*reserve)(void *state, size_t max_rows);
-    int (*txn_begin)(void *state, uint64_t *token);
-    int (*txn_run_schedule)(void *state, uint64_t token, const double *x, const double *y, size_t total_rows,
-                            const elpis_runtime_experience *schedule, size_t experiences, double learning_rate,
-                            double *s3_out, size_t s3_count, elpis_runtime_schedule_result *result);
-    int (*txn_commit_identity)(void *state, uint64_t token, elpis_runtime_commit_identity *identity);
-    int (*txn_abort)(void *state, uint64_t token);
-    int (*query_identity)(void *state, size_t dim, const double *x, size_t rows, double *out, uint8_t digest[32]);
     int (*shape)(void *state, size_t *dim, size_t *width);
+    int (*query_identity)(void *state, size_t dim, const double *x, size_t rows, double *out, uint8_t digest[32]);
+    int (*lease_claim)(void *state, uint64_t lease);
+    int (*lease_release)(void *state, uint64_t lease);
+    int (*leased_reserve)(void *state, uint64_t lease, size_t max_rows);
+    int (*leased_txn_begin)(void *state, uint64_t lease, uint8_t source_digest[32], uint64_t *token);
+    int (*leased_txn_run_schedule)(void *state, uint64_t lease, uint64_t token, const double *x, const double *y,
+                                   size_t total_rows, const elpis_runtime_experience *schedule, size_t experiences,
+                                   double learning_rate, double *s3_out, size_t s3_count,
+                                   elpis_runtime_schedule_result *result);
+    int (*leased_txn_commit_identity)(void *state, uint64_t lease, uint64_t token,
+                                      elpis_runtime_commit_identity *identity);
+    int (*txn_abort)(void *state, uint64_t token);
 } elpis_runtime_k1_api;
 
 /* The K1 FMS adapter's functions (runtime = elpis_ecsg_k1_fms *, id = the resident state). */
 typedef struct {
     int (*state_digest)(void *runtime, uint64_t id, uint8_t out[32]);
-    int (*reserve)(void *runtime, uint64_t id, size_t max_rows);
-    int (*txn_begin)(void *runtime, uint64_t id, uint64_t *token);
-    int (*txn_run_schedule)(void *runtime, uint64_t id, uint64_t token, const double *x, const double *y,
-                            size_t total_rows, const elpis_runtime_experience *schedule, size_t experiences,
-                            double learning_rate, double *s3_out, size_t s3_count,
-                            elpis_runtime_schedule_result *result);
-    int (*txn_commit_identity)(void *runtime, uint64_t id, uint64_t token, elpis_runtime_commit_identity *identity);
-    int (*txn_abort)(void *runtime, uint64_t id, uint64_t token);
+    int (*shape)(void *runtime, uint64_t id, size_t *dim, size_t *width);
     int (*query_identity)(void *runtime, uint64_t id, size_t dim, const double *x, size_t rows, double *out,
                           uint8_t digest[32]);
-    int (*shape)(void *runtime, uint64_t id, size_t *dim, size_t *width);
+    int (*lease_claim)(void *runtime, uint64_t id, uint64_t lease);
+    int (*lease_release)(void *runtime, uint64_t id, uint64_t lease);
+    int (*leased_reserve)(void *runtime, uint64_t id, uint64_t lease, size_t max_rows);
+    int (*leased_txn_begin)(void *runtime, uint64_t id, uint64_t lease, uint8_t source_digest[32], uint64_t *token);
+    int (*leased_txn_run_schedule)(void *runtime, uint64_t id, uint64_t lease, uint64_t token, const double *x,
+                                   const double *y, size_t total_rows, const elpis_runtime_experience *schedule,
+                                   size_t experiences, double learning_rate, double *s3_out, size_t s3_count,
+                                   elpis_runtime_schedule_result *result);
+    int (*leased_txn_commit_identity)(void *runtime, uint64_t id, uint64_t lease, uint64_t token,
+                                      elpis_runtime_commit_identity *identity);
+    int (*txn_abort)(void *runtime, uint64_t id, uint64_t token);
 } elpis_runtime_k1_fms_api;
 
 /* One native K1 state. `owner` is the caller's identity for the object owning `handle`; it must stay unique
@@ -167,6 +183,7 @@ typedef struct {
     uint64_t publications;
     uint64_t k1_queries;
     uint64_t k1_shapes;
+    uint64_t k1_lease_claims;
 } elpis_runtime_counters;
 
 /* Total cognitive fuel (docs/RUNTIME_CORE.md). One operation's totals; every field >= 1 and at most the compiled
@@ -237,6 +254,10 @@ int elpis_runtime_turn_begin(elpis_runtime *runtime, const elpis_runtime_substra
 int elpis_runtime_turn_commit(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
                               elpis_runtime_turn_commit_result *out, elpis_continuity_snapshot *snapshot);
 int elpis_runtime_turn_abort(elpis_runtime *runtime, const elpis_runtime_substrate *substrate);
+
+/* Release the bound state: its K1 lease is released and the lineage unbound (the next QUERY or LEARN binds and
+ * verifies again). Refused while a managed turn is open; another state is COGNITION_SUBSTRATE_SWITCH. */
+int elpis_runtime_release(elpis_runtime *runtime, const elpis_runtime_substrate *substrate);
 
 /* Evolution: one bounded attempt at a time. authority -> (caller validates) -> reserve -> (caller executes
  * once) -> finalize, or abandon (the reservation stays pending; fail-stop CONTINUITY_EVOLUTION_PENDING).

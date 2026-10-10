@@ -15,7 +15,7 @@ use crate::core::{Core, Counters, Stimulus};
 use crate::fuel::{self, Budget, CEILING};
 use crate::substrate::{
     features, CommitIdentity, Digest, Experience, K1Ops, Key, ScheduleOutcome, TxnAbort, K1_BUSY, K1_CAPACITY,
-    K1_NONFINITE, K1_STALE,
+    K1_LEASED, K1_NONFINITE, K1_STALE,
 };
 
 const DIM: usize = 2;
@@ -24,6 +24,7 @@ const WIDTH: usize = 3;
 
 struct Txn {
     token: u64,
+    lease: u64,
     generation: u64,
     w: Vec<f64>,
     epoch: u64,
@@ -36,6 +37,8 @@ struct State {
     generation: u64,
     max_rows: usize,
     txn: Option<Txn>,
+    /// The managed lease (0: unmanaged), as ecsg_k1.h: while set, only that lease's calls mutate.
+    lease: u64,
     next_token: u64,
     digest_fails: bool,
     /// The next aborts refused BUSY (a concurrent overlapping call that did nothing).
@@ -90,6 +93,7 @@ impl Fake {
             generation: 0,
             max_rows: 8,
             txn: None,
+            lease: 0,
             next_token: 1,
             digest_fails: false,
             busy_aborts: 0,
@@ -130,7 +134,29 @@ impl Fake {
         self.state().max_rows
     }
 
-    /// Someone else commits a transition (the state moves out of band).
+    /// Another owner claims the state (its lease is replaced).
+    fn steal(&self) {
+        self.state().lease = 0xdead;
+    }
+
+    fn lease(&self) -> u64 {
+        self.state().lease
+    }
+
+    /// An unmanaged caller attempts a direct transition: refused while the state is leased (ecsg_k1.h).
+    fn unmanaged_learn(&self) -> i32 {
+        let mut s = self.state();
+        if s.lease != 0 {
+            return K1_LEASED;
+        }
+        s.w[0] += 1.0;
+        s.epoch += 1;
+        s.generation += 1;
+        0
+    }
+
+    /// Someone commits a transition that bypasses every guard (a state moved while nobody could see it, e.g.
+    /// before the claim): the identity check must catch it.
     fn interlope(&self) {
         let mut s = self.state();
         s.w[0] += 1.0;
@@ -163,9 +189,12 @@ impl K1Ops for Fake {
         0
     }
 
-    fn reserve(&mut self, max_rows: usize) -> i32 {
+    fn reserve(&mut self, lease: u64, max_rows: usize) -> i32 {
         let mut s = self.state();
         s.calls.push("reserve");
+        if s.lease != lease {
+            return K1_LEASED;
+        }
         if s.txn.is_some() {
             return K1_BUSY;
         }
@@ -173,21 +202,26 @@ impl K1Ops for Fake {
         0
     }
 
-    fn txn_begin(&mut self, token: &mut u64) -> i32 {
+    fn txn_begin(&mut self, lease: u64, source: &mut Digest, token: &mut u64) -> i32 {
         let mut s = self.state();
         s.calls.push("txn_begin");
+        if s.lease != lease {
+            return K1_LEASED;
+        }
         if s.txn.is_some() {
             return K1_BUSY;
         }
         *token = s.next_token;
+        *source = s.identity();
         s.next_token += 1;
-        let txn = Txn { token: *token, generation: s.generation, w: s.w.clone(), epoch: s.epoch };
+        let txn = Txn { token: *token, lease, generation: s.generation, w: s.w.clone(), epoch: s.epoch };
         s.txn = Some(txn);
         0
     }
 
     fn txn_run_schedule(
         &mut self,
+        lease: u64,
         token: u64,
         x: &[f64],
         y: &[f64],
@@ -200,6 +234,7 @@ impl K1Ops for Fake {
         s.calls.push("txn_run_schedule");
         let max_rows = s.max_rows;
         let txn = match s.txn.as_mut() {
+            Some(t) if t.lease != lease => return K1_LEASED,
             Some(t) if t.token == token => t,
             _ => return -1,
         };
@@ -225,9 +260,12 @@ impl K1Ops for Fake {
         0
     }
 
-    fn txn_commit_identity(&mut self, token: u64, out: &mut CommitIdentity) -> i32 {
+    fn txn_commit_identity(&mut self, lease: u64, token: u64, out: &mut CommitIdentity) -> i32 {
         let mut s = self.state();
         s.calls.push("txn_commit_identity");
+        if matches!(&s.txn, Some(t) if t.lease != lease) {
+            return K1_LEASED;
+        }
         if s.refuse_commit != 0 {
             return std::mem::take(&mut s.refuse_commit);
         }
@@ -271,6 +309,29 @@ impl K1Ops for Fake {
             *o = s.w[0] * x[r * DIM] + s.w[1] * x[r * DIM + 1] + s.w[2];
         }
         *digest = s.identity();
+        0
+    }
+
+    fn lease_claim(&mut self, lease: u64) -> i32 {
+        let mut s = self.state();
+        s.calls.push("lease_claim");
+        if s.txn.is_some() {
+            return K1_BUSY;
+        }
+        s.lease = lease;
+        0
+    }
+
+    fn lease_release(&mut self, lease: u64) -> i32 {
+        let mut s = self.state();
+        s.calls.push("lease_release");
+        if s.lease != lease {
+            return K1_LEASED;
+        }
+        if s.txn.is_some() {
+            return K1_BUSY;
+        }
+        s.lease = 0;
         0
     }
 
@@ -383,7 +444,9 @@ fn anchor_is_explicit_once_reads_k1_only_and_binds() {
     let s = core.anchor(&mut sub, key(1)).unwrap();
     assert_eq!(s.generation(), initial + 1);
     assert_eq!(anchored(&core), Some(sub.identity()));
-    assert_eq!((sub.retained(), sub.calls()), (before, vec!["state_digest"]));
+    // Reads K1 only; then claims managed ownership (the lease) of the state it binds.
+    assert_eq!((sub.retained(), sub.calls()), (before, vec!["state_digest", "lease_claim"]));
+    assert_ne!(sub.lease(), 0);
     assert_eq!(core.anchor(&mut sub, key(1)).unwrap_err().error, Code::AlreadyAnchored.into());
     assert_eq!(core.fault(), None);
 }
@@ -1160,4 +1223,110 @@ fn excessive_work_is_refused_before_reserve_begin_schedule_commit_and_publicatio
 
 fn big_schedule(i: &Input) -> &[Experience] {
     &i.schedule
+}
+
+// -- managed ownership: the bound state's K1 lease ------------------------------------------------------------------
+
+#[test]
+fn a_bound_state_refuses_unmanaged_mutation_and_the_lineage_continues() {
+    let dir = Dir::new("lease-refuse");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    turn(&mut core, &mut sub, key(1)).unwrap();
+    let retained = sub.retained();
+    assert_eq!(sub.unmanaged_learn(), K1_LEASED);
+    assert_eq!(sub.retained(), retained);
+    turn(&mut core, &mut sub, key(1)).unwrap();
+    assert_eq!((anchored(&core), core.fault()), (Some(sub.identity()), None));
+}
+
+#[test]
+fn a_lost_lease_fail_stops_before_any_k1_mutation_or_publication() {
+    let dir = Dir::new("lease-lost");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    turn(&mut core, &mut sub, key(1)).unwrap();
+    sub.steal();
+    let (retained, durable) = (sub.retained(), core.snapshot().unwrap());
+    sub.clear_calls();
+    core.counters(true);
+    let i = input(4, 3);
+    let mut s3 = vec![0.0; features(DIM)];
+    let refused = core.turn_begin(&mut sub, key(1), &stimulus(&i), &CEILING, &mut s3).unwrap_err();
+    assert_eq!((refused.error, refused.k1_status), (Code::StateMismatch.into(), K1_LEASED));
+    assert_eq!(sub.calls(), ["txn_begin"]); // refused natively: nothing begun, nothing scheduled
+    assert_eq!((sub.retained(), core.snapshot().unwrap()), (retained, durable));
+    assert_eq!((core.fault(), core.counters(false).publications), (Some(Code::StateMismatch), 0));
+}
+
+#[test]
+fn a_bound_state_that_moved_is_caught_inside_the_transaction_begin() {
+    // A move no guard could refuse (it bypasses the lease): the identity re-established by the begin catches it,
+    // before the schedule touches the candidate. Nothing is built on it and nothing is published.
+    let dir = Dir::new("lease-moved");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    turn(&mut core, &mut sub, key(1)).unwrap();
+    sub.interlope();
+    let (retained, durable) = (sub.retained(), core.snapshot().unwrap());
+    sub.clear_calls();
+    let i = input(4, 3);
+    let mut s3 = vec![0.0; features(DIM)];
+    let refused = core.turn_begin(&mut sub, key(1), &stimulus(&i), &CEILING, &mut s3).unwrap_err();
+    assert_eq!(refused.error, Code::StateMismatch.into());
+    assert_eq!(sub.calls(), ["txn_begin", "txn_abort"]);
+    assert!(!sub.txn_open());
+    assert_eq!(
+        (sub.retained(), core.snapshot().unwrap(), core.fault()),
+        (retained, durable, Some(Code::StateMismatch))
+    );
+}
+
+#[test]
+fn release_gives_the_state_back_and_rebinding_verifies_it_again() {
+    let dir = Dir::new("lease-release");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    core.anchor(&mut sub, key(1)).unwrap();
+    turn(&mut core, &mut sub, key(1)).unwrap();
+    let mut other = Fake::new(0.3);
+    assert_eq!(core.release(&mut other, key(2)).unwrap_err().error, Rt::SubstrateSwitch.into());
+    core.release(&mut sub, key(1)).unwrap();
+    assert_eq!(sub.lease(), 0);
+    assert_eq!(sub.unmanaged_learn(), 0); // unmanaged again: it moves outside the lineage
+    sub.clear_calls();
+    assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::StateMismatch.into());
+    assert_eq!(sub.calls(), ["shape", "state_digest"]); // verified again, refused before any claim or mutation
+    assert_eq!(sub.lease(), 0); // a mismatched state is never claimed
+}
+
+#[test]
+fn a_state_with_an_open_unmanaged_transaction_is_not_adopted() {
+    let dir = Dir::new("lease-busy");
+    let mut core = dir.core();
+    let mut sub = Fake::new(0.1);
+    let mut token = 0u64;
+    let mut source = [0u8; 32];
+    assert_eq!(sub.txn_begin(0, &mut source, &mut token), 0); // an unmanaged transaction, left open
+    let durable = core.snapshot().unwrap();
+    let refused = core.anchor(&mut sub, key(1)).unwrap_err();
+    assert_eq!((refused.error, refused.k1_status), (Rt::EcsRefused.into(), K1_BUSY));
+    assert_eq!((core.snapshot().unwrap(), sub.lease(), core.fault()), (durable, 0, None));
+}
+
+#[test]
+fn a_second_runtime_binding_the_same_state_makes_the_first_fail_stop() {
+    let (a, b) = (Dir::new("lease-two-a"), Dir::new("lease-two-b"));
+    let (mut first, mut second) = (a.core(), b.core());
+    let mut sub = Fake::new(0.1);
+    first.anchor(&mut sub, key(1)).unwrap();
+    turn(&mut first, &mut sub, key(1)).unwrap();
+    second.anchor(&mut sub, key(1)).unwrap(); // proves its own lineage, then takes the lease
+    let retained = sub.retained();
+    assert_eq!(turn(&mut first, &mut sub, key(1)).unwrap_err(), Code::StateMismatch.into());
+    assert_eq!((sub.retained(), first.fault()), (retained, Some(Code::StateMismatch)));
+    turn(&mut second, &mut sub, key(1)).unwrap();
 }

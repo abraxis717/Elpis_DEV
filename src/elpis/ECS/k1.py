@@ -24,6 +24,7 @@ __all__ = ("CommitIdentity", "K1Error", "K1FMSRuntime", "K1FMSState", "K1Library
 
 _U64 = C.c_uint64
 _CODES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT",
+          -8: "LEASED",
           -101: "FMS_INVALID", -102: "NOMEM", -103: "MISSING", -104: "BUSY", -105: "UNSUPPORTED", -106: "IO",
           -107: "CAPACITY", -108: "STATE", -109: "DIGEST", -110: "DEVICE", -111: "TIMEOUT"}
 PROVENANCE = {0: "COMPLETE", 1: "RESET", 2: "UNCONSOLIDATED_IMPORT"}
@@ -212,6 +213,16 @@ _K1_ABI = {
     "txn_commit_identity": ([_VP, _U64, _CIP], C.c_int),
     "txn_abort": ([_VP, _U64], C.c_int),
     "txn_run_schedule": ([_VP, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P, C.c_size_t, _SRP], C.c_int),
+    "shape": ([_VP, C.POINTER(C.c_size_t), C.POINTER(C.c_size_t)], C.c_int),
+    # Managed ownership (ecsg_k1.h): the lease a managed owner (RuntimeCore) holds; read-only here.
+    "lease_of": ([_VP], _U64),
+    "lease_claim": ([_VP, _U64], C.c_int),
+    "lease_release": ([_VP, _U64], C.c_int),
+    "leased_reserve": ([_VP, _U64, C.c_size_t], C.c_int),
+    "leased_txn_begin": ([_VP, _U64, _U8P, C.POINTER(_U64)], C.c_int),
+    "leased_txn_run_schedule": ([_VP, _U64, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P, C.c_size_t,
+                                 _SRP], C.c_int),
+    "leased_txn_commit_identity": ([_VP, _U64, _U64, _CIP], C.c_int),
 }
 
 
@@ -310,6 +321,12 @@ class K1State:
     @property
     def provenance(self):
         return PROVENANCE[int(self._k.provenance_of(self._live()))]
+
+    @property
+    def managed_lease(self):
+        """The lease of the managed owner (RuntimeCore) that holds this state, 0 when unmanaged. While it is held,
+        every unmanaged mutating call here is refused ``LEASED`` before anything is touched."""
+        return int(self._k.lease_of(self._live()))
 
     def reserve(self, max_rows):
         rc = self._k.reserve(self._live(), max_rows)
@@ -548,6 +565,15 @@ _FMS_ABI = {
     "txn_abort": ([_VP, _U64, _U64], C.c_int),
     "txn_run_schedule": ([_VP, _U64, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P, C.c_size_t, _SRP],
                          C.c_int),
+    "shape": ([_VP, _U64, C.POINTER(C.c_size_t), C.POINTER(C.c_size_t)], C.c_int),
+    "lease_of": ([_VP, _U64, C.POINTER(_U64)], C.c_int),
+    "lease_claim": ([_VP, _U64, _U64], C.c_int),
+    "lease_release": ([_VP, _U64, _U64], C.c_int),
+    "leased_reserve": ([_VP, _U64, _U64, C.c_size_t], C.c_int),
+    "leased_txn_begin": ([_VP, _U64, _U64, _U8P, C.POINTER(_U64)], C.c_int),
+    "leased_txn_run_schedule": ([_VP, _U64, _U64, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P,
+                                 C.c_size_t, _SRP], C.c_int),
+    "leased_txn_commit_identity": ([_VP, _U64, _U64, _U64, _CIP], C.c_int),
 }
 
 
@@ -631,6 +657,14 @@ class K1FMSRuntime:
         out = _record(info)
         out["provenance"] = PROVENANCE[out["provenance"]]
         return out
+
+    def managed_lease(self, state_id):
+        """The lease of the managed owner holding one resident state (0: unmanaged)."""
+        out = _U64()
+        rc = self._f.lease_of(self._live(), state_id, C.byref(out))
+        if rc != 0:
+            raise _refused(rc, "K1 FMS lease")
+        return int(out.value)
 
     def k1_stats(self, state_id):
         s = _Counters()
@@ -855,6 +889,10 @@ class K1FMSState:
     @property
     def provenance(self):
         return self._r.inspect(self._id)["provenance"]
+
+    @property
+    def managed_lease(self):
+        return self._r.managed_lease(self._id)
 
     def reserve(self, max_rows):
         self._r.reserve(self._id, max_rows)
