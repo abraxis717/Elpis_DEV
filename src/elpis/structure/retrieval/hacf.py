@@ -229,6 +229,15 @@ class HacfHandle:
     def __exit__(self, *args: Any) -> None:
         self.destroy()
 
+    def __del__(self) -> None:
+        # Lifetime safety net: an epoch dropped without destroy() must not keep its native corpus, vector index
+        # and shard resident for the life of the process. A live borrow keeps this handle reachable through its
+        # ingress (QueryIngress._owner), so none can exist here.
+        try:
+            self.destroy()
+        except Exception:
+            pass
+
 
 def _text(value: bytes | None) -> str:
     return value.decode("utf-8") if value else ""
