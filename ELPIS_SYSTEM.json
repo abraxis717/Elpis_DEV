@@ -470,6 +470,10 @@
       {
         "path": "research/hecs_r3",
         "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, NO_RUNTIME_READINESS_CLAIM: H-ECS R3 successor lineage (frozen write-once evidence; docs/research/HECS_R3_RESULTS.md). CONSTITUENT WORLD-MODEL LAW = QUALIFIED UNDER FROZEN REGIME: C2 (true-target terminal rollout anchoring, HD/L2) DEV 8/8 and C2-Q2 QUAL 12/12 WORLD_MODEL_VALID; matched family C2M (the same offline LEARN law at every H2 constituent, w_T(h)=(4/h)^1.5) DEV 8/8 and QUAL 12/12 WORLD_MODEL_VALID. HIERARCHY HYPOTHESIS = ADJUDICATED NEGATIVE: the R2 H2 law over the matched qualified constituents gives NO_ADVANTAGE_OVER_WIDTH (flat L1/N72 outperforms TS/L2 and HD/L2 at matched planning compute). HIERARCHY INTEGRATION = NOT AUTHORIZED; no H-ECS hierarchical runtime is canonical. C2/C2M is a learning law from observed trajectories, not a query-time method. Not on the canonical path; no codec, no HACF edge."
+      },
+      {
+        "path": "research/hacf_ecs_bridge_r0",
+        "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, UNQUALIFIED, NO_CLAIM: HACF -> ECS Scientific Bridge R0 infrastructure. Validated structural retrieval evidence (canonical bundle gate + frozen observation context) -> identified observation map (measured, pinned) -> ECS observation -> one read-only K1 query_identity with the state proven unchanged. No LEARN, no continuity, no HACF writeback, no laundering of evidence into authority; an observation is not a codec. Harness over VALID / WITHHELD / PERMUTED / STALE / MISLEADING evidence on tiny synthetic fixtures only (TEST_ONLY map). No real evidence frozen; no qualification run."
       }
     ],
     "native_targets": [
