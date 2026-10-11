@@ -483,12 +483,17 @@
       {
         "path": "research/evolution_fitness_r0",
         "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, UNQUALIFIED, NO_CLAIM: Evolution Fitness R0 infrastructure. A tiny deterministic corridor environment (state, action, transition, feedback, terminal evaluation, replay identity) with write-once frozen partitions (CALIBRATION, DEVELOPMENT, HELD_OUT, OOD) and negative baselines; an evaluator that recomputes fitness from replayed trajectories, never reads a candidate's self-report, gates leakage of evaluation identifiers and is pinned by an elpis.evolution-policy.v1 spec. Agents are data, never executed code. No qualification run."
+      },
+      {
+        "path": "research/ecs_binary_observer_r0",
+        "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, UNQUALIFIED: ECS Binary Observation R0. A deterministic fixed-width (64-byte) binary record of one accepted canonical K1 QUERY (query rows, f_W answers, retained-state digest prefix) under a frozen law, with a bounded DROP_NEWEST handoff ring; the research library elpis_ebo_r0, its mechanics test, a direct-native performance driver and a DESIGN -> DEV -> freeze -> QUAL laboratory (ADR.md). Not wired into src/ or native/runtime; no world-representation, BFM or H-ECS claim."
       }
     ],
     "native_targets": [
       "elpis_dsv41_native",
       "elpis_dsv41_clock",
-      "elpis_dsv41_materializer"
+      "elpis_dsv41_materializer",
+      "elpis_ebo_r0"
     ]
   },
   "boundary_policy": {

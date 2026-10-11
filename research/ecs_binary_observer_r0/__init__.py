@@ -1,0 +1,1 @@
+"""ECS Binary Observation R0 (RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, UNQUALIFIED): see ADR.md and README.md."""
