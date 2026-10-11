@@ -233,6 +233,11 @@ representation or a model of ECS.
 * **Boundary registrations (outside the lineage):**
   * `tests/boundary/test_mission.py` now pins `elpis_ebo_r0` among the research native targets.
   * `tests/boundary/test_one_ecs.py` lists this lineage's files that name the K1 ABI.
+* **Law blobs committed late.** The repository `.gitignore` ignores `*.bin`, so the two frozen law blobs were not in
+  commits `a9be051`..`70f3026`. CI failed the freeze-binding test in a clean checkout as a result.
+  * They were committed byte-identical in `5427f86`, under a narrow `.gitignore` exception.
+  * Their SHA-256 values (GRAY4 `0bdfe732...`, SPROJ `a46bd94e...`) were bound in the DESIGN summary and the freeze
+    record from the start, and every phase used these exact files.
 * **Raw timing telemetry.** It stays out of Git by convention; its SHA-256 is recorded. It lives only in the session
   container's scratch, which is ephemeral.
 * **Not done, by design:**
