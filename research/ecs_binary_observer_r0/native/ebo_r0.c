@@ -141,6 +141,7 @@ ebo_status ebo_law_init(ebo_law *law, const uint8_t *blob, size_t size)
                 }
                 staged.index[k][i] = idx;
                 staged.sign[k][i] = sg == 0x01u ? (int8_t)1 : (int8_t)-1;
+                staged.term[k][i] = (uint8_t)(idx + (sg == 0x01u ? 0u : EBO_WINDOW_ROWS));
             }
         }
         p += 2u * EBO_PAYLOAD_BITS * EBO_SPROJ_TERMS;
@@ -166,11 +167,28 @@ static uint64_t input_identity(size_t dim, size_t rows, const double *x, size_t 
     uint64_t bad = 0u;
     const size_t words = window * dim;
     size_t j;
-    lane[0] = H64_LANE[0];
-    lane[1] = H64_LANE[1];
-    lane[2] = H64_LANE[2];
-    lane[3] = H64_LANE[3];
-    for (j = 0u; j < words; ++j) {
+    uint64_t l0 = H64_LANE[0];
+    uint64_t l1 = H64_LANE[1];
+    uint64_t l2 = H64_LANE[2];
+    uint64_t l3 = H64_LANE[3];
+    /* word j feeds lane j mod 4; four independent register chains (same result as one indexed loop) */
+    for (j = 0u; j + 4u <= words; j += 4u) {
+        const uint64_t w0 = bits_of(x[j]);
+        const uint64_t w1 = bits_of(x[j + 1u]);
+        const uint64_t w2 = bits_of(x[j + 2u]);
+        const uint64_t w3 = bits_of(x[j + 3u]);
+        bad |= (uint64_t)(((w0 >> 52) & 0x7ffu) == 0x7ffu) | (uint64_t)(((w1 >> 52) & 0x7ffu) == 0x7ffu) |
+               (uint64_t)(((w2 >> 52) & 0x7ffu) == 0x7ffu) | (uint64_t)(((w3 >> 52) & 0x7ffu) == 0x7ffu);
+        l0 = rotl64((l0 ^ w0) * H64_K, 31u);
+        l1 = rotl64((l1 ^ w1) * H64_K, 31u);
+        l2 = rotl64((l2 ^ w2) * H64_K, 31u);
+        l3 = rotl64((l3 ^ w3) * H64_K, 31u);
+    }
+    lane[0] = l0;
+    lane[1] = l1;
+    lane[2] = l2;
+    lane[3] = l3;
+    for (; j < words; ++j) {
         const uint64_t w = bits_of(x[j]);
         bad |= (uint64_t)(((w >> 52) & 0x7ffu) == 0x7ffu);
         lane[j & 3u] = rotl64((lane[j & 3u] ^ w) * H64_K, 31u);
@@ -191,11 +209,14 @@ static void encode_gray4(const ebo_law *law, const double *values, size_t window
     size_t r;
     for (r = 0u; r < window; ++r) {
         const double v = values[r];
+        const double *t = law->thresholds;
         unsigned b = 0u;
-        unsigned k;
-        for (k = 0u; k < EBO_GRAY4_THRESHOLDS; ++k) {
-            b += (unsigned)(v >= law->thresholds[k]);   /* an exact tie goes to the upper level */
-        }
+        /* b = #{k : v >= t_k} by a branchless search over the strictly increasing thresholds (an exact tie goes to
+         * the upper level) */
+        b += 8u * (unsigned)(v >= t[7]);
+        b += 4u * (unsigned)(v >= t[b + 3u]);
+        b += 2u * (unsigned)(v >= t[b + 1u]);
+        b += 1u * (unsigned)(v >= t[b]);
         b ^= b >> 1u;                                    /* Gray code: adjacent levels differ in one bit */
         payload[r >> 1u] |= (uint8_t)(b << (4u * (r & 1u)));
     }
@@ -203,19 +224,20 @@ static void encode_gray4(const ebo_law *law, const double *values, size_t window
 
 static void encode_sproj(const ebo_law *law, const double *values, size_t window, uint8_t payload[32])
 {
-    double u[EBO_WINDOW_ROWS];
+    double u[2u * EBO_WINDOW_ROWS];   /* u, then -u: a signed term is one table read */
     size_t r;
     size_t k;
     for (r = 0u; r < EBO_WINDOW_ROWS; ++r) {
         u[r] = r < window ? (values[r] - law->mu) * law->inv_scale : 0.0;   /* rows beyond the query: 0 */
+        u[EBO_WINDOW_ROWS + r] = -u[r];
     }
     for (k = 0u; k < EBO_PAYLOAD_BITS; ++k) {
+        const uint8_t *term = law->term[k];
         double s = 0.0;
-        unsigned i;
-        for (i = 0u; i < EBO_SPROJ_TERMS; ++i) {
-            const double t = u[law->index[k][i]];
-            s = s + (law->sign[k][i] > 0 ? t : -t);
-        }
+        s = s + u[term[0]];
+        s = s + u[term[1]];
+        s = s + u[term[2]];
+        s = s + u[term[3]];
         payload[k >> 3u] |= (uint8_t)((unsigned)(s >= law->tau[k]) << (k & 7u));   /* tie: 1 */
     }
 }

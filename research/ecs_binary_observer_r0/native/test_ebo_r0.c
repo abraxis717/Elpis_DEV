@@ -515,6 +515,7 @@ static void test_ring_spsc_threads(void)
     pthread_t thread;
     uint8_t rec[64];
     uint64_t seq;
+    uint64_t dropped;
     assert(ebo_ring_init(&spsc, spsc_slots, 64u) == EBO_OK);
     assert(pthread_create(&thread, NULL, consumer, NULL) == 0);
     for (seq = 1u; seq <= SPSC_RECORDS; ++seq) {
@@ -524,6 +525,7 @@ static void test_ring_spsc_threads(void)
         rec[63] = (uint8_t)(seq >> 8);
         (void)ebo_ring_push(&spsc, rec); /* may drop under contention: the producer never waits */
     }
+    dropped = ebo_ring_dropped(&spsc); /* before the terminator, whose test-side retries also count as drops */
     seq = UINT64_MAX;
     memset(rec, 0, sizeof rec);
     memcpy(rec, &seq, sizeof seq);
@@ -531,7 +533,7 @@ static void test_ring_spsc_threads(void)
         /* the terminator only: test-side retry */
     }
     assert(pthread_join(thread, NULL) == 0);
-    assert(spsc_received + ebo_ring_dropped(&spsc) == SPSC_RECORDS);
+    assert(spsc_received + dropped == SPSC_RECORDS);
     assert(ebo_ring_pushed(&spsc) == spsc_received + 1u);
 }
 

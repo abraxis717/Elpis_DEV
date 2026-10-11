@@ -192,4 +192,4 @@ def test_system_authority_encodes_the_mission():
     assert "ECS" not in subs["inference"]["depends_on"] and "continuity" not in subs["inference"]["depends_on"]
     assert not [t for t in subs["inference"]["native_targets"] if "dsv41" in t]
     assert set(system["research"]["native_targets"]) == {"elpis_dsv41_native", "elpis_dsv41_clock",
-                                                         "elpis_dsv41_materializer"}
+                                                         "elpis_dsv41_materializer", "elpis_ebo_r0"}

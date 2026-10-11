@@ -69,6 +69,7 @@ typedef struct {
     uint8_t index[EBO_PAYLOAD_BITS][EBO_SPROJ_TERMS]; /* SPROJ: window rows, < 64 */
     int8_t sign[EBO_PAYLOAD_BITS][EBO_SPROJ_TERMS];  /* SPROJ: +1 / -1 */
     double tau[EBO_PAYLOAD_BITS];                    /* SPROJ: bit k = (s_k >= tau_k) */
+    uint8_t term[EBO_PAYLOAD_BITS][EBO_SPROJ_TERMS]; /* SPROJ: index, +64 when the sign is -1 (derived at init) */
 } ebo_law;
 
 /*

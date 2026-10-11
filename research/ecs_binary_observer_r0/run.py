@@ -200,14 +200,25 @@ def audit_library(build: Path) -> dict:
     weak = sorted({line.split()[-1].split("@")[0] for line in undefined.splitlines() if line.strip()
                    and line.split()[0] == "w"})
     disasm = subprocess.run([objdump, "-d", "--no-show-raw-insn", str(lib)], capture_output=True, text=True).stdout
-    calls = {}
-    for fn in ("ebo_encode", "ebo_ring_push", "ebo_ring_pop"):
-        body = re.search(rf"<{fn}>:\n(.*?)\n\n", disasm, re.S)
-        calls[fn] = sorted(set(re.findall(r"call\s+\S+\s+<([^>]+)>", body.group(1)))) if body else ["MISSING"]
+    def reached(fn: str, seen: set) -> set:
+        """External (PLT) calls reachable from fn, following local calls transitively; MISSING if unresolved."""
+        body = re.search(rf"<{re.escape(fn)}>:\n(.*?)\n\n", disasm, re.S)
+        if body is None:
+            return {f"MISSING:{fn}"}
+        out = set()
+        for callee in set(re.findall(r"call\s+\S+\s+<([^>+]+)", body.group(1))):
+            if callee.endswith("@plt"):
+                out.add(callee)
+            elif callee not in seen:
+                seen.add(callee)
+                out |= reached(callee, seen)
+        return out
+
+    calls = {fn: sorted(reached(fn, {fn})) for fn in ("ebo_encode", "ebo_ring_push", "ebo_ring_pop")}
     hot_ok = all(set(c) <= {"__stack_chk_fail@plt"} for c in calls.values())
     return {"available": True, "imports": imports, "weak": weak, "observation_path_calls": calls,
             "M5": set(imports) <= allowed and hot_ok,
-            "M6": not any(s.startswith(("elpis_ecsg", "elpis_runtime", "elpis_continuity")) for s in imports)}
+            "M6": not any(s.startswith(("elpis_ecsg_", "elpis_runtime", "elpis_continuity")) for s in imports)}
 
 
 def _ctest(build: Path) -> dict:
