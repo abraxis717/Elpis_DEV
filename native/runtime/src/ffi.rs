@@ -32,7 +32,7 @@ use elpis_continuity::ffi::{from_c_evolution, to_c, CEvolution, CSnapshot};
 use elpis_continuity::{Code, Digest, Snapshot};
 
 use crate::code::{Error, Rt};
-use crate::core::{Core, Counters, Refusal, Stimulus};
+use crate::core::{Core, Counters, Recovery, Refusal, Stimulus};
 use crate::fuel::Budget;
 use crate::substrate::{features, CSubstrate, CommitIdentity, Experience, Native, ScheduleOutcome};
 
@@ -74,6 +74,22 @@ pub struct CQuery {
 }
 
 const _: () = assert!(std::mem::size_of::<CQuery>() == 40);
+
+/// `elpis_runtime_recovery`.
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct CRecovery {
+    /// 1 NOTHING_TO_RECOVER, 2 RESUMABLE, 3 CANDIDATE_UNRESOLVED, 4 CHECKPOINT_MISSING.
+    pub disposition: u32,
+    /// 1 when a verified slot holds the authorized identity.
+    pub authorized_present: u32,
+    pub authorized: Digest,
+    pub candidate: Digest,
+    /// The authorized envelope's size when resumable (copied when the caller's buffer holds it), else 0.
+    pub envelope_bytes: u64,
+}
+
+const _: () = assert!(std::mem::size_of::<CRecovery>() == 80);
 const _: () = assert!(std::mem::size_of::<CTurnBegin>() == 48);
 const _: () = assert!(std::mem::size_of::<CTurnCommit>() == 120);
 const _: () = assert!(std::mem::size_of::<Counters>() == 80);
@@ -192,6 +208,10 @@ pub extern "C" fn elpis_runtime_code_name(code: i32) -> *const c_char {
             Rt::EvolutionInFlight => c"RUNTIME_EVOLUTION_IN_FLIGHT",
             Rt::EvolutionNotInFlight => c"RUNTIME_EVOLUTION_NOT_IN_FLIGHT",
             Rt::Fuel => c"COGNITION_FUEL_EXCEEDED",
+            Rt::CheckpointInvalid => c"CHECKPOINT_INVALID",
+            Rt::CheckpointIo => c"CHECKPOINT_IO",
+            Rt::CheckpointShape => c"CHECKPOINT_SHAPE",
+            Rt::CheckpointUnresolved => c"CHECKPOINT_UNRESOLVED",
         }
         .as_ptr(),
         None => match Code::from_i32(code) {
@@ -428,6 +448,94 @@ pub unsafe extern "C" fn elpis_runtime_turn_abort(rt: *mut ElpisRuntime, sub: *c
     rc(run())
 }
 
+// -- K1 Recovery R0 ---------------------------------------------------------------------------------------------
+
+unsafe fn path_arg<'a>(path: *const u8, len: usize) -> Result<&'a Path, Error> {
+    if path.is_null() {
+        return Err(Rt::Invalid.into());
+    }
+    Ok(Path::new(OsStr::from_bytes(std::slice::from_raw_parts(path, len))))
+}
+
+/// Operator provisioning of a K1 checkpoint store: create the absolute directory `path` (it must not exist) with
+/// exactly two empty slot files sized for envelopes of `envelope_bytes` (the admitted K1 shape's), fully written
+/// and synced. Never overwrites, resizes or adopts anything.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_checkpoint_provision(path: *const u8, len: usize, envelope_bytes: usize) -> i32 {
+    rc(path_arg(path, len)
+        .and_then(|dir| crate::checkpoint::Store::provision(dir, envelope_bytes).map_err(Error::Runtime)))
+}
+
+/// Attach a provisioned checkpoint store to an open runtime (no turn in flight).
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_checkpoint_attach(rt: *mut ElpisRuntime, path: *const u8, len: usize) -> i32 {
+    let run = || -> Result<(), Error> {
+        let dir = path_arg(path, len)?;
+        runtime(rt)?.checkpoint_attach(dir).map_err(|r| r.error)
+    };
+    rc(run())
+}
+
+/// What restart may do with the K1 lineage (read-only). When RESUMABLE and `envelope_len` holds it, the authorized
+/// envelope is copied to `envelope` (restore it into a K1 state; its identity is `out->authorized`).
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_checkpoint_recover(
+    rt: *mut ElpisRuntime,
+    out: *mut CRecovery,
+    envelope: *mut u8,
+    envelope_len: usize,
+) -> i32 {
+    if out.is_null() {
+        return Rt::Invalid as i32;
+    }
+    let run = || -> Result<Recovery, Error> { runtime(rt)?.recover().map_err(|r| r.error) };
+    match run() {
+        Ok(r) => {
+            let size = r.envelope.as_ref().map_or(0, Vec::len);
+            if let Some(bytes) = &r.envelope {
+                if !envelope.is_null() && envelope_len >= size {
+                    std::ptr::copy_nonoverlapping(bytes.as_ptr(), envelope, size);
+                }
+            }
+            *out = CRecovery {
+                disposition: r.disposition as u32,
+                authorized_present: r.authorized_present as u32,
+                authorized: r.authorized,
+                candidate: r.candidate,
+                envelope_bytes: size as u64,
+            };
+            0
+        }
+        Err(e) => e.code(),
+    }
+}
+
+/// Operator reconciliation: discard the unresolved candidate (exactly `candidate`); the lineage stays at
+/// continuity's authority.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_checkpoint_discard(rt: *mut ElpisRuntime, candidate: *const u8) -> i32 {
+    let run = || -> Result<(), Error> {
+        let candidate = digest(candidate)?;
+        runtime(rt)?.checkpoint_discard(candidate).map_err(|r| r.error)
+    };
+    rc(run())
+}
+
+/// Operator reconciliation: adopt the unresolved candidate (exactly `candidate`) as the authority: continuity
+/// publishes authorized -> candidate after its envelope verified. A publication failure fail-stops.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_checkpoint_adopt(
+    rt: *mut ElpisRuntime,
+    candidate: *const u8,
+    out: *mut CSnapshot,
+) -> i32 {
+    let run = || -> Result<Snapshot, Error> {
+        let candidate = digest(candidate)?;
+        runtime(rt)?.checkpoint_adopt(candidate).map_err(|r| r.error)
+    };
+    rc(run().map(|s| snapshot_out(out, &s)))
+}
+
 // -- evolution ------------------------------------------------------------------------------------------------
 
 /// The current idle evolution authority (`CONTINUITY_EVOLUTION_PENDING` while a reservation is pending).
@@ -506,6 +614,20 @@ mod testing {
         arg: u64,
     ) -> i32 {
         rc(runtime(rt).and_then(|mut core| core.testing_arm(publication, action, arg)))
+    }
+
+    /// Simulated process death at a checkpointed-LEARN boundary: 0 none, 1 after the candidate checkpoint (before
+    /// the native commit), 2 after the native commit (before the continuity publication).
+    #[no_mangle]
+    pub unsafe extern "C" fn elpis_runtime_testing_checkpoint_crash(rt: *mut ElpisRuntime, point: u32) -> i32 {
+        use crate::core::CrashPoint;
+        let point = match point {
+            0 => None,
+            1 => Some(CrashPoint::AfterCheckpoint),
+            2 => Some(CrashPoint::AfterNativeCommit),
+            _ => return Rt::Invalid as i32,
+        };
+        rc(runtime(rt).map(|mut core| core.testing_crash_at(point)))
     }
 
     /// Copy the embedded store's I/O counters; reset them when `reset` is nonzero.

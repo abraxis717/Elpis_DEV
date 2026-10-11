@@ -21,6 +21,7 @@ _Static_assert(sizeof(elpis_runtime_turn_commit_result) == 120, "commit result A
 _Static_assert(sizeof(elpis_runtime_counters) == 80, "counters ABI size");
 _Static_assert(sizeof(elpis_runtime_budget) == 48, "budget ABI size");
 _Static_assert(sizeof(elpis_runtime_query_result) == 40, "query result ABI size");
+_Static_assert(sizeof(elpis_runtime_recovery) == 80, "recovery ABI size");
 
 static elpis_ecsg_k1 *state(double seed) {
     double w[DIM * WIDTH];
@@ -279,6 +280,53 @@ int main(int argc, char **argv) {
         assert(elpis_ecsg_k1_lease_of(c) == 0);
         elpis_runtime_destroy(&rt);
         assert(elpis_ecsg_k1_destroy(&c) == ELPIS_ECSG_K1_OK);
+    }
+    /* K1 Recovery R0 through the C ABI: operator provisioning, attach, anchor + LEARN persisting the complete
+     * envelope, and a restart that resumes exactly continuity's identity (docs/K1_RECOVERY_R0.md). */
+    {
+        char dir4[4200], ck[4200];
+        assert(snprintf(dir4, sizeof(dir4), "%s4", dir) < (int)sizeof(dir4));
+        assert(snprintf(ck, sizeof(ck), "%s-k1-checkpoint", dir) < (int)sizeof(ck));
+        assert(snprintf(cmd, sizeof(cmd), "rm -rf '%s' '%s'", dir4, ck) < (int)sizeof(cmd));
+        assert(system(cmd) == 0);
+        const size_t envelope = elpis_ecsg_k1_envelope_bytes(DIM, WIDTH);
+        assert(elpis_runtime_checkpoint_provision((const uint8_t *)"relative", 8, envelope) ==
+               ELPIS_RUNTIME_CHECKPOINT_INVALID);
+        OK(elpis_runtime_checkpoint_provision((const uint8_t *)ck, strlen(ck), envelope));
+        assert(elpis_runtime_checkpoint_provision((const uint8_t *)ck, strlen(ck), envelope) ==
+               ELPIS_RUNTIME_CHECKPOINT_INVALID);   /* never overwritten */
+        OK(elpis_runtime_create((const uint8_t *)dir4, strlen(dir4), &rt));
+        OK(elpis_runtime_open(rt, &snap));
+        OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)ck, strlen(ck)));
+        elpis_runtime_recovery rec;
+        OK(elpis_runtime_checkpoint_recover(rt, &rec, NULL, 0));
+        assert(rec.disposition == ELPIS_RUNTIME_RECOVERY_NOTHING && rec.envelope_bytes == 0);
+        elpis_ecsg_k1 *e = state(0.3);
+        elpis_runtime_substrate de = sub(e, 11, DIM);
+        OK(elpis_runtime_anchor(rt, &de, &snap));
+        OK(turn(rt, &de, &committed));
+        uint8_t *held = malloc(envelope), *got = malloc(envelope);
+        assert(held && got && elpis_ecsg_k1_snapshot_write(e, held, envelope) == ELPIS_ECSG_K1_OK);
+        elpis_runtime_destroy(&rt);   /* the process ends: only continuity and the checkpoint remain */
+        assert(elpis_ecsg_k1_destroy(&e) == ELPIS_ECSG_K1_OK);
+
+        OK(elpis_runtime_create((const uint8_t *)dir4, strlen(dir4), &rt));
+        OK(elpis_runtime_open(rt, &snap));
+        OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)ck, strlen(ck)));
+        OK(elpis_runtime_checkpoint_recover(rt, &rec, got, envelope));
+        assert(rec.disposition == ELPIS_RUNTIME_RECOVERY_RESUMABLE && rec.authorized_present == 1);
+        assert(rec.envelope_bytes == envelope && !memcmp(got, held, envelope));
+        assert(!memcmp(rec.authorized, snap.k1_state_digest, 32) && !memcmp(rec.authorized, held + envelope - 32, 32));
+        elpis_ecsg_k1 *resumed = NULL;
+        assert(elpis_ecsg_k1_restore(got, envelope, 8, &resumed) == ELPIS_ECSG_K1_OK);
+        elpis_runtime_substrate dr = sub(resumed, 12, DIM);
+        OK(turn(rt, &dr, &committed));   /* binds after verification against continuity, and continues */
+        uint8_t zero[32] = {0};
+        assert(elpis_runtime_checkpoint_discard(rt, zero) == ELPIS_RUNTIME_CHECKPOINT_INVALID);
+        elpis_runtime_destroy(&rt);
+        assert(elpis_ecsg_k1_destroy(&resumed) == ELPIS_ECSG_K1_OK);
+        free(held);
+        free(got);
     }
     assert(elpis_ecsg_k1_destroy(&a) == ELPIS_ECSG_K1_OK && elpis_ecsg_k1_destroy(&b) == ELPIS_ECSG_K1_OK);
     puts("runtime ABI: PASS");

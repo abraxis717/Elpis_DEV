@@ -36,6 +36,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, Store};
 
+use crate::checkpoint::{self, Disposition, Slot};
 use crate::code::{Error, Rt};
 use crate::fuel::{self, Budget};
 use crate::substrate::{
@@ -142,6 +143,36 @@ pub struct Core {
     turn: Option<OpenTurn>,
     evolution: Option<EvolutionState>,
     counters: Counters,
+    /// K1 Recovery R0: the bounded checkpoint store, when attached (docs/K1_RECOVERY_R0.md).
+    checkpoint: Option<checkpoint::Store>,
+    /// The checkpoint slot an open turn's candidate was written to (withdrawn if the turn does not commit).
+    candidate_slot: Option<usize>,
+    #[cfg(feature = "testing")]
+    crash: Option<CrashPoint>,
+}
+
+/// Testing builds only: a simulated process death at one boundary of the checkpointed LEARN commit.
+#[cfg(feature = "testing")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CrashPoint {
+    /// The candidate checkpoint is durable; the native commit has not happened.
+    AfterCheckpoint = 1,
+    /// The native commit happened in memory; continuity has not published it.
+    AfterNativeCommit = 2,
+}
+
+/// What [`Core::recover`] found: the disposition, the identities it is about and, when resumable, the envelope.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Recovery {
+    pub disposition: Disposition,
+    /// Continuity's identity (zero when unanchored).
+    pub authorized: Digest,
+    /// Whether a verified slot holds the authorized identity.
+    pub authorized_present: bool,
+    /// The newer unauthorized candidate's identity (zero when none).
+    pub candidate: Digest,
+    /// The authorized envelope, when the disposition is [`Disposition::Resumable`].
+    pub envelope: Option<Vec<u8>>,
 }
 
 impl Core {
@@ -157,6 +188,10 @@ impl Core {
             turn: None,
             evolution: None,
             counters: Counters::default(),
+            checkpoint: None,
+            candidate_slot: None,
+            #[cfg(feature = "testing")]
+            crash: None,
         })
     }
 
@@ -185,6 +220,7 @@ impl Core {
         self.bound = None;
         self.shape = None;
         self.evolution = None;
+        self.checkpoint = None; // the store's lock is released with the runtime's lifecycle
     }
 
     /// Abort the open managed turn, if any, through the capability retained at its begin.
@@ -257,6 +293,10 @@ impl Core {
             return Err(Code::AlreadyAnchored.into());
         }
         let identity = self.digest(sub)?;
+        if self.checkpoint.is_some() {
+            // The anchored state must be resumable: its complete envelope is durable before the anchor is.
+            self.checkpoint_current(sub, &identity)?;
+        }
         self.claim(sub)?;
         match self.store.anchor_cognition(Some(&identity)) {
             Ok(s) => {
@@ -454,6 +494,9 @@ impl Core {
         if self.store.snapshot()?.cognition() == Cognition::Unanchored {
             return Err(Code::Unanchored.into());
         }
+        if self.unresolved_candidate()?.is_some() {
+            return Err(Rt::CheckpointUnresolved.into());
+        }
         // Total fuel, before the identity check, any reserve, the transaction or a candidate mutation.
         let width = self.width(sub, key)?;
         fuel::admit_schedule(budget, key.dim, width, schedule).map_err(|_| Refusal::from(Rt::Fuel))?;
@@ -564,6 +607,19 @@ impl Core {
             self.terminate(turn);
             return Err(code.into());
         }
+        // K1 Recovery R0: the complete candidate is durable before it commits, in the slot that does not hold the
+        // authorized state. Any refusal here ends the turn with nothing committed and nothing published.
+        let checkpointed = match self.checkpoint_candidate(sub, &turn) {
+            Ok(slot) => slot,
+            Err(refusal) => {
+                self.terminate(turn);
+                return Err(refusal);
+            }
+        };
+        #[cfg(feature = "testing")]
+        if self.crash == Some(CrashPoint::AfterCheckpoint) {
+            return Err(self.crashed(turn));
+        }
         let mut identity = CommitIdentity::default();
         self.counters.k1_commits += 1;
         let rc = sub.txn_commit_identity(self.lease, turn.token, &mut identity);
@@ -572,8 +628,20 @@ impl Core {
             if rc != K1_STALE {
                 self.terminate(turn);
             }
+            self.withdraw_candidate();
             let error = if rc == K1_STALE { Rt::EcsStale } else { Rt::EcsRefused };
             return Err(ecs(error, rc, ScheduleOutcome::default()));
+        }
+        self.candidate_slot = None;
+        if matches!(checkpointed, Some(slot) if slot.identity != identity.state_after_digest) {
+            // The candidate committed is not the one checkpointed: never publish it.
+            self.fault = Some(Code::StateMismatch);
+            return Err(Refusal { committed: Some(Box::new(identity)), ..Refusal::from(Code::StateMismatch) });
+        }
+        #[cfg(feature = "testing")]
+        if self.crash == Some(CrashPoint::AfterNativeCommit) {
+            self.fault = Some(Code::TestingProcessDeath);
+            return Err(Refusal { committed: Some(Box::new(identity)), ..Refusal::from(Code::TestingProcessDeath) });
         }
         match self.store.commit_cognition(Some(&identity.state_before_digest), Some(&identity.state_after_digest)) {
             Ok(snapshot) => {
@@ -593,6 +661,201 @@ impl Core {
         let turn = self.take_turn(key)?;
         self.terminate(turn);
         Ok(())
+    }
+
+    // -- K1 Recovery R0: the bounded checkpoint store -------------------------------------------------------------
+
+    /// Attach the provisioned checkpoint store (an open runtime with no turn in flight). From then on every anchor
+    /// and every LEARN persists the complete envelope before it becomes authoritative.
+    pub fn checkpoint_attach(&mut self, directory: &Path) -> Result<(), Refusal> {
+        if !self.open {
+            return Err(Rt::Closed.into());
+        }
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        self.checkpoint = Some(checkpoint::Store::open(directory)?);
+        Ok(())
+    }
+
+    pub fn checkpoint_attached(&self) -> bool {
+        self.checkpoint.is_some()
+    }
+
+    /// The newest verified slot that continuity does not authorize and that is newer than the authorized slot.
+    /// A candidate exists only beside a verified authorized slot: the write protocol never touches the authorized
+    /// slot, so when no slot holds the authorized identity the store is damaged and no other slot is classified as
+    /// a candidate (the disposition is `CheckpointMissing`, never an adoptable candidate).
+    fn unresolved_candidate(&self) -> Result<Option<(usize, Slot)>, Refusal> {
+        let store = match &self.checkpoint {
+            Some(store) => store,
+            None => return Ok(None),
+        };
+        let authorized = match self.store.snapshot()?.cognition() {
+            Cognition::Unanchored => return Ok(None),
+            Cognition::Anchored(d) => d,
+        };
+        let slots = store.slots();
+        let floor = match store.holding(&authorized).and_then(|i| slots[i]) {
+            Some(s) => s.generation,
+            None => return Ok(None),
+        };
+        Ok((0..2)
+            .filter_map(|i| slots[i].map(|s| (i, s)))
+            .filter(|(_, s)| s.identity != authorized && s.generation > floor)
+            .max_by_key(|(_, s)| s.generation))
+    }
+
+    /// Persist the authoritative state's envelope (anchor), unless a verified slot already holds it.
+    fn checkpoint_current(&mut self, sub: &mut dyn K1Ops, identity: &Digest) -> Result<(), Refusal> {
+        let store = self.checkpoint.as_mut().expect("attached");
+        if store.holding(identity).is_some() {
+            return Ok(());
+        }
+        let buffer = store.envelope_buffer();
+        match sub.snapshot_write(buffer) {
+            0 => {}
+            rc => return Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
+        }
+        if checkpoint::envelope_identity(buffer) != Some(*identity) {
+            return Err(Rt::CheckpointShape.into());
+        }
+        store.write(None)?;
+        Ok(())
+    }
+
+    /// Persist the open turn's candidate envelope into the slot that does not hold the authorized identity.
+    fn checkpoint_candidate(&mut self, sub: &mut dyn K1Ops, turn: &OpenTurn) -> Result<Option<Slot>, Refusal> {
+        let authorized = self.expected()?;
+        let store = match self.checkpoint.as_mut() {
+            Some(store) => store,
+            None => return Ok(None),
+        };
+        let buffer = store.envelope_buffer();
+        match sub.txn_snapshot_write(turn.token, buffer) {
+            0 => {}
+            rc => return Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
+        }
+        if checkpoint::envelope_identity(buffer).is_none() {
+            return Err(Rt::CheckpointShape.into());
+        }
+        match store.write(Some(&authorized)) {
+            Ok((slot, written)) => {
+                self.candidate_slot = Some(slot);
+                Ok(Some(written))
+            }
+            Err(rt) => Err(rt.into()),
+        }
+    }
+
+    /// Withdraw an uncommitted candidate slot (best effort: a crash before it leaves an explicit, unresolved
+    /// candidate for the operator, never an authority).
+    fn withdraw_candidate(&mut self) {
+        if let (Some(slot), Some(store)) = (self.candidate_slot.take(), self.checkpoint.as_mut()) {
+            let _ = store.retract(slot);
+        }
+    }
+
+    /// What restart may do with the lineage. Continuity decides; the slots are evidence. Read-only.
+    pub fn recover(&mut self) -> Result<Recovery, Refusal> {
+        if !self.open {
+            return Err(Rt::Closed.into());
+        }
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        let candidate = self.unresolved_candidate()?;
+        let authorized = match self.store.snapshot()?.cognition() {
+            Cognition::Unanchored => None,
+            Cognition::Anchored(d) => Some(d),
+        };
+        let store = self.checkpoint.as_mut().ok_or(Rt::CheckpointInvalid)?;
+        let mut out = Recovery {
+            disposition: Disposition::NothingToRecover,
+            authorized: authorized.unwrap_or([0u8; 32]),
+            authorized_present: false,
+            candidate: candidate.map_or([0u8; 32], |(_, s)| s.identity),
+            envelope: None,
+        };
+        let authorized = match authorized {
+            Some(d) => d,
+            None => return Ok(out),
+        };
+        let held = store.holding(&authorized);
+        out.authorized_present = held.is_some();
+        out.disposition = if candidate.is_some() {
+            Disposition::CandidateUnresolved
+        } else if let Some(i) = held {
+            match store.envelope(i)? {
+                Some((slot, envelope)) if slot.identity == authorized => {
+                    out.envelope = Some(envelope.to_vec());
+                    Disposition::Resumable
+                }
+                _ => Disposition::CheckpointMissing, // it no longer verifies
+            }
+        } else {
+            Disposition::CheckpointMissing
+        };
+        Ok(out)
+    }
+
+    /// Operator reconciliation: discard the unresolved candidate `candidate` (withdraw its slot). The lineage stays
+    /// at continuity's authority. Refused unless `candidate` is exactly the unresolved candidate.
+    pub fn checkpoint_discard(&mut self, candidate: &Digest) -> Result<(), Refusal> {
+        self.live()?;
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        match self.unresolved_candidate()? {
+            Some((slot, s)) if s.identity == *candidate => {
+                self.checkpoint.as_mut().expect("attached").retract(slot)?;
+                Ok(())
+            }
+            _ => Err(Rt::CheckpointInvalid.into()),
+        }
+    }
+
+    /// Operator reconciliation: adopt the unresolved candidate `candidate` as the lineage's authority (continuity
+    /// publishes authorized -> candidate). Its complete envelope is verified first. A publication failure fail-stops.
+    pub fn checkpoint_adopt(&mut self, candidate: &Digest) -> Result<Snapshot, Refusal> {
+        self.live()?;
+        if self.turn.is_some() || self.bound.is_some() {
+            return Err(Rt::TurnOpen.into()); // adopting under a bound state would contradict its identity
+        }
+        let authorized = self.expected()?;
+        let slot = match self.unresolved_candidate()? {
+            Some((slot, s)) if s.identity == *candidate => slot,
+            _ => return Err(Rt::CheckpointInvalid.into()),
+        };
+        match self.checkpoint.as_mut().expect("attached").envelope(slot)? {
+            Some((s, _)) if s.identity == *candidate => {}
+            _ => return Err(Rt::CheckpointInvalid.into()),
+        }
+        match self.store.commit_cognition(Some(&authorized), Some(candidate)) {
+            Ok(snapshot) => {
+                self.counters.publications += 1;
+                Ok(snapshot)
+            }
+            Err(code) => {
+                self.fault = Some(code);
+                Err(code.into())
+            }
+        }
+    }
+
+    #[cfg(feature = "testing")]
+    pub fn testing_crash_at(&mut self, point: Option<CrashPoint>) {
+        self.crash = point;
+    }
+
+    /// A simulated process death mid-commit: the runtime is fail-stopped and its turn forgotten natively (as the
+    /// process's memory would be); nothing more is published.
+    #[cfg(feature = "testing")]
+    fn crashed(&mut self, turn: OpenTurn) -> Refusal {
+        self.candidate_slot = None; // a dead process withdraws nothing
+        self.terminate(turn);
+        self.fault = Some(Code::TestingProcessDeath);
+        Code::TestingProcessDeath.into()
     }
 
     // -- evolution ------------------------------------------------------------------------------------------------

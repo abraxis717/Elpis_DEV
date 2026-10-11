@@ -217,6 +217,44 @@ static void test_transaction_commit_identity_matches_envelope(void)
     elpis_ecsg_k1_destroy(&s);
 }
 
+/* K1 Recovery R0: the candidate's envelope, read under the open transaction, is exactly the state the commit
+ * installs, and its trailer is the identity the commit reports. Reading it writes nothing. */
+static void test_txn_snapshot_is_the_candidate_envelope(void)
+{
+    elpis_ecsg_k1 *s = fresh();
+    elpis_ecsg_k1_commit_identity identity;
+    uint8_t *before = NULL, *again = NULL, *after = NULL, *cand;
+    uint64_t tok = 0u;
+    size_t n = envelope(s, &before);
+
+    cand = (uint8_t *)malloc(n);
+    assert(cand);
+    assert(elpis_ecsg_k1_txn_snapshot_write(s, 1u, cand, n) == ELPIS_ECSG_K1_INVALID);   /* no transaction */
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_txn_learn(s, tok, X, Y, R, 0.002, 3, NULL) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_txn_consolidate(s, tok, X, R) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_txn_snapshot_write(s, tok + 1u, cand, n) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_snapshot_write(s, tok, cand, n - 1u) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_snapshot_write(s, tok, NULL, n) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_txn_snapshot_write(s, tok, cand, n) == ELPIS_ECSG_K1_OK);
+    (void)envelope(s, &again);
+    assert(!memcmp(before, again, n));            /* the authoritative state is untouched */
+    assert(memcmp(before, cand, n) != 0);
+    assert(elpis_ecsg_k1_txn_commit_identity(s, tok, &identity) == ELPIS_ECSG_K1_OK);
+    (void)envelope(s, &after);
+    assert(!memcmp(after, cand, n));
+    assert(!memcmp(identity.state_after_digest, cand + n - ELPIS_ECSG_K1_DIGEST_BYTES, ELPIS_ECSG_K1_DIGEST_BYTES));
+    /* An ended transaction's token reads nothing. */
+    assert(elpis_ecsg_k1_txn_begin(s, &tok) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_txn_abort(s, tok) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_txn_snapshot_write(s, tok, cand, n) == ELPIS_ECSG_K1_INVALID);
+    free(before);
+    free(again);
+    free(after);
+    free(cand);
+    elpis_ecsg_k1_destroy(&s);
+}
+
 static void test_envelope_round_trip_and_corruption(void)
 {
     elpis_ecsg_k1 *s = fresh(), *r = NULL;
@@ -918,6 +956,7 @@ int main(void)
     test_refusals_leave_the_complete_state_unchanged();
     test_transactions_commit_the_complete_state_or_nothing();
     test_transaction_commit_identity_matches_envelope();
+    test_txn_snapshot_is_the_candidate_envelope();
     test_envelope_round_trip_and_corruption();
     test_w_only_snapshot_is_unconsolidated_and_never_a_retained_state();
     test_reset_keeps_w_and_epoch();
@@ -937,6 +976,6 @@ int main(void)
            "envelope integrity, W-only import, reset, SINGLE_WRITER, the transaction refusal contract, hostile "
            "dimensions, resealed envelopes, provenance transitions, epoch overflow, race-free getters, the experience schedule (= ordered txn learn/consolidate, S3 readout, "
            "whole-schedule validation, discard on non-finite, stale), the retained-state digest, read-only QUERY with "
-           "its identity, the managed lease\n");
+           "its identity, the managed lease, the candidate's envelope\n");
     return 0;
 }

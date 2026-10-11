@@ -51,6 +51,13 @@ WRITERS: tuple[PersistentWriter, ...] = (
         "Exactly two fixed 176-byte slot files in one explicit, exclusively owned directory; each publication "
         "replaces the non-current slot in place. No log, history, compaction or growth."),
     PersistentWriter(
+        "k1_checkpoint_slots", F, (),
+        ("native/runtime/src/checkpoint.rs:pub fn write", "native/runtime/src/checkpoint.rs:pub fn retract"),
+        "K1 Recovery R0: exactly two slot files of one fixed size (header + the admitted K1 shape's envelope) in "
+        "one operator-provisioned, exclusively locked directory. The anchor and each LEARN rewrite the slot that "
+        "does not hold the authorized state in place; the runtime never creates, grows, resizes, renames or "
+        "multiplies them. No history; a slot never authorizes itself (continuity decides)."),
+    PersistentWriter(
         "fms_posix_cold_store", F, ("elpis.substrate.residency:Context",),
         ("native/substrate/src/fms_pal_posix.c:p_cold_put",),
         "Only behind a caller-constructed FMS Context with an explicit cold root, cold-tier budget and object "
@@ -62,6 +69,11 @@ WRITERS: tuple[PersistentWriter, ...] = (
         "Each approved publication adds one append-only generation file and one ledger row; the canonical root is "
         "exchanged atomically and the previous snapshot removed; one fixed recovery journal. Growth is bounded by "
         "the number of operator approvals, never by autonomous activity."),
+    PersistentWriter(
+        "k1_checkpoint_provisioning", O, ("elpis.runtime.recovery:provision_k1_checkpoint",),
+        ("native/runtime/src/checkpoint.rs:pub fn provision",),
+        "One new directory with exactly two zeroed, synced slot files per explicit operator command; an existing "
+        "directory is refused (never overwritten, resized or adopted). Never reached by a Runtime operation."),
     PersistentWriter(
         "publication_ledger_v1", O,
         ("elpis.pipeline.application.durable_ledger:DurableApplicationLedger.append",), (),
@@ -122,10 +134,13 @@ AUTONOMOUS_OPERATIONS = frozenset({
     "run_query",           # read-only: writes nothing at all
     "run_learn",           # explicit LearnAuthority; writes only the fixed continuity slots
     "run_turn",            # LEGACY learned turn: a LEARN (explicit LearnAuthority); fixed continuity slots only
+    "recover_k1",          # read-only: what restart may do with the lineage
 })
 OPERATOR_OPERATIONS = frozenset({
     "publish_canonical",   # one-use promotion capability against an operator approval digest
     "evolve",              # an explicit assertion, durably reserved before execution
+    "discard_k1_candidate",   # explicit reconciliation of exactly one named checkpoint candidate
+    "adopt_k1_candidate",     # explicit reconciliation: continuity authorized -> the named candidate
 })
 AUTONOMOUS_WRITERS = frozenset(w.id for w in WRITERS if w.classification is F)
 

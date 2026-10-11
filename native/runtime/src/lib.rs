@@ -18,6 +18,7 @@
 //! The production surface is the C ABI in [`ffi`] (include/elpis/runtime.h). The library also exports the
 //! continuity C ABI of the embedded store's crate, so one library serves both.
 
+pub mod checkpoint;
 pub mod code;
 pub mod core;
 pub mod ffi;

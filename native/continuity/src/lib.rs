@@ -11,7 +11,7 @@
 pub mod error;
 pub mod ffi;
 pub mod record;
-mod sha256;
+pub mod sha256;
 pub mod store;
 
 pub use error::Code;

@@ -874,6 +874,18 @@ int elpis_ecsg_k1_fms_txn_forward(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t to
     return txn_settle(r, s, rc, 0);   /* read-only: only STALE discards */
 }
 
+int elpis_ecsg_k1_fms_txn_snapshot_write(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, uint8_t *out,
+                                         size_t size)
+{
+    slot *s;
+    int rc = txn_take(r, id, token, &s);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
+    }
+    rc = elpis_ecsg_k1_txn_snapshot_write(s->k1, s->txn_native_token, out, size);
+    return txn_settle(r, s, rc, 0);
+}
+
 int elpis_ecsg_k1_fms_txn_epoch(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, uint64_t *epoch)
 {
     slot *s;

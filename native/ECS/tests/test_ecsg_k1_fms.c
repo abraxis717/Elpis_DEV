@@ -136,8 +136,21 @@ static void test_commit_identity_matches_resident_envelope(void)
     OK(elpis_ecsg_k1_fms_inspect(r, id, &info));
     assert(info.transaction_open == 1u && info.lease_count == 1u);
 
-    OK(elpis_ecsg_k1_fms_txn_commit_identity(r, id, tok, &identity));
-    envelope_of(r, id, after);
+    /* K1 Recovery R0: the candidate's envelope under the open transaction, read-only. */
+    {
+        uint8_t *cand = malloc(ENVELOPE), *again = malloc(ENVELOPE);
+        assert(cand && again);
+        assert(elpis_ecsg_k1_fms_txn_snapshot_write(r, id, tok + 1u, cand, ENVELOPE) == ELPIS_ECSG_K1_INVALID);
+        assert(elpis_ecsg_k1_fms_txn_snapshot_write(r, id, tok, cand, ENVELOPE - 1u) == ELPIS_ECSG_K1_INVALID);
+        OK(elpis_ecsg_k1_fms_txn_snapshot_write(r, id, tok, cand, ENVELOPE));
+        envelope_of(r, id, again);
+        assert(!memcmp(before, again, ENVELOPE) && memcmp(before, cand, ENVELOPE) != 0);
+        OK(elpis_ecsg_k1_fms_txn_commit_identity(r, id, tok, &identity));
+        envelope_of(r, id, after);
+        assert(!memcmp(after, cand, ENVELOPE));
+        free(cand);
+        free(again);
+    }
 
     assert(!memcmp(identity.state_before_digest,
                    before + ENVELOPE - ELPIS_ECSG_K1_DIGEST_BYTES,
@@ -635,6 +648,6 @@ int main(void)
     printf("ecsg_k1_fms: resident K1 = standalone K1; warm path over resident bytes; COLD->WARM; pinning; "
            "refusals leave the complete state unchanged; envelopes and W-only imports; the transaction refusal "
            "contract; hostile imports; provenance; the experience schedule (resident = standalone); the resident "
-           "retained-state digest; the managed lease\n");
+           "retained-state digest; the managed lease; the candidate's envelope\n");
     return 0;
 }

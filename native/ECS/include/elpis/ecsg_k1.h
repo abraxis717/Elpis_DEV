@@ -235,6 +235,9 @@ elpis_ecsg_k1_txn_consolidate(elpis_ecsg_k1 *state, uint64_t token, const double
 elpis_ecsg_k1_status
 elpis_ecsg_k1_txn_forward(elpis_ecsg_k1 *state, uint64_t token, const double *x, size_t rows, double *out);
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_epoch(elpis_ecsg_k1 *state, uint64_t token, uint64_t *epoch);
+/* The portable envelope of the open transaction's candidate (read-only; size >= snapshot_size). Its SHA-256 trailer
+ * is the retained-state identity the commit will report (state_after_digest). A stale source is STALE. */
+elpis_ecsg_k1_status elpis_ecsg_k1_txn_snapshot_write(elpis_ecsg_k1 *state, uint64_t token, uint8_t *out, size_t size);
 elpis_ecsg_k1_status
 elpis_ecsg_k1_txn_commit(elpis_ecsg_k1 *state, uint64_t token, elpis_ecsg_k1_transition *transition);
 elpis_ecsg_k1_status

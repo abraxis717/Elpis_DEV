@@ -69,6 +69,15 @@ enum {
     ELPIS_RUNTIME_EVOLUTION_NOT_IN_FLIGHT = 74,
     ELPIS_RUNTIME_FUEL = 75,                     /* COGNITION_FUEL_EXCEEDED: outside the fuel budget (or the budget
                                                     outside the ceiling); refused before reserve or any transaction */
+    ELPIS_RUNTIME_CHECKPOINT_INVALID = 76,       /* the K1 checkpoint store is not provisioned as required */
+    ELPIS_RUNTIME_CHECKPOINT_IO = 77,            /* a checkpoint slot could not be written or synced; the
+                                                    authorized slot is intact */
+    ELPIS_RUNTIME_CHECKPOINT_SHAPE = 78,         /* the envelope is not the provisioned capacity: never resized */
+    ELPIS_RUNTIME_CHECKPOINT_UNRESOLVED = 79,    /* an unauthorized newer candidate awaits discard or adopt */
+    ELPIS_RUNTIME_RECOVERY_NOTHING = 1,          /* continuity unanchored: no lineage; a slot never creates one */
+    ELPIS_RUNTIME_RECOVERY_RESUMABLE = 2,        /* a verified slot holds continuity's identity; no candidate */
+    ELPIS_RUNTIME_RECOVERY_CANDIDATE_UNRESOLVED = 3, /* a newer unauthorized slot exists: operator discard/adopt */
+    ELPIS_RUNTIME_RECOVERY_CHECKPOINT_MISSING = 4,   /* no verified slot holds continuity's identity */
     ELPIS_RUNTIME_SUBSTRATE_K1 = 1,              /* standalone K1 state (ecsg_k1.h) */
     ELPIS_RUNTIME_SUBSTRATE_K1_FMS = 2           /* FMS-resident K1 state (ecsg_k1_fms.h) */
 };
@@ -120,6 +129,9 @@ typedef struct {
     int (*leased_txn_commit_identity)(void *state, uint64_t lease, uint64_t token,
                                       elpis_runtime_commit_identity *identity);
     int (*txn_abort)(void *state, uint64_t token);
+    /* Read-only envelopes (ELPISGK1, SHA-256 trailer = retained-state identity) for K1 Recovery R0. */
+    int (*snapshot_write)(void *state, uint8_t *out, size_t size);
+    int (*txn_snapshot_write)(void *state, uint64_t token, uint8_t *out, size_t size);
 } elpis_runtime_k1_api;
 
 /* The K1 FMS adapter's functions (runtime = elpis_ecsg_k1_fms *, id = the resident state). */
@@ -139,6 +151,8 @@ typedef struct {
     int (*leased_txn_commit_identity)(void *runtime, uint64_t id, uint64_t lease, uint64_t token,
                                       elpis_runtime_commit_identity *identity);
     int (*txn_abort)(void *runtime, uint64_t id, uint64_t token);
+    int (*snapshot_write)(void *runtime, uint64_t id, uint8_t *out, size_t size);
+    int (*txn_snapshot_write)(void *runtime, uint64_t id, uint64_t token, uint8_t *out, size_t size);
 } elpis_runtime_k1_fms_api;
 
 /* One native K1 state. `owner` is the caller's identity for the object owning `handle`; it must stay unique
@@ -202,6 +216,16 @@ typedef struct {
     uint64_t max_query_rows;
 } elpis_runtime_budget;
 
+/* K1 Recovery R0 (docs/K1_RECOVERY_R0.md): what restart may do with the lineage. Continuity decides; checkpoint
+ * slots are evidence and never authorize themselves. */
+typedef struct {
+    uint32_t disposition;           /* ELPIS_RUNTIME_RECOVERY_* */
+    uint32_t authorized_present;    /* 1 when a verified slot holds the authorized identity */
+    uint8_t authorized[32];         /* continuity's identity (zero when unanchored) */
+    uint8_t candidate[32];          /* the unresolved candidate's identity (zero when none) */
+    uint64_t envelope_bytes;        /* the authorized envelope's size when RESUMABLE, else 0 */
+} elpis_runtime_recovery;
+
 typedef struct elpis_runtime elpis_runtime;
 
 uint32_t elpis_runtime_abi_version(void);
@@ -258,6 +282,25 @@ int elpis_runtime_turn_abort(elpis_runtime *runtime, const elpis_runtime_substra
 /* Release the bound state: its K1 lease is released and the lineage unbound (the next QUERY or LEARN binds and
  * verifies again). Refused while a managed turn is open; another state is COGNITION_SUBSTRATE_SWITCH. */
 int elpis_runtime_release(elpis_runtime *runtime, const elpis_runtime_substrate *substrate);
+
+/* K1 Recovery R0: a bounded, crash-recoverable checkpoint owner (two fixed slot files; no history).
+ * provision (operator, explicit): create the absolute directory `path` (it must not exist) holding exactly two
+ * zeroed slot files sized for envelopes of `envelope_bytes` (the admitted K1 shape's snapshot size).
+ * attach: open a provisioned store for this runtime (exclusively locked; no turn open). From then on the anchor
+ * persists the anchored envelope before continuity anchors it, and every LEARN persists its complete candidate
+ * envelope (in the slot that does not hold the authorized state) before the native commit; the commit's identity
+ * must equal the checkpointed one or the runtime fail-stops (CONTINUITY_STATE_MISMATCH). A LEARN is refused while
+ * an unresolved candidate exists (RUNTIME_CHECKPOINT_UNRESOLVED).
+ * recover: read-only; when RESUMABLE and `envelope_len` holds it, the authorized envelope is copied to `envelope`.
+ * discard / adopt: explicit operator reconciliation of exactly `candidate` (adopt publishes authorized ->
+ * candidate in continuity after the candidate's envelope verified; refused while a state is bound). */
+int elpis_runtime_checkpoint_provision(const uint8_t *path, size_t len, size_t envelope_bytes);
+int elpis_runtime_checkpoint_attach(elpis_runtime *runtime, const uint8_t *path, size_t len);
+int elpis_runtime_checkpoint_recover(elpis_runtime *runtime, elpis_runtime_recovery *out, uint8_t *envelope,
+                                     size_t envelope_len);
+int elpis_runtime_checkpoint_discard(elpis_runtime *runtime, const uint8_t candidate[32]);
+int elpis_runtime_checkpoint_adopt(elpis_runtime *runtime, const uint8_t candidate[32],
+                                   elpis_continuity_snapshot *out);
 
 /* Evolution: one bounded attempt at a time. authority -> (caller validates) -> reserve -> (caller executes
  * once) -> finalize, or abandon (the reservation stays pending; fail-stop CONTINUITY_EVOLUTION_PENDING).

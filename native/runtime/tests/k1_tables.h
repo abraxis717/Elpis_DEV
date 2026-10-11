@@ -36,9 +36,14 @@ static int k1_commit(void *s, uint64_t lease, uint64_t token, elpis_runtime_comm
     return elpis_ecsg_k1_leased_txn_commit_identity(s, lease, token, (elpis_ecsg_k1_commit_identity *)identity);
 }
 static int k1_abort(void *s, uint64_t token) { return elpis_ecsg_k1_txn_abort(s, token); }
+static int k1_snapshot(void *s, uint8_t *out, size_t size) { return elpis_ecsg_k1_snapshot_write(s, out, size); }
+static int k1_txn_snapshot(void *s, uint64_t token, uint8_t *out, size_t size) {
+    return elpis_ecsg_k1_txn_snapshot_write(s, token, out, size);
+}
 
-static const elpis_runtime_k1_api K1_API = {k1_digest, k1_shape, k1_query, k1_claim, k1_release,
-                                            k1_reserve, k1_begin, k1_schedule, k1_commit, k1_abort};
+static const elpis_runtime_k1_api K1_API = {k1_digest, k1_shape,  k1_query,    k1_claim,  k1_release,
+                                            k1_reserve, k1_begin, k1_schedule, k1_commit, k1_abort,
+                                            k1_snapshot, k1_txn_snapshot};
 
 #ifdef ELPIS_TEST_K1_FMS
 static int k1fms_digest(void *r, uint64_t id, uint8_t out[32]) { return elpis_ecsg_k1_fms_state_digest(r, id, out); }
@@ -69,9 +74,16 @@ static int k1fms_commit(void *r, uint64_t id, uint64_t lease, uint64_t token, el
                                                         (elpis_ecsg_k1_commit_identity *)identity);
 }
 static int k1fms_abort(void *r, uint64_t id, uint64_t token) { return elpis_ecsg_k1_fms_txn_abort(r, id, token); }
+static int k1fms_snapshot(void *r, uint64_t id, uint8_t *out, size_t size) {
+    return elpis_ecsg_k1_fms_snapshot_write(r, id, out, size);
+}
+static int k1fms_txn_snapshot(void *r, uint64_t id, uint64_t token, uint8_t *out, size_t size) {
+    return elpis_ecsg_k1_fms_txn_snapshot_write(r, id, token, out, size);
+}
 
-static const elpis_runtime_k1_fms_api FMS_API = {k1fms_digest, k1fms_shape, k1fms_query, k1fms_claim, k1fms_release,
-                                                 k1fms_reserve, k1fms_begin, k1fms_schedule, k1fms_commit, k1fms_abort};
+static const elpis_runtime_k1_fms_api FMS_API = {k1fms_digest,   k1fms_shape,   k1fms_query,       k1fms_claim,
+                                                 k1fms_release,  k1fms_reserve, k1fms_begin,       k1fms_schedule,
+                                                 k1fms_commit,   k1fms_abort,   k1fms_snapshot,    k1fms_txn_snapshot};
 #endif
 
 #endif

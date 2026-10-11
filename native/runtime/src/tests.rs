@@ -48,19 +48,27 @@ struct State {
     calls: Vec<&'static str>,
 }
 
+/// The stand-in's portable envelope (as K1's: magic, the retained values, a SHA-256 trailer over what precedes it).
+const ENVELOPE: usize = 176;
+
+fn envelope_of(w: &[f64], epoch: u64) -> [u8; ENVELOPE] {
+    let mut e = [0u8; ENVELOPE];
+    e[..8].copy_from_slice(b"ELPISGK1");
+    for (i, v) in w.iter().enumerate() {
+        e[16 + 8 * i..24 + 8 * i].copy_from_slice(&v.to_bits().to_le_bytes());
+    }
+    e[40..48].copy_from_slice(&epoch.to_le_bytes());
+    let trailer = elpis_continuity::sha256::digest(&[&e[..ENVELOPE - 32]]);
+    e[ENVELOPE - 32..].copy_from_slice(&trailer);
+    e
+}
+
 impl State {
+    /// The retained-state identity: the envelope's SHA-256 trailer (K1's law).
     fn identity(&self) -> Digest {
-        // FNV-1a over the retained values, widened to 32 bytes: an identity, not a cryptographic digest.
+        let e = envelope_of(&self.w, self.epoch);
         let mut out = [0u8; 32];
-        let mut h: u64 = 0xcbf29ce484222325;
-        for v in self.w.iter().map(|v| v.to_bits()).chain([self.epoch]) {
-            for b in v.to_le_bytes() {
-                h = (h ^ b as u64).wrapping_mul(0x100000001b3);
-            }
-        }
-        for (i, chunk) in out.chunks_mut(8).enumerate() {
-            chunk.copy_from_slice(&(h.rotate_left(i as u32 * 7) ^ i as u64).to_le_bytes());
-        }
+        out.copy_from_slice(&e[ENVELOPE - 32..]);
         out
     }
 
@@ -124,6 +132,11 @@ impl Fake {
 
     fn epoch(&self) -> u64 {
         self.state().epoch
+    }
+
+    fn envelope(&self) -> [u8; ENVELOPE] {
+        let s = self.state();
+        envelope_of(&s.w, s.epoch)
     }
 
     fn generation(&self) -> u64 {
@@ -340,6 +353,30 @@ impl K1Ops for Fake {
         s.calls.push("shape");
         *dim = DIM;
         *width = WIDTH;
+        0
+    }
+
+    fn snapshot_write(&mut self, out: &mut [u8]) -> i32 {
+        let mut s = self.state();
+        s.calls.push("snapshot_write");
+        if out.len() < ENVELOPE {
+            return -1;
+        }
+        out[..ENVELOPE].copy_from_slice(&envelope_of(&s.w, s.epoch));
+        0
+    }
+
+    fn txn_snapshot_write(&mut self, token: u64, out: &mut [u8]) -> i32 {
+        let mut s = self.state();
+        s.calls.push("txn_snapshot_write");
+        let txn = match s.txn.as_ref() {
+            Some(t) if t.token == token => t,
+            _ => return -1,
+        };
+        if out.len() < ENVELOPE {
+            return -1;
+        }
+        out[..ENVELOPE].copy_from_slice(&envelope_of(&txn.w, txn.epoch));
         0
     }
 
@@ -1329,4 +1366,276 @@ fn a_second_runtime_binding_the_same_state_makes_the_first_fail_stop() {
     assert_eq!(turn(&mut first, &mut sub, key(1)).unwrap_err(), Code::StateMismatch.into());
     assert_eq!((sub.retained(), first.fault()), (retained, Some(Code::StateMismatch)));
     turn(&mut second, &mut sub, key(1)).unwrap();
+}
+
+// -- K1 Recovery R0: the bounded checkpoint store ------------------------------------------------------------------
+
+mod recovery {
+    use super::*;
+    use crate::checkpoint::{self, Disposition, HEADER, SLOT_NAMES};
+
+    struct Ck(PathBuf);
+
+    impl Ck {
+        fn new(name: &str) -> Ck {
+            let p = std::env::temp_dir().join(format!("elpis-k1ck-{}-{}", std::process::id(), name));
+            let _ = std::fs::remove_dir_all(&p);
+            checkpoint::Store::provision(&p, ENVELOPE).unwrap();
+            Ck(p)
+        }
+
+        fn slot_bytes(&self, i: usize) -> Vec<u8> {
+            std::fs::read(self.0.join(SLOT_NAMES[i])).unwrap()
+        }
+
+        fn write_slot(&self, i: usize, bytes: &[u8]) {
+            std::fs::write(self.0.join(SLOT_NAMES[i]), bytes).unwrap();
+        }
+    }
+
+    impl Drop for Ck {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn core(dir: &Dir, ck: &Ck) -> Core {
+        let mut c = dir.core();
+        c.checkpoint_attach(&ck.0).unwrap();
+        c
+    }
+
+    fn resume(core: &mut Core) -> (Disposition, Option<Vec<u8>>) {
+        let r = core.recover().unwrap();
+        (r.disposition, r.envelope)
+    }
+
+    #[test]
+    fn provisioning_is_fixed_and_never_overwrites() {
+        let ck = Ck::new("provision");
+        assert_eq!(ck.slot_bytes(0), vec![0u8; HEADER + ENVELOPE]);
+        assert_eq!(ck.slot_bytes(1).len(), HEADER + ENVELOPE);
+        assert_eq!(checkpoint::Store::provision(&ck.0, ENVELOPE).unwrap_err(), Rt::CheckpointInvalid);
+        assert_eq!(
+            checkpoint::Store::provision(std::path::Path::new("relative"), ENVELOPE).unwrap_err(),
+            Rt::CheckpointInvalid
+        );
+        std::fs::write(ck.0.join("stray"), b"x").unwrap(); // anything but the two slots refuses the store
+        assert!(checkpoint::Store::open(&ck.0).is_err());
+        std::fs::remove_file(ck.0.join("stray")).unwrap();
+        ck.write_slot(1, &[0u8; 10]); // unequal sizes refuse it too
+        assert!(checkpoint::Store::open(&ck.0).is_err());
+    }
+
+    #[test]
+    fn anchor_and_learn_keep_the_authorized_state_resumable_in_two_fixed_slots() {
+        let (dir, ck) = (Dir::new("ck-learn"), Ck::new("learn"));
+        let mut sub = Fake::new(0.1);
+        let mut c = core(&dir, &ck);
+        c.anchor(&mut sub, key(1)).unwrap();
+        let (d, envelope) = resume(&mut c);
+        assert_eq!(d, Disposition::Resumable);
+        assert_eq!(checkpoint::envelope_identity(&envelope.unwrap()), Some(sub.identity()));
+        for n in 0..5 {
+            turn(&mut c, &mut sub, key(1)).unwrap();
+            let (d, envelope) = resume(&mut c);
+            assert_eq!(d, Disposition::Resumable, "turn {n}");
+            assert_eq!(envelope.unwrap(), sub.envelope().to_vec());
+        }
+        // Physically bounded: exactly two slot files of the provisioned size, whatever the number of LEARNs.
+        let mut names: Vec<_> = std::fs::read_dir(&ck.0).unwrap().map(|e| e.unwrap().file_name()).collect();
+        names.sort();
+        assert_eq!(names, SLOT_NAMES.map(std::ffi::OsString::from));
+        assert!(SLOT_NAMES
+            .iter()
+            .all(|n| std::fs::metadata(ck.0.join(n)).unwrap().len() == (HEADER + ENVELOPE) as u64));
+    }
+
+    #[test]
+    fn checkpoint_bytes_never_authorize_themselves() {
+        let (dir, ck) = (Dir::new("ck-self"), Ck::new("self"));
+        let mut sub = Fake::new(0.1);
+        {
+            // Unanchored: a valid slot (written straight into the store) is never a lineage.
+            let mut store = checkpoint::Store::open(&ck.0).unwrap();
+            let envelope = envelope_of(&sub.state().w, 7);
+            store.envelope_buffer().copy_from_slice(&envelope);
+            store.write(None).unwrap();
+            drop(store);
+            let mut c = dir.core();
+            c.checkpoint_attach(&ck.0).unwrap();
+            let r = c.recover().unwrap();
+            assert_eq!(r.disposition, Disposition::NothingToRecover);
+        }
+        let mut c = core(&dir, &ck);
+        c.anchor(&mut sub, key(1)).unwrap();
+        turn(&mut c, &mut sub, key(1)).unwrap();
+        drop(c);
+        // A checksum-valid slot of another identity replaces the authorized one: not resumable.
+        let other = Fake::new(0.7);
+        let forged = envelope_of(&other.state().w, 99);
+        let held = (0..2).find(|&i| ck.slot_bytes(i)[32..64] == sub.identity()).unwrap();
+        let raw = ck.slot_bytes(held);
+        let generation = u64::from_le_bytes(raw[16..24].try_into().unwrap());
+        let mut slot = vec![0u8; HEADER];
+        slot[..8].copy_from_slice(b"ELPK1CK\x01");
+        slot[8..10].copy_from_slice(&1u16.to_le_bytes());
+        slot[16..24].copy_from_slice(&generation.to_le_bytes());
+        slot[24..32].copy_from_slice(&(ENVELOPE as u64).to_le_bytes());
+        slot[32..64].copy_from_slice(&forged[ENVELOPE - 32..]);
+        let sum = elpis_continuity::sha256::digest(&[b"elpis.k1-checkpoint.slot.v1\0", &slot[..96], &forged]);
+        slot[96..128].copy_from_slice(&sum);
+        slot.extend_from_slice(&forged);
+        ck.write_slot(held, &slot);
+        let mut c = core(&dir, &ck);
+        let r = c.recover().unwrap();
+        assert_eq!((r.disposition, r.envelope), (Disposition::CheckpointMissing, None));
+        assert_eq!(r.authorized, sub.identity());
+    }
+
+    #[test]
+    fn a_torn_or_corrupted_slot_is_not_a_checkpoint() {
+        let (dir, ck) = (Dir::new("ck-torn"), Ck::new("torn"));
+        let mut sub = Fake::new(0.1);
+        let mut c = core(&dir, &ck);
+        c.anchor(&mut sub, key(1)).unwrap();
+        turn(&mut c, &mut sub, key(1)).unwrap();
+        drop(c);
+        let held = (0..2).find(|&i| ck.slot_bytes(i)[32..64] == sub.identity()).unwrap();
+        let other = 1 - held;
+        let mut torn = ck.slot_bytes(other);
+        torn[HEADER + 20] ^= 0xff; // the older slot, corrupted: never a candidate
+        ck.write_slot(other, &torn);
+        let mut c = core(&dir, &ck);
+        assert_eq!(resume(&mut c).0, Disposition::Resumable);
+        drop(c);
+        let mut torn = ck.slot_bytes(held);
+        torn[HEADER + 20] ^= 0xff; // the authorized slot itself: the authorized state is not recoverable here
+        ck.write_slot(held, &torn);
+        let mut c = core(&dir, &ck);
+        assert_eq!(resume(&mut c).0, Disposition::CheckpointMissing);
+    }
+
+    #[test]
+    fn a_state_of_another_shape_is_refused_never_resized_for() {
+        let (dir, ck) =
+            (Dir::new("ck-shape"), Ck(std::env::temp_dir().join(format!("elpis-k1ck-{}-shape", std::process::id()))));
+        let _ = std::fs::remove_dir_all(&ck.0);
+        checkpoint::Store::provision(&ck.0, ENVELOPE + 8).unwrap();
+        let mut sub = Fake::new(0.1);
+        let mut c = core(&dir, &ck);
+        assert_eq!(c.anchor(&mut sub, key(1)).unwrap_err().error, Rt::CheckpointShape.into());
+        assert_eq!(anchored(&c), None);
+        assert_eq!(std::fs::metadata(ck.0.join(SLOT_NAMES[0])).unwrap().len(), (HEADER + ENVELOPE + 8) as u64);
+    }
+
+    #[cfg(feature = "testing")]
+    mod crashes {
+        use super::*;
+        use crate::core::CrashPoint;
+
+        const WRITE_FAIL: u32 = 2;
+        const SYNC_FAIL_LOST: u32 = 5;
+        const SYNC_FAIL_DURABLE: u32 = 6;
+
+        /// Anchor and one LEARN, then a LEARN that dies or fails at `fault`; returns (D0, the candidate D1).
+        fn interrupted(dir: &Dir, ck: &Ck, sub: &mut Fake, fault: &dyn Fn(&mut Core)) -> (Digest, Digest) {
+            let mut c = core(dir, ck);
+            c.anchor(sub, key(1)).unwrap();
+            turn(&mut c, sub, key(1)).unwrap();
+            let d0 = sub.identity();
+            fault(&mut c);
+            let i = input(4, 3);
+            let mut s3 = vec![0.0; features(DIM)];
+            c.turn_begin(sub, key(1), &stimulus(&i), &CEILING, &mut s3).unwrap();
+            let candidate = {
+                let s = sub.state();
+                let t = s.txn.as_ref().unwrap();
+                let e = envelope_of(&t.w, t.epoch);
+                let mut d = [0u8; 32];
+                d.copy_from_slice(&e[ENVELOPE - 32..]);
+                d
+            };
+            assert!(c.turn_commit(sub, key(1)).is_err());
+            assert!(c.fault().is_some());
+            (d0, candidate) // the process dies here: the core and the in-memory state are gone
+        }
+
+        #[test]
+        fn every_crash_boundary_resolves_to_an_exact_state_or_an_explicit_disposition() {
+            type Arm = Box<dyn Fn(&mut Core)>;
+            let cases: Vec<(&str, Arm, Disposition)> = vec![
+                (
+                    "after-checkpoint",
+                    Box::new(|c: &mut Core| c.testing_crash_at(Some(CrashPoint::AfterCheckpoint))),
+                    Disposition::CandidateUnresolved,
+                ),
+                (
+                    "after-native-commit",
+                    Box::new(|c: &mut Core| c.testing_crash_at(Some(CrashPoint::AfterNativeCommit))),
+                    Disposition::CandidateUnresolved,
+                ),
+                (
+                    "publication-refused",
+                    Box::new(|c: &mut Core| c.testing_arm(1, WRITE_FAIL, 0).unwrap()),
+                    Disposition::CandidateUnresolved,
+                ),
+                (
+                    "publication-uncertain-lost",
+                    Box::new(|c: &mut Core| c.testing_arm(1, SYNC_FAIL_LOST, 0).unwrap()),
+                    Disposition::CandidateUnresolved,
+                ),
+                (
+                    "publication-uncertain-durable",
+                    Box::new(|c: &mut Core| c.testing_arm(1, SYNC_FAIL_DURABLE, 0).unwrap()),
+                    Disposition::Resumable,
+                ),
+            ];
+            for (name, arm, expected) in cases {
+                let (dir, ck) = (Dir::new(&format!("ck-crash-{name}")), Ck::new(&format!("crash-{name}")));
+                let mut sub = Fake::new(0.1);
+                let (d0, d1) = interrupted(&dir, &ck, &mut sub, &*arm);
+                let mut c = core(&dir, &ck);
+                let r = c.recover().unwrap();
+                assert_eq!(r.disposition, expected, "{name}");
+                match expected {
+                    Disposition::Resumable => {
+                        // Continuity published D1 durably: resume exactly D1, from its complete checkpoint.
+                        assert_eq!(r.authorized, d1, "{name}");
+                        assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(d1), "{name}");
+                    }
+                    _ => {
+                        // Continuity holds D0, a complete D1 exists: never rolled forward or back silently.
+                        assert_eq!((r.authorized, r.candidate, r.authorized_present), (d0, d1, true), "{name}");
+                        assert_eq!(r.envelope, None, "{name}");
+                        // Nothing proceeds until an operator decides.
+                        let mut fresh = Fake::new(0.1);
+                        assert_eq!(turn(&mut c, &mut fresh, key(3)).unwrap_err(), Rt::CheckpointUnresolved.into());
+                        assert_eq!(c.checkpoint_discard(&d0).unwrap_err().error, Rt::CheckpointInvalid.into());
+                    }
+                }
+            }
+        }
+
+        #[test]
+        fn an_operator_discards_or_adopts_an_unresolved_candidate_explicitly() {
+            for adopt in [false, true] {
+                let (dir, ck) = (Dir::new(&format!("ck-resolve-{adopt}")), Ck::new(&format!("resolve-{adopt}")));
+                let mut sub = Fake::new(0.1);
+                let crash = |c: &mut Core| c.testing_crash_at(Some(CrashPoint::AfterCheckpoint));
+                let (d0, d1) = interrupted(&dir, &ck, &mut sub, &crash);
+                let mut c = core(&dir, &ck);
+                if adopt {
+                    let s = c.checkpoint_adopt(&d1).unwrap();
+                    assert_eq!(s.cognition(), Cognition::Anchored(d1));
+                } else {
+                    c.checkpoint_discard(&d1).unwrap();
+                }
+                let r = c.recover().unwrap();
+                let want = if adopt { d1 } else { d0 };
+                assert_eq!((r.disposition, r.authorized), (Disposition::Resumable, want));
+                assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(want));
+            }
+        }
+    }
 }

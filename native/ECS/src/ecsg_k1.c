@@ -1631,6 +1631,25 @@ elpis_ecsg_k1_txn_forward(elpis_ecsg_k1 *s, uint64_t token, const double *x, siz
     return rc;
 }
 
+/* The retained-state envelope of the open transaction's candidate (read-only; for crash recovery: the candidate is
+ * persisted before it commits). Its SHA-256 trailer is the identity the commit will report as state_after. */
+elpis_ecsg_k1_status elpis_ecsg_k1_txn_snapshot_write(elpis_ecsg_k1 *s, uint64_t token, uint8_t *out, size_t size)
+{
+    elpis_ecsg_k1_status rc;
+    if (s == NULL || s->image == NULL || out == NULL || size < elpis_ecsg_k1_snapshot_size(s)) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (!enter(s)) {
+        return ELPIS_ECSG_K1_BUSY;
+    }
+    rc = txn_check(s, token);
+    if (rc == ELPIS_ECSG_K1_OK) {
+        ecsg_k1_internal_encode(s, s->cand, out);
+    }
+    leave(s);
+    return rc;
+}
+
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_epoch(elpis_ecsg_k1 *s, uint64_t token, uint64_t *epoch)
 {
     elpis_ecsg_k1_status rc;

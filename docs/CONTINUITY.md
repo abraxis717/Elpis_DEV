@@ -131,6 +131,12 @@ fail-stops with the publication code, and restart resolves through the law
 above. No missing turn is synthesized. One open `Runtime` owns one K1 lineage
 handle; the binding and the fail-stop are RuntimeCore's (docs/RUNTIME_CORE.md).
 
+Continuity holds identities, never K1 state. Resuming a lost in-memory state
+from its complete envelope is K1 Recovery R0's job (docs/K1_RECOVERY_R0.md), a
+distinct, operator-provisioned owner of two fixed slots whose bytes never
+authorize themselves: a slot is resumable only when its identity is the one
+continuity holds.
+
 ## Evolution binding
 
 `EvolutionAuthority(revision, head, pending_assertion)` holds exactly one

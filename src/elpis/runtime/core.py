@@ -24,6 +24,7 @@ alive; a standalone ``K1State`` must not be closed while a managed turn on it is
 from __future__ import annotations
 
 import ctypes as C
+from dataclasses import dataclass
 from pathlib import Path
 from struct import unpack_from as _unpack_from
 
@@ -48,7 +49,7 @@ from elpis.substrate.native_admission import AdmittedLibrary, admission_of, admi
 from .errors import CompositionError
 from .fuel import CEILING as _FUEL_CEILING
 
-__all__ = ("RuntimeCore", "RuntimeLibrary", "TurnBegun")
+__all__ = ("K1Recovery", "RuntimeCore", "RuntimeLibrary", "TurnBegun")
 
 _ABI_VERSION = 3
 _TESTING_PROCESS_DEATH = 255
@@ -102,7 +103,34 @@ class _Budget(C.Structure):
 # The K1 library's own entry points RuntimeCore calls, in the ABI v3 table order. Every mutating entry is a leased
 # one (ecsg_k1.h, "Managed ownership").
 _API_ENTRIES = ("state_digest", "shape", "query_identity", "lease_claim", "lease_release", "leased_reserve",
-                "leased_txn_begin", "leased_txn_run_schedule", "leased_txn_commit_identity", "txn_abort")
+                "leased_txn_begin", "leased_txn_run_schedule", "leased_txn_commit_identity", "txn_abort",
+                "snapshot_write", "txn_snapshot_write")
+
+
+class _Recovery(C.Structure):
+    _fields_ = [("disposition", C.c_uint32), ("authorized_present", C.c_uint32), ("authorized", C.c_uint8 * 32),
+                ("candidate", C.c_uint8 * 32), ("envelope_bytes", _U64)]
+
+
+_DISPOSITIONS = {1: "NOTHING_TO_RECOVER", 2: "RESUMABLE", 3: "CANDIDATE_UNRESOLVED", 4: "CHECKPOINT_MISSING"}
+
+
+@dataclass(frozen=True)
+class K1Recovery:
+    """What restart may do with the K1 lineage (K1 Recovery R0, docs/K1_RECOVERY_R0.md). Continuity decides; the
+    checkpoint slots are evidence and never authorize themselves.
+
+    ``disposition`` is one of ``NOTHING_TO_RECOVER`` (continuity unanchored), ``RESUMABLE`` (``envelope`` is the
+    complete authorized ``(W, epoch, H, a)`` envelope: restore it into a K1 state), ``CANDIDATE_UNRESOLVED`` (a
+    newer unauthorized ``candidate`` needs an explicit operator discard or adopt) or ``CHECKPOINT_MISSING`` (no
+    verified slot holds continuity's identity ``authorized``).
+    """
+
+    disposition: str
+    authorized: bytes | None
+    authorized_present: bool
+    candidate: bytes | None
+    envelope: bytes | None
 
 
 class _K1Api(C.Structure):
@@ -116,7 +144,7 @@ class _Substrate(C.Structure):
 
 assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 120 and C.sizeof(_Counters) == 80
 assert C.sizeof(_Budget) == 48
-assert C.sizeof(_Query) == 40
+assert C.sizeof(_Query) == 40 and C.sizeof(_Recovery) == 80
 
 
 def _api(lib, prefix):
@@ -233,6 +261,11 @@ class RuntimeLibrary:
             "evolution_finalize": [P, P, S],
             "evolution_abandon": [P],
             "evolution_reconcile": [P, E, P, S],
+            "checkpoint_provision": [C.c_char_p, C.c_size_t, C.c_size_t],
+            "checkpoint_attach": [P, C.c_char_p, C.c_size_t],
+            "checkpoint_recover": [P, C.POINTER(_Recovery), P, C.c_size_t],
+            "checkpoint_discard": [P, P],
+            "checkpoint_adopt": [P, P, S],
         }
         for name, args in sig.items():
             fn = getattr(lib, "elpis_runtime_" + name)
@@ -244,6 +277,7 @@ class RuntimeLibrary:
         if self.testing:
             lib.elpis_runtime_testing_fault.argtypes = [P, C.c_uint64, C.c_uint32, C.c_uint64]
             lib.elpis_runtime_testing_io_counters.argtypes = [P, C.POINTER(_IOCounters), C.c_int]
+            lib.elpis_runtime_testing_checkpoint_crash.argtypes = [P, C.c_uint32]
         ceiling = _Budget()
         if lib.elpis_runtime_fuel_ceiling(C.byref(ceiling)) != 0 or \
                 tuple(getattr(ceiling, n) for n, _ in _Budget._fields_) != _FUEL_CEILING.native_fields():
@@ -405,6 +439,35 @@ class RuntimeCore:
     def evolution_reconcile(self, expected: EvolutionAuthority, receipt_digest: str) -> ContinuitySnapshot:
         return self._snapshot("evolution_reconcile", _ref(_evolution_arg(expected)), _hex_digest(receipt_digest))
 
+    # -- K1 Recovery R0 ------------------------------------------------------------------------------------------------
+    def checkpoint_attach(self, directory: Path) -> None:
+        raw = str(directory).encode()
+        self.library.check(self._f.elpis_runtime_checkpoint_attach(self._handle, raw, len(raw)))
+
+    def checkpoint_recover(self) -> K1Recovery:
+        """Read-only: the disposition, and the authorized envelope when resumable (one sizing call, one copy)."""
+        out = _Recovery()
+        self.library.check(self._f.elpis_runtime_checkpoint_recover(self._handle, C.byref(out), None, 0))
+        envelope = None
+        if out.envelope_bytes:
+            size = int(out.envelope_bytes)
+            buffer, again = (C.c_uint8 * size)(), _Recovery()
+            self.library.check(self._f.elpis_runtime_checkpoint_recover(self._handle, C.byref(again), buffer, size))
+            if bytes(again.authorized) != bytes(out.authorized) or again.envelope_bytes != size:
+                raise CompositionError("CHECKPOINT_INVALID", "the checkpoint changed while it was read")
+            envelope = bytes(buffer)
+        present = bool(out.authorized_present)
+        authorized, candidate = bytes(out.authorized), bytes(out.candidate)
+        return K1Recovery(_DISPOSITIONS[out.disposition], authorized if any(authorized) else None, present,
+                          candidate if any(candidate) else None, envelope)
+
+    def checkpoint_discard(self, candidate: bytes) -> None:
+        self.library.check(self._f.elpis_runtime_checkpoint_discard(self._handle, _digest_arg(candidate)))
+
+    def checkpoint_adopt(self, candidate: bytes) -> ContinuitySnapshot:
+        return self._snapshot("checkpoint_adopt", _digest_arg(candidate),
+                              detail="the candidate was not adopted")
+
     # -- testing library only -------------------------------------------------------------------------------------------
     def testing_fault(self, publication: int, action: int, arg: int = 0) -> None:
         self._require_testing()
@@ -416,6 +479,12 @@ class RuntimeCore:
         self.library.check(self._f.elpis_runtime_testing_io_counters(self._handle, C.byref(out), int(reset)))
         return {name: getattr(out, name) for name, _ in _IOCounters._fields_}
 
+    def testing_checkpoint_crash(self, point: int) -> None:
+        """Simulated process death at a checkpointed-LEARN boundary: 0 none, 1 after the candidate checkpoint,
+        2 after the native commit (before the continuity publication)."""
+        self._require_testing()
+        self.library.check(self._f.elpis_runtime_testing_checkpoint_crash(self._handle, point))
+
     def _require_testing(self) -> None:
         if not self.library.testing:
             raise CompositionError("RUNTIME_INVALID", "fault injection exists only in the testing library")
@@ -423,3 +492,9 @@ class RuntimeCore:
 
 def _ref(value):
     return C.byref(value) if value is not None else None
+
+
+def _digest_arg(value):
+    if type(value) is not bytes or len(value) != 32:
+        raise CompositionError("RUNTIME_INVALID", "a 32-byte retained-state identity is required")
+    return (C.c_uint8 * 32).from_buffer_copy(value)

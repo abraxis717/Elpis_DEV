@@ -139,10 +139,14 @@ def test_runtime_import_closure_loads_no_dsv_model_machinery():
 # no K1 state and is never invoked implicitly (reconciliation never anchors).
 # ``evolution_authority`` reads the current evolution authority an assertion
 # must be bound to; it writes nothing. ``fault`` reads RuntimeCore's fail-stop
-# disposition (native/runtime); it writes nothing.
+# disposition (native/runtime); it writes nothing. ``recover_k1`` reads what restart
+# may do with the K1 lineage (K1 Recovery R0); ``discard_k1_candidate`` and
+# ``adopt_k1_candidate`` are the explicit operator reconciliation of one named
+# checkpoint candidate. None of them executes a model.
 RUNTIME_OPERATIONS = {"open", "close", "run_ingress", "admit_retrieval", "publish_canonical",
                       "evolution_authority", "evolve", "admit_context", "run_turn", "anchor_cognition", "fault",
-                      "run_query", "run_learn", "release"}
+                      "run_query", "run_learn", "release", "recover_k1", "discard_k1_candidate",
+                      "adopt_k1_candidate"}
 
 
 def test_runtime_composes_no_model_operation():

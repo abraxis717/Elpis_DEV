@@ -51,6 +51,9 @@ or the reverse.
 - `txn_begin` stages a candidate copy of the complete state.
 - `txn_commit` installs W, epoch, H and a in one copy and advances the generation.
 - A direct transition after begin replaces the source, and the candidate is then refused as `STALE`.
+- `txn_snapshot_write` (and `elpis_ecsg_k1_fms_txn_snapshot_write`) writes the candidate's complete retained-state
+  envelope, read-only: its SHA-256 trailer is the identity `txn_commit_identity` will report as `state_after`. K1
+  Recovery R0 persists it before the commit (docs/K1_RECOVERY_R0.md); it changes no K1 mathematics.
 
 **Experience schedule** (`txn_run_schedule`, and `elpis_ecsg_k1_fms_txn_run_schedule` on a resident state). One
 native call applies an ordered schedule of up to 64 experiences to the open transaction's candidate. Each experience

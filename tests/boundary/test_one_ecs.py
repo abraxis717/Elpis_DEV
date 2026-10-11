@@ -291,6 +291,7 @@ NATIVE_ABI_FILES = {
     "tests/boundary/test_k1_state_digest.py": _ABI_TEST,
     "tests/boundary/test_mutable_fms.py": _ABI_TEST,
     "tests/integration/test_codec_ecs_turn.py": _ABI_TEST,
+    "tests/integration/test_native_admission.py": "Admits the K1 libraries under their ABI library identifiers.",
     "tests/conftest.py": "The test catalog pins and admits the built native libraries, the ECS ones by ABI name.",
     "native/continuity/qualify.sh": "Builds the ECS K1 libraries (native target names) the continuity runtime tests load.",
     "docs/RUNTIME_CORE.md": _RUNTIME_K1,

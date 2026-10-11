@@ -132,13 +132,23 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
   then close, and lifecycle calls without a turn (no native call).
 * **Crash law.** A K1 commit is never rolled back. A refused or uncertain publication fail-stops; restart sees
   the old authority (the moved state is a mismatch) or, when the uncertain write landed, the new one.
+* **K1 Recovery R0.** With an operator-provisioned checkpoint store attached (`elpis_runtime_checkpoint_attach`,
+  `RuntimeConfig.k1_checkpoint_dir`), the anchor persists the anchored state's complete envelope before continuity
+  anchors it, and every LEARN persists its candidate's complete envelope (K1's read-only `txn_snapshot_write`) in
+  the slot that does not hold the authorized state before the native commit; a committed identity that differs
+  from the checkpointed one fail-stops. Restart asks `recover` (read-only): `NOTHING_TO_RECOVER`, `RESUMABLE` (the
+  authorized envelope), `CANDIDATE_UNRESOLVED` (LEARN refused with `CHECKPOINT_UNRESOLVED` until an operator
+  `discard`s or `adopt`s exactly that candidate) or `CHECKPOINT_MISSING`. Checkpoint bytes never authorize
+  themselves; continuity remains the current-authority register. Two fixed slot files, no history
+  (docs/K1_RECOVERY_R0.md). ABI v3 added `snapshot_write` / `txn_snapshot_write` to both K1 tables and codes
+  76-79.
 * **Evolution.** One attempt in flight. Reserve (durable, before execution) -> execute once at the boundary ->
   finalize. A reservation or finalization failure fail-stops; an attempt the boundary could not complete is
   abandoned: the reservation stays pending, the runtime fail-stops with `CONTINUITY_EVOLUTION_PENDING`. Nothing
   is retried or inferred. `evolution_reconcile` is the explicit operator finalization after restart; its
   `CONTINUITY_AUTHORITY_MISMATCH` refusal is not a fail-stop.
 * **Nothing else.** No history, receipts, events, trajectory or second store: the durable footprint is the two
-  176-byte continuity slots.
+  176-byte continuity slots, plus, only when the operator provisioned one, the two fixed K1 checkpoint slots.
 * **Concurrency.** A handle serializes its calls with one lock; no call blocks on another runtime.
 
 ## Hot path

@@ -117,6 +117,10 @@ pub trait K1Ops {
     ) -> i32;
     fn txn_commit_identity(&mut self, lease: u64, token: u64, out: &mut CommitIdentity) -> i32;
     fn txn_abort(&mut self, token: u64) -> i32;
+    /// The portable envelope of the authoritative state (`snapshot_write`; read-only).
+    fn snapshot_write(&mut self, out: &mut [u8]) -> i32;
+    /// The portable envelope of the open transaction's candidate (`txn_snapshot_write`; read-only).
+    fn txn_snapshot_write(&mut self, token: u64, out: &mut [u8]) -> i32;
     /// The owned abort capability over this same native state, retained by RuntimeCore from a successful turn
     /// begin until that turn ends. It may outlive the call that produced it, but never the open transaction it
     /// ends: the native state is live for exactly that interval (the substrate lifetime contract, runtime.h).
@@ -203,6 +207,8 @@ pub struct K1Api {
     pub leased_txn_run_schedule: Option<K1RunSchedule>,
     pub leased_txn_commit_identity: Option<unsafe extern "C" fn(State, u64, u64, *mut CommitIdentity) -> Status>,
     pub txn_abort: Option<unsafe extern "C" fn(State, u64) -> Status>,
+    pub snapshot_write: Option<unsafe extern "C" fn(State, *mut u8, usize) -> Status>,
+    pub txn_snapshot_write: Option<unsafe extern "C" fn(State, u64, *mut u8, usize) -> Status>,
 }
 
 /// The function table of the K1 FMS adapter (`ecsg_k1_fms.h`): the same operations on one resident state id.
@@ -219,6 +225,8 @@ pub struct K1FmsApi {
     pub leased_txn_run_schedule: Option<K1FmsRunSchedule>,
     pub leased_txn_commit_identity: Option<unsafe extern "C" fn(State, u64, u64, u64, *mut CommitIdentity) -> Status>,
     pub txn_abort: Option<unsafe extern "C" fn(State, u64, u64) -> Status>,
+    pub snapshot_write: Option<unsafe extern "C" fn(State, u64, *mut u8, usize) -> Status>,
+    pub txn_snapshot_write: Option<unsafe extern "C" fn(State, u64, u64, *mut u8, usize) -> Status>,
 }
 
 /// `elpis_runtime_substrate`: one native K1 state as the caller describes it.
@@ -269,6 +277,8 @@ macro_rules! complete {
             && $t.leased_txn_run_schedule.is_some()
             && $t.leased_txn_commit_identity.is_some()
             && $t.txn_abort.is_some()
+            && $t.snapshot_write.is_some()
+            && $t.txn_snapshot_write.is_some()
     };
 }
 
@@ -385,6 +395,14 @@ impl K1Ops for Native {
 
     fn txn_abort(&mut self, token: u64) -> i32 {
         TxnAbort::txn_abort(self, token)
+    }
+
+    fn snapshot_write(&mut self, out: &mut [u8]) -> i32 {
+        call!(self, snapshot_write, (out.as_mut_ptr(), out.len()))
+    }
+
+    fn txn_snapshot_write(&mut self, token: u64, out: &mut [u8]) -> i32 {
+        call!(self, txn_snapshot_write, (token, out.as_mut_ptr(), out.len()))
     }
 
     fn retain_abort(&self) -> Box<dyn TxnAbort> {

@@ -29,6 +29,10 @@ entry point and returns that subsystem's result:
 * ``run_learn``: the canonical LEARN under an explicit ``LearnAuthority``: the
   admitted experience schedule committed atomically, then its new expected K1
   retained-state identity published to continuity.
+* ``recover_k1``: K1 Recovery R0 (docs/K1_RECOVERY_R0.md), read-only: what
+  restart may do with the lineage, and the complete authorized envelope when it
+  is resumable. ``discard_k1_candidate`` / ``adopt_k1_candidate`` are the
+  explicit operator reconciliation of an unresolved checkpoint candidate.
 * ``run_turn``: the LEGACY learned turn (LEARN, then the decode of its S3
   readout), kept for replay; it needs the same explicit learning authority.
   Without a qualified ECS codec map every cognitive operation refuses with
@@ -77,7 +81,7 @@ from elpis.structure.retrieval.validation import validate_bundle
 from elpis.substrate.authority import PinnedAuthority
 from elpis.substrate.digests import raw_digest
 
-from .core import RuntimeCore, RuntimeLibrary, describe
+from .core import K1Recovery, RuntimeCore, RuntimeLibrary, describe
 from .edges import from_regex_hacf, object_claims
 from .errors import CompositionError
 
@@ -107,6 +111,11 @@ class RuntimeConfig:
     (``elpis.runtime.codec_authority``) whose admissions this runtime's cognitive operations accept. It is
     deployment configuration, never derived from a codec. Without it every managed cognitive operation that is
     given a codec refuses (``CODEC_AUTHORITY``).
+
+    ``k1_checkpoint_dir`` (optional) is an operator-provisioned K1 Recovery R0 store
+    (:func:`elpis.runtime.recovery.provision_k1_checkpoint`). When set, every open attaches it (a missing or malformed
+    store refuses the open), the anchor and every LEARN persist the complete envelope before it becomes
+    authoritative, and :meth:`Runtime.recover_k1` can resume the authorized state after restart.
     """
 
     continuity_dir: Path
@@ -114,9 +123,13 @@ class RuntimeConfig:
     codec_authority_sha256: str | None = None
     native_authority: PinnedAuthority | None = None
     runtime_library_id: str = "elpis_runtime"
+    k1_checkpoint_dir: Path | None = None
 
     def __post_init__(self):
-        for value in (self.continuity_dir, self.runtime_library):
+        paths = (self.continuity_dir, self.runtime_library)
+        if self.k1_checkpoint_dir is not None:
+            paths += (self.k1_checkpoint_dir,)
+        for value in paths:
             if not isinstance(value, Path) or not value.is_absolute():
                 raise CompositionError("RUNTIME_PATH", "runtime paths must be absolute Paths")
         pin = self.codec_authority_sha256
@@ -182,6 +195,12 @@ class Runtime:
         # (unbound) and can retain nothing of it.
         self._core.open()
         self._bound_owner = self._bound_substrate = None
+        if self.config.k1_checkpoint_dir is not None:
+            try:
+                self._core.checkpoint_attach(self.config.k1_checkpoint_dir)
+            except CompositionError:
+                self._core.close()   # a configured store that cannot be attached refuses the open
+                raise
         return self
 
     def close(self) -> None:
@@ -327,6 +346,27 @@ class Runtime:
         anchored = self._core.anchor(descriptor)
         self._bound_owner, self._bound_substrate = owner, substrate
         return anchored
+
+    # -- cognition: K1 Recovery R0 -------------------------------------------------------------------------------
+    def recover_k1(self) -> K1Recovery:
+        """What restart may do with the K1 lineage (read-only; requires an attached checkpoint store).
+
+        Continuity decides; the checkpoint slots are evidence. ``RESUMABLE`` carries the complete authorized
+        ``(W, epoch, H, a)`` envelope: restore it (``K1State.restore``) and the next QUERY or LEARN binds it after
+        verifying its identity against continuity. Nothing rolls forward or back implicitly: a newer unauthorized
+        candidate is ``CANDIDATE_UNRESOLVED`` until an operator discards or adopts it.
+        """
+        return self._core.checkpoint_recover()
+
+    def discard_k1_candidate(self, candidate: bytes) -> None:
+        """Operator reconciliation: withdraw exactly the unresolved candidate ``candidate``; the lineage stays at
+        continuity's authority (``CHECKPOINT_INVALID`` for any other identity)."""
+        self._core.checkpoint_discard(candidate)
+
+    def adopt_k1_candidate(self, candidate: bytes) -> ContinuitySnapshot:
+        """Operator reconciliation: adopt exactly the unresolved candidate ``candidate`` after its complete envelope
+        verified: continuity publishes authorized -> candidate. Refused while a K1 state is bound."""
+        return self._core.checkpoint_adopt(candidate)
 
     def _codec_pin(self) -> str:
         """The deployment pin every admitted codec's authority must match; ``""`` (matches nothing) when none is

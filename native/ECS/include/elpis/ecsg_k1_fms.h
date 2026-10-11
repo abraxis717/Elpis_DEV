@@ -122,6 +122,8 @@ int elpis_ecsg_k1_fms_txn_consolidate(elpis_ecsg_k1_fms *, uint64_t id, uint64_t
 int elpis_ecsg_k1_fms_txn_forward(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token, const double *x, size_t rows,
                                   double *out);
 int elpis_ecsg_k1_fms_txn_epoch(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token, uint64_t *epoch);
+int elpis_ecsg_k1_fms_txn_snapshot_write(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token, uint8_t *out,
+                                         size_t size);
 int elpis_ecsg_k1_fms_txn_commit(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token,
                                  elpis_ecsg_k1_transition *transition);
 int elpis_ecsg_k1_fms_txn_commit_identity(elpis_ecsg_k1_fms *, uint64_t id, uint64_t token,
