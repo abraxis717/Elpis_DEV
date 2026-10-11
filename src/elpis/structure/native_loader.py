@@ -1,16 +1,17 @@
 """Only deployment-pinned, substrate-sealed native structure bridge loads.
 
 The artifact pin is independent deployment authority, not computed from an
-untrusted candidate. Linux root capability and sealed memfd loader remain the
-single native trust mechanism. No path discovery, fallbacks or second loader.
+untrusted candidate. The substrate's one native admission mechanism
+(``elpis.substrate.native_admission``: root capability, sealed memfd, exact pin)
+is the single native trust mechanism. No path discovery, fallbacks or second loader.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 from elpis.substrate.authority import PinnedAuthority
-from elpis.substrate.boundary import RootCapability, load_native
 from elpis.substrate.contracts import Code, require
+from elpis.substrate.native_admission import admit_library
 
 
 def load_structure_bridge(root: str | Path, path: str | Path,
@@ -30,5 +31,4 @@ def load_structure_bridge(root: str | Path, path: str | Path,
             Code.IDENTITY, 'unexpected structure bridge identifier')
     require(expected_library_id in authority.libraries, Code.IDENTITY,
             'structure bridge is not in deployment authority')
-    with RootCapability(root) as cap:
-        return load_native(cap, path, authority.libraries[expected_library_id])
+    return admit_library(root, path, authority, expected_library_id).lib

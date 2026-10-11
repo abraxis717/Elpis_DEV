@@ -122,13 +122,17 @@ def _from_c(s: _Snapshot) -> ContinuitySnapshot:
 
 
 class ContinuityLibrary:
-    """The loaded continuity library (explicit path, like every Elpis native library)."""
+    """The continuity C ABI over an already loaded library.
 
-    def __init__(self, path: str | Path):
-        path = Path(path)
-        if not path.is_absolute() or not path.is_file():
-            raise ContinuityError("CONTINUITY_PATH", f"continuity library not found: {path}")
-        lib = C.CDLL(str(path))
+    This adapter loads nothing: the caller hands it a library it admitted (``elpis.substrate.native_admission``:
+    a deployment-pinned identity, opened beneath a trusted root, verified and loaded from sealed bytes), as the
+    runtime does with RuntimeCore, which exports this ABI. Continuity depends on no other subsystem, so it cannot
+    check the admission itself; it binds and checks the ABI version only.
+    """
+
+    def __init__(self, lib):
+        if not hasattr(lib, "elpis_continuity_abi_version"):
+            raise ContinuityError("CONTINUITY_INVALID", "a loaded library exporting the continuity ABI is required")
         lib.elpis_continuity_abi_version.restype = C.c_uint32
         if lib.elpis_continuity_abi_version() != _ABI_VERSION:
             raise ContinuityError("CONTINUITY_INVALID", "continuity ABI version mismatch")
@@ -158,7 +162,6 @@ class ContinuityLibrary:
         if self.testing:
             lib.elpis_continuity_testing_fault.argtypes = [C.c_void_p, C.c_uint64, C.c_uint32, C.c_uint64]
             lib.elpis_continuity_testing_counters.argtypes = [C.c_void_p, C.POINTER(_Counters), C.c_int]
-        self.path = path
         self.record_size = lib.elpis_continuity_record_size()
         self._lib = lib
 

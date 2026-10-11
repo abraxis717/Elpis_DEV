@@ -8,6 +8,7 @@ import pytest
 from elpis.runtime import CompositionError, Runtime, RuntimeConfig
 
 from .conftest import CONTRADICTION, POSITIVE
+from ..conftest import runtime_config
 
 ZERO_AUTHORITY = ("semantic_authority", "admission_authority", "execution_authority", "runtime_admission")
 
@@ -37,7 +38,7 @@ def test_same_input_is_deterministic(runtime, ingress):
 
 
 def test_reopen_keeps_continuity_and_tampered_continuity_is_refused(tmp_path, ingress, runtime_library):
-    config = RuntimeConfig(tmp_path / "continuity", runtime_library)
+    config = runtime_config(tmp_path / "continuity", runtime_library)
     with Runtime(config) as rt:
         rt.run_ingress(ingress, POSITIVE)
         before = rt.continuity.snapshot()
@@ -58,5 +59,5 @@ def test_retired_receipt_history_directory_is_refused(tmp_path, runtime_library)
     path.mkdir()
     (path / "MANIFEST").write_bytes(b"retired receipt-history layout")
     with pytest.raises(CompositionError) as info:
-        Runtime(RuntimeConfig(path, runtime_library)).open()
+        Runtime(runtime_config(path, runtime_library)).open()
     assert info.value.code == "CONTINUITY_LEGACY_STORAGE"

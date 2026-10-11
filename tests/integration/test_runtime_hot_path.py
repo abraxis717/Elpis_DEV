@@ -26,7 +26,7 @@ from elpis.ECS.k1 import K1Library
 from elpis.runtime import Runtime, RuntimeConfig
 from elpis.runtime.cognition import run_turn
 
-from ..conftest import require_runtime_library
+from ..conftest import admit_k1_set, require_runtime_library, runtime_config
 from ._turn_fixtures import LEARN, TEST_CODEC_PIN, ByteTokens, FixtureMap, admitted
 from .test_codec_ecs_turn import RATE, _beside, _Counting, world
 
@@ -73,7 +73,7 @@ _RETIRED_MODULES = ("elpis.runtime.history", "elpis.runtime.native_history", "el
 
 @pytest.mark.parametrize("experiences,steps", [(1, 1), (8, 60)])
 def test_managed_turn_is_two_runtimecore_crossings_and_one_fixed_publication(experiences, steps, tmp_path, monkeypatch):
-    k1 = K1Library(ctypes.CDLL(str(_beside("libelpis_ecsg_k1.so"))))
+    k1 = K1Library(admit_k1_set()[1].lib)   # the managed runtime drives only admitted K1 code
     fixture = dict(experiences=experiences, steps=steps)
     counter = _Counting(k1._k)
 
@@ -84,7 +84,7 @@ def test_managed_turn_is_two_runtimecore_crossings_and_one_fixed_publication(exp
         run_turn(bare, "turn", tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)
         bare_crossings = dict(counter.calls)
 
-    config = RuntimeConfig(tmp_path / "continuity", require_runtime_library(testing=True), TEST_CODEC_PIN)
+    config = runtime_config(tmp_path / "continuity", require_runtime_library(testing=True), TEST_CODEC_PIN)
     with world(k1) as state, Runtime(config) as runtime:
         runtime.anchor_cognition(state)
         runtime.run_turn(state, "warm", tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)

@@ -42,6 +42,9 @@ from elpis.continuity.adapter import (
 from elpis.ECS.k1 import CommitIdentity, K1Error, K1FMSState, K1State
 from elpis.ECS.native import Commit
 
+from elpis.substrate.contracts import ContractError
+from elpis.substrate.native_admission import AdmittedLibrary, admission_of, admit_library
+
 from .errors import CompositionError
 from .fuel import CEILING as _FUEL_CEILING
 
@@ -131,15 +134,30 @@ def _table(lib, prefix):
     return entry[1]
 
 
+K1_LIBRARY_IDS = {K1State: "elpis_ecsg_k1", K1FMSState: "elpis_ecsg_k1_fms"}
+
+
+def _require_admitted(lib, kind):
+    """The managed runtime drives only K1 code it can prove: the state's library must have been admitted (sealed,
+    pinned) under the K1 library identifier of its kind."""
+    admitted = admission_of(lib)
+    if admitted is None or admitted.library_id != K1_LIBRARY_IDS[kind]:
+        raise CompositionError("ECS_NATIVE_UNADMITTED",
+                               "the K1 state's native library was not admitted from sealed, pinned bytes")
+
+
 def describe(substrate):
-    """``(descriptor, owner)`` for a native K1 state; raises ``ECS_STATE`` for anything else or a closed state."""
+    """``(descriptor, owner)`` for a native K1 state; raises ``ECS_STATE`` for anything else or a closed state, and
+    ``ECS_NATIVE_UNADMITTED`` for a state whose native library was not admitted."""
     try:
         if type(substrate) is K1State:
+            _require_admitted(substrate._lib, K1State)
             table = _table(substrate._lib, "elpis_ecsg_k1_")
             d = _Substrate(1, 0, substrate._live(), 0, id(substrate), substrate.dim, C.addressof(table))
             return d, substrate
         if type(substrate) is K1FMSState:
             runtime = substrate._r
+            _require_admitted(runtime._lib, K1FMSState)
             table = _table(runtime._lib, "elpis_ecsg_k1_fms_")
             d = _Substrate(2, 0, runtime._live(), substrate.id, id(runtime), substrate.dim, C.addressof(table))
             return d, runtime
@@ -161,17 +179,31 @@ class TurnBegun(tuple):
     epoch_after = property(lambda self: self[2])
 
 
+RUNTIME_LIBRARY_IDS = ("elpis_runtime", "elpis_runtime_testing")
+
+
 class RuntimeLibrary:
-    """The loaded RuntimeCore library (explicit path, like every Elpis native library).
+    """The RuntimeCore library, admitted: deployment-pinned identity, opened beneath a trusted root, verified and
+    loaded from sealed bytes (``elpis.substrate.native_admission``). It is never loaded from a pathname.
 
     It also exports the continuity C ABI of the store it embeds: ``continuity`` is the record codec over it.
     """
 
-    def __init__(self, path: str | Path):
-        path = Path(path)
-        if not path.is_absolute() or not path.is_file():
-            raise CompositionError("RUNTIME_PATH", f"runtime library not found: {path}")
-        lib = C.CDLL(str(path))
+    @classmethod
+    def admit(cls, root, path, authority, library_id: str = "elpis_runtime") -> "RuntimeLibrary":
+        """Admit ``path`` beneath ``root`` as ``library_id`` of the deployment ``authority``, then bind it."""
+        if library_id not in RUNTIME_LIBRARY_IDS:
+            raise CompositionError("RUNTIME_UNPINNED", f"not a RuntimeCore library identifier: {library_id!r}")
+        try:
+            return cls(admit_library(root, path, authority, library_id))
+        except ContractError as exc:
+            raise CompositionError("RUNTIME_UNPINNED", str(exc)) from exc
+
+    def __init__(self, admitted: AdmittedLibrary):
+        if type(admitted) is not AdmittedLibrary or admission_of(admitted.lib) is not admitted \
+                or admitted.library_id not in RUNTIME_LIBRARY_IDS:
+            raise CompositionError("RUNTIME_UNPINNED", "RuntimeCore runs only from an admitted, pinned library")
+        lib = admitted.lib
         lib.elpis_runtime_abi_version.restype = C.c_uint32
         if lib.elpis_runtime_abi_version() != _ABI_VERSION:
             raise CompositionError("RUNTIME_INVALID", "runtime ABI version mismatch")
@@ -216,8 +248,8 @@ class RuntimeLibrary:
         if lib.elpis_runtime_fuel_ceiling(C.byref(ceiling)) != 0 or \
                 tuple(getattr(ceiling, n) for n, _ in _Budget._fields_) != _FUEL_CEILING.native_fields():
             raise CompositionError("RUNTIME_INVALID", "the compiled fuel ceiling is not the canonical one")
-        self.path = path
-        self.continuity = ContinuityLibrary(path)
+        self.admission = admitted
+        self.continuity = ContinuityLibrary(lib)   # the continuity ABI of the same admitted bytes
         self._lib = lib
         self._features: dict[int, int] = {}
 

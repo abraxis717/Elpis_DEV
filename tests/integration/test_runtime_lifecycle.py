@@ -17,6 +17,7 @@ from elpis.runtime.core import RuntimeCore, RuntimeLibrary, describe
 from elpis.runtime.fuel import CEILING
 
 from ._turn_fixtures import ByteTokens, FixtureMap
+from ..conftest import admit_native
 from .test_codec_ecs_turn import RATE, _config, _Resident, adapter, k1, world  # noqa: F401 (fixtures)
 
 PATHS = ("abort", "close", "destroy", "reopen", "fail-stop+close")
@@ -74,7 +75,7 @@ class _Subject:
 
 def _core(path):
     config = _config(path)
-    core = RuntimeCore(RuntimeLibrary(config.runtime_library), config.continuity_dir)
+    core = RuntimeCore(RuntimeLibrary(admit_native(config.runtime_library)), config.continuity_dir)
     core.open()
     return core
 

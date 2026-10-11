@@ -152,6 +152,25 @@ three K1 crossings (`txn_begin`, `txn_run_schedule`, `txn_commit_identity`) and 
 writes one 176-byte record and syncs once; Python performs no file I/O. The unmanaged
 `elpis.runtime.cognition.run_turn` (no continuity) keeps its own three K1 crossings plus `max_rows`.
 
+## Native admission
+
+RuntimeCore is never loaded from a pathname. `RuntimeConfig` names the library by an absolute path and supplies a
+deployment-pinned `native_authority` (`PinnedAuthority`, whose own SHA-256 comes from trusted configuration);
+`Runtime` admits the library through the substrate's one native admission mechanism
+(`elpis.substrate.native_admission`, the mechanism the HACF bridges use): opened beneath its directory as the
+trusted descriptor root with `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS)`, copied into a sealed memfd, hashed
+against the exact pin and loaded from the seal, under a RuntimeCore library identifier (`elpis_runtime`,
+`elpis_runtime_testing`); the ABI version and the compiled fuel ceiling are then checked. Without an authority the
+runtime refuses to start (`RUNTIME_UNPINNED`). The continuity ABI is bound over the same admitted bytes
+(`ContinuityLibrary` loads nothing). The managed runtime drives only K1 code it admitted: a K1 or K1 FMS state
+whose library was not admitted under `elpis_ecsg_k1` / `elpis_ecsg_k1_fms` is refused (`ECS_NATIVE_UNADMITTED`)
+before any native call. K1 sets are admitted in dependency order (`elpis_ecsg_math`, `elpis_ecsg_k1`,
+`elpis_ecsg_k1_fms`), and every Elpis dependency the dynamic loader binds by SONAME is verified to be pinned bytes
+(a sealed object, or a mapped file whose inode and SHA-256 equal the pin); anything else refuses the admission.
+Research and unmanaged code may still load K1 by pathname; the managed runtime refuses those states. The pins
+authenticate bytes, not a publisher; the loader, kernel and platform libraries are trusted
+(`tests/integration/test_native_admission.py`).
+
 ## Build and qualification
 
 * `libelpis_runtime.so` (production) and `libelpis_runtime_testing.so` (+ continuity fault injection and I/O

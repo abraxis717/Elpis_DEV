@@ -19,7 +19,7 @@ from elpis.runtime import Runtime, RuntimeConfig
 from elpis.runtime import persistence as P
 from elpis.structure.retrieval.hacf import HacfHandle, build_corpus_and_index
 
-from ..conftest import require_runtime_library
+from ..conftest import require_runtime_library, runtime_config
 from ._turn_fixtures import LEARN, TEST_CODEC_PIN, ByteTokens, FixtureMap, admitted
 from .conftest import DOCS, POSITIVE
 from .test_codec_ecs_turn import RATE, k1, world  # noqa: F401  (k1 is a module pytest fixture)
@@ -78,7 +78,7 @@ def test_ordinary_autonomous_path_leaves_only_the_two_continuity_slots(retrieval
         handle = build_corpus_and_index(retrieval_library, state_root, DOCS)
         try:
             with QueryIngress(ingress_library, handle) as ingress:
-                with Runtime(RuntimeConfig(continuity, require_runtime_library(), TEST_CODEC_PIN)) as runtime:
+                with Runtime(runtime_config(continuity, require_runtime_library(), TEST_CODEC_PIN)) as runtime:
                     runtime.run_ingress(ingress, POSITIVE)
                     runtime.anchor_cognition(state)
                     for text in ("one", "two", "three"):

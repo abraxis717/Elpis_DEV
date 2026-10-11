@@ -182,3 +182,78 @@ def fms_file_library(native_workspace):
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, target)
     return target
+
+
+# ---------------------------------------------------------------------------
+# Native admission (elpis.substrate.native_admission)
+# ---------------------------------------------------------------------------
+#
+# Production loads every high-impact native library only through admission: a deployment-pinned catalog, a trusted
+# descriptor root, sealed verified bytes. In tests the test author is the trust root: the catalog below pins the
+# libraries of *this* build tree. It is a TEST fixture catalog, never deployment authority.
+
+_PINNED = {   # library id -> path relative to the build tree
+    "elpis_runtime": "native/runtime/libelpis_runtime.so",
+    "elpis_runtime_testing": "native/runtime/libelpis_runtime_testing.so",
+    "elpis_continuity": "native/continuity/libelpis_continuity.so",
+    "elpis_continuity_testing": "native/continuity/libelpis_continuity_testing.so",
+    "elpis_ecsg_math": "native/ECS/libelpis_ecsg_math.so",
+    "elpis_ecsg_k1": "native/ECS/libelpis_ecsg_k1.so",
+    "elpis_ecsg_k1_fms": "native/ECS/libelpis_ecsg_k1_fms.so",
+}
+_AUTHORITY = {}
+
+
+def native_authority():
+    """The TEST fixture catalog pinning this build tree's libraries (PinnedAuthority; pinned by its author)."""
+    import hashlib
+    import json
+    from elpis.substrate.authority import PinnedAuthority
+
+    build = native_build_dir()
+    key = str(build)
+    if key not in _AUTHORITY:
+        libraries = []
+        for library_id, relative in sorted(_PINNED.items()):
+            path = build / relative
+            if path.is_file():
+                data = path.read_bytes()
+                libraries.append({"library_id": library_id, "size": len(data),
+                                  "sha256": hashlib.sha256(data).hexdigest()})
+        catalog = json.dumps({"schema": "elpis.inference-authority.v1",
+                              "source": "TEST fixture: the build tree's libraries, pinned by the test author",
+                              "provenance": "deployment", "assets": [], "libraries": libraries},
+                             sort_keys=True, separators=(",", ":")).encode()
+        _AUTHORITY[key] = PinnedAuthority(catalog, expected_sha256=hashlib.sha256(catalog).hexdigest())
+    return _AUTHORITY[key]
+
+
+def library_id_of(path: Path) -> str:
+    for library_id, relative in _PINNED.items():
+        if Path(relative).name == Path(path).name:
+            return library_id
+    raise KeyError(path)
+
+
+def admit_native(path: Path):
+    """Admit one built library (sealed, pinned under the test catalog)."""
+    from elpis.substrate.native_admission import admit_library
+    return admit_library(path.parent, path.name, native_authority(), library_id_of(path))
+
+
+def admit_k1_set():
+    """Admit the K1 set in dependency order (math, K1, the K1 FMS adapter): ``(math, k1, k1_fms)`` admissions."""
+    from elpis.substrate.native_admission import admit_libraries
+    ecs = native_build_dir() / "native" / "ECS"
+    for name in ("libelpis_ecsg_math.so", "libelpis_ecsg_k1.so", "libelpis_ecsg_k1_fms.so"):
+        require_native_library(name[3:-3])
+    return admit_libraries(ecs, native_authority(), (("elpis_ecsg_math", "libelpis_ecsg_math.so"),
+                                                    ("elpis_ecsg_k1", "libelpis_ecsg_k1.so"),
+                                                    ("elpis_ecsg_k1_fms", "libelpis_ecsg_k1_fms.so")))
+
+
+def runtime_config(continuity_dir: Path, runtime_library: Path, codec_pin: str | None = None):
+    """A RuntimeConfig over a built RuntimeCore library, admitted under the test catalog."""
+    from elpis.runtime import RuntimeConfig
+    return RuntimeConfig(continuity_dir, runtime_library, codec_pin, native_authority(),
+                         library_id_of(runtime_library))

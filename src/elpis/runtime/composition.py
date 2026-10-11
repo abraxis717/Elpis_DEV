@@ -74,6 +74,7 @@ from elpis.structure.retrieval.budget import RetrievalBudget
 from elpis.structure.retrieval.contracts import RetrievalBundle
 from elpis.structure.retrieval.objects import CorpusManifest, resolve_chunks
 from elpis.structure.retrieval.validation import validate_bundle
+from elpis.substrate.authority import PinnedAuthority
 from elpis.substrate.digests import raw_digest
 
 from .core import RuntimeCore, RuntimeLibrary, describe
@@ -93,11 +94,14 @@ class ContextPreparation:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """The runtime's continuity directory and the RuntimeCore library (explicit absolute paths), and the deployment
-    pin of the codec admission authority.
+    """The runtime's continuity directory, its RuntimeCore library and the deployment authorities it trusts.
 
-    ``runtime_library`` is the built ``libelpis_runtime.so`` (native/runtime), loaded by explicit
-    path like every Elpis native library. It embeds the continuity authority (native/continuity).
+    ``runtime_library`` is the built ``libelpis_runtime.so`` (native/runtime), named by an explicit absolute path.
+    It is never loaded from that path: it is admitted (``elpis.substrate.native_admission``) beneath its directory
+    as the trusted descriptor root, as the library ``runtime_library_id`` of the deployment-pinned
+    ``native_authority`` (a ``PinnedAuthority`` whose own pin came from trusted configuration), verified and loaded
+    from sealed bytes. Without a ``native_authority`` the runtime refuses to start (``RUNTIME_UNPINNED``). The
+    library embeds the continuity authority (native/continuity).
 
     ``codec_authority_sha256`` is the independent SHA-256 pin of the one codec authority catalog
     (``elpis.runtime.codec_authority``) whose admissions this runtime's cognitive operations accept. It is
@@ -108,6 +112,8 @@ class RuntimeConfig:
     continuity_dir: Path
     runtime_library: Path
     codec_authority_sha256: str | None = None
+    native_authority: PinnedAuthority | None = None
+    runtime_library_id: str = "elpis_runtime"
 
     def __post_init__(self):
         for value in (self.continuity_dir, self.runtime_library):
@@ -159,7 +165,11 @@ class Runtime:
         if type(config) is not RuntimeConfig:
             raise TypeError("config must be a RuntimeConfig")
         self.config = config
-        self._core = RuntimeCore(RuntimeLibrary(config.runtime_library), config.continuity_dir)
+        if config.native_authority is None:
+            raise CompositionError("RUNTIME_UNPINNED", "a deployment-pinned native authority is required")
+        library = RuntimeLibrary.admit(config.runtime_library.parent, config.runtime_library.name,
+                                       config.native_authority, config.runtime_library_id)
+        self._core = RuntimeCore(library, config.continuity_dir)
         self.continuity = RuntimeContinuity(self._core)
         # Keeps the owner of the bound K1 state alive, so its identity cannot be reused while
         # RuntimeCore holds the binding (lifetime only: RuntimeCore decides the binding), and the bound

@@ -15,7 +15,7 @@ from elpis.continuity import ContinuityProcessDeath
 from elpis.evolution import EvolutionAttempt, EvolutionPathAssertion, EvolutionPathGate, GateExecuted, GateRejected
 from elpis.runtime import CompositionError, Runtime, RuntimeConfig
 
-from ..conftest import require_runtime_library
+from ..conftest import require_runtime_library, runtime_config
 from .conftest import POSITIVE
 
 SLOTS = ("continuity.a", "continuity.b")
@@ -25,7 +25,7 @@ STEPS = {"publish.begin": 0, "publish.written": 1, "publish.synced": 2}
 
 
 def config_at(tmp_path, testing=False):
-    return RuntimeConfig(tmp_path / "continuity", require_runtime_library(testing=testing))
+    return runtime_config(tmp_path / "continuity", require_runtime_library(testing=testing))
 
 
 def d(label: str) -> str:

@@ -26,6 +26,7 @@ from elpis.runtime.cognition import CODEC_UNQUALIFIED, Readout, Stimulus, run_tu
 from elpis.runtime.composition import CompositionError
 from elpis.substrate.residency import Context
 
+from ..conftest import admit_k1_set
 from ..ECS.test_math_r0 import REPO, _library_path
 from ._turn_fixtures import FIXTURE, LEARN, TEST_CODEC_PIN, ByteTokens, FixtureMap, admitted
 
@@ -41,17 +42,17 @@ def _beside(name):
 
 @pytest.fixture(scope="module")
 def api():
-    return ECSGLibrary(ctypes.CDLL(str(_library_path())))
+    return ECSGLibrary(admit_k1_set()[0].lib)   # the math kernel, admitted (sealed, pinned)
 
 
 @pytest.fixture(scope="module")
 def k1():
-    return K1Library(ctypes.CDLL(str(_beside("libelpis_ecsg_k1.so"))))
+    return K1Library(admit_k1_set()[1].lib)   # the managed runtime drives only admitted K1 code
 
 
 @pytest.fixture(scope="module")
 def adapter():
-    return ctypes.CDLL(str(_beside("libelpis_ecsg_k1_fms.so")))
+    return admit_k1_set()[2].lib
 
 
 def initial_w(seed=36):
@@ -375,8 +376,8 @@ def test_canonical_turn_exposes_the_commit_bound_retained_state_identities(k1):
 
 def _config(path, testing=False):
     from elpis.runtime import RuntimeConfig
-    from ..conftest import require_runtime_library
-    return RuntimeConfig(path, require_runtime_library(testing=testing), TEST_CODEC_PIN)
+    from ..conftest import require_runtime_library, runtime_config
+    return runtime_config(path, require_runtime_library(testing=testing), TEST_CODEC_PIN)
 
 
 def test_runtime_turn_publishes_exactly_the_new_expected_k1_identity(k1, tmp_path):

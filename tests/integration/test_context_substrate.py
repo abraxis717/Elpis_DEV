@@ -40,6 +40,7 @@ from elpis.substrate.synthetic import SyntheticFileAssets
 
 from ..inference.test_token_stream_kernel import Recorder
 from .conftest import POSITIVE
+from ..conftest import runtime_config
 
 NS = "elpis.docs"
 CONTEXT = initial_snapshot().digest
@@ -210,7 +211,7 @@ def test_resident_model_state_stays_bounded_as_hacf_grows(retrieval_library, ing
         corpus_root, manifest = build(retrieval_library, root, extra)
         chunks = json.loads(manifest)["chunk_count"]
         sizes.append(sum(d["size_bytes"] for d in json.loads(manifest)["documents"]))
-        with Runtime(RuntimeConfig(root / "continuity", runtime_library)) as runtime:
+        with Runtime(runtime_config(root / "continuity", runtime_library)) as runtime:
             admission = prepare(runtime, ingress_library, corpus_root, manifest, engine).admission
             state = engine.initial(CONTEXT)
             sequence = engine.begin(state, PrincipalRequest("r", (1,), 20), admission,
@@ -251,7 +252,7 @@ def test_tampered_volatile_source_or_wrong_manifest_refuses_admission(ingress_li
         data = bytearray(authentic(digest, size))
         if data: data[0] ^= 1
         return bytes(data)
-    with Runtime(RuntimeConfig(tmp_path / "continuity", runtime_library)) as runtime:
+    with Runtime(runtime_config(tmp_path / "continuity", runtime_library)) as runtime:
         with monkeypatch.context() as scope:
             scope.setattr(corpus_root, "read_document", tamper)
             with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
