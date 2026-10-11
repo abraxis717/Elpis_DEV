@@ -1,0 +1,374 @@
+{
+ "environment": {
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "git_head": "341be8a3117112d8e63f44916fbc4758c90deca2",
+  "k1_library_sha256": "992ba258c373228a4bfb1b68a37b21b49a4c76d66a0135ec7fff9044897c9094",
+  "machine": "x86_64",
+  "numpy": "2.5.3",
+  "observer_library_sha256": "6f76482d061b071fe9666c4c400647732c8d01217f65ac091c59fe01a4e06950",
+  "protocol_sha256": "e34ae2769957b42f28f964fedd83d8e61c0eaf9f4a3ae81b748ee28309859050",
+  "python": "3.13.16",
+  "source_sha256": "4b3b5cfff24005d80acc7761ed30d306d83a2c48558b2aea0f3f566f0f6c5f48"
+ },
+ "freeze_commit": "eecb7467b218777b48e581761f275de8488f7edc",
+ "gates": {
+  "GRAY4": {
+   "S1": true,
+   "S2a": true,
+   "S2b": true,
+   "S3": true,
+   "S4": true,
+   "USEFUL": true,
+   "matched_budget": "BINARY_AT_OR_ABOVE_RAW"
+  },
+  "SPROJ": {
+   "S1": true,
+   "S2a": true,
+   "S2b": true,
+   "S3": true,
+   "S4": true,
+   "USEFUL": true,
+   "matched_budget": "RAW_SUPERIOR"
+  }
+ },
+ "mechanics": {
+  "M1_clean_process": true,
+  "M1_parity_and_repeatability_failures": [],
+  "M2_non_interference": true,
+  "M2_worlds": [
+   {
+    "identical": true,
+    "world": "qual-0000"
+   },
+   {
+    "identical": true,
+    "world": "qual-0001"
+   },
+   {
+    "identical": true,
+    "world": "qual-0002"
+   },
+   {
+    "identical": true,
+    "world": "qual-0003"
+   },
+   {
+    "identical": true,
+    "world": "qual-0004"
+   },
+   {
+    "identical": true,
+    "world": "qual-0005"
+   },
+   {
+    "identical": true,
+    "world": "qual-0006"
+   },
+   {
+    "identical": true,
+    "world": "qual-0007"
+   },
+   {
+    "identical": true,
+    "world": "qual-0008"
+   },
+   {
+    "identical": true,
+    "world": "qual-0009"
+   },
+   {
+    "identical": true,
+    "world": "qual-0010"
+   },
+   {
+    "identical": true,
+    "world": "qual-0011"
+   },
+   {
+    "identical": true,
+    "world": "qual-0012"
+   },
+   {
+    "identical": true,
+    "world": "qual-0013"
+   },
+   {
+    "identical": true,
+    "world": "qual-0014"
+   },
+   {
+    "identical": true,
+    "world": "qual-0015"
+   },
+   {
+    "identical": true,
+    "world": "qual-0016"
+   },
+   {
+    "identical": true,
+    "world": "qual-0017"
+   },
+   {
+    "identical": true,
+    "world": "qual-0018"
+   },
+   {
+    "identical": true,
+    "world": "qual-0019"
+   },
+   {
+    "identical": true,
+    "world": "qual-0020"
+   },
+   {
+    "identical": true,
+    "world": "qual-0021"
+   },
+   {
+    "identical": true,
+    "world": "qual-0022"
+   },
+   {
+    "identical": true,
+    "world": "qual-0023"
+   }
+  ],
+  "M3_M4_M7_native_test": {
+   "exit": 0,
+   "stdout": "test_ebo_r0: OK (allocation counting on)"
+  },
+  "M5_M6_audit": {
+   "M5": true,
+   "M6": true,
+   "available": true,
+   "imports": [
+    "__stack_chk_fail",
+    "memcpy",
+    "memset"
+   ],
+   "observation_path_calls": {
+    "ebo_encode": [
+     "__stack_chk_fail@plt"
+    ],
+    "ebo_ring_pop": [],
+    "ebo_ring_push": []
+   },
+   "weak": [
+    "_ITM_deregisterTMCloneTable",
+    "_ITM_registerTMCloneTable",
+    "__cxa_finalize",
+    "__gmon_start__"
+   ]
+  },
+  "other_failures": [],
+  "pass": true,
+  "records": 2496,
+  "records_sha256": "db555e67be8b9128521b6f34cea95c389f18c192fa34525a084dfe708749fc06"
+ },
+ "phase": "QUAL",
+ "probe": {
+  "S1": {
+   "GRAY4": {
+    "digest_bytes_identical_to_twin": 0,
+    "digest_prefix_differs": 1.0,
+    "mean_bit_disagreement": 0.0,
+    "payload_identical": 1.0,
+    "states": 312
+   },
+   "SPROJ": {
+    "digest_bytes_identical_to_twin": 0,
+    "digest_prefix_differs": 1.0,
+    "mean_bit_disagreement": 0.0,
+    "payload_identical": 1.0,
+    "states": 312
+   }
+  },
+  "S2a": {
+   "GRAY4": {
+    "payload_differs": 1.0,
+    "transitions": 288
+   },
+   "SPROJ": {
+    "payload_differs": 0.9965277777777778,
+    "transitions": 288
+   }
+  },
+  "S2b": {
+   "DIGEST": {
+    "pairs": 1872,
+    "rho": 0.012145951737986313
+   },
+   "GRAY4": {
+    "pairs": 1872,
+    "rho": 0.705723137284947
+   },
+   "RAW16": {
+    "metric": "L2 of decoded values",
+    "pairs": 1872,
+    "rho": 0.9030886153213391
+   },
+   "RAW4": {
+    "metric": "L2 of decoded values",
+    "pairs": 1872,
+    "rho": 0.7580334215459428
+   },
+   "SPROJ": {
+    "pairs": 1872,
+    "rho": 0.6758527152389102
+   }
+  },
+  "S3": {
+   "DIGEST": {
+    "features": 64,
+    "lambda": 10000.0,
+    "r2": -0.04501800832897107
+   },
+   "GRAY4": {
+    "controls": {
+     "DIGEST": -0.04501800832897107,
+     "RANDOM": -0.04764811735177399,
+     "RESET": -0.2766467290000436,
+     "ROWPERM": -2.03847459283191,
+     "SHUFFLED": -0.8791146024769068
+    },
+    "features": 64,
+    "lambda": 10.0,
+    "margin": 0.8963178618788296,
+    "r2": 0.8512998535498585,
+    "vs_RAW16": 0.06391854543008169
+   },
+   "RANDOM": {
+    "features": 256,
+    "lambda": 10000.0,
+    "r2": -0.04764811735177399
+   },
+   "RAW16": {
+    "features": 16,
+    "lambda": 10.0,
+    "r2": 0.7873813081197768
+   },
+   "RAW4": {
+    "features": 4,
+    "lambda": 1.0,
+    "r2": 0.38792149659519615
+   },
+   "SPROJ": {
+    "controls": {
+     "DIGEST": -0.04501800832897107,
+     "RANDOM": -0.04764811735177399,
+     "RESET": -0.746065488361557,
+     "ROWPERM": -0.16005905741049853,
+     "SHUFFLED": -0.7946017038901436
+    },
+    "features": 256,
+    "lambda": 100.0,
+    "margin": 0.6841429628578543,
+    "r2": 0.6391249545288832,
+    "vs_RAW16": -0.14825635359089362
+   }
+  },
+  "S4": {
+   "DIGEST": {
+    "features": 128,
+    "lambda": 10000.0,
+    "r2": -4.382215125464661e-05
+   },
+   "GRAY4": {
+    "controls": {
+     "DIGEST": -4.382215125464661e-05,
+     "RANDOM": -0.0023336608264481473,
+     "RESET": -0.0038284808651429802,
+     "SHUFFLED": -0.8629498945440233
+    },
+    "features": 128,
+    "lambda": 10.0,
+    "margin": 0.885988015129401,
+    "r2": 0.8859441929781463,
+    "vs_RAW16": 0.013772850854097962
+   },
+   "RANDOM": {
+    "features": 512,
+    "lambda": 10000.0,
+    "r2": -0.0023336608264481473
+   },
+   "RAW16": {
+    "features": 32,
+    "lambda": 1.0,
+    "r2": 0.8721713421240483
+   },
+   "RAW4": {
+    "features": 8,
+    "lambda": 1.0,
+    "r2": 0.503377698936281
+   },
+   "SPROJ": {
+    "controls": {
+     "DIGEST": -4.382215125464661e-05,
+     "RANDOM": -0.0023336608264481473,
+     "RESET": -0.03620264534847362,
+     "SHUFFLED": -0.727470735359931
+    },
+    "features": 512,
+    "lambda": 100.0,
+    "margin": 0.6590698354528841,
+    "r2": 0.6590260133016295,
+    "vs_RAW16": -0.21314532882241888
+   }
+  },
+  "information": {
+   "GRAY4": {
+    "bit_entropy_mean": 0.9691877063269028,
+    "bit_entropy_min": 0.6500224216483541,
+    "boundary_proximal_values": 0,
+    "colliding_state_pairs": 0,
+    "collision_rate": 0.0,
+    "constant_bits": 0,
+    "distinct_payloads": 312,
+    "midpoint_rmse_over_std": 0.3796789197947941,
+    "outer_level_share": 0.10011017628205128,
+    "states": 312
+   },
+   "SPROJ": {
+    "bit_entropy_mean": 0.9823574454996047,
+    "bit_entropy_min": 0.8978525399739925,
+    "boundary_proximal_projections": 0,
+    "colliding_state_pairs": 1,
+    "collision_rate": 2.061175694616209e-05,
+    "constant_bits": 0,
+    "distinct_payloads": 311,
+    "states": 312
+   },
+   "observed_values_per_state": {
+    "ref": 64,
+    "window": 64
+   },
+   "window_truncation_share": 0.24358974358974358
+  }
+ },
+ "registry": [
+  "qual-0000",
+  "qual-0001",
+  "qual-0002",
+  "qual-0003",
+  "qual-0004",
+  "qual-0005",
+  "qual-0006",
+  "qual-0007",
+  "qual-0008",
+  "qual-0009",
+  "qual-0010",
+  "qual-0011",
+  "qual-0012",
+  "qual-0013",
+  "qual-0014",
+  "qual-0015",
+  "qual-0016",
+  "qual-0017",
+  "qual-0018",
+  "qual-0019",
+  "qual-0020",
+  "qual-0021",
+  "qual-0022",
+  "qual-0023"
+ ]
+}
