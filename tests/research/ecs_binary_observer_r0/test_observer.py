@@ -7,6 +7,7 @@ present) still binds the laboratory.
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import math
 import struct
@@ -159,10 +160,27 @@ def test_library_imports_and_observation_path(observer_library):
 
 
 def test_frozen_evidence_still_binds_the_laboratory():
-    freeze = LAB / "evidence" / "freeze" / "summary.json"
-    if not freeze.is_file():
+    freeze_path = LAB / "evidence" / "freeze" / "summary.json"
+    if not freeze_path.is_file():
         pytest.skip("no freeze yet")
-    R._verify_freeze()
+    freeze = json.loads(freeze_path.read_text())
+    design = json.loads((LAB / "evidence" / "design" / "summary.json").read_text())
+    assert freeze["protocol_sha256"] == P.protocol_digest() and freeze["source_sha256"] == P.source_digest()
+    assert freeze["dev_summary_sha256"] == R._sha_file(LAB / "evidence" / "dev" / "summary.json")
+    assert freeze["design_summary_sha256"] == R._sha_file(LAB / "evidence" / "design" / "summary.json")
+    # The repository forbids committed *.bin: the two law blobs are carried as hex in LAWS.json and must be the exact
+    # bytes the freeze and the DESIGN summary bound.
+    laws = json.loads((LAB / "LAWS.json").read_text())["laws"]
+    for name, file in (("GRAY4", "law_gray4.bin"), ("SPROJ", "law_sproj.bin")):
+        blob = bytes.fromhex(laws[file]["hex"])
+        assert hashlib.sha256(blob).hexdigest() == laws[file]["sha256"] == freeze["laws"][name]
+        assert L.parse_law(blob).sha256 == design["laws"][name]["sha256"]
+        assert L.parse_law(blob).tag.hex() == design["laws"][name]["tag"]
+        local = LAB / "evidence" / "design" / file
+        if local.is_file():
+            assert local.read_bytes() == blob
+    if all((LAB / "evidence" / "design" / f).is_file() for f in ("law_gray4.bin", "law_sproj.bin")):
+        R._verify_freeze()                       # the runner's own check, when the blobs are materialized
     done = LAB / "evidence" / "disposition" / "summary.json"
     if done.is_file():
         d = json.loads(done.read_text())

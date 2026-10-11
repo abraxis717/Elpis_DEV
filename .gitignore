@@ -28,10 +28,6 @@ htmlcov/
 *.npy
 *.npz
 *.pkl
-# Exception: the two frozen ECS Binary Observation R0 laws (128 and 4120 bytes; their SHA-256 is bound by the
-# freeze record). They are evidence, not model weights.
-!research/ecs_binary_observer_r0/evidence/design/law_gray4.bin
-!research/ecs_binary_observer_r0/evidence/design/law_sproj.bin
 
 .DS_Store
 *.swp

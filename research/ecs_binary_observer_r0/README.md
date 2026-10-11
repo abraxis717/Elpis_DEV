@@ -63,6 +63,10 @@ python -m research.ecs_binary_observer_r0.run perf   --build <build> --stage qua
 python -m research.ecs_binary_observer_r0.run disposition --build <build>
 ```
 
+The repository forbids committed `*.bin` files, so a clean checkout carries the two frozen law blobs as hex in
+`LAWS.json`. Before replaying the runner, materialize them into `evidence/design/` with the command in that
+file's `materialize` field. Their SHA-256 values are bound by the DESIGN summary and the freeze record.
+
 Every phase refuses to overwrite its evidence. QUAL and perf-QUAL refuse unless the freeze still holds. Raw timing
 telemetry stays out of Git; its SHA-256 is recorded.
 
