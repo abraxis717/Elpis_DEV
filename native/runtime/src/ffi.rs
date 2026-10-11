@@ -10,6 +10,10 @@
 //! handles come from `elpis_runtime_create` and are used until `elpis_runtime_destroy`. A substrate
 //! descriptor's handle and function table must be live for the duration of the call; the table is copied.
 //!
+//! Managed ownership (ABI v3): RuntimeCore claims every K1 state it binds with its own lease (ecsg_k1.h "Managed
+//! ownership"), so the bound state refuses every unmanaged mutation, and re-establishes the state's exact
+//! retained-state identity inside every managed transaction begin. `elpis_runtime_release` gives the state back.
+//!
 //! Substrate lifetime (ABI v2): a successful `elpis_runtime_turn_begin` opens a native K1 transaction that
 //! RuntimeCore ends with exactly one terminal native action, the commit or an abort, before it forgets the turn.
 //! To end it on every path (commit, abort, a refused commit, close, reopen, destroy) it retains the descriptor's
@@ -28,10 +32,11 @@ use elpis_continuity::ffi::{from_c_evolution, to_c, CEvolution, CSnapshot};
 use elpis_continuity::{Code, Digest, Snapshot};
 
 use crate::code::{Error, Rt};
-use crate::core::{Core, Counters, Refusal, Stimulus};
+use crate::core::{Core, Counters, Recovery, Refusal, Stimulus};
+use crate::fuel::Budget;
 use crate::substrate::{features, CSubstrate, CommitIdentity, Experience, Native, ScheduleOutcome};
 
-pub const ABI_VERSION: u32 = 2;
+pub const ABI_VERSION: u32 = 3;
 
 /// Opaque runtime handle.
 pub struct ElpisRuntime(Mutex<Core>);
@@ -57,9 +62,38 @@ pub struct CTurnCommit {
     pub k1_status: i32,
 }
 
+/// `elpis_runtime_query_result`.
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct CQuery {
+    /// The retained-state identity the answer was computed from (zero on refusal).
+    pub state_digest: Digest,
+    /// The K1 status behind an `ECS_*` refusal (0 otherwise).
+    pub k1_status: i32,
+    pub reserved: u32,
+}
+
+const _: () = assert!(std::mem::size_of::<CQuery>() == 40);
+
+/// `elpis_runtime_recovery`.
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct CRecovery {
+    /// 1 NOTHING_TO_RECOVER, 2 RESUMABLE, 3 CANDIDATE_UNRESOLVED, 4 CHECKPOINT_MISSING.
+    pub disposition: u32,
+    /// 1 when a verified slot holds the authorized identity.
+    pub authorized_present: u32,
+    pub authorized: Digest,
+    pub candidate: Digest,
+    /// The authorized envelope's size when resumable (copied when the caller's buffer holds it), else 0.
+    pub envelope_bytes: u64,
+}
+
+const _: () = assert!(std::mem::size_of::<CRecovery>() == 80);
 const _: () = assert!(std::mem::size_of::<CTurnBegin>() == 48);
 const _: () = assert!(std::mem::size_of::<CTurnCommit>() == 120);
-const _: () = assert!(std::mem::size_of::<Counters>() == 56);
+const _: () = assert!(std::mem::size_of::<Counters>() == 80);
+const _: () = assert!(std::mem::size_of::<Budget>() == 48);
 
 fn rc(result: Result<(), Error>) -> i32 {
     match result {
@@ -107,6 +141,54 @@ pub extern "C" fn elpis_runtime_features(dim: usize) -> usize {
     features(dim)
 }
 
+/// The canonical cognitive fuel ceiling (`elpis_runtime_budget`), compiled in; every budget must narrow it.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_fuel_ceiling(out: *mut Budget) -> i32 {
+    match out.as_mut() {
+        Some(out) => {
+            *out = crate::fuel::CEILING;
+            0
+        }
+        None => Rt::Invalid as i32,
+    }
+}
+
+/// ECS work units of an experience schedule on a `dim x width` state (docs/RUNTIME_CORE.md, fuel). Refused
+/// (`RUNTIME_INVALID`) for an invalid shape or schedule, or a total beyond `u64`.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_work_units(
+    dim: usize,
+    width: usize,
+    schedule: *const Experience,
+    experiences: usize,
+    out: *mut u64,
+) -> i32 {
+    let run = || -> Result<u64, Error> {
+        let schedule = slice(schedule, experiences)?;
+        crate::fuel::schedule_units(dim, width, schedule).ok_or(Error::Runtime(Rt::Invalid))
+    };
+    match (run(), out.as_mut()) {
+        (Ok(units), Some(out)) => {
+            *out = units;
+            0
+        }
+        (Err(e), _) => e.code(),
+        (_, None) => Rt::Invalid as i32,
+    }
+}
+
+/// ECS work units of a QUERY of `rows` rows on a `dim x width` state.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_query_work_units(dim: usize, width: usize, rows: usize, out: *mut u64) -> i32 {
+    match (crate::fuel::query_units(dim, width, rows), out.as_mut()) {
+        (Some(units), Some(out)) => {
+            *out = units;
+            0
+        }
+        _ => Rt::Invalid as i32,
+    }
+}
+
 /// The stable name of any code this library returns (`RUNTIME_OK` for 0), or NULL. Static storage.
 #[no_mangle]
 pub extern "C" fn elpis_runtime_code_name(code: i32) -> *const c_char {
@@ -125,6 +207,11 @@ pub extern "C" fn elpis_runtime_code_name(code: i32) -> *const c_char {
             Rt::TurnNotOpen => c"RUNTIME_TURN_NOT_OPEN",
             Rt::EvolutionInFlight => c"RUNTIME_EVOLUTION_IN_FLIGHT",
             Rt::EvolutionNotInFlight => c"RUNTIME_EVOLUTION_NOT_IN_FLIGHT",
+            Rt::Fuel => c"COGNITION_FUEL_EXCEEDED",
+            Rt::CheckpointInvalid => c"CHECKPOINT_INVALID",
+            Rt::CheckpointIo => c"CHECKPOINT_IO",
+            Rt::CheckpointShape => c"CHECKPOINT_SHAPE",
+            Rt::CheckpointUnresolved => c"CHECKPOINT_UNRESOLVED",
         }
         .as_ptr(),
         None => match Code::from_i32(code) {
@@ -216,6 +303,42 @@ pub unsafe extern "C" fn elpis_runtime_anchor(
     rc(run().map(|s| snapshot_out(out, &s)))
 }
 
+/// QUERY: answer `f_W(x)` for `rows` rows of the descriptor's dimension (`x_len = rows * dim`) from the lineage's
+/// authoritative K1 state, read-only: no transaction, no commit, no publication. `out` receives `rows` values;
+/// `result->state_digest` the retained-state identity they were computed from (it equals the durable expected
+/// identity, or the call is refused and `out` is zeroed).
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_query(
+    rt: *mut ElpisRuntime,
+    sub: *const CSubstrate,
+    x: *const f64,
+    x_len: usize,
+    out: *mut f64,
+    rows: usize,
+    budget: *const Budget,
+    result: *mut CQuery,
+) -> i32 {
+    let run = || -> Result<Digest, Refusal> {
+        let mut native = substrate(sub)?;
+        let key = native.key();
+        let x = slice(x, x_len)?;
+        let budget = budget.as_ref().ok_or(Refusal::from(Rt::Invalid))?;
+        if out.is_null() {
+            return Err(Rt::Invalid.into());
+        }
+        let out = std::slice::from_raw_parts_mut(out, rows);
+        runtime(rt)?.query(&mut native, key, x, out, budget)
+    };
+    let (value, code) = match run() {
+        Ok(state_digest) => (CQuery { state_digest, k1_status: 0, reserved: 0 }, 0),
+        Err(r) => (CQuery { k1_status: r.k1_status, ..CQuery::default() }, r.error.code()),
+    };
+    if !result.is_null() {
+        *result = value;
+    }
+    code
+}
+
 unsafe fn refusal_begin(out: *mut CTurnBegin, r: &Refusal) -> i32 {
     if !out.is_null() {
         *out = CTurnBegin { schedule: r.schedule, k1_status: r.k1_status, reserved: 0 };
@@ -237,6 +360,7 @@ pub unsafe extern "C" fn elpis_runtime_turn_begin(
     schedule: *const Experience,
     experiences: usize,
     learning_rate: f64,
+    budget: *const Budget,
     s3_out: *mut f64,
     s3_len: usize,
     out: *mut CTurnBegin,
@@ -244,6 +368,7 @@ pub unsafe extern "C" fn elpis_runtime_turn_begin(
     let run = || -> Result<ScheduleOutcome, Refusal> {
         let mut native = substrate(sub)?;
         let key = native.key();
+        let budget = budget.as_ref().ok_or(Refusal::from(Rt::Invalid))?;
         let stimulus = Stimulus {
             x: slice(x, x_len)?,
             y: slice(y, y_len)?,
@@ -254,7 +379,7 @@ pub unsafe extern "C" fn elpis_runtime_turn_begin(
             return Err(Rt::Invalid.into());
         }
         let s3 = std::slice::from_raw_parts_mut(s3_out, s3_len);
-        runtime(rt)?.turn_begin(&mut native, key, &stimulus, s3)
+        runtime(rt)?.turn_begin(&mut native, key, &stimulus, budget, s3)
     };
     match run() {
         Ok(schedule) => {
@@ -300,6 +425,18 @@ pub unsafe extern "C" fn elpis_runtime_turn_commit(
     code
 }
 
+/// Release managed ownership of the bound state (its K1 lease) and unbind it, so its owner may use it unmanaged.
+/// Refused while a managed turn is open; a state that is not the bound one is refused; nothing bound is OK.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_release(rt: *mut ElpisRuntime, sub: *const CSubstrate) -> i32 {
+    let run = || -> Result<(), Error> {
+        let mut native = substrate(sub)?;
+        let key = native.key();
+        runtime(rt)?.release(&mut native, key).map_err(|r| r.error)
+    };
+    rc(run())
+}
+
 /// Abort the open turn of the described substrate (through the capability retained at begin): nothing is
 /// installed. Another substrate is refused (`RUNTIME_TURN_NOT_OPEN`) and the turn stays open.
 #[no_mangle]
@@ -309,6 +446,94 @@ pub unsafe extern "C" fn elpis_runtime_turn_abort(rt: *mut ElpisRuntime, sub: *c
         runtime(rt)?.turn_abort(key).map_err(|r| r.error)
     };
     rc(run())
+}
+
+// -- K1 Recovery R0 ---------------------------------------------------------------------------------------------
+
+unsafe fn path_arg<'a>(path: *const u8, len: usize) -> Result<&'a Path, Error> {
+    if path.is_null() {
+        return Err(Rt::Invalid.into());
+    }
+    Ok(Path::new(OsStr::from_bytes(std::slice::from_raw_parts(path, len))))
+}
+
+/// Operator provisioning of a K1 checkpoint store: create the absolute directory `path` (it must not exist) with
+/// exactly two empty slot files sized for envelopes of `envelope_bytes` (the admitted K1 shape's), fully written
+/// and synced. Never overwrites, resizes or adopts anything.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_checkpoint_provision(path: *const u8, len: usize, envelope_bytes: usize) -> i32 {
+    rc(path_arg(path, len)
+        .and_then(|dir| crate::checkpoint::Store::provision(dir, envelope_bytes).map_err(Error::Runtime)))
+}
+
+/// Attach a provisioned checkpoint store to an open runtime (no turn in flight).
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_checkpoint_attach(rt: *mut ElpisRuntime, path: *const u8, len: usize) -> i32 {
+    let run = || -> Result<(), Error> {
+        let dir = path_arg(path, len)?;
+        runtime(rt)?.checkpoint_attach(dir).map_err(|r| r.error)
+    };
+    rc(run())
+}
+
+/// What restart may do with the K1 lineage (read-only). When RESUMABLE and `envelope_len` holds it, the authorized
+/// envelope is copied to `envelope` (restore it into a K1 state; its identity is `out->authorized`).
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_checkpoint_recover(
+    rt: *mut ElpisRuntime,
+    out: *mut CRecovery,
+    envelope: *mut u8,
+    envelope_len: usize,
+) -> i32 {
+    if out.is_null() {
+        return Rt::Invalid as i32;
+    }
+    let run = || -> Result<Recovery, Error> { runtime(rt)?.recover().map_err(|r| r.error) };
+    match run() {
+        Ok(r) => {
+            let size = r.envelope.as_ref().map_or(0, Vec::len);
+            if let Some(bytes) = &r.envelope {
+                if !envelope.is_null() && envelope_len >= size {
+                    std::ptr::copy_nonoverlapping(bytes.as_ptr(), envelope, size);
+                }
+            }
+            *out = CRecovery {
+                disposition: r.disposition as u32,
+                authorized_present: r.authorized_present as u32,
+                authorized: r.authorized,
+                candidate: r.candidate,
+                envelope_bytes: size as u64,
+            };
+            0
+        }
+        Err(e) => e.code(),
+    }
+}
+
+/// Operator reconciliation: discard the unresolved candidate (exactly `candidate`); the lineage stays at
+/// continuity's authority.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_checkpoint_discard(rt: *mut ElpisRuntime, candidate: *const u8) -> i32 {
+    let run = || -> Result<(), Error> {
+        let candidate = digest(candidate)?;
+        runtime(rt)?.checkpoint_discard(candidate).map_err(|r| r.error)
+    };
+    rc(run())
+}
+
+/// Operator reconciliation: adopt the unresolved candidate (exactly `candidate`) as the authority: continuity
+/// publishes authorized -> candidate after its envelope verified. A publication failure fail-stops.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_checkpoint_adopt(
+    rt: *mut ElpisRuntime,
+    candidate: *const u8,
+    out: *mut CSnapshot,
+) -> i32 {
+    let run = || -> Result<Snapshot, Error> {
+        let candidate = digest(candidate)?;
+        runtime(rt)?.checkpoint_adopt(candidate).map_err(|r| r.error)
+    };
+    rc(run().map(|s| snapshot_out(out, &s)))
 }
 
 // -- evolution ------------------------------------------------------------------------------------------------
@@ -389,6 +614,20 @@ mod testing {
         arg: u64,
     ) -> i32 {
         rc(runtime(rt).and_then(|mut core| core.testing_arm(publication, action, arg)))
+    }
+
+    /// Simulated process death at a checkpointed-LEARN boundary: 0 none, 1 after the candidate checkpoint (before
+    /// the native commit), 2 after the native commit (before the continuity publication).
+    #[no_mangle]
+    pub unsafe extern "C" fn elpis_runtime_testing_checkpoint_crash(rt: *mut ElpisRuntime, point: u32) -> i32 {
+        use crate::core::CrashPoint;
+        let point = match point {
+            0 => None,
+            1 => Some(CrashPoint::AfterCheckpoint),
+            2 => Some(CrashPoint::AfterNativeCommit),
+            _ => return Rt::Invalid as i32,
+        };
+        rc(runtime(rt).map(|mut core| core.testing_crash_at(point)))
     }
 
     /// Copy the embedded store's I/O counters; reset them when `reset` is nonzero.

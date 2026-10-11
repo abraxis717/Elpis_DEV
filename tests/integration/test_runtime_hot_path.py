@@ -26,8 +26,8 @@ from elpis.ECS.k1 import K1Library
 from elpis.runtime import Runtime, RuntimeConfig
 from elpis.runtime.cognition import run_turn
 
-from ..conftest import require_runtime_library
-from ._turn_fixtures import ByteTokens, FixtureMap
+from ..conftest import admit_k1_set, require_runtime_library, runtime_config
+from ._turn_fixtures import LEARN, TEST_CODEC_PIN, ByteTokens, FixtureMap, admitted
 from .test_codec_ecs_turn import RATE, _beside, _Counting, world
 
 _OS_CALLS = ("open", "close", "pwrite", "write", "pread", "read", "fsync", "fdatasync", "rename", "replace", "unlink",
@@ -73,30 +73,30 @@ _RETIRED_MODULES = ("elpis.runtime.history", "elpis.runtime.native_history", "el
 
 @pytest.mark.parametrize("experiences,steps", [(1, 1), (8, 60)])
 def test_managed_turn_is_two_runtimecore_crossings_and_one_fixed_publication(experiences, steps, tmp_path, monkeypatch):
-    k1 = K1Library(ctypes.CDLL(str(_beside("libelpis_ecsg_k1.so"))))
+    k1 = K1Library(admit_k1_set()[1].lib)   # the managed runtime drives only admitted K1 code
     fixture = dict(experiences=experiences, steps=steps)
     counter = _Counting(k1._k)
 
     # The bare canonical turn: the reference crossing count.
     with world(k1) as bare:
-        run_turn(bare, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
+        run_turn(bare, "warm", tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)
         counter.calls.clear()
-        run_turn(bare, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
+        run_turn(bare, "turn", tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)
         bare_crossings = dict(counter.calls)
 
-    config = RuntimeConfig(tmp_path / "continuity", require_runtime_library(testing=True))
+    config = runtime_config(tmp_path / "continuity", require_runtime_library(testing=True), TEST_CODEC_PIN)
     with world(k1) as state, Runtime(config) as runtime:
         runtime.anchor_cognition(state)
-        runtime.run_turn(state, "warm", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture), learning_rate=RATE)
+        runtime.run_turn(state, "warm", tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)
         footprint = sorted((p.name, p.stat().st_size) for p in (tmp_path / "continuity").iterdir())
         runtime.continuity.testing_counters(reset=True)
         runtime._core.counters(reset=True)
+        codec = admitted(FixtureMap(**fixture))   # admission is the cold path (it measures the codec's source)
         core_calls = _CountingSymbols(runtime._core._f, "elpis_runtime_")
         counter.calls.clear()
         with monkeypatch.context() as patch:
             fs = _CountingOS(patch)
-            result = runtime.run_turn(state, "turn", tokenizer=ByteTokens(), codec_map=FixtureMap(**fixture),
-                                      learning_rate=RATE)
+            result = runtime.run_turn(state, "turn", tokenizer=ByteTokens(), codec=codec, authority=LEARN)
         python_k1_calls, turn_core_calls = dict(counter.calls), dict(core_calls.calls)
         native = runtime._core.counters()
         io = runtime.continuity.testing_counters()
@@ -110,7 +110,8 @@ def test_managed_turn_is_two_runtimecore_crossings_and_one_fixed_publication(exp
         assert {k: bare_crossings.get(k, 0) for k in ("txn_begin", "txn_run_schedule", "txn_commit_identity")} == \
             {"txn_begin": 1, "txn_run_schedule": 1, "txn_commit_identity": 1}, bare_crossings
         assert native == {"k1_state_digests": 0, "k1_reserves": 0, "k1_txn_begins": 1, "k1_run_schedules": 1,
-                          "k1_commits": 1, "k1_aborts": 0, "publications": 1}, native
+                          "k1_commits": 1, "k1_aborts": 0, "publications": 1, "k1_queries": 0,
+                          "k1_shapes": 0, "k1_lease_claims": 0}, native
         # Python does no file I/O; the library writes one complete fixed-size record and syncs it once.
         assert fs.calls == {}, fs.calls
         assert io == {"opens": 0, "preads": 0, "pread_bytes": 0, "pwrites": 1, "pwrite_bytes": 176,

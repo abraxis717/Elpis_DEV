@@ -18,13 +18,16 @@
 //! The production surface is the C ABI in [`ffi`] (include/elpis/runtime.h). The library also exports the
 //! continuity C ABI of the embedded store's crate, so one library serves both.
 
+pub mod checkpoint;
 pub mod code;
 pub mod core;
 pub mod ffi;
+pub mod fuel;
 pub mod substrate;
 
 pub use crate::core::{Core, Counters, Stimulus};
 pub use code::{Error, Rt};
+pub use fuel::{Budget, CEILING};
 pub use substrate::{CommitIdentity, Experience, K1Ops, Key, ScheduleOutcome, Transition};
 
 // The continuity C ABI is part of this library's exported surface (one authority, one implementation).

@@ -24,6 +24,7 @@ __all__ = ("CommitIdentity", "K1Error", "K1FMSRuntime", "K1FMSState", "K1Library
 
 _U64 = C.c_uint64
 _CODES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT",
+          -8: "LEASED",
           -101: "FMS_INVALID", -102: "NOMEM", -103: "MISSING", -104: "BUSY", -105: "UNSUPPORTED", -106: "IO",
           -107: "CAPACITY", -108: "STATE", -109: "DIGEST", -110: "DEVICE", -111: "TIMEOUT"}
 PROVENANCE = {0: "COMPLETE", 1: "RESET", 2: "UNCONSOLIDATED_IMPORT"}
@@ -192,6 +193,7 @@ _K1_ABI = {
     "generation": ([_VP], _U64),
     "provenance_of": ([_VP], C.c_uint32),
     "forward": ([_VP, _P, C.c_size_t, _P], C.c_int),
+    "query_identity": ([_VP, C.c_size_t, _P, C.c_size_t, _P, _U8P], C.c_int),
     "learn": ([_VP, _P, _P, C.c_size_t, C.c_double, _U64, _TP], C.c_int),
     "consolidate": ([_VP, _P, C.c_size_t, _TP], C.c_int),
     "reset": ([_VP, _TP], C.c_int),
@@ -200,6 +202,7 @@ _K1_ABI = {
     "copy_a": ([_VP, _P, C.c_size_t], C.c_int),
     "snapshot_size": ([_VP], C.c_size_t),
     "snapshot_write": ([_VP, _U8P, C.c_size_t], C.c_int),
+    "txn_snapshot_write": ([_VP, _U64, _U8P, C.c_size_t], C.c_int),
     "state_digest": ([_VP, _U8P], C.c_int),
     "stats": ([_VP, C.POINTER(_Counters)], C.c_int),
     "txn_begin": ([_VP, C.POINTER(_U64)], C.c_int),
@@ -211,6 +214,16 @@ _K1_ABI = {
     "txn_commit_identity": ([_VP, _U64, _CIP], C.c_int),
     "txn_abort": ([_VP, _U64], C.c_int),
     "txn_run_schedule": ([_VP, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P, C.c_size_t, _SRP], C.c_int),
+    "shape": ([_VP, C.POINTER(C.c_size_t), C.POINTER(C.c_size_t)], C.c_int),
+    # Managed ownership (ecsg_k1.h): the lease a managed owner (RuntimeCore) holds; read-only here.
+    "lease_of": ([_VP], _U64),
+    "lease_claim": ([_VP, _U64], C.c_int),
+    "lease_release": ([_VP, _U64], C.c_int),
+    "leased_reserve": ([_VP, _U64, C.c_size_t], C.c_int),
+    "leased_txn_begin": ([_VP, _U64, _U8P, C.POINTER(_U64)], C.c_int),
+    "leased_txn_run_schedule": ([_VP, _U64, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P, C.c_size_t,
+                                 _SRP], C.c_int),
+    "leased_txn_commit_identity": ([_VP, _U64, _U64, _CIP], C.c_int),
 }
 
 
@@ -310,6 +323,12 @@ class K1State:
     def provenance(self):
         return PROVENANCE[int(self._k.provenance_of(self._live()))]
 
+    @property
+    def managed_lease(self):
+        """The lease of the managed owner (RuntimeCore) that holds this state, 0 when unmanaged. While it is held,
+        every unmanaged mutating call here is refused ``LEASED`` before anything is touched."""
+        return int(self._k.lease_of(self._live()))
+
     def reserve(self, max_rows):
         rc = self._k.reserve(self._live(), max_rows)
         if rc != 0:
@@ -330,6 +349,16 @@ class K1State:
         if rc != 0:
             raise _refused(rc, "K1 query")
         return rows
+
+    def query_identity(self, x_rows):
+        """QUERY bound to its identity: ``(f_W(X), state_digest)`` of the same authoritative state, one native call.
+        Read-only: nothing is written."""
+        x, rows = _admit_rows(x_rows, self._dim, "X")
+        out, digest = (C.c_double * rows)(), (C.c_uint8 * 32)()
+        rc = self._k.query_identity(self._live(), self._dim, x, rows, out, digest)
+        if rc != 0:
+            raise _refused(rc, "K1 query")
+        return _unpack_from(f"{rows}d", out), bytes(digest)
 
     def learn(self, x_rows, y, learning_rate, steps=1):
         """``steps`` K1 steps (G1 + the K1 correction) in one native call, committed as one transition."""
@@ -521,11 +550,13 @@ _FMS_ABI = {
     "pump": ([_VP], C.c_int),
     "reserve": ([_VP, _U64, C.c_size_t], C.c_int),
     "forward": ([_VP, _U64, _P, C.c_size_t, _P], C.c_int),
+    "query_identity": ([_VP, _U64, C.c_size_t, _P, C.c_size_t, _P, _U8P], C.c_int),
     "learn": ([_VP, _U64, _P, _P, C.c_size_t, C.c_double, _U64, _TP], C.c_int),
     "consolidate": ([_VP, _U64, _P, C.c_size_t, _TP], C.c_int),
     "reset": ([_VP, _U64, _TP], C.c_int),
     "copy_w": ([_VP, _U64, _P, C.c_size_t], C.c_int),
     "snapshot_write": ([_VP, _U64, _U8P, C.c_size_t], C.c_int),
+    "txn_snapshot_write": ([_VP, _U64, _U64, _U8P, C.c_size_t], C.c_int),
     "state_digest": ([_VP, _U64, _U8P], C.c_int),
     "txn_begin": ([_VP, _U64, C.POINTER(_U64)], C.c_int),
     "txn_learn": ([_VP, _U64, _U64, _P, _P, C.c_size_t, C.c_double, _U64, _TP], C.c_int),
@@ -536,6 +567,15 @@ _FMS_ABI = {
     "txn_abort": ([_VP, _U64, _U64], C.c_int),
     "txn_run_schedule": ([_VP, _U64, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P, C.c_size_t, _SRP],
                          C.c_int),
+    "shape": ([_VP, _U64, C.POINTER(C.c_size_t), C.POINTER(C.c_size_t)], C.c_int),
+    "lease_of": ([_VP, _U64, C.POINTER(_U64)], C.c_int),
+    "lease_claim": ([_VP, _U64, _U64], C.c_int),
+    "lease_release": ([_VP, _U64, _U64], C.c_int),
+    "leased_reserve": ([_VP, _U64, _U64, C.c_size_t], C.c_int),
+    "leased_txn_begin": ([_VP, _U64, _U64, _U8P, C.POINTER(_U64)], C.c_int),
+    "leased_txn_run_schedule": ([_VP, _U64, _U64, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P,
+                                 C.c_size_t, _SRP], C.c_int),
+    "leased_txn_commit_identity": ([_VP, _U64, _U64, _U64, _CIP], C.c_int),
 }
 
 
@@ -620,6 +660,14 @@ class K1FMSRuntime:
         out["provenance"] = PROVENANCE[out["provenance"]]
         return out
 
+    def managed_lease(self, state_id):
+        """The lease of the managed owner holding one resident state (0: unmanaged)."""
+        out = _U64()
+        rc = self._f.lease_of(self._live(), state_id, C.byref(out))
+        if rc != 0:
+            raise _refused(rc, "K1 FMS lease")
+        return int(out.value)
+
     def k1_stats(self, state_id):
         s = _Counters()
         rc = self._f.k1_stats(self._live(), state_id, C.byref(s))
@@ -646,6 +694,16 @@ class K1FMSRuntime:
         if rc != 0:
             raise _refused(rc, "K1 FMS query")
         return rows
+
+    def query_identity(self, state_id, x_rows):
+        """QUERY bound to its identity on a resident state (READ pin): ``(f_W(X), state_digest)``, one call."""
+        dim = self._dim(state_id)
+        x, rows = _admit_rows(x_rows, dim, "X")
+        out, digest = (C.c_double * rows)(), (C.c_uint8 * 32)()
+        rc = self._f.query_identity(self._live(), state_id, dim, x, rows, out, digest)
+        if rc != 0:
+            raise _refused(rc, "K1 FMS query")
+        return _unpack_from(f"{rows}d", out), bytes(digest)
 
     def learn(self, state_id, x_rows, y, learning_rate, steps=1):
         x, rows = _admit_rows(x_rows, self._dim(state_id), "X")
@@ -834,6 +892,10 @@ class K1FMSState:
     def provenance(self):
         return self._r.inspect(self._id)["provenance"]
 
+    @property
+    def managed_lease(self):
+        return self._r.managed_lease(self._id)
+
     def reserve(self, max_rows):
         self._r.reserve(self._id, max_rows)
 
@@ -842,6 +904,9 @@ class K1FMSState:
 
     def query(self, x_rows):
         return self._r.query(self._id, x_rows)
+
+    def query_identity(self, x_rows):
+        return self._r.query_identity(self._id, x_rows)
 
     def snapshot(self):
         return self._r.snapshot(self._id)

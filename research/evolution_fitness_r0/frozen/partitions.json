@@ -1,0 +1,96 @@
+{
+  "classification": "RESEARCH_ONLY NO_CLAIM: write-once partition manifest of the Evolution Fitness R0 corridor environment",
+  "environment_schema": "elpis.research.evolution-fitness.corridor.v1",
+  "negative_baselines": {
+    "ALWAYS_LEFT": {
+      "-1:1": "LEFT",
+      "-1:2": "LEFT",
+      "-1:3": "LEFT",
+      "0:0": "LEFT",
+      "1:1": "LEFT",
+      "1:2": "LEFT",
+      "1:3": "LEFT"
+    },
+    "ALWAYS_STAY": {
+      "-1:1": "STAY",
+      "-1:2": "STAY",
+      "-1:3": "STAY",
+      "0:0": "STAY",
+      "1:1": "STAY",
+      "1:2": "STAY",
+      "1:3": "STAY"
+    },
+    "AWAY": {
+      "-1:1": "RIGHT",
+      "-1:2": "RIGHT",
+      "-1:3": "RIGHT",
+      "0:0": "RIGHT",
+      "1:1": "LEFT",
+      "1:2": "LEFT",
+      "1:3": "LEFT"
+    }
+  },
+  "partitions": {
+    "CALIBRATION": {
+      "digest": "6cfea1cb543ec56330a2a30268873020298dbc280fa754951154cdec1b78cf96",
+      "spec": "63184e37fc8eace2e1e352c56567acff6b1a9d7cb206fb6315e9c9d31623c6ba",
+      "worlds": [
+        "cal-0",
+        "cal-1",
+        "cal-2",
+        "cal-3"
+      ]
+    },
+    "DEVELOPMENT": {
+      "digest": "df7bb1c53eaf9a4692e3b3e606c7b578a951aa3b7e07f39946b6f160a36f17dd",
+      "spec": "63184e37fc8eace2e1e352c56567acff6b1a9d7cb206fb6315e9c9d31623c6ba",
+      "worlds": [
+        "dev-0",
+        "dev-1",
+        "dev-2",
+        "dev-3",
+        "dev-4",
+        "dev-5",
+        "dev-6",
+        "dev-7"
+      ]
+    },
+    "HELD_OUT": {
+      "digest": "2a92cadefb82c930daa01ce4be63808a615f74deda4c343b09095a1c4be95cdd",
+      "spec": "63184e37fc8eace2e1e352c56567acff6b1a9d7cb206fb6315e9c9d31623c6ba",
+      "worlds": [
+        "held-0",
+        "held-1",
+        "held-2",
+        "held-3",
+        "held-4",
+        "held-5",
+        "held-6",
+        "held-7",
+        "held-8",
+        "held-9",
+        "held-10",
+        "held-11"
+      ]
+    },
+    "OOD": {
+      "digest": "cbf3f2ebc54096502b424deb2ef2d74d540dd9893b1f21d8ca5fa40a9ec4956d",
+      "spec": "3b193f52d45d8dfcce341548283593cef17b789735301870d1cf2c4ef5298e7e",
+      "worlds": [
+        "ood-0",
+        "ood-1",
+        "ood-2",
+        "ood-3",
+        "ood-4",
+        "ood-5",
+        "ood-6",
+        "ood-7"
+      ]
+    }
+  },
+  "schema": "elpis.research.evolution-fitness.frozen-partitions.v1",
+  "specs": {
+    "IN_DISTRIBUTION": "63184e37fc8eace2e1e352c56567acff6b1a9d7cb206fb6315e9c9d31623c6ba",
+    "OUT_OF_DISTRIBUTION": "3b193f52d45d8dfcce341548283593cef17b789735301870d1cf2c4ef5298e7e"
+  }
+}

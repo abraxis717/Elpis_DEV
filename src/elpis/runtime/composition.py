@@ -19,14 +19,25 @@ entry point and returns that subsystem's result:
   corpus manifest), then a budgeted, frozen token rendering. It is a
   communication operation: it does not make HACF a context window for a model.
 * ``evolve``: the evolution path gate, bound to the current evolution
-  authority (``evolution_authority``). The exact assertion is durably reserved
-  before execution and finalized afterwards. Pending authority and stale
-  assertions execute nothing.
-* ``anchor_cognition`` / ``run_turn``: the canonical cognitive turn, codec ->
-  ECS -> codec (:mod:`elpis.runtime.cognition`), over a native K1 state of the
-  one ECS. The first managed lineage is anchored explicitly. Each committed
-  turn publishes its new expected K1 retained-state identity to continuity.
-  Without a qualified ECS codec map the turn refuses with
+  authority (``evolution_authority``). The gate must be issued by the
+  deployment-pinned evolution policy (``elpis.evolution.policy``;
+  ``RuntimeConfig.evolution_policy_sha256``): a caller-built gate is refused.
+  The exact assertion is durably reserved before execution and finalized
+  afterwards. Pending authority and stale assertions execute nothing.
+* ``anchor_cognition``: the explicit anchor of the first managed K1 lineage.
+* ``run_query``: the canonical read-only QUERY, codec -> ``f_W(x)`` of the
+  authoritative K1 state -> codec (:mod:`elpis.runtime.cognition`). No state
+  change: nothing is begun, committed or published.
+* ``run_learn``: the canonical LEARN under an explicit ``LearnAuthority``: the
+  admitted experience schedule committed atomically, then its new expected K1
+  retained-state identity published to continuity.
+* ``recover_k1``: K1 Recovery R0 (docs/K1_RECOVERY_R0.md), read-only: what
+  restart may do with the lineage, and the complete authorized envelope when it
+  is resumable. ``discard_k1_candidate`` / ``adopt_k1_candidate`` are the
+  explicit operator reconciliation of an unresolved checkpoint candidate.
+* ``run_turn``: the LEGACY learned turn (LEARN, then the decode of its S3
+  readout), kept for replay; it needs the same explicit learning authority.
+  Without a qualified ECS codec map every cognitive operation refuses with
   ``ECS_CODEC_UNQUALIFIED``: text generation is unavailable.
 
 THE AUTHORITY IS RUNTIMECORE'S, NOT THIS MODULE'S. Every mutable systems decision
@@ -62,6 +73,7 @@ from elpis.evolution.path_gate import (
     GateExecuted,
     GateRejected,
 )
+from elpis.evolution.policy import EvolutionPolicyError, policy_of
 from elpis.inference.admission import ContextAdmission, ContextBudget, admit_context
 from elpis.pipeline.canonical.publisher import CanonicalPublicationReceipt, publish_candidate
 from elpis.pipeline.ingress import QueryIngress, QueryIngressResult
@@ -69,9 +81,10 @@ from elpis.structure.retrieval.budget import RetrievalBudget
 from elpis.structure.retrieval.contracts import RetrievalBundle
 from elpis.structure.retrieval.objects import CorpusManifest, resolve_chunks
 from elpis.structure.retrieval.validation import validate_bundle
+from elpis.substrate.authority import PinnedAuthority
 from elpis.substrate.digests import raw_digest
 
-from .core import RuntimeCore, RuntimeLibrary, describe
+from .core import K1Recovery, RuntimeCore, RuntimeLibrary, describe
 from .edges import from_regex_hacf, object_claims
 from .errors import CompositionError
 
@@ -88,19 +101,50 @@ class ContextPreparation:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """The runtime's continuity directory and the RuntimeCore library (explicit absolute paths).
+    """The runtime's continuity directory, its RuntimeCore library and the deployment authorities it trusts.
 
-    ``runtime_library`` is the built ``libelpis_runtime.so`` (native/runtime), loaded by explicit
-    path like every Elpis native library. It embeds the continuity authority (native/continuity).
+    ``runtime_library`` is the built ``libelpis_runtime.so`` (native/runtime), named by an explicit absolute path.
+    It is never loaded from that path: it is admitted (``elpis.substrate.native_admission``) beneath its directory
+    as the trusted descriptor root, as the library ``runtime_library_id`` of the deployment-pinned
+    ``native_authority`` (a ``PinnedAuthority`` whose own pin came from trusted configuration), verified and loaded
+    from sealed bytes. Without a ``native_authority`` the runtime refuses to start (``RUNTIME_UNPINNED``). The
+    library embeds the continuity authority (native/continuity).
+
+    ``codec_authority_sha256`` is the independent SHA-256 pin of the one codec authority catalog
+    (``elpis.runtime.codec_authority``) whose admissions this runtime's cognitive operations accept. It is
+    deployment configuration, never derived from a codec. Without it every managed cognitive operation that is
+    given a codec refuses (``CODEC_AUTHORITY``).
+
+    ``evolution_policy_sha256`` is the independent SHA-256 pin of the one evolution policy
+    (``elpis.evolution.policy``) whose gates ``Runtime.evolve`` accepts. Without it ``evolve`` refuses
+    (``EVOLUTION_POLICY_UNPINNED``): no caller configures the scopes, budgets or contract of an attempt.
+
+    ``k1_checkpoint_dir`` (optional) is an operator-provisioned K1 Recovery R0 store
+    (:func:`elpis.runtime.recovery.provision_k1_checkpoint`). When set, every open attaches it (a missing or malformed
+    store refuses the open), the anchor and every LEARN persist the complete envelope before it becomes
+    authoritative, and :meth:`Runtime.recover_k1` can resume the authorized state after restart.
     """
 
     continuity_dir: Path
     runtime_library: Path
+    codec_authority_sha256: str | None = None
+    native_authority: PinnedAuthority | None = None
+    runtime_library_id: str = "elpis_runtime"
+    k1_checkpoint_dir: Path | None = None
+    evolution_policy_sha256: str | None = None
 
     def __post_init__(self):
-        for value in (self.continuity_dir, self.runtime_library):
+        paths = (self.continuity_dir, self.runtime_library)
+        if self.k1_checkpoint_dir is not None:
+            paths += (self.k1_checkpoint_dir,)
+        for value in paths:
             if not isinstance(value, Path) or not value.is_absolute():
                 raise CompositionError("RUNTIME_PATH", "runtime paths must be absolute Paths")
+        for pin, code in ((self.codec_authority_sha256, "CODEC_AUTHORITY"),
+                          (self.evolution_policy_sha256, "EVOLUTION_POLICY")):
+            if pin is not None and (type(pin) is not str or len(pin) != 64
+                                    or any(c not in "0123456789abcdef" for c in pin)):
+                raise CompositionError(code, "authority pin: 64 lowercase hex characters")
 
 
 class RuntimeContinuity:
@@ -143,23 +187,56 @@ class Runtime:
         if type(config) is not RuntimeConfig:
             raise TypeError("config must be a RuntimeConfig")
         self.config = config
-        self._core = RuntimeCore(RuntimeLibrary(config.runtime_library), config.continuity_dir)
+        if config.native_authority is None:
+            raise CompositionError("RUNTIME_UNPINNED", "a deployment-pinned native authority is required")
+        library = RuntimeLibrary.admit(config.runtime_library.parent, config.runtime_library.name,
+                                       config.native_authority, config.runtime_library_id)
+        self._core = RuntimeCore(library, config.continuity_dir)
         self.continuity = RuntimeContinuity(self._core)
         # Keeps the owner of the bound K1 state alive, so its identity cannot be reused while
-        # RuntimeCore holds the binding (lifetime only: RuntimeCore decides the binding).
+        # RuntimeCore holds the binding (lifetime only: RuntimeCore decides the binding), and the bound
+        # state itself, so close can give it back (release its managed lease).
         self._bound_owner = None
+        self._bound_substrate = None
 
     def open(self) -> "Runtime":
         # An open runtime is refused and keeps its turn, so the owner is released only once RuntimeCore opened
         # (unbound) and can retain nothing of it.
         self._core.open()
-        self._bound_owner = None
+        self._bound_owner = self._bound_substrate = None
+        if self.config.k1_checkpoint_dir is not None:
+            try:
+                self._core.checkpoint_attach(self.config.k1_checkpoint_dir)
+            except CompositionError:
+                self._core.close()   # a configured store that cannot be attached refuses the open
+                raise
         return self
 
     def close(self) -> None:
+        """Give the bound K1 state back (end any open managed turn on it natively, release its managed lease), then
+        close RuntimeCore. A state its owner already closed has nothing to give back."""
+        substrate, self._bound_substrate = self._bound_substrate, None
+        if substrate is not None:
+            try:
+                descriptor, _ = describe(substrate)
+            except CompositionError:
+                descriptor = None   # the owner closed the state: its lease went with it
+            if descriptor is not None:
+                for step in (self._core.turn_abort, self._core.release):
+                    try:
+                        step(descriptor)
+                    except CompositionError:
+                        pass        # no open turn; closed or fail-stopped runtime; a lease another owner took
         # RuntimeCore aborts an open managed turn natively before the bound owner is released.
         self._core.close()
         self._bound_owner = None
+
+    def release(self, substrate) -> None:
+        """Give the bound K1 state back: RuntimeCore releases its managed lease and unbinds it, so its owner may
+        use it unmanaged (outside this lineage) again; the next cognitive operation binds and verifies again."""
+        descriptor, _ = describe(substrate)
+        self._core.release(descriptor)
+        self._bound_owner = self._bound_substrate = None
 
     def __enter__(self) -> "Runtime":
         return self.open()
@@ -202,6 +279,11 @@ class Runtime:
                ) -> GateRejected | GateExecuted:
         """Validate (the gate), reserve (RuntimeCore), execute once (the gate), finalize (RuntimeCore).
 
+        The gate must be issued by the evolution policy authority whose policy is the configured pin, and still carry
+        exactly that policy's scopes, budgets and contract; anything else is refused before reservation
+        (``EVOLUTION_POLICY_UNPINNED`` / ``EVOLUTION_POLICY_UNAUTHORIZED``). ``advance`` is a trusted operator
+        callback (the policy's confinement is ``TRUSTED_OPERATOR_CALLBACKS``); Elpis does not sandbox it.
+
         RuntimeCore refuses while fail-stopped or pending, durably reserves the exact assertion
         before anything executes and fail-stops on any reservation or finalization failure. An
         attempt that raises or returns an invalid result may already have had an external effect:
@@ -209,6 +291,7 @@ class Runtime:
         """
         if type(gate) is not EvolutionPathGate:
             raise TypeError("evolve takes an EvolutionPathGate")
+        self._require_policy_gate(gate)
         current = self._core.evolution_authority().evolution
         binding = EvolutionAuthorityBinding(current.revision, current.digest, current.head)
         reason = gate.reject_reason(assertion, state, binding)
@@ -225,6 +308,19 @@ class Runtime:
             raise
         self._core.evolution_finalize(result.receipt.receipt_digest)
         return result
+
+    def _require_policy_gate(self, gate: EvolutionPathGate) -> None:
+        pin = self.config.evolution_policy_sha256
+        if pin is None:
+            raise CompositionError("EVOLUTION_POLICY_UNPINNED", "no evolution policy is configured")
+        authority = policy_of(gate)
+        if authority is None or authority.policy.digest != pin:
+            raise CompositionError("EVOLUTION_POLICY_UNAUTHORIZED",
+                                   "the gate was not issued by the configured evolution policy")
+        try:
+            authority.verify_gate(gate)
+        except EvolutionPolicyError as exc:
+            raise CompositionError(exc.code, str(exc)) from exc
 
     # -- structure -> codec: ingress -> adapter -> HACF resolution -> rendering ----------
     def admit_context(self, *, ingress: QueryIngress, task: bytes, corpus_root: Path, corpus_manifest,
@@ -276,30 +372,108 @@ class Runtime:
         """
         descriptor, owner = describe(substrate)
         anchored = self._core.anchor(descriptor)
-        self._bound_owner = owner
+        self._bound_owner, self._bound_substrate = owner, substrate
         return anchored
 
-    # -- cognition: DSV4 codec -> ECS (RuntimeCore) -> DSV4 codec ---------------------------
-    def run_turn(self, substrate, text, *, tokenizer, codec_map=None, learning_rate=None, max_output_tokens=256):
-        """One managed canonical turn.
+    # -- cognition: K1 Recovery R0 -------------------------------------------------------------------------------
+    def recover_k1(self) -> K1Recovery:
+        """What restart may do with the K1 lineage (read-only; requires an attached checkpoint store).
 
-        The boundary validates the request, encodes the text and the stimulus and decodes the
-        readout. RuntimeCore verifies the K1 lineage, runs the native K1 transaction on its
-        candidate, commits it after the decode succeeded and publishes the committed identity to
-        continuity, fail-stopping when that publication is not certain. A refused or aborted turn
-        installs nothing.
+        Continuity decides; the checkpoint slots are evidence. ``RESUMABLE`` carries the complete authorized
+        ``(W, epoch, H, a)`` envelope: restore it (``K1State.restore``) and the next QUERY or LEARN binds it after
+        verifying its identity against continuity. Nothing rolls forward or back implicitly: a newer unauthorized
+        candidate is ``CANDIDATE_UNRESOLVED`` until an operator discards or adopts it.
+        """
+        return self._core.checkpoint_recover()
+
+    def discard_k1_candidate(self, candidate: bytes) -> None:
+        """Operator reconciliation: withdraw exactly the unresolved candidate ``candidate``; the lineage stays at
+        continuity's authority (``CHECKPOINT_INVALID`` for any other identity)."""
+        self._core.checkpoint_discard(candidate)
+
+    def adopt_k1_candidate(self, candidate: bytes) -> ContinuitySnapshot:
+        """Operator reconciliation: adopt exactly the unresolved candidate ``candidate`` after its complete envelope
+        verified: continuity publishes authorized -> candidate. Refused while a K1 state is bound."""
+        return self._core.checkpoint_adopt(candidate)
+
+    def _codec_pin(self) -> str:
+        """The deployment pin every admitted codec's authority must match; ``""`` (matches nothing) when none is
+        configured, so admission refuses (``CODEC_AUTHORITY``) after the fail-closed missing-codec check."""
+        return self.config.codec_authority_sha256 or ""
+
+    # -- cognition: QUERY (read-only) ---------------------------------------------------------------------------
+    def run_query(self, substrate, request):
+        """One managed QUERY (docs/COGNITION_R0.md): read-only.
+
+        The boundary validates the :class:`~elpis.runtime.cognition.QueryRequest` and encodes the query rows.
+        RuntimeCore answers ``f_W(x)`` from the lineage's authoritative K1 state in one native call that also
+        identifies the state; the identity must be the durable expected one (a mismatch fail-stops and the answer is
+        withheld). Nothing is begun, committed, published or written: W, epoch, H, a and continuity are unchanged.
         """
         self._core.require_live()
 
-        from .cognition import Readout, TurnResult, _decode, _encode, _validate_turn_request
+        from .cognition import QueryReadout, QueryResult, _decode_query, _encode_query, _validate_query_request
+        from .fuel import admit_query
 
-        classification = _validate_turn_request(substrate, text, codec_map=codec_map, learning_rate=learning_rate,
-                                                max_output_tokens=max_output_tokens)
+        codec_map, classification = _validate_query_request(substrate, request, self._codec_pin())
+        descriptor, owner = describe(substrate)
+        tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, codec_map)
+        admit_query(stimulus, substrate.dim, substrate.width, request.budget, request.max_output_tokens)
+        if self._bound_owner is None:
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this query binds stays alive
+        values, digest = self._core.query(descriptor, stimulus, request.budget)   # RuntimeCore re-admits natively
+        readout = QueryReadout(values, substrate.dim, substrate.width, digest)
+        output, rendered = _decode_query(codec_map, readout, request.tokenizer, request.max_output_tokens)
+        return QueryResult(tokens, output, rendered, readout, classification)
+
+    # -- cognition: LEARN (explicit authority) -------------------------------------------------------------------
+    def run_learn(self, substrate, request):
+        """One managed LEARN under an explicit :class:`~elpis.runtime.cognition.LearnAuthority`.
+
+        RuntimeCore verifies the K1 lineage, runs the admitted experience schedule on a native candidate, commits it
+        atomically and publishes the new retained-state identity to continuity, fail-stopping when that publication
+        is not certain. A refused LEARN installs nothing.
+        """
+        self._core.require_live()
+
+        from .cognition import LearnResult, _encode, _validate_learn_request
+        from .fuel import admit_learn
+
+        codec_map, classification, authority = _validate_learn_request(substrate, request, self._codec_pin())
+        descriptor, owner = describe(substrate)
+        tokens, stimulus = _encode(substrate, request.text, request.tokenizer, codec_map)
+        admit_learn(stimulus, substrate.dim, substrate.width, authority.budget)
+        if self._bound_owner is None:
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
+        self._core.turn_begin(descriptor, stimulus, authority.learning_rate, authority.budget)
+        committed, _ = self._core.turn_commit(descriptor)
+        return LearnResult(tokens, stimulus.experiences, committed.commit.epoch_before, committed.commit.epoch_after,
+                           classification, authority.grant, committed.state_before_digest,
+                           committed.state_after_digest)
+
+    # -- cognition: LEGACY learned turn (LEARN + S3 decode) --------------------------------------------------------
+    def run_turn(self, substrate, text, *, tokenizer, codec=None, authority=None, max_output_tokens=256):
+        """One managed LEGACY learned turn: a LEARN under explicit authority whose S3 readout is decoded.
+
+        Kept for the replay of the original synthetic scaffold (``LEGACY_LEARNED_TURN``); it is never a query. The
+        boundary validates the request, encodes the text and the stimulus and decodes the readout. RuntimeCore
+        verifies the K1 lineage, runs the native K1 transaction on its candidate, commits it after the decode
+        succeeded and publishes the committed identity to continuity, fail-stopping when that publication is not
+        certain. A refused or aborted turn installs nothing.
+        """
+        self._core.require_live()
+
+        from .cognition import Readout, TurnResult, _admit_turn, _decode, _encode, _validate_turn_request
+
+        codec_map, classification, authority = _validate_turn_request(
+            substrate, text, codec=codec, authority=authority, max_output_tokens=max_output_tokens,
+            deployment_pin=self._codec_pin())
         descriptor, owner = describe(substrate)
         tokens, stimulus = _encode(substrate, text, tokenizer, codec_map)
+        _admit_turn(substrate, stimulus, authority, max_output_tokens)
         if self._bound_owner is None:
-            self._bound_owner = owner   # whatever RuntimeCore binds at this begin stays alive
-        begun = self._core.turn_begin(descriptor, stimulus, learning_rate)
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
+        begun = self._core.turn_begin(descriptor, stimulus, authority.learning_rate, authority.budget)
         try:
             readout = Readout(begun.s3, begun.epoch_after, substrate.dim, substrate.width)
             output, rendered = _decode(codec_map, readout, tokenizer, max_output_tokens)

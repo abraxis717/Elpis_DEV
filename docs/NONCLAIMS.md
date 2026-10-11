@@ -144,18 +144,53 @@ are not evidence that the contract has any effect.
   lineage.
 * **Not cognitive state.** Continuity holds a digest of the K1 state, never
   the state. ECS owns `W`, epoch, `H` and `a`, their snapshots and FMS
-  residency. Continuity grants no authority over ECS mathematics.
+  residency. Continuity grants no authority over ECS mathematics. Resuming a
+  lost in-memory state from its envelope is K1 Recovery R0's job, below.
 * **Legacy storage is refused, not converted.** The retired receipt-history
   layout is detected and refused. Conversion is an offline step documented
   in `docs/CONTINUITY.md`.
+
+## Runtime boundary after the red team (`elpis.runtime`, `native/runtime`)
+
+* **Mechanics, not qualification.** Read-only QUERY and authority-gated LEARN,
+  independent codec admission, total cognitive fuel, managed K1 lease
+  ownership, sealed native admission and K1 Recovery R0 are implemented and
+  tested; none is qualified. Their specifications in `docs/qualification` are
+  NOT RUN.
+* **Pins authenticate bytes, not authors.** The native, codec and evolution
+  policy authorities verify exact bytes against SHA-256 pins from trusted
+  configuration. They offer no protection against a malicious in-process
+  caller, who can construct a catalog and its pin. The codec implementation
+  digest covers its defining source file only.
+* **The lease is not a credential.** RuntimeCore's K1 lease defends against
+  aliasing by cooperating local callers; in-process code can replace it (the
+  owner then fail-stops). Reads stay open to anyone.
+* **Fuel is not a deadline.** Cognitive fuel is a deterministic integer
+  work-unit bound admitted before an operation starts. No wall-clock deadline
+  or preemption is claimed: the K1 ABI has no cancellation point.
+* **K1 Recovery R0 is integrity, not authentication.** Checkpoint slots are
+  checksummed, not authenticated; replacing them can only produce
+  `CHECKPOINT_MISSING`, `CANDIDATE_UNRESOLVED` or a refusal, never a foreign
+  authority without an explicit operator adopt. No media durability beyond
+  `fdatasync`, and no protection against a disk returning stale, checksum-valid
+  data in both slots, is claimed. Checkpointing adds one envelope write and
+  sync to every LEARN when configured.
 
 ## Evolution (`elpis.evolution`)
 
 * The historical `elpis.rsi.*` identifiers on promotion records are persisted
   schema names. They do not claim recursive self-improvement.
-* Selection, reproduction and fitness are deterministic record mechanics.
-  No environment in this repository produces fitness observations. No
-  adaptive or open-ended evolution claim is made.
+* Selection, reproduction and fitness are deterministic record mechanics. No
+  adaptive or open-ended evolution claim is made, and no evolutionary process
+  is claimed to improve anything.
+* **The policy authority confines nothing.** `elpis.evolution.policy` pins and
+  measures the evaluator and issues gates, evaluations, selections and grants,
+  but its confinement is `TRUSTED_OPERATOR_CALLBACKS`: evaluators and attempt
+  callbacks are trusted operator code, not sandboxed. Its issuance registries
+  are process-local. The bare promotion law still accepts caller-built evidence.
+* The only environment producing fitness, `research/evolution_fitness_r0`, is a
+  RESEARCH_ONLY toy corridor; it is unqualified and its objective transfers
+  nowhere.
 
 ## Structure and pipeline
 
@@ -174,10 +209,14 @@ are not evidence that the contract has any effect.
   retrieval path. The H-gram is a fixed-capacity, operator-provisioned
   associative store with no learning authority. There is no arbitrary semantic
   hyperedge projection, no natural-language relation extraction, no semantic
-  codec and no HACF->ECS or ECS->HACF edge.
+  codec and no canonical HACF->ECS or ECS->HACF edge.
+  `research/hacf_ecs_bridge_r0` is RESEARCH_ONLY, unqualified infrastructure:
+  its only observation map is a TEST_ONLY fixture, it cannot detect
+  well-formed misleading evidence, and no answer it produces is authority.
 * Global autonomous unlimited persistence is prohibited. The autonomous runtime
-  path may write only the two fixed continuity slots and a capacity-bounded FMS
-  cold store; every other persistent writer is operator-explicit, offline or
+  path may write only the two fixed continuity slots, a capacity-bounded FMS
+  cold store and, when an operator provisioned one, the two fixed K1 checkpoint
+  slots; every other persistent writer is operator-explicit, offline or
   prohibited (`elpis.runtime.persistence`). This is a property of the code
   paths, proven by tests; it is not a claim about host filesystem accounting.
 

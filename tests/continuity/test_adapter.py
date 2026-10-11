@@ -24,6 +24,8 @@ from elpis.continuity import (
     EvolutionAuthority,
 )
 
+from ..conftest import admit_native
+
 REPO = Path(__file__).resolve().parents[2]
 FIXTURES = REPO / "native" / "continuity" / "tests" / "fixtures"
 ADAPTER = REPO / "src" / "elpis" / "continuity" / "adapter.py"
@@ -32,12 +34,12 @@ SLOTS = ("continuity.a", "continuity.b")
 
 @pytest.fixture(scope="module")
 def lib(continuity_library):
-    return ContinuityLibrary(continuity_library)
+    return ContinuityLibrary(admit_native(continuity_library).lib)
 
 
 @pytest.fixture(scope="module")
 def testing_lib(continuity_testing_library):
-    return ContinuityLibrary(continuity_testing_library)
+    return ContinuityLibrary(admit_native(continuity_testing_library).lib)
 
 
 def _d(n) -> bytes:
@@ -56,7 +58,7 @@ def _code(fn):
 
 def test_production_library_has_no_test_hooks_and_the_testing_library_does(lib, testing_lib):
     assert not lib.testing and testing_lib.testing
-    assert not hasattr(ctypes.CDLL(str(lib.path)), "elpis_continuity_testing_fault")
+    assert not hasattr(lib._lib, "elpis_continuity_testing_fault")
     assert lib.record_size == testing_lib.record_size == 176
 
 

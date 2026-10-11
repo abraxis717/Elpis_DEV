@@ -11,7 +11,10 @@
 //! * K1 lineage: the first managed lineage is anchored explicitly at the state's retained identity; an open
 //!   runtime binds its lineage to one native state, verified once against the durable expected identity
 //!   (a mismatch fail-stops); another state is refused (`COGNITION_SUBSTRATE_SWITCH`) without a native call.
-//! * Managed turn: begin -> one native schedule on the candidate -> (the boundary decodes) -> native commit ->
+//! * QUERY: read-only. One native call answers `f_W(x)` and identifies the state it answered from; the identity
+//!   must be the durable expected one (a mismatch fail-stops and the answer is withheld). No transaction, no
+//!   commit, no publication: the retained state and continuity are unchanged.
+//! * Managed turn (LEARN): begin -> one native schedule on the candidate -> (the boundary decodes) -> native commit ->
 //!   one continuity publication of the committed identity. A K1 commit is final and never rolled back: a
 //!   publication that is refused or uncertain fail-stops the runtime; restart sees either the old authority
 //!   (the moved state is then a mismatch) or the new one. Every refusal before the commit leaves the complete
@@ -29,14 +32,25 @@
 //! * Nothing else is durable or retained: no history, receipts, events or trajectory.
 
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, Store};
 
+use crate::checkpoint::{self, Disposition, Slot};
 use crate::code::{Error, Rt};
+use crate::fuel::{self, Budget};
 use crate::substrate::{
-    features, CommitIdentity, Experience, K1Ops, Key, ScheduleOutcome, TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_CAPACITY,
-    K1_NONFINITE, K1_STALE, MAX_EXPERIENCES,
+    features, CommitIdentity, Digest as K1Digest, Experience, K1Ops, Key, ScheduleOutcome, TxnAbort, K1_BUSY,
+    K1_CAPACITY, K1_FMS_CAPACITY, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE, MAX_EXPERIENCES,
 };
+
+/// The next managed lease: unique and nonzero per RuntimeCore in this process (an aliasing defence between
+/// cooperating callers, not a secret; the K1 header's "Managed ownership").
+fn next_lease() -> u64 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    let n = NEXT.fetch_add(1, Ordering::Relaxed);
+    (u64::from(std::process::id()) << 40) ^ n | 1 << 63
+}
 
 /// Native crossings and publications RuntimeCore performed (diagnostics; never authority).
 #[repr(C)]
@@ -49,6 +63,9 @@ pub struct Counters {
     pub k1_commits: u64,
     pub k1_aborts: u64,
     pub publications: u64,
+    pub k1_queries: u64,
+    pub k1_shapes: u64,
+    pub k1_lease_claims: u64,
 }
 
 /// An admitted, native-ready stimulus: `x` holds `y.len()` rows of the state's dimension, row-major.
@@ -116,12 +133,46 @@ fn terminate(counters: &mut Counters, mut abort: impl FnMut() -> i32) {
 
 pub struct Core {
     store: Store,
+    /// This runtime's managed lease: claimed on every state it binds, presented on every K1 mutation.
+    lease: u64,
     open: bool,
     fault: Option<Code>,
     bound: Option<Key>,
+    /// The width read natively for one state (immutable for that state's lifetime); fuel admission needs it.
+    shape: Option<(Key, usize)>,
     turn: Option<OpenTurn>,
     evolution: Option<EvolutionState>,
     counters: Counters,
+    /// K1 Recovery R0: the bounded checkpoint store, when attached (docs/K1_RECOVERY_R0.md).
+    checkpoint: Option<checkpoint::Store>,
+    /// The checkpoint slot an open turn's candidate was written to (withdrawn if the turn does not commit).
+    candidate_slot: Option<usize>,
+    #[cfg(feature = "testing")]
+    crash: Option<CrashPoint>,
+}
+
+/// Testing builds only: a simulated process death at one boundary of the checkpointed LEARN commit.
+#[cfg(feature = "testing")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CrashPoint {
+    /// The candidate checkpoint is durable; the native commit has not happened.
+    AfterCheckpoint = 1,
+    /// The native commit happened in memory; continuity has not published it.
+    AfterNativeCommit = 2,
+}
+
+/// What [`Core::recover`] found: the disposition, the identities it is about and, when resumable, the envelope.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Recovery {
+    pub disposition: Disposition,
+    /// Continuity's identity (zero when unanchored).
+    pub authorized: Digest,
+    /// Whether a verified slot holds the authorized identity.
+    pub authorized_present: bool,
+    /// The newer unauthorized candidate's identity (zero when none).
+    pub candidate: Digest,
+    /// The authorized envelope, when the disposition is [`Disposition::Resumable`].
+    pub envelope: Option<Vec<u8>>,
 }
 
 impl Core {
@@ -129,12 +180,18 @@ impl Core {
     pub fn new(continuity_dir: &Path) -> Result<Core, Error> {
         Ok(Core {
             store: Store::new(continuity_dir)?,
+            lease: next_lease(),
             open: false,
             fault: None,
             bound: None,
+            shape: None,
             turn: None,
             evolution: None,
             counters: Counters::default(),
+            checkpoint: None,
+            candidate_slot: None,
+            #[cfg(feature = "testing")]
+            crash: None,
         })
     }
 
@@ -161,7 +218,9 @@ impl Core {
         self.end_turn();
         self.fault = None;
         self.bound = None;
+        self.shape = None;
         self.evolution = None;
+        self.checkpoint = None; // the store's lock is released with the runtime's lifecycle
     }
 
     /// Abort the open managed turn, if any, through the capability retained at its begin.
@@ -234,6 +293,11 @@ impl Core {
             return Err(Code::AlreadyAnchored.into());
         }
         let identity = self.digest(sub)?;
+        if self.checkpoint.is_some() {
+            // The anchored state must be resumable: its complete envelope is durable before the anchor is.
+            self.checkpoint_current(sub, &identity)?;
+        }
+        self.claim(sub)?;
         match self.store.anchor_cognition(Some(&identity)) {
             Ok(s) => {
                 self.counters.publications += 1;
@@ -241,6 +305,7 @@ impl Core {
                 Ok(s)
             }
             Err(code) => {
+                let _ = sub.lease_release(self.lease); // nothing was bound
                 if matches!(code, Code::PublicationUncertain | Code::TestingProcessDeath) {
                     self.fault = Some(code);
                 }
@@ -249,21 +314,149 @@ impl Core {
         }
     }
 
-    /// Bind the lineage to this state, or verify it is the bound one.
+    /// Claim managed ownership of the state (its K1 lease). Refused, without a fail-stop, while an unmanaged
+    /// transaction is open on it (BUSY): the state is not adopted mid-transaction.
+    fn claim(&mut self, sub: &mut dyn K1Ops) -> Result<(), Refusal> {
+        self.counters.k1_lease_claims += 1;
+        match sub.lease_claim(self.lease) {
+            0 => Ok(()),
+            rc => Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
+        }
+    }
+
+    /// The durable expected identity of the anchored lineage.
+    fn expected(&self) -> Result<Digest, Refusal> {
+        match self.store.snapshot()?.cognition() {
+            Cognition::Unanchored => Err(Code::Unanchored.into()),
+            Cognition::Anchored(d) => Ok(d),
+        }
+    }
+
+    /// The bound state is not provably the lineage (its identity differs from the durable one, or its managed
+    /// lease was taken): fail-stop. Nothing outside the lineage is ever built upon or published.
+    fn lineage_lost(&mut self, k1_status: i32) -> Refusal {
+        self.fault = Some(Code::StateMismatch);
+        Refusal { k1_status, ..Refusal::from(Code::StateMismatch) }
+    }
+
+    /// Bind the lineage to this state (verified against the durable identity, then claimed under this runtime's
+    /// lease), or verify it is the bound one.
     fn reconcile(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(), Refusal> {
         if let Some(bound) = self.bound {
             return if bound == key { Ok(()) } else { Err(Rt::SubstrateSwitch.into()) };
         }
-        let expected = match self.store.snapshot()?.cognition() {
-            Cognition::Unanchored => return Err(Code::Unanchored.into()),
-            Cognition::Anchored(d) => d,
-        };
+        let expected = self.expected()?;
         if self.digest(sub)? != expected {
             self.fault = Some(Code::StateMismatch);
             return Err(Code::StateMismatch.into());
         }
+        self.claim(sub)?;
         self.bound = Some(key);
         Ok(())
+    }
+
+    /// Release managed ownership of the bound state (its lease) and unbind it, so its owner may use it unmanaged
+    /// again. Refused while a managed turn is open; another state is refused (`RUNTIME_TURN_NOT_OPEN`-like
+    /// `COGNITION_SUBSTRATE_SWITCH`). A lease already taken by another owner is reported, and the state unbound.
+    pub fn release(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(), Refusal> {
+        if !self.open {
+            return Err(Rt::Closed.into());
+        }
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        match self.bound {
+            Some(bound) if bound == key => {}
+            Some(_) => return Err(Rt::SubstrateSwitch.into()),
+            None => return Ok(()),
+        }
+        self.bound = None;
+        self.shape = None;
+        match sub.lease_release(self.lease) {
+            0 => Ok(()),
+            rc => Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
+        }
+    }
+
+    /// The state's width, read natively once per state (cold path; a pure getter) and verified against the declared
+    /// dimension: a state of another dimension is refused (`ECS_REFUSED`, K1 `INVALID`) before any input is read.
+    fn width(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<usize, Refusal> {
+        if let Some((cached, width)) = self.shape {
+            if cached == key {
+                return Ok(width);
+            }
+        }
+        let (mut dim, mut width) = (0usize, 0usize);
+        self.counters.k1_shapes += 1;
+        match sub.shape(&mut dim, &mut width) {
+            0 if dim == key.dim && width > 0 => {
+                self.shape = Some((key, width));
+                Ok(width)
+            }
+            0 => Err(ecs(Rt::EcsRefused, K1_INVALID, ScheduleOutcome::default())),
+            rc => Err(ecs(Rt::EcsState, rc, ScheduleOutcome::default())),
+        }
+    }
+
+    // -- the canonical read-only QUERY ---------------------------------------------------------------------------
+
+    /// QUERY: `f_W(x)` from the lineage's authoritative K1 state, read-only (docs/COGNITION_R0.md).
+    ///
+    /// One native crossing answers and identifies in one guarded K1 call (`query_identity`), so the answer and the
+    /// identity it is checked against come from the same bytes. The identity must equal the durable expected
+    /// identity: an unanchored lineage is refused (`CONTINUITY_UNANCHORED`); a state this lineage never committed
+    /// (another state, or the bound one moved out of band) fail-stops (`CONTINUITY_STATE_MISMATCH`) and its answer
+    /// is never returned. No transaction is opened, nothing is committed or published, and nothing durable or
+    /// retained changes: W, epoch, H, a, continuity. `out` receives the answer (one value per row; zeroed on any
+    /// refusal). Returns the retained-state identity the answer was computed from.
+    pub fn query(
+        &mut self,
+        sub: &mut dyn K1Ops,
+        key: Key,
+        x: &[f64],
+        out: &mut [f64],
+        budget: &Budget,
+    ) -> Result<Digest, Refusal> {
+        let answered = self.query_inner(sub, key, x, out, budget);
+        if answered.is_err() {
+            out.fill(0.0); // no answer leaves a refused query, whatever refused it
+        }
+        answered
+    }
+
+    fn query_inner(
+        &mut self,
+        sub: &mut dyn K1Ops,
+        key: Key,
+        x: &[f64],
+        out: &mut [f64],
+        budget: &Budget,
+    ) -> Result<Digest, Refusal> {
+        self.live()?;
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        let rows = out.len();
+        if rows == 0 || rows.checked_mul(key.dim) != Some(x.len()) {
+            return Err(Rt::Invalid.into());
+        }
+        if matches!(self.bound, Some(bound) if bound != key) {
+            return Err(Rt::SubstrateSwitch.into());
+        }
+        let expected = self.expected()?;
+        let width = self.width(sub, key)?;
+        fuel::admit_query(budget, key.dim, width, rows).map_err(|_| Refusal::from(Rt::Fuel))?;
+        self.reconcile(sub, key)?;
+        let mut identity = [0u8; 32];
+        self.counters.k1_queries += 1;
+        let rc = sub.query_identity(key.dim, x, out, &mut identity);
+        if rc != 0 {
+            return Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default()));
+        }
+        if identity != expected {
+            return Err(self.lineage_lost(0));
+        }
+        Ok(identity)
     }
 
     // -- the managed canonical turn -----------------------------------------------------------------------------
@@ -276,6 +469,7 @@ impl Core {
         sub: &mut dyn K1Ops,
         key: Key,
         stimulus: &Stimulus,
+        budget: &Budget,
         s3: &mut [f64],
     ) -> Result<ScheduleOutcome, Refusal> {
         self.live()?;
@@ -284,14 +478,28 @@ impl Core {
         }
         let rows = stimulus.y.len();
         let schedule = stimulus.schedule;
+        let scheduled = schedule.iter().try_fold(0u64, |n, e| n.checked_add(e.rows));
         if schedule.is_empty()
             || schedule.len() > MAX_EXPERIENCES
             || rows == 0
+            || scheduled != Some(rows as u64)
             || rows.checked_mul(key.dim) != Some(stimulus.x.len())
             || s3.len() != features(key.dim)
         {
             return Err(Rt::Invalid.into());
         }
+        if matches!(self.bound, Some(bound) if bound != key) {
+            return Err(Rt::SubstrateSwitch.into());
+        }
+        if self.store.snapshot()?.cognition() == Cognition::Unanchored {
+            return Err(Code::Unanchored.into());
+        }
+        if self.unresolved_candidate()?.is_some() {
+            return Err(Rt::CheckpointUnresolved.into());
+        }
+        // Total fuel, before the identity check, any reserve, the transaction or a candidate mutation.
+        let width = self.width(sub, key)?;
+        fuel::admit_schedule(budget, key.dim, width, schedule).map_err(|_| Refusal::from(Rt::Fuel))?;
         self.reconcile(sub, key)?;
         let abort = sub.retain_abort();
         let (token, result) = self.run_schedule(sub, stimulus, s3)?;
@@ -299,11 +507,21 @@ impl Core {
         Ok(result)
     }
 
+    /// Begin the managed transaction under this runtime's lease and re-establish, inside the same guarded K1 call,
+    /// the exact retained-state identity of the source the candidate was copied from: it must be the durable
+    /// expected identity. A lost lease (another owner claimed the state) or another identity fail-stops before the
+    /// candidate is touched; the transaction just opened is aborted.
     fn begin(&mut self, sub: &mut dyn K1Ops) -> Result<u64, Refusal> {
-        let mut token = 0u64;
+        let expected = self.expected()?;
+        let (mut token, mut source): (u64, K1Digest) = (0, [0u8; 32]);
         self.counters.k1_txn_begins += 1;
-        match sub.txn_begin(&mut token) {
-            0 => Ok(token),
+        match sub.txn_begin(self.lease, &mut source, &mut token) {
+            0 if source == expected => Ok(token),
+            0 => {
+                self.abort(sub, token);
+                Err(self.lineage_lost(0))
+            }
+            K1_LEASED => Err(self.lineage_lost(K1_LEASED)),
             rc => Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
         }
     }
@@ -322,7 +540,16 @@ impl Core {
     ) -> (i32, ScheduleOutcome) {
         let mut result = ScheduleOutcome::default();
         self.counters.k1_run_schedules += 1;
-        let rc = sub.txn_run_schedule(token, stimulus.x, stimulus.y, stimulus.schedule, stimulus.rate, s3, &mut result);
+        let rc = sub.txn_run_schedule(
+            self.lease,
+            token,
+            stimulus.x,
+            stimulus.y,
+            stimulus.schedule,
+            stimulus.rate,
+            s3,
+            &mut result,
+        );
         (rc, result)
     }
 
@@ -341,9 +568,10 @@ impl Core {
             let rows = stimulus.schedule.iter().map(|e| e.rows).max().unwrap_or(0);
             let rows = usize::try_from(rows).map_err(|_| Refusal::from(Rt::Invalid))?;
             self.counters.k1_reserves += 1;
-            let reserved = sub.reserve(rows);
-            if reserved != 0 {
-                return Err(ecs(Rt::EcsRefused, reserved, ScheduleOutcome::default()));
+            match sub.reserve(self.lease, rows) {
+                0 => {}
+                K1_LEASED => return Err(self.lineage_lost(K1_LEASED)),
+                rc => return Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
             }
             token = self.begin(sub)?;
             (rc, result) = self.schedule_once(sub, token, stimulus, s3);
@@ -379,16 +607,41 @@ impl Core {
             self.terminate(turn);
             return Err(code.into());
         }
+        // K1 Recovery R0: the complete candidate is durable before it commits, in the slot that does not hold the
+        // authorized state. Any refusal here ends the turn with nothing committed and nothing published.
+        let checkpointed = match self.checkpoint_candidate(sub, &turn) {
+            Ok(slot) => slot,
+            Err(refusal) => {
+                self.terminate(turn);
+                return Err(refusal);
+            }
+        };
+        #[cfg(feature = "testing")]
+        if self.crash == Some(CrashPoint::AfterCheckpoint) {
+            return Err(self.crashed(turn));
+        }
         let mut identity = CommitIdentity::default();
         self.counters.k1_commits += 1;
-        let rc = sub.txn_commit_identity(turn.token, &mut identity);
+        let rc = sub.txn_commit_identity(self.lease, turn.token, &mut identity);
         if rc != 0 {
             // STALE discards the transaction natively; any other refusal leaves it open.
             if rc != K1_STALE {
                 self.terminate(turn);
             }
+            self.withdraw_candidate();
             let error = if rc == K1_STALE { Rt::EcsStale } else { Rt::EcsRefused };
             return Err(ecs(error, rc, ScheduleOutcome::default()));
+        }
+        self.candidate_slot = None;
+        if matches!(checkpointed, Some(slot) if slot.identity != identity.state_after_digest) {
+            // The candidate committed is not the one checkpointed: never publish it.
+            self.fault = Some(Code::StateMismatch);
+            return Err(Refusal { committed: Some(Box::new(identity)), ..Refusal::from(Code::StateMismatch) });
+        }
+        #[cfg(feature = "testing")]
+        if self.crash == Some(CrashPoint::AfterNativeCommit) {
+            self.fault = Some(Code::TestingProcessDeath);
+            return Err(Refusal { committed: Some(Box::new(identity)), ..Refusal::from(Code::TestingProcessDeath) });
         }
         match self.store.commit_cognition(Some(&identity.state_before_digest), Some(&identity.state_after_digest)) {
             Ok(snapshot) => {
@@ -408,6 +661,201 @@ impl Core {
         let turn = self.take_turn(key)?;
         self.terminate(turn);
         Ok(())
+    }
+
+    // -- K1 Recovery R0: the bounded checkpoint store -------------------------------------------------------------
+
+    /// Attach the provisioned checkpoint store (an open runtime with no turn in flight). From then on every anchor
+    /// and every LEARN persists the complete envelope before it becomes authoritative.
+    pub fn checkpoint_attach(&mut self, directory: &Path) -> Result<(), Refusal> {
+        if !self.open {
+            return Err(Rt::Closed.into());
+        }
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        self.checkpoint = Some(checkpoint::Store::open(directory)?);
+        Ok(())
+    }
+
+    pub fn checkpoint_attached(&self) -> bool {
+        self.checkpoint.is_some()
+    }
+
+    /// The newest verified slot that continuity does not authorize and that is newer than the authorized slot.
+    /// A candidate exists only beside a verified authorized slot: the write protocol never touches the authorized
+    /// slot, so when no slot holds the authorized identity the store is damaged and no other slot is classified as
+    /// a candidate (the disposition is `CheckpointMissing`, never an adoptable candidate).
+    fn unresolved_candidate(&self) -> Result<Option<(usize, Slot)>, Refusal> {
+        let store = match &self.checkpoint {
+            Some(store) => store,
+            None => return Ok(None),
+        };
+        let authorized = match self.store.snapshot()?.cognition() {
+            Cognition::Unanchored => return Ok(None),
+            Cognition::Anchored(d) => d,
+        };
+        let slots = store.slots();
+        let floor = match store.holding(&authorized).and_then(|i| slots[i]) {
+            Some(s) => s.generation,
+            None => return Ok(None),
+        };
+        Ok((0..2)
+            .filter_map(|i| slots[i].map(|s| (i, s)))
+            .filter(|(_, s)| s.identity != authorized && s.generation > floor)
+            .max_by_key(|(_, s)| s.generation))
+    }
+
+    /// Persist the authoritative state's envelope (anchor), unless a verified slot already holds it.
+    fn checkpoint_current(&mut self, sub: &mut dyn K1Ops, identity: &Digest) -> Result<(), Refusal> {
+        let store = self.checkpoint.as_mut().expect("attached");
+        if store.holding(identity).is_some() {
+            return Ok(());
+        }
+        let buffer = store.envelope_buffer();
+        match sub.snapshot_write(buffer) {
+            0 => {}
+            rc => return Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
+        }
+        if checkpoint::envelope_identity(buffer) != Some(*identity) {
+            return Err(Rt::CheckpointShape.into());
+        }
+        store.write(None)?;
+        Ok(())
+    }
+
+    /// Persist the open turn's candidate envelope into the slot that does not hold the authorized identity.
+    fn checkpoint_candidate(&mut self, sub: &mut dyn K1Ops, turn: &OpenTurn) -> Result<Option<Slot>, Refusal> {
+        let authorized = self.expected()?;
+        let store = match self.checkpoint.as_mut() {
+            Some(store) => store,
+            None => return Ok(None),
+        };
+        let buffer = store.envelope_buffer();
+        match sub.txn_snapshot_write(turn.token, buffer) {
+            0 => {}
+            rc => return Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
+        }
+        if checkpoint::envelope_identity(buffer).is_none() {
+            return Err(Rt::CheckpointShape.into());
+        }
+        match store.write(Some(&authorized)) {
+            Ok((slot, written)) => {
+                self.candidate_slot = Some(slot);
+                Ok(Some(written))
+            }
+            Err(rt) => Err(rt.into()),
+        }
+    }
+
+    /// Withdraw an uncommitted candidate slot (best effort: a crash before it leaves an explicit, unresolved
+    /// candidate for the operator, never an authority).
+    fn withdraw_candidate(&mut self) {
+        if let (Some(slot), Some(store)) = (self.candidate_slot.take(), self.checkpoint.as_mut()) {
+            let _ = store.retract(slot);
+        }
+    }
+
+    /// What restart may do with the lineage. Continuity decides; the slots are evidence. Read-only.
+    pub fn recover(&mut self) -> Result<Recovery, Refusal> {
+        if !self.open {
+            return Err(Rt::Closed.into());
+        }
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        let candidate = self.unresolved_candidate()?;
+        let authorized = match self.store.snapshot()?.cognition() {
+            Cognition::Unanchored => None,
+            Cognition::Anchored(d) => Some(d),
+        };
+        let store = self.checkpoint.as_mut().ok_or(Rt::CheckpointInvalid)?;
+        let mut out = Recovery {
+            disposition: Disposition::NothingToRecover,
+            authorized: authorized.unwrap_or([0u8; 32]),
+            authorized_present: false,
+            candidate: candidate.map_or([0u8; 32], |(_, s)| s.identity),
+            envelope: None,
+        };
+        let authorized = match authorized {
+            Some(d) => d,
+            None => return Ok(out),
+        };
+        let held = store.holding(&authorized);
+        out.authorized_present = held.is_some();
+        out.disposition = if candidate.is_some() {
+            Disposition::CandidateUnresolved
+        } else if let Some(i) = held {
+            match store.envelope(i)? {
+                Some((slot, envelope)) if slot.identity == authorized => {
+                    out.envelope = Some(envelope.to_vec());
+                    Disposition::Resumable
+                }
+                _ => Disposition::CheckpointMissing, // it no longer verifies
+            }
+        } else {
+            Disposition::CheckpointMissing
+        };
+        Ok(out)
+    }
+
+    /// Operator reconciliation: discard the unresolved candidate `candidate` (withdraw its slot). The lineage stays
+    /// at continuity's authority. Refused unless `candidate` is exactly the unresolved candidate.
+    pub fn checkpoint_discard(&mut self, candidate: &Digest) -> Result<(), Refusal> {
+        self.live()?;
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        match self.unresolved_candidate()? {
+            Some((slot, s)) if s.identity == *candidate => {
+                self.checkpoint.as_mut().expect("attached").retract(slot)?;
+                Ok(())
+            }
+            _ => Err(Rt::CheckpointInvalid.into()),
+        }
+    }
+
+    /// Operator reconciliation: adopt the unresolved candidate `candidate` as the lineage's authority (continuity
+    /// publishes authorized -> candidate). Its complete envelope is verified first. A publication failure fail-stops.
+    pub fn checkpoint_adopt(&mut self, candidate: &Digest) -> Result<Snapshot, Refusal> {
+        self.live()?;
+        if self.turn.is_some() || self.bound.is_some() {
+            return Err(Rt::TurnOpen.into()); // adopting under a bound state would contradict its identity
+        }
+        let authorized = self.expected()?;
+        let slot = match self.unresolved_candidate()? {
+            Some((slot, s)) if s.identity == *candidate => slot,
+            _ => return Err(Rt::CheckpointInvalid.into()),
+        };
+        match self.checkpoint.as_mut().expect("attached").envelope(slot)? {
+            Some((s, _)) if s.identity == *candidate => {}
+            _ => return Err(Rt::CheckpointInvalid.into()),
+        }
+        match self.store.commit_cognition(Some(&authorized), Some(candidate)) {
+            Ok(snapshot) => {
+                self.counters.publications += 1;
+                Ok(snapshot)
+            }
+            Err(code) => {
+                self.fault = Some(code);
+                Err(code.into())
+            }
+        }
+    }
+
+    #[cfg(feature = "testing")]
+    pub fn testing_crash_at(&mut self, point: Option<CrashPoint>) {
+        self.crash = point;
+    }
+
+    /// A simulated process death mid-commit: the runtime is fail-stopped and its turn forgotten natively (as the
+    /// process's memory would be); nothing more is published.
+    #[cfg(feature = "testing")]
+    fn crashed(&mut self, turn: OpenTurn) -> Refusal {
+        self.candidate_slot = None; // a dead process withdraws nothing
+        self.terminate(turn);
+        self.fault = Some(Code::TestingProcessDeath);
+        Code::TestingProcessDeath.into()
     }
 
     // -- evolution ------------------------------------------------------------------------------------------------

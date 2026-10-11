@@ -19,8 +19,8 @@ from elpis.runtime import Runtime, RuntimeConfig
 from elpis.runtime import persistence as P
 from elpis.structure.retrieval.hacf import HacfHandle, build_corpus_and_index
 
-from ..conftest import require_runtime_library
-from ._turn_fixtures import ByteTokens, FixtureMap
+from ..conftest import require_runtime_library, runtime_config
+from ._turn_fixtures import LEARN, TEST_CODEC_PIN, ByteTokens, FixtureMap, admitted
 from .conftest import DOCS, POSITIVE
 from .test_codec_ecs_turn import RATE, k1, world  # noqa: F401  (k1 is a module pytest fixture)
 
@@ -71,25 +71,54 @@ def _tree(root):
 
 def test_ordinary_autonomous_path_leaves_only_the_two_continuity_slots(retrieval_library, ingress_library,
                                                                         k1, tmp_path):
-    assert P.AUTONOMOUS_WRITERS == {"continuity_slots", "fms_posix_cold_store"}
+    assert P.AUTONOMOUS_WRITERS == {"continuity_slots", "fms_posix_cold_store", "k1_checkpoint_slots"}
     state_root, continuity = tmp_path / "structural-memory", tmp_path / "continuity"
     trap = _WriteTrap()
     with world(k1) as state, trap:
         handle = build_corpus_and_index(retrieval_library, state_root, DOCS)
         try:
             with QueryIngress(ingress_library, handle) as ingress:
-                with Runtime(RuntimeConfig(continuity, require_runtime_library())) as runtime:
+                with Runtime(runtime_config(continuity, require_runtime_library(), TEST_CODEC_PIN)) as runtime:
                     runtime.run_ingress(ingress, POSITIVE)
                     runtime.anchor_cognition(state)
                     for text in ("one", "two", "three"):
-                        runtime.run_turn(state, text, tokenizer=ByteTokens(), codec_map=FixtureMap(),
-                                         learning_rate=RATE)
+                        runtime.run_turn(state, text, tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
+                                         authority=LEARN)
         finally:
             handle.destroy()
     assert trap.events == [], trap.events
     assert not state_root.exists(), "a volatile retrieval epoch created a state root"
     assert _tree(tmp_path) == [("continuity", None), ("continuity/continuity.a", 176),
                                ("continuity/continuity.b", 176)], _tree(tmp_path)
+
+
+def test_a_provisioned_k1_checkpoint_stays_two_fixed_slots_on_the_autonomous_path(k1, tmp_path):  # noqa: F811
+    """K1 Recovery R0: the operator provisions the store (outside the trap); the autonomous path then rewrites
+    its two slots in place and creates, grows or renames nothing (elpis.runtime.persistence: k1_checkpoint_slots)."""
+    from dataclasses import replace
+    from elpis.runtime.cognition import LearnRequest, QueryRequest
+    from elpis.runtime.core import RuntimeLibrary
+    from elpis.runtime.recovery import provision_k1_checkpoint
+    from ..conftest import library_id_of, native_authority
+    from .test_codec_ecs_turn import DIM, WIDTH
+
+    path = require_runtime_library()
+    library = RuntimeLibrary.admit(path.parent, path.name, native_authority(), library_id_of(path))
+    checkpoint = tmp_path / "k1-checkpoint"
+    provision_k1_checkpoint(library, checkpoint, k1.envelope_bytes(DIM, WIDTH))
+    slots = sorted((p.name, p.stat().st_size, p.stat().st_ino) for p in checkpoint.iterdir())
+    config = replace(runtime_config(tmp_path / "continuity", path, TEST_CODEC_PIN), k1_checkpoint_dir=checkpoint)
+    trap = _WriteTrap()
+    with world(k1) as state, trap:
+        with Runtime(config) as runtime:
+            runtime.anchor_cognition(state)
+            for text in ("one", "two", "three"):
+                runtime.run_learn(state, LearnRequest(text, ByteTokens(), admitted(FixtureMap()), LEARN))
+                runtime.run_query(state, QueryRequest(text, ByteTokens(), admitted(FixtureMap())))
+            assert runtime.recover_k1().disposition == "RESUMABLE"
+    assert trap.events == [], trap.events
+    assert sorted((p.name, p.stat().st_size, p.stat().st_ino) for p in checkpoint.iterdir()) == slots
+    assert _tree(tmp_path / "continuity") == [("continuity.a", 176), ("continuity.b", 176)]
 
 
 def _fds() -> int:

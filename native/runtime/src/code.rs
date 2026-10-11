@@ -27,10 +27,21 @@ pub enum Rt {
     EvolutionInFlight = 73,
     /// No evolution attempt is in flight.
     EvolutionNotInFlight = 74,
+    /// The operation is outside its cognitive fuel budget (or the budget outside the ceiling); refused before
+    /// any reserve, transaction or K1 mutation.
+    Fuel = 75,
+    /// The K1 checkpoint store is not provisioned as required (missing, wrong files or sizes, locked, refused).
+    CheckpointInvalid = 76,
+    /// A K1 checkpoint slot could not be written or synced; the authorized slot is intact.
+    CheckpointIo = 77,
+    /// The K1 state's envelope is not the provisioned checkpoint capacity (another shape): refused, never resized.
+    CheckpointShape = 78,
+    /// A newer unauthorized checkpoint candidate needs explicit operator reconciliation (discard or adopt) first.
+    CheckpointUnresolved = 79,
 }
 
 impl Rt {
-    pub const ALL: [Rt; 10] = [
+    pub const ALL: [Rt; 15] = [
         Rt::Invalid,
         Rt::Closed,
         Rt::SubstrateSwitch,
@@ -41,6 +52,11 @@ impl Rt {
         Rt::TurnNotOpen,
         Rt::EvolutionInFlight,
         Rt::EvolutionNotInFlight,
+        Rt::Fuel,
+        Rt::CheckpointInvalid,
+        Rt::CheckpointIo,
+        Rt::CheckpointShape,
+        Rt::CheckpointUnresolved,
     ];
 
     pub fn name(self) -> &'static str {
@@ -55,6 +71,11 @@ impl Rt {
             Rt::TurnNotOpen => "RUNTIME_TURN_NOT_OPEN",
             Rt::EvolutionInFlight => "RUNTIME_EVOLUTION_IN_FLIGHT",
             Rt::EvolutionNotInFlight => "RUNTIME_EVOLUTION_NOT_IN_FLIGHT",
+            Rt::Fuel => "COGNITION_FUEL_EXCEEDED",
+            Rt::CheckpointInvalid => "CHECKPOINT_INVALID",
+            Rt::CheckpointIo => "CHECKPOINT_IO",
+            Rt::CheckpointShape => "CHECKPOINT_SHAPE",
+            Rt::CheckpointUnresolved => "CHECKPOINT_UNRESOLVED",
         }
     }
 

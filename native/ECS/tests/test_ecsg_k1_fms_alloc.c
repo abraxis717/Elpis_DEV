@@ -66,6 +66,11 @@ int main(void)
     for (k = 0; k < 200; ++k) {
         assert(elpis_ecsg_k1_fms_forward(r, id, X, R, O) == 0);
     }
+    {
+        uint8_t digest[32];
+        assert(elpis_ecsg_k1_fms_query_identity(r, id, D, X, R, O, digest) == 0);   /* QUERY with identity */
+        assert(elpis_ecsg_k1_fms_query_identity(r, id, D - 1, X, R, O, digest) == ELPIS_ECSG_K1_INVALID);
+    }
     assert(elpis_ecsg_k1_fms_learn(r, id, X, Y, R, 0.002, 100, NULL) == 0);
     assert(elpis_ecsg_k1_fms_consolidate(r, id, X, R, NULL) == 0);
     assert(elpis_ecsg_k1_fms_txn_begin(r, id, &tok) == 0);

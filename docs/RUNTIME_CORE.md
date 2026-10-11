@@ -1,6 +1,6 @@
 # RuntimeCore: the runtime's systems authority in Rust
 
-`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v2) owns the mutable systems
+`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v3) owns the mutable systems
 authority of an open Elpis runtime. `elpis.runtime.Runtime` is its compatibility facade.
 
 ## What RuntimeCore owns
@@ -11,7 +11,8 @@ authority of an open Elpis runtime. `elpis.runtime.Runtime` is its compatibility
 | Fail-stop disposition | `Runtime._continuity_fault` | `Core.fault` (a continuity code); every lineage- or authority-dependent call refuses with it until reopen |
 | Continuity store | a Python `ContinuityStore` handle | the `elpis_continuity::Store`, embedded as a crate (one implementation; the library also exports the continuity C ABI) |
 | K1 lineage binding | `Runtime._turn_substrate` and `_reconcile_cognition_substrate` | `Core.bound` (`Key`: kind, native handle, resident id, owner identity, dimension), verified once against the durable expected identity |
-| Managed turn's native transaction | Python sequenced `txn_begin`, `run_schedule`, `commit_identity`, abort | `turn_begin` (lineage check, begin, one schedule, cold-path capacity growth) and `turn_commit` / `turn_abort` |
+| Managed QUERY (read-only) | none (the turn was the only cognitive operation) | `query`: lineage check and one native `query_identity` (the answer `f_W(x)` and the identity of the state that computed it); no transaction, no commit, no publication |
+| Managed LEARN (the turn's native transaction) | Python sequenced `txn_begin`, `run_schedule`, `commit_identity`, abort | `turn_begin` (lineage check, begin, one schedule, cold-path capacity growth) and `turn_commit` / `turn_abort` |
 | Continuity publication of a committed turn | Python `commit_cognition_transition` + fault flag | `turn_commit` publishes or fail-stops; the refusal still reports the standing K1 commit |
 | Evolution reservation / finalization | Python reserve, execute, finalize, fault on exception | `evolution_reserve` / `evolution_finalize` / `evolution_abandon` / `evolution_reconcile`: one attempt in flight |
 
@@ -43,8 +44,9 @@ typedef struct {
 } elpis_runtime_substrate;
 ```
 
-`api` is a table of the K1 library's own functions (`state_digest`, `reserve`, `txn_begin`,
-`txn_run_schedule`, `txn_commit_identity`, `txn_abort`); the Python adapter takes their addresses from the
+`api` is a table of the K1 library's own functions (`state_digest`, `shape`, `query_identity`, `lease_claim`,
+`lease_release`, `leased_reserve`, `leased_txn_begin`, `leased_txn_run_schedule`, `leased_txn_commit_identity`,
+`txn_abort`); the Python adapter takes their addresses from the
 loaded library, a C or C++ host passes them directly (`native/runtime/tests/test_runtime_abi.c`). The declared
 dimension is verified natively: K1 compares the readout length it implies with the state's own before it reads
 any input byte (`schedule_check`).
@@ -73,13 +75,46 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
 `native/runtime/tests/test_runtime_lifecycle.c` and `tests/integration`.
 
 * **Anchor.** The first managed lineage is anchored explicitly at the state's retained identity; RuntimeCore
-  reads the identity only. A second anchor is `CONTINUITY_ALREADY_ANCHORED`.
-* **Bind and verify.** The first turn after open binds the lineage to the supplied state after comparing its
-  identity with the durable expectation: unanchored is `CONTINUITY_UNANCHORED` (no fail-stop), a mismatch is
-  `CONTINUITY_STATE_MISMATCH` and fail-stops; both before any K1 mutation. A bound runtime refuses any other
-  state, by handle or owner, with `COGNITION_SUBSTRATE_SWITCH` and no native call. A warm turn reads no
-  identity: the binding holds and continuity verifies `before` at publication.
-* **Turn.** begin -> one native schedule on the candidate -> (boundary decodes) -> native commit -> one
+  reads the identity only (and claims the state, below). A second anchor is `CONTINUITY_ALREADY_ANCHORED`.
+* **Bind and verify.** The first operation after open (QUERY or LEARN) binds the lineage to the supplied state
+  after comparing its identity with the durable expectation: unanchored is `CONTINUITY_UNANCHORED` (no fail-stop),
+  a mismatch is `CONTINUITY_STATE_MISMATCH` and fail-stops; both before any K1 mutation. A bound runtime refuses
+  any other state, by handle or owner, with `COGNITION_SUBSTRATE_SWITCH` and no native call.
+* **Managed ownership.** Binding claims the state under this runtime's K1 lease (the K1 header's "Managed
+  ownership"; `lease_claim` refuses `BUSY`, without a fail-stop, while an unmanaged transaction is open). From then
+  on the state refuses every unmanaged mutating entry point (`LEASED`, before anything is touched): direct learn,
+  consolidate, reset and reserve, an unmanaged transaction begin, and the plain candidate calls on a leased
+  transaction. RuntimeCore mutates only through the `leased_*` entries, and every managed transaction begin
+  re-establishes the state's exact retained-state identity inside the same guarded K1 call
+  (`leased_txn_begin` returns the identity of exactly the source it copied), even on a warm binding. A bound
+  state that is not provably the lineage (another identity: the begin is aborted; or its lease taken by another
+  owner: refused natively) fail-stops with `CONTINUITY_STATE_MISMATCH` before the schedule touches the candidate:
+  nothing outside the lineage is built on or published. `release` (`elpis_runtime_release`; the Python facade's
+  `close` and `release`) gives the state back; `close` without a descriptor does not touch the state. Reads stay
+  open to anyone. The lease is an aliasing defence between cooperating local callers, not a secret or a
+  credential: in-process code can replace it (and the owner then fail-stops). Before this law an out-of-band
+  mutation was accepted by K1 and the next managed LEARN committed on top of it before publication refused it
+  (`tests/integration/test_managed_ownership.py`).
+* **QUERY.** Read-only (docs/COGNITION_R0.md). One native call (`query_identity`) answers `f_W(x)` from the
+  authoritative state and returns that same state's retained-state identity under one K1 guard, so no operation
+  can move the state between the answer and its identity. The identity must equal the durable expected identity:
+  unanchored is `CONTINUITY_UNANCHORED`; any other state, including the bound one moved out of band, is
+  `CONTINUITY_STATE_MISMATCH` (fail-stop) and the answer is withheld (zeroed). A query is refused while a managed
+  turn is open (`RUNTIME_TURN_OPEN`). It begins no transaction, commits nothing and publishes nothing: W, epoch,
+  H, a, the generation and both continuity slots are byte-for-byte unchanged (`tests/integration/test_query_learn.py`).
+  ABI v3 added the entry to both K1 tables and the `k1_queries` counter.
+* **Total fuel.** Every QUERY and LEARN is admitted against a budget of totals (`elpis_runtime_budget`: experiences,
+  rows, rows of one experience (also the reserve ceiling), K1 learning steps, ECS work units, query rows) before the
+  identity check, any reserve, the transaction or a candidate mutation; a refusal is `COGNITION_FUEL_EXCEEDED` and
+  is not a fail-stop. The budget can only narrow the compiled ceiling (`elpis_runtime_fuel_ceiling`: 64
+  experiences, 16384 rows, 256 rows per experience, 2^20 steps, 2^30 work units, 4096 query rows), and the Python
+  boundary refuses a library whose ceiling differs. An ECS work unit is one multiply-accumulate-class operation
+  of the K1 kernels as counted by a fixed integer formula (`native/runtime/src/fuel.rs`, `elpis.runtime.fuel`;
+  tested equal): a K1 step on r rows is `2rdw + 2dwF + F^2`, a consolidation `rF^2 + dwF`, a QUERY `rdw`. It is
+  a deterministic proxy, not wall-clock. **No deadline is claimed**: the K1 ABI is synchronous and has no
+  cooperative cancellation point, so a running schedule cannot be preempted; preemptive deadlines are a missing
+  interface. RuntimeCore reads the state's immutable shape once per state (`shape`, cold path) to count width.
+* **Turn (LEARN).** begin -> one native schedule on the candidate -> (boundary decodes) -> native commit -> one
   publication. Capacity beyond the reservation is grown on the cold path (abort, `reserve`, begin again).
   Every refusal before the commit leaves `(W, epoch, H, a)` byte-for-byte unchanged; a stale source is
   `ECS_STALE`.
@@ -97,22 +132,54 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
   then close, and lifecycle calls without a turn (no native call).
 * **Crash law.** A K1 commit is never rolled back. A refused or uncertain publication fail-stops; restart sees
   the old authority (the moved state is a mismatch) or, when the uncertain write landed, the new one.
+* **K1 Recovery R0.** With an operator-provisioned checkpoint store attached (`elpis_runtime_checkpoint_attach`,
+  `RuntimeConfig.k1_checkpoint_dir`), the anchor persists the anchored state's complete envelope before continuity
+  anchors it, and every LEARN persists its candidate's complete envelope (K1's read-only `txn_snapshot_write`) in
+  the slot that does not hold the authorized state before the native commit; a committed identity that differs
+  from the checkpointed one fail-stops. Restart asks `recover` (read-only): `NOTHING_TO_RECOVER`, `RESUMABLE` (the
+  authorized envelope), `CANDIDATE_UNRESOLVED` (LEARN refused with `CHECKPOINT_UNRESOLVED` until an operator
+  `discard`s or `adopt`s exactly that candidate) or `CHECKPOINT_MISSING`. Checkpoint bytes never authorize
+  themselves; continuity remains the current-authority register. Two fixed slot files, no history
+  (docs/K1_RECOVERY_R0.md). ABI v3 added `snapshot_write` / `txn_snapshot_write` to both K1 tables and codes
+  76-79.
 * **Evolution.** One attempt in flight. Reserve (durable, before execution) -> execute once at the boundary ->
   finalize. A reservation or finalization failure fail-stops; an attempt the boundary could not complete is
   abandoned: the reservation stays pending, the runtime fail-stops with `CONTINUITY_EVOLUTION_PENDING`. Nothing
   is retried or inferred. `evolution_reconcile` is the explicit operator finalization after restart; its
   `CONTINUITY_AUTHORITY_MISMATCH` refusal is not a fail-stop.
 * **Nothing else.** No history, receipts, events, trajectory or second store: the durable footprint is the two
-  176-byte continuity slots.
+  176-byte continuity slots, plus, only when the operator provisioned one, the two fixed K1 checkpoint slots.
 * **Concurrency.** A handle serializes its calls with one lock; no call blocks on another runtime.
 
 ## Hot path
+
+A managed `Runtime.run_query` is one Python crossing into RuntimeCore for the query (after the fail-stop probe) and
+one K1 crossing (`query_identity`); the store does no I/O.
 
 A warm managed `Runtime.run_turn` (`tests/integration/test_runtime_hot_path.py`, every run): Python makes no K1
 call and three crossings into RuntimeCore (the fail-stop probe, `turn_begin`, `turn_commit`); RuntimeCore makes
 three K1 crossings (`txn_begin`, `txn_run_schedule`, `txn_commit_identity`) and one publication; the store
 writes one 176-byte record and syncs once; Python performs no file I/O. The unmanaged
 `elpis.runtime.cognition.run_turn` (no continuity) keeps its own three K1 crossings plus `max_rows`.
+
+## Native admission
+
+RuntimeCore is never loaded from a pathname. `RuntimeConfig` names the library by an absolute path and supplies a
+deployment-pinned `native_authority` (`PinnedAuthority`, whose own SHA-256 comes from trusted configuration);
+`Runtime` admits the library through the substrate's one native admission mechanism
+(`elpis.substrate.native_admission`, the mechanism the HACF bridges use): opened beneath its directory as the
+trusted descriptor root with `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS)`, copied into a sealed memfd, hashed
+against the exact pin and loaded from the seal, under a RuntimeCore library identifier (`elpis_runtime`,
+`elpis_runtime_testing`); the ABI version and the compiled fuel ceiling are then checked. Without an authority the
+runtime refuses to start (`RUNTIME_UNPINNED`). The continuity ABI is bound over the same admitted bytes
+(`ContinuityLibrary` loads nothing). The managed runtime drives only K1 code it admitted: a K1 or K1 FMS state
+whose library was not admitted under `elpis_ecsg_k1` / `elpis_ecsg_k1_fms` is refused (`ECS_NATIVE_UNADMITTED`)
+before any native call. K1 sets are admitted in dependency order (`elpis_ecsg_math`, `elpis_ecsg_k1`,
+`elpis_ecsg_k1_fms`), and every Elpis dependency the dynamic loader binds by SONAME is verified to be pinned bytes
+(a sealed object, or a mapped file whose inode and SHA-256 equal the pin); anything else refuses the admission.
+Research and unmanaged code may still load K1 by pathname; the managed runtime refuses those states. The pins
+authenticate bytes, not a publisher; the loader, kernel and platform libraries are trusted
+(`tests/integration/test_native_admission.py`).
 
 ## Build and qualification
 

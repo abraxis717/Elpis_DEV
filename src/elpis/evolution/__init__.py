@@ -9,11 +9,18 @@
 * ``path_gate`` — one bounded attempt per admitted path assertion bound to the
   current evolution authority, recorded as a chained transition receipt;
 * ``promotion`` — evaluation-gated promotion of a candidate workspace over its
-  incumbent and atomic materialization of the selected child.
+  incumbent and atomic materialization of the selected child;
+* ``policy`` — the independent evolution policy authority: a pinned policy
+  (objective, evaluator, scopes, budget, evaluation contract, side effects,
+  confinement, promotion) is the only issuer of the gates the managed runtime
+  accepts, of evaluations, selections and operator-approved promotion grants
+  (docs/EVOLUTION_POLICY.md). Evolution may propose; it may not authorize or
+  evaluate itself.
 
 Nothing here randomizes implicitly, loads a model or imports numerics.
-Measured outcomes (fitness observations, evaluation evidence) are supplied by
-the caller; no environment producing them is part of this package.
+Fitness observations are supplied by the caller; evaluation evidence the
+policy authority accepts is produced by the policy's pinned evaluator. No
+qualified environment producing either is part of this package.
 """
 
 from .fitness import FitnessObservation, FitnessPolicyV1, OrganismFitnessRecord
@@ -33,6 +40,14 @@ from .path_gate import (
     GateExecuted,
     GateRejected,
     PathTransitionReceipt,
+)
+from .policy import (
+    EvaluatorReport,
+    EvolutionPolicy,
+    EvolutionPolicyAuthority,
+    EvolutionPolicyError,
+    PromotionGrant,
+    policy_of,
 )
 from .promotion import (
     CandidateRecord,
@@ -62,16 +77,17 @@ from .selection import (
 )
 
 __all__ = [
-    "BirthRequest", "CandidateRecord", "EvaluationEvidence", "EvolutionAttempt",
+    "BirthRequest", "CandidateRecord", "EvaluationEvidence", "EvaluatorReport", "EvolutionAttempt",
     "EvolutionAuthorityBinding", "EvolutionGateError", "EvolutionPathAssertion",
-    "EvolutionPathAssertionV0", "EvolutionPathGate", "FitnessObservation",
+    "EvolutionPathAssertionV0", "EvolutionPathGate", "EvolutionPolicy", "EvolutionPolicyAuthority",
+    "EvolutionPolicyError", "FitnessObservation",
     "FitnessPolicyV1", "GENESIS_DIGEST", "GateExecuted", "GateRejected", "Genotype",
     "HarnessManifest", "IntegerGene", "LifecycleState", "LineageIdentity", "MutationEvent",
     "MutationPolicyV1", "MutationResult", "OrganismFitnessRecord", "OrganismState",
-    "ParentLineageRef", "PathTransitionReceipt", "PopulationState", "ReproductionPolicyV1",
+    "ParentLineageRef", "PathTransitionReceipt", "PopulationState", "PromotionGrant", "ReproductionPolicyV1",
     "ReproductionRejectionCode", "ReproductionResult", "ResourceQuantity", "SelectionCommitResult",
     "SelectionReceipt", "SelectionRejectionCode", "TruncationSelectionPolicyV1",
     "atomic_materialize", "build_manifest_from_tree", "can_transition", "commit_selection",
     "content_map_digest", "derive_mutation_seed", "digest_tree", "eligibility",
-    "execute_reproduction", "mutate_genotype", "select", "transition_lifecycle",
+    "execute_reproduction", "mutate_genotype", "policy_of", "select", "transition_lifecycle",
 ]

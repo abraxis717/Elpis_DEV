@@ -124,6 +124,15 @@ source rows -> typed projection (source identity + transition, expansion
 The substrate manages bytes, descriptors, residency and native code. It does
 not know which model, if any, consumes them.
 
+One native admission mechanism (`elpis.substrate.native_admission`) loads every
+high-impact native library: RuntimeCore, native K1, the K1 FMS adapter and the
+continuity authority, as well as the structure bridges. A library is opened
+beneath a trusted root descriptor without symlinks, copied into a sealed memfd,
+hashed against a deployment-pinned catalog and loaded from the seal; a set is
+admitted in dependency order and every Elpis dependency the dynamic loader
+binds by SONAME is verified to be pinned bytes. The managed runtime drives only
+admitted K1 code (`ECS_NATIVE_UNADMITTED`).
+
 ### FMS residency (native)
 
 FMS ABI v2 separates **logical latency tiers** (HOT, WARM, COLD) from
@@ -463,6 +472,26 @@ state root) stays as `EvolutionPathAssertionV0` so its persisted identity
 remains computable. The gate refuses it with `ASSERTION_SCHEMA_RETIRED`; v0
 is never reinterpreted as v1.
 
+### Policy authority (`elpis.evolution.policy`, docs/EVOLUTION_POLICY.md)
+
+Evolution may propose; it may not authorize or evaluate itself. An
+`EvolutionPolicy` (`elpis.evolution-policy.v1`) is pinned by an independent
+SHA-256 from trusted configuration (`RuntimeConfig.evolution_policy_sha256`)
+and fixes the objective, the evaluator (measured: defining source SHA-256),
+disjoint candidate and protected scopes, the budget (largest edit budget an
+assertion may claim, resource cost, candidates per selection), the evaluation
+contract (four distinct partitions; it may only narrow the promotion law),
+side effects (`CANDIDATE_WORKSPACE_ONLY`), confinement
+(`TRUSTED_OPERATOR_CALLBACKS`: nothing is sandboxed) and operator-approved
+promotion. `EvolutionPolicyAuthority` is the only issuer of the gates
+`Runtime.evolve` accepts (`EVOLUTION_POLICY_UNPINNED`,
+`EVOLUTION_POLICY_UNAUTHORIZED` before any reservation), of evaluations (the
+authority verifies both workspaces against their manifests, computes the
+changed components and scope verdict, refuses a candidate carrying its
+evaluator, runs the pinned evaluator and refuses side effects), of selections
+(only evaluations it issued are weighed: `EVALUATION_NOT_INDEPENDENT`) and of
+promotion grants, without which nothing is materialized.
+
 ### Promotion
 
 A candidate workspace is promoted over its incumbent only when all of these
@@ -484,9 +513,14 @@ schema identifiers are historical and carry no self-improvement claim.
 
 ### Incomplete interfaces
 
-* **No in-repo fitness environment.** No environment produces fitness
-  observations; the beta's Torch lattice ecology is retired.
-* **No in-repo evaluator.** Nothing produces promotion evaluation evidence.
+* **No qualified fitness environment.** The beta's Torch lattice ecology is
+  retired. `research/evolution_fitness_r0` is a RESEARCH_ONLY corridor
+  environment with replay identity, frozen partitions, negative baselines and
+  an evaluator that recomputes fitness; it is unqualified
+  (docs/qualification/EVOLUTION_FITNESS_R0.md, NOT RUN).
+* **The bare promotion law still accepts caller-built evidence.** Only the
+  policy authority refuses evidence it did not issue; its issuance registries
+  are process-local.
 * **No receipt history.** Transition receipts are returned to the caller.
   Continuity keeps only the digest of the last admitted one as the authority
   head.
@@ -514,9 +548,10 @@ R1 and K1 qualification evidence and are protocol identity, not a second
 ECS. Native K1 ([`ECS_K1_RUNTIME.md`](ECS_K1_RUNTIME.md)) is the canonical
 retained-state runtime: complete state `(W, epoch, H, a)`, native learning
 and consolidation, complete-state transactions and generic FMS residency. The runtime's
-canonical turn places it between DSV4 encode and DSV4 decode (see *Runtime*);
-it is never a conditioning input to a DSV model and never driven by a DSV
-model's output statistics.
+canonical QUERY reads it (one read-only `query_identity`) and its LEARN and legacy learned
+turn place it between DSV4 encode and DSV4 decode (see *Runtime*); a state the runtime
+binds is claimed under its K1 lease (unmanaged mutation refused `LEASED`). It is never a
+conditioning input to a DSV model and never driven by a DSV model's output statistics.
 
 Cognitive R0 (`elpis.ECS.cognition.CognitiveCore`, [`COGNITION_R0.md`](COGNITION_R0.md))
 keeps two operations apart: QUERY, `x -> f_W(x)` by the native forward map of
@@ -749,10 +784,13 @@ There is one runtime composition. The beta's numbered runtime generations
 
 ### Composition
 
-`Runtime(RuntimeConfig(continuity_dir, runtime_library))` is a facade over RuntimeCore
-(`native/runtime`, Rust; docs/RUNTIME_CORE.md), which owns the runtime's lifecycle, fail-stop,
-continuity store, K1 lineage binding, the managed turn's native K1 transaction and the evolution
-reservation. The facade keeps only the edge adapters (`elpis.runtime.edges`) that turn ingress exports and
+`Runtime(RuntimeConfig(continuity_dir, runtime_library, ...))` is a facade over RuntimeCore
+(`native/runtime`, Rust, C ABI v3; docs/RUNTIME_CORE.md), which owns the runtime's lifecycle, fail-stop,
+continuity store, K1 lineage binding and managed K1 lease, total cognitive fuel admission, the QUERY and
+LEARN native calls, the optional K1 Recovery R0 checkpoint store and the evolution reservation. RuntimeCore
+and the K1 libraries it drives are loaded only from sealed, deployment-pinned bytes
+(`elpis.substrate.native_admission`); the codec authority and the evolution policy are pinned by SHA-256 in
+`RuntimeConfig`. The facade keeps only the edge adapters (`elpis.runtime.edges`) that turn ingress exports and
 retrieval bundles into object claims and address proposals for
 structural-memory rendering. The caller supplies everything else explicitly:
 library paths, corpus roots, file assets, ledgers and capabilities. Each
@@ -766,10 +804,15 @@ history:
 | `admit_retrieval` | `validate_bundle` | none |
 | `publish_canonical` | `publish_candidate` | none (the pipeline ledger owns publication durability and replay) |
 | `evolution_authority` | continuity snapshot | none (read) |
-| `evolve` | `EvolutionPathGate.execute` bound to the current evolution authority | admitted attempt: revision + 1, head = transition receipt digest |
+| `evolve` | a gate issued by the pinned evolution policy, `EvolutionPathGate.execute` bound to the current evolution authority | admitted attempt: revision + 1, head = transition receipt digest |
 | `admit_context` | ingress, edge adapter, `resolve_chunks`, codec rendering | none |
 | `anchor_cognition` | the K1 state's `state_digest()` (no K1 mutation) | explicit anchor of the first managed K1 lineage |
-| `run_turn` | codec -> native K1 (ECS) -> codec (`elpis.runtime.cognition`) | the committed turn's new K1 state digest |
+| `run_query` | codec -> one read-only native `query_identity` -> codec (`elpis.runtime.cognition`) | none (QUERY writes nothing) |
+| `run_learn` | codec -> native K1 transaction under an explicit `LearnAuthority` | the committed LEARN's new K1 state digest |
+| `run_turn` | LEGACY learned turn: a LEARN whose S3 readout is decoded | the committed turn's new K1 state digest |
+| `release` | RuntimeCore releases the bound state's K1 lease | none |
+| `recover_k1` | K1 Recovery R0 disposition (read-only) | none |
+| `discard_k1_candidate` / `adopt_k1_candidate` | operator reconciliation of one named checkpoint candidate | adopt: authorized -> candidate |
 
 The runtime composes no DSV model execution: there is no decode, principal
 sequence or model text operation, and the mission gate pins this list.
@@ -781,13 +824,17 @@ There is zero autonomously ever-expanding Elpis-owned persistence.
 from the runtime exactly once, and every public `Runtime` operation as
 autonomous or operator:
 
-* `FIXED_CAPACITY_AUTONOMOUS`: the two continuity slots, and the FMS cold
-  store. The cold store is bounded by the cold budget and object capacity
-  fixed at `Context` creation. Its root has one live owner, and a crashed
-  owner's files are reclaimed.
+* `FIXED_CAPACITY_AUTONOMOUS`: the two continuity slots, the FMS cold
+  store, and the two K1 checkpoint slots of an operator-provisioned K1
+  Recovery R0 store (rewritten in place; never created, grown or renamed by
+  the runtime). The cold store is bounded by the cold budget and object
+  capacity fixed at `Context` creation. Its root has one live owner, and a
+  crashed owner's files are reclaimed.
 * `OPERATOR_EXPLICIT_BOUNDED`: each write needs an explicit operator act.
   - canonical publication, with its ledgers and candidate construction;
-  - evolution materialization;
+  - evolution materialization (only for an operator-approved grant of the
+    pinned evolution policy);
+  - K1 checkpoint provisioning (`elpis.runtime.recovery`);
   - the H-gram, which is operator-provisioned and fully preallocated and is
     written only by preapproved in-place updates;
   - semantic admission and snapshot publication.
@@ -802,8 +849,9 @@ optional writable grant is the two continuity slots.
 `tests/boundary/test_autonomous_persistence.py` binds the table to the code.
 `tests/integration/test_autonomous_no_growth.py` runs an epoch, ingress, an
 anchor and canonical turns on real libraries under a write trap: they leave
-exactly the two 176-byte slots. Repeated epoch create/destroy holds file
-descriptors, threads and live handles constant.
+exactly the two 176-byte slots; with a provisioned checkpoint store, its two
+slots keep their names, sizes and inodes. Repeated epoch create/destroy holds
+file descriptors, threads and live handles constant.
 
 ### K1 restart law
 
@@ -815,7 +863,16 @@ and a second substrate object in the same open runtime with
 `COGNITION_SUBSTRATE_SWITCH`. After the native commit the runtime publishes
 `before -> after`. If publication fails, the committed K1 state is not rolled
 back and no turn is synthesized: the runtime fail-stops with the publication
-code, and restart resolves through the comparison above.
+code, and restart resolves through the comparison above. A bound state is
+claimed under RuntimeCore's K1 lease, so an unmanaged mutation is refused
+(`LEASED`) rather than discovered at the next publication.
+
+With an operator-provisioned K1 Recovery R0 store (docs/K1_RECOVERY_R0.md) the
+anchored state and every LEARN's candidate are checkpointed in full before
+they become authoritative, and restart can resume a lost in-memory state.
+Checkpoint bytes never authorize themselves: a slot is resumable only when its
+identity is the one continuity holds; a newer unauthorized candidate is
+`CANDIDATE_UNRESOLVED` until an operator discards or adopts it.
 
 ### The canonical turn
 
@@ -830,7 +887,16 @@ text --codec encode--> tokens
      --one native commit of the complete (W, epoch, H, a) candidate
 ```
 
-No ECS<->DSV semantic codec is defined or qualified, so `run_turn` refuses with
+QUERY (`run_query`) is the canonical read-only operation: one native
+`query_identity` answers `f_W(x)` from the authoritative state and identifies
+it; nothing is begun, committed, published or written. LEARN (`run_learn`)
+needs an explicit `LearnAuthority`; `run_turn` above is the LEGACY learned
+turn. Every cognitive operation is admitted under total integer fuel budgets
+before any reserve or transaction, and runs a codec only as an `AdmittedCodec`
+of the deployment-pinned codec authority (QUERY and LEARN capabilities are
+separate; a codec's classification is metadata, never a credential).
+
+No ECS<->DSV semantic codec is defined or qualified, so every cognitive operation refuses with
 `ECS_CODEC_UNQUALIFIED` ("ECS codec mapping not yet qualified; text generation
 unavailable") unless a map is supplied explicitly. There is no fallback to a
 DSV model. A supplied map declares its classification and every result
@@ -849,9 +915,9 @@ one native call) -> decode -> native commit -> one continuity publication
 the K1 turn and reaches no receipt, event, scheduler, projection or
 compaction machinery (`tests/boundary/test_one_ecs.py`).
 
-The evolution gate binds the current evolution authority. Each admitted
-transition advances it, so an assertion built against an older revision is
-rejected before anything runs.
+The evolution gate binds the current evolution authority and comes from the
+pinned evolution policy. Each admitted transition advances the authority, so
+an assertion built against an older revision is rejected before anything runs.
 
 ### Integration suites (`tests/integration`)
 
@@ -862,7 +928,11 @@ Each suite runs over the real native libraries and a real HACF corpus:
 * canonical writer;
 * evolution;
 * structural-memory rendering through the codec;
-* the canonical codec -> ECS -> codec turn (`test_codec_ecs_turn.py`).
+* the canonical codec -> ECS -> codec turn (`test_codec_ecs_turn.py`), QUERY
+  and LEARN (`test_query_learn.py`), codec admission, cognitive fuel, managed
+  ownership, native admission and K1 recovery;
+* the post-red-team regression index (`tests/boundary/test_redteam_regressions.py`)
+  and its mutation adequacy (`tests/boundary/test_redteam_mutations.py`).
 
 Each suite also checks that refused operations leave both continuity and
 the subsystem state unchanged.
@@ -871,8 +941,13 @@ the subsystem state unchanged.
 
 * **No qualified ECS codec.** Canonical text generation is unavailable until
   the ECS<->DSV semantic maps are defined and qualified.
-* **No HACF -> ECS edge.** Structural memory is rendered through the codec,
-  but nothing canonical consumes it yet.
+* **No canonical HACF -> ECS edge.** Structural memory is rendered through the
+  codec, but nothing canonical consumes it yet. `research/hacf_ecs_bridge_r0`
+  is RESEARCH_ONLY, unqualified infrastructure (read-only QUERY only).
+* **No preemptive deadline.** Fuel bounds an operation before it starts; a
+  running K1 schedule cannot be cancelled.
+* **Unqualified post-red-team mechanisms.** Their specifications
+  (docs/qualification) are NOT RUN.
 * **Proposals only, not overlays.** Ingress overlays are not persisted.
 * **No steering epochs.** The steered engine is composed by the caller.
 * **No audit trail.** Runtime operations are not logged. Continuity holds

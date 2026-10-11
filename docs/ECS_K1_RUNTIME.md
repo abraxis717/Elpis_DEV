@@ -40,6 +40,7 @@ or the reverse.
 | operation | law | notes |
 |---|---|---|
 | QUERY `forward(X)` | `f_W(x) = 1/2 phi(x) . S3(W)` | Reads W only; H and a never enter. Bitwise the Runtime R1 executor's forward map. No allocation. |
+| QUERY with identity `query_identity(dim, X)` | `f_W(x)` and `state_digest()` | One guarded call: the answer and the retained-state identity of the same authoritative state. `dim` must be the state's own (INVALID before any input is read). Writes nothing; an open transaction is untouched. No allocation. The canonical read-only QUERY (`elpis.runtime.cognition.run_query`, RuntimeCore `query`). |
 | LEARN `learn(X, y, eta, K)` | `W <- G1(W; X, y) - eta J(W)^T u` with `u = 1/2 H (S3(W) - a)` at the pre-step W | K steps in one call: no per-step crossing, no Python loop. With `H = 0` the step is bitwise Runtime R1 G1. Success commits W and `epoch + K`; any refusal commits nothing. |
 | CONSOLIDATE `consolidate(X)` | `H <- H + (1/n) sum phi(x) phi(x)^T`, `a <- S3(W)` | Inputs only; no target enters. Closed form. Commits H and a together, and the provenance becomes COMPLETE. |
 | RESET `reset()` | `H <- 0`, `a <- 0` | W and epoch are kept. Provenance RESET. |
@@ -50,6 +51,9 @@ or the reverse.
 - `txn_begin` stages a candidate copy of the complete state.
 - `txn_commit` installs W, epoch, H and a in one copy and advances the generation.
 - A direct transition after begin replaces the source, and the candidate is then refused as `STALE`.
+- `txn_snapshot_write` (and `elpis_ecsg_k1_fms_txn_snapshot_write`) writes the candidate's complete retained-state
+  envelope, read-only: its SHA-256 trailer is the identity `txn_commit_identity` will report as `state_after`. K1
+  Recovery R0 persists it before the commit (docs/K1_RECOVERY_R0.md); it changes no K1 mathematics.
 
 **Experience schedule** (`txn_run_schedule`, and `elpis_ecsg_k1_fms_txn_run_schedule` on a resident state). One
 native call applies an ordered schedule of up to 64 experiences to the open transaction's candidate. Each experience
@@ -72,6 +76,7 @@ of the same rows. The call then returns `S3` of the final candidate `W` (the rea
 |---|---|
 | `INVALID`, `CAPACITY`, `BUSY` | Refused before the candidate is touched. The transaction stays open and unchanged; retry is allowed. |
 | `STALE` | Discarded. |
+| `LEASED` | Refused before anything is touched: a managed owner holds the state (below). The transaction stays open. |
 | `NONFINITE` from `txn_learn` / `txn_consolidate` | Discarded (non-finite input or arithmetic). |
 | `NONFINITE` from `txn_forward` | Read-only; nothing is discarded. |
 
@@ -79,9 +84,15 @@ of the same rows. The call then returns `S3` of the final candidate `W` (the rea
 - `txn_abort` with a wrong token is `INVALID` and changes nothing.
 - No refusal changes the authoritative state.
 
-## The canonical turn (`elpis.runtime.cognition.run_turn`)
+## The canonical operations (`elpis.runtime.cognition`)
 
-Native K1 is the canonical retained-state cognitive substrate of the turn, standalone (`K1State`) or FMS-resident
+QUERY and LEARN are separate operations (docs/COGNITION_R0.md). QUERY (`run_query`, `QueryRequest`) is one native
+call, `query_identity`: read-only, no transaction. LEARN (`run_learn`, `LearnRequest`) requires an explicit
+`LearnAuthority` and is the transaction below without a decode; it returns the committed transition and its
+retained-state identities. The legacy learned turn (`run_turn`, `LEGACY_LEARNED_TURN`) is a LEARN whose S3 readout
+is decoded; it needs the same authority.
+
+Native K1 is the canonical retained-state cognitive substrate of these operations, standalone (`K1State`) or FMS-resident
 (`K1FMSState`, a typed handle on one resident state). The Runtime R1 `Executor` remains a qualified primitive and
 the K1-disabled reference; it is not accepted by the turn.
 
@@ -164,6 +175,20 @@ LEARN never changes provenance.
   allocation.
 - No query, learn, consolidation, transaction, reset or snapshot allocates (link-time allocator interposition:
   `test_ecsg_k1_alloc`, `test_ecsg_k1_fms_alloc`).
+
+## Managed ownership
+
+A managed owner (RuntimeCore) claims a state with a nonzero 64-bit lease (`lease_claim`; `BUSY` while a transaction
+is open; a claim replaces any other lease). While leased, every unmanaged mutating entry point refuses with
+`LEASED` (-8) before touching anything: `learn`, `consolidate`, `reset`, `reserve`, `txn_begin`, and `txn_learn`,
+`txn_consolidate`, `txn_run_schedule`, `txn_commit`, `txn_commit_identity` on a transaction begun under the lease
+(it stays open). The owner uses `leased_reserve`, `leased_txn_begin` (which also writes the retained-state identity
+of exactly the source it copied), `leased_txn_run_schedule` and `leased_txn_commit_identity`. Reads (`forward`,
+`query_identity`, copies, snapshot, digest, stats, getters, `txn_forward`, `txn_epoch`) and `txn_abort` stay open
+to anyone. The FMS adapter delegates to the resident K1 object and refuses an unmanaged write before taking a WRITE
+pin (the object is not dirtied). The lease is not part of the retained state, the envelope or the digest, and it
+changes no numerical law: a leased schedule is bitwise the unleased one (`test_ecsg_k1`, `test_ecsg_k1_fms`). It is
+an aliasing defence, not a secret.
 
 ## Concurrency
 
