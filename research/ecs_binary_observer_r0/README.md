@@ -2,6 +2,14 @@
 
 `RESEARCH_ONLY` · `NO_RUNTIME_AUTHORITY` · `UNQUALIFIED` · `NO_WORLD_REPRESENTATION_CLAIM` · `NO_BFM` · `NO_H-ECS`
 
+**Disposition: `INCONCLUSIVE`** (`evidence/disposition`; `docs/research/ECS_BINARY_OBSERVER_R0_RESULTS.md`).
+
+* Mechanics pass.
+* GRAY4 and SPROJ are useful on QUAL.
+* The p99 latency gate is unresolvable on the host it ran on, although the deterministic observer cost is at most
+  0.52% of the median canonical QUERY.
+* A Bernoulli-transition follow-up is not justified.
+
 ## The question
 
 Can a deterministic encoder `B = Encode(observed_computation, frozen_law)` produce a compact, fixed-width binary

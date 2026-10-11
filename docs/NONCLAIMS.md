@@ -270,3 +270,11 @@ are not evidence that the contract has any effect.
   qualified constituents, is negative (`NO_ADVANTAGE_OVER_WIDTH`). Hierarchy
   integration is NOT AUTHORIZED, no H-ECS or EDEN hierarchical runtime is
   canonical, and no runtime readiness is claimed.
+* `research/ecs_binary_observer_r0` (ECS Binary Observation R0) is RESEARCH_ONLY
+  with NO_RUNTIME_AUTHORITY (`docs/research/ECS_BINARY_OBSERVER_R0_RESULTS.md`).
+  Its disposition is `INCONCLUSIVE`: mechanics pass and the GRAY4 and SPROJ
+  records are useful under the frozen synthetic regime, but the p99 latency gate
+  could not be resolved on the host it ran on. The 64-byte record is a lossy code
+  of one K1 forward map on caller-chosen query rows. It is not a world or state
+  representation and not a model of ECS. It is not wired into the runtime, has no
+  consumer, and authorizes no Bernoulli Flow Model or H-ECS work.
