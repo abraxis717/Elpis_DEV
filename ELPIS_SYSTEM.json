@@ -474,6 +474,10 @@
       {
         "path": "research/hacf_ecs_bridge_r0",
         "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, UNQUALIFIED, NO_CLAIM: HACF -> ECS Scientific Bridge R0 infrastructure. Validated structural retrieval evidence (canonical bundle gate + frozen observation context) -> identified observation map (measured, pinned) -> ECS observation -> one read-only K1 query_identity with the state proven unchanged. No LEARN, no continuity, no HACF writeback, no laundering of evidence into authority; an observation is not a codec. Harness over VALID / WITHHELD / PERMUTED / STALE / MISLEADING evidence on tiny synthetic fixtures only (TEST_ONLY map). No real evidence frozen; no qualification run."
+      },
+      {
+        "path": "research/evolution_fitness_r0",
+        "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, UNQUALIFIED, NO_CLAIM: Evolution Fitness R0 infrastructure. A tiny deterministic corridor environment (state, action, transition, feedback, terminal evaluation, replay identity) with write-once frozen partitions (CALIBRATION, DEVELOPMENT, HELD_OUT, OOD) and negative baselines; an evaluator that recomputes fitness from replayed trajectories, never reads a candidate's self-report, gates leakage of evaluation identifiers and is pinned by an elpis.evolution-policy.v1 spec. Agents are data, never executed code. No qualification run."
       }
     ],
     "native_targets": [
