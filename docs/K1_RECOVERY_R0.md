@@ -3,7 +3,8 @@
 **CHECKPOINT BYTES DO NOT AUTHORIZE THEMSELVES. CONTINUITY REMAINS THE CURRENT-AUTHORITY REGISTER.**
 
 Status: implemented systems mechanism (`native/runtime/src/checkpoint.rs`, RuntimeCore ABI v3, `elpis.runtime.recovery`).
-UNQUALIFIED: this document specifies the mechanism and its tests; it does not qualify it.
+UNQUALIFIED: this document specifies the mechanism and its tests; it does not qualify it. Qualification
+specification: `docs/qualification/K1_RECOVERY_R0.md` (NOT RUN).
 
 ## Why a distinct owner
 

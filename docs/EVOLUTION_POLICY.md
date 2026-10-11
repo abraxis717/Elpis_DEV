@@ -1,7 +1,8 @@
 # Evolution policy authority: evolution may propose; it may not authorize or evaluate itself
 
 Status: implemented systems mechanism (`src/elpis/evolution/policy.py`; `Runtime.evolve`). UNQUALIFIED: no evaluator,
-fitness environment or promotion is qualified; the fixtures under `tests/evolution/` are TEST_ONLY.
+fitness environment or promotion is qualified; the fixtures under `tests/evolution/` are TEST_ONLY. Qualification
+specification: `docs/qualification/EVOLUTION_FITNESS_R0.md` (NOT RUN).
 
 ## The finding
 

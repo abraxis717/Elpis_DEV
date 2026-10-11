@@ -22,4 +22,5 @@ The agent never observes a world identifier, so a candidate can only overfit the
 their identifiers, which the leakage gate detects. Nothing is written and nothing is learned by ECS here.
 
 Tests: `tests/research/evolution_fitness_r0` (scientific lane). The fixtures `SEEK` / `HESITANT` are TEST_ONLY
-tables; no claim is made about any evolutionary process. No qualification has been run.
+tables; no claim is made about any evolutionary process. No qualification has been run; the specification is
+`docs/qualification/EVOLUTION_FITNESS_R0.md` (NOT RUN).

@@ -31,4 +31,4 @@ semantically misleading evidence, and the harness records that rather than hidin
 
 Fixtures: `StructuralFixtureMap` is `TEST_ONLY TRAINING=NONE SEMANTICS=NONE`; the bundles are synthetic. Tests:
 `tests/research/hacf_ecs_bridge_r0` (scientific lane). No real evidence has been frozen and no qualification has
-been run.
+been run; the specification is `docs/qualification/HACF_ECS_BRIDGE_R0.md` (NOT RUN).
