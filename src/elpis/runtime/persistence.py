@@ -88,9 +88,12 @@ WRITERS: tuple[PersistentWriter, ...] = (
         "canonical_candidate_construction", O, ("elpis.pipeline.canonical.candidate:construct_candidate",), (),
         "One candidate tree per explicit promotion, at a caller-chosen root, replaced atomically."),
     PersistentWriter(
-        "evolution_child_materialization", O, ("elpis.evolution.promotion:atomic_materialize",), (),
-        "Only inside an explicit evolution attempt whose assertion RuntimeCore has durably reserved; one child "
-        "workspace per admitted attempt at a caller-chosen destination."),
+        "evolution_child_materialization", O,
+        ("elpis.evolution.promotion:atomic_materialize",
+         "elpis.evolution.policy:EvolutionPolicyAuthority.materialize"), (),
+        "One child workspace per operator-approved promotion grant of the pinned evolution policy "
+        "(elpis.evolution.policy), at a caller-chosen destination that must not exist; never reached by a "
+        "Runtime operation."),
     PersistentWriter(
         "hgram_fixed_capacity_store", O, (),
         ("native/structure/hacf/src/kernel/hgram_init.c:main",
@@ -138,7 +141,7 @@ AUTONOMOUS_OPERATIONS = frozenset({
 })
 OPERATOR_OPERATIONS = frozenset({
     "publish_canonical",   # one-use promotion capability against an operator approval digest
-    "evolve",              # an explicit assertion, durably reserved before execution
+    "evolve",              # an explicit assertion under the pinned evolution policy, reserved before execution
     "discard_k1_candidate",   # explicit reconciliation of exactly one named checkpoint candidate
     "adopt_k1_candidate",     # explicit reconciliation: continuity authorized -> the named candidate
 })

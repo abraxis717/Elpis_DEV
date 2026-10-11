@@ -16,6 +16,8 @@ from elpis.evolution import EvolutionAttempt, EvolutionPathAssertion, EvolutionP
 from elpis.runtime import CompositionError, Runtime, RuntimeConfig
 
 from ..conftest import require_runtime_library, runtime_config
+from ..evolution._policy_fixtures import TEST_AUTHORITY, TEST_EVOLUTION_PIN
+from ..evolution import _policy_fixtures as policies
 from .conftest import POSITIVE
 
 SLOTS = ("continuity.a", "continuity.b")
@@ -24,8 +26,9 @@ DIE, WRITE_FAIL, TORN_FAIL, SYNC_FAIL_LOST, SYNC_FAIL_DURABLE = 1, 2, 3, 5, 6
 STEPS = {"publish.begin": 0, "publish.written": 1, "publish.synced": 2}
 
 
-def config_at(tmp_path, testing=False):
-    return runtime_config(tmp_path / "continuity", require_runtime_library(testing=testing))
+def config_at(tmp_path, testing=False, evolution_pin=TEST_EVOLUTION_PIN):
+    return runtime_config(tmp_path / "continuity", require_runtime_library(testing=testing),
+                          evolution_pin=evolution_pin)
 
 
 def d(label: str) -> str:
@@ -43,8 +46,9 @@ class Episode:
         return self.state_digest
 
 
-GATE = EvolutionPathGate(allowed_component_scopes=("evolution/population",),
-                         resource_budget_digest=d("budget"), evaluation_contract_digest=d("contract"))
+# The gate comes from the pinned TEST_ONLY evolution policy (elpis.evolution.policy), never from the caller.
+GATE = TEST_AUTHORITY.gate()
+POLICY = TEST_AUTHORITY.policy
 
 
 def assertion(episode, authority, previous_receipt):
@@ -54,7 +58,8 @@ def assertion(episode, authority, previous_receipt):
         previous_structural_attempt_digest=episode.previous_structural_attempt_digest,
         previous_path_receipt_digest=previous_receipt, candidate_manifest_digest=d("candidate"),
         hypothesis_digest=d("hypothesis"), component_scope=("evolution/population",), edit_count=1,
-        edit_budget=2, resource_budget_digest=d("budget"), evaluation_contract_digest=d("contract"),
+        edit_budget=2, resource_budget_digest=POLICY.resource_budget_digest,
+        evaluation_contract_digest=POLICY.evaluation_contract_digest,
         evolution_authority_revision=authority.revision, evolution_authority_digest=authority.digest)
 
 
@@ -311,3 +316,34 @@ def test_process_death_during_evolution_publication(tmp_path, phase, step):
                 with pytest.raises(CompositionError, match="CONTINUITY_EVOLUTION_PENDING"):
                     rt.evolve(GATE, assertion=a, state=episode, advance=counted, advance_kwargs={})
             assert calls == (0 if phase == "reservation" else 1)
+
+
+def test_only_the_pinned_policy_gate_reaches_reservation(tmp_path):
+    """A caller-built gate, another policy's gate or an altered issued gate is refused before RuntimeCore reserves
+    anything: no caller configures the scopes, budgets or contract of an attempt (elpis.evolution.policy)."""
+    episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
+    lookalike = EvolutionPathGate(allowed_component_scopes=POLICY.candidate_scopes,
+                                  resource_budget_digest=POLICY.resource_budget_digest,
+                                  evaluation_contract_digest=POLICY.evaluation_contract_digest,
+                                  max_edit_budget=POLICY.max_edit_budget)
+    altered = TEST_AUTHORITY.gate()
+    altered.allowed_component_scopes = frozenset({"evolution/population", "policy"})
+    other = policies.authority(budget={"max_edit_budget": 99, "max_resource_cost": 100, "max_candidates": 4})
+    calls = []
+    with Runtime(config_at(tmp_path)) as rt:
+        before = rt.continuity.snapshot()
+        a = assertion(episode, rt.evolution_authority(), "0" * 64)
+        for gate, code in ((lookalike, "EVOLUTION_POLICY_UNAUTHORIZED"), (altered, "EVOLUTION_POLICY_UNAUTHORIZED"),
+                           (other.gate(), "EVOLUTION_POLICY_UNAUTHORIZED")):
+            with pytest.raises(CompositionError) as info:
+                rt.evolve(gate, assertion=a, state=episode, advance=lambda **kw: calls.append(kw), advance_kwargs={})
+            assert info.value.code == code
+        assert rt.continuity.snapshot() == before and rt.fault is None and calls == []
+        # The pinned policy's own gate is admitted.
+        assert isinstance(rt.evolve(GATE, assertion=a, state=episode, advance=advance, advance_kwargs={"label": "1"}),
+                          GateExecuted)
+    with Runtime(config_at(tmp_path / "unpinned", evolution_pin=None)) as rt:
+        with pytest.raises(CompositionError) as info:
+            rt.evolve(GATE, assertion=assertion(episode, rt.evolution_authority(), "0" * 64), state=episode,
+                      advance=lambda **kw: calls.append(kw), advance_kwargs={})
+        assert info.value.code == "EVOLUTION_POLICY_UNPINNED" and calls == []

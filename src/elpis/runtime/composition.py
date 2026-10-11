@@ -19,9 +19,11 @@ entry point and returns that subsystem's result:
   corpus manifest), then a budgeted, frozen token rendering. It is a
   communication operation: it does not make HACF a context window for a model.
 * ``evolve``: the evolution path gate, bound to the current evolution
-  authority (``evolution_authority``). The exact assertion is durably reserved
-  before execution and finalized afterwards. Pending authority and stale
-  assertions execute nothing.
+  authority (``evolution_authority``). The gate must be issued by the
+  deployment-pinned evolution policy (``elpis.evolution.policy``;
+  ``RuntimeConfig.evolution_policy_sha256``): a caller-built gate is refused.
+  The exact assertion is durably reserved before execution and finalized
+  afterwards. Pending authority and stale assertions execute nothing.
 * ``anchor_cognition``: the explicit anchor of the first managed K1 lineage.
 * ``run_query``: the canonical read-only QUERY, codec -> ``f_W(x)`` of the
   authoritative K1 state -> codec (:mod:`elpis.runtime.cognition`). No state
@@ -71,6 +73,7 @@ from elpis.evolution.path_gate import (
     GateExecuted,
     GateRejected,
 )
+from elpis.evolution.policy import EvolutionPolicyError, policy_of
 from elpis.inference.admission import ContextAdmission, ContextBudget, admit_context
 from elpis.pipeline.canonical.publisher import CanonicalPublicationReceipt, publish_candidate
 from elpis.pipeline.ingress import QueryIngress, QueryIngressResult
@@ -112,6 +115,10 @@ class RuntimeConfig:
     deployment configuration, never derived from a codec. Without it every managed cognitive operation that is
     given a codec refuses (``CODEC_AUTHORITY``).
 
+    ``evolution_policy_sha256`` is the independent SHA-256 pin of the one evolution policy
+    (``elpis.evolution.policy``) whose gates ``Runtime.evolve`` accepts. Without it ``evolve`` refuses
+    (``EVOLUTION_POLICY_UNPINNED``): no caller configures the scopes, budgets or contract of an attempt.
+
     ``k1_checkpoint_dir`` (optional) is an operator-provisioned K1 Recovery R0 store
     (:func:`elpis.runtime.recovery.provision_k1_checkpoint`). When set, every open attaches it (a missing or malformed
     store refuses the open), the anchor and every LEARN persist the complete envelope before it becomes
@@ -124,6 +131,7 @@ class RuntimeConfig:
     native_authority: PinnedAuthority | None = None
     runtime_library_id: str = "elpis_runtime"
     k1_checkpoint_dir: Path | None = None
+    evolution_policy_sha256: str | None = None
 
     def __post_init__(self):
         paths = (self.continuity_dir, self.runtime_library)
@@ -132,10 +140,11 @@ class RuntimeConfig:
         for value in paths:
             if not isinstance(value, Path) or not value.is_absolute():
                 raise CompositionError("RUNTIME_PATH", "runtime paths must be absolute Paths")
-        pin = self.codec_authority_sha256
-        if pin is not None and (type(pin) is not str or len(pin) != 64
-                                or any(c not in "0123456789abcdef" for c in pin)):
-            raise CompositionError("CODEC_AUTHORITY", "codec_authority_sha256: 64 lowercase hex characters")
+        for pin, code in ((self.codec_authority_sha256, "CODEC_AUTHORITY"),
+                          (self.evolution_policy_sha256, "EVOLUTION_POLICY")):
+            if pin is not None and (type(pin) is not str or len(pin) != 64
+                                    or any(c not in "0123456789abcdef" for c in pin)):
+                raise CompositionError(code, "authority pin: 64 lowercase hex characters")
 
 
 class RuntimeContinuity:
@@ -270,6 +279,11 @@ class Runtime:
                ) -> GateRejected | GateExecuted:
         """Validate (the gate), reserve (RuntimeCore), execute once (the gate), finalize (RuntimeCore).
 
+        The gate must be issued by the evolution policy authority whose policy is the configured pin, and still carry
+        exactly that policy's scopes, budgets and contract; anything else is refused before reservation
+        (``EVOLUTION_POLICY_UNPINNED`` / ``EVOLUTION_POLICY_UNAUTHORIZED``). ``advance`` is a trusted operator
+        callback (the policy's confinement is ``TRUSTED_OPERATOR_CALLBACKS``); Elpis does not sandbox it.
+
         RuntimeCore refuses while fail-stopped or pending, durably reserves the exact assertion
         before anything executes and fail-stops on any reservation or finalization failure. An
         attempt that raises or returns an invalid result may already have had an external effect:
@@ -277,6 +291,7 @@ class Runtime:
         """
         if type(gate) is not EvolutionPathGate:
             raise TypeError("evolve takes an EvolutionPathGate")
+        self._require_policy_gate(gate)
         current = self._core.evolution_authority().evolution
         binding = EvolutionAuthorityBinding(current.revision, current.digest, current.head)
         reason = gate.reject_reason(assertion, state, binding)
@@ -293,6 +308,19 @@ class Runtime:
             raise
         self._core.evolution_finalize(result.receipt.receipt_digest)
         return result
+
+    def _require_policy_gate(self, gate: EvolutionPathGate) -> None:
+        pin = self.config.evolution_policy_sha256
+        if pin is None:
+            raise CompositionError("EVOLUTION_POLICY_UNPINNED", "no evolution policy is configured")
+        authority = policy_of(gate)
+        if authority is None or authority.policy.digest != pin:
+            raise CompositionError("EVOLUTION_POLICY_UNAUTHORIZED",
+                                   "the gate was not issued by the configured evolution policy")
+        try:
+            authority.verify_gate(gate)
+        except EvolutionPolicyError as exc:
+            raise CompositionError(exc.code, str(exc)) from exc
 
     # -- structure -> codec: ingress -> adapter -> HACF resolution -> rendering ----------
     def admit_context(self, *, ingress: QueryIngress, task: bytes, corpus_root: Path, corpus_manifest,

@@ -275,7 +275,10 @@ class EvolutionPathGate:
         allowed_component_scopes: tuple[str, ...],
         resource_budget_digest: str,
         evaluation_contract_digest: str,
+        max_edit_budget: int | None = None,
     ) -> None:
+        if max_edit_budget is not None and (type(max_edit_budget) is not int or max_edit_budget < 0):
+            raise ValueError("max_edit_budget must be a non-negative int")
         if type(allowed_component_scopes) is not tuple or not allowed_component_scopes or any(
             type(x) is not str or not x for x in allowed_component_scopes
         ):
@@ -285,6 +288,9 @@ class EvolutionPathGate:
         require_digest(evaluation_contract_digest)
         self.resource_budget_digest = resource_budget_digest
         self.evaluation_contract_digest = evaluation_contract_digest
+        # The edit budget an assertion may claim (the policy's, never the assertion's own): None leaves it unbounded
+        # for a caller-built gate, which the managed runtime refuses (elpis.evolution.policy).
+        self.max_edit_budget = max_edit_budget
 
     def reject_reason(
         self,
@@ -311,6 +317,8 @@ class EvolutionPathGate:
             return "STRUCTURAL_ATTEMPT_HEAD_MISMATCH"
         if assertion.edit_count > assertion.edit_budget:
             return "EDIT_BUDGET_EXCEEDED"
+        if self.max_edit_budget is not None and assertion.edit_budget > self.max_edit_budget:
+            return "EDIT_BUDGET_NOT_AUTHORIZED"
         if not assertion.component_scope:
             return "EMPTY_COMPONENT_SCOPE"
         if not set(assertion.component_scope).issubset(self.allowed_component_scopes):

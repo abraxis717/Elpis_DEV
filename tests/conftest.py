@@ -252,8 +252,9 @@ def admit_k1_set():
                                                     ("elpis_ecsg_k1_fms", "libelpis_ecsg_k1_fms.so")))
 
 
-def runtime_config(continuity_dir: Path, runtime_library: Path, codec_pin: str | None = None):
+def runtime_config(continuity_dir: Path, runtime_library: Path, codec_pin: str | None = None,
+                   evolution_pin: str | None = None):
     """A RuntimeConfig over a built RuntimeCore library, admitted under the test catalog."""
     from elpis.runtime import RuntimeConfig
     return RuntimeConfig(continuity_dir, runtime_library, codec_pin, native_authority(),
-                         library_id_of(runtime_library))
+                         library_id_of(runtime_library), evolution_policy_sha256=evolution_pin)

@@ -61,6 +61,8 @@ def ingress(ingress_library, corpus):
 def runtime(tmp_path_factory, runtime_library):
     from ._turn_fixtures import TEST_CODEC_PIN
     from ..conftest import runtime_config
-    config = runtime_config(tmp_path_factory.mktemp("runtime") / "continuity", runtime_library, TEST_CODEC_PIN)
+    from ..evolution._policy_fixtures import TEST_EVOLUTION_PIN
+    config = runtime_config(tmp_path_factory.mktemp("runtime") / "continuity", runtime_library, TEST_CODEC_PIN,
+                            TEST_EVOLUTION_PIN)
     with Runtime(config) as rt:
         yield rt
