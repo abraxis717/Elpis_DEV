@@ -44,7 +44,7 @@ The audit's terminal disposition was exactly `G1_G2_G3_G4_SUPPORTED_BY_PRESERVED
 - Independent audit R0: terminal HALT caused by a malformed hardcoded sanitizer-inventory digest; its terminal record SHA-256 is `44b556f4b9f61d78eb6beac0c3fe65adecefaf8160fd4f2e180156b15bb28690`. The diagnostic verified the frozen Phase 8 manifest and unchanged inventory; the audit was not overwritten or resumed.
 - Independent audit R1: corrected *only* the auditor's hardcoded inventory pin, passed all checks and accepted the frozen-scope disposition above.
 
-The original [`COGNITIVE_BOUNDARY_R1.md`](COGNITIVE_BOUNDARY_R1.md) retains its frozen **NOT RUN** pre-registration wording as historical source authority at the qualifying commit. This later document records the subsequent execution and closure, rather than rewriting that historical specification or its test subject.
+The original [`COGNITIVE_BOUNDARY_R1.md`](../COGNITIVE_BOUNDARY_R1.md) retains its frozen **NOT RUN** pre-registration wording as historical source authority at the qualifying commit. This later document records the subsequent execution and closure, rather than rewriting that historical specification or its test subject.
 
 ## Limits and custody
 
@@ -52,4 +52,4 @@ Passing the registered gates establishes only the listed boundary mechanics agai
 
 Write-once formal and audit evidence remains under the original operator-controlled `/mnt/primesauce/Elpis_DEV_WORK/cognitive_boundary_r1_preflight_20261011/` qualification workspaces, separate from this repository. The hashes above identify those records; the evidence bytes are not published by this documentation-only PR, and repository readers without them cannot independently reproduce the evidence audit from this commit alone. Subsequent changes to the threat model or implementation require a new separately registered qualification.
 
-**Next outstanding qualification:** K1 Recovery R0, governed separately by [`K1_RECOVERY_R0.md`](K1_RECOVERY_R0.md). No K1 Recovery qualification is asserted here.
+**Next outstanding qualification:** K1 Recovery R0, governed separately by [`K1_RECOVERY_R0.md`](../K1_RECOVERY_R0.md). No K1 Recovery qualification is asserted here.
