@@ -1,0 +1,68 @@
+{
+ "bfm_followup": "a conditional Bernoulli-transition experiment is justified only if the disposition is BINARY_OBSERVER_FEASIBLE and a USEFUL perf-PASS encoder also passes S4 with mean per-bit entropy >= 0.5 bit and <= 10% constant bits",
+ "design_summary_sha256": "87e4785a87fa23fcb8830cb6299363129926e59d3d88ceec82fda373b6aee208",
+ "dev_summary_sha256": "b4bb2b3481eb22e9e705c31ceaae1ef381d81bfa6da427c1bcc6f65032ad967b",
+ "disposition": "MECHANICS_BLOCKED if any M gate fails; else BINARY_OBSERVER_NOT_USEFUL if no encoder is USEFUL; else PERFORMANCE_NONPASS if every USEFUL encoder is perf NONPASS; else INCONCLUSIVE if no USEFUL encoder is perf PASS; else BINARY_OBSERVER_FEASIBLE",
+ "gates": {
+  "M1_repeatability": "every observed record: encoded twice in process, bitwise identical; native == pure-Python reference bitwise; the first QUAL world re-encoded in a clean process, bitwise identical",
+  "M2_non_interference": "every QUAL world run with the observer OFF and ON: identical answers (bytes), digests, retained-state snapshots at every state, and K1 counters (forward, learn, commits, refusals, heap allocations)",
+  "M3_refusal": "the native mechanics test (ctest research.test_ebo_r0) and the Python refusal tests pass: pinned codes, no record written, inputs unchanged; an observation failure leaves the query result intact",
+  "M4_fixed_bounded": "every record is 64 bytes and admitted by ebo_record_check; rows > 64 are TRUNCATED; the encoder reads only the window (native test)",
+  "M5_no_io_alloc": "the observer library imports no symbol outside {memcpy, memset, __stack_chk_fail} and weak runtime symbols; ebo_encode / ebo_ring_push / ebo_ring_pop call nothing but the stack-protector failure path; zero allocations across QUERY + encode + push (native test)",
+  "M6_no_learn_continuity": "the observer library imports no ECS/runtime symbol; observer.py imports no elpis module",
+  "M7_handoff": "fixed-capacity SPSC ring, DROP_NEWEST, never blocks; FIFO and loss accounting under threads (native test, TSan in CI)",
+  "S1_equivalence": "per encoder over QUAL states vs the neuron-permuted copy W[:, pi]: digest prefixes differ in 100% of states (identity separates), and payloads are identical in >= 0.99 of states",
+  "S2a_distinction": "per encoder over QUAL transitions t -> t+1: payload differs in >= 0.95 of transitions",
+  "S2b_graded": "per encoder over within-world QUAL state pairs: Spearman rho(payload Hamming, L2 of f on X_HELD) >= 0.6, and DIGEST rho is within [-0.2, 0.2] (control validity)",
+  "S3_state": "per encoder: pooled R^2 on QUAL of f(X_HELD) from the record (DESIGN-trained decoder) >= 0.5, and exceeds every control (DIGEST, RANDOM, SHUFFLED, RESET, ROWPERM) by >= 0.25",
+  "S4_transition": "per encoder: pooled R^2 on QUAL of f_{t+1}(X_HELD) - f_t(X_HELD) from (record_t, record_t+1) >= 0.3, and exceeds every control (DIGEST, RANDOM, SHUFFLED, RESET) by >= 0.2"
+ },
+ "laws": {
+  "GRAY4": "0bdfe732b583b837faee52fd115cf5cf71192324fec4d05d588c99474c822ea3",
+  "SPROJ": "a46bd94e4740f06b023b70c18b402111814039d277931aa7cb62e573ab135278"
+ },
+ "perf": {
+  "disclosed": "isolated cost relative to the bare forward median (not a gate)",
+  "estimator": "delta_p99 = p99(ON) - p99(OFF); 95% CI by block bootstrap over 20 consecutive blocks of pairs, 2000 resamples, seed 20261011",
+  "pairs": {
+   "1": 20000,
+   "16": 20000,
+   "256": 20000,
+   "4096": 4000,
+   "64": 20000
+  },
+  "rule": "per rows: PASS if CI_high <= theta and isolated (encode + push/pop) <= 0.01 * median_OFF; NONPASS if CI_low > theta or isolated > 0.01 * median_OFF; else INCONCLUSIVE. Encoder PASS iff PASS at every rows; NONPASS if any rows NONPASS; else INCONCLUSIVE",
+  "theta": "theta(rows) = min(0.01 * p99_OFF, 1500 ns)",
+  "workload": "K1 dim 6 width 36, GCC Release, rows 1, 16, 64, 256, 4096; OFF = query_identity; ON = query_identity + ebo_encode + ebo_ring_push; pairs interleaved in fixed pseudo-random order; ring drained outside the timed region"
+ },
+ "phase": "FREEZE",
+ "protocol_sha256": "e34ae2769957b42f28f964fedd83d8e61c0eaf9f4a3ae81b748ee28309859050",
+ "qual_registry": [
+  "qual-0000",
+  "qual-0001",
+  "qual-0002",
+  "qual-0003",
+  "qual-0004",
+  "qual-0005",
+  "qual-0006",
+  "qual-0007",
+  "qual-0008",
+  "qual-0009",
+  "qual-0010",
+  "qual-0011",
+  "qual-0012",
+  "qual-0013",
+  "qual-0014",
+  "qual-0015",
+  "qual-0016",
+  "qual-0017",
+  "qual-0018",
+  "qual-0019",
+  "qual-0020",
+  "qual-0021",
+  "qual-0022",
+  "qual-0023"
+ ],
+ "source_commit": "eecb7467b218777b48e581761f275de8488f7edc",
+ "source_sha256": "4b3b5cfff24005d80acc7761ed30d306d83a2c48558b2aea0f3f566f0f6c5f48"
+}

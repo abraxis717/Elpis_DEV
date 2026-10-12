@@ -55,5 +55,6 @@ add_subdirectory(research/ecs_runtime_r1/native)
 add_subdirectory(research/hecs_r0)
 add_subdirectory(research/hecs_r1)
 add_subdirectory(research/hecs_r2)
+add_subdirectory(research/ecs_binary_observer_r0/native)
 
 elpis_verify_targets()

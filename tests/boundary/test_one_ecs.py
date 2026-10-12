@@ -241,6 +241,8 @@ _HECS_K1 = "H-ECS R0 drives each level's K1 state through the qualified native A
 _HECS_R1_K1 = "H-ECS R1 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
 _HECS_R2_K1 = "H-ECS R2 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
 _RUNTIME_K1 = "RuntimeCore reaches K1 only through tables of the qualified native ABI's entry points (elpis_ecsg_k1)."
+_EBO_K1 = ("ECS Binary Observation R0 (research) names the qualified K1 QUERY it observes (elpis_ecsg_k1_query_identity); "
+           "only its mechanics test and benchmark link the K1 library, the observer itself links nothing of ECS.")
 
 # Files that may contain retired tokens only as NATIVE_ABI_FORM identifiers.
 NATIVE_ABI_FILES = {
@@ -319,6 +321,15 @@ NATIVE_ABI_FILES = {
     "research/hecs_r2/rust/src/main.rs": _HECS_R2_K1,
     "research/hecs_r2/rust/src/spec.rs": _HECS_R2_K1,
     "research/hecs_r2/rust/src/tests.rs": _HECS_R2_K1,
+    "docs/research/ECS_BINARY_OBSERVER_R0_RESULTS.md": _EBO_K1,
+    "research/ecs_binary_observer_r0/ADR.md": _EBO_K1,
+    "research/ecs_binary_observer_r0/DEV_NOTES.md": _EBO_K1,
+    "research/ecs_binary_observer_r0/README.md": _EBO_K1,
+    "research/ecs_binary_observer_r0/run.py": _EBO_K1,
+    "research/ecs_binary_observer_r0/native/CMakeLists.txt": _EBO_K1,
+    "research/ecs_binary_observer_r0/native/ebo_r0.h": _EBO_K1,
+    "research/ecs_binary_observer_r0/native/ebo_r0_bench.c": _EBO_K1,
+    "research/ecs_binary_observer_r0/native/test_ebo_r0.c": _EBO_K1,
     "research/hecs_r0/CMakeLists.txt": _HECS_K1,
     "research/hecs_r0/PREREGISTRATION.md": _HECS_K1,
     "research/hecs_r0/README.md": _HECS_K1,

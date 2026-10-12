@@ -1,0 +1,284 @@
+{
+ "environment": {
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "git_head": "a9be051fbfbc1c2e16156bb01b3b91224745a95b",
+  "k1_library_sha256": "992ba258c373228a4bfb1b68a37b21b49a4c76d66a0135ec7fff9044897c9094",
+  "machine": "x86_64",
+  "numpy": "2.5.3",
+  "observer_library_sha256": "d3c684e5f01eccd4f1aa4f8b4dae53ccc2f7a7b1f7e9141054633a68a959304d",
+  "protocol_sha256": "e34ae2769957b42f28f964fedd83d8e61c0eaf9f4a3ae81b748ee28309859050",
+  "python": "3.13.16",
+  "source_sha256": "2ada336ada7de1d870fa93abee9d18f62639fd3943b037662900d878918bce0c"
+ },
+ "gates": {
+  "GRAY4": {
+   "S1": true,
+   "S2a": true,
+   "S2b": true,
+   "S3": true,
+   "S4": true,
+   "USEFUL": true,
+   "matched_budget": "BINARY_AT_OR_ABOVE_RAW"
+  },
+  "SPROJ": {
+   "S1": true,
+   "S2a": true,
+   "S2b": true,
+   "S3": true,
+   "S4": true,
+   "USEFUL": true,
+   "matched_budget": "RAW_SUPERIOR"
+  }
+ },
+ "mechanics": {
+  "M1_parity_and_repeatability_failures": [],
+  "M2_non_interference": true,
+  "M2_worlds": [
+   {
+    "identical": true,
+    "world": "dev-0000"
+   },
+   {
+    "identical": true,
+    "world": "dev-0001"
+   },
+   {
+    "identical": true,
+    "world": "dev-0002"
+   },
+   {
+    "identical": true,
+    "world": "dev-0003"
+   },
+   {
+    "identical": true,
+    "world": "dev-0004"
+   },
+   {
+    "identical": true,
+    "world": "dev-0005"
+   },
+   {
+    "identical": true,
+    "world": "dev-0006"
+   },
+   {
+    "identical": true,
+    "world": "dev-0007"
+   },
+   {
+    "identical": true,
+    "world": "dev-0008"
+   },
+   {
+    "identical": true,
+    "world": "dev-0009"
+   },
+   {
+    "identical": true,
+    "world": "dev-0010"
+   },
+   {
+    "identical": true,
+    "world": "dev-0011"
+   }
+  ],
+  "other_failures": [],
+  "records": 1248,
+  "records_sha256": "50bd77287fb9bd54963bedec2f851b3a061b41dcdffd39ad0172bf1f63a169f1"
+ },
+ "phase": "DEV",
+ "probe": {
+  "S1": {
+   "GRAY4": {
+    "digest_bytes_identical_to_twin": 0,
+    "digest_prefix_differs": 1.0,
+    "mean_bit_disagreement": 0.0,
+    "payload_identical": 1.0,
+    "states": 156
+   },
+   "SPROJ": {
+    "digest_bytes_identical_to_twin": 0,
+    "digest_prefix_differs": 1.0,
+    "mean_bit_disagreement": 0.0,
+    "payload_identical": 1.0,
+    "states": 156
+   }
+  },
+  "S2a": {
+   "GRAY4": {
+    "payload_differs": 1.0,
+    "transitions": 144
+   },
+   "SPROJ": {
+    "payload_differs": 1.0,
+    "transitions": 144
+   }
+  },
+  "S2b": {
+   "DIGEST": {
+    "pairs": 936,
+    "rho": -0.02732383871086547
+   },
+   "GRAY4": {
+    "pairs": 936,
+    "rho": 0.8113044954554639
+   },
+   "RAW16": {
+    "metric": "L2 of decoded values",
+    "pairs": 936,
+    "rho": 0.9281869238803133
+   },
+   "RAW4": {
+    "metric": "L2 of decoded values",
+    "pairs": 936,
+    "rho": 0.8026663921384243
+   },
+   "SPROJ": {
+    "pairs": 936,
+    "rho": 0.7631386051643612
+   }
+  },
+  "S3": {
+   "DIGEST": {
+    "features": 64,
+    "lambda": 10000.0,
+    "r2": -0.07457356363275469
+   },
+   "GRAY4": {
+    "controls": {
+     "DIGEST": -0.07457356363275469,
+     "RANDOM": -0.07783245848566755,
+     "RESET": -0.3772345291436363,
+     "ROWPERM": -1.8918053878537093,
+     "SHUFFLED": -0.9593783287154987
+    },
+    "features": 64,
+    "lambda": 10.0,
+    "margin": 0.9340162602960806,
+    "r2": 0.859442696663326,
+    "vs_RAW16": 0.07087578507461467
+   },
+   "RANDOM": {
+    "features": 256,
+    "lambda": 10000.0,
+    "r2": -0.07783245848566755
+   },
+   "RAW16": {
+    "features": 16,
+    "lambda": 10.0,
+    "r2": 0.7885669115887113
+   },
+   "RAW4": {
+    "features": 4,
+    "lambda": 1.0,
+    "r2": 0.3740707111705809
+   },
+   "SPROJ": {
+    "controls": {
+     "DIGEST": -0.07457356363275469,
+     "RANDOM": -0.07783245848566755,
+     "RESET": -1.0063011170450782,
+     "ROWPERM": -0.16422261603828292,
+     "SHUFFLED": -0.958458577310332
+    },
+    "features": 256,
+    "lambda": 100.0,
+    "margin": 0.7172577572066285,
+    "r2": 0.6426841935738739,
+    "vs_RAW16": -0.14588271801483743
+   }
+  },
+  "S4": {
+   "DIGEST": {
+    "features": 128,
+    "lambda": 10000.0,
+    "r2": -0.002580544843503896
+   },
+   "GRAY4": {
+    "controls": {
+     "DIGEST": -0.002580544843503896,
+     "RANDOM": 0.0001762970864931379,
+     "RESET": -0.0065844421573173495,
+     "SHUFFLED": -1.0606320981167414
+    },
+    "features": 128,
+    "lambda": 10.0,
+    "margin": 0.8794829310199489,
+    "r2": 0.879659228106442,
+    "vs_RAW16": 0.021464377662507972
+   },
+   "RANDOM": {
+    "features": 512,
+    "lambda": 10000.0,
+    "r2": 0.0001762970864931379
+   },
+   "RAW16": {
+    "features": 32,
+    "lambda": 1.0,
+    "r2": 0.8581948504439341
+   },
+   "RAW4": {
+    "features": 8,
+    "lambda": 1.0,
+    "r2": 0.5589840364755354
+   },
+   "SPROJ": {
+    "controls": {
+     "DIGEST": -0.002580544843503896,
+     "RANDOM": 0.0001762970864931379,
+     "RESET": -0.04591335110846795,
+     "SHUFFLED": -0.920732528544006
+    },
+    "features": 512,
+    "lambda": 100.0,
+    "margin": 0.6290284036648943,
+    "r2": 0.6292047007513875,
+    "vs_RAW16": -0.2289901496925466
+   }
+  },
+  "information": {
+   "GRAY4": {
+    "bit_entropy_mean": 0.9598349580049543,
+    "bit_entropy_min": 0.4566836315394428,
+    "boundary_proximal_values": 0,
+    "colliding_state_pairs": 0,
+    "collision_rate": 0.0,
+    "constant_bits": 0,
+    "distinct_payloads": 156,
+    "midpoint_rmse_over_std": 0.37753459465463096,
+    "outer_level_share": 0.08122996794871795,
+    "states": 156
+   },
+   "SPROJ": {
+    "bit_entropy_mean": 0.9659900280186479,
+    "bit_entropy_min": 0.779349837292085,
+    "boundary_proximal_projections": 0,
+    "colliding_state_pairs": 0,
+    "collision_rate": 0.0,
+    "constant_bits": 0,
+    "distinct_payloads": 156,
+    "states": 156
+   },
+   "observed_values_per_state": {
+    "ref": 64,
+    "window": 64
+   },
+   "window_truncation_share": 0.28846153846153844
+  }
+ },
+ "registry": [
+  "dev-0000",
+  "dev-0001",
+  "dev-0002",
+  "dev-0003",
+  "dev-0004",
+  "dev-0005",
+  "dev-0006",
+  "dev-0007",
+  "dev-0008",
+  "dev-0009",
+  "dev-0010",
+  "dev-0011"
+ ]
+}

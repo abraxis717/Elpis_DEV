@@ -1,0 +1,19 @@
+{
+ "bfm_followup_justified": false,
+ "bfm_rule": "a conditional Bernoulli-transition experiment is justified only if the disposition is BINARY_OBSERVER_FEASIBLE and a USEFUL perf-PASS encoder also passes S4 with mean per-bit entropy >= 0.5 bit and <= 10% constant bits",
+ "disposition": "INCONCLUSIVE",
+ "freeze_commit": "eecb7467b218777b48e581761f275de8488f7edc",
+ "mechanics_pass": true,
+ "perf": {
+  "GRAY4": "INCONCLUSIVE",
+  "SPROJ": "INCONCLUSIVE"
+ },
+ "perf_qual_summary_sha256": "301b06c36e8e9232f0f5a2737bbef9454d630a59d193c81e06d0c2ab1b5d8a38",
+ "phase": "DISPOSITION",
+ "qual_summary_sha256": "1d16ff4846c2540cbf2b3b4cba88bd6558ff1e9d5dedbd4ebbc5b6934b5a60ed",
+ "rule": "MECHANICS_BLOCKED if any M gate fails; else BINARY_OBSERVER_NOT_USEFUL if no encoder is USEFUL; else PERFORMANCE_NONPASS if every USEFUL encoder is perf NONPASS; else INCONCLUSIVE if no USEFUL encoder is perf PASS; else BINARY_OBSERVER_FEASIBLE",
+ "useful": {
+  "GRAY4": true,
+  "SPROJ": true
+ }
+}
