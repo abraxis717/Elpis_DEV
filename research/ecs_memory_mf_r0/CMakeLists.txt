@@ -23,3 +23,17 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT (ELPIS_ENABLE_ASAN OR ELPIS_ENABLE
   target_link_options(ecs_mem_lattice_differential PRIVATE
     -Wl,--wrap=calloc -Wl,--wrap=malloc -Wl,--wrap=free)
 endif()
+
+# The MF-R0 memory mechanism (ecs_mem.h): integer arithmetic only, one allocation per handle.
+elpis_add_test_library(research elpis_ecs_mem ${_mem}/src/ecs_mem.c)
+target_include_directories(elpis_ecs_mem PUBLIC ${_mem}/include/elpis)
+target_link_libraries(elpis_ecs_mem PUBLIC elpis_hash)
+elpis_add_test(research ecs_mem_mechanics SOURCES ${_mem}/tests/test_ecs_mem.c LIBS elpis_ecs_mem TIMEOUT 120)
+elpis_add_test(research ecs_mem_reference SOURCES ${_mem}/tests/test_ecs_mem_reference.c LIBS elpis_ecs_mem TIMEOUT 600)
+elpis_add_test(research ecs_mem_concurrency SOURCES ${_mem}/tests/test_ecs_mem_concurrency.c
+  LIBS elpis_ecs_mem Threads::Threads TIMEOUT 300)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT (ELPIS_ENABLE_ASAN OR ELPIS_ENABLE_UBSAN OR ELPIS_ENABLE_TSAN))
+  elpis_add_test(research ecs_mem_alloc SOURCES ${_mem}/tests/test_ecs_mem_alloc.c LIBS elpis_ecs_mem TIMEOUT 300)
+  target_link_options(ecs_mem_alloc PRIVATE -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc
+    -Wl,--wrap=aligned_alloc -Wl,--wrap=free)
+endif()
