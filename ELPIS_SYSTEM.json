@@ -483,6 +483,10 @@
       {
         "path": "research/evolution_fitness_r0",
         "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, UNQUALIFIED, NO_CLAIM: Evolution Fitness R0 infrastructure. A tiny deterministic corridor environment (state, action, transition, feedback, terminal evaluation, replay identity) with write-once frozen partitions (CALIBRATION, DEVELOPMENT, HELD_OUT, OOD) and negative baselines; an evaluator that recomputes fitness from replayed trajectories, never reads a candidate's self-report, gates leakage of evaluation identifiers and is pinned by an elpis.evolution-policy.v1 spec. Agents are data, never executed code. No qualification run."
+      },
+      {
+        "path": "research/ecs_memory_mf_r0",
+        "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, TRAINING=NONE, SEMANTICS=NONE: ECS Memory MF-R0, a bounded model-free typed relational memory (native C11; integer gated-delta banks, resident evidence slots, typed HACF adapter, ELPISEM1 snapshot) and the PR #47 D31-B/D31-C lattices kept as frozen differential references (docs/research/ECS_MEMORY_MF_R0.md). Built as test-kind research support; not part of the one ECS, not bound by continuity, not on the cognitive path."
       }
     ],
     "native_targets": [

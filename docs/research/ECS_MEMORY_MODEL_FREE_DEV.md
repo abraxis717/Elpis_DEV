@@ -1,5 +1,8 @@
 # ECS Memory — zero-model DEV foundation (not integrated)
 
+> Historical PR #47 note. The code moved to `research/ecs_memory_mf_r0` and its successor contract,
+> audit and results are in [`ECS_MEMORY_MF_R0.md`](ECS_MEMORY_MF_R0.md). The text below is unchanged.
+
 ## Repository publication status
 
 This source is an **experimental research backend** only, not a release of the living ECS, not a qualified cognitive writer, and not a new continuity authority. It must not replace existing native ECS/K1/FMS code or be registered in the canonical build automatically.
