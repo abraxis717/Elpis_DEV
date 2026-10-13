@@ -243,3 +243,135 @@ Polarity is supplied by the caller because HACF does not define it; it is record
 observing a record never makes it true, authorized or learned: LEARN is a separate call, and a conflict
 (one source asserting, another negating the same hyperedge) is retained with both provenances and refuses
 LEARN (`NO_NET_EVIDENCE`).
+
+## M3 — Laboratory results (`research/ecs_memory_mf_r0`, preregistered, frozen, QUAL once)
+
+Protocol: `research/ecs_memory_mf_r0/PREREGISTRATION.md` (committed `35fc484`, before the laboratory existed).
+Laboratory, runner and scorer `0204eff`; DEV record (seeds 1–4) `a3713c7`; freeze manifest `8b384e9`
+(SHA-256 `3cf46ea5…`); QUAL record (seeds 1001–1008, once) `2744ece` (SHA-256 `5454cbf1…`). Binary
+`research/ecs_memory_mf_r0/ecs_mem_lab` SHA-256 `545ced3f…`, gcc 13.3.0 Release, x86_64, Intel Xeon @ 2.10 GHz.
+Parameters the preregistration left open were fixed in the laboratory before DEV and are echoed in every
+record: SLOW consolidation rate 0.5, D31C α = β = 1 and radius 8, S8 intermediate pool of 64. DEV found no
+harness defect; nothing was tuned between DEV and QUAL. Guards: `tests/research/ecs_memory_mf_r0`
+(seals, recomputed verdicts, freeze binding, chronology, exact replay of seed 1001 on the current build).
+
+### Verdicts (QUAL, pooled over 8 seeds; chance = 1/64 = 0.016)
+
+| Hypothesis | Verdict | Decisive numbers |
+|---|---|---|
+| H1 acquisition and state causality | **PASS** | FAST 1.000; NONE 0.016, FIXED 0.014, PERM 0.016 |
+| H2 updating AB / ABA / ABAB | **PASS** | FAST 0.996 / 1.000 / 1.000; HEBB 0.457 on ABAB |
+| H3 partial-cue completion (agent only) | **PASS** | FAST 0.932 — algebraic completion by fixed geometry, as classified in advance |
+| H4 byte-matched retention under interference | **NONPASS** | FAST 0.090 / 0.012 / 0.012 at K = 256 / 1024 / 4096; KEYED 1.000 at every K |
+| H5 consolidation of rare recurrent relations | **PASS** | SLOW(RECUR) 0.883; FAST(RECUR) 0.023; SLOW(NORECUR) 0.016 |
+
+### Every arm (QUAL accuracy)
+
+| scenario / condition | FAST | SLOW | HEBB | LOOKUP | KEYED | D31C | FIXED | NONE | PERM |
+|---|---|---|---|---|---|---|---|---|---|
+| S1 base | 1.000 | 0.016 | 1.000 | 1.000 | 1.000 | 0.811 | 0.014 | 0.016 | 0.016 |
+| S2 AB | 0.996 | 0.016 | 0.434 | 1.000 | 1.000 | 0.945 | 0.012 | 0.016 | 0.016 |
+| S2 ABA | 1.000 | 0.012 | 1.000 | 1.000 | 1.000 | 0.996 | 0.031 | 0.012 | 0.012 |
+| S2 ABAB | 1.000 | 0.012 | 0.457 | 1.000 | 1.000 | 0.984 | 0.023 | 0.012 | 0.012 |
+| S3 shared roles | 0.557 | 0.000 | 0.454 | 1.000 | 1.000 | 0.902 | 0.010 | 0.000 | 0.034 |
+| S4 simultaneous conflict (either object) | 1.000 | 0.027 | 1.000 | 1.000 | 1.000 | 0.895 | 0.043 | 0.027 | 0.027 |
+| S5 UNIQUE agent only | 0.932 | 0.018 | 0.977 | 1.000 | 0.000 | 0.018 | 0.010 | 0.018 | 0.013 |
+| S5 UNIQUE recipient only | 0.927 | 0.018 | 0.982 | 1.000 | 0.000 | 0.016 | 0.013 | 0.018 | 0.005 |
+| S5 UNIQUE both | 0.948 | 0.018 | 0.935 | 1.000 | 1.000 | 0.932 | 0.013 | 0.018 | 0.010 |
+| S5 SHARED agent only (either) | 0.964 | 0.036 | 1.000 | 1.000 | 0.000 | 0.031 | 0.026 | 0.036 | 0.036 |
+| S5 SHARED recipient only | 0.966 | 0.018 | 0.992 | 1.000 | 0.000 | 0.013 | 0.013 | 0.018 | 0.013 |
+| S5 SHARED both | 0.917 | 0.018 | 0.919 | 1.000 | 1.000 | 0.930 | 0.008 | 0.018 | 0.021 |
+| S6 K=0 | 1.000 | 0.012 | 1.000 | 1.000 | 1.000 | 0.973 | 0.027 | 0.012 | 0.105 |
+| S6 K=256 | 0.090 | 0.020 | 0.965 | 1.000 | 1.000 | 0.020 | 0.008 | 0.020 | 0.020 |
+| S6 K=1024 | 0.012 | 0.020 | 0.461 | 0.000 | 1.000 | 0.008 | 0.031 | 0.020 | 0.020 |
+| S6 K=4096 | 0.012 | 0.008 | 0.168 | 0.000 | 1.000 | 0.016 | 0.012 | 0.008 | 0.020 |
+| S7 RECUR | 0.023 | 0.883 | 0.031 | 1.000 | 1.000 | 0.016 | 0.031 | 0.008 | 0.008 |
+| S7 NORECUR | 0.008 | 0.016 | 0.016 | 0.000 | 1.000 | 0.016 | 0.008 | 0.008 | 0.008 |
+| S8 two-hop chain | 1.000 | 0.020 | 1.000 | 1.000 | 1.000 | 0.996 | 0.023 | 0.020 | 0.016 |
+
+Budget: every arm's capacity ≈ 562.8 kB (the FAST handle's full ELPISEM1 state: two bank sets of 4 × 128²
+int32, 64 slots, 64 codebook entries). KEYED holds 7,035 exact entries in it; LOOKUP ≈ 1,000 evidence
+slots; D31C 68 lattice cells. Mean query latency (descriptive, one shared VM): FAST/SLOW/HEBB ≈ 79 µs
+(64 candidate codes derived by SHA-256 plus a 128² readout), D31C ≈ 88 µs, LOOKUP ≈ 2 µs, KEYED ≈ 1 µs.
+Work per arm (integer MACs, slot scans, SHA blocks, probes) is in the record.
+
+### What the numbers do and do not show
+
+* **Acquisition is state-borne and causal (H1).** Answers follow the learned banks: empty banks, fixed random
+  banks and permuted role addressing all fall to chance. This is learning in the narrow sense of a state
+  transition driven by observations; it is one-shot storage of quasi-orthogonal associations.
+* **Lookup, algebraic completion and learned state are separated, and the separation matters.** LOOKUP
+  (ordinary lookup over resident evidence) is exact wherever its evidence is resident, including partial
+  cues and two-hop chains (S8, an algebraic inference composed of two lookups by the caller). FAST completes
+  partial cues (H3) because a partial-cue code correlates with the stored bundled cue: a property of the fixed
+  encoding, not generalization to unseen entities. No arm generalizes to entities it never observed, and the
+  laboratory tested none.
+* **Byte-matched exact storage dominates retention (H4 NONPASS).** At equal bytes, KEYED retains every target
+  at every interference level; FAST keeps roughly its last D associations per bank and loses targets after
+  a few hundred interfering relations. LOOKUP fails once its ~1,000 resident slots overflow (K ≥ 1024).
+* **The delta residual trades retention for updating.** The Hebbian ablation retains far better under
+  interference (0.965 at K = 256) but cannot update (0.43–0.46 on AB / ABAB, where it splits between the old
+  and new object), and it reaches the numerical learning bound under heavy traffic (refusals recorded). The
+  delta law updates perfectly and forgets by overwriting. Neither law is "better"; the trade-off is measured.
+* **Consolidation C1 helps only what recurs (H5).** Replay of resident evidence into the undecayed slow
+  banks retains rare relations that recur (0.883) and not those observed once (0.016). It is still below the
+  byte-matched exact stores in the same scenario (LOOKUP and KEYED 1.000), so it is not evidence that
+  consolidation beats storage, only that the separately specified law retains recurrent structure that
+  the decaying fast state loses.
+* **Shared roles cost the associative state (S3).** With entities filling several roles across 48 ternary
+  relations, FAST answers 0.557 and HEBB 0.454 against 1.000 for the exact stores. Conflicting simultaneous
+  assertions (S4) are answered with one of the two objects by every learning arm; only LOOKUP reports the
+  conflict (`conflicts`), and only through its retained evidence.
+* **The PR #47 lattice (D31C)** is competitive on full-cue recall and updating at this scale (0.81–1.00),
+  cannot answer partial cues by construction (hashed cue), and is overwhelmed by interference as FAST is.
+
+## M4 — Composite ECS integration: what exists and what is blocked
+
+Implemented (`integration/`, `ecs_mem_composite.h`, `research.ecs_mem_composite`):
+
+* `ecs_mem_composite_identity(k1_digest, memory_identity)` — the identity a composite retained state would
+  need. It binds both components with domain separation and is bound by nothing.
+* Against the real native K1 library: MF-R0 transitions leave `elpis_ecsg_k1_state_digest` unchanged. The
+  K1 digest is the only cognitive identity continuity binds, so **today continuity can neither detect, order
+  nor restore memory state**; a restart would resume K1 and silently pair it with any memory state.
+* Generic FMS residency: the ELPISEM1 envelope survives COLD demotion and verified rematerialization as an
+  opaque FMS object (FMS interprets nothing), and restores the identical state. This is placement, not
+  checkpoint authority.
+
+Blocked, with the exact authority each needs (no code was written against them):
+
+| Seam | Current authority | What integration would require |
+|---|---|---|
+| retained-state identity | `ELPISGK1` v1, `elpis_ecsg_k1_state_digest`; kernel sources digest-pinned by the mission gate | a new, versioned composite envelope (or K1 envelope v2) qualified under the K1 qualification line, with the mission gate's pins updated by explicit review |
+| durable authority | continuity `ELPCONT` v2: one 32-byte K1 digest (`elpis_continuity_commit_cognition`) | a continuity format change (v3, new frozen byte-parity vectors) binding the composite digest, or an explicit decision that memory state is not durable authority |
+| durable state | K1 Recovery R0: two slots of exactly one `ELPISGK1` envelope | a checkpoint format carrying the memory envelope, or a separately authorized owner (not created here) |
+| managed mutation | RuntimeCore lease and turn over K1 only | RuntimeCore ABI changes to lease, fuel-admit and commit the memory with the K1 turn |
+| observation → state map | none (`ARCHITECTURE.md`: no canonical HACF → ECS edge) | a scientifically identified observation map; the HACF adapter here maps structure to a typed record, not to meaning |
+| LEARN authority | `LearnAuthority` for K1 only | a defined authority for memory LEARN/CONSOLIDATE; MF-R0 only separates the calls and mirrors the K1 lease |
+
+Continuity integration is **not claimed**.
+
+## M6 — Status
+
+| Question | Answer |
+|---|---|
+| Artifact class | **experimental research mechanism (RESEARCH_ONLY)**, mechanically tested; not admitted, not canonical, not part of the one ECS |
+| Mechanics | contract, refusal atomicity, capacity/eviction, lease, guard, determinism (pinned identity), allocation freedom, differential reference, snapshot faults, HACF adapter, K1/FMS adjacency: all in ctest under gcc/clang Debug/Release, ASan+UBSan and TSan |
+| Science | one preregistered DEV → freeze → QUAL in a synthetic regime: H1, H2, H3, H5 PASS; H4 NONPASS (preserved). This is not scientific qualification of a cognitive memory, of semantics, or of generalization |
+| Remaining blockers | the six authority seams above; a qualified observation map; LEARN authority; a composite retained-state format; fairness of the guard (writers can starve); read-recency retention is impossible while QUERY is read-only |
+
+### CI note (run 204)
+
+The push run for `8561838` failed one job, Native ASan+UBSan, in `research.hecs_r1_mechanics` (untouched by
+this work) with an AddressSanitizer runtime-internal `CHECK failed: sanitizer_thread_registry.cpp:316` inside
+a Rust test harness that preloads the ASan runtime. The next head (run 205) passed the same job with the same
+H-ECS R1 sources. Per `docs/CI_POLICY.md` rule 3 this is classified NONDETERMINISTIC / ENVIRONMENT-SENSITIVE and
+recorded here; it was not re-run to obtain green.
+
+## Non-claims
+
+No semantics, language, meaning or understanding; no learned similarity or generalization to unseen
+entities (codes are fixed SHA-256 derivations); no claim that the memory is better than exact storage at
+equal bytes (H4 says the opposite); no continual-learning or catastrophic-forgetting solution; no
+crash-durable commit, continuity binding or checkpoint authority; no claim beyond the synthetic regime,
+budgets and seeds recorded; latency is descriptive; the snapshot checksum is integrity, not authentication.

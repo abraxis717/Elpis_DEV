@@ -241,6 +241,8 @@ _HECS_K1 = "H-ECS R0 drives each level's K1 state through the qualified native A
 _HECS_R1_K1 = "H-ECS R1 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
 _HECS_R2_K1 = "H-ECS R2 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
 _RUNTIME_K1 = "RuntimeCore reaches K1 only through tables of the qualified native ABI's entry points (elpis_ecsg_k1)."
+_MEM_MF_K1 = ("ECS Memory MF-R0 M4 test: creates its own K1 state through the qualified native ABI (elpis_ecsg_k1) to "
+              "show that memory transitions leave the K1 state digest unchanged.")
 
 # Files that may contain retired tokens only as NATIVE_ABI_FORM identifiers.
 NATIVE_ABI_FILES = {
@@ -319,6 +321,8 @@ NATIVE_ABI_FILES = {
     "research/hecs_r2/rust/src/main.rs": _HECS_R2_K1,
     "research/hecs_r2/rust/src/spec.rs": _HECS_R2_K1,
     "research/hecs_r2/rust/src/tests.rs": _HECS_R2_K1,
+    "research/ecs_memory_mf_r0/integration/CMakeLists.txt": _MEM_MF_K1,
+    "research/ecs_memory_mf_r0/native/tests/test_ecs_mem_composite.c": _MEM_MF_K1,
     "research/hecs_r0/CMakeLists.txt": _HECS_K1,
     "research/hecs_r0/PREREGISTRATION.md": _HECS_K1,
     "research/hecs_r0/README.md": _HECS_K1,

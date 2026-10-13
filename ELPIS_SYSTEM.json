@@ -590,7 +590,8 @@
     "Post-red-team mechanisms are UNQUALIFIED: Cognitive Boundary R1, K1 Recovery R0, HACF-ECS Scientific Bridge R0 and Evolution Fitness R0 have pre-registered specifications (docs/qualification) and no runs; mechanics tests are not qualification evidence.",
     "Pins authenticate bytes, not authors: the native, codec and evolution-policy authorities, and the K1 checkpoint and continuity stores (integrity-checked, not authenticated), offer no protection against a malicious in-process caller or a writer of their directories.",
     "Cognitive fuel is a deterministic integer work-unit bound admitted before an operation starts; no wall-clock deadline or preemption is claimed.",
-    "Evolution policy confinement is TRUSTED_OPERATOR_CALLBACKS: evaluators and attempt callbacks are not sandboxed; no evolutionary process is claimed to improve anything."
+    "Evolution policy confinement is TRUSTED_OPERATOR_CALLBACKS: evaluators and attempt callbacks are not sandboxed; no evolutionary process is claimed to improve anything.",
+    "ECS Memory MF-R0 (research/ecs_memory_mf_r0) is RESEARCH_ONLY: not the ECS, not bound by continuity, not admitted; its QUAL (H1-H3, H5 PASS; H4 NONPASS) is a mechanism finding in a synthetic regime, with no semantic, generalization or better-than-storage claim."
   ],
   "post_migration_relocations": [],
   "post_migration_retirements": [

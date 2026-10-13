@@ -5,6 +5,20 @@ therefore never compiled or tested by CI. `native/` is canonical; experiments li
 (`docs/ELPIS_MISSION.md`). The contract, census, audit and results are in
 [`docs/research/ECS_MEMORY_MF_R0.md`](../../docs/research/ECS_MEMORY_MF_R0.md).
 
+## Layout
+
+| Path | What |
+|---|---|
+| `native/include/elpis/ecs_mem.h`, `native/src/ecs_mem.c` | MF-R0: the bounded typed relational memory (contract in the header) |
+| `native/include/elpis/ecs_mem_hacf.h`, `native/src/ecs_mem_hacf.c` | typed adapter over structure's hyperedges and assertions |
+| `native/include/elpis/ecs_mem_composite.h`, `native/src/ecs_mem_composite.c`, `integration/` | M4: composite identity, K1/FMS adjacency test |
+| `native/tests/test_ecs_mem*.c` | mechanics, differential reference, allocation, concurrency, snapshot, HACF, composite |
+| `PREREGISTRATION.md`, `lab/`, `run.py`, `score.py`, `evidence/` | the preregistered laboratory and its write-once DEV/freeze/QUAL evidence |
+| `native/{include,src}/…lattice*`, `model_free_memory.*`, `native/tests/test_index.c` … | the PR #47 lattice, byte-identical, kept as differential reference and competing arm |
+
+Status: experimental research mechanism, mechanically tested in every native CI job; preregistered QUAL with
+H1–H3, H5 PASS and H4 NONPASS. Not admitted, not the ECS, not bound by continuity.
+
 ## PR #47 foundation (unchanged sources)
 
 **Status: isolated native research prototype. Not production, cognitive writer, published continuity, or scientific qualification.**
