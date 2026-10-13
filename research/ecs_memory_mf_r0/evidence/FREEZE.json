@@ -1,0 +1,35 @@
+{
+ "dev_record_sha256": "f33167b1916542534a4bac5bc90d0577d450718b056069caaa80192a2e3d80ce",
+ "git_head": "a3713c7b767fa150c3bec656bb773a8855515814",
+ "qual_seeds": [
+  1001,
+  1002,
+  1003,
+  1004,
+  1005,
+  1006,
+  1007,
+  1008
+ ],
+ "record_sha256": "74b317e75659c7232ba70538f061ec30587e2b9f87dedc099a5c118e15373838",
+ "schema": "elpis.ecs-mem-lab.freeze.v1",
+ "sources": {
+  "native/substrate/include/elpis/sha256.h": "08968a94d48965ea40c6cf971d8e1599304369b560e7264557481a7eb365f3c2",
+  "native/substrate/src/sha256.c": "3607f994d8adc3ba95fae9137947b12a1821760d8e4ca9c79bd87a1e481373b7",
+  "research/ecs_memory_mf_r0/CMakeLists.txt": "96172bfb33a31ef3ad76b14cb665ad90849041c37cf1e54876d6da582aea7385",
+  "research/ecs_memory_mf_r0/PREREGISTRATION.md": "fd349cc2d1bb0fe80351501e8b050858d9cc1a775f655b2b9593608a438b49c2",
+  "research/ecs_memory_mf_r0/lab/ecs_mem_lab.c": "f1f595d3a49a5f605a3976b3bb9c81c994948580390c1a61d584feca71656eba",
+  "research/ecs_memory_mf_r0/native/include/elpis/bounded_lattice.h": "b511bec363d4f59ce318fdcd0938cd3feae0bfd776368f6d570b983837a9ee37",
+  "research/ecs_memory_mf_r0/native/include/elpis/ecs_mem.h": "f7305290c8fe48230c084c42d1a72695500cca4563a17934a56e26d774920b14",
+  "research/ecs_memory_mf_r0/native/include/elpis/ecs_mem_hacf.h": "ce07c65edd325860edc21b75b7b263b7e3e44a75a9e858ab1601e6aa32023f7d",
+  "research/ecs_memory_mf_r0/native/include/elpis/indexed_lattice.h": "91a9aafebedc29e6fa2f42e79bef908ddc13205cb5d99db411c8e6efd6fd64ca",
+  "research/ecs_memory_mf_r0/native/include/elpis/model_free_memory.h": "708209b3f12ca833629c7558e774073b7dccfd58999d60d57526fbc799024f11",
+  "research/ecs_memory_mf_r0/native/src/bounded_lattice.c": "fdc95dc37a8c93ff0bce2a81a2446a1064fb531172925efee80b36a573a67944",
+  "research/ecs_memory_mf_r0/native/src/ecs_mem.c": "8dede2caf78c2e2824796866c28c689dcd8e62d7bd7e48f10e2ab19fc42f9eea",
+  "research/ecs_memory_mf_r0/native/src/ecs_mem_hacf.c": "c09aa59ea578f1f63b7de1e989e5df01d79db6e5a191717ecdadbcd983eb32bd",
+  "research/ecs_memory_mf_r0/native/src/indexed_lattice.c": "a286f850f3afc0c0896978164ddb00ed8692abe2b9bab8d8589f6424353e93bc",
+  "research/ecs_memory_mf_r0/native/src/model_free_memory.c": "f2ccd781f31bddf5fcca8edd0ba736ff0b40b3acd91abae631b794ad53b4170e",
+  "research/ecs_memory_mf_r0/run.py": "8abda4a75b2a5e7726661c706574ddd4843b73a0bc94026f02320996585147a9",
+  "research/ecs_memory_mf_r0/score.py": "3856dc11ac602985294e7dd83a0b018648cef772f39620164b18ee3886de5619"
+ }
+}

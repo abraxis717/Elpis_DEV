@@ -270,3 +270,11 @@ are not evidence that the contract has any effect.
   qualified constituents, is negative (`NO_ADVANTAGE_OVER_WIDTH`). Hierarchy
   integration is NOT AUTHORIZED, no H-ECS or EDEN hierarchical runtime is
   canonical, and no runtime readiness is claimed.
+* `research/ecs_memory_mf_r0` (ECS Memory MF-R0, the successor of the PR #47 model-free memory) is
+  RESEARCH_ONLY with NO_RUNTIME_AUTHORITY (`docs/research/ECS_MEMORY_MF_R0.md`). It is not part of the one ECS,
+  continuity does not bind its state (a memory transition leaves the K1 digest unchanged, tested), and no
+  composite retained state, checkpoint owner or LEARN authority exists for it. Its preregistered QUAL passed
+  H1 (state-borne acquisition), H2 (updating), H3 (partial-cue completion, classified as algebraic completion
+  by fixed encoding geometry) and H5 (consolidation of recurrent relations), and failed H4: byte-matched exact
+  keyed storage retains more under interference. Codes are fixed SHA-256 derivations: no semantics, learned
+  similarity or generalization to unseen entities is claimed.

@@ -483,6 +483,10 @@
       {
         "path": "research/evolution_fitness_r0",
         "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, UNQUALIFIED, NO_CLAIM: Evolution Fitness R0 infrastructure. A tiny deterministic corridor environment (state, action, transition, feedback, terminal evaluation, replay identity) with write-once frozen partitions (CALIBRATION, DEVELOPMENT, HELD_OUT, OOD) and negative baselines; an evaluator that recomputes fitness from replayed trajectories, never reads a candidate's self-report, gates leakage of evaluation identifiers and is pinned by an elpis.evolution-policy.v1 spec. Agents are data, never executed code. No qualification run."
+      },
+      {
+        "path": "research/ecs_memory_mf_r0",
+        "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, TRAINING=NONE, SEMANTICS=NONE: ECS Memory MF-R0, a bounded model-free typed relational memory (native C11; integer gated-delta banks, resident evidence slots, typed HACF adapter, ELPISEM1 snapshot) and the PR #47 D31-B/D31-C lattices kept as frozen differential references (docs/research/ECS_MEMORY_MF_R0.md). Built as test-kind research support; not part of the one ECS, not bound by continuity, not on the cognitive path."
       }
     ],
     "native_targets": [
@@ -586,7 +590,8 @@
     "Post-red-team mechanisms are UNQUALIFIED: Cognitive Boundary R1, K1 Recovery R0, HACF-ECS Scientific Bridge R0 and Evolution Fitness R0 have pre-registered specifications (docs/qualification) and no runs; mechanics tests are not qualification evidence.",
     "Pins authenticate bytes, not authors: the native, codec and evolution-policy authorities, and the K1 checkpoint and continuity stores (integrity-checked, not authenticated), offer no protection against a malicious in-process caller or a writer of their directories.",
     "Cognitive fuel is a deterministic integer work-unit bound admitted before an operation starts; no wall-clock deadline or preemption is claimed.",
-    "Evolution policy confinement is TRUSTED_OPERATOR_CALLBACKS: evaluators and attempt callbacks are not sandboxed; no evolutionary process is claimed to improve anything."
+    "Evolution policy confinement is TRUSTED_OPERATOR_CALLBACKS: evaluators and attempt callbacks are not sandboxed; no evolutionary process is claimed to improve anything.",
+    "ECS Memory MF-R0 (research/ecs_memory_mf_r0) is RESEARCH_ONLY: not the ECS, not bound by continuity, not admitted; its QUAL (H1-H3, H5 PASS; H4 NONPASS) is a mechanism finding in a synthetic regime, with no semantic, generalization or better-than-storage claim."
   ],
   "post_migration_relocations": [],
   "post_migration_retirements": [
