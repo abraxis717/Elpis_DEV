@@ -30,10 +30,22 @@ if(ELPIS_ENABLE_ASAN OR ELPIS_ENABLE_TSAN)
   set(_hecs_runner --config "target.'cfg(all())'.runner=['sh','${_hecs_runner_script}']")
 endif()
 
+# Under ASan the libtest harness runs its tests one at a time (--test-threads=1). Every Native ASan+UBSan failure of
+# an H-ECS crate (CI runs 204: hecs_r1, 215: hecs_r0) was a crash inside the preloaded ASan runtime's own thread
+# bookkeeping (ThreadRegistry::StartThread CHECKs on garbage tid/status, or a SIGSEGV with no ASan report) at the
+# moment replacement test threads were created while other test threads were still alive, in this uninstrumented
+# Rust process; no report ever concerned K1 memory. Serializing the harness removes overlapping test-thread
+# lifetimes and changes no assertion. TSan keeps the parallel harness, so concurrent K1 use is still exercised where
+# races are detected (docs/research/ECS_MEMORY_MF_R0.md, "CI note"; tests/boundary/test_sanitizer_runners.py).
+set(_hecs_harness_args)
+if(ELPIS_ENABLE_ASAN)
+  set(_hecs_harness_args -- --test-threads=1)
+endif()
+
 add_test(NAME research.hecs_r0_mechanics
   COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS
           "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/cargo-test"
           "ELPIS_ECS_K1_LIBRARY=$<TARGET_FILE:elpis_ecsg_k1>" ELPIS_REQUIRE_NATIVE=1
           "${ELPIS_CARGO}" test --offline --locked --release ${_hecs_runner}
-          --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/rust/Cargo.toml")
+          --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/rust/Cargo.toml" ${_hecs_harness_args})
 set_tests_properties(research.hecs_r0_mechanics PROPERTIES LABELS "research;hecs" TIMEOUT 600)
