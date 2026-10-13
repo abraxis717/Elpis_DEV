@@ -112,9 +112,9 @@ def test_chronology_preregistration_laboratory_dev_freeze_qual():
 def test_current_runtime_reproduces_a_qual_seed_exactly():
     """Integer arms are exact by construction (ecs_mem.h); D31C is binary32 arithmetic and is compared within
     one answer per row. Historical replay is demanded only while the bound sources are unchanged."""
-    run = _load("run")
     freeze = _record(FREEZE)
-    if run.source_digests() != freeze["sources"]:
+    # The frozen files themselves (sources added later are not linked into the laboratory binary).
+    if {s: _sha(REPO / s) for s in freeze["sources"]} != freeze["sources"]:
         pytest.skip("bound sources changed after the freeze: historical replay is not demanded (never a PASS)")
     binary = native_build_dir() / "research" / "ecs_memory_mf_r0" / "ecs_mem_lab"
     if not binary.is_file():
