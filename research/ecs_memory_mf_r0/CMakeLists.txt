@@ -38,3 +38,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT (ELPIS_ENABLE_ASAN OR ELPIS_ENABLE
     -Wl,--wrap=aligned_alloc -Wl,--wrap=free)
 endif()
 elpis_add_test(research ecs_mem_snapshot SOURCES ${_mem}/tests/test_ecs_mem_snapshot.c LIBS elpis_ecs_mem TIMEOUT 600)
+
+# Typed HACF adapter: structure's own validators and identities (elpis_semantic) -> MF-R0 observations.
+elpis_add_test_library(research elpis_ecs_mem_hacf ${_mem}/src/ecs_mem_hacf.c)
+target_include_directories(elpis_ecs_mem_hacf PUBLIC ${_mem}/include/elpis)
+target_link_libraries(elpis_ecs_mem_hacf PUBLIC elpis_ecs_mem elpis_semantic)
+elpis_add_test(research ecs_mem_hacf SOURCES ${_mem}/tests/test_ecs_mem_hacf.c LIBS elpis_ecs_mem_hacf TIMEOUT 120)

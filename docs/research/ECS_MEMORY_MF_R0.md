@@ -220,3 +220,26 @@ trailer), exact replay of 30 further steps on original and restored handles (ide
 equal at every step), every header and trailer byte and every 13th body byte flipped (all refused, target
 unchanged), truncation and trailing bytes, a torn envelope (prefix of one state over another), 25 resealed
 semantic violations, configuration mismatch, foreign lease, a budget one byte short, a short output buffer.
+
+## Typed HACF adapter (`native/include/elpis/ecs_mem_hacf.h`)
+
+`ecs_mem_hacf_observation(edge, assertion, polarity, tick, out)` maps one structure hyperedge
+(`elpis_semantic_hyperedge_v1`) and one assertion that names it (`elpis_semantic_assertion_v1`) to one
+MF-R0 observation. Structure stays the owner of identity and validation: the adapter calls
+`elpis_semantic_hyperedge_validate`, `elpis_semantic_assertion_validate`, recomputes both identities with
+structure's functions, and requires the assertion to assert exactly this hyperedge. The map is lossless for
+what it accepts (type, payload, canonical participants with incidence role, ordinal and node identity,
+provenance, authority, hyperedge identity), and `ecs_mem_hacf_hyperedge(slot, out)` inverts it: the rebuilt
+hyperedge is byte-identical and its recomputed identity equals the original (tested).
+
+| Refusal | Why |
+|---|---|
+| `STRUCTURE` | structure's validators refuse (namespace, reserved fields, authority > 3, …) |
+| `IDENTITY` | a stored identity is a claim: it must equal the recomputed one; the assertion must assert this hyperedge |
+| `NONCANONICAL` | participants not in structure's canonical order (structure's validator does not check it; its identity function assumes it) |
+| `UNSUPPORTED` | assertion flags or hyperedge flag 0x01 (meaning **UNDEFINED** in the repository), query-local participants (`SEMANTIC_PARTICIPANT_FLAG_QUERY`), 0 or > 8 participants, two participants sharing `(role, ordinal)` |
+
+Polarity is supplied by the caller because HACF does not define it; it is recorded as given. Mapping and
+observing a record never makes it true, authorized or learned: LEARN is a separate call, and a conflict
+(one source asserting, another negating the same hyperedge) is retained with both provenances and refuses
+LEARN (`NO_NET_EVIDENCE`).
