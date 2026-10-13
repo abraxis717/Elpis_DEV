@@ -254,6 +254,9 @@ Parameters the preregistration left open were fixed in the laboratory before DEV
 record: SLOW consolidation rate 0.5, D31C α = β = 1 and radius 8, S8 intermediate pool of 64. DEV found no
 harness defect; nothing was tuned between DEV and QUAL. Guards: `tests/research/ecs_memory_mf_r0`
 (seals, recomputed verdicts, freeze binding, chronology, exact replay of seed 1001 on the current build).
+Cross-compiler check (descriptive, after QUAL): a clang 18.1.3 Release build reproduced every integer-arm row
+of QUAL seed 1004, work counters included, exactly; the binary32 D31C rows also matched on that seed, which the
+contract does not guarantee.
 
 ### Verdicts (QUAL, pooled over 8 seeds; chance = 1/64 = 0.016)
 
