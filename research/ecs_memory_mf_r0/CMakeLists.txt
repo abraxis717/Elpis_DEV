@@ -44,3 +44,7 @@ elpis_add_test_library(research elpis_ecs_mem_hacf ${_mem}/src/ecs_mem_hacf.c)
 target_include_directories(elpis_ecs_mem_hacf PUBLIC ${_mem}/include/elpis)
 target_link_libraries(elpis_ecs_mem_hacf PUBLIC elpis_ecs_mem elpis_semantic)
 elpis_add_test(research ecs_mem_hacf SOURCES ${_mem}/tests/test_ecs_mem_hacf.c LIBS elpis_ecs_mem_hacf TIMEOUT 120)
+
+# The MF-R0 laboratory (PREREGISTRATION.md). ctest runs only its smoke world; science runs through run.py.
+elpis_add_test(research ecs_mem_lab SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/lab/ecs_mem_lab.c
+  LIBS elpis_ecs_mem elpis_ecs_mem_lattice ARGS --smoke TIMEOUT 300)
