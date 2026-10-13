@@ -37,3 +37,4 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT (ELPIS_ENABLE_ASAN OR ELPIS_ENABLE
   target_link_options(ecs_mem_alloc PRIVATE -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc
     -Wl,--wrap=aligned_alloc -Wl,--wrap=free)
 endif()
+elpis_add_test(research ecs_mem_snapshot SOURCES ${_mem}/tests/test_ecs_mem_snapshot.c LIBS elpis_ecs_mem TIMEOUT 600)

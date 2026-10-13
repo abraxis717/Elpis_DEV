@@ -94,3 +94,129 @@ Seams reused: `elpis_sha256_*`; `elpis_semantic_hyperedge_validate/identity`,
 `elpis_ecsg_k1_state_digest` (read only, M4). Seams **blocked by authority** (no code written against
 them): `elpis_continuity_commit_cognition`, the `ELPISGK1` envelope, the K1 checkpoint slots,
 RuntimeCore's managed turn.
+
+## M2 — The memory contract (`native/include/elpis/ecs_mem.h`)
+
+The header is normative. One handle is one bounded memory with operator-fixed capacity.
+
+### State, and what is authoritative
+
+| Component | Kind | Written by | In snapshot / identity |
+|---|---|---|---|
+| evidence slots (S records: relation key, type, payload, canonical participants `(role, ordinal, entity)`, assert/negate/uncertain counts, first/last/last-assert/last-negate ticks, first/last provenance, last structure reference, last authority, learn count) | **resident representation** of observed structure; exact, reconstructible, not truth | OBSERVE (LEARN updates `learn_count` and recency) | yes |
+| entity codebook (E identities with first/last tick) | candidate set for associative cleanup | OBSERVE | yes |
+| LRU order of slots and of codebook entries | retention order (write recency) | OBSERVE, LEARN (slots) | yes |
+| fast banks (B integer D×D, Q16) | **committed memory state**, learned | LEARN only | yes |
+| slow banks (B integer D×D, Q16) | **committed memory state**, consolidated | CONSOLIDATE only | yes |
+| clock, consolidation cursor | causal order, replay position | OBSERVE/LEARN/CONSOLIDATE | yes |
+| hash indexes, restore workspace | derived (rebuilt on restore) | — | no |
+| lease | ownership, not state | lease calls | no |
+| telemetry (counters, refusals, write work) | non-authoritative | every mutator | no |
+
+Structural evidence itself (HACF hyperedges and assertions) is **not** held: a slot carries the observation's
+identity references (`structure_ref`, provenance digests) so that the evidence can be found again in HACF.
+Observing a record does not make it true, authorized or learned.
+
+### Operations
+
+| Operation | Law | Refusals (state and outputs unchanged) | Work bound |
+|---|---|---|---|
+| INITIALIZE `ecs_mem_create` | one checked layout; one arena; `arena <= byte_budget` and `<= 1 GiB` | `INVALID`, `CAPACITY`, `NOMEM` | O(arena) zeroing |
+| OBSERVE `ecs_mem_observe` | canonicalize participants; key = SHA-256(type, payload, participants); update or admit the slot; admit/touch distinct entities; `clock = tick` | `INVALID`, `CLOCK` (tick < clock, counter exhausted), `CAPACITY` (REFUSE policy, or no non-participant victim), `LEASED`, `BUSY` | O(P) hash probes (expected), O(P²) planning; no scan |
+| LEARN `ecs_mem_learn` | per participant `p` (target) with the others as cue: one DELTA (or HEBBIAN) step into fast bank `bank(T, r_p, o_p)`; target = entity code if net > 0, zero if net < 0 | `NOT_FOUND`, `NO_NET_EVIDENCE`, `NUMERIC` (touched bank beyond 2^24), `CLOCK`, `LEASED`, `BUSY`, `INVALID` | P·(2–3)·D² integer MACs |
+| CONSOLIDATE `ecs_mem_consolidate` | law C1: round-robin from the cursor over resident slots, at most `max_items` (≤ 16) with nonzero net evidence, one slow-bank step per direction at `consolidate_rate`, no decay | `INVALID`, `NUMERIC`, `CLOCK`, `LEASED`, `BUSY` | ≤ S slot visits + 128·2·D² MACs |
+| QUERY `ecs_mem_query` | LOOKUP: exact scan, partial cues allowed, answer = latest assert among net-positive matches; FAST/SLOW: `y = M c / D`, score each candidate (caller list or codebook) | `INVALID`, `BUSY` | LOOKUP 2S slot scans; FAST/SLOW D² + n·D |
+| INSPECT `ecs_mem_inspect`, `slot_read`, `codebook_contains`, `identity` | read only | `INVALID`, `BUSY`, `NOT_FOUND` | O(1) / O(state) for identity |
+| SNAPSHOT / RESTORE | ELPISEM1 v1 (below) | `CAPACITY`, `CORRUPT`, `LEASED`, `BUSY`, `INVALID`, `NOMEM` | O(state) |
+
+QUERY never learns, never changes recency and never writes telemetry; it reports its own work in the answer.
+Consequently retention follows write use only: a relation that is only ever read is evicted like one never
+read. This is deliberate (QUERY must not mutate the authoritative state), and it is a limit.
+
+Every answer is labelled by the channel that produced it. LOOKUP is ordinary lookup over resident evidence;
+FAST is the learned recurrent state; SLOW is the consolidated state. A claim (for example "X is the current
+object of R for S") is derived by the caller from an answer, its channel, its score, `conflicts`,
+`contradicted`, `uncertain` and `signal` (0 means the bank holds nothing along that cue: explicit absence).
+
+### Encoding (deterministic, not semantic)
+
+Codes are bipolar vectors of D bits from SHA-256 in counter mode over domain-separated identifiers
+(`elpis.ecs-mem.code.{entity,role,target,type,tie}.v1`). A cue binds (XOR) the majority of the known
+`role ⊗ entity` pairs with the relation type and the target role; the bank is
+`SHA-256("elpis.ecs-mem.bank.v1" | T | r | o) mod B`. Codes of distinct identifiers are quasi-orthogonal by
+construction. Any "generalization" from shared cue components (partial cues) is a property of this fixed
+geometry, measured as such in M3; it is not learned similarity.
+
+### Numerical bound
+
+Banks are int32 Q16. Let `c ∈ {±1}^D`. The DELTA step on row `i` is
+`row ← row (I − rate c cᵀ/D) + rate t_i cᵀ`; `I − rate c cᵀ/D` has spectral norm ≤ 1 for rate ∈ (0, 1], and
+rounding moves each entry by at most 1, so each step adds at most `(65536 + 1)·√D` to the row 2-norm (the
+HEBBIAN step likewise). With every `|w| ≤ 2^24` before a call (checked on every touched bank: `NUMERIC`
+otherwise) and at most 128 steps per call (LEARN ≤ 8, CONSOLIDATE ≤ 16 × 8), every entry stays below
+`√1024 · (2^24 + 128·65537) < 2^30 < 2^31`. Hence no call can overflow, and a refusal happens before any
+write. Restore refuses any stored `|w| > 2^30`. The differential test reaches the bound with the Hebbian
+law and checks that core and reference refuse at the same step.
+
+### Determinism, resources, concurrency
+
+* Integer arithmetic only; division rounds half away from zero. The state identity of a fixed script is
+  pinned (`ECS_MEM_KNOWN_ANSWER` in `test_ecs_mem.c`) and must be reproduced by gcc and clang, Debug and
+  Release, ASan+UBSan and TSan builds.
+* One allocation (handle + one 64-byte-aligned arena) at create/restore; no heap operation afterwards
+  (`research.ecs_mem_alloc`, link-time wrapping of malloc/calloc/realloc/aligned_alloc/free).
+  `allocated_bytes = arena + handle`; allocator overhead and bounded stack staging (≤ ~40 KiB: cues, plans,
+  readout) are excluded.
+* Hash indexes are exact (full 32-byte comparison); collisions cost probes, never identity. Admission is
+  O(1) expected through an intrusive LRU list (the PR #47 O(capacity) scan is gone). A deliberately
+  adversarial set of identities can still lengthen probe chains up to O(capacity); `index_probes` reports it.
+* Guard: one writer XOR many readers, non-blocking; a conflicting entry is `BUSY`. It has **no fairness**:
+  continuously overlapping readers starved a writer completely in the first concurrency run (400/400 writes
+  refused). Retry policy is the caller's.
+
+### Defects found while building it (fixed before commit, recorded here)
+
+* The first DELTA step divided the update by D twice (readout normalization and outer product), so each LEARN
+  moved the readout by `rate/D` of the error. Found by the suppression test; fixed to `rate·(t − y)·cᵀ`, and the
+  overflow bound was re-derived for the corrected law.
+* Code derivation produced `words/4` SHA-256 chunks, i.e. **none** for D = 64 and D = 128: those codes were
+  uninitialized stack memory. The state identity changed between runs under ASLR; valgrind located it. Fixed
+  to `ceil(words/4)` chunks; the known-answer identity now pins D = 128 across processes.
+
+## M5 — The ELPISEM1 v1 envelope
+
+Little-endian, explicit layout; everything that determines future behaviour and nothing else.
+
+| Offset | Field |
+|---|---|
+| 0 | magic `ELPISEM1` |
+| 8 | format version (u32) = 1 |
+| 12 | ABI (u32) = 1 |
+| 16..55 | dim, banks, slot capacity, codebook capacity, slot policy, codebook policy, law, learn rate, retain, consolidate rate (u32 each) |
+| 56..63 | reserved, zero |
+| 64 | clock (u64) |
+| 72 | consolidation cursor (u32) |
+| 76 | resident slots `s` (u32) |
+| 80 | codebook entries `e` (u32) |
+| 84..127 | reserved, zero |
+| 128 | fast banks, then slow banks: `2·B·D·D` int32 |
+| … | `s` slot records of 544 bytes, in slot-index order |
+| … | slot LRU order: `s` u32 indices, least recent first |
+| … | `e` codebook records of 48 bytes (identity, first tick, last tick), in index order |
+| … | codebook LRU order: `e` u32 indices |
+| end | SHA-256 of every preceding byte (the state identity) |
+
+`byte_budget` is not in the envelope: it constrains a host, not the state. Restore validates everything
+before touching the state (no allocation in `restore_into`): magic, version, ABI, configuration (equal to the
+handle's), reserved fields, exact size, checksum, every weight bound, every slot record (participant count,
+canonical order, zero padding, polarity counts, tick order against the clock, recomputed key), duplicate
+slot keys and codebook identities, LRU orders as permutations, cursor range. Only then is the state installed
+and the indexes rebuilt. Version 1 is the only version; any other is refused (`CORRUPT`) and **no migration
+exists**. The checksum gives integrity, not authenticity: a resealed in-bound edit is accepted (tested and
+stated, as for `ELPISGK1`).
+
+Tests (`research.ecs_mem_snapshot`): round trip (restore then snapshot is bitwise identical; identity equals
+trailer), exact replay of 30 further steps on original and restored handles (identities and SLOW answers
+equal at every step), every header and trailer byte and every 13th body byte flipped (all refused, target
+unchanged), truncation and trailing bytes, a torn envelope (prefix of one state over another), 25 resealed
+semantic violations, configuration mismatch, foreign lease, a budget one byte short, a short output buffer.
