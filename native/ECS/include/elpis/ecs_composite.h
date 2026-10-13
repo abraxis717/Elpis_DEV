@@ -44,7 +44,6 @@ extern "C" {
  *   txn_run_schedule     the qualified K1 experience law on the K1 candidate (elpis_ecsg_k1_txn_run_schedule)
  *   txn_observe          OBSERVE on the memory candidate
  *   txn_memory_learn     LEARN on the memory candidate (UNQUALIFIED unless the memory admits CAP_RECURRENT)
- *   txn_memory_consolidate  CONSOLIDATE on the memory candidate (UNQUALIFIED unless it admits CAP_CONSOLIDATE)
  *   txn_snapshot_write   the candidate's complete ELPISEC1 envelope; its trailer is the identity commit reports
  *   txn_commit           commits the K1 candidate, then installs the memory candidate (a pointer exchange, which
  *                        cannot fail); reports the composite identities before and after
@@ -126,7 +125,7 @@ typedef struct {
     uint32_t capabilities;                /* the memory capabilities this composite admits (policy) */
     uint32_t txn_open, lease_held, reserved;
     /* Non-authoritative telemetry. */
-    uint64_t commits, aborts, refusals, memory_observes, memory_learns, memory_consolidations;
+    uint64_t commits, aborts, refusals, memory_observes, memory_learns;
 } elpis_ecs_composite_stats;
 
 const char *elpis_ecs_composite_code_name(int status);
@@ -201,14 +200,10 @@ elpis_ecs_composite_status elpis_ecs_composite_leased_txn_observe(elpis_ecs_comp
                                                                   uint64_t token,
                                                                   const elpis_ecs_mem_observation *observation,
                                                                   elpis_ecs_mem_digest *out_key, int *memory_status);
-/* LEARN / CONSOLIDATE on the memory candidate (UNQUALIFIED unless the memory configuration admits them). */
+/* LEARN on the memory candidate (UNQUALIFIED unless the memory configuration admits CAP_RECURRENT). */
 elpis_ecs_composite_status elpis_ecs_composite_leased_txn_memory_learn(elpis_ecs_composite *composite, uint64_t lease,
                                                                        uint64_t token, const elpis_ecs_mem_digest *key,
                                                                        uint64_t tick, int *memory_status);
-elpis_ecs_composite_status elpis_ecs_composite_leased_txn_memory_consolidate(elpis_ecs_composite *composite,
-                                                                             uint64_t lease, uint64_t token,
-                                                                             uint64_t tick, uint32_t max_items,
-                                                                             uint32_t *replayed, int *memory_status);
 /* The candidate's complete ELPISEC1 envelope (read-only; size >= envelope_bytes). Its trailer is the identity the
  * commit will report. */
 elpis_ecs_composite_status elpis_ecs_composite_txn_snapshot_write(elpis_ecs_composite *composite, uint64_t token,

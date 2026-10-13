@@ -1,9 +1,11 @@
 /* Differential test: the canonical ECS memory (native/ECS, elpis_ecs_mem_*) against the frozen research MF-R0
- * mechanism (ecs_mem_*), its independent reference. Seeded random operation sequences (OBSERVE, LEARN, CONSOLIDATE,
- * QUERY on every channel, restore) are applied to both. With every capability admitted, every status, answer,
- * work count, identity and ELPISEM1 byte must agree exactly; envelopes cross-restore in both directions. With no
- * capability admitted, the canonical handle must agree on every admitted operation and refuse every unqualified
- * one UNQUALIFIED with its identity unchanged. RESEARCH_ONLY test; the canonical library never links research. */
+ * mechanism (ecs_mem_*), its independent reference. Seeded random operation sequences (OBSERVE, LEARN, QUERY on
+ * every channel, cross restores) are applied to both. With the recurrent capability admitted, every status,
+ * answer, work count, identity and ELPISEM1 byte must agree exactly and envelopes cross-restore in both directions;
+ * with none, the canonical handle agrees on every admitted operation and refuses LEARN and FAST UNQUALIFIED with
+ * its identity unchanged. The reference's slow-bank law has no canonical counterpart: the SLOW channel is always
+ * UNQUALIFIED canonically, and the reference's slow-bank operation is never applied here. RESEARCH_ONLY test; the
+ * canonical library never links research. */
 #include "ecs_mem.h"
 #include "elpis/ecs_memory.h"
 #include "elpis/sha256.h"
@@ -55,7 +57,7 @@ static void same_identity(const ecs_mem *r, const elpis_ecs_mem *c) {
 }
 
 typedef struct {
-    unsigned long ops, observes, learns, consolidates, queries, refusals, unqualified, restores;
+    unsigned long ops, observes, learns, queries, refusals, unqualified, restores;
 } tally;
 
 /* One random world. full: the canonical handle admits every capability (exact equality required). */
@@ -84,9 +86,9 @@ static void world(uint64_t seed, int full, tally *t) {
     cc.law = rc.law;
     cc.learn_rate_q16 = rc.learn_rate_q16;
     cc.retain_q16 = rc.retain_q16;
-    cc.consolidate_rate_q16 = rc.consolidate_rate_q16;
+    cc.slow_rate_q16 = rc.consolidate_rate_q16; /* serialized config word; unused canonically */
     cc.byte_budget = rc.byte_budget;
-    cc.capabilities = full ? (ELPIS_ECS_MEM_CAP_RECURRENT | ELPIS_ECS_MEM_CAP_CONSOLIDATE) : 0;
+    cc.capabilities = full ? ELPIS_ECS_MEM_CAP_RECURRENT : 0;
 
     ecs_mem *r = NULL;
     elpis_ecs_mem *c = NULL;
@@ -154,21 +156,7 @@ static void world(uint64_t seed, int full, tally *t) {
                 t->unqualified++;
                 if (s1 == ECS_MEM_OK) goto resync; /* the reference learned; the canonical handle may not */
             }
-        } else if (op < 8) { /* CONSOLIDATE */
-            const uint32_t items = 1 + (uint32_t)(rnd() % 4);
-            uint32_t n1 = 0, n2 = 0;
-            const int s1 = ecs_mem_consolidate(r, 0, tick, items, &n1, NULL);
-            const int s2 = elpis_ecs_mem_consolidate(c, 0, tick, items, &n2, NULL);
-            t->consolidates++;
-            if (full) {
-                assert(s1 == s2 && n1 == n2);
-                if (s1 != ECS_MEM_OK) t->refusals++;
-            } else {
-                assert(s2 == ELPIS_ECS_MEM_UNQUALIFIED);
-                t->unqualified++;
-                if (s1 == ECS_MEM_OK) goto resync;
-            }
-        } else if (op < 9) { /* QUERY */
+        } else if (op < 9) { /* QUERY (also drawn where the reference's slow-bank operation would be) */
             ecs_mem_request q;
             memset(&q, 0, sizeof(q));
             q.abi_version = ECS_MEM_ABI_V1;
@@ -192,7 +180,7 @@ static void world(uint64_t seed, int full, tally *t) {
             const int s1 = ecs_mem_query(r, &q, &a1);
             const int s2 = elpis_ecs_mem_query(c, &cq, &a2);
             t->queries++;
-            if (full || q.channel == ECS_MEM_LOOKUP) {
+            if (q.channel == ECS_MEM_LOOKUP || (full && q.channel == ECS_MEM_FAST)) {
                 assert(s1 == s2);
                 if (s1 == ECS_MEM_OK) assert(!memcmp(&a1, &a2, sizeof(a1)));
             } else {
@@ -239,11 +227,11 @@ int main(void) {
     tally full = {0}, admitted = {0};
     for (uint64_t seed = 1; seed <= 20; ++seed) world(seed, 1, &full);
     for (uint64_t seed = 101; seed <= 120; ++seed) world(seed, 0, &admitted);
-    assert(full.learns > 100 && full.consolidates > 50 && full.queries > 100 && full.restores > 100);
+    assert(full.learns > 100 && full.queries > 100 && full.restores > 100 && full.unqualified > 20);
     assert(admitted.unqualified > 100);
-    printf("canonical == research: full %lu ops (%lu observe, %lu learn, %lu consolidate, %lu query, %lu restore, "
-           "%lu refusals); admitted-only %lu ops, %lu UNQUALIFIED refusals\n",
-           full.ops, full.observes, full.learns, full.consolidates, full.queries, full.restores, full.refusals,
+    printf("canonical == research: recurrent %lu ops (%lu observe, %lu learn, %lu query, %lu restore, %lu refusals, "
+           "%lu SLOW UNQUALIFIED); admitted-only %lu ops, %lu UNQUALIFIED refusals\n",
+           full.ops, full.observes, full.learns, full.queries, full.restores, full.refusals, full.unqualified,
            admitted.ops, admitted.unqualified);
     return 0;
 }

@@ -70,8 +70,8 @@ The composite holds its K1 state under a private lease, so every unmanaged K1 mu
 `LEASED`; the memory handles are private. The only mutation path is the composite's leased transaction:
 
 `leased_txn_begin` → any of `leased_txn_run_schedule` (the qualified K1 experience law on the K1 candidate),
-`leased_txn_observe`, `leased_txn_memory_learn`, `leased_txn_memory_consolidate` (memory candidate: a copy of
-the committed memory made at the first memory operation) → `txn_snapshot_write` (the candidate's complete
+`leased_txn_observe`, `leased_txn_memory_learn` (memory candidate: a copy of the committed memory made at the
+first memory operation; LEARN is UNQUALIFIED unless the configuration admits RECURRENT) → `txn_snapshot_write` (the candidate's complete
 envelope; its trailer is the identity commit will report) → `leased_txn_commit` (computes the candidate's
 identity, commits K1, then installs the memory candidate by pointer exchange, which cannot fail) or
 `txn_abort` (installs nothing).

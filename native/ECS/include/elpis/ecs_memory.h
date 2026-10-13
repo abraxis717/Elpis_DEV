@@ -11,7 +11,11 @@ extern "C" {
 /*
  * ECS memory (canonical ECS capability; docs/ECS_MEMORY.md). The bounded, model-free typed relational memory of
  * the one ECS, relocated from the research MF-R0 mechanism (research/ecs_memory_mf_r0, kept byte-frozen as the
- * independent reference): same state, laws, envelope (ELPISEM1 v1) and identity, under the canonical prefix.
+ * independent reference): same evidence, codebook and fast-bank laws, envelope (ELPISEM1 v1) and identity, under
+ * the canonical prefix. The reference's slow-bank law is not part of the canonical memory: canonical ECS code may
+ * carry no unqualified mechanism of that family (the canonical-vocabulary guards of the closed R1-R3 laboratories
+ * admit only the qualified K1 milestone; docs/ECS_MEMORY.md). ELPISEM1 keeps its slow banks and their cursor;
+ * here they are always empty.
  *
  * It is a component of the ECS retained state, never an authority of its own: a memory handle is either owned
  * by an ECS composite state (ecs_composite.h), whose ELPISEC1 envelope binds it to the K1 state under one
@@ -26,9 +30,10 @@ extern "C" {
  *   UNQUALIFIED (refused ELPIS_ECS_MEM_UNQUALIFIED unless the capability is set)
  *     LEARN, QUERY FAST            CAP_RECURRENT    (MF-R0 QUAL: H1-H3 PASS in a synthetic regime; H4 NONPASS:
  *                                                    byte-matched exact storage retains more)
- *     CONSOLIDATE, QUERY SLOW      CAP_CONSOLIDATE  (H5 PASS only for recurring relations, below exact storage)
- *   A handle without a capability also refuses to restore a state that holds content of that capability
- *   (nonzero fast or slow banks): unqualified learned content can never enter through restore.
+ *   NOT PROVIDED (always refused ELPIS_ECS_MEM_UNQUALIFIED)
+ *     QUERY SLOW, and any slow-bank content or moved slow-bank cursor on restore (research reference only)
+ *   A handle without RECURRENT also refuses to restore a state with nonzero fast banks: unqualified learned
+ *   content can never enter through restore.
  *
  * State (fixed at create; one arena, no later allocation):
  *
@@ -36,12 +41,12 @@ extern "C" {
  *                    roles, ordinals, polarity counts, ticks, provenance). Not truth, not cognition.
  *   codebook         E entity identities recently observed (candidate set for associative cleanup).
  *   fast banks       B integer D x D matrices (Q16), written only by LEARN (gated delta or Hebbian law).
- *   slow banks       B integer D x D matrices (Q16), written only by CONSOLIDATE (replay law C1).
+ *   slow banks       B integer D x D matrices (Q16) of the ELPISEM1 layout: always zero here.
  *   clock            the greatest tick admitted; ticks are caller logical time and never decrease.
- *   cursor           CONSOLIDATE's round-robin position over slot indices.
+ *   slow cursor      a u32 of the ELPISEM1 layout: always zero here.
  *
  * The evidence slots and codebook are kept in LRU order of WRITE use (OBSERVE, and LEARN for slots). QUERY
- * never changes recency: it is read-only by contract, so retention can only follow writes.
+ * never changes recency: it is read-only by contract, so eviction order follows writes only.
  *
  * Arithmetic: integers only. Entity, role, type and target codes are bipolar vectors derived by SHA-256 in
  * counter mode from explicit identifiers (deterministic encoding, not semantics). Banks hold int32 Q16; every
@@ -56,9 +61,7 @@ extern "C" {
  *   LEARN (HEBBIAN): M <- retain M;                M <- M + rate t c^T          (ablation: no residual)
  *       t = entity(e_target) (Q16 +-1) when the slot's net evidence (asserts - negates) is positive,
  *       t = 0 when it is negative (suppression), refused when it is zero.
- *   CONSOLIDATE (C1): for up to max_items resident slots in cursor order with nonzero net evidence, one update
- *       of the slow bank per participant with rate consolidate_rate_q16, retain 1, under the configured law.
- *   QUERY (FAST|SLOW): y = M c / D; score(candidate) = sum_i y_i entity(candidate)_i. Read only.
+ *   QUERY (FAST): y = M c / D; score(candidate) = sum_i y_i entity(candidate)_i. Read only.
  *   QUERY (LOOKUP):    exact scan of resident evidence slots (partial cues allowed). Read only.
  *
  * Refusal law: every non-OK status leaves the authoritative state (everything a snapshot contains) and every
@@ -90,9 +93,8 @@ enum {
     ELPIS_ECS_MEM_MAX_SLOTS = 65536u,
     ELPIS_ECS_MEM_MAX_CODEBOOK = 65536u,
     ELPIS_ECS_MEM_MAX_CANDIDATES = 65536u,
-    ELPIS_ECS_MEM_MAX_CONSOLIDATE_ITEMS = 16u,
     ELPIS_ECS_MEM_Q16_ONE = 65536u,
-    ELPIS_ECS_MEM_LEARN_WEIGHT_LIMIT = 16777216u, /* 2^24: learning precondition on touched banks */
+    ELPIS_ECS_MEM_LEARN_WEIGHT_LIMIT = 16777216u, /* 2^24: required of touched banks before learning */
     ELPIS_ECS_MEM_WEIGHT_LIMIT = 1073741824u      /* 2^30: any admissible stored weight */
 };
 #define ELPIS_ECS_MEM_MAX_ARENA_BYTES ((uint64_t)1 << 30)
@@ -115,8 +117,7 @@ typedef enum {
 
 /* Capabilities (elpis_ecs_mem_config.capabilities). Not state: never serialized. */
 enum {
-    ELPIS_ECS_MEM_CAP_RECURRENT = 1u,   /* LEARN, QUERY FAST: unqualified recurrent learning */
-    ELPIS_ECS_MEM_CAP_CONSOLIDATE = 2u  /* CONSOLIDATE, QUERY SLOW: unqualified consolidation; needs RECURRENT */
+    ELPIS_ECS_MEM_CAP_RECURRENT = 1u    /* LEARN, QUERY FAST: unqualified recurrent learning */
 };
 
 typedef enum { ELPIS_ECS_MEM_REFUSE = 0, ELPIS_ECS_MEM_EVICT_LRU = 1 } elpis_ecs_mem_policy;
@@ -138,7 +139,7 @@ typedef struct {
     uint32_t law;                  /* elpis_ecs_mem_law */
     uint32_t learn_rate_q16;       /* 1..65536 */
     uint32_t retain_q16;           /* 1..65536 (65536: no decay) */
-    uint32_t consolidate_rate_q16; /* 1..65536 */
+    uint32_t slow_rate_q16;        /* 1..65536: the reference's slow-bank rate, serialized; unused here */
     uint32_t capabilities;         /* ELPIS_ECS_MEM_CAP_* (0: admitted operations only); policy, not state */
     uint64_t byte_budget;          /* the arena (all state + index + restore workspace) must fit; not state */
 } elpis_ecs_mem_config;
@@ -193,7 +194,7 @@ typedef struct {
     uint32_t target_role;
     uint32_t target_ordinal;
     uint32_t cue_count;            /* 0..ELPIS_ECS_MEM_MAX_PARTICIPANTS - 1 known participants; none is the target */
-    uint32_t candidate_source;     /* FAST/SLOW only; LOOKUP requires CALLER with no candidates */
+    uint32_t candidate_source;     /* FAST only; LOOKUP requires CALLER with no candidates */
     uint32_t candidate_count;      /* CALLER: 1..ELPIS_ECS_MEM_MAX_CANDIDATES */
     const elpis_ecs_mem_digest *candidates;
     elpis_ecs_mem_participant cue[ELPIS_ECS_MEM_MAX_PARTICIPANTS];
@@ -201,7 +202,7 @@ typedef struct {
 
 typedef struct {
     uint64_t index_probes;         /* hash-index slots inspected */
-    uint64_t slot_scans;           /* evidence slots examined (LOOKUP, CONSOLIDATE) */
+    uint64_t slot_scans;           /* evidence slots examined (LOOKUP) */
     uint64_t sha_blocks;           /* SHA-256 compressions for codes and keys */
     uint64_t mac_ops;              /* integer multiply-accumulates over banks and scores */
     uint64_t candidates_scored;
@@ -209,15 +210,15 @@ typedef struct {
 
 typedef struct {
     uint32_t found;                /* 1 if an answer is named */
-    uint32_t matches;              /* LOOKUP: matching slots (any polarity); FAST/SLOW: candidates scored */
+    uint32_t matches;              /* LOOKUP: matching slots (any polarity); FAST: candidates scored */
     uint32_t conflicts;            /* LOOKUP: other matching slots with positive net evidence for another filler */
     uint32_t contradicted;         /* LOOKUP: matching slots with negative net evidence */
     uint32_t uncertain;            /* LOOKUP: sum of uncertain observations over matching slots */
     uint32_t reserved;
     elpis_ecs_mem_digest answer;
-    int64_t score;                 /* LOOKUP: net evidence of the answer slot; FAST/SLOW: raw integer score */
+    int64_t score;                 /* LOOKUP: net evidence of the answer slot; FAST: raw integer score */
     int64_t runner_up;             /* second best score (INT64_MIN when none) */
-    int64_t signal;                /* FAST/SLOW: sum |y_i| (0: the bank holds nothing along this cue) */
+    int64_t signal;                /* FAST: sum |y_i| (0: the bank holds nothing along this cue) */
     uint64_t answer_tick;          /* LOOKUP: last assert tick of the answer slot */
     elpis_ecs_mem_digest answer_key;     /* LOOKUP: relation key of the answer slot */
     elpis_ecs_mem_work work;
@@ -228,7 +229,6 @@ typedef struct {
     uint64_t clock;
     uint32_t slots_used;
     uint32_t codebook_used;
-    uint32_t consolidate_cursor;
     uint32_t lease_held;           /* 0 or 1; the token is never reported */
     uint64_t state_bytes;          /* exact snapshot size of the current state */
     uint64_t arena_bytes;          /* the single allocation */
@@ -236,7 +236,7 @@ typedef struct {
     /* Non-authoritative telemetry (not in the snapshot or the identity). */
     uint64_t observes, new_slots, repeated_observations, slot_evictions;
     uint64_t codebook_admissions, codebook_evictions;
-    uint64_t learns, learn_bank_updates, consolidations, consolidation_bank_updates;
+    uint64_t learns, learn_bank_updates;
     uint64_t restores, refusals;
     uint64_t refusals_by_code[12]; /* index -status */
     uint64_t index_collisions;     /* displaced insertions (hash collisions in the exact indexes) */
@@ -267,9 +267,6 @@ elpis_ecs_mem_status elpis_ecs_mem_observe(elpis_ecs_mem *memory, uint64_t lease
 /* LEARN: one law step per participant of the resident slot `key` into the fast banks. */
 elpis_ecs_mem_status elpis_ecs_mem_learn(elpis_ecs_mem *memory, uint64_t lease, const elpis_ecs_mem_digest *key, uint64_t tick,
                              elpis_ecs_mem_work *work);
-/* CONSOLIDATE: law C1 over at most max_items (1..ELPIS_ECS_MEM_MAX_CONSOLIDATE_ITEMS) slots. replayed optional. */
-elpis_ecs_mem_status elpis_ecs_mem_consolidate(elpis_ecs_mem *memory, uint64_t lease, uint64_t tick, uint32_t max_items,
-                                   uint32_t *replayed, elpis_ecs_mem_work *work);
 /* QUERY: read only (no learning, no recency, no telemetry). */
 elpis_ecs_mem_status elpis_ecs_mem_query(const elpis_ecs_mem *memory, const elpis_ecs_mem_request *query, elpis_ecs_mem_answer *out);
 

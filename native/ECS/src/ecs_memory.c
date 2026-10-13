@@ -1,6 +1,8 @@
 /* ECS memory (canonical ECS capability): bounded model-free typed relational memory. Contract: elpis/ecs_memory.h
  * and docs/ECS_MEMORY.md. Relocated from research/ecs_memory_mf_r0 (the frozen reference, differential-tested
- * against this file) with capability gating added. Integer arithmetic only; one allocation per handle; no I/O. */
+ * against this file) with capability gating added and the reference's slow-bank law left out: the slow banks and
+ * their cursor stay in the ELPISEM1 layout and must be empty. Integer arithmetic only; one allocation per handle;
+ * no I/O. */
 #include "elpis/ecs_memory.h"
 #include "elpis/sha256.h"
 
@@ -33,7 +35,6 @@ struct elpis_ecs_mem {
     _Atomic int guard; /* 0 idle, n > 0 readers, -1 one writer */
     uint64_t lease;
     uint64_t clock;
-    uint32_t cursor;
     uint32_t words; /* D / 64 */
     int32_t *fast, *slow;
     elpis_ecs_mem_slot *slots;
@@ -323,7 +324,7 @@ static uint32_t bank_maxabs(const int32_t *bank, uint32_t dim, uint64_t *ops) {
  * or d_i = rate t_i (HEBBIAN). target NULL means the zero target. Bound (ECS_MEMORY_MF_R0.md, "Numerical
  * bound"): the DELTA step is non-expansive on each row up to rounding, and any step adds at most
  * (65536 + 1) sqrt(D) to a row's 2-norm; with every |w| <= 2^24 before at most 128 steps and D <= 1024, every
- * |w| stays below 32 (2^24 + 128 * 65537) < 2^30. Callers check the precondition. */
+ * |w| stays below 32 (2^24 + 128 * 65537) < 2^30. Callers check that bound first. */
 static void bank_step(int32_t *bank, uint32_t dim, const uint64_t *cue, const uint64_t *target, uint32_t rate,
                       uint32_t retain, uint32_t law, uint64_t *ops) {
     const int64_t D = dim;
@@ -385,14 +386,13 @@ void elpis_ecs_mem_config_default(elpis_ecs_mem_config *out) {
     out->law = ELPIS_ECS_MEM_LAW_DELTA;
     out->learn_rate_q16 = ELPIS_ECS_MEM_Q16_ONE;
     out->retain_q16 = ELPIS_ECS_MEM_Q16_ONE;
-    out->consolidate_rate_q16 = ELPIS_ECS_MEM_Q16_ONE / 2u;
+    out->slow_rate_q16 = ELPIS_ECS_MEM_Q16_ONE / 2u;
     out->capabilities = 0; /* admitted operations only */
     out->byte_budget = (uint64_t)64 << 20;
 }
 static int config_shape_ok(const elpis_ecs_mem_config *c) {
     if (c->abi_version != ELPIS_ECS_MEM_ABI_V1) return 0;
-    if (c->capabilities & ~(uint32_t)(ELPIS_ECS_MEM_CAP_RECURRENT | ELPIS_ECS_MEM_CAP_CONSOLIDATE)) return 0;
-    if ((c->capabilities & ELPIS_ECS_MEM_CAP_CONSOLIDATE) && !(c->capabilities & ELPIS_ECS_MEM_CAP_RECURRENT)) return 0;
+    if (c->capabilities & ~(uint32_t)ELPIS_ECS_MEM_CAP_RECURRENT) return 0;
     if (c->dim < ELPIS_ECS_MEM_MIN_DIM || c->dim > ELPIS_ECS_MEM_MAX_DIM || (c->dim & (c->dim - 1u))) return 0;
     if (!c->banks || c->banks > ELPIS_ECS_MEM_MAX_BANKS) return 0;
     if (!c->slot_capacity || c->slot_capacity > ELPIS_ECS_MEM_MAX_SLOTS) return 0;
@@ -401,7 +401,7 @@ static int config_shape_ok(const elpis_ecs_mem_config *c) {
     if (c->law > ELPIS_ECS_MEM_LAW_HEBBIAN) return 0;
     if (!c->learn_rate_q16 || c->learn_rate_q16 > ELPIS_ECS_MEM_Q16_ONE) return 0;
     if (!c->retain_q16 || c->retain_q16 > ELPIS_ECS_MEM_Q16_ONE) return 0;
-    if (!c->consolidate_rate_q16 || c->consolidate_rate_q16 > ELPIS_ECS_MEM_Q16_ONE) return 0;
+    if (!c->slow_rate_q16 || c->slow_rate_q16 > ELPIS_ECS_MEM_Q16_ONE) return 0;
     return 1;
 }
 static uint32_t index_size(uint32_t cap) {
@@ -729,7 +729,7 @@ elpis_ecs_mem_status elpis_ecs_mem_observe(elpis_ecs_mem *m, uint64_t lease, con
 }
 
 /* ------------------------------------------------------------------------------------------------------ */
-/* LEARN and CONSOLIDATE                                                                                  */
+/* LEARN                                                                                                  */
 /* ------------------------------------------------------------------------------------------------------ */
 
 typedef struct {
@@ -803,70 +803,6 @@ elpis_ecs_mem_status elpis_ecs_mem_learn(elpis_ecs_mem *m, uint64_t lease, const
     m->tel.learns++;
     m->tel.learn_bank_updates += s->participant_count;
     work_add(&m->tel.write_work, &w);
-    if (work) *work = w;
-    leave_write(m);
-    return ELPIS_ECS_MEM_OK;
-}
-
-elpis_ecs_mem_status elpis_ecs_mem_consolidate(elpis_ecs_mem *m, uint64_t lease, uint64_t tick, uint32_t max_items,
-                                   uint32_t *replayed, elpis_ecs_mem_work *work) {
-    elpis_ecs_mem_work w;
-    memset(&w, 0, sizeof(w));
-    if (!m) return ELPIS_ECS_MEM_INVALID;
-    if (!enter_write(m)) return ELPIS_ECS_MEM_BUSY;
-    elpis_ecs_mem_status status = ELPIS_ECS_MEM_OK;
-    if (m->lease != lease) status = ELPIS_ECS_MEM_LEASED;
-    else if (!(m->cfg.capabilities & ELPIS_ECS_MEM_CAP_CONSOLIDATE)) status = ELPIS_ECS_MEM_UNQUALIFIED;
-    else if (!max_items || max_items > ELPIS_ECS_MEM_MAX_CONSOLIDATE_ITEMS) status = ELPIS_ECS_MEM_INVALID;
-    else if (tick < m->clock) status = ELPIS_ECS_MEM_CLOCK;
-    uint32_t items[ELPIS_ECS_MEM_MAX_CONSOLIDATE_ITEMS], ni = 0, cursor = m->cursor;
-    const size_t bank_floats = (size_t)m->cfg.dim * m->cfg.dim;
-    if (status == ELPIS_ECS_MEM_OK && m->st.count) {
-        /* Plan: visit at most every resident slot once from the cursor. */
-        for (uint32_t visited = 0; visited < m->st.count && ni < max_items; ++visited) {
-            const uint32_t i = cursor;
-            cursor = (cursor + 1u) % m->st.count;
-            ++w.slot_scans;
-            if (net_of(&m->slots[i])) items[ni++] = i;
-        }
-        /* Preflight every slow bank an item can touch. */
-        uint8_t checked[ELPIS_ECS_MEM_MAX_BANKS];
-        memset(checked, 0, sizeof(checked));
-        for (uint32_t k = 0; k < ni && status == ELPIS_ECS_MEM_OK; ++k) {
-            const elpis_ecs_mem_slot *s = &m->slots[items[k]];
-            for (uint32_t t = 0; t < s->participant_count && status == ELPIS_ECS_MEM_OK; ++t) {
-                const elpis_ecs_mem_participant *tg = &s->participants[t];
-                const uint32_t b = bank_of(s->relation_type, tg->role, tg->ordinal, m->cfg.banks, &w.sha_blocks);
-                if (checked[b]) continue;
-                checked[b] = 1;
-                if (bank_maxabs(m->slow + b * bank_floats, m->cfg.dim, &w.mac_ops) > ELPIS_ECS_MEM_LEARN_WEIGHT_LIMIT)
-                    status = ELPIS_ECS_MEM_NUMERIC;
-            }
-        }
-    }
-    if (status != ELPIS_ECS_MEM_OK) {
-        status = refuse(m, status);
-        leave_write(m);
-        return status;
-    }
-    uint64_t updates = 0;
-    for (uint32_t k = 0; k < ni; ++k) {
-        slot_plan plan;
-        const elpis_ecs_mem_slot *s = &m->slots[items[k]];
-        const int positive = net_of(s) > 0;
-        plan_slot(m, s, &plan, &w.sha_blocks);
-        for (uint32_t t = 0; t < s->participant_count; ++t)
-            bank_step(m->slow + plan.bank[t] * bank_floats, m->cfg.dim, plan.cue[t],
-                      positive ? plan.target[t] : NULL, m->cfg.consolidate_rate_q16, ELPIS_ECS_MEM_Q16_ONE, m->cfg.law,
-                      &w.mac_ops);
-        updates += s->participant_count;
-    }
-    m->cursor = m->st.count ? cursor : 0;
-    m->clock = tick;
-    m->tel.consolidations++;
-    m->tel.consolidation_bank_updates += updates;
-    work_add(&m->tel.write_work, &w);
-    if (replayed) *replayed = ni;
     if (work) *work = w;
     leave_write(m);
     return ELPIS_ECS_MEM_OK;
@@ -962,7 +898,7 @@ static void associative(const elpis_ecs_mem *m, const elpis_ecs_mem_request *q, 
                                   &a->work.sha_blocks);
     cue_bits(q->relation_type, q->target_role, q->target_ordinal, q->cue, q->cue_count, m->cfg.dim, cue,
              &a->work.sha_blocks);
-    const int32_t *M = (q->channel == ELPIS_ECS_MEM_FAST ? m->fast : m->slow) + (size_t)bank * m->cfg.dim * m->cfg.dim;
+    const int32_t *M = m->fast + (size_t)bank * m->cfg.dim * m->cfg.dim; /* FAST: the only bank channel admitted */
     a->signal = readout(M, m->cfg.dim, cue, y, &a->work.mac_ops);
     const uint32_t n = q->candidate_source == ELPIS_ECS_MEM_CANDIDATES_CALLER ? q->candidate_count : m->et.count;
     int64_t best = INT64_MIN, second = INT64_MIN;
@@ -988,8 +924,8 @@ static void associative(const elpis_ecs_mem *m, const elpis_ecs_mem_request *q, 
 
 elpis_ecs_mem_status elpis_ecs_mem_query(const elpis_ecs_mem *m, const elpis_ecs_mem_request *q, elpis_ecs_mem_answer *out) {
     if (!m || !out || !query_ok(q)) return ELPIS_ECS_MEM_INVALID;
-    if ((q->channel == ELPIS_ECS_MEM_FAST && !(m->cfg.capabilities & ELPIS_ECS_MEM_CAP_RECURRENT)) ||
-        (q->channel == ELPIS_ECS_MEM_SLOW && !(m->cfg.capabilities & ELPIS_ECS_MEM_CAP_CONSOLIDATE)))
+    /* SLOW is never admitted here (its law is research-only); FAST needs the recurrent capability. */
+    if (q->channel == ELPIS_ECS_MEM_SLOW || (q->channel == ELPIS_ECS_MEM_FAST && !(m->cfg.capabilities & ELPIS_ECS_MEM_CAP_RECURRENT)))
         return ELPIS_ECS_MEM_UNQUALIFIED;
     if (!enter_read(m)) return ELPIS_ECS_MEM_BUSY;
     elpis_ecs_mem_answer a;
@@ -1013,7 +949,6 @@ elpis_ecs_mem_status elpis_ecs_mem_inspect(const elpis_ecs_mem *m, elpis_ecs_mem
     s.clock = m->clock;
     s.slots_used = m->st.count;
     s.codebook_used = m->et.count;
-    s.consolidate_cursor = m->cursor;
     s.lease_held = m->lease != 0;
     s.state_bytes = state_bytes_for(&m->cfg, m->st.count, m->et.count);
     s.arena_bytes = m->arena_bytes;
@@ -1066,7 +1001,7 @@ static void config_fields(uint8_t *h, const elpis_ecs_mem_config *c) {
     le32(h + 40, c->law);
     le32(h + 44, c->learn_rate_q16);
     le32(h + 48, c->retain_q16);
-    le32(h + 52, c->consolidate_rate_q16);
+    le32(h + 52, c->slow_rate_q16);
 }
 static void emit_bank(sink *k, const int32_t *v, size_t n) {
     uint8_t buf[1024];
@@ -1139,7 +1074,7 @@ static void serialize(const elpis_ecs_mem *m, sink *k) {
     le32(h + 12, ELPIS_ECS_MEM_ABI_V1);
     config_fields(h, &m->cfg);
     le64(h + 64, m->clock);
-    le32(h + 72, m->cursor);
+    le32(h + 72, 0); /* the slow-bank cursor: always 0 here */
     le32(h + 76, m->st.count);
     le32(h + 80, m->et.count);
     emit(k, h, sizeof(h));
@@ -1216,7 +1151,7 @@ static int header_config(const uint8_t *h, elpis_ecs_mem_config *c) {
     c->law = rd32(h + 40);
     c->learn_rate_q16 = rd32(h + 44);
     c->retain_q16 = rd32(h + 48);
-    c->consolidate_rate_q16 = rd32(h + 52);
+    c->slow_rate_q16 = rd32(h + 52);
     if (!is_zero(h + 56, 8) || !is_zero(h + 84, ELPIS_ECS_MEM_HEADER_BYTES - 84u)) return 0;
     return config_shape_ok(c);
 }
@@ -1224,7 +1159,7 @@ static int same_config(const elpis_ecs_mem_config *a, const elpis_ecs_mem_config
     return a->dim == b->dim && a->banks == b->banks && a->slot_capacity == b->slot_capacity &&
            a->codebook_capacity == b->codebook_capacity && a->slot_policy == b->slot_policy &&
            a->codebook_policy == b->codebook_policy && a->law == b->law && a->learn_rate_q16 == b->learn_rate_q16 &&
-           a->retain_q16 == b->retain_q16 && a->consolidate_rate_q16 == b->consolidate_rate_q16;
+           a->retain_q16 == b->retain_q16 && a->slow_rate_q16 == b->slow_rate_q16;
 }
 /* Validate an LRU order of `count` u32 indices: a permutation of 0..count-1. */
 static int order_ok(const uint8_t *p, uint32_t count, uint8_t *marks) {
@@ -1298,9 +1233,9 @@ static elpis_ecs_mem_status validate(elpis_ecs_mem *m, const uint8_t *b, size_t 
         if (w > (int64_t)ELPIS_ECS_MEM_WEIGHT_LIMIT || w < -(int64_t)ELPIS_ECS_MEM_WEIGHT_LIMIT) return ELPIS_ECS_MEM_CORRUPT;
         if (w) *(i < bank_values / 2u ? &fast_content : &slow_content) = 1;
     }
-    /* Unqualified learned content never enters a handle that does not admit it (checked after integrity). */
-    if ((fast_content && !(m->cfg.capabilities & ELPIS_ECS_MEM_CAP_RECURRENT)) ||
-        (slow_content && !(m->cfg.capabilities & ELPIS_ECS_MEM_CAP_CONSOLIDATE)))
+    /* Unqualified content never enters a handle that does not admit it (checked after integrity): fast-bank
+     * content needs the recurrent capability; slow-bank content and a moved slow-bank cursor are never admitted. */
+    if ((fast_content && !(m->cfg.capabilities & ELPIS_ECS_MEM_CAP_RECURRENT)) || slow_content || v->cursor)
         return ELPIS_ECS_MEM_UNQUALIFIED;
     uint64_t probes = 0;
     const uint32_t smask = m->st.mask, emask = m->et.mask;
@@ -1349,7 +1284,6 @@ static void install(elpis_ecs_mem *m, const uint8_t *b, const envelope *v) {
     for (uint32_t k = 0; k < v->ents; ++k) lru_push_tail(&m->et, rd32(b + v->eorder_at + 4u * k));
     for (uint32_t i = 0; i < v->ents; ++i) index_insert(m->et.index, m->et.mask, ent_keys(m), i, &probes, NULL);
     m->clock = v->clock;
-    m->cursor = v->cursor;
 }
 elpis_ecs_mem_status elpis_ecs_mem_restore_into(elpis_ecs_mem *m, uint64_t lease, const uint8_t *bytes, size_t length) {
     if (!m) return ELPIS_ECS_MEM_INVALID;

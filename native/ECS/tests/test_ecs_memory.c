@@ -1,10 +1,12 @@
-/* ECS Memory MF-R0 mechanics: contract, refusal atomicity, capacity, recency, lease, channels. */
+/* Canonical ECS memory mechanics: contract, refusal atomicity, capacity, recency, lease, channels. */
 #include "ecs_memory_test_util.h"
 
 #include <stdint.h>
 
+/* The identity of the script below (observe + learn, no slow-bank operation). The frozen research reference
+ * (research/ecs_memory_mf_r0, ecs_mem.c) produces the same identity for the same script. */
 #ifndef ELPIS_ECS_MEM_KNOWN_ANSWER
-#define ELPIS_ECS_MEM_KNOWN_ANSWER "74ac758293beddb9859862a6bf09270cefb2ff2e867f1ec89a999c7a8e35e28e"
+#define ELPIS_ECS_MEM_KNOWN_ANSWER "9b0e06c335467414a0afe81c19b4ed95b382d6a811622381da3790b6eb8162fc"
 #endif
 
 static void test_config(void) {
@@ -28,9 +30,9 @@ static void test_config(void) {
         {offsetof(elpis_ecs_mem_config, codebook_capacity), 7}, {offsetof(elpis_ecs_mem_config, slot_policy), 2},
         {offsetof(elpis_ecs_mem_config, codebook_policy), 9}, {offsetof(elpis_ecs_mem_config, law), 2},
         {offsetof(elpis_ecs_mem_config, learn_rate_q16), 0}, {offsetof(elpis_ecs_mem_config, learn_rate_q16), 65537},
-        {offsetof(elpis_ecs_mem_config, retain_q16), 0}, {offsetof(elpis_ecs_mem_config, consolidate_rate_q16), 70000},
+        {offsetof(elpis_ecs_mem_config, retain_q16), 0}, {offsetof(elpis_ecs_mem_config, slow_rate_q16), 70000},
         {offsetof(elpis_ecs_mem_config, capabilities), 4},
-        {offsetof(elpis_ecs_mem_config, capabilities), ELPIS_ECS_MEM_CAP_CONSOLIDATE},
+        {offsetof(elpis_ecs_mem_config, capabilities), 2},
     };
     for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
         elpis_ecs_mem_config b = c;
@@ -250,7 +252,6 @@ static void test_lease(void) {
     elpis_ecs_mem_digest before = tu_identity(m);
     assert(elpis_ecs_mem_observe(m, 0, &o, NULL, NULL) == ELPIS_ECS_MEM_LEASED);
     assert(elpis_ecs_mem_observe(m, 78, &o, NULL, NULL) == ELPIS_ECS_MEM_LEASED);
-    assert(elpis_ecs_mem_consolidate(m, 0, 1, 1, NULL, NULL) == ELPIS_ECS_MEM_LEASED);
     assert(tu_same(before, tu_identity(m)));
     elpis_ecs_mem_digest key;
     assert(elpis_ecs_mem_observe(m, 77, &o, &key, NULL) == ELPIS_ECS_MEM_OK);
@@ -421,38 +422,32 @@ static void test_lookup_channel(void) {
     elpis_ecs_mem_destroy(m);
 }
 
-static void test_consolidate(void) {
-    elpis_ecs_mem_config c = tu_config(256, 32, 64);
+static void test_slow_channel_not_provided(void) {
+    /* The slow-bank law is research-only: the SLOW channel is refused UNQUALIFIED whatever the capabilities, the
+     * slow banks stay zero and the snapshot's slow cursor stays 0. */
+    elpis_ecs_mem_config c = tu_config(64, 8, 16);
     elpis_ecs_mem *m;
     assert(elpis_ecs_mem_create(&c, &m) == ELPIS_ECS_MEM_OK);
-    uint32_t replayed = 99;
-    assert(elpis_ecs_mem_consolidate(m, 0, 0, 0, &replayed, NULL) == ELPIS_ECS_MEM_INVALID);
-    assert(elpis_ecs_mem_consolidate(m, 0, 0, ELPIS_ECS_MEM_MAX_CONSOLIDATE_ITEMS + 1u, &replayed, NULL) == ELPIS_ECS_MEM_INVALID);
-    assert(replayed == 99);
-    assert(elpis_ecs_mem_consolidate(m, 0, 0, 4, &replayed, NULL) == ELPIS_ECS_MEM_OK && replayed == 0);
+    elpis_ecs_mem_digest key;
     for (uint64_t i = 0; i < 6; ++i) {
         elpis_ecs_mem_observation o = tu_bin(1, i, 100 + i, ELPIS_ECS_MEM_ASSERT, 1 + i);
-        assert(elpis_ecs_mem_observe(m, 0, &o, NULL, NULL) == ELPIS_ECS_MEM_OK);
+        assert(elpis_ecs_mem_observe(m, 0, &o, &key, NULL) == ELPIS_ECS_MEM_OK);
+        assert(elpis_ecs_mem_learn(m, 0, &key, 1 + i, NULL) == ELPIS_ECS_MEM_OK);
     }
-    elpis_ecs_mem_observation u = tu_bin(1, 50, 150, ELPIS_ECS_MEM_UNCERTAIN, 7); /* no net evidence: skipped */
-    assert(elpis_ecs_mem_observe(m, 0, &u, NULL, NULL) == ELPIS_ECS_MEM_OK);
-    const elpis_ecs_mem_digest before = tu_identity(m);
-    elpis_ecs_mem_request fq = tu_query(ELPIS_ECS_MEM_FAST, 1, 2);
-    tu_cue(&fq, 1, 0);
+    elpis_ecs_mem_request sq = tu_query(ELPIS_ECS_MEM_SLOW, 1, 2);
+    tu_cue(&sq, 1, 0);
     elpis_ecs_mem_answer ans;
-    assert(elpis_ecs_mem_query(m, &fq, &ans) == ELPIS_ECS_MEM_OK);
-    const int64_t fast_signal = ans.signal;
-    assert(elpis_ecs_mem_consolidate(m, 0, 8, 4, &replayed, NULL) == ELPIS_ECS_MEM_OK && replayed == 4);
-    elpis_ecs_mem_stats st;
-    assert(elpis_ecs_mem_inspect(m, &st) == ELPIS_ECS_MEM_OK && st.consolidate_cursor == 4);
-    /* Round robin: 4, 5, (6 has no net evidence), wrap, 0, 1. */
-    assert(elpis_ecs_mem_consolidate(m, 0, 8, 4, &replayed, NULL) == ELPIS_ECS_MEM_OK && replayed == 4);
-    assert(elpis_ecs_mem_inspect(m, &st) == ELPIS_ECS_MEM_OK && st.consolidate_cursor == 2);
-    assert(!tu_same(before, tu_identity(m)));
-    assert(elpis_ecs_mem_query(m, &fq, &ans) == ELPIS_ECS_MEM_OK && ans.signal == fast_signal); /* fast untouched */
-    elpis_ecs_mem_request sq = fq;
-    sq.channel = ELPIS_ECS_MEM_SLOW;
-    assert(elpis_ecs_mem_query(m, &sq, &ans) == ELPIS_ECS_MEM_OK && ans.found && tu_same(ans.answer, tu_entity(100)));
+    memset(&ans, 0x5A, sizeof(ans));
+    elpis_ecs_mem_answer untouched = ans;
+    assert(elpis_ecs_mem_query(m, &sq, &ans) == ELPIS_ECS_MEM_UNQUALIFIED && !memcmp(&ans, &untouched, sizeof(ans)));
+    const size_t n = elpis_ecs_mem_snapshot_size(m);
+    uint8_t *b = malloc(n);
+    size_t w = 0;
+    assert(b && elpis_ecs_mem_snapshot(m, b, n, &w) == ELPIS_ECS_MEM_OK && w == n);
+    const size_t half = (size_t)c.banks * c.dim * c.dim * 4u;
+    for (size_t i = 0; i < half; ++i) assert(b[128 + half + i] == 0); /* slow banks */
+    assert(b[72] == 0 && b[73] == 0 && b[74] == 0 && b[75] == 0);    /* slow cursor */
+    free(b);
     elpis_ecs_mem_destroy(m);
 }
 
@@ -502,7 +497,6 @@ static void test_determinism_known_answer(void) {
             assert(elpis_ecs_mem_observe(m, 0, &o, &key, NULL) == ELPIS_ECS_MEM_OK);
             const elpis_ecs_mem_status s = elpis_ecs_mem_learn(m, 0, &key, i, NULL);
             assert(s == ELPIS_ECS_MEM_OK || s == ELPIS_ECS_MEM_NO_NET_EVIDENCE);
-            if (i % 9 == 8) assert(elpis_ecs_mem_consolidate(m, 0, i, 3, NULL, NULL) == ELPIS_ECS_MEM_OK);
         }
         ids[h] = tu_identity(m);
         elpis_ecs_mem_destroy(m);
@@ -522,7 +516,7 @@ int main(void) {
     test_lease();
     test_learn_and_query();
     test_lookup_channel();
-    test_consolidate();
+    test_slow_channel_not_provided();
     test_hebbian_numeric_bound();
     test_determinism_known_answer();
     printf("PASS_ECS_MEM_MECHANICS\n");

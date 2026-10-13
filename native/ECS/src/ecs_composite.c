@@ -28,7 +28,7 @@ struct elpis_ecs_composite {
     int txn_open, candidate_ready;
     uint64_t token, k1_token, next_token;
     /* Non-authoritative telemetry. */
-    uint64_t commits, aborts, refusals, observes, learns, consolidations;
+    uint64_t commits, aborts, refusals, observes, learns;
 };
 
 /* ---- little-endian fields -------------------------------------------------------------------------------- */
@@ -469,7 +469,6 @@ elpis_ecs_composite_status elpis_ecs_composite_inspect(elpis_ecs_composite *c, e
         out->refusals = c->refusals;
         out->memory_observes = c->observes;
         out->memory_learns = c->learns;
-        out->memory_consolidations = c->consolidations;
     }
     leave_read(c);
     return s;
@@ -637,23 +636,6 @@ elpis_ecs_composite_status elpis_ecs_composite_leased_txn_memory_learn(elpis_ecs
     if ((s = ready_candidate(c)) != ELPIS_ECS_COMPOSITE_OK) return leave_with(c, s);
     s = memory_result(elpis_ecs_mem_learn(c->candidate, 0, key, tick, NULL), memory_status);
     if (s == ELPIS_ECS_COMPOSITE_OK) c->learns++;
-    return leave_with(c, s);
-}
-
-elpis_ecs_composite_status elpis_ecs_composite_leased_txn_memory_consolidate(elpis_ecs_composite *c, uint64_t lease,
-                                                                             uint64_t token, uint64_t tick,
-                                                                             uint32_t max_items, uint32_t *replayed,
-                                                                             int *memory_status) {
-    if (!c) return ELPIS_ECS_COMPOSITE_INVALID;
-    elpis_ecs_composite_status s = enter_txn(c, lease, token);
-    if (s != ELPIS_ECS_COMPOSITE_OK) return s;
-    if (!(c->cfg.memory.capabilities & ELPIS_ECS_MEM_CAP_CONSOLIDATE)) {
-        if (memory_status) *memory_status = ELPIS_ECS_MEM_UNQUALIFIED;
-        return leave_with(c, ELPIS_ECS_COMPOSITE_UNQUALIFIED);
-    }
-    if ((s = ready_candidate(c)) != ELPIS_ECS_COMPOSITE_OK) return leave_with(c, s);
-    s = memory_result(elpis_ecs_mem_consolidate(c->candidate, 0, tick, max_items, replayed, NULL), memory_status);
-    if (s == ELPIS_ECS_COMPOSITE_OK) c->consolidations++;
     return leave_with(c, s);
 }
 

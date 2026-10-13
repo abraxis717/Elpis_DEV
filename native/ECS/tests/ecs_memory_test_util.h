@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Every capability: the mechanics tests exercise every law, so they admit the unqualified ones explicitly. */
-#define TU_CAPS (ELPIS_ECS_MEM_CAP_RECURRENT | ELPIS_ECS_MEM_CAP_CONSOLIDATE)
+/* Every capability: the mechanics tests exercise LEARN, so they admit the unqualified recurrent capability. */
+#define TU_CAPS ELPIS_ECS_MEM_CAP_RECURRENT
 
 static inline elpis_ecs_mem_digest tu_digest(const char *tag, uint64_t i) {
     char buf[96];

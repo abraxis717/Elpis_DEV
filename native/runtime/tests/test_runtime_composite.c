@@ -5,11 +5,14 @@
  *   memory, committed through checkpoint -> native commit -> publication; recoverable observe refusals; the
  *   composite refuses every unmanaged mutation while bound; a K1 state never stands for the composite lineage;
  *   process death after the checkpoint and after the native commit, then recovery from continuity + the slots with
- *   the memory transition applied exactly once; the explicit legacy import of a K1 lineage.
+ *   the memory transition applied exactly once; the explicit legacy import of a K1 lineage; and the typed HACF
+ *   path: a structure hyperedge asserted by one source and negated by another reaches the committed memory through
+ *   a managed turn with both provenances, both polarities and the exact structural identity preserved.
  *
  * Usage: test_runtime_composite <scratch-dir>. Deterministic: no threads, no sleeps. */
 #define _POSIX_C_SOURCE 200809L
 #include "elpis/ecs_composite.h"
+#include "elpis/ecs_observation_hacf.h"
 #include "elpis/ecsg_k1.h"
 #include "elpis/runtime.h"
 #include "k1_tables.h"
@@ -150,6 +153,63 @@ static int turn(elpis_runtime *rt, const elpis_runtime_substrate *d, const elpis
     return elpis_runtime_turn_commit(rt, d, out, &snap);
 }
 
+/* HACF hyperedge -> typed observation -> managed turn -> committed composite memory, provenance preserved. */
+static void hacf_turn(elpis_runtime *rt, const elpis_runtime_substrate *d, elpis_ecs_composite *x, uint64_t tick) {
+    elpis_semantic_hyperedge_v1 e;
+    memset(&e, 0, sizeof(e));
+    e.abi_version = SEMANTIC_ABI_VERSION;
+    e.hyperedge_type = SEMANTIC_HYPEREDGE_NAMESPACE | 1u;
+    e.participant_count = 3;
+    for (uint32_t i = 0; i < 3; ++i) {
+        e.participants[i].incidence_role = SEMANTIC_INCIDENCE_NAMESPACE | (3u - i);
+        for (int k = 0; k < 32; ++k) e.participants[i].node_identity.bytes[k] = (uint8_t)(i * 41 + (uint32_t)k);
+    }
+    assert(elpis_semantic_canonicalize_participants(e.participants, 3) == SEMANTIC_OK);
+    assert(elpis_semantic_hyperedge_identity(&e, &e.hyperedge_identity) == SEMANTIC_OK);
+    elpis_semantic_assertion_v1 a[2];
+    elpis_ecs_mem_observation o[2];
+    for (int s = 0; s < 2; ++s) {
+        memset(&a[s], 0, sizeof(a[s]));
+        a[s].abi_version = SEMANTIC_ABI_VERSION;
+        a[s].asserted_object_kind = SEMANTIC_OBJECT_KIND_HYPEREDGE;
+        a[s].asserted_object_digest = e.hyperedge_identity;
+        memset(a[s].provenance_digest.bytes, 0xA0 + s, 32);
+        a[s].authority = (uint32_t)(1 + s);
+        assert(elpis_semantic_assertion_identity(&a[s], &a[s].assertion_identity) == SEMANTIC_OK);
+        /* Polarity is supplied by the caller (HACF does not define it): source 0 asserts, source 1 negates. */
+        assert(elpis_ecs_obs_hacf_observation(&e, &a[s], s ? ELPIS_ECS_MEM_NEGATE : ELPIS_ECS_MEM_ASSERT, tick + (uint64_t)s,
+                                              &o[s]) == ELPIS_ECS_OBS_HACF_OK);
+    }
+    uint8_t keys[2][32];
+    elpis_runtime_turn_commit_result committed;
+    OK(turn(rt, d, o, 2, keys, &committed));
+    assert(!memcmp(keys[0], keys[1], 32)); /* one relation, two observations */
+    elpis_ecs_mem_slot slot;
+    int ms = 0;
+    assert(elpis_ecs_composite_memory_slot_read(x, (const elpis_ecs_mem_digest *)keys[0], &slot, &ms) == 0);
+    assert(slot.assert_count == 1 && slot.negate_count == 1 && slot.last_polarity == ELPIS_ECS_MEM_NEGATE);
+    assert(!memcmp(slot.first_provenance.b, a[0].provenance_digest.bytes, 32));
+    assert(!memcmp(slot.last_provenance.b, a[1].provenance_digest.bytes, 32));
+    assert(slot.last_authority == 2 && !memcmp(slot.structure_ref.b, e.hyperedge_identity.bytes, 32));
+    elpis_semantic_hyperedge_v1 back;
+    assert(elpis_ecs_obs_hacf_hyperedge(&slot, &back) == ELPIS_ECS_OBS_HACF_OK);
+    assert(!memcmp(&back, &e, sizeof(e))); /* the exact structure, identity recomputed by structure */
+    /* LOOKUP reports the conflict instead of an answer: observation is not learning or truth. */
+    elpis_ecs_mem_request q;
+    memset(&q, 0, sizeof(q));
+    q.abi_version = ELPIS_ECS_MEM_ABI_V1;
+    q.channel = ELPIS_ECS_MEM_LOOKUP;
+    q.relation_type = e.hyperedge_type;
+    q.target_role = slot.participants[2].role;
+    q.cue_count = 2;
+    q.cue[0] = slot.participants[0];
+    q.cue[1] = slot.participants[1];
+    elpis_ecs_mem_answer ans;
+    uint8_t at[32];
+    assert(elpis_ecs_composite_memory_query(x, &q, &ans, at, NULL) == 0);
+    assert(ans.matches == 1 && !ans.found);
+}
+
 int main(int argc, char **argv) {
     assert(argc == 2);
     for (int i = 0; i < DIM * WIDTH; ++i) W0[i] = 0.2 * (double)((i * 7) % 13 - 6) / 13.0;
@@ -235,6 +295,7 @@ int main(int argc, char **argv) {
         identity(x, after);
         assert(!memcmp(id, after, 32) && asserts_of(x, orr.relation_key) == 0);
     }
+    hacf_turn(rt, &d, x, 30);
     elpis_runtime_destroy(&rt);
 
     /* ---- a K1 state never stands for the composite lineage ---------------------------------------------------- */

@@ -72,10 +72,20 @@ elpis_add_cargo_target(runtime elpis_runtime_testing_copy test "${_testing_dir}/
 elpis_add_test(runtime test_runtime_composite
   SOURCES tests/test_runtime_composite.c
   INCLUDES "${_crate}/include" "${_continuity}/include"
-  LIBS "${_testing_dir}/libelpis_runtime.so" elpis_ecs_composite elpis_ecs_memory elpis_ecsg_k1
+  LIBS "${_testing_dir}/libelpis_runtime.so" elpis_hacf_observation elpis_semantic elpis_ecs_composite elpis_ecs_memory
+       elpis_ecsg_k1
   ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_composite"
   TIMEOUT 120)
 add_dependencies(test_runtime_composite elpis_runtime_testing_copy)
+
+# Typed HACF -> ECS memory observation path (docs/ECS_MEMORY.md, "HACF observations"): joins structure (identity and
+# validation owner) and the ECS memory type at the composition layer; RuntimeCore itself still links neither.
+elpis_add_library(runtime elpis_hacf_observation SHARED observation/src/ecs_observation_hacf.c)
+target_include_directories(elpis_hacf_observation PUBLIC observation/include)
+target_link_libraries(elpis_hacf_observation PUBLIC elpis_ecs_memory elpis_semantic)
+elpis_add_test(runtime test_ecs_observation_hacf SOURCES observation/tests/test_ecs_observation_hacf.c
+  INCLUDES "${CMAKE_SOURCE_DIR}/native/ECS/tests"
+  LIBS elpis_hacf_observation elpis_ecs_memory elpis_semantic elpis_hash TIMEOUT 120)
 
 # The Rust law suite (lifecycle, lineage, turn, evolution and the continuity crash law through RuntimeCore).
 add_test(NAME runtime.cargo_test

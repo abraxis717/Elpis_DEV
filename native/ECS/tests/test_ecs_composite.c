@@ -262,9 +262,6 @@ static void test_abort_and_refusals(void) {
     elpis_ecs_mem_digest key = dg("missing", 0);
     assert(elpis_ecs_composite_leased_txn_memory_learn(x, 0, tok, &key, 7, &ms) == ELPIS_ECS_COMPOSITE_UNQUALIFIED &&
            ms == ELPIS_ECS_MEM_UNQUALIFIED);
-    uint32_t replayed = 77;
-    assert(elpis_ecs_composite_leased_txn_memory_consolidate(x, 0, tok, 7, 2, &replayed, &ms) ==
-           ELPIS_ECS_COMPOSITE_UNQUALIFIED && replayed == 77);
     const elpis_ecsg_k1_experience e[1] = {{R + 1, 1}};
     double s3[F];
     elpis_ecsg_k1_schedule_result res;
@@ -492,7 +489,7 @@ static void test_capacity_and_admission(void) {
     bad.max_rows = 0;
     assert(elpis_ecs_composite_create(&bad, W0, &x) == ELPIS_ECS_COMPOSITE_INVALID);
     bad = c;
-    bad.memory.capabilities = ELPIS_ECS_MEM_CAP_CONSOLIDATE; /* needs RECURRENT */
+    bad.memory.capabilities = 2; /* no capability but RECURRENT exists */
     assert(elpis_ecs_composite_create(&bad, W0, &x) == ELPIS_ECS_COMPOSITE_INVALID);
     bad = c;
     bad.memory.dim = 1024;
@@ -534,8 +531,6 @@ static void test_capacity_and_admission(void) {
     o = obs(1, 2, 1);
     assert(elpis_ecs_composite_leased_txn_observe(x, 0, tok, &o, &key, NULL) == 0);
     assert(elpis_ecs_composite_leased_txn_memory_learn(x, 0, tok, &key, 2, &ms) == 0);
-    assert(elpis_ecs_composite_leased_txn_memory_consolidate(x, 0, tok, 2, 1, NULL, &ms) ==
-           ELPIS_ECS_COMPOSITE_UNQUALIFIED);
     assert(elpis_ecs_composite_leased_txn_commit(x, 0, tok, &cm) == 0);
     uint8_t *e = NULL;
     const size_t n = envelope(x, &e);

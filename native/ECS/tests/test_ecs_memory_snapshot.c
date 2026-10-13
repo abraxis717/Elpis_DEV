@@ -35,7 +35,6 @@ static void script(elpis_ecs_mem *m, uint64_t from, uint64_t to) {
         assert(elpis_ecs_mem_observe(m, 0, &o, &key, NULL) == ELPIS_ECS_MEM_OK);
         const elpis_ecs_mem_status s = elpis_ecs_mem_learn(m, 0, &key, i, NULL);
         assert(s == ELPIS_ECS_MEM_OK || s == ELPIS_ECS_MEM_NO_NET_EVIDENCE);
-        if (i % 5 == 0) assert(elpis_ecs_mem_consolidate(m, 0, i, 3, NULL, NULL) == ELPIS_ECS_MEM_OK);
     }
 }
 static elpis_ecs_mem_config small_config(void) {
@@ -69,7 +68,7 @@ static void test_round_trip_and_replay(void) {
         script(a, i, i + 1);
         script(b, i, i + 1);
         assert(tu_same(tu_identity(a), tu_identity(b)));
-        elpis_ecs_mem_request q = tu_query(ELPIS_ECS_MEM_SLOW, 1, 2);
+        elpis_ecs_mem_request q = tu_query(ELPIS_ECS_MEM_FAST, 1, 2);
         tu_cue(&q, 1, i % 9);
         elpis_ecs_mem_answer x, y;
         assert(elpis_ecs_mem_query(a, &q, &x) == ELPIS_ECS_MEM_OK && elpis_ecs_mem_query(b, &q, &y) == ELPIS_ECS_MEM_OK);

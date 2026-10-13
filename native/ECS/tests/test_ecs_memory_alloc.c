@@ -31,7 +31,6 @@ int main(void) {
         elpis_ecs_mem_digest key;
         assert(elpis_ecs_mem_observe(m, 0, &o, &key, NULL) == ELPIS_ECS_MEM_OK);
         assert(elpis_ecs_mem_learn(m, 0, &key, i, NULL) == ELPIS_ECS_MEM_OK);
-        if (i % 7 == 0) assert(elpis_ecs_mem_consolidate(m, 0, i, 4, NULL, NULL) == ELPIS_ECS_MEM_OK);
         elpis_ecs_mem_request q = tu_query(ELPIS_ECS_MEM_FAST, 1, 2);
         tu_cue(&q, 1, i % 11);
         elpis_ecs_mem_answer a;

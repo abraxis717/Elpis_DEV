@@ -562,6 +562,20 @@ lives in and follows `W`, survives snapshot and a clean process, and changes
 with experience. The same qualification found no retention under sequential
 learning (interference in 8 of 8 worlds). No language claim follows.
 
+### ECS memory and the composite retained state
+
+The ECS retained state may also carry the **ECS memory** ([`ECS_MEMORY.md`](ECS_MEMORY.md),
+`libelpis_ecs_memory`): bounded, exact typed relational evidence (OBSERVE, LOOKUP) with an unqualified recurrent
+LEARN behind an explicit capability, relocated from the frozen MF-R0 reference and differential-tested against it;
+the MF-R0 slow-bank (consolidation) law is not canonical. The **composite retained state**
+([`ECS_COMPOSITE_STATE.md`](ECS_COMPOSITE_STATE.md), `libelpis_ecs_composite`, envelope `ELPISEC1` v1) owns K1
+and the memory under one transaction owner and one identity; `ELPISGK1` and `ELPISEM1` keep their bytes and
+meanings inside it, and a bare `ELPISGK1` becomes composite only by explicit import. RuntimeCore drives a
+composite as substrate kind 3 through the same checkpoint -> native commit -> continuity publication path as K1
+(continuity record v3 names the composite format); memory changes only through `turn_observe` in a managed turn.
+The typed HACF -> memory observation path (`libelpis_hacf_observation`, runtime subsystem) keeps structure the
+owner of hyperedge identity and validation. The Python runtime composition binds K1 lineages only.
+
 ## Inference: the DSV4 codec and retained model mechanics (`elpis.inference`)
 
 The canonical part of `elpis.inference` is the DSV4 communication codec:

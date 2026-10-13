@@ -1,6 +1,7 @@
-/* Canonical ECS memory capability status: admitted operations work without any capability; LEARN, CONSOLIDATE and
- * the FAST/SLOW channels are refused UNQUALIFIED (state, outputs and identity unchanged) unless admitted; restore
- * never brings unqualified learned content into a handle that does not admit it. */
+/* Canonical ECS memory capability status: admitted operations work without any capability; LEARN and the FAST
+ * channel are refused UNQUALIFIED (state, outputs and identity unchanged) unless RECURRENT is admitted; the SLOW
+ * channel is never provided; restore never brings content into a handle that does not admit it (fast banks without
+ * RECURRENT; slow banks or a moved slow cursor ever). */
 #include "ecs_memory_test_util.h"
 
 #include <stdint.h>
@@ -41,13 +42,11 @@ static void test_admitted_without_capabilities(void) {
     elpis_ecs_mem_work w;
     memset(&w, 0xA5, sizeof(w));
     elpis_ecs_mem_work w0 = w;
-    uint32_t replayed = 0xFFFFFFFFu;
     assert(elpis_ecs_mem_learn(m, 0, &key, 2, &w) == ELPIS_ECS_MEM_UNQUALIFIED);
-    assert(elpis_ecs_mem_consolidate(m, 0, 2, 4, &replayed, &w) == ELPIS_ECS_MEM_UNQUALIFIED);
-    assert(replayed == 0xFFFFFFFFu && !memcmp(&w, &w0, sizeof(w)));
+    assert(!memcmp(&w, &w0, sizeof(w)));
     elpis_ecs_mem_answer untouched;
     memset(&untouched, 0x5A, sizeof(untouched));
-    for (uint32_t ch = ELPIS_ECS_MEM_FAST; ch <= ELPIS_ECS_MEM_SLOW; ++ch) {
+    for (uint32_t ch = ELPIS_ECS_MEM_FAST; ch <= ELPIS_ECS_MEM_SLOW; ++ch) { /* SLOW: never provided */
         elpis_ecs_mem_request f = tu_query(ch, 3, 2);
         tu_cue(&f, 1, 1);
         elpis_ecs_mem_answer b = untouched;
@@ -56,17 +55,16 @@ static void test_admitted_without_capabilities(void) {
     }
     assert(tu_same(before, tu_identity(m)));
     assert(elpis_ecs_mem_inspect(m, &s1) == ELPIS_ECS_MEM_OK);
-    assert(s1.learns == s0.learns && s1.consolidations == s0.consolidations && s1.clock == s0.clock);
-    assert(s1.refusals_by_code[-ELPIS_ECS_MEM_UNQUALIFIED] == s0.refusals_by_code[-ELPIS_ECS_MEM_UNQUALIFIED] + 2);
+    assert(s1.learns == s0.learns && s1.clock == s0.clock);
+    assert(s1.refusals_by_code[-ELPIS_ECS_MEM_UNQUALIFIED] == s0.refusals_by_code[-ELPIS_ECS_MEM_UNQUALIFIED] + 1);
     assert(!strcmp(elpis_ecs_mem_code_name(ELPIS_ECS_MEM_UNQUALIFIED), "ELPIS_ECS_MEM_UNQUALIFIED"));
 
-    /* RECURRENT alone: LEARN and FAST, but not CONSOLIDATE or SLOW. */
+    /* RECURRENT: LEARN and FAST, never SLOW. */
     elpis_ecs_mem *r = NULL;
     c = cfg(ELPIS_ECS_MEM_CAP_RECURRENT);
     assert(elpis_ecs_mem_create(&c, &r) == ELPIS_ECS_MEM_OK);
     assert(elpis_ecs_mem_observe(r, 0, &o, &key, NULL) == ELPIS_ECS_MEM_OK);
     assert(elpis_ecs_mem_learn(r, 0, &key, 2, NULL) == ELPIS_ECS_MEM_OK);
-    assert(elpis_ecs_mem_consolidate(r, 0, 2, 4, NULL, NULL) == ELPIS_ECS_MEM_UNQUALIFIED);
     elpis_ecs_mem_request f = tu_query(ELPIS_ECS_MEM_FAST, 3, 2);
     tu_cue(&f, 1, 1);
     assert(elpis_ecs_mem_query(r, &f, &a) == ELPIS_ECS_MEM_OK && a.found && tu_same(a.answer, tu_entity(2)));
@@ -76,8 +74,9 @@ static void test_admitted_without_capabilities(void) {
     elpis_ecs_mem_destroy(m);
 }
 
+static void reseal(uint8_t *b, size_t n) { elpis_sha256(b, n - 32, b + n - 32); }
+
 static void test_restore_admission(void) {
-    /* A full-capability state with fast and slow content. */
     elpis_ecs_mem *full = NULL;
     elpis_ecs_mem_config c = cfg(TU_CAPS);
     assert(elpis_ecs_mem_create(&c, &full) == ELPIS_ECS_MEM_OK);
@@ -89,13 +88,17 @@ static void test_restore_admission(void) {
     assert(elpis_ecs_mem_learn(full, 0, &key, 2, NULL) == ELPIS_ECS_MEM_OK);
     uint8_t *fast_only = NULL;
     const size_t nf = snap(full, &fast_only);
-    assert(elpis_ecs_mem_consolidate(full, 0, 3, 4, NULL, NULL) == ELPIS_ECS_MEM_OK);
-    uint8_t *both = NULL;
-    const size_t nb = snap(full, &both);
+    /* Slow-bank content: an integrity-valid envelope (resealed) that only the research reference could produce. */
+    const size_t half = (size_t)c.banks * c.dim * c.dim * 4u;
+    uint8_t *slow = malloc(nf);
+    assert(slow);
+    memcpy(slow, fast_only, nf);
+    slow[128 + half] = 1; /* slow bank 0, weight 0 = 1 */
+    reseal(slow, nf);
 
-    const uint32_t caps[3] = {0, ELPIS_ECS_MEM_CAP_RECURRENT, TU_CAPS};
-    struct { const uint8_t *b; size_t n; int need; } cases[3] = {{evidence_only, ne, 0}, {fast_only, nf, 1}, {both, nb, 2}};
-    for (int k = 0; k < 3; ++k) {
+    const uint32_t caps[2] = {0, ELPIS_ECS_MEM_CAP_RECURRENT};
+    struct { const uint8_t *b; size_t n; int need; } cases[3] = {{evidence_only, ne, 0}, {fast_only, nf, 1}, {slow, nf, 2}};
+    for (int k = 0; k < 2; ++k) {
         for (int i = 0; i < 3; ++i) {
             elpis_ecs_mem *out = (elpis_ecs_mem *)(uintptr_t)1;
             const elpis_ecs_mem_status s = elpis_ecs_mem_restore(cases[i].b, cases[i].n, 1u << 26, caps[k], &out);
@@ -110,6 +113,19 @@ static void test_restore_admission(void) {
             }
         }
     }
+    /* A moved slow cursor (needs at least two resident slots to be in range). */
+    elpis_ecs_mem_observation o2 = tu_bin(3, 5, 6, ELPIS_ECS_MEM_ASSERT, 3);
+    assert(elpis_ecs_mem_observe(full, 0, &o2, NULL, NULL) == ELPIS_ECS_MEM_OK);
+    uint8_t *two = NULL;
+    const size_t n2 = snap(full, &two);
+    two[72] = 1;
+    reseal(two, n2);
+    elpis_ecs_mem *out = (elpis_ecs_mem *)(uintptr_t)1;
+    assert(elpis_ecs_mem_restore(two, n2, 1u << 26, TU_CAPS, &out) == ELPIS_ECS_MEM_UNQUALIFIED);
+    two[72] = 2; /* beyond the slots: structurally corrupt, whatever the capabilities */
+    reseal(two, n2);
+    assert(elpis_ecs_mem_restore(two, n2, 1u << 26, TU_CAPS, &out) == ELPIS_ECS_MEM_CORRUPT);
+
     /* restore_into: the refusal leaves the target's state exactly as it was. */
     elpis_ecs_mem *plain = NULL;
     c = cfg(0);
@@ -129,7 +145,8 @@ static void test_restore_admission(void) {
     elpis_ecs_mem_destroy(full);
     free(evidence_only);
     free(fast_only);
-    free(both);
+    free(slow);
+    free(two);
 }
 
 int main(void) {
