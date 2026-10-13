@@ -91,6 +91,25 @@ higher generation. Two valid records with the same generation, or no valid
 record, fail closed with `CONTINUITY_CORRUPT`. The maximum durable size is
 therefore 352 bytes, whatever the runtime lifetime.
 
+### Record v3: composite lineages
+
+A lineage may be anchored at an ECS composite retained-state identity (`ELPISEC1`,
+docs/ECS_COMPOSITE_STATE.md) instead of a K1 identity. Such an authority is written as **record v3**: the v2
+layout with magic `ELPCONT\x03`, format version 3, byte 25 = 1 (state format: composite), the anchored flag
+required, and the checksum domain `elpis.continuity.register.v3\0`. Every K1 or unanchored authority is still
+written as v2, byte for byte (the frozen v2 parity vectors are unchanged), so the digest at 32 keeps its v2
+meaning wherever v2 is written. A v2-only reader refuses a v3 record (`CONTINUITY_CORRUPT`): it fails closed
+rather than misreading a composite identity as a K1 identity. The C snapshot reports the format in
+`state_format` (formerly the first reserved byte); the Python continuity adapter binds K1 lineages only and
+refuses a composite one (`CONTINUITY_STATE_MISMATCH`).
+
+A lineage keeps its format. `commit_cognition_as(format, ...)` by a committer of another format is
+`CONTINUITY_STATE_MISMATCH`; the only transition between formats is the explicit legacy import
+`import_cognition(k1, composite)`: refused unless the lineage is K1-format and anchored at exactly `k1`, and
+published like any transition (one record, one `fdatasync`; a crash leaves the K1 or the composite authority).
+Continuity still holds one 32-byte identity and the evolution authority; no memory content, observation or
+history enters it.
+
 ## Publication (crash law)
 
 Publication writes the complete next record (generation + 1) into the slot

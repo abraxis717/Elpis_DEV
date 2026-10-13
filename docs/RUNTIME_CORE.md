@@ -68,6 +68,28 @@ load the library rather than inherit the new obligation silently.
   `close` (no finalizer frees them), and `Runtime` keeps the bound state's owner alive until RuntimeCore has ended
   the turn (`close` and `open` release it only afterwards).
 
+### Composite substrates
+
+A substrate of kind `ELPIS_RUNTIME_SUBSTRATE_COMPOSITE` (3) is an ECS composite retained state
+(docs/ECS_COMPOSITE_STATE.md). Its table, `elpis_runtime_composite_api`, is the K1 table (same signatures and
+status numbers; the digests are `ELPISEC1` identities) plus `leased_txn_observe`. RuntimeCore binds, queries,
+learns, checkpoints and recovers it exactly as a K1 state; continuity records the lineage's format (record v3),
+and binding or committing a substrate of another format than the lineage's is `CONTINUITY_STATE_MISMATCH`
+(fail-stop on binding, as an identity mismatch is).
+
+* `elpis_runtime_turn_observe` records an opaque `elpis_ecs_mem_observation` on the open turn's memory candidate
+  (RuntimeCore never reads it). The memory therefore changes only inside a managed turn, and becomes
+  authoritative only through that turn's checkpoint -> native commit -> publication. A refusal is recoverable
+  (`ECS_REFUSED`, with the composite and memory statuses reported); the turn stays open.
+* No memory LEARN or CONSOLIDATE is exposed: those operations are UNQUALIFIED (docs/ECS_MEMORY.md).
+* `elpis_runtime_import_composite` moves a K1 lineage to a composite made by `elpis_ecs_composite_import_k1`
+  from exactly the authorized K1 state with an empty memory; it requires an attached checkpoint store sized for
+  the composite envelope, makes the envelope durable, then publishes `import_cognition`.
+
+`native/runtime/tests/test_runtime_composite.c` (testing library) covers the composite anchor, turns with
+observations, refusals, the format mismatch, process death after the checkpoint and after the native commit
+(recovery with the memory transition present exactly once or absent), and the legacy import.
+
 ## Laws
 
 Each law is a test in `native/runtime/src/tests.rs` (deterministic in-memory K1 stand-in, continuity fault

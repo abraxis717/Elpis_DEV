@@ -146,7 +146,10 @@ def test_continuity_surface_is_current_authority_only():
     assert exported == {f"elpis_continuity_{n}" for n in (
         "abi_version", "record_size", "code_name", "evolution_digest", "record_encode", "record_decode",
         "store_create", "store_destroy", "store_open", "store_close", "store_snapshot", "anchor_cognition",
-        "commit_cognition", "reserve_evolution", "finalize_evolution")}, exported
+        "commit_cognition", "reserve_evolution", "finalize_evolution",
+        # The state-format-tagged lineage (record v3, docs/ECS_COMPOSITE_STATE.md): still one identity digest, now
+        # with the format it names, and the explicit legacy K1 -> composite import. No state, no history.
+        "anchor_cognition_as", "commit_cognition_as", "import_cognition")}, exported
     banned = re.compile(r"(?i)\b(entit(?:y|ies)|mailbox\w*|scheduler\w*|topology|projection\w*|replay\w*|"
                         r"compact\w*|segment\w*|retention\w*|events?|event_log|receipt_history|propose\w*)\b")
     for path in (REPO / "src/elpis/continuity").rglob("*.py"):
@@ -241,6 +244,8 @@ _HECS_K1 = "H-ECS R0 drives each level's K1 state through the qualified native A
 _HECS_R1_K1 = "H-ECS R1 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
 _HECS_R2_K1 = "H-ECS R2 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
 _RUNTIME_K1 = "RuntimeCore reaches K1 only through tables of the qualified native ABI's entry points (elpis_ecsg_k1)."
+_COMPOSITE_K1 = ("ECS composite retained state (docs/ECS_COMPOSITE_STATE.md): holds a K1 state through the qualified "
+                 "native ABI (elpis_ecsg_k1) and embeds its unchanged ELPISGK1 envelope.")
 _MEM_MF_K1 = ("ECS Memory MF-R0 M4 test: creates its own K1 state through the qualified native ABI (elpis_ecsg_k1) to "
               "show that memory transitions leave the K1 state digest unchanged.")
 
@@ -272,6 +277,10 @@ NATIVE_ABI_FILES = {
     "native/ECS/tests/test_ecsg_k1_fms_alloc.c": _ABI_NATIVE,
     "native/ECS/tests/test_ecsg_k1_fms_faults.c": _ABI_NATIVE,
     "native/ECS/tests/test_ecsg_k1_performance.c": _ABI_NATIVE,
+    "native/ECS/include/elpis/ecs_composite.h": _COMPOSITE_K1,
+    "native/ECS/src/ecs_composite.c": _COMPOSITE_K1,
+    "native/ECS/tests/test_ecs_composite.c": _COMPOSITE_K1,
+    "docs/ECS_COMPOSITE_STATE.md": _COMPOSITE_K1,
     "src/elpis/ECS/__init__.py": _ABI_BINDING,
     "src/elpis/ECS/cognition.py": _ABI_BINDING,
     "src/elpis/ECS/k1.py": _ABI_BINDING,
@@ -306,6 +315,7 @@ NATIVE_ABI_FILES = {
     "native/runtime/tests/test_runtime_abi.c": _RUNTIME_K1,
     "native/runtime/tests/test_runtime_lifecycle.c": _RUNTIME_K1,
     "native/runtime/tests/k1_tables.h": _RUNTIME_K1,
+    "native/runtime/tests/test_runtime_composite.c": _RUNTIME_K1,
     "src/elpis/runtime/core.py": _RUNTIME_K1,
     "research/hecs_r1/CMakeLists.txt": _HECS_R1_K1,
     "research/hecs_r1/README.md": _HECS_R1_K1,

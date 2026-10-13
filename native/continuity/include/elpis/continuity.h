@@ -4,9 +4,11 @@
 /* Elpis continuity ABI v1: the minimal durable runtime authority (docs/CONTINUITY.md).
  *
  * Implemented in Rust (native/continuity). One fixed-size current-authority record in a
- * two-slot crash-safe register v2 (ELPCONT\x02, 176-byte records, 352 durable bytes):
- * the expected K1 retained-state digest of the ECS lineage and the evolution authority
- * (idle at a head, or reserved for one exact assertion). No history, no events, no replay.
+ * two-slot crash-safe register (176-byte records, 352 durable bytes): the expected
+ * retained-state digest of the ECS lineage and the evolution authority (idle at a head, or
+ * reserved for one exact assertion). No history, no events, no replay. Record v2
+ * (ELPCONT\x02) is unchanged and names a K1 identity (ELPISGK1); record v3 (ELPCONT\x03) is
+ * written only for a lineage anchored at an ECS composite identity (ELPISEC1).
  *
  * Every function returns ELPIS_CONTINUITY_OK (0) or a positive stable code below.
  * A store handle is used by one caller at a time; calls on one handle must not overlap.
@@ -58,13 +60,17 @@ typedef struct {
     uint8_t assertion[32];
 } elpis_continuity_evolution;
 
-/* One verified authority. anchored == 0: no K1 lineage (k1_state_digest zero). The two
- * digests are outputs (evolution-authority v2 digest and the record checksum); they are
- * ignored on input. */
+/* One verified authority. anchored == 0: no lineage (k1_state_digest zero). state_format
+ * names what the anchored digest identifies: ELPIS_CONTINUITY_FORMAT_K1 (0, every v2 record;
+ * the field keeps its historical name) or ELPIS_CONTINUITY_FORMAT_COMPOSITE (1, v3, anchored
+ * only). The two digests are outputs (evolution-authority v2 digest and the record
+ * checksum); they are ignored on input. */
+enum { ELPIS_CONTINUITY_FORMAT_K1 = 0u, ELPIS_CONTINUITY_FORMAT_COMPOSITE = 1u };
 typedef struct {
     uint64_t generation;
     uint8_t anchored;
-    uint8_t reserved[7];
+    uint8_t state_format;
+    uint8_t reserved[6];
     uint8_t k1_state_digest[32];
     elpis_continuity_evolution evolution;
     uint8_t evolution_digest[32];
@@ -81,7 +87,7 @@ const char *elpis_continuity_code_name(int code);
 /* Pure record functions. */
 int elpis_continuity_evolution_digest(const elpis_continuity_evolution *, uint8_t out[32]);
 int elpis_continuity_record_encode(const elpis_continuity_snapshot *, uint8_t out[176]);
-/* *empty = 1 for an all-zero slot (out untouched); CORRUPT for anything not a valid v2 record. */
+/* *empty = 1 for an all-zero slot (out untouched); CORRUPT for anything not a valid v2 or v3 record. */
 int elpis_continuity_record_decode(const uint8_t *raw, size_t len, elpis_continuity_snapshot *out, int *empty);
 
 /* The store. `path` is an absolute directory path of `len` bytes. */
@@ -98,6 +104,16 @@ int elpis_continuity_anchor_cognition(elpis_continuity_store *, const uint8_t k1
                                       elpis_continuity_snapshot *out);
 int elpis_continuity_commit_cognition(elpis_continuity_store *, const uint8_t before[32],
                                       const uint8_t after[32], elpis_continuity_snapshot *out);
+/* Anchor the first lineage at an identity of `state_format` (ELPIS_CONTINUITY_FORMAT_*). */
+int elpis_continuity_anchor_cognition_as(elpis_continuity_store *, uint32_t state_format, const uint8_t digest[32],
+                                         elpis_continuity_snapshot *out);
+/* commit_cognition by a committer of `state_format`: another format than the lineage's is STATE_MISMATCH. */
+int elpis_continuity_commit_cognition_as(elpis_continuity_store *, uint32_t state_format, const uint8_t before[32],
+                                         const uint8_t after[32], elpis_continuity_snapshot *out);
+/* LEGACY: move a K1 lineage anchored at exactly `k1` to the composite identity `composite` of the same K1 state
+ * with an empty memory (elpis_ecs_composite_import_k1). STATE_MISMATCH unless K1-format and anchored at `k1`. */
+int elpis_continuity_import_cognition(elpis_continuity_store *, const uint8_t k1[32], const uint8_t composite[32],
+                                      elpis_continuity_snapshot *out);
 /* idle -> pending: durably reserve `assertion` before the caller may execute it. */
 int elpis_continuity_reserve_evolution(elpis_continuity_store *, const elpis_continuity_evolution *expected,
                                        const uint8_t assertion[32], elpis_continuity_snapshot *out);

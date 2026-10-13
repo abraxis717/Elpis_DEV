@@ -91,11 +91,28 @@ identity, commits K1, then installs the memory candidate by pointer exchange, wh
 
 ## Authority
 
-Process-local atomicity is all the composite object itself provides. Durable authority is the established
-path's: RuntimeCore's checkpoint owner (K1 Recovery R0) persists the complete candidate envelope before commit,
-and continuity binds the committed identity. How that path admits composite identities is specified in
-`docs/K1_RECOVERY_R0.md` and `docs/CONTINUITY.md`; until a runtime maintains and recovers the composite through
-that path, a composite identity is **not** durable authority.
+The composite object provides process-local atomicity only. Durable authority is the established path's, now
+format-aware (C ABI and laws in `docs/RUNTIME_CORE.md`, "Composite substrates"):
+
+1. **Continuity** names the authoritative composite identity in a v3 record (`docs/CONTINUITY.md`, "Record v3").
+   It holds the identity and its format, never memory content. A lineage keeps its format; only the explicit
+   legacy import moves a K1 lineage to a composite one.
+2. **Checkpoint (K1 Recovery R0)** holds the complete `ELPISEC1` envelope in a store provisioned for its size
+   (`docs/K1_RECOVERY_R0.md`, "Composite envelopes"). Slots are evidence; they never authorize themselves.
+3. **RuntimeCore** is the one mutation owner: it holds the composite's lease, so every unmanaged mutation is
+   refused `LEASED`; the memory changes only through `turn_observe` inside a managed turn, whose candidate
+   envelope is checkpointed before the native commit and published after it. A memory transition is therefore
+   durably authoritative under exactly K1's discipline, and never otherwise.
+4. **Recovery**: restart reads continuity's identity, the checkpoint returns the matching envelope,
+   `elpis_ecs_composite_restore` rebuilds the state exactly, and binding verifies its identity against
+   continuity before anything is built on it. An interrupted turn leaves an unresolved candidate slot that the
+   operator discards (never committed) or adopts (committed, not published): a transition is either absent or
+   present once, never duplicated (tested with process death at both points).
+
+What this does **not** claim: that RuntimeCore admits memory LEARN or CONSOLIDATE (it does not; unqualified), that
+any memory operation has scientific qualification, or that the Python runtime composition drives composite
+lineages (the Python adapters bind K1 lineages only and refuse composite ones). A snapshot round trip alone is
+not crash-consistent recovery; the recovery claim rests on the checkpoint + continuity tests above.
 
 ## Tests
 

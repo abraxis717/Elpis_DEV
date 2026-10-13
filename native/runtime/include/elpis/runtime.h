@@ -40,6 +40,15 @@
  * and its runtime cannot be destroyed while a state is registered (both BUSY). A standalone K1 state's owner must
  * not destroy it while a turn on it is open (ecsg_k1.h frees a state whatever transaction it holds).
  *
+ * ECS composite substrates (additive to v3; docs/ECS_COMPOSITE_STATE.md). A substrate of kind
+ * ELPIS_RUNTIME_SUBSTRATE_COMPOSITE is an ECS composite retained state (ecs_composite.h: K1 and the ECS memory under
+ * one ELPISEC1 identity). Its table is the K1 table over composite identities plus leased_txn_observe; RuntimeCore
+ * binds, queries, learns, checkpoints and recovers it exactly as a K1 state, and continuity records the lineage's
+ * format (a v3 record), so a K1 state never stands for a composite lineage or the reverse (STATE_MISMATCH). The
+ * memory changes only through elpis_runtime_turn_observe inside a managed turn, which then commits through the same
+ * checkpoint -> native commit -> publication path. No memory LEARN or CONSOLIDATE is exposed (unqualified). A K1
+ * lineage moves to a composite one only through the explicit elpis_runtime_import_composite.
+ *
  * The library also exports the continuity C ABI (elpis/continuity.h) of the store it embeds.
  *
  * Every function returns 0 or a positive code: a continuity code (1..17, 255) or a runtime code below.
@@ -79,7 +88,8 @@ enum {
     ELPIS_RUNTIME_RECOVERY_CANDIDATE_UNRESOLVED = 3, /* a newer unauthorized slot exists: operator discard/adopt */
     ELPIS_RUNTIME_RECOVERY_CHECKPOINT_MISSING = 4,   /* no verified slot holds continuity's identity */
     ELPIS_RUNTIME_SUBSTRATE_K1 = 1,              /* standalone K1 state (ecsg_k1.h) */
-    ELPIS_RUNTIME_SUBSTRATE_K1_FMS = 2           /* FMS-resident K1 state (ecsg_k1_fms.h) */
+    ELPIS_RUNTIME_SUBSTRATE_K1_FMS = 2,          /* FMS-resident K1 state (ecsg_k1_fms.h) */
+    ELPIS_RUNTIME_SUBSTRATE_COMPOSITE = 3        /* ECS composite retained state (ecs_composite.h; id zero) */
 };
 
 /* Layout-identical to elpis_ecsg_k1_experience, _schedule_result, _transition and _commit_identity. */
@@ -155,18 +165,28 @@ typedef struct {
     int (*txn_snapshot_write)(void *runtime, uint64_t id, uint64_t token, uint8_t *out, size_t size);
 } elpis_runtime_k1_fms_api;
 
+/* The ECS composite's functions (state = elpis_ecs_composite *): the K1 table's entries over composite identities
+ * (layout-identical first member; the composite status space extends K1's with the same numbers), then the
+ * memory OBSERVE of the open transaction. `observation` is an elpis_ecs_mem_observation and `key` 32 bytes;
+ * RuntimeCore never reads the observation. */
+typedef struct {
+    elpis_runtime_k1_api base;
+    int (*leased_txn_observe)(void *state, uint64_t lease, uint64_t token, const void *observation, uint8_t key[32],
+                              int *memory_status);
+} elpis_runtime_composite_api;
+
 /* One native K1 state. `owner` is the caller's identity for the object owning `handle`; it must stay unique
  * while bound (a freed handle address reused by another state is then not mistaken for the bound one).
  * `dim` is verified natively: the readout length it implies must equal the state's own before any input byte
  * is read. */
 typedef struct {
-    uint32_t kind;          /* ELPIS_RUNTIME_SUBSTRATE_K1 or _K1_FMS */
+    uint32_t kind;          /* ELPIS_RUNTIME_SUBSTRATE_K1, _K1_FMS or _COMPOSITE */
     uint32_t reserved;      /* zero */
     void *handle;
     uint64_t id;            /* the resident state id (K1_FMS); zero for K1 */
     uint64_t owner;
     uint64_t dim;           /* 1..64 */
-    const void *api;        /* const elpis_runtime_k1_api * or const elpis_runtime_k1_fms_api * */
+    const void *api;        /* const elpis_runtime_k1_api *, elpis_runtime_k1_fms_api * or _composite_api * */
 } elpis_runtime_substrate;
 
 typedef struct {
@@ -186,6 +206,12 @@ typedef struct {
     uint32_t committed;     /* 1: the native commit happened (also when its publication then failed) */
     int32_t k1_status;
 } elpis_runtime_turn_commit_result;
+
+typedef struct {
+    uint8_t relation_key[32];   /* the observation's relation key; zero on refusal */
+    int32_t k1_status;          /* the composite status behind an ECS_* refusal; 0 otherwise */
+    int32_t memory_status;      /* the memory's own status behind it; 0 otherwise */
+} elpis_runtime_observe_result;
 
 typedef struct {
     uint64_t k1_state_digests;
@@ -278,6 +304,18 @@ int elpis_runtime_turn_begin(elpis_runtime *runtime, const elpis_runtime_substra
 int elpis_runtime_turn_commit(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
                               elpis_runtime_turn_commit_result *out, elpis_continuity_snapshot *snapshot);
 int elpis_runtime_turn_abort(elpis_runtime *runtime, const elpis_runtime_substrate *substrate);
+/* OBSERVE inside the open turn of a composite substrate (observation: an elpis_ecs_mem_observation, passed through
+ * unread). Authoritative only with the turn's commit; a refusal leaves the turn open and its candidate unchanged.
+ * A K1 substrate is RUNTIME_INVALID. `out` is nullable. */
+int elpis_runtime_turn_observe(elpis_runtime *runtime, const elpis_runtime_substrate *substrate, const void *observation,
+                               elpis_runtime_observe_result *out);
+/* LEGACY: move the open runtime's K1 lineage to a composite made by elpis_ecs_composite_import_k1 from exactly its
+ * authorized K1 state (empty memory). Needs an attached checkpoint store provisioned for the composite envelope
+ * size: the envelope is durable before continuity publishes the import (a v3 record). Then the composite is bound.
+ * STATE_MISMATCH when the lineage is not K1-format, or the composite does not name the authorized K1 identity
+ * with an empty memory. */
+int elpis_runtime_import_composite(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
+                                   elpis_continuity_snapshot *out);
 
 /* Release the bound state: its K1 lease is released and the lineage unbound (the next QUERY or LEARN binds and
  * verifies again). Refused while a managed turn is open; another state is COGNITION_SUBSTRATE_SWITCH. */

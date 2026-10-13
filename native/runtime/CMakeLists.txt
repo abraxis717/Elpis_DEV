@@ -58,6 +58,25 @@ elpis_add_test(runtime test_runtime_lifecycle
   TIMEOUT 120)
 add_dependencies(test_runtime_lifecycle elpis_runtime)
 
+# RuntimeCore over the ECS composite retained state (docs/ECS_COMPOSITE_STATE.md): composite anchor (continuity
+# v3), managed turns that learn K1 and observe the memory, checkpoint + crash injection + recovery with the memory
+# transition applied exactly once, and the explicit legacy import. It needs the testing library's crash hook; that
+# library's SONAME is libelpis_runtime.so, so the test links a copy under that name in its own directory.
+set(_testing_dir "${CMAKE_CURRENT_BINARY_DIR}/testing-lib")
+add_custom_command(OUTPUT "${_testing_dir}/libelpis_runtime.so"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_testing_dir}"
+  COMMAND ${CMAKE_COMMAND} -E copy "${_testing}" "${_testing_dir}/libelpis_runtime.so"
+  DEPENDS "${_testing}"
+  VERBATIM)
+elpis_add_cargo_target(runtime elpis_runtime_testing_copy test "${_testing_dir}/libelpis_runtime.so")
+elpis_add_test(runtime test_runtime_composite
+  SOURCES tests/test_runtime_composite.c
+  INCLUDES "${_crate}/include" "${_continuity}/include"
+  LIBS "${_testing_dir}/libelpis_runtime.so" elpis_ecs_composite elpis_ecs_memory elpis_ecsg_k1
+  ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_composite"
+  TIMEOUT 120)
+add_dependencies(test_runtime_composite elpis_runtime_testing_copy)
+
 # The Rust law suite (lifecycle, lineage, turn, evolution and the continuity crash law through RuntimeCore).
 add_test(NAME runtime.cargo_test
   COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/cargo-test"

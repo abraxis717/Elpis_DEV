@@ -54,6 +54,17 @@ A slot is valid only if every field checks, the slot checksum matches, and the e
 the envelope before it and equals the header identity. An all-zero header is an empty slot; anything else (a torn
 or corrupted write) is invalid and is simply not a checkpoint. Validity is integrity, never authority.
 
+### Composite envelopes
+
+A slot holds one self-identifying retained-state envelope: `ELPISGK1` for a K1 lineage, or `ELPISEC1`
+(docs/ECS_COMPOSITE_STATE.md) for an ECS composite lineage. The slot format, protocol, dispositions and
+crash matrix are unchanged; only the admitted envelope magic is extended, and the size bound grows to the
+composite maximum (`ELPIS_ECS_COMPOSITE_MAX_ENVELOPE_BYTES`). A store is provisioned for exactly one envelope
+size, so a composite lineage needs a store provisioned for its composite envelope size; a K1-sized store
+refuses a composite snapshot (`ECS_REFUSED`, capacity) before anything is written. Because the composite
+envelope carries the memory, a memory transition is resumable only from a slot exactly as K1's is: it is
+durable before its native commit and authoritative only once continuity names its identity.
+
 ## Protocol
 
 With a store attached (`RuntimeConfig.k1_checkpoint_dir`; `elpis_runtime_checkpoint_attach`):
