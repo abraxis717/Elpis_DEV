@@ -63,20 +63,22 @@ add_dependencies(test_runtime_lifecycle elpis_runtime)
 # transition applied exactly once, and the explicit legacy import. It needs the testing library's crash hook; that
 # library's SONAME is libelpis_runtime.so, so the test links a copy under that name in its own directory.
 set(_testing_dir "${CMAKE_CURRENT_BINARY_DIR}/testing-lib")
-add_custom_command(OUTPUT "${_testing_dir}/libelpis_runtime.so"
+# A POST_BUILD step of the one target that builds the testing library, so no second rule (and no second, concurrent
+# cargo build or copy) exists for these files in a parallel build. The test links it by name, after that target.
+add_custom_command(TARGET elpis_runtime_testing POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory "${_testing_dir}"
   COMMAND ${CMAKE_COMMAND} -E copy "${_testing}" "${_testing_dir}/libelpis_runtime.so"
-  DEPENDS "${_testing}"
   VERBATIM)
-elpis_add_cargo_target(runtime elpis_runtime_testing_copy test "${_testing_dir}/libelpis_runtime.so")
 elpis_add_test(runtime test_runtime_composite
   SOURCES tests/test_runtime_composite.c
   INCLUDES "${_crate}/include" "${_continuity}/include"
-  LIBS "${_testing_dir}/libelpis_runtime.so" elpis_hacf_observation elpis_semantic elpis_ecs_composite elpis_ecs_memory
-       elpis_ecsg_k1
+  LIBS elpis_hacf_observation elpis_semantic elpis_ecs_composite elpis_ecs_memory elpis_ecsg_k1
   ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_composite"
   TIMEOUT 120)
-add_dependencies(test_runtime_composite elpis_runtime_testing_copy)
+target_link_options(test_runtime_composite PRIVATE "-L${_testing_dir}")
+target_link_libraries(test_runtime_composite PRIVATE -lelpis_runtime)
+set_target_properties(test_runtime_composite PROPERTIES BUILD_RPATH "${_testing_dir}")
+add_dependencies(test_runtime_composite elpis_runtime_testing)
 
 # Typed HACF -> ECS memory observation path (docs/ECS_MEMORY.md, "HACF observations"): joins structure (identity and
 # validation owner) and the ECS memory type at the composition layer; RuntimeCore itself still links neither.
