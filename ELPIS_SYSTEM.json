@@ -103,7 +103,9 @@
         "elpis_ecsg_math",
         "elpis_ecsg_fms",
         "elpis_ecsg_k1",
-        "elpis_ecsg_k1_fms"
+        "elpis_ecsg_k1_fms",
+        "elpis_ecs_memory",
+        "elpis_ecs_composite"
       ],
       "depends_on": [
         "substrate"
