@@ -377,9 +377,11 @@ int elpis_runtime_turn_observe(elpis_runtime *runtime, const elpis_runtime_subst
 int elpis_runtime_import_composite(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
                                    elpis_continuity_snapshot *out);
 
-/* Release the bound state: its K1 lease is released and the lineage unbound (the next QUERY or LEARN binds and
- * verifies again: volatile work since the last durable acknowledgment is then a mismatch). Refused while a managed
- * turn is open; another state is COGNITION_SUBSTRATE_SWITCH. */
+/* Release the bound state: its live identity is read under the lease (one hash; a control operation), then its K1
+ * lease is released and the lineage unbound. The next QUERY or LEARN binds and verifies again: it accepts exactly the
+ * bytes this release gave back (the live lineage, volatile work included) or the durable identity (as a restart
+ * would, abandoning that work); anything else is CONTINUITY_STATE_MISMATCH. Refused while a managed turn is open;
+ * another state is COGNITION_SUBSTRATE_SWITCH. */
 int elpis_runtime_release(elpis_runtime *runtime, const elpis_runtime_substrate *substrate);
 
 /* Durable publication (v4): explicit, served by the durability lane.
