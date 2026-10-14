@@ -15,7 +15,7 @@ pub mod sha256;
 pub mod store;
 
 pub use error::Code;
-pub use record::{Cognition, Digest, EvolutionState, Snapshot, MAX_COUNTER, RECORD_SIZE};
+pub use record::{Cognition, Digest, EvolutionState, Snapshot, StateFormat, MAX_COUNTER, RECORD_SIZE};
 pub use store::{Store, SLOT_NAMES};
 
 #[cfg(test)]

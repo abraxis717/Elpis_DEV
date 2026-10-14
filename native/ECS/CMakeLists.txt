@@ -151,3 +151,34 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang
   target_compile_options(test_ecsg_k1_fms_faults PRIVATE -ffp-contract=off)
   target_link_options(test_ecsg_k1_fms_faults PRIVATE "LINKER:--wrap=fms_release")
 endif()
+
+# ECS memory (docs/ECS_MEMORY.md): the bounded model-free typed relational memory of the one ECS, relocated from
+# research/ecs_memory_mf_r0 (the byte-frozen independent reference; never linked here). Integer arithmetic only.
+elpis_add_library(ECS elpis_ecs_memory SHARED src/ecs_memory.c)
+target_include_directories(elpis_ecs_memory PUBLIC include)
+target_link_libraries(elpis_ecs_memory PRIVATE elpis_hash)
+
+elpis_add_test(ECS test_ecs_memory SOURCES tests/test_ecs_memory.c LIBS elpis_ecs_memory elpis_hash TIMEOUT 120)
+elpis_add_test(ECS test_ecs_memory_capability SOURCES tests/test_ecs_memory_capability.c
+  LIBS elpis_ecs_memory elpis_hash TIMEOUT 60)
+elpis_add_test(ECS test_ecs_memory_snapshot SOURCES tests/test_ecs_memory_snapshot.c
+  LIBS elpis_ecs_memory elpis_hash TIMEOUT 600)
+elpis_add_test(ECS test_ecs_memory_concurrency SOURCES tests/test_ecs_memory_concurrency.c
+  LIBS elpis_ecs_memory elpis_hash Threads::Threads TIMEOUT 300)
+# One allocation per handle, none afterwards: proven by link-time allocator wrapping, so the library source is
+# compiled into the test (sanitizer runtimes interpose the allocator themselves: uninstrumented builds only).
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT (ELPIS_ENABLE_ASAN OR ELPIS_ENABLE_UBSAN OR ELPIS_ENABLE_TSAN))
+  elpis_add_test(ECS test_ecs_memory_alloc SOURCES tests/test_ecs_memory_alloc.c src/ecs_memory.c
+    INCLUDES include LIBS elpis_hash TIMEOUT 300)
+  target_link_options(test_ecs_memory_alloc PRIVATE
+    "LINKER:--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=aligned_alloc,--wrap=free")
+endif()
+
+# ECS composite retained state (docs/ECS_COMPOSITE_STATE.md): K1 and the ECS memory under one owner, one
+# transaction and one identity (ELPISEC1 v1). Binds the components; computes no law of its own.
+elpis_add_library(ECS elpis_ecs_composite SHARED src/ecs_composite.c)
+target_include_directories(elpis_ecs_composite PUBLIC include)
+target_link_libraries(elpis_ecs_composite PUBLIC elpis_ecsg_k1 elpis_ecs_memory PRIVATE elpis_hash)
+
+elpis_add_test(ECS test_ecs_composite SOURCES tests/test_ecs_composite.c
+  LIBS elpis_ecs_composite elpis_ecs_memory elpis_ecsg_k1 elpis_ecsg_math elpis_hash Threads::Threads m TIMEOUT 300)

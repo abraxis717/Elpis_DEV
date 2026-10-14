@@ -75,6 +75,19 @@ pub struct CQuery {
 
 const _: () = assert!(std::mem::size_of::<CQuery>() == 40);
 
+/// `elpis_runtime_observe_result`.
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct CObserve {
+    /// The observation's relation key (zero on refusal).
+    pub relation_key: Digest,
+    /// The composite status behind an `ECS_*` refusal (0 otherwise).
+    pub k1_status: i32,
+    /// The memory's own status behind a composite REFUSED / UNQUALIFIED / INVALID / CAPACITY (0 otherwise).
+    pub memory_status: i32,
+}
+const _: () = assert!(std::mem::size_of::<CObserve>() == 40);
+
 /// `elpis_runtime_recovery`.
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
@@ -423,6 +436,55 @@ pub unsafe extern "C" fn elpis_runtime_turn_commit(
         *out = result;
     }
     code
+}
+
+/// OBSERVE inside the open turn of a composite substrate (`ELPIS_RUNTIME_SUBSTRATE_COMPOSITE`): `observation` is the
+/// caller's `elpis_ecs_mem_observation`, passed through unread. The observation becomes authoritative only with the
+/// turn's commit; a refusal leaves the turn open and its candidate unchanged.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_turn_observe(
+    rt: *mut ElpisRuntime,
+    sub: *const CSubstrate,
+    observation: *const std::ffi::c_void,
+    out: *mut CObserve,
+) -> i32 {
+    let (value, code) = match (|| -> Result<(Native, crate::substrate::Key), Error> {
+        let native = substrate(sub)?;
+        let key = native.key();
+        Ok((native, key))
+    })() {
+        Err(e) => (CObserve::default(), e.code()),
+        Ok((mut native, key)) => match runtime(rt) {
+            Err(e) => (CObserve::default(), e.code()),
+            Ok(mut core) => match core.turn_observe(&mut native, key, crate::substrate::Observation(observation)) {
+                (Ok(relation_key), _) => (CObserve { relation_key, k1_status: 0, memory_status: 0 }, 0),
+                (Err(r), memory_status) => {
+                    (CObserve { relation_key: [0; 32], k1_status: r.k1_status, memory_status }, r.error.code())
+                }
+            },
+        },
+    };
+    if !out.is_null() {
+        *out = value;
+    }
+    code
+}
+
+/// LEGACY: move the open runtime's K1 lineage to the composite substrate made from exactly its authorized K1 state
+/// with an empty memory (`elpis_ecs_composite_import_k1`). Requires an attached checkpoint store provisioned for
+/// the composite envelope size; the envelope is durable before continuity publishes the import.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_import_composite(
+    rt: *mut ElpisRuntime,
+    sub: *const CSubstrate,
+    out: *mut CSnapshot,
+) -> i32 {
+    let run = || -> Result<Snapshot, Error> {
+        let mut native = substrate(sub)?;
+        let key = native.key();
+        runtime(rt)?.import_composite(&mut native, key).map_err(|r| r.error)
+    };
+    rc(run().map(|s| snapshot_out(out, &s)))
 }
 
 /// Release managed ownership of the bound state (its K1 lease) and unbind it, so its owner may use it unmanaged.

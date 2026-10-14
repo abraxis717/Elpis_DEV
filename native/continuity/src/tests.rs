@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::error::Code;
-use crate::record::{Cognition, Digest, EvolutionState, Snapshot, MAX_COUNTER, RECORD_SIZE, ZERO};
+use crate::record::{Cognition, Digest, EvolutionState, Snapshot, StateFormat, MAX_COUNTER, RECORD_SIZE, ZERO};
 use crate::sha256;
 use crate::store::probe::{Counters, Fault};
 use crate::store::{Step, Store, SLOT_NAMES};
@@ -661,4 +661,161 @@ fn paths_closed_stores_and_codes_are_stable() {
     }
     assert_eq!(Code::ALL.len(), expected.len());
     assert!(crate::ffi::elpis_continuity_code_name(99).is_null());
+}
+
+// -- record v3: lineages anchored at an ECS composite identity (docs/ECS_COMPOSITE_STATE.md) ---------------
+
+fn composite(generation: u64, digest: Digest, evolution: EvolutionState) -> Snapshot {
+    Snapshot::with_format(generation, Cognition::Anchored(digest), StateFormat::Composite, evolution).unwrap()
+}
+
+#[test]
+fn v3_records_encode_only_composite_lineages_and_round_trip() {
+    let s = composite(7, d("ec-7"), EvolutionState::GENESIS);
+    let raw = s.encode();
+    assert_eq!(&raw[0..8], b"ELPCONT\x03");
+    assert_eq!(raw[8..10], 3u16.to_be_bytes());
+    assert_eq!((raw[24], raw[25]), (1, 1));
+    assert_eq!(&raw[32..64], &d("ec-7"));
+    assert_eq!(raw[144..], sha256::digest(&[b"elpis.continuity.register.v3\0", &raw[..144]]));
+    assert_eq!(Snapshot::decode(&raw), Ok(Some(s)));
+    assert_eq!(s.digest(), digest_of(&hex(&raw[144..])));
+    // The same identity in a K1 lineage is a different record (v2, byte 25 zero, another checksum domain).
+    let k1 = Snapshot::new(7, Cognition::Anchored(d("ec-7")), EvolutionState::GENESIS).unwrap();
+    let v2 = k1.encode();
+    assert_eq!(&v2[0..8], b"ELPCONT\x02");
+    assert_eq!(v2[25], 0);
+    assert_ne!(k1.digest(), s.digest());
+    // An unanchored composite authority does not exist, in either representation.
+    assert_eq!(
+        Snapshot::with_format(3, Cognition::Unanchored, StateFormat::Composite, EvolutionState::GENESIS),
+        Err(Code::Corrupt)
+    );
+    let mut bad = raw;
+    bad[24] = 0;
+    bad[32..64].copy_from_slice(&ZERO);
+    let sum = sha256::digest(&[b"elpis.continuity.register.v3\0", &bad[..144]]);
+    bad[144..].copy_from_slice(&sum);
+    assert_eq!(Snapshot::decode(&bad), Err(Code::Corrupt));
+}
+
+#[test]
+fn v3_and_v2_markers_cannot_be_mixed() {
+    let raw = composite(4, d("ec"), EvolutionState::GENESIS).encode();
+    let reseal = |mut r: [u8; RECORD_SIZE], domain: &[u8]| {
+        let sum = sha256::digest(&[domain, &r[..144]]);
+        r[144..].copy_from_slice(&sum);
+        r
+    };
+    let v2_domain: &[u8] = b"elpis.continuity.register.v2\0";
+    let v3_domain: &[u8] = b"elpis.continuity.register.v3\0";
+    // v3 magic with format byte 0, or another format value.
+    for format in [0u8, 2, 255] {
+        let mut r = raw;
+        r[25] = format;
+        assert_eq!(Snapshot::decode(&reseal(r, v3_domain)), Err(Code::Corrupt), "format {format}");
+    }
+    // v3 content under the v2 checksum domain, and a v2 magic carrying a format byte.
+    assert_eq!(Snapshot::decode(&reseal(raw, v2_domain)), Err(Code::Corrupt));
+    let mut r = raw;
+    r[0..8].copy_from_slice(b"ELPCONT\x02");
+    r[8..10].copy_from_slice(&2u16.to_be_bytes());
+    assert_eq!(Snapshot::decode(&reseal(r, v2_domain)), Err(Code::Corrupt));
+    // A v3 version number under the v2 magic, and reserved bytes 26..32.
+    let mut r = raw;
+    r[8..10].copy_from_slice(&2u16.to_be_bytes());
+    assert_eq!(Snapshot::decode(&reseal(r, v3_domain)), Err(Code::Corrupt));
+    for at in 26..32 {
+        let mut r = raw;
+        r[at] = 1;
+        assert_eq!(Snapshot::decode(&reseal(r, v3_domain)), Err(Code::Corrupt), "byte {at}");
+    }
+}
+
+#[test]
+fn a_lineage_keeps_its_format_through_commits_evolution_and_restart() {
+    let dir = TempDir::new();
+    let path = dir.join("c");
+    let mut s = open(&path);
+    assert_eq!(s.commit_cognition_as(StateFormat::Composite, Some(&d("a")), Some(&d("b"))), Err(Code::Unanchored));
+    s.anchor_cognition_as(StateFormat::Composite, Some(&d("ec-0"))).unwrap();
+    assert_eq!(s.snapshot().unwrap().format(), StateFormat::Composite);
+    assert_eq!(s.anchor_cognition_as(StateFormat::K1, Some(&d("k1"))), Err(Code::AlreadyAnchored));
+    // A K1-format committer can never publish into a composite lineage, even from the right identity.
+    let before = s.snapshot().unwrap();
+    assert_eq!(s.commit_cognition_as(StateFormat::K1, Some(&d("ec-0")), Some(&d("ec-1"))), Err(Code::StateMismatch));
+    assert_eq!(s.snapshot().unwrap(), before);
+    s.commit_cognition_as(StateFormat::Composite, Some(&d("ec-0")), Some(&d("ec-1"))).unwrap();
+    // A plain commit uses the lineage's own format.
+    s.commit_cognition(Some(&d("ec-1")), Some(&d("ec-2"))).unwrap();
+    // The evolution authority's transitions keep the cognition format.
+    let pending = s.reserve_evolution(Some(&EvolutionState::GENESIS), Some(&d("assertion"))).unwrap();
+    assert_eq!(pending.format(), StateFormat::Composite);
+    let idle = s.finalize_evolution(Some(&pending.evolution()), Some(&d("receipt"))).unwrap();
+    assert_eq!(idle.format(), StateFormat::Composite);
+    drop(s);
+    let s = open(&path);
+    let snap = s.snapshot().unwrap();
+    assert_eq!((snap.format(), snap.cognition()), (StateFormat::Composite, Cognition::Anchored(d("ec-2"))));
+    for name in SLOT_NAMES {
+        let raw = fs::read(path.join(name)).unwrap();
+        assert!(&raw[0..8] == b"ELPCONT\x03" || raw.iter().all(|&b| b == 0) || &raw[0..8] == b"ELPCONT\x02");
+    }
+}
+
+#[test]
+fn legacy_import_moves_exactly_one_k1_lineage_to_a_composite_identity() {
+    let dir = TempDir::new();
+    let path = dir.join("c");
+    let mut s = open(&path);
+    assert_eq!(s.import_cognition(Some(&d("k1")), Some(&d("ec"))), Err(Code::Unanchored));
+    s.anchor_cognition(Some(&d("k1-0"))).unwrap();
+    s.commit_cognition(Some(&d("k1-0")), Some(&d("k1-1"))).unwrap();
+    // Only from the exact authorized K1 identity.
+    let before = s.snapshot().unwrap();
+    assert_eq!(s.import_cognition(Some(&d("k1-0")), Some(&d("ec"))), Err(Code::StateMismatch));
+    assert_eq!(s.import_cognition(None, Some(&d("ec"))), Err(Code::Invalid));
+    assert_eq!(s.snapshot().unwrap(), before);
+    // A composite committer cannot publish into the K1 lineage before the import.
+    assert_eq!(
+        s.commit_cognition_as(StateFormat::Composite, Some(&d("k1-1")), Some(&d("ec"))),
+        Err(Code::StateMismatch)
+    );
+    let after = s.import_cognition(Some(&d("k1-1")), Some(&d("ec-0"))).unwrap();
+    assert_eq!((after.format(), after.cognition()), (StateFormat::Composite, Cognition::Anchored(d("ec-0"))));
+    assert_eq!(after.generation(), before.generation() + 1);
+    // Once: a composite lineage cannot be imported again, and K1 commits are refused.
+    assert_eq!(s.import_cognition(Some(&d("ec-0")), Some(&d("ec-9"))), Err(Code::StateMismatch));
+    assert_eq!(s.commit_cognition_as(StateFormat::K1, Some(&d("ec-0")), Some(&d("k1-2"))), Err(Code::StateMismatch));
+}
+
+#[test]
+fn death_at_each_step_of_the_import_yields_the_k1_or_the_composite_authority() {
+    for step in [Step::PublishBegin, Step::PublishWritten, Step::PublishSynced] {
+        let dir = TempDir::new();
+        let path = dir.join("c");
+        let mut s = open(&path);
+        s.anchor_cognition(Some(&d("k1-0"))).unwrap();
+        let previous = s.snapshot().unwrap();
+        s.probe.publications = 0;
+        s.probe.plan = Some((1, Fault::Die(step)));
+        assert_eq!(s.import_cognition(Some(&d("k1-0")), Some(&d("ec-0"))), Err(Code::TestingProcessDeath));
+        drop(s);
+        let next = composite(previous.generation() + 1, d("ec-0"), previous.evolution());
+        let expected = if step == Step::PublishBegin { previous } else { next };
+        assert_eq!(open(&path).snapshot().unwrap(), expected, "{step:?}");
+    }
+    // A torn v3 write never destroys the K1 authority before it.
+    for cut in [1usize, 25, 26, 64, RECORD_SIZE - 1] {
+        let dir = TempDir::new();
+        let path = dir.join("c");
+        let mut s = open(&path);
+        s.anchor_cognition(Some(&d("k1-0"))).unwrap();
+        let previous = s.snapshot().unwrap();
+        s.probe.publications = 0;
+        s.probe.plan = Some((1, Fault::TornDie(cut)));
+        assert_eq!(s.import_cognition(Some(&d("k1-0")), Some(&d("ec-0"))), Err(Code::TestingProcessDeath));
+        drop(s);
+        assert_eq!(open(&path).snapshot().unwrap(), previous, "cut {cut}");
+    }
 }

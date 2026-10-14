@@ -17,7 +17,7 @@ use std::os::unix::fs::{FileExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 
 use crate::error::Code;
-use crate::record::{Cognition, Digest, EvolutionState, Snapshot, MAX_COUNTER, RECORD_SIZE, ZERO};
+use crate::record::{Cognition, Digest, EvolutionState, Snapshot, StateFormat, MAX_COUNTER, RECORD_SIZE, ZERO};
 
 pub const SLOT_NAMES: [&str; 2] = ["continuity.a", "continuity.b"];
 const TMP_SUFFIX: &str = ".tmp";
@@ -436,25 +436,69 @@ impl Store {
 
     /// Explicitly anchor the first K1 lineage at a retained-state identity.
     pub fn anchor_cognition(&mut self, k1: Option<&Digest>) -> Result<Snapshot, Code> {
+        self.anchor_cognition_as(StateFormat::K1, k1)
+    }
+
+    /// Explicitly anchor the first lineage at a retained-state identity of `format` (an `ELPISGK1` K1 identity,
+    /// or an `ELPISEC1` composite identity, published as a v3 record).
+    pub fn anchor_cognition_as(&mut self, format: StateFormat, digest: Option<&Digest>) -> Result<Snapshot, Code> {
         let current = self.require()?.current;
-        let k1 = *k1.ok_or(Code::Invalid)?;
+        let digest = *digest.ok_or(Code::Invalid)?;
         if current.cognition() != Cognition::Unanchored {
             return Err(Code::AlreadyAnchored);
         }
-        let next = Snapshot::new(current.generation() + 1, Cognition::Anchored(k1), current.evolution())?;
+        let next =
+            Snapshot::with_format(current.generation() + 1, Cognition::Anchored(digest), format, current.evolution())?;
         self.publish(next)
     }
 
-    /// Publish `after` as the expected K1 identity of a committed turn from `before`.
+    /// Publish `after` as the expected identity of a committed turn from `before`. The lineage keeps its format.
     pub fn commit_cognition(&mut self, before: Option<&Digest>, after: Option<&Digest>) -> Result<Snapshot, Code> {
+        let current = self.require()?.current;
+        self.commit_cognition_as(current.format(), before, after)
+    }
+
+    /// `commit_cognition` by a committer of a stated format: a commit by a substrate of another format than the
+    /// lineage's is `StateMismatch` (an identity of one format never stands for a state of another).
+    pub fn commit_cognition_as(
+        &mut self,
+        format: StateFormat,
+        before: Option<&Digest>,
+        after: Option<&Digest>,
+    ) -> Result<Snapshot, Code> {
         let current = self.require()?.current;
         let (before, after) = (*before.ok_or(Code::Invalid)?, *after.ok_or(Code::Invalid)?);
         match current.cognition() {
             Cognition::Unanchored => return Err(Code::Unanchored),
-            Cognition::Anchored(expected) if expected != before => return Err(Code::StateMismatch),
+            Cognition::Anchored(expected) if expected != before || current.format() != format => {
+                return Err(Code::StateMismatch)
+            }
             Cognition::Anchored(_) => {}
         }
-        let next = Snapshot::new(current.generation() + 1, Cognition::Anchored(after), current.evolution())?;
+        let next =
+            Snapshot::with_format(current.generation() + 1, Cognition::Anchored(after), format, current.evolution())?;
+        self.publish(next)
+    }
+
+    /// LEGACY import: move a K1-format lineage anchored at exactly `k1` to the composite identity `composite` of the
+    /// same K1 state with an empty memory (`elpis_ecs_composite_import_k1`). Explicit and authority-checked: refused
+    /// unless the lineage is K1-format and anchored at `k1` (`StateMismatch`; `Unanchored` when there is none).
+    pub fn import_cognition(&mut self, k1: Option<&Digest>, composite: Option<&Digest>) -> Result<Snapshot, Code> {
+        let current = self.require()?.current;
+        let (k1, composite) = (*k1.ok_or(Code::Invalid)?, *composite.ok_or(Code::Invalid)?);
+        match current.cognition() {
+            Cognition::Unanchored => return Err(Code::Unanchored),
+            Cognition::Anchored(expected) if expected != k1 || current.format() != StateFormat::K1 => {
+                return Err(Code::StateMismatch)
+            }
+            Cognition::Anchored(_) => {}
+        }
+        let next = Snapshot::with_format(
+            current.generation() + 1,
+            Cognition::Anchored(composite),
+            StateFormat::Composite,
+            current.evolution(),
+        )?;
         self.publish(next)
     }
 
@@ -480,7 +524,7 @@ impl Store {
             return Err(Code::Exhausted);
         }
         let pending = EvolutionState::pending(revision, head, assertion)?;
-        self.publish(Snapshot::new(current.generation() + 1, current.cognition(), pending)?)
+        self.publish(Snapshot::with_format(current.generation() + 1, current.cognition(), current.format(), pending)?)
     }
 
     /// Finalize the exact pending authority (pending -> next idle) with an explicitly established result.
@@ -506,7 +550,7 @@ impl Store {
             return Err(Code::Invalid);
         }
         let next = EvolutionState::idle(revision + 1, receipt).map_err(|_| Code::Invalid)?;
-        self.publish(Snapshot::new(current.generation() + 1, current.cognition(), next)?)
+        self.publish(Snapshot::with_format(current.generation() + 1, current.cognition(), current.format(), next)?)
     }
 }
 

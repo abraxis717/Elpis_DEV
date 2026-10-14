@@ -1,5 +1,10 @@
 //! K1 Recovery R0: a bounded, crash-recoverable store of the complete K1 retained state (docs/K1_RECOVERY_R0.md).
 //!
+//! The slot format is unchanged by the ECS composite retained state (docs/ECS_COMPOSITE_STATE.md): a slot holds one
+//! self-identifying retained-state envelope, `ELPISGK1` (a K1 lineage) or `ELPISEC1` (a composite lineage), whose
+//! SHA-256 trailer is the identity continuity names. A store is provisioned for one envelope size, so it serves one
+//! format and shape.
+//!
 //! Continuity tells a restarting runtime *which* K1 retained-state identity is authoritative; it holds no state. FMS
 //! COLD is scratch residency that reclaims orphans. Neither may hold the state that recovery needs, so this module
 //! is a distinct owner with one job: keep a complete `(W, epoch, H, a)` envelope (`ELPISGK1`) of the authorized
@@ -36,7 +41,7 @@ use std::os::unix::fs::{FileExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 
 use elpis_continuity::sha256::digest as sha256;
-use elpis_continuity::Digest;
+use elpis_continuity::{Digest, StateFormat};
 
 use crate::code::Rt;
 
@@ -47,8 +52,12 @@ const VERSION: u16 = 1;
 const DOMAIN: &[u8] = b"elpis.k1-checkpoint.slot.v1\0";
 /// The smallest envelope any K1 shape has (header, one W value, F = 3 at dim 1, the trailer).
 const MIN_ENVELOPE: usize = 64 + 8 * (1 + 6 + 3) + 32;
-/// The largest envelope (the K1 image budget, including its header, plus the trailer).
-const MAX_ENVELOPE: usize = 64 * 1024 * 1024 + 32;
+/// The largest envelope: an `ELPISEC1` of the largest K1 image (64 MiB budget, header included, plus its trailer)
+/// and the largest composite memory capacity (64 MiB), with the composite header and trailer
+/// (`ELPIS_ECS_COMPOSITE_MAX_ENVELOPE_BYTES`). Every `ELPISGK1` envelope is smaller.
+const MAX_ENVELOPE: usize = 128 + (64 * 1024 * 1024 + 32) + 64 * 1024 * 1024 + 32;
+const K1_MAGIC: &[u8; 8] = b"ELPISGK1";
+const COMPOSITE_MAGIC: &[u8; 8] = b"ELPISEC1";
 
 /// A valid slot's header.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -82,9 +91,18 @@ fn header(generation: u64, envelope: &[u8], identity: &Digest) -> [u8; HEADER] {
     h
 }
 
+/// The retained-state format an envelope's magic names (`None` for anything else). Structural only.
+pub fn envelope_format(envelope: &[u8]) -> Option<StateFormat> {
+    match envelope.get(..8)? {
+        m if m == K1_MAGIC => Some(StateFormat::K1),
+        m if m == COMPOSITE_MAGIC => Some(StateFormat::Composite),
+        _ => None,
+    }
+}
+
 /// The verified identity of an envelope: its SHA-256 trailer, if it is the SHA-256 of everything before it.
 pub fn envelope_identity(envelope: &[u8]) -> Option<Digest> {
-    if envelope.len() < MIN_ENVELOPE || &envelope[..8] != b"ELPISGK1" {
+    if envelope.len() < MIN_ENVELOPE || envelope_format(envelope).is_none() {
         return None;
     }
     let (body, trailer) = envelope.split_at(envelope.len() - 32);
@@ -273,4 +291,30 @@ pub enum Disposition {
     CandidateUnresolved = 3,
     /// Continuity holds D but no verified slot holds D: the authorized state cannot be resumed from here.
     CheckpointMissing = 4,
+}
+
+/// The legacy import's source check (docs/ECS_COMPOSITE_STATE.md, "Legacy"): a verified `ELPISEC1` envelope whose
+/// recorded K1 component identity is `k1` and whose memory component is empty (clock, cursor, slot and codebook
+/// counts zero and every bank weight zero). Structural: the trailers bind the bytes, and the composite library's own
+/// restore validates every component in full. Returns the composite identity.
+pub fn composite_import_identity(envelope: &[u8], k1: &Digest) -> Option<Digest> {
+    let identity = envelope_identity(envelope)?;
+    if envelope_format(envelope)? != StateFormat::Composite || envelope.len() < 128 + 64 {
+        return None;
+    }
+    let field = |at: usize| -> Option<usize> {
+        usize::try_from(u64::from_le_bytes(envelope[at..at + 8].try_into().ok()?)).ok()
+    };
+    let (k1_bytes, memory_bytes) = (field(16)?, field(32)?);
+    if &envelope[48..80] != k1 {
+        return None;
+    }
+    let memory = envelope.get(128 + k1_bytes..(128 + k1_bytes).checked_add(memory_bytes)?)?;
+    // ELPISEM1: header 128 bytes (clock at 64, cursor at 72, slots at 76, codebook entries at 80), then the banks;
+    // with no slot and no codebook entry the banks run to the trailer.
+    if memory.len() < 128 + 32 || &memory[..8] != b"ELPISEM1" {
+        return None;
+    }
+    let empty = memory[64..84].iter().all(|&b| b == 0) && memory[128..memory.len() - 32].iter().all(|&b| b == 0);
+    empty.then_some(identity)
 }

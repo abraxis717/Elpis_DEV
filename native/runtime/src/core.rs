@@ -29,19 +29,25 @@
 //!   and finalized with the executed receipt; a failed reservation or finalization fail-stops, and an attempt
 //!   the boundary could not complete leaves the durable reservation pending (fail-stop
 //!   `CONTINUITY_EVOLUTION_PENDING`); execution is never retried or inferred.
+//! * Composite lineages (docs/ECS_COMPOSITE_STATE.md): a substrate of the ECS composite kind is bound, queried,
+//!   learned, checkpointed and recovered exactly as a K1 state, under its `ELPISEC1` identity; continuity records
+//!   the lineage's format, and a substrate of another format never stands for it (`CONTINUITY_STATE_MISMATCH`). The
+//!   memory changes only through `turn_observe` inside the managed turn, so a memory mutation becomes authoritative
+//!   only by the same checkpoint-then-commit-then-publish path as K1's. RuntimeCore exposes no memory LEARN or
+//!   CONSOLIDATE (unqualified). A K1 lineage moves to a composite one only by the explicit `import_composite`.
 //! * Nothing else is durable or retained: no history, receipts, events or trajectory.
 
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, Store};
+use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, StateFormat, Store};
 
 use crate::checkpoint::{self, Disposition, Slot};
 use crate::code::{Error, Rt};
 use crate::fuel::{self, Budget};
 use crate::substrate::{
-    features, CommitIdentity, Digest as K1Digest, Experience, K1Ops, Key, ScheduleOutcome, TxnAbort, K1_BUSY,
-    K1_CAPACITY, K1_FMS_CAPACITY, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE, MAX_EXPERIENCES,
+    features, CommitIdentity, Digest as K1Digest, Experience, K1Ops, Key, Observation, ScheduleOutcome, TxnAbort,
+    K1_BUSY, K1_CAPACITY, K1_FMS_CAPACITY, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE, MAX_EXPERIENCES,
 };
 
 /// The next managed lease: unique and nonzero per RuntimeCore in this process (an aliasing defence between
@@ -298,7 +304,7 @@ impl Core {
             self.checkpoint_current(sub, &identity)?;
         }
         self.claim(sub)?;
-        match self.store.anchor_cognition(Some(&identity)) {
+        match self.store.anchor_cognition_as(sub.format(), Some(&identity)) {
             Ok(s) => {
                 self.counters.publications += 1;
                 self.bound = Some(key);
@@ -346,7 +352,8 @@ impl Core {
             return if bound == key { Ok(()) } else { Err(Rt::SubstrateSwitch.into()) };
         }
         let expected = self.expected()?;
-        if self.digest(sub)? != expected {
+        // An identity of one format never stands for a state of another (a K1 state for a composite lineage).
+        if self.store.snapshot()?.format() != sub.format() || self.digest(sub)? != expected {
             self.fault = Some(Code::StateMismatch);
             return Err(Code::StateMismatch.into());
         }
@@ -643,7 +650,12 @@ impl Core {
             self.fault = Some(Code::TestingProcessDeath);
             return Err(Refusal { committed: Some(Box::new(identity)), ..Refusal::from(Code::TestingProcessDeath) });
         }
-        match self.store.commit_cognition(Some(&identity.state_before_digest), Some(&identity.state_after_digest)) {
+        let format = sub.format();
+        match self.store.commit_cognition_as(
+            format,
+            Some(&identity.state_before_digest),
+            Some(&identity.state_after_digest),
+        ) {
             Ok(snapshot) => {
                 self.counters.publications += 1;
                 Ok((identity, snapshot))
@@ -651,6 +663,93 @@ impl Core {
             Err(code) => {
                 self.fault = Some(code);
                 Err(Refusal { committed: Some(Box::new(identity)), ..Refusal::from(code) })
+            }
+        }
+    }
+
+    /// OBSERVE inside the open managed turn of a composite substrate: the observation (opaque here) is recorded on
+    /// the turn's memory candidate, which becomes authoritative only with the turn's commit (checkpointed, committed
+    /// and published like K1's). A refusal is recoverable: the turn stays open and its candidate unchanged. A K1
+    /// substrate has no memory (`RUNTIME_INVALID`). Returns the relation key; the second value is the memory's own
+    /// status behind a composite refusal (0 otherwise).
+    pub fn turn_observe(
+        &mut self,
+        sub: &mut dyn K1Ops,
+        key: Key,
+        observation: Observation,
+    ) -> (Result<K1Digest, Refusal>, i32) {
+        if !self.open {
+            return (Err(Rt::Closed.into()), 0);
+        }
+        let token = match &self.turn {
+            Some(turn) if turn.key == key => turn.token,
+            _ => return (Err(Rt::TurnNotOpen.into()), 0),
+        };
+        if let Some(code) = self.fault {
+            return (Err(code.into()), 0);
+        }
+        if sub.format() != StateFormat::Composite || observation.0.is_null() {
+            return (Err(Rt::Invalid.into()), 0);
+        }
+        let (mut relation, mut memory_status) = ([0u8; 32], 0i32);
+        match sub.txn_observe(self.lease, token, observation, &mut relation, &mut memory_status) {
+            0 => (Ok(relation), 0),
+            K1_LEASED => (Err(self.lineage_lost(K1_LEASED)), 0),
+            rc => (Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())), memory_status),
+        }
+    }
+
+    /// LEGACY import (docs/ECS_COMPOSITE_STATE.md): move this runtime's K1 lineage to the composite substrate
+    /// `sub`, made by `elpis_ecs_composite_import_k1` from exactly the authorized K1 state with an empty memory.
+    /// Explicit and authority-checked: the lineage must be K1-format and anchored, no turn open and nothing bound,
+    /// and a checkpoint store provisioned for the composite envelope size must be attached. The composite's
+    /// envelope must name the authorized K1 identity and hold an empty memory; it is made durable in the checkpoint
+    /// store before continuity publishes the import. Then the composite is bound under this runtime's lease.
+    pub fn import_composite(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<Snapshot, Refusal> {
+        self.live()?;
+        if self.turn.is_some() || self.bound.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        let k1 = self.expected()?;
+        if self.store.snapshot()?.format() != StateFormat::K1 || sub.format() != StateFormat::Composite {
+            return Err(Code::StateMismatch.into());
+        }
+        if self.checkpoint.is_none() {
+            return Err(Rt::CheckpointInvalid.into());
+        }
+        if self.unresolved_candidate()?.is_some() {
+            return Err(Rt::CheckpointUnresolved.into());
+        }
+        let identity = self.digest(sub)?;
+        let store = self.checkpoint.as_mut().expect("attached");
+        let buffer = store.envelope_buffer();
+        match sub.snapshot_write(buffer) {
+            0 => {}
+            rc => return Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
+        }
+        if checkpoint::envelope_identity(buffer) != Some(identity) {
+            return Err(Rt::CheckpointShape.into());
+        }
+        if checkpoint::composite_import_identity(buffer, &k1) != Some(identity) {
+            return Err(Code::StateMismatch.into()); // not the authorized K1 state with an empty memory
+        }
+        if store.holding(&identity).is_none() {
+            store.write(Some(&k1))?;
+        }
+        self.claim(sub)?;
+        match self.store.import_cognition(Some(&k1), Some(&identity)) {
+            Ok(s) => {
+                self.counters.publications += 1;
+                self.bound = Some(key);
+                self.shape = None;
+                Ok(s)
+            }
+            Err(code) => {
+                let _ = sub.lease_release(self.lease);
+                if matches!(code, Code::PublicationUncertain | Code::TestingProcessDeath) {
+                    self.fault = Some(code);
+                }
+                Err(code.into())
             }
         }
     }

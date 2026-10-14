@@ -58,6 +58,37 @@ elpis_add_test(runtime test_runtime_lifecycle
   TIMEOUT 120)
 add_dependencies(test_runtime_lifecycle elpis_runtime)
 
+# RuntimeCore over the ECS composite retained state (docs/ECS_COMPOSITE_STATE.md): composite anchor (continuity
+# v3), managed turns that learn K1 and observe the memory, checkpoint + crash injection + recovery with the memory
+# transition applied exactly once, and the explicit legacy import. It needs the testing library's crash hook; that
+# library's SONAME is libelpis_runtime.so, so the test links a copy under that name in its own directory.
+set(_testing_dir "${CMAKE_CURRENT_BINARY_DIR}/testing-lib")
+# A POST_BUILD step of the one target that builds the testing library, so no second rule (and no second, concurrent
+# cargo build or copy) exists for these files in a parallel build. The test links it by name, after that target.
+add_custom_command(TARGET elpis_runtime_testing POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${_testing_dir}"
+  COMMAND ${CMAKE_COMMAND} -E copy "${_testing}" "${_testing_dir}/libelpis_runtime.so"
+  VERBATIM)
+elpis_add_test(runtime test_runtime_composite
+  SOURCES tests/test_runtime_composite.c
+  INCLUDES "${_crate}/include" "${_continuity}/include"
+  LIBS elpis_hacf_observation elpis_semantic elpis_ecs_composite elpis_ecs_memory elpis_ecsg_k1
+  ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_composite"
+  TIMEOUT 120)
+target_link_options(test_runtime_composite PRIVATE "-L${_testing_dir}")
+target_link_libraries(test_runtime_composite PRIVATE -lelpis_runtime)
+set_target_properties(test_runtime_composite PROPERTIES BUILD_RPATH "${_testing_dir}")
+add_dependencies(test_runtime_composite elpis_runtime_testing)
+
+# Typed HACF -> ECS memory observation path (docs/ECS_MEMORY.md, "HACF observations"): joins structure (identity and
+# validation owner) and the ECS memory type at the composition layer; RuntimeCore itself still links neither.
+elpis_add_library(runtime elpis_hacf_observation SHARED observation/src/ecs_observation_hacf.c)
+target_include_directories(elpis_hacf_observation PUBLIC observation/include)
+target_link_libraries(elpis_hacf_observation PUBLIC elpis_ecs_memory elpis_semantic)
+elpis_add_test(runtime test_ecs_observation_hacf SOURCES observation/tests/test_ecs_observation_hacf.c
+  INCLUDES "${CMAKE_SOURCE_DIR}/native/ECS/tests"
+  LIBS elpis_hacf_observation elpis_ecs_memory elpis_semantic elpis_hash TIMEOUT 120)
+
 # The Rust law suite (lifecycle, lineage, turn, evolution and the continuity crash law through RuntimeCore).
 add_test(NAME runtime.cargo_test
   COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/cargo-test"

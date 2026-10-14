@@ -1,4 +1,10 @@
-//! The continuity register v2 record (docs/CONTINUITY.md): one fixed 176-byte current authority.
+//! The continuity register record (docs/CONTINUITY.md): one fixed 176-byte current authority.
+//!
+//! Two record versions share one layout. **v2** (`ELPCONT\x02`) is unchanged: its anchored digest is a K1 retained-state
+//! identity (`ELPISGK1`). **v3** (`ELPCONT\x03`, register domain v3) is written only for a lineage anchored at an ECS
+//! composite retained-state identity (`ELPISEC1`, docs/ECS_COMPOSITE_STATE.md): it is the v2 layout with byte 25 = 1
+//! (the state format) and requires the anchored flag. Every K1 or unanchored authority is still encoded as v2, byte
+//! for byte, so v2 parity holds; a v2-only reader refuses a v3 record (fail closed) instead of misreading it.
 //!
 //! Layout (big-endian integers):
 //!
@@ -9,14 +15,15 @@
 //! | 10     | 6    | reserved, zero                                          |
 //! | 16     | 8    | generation, 1..=2^63-1                                  |
 //! | 24     | 1    | cognition: 0 unanchored, 1 anchored                     |
-//! | 25     | 7    | reserved, zero                                          |
-//! | 32     | 32   | K1 retained-state digest (zero when unanchored)         |
+//! | 25     | 1    | v2: reserved, zero; v3: state format 1 (ELPISEC1)       |
+//! | 26     | 6    | reserved, zero                                          |
+//! | 32     | 32   | retained-state digest (zero when unanchored)            |
 //! | 64     | 8    | evolution revision, 0..=2^63-1                          |
 //! | 72     | 32   | evolution head (zero exactly at revision 0)             |
 //! | 104    | 1    | evolution: 0 idle, 1 pending                            |
 //! | 105    | 7    | reserved, zero                                          |
 //! | 112    | 32   | pending assertion identity (zero when idle)             |
-//! | 144    | 32   | SHA-256(`elpis.continuity.register.v2\0` ‖ bytes 0..144) |
+//! | 144    | 32   | SHA-256(`elpis.continuity.register.v{2,3}\0` ‖ bytes 0..144) |
 
 use crate::error::Code;
 use crate::sha256;
@@ -27,11 +34,15 @@ pub const RECORD_SIZE: usize = 176;
 pub const BODY_SIZE: usize = 144;
 pub const MAGIC: &[u8; 8] = b"ELPCONT\x02";
 pub const FORMAT_VERSION: u16 = 2;
+/// The v3 record: an authority anchored at an ECS composite retained-state identity.
+pub const MAGIC_V3: &[u8; 8] = b"ELPCONT\x03";
+pub const FORMAT_VERSION_V3: u16 = 3;
 /// The largest generation or revision a record may carry.
 pub const MAX_COUNTER: u64 = (1 << 63) - 1;
 pub const ZERO: Digest = [0; 32];
 
 const REGISTER_DOMAIN: &[u8] = b"elpis.continuity.register.v2\x00";
+const REGISTER_DOMAIN_V3: &[u8] = b"elpis.continuity.register.v3\x00";
 const EVOLUTION_DOMAIN: &[u8] = b"elpis.continuity.evolution-authority.v2\x00";
 
 /// The evolution authority: idle at a head, or reserved for exactly one assertion.
@@ -97,11 +108,22 @@ impl EvolutionState {
     }
 }
 
-/// The K1 lineage: no lineage yet, or the expected retained-state digest of the committed K1 state.
+/// The K1 lineage: no lineage yet, or the expected retained-state digest of the committed state (of the format
+/// [`Snapshot::format`] names).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cognition {
     Unanchored,
     Anchored(Digest),
+}
+
+/// The retained-state format an anchored digest identifies. A lineage keeps its format: a commit never changes
+/// it, and the only transition between formats is the explicit legacy import (`Store::import_cognition`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StateFormat {
+    /// `ELPISGK1` v1, the K1 retained state (every v2 record; the format of an unanchored authority).
+    K1 = 0,
+    /// `ELPISEC1` v1, the ECS composite retained state (K1 and the ECS memory; v3 records only).
+    Composite = 1,
 }
 
 /// One complete, verified continuity authority.
@@ -109,18 +131,42 @@ pub enum Cognition {
 pub struct Snapshot {
     generation: u64,
     cognition: Cognition,
+    format: StateFormat,
     evolution: EvolutionState,
 }
 
 impl Snapshot {
-    pub const GENESIS: Snapshot =
-        Snapshot { generation: 1, cognition: Cognition::Unanchored, evolution: EvolutionState::GENESIS };
+    pub const GENESIS: Snapshot = Snapshot {
+        generation: 1,
+        cognition: Cognition::Unanchored,
+        format: StateFormat::K1,
+        evolution: EvolutionState::GENESIS,
+    };
 
+    /// A K1-format authority (every v2 record).
     pub fn new(generation: u64, cognition: Cognition, evolution: EvolutionState) -> Result<Self, Code> {
+        Self::with_format(generation, cognition, StateFormat::K1, evolution)
+    }
+
+    /// An authority of an explicit format. A composite format names an anchored identity: an unanchored
+    /// composite authority does not exist.
+    pub fn with_format(
+        generation: u64,
+        cognition: Cognition,
+        format: StateFormat,
+        evolution: EvolutionState,
+    ) -> Result<Self, Code> {
         if generation == 0 || generation > MAX_COUNTER {
             return Err(Code::Corrupt);
         }
-        Ok(Snapshot { generation, cognition, evolution })
+        if format == StateFormat::Composite && cognition == Cognition::Unanchored {
+            return Err(Code::Corrupt);
+        }
+        Ok(Snapshot { generation, cognition, format, evolution })
+    }
+
+    pub fn format(&self) -> StateFormat {
+        self.format
     }
 
     pub fn generation(&self) -> u64 {
@@ -137,8 +183,14 @@ impl Snapshot {
 
     fn body(&self) -> [u8; BODY_SIZE] {
         let mut b = [0u8; BODY_SIZE];
-        b[0..8].copy_from_slice(MAGIC);
-        b[8..10].copy_from_slice(&FORMAT_VERSION.to_be_bytes());
+        if self.format == StateFormat::Composite {
+            b[0..8].copy_from_slice(MAGIC_V3);
+            b[8..10].copy_from_slice(&FORMAT_VERSION_V3.to_be_bytes());
+            b[25] = StateFormat::Composite as u8;
+        } else {
+            b[0..8].copy_from_slice(MAGIC);
+            b[8..10].copy_from_slice(&FORMAT_VERSION.to_be_bytes());
+        }
         b[16..24].copy_from_slice(&self.generation.to_be_bytes());
         if let Cognition::Anchored(k1) = self.cognition {
             b[24] = 1;
@@ -157,13 +209,13 @@ impl Snapshot {
         let body = self.body();
         let mut out = [0u8; RECORD_SIZE];
         out[..BODY_SIZE].copy_from_slice(&body);
-        out[BODY_SIZE..].copy_from_slice(&checksum(&body));
+        out[BODY_SIZE..].copy_from_slice(&checksum(&body, self.format));
         out
     }
 
     /// The record checksum: the content identity of this whole authority (integrity, not authentication).
     pub fn digest(&self) -> Digest {
-        checksum(&self.body())
+        checksum(&self.body(), self.format)
     }
 
     /// A verified snapshot, `None` for an empty (all-zero) slot, `Corrupt` for anything else.
@@ -175,11 +227,21 @@ impl Snapshot {
             return Ok(None);
         }
         let (body, sum) = raw.split_at(BODY_SIZE);
-        if checksum(body) != sum {
+        let format = if &body[0..8] == MAGIC && body[8..10] == FORMAT_VERSION.to_be_bytes() && body[25] == 0 {
+            StateFormat::K1
+        } else if &body[0..8] == MAGIC_V3
+            && body[8..10] == FORMAT_VERSION_V3.to_be_bytes()
+            && body[25] == StateFormat::Composite as u8
+        {
+            StateFormat::Composite
+        } else {
+            return Err(Code::Corrupt);
+        };
+        if checksum(body, format) != sum {
             return Err(Code::Corrupt);
         }
         let zero = |r: std::ops::Range<usize>| body[r].iter().all(|&b| b == 0);
-        if &body[0..8] != MAGIC || body[8..10] != FORMAT_VERSION.to_be_bytes() || !zero(10..16) || !zero(25..32) {
+        if !zero(10..16) || !zero(26..32) {
             return Err(Code::Corrupt);
         }
         let k1 = digest_at(body, 32);
@@ -199,12 +261,16 @@ impl Snapshot {
             1 => EvolutionState::pending(revision, head, assertion)?,
             _ => return Err(Code::Corrupt),
         };
-        Snapshot::new(u64_at(body, 16), cognition, evolution).map(Some)
+        Snapshot::with_format(u64_at(body, 16), cognition, format, evolution).map(Some)
     }
 }
 
-fn checksum(body: &[u8]) -> Digest {
-    sha256::digest(&[REGISTER_DOMAIN, body])
+fn checksum(body: &[u8], format: StateFormat) -> Digest {
+    let domain = match format {
+        StateFormat::K1 => REGISTER_DOMAIN,
+        StateFormat::Composite => REGISTER_DOMAIN_V3,
+    };
+    sha256::digest(&[domain, body])
 }
 
 fn digest_at(b: &[u8], at: usize) -> Digest {

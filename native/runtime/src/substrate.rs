@@ -10,8 +10,20 @@
 //! and abort entry; never commit, schedule or any other operation). It is what ends the turn when the runtime is
 //! closed, reopened or destroyed without an explicit commit or abort, so an open native transaction is never
 //! forgotten. The C ABI (v2) makes the substrate's lifetime explicit: the state must stay live until the turn ends.
+//!
+//! A third kind is the ECS composite retained state (`ecs_composite.h`, docs/ECS_COMPOSITE_STATE.md): K1 and the ECS
+//! memory under one identity (`ELPISEC1`). Its table is the K1 table (same signatures and status numbers; the
+//! digests are composite identities) plus one entry, `leased_txn_observe`, which hands an opaque observation record
+//! to the composite's open transaction. RuntimeCore never reads that record: it passes the pointer through.
 
 use std::ffi::{c_int, c_void};
+
+pub use elpis_continuity::StateFormat;
+
+/// A caller's observation record (`elpis_ecs_mem_observation *`), opaque to RuntimeCore: it is never read here,
+/// only handed to the composite's `leased_txn_observe`. The C ABI caller guarantees it is valid for the call.
+#[derive(Clone, Copy, Debug)]
+pub struct Observation(pub *const c_void);
 
 pub type Digest = [u8; 32];
 
@@ -125,6 +137,22 @@ pub trait K1Ops {
     /// begin until that turn ends. It may outlive the call that produced it, but never the open transaction it
     /// ends: the native state is live for exactly that interval (the substrate lifetime contract, runtime.h).
     fn retain_abort(&self) -> Box<dyn TxnAbort>;
+    /// The retained-state format this substrate's identities name (`ELPISGK1` for K1 states).
+    fn format(&self) -> StateFormat {
+        StateFormat::K1
+    }
+    /// OBSERVE on the open transaction's memory candidate (composite substrates only; `observation` is the
+    /// caller's opaque `elpis_ecs_mem_observation`, never read here). A K1 substrate has no memory: INVALID.
+    fn txn_observe(
+        &mut self,
+        _lease: u64,
+        _token: u64,
+        _observation: Observation,
+        _key: &mut Digest,
+        _memory_status: &mut i32,
+    ) -> i32 {
+        K1_INVALID
+    }
 }
 
 /// The one operation RuntimeCore retains across calls: ending the open managed turn's native transaction.
@@ -150,6 +178,8 @@ pub struct Key {
 
 pub const KIND_K1: u32 = 1;
 pub const KIND_K1_FMS: u32 = 2;
+/// An ECS composite retained state (`elpis_ecs_composite *`, docs/ECS_COMPOSITE_STATE.md).
+pub const KIND_COMPOSITE: u32 = 3;
 
 type Status = c_int;
 type State = *mut c_void;
@@ -211,6 +241,18 @@ pub struct K1Api {
     pub txn_snapshot_write: Option<unsafe extern "C" fn(State, u64, *mut u8, usize) -> Status>,
 }
 
+/// `elpis_ecs_composite_leased_txn_observe` (the observation and key are opaque to RuntimeCore).
+pub type CompositeObserve = unsafe extern "C" fn(State, u64, u64, *const c_void, *mut u8, *mut c_int) -> Status;
+
+/// The function table of an ECS composite (`ecs_composite.h`): the K1 table over composite identities, then the
+/// memory OBSERVE of the open transaction. Every entry is required.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct CompositeApi {
+    pub base: K1Api,
+    pub leased_txn_observe: Option<CompositeObserve>,
+}
+
 /// The function table of the K1 FMS adapter (`ecsg_k1_fms.h`): the same operations on one resident state id.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -250,6 +292,7 @@ pub struct CSubstrate {
 enum Table {
     K1(K1Api),
     Fms(K1FmsApi),
+    Composite(CompositeApi),
 }
 
 /// A validated descriptor: a [`K1Ops`] over the caller's native function table (copied by value).
@@ -303,6 +346,10 @@ impl Native {
                 let t = *(d.api as *const K1FmsApi);
                 complete!(t).then_some(Table::Fms(t))?
             }
+            KIND_COMPOSITE if d.id == 0 => {
+                let t = *(d.api as *const CompositeApi);
+                (complete!(t.base) && t.leased_txn_observe.is_some()).then_some(Table::Composite(t))?
+            }
             _ => return None,
         };
         let key = Key { kind: d.kind, handle: d.handle as usize, id: d.id, owner: d.owner, dim };
@@ -325,6 +372,7 @@ macro_rules! call {
             match &$self.table {
                 Table::K1(t) => t.$entry.expect(TABLE)($self.handle $(, $arg)*),
                 Table::Fms(t) => t.$entry.expect(TABLE)($self.handle, $self.key.id $(, $arg)*),
+                Table::Composite(t) => t.base.$entry.expect(TABLE)($self.handle $(, $arg)*),
             }
         }
     };
@@ -407,6 +455,36 @@ impl K1Ops for Native {
 
     fn retain_abort(&self) -> Box<dyn TxnAbort> {
         Box::new(*self)
+    }
+
+    fn format(&self) -> StateFormat {
+        match self.table {
+            Table::Composite(_) => StateFormat::Composite,
+            _ => StateFormat::K1,
+        }
+    }
+
+    fn txn_observe(
+        &mut self,
+        lease: u64,
+        token: u64,
+        observation: Observation,
+        key: &mut Digest,
+        memory_status: &mut i32,
+    ) -> i32 {
+        match &self.table {
+            Table::Composite(t) => unsafe {
+                t.leased_txn_observe.expect(TABLE)(
+                    self.handle,
+                    lease,
+                    token,
+                    observation.0,
+                    key.as_mut_ptr(),
+                    memory_status,
+                )
+            },
+            _ => K1_INVALID,
+        }
     }
 }
 

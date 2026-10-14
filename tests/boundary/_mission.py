@@ -166,8 +166,16 @@ def ecs_independence(root: Path) -> list[str]:
                     "tests/test_ecsg_k1_fms_faults.c": {"elpis/fms_pal_posix.h"},
                     "tests/test_ecsg_k1_fms_alloc.c": {"elpis/fms_pal_posix.h"},
                     "tests/test_ecsg_k1_performance.c": {"elpis/fms_pal_posix.h"},
+                    # ECS memory and the composite retained state (docs/ECS_MEMORY.md, docs/ECS_COMPOSITE_STATE.md):
+                    # SHA-256 identities and the deterministic code derivation; nothing else outside ECS.
+                    "src/ecs_memory.c": {"elpis/sha256.h"},
+                    "src/ecs_composite.c": {"elpis/sha256.h"},
+                    "tests/ecs_memory_test_util.h": {"elpis/sha256.h"},
+                    "tests/test_ecs_composite.c": {"elpis/sha256.h"},
                 }
-                if not inc.startswith("elpis/ecsg_") and inc not in allowed.get(relative, set()):
+                own = inc.startswith("elpis/ecsg_") or inc in ("elpis/ecs_memory.h", "elpis/ecs_composite.h")
+                own = own or (relative.startswith("tests/test_ecs_memory") and inc == "ecs_memory_test_util.h")
+                if not own and inc not in allowed.get(relative, set()):
                     out.append(f"{path.relative_to(root)}: includes {inc}")
     return out
 

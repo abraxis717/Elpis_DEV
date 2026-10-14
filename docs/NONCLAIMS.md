@@ -273,8 +273,18 @@ are not evidence that the contract has any effect.
 * `research/ecs_memory_mf_r0` (ECS Memory MF-R0, the successor of the PR #47 model-free memory) is
   RESEARCH_ONLY with NO_RUNTIME_AUTHORITY (`docs/research/ECS_MEMORY_MF_R0.md`). It is not part of the one ECS,
   continuity does not bind its state (a memory transition leaves the K1 digest unchanged, tested), and no
-  composite retained state, checkpoint owner or LEARN authority exists for it. Its preregistered QUAL passed
+  composite retained state, checkpoint owner or LEARN authority exists for it (its canonical relocation is the
+  next item). Its preregistered QUAL passed
   H1 (state-borne acquisition), H2 (updating), H3 (partial-cue completion, classified as algebraic completion
   by fixed encoding geometry) and H5 (consolidation of recurrent relations), and failed H4: byte-matched exact
   keyed storage retains more under interference. Codes are fixed SHA-256 derivations: no semantics, learned
   similarity or generalization to unseen entities is claimed.
+* The canonical ECS memory and the composite retained state (`docs/ECS_MEMORY.md`,
+  `docs/ECS_COMPOSITE_STATE.md`) are **mechanical** integration. OBSERVE and LOOKUP are exact storage of typed
+  structural evidence, not truth, meaning or learning; LEARN and the FAST channel are UNQUALIFIED (refused unless a
+  host admits the recurrent capability; RuntimeCore never exposes them); the MF-R0 consolidation law is not
+  canonical at all, and the frozen H4 NONPASS stands. A composite identity is durable authority only when
+  continuity names it after RuntimeCore's checkpoint -> commit -> publication; a composite snapshot round trip by
+  itself is not crash-consistent recovery, and FMS residency of an envelope is not checkpoint publication.
+  The Python runtime composition (codec, `Runtime.run_learn`) does not drive composite lineages, so canonical
+  cognitive integration of the memory into the managed turn of the full runtime is **not** complete.

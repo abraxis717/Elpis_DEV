@@ -371,6 +371,10 @@ a Rust test harness that preloads the ASan runtime. The next head (run 205) pass
 H-ECS R1 sources. Per `docs/CI_POLICY.md` rule 3 this is classified NONDETERMINISTIC / ENVIRONMENT-SENSITIVE and
 recorded here; it was not re-run to obtain green.
 
+It recurred after the merge: post-merge run 215 (`91516e5`, run id 38451028810) failed the same job in
+`research.hecs_r0_mechanics` (SIGSEGV with no sanitizer report, after three tests had passed). The investigation,
+classification, repair and its limits are recorded in `docs/CI_INCIDENTS.md` (incident CI-HECS-ASAN-1).
+
 ## Non-claims
 
 No semantics, language, meaning or understanding; no learned similarity or generalization to unseen

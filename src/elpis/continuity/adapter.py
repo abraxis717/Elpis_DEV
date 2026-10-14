@@ -68,7 +68,8 @@ class _Evolution(C.Structure):
 
 
 class _Snapshot(C.Structure):
-    _fields_ = [("generation", C.c_uint64), ("anchored", C.c_uint8), ("reserved", C.c_uint8 * 7),
+    _fields_ = [("generation", C.c_uint64), ("anchored", C.c_uint8), ("state_format", C.c_uint8),
+                ("reserved", C.c_uint8 * 6),
                 ("k1_state_digest", C.c_uint8 * 32), ("evolution", _Evolution),
                 ("evolution_digest", C.c_uint8 * 32), ("record_digest", C.c_uint8 * 32)]
 
@@ -109,10 +110,14 @@ def _snapshot_arg(value):
     if (type(value) is not ContinuitySnapshot or evolution is None or k1_arg is None
             or type(generation) is not int or not 0 <= generation <= _U64):
         return None
-    return _Snapshot(generation, int(k1 is not None), (C.c_uint8 * 7)(), k1_arg, evolution)
+    return _Snapshot(generation, int(k1 is not None), 0, (C.c_uint8 * 6)(), k1_arg, evolution)
 
 
 def _from_c(s: _Snapshot) -> ContinuitySnapshot:
+    if s.state_format != 0:
+        # An ECS composite lineage (ELPISEC1, a v3 record): this adapter binds K1 lineages only, and a composite
+        # identity is never a K1 retained-state digest. Fail closed instead of misreading it.
+        raise ContinuityError("CONTINUITY_STATE_MISMATCH", "a composite (ELPISEC1) lineage is not a K1 lineage")
     e = s.evolution
     authority = EvolutionAuthority(e.revision, bytes(e.head).hex(),
                                    bytes(e.assertion).hex() if e.pending else None,

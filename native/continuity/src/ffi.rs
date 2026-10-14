@@ -16,7 +16,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 
 use crate::error::Code;
-use crate::record::{Cognition, Digest, EvolutionState, Snapshot, RECORD_SIZE, ZERO};
+use crate::record::{Cognition, Digest, EvolutionState, Snapshot, StateFormat, RECORD_SIZE, ZERO};
 use crate::store::Store;
 
 pub const ABI_VERSION: u32 = 1;
@@ -36,7 +36,9 @@ pub struct CEvolution {
 pub struct CSnapshot {
     pub generation: u64,
     pub anchored: u8,
-    pub reserved: [u8; 7],
+    /// `StateFormat` of the anchored digest: 0 K1 (`ELPISGK1`), 1 composite (`ELPISEC1`).
+    pub state_format: u8,
+    pub reserved: [u8; 6],
     pub k1_state_digest: Digest,
     pub evolution: CEvolution,
     pub evolution_digest: Digest,
@@ -75,7 +77,8 @@ pub fn to_c(s: &Snapshot) -> CSnapshot {
     CSnapshot {
         generation: s.generation(),
         anchored,
-        reserved: [0; 7],
+        state_format: s.format() as u8,
+        reserved: [0; 6],
         k1_state_digest: k1,
         evolution: to_c_evolution(&s.evolution()),
         evolution_digest: s.evolution().digest(),
@@ -97,15 +100,24 @@ pub fn from_c_evolution(e: &CEvolution) -> Result<EvolutionState, Code> {
 }
 
 fn from_c(s: &CSnapshot) -> Result<Snapshot, Code> {
-    if s.reserved != [0; 7] {
+    if s.reserved != [0; 6] {
         return Err(Code::Corrupt);
     }
+    let format = format_arg(u32::from(s.state_format)).ok_or(Code::Corrupt)?;
     let cognition = match s.anchored {
         0 if s.k1_state_digest == ZERO => Cognition::Unanchored,
         1 => Cognition::Anchored(s.k1_state_digest),
         _ => return Err(Code::Corrupt),
     };
-    Snapshot::new(s.generation, cognition, from_c_evolution(&s.evolution)?)
+    Snapshot::with_format(s.generation, cognition, format, from_c_evolution(&s.evolution)?)
+}
+
+fn format_arg(v: u32) -> Option<StateFormat> {
+    match v {
+        0 => Some(StateFormat::K1),
+        1 => Some(StateFormat::Composite),
+        _ => None,
+    }
 }
 
 unsafe fn digest_arg<'a>(p: *const u8) -> Option<&'a Digest> {
@@ -274,6 +286,52 @@ pub unsafe extern "C" fn elpis_continuity_commit_cognition(
 ) -> i32 {
     rc(store(s)
         .and_then(|s| s.commit_cognition(digest_arg(before), digest_arg(after)))
+        .map(|snap| write_out(out, &snap)))
+}
+
+/// Anchor the first lineage at an identity of `state_format` (0 K1, 1 composite; anything else `INVALID`).
+#[no_mangle]
+pub unsafe extern "C" fn elpis_continuity_anchor_cognition_as(
+    s: *mut ElpisContinuityStore,
+    state_format: u32,
+    digest: *const u8,
+    out: *mut CSnapshot,
+) -> i32 {
+    let format = match format_arg(state_format) {
+        Some(f) => f,
+        None => return Code::Invalid as i32,
+    };
+    rc(store(s).and_then(|s| s.anchor_cognition_as(format, digest_arg(digest))).map(|snap| write_out(out, &snap)))
+}
+
+/// `commit_cognition` by a committer of `state_format`: another format than the lineage's is `STATE_MISMATCH`.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_continuity_commit_cognition_as(
+    s: *mut ElpisContinuityStore,
+    state_format: u32,
+    before: *const u8,
+    after: *const u8,
+    out: *mut CSnapshot,
+) -> i32 {
+    let format = match format_arg(state_format) {
+        Some(f) => f,
+        None => return Code::Invalid as i32,
+    };
+    rc(store(s)
+        .and_then(|s| s.commit_cognition_as(format, digest_arg(before), digest_arg(after)))
+        .map(|snap| write_out(out, &snap)))
+}
+
+/// LEGACY: K1 lineage anchored at exactly `k1` -> composite identity `composite` (explicit, authority-checked).
+#[no_mangle]
+pub unsafe extern "C" fn elpis_continuity_import_cognition(
+    s: *mut ElpisContinuityStore,
+    k1: *const u8,
+    composite: *const u8,
+    out: *mut CSnapshot,
+) -> i32 {
+    rc(store(s)
+        .and_then(|s| s.import_cognition(digest_arg(k1), digest_arg(composite)))
         .map(|snap| write_out(out, &snap)))
 }
 
