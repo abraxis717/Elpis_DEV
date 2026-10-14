@@ -132,12 +132,20 @@ are not evidence that the contract has any effect.
   the rename and directory-`fsync` ordering at initialization. A torn sector
   is detected by the checksum and resolves to the other slot; stronger
   power-failure atomicity is not claimed.
-* **No rollback, no synthesis.** If publication fails after a native K1
-  commit, the K1 commit stands and the runtime fail-stops with the
-  publication code. Restart verifies the supplied K1 state against the
-  durable identity and refuses a mismatch before any mutation. No missing
-  turn is replayed or synthesized; recovering from a mismatch is an explicit
-  operator decision outside the runtime.
+* **No rollback, no synthesis.** A native K1 commit is volatile and stands; a
+  failed durable publication changes nothing durable (or, uncertain, faults
+  the durability lane until reopen) and never rolls the live state back.
+  Restart verifies the supplied K1 state against the durable identity and
+  refuses a mismatch before any mutation. No missing turn is replayed or
+  synthesized; recovering from a mismatch is an explicit operator decision
+  outside the runtime.
+* **Volatile work is volatile.** Ordinary inference and managed LEARNs do not
+  wait for durability, so a crash loses every transition since the last
+  acknowledged durable publication. Nothing claims otherwise: results report
+  `durability == "VOLATILE"`, and only an `ACKNOWLEDGED` ticket (recoverable
+  when a checkpoint slot holds it) means restart can resume that state. The
+  acknowledgment's durability is POSIX `fdatasync` on the store's filesystem;
+  a process kill keeps written-but-unsynced bytes, a power loss may not.
 * **Single process, single owner.** A directory `flock` excludes a second
   owner on the same host. There is no cross-process transport, federation,
   replication or shared-reader semantics. One open runtime owns one K1
@@ -174,7 +182,19 @@ are not evidence that the contract has any effect.
   authority without an explicit operator adopt. No media durability beyond
   `fdatasync`, and no protection against a disk returning stale, checksum-valid
   data in both slots, is claimed. Checkpointing adds one envelope write and
-  sync to every LEARN when configured.
+  sync to every explicit durable publication when configured (no longer to
+  every LEARN: RuntimeCore ABI v4).
+* **The contextual lane is mechanics, not cognition.** `elpis.runtime.context`
+  proves ownership, bounded handoff and isolation of an active context: it
+  implements no contextual dynamics law (Hypergraph Cellular Automata are an
+  unqualified candidate), infers no relation, encodes no view into the K1
+  stimulus and makes no semantic claim from retrieval similarity,
+  co-occurrence or interaction. Its tests use synthetic references and the
+  deterministic hash-derived fixture embedding, which is not evidence of
+  semantic retrieval. It is session-local and never persisted.
+* **HOT-lane performance figures are descriptive.** Before/after timings of the
+  volatile turn and the query are single-host observations, not a performance
+  qualification and not evidence of model-level inference throughput.
 
 ## Evolution (`elpis.evolution`)
 

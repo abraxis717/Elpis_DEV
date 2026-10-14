@@ -100,14 +100,20 @@ format-aware (C ABI and laws in `docs/RUNTIME_CORE.md`, "Composite substrates"):
 2. **Checkpoint (K1 Recovery R0)** holds the complete `ELPISEC1` envelope in a store provisioned for its size
    (`docs/K1_RECOVERY_R0.md`, "Composite envelopes"). Slots are evidence; they never authorize themselves.
 3. **RuntimeCore** is the one mutation owner: it holds the composite's lease, so every unmanaged mutation is
-   refused `LEASED`; the memory changes only through `turn_observe` inside a managed turn, whose candidate
-   envelope is checkpointed before the native commit and published after it. A memory transition is therefore
-   durably authoritative under exactly K1's discipline, and never otherwise.
+   refused `LEASED`; the memory changes only through `turn_observe` inside a managed turn, whose native commit is
+   volatile (RuntimeCore ABI v4: the live coordinate advances; nothing is checkpointed or published). It becomes
+   durable only through an explicit durable publication: the composite is captured under the lease
+   (`elpis_ecs_composite_leased_capture`: the K1 component unsealed, the memory component sealed by its own
+   format), sealed by the pure `elpis_ecs_composite_envelope_seal`, checkpointed, then published. A memory
+   transition is therefore durably authoritative under exactly K1's discipline, and never otherwise. (Through ABI
+   v3 every turn's candidate envelope was checkpointed before the native commit and published after it; that
+   per-turn durability is superseded.)
 4. **Recovery**: restart reads continuity's identity, the checkpoint returns the matching envelope,
    `elpis_ecs_composite_restore` rebuilds the state exactly, and binding verifies its identity against
-   continuity before anything is built on it. An interrupted turn leaves an unresolved candidate slot that the
-   operator discards (never committed) or adopts (committed, not published): a transition is either absent or
-   present once, never duplicated (tested with process death at both points).
+   continuity before anything is built on it. An interrupted durable publication leaves an unresolved candidate
+   slot that the operator discards (resume the acknowledged state) or adopts (the captured state): a transition is
+   either absent or present once, never duplicated (tested with process death after the slot sync and with the
+   continuity record torn). Volatile transitions since the last acknowledgment are lost by a crash.
 
 What this does **not** claim: that RuntimeCore admits memory LEARN or CONSOLIDATE (it does not; unqualified), that
 any memory operation has scientific qualification, or that the Python runtime composition drives composite

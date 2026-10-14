@@ -8,7 +8,10 @@ The ECS memory is the bounded, model-free typed relational memory of the one ECS
 prefix (`elpis_ecs_mem_*`, `ELPIS_ECS_MEM_*`), capability gating, and **without the MF-R0 CONSOLIDATE (slow-bank)
 law**. It is a **component** of the ECS retained
 state, never an authority of its own: durable authority over it exists only through the composite retained state
-(`docs/ECS_COMPOSITE_STATE.md`).
+(`docs/ECS_COMPOSITE_STATE.md`). A managed turn that observes it commits volatile (RuntimeCore ABI v4); the memory
+becomes durable only with an explicit durable publication of the composite. It is not the contextual (WARM) lane's
+active context (`elpis.runtime.context`), which is session-local, never persisted and holds references, not memory
+slots.
 
 ## Relation to the research mechanism
 
@@ -81,8 +84,9 @@ composition layer may use both. Structure stays the owner of identity and valida
 structure's validators and identity functions and refuses anything whose stored identity is not the recomputed
 one. Provenance (first and last), authority, polarity (supplied by the caller; HACF does not define it),
 uncertainty (`UNCERTAIN` observations are counted, never learned from) and the exact hyperedge identity are
-preserved; `test_runtime_composite` carries an asserted-and-negated hyperedge through a managed turn and recovers
-the byte-identical hyperedge from the committed memory, whose LOOKUP then reports the conflict instead of an answer.
+preserved; `test_runtime_composite` carries an asserted-and-negated hyperedge through a managed turn (committed
+volatile, then published durably) and recovers the byte-identical hyperedge from the committed memory, whose LOOKUP
+then reports the conflict instead of an answer.
 Mapping or observing never makes a record true, authorized or learned.
 
 ## Resources

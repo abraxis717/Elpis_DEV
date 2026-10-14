@@ -18,10 +18,40 @@ space and Elpis's internal computational substrate.
 
 There is one ECS (`elpis.ECS`, `native/ECS`). Continuity is not an ECS and not
 a history: it is a fixed-size, crash-safe register holding only the current
-durable authority the runtime must verify (the committed K1 state digest and
-the evolution authority head). It has no entities, mailboxes, schedulers,
-projections, topology, event log, compaction or retention
-(`docs/CONTINUITY.md`).
+durable authority the runtime must verify (the last explicitly acknowledged K1
+state digest and the evolution authority head). It has no entities, mailboxes,
+schedulers, projections, topology, event log, compaction or retention
+(`docs/CONTINUITY.md`). It does not decide when Elpis may think.
+
+## Execution lanes (architectural correction, Elpis_DEV)
+
+Active computation is decoupled from durable bookkeeping. Each responsibility
+has its own lane and its own coordinate:
+
+* the **geometric (HOT) lane** computes: QUERY and LEARN on the live ECS
+  state, under RuntimeCore's managed lease, at the state's live coordinate
+  (its K1 generation). A managed commit is volatile: no filesystem write or
+  sync, no continuity publication, no checkpoint, no digest, and no wait for
+  any other lane;
+* the **contextual (WARM) lane** maintains the active relational context: a
+  bounded, session-local set of provenance-bearing axioms and typed relations
+  built from admitted HACF references, published as immutable versioned views
+  the HOT lane consumes without waiting (`elpis.runtime.context`). It is not a
+  text window, a history or a persistence system, and no contextual dynamics
+  law (HCA) is qualified or implemented;
+* **HACF addresses** existing resources and their relationships in place;
+  **FMS materializes** bounded resources;
+* the **durability lane preserves explicitly acknowledged state**: on an
+  explicit request it checkpoints and publishes a captured state off the HOT
+  lane, and acknowledges only what restart can recover.
+
+The live state, the published context view, the last durably acknowledged
+state and the reserved irreversible operations (evolution) are four separate
+coordinates. **Superseded:** through RuntimeCore ABI v3 the runtime published
+continuity (and, with a checkpoint store, a complete checkpoint) after every
+native K1 commit, before the turn returned. That per-turn durability
+requirement is withdrawn by this correction; evidence recorded under it is
+not reinterpreted.
 
 ## The topology
 
@@ -88,11 +118,11 @@ remain in public history as evidence and are removed from the canonical path.
 | Subsystem | Role | Must not |
 |---|---|---|
 | ECS (ECS/EDEN-facing geometric substrate) | owns active microscopic dynamical state (`W`), its qualified recurrence, coarse observables (`S3`) and snapshots; a qualified primitive of the cognitive substrate | import inference, codec, runtime or continuity; be an auxiliary conditioning vector for a model |
-| continuity (`native/continuity`, Rust behind a C ABI; `elpis.continuity` adapter) | the current durable runtime lineage/authority: one fixed-size two-slot register binding the committed K1 state digest and the evolution authority (revision, head); fail-closed restart verification | hold or substitute for active cognitive state; keep history, events, entities, schedules, projections or topology; depend on ECS, K1 execution, runtime or inference |
+| continuity (`native/continuity`, Rust behind a C ABI; `elpis.continuity` adapter) | the current durable runtime lineage/authority: one fixed-size two-slot register binding the last explicitly acknowledged K1 state digest and the evolution authority (revision, head); fail-closed restart verification | hold or substitute for active cognitive state; keep history, events, entities, schedules, projections or topology; supervise or gate foreground cognition; depend on ECS, K1 execution, runtime or inference |
 | DSV4 codec (`elpis.inference` codec modules) | communication: text/bytes <-> tokens, vocabulary identity, bounded rendering; the token side of encode/decode | own ECS state; run an autonomous transformer/MoE cognition path |
 | substrate / FMS | generic resource authority, residency and materialization: persistent logical capacity >= resident materialization >= active materialization | require DSV-specific tensor roles in its generic core; decide semantics |
 | structure / HACF | persistent structural memory, topology, representation, provenance | be defined solely as a context-window supplier for a model |
-| runtime | orchestrates codec -> ECS -> codec and, after each native K1 commit, publishes the new K1 state digest to continuity (one 176-byte slot write and one fdatasync) | route cognition through a DSV model; record per-turn receipts or event history |
+| runtime | orchestrates codec -> ECS -> codec on the HOT lane (a managed commit is volatile: it advances the live coordinate only); on explicit request, its durability lane captures the live state and publishes it (checkpoint slot when provisioned, then one 176-byte continuity record and one fdatasync); its contextual lane keeps the bounded active context | route cognition through a DSV model; record per-turn receipts or event history; make a HOT operation wait for durable publication or for the contextual lane |
 
 ## Classification of existing machinery
 
