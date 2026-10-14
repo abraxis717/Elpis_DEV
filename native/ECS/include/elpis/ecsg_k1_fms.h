@@ -147,6 +147,23 @@ int elpis_ecsg_k1_fms_leased_txn_run_schedule(elpis_ecsg_k1_fms *runtime, uint64
                                               double learning_rate, double *s3_out, size_t s3_count,
                                               elpis_ecsg_k1_schedule_result *result);
 
+/* The live coordinate of ecsg_k1.h ("Live coordinate") on a resident state, for the lease holder: leased_query,
+ * leased_identity and leased_capture under a READ pin (read-only; nothing dirtied), leased_txn_begin_at and
+ * leased_txn_commit under the transaction's WRITE pin, with the refusal contract of their leased_txn_begin and
+ * leased_txn_commit_identity counterparts. No digest is computed except by leased_identity. envelope_seal is K1's
+ * (pure). Additive: no existing entry point changes. */
+int elpis_ecsg_k1_fms_leased_query(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease, size_t dim, const double *x,
+                                   size_t rows, double *out, uint64_t *generation);
+int elpis_ecsg_k1_fms_leased_identity(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease,
+                                      uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES], uint64_t *generation);
+int elpis_ecsg_k1_fms_leased_txn_begin_at(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease,
+                                          uint64_t *source_generation, uint64_t *token);
+int elpis_ecsg_k1_fms_leased_txn_commit(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease, uint64_t token,
+                                        elpis_ecsg_k1_transition *transition);
+int elpis_ecsg_k1_fms_leased_capture(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease, uint8_t *out, size_t size,
+                                     uint64_t *generation);
+int elpis_ecsg_k1_fms_envelope_seal(uint8_t *envelope, size_t size);
+
 /* The experience schedule of ecsg_k1.h on the resident candidate, under the transaction's WRITE pin: one call learns
  * and consolidates every experience natively and returns S3 of the final candidate W. Same validation and refusal
  * contract as elpis_ecsg_k1_txn_run_schedule; a discarding refusal releases the pin. */

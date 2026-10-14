@@ -23,6 +23,7 @@ struct elpis_ecs_composite {
     elpis_ecs_mem *candidate;         /* the transaction's memory candidate (valid while candidate_ready) */
     uint8_t *staging;                 /* envelope_bytes: the commit's identity and the candidate copy */
     uint8_t identity[32], k1_identity[32], memory_identity[32];
+    uint64_t k1_generation;           /* the private K1 state's generation as of the committed state (live coordinate) */
     int poisoned;                     /* an internal invariant failed: every call refuses CORRUPT */
     /* The open transaction (one at most). */
     int txn_open, candidate_ready;
@@ -259,6 +260,7 @@ static elpis_ecs_composite_status settle(elpis_ecs_composite *c) {
     memcpy(c->identity, c->staging + c->envelope_bytes - 32, 32);
     memcpy(c->k1_identity, c->staging + 48, 32);
     memcpy(c->memory_identity, c->staging + 80, 32);
+    c->k1_generation = elpis_ecsg_k1_generation(c->k1);
     return ELPIS_ECS_COMPOSITE_OK;
 }
 
@@ -653,8 +655,11 @@ elpis_ecs_composite_status elpis_ecs_composite_txn_snapshot_write(elpis_ecs_comp
     return leave_with(c, s);
 }
 
-static elpis_ecs_composite_status commit(elpis_ecs_composite *c, uint64_t lease, uint64_t token,
-                                         elpis_ecs_composite_commit *out) {
+/* The commit. With `k1_digests` the private K1 commit reports its digests and they must name exactly the K1 state the
+ * composite identity binds; without, the digest-free K1 commit (live coordinate) reports its generations and they
+ * must continue the cached generation. Either way the composite identity is assembled before anything commits. */
+static elpis_ecs_composite_status commit_as(elpis_ecs_composite *c, uint64_t lease, uint64_t token,
+                                            elpis_ecs_composite_commit *out, int k1_digests) {
     elpis_ecs_composite_status s = enter_txn(c, lease, token);
     if (s != ELPIS_ECS_COMPOSITE_OK) return s;
     const elpis_ecs_mem *memory = c->candidate_ready ? c->candidate : c->memory;
@@ -664,7 +669,9 @@ static elpis_ecs_composite_status commit(elpis_ecs_composite *c, uint64_t lease,
         return leave_with(c, s);
     }
     elpis_ecsg_k1_commit_identity k1;
-    s = from_k1(elpis_ecsg_k1_leased_txn_commit_identity(c->k1, K1_LEASE, c->k1_token, &k1));
+    memset(&k1, 0, sizeof(k1));
+    s = from_k1(k1_digests ? elpis_ecsg_k1_leased_txn_commit_identity(c->k1, K1_LEASE, c->k1_token, &k1)
+                           : elpis_ecsg_k1_leased_txn_commit(c->k1, K1_LEASE, c->k1_token, &k1.transition));
     if (s != ELPIS_ECS_COMPOSITE_OK) {
         if (s == ELPIS_ECS_COMPOSITE_STALE) close_txn(c); /* K1 discarded it; other refusals leave it open */
         return leave_with(c, s);
@@ -688,11 +695,20 @@ static elpis_ecs_composite_status commit(elpis_ecs_composite *c, uint64_t lease,
     memcpy(out->k1_after, c->k1_identity, 32);
     memcpy(out->memory_after, c->memory_identity, 32);
     /* K1's own report must name exactly the K1 state the identity binds (K1 is private: never otherwise). */
-    if (memcmp(k1.state_after_digest, c->k1_identity, 32) || memcmp(k1.state_before_digest, out->k1_before, 32))
+    if (k1_digests ? (memcmp(k1.state_after_digest, c->k1_identity, 32) ||
+                      memcmp(k1.state_before_digest, out->k1_before, 32))
+                   : (k1.transition.generation_before != c->k1_generation ||
+                      k1.transition.generation_after != c->k1_generation + 1u))
         c->poisoned = 1;
+    c->k1_generation = k1.transition.generation_after;
     close_txn(c);
     c->commits++;
     return leave_with(c, c->poisoned ? ELPIS_ECS_COMPOSITE_CORRUPT : ELPIS_ECS_COMPOSITE_OK);
+}
+
+static elpis_ecs_composite_status commit(elpis_ecs_composite *c, uint64_t lease, uint64_t token,
+                                         elpis_ecs_composite_commit *out) {
+    return commit_as(c, lease, token, out, 1);
 }
 
 elpis_ecs_composite_status elpis_ecs_composite_leased_txn_commit(elpis_ecs_composite *c, uint64_t lease, uint64_t token,
@@ -713,6 +729,139 @@ elpis_ecs_composite_status elpis_ecs_composite_leased_txn_commit_identity(elpis_
         memcpy(out->state_after_digest, full.after, 32);
     }
     return s;
+}
+
+/* ---- live coordinate (ecs_composite.h, "Live coordinate") ---------------------------------------------------- */
+
+elpis_ecs_composite_status elpis_ecs_composite_leased_query(elpis_ecs_composite *c, uint64_t lease, size_t dim,
+                                                            const double *x, size_t rows, double *out,
+                                                            uint64_t *generation) {
+    if (!c || !generation || !lease) return ELPIS_ECS_COMPOSITE_INVALID;
+    if (!enter_read(c)) return ELPIS_ECS_COMPOSITE_BUSY;
+    elpis_ecs_composite_status s = ELPIS_ECS_COMPOSITE_CORRUPT;
+    if (!c->poisoned) {
+        if (atomic_load(&c->lease) != lease) s = ELPIS_ECS_COMPOSITE_LEASED;
+        else {
+            uint64_t g = 0;
+            s = from_k1(elpis_ecsg_k1_leased_query(c->k1, K1_LEASE, dim, x, rows, out, &g));
+            if (s == ELPIS_ECS_COMPOSITE_OK) {
+                if (g != c->k1_generation) s = ELPIS_ECS_COMPOSITE_CORRUPT; /* K1 is private: never */
+                else *generation = g;
+            }
+        }
+    }
+    leave_read(c);
+    return s;
+}
+
+elpis_ecs_composite_status elpis_ecs_composite_leased_identity(elpis_ecs_composite *c, uint64_t lease,
+                                                               uint8_t digest[32], uint64_t *generation) {
+    if (!c || !digest || !generation || !lease) return ELPIS_ECS_COMPOSITE_INVALID;
+    if (!enter_read(c)) return ELPIS_ECS_COMPOSITE_BUSY;
+    elpis_ecs_composite_status s = ELPIS_ECS_COMPOSITE_CORRUPT;
+    if (!c->poisoned) {
+        if (atomic_load(&c->lease) != lease) s = ELPIS_ECS_COMPOSITE_LEASED;
+        else if (elpis_ecsg_k1_generation(c->k1) != c->k1_generation) s = ELPIS_ECS_COMPOSITE_CORRUPT;
+        else {
+            memcpy(digest, c->identity, 32);
+            *generation = c->k1_generation;
+            s = ELPIS_ECS_COMPOSITE_OK;
+        }
+    }
+    leave_read(c);
+    return s;
+}
+
+elpis_ecs_composite_status elpis_ecs_composite_leased_txn_begin_at(elpis_ecs_composite *c, uint64_t lease,
+                                                                   uint64_t *source_generation, uint64_t *token) {
+    if (!c || !source_generation || !token) return ELPIS_ECS_COMPOSITE_INVALID;
+    elpis_ecs_composite_status s = enter_mutation(c, lease);
+    if (s != ELPIS_ECS_COMPOSITE_OK) return s;
+    if (c->txn_open) return leave_with(c, ELPIS_ECS_COMPOSITE_BUSY);
+    uint64_t g = 0, k1_token = 0;
+    s = from_k1(elpis_ecsg_k1_leased_txn_begin_at(c->k1, K1_LEASE, &g, &k1_token));
+    if (s != ELPIS_ECS_COMPOSITE_OK) return leave_with(c, s);
+    if (g != c->k1_generation) { /* K1 is private: its state cannot have moved */
+        (void)elpis_ecsg_k1_txn_abort(c->k1, k1_token);
+        c->poisoned = 1;
+        return leave_with(c, ELPIS_ECS_COMPOSITE_CORRUPT);
+    }
+    c->txn_open = 1;
+    c->candidate_ready = 0;
+    c->k1_token = k1_token;
+    c->token = c->next_token++;
+    if (!c->next_token) c->next_token = 1;
+    *source_generation = g;
+    *token = c->token;
+    return leave_with(c, ELPIS_ECS_COMPOSITE_OK);
+}
+
+elpis_ecs_composite_status elpis_ecs_composite_leased_txn_commit_at(elpis_ecs_composite *c, uint64_t lease,
+                                                                    uint64_t token,
+                                                                    elpis_ecsg_k1_transition *transition) {
+    if (!c || !transition) return ELPIS_ECS_COMPOSITE_INVALID;
+    elpis_ecs_composite_commit full;
+    const elpis_ecs_composite_status s = commit_as(c, lease, token, &full, 0);
+    if (s == ELPIS_ECS_COMPOSITE_OK) *transition = full.k1;
+    return s;
+}
+
+elpis_ecs_composite_status elpis_ecs_composite_leased_capture(elpis_ecs_composite *c, uint64_t lease, uint8_t *out,
+                                                              size_t size, uint64_t *generation) {
+    if (!c || !out || !generation || !lease) return ELPIS_ECS_COMPOSITE_INVALID;
+    if (size < c->envelope_bytes) return ELPIS_ECS_COMPOSITE_CAPACITY;
+    if (!enter_read(c)) return ELPIS_ECS_COMPOSITE_BUSY;
+    elpis_ecs_composite_status s = ELPIS_ECS_COMPOSITE_CORRUPT;
+    if (!c->poisoned) {
+        if (atomic_load(&c->lease) != lease) s = ELPIS_ECS_COMPOSITE_LEASED;
+        else {
+            uint8_t *k1 = out + ELPIS_ECS_COMPOSITE_HEADER_BYTES;
+            uint8_t *mem = k1 + c->k1_bytes;
+            uint64_t g = 0;
+            size_t written = 0;
+            s = from_k1(elpis_ecsg_k1_leased_capture(c->k1, K1_LEASE, k1, c->k1_bytes, &g));
+            if (s == ELPIS_ECS_COMPOSITE_OK && g != c->k1_generation) s = ELPIS_ECS_COMPOSITE_CORRUPT;
+            if (s == ELPIS_ECS_COMPOSITE_OK) {
+                const elpis_ecs_mem_status ms = elpis_ecs_mem_snapshot(c->memory, mem, c->memory_capacity, &written);
+                if (ms != ELPIS_ECS_MEM_OK) s = from_memory(ms);
+            }
+            if (s == ELPIS_ECS_COMPOSITE_OK) {
+                memset(mem + written, 0, c->memory_capacity - written);
+                memset(out, 0, ELPIS_ECS_COMPOSITE_HEADER_BYTES);
+                memcpy(out, MAGIC, 8);
+                wr32(out + 8, ELPIS_ECS_COMPOSITE_FORMAT_VERSION);
+                wr64(out + 16, c->k1_bytes);
+                wr64(out + 24, c->memory_capacity);
+                wr64(out + 32, written);
+                memcpy(out + 80, mem + written - 32, 32);
+                memset(out + c->envelope_bytes - 32, 0, 32); /* unsealed: the K1 trailer, out + 48 and this */
+                *generation = g;
+            }
+        }
+    }
+    leave_read(c);
+    return s;
+}
+
+elpis_ecs_composite_status elpis_ecs_composite_envelope_seal(uint8_t *e, size_t length) {
+    if (!e || length < ELPIS_ECS_COMPOSITE_HEADER_BYTES + 2u * ELPIS_ECS_COMPOSITE_DIGEST_BYTES)
+        return ELPIS_ECS_COMPOSITE_INVALID;
+    if (memcmp(e, MAGIC, 8) || rd32(e + 8) != ELPIS_ECS_COMPOSITE_FORMAT_VERSION || rd32(e + 12) != 0 ||
+        rd64(e + 40) != 0 || !is_zero(e + 112, 16))
+        return ELPIS_ECS_COMPOSITE_INVALID;
+    const uint64_t k1 = rd64(e + 16), cap = rd64(e + 24), mem = rd64(e + 32);
+    if (k1 < ELPIS_ECSG_K1_HEADER_BYTES + ELPIS_ECSG_K1_DIGEST_BYTES || k1 > length ||
+        cap > ELPIS_ECS_COMPOSITE_MAX_MEMORY_BYTES || mem > cap ||
+        mem < (uint64_t)ELPIS_ECS_MEM_HEADER_BYTES + ELPIS_ECS_MEM_DIGEST_BYTES ||
+        (uint64_t)ELPIS_ECS_COMPOSITE_HEADER_BYTES + k1 + cap + ELPIS_ECS_COMPOSITE_DIGEST_BYTES != (uint64_t)length)
+        return ELPIS_ECS_COMPOSITE_INVALID;
+    uint8_t *k1p = e + ELPIS_ECS_COMPOSITE_HEADER_BYTES, *memp = k1p + k1;
+    if (memcmp(e + 80, memp + mem - 32, 32) || !is_zero(memp + mem, (size_t)(cap - mem)))
+        return ELPIS_ECS_COMPOSITE_INVALID;
+    if (elpis_ecsg_k1_envelope_seal(k1p, (size_t)k1) != ELPIS_ECSG_K1_OK) return ELPIS_ECS_COMPOSITE_INVALID;
+    memcpy(e + 48, k1p + k1 - 32, 32);
+    elpis_sha256(e, length - 32, e + length - 32);
+    return ELPIS_ECS_COMPOSITE_OK;
 }
 
 elpis_ecs_composite_status elpis_ecs_composite_txn_abort(elpis_ecs_composite *c, uint64_t token) {

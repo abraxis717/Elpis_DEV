@@ -629,6 +629,66 @@ static void test_managed_lease_resident(void)
     free(after);
 }
 
+/* The live coordinate over the resident bytes (ecsg_k1.h, "Live coordinate"): the holder's generation-bound query,
+ * identity, capture, begin and commit equal the standalone law; no pin is left behind; another lease is refused
+ * before a pin could dirty the resident state. */
+static void test_live_coordinate_resident(void)
+{
+    elpis_ecsg_k1_fms *r = runtime_with(NULL, "k1-live", (uint64_t)IMAGE * 8u, 2);
+    uint64_t id = state(r, 11), tok = 0, g = 77, g2 = 77;
+    uint8_t *sealed = malloc(ENVELOPE), *captured = malloc(ENVELOPE), digest[32];
+    elpis_ecsg_k1 *twin = NULL;
+    elpis_ecsg_k1_fms_info info;
+    elpis_ecsg_k1_transition t;
+    const elpis_ecsg_k1_experience sched[1] = {{R / 2, 2}};
+    double s3[83], out[R], direct[R];
+    const uint64_t L = 0xdef, M = 0x123;
+    assert(sealed && captured);
+    OK(elpis_ecsg_k1_create(D, N, R, W0, &twin));
+    assert(elpis_ecsg_k1_fms_leased_query(r, id, L, D, X2, R, out, &g) == ELPIS_ECSG_K1_LEASED && g == 77);
+    OK(elpis_ecsg_k1_fms_lease_claim(r, id, L));
+    assert(elpis_ecsg_k1_fms_leased_query(r, id, M, D, X2, R, out, &g) == ELPIS_ECSG_K1_LEASED && g == 77);
+    assert(elpis_ecsg_k1_fms_leased_identity(r, id, M, digest, &g) == ELPIS_ECSG_K1_LEASED && g == 77);
+    assert(elpis_ecsg_k1_fms_leased_capture(r, id, M, captured, ENVELOPE, &g) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_fms_leased_txn_begin_at(r, id, M, &g, &tok) == ELPIS_ECSG_K1_LEASED && g == 77);
+    OK(elpis_ecsg_k1_fms_inspect(r, id, &info));
+    assert(info.lease_count == 0u && info.transaction_open == 0u);
+    for (uint64_t k = 0; k < 3; ++k) {
+        OK(elpis_ecsg_k1_fms_leased_txn_begin_at(r, id, L, &g, &tok));
+        assert(g == k);
+        OK(elpis_ecsg_k1_fms_leased_txn_run_schedule(r, id, L, tok, X, Y, R / 2, sched, 1, 0.002, s3, 83, NULL));
+        assert(elpis_ecsg_k1_fms_leased_txn_commit(r, id, M, tok, &t) == ELPIS_ECSG_K1_LEASED);   /* still open */
+        OK(elpis_ecsg_k1_fms_inspect(r, id, &info));
+        assert(info.transaction_open == 1u);
+        OK(elpis_ecsg_k1_fms_leased_txn_commit(r, id, L, tok, &t));
+        assert(t.generation_before == k && t.generation_after == k + 1);
+        {
+            uint64_t ot = 0;
+            OK(elpis_ecsg_k1_txn_begin(twin, &ot));
+            OK(elpis_ecsg_k1_txn_run_schedule(twin, ot, X, Y, R / 2, sched, 1, 0.002, s3, 83, NULL));
+            OK(elpis_ecsg_k1_txn_commit(twin, ot, NULL));
+        }
+        OK(elpis_ecsg_k1_fms_leased_query(r, id, L, D, X2, R, out, &g2));
+        OK(elpis_ecsg_k1_forward(twin, X2, R, direct));
+        assert(g2 == k + 1 && !memcmp(out, direct, sizeof(out)));
+    }
+    OK(elpis_ecsg_k1_snapshot_write(twin, sealed, ENVELOPE));
+    OK(elpis_ecsg_k1_fms_leased_capture(r, id, L, captured, ENVELOPE, &g));
+    assert(g == 3u);
+    OK(elpis_ecsg_k1_fms_envelope_seal(captured, ENVELOPE));
+    assert(!memcmp(captured, sealed, ENVELOPE));
+    OK(elpis_ecsg_k1_fms_leased_identity(r, id, L, digest, &g));
+    assert(g == 3u && !memcmp(digest, sealed + ENVELOPE - 32, 32));
+    OK(elpis_ecsg_k1_fms_inspect(r, id, &info));
+    assert(info.lease_count == 0u && info.transaction_open == 0u && info.generation == 3u);
+    OK(elpis_ecsg_k1_fms_lease_release(r, id, L));
+    OK(elpis_ecsg_k1_fms_close(r, &id));
+    OK(elpis_ecsg_k1_fms_destroy(&r));
+    elpis_ecsg_k1_destroy(&twin);
+    free(sealed);
+    free(captured);
+}
+
 int main(void)
 {
     fixture();
@@ -645,9 +705,10 @@ int main(void)
     test_experience_schedule_resident_equals_standalone();
     test_state_digest_matches_resident_snapshot_trailer();
     test_managed_lease_resident();
+    test_live_coordinate_resident();
     printf("ecsg_k1_fms: resident K1 = standalone K1; warm path over resident bytes; COLD->WARM; pinning; "
            "refusals leave the complete state unchanged; envelopes and W-only imports; the transaction refusal "
            "contract; hostile imports; provenance; the experience schedule (resident = standalone); the resident "
-           "retained-state digest; the managed lease; the candidate's envelope\n");
+           "retained-state digest; the managed lease; the live coordinate; the candidate's envelope\n");
     return 0;
 }

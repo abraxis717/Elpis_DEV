@@ -662,6 +662,76 @@ static void test_concurrency(void) {
     elpis_ecs_composite_destroy(x);
 }
 
+/* Live coordinate: the holder's generation-bound entries equal the digest-bearing ones (same states, same composite
+ * identities, the commit's memory install included); capture + seal is snapshot_write byte for byte; another lease
+ * is refused before anything is read or touched. */
+static void test_live_coordinate(void) {
+    elpis_ecs_composite *x = fresh(0), *twin = fresh(0);
+    const uint64_t L = 0x77, M = 0x78;
+    uint8_t id[32], expect[32], src[32], *sealed, *captured;
+    double out[R], direct[R];
+    uint64_t g = 55, tok = 0, ttok = 0;
+    elpis_ecsg_k1_transition t;
+    elpis_ecs_composite_commit cm;
+    const size_t n = envelope(x, &sealed);
+    captured = malloc(n);
+    assert(captured);
+    assert(elpis_ecs_composite_leased_query(x, L, D, X, R, out, &g) == ELPIS_ECS_COMPOSITE_LEASED && g == 55);
+    assert(elpis_ecs_composite_lease_claim(x, L) == 0 && elpis_ecs_composite_lease_claim(twin, M) == 0);
+    assert(elpis_ecs_composite_leased_query(x, M, D, X, R, out, &g) == ELPIS_ECS_COMPOSITE_LEASED && g == 55);
+    assert(elpis_ecs_composite_leased_identity(x, M, id, &g) == ELPIS_ECS_COMPOSITE_LEASED && g == 55);
+    assert(elpis_ecs_composite_leased_capture(x, M, captured, n, &g) == ELPIS_ECS_COMPOSITE_LEASED && g == 55);
+    assert(elpis_ecs_composite_leased_txn_begin_at(x, M, &g, &tok) == ELPIS_ECS_COMPOSITE_LEASED && g == 55);
+    assert(elpis_ecs_composite_leased_capture(x, L, captured, n - 1, &g) == ELPIS_ECS_COMPOSITE_CAPACITY);
+    assert(elpis_ecs_composite_leased_identity(x, L, id, &g) == 0 && g == 0);
+    identity(x, expect);
+    assert(!memcmp(id, expect, 32));
+    memset(captured, 0xEE, n);
+    assert(elpis_ecs_composite_leased_capture(x, L, captured, n, &g) == 0 && g == 0);
+    assert(elpis_ecs_composite_envelope_seal(captured, n) == 0 && !memcmp(captured, sealed, n));
+    free(sealed);
+    for (uint64_t k = 0; k < 3; ++k) {
+        assert(elpis_ecs_composite_leased_txn_begin_at(x, L, &g, &tok) == 0 && g == k);
+        assert(elpis_ecs_composite_leased_txn_begin(twin, M, src, &ttok) == 0);
+        run_schedule(x, L, tok, 2 + k);
+        run_schedule(twin, M, ttok, 2 + k);
+        elpis_ecs_mem_observation o = obs(k, k + 5, k + 1);
+        assert(elpis_ecs_composite_leased_txn_observe(x, L, tok, &o, NULL, NULL) == 0);
+        assert(elpis_ecs_composite_leased_txn_observe(twin, M, ttok, &o, NULL, NULL) == 0);
+        assert(elpis_ecs_composite_leased_txn_commit_at(x, M, tok, &t) == ELPIS_ECS_COMPOSITE_LEASED);   /* open */
+        assert(elpis_ecs_composite_leased_query(x, L, D, X, R, out, &g) == 0 && g == k);   /* the committed state */
+        assert(elpis_ecs_composite_leased_txn_commit_at(x, L, tok, &t) == 0);
+        assert(t.generation_before == k && t.generation_after == k + 1);
+        assert(elpis_ecs_composite_leased_txn_commit(twin, M, ttok, &cm) == 0);
+        identity(x, id);
+        assert(!memcmp(id, cm.after, 32) && cm.k1.generation_after == t.generation_after);
+        assert(elpis_ecs_composite_leased_query(x, L, D, X, R, out, &g) == 0 && g == k + 1);
+        assert(elpis_ecs_composite_query_identity(twin, D, X, R, direct, expect) == 0);
+        assert(!memcmp(out, direct, sizeof(out)) && !memcmp(expect, id, 32));
+    }
+    sealed = NULL;
+    (void)envelope(x, &sealed);
+    assert(elpis_ecs_composite_leased_capture(x, L, captured, n, &g) == 0 && g == 3);
+    for (size_t i = n - 32; i < n; ++i) assert(captured[i] == 0);
+    assert(elpis_ecs_composite_envelope_seal(captured, n) == 0 && !memcmp(captured, sealed, n));
+    /* The sealer validates structure: a bad magic, a non-zero padding byte or a wrong length is refused. */
+    captured[0] ^= 1;
+    assert(elpis_ecs_composite_envelope_seal(captured, n) == ELPIS_ECS_COMPOSITE_INVALID);
+    captured[0] ^= 1;
+    captured[n - 33] ^= 1;   /* the last padding byte of the memory capacity (an empty-ish memory) */
+    assert(elpis_ecs_composite_envelope_seal(captured, n) == ELPIS_ECS_COMPOSITE_INVALID);
+    captured[n - 33] ^= 1;
+    assert(elpis_ecs_composite_envelope_seal(captured, n - 8) == ELPIS_ECS_COMPOSITE_INVALID);
+    /* An aborted begin installs nothing and leaves the generation. */
+    assert(elpis_ecs_composite_leased_txn_begin_at(x, L, &g, &tok) == 0 && g == 3);
+    assert(elpis_ecs_composite_txn_abort(x, tok) == 0);
+    assert(elpis_ecs_composite_leased_identity(x, L, id, &g) == 0 && g == 3);
+    free(sealed);
+    free(captured);
+    elpis_ecs_composite_destroy(twin);
+    elpis_ecs_composite_destroy(x);
+}
+
 int main(void) {
     fixture();
     test_layout_and_identity();
@@ -671,6 +741,7 @@ int main(void) {
     test_corruption_and_formats();
     test_capacity_and_admission();
     test_lease();
+    test_live_coordinate();
     test_concurrency();
     assert(!strcmp(elpis_ecs_composite_code_name(ELPIS_ECS_COMPOSITE_UNQUALIFIED), "ELPIS_ECS_COMPOSITE_UNQUALIFIED"));
     puts("ecs composite: ok");
