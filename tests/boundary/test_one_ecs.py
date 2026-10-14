@@ -111,11 +111,35 @@ def test_the_canonical_turn_has_no_history_machinery_statically():
                    inspect.getsource(RuntimeCore.turn_abort)):
         code = ast.unparse(_strip_docstrings(ast.parse(_dedent(source))))
         assert not FORBIDDEN_HOT_PATH.findall(code), FORBIDDEN_HOT_PATH.findall(code)
-    # RuntimeCore's managed turn (Rust): lineage, the native transaction and one publication, nothing else.
+    # RuntimeCore's HOT operations (Rust): the live lineage and the native transaction, nothing else. Each HOT
+    # function body is checked on its own: no history machinery, and (ABI v4, docs/RUNTIME_CORE.md "Live and
+    # durable authority") no store, no durability lane, no checkpoint, no publication and no sync. A managed commit
+    # is volatile; durable publication is the separate, explicit durable_request.
     core = (REPO / "native/runtime/src/core.rs").read_text()
-    turn = core[core.index("// -- K1 lineage"):core.index("// -- evolution")]
-    code = "\n".join(line.split("//")[0] for line in turn.splitlines())
-    assert not FORBIDDEN_HOT_PATH.findall(code), FORBIDDEN_HOT_PATH.findall(code)
+    durable_machinery = re.compile(r"\b(with_stores|Stores|lane|checkpoint|publish\w*|sync\w*|snapshot_write|"
+                                   r"continuity|commit_cognition\w*|digest|leased_identity)\b")
+    for name in _HOT_FUNCTIONS:
+        body = _rust_fn(core, name)
+        code = "\n".join(line.split("//")[0] for line in body.splitlines())
+        assert not FORBIDDEN_HOT_PATH.findall(code), (name, FORBIDDEN_HOT_PATH.findall(code))
+        assert not durable_machinery.findall(code), (name, durable_machinery.findall(code))
+
+
+# The HOT functions of RuntimeCore: QUERY, the managed turn and OBSERVE, with their helpers. Binding (`reconcile`)
+# reads the durable identity once per binding and is checked separately by the runtime laws.
+_HOT_FUNCTIONS = ("query", "query_inner", "turn_begin", "begin", "schedule_once", "run_schedule", "take_turn",
+                  "turn_commit", "turn_observe", "turn_abort", "set_live")
+
+
+def _rust_fn(source: str, name: str) -> str:
+    """The body of `fn name` in `source` (brace-matched; comments and strings in these bodies hold no braces)."""
+    m = re.search(r"\bfn " + re.escape(name) + r"\b[^{]*\{", source)
+    assert m, name
+    depth, i = 1, m.end()
+    while depth:
+        depth += {"{": 1, "}": -1}.get(source[i], 0)
+        i += 1
+    return source[m.end():i - 1]
 
 
 def _dedent(source: str) -> str:

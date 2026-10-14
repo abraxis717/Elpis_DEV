@@ -1,58 +1,74 @@
 #ifndef ELPIS_RUNTIME_H
 #define ELPIS_RUNTIME_H
 
-/* Elpis RuntimeCore C ABI v3 (docs/RUNTIME_CORE.md), implemented in Rust (native/runtime).
+/* Elpis RuntimeCore C ABI v4 (docs/RUNTIME_CORE.md), implemented in Rust (native/runtime).
  *
  * One runtime handle owns one continuity directory and the mutable systems authority of an open Elpis
  * runtime: lifecycle, fail-stop, the binding of its K1 lineage to one native K1 state, the managed canonical
- * turn's native K1 transaction and its continuity publication, and the evolution attempt's durable
- * reservation and finalization. It owns no semantics: callers hand it a validated native-ready stimulus or an
- * assertion digest.
+ * turn's native K1 transaction, the durability lane (explicit durable publication of the live state) and the
+ * evolution attempt's durable reservation and finalization. It owns no semantics: callers hand it a validated
+ * native-ready stimulus or an assertion digest.
  *
  * RuntimeCore links no ECS code: the native K1 state is reached through the caller's K1 function table (the
- * entries of ecsg_k1.h or ecsg_k1_fms.h; a K1 status is an int-sized enum and a state handle an opaque
- * pointer). It computes no ECS mathematics and touches no ECS byte.
+ * entries of ecsg_k1.h, ecsg_k1_fms.h or ecs_composite.h; a K1 status is an int-sized enum and a state handle an
+ * opaque pointer). It computes no ECS mathematics and touches no ECS byte.
  *
- * QUERY and LEARN (v3). QUERY (elpis_runtime_query) is read-only: one native call answers f_W(x) from the lineage's
- * authoritative K1 state together with that state's retained-state identity, which must equal the durable expected
- * identity (a mismatch fail-stops and the answer is withheld). It opens no transaction, commits nothing and publishes
- * nothing. LEARN is the managed turn below: begin, the experience schedule on a candidate, commit, one publication.
- * v3 adds the query entry to both K1 function tables and the query counter; a v2 caller refuses to load it.
+ * Live and durable authority (v4). Two coordinates, never equated:
+ *   live     the bound state's native generation (ecsg_k1.h, "Live coordinate") under this runtime's lease, as
+ *            RuntimeCore last established it. Every HOT operation (QUERY, the managed turn, OBSERVE) is checked
+ *            against it; none performs file I/O, computes a digest or waits for the durability lane.
+ *   durable  continuity's record (and, when provisioned, the K1 checkpoint slot holding the same envelope): the
+ *            last state a durable publication ACKNOWLEDGED. Restart binds only a state whose identity is it.
+ * A managed commit is VOLATILE: it installs the candidate and advances the live generation by one; nothing is
+ * checkpointed or published. Durable publication is explicit: elpis_runtime_durable_request captures the live
+ * state (unsealed, under the lease: the one synchronous step) and hands it to the durability lane, one worker
+ * thread that seals it, writes and syncs the checkpoint slot, then writes and syncs the continuity record, without
+ * the handle's lock. A crash loses at most the volatile work since the last acknowledgment. v3 published one
+ * continuity record (and wrote one checkpoint slot) per managed turn; that per-turn durability is superseded
+ * (docs/RUNTIME_CORE.md, "Superseded"). A v3 caller refuses to load this library (the version check), so no caller
+ * can mistake a volatile commit for a durable one.
  *
- * Managed ownership (v3). Binding a state (anchor, or the first QUERY or LEARN after open) verifies its retained-state
- * identity against the durable one and claims it under this runtime's K1 lease: from then on the state refuses every
- * unmanaged mutation (ELPIS_ECSG_K1_LEASED), and every managed transaction begin re-establishes the state's exact
- * identity inside the same guarded K1 call. A bound state that is not provably the lineage (another identity, or
- * its lease taken by another owner) fail-stops with CONTINUITY_STATE_MISMATCH before anything is built on it or
- * published. elpis_runtime_release gives the state back (unbound, unleased); close does not touch the state.
+ * QUERY and LEARN. QUERY (elpis_runtime_query) is read-only: one native call answers f_W(x) from the lineage's live
+ * state together with that state's generation, which must be the live one (otherwise the lineage is lost: fail-stop,
+ * the answer withheld). It opens no transaction, commits nothing, publishes nothing, hashes nothing. LEARN is the
+ * managed turn below: begin, the experience schedule on a candidate, the volatile commit.
+ *
+ * Managed ownership (v3). Binding a state (anchor, or the first QUERY, LEARN or durable request after open) checks
+ * its retained-state identity against the durable one before claiming it (a mismatched state is never claimed),
+ * claims it under this runtime's K1 lease, then reads its identity and generation together under the lease: from
+ * then on the state refuses every unmanaged mutation (ELPIS_ECSG_K1_LEASED), and every managed transaction begin
+ * reports the generation of exactly the source it copied. A bound state that is not provably the lineage (another
+ * generation, or its lease taken by another owner) fail-stops with CONTINUITY_STATE_MISMATCH before anything is built
+ * on it or published. elpis_runtime_release gives the state back (unbound, unleased); close does not touch the state.
  *
  * Turn lifecycle (v2). A successful turn_begin opens one native K1 transaction. RuntimeCore ends it with exactly one
  * terminal native action, the commit or an abort, before it forgets the turn; there is no third disposition. An
  * explicit turn_abort, a refused commit, close, and destroy all abort it; open on an open runtime is refused and
  * keeps it. An abort refused BUSY (a concurrent overlapping call on the state) is retried until the state admits it.
- * An implicit abort installs nothing and publishes nothing: W, epoch, generation, H, a, the retained-state digest
- * and continuity are unchanged, and the state takes the next transaction.
+ * An implicit abort installs nothing and publishes nothing.
  *
  * Substrate lifetime (v2). To end the turn on every path, RuntimeCore retains the descriptor's handle, resident id
  * and txn_abort entry (copied; never any other entry) from a successful turn_begin until the turn ends. The native
  * state must stay live, and its library loaded, for that interval; outside it, a descriptor need only be live for
  * the call. The K1 FMS adapter enforces this natively: a resident state with an open transaction cannot be closed
  * and its runtime cannot be destroyed while a state is registered (both BUSY). A standalone K1 state's owner must
- * not destroy it while a turn on it is open (ecsg_k1.h frees a state whatever transaction it holds).
+ * not destroy it while a turn on it is open (ecsg_k1.h frees a state whatever transaction it holds). The durability
+ * lane never touches the state: it owns only the bytes a request captured (and calls the table's pure sealer).
  *
- * ECS composite substrates (additive to v3; docs/ECS_COMPOSITE_STATE.md). A substrate of kind
- * ELPIS_RUNTIME_SUBSTRATE_COMPOSITE is an ECS composite retained state (ecs_composite.h: K1 and the ECS memory under
- * one ELPISEC1 identity). Its table is the K1 table over composite identities plus leased_txn_observe; RuntimeCore
- * binds, queries, learns, checkpoints and recovers it exactly as a K1 state, and continuity records the lineage's
- * format (a v3 record), so a K1 state never stands for a composite lineage or the reverse (STATE_MISMATCH). The
- * memory changes only through elpis_runtime_turn_observe inside a managed turn, which then commits through the same
- * checkpoint -> native commit -> publication path. No memory LEARN or CONSOLIDATE is exposed (unqualified). A K1
- * lineage moves to a composite one only through the explicit elpis_runtime_import_composite.
+ * ECS composite substrates (docs/ECS_COMPOSITE_STATE.md). A substrate of kind ELPIS_RUNTIME_SUBSTRATE_COMPOSITE is an
+ * ECS composite retained state (ecs_composite.h: K1 and the ECS memory under one ELPISEC1 identity). Its table is the
+ * K1 table over composite identities plus leased_txn_observe; RuntimeCore binds, queries, learns, durably publishes
+ * and recovers it exactly as a K1 state, and continuity records the lineage's format (a v3 record), so a K1 state
+ * never stands for a composite lineage or the reverse (STATE_MISMATCH). The memory changes only through
+ * elpis_runtime_turn_observe inside a managed turn. No memory LEARN or CONSOLIDATE is exposed (unqualified). A K1
+ * lineage moves to a composite one only through the explicit elpis_runtime_import_composite. A composite is durably
+ * published only with a checkpoint store attached (its envelope size is the store's provisioned capacity).
  *
  * The library also exports the continuity C ABI (elpis/continuity.h) of the store it embeds.
  *
  * Every function returns 0 or a positive code: a continuity code (1..17, 255) or a runtime code below.
- * Calls on one handle are serialized by the handle. */
+ * Calls on one handle are serialized by the handle, except elpis_runtime_durable_wait and _durable_status, which
+ * take only the durability lane's lock (they never wait behind a HOT operation, nor a HOT operation behind them). */
 
 #include <stddef.h>
 #include <stdint.h>
@@ -64,7 +80,7 @@ extern "C" {
 #endif
 
 enum {
-    ELPIS_RUNTIME_ABI_V3 = 3u,
+    ELPIS_RUNTIME_ABI_V4 = 4u,
     ELPIS_RUNTIME_OK = 0,
     ELPIS_RUNTIME_INVALID = 64,                  /* malformed argument */
     ELPIS_RUNTIME_CLOSED = 65,                   /* the runtime is not open */
@@ -83,16 +99,27 @@ enum {
                                                     authorized slot is intact */
     ELPIS_RUNTIME_CHECKPOINT_SHAPE = 78,         /* the envelope is not the provisioned capacity: never resized */
     ELPIS_RUNTIME_CHECKPOINT_UNRESOLVED = 79,    /* an unauthorized newer candidate awaits discard or adopt */
+    ELPIS_RUNTIME_DURABLE_BUSY = 80,             /* a durable publication is pending or running */
+    ELPIS_RUNTIME_DURABLE_PENDING = 81,          /* a durable wait timed out: the request is still pending */
     ELPIS_RUNTIME_RECOVERY_NOTHING = 1,          /* continuity unanchored: no lineage; a slot never creates one */
     ELPIS_RUNTIME_RECOVERY_RESUMABLE = 2,        /* a verified slot holds continuity's identity; no candidate */
     ELPIS_RUNTIME_RECOVERY_CANDIDATE_UNRESOLVED = 3, /* a newer unauthorized slot exists: operator discard/adopt */
     ELPIS_RUNTIME_RECOVERY_CHECKPOINT_MISSING = 4,   /* no verified slot holds continuity's identity */
     ELPIS_RUNTIME_SUBSTRATE_K1 = 1,              /* standalone K1 state (ecsg_k1.h) */
     ELPIS_RUNTIME_SUBSTRATE_K1_FMS = 2,          /* FMS-resident K1 state (ecsg_k1_fms.h) */
-    ELPIS_RUNTIME_SUBSTRATE_COMPOSITE = 3        /* ECS composite retained state (ecs_composite.h; id zero) */
+    ELPIS_RUNTIME_SUBSTRATE_COMPOSITE = 3,       /* ECS composite retained state (ecs_composite.h; id zero) */
+    /* elpis_runtime_durable_ticket.status */
+    ELPIS_RUNTIME_DURABLE_NONE = 0,
+    ELPIS_RUNTIME_DURABLE_REQUESTED = 1,         /* PENDING: captured; waiting for, or in, the worker */
+    ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED = 2,      /* durable: continuity names it (recoverable: a slot holds it) */
+    ELPIS_RUNTIME_DURABLE_FAILED = 3,            /* nothing durable changed; the previous authority stands */
+    ELPIS_RUNTIME_DURABLE_UNCERTAIN = 4,         /* the publication's outcome is unknown; lane faulted until reopen */
+    ELPIS_RUNTIME_DURABLE_SUPERSEDED = 5,        /* replaced by a newer request before the worker took it */
+    ELPIS_RUNTIME_DURABLE_ABANDONED = 6,         /* closed (or the process died) before it completed */
+    ELPIS_RUNTIME_DURABLE_UNKNOWN = 7            /* resolved too long ago to be recorded */
 };
 
-/* Layout-identical to elpis_ecsg_k1_experience, _schedule_result, _transition and _commit_identity. */
+/* Layout-identical to elpis_ecsg_k1_experience, _schedule_result and _transition. */
 typedef struct {
     uint64_t rows;
     uint64_t steps;
@@ -115,60 +142,59 @@ typedef struct {
     uint64_t failed_step;
 } elpis_runtime_transition;
 
-typedef struct {
-    elpis_runtime_transition transition;
-    uint8_t state_before_digest[32];
-    uint8_t state_after_digest[32];
-} elpis_runtime_commit_identity;
-
-/* The standalone K1 functions RuntimeCore calls (state = elpis_ecsg_k1 *). Every entry is required. Every mutating
- * entry is a leased one (ecsg_k1.h, "Managed ownership"): RuntimeCore claims each state it binds with its own lease,
- * so the bound state refuses every unmanaged mutation, and presents that lease on every mutation it makes. */
+/* The standalone K1 functions RuntimeCore calls (state = elpis_ecsg_k1 *), ABI v4. Every entry is required. Every
+ * mutating entry is a leased one (ecsg_k1.h, "Managed ownership"); the live-coordinate entries (ecsg_k1.h, "Live
+ * coordinate") report the generation under the same guard as their answer, begin, commit or capture. state_digest is
+ * the one unleased read: a state is checked against the durable identity before it is ever claimed. */
 typedef struct {
     int (*state_digest)(void *state, uint8_t out[32]);
     int (*shape)(void *state, size_t *dim, size_t *width);
-    int (*query_identity)(void *state, size_t dim, const double *x, size_t rows, double *out, uint8_t digest[32]);
     int (*lease_claim)(void *state, uint64_t lease);
     int (*lease_release)(void *state, uint64_t lease);
     int (*leased_reserve)(void *state, uint64_t lease, size_t max_rows);
-    int (*leased_txn_begin)(void *state, uint64_t lease, uint8_t source_digest[32], uint64_t *token);
+    int (*leased_identity)(void *state, uint64_t lease, uint8_t digest[32], uint64_t *generation);
+    int (*leased_query)(void *state, uint64_t lease, size_t dim, const double *x, size_t rows, double *out,
+                        uint64_t *generation);
+    int (*leased_txn_begin_at)(void *state, uint64_t lease, uint64_t *source_generation, uint64_t *token);
     int (*leased_txn_run_schedule)(void *state, uint64_t lease, uint64_t token, const double *x, const double *y,
                                    size_t total_rows, const elpis_runtime_experience *schedule, size_t experiences,
                                    double learning_rate, double *s3_out, size_t s3_count,
                                    elpis_runtime_schedule_result *result);
-    int (*leased_txn_commit_identity)(void *state, uint64_t lease, uint64_t token,
-                                      elpis_runtime_commit_identity *identity);
+    int (*leased_txn_commit)(void *state, uint64_t lease, uint64_t token, elpis_runtime_transition *transition);
     int (*txn_abort)(void *state, uint64_t token);
-    /* Read-only envelopes (ELPISGK1, SHA-256 trailer = retained-state identity) for K1 Recovery R0. */
-    int (*snapshot_write)(void *state, uint8_t *out, size_t size);
-    int (*txn_snapshot_write)(void *state, uint64_t token, uint8_t *out, size_t size);
+    /* The unsealed envelope (ELPISGK1 / ELPISEC1 without its trailer) of the authoritative state, and the pure
+     * sealer that completes it (called by the durability lane, on its own thread, over bytes it owns). */
+    int (*leased_capture)(void *state, uint64_t lease, uint8_t *out, size_t size, uint64_t *generation);
+    int (*envelope_seal)(uint8_t *envelope, size_t size);
 } elpis_runtime_k1_api;
 
-/* The K1 FMS adapter's functions (runtime = elpis_ecsg_k1_fms *, id = the resident state). */
+/* The K1 FMS adapter's functions (runtime = elpis_ecsg_k1_fms *, id = the resident state), ABI v4. */
 typedef struct {
     int (*state_digest)(void *runtime, uint64_t id, uint8_t out[32]);
     int (*shape)(void *runtime, uint64_t id, size_t *dim, size_t *width);
-    int (*query_identity)(void *runtime, uint64_t id, size_t dim, const double *x, size_t rows, double *out,
-                          uint8_t digest[32]);
     int (*lease_claim)(void *runtime, uint64_t id, uint64_t lease);
     int (*lease_release)(void *runtime, uint64_t id, uint64_t lease);
     int (*leased_reserve)(void *runtime, uint64_t id, uint64_t lease, size_t max_rows);
-    int (*leased_txn_begin)(void *runtime, uint64_t id, uint64_t lease, uint8_t source_digest[32], uint64_t *token);
+    int (*leased_identity)(void *runtime, uint64_t id, uint64_t lease, uint8_t digest[32], uint64_t *generation);
+    int (*leased_query)(void *runtime, uint64_t id, uint64_t lease, size_t dim, const double *x, size_t rows,
+                        double *out, uint64_t *generation);
+    int (*leased_txn_begin_at)(void *runtime, uint64_t id, uint64_t lease, uint64_t *source_generation,
+                               uint64_t *token);
     int (*leased_txn_run_schedule)(void *runtime, uint64_t id, uint64_t lease, uint64_t token, const double *x,
                                    const double *y, size_t total_rows, const elpis_runtime_experience *schedule,
                                    size_t experiences, double learning_rate, double *s3_out, size_t s3_count,
                                    elpis_runtime_schedule_result *result);
-    int (*leased_txn_commit_identity)(void *runtime, uint64_t id, uint64_t lease, uint64_t token,
-                                      elpis_runtime_commit_identity *identity);
+    int (*leased_txn_commit)(void *runtime, uint64_t id, uint64_t lease, uint64_t token,
+                             elpis_runtime_transition *transition);
     int (*txn_abort)(void *runtime, uint64_t id, uint64_t token);
-    int (*snapshot_write)(void *runtime, uint64_t id, uint8_t *out, size_t size);
-    int (*txn_snapshot_write)(void *runtime, uint64_t id, uint64_t token, uint8_t *out, size_t size);
+    int (*leased_capture)(void *runtime, uint64_t id, uint64_t lease, uint8_t *out, size_t size, uint64_t *generation);
+    int (*envelope_seal)(uint8_t *envelope, size_t size);
 } elpis_runtime_k1_fms_api;
 
 /* The ECS composite's functions (state = elpis_ecs_composite *): the K1 table's entries over composite identities
- * (layout-identical first member; the composite status space extends K1's with the same numbers), then the
- * memory OBSERVE of the open transaction. `observation` is an elpis_ecs_mem_observation and `key` 32 bytes;
- * RuntimeCore never reads the observation. */
+ * (layout-identical first member; the composite status space extends K1's with the same numbers; leased_txn_commit
+ * is elpis_ecs_composite_leased_txn_commit_at), then the memory OBSERVE of the open transaction. `observation` is an
+ * elpis_ecs_mem_observation and `key` 32 bytes; RuntimeCore never reads the observation. */
 typedef struct {
     elpis_runtime_k1_api base;
     int (*leased_txn_observe)(void *state, uint64_t lease, uint64_t token, const void *observation, uint8_t key[32],
@@ -196,16 +222,43 @@ typedef struct {
 } elpis_runtime_turn_begin_result;
 
 typedef struct {
-    uint8_t state_digest[32];   /* the retained-state identity the answer was computed from; zero on refusal */
+    uint64_t live_generation;   /* the live generation the answer was computed from; zero on refusal */
     int32_t k1_status;          /* the K1 status behind an ECS_* refusal; 0 otherwise */
     uint32_t reserved;
 } elpis_runtime_query_result;
 
+/* A managed commit (v4): VOLATILE. The live generation advanced by one; nothing was checkpointed or published. */
 typedef struct {
-    elpis_runtime_commit_identity identity;
-    uint32_t committed;     /* 1: the native commit happened (also when its publication then failed) */
+    elpis_runtime_transition transition;   /* epochs, generations (before/after), steps */
+    uint64_t live_generation;              /* = transition.generation_after; 0 when not committed */
+    uint32_t committed;                    /* 1: the native commit happened */
     int32_t k1_status;
-} elpis_runtime_turn_commit_result;
+} elpis_runtime_volatile_commit;
+
+/* One durable publication request. */
+typedef struct {
+    uint64_t sequence;          /* monotonic per handle, from 1 */
+    uint64_t generation;        /* the live generation captured */
+    uint32_t status;            /* ELPIS_RUNTIME_DURABLE_* */
+    uint32_t recoverable;       /* 1: a verified, synced checkpoint slot holds the acknowledged envelope */
+    int32_t code;               /* the refusal or fault behind FAILED / UNCERTAIN / ABANDONED */
+    uint32_t reserved;
+    uint8_t identity[32];       /* the captured state's retained-state identity (zero until sealed) */
+} elpis_runtime_durable_ticket;
+
+/* The durability lane as a status read sees it. */
+typedef struct {
+    elpis_runtime_durable_ticket last_requested;
+    elpis_runtime_durable_ticket last_acknowledged;
+    elpis_runtime_durable_ticket running;          /* sequence 0: none */
+    uint64_t live_generation;
+    uint32_t pending;                              /* 1 while a captured request waits for the worker */
+    int32_t fault;                                 /* the lane's sticky fault (0: none), until reopen */
+    uint32_t parked;                               /* testing builds: the step the worker is parked at */
+    uint32_t durable_known;                        /* 1 when `durable` holds the current durable authority */
+    uint64_t checkpoint_capacity;                  /* the attached store's envelope capacity (0: none) */
+    elpis_continuity_snapshot durable;
+} elpis_runtime_durability;
 
 typedef struct {
     uint8_t relation_key[32];   /* the observation's relation key; zero on refusal */
@@ -224,6 +277,12 @@ typedef struct {
     uint64_t k1_queries;
     uint64_t k1_shapes;
     uint64_t k1_lease_claims;
+    uint64_t k1_identities;          /* leased_identity: binding, live_identity */
+    uint64_t k1_captures;            /* leased_capture: durable requests, anchor, import */
+    uint64_t durable_requests;
+    uint64_t durable_superseded;
+    uint64_t durable_acknowledged;
+    uint64_t durable_failed;         /* FAILED and UNCERTAIN */
 } elpis_runtime_counters;
 
 /* Total cognitive fuel (docs/RUNTIME_CORE.md). One operation's totals; every field >= 1 and at most the compiled
@@ -281,28 +340,29 @@ int elpis_runtime_anchor(elpis_runtime *runtime, const elpis_runtime_substrate *
                          elpis_continuity_snapshot *out);
 
 /* QUERY: the canonical read-only operation. x holds `rows` rows of the descriptor's dimension
- * (x_len = rows * dim); out receives `rows` values f_W(x_r). Admitted under `budget` (query rows, work units)
- * before the native query (RUNTIME_FUEL). The lineage must be anchored and the state's identity
- * must equal the durable expected identity (bound on first use; a mismatch fail-stops, out is zeroed). Refused while
- * a managed turn is open (RUNTIME_TURN_OPEN). Nothing is begun, committed, published or written. */
+ * (x_len = rows * dim); out receives `rows` values f_W(x_r) of the LIVE state. Admitted under `budget` (query rows,
+ * work units) before the native query (RUNTIME_FUEL). The lineage must be anchored; the state is bound on first use
+ * (verified against the durable identity) and its generation must be the live one (otherwise fail-stop, out zeroed).
+ * Refused while a managed turn is open (RUNTIME_TURN_OPEN). Nothing is begun, committed, published, hashed or
+ * written. */
 int elpis_runtime_query(elpis_runtime *runtime, const elpis_runtime_substrate *substrate, const double *x,
                         size_t x_len, double *out, size_t rows, const elpis_runtime_budget *budget,
                         elpis_runtime_query_result *result);
 
 /* LEARN: the managed canonical turn. begin admits the schedule's total fuel under `budget` (RUNTIME_FUEL) before
- * the identity check, any reserve or the transaction, then verifies the lineage (binding the state on first use; a mismatch
- * fail-stops), begins the native transaction and runs the whole schedule on its candidate in one native call
- * (x: y_len rows of dim values; s3_len = elpis_runtime_features(dim)). Then exactly one of commit (native
- * commit, then one continuity publication; a failed publication fail-stops and out->committed reports the
- * standing K1 commit) or abort. A commit refused natively, or on a fail-stopped runtime, aborts the turn. abort
- * ends the described substrate's turn through the capability retained at begin; another substrate is refused
+ * the identity check, any reserve or the transaction, then verifies the lineage (binding the state on first use; a
+ * mismatch fail-stops), begins the native transaction (its source generation must be the live one) and runs the whole
+ * schedule on its candidate in one native call (x: y_len rows of dim values; s3_len = elpis_runtime_features(dim)).
+ * Then exactly one of commit (the native commit: VOLATILE, out->live_generation the new live generation; nothing is
+ * checkpointed or published) or abort. A commit refused natively, or on a fail-stopped runtime, aborts the turn.
+ * abort ends the described substrate's turn through the capability retained at begin; another substrate is refused
  * (RUNTIME_TURN_NOT_OPEN) and the turn stays open. */
 int elpis_runtime_turn_begin(elpis_runtime *runtime, const elpis_runtime_substrate *substrate, const double *x,
                              size_t x_len, const double *y, size_t y_len, const elpis_runtime_experience *schedule,
                              size_t experiences, double learning_rate, const elpis_runtime_budget *budget,
                              double *s3_out, size_t s3_len, elpis_runtime_turn_begin_result *out);
 int elpis_runtime_turn_commit(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
-                              elpis_runtime_turn_commit_result *out, elpis_continuity_snapshot *snapshot);
+                              elpis_runtime_volatile_commit *out);
 int elpis_runtime_turn_abort(elpis_runtime *runtime, const elpis_runtime_substrate *substrate);
 /* OBSERVE inside the open turn of a composite substrate (observation: an elpis_ecs_mem_observation, passed through
  * unread). Authoritative only with the turn's commit; a refusal leaves the turn open and its candidate unchanged.
@@ -311,27 +371,50 @@ int elpis_runtime_turn_observe(elpis_runtime *runtime, const elpis_runtime_subst
                                elpis_runtime_observe_result *out);
 /* LEGACY: move the open runtime's K1 lineage to a composite made by elpis_ecs_composite_import_k1 from exactly its
  * authorized K1 state (empty memory). Needs an attached checkpoint store provisioned for the composite envelope
- * size: the envelope is durable before continuity publishes the import (a v3 record). Then the composite is bound.
- * STATE_MISMATCH when the lineage is not K1-format, or the composite does not name the authorized K1 identity
- * with an empty memory. */
+ * size: the composite is claimed and captured, its envelope must name the authorized K1 identity with an empty memory
+ * (else the claim is released, STATE_MISMATCH), and it is durable before continuity publishes the import (a v3
+ * record). Then the composite is bound. */
 int elpis_runtime_import_composite(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
                                    elpis_continuity_snapshot *out);
 
 /* Release the bound state: its K1 lease is released and the lineage unbound (the next QUERY or LEARN binds and
- * verifies again). Refused while a managed turn is open; another state is COGNITION_SUBSTRATE_SWITCH. */
+ * verifies again: volatile work since the last durable acknowledgment is then a mismatch). Refused while a managed
+ * turn is open; another state is COGNITION_SUBSTRATE_SWITCH. */
 int elpis_runtime_release(elpis_runtime *runtime, const elpis_runtime_substrate *substrate);
+
+/* Durable publication (v4): explicit, served by the durability lane.
+ * request: bind the state if needed, capture its envelope unsealed under the lease at the live generation (the one
+ *   synchronous step) and hand it to the lane; returns at once, `out` a PENDING ticket. At most one request waits:
+ *   a newer request supersedes it (SUPERSEDED, never silently acknowledged). Refused while a turn is open, on an
+ *   unanchored lineage (anchoring is explicit), for a composite without a checkpoint store (CHECKPOINT_INVALID) and
+ *   with the lane's fault while it is faulted (an UNCERTAIN publication or a death, until reopen).
+ *   The lane then: seals and verifies the envelope; with a checkpoint store, refuses while an unresolved candidate
+ *   exists (CHECKPOINT_UNRESOLVED) and writes + syncs the slot that does not hold the durable authority; then writes
+ *   + syncs the continuity record (durable identity -> captured identity). ACKNOWLEDGED: durable (recoverable when a
+ *   slot holds it). FAILED: nothing durable changed (a failed write is withdrawn). UNCERTAIN: unknown; restart
+ *   resolves it to exactly one record; never assumed either way.
+ * wait: until `sequence` resolves or `timeout_ms` elapses (UINT64_MAX: no limit); RUNTIME_DURABLE_PENDING on timeout.
+ * status: the lane's tickets, fault, the live generation and the durable authority.
+ * live_identity: the bound state's retained-state identity (one hashing native call, cold path) and generation. */
+int elpis_runtime_durable_request(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
+                                  elpis_runtime_durable_ticket *out);
+int elpis_runtime_durable_wait(elpis_runtime *runtime, uint64_t sequence, uint64_t timeout_ms,
+                               elpis_runtime_durable_ticket *out);
+int elpis_runtime_durable_status(elpis_runtime *runtime, elpis_runtime_durability *out);
+int elpis_runtime_live_identity(elpis_runtime *runtime, const elpis_runtime_substrate *substrate, uint8_t digest[32],
+                                uint64_t *generation);
 
 /* K1 Recovery R0: a bounded, crash-recoverable checkpoint owner (two fixed slot files; no history).
  * provision (operator, explicit): create the absolute directory `path` (it must not exist) holding exactly two
- * zeroed slot files sized for envelopes of `envelope_bytes` (the admitted K1 shape's snapshot size).
+ * zeroed slot files sized for envelopes of `envelope_bytes` (the admitted shape's snapshot size).
  * attach: open a provisioned store for this runtime (exclusively locked; no turn open). From then on the anchor
- * persists the anchored envelope before continuity anchors it, and every LEARN persists its complete candidate
- * envelope (in the slot that does not hold the authorized state) before the native commit; the commit's identity
- * must equal the checkpointed one or the runtime fail-stops (CONTINUITY_STATE_MISMATCH). A LEARN is refused while
- * an unresolved candidate exists (RUNTIME_CHECKPOINT_UNRESOLVED).
+ * persists the anchored envelope before continuity anchors it, and every durable publication persists its complete
+ * envelope (in the slot that does not hold the authorized state) before continuity names it. A managed turn never
+ * touches the store (v4).
  * recover: read-only; when RESUMABLE and `envelope_len` holds it, the authorized envelope is copied to `envelope`.
  * discard / adopt: explicit operator reconciliation of exactly `candidate` (adopt publishes authorized ->
- * candidate in continuity after the candidate's envelope verified; refused while a state is bound). */
+ * candidate in continuity after the candidate's envelope verified; refused while a state is bound). Both refuse
+ * while a durable publication is pending or running (RUNTIME_DURABLE_BUSY). */
 int elpis_runtime_checkpoint_provision(const uint8_t *path, size_t len, size_t envelope_bytes);
 int elpis_runtime_checkpoint_attach(elpis_runtime *runtime, const uint8_t *path, size_t len);
 int elpis_runtime_checkpoint_recover(elpis_runtime *runtime, elpis_runtime_recovery *out, uint8_t *envelope,
@@ -342,7 +425,9 @@ int elpis_runtime_checkpoint_adopt(elpis_runtime *runtime, const uint8_t candida
 
 /* Evolution: one bounded attempt at a time. authority -> (caller validates) -> reserve -> (caller executes
  * once) -> finalize, or abandon (the reservation stays pending; fail-stop CONTINUITY_EVOLUTION_PENDING).
- * reconcile is the explicit finalization of a durable pending authority after restart. */
+ * reconcile is the explicit finalization of a durable pending authority after restart. Unchanged by v4: the
+ * reservation is written and synced before reserve returns (on the caller's thread); volatile cognition never
+ * stands in for it and never makes an executed attempt retryable. */
 int elpis_runtime_evolution_authority(elpis_runtime *runtime, elpis_continuity_snapshot *out);
 int elpis_runtime_evolution_reserve(elpis_runtime *runtime, const elpis_continuity_evolution *observed,
                                     const uint8_t assertion[32], elpis_continuity_snapshot *out);

@@ -75,6 +75,45 @@ fn sync_data(file: &File) -> io::Result<()> {
     }
 }
 
+/// Test-only fault plan and I/O counters of one checkpoint store (compiled into test and testing builds only).
+#[cfg(any(test, feature = "testing"))]
+pub mod probe {
+    /// One planned fault of the next slot write (`Store::write`).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum Fault {
+        /// The write fails before any byte is written.
+        WriteFail,
+        /// The first `n` bytes of the slot are written, then the write fails.
+        TornFail(usize),
+        /// The first `n` bytes are written, then the process dies (simulated: nothing more happens).
+        TornDie(usize),
+        /// The complete slot is written, then the process dies before the sync.
+        DieBeforeSync,
+        /// The sync reports failure (the bytes may or may not be durable).
+        SyncFail,
+        /// The complete slot is written and synced, then the process dies (before anything else is published).
+        DieAfterSync,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub struct Counters {
+        pub preads: u64,
+        pub pread_bytes: u64,
+        pub pwrites: u64,
+        pub pwrite_bytes: u64,
+        pub data_syncs: u64,
+    }
+
+    #[derive(Default)]
+    pub struct Probe {
+        pub plan: Option<Fault>,
+        pub counters: Counters,
+        /// Set when a planned death fired: the owner must treat the process as dead.
+        pub died: bool,
+    }
+}
+
 fn io(_: io::Error) -> Rt {
     Rt::CheckpointIo
 }
@@ -138,8 +177,10 @@ pub struct Store {
     files: [File; 2],
     capacity: usize,
     slots: [Option<Slot>; 2],
-    /// One slot's bytes, preallocated: a LEARN's checkpoint allocates nothing.
+    /// One slot's bytes, preallocated: a durable publication's checkpoint allocates nothing.
     buffer: Vec<u8>,
+    #[cfg(any(test, feature = "testing"))]
+    pub probe: probe::Probe,
 }
 
 impl Store {
@@ -201,6 +242,8 @@ impl Store {
             capacity,
             slots: [None, None],
             buffer: vec![0u8; HEADER + capacity],
+            #[cfg(any(test, feature = "testing"))]
+            probe: probe::Probe::default(),
         };
         for i in 0..2 {
             store.slots[i] = store.read(i)?;
@@ -210,6 +253,11 @@ impl Store {
 
     fn read(&mut self, i: usize) -> Result<Option<Slot>, Rt> {
         self.files[i].read_exact_at(&mut self.buffer, 0).map_err(io)?;
+        #[cfg(any(test, feature = "testing"))]
+        {
+            self.probe.counters.preads += 1;
+            self.probe.counters.pread_bytes += self.buffer.len() as u64;
+        }
         Ok(verify(&self.buffer, self.capacity))
     }
 
@@ -255,18 +303,116 @@ impl Store {
         let h = header(generation, &self.buffer[HEADER..], &identity);
         self.buffer[..HEADER].copy_from_slice(&h);
         self.slots[target] = None; // whatever the write leaves behind is not trusted until it verifies
+        #[cfg(any(test, feature = "testing"))]
+        if let Some(r) = self.planned_write(target) {
+            return r;
+        }
         self.files[target].write_all_at(&self.buffer, 0).map_err(io)?;
+        self.count_write(self.buffer.len());
+        #[cfg(any(test, feature = "testing"))]
+        if let Some(r) = self.planned_sync() {
+            return r;
+        }
         sync_data(&self.files[target]).map_err(io)?;
+        self.count_sync();
+        #[cfg(any(test, feature = "testing"))]
+        if self.probe.plan == Some(probe::Fault::DieAfterSync) {
+            self.probe.plan = None;
+            self.probe.died = true;
+            return Err(Rt::CheckpointIo);
+        }
         let slot = Slot { generation, identity };
         self.slots[target] = Some(slot);
         Ok((target, slot))
+    }
+
+    #[inline]
+    fn count_write(&mut self, _bytes: usize) {
+        #[cfg(any(test, feature = "testing"))]
+        {
+            self.probe.counters.pwrites += 1;
+            self.probe.counters.pwrite_bytes += _bytes as u64;
+        }
+    }
+
+    #[inline]
+    fn count_sync(&mut self) {
+        #[cfg(any(test, feature = "testing"))]
+        {
+            self.probe.counters.data_syncs += 1;
+        }
+    }
+
+    /// Testing builds: the planned fault of this slot write, before the sync.
+    #[cfg(any(test, feature = "testing"))]
+    fn planned_write(&mut self, target: usize) -> Option<Result<(usize, Slot), Rt>> {
+        use probe::Fault;
+        match self.probe.plan? {
+            Fault::WriteFail => {
+                self.probe.plan = None;
+                Some(Err(Rt::CheckpointIo))
+            }
+            Fault::TornFail(n) | Fault::TornDie(n) => {
+                let n = n.min(self.buffer.len());
+                let died = matches!(self.probe.plan, Some(Fault::TornDie(_)));
+                self.probe.plan = None;
+                if self.files[target].write_all_at(&self.buffer[..n], 0).is_ok() {
+                    self.count_write(n);
+                }
+                self.probe.died = died;
+                Some(Err(Rt::CheckpointIo))
+            }
+            _ => None,
+        }
+    }
+
+    /// Testing builds: the planned fault between the complete slot write and its sync.
+    #[cfg(any(test, feature = "testing"))]
+    fn planned_sync(&mut self) -> Option<Result<(usize, Slot), Rt>> {
+        use probe::Fault;
+        match self.probe.plan? {
+            Fault::DieBeforeSync => {
+                self.probe.plan = None;
+                self.probe.died = true;
+                Some(Err(Rt::CheckpointIo))
+            }
+            Fault::SyncFail => {
+                self.probe.plan = None;
+                Some(Err(Rt::CheckpointIo))
+            }
+            _ => None,
+        }
     }
 
     /// Withdraw a slot (an unauthorized candidate): zero its header and sync. The slot is empty from then on.
     pub fn retract(&mut self, i: usize) -> Result<(), Rt> {
         self.slots[i] = None;
         self.files[i].write_all_at(&[0u8; HEADER], 0).map_err(io)?;
-        sync_data(&self.files[i]).map_err(io)
+        self.count_write(HEADER);
+        sync_data(&self.files[i]).map_err(io)?;
+        self.count_sync();
+        Ok(())
+    }
+
+    /// Copy `envelope` (exactly the provisioned capacity) into the store's buffer and [`Store::write`] it.
+    pub fn write_envelope(&mut self, envelope: &[u8], protect: Option<&Digest>) -> Result<(usize, Slot), Rt> {
+        if envelope.len() != self.capacity {
+            return Err(Rt::CheckpointShape);
+        }
+        self.envelope_buffer().copy_from_slice(envelope);
+        self.write(protect)
+    }
+
+    /// The newest verified slot that does not hold `authorized` and is newer than the slot that does: an
+    /// unauthorized candidate awaiting explicit operator reconciliation. A candidate exists only beside a verified
+    /// authorized slot: the write protocol never touches the authorized slot, so when no slot holds it the store is
+    /// damaged and no other slot is classified as a candidate (`CheckpointMissing`, never an adoptable candidate).
+    pub fn unresolved(&self, authorized: &Digest) -> Option<(usize, Slot)> {
+        let floor = self.holding(authorized).and_then(|i| self.slots[i])?.generation;
+        (0..2)
+            .filter_map(|i| self.slots[i].map(|s| (i, s)))
+            .filter(|(_, s)| s.identity != *authorized && s.generation > floor)
+            .max_by_key(|(_, s)| s.generation)
     }
 
     /// The verified envelope of slot `i` (re-read and re-verified from the file).

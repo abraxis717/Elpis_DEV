@@ -2,12 +2,14 @@
  * runtime library (crash injection) and the real libelpis_ecs_composite:
  *
  *   composite anchor (continuity v3 record, envelope durable first); managed turns that learn K1 and OBSERVE the
- *   memory, committed through checkpoint -> native commit -> publication; recoverable observe refusals; the
- *   composite refuses every unmanaged mutation while bound; a K1 state never stands for the composite lineage;
- *   process death after the checkpoint and after the native commit, then recovery from continuity + the slots with
- *   the memory transition applied exactly once; the explicit legacy import of a K1 lineage; and the typed HACF
- *   path: a structure hyperedge asserted by one source and negated by another reaches the committed memory through
- *   a managed turn with both provenances, both polarities and the exact structural identity preserved.
+ *   memory, committed natively as VOLATILE transitions (ABI v4) and made durable only by an explicit durable
+ *   publication (capture -> seal -> checkpoint -> continuity, on the durability lane); recoverable observe refusals;
+ *   the composite refuses every unmanaged mutation while bound; a K1 state never stands for the composite lineage;
+ *   process death during a durable publication (after the checkpoint slot is synced, and with the continuity record
+ *   torn), then recovery from continuity + the slots with the memory transition applied exactly once; the explicit
+ *   legacy import of a K1 lineage; and the typed HACF path: a structure hyperedge asserted by one source and negated
+ *   by another reaches the committed memory through a managed turn with both provenances, both polarities and the
+ *   exact structural identity preserved.
  *
  * Usage: test_runtime_composite <scratch-dir>. Deterministic: no threads, no sleeps. */
 #define _POSIX_C_SOURCE 200809L
@@ -22,9 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* The testing library's crash hook (not in the production header). 1: after the candidate checkpoint; 2: after the
- * native commit, before publication. */
-int elpis_runtime_testing_checkpoint_crash(elpis_runtime *runtime, uint32_t point);
+/* The testing library's durability fault plan (not in the production header): action 1 dies (simulated) at `step` of
+ * the next durable publication (5: the checkpoint slot synced, continuity not published; 6: the continuity record
+ * torn after `arg` bytes). */
+int elpis_runtime_testing_durable_fault(elpis_runtime *runtime, uint32_t action, uint32_t step, uint64_t arg);
 
 #define OK(x) assert((x) == ELPIS_RUNTIME_OK)
 enum { DIM = 6, WIDTH = 36, ROWS = 4, F = 83 };
@@ -34,14 +37,17 @@ _Static_assert(sizeof(elpis_runtime_observe_result) == 40, "observe result ABI s
 
 static int c_digest(void *s, uint8_t out[32]) { return elpis_ecs_composite_state_digest(s, out); }
 static int c_shape(void *s, size_t *dim, size_t *width) { return elpis_ecs_composite_shape(s, dim, width); }
-static int c_query(void *s, size_t dim, const double *x, size_t rows, double *out, uint8_t digest[32]) {
-    return elpis_ecs_composite_query_identity(s, dim, x, rows, out, digest);
-}
 static int c_claim(void *s, uint64_t lease) { return elpis_ecs_composite_lease_claim(s, lease); }
 static int c_release(void *s, uint64_t lease) { return elpis_ecs_composite_lease_release(s, lease); }
 static int c_reserve(void *s, uint64_t lease, size_t rows) { return elpis_ecs_composite_leased_reserve(s, lease, rows); }
-static int c_begin(void *s, uint64_t lease, uint8_t source[32], uint64_t *token) {
-    return elpis_ecs_composite_leased_txn_begin(s, lease, source, token);
+static int c_identity(void *s, uint64_t lease, uint8_t digest[32], uint64_t *generation) {
+    return elpis_ecs_composite_leased_identity(s, lease, digest, generation);
+}
+static int c_query(void *s, uint64_t lease, size_t dim, const double *x, size_t rows, double *out, uint64_t *g) {
+    return elpis_ecs_composite_leased_query(s, lease, dim, x, rows, out, g);
+}
+static int c_begin(void *s, uint64_t lease, uint64_t *source, uint64_t *token) {
+    return elpis_ecs_composite_leased_txn_begin_at(s, lease, source, token);
 }
 static int c_schedule(void *s, uint64_t lease, uint64_t token, const double *x, const double *y, size_t rows,
                       const elpis_runtime_experience *schedule, size_t n, double rate, double *s3, size_t s3n,
@@ -50,21 +56,26 @@ static int c_schedule(void *s, uint64_t lease, uint64_t token, const double *x, 
                                                        (const elpis_ecsg_k1_experience *)schedule, n, rate, s3, s3n,
                                                        (elpis_ecsg_k1_schedule_result *)result);
 }
-static int c_commit(void *s, uint64_t lease, uint64_t token, elpis_runtime_commit_identity *identity) {
-    return elpis_ecs_composite_leased_txn_commit_identity(s, lease, token, (elpis_ecsg_k1_commit_identity *)identity);
+static int c_commit(void *s, uint64_t lease, uint64_t token, elpis_runtime_transition *t) {
+    return elpis_ecs_composite_leased_txn_commit_at(s, lease, token, (elpis_ecsg_k1_transition *)t);
 }
 static int c_abort(void *s, uint64_t token) { return elpis_ecs_composite_txn_abort(s, token); }
-static int c_snapshot(void *s, uint8_t *out, size_t size) { return elpis_ecs_composite_snapshot_write(s, out, size); }
-static int c_txn_snapshot(void *s, uint64_t token, uint8_t *out, size_t size) {
-    return elpis_ecs_composite_txn_snapshot_write(s, token, out, size);
+static int c_capture(void *s, uint64_t lease, uint8_t *out, size_t size, uint64_t *generation) {
+    return elpis_ecs_composite_leased_capture(s, lease, out, size, generation);
 }
+static int c_seal(uint8_t *envelope, size_t size) { return elpis_ecs_composite_envelope_seal(envelope, size); }
 static int c_observe(void *s, uint64_t lease, uint64_t token, const void *observation, uint8_t key[32], int *ms) {
     return elpis_ecs_composite_leased_txn_observe(s, lease, token, observation, (elpis_ecs_mem_digest *)key, ms);
 }
 static const elpis_runtime_composite_api COMPOSITE_API = {
-    {c_digest, c_shape, c_query, c_claim, c_release, c_reserve, c_begin, c_schedule, c_commit, c_abort, c_snapshot,
-     c_txn_snapshot},
+    {c_digest, c_shape, c_claim, c_release, c_reserve, c_identity, c_query, c_begin, c_schedule, c_commit, c_abort,
+     c_capture, c_seal},
     c_observe};
+
+static void make_durable(elpis_runtime *rt, const elpis_runtime_substrate *d) {
+    const elpis_runtime_durable_ticket t = durable_publish(rt, d);
+    assert(t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED);
+}
 
 /* ---- fixtures ------------------------------------------------------------------------------------------------ */
 
@@ -138,7 +149,7 @@ static void reset_dir(const char *a, const char *b) {
 
 /* begin (K1 schedule) -> observe each -> commit. Returns the commit status; keys of the observations. */
 static int turn(elpis_runtime *rt, const elpis_runtime_substrate *d, const elpis_ecs_mem_observation *o, int n,
-                uint8_t keys[][32], elpis_runtime_turn_commit_result *out) {
+                uint8_t keys[][32], elpis_runtime_volatile_commit *out) {
     double s3[F];
     elpis_runtime_turn_begin_result begun;
     int rc = elpis_runtime_turn_begin(rt, d, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, &BUDGET, s3, F, &begun);
@@ -149,8 +160,7 @@ static int turn(elpis_runtime *rt, const elpis_runtime_substrate *d, const elpis
         assert(r.k1_status == 0 && r.memory_status == 0);
         if (keys) memcpy(keys[i], r.relation_key, 32);
     }
-    elpis_continuity_snapshot snap;
-    return elpis_runtime_turn_commit(rt, d, out, &snap);
+    return elpis_runtime_turn_commit(rt, d, out);
 }
 
 /* HACF hyperedge -> typed observation -> managed turn -> committed composite memory, provenance preserved. */
@@ -181,7 +191,7 @@ static void hacf_turn(elpis_runtime *rt, const elpis_runtime_substrate *d, elpis
                                               &o[s]) == ELPIS_ECS_OBS_HACF_OK);
     }
     uint8_t keys[2][32];
-    elpis_runtime_turn_commit_result committed;
+    elpis_runtime_volatile_commit committed;
     OK(turn(rt, d, o, 2, keys, &committed));
     assert(!memcmp(keys[0], keys[1], 32)); /* one relation, two observations */
     elpis_ecs_mem_slot slot;
@@ -250,19 +260,27 @@ int main(int argc, char **argv) {
     elpis_ecs_mem_observation o1[2] = {obs(1, 2, 10), obs(3, 4, 11)};
     elpis_runtime_observe_result orr;
     assert(elpis_runtime_turn_observe(rt, &d, &o1[0], &orr) == ELPIS_RUNTIME_TURN_NOT_OPEN);
-    elpis_runtime_turn_commit_result committed;
-    uint8_t keys[2][32];
+    elpis_runtime_volatile_commit committed;
+    uint8_t keys[2][32], anchored[32];
+    memcpy(anchored, id, 32);
     OK(turn(rt, &d, o1, 2, keys, &committed));
     identity(x, id);
+    assert(committed.committed == 1 && committed.transition.generation_after == committed.transition.generation_before + 1);
     OK(elpis_runtime_snapshot(rt, &snap));
-    assert(!memcmp(committed.identity.state_after_digest, id, 32) && !memcmp(snap.k1_state_digest, id, 32));
-    assert(snap.state_format == ELPIS_CONTINUITY_FORMAT_COMPOSITE);
-    assert(asserts_of(x, keys[0]) == 1 && asserts_of(x, keys[1]) == 1);
-    /* QUERY is bound to the composite identity. */
+    assert(!memcmp(snap.k1_state_digest, anchored, 32));   /* volatile: the durable authority did not move */
+    assert(asserts_of(x, keys[0]) == 1 && asserts_of(x, keys[1]) == 1);   /* the memory transition is live */
+    /* QUERY answers from the live composite, at its live generation. */
     double answer[ROWS];
     elpis_runtime_query_result qr;
     OK(elpis_runtime_query(rt, &d, X, ROWS * DIM, answer, ROWS, &BUDGET, &qr));
-    assert(!memcmp(qr.state_digest, id, 32));
+    assert(qr.live_generation == committed.live_generation);
+    /* An explicit durable publication: the composite envelope (memory included) checkpointed, then published. */
+    {
+        const elpis_runtime_durable_ticket t = durable_publish(rt, &d);
+        assert(t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED && t.recoverable == 1 && !memcmp(t.identity, id, 32));
+        OK(elpis_runtime_snapshot(rt, &snap));
+        assert(!memcmp(snap.k1_state_digest, id, 32) && snap.state_format == ELPIS_CONTINUITY_FORMAT_COMPOSITE);
+    }
     /* A refused observation is recoverable: the turn stays open and commits the rest. */
     {
         double s3[F];
@@ -279,7 +297,7 @@ int main(int argc, char **argv) {
         elpis_ecs_mem_observation good = obs(5, 6, 12);
         OK(elpis_runtime_turn_observe(rt, &d, &good, &orr));
         memcpy(keys[0], orr.relation_key, 32);
-        OK(elpis_runtime_turn_commit(rt, &d, &committed, &snap));
+        OK(elpis_runtime_turn_commit(rt, &d, &committed));
         assert(asserts_of(x, keys[0]) == 1);
     }
     /* An aborted turn changes nothing (its observation included). */
@@ -296,6 +314,7 @@ int main(int argc, char **argv) {
         assert(!memcmp(id, after, 32) && asserts_of(x, orr.relation_key) == 0);
     }
     hacf_turn(rt, &d, x, 30);
+    make_durable(rt, &d);   /* the state the next sections bind must be the durable one */
     elpis_runtime_destroy(&rt);
 
     /* ---- a K1 state never stands for the composite lineage ---------------------------------------------------- */
@@ -314,7 +333,8 @@ int main(int argc, char **argv) {
         assert(elpis_ecsg_k1_destroy(&k) == ELPIS_ECSG_K1_OK);
     }
 
-    /* ---- process death after the checkpoint, and after the native commit ---------------------------------------- */
+    /* ---- process death during a durable publication: after the checkpoint slot is synced (continuity unpublished),
+     * and with the continuity record torn ------------------------------------------------------------------------ */
     uint8_t *got = malloc(envelope);
     assert(got);
     for (uint32_t point = 1; point <= 2; ++point) {
@@ -323,12 +343,13 @@ int main(int argc, char **argv) {
         OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)ck, strlen(ck)));
         uint8_t authorized[32];
         memcpy(authorized, snap.k1_state_digest, 32);
-        OK(elpis_runtime_testing_checkpoint_crash(rt, point));
         elpis_ecs_mem_observation oc = obs(40 + point, 50 + point, 100 + point);
         uint8_t ck_key[1][32];
-        const int rc = turn(rt, &d, &oc, 1, ck_key, &committed);
-        assert(rc == ELPIS_CONTINUITY_TESTING_PROCESS_DEATH);
-        assert(committed.committed == (point == 2));
+        OK(turn(rt, &d, &oc, 1, ck_key, &committed));   /* volatile */
+        OK(elpis_runtime_testing_durable_fault(rt, 1, point == 1 ? 5u : 6u, 50));
+        const elpis_runtime_durable_ticket died = durable_publish(rt, &d);
+        assert(died.status == ELPIS_RUNTIME_DURABLE_ABANDONED && died.code == ELPIS_CONTINUITY_TESTING_PROCESS_DEATH);
+        assert(elpis_runtime_fault(rt) == ELPIS_CONTINUITY_TESTING_PROCESS_DEATH);
         elpis_runtime_destroy(&rt); /* the process ends: only continuity and the checkpoint slots remain */
         elpis_ecs_composite_destroy(x);
 
@@ -339,9 +360,9 @@ int main(int argc, char **argv) {
         OK(elpis_runtime_checkpoint_recover(rt, &rec, NULL, 0));
         assert(rec.disposition == ELPIS_RUNTIME_RECOVERY_CANDIDATE_UNRESOLVED && rec.authorized_present == 1);
         if (point == 1) {
-            OK(elpis_runtime_checkpoint_discard(rt, rec.candidate)); /* the commit never happened */
+            OK(elpis_runtime_checkpoint_discard(rt, rec.candidate)); /* the operator keeps the acknowledged state */
         } else {
-            OK(elpis_runtime_checkpoint_adopt(rt, rec.candidate, &snap)); /* operator adopts the committed state */
+            OK(elpis_runtime_checkpoint_adopt(rt, rec.candidate, &snap)); /* operator adopts the captured state */
             assert(!memcmp(snap.k1_state_digest, rec.candidate, 32));
             assert(snap.state_format == ELPIS_CONTINUITY_FORMAT_COMPOSITE);
         }
@@ -352,7 +373,7 @@ int main(int argc, char **argv) {
         identity(x, id);
         OK(elpis_runtime_snapshot(rt, &snap));
         assert(!memcmp(id, snap.k1_state_digest, 32));
-        /* The memory transition of the interrupted turn is present exactly when it became authoritative. */
+        /* The memory transition of the interrupted publication is present exactly when it became authoritative. */
         assert(asserts_of(x, ck_key[0]) == (point == 2 ? 1u : 0u));
         d = csub(x, 10 + point);
         uint8_t again[1][32];
@@ -363,6 +384,7 @@ int main(int argc, char **argv) {
             OK(turn(rt, &d, NULL, 0, NULL, &committed)); /* the lineage continues from the adopted state */
             assert(asserts_of(x, ck_key[0]) == 1);       /* never duplicated */
         }
+        make_durable(rt, &d);
         elpis_runtime_destroy(&rt);
     }
     elpis_ecs_composite_destroy(x);
@@ -387,6 +409,7 @@ int main(int argc, char **argv) {
         OK(elpis_runtime_anchor(rt, &dk, &snap));
         assert(snap.state_format == ELPIS_CONTINUITY_FORMAT_K1);
         OK(turn(rt, &dk, NULL, 0, NULL, &committed));
+        make_durable(rt, &dk);   /* the import names the durable K1 identity */
         uint8_t *k1e = malloc(k1n);
         assert(k1e && elpis_ecsg_k1_snapshot_write(k, k1e, k1n) == ELPIS_ECSG_K1_OK);
         OK(elpis_runtime_release(rt, &dk));

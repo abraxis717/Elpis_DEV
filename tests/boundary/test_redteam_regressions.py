@@ -17,7 +17,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 FINDINGS: dict[str, tuple[str, tuple[str, ...]]] = {
     "RT-01 QUERY could learn": (
-        "QUERY is read-only: one native query_identity, no transaction, no publication; LEARN needs authority", (
+        "QUERY is read-only: one native leased query at the live coordinate, no transaction, no publication; LEARN needs authority", (
             "tests/integration/test_query_learn.py::test_a_query_answers_f_w_of_the_authoritative_state_and_changes_nothing",
             "tests/integration/test_query_learn.py::test_a_managed_query_changes_no_state_and_no_continuity_byte",
             "tests/integration/test_query_learn.py::test_learn_without_explicit_authority_is_refused_before_any_state_is_touched",
@@ -50,10 +50,11 @@ FINDINGS: dict[str, tuple[str, tuple[str, ...]]] = {
             "tests/integration/test_native_admission.py::test_a_dependency_bound_to_unpinned_bytes_refuses_the_admission",
         )),
     "RT-06 an unrecoverable K1 state": (
-        "K1 Recovery R0: two fixed slots; checkpoint bytes never authorize themselves; explicit dispositions", (
+        "K1 Recovery R0: two fixed slots; bytes never authorize themselves; explicit acknowledged publication", (
             "tests/integration/test_k1_recovery.py::test_checkpoint_bytes_never_authorize_themselves",
-            "tests/integration/test_k1_recovery.py::test_a_crash_inside_a_checkpointed_learn_needs_explicit_reconciliation",
-            "tests/integration/test_k1_recovery.py::test_anchor_and_every_learn_keep_the_complete_authorized_state_resumable_in_two_fixed_slots",
+            "tests/integration/test_k1_recovery.py::test_a_crash_inside_a_durable_publication_needs_explicit_reconciliation",
+            "tests/integration/test_k1_recovery.py::test_volatile_learns_never_touch_the_slots_and_each_durable_publication_is_resumable",
+            "tests/integration/test_k1_recovery.py::test_restart_resumes_exactly_the_last_acknowledged_state",
         )),
     "RT-07 evolution authorized and evaluated itself": (
         "pinned evolution policy: issued gates, independent evaluation, operator-approved promotion", (

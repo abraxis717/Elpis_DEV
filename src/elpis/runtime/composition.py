@@ -29,8 +29,13 @@ entry point and returns that subsystem's result:
   authoritative K1 state -> codec (:mod:`elpis.runtime.cognition`). No state
   change: nothing is begun, committed or published.
 * ``run_learn``: the canonical LEARN under an explicit ``LearnAuthority``: the
-  admitted experience schedule committed atomically, then its new expected K1
-  retained-state identity published to continuity.
+  admitted experience schedule committed atomically into the live state. The
+  commit is VOLATILE: nothing is checkpointed or published, and no I/O happens.
+* ``publish_durable``: the explicit durable publication of the live state
+  (docs/RUNTIME_CORE.md, "Live and durable authority"): RuntimeCore captures it
+  and its durability lane checkpoints and publishes it off the HOT lane; the
+  caller chooses whether to wait for the acknowledgment. ``durability`` reads
+  the lane's state; ``live_identity`` reads the live state's identity on request.
 * ``recover_k1``: K1 Recovery R0 (docs/K1_RECOVERY_R0.md), read-only: what
   restart may do with the lineage, and the complete authorized envelope when it
   is resumable. ``discard_k1_candidate`` / ``adopt_k1_candidate`` are the
@@ -42,11 +47,11 @@ entry point and returns that subsystem's result:
 
 THE AUTHORITY IS RUNTIMECORE'S, NOT THIS MODULE'S. Every mutable systems decision
 of an open runtime belongs to RuntimeCore (native/runtime, Rust; docs/RUNTIME_CORE.md):
-its lifecycle and fail-stop disposition, the continuity store, the binding of the
-K1 lineage to one native state and its verification against continuity, the
-managed turn's native K1 transaction (begin, schedule, commit or abort) with its
-continuity publication, and the evolution attempt's durable reservation and
-finalization. This module is the compatibility facade: it validates requests at
+its lifecycle and fail-stop disposition, the binding of the K1 lineage to one native
+state (verified once against continuity) and its live coordinate, the managed
+turn's native K1 transaction (begin, schedule, volatile commit or abort), the
+durability lane (explicit durable publication) and the evolution attempt's durable
+reservation and finalization. This module is the compatibility facade: it validates requests at
 the language boundary (token codec, ECS codec map, evolution gate), hands
 RuntimeCore native-ready values and raises the code RuntimeCore returns. It holds
 no fail-stop flag, no lineage state, no transaction and no authority value; the
@@ -54,7 +59,9 @@ only state it keeps is a reference that keeps the bound K1 state's owner alive
 (lifetime, not authority).
 
 There are no generic receipts and no history. Continuity holds only the current
-authority restart and evolution need (docs/CONTINUITY.md).
+durable authority restart and evolution need (docs/CONTINUITY.md); the live state
+may be ahead of it, and a crash loses at most the volatile work since the last
+acknowledged durable publication.
 
 The runtime composes no DSV model execution (docs/ELPIS_MISSION.md: DSV4
 communicates, ECS computes). Nothing is chained implicitly. No hidden
@@ -84,7 +91,7 @@ from elpis.structure.retrieval.validation import validate_bundle
 from elpis.substrate.authority import PinnedAuthority
 from elpis.substrate.digests import raw_digest
 
-from .core import K1Recovery, RuntimeCore, RuntimeLibrary, describe
+from .core import DurabilityStatus, DurableTicket, K1Recovery, RuntimeCore, RuntimeLibrary, describe
 from .edges import from_regex_hacf, object_claims
 from .errors import CompositionError
 
@@ -121,8 +128,9 @@ class RuntimeConfig:
 
     ``k1_checkpoint_dir`` (optional) is an operator-provisioned K1 Recovery R0 store
     (:func:`elpis.runtime.recovery.provision_k1_checkpoint`). When set, every open attaches it (a missing or malformed
-    store refuses the open), the anchor and every LEARN persist the complete envelope before it becomes
-    authoritative, and :meth:`Runtime.recover_k1` can resume the authorized state after restart.
+    store refuses the open), the anchor and every durable publication persist the complete envelope before continuity
+    names it, and :meth:`Runtime.recover_k1` can resume the last acknowledged state after restart. A LEARN never
+    touches it.
     """
 
     continuity_dir: Path
@@ -406,9 +414,10 @@ class Runtime:
         """One managed QUERY (docs/COGNITION_R0.md): read-only.
 
         The boundary validates the :class:`~elpis.runtime.cognition.QueryRequest` and encodes the query rows.
-        RuntimeCore answers ``f_W(x)`` from the lineage's authoritative K1 state in one native call that also
-        identifies the state; the identity must be the durable expected one (a mismatch fail-stops and the answer is
-        withheld). Nothing is begun, committed, published or written: W, epoch, H, a and continuity are unchanged.
+        RuntimeCore answers ``f_W(x)`` from the lineage's LIVE K1 state in one native call that also reports the
+        state's generation; it must be the live one (otherwise the lineage is lost: fail-stop, the answer withheld).
+        Nothing is begun, committed, published, hashed or written: W, epoch, H, a and continuity are unchanged. The
+        answer reflects every managed LEARN before it, durable or not.
         """
         self._core.require_live()
 
@@ -421,8 +430,8 @@ class Runtime:
         admit_query(stimulus, substrate.dim, substrate.width, request.budget, request.max_output_tokens)
         if self._bound_owner is None:
             self._bound_owner, self._bound_substrate = owner, substrate   # what this query binds stays alive
-        values, digest = self._core.query(descriptor, stimulus, request.budget)   # RuntimeCore re-admits natively
-        readout = QueryReadout(values, substrate.dim, substrate.width, digest)
+        values, generation = self._core.query(descriptor, stimulus, request.budget)   # RuntimeCore re-admits natively
+        readout = QueryReadout(values, substrate.dim, substrate.width, None, generation)
         output, rendered = _decode_query(codec_map, readout, request.tokenizer, request.max_output_tokens)
         return QueryResult(tokens, output, rendered, readout, classification)
 
@@ -430,9 +439,10 @@ class Runtime:
     def run_learn(self, substrate, request):
         """One managed LEARN under an explicit :class:`~elpis.runtime.cognition.LearnAuthority`.
 
-        RuntimeCore verifies the K1 lineage, runs the admitted experience schedule on a native candidate, commits it
-        atomically and publishes the new retained-state identity to continuity, fail-stopping when that publication
-        is not certain. A refused LEARN installs nothing.
+        RuntimeCore verifies the K1 lineage (its live coordinate), runs the admitted experience schedule on a native
+        candidate and commits it atomically into the live state. The commit is VOLATILE: nothing is checkpointed or
+        published and no I/O happens (``result.durability == "VOLATILE"``; the result carries the live generations).
+        Durability is :meth:`publish_durable`. A refused LEARN installs nothing.
         """
         self._core.require_live()
 
@@ -446,10 +456,42 @@ class Runtime:
         if self._bound_owner is None:
             self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
         self._core.turn_begin(descriptor, stimulus, authority.learning_rate, authority.budget)
-        committed, _ = self._core.turn_commit(descriptor)
-        return LearnResult(tokens, stimulus.experiences, committed.commit.epoch_before, committed.commit.epoch_after,
-                           classification, authority.grant, committed.state_before_digest,
-                           committed.state_after_digest)
+        committed = self._core.turn_commit(descriptor)
+        return LearnResult(tokens, stimulus.experiences, committed.epoch_before, committed.epoch_after,
+                           classification, authority.grant, None, None,
+                           generation_before=committed.generation_before, generation_after=committed.generation_after,
+                           durability="VOLATILE")
+
+    # -- durability: explicit, off the HOT lane -------------------------------------------------------------------
+    def publish_durable(self, substrate, *, wait: bool = True, timeout: float | None = None) -> DurableTicket:
+        """Request durable publication of the live state of ``substrate`` (binding it first if needed).
+
+        RuntimeCore captures the state's envelope under its lease (the one synchronous step) and hands it to its
+        durability lane, which seals it, writes and syncs the checkpoint slot (when a store is attached), then writes
+        and syncs the continuity record, off the HOT lane. With ``wait`` (the caller's explicit choice) this returns
+        the resolved :class:`~elpis.runtime.core.DurableTicket`; otherwise the PENDING one at once. ``ACKNOWLEDGED``
+        with ``recoverable`` means restart resumes exactly this state (K1 Recovery R0); without a checkpoint store
+        only the identity is durable. A newer request supersedes a waiting one. Refused while the lane is faulted.
+        """
+        self._core.require_live()
+        descriptor, owner = describe(substrate)
+        if self._bound_owner is None:
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this request binds stays alive
+        ticket = self._core.durable_request(descriptor)
+        if not wait:
+            return ticket
+        return self._core.durable_wait(ticket.sequence, timeout)
+
+    def durability(self) -> DurabilityStatus:
+        """The durability lane's state (read without waiting for any HOT operation)."""
+        return self._core.durable_status()
+
+    def live_identity(self, substrate) -> tuple[bytes, int]:
+        """The bound state's retained-state identity and live generation, on request (cold path: it hashes)."""
+        descriptor, owner = describe(substrate)
+        if self._bound_owner is None:
+            self._bound_owner, self._bound_substrate = owner, substrate
+        return self._core.live_identity(descriptor)
 
     # -- cognition: LEGACY learned turn (LEARN + S3 decode) --------------------------------------------------------
     def run_turn(self, substrate, text, *, tokenizer, codec=None, authority=None, max_output_tokens=256):
@@ -457,9 +499,8 @@ class Runtime:
 
         Kept for the replay of the original synthetic scaffold (``LEGACY_LEARNED_TURN``); it is never a query. The
         boundary validates the request, encodes the text and the stimulus and decodes the readout. RuntimeCore
-        verifies the K1 lineage, runs the native K1 transaction on its candidate, commits it after the decode
-        succeeded and publishes the committed identity to continuity, fail-stopping when that publication is not
-        certain. A refused or aborted turn installs nothing.
+        verifies the K1 lineage, runs the native K1 transaction on its candidate and commits it (volatile) after the
+        decode succeeded. A refused or aborted turn installs nothing.
         """
         self._core.require_live()
 
@@ -480,7 +521,7 @@ class Runtime:
         except BaseException:
             self._core.turn_abort(descriptor)
             raise
-        committed, _ = self._core.turn_commit(descriptor)
-        return TurnResult(tokens, output, rendered, readout, committed.commit.epoch_before,
-                          committed.commit.epoch_after, classification, committed.state_before_digest,
-                          committed.state_after_digest)
+        committed = self._core.turn_commit(descriptor)
+        return TurnResult(tokens, output, rendered, readout, committed.epoch_before, committed.epoch_after,
+                          classification, generation_before=committed.generation_before,
+                          generation_after=committed.generation_after, durability="VOLATILE")

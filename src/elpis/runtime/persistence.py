@@ -47,16 +47,19 @@ F, O, R, P = (WriterClass.FIXED_CAPACITY_AUTONOMOUS, WriterClass.OPERATOR_EXPLIC
 WRITERS: tuple[PersistentWriter, ...] = (
     PersistentWriter(
         "continuity_slots", F, (),
-        ("native/continuity/src/store.rs:pub struct Store", "native/runtime/src/core.rs:Store"),
+        ("native/continuity/src/store.rs:pub struct Store", "native/runtime/src/durable.rs:pub struct Stores"),
         "Exactly two fixed 176-byte slot files in one explicit, exclusively owned directory; each publication "
-        "replaces the non-current slot in place. No log, history, compaction or growth."),
+        "replaces the non-current slot in place. No log, history, compaction or growth. Published only by an explicit "
+        "operation (anchor, an explicit durable publication on the durability lane, evolution reservation and "
+        "finalization, operator reconciliation); a LEARN or QUERY never writes it (RuntimeCore ABI v4)."),
     PersistentWriter(
         "k1_checkpoint_slots", F, (),
         ("native/runtime/src/checkpoint.rs:pub fn write", "native/runtime/src/checkpoint.rs:pub fn retract"),
         "K1 Recovery R0: exactly two slot files of one fixed size (header + the admitted K1 shape's envelope) in "
-        "one operator-provisioned, exclusively locked directory. The anchor and each LEARN rewrite the slot that "
-        "does not hold the authorized state in place; the runtime never creates, grows, resizes, renames or "
-        "multiplies them. No history; a slot never authorizes itself (continuity decides)."),
+        "one operator-provisioned, exclusively locked directory. The anchor and each explicit durable publication "
+        "rewrite the slot that does not hold the authorized state in place (a LEARN never does); the runtime never "
+        "creates, grows, resizes, renames or multiplies them. No history; a slot never authorizes itself (continuity "
+        "decides)."),
     PersistentWriter(
         "fms_posix_cold_store", F, ("elpis.substrate.residency:Context",),
         ("native/substrate/src/fms_pal_posix.c:p_cold_put",),
@@ -135,8 +138,11 @@ AUTONOMOUS_OPERATIONS = frozenset({
     "anchor_cognition", "evolution_authority",
     "release",             # gives a bound K1 state back (its managed lease); writes nothing
     "run_query",           # read-only: writes nothing at all
-    "run_learn",           # explicit LearnAuthority; writes only the fixed continuity slots
-    "run_turn",            # LEGACY learned turn: a LEARN (explicit LearnAuthority); fixed continuity slots only
+    "run_learn",           # explicit LearnAuthority; a volatile commit: writes nothing at all
+    "run_turn",            # LEGACY learned turn: a LEARN (explicit LearnAuthority); writes nothing at all
+    "publish_durable",     # explicit durable publication: the fixed checkpoint and continuity slots only
+    "durability",          # read-only: the durability lane's state
+    "live_identity",       # read-only: the live state's identity
     "recover_k1",          # read-only: what restart may do with the lineage
 })
 OPERATOR_OPERATIONS = frozenset({

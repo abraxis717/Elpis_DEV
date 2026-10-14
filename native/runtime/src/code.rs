@@ -38,10 +38,14 @@ pub enum Rt {
     CheckpointShape = 78,
     /// A newer unauthorized checkpoint candidate needs explicit operator reconciliation (discard or adopt) first.
     CheckpointUnresolved = 79,
+    /// A durable publication is pending or running; the operation would change the lineage under it.
+    DurableBusy = 80,
+    /// The durable publication waited for has not resolved yet (a wait that timed out). Not a failure.
+    DurablePending = 81,
 }
 
 impl Rt {
-    pub const ALL: [Rt; 15] = [
+    pub const ALL: [Rt; 17] = [
         Rt::Invalid,
         Rt::Closed,
         Rt::SubstrateSwitch,
@@ -57,6 +61,8 @@ impl Rt {
         Rt::CheckpointIo,
         Rt::CheckpointShape,
         Rt::CheckpointUnresolved,
+        Rt::DurableBusy,
+        Rt::DurablePending,
     ];
 
     pub fn name(self) -> &'static str {
@@ -76,6 +82,8 @@ impl Rt {
             Rt::CheckpointIo => "CHECKPOINT_IO",
             Rt::CheckpointShape => "CHECKPOINT_SHAPE",
             Rt::CheckpointUnresolved => "CHECKPOINT_UNRESOLVED",
+            Rt::DurableBusy => "RUNTIME_DURABLE_BUSY",
+            Rt::DurablePending => "RUNTIME_DURABLE_PENDING",
         }
     }
 

@@ -5,6 +5,15 @@
 //! declared input dimension and the caller identity of the handle's owner. Every [`K1Ops`] call is exactly one
 //! native K1 crossing; RuntimeCore computes no ECS mathematics and touches no ECS byte.
 //!
+//! ABI v4 (docs/RUNTIME_CORE.md, "Live and durable authority"): the managed operations reach the state through its
+//! live coordinate (ecsg_k1.h, "Live coordinate"): `leased_query`, `leased_txn_begin_at` and `leased_txn_commit`
+//! bind every answer, begin and commit to the state's generation under RuntimeCore's lease and compute no digest;
+//! `leased_identity` (the SHA-256 retained-state identity with the generation) is read once when a state is bound;
+//! `leased_capture` and the pure `envelope_seal` produce the envelope that durable publication writes, the capture
+//! on the caller's thread and the seal on the durability lane. The digest-bearing entries of v3 (`query_identity`,
+//! `leased_txn_begin`, `leased_txn_commit_identity`, `snapshot_write`, `txn_snapshot_write`) are not in the v4
+//! tables: RuntimeCore no longer calls them.
+//!
 //! From a successful managed-turn begin until that turn ends, RuntimeCore retains one capability over the state:
 //! [`TxnAbort`], the native `txn_abort` of the turn's transaction (a copy of the descriptor's handle, resident id
 //! and abort entry; never commit, schedule or any other operation). It is what ends the turn when the runtime is
@@ -76,15 +85,6 @@ pub struct Transition {
     pub failed_step: u64,
 }
 
-/// `elpis_ecsg_k1_commit_identity`: the committed transition and its exact retained-state identities.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct CommitIdentity {
-    pub transition: Transition,
-    pub state_before_digest: Digest,
-    pub state_after_digest: Digest,
-}
-
 /// The S3 readout length of a K1 state of input dimension `dim` (`elpis_ecsg_k1_features`):
 /// `d + d(d+1)/2 + d(d+1)(d+2)/6`, the number of degree-1..3 monomials. 0 outside 1..=64.
 pub fn features(dim: usize) -> usize {
@@ -94,27 +94,48 @@ pub fn features(dim: usize) -> usize {
     dim + dim * (dim + 1) / 2 + dim * (dim + 1) * (dim + 2) / 6
 }
 
-/// The native operations a runtime needs on one retained K1 state. Each returns the K1 status.
+/// The `ELPISGK1` envelope size of a `dim x width` K1 state (`elpis_ecsg_k1_envelope_bytes`): the 64-byte header,
+/// W, H packed and a as binary64, and the 32-byte trailer. `None` on an invalid shape or an overflow. K1 verifies it
+/// natively: a capture into a buffer of another size is refused (`leased_capture` INVALID, `envelope_seal`
+/// INVALID), never written short.
+pub fn k1_envelope_bytes(dim: usize, width: usize) -> Option<usize> {
+    let f = features(dim);
+    if f == 0 || width == 0 {
+        return None;
+    }
+    let values = dim.checked_mul(width)?.checked_add(f.checked_mul(f + 1)? / 2)?.checked_add(f)?;
+    values.checked_mul(8)?.checked_add(64 + 32)
+}
+
+/// The pure sealer of the substrate's envelope format (`envelope_seal`): writes the SHA-256 trailer(s) of an unsealed
+/// envelope in place. No state; callable from any thread (the durability lane calls it).
+pub type Sealer = unsafe extern "C" fn(*mut u8, usize) -> c_int;
+
 /// The native operations a runtime needs on one retained K1 state. Each returns the K1 status.
 ///
 /// Every mutating operation is a *leased* entry point (ecsg_k1.h, "Managed ownership"): it presents RuntimeCore's
 /// lease, and the state refuses it (`LEASED`) unless that lease holds the state. While RuntimeCore holds the lease
-/// the state refuses every unmanaged mutating entry point, so the bound state cannot move outside the lineage.
+/// the state refuses every unmanaged mutating entry point, so the bound state cannot move outside the lineage. The
+/// live-coordinate entries (ecsg_k1.h, "Live coordinate") report the state's generation under the same guard as
+/// their answer, begin, commit or capture, and refuse another lease before reading anything.
 pub trait K1Ops {
+    /// The retained-state identity of the authoritative state (unleased read; used to check a state before it is
+    /// claimed, so a state that is not the lineage is never claimed).
     fn state_digest(&mut self, out: &mut Digest) -> i32;
     /// The state's immutable shape `(dim, width)` (`shape`): read-only, no guard.
     fn shape(&mut self, dim: &mut usize, width: &mut usize) -> i32;
-    /// QUERY bound to its identity (`query_identity`): `out[r] = f_W(x_r)` for `out.len()` rows of the declared
-    /// dimension, and `digest` = the retained-state identity of the same authoritative state, in one native call.
-    /// Read-only: no transaction, no commit, nothing written to the retained state.
-    fn query_identity(&mut self, dim: usize, x: &[f64], out: &mut [f64], digest: &mut Digest) -> i32;
     /// Claim the state for `lease` (replacing any other lease; BUSY while a transaction is open).
     fn lease_claim(&mut self, lease: u64) -> i32;
     /// Release the state if `lease` holds it.
     fn lease_release(&mut self, lease: u64) -> i32;
     fn reserve(&mut self, lease: u64, max_rows: usize) -> i32;
-    /// Begin a transaction and write the retained-state identity of exactly the source it copied (one call).
-    fn txn_begin(&mut self, lease: u64, source: &mut Digest, token: &mut u64) -> i32;
+    /// The retained-state identity and the generation of the same state, for the lease holder (one guarded call).
+    fn leased_identity(&mut self, lease: u64, digest: &mut Digest, generation: &mut u64) -> i32;
+    /// QUERY for the lease holder (`leased_query`): `out[r] = f_W(x_r)` for `out.len()` rows of the declared
+    /// dimension and the generation of the same authoritative state, in one native call. Read-only; no digest.
+    fn leased_query(&mut self, lease: u64, dim: usize, x: &[f64], out: &mut [f64], generation: &mut u64) -> i32;
+    /// Begin a transaction and report the generation of exactly the source it copied (no digest).
+    fn txn_begin_at(&mut self, lease: u64, source_generation: &mut u64, token: &mut u64) -> i32;
     #[allow(clippy::too_many_arguments)]
     fn txn_run_schedule(
         &mut self,
@@ -127,12 +148,14 @@ pub trait K1Ops {
         s3: &mut [f64],
         result: &mut ScheduleOutcome,
     ) -> i32;
-    fn txn_commit_identity(&mut self, lease: u64, token: u64, out: &mut CommitIdentity) -> i32;
+    /// Commit the open transaction and report the transition (generations before and after; no digest).
+    fn txn_commit(&mut self, lease: u64, token: u64, out: &mut Transition) -> i32;
     fn txn_abort(&mut self, token: u64) -> i32;
-    /// The portable envelope of the authoritative state (`snapshot_write`; read-only).
-    fn snapshot_write(&mut self, out: &mut [u8]) -> i32;
-    /// The portable envelope of the open transaction's candidate (`txn_snapshot_write`; read-only).
-    fn txn_snapshot_write(&mut self, token: u64, out: &mut [u8]) -> i32;
+    /// The authoritative state's envelope UNSEALED (its trailer zero) and the generation of the same state, for the
+    /// lease holder (one guarded call). `envelope_seal` completes it.
+    fn leased_capture(&mut self, lease: u64, out: &mut [u8], generation: &mut u64) -> i32;
+    /// The pure sealer of this substrate's envelope format.
+    fn sealer(&self) -> Sealer;
     /// The owned abort capability over this same native state, retained by RuntimeCore from a successful turn
     /// begin until that turn ends. It may outlive the call that produced it, but never the open transaction it
     /// ends: the native state is live for exactly that interval (the substrate lifetime contract, runtime.h).
@@ -217,28 +240,30 @@ pub type K1FmsRunSchedule = unsafe extern "C" fn(
     *mut ScheduleOutcome,
 ) -> Status;
 
-/// `elpis_ecsg_k1_query_identity`.
-pub type K1QueryIdentity = unsafe extern "C" fn(State, usize, *const f64, usize, *mut f64, *mut u8) -> Status;
+/// `elpis_ecsg_k1_leased_query`.
+pub type K1LeasedQuery = unsafe extern "C" fn(State, u64, usize, *const f64, usize, *mut f64, *mut u64) -> Status;
 
-/// `elpis_ecsg_k1_fms_query_identity`.
-pub type K1FmsQueryIdentity = unsafe extern "C" fn(State, u64, usize, *const f64, usize, *mut f64, *mut u8) -> Status;
+/// `elpis_ecsg_k1_fms_leased_query`.
+pub type K1FmsLeasedQuery =
+    unsafe extern "C" fn(State, u64, u64, usize, *const f64, usize, *mut f64, *mut u64) -> Status;
 
-/// The function table of a standalone K1 library (`ecsg_k1.h`). Every entry is required.
+/// The function table of a standalone K1 library (`ecsg_k1.h`), ABI v4. Every entry is required.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct K1Api {
     pub state_digest: Option<unsafe extern "C" fn(State, *mut u8) -> Status>,
     pub shape: Option<unsafe extern "C" fn(State, *mut usize, *mut usize) -> Status>,
-    pub query_identity: Option<K1QueryIdentity>,
     pub lease_claim: Option<unsafe extern "C" fn(State, u64) -> Status>,
     pub lease_release: Option<unsafe extern "C" fn(State, u64) -> Status>,
     pub leased_reserve: Option<unsafe extern "C" fn(State, u64, usize) -> Status>,
-    pub leased_txn_begin: Option<unsafe extern "C" fn(State, u64, *mut u8, *mut u64) -> Status>,
+    pub leased_identity: Option<unsafe extern "C" fn(State, u64, *mut u8, *mut u64) -> Status>,
+    pub leased_query: Option<K1LeasedQuery>,
+    pub leased_txn_begin_at: Option<unsafe extern "C" fn(State, u64, *mut u64, *mut u64) -> Status>,
     pub leased_txn_run_schedule: Option<K1RunSchedule>,
-    pub leased_txn_commit_identity: Option<unsafe extern "C" fn(State, u64, u64, *mut CommitIdentity) -> Status>,
+    pub leased_txn_commit: Option<unsafe extern "C" fn(State, u64, u64, *mut Transition) -> Status>,
     pub txn_abort: Option<unsafe extern "C" fn(State, u64) -> Status>,
-    pub snapshot_write: Option<unsafe extern "C" fn(State, *mut u8, usize) -> Status>,
-    pub txn_snapshot_write: Option<unsafe extern "C" fn(State, u64, *mut u8, usize) -> Status>,
+    pub leased_capture: Option<unsafe extern "C" fn(State, u64, *mut u8, usize, *mut u64) -> Status>,
+    pub envelope_seal: Option<Sealer>,
 }
 
 /// `elpis_ecs_composite_leased_txn_observe` (the observation and key are opaque to RuntimeCore).
@@ -253,22 +278,24 @@ pub struct CompositeApi {
     pub leased_txn_observe: Option<CompositeObserve>,
 }
 
-/// The function table of the K1 FMS adapter (`ecsg_k1_fms.h`): the same operations on one resident state id.
+/// The function table of the K1 FMS adapter (`ecsg_k1_fms.h`), ABI v4: the same operations on one resident state
+/// id (the sealer is pure and takes no id).
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct K1FmsApi {
     pub state_digest: Option<unsafe extern "C" fn(State, u64, *mut u8) -> Status>,
     pub shape: Option<unsafe extern "C" fn(State, u64, *mut usize, *mut usize) -> Status>,
-    pub query_identity: Option<K1FmsQueryIdentity>,
     pub lease_claim: Option<unsafe extern "C" fn(State, u64, u64) -> Status>,
     pub lease_release: Option<unsafe extern "C" fn(State, u64, u64) -> Status>,
     pub leased_reserve: Option<unsafe extern "C" fn(State, u64, u64, usize) -> Status>,
-    pub leased_txn_begin: Option<unsafe extern "C" fn(State, u64, u64, *mut u8, *mut u64) -> Status>,
+    pub leased_identity: Option<unsafe extern "C" fn(State, u64, u64, *mut u8, *mut u64) -> Status>,
+    pub leased_query: Option<K1FmsLeasedQuery>,
+    pub leased_txn_begin_at: Option<unsafe extern "C" fn(State, u64, u64, *mut u64, *mut u64) -> Status>,
     pub leased_txn_run_schedule: Option<K1FmsRunSchedule>,
-    pub leased_txn_commit_identity: Option<unsafe extern "C" fn(State, u64, u64, u64, *mut CommitIdentity) -> Status>,
+    pub leased_txn_commit: Option<unsafe extern "C" fn(State, u64, u64, u64, *mut Transition) -> Status>,
     pub txn_abort: Option<unsafe extern "C" fn(State, u64, u64) -> Status>,
-    pub snapshot_write: Option<unsafe extern "C" fn(State, u64, *mut u8, usize) -> Status>,
-    pub txn_snapshot_write: Option<unsafe extern "C" fn(State, u64, u64, *mut u8, usize) -> Status>,
+    pub leased_capture: Option<unsafe extern "C" fn(State, u64, u64, *mut u8, usize, *mut u64) -> Status>,
+    pub envelope_seal: Option<Sealer>,
 }
 
 /// `elpis_runtime_substrate`: one native K1 state as the caller describes it.
@@ -284,7 +311,8 @@ pub struct CSubstrate {
     pub owner: u64,
     /// The state's input dimension, 1..=64, verified natively against the state's shape before any input is read.
     pub dim: u64,
-    /// `const elpis_runtime_k1_api *` (kind 1) or `const elpis_runtime_k1_fms_api *` (kind 2).
+    /// `const elpis_runtime_k1_api *` (kind 1), `const elpis_runtime_k1_fms_api *` (kind 2) or
+    /// `const elpis_runtime_composite_api *` (kind 3), ABI v4 layouts.
     pub api: *const c_void,
 }
 
@@ -312,16 +340,17 @@ macro_rules! complete {
     ($t:expr) => {
         $t.state_digest.is_some()
             && $t.shape.is_some()
-            && $t.query_identity.is_some()
             && $t.lease_claim.is_some()
             && $t.lease_release.is_some()
             && $t.leased_reserve.is_some()
-            && $t.leased_txn_begin.is_some()
+            && $t.leased_identity.is_some()
+            && $t.leased_query.is_some()
+            && $t.leased_txn_begin_at.is_some()
             && $t.leased_txn_run_schedule.is_some()
-            && $t.leased_txn_commit_identity.is_some()
+            && $t.leased_txn_commit.is_some()
             && $t.txn_abort.is_some()
-            && $t.snapshot_write.is_some()
-            && $t.txn_snapshot_write.is_some()
+            && $t.leased_capture.is_some()
+            && $t.envelope_seal.is_some()
     };
 }
 
@@ -387,10 +416,6 @@ impl K1Ops for Native {
         call!(self, shape, (dim, width))
     }
 
-    fn query_identity(&mut self, dim: usize, x: &[f64], out: &mut [f64], digest: &mut Digest) -> i32 {
-        call!(self, query_identity, (dim, x.as_ptr(), out.len(), out.as_mut_ptr(), digest.as_mut_ptr()))
-    }
-
     fn lease_claim(&mut self, lease: u64) -> i32 {
         call!(self, lease_claim, (lease))
     }
@@ -403,8 +428,16 @@ impl K1Ops for Native {
         call!(self, leased_reserve, (lease, max_rows))
     }
 
-    fn txn_begin(&mut self, lease: u64, source: &mut Digest, token: &mut u64) -> i32 {
-        call!(self, leased_txn_begin, (lease, source.as_mut_ptr(), token))
+    fn leased_identity(&mut self, lease: u64, digest: &mut Digest, generation: &mut u64) -> i32 {
+        call!(self, leased_identity, (lease, digest.as_mut_ptr(), generation))
+    }
+
+    fn leased_query(&mut self, lease: u64, dim: usize, x: &[f64], out: &mut [f64], generation: &mut u64) -> i32 {
+        call!(self, leased_query, (lease, dim, x.as_ptr(), out.len(), out.as_mut_ptr(), generation))
+    }
+
+    fn txn_begin_at(&mut self, lease: u64, source_generation: &mut u64, token: &mut u64) -> i32 {
+        call!(self, leased_txn_begin_at, (lease, source_generation, token))
     }
 
     fn txn_run_schedule(
@@ -437,20 +470,25 @@ impl K1Ops for Native {
         )
     }
 
-    fn txn_commit_identity(&mut self, lease: u64, token: u64, out: &mut CommitIdentity) -> i32 {
-        call!(self, leased_txn_commit_identity, (lease, token, out))
+    fn txn_commit(&mut self, lease: u64, token: u64, out: &mut Transition) -> i32 {
+        call!(self, leased_txn_commit, (lease, token, out))
     }
 
     fn txn_abort(&mut self, token: u64) -> i32 {
         TxnAbort::txn_abort(self, token)
     }
 
-    fn snapshot_write(&mut self, out: &mut [u8]) -> i32 {
-        call!(self, snapshot_write, (out.as_mut_ptr(), out.len()))
+    fn leased_capture(&mut self, lease: u64, out: &mut [u8], generation: &mut u64) -> i32 {
+        call!(self, leased_capture, (lease, out.as_mut_ptr(), out.len(), generation))
     }
 
-    fn txn_snapshot_write(&mut self, token: u64, out: &mut [u8]) -> i32 {
-        call!(self, txn_snapshot_write, (token, out.as_mut_ptr(), out.len()))
+    fn sealer(&self) -> Sealer {
+        match &self.table {
+            Table::K1(t) => t.envelope_seal,
+            Table::Fms(t) => t.envelope_seal,
+            Table::Composite(t) => t.base.envelope_seal,
+        }
+        .expect(TABLE)
     }
 
     fn retain_abort(&self) -> Box<dyn TxnAbort> {

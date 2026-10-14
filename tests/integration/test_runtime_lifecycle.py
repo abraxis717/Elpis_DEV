@@ -4,7 +4,8 @@ Once a managed turn has opened a native K1 transaction, RuntimeCore ends it with
 abort before it forgets the turn, on every lifecycle path the adapter exposes: explicit abort, close, destruction
 (``RuntimeCore.__del__`` -> ``elpis_runtime_destroy``), reopen, and close after a fail-stop. An implicit abort
 installs nothing and publishes nothing; the same live state takes the next transaction; an FMS-resident state's
-WRITE pin is released. The fixture map is TRAINING=NONE SEMANTICS=NONE: interface mechanics only.
+WRITE pin is released. A commit is volatile: it ends the turn and publishes nothing (durable publication is the
+explicit ``durable_request``). The fixture map is TRAINING=NONE SEMANTICS=NONE: interface mechanics only.
 """
 from __future__ import annotations
 
@@ -80,6 +81,13 @@ def _core(path):
     return core
 
 
+def _publish(core, descriptor):
+    """Make the live state durable (explicitly; the caller waits for its own request)."""
+    done = core.durable_wait(core.durable_request(descriptor).sequence, 30)
+    assert done.acknowledged, done
+    return done
+
+
 def _durable(path):
     core = _core(path)
     try:
@@ -106,8 +114,10 @@ def test_an_open_turn_is_ended_natively_on_every_lifecycle_path(subject, path, t
     core.anchor(descriptor)
     core.turn_begin(descriptor, _stimulus("first"), RATE, CEILING)
     core.turn_commit(descriptor)
+    _publish(core, descriptor)   # so the restart below resumes this state (volatile work never survives one)
     record = core.snapshot()
     before, aborts = subject.retained(), subject.native_aborts()
+    assert record.k1_state_digest == before[1]
 
     core.turn_begin(descriptor, _stimulus(), RATE, CEILING)   # the schedule ran on the candidate; nothing committed
     if subject.resident:
@@ -157,9 +167,10 @@ def test_an_open_turn_is_ended_natively_on_every_lifecycle_path(subject, path, t
     subject.released()
     # The same live state takes the next managed turn over the resumed lineage.
     core = _core(directory)
-    core.turn_begin(descriptor, _stimulus("next"), RATE, CEILING)
-    identity, _ = core.turn_commit(descriptor)
-    assert identity.state_before_digest == before[1] and subject.state.epoch > before[2]
+    core.turn_begin(descriptor, _stimulus("next"), RATE, CEILING)   # binding verified it against ``record``
+    committed = core.turn_commit(descriptor)
+    assert committed.generation_after == committed.generation_before + 1 == committed.live_generation
+    assert subject.state.epoch > before[2] and core.snapshot() == record   # volatile: nothing published
     core.close()
     subject.released()
 
@@ -169,10 +180,13 @@ def test_a_commit_ends_the_turn_without_an_abort(subject, tmp_path):
     descriptor, _owner = describe(subject.state)
     core.anchor(descriptor)
     aborts = subject.native_aborts()
+    anchored = core.snapshot()
     core.turn_begin(descriptor, _stimulus(), RATE, CEILING)
-    identity, snapshot = core.turn_commit(descriptor)
+    committed = core.turn_commit(descriptor)
     assert core.counters()["k1_aborts"] == 0 and subject.native_aborts() == aborts
-    assert snapshot.k1_state_digest == identity.state_after_digest == subject.state.state_digest()
+    assert core.live_identity(descriptor) == (subject.state.state_digest(), committed.live_generation)
+    assert core.snapshot() == anchored   # the commit is volatile
+    assert _publish(core, descriptor).identity == subject.state.state_digest() == core.snapshot().k1_state_digest
     del core
     assert subject.native_aborts() == aborts
     subject.released()
