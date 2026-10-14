@@ -299,6 +299,7 @@ class QueryResult:
     readout: QueryReadout
     codec: str          # the classification the codec authority admitted
     operation: CognitiveOperation = CognitiveOperation.QUERY
+    context: object = None   # the ContextCoordinate of the published context view consumed (managed; None: none)
 
     @property
     def state_digest(self) -> bytes | None:
@@ -328,6 +329,7 @@ class LearnResult:
     generation_before: int | None = None
     generation_after: int | None = None
     durability: str = "UNMANAGED"
+    context: object = None   # the ContextCoordinate of the published context view consumed (managed; None: none)
 
 
 @dataclass(frozen=True)
@@ -349,6 +351,7 @@ class TurnResult:
     generation_before: int | None = field(default=None, compare=False)
     generation_after: int | None = field(default=None, compare=False)
     durability: str = field(default="UNMANAGED", compare=False)
+    context: object = field(default=None, compare=False)
 
 
 # --- the boundary: validation, encode, decode (shared by the managed operations) --------------------------------

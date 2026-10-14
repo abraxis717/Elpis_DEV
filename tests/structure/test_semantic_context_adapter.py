@@ -100,6 +100,26 @@ def test_explicit_construction_builds_a_graph_epoch_for_bounded_retrieval(librar
     assert not (tmp_path / "epoch").exists()
 
 
+
+def test_a_semantic_admission_is_the_only_source_of_admitted_contextual_relations(library, proofs, tmp_path):
+    """The contextual (WARM) lane keeps the candidate/admitted distinction: ADMITTED relations come only from the
+    typed result of this explicit projection step, which the lane itself never runs."""
+    from elpis.runtime.composition import CompositionError
+    from elpis.runtime.context import ADMITTED, CANDIDATE, admitted_relations, candidate_relations
+    with build_corpus_and_index(library, tmp_path / "epoch", DOCS) as epoch:
+        admission = epoch.admit_semantic_edges(proofs)
+        assert admission.corpus_digest == epoch.corpus_digest
+        assert [_edge(e) for e in admission.edges] == [_edge(e) for e in epoch.project_semantic_edges(proofs)]
+    admitted = admitted_relations(admission)
+    assert [r.status for r in admitted] == [ADMITTED, ADMITTED]
+    assert [r.relation_type for r in admitted] == [SUPPORTS, CONTRADICTS]
+    assert [r.members for r in admitted] == [(e.subject_chunk_digest.decode(), e.object_chunk_digest.decode())
+                                            for e in admission.edges]
+    # The same edges as plain values are only candidates; anything but the admission is refused.
+    assert {r.status for r in candidate_relations(admission.edges)} == {CANDIDATE}
+    with pytest.raises(CompositionError, match="CONTEXT_INVALID"):
+        admitted_relations(admission.edges)
+
 def _tamper(proof: SemanticRelationProof, field: str) -> SemanticRelationProof:
     data = bytearray(getattr(proof, field))
     data[-40] ^= 1

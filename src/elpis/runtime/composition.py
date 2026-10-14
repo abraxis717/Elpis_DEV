@@ -31,6 +31,12 @@ entry point and returns that subsystem's result:
 * ``run_learn``: the canonical LEARN under an explicit ``LearnAuthority``: the
   admitted experience schedule committed atomically into the live state. The
   commit is VOLATILE: nothing is checkpointed or published, and no I/O happens.
+* ``run_query``, ``run_learn`` and ``run_turn`` take an optional ``context``: a
+  contextual-lane :class:`~elpis.runtime.context.ContextLane` (its current
+  published view, one reference read that never waits for the WARM worker) or
+  a pinned :class:`~elpis.runtime.context.ContextView`. The result records the
+  view's coordinate (``result.context``); no encoding of a view into the K1
+  stimulus exists (docs/ARCHITECTURE.md, "Execution lanes").
 * ``publish_durable``: the explicit durable publication of the live state
   (docs/RUNTIME_CORE.md, "Live and durable authority"): RuntimeCore captures it
   and its durability lane checkpoints and publishes it off the HOT lane; the
@@ -188,6 +194,20 @@ class RuntimeContinuity:
 
     def testing_counters(self, reset: bool = False) -> dict[str, int]:
         return self._call(self._core.testing_io_counters, reset)
+
+
+def _consumed_context(context):
+    """The coordinate of the published context view a cognitive operation consumes: one reference read of a
+    :class:`~elpis.runtime.context.ContextLane` (it never waits for the lane's WARM worker) or a pinned
+    :class:`~elpis.runtime.context.ContextView`; ``None`` without one."""
+    if context is None:
+        return None
+    from .context import ContextLane, ContextView
+    if type(context) is ContextLane:
+        return context.view().coordinate
+    if type(context) is ContextView:
+        return context.coordinate
+    raise TypeError("context is a ContextLane or a ContextView")
 
 
 class Runtime:
@@ -410,16 +430,17 @@ class Runtime:
         return self.config.codec_authority_sha256 or ""
 
     # -- cognition: QUERY (read-only) ---------------------------------------------------------------------------
-    def run_query(self, substrate, request):
+    def run_query(self, substrate, request, *, context=None):
         """One managed QUERY (docs/COGNITION_R0.md): read-only.
 
         The boundary validates the :class:`~elpis.runtime.cognition.QueryRequest` and encodes the query rows.
         RuntimeCore answers ``f_W(x)`` from the lineage's LIVE K1 state in one native call that also reports the
         state's generation; it must be the live one (otherwise the lineage is lost: fail-stop, the answer withheld).
         Nothing is begun, committed, published, hashed or written: W, epoch, H, a and continuity are unchanged. The
-        answer reflects every managed LEARN before it, durable or not.
+        answer reflects every managed LEARN before it, durable or not. ``context``: see the module docstring.
         """
         self._core.require_live()
+        consumed = _consumed_context(context)
 
         from .cognition import QueryReadout, QueryResult, _decode_query, _encode_query, _validate_query_request
         from .fuel import admit_query
@@ -433,18 +454,20 @@ class Runtime:
         values, generation = self._core.query(descriptor, stimulus, request.budget)   # RuntimeCore re-admits natively
         readout = QueryReadout(values, substrate.dim, substrate.width, None, generation)
         output, rendered = _decode_query(codec_map, readout, request.tokenizer, request.max_output_tokens)
-        return QueryResult(tokens, output, rendered, readout, classification)
+        return QueryResult(tokens, output, rendered, readout, classification, context=consumed)
 
     # -- cognition: LEARN (explicit authority) -------------------------------------------------------------------
-    def run_learn(self, substrate, request):
+    def run_learn(self, substrate, request, *, context=None):
         """One managed LEARN under an explicit :class:`~elpis.runtime.cognition.LearnAuthority`.
 
         RuntimeCore verifies the K1 lineage (its live coordinate), runs the admitted experience schedule on a native
         candidate and commits it atomically into the live state. The commit is VOLATILE: nothing is checkpointed or
         published and no I/O happens (``result.durability == "VOLATILE"``; the result carries the live generations).
-        Durability is :meth:`publish_durable`. A refused LEARN installs nothing.
+        Durability is :meth:`publish_durable`. A refused LEARN installs nothing. ``context``: see the module
+        docstring.
         """
         self._core.require_live()
+        consumed = _consumed_context(context)
 
         from .cognition import LearnResult, _encode, _validate_learn_request
         from .fuel import admit_learn
@@ -460,7 +483,7 @@ class Runtime:
         return LearnResult(tokens, stimulus.experiences, committed.epoch_before, committed.epoch_after,
                            classification, authority.grant, None, None,
                            generation_before=committed.generation_before, generation_after=committed.generation_after,
-                           durability="VOLATILE")
+                           durability="VOLATILE", context=consumed)
 
     # -- durability: explicit, off the HOT lane -------------------------------------------------------------------
     def publish_durable(self, substrate, *, wait: bool = True, timeout: float | None = None) -> DurableTicket:
@@ -494,7 +517,8 @@ class Runtime:
         return self._core.live_identity(descriptor)
 
     # -- cognition: LEGACY learned turn (LEARN + S3 decode) --------------------------------------------------------
-    def run_turn(self, substrate, text, *, tokenizer, codec=None, authority=None, max_output_tokens=256):
+    def run_turn(self, substrate, text, *, tokenizer, codec=None, authority=None, max_output_tokens=256,
+                 context=None):
         """One managed LEGACY learned turn: a LEARN under explicit authority whose S3 readout is decoded.
 
         Kept for the replay of the original synthetic scaffold (``LEGACY_LEARNED_TURN``); it is never a query. The
@@ -503,6 +527,7 @@ class Runtime:
         decode succeeded. A refused or aborted turn installs nothing.
         """
         self._core.require_live()
+        consumed = _consumed_context(context)
 
         from .cognition import Readout, TurnResult, _admit_turn, _decode, _encode, _validate_turn_request
 
@@ -524,4 +549,4 @@ class Runtime:
         committed = self._core.turn_commit(descriptor)
         return TurnResult(tokens, output, rendered, readout, committed.epoch_before, committed.epoch_after,
                           classification, generation_before=committed.generation_before,
-                          generation_after=committed.generation_after, durability="VOLATILE")
+                          generation_after=committed.generation_after, durability="VOLATILE", context=consumed)
