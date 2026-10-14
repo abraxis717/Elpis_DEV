@@ -13,6 +13,7 @@ from array import array
 
 import pytest
 
+from elpis.ECS.k1 import K1State
 from elpis.runtime import Runtime
 from elpis.runtime.cognition import (CognitiveOperation, LearnAuthority, LearnRequest, LearnResult, QueryRequest,
                                      QueryResult, QueryStimulus, run_learn, run_query, run_turn)
@@ -287,3 +288,23 @@ def test_managed_learn_needs_authority_commits_volatile_and_publishes_only_on_re
             ("ACKNOWLEDGED", subject.state.state_digest(), result.generation_after)
         assert runtime.continuity.snapshot().k1_state_digest == subject.state.state_digest()
         assert runtime.continuity.snapshot().generation == durable.generation + 1
+
+
+def test_gate_b_queries_and_transactions_follow_the_live_state_between_volatile_transitions(subject, k1, tmp_path):   # noqa: F811
+    """Between volatile transitions, a managed QUERY answers ``f_W(x)`` of the LIVE state and the next managed LEARN
+    begins on it: neither is refused or redirected because the durable authority names an older state."""
+    rows = memoryview(FixtureMap().query_rows_of(ByteTokens().encode("what is f_W here?")))
+    with Runtime(_config(tmp_path / "c")) as runtime:
+        runtime.anchor_cognition(subject.state)
+        durable, anchored = runtime.continuity.snapshot(), subject.state.snapshot()
+        answers = []
+        for n in range(5):
+            learned = runtime.run_learn(subject.state, _learn(f"experience {n}"))
+            result = runtime.run_query(subject.state, _query())
+            assert result.live_generation == learned.generation_after == subject.generation(), n
+            assert result.readout.values == subject.state.query(rows), n     # the live state's own forward map
+            answers.append(result.readout.values)
+        assert len(set(answers)) == len(answers)                             # each transition is visible at once
+        assert runtime.continuity.snapshot() == durable and runtime.fault is None
+        with K1State.restore(k1, anchored) as old:                           # the durable state answers otherwise
+            assert old.query(rows) != answers[-1]
