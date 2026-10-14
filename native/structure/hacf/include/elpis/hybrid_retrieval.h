@@ -52,12 +52,21 @@ typedef struct elpis_hybrid_policy {
     uint32_t reserved[5];
 } elpis_hybrid_policy;
 
+/* Residency choice of one retrieval (elpis_hybrid_query.residency). The default (zero) never waits: a vector shard
+ * that cannot be made WARM-resident right now refuses the retrieval (ELPIS_HYBRID_E_VECTOR, cause
+ * ELPIS_VEC_E_RESIDENCY) instead of sleeping on the caller's thread. Only a caller that chose to wait (a WARM or
+ * background lane) passes BOUNDED_WAIT (elpis_vector_index_search's hard wall-clock bound). Not part of the
+ * query's identity: the bundle is the same either way. */
+#define ELPIS_HYBRID_RESIDENCY_NOWAIT       0u
+#define ELPIS_HYBRID_RESIDENCY_BOUNDED_WAIT 1u
+
 typedef struct elpis_hybrid_query {
     const char  *text;             /* NUL-terminated, nonempty, <= 65535 bytes */
     const float *vector;
     uint32_t     dimensions;
     const char  *namespace_filter; /* NULL = all */
     const char  *authority_filter; /* NULL = all */
+    uint32_t     residency;        /* ELPIS_HYBRID_RESIDENCY_*; zero-initialized = NOWAIT */
 } elpis_hybrid_query;
 
 typedef struct elpis_hybrid_retriever elpis_hybrid_retriever;

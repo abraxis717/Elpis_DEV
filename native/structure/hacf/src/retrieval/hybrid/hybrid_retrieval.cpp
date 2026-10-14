@@ -196,7 +196,12 @@ static int retrieve_impl(elpis_hybrid_retriever *r, const elpis_hybrid_query *q,
     vq.ns_filter = q->namespace_filter;
     vq.authority_filter = q->authority_filter;
     uint32_t dn = 0;
-    int vrc = elpis_vector_index_search(r->index, &vq, dense.data(), &dn);
+    if (q->residency != ELPIS_HYBRID_RESIDENCY_NOWAIT && q->residency != ELPIS_HYBRID_RESIDENCY_BOUNDED_WAIT)
+        return set_error(r, ELPIS_HYBRID_E_INVAL, 0, "invalid residency choice");
+    /* Waiting for residency is the caller's explicit choice, never implicit. */
+    int vrc = q->residency == ELPIS_HYBRID_RESIDENCY_BOUNDED_WAIT
+                  ? elpis_vector_index_search(r->index, &vq, dense.data(), &dn)
+                  : elpis_vector_index_search_nowait(r->index, &vq, dense.data(), &dn);
     if (vrc != ELPIS_VEC_OK) {
         const elpis_vec_error *e = elpis_vector_index_last_error(r->index);
         return set_error(r, ELPIS_HYBRID_E_VECTOR, e ? e->status : vrc,

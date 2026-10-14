@@ -43,6 +43,8 @@ class PersistentWriter:
 
 F, O, R, P = (WriterClass.FIXED_CAPACITY_AUTONOMOUS, WriterClass.OPERATOR_EXPLICIT_BOUNDED,
               WriterClass.OFFLINE_RESEARCH_ONLY, WriterClass.PROHIBITED_FROM_AUTONOMOUS_RUNTIME)
+_TOPOLOGY = "native/structure/semantic/src/topology/"
+_GRID81 = "native/structure/semantic/src/grid81/"
 
 WRITERS: tuple[PersistentWriter, ...] = (
     PersistentWriter(
@@ -114,6 +116,57 @@ WRITERS: tuple[PersistentWriter, ...] = (
          "native/structure/semantic/src/evidence/admission_commit_b2c.c:semantic_b2c_publish_one"),
         "Immutable segments/manifests and a CAS active head, written only by an explicit caller with explicit "
         "admission and snapshot authority. No Python binding, no background or per-turn publisher."),
+    PersistentWriter(
+        "semantic_context_artifacts", O, (),
+        ("native/structure/semantic/src/context/context_writer.c:elpis_write_requirement_set",
+         "native/structure/semantic/src/context/context_writer.c:elpis_write_deficit_policy",
+         "native/structure/semantic/src/context/context_writer.c:elpis_write_deficit_report",
+         "native/structure/semantic/src/context/context_writer.c:elpis_write_retrieval_requirement",
+         "native/structure/semantic/src/context/context_writer.c:elpis_write_retrieval_bundle"),
+        "One named file per explicit call, at a path the caller supplies (same-directory temp, fsync, atomic "
+        "rename, directory fsync). Not reachable from retrieval, the bridges or any Runtime operation; no Python "
+        "binding. The contextual lane (elpis.runtime.context) writes nothing."),
+    PersistentWriter(
+        "semantic_embedding_files", O, (),
+        ("native/structure/semantic/src/embedding/embedding_writer.c:elpis_embedding_write_profile",
+         "native/structure/semantic/src/embedding/embedding_writer.c:elpis_embedding_write_vector",
+         "native/structure/semantic/src/embedding/embedding_writer.c:elpis_embedding_write_collection"),
+        "One named file per explicit call (atomic no-replace publication) at a caller-supplied path. Retrieval "
+        "embeds in memory only (the epoch's vector shard is an FMS object); no Python binding."),
+    PersistentWriter(
+        "semantic_evidence_records", O, (),
+        ("native/structure/semantic/src/evidence/evidence_writer.c:elpis_evidence_write_record",),
+        "One evidence record file per explicit call at a caller-supplied path; no Python binding; never reached "
+        "by retrieval, the bridges or a Runtime operation."),
+    PersistentWriter(
+        "semantic_view_directory", O, (),
+        ("native/structure/semantic/src/view/view_writer.c:elpis_view_write_all",),
+        "The fixed file set of one bounded semantic view into a caller-supplied directory, per explicit call; "
+        "no Python binding."),
+    PersistentWriter(
+        "semantic_topology_artifacts", O, (),
+        tuple(_TOPOLOGY + f for f in (
+            "topology_address.c:elpis_write_topology_addresses", "topology_anchor.c:elpis_write_topology_anchors",
+            "topology_bridge.c:elpis_write_topology_bridges", "topology_conflict.c:elpis_write_topology_conflicts",
+            "topology_constellation.c:elpis_write_topology_constellations",
+            "topology_constraint.c:elpis_write_topology_constraints", "topology_graph.c:elpis_write_topology_graph",
+            "topology_metric.c:elpis_write_topology_metric_hints", "topology_persist.c:elpis_write_topology_IR",
+            "topology_persist.c:elpis_write_compile_receipt", "topology_persist.c:elpis_write_topology_handoff",
+            "topology_policy.c:elpis_write_topology_policy", "topology_registry.c:elpis_write_topology_registry",
+            "topology_roles.c:elpis_write_topology_roles")),
+        "Offline topology compilation output: one named file per explicit call at a caller-supplied path. No "
+        "Python binding; not reachable from retrieval or the runtime."),
+    PersistentWriter(
+        "semantic_grid81_artifacts", O, (),
+        tuple(_GRID81 + f for f in (
+            "grid81_capsule.c:elpis_write_grid81_capsule_manifest", "grid81_cell.c:elpis_write_grid81_masks",
+            "grid81_codebook.c:elpis_write_grid81_codebook",
+            "grid81_compile_receipt.c:elpis_write_grid81_compile_receipt",
+            "grid81_constraint_projection.c:elpis_write_grid81_constraint_projections",
+            "grid81_handoff.c:elpis_write_grid81_handoff", "grid81_packet.c:elpis_write_grid81_structural_packet",
+            "grid81_policy.c:elpis_write_grid81_policy")),
+        "Offline Grid81 compilation output: one named file per explicit call at a caller-supplied path (canonical "
+        "Grid81 publication is the separate operator-approved publisher). No Python binding."),
     PersistentWriter(
         "dsv4_synthetic_fixture_generator", R, ("elpis.inference.drivers.dsv4.fixtures:make_fixture",), (),
         "Deterministic synthetic fixtures written into a caller-supplied provider root; not reachable from "

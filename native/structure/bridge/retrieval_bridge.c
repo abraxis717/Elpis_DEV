@@ -71,6 +71,8 @@ struct elpis_retrieval_env {
 
     void *shard_bytes;
     size_t shard_len;
+
+    uint32_t residency;   /* ELPIS_HYBRID_RESIDENCY_*; zero (NOWAIT) unless the owner chose to wait */
 };
 
 /* Epoch ownership stays with retrieval. Ingress receives a borrowed pointer
@@ -595,6 +597,17 @@ static void digest_out(char *out, const char digest[65]) {
     }
 }
 
+_Static_assert(ELPIS_RETRIEVAL_RESIDENCY_NOWAIT == ELPIS_HYBRID_RESIDENCY_NOWAIT &&
+                   ELPIS_RETRIEVAL_RESIDENCY_BOUNDED_WAIT == ELPIS_HYBRID_RESIDENCY_BOUNDED_WAIT,
+               "bridge residency values are the hybrid layer's");
+
+int elpis_retrieval_env_set_residency(elpis_retrieval_env_t *env, uint32_t residency) {
+    if (!env || (residency != ELPIS_HYBRID_RESIDENCY_NOWAIT && residency != ELPIS_HYBRID_RESIDENCY_BOUNDED_WAIT))
+        return RETRIEVAL_E_INVAL;
+    __atomic_store_n(&env->residency, residency, __ATOMIC_RELEASE);
+    return 0;
+}
+
 int elpis_retrieval_env_retrieve(elpis_retrieval_env_t *env,
                     const char *query_text,
                     const float *query_vector, int query_dim,
@@ -649,6 +662,7 @@ int elpis_retrieval_env_retrieve(elpis_retrieval_env_t *env,
     q.dimensions = (uint32_t)query_dim;
     q.namespace_filter = namespace_filter;
     q.authority_filter = authority_filter;
+    q.residency = __atomic_load_n(&env->residency, __ATOMIC_ACQUIRE);
 
     elpis_retrieval_bundle *bundle = NULL;
     int rc = elpis_hybrid_retrieve(retriever, &q, &bundle);

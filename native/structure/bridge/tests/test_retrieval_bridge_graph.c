@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
     assert(argc == 2 && strlen(argv[1]) < 1024);
     snprintf(ROOT, sizeof ROOT, "%s", argv[1]);
     assert(elpis_retrieval_bridge_abi_version() == ELPIS_RETRIEVAL_BRIDGE_ABI_VERSION);
-    assert(ELPIS_RETRIEVAL_BRIDGE_ABI_VERSION == 2u);
+    assert(ELPIS_RETRIEVAL_BRIDGE_ABI_VERSION == 3u);
 
     /* Graph disabled: the environment's and the bundle's graph identity are the native zero digest. */
     char error[256];
@@ -101,6 +101,14 @@ int main(int argc, char **argv) {
     assert(chunks(c, DOCS) == DOCS);
     elpis_retrieval_graph_policy gp = {1, 1, 0};
     assert(retrieve(plain, 50, 50, 30, 60, &gp).rc == -3);   /* a graph policy needs a graph */
+
+    /* Residency (ABI v3): never waiting is the default; waiting is the epoch owner's explicit choice, and it never
+     * changes the bundle. Any other choice is refused. */
+    assert(elpis_retrieval_env_set_residency(plain, 2u) == -3 && elpis_retrieval_env_set_residency(NULL, 0u) == -3);
+    assert(elpis_retrieval_env_set_residency(plain, ELPIS_RETRIEVAL_RESIDENCY_BOUNDED_WAIT) == 0);
+    result waited = retrieve(plain, 50, 50, 30, 60, NULL);
+    assert(waited.rc == 0 && !strcmp(waited.bundle, base.bundle) && !strcmp(waited.query, base.query));
+    assert(elpis_retrieval_env_set_residency(plain, ELPIS_RETRIEVAL_RESIDENCY_NOWAIT) == 0);
 
     /* Refusals release everything built so far. */
     elpis_context_edge_input bad[2] = {edge(c[0], c[1], 1, 1), edge(c[0], c[1], 1, 1)};

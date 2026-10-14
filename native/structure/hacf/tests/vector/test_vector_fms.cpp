@@ -9,9 +9,11 @@
 #include "elpis/vector_index.h"
 #include "elpis/vector_result.h"
 
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <thread>
 #include <vector>
 
 static int fails = 0, checks = 0;
@@ -325,6 +327,90 @@ static void case_close_shard() {
     elpis_embedder_destroy(emb);
 }
 
+static void case_nowait_never_waits() {
+    CASE("the no-wait search refuses a shard that cannot be made resident now; only the explicit search waits");
+    std::string cold = base + "/nowait";
+    /* A 1 MiB ceiling holds one ~800 KiB shard WARM at a time. */
+    fms_ctx *fms = vecfix::make_fms(cold, 1ull << 20);
+    CHECK(fms != nullptr, "fms");
+    if (!fms) return;
+    elpis_embedder *emb = nullptr;
+    elpis_embedder_fixture_create(ELPIS_NORM_L2, &emb);
+    elpis_embedding_profile prof;
+    elpis_embedder_profile(emb, &prof);
+    elpis_vector_index *ix = nullptr;
+    elpis_vector_index_create(fms, &prof, kCorpusDg, &ix);
+    std::vector<vecfix::Corpus> shards(2);
+    std::vector<std::string> ids;
+    for (int i = 0; i < 2; i++) {
+        char tag[32];
+        std::snprintf(tag, sizeof tag, "nowait-%d", i);
+        shards[(size_t)i].build(tag, kShardVectors, emb);
+        char sd[65];
+        std::vector<uint8_t> img = vecfix::build_shard(shards[(size_t)i], kCorpusDg, sd);
+        CHECK(elpis_vector_index_add_shard_bytes(ix, img.data(), img.size(), nullptr) == 0, "admit %d: %s", i,
+              elpis_vector_index_error(ix));
+        ids.emplace_back(sd);
+    }
+    elpis_vector_query q;
+    std::memset(&q, 0, sizeof q);
+    q.vector = shards[0].vec[3].data();
+    q.dimensions = D;
+    q.k = 4;
+    std::vector<elpis_vector_hit> hits(q.k);
+    uint32_t n = 0;
+    /* Without contention the no-wait search is the same exact search (the COLD shard is materialized by the
+     * attempt itself, synchronously: that is a promotion, not a wait). */
+    CHECK(elpis_vector_index_search_nowait(ix, &q, hits.data(), &n) == ELPIS_VEC_OK, "nowait search: %s",
+          elpis_vector_index_error(ix));
+    char a[65] = {0}, b[65] = {0};
+    elpis_vector_result_digest(hits.data(), n, a);
+    CHECK(elpis_vector_index_search(ix, &q, hits.data(), &n) == ELPIS_VEC_OK, "search");
+    elpis_vector_result_digest(hits.data(), n, b);
+    CHECK(std::strcmp(a, b) == 0, "the two entries disagree");
+
+    /* Another holder pins whichever shard is WARM: the other one has no headroom now (FMS_E_LIMIT). */
+    fms_id held = 0;
+    for (const std::string &sd : ids) {
+        fms_id id = 0;
+        fms_object_info info;
+        elpis_vector_index_shard_object(ix, sd.c_str(), &id);
+        if (fms_query(fms, id, &info) == FMS_OK && info.tier == FMS_WARM) held = id;
+    }
+    CHECK(held != 0, "no WARM shard to pin");
+    void *ptr = nullptr;
+    CHECK((int)fms_acquire(fms, held, FMS_WARM, FMS_READ, &ptr) == (int)FMS_WARM, "external pin");
+    const auto t0 = std::chrono::steady_clock::now();
+    n = 99;
+    int rc = elpis_vector_index_search_nowait(ix, &q, hits.data(), &n);
+    const auto waited = std::chrono::steady_clock::now() - t0;
+    CHECK(rc == ELPIS_VEC_E_RESIDENCY && n == 0, "expected an immediate residency refusal, got %d (%u hits)", rc, n);
+    const elpis_vec_error *err = elpis_vector_index_last_error(ix);
+    CHECK(err && err->cause == FMS_E_LIMIT, "cause not preserved: %d", err ? err->cause : 0);
+    CHECK(waited < std::chrono::milliseconds(1000), "the no-wait search waited %lld ms",
+          (long long)std::chrono::duration_cast<std::chrono::milliseconds>(waited).count());
+    /* The explicit search waits (bounded) and succeeds once the holder lets go. */
+    std::thread holder([&] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        fms_release(fms, held);
+    });
+    const auto t1 = std::chrono::steady_clock::now();
+    rc = elpis_vector_index_search(ix, &q, hits.data(), &n);
+    const auto blocked = std::chrono::steady_clock::now() - t1;
+    holder.join();
+    CHECK(rc == ELPIS_VEC_OK && n == 4, "the waiting search failed: %d (%s)", rc, elpis_vector_index_error(ix));
+    CHECK(blocked >= std::chrono::milliseconds(100), "the waiting search did not wait");
+    elpis_vector_result_digest(hits.data(), n, b);
+    CHECK(std::strcmp(a, b) == 0, "the waited result differs");
+    fms_stats st;
+    fms_get_stats(fms, &st);
+    CHECK(st.pinned_bytes == 0, "pins leaked");
+
+    elpis_vector_index_destroy(ix);
+    fms_destroy(fms);
+    elpis_embedder_destroy(emb);
+}
+
 int main(int argc, char **argv) {
     base = argc > 1 ? argv[1] : "/tmp/elpis-vector-fms";
     vecfix::rmtree(base);
@@ -336,6 +422,7 @@ int main(int argc, char **argv) {
     case_no_headroom();
     case_cold_corruption();
     case_close_shard();
+    case_nowait_never_waits();
 
     std::printf("%d checks, %d failures\n", checks, fails);
     return fails != 0;

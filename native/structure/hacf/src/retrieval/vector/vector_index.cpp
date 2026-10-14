@@ -675,8 +675,11 @@ static int verify_impl(elpis_vector_index *ix, const char *shard_digest) {
     return ELPIS_VEC_OK;
 }
 
+/* wait: the caller chose the bounded residency wait (elpis_vector_index_search);
+ * otherwise one attempt per shard and no blocking on another reader's promotion
+ * (elpis_vector_index_search_nowait). */
 static int search_impl(elpis_vector_index *ix, const elpis_vector_query *q,
-                       elpis_vector_hit *hits, uint32_t *n_out) {
+                       elpis_vector_hit *hits, uint32_t *n_out, bool wait) {
     if (!ix || !q || !n_out) return ELPIS_VEC_E_INVAL;
     *n_out = 0;
     clear_err(ix);
@@ -705,9 +708,14 @@ static int search_impl(elpis_vector_index *ix, const elpis_vector_query *q,
         void *p = nullptr;
         LeaseGuard g(ix->fms, s.id);
         fms_status r;
-        {
+        if (wait) {
             std::lock_guard<std::mutex> shard_lk(*s.gate);   /* one promoter per shard */
             r = g.acquire(&p);
+        } else {
+            /* One attempt and no promotion gate: a shard another reader is moving is FMS_E_BUSY, a shard without
+             * headroom FMS_E_LIMIT, and both are refused below instead of waited for. Pinning a WARM shard is
+             * FMS's own short critical section, so concurrent readers of resident shards are never refused. */
+            r = g.try_acquire(&p);
         }
         if (r != FMS_OK) {
             /* Structured error, never an empty result. FMS_E_DIGEST stays an
@@ -784,7 +792,13 @@ int elpis_vector_index_add_shard_file(elpis_vector_index *ix, const char *path,
 int elpis_vector_index_search(elpis_vector_index *ix, const elpis_vector_query *q,
                               elpis_vector_hit *hits, uint32_t *n_out) {
     if (!ix) return ELPIS_VEC_E_INVAL;
-    return guard(ix, [&] { return search_impl(ix, q, hits, n_out); });
+    return guard(ix, [&] { return search_impl(ix, q, hits, n_out, true); });
+}
+
+int elpis_vector_index_search_nowait(elpis_vector_index *ix, const elpis_vector_query *q,
+                                     elpis_vector_hit *hits, uint32_t *n_out) {
+    if (!ix) return ELPIS_VEC_E_INVAL;
+    return guard(ix, [&] { return search_impl(ix, q, hits, n_out, false); });
 }
 
 int elpis_vector_executor_create(elpis_vector_index *ix, unsigned workers,

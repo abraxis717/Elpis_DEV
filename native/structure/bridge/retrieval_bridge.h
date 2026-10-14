@@ -29,7 +29,9 @@
 extern "C" {
 #endif
 
-#define ELPIS_RETRIEVAL_BRIDGE_ABI_VERSION 2u
+/* v3: retrieval never waits for vector-shard residency unless the epoch's owner chose to
+ * (elpis_retrieval_env_set_residency). */
+#define ELPIS_RETRIEVAL_BRIDGE_ABI_VERSION 3u
 
 /* A graph policy field left at this value takes the native default
  * (elpis_hybrid_policy_default); graph_seed_limit's default is then bounded by
@@ -72,6 +74,14 @@ int elpis_retrieval_env_copy_document(elpis_retrieval_env_t *env, const char *di
 /* The graph snapshot digest (64 zeros without a graph) and its edge count. */
 const char *elpis_retrieval_env_graph_digest(elpis_retrieval_env_t *env);
 uint32_t elpis_retrieval_env_graph_edge_count(elpis_retrieval_env_t *env);
+
+/* The epoch's residency choice for every later retrieval: ELPIS_RETRIEVAL_RESIDENCY_NOWAIT (the default: a vector
+ * shard that cannot be made WARM-resident right now refuses the retrieval at once) or
+ * ELPIS_RETRIEVAL_RESIDENCY_BOUNDED_WAIT (the bounded wait on the retrieving thread; for an epoch owned by a lane
+ * that may wait). Anything else is E_INVAL. The values are elpis_hybrid_query's ELPIS_HYBRID_RESIDENCY_*. */
+#define ELPIS_RETRIEVAL_RESIDENCY_NOWAIT       0u
+#define ELPIS_RETRIEVAL_RESIDENCY_BOUNDED_WAIT 1u
+int elpis_retrieval_env_set_residency(elpis_retrieval_env_t *env, uint32_t residency);
 
 /* namespace_filter / authority_filter: NULL = all (exact match otherwise).
  * graph_policy: NULL = the native default graph fields with a graph, and the

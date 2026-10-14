@@ -70,9 +70,25 @@ int  elpis_vector_index_inspect(elpis_vector_index *ix, const char *shard_digest
                                 elpis_vshard_header *out);
 
 /* Exhaustive exact search across every admitted shard. Shard order never
- * affects the result. hits must hold at least q->k entries. */
+ * affects the result. hits must hold at least q->k entries.
+ *
+ * Residency. A shard another reader is promoting (or that has no WARM headroom
+ * right now because concurrent readers hold pins) is transient. This entry
+ * WAITS for it on the calling thread, under a hard wall-clock bound (sleeping
+ * between single attempts), then fails with a structured residency error. It
+ * is for a caller that has chosen to wait (a WARM/background lane): never call
+ * it implicitly from a lane that must not wait. */
 int  elpis_vector_index_search(elpis_vector_index *ix, const elpis_vector_query *q,
                                elpis_vector_hit *hits, uint32_t *n_out);
+
+/* The same search, but it never waits: one lease attempt per shard, and a shard
+ * that is mid-move, being promoted by another reader, or has no WARM headroom
+ * right now is refused at once with ELPIS_VEC_E_RESIDENCY (cause FMS_E_BUSY or
+ * FMS_E_LIMIT), never an empty or partial result. A COLD shard is still
+ * materialized by the attempt itself (that is FMS's synchronous promotion, not
+ * a wait); FMS_E_DIGEST stays an integrity failure. */
+int  elpis_vector_index_search_nowait(elpis_vector_index *ix, const elpis_vector_query *q,
+                                      elpis_vector_hit *hits, uint32_t *n_out);
 
 /* Digests this index binds to. corpus_digest_out receives all-zero hex when the
  * index was created unbound (tests only). */

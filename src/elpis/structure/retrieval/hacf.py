@@ -19,7 +19,12 @@ content-addressed identities (learned from HACF, e.g. a retrieval bundle over th
 built once per environment, owned and destroyed with it, and its identity is invariant under edge order (exact
 duplicates collapse). A malformed digest, self-edge or an endpoint that is not an admitted chunk of the
 environment's corpus refuses construction. Retrieval mechanics and policy stay native (``elpis_hybrid_policy``):
-Python only selects its graph fields. Without a graph the environment is exactly the lexical+dense one it was."""
+Python only selects its graph fields. Without a graph the environment is exactly the lexical+dense one it was.
+
+Residency (bridge ABI v3). A retrieval never waits for a vector shard to become WARM-resident unless the epoch's
+owner chose to (``build_corpus_and_index(..., residency_wait=True)``, for an epoch owned by a lane that may wait):
+by default a shard that another reader is moving, or that has no headroom right now, refuses the retrieval at once
+(``HybridRetrievalError``) instead of sleeping on the caller's thread. The bundle is identical either way."""
 
 from __future__ import annotations
 
@@ -38,7 +43,7 @@ from .errors import HybridRetrievalError, RetrievalLibraryError
 
 ELPIS_EMBEDDING_DIM = 384
 BUNDLE_JSON_CAP = 1 << 18  # 256 KiB buffer for bundle JSON
-BRIDGE_ABI_VERSION = 2
+BRIDGE_ABI_VERSION = 3
 ZERO_DIGEST = "0" * 64      # the native identity of "no context graph"
 _POLICY_DEFAULT = 0xFFFFFFFF  # ELPIS_RETRIEVAL_POLICY_DEFAULT: keep the native default of that field
 _HEX = frozenset("0123456789abcdef")
@@ -116,6 +121,16 @@ class SemanticRelationProof:
     target: SemanticEndpointWitness
 
 
+@dataclass(frozen=True)
+class SemanticAdmission:
+    """The result of one explicit Track C v1 projection (:meth:`HacfHandle.admit_semantic_edges`): the epoch's
+    corpus digest and exactly the edges the native projection verified, all-or-nothing, against that epoch's own
+    chunks. A consumer that must tell admitted relations from candidate ones accepts only this value."""
+
+    corpus_digest: str
+    edges: tuple
+
+
 class RetrievalLibrary:
     """One native retrieval bridge, sealed against deployment-pinned bytes."""
 
@@ -161,6 +176,8 @@ class RetrievalLibrary:
             ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
         lib.elpis_retrieval_env_destroy.restype = None
         lib.elpis_retrieval_env_destroy.argtypes = [ctypes.c_void_p]
+        lib.elpis_retrieval_env_set_residency.restype = ctypes.c_int
+        lib.elpis_retrieval_env_set_residency.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
         lib.elpis_retrieval_env_embed.restype = ctypes.c_int
         lib.elpis_retrieval_env_embed.argtypes = [
             ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int,
@@ -326,6 +343,10 @@ class HacfHandle:
             raise HybridRetrievalError("PROJECTION_REFUSED", _text(error.value) or "refused")
         return tuple(ContextEdge.from_buffer_copy(edges[i]) for i in range(len(proofs)))
 
+    def admit_semantic_edges(self, proofs: Sequence[SemanticRelationProof]) -> SemanticAdmission:
+        """:meth:`project_semantic_edges`, returned as a :class:`SemanticAdmission` bound to this epoch's corpus."""
+        return SemanticAdmission(self.corpus_digest, self.project_semantic_edges(proofs))
+
     def __enter__(self) -> "HacfHandle":
         return self
 
@@ -366,6 +387,8 @@ def build_corpus_and_index(
     state_root: str | Path,
     documents: list[tuple[str, str, str, str]],
     edges: Iterable[ContextEdge] | None = None,
+    *,
+    residency_wait: bool = False,
 ) -> HacfHandle:
     """Build a complete HACF corpus + vector index from documents, and optionally one context graph.
 
@@ -376,7 +399,12 @@ def build_corpus_and_index(
         edges: ``None`` for no context graph (lexical + dense retrieval); otherwise the explicit
             :class:`ContextEdge` facts of the environment's one immutable graph (an empty iterable is an
             empty graph). Every endpoint must be an admitted chunk of these documents.
+        residency_wait: ``False`` (default): no retrieval of this epoch ever waits for vector residency (a shard
+            that cannot be made resident now refuses it). ``True``: the explicit choice of an owner on a lane that
+            may wait; retrievals then wait for residency under the native hard wall-clock bound.
     """
+    if type(residency_wait) is not bool:
+        raise HybridRetrievalError("POLICY_INVALID", "residency_wait is a bool")
     edge_list = None if edges is None else list(edges)
     if edge_list is not None and not all(type(e) is ContextEdge for e in edge_list):
         raise HybridRetrievalError("GRAPH_EDGE_INVALID", "edges must be ContextEdge values")
@@ -402,8 +430,12 @@ def build_corpus_and_index(
         lib.elpis_retrieval_env_destroy(ptr)
         raise HybridRetrievalError("ENV_CREATE_FAILED", err)
 
+    if residency_wait and lib.elpis_retrieval_env_set_residency(ptr, 1) != 0:
+        lib.elpis_retrieval_env_destroy(ptr)
+        raise HybridRetrievalError("ENV_CREATE_FAILED", "residency choice refused")
     handle = HacfHandle(library)
     handle._ptr = ctypes.c_void_p(ptr)
+    handle.residency_wait = residency_wait
     handle.corpus_manifest_json = _text(lib.elpis_retrieval_env_corpus_manifest(ptr))
     handle.corpus_digest = _text(lib.elpis_retrieval_env_corpus_digest(ptr))
     handle.shard_digest = _text(lib.elpis_retrieval_env_shard_digest(ptr))
