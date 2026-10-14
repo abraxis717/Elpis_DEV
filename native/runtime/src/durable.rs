@@ -34,6 +34,7 @@
 //! restart resolves to exactly one complete record. A crash at any point loses at most the volatile work since the
 //! last acknowledgment; restart never adopts an unacknowledged state (checkpoint bytes never authorize themselves).
 
+use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
@@ -247,9 +248,98 @@ pub struct Report {
     pub durable: Option<Snapshot>,
 }
 
-fn lock(m: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
+/// ThreadSanitizer cannot see the synchronization of this uninstrumented Rust code (std's futex-based `Mutex` and
+/// `Condvar`), yet it sees the instrumented C on both sides of the lane's handoff (the K1 capture on the HOT thread,
+/// the seal on the worker). In a TSan process the lane therefore announces its lock's happens-before edges with
+/// TSan's own annotation entry points; in any other process they are absent and these are no-ops (resolved once).
+mod tsan {
+    use std::ffi::{c_char, c_void, CStr};
+    use std::sync::OnceLock;
+
+    type Hook = unsafe extern "C" fn(*mut c_void);
+
+    extern "C" {
+        fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
+    }
+
+    fn find(name: &CStr) -> Option<Hook> {
+        // SAFETY: an RTLD_DEFAULT (null handle) lookup of a symbol by a NUL-terminated name.
+        let p = unsafe { dlsym(std::ptr::null_mut(), name.as_ptr()) };
+        // SAFETY: when present, the symbol is TSan's `void __tsan_acquire(void *)` / `void __tsan_release(void *)`.
+        (!p.is_null()).then(|| unsafe { std::mem::transmute::<*mut c_void, Hook>(p) })
+    }
+
+    fn hooks() -> (Option<Hook>, Option<Hook>) {
+        static HOOKS: OnceLock<(Option<Hook>, Option<Hook>)> = OnceLock::new();
+        *HOOKS.get_or_init(|| (find(c"__tsan_acquire"), find(c"__tsan_release")))
+    }
+
+    pub fn acquire(at: *const ()) {
+        if let Some(f) = hooks().0 {
+            // SAFETY: an annotation of an address; TSan never dereferences it.
+            unsafe { f(at as *mut c_void) }
+        }
+    }
+
+    pub fn release(at: *const ()) {
+        if let Some(f) = hooks().1 {
+            // SAFETY: as above.
+            unsafe { f(at as *mut c_void) }
+        }
+    }
+}
+
+/// The lane's lock, held: every acquisition and release (including a condvar wait's) is also announced to TSan.
+struct Held<'a> {
+    guard: Option<MutexGuard<'a, Shared>>,
+    at: *const (),
+}
+
+impl Deref for Held<'_> {
+    type Target = Shared;
+    fn deref(&self) -> &Shared {
+        self.guard.as_ref().expect("held")
+    }
+}
+
+impl DerefMut for Held<'_> {
+    fn deref_mut(&mut self) -> &mut Shared {
+        self.guard.as_mut().expect("held")
+    }
+}
+
+impl Drop for Held<'_> {
+    fn drop(&mut self) {
+        if self.guard.is_some() {
+            tsan::release(self.at);
+        }
+    }
+}
+
+impl<'a> Held<'a> {
+    fn wait(mut self, cv: &Condvar) -> Held<'a> {
+        let guard = self.guard.take().expect("held");
+        tsan::release(self.at);
+        let guard = cv.wait(guard).unwrap_or_else(|e| e.into_inner());
+        tsan::acquire(self.at);
+        Held { guard: Some(guard), at: self.at }
+    }
+
+    fn wait_timeout(mut self, cv: &Condvar, timeout: Duration) -> Held<'a> {
+        let guard = self.guard.take().expect("held");
+        tsan::release(self.at);
+        let guard = cv.wait_timeout(guard, timeout).unwrap_or_else(|e| e.into_inner()).0;
+        tsan::acquire(self.at);
+        Held { guard: Some(guard), at: self.at }
+    }
+}
+
+fn lock(m: &Mutex<Shared>) -> Held<'_> {
     // A panic aborts the process (panic = "abort" in release); in tests the lock is never poisoned by a live owner.
-    m.lock().unwrap_or_else(|e| e.into_inner())
+    let guard = m.lock().unwrap_or_else(|e| e.into_inner());
+    let at = m as *const Mutex<Shared> as *const ();
+    tsan::acquire(at);
+    Held { guard: Some(guard), at }
 }
 
 impl Lane {
@@ -297,7 +387,7 @@ impl Lane {
                 if !g.open && g.running.is_none() {
                     return Err(Rt::Closed.into()); // a simulated process death took them with it
                 }
-                g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner());
+                g = g.wait(&self.cv);
             }
         };
         let r = f(&mut stores);
@@ -512,13 +602,13 @@ impl Lane {
                 return Ok(t.resolve(Status::Abandoned, Rt::Closed as i32));
             }
             match deadline {
-                None => g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner()),
+                None => g = g.wait(&self.cv),
                 Some(d) => {
                     let now = Instant::now();
                     if now >= d {
                         return Ok(t);
                     }
-                    g = self.cv.wait_timeout(g, d - now).unwrap_or_else(|e| e.into_inner()).0;
+                    g = g.wait_timeout(&self.cv, d - now);
                 }
             }
         }
@@ -564,7 +654,7 @@ impl Lane {
                     if !g.hold && g.pending.is_some() && g.stores.is_some() {
                         break;
                     }
-                    g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner());
+                    g = g.wait(&self.cv);
                 }
                 let job = g.pending.take().expect("pending");
                 g.running = Some(job.ticket);
@@ -618,7 +708,7 @@ impl Lane {
         g.parked = step as u32;
         self.cv.notify_all();
         while !g.shutdown {
-            g = self.cv.wait(g).unwrap_or_else(|e| e.into_inner());
+            g = g.wait(&self.cv);
         }
     }
 }
