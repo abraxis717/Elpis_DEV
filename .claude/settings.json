@@ -1,0 +1,7 @@
+{
+  "disableWorkflows": true,
+  "workflowKeywordTriggerEnabled": false,
+  "permissions": {
+    "deny": ["Workflow"]
+  }
+}

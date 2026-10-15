@@ -404,6 +404,7 @@
     }
   ],
   "repository_surfaces": {
+    ".claude": "development tooling settings (dynamic multi-agent workflows disabled)",
     ".github": "CI",
     ".gitignore": "repository metadata",
     "CMakeLists.txt": "native build",
