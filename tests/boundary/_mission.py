@@ -172,6 +172,9 @@ def ecs_independence(root: Path) -> list[str]:
                     "src/ecs_composite.c": {"elpis/sha256.h"},
                     "tests/ecs_memory_test_util.h": {"elpis/sha256.h"},
                     "tests/test_ecs_composite.c": {"elpis/sha256.h"},
+                    # The legacy-surface differential guard (K1, K1 FMS, composite): a POSIX cold store for the
+                    # resident states and SHA-256 for the transcript digest and the memory fixtures.
+                    "tests/test_k1_legacy_differential.c": {"elpis/fms_pal_posix.h", "elpis/sha256.h"},
                 }
                 own = inc.startswith("elpis/ecsg_") or inc in ("elpis/ecs_memory.h", "elpis/ecs_composite.h")
                 own = own or (relative.startswith("tests/test_ecs_memory") and inc == "ecs_memory_test_util.h")

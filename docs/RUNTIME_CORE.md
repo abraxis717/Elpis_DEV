@@ -335,6 +335,42 @@ stand-in); `tests/integration/test_hot_residency.py`. This is mechanics: it says
 promotion, which now happens only where an owner asks for it. The Rust suite proves the same over the stand-in and forbids, statically, any store,
 lane, sync or digest use in the HOT functions (`tests/boundary/test_one_ecs.py`).
 
+### Legacy surface
+
+The live-coordinate entry points the correction added to K1, the K1 FMS adapter and the ECS composite (and the
+residency hold) are additive. Reviewed against the pre-correction tree (`81b738e`):
+
+* **Exports.** Every symbol the pre-correction `libelpis_ecsg_k1`, `libelpis_ecsg_k1_fms`, `libelpis_ecs_composite`,
+  `libelpis_ecs_memory` and `libelpis_ecsg_math` export is still exported; the change only adds symbols. No public
+  struct changed layout; no status value changed meaning.
+* **Source.** K1's envelope check and encoder were split by pure extraction (`check_header` + checksum,
+  `encode_body` + trailer: the same checks, order, return codes and bytes); `txn_begin_as` gained an optional
+  generation output; the commit path is unchanged. In the FMS adapter and the composite, the new branches are
+  reachable only from the new entry points (the legacy leased commit-identity still refuses a NULL identity before
+  reaching them); the composite's legacy commit keeps its digest poison check, and its cached K1 generation is
+  neither state nor envelope nor identity. `ELPISGK1`, `ELPISEM1` and `ELPISEC1` are written and checked by the
+  same code; K1 mathematics is untouched.
+* **Behavior.** `native/ECS/tests/test_k1_legacy_differential.c` Part A drives only pre-correction entry points
+  (K1 create/learn/consolidate/forward/query-identity, transactions with commit, commit-identity, abort and the
+  experience schedule, the refusal contract, the managed lease, restore and reset; FMS-resident states including a
+  demotion and the legacy materializing access; the composite's leased turns with observations) and records every
+  status, transition, readout, digest and envelope byte. Compiled against the pre-correction headers and linked
+  over the pre-correction, the `200f73f`-era and the current libraries, the three transcripts are byte-identical
+  (882,498 bytes, SHA-256 `6cb8a371f9864dcd351c0e6fd14796c87a4a04f08fc5e31333439a04fd530fa9` on the review host).
+  In CI the same battery must be deterministic and Part B proves the new entry points against the legacy ones in
+  the same build (capture + seal equals `snapshot_write` for all three; `begin_at`/`commit` install the bytes
+  `begin`/`commit_identity` install; the generation advances by one per installing mutation and never on a
+  refusal; another lease is refused before anything is read). The digest is not asserted in CI: the K1 kernels are
+  multi-versioned per ISA, so a transcript is compared across builds of one host, not against a constant.
+* **Recorded, unchanged.** The adapter's `close` of a state under a managed K1 lease succeeds (the lease guards
+  K1's mutating entry points, not the adapter's lifecycle), as before; a runtime-bound state is now additionally
+  protected by the residency hold (`close` refused `BUSY`).
+
+Reproduce: `git worktree add <base> 81b738e`, build it, compile the test against `<base>/native/ECS/include` and
+`<base>/native/substrate/include` without `ELPIS_K1_LIVE_COORDINATE`, link the one object against each tree's
+libraries (and its `libelpis_fms.a`, `libelpis_hash.a`), run each with a scratch directory and a transcript path,
+and compare the transcripts byte for byte.
+
 ## Native admission
 
 RuntimeCore is never loaded from a pathname. `RuntimeConfig` names the library by an absolute path and supplies a

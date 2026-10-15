@@ -301,6 +301,7 @@ NATIVE_ABI_FILES = {
     "native/ECS/tests/test_ecsg_k1_fms_alloc.c": _ABI_NATIVE,
     "native/ECS/tests/test_ecsg_k1_fms_faults.c": _ABI_NATIVE,
     "native/ECS/tests/test_ecsg_k1_performance.c": _ABI_NATIVE,
+    "native/ECS/tests/test_k1_legacy_differential.c": _ABI_NATIVE,
     "native/ECS/include/elpis/ecs_composite.h": _COMPOSITE_K1,
     "native/ECS/src/ecs_composite.c": _COMPOSITE_K1,
     "native/ECS/tests/test_ecs_composite.c": _COMPOSITE_K1,
