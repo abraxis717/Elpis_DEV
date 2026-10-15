@@ -182,3 +182,13 @@ target_link_libraries(elpis_ecs_composite PUBLIC elpis_ecsg_k1 elpis_ecs_memory 
 
 elpis_add_test(ECS test_ecs_composite SOURCES tests/test_ecs_composite.c
   LIBS elpis_ecs_composite elpis_ecs_memory elpis_ecsg_k1 elpis_ecsg_math elpis_hash Threads::Threads m TIMEOUT 300)
+
+# The legacy-surface differential guard of the live-coordinate additions (K1, K1 FMS, composite): Part A's legacy
+# battery is the cross-version check (its transcript, built against the pre-correction headers, is byte-identical
+# over the pre-correction and the corrected libraries; docs/RUNTIME_CORE.md, "Legacy surface"); here it must be
+# deterministic, and Part B proves the additive entry points against the legacy ones in the same build.
+elpis_add_test(ECS test_k1_legacy_differential SOURCES tests/test_k1_legacy_differential.c
+  DEFINES ELPIS_K1_LIVE_COORDINATE
+  LIBS elpis_ecs_composite elpis_ecsg_k1_fms elpis_ecsg_k1 elpis_ecs_memory elpis_ecsg_math elpis_hash m
+  ARGS "."
+  TIMEOUT 120)

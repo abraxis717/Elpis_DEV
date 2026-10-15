@@ -80,6 +80,20 @@ target_link_libraries(test_runtime_composite PRIVATE -lelpis_runtime)
 set_target_properties(test_runtime_composite PROPERTIES BUILD_RPATH "${_testing_dir}")
 add_dependencies(test_runtime_composite elpis_runtime_testing)
 
+# Gate A at the system-call boundary: the executable interposes the C library's persistent-I/O entry points and
+# counts them per thread while managed turns run with the durability worker held (testing library: the hold).
+elpis_add_test(runtime test_runtime_hot_io
+  SOURCES tests/test_runtime_hot_io.c
+  INCLUDES "${_crate}/include" "${_continuity}/include"
+  LIBS elpis_ecsg_k1_fms elpis_ecsg_k1
+  ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_hot_io"
+  TIMEOUT 120)
+target_compile_definitions(test_runtime_hot_io PRIVATE _GNU_SOURCE=1)
+target_link_options(test_runtime_hot_io PRIVATE "-L${_testing_dir}" "-rdynamic")
+target_link_libraries(test_runtime_hot_io PRIVATE -lelpis_runtime ${CMAKE_DL_LIBS})
+set_target_properties(test_runtime_hot_io PROPERTIES BUILD_RPATH "${_testing_dir}")
+add_dependencies(test_runtime_hot_io elpis_runtime_testing)
+
 # Typed HACF -> ECS memory observation path (docs/ECS_MEMORY.md, "HACF observations"): joins structure (identity and
 # validation owner) and the ECS memory type at the composition layer; RuntimeCore itself still links neither.
 elpis_add_library(runtime elpis_hacf_observation SHARED observation/src/ecs_observation_hacf.c)

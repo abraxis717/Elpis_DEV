@@ -868,10 +868,9 @@ static int read_doubles(const uint8_t *src, size_t count, double *dst)
     return check == 0.0;
 }
 
-/* Validates an envelope's header, size and checksum; returns dim and width. */
-static elpis_ecsg_k1_status check_envelope(const uint8_t *e, size_t size, size_t *dim, size_t *width)
+/* Validates an envelope's header and size (not its checksum); returns dim and width. */
+static elpis_ecsg_k1_status check_header(const uint8_t *e, size_t size, size_t *dim, size_t *width)
 {
-    uint8_t digest[32];
     size_t d = 0u;
     size_t w = 0u;
     size_t image = 0u;
@@ -896,6 +895,21 @@ static elpis_ecsg_k1_status check_envelope(const uint8_t *e, size_t size, size_t
         get_u64(e + 48u) > ELPIS_ECSG_K1_UNCONSOLIDATED_IMPORT || get_u64(e + 56u) != 0u ||
         size != image + ELPIS_ECSG_K1_DIGEST_BYTES) {
         return ELPIS_ECSG_K1_CORRUPT;
+    }
+    *dim = d;
+    *width = w;
+    return ELPIS_ECSG_K1_OK;
+}
+
+/* Validates an envelope's header, size and checksum; returns dim and width. */
+static elpis_ecsg_k1_status check_envelope(const uint8_t *e, size_t size, size_t *dim, size_t *width)
+{
+    uint8_t digest[32];
+    size_t d = 0u;
+    size_t w = 0u;
+    const elpis_ecsg_k1_status rc = check_header(e, size, &d, &w);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
     }
     elpis_sha256(e, size - ELPIS_ECSG_K1_DIGEST_BYTES, digest);
     if (!elpis_digest_equal(digest, e + size - ELPIS_ECSG_K1_DIGEST_BYTES)) {
@@ -1324,7 +1338,8 @@ size_t elpis_ecsg_k1_snapshot_size(const elpis_ecsg_k1 *s)
     return s == NULL ? 0u : s->image_bytes + ELPIS_ECSG_K1_DIGEST_BYTES;
 }
 
-void ecsg_k1_internal_encode(const elpis_ecsg_k1 *s, const uint8_t *image, uint8_t *out)
+/* The envelope's bytes before its trailer: the header and every binary64 value, little-endian. */
+static void encode_body(const elpis_ecsg_k1 *s, const uint8_t *image, uint8_t *out)
 {
     const size_t doubles = s->w_count + s->h_count + s->features;
     const double *v = img_w(s, (uint8_t *)(uintptr_t)image);
@@ -1335,6 +1350,11 @@ void ecsg_k1_internal_encode(const elpis_ecsg_k1 *s, const uint8_t *image, uint8
         memcpy(&bits, &v[i], sizeof(bits));
         put_u64(out + ELPIS_ECSG_K1_HEADER_BYTES + 8u * i, bits);
     }
+}
+
+void ecsg_k1_internal_encode(const elpis_ecsg_k1 *s, const uint8_t *image, uint8_t *out)
+{
+    encode_body(s, image, out);
     elpis_sha256(out, s->image_bytes, out + s->image_bytes);
 }
 
@@ -1421,6 +1441,83 @@ elpis_ecsg_k1_query_identity(elpis_ecsg_k1 *s, size_t dim, const double *x, size
     return rc;
 }
 
+/* --- live coordinate (ecsg_k1.h, "Live coordinate"): the lease holder's reads bound to the generation ---------- */
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_query(elpis_ecsg_k1 *s, uint64_t lease, size_t dim, const double *x, size_t rows, double *out,
+                           uint64_t *generation)
+{
+    elpis_ecsg_k1_status rc;
+    if (s == NULL || s->image == NULL || generation == NULL || lease == 0u || dim != s->dim) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (!enter(s)) {
+        return ELPIS_ECSG_K1_BUSY;
+    }
+    if (s->lease != lease) {
+        leave(s);
+        return ELPIS_ECSG_K1_LEASED;
+    }
+    rc = forward_on(s, s->image, x, rows, out);
+    if (rc == ELPIS_ECSG_K1_OK) {
+        *generation = s->generation;
+    }
+    leave(s);
+    return rc;
+}
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_identity(elpis_ecsg_k1 *s, uint64_t lease, uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES],
+                              uint64_t *generation)
+{
+    if (s == NULL || s->image == NULL || digest == NULL || generation == NULL || lease == 0u) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (!enter(s)) {
+        return ELPIS_ECSG_K1_BUSY;
+    }
+    if (s->lease != lease) {
+        leave(s);
+        return ELPIS_ECSG_K1_LEASED;
+    }
+    retained_state_digest(s, s->image, digest);
+    *generation = s->generation;
+    leave(s);
+    return ELPIS_ECSG_K1_OK;
+}
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_capture(elpis_ecsg_k1 *s, uint64_t lease, uint8_t *out, size_t size, uint64_t *generation)
+{
+    if (s == NULL || s->image == NULL || out == NULL || generation == NULL || lease == 0u ||
+        size < elpis_ecsg_k1_snapshot_size(s)) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (!enter(s)) {
+        return ELPIS_ECSG_K1_BUSY;
+    }
+    if (s->lease != lease) {
+        leave(s);
+        return ELPIS_ECSG_K1_LEASED;
+    }
+    encode_body(s, s->image, out);
+    memset(out + s->image_bytes, 0, ELPIS_ECSG_K1_DIGEST_BYTES);   /* unsealed: envelope_seal writes it */
+    *generation = s->generation;
+    leave(s);
+    return ELPIS_ECSG_K1_OK;
+}
+
+elpis_ecsg_k1_status elpis_ecsg_k1_envelope_seal(uint8_t *envelope, size_t size)
+{
+    size_t d = 0u;
+    size_t w = 0u;
+    if (envelope == NULL || check_header(envelope, size, &d, &w) != ELPIS_ECSG_K1_OK) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    elpis_sha256(envelope, size - ELPIS_ECSG_K1_DIGEST_BYTES, envelope + size - ELPIS_ECSG_K1_DIGEST_BYTES);
+    return ELPIS_ECSG_K1_OK;
+}
+
 elpis_ecsg_k1_status elpis_ecsg_k1_stats(elpis_ecsg_k1 *s, elpis_ecsg_k1_counters *out)
 {
     if (s == NULL || out == NULL) {
@@ -1473,7 +1570,8 @@ static void discard_on(elpis_ecsg_k1 *s, elpis_ecsg_k1_status rc)
 }
 
 static elpis_ecsg_k1_status
-txn_begin_as(elpis_ecsg_k1 *s, uint64_t caller, uint8_t source_digest[ELPIS_ECSG_K1_DIGEST_BYTES], uint64_t *token)
+txn_begin_as(elpis_ecsg_k1 *s, uint64_t caller, uint8_t source_digest[ELPIS_ECSG_K1_DIGEST_BYTES],
+             uint64_t *source_generation, uint64_t *token)
 {
     if (s == NULL || s->image == NULL || token == NULL) {
         return ELPIS_ECSG_K1_INVALID;
@@ -1497,6 +1595,9 @@ txn_begin_as(elpis_ecsg_k1 *s, uint64_t caller, uint8_t source_digest[ELPIS_ECSG
     s->txn_lease = caller;
     s->txn_token = ++s->txn_tokens_issued;
     s->txn_source_generation = s->generation;
+    if (source_generation != NULL) {
+        *source_generation = s->generation;   /* the generation of exactly the source copied */
+    }
     s->stats.txn_begins += 1u;
     *token = s->txn_token;
     leave(s);
@@ -1505,7 +1606,7 @@ txn_begin_as(elpis_ecsg_k1 *s, uint64_t caller, uint8_t source_digest[ELPIS_ECSG
 
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_begin(elpis_ecsg_k1 *s, uint64_t *token)
 {
-    return txn_begin_as(s, 0u, NULL, token);
+    return txn_begin_as(s, 0u, NULL, NULL, token);
 }
 
 elpis_ecsg_k1_status elpis_ecsg_k1_leased_txn_begin(elpis_ecsg_k1 *s, uint64_t lease,
@@ -1515,7 +1616,16 @@ elpis_ecsg_k1_status elpis_ecsg_k1_leased_txn_begin(elpis_ecsg_k1 *s, uint64_t l
     if (lease == 0u || source_digest == NULL) {
         return ELPIS_ECSG_K1_INVALID;
     }
-    return txn_begin_as(s, lease, source_digest, token);
+    return txn_begin_as(s, lease, source_digest, NULL, token);
+}
+
+elpis_ecsg_k1_status elpis_ecsg_k1_leased_txn_begin_at(elpis_ecsg_k1 *s, uint64_t lease, uint64_t *source_generation,
+                                                       uint64_t *token)
+{
+    if (lease == 0u || source_generation == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    return txn_begin_as(s, lease, NULL, source_generation, token);
 }
 
 /* --- managed ownership --------------------------------------------------------------------------------------- */
@@ -1740,6 +1850,12 @@ elpis_ecsg_k1_leased_txn_commit_identity(elpis_ecsg_k1 *s, uint64_t lease, uint6
                                          elpis_ecsg_k1_commit_identity *identity)
 {
     return lease == 0u ? ELPIS_ECSG_K1_INVALID : txn_commit_identity_as(s, lease, token, identity);
+}
+
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_txn_commit(elpis_ecsg_k1 *s, uint64_t lease, uint64_t token, elpis_ecsg_k1_transition *t)
+{
+    return lease == 0u || t == NULL ? ELPIS_ECSG_K1_INVALID : txn_commit_common(s, lease, token, t, NULL, NULL);
 }
 
 elpis_ecsg_k1_status elpis_ecsg_k1_txn_abort(elpis_ecsg_k1 *s, uint64_t token)

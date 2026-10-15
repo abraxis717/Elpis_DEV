@@ -43,8 +43,8 @@ from elpis.substrate.contracts import ContractError
 from .errors import RetrievalError
 
 __all__ = (
-    "ChunkClaim", "CorpusDocument", "CorpusManifest", "ObjectResolutionError", "ResolvedChunk",
-    "chunk_identity", "normalize", "resolve_chunks",
+    "ChunkClaim", "CorpusDocument", "CorpusManifest", "InPlaceDocuments", "ObjectResolutionError", "ResolvedChunk",
+    "SourceBinding", "chunk_identity", "documents_in_place", "normalize", "resolve_chunks",
 )
 
 _DIGEST = re.compile(r"[0-9a-f]{64}\Z")
@@ -269,3 +269,85 @@ def resolve_chunks(corpus_root, manifest: CorpusManifest, claims, *, max_objects
             resolved.append(ResolvedChunk(claim.chunk_digest, claim.doc_digest, claim.ordinal,
                                           claim.byte_start, claim.byte_end, norm_digest, text))
     return tuple(resolved), len(distinct) - len(resolved)
+
+
+# -- in-place sources for a bounded retrieval epoch ------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class SourceBinding:
+    """One existing resource to address in place: its label, its path relative to the authorized root, and the
+    namespace and authority class the retrieval epoch records for it."""
+    label: str
+    path: str
+    namespace: str
+    authority: str
+
+    def __post_init__(self):
+        for value, what in ((self.label, "label"), (self.namespace, "namespace"), (self.authority, "authority")):
+            if type(value) is not str or not value or "\x00" in value:
+                raise ObjectResolutionError("INVALID", f"source {what}")
+        if type(self.path) is not str or not self.path or self.path.startswith("/") or \
+                any(part in ("", ".", "..") for part in self.path.split("/")) or "\x00" in self.path:
+            raise ObjectResolutionError("INVALID", "source binding must be a confined relative path")
+
+
+@dataclass(frozen=True)
+class InPlaceDocuments:
+    """What a bounded retrieval epoch needs from resources that stay where they are.
+
+    ``documents`` are the transient ``(label, text, namespace, authority)`` tuples for
+    :func:`elpis.structure.retrieval.hacf.build_corpus_and_index` (held only until the epoch is built);
+    ``source_paths`` binds each document digest to its original relative path, so later resolution
+    (:func:`resolve_chunks` with ``source_paths``) re-reads and re-verifies the original in place: a source changed
+    since the epoch was built is refused (stale), never silently reused."""
+    documents: tuple
+    source_paths: dict
+
+
+def documents_in_place(root, bindings, *, max_document_bytes: int, max_total_bytes: int) -> InPlaceDocuments:
+    """Read existing resources once, in place, for a bounded retrieval epoch: nothing is copied or created.
+
+    Each binding is opened beneath ``root`` through :class:`RootCapability` (``openat2``, no symlinks, regular file
+    only, no traversal), bounded per document and in total, and must be strict UTF-8 text without NUL (the
+    retrieval epoch's text boundary). Labels and paths are distinct. Any refusal raises and returns nothing.
+    """
+    _count(max_document_bytes, "max_document_bytes", 1)
+    _count(max_total_bytes, "max_total_bytes", 1)
+    if type(bindings) is not tuple or not bindings or not all(type(b) is SourceBinding for b in bindings):
+        raise ObjectResolutionError("INVALID", "bindings must be a nonempty tuple of SourceBinding")
+    if len({b.label for b in bindings}) != len(bindings) or len({b.path for b in bindings}) != len(bindings):
+        raise ObjectResolutionError("INVALID", "duplicate source label or path")
+    try:
+        capability = RootCapability(root)
+    except ContractError as exc:
+        raise ObjectResolutionError("MISSING", "source root could not be opened") from exc
+    documents, paths, total = [], {}, 0
+    with capability:
+        for binding in bindings:
+            try:
+                fd = capability.open_file(binding.path)
+            except ContractError as exc:
+                raise ObjectResolutionError("MISSING" if exc.code.value == "MISSING" else "INTEGRITY",
+                                            "source could not be opened beneath the authorized root") from exc
+            try:
+                size = os.fstat(fd).st_size
+                if size > max_document_bytes:
+                    raise ObjectResolutionError("LIMIT", "source exceeds the per-document bound")
+                total += size
+                if total > max_total_bytes:
+                    raise ObjectResolutionError("LIMIT", "sources exceed the epoch's total bound")
+                data = read_exact(fd, size, 0) if size else b""
+            finally:
+                os.close(fd)
+            if b"\x00" in data:
+                raise ObjectResolutionError("INVALID", "source text contains NUL")
+            try:
+                text = data.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise ObjectResolutionError("INVALID", "source is not UTF-8 text") from exc
+            digest = hashlib.sha256(data).hexdigest()
+            if digest in paths:
+                raise ObjectResolutionError("INVALID", "two sources with the same content")
+            paths[digest] = binding.path
+            documents.append((binding.label, text, binding.namespace, binding.authority))
+    return InPlaceDocuments(tuple(documents), paths)

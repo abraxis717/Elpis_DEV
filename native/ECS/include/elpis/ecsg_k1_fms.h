@@ -33,6 +33,10 @@ extern "C" {
  */
 enum { ELPIS_ECSG_K1_FMS_ABI_V1 = 1u, ELPIS_ECSG_K1_FMS_ERROR_BASE = -100 };
 
+/* The resident state is not resident in WARM (demoted, or a move in flight) while a residency hold requires it:
+ * refused without pinning, promoting, reading the cold store or waiting (-100 + FMS_E_NOT_RESIDENT). */
+enum { ELPIS_ECSG_K1_FMS_NOT_RESIDENT = ELPIS_ECSG_K1_FMS_ERROR_BASE + FMS_E_NOT_RESIDENT };
+
 typedef struct elpis_ecsg_k1_fms elpis_ecsg_k1_fms;
 
 typedef struct {
@@ -97,6 +101,23 @@ int elpis_ecsg_k1_fms_stats(elpis_ecsg_k1_fms *, elpis_ecsg_k1_fms_metrics *out)
 int elpis_ecsg_k1_fms_pump(elpis_ecsg_k1_fms *);
 int elpis_ecsg_k1_fms_reserve(elpis_ecsg_k1_fms *, uint64_t id, size_t rows);
 
+/* Residency (additive; ABI v1 entry points and structs unchanged). A HOT caller that must never trigger a
+ * synchronous materialization holds the state resident:
+ *   resident_hold      only if the state is WARM now: pins it (it can no longer be demoted) and from then on every
+ *                      operation on it pins resident-only (fms_acquire_resident): an operation never promotes, never
+ *                      reads the cold store and never waits for a move. A demoted state (or one in motion) is
+ *                      refused ELPIS_ECSG_K1_FMS_NOT_RESIDENT; nothing is pinned or promoted. Holds nest.
+ *   resident_release   drops one hold; the last one unpins (the state is demotable again). INVALID without a hold.
+ *   materialize        the explicit, synchronous WARM-lane promotion (COLD -> WARM through FMS, verified); never
+ *                      called by a HOT operation. OK when the state already is WARM.
+ *   resident_holds     the current number of holds.
+ * Without a hold every entry point keeps its ABI v1 behavior (an operation materializes a demoted state). close is
+ * refused BUSY while a hold exists. */
+int elpis_ecsg_k1_fms_resident_hold(elpis_ecsg_k1_fms *, uint64_t id);
+int elpis_ecsg_k1_fms_resident_release(elpis_ecsg_k1_fms *, uint64_t id);
+int elpis_ecsg_k1_fms_materialize(elpis_ecsg_k1_fms *, uint64_t id);
+int elpis_ecsg_k1_fms_resident_holds(elpis_ecsg_k1_fms *, uint64_t id, uint32_t *holds);
+
 int elpis_ecsg_k1_fms_forward(elpis_ecsg_k1_fms *, uint64_t id, const double *x, size_t rows, double *out);
 int elpis_ecsg_k1_fms_learn(elpis_ecsg_k1_fms *, uint64_t id, const double *x, const double *y, size_t rows,
                             double rate, uint64_t steps, elpis_ecsg_k1_transition *transition);
@@ -146,6 +167,23 @@ int elpis_ecsg_k1_fms_leased_txn_run_schedule(elpis_ecsg_k1_fms *runtime, uint64
                                               const elpis_ecsg_k1_experience *schedule, size_t experiences,
                                               double learning_rate, double *s3_out, size_t s3_count,
                                               elpis_ecsg_k1_schedule_result *result);
+
+/* The live coordinate of ecsg_k1.h ("Live coordinate") on a resident state, for the lease holder: leased_query,
+ * leased_identity and leased_capture under a READ pin (read-only; nothing dirtied), leased_txn_begin_at and
+ * leased_txn_commit under the transaction's WRITE pin, with the refusal contract of their leased_txn_begin and
+ * leased_txn_commit_identity counterparts. No digest is computed except by leased_identity. envelope_seal is K1's
+ * (pure). Additive: no existing entry point changes. */
+int elpis_ecsg_k1_fms_leased_query(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease, size_t dim, const double *x,
+                                   size_t rows, double *out, uint64_t *generation);
+int elpis_ecsg_k1_fms_leased_identity(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease,
+                                      uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES], uint64_t *generation);
+int elpis_ecsg_k1_fms_leased_txn_begin_at(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease,
+                                          uint64_t *source_generation, uint64_t *token);
+int elpis_ecsg_k1_fms_leased_txn_commit(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease, uint64_t token,
+                                        elpis_ecsg_k1_transition *transition);
+int elpis_ecsg_k1_fms_leased_capture(elpis_ecsg_k1_fms *, uint64_t id, uint64_t lease, uint8_t *out, size_t size,
+                                     uint64_t *generation);
+int elpis_ecsg_k1_fms_envelope_seal(uint8_t *envelope, size_t size);
 
 /* The experience schedule of ecsg_k1.h on the resident candidate, under the transaction's WRITE pin: one call learns
  * and consolidates every experience natively and returns S3 of the final candidate W. Same validation and refusal

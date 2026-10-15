@@ -48,6 +48,13 @@ or hypothetical future use did not count as a consumer.
 | Structural R0 mutation grammar and sealed authority bytes | no canonical runtime consumer (own tests only; never admitted as transitions) | None | None | - | - | - | **DELETE** from the live package; the beta migration record and git history keep its provenance |
 | Native receipt codec, log, runtime session (the retired native history library) | the receipt history only | None | None | - | - | - | **DELETE**: continuity needs no native code |
 
+**Correction (Elpis_DEV, RuntimeCore ABI v4).** The first row's "Sync: yes (after K1 commit, before return)" is
+superseded. Continuity still keeps exactly one current expected identity, but it is the last **explicitly
+published** one: a managed commit is volatile (it advances the live coordinate only), and the identity is published
+by RuntimeCore's durability lane when a caller requests durable publication, recoverable (the state's bytes in the
+checkpoint store first) or identity-only (docs/RUNTIME_CORE.md, "Live and durable authority"). Continuity no longer decides when the runtime may think. Nothing else in this census
+changes; the retired event-history kernel stays retired, and continuity is not the contextual lane's memory.
+
 ## K1 identity rule
 
 The K1 **retained-state identity** is `state_digest()`: the SHA-256 trailer of
@@ -56,7 +63,9 @@ snapshot and restore exactly.
 
 The K1 `generation` is process-local transaction-staleness metadata. It starts
 at 0 on every create or restore and is not part of the envelope. Continuity
-therefore never records it as a restart coordinate. Turn-local diagnostics
+therefore never records it as a restart coordinate. RuntimeCore uses it, in memory
+only, as the live coordinate of the state it holds under its managed lease (live
+authority); continuity holds the durable authority. Turn-local diagnostics
 (epochs, generations, token and readout digests) stay on the returned turn
 result and are not durable continuity.
 
@@ -138,17 +147,23 @@ memory, independent of how many turns or transitions were ever published.
 ## K1 restart law
 
 ```
-first managed K1 lineage           -> explicit anchor (no implicit anchor, ever)
-successful K1 turn A -> B          -> publish expected identity B
-restart, durable says A, K1 is B   -> CONTINUITY_STATE_MISMATCH before any K1 mutation
-restart, durable says B, K1 is B   -> resume
-corrupt / ambiguous register       -> CONTINUITY_CORRUPT
+first managed K1 lineage            -> explicit anchor (no implicit anchor, ever)
+successful K1 turn A -> B           -> volatile: the live state is B, continuity still says A
+explicit durable publication of B   -> publish expected identity B (durability lane), then ACKNOWLEDGED
+restart, durable says A, K1 is B    -> CONTINUITY_STATE_MISMATCH before any K1 mutation
+restart, durable says B, K1 is B    -> resume
+corrupt / ambiguous register        -> CONTINUITY_CORRUPT
 ```
 
-A K1 commit is never rolled back because publication failed. The runtime
-fail-stops with the publication code, and restart resolves through the law
-above. No missing turn is synthesized. One open `Runtime` owns one K1 lineage
-handle; the binding and the fail-stop are RuntimeCore's (docs/RUNTIME_CORE.md).
+A K1 commit is never rolled back because a publication failed. A refused publication resolves its request
+`FAILED` (nothing durable changed); an uncertain one resolves it `UNCERTAIN` and faults the durability lane until
+reopen; the HOT lane keeps its live state either way. Restart resolves through the law above: a crash loses the
+volatile work since the last completed publication, never more, and no missing turn is synthesized. A publication
+whose record completed may be the authority even though its caller never received the acknowledgment (the process
+died first): a missing acknowledgment proves nothing about durability, and restart reads only what continuity
+names. One open `Runtime`
+owns one K1 lineage handle; the binding, the live coordinate and the fail-stop are RuntimeCore's
+(docs/RUNTIME_CORE.md).
 
 Continuity holds identities, never K1 state. Resuming a lost in-memory state
 from its complete envelope is K1 Recovery R0's job (docs/K1_RECOVERY_R0.md), a
@@ -255,18 +270,21 @@ migration or license to reset authority.
 
 ## Hot path
 
-The managed canonical turn is: codec -> RuntimeCore (one native K1 transaction: experience schedule and
-readout) -> decode -> RuntimeCore (native commit, one continuity publication). Since this branch the store is
-embedded in RuntimeCore (native/runtime, docs/RUNTIME_CORE.md), which owns the fail-stop and the K1 lineage
-binding. `tests/integration/test_runtime_hot_path.py` checks dynamically, on every run, that Python makes no K1
-call and three crossings into RuntimeCore, that RuntimeCore's K1 crossings are the transaction's own (begin,
-one schedule, commit) with exactly one publication, that Python performs no file I/O, and that the store's
-filesystem work per turn is exactly one 176-byte `pwrite` and one `fdatasync` (testing-library I/O counters).
-`tests/boundary/test_one_ecs.py` checks statically that the turn, in Python and in RuntimeCore, reaches no
-receipt, history, event, scheduler, projection or compaction machinery.
+The managed canonical turn is: codec -> RuntimeCore (one native K1 transaction begun at the live coordinate:
+experience schedule and readout) -> decode -> RuntimeCore (native commit: volatile). It touches continuity not at
+all. The store is embedded in RuntimeCore (native/runtime, docs/RUNTIME_CORE.md) and owned by its durability lane;
+`tests/integration/test_runtime_hot_path.py` checks dynamically, on every run, that Python makes no K1 call and
+three crossings into RuntimeCore, that RuntimeCore's K1 crossings are the transaction's own (begin, one schedule,
+commit) with no publication, that Python performs no file I/O, and that the store performs no I/O at all during the
+turn (testing-library I/O counters); `native/runtime/tests/test_runtime_hot_io.c` checks the same at the
+system-call boundary. Each explicit durable publication writes one 176-byte record and syncs it once (plus the
+checkpoint slot when a store is attached), on the durability lane. `tests/boundary/test_one_ecs.py` checks
+statically that the turn, in Python and in RuntimeCore, reaches no receipt, history, event, scheduler, projection
+or compaction machinery, and no store, lane, sync or digest.
 
-The current record-size consequence is 176 bytes written per turn and 352
-bytes total. No new latency measurements are claimed for format v2.
+**Superseded (through RuntimeCore ABI v3):** every managed turn published one 176-byte record and called
+`fdatasync` before returning. The measurements below are historical records of that design and its predecessor;
+they are not rewritten.
 
 One measurement of a warm managed turn, before (`e05b33a`, receipt history)
 and after (the original 136-byte format-v1 design), on the same host (Linux VM, ext4, Release build;

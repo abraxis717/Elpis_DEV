@@ -20,6 +20,7 @@ typedef struct {
     uint8_t *image;  /* valid while pinned: a pinned object cannot move */
     elpis_ecsg_k1 *k1;
     int txn_open;
+    uint32_t resident_holds; /* > 0: one FMS pin keeps the image WARM, and every pin is resident-only */
     uint64_t txn_external_token;
     uint64_t txn_native_token;
     uint64_t txn_tokens_issued;
@@ -157,7 +158,10 @@ static int acquire(elpis_ecsg_k1_fms *r, slot *s, unsigned mode)
         }
     }
     start = now_ns();
-    rc = fms_acquire(r->fms, s->object, FMS_WARM, mode, &ptr);
+    /* Under a residency hold the state cannot have been demoted (the hold pins it); the resident-only pin makes
+     * that a checked fact: it never promotes, reads the cold store or waits. */
+    rc = s->resident_holds ? fms_acquire_resident(r->fms, s->object, FMS_WARM, mode, &ptr)
+                           : fms_acquire(r->fms, s->object, FMS_WARM, mode, &ptr);
     s->info.materialization_ns += now_ns() - start;
     if (rc < 0) {
         s->info.lease_failures += 1u;
@@ -394,7 +398,7 @@ int elpis_ecsg_k1_fms_close(elpis_ecsg_k1_fms *r, uint64_t *id)
     if (rc != ELPIS_ECSG_K1_OK) {
         return rc;
     }
-    if (s->txn_open) {
+    if (s->txn_open || s->resident_holds) {
         give(r, s);
         return ELPIS_ECSG_K1_BUSY;
     }
@@ -413,6 +417,98 @@ int elpis_ecsg_k1_fms_close(elpis_ecsg_k1_fms *r, uint64_t *id)
     memset(s, 0, sizeof(*s));
     pthread_mutex_unlock(&r->mu);
     *id = 0u;
+    return ELPIS_ECSG_K1_OK;
+}
+
+/* --- residency: holds, explicit materialization ------------------------------------------------------------- */
+
+int elpis_ecsg_k1_fms_resident_hold(elpis_ecsg_k1_fms *r, uint64_t id)
+{
+    slot *s;
+    void *ptr = NULL;
+    int rc = take(r, id, &s);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
+    }
+    if (s->resident_holds == UINT32_MAX) {
+        give(r, s);
+        return ELPIS_ECSG_K1_CAPACITY;
+    }
+    if (s->resident_holds == 0u) {
+        rc = fms_acquire_resident(r->fms, s->object, FMS_WARM, FMS_READ, &ptr);
+        if (rc < 0) {
+            give(r, s);
+            return fm(rc);
+        }
+        if (rc != FMS_WARM) {
+            (void)fms_release(r->fms, s->object);
+            give(r, s);
+            return fm(FMS_E_STATE);
+        }
+    }
+    s->resident_holds += 1u;
+    give(r, s);
+    return ELPIS_ECSG_K1_OK;
+}
+
+int elpis_ecsg_k1_fms_resident_release(elpis_ecsg_k1_fms *r, uint64_t id)
+{
+    slot *s;
+    int rc = take(r, id, &s);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
+    }
+    if (s->resident_holds == 0u) {
+        give(r, s);
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (s->resident_holds == 1u) {
+        rc = fms_release(r->fms, s->object);
+        if (rc < 0) {
+            give(r, s);
+            return fm(rc);   /* the hold (and its pin) stands; retried by the next release */
+        }
+    }
+    s->resident_holds -= 1u;
+    give(r, s);
+    return ELPIS_ECSG_K1_OK;
+}
+
+int elpis_ecsg_k1_fms_materialize(elpis_ecsg_k1_fms *r, uint64_t id)
+{
+    slot *s;
+    void *ptr = NULL;
+    uint64_t start;
+    int rc = take(r, id, &s);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
+    }
+    start = now_ns();
+    rc = fms_acquire(r->fms, s->object, FMS_WARM, FMS_READ, &ptr);   /* promotes synchronously: WARM lane only */
+    s->info.materialization_ns += now_ns() - start;
+    if (rc < 0) {
+        s->info.lease_failures += 1u;
+        give(r, s);
+        return fm(rc);
+    }
+    (void)fms_release(r->fms, s->object);
+    give(r, s);
+    return rc == FMS_WARM ? ELPIS_ECSG_K1_OK : fm(FMS_E_STATE);
+}
+
+int elpis_ecsg_k1_fms_resident_holds(elpis_ecsg_k1_fms *r, uint64_t id, uint32_t *holds)
+{
+    slot *s;
+    int rc;
+    if (holds == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    rc = take(r, id, &s);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
+    }
+    *holds = s->resident_holds;
+    give(r, s);
     return ELPIS_ECSG_K1_OK;
 }
 
@@ -590,7 +686,8 @@ int elpis_ecsg_k1_fms_lease_of(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t *leas
 /* --- direct operations: pin -> native operation over the resident bytes -> unpin --------------------- */
 
 typedef enum { OP_FORWARD, OP_LEARN, OP_CONSOLIDATE, OP_RESET, OP_COPY_W, OP_COPY_H, OP_COPY_A,
-               OP_SNAPSHOT, OP_STATE_DIGEST, OP_QUERY_IDENTITY } op_kind;
+               OP_SNAPSHOT, OP_STATE_DIGEST, OP_QUERY_IDENTITY, OP_LEASED_QUERY, OP_LEASED_IDENTITY,
+               OP_LEASED_CAPTURE } op_kind;
 
 typedef struct {
     op_kind kind;
@@ -603,6 +700,8 @@ typedef struct {
     size_t count;
     uint8_t *bytes;
     elpis_ecsg_k1_transition *transition;
+    uint64_t lease;          /* the live-coordinate reads (ecsg_k1.h, "Live coordinate") */
+    uint64_t *generation;
 } op_args;
 
 static int run_op(elpis_ecsg_k1 *k1, const op_args *a)
@@ -628,6 +727,12 @@ static int run_op(elpis_ecsg_k1 *k1, const op_args *a)
         return elpis_ecsg_k1_state_digest(k1, a->bytes);
     case OP_QUERY_IDENTITY:
         return elpis_ecsg_k1_query_identity(k1, a->count, a->x, a->rows, a->out, a->bytes);
+    case OP_LEASED_QUERY:
+        return elpis_ecsg_k1_leased_query(k1, a->lease, a->count, a->x, a->rows, a->out, a->generation);
+    case OP_LEASED_IDENTITY:
+        return elpis_ecsg_k1_leased_identity(k1, a->lease, a->bytes, a->generation);
+    case OP_LEASED_CAPTURE:
+        return elpis_ecsg_k1_leased_capture(k1, a->lease, a->bytes, a->count, a->generation);
     }
     return ELPIS_ECSG_K1_INVALID;
 }
@@ -651,7 +756,7 @@ static int direct(elpis_ecsg_k1_fms *r, uint64_t id, const op_args *a)
         give(r, s);
         return rc;
     }
-    timer = a->kind == OP_FORWARD || a->kind == OP_QUERY_IDENTITY ? &s->info.query_ns
+    timer = a->kind == OP_FORWARD || a->kind == OP_QUERY_IDENTITY || a->kind == OP_LEASED_QUERY ? &s->info.query_ns
           : a->kind == OP_LEARN ? &s->info.learn_ns
           : a->kind == OP_CONSOLIDATE ? &s->info.consolidate_ns : &s->info.commit_ns;
     start = now_ns();
@@ -670,51 +775,51 @@ static int direct(elpis_ecsg_k1_fms *r, uint64_t id, const op_args *a)
 
 int elpis_ecsg_k1_fms_forward(elpis_ecsg_k1_fms *r, uint64_t id, const double *x, size_t rows, double *out)
 {
-    op_args a = {OP_FORWARD, x, NULL, rows, 0.0, 0u, out, 0u, NULL, NULL};
+    op_args a = {OP_FORWARD, x, NULL, rows, 0.0, 0u, out, 0u, NULL, NULL, 0u, NULL};
     return direct(r, id, &a);
 }
 
 int elpis_ecsg_k1_fms_learn(elpis_ecsg_k1_fms *r, uint64_t id, const double *x, const double *y, size_t rows,
                             double rate, uint64_t steps, elpis_ecsg_k1_transition *t)
 {
-    op_args a = {OP_LEARN, x, y, rows, rate, steps, NULL, 0u, NULL, t};
+    op_args a = {OP_LEARN, x, y, rows, rate, steps, NULL, 0u, NULL, t, 0u, NULL};
     return direct(r, id, &a);
 }
 
 int elpis_ecsg_k1_fms_consolidate(elpis_ecsg_k1_fms *r, uint64_t id, const double *x, size_t rows,
                                   elpis_ecsg_k1_transition *t)
 {
-    op_args a = {OP_CONSOLIDATE, x, NULL, rows, 0.0, 0u, NULL, 0u, NULL, t};
+    op_args a = {OP_CONSOLIDATE, x, NULL, rows, 0.0, 0u, NULL, 0u, NULL, t, 0u, NULL};
     return direct(r, id, &a);
 }
 
 int elpis_ecsg_k1_fms_reset(elpis_ecsg_k1_fms *r, uint64_t id, elpis_ecsg_k1_transition *t)
 {
-    op_args a = {OP_RESET, NULL, NULL, 0u, 0.0, 0u, NULL, 0u, NULL, t};
+    op_args a = {OP_RESET, NULL, NULL, 0u, 0.0, 0u, NULL, 0u, NULL, t, 0u, NULL};
     return direct(r, id, &a);
 }
 
 int elpis_ecsg_k1_fms_copy_w(elpis_ecsg_k1_fms *r, uint64_t id, double *out, size_t count)
 {
-    op_args a = {OP_COPY_W, NULL, NULL, 0u, 0.0, 0u, out, count, NULL, NULL};
+    op_args a = {OP_COPY_W, NULL, NULL, 0u, 0.0, 0u, out, count, NULL, NULL, 0u, NULL};
     return direct(r, id, &a);
 }
 
 int elpis_ecsg_k1_fms_copy_h_packed(elpis_ecsg_k1_fms *r, uint64_t id, double *out, size_t count)
 {
-    op_args a = {OP_COPY_H, NULL, NULL, 0u, 0.0, 0u, out, count, NULL, NULL};
+    op_args a = {OP_COPY_H, NULL, NULL, 0u, 0.0, 0u, out, count, NULL, NULL, 0u, NULL};
     return direct(r, id, &a);
 }
 
 int elpis_ecsg_k1_fms_copy_a(elpis_ecsg_k1_fms *r, uint64_t id, double *out, size_t count)
 {
-    op_args a = {OP_COPY_A, NULL, NULL, 0u, 0.0, 0u, out, count, NULL, NULL};
+    op_args a = {OP_COPY_A, NULL, NULL, 0u, 0.0, 0u, out, count, NULL, NULL, 0u, NULL};
     return direct(r, id, &a);
 }
 
 int elpis_ecsg_k1_fms_snapshot_write(elpis_ecsg_k1_fms *r, uint64_t id, uint8_t *out, size_t size)
 {
-    op_args a = {OP_SNAPSHOT, NULL, NULL, 0u, 0.0, 0u, NULL, size, out, NULL};
+    op_args a = {OP_SNAPSHOT, NULL, NULL, 0u, 0.0, 0u, NULL, size, out, NULL, 0u, NULL};
     return direct(r, id, &a);
 }
 
@@ -737,11 +842,63 @@ elpis_ecsg_k1_fms_state_digest(
 int elpis_ecsg_k1_fms_query_identity(elpis_ecsg_k1_fms *r, uint64_t id, size_t dim, const double *x, size_t rows,
                                      double *out, uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES])
 {
-    op_args a = {OP_QUERY_IDENTITY, x, NULL, rows, 0.0, 0u, out, dim, digest, NULL};
+    op_args a = {OP_QUERY_IDENTITY, x, NULL, rows, 0.0, 0u, out, dim, digest, NULL, 0u, NULL};
     if (digest == NULL) {
         return ELPIS_ECSG_K1_INVALID;
     }
     return direct(r, id, &a);
+}
+
+/* The live-coordinate reads of ecsg_k1.h on the resident state under a READ pin (read-only; nothing dirtied). */
+int elpis_ecsg_k1_fms_leased_query(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t lease, size_t dim, const double *x,
+                                   size_t rows, double *out, uint64_t *generation)
+{
+    op_args a = {0};
+    if (generation == NULL || lease == 0u) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    a.kind = OP_LEASED_QUERY;
+    a.x = x;
+    a.rows = rows;
+    a.out = out;
+    a.count = dim;
+    a.lease = lease;
+    a.generation = generation;
+    return direct(r, id, &a);
+}
+
+int elpis_ecsg_k1_fms_leased_identity(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t lease,
+                                      uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES], uint64_t *generation)
+{
+    op_args a = {0};
+    if (digest == NULL || generation == NULL || lease == 0u) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    a.kind = OP_LEASED_IDENTITY;
+    a.bytes = digest;
+    a.lease = lease;
+    a.generation = generation;
+    return direct(r, id, &a);
+}
+
+int elpis_ecsg_k1_fms_leased_capture(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t lease, uint8_t *out, size_t size,
+                                     uint64_t *generation)
+{
+    op_args a = {0};
+    if (out == NULL || generation == NULL || lease == 0u) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    a.kind = OP_LEASED_CAPTURE;
+    a.bytes = out;
+    a.count = size;
+    a.lease = lease;
+    a.generation = generation;
+    return direct(r, id, &a);
+}
+
+int elpis_ecsg_k1_fms_envelope_seal(uint8_t *envelope, size_t size)
+{
+    return elpis_ecsg_k1_envelope_seal(envelope, size);
 }
 
 /* --- transactions: the WRITE pin is held from begin to commit/abort ---------------------------------------- */
@@ -778,7 +935,7 @@ static int txn_settle(elpis_ecsg_k1_fms *r, slot *s, int rc, int mutating)
 }
 
 static int txn_begin_as(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t lease, uint8_t *source_digest,
-                        uint64_t *token)
+                        uint64_t *source_generation, uint64_t *token)
 {
     slot *s;
     int rc;
@@ -800,8 +957,10 @@ static int txn_begin_as(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t lease, uint8
     }
     rc = acquire(r, s, FMS_WRITE);
     if (rc == ELPIS_ECSG_K1_OK) {
-        rc = lease != 0u ? elpis_ecsg_k1_leased_txn_begin(s->k1, lease, source_digest, &s->txn_native_token)
-                         : elpis_ecsg_k1_txn_begin(s->k1, &s->txn_native_token);
+        rc = lease == 0u ? elpis_ecsg_k1_txn_begin(s->k1, &s->txn_native_token)
+           : source_generation != NULL
+               ? elpis_ecsg_k1_leased_txn_begin_at(s->k1, lease, source_generation, &s->txn_native_token)
+               : elpis_ecsg_k1_leased_txn_begin(s->k1, lease, source_digest, &s->txn_native_token);
         if (rc != ELPIS_ECSG_K1_OK) {
             (void)release(r, s);
         }
@@ -817,7 +976,7 @@ static int txn_begin_as(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t lease, uint8
 
 int elpis_ecsg_k1_fms_txn_begin(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t *token)
 {
-    return txn_begin_as(r, id, 0u, NULL, token);
+    return txn_begin_as(r, id, 0u, NULL, NULL, token);
 }
 
 int elpis_ecsg_k1_fms_leased_txn_begin(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t lease,
@@ -826,7 +985,16 @@ int elpis_ecsg_k1_fms_leased_txn_begin(elpis_ecsg_k1_fms *r, uint64_t id, uint64
     if (lease == 0u || source_digest == NULL) {
         return ELPIS_ECSG_K1_INVALID;
     }
-    return txn_begin_as(r, id, lease, source_digest, token);
+    return txn_begin_as(r, id, lease, source_digest, NULL, token);
+}
+
+int elpis_ecsg_k1_fms_leased_txn_begin_at(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t lease,
+                                          uint64_t *source_generation, uint64_t *token)
+{
+    if (lease == 0u || source_generation == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    return txn_begin_as(r, id, lease, NULL, source_generation, token);
 }
 
 int elpis_ecsg_k1_fms_txn_learn(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token, const double *x, const double *y,
@@ -959,6 +1127,8 @@ fms_txn_commit_common(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t lease, uint64_
         rc = elpis_ecsg_k1_leased_txn_commit_identity(s->k1, lease, s->txn_native_token, identity);
     } else if (identity != NULL) {
         rc = elpis_ecsg_k1_txn_commit_identity(s->k1, s->txn_native_token, identity);
+    } else if (lease != 0u) {
+        rc = elpis_ecsg_k1_leased_txn_commit(s->k1, lease, s->txn_native_token, t);
     } else {
         rc = elpis_ecsg_k1_txn_commit(s->k1, s->txn_native_token, t);
     }
@@ -1006,6 +1176,16 @@ elpis_ecsg_k1_fms_leased_txn_commit_identity(elpis_ecsg_k1_fms *r, uint64_t id, 
         return ELPIS_ECSG_K1_INVALID;
     }
     return fms_txn_commit_common(r, id, lease, token, NULL, identity);
+}
+
+int
+elpis_ecsg_k1_fms_leased_txn_commit(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t lease, uint64_t token,
+                                    elpis_ecsg_k1_transition *transition)
+{
+    if (transition == NULL || lease == 0u) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    return fms_txn_commit_common(r, id, lease, token, transition, NULL);
 }
 
 int elpis_ecsg_k1_fms_txn_abort(elpis_ecsg_k1_fms *r, uint64_t id, uint64_t token)

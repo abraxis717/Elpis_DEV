@@ -87,9 +87,10 @@ of the same rows. The call then returns `S3` of the final candidate `W` (the rea
 ## The canonical operations (`elpis.runtime.cognition`)
 
 QUERY and LEARN are separate operations (docs/COGNITION_R0.md). QUERY (`run_query`, `QueryRequest`) is one native
-call, `query_identity`: read-only, no transaction. LEARN (`run_learn`, `LearnRequest`) requires an explicit
-`LearnAuthority` and is the transaction below without a decode; it returns the committed transition and its
-retained-state identities. The legacy learned turn (`run_turn`, `LEGACY_LEARNED_TURN`) is a LEARN whose S3 readout
+call: `query_identity` unmanaged, `leased_query` when RuntimeCore manages the state (both read-only, no transaction).
+LEARN (`run_learn`, `LearnRequest`) requires an explicit `LearnAuthority` and is the transaction below without a
+decode; unmanaged it returns the committed transition and its retained-state identities, managed (RuntimeCore ABI
+v4) the volatile transition and its live generations, with no digest. The legacy learned turn (`run_turn`, `LEGACY_LEARNED_TURN`) is a LEARN whose S3 readout
 is decoded; it needs the same authority.
 
 Native K1 is the canonical retained-state cognitive substrate of these operations, standalone (`K1State`) or FMS-resident
@@ -183,7 +184,12 @@ is open; a claim replaces any other lease). While leased, every unmanaged mutati
 `LEASED` (-8) before touching anything: `learn`, `consolidate`, `reset`, `reserve`, `txn_begin`, and `txn_learn`,
 `txn_consolidate`, `txn_run_schedule`, `txn_commit`, `txn_commit_identity` on a transaction begun under the lease
 (it stays open). The owner uses `leased_reserve`, `leased_txn_begin` (which also writes the retained-state identity
-of exactly the source it copied), `leased_txn_run_schedule` and `leased_txn_commit_identity`. Reads (`forward`,
+of exactly the source it copied), `leased_txn_run_schedule` and `leased_txn_commit_identity`, and the live-coordinate
+entries (`ecsg_k1.h`, "Live coordinate"; additive, no numerical law changes): `leased_query` (`f_W(x)` and the
+generation of the same state), `leased_identity` (digest and generation together), `leased_txn_begin_at` (the
+source generation), `leased_txn_commit` (no digest), `leased_capture` (the envelope unsealed, with its generation)
+and the pure `envelope_seal`. Under the lease no unmanaged entry can move the state, so the generation identifies
+the live retained state without hashing it; the digest is computed only where durability needs it. Reads (`forward`,
 `query_identity`, copies, snapshot, digest, stats, getters, `txn_forward`, `txn_epoch`) and `txn_abort` stay open
 to anyone. The FMS adapter delegates to the resident K1 object and refuses an unmanaged write before taking a WRITE
 pin (the object is not dirtied). The lease is not part of the retained state, the envelope or the digest, and it
@@ -218,6 +224,14 @@ copies and snapshots pin READ; writes pin WRITE, which marks the object dirty an
 
 - a failed cold read leaves the object FAILED, and it is never soft-recovered;
 - a corrupted cold replica is refused by its digest.
+
+**Residency hold** (additive; docs/RUNTIME_CORE.md, "HOT residency"): `elpis_ecsg_k1_fms_resident_hold` succeeds
+only on a WARM state (`fms_acquire_resident`: never promotes, reads the cold store or waits), keeps one pin so the
+state cannot be demoted, and makes every operation on the state pin resident-only until the last
+`elpis_ecsg_k1_fms_resident_release`. A demoted state is refused `ELPIS_ECSG_K1_FMS_NOT_RESIDENT` (-112).
+`elpis_ecsg_k1_fms_materialize` is the explicit COLD to WARM promotion (a WARM-lane operation);
+`elpis_ecsg_k1_fms_resident_holds` reports the count. `close` is refused `BUSY` while a hold exists. Without a hold
+every entry point behaves exactly as before. RuntimeCore holds every FMS-resident state it binds.
 
 **Failed release:** if FMS release fails, the adapter keeps the pin FMS still holds. That pin stays consistent and
 is retried by the next operation and by close. A held READ pin never serves a write. A committed result is never

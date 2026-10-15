@@ -206,6 +206,7 @@ int elpis_hybrid_bridge_execute(
     q.dimensions = materialization->vector_dimensions;
     q.namespace_filter = materialization->namespace_bytes;
     q.authority_filter = NULL; /* retrieval-bridge v1: floor-based, not exact authority filter */
+    q.residency = ELPIS_HYBRID_RESIDENCY_NOWAIT; /* never an implicit residency wait */
 
     /* Step 9: Create HACF hybrid retriever */
     elpis_hybrid_retriever *retriever = nullptr;

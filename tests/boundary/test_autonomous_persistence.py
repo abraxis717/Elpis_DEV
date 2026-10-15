@@ -6,6 +6,8 @@ Architectural properties, not keyword bans:
 * the persistent-writer registry resolves to real code, and each writer has exactly one class;
 * the autonomous Runtime operations and the modules they delegate to reference no operator writer;
 * native writers documented as having no Python binding have none anywhere in ``src/``;
+* every native C/C++ source that performs a persistent write is classified in the registry, and no bridge that
+  Python loads calls an operator-only writer;
 * the H-gram is provisioned and written only by its operator command and its explicit entry points;
 * the HACF corpus and ingress have no persistent path, and the retrieval epoch's FMS is RAM-only;
 * importing the runtime installs no persistent log sink.
@@ -103,7 +105,7 @@ def test_autonomous_runtime_operations_reference_no_operator_writer():
             continue
         assert not (_referenced_names(node) & forbidden), (name, _referenced_names(node) & forbidden)
     # The modules the autonomous turn delegates to reference no operator writer at all.
-    for module in ("cognition.py", "core.py", "edges.py"):
+    for module in ("cognition.py", "core.py", "edges.py", "context.py"):
         names = _referenced_names(ast.parse((SRC / "runtime" / module).read_text(encoding="utf-8")))
         assert not (names & forbidden), (module, names & forbidden)
 
@@ -131,6 +133,41 @@ def _native_sources():
     for path in NATIVE.rglob("*"):
         if path.suffix in {".c", ".cpp", ".h", ".rs"} and "tests" not in path.parts:
             yield path
+
+
+# A persistent write: create/write opens, positional writes, renames, unlinks, truncation, directory creation, syncs.
+_WRITES = re.compile(r"\b(pwrite|pwritev|renameat2?|rename|fsync|fdatasync|mkdirat|mkdir|unlinkat|unlink|ftruncate|"
+                     r"creat)\s*\(|O_CREAT|O_WRONLY|O_RDWR")
+# Sources that name write flags only to refuse them.
+_REFUSES_WRITES = {"native/runtime/containment/elpis_autonomous_run.c"}
+# The bridges Python loads (elpis.structure.retrieval.hacf, elpis.pipeline.ingress): the native surface every
+# ordinary retrieval and ingress operation reaches.
+_LOADED_BRIDGES = ("native/structure/bridge/retrieval_bridge.c", "native/pipeline/ingress/bridge/ingress_bridge.c")
+
+
+def test_every_native_source_that_writes_persistently_is_classified():
+    classified = {entry.split(":", 1)[0] for w in P.WRITERS for entry in w.native}
+    writers = {str(p.relative_to(REPO)) for p in _native_sources()
+               if p.suffix in {".c", ".cpp"} and _WRITES.search(p.read_text(encoding="utf-8", errors="replace"))}
+    unclassified = sorted(writers - classified - _REFUSES_WRITES)
+    assert not unclassified, ("classify each persistent writer in elpis.runtime.persistence", unclassified)
+    # The semantic writer families are operator-explicit: one named file per explicit call, never autonomous.
+    for name in ("semantic_context_artifacts", "semantic_embedding_files", "semantic_evidence_records",
+                 "semantic_view_directory", "semantic_topology_artifacts", "semantic_grid81_artifacts",
+                 "semantic_snapshot_publication"):
+        assert P.writer(name).classification is P.WriterClass.OPERATOR_EXPLICIT_BOUNDED, name
+
+
+def test_no_bridge_python_loads_calls_an_operator_only_writer():
+    # Operator and offline writers (a prohibited one is a refusing stub, held by its own test above).
+    symbols = {_native_symbol(e) for w in P.WRITERS
+               if w.classification in (P.WriterClass.OPERATOR_EXPLICIT_BOUNDED, P.WriterClass.OFFLINE_RESEARCH_ONLY)
+               for e in w.native if re.fullmatch(r"\w+", _native_symbol(e))}
+    assert {"elpis_write_requirement_set", "elpis_embedding_write_vector", "semantic_snapshot_write"} <= symbols
+    pattern = re.compile(r"\b(" + "|".join(sorted(symbols)) + r")\s*\(")
+    for path in _LOADED_BRIDGES:
+        found = sorted(set(pattern.findall((REPO / path).read_text(encoding="utf-8"))))
+        assert not found, (path, found)
 
 
 def test_hgram_is_provisioned_and_written_only_through_its_explicit_entry_points():

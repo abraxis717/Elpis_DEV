@@ -219,6 +219,38 @@ elpis_ecs_composite_status elpis_ecs_composite_leased_txn_commit_identity(elpis_
 /* Discard both candidates (any caller; installs nothing). No open transaction: OK. Wrong token: INVALID. */
 elpis_ecs_composite_status elpis_ecs_composite_txn_abort(elpis_ecs_composite *composite, uint64_t token);
 
+/* ---- Live coordinate (additive; docs/RUNTIME_CORE.md, "Live and durable authority") --------------------------
+ * The composite's generation is its private K1 state's (ecsg_k1.h, "Live coordinate"): every composite commit is
+ * exactly one K1 commit, so it advances by exactly one per committed composite transition and by nothing else; it
+ * is not state, not in the envelope and not in any identity (create, restore and import start it at 0). For the
+ * lease holder (LEASED, nothing read or touched, otherwise):
+ *   leased_query         the K1 QUERY of the committed state and its generation (one read-guarded call; no digest)
+ *   leased_identity      the cached composite identity of the committed state and its generation
+ *   leased_txn_begin_at  leased_txn_begin reporting the source generation (no K1 digest is computed)
+ *   leased_txn_commit_at the commit reporting the K1 transition; the private K1 commit computes no digest (the
+ *                        composite identity is still assembled and cached, as by leased_txn_commit)
+ *   leased_capture       the committed ELPISEC1 envelope UNSEALED: the K1 component without its trailer, the
+ *                        memory component sealed (ELPISEM1 seals itself), the header's K1 identity and the
+ *                        composite trailer left zero; and the generation (one read-guarded call)
+ *   envelope_seal        pure (no state, any thread): validates the structure of an unsealed envelope, seals the K1
+ *                        component, records its identity in the header and writes the composite trailer in place.
+ *                        capture + seal equals snapshot_write byte for byte.
+ * No existing entry point, law, refusal or byte of ELPISEC1, ELPISGK1 or ELPISEM1 changes. */
+elpis_ecs_composite_status elpis_ecs_composite_leased_query(elpis_ecs_composite *composite, uint64_t lease, size_t dim,
+                                                            const double *x, size_t rows, double *out,
+                                                            uint64_t *generation);
+elpis_ecs_composite_status elpis_ecs_composite_leased_identity(elpis_ecs_composite *composite, uint64_t lease,
+                                                               uint8_t digest[ELPIS_ECS_COMPOSITE_DIGEST_BYTES],
+                                                               uint64_t *generation);
+elpis_ecs_composite_status elpis_ecs_composite_leased_txn_begin_at(elpis_ecs_composite *composite, uint64_t lease,
+                                                                   uint64_t *source_generation, uint64_t *token);
+elpis_ecs_composite_status elpis_ecs_composite_leased_txn_commit_at(elpis_ecs_composite *composite, uint64_t lease,
+                                                                    uint64_t token,
+                                                                    elpis_ecsg_k1_transition *transition);
+elpis_ecs_composite_status elpis_ecs_composite_leased_capture(elpis_ecs_composite *composite, uint64_t lease,
+                                                              uint8_t *out, size_t size, uint64_t *generation);
+elpis_ecs_composite_status elpis_ecs_composite_envelope_seal(uint8_t *envelope, size_t length);
+
 /* ---- Envelope inspection (pure; no handle) ------------------------------------------------------------------ */
 
 /* Verify an ELPISEC1 envelope's structure and trailer (not its components) and report its recorded identities. */

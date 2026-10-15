@@ -26,7 +26,7 @@ _U64 = C.c_uint64
 _CODES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT",
           -8: "LEASED",
           -101: "FMS_INVALID", -102: "NOMEM", -103: "MISSING", -104: "BUSY", -105: "UNSUPPORTED", -106: "IO",
-          -107: "CAPACITY", -108: "STATE", -109: "DIGEST", -110: "DEVICE", -111: "TIMEOUT"}
+          -107: "CAPACITY", -108: "STATE", -109: "DIGEST", -110: "DEVICE", -111: "TIMEOUT", -112: "NOT_RESIDENT"}
 PROVENANCE = {0: "COMPLETE", 1: "RESET", 2: "UNCONSOLIDATED_IMPORT"}
 _STALE, _NONFINITE = -3, -2
 
@@ -576,6 +576,8 @@ _FMS_ABI = {
     "leased_txn_run_schedule": ([_VP, _U64, _U64, _U64, _P, _P, C.c_size_t, _EP, C.c_size_t, C.c_double, _P,
                                  C.c_size_t, _SRP], C.c_int),
     "leased_txn_commit_identity": ([_VP, _U64, _U64, _U64, _CIP], C.c_int),
+    "materialize": ([_VP, _U64], C.c_int),
+    "resident_holds": ([_VP, _U64, C.POINTER(C.c_uint32)], C.c_int),
 }
 
 
@@ -679,6 +681,22 @@ class K1FMSRuntime:
         rc = self._f.pump(self._live())
         if rc != 0:
             raise _refused(rc, "K1 FMS pump")
+
+    def materialize(self, state_id):
+        """The explicit, synchronous WARM-lane promotion of a demoted state (COLD -> WARM through FMS, verified).
+        A HOT operation never does this: a runtime-bound state that is not WARM is refused ``RUNTIME_NOT_RESIDENT``
+        until its owner materializes it here."""
+        rc = self._f.materialize(self._live(), state_id)
+        if rc != 0:
+            raise _refused(rc, "K1 FMS materialize")
+
+    def resident_holds(self, state_id):
+        """The number of residency holds on a state (a bound runtime holds one)."""
+        out = C.c_uint32()
+        rc = self._f.resident_holds(self._live(), state_id, C.byref(out))
+        if rc != 0:
+            raise _refused(rc, "K1 FMS residency")
+        return int(out.value)
 
     def query(self, state_id, x_rows):
         x, rows = _admit_rows(x_rows, self._dim(state_id), "X")
@@ -895,6 +913,10 @@ class K1FMSState:
     @property
     def managed_lease(self):
         return self._r.managed_lease(self._id)
+
+    def materialize(self):
+        """The explicit WARM-lane promotion of this state (see :meth:`K1FMSRuntime.materialize`)."""
+        self._r.materialize(self._id)
 
     def reserve(self, max_rows):
         self._r.reserve(self._id, max_rows)

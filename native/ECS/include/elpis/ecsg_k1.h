@@ -276,6 +276,45 @@ elpis_ecsg_k1_leased_txn_commit_identity(elpis_ecsg_k1 *state, uint64_t lease, u
                                          elpis_ecsg_k1_commit_identity *identity);
 
 /*
+ * Live coordinate (docs/RUNTIME_CORE.md, "Live and durable authority"). The generation counts the committed
+ * transitions of this object: every installing mutation (learn, consolidate, reset, a committed transaction)
+ * advances it by exactly one and nothing else changes it. It is not part of the retained state, its envelope or
+ * its digest (create, restore and import start it at 0). While a managed owner holds the lease, only that owner's
+ * leased entry points can advance it, so (lease, generation) names the live retained state between the owner's
+ * own transitions without hashing it; the retained-state identity (the SHA-256 digest) stays what restart and
+ * durable publication verify. These entry points are additive: they change no law, no refusal of an existing
+ * entry point and no byte of the retained state or its envelope. Each enters the guard once.
+ *
+ *   leased_query         QUERY for the lease holder: out[r] = f_W(x_r) and *generation of the same authoritative
+ *                        state in one guarded call (LEASED, nothing read, unless `lease` holds the state; `dim` as
+ *                        query_identity). Read-only; no digest is computed.
+ *   leased_identity      the retained-state identity (state_digest) and the generation of the same state, for the
+ *                        lease holder, in one guarded call.
+ *   leased_txn_begin_at  leased_txn_begin reporting the generation of exactly the source copied instead of its
+ *                        digest (no digest is computed).
+ *   leased_txn_commit    the leased commit reporting the transition only (generations before/after; no digest).
+ *   leased_capture       the portable envelope of the authoritative state for the lease holder, UNSEALED: every
+ *                        byte snapshot_write writes except the 32-byte SHA-256 trailer, which is left zero, and the
+ *                        generation of the same state, in one guarded call (size >= snapshot_size).
+ *   envelope_seal        pure (no state, any thread): validates the header and size of an unsealed envelope and
+ *                        writes its SHA-256 trailer in place. capture + seal equals snapshot_write byte for byte.
+ */
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_query(elpis_ecsg_k1 *state, uint64_t lease, size_t dim, const double *x, size_t rows,
+                           double *out, uint64_t *generation);
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_identity(elpis_ecsg_k1 *state, uint64_t lease, uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES],
+                              uint64_t *generation);
+elpis_ecsg_k1_status elpis_ecsg_k1_leased_txn_begin_at(elpis_ecsg_k1 *state, uint64_t lease,
+                                                       uint64_t *source_generation, uint64_t *token);
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_txn_commit(elpis_ecsg_k1 *state, uint64_t lease, uint64_t token,
+                                elpis_ecsg_k1_transition *transition);
+elpis_ecsg_k1_status
+elpis_ecsg_k1_leased_capture(elpis_ecsg_k1 *state, uint64_t lease, uint8_t *out, size_t size, uint64_t *generation);
+elpis_ecsg_k1_status elpis_ecsg_k1_envelope_seal(uint8_t *envelope, size_t size);
+
+/*
  * Experience schedule (the qualified K1 experience law, Retention R3): an
  * ordered sequence of experiences; for each, `steps` K1 learning steps on its
  * rows, then the consolidation of the same rows (inputs only):

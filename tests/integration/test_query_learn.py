@@ -13,6 +13,7 @@ from array import array
 
 import pytest
 
+from elpis.ECS.k1 import K1State
 from elpis.runtime import Runtime
 from elpis.runtime.cognition import (CognitiveOperation, LearnAuthority, LearnRequest, LearnResult, QueryRequest,
                                      QueryResult, QueryStimulus, run_learn, run_query, run_turn)
@@ -46,6 +47,10 @@ class _Subject:
             components = (s.w(), s.h_packed(), s.a(), s.provenance)
             generation = s.generation
         return s.snapshot(), s.state_digest(), s.epoch, generation, components
+
+    def generation(self):
+        """The state's native generation: the live coordinate RuntimeCore checks (the K1 header, "Live coordinate")."""
+        return self.retained()[3]
 
 
 @pytest.fixture(params=["k1", "fms-k1"])
@@ -187,10 +192,13 @@ def test_a_managed_query_changes_no_state_and_no_continuity_byte(subject, tmp_pa
         assert subject.retained() == before                    # W, epoch, H, a, generation
         assert _slots(runtime) == slots                        # continuity slot bytes
         assert runtime.continuity.snapshot() == durable        # continuity current authority
-        assert all(r.state_digest == before[1] == durable.k1_state_digest for r in results)
+        # Answered from the LIVE state (one volatile LEARN past the durable anchor): its generation, no digest.
+        assert durable.k1_state_digest != before[1]
+        assert all(r.live_generation == subject.generation() and r.state_digest is None for r in results)
         assert results[0].readout == results[2].readout
         native = runtime._core.counters()
         assert native["k1_queries"] == 3 and native["publications"] == 0
+        assert native["k1_state_digests"] == native["k1_identities"] == native["k1_captures"] == 0
         assert native["k1_txn_begins"] == native["k1_commits"] == native["k1_aborts"] == native["k1_reserves"] == 0
         io = runtime.continuity.testing_counters()
         assert not any(io.values()), io                        # the store did no I/O at all
@@ -252,7 +260,7 @@ def test_a_managed_query_of_a_state_moved_after_release_fail_stops_and_withholds
         assert state.managed_lease == 0           # a state that is not the lineage is never claimed
 
 
-def test_managed_learn_needs_authority_and_publishes_exactly_its_commit(subject, tmp_path):
+def test_managed_learn_needs_authority_commits_volatile_and_publishes_only_on_request(subject, tmp_path):
     with Runtime(_config(tmp_path / "c")) as runtime:
         runtime.anchor_cognition(subject.state)
         before, slots = subject.retained(), _slots(runtime)
@@ -261,13 +269,42 @@ def test_managed_learn_needs_authority_and_publishes_exactly_its_commit(subject,
                 runtime.run_learn(subject.state, request)
             assert info.value.code in ("LEARN_UNAUTHORIZED", "OPERATION")
             assert (subject.retained(), _slots(runtime)) == (before, slots) and runtime.fault is None
-        generation = runtime.continuity.snapshot().generation
+        durable = runtime.continuity.snapshot()
+        generation = subject.generation()
         result = runtime.run_learn(subject.state, _learn())
-        assert result.state_before_digest == before[1]
-        assert result.state_after_digest == subject.state.state_digest() == \
-            runtime.continuity.snapshot().k1_state_digest
-        assert runtime.continuity.snapshot().generation == generation + 1
-        # QUERY answers from the learned state, and does not move it.
+        # The commit is volatile: the live state advanced by exactly one transition; no slot byte moved.
+        assert (result.durability, result.generation_before, result.generation_after) == \
+            ("VOLATILE", generation, generation + 1)
+        assert result.state_before_digest is None and result.state_after_digest is None
+        assert subject.generation() == generation + 1 and subject.retained() != before
+        assert (_slots(runtime), runtime.continuity.snapshot()) == (slots, durable)
+        # QUERY answers from the learned (live) state at once, and does not move it.
         after = subject.retained()
-        assert runtime.run_query(subject.state, _query()).state_digest == result.state_after_digest
+        assert runtime.run_query(subject.state, _query()).live_generation == result.generation_after
         assert subject.retained() == after
+        # Durable publication is explicit: then, and only then, continuity names exactly the learned state.
+        ticket = runtime.publish_identity(subject.state)   # no checkpoint store: identity only
+        assert (ticket.status, ticket.identity, ticket.generation) == \
+            ("IDENTITY_PUBLISHED", subject.state.state_digest(), result.generation_after)
+        assert runtime.continuity.snapshot().k1_state_digest == subject.state.state_digest()
+        assert runtime.continuity.snapshot().generation == durable.generation + 1
+
+
+def test_gate_b_queries_and_transactions_follow_the_live_state_between_volatile_transitions(subject, k1, tmp_path):   # noqa: F811
+    """Between volatile transitions, a managed QUERY answers ``f_W(x)`` of the LIVE state and the next managed LEARN
+    begins on it: neither is refused or redirected because the durable authority names an older state."""
+    rows = memoryview(FixtureMap().query_rows_of(ByteTokens().encode("what is f_W here?")))
+    with Runtime(_config(tmp_path / "c")) as runtime:
+        runtime.anchor_cognition(subject.state)
+        durable, anchored = runtime.continuity.snapshot(), subject.state.snapshot()
+        answers = []
+        for n in range(5):
+            learned = runtime.run_learn(subject.state, _learn(f"experience {n}"))
+            result = runtime.run_query(subject.state, _query())
+            assert result.live_generation == learned.generation_after == subject.generation(), n
+            assert result.readout.values == subject.state.query(rows), n     # the live state's own forward map
+            answers.append(result.readout.values)
+        assert len(set(answers)) == len(answers)                             # each transition is visible at once
+        assert runtime.continuity.snapshot() == durable and runtime.fault is None
+        with K1State.restore(k1, anchored) as old:                           # the durable state answers otherwise
+            assert old.query(rows) != answers[-1]

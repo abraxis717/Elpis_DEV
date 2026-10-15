@@ -21,10 +21,13 @@ native calls each one can reach:
            --native K1 transaction candidate: per experience, its K1 learning steps, then the consolidation of
              its rows (one native call)--> (W, epoch, H, a) candidate
            --atomic native commit of the complete candidate, or nothing
-           --(managed) one continuity publication of the new retained-state identity
 
-  A LEARN returns the committed transition and its exact retained-state identities. It produces no text: a
-  response is a QUERY.
+  A LEARN returns the committed transition. Unmanaged, it carries the exact retained-state identities of the
+  commit. Managed (:meth:`elpis.runtime.Runtime.run_learn`), the commit is VOLATILE: it carries the live generations
+  instead (``durability == "VOLATILE"``) and nothing is published; durability is the separate, explicit
+  :meth:`elpis.runtime.Runtime.publish_recoverable` (or, without a checkpoint store, the identity-only
+  :meth:`elpis.runtime.Runtime.publish_identity`; docs/RUNTIME_CORE.md, "Live and durable authority"). A LEARN
+  produces no text: a response is a QUERY.
 
 * **Legacy learned turn** (:func:`run_turn`, :meth:`elpis.runtime.Runtime.run_turn`): the original synthetic
   scaffold, LEARN followed by the decode of ``S3`` of the candidate W (the kernel's coarse observable) into tokens.
@@ -53,8 +56,8 @@ operation leaves ``(W, epoch, H, a)`` byte-for-byte unchanged.
 
 This module performs no durable writes and holds no state. Its functions are the unmanaged operations over a native
 K1 state (no continuity); the managed operations of :class:`elpis.runtime.Runtime` share this module's boundary
-(request validation, encode, decode) and hand the native work and its continuity publication to RuntimeCore
-(native/runtime, docs/RUNTIME_CORE.md).
+(request validation, encode, decode) and hand the native work to RuntimeCore (native/runtime,
+docs/RUNTIME_CORE.md), whose managed commits are volatile; durable publication is a separate explicit operation.
 """
 from __future__ import annotations
 from array import array
@@ -200,12 +203,14 @@ class Readout:
 
 @dataclass(frozen=True)
 class QueryReadout:
-    """What a QUERY exposes to its decode: ``f_W(x)`` per query row, computed natively from the authoritative W,
-    and the retained-state identity (``state_digest``) of the state that computed it."""
+    """What a QUERY exposes to its decode: ``f_W(x)`` per query row, computed natively from W, and the coordinate of
+    the state that computed it: unmanaged, its retained-state identity (``state_digest``); managed, the live
+    generation of the bound lineage state (``live_generation``; no digest is computed on the HOT path)."""
     values: tuple
     dim: int
     width: int
-    state_digest: bytes
+    state_digest: bytes | None
+    live_generation: int | None = None
 
 
 class ECSCodecMap(Protocol):
@@ -295,24 +300,37 @@ class QueryResult:
     readout: QueryReadout
     codec: str          # the classification the codec authority admitted
     operation: CognitiveOperation = CognitiveOperation.QUERY
+    context: object = None   # the ContextCoordinate of the published context view consumed (managed; None: none)
 
     @property
-    def state_digest(self) -> bytes:
-        """The retained-state identity the answer was computed from (unchanged by the query)."""
+    def state_digest(self) -> bytes | None:
+        """The retained-state identity the answer was computed from (unmanaged queries; None when managed)."""
         return self.readout.state_digest
+
+    @property
+    def live_generation(self) -> int | None:
+        """The live generation the answer was computed from (managed queries; None when unmanaged)."""
+        return self.readout.live_generation
 
 
 @dataclass(frozen=True)
 class LearnResult:
+    """A committed LEARN. Unmanaged: the exact retained-state identities of the commit (``durability ==
+    "UNMANAGED"``). Managed: a VOLATILE commit of the bound lineage state, reported by its live generations; the
+    digests are None and nothing was published (``durability == "VOLATILE"``)."""
     input_tokens: tuple
     experiences: int
     epoch_before: int
     epoch_after: int
     codec: str          # the classification the codec authority admitted
     grant: str          # the learning authority's grant
-    state_before_digest: bytes
-    state_after_digest: bytes
+    state_before_digest: bytes | None
+    state_after_digest: bytes | None
     operation: CognitiveOperation = CognitiveOperation.LEARN
+    generation_before: int | None = None
+    generation_after: int | None = None
+    durability: str = "UNMANAGED"
+    context: object = None   # the ContextCoordinate of the published context view consumed (managed; None: none)
 
 
 @dataclass(frozen=True)
@@ -325,11 +343,16 @@ class TurnResult:
     epoch_before: int
     epoch_after: int
     codec: str          # the classification the codec authority admitted
-    # Exact K1 retained-state identities (state_digest) of the committed transition, from the native commit.
+    # Exact K1 retained-state identities (state_digest) of the committed transition, from the native commit
+    # (unmanaged); a managed turn's commit is volatile and reports its live generations instead.
     state_before_digest: bytes | None = field(default=None, compare=False)
     state_after_digest: bytes | None = field(default=None, compare=False)
     operation: CognitiveOperation = field(default=CognitiveOperation.LEARN, compare=False)
     surface: str = field(default=LEGACY_LEARNED_TURN, compare=False)
+    generation_before: int | None = field(default=None, compare=False)
+    generation_after: int | None = field(default=None, compare=False)
+    durability: str = field(default="UNMANAGED", compare=False)
+    context: object = field(default=None, compare=False)
 
 
 # --- the boundary: validation, encode, decode (shared by the managed operations) --------------------------------

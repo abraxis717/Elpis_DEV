@@ -2,7 +2,8 @@
 
 **CHECKPOINT BYTES DO NOT AUTHORIZE THEMSELVES. CONTINUITY REMAINS THE CURRENT-AUTHORITY REGISTER.**
 
-Status: implemented systems mechanism (`native/runtime/src/checkpoint.rs`, RuntimeCore ABI v3, `elpis.runtime.recovery`).
+Status: implemented systems mechanism (`native/runtime/src/checkpoint.rs`, written by the durability lane of
+`native/runtime/src/durable.rs`, RuntimeCore ABI v4, `elpis.runtime.recovery`).
 UNQUALIFIED: this document specifies the mechanism and its tests; it does not qualify it. Qualification
 specification: `docs/qualification/K1_RECOVERY_R0.md` (NOT RUN).
 
@@ -63,7 +64,8 @@ composite maximum (`ELPIS_ECS_COMPOSITE_MAX_ENVELOPE_BYTES`). A store is provisi
 size, so a composite lineage needs a store provisioned for its composite envelope size; a K1-sized store
 refuses a composite snapshot (`ECS_REFUSED`, capacity) before anything is written. Because the composite
 envelope carries the memory, a memory transition is resumable only from a slot exactly as K1's is: it is
-durable before its native commit and authoritative only once continuity names its identity.
+durable only through an explicit durable publication (slot first) and authoritative only once continuity names its
+identity.
 
 ## Protocol
 
@@ -72,17 +74,28 @@ With a store attached (`RuntimeConfig.k1_checkpoint_dir`; `elpis_runtime_checkpo
 * **Anchor.** Before continuity anchors the lineage, the anchored state's complete envelope
   (`snapshot_write`, read-only) is verified (its identity equals the identity being anchored) and written into a
   slot and synced. A refusal anchors nothing.
-* **LEARN.** After the schedule ran on the native candidate and before the native commit, the candidate's complete
-  envelope (`txn_snapshot_write`, read-only, under the transaction) is written into the slot that does **not** hold
-  the authorized identity, and synced. Then the native commit; its committed identity must equal the checkpointed
-  one, or the runtime fail-stops (`CONTINUITY_STATE_MISMATCH`) and publishes nothing. Then the one continuity
-  publication. A commit refused natively withdraws the candidate slot (best effort). The authorized slot is never
-  touched by a LEARN.
-* **Refusal while unresolved.** A LEARN is refused (`CHECKPOINT_UNRESOLVED`, no fail-stop) while an unresolved
-  candidate exists. QUERY stays available (read-only, verified against continuity).
+* **LEARN.** Volatile (RuntimeCore ABI v4): a LEARN never touches the store. It advances the live state only.
+* **Recoverable publication** (explicit: `Runtime.publish_recoverable`, `elpis_runtime_recoverable_request`;
+  refused `RUNTIME_RECOVERY_UNAVAILABLE` without an attached store, never downgraded). The live state's envelope is
+  captured unsealed under the managed lease (`leased_capture`) and handed to the durability lane, which seals it
+  (`envelope_seal`, pure), verifies its identity and format, writes it into the slot that does **not** hold the
+  authorized identity and syncs it, **reads the slot back and verifies it is exactly the captured envelope**, then
+  has continuity publish `D -> C`. The request is `ACKNOWLEDGED` (always `recoverable`) only after both are durable
+  and the slot verified. A failed slot write, torn write, sync or read-back is `FAILED` (`CHECKPOINT_IO`) and the
+  slot is withdrawn (best effort); the authorized slot is never touched. A capture that already is the authority
+  publishes no record; its slot is still read back and verified (and written first if no slot held it).
+* **Identity-only publication** (`Runtime.publish_identity`, `elpis_runtime_identity_request`) is refused
+  (`RUNTIME_CHECKPOINT_ATTACHED`) while a store is attached: with a store, continuity never names an identity the
+  store does not hold. Without one it resolves `IDENTITY_PUBLISHED`, never `ACKNOWLEDGED` (docs/RUNTIME_CORE.md,
+  "Recoverable and identity-only publication").
+* **Refusal while unresolved.** A durable publication is refused (`FAILED`, `CHECKPOINT_UNRESOLVED`, no fail-stop)
+  while an unresolved candidate exists. LEARN and QUERY stay available on the live state.
 
-The checkpoint adds one envelope copy and one slot write + `fdatasync` to every LEARN. That is the explicit
-price of recoverability; a runtime without a configured store keeps the hot path of docs/RUNTIME_CORE.md.
+**Superseded (through ABI v3):** every LEARN wrote and synced its candidate's complete envelope before the native
+commit, so recoverability cost one envelope copy and one slot write + `fdatasync` per LEARN on the HOT path. Now
+that price is paid only per explicit recoverable publication, on the durability lane; restart resumes the last
+completed publication (which may be one whose acknowledgment the crash prevented), and volatile work since then is
+lost by a crash (the API reports it as volatile).
 
 ## Recovery dispositions
 
@@ -93,7 +106,7 @@ evidence.
 |---|---|---|---|
 | unanchored | anything | `NOTHING_TO_RECOVER` | nothing; a slot never creates a lineage |
 | anchored at D | a verified slot holds D, no newer slot of another identity | `RESUMABLE` | restore the returned envelope (`K1State.restore`); the next QUERY/LEARN binds it after verifying it against D |
-| anchored at D | a verified slot holds D and a newer verified slot holds C != D | `CANDIDATE_UNRESOLVED` | nothing implicit; LEARN is refused until an operator discards C (resume D) or adopts C (continuity D -> C) |
+| anchored at D | a verified slot holds D and a newer verified slot holds C != D | `CANDIDATE_UNRESOLVED` | nothing implicit; durable publication is refused until an operator discards C (resume D) or adopts C (continuity D -> C) |
 | anchored at D | no verified slot holds D | `CHECKPOINT_MISSING` | the authorized state is not recoverable from this store; no other slot is a candidate |
 
 There is no silent roll forward (a candidate never becomes authority by being newer or valid) and no silent roll
@@ -104,25 +117,35 @@ back (an authorized identity without its envelope is reported missing, never rep
 * `discard_k1_candidate(C)` / `elpis_runtime_checkpoint_discard`: withdraws exactly the unresolved candidate `C`
   (its header is zeroed and synced). Any other identity is `CHECKPOINT_INVALID`.
 * `adopt_k1_candidate(C)` / `elpis_runtime_checkpoint_adopt`: re-reads and re-verifies `C`'s complete envelope,
-  then continuity publishes `D -> C`. Refused while a K1 state is bound (`RUNTIME_TURN_OPEN`); a publication
-  failure fail-stops. Adoption is the operator's decision that `C` is the lineage; the checkpoint never makes it.
+  then continuity publishes `D -> C`. Refused while a K1 state is bound (`RUNTIME_TURN_OPEN`) and while a durable
+  publication is pending or running (`RUNTIME_DURABLE_BUSY`, as discard is); a publication failure fail-stops.
+  Adoption is the operator's decision that `C` is the lineage; the checkpoint never makes it.
 
 Both are `OPERATOR_OPERATIONS` in `elpis.runtime.persistence`.
 
 ## Crash matrix
 
-Deterministic fault points (testing library: `elpis_runtime_testing_checkpoint_crash`, continuity fault injection)
-are proven in `native/runtime/src/tests.rs` (`mod recovery`, in-memory K1 stand-in) and over real native K1 in
-`tests/integration/test_k1_recovery.py`.
+Deterministic fault points of a durable publication (testing library: `elpis_runtime_testing_durable_fault`:
+die or park at each step of `durable.rs`, slot/record write, torn-write and sync failures) are proven in
+`native/runtime/src/tests.rs` (in-memory K1 stand-in), over real native K1 in `tests/integration/test_k1_recovery.py`
+and the composite in `native/runtime/tests/test_runtime_composite.c`; with real `SIGKILL` of a process parked at
+every step and after the acknowledgment was delivered in `tests/integration/test_durable_process_kill.py`, plus
+randomized kills while learning and publishing. Restart recovers only a complete, authorized durable state, which
+may include a publication completed immediately before the caller lost its acknowledgment: a missing
+acknowledgment is not evidence that nothing became durable (docs/RUNTIME_CORE.md, "Crash law").
 
 | Process dies / fails ... | Durable state | After restart |
 |---|---|---|
+| any time between durable publications (volatile LEARNs) | D authorized | `RESUMABLE` at D: the volatile work is lost |
+| before the capture is sealed or written | D authorized | `RESUMABLE` at D |
 | during the candidate slot write (torn) | authorized slot intact; the other slot invalid | `RESUMABLE` at D |
-| after the candidate checkpoint, before the native commit | D authorized; C checkpointed | `CANDIDATE_UNRESOLVED` (C) |
-| after the native commit, before publication | D authorized; C checkpointed (and committed in the lost memory) | `CANDIDATE_UNRESOLVED` (C) |
-| publication refused / uncertain and lost | D authorized; C checkpointed | `CANDIDATE_UNRESOLVED` (C) |
-| publication uncertain but durable | C authorized; C's slot is the newest | `RESUMABLE` at C |
-| after publication | C authorized | `RESUMABLE` at C |
+| after the candidate slot is complete (synced or not), before the record | D authorized; C checkpointed | `CANDIDATE_UNRESOLVED` (C) |
+| during the continuity record write (torn) | D authorized; C checkpointed | `CANDIDATE_UNRESOLVED` (C) |
+| record written (process death; the page cache survives), synced, or acknowledged (the caller may never have received the acknowledgment) | C authorized | `RESUMABLE` at C |
+| record written, then power loss before its sync (not exercised by `SIGKILL`) | D or C authorized (the record may be lost) | `CANDIDATE_UNRESOLVED` (C) / `RESUMABLE` at C |
+| slot read back unequal to the capture (`FAILED`, `CHECKPOINT_IO`) | D authorized; the slot withdrawn | `RESUMABLE` at D |
+| publication refused (`FAILED`) | D authorized; the candidate slot withdrawn | `RESUMABLE` at D |
+| publication uncertain (`UNCERTAIN`), record lost / durable | D / C authorized | `CANDIDATE_UNRESOLVED` (C) / `RESUMABLE` at C |
 
 ## Non-claims
 
@@ -133,6 +156,6 @@ are proven in `native/runtime/src/tests.rs` (`mod recovery`, in-memory K1 stand-
 * No media-level durability beyond `fdatasync` is claimed; no protection against a failing disk that returns old
   data with valid checksums for both slots.
 * R0 does not checkpoint FMS COLD scratch, codec state, evolution state or any history, and does not make H-ECS or
-  any hierarchy canonical. It changes no K1 or S3 mathematics: envelopes are written by K1's own read-only
-  `snapshot_write` / `txn_snapshot_write`.
+  any hierarchy canonical. It changes no K1 or S3 mathematics: envelopes are K1's own (`snapshot_write` at the
+  anchor; the leased capture plus the pure seal for a durable publication, byte-identical to `snapshot_write`).
 * Recovery is unqualified: no qualification run with recorded evidence exists.

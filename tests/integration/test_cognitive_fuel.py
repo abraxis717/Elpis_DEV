@@ -153,10 +153,15 @@ def test_managed_oversized_learn_is_refused_before_reserve_begin_schedule_commit
         assert counters["k1_commits"] == counters["publications"] == counters["k1_aborts"] == 0
         assert _k1_evidence(state) == before                       # max_rows still 2: nothing reserved
         assert (_slots(runtime), runtime.continuity.snapshot(), runtime.fault) == (slots, durable, None)
-        # Within budget the same LEARN runs and publishes once (reserving on the cold path as before).
-        runtime.run_learn(state, LearnRequest("x", ByteTokens(), admitted(FixtureMap()),
-                                              _authority(max_work_units=DEFAULT_UNITS)))
-        assert runtime.continuity.snapshot().generation == durable.generation + 1 and state.max_rows >= 4
+        # Within budget the same LEARN runs (reserving on the cold path as before) and commits volatile: the live
+        # generation advances, the durable record does not, until an explicit durable publication.
+        generation = state.generation
+        result = runtime.run_learn(state, LearnRequest("x", ByteTokens(), admitted(FixtureMap()),
+                                                       _authority(max_work_units=DEFAULT_UNITS)))
+        assert result.generation_after == state.generation == generation + 1 and state.max_rows >= 4
+        assert runtime.continuity.snapshot() == durable
+        assert runtime.publish_identity(state).identity_published
+        assert runtime.continuity.snapshot().generation == durable.generation + 1
 
 
 def test_managed_query_beyond_its_budget_is_refused_natively(k1, tmp_path):
@@ -168,8 +173,8 @@ def test_managed_query_beyond_its_budget_is_refused_natively(k1, tmp_path):
         with pytest.raises(CompositionError) as info:
             runtime._core.query(descriptor, query, CognitiveBudget(max_query_rows=2))
         assert info.value.code == FUEL and runtime._core.counters()["k1_queries"] == 0 and runtime.fault is None
-        values, digest = runtime._core.query(descriptor, query, CognitiveBudget(max_query_rows=3))
-        assert len(values) == 3 and digest == state.state_digest()
+        values, generation = runtime._core.query(descriptor, query, CognitiveBudget(max_query_rows=3))
+        assert len(values) == 3 and generation == state.generation
 
 
 def _raw(stimulus):

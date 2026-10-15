@@ -548,7 +548,7 @@ R1 and K1 qualification evidence and are protocol identity, not a second
 ECS. Native K1 ([`ECS_K1_RUNTIME.md`](ECS_K1_RUNTIME.md)) is the canonical
 retained-state runtime: complete state `(W, epoch, H, a)`, native learning
 and consolidation, complete-state transactions and generic FMS residency. The runtime's
-canonical QUERY reads it (one read-only `query_identity`) and its LEARN and legacy learned
+canonical QUERY reads it (managed: one read-only `leased_query` at the live coordinate; unmanaged: `query_identity`) and its LEARN and legacy learned
 turn place it between DSV4 encode and DSV4 decode (see *Runtime*); a state the runtime
 binds is claimed under its K1 lease (unmanaged mutation refused `LEASED`). It is never a
 conditioning input to a DSV model and never driven by a DSV model's output statistics.
@@ -571,8 +571,9 @@ the MF-R0 slow-bank (consolidation) law is not canonical. The **composite retain
 ([`ECS_COMPOSITE_STATE.md`](ECS_COMPOSITE_STATE.md), `libelpis_ecs_composite`, envelope `ELPISEC1` v1) owns K1
 and the memory under one transaction owner and one identity; `ELPISGK1` and `ELPISEM1` keep their bytes and
 meanings inside it, and a bare `ELPISGK1` becomes composite only by explicit import. RuntimeCore drives a
-composite as substrate kind 3 through the same checkpoint -> native commit -> continuity publication path as K1
-(continuity record v3 names the composite format); memory changes only through `turn_observe` in a managed turn.
+composite as substrate kind 3 exactly as K1: a volatile native commit on the HOT lane, and durability only through
+an explicit durable publication (capture -> seal -> checkpoint -> continuity; record v3 names the composite
+format); memory changes only through `turn_observe` in a managed turn.
 The typed HACF -> memory observation path (`libelpis_hacf_observation`, runtime subsystem) keeps structure the
 owner of hyperedge identity and validation. The Python runtime composition binds K1 lineages only.
 
@@ -821,9 +822,12 @@ history:
 | `evolve` | a gate issued by the pinned evolution policy, `EvolutionPathGate.execute` bound to the current evolution authority | admitted attempt: revision + 1, head = transition receipt digest |
 | `admit_context` | ingress, edge adapter, `resolve_chunks`, codec rendering | none |
 | `anchor_cognition` | the K1 state's `state_digest()` (no K1 mutation) | explicit anchor of the first managed K1 lineage |
-| `run_query` | codec -> one read-only native `query_identity` -> codec (`elpis.runtime.cognition`) | none (QUERY writes nothing) |
-| `run_learn` | codec -> native K1 transaction under an explicit `LearnAuthority` | the committed LEARN's new K1 state digest |
-| `run_turn` | LEGACY learned turn: a LEARN whose S3 readout is decoded | the committed turn's new K1 state digest |
+| `run_query` | codec -> one read-only native `leased_query` -> codec (`elpis.runtime.cognition`) | none (QUERY writes nothing) |
+| `run_learn` | codec -> native K1 transaction under an explicit `LearnAuthority` | none: the commit is volatile (ABI v4) |
+| `run_turn` | LEGACY learned turn: a LEARN whose S3 readout is decoded | none: the commit is volatile (ABI v4) |
+| `publish_recoverable` | RuntimeCore's durability lane: capture, seal, checkpoint slot (read back verified), continuity record; needs the checkpoint store | the acknowledged K1 state digest and its checkpoint slot |
+| `publish_identity` | RuntimeCore's durability lane: capture, seal, continuity record; only without a checkpoint store | the published K1 state digest (identity only; never an acknowledgment) |
+| `durability`, `live_identity` | read the durability lane / the bound state's identity | none |
 | `release` | RuntimeCore releases the bound state's K1 lease | none |
 | `recover_k1` | K1 Recovery R0 disposition (read-only) | none |
 | `discard_k1_candidate` / `adopt_k1_candidate` | operator reconciliation of one named checkpoint candidate | adopt: authorized -> candidate |
@@ -870,20 +874,25 @@ file descriptors, threads and live handles constant.
 ### K1 restart law
 
 The first managed lineage is anchored explicitly; nothing anchors
-implicitly. Before a turn mutates a K1 state, the runtime compares its
+implicitly. When the runtime binds a K1 state it compares the state's
 `state_digest()` with the durable identity: unanchored refuses with
 `CONTINUITY_UNANCHORED`, a different state with `CONTINUITY_STATE_MISMATCH`,
 and a second substrate object in the same open runtime with
-`COGNITION_SUBSTRATE_SWITCH`. After the native commit the runtime publishes
-`before -> after`. If publication fails, the committed K1 state is not rolled
-back and no turn is synthesized: the runtime fail-stops with the publication
-code, and restart resolves through the comparison above. A bound state is
-claimed under RuntimeCore's K1 lease, so an unmanaged mutation is refused
-(`LEASED`) rather than discovered at the next publication.
+`COGNITION_SUBSTRATE_SWITCH`. From then on the live coordinate is the bound
+state's K1 generation under RuntimeCore's lease (no digest on the HOT lane); a
+managed commit is volatile and publishes nothing. An explicit durable
+publication publishes `durable -> captured` off the HOT lane; if it fails,
+nothing durable changed (or, uncertain, restart resolves it), the committed K1
+state is not rolled back and the HOT lane keeps thinking. Restart resumes
+exactly the last completed publication (possibly one whose acknowledgment a
+crash prevented); volatile work since then is lost by a crash and never
+adopted. A bound state is claimed under RuntimeCore's K1
+lease, so an unmanaged mutation is refused (`LEASED`).
 
 With an operator-provisioned K1 Recovery R0 store (docs/K1_RECOVERY_R0.md) the
-anchored state and every LEARN's candidate are checkpointed in full before
-they become authoritative, and restart can resume a lost in-memory state.
+anchored state and every durably published state are checkpointed in full
+before they become authoritative, and restart can resume a lost in-memory
+state.
 Checkpoint bytes never authorize themselves: a slot is resumable only when its
 identity is the one continuity holds; a newer unauthorized candidate is
 `CANDIDATE_UNRESOLVED` until an operator discards or adopts it.
@@ -902,8 +911,8 @@ text --codec encode--> tokens
 ```
 
 QUERY (`run_query`) is the canonical read-only operation: one native
-`query_identity` answers `f_W(x)` from the authoritative state and identifies
-it; nothing is begun, committed, published or written. LEARN (`run_learn`)
+`leased_query` answers `f_W(x)` from the live state at its live coordinate;
+nothing is begun, committed, published, hashed or written. LEARN (`run_learn`)
 needs an explicit `LearnAuthority`; `run_turn` above is the LEGACY learned
 turn. Every cognitive operation is admitted under total integer fuel budgets
 before any reserve or transaction, and runs a codec only as an `AdmittedCodec`
@@ -924,10 +933,32 @@ meanwhile). The Runtime R1 executor remains a qualified primitive and the
 K1-disabled reference; it is not the substrate of the canonical turn.
 
 The canonical hot path is codec -> K1 transaction (schedule and readout in
-one native call) -> decode -> native commit -> one continuity publication
-(one 176-byte `pwrite` and one `fdatasync`). It adds no native crossings to
-the K1 turn and reaches no receipt, event, scheduler, projection or
-compaction machinery (`tests/boundary/test_one_ecs.py`).
+one native call) -> decode -> native commit (volatile). It performs no
+filesystem write or sync, no continuity publication, no checkpoint and no
+digest, adds no native crossings to the K1 turn and reaches no receipt, event,
+scheduler, projection or compaction machinery (`tests/boundary/test_one_ecs.py`,
+`tests/integration/test_runtime_hot_path.py`,
+`native/runtime/tests/test_runtime_hot_io.c`). Through RuntimeCore ABI v3 it
+ended with one continuity publication (one 176-byte `pwrite` and one
+`fdatasync`) per turn; that per-turn durability is superseded (see "Execution
+lanes").
+
+### Execution lanes
+
+| Lane | Responsibility | Coordinate | Waits for |
+|---|---|---|---|
+| geometric (HOT): RuntimeCore `query`, `turn_begin`, `turn_commit` | qualified K1 computation on the live state | the bound state's K1 generation (live) | nothing outside its own native call |
+| contextual (WARM): `elpis.runtime.context.ContextLane` | the bounded, session-local active relational context: admitted HACF references, provisional/binding axioms, candidate/admitted typed relations; immutable versioned views | the view's version and digest (never persisted) | its own WARM worker only; `view()` and `submit()` never wait |
+| durability (WARM): RuntimeCore's durability lane (`durable.rs`) | explicit durable publication: capture, seal, checkpoint slot, continuity record | continuity's record (durable) | its own worker; callers wait only by explicit choice (`durable_wait`) |
+| evolution (control) | reservation before, finalization after an irreversible attempt | continuity's evolution authority | synchronous by design: never volatile |
+
+The HOT lane consumes the most recently published context view by one
+reference read (`Runtime.run_query(..., context=lane)` records its coordinate);
+no encoding of a view into the K1 stimulus exists, and no contextual dynamics
+law (HCA) is implemented or qualified. HACF supplies references through the
+in-place resolver (`elpis.structure.retrieval.objects`), whose cold reads run on
+the contextual worker before a view is published; a retrieval epoch never waits
+for vector residency unless its owner chose to (bridge ABI v3).
 
 The evolution gate binds the current evolution authority and comes from the
 pinned evolution policy. Each admitted transition advances the authority, so

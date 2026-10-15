@@ -1,7 +1,18 @@
 //! The stable C ABI (include/elpis/runtime.h).
 //!
 //! Every function returns 0 or a positive stable code: a continuity code (1..=17, 255) or a RuntimeCore code
-//! (64..). A runtime handle serializes its calls internally (one lock per handle).
+//! (64..). A runtime handle serializes its calls internally (one lock per handle), except the durability lane's
+//! wait and status reads, which take only the lane's lock: they never wait behind a HOT operation, and a HOT
+//! operation never waits behind them.
+//!
+//! ABI v4 (docs/RUNTIME_CORE.md, "Live and durable authority"): a managed commit is volatile (no checkpoint, no
+//! continuity publication); durable publication is an explicit request of one of two kinds, never confused:
+//! `elpis_runtime_recoverable_request` (the complete state; needs an attached checkpoint store; ACKNOWLEDGED only
+//! with a read-back verified slot) or `elpis_runtime_identity_request` (only the identity; no store attached;
+//! IDENTITY_PUBLISHED, never ACKNOWLEDGED), served by the durability lane (`elpis_runtime_durable_wait`,
+//! `elpis_runtime_durable_status`). QUERY reports the live
+//! generation instead of a digest. The substrate tables carry the live-coordinate entries (ecsg_k1.h). A v3 caller
+//! refuses to load the library (the version check), so no caller can mistake a volatile commit for a durable one.
 //!
 //! # Safety
 //!
@@ -26,20 +37,26 @@
 use std::ffi::{c_char, OsStr};
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::Duration;
 
 use elpis_continuity::ffi::{from_c_evolution, to_c, CEvolution, CSnapshot};
 use elpis_continuity::{Code, Digest, Snapshot};
 
 use crate::code::{Error, Rt};
-use crate::core::{Core, Counters, Recovery, Refusal, Stimulus};
+use crate::core::{Core, Counters, Recovery, Refusal, Stimulus, VolatileCommit};
+use crate::durable::{Kind, Lane, Status, Ticket};
 use crate::fuel::Budget;
-use crate::substrate::{features, CSubstrate, CommitIdentity, Experience, Native, ScheduleOutcome};
+use crate::substrate::{features, CSubstrate, Experience, Native, ScheduleOutcome, Transition};
 
-pub const ABI_VERSION: u32 = 3;
+pub const ABI_VERSION: u32 = 4;
 
-/// Opaque runtime handle.
-pub struct ElpisRuntime(Mutex<Core>);
+/// Opaque runtime handle: the HOT state machine behind its lock, and the durability lane its wait and status
+/// reads reach without that lock.
+pub struct ElpisRuntime {
+    core: Mutex<Core>,
+    lane: Arc<Lane>,
+}
 
 /// `elpis_runtime_turn_begin_result`.
 #[repr(C)]
@@ -51,29 +68,58 @@ pub struct CTurnBegin {
     pub reserved: u32,
 }
 
-/// `elpis_runtime_turn_commit_result`.
+/// `elpis_runtime_volatile_commit` (ABI v4): a managed commit is volatile.
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
-pub struct CTurnCommit {
-    pub identity: CommitIdentity,
-    /// 1 when the native commit happened (also when its publication then failed), else 0.
+pub struct CVolatileCommit {
+    /// The native transition: epochs, generations (before/after), steps.
+    pub transition: Transition,
+    /// The live generation the commit established (= `transition.generation_after`; 0 when not committed).
+    pub live_generation: u64,
+    /// 1 when the native commit happened, else 0.
     pub committed: u32,
     /// The K1 status behind an `ECS_*` refusal (0 otherwise).
     pub k1_status: i32,
 }
 
-/// `elpis_runtime_query_result`.
+/// `elpis_runtime_query_result` (ABI v4).
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub struct CQuery {
-    /// The retained-state identity the answer was computed from (zero on refusal).
-    pub state_digest: Digest,
+    /// The live generation the answer was computed from (0 on refusal).
+    pub live_generation: u64,
     /// The K1 status behind an `ECS_*` refusal (0 otherwise).
     pub k1_status: i32,
     pub reserved: u32,
 }
 
-const _: () = assert!(std::mem::size_of::<CQuery>() == 40);
+const _: () = assert!(std::mem::size_of::<CQuery>() == 16);
+
+/// `elpis_runtime_durability`: the durability lane as a status read sees it.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct CDurability {
+    pub last_requested: Ticket,
+    pub last_acknowledged: Ticket,
+    /// The request the worker is running (zero sequence: none).
+    pub running: Ticket,
+    /// The live generation of the bound state (diagnostics mirror).
+    pub live_generation: u64,
+    /// 1 while a captured request waits for the worker.
+    pub pending: u32,
+    /// The lane's sticky fault (0: none): an uncertain publication or a simulated death, until reopen.
+    pub fault: i32,
+    /// Testing builds: the step the worker is parked at (0: none).
+    pub parked: u32,
+    /// 1 when `durable` holds the current durable authority (0 while closed or faulted).
+    pub durable_known: u32,
+    /// The attached checkpoint store's envelope capacity (0: none attached).
+    pub checkpoint_capacity: u64,
+    pub durable: CSnapshot,
+}
+
+const _: () = assert!(std::mem::size_of::<CSnapshot>() == 192);
+const _: () = assert!(std::mem::size_of::<CDurability>() == 64 * 3 + 32 + 192);
 
 /// `elpis_runtime_observe_result`.
 #[repr(C)]
@@ -104,8 +150,8 @@ pub struct CRecovery {
 
 const _: () = assert!(std::mem::size_of::<CRecovery>() == 80);
 const _: () = assert!(std::mem::size_of::<CTurnBegin>() == 48);
-const _: () = assert!(std::mem::size_of::<CTurnCommit>() == 120);
-const _: () = assert!(std::mem::size_of::<Counters>() == 80);
+const _: () = assert!(std::mem::size_of::<CVolatileCommit>() == 64);
+const _: () = assert!(std::mem::size_of::<Counters>() == 128);
 const _: () = assert!(std::mem::size_of::<Budget>() == 48);
 
 fn rc(result: Result<(), Error>) -> i32 {
@@ -118,7 +164,12 @@ fn rc(result: Result<(), Error>) -> i32 {
 unsafe fn runtime<'a>(p: *mut ElpisRuntime) -> Result<MutexGuard<'a, Core>, Error> {
     let rt = p.as_ref().ok_or(Error::Runtime(Rt::Invalid))?;
     // A panic aborts the process (panic = "abort"), so the lock is never left poisoned by a live caller.
-    Ok(rt.0.lock().unwrap_or_else(|e| e.into_inner()))
+    Ok(rt.core.lock().unwrap_or_else(|e| e.into_inner()))
+}
+
+/// The durability lane of a handle, without the handle's lock.
+unsafe fn lane<'a>(p: *mut ElpisRuntime) -> Result<&'a Arc<Lane>, Error> {
+    Ok(&p.as_ref().ok_or(Error::Runtime(Rt::Invalid))?.lane)
 }
 
 unsafe fn snapshot_out(out: *mut CSnapshot, s: &Snapshot) {
@@ -225,6 +276,11 @@ pub extern "C" fn elpis_runtime_code_name(code: i32) -> *const c_char {
             Rt::CheckpointIo => c"CHECKPOINT_IO",
             Rt::CheckpointShape => c"CHECKPOINT_SHAPE",
             Rt::CheckpointUnresolved => c"CHECKPOINT_UNRESOLVED",
+            Rt::DurableBusy => c"RUNTIME_DURABLE_BUSY",
+            Rt::DurablePending => c"RUNTIME_DURABLE_PENDING",
+            Rt::RecoveryUnavailable => c"RUNTIME_RECOVERY_UNAVAILABLE",
+            Rt::CheckpointAttached => c"RUNTIME_CHECKPOINT_ATTACHED",
+            Rt::NotResident => c"RUNTIME_NOT_RESIDENT",
         }
         .as_ptr(),
         None => match Code::from_i32(code) {
@@ -244,10 +300,14 @@ pub unsafe extern "C" fn elpis_runtime_create(path: *const u8, len: usize, out: 
     }
     *out = std::ptr::null_mut();
     let dir = Path::new(OsStr::from_bytes(std::slice::from_raw_parts(path, len)));
-    rc(Core::new(dir).map(|core| *out = Box::into_raw(Box::new(ElpisRuntime(Mutex::new(core))))))
+    rc(Core::new(dir).map(|core| {
+        let lane = core.lane();
+        *out = Box::into_raw(Box::new(ElpisRuntime { core: Mutex::new(core), lane }))
+    }))
 }
 
-/// Close (if open) and free a runtime; sets `*rt` to NULL. An open managed turn is aborted natively first.
+/// Close (if open) and free a runtime; sets `*rt` to NULL. An open managed turn is aborted natively first; a pending
+/// durable request is abandoned and a running one completes before the worker stops.
 #[no_mangle]
 pub unsafe extern "C" fn elpis_runtime_destroy(rt: *mut *mut ElpisRuntime) {
     if !rt.is_null() && !(*rt).is_null() {
@@ -281,7 +341,8 @@ pub unsafe extern "C" fn elpis_runtime_fault(rt: *mut ElpisRuntime) -> i32 {
     }
 }
 
-/// The current durable authority (readable while fail-stopped).
+/// The current durable authority: the last durably acknowledged record (readable while fail-stopped; refused with
+/// the lane's fault while the durable outcome is unknown). The live state may be ahead of it.
 #[no_mangle]
 pub unsafe extern "C" fn elpis_runtime_snapshot(rt: *mut ElpisRuntime, out: *mut CSnapshot) -> i32 {
     if out.is_null() {
@@ -317,9 +378,9 @@ pub unsafe extern "C" fn elpis_runtime_anchor(
 }
 
 /// QUERY: answer `f_W(x)` for `rows` rows of the descriptor's dimension (`x_len = rows * dim`) from the lineage's
-/// authoritative K1 state, read-only: no transaction, no commit, no publication. `out` receives `rows` values;
-/// `result->state_digest` the retained-state identity they were computed from (it equals the durable expected
-/// identity, or the call is refused and `out` is zeroed).
+/// live K1 state, read-only: no transaction, no commit, no publication, no digest, no I/O. `out` receives `rows`
+/// values; `result->live_generation` the live generation they were computed from (the call is refused and `out`
+/// zeroed otherwise).
 #[no_mangle]
 pub unsafe extern "C" fn elpis_runtime_query(
     rt: *mut ElpisRuntime,
@@ -331,7 +392,7 @@ pub unsafe extern "C" fn elpis_runtime_query(
     budget: *const Budget,
     result: *mut CQuery,
 ) -> i32 {
-    let run = || -> Result<Digest, Refusal> {
+    let run = || -> Result<u64, Refusal> {
         let mut native = substrate(sub)?;
         let key = native.key();
         let x = slice(x, x_len)?;
@@ -343,7 +404,7 @@ pub unsafe extern "C" fn elpis_runtime_query(
         runtime(rt)?.query(&mut native, key, x, out, budget)
     };
     let (value, code) = match run() {
-        Ok(state_digest) => (CQuery { state_digest, k1_status: 0, reserved: 0 }, 0),
+        Ok(live_generation) => (CQuery { live_generation, k1_status: 0, reserved: 0 }, 0),
         Err(r) => (CQuery { k1_status: r.k1_status, ..CQuery::default() }, r.error.code()),
     };
     if !result.is_null() {
@@ -405,37 +466,180 @@ pub unsafe extern "C" fn elpis_runtime_turn_begin(
     }
 }
 
-/// Commit the open turn natively and publish its retained-state identity to continuity. On a publication
-/// failure the runtime fail-stops; `out->committed` is 1 and carries the committed identity.
+/// Commit the open turn natively: a VOLATILE commit (ABI v4). The candidate is installed and the live generation
+/// advances by one; nothing is checkpointed, published or written. Durability is an explicit request
+/// (`elpis_runtime_recoverable_request` or `elpis_runtime_identity_request`).
 #[no_mangle]
 pub unsafe extern "C" fn elpis_runtime_turn_commit(
     rt: *mut ElpisRuntime,
     sub: *const CSubstrate,
-    out: *mut CTurnCommit,
-    snapshot: *mut CSnapshot,
+    out: *mut CVolatileCommit,
 ) -> i32 {
-    let run = || -> Result<(CommitIdentity, Snapshot), Refusal> {
+    let run = || -> Result<VolatileCommit, Refusal> {
         let mut native = substrate(sub)?;
         let key = native.key();
         runtime(rt)?.turn_commit(&mut native, key)
     };
     let (result, code) = match run() {
-        Ok((identity, s)) => {
-            snapshot_out(snapshot, &s);
-            (CTurnCommit { identity, committed: 1, k1_status: 0 }, 0)
-        }
-        Err(r) => {
-            let committed = r.committed.as_deref().copied().unwrap_or_default();
-            (
-                CTurnCommit { identity: committed, committed: r.committed.is_some() as u32, k1_status: r.k1_status },
-                r.error.code(),
-            )
-        }
+        Ok(c) => (
+            CVolatileCommit {
+                transition: c.transition,
+                live_generation: c.live_generation,
+                committed: 1,
+                k1_status: 0,
+            },
+            0,
+        ),
+        Err(r) => (
+            CVolatileCommit {
+                transition: r.committed.unwrap_or_default(),
+                live_generation: 0,
+                committed: r.committed.is_some() as u32,
+                k1_status: r.k1_status,
+            },
+            r.error.code(),
+        ),
     };
     if !out.is_null() {
         *out = result;
     }
     code
+}
+
+// -- durable publication: the explicit WARM lane -----------------------------------------------------------------
+
+/// Request RECOVERABLE durable publication of the live state of the described (bound, or bindable) substrate: the
+/// complete envelope in the attached checkpoint store (written, synced, read back verified), then continuity. The
+/// envelope is captured unsealed under the lease (the one synchronous step) and handed to the durability lane;
+/// returns at once with `out` a PENDING ticket. ACKNOWLEDGED (always `recoverable` 1) means restart resumes exactly
+/// this state. Refused with `RUNTIME_RECOVERY_UNAVAILABLE` (nothing bound or captured) unless a checkpoint store is
+/// attached. A request that finds an earlier one still waiting supersedes it. Refused while a turn is open, on an
+/// unanchored lineage, and with the lane's fault while it is faulted.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_recoverable_request(
+    rt: *mut ElpisRuntime,
+    sub: *const CSubstrate,
+    out: *mut Ticket,
+) -> i32 {
+    request(rt, sub, out, Kind::Recoverable)
+}
+
+/// Request IDENTITY-ONLY durable publication: continuity names the live state's identity; no store holds its bytes
+/// (the caller keeps them). Resolves IDENTITY_PUBLISHED (always `recoverable` 0), never ACKNOWLEDGED. Refused with
+/// `RUNTIME_CHECKPOINT_ATTACHED` (nothing bound or captured) while a checkpoint store is attached. Otherwise as
+/// `elpis_runtime_recoverable_request`.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_identity_request(
+    rt: *mut ElpisRuntime,
+    sub: *const CSubstrate,
+    out: *mut Ticket,
+) -> i32 {
+    request(rt, sub, out, Kind::Identity)
+}
+
+unsafe fn request(rt: *mut ElpisRuntime, sub: *const CSubstrate, out: *mut Ticket, kind: Kind) -> i32 {
+    let run = || -> Result<Ticket, Refusal> {
+        let mut native = substrate(sub)?;
+        let key = native.key();
+        runtime(rt)?.durable_request(&mut native, key, kind)
+    };
+    match run() {
+        Ok(t) => {
+            if !out.is_null() {
+                *out = t;
+            }
+            0
+        }
+        Err(r) => {
+            if !out.is_null() {
+                *out = Ticket::default();
+            }
+            r.error.code()
+        }
+    }
+}
+
+/// Wait (the caller's explicit choice) until request `sequence` resolves, at most `timeout_ms` milliseconds
+/// (`UINT64_MAX`: without limit). Takes only the lane's lock: HOT operations proceed meanwhile. Returns 0 with the
+/// resolved ticket, `RUNTIME_DURABLE_PENDING` with the still-pending ticket after a timeout, `RUNTIME_INVALID` for a
+/// sequence never issued.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_durable_wait(
+    rt: *mut ElpisRuntime,
+    sequence: u64,
+    timeout_ms: u64,
+    out: *mut Ticket,
+) -> i32 {
+    let timeout = (timeout_ms != u64::MAX).then(|| Duration::from_millis(timeout_ms));
+    match lane(rt).and_then(|l| l.wait(sequence, timeout)) {
+        Ok(t) => {
+            if !out.is_null() {
+                *out = t;
+            }
+            if t.status() == Status::Pending {
+                Rt::DurablePending as i32
+            } else {
+                0
+            }
+        }
+        Err(e) => e.code(),
+    }
+}
+
+/// The durability lane's state (lane lock only): the last requested and acknowledged tickets, the running one, the
+/// live generation, the lane fault and the durable authority.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_durable_status(rt: *mut ElpisRuntime, out: *mut CDurability) -> i32 {
+    if out.is_null() {
+        return Rt::Invalid as i32;
+    }
+    match lane(rt) {
+        Ok(l) => {
+            let r = l.report();
+            let durable = r.durable.unwrap_or(Snapshot::GENESIS);
+            *out = CDurability {
+                last_requested: r.last_requested,
+                last_acknowledged: r.last_acknowledged,
+                running: r.running,
+                live_generation: r.live_generation,
+                pending: r.pending,
+                fault: r.fault,
+                parked: r.parked,
+                durable_known: r.durable.is_some() as u32,
+                checkpoint_capacity: r.capacity,
+                durable: to_c(&durable),
+            };
+            0
+        }
+        Err(e) => e.code(),
+    }
+}
+
+/// The bound state's retained-state identity and live generation, read on request (cold path: one guarded native
+/// call that hashes the state). Binds the state first if needed (verified against the durable identity).
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_live_identity(
+    rt: *mut ElpisRuntime,
+    sub: *const CSubstrate,
+    digest: *mut u8,
+    generation: *mut u64,
+) -> i32 {
+    if digest.is_null() || generation.is_null() {
+        return Rt::Invalid as i32;
+    }
+    let run = || -> Result<(Digest, u64), Refusal> {
+        let mut native = substrate(sub)?;
+        let key = native.key();
+        runtime(rt)?.live_identity(&mut native, key)
+    };
+    match run() {
+        Ok((d, g)) => {
+            std::ptr::copy_nonoverlapping(d.as_ptr(), digest, 32);
+            *generation = g;
+            0
+        }
+        Err(r) => r.error.code(),
+    }
 }
 
 /// OBSERVE inside the open turn of a composite substrate (`ELPIS_RUNTIME_SUBSTRATE_COMPOSITE`): `observation` is the
@@ -678,18 +882,60 @@ mod testing {
         rc(runtime(rt).and_then(|mut core| core.testing_arm(publication, action, arg)))
     }
 
-    /// Simulated process death at a checkpointed-LEARN boundary: 0 none, 1 after the candidate checkpoint (before
-    /// the native commit), 2 after the native commit (before the continuity publication).
+    /// Hold (nonzero) or release (zero) the durability worker before it takes a new job.
     #[no_mangle]
-    pub unsafe extern "C" fn elpis_runtime_testing_checkpoint_crash(rt: *mut ElpisRuntime, point: u32) -> i32 {
-        use crate::core::CrashPoint;
-        let point = match point {
+    pub unsafe extern "C" fn elpis_runtime_testing_durable_hold(rt: *mut ElpisRuntime, hold: i32) -> i32 {
+        rc(runtime(rt).map(|mut core| core.testing_durable_hold(hold != 0)))
+    }
+
+    /// Plan one fault of the next durable publication (docs/RUNTIME_CORE.md, "Durability crash matrix"):
+    /// action 0 clear; 1 die (simulated process death) at `step`; 2 park at `step` (block until the process is
+    /// killed or the runtime closes) with exactly that step's on-disk effect; 3 checkpoint write fails; 4 checkpoint
+    /// write torn after `arg` bytes, then fails; 5 checkpoint sync fails; 6 continuity record write fails; 7 record
+    /// torn after `arg` bytes, then fails; 8 record sync fails with the bytes lost; 9 record sync fails although
+    /// durable; 10 checkpoint write and sync succeed but the bytes on disk differ (caught by the read-back). Steps: 1
+    /// taken, 2 sealed, 3 slot torn (`arg` bytes), 4 slot written (unsynced), 5 slot synced, 6 record torn (`arg`
+    /// bytes), 7 record written (unsynced), 8 record synced, 9 acknowledged. A death at steps 1..5 resolves the ticket
+    /// ABANDONED (continuity's record never begun); at 6..8 UNCERTAIN (restart resolves it); at 9 the ticket keeps
+    /// its acknowledgment.
+    #[no_mangle]
+    pub unsafe extern "C" fn elpis_runtime_testing_durable_fault(
+        rt: *mut ElpisRuntime,
+        action: u32,
+        step: u32,
+        arg: u64,
+    ) -> i32 {
+        use crate::durable::{Plan, Step};
+        let plan = match action {
             0 => None,
-            1 => Some(CrashPoint::AfterCheckpoint),
-            2 => Some(CrashPoint::AfterNativeCommit),
+            1 | 2 => match Step::from_u32(step) {
+                Some(step) => Some(Plan::At { step, park: action == 2, arg }),
+                None => return Rt::Invalid as i32,
+            },
+            3 => Some(Plan::SlotWriteFail),
+            4 => Some(Plan::SlotTornFail(arg)),
+            5 => Some(Plan::SlotSyncFail),
+            6 => Some(Plan::RecordWriteFail),
+            7 => Some(Plan::RecordTornFail(arg)),
+            8 => Some(Plan::RecordSyncLost),
+            9 => Some(Plan::RecordSyncDurable),
+            10 => Some(Plan::SlotReadBackFail),
             _ => return Rt::Invalid as i32,
         };
-        rc(runtime(rt).map(|mut core| core.testing_crash_at(point)))
+        rc(runtime(rt).map(|mut core| core.testing_durable_plan(plan)))
+    }
+
+    /// Copy the checkpoint store's I/O counters (zero when none is attached); reset them when `reset` is nonzero.
+    #[no_mangle]
+    pub unsafe extern "C" fn elpis_runtime_testing_checkpoint_io_counters(
+        rt: *mut ElpisRuntime,
+        out: *mut crate::checkpoint::probe::Counters,
+        reset: i32,
+    ) -> i32 {
+        if out.is_null() {
+            return Rt::Invalid as i32;
+        }
+        rc(runtime(rt).map(|mut core| *out = core.testing_checkpoint_counters(reset != 0)))
     }
 
     /// Copy the embedded store's I/O counters; reset them when `reset` is nonzero.

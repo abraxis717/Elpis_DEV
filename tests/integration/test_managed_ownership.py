@@ -3,9 +3,11 @@
 Before this law, every out-of-band mutation of a bound state was accepted by K1, and the next managed LEARN committed
 natively on top of it before continuity publication noticed. Now RuntimeCore claims every state it binds with its own
 K1 lease (the K1 header's "Managed ownership"): every unmanaged mutating entry point is refused (``LEASED``) before it
-touches anything, and every managed transaction begin re-establishes the state's exact retained-state identity
-inside the same guarded K1 call. A bound state that is not provably the lineage (its lease taken by another owner, or
-a move no guard could see) fail-stops before anything is built on it or published. Real native K1, standalone and
+touches anything, and every managed transaction begins at the state's live coordinate (its native generation, checked
+inside the same guarded K1 call; the K1 header's "Live coordinate"). Binding verifies the exact retained-state
+identity before claiming. A bound state that is not provably the lineage (its lease taken by another owner, or a move
+no guard could see) fail-stops before anything is built on it or published. Managed commits are volatile; durable
+publication is the explicit ``publish_identity`` (no checkpoint store here). Real native K1, standalone and
 FMS-resident; the fixture map is TEST_ONLY TRAINING=NONE SEMANTICS=NONE.
 """
 from __future__ import annotations
@@ -51,6 +53,10 @@ def bound(request, k1, adapter, tmp_path):   # noqa: F811 (module fixtures)
             runtime.close()
 
 
+def _generation(state):
+    return state._r.inspect(state.id)["generation"] if hasattr(state, "_r") else state.generation
+
+
 def _evidence(state, runtime):
     slots = tuple((runtime.continuity.directory / n).read_bytes() for n in ("continuity.a", "continuity.b"))
     return state.snapshot(), state.state_digest(), state.epoch, slots, runtime.continuity.snapshot()
@@ -91,11 +97,15 @@ def test_every_unmanaged_mutation_of_a_bound_state_is_refused_and_the_lineage_co
             call()
         assert info.value.code == "ECS_LEASED", name
         assert _evidence(state, runtime) == before, name
-    # Reads stay available, and the managed lineage continues as if nothing happened.
+    # Reads stay available, and the managed lineage continues at its live coordinate as if nothing happened.
     state.query(X.x)
+    generation = _generation(state)
     result = runtime.run_learn(state, _learn("next"))
-    assert result.state_before_digest == before[1]
-    assert runtime.continuity.snapshot().k1_state_digest == state.state_digest() and runtime.fault is None
+    assert (result.generation_before, result.generation_after) == (generation, _generation(state))
+    assert result.durability == "VOLATILE" and runtime.fault is None
+    assert runtime.live_identity(state) == (state.state_digest(), _generation(state))
+    assert runtime.publish_identity(state).identity_published
+    assert runtime.continuity.snapshot().k1_state_digest == state.state_digest()
 
 
 def test_an_unmanaged_mutation_during_an_open_managed_transaction_is_refused(bound):
@@ -107,9 +117,11 @@ def test_an_unmanaged_mutation_during_an_open_managed_transaction_is_refused(bou
         with pytest.raises(K1Error) as info:
             mutate()
         assert info.value.code in ("LEASED", "BUSY"), name   # BUSY: one transaction per state, and it is open
-    committed, _ = runtime._core.turn_commit(descriptor)      # the managed commit is not STALE: nothing moved it
-    assert committed.state_after_digest == state.state_digest() == runtime.continuity.snapshot().k1_state_digest
-    assert runtime.fault is None
+    durable = runtime.continuity.snapshot()
+    committed = runtime._core.turn_commit(descriptor)          # the managed commit is not STALE: nothing moved it
+    assert committed.live_generation == committed.generation_after == _generation(state)
+    assert runtime._core.live_identity(descriptor) == (state.state_digest(), _generation(state))
+    assert runtime.continuity.snapshot() == durable and runtime.fault is None   # volatile: nothing published
 
 
 def test_a_second_runtime_taking_the_state_makes_the_first_fail_stop_before_any_mutation(k1, tmp_path):
@@ -125,6 +137,7 @@ def test_a_second_runtime_taking_the_state_makes_the_first_fail_stop_before_any_
         assert info.value.code == MISMATCH and first.fault == MISMATCH
         assert state.snapshot() == before      # refused natively at the leased begin: nothing built, nothing published
         second.run_learn(state, _learn("second"))
+        assert second.publish_identity(state).identity_published
         assert second.continuity.snapshot().k1_state_digest == state.state_digest()
         first.close()
         second.close()
@@ -135,6 +148,7 @@ def test_close_gives_the_state_back_and_restart_verifies_it(k1, tmp_path):
         with Runtime(_config(tmp_path / "c")) as runtime:
             runtime.anchor_cognition(state)
             runtime.run_learn(state, _learn())
+            assert runtime.publish_identity(state).identity_published   # so only the unmanaged move below can mismatch
             assert state.managed_lease != 0
         assert state.managed_lease == 0
         state.learn(X.x, X.y, RATE, 1)        # unmanaged again: outside the lineage
@@ -146,11 +160,13 @@ def test_close_gives_the_state_back_and_restart_verifies_it(k1, tmp_path):
 
 
 def test_an_explicit_release_and_rebind_verifies_identity_again(bound):
-    state, runtime = bound
+    state, runtime = bound                    # its last managed LEARN is volatile: never published
+    durable = runtime.continuity.snapshot()
     runtime.release(state)
-    assert state.managed_lease == 0
+    assert state.managed_lease == 0 and runtime.continuity.snapshot() == durable   # a release publishes nothing
     runtime.run_query(state, QueryRequest("q", ByteTokens(), admitted(FixtureMap())))   # rebinds: same bytes
     assert state.managed_lease != 0 and runtime.fault is None
+    assert durable.k1_state_digest != state.state_digest()   # the live lineage survived the release, unpublished
 
 
 def test_close_after_the_owner_closed_the_state_is_clean(k1, tmp_path):

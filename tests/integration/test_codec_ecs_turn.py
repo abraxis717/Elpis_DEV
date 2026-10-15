@@ -380,19 +380,41 @@ def _config(path, testing=False):
     return runtime_config(path, require_runtime_library(testing=testing), TEST_CODEC_PIN)
 
 
-def test_runtime_turn_publishes_exactly_the_new_expected_k1_identity(k1, tmp_path):
+def test_a_runtime_turn_is_volatile_and_durable_publication_is_explicit(k1, tmp_path):
+    """RuntimeCore ABI v4 (docs/RUNTIME_CORE.md, "Live and durable authority"): a managed turn commits natively and
+    advances the live state; it publishes nothing. An explicit durable publication then makes exactly that state the
+    durable authority."""
     from elpis.runtime import Runtime
 
     with world(k1) as state:
         with Runtime(_config(tmp_path / "c")) as runtime:
             anchored = runtime.anchor_cognition(state)
             assert anchored.k1_state_digest == state.state_digest()
+            generation = state.generation
             result = runtime.run_turn(state, "one", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
                                       authority=LEARN)
+            # Volatile: the live state moved by exactly one committed transition; the durable record did not.
+            assert (result.durability, result.generation_before, result.generation_after) == \
+                ("VOLATILE", generation, generation + 1) == ("VOLATILE", generation, state.generation)
+            assert result.state_after_digest is None   # no identity is computed on the HOT path
+            assert runtime.continuity.snapshot() == anchored
+            assert state.state_digest() != anchored.k1_state_digest
+            # The live identity on request is the live state's; durability is a separate, explicit act.
+            assert runtime.live_identity(state) == (state.state_digest(), state.generation)
+            # Recoverable durability needs a checkpoint owner: refused (never downgraded), nothing captured.
+            with pytest.raises(CompositionError) as info:
+                runtime.publish_recoverable(state)
+            assert info.value.code == "RUNTIME_RECOVERY_UNAVAILABLE"
+            assert runtime.continuity.snapshot() == anchored and runtime.durability().last_requested.sequence == 0
+            ticket = runtime.publish_identity(state)
+            assert (ticket.status, ticket.kind, ticket.identity, ticket.generation) == \
+                ("IDENTITY_PUBLISHED", "IDENTITY", state.state_digest(), state.generation)
+            # No checkpoint store: only the identity is durable, and that is never an acknowledgment.
+            assert not ticket.recoverable and not ticket.acknowledged and ticket.identity_published
             snap = runtime.continuity.snapshot()
-            assert snap.k1_state_digest == result.state_after_digest == state.state_digest()
+            assert snap.k1_state_digest == state.state_digest()
             assert snap.generation == anchored.generation + 1
-            # Nothing else is durable: no generation, epochs or token identities.
+            # Nothing else is durable: no epochs or token identities; the evolution authority is untouched.
             assert snap.evolution == anchored.evolution
 
 
@@ -436,13 +458,34 @@ def test_matched_restart_resumes_without_a_new_anchor(k1, tmp_path):
             first.anchor_cognition(state)
             first.run_turn(state, "before restart", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
                            authority=LEARN)
+            assert first.publish_identity(state).identity_published
             generation = first.continuity.snapshot().generation
         with Runtime(_config(tmp_path / "c")) as restarted:
             result = restarted.run_turn(state, "resume", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
                                         authority=LEARN)
+            assert result.generation_after == state.generation
             snap = restarted.continuity.snapshot()
-            assert snap.k1_state_digest == result.state_after_digest
-            assert snap.generation == generation + 1  # one transition, no anchor
+            assert snap.generation == generation  # the resumed turn is volatile: no anchor, no publication
+
+
+def test_a_restart_never_adopts_volatile_work_that_was_not_durably_published(k1, tmp_path):
+    """A crash (or a close) loses at most the volatile work since the last acknowledgment: restart binds only a state
+    whose identity is the durable one, and an advanced unpublished state is refused before any mutation."""
+    from elpis.runtime import Runtime
+
+    with world(k1) as state:
+        with Runtime(_config(tmp_path / "c")) as first:
+            anchored = first.anchor_cognition(state)
+            for text in ("one", "two"):
+                first.run_turn(state, text, tokenizer=ByteTokens(), codec=admitted(FixtureMap()), authority=LEARN)
+        moved = state.snapshot()
+        with Runtime(_config(tmp_path / "c")) as restarted:
+            assert restarted.continuity.snapshot() == anchored
+            with pytest.raises(CompositionError) as info:
+                restarted.run_turn(state, "adopt?", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
+                                   authority=LEARN)
+            assert info.value.code == "CONTINUITY_STATE_MISMATCH"
+            assert state.snapshot() == moved and state.managed_lease == 0   # never claimed, never mutated
 
 
 def test_mismatched_restart_fails_before_k1_mutation(k1, tmp_path):
@@ -468,45 +511,49 @@ def test_mismatched_restart_fails_before_k1_mutation(k1, tmp_path):
             assert info.value.code == "CONTINUITY_STATE_MISMATCH"
 
 
-# Testing-library faults (native/continuity): 2 write fails, 5 sync fails with the bytes lost,
-# 6 sync fails although the record is durable.
+# Testing-library faults of the durability lane (runtime.h, "Durability crash matrix"): 6 the continuity record write
+# fails, 8 its sync fails with the bytes lost, 9 its sync fails although the record is durable.
 @pytest.mark.parametrize("failure", ["write", "sync-lost", "sync-durable"])
-def test_k1_commit_then_failed_publication_keeps_k1_and_fail_stops(k1, tmp_path, failure):
-    """The crash law: the K1 commit stands; restart sees old authority and refuses the moved state."""
+def test_a_failed_durable_publication_never_stops_thinking_and_restart_resolves_it(k1, tmp_path, failure):
+    """A durable publication that fails or is uncertain is reported as such (FAILED / UNCERTAIN), never as an
+    acknowledgment; the HOT lane keeps thinking; restart resolves an uncertain outcome to exactly one record and
+    refuses a live state that is not it."""
     from elpis.runtime import Runtime
 
     with world(k1) as state:
         with Runtime(_config(tmp_path / "c", testing=True)) as runtime:
             anchored = runtime.anchor_cognition(state)
-            action = {"write": 2, "sync-lost": 5, "sync-durable": 6}[failure]
-            runtime.continuity.testing_fault(1, action)
-            expected = "CONTINUITY_PUBLICATION_REFUSED" if failure == "write" else "CONTINUITY_PUBLICATION_UNCERTAIN"
-            with pytest.raises(CompositionError) as info:
-                runtime.run_turn(state, "commit then fail", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
-                                 authority=LEARN)
-            assert info.value.code == expected
-            committed = state.snapshot()
-            # K1 committed and is never rolled back.
-            assert state.epoch > 0 and committed[-32:] != anchored.k1_state_digest
-            with pytest.raises(CompositionError) as info:  # fail-stopped: no further K1 mutation
-                runtime.run_turn(state, "again", tokenizer=ByteTokens(), codec=admitted(FixtureMap()), authority=LEARN)
-            assert info.value.code == expected
-            assert state.snapshot() == committed
+            runtime.run_turn(state, "commit", tokenizer=ByteTokens(), codec=admitted(FixtureMap()), authority=LEARN)
+            published = state.snapshot()
+            action = {"write": 6, "sync-lost": 8, "sync-durable": 9}[failure]
+            runtime._core.testing_durable_fault(action)
+            ticket = runtime.publish_identity(state)
+            if failure == "write":
+                assert (ticket.status, ticket.code) == ("FAILED", "CONTINUITY_PUBLICATION_REFUSED")
+                assert runtime.continuity.snapshot() == anchored        # nothing durable changed
+            else:
+                assert (ticket.status, ticket.code) == ("UNCERTAIN", "CONTINUITY_PUBLICATION_UNCERTAIN")
+                assert runtime.durability().fault == "CONTINUITY_PUBLICATION_UNCERTAIN"   # sticky until reopen
+                with pytest.raises(CompositionError) as info:
+                    runtime.publish_identity(state)
+                assert info.value.code == "CONTINUITY_PUBLICATION_UNCERTAIN"
+            # The HOT lane is not fail-stopped: thinking continues on the live state.
+            assert runtime.fault is None
+            runtime.run_turn(state, "again", tokenizer=ByteTokens(), codec=admitted(FixtureMap()), authority=LEARN)
+            assert state.epoch > 0 and state.snapshot() != published
         with Runtime(_config(tmp_path / "c")) as restarted:
             durable = restarted.continuity.snapshot().k1_state_digest
-            if durable == anchored.k1_state_digest:
-                # Old durable authority: the moved K1 state is a mismatch, refused before mutation.
-                assert failure != "sync-durable"
-                with pytest.raises(CompositionError) as info:
-                    restarted.run_turn(state, "after restart", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
-                                       authority=LEARN)
-                assert info.value.code == "CONTINUITY_STATE_MISMATCH"
-                assert state.snapshot() == committed
+            if failure == "sync-durable":
+                assert durable == published[-32:]   # the record did land: the captured state is the authority
             else:
-                # New durable authority (the synced-unknown write did land): resume.
-                assert failure == "sync-durable" and durable == committed[-32:]
+                assert durable == anchored.k1_state_digest
+            # Either way the live state (one volatile turn further) is not the durable one: refused, untouched.
+            before = state.snapshot()
+            with pytest.raises(CompositionError) as info:
                 restarted.run_turn(state, "after restart", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
                                    authority=LEARN)
+            assert info.value.code == "CONTINUITY_STATE_MISMATCH"
+            assert state.snapshot() == before
 
 
 def test_open_runtime_refuses_switching_k1_lineage_handles(k1, tmp_path):
@@ -539,9 +586,10 @@ def test_managed_fms_resident_turns_equal_managed_standalone_turns(k1, adapter, 
                                 authority=LEARN)
                 b = rb.run_turn(resident, text, tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)),
                                 authority=LEARN)
-                assert a == b and a.state_after_digest == b.state_after_digest
+                assert a == b and a.generation_after == b.generation_after and a.durability == "VOLATILE"
                 assert standalone.snapshot() == resident.snapshot()
-                assert rb.continuity.snapshot().k1_state_digest == resident.state_digest()
+                assert ra.live_identity(standalone) == rb.live_identity(resident)
+                assert rb.live_identity(resident)[0] == resident.state_digest()
             # RuntimeCore grew both reservations natively on the cold path.
             assert standalone.max_rows >= 12 and resident._r.inspect(resident.id)["max_rows"] >= 12
             before = resident.snapshot()
@@ -550,7 +598,8 @@ def test_managed_fms_resident_turns_equal_managed_standalone_turns(k1, adapter, 
                             codec=admitted(FixtureMap(reply=(999,))))
             assert info.value.code == "DECODE" and resident.snapshot() == before
             info = resident._r.inspect(resident.id)
-            assert info["transaction_open"] == 0 and info["lease_count"] == 0   # aborted; no pin left behind
+            # Aborted: no transaction pin left behind; the one pin is the bound runtime's residency hold.
+            assert (info["transaction_open"], info["lease_count"], resident._r.resident_holds(resident.id)) == (0, 1, 1)
             # A second wrapper of the same resident state is the same bound state (same owner and id).
             rb.run_turn(resident._r.state(resident.id), "again", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
                         authority=LEARN)

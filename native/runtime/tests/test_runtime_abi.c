@@ -1,7 +1,8 @@
-/* The RuntimeCore C ABI over a real native K1 state (production runtime library, real libelpis_ecsg_k1).
+/* The RuntimeCore C ABI v4 over a real native K1 state (production runtime library, real libelpis_ecsg_k1).
  *
  * Usage: test_runtime_abi <scratch-dir>
- * Deterministic: no threads, no sleeps. The K1 function table is built from typed wrappers (no casts). */
+ * Deterministic: no test threads, no sleeps (the runtime's own durability worker serves explicit durable
+ * publications; the test waits for them explicitly). The K1 function table is built from typed wrappers (no casts). */
 #define _POSIX_C_SOURCE 200809L
 #include "elpis/ecsg_k1.h"
 #include "elpis/runtime.h"
@@ -17,10 +18,12 @@
 enum { DIM = 6, WIDTH = 36, ROWS = 4 };
 
 _Static_assert(sizeof(elpis_runtime_turn_begin_result) == 48, "begin result ABI size");
-_Static_assert(sizeof(elpis_runtime_turn_commit_result) == 120, "commit result ABI size");
-_Static_assert(sizeof(elpis_runtime_counters) == 80, "counters ABI size");
+_Static_assert(sizeof(elpis_runtime_volatile_commit) == 64, "commit result ABI size");
+_Static_assert(sizeof(elpis_runtime_counters) == 128, "counters ABI size");
 _Static_assert(sizeof(elpis_runtime_budget) == 48, "budget ABI size");
-_Static_assert(sizeof(elpis_runtime_query_result) == 40, "query result ABI size");
+_Static_assert(sizeof(elpis_runtime_query_result) == 16, "query result ABI size");
+_Static_assert(sizeof(elpis_runtime_durable_ticket) == 64, "durable ticket ABI size");
+_Static_assert(sizeof(elpis_runtime_durability) == 3 * 64 + 32 + sizeof(elpis_continuity_snapshot), "durability");
 _Static_assert(sizeof(elpis_runtime_recovery) == 80, "recovery ABI size");
 
 static elpis_ecsg_k1 *state(double seed) {
@@ -42,27 +45,27 @@ static elpis_runtime_budget BUDGET;
 static double X[ROWS * DIM], Y[ROWS];
 static const elpis_runtime_experience SCHEDULE[2] = {{2, 3}, {2, 5}};
 
-static int turn(elpis_runtime *rt, const elpis_runtime_substrate *d, elpis_runtime_turn_commit_result *out) {
+static int turn(elpis_runtime *rt, const elpis_runtime_substrate *d, elpis_runtime_volatile_commit *out) {
     double s3[83];
     elpis_runtime_turn_begin_result begun;
     int rc = elpis_runtime_turn_begin(rt, d, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, &BUDGET, s3, 83, &begun);
     if (rc != ELPIS_RUNTIME_OK) return rc;
     assert(begun.schedule.experiences_applied == 2 && begun.schedule.epoch_after == begun.schedule.epoch_before + 8);
-    elpis_continuity_snapshot snap;
-    return elpis_runtime_turn_commit(rt, d, out, &snap);
+    return elpis_runtime_turn_commit(rt, d, out);
 }
 
 int main(int argc, char **argv) {
     assert(argc == 2);
     for (int i = 0; i < ROWS * DIM; ++i) X[i] = (double)((i * 5) % 11 - 5) / 16.0;
     for (int i = 0; i < ROWS; ++i) Y[i] = (double)(i % 3 - 1) / 8.0;
-    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V3);
+    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V4);
     assert(elpis_runtime_fuel_ceiling(&BUDGET) == ELPIS_RUNTIME_OK);
     assert(elpis_runtime_features(DIM) == elpis_ecsg_k1_features(DIM));
     for (size_t d = 1; d <= 64; ++d) assert(elpis_runtime_features(d) == elpis_ecsg_k1_features(d));
     assert(!strcmp(elpis_runtime_code_name(ELPIS_RUNTIME_SUBSTRATE_SWITCH), "COGNITION_SUBSTRATE_SWITCH"));
     assert(!strcmp(elpis_runtime_code_name(ELPIS_CONTINUITY_UNANCHORED), "CONTINUITY_UNANCHORED"));
     assert(elpis_runtime_code_name(1000) == NULL);
+    assert(!strcmp(elpis_runtime_code_name(ELPIS_RUNTIME_DURABLE_PENDING), "RUNTIME_DURABLE_PENDING"));
 
     char dir[4096];
     assert(snprintf(dir, sizeof(dir), "%s/continuity", argv[1]) < (int)sizeof(dir));
@@ -81,22 +84,58 @@ int main(int argc, char **argv) {
     elpis_runtime_substrate da = sub(a, 1, DIM), db = sub(b, 2, DIM);
     uint8_t before[32], now[32];
     digest(a, before);
-    elpis_runtime_turn_commit_result committed;
+    elpis_runtime_volatile_commit committed;
 
-    /* Unanchored: refused before any mutation. */
+    /* Unanchored: refused before any mutation (and nothing to publish durably). */
     assert(turn(rt, &da, &committed) == ELPIS_CONTINUITY_UNANCHORED);
     digest(a, now);
     assert(!memcmp(before, now, 32) && elpis_ecsg_k1_epoch(a) == 0);
 
-    /* Explicit anchor at the retained identity; then a committed turn publishes its new identity. */
+    {
+        elpis_runtime_durable_ticket t;
+        assert(elpis_runtime_identity_request(rt, &da, &t) == ELPIS_CONTINUITY_UNANCHORED);
+        /* A recoverable request with no checkpoint store is refused before anything is bound or captured. */
+        memset(&t, 0xA5, sizeof t);
+        assert(elpis_runtime_recoverable_request(rt, &da, &t) == ELPIS_RUNTIME_RECOVERY_UNAVAILABLE);
+        assert(t.sequence == 0 && t.status == ELPIS_RUNTIME_DURABLE_NONE && t.kind == 0);
+        assert(!strcmp(elpis_runtime_code_name(ELPIS_RUNTIME_RECOVERY_UNAVAILABLE), "RUNTIME_RECOVERY_UNAVAILABLE"));
+        assert(!strcmp(elpis_runtime_code_name(ELPIS_RUNTIME_CHECKPOINT_ATTACHED), "RUNTIME_CHECKPOINT_ATTACHED"));
+    }
+
+    /* Explicit, durable anchor at the retained identity; a committed turn is VOLATILE: the live generation advances,
+     * the durable authority does not move. */
     OK(elpis_runtime_anchor(rt, &da, &snap));
     assert(snap.anchored && !memcmp(snap.k1_state_digest, before, 32));
+    const uint64_t g0 = elpis_ecsg_k1_generation(a);
     OK(turn(rt, &da, &committed));
     digest(a, now);
-    assert(committed.committed == 1 && !memcmp(committed.identity.state_before_digest, before, 32));
-    assert(!memcmp(committed.identity.state_after_digest, now, 32) && elpis_ecsg_k1_epoch(a) == 8);
+    assert(committed.committed == 1 && committed.transition.generation_before == g0);
+    assert(committed.live_generation == g0 + 1 && elpis_ecsg_k1_generation(a) == g0 + 1);
+    assert(elpis_ecsg_k1_epoch(a) == 8 && committed.transition.epoch_after == 8);
     OK(elpis_runtime_snapshot(rt, &snap));
-    assert(!memcmp(snap.k1_state_digest, now, 32));
+    assert(!memcmp(snap.k1_state_digest, before, 32));   /* durable: still the anchor */
+    {
+        /* The live identity, read on request, is the live state's; an explicit identity-only publication makes it
+         * the durable authority (no checkpoint store is attached): IDENTITY_PUBLISHED, never ACKNOWLEDGED. */
+        uint8_t live[32];
+        uint64_t generation = 0;
+        OK(elpis_runtime_live_identity(rt, &da, live, &generation));
+        assert(!memcmp(live, now, 32) && generation == g0 + 1);
+        elpis_runtime_durable_ticket t = durable_publish(rt, &da, ELPIS_RUNTIME_DURABLE_KIND_IDENTITY);
+        assert(t.status == ELPIS_RUNTIME_DURABLE_IDENTITY_PUBLISHED && t.recoverable == 0 && t.generation == g0 + 1);
+        assert(t.kind == ELPIS_RUNTIME_DURABLE_KIND_IDENTITY);
+        assert(!memcmp(t.identity, now, 32));
+        OK(elpis_runtime_snapshot(rt, &snap));
+        assert(!memcmp(snap.k1_state_digest, now, 32));
+        elpis_runtime_durability d;
+        OK(elpis_runtime_durable_status(rt, &d));
+        /* Identity-only: the last request, never the last (recoverable) acknowledgment. */
+        assert(d.last_requested.sequence == t.sequence && d.last_acknowledged.sequence == 0);
+        assert(d.fault == 0 && d.pending == 0 && d.durable_known == 1);
+        assert(d.live_generation == g0 + 1 && !memcmp(d.durable.k1_state_digest, now, 32));
+        elpis_runtime_durable_ticket w;
+        assert(elpis_runtime_durable_wait(rt, 99, 0, &w) == ELPIS_RUNTIME_INVALID);
+    }
 
     /* Another state is refused without a native call; not a fail-stop. */
     assert(turn(rt, &db, &committed) == ELPIS_RUNTIME_SUBSTRATE_SWITCH && elpis_ecsg_k1_epoch(b) == 0);
@@ -127,8 +166,8 @@ int main(int argc, char **argv) {
     digest(a, now);
     assert(!memcmp(before, now, 32));
 
-    /* QUERY: read-only. The answer is K1's own forward map of the authoritative state, reported against its
-     * identity; W, epoch, H, a (the retained-state digest), the generation and continuity are unchanged. */
+    /* QUERY: read-only. The answer is K1's own forward map of the LIVE state, reported against its generation; W,
+     * epoch, H, a (the retained-state digest), the generation and continuity are unchanged; no digest computed. */
     {
         double q[2 * DIM], answer[2], direct[2];
         for (int i = 0; i < 2 * DIM; ++i) q[i] = (double)(i % 5 - 2) / 8.0;
@@ -141,13 +180,14 @@ int main(int argc, char **argv) {
         assert(elpis_ecsg_k1_forward(a, q, 2, direct) == ELPIS_ECSG_K1_OK);
         assert(!memcmp(answer, direct, sizeof(direct)));
         digest(a, now);
-        assert(!memcmp(queried.state_digest, now, 32) && !memcmp(now, before, 32));
+        assert(queried.live_generation == generation && !memcmp(now, before, 32));
         assert(elpis_ecsg_k1_epoch(a) == epoch && elpis_ecsg_k1_generation(a) == generation);
         OK(elpis_runtime_snapshot(rt, &after));
         assert(!memcmp(&durable, &after, sizeof(after)));
         elpis_runtime_counters c;
         OK(elpis_runtime_read_counters(rt, &c, 0));
         assert(c.k1_queries == 1 && c.k1_txn_begins == 0 && c.k1_commits == 0 && c.publications == 0);
+        assert(c.k1_state_digests == 0 && c.k1_identities == 0 && c.k1_captures == 0);
         /* A declared dimension that is not the state's own is refused natively before any input is read. */
         elpis_runtime_substrate short_dim = sub(a, 1, DIM - 1);
         assert(elpis_runtime_query(rt, &short_dim, q, 2 * (DIM - 1), answer, 2, &BUDGET, &queried) ==
@@ -210,10 +250,11 @@ int main(int argc, char **argv) {
     OK(elpis_runtime_evolution_finalize(rt, receipt, &snap));
     assert(snap.evolution.pending == 0 && snap.evolution.revision == observed.revision + 1);
 
-    /* Restart: the matching state resumes; the moved state is a mismatch that fail-stops. */
+    /* Restart: the matching (durably published) state resumes; a volatile turn after it is not durable, so after the
+     * next restart the moved state is a mismatch that fail-stops; another state is a mismatch too. */
     elpis_runtime_close(rt);
     OK(elpis_runtime_open(rt, &snap));
-    OK(turn(rt, &da, &committed));
+    OK(turn(rt, &da, &committed));   /* binds (verified against the durable identity), then a volatile turn */
     elpis_runtime_close(rt);
     OK(elpis_runtime_open(rt, &snap));
     elpis_runtime_counters counters;
@@ -224,6 +265,10 @@ int main(int argc, char **argv) {
 
     OK(elpis_runtime_read_counters(rt, &counters, 0));   /* the mismatch: one identity read, nothing else */
     assert(counters.k1_state_digests == 1 && counters.k1_txn_begins == 0 && counters.publications == 0);
+    assert(counters.k1_lease_claims == 0);   /* a mismatched state is never claimed */
+    elpis_runtime_close(rt);
+    OK(elpis_runtime_open(rt, &snap));
+    assert(turn(rt, &da, &committed) == ELPIS_CONTINUITY_STATE_MISMATCH);   /* the volatile turn was lost */
 
     elpis_runtime_destroy(&rt);
     assert(rt == NULL);
@@ -281,8 +326,9 @@ int main(int argc, char **argv) {
         elpis_runtime_destroy(&rt);
         assert(elpis_ecsg_k1_destroy(&c) == ELPIS_ECSG_K1_OK);
     }
-    /* K1 Recovery R0 through the C ABI: operator provisioning, attach, anchor + LEARN persisting the complete
-     * envelope, and a restart that resumes exactly continuity's identity (docs/K1_RECOVERY_R0.md). */
+    /* K1 Recovery R0 through the C ABI: operator provisioning, attach, the anchor and an explicit durable publication
+     * persisting the complete envelope, volatile turns after it, and a restart that resumes exactly the last
+     * acknowledged state (docs/K1_RECOVERY_R0.md). */
     {
         char dir4[4200], ck[4200];
         assert(snprintf(dir4, sizeof(dir4), "%s4", dir) < (int)sizeof(dir4));
@@ -307,6 +353,14 @@ int main(int argc, char **argv) {
         OK(turn(rt, &de, &committed));
         uint8_t *held = malloc(envelope), *got = malloc(envelope);
         assert(held && got && elpis_ecsg_k1_snapshot_write(e, held, envelope) == ELPIS_ECSG_K1_OK);
+        {
+            elpis_runtime_durable_ticket refused;
+            assert(elpis_runtime_identity_request(rt, &de, &refused) == ELPIS_RUNTIME_CHECKPOINT_ATTACHED);
+        }
+        elpis_runtime_durable_ticket t = durable_publish(rt, &de, ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE);
+        assert(t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED && t.recoverable == 1);
+        assert(!memcmp(t.identity, held + envelope - 32, 32));
+        OK(turn(rt, &de, &committed));   /* volatile: lost with the process */
         elpis_runtime_destroy(&rt);   /* the process ends: only continuity and the checkpoint remain */
         assert(elpis_ecsg_k1_destroy(&e) == ELPIS_ECSG_K1_OK);
 

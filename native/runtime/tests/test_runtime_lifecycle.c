@@ -4,9 +4,11 @@
  * Each case runs over a standalone K1 state (libelpis_ecsg_k1) and an FMS-resident one (libelpis_ecsg_k1_fms over a
  * real FMS context), and checks the native abort count, the retained-state digest, epoch and generation, the
  * durable continuity record, that the state takes another transaction, and for the resident state that the
- * transaction's WRITE pin is released and the adapter's own lifetime guard holds while the turn is open.
+ * transaction's WRITE pin is released and the adapter's own lifetime guard holds while the turn is open. A managed
+ * commit is volatile (ABI v4): each case makes its state durable by an explicit durable publication first, so the
+ * durable record restart sees is exactly the one the turn under test must not move.
  *
- * Usage: test_runtime_lifecycle <scratch-dir>. Deterministic: no threads, no sleeps. */
+ * Usage: test_runtime_lifecycle <scratch-dir>. Deterministic: no test threads, no sleeps. */
 #define _POSIX_C_SOURCE 200809L
 #include "elpis/ecsg_k1.h"
 #include "elpis/ecsg_k1_fms.h"
@@ -149,7 +151,9 @@ static void released(const subject *s) {
     uint32_t leases = 99;
     assert(!txn_open(s, &leases));
     if (s->resident) {
-        assert(leases == 0);
+        uint32_t holds = 99;
+        OK(elpis_ecsg_k1_fms_resident_holds(s->fms, s->id, &holds));
+        assert(leases == 0 && holds == 0);   /* no runtime binds it: no pin, no residency hold */
         uint64_t token = 0;
         assert(probe_begin(s, &token) == ELPIS_ECSG_K1_OK);
         assert(txn_open(s, &leases) && leases == 1);   /* the transaction's WRITE pin */
@@ -178,11 +182,16 @@ static int begin(elpis_runtime *rt, const subject *s) {
 }
 
 static void commit_turn(elpis_runtime *rt, const subject *s) {
-    elpis_runtime_turn_commit_result out;
-    elpis_continuity_snapshot snap;
+    elpis_runtime_volatile_commit out;
     OK(begin(rt, s));
-    OK(elpis_runtime_turn_commit(rt, &s->d, &out, &snap));
-    assert(out.committed == 1);
+    OK(elpis_runtime_turn_commit(rt, &s->d, &out));
+    assert(out.committed == 1 && out.live_generation == out.transition.generation_after);
+}
+
+/* An explicit identity-only publication of the live state (no checkpoint store here), waited for. */
+static void make_durable(elpis_runtime *rt, const subject *s) {
+    elpis_runtime_durable_ticket t = durable_publish(rt, &s->d, ELPIS_RUNTIME_DURABLE_KIND_IDENTITY);
+    assert(t.status == ELPIS_RUNTIME_DURABLE_IDENTITY_PUBLISHED && t.recoverable == 0);
 }
 
 static uint64_t aborts(elpis_runtime *rt) {
@@ -214,11 +223,19 @@ static void lifecycle(int resident, int which) {
     elpis_runtime *rt = runtime_at(dir, 1);
     OK(elpis_runtime_anchor(rt, &s.d, &snap));
     commit_turn(rt, &s);
+    make_durable(rt, &s);
     OK(elpis_runtime_snapshot(rt, &before_record));
     retained before = observe(&s);
     OK(begin(rt, &s));   /* the schedule ran on the candidate; nothing committed yet */
     uint32_t leases = 0;
-    assert(txn_open(&s, &leases) && (!resident || leases == 1));
+    /* A resident state holds two FMS pins now: the transaction's WRITE pin and the runtime's residency hold, which
+     * keeps a bound state WARM so no HOT operation ever materializes it (docs/RUNTIME_CORE.md, "HOT residency"). */
+    assert(txn_open(&s, &leases) && (!resident || leases == 2));
+    if (resident) {
+        uint32_t holds = 0;
+        OK(elpis_ecsg_k1_fms_resident_holds(s.fms, s.id, &holds));
+        assert(holds == 1);
+    }
     assert(aborts(rt) == 0);
     if (resident) {
         /* The adapter's own lifetime guard: an open transaction keeps the retained handle and id live. */
@@ -235,12 +252,18 @@ static void lifecycle(int resident, int which) {
         assert(elpis_runtime_turn_abort(rt, &s.d) == ELPIS_RUNTIME_TURN_NOT_OPEN);
         break;
     case CASE_COMMIT: {
-        elpis_runtime_turn_commit_result out;
-        OK(elpis_runtime_turn_commit(rt, &s.d, &out, &snap));
+        elpis_runtime_volatile_commit out;
+        OK(elpis_runtime_turn_commit(rt, &s.d, &out));
         assert(aborts(rt) == 0 && out.committed == 1);
         retained after = observe(&s);
         assert(after.generation == before.generation + 1 && after.epoch == before.epoch + 8);
-        assert(!memcmp(out.identity.state_after_digest, after.digest, 32));
+        assert(out.live_generation == after.generation && out.transition.generation_before == before.generation);
+        /* Volatile: the durable record has not moved. */
+        OK(elpis_runtime_snapshot(rt, &snap));
+        assert(same_record(&snap, &before_record));
+        /* Explicit durability makes it the authority restart resumes. */
+        make_durable(rt, &s);
+        OK(elpis_runtime_snapshot(rt, &snap));
         assert(!memcmp(snap.k1_state_digest, after.digest, 32));
         break;
     }
@@ -294,11 +317,11 @@ static void lifecycle(int resident, int which) {
         assert(same_record(&before_record, &after_record));
         assert(!memcmp(after_record.k1_state_digest, before.digest, 32));
     }
+    if (rt) {
+        elpis_runtime_destroy(&rt);   /* unbinds the state: the residency hold is dropped */
+    }
     released(&s);
     /* The same live state takes the next managed turn, over a runtime resumed from the same continuity. */
-    if (rt) {
-        elpis_runtime_destroy(&rt);
-    }
     rt = runtime_at(dir, 0);
     commit_turn(rt, &s);
     assert(observe(&s).generation == before.generation + (which == CASE_COMMIT ? 2u : 1u));
@@ -342,7 +365,7 @@ int main(int argc, char **argv) {
     char cmd[3200];
     assert(snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", SCRATCH) < (int)sizeof(cmd));
     assert(system(cmd) == 0);
-    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V3);
+    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V4);
     assert(elpis_runtime_fuel_ceiling(&BUDGET) == ELPIS_RUNTIME_OK);
     for (int i = 0; i < DIM * WIDTH; ++i) W0[i] = 0.2 * (double)((i * 7) % 13 - 6) / 13.0;
     for (int i = 0; i < ROWS * DIM; ++i) X[i] = (double)((i * 5) % 11 - 5) / 16.0;

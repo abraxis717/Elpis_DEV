@@ -32,16 +32,31 @@ pub enum Rt {
     Fuel = 75,
     /// The K1 checkpoint store is not provisioned as required (missing, wrong files or sizes, locked, refused).
     CheckpointInvalid = 76,
-    /// A K1 checkpoint slot could not be written or synced; the authorized slot is intact.
+    /// A K1 checkpoint slot could not be written, synced, or read back verified (its bytes are not exactly the
+    /// envelope written); the authorized slot is intact.
     CheckpointIo = 77,
     /// The K1 state's envelope is not the provisioned checkpoint capacity (another shape): refused, never resized.
     CheckpointShape = 78,
     /// A newer unauthorized checkpoint candidate needs explicit operator reconciliation (discard or adopt) first.
     CheckpointUnresolved = 79,
+    /// A durable publication is pending or running; the operation would change the lineage under it.
+    DurableBusy = 80,
+    /// The durable publication waited for has not resolved yet (a wait that timed out). Not a failure.
+    DurablePending = 81,
+    /// A recoverable-state publication was requested without an attached checkpoint store: no owner could hold the
+    /// complete state, so nothing was captured or published (identity-only publication is a separate request).
+    RecoveryUnavailable = 82,
+    /// An identity-only publication was requested while a checkpoint store is attached: every publication must then
+    /// be recoverable (continuity never names an identity the attached store does not hold).
+    CheckpointAttached = 83,
+    /// The FMS-resident state is not resident (WARM) where a HOT operation requires it (demoted, or a move in
+    /// flight): refused before anything touches it, without promoting it, reading the cold store or waiting; nothing
+    /// bound, no fail-stop. Materialize it explicitly (a WARM operation) and retry.
+    NotResident = 84,
 }
 
 impl Rt {
-    pub const ALL: [Rt; 15] = [
+    pub const ALL: [Rt; 20] = [
         Rt::Invalid,
         Rt::Closed,
         Rt::SubstrateSwitch,
@@ -57,6 +72,11 @@ impl Rt {
         Rt::CheckpointIo,
         Rt::CheckpointShape,
         Rt::CheckpointUnresolved,
+        Rt::DurableBusy,
+        Rt::DurablePending,
+        Rt::RecoveryUnavailable,
+        Rt::CheckpointAttached,
+        Rt::NotResident,
     ];
 
     pub fn name(self) -> &'static str {
@@ -76,6 +96,11 @@ impl Rt {
             Rt::CheckpointIo => "CHECKPOINT_IO",
             Rt::CheckpointShape => "CHECKPOINT_SHAPE",
             Rt::CheckpointUnresolved => "CHECKPOINT_UNRESOLVED",
+            Rt::DurableBusy => "RUNTIME_DURABLE_BUSY",
+            Rt::DurablePending => "RUNTIME_DURABLE_PENDING",
+            Rt::RecoveryUnavailable => "RUNTIME_RECOVERY_UNAVAILABLE",
+            Rt::CheckpointAttached => "RUNTIME_CHECKPOINT_ATTACHED",
+            Rt::NotResident => "RUNTIME_NOT_RESIDENT",
         }
     }
 

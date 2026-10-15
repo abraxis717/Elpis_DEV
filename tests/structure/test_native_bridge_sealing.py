@@ -35,7 +35,7 @@ def _abi_export(wrapper):
     actual export also tests that verified equal binaries reuse the sealed ELF.
     """
     if isinstance(wrapper, RetrievalLibrary):
-        return wrapper.lib.elpis_retrieval_bridge_abi_version, 2
+        return wrapper.lib.elpis_retrieval_bridge_abi_version, 3
     if isinstance(wrapper, IngressLibrary):
         return wrapper.bridge_abi, 1
     raise TypeError("unknown bridge wrapper")

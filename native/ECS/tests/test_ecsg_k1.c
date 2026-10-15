@@ -947,6 +947,97 @@ static void test_managed_lease(void)
     elpis_ecsg_k1_destroy(&s);
 }
 
+/* Live coordinate (ecsg_k1.h): the holder's generation-bound reads, begin and commit compute no digest, change no law
+ * and are bitwise the digest-bearing entries; the generation advances by exactly one per committed transition;
+ * capture + seal is snapshot_write byte for byte; every entry refuses another lease (LEASED) before touching
+ * anything. */
+static void test_live_coordinate(void)
+{
+    elpis_ecsg_k1 *s = fresh(), *twin = fresh();
+    const uint64_t L = 0x51ee, M = 0x9999;
+    const elpis_ecsg_k1_experience sched[1] = {{R / 2, 3}};
+    uint8_t digest[ELPIS_ECSG_K1_DIGEST_BYTES], expected[ELPIS_ECSG_K1_DIGEST_BYTES];
+    double out[R], direct[R], s3[83];
+    uint64_t g = 99, g2 = 99, tok = 0, other = 0;
+    elpis_ecsg_k1_transition t;
+    elpis_ecsg_k1_commit_identity id;
+    uint8_t *sealed, *captured, *after;
+    size_t n;
+
+    /* Unleased, or held by another lease: refused before anything is read or touched. */
+    n = envelope(s, &sealed);
+    captured = (uint8_t *)malloc(n);
+    assert(captured);
+    assert(elpis_ecsg_k1_leased_query(s, L, D, X2, R, out, &g) == ELPIS_ECSG_K1_LEASED && g == 99);
+    assert(elpis_ecsg_k1_leased_identity(s, L, digest, &g) == ELPIS_ECSG_K1_LEASED && g == 99);
+    assert(elpis_ecsg_k1_leased_capture(s, L, captured, n, &g) == ELPIS_ECSG_K1_LEASED && g == 99);
+    assert(elpis_ecsg_k1_leased_txn_begin_at(s, L, &g, &tok) == ELPIS_ECSG_K1_LEASED && g == 99);
+    assert(elpis_ecsg_k1_lease_claim(s, L) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_leased_query(s, M, D, X2, R, out, &g) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_leased_identity(s, M, digest, &g) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_leased_capture(s, M, captured, n, &g) == ELPIS_ECSG_K1_LEASED);
+    assert(elpis_ecsg_k1_leased_txn_begin_at(s, M, &g, &tok) == ELPIS_ECSG_K1_LEASED && g == 99);
+    /* Malformed arguments. */
+    assert(elpis_ecsg_k1_leased_query(s, 0u, D, X2, R, out, &g) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_leased_query(s, L, D - 1, X2, R, out, &g) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_leased_query(s, L, D, X2, R, out, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_leased_capture(s, L, captured, n - 1, &g) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_leased_txn_begin_at(s, L, NULL, &tok) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_leased_txn_commit(s, L, 1u, NULL) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_envelope_seal(NULL, n) == ELPIS_ECSG_K1_INVALID);
+
+    /* The holder: answers bitwise forward, identity bitwise state_digest, generation 0 at creation. */
+    assert(elpis_ecsg_k1_leased_query(s, L, D, X2, R, out, &g) == ELPIS_ECSG_K1_OK && g == 0u);
+    assert(elpis_ecsg_k1_forward(s, X2, R, direct) == ELPIS_ECSG_K1_OK && !memcmp(out, direct, sizeof(out)));
+    assert(elpis_ecsg_k1_leased_identity(s, L, digest, &g) == ELPIS_ECSG_K1_OK && g == 0u);
+    assert(elpis_ecsg_k1_state_digest(s, expected) == ELPIS_ECSG_K1_OK && !memcmp(digest, expected, 32));
+    /* capture + seal == snapshot_write, and the unsealed trailer is zero. */
+    memset(captured, 0xCD, n);
+    assert(elpis_ecsg_k1_leased_capture(s, L, captured, n, &g) == ELPIS_ECSG_K1_OK && g == 0u);
+    for (size_t i = n - 32; i < n; ++i) assert(captured[i] == 0);
+    assert(!memcmp(captured, sealed, n - 32));
+    assert(elpis_ecsg_k1_envelope_seal(captured, n) == ELPIS_ECSG_K1_OK && !memcmp(captured, sealed, n));
+    assert(elpis_ecsg_k1_envelope_seal(captured, n - 8) == ELPIS_ECSG_K1_INVALID);   /* wrong size */
+    captured[0] ^= 1u;
+    assert(elpis_ecsg_k1_envelope_seal(captured, n) == ELPIS_ECSG_K1_INVALID);       /* not ELPISGK1 */
+    captured[0] ^= 1u;
+    free(sealed);
+
+    /* The digest-free transaction: begin reports the source generation; commit advances it by exactly one and is
+     * bitwise the digest-bearing commit of an unleased twin; queries observe the committed state at once. */
+    for (uint64_t k = 0; k < 4; ++k) {
+        assert(elpis_ecsg_k1_leased_txn_begin_at(s, L, &g, &tok) == ELPIS_ECSG_K1_OK && g == k);
+        assert(elpis_ecsg_k1_lease_claim(s, M) == ELPIS_ECSG_K1_BUSY);           /* never adopt an open transaction */
+        assert(elpis_ecsg_k1_leased_txn_commit(s, M, tok, &t) == ELPIS_ECSG_K1_LEASED);   /* still open */
+        assert(elpis_ecsg_k1_leased_txn_run_schedule(s, L, tok, X, Y, R / 2, sched, 1, 0.002, s3, 83, NULL) == 0);
+        assert(elpis_ecsg_k1_leased_query(s, L, D, X2, R, out, &g2) == ELPIS_ECSG_K1_OK && g2 == k);  /* committed */
+        assert(elpis_ecsg_k1_leased_txn_commit(s, L, tok, &t) == ELPIS_ECSG_K1_OK);
+        assert(t.generation_before == k && t.generation_after == k + 1 && elpis_ecsg_k1_generation(s) == k + 1);
+        assert(elpis_ecsg_k1_txn_begin(twin, &other) == ELPIS_ECSG_K1_OK);
+        assert(elpis_ecsg_k1_txn_run_schedule(twin, other, X, Y, R / 2, sched, 1, 0.002, s3, 83, NULL) == 0);
+        assert(elpis_ecsg_k1_txn_commit_identity(twin, other, &id) == ELPIS_ECSG_K1_OK);
+        assert(same_state(s, twin) && id.transition.generation_after == t.generation_after);
+        assert(id.transition.epoch_after == t.epoch_after && id.transition.steps == t.steps);
+        assert(elpis_ecsg_k1_leased_query(s, L, D, X2, R, out, &g2) == ELPIS_ECSG_K1_OK && g2 == k + 1);
+        assert(elpis_ecsg_k1_forward(twin, X2, R, direct) == ELPIS_ECSG_K1_OK && !memcmp(out, direct, sizeof(out)));
+        assert(elpis_ecsg_k1_leased_identity(s, L, digest, &g2) == ELPIS_ECSG_K1_OK && g2 == k + 1);
+        assert(!memcmp(digest, id.state_after_digest, 32));
+    }
+    /* A stale transaction (the holder's direct-path transition is impossible while leased; abort + another begin
+     * shows the token law): an aborted begin installs nothing and leaves the generation. */
+    assert(elpis_ecsg_k1_leased_txn_begin_at(s, L, &g, &tok) == ELPIS_ECSG_K1_OK && g == 4u);
+    assert(elpis_ecsg_k1_txn_abort(s, tok) == ELPIS_ECSG_K1_OK && elpis_ecsg_k1_generation(s) == 4u);
+    assert(elpis_ecsg_k1_leased_txn_commit(s, L, tok, &t) == ELPIS_ECSG_K1_INVALID && elpis_ecsg_k1_generation(s) == 4u);
+    /* A capture after commits seals to the committed state's envelope. */
+    n = envelope(s, &after);
+    assert(elpis_ecsg_k1_leased_capture(s, L, captured, n, &g) == ELPIS_ECSG_K1_OK && g == 4u);
+    assert(elpis_ecsg_k1_envelope_seal(captured, n) == ELPIS_ECSG_K1_OK && !memcmp(captured, after, n));
+    free(after);
+    free(captured);
+    elpis_ecsg_k1_destroy(&twin);
+    elpis_ecsg_k1_destroy(&s);
+}
+
 int main(void)
 {
     fixture();
@@ -972,10 +1063,11 @@ int main(void)
     test_state_digest_matches_snapshot_trailer();
     test_query_identity_is_read_only();
     test_managed_lease();
+    test_live_coordinate();
     printf("ecsg_k1: Runtime R1 parity at H = 0, K1 law shape, refusal atomicity, complete-state transactions, "
            "envelope integrity, W-only import, reset, SINGLE_WRITER, the transaction refusal contract, hostile "
            "dimensions, resealed envelopes, provenance transitions, epoch overflow, race-free getters, the experience schedule (= ordered txn learn/consolidate, S3 readout, "
            "whole-schedule validation, discard on non-finite, stale), the retained-state digest, read-only QUERY with "
-           "its identity, the managed lease, the candidate's envelope\n");
+           "its identity, the managed lease, the live coordinate, the candidate's envelope\n");
     return 0;
 }
