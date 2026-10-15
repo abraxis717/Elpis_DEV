@@ -160,7 +160,7 @@ def test_managed_oversized_learn_is_refused_before_reserve_begin_schedule_commit
                                                        _authority(max_work_units=DEFAULT_UNITS)))
         assert result.generation_after == state.generation == generation + 1 and state.max_rows >= 4
         assert runtime.continuity.snapshot() == durable
-        assert runtime.publish_durable(state).acknowledged
+        assert runtime.publish_identity(state).identity_published
         assert runtime.continuity.snapshot().generation == durable.generation + 1
 
 

@@ -18,12 +18,17 @@
  *            RuntimeCore last established it. Every HOT operation (QUERY, the managed turn, OBSERVE) is checked
  *            against it; none performs file I/O, computes a digest or waits for the durability lane.
  *   durable  continuity's record (and, when provisioned, the K1 checkpoint slot holding the same envelope): the
- *            last state a durable publication ACKNOWLEDGED. Restart binds only a state whose identity is it.
+ *            last state a durable publication completed. Restart binds only a state whose identity is it.
  * A managed commit is VOLATILE: it installs the candidate and advances the live generation by one; nothing is
- * checkpointed or published. Durable publication is explicit: elpis_runtime_durable_request captures the live
- * state (unsealed, under the lease: the one synchronous step) and hands it to the durability lane, one worker
- * thread that seals it, writes and syncs the checkpoint slot, then writes and syncs the continuity record, without
- * the handle's lock. A crash loses at most the volatile work since the last acknowledgment. v3 published one
+ * checkpointed or published. Durable publication is an explicit request of one of two kinds, never confused:
+ * elpis_runtime_recoverable_request (the complete state: needs an attached checkpoint store; ACKNOWLEDGED only after
+ * the slot is written, synced and read back verified, and continuity names it) or elpis_runtime_identity_request
+ * (only the identity: no store attached; IDENTITY_PUBLISHED, never ACKNOWLEDGED; the caller keeps the bytes). Either
+ * captures the live state (unsealed, under the lease: the one synchronous step) and hands it to the durability
+ * lane, one worker thread that seals it, checkpoints it (recoverable only) and publishes continuity, without the
+ * handle's lock. A crash loses at most the volatile work since the last completed publication; restart recovers
+ * only a complete, authorized durable state, which may be a publication that completed just before the caller
+ * lost its acknowledgment (an acknowledgment that never arrived is not proof of non-durability). v3 published one
  * continuity record (and wrote one checkpoint slot) per managed turn; that per-turn durability is superseded
  * (docs/RUNTIME_CORE.md, "Superseded"). A v3 caller refuses to load this library (the version check), so no caller
  * can mistake a volatile commit for a durable one.
@@ -95,12 +100,14 @@ enum {
     ELPIS_RUNTIME_FUEL = 75,                     /* COGNITION_FUEL_EXCEEDED: outside the fuel budget (or the budget
                                                     outside the ceiling); refused before reserve or any transaction */
     ELPIS_RUNTIME_CHECKPOINT_INVALID = 76,       /* the K1 checkpoint store is not provisioned as required */
-    ELPIS_RUNTIME_CHECKPOINT_IO = 77,            /* a checkpoint slot could not be written or synced; the
-                                                    authorized slot is intact */
+    ELPIS_RUNTIME_CHECKPOINT_IO = 77,            /* a checkpoint slot could not be written, synced or read back
+                                                    verified; the authorized slot is intact */
     ELPIS_RUNTIME_CHECKPOINT_SHAPE = 78,         /* the envelope is not the provisioned capacity: never resized */
     ELPIS_RUNTIME_CHECKPOINT_UNRESOLVED = 79,    /* an unauthorized newer candidate awaits discard or adopt */
     ELPIS_RUNTIME_DURABLE_BUSY = 80,             /* a durable publication is pending or running */
     ELPIS_RUNTIME_DURABLE_PENDING = 81,          /* a durable wait timed out: the request is still pending */
+    ELPIS_RUNTIME_RECOVERY_UNAVAILABLE = 82,     /* a recoverable request without a checkpoint store: refused */
+    ELPIS_RUNTIME_CHECKPOINT_ATTACHED = 83,      /* an identity-only request with a checkpoint store: refused */
     ELPIS_RUNTIME_RECOVERY_NOTHING = 1,          /* continuity unanchored: no lineage; a slot never creates one */
     ELPIS_RUNTIME_RECOVERY_RESUMABLE = 2,        /* a verified slot holds continuity's identity; no candidate */
     ELPIS_RUNTIME_RECOVERY_CANDIDATE_UNRESOLVED = 3, /* a newer unauthorized slot exists: operator discard/adopt */
@@ -111,12 +118,23 @@ enum {
     /* elpis_runtime_durable_ticket.status */
     ELPIS_RUNTIME_DURABLE_NONE = 0,
     ELPIS_RUNTIME_DURABLE_REQUESTED = 1,         /* PENDING: captured; waiting for, or in, the worker */
-    ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED = 2,      /* durable: continuity names it (recoverable: a slot holds it) */
+    ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED = 2,      /* RECOVERABLE only: a read-back verified slot holds the complete
+                                                    state and continuity names it; recoverable is always 1 */
     ELPIS_RUNTIME_DURABLE_FAILED = 3,            /* nothing durable changed; the previous authority stands */
-    ELPIS_RUNTIME_DURABLE_UNCERTAIN = 4,         /* the publication's outcome is unknown; lane faulted until reopen */
+    ELPIS_RUNTIME_DURABLE_UNCERTAIN = 4,         /* outcome unknown (the record was being written or synced): lane
+                                                    faulted until reopen; restart resolves it, possibly to this one */
     ELPIS_RUNTIME_DURABLE_SUPERSEDED = 5,        /* replaced by a newer request before the worker took it */
-    ELPIS_RUNTIME_DURABLE_ABANDONED = 6,         /* closed (or the process died) before it completed */
-    ELPIS_RUNTIME_DURABLE_UNKNOWN = 7            /* resolved too long ago to be recorded */
+    ELPIS_RUNTIME_DURABLE_ABANDONED = 6,         /* not published: closed (or the process died) before continuity's
+                                                    record was begun */
+    ELPIS_RUNTIME_DURABLE_UNKNOWN = 7,           /* resolved too long ago to be recorded */
+    ELPIS_RUNTIME_DURABLE_IDENTITY_PUBLISHED = 8 /* IDENTITY only: continuity names the identity; no store holds
+                                                    the bytes; recoverable is always 0; never an acknowledgment */
+};
+
+/* What a durable request asks to make durable (elpis_runtime_durable_ticket.kind). */
+enum {
+    ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE = 1, /* the complete state (checkpoint slot, verified) and its identity */
+    ELPIS_RUNTIME_DURABLE_KIND_IDENTITY = 2     /* only the identity (continuity) */
 };
 
 /* Layout-identical to elpis_ecsg_k1_experience, _schedule_result and _transition. */
@@ -240,9 +258,9 @@ typedef struct {
     uint64_t sequence;          /* monotonic per handle, from 1 */
     uint64_t generation;        /* the live generation captured */
     uint32_t status;            /* ELPIS_RUNTIME_DURABLE_* */
-    uint32_t recoverable;       /* 1: a verified, synced checkpoint slot holds the acknowledged envelope */
+    uint32_t recoverable;       /* 1 exactly when ACKNOWLEDGED: a read-back verified slot holds the envelope */
     int32_t code;               /* the refusal or fault behind FAILED / UNCERTAIN / ABANDONED */
-    uint32_t reserved;
+    uint32_t kind;              /* ELPIS_RUNTIME_DURABLE_KIND_* (0 for no request) */
     uint8_t identity[32];       /* the captured state's retained-state identity (zero until sealed) */
 } elpis_runtime_durable_ticket;
 
@@ -384,22 +402,31 @@ int elpis_runtime_import_composite(elpis_runtime *runtime, const elpis_runtime_s
  * another state is COGNITION_SUBSTRATE_SWITCH. */
 int elpis_runtime_release(elpis_runtime *runtime, const elpis_runtime_substrate *substrate);
 
-/* Durable publication (v4): explicit, served by the durability lane.
- * request: bind the state if needed, capture its envelope unsealed under the lease at the live generation (the one
- *   synchronous step) and hand it to the lane; returns at once, `out` a PENDING ticket. At most one request waits:
- *   a newer request supersedes it (SUPERSEDED, never silently acknowledged). Refused while a turn is open, on an
- *   unanchored lineage (anchoring is explicit), for a composite without a checkpoint store (CHECKPOINT_INVALID) and
- *   with the lane's fault while it is faulted (an UNCERTAIN publication or a death, until reopen).
- *   The lane then: seals and verifies the envelope; with a checkpoint store, refuses while an unresolved candidate
- *   exists (CHECKPOINT_UNRESOLVED) and writes + syncs the slot that does not hold the durable authority; then writes
- *   + syncs the continuity record (durable identity -> captured identity). ACKNOWLEDGED: durable (recoverable when a
- *   slot holds it). FAILED: nothing durable changed (a failed write is withdrawn). UNCERTAIN: unknown; restart
- *   resolves it to exactly one record; never assumed either way.
+/* Durable publication (v4): explicit, served by the durability lane. Two kinds, never confused.
+ * recoverable_request: the complete state. Refused with RUNTIME_RECOVERY_UNAVAILABLE (nothing bound or captured)
+ *   unless a checkpoint store is attached. The lane seals and verifies the envelope, refuses while an unresolved
+ *   candidate exists (CHECKPOINT_UNRESOLVED), writes + syncs the slot that does not hold the durable authority,
+ *   reads it back and verifies it is exactly the captured envelope (CHECKPOINT_IO otherwise, the slot withdrawn),
+ *   then writes + syncs the continuity record (durable identity -> captured identity). ACKNOWLEDGED (recoverable 1):
+ *   restart resumes exactly this state.
+ * identity_request: only the identity. Refused with RUNTIME_CHECKPOINT_ATTACHED (nothing bound or captured) while a
+ *   checkpoint store is attached. The lane seals and verifies the envelope and publishes continuity alone.
+ *   IDENTITY_PUBLISHED (recoverable 0): the caller keeps the bytes; never an acknowledgment of recoverable state.
+ * Both bind the state if needed, capture its envelope unsealed under the lease at the live generation (the one
+ *   synchronous step) and hand it to the lane; they return at once, `out` a PENDING ticket. At most one request
+ *   waits: a newer request supersedes it (SUPERSEDED, never silently acknowledged). Refused while a turn is open, on
+ *   an unanchored lineage (anchoring is explicit), for a composite without a checkpoint store (CHECKPOINT_INVALID)
+ *   and with the lane's fault while it is faulted (an UNCERTAIN publication or a death, until reopen).
+ *   FAILED: nothing durable changed (a failed write is withdrawn). ABANDONED: continuity's record was never begun.
+ *   UNCERTAIN: the record's outcome is unknown; restart resolves it to exactly one complete record, which may be
+ *   this one; never assumed either way.
  * wait: until `sequence` resolves or `timeout_ms` elapses (UINT64_MAX: no limit); RUNTIME_DURABLE_PENDING on timeout.
  * status: the lane's tickets, fault, the live generation and the durable authority.
  * live_identity: the bound state's retained-state identity (one hashing native call, cold path) and generation. */
-int elpis_runtime_durable_request(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
-                                  elpis_runtime_durable_ticket *out);
+int elpis_runtime_recoverable_request(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
+                                      elpis_runtime_durable_ticket *out);
+int elpis_runtime_identity_request(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
+                                   elpis_runtime_durable_ticket *out);
 int elpis_runtime_durable_wait(elpis_runtime *runtime, uint64_t sequence, uint64_t timeout_ms,
                                elpis_runtime_durable_ticket *out);
 int elpis_runtime_durable_status(elpis_runtime *runtime, elpis_runtime_durability *out);

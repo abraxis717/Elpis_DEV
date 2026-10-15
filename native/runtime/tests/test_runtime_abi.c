@@ -93,7 +93,13 @@ int main(int argc, char **argv) {
 
     {
         elpis_runtime_durable_ticket t;
-        assert(elpis_runtime_durable_request(rt, &da, &t) == ELPIS_CONTINUITY_UNANCHORED);
+        assert(elpis_runtime_identity_request(rt, &da, &t) == ELPIS_CONTINUITY_UNANCHORED);
+        /* A recoverable request with no checkpoint store is refused before anything is bound or captured. */
+        memset(&t, 0xA5, sizeof t);
+        assert(elpis_runtime_recoverable_request(rt, &da, &t) == ELPIS_RUNTIME_RECOVERY_UNAVAILABLE);
+        assert(t.sequence == 0 && t.status == ELPIS_RUNTIME_DURABLE_NONE && t.kind == 0);
+        assert(!strcmp(elpis_runtime_code_name(ELPIS_RUNTIME_RECOVERY_UNAVAILABLE), "RUNTIME_RECOVERY_UNAVAILABLE"));
+        assert(!strcmp(elpis_runtime_code_name(ELPIS_RUNTIME_CHECKPOINT_ATTACHED), "RUNTIME_CHECKPOINT_ATTACHED"));
     }
 
     /* Explicit, durable anchor at the retained identity; a committed turn is VOLATILE: the live generation advances,
@@ -109,20 +115,23 @@ int main(int argc, char **argv) {
     OK(elpis_runtime_snapshot(rt, &snap));
     assert(!memcmp(snap.k1_state_digest, before, 32));   /* durable: still the anchor */
     {
-        /* The live identity, read on request, is the live state's; an explicit durable publication makes it the
-         * durable authority, acknowledged (identity only: no checkpoint store is attached). */
+        /* The live identity, read on request, is the live state's; an explicit identity-only publication makes it
+         * the durable authority (no checkpoint store is attached): IDENTITY_PUBLISHED, never ACKNOWLEDGED. */
         uint8_t live[32];
         uint64_t generation = 0;
         OK(elpis_runtime_live_identity(rt, &da, live, &generation));
         assert(!memcmp(live, now, 32) && generation == g0 + 1);
-        elpis_runtime_durable_ticket t = durable_publish(rt, &da);
-        assert(t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED && t.recoverable == 0 && t.generation == g0 + 1);
+        elpis_runtime_durable_ticket t = durable_publish(rt, &da, ELPIS_RUNTIME_DURABLE_KIND_IDENTITY);
+        assert(t.status == ELPIS_RUNTIME_DURABLE_IDENTITY_PUBLISHED && t.recoverable == 0 && t.generation == g0 + 1);
+        assert(t.kind == ELPIS_RUNTIME_DURABLE_KIND_IDENTITY);
         assert(!memcmp(t.identity, now, 32));
         OK(elpis_runtime_snapshot(rt, &snap));
         assert(!memcmp(snap.k1_state_digest, now, 32));
         elpis_runtime_durability d;
         OK(elpis_runtime_durable_status(rt, &d));
-        assert(d.last_acknowledged.sequence == t.sequence && d.fault == 0 && d.pending == 0 && d.durable_known == 1);
+        /* Identity-only: the last request, never the last (recoverable) acknowledgment. */
+        assert(d.last_requested.sequence == t.sequence && d.last_acknowledged.sequence == 0);
+        assert(d.fault == 0 && d.pending == 0 && d.durable_known == 1);
         assert(d.live_generation == g0 + 1 && !memcmp(d.durable.k1_state_digest, now, 32));
         elpis_runtime_durable_ticket w;
         assert(elpis_runtime_durable_wait(rt, 99, 0, &w) == ELPIS_RUNTIME_INVALID);
@@ -344,7 +353,11 @@ int main(int argc, char **argv) {
         OK(turn(rt, &de, &committed));
         uint8_t *held = malloc(envelope), *got = malloc(envelope);
         assert(held && got && elpis_ecsg_k1_snapshot_write(e, held, envelope) == ELPIS_ECSG_K1_OK);
-        elpis_runtime_durable_ticket t = durable_publish(rt, &de);
+        {
+            elpis_runtime_durable_ticket refused;
+            assert(elpis_runtime_identity_request(rt, &de, &refused) == ELPIS_RUNTIME_CHECKPOINT_ATTACHED);
+        }
+        elpis_runtime_durable_ticket t = durable_publish(rt, &de, ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE);
         assert(t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED && t.recoverable == 1);
         assert(!memcmp(t.identity, held + envelope - 32, 32));
         OK(turn(rt, &de, &committed));   /* volatile: lost with the process */

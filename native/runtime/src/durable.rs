@@ -5,10 +5,12 @@
 //!   HOT (caller thread, under the runtime handle's lock)       WARM (one worker thread per open runtime)
 //!   ---------------------------------------------------        -----------------------------------------
 //!   query / turn_begin / turn_commit: no I/O, no lane          wait for a job and the stores
-//!   durable_request: leased_capture (unsealed, ~memcpy)  --->  seal (envelope_seal) and verify the identity
-//!                    + enqueue (capacity 1, coalescing)        checkpoint slot write + fdatasync (two fixed slots)
+//!   recoverable_request | identity_request:                    seal (envelope_seal) and verify the identity
+//!                    leased_capture (unsealed, ~memcpy)  --->  RECOVERABLE: checkpoint slot write + fdatasync,
+//!                    + enqueue (capacity 1, coalescing)          then read back and verify the slot's bytes
 //!                    returns PENDING at once                   continuity publication (one record + fdatasync)
-//!   durable_wait / durable_status: lane lock only        <---  ticket: ACKNOWLEDGED / FAILED / UNCERTAIN
+//!   durable_wait / durable_status: lane lock only        <---  ticket: ACKNOWLEDGED | IDENTITY_PUBLISHED /
+//!                                                              FAILED / UNCERTAIN / ABANDONED
 //! ```
 //!
 //! The lane owns the continuity store and the checkpoint store. The HOT lane never touches either: a managed
@@ -26,13 +28,25 @@
 //! silently acknowledged. A request never waits for the worker; at most two capture buffers exist. A stalled worker
 //! therefore never blocks the HOT lane.
 //!
-//! Acknowledgment. ACKNOWLEDGED means continuity's record naming the captured identity is synced, and, when
-//! `recoverable` is 1, a verified checkpoint slot holding that complete envelope was synced before it: restart
-//! resumes exactly that state (K1 Recovery R0). Without a checkpoint store only the identity is durable
-//! (`recoverable` 0): the caller keeps the bytes. FAILED means nothing durable changed (the previous authority
-//! stands). UNCERTAIN means the continuity publication's outcome is unknown: the lane faults (sticky until reopen);
-//! restart resolves to exactly one complete record. A crash at any point loses at most the volatile work since the
-//! last acknowledgment; restart never adopts an unacknowledged state (checkpoint bytes never authorize themselves).
+//! Two kinds of request, never confused (docs/RUNTIME_CORE.md, "Recoverable and identity-only publication"):
+//! * RECOVERABLE (`recoverable_request`): the complete state is made durable. Refused (`RUNTIME_RECOVERY_UNAVAILABLE`)
+//!   without an attached checkpoint store: nothing else could hold the bytes. The worker writes and syncs the slot,
+//!   reads it back and verifies it is exactly the captured envelope, and only then publishes continuity. ACKNOWLEDGED
+//!   is reserved for this kind and always carries `recoverable` 1: restart resumes exactly that state (K1 Recovery R0).
+//! * IDENTITY (`identity_request`): only the identity becomes durable; the caller keeps the bytes. Refused
+//!   (`RUNTIME_CHECKPOINT_ATTACHED`) while a checkpoint store is attached. It resolves IDENTITY_PUBLISHED (never
+//!   ACKNOWLEDGED, `recoverable` always 0): restart can rebind only a state whose bytes the caller supplies.
+//!
+//! Publication, acknowledgment and unknown outcome are three different things. The durable publication is the
+//! synced continuity record; the acknowledgment is this lane's report of it to the caller; between the two a crash
+//! leaves the outcome unknown to the caller although the publication may be complete. FAILED means nothing durable
+//! changed (the previous authority stands). ABANDONED means continuity's record was never begun (a checkpoint slot it
+//! left is an unresolved candidate, never an authority). UNCERTAIN means the record was being written or synced when
+//! the publication failed or the process died: the lane faults (sticky until reopen) and restart resolves to exactly
+//! one complete record, which may be this one. Restart recovers only a complete, authorized durable state, which may
+//! include a publication completed immediately before the caller lost its acknowledgment; it never recovers volatile
+//! work that was never requested, and never a state continuity does not name (checkpoint bytes never authorize
+//! themselves).
 
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -53,18 +67,36 @@ pub enum Status {
     None = 0,
     /// Captured; waiting for, or in, the worker.
     Pending = 1,
-    /// Durable: continuity names the identity (and, when `recoverable`, a synced checkpoint slot holds it).
+    /// RECOVERABLE requests only: the complete state is durable. A checkpoint slot holding exactly the captured
+    /// envelope was synced and read back verified, and continuity's synced record names its identity. `recoverable`
+    /// is always 1: restart resumes exactly this state.
     Acknowledged = 2,
     /// Nothing durable changed: the previous durable authority stands (`code` says why).
     Failed = 3,
-    /// The continuity publication's outcome is unknown; the lane is faulted until reopen; restart resolves it.
+    /// Outcome unknown: continuity's record was being written or synced when the publication failed or the process
+    /// died. The lane is faulted until reopen; restart resolves to exactly one complete record, possibly this one.
+    /// Never evidence that the state is not durable.
     Uncertain = 4,
     /// Replaced, before the worker took it, by a newer request of the same lineage.
     Superseded = 5,
-    /// The runtime closed (or the process was declared dead) before the worker took it.
+    /// Not published: the runtime closed, or the process died (simulated), before continuity's record was begun.
+    /// A checkpoint slot it left is an unresolved candidate, never an authority.
     Abandoned = 6,
     /// Resolved so long ago that the lane keeps no record of it (see the last acknowledgment instead).
     Unknown = 7,
+    /// IDENTITY requests only: continuity's synced record names the identity; no store holds the bytes (the caller
+    /// keeps them). `recoverable` is always 0. Never an acknowledgment of recoverable state.
+    IdentityPublished = 8,
+}
+
+/// What a request asks to make durable (`elpis_runtime_durable_ticket.kind`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u32)]
+pub enum Kind {
+    /// The complete state: checkpoint slot (verified) then continuity. Needs an attached checkpoint store.
+    Recoverable = 1,
+    /// Only the identity: continuity alone. Needs no checkpoint store attached.
+    Identity = 2,
 }
 
 /// `elpis_runtime_durable_ticket`.
@@ -76,11 +108,12 @@ pub struct Ticket {
     /// The live generation the capture was taken at.
     pub generation: u64,
     pub status: u32,
-    /// 1: a verified checkpoint slot holds the acknowledged envelope (restart can resume it).
+    /// 1 exactly when ACKNOWLEDGED: a read-back verified checkpoint slot holds the envelope (restart resumes it).
     pub recoverable: u32,
     /// The refusal or fault code behind FAILED / UNCERTAIN / ABANDONED (0 otherwise).
     pub code: i32,
-    pub reserved: u32,
+    /// The request's [`Kind`] (0 for no request).
+    pub kind: u32,
     /// The captured state's retained-state identity (zero until the worker sealed it).
     pub identity: Digest,
 }
@@ -97,6 +130,7 @@ impl Ticket {
             5 => Status::Superseded,
             6 => Status::Abandoned,
             7 => Status::Unknown,
+            8 => Status::IdentityPublished,
             _ => Status::None,
         }
     }
@@ -114,6 +148,7 @@ pub struct Counters {
     pub requests: u64,
     pub superseded: u64,
     pub acknowledged: u64,
+    pub identity_published: u64,
     pub failed: u64,
     pub uncertain: u64,
     pub publications: u64,
@@ -128,6 +163,7 @@ pub struct Stores {
 
 /// One captured envelope on its way to durability. Owned by the lane alone from the moment it is enqueued.
 pub struct Job {
+    pub kind: Kind,
     pub ticket: Ticket,
     pub format: StateFormat,
     pub envelope: Vec<u8>,
@@ -150,6 +186,8 @@ pub enum Plan {
     SlotWriteFail,
     SlotTornFail(u64),
     SlotSyncFail,
+    /// The slot write and sync report success but the bytes on disk differ (only the read-back can tell).
+    SlotReadBackFail,
     RecordWriteFail,
     RecordTornFail(u64),
     RecordSyncLost,
@@ -523,6 +561,7 @@ impl Lane {
     /// Returns the new ticket (PENDING). Refused with the lane fault while faulted, `RUNTIME_CLOSED` while closed.
     pub fn enqueue(
         &self,
+        kind: Kind,
         generation: u64,
         format: StateFormat,
         envelope: Vec<u8>,
@@ -537,8 +576,13 @@ impl Lane {
             Self::recycle(&mut g, envelope);
             return Err(code.into());
         }
-        let ticket =
-            Ticket { sequence: g.next_sequence, generation, status: Status::Pending as u32, ..Ticket::default() };
+        let ticket = Ticket {
+            sequence: g.next_sequence,
+            generation,
+            status: Status::Pending as u32,
+            kind: kind as u32,
+            ..Ticket::default()
+        };
         g.next_sequence += 1;
         g.counters.requests += 1;
         if let Some(old) = g.pending.take() {
@@ -547,7 +591,7 @@ impl Lane {
             Self::record(&mut g, t);
             Self::recycle(&mut g, old.envelope);
         }
-        g.pending = Some(Job { ticket, format, envelope, seal });
+        g.pending = Some(Job { kind, ticket, format, envelope, seal });
         g.last_requested = ticket;
         drop(g);
         self.cv.notify_all();
@@ -681,6 +725,7 @@ impl Lane {
             };
             match ticket.status() {
                 Status::Acknowledged => g.counters.acknowledged += 1,
+                Status::IdentityPublished => g.counters.identity_published += 1,
                 Status::Uncertain => {
                     g.counters.uncertain += 1;
                     g.fault.get_or_insert(Code::PublicationUncertain);
@@ -776,58 +821,84 @@ fn persist(stores: &mut Stores, job: &mut Job, plan: PlanArg, lane: &Lane) -> Ou
     if authority.format() != job.format {
         return failed(Code::StateMismatch as i32);
     }
-    let recoverable = stores.checkpoint.as_ref().is_some_and(|c| c.holding(&identity).is_some());
-    if identity == durable && (stores.checkpoint.is_none() || recoverable) {
-        // Already the durable authority: nothing to write.
-        return Outcome::Done(Ticket { recoverable: recoverable as u32, ..ticket.resolve(Status::Acknowledged, 0) });
-    }
 
-    // The checkpoint slot first: the complete envelope is durable before continuity names it.
+    // The kind decides what "durable" promises; the store attached now must be the one the request was admitted for.
+    let done = match job.kind {
+        Kind::Recoverable => Ticket { recoverable: 1, ..ticket.resolve(Status::Acknowledged, 0) },
+        Kind::Identity => ticket.resolve(Status::IdentityPublished, 0),
+    };
     let mut written: Option<usize> = None;
-    if let Some(store) = stores.checkpoint.as_mut() {
-        if store.unresolved(&durable).is_some() {
-            return failed(Rt::CheckpointUnresolved as i32);
-        }
-        if store.capacity() != len {
-            return failed(Rt::CheckpointShape as i32);
-        }
-        if store.holding(&identity).is_none() {
-            #[cfg(feature = "testing")]
-            {
-                use checkpoint::probe::Fault;
-                store.probe.plan = match plan {
-                    Some(Plan::At { step: Step::SlotTorn, arg, .. }) => Some(Fault::TornDie(arg as usize)),
-                    Some(Plan::At { step: Step::SlotWritten, .. }) => Some(Fault::DieBeforeSync),
-                    Some(Plan::SlotWriteFail) => Some(Fault::WriteFail),
-                    Some(Plan::SlotTornFail(n)) => Some(Fault::TornFail(n as usize)),
-                    Some(Plan::SlotSyncFail) => Some(Fault::SyncFail),
-                    _ => None,
-                };
+    match (job.kind, stores.checkpoint.as_mut()) {
+        (Kind::Recoverable, None) => return failed(Rt::RecoveryUnavailable as i32),
+        (Kind::Identity, Some(_)) => return failed(Rt::CheckpointAttached as i32),
+        (Kind::Identity, None) => {
+            if identity == durable {
+                return Outcome::Done(done); // already the durable authority: nothing to write
             }
-            match store.write_envelope(&job.envelope, Some(&durable)) {
-                Ok((slot, _)) => written = Some(slot),
-                Err(rt) => {
-                    #[cfg(feature = "testing")]
-                    if std::mem::take(&mut store.probe.died) {
-                        if let Some(Plan::At { step, park: true, .. }) = plan {
-                            lane.park(step);
-                        }
-                        return Outcome::Died(ticket.resolve(Status::Abandoned, Code::TestingProcessDeath as i32));
-                    }
-                    // Nothing was published: withdraw whatever the failed write left (best effort; a slot that
-                    // survives is an explicit unresolved candidate for the operator, never an authority).
-                    let target = (0..2).find(|&i| store.slots()[i].is_none());
-                    if let Some(i) = target {
-                        let _ = store.retract(i);
-                    }
-                    return failed(rt as i32);
+        }
+        (Kind::Recoverable, Some(store)) => {
+            // The checkpoint slot first: the complete envelope is durable, and verified, before continuity names it.
+            if identity != durable && store.unresolved(&durable).is_some() {
+                return failed(Rt::CheckpointUnresolved as i32);
+            }
+            let held = store.holding(&identity);
+            if held.is_none() {
+                if store.capacity() != len {
+                    return failed(Rt::CheckpointShape as i32);
                 }
+                #[cfg(feature = "testing")]
+                {
+                    use checkpoint::probe::Fault;
+                    store.probe.plan = match plan {
+                        Some(Plan::At { step: Step::SlotTorn, arg, .. }) => Some(Fault::TornDie(arg as usize)),
+                        Some(Plan::At { step: Step::SlotWritten, .. }) => Some(Fault::DieBeforeSync),
+                        Some(Plan::SlotWriteFail) => Some(Fault::WriteFail),
+                        Some(Plan::SlotTornFail(n)) => Some(Fault::TornFail(n as usize)),
+                        Some(Plan::SlotSyncFail) => Some(Fault::SyncFail),
+                        Some(Plan::SlotReadBackFail) => Some(Fault::Garble),
+                        _ => None,
+                    };
+                }
+                match store.write_envelope(&job.envelope, Some(&durable)) {
+                    Ok((slot, _)) => written = Some(slot),
+                    Err(rt) => {
+                        #[cfg(feature = "testing")]
+                        if std::mem::take(&mut store.probe.died) {
+                            if let Some(Plan::At { step, park: true, .. }) = plan {
+                                lane.park(step);
+                            }
+                            // Continuity's record was never begun: not published.
+                            return Outcome::Died(ticket.resolve(Status::Abandoned, Code::TestingProcessDeath as i32));
+                        }
+                        // Nothing was published: withdraw whatever the failed write left (best effort; a slot that
+                        // survives is an explicit unresolved candidate for the operator, never an authority).
+                        let target = (0..2).find(|&i| store.slots()[i].is_none());
+                        if let Some(i) = target {
+                            let _ = store.retract(i);
+                        }
+                        return failed(rt as i32);
+                    }
+                }
+            }
+            // Read back: no recoverable acknowledgment without independently re-read, verified, complete bytes.
+            let slot = written.or(held).expect("a slot holds the identity");
+            let verified = matches!(store.envelope(slot), Ok(Some((s, bytes))) if s.identity == identity
+                && bytes == job.envelope.as_slice());
+            if !verified {
+                if written.is_some() {
+                    let _ = store.retract(slot); // our own unverified write: never a candidate
+                }
+                return failed(Rt::CheckpointIo as i32);
+            }
+            if identity == durable {
+                return Outcome::Done(done); // continuity already names it; the slot now verifiably holds it
             }
         }
     }
     step!(Step::SlotSynced, ticket);
 
-    // The continuity publication: one record, one sync. The lineage's previous durable identity -> this one.
+    // The continuity publication: one record, one sync. The lineage's previous durable identity -> this one. From
+    // here on a death or an unconfirmed sync leaves the outcome unknown (UNCERTAIN), never "not durable".
     #[cfg(feature = "testing")]
     {
         let arm = match plan {
@@ -848,17 +919,15 @@ fn persist(stores: &mut Stores, job: &mut Job, plan: PlanArg, lane: &Lane) -> Ou
     match published {
         Ok(_) => {
             lane.count_publication();
-            let t =
-                Ticket { recoverable: stores.checkpoint.is_some() as u32, ..ticket.resolve(Status::Acknowledged, 0) };
             #[cfg(feature = "testing")]
             if let Some(Plan::At { step: Step::Acknowledged, park, .. }) = plan {
-                // Dies after the acknowledgment: the ticket stays ACKNOWLEDGED (the record is synced).
+                // Dies right after the acknowledgment was made: the ticket keeps it (the record is synced).
                 if park {
                     lane.park(Step::Acknowledged);
                 }
-                return Outcome::Died(t);
+                return Outcome::Died(done);
             }
-            Outcome::Done(t)
+            Outcome::Done(done)
         }
         Err(Code::PublicationRefused) => {
             // Definitive: the record was not written (or torn, which restart skips): the old authority stands.
@@ -871,11 +940,12 @@ fn persist(stores: &mut Stores, job: &mut Job, plan: PlanArg, lane: &Lane) -> Ou
             Outcome::Done(ticket.resolve(Status::Uncertain, Code::PublicationUncertain as i32))
         }
         Err(Code::TestingProcessDeath) => {
+            // Died while the record was being written or synced: whether it is durable is for restart to resolve.
             #[cfg(feature = "testing")]
             if let Some(Plan::At { step, park: true, .. }) = plan {
                 lane.park(step);
             }
-            Outcome::Died(ticket.resolve(Status::Abandoned, Code::TestingProcessDeath as i32))
+            Outcome::Died(ticket.resolve(Status::Uncertain, Code::TestingProcessDeath as i32))
         }
         Err(code) => {
             if let (Some(slot), Some(store)) = (written, stores.checkpoint.as_mut()) {

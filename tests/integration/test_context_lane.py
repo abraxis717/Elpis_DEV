@@ -393,8 +393,8 @@ def test_the_active_view_and_the_durable_state_are_separate_coordinates(k1, tmp_
             assert _settle(lane, lane.submit(_axiom("z"))[0]) == "APPLIED"
             assert runtime.continuity.snapshot() == durable
             assert all(v == 0 for v in runtime.continuity.testing_counters().values()), io
-            ticket = runtime.publish_durable(state)   # durable publication neither includes nor waits for the view
-            assert ticket.acknowledged and not hasattr(ticket, "context")
+            ticket = runtime.publish_identity(state)  # durable publication neither includes nor waits for the view
+            assert ticket.identity_published and not hasattr(ticket, "context")
             assert result.context.version == 1 and lane.view().version > 1
         with ContextLane() as fresh:                  # a restart starts from the empty view
             assert fresh.view() is EMPTY_VIEW

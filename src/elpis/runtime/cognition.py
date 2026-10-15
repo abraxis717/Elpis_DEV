@@ -25,7 +25,8 @@ native calls each one can reach:
   A LEARN returns the committed transition. Unmanaged, it carries the exact retained-state identities of the
   commit. Managed (:meth:`elpis.runtime.Runtime.run_learn`), the commit is VOLATILE: it carries the live generations
   instead (``durability == "VOLATILE"``) and nothing is published; durability is the separate, explicit
-  :meth:`elpis.runtime.Runtime.publish_durable` (docs/RUNTIME_CORE.md, "Live and durable authority"). A LEARN
+  :meth:`elpis.runtime.Runtime.publish_recoverable` (or, without a checkpoint store, the identity-only
+  :meth:`elpis.runtime.Runtime.publish_identity`; docs/RUNTIME_CORE.md, "Live and durable authority"). A LEARN
   produces no text: a response is a QUERY.
 
 * **Legacy learned turn** (:func:`run_turn`, :meth:`elpis.runtime.Runtime.run_turn`): the original synthetic

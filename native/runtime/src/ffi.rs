@@ -6,8 +6,11 @@
 //! operation never waits behind them.
 //!
 //! ABI v4 (docs/RUNTIME_CORE.md, "Live and durable authority"): a managed commit is volatile (no checkpoint, no
-//! continuity publication); durable publication is the explicit `elpis_runtime_durable_request`, served by the
-//! durability lane (`elpis_runtime_durable_wait`, `elpis_runtime_durable_status`). QUERY reports the live
+//! continuity publication); durable publication is an explicit request of one of two kinds, never confused:
+//! `elpis_runtime_recoverable_request` (the complete state; needs an attached checkpoint store; ACKNOWLEDGED only
+//! with a read-back verified slot) or `elpis_runtime_identity_request` (only the identity; no store attached;
+//! IDENTITY_PUBLISHED, never ACKNOWLEDGED), served by the durability lane (`elpis_runtime_durable_wait`,
+//! `elpis_runtime_durable_status`). QUERY reports the live
 //! generation instead of a digest. The substrate tables carry the live-coordinate entries (ecsg_k1.h). A v3 caller
 //! refuses to load the library (the version check), so no caller can mistake a volatile commit for a durable one.
 //!
@@ -42,7 +45,7 @@ use elpis_continuity::{Code, Digest, Snapshot};
 
 use crate::code::{Error, Rt};
 use crate::core::{Core, Counters, Recovery, Refusal, Stimulus, VolatileCommit};
-use crate::durable::{Lane, Status, Ticket};
+use crate::durable::{Kind, Lane, Status, Ticket};
 use crate::fuel::Budget;
 use crate::substrate::{features, CSubstrate, Experience, Native, ScheduleOutcome, Transition};
 
@@ -275,6 +278,8 @@ pub extern "C" fn elpis_runtime_code_name(code: i32) -> *const c_char {
             Rt::CheckpointUnresolved => c"CHECKPOINT_UNRESOLVED",
             Rt::DurableBusy => c"RUNTIME_DURABLE_BUSY",
             Rt::DurablePending => c"RUNTIME_DURABLE_PENDING",
+            Rt::RecoveryUnavailable => c"RUNTIME_RECOVERY_UNAVAILABLE",
+            Rt::CheckpointAttached => c"RUNTIME_CHECKPOINT_ATTACHED",
         }
         .as_ptr(),
         None => match Code::from_i32(code) {
@@ -461,7 +466,8 @@ pub unsafe extern "C" fn elpis_runtime_turn_begin(
 }
 
 /// Commit the open turn natively: a VOLATILE commit (ABI v4). The candidate is installed and the live generation
-/// advances by one; nothing is checkpointed, published or written. Durability is `elpis_runtime_durable_request`.
+/// advances by one; nothing is checkpointed, published or written. Durability is an explicit request
+/// (`elpis_runtime_recoverable_request` or `elpis_runtime_identity_request`).
 #[no_mangle]
 pub unsafe extern "C" fn elpis_runtime_turn_commit(
     rt: *mut ElpisRuntime,
@@ -501,20 +507,40 @@ pub unsafe extern "C" fn elpis_runtime_turn_commit(
 
 // -- durable publication: the explicit WARM lane -----------------------------------------------------------------
 
-/// Request durable publication of the live state of the described (bound, or bindable) substrate. The envelope is
-/// captured unsealed under the lease (the one synchronous step) and handed to the durability lane; returns at once
-/// with `out` a PENDING ticket. A request that finds an earlier one still waiting supersedes it. Refused while a
-/// turn is open, on an unanchored lineage, and with the lane's fault while it is faulted.
+/// Request RECOVERABLE durable publication of the live state of the described (bound, or bindable) substrate: the
+/// complete envelope in the attached checkpoint store (written, synced, read back verified), then continuity. The
+/// envelope is captured unsealed under the lease (the one synchronous step) and handed to the durability lane;
+/// returns at once with `out` a PENDING ticket. ACKNOWLEDGED (always `recoverable` 1) means restart resumes exactly
+/// this state. Refused with `RUNTIME_RECOVERY_UNAVAILABLE` (nothing bound or captured) unless a checkpoint store is
+/// attached. A request that finds an earlier one still waiting supersedes it. Refused while a turn is open, on an
+/// unanchored lineage, and with the lane's fault while it is faulted.
 #[no_mangle]
-pub unsafe extern "C" fn elpis_runtime_durable_request(
+pub unsafe extern "C" fn elpis_runtime_recoverable_request(
     rt: *mut ElpisRuntime,
     sub: *const CSubstrate,
     out: *mut Ticket,
 ) -> i32 {
+    request(rt, sub, out, Kind::Recoverable)
+}
+
+/// Request IDENTITY-ONLY durable publication: continuity names the live state's identity; no store holds its bytes
+/// (the caller keeps them). Resolves IDENTITY_PUBLISHED (always `recoverable` 0), never ACKNOWLEDGED. Refused with
+/// `RUNTIME_CHECKPOINT_ATTACHED` (nothing bound or captured) while a checkpoint store is attached. Otherwise as
+/// `elpis_runtime_recoverable_request`.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_identity_request(
+    rt: *mut ElpisRuntime,
+    sub: *const CSubstrate,
+    out: *mut Ticket,
+) -> i32 {
+    request(rt, sub, out, Kind::Identity)
+}
+
+unsafe fn request(rt: *mut ElpisRuntime, sub: *const CSubstrate, out: *mut Ticket, kind: Kind) -> i32 {
     let run = || -> Result<Ticket, Refusal> {
         let mut native = substrate(sub)?;
         let key = native.key();
-        runtime(rt)?.durable_request(&mut native, key)
+        runtime(rt)?.durable_request(&mut native, key, kind)
     };
     match run() {
         Ok(t) => {
@@ -866,8 +892,11 @@ mod testing {
     /// killed or the runtime closes) with exactly that step's on-disk effect; 3 checkpoint write fails; 4 checkpoint
     /// write torn after `arg` bytes, then fails; 5 checkpoint sync fails; 6 continuity record write fails; 7 record
     /// torn after `arg` bytes, then fails; 8 record sync fails with the bytes lost; 9 record sync fails although
-    /// durable. Steps: 1 taken, 2 sealed, 3 slot torn (`arg` bytes), 4 slot written (unsynced), 5 slot synced, 6
-    /// record torn (`arg` bytes), 7 record written (unsynced), 8 record synced, 9 acknowledged.
+    /// durable; 10 checkpoint write and sync succeed but the bytes on disk differ (caught by the read-back). Steps: 1
+    /// taken, 2 sealed, 3 slot torn (`arg` bytes), 4 slot written (unsynced), 5 slot synced, 6 record torn (`arg`
+    /// bytes), 7 record written (unsynced), 8 record synced, 9 acknowledged. A death at steps 1..5 resolves the ticket
+    /// ABANDONED (continuity's record never begun); at 6..8 UNCERTAIN (restart resolves it); at 9 the ticket keeps
+    /// its acknowledgment.
     #[no_mangle]
     pub unsafe extern "C" fn elpis_runtime_testing_durable_fault(
         rt: *mut ElpisRuntime,
@@ -889,6 +918,7 @@ mod testing {
             7 => Some(Plan::RecordTornFail(arg)),
             8 => Some(Plan::RecordSyncLost),
             9 => Some(Plan::RecordSyncDurable),
+            10 => Some(Plan::SlotReadBackFail),
             _ => return Rt::Invalid as i32,
         };
         rc(runtime(rt).map(|mut core| core.testing_durable_plan(plan)))

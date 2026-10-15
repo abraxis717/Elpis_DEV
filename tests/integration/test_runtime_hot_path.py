@@ -170,7 +170,7 @@ def test_gate_a_hot_transitions_never_wait_for_a_stalled_durability_worker(k1, t
         anchored = runtime.continuity.snapshot()
         runtime._core.testing_durable_hold(True)   # the worker takes no job until released
         runtime.run_learn(state, learn)
-        first = runtime.publish_durable(state, wait=False)
+        first = runtime.publish_recoverable(state, wait=False)
         requested = state.state_digest()            # what that request captured
         assert first.status == "PENDING" and runtime.durability().pending
 
@@ -196,7 +196,7 @@ def test_gate_a_hot_transitions_never_wait_for_a_stalled_durability_worker(k1, t
         assert status.live_generation == generation + TRANSITIONS
 
         # A newer request supersedes the waiting one; nothing ran yet, so it is still the only job.
-        second = runtime.publish_durable(state, wait=False)
+        second = runtime.publish_recoverable(state, wait=False)
         captured = state.state_digest()
         assert runtime._core.durable_wait(first.sequence, 0).status == "SUPERSEDED"
         runtime.run_learn(state, learn)              # volatile work after the request is not part of it

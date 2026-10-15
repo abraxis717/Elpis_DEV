@@ -73,7 +73,7 @@ static const elpis_runtime_composite_api COMPOSITE_API = {
     c_observe};
 
 static void make_durable(elpis_runtime *rt, const elpis_runtime_substrate *d) {
-    const elpis_runtime_durable_ticket t = durable_publish(rt, d);
+    const elpis_runtime_durable_ticket t = durable_publish(rt, d, ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE);
     assert(t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED);
 }
 
@@ -276,7 +276,7 @@ int main(int argc, char **argv) {
     assert(qr.live_generation == committed.live_generation);
     /* An explicit durable publication: the composite envelope (memory included) checkpointed, then published. */
     {
-        const elpis_runtime_durable_ticket t = durable_publish(rt, &d);
+        const elpis_runtime_durable_ticket t = durable_publish(rt, &d, ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE);
         assert(t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED && t.recoverable == 1 && !memcmp(t.identity, id, 32));
         OK(elpis_runtime_snapshot(rt, &snap));
         assert(!memcmp(snap.k1_state_digest, id, 32) && snap.state_format == ELPIS_CONTINUITY_FORMAT_COMPOSITE);
@@ -347,8 +347,11 @@ int main(int argc, char **argv) {
         uint8_t ck_key[1][32];
         OK(turn(rt, &d, &oc, 1, ck_key, &committed));   /* volatile */
         OK(elpis_runtime_testing_durable_fault(rt, 1, point == 1 ? 5u : 6u, 50));
-        const elpis_runtime_durable_ticket died = durable_publish(rt, &d);
-        assert(died.status == ELPIS_RUNTIME_DURABLE_ABANDONED && died.code == ELPIS_CONTINUITY_TESTING_PROCESS_DEATH);
+        const elpis_runtime_durable_ticket died = durable_publish(rt, &d, ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE);
+        /* Step 5 (slot synced): continuity's record never begun, not published. Step 6 (record torn): the record was
+         * being written, so the outcome is unknown until restart resolves it (here: torn, not published). */
+        assert(died.status == (point == 1 ? ELPIS_RUNTIME_DURABLE_ABANDONED : ELPIS_RUNTIME_DURABLE_UNCERTAIN));
+        assert(died.code == ELPIS_CONTINUITY_TESTING_PROCESS_DEATH);
         assert(elpis_runtime_fault(rt) == ELPIS_CONTINUITY_TESTING_PROCESS_DEATH);
         elpis_runtime_destroy(&rt); /* the process ends: only continuity and the checkpoint slots remain */
         elpis_ecs_composite_destroy(x);

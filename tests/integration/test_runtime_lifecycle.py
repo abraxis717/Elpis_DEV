@@ -5,7 +5,7 @@ abort before it forgets the turn, on every lifecycle path the adapter exposes: e
 (``RuntimeCore.__del__`` -> ``elpis_runtime_destroy``), reopen, and close after a fail-stop. An implicit abort
 installs nothing and publishes nothing; the same live state takes the next transaction; an FMS-resident state's
 WRITE pin is released. A commit is volatile: it ends the turn and publishes nothing (durable publication is the
-explicit ``durable_request``). The fixture map is TRAINING=NONE SEMANTICS=NONE: interface mechanics only.
+explicit ``identity_request``). The fixture map is TRAINING=NONE SEMANTICS=NONE: interface mechanics only.
 """
 from __future__ import annotations
 
@@ -82,9 +82,10 @@ def _core(path):
 
 
 def _publish(core, descriptor):
-    """Make the live state durable (explicitly; the caller waits for its own request)."""
-    done = core.durable_wait(core.durable_request(descriptor).sequence, 30)
-    assert done.acknowledged, done
+    """Make the live state's identity durable (explicitly, identity-only: no checkpoint store here; the caller waits
+    for its own request)."""
+    done = core.durable_wait(core.identity_request(descriptor).sequence, 30)
+    assert done.identity_published and not done.acknowledged, done
     return done
 
 

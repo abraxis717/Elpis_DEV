@@ -7,8 +7,8 @@ touches anything, and every managed transaction begins at the state's live coord
 inside the same guarded K1 call; the K1 header's "Live coordinate"). Binding verifies the exact retained-state
 identity before claiming. A bound state that is not provably the lineage (its lease taken by another owner, or a move
 no guard could see) fail-stops before anything is built on it or published. Managed commits are volatile; durable
-publication is the explicit ``publish_durable``. Real native K1, standalone and FMS-resident; the fixture map is
-TEST_ONLY TRAINING=NONE SEMANTICS=NONE.
+publication is the explicit ``publish_identity`` (no checkpoint store here). Real native K1, standalone and
+FMS-resident; the fixture map is TEST_ONLY TRAINING=NONE SEMANTICS=NONE.
 """
 from __future__ import annotations
 
@@ -104,7 +104,7 @@ def test_every_unmanaged_mutation_of_a_bound_state_is_refused_and_the_lineage_co
     assert (result.generation_before, result.generation_after) == (generation, _generation(state))
     assert result.durability == "VOLATILE" and runtime.fault is None
     assert runtime.live_identity(state) == (state.state_digest(), _generation(state))
-    assert runtime.publish_durable(state).acknowledged
+    assert runtime.publish_identity(state).identity_published
     assert runtime.continuity.snapshot().k1_state_digest == state.state_digest()
 
 
@@ -137,7 +137,7 @@ def test_a_second_runtime_taking_the_state_makes_the_first_fail_stop_before_any_
         assert info.value.code == MISMATCH and first.fault == MISMATCH
         assert state.snapshot() == before      # refused natively at the leased begin: nothing built, nothing published
         second.run_learn(state, _learn("second"))
-        assert second.publish_durable(state).acknowledged
+        assert second.publish_identity(state).identity_published
         assert second.continuity.snapshot().k1_state_digest == state.state_digest()
         first.close()
         second.close()
@@ -148,7 +148,7 @@ def test_close_gives_the_state_back_and_restart_verifies_it(k1, tmp_path):
         with Runtime(_config(tmp_path / "c")) as runtime:
             runtime.anchor_cognition(state)
             runtime.run_learn(state, _learn())
-            assert runtime.publish_durable(state).acknowledged   # so only the unmanaged move below can mismatch
+            assert runtime.publish_identity(state).identity_published   # so only the unmanaged move below can mismatch
             assert state.managed_lease != 0
         assert state.managed_lease == 0
         state.learn(X.x, X.y, RATE, 1)        # unmanaged again: outside the lineage

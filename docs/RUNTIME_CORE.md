@@ -10,16 +10,37 @@ RuntimeCore keeps two coordinates and never equates them:
 * **Live**: the bound state's K1 generation under RuntimeCore's managed lease (the K1 header's "Live coordinate").
   It advances by exactly one per managed commit. QUERY and LEARN operate on the live state and check this coordinate
   inside the same guarded K1 call; nothing is hashed on the HOT lane.
-* **Durable**: continuity's record (the last acknowledged retained-state identity) and, with a checkpoint store, a
-  verified slot holding that state's complete envelope. Restart resumes exactly this, never anything later.
+* **Durable**: continuity's record (the retained-state identity of the last completed durable publication) and,
+  with a checkpoint store, a verified slot holding that state's complete envelope. Restart resumes exactly this,
+  never anything later.
 
 A managed commit is **volatile**: it installs the native candidate and advances the live coordinate; nothing is
-checkpointed, published, hashed or written. Durable publication is a separate, explicit WARM operation
-(`elpis_runtime_durable_request`, Python `Runtime.publish_durable`): the HOT lane captures the envelope unsealed
-under the lease (the one synchronous step, a copy) and hands it to the runtime's **durability lane**, a worker
-thread that seals and verifies it, writes and syncs the checkpoint slot, then writes and syncs the continuity
-record, and resolves the request's ticket. The caller chooses whether to wait (`durable_wait`). A crash may lose the
-volatile work since the last acknowledgment; the API says so (`durability == "VOLATILE"`, the ticket's status).
+checkpointed, published, hashed or written. Durable publication is a separate, explicit WARM request of one of two
+kinds (below): the HOT lane captures the envelope unsealed under the lease (the one synchronous step, a copy) and
+hands it to the runtime's **durability lane**, a worker thread that seals and verifies it, makes it durable and
+resolves the request's ticket. The caller chooses whether to wait (`durable_wait`). A crash may lose the volatile work
+since the last completed publication; the API says so (`durability == "VOLATILE"`, the ticket's status).
+
+### Recoverable and identity-only publication
+
+Making a *state* durable and making its *identity* durable are different promises, and the ABI never lets one stand
+for the other:
+
+| | Recoverable | Identity-only |
+|---|---|---|
+| Request | `elpis_runtime_recoverable_request`, Python `Runtime.publish_recoverable` | `elpis_runtime_identity_request`, Python `Runtime.publish_identity` |
+| Requires | an attached checkpoint store (the owner of the bytes); otherwise refused `RUNTIME_RECOVERY_UNAVAILABLE` before anything is bound or captured, never downgraded | no checkpoint store attached; otherwise refused `RUNTIME_CHECKPOINT_ATTACHED` (with a store every publication must be recoverable) |
+| Lane | seal + verify, slot write + `fdatasync`, **read back and verify** the slot is exactly the captured envelope (`CHECKPOINT_IO` and the slot withdrawn otherwise), then the continuity record + `fdatasync` | seal + verify, the continuity record + `fdatasync` |
+| Success | `ACKNOWLEDGED`, `recoverable` always 1: restart resumes exactly this state from the store | `IDENTITY_PUBLISHED`, `recoverable` always 0: never an acknowledgment; the caller keeps the bytes and restart can rebind only a state the caller supplies |
+
+The ticket carries its `kind`; `last_acknowledged` in the lane's status and the `durable_acknowledged` counter count
+recoverable acknowledgments only; the Python adapter re-checks the law on every ticket (an `ACKNOWLEDGED` ticket that
+is not recoverable, or a recoverable identity-only one, is refused as a contract violation). Attaching a checkpoint
+store is refused while a publication is pending or running (`RUNTIME_DURABLE_BUSY`), so an identity-only request never
+runs against a store. The explicit anchor is a control operation, not a publication request: it persists the
+envelope when a store is attached and otherwise anchors the identity only (`recover` then reports
+`CHECKPOINT_MISSING` until a recoverable publication of a state makes it resumable; a recoverable publication of the
+anchored state itself writes and verifies the slot without a new continuity record).
 
 **Superseded requirement.** Through ABI v3, every committed LEARN published its new expected K1 identity to
 continuity before returning (one 176-byte record write and one `fdatasync`), and with a checkpoint store also wrote
@@ -33,9 +54,11 @@ recorded evidence produced under v3 stays as recorded.
   query        leased_query at the live generation       (idle)
   turn_begin   leased_txn_begin_at the live generation
   turn_commit  leased_txn_commit: volatile, no I/O
-  durable_request  leased_capture (unsealed copy) --->   seal + verify -> slot write + fdatasync
-                   returns PENDING at once                -> record write + fdatasync -> ticket
-  durable_wait / durable_status: lane lock only  <---    ACKNOWLEDGED / FAILED / UNCERTAIN / SUPERSEDED / ...
+  recoverable_request | identity_request                 seal + verify
+               leased_capture (unsealed copy) --->       [recoverable] slot write + fdatasync + read-back verify
+               returns PENDING at once                   -> record write + fdatasync -> ticket
+  durable_wait / durable_status: lane lock only  <---    ACKNOWLEDGED | IDENTITY_PUBLISHED / FAILED / UNCERTAIN /
+                                                         ABANDONED / SUPERSEDED / ...
 ```
 
 ## What RuntimeCore owns
@@ -48,7 +71,7 @@ recorded evidence produced under v3 stays as recorded.
 | K1 lineage binding | `Runtime._turn_substrate` and `_reconcile_cognition_substrate` | `Core.bound` (`Key`: kind, native handle, resident id, owner identity, dimension; and the live generation), verified once against the durable expected identity (or the live identity an explicit release gave back) |
 | Managed QUERY (read-only) | none (the turn was the only cognitive operation) | `query`: one native `leased_query` (the answer `f_W(x)` and the generation of the state that computed it, under one K1 guard); no transaction, no commit, no publication, no digest |
 | Managed LEARN (the turn's native transaction) | Python sequenced `txn_begin`, `run_schedule`, `commit_identity`, abort | `turn_begin` (lineage check at the live generation, begin, one schedule, cold-path capacity growth) and `turn_commit` (volatile) / `turn_abort` |
-| Durable publication | Python `commit_cognition_transition` + fault flag, once per turn | explicit `durable_request` on the durability lane (`durable.rs`); `durable_wait`, `durable_status` |
+| Durable publication | Python `commit_cognition_transition` + fault flag, once per turn | explicit `recoverable_request` / `identity_request` on the durability lane (`durable.rs`); `durable_wait`, `durable_status` |
 | Evolution reservation / finalization | Python reserve, execute, finalize, fault on exception | `evolution_reserve` / `evolution_finalize` / `evolution_abandon` / `evolution_reconcile`: one attempt in flight |
 
 What stays at the language boundary, because it is semantics or validation rather than mutable authority:
@@ -184,17 +207,21 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
   native commit (volatile: the live generation advances by one; no publication, no checkpoint, no digest, no I/O).
   Capacity beyond the reservation is grown on the cold path (abort, `reserve`, begin again). Every refusal before
   the commit leaves `(W, epoch, H, a)` byte-for-byte unchanged; a stale source is `ECS_STALE`.
-* **Durable publication.** `durable_request` (bind if needed; refused while a turn is open, on an unanchored lineage
-  and while the lane is faulted) captures the envelope unsealed under the lease at the live generation and returns
-  a `PENDING` ticket at once. The handoff is bounded: one job runs and at most one waits; a newer request replaces a
-  waiting one (`SUPERSEDED`, never silently acknowledged); a request never waits for the worker. The worker seals
-  and verifies the capture; when it already is the durable authority nothing is written; with a checkpoint store it
-  refuses while an unresolved candidate exists (`CHECKPOINT_UNRESOLVED`) and writes and syncs the slot that does
-  not hold the authority; then continuity publishes `durable -> captured`. Ticket statuses: `ACKNOWLEDGED` (durable;
-  `recoverable` when a synced slot holds the envelope; without a store only the identity is durable), `FAILED`
-  (nothing durable changed: a written slot is withdrawn; not a lane fault), `UNCERTAIN` (the continuity
-  publication's outcome is unknown: the lane faults, sticky until reopen, and restart resolves it to exactly one
-  complete record), `ABANDONED` (closed, or the process died, first), `UNKNOWN` (resolved too long ago to be kept).
+* **Durable publication.** `recoverable_request` / `identity_request` (the kind checked against the attached store
+  first; bind if needed; refused while a turn is open, on an unanchored lineage and while the lane is faulted)
+  captures the envelope unsealed under the lease at the live generation and returns a `PENDING` ticket at once. The
+  handoff is bounded: one job runs and at most one waits; a newer request replaces a waiting one (`SUPERSEDED`,
+  never silently acknowledged); a request never waits for the worker. The worker seals and verifies the capture.
+  Recoverable: it refuses while an unresolved candidate exists (`CHECKPOINT_UNRESOLVED`), writes and syncs the slot
+  that does not hold the authority (unless a slot already holds the capture), reads the slot back and verifies it,
+  and, unless the capture already is the durable authority, continuity publishes `durable -> captured`.
+  Identity-only: continuity publishes `durable -> captured` (nothing when it already is the authority). Ticket
+  statuses: `ACKNOWLEDGED` (recoverable only, always `recoverable`), `IDENTITY_PUBLISHED` (identity-only only, never
+  `recoverable`), `FAILED` (nothing durable changed: a written slot is withdrawn; not a lane fault), `UNCERTAIN`
+  (outcome unknown: continuity's record was being written or synced when the publication failed or the process
+  died; the lane faults, sticky until reopen, and restart resolves it to exactly one complete record, possibly this
+  one), `ABANDONED` (not published: closed, or the process died, before continuity's record was begun), `UNKNOWN`
+  (resolved too long ago to be kept).
   Operator discard / adopt and the legacy import refuse while the lane is busy (`RUNTIME_DURABLE_BUSY`). The HOT
   lane keeps thinking through a FAILED or UNCERTAIN publication; only a lost lineage (above) or a simulated process
   death fail-stops it.
@@ -210,19 +237,31 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
   over real standalone and FMS-resident K1 (`native/runtime/tests/test_runtime_lifecycle.c`,
   `tests/integration/test_runtime_lifecycle.py`): abort, commit, close, double close, destroy, reopen, fail-stop
   then close, and lifecycle calls without a turn (no native call).
-* **Crash law.** A K1 commit is never rolled back. A crash loses the volatile work since the last acknowledgment,
-  never more: restart resumes exactly continuity's authority (the last acknowledged state, or, when an uncertain
-  publication's record landed complete, the requested one) and never adopts an unacknowledged state. Durability
-  crash matrix (`durable.rs` steps; `tests.rs` simulated death at every step;
-  `tests/integration/test_durable_process_kill.py` real `SIGKILL` at every step):
+* **Crash law.** A K1 commit is never rolled back. Three things are kept apart: the **durable publication** (the
+  synced continuity record), the **caller's acknowledgment** (the lane's report of it), and an **unknown outcome**
+  (a death or failure between the two, or during the record's write or sync). The invariant: *restart recovers only
+  a complete, authorized durable state, which may include a publication completed immediately before the caller
+  lost its acknowledgment.* A missing acknowledgment is never evidence that nothing became durable; restart never
+  recovers volatile work that was never requested, and never a state continuity does not name (checkpoint bytes
+  never authorize themselves; a candidate waits for the operator). Checksums, generation ordering, the predecessor
+  authority of every record and operator reconciliation are unchanged. Durability crash matrix (`durable.rs` steps;
+  `tests.rs` simulated death at every step; `tests/integration/test_durable_process_kill.py` real `SIGKILL` at every
+  step and after the acknowledgment was delivered):
 
-  | Death at | On disk | Restart |
-  |---|---|---|
-  | 1 taken, 2 sealed (capture, seal) | nothing | the acknowledged state |
-  | 3 slot torn, 4 slot written, 5 slot synced | a partial or complete candidate slot | the acknowledged state; a complete slot is `CANDIDATE_UNRESOLVED` until an operator discards or adopts it |
-  | 6 record torn | the slot and a partial record | the acknowledged state (a torn record is not an authority); candidate unresolved |
-  | 7 record written, 8 record synced | the complete record | the new state (a process death keeps the page cache; only a power loss can drop an unsynced record, and then restart sees the acknowledged state) |
-  | 9 acknowledged | everything | the new state |
+  | Death at | Ticket (in-process view) | On disk | Restart |
+  |---|---|---|---|
+  | 1 taken, 2 sealed (before the checkpoint write) | `ABANDONED` | nothing | the previous authority |
+  | 3 slot torn (a partial checkpoint write) | `ABANDONED` | a partial slot | the previous authority (a torn slot is not a checkpoint) |
+  | 4 slot written, 5 slot synced (before continuity) | `ABANDONED` | a complete candidate slot | the previous authority; `CANDIDATE_UNRESOLVED` until an operator discards or adopts it |
+  | 6 record torn (a partial continuity write) | `UNCERTAIN` | the slot and a partial record | the previous authority (a torn record is not an authority); candidate unresolved |
+  | 7 record written, not synced | `UNCERTAIN` | the complete record in the page cache | process kill: the new state; power loss: possibly the previous authority (the record may be lost) |
+  | 8 record synced, before the acknowledgment | `UNCERTAIN` | the synced record | the new state, although the caller was never acknowledged |
+  | 9 acknowledged, before or after delivery | `ACKNOWLEDGED` | everything | the new state |
+
+  **Process kill is not power loss.** A process death (`SIGKILL`, abort) keeps the kernel's page cache, so a written
+  but unsynced record (step 7) survives it; a power loss may drop it, and restart then finds the previous authority
+  (in-process sync-loss faults cover that branch). The `SIGKILL` tests prove the process-death column only; no test
+  here proves power-loss durability, which depends on the device honoring `fdatasync`.
 * **K1 Recovery R0.** With an operator-provisioned checkpoint store attached (`elpis_runtime_checkpoint_attach`,
   `RuntimeConfig.k1_checkpoint_dir`), the anchor persists the anchored state's complete envelope before continuity
   anchors it, and every durable publication persists its capture's complete envelope in the slot that does not hold

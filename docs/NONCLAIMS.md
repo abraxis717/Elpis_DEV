@@ -141,11 +141,16 @@ are not evidence that the contract has any effect.
   outside the runtime.
 * **Volatile work is volatile.** Ordinary inference and managed LEARNs do not
   wait for durability, so a crash loses every transition since the last
-  acknowledged durable publication. Nothing claims otherwise: results report
-  `durability == "VOLATILE"`, and only an `ACKNOWLEDGED` ticket (recoverable
-  when a checkpoint slot holds it) means restart can resume that state. The
-  acknowledgment's durability is POSIX `fdatasync` on the store's filesystem;
-  a process kill keeps written-but-unsynced bytes, a power loss may not.
+  completed durable publication. Nothing claims otherwise: results report
+  `durability == "VOLATILE"`, and only an `ACKNOWLEDGED` ticket (a recoverable
+  publication: always backed by a read-back verified checkpoint slot) means
+  restart can resume that state from the store. `IDENTITY_PUBLISHED` (no store)
+  makes only the identity durable and is not an acknowledgment of recoverable
+  state. A missing acknowledgment is not a claim that nothing became durable:
+  restart may resume a publication that completed just before the caller lost
+  its acknowledgment. Durability is POSIX `fdatasync` on the store's
+  filesystem; a process kill keeps written-but-unsynced bytes, a power loss may
+  not, and no test here proves power-loss behaviour of a device.
 * **Single process, single owner.** A directory `flock` excludes a second
   owner on the same host. There is no cross-process transport, federation,
   replication or shared-reader semantics. One open runtime owns one K1

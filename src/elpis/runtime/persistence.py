@@ -193,7 +193,8 @@ AUTONOMOUS_OPERATIONS = frozenset({
     "run_query",           # read-only: writes nothing at all
     "run_learn",           # explicit LearnAuthority; a volatile commit: writes nothing at all
     "run_turn",            # LEGACY learned turn: a LEARN (explicit LearnAuthority); writes nothing at all
-    "publish_durable",     # explicit durable publication: the fixed checkpoint and continuity slots only
+    "publish_recoverable",  # explicit recoverable publication: the fixed checkpoint and continuity slots only
+    "publish_identity",    # explicit identity-only publication: the fixed continuity slots only
     "durability",          # read-only: the durability lane's state
     "live_identity",       # read-only: the live state's identity
     "recover_k1",          # read-only: what restart may do with the lineage

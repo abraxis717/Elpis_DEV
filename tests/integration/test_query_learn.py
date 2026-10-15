@@ -283,9 +283,9 @@ def test_managed_learn_needs_authority_commits_volatile_and_publishes_only_on_re
         assert runtime.run_query(subject.state, _query()).live_generation == result.generation_after
         assert subject.retained() == after
         # Durable publication is explicit: then, and only then, continuity names exactly the learned state.
-        ticket = runtime.publish_durable(subject.state)
+        ticket = runtime.publish_identity(subject.state)   # no checkpoint store: identity only
         assert (ticket.status, ticket.identity, ticket.generation) == \
-            ("ACKNOWLEDGED", subject.state.state_digest(), result.generation_after)
+            ("IDENTITY_PUBLISHED", subject.state.state_digest(), result.generation_after)
         assert runtime.continuity.snapshot().k1_state_digest == subject.state.state_digest()
         assert runtime.continuity.snapshot().generation == durable.generation + 1
 

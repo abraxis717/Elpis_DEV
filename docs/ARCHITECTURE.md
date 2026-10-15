@@ -825,7 +825,8 @@ history:
 | `run_query` | codec -> one read-only native `leased_query` -> codec (`elpis.runtime.cognition`) | none (QUERY writes nothing) |
 | `run_learn` | codec -> native K1 transaction under an explicit `LearnAuthority` | none: the commit is volatile (ABI v4) |
 | `run_turn` | LEGACY learned turn: a LEARN whose S3 readout is decoded | none: the commit is volatile (ABI v4) |
-| `publish_durable` | RuntimeCore's durability lane: capture, seal, checkpoint slot, continuity record | the acknowledged K1 state digest (and its checkpoint slot) |
+| `publish_recoverable` | RuntimeCore's durability lane: capture, seal, checkpoint slot (read back verified), continuity record; needs the checkpoint store | the acknowledged K1 state digest and its checkpoint slot |
+| `publish_identity` | RuntimeCore's durability lane: capture, seal, continuity record; only without a checkpoint store | the published K1 state digest (identity only; never an acknowledgment) |
 | `durability`, `live_identity` | read the durability lane / the bound state's identity | none |
 | `release` | RuntimeCore releases the bound state's K1 lease | none |
 | `recover_k1` | K1 Recovery R0 disposition (read-only) | none |
@@ -883,8 +884,9 @@ managed commit is volatile and publishes nothing. An explicit durable
 publication publishes `durable -> captured` off the HOT lane; if it fails,
 nothing durable changed (or, uncertain, restart resolves it), the committed K1
 state is not rolled back and the HOT lane keeps thinking. Restart resumes
-exactly the last acknowledged state; volatile work since then is lost by a
-crash and never adopted. A bound state is claimed under RuntimeCore's K1
+exactly the last completed publication (possibly one whose acknowledgment a
+crash prevented); volatile work since then is lost by a crash and never
+adopted. A bound state is claimed under RuntimeCore's K1
 lease, so an unmanaged mutation is refused (`LEASED`).
 
 With an operator-provisioned K1 Recovery R0 store (docs/K1_RECOVERY_R0.md) the

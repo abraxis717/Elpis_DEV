@@ -142,15 +142,17 @@ def test_runtime_import_closure_loads_no_dsv_model_machinery():
 # disposition (native/runtime); it writes nothing. ``recover_k1`` reads what restart
 # may do with the K1 lineage (K1 Recovery R0); ``discard_k1_candidate`` and
 # ``adopt_k1_candidate`` are the explicit operator reconciliation of one named
-# checkpoint candidate. ``publish_durable`` is the explicit durable publication of
-# the live K1 state (RuntimeCore ABI v4, docs/RUNTIME_CORE.md "Live and durable
-# authority": a managed LEARN is volatile, durability is requested separately);
+# checkpoint candidate. ``publish_recoverable`` and ``publish_identity`` are the
+# explicit durable publications of the live K1 state, of two kinds never confused
+# (RuntimeCore ABI v4, docs/RUNTIME_CORE.md "Live and durable authority": a
+# managed LEARN is volatile, durability is requested separately);
 # ``durability`` reads the durability lane's state and ``live_identity`` the live
 # state's identity. None of them executes a model.
 RUNTIME_OPERATIONS = {"open", "close", "run_ingress", "admit_retrieval", "publish_canonical",
                       "evolution_authority", "evolve", "admit_context", "run_turn", "anchor_cognition", "fault",
                       "run_query", "run_learn", "release", "recover_k1", "discard_k1_candidate",
-                      "adopt_k1_candidate", "publish_durable", "durability", "live_identity"}
+                      "adopt_k1_candidate", "publish_recoverable", "publish_identity", "durability",
+                      "live_identity"}
 
 
 def test_runtime_composes_no_model_operation():

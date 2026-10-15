@@ -50,9 +50,9 @@ or hypothetical future use did not count as a consumer.
 
 **Correction (Elpis_DEV, RuntimeCore ABI v4).** The first row's "Sync: yes (after K1 commit, before return)" is
 superseded. Continuity still keeps exactly one current expected identity, but it is the last **explicitly
-acknowledged** one: a managed commit is volatile (it advances the live coordinate only), and the identity is
-published by RuntimeCore's durability lane when a caller requests durable publication (docs/RUNTIME_CORE.md, "Live
-and durable authority"). Continuity no longer decides when the runtime may think. Nothing else in this census
+published** one: a managed commit is volatile (it advances the live coordinate only), and the identity is published
+by RuntimeCore's durability lane when a caller requests durable publication, recoverable (the state's bytes in the
+checkpoint store first) or identity-only (docs/RUNTIME_CORE.md, "Live and durable authority"). Continuity no longer decides when the runtime may think. Nothing else in this census
 changes; the retired event-history kernel stays retired, and continuity is not the contextual lane's memory.
 
 ## K1 identity rule
@@ -158,7 +158,10 @@ corrupt / ambiguous register        -> CONTINUITY_CORRUPT
 A K1 commit is never rolled back because a publication failed. A refused publication resolves its request
 `FAILED` (nothing durable changed); an uncertain one resolves it `UNCERTAIN` and faults the durability lane until
 reopen; the HOT lane keeps its live state either way. Restart resolves through the law above: a crash loses the
-volatile work since the last acknowledgment, never more, and no missing turn is synthesized. One open `Runtime`
+volatile work since the last completed publication, never more, and no missing turn is synthesized. A publication
+whose record completed may be the authority even though its caller never received the acknowledgment (the process
+died first): a missing acknowledgment proves nothing about durability, and restart reads only what continuity
+names. One open `Runtime`
 owns one K1 lineage handle; the binding, the live coordinate and the fail-stop are RuntimeCore's
 (docs/RUNTIME_CORE.md).
 

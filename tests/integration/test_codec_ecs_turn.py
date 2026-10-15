@@ -401,10 +401,16 @@ def test_a_runtime_turn_is_volatile_and_durable_publication_is_explicit(k1, tmp_
             assert state.state_digest() != anchored.k1_state_digest
             # The live identity on request is the live state's; durability is a separate, explicit act.
             assert runtime.live_identity(state) == (state.state_digest(), state.generation)
-            ticket = runtime.publish_durable(state)
-            assert (ticket.status, ticket.identity, ticket.generation) == \
-                ("ACKNOWLEDGED", state.state_digest(), state.generation)
-            assert not ticket.recoverable            # no checkpoint store: only the identity is durable
+            # Recoverable durability needs a checkpoint owner: refused (never downgraded), nothing captured.
+            with pytest.raises(CompositionError) as info:
+                runtime.publish_recoverable(state)
+            assert info.value.code == "RUNTIME_RECOVERY_UNAVAILABLE"
+            assert runtime.continuity.snapshot() == anchored and runtime.durability().last_requested.sequence == 0
+            ticket = runtime.publish_identity(state)
+            assert (ticket.status, ticket.kind, ticket.identity, ticket.generation) == \
+                ("IDENTITY_PUBLISHED", "IDENTITY", state.state_digest(), state.generation)
+            # No checkpoint store: only the identity is durable, and that is never an acknowledgment.
+            assert not ticket.recoverable and not ticket.acknowledged and ticket.identity_published
             snap = runtime.continuity.snapshot()
             assert snap.k1_state_digest == state.state_digest()
             assert snap.generation == anchored.generation + 1
@@ -452,7 +458,7 @@ def test_matched_restart_resumes_without_a_new_anchor(k1, tmp_path):
             first.anchor_cognition(state)
             first.run_turn(state, "before restart", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
                            authority=LEARN)
-            assert first.publish_durable(state).acknowledged
+            assert first.publish_identity(state).identity_published
             generation = first.continuity.snapshot().generation
         with Runtime(_config(tmp_path / "c")) as restarted:
             result = restarted.run_turn(state, "resume", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
@@ -521,7 +527,7 @@ def test_a_failed_durable_publication_never_stops_thinking_and_restart_resolves_
             published = state.snapshot()
             action = {"write": 6, "sync-lost": 8, "sync-durable": 9}[failure]
             runtime._core.testing_durable_fault(action)
-            ticket = runtime.publish_durable(state)
+            ticket = runtime.publish_identity(state)
             if failure == "write":
                 assert (ticket.status, ticket.code) == ("FAILED", "CONTINUITY_PUBLICATION_REFUSED")
                 assert runtime.continuity.snapshot() == anchored        # nothing durable changed
@@ -529,7 +535,7 @@ def test_a_failed_durable_publication_never_stops_thinking_and_restart_resolves_
                 assert (ticket.status, ticket.code) == ("UNCERTAIN", "CONTINUITY_PUBLICATION_UNCERTAIN")
                 assert runtime.durability().fault == "CONTINUITY_PUBLICATION_UNCERTAIN"   # sticky until reopen
                 with pytest.raises(CompositionError) as info:
-                    runtime.publish_durable(state)
+                    runtime.publish_identity(state)
                 assert info.value.code == "CONTINUITY_PUBLICATION_UNCERTAIN"
             # The HOT lane is not fail-stopped: thinking continues on the live state.
             assert runtime.fault is None

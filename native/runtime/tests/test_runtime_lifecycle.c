@@ -186,10 +186,10 @@ static void commit_turn(elpis_runtime *rt, const subject *s) {
     assert(out.committed == 1 && out.live_generation == out.transition.generation_after);
 }
 
-/* An explicit durable publication of the live state, waited for. */
+/* An explicit identity-only publication of the live state (no checkpoint store here), waited for. */
 static void make_durable(elpis_runtime *rt, const subject *s) {
-    elpis_runtime_durable_ticket t = durable_publish(rt, &s->d);
-    assert(t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED);
+    elpis_runtime_durable_ticket t = durable_publish(rt, &s->d, ELPIS_RUNTIME_DURABLE_KIND_IDENTITY);
+    assert(t.status == ELPIS_RUNTIME_DURABLE_IDENTITY_PUBLISHED && t.recoverable == 0);
 }
 
 static uint64_t aborts(elpis_runtime *rt) {

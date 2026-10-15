@@ -93,6 +93,9 @@ pub mod probe {
         SyncFail,
         /// The complete slot is written and synced, then the process dies (before anything else is published).
         DieAfterSync,
+        /// The complete slot is written and synced and the write reports success, but one envelope byte on disk
+        /// differs from what was written (a lost or misdirected write): only a read-back can tell.
+        Garble,
     }
 
     #[repr(C)]
@@ -320,6 +323,12 @@ impl Store {
             self.probe.plan = None;
             self.probe.died = true;
             return Err(Rt::CheckpointIo);
+        }
+        #[cfg(any(test, feature = "testing"))]
+        if self.probe.plan == Some(probe::Fault::Garble) {
+            self.probe.plan = None;
+            let at = HEADER + self.capacity / 2;
+            let _ = self.files[target].write_all_at(&[!self.buffer[at]], at as u64);
         }
         let slot = Slot { generation, identity };
         self.slots[target] = Some(slot);

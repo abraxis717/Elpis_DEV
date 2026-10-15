@@ -32,8 +32,10 @@
 //!   VOLATILE commit: no checkpoint, no continuity publication, no I/O. Every refusal before the commit leaves the
 //!   complete retained state byte-for-byte unchanged (the native transaction law).
 //! * Durable publication: `durable_request` captures the live state (unsealed, under the lease, at the live
-//!   generation) and hands it to the durability lane; it returns at once. The lane seals, checkpoints and publishes;
-//!   acknowledgment means recoverable (docs/K1_RECOVERY_R0.md). Never implied by a turn.
+//!   generation) and hands it to the durability lane; it returns at once. A RECOVERABLE request (checkpoint store
+//!   required) is ACKNOWLEDGED only after the slot is read back verified and continuity names it: acknowledgment
+//!   means recoverable (docs/K1_RECOVERY_R0.md). An IDENTITY request (no store attached) resolves
+//!   IDENTITY_PUBLISHED, never ACKNOWLEDGED. Never implied by a turn.
 //! * Turn lifecycle: once a native transaction is open, exactly one terminal native action ends it before
 //!   RuntimeCore forgets the turn: the commit, or an abort. There is no third disposition. An explicit
 //!   `turn_abort`, a refused commit, `close`, a reopen and destruction (`Drop`) all abort through the capability
@@ -59,7 +61,7 @@ use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, StateF
 
 use crate::checkpoint::{self, Disposition};
 use crate::code::{Error, Rt};
-use crate::durable::{Lane, Ticket};
+use crate::durable::{Kind, Lane, Ticket};
 use crate::fuel::{self, Budget};
 use crate::substrate::{
     features, k1_envelope_bytes, Experience, K1Ops, Key, Observation, ScheduleOutcome, Transition, TxnAbort, K1_BUSY,
@@ -888,10 +890,13 @@ impl Core {
     /// Request durable publication of the live state (binding it first if needed). The state's envelope is captured
     /// UNSEALED under this runtime's lease at the live generation (`leased_capture`: the one synchronous step) and
     /// handed to the durability lane, which seals, checkpoints and publishes it. Returns at once with a PENDING
-    /// ticket; it never waits for the lane. Refused while a managed turn is open, while the lane is faulted (its
+    /// ticket; it never waits for the lane. `kind` is what the caller asks to make durable: the complete state
+    /// ([`Kind::Recoverable`], refused with `RUNTIME_RECOVERY_UNAVAILABLE` unless a checkpoint store is attached) or
+    /// only its identity ([`Kind::Identity`], refused with `RUNTIME_CHECKPOINT_ATTACHED` while one is attached).
+    /// Refused, before anything is bound or captured, while a managed turn is open, while the lane is faulted (its
     /// fault code) and on an unanchored lineage (anchoring is explicit). A request that finds an earlier one still
     /// waiting supersedes it (bounded: one waiting job).
-    pub fn durable_request(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<Ticket, Refusal> {
+    pub fn durable_request(&mut self, sub: &mut dyn K1Ops, key: Key, kind: Kind) -> Result<Ticket, Refusal> {
         self.live()?;
         if self.turn.is_some() {
             return Err(Rt::TurnOpen.into());
@@ -902,24 +907,33 @@ impl Core {
         if let Some(code) = self.lane.fault() {
             return Err(code.into());
         }
+        match (kind, self.lane.capacity().is_some()) {
+            (Kind::Recoverable, false) => return Err(Rt::RecoveryUnavailable.into()),
+            (Kind::Identity, true) => return Err(Rt::CheckpointAttached.into()),
+            _ => {}
+        }
         self.reconcile(sub, key)?;
         let size = self.capture_size(sub, key)?;
         let live = self.bound.expect("bound").generation;
         let provisioned = self.lane.capacity().is_some();
         let envelope = self.capture(sub, size, live, provisioned)?;
-        Ok(self.lane.enqueue(live, sub.format(), envelope, sub.sealer())?)
+        Ok(self.lane.enqueue(kind, live, sub.format(), envelope, sub.sealer())?)
     }
 
     // -- K1 Recovery R0: the bounded checkpoint store -------------------------------------------------------------
 
-    /// Attach the provisioned checkpoint store (an open runtime with no turn in flight). From then on the anchor and
-    /// every durable publication persist the complete envelope before continuity names it.
+    /// Attach the provisioned checkpoint store (an open runtime with no turn in flight and no durable publication
+    /// pending or running: an identity-only request admitted without a store never runs with one). From then on the
+    /// anchor and every durable publication persist the complete envelope before continuity names it.
     pub fn checkpoint_attach(&mut self, directory: &Path) -> Result<(), Refusal> {
         if !self.open {
             return Err(Rt::Closed.into());
         }
         if self.turn.is_some() {
             return Err(Rt::TurnOpen.into());
+        }
+        if self.lane.busy() {
+            return Err(Rt::DurableBusy.into());
         }
         let store = checkpoint::Store::open(directory)?;
         self.lane.with_stores(|st| st.checkpoint = Some(store))?;

@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
     turn(rt, &d, &live);
     take(&main_io);
     take(&other_io);
-    elpis_runtime_durable_ticket t = durable_publish(rt, &d);
+    elpis_runtime_durable_ticket t = durable_publish(rt, &d, ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE);
     assert(t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED && t.recoverable == 1);
     const long published_main = take(&main_io), published_worker = take(&other_io);
     printf("durable publication: %ld persistent-I/O calls on the worker, %ld on the caller\n", published_worker,
@@ -173,7 +173,7 @@ int main(int argc, char **argv) {
     assert(elpis_runtime_testing_durable_hold(rt, 1) == ELPIS_RUNTIME_OK);
     turn(rt, &d, &live);
     elpis_runtime_durable_ticket pending;
-    OK(elpis_runtime_durable_request(rt, &d, &pending));
+    OK(elpis_runtime_recoverable_request(rt, &d, &pending));
     assert(pending.status == ELPIS_RUNTIME_DURABLE_REQUESTED && pending.generation == live);
     uint8_t captured[32];
     {

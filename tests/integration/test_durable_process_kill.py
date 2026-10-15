@@ -1,22 +1,32 @@
-"""Gate D with real process death: SIGKILL inside a durable publication, then restart in a fresh process.
+"""Gate D with real process death: SIGKILL inside a recoverable publication, then restart in a fresh process.
 
-A child process runs a managed runtime over real native K1 with an operator-provisioned checkpoint store: it anchors,
-learns, publishes durably (acknowledged), learns again (volatile work), and requests one more durable publication
-whose durability worker is parked at one step of the publication (the testing library's park: the worker stops with
-exactly that step's effect on disk). The parent then kills the child with SIGKILL: no destructor, no close, no flush.
-A fresh process restarts over the same directories and must recover exactly what continuity authorizes:
+Durable publication, caller acknowledgment and unknown outcome are three different things. A child process runs a
+managed runtime over real native K1 with an operator-provisioned checkpoint store: it anchors, learns, publishes
+recoverably (acknowledged), learns again (volatile work), and requests one more recoverable publication whose
+durability worker is parked at one step of the publication (the testing library's park: the worker stops with exactly
+that step's effect on disk), or (the last crash point) waits until that acknowledgment was delivered to it. The parent
+then kills the child with SIGKILL: no destructor, no close, no flush. A fresh process restarts over the same
+directories and must recover exactly what continuity authorizes:
 
-| parked at | on disk | restart |
-|---|---|---|
-| 1 taken, 2 sealed | nothing written | RESUMABLE: the acknowledged state; no candidate |
-| 3 slot torn | a partial slot | RESUMABLE: a torn slot is not a checkpoint |
-| 4 slot written, 5 slot synced | a complete candidate slot | CANDIDATE_UNRESOLVED until an operator decides |
-| 6 record torn | the slot, a partial record | CANDIDATE_UNRESOLVED: a torn record is not an authority |
-| 7 record written, 8 record synced, 9 acknowledged | the slot and the complete record | RESUMABLE: the new state |
+| crash point | parked at | on disk | restart |
+|---|---|---|---|
+| before the checkpoint write | 1 taken, 2 sealed | nothing written | RESUMABLE: the acknowledged state; no candidate |
+| during a partial checkpoint write | 3 slot torn | a partial slot | RESUMABLE: a torn slot is not a checkpoint |
+| after the checkpoint write / sync, before continuity | 4 slot written, 5 slot synced | a complete candidate slot | CANDIDATE_UNRESOLVED until an operator decides |
+| during a partial continuity write | 6 record torn | the slot, a partial record | CANDIDATE_UNRESOLVED: a torn record is not an authority |
+| after the continuity write, before its sync | 7 record written | the slot and the complete record (page cache) | RESUMABLE: the new state |
+| after the durable sync, before the acknowledgment was delivered | 8 record synced, 9 acknowledged | the slot and the synced record | RESUMABLE: the new state |
+| after the acknowledgment was delivered | (not parked) | the slot and the synced record | RESUMABLE: the acknowledged state |
 
-Steps 7 and 8 differ from the acknowledged step only for a power loss (the record not yet synced); a process kill
-leaves the kernel's page cache intact, so the complete record is the authority. Nothing else is ever recovered: never
-the volatile work after the last request, never an unauthorized candidate. A randomized loop (STRESS lane) kills a
+At steps 7..9 the caller never received its acknowledgment, yet restart resumes the requested state: a lost
+acknowledgment is not evidence that nothing became durable. Restart recovers only a complete, authorized durable
+state, which may be a publication that completed immediately before the caller lost its acknowledgment; never the
+volatile work after the last request, never an unauthorized candidate.
+
+Process kill is not power loss. SIGKILL leaves the kernel's page cache intact, so a written but unsynced record (step
+7) survives and is the authority; after a power loss it may not, and restart would find the previous authority (the
+lane's simulated sync-loss faults cover that branch in-process: tests/integration/test_k1_recovery.py). Nothing here
+proves power-loss durability, which depends on the device honoring fdatasync. A randomized loop kills a
 child that learns and publishes continuously at random moments. The fixture map is TEST_ONLY TRAINING=NONE
 SEMANTICS=NONE: mechanics only.
 """
@@ -67,19 +77,26 @@ if mode.startswith("park:"):
     step, arg = (int(v) for v in mode[5:].split(","))
     for n in range(3):
         runtime.run_learn(state, learn(f"before {n}"))
-    acked = runtime.publish_durable(state)
+    acked = runtime.publish_recoverable(state)
     assert acked.acknowledged and acked.recoverable
     for n in range(2):
         runtime.run_learn(state, learn(f"candidate {n}"))
     candidate = runtime.live_identity(state)[0]
     runtime._core.testing_durable_fault(2, step, arg)      # park the worker at `step`
-    pending = runtime.publish_durable(state, wait=False)
+    pending = runtime.publish_recoverable(state, wait=False)
     runtime.run_learn(state, learn("volatile, never requested"))   # the HOT lane is not blocked by the park
     volatile = runtime.live_identity(state)[0]
     while runtime.durability().parked != step:
         time.sleep(0.005)
     say(parked=step, authorized=acked.identity.hex(), candidate=candidate.hex(), volatile=volatile.hex(),
         pending=pending.status)
+    time.sleep(3600)                                          # killed here
+elif mode == "delivered":                                     # killed after the acknowledgment reached the caller
+    runtime.run_learn(state, learn("before"))
+    acked = runtime.publish_recoverable(state)
+    runtime.run_learn(state, learn("volatile, never requested"))
+    say(acked=acked.identity.hex(), status=acked.status, recoverable=acked.recoverable,
+        volatile=runtime.live_identity(state)[0].hex())
     time.sleep(3600)                                          # killed here
 else:                                                         # "loop": learn and publish until killed
     n = 0
@@ -88,7 +105,7 @@ else:                                                         # "loop": learn an
             runtime.run_learn(state, learn(f"loop {n}"))
             n += 1
         say(requested=runtime.live_identity(state)[0].hex())
-        ticket = runtime.publish_durable(state)
+        ticket = runtime.publish_recoverable(state)
         say(acked=ticket.identity.hex(), status=ticket.status)
 """
 
@@ -115,7 +132,7 @@ def _resume(k1, runtime, envelope):   # noqa: F811
     with K1State.restore(k1, envelope, max_rows=8) as resumed:
         result = runtime.run_learn(resumed, LearnRequest("after", ByteTokens(), admitted(FixtureMap()), LEARN))
         assert result.durability == "VOLATILE"
-        ticket = runtime.publish_durable(resumed)
+        ticket = runtime.publish_recoverable(resumed)
         assert ticket.acknowledged and ticket.recoverable
         assert runtime.continuity.snapshot().k1_state_digest == resumed.state_digest()
 
@@ -128,7 +145,7 @@ _STEPS = {1: (0, "authorized", "RESUMABLE"), 2: (0, "authorized", "RESUMABLE"), 
 
 
 @pytest.mark.parametrize("step", sorted(_STEPS))
-def test_sigkill_inside_a_durable_publication_restarts_at_exactly_the_authorized_state(k1, tmp_path, step):   # noqa: F811
+def test_sigkill_at_each_publication_step_restarts_at_exactly_the_authorized_state(k1, tmp_path, step):   # noqa: F811
     arg, expected, disposition = _STEPS[step]
     _provision(k1, tmp_path / "checkpoint")
     child = _child(tmp_path, f"park:{step},{arg}")
@@ -160,6 +177,27 @@ def test_sigkill_inside_a_durable_publication_restarts_at_exactly_the_authorized
             _resume(k1, runtime, recovery.envelope)
 
 
+def test_sigkill_after_the_acknowledgment_was_delivered_resumes_exactly_the_acknowledged_state(
+        k1, tmp_path):   # noqa: F811
+    _provision(k1, tmp_path / "checkpoint")
+    child = _child(tmp_path, "delivered")
+    try:
+        line = child.stdout.readline()
+        assert line, child.stderr.read()
+        report = json.loads(line)
+    finally:
+        _kill(child)
+    assert (report["status"], report["recoverable"]) == ("ACKNOWLEDGED", True)
+    acked, volatile = bytes.fromhex(report["acked"]), bytes.fromhex(report["volatile"])
+    assert acked != volatile
+    with _restart(tmp_path) as runtime:
+        assert runtime.continuity.snapshot().k1_state_digest == acked
+        recovery = runtime.recover_k1()
+        assert recovery.disposition == "RESUMABLE" and recovery.candidate is None
+        assert recovery.envelope[-32:] == acked
+        _resume(k1, runtime, recovery.envelope)
+
+
 KILLS = 6
 
 
@@ -172,7 +210,8 @@ def _events(text):
     return out
 
 
-def test_random_sigkill_while_learning_and_publishing_never_recovers_an_unacknowledged_state(k1, tmp_path):   # noqa: F811
+def test_random_sigkill_while_learning_and_publishing_recovers_only_a_complete_authorized_state(
+        k1, tmp_path):   # noqa: F811
     rng = random.Random(20261014)
     with world(k1, max_rows=8) as fresh:
         anchor = fresh.state_digest()
@@ -193,8 +232,9 @@ def test_random_sigkill_while_learning_and_publishing_never_recovers_an_unacknow
         acked = [bytes.fromhex(e["acked"]) for e in events if "acked" in e]
         requested = [bytes.fromhex(e["requested"]) for e in events if "requested" in e]
         assert all(e.get("status", "ACKNOWLEDGED") == "ACKNOWLEDGED" for e in events)
-        # The last acknowledged state (the anchor before any), or the last requested one whose publication landed
-        # before the kill. Never a volatile state: none was ever requested.
+        # The last acknowledged state (the anchor before any), or the last requested one whose publication completed
+        # before the kill although its acknowledgment never reached the child (a lost acknowledgment is not proof of
+        # non-durability). Never a volatile state: none was ever requested.
         allowed = {acked[-1] if acked else anchor} | set(requested[-1:])
         with _restart(tmp_path) as runtime:
             authority = runtime.continuity.snapshot().k1_state_digest

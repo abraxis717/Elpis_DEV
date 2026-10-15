@@ -37,11 +37,15 @@ entry point and returns that subsystem's result:
   a pinned :class:`~elpis.runtime.context.ContextView`. The result records the
   view's coordinate (``result.context``); no encoding of a view into the K1
   stimulus exists (docs/ARCHITECTURE.md, "Execution lanes").
-* ``publish_durable``: the explicit durable publication of the live state
-  (docs/RUNTIME_CORE.md, "Live and durable authority"): RuntimeCore captures it
-  and its durability lane checkpoints and publishes it off the HOT lane; the
-  caller chooses whether to wait for the acknowledgment. ``durability`` reads
-  the lane's state; ``live_identity`` reads the live state's identity on request.
+* ``publish_recoverable`` / ``publish_identity``: the explicit durable
+  publication of the live state, of one of two kinds never confused
+  (docs/RUNTIME_CORE.md, "Recoverable and identity-only publication"):
+  RuntimeCore captures it and its durability lane makes it durable off the HOT
+  lane; the caller chooses whether to wait. ``publish_recoverable`` needs the
+  checkpoint store and is ``ACKNOWLEDGED`` only with a read-back verified slot;
+  ``publish_identity`` (no store) resolves ``IDENTITY_PUBLISHED``, never an
+  acknowledgment. ``durability`` reads the lane's state; ``live_identity``
+  reads the live state's identity on request.
 * ``recover_k1``: K1 Recovery R0 (docs/K1_RECOVERY_R0.md), read-only: what
   restart may do with the lineage, and the complete authorized envelope when it
   is resumable. ``discard_k1_candidate`` / ``adopt_k1_candidate`` are the
@@ -463,7 +467,7 @@ class Runtime:
         RuntimeCore verifies the K1 lineage (its live coordinate), runs the admitted experience schedule on a native
         candidate and commits it atomically into the live state. The commit is VOLATILE: nothing is checkpointed or
         published and no I/O happens (``result.durability == "VOLATILE"``; the result carries the live generations).
-        Durability is :meth:`publish_durable`. A refused LEARN installs nothing. ``context``: see the module
+        Durability is :meth:`publish_recoverable` (or :meth:`publish_identity`). A refused LEARN installs nothing. ``context``: see the module
         docstring.
         """
         self._core.require_live()
@@ -486,21 +490,38 @@ class Runtime:
                            durability="VOLATILE", context=consumed)
 
     # -- durability: explicit, off the HOT lane -------------------------------------------------------------------
-    def publish_durable(self, substrate, *, wait: bool = True, timeout: float | None = None) -> DurableTicket:
-        """Request durable publication of the live state of ``substrate`` (binding it first if needed).
+    def publish_recoverable(self, substrate, *, wait: bool = True, timeout: float | None = None) -> DurableTicket:
+        """Request RECOVERABLE durable publication of the live state of ``substrate`` (binding it first if needed).
 
-        RuntimeCore captures the state's envelope under its lease (the one synchronous step) and hands it to its
-        durability lane, which seals it, writes and syncs the checkpoint slot (when a store is attached), then writes
-        and syncs the continuity record, off the HOT lane. With ``wait`` (the caller's explicit choice) this returns
-        the resolved :class:`~elpis.runtime.core.DurableTicket`; otherwise the PENDING one at once. ``ACKNOWLEDGED``
-        with ``recoverable`` means restart resumes exactly this state (K1 Recovery R0); without a checkpoint store
-        only the identity is durable. A newer request supersedes a waiting one. Refused while the lane is faulted.
+        The complete state becomes durable, so a checkpoint store must be attached (``k1_checkpoint_dir``): without
+        one this is refused with ``RUNTIME_RECOVERY_UNAVAILABLE`` before anything is bound or captured; it is never
+        silently downgraded to an identity-only publication. RuntimeCore captures the state's envelope under its
+        lease (the one synchronous step) and hands it to its durability lane, which seals it, writes and syncs the
+        checkpoint slot, reads it back and verifies it is exactly the captured envelope, then writes and syncs the
+        continuity record, off the HOT lane. With ``wait`` (the caller's explicit choice) this returns the resolved
+        :class:`~elpis.runtime.core.DurableTicket`; otherwise the PENDING one at once. ``ACKNOWLEDGED`` (always
+        ``recoverable``) means restart resumes exactly this state (K1 Recovery R0). ``UNCERTAIN`` means the outcome is
+        unknown until restart resolves it; it never means the state is not durable. A newer request supersedes a
+        waiting one. Refused while the lane is faulted.
         """
+        return self._publish(substrate, self._core.recoverable_request, wait, timeout)
+
+    def publish_identity(self, substrate, *, wait: bool = True, timeout: float | None = None) -> DurableTicket:
+        """Request IDENTITY-ONLY durable publication: continuity names the live state's identity; no store holds its
+        bytes (the caller keeps them, and restart can rebind only a state the caller supplies).
+
+        For runtimes without a checkpoint store; refused with ``RUNTIME_CHECKPOINT_ATTACHED`` while one is attached
+        (every publication must then be recoverable). Resolves ``IDENTITY_PUBLISHED`` (never ``recoverable``), never
+        ``ACKNOWLEDGED``: it is not a recoverable-state acknowledgment. Otherwise as :meth:`publish_recoverable`.
+        """
+        return self._publish(substrate, self._core.identity_request, wait, timeout)
+
+    def _publish(self, substrate, request, wait: bool, timeout: float | None) -> DurableTicket:
         self._core.require_live()
         descriptor, owner = describe(substrate)
         if self._bound_owner is None:
             self._bound_owner, self._bound_substrate = owner, substrate   # what this request binds stays alive
-        ticket = self._core.durable_request(descriptor)
+        ticket = request(descriptor)
         if not wait:
             return ticket
         return self._core.durable_wait(ticket.sequence, timeout)

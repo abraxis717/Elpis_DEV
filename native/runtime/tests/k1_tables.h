@@ -92,10 +92,15 @@ static const elpis_runtime_k1_fms_api FMS_API = {k1fms_digest,   k1fms_shape,   
                                                  k1fms_seal};
 #endif
 
-/* Wait for a durable request to resolve (the caller's explicit choice; never on the HOT lane). */
-static elpis_runtime_durable_ticket durable_publish(elpis_runtime *rt, const elpis_runtime_substrate *d) {
+/* Request a durable publication of `kind` (ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE: the complete state, a checkpoint
+ * store attached; _IDENTITY: only the identity, none attached) and wait for it to resolve (the caller's explicit
+ * choice; never on the HOT lane). */
+static elpis_runtime_durable_ticket durable_publish(elpis_runtime *rt, const elpis_runtime_substrate *d,
+                                                   uint32_t kind) {
     elpis_runtime_durable_ticket t;
-    if (elpis_runtime_durable_request(rt, d, &t) != ELPIS_RUNTIME_OK) {
+    const int rc = kind == ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE ? elpis_runtime_recoverable_request(rt, d, &t)
+                                                                  : elpis_runtime_identity_request(rt, d, &t);
+    if (rc != ELPIS_RUNTIME_OK) {
         t.status = ELPIS_RUNTIME_DURABLE_NONE;
         return t;
     }

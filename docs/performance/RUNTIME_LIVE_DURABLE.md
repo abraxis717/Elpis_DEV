@@ -45,6 +45,11 @@ round 2: 318), consistent with a shared VM.
 
 ## Appendix: the driver
 
+The driver predates the split of durable publication into two named kinds (docs/RUNTIME_CORE.md, "Recoverable and
+identity-only publication"). Its `publish_durable` ran without a checkpoint store, which is today's
+`publish_identity` (identical lane work); it is kept as run. A recoverable publication now also reads its slot back
+before continuity names it (one slot-sized `pread` per publication); that path was not part of these measurements.
+
 ```python
 """Matched HOT-lane benchmark: the same managed QUERY / LEARN through the Python Runtime facade, on one tree.
 

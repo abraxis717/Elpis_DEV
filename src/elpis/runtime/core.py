@@ -2,15 +2,18 @@
 
 RuntimeCore (Rust) owns the runtime's mutable systems authority: lifecycle, fail-stop, the binding of the K1 lineage
 to one native state and its live coordinate, the managed turn's native K1 transaction (a VOLATILE commit), the
-durability lane (explicitly requested durable publication: checkpoint slot, then continuity record, on its own
-worker thread), and the evolution attempt's reservation and finalization. This module only marshals values across
+durability lane (explicitly requested durable publication, on its own worker thread: recoverable = checkpoint slot,
+read back verified, then continuity record; identity-only = continuity record alone), and the evolution attempt's reservation and finalization. This module only marshals values across
 the C ABI and raises the stable code RuntimeCore returns. It holds no authority state, decides no transition and
 calls no K1 function: it hands RuntimeCore the K1 library's own entry points and the state's native handle.
 
 Live and durable authority (ABI v4, docs/RUNTIME_CORE.md). ``turn_commit`` returns a :class:`VolatileCommit`: the
-native transition and the live generation it established; nothing was checkpointed or published. Durability is the
-explicit ``durable_request`` (returns a PENDING :class:`DurableTicket` at once) and ``durable_wait`` (the caller's
-choice to wait); ``durable_status`` reads the lane without the HOT lock. A v3 library is refused (version check).
+native transition and the live generation it established; nothing was checkpointed or published. Durability is an
+explicit request of one of two kinds, never confused: ``recoverable_request`` (the complete state; a checkpoint store
+must be attached; ``ACKNOWLEDGED`` only with a read-back verified slot) or ``identity_request`` (only the identity; no
+store attached; ``IDENTITY_PUBLISHED``, never ``ACKNOWLEDGED``). Either returns a PENDING :class:`DurableTicket` at
+once; ``durable_wait`` is the caller's choice to wait; ``durable_status`` reads the lane without the HOT lock. A v3
+library is refused (version check).
 
 The substrate descriptor names the native state, its library's entry points, its declared dimension (verified
 natively) and the identity of the Python object that owns the handle (``owner``). The caller keeps that owner
@@ -95,7 +98,7 @@ class _Query(C.Structure):
 class _Ticket(C.Structure):
     """``elpis_runtime_durable_ticket``."""
     _fields_ = [("sequence", _U64), ("generation", _U64), ("status", C.c_uint32), ("recoverable", C.c_uint32),
-                ("code", C.c_int32), ("reserved", C.c_uint32), ("identity", C.c_uint8 * 32)]
+                ("code", C.c_int32), ("kind", C.c_uint32), ("identity", C.c_uint8 * 32)]
 
 
 class _Durability(C.Structure):
@@ -136,7 +139,8 @@ class _Recovery(C.Structure):
 
 _DISPOSITIONS = {1: "NOTHING_TO_RECOVER", 2: "RESUMABLE", 3: "CANDIDATE_UNRESOLVED", 4: "CHECKPOINT_MISSING"}
 _DURABLE = {0: "NONE", 1: "PENDING", 2: "ACKNOWLEDGED", 3: "FAILED", 4: "UNCERTAIN", 5: "SUPERSEDED", 6: "ABANDONED",
-            7: "UNKNOWN"}
+            7: "UNKNOWN", 8: "IDENTITY_PUBLISHED"}
+_KIND = {1: "RECOVERABLE", 2: "IDENTITY"}   # elpis_runtime_durable_ticket.kind
 _DURABLE_PENDING = 81   # RUNTIME_DURABLE_PENDING: a wait that timed out
 
 
@@ -157,12 +161,17 @@ class VolatileCommit:
 class DurableTicket:
     """One durable publication request (``elpis_runtime_durable_ticket``).
 
-    ``status``: ``PENDING`` (captured; waiting for, or in, the durability worker), ``ACKNOWLEDGED`` (continuity names
-    ``identity``; when ``recoverable``, a verified, synced checkpoint slot holds the complete envelope: restart can
-    resume exactly it), ``FAILED`` (nothing durable changed; ``code`` says why), ``UNCERTAIN`` (the continuity
-    publication's outcome is unknown; the lane is faulted until reopen; restart resolves it), ``SUPERSEDED`` (a newer
-    request replaced it before the worker took it), ``ABANDONED`` (closed, or the process died, first) or
-    ``UNKNOWN`` (resolved too long ago to be recorded). ``generation`` is the live generation captured.
+    ``kind`` is what was asked: ``RECOVERABLE`` (the complete state) or ``IDENTITY`` (only the identity).
+    ``status``: ``PENDING`` (captured; waiting for, or in, the durability worker), ``ACKNOWLEDGED`` (RECOVERABLE only:
+    a checkpoint slot holding exactly the captured envelope was synced and read back verified, and continuity names
+    ``identity``; ``recoverable`` is always True: restart resumes exactly this state), ``IDENTITY_PUBLISHED``
+    (IDENTITY only: continuity names ``identity``; no store holds the bytes, the caller keeps them; ``recoverable`` is
+    always False; never an acknowledgment), ``FAILED`` (nothing durable changed; ``code`` says why), ``UNCERTAIN``
+    (outcome unknown: continuity's record was being written or synced when the publication failed or the process
+    died; the lane is faulted until reopen; restart resolves it to exactly one complete record, possibly this one; it
+    never means "not durable"), ``SUPERSEDED`` (a newer request replaced it before the worker took it), ``ABANDONED``
+    (not published: closed, or the process died, before continuity's record was begun) or ``UNKNOWN`` (resolved too
+    long ago to be recorded). ``generation`` is the live generation captured.
     """
 
     sequence: int
@@ -171,10 +180,17 @@ class DurableTicket:
     recoverable: bool
     code: str | None
     identity: bytes | None
+    kind: str | None = None
 
     @property
     def acknowledged(self) -> bool:
+        """Recoverable state acknowledged: restart resumes exactly ``identity``. Never true for identity-only."""
         return self.status == "ACKNOWLEDGED"
+
+    @property
+    def identity_published(self) -> bool:
+        """Only the identity is durable (the caller keeps the bytes). Never a recoverable acknowledgment."""
+        return self.status == "IDENTITY_PUBLISHED"
 
 
 @dataclass(frozen=True)
@@ -332,7 +348,8 @@ class RuntimeLibrary:
             "work_units": [C.c_size_t, C.c_size_t, C.POINTER(_Experience), C.c_size_t, C.POINTER(_U64)],
             "query_work_units": [C.c_size_t, C.c_size_t, C.c_size_t, C.POINTER(_U64)],
             "turn_commit": [P, C.POINTER(_Substrate), C.POINTER(_Commit)],
-            "durable_request": [P, C.POINTER(_Substrate), C.POINTER(_Ticket)],
+            "recoverable_request": [P, C.POINTER(_Substrate), C.POINTER(_Ticket)],
+            "identity_request": [P, C.POINTER(_Substrate), C.POINTER(_Ticket)],
             "durable_wait": [P, _U64, _U64, C.POINTER(_Ticket)],
             "durable_status": [P, C.POINTER(_Durability)],
             "live_identity": [P, C.POINTER(_Substrate), P, C.POINTER(_U64)],
@@ -502,13 +519,29 @@ class RuntimeCore:
     def _ticket(self, t: _Ticket) -> DurableTicket:
         identity = bytes(t.identity)
         code = self.library.code(t.code) if t.code else None
-        return DurableTicket(int(t.sequence), int(t.generation), _DURABLE.get(t.status, f"STATUS_{t.status}"),
-                             bool(t.recoverable), code, identity if any(identity) else None)
+        ticket = DurableTicket(int(t.sequence), int(t.generation), _DURABLE.get(t.status, f"STATUS_{t.status}"),
+                               bool(t.recoverable), code, identity if any(identity) else None, _KIND.get(t.kind))
+        # The ABI's law, re-checked at the boundary: an acknowledgment is recoverable and only ever a recoverable
+        # request's; identity-only publication is never recoverable. Anything else is a contract violation.
+        if ticket.recoverable != ticket.acknowledged or (ticket.acknowledged and ticket.kind != "RECOVERABLE") or \
+                (ticket.identity_published and ticket.kind != "IDENTITY"):
+            raise CompositionError("RUNTIME_INVALID", f"durable ticket violates the acknowledgment law: {ticket}")
+        return ticket
 
-    def durable_request(self, descriptor) -> DurableTicket:
-        """Capture the live state (unsealed, under the lease) and hand it to the durability lane: PENDING at once."""
+    def recoverable_request(self, descriptor) -> DurableTicket:
+        """Capture the live state (unsealed, under the lease) and hand it to the durability lane for RECOVERABLE
+        publication (checkpoint slot, read back verified, then continuity): PENDING at once. Refused with
+        ``RUNTIME_RECOVERY_UNAVAILABLE`` (nothing bound or captured) unless a checkpoint store is attached."""
         out = _Ticket()
-        self.library.check(self._f.elpis_runtime_durable_request(self._handle, C.byref(descriptor), C.byref(out)))
+        self.library.check(self._f.elpis_runtime_recoverable_request(self._handle, C.byref(descriptor), C.byref(out)))
+        return self._ticket(out)
+
+    def identity_request(self, descriptor) -> DurableTicket:
+        """Capture the live state and hand it to the durability lane for IDENTITY-ONLY publication (continuity alone;
+        the caller keeps the bytes): PENDING at once. Refused with ``RUNTIME_CHECKPOINT_ATTACHED`` (nothing bound or
+        captured) while a checkpoint store is attached."""
+        out = _Ticket()
+        self.library.check(self._f.elpis_runtime_identity_request(self._handle, C.byref(descriptor), C.byref(out)))
         return self._ticket(out)
 
     def durable_wait(self, sequence: int, timeout: float | None = None) -> DurableTicket:
@@ -609,7 +642,7 @@ class RuntimeCore:
 
     def testing_durable_fault(self, action: int, step: int = 0, arg: int = 0) -> None:
         """Plan one fault of the next durable publication (runtime.c ABI: 1 die / 2 park at ``step``; 3..9 I/O
-        failures); docs/RUNTIME_CORE.md, "Durability crash matrix"."""
+        failures; 10 a checkpoint slot that does not read back exactly); docs/RUNTIME_CORE.md, "Crash law"."""
         self._require_testing()
         self.library.check(self._f.elpis_runtime_testing_durable_fault(self._handle, action, step, arg))
 
