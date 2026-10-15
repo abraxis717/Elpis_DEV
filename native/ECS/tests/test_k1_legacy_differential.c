@@ -122,8 +122,6 @@ static void legacy_k1(void) {
     memset(&t, 0, sizeof(t));
     st("k1.learn", elpis_ecsg_k1_learn(k, X, Y, R, 0.002, 40, &t));
     rec_transition("k1.learn.t", &t);
-    st("k1.consolidate", elpis_ecsg_k1_consolidate(k, X, R, &t));
-    rec_transition("k1.consolidate.t", &t);
     k1_envelope("k1.learned", k);
     st("k1.copy_w", elpis_ecsg_k1_copy_w(k, w, WC));
     rec("k1.w", w, sizeof(w));

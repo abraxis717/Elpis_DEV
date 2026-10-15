@@ -351,12 +351,14 @@ residency hold) are additive. Reviewed against the pre-correction tree (`81b738e
   neither state nor envelope nor identity. `ELPISGK1`, `ELPISEM1` and `ELPISEC1` are written and checked by the
   same code; K1 mathematics is untouched.
 * **Behavior.** `native/ECS/tests/test_k1_legacy_differential.c` Part A drives only pre-correction entry points
-  (K1 create/learn/consolidate/forward/query-identity, transactions with commit, commit-identity, abort and the
+  (K1 create/learn/forward/query-identity, transactions with commit, commit-identity, abort and the
   experience schedule, the refusal contract, the managed lease, restore and reset; FMS-resident states including a
-  demotion and the legacy materializing access; the composite's leased turns with observations) and records every
+  demotion and the legacy materializing access; the composite's leased turns with observations; K1's
+  retention-vocabulary entry point is left to the K1 milestone's own suites, as the Retention R1/R2/R3 guards
+  require of every non-milestone file) and records every
   status, transition, readout, digest and envelope byte. Compiled against the pre-correction headers and linked
   over the pre-correction, the `200f73f`-era and the current libraries, the three transcripts are byte-identical
-  (882,498 bytes, SHA-256 `6cb8a371f9864dcd351c0e6fd14796c87a4a04f08fc5e31333439a04fd530fa9` on the review host).
+  (882,398 bytes, SHA-256 `1db0250f9328c150806d7d618bafbbfb58ed611c3576746ce0c9d0fd39bd63de` on the review host).
   In CI the same battery must be deterministic and Part B proves the new entry points against the legacy ones in
   the same build (capture + seal equals `snapshot_write` for all three; `begin_at`/`commit` install the bytes
   `begin`/`commit_identity` install; the generation advances by one per installing mutation and never on a
