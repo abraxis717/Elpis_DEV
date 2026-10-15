@@ -280,6 +280,7 @@ pub extern "C" fn elpis_runtime_code_name(code: i32) -> *const c_char {
             Rt::DurablePending => c"RUNTIME_DURABLE_PENDING",
             Rt::RecoveryUnavailable => c"RUNTIME_RECOVERY_UNAVAILABLE",
             Rt::CheckpointAttached => c"RUNTIME_CHECKPOINT_ATTACHED",
+            Rt::NotResident => c"RUNTIME_NOT_RESIDENT",
         }
         .as_ptr(),
         None => match Code::from_i32(code) {

@@ -85,11 +85,13 @@ static int k1fms_capture(void *r, uint64_t id, uint64_t lease, uint8_t *out, siz
     return elpis_ecsg_k1_fms_leased_capture(r, id, lease, out, size, generation);
 }
 static int k1fms_seal(uint8_t *envelope, size_t size) { return elpis_ecsg_k1_fms_envelope_seal(envelope, size); }
+static int k1fms_hold(void *r, uint64_t id) { return elpis_ecsg_k1_fms_resident_hold(r, id); }
+static int k1fms_unhold(void *r, uint64_t id) { return elpis_ecsg_k1_fms_resident_release(r, id); }
 
 static const elpis_runtime_k1_fms_api FMS_API = {k1fms_digest,   k1fms_shape,    k1fms_claim,  k1fms_release,
                                                  k1fms_reserve,  k1fms_identity, k1fms_query,  k1fms_begin,
                                                  k1fms_schedule, k1fms_commit,   k1fms_abort,  k1fms_capture,
-                                                 k1fms_seal};
+                                                 k1fms_seal,     k1fms_hold,     k1fms_unhold};
 #endif
 
 /* Request a durable publication of `kind` (ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE: the complete state, a checkpoint

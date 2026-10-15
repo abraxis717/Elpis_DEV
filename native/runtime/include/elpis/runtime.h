@@ -108,6 +108,8 @@ enum {
     ELPIS_RUNTIME_DURABLE_PENDING = 81,          /* a durable wait timed out: the request is still pending */
     ELPIS_RUNTIME_RECOVERY_UNAVAILABLE = 82,     /* a recoverable request without a checkpoint store: refused */
     ELPIS_RUNTIME_CHECKPOINT_ATTACHED = 83,      /* an identity-only request with a checkpoint store: refused */
+    ELPIS_RUNTIME_NOT_RESIDENT = 84,             /* an FMS-resident state is not WARM where a HOT operation needs
+                                                    it: refused without promoting, cold reads or waiting */
     ELPIS_RUNTIME_RECOVERY_NOTHING = 1,          /* continuity unanchored: no lineage; a slot never creates one */
     ELPIS_RUNTIME_RECOVERY_RESUMABLE = 2,        /* a verified slot holds continuity's identity; no candidate */
     ELPIS_RUNTIME_RECOVERY_CANDIDATE_UNRESOLVED = 3, /* a newer unauthorized slot exists: operator discard/adopt */
@@ -207,6 +209,11 @@ typedef struct {
     int (*txn_abort)(void *runtime, uint64_t id, uint64_t token);
     int (*leased_capture)(void *runtime, uint64_t id, uint64_t lease, uint8_t *out, size_t size, uint64_t *generation);
     int (*envelope_seal)(uint8_t *envelope, size_t size);
+    /* HOT residency (docs/RUNTIME_CORE.md): elpis_ecsg_k1_fms_resident_hold / _resident_release. RuntimeCore holds a
+     * bound state resident (taken before binding, only if it is WARM; RUNTIME_NOT_RESIDENT otherwise) and drops the
+     * hold whenever it unbinds it; meanwhile every operation on it pins resident-only (never a promotion). */
+    int (*resident_hold)(void *runtime, uint64_t id);
+    int (*resident_release)(void *runtime, uint64_t id);
 } elpis_runtime_k1_fms_api;
 
 /* The ECS composite's functions (state = elpis_ecs_composite *): the K1 table's entries over composite identities

@@ -598,7 +598,8 @@ def test_managed_fms_resident_turns_equal_managed_standalone_turns(k1, adapter, 
                             codec=admitted(FixtureMap(reply=(999,))))
             assert info.value.code == "DECODE" and resident.snapshot() == before
             info = resident._r.inspect(resident.id)
-            assert info["transaction_open"] == 0 and info["lease_count"] == 0   # aborted; no pin left behind
+            # Aborted: no transaction pin left behind; the one pin is the bound runtime's residency hold.
+            assert (info["transaction_open"], info["lease_count"], resident._r.resident_holds(resident.id)) == (0, 1, 1)
             # A second wrapper of the same resident state is the same bound state (same owner and id).
             rb.run_turn(resident._r.state(resident.id), "again", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
                         authority=LEARN)

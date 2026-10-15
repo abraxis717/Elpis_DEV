@@ -85,7 +85,7 @@ add_dependencies(test_runtime_composite elpis_runtime_testing)
 elpis_add_test(runtime test_runtime_hot_io
   SOURCES tests/test_runtime_hot_io.c
   INCLUDES "${_crate}/include" "${_continuity}/include"
-  LIBS elpis_ecsg_k1
+  LIBS elpis_ecsg_k1_fms elpis_ecsg_k1
   ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_hot_io"
   TIMEOUT 120)
 target_compile_definitions(test_runtime_hot_io PRIVATE _GNU_SOURCE=1)

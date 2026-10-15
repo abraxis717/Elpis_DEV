@@ -49,10 +49,14 @@ pub enum Rt {
     /// An identity-only publication was requested while a checkpoint store is attached: every publication must then
     /// be recoverable (continuity never names an identity the attached store does not hold).
     CheckpointAttached = 83,
+    /// The FMS-resident state is not resident (WARM) where a HOT operation requires it (demoted, or a move in
+    /// flight): refused before anything touches it, without promoting it, reading the cold store or waiting; nothing
+    /// bound, no fail-stop. Materialize it explicitly (a WARM operation) and retry.
+    NotResident = 84,
 }
 
 impl Rt {
-    pub const ALL: [Rt; 19] = [
+    pub const ALL: [Rt; 20] = [
         Rt::Invalid,
         Rt::Closed,
         Rt::SubstrateSwitch,
@@ -72,6 +76,7 @@ impl Rt {
         Rt::DurablePending,
         Rt::RecoveryUnavailable,
         Rt::CheckpointAttached,
+        Rt::NotResident,
     ];
 
     pub fn name(self) -> &'static str {
@@ -95,6 +100,7 @@ impl Rt {
             Rt::DurablePending => "RUNTIME_DURABLE_PENDING",
             Rt::RecoveryUnavailable => "RUNTIME_RECOVERY_UNAVAILABLE",
             Rt::CheckpointAttached => "RUNTIME_CHECKPOINT_ATTACHED",
+            Rt::NotResident => "RUNTIME_NOT_RESIDENT",
         }
     }
 

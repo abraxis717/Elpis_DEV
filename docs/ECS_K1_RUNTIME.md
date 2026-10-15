@@ -225,6 +225,14 @@ copies and snapshots pin READ; writes pin WRITE, which marks the object dirty an
 - a failed cold read leaves the object FAILED, and it is never soft-recovered;
 - a corrupted cold replica is refused by its digest.
 
+**Residency hold** (additive; docs/RUNTIME_CORE.md, "HOT residency"): `elpis_ecsg_k1_fms_resident_hold` succeeds
+only on a WARM state (`fms_acquire_resident`: never promotes, reads the cold store or waits), keeps one pin so the
+state cannot be demoted, and makes every operation on the state pin resident-only until the last
+`elpis_ecsg_k1_fms_resident_release`. A demoted state is refused `ELPIS_ECSG_K1_FMS_NOT_RESIDENT` (-112).
+`elpis_ecsg_k1_fms_materialize` is the explicit COLD to WARM promotion (a WARM-lane operation);
+`elpis_ecsg_k1_fms_resident_holds` reports the count. `close` is refused `BUSY` while a hold exists. Without a hold
+every entry point behaves exactly as before. RuntimeCore holds every FMS-resident state it binds.
+
 **Failed release:** if FMS release fails, the adapter keeps the pin FMS still holds. That pin stays consistent and
 is retried by the next operation and by close. A held READ pin never serves a write. A committed result is never
 reported as refused (`test_ecsg_k1_fms_faults`).

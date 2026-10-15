@@ -64,10 +64,12 @@ class _Subject:
         return abort
 
     def released(self):
-        """No transaction open (and, resident, no pin held); another transaction begins and aborts cleanly."""
+        """No transaction open (and, resident, no pin or residency hold held); another transaction begins and aborts
+        cleanly."""
         if self.resident:
             info = self.info()
             assert info["transaction_open"] == 0 and info["lease_count"] == 0
+            assert self.state._r.resident_holds(self.state.id) == 0
         abort = self.probe_begin()
         if self.resident:
             assert self.info()["transaction_open"] == 1 and self.info()["lease_count"] == 1
@@ -122,7 +124,10 @@ def test_an_open_turn_is_ended_natively_on_every_lifecycle_path(subject, path, t
 
     core.turn_begin(descriptor, _stimulus(), RATE, CEILING)   # the schedule ran on the candidate; nothing committed
     if subject.resident:
-        assert subject.info()["transaction_open"] == 1 and subject.info()["lease_count"] == 1
+        # Two FMS pins: the transaction's WRITE pin and the runtime's residency hold (docs/RUNTIME_CORE.md, "HOT
+        # residency"), which the runtime drops whenever it unbinds the state (``released`` checks: none left).
+        assert subject.info()["transaction_open"] == 1 and subject.info()["lease_count"] == 2
+        assert subject.state._r.resident_holds(subject.state.id) == 1
         with pytest.raises(Exception, match="BUSY"):   # the adapter's own lifetime guard while the turn is open
             subject.state._r.close_state(subject.state.id)
     core.counters(reset=True)

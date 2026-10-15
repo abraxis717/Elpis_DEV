@@ -601,6 +601,23 @@ fms_status fms_acquire(fms_ctx *c, fms_id id, int want_tier, unsigned mode, void
     return r == FMS_OK ? (fms_status)tier : r;
 }
 
+fms_status fms_acquire_resident(fms_ctx *c, fms_id id, int want_tier, unsigned mode, void **ptr) {
+    if (!c || !ptr || !(mode & (FMS_READ | FMS_WRITE))) return FMS_E_INVAL;
+    lock(c);
+    int want = eff_tier(c, want_tier);
+    if (want < 0) { unlock(c); return FMS_E_UNSUPPORTED; }
+    slot_t *s = lookup(c, id);
+    if (!s) { unlock(c); return FMS_E_NOTFOUND; }
+    if (s->state == FMS_ST_FAILED || s->state == FMS_ST_LOST) { unlock(c); return FMS_E_STATE; }
+    /* Never promote, never wait: a demoted object or one in motion is refused before anything is pinned. */
+    if (s->state == FMS_ST_MOVING || (int)s->tier > want) { unlock(c); return FMS_E_NOT_RESIDENT; }
+    int tier = 0;
+    fms_status r = pin_at(c, s, want, mode, ptr, &tier);   /* tier <= want: pin_at takes no hop */
+    if (r == FMS_OK) c->st.pinned_bytes += s->size;
+    unlock(c);
+    return r == FMS_OK ? (fms_status)tier : r;
+}
+
 fms_status fms_release(fms_ctx *c, fms_id id) {
     if (!c) return FMS_E_INVAL;
     lock(c);
@@ -870,6 +887,7 @@ const char *fms_strerror(int s) {
     case FMS_E_DIGEST: return "cold digest mismatch";
     case FMS_E_DEVICE: return "device failure";
     case FMS_E_TIMEOUT: return "fence timeout";
+    case FMS_E_NOT_RESIDENT: return "not resident in the requested tier";
     default: return s > 0 ? "ok (tier)" : "unknown";
     }
 }

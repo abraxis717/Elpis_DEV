@@ -20,6 +20,7 @@ typedef struct {
     uint8_t *image;  /* valid while pinned: a pinned object cannot move */
     elpis_ecsg_k1 *k1;
     int txn_open;
+    uint32_t resident_holds; /* > 0: one FMS pin keeps the image WARM, and every pin is resident-only */
     uint64_t txn_external_token;
     uint64_t txn_native_token;
     uint64_t txn_tokens_issued;
@@ -157,7 +158,10 @@ static int acquire(elpis_ecsg_k1_fms *r, slot *s, unsigned mode)
         }
     }
     start = now_ns();
-    rc = fms_acquire(r->fms, s->object, FMS_WARM, mode, &ptr);
+    /* Under a residency hold the state cannot have been demoted (the hold pins it); the resident-only pin makes
+     * that a checked fact: it never promotes, reads the cold store or waits. */
+    rc = s->resident_holds ? fms_acquire_resident(r->fms, s->object, FMS_WARM, mode, &ptr)
+                           : fms_acquire(r->fms, s->object, FMS_WARM, mode, &ptr);
     s->info.materialization_ns += now_ns() - start;
     if (rc < 0) {
         s->info.lease_failures += 1u;
@@ -394,7 +398,7 @@ int elpis_ecsg_k1_fms_close(elpis_ecsg_k1_fms *r, uint64_t *id)
     if (rc != ELPIS_ECSG_K1_OK) {
         return rc;
     }
-    if (s->txn_open) {
+    if (s->txn_open || s->resident_holds) {
         give(r, s);
         return ELPIS_ECSG_K1_BUSY;
     }
@@ -413,6 +417,98 @@ int elpis_ecsg_k1_fms_close(elpis_ecsg_k1_fms *r, uint64_t *id)
     memset(s, 0, sizeof(*s));
     pthread_mutex_unlock(&r->mu);
     *id = 0u;
+    return ELPIS_ECSG_K1_OK;
+}
+
+/* --- residency: holds, explicit materialization ------------------------------------------------------------- */
+
+int elpis_ecsg_k1_fms_resident_hold(elpis_ecsg_k1_fms *r, uint64_t id)
+{
+    slot *s;
+    void *ptr = NULL;
+    int rc = take(r, id, &s);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
+    }
+    if (s->resident_holds == UINT32_MAX) {
+        give(r, s);
+        return ELPIS_ECSG_K1_CAPACITY;
+    }
+    if (s->resident_holds == 0u) {
+        rc = fms_acquire_resident(r->fms, s->object, FMS_WARM, FMS_READ, &ptr);
+        if (rc < 0) {
+            give(r, s);
+            return fm(rc);
+        }
+        if (rc != FMS_WARM) {
+            (void)fms_release(r->fms, s->object);
+            give(r, s);
+            return fm(FMS_E_STATE);
+        }
+    }
+    s->resident_holds += 1u;
+    give(r, s);
+    return ELPIS_ECSG_K1_OK;
+}
+
+int elpis_ecsg_k1_fms_resident_release(elpis_ecsg_k1_fms *r, uint64_t id)
+{
+    slot *s;
+    int rc = take(r, id, &s);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
+    }
+    if (s->resident_holds == 0u) {
+        give(r, s);
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    if (s->resident_holds == 1u) {
+        rc = fms_release(r->fms, s->object);
+        if (rc < 0) {
+            give(r, s);
+            return fm(rc);   /* the hold (and its pin) stands; retried by the next release */
+        }
+    }
+    s->resident_holds -= 1u;
+    give(r, s);
+    return ELPIS_ECSG_K1_OK;
+}
+
+int elpis_ecsg_k1_fms_materialize(elpis_ecsg_k1_fms *r, uint64_t id)
+{
+    slot *s;
+    void *ptr = NULL;
+    uint64_t start;
+    int rc = take(r, id, &s);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
+    }
+    start = now_ns();
+    rc = fms_acquire(r->fms, s->object, FMS_WARM, FMS_READ, &ptr);   /* promotes synchronously: WARM lane only */
+    s->info.materialization_ns += now_ns() - start;
+    if (rc < 0) {
+        s->info.lease_failures += 1u;
+        give(r, s);
+        return fm(rc);
+    }
+    (void)fms_release(r->fms, s->object);
+    give(r, s);
+    return rc == FMS_WARM ? ELPIS_ECSG_K1_OK : fm(FMS_E_STATE);
+}
+
+int elpis_ecsg_k1_fms_resident_holds(elpis_ecsg_k1_fms *r, uint64_t id, uint32_t *holds)
+{
+    slot *s;
+    int rc;
+    if (holds == NULL) {
+        return ELPIS_ECSG_K1_INVALID;
+    }
+    rc = take(r, id, &s);
+    if (rc != ELPIS_ECSG_K1_OK) {
+        return rc;
+    }
+    *holds = s->resident_holds;
+    give(r, s);
     return ELPIS_ECSG_K1_OK;
 }
 

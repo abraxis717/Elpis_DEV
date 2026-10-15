@@ -581,6 +581,218 @@ static void test_state_digest_matches_resident_snapshot_trailer(void)
 
 /* Managed ownership of a resident state: refused unmanaged writes take no WRITE pin (the object is not dirtied,
  * its cold replica survives); the holder's leased entry points work over the resident bytes. */
+/* --- HOT residency: a held state is never materialized by an operation (docs/RUNTIME_CORE.md, "HOT residency") */
+static int (*real_cold_get)(void *, const fms_cold_token *, void *, uint64_t);
+static pthread_mutex_t stall_mu = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t stall_cv = PTHREAD_COND_INITIALIZER;
+static unsigned cold_gets;
+static int stall_armed, stall_entered, stall_open, fail_reads;
+
+/* The PAL's cold read, counted; it can stall (a slow device) or fail (a lost replica). */
+static int counting_get(void *self, const fms_cold_token *t, void *out, uint64_t bytes)
+{
+    int fail;
+    pthread_mutex_lock(&stall_mu);
+    cold_gets += 1u;
+    fail = fail_reads;
+    if (stall_armed) {
+        stall_entered = 1;
+        pthread_cond_broadcast(&stall_cv);
+        while (!stall_open) pthread_cond_wait(&stall_cv, &stall_mu);
+    }
+    pthread_mutex_unlock(&stall_mu);
+    return fail ? FMS_PAL_EIO : real_cold_get(self, t, out, bytes);
+}
+
+static unsigned gets(void)
+{
+    unsigned n;
+    pthread_mutex_lock(&stall_mu);
+    n = cold_gets;
+    pthread_mutex_unlock(&stall_mu);
+    return n;
+}
+
+static fms_stats residency(elpis_ecsg_k1_fms *r)
+{
+    elpis_ecsg_k1_fms_metrics m;
+    OK(elpis_ecsg_k1_fms_stats(r, &m));
+    return m.residency;
+}
+
+static elpis_ecsg_k1_fms_info info_of(elpis_ecsg_k1_fms *r, uint64_t id)
+{
+    elpis_ecsg_k1_fms_info i;
+    OK(elpis_ecsg_k1_fms_inspect(r, id, &i));
+    return i;
+}
+
+static uint32_t holds_of(elpis_ecsg_k1_fms *r, uint64_t id)
+{
+    uint32_t n = 99u;
+    OK(elpis_ecsg_k1_fms_resident_holds(r, id, &n));
+    return n;
+}
+
+typedef struct {
+    elpis_ecsg_k1_fms *r;
+    uint64_t id;
+    int rc, ok, busy, rounds;
+} job;
+
+static void *materialize_job(void *p)
+{
+    job *j = p;
+    j->rc = elpis_ecsg_k1_fms_materialize(j->r, j->id);
+    return NULL;
+}
+
+static void *reader_job(void *p)
+{
+    job *j = p;
+    double q[R];
+    int n;
+    for (n = 0; n < j->rounds; ++n) {
+        int rc = elpis_ecsg_k1_fms_forward(j->r, j->id, X, R, q);
+        assert(rc == ELPIS_ECSG_K1_OK || rc == ELPIS_ECSG_K1_BUSY);   /* same-state calls never wait */
+        j->ok += rc == ELPIS_ECSG_K1_OK;
+        j->busy += rc == ELPIS_ECSG_K1_BUSY;
+    }
+    return NULL;
+}
+
+static void *transition_job(void *p)
+{
+    job *j = p;
+    int n;
+    for (n = 0; n < j->rounds; ++n) {
+        uint64_t e = state(j->r, (unsigned)(100 + n % 100));   /* over budget: someone must be demoted */
+        OK(elpis_ecsg_k1_fms_pump(j->r));
+        OK(elpis_ecsg_k1_fms_close(j->r, &e));
+    }
+    return NULL;
+}
+
+static void test_residency_hold(void)
+{
+    fms_pal *pal = NULL;
+    elpis_ecsg_k1_fms *r = runtime_with(&pal, "k1-residency", 2u * (uint64_t)IMAGE + IMAGE / 2u, 8);
+    uint64_t a, b, c, d;
+    double q[R];
+    uint8_t *env = malloc(ENVELOPE);
+    elpis_ecsg_k1_transition t;
+    uint64_t tok = 0;
+    fms_stats s0;
+    unsigned g0;
+    pthread_t th[3];
+    job readers[2], transitions, mat;
+    assert(env);
+    real_cold_get = pal->cold_get;
+    pal->cold_get = counting_get;
+    a = state(r, 1);
+    b = state(r, 2);
+
+    /* Already resident: every operation under the hold runs on the WARM image; nothing is promoted or read. */
+    OK(elpis_ecsg_k1_fms_resident_hold(r, b));
+    assert(holds_of(r, b) == 1u && info_of(r, b).tier == FMS_WARM);
+    s0 = residency(r);
+    g0 = gets();
+    OK(elpis_ecsg_k1_fms_forward(r, b, X, R, q));
+    OK(elpis_ecsg_k1_fms_learn(r, b, X, Y, R, 0.002, 3, NULL));
+    OK(elpis_ecsg_k1_fms_txn_begin(r, b, &tok));
+    OK(elpis_ecsg_k1_fms_txn_learn(r, b, tok, X2, Y2, R, 0.002, 2, NULL));
+    OK(elpis_ecsg_k1_fms_txn_commit(r, b, tok, &t));
+    envelope_of(r, b, env);
+    assert(residency(r).promotions == s0.promotions && residency(r).cold_reads == s0.cold_reads && gets() == g0);
+
+    /* Budget exhaustion: the WARM budget fits two images; the held state is never the victim. */
+    c = state(r, 3);
+    OK(elpis_ecsg_k1_fms_pump(r));
+    d = state(r, 4);
+    OK(elpis_ecsg_k1_fms_pump(r));
+    assert(info_of(r, b).tier == FMS_WARM && holds_of(r, b) == 1u);
+    assert(info_of(r, a).tier == FMS_COLD);
+    OK(elpis_ecsg_k1_fms_close(r, &d));
+
+    /* Demoted before inference: the hold is refused; nothing pinned, promoted or read; no wait. */
+    s0 = residency(r);
+    g0 = gets();
+    assert(elpis_ecsg_k1_fms_resident_hold(r, a) == ELPIS_ECSG_K1_FMS_NOT_RESIDENT);
+    assert(holds_of(r, a) == 0u && info_of(r, a).lease_count == 0u && info_of(r, a).tier == FMS_COLD);
+    assert(residency(r).promotions == s0.promotions && residency(r).cold_reads == s0.cold_reads && gets() == g0);
+
+    /* WARM promotion stalled: the explicit materialization blocks in the cold read; the held state is not
+     * affected, and the stalled state refuses at once (the adapter's single-writer guard), never waits. */
+    stall_armed = 1;
+    mat.r = r;
+    mat.id = a;
+    mat.rc = 99;
+    assert(pthread_create(&th[0], NULL, materialize_job, &mat) == 0);
+    pthread_mutex_lock(&stall_mu);
+    while (!stall_entered) pthread_cond_wait(&stall_cv, &stall_mu);
+    pthread_mutex_unlock(&stall_mu);
+    OK(elpis_ecsg_k1_fms_forward(r, b, X, R, q));
+    assert(elpis_ecsg_k1_fms_resident_hold(r, a) == ELPIS_ECSG_K1_BUSY);
+    pthread_mutex_lock(&stall_mu);
+    stall_open = 1;
+    stall_armed = 0;
+    pthread_cond_broadcast(&stall_cv);
+    pthread_mutex_unlock(&stall_mu);
+    assert(pthread_join(th[0], NULL) == 0);
+    assert(mat.rc == ELPIS_ECSG_K1_OK && info_of(r, a).tier == FMS_WARM);
+    assert(residency(r).promotions == s0.promotions + 1u && gets() == g0 + 1u);   /* exactly the explicit one */
+    OK(elpis_ecsg_k1_fms_resident_hold(r, a));
+    OK(elpis_ecsg_k1_fms_resident_release(r, a));
+
+    /* Concurrent readers of the held state while other states come and go and the pump demotes. */
+    g0 = gets();
+    readers[0] = readers[1] = (job){r, b, 0, 0, 0, 300};
+    transitions = (job){r, 0, 0, 0, 0, 60};
+    assert(pthread_create(&th[0], NULL, reader_job, &readers[0]) == 0);
+    assert(pthread_create(&th[1], NULL, reader_job, &readers[1]) == 0);
+    assert(pthread_create(&th[2], NULL, transition_job, &transitions) == 0);
+    assert(pthread_join(th[0], NULL) == 0 && pthread_join(th[1], NULL) == 0 && pthread_join(th[2], NULL) == 0);
+    assert(readers[0].ok + readers[1].ok > 0);
+    assert(info_of(r, b).tier == FMS_WARM && holds_of(r, b) == 1u && gets() == g0);   /* never materialized */
+
+    /* Lifetime: holds nest; the last release unpins; close waits for none and is refused while held. */
+    {
+        uint64_t keep = b;
+        assert(elpis_ecsg_k1_fms_close(r, &keep) == ELPIS_ECSG_K1_BUSY && keep == b);
+    }
+    OK(elpis_ecsg_k1_fms_resident_hold(r, b));
+    assert(holds_of(r, b) == 2u && info_of(r, b).lease_count == 1u);   /* one FMS pin for all holds */
+    OK(elpis_ecsg_k1_fms_resident_release(r, b));
+    assert(holds_of(r, b) == 1u && info_of(r, b).lease_count == 1u);
+    OK(elpis_ecsg_k1_fms_resident_release(r, b));
+    assert(holds_of(r, b) == 0u && info_of(r, b).lease_count == 0u);
+    assert(elpis_ecsg_k1_fms_resident_release(r, b) == ELPIS_ECSG_K1_INVALID);
+    assert(elpis_ecsg_k1_fms_resident_holds(r, b, NULL) == ELPIS_ECSG_K1_INVALID);
+
+    /* Missing from the expected tier with a lost replica: the hold refuses without even trying the cold store; only
+     * the explicit materialization reads it, and fails. */
+    d = state(r, 5);
+    OK(elpis_ecsg_k1_fms_pump(r));
+    {
+        uint64_t e = state(r, 6);
+        OK(elpis_ecsg_k1_fms_pump(r));
+        OK(elpis_ecsg_k1_fms_close(r, &e));
+    }
+    assert(info_of(r, a).tier == FMS_COLD);
+    fail_reads = 1;
+    g0 = gets();
+    assert(elpis_ecsg_k1_fms_resident_hold(r, a) == ELPIS_ECSG_K1_FMS_NOT_RESIDENT && gets() == g0);
+    assert(elpis_ecsg_k1_fms_materialize(r, a) == ELPIS_ECSG_K1_FMS_ERROR_BASE + FMS_E_IO && gets() == g0 + 1u);
+    fail_reads = 0;
+
+    OK(elpis_ecsg_k1_fms_close(r, &a));
+    OK(elpis_ecsg_k1_fms_close(r, &b));
+    OK(elpis_ecsg_k1_fms_close(r, &c));
+    OK(elpis_ecsg_k1_fms_close(r, &d));
+    OK(elpis_ecsg_k1_fms_destroy(&r));
+    free(env);
+}
+
 static void test_managed_lease_resident(void)
 {
     elpis_ecsg_k1_fms *r = runtime_with(NULL, "k1-lease", (uint64_t)IMAGE * 8u, 2);
@@ -706,9 +918,11 @@ int main(void)
     test_state_digest_matches_resident_snapshot_trailer();
     test_managed_lease_resident();
     test_live_coordinate_resident();
+    test_residency_hold();
     printf("ecsg_k1_fms: resident K1 = standalone K1; warm path over resident bytes; COLD->WARM; pinning; "
            "refusals leave the complete state unchanged; envelopes and W-only imports; the transaction refusal "
            "contract; hostile imports; provenance; the experience schedule (resident = standalone); the resident "
-           "retained-state digest; the managed lease; the live coordinate; the candidate's envelope\n");
+           "retained-state digest; the managed lease; the live coordinate; the candidate's envelope; HOT residency "
+           "holds\n");
     return 0;
 }

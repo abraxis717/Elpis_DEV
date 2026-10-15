@@ -151,7 +151,9 @@ static void released(const subject *s) {
     uint32_t leases = 99;
     assert(!txn_open(s, &leases));
     if (s->resident) {
-        assert(leases == 0);
+        uint32_t holds = 99;
+        OK(elpis_ecsg_k1_fms_resident_holds(s->fms, s->id, &holds));
+        assert(leases == 0 && holds == 0);   /* no runtime binds it: no pin, no residency hold */
         uint64_t token = 0;
         assert(probe_begin(s, &token) == ELPIS_ECSG_K1_OK);
         assert(txn_open(s, &leases) && leases == 1);   /* the transaction's WRITE pin */
@@ -226,7 +228,14 @@ static void lifecycle(int resident, int which) {
     retained before = observe(&s);
     OK(begin(rt, &s));   /* the schedule ran on the candidate; nothing committed yet */
     uint32_t leases = 0;
-    assert(txn_open(&s, &leases) && (!resident || leases == 1));
+    /* A resident state holds two FMS pins now: the transaction's WRITE pin and the runtime's residency hold, which
+     * keeps a bound state WARM so no HOT operation ever materializes it (docs/RUNTIME_CORE.md, "HOT residency"). */
+    assert(txn_open(&s, &leases) && (!resident || leases == 2));
+    if (resident) {
+        uint32_t holds = 0;
+        OK(elpis_ecsg_k1_fms_resident_holds(s.fms, s.id, &holds));
+        assert(holds == 1);
+    }
     assert(aborts(rt) == 0);
     if (resident) {
         /* The adapter's own lifetime guard: an open transaction keeps the retained handle and id live. */
@@ -308,11 +317,11 @@ static void lifecycle(int resident, int which) {
         assert(same_record(&before_record, &after_record));
         assert(!memcmp(after_record.k1_state_digest, before.digest, 32));
     }
+    if (rt) {
+        elpis_runtime_destroy(&rt);   /* unbinds the state: the residency hold is dropped */
+    }
     released(&s);
     /* The same live state takes the next managed turn, over a runtime resumed from the same continuity. */
-    if (rt) {
-        elpis_runtime_destroy(&rt);
-    }
     rt = runtime_at(dir, 0);
     commit_turn(rt, &s);
     assert(observe(&s).generation == before.generation + (which == CASE_COMMIT ? 2u : 1u));

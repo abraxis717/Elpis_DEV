@@ -40,7 +40,9 @@ typedef enum {
     FMS_E_STATE       = -8,
     FMS_E_DIGEST      = -9,   /* cold replica failed verification - never soft-recovered */
     FMS_E_DEVICE      = -10,  /* device lost or dispatch failed */
-    FMS_E_TIMEOUT     = -11
+    FMS_E_TIMEOUT     = -11,
+    FMS_E_NOT_RESIDENT = -12  /* fms_acquire_resident only: not resident in the requested tier (demoted, or a
+                                 move in flight); nothing was pinned, promoted, read or waited for */
 } fms_status;
 
 enum { FMS_ST_RESIDENT = 0, FMS_ST_MOVING = 1, FMS_ST_FAILED = 2, FMS_ST_LOST = 3 };
@@ -113,8 +115,14 @@ fms_status fms_register(fms_ctx *c, uint32_t kind, uint64_t bytes, int want_tier
                         float pin_priority, const void *init, fms_id *out);
 fms_status fms_unregister(fms_ctx *c, fms_id id);
 
-/* Unfenced pin. Returns the actual tier (>=0). */
+/* Unfenced pin. Returns the actual tier (>=0). Promotes synchronously (a COLD object is materialized from the
+ * cold store before this returns). */
 fms_status fms_acquire(fms_ctx *c, fms_id id, int want_tier, unsigned mode, void **ptr);
+/* Resident-only unfenced pin (additive; existing callers are unaffected). Pins the object only where it already
+ * is: never promotes, never touches the cold store, never waits for a move. FMS_E_NOT_RESIDENT when the object
+ * sits below `want_tier` (demoted) or a move is in flight. Returns the actual tier (>=0); release with
+ * fms_release. A pinned object is never demoted, so a held pin keeps the object resident. */
+fms_status fms_acquire_resident(fms_ctx *c, fms_id id, int want_tier, unsigned mode, void **ptr);
 fms_status fms_release(fms_ctx *c, fms_id id);
 
 /* Fenced pin for accelerator dispatch. The object cannot be demoted, freed or

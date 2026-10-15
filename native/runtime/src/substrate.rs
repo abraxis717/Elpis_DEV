@@ -20,6 +20,13 @@
 //! closed, reopened or destroyed without an explicit commit or abort, so an open native transaction is never
 //! forgotten. The C ABI (v2) makes the substrate's lifetime explicit: the state must stay live until the turn ends.
 //!
+//! An FMS-resident state is held resident for as long as it is bound (docs/RUNTIME_CORE.md, "HOT residency"):
+//! binding takes the adapter's residency hold (`resident_hold`, only if the state is WARM now) before anything else
+//! touches it, and from then on every operation on it pins resident-only, so no HOT operation ever promotes it,
+//! reads the cold store or waits for a move. RuntimeCore retains a second capability over the state while bound:
+//! [`ResidentRelease`], which drops that hold on release, close, reopen and destruction. A standalone K1 state and a
+//! composite are RAM objects: their hold is a no-op.
+//!
 //! A third kind is the ECS composite retained state (`ecs_composite.h`, docs/ECS_COMPOSITE_STATE.md): K1 and the ECS
 //! memory under one identity (`ELPISEC1`). Its table is the K1 table (same signatures and status numbers; the
 //! digests are composite identities) plus one entry, `leased_txn_observe`, which hands an opaque observation record
@@ -48,6 +55,9 @@ pub const K1_CAPACITY: i32 = -5;
 pub const K1_LEASED: i32 = -8;
 /// The FMS adapter's capacity refusal (`-100 + FMS_CAPACITY`).
 pub const K1_FMS_CAPACITY: i32 = -107;
+/// The FMS-resident state is not WARM while residency is required (`ELPIS_ECSG_K1_FMS_NOT_RESIDENT`: demoted, or a
+/// move in flight): refused without pinning, promoting, reading the cold store or waiting.
+pub const K1_FMS_NOT_RESIDENT: i32 = -112;
 
 /// The highest K1 input dimension (`ELPIS_ECSG_K1_MAX_DIM`).
 pub const MAX_DIM: usize = 64;
@@ -160,6 +170,16 @@ pub trait K1Ops {
     /// begin until that turn ends. It may outlive the call that produced it, but never the open transaction it
     /// ends: the native state is live for exactly that interval (the substrate lifetime contract, runtime.h).
     fn retain_abort(&self) -> Box<dyn TxnAbort>;
+    /// Hold the state resident while it is bound (FMS-resident states; a no-op for RAM states): only if it is WARM
+    /// now, never promoting it; `K1_FMS_NOT_RESIDENT` otherwise. Every later operation then pins resident-only.
+    fn resident_hold(&mut self) -> i32 {
+        K1_OK
+    }
+    /// The owned capability that drops the hold [`K1Ops::resident_hold`] took (None for RAM states), retained by
+    /// RuntimeCore for exactly as long as the state is bound.
+    fn retain_resident(&self) -> Option<Box<dyn ResidentRelease>> {
+        None
+    }
     /// The retained-state format this substrate's identities name (`ELPISGK1` for K1 states).
     fn format(&self) -> StateFormat {
         StateFormat::K1
@@ -183,6 +203,13 @@ pub trait TxnAbort: Send {
     /// `txn_abort` of the K1 ABI: OK (aborted, or no transaction open), INVALID (not this token's transaction),
     /// BUSY (a concurrent overlapping call; nothing done).
     fn txn_abort(&mut self, token: u64) -> i32;
+}
+
+/// The other operation RuntimeCore retains across calls while a state is bound: dropping its residency hold.
+pub trait ResidentRelease: Send {
+    /// `resident_release` of the K1 FMS ABI: OK, INVALID (no hold), BUSY (a concurrent overlapping call), or an
+    /// FMS refusal (the hold stands).
+    fn resident_release(&mut self) -> i32;
 }
 
 /// What an open runtime binds its K1 lineage to: the native state and the caller's owner identity.
@@ -296,6 +323,9 @@ pub struct K1FmsApi {
     pub txn_abort: Option<unsafe extern "C" fn(State, u64, u64) -> Status>,
     pub leased_capture: Option<unsafe extern "C" fn(State, u64, u64, *mut u8, usize, *mut u64) -> Status>,
     pub envelope_seal: Option<Sealer>,
+    /// `elpis_ecsg_k1_fms_resident_hold` / `_resident_release` (docs/RUNTIME_CORE.md, "HOT residency").
+    pub resident_hold: Option<unsafe extern "C" fn(State, u64) -> Status>,
+    pub resident_release: Option<unsafe extern "C" fn(State, u64) -> Status>,
 }
 
 /// `elpis_runtime_substrate`: one native K1 state as the caller describes it.
@@ -373,7 +403,7 @@ impl Native {
             }
             KIND_K1_FMS => {
                 let t = *(d.api as *const K1FmsApi);
-                complete!(t).then_some(Table::Fms(t))?
+                (complete!(t) && t.resident_hold.is_some() && t.resident_release.is_some()).then_some(Table::Fms(t))?
             }
             KIND_COMPOSITE if d.id == 0 => {
                 let t = *(d.api as *const CompositeApi);
@@ -495,6 +525,18 @@ impl K1Ops for Native {
         Box::new(*self)
     }
 
+    fn resident_hold(&mut self) -> i32 {
+        match &self.table {
+            // SAFETY: the validated FMS table's own entry over the descriptor's live handle and resident id.
+            Table::Fms(t) => unsafe { t.resident_hold.expect(TABLE)(self.handle, self.key.id) },
+            _ => K1_OK,
+        }
+    }
+
+    fn retain_resident(&self) -> Option<Box<dyn ResidentRelease>> {
+        matches!(self.table, Table::Fms(_)).then(|| Box::new(*self) as Box<dyn ResidentRelease>)
+    }
+
     fn format(&self) -> StateFormat {
         match self.table {
             Table::Composite(_) => StateFormat::Composite,
@@ -529,5 +571,15 @@ impl K1Ops for Native {
 impl TxnAbort for Native {
     fn txn_abort(&mut self, token: u64) -> i32 {
         call!(self, txn_abort, (token))
+    }
+}
+
+impl ResidentRelease for Native {
+    fn resident_release(&mut self) -> i32 {
+        match &self.table {
+            // SAFETY: as `resident_hold`; the substrate lifetime contract keeps the state live while it is bound.
+            Table::Fms(t) => unsafe { t.resident_release.expect(TABLE)(self.handle, self.key.id) },
+            _ => K1_OK,
+        }
     }
 }

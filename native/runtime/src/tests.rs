@@ -18,8 +18,8 @@ use crate::core::{Core, Counters, Stimulus, VolatileCommit};
 use crate::durable::{Kind, Status, Ticket};
 use crate::fuel::{self, Budget, CEILING};
 use crate::substrate::{
-    features, k1_envelope_bytes, Digest, Experience, K1Ops, Key, ScheduleOutcome, Sealer, Transition, TxnAbort,
-    K1_BUSY, K1_CAPACITY, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE,
+    features, k1_envelope_bytes, Digest, Experience, K1Ops, Key, ResidentRelease, ScheduleOutcome, Sealer, Transition,
+    TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE,
 };
 
 const DIM: usize = 2;
@@ -53,6 +53,24 @@ struct State {
     /// A recoverable commit refusal that leaves the transaction open (0: none).
     refuse_commit: i32,
     calls: Vec<&'static str>,
+    /// Residency of an FMS-resident stand-in: `fms` states have a tier (WARM or demoted), residency holds, and a
+    /// count of the materializations an operation performed (the synchronous promotion a HOT path must never do).
+    fms: bool,
+    warm: bool,
+    holds: u32,
+    promotions: u64,
+}
+
+impl State {
+    /// An FMS operation pin: without a hold, a demoted state is materialized synchronously (ABI v1 behavior); under a
+    /// hold it is resident by construction (the hold pins it).
+    fn pin(&mut self) {
+        if self.fms && !self.warm {
+            assert_eq!(self.holds, 0, "a held state was demoted");
+            self.promotions += 1;
+            self.warm = true;
+        }
+    }
 }
 
 fn envelope_of(w: &[f64], epoch: u64) -> Vec<u8> {
@@ -134,7 +152,43 @@ impl Fake {
             busy_aborts: 0,
             refuse_commit: 0,
             calls: Vec::new(),
+            fms: false,
+            warm: true,
+            holds: 0,
+            promotions: 0,
         })))
+    }
+
+    /// An FMS-resident stand-in (WARM until demoted).
+    fn resident(seed: f64) -> Fake {
+        let f = Fake::new(seed);
+        f.state().fms = true;
+        f
+    }
+
+    /// FMS demotion: refused (false) while a hold pins the state.
+    fn demote(&self) -> bool {
+        let mut s = self.state();
+        if s.holds > 0 {
+            return false;
+        }
+        s.warm = false;
+        true
+    }
+
+    /// The explicit WARM-lane materialization (never a HOT operation's).
+    fn materialize(&self) {
+        let mut s = self.state();
+        s.promotions += 1;
+        s.warm = true;
+    }
+
+    fn holds(&self) -> u32 {
+        self.state().holds
+    }
+
+    fn promotions(&self) -> u64 {
+        self.state().promotions
     }
 
     fn state(&self) -> MutexGuard<'_, State> {
@@ -216,6 +270,19 @@ impl Fake {
     }
 }
 
+struct FakeResident(Arc<Mutex<State>>);
+
+impl ResidentRelease for FakeResident {
+    fn resident_release(&mut self) -> i32 {
+        let mut s = self.0.lock().unwrap();
+        if s.holds == 0 {
+            return K1_INVALID;
+        }
+        s.holds -= 1;
+        0
+    }
+}
+
 struct FakeAbort(Arc<Mutex<State>>);
 
 impl TxnAbort for FakeAbort {
@@ -228,6 +295,7 @@ impl K1Ops for Fake {
     fn state_digest(&mut self, out: &mut Digest) -> i32 {
         let mut s = self.state();
         s.calls.push("state_digest");
+        s.pin();
         if s.digest_fails {
             return -1;
         }
@@ -282,6 +350,7 @@ impl K1Ops for Fake {
     fn leased_identity(&mut self, lease: u64, digest: &mut Digest, generation: &mut u64) -> i32 {
         let mut s = self.state();
         s.calls.push("leased_identity");
+        s.pin();
         if s.lease != lease {
             return K1_LEASED;
         }
@@ -296,6 +365,7 @@ impl K1Ops for Fake {
     fn leased_query(&mut self, lease: u64, dim: usize, x: &[f64], out: &mut [f64], generation: &mut u64) -> i32 {
         let mut s = self.state();
         s.calls.push("leased_query");
+        s.pin();
         if dim != DIM || x.len() != out.len() * DIM {
             return -1;
         }
@@ -316,6 +386,7 @@ impl K1Ops for Fake {
     fn txn_begin_at(&mut self, lease: u64, source_generation: &mut u64, token: &mut u64) -> i32 {
         let mut s = self.state();
         s.calls.push("txn_begin_at");
+        s.pin();
         if s.lease != lease {
             return K1_LEASED;
         }
@@ -408,6 +479,7 @@ impl K1Ops for Fake {
     fn leased_capture(&mut self, lease: u64, out: &mut [u8], generation: &mut u64) -> i32 {
         let mut s = self.state();
         s.calls.push("leased_capture");
+        s.pin();
         if out.len() < ENVELOPE {
             return K1_INVALID;
         }
@@ -425,6 +497,23 @@ impl K1Ops for Fake {
 
     fn retain_abort(&self) -> Box<dyn TxnAbort> {
         Box::new(FakeAbort(Arc::clone(&self.0)))
+    }
+
+    fn resident_hold(&mut self) -> i32 {
+        let mut s = self.state();
+        if !s.fms {
+            return 0;
+        }
+        s.calls.push("resident_hold");
+        if !s.warm {
+            return K1_FMS_NOT_RESIDENT; // never promoted here
+        }
+        s.holds += 1;
+        0
+    }
+
+    fn retain_resident(&self) -> Option<Box<dyn ResidentRelease>> {
+        self.state().fms.then(|| Box::new(FakeResident(Arc::clone(&self.0))) as Box<dyn ResidentRelease>)
     }
 }
 
@@ -1498,6 +1587,74 @@ fn a_second_runtime_binding_the_same_state_makes_the_first_fail_stop() {
 }
 
 // -- the durability lane: explicit, off the HOT lane, bounded ----------------------------------------------------
+
+#[test]
+fn a_demoted_fms_state_is_refused_before_anything_touches_it_and_binds_after_explicit_materialization() {
+    let dir = Dir::new("resident-demoted");
+    let mut sub = Fake::resident(0.1);
+    let mut core = dir.core();
+    core.anchor(&mut sub, key(1)).unwrap();
+    assert_eq!(sub.holds(), 1); // anchoring binds: the state is held resident from then on
+    assert!(!sub.demote(), "a bound state was demoted");
+    turn(&mut core, &mut sub, key(1)).unwrap();
+    core.release(&mut sub, key(1)).unwrap();
+    assert_eq!(sub.holds(), 0); // unbound: demotable again
+    assert!(sub.demote());
+    sub.clear_calls();
+    let touched = |c: Counters| (c.k1_state_digests, c.k1_lease_claims, c.k1_identities, c.k1_queries, c.k1_txn_begins);
+    let before = (touched(core.counters(false)), sub.lease(), sub.promotions());
+    // The HOT operation is refused before any identity read, claim or pin: nothing is promoted or waited for.
+    let r = query(&mut core, &mut sub, key(1), 1).unwrap_err();
+    assert_eq!(r, Rt::NotResident.into());
+    assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Rt::NotResident.into());
+    // Only the pin-free shape read (fuel admission) and the refused holds: no identity read, claim or pinned call.
+    assert!(sub.calls().iter().all(|c| ["shape", "resident_hold"].contains(c)), "{:?}", sub.calls());
+    assert_eq!(sub.calls().iter().filter(|c| **c == "resident_hold").count(), 2);
+    assert_eq!((touched(core.counters(false)), sub.lease(), sub.promotions()), before);
+    assert_eq!((core.fault(), sub.holds()), (None, 0)); // no fail-stop, no hold left behind
+                                                        // The explicit WARM-lane materialization, then the same HOT operation binds and runs without any promotion.
+    sub.materialize();
+    let promotions = sub.promotions();
+    let (answer, _) = query(&mut core, &mut sub, key(1), 1).unwrap();
+    assert_eq!(answer, sub.answer(&query_rows(1)));
+    turn(&mut core, &mut sub, key(1)).unwrap();
+    assert_eq!((sub.promotions(), sub.holds()), (promotions, 1));
+}
+
+#[test]
+fn the_residency_hold_lives_exactly_as_long_as_the_binding() {
+    let dir = Dir::new("resident-lifetime");
+    let mut sub = Fake::resident(0.1);
+    {
+        let mut core = dir.core();
+        core.anchor(&mut sub, key(1)).unwrap();
+        assert_eq!(sub.holds(), 1);
+        core.close();
+        assert_eq!(sub.holds(), 0); // close unbinds
+        core.open().unwrap();
+        query(&mut core, &mut sub, key(1), 1).unwrap(); // rebinding takes exactly one hold again
+        query(&mut core, &mut sub, key(1), 1).unwrap();
+        assert_eq!(sub.holds(), 1);
+        core.release(&mut sub, key(1)).unwrap();
+        core.release(&mut sub, key(1)).unwrap(); // releasing an unbound state drops nothing more
+        assert_eq!(sub.holds(), 0);
+        query(&mut core, &mut sub, key(1), 1).unwrap();
+        assert_eq!(sub.holds(), 1);
+    } // destruction unbinds
+    assert_eq!(sub.holds(), 0);
+    // A bind that fails after the hold (a state that is not the lineage) gives the hold back.
+    let mut other = Fake::resident(0.7);
+    let mut core = dir.core();
+    assert_eq!(query(&mut core, &mut other, key(2), 1).unwrap_err(), Code::StateMismatch.into());
+    assert_eq!((other.holds(), other.lease()), (0, 0));
+    // A RAM state takes no hold at all.
+    let dir = Dir::new("resident-ram");
+    let mut ram = Fake::new(0.1);
+    let mut core = dir.core();
+    core.anchor(&mut ram, key(3)).unwrap();
+    query(&mut core, &mut ram, key(3), 1).unwrap();
+    assert!(!ram.calls().contains(&"resident_hold"));
+}
 
 #[test]
 fn a_durable_request_captures_at_the_live_generation_and_returns_without_waiting() {

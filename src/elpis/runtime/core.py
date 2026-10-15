@@ -130,6 +130,8 @@ class _Budget(C.Structure):
 _API_ENTRIES = ("state_digest", "shape", "lease_claim", "lease_release", "leased_reserve", "leased_identity",
                 "leased_query", "leased_txn_begin_at", "leased_txn_run_schedule", "leased_txn_commit", "txn_abort",
                 "leased_capture", "envelope_seal")
+# The K1 FMS adapter's table appends its residency hold (docs/RUNTIME_CORE.md, "HOT residency").
+_FMS_ENTRIES = _API_ENTRIES + ("resident_hold", "resident_release")
 
 
 class _Recovery(C.Structure):
@@ -230,6 +232,10 @@ class _K1Api(C.Structure):
     _fields_ = [(n, C.c_void_p) for n in _API_ENTRIES]
 
 
+class _K1FmsApi(C.Structure):
+    _fields_ = [(n, C.c_void_p) for n in _FMS_ENTRIES]
+
+
 class _Substrate(C.Structure):
     _fields_ = [("kind", C.c_uint32), ("reserved", C.c_uint32), ("handle", C.c_void_p), ("id", _U64),
                 ("owner", _U64), ("dim", _U64), ("api", C.c_void_p)]
@@ -243,7 +249,8 @@ assert C.sizeof(_Durability) == 3 * 64 + 32 + C.sizeof(_Snapshot)
 
 def _api(lib, prefix):
     """The library's own entry points (addresses of the loaded symbols), as RuntimeCore's function table."""
-    return _K1Api(*(C.cast(getattr(lib, prefix + n), C.c_void_p).value for n in _API_ENTRIES))
+    struct, entries = (_K1FmsApi, _FMS_ENTRIES) if prefix == "elpis_ecsg_k1_fms_" else (_K1Api, _API_ENTRIES)
+    return struct(*(C.cast(getattr(lib, prefix + n), C.c_void_p).value for n in entries))
 
 
 _TABLES: dict[int, tuple[object, _K1Api]] = {}   # id(loaded library) -> (library, table); libraries are never unloaded

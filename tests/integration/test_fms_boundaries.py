@@ -3,8 +3,9 @@
 The geometric (HOT) lane runs managed LEARN and QUERY on an FMS-resident K1 state. Concurrently the contextual (WARM)
 lane resolves existing resources in place and folds them into its views, and a retrieval epoch runs searches that
 never wait for residency. The HOT state's FMS context is not the retrieval epoch's: WARM work cannot promote, demote,
-pin or wait on it. Afterwards the resident state holds no lease and no open transaction, stays WARM, recorded no
-lease failure, and the external resources are byte-for-byte unchanged. A failed WARM materialization (an absent
+pin or wait on it. Afterwards the resident state holds no open transaction and exactly one pin, the runtime's
+residency hold (docs/RUNTIME_CORE.md, "HOT residency": a bound state is never demoted, so no HOT operation can
+materialize it), stays WARM, recorded no lease failure, and the external resources are byte-for-byte unchanged. A failed WARM materialization (an absent
 resource) publishes nothing and the HOT lane never notices.
 
 Cold-resource absence, corrupt cold replicas, exhausted residency budgets, stalled promotion (another holder's pin)
@@ -72,12 +73,14 @@ def test_warm_context_work_never_promotes_pins_or_waits_on_the_hot_resident_stat
             stop.set()
             thread.join()
         after = state._r.inspect(state.id)
+        holds = state._r.resident_holds(state.id)
         status = lane.status()
         assert runtime.continuity.snapshot() == durable              # volatile: nothing published
     assert not errors, errors
     assert retrievals[0] > 0 and status.published > 0 and status.failed > 0 and status.failed_batches == 0
-    # The resident HOT state: no lease or transaction left, still WARM, never a lease failure.
-    assert (after["lease_count"], after["transaction_open"], after["lease_failures"]) == (0, 0, 0), after
+    # The resident HOT state: no transaction left, only the runtime's residency hold (one pin), still WARM, never a
+    # lease failure.
+    assert (after["lease_count"], holds, after["transaction_open"], after["lease_failures"]) == (1, 1, 0, 0), after
     assert after["tier"] == resident["tier"] == 1                     # FMS_WARM
     assert after["generation"] == resident["generation"] + TRANSITIONS
     assert after["acquisitions"] > resident["acquisitions"]

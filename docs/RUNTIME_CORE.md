@@ -295,9 +295,44 @@ K1 crossings plus `max_rows`.
 
 Gate A (HOT isolation): with the durability worker held behind a pending request, 120 managed transitions and 12
 queries complete with no continuity or checkpoint I/O (`test_runtime_hot_path.py`), and at the system-call boundary
-no write, positional write, sync, rename, unlink, truncate or open-for-write on any thread
-(`native/runtime/tests/test_runtime_hot_io.c`, an interposer counting per thread; each durable publication is 4
-such calls, all on the worker). The Rust suite proves the same over the stand-in and forbids, statically, any store,
+no write, positional write, sync, rename, unlink, truncate or open-for-write, and no read, positional read or
+read-only open, on any thread (`native/runtime/tests/test_runtime_hot_io.c`, an interposer counting per thread;
+each durable publication is 4 write-side calls, all on the worker).
+
+### HOT residency
+
+An FMS-resident K1 state lives in FMS: when WARM its image is in memory, but FMS may demote it to the cold store,
+and the K1 FMS adapter's ordinary pin materializes a demoted state synchronously (`fms_acquire`: a cold read, a
+digest check and an allocation) inside whatever operation touched it. A HOT operation must never do that. The
+guarantee is a **residency hold** (additive to the adapter's ABI v1 and to FMS ABI v2; no existing entry point or
+struct changed):
+
+* **Binding holds.** Before RuntimeCore binds an FMS-resident state (the first QUERY / LEARN / durable request after
+  open or release, and the explicit anchor) and before anything else touches it (the identity precheck included),
+  it takes the adapter's hold (`elpis_ecsg_k1_fms_resident_hold`), which succeeds only if the state is WARM now:
+  `fms_acquire_resident` pins it where it is and never promotes, reads the cold store or waits for a move.
+* **A held state stays resident.** The hold's pin makes the object non-demotable (FMS never demotes a pinned
+  object; memory pressure picks other victims or refuses the newcomer), and while any hold exists every operation
+  on the state pins resident-only, so a promotion on the HOT path is impossible rather than merely unlikely.
+* **Not resident: a precise refusal.** A state that is demoted (or in motion) when it would be bound is refused
+  `RUNTIME_NOT_RESIDENT` (84; K1 FMS `-112`): nothing is claimed, read, pinned, promoted or bound, and the runtime
+  is not fail-stopped. A concurrent explicit materialization of the same state is refused `ECS_REFUSED` (K1 `BUSY`,
+  the adapter's single-writer guard) without waiting.
+* **Materialization is WARM work.** The owner promotes the state explicitly (`elpis_ecsg_k1_fms_materialize`,
+  Python `K1FMSState.materialize()`), then retries; the lineage resumes (a release keeps its live identity).
+* **Lifetime.** RuntimeCore retains the hold's release capability exactly while the state is bound and drops it on
+  `release`, `close`, reopen and destruction (and when a bind fails after taking it); the adapter refuses `close`
+  of a held state (`BUSY`). A RAM state (standalone K1, composite) needs no hold.
+
+Proofs: `runtime.test_runtime_hot_io` (real FMS and POSIX cold store: 40 held turns and queries under memory
+pressure with zero read or write calls on any thread and zero promotions; a demoted state's QUERY and LEARN refused
+with zero I/O and zero promotions; only the explicit materialization reads); `ECS.test_ecsg_k1_fms`
+(`test_residency_hold`: already resident, demoted, budget exhaustion, a stalled promotion that blocks neither the
+held state nor the caller, a lost cold replica the hold never even reads, concurrent readers during demotion
+pressure, nested holds and their lifetime, FMS promotion and cold-read counters); `test_runtime_lifecycle.c` (the
+hold across abort, commit, close, destroy, reopen and fail-stop); `tests.rs` (the binding and refusal laws over the
+stand-in); `tests/integration/test_hot_residency.py`. This is mechanics: it says nothing about the latency of a
+promotion, which now happens only where an owner asks for it. The Rust suite proves the same over the stand-in and forbids, statically, any store,
 lane, sync or digest use in the HOT functions (`tests/boundary/test_one_ecs.py`).
 
 ## Native admission

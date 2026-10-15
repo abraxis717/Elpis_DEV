@@ -64,8 +64,9 @@ use crate::code::{Error, Rt};
 use crate::durable::{Kind, Lane, Ticket};
 use crate::fuel::{self, Budget};
 use crate::substrate::{
-    features, k1_envelope_bytes, Experience, K1Ops, Key, Observation, ScheduleOutcome, Transition, TxnAbort, K1_BUSY,
-    K1_CAPACITY, K1_FMS_CAPACITY, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE, KIND_COMPOSITE, MAX_EXPERIENCES,
+    features, k1_envelope_bytes, Experience, K1Ops, Key, Observation, ResidentRelease, ScheduleOutcome, Transition,
+    TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID, K1_LEASED, K1_NONFINITE,
+    K1_STALE, KIND_COMPOSITE, MAX_EXPERIENCES,
 };
 
 /// The next managed lease: unique and nonzero per RuntimeCore in this process (an aliasing defence between
@@ -189,6 +190,9 @@ pub struct Core {
     open: bool,
     fault: Option<Code>,
     bound: Option<Bound>,
+    /// The residency hold of the bound FMS-resident state (docs/RUNTIME_CORE.md, "HOT residency"): taken before a
+    /// state is bound, dropped whenever it is unbound (release, close, reopen, destruction). None for RAM states.
+    resident: Option<Box<dyn ResidentRelease>>,
     /// The live identity an explicit release gave back (format and retained-state identity, read under the lease
     /// just before releasing it). Rebinding accepts it besides the durable identity, so volatile work survives an
     /// explicit release without being made durable; restart never sees it (it is never persisted).
@@ -226,6 +230,7 @@ impl Core {
             open: false,
             fault: None,
             bound: None,
+            resident: None,
             released: None,
             shape: None,
             turn: None,
@@ -277,6 +282,7 @@ impl Core {
         self.end_turn();
         self.fault = None;
         self.bound = None;
+        self.unhold();
         self.released = None;
         self.shape = None;
         self.evolution = None;
@@ -392,10 +398,15 @@ impl Core {
         if self.lane.durable()?.cognition() != Cognition::Unanchored {
             return Err(Code::AlreadyAnchored.into());
         }
-        self.claim(sub)?;
+        self.hold(sub)?;
+        if let Err(r) = self.claim(sub) {
+            self.unhold();
+            return Err(r);
+        }
         let anchored = self.anchor_claimed(sub, key);
         if anchored.is_err() {
             let _ = sub.lease_release(self.lease); // nothing was bound
+            self.unhold();
         }
         anchored
     }
@@ -499,6 +510,47 @@ impl Core {
         if let Some(bound) = self.bound {
             return if bound.key == key { Ok(()) } else { Err(Rt::SubstrateSwitch.into()) };
         }
+        // Residency first: an FMS-resident state that is not WARM now is refused before anything touches it (the
+        // identity check below would otherwise materialize it synchronously on this, the HOT, path).
+        self.hold(sub)?;
+        let bound = self.bind(sub, key);
+        if bound.is_err() {
+            self.unhold();
+        }
+        bound
+    }
+
+    /// Take the residency hold of a state about to be bound (a no-op for RAM states). Refused, without a fail-stop
+    /// and without touching the state further, with `RUNTIME_NOT_RESIDENT` when it is not WARM now: the caller
+    /// materializes it explicitly (a WARM operation) and retries.
+    fn hold(&mut self, sub: &mut dyn K1Ops) -> Result<(), Refusal> {
+        self.unhold(); // at most one hold, and only for the state being bound
+        if self.resident.is_some() {
+            // An earlier hold could not be dropped yet (a concurrent overlapping call): never stack a second one.
+            return Err(ecs(Rt::EcsRefused, K1_BUSY, ScheduleOutcome::default()));
+        }
+        match sub.resident_hold() {
+            0 => {
+                self.resident = sub.retain_resident();
+                Ok(())
+            }
+            K1_FMS_NOT_RESIDENT => Err(Refusal { k1_status: K1_FMS_NOT_RESIDENT, ..Refusal::from(Rt::NotResident) }),
+            rc => Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
+        }
+    }
+
+    /// Drop the residency hold, if any. A refused release (BUSY: a concurrent overlapping call on the state) keeps
+    /// the capability, so the hold is released by the next unbind or bind attempt, or at destruction; meanwhile the
+    /// state merely stays resident.
+    fn unhold(&mut self) {
+        if let Some(mut resident) = self.resident.take() {
+            if resident.resident_release() != 0 {
+                self.resident = Some(resident);
+            }
+        }
+    }
+
+    fn bind(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(), Refusal> {
         let durable = self.lane.durable()?;
         let anchored = match durable.cognition() {
             Cognition::Unanchored => return Err(Code::Unanchored.into()),
@@ -555,7 +607,9 @@ impl Core {
             Ok((identity, generation)) if generation == live => Some((sub.format(), identity)),
             _ => None,
         };
-        match sub.lease_release(self.lease) {
+        let released = sub.lease_release(self.lease);
+        self.unhold(); // the state is unbound: it may be demoted again
+        match released {
             0 => Ok(()),
             rc => Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())),
         }
@@ -1279,6 +1333,7 @@ impl Drop for Core {
     /// abandoned, a running one completes) and the stores release themselves.
     fn drop(&mut self) {
         self.end_turn();
+        self.unhold();
         self.lane.shutdown();
         if let Some(worker) = self.worker.take() {
             let _ = worker.join();
