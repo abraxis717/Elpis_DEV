@@ -324,14 +324,23 @@ struct changed):
   `release`, `close`, reopen and destruction (and when a bind fails after taking it); the adapter refuses `close`
   of a held state (`BUSY`). A RAM state (standalone K1, composite) needs no hold.
 
-Proofs: `runtime.test_runtime_hot_io` (real FMS and POSIX cold store: 40 held turns and queries under memory
-pressure with zero read or write calls on any thread and zero promotions; a demoted state's QUERY and LEARN refused
-with zero I/O and zero promotions; only the explicit materialization reads); `ECS.test_ecsg_k1_fms`
+Which *unpinned* WARM state FMS demotes is recency- and frequency-weighted on the wall clock (`fms_core.c`,
+`evict_cost_ns`; a release counts as an access), so a released state is not necessarily the next victim and no test
+relies on a victim order: every residency precondition is made exact by holding every other WARM state, so that exactly
+one state is eligible (CI-HOTRES-1, `docs/CI_INCIDENTS.md`).
+
+Proofs: `runtime.test_runtime_hot_io` (real FMS and POSIX cold store: pressure while bound demotes only the other
+arrival, and with nothing else eligible the newcomer is refused while the bound state stays WARM; 40 held turns and
+queries with zero read or write calls on any thread and zero promotions; a demoted state's QUERY, LEARN and identity-only
+durable request refused with zero I/O, zero promotions and continuity and the lane status byte-for-byte unchanged; only
+the explicit materialization reads); `ECS.test_ecsg_k1_fms`
 (`test_residency_hold`: already resident, demoted, budget exhaustion, a stalled promotion that blocks neither the
 held state nor the caller, a lost cold replica the hold never even reads, concurrent readers during demotion
 pressure, nested holds and their lifetime, FMS promotion and cold-read counters); `test_runtime_lifecycle.c` (the
 hold across abort, commit, close, destroy, reopen and fail-stop); `tests.rs` (the binding and refusal laws over the
-stand-in); `tests/integration/test_hot_residency.py`. This is mechanics: it says nothing about the latency of a
+stand-in); `tests/integration/test_hot_residency.py` (the three invariants as separate tests: A residency protection,
+B nonresident refusal with nothing promoted, read, pinned, held, published or fail-stopped, C explicit restoration of
+the released live lineage). This is mechanics: it says nothing about the latency of a
 promotion, which now happens only where an owner asks for it. The Rust suite proves the same over the stand-in and forbids, statically, any store,
 lane, sync or digest use in the HOT functions (`tests/boundary/test_one_ecs.py`).
 

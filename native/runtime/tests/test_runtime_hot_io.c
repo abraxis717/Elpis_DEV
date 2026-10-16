@@ -197,11 +197,24 @@ static void fms_resident(const char *scratch) {
         uint8_t digest[32];
         OK(elpis_runtime_live_identity(rt, &fd, digest, &live));
     }
-    /* Memory pressure while bound: another state arrives and the pump runs; the bound state is never the victim. */
+    /* Which unpinned WARM state FMS demotes is recency-weighted on the wall clock (fms_core.c, evict_cost_ns; a release
+     * counts as an access), so no precondition here relies on it. Each is exact through FMS's one hard law, a pinned
+     * object is never demoted: when exactly one WARM state is unpinned, an arrival can displace only that one.
+     *
+     * Memory pressure while bound: two states arrive and the pump runs; the second can displace only the first,
+     * never the held bound state. With every other WARM state held too, nothing is eligible: the newcomer is
+     * refused rather than the bound state demoted (without the runtime's hold, `a` would be the one victim). */
     key[0] = 2;
     assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &others[0]) == ELPIS_ECSG_K1_OK);
+    key[0] = 3;
+    assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &others[1]) == ELPIS_ECSG_K1_OK);
     assert(elpis_ecsg_k1_fms_pump(fr) == ELPIS_ECSG_K1_OK);
-    assert(info_of(fr, a).tier == FMS_WARM);
+    assert(info_of(fr, a).tier == FMS_WARM && info_of(fr, others[0]).tier == FMS_COLD);
+    OK(elpis_ecsg_k1_fms_resident_hold(fr, others[1]));
+    key[0] = 4;
+    assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &others[2]) ==
+           ELPIS_ECSG_K1_FMS_ERROR_BASE + FMS_E_LIMIT);
+    assert(others[2] == 0u && info_of(fr, a).tier == FMS_WARM && info_of(fr, a).lease_count == 1u);
     const fms_stats s0 = residency(fr);
     all_io();
     for (int n = 0; n < 40; ++n) {
@@ -219,24 +232,34 @@ static void fms_resident(const char *scratch) {
            (unsigned long long)(s1.promotions - s0.promotions));
     assert(io == 0 && s1.promotions == s0.promotions && s1.cold_reads == s0.cold_reads);
 
-    /* Unbound, it may be demoted; then a HOT operation is refused before anything touches it: no I/O at all. */
+    /* Unbound, it may be demoted; then a HOT operation is refused before anything touches it: no I/O at all. The only
+     * other WARM state is still held, so the next arrival can displace only `a`. */
     OK(elpis_runtime_release(rt, &fd));
-    for (int k = 1; k < 4 && info_of(fr, a).tier != FMS_COLD; ++k) {
-        key[0] = (uint8_t)(2 + k);
-        assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &others[k]) == ELPIS_ECSG_K1_OK);
-        assert(elpis_ecsg_k1_fms_pump(fr) == ELPIS_ECSG_K1_OK);
-    }
-    assert(info_of(fr, a).tier == FMS_COLD);
+    assert(info_of(fr, a).lease_count == 0u);
+    key[0] = 5;
+    assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &others[3]) == ELPIS_ECSG_K1_OK);
+    assert(info_of(fr, a).tier == FMS_COLD && info_of(fr, others[1]).tier == FMS_WARM);
     const fms_stats s2 = residency(fr);
+    elpis_continuity_snapshot durable_before, durable_after;
+    elpis_runtime_durability lane_before, lane_after;
+    OK(elpis_runtime_snapshot(rt, &durable_before));
+    OK(elpis_runtime_durable_status(rt, &lane_before));
     all_io();
     {
         double out[ROWS], s3[S3];
         elpis_runtime_query_result q;
         elpis_runtime_turn_begin_result begun;
+        elpis_runtime_durable_ticket ticket;
         assert(elpis_runtime_query(rt, &fd, X, ROWS * DIM, out, ROWS, &BUDGET, &q) == ELPIS_RUNTIME_NOT_RESIDENT);
         assert(elpis_runtime_turn_begin(rt, &fd, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, &BUDGET, s3, S3,
                                         &begun) == ELPIS_RUNTIME_NOT_RESIDENT);
+        /* A durable request needs the bytes too: refused before any capture, and nothing durable moves. */
+        assert(elpis_runtime_identity_request(rt, &fd, &ticket) == ELPIS_RUNTIME_NOT_RESIDENT);
     }
+    OK(elpis_runtime_snapshot(rt, &durable_after));
+    OK(elpis_runtime_durable_status(rt, &lane_after));
+    assert(memcmp(&durable_before, &durable_after, sizeof durable_before) == 0);
+    assert(memcmp(&lane_before, &lane_after, sizeof lane_before) == 0);
     io = all_io();
     fms_stats s3 = residency(fr);
     printf("HOT operations on a demoted state: refused NOT_RESIDENT with %ld read or write calls, %llu promotions\n",
@@ -256,6 +279,7 @@ static void fms_resident(const char *scratch) {
 
     elpis_runtime_destroy(&rt);   /* unbinds: the residency hold is dropped */
     assert(info_of(fr, a).lease_count == 0);
+    OK(elpis_ecsg_k1_fms_resident_release(fr, others[1]));
     assert(elpis_ecsg_k1_fms_close(fr, &a) == ELPIS_ECSG_K1_OK);
     for (int k = 0; k < 4; ++k) assert(elpis_ecsg_k1_fms_close(fr, &others[k]) == ELPIS_ECSG_K1_OK);
     assert(elpis_ecsg_k1_fms_destroy(&fr) == ELPIS_ECSG_K1_OK);
