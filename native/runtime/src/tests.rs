@@ -1898,6 +1898,39 @@ mod recovery {
     }
 
     #[test]
+    fn a_ticket_resolved_beyond_the_kept_window_reads_unknown_never_acknowledged() {
+        // The lane keeps the last 16 resolutions only (bounded state, no history). An older ticket reads UNKNOWN:
+        // not ACKNOWLEDGED, not recoverable, no identity, no code; what is durable is the separately reported last
+        // acknowledgment and continuity, never an inference from a forgotten ticket. A sequence never issued is
+        // refused, not UNKNOWN.
+        let (dir, ck) = (Dir::new("ck-unknown"), Ck::new("unknown"));
+        let mut sub = Fake::new(0.1);
+        let mut c = core(&dir, &ck);
+        c.anchor(&mut sub, key(1)).unwrap();
+        let mut tickets = Vec::new();
+        for _ in 0..17 {
+            turn(&mut c, &mut sub, key(1)).unwrap();
+            tickets.push(publish(&mut c, &mut sub, key(1)).unwrap());
+        }
+        assert!(tickets.iter().all(|t| (t.status(), t.recoverable) == (Status::Acknowledged, 1)));
+        let first = c.lane().wait(tickets[0].sequence, Some(Duration::ZERO)).unwrap();
+        assert_eq!(
+            (first.status(), first.sequence, first.recoverable, first.code, first.identity),
+            (Status::Unknown, tickets[0].sequence, 0, 0, [0u8; 32])
+        );
+        for t in &tickets[1..] {
+            // The newer ones are kept exactly.
+            assert_eq!(c.lane().wait(t.sequence, Some(Duration::ZERO)).unwrap(), *t);
+        }
+        let last = *tickets.last().unwrap();
+        let report = c.lane().report();
+        assert_eq!((report.last_requested, report.last_acknowledged), (last, last));
+        assert_eq!(on_disk(&dir).cognition(), Cognition::Anchored(last.identity));
+        assert_eq!(c.lane().wait(0, Some(Duration::ZERO)).unwrap_err(), Rt::Invalid.into());
+        assert_eq!(c.lane().wait(last.sequence + 1, Some(Duration::ZERO)).unwrap_err(), Rt::Invalid.into());
+    }
+
+    #[test]
     fn a_recoverable_request_without_a_checkpoint_store_is_refused_before_anything_is_captured() {
         let dir = Dir::new("kind-no-store");
         let mut sub = Fake::new(0.1);
