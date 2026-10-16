@@ -5,7 +5,8 @@
 Status: implemented systems mechanism (`native/runtime/src/checkpoint.rs`, written by the durability lane of
 `native/runtime/src/durable.rs`, RuntimeCore ABI v4, `elpis.runtime.recovery`).
 UNQUALIFIED: this document specifies the mechanism and its tests; it does not qualify it. Qualification
-specification: `docs/qualification/K1_RECOVERY_R0.md` (NOT RUN).
+specification for ABI v4: `docs/qualification/K1_RECOVERY_R0_V4.md` (NOT RUN); the ABI v3 pre-registration
+`docs/qualification/K1_RECOVERY_R0.md` (NOT RUN) is kept as written.
 
 ## Why a distinct owner
 

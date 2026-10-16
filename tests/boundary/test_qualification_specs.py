@@ -11,13 +11,17 @@ import re
 
 REPO = Path(__file__).resolve().parents[2]
 SPECS = REPO / "docs" / "qualification"
-EXPECTED = {"COGNITIVE_BOUNDARY_R1.md", "K1_RECOVERY_R0.md", "HACF_ECS_BRIDGE_R0.md", "EVOLUTION_FITNESS_R0.md"}
 EVIDENCE = {
     "COGNITIVE_BOUNDARY_R1.md": "research/qualification/cognitive_boundary_r1/evidence",
     "K1_RECOVERY_R0.md": "research/qualification/k1_recovery_r0/evidence",
     "HACF_ECS_BRIDGE_R0.md": "research/hacf_ecs_bridge_r0/evidence",
     "EVOLUTION_FITNESS_R0.md": "research/evolution_fitness_r0/evidence",
+    # RuntimeCore ABI v4 successors (the ABI v3 specifications above stay as pre-registered) and the codec interface.
+    "COGNITIVE_BOUNDARY_R2.md": "research/qualification/cognitive_boundary_r2/evidence",
+    "K1_RECOVERY_R0_V4.md": "research/qualification/k1_recovery_r0_v4/evidence",
+    "ECS_CODEC_R0.md": "research/qualification/ecs_codec_r0/evidence",
 }
+EXPECTED = set(EVIDENCE)
 STATUS = re.compile(r"^Status: \*\*(?P<status>[A-Z ]+)\*\* · Subject: \*\*(?P<subject>[A-Z]+)\*\*", re.M)
 
 

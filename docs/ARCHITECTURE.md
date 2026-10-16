@@ -994,7 +994,9 @@ the subsystem state unchanged.
 * **No preemptive deadline.** Fuel bounds an operation before it starts; a
   running K1 schedule cannot be cancelled.
 * **Unqualified post-red-team mechanisms.** Their specifications
-  (docs/qualification) are NOT RUN.
+  (docs/qualification, including the ABI v4 successors and ECS Codec R0) are
+  NOT RUN; Cognitive Boundary R1's retrospective closure covers commit `bec6da7`
+  (ABI v3) only.
 * **Proposals only, not overlays.** Ingress overlays are not persisted.
 * **No steering epochs.** The steered engine is composed by the caller.
 * **No audit trail.** Runtime operations are not logged. Continuity holds
