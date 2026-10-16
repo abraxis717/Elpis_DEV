@@ -89,6 +89,19 @@ volatile, then published durably) and recovers the byte-identical hyperedge from
 then reports the conflict instead of an answer.
 Mapping or observing never makes a record true, authorized or learned.
 
+From Python the same path is `elpis.runtime.observation.HacfObservationLibrary` over the admitted adapter (library
+identifier `elpis_hacf_observation`): structure's own native functions canonicalize participants and compute and
+validate every hyperedge and assertion identity (Python hashes nothing), the adapter maps the record, and the
+observation enters the composite memory only through `Runtime.run_learn(..., observations=...,
+observation_authority=...)` (docs/ECS_COMPOSITE_STATE.md, "Python composition"); `hyperedge_of` inverts a resident
+slot. `tests/integration/test_hacf_composite_observation.py` carries an asserted, negated, uncertain and re-asserted
+hyperedge through managed turns, a recoverable publication and a restart, and recovers the identical slot and
+hyperedge; it refuses a tampered identity, a changed provenance, an assertion of another hyperedge, an authority
+outside structure's range or outside the `ObservationAuthority`, undefined flags, query-local, too many and repeated
+participants, a self-consistent noncanonical record, a failed turn and an unmanaged mutation, and shows that the same
+LEARN with and without an observation leaves identical K1 components. This is mechanical transport and preservation
+only: no semantic interpretation, no qualified HACF -> ECS observation map and no cognitive use is established.
+
 ## Resources
 
 One allocation per handle (the handle and one 64-byte-aligned arena) at create/restore; none afterwards
