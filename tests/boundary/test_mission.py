@@ -152,7 +152,9 @@ RUNTIME_OPERATIONS = {"open", "close", "run_ingress", "admit_retrieval", "publis
                       "evolution_authority", "evolve", "admit_context", "run_turn", "anchor_cognition", "fault",
                       "run_query", "run_learn", "release", "recover_k1", "discard_k1_candidate",
                       "adopt_k1_candidate", "publish_recoverable", "publish_identity", "durability",
-                      "live_identity"}
+                      "live_identity",
+                      # the explicit legacy move of a K1 lineage to an ECS composite one (a control operation)
+                      "import_composite"}
 
 
 def test_runtime_composes_no_model_operation():

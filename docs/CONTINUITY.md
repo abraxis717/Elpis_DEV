@@ -109,8 +109,10 @@ required, and the checksum domain `elpis.continuity.register.v3\0`. Every K1 or 
 written as v2, byte for byte (the frozen v2 parity vectors are unchanged), so the digest at 32 keeps its v2
 meaning wherever v2 is written. A v2-only reader refuses a v3 record (`CONTINUITY_CORRUPT`): it fails closed
 rather than misreading a composite identity as a K1 identity. The C snapshot reports the format in
-`state_format` (formerly the first reserved byte); the Python continuity adapter binds K1 lineages only and
-refuses a composite one (`CONTINUITY_STATE_MISMATCH`).
+`state_format` (formerly the first reserved byte); the Python continuity adapter (`ContinuityStore`) binds K1
+lineages only and refuses a composite one (`CONTINUITY_STATE_MISMATCH`), and never encodes a composite authority as
+a v2 record. RuntimeCore's reader is format-aware: its `ContinuitySnapshot.state_format` is `"K1"` or
+`"COMPOSITE"`.
 
 A lineage keeps its format. `commit_cognition_as(format, ...)` by a committer of another format is
 `CONTINUITY_STATE_MISMATCH`; the only transition between formats is the explicit legacy import

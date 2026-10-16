@@ -84,6 +84,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from elpis.continuity import ContinuityError, ContinuitySnapshot, EvolutionAuthority
+from elpis.ECS.composite import CompositeState
 from elpis.evolution.path_gate import (
     EvolutionAuthorityBinding,
     EvolutionPathGate,
@@ -423,6 +424,20 @@ class Runtime:
         continuity's authority (``CHECKPOINT_INVALID`` for any other identity)."""
         self._core.checkpoint_discard(candidate)
 
+    def import_composite(self, substrate) -> ContinuitySnapshot:
+        """Operator, explicit and LEGACY: move the open K1 lineage to the ECS composite ``substrate``, made by
+        ``CompositeState.import_k1`` from exactly the authorized K1 state with an empty memory. Needs an attached
+        checkpoint store provisioned for the composite envelope: the composite is captured and made durable first,
+        then continuity publishes the import (a v3 record of format ``COMPOSITE``); the composite is then bound.
+        Anything else (another K1 state, a non-empty memory) is ``CONTINUITY_STATE_MISMATCH`` and publishes
+        nothing. A lineage never changes format implicitly."""
+        if type(substrate) is not CompositeState:
+            raise CompositionError("ECS_STATE", "the import target is an ECS CompositeState")
+        descriptor, owner = describe(substrate)
+        snapshot = self._core.import_composite(descriptor)
+        self._bound_owner, self._bound_substrate = owner, substrate
+        return snapshot
+
     def adopt_k1_candidate(self, candidate: bytes) -> ContinuitySnapshot:
         """Operator reconciliation: adopt exactly the unresolved candidate ``candidate`` after its complete envelope
         verified: continuity publishes authorized -> candidate. Refused while a K1 state is bound."""
@@ -449,7 +464,7 @@ class Runtime:
         from .cognition import QueryReadout, QueryResult, _decode_query, _encode_query, _validate_query_request
         from .fuel import admit_query
 
-        codec_map, classification = _validate_query_request(substrate, request, self._codec_pin())
+        codec_map, classification = _validate_query_request(substrate, request, self._codec_pin(), managed=True)
         descriptor, owner = describe(substrate)
         tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, codec_map)
         admit_query(stimulus, substrate.dim, substrate.width, request.budget, request.max_output_tokens)
@@ -461,33 +476,53 @@ class Runtime:
         return QueryResult(tokens, output, rendered, readout, classification, context=consumed)
 
     # -- cognition: LEARN (explicit authority) -------------------------------------------------------------------
-    def run_learn(self, substrate, request, *, context=None):
+    def run_learn(self, substrate, request, *, context=None, observations=(), observation_authority=None):
         """One managed LEARN under an explicit :class:`~elpis.runtime.cognition.LearnAuthority`.
 
-        RuntimeCore verifies the K1 lineage (its live coordinate), runs the admitted experience schedule on a native
+        RuntimeCore verifies the lineage (its live coordinate), runs the admitted experience schedule on a native
         candidate and commits it atomically into the live state. The commit is VOLATILE: nothing is checkpointed or
         published and no I/O happens (``result.durability == "VOLATILE"``; the result carries the live generations).
-        Durability is :meth:`publish_recoverable` (or :meth:`publish_identity`). A refused LEARN installs nothing. ``context``: see the module
-        docstring.
+        Durability is :meth:`publish_recoverable` (or :meth:`publish_identity`). A refused LEARN installs nothing.
+        ``context``: see the module docstring.
+
+        ``observations`` (an ECS composite lineage only): typed
+        :class:`~elpis.ECS.composite.MemoryObservation` values recorded into the memory candidate of the same turn,
+        under an explicit :class:`~elpis.runtime.cognition.ObservationAuthority` (admitted before anything native is
+        called). OBSERVE is exact evidence storage: it never changes the K1 schedule and is not learning or truth. The
+        turn is all or nothing: if any observation is refused the whole turn is aborted (nothing of it is installed)
+        and the refusal is raised; otherwise the K1 candidate and the memory candidate commit as one transition. No
+        memory LEARN is reachable (unqualified). ``result.observed`` holds the committed relation keys in order.
         """
         self._core.require_live()
         consumed = _consumed_context(context)
 
-        from .cognition import LearnResult, _encode, _validate_learn_request
+        from .cognition import LearnResult, _admit_observations, _encode, _validate_learn_request
         from .fuel import admit_learn
 
-        codec_map, classification, authority = _validate_learn_request(substrate, request, self._codec_pin())
+        codec_map, classification, authority = _validate_learn_request(substrate, request, self._codec_pin(),
+                                                                       managed=True)
+        observed = _admit_observations(substrate, observations, observation_authority)
         descriptor, owner = describe(substrate)
         tokens, stimulus = _encode(substrate, request.text, request.tokenizer, codec_map)
         admit_learn(stimulus, substrate.dim, substrate.width, authority.budget)
         if self._bound_owner is None:
             self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
         self._core.turn_begin(descriptor, stimulus, authority.learning_rate, authority.budget)
+        keys = []
+        try:
+            for observation in observed:
+                keys.append(self._core.turn_observe(descriptor, observation))
+        except BaseException:
+            try:
+                self._core.turn_abort(descriptor)   # all or nothing: no partial candidate is ever committed
+            except CompositionError:
+                pass   # a fail-stop already ended it natively, or close and destruction will (the turn law)
+            raise
         committed = self._core.turn_commit(descriptor)
         return LearnResult(tokens, stimulus.experiences, committed.epoch_before, committed.epoch_after,
                            classification, authority.grant, None, None,
                            generation_before=committed.generation_before, generation_after=committed.generation_after,
-                           durability="VOLATILE", context=consumed)
+                           durability="VOLATILE", context=consumed, observed=tuple(keys))
 
     # -- durability: explicit, off the HOT lane -------------------------------------------------------------------
     def publish_recoverable(self, substrate, *, wait: bool = True, timeout: float | None = None) -> DurableTicket:

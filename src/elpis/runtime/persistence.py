@@ -204,6 +204,7 @@ OPERATOR_OPERATIONS = frozenset({
     "evolve",              # an explicit assertion under the pinned evolution policy, reserved before execution
     "discard_k1_candidate",   # explicit reconciliation of exactly one named checkpoint candidate
     "adopt_k1_candidate",     # explicit reconciliation: continuity authorized -> the named candidate
+    "import_composite",       # explicit lineage format change (K1 -> ECS composite): fixed checkpoint, then continuity
 })
 AUTONOMOUS_WRITERS = frozenset(w.id for w in WRITERS if w.classification is F)
 

@@ -49,6 +49,7 @@ from elpis.continuity.adapter import (
     ContinuitySnapshot,
     EvolutionAuthority,
 )
+from elpis.ECS.composite import CompositeState, MemoryObservation, MEMORY_CODES as _MEMORY_CODES
 from elpis.ECS.k1 import K1Error, K1FMSState, K1State
 
 from elpis.substrate.contracts import ContractError
@@ -132,6 +133,10 @@ _API_ENTRIES = ("state_digest", "shape", "lease_claim", "lease_release", "leased
                 "leased_capture", "envelope_seal")
 # The K1 FMS adapter's table appends its residency hold (docs/RUNTIME_CORE.md, "HOT residency").
 _FMS_ENTRIES = _API_ENTRIES + ("resident_hold", "resident_release")
+# The ECS composite's table (elpis_runtime_composite_api): the K1 table's entries over composite identities, in the
+# same order (its leased_txn_commit is the composite's leased_txn_commit_at), then the memory OBSERVE of the open turn.
+_COMPOSITE_ENTRIES = tuple("leased_txn_commit_at" if n == "leased_txn_commit" else n for n in _API_ENTRIES) + (
+    "leased_txn_observe",)
 
 
 class _Recovery(C.Structure):
@@ -236,6 +241,15 @@ class _K1FmsApi(C.Structure):
     _fields_ = [(n, C.c_void_p) for n in _FMS_ENTRIES]
 
 
+class _CompositeApi(C.Structure):
+    _fields_ = [("base", _K1Api), ("leased_txn_observe", C.c_void_p)]
+
+
+class _ObserveResult(C.Structure):
+    """``elpis_runtime_observe_result``."""
+    _fields_ = [("relation_key", C.c_uint8 * 32), ("k1_status", C.c_int32), ("memory_status", C.c_int32)]
+
+
 class _Substrate(C.Structure):
     _fields_ = [("kind", C.c_uint32), ("reserved", C.c_uint32), ("handle", C.c_void_p), ("id", _U64),
                 ("owner", _U64), ("dim", _U64), ("api", C.c_void_p)]
@@ -244,11 +258,15 @@ class _Substrate(C.Structure):
 assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 64 and C.sizeof(_Counters) == 128
 assert C.sizeof(_Budget) == 48 and C.sizeof(_Ticket) == 64
 assert C.sizeof(_Query) == 16 and C.sizeof(_Recovery) == 80
+assert C.sizeof(_CompositeApi) == 14 * C.sizeof(C.c_void_p) and C.sizeof(_ObserveResult) == 40
 assert C.sizeof(_Durability) == 3 * 64 + 32 + C.sizeof(_Snapshot)
 
 
 def _api(lib, prefix):
     """The library's own entry points (addresses of the loaded symbols), as RuntimeCore's function table."""
+    if prefix == "elpis_ecs_composite_":
+        address = [C.cast(getattr(lib, prefix + n), C.c_void_p).value for n in _COMPOSITE_ENTRIES]
+        return _CompositeApi(_K1Api(*address[:-1]), address[-1])
     struct, entries = (_K1FmsApi, _FMS_ENTRIES) if prefix == "elpis_ecsg_k1_fms_" else (_K1Api, _API_ENTRIES)
     return struct(*(C.cast(getattr(lib, prefix + n), C.c_void_p).value for n in entries))
 
@@ -263,7 +281,7 @@ def _table(lib, prefix):
     return entry[1]
 
 
-K1_LIBRARY_IDS = {K1State: "elpis_ecsg_k1", K1FMSState: "elpis_ecsg_k1_fms"}
+K1_LIBRARY_IDS = {K1State: "elpis_ecsg_k1", K1FMSState: "elpis_ecsg_k1_fms", CompositeState: "elpis_ecs_composite"}
 
 
 def _require_admitted(lib, kind):
@@ -276,8 +294,8 @@ def _require_admitted(lib, kind):
 
 
 def describe(substrate):
-    """``(descriptor, owner)`` for a native K1 state; raises ``ECS_STATE`` for anything else or a closed state, and
-    ``ECS_NATIVE_UNADMITTED`` for a state whose native library was not admitted."""
+    """``(descriptor, owner)`` for a native K1 state or ECS composite; raises ``ECS_STATE`` for anything else or a
+    closed state, and ``ECS_NATIVE_UNADMITTED`` for a state whose native library was not admitted."""
     try:
         if type(substrate) is K1State:
             _require_admitted(substrate._lib, K1State)
@@ -290,9 +308,15 @@ def describe(substrate):
             table = _table(runtime._lib, "elpis_ecsg_k1_fms_")
             d = _Substrate(2, 0, runtime._live(), substrate.id, id(runtime), substrate.dim, C.addressof(table))
             return d, runtime
+        if type(substrate) is CompositeState:
+            _require_admitted(substrate._lib, CompositeState)
+            table = _table(substrate._lib, "elpis_ecs_composite_")
+            d = _Substrate(3, 0, substrate._live(), 0, id(substrate), substrate.dim, C.addressof(table))
+            return d, substrate
     except K1Error as exc:
         raise CompositionError("ECS_STATE", str(exc)) from exc
-    raise CompositionError("ECS_STATE", "a native K1 state (K1State or K1FMSState) is required")
+    raise CompositionError("ECS_STATE", "a native K1 state (K1State or K1FMSState) or an ECS CompositeState is "
+                                        "required")
 
 
 class TurnBegun(tuple):
@@ -372,6 +396,8 @@ class RuntimeLibrary:
             "checkpoint_recover": [P, C.POINTER(_Recovery), P, C.c_size_t],
             "checkpoint_discard": [P, P],
             "checkpoint_adopt": [P, P, S],
+            "turn_observe": [P, C.POINTER(_Substrate), P, C.POINTER(_ObserveResult)],
+            "import_composite": [P, C.POINTER(_Substrate), S],
         }
         for name, args in sig.items():
             fn = getattr(lib, "elpis_runtime_" + name)
@@ -452,7 +478,7 @@ class RuntimeCore:
     def _snapshot(self, name: str, *args, detail: str = "") -> ContinuitySnapshot:
         out = _Snapshot()
         self.library.check(getattr(self._f, "elpis_runtime_" + name)(self._handle, *args, C.byref(out)), detail)
-        return _from_c(out)
+        return _from_c(out, composite=True)   # RuntimeCore is format-aware: a lineage is K1 or ECS composite
 
     # -- lifecycle --------------------------------------------------------------------------------------------
     def open(self) -> ContinuitySnapshot:
@@ -511,6 +537,27 @@ class RuntimeCore:
         return TurnBegun(_unpack_from(f"{features}d", s3), int(out.schedule.epoch_before),
                          int(out.schedule.epoch_after))
 
+    def turn_observe(self, descriptor, observation) -> bytes:
+        """OBSERVE one :class:`~elpis.ECS.composite.MemoryObservation` on the open turn's memory candidate (an ECS
+        composite substrate only); returns its relation key. Authoritative only with the turn's commit. A refusal
+        (``ECS_REFUSED`` with the composite and memory statuses) leaves the turn open and its candidate unchanged;
+        RuntimeCore never reads the observation."""
+        if type(observation) is not MemoryObservation:
+            raise CompositionError("RUNTIME_INVALID", "a MemoryObservation is required")
+        native, out = observation._native(), _ObserveResult()
+        rc = self._f.elpis_runtime_turn_observe(self._handle, C.byref(descriptor), C.byref(native), C.byref(out))
+        if rc != 0 and out.memory_status:
+            memory = _MEMORY_CODES.get(out.memory_status, out.memory_status)
+            self.library.check(rc, f"memory {memory}", out.k1_status)
+        self.library.check(rc, "", out.k1_status)
+        return bytes(out.relation_key)
+
+    def import_composite(self, descriptor) -> ContinuitySnapshot:
+        """LEGACY, explicit: move the K1 lineage to the ECS composite ``descriptor`` names (made by
+        ``CompositeState.import_k1`` from exactly the authorized K1 state, empty memory); durable before continuity
+        publishes the import. Needs an attached checkpoint store sized for the composite envelope."""
+        return self._snapshot("import_composite", C.byref(descriptor))
+
     def turn_commit(self, descriptor) -> VolatileCommit:
         """The volatile native commit of the open turn: nothing is checkpointed or published."""
         out = _Commit()
@@ -568,7 +615,7 @@ class RuntimeCore:
                                 self._ticket(out.running) if out.running.sequence else None,
                                 int(out.live_generation), bool(out.pending),
                                 self.library.code(out.fault) if out.fault else None, int(out.parked),
-                                int(out.checkpoint_capacity), _from_c(out.durable) if out.durable_known else None)
+                                int(out.checkpoint_capacity), _from_c(out.durable, composite=True) if out.durable_known else None)
 
     def live_identity(self, descriptor) -> tuple[bytes, int]:
         """The bound state's retained-state identity and live generation (cold path: one hashing native call)."""

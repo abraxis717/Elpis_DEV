@@ -115,10 +115,39 @@ format-aware (C ABI and laws in `docs/RUNTIME_CORE.md`, "Composite substrates"):
    either absent or present once, never duplicated (tested with process death after the slot sync and with the
    continuity record torn). Volatile transitions since the last acknowledgment are lost by a crash.
 
-What this does **not** claim: that RuntimeCore admits memory LEARN or CONSOLIDATE (it does not; unqualified), that
-any memory operation has scientific qualification, or that the Python runtime composition drives composite
-lineages (the Python adapters bind K1 lineages only and refuse composite ones). A snapshot round trip alone is
-not crash-consistent recovery; the recovery claim rests on the checkpoint + continuity tests above.
+What this does **not** claim: that RuntimeCore admits memory LEARN or CONSOLIDATE (it does not; unqualified), or
+that any memory operation has scientific qualification. A snapshot round trip alone is not crash-consistent
+recovery; the recovery claim rests on the checkpoint + continuity tests above.
+
+## Python composition (mechanics)
+
+`elpis.ECS.composite` binds the composite as `elpis.ECS.k1` binds K1 (one native call per method, no ECS law in
+Python); its configuration never sets a memory capability, so OBSERVE and LOOKUP are reachable and memory LEARN /
+QUERY FAST are not. The managed runtime admits it under the library identifier `elpis_ecs_composite` (math, K1, the
+memory and the composite are admitted in dependency order and bound by SONAME to the pinned objects) and drives it
+through the existing RuntimeCore substrate kind 3:
+
+* `Runtime.anchor_cognition`, `run_query`, `run_learn`, `publish_recoverable` (a checkpoint store provisioned for
+  the composite envelope), `recover_k1` (the ELPISEC1 envelope; `CompositeState.restore`) and `release` work on a
+  `CompositeState` exactly as on K1; `ContinuitySnapshot.state_format` is `"COMPOSITE"` for its lineage.
+* `run_learn(..., observations=..., observation_authority=ObservationAuthority(...))` carries typed
+  `MemoryObservation` values into the same managed turn: admitted at the boundary before anything native (an
+  explicit grant, the source identifiers it admits, a per-turn bound of at most 64), observed natively on the memory
+  candidate, then committed with the K1 candidate as one volatile transition. All or nothing: a refused observation
+  (a stale tick, capacity, a malformed record) aborts the whole turn.
+* OBSERVE exists only inside a LEARN turn: RuntimeCore's `turn_begin` refuses an empty K1 schedule, so there is no
+  observe-only managed turn. Defining one is a RuntimeCore ABI decision (a proposed contract is in
+  `docs/qualification/README.md`, "Interface readiness"), not done here.
+* `Runtime.import_composite` (an operator operation) is the explicit legacy move of a K1 lineage to a composite one.
+* The direct continuity adapter (`elpis.continuity.ContinuityStore`) still binds K1 lineages only: it refuses to
+  read, or encode, a composite record.
+
+Tests: `tests/integration/test_composite_runtime.py` (ownership and lease refusal, atomic observe + commit, every
+refusal installing nothing, exact snapshot / restore, bounded allocation and checkpoint footprint, restart losing
+exactly the volatile work, K1 / composite non-substitution, the explicit import, unadmitted libraries, format-aware
+readers) and `tests/integration/test_composite_process_kill.py` (real SIGKILL inside a composite publication: the
+memory transition is present exactly once when continuity authorizes it, never the volatile one). Mechanics only:
+nothing decides what to observe, and an observation is evidence, never truth or a learning instruction.
 
 ## Tests
 

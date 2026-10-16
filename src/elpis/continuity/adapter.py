@@ -50,12 +50,18 @@ class EvolutionAuthority:
 
 @dataclass(frozen=True)
 class ContinuitySnapshot:
-    """One complete authority as returned by the library. ``digest`` is the record checksum."""
+    """One complete authority as returned by the library. ``digest`` is the record checksum.
+
+    ``state_format`` names what the anchored identity identifies: ``"K1"`` (an ELPISGK1 retained state; every v2
+    record) or ``"COMPOSITE"`` (an ELPISEC1 ECS composite, a v3 record; the field ``k1_state_digest`` keeps its
+    historical name, as in the C ABI, and then holds the composite identity, never a K1 one). Only a format-aware
+    reader (RuntimeCore's) returns a COMPOSITE snapshot; this adapter's own store binds K1 lineages only."""
 
     generation: int
     k1_state_digest: bytes | None
     evolution: EvolutionAuthority
     digest: str | None = field(default=None, compare=False, repr=False)
+    state_format: str = "K1"
 
     @property
     def anchored(self) -> bool:
@@ -108,22 +114,29 @@ def _snapshot_arg(value):
     k1_arg = _DIGEST() if k1 is None else _digest_arg(k1) if type(k1) is bytes else None
     generation = getattr(value, "generation", None)
     if (type(value) is not ContinuitySnapshot or evolution is None or k1_arg is None
-            or type(generation) is not int or not 0 <= generation <= _U64):
+            or type(generation) is not int or not 0 <= generation <= _U64 or value.state_format != "K1"):
         return None
     return _Snapshot(generation, int(k1 is not None), 0, (C.c_uint8 * 6)(), k1_arg, evolution)
 
 
-def _from_c(s: _Snapshot) -> ContinuitySnapshot:
-    if s.state_format != 0:
-        # An ECS composite lineage (ELPISEC1, a v3 record): this adapter binds K1 lineages only, and a composite
-        # identity is never a K1 retained-state digest. Fail closed instead of misreading it.
-        raise ContinuityError("CONTINUITY_STATE_MISMATCH", "a composite (ELPISEC1) lineage is not a K1 lineage")
+_FORMATS = {0: "K1", 1: "COMPOSITE"}   # ELPIS_CONTINUITY_FORMAT_K1 / ELPIS_CONTINUITY_FORMAT_COMPOSITE
+
+
+def _from_c(s: _Snapshot, *, composite: bool = False) -> ContinuitySnapshot:
+    """The snapshot value of a record. A composite lineage (ELPISEC1, a v3 record) is decoded only for a
+    format-aware reader (``composite``: RuntimeCore); this adapter binds K1 lineages only, and a composite identity
+    is never a K1 retained-state digest, so it fails closed instead of misreading one. An unknown format is refused
+    by every reader."""
+    state_format = _FORMATS.get(s.state_format)
+    if state_format is None or (state_format == "COMPOSITE" and not composite):
+        raise ContinuityError("CONTINUITY_STATE_MISMATCH", "a composite (ELPISEC1) lineage is not a K1 lineage"
+                              if state_format else f"unknown continuity state format {s.state_format}")
     e = s.evolution
     authority = EvolutionAuthority(e.revision, bytes(e.head).hex(),
                                    bytes(e.assertion).hex() if e.pending else None,
                                    bytes(s.evolution_digest).hex())
     return ContinuitySnapshot(s.generation, bytes(s.k1_state_digest) if s.anchored else None, authority,
-                              bytes(s.record_digest).hex())
+                              bytes(s.record_digest).hex(), state_format)
 
 
 class ContinuityLibrary:

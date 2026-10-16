@@ -575,7 +575,9 @@ composite as substrate kind 3 exactly as K1: a volatile native commit on the HOT
 an explicit durable publication (capture -> seal -> checkpoint -> continuity; record v3 names the composite
 format); memory changes only through `turn_observe` in a managed turn.
 The typed HACF -> memory observation path (`libelpis_hacf_observation`, runtime subsystem) keeps structure the
-owner of hyperedge identity and validation. The Python runtime composition binds K1 lineages only.
+owner of hyperedge identity and validation. The Python runtime composition drives composite lineages through the
+same RuntimeCore substrate (`elpis.ECS.composite`; typed observations ride a managed LEARN turn under an explicit
+`ObservationAuthority`, all or nothing; docs/ECS_COMPOSITE_STATE.md, "Python composition"): mechanics only.
 
 ## Inference: the DSV4 codec and retained model mechanics (`elpis.inference`)
 

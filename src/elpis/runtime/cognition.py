@@ -66,6 +66,7 @@ from enum import Enum
 import math
 from typing import Protocol
 
+from elpis.ECS.composite import CompositeState, MemoryObservation
 from elpis.ECS.k1 import MAX_EXPERIENCES, K1Error, K1FMSState, K1State
 
 from . import codec_authority as _ca
@@ -74,7 +75,8 @@ from .errors import CompositionError
 from .fuel import CEILING, CognitiveBudget, admit_learn, admit_query
 
 __all__ = ("CODEC_UNQUALIFIED", "LEGACY_LEARNED_TURN", "CognitiveOperation", "ECSCodecMap", "ECSQueryCodecMap",
-           "LearnAuthority", "LearnRequest", "LearnResult", "QueryReadout", "QueryRequest", "QueryResult",
+           "LearnAuthority", "LearnRequest", "LearnResult", "MAX_TURN_OBSERVATIONS", "ObservationAuthority",
+           "QueryReadout", "QueryRequest", "QueryResult",
            "QueryStimulus", "Readout", "Stimulus", "TurnResult", "run_learn", "run_query", "run_turn")
 
 CODEC_UNQUALIFIED = "ECS_CODEC_UNQUALIFIED"
@@ -83,6 +85,10 @@ LEGACY_LEARNED_TURN = "LEGACY_LEARNED_TURN"
 _MAX_ROWS, _MAX_STEPS, _MAX_TOKENS, _MAX_DIM = 256, 1 << 20, 4096, 64
 MAX_QUERY_ROWS = 4096
 _SUBSTRATES = (K1State, K1FMSState)
+# The managed runtime (RuntimeCore) also binds an ECS composite lineage (K1 + memory, ELPISEC1); the unmanaged paths
+# here drive a K1 transaction themselves and stay K1-only.
+_MANAGED_SUBSTRATES = _SUBSTRATES + (CompositeState,)
+MAX_TURN_OBSERVATIONS = 64   # the most observations one managed LEARN turn may carry
 
 
 class CognitiveOperation(str, Enum):
@@ -263,6 +269,57 @@ class LearnAuthority:
 
 
 @dataclass(frozen=True)
+class ObservationAuthority:
+    """Explicit OBSERVE authority: without it no observation enters the ECS memory of a composite lineage.
+
+    OBSERVE records exact typed evidence (docs/ECS_MEMORY.md): it is storage, never learning, truth or authority,
+    and it does not change what the turn's LEARN does (that is its own :class:`LearnAuthority`'s). ``grant`` states
+    who granted it and why (reported, never interpreted). ``sources`` is the set of source-authority identifiers
+    whose observations it admits: an observation recording any other source is refused before anything is begun.
+    ``max_observations`` bounds one turn (at most :data:`MAX_TURN_OBSERVATIONS`). Like :class:`LearnAuthority` it is
+    not a credential against an in-process caller: it makes each admission of evidence an explicit act.
+    """
+
+    grant: str
+    sources: frozenset
+    max_observations: int = MAX_TURN_OBSERVATIONS
+
+    def __post_init__(self):
+        if type(self.grant) is not str or not self.grant.strip():
+            raise CompositionError("OBSERVATION_AUTHORITY", "an observation grant must state who granted it and why")
+        if type(self.sources) is not frozenset or not self.sources or \
+                not all(type(s) is int and 0 <= s < 1 << 32 for s in self.sources):
+            raise CompositionError("OBSERVATION_AUTHORITY", "sources: a non-empty frozenset of 32-bit source ids")
+        if type(self.max_observations) is not int or not 1 <= self.max_observations <= MAX_TURN_OBSERVATIONS:
+            raise CompositionError("OBSERVATION_AUTHORITY", f"max_observations: 1..{MAX_TURN_OBSERVATIONS}")
+
+
+def _admit_observations(substrate, observations, authority):
+    """The observations one managed LEARN turn carries, admitted before anything native is called: a tuple of
+    :class:`~elpis.ECS.composite.MemoryObservation` for an ECS composite substrate, each from a source the explicit
+    :class:`ObservationAuthority` admits, within its bound. No observations: no authority (it would authorize
+    nothing)."""
+    if type(observations) is not tuple:
+        raise CompositionError("OBSERVATION", "observations: a tuple of MemoryObservation")
+    if not observations:
+        if authority is not None:
+            raise CompositionError("OBSERVATION_AUTHORITY", "an observation authority without observations")
+        return ()
+    if type(substrate) is not CompositeState:
+        raise CompositionError("OBSERVATION", "only an ECS composite substrate has a memory to observe into")
+    if type(authority) is not ObservationAuthority:
+        raise CompositionError("OBSERVATION_UNAUTHORIZED", "OBSERVE requires an explicit ObservationAuthority")
+    if len(observations) > authority.max_observations:
+        raise CompositionError("OBSERVATION_AUTHORITY", "more observations than the authority admits")
+    for o in observations:
+        if type(o) is not MemoryObservation:
+            raise CompositionError("OBSERVATION", "observations: a tuple of MemoryObservation")
+        if o.source_authority not in authority.sources:
+            raise CompositionError("OBSERVATION_AUTHORITY", "an observation from a source the authority does not admit")
+    return observations
+
+
+@dataclass(frozen=True)
 class QueryRequest:
     """A QUERY: ``text`` through ``tokenizer`` and the QUERY side of an admitted ``codec``. Nothing in it can learn."""
 
@@ -331,6 +388,7 @@ class LearnResult:
     generation_after: int | None = None
     durability: str = "UNMANAGED"
     context: object = None   # the ContextCoordinate of the published context view consumed (managed; None: none)
+    observed: tuple = ()     # managed composite LEARN: the relation keys of the observations it committed, in order
 
 
 @dataclass(frozen=True)
@@ -367,9 +425,10 @@ def _admitted(codec, needed, deployment_pin):
     return codec.require(needed, deployment_pin), codec.classification
 
 
-def _validate_common(substrate, text):
-    if type(substrate) not in _SUBSTRATES:
-        raise CompositionError("ECS_STATE", "a native K1 state (K1State or K1FMSState) is required")
+def _validate_common(substrate, text, managed=False):
+    if type(substrate) not in (_MANAGED_SUBSTRATES if managed else _SUBSTRATES):
+        raise CompositionError("ECS_STATE", "a native K1 state (K1State or K1FMSState) is required" if not managed
+                               else "a native K1 state (K1State or K1FMSState) or an ECS CompositeState is required")
     if type(text) is not str:
         raise CompositionError("INPUT", "text must be str")
 
@@ -387,25 +446,27 @@ def _validate_authority(authority):
     return authority
 
 
-def _validate_query_request(substrate, request, deployment_pin=None):
-    """Validate a QUERY without reading or mutating K1 state; returns (codec map, admitted classification)."""
+def _validate_query_request(substrate, request, deployment_pin=None, *, managed=False):
+    """Validate a QUERY without reading or mutating K1 state; returns (codec map, admitted classification). Only the
+    managed runtime (``managed``) admits an ECS composite substrate."""
     if type(request) is not QueryRequest:
         raise CompositionError("OPERATION", "a QUERY takes a QueryRequest")
     if request.codec is None:
         raise CompositionError(CODEC_UNQUALIFIED, UNQUALIFIED_DETAIL)
-    _validate_common(substrate, request.text)
+    _validate_common(substrate, request.text, managed)
     _validate_output_limit(request.max_output_tokens)
     return _admitted(request.codec, _ca.QUERY, deployment_pin)
 
 
-def _validate_learn_request(substrate, request, deployment_pin=None):
-    """Validate a LEARN without reading or mutating K1 state; returns (codec map, classification, authority)."""
+def _validate_learn_request(substrate, request, deployment_pin=None, *, managed=False):
+    """Validate a LEARN without reading or mutating K1 state; returns (codec map, classification, authority). Only
+    the managed runtime (``managed``) admits an ECS composite substrate."""
     if type(request) is not LearnRequest:
         raise CompositionError("OPERATION", "a LEARN takes a LearnRequest")
     if request.codec is None:
         raise CompositionError(CODEC_UNQUALIFIED, UNQUALIFIED_DETAIL)
     authority = _validate_authority(request.authority)
-    _validate_common(substrate, request.text)
+    _validate_common(substrate, request.text, managed)
     codec_map, classification = _admitted(request.codec, _ca.LEARN, deployment_pin)
     return codec_map, classification, authority
 
