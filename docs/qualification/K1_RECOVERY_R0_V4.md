@@ -9,9 +9,47 @@ LEARN wrote its candidate's envelope and published continuity before returning. 
 durability is an explicit request served by the durability lane, so the v3 crash points (a checkpointed LEARN) no
 longer exist and that specification cannot be inherited. It stays as written, historical authority for ABI v3.
 
+## Amendment before any run (RuntimeCore ABI v5; freeze prerequisites)
+
+Made before the freeze, on DEV inputs only; nothing of it was chosen after observing a QUAL result.
+
+* **The ABI under test.** The library is RuntimeCore ABI v5. v5 changed only the managed turn (the observe-only
+  turn, `budget.max_observations`, `counters.k1_observes`); the durability lane, the checkpoint store, continuity's
+  records, the envelopes and every crash law this specification measures are ABI v4's, unchanged. The question and
+  the gates below are therefore asked of the v4 durability law as the v5 library implements it.
+* **The control-operation hooks** this specification made a prerequisite exist and were reviewed:
+  `elpis_runtime_testing_control_fault` (testing library only; docs/RUNTIME_CORE.md, "Control-operation crash
+  points"): anchor, import, discard and adopt at begun / slot written / slot synced / record torn / record written /
+  record synced, simulated (in-process tests) or parked for a real `SIGKILL` (this run).
+* **Instrument.** `research/qualification/k1_recovery_r0_v4/`: `plan.json` (every point, lineage, expectation,
+  operator action, torn offset, bound and input seed: the pre-registered crash-point list), `runner.py` (children
+  that drive a real lineage through the public runtime API over a pinned deployment of the testing build, parked and
+  `SIGKILL`ed; fresh restart processes), `check.py` (the gates, evaluated from the records alone; it imports no Elpis
+  code). The freeze record binds their digests, the source commit and the library digests before the QUAL run.
+* **Procedure as registered.** Families: `publish` (lane steps 1-9 and after delivery; both lineages), `identity`
+  (sealed, record torn / written / synced, acknowledged; bare K1 only: a composite's envelope size is stated only by
+  a provisioned store, so its identity-only publication is refused `CHECKPOINT_INVALID`, registered as
+  `identity_refused`), `anchor` (points 1-6, both lineages, store attached), `import` (points 1-6: a K1 lineage with its
+  own K1-sized store, a freshly provisioned composite store, restart observed through both stores), `discard`
+  (points 1-3) and `adopt` (points 1, 4-6) of a candidate left by a `SIGKILL` at lane step 5 (both lineages),
+  `uncertain` (the in-process lost-sync faults 8 and 9, no kill), `random` (32 randomized kills per lineage while
+  learning and publishing). 4 runs per parked point. After the first acknowledgment the caller keeps a copy of the
+  acknowledged state's bytes (release, snapshot, rebind): restart uses it only to show that a recoverable publication
+  over an unresolved candidate fails (`CHECKPOINT_UNRESOLVED`) and, for the identity-only lineage, that only the
+  caller bytes of continuity's identity rebind. An identity-only restart attaches a freshly provisioned store. The
+  operator action for an unresolved candidate is pre-registered: adopt on even run indices, discard on odd ones (the
+  discard and adopt families repeat their own reconciliation).
+* **Plan corrections made on DEV inputs** (before the freeze): a record sync that fails with the bytes lost leaves the
+  synced candidate slot, so restart reports `CANDIDATE_UNRESOLVED`, not `RESUMABLE` (the crash law already said so:
+  `test_k1_recovery.py`); composite identity-only publication is a registered refusal, not a point.
+* **Evidence schema.** `elpis.k1-recovery-r0-v4.record.v1` (one record per run), `.verdict.v1` (the checker's
+  output), and a freeze record and manifest binding source commit, tree, library digests, plan, runner, checker,
+  platform and filesystem; `SHA256SUMS` over every evidence file. Integrity is digest-bound to the qualifying commit;
+  the evidence is not cryptographically signed (its custody is this repository's history).
+
 ## Question
 
-Under ABI v4, after a process death at any step of an anchor, a recoverable publication, an identity-only publication,
+Under ABI v4 (as the ABI v5 library implements it), after a process death at any step of an anchor, a recoverable publication, an identity-only publication,
 the legacy composite import or an operator reconciliation, does restart resume exactly the state continuity
 authorizes (the last completed durable publication, possibly one whose acknowledgment the caller never received), or
 report an explicit disposition that needs an operator, never rolling silently forward or back and never recovering
@@ -34,7 +72,8 @@ composite lineages alike?
 
 ## Subject
 
-`native/runtime/src/checkpoint.rs`, `durable.rs` and `core.rs` (ABI v4); `elpis.runtime.recovery`; `Runtime.recover_k1`,
+`native/runtime/src/checkpoint.rs`, `durable.rs` and `core.rs` (the ABI v4 durability law in the ABI v5 library);
+`elpis.runtime.recovery`; `Runtime.recover_k1`,
 `discard_k1_candidate`, `adopt_k1_candidate`, `publish_recoverable`, `publish_identity`, `import_composite`.
 Mechanics: `native/runtime/src/tests.rs` (`recovery`, `crashes`), `tests/integration/test_k1_recovery.py`,
 `test_durable_process_kill.py`, `test_composite_process_kill.py`, `test_durable_ticket_law.py`,

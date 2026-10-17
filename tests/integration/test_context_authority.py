@@ -49,6 +49,25 @@ def test_the_context_lane_imports_nothing_that_can_mutate_ecs_state():
         assert name not in text, name
 
 
+def test_one_context_authority_the_runtime_never_uses_the_proposal_only_model_view_context():
+    """The WARM lane (elpis.runtime.context) is the one definition of the active context's identity, version and
+    predecessor the runtime uses. elpis.inference.context / global_context (the DSV model-view context snapshot and
+    index, ProposalOnly) define their own generation and predecessor for a different object; nothing outside
+    elpis.inference may import them, so two context identities can never meet in one operation."""
+    root = SRC.parent
+    duplicates = ("elpis.inference.context", "elpis.inference.global_context")
+    users = []
+    for path in root.rglob("*.py"):
+        if path.is_relative_to(root / "inference"):
+            continue
+        for name in _imports(path):
+            if name.startswith(duplicates) or (name.startswith(".") and path.parent.name != "inference"
+                                               and name.lstrip(".").startswith(("inference.context",
+                                                                                "inference.global_context"))):
+                users.append((str(path.relative_to(root)), name))
+    assert not users, users
+
+
 def test_the_facade_hands_a_context_only_to_the_coordinate_read():
     """In every cognitive operation of the facade, the ``context`` argument is read exactly once, by
     ``_consumed_context`` (one reference read of the published view's coordinate), and goes nowhere else."""

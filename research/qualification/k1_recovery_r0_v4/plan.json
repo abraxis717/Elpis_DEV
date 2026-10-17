@@ -1,0 +1,458 @@
+{
+ "schema": "elpis.k1-recovery-r0-v4.plan.v1",
+ "specification": "docs/qualification/K1_RECOVERY_R0_V4.md",
+ "lineages": {
+  "k1": {
+   "format": "K1",
+   "dim": 6,
+   "width": 36,
+   "max_rows": 8
+  },
+  "composite": {
+   "format": "COMPOSITE",
+   "dim": 6,
+   "width": 36,
+   "max_rows": 8,
+   "memory_dim": 64,
+   "banks": 2,
+   "slot_capacity": 16,
+   "codebook_capacity": 32
+  }
+ },
+ "stimulus": {
+  "rows": 4,
+  "steps": 3,
+  "learning_rate": 0.01,
+  "observation": {
+   "relation_type": 3,
+   "polarity": "ASSERT",
+   "source_authority": 1
+  }
+ },
+ "runs_per_point": 4,
+ "inputs": {
+  "dev": {
+   "lineage_seed_base": 1000,
+   "random_seed": 7
+  },
+  "qual": {
+   "lineage_seed_base": 20261017,
+   "random_seed": 20261017
+  }
+ },
+ "torn_offsets": {
+  "slot": [
+   "1",
+   "127",
+   "128+capacity//2",
+   "128+capacity-1"
+  ],
+  "record": [
+   1,
+   50,
+   100,
+   175
+  ]
+ },
+ "operator_action_for_unresolved": "adopt when the run index is even, discard when odd",
+ "families": {
+  "publish": {
+   "lineages": [
+    "k1",
+    "composite"
+   ],
+   "store": true,
+   "points": [
+    {
+     "point": "step:1",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "RESUMABLE",
+      "authority": "D1"
+     }
+    },
+    {
+     "point": "step:2",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "RESUMABLE",
+      "authority": "D1"
+     }
+    },
+    {
+     "point": "step:3",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "RESUMABLE",
+      "authority": "D1"
+     }
+    },
+    {
+     "point": "step:4",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "CANDIDATE_UNRESOLVED",
+      "authority": "D1",
+      "candidate": "D2"
+     }
+    },
+    {
+     "point": "step:5",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "CANDIDATE_UNRESOLVED",
+      "authority": "D1",
+      "candidate": "D2"
+     }
+    },
+    {
+     "point": "step:6",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "CANDIDATE_UNRESOLVED",
+      "authority": "D1",
+      "candidate": "D2"
+     }
+    },
+    {
+     "point": "step:7",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "RESUMABLE",
+      "authority": "D2"
+     }
+    },
+    {
+     "point": "step:8",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "RESUMABLE",
+      "authority": "D2"
+     }
+    },
+    {
+     "point": "step:9",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "RESUMABLE",
+      "authority": "D2"
+     }
+    },
+    {
+     "point": "delivered",
+     "expect": {
+      "status": "ACKNOWLEDGED",
+      "disposition": "RESUMABLE",
+      "authority": "D2"
+     }
+    }
+   ]
+  },
+  "identity": {
+   "lineages": [
+    "k1"
+   ],
+   "store": false,
+   "points": [
+    {
+     "point": "step:2",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "CHECKPOINT_MISSING",
+      "authority": "D1"
+     }
+    },
+    {
+     "point": "step:6",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "CHECKPOINT_MISSING",
+      "authority": "D1"
+     }
+    },
+    {
+     "point": "step:7",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "CHECKPOINT_MISSING",
+      "authority": "D2"
+     }
+    },
+    {
+     "point": "step:8",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "CHECKPOINT_MISSING",
+      "authority": "D2"
+     }
+    },
+    {
+     "point": "step:9",
+     "expect": {
+      "status": "PENDING",
+      "disposition": "CHECKPOINT_MISSING",
+      "authority": "D2"
+     }
+    }
+   ]
+  },
+  "identity_refused": {
+   "lineages": [
+    "composite"
+   ],
+   "store": false,
+   "points": [
+    {
+     "point": "request",
+     "expect": {
+      "refusal": "CHECKPOINT_INVALID",
+      "authority": "D1"
+     }
+    }
+   ],
+   "note": "a composite's envelope size is stated only by a provisioned store: identity-only publication is refused, never guessed"
+  },
+  "anchor": {
+   "lineages": [
+    "k1",
+    "composite"
+   ],
+   "store": true,
+   "points": [
+    {
+     "point": "control:1",
+     "expect": {
+      "disposition": "NOTHING_TO_RECOVER",
+      "slot_holds_d0": false
+     }
+    },
+    {
+     "point": "control:2",
+     "expect": {
+      "disposition": "NOTHING_TO_RECOVER",
+      "slot_holds_d0": true
+     }
+    },
+    {
+     "point": "control:3",
+     "expect": {
+      "disposition": "NOTHING_TO_RECOVER",
+      "slot_holds_d0": true
+     }
+    },
+    {
+     "point": "control:4",
+     "expect": {
+      "disposition": "NOTHING_TO_RECOVER",
+      "slot_holds_d0": true
+     }
+    },
+    {
+     "point": "control:5",
+     "expect": {
+      "disposition": "RESUMABLE",
+      "authority": "D0",
+      "slot_holds_d0": true
+     }
+    },
+    {
+     "point": "control:6",
+     "expect": {
+      "disposition": "RESUMABLE",
+      "authority": "D0",
+      "slot_holds_d0": true
+     }
+    }
+   ]
+  },
+  "import": {
+   "lineages": [
+    "k1"
+   ],
+   "store": true,
+   "points": [
+    {
+     "point": "control:1",
+     "expect": {
+      "format": "K1",
+      "authority": "K",
+      "composite_store": "CHECKPOINT_MISSING",
+      "k1_store": "RESUMABLE"
+     }
+    },
+    {
+     "point": "control:2",
+     "expect": {
+      "format": "K1",
+      "authority": "K",
+      "composite_store": "CHECKPOINT_MISSING",
+      "k1_store": "RESUMABLE"
+     }
+    },
+    {
+     "point": "control:3",
+     "expect": {
+      "format": "K1",
+      "authority": "K",
+      "composite_store": "CHECKPOINT_MISSING",
+      "k1_store": "RESUMABLE"
+     }
+    },
+    {
+     "point": "control:4",
+     "expect": {
+      "format": "K1",
+      "authority": "K",
+      "composite_store": "CHECKPOINT_MISSING",
+      "k1_store": "RESUMABLE"
+     }
+    },
+    {
+     "point": "control:5",
+     "expect": {
+      "format": "COMPOSITE",
+      "authority": "C",
+      "composite_store": "RESUMABLE",
+      "k1_store": "CHECKPOINT_MISSING"
+     }
+    },
+    {
+     "point": "control:6",
+     "expect": {
+      "format": "COMPOSITE",
+      "authority": "C",
+      "composite_store": "RESUMABLE",
+      "k1_store": "CHECKPOINT_MISSING"
+     }
+    }
+   ]
+  },
+  "discard": {
+   "lineages": [
+    "k1",
+    "composite"
+   ],
+   "store": true,
+   "points": [
+    {
+     "point": "control:1",
+     "expect": {
+      "disposition": "CANDIDATE_UNRESOLVED",
+      "authority": "D1",
+      "candidate": "D2",
+      "final": "D1"
+     }
+    },
+    {
+     "point": "control:2",
+     "expect": {
+      "disposition": "RESUMABLE",
+      "authority": "D1",
+      "final": "D1"
+     }
+    },
+    {
+     "point": "control:3",
+     "expect": {
+      "disposition": "RESUMABLE",
+      "authority": "D1",
+      "final": "D1"
+     }
+    }
+   ]
+  },
+  "adopt": {
+   "lineages": [
+    "k1",
+    "composite"
+   ],
+   "store": true,
+   "points": [
+    {
+     "point": "control:1",
+     "expect": {
+      "disposition": "CANDIDATE_UNRESOLVED",
+      "authority": "D1",
+      "candidate": "D2",
+      "final": "D2"
+     }
+    },
+    {
+     "point": "control:4",
+     "expect": {
+      "disposition": "CANDIDATE_UNRESOLVED",
+      "authority": "D1",
+      "candidate": "D2",
+      "final": "D2"
+     }
+    },
+    {
+     "point": "control:5",
+     "expect": {
+      "disposition": "RESUMABLE",
+      "authority": "D2",
+      "final": "D2"
+     }
+    },
+    {
+     "point": "control:6",
+     "expect": {
+      "disposition": "RESUMABLE",
+      "authority": "D2",
+      "final": "D2"
+     }
+    }
+   ]
+  },
+  "uncertain": {
+   "lineages": [
+    "k1",
+    "composite"
+   ],
+   "store": true,
+   "points": [
+    {
+     "point": "lane:8",
+     "expect": {
+      "status": "UNCERTAIN",
+      "fault": "CONTINUITY_PUBLICATION_UNCERTAIN",
+      "disposition": "CANDIDATE_UNRESOLVED",
+      "authority": "D1",
+      "candidate": "D2"
+     }
+    },
+    {
+     "point": "lane:9",
+     "expect": {
+      "status": "UNCERTAIN",
+      "fault": "CONTINUITY_PUBLICATION_UNCERTAIN",
+      "disposition": "RESUMABLE",
+      "authority": "D2"
+     }
+    }
+   ]
+  },
+  "random": {
+   "lineages": [
+    "k1",
+    "composite"
+   ],
+   "store": true,
+   "runs_per_lineage": 32,
+   "publish_probability": 0.35,
+   "wait_probability": 0.5,
+   "max_learns": {
+    "k1": 64,
+    "composite": 15
+   },
+   "kill_after_learns": "uniform integer in [1, max_learns - 1]: the parent kills as soon as the child has reported that many LEARNs (the child keeps running until the signal lands)",
+   "note": "a composite memory holds S = 16 relations and every composite LEARN carries one new relation: 15 LEARNs leave one slot for the restart's LEARN"
+  }
+ },
+ "bounds": {
+  "max_learns_per_lineage": 64,
+  "max_runs_per_parked_point": 16,
+  "max_random_kills_per_lineage": 64,
+  "child_timeout_seconds": 120
+ }
+}
