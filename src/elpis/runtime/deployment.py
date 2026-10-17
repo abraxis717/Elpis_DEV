@@ -56,6 +56,7 @@ _W_DOMAIN = b"elpis.deployment.initial-w.v1"
 # (library id, file name, relative path in a build tree), in admission (dependency) order within each set.
 _ECS_SET = (("elpis_ecsg_math", "libelpis_ecsg_math.so", "native/ECS/libelpis_ecsg_math.so"),
             ("elpis_ecsg_k1", "libelpis_ecsg_k1.so", "native/ECS/libelpis_ecsg_k1.so"),
+            ("elpis_ecsg_k1_fms", "libelpis_ecsg_k1_fms.so", "native/ECS/libelpis_ecsg_k1_fms.so"),
             ("elpis_ecs_memory", "libelpis_ecs_memory.so", "native/ECS/libelpis_ecs_memory.so"),
             ("elpis_ecs_composite", "libelpis_ecs_composite.so", "native/ECS/libelpis_ecs_composite.so"))
 _HACF = ("elpis_hacf_observation", "libelpis_hacf_observation.so", "native/runtime/libelpis_hacf_observation.so")
@@ -200,8 +201,9 @@ class _Libraries:
     """The admitted native libraries of one deployment (one process admits them once)."""
 
     def __init__(self, runtime_library: RuntimeLibrary, composite: CompositeLibrary, hacf: HacfObservationLibrary,
-                 identities: dict):
+                 identities: dict, k1, k1_fms):
         self.runtime, self.composite, self.hacf, self.identities = runtime_library, composite, hacf, identities
+        self.k1, self.k1_fms = k1, k1_fms   # K1Library and the admitted K1 FMS adapter (FMS-resident K1 states)
 
     @classmethod
     def admit(cls, lib: Path, authority: PinnedAuthority, testing: bool) -> "_Libraries":
@@ -218,7 +220,9 @@ class _Libraries:
                       for a in ecs + (hacf,)}
         pinned = authority.libraries[runtime_id]
         identities[runtime_id] = {"sha256": pinned.sha256, "size": pinned.size}
-        return cls(runtime_library, CompositeLibrary(ecs[3].lib), HacfObservationLibrary(hacf), identities)
+        from elpis.ECS.k1 import K1Library
+        return cls(runtime_library, CompositeLibrary(ecs[4].lib), HacfObservationLibrary(hacf), identities,
+                   K1Library(ecs[1].lib), ecs[2].lib)
 
 
 class Deployment:

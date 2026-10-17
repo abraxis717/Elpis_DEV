@@ -32,7 +32,8 @@ from ..conftest import native_build_dir, require_native_library
 REPO = Path(__file__).resolve().parents[2]
 _LIBS = ("native/runtime/libelpis_runtime.so", "native/runtime/libelpis_runtime_testing.so",
          "native/runtime/libelpis_hacf_observation.so", "native/ECS/libelpis_ecsg_math.so",
-         "native/ECS/libelpis_ecsg_k1.so", "native/ECS/libelpis_ecs_memory.so", "native/ECS/libelpis_ecs_composite.so")
+         "native/ECS/libelpis_ecsg_k1.so", "native/ECS/libelpis_ecsg_k1_fms.so", "native/ECS/libelpis_ecs_memory.so",
+         "native/ECS/libelpis_ecs_composite.so")
 
 
 def node(name):

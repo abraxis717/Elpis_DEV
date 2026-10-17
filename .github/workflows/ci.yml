@@ -189,6 +189,36 @@ jobs:
           "
           run_isolated /tmp/elpis-venv/bin/python -m pytest --lane all
 
+  acceptance:
+    # The installed product end to end (docs/OPERATING_ELPIS.md, "Smoke and recovery test"): a clean base install
+    # (no extras), a native build outside the checkout, then the system acceptance run from outside the checkout and
+    # inside a network namespace with no interfaces up: deployments, restarts, SIGKILL at registered durability
+    # boundaries and the refusal catalog, against the installed package only.
+    name: Installed system acceptance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y $NATIVE_DEPS
+      - name: Native build and clean base install (network allowed only here)
+        run: |
+          cmake -S . -B "$RUNNER_TEMP/build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/build" --parallel
+          python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/venv/bin/python" -m pip install .
+      - name: System acceptance, offline, from outside the checkout
+        run: |
+          cd "$RUNNER_TEMP"
+          sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
+            env -i PATH="$PATH" HOME="$HOME" PYTHONDONTWRITEBYTECODE=1 \
+            timeout 1800 "$RUNNER_TEMP/venv/bin/python" -m elpis.runtime.acceptance \
+            --native-build "$RUNNER_TEMP/build" --work "$RUNNER_TEMP/acceptance" \
+            --source-commit "$GITHUB_SHA" --report "$RUNNER_TEMP/acceptance.json"
+
   authority:
     # Scientific authority gate (docs/CI_POLICY.md). Not a replacement for the full
     # suites above: a focused, declared-environment run of the evidence and

@@ -188,8 +188,14 @@ class Console:
         s = self.session
         state = s.require_state()
         identity, generation = s.runtime.live_identity(state)
-        return {"live": {"identity": identity.hex(), "generation": generation},
+        composite, k1, memory = self.deployment.libraries.composite.envelope_identities(state.snapshot())
+        return {"live": {"identity": identity.hex(), "generation": generation, "k1_identity": k1.hex(),
+                         "memory_identity": memory.hex()},
                 "durable": _snapshot(s.runtime.continuity.snapshot())}
+
+    def op_counters(self, op) -> dict:
+        """RuntimeCore's native crossings since this process opened the runtime (``reset`` restarts the count)."""
+        return {"counters": self.session.runtime._core.counters(reset=bool(op.get("reset", False)))}
 
     def op_candidates(self, op) -> dict:
         s = self.session
