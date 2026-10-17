@@ -11,15 +11,15 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-use elpis_continuity::{Code, Cognition, EvolutionState};
+use elpis_continuity::{Code, Cognition, EvolutionState, StateFormat};
 
 use crate::code::{Error, Rt};
 use crate::core::{Core, Counters, Stimulus, VolatileCommit};
 use crate::durable::{Kind, Status, Ticket};
 use crate::fuel::{self, Budget, CEILING};
 use crate::substrate::{
-    features, k1_envelope_bytes, Digest, Experience, K1Ops, Key, ResidentRelease, ScheduleOutcome, Sealer, Transition,
-    TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE,
+    features, k1_envelope_bytes, Digest, Experience, K1Ops, Key, Observation, ResidentRelease, ScheduleOutcome, Sealer,
+    Transition, TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE,
 };
 
 const DIM: usize = 2;
@@ -35,6 +35,8 @@ struct Txn {
     generation: u64,
     w: Vec<f64>,
     epoch: u64,
+    /// The memory candidate of a composite stand-in (the committed memory, plus this transaction's observations).
+    memory: Vec<Digest>,
 }
 
 /// One retained "state": W, epoch and a generation that every committed transition advances by one.
@@ -59,6 +61,12 @@ struct State {
     warm: bool,
     holds: u32,
     promotions: u64,
+    /// A composite stand-in: its retained state is (W, epoch) plus a memory of recorded observation keys, under one
+    /// identity (as ELPISEC1 binds the K1 trailer and the memory).
+    composite: bool,
+    memory: Vec<Digest>,
+    /// A faulty composite whose commit reports K1 learning (an epoch step) it never ran.
+    learn_on_commit: bool,
 }
 
 impl State {
@@ -109,11 +117,17 @@ unsafe extern "C" fn fake_seal(p: *mut u8, n: usize) -> c_int {
 }
 
 impl State {
-    /// The retained-state identity: the envelope's SHA-256 trailer (K1's law).
+    /// The retained-state identity: the envelope's SHA-256 trailer (K1's law); a composite's binds the K1 trailer
+    /// and every memory key together.
     fn identity(&self) -> Digest {
         let e = envelope_of(&self.w, self.epoch);
         let mut out = [0u8; 32];
         out.copy_from_slice(&e[ENVELOPE - 32..]);
+        if self.composite {
+            let mut parts: Vec<&[u8]> = vec![b"composite", &out];
+            parts.extend(self.memory.iter().map(|k| &k[..]));
+            return elpis_continuity::sha256::digest(&parts);
+        }
         out
     }
 
@@ -156,7 +170,21 @@ impl Fake {
             warm: true,
             holds: 0,
             promotions: 0,
+            composite: false,
+            memory: Vec::new(),
+            learn_on_commit: false,
         })))
+    }
+
+    /// A composite stand-in (K1 plus a memory; `ELPIS_RUNTIME_SUBSTRATE_COMPOSITE`).
+    fn composite(seed: f64) -> Fake {
+        let f = Fake::new(seed);
+        f.state().composite = true;
+        f
+    }
+
+    fn memory(&self) -> Vec<Digest> {
+        self.state().memory.clone()
     }
 
     /// An FMS-resident stand-in (WARM until demoted).
@@ -396,7 +424,14 @@ impl K1Ops for Fake {
         *token = s.next_token;
         *source_generation = s.generation;
         s.next_token += 1;
-        let txn = Txn { token: *token, lease, generation: s.generation, w: s.w.clone(), epoch: s.epoch };
+        let txn = Txn {
+            token: *token,
+            lease,
+            generation: s.generation,
+            w: s.w.clone(),
+            epoch: s.epoch,
+            memory: s.memory.clone(),
+        };
         s.txn = Some(txn);
         0
     }
@@ -464,7 +499,8 @@ impl K1Ops for Fake {
         out.epoch_before = s.epoch;
         out.generation_before = s.generation;
         s.w = txn.w;
-        s.epoch = txn.epoch;
+        s.epoch = txn.epoch + u64::from(s.learn_on_commit);
+        s.memory = txn.memory;
         s.generation += 1;
         out.epoch_after = s.epoch;
         out.generation_after = s.generation;
@@ -515,7 +551,51 @@ impl K1Ops for Fake {
     fn retain_resident(&self) -> Option<Box<dyn ResidentRelease>> {
         self.state().fms.then(|| Box::new(FakeResident(Arc::clone(&self.0))) as Box<dyn ResidentRelease>)
     }
+
+    fn format(&self) -> StateFormat {
+        if self.state().composite {
+            StateFormat::Composite
+        } else {
+            StateFormat::K1
+        }
+    }
+
+    /// The stand-in's OBSERVE: `observation` points at the 32-byte relation key the test chose (opaque to
+    /// RuntimeCore); a key starting 0xFF is refused by the "memory" (composite REFUSED, its own status -7).
+    fn txn_observe(
+        &mut self,
+        lease: u64,
+        token: u64,
+        observation: Observation,
+        key: &mut Digest,
+        memory_status: &mut i32,
+    ) -> i32 {
+        let mut s = self.state();
+        s.calls.push("txn_observe");
+        if !s.composite {
+            return K1_INVALID;
+        }
+        if s.lease != lease {
+            return K1_LEASED;
+        }
+        let txn = match s.txn.as_mut() {
+            Some(t) if t.token == token => t,
+            _ => return K1_INVALID,
+        };
+        // SAFETY: the tests pass a pointer to a live Digest.
+        let observed = unsafe { *(observation.0 as *const Digest) };
+        if observed[0] == 0xFF {
+            *memory_status = -7;
+            return COMPOSITE_REFUSED;
+        }
+        txn.memory.push(observed);
+        *key = observed;
+        0
+    }
 }
+
+/// `ELPIS_ECS_COMPOSITE_REFUSED`: the memory refused (its own status reported alongside).
+const COMPOSITE_REFUSED: i32 = -10;
 
 fn query(core: &mut Core, sub: &mut Fake, k: Key, rows: usize) -> Result<(Vec<f64>, u64), Error> {
     let x = query_rows(rows);
@@ -2405,5 +2485,199 @@ mod faults {
         let io = core.testing_continuity_counters(false);
         assert_eq!((io.opens, io.preads, io.pwrites, io.pwrite_bytes, io.data_syncs), (0, 0, 1, 176, 1));
         assert_eq!((io.dir_syncs, io.renames, io.unlinks), (0, 0, 0));
+    }
+}
+
+/// ABI v5: the observe-only managed turn of a composite substrate (docs/RUNTIME_CORE.md, "Observe-only turns").
+mod observe_only {
+    use super::*;
+
+    fn composite_key(owner: u64) -> Key {
+        Key { kind: 3, handle: 0x2000 + owner as usize, id: 0, owner, dim: DIM }
+    }
+
+    fn observation(byte: u8) -> Digest {
+        let mut d = [0u8; 32];
+        d[0] = byte;
+        d[31] = 0x5a;
+        d
+    }
+
+    fn observe(core: &mut Core, sub: &mut Fake, k: Key, d: &Digest) -> Result<Digest, (Error, i32)> {
+        let (result, memory_status) = core.turn_observe(sub, k, Observation(d as *const Digest as *const _));
+        result.map_err(|r| (r.error, memory_status))
+    }
+
+    fn anchored_composite(name: &str) -> (Dir, Core, Fake, Key, elpis_continuity::Snapshot) {
+        let dir = Dir::new(name);
+        let mut core = dir.core();
+        let mut sub = Fake::composite(0.2);
+        let k = composite_key(7);
+        let anchor = core.anchor(&mut sub, k).unwrap();
+        sub.clear_calls();
+        core.counters(true);
+        (dir, core, sub, k, anchor)
+    }
+
+    #[test]
+    fn an_observe_only_turn_records_evidence_without_any_k1_schedule_and_commits_volatile() {
+        let (dir, mut core, mut sub, k, anchor) = anchored_composite("observe-only");
+        let (k1_before, generation) = (sub.retained(), sub.generation());
+        let a = observation(1);
+        assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap(), generation);
+        assert_eq!(observe(&mut core, &mut sub, k, &a).unwrap(), a);
+        let c = core.turn_commit(&mut sub, k).unwrap();
+        // The live coordinate advanced by exactly one; K1 reports no step and no epoch change.
+        assert_eq!((c.transition.generation_before, c.transition.generation_after), (generation, generation + 1));
+        assert_eq!((c.transition.steps, c.transition.epoch_before, c.transition.epoch_after), (0, 0, 0));
+        assert_eq!((c.live_generation, core.live_generation()), (generation + 1, Some(generation + 1)));
+        // K1's retained values are byte-identical; only the memory moved.
+        assert_eq!(sub.retained(), k1_before);
+        assert_eq!(sub.memory(), vec![a]);
+        // Volatile: the durable authority did not move.
+        assert_eq!((core.snapshot().unwrap(), on_disk(&dir)), (anchor, anchor));
+        assert_ne!(sub.identity(), anchored(&core).unwrap());
+        // The first turn reads the state's shape once (cold path, cached); then begin, one observe, commit.
+        assert_eq!(sub.calls(), ["shape", "txn_begin_at", "txn_observe", "txn_commit"]);
+        // A warm observe-only turn: no schedule, no digest, no capture.
+        sub.clear_calls();
+        core.counters(true);
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        observe(&mut core, &mut sub, k, &observation(2)).unwrap();
+        core.turn_commit(&mut sub, k).unwrap();
+        assert_eq!(sub.calls(), ["txn_begin_at", "txn_observe", "txn_commit"]);
+        let expected = Counters { k1_txn_begins: 1, k1_observes: 1, k1_commits: 1, ..Counters::default() };
+        assert_eq!(core.counters(false), expected);
+        assert_eq!((sub.retained(), sub.memory()), (k1_before, vec![a, observation(2)]));
+        assert_eq!(core.fault(), None);
+    }
+
+    #[test]
+    fn a_k1_or_fms_substrate_is_refused_before_any_native_call() {
+        for (name, mut sub, k) in [
+            ("observe-k1", Fake::new(0.1), key(1)),
+            ("observe-fms", Fake::resident(0.1), Key { kind: 2, handle: 0x3000, id: 9, owner: 3, dim: DIM }),
+        ] {
+            let dir = Dir::new(name);
+            let mut core = dir.core();
+            core.anchor(&mut sub, k).unwrap();
+            sub.clear_calls();
+            assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap_err().error, Rt::Invalid.into());
+            assert!(sub.calls().is_empty() && !core.turn_is_open() && !sub.txn_open(), "{name}");
+            // A K1 lineage has no memory in a LEARN turn either.
+            let i = input(2, 1);
+            let mut s3 = vec![0.0; features(DIM)];
+            core.turn_begin(&mut sub, k, &stimulus(&i), &CEILING, &mut s3).unwrap();
+            assert_eq!(observe(&mut core, &mut sub, k, &observation(2)).unwrap_err().0, Rt::Invalid.into());
+            core.turn_abort(k).unwrap();
+        }
+    }
+
+    #[test]
+    fn a_commit_with_nothing_observed_is_refused_and_the_turn_stays_open() {
+        let (_dir, mut core, mut sub, k, _anchor) = anchored_composite("observe-empty");
+        let generation = sub.generation();
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        assert_eq!(core.turn_commit(&mut sub, k).unwrap_err().error, Rt::Invalid.into());
+        assert!(core.turn_is_open() && sub.txn_open());
+        // A refused observation does not count either.
+        assert_eq!(observe(&mut core, &mut sub, k, &observation(0xFF)).unwrap_err(), (Rt::EcsRefused.into(), -7));
+        assert_eq!(core.turn_commit(&mut sub, k).unwrap_err().error, Rt::Invalid.into());
+        core.turn_abort(k).unwrap();
+        assert!(!core.turn_is_open() && !sub.txn_open());
+        assert_eq!((sub.generation(), sub.memory()), (generation, vec![]));
+    }
+
+    #[test]
+    fn the_observation_bound_is_fuel_checked_before_the_native_call_and_recoverable() {
+        let (_dir, mut core, mut sub, k, _anchor) = anchored_composite("observe-fuel");
+        let two = Budget { max_observations: 2, ..CEILING };
+        core.turn_begin_observe(&mut sub, k, &two).unwrap();
+        let (a, b, c) = (observation(1), observation(2), observation(3));
+        observe(&mut core, &mut sub, k, &a).unwrap();
+        observe(&mut core, &mut sub, k, &b).unwrap();
+        assert_eq!(observe(&mut core, &mut sub, k, &c).unwrap_err().0, Rt::Fuel.into());
+        assert_eq!(core.counters(false).k1_observes, 2); // the refused one never crossed
+        assert!(core.turn_is_open());
+        core.turn_commit(&mut sub, k).unwrap();
+        assert_eq!(sub.memory(), vec![a, b]);
+        // The bound holds in a LEARN turn too.
+        let one = Budget { max_observations: 1, ..CEILING };
+        let i = input(2, 1);
+        let mut s3 = vec![0.0; features(DIM)];
+        core.turn_begin(&mut sub, k, &stimulus(&i), &one, &mut s3).unwrap();
+        observe(&mut core, &mut sub, k, &c).unwrap();
+        assert_eq!(observe(&mut core, &mut sub, k, &observation(4)).unwrap_err().0, Rt::Fuel.into());
+        core.turn_commit(&mut sub, k).unwrap();
+        assert_eq!(sub.memory(), vec![a, b, c]);
+        // A budget outside the ceiling is refused before anything is begun.
+        sub.clear_calls();
+        for bad in [Budget { max_observations: 0, ..CEILING }, Budget { max_observations: 257, ..CEILING }] {
+            assert_eq!(core.turn_begin_observe(&mut sub, k, &bad).unwrap_err().error, Rt::Fuel.into());
+        }
+        assert!(!sub.calls().contains(&"txn_begin_at") && !core.turn_is_open());
+        assert_eq!(fuel::CEILING.max_observations, fuel::MAX_TURN_OBSERVATIONS);
+    }
+
+    #[test]
+    fn a_refused_observation_leaves_the_candidate_and_an_abort_installs_nothing() {
+        let (_dir, mut core, mut sub, k, _anchor) = anchored_composite("observe-abort");
+        let generation = sub.generation();
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        observe(&mut core, &mut sub, k, &observation(1)).unwrap();
+        assert_eq!(observe(&mut core, &mut sub, k, &observation(0xFF)).unwrap_err(), (Rt::EcsRefused.into(), -7));
+        assert!(core.turn_is_open());
+        core.turn_abort(k).unwrap();
+        assert_eq!((sub.generation(), sub.memory(), core.live_generation()), (generation, vec![], Some(generation)));
+        // The next turn starts from the committed state, not from the aborted candidate.
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        observe(&mut core, &mut sub, k, &observation(2)).unwrap();
+        core.turn_commit(&mut sub, k).unwrap();
+        assert_eq!(sub.memory(), vec![observation(2)]);
+    }
+
+    #[test]
+    fn an_observe_only_commit_that_reports_k1_learning_fail_stops() {
+        let (_dir, mut core, mut sub, k, anchor) = anchored_composite("observe-learned");
+        sub.state().learn_on_commit = true;
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        observe(&mut core, &mut sub, k, &observation(1)).unwrap();
+        let refused = core.turn_commit(&mut sub, k).unwrap_err();
+        assert_eq!(refused.error, Code::StateMismatch.into());
+        assert_eq!(core.fault(), Some(Code::StateMismatch));
+        // Nothing is built on it: every HOT operation and publication is refused; durable authority unchanged.
+        assert!(core.turn_begin_observe(&mut sub, k, &CEILING).is_err());
+        assert!(core.durable_request(&mut sub, k, kind_of(&core)).is_err());
+        assert_eq!(core.snapshot().unwrap(), anchor);
+    }
+
+    #[test]
+    fn observe_only_turns_keep_the_lifecycle_refusals() {
+        let dir = Dir::new("observe-refusals");
+        let mut core = Core::new(&dir.0).unwrap();
+        let mut sub = Fake::composite(0.2);
+        let k = composite_key(7);
+        assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap_err().error, Rt::Closed.into());
+        core.open().unwrap();
+        assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap_err().error, Code::Unanchored.into());
+        assert!(sub.calls().is_empty());
+        core.anchor(&mut sub, k).unwrap();
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap_err().error, Rt::TurnOpen.into());
+        let mut other = Fake::composite(0.3);
+        assert_eq!(
+            observe(&mut core, &mut other, composite_key(8), &observation(1)).unwrap_err().0,
+            Rt::TurnNotOpen.into()
+        );
+        assert_eq!(core.durable_request(&mut sub, k, kind_of(&core)).unwrap_err().error, Rt::TurnOpen.into());
+        // Close ends the turn natively: nothing installed.
+        observe(&mut core, &mut sub, k, &observation(1)).unwrap();
+        core.close();
+        assert!(!sub.txn_open() && sub.memory().is_empty());
+        core.open().unwrap();
+        assert_eq!(
+            core.turn_begin_observe(&mut other, composite_key(8), &CEILING).unwrap_err().error,
+            Code::StateMismatch.into()
+        );
     }
 }

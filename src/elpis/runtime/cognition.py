@@ -76,7 +76,7 @@ from .fuel import CEILING, CognitiveBudget, admit_learn, admit_query
 
 __all__ = ("CODEC_UNQUALIFIED", "LEGACY_LEARNED_TURN", "CognitiveOperation", "ECSCodecMap", "ECSQueryCodecMap",
            "LearnAuthority", "LearnRequest", "LearnResult", "MAX_TURN_OBSERVATIONS", "ObservationAuthority",
-           "QueryReadout", "QueryRequest", "QueryResult",
+           "ObserveResult", "QueryReadout", "QueryRequest", "QueryResult",
            "QueryStimulus", "Readout", "Stimulus", "TurnResult", "run_learn", "run_query", "run_turn")
 
 CODEC_UNQUALIFIED = "ECS_CODEC_UNQUALIFIED"
@@ -88,7 +88,7 @@ _SUBSTRATES = (K1State, K1FMSState)
 # The managed runtime (RuntimeCore) also binds an ECS composite lineage (K1 + memory, ELPISEC1); the unmanaged paths
 # here drive a K1 transaction themselves and stay K1-only.
 _MANAGED_SUBSTRATES = _SUBSTRATES + (CompositeState,)
-MAX_TURN_OBSERVATIONS = 64   # the most observations one managed LEARN turn may carry
+MAX_TURN_OBSERVATIONS = 64   # the most observations one managed turn (LEARN or observe-only) may carry
 
 
 class CognitiveOperation(str, Enum):
@@ -389,6 +389,21 @@ class LearnResult:
     durability: str = "UNMANAGED"
     context: object = None   # the ContextCoordinate of the published context view consumed (managed; None: none)
     observed: tuple = ()     # managed composite LEARN: the relation keys of the observations it committed, in order
+
+
+@dataclass(frozen=True)
+class ObserveResult:
+    """A committed OBSERVE-ONLY managed turn (RuntimeCore ABI v5): typed evidence recorded into the memory of an ECS
+    composite lineage with no K1 learning. VOLATILE like every managed commit (nothing was published); the live
+    generation advanced by one (``generation_after == generation_before + 1``) and the K1 retained state is
+    byte-identical (``k1_steps == 0``). ``observed`` holds the committed relation keys in order. Evidence is storage:
+    it is not learning, truth or authority."""
+    observed: tuple
+    grant: str            # the observation authority's grant
+    generation_before: int
+    generation_after: int
+    k1_steps: int = 0
+    durability: str = "VOLATILE"
 
 
 @dataclass(frozen=True)

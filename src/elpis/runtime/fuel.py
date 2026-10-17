@@ -3,7 +3,7 @@
 Per-field stimulus bounds (64 experiences, 256 rows and 2^20 K1 steps each) still admit a schedule of tens of millions
 of learning steps. A cognitive operation is therefore admitted against a :class:`CognitiveBudget` of *totals*:
 experiences, rows, rows of one experience (also the row capacity a LEARN may reserve: the memory ceiling), learning
-steps, query rows, output tokens and **ECS work units**.
+steps, query rows, output tokens, **ECS work units**, and the typed memory observations one managed turn records.
 
 An ECS work unit is one multiply-accumulate-class operation of the native K1 kernels as counted by a fixed integer
 formula (not measured, not wall-clock, not machine-dependent). For a state of input dimension ``d``, width ``w`` and
@@ -35,7 +35,8 @@ _U64 = (1 << 64) - 1
 
 # The canonical ceiling, equal to the compiled native one (native/runtime/src/fuel.rs ``CEILING``; tested).
 _CEILING = {"max_experiences": 64, "max_rows": 16_384, "max_experience_rows": 256, "max_steps": 1 << 20,
-            "max_work_units": 1 << 30, "max_query_rows": 4096, "max_output_tokens": 4096}
+            "max_work_units": 1 << 30, "max_query_rows": 4096, "max_output_tokens": 4096,
+            "max_observations": 256}
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,7 @@ class CognitiveBudget:
     max_work_units: int = _CEILING["max_work_units"]
     max_query_rows: int = _CEILING["max_query_rows"]
     max_output_tokens: int = _CEILING["max_output_tokens"]
+    max_observations: int = _CEILING["max_observations"]   # observations of one managed turn (RuntimeCore ABI v5)
 
     def __post_init__(self):
         for f in fields(self):
@@ -59,7 +61,7 @@ class CognitiveBudget:
     def native_fields(self) -> tuple:
         """The fields RuntimeCore admits (``elpis_runtime_budget``), in ABI order."""
         return (self.max_experiences, self.max_rows, self.max_experience_rows, self.max_steps, self.max_work_units,
-                self.max_query_rows)
+                self.max_query_rows, self.max_observations)
 
 
 CEILING = CognitiveBudget()

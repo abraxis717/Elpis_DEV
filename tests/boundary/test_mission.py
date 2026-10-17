@@ -154,7 +154,9 @@ RUNTIME_OPERATIONS = {"open", "close", "run_ingress", "admit_retrieval", "publis
                       "adopt_k1_candidate", "publish_recoverable", "publish_identity", "durability",
                       "live_identity",
                       # the explicit legacy move of a K1 lineage to an ECS composite one (a control operation)
-                      "import_composite"}
+                      "import_composite",
+                      # the observe-only managed turn (RuntimeCore ABI v5): typed evidence, no K1 learning
+                      "run_observe"}
 
 
 def test_runtime_composes_no_model_operation():

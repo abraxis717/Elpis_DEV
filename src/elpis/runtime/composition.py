@@ -215,6 +215,15 @@ def _consumed_context(context):
     raise TypeError("context is a ContextLane or a ContextView")
 
 
+def _observation_budget(budget, observation_authority):
+    """The native budget of a managed turn that records observations: its ``max_observations`` narrowed to the
+    observation authority's bound, so RuntimeCore itself enforces what the authority admitted (ABI v5)."""
+    if observation_authority is None:
+        return budget
+    from dataclasses import replace
+    return replace(budget, max_observations=min(budget.max_observations, observation_authority.max_observations))
+
+
 class Runtime:
     def __init__(self, config: RuntimeConfig):
         if type(config) is not RuntimeConfig:
@@ -507,7 +516,56 @@ class Runtime:
         admit_learn(stimulus, substrate.dim, substrate.width, authority.budget)
         if self._bound_owner is None:
             self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
-        self._core.turn_begin(descriptor, stimulus, authority.learning_rate, authority.budget)
+        budget = _observation_budget(authority.budget, observation_authority if observed else None)
+        self._core.turn_begin(descriptor, stimulus, authority.learning_rate, budget)
+        keys = self._observe_all(descriptor, observed)
+        committed = self._core.turn_commit(descriptor)
+        return LearnResult(tokens, stimulus.experiences, committed.epoch_before, committed.epoch_after,
+                           classification, authority.grant, None, None,
+                           generation_before=committed.generation_before, generation_after=committed.generation_after,
+                           durability="VOLATILE", context=consumed, observed=tuple(keys))
+
+    # -- cognition: OBSERVE-ONLY (explicit authority; no K1 learning) -------------------------------------------
+    def run_observe(self, substrate, observations, observation_authority, *, budget=None):
+        """Record typed evidence into the memory of an ECS composite lineage WITHOUT any K1 learning (RuntimeCore
+        ABI v5, the observe-only managed turn).
+
+        ``observations``: a non-empty tuple of :class:`~elpis.ECS.composite.MemoryObservation` (for HACF evidence,
+        :meth:`elpis.runtime.observation.HacfObservationLibrary.observation` maps a validated hyperedge and
+        assertion to one), each from a source the explicit :class:`~elpis.runtime.cognition.ObservationAuthority`
+        admits, within its bound; all of it is admitted before anything native is called. RuntimeCore verifies and
+        binds the lineage, opens the composite transaction at the live generation and runs NO K1 schedule; the
+        observations are recorded on the memory candidate and committed as one VOLATILE transition: the live
+        generation advances by one, the K1 retained state stays byte-identical, nothing is published (durability is
+        :meth:`publish_recoverable`). All or nothing: any refused observation aborts the whole turn (nothing is
+        installed) and the refusal is raised. ``budget`` (a :class:`~elpis.runtime.fuel.CognitiveBudget`, default
+        the ceiling) is admitted natively; its ``max_observations`` is narrowed to the authority's bound.
+        Evidence is storage: an observation is not learning, truth or authority.
+        """
+        self._core.require_live()
+        from .cognition import ObserveResult, _admit_observations
+        from .fuel import CEILING, CognitiveBudget
+
+        if budget is None:
+            budget = CEILING
+        if type(budget) is not CognitiveBudget:
+            raise CompositionError("OBSERVATION", "budget must be a CognitiveBudget")
+        if type(observations) is not tuple or not observations:
+            raise CompositionError("OBSERVATION", "observations: a non-empty tuple of MemoryObservation")
+        observed = _admit_observations(substrate, observations, observation_authority)
+        descriptor, owner = describe(substrate)
+        if self._bound_owner is None:
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
+        generation = self._core.turn_begin_observe(descriptor, _observation_budget(budget, observation_authority))
+        keys = self._observe_all(descriptor, observed)
+        committed = self._core.turn_commit(descriptor)
+        if committed.generation_before != generation:
+            raise CompositionError("RUNTIME_INVALID", "the observe-only commit does not continue the turn's generation")
+        return ObserveResult(tuple(keys), observation_authority.grant, committed.generation_before,
+                             committed.generation_after, committed.steps)
+
+    def _observe_all(self, descriptor, observed) -> list:
+        """OBSERVE every admitted observation on the open turn; all or nothing (any refusal aborts the turn)."""
         keys = []
         try:
             for observation in observed:
@@ -518,11 +576,7 @@ class Runtime:
             except CompositionError:
                 pass   # a fail-stop already ended it natively, or close and destruction will (the turn law)
             raise
-        committed = self._core.turn_commit(descriptor)
-        return LearnResult(tokens, stimulus.experiences, committed.epoch_before, committed.epoch_after,
-                           classification, authority.grant, None, None,
-                           generation_before=committed.generation_before, generation_after=committed.generation_after,
-                           durability="VOLATILE", context=consumed, observed=tuple(keys))
+        return keys
 
     # -- durability: explicit, off the HOT lane -------------------------------------------------------------------
     def publish_recoverable(self, substrate, *, wait: bool = True, timeout: float | None = None) -> DurableTicket:

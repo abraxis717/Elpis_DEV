@@ -192,6 +192,7 @@ AUTONOMOUS_OPERATIONS = frozenset({
     "release",             # gives a bound K1 state back (its managed lease); writes nothing
     "run_query",           # read-only: writes nothing at all
     "run_learn",           # explicit LearnAuthority; a volatile commit: writes nothing at all
+    "run_observe",         # explicit ObservationAuthority; a volatile observe-only commit: writes nothing at all
     "run_turn",            # LEGACY learned turn: a LEARN (explicit LearnAuthority); writes nothing at all
     "publish_recoverable",  # explicit recoverable publication: the fixed checkpoint and continuity slots only
     "publish_identity",    # explicit identity-only publication: the fixed continuity slots only

@@ -100,6 +100,8 @@ pub struct Counters {
     pub durable_superseded: u64,
     pub durable_acknowledged: u64,
     pub durable_failed: u64,
+    /// `leased_txn_observe` crossings (ABI v5): OBSERVE inside a managed turn, LEARN or observe-only.
+    pub k1_observes: u64,
 }
 
 /// An admitted, native-ready stimulus: `x` holds `y.len()` rows of the state's dimension, row-major.
@@ -145,11 +147,16 @@ fn ecs(error: Rt, k1_status: i32, schedule: ScheduleOutcome) -> Refusal {
 }
 
 /// The open managed turn: the bound substrate, its native transaction token and the retained capability that
-/// ends that transaction (abort only). It exists exactly while the native transaction is open.
+/// ends that transaction (abort only). It exists exactly while the native transaction is open. An observe-only
+/// turn (ABI v5) ran no K1 schedule; every turn counts the observations it recorded against the bound its budget
+/// admitted at begin.
 struct OpenTurn {
     key: Key,
     token: u64,
     abort: Box<dyn TxnAbort>,
+    observe_only: bool,
+    observations: u64,
+    max_observations: u64,
 }
 
 /// The bound state and its live coordinate: the native generation RuntimeCore last established for it.
@@ -756,8 +763,42 @@ impl Core {
         self.reconcile(sub, key)?;
         let abort = sub.retain_abort();
         let (token, result) = self.run_schedule(sub, stimulus, s3)?;
-        self.turn = Some(OpenTurn { key, token, abort });
+        let max_observations = budget.max_observations;
+        self.turn = Some(OpenTurn { key, token, abort, observe_only: false, observations: 0, max_observations });
         Ok(result)
+    }
+
+    /// Begin an OBSERVE-ONLY managed turn on a composite substrate (ABI v5): the lineage is verified and bound exactly
+    /// as for [`Core::turn_begin`], and the native composite transaction is opened at the live generation, but no K1
+    /// experience schedule runs: the K1 component's candidate is the unchanged copy of the live K1 state. The turn
+    /// then admits typed observations ([`Core::turn_observe`], at most the budget's `max_observations`) and ends by
+    /// [`Core::turn_commit`] (volatile; the live generation advances by one, as for every committed transaction, and
+    /// the K1 retained state stays byte-identical) or [`Core::turn_abort`]. A K1 or K1 FMS substrate has no memory
+    /// (`RUNTIME_INVALID`, before any native call). Returns the live generation the turn was opened on.
+    pub fn turn_begin_observe(&mut self, sub: &mut dyn K1Ops, key: Key, budget: &Budget) -> Result<u64, Refusal> {
+        self.live()?;
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        if key.kind != KIND_COMPOSITE || sub.format() != StateFormat::Composite {
+            return Err(Rt::Invalid.into());
+        }
+        match self.bound {
+            Some(bound) if bound.key != key => return Err(Rt::SubstrateSwitch.into()),
+            Some(_) => {}
+            None => {
+                self.expected()?; // unanchored: refused before any native call
+            }
+        }
+        // The shape is verified natively, then the budget, before the identity check or the transaction.
+        self.width(sub, key)?;
+        fuel::admit_observe_turn(budget).map_err(|_| Refusal::from(Rt::Fuel))?;
+        self.reconcile(sub, key)?;
+        let abort = sub.retain_abort();
+        let token = self.begin(sub)?;
+        let max_observations = budget.max_observations;
+        self.turn = Some(OpenTurn { key, token, abort, observe_only: true, observations: 0, max_observations });
+        Ok(self.bound.expect("bound").generation)
     }
 
     /// Begin the managed transaction under this runtime's lease; the same guarded K1 call reports the generation of
@@ -856,11 +897,17 @@ impl Core {
         if !self.open {
             return Err(Rt::Closed.into());
         }
+        // An observe-only turn that recorded nothing has nothing to commit: refused before the turn is taken, so it
+        // stays open for an observation or an abort.
+        if matches!(&self.turn, Some(t) if t.key == key && t.observe_only && t.observations == 0) {
+            return Err(Rt::Invalid.into());
+        }
         let turn = self.take_turn(key)?;
         if let Some(code) = self.fault() {
             self.terminate(turn);
             return Err(code.into());
         }
+        let observe_only = turn.observe_only;
         let live = self.bound.expect("a turn is begun on the bound state").generation;
         let mut transition = Transition::default();
         self.counters.k1_commits += 1;
@@ -876,8 +923,12 @@ impl Core {
             let error = if rc == K1_STALE { Rt::EcsStale } else { Rt::EcsRefused };
             return Err(ecs(error, rc, ScheduleOutcome::default()));
         }
-        if transition.generation_before != live || transition.generation_after != live.wrapping_add(1) {
-            // The state committed is not the continuation of the live coordinate: never built upon.
+        if transition.generation_before != live
+            || transition.generation_after != live.wrapping_add(1)
+            || (observe_only && (transition.steps != 0 || transition.epoch_after != transition.epoch_before))
+        {
+            // The state committed is not the continuation of the live coordinate (or an observe-only commit reports
+            // K1 learning it never ran): never built upon.
             self.fault = Some(Code::StateMismatch);
             return Err(Refusal { committed: Some(transition), ..Refusal::from(Code::StateMismatch) });
         }
@@ -899,8 +950,8 @@ impl Core {
         if !self.open {
             return (Err(Rt::Closed.into()), 0);
         }
-        let token = match &self.turn {
-            Some(turn) if turn.key == key => turn.token,
+        let (token, recorded, max) = match &self.turn {
+            Some(turn) if turn.key == key => (turn.token, turn.observations, turn.max_observations),
             _ => return (Err(Rt::TurnNotOpen.into()), 0),
         };
         if let Some(code) = self.fault() {
@@ -909,9 +960,19 @@ impl Core {
         if sub.format() != StateFormat::Composite || observation.0.is_null() {
             return (Err(Rt::Invalid.into()), 0);
         }
+        // The turn's observation bound (ABI v5), before the native call: recoverable, the turn stays open.
+        if fuel::admit_observation(recorded, max).is_err() {
+            return (Err(Rt::Fuel.into()), 0);
+        }
         let (mut relation, mut memory_status) = ([0u8; 32], 0i32);
+        self.counters.k1_observes += 1;
         match sub.txn_observe(self.lease, token, observation, &mut relation, &mut memory_status) {
-            0 => (Ok(relation), 0),
+            0 => {
+                if let Some(turn) = self.turn.as_mut() {
+                    turn.observations += 1;
+                }
+                (Ok(relation), 0)
+            }
             K1_LEASED => (Err(self.lineage_lost(K1_LEASED)), 0),
             rc => (Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())), memory_status),
         }

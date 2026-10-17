@@ -14,6 +14,12 @@
 //! generation instead of a digest. The substrate tables carry the live-coordinate entries (ecsg_k1.h). A v3 caller
 //! refuses to load the library (the version check), so no caller can mistake a volatile commit for a durable one.
 //!
+//! ABI v5 (docs/RUNTIME_CORE.md, "Observe-only turns"): `elpis_runtime_turn_begin_observe` opens a managed turn on a
+//! composite substrate that runs no K1 schedule, so typed memory observations need no geometric learning; the fuel
+//! budget gains `max_observations` (every managed turn's observation bound) and the counters `k1_observes`. Every
+//! v4 entry point keeps its meaning; the envelope and continuity formats are unchanged. A v4 caller refuses to load
+//! this library (the version check), so no caller reads the v5 budget or counters with the v4 layout.
+//!
 //! # Safety
 //!
 //! Every pointer argument is either NULL (refused with `RUNTIME_INVALID`, or the documented meaning) or valid
@@ -49,7 +55,7 @@ use crate::durable::{Kind, Lane, Status, Ticket};
 use crate::fuel::Budget;
 use crate::substrate::{features, CSubstrate, Experience, Native, ScheduleOutcome, Transition};
 
-pub const ABI_VERSION: u32 = 4;
+pub const ABI_VERSION: u32 = 5;
 
 /// Opaque runtime handle: the HOT state machine behind its lock, and the durability lane its wait and status
 /// reads reach without that lock.
@@ -94,6 +100,19 @@ pub struct CQuery {
 }
 
 const _: () = assert!(std::mem::size_of::<CQuery>() == 16);
+
+/// `elpis_runtime_observe_begin_result` (ABI v5).
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct CObserveBegin {
+    /// The live generation the observe-only turn was opened on (0 on refusal).
+    pub live_generation: u64,
+    /// The composite status behind an `ECS_*` refusal (0 otherwise).
+    pub k1_status: i32,
+    pub reserved: u32,
+}
+
+const _: () = assert!(std::mem::size_of::<CObserveBegin>() == 16);
 
 /// `elpis_runtime_durability`: the durability lane as a status read sees it.
 #[repr(C)]
@@ -151,8 +170,8 @@ pub struct CRecovery {
 const _: () = assert!(std::mem::size_of::<CRecovery>() == 80);
 const _: () = assert!(std::mem::size_of::<CTurnBegin>() == 48);
 const _: () = assert!(std::mem::size_of::<CVolatileCommit>() == 64);
-const _: () = assert!(std::mem::size_of::<Counters>() == 128);
-const _: () = assert!(std::mem::size_of::<Budget>() == 48);
+const _: () = assert!(std::mem::size_of::<Counters>() == 136);
+const _: () = assert!(std::mem::size_of::<Budget>() == 56);
 
 fn rc(result: Result<(), Error>) -> i32 {
     match result {
@@ -409,6 +428,34 @@ pub unsafe extern "C" fn elpis_runtime_query(
     };
     if !result.is_null() {
         *result = value;
+    }
+    code
+}
+
+/// Begin an OBSERVE-ONLY managed turn on a composite substrate (ABI v5): the lineage is verified and bound as for
+/// `elpis_runtime_turn_begin`, the composite transaction is opened at the live generation, and no K1 schedule runs.
+/// Observations then enter through `elpis_runtime_turn_observe` (at most `budget->max_observations`); the turn ends
+/// with `elpis_runtime_turn_commit` (volatile; refused `RUNTIME_INVALID`, the turn kept open, while nothing was
+/// observed) or `elpis_runtime_turn_abort`. A K1 or K1 FMS substrate is refused (`RUNTIME_INVALID`).
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_turn_begin_observe(
+    rt: *mut ElpisRuntime,
+    sub: *const CSubstrate,
+    budget: *const Budget,
+    out: *mut CObserveBegin,
+) -> i32 {
+    let run = || -> Result<u64, Refusal> {
+        let mut native = substrate(sub)?;
+        let key = native.key();
+        let budget = budget.as_ref().ok_or(Refusal::from(Rt::Invalid))?;
+        runtime(rt)?.turn_begin_observe(&mut native, key, budget)
+    };
+    let (value, code) = match run() {
+        Ok(live_generation) => (CObserveBegin { live_generation, k1_status: 0, reserved: 0 }, 0),
+        Err(r) => (CObserveBegin { k1_status: r.k1_status, ..CObserveBegin::default() }, r.error.code()),
+    };
+    if !out.is_null() {
+        *out = value;
     }
     code
 }

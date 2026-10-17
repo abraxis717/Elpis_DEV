@@ -19,8 +19,8 @@ enum { DIM = 6, WIDTH = 36, ROWS = 4 };
 
 _Static_assert(sizeof(elpis_runtime_turn_begin_result) == 48, "begin result ABI size");
 _Static_assert(sizeof(elpis_runtime_volatile_commit) == 64, "commit result ABI size");
-_Static_assert(sizeof(elpis_runtime_counters) == 128, "counters ABI size");
-_Static_assert(sizeof(elpis_runtime_budget) == 48, "budget ABI size");
+_Static_assert(sizeof(elpis_runtime_counters) == 136, "counters ABI size");
+_Static_assert(sizeof(elpis_runtime_budget) == 56, "budget ABI size");
 _Static_assert(sizeof(elpis_runtime_query_result) == 16, "query result ABI size");
 _Static_assert(sizeof(elpis_runtime_durable_ticket) == 64, "durable ticket ABI size");
 _Static_assert(sizeof(elpis_runtime_durability) == 3 * 64 + 32 + sizeof(elpis_continuity_snapshot), "durability");
@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     assert(argc == 2);
     for (int i = 0; i < ROWS * DIM; ++i) X[i] = (double)((i * 5) % 11 - 5) / 16.0;
     for (int i = 0; i < ROWS; ++i) Y[i] = (double)(i % 3 - 1) / 8.0;
-    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V4);
+    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V5);
     assert(elpis_runtime_fuel_ceiling(&BUDGET) == ELPIS_RUNTIME_OK);
     assert(elpis_runtime_features(DIM) == elpis_ecsg_k1_features(DIM));
     for (size_t d = 1; d <= 64; ++d) assert(elpis_runtime_features(d) == elpis_ecsg_k1_features(d));

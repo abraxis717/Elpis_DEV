@@ -61,7 +61,7 @@ from .fuel import CEILING as _FUEL_CEILING
 __all__ = ("DurabilityStatus", "DurableTicket", "K1Recovery", "RuntimeCore", "RuntimeLibrary", "TurnBegun",
            "VolatileCommit")
 
-_ABI_VERSION = 4
+_ABI_VERSION = 5
 _TESTING_PROCESS_DEATH = 255
 _U64 = C.c_uint64
 _K1_NAMES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT",
@@ -117,12 +117,13 @@ class _Counters(C.Structure):
     _fields_ = [(n, _U64) for n in ("k1_state_digests", "k1_reserves", "k1_txn_begins", "k1_run_schedules",
                                     "k1_commits", "k1_aborts", "publications", "k1_queries", "k1_shapes",
                                     "k1_lease_claims", "k1_identities", "k1_captures", "durable_requests",
-                                    "durable_superseded", "durable_acknowledged", "durable_failed")]
+                                    "durable_superseded", "durable_acknowledged", "durable_failed",
+                                    "k1_observes")]
 
 
 class _Budget(C.Structure):
     _fields_ = [(n, _U64) for n in ("max_experiences", "max_rows", "max_experience_rows", "max_steps",
-                                    "max_work_units", "max_query_rows")]
+                                    "max_work_units", "max_query_rows", "max_observations")]
 
 
 # The K1 library's own entry points RuntimeCore calls, in the ABI v4 table order. Every mutating entry is a leased
@@ -255,8 +256,8 @@ class _Substrate(C.Structure):
                 ("owner", _U64), ("dim", _U64), ("api", C.c_void_p)]
 
 
-assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 64 and C.sizeof(_Counters) == 128
-assert C.sizeof(_Budget) == 48 and C.sizeof(_Ticket) == 64
+assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 64 and C.sizeof(_Counters) == 136
+assert C.sizeof(_Budget) == 56 and C.sizeof(_Ticket) == 64
 assert C.sizeof(_Query) == 16 and C.sizeof(_Recovery) == 80
 assert C.sizeof(_CompositeApi) == 14 * C.sizeof(C.c_void_p) and C.sizeof(_ObserveResult) == 40
 assert C.sizeof(_Durability) == 3 * 64 + 32 + C.sizeof(_Snapshot)
@@ -397,6 +398,7 @@ class RuntimeLibrary:
             "checkpoint_discard": [P, P],
             "checkpoint_adopt": [P, P, S],
             "turn_observe": [P, C.POINTER(_Substrate), P, C.POINTER(_ObserveResult)],
+            "turn_begin_observe": [P, C.POINTER(_Substrate), C.POINTER(_Budget), C.POINTER(_Query)],
             "import_composite": [P, C.POINTER(_Substrate), S],
         }
         for name, args in sig.items():
@@ -551,6 +553,19 @@ class RuntimeCore:
             self.library.check(rc, f"memory {memory}", out.k1_status)
         self.library.check(rc, "", out.k1_status)
         return bytes(out.relation_key)
+
+    def turn_begin_observe(self, descriptor, budget) -> int:
+        """Begin an OBSERVE-ONLY managed turn on an ECS composite substrate (ABI v5): the lineage is verified and bound
+        as by :meth:`turn_begin` and the composite transaction is opened at the live generation, but no K1 schedule
+        runs (the K1 retained state stays byte-identical). Observations enter through :meth:`turn_observe` (at most
+        ``budget.max_observations``, refused ``COGNITION_FUEL_EXCEEDED`` beyond); end it with :meth:`turn_commit`
+        (refused ``RUNTIME_INVALID``, the turn kept open, while nothing was observed) or :meth:`turn_abort`. Returns
+        the live generation the turn was opened on."""
+        out = _Query()   # layout-identical to elpis_runtime_observe_begin_result
+        rc = self._f.elpis_runtime_turn_begin_observe(self._handle, C.byref(descriptor),
+                                                      C.byref(_Budget(*budget.native_fields())), C.byref(out))
+        self.library.check(rc, "", out.k1_status)
+        return int(out.live_generation)
 
     def import_composite(self, descriptor) -> ContinuitySnapshot:
         """LEGACY, explicit: move the K1 lineage to the ECS composite ``descriptor`` names (made by
