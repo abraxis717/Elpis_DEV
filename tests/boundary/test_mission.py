@@ -132,8 +132,13 @@ def test_runtime_import_closure_loads_no_dsv_model_machinery():
 # Runtime operations. A new operation is an architectural decision: adding one
 # (for example a model decode or a model text path) must update this list,
 # which is reviewed against docs/ELPIS_MISSION.md.
+#
+# ``anchor_cognition`` is the explicit, one-time ECS_C continuity bootstrap of the
+# canonical K1 turn: it reads the caller's K1 retained-state identity and records
+# one ``ecs_g / cognition.anchor`` receipt. It executes no model, mutates no K1
+# state and is never invoked implicitly (reconciliation never creates an anchor).
 RUNTIME_OPERATIONS = {"open", "close", "run_ingress", "admit_retrieval", "publish_canonical",
-                      "history_projection", "evolve", "admit_context", "run_turn"}
+                      "history_projection", "evolve", "admit_context", "run_turn", "anchor_cognition"}
 
 
 def test_runtime_composes_no_model_operation():

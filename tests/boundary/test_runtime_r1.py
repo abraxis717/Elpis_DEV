@@ -105,8 +105,13 @@ def test_commit_is_native_not_a_python_snapshot_hash_swap():
 @pending("executor")
 def test_runtime_turn_commits_through_a_native_transaction():
     """The canonical turn's substrate is now native K1 (tests/boundary/test_k1_runtime.py); its commit stays one
-    native transaction commit, never a Python fork/adopt/step."""
+    native transaction commit, never a Python fork/adopt/step.
+
+    The one commit is ``commit_identity``: the native transaction commit that also returns the exact retained-state
+    identities before and after. The legacy ``commit()`` must not reappear in the turn module, so the identity-bearing
+    commit cannot be bypassed."""
     _, functions = _functions(TURN)
     calls = set().union(*(_calls(f) for f in functions.values()))
-    assert "transaction" in calls and "commit" in calls
+    assert {"transaction", "commit_identity"} <= calls, calls
+    assert "commit" not in calls, "the canonical turn commits only through the identity-bearing native commit"
     assert not calls & {"fork", "adopt", "step"}, calls & {"fork", "adopt", "step"}

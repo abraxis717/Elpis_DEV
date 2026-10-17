@@ -12,6 +12,9 @@ from elpis.ECS_C.errors import EcsError
 from elpis.ECS_C.limits import MAX_INT, SUPPORTED_SCHEDULER_PROTOCOLS
 
 SCHEMA = "ecs.context-projection.v1"
+# A projection over a compacted history's retained window. Distinct schema so
+# a retained-window result can never be mistaken for a complete-history one.
+RETAINED_SCHEMA = "ecs.context-projection.retained.v1"
 EVENT_KINDS = frozenset(TRANSITION_EVENT_KIND.values()) | {
     "ENTITY_FOUNDED", "MESSAGE_ENQUEUED", "MESSAGE_PROCESSED",
 }
@@ -107,6 +110,39 @@ class HistoryBinding:
 
 
 @dataclass(frozen=True)
+class RetainedHistoryBinding:
+    """Coordinates of a compacted history's RETAINED window, floor included.
+
+    ``retention_floor`` is the global index of the first retained event; the
+    retired prefix exists only as a verified compaction checkpoint whose
+    terminal event digest and state root are ``floor_event_digest`` and
+    ``floor_state_root``. Like HistoryBinding this is identity data, not a
+    trust credential, and must come from a replay-validated owner.
+    """
+
+    genesis_digest: str
+    mailbox_capacity: int
+    scheduler_protocol: str
+    event_count: int
+    head_event_digest: str
+    final_state_root: str
+    retention_floor: int
+    floor_event_digest: str
+    floor_state_root: str
+
+    def __post_init__(self) -> None:
+        for value in (self.genesis_digest, self.head_event_digest, self.final_state_root,
+                      self.floor_event_digest, self.floor_state_root):
+            require_digest(value)
+        require_int(self.mailbox_capacity, "MAILBOX_CAPACITY", 1, MAX_INT)
+        require_int(self.event_count, "EVENT_COUNT", 1, MAX_INT)
+        require_int(self.retention_floor, "RETENTION_FLOOR", 1, self.event_count)
+        if (type(self.scheduler_protocol) is not str
+                or self.scheduler_protocol not in SUPPORTED_SCHEDULER_PROTOCOLS):
+            raise ProjectionError("INVALID_SCHEDULER_PROTOCOL")
+
+
+@dataclass(frozen=True)
 class ProjectedEvent:
     """Exact canonical ECS bytes, with source event coordinates preserved."""
 
@@ -126,12 +162,20 @@ class ProjectedEvent:
 class ContextProjection:
     """Derived observation only; contains no execution capability."""
 
-    source: HistoryBinding
+    source: HistoryBinding | RetainedHistoryBinding
     request: ProjectionRequest
     records: tuple[ProjectedEvent, ...]
     total_matches: int
     record_bytes_used: int
     budget_exhausted: tuple[str, ...]
+
+    @property
+    def schema(self) -> str:
+        return RETAINED_SCHEMA if type(self.source) is RetainedHistoryBinding else SCHEMA
+
+    @property
+    def retention_floor(self) -> int:
+        return getattr(self.source, "retention_floor", 0)
 
     @property
     def truncated(self) -> bool:
@@ -140,7 +184,7 @@ class ContextProjection:
     def to_dict(self) -> dict:
         """Return a fresh JSON-compatible view (digest excludes itself)."""
         return {
-            "schema": SCHEMA,
+            "schema": self.schema,
             "source": asdict(self.source),
             "request": asdict(self.request),
             "records": [record.to_dict() for record in self.records],
@@ -160,4 +204,4 @@ class ContextProjection:
     @property
     def projection_digest(self) -> str:
         """Cross-component content identity v1; not authentication."""
-        return content_digest(SCHEMA, self.to_dict())
+        return content_digest(self.schema, self.to_dict())

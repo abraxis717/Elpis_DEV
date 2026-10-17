@@ -6,10 +6,14 @@ model, network, tool or execution authority. ``HistoryBinding`` is identity
 data, not authentication.
 """
 
-from .contracts import ContextProjection, HistoryBinding, ProjectionError, ProjectionRequest
-from .projector import project_history, project_verified_events
+from .contracts import (
+    ContextProjection, HistoryBinding, ProjectionError, ProjectionRequest,
+    RetainedHistoryBinding,
+)
+from .projector import project_history, project_retained_history, project_verified_events
 
 __all__ = [
     "ContextProjection", "HistoryBinding", "ProjectionError", "ProjectionRequest",
-    "project_history", "project_verified_events",
+    "RetainedHistoryBinding", "project_history", "project_retained_history",
+    "project_verified_events",
 ]

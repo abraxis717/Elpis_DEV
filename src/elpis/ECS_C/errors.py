@@ -104,3 +104,23 @@ class ReplayError(EcsError):
 
 class WrongAuthorityError(ReplayError):
     """Replay was given a wrong genesis / authority input."""
+
+
+class StorageCapacityError(PersistenceError):
+    """A durable write would exceed a finite storage bound; nothing was written."""
+
+
+class RetentionFloorError(PersistenceError):
+    """A request reached below the retained-history floor of a compacted history.
+
+    The retired prefix is represented only by a verified compaction checkpoint;
+    its individual events no longer exist and are never synthesized.
+    """
+
+
+class CorruptCompactionCheckpointError(CorruptCheckpointError):
+    """A state-bearing compaction checkpoint failed verification."""
+
+
+class GenerationError(PersistenceError):
+    """A compacted-history generation manifest/artifact set is inconsistent."""

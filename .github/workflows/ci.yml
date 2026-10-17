@@ -36,7 +36,21 @@ jobs:
           assert "torch" not in sys.modules and "numpy" not in sys.modules
           print("base install:", sorted(installed))
           EOF
+      # The native libraries are built only after base neutrality was proved: a
+      # CMake build installs no Python distribution, so it cannot change that
+      # result. Boundary tests that bind native ECS_G/ECS_C ABIs (K1 commit and
+      # state identity, the runtime-history session) load them from this build,
+      # the same convention as the Python and authority jobs.
+      - name: Native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y $NATIVE_DEPS
+      - name: Native build (libraries loaded by boundary tests)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
       - name: Boundary suite (architecture, authority, migration record)
+        env:
+          ELPIS_REQUIRE_NATIVE: "1"
+          ELPIS_NATIVE_BUILD: ${{ github.workspace }}/build
         run: |
           # Base neutrality was proved above before inference dependencies existed.
           # The closure probe intentionally imports every inference module, so

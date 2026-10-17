@@ -20,6 +20,13 @@ elpis_add_test(ECS_C test_ecsc_history
   LIBS elpis_ecsc_history
 )
 
+# Bounded active-segment session ABI (global/base/local accounting and the
+# capacity disposition before mutation).
+elpis_add_test(ECS_C test_ecsc_session_segment
+  SOURCES tests/test_ecsc_session_segment.c
+  LIBS elpis_ecsc_history
+)
+
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   # Test-only syscall fault injection. Compile the durability source directly
@@ -30,5 +37,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang
     INCLUDES include
     TIMEOUT 60)
   target_link_options(test_ecsc_log_faults PRIVATE
+    "LINKER:--wrap=write,--wrap=fsync,--wrap=ftruncate")
+
+  # Session-level fault matrix under a segment base: the same wrap technique
+  # over the session + log + planner sources (no hooks in the shared library).
+  elpis_add_test(ECS_C test_ecsc_session_faults
+    SOURCES tests/test_ecsc_session_segment.c src/ecsc_session.c src/ecsc_log.c src/ecsc_history.c
+    INCLUDES include ../substrate/include
+    LIBS elpis_hash
+    DEFINES ECSC_SESSION_FAULTS
+    TIMEOUT 60)
+  target_link_options(test_ecsc_session_faults PRIVATE
     "LINKER:--wrap=write,--wrap=fsync,--wrap=ftruncate")
 endif()

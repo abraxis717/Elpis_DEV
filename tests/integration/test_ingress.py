@@ -54,7 +54,8 @@ def test_reopen_replays_and_tampered_history_is_refused(
         root = rt.history.state_root
     with Runtime(config) as rt:
         assert rt.history.records() == (recorded,) and rt.history.state_root == root
-    log = config.history_dir / "events.log"
+        # The durable events live in the published generation's active segment.
+        log = rt.history.segment_path
     data = bytearray(log.read_bytes())
     index = data.index(b"ingress.proposal".hex().encode())
     data[index] ^= 0x01

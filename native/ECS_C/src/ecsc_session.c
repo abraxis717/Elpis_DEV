@@ -23,6 +23,14 @@ struct elpis_ecsc_runtime_session {
     uint64_t mailbox_default_capacity;
     uint64_t event_count;
 
+    /*
+     * Global index of the first frame in the owned segment, and the finite
+     * segment policy enforced before every mutation.
+     */
+    uint64_t segment_base;
+    uint64_t max_segment_bytes;
+    uint64_t max_segment_frames;
+
     elpis_ecsc_state_entity_view
         entities[ELPIS_ECSC_RUNTIME_MAX_ENTITIES];
 
@@ -633,19 +641,24 @@ static int session_install_success(
     if (session->log == NULL ||
         elpis_ecsc_log_frame_count(
             session->log
-        ) != session->event_count) {
+        ) != session->event_count -
+                session->segment_base) {
         return ELPIS_ECSC_CORRUPT;
     }
 
     return ELPIS_ECSC_OK;
 }
 
-int elpis_ecsc_runtime_session_open(
+static int session_open_impl(
     const char *log_path,
     size_t log_path_len,
     const elpis_ecsc_state_root_view *validated_state,
     const char current_event_digest[64],
     uint64_t validated_event_count,
+    uint64_t segment_base,
+    uint64_t max_segment_bytes,
+    uint64_t max_segment_frames,
+    int mismatch_code,
     elpis_ecsc_runtime_session **out_session
 )
 {
@@ -666,8 +679,14 @@ int elpis_ecsc_runtime_session_open(
         validated_state == NULL ||
         current_event_digest == NULL ||
         validated_event_count !=
-            validated_state->logical_clock) {
+            validated_state->logical_clock ||
+        max_segment_bytes == 0u ||
+        max_segment_frames == 0u) {
         return ELPIS_ECSC_INVALID;
+    }
+
+    if (segment_base > validated_event_count) {
+        return mismatch_code;
     }
 
     rc = elpis_ecsc_state_root_digest(
@@ -720,6 +739,10 @@ int elpis_ecsc_runtime_session_open(
     session->event_count =
         validated_event_count;
 
+    session->segment_base = segment_base;
+    session->max_segment_bytes = max_segment_bytes;
+    session->max_segment_frames = max_segment_frames;
+
     rc = elpis_ecsc_state_root_digest(
         &session->root,
         copied_root
@@ -764,10 +787,22 @@ int elpis_ecsc_runtime_session_open(
      * later restart/recovery phase.
      */
     if (scan.has_incomplete_tail != 0u ||
-        scan.total_size != scan.complete_prefix ||
-        scan.frame_count != validated_event_count) {
+        scan.total_size != scan.complete_prefix) {
         session_free(session);
         return ELPIS_ECSC_CORRUPT;
+    }
+
+    /* Local frames must be exactly global - base: never renumbered. */
+    if (scan.frame_count !=
+            validated_event_count - segment_base) {
+        session_free(session);
+        return mismatch_code;
+    }
+
+    if (scan.complete_prefix > max_segment_bytes ||
+        scan.frame_count > max_segment_frames) {
+        session_free(session);
+        return ELPIS_ECSC_SEGMENT_FULL;
     }
 
     rc = elpis_ecsc_log_finish_recovery(
@@ -785,6 +820,107 @@ int elpis_ecsc_runtime_session_open(
     *out_session = session;
 
     return ELPIS_ECSC_OK;
+}
+
+int elpis_ecsc_runtime_session_open(
+    const char *log_path,
+    size_t log_path_len,
+    const elpis_ecsc_state_root_view *validated_state,
+    const char current_event_digest[64],
+    uint64_t validated_event_count,
+    elpis_ecsc_runtime_session **out_session
+)
+{
+    /*
+     * Original whole-log ABI: segment base 0 and no segment policy. Kept for
+     * ABI compatibility; the bounded runtime history uses open_segment.
+     */
+    return session_open_impl(
+        log_path,
+        log_path_len,
+        validated_state,
+        current_event_digest,
+        validated_event_count,
+        0u,
+        UINT64_MAX,
+        UINT64_MAX,
+        ELPIS_ECSC_CORRUPT,
+        out_session
+    );
+}
+
+int elpis_ecsc_runtime_session_open_segment(
+    const char *segment_path,
+    size_t segment_path_len,
+    const elpis_ecsc_state_root_view *validated_state,
+    const char current_event_digest[64],
+    uint64_t global_event_count,
+    uint64_t segment_base,
+    const elpis_ecsc_segment_policy *policy,
+    elpis_ecsc_runtime_session **out_session
+)
+{
+    if (out_session != NULL) {
+        *out_session = NULL;
+    }
+
+    if (policy == NULL ||
+        policy->max_segment_bytes == 0u ||
+        policy->max_segment_frames == 0u ||
+        policy->max_segment_bytes == UINT64_MAX ||
+        policy->max_segment_frames == UINT64_MAX) {
+        return ELPIS_ECSC_INVALID;
+    }
+
+    return session_open_impl(
+        segment_path,
+        segment_path_len,
+        validated_state,
+        current_event_digest,
+        global_event_count,
+        segment_base,
+        policy->max_segment_bytes,
+        policy->max_segment_frames,
+        ELPIS_ECSC_SEGMENT_MISMATCH,
+        out_session
+    );
+}
+
+uint64_t elpis_ecsc_runtime_session_segment_base(
+    const elpis_ecsc_runtime_session *session
+)
+{
+    if (session == NULL) {
+        return UINT64_MAX;
+    }
+
+    return session->segment_base;
+}
+
+uint64_t elpis_ecsc_runtime_session_segment_bytes(
+    const elpis_ecsc_runtime_session *session
+)
+{
+    if (session == NULL ||
+        session->poisoned != 0 ||
+        session->log == NULL) {
+        return UINT64_MAX;
+    }
+
+    return elpis_ecsc_log_size(session->log);
+}
+
+uint64_t elpis_ecsc_runtime_session_segment_frames(
+    const elpis_ecsc_runtime_session *session
+)
+{
+    if (session == NULL ||
+        session->poisoned != 0 ||
+        session->log == NULL) {
+        return UINT64_MAX;
+    }
+
+    return elpis_ecsc_log_frame_count(session->log);
 }
 
 void elpis_ecsc_runtime_session_close(
@@ -839,6 +975,33 @@ int elpis_ecsc_runtime_session_record(
 
     if (rc != ELPIS_ECSC_OK) {
         return rc;
+    }
+
+    /*
+     * Enforce the finite segment policy with the PLANNED sizes before any
+     * mutation. Both frames must fit, so an enqueue is never appended
+     * without room for its processed event. SEGMENT_FULL changes nothing:
+     * the plan only wrote session scratch buffers.
+     */
+    {
+        uint64_t used = elpis_ecsc_log_size(session->log);
+        uint64_t frames = elpis_ecsc_log_frame_count(session->log);
+        uint64_t need;
+
+        if (used == UINT64_MAX || frames == UINT64_MAX) {
+            return ELPIS_ECSC_NOT_READY;
+        }
+
+        need = UINT64_C(16) +
+            (uint64_t)plan.enqueue_event_size +
+            (uint64_t)plan.processed_event_size;
+
+        if (used > session->max_segment_bytes ||
+            need > session->max_segment_bytes - used ||
+            frames > session->max_segment_frames ||
+            UINT64_C(2) > session->max_segment_frames - frames) {
+            return ELPIS_ECSC_SEGMENT_FULL;
+        }
     }
 
     rc = elpis_ecsc_log_append_event_bytes(

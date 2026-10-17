@@ -438,3 +438,59 @@ def replay_with_checkpoint(
                 f"(replayed={replayed_root} checkpoint={expected_root})"
             )
     return state
+
+
+class StreamReplay:
+    """Incremental replay of a verified event stream onto a verified base state.
+
+    ``state`` must be a KernelState whose coordinates are already verified:
+    either the genesis-empty state (``base_count == 0``) or a state rebuilt
+    from a verified compaction checkpoint whose ``logical_clock`` equals
+    ``base_count``. Each ``apply(event)`` performs the same per-event protocol
+    as :func:`replay_from_events` at GLOBAL index ``base_count + i``:
+
+      1. structural link (schema, digests, global index, exact clock, prev
+         digest, before root == reconstructed root);
+      2. apply the event mutation;
+      3. set the clock and history digest;
+      4. verify the reconstructed after_state_root.
+
+    Retained memory is the state plus the current head; events are not kept.
+    """
+
+    def __init__(self, state: KernelState, base_count: int, base_head: str) -> None:
+        if type(base_count) is not int or base_count < 0 or state.logical_clock != base_count:
+            raise ReplayError("STREAM_REPLAY_BASE_CLOCK_MISMATCH")
+        if (base_count == 0) != (base_head == GENESIS_PREV_DIGEST):
+            raise ReplayError("STREAM_REPLAY_BASE_HEAD_MISMATCH")
+        self.state = state
+        self.event_count = base_count
+        self.head_event_digest = base_head
+        self._root = state.state_root_digest()
+
+    @property
+    def state_root_digest(self) -> str:
+        return self._root
+
+    def apply(self, ev: Mapping[str, Any]) -> None:
+        from .persistence import verify_event_link
+        index = self.event_count
+        if index == 0 and ev.get("before_state_root") != self._root:
+            raise WrongAuthorityError(
+                "WRONG_GENESIS_OR_CAPACITY: first event before_state_root "
+                "does not match the initial state root for this genesis "
+                "authority and mailbox capacity"
+            )
+        verify_event_link(ev, index, self.head_event_digest, self._root)
+        _apply_event(self.state, ev)
+        self.state.logical_clock = ev["logical_clock"]
+        self.state.history_digest = event_intent_digest(ev)
+        root = self.state.state_root_digest()
+        if root != ev["after_state_root"]:
+            raise BrokenChainError(
+                f"STATE_ROOT_MISMATCH: index={index} reconstructed="
+                f"{root} event_after={ev['after_state_root']}"
+            )
+        self._root = root
+        self.event_count = index + 1
+        self.head_event_digest = ev["event_digest"]

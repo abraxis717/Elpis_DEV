@@ -229,8 +229,47 @@ genesis/configuration authority + ordered committed event bytes
 ```
 
 Replay re-applies every transition's preconditions and effects. It does not
-trust a stored after-root because its syntax is valid. Checkpoints are local
-rollback-floor markers: full replay remains authoritative.
+trust a stored after-root because its syntax is valid. The `ecs.checkpoint.v1`
+checkpoint of an uncompacted kernel is a local rollback-floor marker only:
+full replay from genesis remains authoritative for that layout.
+
+### Compacted histories (bounded storage)
+
+A history can instead be opened on a verified **compaction base**:
+`elpis.ECS_C.compaction.CompactionCheckpoint` (`ecs.compaction-checkpoint.v1`)
+plus one **segment** file holding only the events after it.
+
+* The checkpoint is state-bearing and distinct from the marker. It binds
+  schema, genesis label and digest, scheduler protocol, mailbox capacity,
+  global event count (= logical clock), terminal event digest, history
+  digest, the complete `ecs.state_root.v3` record (next founding index,
+  registry, mailboxes with contents, watermarks) plus each entity's
+  `causing_event_id`, and a bounded opaque extension. Its identity is a
+  domain-separated digest. It is verified before use by rebuilding the kernel
+  state and requiring the exact recorded root. It is ECS_C mechanical state,
+  not cognitive state.
+* Segment events keep their **global** coordinates. The first one has
+  `event_index == base count` and links to the checkpoint's terminal event
+  digest and state root. Nothing is renumbered, and the logical clock,
+  watermarks, versions and history digest continue monotonically.
+* `Kernel(..., log_path=, base=)` rebuilds the base state and
+  stream-replays only the segment (`StreamReplay`; `EventLog.scan_events`
+  never materializes the file).
+* `Kernel.retention_floor` is the first retained global index. Below a
+  non-zero floor `events()` and `topology_projection()` refuse with
+  `RetentionFloorError`; `retained_events()` returns the window.
+* `elpis.ECS_C.generations` publishes one generation (checkpoint, segment)
+  per directory through a crash-safe MANIFEST switch:
+  1. write and fsync the checkpoint;
+  2. create and fsync the segment;
+  3. fsync the directory;
+  4. write and fsync `MANIFEST.tmp`;
+  5. atomically rename it to `MANIFEST` (publication);
+  6. fsync the directory again;
+  7. only then remove the previous generation.
+
+  A crash before the rename reopens the old generation and one after it the
+  new one. Every write is admitted against the directory budget first.
 
 ### Projections
 
@@ -729,17 +768,78 @@ There is one runtime composition. The beta's numbered runtime generations
 `ReceiptHistory` is an ordinary ECS kernel history with a fixed genesis
 (`elpis.runtime.history.v1`). At genesis it founds, in order, one `history`
 entity and one recorder entity for each of `pipeline`, `structure`,
-`evolution` and `inference`.
+`evolution`, `inference` and `ecs_g`. A legacy five-role history is upgraded
+once by exactly one FOUND + ACTIVATE of `ecs_g`.
 
 Recording a receipt sends one message from the owning subsystem's recorder
 to the history entity. The kernel attributes the sender, so a record cannot
 claim another subsystem. The payload is a canonical
 `elpis.runtime.receipt-record.v1` record: subsystem, kind, digest and named
-bindings.
+bindings. Native ECS_C owns every append. There is no Python propose
+fallback and no Python scheduler on the write path.
 
-Recording is idempotent: an equal record returns the existing entry. Opening
-replays and verifies the whole event chain, and it refuses a history founded
-differently, a record from the wrong recorder or a non-canonical payload.
+**Bounded storage.** The history directory is governed by a finite
+`RuntimeHistoryPolicy`, with no unlimited value and finite defaults:
+
+* `max_segment_bytes` 8 MiB;
+* `max_segment_events` 32768;
+* `max_checkpoint_bytes` 64 KiB;
+* `max_directory_bytes` 9 MiB, which must be at least segment +
+  2 x checkpoint + 2 x manifest.
+
+The directory holds exactly `LOCK`, `MANIFEST`, `g<N>.ckpt` and `g<N>.seg`
+between operations. The native session (`open_segment`) is given the global
+count, the segment base and the policy.
+
+1. It checks the planned frame sizes before every mutation and returns the
+   non-mutating disposition `SEGMENT_FULL` when a receipt would not fit.
+2. On `SEGMENT_FULL`, `ReceiptHistory` closes the native session and checks
+   the segment by bounded Python replay.
+3. It checkpoints the quiescent state, publishes generation N+1, reopens
+   native, and retries that exact receipt once.
+4. Nothing is archived. A K1 turn is never repeated, because recording
+   follows the committed turn.
+
+Failure codes:
+
+* `HISTORY_STORAGE_CAPACITY`: a receipt does not fit an empty segment, or a
+  write would exceed the directory budget.
+* `HISTORY_COMPACTION_REQUIRED`: the segment is over policy at a
+  non-quiescent boundary.
+* `HISTORY_COMPACTION_FAILED`: fail-stop. The last published generation is
+  never deleted.
+* `HISTORY_CHECKPOINT_INVALID`, `HISTORY_GENERATION_MISMATCH`,
+  `HISTORY_NATIVE_SEGMENT_MISMATCH`: inconsistent stored artifacts or counts.
+* `HISTORY_LEGACY_MIGRATION_FAILED`: the legacy layout could not be migrated.
+
+**Retention.** `retention_floor` is the first retained global event index.
+
+* `records()` returns the complete record list only while the floor is 0.
+  Otherwise it refuses with `HISTORY_BELOW_RETENTION_FLOOR`;
+  `retained_records()` returns the window.
+* Exact duplicate detection (an equal record returns the existing entry and
+  appends nothing) is guaranteed **only within the retained window**. A record
+  equal to a retired one is recorded again.
+* With a floor, the default `projection()` selects the retained window
+  (`clock_min = floor + 1`). Its result binds the floor
+  (`RetainedHistoryBinding`, schema `ecs.context-projection.retained.v1`).
+  An explicit request at or below the floor refuses.
+
+**Opening** rebuilds the base from the verified checkpoint and stream-replays
+only the bounded segment. It never replays lifetime history, and it refuses a
+history founded differently, a record from the wrong recorder or a
+non-canonical payload. An enqueue-only prefix left by `PARTIAL_COMMIT` is
+completed by the canonical Python replay path at native-writer open.
+
+**Legacy layouts** (`events.log` + `checkpoint.bin`) are validated once and
+migrated deterministically, either verbatim as generation 1's segment (hard
+link) or as a head checkpoint when larger than the segment policy. They are
+removed only after publication and never replayed again.
+
+The ECS_G K1 lineage (`cognition.anchor` / `cognition.turn` receipts) is
+folded into a fixed-size `CognitionContinuity` summary. The summary is
+carried across compaction in the checkpoint, so restart reconciliation never
+reads retired receipts.
 
 ### Composition
 
@@ -757,7 +857,8 @@ entry point and is recorded only if that entry point committed:
 | `publish_canonical` | `publish_candidate` | publication receipt (replay records nothing new) |
 | `evolve` | `EvolutionPathGate.execute` over a projection of this history taken at call time | transition receipt of an admitted attempt |
 | `admit_context` | ingress, edge adapter, `resolve_chunks`, codec rendering | ingress proposal and the rendering |
-| `run_turn` | codec -> native K1 (ECS_G) -> codec (`elpis.runtime.cognition`) | nothing yet (no ECS recorder role) |
+| `anchor_cognition` | the K1 state's `state_digest()` (no K1 mutation) | one explicit `ecs_g` / `cognition.anchor` |
+| `run_turn` | codec -> native K1 (ECS_G) -> codec (`elpis.runtime.cognition`) | one `ecs_g` / `cognition.turn` per committed turn |
 
 The runtime composes no DSV model execution: there is no decode, principal
 sequence or model text operation, and the mission gate pins this list.
@@ -810,8 +911,6 @@ the subsystem state unchanged.
 
 * **No qualified ECS codec.** Canonical text generation is unavailable until
   the ECS<->DSV semantic maps are defined and qualified.
-* **ECS turns are not recorded.** The history genesis has no ECS recorder
-  role.
 * **No HACF -> ECS edge.** Structural memory is rendered through the codec,
   but nothing canonical consumes it yet.
 * **Proposals only, not overlays.** Ingress overlays are recorded by
@@ -820,8 +919,10 @@ the subsystem state unchanged.
   engine is composed by the caller.
 * **Only publication is recorded.** The application and promotion stages
   before canonical publication are driven by the caller and not recorded.
-* **Single process.** There is no cross-process transport. `record()`
-  re-reads the event log after each write.
+* **Single process.** There is no cross-process transport.
+* **Retained window only.** Events below the retention floor exist only as
+  the compaction checkpoint's state. They cannot be listed, projected,
+  topology-folded or used for duplicate detection.
 
 ## ECS_G mutable FMS residency (R0)
 

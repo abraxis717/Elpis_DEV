@@ -74,6 +74,7 @@ from .errors import (
     CorruptCheckpointError,
     CorruptEventError,
     PersistenceError,
+    StorageCapacityError,
     TruncatedLogError,
     WrongAuthorityError,
 )
@@ -483,40 +484,85 @@ class EventLog:
     Recovery is explicit and only available before finish_recovery(). Live
     inspection never truncates. flock prevents a second open file owner,
     including aliases; it supplies exclusion, not cross-process identity.
+
+    Global coordinates
+    ------------------
+    A log may be the active SEGMENT of a compacted history. ``base_count``,
+    ``base_head`` and ``base_root`` are the verified coordinates of the retired
+    prefix (taken from a verified compaction checkpoint): the first frame in
+    the file has global ``event_index == base_count``, links to ``base_head``
+    and starts from ``base_root``. Surviving events are never renumbered.
+    ``event_count()`` is the GLOBAL count (base + local frames);
+    ``frame_count()`` is the local frame count. The defaults describe an
+    uncompacted history (base 0, genesis head).
+
+    ``max_bytes`` is an optional hard append bound for this file: an append
+    whose framed size would exceed it raises StorageCapacityError before any
+    byte is written.
     """
-    def __init__(self, path):
+    def __init__(self, path, *, base_count=0, base_head=GENESIS_PREV_DIGEST,
+                 base_root=None, create=True, max_bytes=None):
+        _require_int(base_count, "base_count")
+        _require_digest(base_head, "base_head")
+        if base_root is not None:
+            _require_digest(base_root, "base_root")
+        if (base_count == 0) != (base_head == GENESIS_PREV_DIGEST):
+            raise PersistenceError("LOG_BASE_INCONSISTENT")
+        if max_bytes is not None:
+            _require_int(max_bytes, "max_bytes", 1)
         self.path = path
+        self._base_count = base_count
+        self._base_head = base_head
+        self._base_root = base_root
+        self._create = bool(create)
+        self._max_bytes = max_bytes
         self._fd = None
         self._lock = threading.RLock()
         self._recovering = False
         self._tail = None
-        self._count = 0
-        self._head = GENESIS_PREV_DIGEST
-        self._after_root = None
+        self._count = base_count
+        self._head = base_head
+        self._after_root = base_root
         self._size = 0
         self._scanned = False
+
+    @property
+    def base_count(self):
+        return self._base_count
 
     @_locked
     def open(self):
         if self._fd is not None:
             return self._fd
         directory = os.path.dirname(os.path.abspath(self.path))
-        # Persist newly-created directory entries from child through existing parent.
-        missing = []
-        current = directory
-        while not os.path.exists(current):
-            missing.append(current)
-            current = os.path.dirname(current)
-        os.makedirs(directory, exist_ok=True)
-        fd = os.open(self.path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600)
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            _sync_directory(directory)
-            for entry in missing:
-                _sync_directory(os.path.dirname(entry))
-        except BaseException:
-            os.close(fd)
-            raise
+        if not self._create:
+            # A segment of a compacted history is created only by the
+            # generation switch protocol. Never resurrect a missing segment.
+            if not os.path.isfile(self.path):
+                raise PersistenceError("LOG_SEGMENT_MISSING")
+            fd = os.open(self.path, os.O_RDWR | os.O_APPEND)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BaseException:
+                os.close(fd)
+                raise
+        else:
+            # Persist newly-created directory entries from child through existing parent.
+            missing = []
+            current = directory
+            while not os.path.exists(current):
+                missing.append(current)
+                current = os.path.dirname(current)
+            os.makedirs(directory, exist_ok=True)
+            fd = os.open(self.path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                _sync_directory(directory)
+                for entry in missing:
+                    _sync_directory(os.path.dirname(entry))
+            except BaseException:
+                os.close(fd)
+                raise
         self._fd = fd
         self._recovering = True
         self._scanned = False
@@ -537,15 +583,22 @@ class EventLog:
         self.close()
 
     @_locked
-    def read_events(self, *, recovery=False):
+    def scan_events(self, visit, *, recovery=False):
+        """Stream every complete frame through ``visit(event)`` in order.
+
+        Retained memory is one frame plus the caller's fold state; the file is
+        never materialized. Every frame is verified (schema, digests, global
+        index, clock, prev digest, root link) before ``visit`` sees it.
+        Returns the number of local frames visited.
+        """
         if self._fd is None:
             raise PersistenceError("LOG_NOT_OPEN")
         if recovery and not self._recovering:
             raise PersistenceError("RECOVERY_NOT_ALLOWED_LIVE")
-        # Stream bounded frames. Memory use scales with valid history, never
-        # with an untrusted length prefix or concatenated whole-file buffer.
-        events = []
         offset = 0
+        frames = 0
+        previous_digest = self._base_head
+        previous_root = self._base_root
         size = os.fstat(self._fd).st_size
         while offset < size:
             header = _pread_exact(self._fd, min(8, size - offset), offset)
@@ -560,22 +613,31 @@ class EventLog:
             if len(payload) != length:
                 raise CorruptEventError("FILE_CHANGED_DURING_READ")
             event = _decode_record(payload)
-            verify_event_link(event, len(events),
-                              events[-1]["event_digest"] if events else GENESIS_PREV_DIGEST,
-                              events[-1]["after_state_root"] if events else None)
-            events.append(event)
+            verify_event_link(event, self._base_count + frames,
+                              previous_digest, previous_root)
+            visit(event)
+            frames += 1
+            previous_digest = event["event_digest"]
+            previous_root = event["after_state_root"]
             offset += 8 + length
         if offset != size and not recovery:
             raise TruncatedLogError("INCOMPLETE_LIVE_TAIL")
         if recovery:
             self._tail = offset if offset != size else None
-            self._count = len(events)
-            self._after_root = events[-1]["after_state_root"] if events else None
+            self._count = self._base_count + frames
+            self._after_root = previous_root
             self._size = offset
             self._scanned = True
-            self._head = events[-1]["event_digest"] if events else GENESIS_PREV_DIGEST
-        elif len(events) != self._count or (events[-1]["event_digest"] if events else GENESIS_PREV_DIGEST) != self._head:
+            self._head = previous_digest
+        elif self._base_count + frames != self._count or previous_digest != self._head:
             raise CorruptEventError("LOG_CHANGED_OUTSIDE_OWNER")
+        return frames
+
+    @_locked
+    def read_events(self, *, recovery=False):
+        """Materialize this file's verified frames (bounded by the file)."""
+        events = []
+        self.scan_events(events.append, recovery=recovery)
         return events
 
     @_locked
@@ -593,11 +655,14 @@ class EventLog:
 
         On ordinary I/O failure restore and fsync the previous file length.
         If rollback fails the outcome is indeterminate; the owner must close.
+        A configured ``max_bytes`` bound is enforced before any write.
         """
         if self._fd is None or self._recovering:
             raise PersistenceError("LOG_NOT_READY")
         verify_event_link(event, self._count, self._head, self._after_root)
         payload = canonical.canonical_bytes(event)
+        if self._max_bytes is not None and self._size + 8 + len(payload) > self._max_bytes:
+            raise StorageCapacityError("SEGMENT_CAPACITY_REACHED")
         start = os.fstat(self._fd).st_size
         if start != self._size:
             raise CorruptEventError("LOG_SIZE_CHANGED_OUTSIDE_OWNER")
@@ -629,7 +694,18 @@ class EventLog:
 
     @_locked
     def event_count(self):
+        """GLOBAL committed event count (retired base + local frames)."""
         return self._count
+
+    @_locked
+    def frame_count(self):
+        """Local frames in this file."""
+        return self._count - self._base_count
+
+    @_locked
+    def size(self):
+        """Bytes of the verified complete-frame prefix."""
+        return self._size
 
 
 def _validate_length(length):
