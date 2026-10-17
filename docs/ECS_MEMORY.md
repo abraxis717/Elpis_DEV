@@ -102,6 +102,24 @@ participants, a self-consistent noncanonical record, a failed turn and an unmana
 LEARN with and without an observation leaves identical K1 components. This is mechanical transport and preservation
 only: no semantic interpretation, no qualified HACF -> ECS observation map and no cognitive use is established.
 
+**The direct evidence path.** `elpis.runtime.observation.record_evidence(runtime, substrate, adapter, evidence,
+observation_authority)` takes a tuple of `StructuralEvidence` (a structure-identified hyperedge, an assertion naming
+it, the caller's explicit polarity and a tick), maps every item through the adapter first (any refusal touches no
+runtime state: no native turn is begun), then records all of them in ONE observe-only managed turn (RuntimeCore ABI
+v5: no K1 learning), all or nothing, and returns an `EvidenceReceipt` binding each relation key to the hyperedge
+identity, assertion identity, provenance digest, source authority, polarity and tick it records. The memory keeps the
+provenance digest exactly; resolving it to source coordinates is structure's. Laws
+(`tests/integration/test_structural_evidence.py`, real native code): two sources asserting and negating one
+hyperedge are one relation with both kept, and LOOKUP answers by net evidence (it withholds an answer while they
+balance and never decides which source is right); duplicate evidence is counted again, never merged or dropped;
+invalid provenance, another hyperedge's assertion, 9 or query-local participants, an undefined polarity and an
+unadmitted source are refused with nothing native begun; evidence beyond the memory's slot capacity aborts its whole
+turn; simultaneous requests from 8 threads are serialized by RuntimeCore (`RUNTIME_TURN_OPEN` for the others) and
+each is recorded exactly once; evidence survives recoverable publication, SIGKILL and restore exactly. Footprint of
+the test configuration (K1 6x36, memory D = 64, B = 2, S = 16, E = 32): a fixed 106,664-byte ELPISEC1 envelope
+(K1 30,376; memory capacity 76,128) and 337,488 allocated bytes, unchanged by recording up to the 16-relation slot
+capacity. Four mutants of the path (polarity, receipt order, receipt provenance, authority) are killed.
+
 ## Resources
 
 One allocation per handle (the handle and one 64-byte-aligned arena) at create/restore; none afterwards

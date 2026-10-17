@@ -13,8 +13,15 @@ What is undefined in the repository is refused or supplied explicitly, never inf
 the caller's (HACF assertion flags have no named meaning and must be zero); a hyperedge semantic flag, a query-local
 participant, more participants than one memory observation holds and a repeated (role, ordinal) are refused. A
 mapped observation is evidence to record through an explicit :class:`~elpis.runtime.cognition.ObservationAuthority`
-in a managed turn (``Runtime.run_learn``), never a truth, a learning instruction or an authority, and no HACF ->
-meaning map is defined here or anywhere (docs/ECS_MEMORY.md, "Non-claims").
+in a managed turn (``Runtime.run_observe``, or ``Runtime.run_learn``), never a truth, a learning instruction or an
+authority, and no HACF -> meaning map is defined here or anywhere (docs/ECS_MEMORY.md, "Non-claims").
+
+:func:`record_evidence` is the direct path for admitted typed structural evidence: every item is validated and mapped
+by structure and the adapter first (a refusal touches no runtime state), then all of it is recorded in ONE
+observe-only managed turn (RuntimeCore ABI v5: no K1 learning), all or nothing; the :class:`EvidenceReceipt` binds
+each committed relation key to the hyperedge identity, assertion identity, provenance digest, source authority,
+polarity and tick it records. The memory keeps the provenance digest exactly; resolving it to source coordinates
+(documents, offsets) is structure's, outside the ECS state.
 """
 from __future__ import annotations
 
@@ -26,8 +33,8 @@ from elpis.substrate.native_admission import AdmittedLibrary, admission_of
 
 from .errors import CompositionError
 
-__all__ = ("HYPEREDGE_NAMESPACE", "INCIDENCE_NAMESPACE", "HacfAssertion", "HacfHyperedge", "HacfObservationLibrary",
-           "HacfParticipant")
+__all__ = ("HYPEREDGE_NAMESPACE", "INCIDENCE_NAMESPACE", "EvidenceEntry", "EvidenceReceipt", "HacfAssertion",
+           "HacfHyperedge", "HacfObservationLibrary", "HacfParticipant", "StructuralEvidence", "record_evidence")
 
 LIBRARY_ID = "elpis_hacf_observation"
 HYPEREDGE_NAMESPACE = 0x20000000    # SEMANTIC_HYPEREDGE_NAMESPACE: hyperedge type ids
@@ -238,3 +245,70 @@ class HacfObservationLibrary:
         if rc != 0:
             raise _refuse("the HACF observation inverse", rc)
         return HacfHyperedge._of(edge)
+
+
+@dataclass(frozen=True)
+class StructuralEvidence:
+    """One admitted piece of typed structural evidence: a structure-identified ``hyperedge``, an ``assertion`` that
+    names it (its ``authority`` is the asserting source), the caller's explicit ``polarity`` (``ASSERT``, ``NEGATE`` or
+    ``UNCERTAIN``: HACF defines none, so it is never inferred) and a logical ``tick`` (the memory's clock: ticks of one
+    relation must not go backwards)."""
+
+    hyperedge: HacfHyperedge
+    assertion: HacfAssertion
+    polarity: str
+    tick: int
+
+
+@dataclass(frozen=True)
+class EvidenceEntry:
+    """What one committed observation records: the memory relation key and the structural identities behind it."""
+
+    relation_key: bytes
+    hyperedge_identity: bytes
+    assertion_identity: bytes
+    provenance_digest: bytes
+    source_authority: int
+    polarity: str
+    tick: int
+
+
+@dataclass(frozen=True)
+class EvidenceReceipt:
+    """A committed observe-only turn of structural evidence (VOLATILE until an explicit recoverable publication).
+    ``entries`` follow the submitted order; ``generation_after == generation_before + 1``; ``k1_steps == 0``."""
+
+    entries: tuple
+    grant: str
+    generation_before: int
+    generation_after: int
+    k1_steps: int
+    durability: str
+
+
+def record_evidence(runtime, substrate, adapter, evidence, observation_authority, *, budget=None) -> EvidenceReceipt:
+    """Record admitted typed structural evidence into the memory of the ECS composite lineage ``substrate`` without
+    any K1 learning.
+
+    ``evidence`` is a non-empty tuple of :class:`StructuralEvidence`. Each item is mapped by the admitted ``adapter``
+    (:class:`HacfObservationLibrary`: structure recomputes and checks every identity; a tampered, noncanonical,
+    unsupported or unvalidated record is refused ``OBSERVATION_*``) before the runtime is touched; then
+    ``runtime.run_observe`` records all of them in one observe-only managed turn under the explicit
+    ``observation_authority`` (every assertion's source must be one it admits), all or nothing. Refusals install
+    nothing. Evidence is storage: a recorded assertion is not true, not learned and not an authority; LOOKUP reports
+    a conflict between sources instead of resolving it.
+    """
+    if type(adapter) is not HacfObservationLibrary:
+        raise CompositionError("OBSERVATION_INVALID", "an admitted HacfObservationLibrary is required")
+    if type(evidence) is not tuple or not evidence or not all(type(e) is StructuralEvidence for e in evidence):
+        raise CompositionError("OBSERVATION", "evidence: a non-empty tuple of StructuralEvidence")
+    observations = tuple(adapter.observation(e.hyperedge, e.assertion, e.polarity, e.tick) for e in evidence)
+    result = runtime.run_observe(substrate, observations, observation_authority, budget=budget)
+    if len(result.observed) != len(evidence):
+        raise CompositionError("RUNTIME_INVALID", "the committed observations do not match the evidence")
+    entries = tuple(EvidenceEntry(key, e.hyperedge.identity, e.assertion.identity, e.assertion.provenance_digest,
+                                  e.assertion.authority, e.polarity, e.tick)
+                    for key, e in zip(result.observed, evidence))
+    return EvidenceReceipt(entries, result.grant, result.generation_before, result.generation_after, result.k1_steps,
+                           result.durability)
+
