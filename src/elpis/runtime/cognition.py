@@ -75,8 +75,8 @@ from .errors import CompositionError
 from .fuel import CEILING, CognitiveBudget, admit_learn, admit_query
 
 __all__ = ("CODEC_UNQUALIFIED", "LEGACY_LEARNED_TURN", "CognitiveOperation", "ECSCodecMap", "ECSQueryCodecMap",
-           "LearnAuthority", "LearnRequest", "LearnResult", "MAX_TURN_OBSERVATIONS", "ObservationAuthority",
-           "ObserveResult", "QueryReadout", "QueryRequest", "QueryResult",
+           "LearnAuthority", "LearnRequest", "LearnResult", "MAX_TURN_OBSERVATIONS", "NumericAnswer",
+           "NumericLearnResult", "ObservationAuthority", "ObserveResult", "QueryReadout", "QueryRequest", "QueryResult",
            "QueryStimulus", "Readout", "Stimulus", "TurnResult", "run_learn", "run_query", "run_turn")
 
 CODEC_UNQUALIFIED = "ECS_CODEC_UNQUALIFIED"
@@ -389,6 +389,38 @@ class LearnResult:
     durability: str = "UNMANAGED"
     context: object = None   # the ContextCoordinate of the published context view consumed (managed; None: none)
     observed: tuple = ()     # managed composite LEARN: the relation keys of the observations it committed, in order
+
+
+@dataclass(frozen=True)
+class NumericAnswer:
+    """A managed NUMERIC QUERY (``Runtime.run_numeric_query``): ``values[r] = f_W(x_r)`` from the lineage's live K1
+    state at ``live_generation``, for an admitted :class:`QueryStimulus`. Numbers in, numbers out: no codec, no text,
+    no language claim. Read-only, like every QUERY."""
+    values: tuple
+    rows: int
+    dim: int
+    width: int
+    live_generation: int
+    context: object = None
+
+
+@dataclass(frozen=True)
+class NumericLearnResult:
+    """A committed managed NUMERIC LEARN (``Runtime.run_numeric_learn``): an admitted :class:`Stimulus` (an
+    experience schedule of numeric rows and targets) learned by the qualified K1 law under an explicit
+    :class:`LearnAuthority`. VOLATILE like every managed commit; ``observed`` holds the relation keys of the typed
+    observations committed in the same turn (a composite lineage). No codec, no text, no language claim."""
+    experiences: int
+    rows: int
+    steps: int
+    epoch_before: int
+    epoch_after: int
+    generation_before: int
+    generation_after: int
+    grant: str
+    observed: tuple = ()
+    durability: str = "VOLATILE"
+    context: object = None
 
 
 @dataclass(frozen=True)

@@ -516,14 +516,75 @@ class Runtime:
         admit_learn(stimulus, substrate.dim, substrate.width, authority.budget)
         if self._bound_owner is None:
             self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
-        budget = _observation_budget(authority.budget, observation_authority if observed else None)
-        self._core.turn_begin(descriptor, stimulus, authority.learning_rate, budget)
-        keys = self._observe_all(descriptor, observed)
-        committed = self._core.turn_commit(descriptor)
+        committed, keys = self._managed_learn(descriptor, stimulus, authority, observed, observation_authority)
         return LearnResult(tokens, stimulus.experiences, committed.epoch_before, committed.epoch_after,
                            classification, authority.grant, None, None,
                            generation_before=committed.generation_before, generation_after=committed.generation_after,
                            durability="VOLATILE", context=consumed, observed=tuple(keys))
+
+    def _managed_learn(self, descriptor, stimulus, authority, observed, observation_authority):
+        """Begin, run the admitted schedule, OBSERVE every admitted observation, commit: one volatile turn."""
+        budget = _observation_budget(authority.budget, observation_authority if observed else None)
+        self._core.turn_begin(descriptor, stimulus, authority.learning_rate, budget)
+        keys = self._observe_all(descriptor, observed)
+        return self._core.turn_commit(descriptor), keys
+
+    # -- cognition: NUMERIC QUERY and LEARN (admitted numeric stimuli; no codec, no text) ---------------------
+    def run_numeric_query(self, substrate, stimulus, *, budget=None, context=None):
+        """One managed QUERY of an admitted numeric :class:`~elpis.runtime.cognition.QueryStimulus` (rows of the
+        lineage's dimension): ``f_W(x)`` from the LIVE K1 state in one native ``leased_query`` that also reports its
+        generation. Read-only exactly as :meth:`run_query`; it differs only in its edge: numbers in, numbers out. No
+        codec and no text are involved, so nothing here is a language operation and the text turn still fails closed
+        without a qualified codec (docs/ELPIS_MISSION.md)."""
+        self._core.require_live()
+        consumed = _consumed_context(context)
+        from .cognition import NumericAnswer, QueryStimulus, _MANAGED_SUBSTRATES
+        from .fuel import CEILING, CognitiveBudget, admit_query
+
+        budget = CEILING if budget is None else budget
+        if type(substrate) not in _MANAGED_SUBSTRATES:
+            raise CompositionError("ECS_STATE", "a native K1 state or an ECS CompositeState is required")
+        if type(stimulus) is not QueryStimulus or stimulus.dim != substrate.dim:
+            raise CompositionError("STIMULUS", "a QueryStimulus of the lineage's dimension is required")
+        if type(budget) is not CognitiveBudget:
+            raise CompositionError("STIMULUS", "budget must be a CognitiveBudget")
+        admit_query(stimulus, substrate.dim, substrate.width, budget, 0)
+        descriptor, owner = describe(substrate)
+        if self._bound_owner is None:
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this query binds stays alive
+        values, generation = self._core.query(descriptor, stimulus, budget)   # RuntimeCore re-admits natively
+        return NumericAnswer(tuple(values), stimulus.rows, substrate.dim, substrate.width, generation, consumed)
+
+    def run_numeric_learn(self, substrate, stimulus, authority, *, observations=(), observation_authority=None,
+                          context=None):
+        """One managed LEARN of an admitted numeric :class:`~elpis.runtime.cognition.Stimulus` (an experience
+        schedule of rows and targets) under an explicit :class:`~elpis.runtime.cognition.LearnAuthority`: the
+        qualified K1 law runs natively on a candidate, committed atomically and VOLATILE, exactly as
+        :meth:`run_learn`; typed ``observations`` ride the same turn under an explicit ``observation_authority`` (all
+        or nothing). No codec and no text are involved."""
+        self._core.require_live()
+        consumed = _consumed_context(context)
+        from .cognition import (LearnAuthority, NumericLearnResult, Stimulus, _MANAGED_SUBSTRATES,
+                                _admit_observations)
+        from .fuel import admit_learn
+
+        if type(substrate) not in _MANAGED_SUBSTRATES:
+            raise CompositionError("ECS_STATE", "a native K1 state or an ECS CompositeState is required")
+        if authority is None:
+            raise CompositionError("LEARN_UNAUTHORIZED", "LEARN requires an explicit LearnAuthority")
+        if type(authority) is not LearnAuthority:
+            raise CompositionError("LEARN_AUTHORITY", "authority must be a LearnAuthority")
+        if type(stimulus) is not Stimulus or stimulus.dim != substrate.dim:
+            raise CompositionError("STIMULUS", "a Stimulus of the lineage's dimension is required")
+        observed = _admit_observations(substrate, observations, observation_authority)
+        admit_learn(stimulus, substrate.dim, substrate.width, authority.budget)
+        descriptor, owner = describe(substrate)
+        if self._bound_owner is None:
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
+        committed, keys = self._managed_learn(descriptor, stimulus, authority, observed, observation_authority)
+        return NumericLearnResult(stimulus.experiences, stimulus.rows, stimulus.steps, committed.epoch_before,
+                                  committed.epoch_after, committed.generation_before, committed.generation_after,
+                                  authority.grant, tuple(keys), context=consumed)
 
     # -- cognition: OBSERVE-ONLY (explicit authority; no K1 learning) -------------------------------------------
     def run_observe(self, substrate, observations, observation_authority, *, budget=None):
