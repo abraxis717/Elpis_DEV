@@ -25,6 +25,28 @@ MANIFEST = DOCS / "MIGRATION_PROVENANCE.md"
 # record's own freeze test cannot be completed in this repository (the other eleven revisions are checked below).
 NOT_MIGRATED = {"research/ecsc_hca_r0/CHECKSUMS.sha256"}
 FREEZE_TEST = "research/ecsc_hca_r0/test_b2.py::B2Mechanics::test_baseline_freeze_is_unchanged"
+# Network access (any AF_INET connection, loopback included) is forbidden in Elpis tests (tests/conftest.py). The
+# record's R12 test talks to a mock inference endpoint over loopback TCP, so it is not replayed here.
+LOOPBACK_TEST = "research/ecsc_hca_r0/test_r12_answer_level.py::R12Loopback::test_mock_loopback_inference_and_exact_resume"
+# The replay runs under the same network guard as every Elpis test, so nothing in it can reach a socket.
+_GUARDED_PYTEST = """
+import socket, sys
+def _forbid(*_a, **_k):
+    raise RuntimeError("network access is forbidden in Elpis tests")
+_connect, _connect_ex = socket.socket.connect, socket.socket.connect_ex
+def connect(self, address):
+    if self.family in (socket.AF_INET, socket.AF_INET6):
+        _forbid()
+    return _connect(self, address)
+def connect_ex(self, address):
+    if self.family in (socket.AF_INET, socket.AF_INET6):
+        _forbid()
+    return _connect_ex(self, address)
+socket.socket.connect, socket.socket.connect_ex = connect, connect_ex
+socket.create_connection = socket.getaddrinfo = socket.gethostbyname = _forbid
+import pytest
+sys.exit(pytest.main(sys.argv[1:]))
+"""
 
 
 def _manifest() -> dict[str, str]:
@@ -78,13 +100,13 @@ def test_the_recorded_negative_dispositions_are_kept():
 
 
 def test_the_record_replays_its_own_mechanics_suite_against_the_current_runtime():
-    """The record's historical invocation, live output captured, exit code and counts checked exactly."""
+    """The record's historical invocation (under the Elpis network guard), exit code and counts checked exactly."""
     env = dict(os.environ, PYTHONPATH=os.pathsep.join([str(REPO / "src"), str(REPO), str(LAB)]),
                PYTHONDONTWRITEBYTECODE="1", PYTEST_DISABLE_PLUGIN_AUTOLOAD="1")
     run = subprocess.run(
-        [sys.executable, "-m", "pytest", "research/ecsc_hca_r0", "-q", "-p", "no:cacheprovider", "--tb=short",
-         "-c", os.devnull, "--rootdir", str(REPO), "--deselect", FREEZE_TEST],
+        [sys.executable, "-c", _GUARDED_PYTEST, "research/ecsc_hca_r0", "-q", "-p", "no:cacheprovider", "--tb=short",
+         "-c", os.devnull, "--rootdir", str(REPO), "--deselect", FREEZE_TEST, "--deselect", LOOPBACK_TEST],
         cwd=REPO, env=env, capture_output=True, text=True, timeout=900)
     tail = run.stdout.strip().splitlines()[-1] if run.stdout.strip() else run.stderr[-2000:]
     assert run.returncode == 0, run.stdout[-4000:] + run.stderr[-2000:]
-    assert re.fullmatch(r"275 passed, 1 deselected in [\d.]+s(?: \(\d+:\d+:\d+\))?", tail), tail
+    assert re.fullmatch(r"274 passed, 2 deselected in [\d.]+s(?: \(\d+:\d+:\d+\))?", tail), tail
