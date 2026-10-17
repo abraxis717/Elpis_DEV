@@ -1,7 +1,11 @@
 # RuntimeCore: the runtime's systems authority in Rust
 
-`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v4) owns the mutable systems
+`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v5) owns the mutable systems
 authority of an open Elpis runtime. `elpis.runtime.Runtime` is its compatibility facade.
+
+ABI history: v2 the turn lifecycle, v3 managed ownership, v4 the live/durable split (volatile commits, explicit
+durability), v5 the observe-only managed turn ("Observe-only turns (ABI v5)" below). Each version is refused by a
+caller of another (`elpis_runtime_abi_version`).
 
 ## Live and durable authority (ABI v4)
 
@@ -149,8 +153,39 @@ and binding or committing a substrate of another format than the lineage's is `C
 
 `native/runtime/tests/test_runtime_composite.c` (testing library) covers the composite anchor, volatile turns with
 observations, refusals, the format mismatch, process death inside a durable publication (after the slot is synced;
-with the continuity record torn), recovery with the memory transition present exactly once or absent, and the
-legacy import.
+with the continuity record torn), recovery with the memory transition present exactly once or absent, the
+legacy import, and the observe-only turn below.
+
+### Observe-only turns (ABI v5)
+
+Up to v4, OBSERVE existed only inside a LEARN turn (`turn_begin` refuses an empty K1 schedule), so recording typed
+evidence forced a geometric learning transition. v5 separates them:
+
+* `elpis_runtime_turn_begin_observe(runtime, substrate, budget, out)` (a composite substrate only) verifies and
+  binds the lineage exactly as `turn_begin` does and opens the composite transaction at the live generation, but runs
+  **no K1 experience schedule**: the K1 candidate is the unchanged copy of the live K1 state. A K1 or K1 FMS
+  substrate is `RUNTIME_INVALID` before any native call; an open turn, an unanchored lineage, another substrate and a
+  budget outside the ceiling are refused as for `turn_begin`.
+* Observations enter through `elpis_runtime_turn_observe`. Every managed turn (LEARN or observe-only) records at most
+  `budget.max_observations` (ceiling 256); one more is `COGNITION_FUEL_EXCEEDED` before the native call and leaves
+  the turn open. `counters.k1_observes` counts the crossings.
+* `turn_commit` is volatile, as every managed commit: the live generation advances by one (the composite commits its
+  untouched K1 candidate: W, epoch, H and a reinstalled, the K1 identity unchanged, since the generation is not
+  state) and the memory candidate is installed. A commit while nothing was observed is `RUNTIME_INVALID` and keeps
+  the turn open; a commit whose K1 transition reports a step or an epoch change fail-stops `STATE_MISMATCH` (never
+  built upon). `turn_abort`, close and destroy end it as any turn.
+* Durability is unchanged: a recoverable publication captures the composite (its K1 bytes those of the last LEARN)
+  and the restart law is v4's.
+
+v5 changed the layout of `elpis_runtime_budget` (`max_observations`, 56 bytes) and `elpis_runtime_counters`
+(`k1_observes`, 136 bytes); every v4 entry point keeps its meaning and the ELPISGK1, ELPISEC1 and continuity formats
+are unchanged, so durable state written by a v4 library restores under v5. `Runtime.run_observe` is the Python
+operation (an explicit `ObservationAuthority`, all or nothing, the native bound narrowed to the authority's);
+laws: `native/runtime/src/tests.rs` (`observe_only`), `test_runtime_composite.c`, `tests/integration/test_observe_only.py`
+(including a SIGKILLed child). Mutation sensitivity (rebuilt mutants outside the repository, unmutated baseline green): a K1 substrate admitted,
+a commit with nothing observed, the native observation bound removed, an observe-only commit reporting K1 learning
+built upon, a refused observation not aborting the turn, the native bound not narrowed to the authority's, and
+`run_observe` skipping the authority: all seven killed.
 
 ## Laws
 

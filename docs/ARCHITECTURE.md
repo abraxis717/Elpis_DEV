@@ -827,6 +827,7 @@ history:
 | `run_query` | codec -> one read-only native `leased_query` -> codec (`elpis.runtime.cognition`) | none (QUERY writes nothing) |
 | `run_learn` | codec -> native K1 transaction under an explicit `LearnAuthority` | none: the commit is volatile (ABI v4) |
 | `run_turn` | LEGACY learned turn: a LEARN whose S3 readout is decoded | none: the commit is volatile (ABI v4) |
+| `run_observe` | an observe-only managed turn on an ECS composite (RuntimeCore ABI v5): typed observations under an explicit `ObservationAuthority`, no K1 schedule | none: the commit is volatile; the K1 component stays byte-identical |
 | `publish_recoverable` | RuntimeCore's durability lane: capture, seal, checkpoint slot (read back verified), continuity record; needs the checkpoint store | the acknowledged K1 state digest and its checkpoint slot |
 | `publish_identity` | RuntimeCore's durability lane: capture, seal, continuity record; only without a checkpoint store | the published K1 state digest (identity only; never an acknowledgment) |
 | `durability`, `live_identity` | read the durability lane / the bound state's identity | none |

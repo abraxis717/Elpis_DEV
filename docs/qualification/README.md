@@ -51,7 +51,7 @@ refused or unreachable by design).
 | RuntimeCore v4 QUERY / volatile LEARN | yes | yes | no preemptive deadline (no K1 cancellation point) | — | no (R2 NOT RUN) | — |
 | Durability lane (recoverable / identity-only, tickets, crash law) | yes | yes (simulated and real SIGKILL matrix, ticket law, UNKNOWN window) | — | — | no (K1 Recovery R0 v4 NOT RUN) | power-loss durability (never claimed) |
 | HOT residency (FMS holds, NOT_RESIDENT, explicit materialization) | yes | yes (CI-HOTRES-1 mutants) | — | — | no | — |
-| ECS composite through the Python runtime | yes | yes (incl. real SIGKILL) | no observe-only managed turn (OBSERVE rides a LEARN turn; RuntimeCore refuses an empty schedule): an ABI decision, proposal below | — | no | memory LEARN / QUERY FAST (no capability is ever set), SLOW (not provided) |
+| ECS composite through the Python runtime | yes | yes (incl. real SIGKILL; the observe-only turn's laws and mutants) | — | — | no | memory LEARN / QUERY FAST (no capability is ever set), SLOW (not provided) |
 | Typed HACF -> memory observation transport | yes | yes (adversarial records, mutants) | — | a HACF -> ECS meaning map | no | semantic interpretation |
 | Contextual (WARM) lane | yes | yes (bounds, immutability, isolation, no ECS path) | — | a contextual dynamics law (HCA) | no | — |
 | ECS <-> DSV4 codec | protocol and fail-closed refusal only | the refusal and the D1-D3 gate mechanics | token-distribution and memory-LOOKUP protocol methods (proposals) | the map itself | no (ECS Codec R0 NOT RUN) | text generation (`ECS_CODEC_UNQUALIFIED`) |
@@ -59,12 +59,12 @@ refused or unreachable by design).
 | Evolution policy + Fitness R0 | yes | yes (policy gates, evaluator recomputation) | — | meaningful selection advantage, adaptive capability | no (NOT RUN) | autonomous improvement |
 | H-ECS hierarchy | research only | — | — | closed: NO_ADVANTAGE_OVER_WIDTH | C2/C2M constituent law (research) | hierarchy integration (NOT AUTHORIZED) |
 
-**Proposal (mechanical, not done): an observe-only managed turn.** `elpis_runtime_turn_begin_observe(runtime,
-substrate, budget, out)` for a composite substrate only: binds and verifies the lineage exactly as `turn_begin`,
-opens the composite transaction with an empty K1 schedule (no K1 step, no consolidation), admits observations through
-`turn_observe` and commits through `turn_commit` (the live generation advances by one, as for every composite commit;
-volatile); a K1 substrate is `RUNTIME_INVALID`; fuel counts observations against a new field. It is a RuntimeCore ABI
-change (v5) with its own law tests and must not be read into v4.
+**Implemented: the observe-only managed turn (RuntimeCore ABI v5).** The proposal recorded here is now
+`elpis_runtime_turn_begin_observe` (composite substrates only; no K1 schedule; the K1 component byte-identical; a
+commit with nothing observed refused; the turn's observations bounded natively by `budget.max_observations`) and
+`Runtime.run_observe` (docs/RUNTIME_CORE.md, "Observe-only turns (ABI v5)"). It is a versioned ABI change (v5): the
+budget and counters changed layout, every v4 entry point keeps its meaning, and the envelope and continuity formats are
+unchanged.
 
 ## Open formal gates
 

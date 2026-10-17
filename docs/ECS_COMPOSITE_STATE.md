@@ -100,8 +100,9 @@ format-aware (C ABI and laws in `docs/RUNTIME_CORE.md`, "Composite substrates"):
 2. **Checkpoint (K1 Recovery R0)** holds the complete `ELPISEC1` envelope in a store provisioned for its size
    (`docs/K1_RECOVERY_R0.md`, "Composite envelopes"). Slots are evidence; they never authorize themselves.
 3. **RuntimeCore** is the one mutation owner: it holds the composite's lease, so every unmanaged mutation is
-   refused `LEASED`; the memory changes only through `turn_observe` inside a managed turn, whose native commit is
-   volatile (RuntimeCore ABI v4: the live coordinate advances; nothing is checkpointed or published). It becomes
+   refused `LEASED`; the memory changes only through `turn_observe` inside a managed turn (a LEARN turn, or since
+   RuntimeCore ABI v5 an observe-only turn that runs no K1 schedule), whose native commit is volatile (RuntimeCore
+   ABI v4 onward: the live coordinate advances; nothing is checkpointed or published). It becomes
    durable only through an explicit durable publication: the composite is captured under the lease
    (`elpis_ecs_composite_leased_capture`: the K1 component unsealed, the memory component sealed by its own
    format), sealed by the pure `elpis_ecs_composite_envelope_seal`, checkpointed, then published. A memory
@@ -135,9 +136,10 @@ through the existing RuntimeCore substrate kind 3:
   explicit grant, the source identifiers it admits, a per-turn bound of at most 64), observed natively on the memory
   candidate, then committed with the K1 candidate as one volatile transition. All or nothing: a refused observation
   (a stale tick, capacity, a malformed record) aborts the whole turn.
-* OBSERVE exists only inside a LEARN turn: RuntimeCore's `turn_begin` refuses an empty K1 schedule, so there is no
-  observe-only managed turn. Defining one is a RuntimeCore ABI decision (a proposed contract is in
-  `docs/qualification/README.md`, "Interface readiness"), not done here.
+* `run_observe(substrate, observations, observation_authority)` (RuntimeCore ABI v5) records typed evidence with
+  **no K1 learning**: the same admission, then an observe-only managed turn (no experience schedule), one volatile
+  commit in which the K1 component is byte-identical and only the memory moves (`docs/RUNTIME_CORE.md`, "Observe-only
+  turns (ABI v5)"). All or nothing, as above; the native per-turn bound is the authority's.
 * `Runtime.import_composite` (an operator operation) is the explicit legacy move of a K1 lineage to a composite one.
 * The direct continuity adapter (`elpis.continuity.ContinuityStore`) still binds K1 lineages only: it refuses to
   read, or encode, a composite record.
