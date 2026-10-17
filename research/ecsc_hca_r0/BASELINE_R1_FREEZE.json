@@ -1,0 +1,82 @@
+{
+  "admission_authority": "TEST_ONLY_R1 exact synthetic allowlists; no migration; no native proof",
+  "branch": "research/ecsc_hca_r0",
+  "canonical_context_sha256": "afa96f35c51e8130683eb5502e8e6478d7c113caf1f6116e4a703c6cd0aae2f0",
+  "change_rule": "No post-B2 baseline edits. Essential defect => STOP; request a newly authorized baseline freeze.",
+  "checks": [
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src:. python -m unittest research.ecsc_hca_r0.test_baselines research.ecsc_hca_r0.test_task -v",
+      "exit_code": 0,
+      "tests": 28
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src:. python -m pytest tests/integration/test_context_lane.py::test_successor_is_pure_and_deterministic tests/integration/test_context_lane.py::test_references_and_relations_keep_their_epistemic_status -q -p no:cacheprovider",
+      "exit_code": 0,
+      "tests": 2
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src:. python -m research.ecsc_hca_r0.run_dev",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "output": ""
+    }
+  ],
+  "limits_absolute": {
+    "arity": 16,
+    "axioms": 256,
+    "degree": 32,
+    "references": 16,
+    "relations": 512,
+    "rounds": 32,
+    "sidecar_bytes": 4194304,
+    "state_bytes": 1048576,
+    "updates_per_tick": 256,
+    "work": 10000000
+  },
+  "limits_default": {
+    "arity": 8,
+    "axioms": 32,
+    "degree": 8,
+    "references": 4,
+    "relations": 32,
+    "rounds": 8,
+    "sidecar_bytes": 262144,
+    "state_bytes": 65536,
+    "updates_per_tick": 256,
+    "work": 100000
+  },
+  "methods": {
+    "B0": "baselines.py inspector; task.predict exact bounded worklist closure",
+    "B1": "baselines.py inspector; task.predict weighted synchronous conjunction"
+  },
+  "ordering": "R1A tests passed; B2 module not yet created or executed",
+  "phase": "R1B_MECHANICAL_BASELINE_FREEZE_NOT_SCIENCE",
+  "resource_semantics": {
+    "graph": "immutable object/index cardinalities bounded; incidence entries <= min(axioms*degree,relations*arity)",
+    "readout": "task record slots: mandatory constraints + predictions + direct relation evidence",
+    "sidecar": "per-coordinate encoded bytes, scalar streaming two-pass admission, scratch <= 386 ASCII bytes for a 64-character escaped label",
+    "state_bytes": "B2 auxiliary activation state ceiling, checked by B2; graph capacity shared by all methods",
+    "work": "logical operations, not exact CPU instructions/FLOPs; wall_ns measured separately"
+  },
+  "revisions": {
+    "research/ecsc_hca_r0/AGENT_TASK.md": "df53f1089e34e66441f2897b39bea2269b493570295223a19b56caee9cba85ad",
+    "research/ecsc_hca_r0/CHECKSUMS.sha256": "5c11cd083323a342700e2a34ac944e31d9caa672e5aef7bf31a43ed534c0d480",
+    "research/ecsc_hca_r0/DRAFT_PROTOCOL_R1.md": "358bb68101bc0fea3ad8ebd6ceffa70fa2f507ec120b0b265633508627692424",
+    "research/ecsc_hca_r0/RESEARCH_CONTRACT.md": "7fee8e06dd230a6751a45993f499dc1c39a65d8064423ef82eb49f2c4c444af2",
+    "research/ecsc_hca_r0/__init__.py": "17225e72b52e2c053f7c7a5499fccbebc546e24cb0dad6baa56cb106dc0eed2c",
+    "research/ecsc_hca_r0/baselines.py": "04719f9c446f83b9de0b0d157f55e29f2aaa2ebfcee80a75272a5fe4fb8aef7a",
+    "research/ecsc_hca_r0/evaluation.py": "b8901ab3a43d704df4eda08559013d89584d99b905055b5c0770900e1bed7462",
+    "research/ecsc_hca_r0/fixtures.py": "0efe462aa16caf6838ee06bd1487aae6cc3470f436a9dcfc972dc386e70c5d16",
+    "research/ecsc_hca_r0/run_dev.py": "a2d2bc9fbc81b95bec789b38c5a879d502cc79d8db1f42b79f7c0311877e23bf",
+    "research/ecsc_hca_r0/task.py": "6bb07d65cf9bd958b23cbbe2d4fe0118e02cb076424ea14308f7643b87f0892f",
+    "research/ecsc_hca_r0/test_baselines.py": "71af19431a91e267a473be9071f0529b14e1b2942316f383c94c33aead8973ce",
+    "research/ecsc_hca_r0/test_task.py": "afef835794b62242ee794e269d72c869246f1d1e74b7fdb6510dfba510718256"
+  },
+  "science": "NOT_EVALUATED; DRAFT_NOT_FROZEN protocol; NO_QUAL",
+  "scoring_authority": "evaluation.score; harness-only withheld frozenset; synthetic retrieval not semantic truth",
+  "source_pin": "cb530e7a0c290b9ceeb6614ab1db4ab45ada54e3",
+  "task_envelope": "task.Task and Predicate; no withheld key or oracle field"
+}
