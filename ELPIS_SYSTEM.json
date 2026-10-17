@@ -408,6 +408,7 @@
     ".github": "CI",
     ".gitignore": "repository metadata",
     "CMakeLists.txt": "native build",
+    "DEV": "historical DEV research protocols and reports (RESEARCH_ONLY, NO_RUNTIME_AUTHORITY): the HCA R0-R19 record migrated by PR #51, byte-pinned by DEV/ecsc_hca/MIGRATION_PROVENANCE.md; never packaged, never imported by src",
     "docs": "documentation",
     "ELPIS_SYSTEM.json": "system authority",
     "LICENSE": "license",
@@ -426,7 +427,8 @@
     "roots": [
       "research",
       "tests/research",
-      "docs/research"
+      "docs/research",
+      "DEV"
     ],
     "components": [
       {
@@ -492,6 +494,14 @@
       {
         "path": "research/ecs_memory_mf_r0",
         "classification": "RESEARCH_ONLY, NO_RUNTIME_AUTHORITY, TRAINING=NONE, SEMANTICS=NONE: ECS Memory MF-R0, a bounded model-free typed relational memory (native C11; integer gated-delta banks, resident evidence slots, typed HACF adapter, ELPISEM1 snapshot) and the PR #47 D31-B/D31-C lattices kept as frozen differential references (docs/research/ECS_MEMORY_MF_R0.md). Built as test-kind research support; not part of the one ECS, not bound by continuity, not on the cognitive path."
+      },
+      {
+        "path": "research/ecsc_hca_r0",
+        "classification": "RESEARCH_ONLY, HISTORICAL DEV RECORD, NO_RUNTIME_AUTHORITY: the HCA R0-R19 research mechanics and their tests, migrated byte-for-byte by PR #51 (DEV/ecsc_hca/MIGRATION_PROVENANCE.md). Recorded disposition R19 DEV_DESCRIPTIVE_NOT_SCIENTIFIC_QUAL; the R18 retrospective audit (a root-operator-only rule reproduced all 448 outcomes, learned primitive gates correct on 6/10) stands. No HCA law, contextual reasoning or learned parsing is established; nothing is promoted to src/ or native/. Guard: its test_record.py under tests/research."
+      },
+      {
+        "path": "DEV/ecsc_hca",
+        "classification": "RESEARCH_ONLY, HISTORICAL DEV PROTOCOLS: the R0-R19 protocols, audits and reports of the HCA research record, byte-pinned by MIGRATION_PROVENANCE.md; read-only record, not a specification of the canonical runtime."
       }
     ],
     "native_targets": [

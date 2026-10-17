@@ -217,7 +217,8 @@ NATIVE_ABI_FORM = re.compile(
     r"|ELPIS_ECSG_\w*"                   # ELPIS_ECSG_* ABI constants
     r"|ECSG(?:Library|Error)\b"          # the ctypes binding classes
     r"|ecsg-k1-native(?:\.v\d+)?"         # the K1 native qualification authority id
-    r"|elpis\.ecsg\.[\w.-]+")              # persisted schema / digest-domain strings
+    r"|elpis\.ecsg\.[\w.-]+"               # persisted schema / digest-domain strings
+    r"|\b(?:DEV/ecsc_hca|research/ecsc_hca_r0)\b")  # the historical HCA record's directories (PR #51), by path only
 
 # Immutable evidence: any form may appear (recorded names, measured paths, frozen source text).
 FROZEN_EVIDENCE = {
@@ -246,6 +247,9 @@ FROZEN_EVIDENCE = {
         "H-ECS R3 successor C2M frozen supervisor source: names the K1 library it runs (K1 ABI name).",
     "research/hecs_r3/successor_c2m/freeze/source/generators/":
         "H-ECS R3 successor C2M supervisor generator template: names the K1 library it runs (K1 ABI name).",
+    "DEV/ecsc_hca/": "Historical ECS_C/HCA R0-R19 protocols (PR #51), byte-pinned by their migration manifest.",
+    "research/ecsc_hca_r0/": "Historical ECS_C/HCA R0-R19 research mechanics (PR #51), byte-pinned by DEV/ecsc_hca's "
+                             "migration manifest; the retired name is its recorded subject name.",
 }
 
 # Native sources whose exact bytes are recorded by research/ecs_runtime_r1/evidence (measured and sanitized
