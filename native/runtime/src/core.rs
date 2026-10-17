@@ -61,7 +61,24 @@ use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, StateF
 
 use crate::checkpoint::{self, Disposition};
 use crate::code::{Error, Rt};
+#[cfg(feature = "testing")]
+use crate::durable::control;
 use crate::durable::{Kind, Lane, Ticket};
+
+/// Testing builds: a registered control-operation crash point (`durable::control`). When the planned fault fires
+/// there, the operation ends as the simulated death (after parking, when planned). Nothing in production builds.
+#[cfg(feature = "testing")]
+macro_rules! control_point {
+    ($fire:expr) => {
+        if let Some(code) = $fire {
+            return Err(code.into());
+        }
+    };
+}
+#[cfg(not(feature = "testing"))]
+macro_rules! control_point {
+    ($fire:expr) => {};
+}
 use crate::fuel::{self, Budget};
 use crate::substrate::{
     features, k1_envelope_bytes, Experience, K1Ops, Key, Observation, ResidentRelease, ScheduleOutcome, Transition,
@@ -425,19 +442,33 @@ impl Core {
             None => None,
         };
         let format = sub.format();
+        #[cfg(feature = "testing")]
+        let planned = self.lane.take_control(control::Op::Anchor);
+        #[cfg(feature = "testing")]
+        let lane = &*self.lane;
         let published = self.lane.with_stores(|st| -> Result<Snapshot, Refusal> {
-            if let (Some(store), Some(mut envelope)) = (st.checkpoint.as_mut(), envelope) {
+            if let (true, Some(mut envelope)) = (st.checkpoint.is_some(), envelope) {
                 // SAFETY: the substrate library's pure sealer over a buffer this call owns.
                 if unsafe { (sub.sealer())(envelope.as_mut_ptr(), envelope.len()) } != 0
                     || checkpoint::envelope_identity(&envelope) != Some(identity)
                 {
                     return Err(Rt::CheckpointShape.into());
                 }
-                if store.holding(&identity).is_none() {
-                    store.write_envelope(&envelope, None)?;
-                }
+                control_point!(lane.control_begun(planned, st));
+                let store = st.checkpoint.as_mut().expect("attached");
+                let written = match store.holding(&identity) {
+                    None => store.write_envelope(&envelope, None).map(|_| ()),
+                    Some(_) => Ok(()),
+                };
+                control_point!(lane.control_slot(planned, st));
+                written?;
+            } else {
+                control_point!(lane.control_begun(planned, st));
             }
-            Ok(st.continuity.anchor_cognition_as(format, Some(&identity))?)
+            control_point!(lane.control_publishing(planned, st));
+            let anchored = st.continuity.anchor_cognition_as(format, Some(&identity));
+            control_point!(lane.control_record(planned, &anchored, st));
+            Ok(anchored?)
         })?;
         match published {
             Ok(s) => {
@@ -1115,16 +1146,24 @@ impl Core {
         if self.lane.busy() {
             return Err(Rt::DurableBusy.into());
         }
+        #[cfg(feature = "testing")]
+        let planned = self.lane.take_control(control::Op::Discard);
+        #[cfg(feature = "testing")]
+        let lane = &*self.lane;
         self.lane.with_stores(|st| -> Result<(), Refusal> {
             let authorized = match st.continuity.snapshot()?.cognition() {
                 Cognition::Unanchored => return Err(Rt::CheckpointInvalid.into()),
                 Cognition::Anchored(d) => d,
             };
             let store = st.checkpoint.as_mut().ok_or(Rt::CheckpointInvalid)?;
-            match store.unresolved(&authorized) {
-                Some((slot, s)) if s.identity == *candidate => Ok(store.retract(slot)?),
-                _ => Err(Rt::CheckpointInvalid.into()),
-            }
+            let slot = match store.unresolved(&authorized) {
+                Some((slot, s)) if s.identity == *candidate => slot,
+                _ => return Err(Rt::CheckpointInvalid.into()),
+            };
+            control_point!(lane.control_begun(planned, st));
+            let withdrawn = st.checkpoint.as_mut().expect("attached").retract(slot);
+            control_point!(lane.control_slot(planned, st));
+            Ok(withdrawn?)
         })?
     }
 
@@ -1139,6 +1178,10 @@ impl Core {
         if self.lane.busy() {
             return Err(Rt::DurableBusy.into());
         }
+        #[cfg(feature = "testing")]
+        let planned = self.lane.take_control(control::Op::Adopt);
+        #[cfg(feature = "testing")]
+        let lane = &*self.lane;
         let adopted = self.lane.with_stores(|st| -> Result<Snapshot, Refusal> {
             let authorized = match st.continuity.snapshot()?.cognition() {
                 Cognition::Unanchored => return Err(Code::Unanchored.into()),
@@ -1153,7 +1196,11 @@ impl Core {
                 Some((s, _)) if s.identity == *candidate => {}
                 _ => return Err(Rt::CheckpointInvalid.into()),
             }
-            Ok(st.continuity.commit_cognition(Some(&authorized), Some(candidate))?)
+            control_point!(lane.control_begun(planned, st));
+            control_point!(lane.control_publishing(planned, st));
+            let adopted = st.continuity.commit_cognition(Some(&authorized), Some(candidate));
+            control_point!(lane.control_record(planned, &adopted, st));
+            Ok(adopted?)
         })?;
         match adopted {
             Ok(snapshot) => {
@@ -1230,15 +1277,27 @@ impl Core {
         if checkpoint::composite_import_identity(&envelope, k1) != Some(identity) {
             return Err(Code::StateMismatch.into()); // not the authorized K1 state with an empty memory
         }
+        #[cfg(feature = "testing")]
+        let planned = self.lane.take_control(control::Op::Import);
+        #[cfg(feature = "testing")]
+        let lane = &*self.lane;
         let published = self.lane.with_stores(|st| -> Result<Snapshot, Refusal> {
             let store = st.checkpoint.as_mut().ok_or(Rt::CheckpointInvalid)?;
             if store.unresolved(k1).is_some() {
                 return Err(Rt::CheckpointUnresolved.into());
             }
-            if store.holding(&identity).is_none() {
-                store.write_envelope(&envelope, Some(k1))?;
-            }
-            Ok(st.continuity.import_cognition(Some(k1), Some(&identity))?)
+            control_point!(lane.control_begun(planned, st));
+            let store = st.checkpoint.as_mut().expect("attached");
+            let written = match store.holding(&identity) {
+                None => store.write_envelope(&envelope, Some(k1)).map(|_| ()),
+                Some(_) => Ok(()),
+            };
+            control_point!(lane.control_slot(planned, st));
+            written?;
+            control_point!(lane.control_publishing(planned, st));
+            let imported = st.continuity.import_cognition(Some(k1), Some(&identity));
+            control_point!(lane.control_record(planned, &imported, st));
+            Ok(imported?)
         })?;
         match published {
             Ok(s) => {
@@ -1385,6 +1444,12 @@ impl Core {
     #[cfg(feature = "testing")]
     pub fn testing_durable_plan(&mut self, plan: Option<crate::durable::Plan>) {
         self.lane.plan(plan);
+    }
+
+    /// Plan (or clear) one fault of the next control operation of its kind (anchor, import, discard, adopt).
+    #[cfg(feature = "testing")]
+    pub fn testing_control_plan(&mut self, plan: Option<control::Plan>) {
+        self.lane.control_plan(plan);
     }
 }
 

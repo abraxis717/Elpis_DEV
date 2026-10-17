@@ -972,6 +972,35 @@ mod testing {
         rc(runtime(rt).map(|mut core| core.testing_durable_plan(plan)))
     }
 
+    /// Plan one fault of the next control operation of kind `op` (docs/RUNTIME_CORE.md, "Control-operation crash
+    /// points"): 1 anchor, 2 legacy import, 3 operator discard, 4 operator adopt. These run outside the lane's step
+    /// machine, on the caller's thread with the stores held. Action 0 clears; 1 dies (simulated) at `point`; 2 parks
+    /// the caller at `point` with exactly that point's on-disk effect (it holds the handle: the wait ends only with
+    /// the process, or after 300 s as a simulated death; the durability status reports `parked` = 100 * op + point).
+    /// Points: 1 begun (checks passed, nothing written); 2 slot written, not synced (anchor, import: the envelope;
+    /// discard: the zeroed header); 3 slot synced (anchor, import: continuity not begun; discard: not returned);
+    /// 4 continuity record torn after `arg` bytes; 5 record written, not synced; 6 record synced, not returned
+    /// (anchor, import, adopt). A discard has no record point and an adopt no slot point (`RUNTIME_INVALID`).
+    #[no_mangle]
+    pub unsafe extern "C" fn elpis_runtime_testing_control_fault(
+        rt: *mut ElpisRuntime,
+        op: u32,
+        action: u32,
+        point: u32,
+        arg: u64,
+    ) -> i32 {
+        use crate::durable::control::Plan;
+        let plan = match action {
+            0 => None,
+            1 | 2 => match Plan::new(op, point, action == 2, arg) {
+                Some(plan) => Some(plan),
+                None => return Rt::Invalid as i32,
+            },
+            _ => return Rt::Invalid as i32,
+        };
+        rc(runtime(rt).map(|mut core| core.testing_control_plan(plan)))
+    }
+
     /// Copy the checkpoint store's I/O counters (zero when none is attached); reset them when `reset` is nonzero.
     #[no_mangle]
     pub unsafe extern "C" fn elpis_runtime_testing_checkpoint_io_counters(

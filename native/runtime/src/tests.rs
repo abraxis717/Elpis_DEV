@@ -2405,6 +2405,153 @@ mod recovery {
             c.testing_durable_hold(false);
         }
 
+        /// The registered crash points of the control operations (`durable::control`): a death at each leaves
+        /// exactly that point's on-disk effect, and restart decides from continuity alone.
+        mod control_points {
+            use super::*;
+            use crate::durable::control::{Plan as Control, Point};
+
+            fn plan(op: u32, point: Point, arg: u64) -> Option<Control> {
+                Some(Control::new(op, point as u32, false, arg).expect("a registered point"))
+            }
+
+            fn died(e: Error, name: &str) {
+                assert_eq!(e, Code::TestingProcessDeath.into(), "{name}");
+            }
+
+            /// The candidate's lineage (D1 authorized, D3 an unresolved candidate) and a plan of the reconciliation.
+            fn unresolved(name: &str) -> (Dir, Ck, Digest, Digest) {
+                let (dir, ck) = (Dir::new(&format!("ck-{name}")), Ck::new(name));
+                let mut sub = Fake::new(0.1);
+                let (d1, d3, _) =
+                    interrupted(&dir, &ck, &mut sub, Plan::At { step: Step::SlotSynced, park: false, arg: 0 });
+                (dir, ck, d1, d3)
+            }
+
+            #[test]
+            fn a_control_plan_names_only_its_operations_points_and_applies_once() {
+                assert!(Control::new(3, Point::RecordTorn as u32, false, 0).is_none()); // a discard writes no record
+                assert!(Control::new(4, Point::SlotWritten as u32, false, 0).is_none()); // an adopt writes no slot
+                assert!(Control::new(5, 1, false, 0).is_none() && Control::new(1, 7, false, 0).is_none());
+                assert_eq!(Control::new(2, 3, true, 0).unwrap().parked(), 203);
+                let (dir, ck) = (Dir::new("ck-control-once"), Ck::new("control-once"));
+                let mut sub = Fake::new(0.1);
+                let mut c = core(&dir, &ck);
+                c.testing_control_plan(plan(4, Point::Begun, 0)); // an adopt's: another kind never fires it
+                c.anchor(&mut sub, key(1)).unwrap();
+                turn(&mut c, &mut sub, key(1)).unwrap();
+                assert_eq!(publish(&mut c, &mut sub, key(1)).unwrap().status(), Status::Acknowledged);
+                // An anchor's slot point that its operation never reaches leaves nothing armed behind it.
+                drop(c);
+                let mut c = core(&dir, &ck);
+                c.testing_control_plan(plan(1, Point::SlotWritten, 0));
+                assert_eq!(c.anchor(&mut sub, key(1)).unwrap_err().error, Code::AlreadyAnchored.into());
+                c.testing_control_plan(None);
+                turn(&mut c, &mut sub, key(1)).unwrap();
+                assert_eq!(publish(&mut c, &mut sub, key(1)).unwrap().status(), Status::Acknowledged);
+            }
+
+            #[test]
+            fn a_death_at_every_anchor_point_leaves_no_lineage_or_exactly_the_anchored_one() {
+                use Disposition::*;
+                // (point, torn bytes, a slot holds the state, what restart decides)
+                let cases = [
+                    (Point::Begun, 0, false, NothingToRecover),
+                    (Point::SlotWritten, 0, true, NothingToRecover), // a slot never creates a lineage
+                    (Point::SlotSynced, 0, true, NothingToRecover),
+                    (Point::RecordTorn, 50, true, NothingToRecover), // a torn record is not an authority
+                    (Point::RecordWritten, 0, true, Resumable),      // an unsynced record survives a process death
+                    (Point::RecordSynced, 0, true, Resumable),
+                ];
+                for (point, arg, held, expected) in cases {
+                    let name = format!("anchor-{point:?}");
+                    let (dir, ck) = (Dir::new(&format!("ck-{name}")), Ck::new(&name));
+                    let mut sub = Fake::new(0.1);
+                    let d0 = sub.identity();
+                    {
+                        let mut c = core(&dir, &ck);
+                        c.testing_control_plan(plan(1, point, arg));
+                        died(c.anchor(&mut sub, key(1)).unwrap_err().error, &name);
+                        assert_eq!(c.fault(), Some(Code::TestingProcessDeath), "{name}");
+                        died(turn(&mut c, &mut sub, key(1)).unwrap_err(), &name);
+                        // the process is "gone"
+                    }
+                    let slots = checkpoint::Store::open(&ck.0).unwrap().slots();
+                    assert_eq!(slots.iter().flatten().any(|s| s.identity == d0), held, "{name}");
+                    let mut sub = Fake::new(0.1); // a fresh process; the caller supplies the same state again
+                    let mut c = core(&dir, &ck);
+                    let r = c.recover().unwrap();
+                    assert_eq!(r.disposition, expected, "{name}");
+                    if expected == NothingToRecover {
+                        c.anchor(&mut sub, key(1)).unwrap(); // the operator anchors again, explicitly
+                    }
+                    let r = c.recover().unwrap();
+                    assert_eq!((r.disposition, r.authorized), (Resumable, d0), "{name}");
+                    assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(d0), "{name}");
+                    turn(&mut c, &mut sub, key(1)).unwrap();
+                    assert_eq!(publish(&mut c, &mut sub, key(1)).unwrap().status(), Status::Acknowledged, "{name}");
+                }
+            }
+
+            #[test]
+            fn a_death_at_every_discard_point_leaves_the_candidate_or_its_withdrawal() {
+                use Disposition::*;
+                for (point, expected) in [
+                    (Point::Begun, CandidateUnresolved),
+                    (Point::SlotWritten, Resumable),
+                    (Point::SlotSynced, Resumable),
+                ] {
+                    let name = format!("discard-{point:?}");
+                    let (dir, ck, d1, d3) = unresolved(&name);
+                    {
+                        let mut c = core(&dir, &ck);
+                        c.testing_control_plan(plan(3, point, 0));
+                        died(c.checkpoint_discard(&d3).unwrap_err().error, &name);
+                    }
+                    let mut c = core(&dir, &ck);
+                    let r = c.recover().unwrap();
+                    assert_eq!((r.disposition, r.authorized), (expected, d1), "{name}");
+                    if expected == CandidateUnresolved {
+                        assert_eq!(r.candidate, d3, "{name}");
+                        c.checkpoint_discard(&d3).unwrap(); // the operator's action, again: exactly that candidate
+                    }
+                    let r = c.recover().unwrap();
+                    assert_eq!((r.disposition, r.authorized, r.candidate), (Resumable, d1, [0u8; 32]), "{name}");
+                    assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(d1), "{name}");
+                }
+            }
+
+            #[test]
+            fn a_death_at_every_adopt_point_leaves_the_candidate_or_its_adoption() {
+                use Disposition::*;
+                for (point, arg, adopted) in [
+                    (Point::Begun, 0, false),
+                    (Point::RecordTorn, 50, false),
+                    (Point::RecordWritten, 0, true),
+                    (Point::RecordSynced, 0, true),
+                ] {
+                    let name = format!("adopt-{point:?}");
+                    let (dir, ck, d1, d3) = unresolved(&name);
+                    {
+                        let mut c = core(&dir, &ck);
+                        c.testing_control_plan(plan(4, point, arg));
+                        died(c.checkpoint_adopt(&d3).unwrap_err().error, &name);
+                    }
+                    let mut c = core(&dir, &ck);
+                    let r = c.recover().unwrap();
+                    if adopted {
+                        assert_eq!((r.disposition, r.authorized, r.candidate), (Resumable, d3, [0u8; 32]), "{name}");
+                    } else {
+                        assert_eq!((r.disposition, r.authorized, r.candidate), (CandidateUnresolved, d1, d3), "{name}");
+                        c.checkpoint_adopt(&d3).unwrap(); // the operator's action, again
+                    }
+                    let r = c.recover().unwrap();
+                    assert_eq!((r.disposition, r.authorized), (Resumable, d3), "{name}");
+                    assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(d3), "{name}");
+                }
+            }
+        }
+
         #[test]
         fn the_hot_lane_performs_no_continuity_or_checkpoint_io() {
             let (dir, ck) = (Dir::new("ck-io"), Ck::new("io"));

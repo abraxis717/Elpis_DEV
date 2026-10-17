@@ -297,6 +297,27 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
   but unsynced record (step 7) survives it; a power loss may drop it, and restart then finds the previous authority
   (in-process sync-loss faults cover that branch). The `SIGKILL` tests prove the process-death column only; no test
   here proves power-loss durability, which depends on the device honoring `fdatasync`.
+* **Control-operation crash points** (testing library only). The anchor, the legacy import and the operator
+  reconciliations run outside the lane's step machine, on the caller's thread with the stores held, so the lane's
+  steps cannot reach them. `elpis_runtime_testing_control_fault(rt, op, action, point, arg)` (`durable::control`;
+  `RuntimeCore.testing_control_fault`) plans one fault of the next operation of kind `op` (1 anchor, 2 import, 3
+  discard, 4 adopt) that gets past its lifecycle checks: a simulated death (action 1) or a park of the caller (2) at
+  `point`, with exactly that point's on-disk effect. A parked caller holds the handle, so only the process's death
+  ends the wait (after 300 s it is a simulated death); the durability status reports `parked` = 100 * op + point.
+  Every fault it arms in the checkpoint or continuity store is disarmed right after the step it targets. Restart
+  decides from continuity alone (`tests.rs` `control_points`; the real `SIGKILL` matrix is K1 Recovery R0 v4's):
+
+  | Point | Anchor | Import (K1 lineage, composite store) | Discard | Adopt |
+  |---|---|---|---|---|
+  | 1 begun (checks passed, nothing written) | unanchored: `NOTHING_TO_RECOVER` | the K1 authority | the candidate unresolved | the candidate unresolved |
+  | 2 slot written, not synced | unanchored; the slot holds the state but never creates a lineage | the K1 authority; the composite slot is no candidate (no slot of that store holds the authority) | withdrawn (process death keeps the zeroed header) | — |
+  | 3 slot synced, continuity not begun | the same | the same | withdrawn | — |
+  | 4 record torn after `arg` bytes | unanchored (a torn record is not an authority) | the K1 authority | — | the candidate unresolved |
+  | 5 record written, not synced | anchored (process death keeps it) | the composite, `RESUMABLE` from the composite store | — | adopted |
+  | 6 record synced, not returned | anchored | the composite | — | adopted |
+
+  The production library exports none of these entry points (`nm -D`: no `elpis_runtime_testing_*` symbol), and
+  its control operations carry no fault branch (the hooks compile only under the `testing` feature).
 * **K1 Recovery R0.** With an operator-provisioned checkpoint store attached (`elpis_runtime_checkpoint_attach`,
   `RuntimeConfig.k1_checkpoint_dir`), the anchor persists the anchored state's complete envelope before continuity
   anchors it, and every durable publication persists its capture's complete envelope in the slot that does not hold

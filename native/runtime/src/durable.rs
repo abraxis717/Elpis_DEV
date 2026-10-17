@@ -229,6 +229,95 @@ impl Step {
     }
 }
 
+/// Testing builds only: the registered crash points of the control operations (the anchor, the legacy import and the
+/// operator reconciliations). They run outside the lane's step machine, on the caller's thread with the stores held,
+/// so their points are planned here, one operation at a time (docs/RUNTIME_CORE.md, "Control-operation crash points").
+#[cfg(feature = "testing")]
+pub mod control {
+    use crate::checkpoint::probe::Fault;
+
+    /// The control operation a plan applies to (the next one of that kind).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[repr(u32)]
+    pub enum Op {
+        Anchor = 1,
+        Import = 2,
+        Discard = 3,
+        Adopt = 4,
+    }
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[repr(u32)]
+    pub enum Point {
+        /// The operation's checks passed; nothing written.
+        Begun = 1,
+        /// Anchor, import: the complete checkpoint slot written, not synced. Discard: the candidate's header zeroed,
+        /// not synced.
+        SlotWritten = 2,
+        /// Anchor, import: the slot synced, continuity not yet begun. Discard: the withdrawal synced, not returned.
+        SlotSynced = 3,
+        /// Anchor, import, adopt: `arg` bytes of the continuity record written.
+        RecordTorn = 4,
+        /// The complete continuity record written, not synced.
+        RecordWritten = 5,
+        /// The continuity record synced; the operation has not returned.
+        RecordSynced = 6,
+    }
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct Plan {
+        pub op: Op,
+        pub point: Point,
+        /// Park the caller at the point (it holds the runtime handle: nothing ends the wait but the process's death,
+        /// or 300 s, after which it is a simulated death) instead of a simulated death.
+        pub park: bool,
+        pub arg: u64,
+    }
+
+    impl Plan {
+        /// The plan of `op` at `point`; None for a point the operation does not have (a discard writes no record, an
+        /// adopt no slot).
+        pub fn new(op: u32, point: u32, park: bool, arg: u64) -> Option<Plan> {
+            let op = [Op::Anchor, Op::Import, Op::Discard, Op::Adopt].into_iter().find(|o| *o as u32 == op)?;
+            use Point::*;
+            let point = [Begun, SlotWritten, SlotSynced, RecordTorn, RecordWritten, RecordSynced]
+                .into_iter()
+                .find(|p| *p as u32 == point)?;
+            let valid = match op {
+                Op::Anchor | Op::Import => true,
+                Op::Discard => matches!(point, Begun | SlotWritten | SlotSynced),
+                Op::Adopt => matches!(point, Begun | RecordTorn | RecordWritten | RecordSynced),
+            };
+            valid.then_some(Plan { op, point, park, arg })
+        }
+
+        /// What the lane status reports while the caller is parked here: 100 * op + point (lane steps are 1..9).
+        pub fn parked(&self) -> u32 {
+            100 * self.op as u32 + self.point as u32
+        }
+    }
+
+    /// The checkpoint store's fault for a slot point of `plan` (its next slot write or withdrawal).
+    pub fn slot_fault(plan: Option<Plan>) -> Option<Fault> {
+        match plan?.point {
+            Point::SlotWritten => Some(Fault::DieBeforeSync),
+            Point::SlotSynced => Some(Fault::DieAfterSync),
+            _ => None,
+        }
+    }
+
+    /// The continuity fault (`testing_arm` action and argument) for a record point of `plan`.
+    pub fn record_fault(plan: Option<Plan>) -> Option<(u32, u64)> {
+        let plan = plan?;
+        match plan.point {
+            Point::RecordTorn => Some((4, plan.arg)),
+            Point::RecordWritten => Some((1, 1)),
+            Point::RecordSynced => Some((1, 2)),
+            _ => None,
+        }
+    }
+}
+
 const RING: usize = 16;
 
 struct Shared {
@@ -257,7 +346,10 @@ struct Shared {
     hold: bool,
     #[cfg(feature = "testing")]
     plan: Option<Plan>,
-    /// Testing: the step the worker is parked at (0: none).
+    /// Testing: the planned fault of the next control operation of its kind.
+    #[cfg(feature = "testing")]
+    control: Option<control::Plan>,
+    /// Testing: the step the worker is parked at, or 100 * op + point of a parked control operation (0: none).
     parked: u32,
 }
 
@@ -402,6 +494,8 @@ impl Lane {
                 hold: false,
                 #[cfg(feature = "testing")]
                 plan: None,
+                #[cfg(feature = "testing")]
+                control: None,
                 parked: 0,
             }),
             cv: Condvar::new(),
@@ -479,6 +573,7 @@ impl Lane {
         #[cfg(feature = "testing")]
         {
             g.plan = None;
+            g.control = None;
         }
         g.parked = 0;
         drop(g);
@@ -682,6 +777,97 @@ impl Lane {
     #[cfg(feature = "testing")]
     pub fn plan(&self, plan: Option<Plan>) {
         lock(&self.shared).plan = plan;
+    }
+
+    /// Testing: plan (or clear) one fault of the next control operation of `plan.op`.
+    #[cfg(feature = "testing")]
+    pub fn control_plan(&self, plan: Option<control::Plan>) {
+        lock(&self.shared).control = plan;
+    }
+
+    /// Testing: the planned fault of this control operation, consumed by the next operation of its kind that gets
+    /// past its lifecycle checks, whether or not it reaches the point.
+    #[cfg(feature = "testing")]
+    pub fn take_control(&self, op: control::Op) -> Option<control::Plan> {
+        let mut g = lock(&self.shared);
+        match g.control {
+            Some(c) if c.op == op => g.control.take(),
+            _ => None,
+        }
+    }
+
+    /// Testing: the control operation's checks passed. Fires a `Begun` plan (nothing written); arms the checkpoint
+    /// store's fault for a slot point (`control_slot` disarms it right after the slot step, written or not).
+    #[cfg(feature = "testing")]
+    pub fn control_begun(&self, plan: Option<control::Plan>, stores: &mut Stores) -> Option<Code> {
+        if plan?.point == control::Point::Begun {
+            return Some(self.control_fire(plan, stores));
+        }
+        if let (Some(fault), Some(store)) = (control::slot_fault(plan), stores.checkpoint.as_mut()) {
+            store.probe.plan = Some(fault);
+        }
+        None
+    }
+
+    /// Testing: right after the control operation's slot step (a write or withdrawal, or none needed). Disarms the
+    /// slot fault; fires when it did.
+    #[cfg(feature = "testing")]
+    pub fn control_slot(&self, plan: Option<control::Plan>, stores: &mut Stores) -> Option<Code> {
+        let store = stores.checkpoint.as_mut()?;
+        store.probe.plan = None;
+        if std::mem::take(&mut store.probe.died) {
+            return Some(self.control_fire(plan, stores));
+        }
+        None
+    }
+
+    /// Testing: right before the control operation's continuity publication: arms continuity's fault for a record
+    /// point (`control_record` disarms it right after). Never fires itself.
+    #[cfg(feature = "testing")]
+    pub fn control_publishing(&self, plan: Option<control::Plan>, stores: &mut Stores) -> Option<Code> {
+        if let Some((action, arg)) = control::record_fault(plan) {
+            let _ = stores.continuity.testing_arm(1, action, arg);
+        }
+        None
+    }
+
+    /// Testing: right after the control operation's continuity publication. Disarms the record fault; fires when it
+    /// did.
+    #[cfg(feature = "testing")]
+    pub fn control_record<T>(
+        &self,
+        plan: Option<control::Plan>,
+        published: &Result<T, Code>,
+        stores: &mut Stores,
+    ) -> Option<Code> {
+        let _ = stores.continuity.testing_arm(0, 0, 0);
+        if plan.is_some() && matches!(published, Err(Code::TestingProcessDeath)) {
+            return Some(self.control_fire(plan, stores));
+        }
+        None
+    }
+
+    /// Testing: the control operation reached its planned point, with exactly that point's on-disk effect. Park the
+    /// caller there when planned (until the process is killed: the caller holds the runtime handle, so nothing else
+    /// ends the wait; after 300 s it falls through), then die (simulated): descriptors close, nothing more is
+    /// written, every operation refuses until restart.
+    #[cfg(feature = "testing")]
+    fn control_fire(&self, plan: Option<control::Plan>, stores: &mut Stores) -> Code {
+        if let Some(plan) = plan.filter(|p| p.park) {
+            let deadline = Instant::now() + Duration::from_secs(300);
+            let mut g = lock(&self.shared);
+            g.parked = plan.parked();
+            self.cv.notify_all();
+            while !g.shutdown && Instant::now() < deadline {
+                g = g.wait_timeout(&self.cv, deadline.saturating_duration_since(Instant::now()));
+            }
+        }
+        stores.continuity.close();
+        stores.checkpoint = None;
+        let mut g = lock(&self.shared);
+        g.fault = Some(Code::TestingProcessDeath);
+        self.dead.store(true, Ordering::Release);
+        Code::TestingProcessDeath
     }
 
     // -- the worker -----------------------------------------------------------------------------------------------

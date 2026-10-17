@@ -413,6 +413,7 @@ class RuntimeLibrary:
             lib.elpis_runtime_testing_io_counters.argtypes = [P, C.POINTER(_IOCounters), C.c_int]
             lib.elpis_runtime_testing_durable_hold.argtypes = [P, C.c_int]
             lib.elpis_runtime_testing_durable_fault.argtypes = [P, C.c_uint32, C.c_uint32, C.c_uint64]
+            lib.elpis_runtime_testing_control_fault.argtypes = [P, C.c_uint32, C.c_uint32, C.c_uint32, C.c_uint64]
             lib.elpis_runtime_testing_checkpoint_io_counters.argtypes = [P, C.POINTER(_CheckpointCounters), C.c_int]
         ceiling = _Budget()
         if lib.elpis_runtime_fuel_ceiling(C.byref(ceiling)) != 0 or \
@@ -714,6 +715,14 @@ class RuntimeCore:
         failures; 10 a checkpoint slot that does not read back exactly); docs/RUNTIME_CORE.md, "Crash law"."""
         self._require_testing()
         self.library.check(self._f.elpis_runtime_testing_durable_fault(self._handle, action, step, arg))
+
+    def testing_control_fault(self, op: int, action: int, point: int = 0, arg: int = 0) -> None:
+        """Plan one fault of the next control operation of kind ``op`` (1 anchor, 2 legacy import, 3 discard, 4 adopt):
+        action 0 clear, 1 die (simulated) / 2 park the caller at ``point`` (1 begun, 2 slot written, 3 slot synced,
+        4 record torn after ``arg`` bytes, 5 record written, 6 record synced; ``durability().parked`` reports
+        ``100 * op + point``); docs/RUNTIME_CORE.md, "Control-operation crash points"."""
+        self._require_testing()
+        self.library.check(self._f.elpis_runtime_testing_control_fault(self._handle, op, action, point, arg))
 
     def testing_checkpoint_io_counters(self, reset: bool = False) -> dict[str, int]:
         self._require_testing()
