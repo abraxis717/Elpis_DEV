@@ -288,7 +288,9 @@ pub mod control {
                 Op::Discard => matches!(point, Begun | SlotWritten | SlotSynced),
                 Op::Adopt => matches!(point, Begun | RecordTorn | RecordWritten | RecordSynced),
             };
-            valid.then_some(Plan { op, point, park, arg })
+            // A torn record writes at least one byte and leaves at least the checksum's last byte unwritten.
+            let torn = point != RecordTorn || (1..elpis_continuity::RECORD_SIZE as u64).contains(&arg);
+            (valid && torn).then_some(Plan { op, point, park, arg })
         }
 
         /// What the lane status reports while the caller is parked here: 100 * op + point (lane steps are 1..9).
@@ -840,8 +842,9 @@ impl Lane {
         published: &Result<T, Code>,
         stores: &mut Stores,
     ) -> Option<Code> {
+        control::record_fault(plan)?; // no record point planned: an armed continuity fault is not this plan's
         let _ = stores.continuity.testing_arm(0, 0, 0);
-        if plan.is_some() && matches!(published, Err(Code::TestingProcessDeath)) {
+        if matches!(published, Err(Code::TestingProcessDeath)) {
             return Some(self.control_fire(plan, stores));
         }
         None
@@ -861,6 +864,7 @@ impl Lane {
             while !g.shutdown && Instant::now() < deadline {
                 g = g.wait_timeout(&self.cv, deadline.saturating_duration_since(Instant::now()));
             }
+            g.parked = 0;
         }
         stores.continuity.close();
         stores.checkpoint = None;

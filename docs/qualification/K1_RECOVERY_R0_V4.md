@@ -17,7 +17,7 @@ Made before the freeze, on DEV inputs only; nothing of it was chosen after obser
   turn, `budget.max_observations`, `counters.k1_observes`); the durability lane, the checkpoint store, continuity's
   records, the envelopes and every crash law this specification measures are ABI v4's, unchanged. The question and
   the gates below are therefore asked of the v4 durability law as the v5 library implements it.
-* **The control-operation hooks** this specification made a prerequisite exist and were reviewed:
+* **The control-operation hooks** this specification made a prerequisite exist:
   `elpis_runtime_testing_control_fault` (testing library only; docs/RUNTIME_CORE.md, "Control-operation crash
   points"): anchor, import, discard and adopt at begun / slot written / slot synced / record torn / record written /
   record synced, simulated (in-process tests) or parked for a real `SIGKILL` (this run).
@@ -43,9 +43,35 @@ Made before the freeze, on DEV inputs only; nothing of it was chosen after obser
   synced candidate slot, so restart reports `CANDIDATE_UNRESOLVED`, not `RESUMABLE` (the crash law already said so:
   `test_k1_recovery.py`); composite identity-only publication is a registered refusal, not a point.
 * **Evidence schema.** `elpis.k1-recovery-r0-v4.record.v1` (one record per run), `.verdict.v1` (the checker's
-  output), and a freeze record and manifest binding source commit, tree, library digests, plan, runner, checker,
-  platform and filesystem; `SHA256SUMS` over every evidence file. Integrity is digest-bound to the qualifying commit;
-  the evidence is not cryptographically signed (its custody is this repository's history).
+  output), and a freeze record and manifest that must bind source commit, tree, library digests, plan, runner,
+  checker, platform and filesystem (not yet enforced: review finding B1); `SHA256SUMS` over every evidence file. The
+  evidence would not be cryptographically signed (its custody is this repository's history).
+
+## Prerequisite review (2026-10-18): NOT SATISFIED, the freeze is blocked
+
+An independent read-only review of the hooks and the instrument (commits 785faf9, f2e199f) found the hooks correct
+and production-safe (identical exported symbols and call targets with the feature off; every point's on-disk effect as
+documented; no armed fault outliving its operation) and a full DEV run of the instrument passing G1-G6. It found the
+instrument not yet freezable. No QUAL run may start until these are fixed and re-reviewed:
+
+* **B1 (blocking).** `verify_freeze` binds only digests the operator supplies: it does not check the checkout's HEAD,
+  tree or cleanliness, nor that the imported `elpis` package is the frozen source's, nor the deployed `home/lib`
+  copies; the freeze record producer is not part of the digest-bound instrument.
+* **S1.** `check.py` judges each record against the expectation the record carries, not the plan's for its point;
+  `arg` and `seed` are not checked against the plan.
+* **S2.** `identity_refused` registers authority D1; the durable authority must stay D0 (the checker hard-codes D0).
+* **S3.** Torn offsets 1 (slot and record) rewrite identical bytes, so no tear happens; offsets that leave one old
+  byte can complete a valid slot or record by chance. Registered replacements: slot 17 / 127 / 128 + c/2 /
+  128 + c - 32, record 24 / 50 / 100 / 144; restart must record the raw continuity and checkpoint files so a tear is
+  observed, not assumed.
+* **S4.** The continuity record's format (v2 K1 / v3 composite) is gated only for the import family.
+* **Notes.** Fixed: a control operation no longer disarms a continuity fault armed by another test (N1), a torn
+  record point takes 1..175 bytes (N2), `parked` is cleared after the 300 s fallback (N3). Open: an in-process test
+  of a slot point consumed without a write and in-process import points (N4); parked-ticket and import-memory
+  sub-checks that cannot fail (N5); `-I` ignores the `PYTHON*` variables the runner sets, unawaited random-family
+  tickets are not reported, and no tool writes `SHA256SUMS` (N6).
+
+The DEV records of the review's run are development records, not evidence. The subject stays `UNQUALIFIED`.
 
 ## Question
 
