@@ -58,6 +58,25 @@ def _first(records, **match):
     return next(i for i, r in enumerate(records) if all(r.get(k) == v for k, v in match.items()))
 
 
+def test_the_runner_keeps_every_line_a_child_wrote_past_the_one_it_waited_for(tmp_path):
+    """A chunk can carry the LEARN the runner waits for and the request the child made next, before its kill: the
+    request must reach the record (a lost one made a requested candidate look never requested)."""
+    runner = _load("runner")
+    child = ("import json, os, sys, time\n"
+             "lines = [json.dumps({'event': 'learn', 'i': 0}), json.dumps({'event': 'request', 'identity': 'aa'}),"
+             " json.dumps({'event': 'learn', 'i': 1})]\n"
+             "os.write(1, ('\\n'.join(lines[:2]) + '\\n').encode()); time.sleep(0.5)\n"
+             "os.write(1, (lines[2] + '\\n').encode()); time.sleep(3600)\n")
+    proc = subprocess.Popen([sys.executable, "-I", "-B", "-c", child], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True)
+    out = runner._Output(proc)
+    first, done = out.read(30, until=lambda line: line.get("event") == "learn")
+    assert done and first == [{"event": "learn", "i": 0}]
+    second, done = out.read(30, until=lambda line: line.get("i") == 1)
+    assert done and second == [{"event": "request", "identity": "aa"}, {"event": "learn", "i": 1}]
+    assert runner._kill(proc)["signaled"] and out.rest() == []
+
+
 def test_the_dev_run_is_complete_and_passes_every_gate(dev):
     _, _, records = dev
     result = _verdict(records)

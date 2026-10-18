@@ -698,29 +698,53 @@ def _spawn(role: str, spec: dict) -> subprocess.Popen:
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, cwd=spec["run_dir"])
 
 
-def _read_lines(proc, timeout: float, until=None) -> tuple[list, bool]:
-    """Read JSON lines until ``until(line)`` holds, the process exits, or ``timeout``. Returns (lines, satisfied)."""
-    lines, deadline, buf = [], time.monotonic() + timeout, ""
-    fd = proc.stdout.fileno()
-    while True:
-        left = deadline - time.monotonic()
-        if left <= 0:
-            return lines, False
-        ready, _, _ = select.select([fd], [], [], min(left, 0.5))
-        if not ready:
-            if proc.poll() is not None:
-                return lines, False
-            continue
-        chunk = os.read(fd, 65536).decode()
-        if not chunk:
-            return lines, False
-        buf += chunk
-        while "\n" in buf:
-            line, buf = buf.split("\n", 1)
+class _Output:
+    """A child's JSON-line stdout, read through one buffer for the child's whole life: the lines a chunk carries past
+    the one a caller waits for stay buffered for the next read, and after the kill ``rest`` returns every line the
+    child wrote (a pipe keeps what a killed writer flushed). Nothing the child reported is dropped."""
+
+    def __init__(self, proc):
+        self.proc, self.fd, self.buf = proc, proc.stdout.fileno(), b""
+
+    def _take(self, until):
+        lines = []
+        while b"\n" in self.buf:
+            line, self.buf = self.buf.split(b"\n", 1)
             if line.strip():
                 lines.append(json.loads(line))
                 if until is not None and until(lines[-1]):
                     return lines, True
+        return lines, False
+
+    def read(self, timeout: float, until=None) -> tuple[list, bool]:
+        """Lines until ``until(line)`` holds, the process exits, or ``timeout``. Returns (lines, satisfied)."""
+        lines, deadline = [], time.monotonic() + timeout
+        while True:
+            more, done = self._take(until)
+            lines += more
+            if done:
+                return lines, True
+            left = deadline - time.monotonic()
+            if left <= 0:
+                return lines, False
+            ready, _, _ = select.select([self.fd], [], [], min(left, 0.5))
+            if not ready:
+                if self.proc.poll() is not None:
+                    return lines, False
+                continue
+            chunk = os.read(self.fd, 65536)
+            if not chunk:
+                return lines, False
+            self.buf += chunk
+
+    def rest(self) -> list:
+        """Every line not yet returned, to the end of the (dead) child's output; a torn last line raises."""
+        while chunk := os.read(self.fd, 65536):
+            self.buf += chunk
+        lines, _ = self._take(None)
+        if self.buf.strip():
+            raise ValueError(f"the child's output ends in a torn line: {self.buf[-200:]!r}")
+        return lines
 
 
 def _not_ready(proc) -> str:
@@ -764,18 +788,19 @@ def _drive(family: str, spec: dict, timeout: float) -> dict:
         return out
     if family == "random":
         proc = _spawn("child", spec)
-        lines, ready = _read_lines(proc, timeout, until=lambda line: line.get("event") == "ready")
+        stdout = _Output(proc)
+        lines, ready = stdout.read(timeout, until=lambda line: line.get("event") == "ready")
         if not ready:
             out["child_error"] = _not_ready(proc)
             return out
         target = spec["kill_after"]           # kill as soon as that many LEARNs were reported
-        more, _ = _read_lines(proc, timeout, until=lambda line: line.get("event") == "learn" and line["i"] + 1 >= target)
+        more, _ = stdout.read(timeout, until=lambda line: line.get("event") == "learn" and line["i"] + 1 >= target)
         out["child_exit"] = _kill(proc)
-        out["events"] = lines + more + [json.loads(line) for line in proc.stdout.read().splitlines() if line.strip()]
+        out["events"] = lines + more + stdout.rest()   # what it did between the last LEARN read and its death
         out["keys"] = [e.get("key") for e in out["events"] if e.get("event") == "learn"]
         return out
     proc = _spawn("child", spec)
-    lines, ready = _read_lines(proc, timeout, until=lambda line: line.get("ready"))
+    lines, ready = _Output(proc).read(timeout, until=lambda line: line.get("ready"))
     if not ready:
         out["child_error"] = _not_ready(proc)
         return out
@@ -783,7 +808,7 @@ def _drive(family: str, spec: dict, timeout: float) -> dict:
     out["child_exit"] = _kill(proc)
     if family in ("discard", "adopt"):
         proc = _spawn("child", dict(spec, phase="reconcile"))
-        lines, ready = _read_lines(proc, timeout, until=lambda line: line.get("ready"))
+        lines, ready = _Output(proc).read(timeout, until=lambda line: line.get("ready"))
         if not ready:
             out["reconcile_error"] = _not_ready(proc)
             return out
