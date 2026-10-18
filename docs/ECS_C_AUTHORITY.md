@@ -21,7 +21,9 @@ premise). Nothing in this document is a scientific claim.
 ECS_C owns the authority; it performs no geometric learning and never touches ECS_G state: it names retained-state
 identities (ELPISGK1 or ELPISEC1 digests), never the states. It embeds the standard-library-only continuity crate
 for SHA-256, the evolution-authority digest and the legacy register reader (one implementation each), and re-exports
-none of continuity's C ABI. It links no ECS_G, memory, RuntimeCore or codec code.
+none of continuity's C ABI. Its own C ABI is the crate's default `c-abi` feature, so a crate that embeds it
+(RuntimeCore, Stage D) does not re-export `elpis_ecs_c_*` either. It links no ECS_G, memory, RuntimeCore or codec
+code.
 
 ## Threat model
 
@@ -91,7 +93,9 @@ key labels `elpis.ecs_c.authority.key.{record,witness,deployment}.v1`. The evolu
 Entities are OPERATOR, RUNTIME and SOURCE. Lifecycle: FOUNDED → ACTIVE ⇄ DORMANT, and any non-terminal state →
 TERMINATED (final). The founding operator and runtime are founded ACTIVE at genesis and can never be terminated; the
 authority always keeps an ACTIVE operator. An entity's identity is SHA-256 of the lineage, its founding index, kind
-and label digest. A source carries a version (≥ 1), a scope digest and a per-turn observation bound (1..256).
+and label digest. A source carries a version (≥ 1), a scope digest, a per-turn observation bound (1..256) and the
+32-bit memory `source_authority` its typed observations record (unique among the present source rows; freed only by
+an explicit reclamation), so admission can map an observation to its source (`elpis_ecs_c_source_for_authority`).
 
 Every event names a sender and a sender sequence that must equal the sender's watermark + 1 (`DUPLICATE` at or below
 it, `SEQUENCE_GAP` above), and a receiver (the entity an entity-scoped event acts on; zero otherwise). Requests are
@@ -100,7 +104,7 @@ matrix:
 
 | Event | Sender | Law |
 |---|---|---|
-| ENTITY_FOUND | operator | the receiver must be the identity the state founds next (`STALE` otherwise); `CAPACITY` when full |
+| ENTITY_FOUND | operator | the receiver must be the identity the state founds next (`STALE` otherwise); `CAPACITY` when full; a source's `source_authority` held by another present source is `SCOPE_CONFLICT` |
 | ENTITY_LIFECYCLE | operator | from must be current; the FSM above; founders never terminated; an ACTIVE operator remains |
 | SOURCE_VERSION | operator | expected version must be current (`SOURCE_STALE`); versions only increase; new scope and bound |
 | ANCHOR | runtime | once (`ALREADY_ANCHORED`); a K1 (ELPISGK1) or composite (ELPISEC1) identity |

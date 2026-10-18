@@ -12,6 +12,8 @@ The ECS has two native owners (`docs/ELPIS_MISSION.md`, Amendment 1): ECS_G
 (`native/ECS_G`, geometry) and ECS_C (`native/ECS_C`, continuity and memory),
 composed only by RuntimeCore. Continuity (`elpis.continuity`)
 is not an ECS: it is a fixed-size register of the current durable authority.
+Its successor, the ECS_C authority (`docs/ECS_C_AUTHORITY.md`), is built and
+qualified as a library and is not yet composed by RuntimeCore.
 
 The canonical cognitive dataflow is `text -> DSV4 encode -> ECS stimulus ->
 ECS/EDEN dynamics -> ECS readout -> DSV4 decode -> text`. ECS as a sidecar

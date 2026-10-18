@@ -150,6 +150,7 @@ int main(int argc, char **argv) {
     put_u64(e + 80 + 8, 1);
     memcpy(e + 80 + 16, src_label, 32);
     memcpy(e + 80 + 48, scope, 32);
+    put_u32(e + 80 + 80, 4242); /* the memory source-authority identifier its observations record */
     elpis_ecs_c_receipt r;
     RC(send(a, e, &r), ELPIS_ECS_C_OK);
     CHECK(r.generation == 2 && r.predecessor_generation == 1 && r.founded_present == 1);
@@ -157,6 +158,10 @@ int main(int argc, char **argv) {
     RC(elpis_ecs_c_receipt_chain(head, r.receipt, head), ELPIS_ECS_C_OK);
     uint32_t limit = 0;
     RC(elpis_ecs_c_check_evidence(a, src, 1, scope, &limit), ELPIS_ECS_C_LIFECYCLE);
+    elpis_ecs_c_entity found;
+    RC(elpis_ecs_c_source_for_authority(a, 4242, &found), ELPIS_ECS_C_OK);
+    CHECK(memcmp(found.id, src, 32) == 0 && found.source_authority == 4242 && found.kind == ELPIS_ECS_C_SOURCE);
+    RC(elpis_ecs_c_source_for_authority(a, 4243, &found), ELPIS_ECS_C_UNKNOWN_ENTITY);
     event(e, 3, operator_.id, next_seq(a, operator_.id), src);
     e[80] = ELPIS_ECS_C_FOUNDED;
     e[81] = ELPIS_ECS_C_ACTIVE;

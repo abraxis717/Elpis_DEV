@@ -108,6 +108,8 @@ pub struct CEntity {
     pub source_version: u64,
     pub label: Digest,
     pub scope: Digest,
+    pub source_authority: u32,
+    pub reserved2: u32,
 }
 
 #[repr(C)]
@@ -128,7 +130,7 @@ pub struct CReceipt {
 const _: () = assert!(std::mem::size_of::<CProvisioned>() == 144);
 const _: () = assert!(std::mem::size_of::<CReport>() == 136);
 const _: () = assert!(std::mem::size_of::<CStatus>() == 528);
-const _: () = assert!(std::mem::size_of::<CEntity>() == 144);
+const _: () = assert!(std::mem::size_of::<CEntity>() == 152);
 const _: () = assert!(std::mem::size_of::<CReceipt>() == 192);
 
 /// Opaque authority handle.
@@ -209,6 +211,8 @@ pub fn to_c_entity(e: &Entity) -> CEntity {
         source_version: e.source_version,
         label: e.label,
         scope: e.scope,
+        source_authority: e.source_authority,
+        reserved2: 0,
     }
 }
 
@@ -402,6 +406,21 @@ pub unsafe extern "C" fn elpis_ecs_c_entity_find(
         let a = handle(h)?;
         let id = digest(id)?;
         let e = a.current()?.state.entity(&id).ok_or(Code::UnknownEntity)?;
+        write(out, to_c_entity(e))
+    })())
+}
+
+/// The present source row that owns the memory source-authority identifier `source_authority` (any lifecycle), or
+/// `ECS_C_UNKNOWN_ENTITY`. Typed memory observations record this identifier; admission maps it to its source.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_ecs_c_source_for_authority(
+    h: *const ElpisEcsCAuthority,
+    source_authority: u32,
+    out: *mut CEntity,
+) -> i32 {
+    rc((|| {
+        let a = handle(h)?;
+        let e = a.current()?.state.source_for_authority(source_authority).ok_or(Code::UnknownEntity)?;
         write(out, to_c_entity(e))
     })())
 }

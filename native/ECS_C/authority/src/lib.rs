@@ -8,10 +8,12 @@
 //! predecessor. Nothing grows: no log, no segments, no generations, no compaction (census, section 5a).
 //!
 //! ECS_C performs no geometric learning and never touches ECS_G state; it names retained-state identities only.
-//! The production surface is the C ABI in [`ffi`] (include/elpis/ecs_c_authority.h); RuntimeCore embeds the crate.
-//! The `testing` feature adds fault injection and is built only into `libelpis_ecs_c_authority_testing.so`.
+//! The production surface is the C ABI in `ffi` (include/elpis/ecs_c_authority.h, the default `c-abi` feature);
+//! RuntimeCore embeds the crate without it. The `testing` feature adds fault injection and is built only into
+//! `libelpis_ecs_c_authority_testing.so`.
 
 pub mod error;
+#[cfg(feature = "c-abi")]
 pub mod ffi;
 pub mod hmac;
 pub mod legacy;

@@ -1,5 +1,9 @@
 # Continuity: minimal durable runtime authority (`native/continuity`, `elpis.continuity`)
 
+> Successor: the ECS_C authority (`docs/ECS_C_AUTHORITY.md`, Stage C of `docs/NATIVE_SPLIT_CENSUS.md`). It imports a
+> continuity register explicitly and never writes it. Until RuntimeCore composes the successor (Stage D) this register
+> remains the live authority, and `native/continuity` stays byte-identical (K1 Recovery R0 v4 premise P1).
+
 Continuity records the current durable lineage and authority that the runtime
 needs for safe restart. It is not an ECS, not context memory, not an event
 database, not topology, not a message bus and not an audit ledger. It retains

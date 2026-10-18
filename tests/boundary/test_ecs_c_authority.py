@@ -34,6 +34,9 @@ def test_the_header_the_ffi_and_the_inventory_declare_one_abi():
     assert defined == declared, sorted(defined ^ declared)
     gated = set(re.findall(r'#\[cfg\(feature = "testing"\)\]\s*#\[no_mangle\]\s*pub (?:unsafe )?extern "C" fn (\w+)', ffi))
     assert gated == TESTING
+    # The C ABI is the default `c-abi` feature: an embedding crate (RuntimeCore) builds without it.
+    assert '#[cfg(feature = "c-abi")]\npub mod ffi;' in _rust("lib.rs")
+    assert 'default = ["c-abi"]' in (CRATE / "Cargo.toml").read_text(encoding="utf-8")
     inventory = json.loads((REPO / "native/ABI_INVENTORY.json").read_text(encoding="utf-8"))["libraries"]
     production = inventory["libelpis_ecs_c_authority.so"]
     testing = inventory["libelpis_ecs_c_authority_testing.so"]

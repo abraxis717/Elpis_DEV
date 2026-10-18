@@ -164,7 +164,9 @@ pub fn entity_id(lineage: &Digest, founding_index: u64, kind: EntityKind, label:
 /// | 72 | 8 | source version (sources: >= 1; others 0) |
 /// | 80 | 32 | label digest (content-free) |
 /// | 112 | 32 | scope digest (sources: nonzero; others zero) |
-/// | 144 | 16 | reserved, zero |
+/// | 144 | 4 | source authority (sources: the 32-bit `source_authority` its typed memory observations record, unique
+/// among the present source rows; others 0) |
+/// | 148 | 12 | reserved, zero |
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Entity {
     pub id: Digest,
@@ -178,6 +180,7 @@ pub struct Entity {
     pub source_version: u64,
     pub label: Digest,
     pub scope: Digest,
+    pub source_authority: u32,
 }
 
 impl Entity {
@@ -194,10 +197,11 @@ impl Entity {
         put_u64(out, 72, self.source_version);
         put_digest(out, 80, &self.label);
         put_digest(out, 112, &self.scope);
+        put_u32(out, 144, self.source_authority);
     }
 
     fn decode(b: &[u8]) -> Result<Entity, Code> {
-        if !zero(&b[34..36]) || !zero(&b[144..160]) {
+        if !zero(&b[34..36]) || !zero(&b[148..160]) {
             return Err(Code::Corrupt);
         }
         Ok(Entity {
@@ -212,6 +216,7 @@ impl Entity {
             source_version: u64_at(b, 72),
             label: digest_at(b, 80),
             scope: digest_at(b, 112),
+            source_authority: u32_at(b, 144),
         })
     }
 
@@ -222,7 +227,7 @@ impl Entity {
                 && (1..=MAX_COUNTER).contains(&self.source_version)
                 && self.scope != ZERO
         } else {
-            self.per_turn_limit == 0 && self.source_version == 0 && self.scope == ZERO
+            self.per_turn_limit == 0 && self.source_version == 0 && self.scope == ZERO && self.source_authority == 0
         };
         let ok = fields_ok
             && self.id == entity_id(lineage, self.founding_index, self.kind, &self.label)
@@ -309,6 +314,11 @@ impl State {
 
     fn index_of(&self, id: &Digest) -> Option<usize> {
         self.entities.iter().position(|e| e.id == *id)
+    }
+
+    /// The present source row (of any lifecycle) that owns the memory source-authority identifier `authority`.
+    pub fn source_for_authority(&self, authority: u32) -> Option<&Entity> {
+        self.entities.iter().find(|e| e.kind == EntityKind::Source && e.source_authority == authority)
     }
 
     fn has_active_operator(&self) -> bool {
@@ -467,6 +477,13 @@ impl State {
             if i > 0 && e.founding_index <= self.entities[i - 1].founding_index {
                 return corrupt;
             }
+            if e.kind == EntityKind::Source
+                && self.entities[..i]
+                    .iter()
+                    .any(|o| o.kind == EntityKind::Source && o.source_authority == e.source_authority)
+            {
+                return corrupt;
+            }
             if e.founding_index >= self.next_founding_index {
                 return corrupt;
             }
@@ -564,7 +581,7 @@ impl EventKind {
     pub fn payload_len(self) -> usize {
         match self {
             EventKind::Genesis => 96,
-            EventKind::EntityFound => 80,
+            EventKind::EntityFound => 84,
             EventKind::EntityLifecycle => 2,
             EventKind::SourceVersion => 56,
             EventKind::Anchor => 40,
@@ -675,6 +692,7 @@ impl Event {
         scope: &Digest,
         source_version: u64,
         per_turn_limit: u32,
+        source_authority: u32,
     ) -> Event {
         let mut e = Event::new(EventKind::EntityFound, sender, seq, id);
         e.payload[0] = kind as u8;
@@ -682,6 +700,7 @@ impl Event {
         put_u64(&mut e.payload, 8, source_version);
         put_digest(&mut e.payload, 16, label);
         put_digest(&mut e.payload, 48, scope);
+        put_u32(&mut e.payload, 80, source_authority);
         e
     }
 
@@ -921,6 +940,7 @@ pub fn genesis(deployment: &Digest, capacity: u32, event: &Event) -> Result<(Dig
         source_version: 0,
         label,
         scope: ZERO,
+        source_authority: 0,
     };
     let receipt = receipt(&lineage, 1, 0, &ZERO, &ZERO, &event.encode());
     let state = State {
@@ -994,13 +1014,18 @@ pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Cod
                 return Err(Code::Invalid);
             }
             let (limit, version, label, scope) = (u32_at(p, 4), u64_at(p, 8), digest_at(p, 16), digest_at(p, 48));
+            let authority = u32_at(p, 80);
             let shape_ok = if ek == EntityKind::Source {
                 (1..=MAX_PER_TURN).contains(&limit) && (1..=MAX_COUNTER).contains(&version) && scope != ZERO
             } else {
-                limit == 0 && version == 0 && scope == ZERO
+                limit == 0 && version == 0 && scope == ZERO && authority == 0
             };
             if !shape_ok {
                 return Err(Code::Invalid);
+            }
+            if ek == EntityKind::Source && s.source_for_authority(authority).is_some() {
+                // One present source row per memory source-authority identifier (freed only by reclamation).
+                return Err(Code::ScopeConflict);
             }
             if s.entities.len() >= capacity as usize {
                 return Err(Code::Capacity);
@@ -1024,6 +1049,7 @@ pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Cod
                 source_version: version,
                 label,
                 scope,
+                source_authority: authority,
             });
             s.next_founding_index += 1;
             founded = Some(id);

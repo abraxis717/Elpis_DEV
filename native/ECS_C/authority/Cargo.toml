@@ -18,6 +18,10 @@ crate-type = ["cdylib", "rlib"]
 doctest = false
 
 [features]
+default = ["c-abi"]
+# The C ABI (include/elpis/ecs_c_authority.h). A crate that embeds this one (RuntimeCore) disables it, so its own
+# shared library never re-exports elpis_ecs_c_* beside libelpis_ecs_c_authority.so.
+c-abi = []
 # Test-only fault injection and I/O counters, compiled into libelpis_ecs_c_authority_testing.so only.
 testing = []
 

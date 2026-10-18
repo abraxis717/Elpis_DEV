@@ -134,7 +134,10 @@ fn found(a: &mut Authority, kind: EntityKind, label: &str, scope: &Digest, versi
     let o = op(a);
     let id = a.next_entity_id(kind, &d(label)).unwrap();
     let s = seq(a, &o);
-    let r = tx(a, &Event::entity_found(&o, s, &id, kind, &d(label), scope, version, limit)).unwrap();
+    // Sources record a unique memory source-authority identifier: the founding index serves (never reused).
+    let st = &a.current().unwrap().state;
+    let authority = if kind == EntityKind::Source { st.next_founding_index as u32 } else { 0 };
+    let r = tx(a, &Event::entity_found(&o, s, &id, kind, &d(label), scope, version, limit, authority)).unwrap();
     assert_eq!(r.founded, Some(id));
     id
 }
@@ -284,7 +287,7 @@ fn every_event_round_trips_and_malformed_events_are_refused() {
     let ev = EvolutionState::pending(3, d("head"), d("assertion")).unwrap();
     let events = [
         Event::genesis(&x, &d("o"), &d("r")),
-        Event::entity_found(&s, 1, &x, EntityKind::Source, &d("l"), &d("scope"), 1, 8),
+        Event::entity_found(&s, 1, &x, EntityKind::Source, &d("l"), &d("scope"), 1, 8, 0xfeed),
         Event::entity_lifecycle(&s, 2, &x, Lifecycle::Founded, Lifecycle::Active),
         Event::source_version(&s, 3, &x, 1, 2, 9, &d("scope2")),
         Event::anchor(&s, 4, StateFormat::Composite, &x),
@@ -619,7 +622,7 @@ fn sender_authorization_matrix() {
     let operator_only = |sender: &Digest, s: u64, a: &Authority| {
         let id = a.next_entity_id(EntityKind::Source, &d("x")).unwrap();
         vec![
-            Event::entity_found(sender, s, &id, EntityKind::Source, &d("x"), &d("scope"), 1, 1),
+            Event::entity_found(sender, s, &id, EntityKind::Source, &d("x"), &d("scope"), 1, 1, 900),
             Event::entity_lifecycle(sender, s, &src, Lifecycle::Active, Lifecycle::Dormant),
             Event::source_version(sender, s, &src, 1, 2, 1, &d("scope")),
             Event::import_legacy(sender, s, &[0u8; LEGACY_RECORD_BYTES]),
@@ -673,7 +676,7 @@ fn compare_and_publish_refuses_stale_requests_before_any_write() {
     assert_eq!(a.transition(g, &d("other root"), &e).unwrap_err(), Code::Stale);
     // A founding request names the identity the current state founds next; any other is stale.
     let o = op(&a);
-    let e = Event::entity_found(&o, 1, &d("guess"), EntityKind::Source, &d("l"), &d("scope"), 1, 1);
+    let e = Event::entity_found(&o, 1, &d("guess"), EntityKind::Source, &d("l"), &d("scope"), 1, 1, 900);
     assert_eq!(send!(a, &e).unwrap_err(), Code::Stale);
     assert_eq!(a.testing_counters(false).pwrites, 0);
     assert_eq!(cur(&a), (g, root));
@@ -686,7 +689,7 @@ fn capacity_refuses_before_any_write_and_reclamation_is_explicit_and_bounded() {
     let _s2 = active_source(&mut a, "s2");
     let o = op(&a);
     let id = a.next_entity_id(EntityKind::Source, &d("s3")).unwrap();
-    let e = Event::entity_found(&o, seq(&a, &o), &id, EntityKind::Source, &d("s3"), &d("scope"), 1, 1);
+    let e = Event::entity_found(&o, seq(&a, &o), &id, EntityKind::Source, &d("s3"), &d("scope"), 1, 1, 900);
     a.testing_counters(true);
     let g = cur(&a).0;
     assert_eq!(send!(a, &e).unwrap_err(), Code::Capacity);
@@ -735,17 +738,25 @@ fn source_versions_and_scopes_govern_evidence_admission() {
     // Non-sources have no versions; invalid founding shapes are refused.
     let e = Event::source_version(&o, seq(&a, &o), &o, 0, 1, 1, &scope);
     assert_eq!(send!(a, &e).unwrap_err(), Code::Invalid);
-    for (kind, scope, version, limit) in [
-        (EntityKind::Source, ZERO, 1, 1),
-        (EntityKind::Source, d("s"), 0, 1),
-        (EntityKind::Source, d("s"), 1, 0),
-        (EntityKind::Operator, d("s"), 0, 0),
-        (EntityKind::Runtime, ZERO, 1, 0),
+    for (kind, scope, version, limit, authority) in [
+        (EntityKind::Source, ZERO, 1, 1, 900),
+        (EntityKind::Source, d("s"), 0, 1, 900),
+        (EntityKind::Source, d("s"), 1, 0, 900),
+        (EntityKind::Operator, d("s"), 0, 0, 0),
+        (EntityKind::Runtime, ZERO, 1, 0, 0),
+        (EntityKind::Operator, ZERO, 0, 0, 7),
     ] {
         let id = a.next_entity_id(kind, &d("bad")).unwrap();
-        let e = Event::entity_found(&o, seq(&a, &o), &id, kind, &d("bad"), &scope, version, limit);
+        let e = Event::entity_found(&o, seq(&a, &o), &id, kind, &d("bad"), &scope, version, limit, authority);
         assert_eq!(send!(a, &e).unwrap_err(), Code::Invalid, "{kind:?}");
     }
+    // A source's memory source-authority identifier binds its typed observations: one present source row each.
+    let taken = a.current().unwrap().state.entity(&s).unwrap().source_authority;
+    let id = a.next_entity_id(EntityKind::Source, &d("twin")).unwrap();
+    let e = Event::entity_found(&o, seq(&a, &o), &id, EntityKind::Source, &d("twin"), &d("scope"), 1, 1, taken);
+    assert_eq!(send!(a, &e).unwrap_err(), Code::ScopeConflict);
+    assert_eq!(a.current().unwrap().state.source_for_authority(taken).map(|e| e.id), Some(s));
+    assert!(a.current().unwrap().state.source_for_authority(taken + 1000).is_none());
 }
 
 #[test]
@@ -1469,7 +1480,7 @@ fn state_invariants_refuse_every_violation() {
     let (lineage, g) = (c.lineage, c.generation);
     assert_eq!(c.state.check(4, &lineage, g), Ok(()));
     type Mutation = (&'static str, fn(&mut State, u64));
-    let mutations: [Mutation; 18] = [
+    let mutations: [Mutation; 20] = [
         ("founders out of place", |s, _| s.entities.swap(0, 1)),
         ("rows out of founding order", |s, _| s.entities.swap(2, 3)),
         ("a terminated founder", |s, _| s.entities[1].lifecycle = Lifecycle::Terminated),
@@ -1494,6 +1505,10 @@ fn state_invariants_refuse_every_violation() {
         ("a legacy import without its digest", |s, _| {
             s.legacy = Some(Legacy { generation: 1, format: StateFormat::K1, anchored: false, record_digest: ZERO });
         }),
+        ("two sources with one source authority", |s, _| {
+            s.entities[3].source_authority = s.entities[2].source_authority
+        }),
+        ("an operator with a source authority", |s, _| s.entities[0].source_authority = 1),
         ("a counter past its bound", |s, _| {
             s.publications = MAX_COUNTER + 1;
             s.last_publication_generation = 1;
@@ -1527,6 +1542,7 @@ fn state_invariants_refuse_every_violation() {
         (400, &bytes),
         (STATE_FIXED + 34, &bytes),
         (STATE_FIXED + 150, &bytes),
+        (STATE_FIXED + 148, &bytes),
         (unused_row, &short_bytes),
     ] {
         let mut b = base.clone();

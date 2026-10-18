@@ -115,7 +115,9 @@ extern "C" {
  *
  *  kind                          sender            receiver      payload
  *  2  ENTITY_FOUND               operator          the new id    kind u8 @0, per-turn bound u32 @4,
- *                                                                source version u64 @8, label @16, scope @48
+ *                                                                source version u64 @8, label @16, scope @48,
+ *                                                                source authority u32 @80 (sources: unique among
+ *                                                                present source rows; others 0)
  *  3  ENTITY_LIFECYCLE           operator          the entity    from u8 @0, to u8 @1
  *  4  SOURCE_VERSION             operator          the source    expected version u64 @0, new version u64 @8,
  *                                                                per-turn bound u32 @16, scope @24
@@ -219,6 +221,8 @@ typedef struct {
     uint64_t source_version;
     uint8_t label[32];
     uint8_t scope[32];
+    uint32_t source_authority; /* sources: the 32-bit source_authority its typed memory observations record */
+    uint32_t reserved2;
 } elpis_ecs_c_entity;
 
 typedef struct {
@@ -243,7 +247,7 @@ typedef struct {
 _Static_assert(sizeof(elpis_ecs_c_provisioned) == 144, "elpis_ecs_c_provisioned layout");
 _Static_assert(sizeof(elpis_ecs_c_report) == 136, "elpis_ecs_c_report layout");
 _Static_assert(sizeof(elpis_ecs_c_status) == 528, "elpis_ecs_c_status layout");
-_Static_assert(sizeof(elpis_ecs_c_entity) == 144, "elpis_ecs_c_entity layout");
+_Static_assert(sizeof(elpis_ecs_c_entity) == 152, "elpis_ecs_c_entity layout");
 _Static_assert(sizeof(elpis_ecs_c_receipt) == 192, "elpis_ecs_c_receipt layout");
 _Static_assert(sizeof(elpis_ecs_c_counters) == 96, "elpis_ecs_c_counters layout");
 #endif
@@ -269,6 +273,9 @@ int32_t elpis_ecs_c_read_report(const elpis_ecs_c_authority *authority, elpis_ec
 int32_t elpis_ecs_c_entity_at(const elpis_ecs_c_authority *authority, uint32_t index, elpis_ecs_c_entity *out);
 int32_t elpis_ecs_c_entity_find(const elpis_ecs_c_authority *authority, const uint8_t id[32],
                                 elpis_ecs_c_entity *out);
+/* The present source row owning a memory source-authority identifier, or UNKNOWN_ENTITY. */
+int32_t elpis_ecs_c_source_for_authority(const elpis_ecs_c_authority *authority, uint32_t source_authority,
+                                         elpis_ecs_c_entity *out);
 /* The identity the next ENTITY_FOUND of `kind` and `label` founds (the receiver that event must name). */
 int32_t elpis_ecs_c_next_entity_id(const elpis_ecs_c_authority *authority, uint8_t kind, const uint8_t label[32],
                                    uint8_t out[32]);
