@@ -104,8 +104,19 @@ any freeze, on DEV inputs only:
 * **Adversarial check.** `test_instrument.py` generates a DEV run (one run per point), and every listed mutant fails
   its gate (the list is in the test).
 
-A full DEV run of the corrected instrument (312 trials) passes G1-G6. DEV records are development records, never
-evidence. The subject stays `UNQUALIFIED` until its QUAL evidence says otherwise.
+* **Rehearsal under a freeze (DEV inputs).** The whole pipeline (clean checkout, Release build, non-editable install,
+  `freeze`, `run --freeze`, `verdict`, `seal`, `evidence`) was rehearsed on DEV inputs. At dffb5b0 it judged one
+  random-family trial G3 FAIL (`random/composite/random/27`: an unresolved candidate that looked never requested). The
+  defect was the runner's, not the subject's: the child flushes its request event before it publishes, but that event
+  reached the runner in the same pipe chunk as the LEARN the runner was waiting for, and the reader discarded the
+  rest of the chunk. The runner now reads each child's output through one buffer for the child's life (c81a223, with
+  a regression test the old reader fails). The rehearsal at c81a223 passes G1-G6 over 312 trials, and its sealed
+  directory validates (`verify_evidence(..., inputs="dev")` finds no problem; as QUAL evidence it is refused, as it
+  must be). An earlier full DEV run (4c996c6) passed only because no chunk split there; the checker caught the loss
+  when it occurred.
+
+DEV records are development records, never evidence. The subject stays `UNQUALIFIED` until its QUAL evidence says
+otherwise.
 
 ## Question
 

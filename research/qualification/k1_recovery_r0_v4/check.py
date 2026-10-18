@@ -503,8 +503,10 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def verify_evidence(directory: Path, plan_path: Path) -> list:
-    """Every problem with a sealed evidence directory (empty: complete, intact, bound and recomputed)."""
+def verify_evidence(directory: Path, plan_path: Path, *, inputs: str = "qual") -> list:
+    """Every problem with a sealed evidence directory (empty: complete, intact, bound and recomputed). Evidence is a
+    complete QUAL run; ``inputs="dev"`` exists only so a sealed full DEV rehearsal exercises every other check before
+    any QUAL data exists (its records are never evidence)."""
     problems = []
     present = sorted(p.name for p in directory.iterdir())
     if present != sorted(EVIDENCE_FILES):
@@ -530,8 +532,8 @@ def verify_evidence(directory: Path, plan_path: Path) -> list:
     if freeze.get("schema") != FREEZE_SCHEMA or run.get("schema") != RUN_SCHEMA or verdict.get("schema") != \
             VERDICT_SCHEMA:
         problems.append("a schema is not the registered one")
-    if run.get("inputs") != "qual" or run.get("dev_runs") is not None or run.get("only") is not None:
-        problems.append("the run is not a complete QUAL run")
+    if run.get("inputs") != inputs or run.get("dev_runs") is not None or run.get("only") is not None:
+        problems.append(f"the run is not a complete {inputs.upper()} run")
     if run.get("freeze_sha256") != _sha(directory / "freeze.json"):
         problems.append("the run does not name this freeze record")
     if run.get("records_sha256") != _sha(directory / "records.jsonl"):
@@ -548,7 +550,7 @@ def verify_evidence(directory: Path, plan_path: Path) -> list:
     if _sha(plan_path) != ((freeze.get("instrument") or {}).get("files") or {}).get("plan.json"):
         problems.append("the plan is not the frozen plan")
     plan = json.loads(plan_path.read_text())
-    recomputed = evaluate(plan, records, inputs="qual")
+    recomputed = evaluate(plan, records, inputs=inputs)
     for key in ("records", "planned", "complete", "missing", "gates", "verdict"):
         if recomputed[key] != verdict.get(key):
             problems.append(f"the verdict's {key} is not what the records give")
