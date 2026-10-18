@@ -626,10 +626,14 @@ def _torn(plan: dict, point: str, run_index: int, capacity: int) -> int:
 
 
 FREEZE_SCHEMA = "elpis.k1-recovery-r0-v4.freeze.v1"
-# The deployable libraries a run admits (elpis.runtime.deployment, testing build), relative to the build tree.
-LIBRARIES = ("native/runtime/libelpis_runtime_testing.so", "native/ECS/libelpis_ecsg_math.so",
-             "native/ECS/libelpis_ecsg_k1.so", "native/ECS/libelpis_ecsg_k1_fms.so", "native/ECS/libelpis_ecs_memory.so",
-             "native/ECS/libelpis_ecs_composite.so", "native/runtime/libelpis_hacf_observation.so")
+
+
+def libraries() -> tuple[str, ...]:
+    """The libraries a run admits, relative to the build tree: exactly the testing deployment's set, read from its one
+    authority (``elpis.runtime.deployment.deployable_libraries``), never a second list."""
+    from elpis.runtime.deployment import deployable_libraries
+
+    return tuple(relative for _, _, relative in deployable_libraries(testing=True))
 
 
 def _sha(path: Path) -> str:
@@ -654,7 +658,7 @@ def verify_freeze(freeze_path: Path, native_build: Path, source_commit: str) -> 
     for name, digest in instrument().items():
         if freeze["instrument"].get(name) != digest:
             problems.append(f"{name} differs from the frozen instrument")
-    for rel in LIBRARIES:
+    for rel in libraries():
         if freeze["libraries"].get(rel) != _sha(native_build / rel):
             problems.append(f"{rel} differs from the frozen library")
     if problems:

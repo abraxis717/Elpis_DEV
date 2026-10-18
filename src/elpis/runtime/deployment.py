@@ -45,8 +45,8 @@ from .errors import CompositionError
 from .observation import HacfObservationLibrary
 from .recovery import provision_k1_checkpoint
 
-__all__ = ("DEPLOYMENT_SCHEMA", "LINEAGE_SCHEMA", "Deployment", "LineageConfig", "Session", "initial_weights",
-           "init_deployment")
+__all__ = ("DEPLOYMENT_SCHEMA", "LINEAGE_SCHEMA", "Deployment", "LineageConfig", "Session", "deployable_libraries",
+           "initial_weights", "init_deployment")
 
 DEPLOYMENT_SCHEMA = "elpis.deployment.v1"
 LINEAGE_SCHEMA = "elpis.lineage.v1"
@@ -63,6 +63,13 @@ _HACF = ("elpis_hacf_observation", "libelpis_hacf_observation.so", "native/runti
 _RUNTIME = {False: ("elpis_runtime", "libelpis_runtime.so", "native/runtime/libelpis_runtime.so"),
             True: ("elpis_runtime_testing", "libelpis_runtime_testing.so",
                    "native/runtime/libelpis_runtime_testing.so")}
+
+
+def deployable_libraries(testing: bool = False) -> tuple[tuple[str, str, str], ...]:
+    """The native library set one deployment pins and admits, in admission order: ``(library id, file name, path
+    relative to an operator build tree)``. ``testing`` selects the testing RuntimeCore build. This is the one list of
+    the files a deployment runs; ``init_deployment``, admission and the qualification instruments read it."""
+    return (_RUNTIME[bool(testing)],) + _ECS_SET + (_HACF,)
 
 
 def _refuse(code, detail):
@@ -180,7 +187,7 @@ def init_deployment(home: Path, native_build: Path, *, testing: bool = False, so
     lib = home / "lib"
     lib.mkdir(mode=0o700)
     entries = []
-    for library_id, name, relative in (_RUNTIME[testing],) + _ECS_SET + (_HACF,):
+    for library_id, name, relative in deployable_libraries(testing):
         data = _read_regular(native_build / relative)
         _write_once(lib / name, data, 0o500)
         entries.append({"library_id": library_id, "size": len(data), "sha256": hashlib.sha256(data).hexdigest()})
