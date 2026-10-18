@@ -4,13 +4,18 @@ Every specification states its status: NOT RUN (no evidence may exist), RUN PASS
 write-once evidence that the specification's independent validator verifies (exactly its files, every digest, their
 binding to the freeze) and recomputes, and the status must repeat the recomputed verdict. Only a RUN PASS backed so
 may state a QUALIFIED subject, with its scope in its own document; no other document declares a qualification.
+The repository keeps no file over 2 MiB, so a large sealed file is committed gzip-compressed (``name.gz``) and
+restored before validation; the sealed digests prove the restored bytes are the written ones.
 """
 from __future__ import annotations
 
+import gzip
 import importlib.util
 import json
 from pathlib import Path
 import re
+import shutil
+import tempfile
 
 REPO = Path(__file__).resolve().parents[2]
 SPECS = REPO / "docs" / "qualification"
@@ -44,9 +49,15 @@ def _validate(name):
     spec = importlib.util.spec_from_file_location(f"validator_{name}", VALIDATORS[name])
     check = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(check)
-    evidence = REPO / EVIDENCE[name]
-    problems = check.verify_evidence(evidence, VALIDATORS[name].parent / "plan.json")
-    verdict = json.loads((evidence / "verdict.json").read_text()).get("verdict") if not problems else None
+    with tempfile.TemporaryDirectory() as tmp:
+        sealed = Path(tmp)
+        for p in (REPO / EVIDENCE[name]).iterdir():
+            if p.suffix == ".gz":
+                (sealed / p.stem).write_bytes(gzip.decompress(p.read_bytes()))
+            else:
+                shutil.copyfile(p, sealed / p.name)
+        problems = check.verify_evidence(sealed, VALIDATORS[name].parent / "plan.json")
+        verdict = json.loads((sealed / "verdict.json").read_text()).get("verdict") if not problems else None
     return problems, verdict
 
 

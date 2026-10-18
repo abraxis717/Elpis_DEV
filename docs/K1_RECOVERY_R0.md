@@ -4,9 +4,11 @@
 
 Status: implemented systems mechanism (`native/runtime/src/checkpoint.rs`, written by the durability lane of
 `native/runtime/src/durable.rs`, RuntimeCore ABI v4, `elpis.runtime.recovery`).
-UNQUALIFIED: this document specifies the mechanism and its tests; it does not qualify it. Qualification
-specification for ABI v4: `docs/qualification/K1_RECOVERY_R0_V4.md` (NOT RUN); the ABI v3 pre-registration
-`docs/qualification/K1_RECOVERY_R0.md` (NOT RUN) is kept as written.
+UNQUALIFIED here: this document specifies the mechanism and its tests and qualifies nothing by itself. Its ABI v4
+qualification specification, `docs/qualification/K1_RECOVERY_R0_V4.md`, is RUN PASS with in-repository evidence for
+commit `18f2f4d` only, within the scope stated there (crash consistency under `SIGKILL`, torn writes and lost-sync
+faults; not power loss). The ABI v3 pre-registration `docs/qualification/K1_RECOVERY_R0.md` (NOT RUN) is kept as
+written.
 
 ## Why a distinct owner
 

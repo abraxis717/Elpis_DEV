@@ -253,6 +253,9 @@ FROZEN_EVIDENCE = {
     "research/qualification/k1_recovery_r0_v4/FREEZE.json":
         "K1 Recovery R0 v4 freeze record, published before the QUAL run: it names the native library files it "
         "measured (K1 ABI names).",
+    "research/qualification/k1_recovery_r0_v4/evidence/":
+        "K1 Recovery R0 v4 write-once QUAL evidence: its freeze, run and trial records name the native library files "
+        "they measured and deployed (K1 ABI names).",
 }
 
 # Native sources whose exact bytes are recorded by research/ecs_runtime_r1/evidence (measured and sanitized

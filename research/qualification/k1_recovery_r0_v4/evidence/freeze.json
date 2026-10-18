@@ -1,0 +1,178 @@
+{
+ "deployed": {
+  "catalog": {
+   "elpis_ecs_composite": "b27717171734ce4013b0ad29a08577bd5b118eb88f4232f100790babf15269de",
+   "elpis_ecs_memory": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+   "elpis_ecsg_k1": "34620b4d894a944b0d73bdb2a1cf0367c4a68d2f461d80f20d763caef36bf5e5",
+   "elpis_ecsg_k1_fms": "91e3c011bbff4896b1eadbb62412ee6997f8e192722c5d47736c1f0c365bf7da",
+   "elpis_ecsg_math": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+   "elpis_hacf_observation": "8943f677331328dfd8c5569f17a572981ace542a2e465687cd843b35bbcfa62e",
+   "elpis_runtime_testing": "3c16135e4c3d665cc716a656440c1c4b090a03e1e82bd7f768f28bdd94c81b9a"
+  },
+  "catalog_sha256": "262f0f7ee65bb5170d3743fd6523558c8fbd20a7d7af0fdc6639fbf3fbea7431",
+  "deployment_abi": {
+   "composite": 1,
+   "runtime": 5
+  },
+  "lib": {
+   "libelpis_ecs_composite.so": "b27717171734ce4013b0ad29a08577bd5b118eb88f4232f100790babf15269de",
+   "libelpis_ecs_memory.so": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+   "libelpis_ecsg_k1.so": "34620b4d894a944b0d73bdb2a1cf0367c4a68d2f461d80f20d763caef36bf5e5",
+   "libelpis_ecsg_k1_fms.so": "91e3c011bbff4896b1eadbb62412ee6997f8e192722c5d47736c1f0c365bf7da",
+   "libelpis_ecsg_math.so": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+   "libelpis_hacf_observation.so": "8943f677331328dfd8c5569f17a572981ace542a2e465687cd843b35bbcfa62e",
+   "libelpis_runtime_testing.so": "3c16135e4c3d665cc716a656440c1c4b090a03e1e82bd7f768f28bdd94c81b9a"
+  },
+  "reported_abi": {
+   "continuity": 1,
+   "k1": 1,
+   "runtime": 5
+  }
+ },
+ "evidence_schema": {
+  "freeze": "elpis.k1-recovery-r0-v4.freeze.v2",
+  "record": "elpis.k1-recovery-r0-v4.record.v2",
+  "run": "elpis.k1-recovery-r0-v4.run.v2",
+  "verdict": "elpis.k1-recovery-r0-v4.verdict.v2"
+ },
+ "filesystem": {
+  "type": "ext2/ext3",
+  "work_root": "/home/user/elpis-work/qual-18f2f4de3c1b/work"
+ },
+ "gates": [
+  "G1",
+  "G2",
+  "G3",
+  "G4",
+  "G5",
+  "G6"
+ ],
+ "inputs": "qual",
+ "instrument": {
+  "files": {
+   "README.md": "38f3cf46d9a49c4762307d52d8b4aeb5e2b7ae4d1db80792e719620732b70404",
+   "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "check.py": "902f939b92455804658e7154e464bdaf5d68fa06430306d84fbff78544384b1c",
+   "freeze.py": "2b8236c1704d17ad08ae7ac35658f4dedada120b506dd23e6158862a1c280a06",
+   "plan.json": "aa350cce30378a8373bf0c17bf4da2c22c4c28ceb2e1a3c5ca9458c061e1c31b",
+   "premise.py": "c351cff1a491259d78d5b05ba7162093eaba7bc84372e2cc0bce613dab977dcb",
+   "runner.py": "e548dfa942ceec6fd9593ff1282e7757c1ad1acc4d86b426942c7877172f2eef"
+  },
+  "specification": "b5405af83e05417ef58e62eebb2279a9cab394b10a2a7909730ae6f947616e9e"
+ },
+ "native": {
+  "native/ECS/libelpis_ecs_composite.so": "b27717171734ce4013b0ad29a08577bd5b118eb88f4232f100790babf15269de",
+  "native/ECS/libelpis_ecs_memory.so": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+  "native/ECS/libelpis_ecsg_k1.so": "34620b4d894a944b0d73bdb2a1cf0367c4a68d2f461d80f20d763caef36bf5e5",
+  "native/ECS/libelpis_ecsg_k1_fms.so": "91e3c011bbff4896b1eadbb62412ee6997f8e192722c5d47736c1f0c365bf7da",
+  "native/ECS/libelpis_ecsg_math.so": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+  "native/runtime/libelpis_hacf_observation.so": "8943f677331328dfd8c5569f17a572981ace542a2e465687cd843b35bbcfa62e",
+  "native/runtime/libelpis_runtime_testing.so": "3c16135e4c3d665cc716a656440c1c4b090a03e1e82bd7f768f28bdd94c81b9a"
+ },
+ "plan_runs": {
+  "adopt": 4,
+  "anchor": 4,
+  "discard": 4,
+  "identity": 4,
+  "identity_refused": 4,
+  "import": 4,
+  "publish": 4,
+  "random": 32,
+  "uncertain": 4
+ },
+ "platform": {
+  "kernel": "6.18.44-fc-v139",
+  "libc": "glibc-2.39",
+  "machine": "x86_64",
+  "system": "Linux"
+ },
+ "premise": {
+  "abi_v4_commit": "65287ad683440d48d3a37c1ff7fa94ea3ab5436c",
+  "abi_v4_recovery_tests": [
+   "a_checkpoint_store_is_not_attached_under_a_pending_publication",
+   "a_failed_request_never_stops_the_hot_lane_and_the_next_request_succeeds",
+   "a_recoverable_request_without_a_checkpoint_store_is_refused_before_anything_is_captured",
+   "a_simulated_death_on_the_lane_stops_the_hot_lane_too",
+   "a_slot_that_does_not_read_back_exactly_is_never_acknowledged",
+   "a_state_of_another_shape_is_refused_never_resized_for",
+   "a_store_attached_after_an_identity_anchor_makes_the_same_state_recoverable_without_a_new_record",
+   "a_ticket_resolved_beyond_the_kept_window_reads_unknown_never_acknowledged",
+   "a_torn_or_corrupted_slot_is_not_a_checkpoint",
+   "an_identity_request_with_a_checkpoint_store_is_refused_and_a_recoverable_one_is_read_back_verified",
+   "an_operator_discards_or_adopts_an_unresolved_candidate_explicitly",
+   "an_uncertain_publication_faults_the_lane_until_restart_and_the_hot_lane_continues",
+   "an_unresolved_candidate_waits_for_the_operator",
+   "checkpoint_bytes_never_authorize_themselves",
+   "every_durable_step_resolves_to_an_exact_state_or_an_explicit_disposition",
+   "io_failures_are_definitive_and_leave_the_previous_authority",
+   "operator_reconciliation_refuses_while_a_publication_is_in_flight",
+   "provisioning_is_fixed_and_never_overwrites",
+   "restart_resumes_exactly_the_last_acknowledged_state_never_a_later_volatile_one",
+   "the_hot_lane_performs_no_continuity_or_checkpoint_io",
+   "volatile_turns_never_touch_the_slots_and_durable_publications_keep_the_state_resumable"
+  ],
+  "commit": "18f2f4de3c1bacef4f5b6bc61ac5999ecd133038",
+  "problems": [],
+  "reviewed_not_mechanical": {
+   "native/runtime/src/core.rs": {
+    "basis": "control operations restructured for the testing-only crash points (production equivalence per the 2026-10-18 review: identical exported symbols and call targets); the ABI v5 turn changes are outside the durability law",
+    "diff_sha256": "ae5e40aa50436cec9b5f7f77e302e4a3aa67471ec2918d98f630582ccb840786"
+   }
+  },
+  "schema": "elpis.k1-recovery-r0-v4.premise.v1"
+ },
+ "python": {
+  "executable": "/usr/bin/python3.12",
+  "implementation": "CPython",
+  "isolated": 1,
+  "modules_outside_package": [],
+  "no_bytecode": 1,
+  "package": "38fbf2ee6c3ef453c3e54f3ec7b4bf9642fdcde133b941ba71c4deedbe635d71",
+  "package_files": 183,
+  "package_root": "/home/user/elpis-work/qual-18f2f4de3c1b/venv/lib/python3.12/site-packages/elpis",
+  "source_package": "38fbf2ee6c3ef453c3e54f3ec7b4bf9642fdcde133b941ba71c4deedbe635d71",
+  "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+ },
+ "schema": "elpis.k1-recovery-r0-v4.freeze.v2",
+ "source": {
+  "clean": true,
+  "commit": "18f2f4de3c1bacef4f5b6bc61ac5999ecd133038",
+  "status": [],
+  "tree": "a6de5ce85e0ec453b1d0fff4d110f8504ac31c6c"
+ },
+ "specification": "docs/qualification/K1_RECOVERY_R0_V4.md",
+ "subject": {
+  "native/continuity/src/error.rs": "c4d0ccf7dc95ce874d0599e31888aa45d154a3171c818563af065d90a14486cc",
+  "native/continuity/src/ffi.rs": "daf9dfdf034d25cd38b199ac05337905924c7e2c1b087e1d0c422b2197543095",
+  "native/continuity/src/lib.rs": "773ebc69b7f1888efe745f0d2470bfb90e95df508e6bc6b7ea0afde71eed1a53",
+  "native/continuity/src/record.rs": "cc0a6c194c39f8dd17a261ca3ae9c4d6c3606f2cfb985406a4be27839b71218f",
+  "native/continuity/src/sha256.rs": "ce35dfcd12758177d45b4c490f0d905f811d6cc387d153c809e8262883a9dbb2",
+  "native/continuity/src/store.rs": "dca4c8a79b76a36a214e0b626a02cfed1a604ba27a6baec66c92947cd28e5440",
+  "native/continuity/src/tests.rs": "80b9b58679504b9c1f5e9f87ae70105a0cd496e7dde5dcd0483fa8836e0537b0",
+  "native/runtime/include/elpis/runtime.h": "c9e8f14124a1847349b45d11384480fa34df3329d0ab5e5d1f2d5a0abfe1cd45",
+  "native/runtime/src/checkpoint.rs": "74282dc5538c8191478e774e5444edd0b11bf0fd34ca214d3cb43af6efa9fd0c",
+  "native/runtime/src/code.rs": "b966a2e7a0dccfd9fdebe586941933221dbb285ffc0620e8f2ce28d733c31ca4",
+  "native/runtime/src/core.rs": "94d7908ac3262d8ba1b6ecaac28f6aa6f0d331962628877963e5ef3b2192483e",
+  "native/runtime/src/durable.rs": "35e37dc4cd5b09435cec0ec0f98c9f4b29d2abb08e5968b696bb593fdce70b82",
+  "native/runtime/src/ffi.rs": "28d52b33b1fe90a48b8661078f98f6647a683da4669518077d09f9a9131fd248",
+  "native/runtime/src/fuel.rs": "2b1e5e222bbc26fe9e5f24973819ffe5df559f82c836b021f59f6ce76c9a4bbb",
+  "native/runtime/src/lib.rs": "680519087ebac4b844c94266cd8fe247860e7294fd68709174145631d32f7d89",
+  "native/runtime/src/substrate.rs": "9e728ad6b80d47f06717ca6a2dce90fb5642df0441d1adbf47a9806bd4b5d0bd",
+  "native/runtime/src/tests.rs": "f5268c01b5dee8a503371a6f959a769dc02970674d5ae2eada071370d275e59c",
+  "src/elpis/ECS/composite.py": "9e8fdd66a86a07a33b23de863cc636bdd94ee0fb01f15f391d41fdd145296be7",
+  "src/elpis/ECS/k1.py": "dc0b0fd2e88717f5881c031698bbc48ebe061276e4414a2050cadc89201381be",
+  "src/elpis/runtime/cognition.py": "9476399146c2d73b952ac6925871853558aafd9da460aca47fc91bba37afeaab",
+  "src/elpis/runtime/composition.py": "38a5e95f67ebf161ea37ce2b0faed1c71499f243a225a016f8bc3564c8ed02b1",
+  "src/elpis/runtime/core.py": "931d918ead86f6d7c5b350b281fbb7af88fb253924d58e3dfff2282266149e98",
+  "src/elpis/runtime/deployment.py": "18730353f26bb0e12ceaf1b8ddf8f988061bc59c1d4227d0949eef80b7a78ae7",
+  "src/elpis/runtime/fuel.py": "674e62cbf01262260cb42c188df92792b50acb5327cc734e71d12964299b931a",
+  "src/elpis/runtime/recovery.py": "082ee3b719095840ae03cfa5fd9f59a48476fc04e4f0acc89d941dbe82d918cb"
+ },
+ "toolchain": {
+  "c++": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "cargo": "cargo 1.97.0 (c980f4866 2026-06-30)",
+  "cc": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "cmake": "cmake version 3.28.3",
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)"
+ }
+}
