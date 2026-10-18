@@ -17,6 +17,14 @@ Made before the freeze, on DEV inputs only; nothing of it was chosen after obser
   turn, `budget.max_observations`, `counters.k1_observes`); the durability lane, the checkpoint store, continuity's
   records, the envelopes and every crash law this specification measures are ABI v4's, unchanged. The question and
   the gates below are therefore asked of the v4 durability law as the v5 library implements it.
+* **The unchanged-law premise, bound to source** (`premise.py`; `plan.json` `premise.abi_v4_commit` = 65287ad, the last
+  ABI v4 commit). The freeze is refused, and so is every run, unless all hold against the qualifying checkout: P1
+  `native/continuity` byte-identical; P2 the ABI v4 durability-law test files (`test_k1_recovery.py`,
+  `test_durable_process_kill.py`, `test_durable_ticket_law.py`, `test_composite_process_kill.py`,
+  `test_autonomous_no_growth.py`) byte-identical; P3 all 21 ABI v4 recovery and crash tests of `tests.rs` present with
+  identical bodies; P4 `durable.rs` and `checkpoint.rs` identical once their testing-only items are removed. Not
+  mechanical, so recorded with a digest rather than claimed: the restructured control operations in `core.rs`
+  (production equivalence per the 2026-10-18 review: identical exported symbols and call targets).
 * **The control-operation hooks** this specification made a prerequisite exist:
   `elpis_runtime_testing_control_fault` (testing library only; docs/RUNTIME_CORE.md, "Control-operation crash
   points"): anchor, import, discard and adopt at begun / slot written / slot synced / record torn / record written /

@@ -8,6 +8,7 @@ nothing by existing. Every specification here is `NOT RUN` and its subject is `U
 |---|---|---|
 | [Cognitive Boundary R1](COGNITIVE_BOUNDARY_R1.md) | QUERY/LEARN separation, codec admission, fuel, managed ownership, native admission (RuntimeCore ABI v3) | NOT RUN · UNQUALIFIED |
 | [Cognitive Boundary R2](COGNITIVE_BOUNDARY_R2.md) | the same boundary under RuntimeCore ABI v4, plus the durability lane, HOT residency, composite observation authority and context isolation | NOT RUN · UNQUALIFIED |
+| [Cognitive Boundary R2 under ABI v5](COGNITIVE_BOUNDARY_R2_V5.md) | the boundary under RuntimeCore ABI v5: R2's laws plus observe-only turn authority, memory mutation without K1 learning, `max_observations`, ABI compatibility and refusal of obsolete callers | NOT RUN · UNQUALIFIED |
 | [K1 Recovery R0](K1_RECOVERY_R0.md) | the bounded continuity-authorized K1 checkpoint owner (docs/K1_RECOVERY_R0.md), as pre-registered against ABI v3 | NOT RUN · UNQUALIFIED |
 | [K1 Recovery R0 under ABI v4](K1_RECOVERY_R0_V4.md) | the same owner under ABI v4: volatile LEARN, explicit publication, bare K1 and composite lineages | NOT RUN · UNQUALIFIED |
 | [HACF-ECS Scientific Bridge R0](HACF_ECS_BRIDGE_R0.md) | research/hacf_ecs_bridge_r0 (RESEARCH_ONLY) | NOT RUN · UNQUALIFIED |

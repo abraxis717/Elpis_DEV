@@ -472,5 +472,9 @@
   "NOTHING_TO_RECOVER": "anchor family only: anchor the caller's recreated state explicitly",
   "import_pending": "import family, continuity still K1: import again from the K1 store's RESUMABLE envelope",
   "otherwise": "no action"
+ },
+ "premise": {
+  "abi_v4_commit": "65287ad683440d48d3a37c1ff7fa94ea3ab5436c",
+  "rule": "the ABI v4 durability law is asked of the ABI v5 library only while premise.py finds P1-P4 (continuity byte-identical; the v4 durability-law tests byte-identical; every v4 recovery test body unchanged; durable.rs and checkpoint.rs identical in production) against this commit, the last ABI v4 commit before RuntimeCore ABI v5"
  }
 }

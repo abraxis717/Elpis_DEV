@@ -152,10 +152,21 @@ def machine(work_root: Path) -> dict:
             "filesystem": {"work_root": str(work_root), "type": _tool(["stat", "-f", "-c", "%T", str(work_root)])}}
 
 
+def premise(repo: Path) -> dict:
+    """The unchanged-law premise of the plan's ABI v4 commit, verified against the checkout (``premise.py``)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("k1r4_premise", repo / HERE.relative_to(REPO) / "premise.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    plan = json.loads((repo / HERE.relative_to(REPO) / "plan.json").read_text())
+    return module.check(repo, plan["premise"]["abi_v4_commit"])
+
+
 def observe(*, native_build: Path, work_root: Path, repo: Path = REPO) -> dict:
     """Everything a freeze binds, measured now (``deployed`` is measured after the deployment exists)."""
     return {"source": source(repo), "instrument": instrument(repo), "subject": subject(repo),
-            "python": python(repo), "native": native(native_build), **machine(work_root)}
+            "premise": premise(repo), "python": python(repo), "native": native(native_build), **machine(work_root)}
 
 
 def trial_deployment(native_build: Path, scratch: Path) -> dict:
@@ -197,10 +208,13 @@ def _preconditions(observed: dict) -> list:
         problems.append(f"elpis modules loaded from outside the package: {py['modules_outside_package']}")
     if any(v is None for v in observed["native"].values()):
         problems.append("a deployable library is missing from the native build")
+    if observed["premise"]["problems"]:
+        problems.append(f"the unchanged-law premise does not hold: {observed['premise']['problems']}")
     return problems
 
 
-_COMPARED = (("source", "commit"), ("source", "tree"), ("instrument",), ("subject",), ("python", "executable"),
+_COMPARED = (("source", "commit"), ("source", "tree"), ("instrument",), ("subject",), ("premise",),
+             ("python", "executable"),
              ("python", "version"), ("python", "implementation"), ("python", "package"), ("native",),
              ("toolchain",), ("platform",), ("filesystem", "type"))
 

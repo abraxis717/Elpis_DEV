@@ -2,6 +2,10 @@
 
 Status: **NOT RUN** · Subject: **UNQUALIFIED**
 
+*Superseded before any run:* the product is RuntimeCore ABI v5; its boundary is
+[Cognitive Boundary R2 under ABI v5](COGNITIVE_BOUNDARY_R2_V5.md). This specification stays as pre-registered, unrun
+authority for ABI v4; nothing of a v4 run would extend to v5.
+
 Successor of [Cognitive Boundary R1](COGNITIVE_BOUNDARY_R1.md), which was pre-registered against RuntimeCore ABI v3
 and has a retrospective closure for commit `bec6da7` only ([closure](closures/COGNITIVE_BOUNDARY_R1_CLOSURE_20261011.md);
 its evidence is held outside this repository). R1 cannot carry over: ABI v4 changed the subject (volatile commits, the

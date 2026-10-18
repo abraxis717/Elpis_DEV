@@ -206,3 +206,44 @@ def test_a_refused_qual_run_creates_nothing(tmp_path, observed):
         done = subprocess.run(base + ["--work", str(work)] + extra, capture_output=True, text=True, cwd=tmp_path)
         assert done.returncode != 0 and needle in done.stderr, done.stderr
         assert not work.exists() and not (tmp_path / "records.jsonl").exists()
+
+
+premise = _load("premise")
+_V4 = json.loads((INSTRUMENT / "plan.json").read_text())["premise"]["abi_v4_commit"]
+
+
+def test_the_production_view_drops_exactly_the_testing_only_items():
+    base = "pub fn law(a: u32, b: u32) -> u32 {\n    a + b\n}\nstruct S {\n    x: u32,\n}\n"
+    testing = ('pub fn law(a: u32, b: u32) -> u32 {\n    #[cfg(feature = "testing")]\n    if a == 9 {\n        return 0;\n'
+               '    }\n    a + b // the law\n}\n#[cfg(any(test, feature = "testing"))]\npub fn hook(\n    a: u32,\n    b: u32,\n'
+               ') -> u32 {\n    a\n}\nstruct S {\n    x: u32,\n    #[cfg(feature = "testing")]\n    plan: Option<u32>,\n}\n')
+    assert premise.production(testing) == premise.production(base)
+    assert premise.production(base.replace("a + b", "a - b")) != premise.production(base)   # a law change remains
+
+
+def test_the_unchanged_law_premise_holds_against_the_abi_v4_commit():
+    result = premise.check(REPO, _V4)
+    assert result["problems"] == [] and len(result["abi_v4_recovery_tests"]) >= 21
+
+
+@pytest.mark.parametrize("path,edit,needle", [
+    ("native/runtime/src/durable.rs", lambda t: t.replace("Status::Acknowledged", "Status::Uncertain", 1), "P4"),
+    ("native/runtime/src/tests.rs", lambda t: t.replace("fn provisioning_is_fixed_and_never_overwrites",
+                                                        "fn provisioning_renamed", 1), "P3"),
+    ("tests/integration/test_k1_recovery.py", lambda t: t + "\n# changed\n", "P2"),
+])
+def test_a_changed_law_or_law_test_breaks_the_premise(monkeypatch, path, edit, needle):
+    real = premise._show
+
+    def show(repo, commit, p):
+        text = real(repo, commit, p)
+        return edit(text) if commit == "HEAD" and p == path else text
+
+    monkeypatch.setattr(premise, "_show", show)
+    assert any(p.startswith(needle) for p in premise.check(REPO, _V4)["problems"])
+
+
+def test_a_broken_premise_refuses_the_freeze(observed):
+    broken = copy.deepcopy(observed)
+    broken["premise"] = dict(broken["premise"], problems=["P1: native/continuity differs from the ABI v4 commit"])
+    assert any("unchanged-law premise" in p for p in freeze.compare(_as_freeze(observed), broken))
