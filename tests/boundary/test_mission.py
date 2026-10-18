@@ -198,8 +198,12 @@ def test_system_authority_encodes_the_mission():
     assert system["mission"]["gate"] == "tests/boundary/test_mission.py"
     subs = {s["id"]: s for s in system["subsystems"]}
     assert tuple(subs["inference"]["canonical_modules"]) == M.CODEC_MODULES
-    for ecs in ("ECS_G", "ECS_C"):   # the two native ECS domains depend on the substrate only, never on each other
-        assert subs[ecs]["depends_on"] == ["substrate"] and not subs[ecs].get("uses_numpy"), ecs
+    # The two native ECS domains never depend on each other: ECS_G on the substrate only, ECS_C on the substrate and,
+    # until standalone continuity retires into it (Stage F), the continuity crate its authority embeds.
+    assert subs["ECS_G"]["depends_on"] == ["substrate"]
+    assert subs["ECS_C"]["depends_on"] == ["substrate", "continuity"]
+    for ecs in ("ECS_G", "ECS_C"):
+        assert not subs[ecs].get("uses_numpy"), ecs
         assert ecs not in subs["inference"]["depends_on"] and ecs not in subs["continuity"]["depends_on"], ecs
     assert {"ECS_G", "ECS_C", "continuity", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
     assert not subs["continuity"]["depends_on"] and "continuity" not in subs["inference"]["depends_on"]

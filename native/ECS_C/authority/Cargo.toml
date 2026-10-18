@@ -1,0 +1,26 @@
+[package]
+name = "elpis_ecs_c_authority"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+description = "Elpis ECS_C authority: the bounded, authenticated, semantically replayed continuity and entity authority (fixed two-slot records and a protected rollback witness) behind a stable C ABI."
+license = "UNLICENSED"
+publish = false
+
+# The continuity crate supplies SHA-256, the evolution-authority digest and the legacy v2/v3 record reader (one
+# implementation each, never a copy). It folds into ECS_C when standalone continuity retires (census, section 9).
+[dependencies]
+elpis_continuity = { path = "../../continuity" }
+
+[lib]
+name = "elpis_ecs_c_authority"
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[features]
+# Test-only fault injection and I/O counters, compiled into libelpis_ecs_c_authority_testing.so only.
+testing = []
+
+[profile.release]
+panic = "abort"
+debug = false

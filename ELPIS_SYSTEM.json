@@ -134,36 +134,41 @@
     {
       "id": "ECS_C",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "ECS_C, continuity and memory (docs/NATIVE_SPLIT_CENSUS.md). At this stage it holds the ECS memory (docs/ECS_MEMORY.md, libelpis_ecs_memory): the bounded, model-free typed relational memory relocated from the frozen MF-R0 reference, ELPISEM1 v1. OBSERVE (exact typed evidence slots, entity codebook), QUERY LOOKUP (exact read-only scan), INSPECT, slot read, identity and SNAPSHOT/RESTORE are admitted mechanically; LEARN and QUERY FAST stay behind the RECURRENT capability (UNQUALIFIED, MF-R0 H4 NONPASS); CONSOLIDATE and QUERY SLOW are not provided. The continuity authority successor (native/continuity -> ECS_C, docs/NATIVE_SPLIT_CENSUS.md section 5a) is not yet part of it. ECS_C links no geometric (ECS_G) or runtime code; the memory is a component of a composite retained state, never a durable authority of its own.",
+      "purpose": "ECS_C, continuity and memory (docs/NATIVE_SPLIT_CENSUS.md). It holds (1) the ECS memory (docs/ECS_MEMORY.md, libelpis_ecs_memory): the bounded, model-free typed relational memory relocated from the frozen MF-R0 reference, ELPISEM1 v1. OBSERVE (exact typed evidence slots, entity codebook), QUERY LOOKUP (exact read-only scan), INSPECT, slot read, identity and SNAPSHOT/RESTORE are admitted mechanically; LEARN and QUERY FAST stay behind the RECURRENT capability (UNQUALIFIED, MF-R0 H4 NONPASS); CONSOLIDATE and QUERY SLOW are not provided. (2) The ECS_C authority (docs/ECS_C_AUTHORITY.md, native/ECS_C/authority, libelpis_ecs_c_authority, C ABI v1 include/elpis/ecs_c_authority.h): the successor of standalone continuity, built and qualified as a library in Stage C and not yet composed by RuntimeCore: genesis and lineage, entities (operator, runtime, source) and their lifecycles, sender attribution with per-sender sequences, the authority's logical clock (generation), source versions, scopes and per-turn bounds (native evidence admission), the cognition lineage (format-aware, K1 or composite), the evolution authority (continuity's law and digest), receipts kept as a chain head, explicit operator reconciliation, and explicit legacy import of a continuity v2/v3 register. One fixed-size materialized record in two preallocated slots plus an authenticated rollback witness in a separately protected directory; every transition is validated by one transition law before it is written and the newest is replayed at recovery. ECS_C links no geometric (ECS_G) or runtime code; the memory is a component of a composite retained state, never a durable authority of its own.",
       "python_package": null,
       "python_package_note": "No Python package: the memory is reached from Python only through the composite binding elpis.ECS.composite (CompositeState memory_query / memory_slot_read).",
       "implementation_roots": [
         "native/ECS_C"
       ],
       "test_roots": [
-        "native/ECS_C/memory/tests"
+        "native/ECS_C/memory/tests",
+        "native/ECS_C/authority/src/tests.rs",
+        "native/ECS_C/authority/tests"
       ],
       "native_targets": [
-        "elpis_ecs_memory"
+        "elpis_ecs_memory",
+        "elpis_ecs_c_authority"
       ],
       "depends_on": [
-        "substrate"
+        "substrate",
+        "continuity"
       ],
-      "mutation_authority": "The memory changes only through its own OBSERVE (exact typed evidence) on a handle the caller owns, or, inside a composite, only through the composite's leased transaction (RuntimeCore turn_observe in a managed turn). LEARN is refused UNQUALIFIED without the RECURRENT capability, which no canonical configuration sets; restore refuses unadmitted learned content. ECS_C mutates no geometric state.",
+      "mutation_authority": "The memory changes only through its own OBSERVE (exact typed evidence) on a handle the caller owns, or, inside a composite, only through the composite's leased transaction (RuntimeCore turn_observe in a managed turn). LEARN is refused UNQUALIFIED without the RECURRENT capability, which no canonical configuration sets; restore refuses unadmitted learned content. The ECS_C authority changes only through elpis_ecs_c_transition: compare-and-publish against the current generation and state root, the authorization matrix and sender sequence, and the transition law, then the complete next record into the non-current slot (fdatasync, the commit point) and the witness (fdatasync); reconciliation only in the mode recovery opened and only for exactly what it observed. ECS_C mutates no geometric state.",
       "runtime_participation": "RuntimeCore drives the memory only as the memory component of an ECS composite (substrate kind 3): observations enter through turn_observe in a managed turn (a LEARN turn or an observe-only turn), commit volatile and become durable only through an explicit durable publication of the composite envelope.",
-      "security_boundary": "Bounded by its configuration: one allocation per handle at create/restore, checked arithmetic, the arena within its byte budget and 1 GiB; ELPISEM1 envelopes are validated completely before anything is installed.",
-      "persistence": "None of its own: the memory is persisted only inside the fixed-size composite envelope (ELPISEC1) in the two K1 Recovery R0 checkpoint slots.",
+      "security_boundary": "Memory: bounded by its configuration (one allocation per handle, checked arithmetic, envelopes validated completely before installation). Authority: T0 crashes, torn writes and failed or lying syncs; T1 an adversary with read and write access to the state directory but neither the deployment key nor write access to the authority directory (forgery and substitution are UNAUTHENTICATED by the MAC; rollback and replay of older genuine records are refused against the witness). Not defended: a key holder, in-process code, a writer of the authority directory.",
+      "persistence": "The memory: none of its own (inside the fixed-size ELPISEC1 envelope in the K1 Recovery R0 checkpoint slots). The authority: exactly five files fixed at provisioning (authority.a/.b of R(capacity) = 1344 + 160 * capacity bytes; deployment.key, witness.a/.b in the protected authority directory), rewritten in place; nothing is ever created, renamed or removed afterwards, and recovery reads two records, two witnesses and the key whatever the history length.",
       "protocol_identifiers_retained": [
-        "ELPISEM1 v1 (memory envelope; identity = its SHA-256 trailer), the elpis_ecs_mem_* C symbols and ELPIS_ECS_MEM_* constants (elpis/ecs_memory.h)."
+        "ELPISEM1 v1 (memory envelope; identity = its SHA-256 trailer), the elpis_ecs_mem_* C symbols and ELPIS_ECS_MEM_* constants (elpis/ecs_memory.h).",
+        "ELPECA01 v1 (authority record) and ELPECW01 v1 (witness), the elpis_ecs_c_* C symbols and ELPIS_ECS_C_* constants (elpis/ecs_c_authority.h); the evolution digest elpis.continuity.evolution-authority.v2 unchanged."
       ],
       "external_dependencies": [],
       "model_dependency": "NONE",
       "uses_numpy": false,
-      "maturity": "Mechanics qualified: ECS.test_ecs_memory (known-answer identity), capability, snapshot faults, concurrency and allocation suites under every native job and both sanitizers; canonical = research differential (research.ecs_memory_canonical_differential). No scientific qualification of any memory function.",
+      "maturity": "Mechanics qualified: memory suites (known-answer identity, capability, snapshot faults, concurrency, allocation) under every native job and both sanitizers; canonical = research differential. Authority: ECS_C.cargo_test_authority (the transition law, the crash matrix at every write step and cut, the T1 adversary matrix, boundedness over long sequences) and the C ABI end to end (ECS_C.test_ecs_c_authority_abi, _testing). No scientific qualification of any memory function.",
       "incomplete_interfaces": [
         "Memory LEARN / QUERY FAST are UNQUALIFIED (MF-R0 H4 NONPASS: byte-matched exact storage retains more); the MF-R0 slow-bank (CONSOLIDATE) law is not canonical.",
         "No observation map from HACF structure to meaning exists: the typed HACF path (libelpis_hacf_observation, runtime subsystem) maps records, not meaning.",
-        "The continuity authority successor (entities, provenance, the authority of the durable lineage) is Stage C of docs/NATIVE_SPLIT_CENSUS.md; until then continuity is its own subsystem.",
+        "The ECS_C authority is not yet composed by RuntimeCore (Stage D); until then the live runtime uses standalone continuity, and the authority depends on the continuity crate for SHA-256, the evolution digest and the legacy register reader (it folds into ECS_C in Stage F).",
         "The typed-hypergraph cellular memory (HCA) is research only (research/ecsc_hca_r0) and has no native substrate yet."
       ]
     },

@@ -140,8 +140,9 @@ def ecs_independence(root: Path) -> list[str]:
     """(4) ECS mathematics is independent, and the two native ECS domains do not depend on each other.
 
     ECS_G (native/ECS_G: math, executor, mutable FMS, K1, K1 FMS) includes only its own headers and the named
-    substrate headers; ECS_C (native/ECS_C: the memory) includes only its own headers and SHA-256. Neither includes
-    the other's headers, RuntimeCore's or continuity's: only RuntimeCore composes them (native/runtime/composite).
+    substrate headers; ECS_C (native/ECS_C: the memory and the authority) includes only its own headers and SHA-256.
+    Neither includes the other's headers, RuntimeCore's or continuity's: only RuntimeCore composes them
+    (native/runtime/composite).
     """
     out = []
     for path in _python(root, "ECS"):
@@ -171,7 +172,7 @@ def ecs_independence(root: Path) -> list[str]:
     memory = {"memory/src/ecs_memory.c": {"elpis/sha256.h"}, "memory/tests/ecs_memory_test_util.h": {"elpis/sha256.h"}}
     for domain, allowed, own in (
             ("ECS_G", geometric, lambda inc, rel: inc.startswith("elpis/ecsg_")),
-            ("ECS_C", memory, lambda inc, rel: inc == "elpis/ecs_memory.h" or (
+            ("ECS_C", memory, lambda inc, rel: inc in ("elpis/ecs_memory.h", "elpis/ecs_c_authority.h") or (
                 rel.startswith("memory/tests/test_ecs_memory") and inc == "ecs_memory_test_util.h"))):
         base = root / "native" / domain
         for path in sorted(base.rglob("*")) if base.is_dir() else []:

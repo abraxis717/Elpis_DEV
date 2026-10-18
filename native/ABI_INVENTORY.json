@@ -5,6 +5,12 @@
   "measured_build": "Release build of 18f2f4de3c1bacef4f5b6bc61ac5999ecd133038 (native tree equal to the baseline's)"
  },
  "rule": "Every listed library is built under its file name, carries its SONAME, exports exactly these elpis_* / ELPIS_* symbols and links exactly these Elpis libraries (DT_NEEDED). A relocation keeps this file unchanged; a change of exports or of the Elpis link graph is a versioned change recorded here in the same commit.",
+ "amendments": [
+  {
+   "stage": "C (docs/NATIVE_SPLIT_CENSUS.md)",
+   "change": "adds libelpis_ecs_c_authority.so and libelpis_ecs_c_authority_testing.so (ECS_C authority C ABI v1, include/elpis/ecs_c_authority.h); no export or link of any library above changes"
+  }
+ ],
  "libraries": {
   "libelpis_continuity.so": {
    "soname": "libelpis_continuity.so",
@@ -54,6 +60,52 @@
     "elpis_continuity_store_snapshot",
     "elpis_continuity_testing_counters",
     "elpis_continuity_testing_fault"
+   ]
+  },
+  "libelpis_ecs_c_authority.so": {
+   "soname": "libelpis_ecs_c_authority.so",
+   "elpis_needed": [],
+   "exports": [
+    "elpis_ecs_c_abi_version",
+    "elpis_ecs_c_check_evidence",
+    "elpis_ecs_c_close",
+    "elpis_ecs_c_code_name",
+    "elpis_ecs_c_entity_at",
+    "elpis_ecs_c_entity_find",
+    "elpis_ecs_c_evolution_digest",
+    "elpis_ecs_c_legacy_record",
+    "elpis_ecs_c_next_entity_id",
+    "elpis_ecs_c_open",
+    "elpis_ecs_c_provision",
+    "elpis_ecs_c_read_report",
+    "elpis_ecs_c_read_status",
+    "elpis_ecs_c_receipt_chain",
+    "elpis_ecs_c_record_bytes",
+    "elpis_ecs_c_transition"
+   ]
+  },
+  "libelpis_ecs_c_authority_testing.so": {
+   "soname": "libelpis_ecs_c_authority_testing.so",
+   "elpis_needed": [],
+   "exports": [
+    "elpis_ecs_c_abi_version",
+    "elpis_ecs_c_check_evidence",
+    "elpis_ecs_c_close",
+    "elpis_ecs_c_code_name",
+    "elpis_ecs_c_entity_at",
+    "elpis_ecs_c_entity_find",
+    "elpis_ecs_c_evolution_digest",
+    "elpis_ecs_c_legacy_record",
+    "elpis_ecs_c_next_entity_id",
+    "elpis_ecs_c_open",
+    "elpis_ecs_c_provision",
+    "elpis_ecs_c_read_report",
+    "elpis_ecs_c_read_status",
+    "elpis_ecs_c_receipt_chain",
+    "elpis_ecs_c_record_bytes",
+    "elpis_ecs_c_testing_arm",
+    "elpis_ecs_c_testing_counters",
+    "elpis_ecs_c_transition"
    ]
   },
   "libelpis_ecs_composite.so": {

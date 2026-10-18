@@ -1,5 +1,5 @@
-# ECS_C: continuity and memory (docs/NATIVE_SPLIT_CENSUS.md). Stage B holds the memory; the authority successor of
-# native/continuity arrives in Stage C.
+# ECS_C: continuity and memory (docs/NATIVE_SPLIT_CENSUS.md): the memory, and the authority successor of
+# native/continuity (authority/, docs/ECS_C_AUTHORITY.md).
 
 # ECS_C memory (docs/ECS_MEMORY.md): the bounded model-free typed relational memory, relocated from
 # research/ecs_memory_mf_r0 (the byte-frozen independent reference; never linked here). Integer arithmetic only. The
@@ -23,3 +23,5 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT (ELPIS_ENABLE_ASAN OR ELPIS_ENABLE
   target_link_options(test_ecs_memory_alloc PRIVATE
     "LINKER:--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=aligned_alloc,--wrap=free")
 endif()
+
+add_subdirectory(authority)

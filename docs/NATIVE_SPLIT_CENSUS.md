@@ -90,6 +90,8 @@ Dependency direction (target, enforced by Stage B's successor gate):
 ```
 substrate  <-  ECS_G  (math, K1, FMS residency; never ECS_C, RuntimeCore, codec)
 substrate  <-  ECS_C  (memory, authority, gated HCA; never ECS_G mutation, RuntimeCore, codec)
+continuity crate  <-  ECS_C authority  (Stages C to E only: SHA-256, the evolution digest, the legacy reader;
+                                        folds into ECS_C in Stage F; continuity never depends on ECS_C)
 structure  <-  RuntimeCore observation adapter
 ECS_G, ECS_C, structure, substrate  <-  RuntimeCore (composite, managed turns, durability, recovery)  <-  native host (CLI)
 ```
@@ -279,3 +281,12 @@ table; `native/runtime/tests/test_runtime_composite.c` already builds one in C).
 | G | documentation and machine-readable authority match the implementation | documentation |
 
 No stage is merged without explicit authorization; a red or incomplete stage is reported as such.
+
+Progress (updated by each stage's pull request): **A** census and ABI inventory; **B** the split (byte moves,
+build graph, successor gate; `native/continuity` stays byte-identical to the K1 Recovery R0 v4 premise P1, so its
+frozen `qualify.sh` keeps naming `tests/boundary/test_one_ecs.py`, which now runs the successor gate); **C** the ECS_C
+authority library (`docs/ECS_C_AUTHORITY.md`): materialized authority in two fixed slots, authenticated records and a
+protected rollback witness, one transition law for validation and replay, every recovery disposition, explicit
+operator reconciliation, legacy import, crash / adversary / boundedness suites. The authority embeds the continuity
+crate until Stage F (an amendment of Amendment 1 stated in `docs/ELPIS_MISSION.md` and enforced by the mission and
+split gates), and no runtime consumer uses it before Stage D.

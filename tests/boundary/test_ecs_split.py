@@ -3,12 +3,13 @@
 The successor of the one-ECS gate (tests/boundary/test_one_ecs.py, retired with the one-ECS tree by Stage B of
 the native split). It keeps every prohibition that still applies and adds the split's:
 
-* ``native/ECS_G`` (geometry: math, Runtime R1 executor, mutable FMS, K1, K1 FMS) and ``native/ECS_C`` (the memory)
-  exist, ``native/ECS`` does not; ELPIS_SYSTEM.json declares ``ECS_G`` and ``ECS_C`` and no ``ECS``.
-* Dependency directions, in the sources, the build graph and the authority: ECS_G and ECS_C depend on the substrate
-  only and never on each other, RuntimeCore or continuity; the composite (both domains in one object) is
-  RuntimeCore's; RuntimeCore's crate still embeds only continuity and links no ECS code. The built binaries' link
-  graph is checked by tests/boundary/test_abi_inventory.py.
+* ``native/ECS_G`` (geometry: math, Runtime R1 executor, mutable FMS, K1, K1 FMS) and ``native/ECS_C`` (the memory
+  and the authority) exist, ``native/ECS`` does not; ELPIS_SYSTEM.json declares ``ECS_G`` and ``ECS_C`` and no ``ECS``.
+* Dependency directions, in the sources, the build graph and the authority: ECS_G depends on the substrate only;
+  ECS_C on the substrate and, while its authority embeds the continuity crate (until Stage F), on continuity; neither
+  ever on the other or on RuntimeCore; the composite (both domains in one object) is RuntimeCore's; RuntimeCore's
+  crate still embeds only continuity and links no ECS code. The built binaries' link graph is checked by
+  tests/boundary/test_abi_inventory.py and tests/boundary/test_ecs_c_authority.py.
 * Python is not the target execution architecture: no ``elpis.ECS_G`` / ``elpis.ECS_C`` package exists (the
   frozen laboratories' ``elpis.ECS_G`` import name resolves only through research/__init__.py), the deleted ECS_C
   Python kernel and its native history ABI never reappear in canonical code.
@@ -46,7 +47,7 @@ def test_the_two_native_ecs_domains_exist_and_the_one_ecs_tree_does_not():
     subs = {s["id"]: s for s in SYSTEM["subsystems"]}
     assert set(subs["ECS_G"]["native_targets"]) == {"elpis_ecsg_math", "elpis_ecsg_fms", "elpis_ecsg_k1",
                                                     "elpis_ecsg_k1_fms"}
-    assert subs["ECS_C"]["native_targets"] == ["elpis_ecs_memory"]
+    assert subs["ECS_C"]["native_targets"] == ["elpis_ecs_memory", "elpis_ecs_c_authority"]
     assert "elpis_ecs_composite" in subs["runtime"]["native_targets"]
     # Python bindings keep their historical package; no Python ECS_G / ECS_C package or kernel exists.
     assert _clean_import("elpis.ECS").returncode == 0 and _clean_import("elpis.continuity").returncode == 0
@@ -103,6 +104,22 @@ def test_dependency_directions_keep_runtime_as_the_only_composer():
                      for line in p.read_text().splitlines())   # code only: doc comments cite the K1 ABI it mirrors
     for foreign in ("elpis_ecsg", "extern crate", "#[link(", "dlopen", "dsv", "inference"):
         assert foreign not in rust, foreign
+    # The ECS_C authority (docs/ECS_C_AUTHORITY.md) embeds the continuity crate (SHA-256, the evolution digest, the
+    # legacy register reader) and nothing else until continuity folds into ECS_C (census, section 9): no ECS_G, no
+    # memory, no RuntimeCore, no codec. Its build script only keeps the embedded crate's C ABI out of its exports.
+    authority = REPO / "native/ECS_C/authority"
+    cargo = (authority / "Cargo.toml").read_text()
+    deps = cargo[cargo.index("[dependencies]"):].split("\n[", 1)[0]
+    assert re.findall(r"(?m)^(\w+)\s*=", deps) == ["elpis_continuity"], deps
+    assert "[build-dependencies]" not in cargo and "[dev-dependencies]" not in cargo
+    lock = (authority / "Cargo.lock").read_text()
+    assert sorted(re.findall(r'(?m)^name = "([^"]+)"', lock)) == ["elpis_continuity", "elpis_ecs_c_authority"]
+    rust = "\n".join(line.split("//")[0] for p in (authority / "src").rglob("*.rs") for line in p.read_text().splitlines())
+    for foreign in ("elpis_ecsg", "ecsg_", "elpis_ecs_mem", "elpis_runtime", "extern crate", "#[link(", "dlopen",
+                    "dsv", "inference"):
+        assert foreign not in rust, foreign
+    build = "\n".join(line.split("//")[0] for line in (authority / "build.rs").read_text().splitlines())
+    assert re.findall(r'println!\("([^"]*)"\)', build) == ["cargo:rustc-cdylib-link-arg=-Wl,--exclude-libs,ALL"]
     inference = _imports("inference")
     assert not [n for n in inference if _under(n, "elpis.ECS") or _under(n, "elpis.continuity")]
     cognition = imports_of(REPO, REPO / "src/elpis/runtime/cognition.py")
@@ -111,19 +128,22 @@ def test_dependency_directions_keep_runtime_as_the_only_composer():
     assert any(_under(n, "elpis.continuity") for n in composition)
     subs = {s["id"]: s for s in SYSTEM["subsystems"]}
     assert {"ECS_G", "ECS_C", "continuity"} <= set(subs["runtime"]["depends_on"])
+    # ECS_C depends on continuity only while its authority embeds the continuity crate (until Stage F).
+    assert subs["ECS_G"]["depends_on"] == ["substrate"]
+    assert subs["ECS_C"]["depends_on"] == ["substrate", "continuity"]
     for ecs in ("ECS_G", "ECS_C"):
-        assert subs[ecs]["depends_on"] == ["substrate"], ecs
         assert ecs not in subs["continuity"]["depends_on"]
     # The build graph: each domain links only itself and the substrate; the composite (both) is RuntimeCore's.
     geometric = _cmake_links((REPO / "native/ECS_G/CMakeLists.txt").read_text())
-    memory = _cmake_links((REPO / "native/ECS_C/CMakeLists.txt").read_text())
+    memory = set().union(*(_cmake_links(p.read_text()) for p in (REPO / "native/ECS_C").rglob("CMakeLists.txt")))
     assert not [n for n in geometric if n.startswith(("elpis_ecs_", "elpis_runtime", "elpis_continuity"))], geometric
     assert not [n for n in memory if n.startswith(("elpis_ecsg_", "elpis_runtime", "elpis_continuity"))], memory
     composite = (REPO / "native/runtime/composite/CMakeLists.txt").read_text()
     assert "elpis_add_library(runtime elpis_ecs_composite" in composite
     for domain in ("ECS_G", "ECS_C"):
-        text = (REPO / f"native/{domain}/CMakeLists.txt").read_text()
-        labels = set(re.findall(r"elpis_add_(?:library|test)\((\w+)\s", text))
+        text = "\n".join(p.read_text() for p in (REPO / f"native/{domain}").rglob("CMakeLists.txt"))
+        labels = set(re.findall(r"elpis_add_(?:library|test|cargo_target)\((\w+)\s", text))
+        labels |= set(re.findall(r"LABELS (\w+)", text))
         assert labels == {domain}, (domain, labels)   # every target of the tree belongs to its domain
     # The source include graph (the mission gate's check 4): no include across the two domains.
     assert ecs_independence(REPO) == []
