@@ -176,7 +176,7 @@ except Exception as exc:
 
 
 def test_a_dependency_bound_to_unpinned_bytes_refuses_the_admission(tmp_path):
-    ecs = native_build_dir() / "native" / "ECS"
+    ecs = native_build_dir() / "native" / "ECS_G"
     names = ("libelpis_ecsg_math.so", "libelpis_ecsg_k1.so", "libelpis_ecsg_k1_fms.so")
     for name in names:
         require_native_library(name[3:-3])

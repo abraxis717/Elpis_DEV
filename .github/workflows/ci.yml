@@ -264,7 +264,9 @@ jobs:
           grep -m1 -E "^model[[:space:]]" /proc/cpuinfo
           echo "shallow: $(git rev-parse --is-shallow-repository)"
       - name: Current executor equals the scalar reference (native, AVX2 and baseline clones)
-        run: ctest --test-dir build --output-on-failure -R "^ECS\."
+        # The native ECS suites at their owners since the split (docs/NATIVE_SPLIT_CENSUS.md): ECS_G (executor,
+        # reference, K1), ECS_C (memory) and RuntimeCore's composite tests, the set this step ran as ^ECS. before.
+        run: ctest --test-dir build --output-on-failure -R "^(ECS_G|ECS_C)\.|^runtime\.test_(ecs_composite|k1_legacy_differential)$"
       - name: SCIENTIFIC lane (evidence integrity, chronology, replay contracts of every laboratory; tests/lanes.py)
         run: /tmp/elpis-venv/bin/python -m pytest -rs --lane scientific --durations=10
       - name: Current-runtime regressions behind the evidence (declared environment)

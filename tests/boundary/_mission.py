@@ -34,15 +34,15 @@ DSV_ROLES = re.compile(r"(?i)(dsv4|deepseek|engram|\bmoe\b|\bexperts?\b|\bw[123]
 # The qualified ECS kernel. Changing these sources requires an explicit,
 # reviewed update of the pins together with the kernel qualification.
 ECS_KERNEL_PINS = {
-    "native/ECS/src/ecsg_math.c": "fbfc48e5e36498df3dc8d33fa44620a61d697fa7bd00b8c7303929c4dc0cf235",
-    "native/ECS/src/ecsg_state.c": "c9887848fa0ddcfff71952a2010dd9968d980973cbe56cc0fa056c81f7b0b821",
-    "native/ECS/include/elpis/ecsg_math.h": "94f3c4e7a9bf26b08b267679c9b707e8376cc4e2867be760ac825760ce95f80e",
-    "native/ECS/include/elpis/ecsg_state.h": "34b173c4873fdac398876cf2eab426d88aca0884a3fa33640a570ae5c03a93c5",
+    "native/ECS_G/src/ecsg_math.c": "fbfc48e5e36498df3dc8d33fa44620a61d697fa7bd00b8c7303929c4dc0cf235",
+    "native/ECS_G/src/ecsg_state.c": "c9887848fa0ddcfff71952a2010dd9968d980973cbe56cc0fa056c81f7b0b821",
+    "native/ECS_G/include/elpis/ecsg_math.h": "94f3c4e7a9bf26b08b267679c9b707e8376cc4e2867be760ac825760ce95f80e",
+    "native/ECS_G/include/elpis/ecsg_state.h": "34b173c4873fdac398876cf2eab426d88aca0884a3fa33640a570ae5c03a93c5",
     # Runtime R1 executor: bitwise-qualified against the reference above
     # (tests/ECS/test_executor_differential.py) and bound to its measured
     # evidence (research/ecs_runtime_r1/evidence).
-    "native/ECS/src/ecsg_executor.c": "1d94739c52543da2080ccac2aeb640ef84b650161fa740c01f706b3f73b0fa8f",
-    "native/ECS/include/elpis/ecsg_executor.h": "67502a5e4cf3a14800760e661dac59dd17bbd736fcbb146e60faada0ee7ebde2",
+    "native/ECS_G/src/ecsg_executor.c": "1d94739c52543da2080ccac2aeb640ef84b650161fa740c01f706b3f73b0fa8f",
+    "native/ECS_G/include/elpis/ecsg_executor.h": "67502a5e4cf3a14800760e661dac59dd17bbd736fcbb146e60faada0ee7ebde2",
 }
 
 _CODE_SUFFIXES = (".py", ".c", ".h", ".cpp", ".hpp", ".map")
@@ -137,7 +137,12 @@ def canonical_tower(root: Path) -> list[str]:
 
 
 def ecs_independence(root: Path) -> list[str]:
-    """(4) ECS mathematics is independent; only the residency adapter may use generic FMS."""
+    """(4) ECS mathematics is independent, and the two native ECS domains do not depend on each other.
+
+    ECS_G (native/ECS_G: math, executor, mutable FMS, K1, K1 FMS) includes only its own headers and the named
+    substrate headers; ECS_C (native/ECS_C: the memory) includes only its own headers and SHA-256. Neither includes
+    the other's headers, RuntimeCore's or continuity's: only RuntimeCore composes them (native/runtime/composite).
+    """
     out = []
     for path in _python(root, "ECS"):
         for name in imports_of(root, path):
@@ -145,40 +150,36 @@ def ecs_independence(root: Path) -> list[str]:
                 out.append(f"{path.relative_to(root)}: imports {name}")
             if _under(name, "numpy") or _under(name, "research"):
                 out.append(f"{path.relative_to(root)}: imports {name}")
-    base = root / "native" / "ECS"
-    for path in sorted(base.rglob("*")) if base.is_dir() else []:
-        if path.suffix in (".c", ".h"):
+    geometric = {
+        "include/elpis/ecsg_fms.h": {"elpis/fms.h"},
+        "src/ecsg_fms.c": {"elpis/sha256.h"},
+        "tests/test_ecsg_fms.c": {"elpis/fms_pal_posix.h"},
+        "tests/test_ecsg_fms_alloc.c": {"elpis/fms_pal_posix.h"},
+        "tests/test_ecsg_fms_performance.c": {"elpis/fms_pal_posix.h"},
+        # Native K1 runtime (docs/ECS_K1_RUNTIME.md): SHA-256 envelope digests, the private K1/residency interface,
+        # and generic FMS for its residency adapter only.
+        "src/ecsg_k1.c": {"elpis/sha256.h", "ecsg_k1_internal.h"},
+        "src/ecsg_k1_fms.c": {"elpis/sha256.h", "ecsg_k1_internal.h"},
+        "include/elpis/ecsg_k1_fms.h": {"elpis/fms.h"},
+        "tests/test_ecsg_k1.c": {"elpis/sha256.h"},
+        "tests/test_ecsg_k1_fms.c": {"elpis/fms_pal.h", "elpis/fms_pal_posix.h"},
+        "tests/test_ecsg_k1_fms_faults.c": {"elpis/fms_pal_posix.h"},
+        "tests/test_ecsg_k1_fms_alloc.c": {"elpis/fms_pal_posix.h"},
+        "tests/test_ecsg_k1_performance.c": {"elpis/fms_pal_posix.h"},
+    }
+    # ECS memory (docs/ECS_MEMORY.md): SHA-256 identities and the deterministic code derivation; nothing else.
+    memory = {"memory/src/ecs_memory.c": {"elpis/sha256.h"}, "memory/tests/ecs_memory_test_util.h": {"elpis/sha256.h"}}
+    for domain, allowed, own in (
+            ("ECS_G", geometric, lambda inc, rel: inc.startswith("elpis/ecsg_")),
+            ("ECS_C", memory, lambda inc, rel: inc == "elpis/ecs_memory.h" or (
+                rel.startswith("memory/tests/test_ecs_memory") and inc == "ecs_memory_test_util.h"))):
+        base = root / "native" / domain
+        for path in sorted(base.rglob("*")) if base.is_dir() else []:
+            if path.suffix not in (".c", ".h"):
+                continue
+            relative = str(path.relative_to(base))
             for inc in re.findall(r'#\s*include\s*"([^"]+)"', path.read_text(encoding="utf-8")):
-                relative = str(path.relative_to(base))
-                allowed = {
-                    "include/elpis/ecsg_fms.h": {"elpis/fms.h"},
-                    "src/ecsg_fms.c": {"elpis/sha256.h"},
-                    "tests/test_ecsg_fms.c": {"elpis/fms_pal_posix.h"},
-                    "tests/test_ecsg_fms_alloc.c": {"elpis/fms_pal_posix.h"},
-                    "tests/test_ecsg_fms_performance.c": {"elpis/fms_pal_posix.h"},
-                    # Native K1 runtime (docs/ECS_K1_RUNTIME.md): SHA-256 envelope digests, the private K1/residency
-                    # interface, and generic FMS for its residency adapter only.
-                    "src/ecsg_k1.c": {"elpis/sha256.h", "ecsg_k1_internal.h"},
-                    "src/ecsg_k1_fms.c": {"elpis/sha256.h", "ecsg_k1_internal.h"},
-                    "include/elpis/ecsg_k1_fms.h": {"elpis/fms.h"},
-                    "tests/test_ecsg_k1.c": {"elpis/sha256.h"},
-                    "tests/test_ecsg_k1_fms.c": {"elpis/fms_pal.h", "elpis/fms_pal_posix.h"},
-                    "tests/test_ecsg_k1_fms_faults.c": {"elpis/fms_pal_posix.h"},
-                    "tests/test_ecsg_k1_fms_alloc.c": {"elpis/fms_pal_posix.h"},
-                    "tests/test_ecsg_k1_performance.c": {"elpis/fms_pal_posix.h"},
-                    # ECS memory and the composite retained state (docs/ECS_MEMORY.md, docs/ECS_COMPOSITE_STATE.md):
-                    # SHA-256 identities and the deterministic code derivation; nothing else outside ECS.
-                    "src/ecs_memory.c": {"elpis/sha256.h"},
-                    "src/ecs_composite.c": {"elpis/sha256.h"},
-                    "tests/ecs_memory_test_util.h": {"elpis/sha256.h"},
-                    "tests/test_ecs_composite.c": {"elpis/sha256.h"},
-                    # The legacy-surface differential guard (K1, K1 FMS, composite): a POSIX cold store for the
-                    # resident states and SHA-256 for the transcript digest and the memory fixtures.
-                    "tests/test_k1_legacy_differential.c": {"elpis/fms_pal_posix.h", "elpis/sha256.h"},
-                }
-                own = inc.startswith("elpis/ecsg_") or inc in ("elpis/ecs_memory.h", "elpis/ecs_composite.h")
-                own = own or (relative.startswith("tests/test_ecs_memory") and inc == "ecs_memory_test_util.h")
-                if not own and inc not in allowed.get(relative, set()):
+                if not own(inc, relative) and inc not in allowed.get(relative, set()):
                     out.append(f"{path.relative_to(root)}: includes {inc}")
     return out
 
@@ -197,7 +198,7 @@ def codec_independence(root: Path) -> list[str]:
 
 
 def ecs_continuity_separation(root: Path) -> list[str]:
-    """(6) The one ECS and continuity (not an ECS) do not depend on each other; the runtime composes both."""
+    """(6) The ECS bindings and continuity do not depend on each other; the runtime composes both."""
     out = []
     for package, other in (("continuity", "elpis.ECS"), ("ECS", "elpis.continuity")):
         for path in _python(root, package):

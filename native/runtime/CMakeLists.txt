@@ -36,6 +36,10 @@ add_custom_command(OUTPUT "${_testing}"
   VERBATIM)
 
 elpis_add_cargo_target(runtime elpis_runtime library "${_prod}")
+
+# The ECS composite retained state: RuntimeCore's composition of ECS_G (K1) and ECS_C (memory) as one native object
+# (docs/ECS_COMPOSITE_STATE.md). RuntimeCore's crate still links neither; hosts pass the composite's own table.
+add_subdirectory(composite)
 elpis_add_cargo_target(runtime elpis_runtime_testing test "${_testing}")
 
 # The C ABI over a real native K1 state, through the production library.
@@ -100,7 +104,7 @@ elpis_add_library(runtime elpis_hacf_observation SHARED observation/src/ecs_obse
 target_include_directories(elpis_hacf_observation PUBLIC observation/include)
 target_link_libraries(elpis_hacf_observation PUBLIC elpis_ecs_memory elpis_semantic)
 elpis_add_test(runtime test_ecs_observation_hacf SOURCES observation/tests/test_ecs_observation_hacf.c
-  INCLUDES "${CMAKE_SOURCE_DIR}/native/ECS/tests"
+  INCLUDES "${CMAKE_SOURCE_DIR}/native/ECS_C/memory/tests"
   LIBS elpis_hacf_observation elpis_ecs_memory elpis_semantic elpis_hash TIMEOUT 120)
 
 # The Rust law suite (lifecycle, lineage, turn, evolution and the continuity crash law through RuntimeCore).

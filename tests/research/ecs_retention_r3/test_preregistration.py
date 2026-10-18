@@ -323,7 +323,7 @@ def test_records_appear_only_after_their_chronological_step():
 def _pointers() -> dict:
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
     component = next(c for c in system["research"]["components"] if c["path"] == LAB)
-    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS")
+    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
     interface = next(i for i in ecsg["incomplete_interfaces"] if i.startswith("Retention R3"))
     cognition = (REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8")
     return {"component": component["classification"], "ECS interface": interface,
@@ -346,8 +346,11 @@ def test_no_canonical_retention_mechanism_before_an_r3_outcome_a_record():
     """Before OUTCOME_A no canonical file names a retention mechanism; after it, only the K1 milestone's files do,
     and only once the native milestone is QUALIFIED (tests/research/_k1_promotion.py)."""
     vocabulary = re.compile(r"(?i)consolidat|retention|laplace|fibre|recondition|rehears")
+    # The native ECS sources at their current owners (docs/NATIVE_SPLIT_CENSUS.md): every file this guard scanned
+    # under native/ECS, now under native/ECS_G, native/ECS_C and native/runtime/composite.
     sources = sorted((REPO / "src" / "elpis" / "ECS").rglob("*.py")) + sorted(
-        p for p in (REPO / "native" / "ECS").rglob("*") if p.suffix in (".c", ".h"))
+        p for root in ("ECS_G", "ECS_C", "runtime/composite") for p in (REPO / "native" / root).rglob("*")
+        if p.suffix in (".c", ".h"))
     exempt = admitted(REPO)
     assert not exempt or _qual_outcome() == "OUTCOME_A"
     offenders = [str(p.relative_to(REPO)) for p in sources if vocabulary.search(p.read_text(encoding="utf-8"))

@@ -184,7 +184,7 @@ DRIFT_PHRASES = ("turn conditioning", "worldmodelloop", "drivemap", "conditionin
 
 
 @pytest.mark.parametrize("name", ["ELPIS_SYSTEM.json", "README.md", "docs/ARCHITECTURE.md",
-                                  "native/ECS/README.md", "docs/NONCLAIMS.md",
+                                  "native/ECS_G/README.md", "docs/NONCLAIMS.md",
                                   "docs/inference/DSV41_TEXT_BOUNDARY.md"])
 def test_authority_and_design_docs_describe_the_corrected_architecture(name):
     text = (REPO / name).read_text(encoding="utf-8").lower()
@@ -198,10 +198,11 @@ def test_system_authority_encodes_the_mission():
     assert system["mission"]["gate"] == "tests/boundary/test_mission.py"
     subs = {s["id"]: s for s in system["subsystems"]}
     assert tuple(subs["inference"]["canonical_modules"]) == M.CODEC_MODULES
-    assert subs["ECS"]["depends_on"] == ["substrate"] and not subs["ECS"].get("uses_numpy")
-    assert {"ECS", "continuity", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
-    assert not subs["continuity"]["depends_on"] and "continuity" not in subs["ECS"]["depends_on"]
-    assert "ECS" not in subs["inference"]["depends_on"] and "continuity" not in subs["inference"]["depends_on"]
+    for ecs in ("ECS_G", "ECS_C"):   # the two native ECS domains depend on the substrate only, never on each other
+        assert subs[ecs]["depends_on"] == ["substrate"] and not subs[ecs].get("uses_numpy"), ecs
+        assert ecs not in subs["inference"]["depends_on"] and ecs not in subs["continuity"]["depends_on"], ecs
+    assert {"ECS_G", "ECS_C", "continuity", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
+    assert not subs["continuity"]["depends_on"] and "continuity" not in subs["inference"]["depends_on"]
     assert not [t for t in subs["inference"]["native_targets"] if "dsv41" in t]
     assert set(system["research"]["native_targets"]) == {"elpis_dsv41_native", "elpis_dsv41_clock",
                                                          "elpis_dsv41_materializer"}

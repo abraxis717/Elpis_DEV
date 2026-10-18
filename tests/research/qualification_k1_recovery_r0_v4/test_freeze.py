@@ -118,7 +118,7 @@ def test_a_freeze_record_of_another_schema_is_refused(observed):
     (lambda o: o["python"].update(isolated=0), "isolated"),
     (lambda o: o["python"].update(package="a" * 64), "not the checkout's src/elpis"),
     (lambda o: o["python"].update(modules_outside_package=["elpis.runtime.core"]), "outside the package"),
-    (lambda o: o["native"].update({"native/ECS/libelpis_ecs_memory.so": None}), "missing"),
+    (lambda o: o["native"].update({"native/ECS_C/libelpis_ecs_memory.so": None}), "missing"),
 ])
 def test_the_preconditions_refuse_whatever_freeze_record_is_offered(observed, change, needle):
     bad = copy.deepcopy(observed)

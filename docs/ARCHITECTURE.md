@@ -8,7 +8,9 @@ facts describe. Both answer to [`ELPIS_MISSION.md`](ELPIS_MISSION.md):
     FMS MATERIALIZES.  HACF / STRUCTURE ORGANIZES PERSISTENT STRUCTURAL MEMORY.
     CONTINUITY BINDS MINIMAL DURABLE RUNTIME LINEAGE/AUTHORITY.
 
-There is one ECS (`elpis.ECS`, `native/ECS`). Continuity (`elpis.continuity`)
+The ECS has two native owners (`docs/ELPIS_MISSION.md`, Amendment 1): ECS_G
+(`native/ECS_G`, geometry) and ECS_C (`native/ECS_C`, continuity and memory),
+composed only by RuntimeCore. Continuity (`elpis.continuity`)
 is not an ECS: it is a fixed-size register of the current durable authority.
 
 The canonical cognitive dataflow is `text -> DSV4 encode -> ECS stimulus ->
@@ -525,9 +527,9 @@ schema identifiers are historical and carry no self-improvement claim.
   Continuity keeps only the digest of the last admitted one as the authority
   head.
 
-## ECS: the one canonical cognitive/dynamical substrate (`elpis.ECS`, `native/ECS`)
+## ECS_G: the geometric cognitive/dynamical substrate (`native/ECS_G`; Python bindings `elpis.ECS`)
 
-ECS is the one canonical ECS of Elpis: the ECS/EDEN-facing cognitive and
+ECS_G is the geometric ECS of Elpis: the ECS/EDEN-facing cognitive and
 dynamical substrate. Its qualified native kernel is a primitive of that
 substrate. It
 owns the authoritative microscopic state `W in R^(d x N)` (binary64), the exact
@@ -537,7 +539,9 @@ full-batch gradient step on a drive `(X, y)`), an epoch counter and portable
 snapshot/restore. The mathematics is qualified in the frozen `d=6`,
 `N in {36,48,72}` regime; that does not make this small kernel the entire
 eventual cognitive substrate. The kernel sources are digest-pinned by the
-mission gate. See [`native/ECS/README.md`](../native/ECS/README.md).
+mission gate. See [`native/ECS_G/README.md`](../native/ECS_G/README.md). The memory is ECS_C's
+(`native/ECS_C`) and the composite RuntimeCore's (`native/runtime/composite`); `docs/NATIVE_SPLIT_CENSUS.md` records
+the split.
 
 ECS imports nothing beyond itself and the standard library: no inference,
 codec, runtime or continuity module. Its native ABI keeps its qualified
@@ -940,7 +944,7 @@ The canonical hot path is codec -> K1 transaction (schedule and readout in
 one native call) -> decode -> native commit (volatile). It performs no
 filesystem write or sync, no continuity publication, no checkpoint and no
 digest, adds no native crossings to the K1 turn and reaches no receipt, event,
-scheduler, projection or compaction machinery (`tests/boundary/test_one_ecs.py`,
+scheduler, projection or compaction machinery (`tests/boundary/test_ecs_split.py`,
 `tests/integration/test_runtime_hot_path.py`,
 `native/runtime/tests/test_runtime_hot_io.c`). Through RuntimeCore ABI v3 it
 ended with one continuity publication (one 176-byte `pwrite` and one

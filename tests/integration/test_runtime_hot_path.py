@@ -76,7 +76,7 @@ class _CountingSymbols:
         return call
 
 
-# The retired receipt-history modules (the retired packages themselves are absent: tests/boundary/test_one_ecs.py).
+# The retired receipt-history modules (the retired packages themselves are absent: tests/boundary/test_ecs_split.py).
 _RETIRED_MODULES = ("elpis.runtime.history", "elpis.runtime.native_history", "elpis.runtime.continuity")
 
 _NO_IO = {"opens": 0, "preads": 0, "pread_bytes": 0, "pwrites": 0, "pwrite_bytes": 0, "data_syncs": 0,

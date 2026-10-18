@@ -36,7 +36,9 @@ the installed system's smoke and recovery test.
 | Path | Subsystem |
 |---|---|
 | `src/elpis/substrate`, `native/substrate` | resource authority, residency and materialization (FMS, PAL, file assets, execution port) |
-| `src/elpis/ECS`, `native/ECS` | the one canonical ECS: cognitive/dynamical substrate (state `W`, epoch, `H`, `a`; `S3` observable; recurrence, learning, consolidation, readout; native K1 transactions, snapshots, FMS residency) |
+| `native/ECS_G`, `src/elpis/ECS` (Python bindings) | ECS_G, the geometric ECS: cognitive/dynamical substrate (state `W`, epoch, `H`, `a`; `S3` observable; recurrence, learning, consolidation, readout; native K1 transactions, snapshots, FMS residency) |
+| `native/ECS_C` | ECS_C, continuity and memory: the bounded typed relational memory (`docs/ECS_MEMORY.md`); its continuity successor is Stage C of `docs/NATIVE_SPLIT_CENSUS.md` |
+| `native/runtime/composite` | the composite retained state (K1 + memory, `ELPISEC1`), RuntimeCore's composition of the two |
 | `native/continuity`, `src/elpis/continuity` | minimal durable runtime authority in Rust behind a stable C ABI (`include/elpis/continuity.h`): a fixed-size two-slot register of the committed K1 state digest and the evolution authority ([spec](docs/CONTINUITY.md)); `elpis.continuity` is a thin Python adapter |
 | `src/elpis/structure`, `native/structure` | HACF structural memory, semantic core, retrieval, Grid81 representation |
 | `src/elpis/pipeline`, `native/pipeline` | bounded Regex → HACF ingress; the canonical Grid81 writer path |

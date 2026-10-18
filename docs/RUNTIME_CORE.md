@@ -398,7 +398,7 @@ stand-in); `tests/integration/test_hot_residency.py` (the three invariants as se
 B nonresident refusal with nothing promoted, read, pinned, held, published or fail-stopped, C explicit restoration of
 the released live lineage). This is mechanics: it says nothing about the latency of a
 promotion, which now happens only where an owner asks for it. The Rust suite proves the same over the stand-in and forbids, statically, any store,
-lane, sync or digest use in the HOT functions (`tests/boundary/test_one_ecs.py`).
+lane, sync or digest use in the HOT functions (`tests/boundary/test_ecs_split.py`).
 
 ### Legacy surface
 
@@ -415,7 +415,7 @@ residency hold) are additive. Reviewed against the pre-correction tree (`81b738e
   reaching them); the composite's legacy commit keeps its digest poison check, and its cached K1 generation is
   neither state nor envelope nor identity. `ELPISGK1`, `ELPISEM1` and `ELPISEC1` are written and checked by the
   same code; K1 mathematics is untouched.
-* **Behavior.** `native/ECS/tests/test_k1_legacy_differential.c` Part A drives only pre-correction entry points
+* **Behavior.** `native/runtime/composite/tests/test_k1_legacy_differential.c` Part A drives only pre-correction entry points
   (K1 create/learn/forward/query-identity, transactions with commit, commit-identity, abort and the
   experience schedule, the refusal contract, the managed lease, restore and reset; FMS-resident states including a
   demotion and the legacy materializing access; the composite's leased turns with observations; K1's

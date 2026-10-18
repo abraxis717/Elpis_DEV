@@ -346,9 +346,9 @@ def test_write_once_records_and_binding(tmp_path):
         P.write(path, "dev", {"x": 2})
     impl = P.implementation(_library_path())
     assert {"files", "library", "build", "numerical_profile", "lab_source_digest", "tree", "dirty"} <= set(impl)
-    # Closed laboratory: its frozen binding names the pre-rename layout; under the one stated rename
-    # (tests/research/_renamed_sources.py, applied in memory by the fixture above) it binds the canonical ECS.
-    assert "native/ECS/src/ecsg_executor.c" in impl["files"] and "src/elpis/ECS/native.py" in impl["files"]
+    # Closed laboratory: its frozen binding names the pre-rename layout; under the stated relocations
+    # (tests/research/_renamed_sources.py, applied in memory by the fixture above) it binds the current tree.
+    assert "native/ECS_G/src/ecsg_executor.c" in impl["files"] and "src/elpis/ECS/native.py" in impl["files"]
     assert P.binding_mismatch(impl, impl) == []
     assert P.spec_digests(SPEC)["candidates_sha256"] == P.sha256_file(LAB_DIR / "PREREGISTRATION.md")
 

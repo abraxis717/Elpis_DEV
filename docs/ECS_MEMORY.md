@@ -1,10 +1,11 @@
 # ECS memory (canonical)
 
-Authority: `docs/ELPIS_MISSION.md` (one ECS) and `ELPIS_SYSTEM.json` (subsystem `ECS`). Contract:
-`native/ECS/include/elpis/ecs_memory.h` (normative). Library: `libelpis_ecs_memory` (`native/ECS/src/ecs_memory.c`).
+Authority: `docs/ELPIS_MISSION.md` (Amendment 1: the memory is ECS_C's) and `ELPIS_SYSTEM.json` (subsystem `ECS_C`).
+Contract: `native/ECS_C/memory/include/elpis/ecs_memory.h` (normative). Library: `libelpis_ecs_memory`
+(`native/ECS_C/memory/src/ecs_memory.c`).
 
-The ECS memory is the bounded, model-free typed relational memory of the one ECS. It is the MF-R0 mechanism
-(`research/ecs_memory_mf_r0`, `docs/research/ECS_MEMORY_MF_R0.md`) relocated under `native/ECS` with the canonical
+The ECS memory is the bounded, model-free typed relational memory of ECS_C. It is the MF-R0 mechanism
+(`research/ecs_memory_mf_r0`, `docs/research/ECS_MEMORY_MF_R0.md`) relocated under `native/ECS_C/memory` with the canonical
 prefix (`elpis_ecs_mem_*`, `ELPIS_ECS_MEM_*`), capability gating, and **without the MF-R0 CONSOLIDATE (slow-bank)
 law**. It is a **component** of the ECS retained
 state, never an authority of its own: durable authority over it exists only through the composite retained state
@@ -135,7 +136,7 @@ One writer XOR any number of readers per handle, non-blocking (`BUSY` on conflic
 starve a writer. Distinct handles share nothing. Inside a composite the memory handles are private and only the
 composite's own guard is ever contended.
 
-## Tests (`native/ECS`, every native job, ASan+UBSan and TSan)
+## Tests (`native/ECS_C/memory`, every native job, ASan+UBSan and TSan)
 
 `ECS.test_ecs_memory` (mechanics; known-answer identity), `ECS.test_ecs_memory_capability` (refusals, restore
 admission), `ECS.test_ecs_memory_snapshot` (ELPISEM1 faults), `ECS.test_ecs_memory_concurrency`,

@@ -33,7 +33,7 @@ The qualified mathematics: `phi(z) = 0.5z + 0.5z^2 + 0.5z^3`,
 `f_W(x) = sum_i phi(x . w_i)`, the G1 step
 `W' = W - eta (2/R) X^T [e * phi'(XW)]` with `e = f_W(X) - y`, microscopic `W` as
 authority, `S3` as a diagnostic, the snapshot format, epoch semantics and
-failure atomicity. `native/ECS/src/ecsg_math.c` and `ecsg_state.c` remain the
+failure atomicity. `native/ECS_G/src/ecsg_math.c` and `ecsg_state.c` remain the
 scalar reference and correctness authority (digest-pinned by the mission
 gate). An executor that keeps the reference's per-element floating-point
 order must be bitwise equal to it. Any backend that changes accumulation order
@@ -42,7 +42,7 @@ before the runtime may select it. Cognitive R0 v1 evidence is never rewritten.
 
 ## Required runtime shape
 
-A native executor under `native/ECS` owns, for one ECS state:
+A native executor under `native/ECS_G` owns, for one ECS state:
 
 * authoritative `W`, staging/candidate `W`, reusable scratch, admitted
   capacity, epoch and a commit generation;
@@ -71,7 +71,7 @@ calls the executor ABI directly, without Python.
 
 ## Implementation (R1C-R1F)
 
-`native/ECS/include/elpis/ecsg_executor.h` (executor ABI v1, in
+`native/ECS_G/include/elpis/ecsg_executor.h` (executor ABI v1, in
 `libelpis_ecsg_math`) and `elpis.ECS.native.Executor` / `Transaction`
 realise this shape:
 

@@ -40,9 +40,9 @@ import time
 
 REPORT_SCHEMA = "elpis.acceptance-report.v1"
 _LIBS = ("native/runtime/libelpis_runtime.so", "native/runtime/libelpis_runtime_testing.so",
-         "native/runtime/libelpis_hacf_observation.so", "native/ECS/libelpis_ecsg_math.so",
-         "native/ECS/libelpis_ecsg_k1.so", "native/ECS/libelpis_ecsg_k1_fms.so", "native/ECS/libelpis_ecs_memory.so",
-         "native/ECS/libelpis_ecs_composite.so")
+         "native/runtime/libelpis_hacf_observation.so", "native/ECS_G/libelpis_ecsg_math.so",
+         "native/ECS_G/libelpis_ecsg_k1.so", "native/ECS_G/libelpis_ecsg_k1_fms.so", "native/ECS_C/libelpis_ecs_memory.so",
+         "native/runtime/composite/libelpis_ecs_composite.so")
 
 
 def node(label: str) -> str:

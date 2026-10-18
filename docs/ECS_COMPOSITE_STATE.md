@@ -1,10 +1,11 @@
 # ECS composite retained state (ELPISEC1 v1)
 
-Authority: `docs/ELPIS_MISSION.md` (one ECS), `docs/ECS_K1_RUNTIME.md` (K1, unchanged), `docs/ECS_MEMORY.md`
-(the memory, unchanged). Contract: `native/ECS/include/elpis/ecs_composite.h` (normative). Library:
-`libelpis_ecs_composite` (`native/ECS/src/ecs_composite.c`).
+Authority: `docs/ELPIS_MISSION.md` (Amendment 1: RuntimeCore composes ECS_G and ECS_C), `docs/ECS_K1_RUNTIME.md` (K1,
+unchanged), `docs/ECS_MEMORY.md` (the memory, unchanged). Contract:
+`native/runtime/composite/include/elpis/ecs_composite.h` (normative). Library: `libelpis_ecs_composite`
+(`native/runtime/composite/src/ecs_composite.c`, RuntimeCore's composition of ECS_G's K1 and ECS_C's memory).
 
-The one ECS retained state is the qualified K1 state `(W, epoch, H, a)` **and** the ECS memory. The composite is
+The ECS retained state is the qualified K1 state `(W, epoch, H, a)` **and** the ECS memory. The composite is
 the single object that owns both, mutates both only inside one transaction, serializes both into one fixed-size
 envelope, and identifies both with one digest. It computes no law of its own: K1 and the memory compute
 everything; the composite stages, binds, serializes and commits.

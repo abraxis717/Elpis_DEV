@@ -197,11 +197,11 @@ _PINNED = {   # library id -> path relative to the build tree
     "elpis_runtime_testing": "native/runtime/libelpis_runtime_testing.so",
     "elpis_continuity": "native/continuity/libelpis_continuity.so",
     "elpis_continuity_testing": "native/continuity/libelpis_continuity_testing.so",
-    "elpis_ecsg_math": "native/ECS/libelpis_ecsg_math.so",
-    "elpis_ecsg_k1": "native/ECS/libelpis_ecsg_k1.so",
-    "elpis_ecsg_k1_fms": "native/ECS/libelpis_ecsg_k1_fms.so",
-    "elpis_ecs_memory": "native/ECS/libelpis_ecs_memory.so",
-    "elpis_ecs_composite": "native/ECS/libelpis_ecs_composite.so",
+    "elpis_ecsg_math": "native/ECS_G/libelpis_ecsg_math.so",
+    "elpis_ecsg_k1": "native/ECS_G/libelpis_ecsg_k1.so",
+    "elpis_ecsg_k1_fms": "native/ECS_G/libelpis_ecsg_k1_fms.so",
+    "elpis_ecs_memory": "native/ECS_C/libelpis_ecs_memory.so",
+    "elpis_ecs_composite": "native/runtime/composite/libelpis_ecs_composite.so",
     "elpis_hacf_observation": "native/runtime/libelpis_hacf_observation.so",
 }
 _AUTHORITY = {}
@@ -247,23 +247,24 @@ def admit_native(path: Path):
 def admit_k1_set():
     """Admit the K1 set in dependency order (math, K1, the K1 FMS adapter): ``(math, k1, k1_fms)`` admissions."""
     from elpis.substrate.native_admission import admit_libraries
-    ecs = native_build_dir() / "native" / "ECS"
+    native = native_build_dir() / "native"
     for name in ("libelpis_ecsg_math.so", "libelpis_ecsg_k1.so", "libelpis_ecsg_k1_fms.so"):
         require_native_library(name[3:-3])
-    return admit_libraries(ecs, native_authority(), (("elpis_ecsg_math", "libelpis_ecsg_math.so"),
-                                                    ("elpis_ecsg_k1", "libelpis_ecsg_k1.so"),
-                                                    ("elpis_ecsg_k1_fms", "libelpis_ecsg_k1_fms.so")))
+    return admit_libraries(native, native_authority(), (("elpis_ecsg_math", "ECS_G/libelpis_ecsg_math.so"),
+                                                        ("elpis_ecsg_k1", "ECS_G/libelpis_ecsg_k1.so"),
+                                                        ("elpis_ecsg_k1_fms", "ECS_G/libelpis_ecsg_k1_fms.so")))
 
 
 def admit_composite_set():
     """Admit the ECS composite set in dependency order (math, K1, the memory, the composite): its admissions. The
     composite binds K1 and the memory by SONAME, so both must be the pinned, sealed objects."""
     from elpis.substrate.native_admission import admit_libraries
-    ecs = native_build_dir() / "native" / "ECS"
-    names = ("libelpis_ecsg_math.so", "libelpis_ecsg_k1.so", "libelpis_ecs_memory.so", "libelpis_ecs_composite.so")
+    native = native_build_dir() / "native"
+    names = ("ECS_G/libelpis_ecsg_math.so", "ECS_G/libelpis_ecsg_k1.so", "ECS_C/libelpis_ecs_memory.so",
+             "runtime/composite/libelpis_ecs_composite.so")
     for name in names:
-        require_native_library(name[3:-3])
-    return admit_libraries(ecs, native_authority(), tuple((name[3:-3], name) for name in names))
+        require_native_library(name.rsplit("/", 1)[1][3:-3])
+    return admit_libraries(native, native_authority(), tuple((name.rsplit("/", 1)[1][3:-3], name) for name in names))
 
 
 def runtime_config(continuity_dir: Path, runtime_library: Path, codec_pin: str | None = None,

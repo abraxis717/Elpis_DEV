@@ -54,11 +54,11 @@ CATALOG_SCHEMA = "elpis.inference-authority.v1"   # the persisted PinnedAuthorit
 _W_DOMAIN = b"elpis.deployment.initial-w.v1"
 
 # (library id, file name, relative path in a build tree), in admission (dependency) order within each set.
-_ECS_SET = (("elpis_ecsg_math", "libelpis_ecsg_math.so", "native/ECS/libelpis_ecsg_math.so"),
-            ("elpis_ecsg_k1", "libelpis_ecsg_k1.so", "native/ECS/libelpis_ecsg_k1.so"),
-            ("elpis_ecsg_k1_fms", "libelpis_ecsg_k1_fms.so", "native/ECS/libelpis_ecsg_k1_fms.so"),
-            ("elpis_ecs_memory", "libelpis_ecs_memory.so", "native/ECS/libelpis_ecs_memory.so"),
-            ("elpis_ecs_composite", "libelpis_ecs_composite.so", "native/ECS/libelpis_ecs_composite.so"))
+_ECS_SET = (("elpis_ecsg_math", "libelpis_ecsg_math.so", "native/ECS_G/libelpis_ecsg_math.so"),
+            ("elpis_ecsg_k1", "libelpis_ecsg_k1.so", "native/ECS_G/libelpis_ecsg_k1.so"),
+            ("elpis_ecsg_k1_fms", "libelpis_ecsg_k1_fms.so", "native/ECS_G/libelpis_ecsg_k1_fms.so"),
+            ("elpis_ecs_memory", "libelpis_ecs_memory.so", "native/ECS_C/libelpis_ecs_memory.so"),
+            ("elpis_ecs_composite", "libelpis_ecs_composite.so", "native/runtime/composite/libelpis_ecs_composite.so"))
 _HACF = ("elpis_hacf_observation", "libelpis_hacf_observation.so", "native/runtime/libelpis_hacf_observation.so")
 _RUNTIME = {False: ("elpis_runtime", "libelpis_runtime.so", "native/runtime/libelpis_runtime.so"),
             True: ("elpis_runtime_testing", "libelpis_runtime_testing.so",

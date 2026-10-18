@@ -218,7 +218,7 @@ def test_results_report_the_recorded_disposition_and_claim_no_more():
 def test_authority_pointers_state_the_recorded_disposition():
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
     component = next(c for c in system["research"]["components"] if c["path"] == "research/ecs_retention_r2")
-    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS")
+    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
     interface = next(i for i in ecsg["incomplete_interfaces"] if "Retention R2" in i).split("Retention R2", 1)[1]
     cognition = (REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8")
     cognition = cognition.split("Retention R2", 1)[1].split("\n\n", 1)[0]

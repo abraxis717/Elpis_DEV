@@ -16,7 +16,7 @@ these frozen laboratories: ``elpis.ECS_G[.<module>]`` resolves to the *same*
 module object as ``elpis.ECS[.<module>]``. It is a name, not a second
 implementation, and it does not exist in the ``elpis`` distribution:
 ``import elpis.ECS_G`` fails in any process that has not imported
-``research`` (tests/boundary/test_one_ecs.py).
+``research`` (tests/boundary/test_ecs_split.py).
 """
 from __future__ import annotations
 
