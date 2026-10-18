@@ -1,6 +1,6 @@
 # K1 Recovery R0 under RuntimeCore ABI v4: qualification specification
 
-Status: **NOT RUN** · Subject: **UNQUALIFIED**
+Status: **RUN PASS** · Subject: **QUALIFIED**
 
 CHECKPOINT BYTES DO NOT AUTHORIZE THEMSELVES. CONTINUITY REMAINS THE CURRENT-AUTHORITY REGISTER.
 
@@ -8,6 +8,31 @@ Successor of [K1_RECOVERY_R0.md](K1_RECOVERY_R0.md), which was pre-registered ag
 LEARN wrote its candidate's envelope and published continuity before returning. Under ABI v4 a LEARN is volatile and
 durability is an explicit request served by the durability lane, so the v3 crash points (a checkpointed LEARN) no
 longer exist and that specification cannot be inherited. It stays as written, historical authority for ABI v3.
+
+## Qualified scope
+
+Run once, on QUAL inputs, under the freeze record published before the run (`FREEZE.json`, commit a2a84e2), with the
+verdict recomputed by the independent checker: **RUN PASS**, G1-G6 over all 312 planned trials (G1 2576 checks, G2 908,
+G3 1363, G4 476, G5 64, G6 332; no failure). What is qualified, and only that:
+
+* **Subject:** the K1 Recovery R0 durability protocol (the durability lane, the two-slot checkpoint store and
+  continuity as the authority register) for bare K1 and composite lineages, with the ABI v4 durability law unchanged
+  in the ABI v5 library (premise P1-P4 against 65287ad, verified mechanically at the freeze).
+* **Commit:** `18f2f4de3c1bacef4f5b6bc61ac5999ecd133038` (tree `a6de5ce`), the merge commit of PR #52, from a fresh
+  clone, a fresh Release build and a fresh venv with a non-editable install. No other commit is qualified by this
+  run, including the later commits that only add this record and its evidence.
+* **Binary:** the testing RuntimeCore build of that commit (`libelpis_runtime_testing.so`, SHA-256
+  `3c16135e4c3d665cc716a656440c1c4b090a03e1e82bd7f768f28bdd94c81b9a`), because the crash points exist only there,
+  with the K1, composite and HACF libraries whose digests the freeze record lists, deployed as `home/lib` copies,
+  pinned and admitted at ABI runtime 5, composite 1. That the production build carries the same protocol rests on
+  premise P4 (the production view of `durable.rs` and `checkpoint.rs`) and on the review of the control operations
+  in `core.rs` (identical exported symbols and call targets). That is a source argument, not a fault run of the
+  production binary.
+* **Environment:** Linux 6.18.44 x86_64, glibc 2.39, GCC 13.3.0, rustc 1.97.0, CPython 3.12.3 (isolated); the work
+  root on an ext2/ext3-family filesystem (statfs magic); one machine.
+* **Faults:** `SIGKILL` at every registered lane step and control-operation point, torn slot and record writes at the
+  registered offsets, and the in-process lost-sync faults (`uncertain`). `SIGKILL` keeps the page cache, so nothing
+  here bears on power loss or media durability ("Would establish / would not establish" holds as written).
 
 ## Amendment before any run (RuntimeCore ABI v5; freeze prerequisites)
 
@@ -204,4 +229,29 @@ content.
 
 ## Evidence
 
-`research/qualification/k1_recovery_r0_v4/evidence/` (write-once; not present: the run has not happened).
+`research/qualification/k1_recovery_r0_v4/evidence/` holds the directory written once by the QUAL run on 18f2f4d
+and sealed by `runner.py seal`. The repository keeps no file over 2 MiB, so `records.jsonl` (2408621 bytes) is
+committed gzip-compressed as `records.jsonl.gz` (SHA-256 `ea26994633e50d21994791768c76ce72437bc18109e6e3ab2a33fe48761effae`);
+every other file is committed as sealed. To validate, restore the sealed directory, then run the frozen validator,
+which checks exactly its five files, every SHA-256 (so the restored records are the written bytes), the run bound to
+its freeze record and records, the observed checkout, instrument, subject and libraries equal to the freeze, and the
+verdict recomputed from the records:
+
+```sh
+mkdir sealed && cp evidence/freeze.json evidence/run.json evidence/verdict.json evidence/SHA256SUMS sealed/
+gunzip -c evidence/records.jsonl.gz > sealed/records.jsonl
+python -I -B check.py evidence sealed
+```
+
+| File | SHA-256 |
+|---|---|
+| `freeze.json` (byte-identical to the published `FREEZE.json`) | `2ff44a12ac5ceed9d8065969f790b00397a50e406a4fa86b05786f215bd45c3b` |
+| `records.jsonl` (312 trial records; committed as `records.jsonl.gz`) | `dbee71c9fdf16619e3eb2a9da2c29182b4b7eed850b08992a03f8c065a351c4a` |
+| `run.json` | `0833539ff30d1e49731e7ba0f28a27b3d00d44acb976dc6ad2b9d6739f8c1f30` |
+| `verdict.json` | `475a9c744393eb375546d6b886687bba637bc63db242acd7ea805762de81d915` |
+| `SHA256SUMS` | `b0f785214614e436b435c605514d8f55ec7587c900f8d6ac244189ba6341126b` |
+
+In CI, `tests/research/qualification_k1_recovery_r0_v4/test_evidence.py` re-validates it and requires the
+instrument files in the tree to be the ones the freeze bound. A changed instrument is a new instrument and needs new
+evidence. `tests/boundary/test_qualification_specs.py` requires this document's status to repeat the recomputed
+verdict. The run's stderr was empty; it took 179.7 s.

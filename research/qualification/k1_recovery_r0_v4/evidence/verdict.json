@@ -1,0 +1,43 @@
+{
+ "complete": true,
+ "gates": {
+  "G1": {
+   "checks": 2576,
+   "failures": [],
+   "verdict": "PASS"
+  },
+  "G2": {
+   "checks": 908,
+   "failures": [],
+   "verdict": "PASS"
+  },
+  "G3": {
+   "checks": 1363,
+   "failures": [],
+   "verdict": "PASS"
+  },
+  "G4": {
+   "checks": 476,
+   "failures": [],
+   "verdict": "PASS"
+  },
+  "G5": {
+   "checks": 64,
+   "failures": [],
+   "verdict": "PASS"
+  },
+  "G6": {
+   "checks": 332,
+   "failures": [],
+   "verdict": "PASS"
+  }
+ },
+ "inputs": "qual",
+ "missing": [],
+ "plan_sha256": "aa350cce30378a8373bf0c17bf4da2c22c4c28ceb2e1a3c5ca9458c061e1c31b",
+ "planned": 312,
+ "records": 312,
+ "records_sha256": "dbee71c9fdf16619e3eb2a9da2c29182b4b7eed850b08992a03f8c065a351c4a",
+ "schema": "elpis.k1-recovery-r0-v4.verdict.v2",
+ "verdict": "PASS"
+}

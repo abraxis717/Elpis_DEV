@@ -2,7 +2,9 @@
 
 A qualification specification states, **before any run**, the question, the frozen inputs, the procedure, the
 gates and the evidence a qualification would produce, and what passing would and would not establish. It grants
-nothing by existing. Every specification here is `NOT RUN` and its subject is `UNQUALIFIED` in this repository.
+nothing by existing. Every specification here is `NOT RUN` and its subject is `UNQUALIFIED` in this repository,
+except K1 Recovery R0 under ABI v4. That one is `RUN PASS` with write-once evidence in this repository, and its subject
+is `QUALIFIED` for commit `18f2f4d` only, within its stated scope (its "Qualified scope").
 
 | Specification | Subject (implemented) | Status |
 |---|---|---|
@@ -10,7 +12,7 @@ nothing by existing. Every specification here is `NOT RUN` and its subject is `U
 | [Cognitive Boundary R2](COGNITIVE_BOUNDARY_R2.md) | the same boundary under RuntimeCore ABI v4, plus the durability lane, HOT residency, composite observation authority and context isolation | NOT RUN · UNQUALIFIED |
 | [Cognitive Boundary R2 under ABI v5](COGNITIVE_BOUNDARY_R2_V5.md) | the boundary under RuntimeCore ABI v5: R2's laws plus observe-only turn authority, memory mutation without K1 learning, `max_observations`, ABI compatibility and refusal of obsolete callers | NOT RUN · UNQUALIFIED |
 | [K1 Recovery R0](K1_RECOVERY_R0.md) | the bounded continuity-authorized K1 checkpoint owner (docs/K1_RECOVERY_R0.md), as pre-registered against ABI v3 | NOT RUN · UNQUALIFIED |
-| [K1 Recovery R0 under ABI v4](K1_RECOVERY_R0_V4.md) | the same owner under ABI v4: volatile LEARN, explicit publication, bare K1 and composite lineages | NOT RUN · UNQUALIFIED |
+| [K1 Recovery R0 under ABI v4](K1_RECOVERY_R0_V4.md) | the same owner under ABI v4: volatile LEARN, explicit publication, bare K1 and composite lineages | RUN PASS · QUALIFIED (commit `18f2f4d` only; crash consistency under `SIGKILL` and lost-sync faults, testing build; not power loss) |
 | [HACF-ECS Scientific Bridge R0](HACF_ECS_BRIDGE_R0.md) | research/hacf_ecs_bridge_r0 (RESEARCH_ONLY) | NOT RUN · UNQUALIFIED |
 | [Evolution Fitness R0](EVOLUTION_FITNESS_R0.md) | research/evolution_fitness_r0 and the evolution policy authority (docs/EVOLUTION_POLICY.md) | NOT RUN · UNQUALIFIED |
 | [ECS <-> DSV4 Codec R0](ECS_CODEC_R0.md) | the codec interface and its ECS-dependence gates (no map exists) | NOT RUN · UNQUALIFIED |
@@ -43,14 +45,14 @@ Rules shared by every specification:
 Categories: **implemented** (code exists), **mechanically verified** (deterministic tests over real native libraries,
 with mutation or adversarial negative controls), **mechanically incomplete** (a mechanical piece is missing),
 **blocked by scientific authority** (needs a new, separately qualified law or map), **formally qualified** (a frozen
-specification run with in-repository evidence; none at this head), **explicitly unqualified** (implemented and
-refused or unreachable by design).
+specification run with in-repository evidence; K1 Recovery R0 v4, for commit `18f2f4d` only), **explicitly
+unqualified** (implemented and refused or unreachable by design).
 
 | Interface | Implemented | Mechanically verified | Mechanically incomplete | Blocked by scientific authority | Formally qualified | Explicitly unqualified |
 |---|---|---|---|---|---|---|
 | Native K1 law `(W, epoch, H, a)` | yes | yes (native suites, legacy differential) | — | — | K1N-v2 attestation (research, frozen regime) | — |
 | RuntimeCore v4 QUERY / volatile LEARN | yes | yes | no preemptive deadline (no K1 cancellation point) | — | no (R2 NOT RUN) | — |
-| Durability lane (recoverable / identity-only, tickets, crash law) | yes | yes (simulated and real SIGKILL matrix, ticket law, UNKNOWN window) | — | — | no (K1 Recovery R0 v4 NOT RUN) | power-loss durability (never claimed) |
+| Durability lane (recoverable / identity-only, tickets, crash law) | yes | yes (simulated and real SIGKILL matrix, ticket law, UNKNOWN window) | — | — | K1 Recovery R0 v4 at commit `18f2f4d` only (crash consistency under `SIGKILL`, torn writes and lost-sync faults; testing build) | power-loss durability (never claimed) |
 | HOT residency (FMS holds, NOT_RESIDENT, explicit materialization) | yes | yes (CI-HOTRES-1 mutants) | — | — | no | — |
 | ECS composite through the Python runtime | yes | yes (incl. real SIGKILL; the observe-only turn's laws and mutants) | — | — | no | memory LEARN / QUERY FAST (no capability is ever set), SLOW (not provided) |
 | Typed HACF -> memory observation transport | yes | yes (adversarial records, mutants) | — | a HACF -> ECS meaning map | no | semantic interpretation |
@@ -69,9 +71,9 @@ unchanged.
 
 ## Open formal gates
 
-Cognitive Boundary R2; K1 Recovery R0 under ABI v4; ECS Codec R0 (blocked by the absence of any map); HACF-ECS
-Scientific Bridge R0 (blocked: no frozen evidence, map or meaningful state); Evolution Fitness R0 (runnable as
-specified; its scope is the instrument only).
+Cognitive Boundary R2 under ABI v5 (its instrument is not built; R2 itself was superseded before any run); ECS Codec
+R0 (blocked by the absence of any map); HACF-ECS Scientific Bridge R0 (blocked: no frozen evidence, map or meaningful
+state); Evolution Fitness R0 (runnable as specified; its scope is the instrument only).
 
 **Evolution Fitness R0, what its gates can and cannot reach.** Deterministic policy mechanics (G1: identical reports
 and trajectory identities across processes) and evaluator independence (fitness recomputed from replayed trajectories,
