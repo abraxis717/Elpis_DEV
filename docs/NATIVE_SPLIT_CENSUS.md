@@ -249,7 +249,7 @@ table; `native/runtime/tests/test_runtime_composite.c` already builds one in C).
 | Surface | Retired when | Successor | Condition |
 |---|---|---|---|
 | subsystem id `ECS`, `native/ECS` | Stage B | `ECS_G`, `ECS_C`, `native/runtime/composite` | byte moves verified; ABI inventory equal; every native suite green under its new label |
-| `tests/boundary/test_one_ecs.py` (one-ECS assertions) | Stage B | `tests/boundary/test_ecs_split.py` | the successor enforces the split's dependency directions, ownership and the HOT-lane prohibitions at least as strongly |
+| `tests/boundary/test_one_ecs.py` (one-ECS assertions) | Stage B | `tests/boundary/test_ecs_split.py` | the successor enforces the split's dependency directions, ownership and the HOT-lane prohibitions at least as strongly. The path itself stays until Stage F as a runner of the successor: `native/continuity/qualify.sh` names it and cannot be edited, because the K1 Recovery R0 v4 premise P1 binds `native/continuity` byte for byte to the ABI v4 commit |
 | `libelpis_continuity.so`, `elpis.continuity` adapter, `native/continuity` | Stage F | ECS_C authority (`native/ECS_C/authority`) | every consumer listed in section 5 passes the successor's contract tests; legacy v2/v3 directories are imported explicitly, never reinterpreted |
 | Python `Runtime` facade, deployment, CLI as the production path | Stage F | native host `elpis` | native end-to-end, crash and acceptance suites pass on the installed native binary; the process closure loads no Python |
 | one-ECS wording of `ELPIS_MISSION.md`, `CONTINUITY.md`, `ARCHITECTURE.md` | Stage B (mission amendment), Stage G (final text) | the amended mission | documentation describes only what exists |

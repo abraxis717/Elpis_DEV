@@ -28,7 +28,7 @@ step "Python adapter and runtime continuity paths (pytest)" 300
 cd "$repo"
 ELPIS_NATIVE_BUILD="$build" ELPIS_REQUIRE_NATIVE=1 PYTHONPATH="$repo/src${PYTHONPATH:+:$PYTHONPATH}" \
     timeout 300 "$python" -m pytest -p no:cacheprovider -v --durations=5 \
-    tests/continuity tests/boundary/test_ecs_split.py tests/integration/test_evolution.py \
+    tests/continuity tests/boundary/test_one_ecs.py tests/integration/test_evolution.py \
     tests/integration/test_runtime_hot_path.py tests/integration/test_codec_ecs_turn.py
 
 printf '\n== [%3ss] continuity qualification PASS\n' "$((SECONDS - start))"
