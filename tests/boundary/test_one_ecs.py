@@ -258,6 +258,15 @@ FROZEN_EVIDENCE = {
         "they measured and deployed (K1 ABI names).",
 }
 
+# Transition records of the native ECS_G / ECS_C split (docs/NATIVE_SPLIT_CENSUS.md): documents that name the target
+# subsystems and inventory the retired donor before the successor gate of Stage B replaces this one. Any form may
+# appear in them; each entry is a named file with its reason, never a pattern.
+TRANSITION_RECORDS = {
+    "docs/NATIVE_SPLIT_CENSUS.md":
+        "Stage A census of the native ECS_G / ECS_C split: names the target subsystems and inventories the deleted "
+        "ECS_C donor; the Stage B successor gate replaces this gate.",
+}
+
 # Native sources whose exact bytes are recorded by research/ecs_runtime_r1/evidence (measured and sanitized
 # sources) and pinned by the mission gate; their comments, macros and PASS strings keep the old name.
 BYTE_BOUND = {
@@ -382,6 +391,7 @@ NATIVE_ABI_FILES = {
     "research/hecs_r0/rust/src/tests.rs": _HECS_K1,
     "research/hecs_r0/specs/hecs-r0.v1.spec.json": _HECS_K1,
     "research/hecs_r0/evidence/dev/hecs-r0.v1.calibration.json": _HECS_K1,
+    "native/ABI_INVENTORY.json": "Records the exported symbols of every native library, the ECS ones by ABI name.",
 }
 
 
@@ -404,7 +414,7 @@ def _text(path: str) -> str | None:
 def test_retired_names_appear_only_in_enumerated_evidence_and_abi_identifiers():
     violations = []
     for path in _tracked():
-        if _frozen(path) or path in BYTE_BOUND:
+        if _frozen(path) or path in BYTE_BOUND or path in TRANSITION_RECORDS:
             continue
         text = _text(path)
         if text is None:
@@ -430,9 +440,11 @@ def test_every_exemption_is_real_and_reasoned():
         assert any(RETIRED_TOKEN.search(_text(p) or "") for p in members), f"stale exemption: {key}"
     for path, why in NATIVE_ABI_FILES.items():
         assert why.strip() and RETIRED_TOKEN.search(_text(path) or ""), f"stale exemption: {path}"
+    for path, why in TRANSITION_RECORDS.items():
+        assert why.strip() and path in tracked and RETIRED_TOKEN.search(_text(path) or ""), f"stale exemption: {path}"
     assert BYTE_BOUND_REASON.strip()
     evidence = "".join(p.read_text() for p in (REPO / "research/ecs_runtime_r1/evidence").glob("*.json"))
     for path in BYTE_BOUND:
         digest = hashlib.sha256((REPO / path).read_bytes()).hexdigest()
         assert digest in evidence, f"{path} is no longer the recorded bytes; it is not byte-bound"
-    assert not set(NATIVE_ABI_FILES) & BYTE_BOUND
+    assert not set(NATIVE_ABI_FILES) & BYTE_BOUND and not set(TRANSITION_RECORDS) & (set(NATIVE_ABI_FILES) | BYTE_BOUND)
