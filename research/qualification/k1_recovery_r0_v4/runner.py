@@ -1,14 +1,20 @@
 """K1 Recovery R0 under RuntimeCore ABI v4 (the v5 library): the qualification runner (docs/qualification/K1_RECOVERY_R0_V4.md).
 
-    python -I runner.py run --native-build BUILD --work WORK --source-commit SHA --inputs {dev,qual} --out RECORDS
+    python -I -B runner.py freeze --native-build BUILD --work-root ROOT --out FREEZE.json
+    python -I -B runner.py run --native-build BUILD --work ROOT/qual --inputs qual --freeze FREEZE.json --out RECORDS
+    python -I -B runner.py seal --freeze FREEZE.json --records RECORDS --verdict VERDICT --out EVIDENCE_DIR
 
-``run`` deploys the testing RuntimeCore build of one operator build once (``elpis.runtime.deployment``: every library
-pinned and admitted from sealed bytes), then, for every family, point, lineage and run of the frozen ``plan.json``,
-starts a child process (``child``) that drives a real lineage through the public runtime API up to the point, parks
-there (the durability worker, or the control operation's caller) and reports what it holds; the parent sends it
-``SIGKILL``. A fresh process (``restart``) then observes what restart decides over the same directories, performs the
-point's pre-registered operator action, resumes and continues. The parent writes one JSON record per run; it decides
-nothing (``check.py`` evaluates the pre-registered gates from the records alone).
+``freeze`` measures the executing checkout, interpreter, imported package, libraries (and a trial deployment of
+them), toolchain, platform and filesystem (``freeze.py``) and writes the freeze record once. ``run`` measures them
+again and refuses before it creates or opens anything unless every one equals the record; after deploying the testing
+RuntimeCore build it verifies the deployed copies and their pins; at the end it measures the checkout again. Then, for
+every trial of the frozen ``plan.json`` (its coordinates: family, lineage, point, run index; the seed and fault
+argument the plan derives from them), a child process drives a real lineage through the public runtime API up to the
+point, parks there (the durability worker, or the control operation's caller) and reports what it holds; the parent
+sends it ``SIGKILL`` and records the wait status. A fresh process (``restart``) records the raw slot and continuity
+bytes, what restart decides, performs the point's pre-registered operator action, resumes and continues. The parent
+writes one JSON record per trial; it decides nothing (``check.py`` evaluates the gates from the plan and the records).
+``seal`` assembles the write-once evidence directory and its ``SHA256SUMS``.
 
 Nothing here is a model or a fixture of the runtime: the stimuli are deterministic numbers, the observations typed
 fixture evidence (TRAINING=NONE SEMANTICS=NONE); only process death (``SIGKILL``) is injected, plus the in-process
@@ -24,18 +30,37 @@ import os
 from pathlib import Path
 import random
 import select
+import shutil
 import signal
 import subprocess
 import sys
 import threading
 import time
 
-RECORD_SCHEMA = "elpis.k1-recovery-r0-v4.record.v1"
+RECORD_SCHEMA = "elpis.k1-recovery-r0-v4.record.v2"
+RUN_SCHEMA = "elpis.k1-recovery-r0-v4.run.v2"
 HERE = Path(__file__).resolve().parent
+
+
+def _load_freeze():
+    """The instrument's own ``freeze.py``, loaded by its path (``-I`` puts no script directory on ``sys.path``, and
+    the instrument never adds one: nothing here can shadow a module ``elpis`` imports)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("k1_recovery_r0_v4_freeze", HERE / "freeze.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+frozen = _load_freeze()
+
 GRANT = "k1-recovery-r0-v4: qualification stimulus (TRAINING=NONE SEMANTICS=NONE)"
 OBSERVE_GRANT = "k1-recovery-r0-v4: fixture typed evidence (TRAINING=NONE SEMANTICS=NONE)"
 # Control operations of the testing build (elpis_runtime_testing_control_fault): op and the parked report.
 CONTROL_OP = {"anchor": 1, "import": 2, "discard": 3, "adopt": 4}
+CONTINUITY_FILES = ("continuity.a", "continuity.b")
+WINDOW = 16   # raw bytes recorded on each side of a slot tear
 
 
 def _say(**kw) -> None:
@@ -47,18 +72,48 @@ def _hex(b) -> str | None:
     return None if b is None else bytes(b).hex()
 
 
+def plan_load() -> dict:
+    return json.loads((HERE / "plan.json").read_text())
+
+
+def trials(plan: dict, runs_override: int | None = None) -> list:
+    """The plan's trials in its registered enumeration order (plan.coordinates)."""
+    out = []
+    for family, fam in plan["families"].items():
+        points = [p["point"] for p in fam.get("points", [{"point": "random"}])]
+        runs = runs_override or fam.get("runs_per_lineage", plan["runs_per_point"])
+        for lineage in fam["lineages"]:
+            for point in points:
+                for run_index in range(runs):
+                    out.append((family, lineage, point, run_index))
+    return out
+
+
+# plan.json "torn_offsets.slot", in order: bytes of the slot (header + envelope) written before the death.
+_SLOT_TORN = (lambda c: 17, lambda c: 127, lambda c: 128 + c // 2, lambda c: 128 + c - 32)
+
+
+def fault_arg(plan: dict, lineage: str, point: str, run_index: int) -> int:
+    if point == "step:3":
+        return _SLOT_TORN[run_index % 4](plan["lineages"][lineage]["envelope_bytes"])
+    if point in ("step:6", "control:4"):
+        return plan["torn_offsets"]["record"][run_index % 4]
+    return 0
+
+
 # =====================================================================================================================
 # The lineage, through the public API only (children and restarts)
 # =====================================================================================================================
 
 class Lineage:
-    """One run's lineage: its directories, its kind and its deterministic inputs."""
+    """One trial's lineage: its directories, its kind and its deterministic inputs."""
 
     def __init__(self, spec: dict):
+        _child_environment(spec)
         from elpis.runtime.deployment import Deployment
 
         self.spec = spec
-        self.plan = json.loads(Path(spec["plan"]).read_text())
+        self.plan = plan_load()
         self.kind = spec["lineage"]
         self.shape = self.plan["lineages"][self.kind]
         self.run = Path(spec["run_dir"])
@@ -66,7 +121,6 @@ class Lineage:
         self.deployment = Deployment(Path(spec["home"]))
         self.libs = self.deployment.libraries
 
-    # -- configuration -------------------------------------------------------------------------------------------
     def config(self, store: Path | None):
         from elpis.runtime import RuntimeConfig
 
@@ -89,19 +143,15 @@ class Lineage:
                                codebook_capacity=s["codebook_capacity"])
 
     def envelope_bytes(self, kind=None) -> int:
-        kind = kind or self.kind
-        if kind == "k1":
-            return int(self.libs.k1.envelope_bytes(self.shape["dim"], self.shape["width"]))
-        return int(self.libs.composite.envelope_bytes(self.composite_config()))
+        return int(self.plan["lineages"][kind or self.kind]["envelope_bytes"])
 
-    # -- states --------------------------------------------------------------------------------------------------
-    def create(self):
+    def create(self, kind=None):
         from elpis.ECS.composite import CompositeState
         from elpis.ECS.k1 import K1State
         from elpis.runtime.deployment import initial_weights
 
         w = initial_weights(self.shape["dim"], self.shape["width"], self.seed)
-        if self.kind == "k1":
+        if (kind or self.kind) == "k1":
             return K1State.create(self.libs.k1, self.shape["dim"], self.shape["width"], w,
                                   max_rows=self.shape["max_rows"])
         return CompositeState.create(self.libs.composite, self.composite_config(), memoryview(w))
@@ -114,7 +164,6 @@ class Lineage:
             return K1State.restore(self.libs.k1, envelope, max_rows=self.shape["max_rows"])
         return CompositeState.restore(self.libs.composite, self.composite_config(), envelope)
 
-    # -- LEARN i: deterministic numbers; a composite LEARN carries one typed observation ---------------------------
     def stimulus(self, i: int):
         from elpis.runtime.cognition import Stimulus
 
@@ -139,11 +188,11 @@ class Lineage:
                                  i + 1, o["source_authority"], provenance)
 
     def learn(self, runtime, state, i: int):
-        """LEARN i (volatile); returns (identity after, relation key or None)."""
+        """LEARN i (volatile); a composite LEARN carries one typed observation. Returns (identity, relation key)."""
         from elpis.runtime.cognition import LearnAuthority, ObservationAuthority
 
         authority = LearnAuthority(self.plan["stimulus"]["learning_rate"], GRANT)
-        if self.kind == "composite" or type(state).__name__ == "CompositeState":
+        if type(state).__name__ == "CompositeState":
             observation = self.observation(i)
             result = runtime.run_numeric_learn(
                 state, self.stimulus(i), authority, observations=(observation,),
@@ -154,20 +203,25 @@ class Lineage:
             key = None
         return runtime.live_identity(state)[0], key
 
-    # -- the checkpoint directory's fixed footprint (G6) ---------------------------------------------------------
-    @staticmethod
-    def footprint(store: Path) -> dict:
-        if not store.exists():
-            return {}
-        return {p.name: {"size": p.stat().st_size, "inode": p.stat().st_ino} for p in sorted(store.iterdir())}
 
+def _child_environment(spec: dict) -> None:
+    """A child runs only in the parent's verified environment: isolated, the verified package."""
+    import elpis
+
+    root = str(Path(elpis.__file__).resolve().parent)
+    if sys.flags.isolated != 1 or root != spec["package_root"]:
+        raise SystemExit(f"child environment refused: isolated={sys.flags.isolated} package={root}")
+
+
+# =====================================================================================================================
+# Raw evidence: what the slot and continuity files hold on disk (read directly; slots never authorize anything)
+# =====================================================================================================================
 
 _SLOT_MAGIC, _SLOT_DOMAIN = b"ELPK1CK\x01", b"elpis.k1-checkpoint.slot.v1\0"
 
 
 def raw_slots(store: Path) -> dict:
-    """What the slot files hold on disk, read directly (evidence only: slots never authorize anything): the header's
-    identity and generation, and whether the slot verifies (its header checksum and the envelope's own trailer)."""
+    """Each slot's header identity and generation and whether it verifies (header checksum and envelope trailer)."""
     out = {}
     for p in sorted(store.iterdir()):
         raw = p.read_bytes()
@@ -180,6 +234,42 @@ def raw_slots(store: Path) -> dict:
                     and hashlib.sha256(envelope[:-32]).digest() == envelope[-32:] == identity)
         out[p.name] = {"identity": identity.hex(), "generation": int.from_bytes(h[16:24], "little"),
                        "verified": verified}
+    return out
+
+
+def snapshot_files(run: Path, stores: tuple, tag: str) -> dict:
+    """The raw bytes before an interruption: both continuity records in full (hex) and every checkpoint slot's
+    SHA-256, with a copy of each slot kept beside the run for the restart's byte comparison."""
+    out = {"continuity": {n: (run / "continuity" / n).read_bytes().hex() for n in CONTINUITY_FILES
+                          if (run / "continuity" / n).exists()}, "slots": {}}
+    for store in stores:
+        keep = run / f"raw-{tag}" / store.name
+        keep.mkdir(parents=True, exist_ok=True)
+        for p in sorted(store.iterdir()):
+            shutil.copyfile(p, keep / p.name)
+            out["slots"][f"{store.name}/{p.name}"] = frozen.sha256(p)
+    return out
+
+
+def compare_files(run: Path, stores: tuple, tag: str, arg: int) -> dict:
+    """The raw bytes after the interruption, against the ``tag`` snapshot: the continuity records in full (hex);
+    for every slot its SHA-256 and the differing byte range, whether every difference lies below ``arg`` (a write of
+    exactly the first ``arg`` bytes), and the bytes around ``arg`` before and after."""
+    out = {"continuity": {n: (run / "continuity" / n).read_bytes().hex() for n in CONTINUITY_FILES
+                          if (run / "continuity" / n).exists()}, "slots": {}}
+    for store in stores:
+        for p in sorted(store.iterdir()):
+            before_path = run / f"raw-{tag}" / store.name / p.name
+            before, after = before_path.read_bytes() if before_path.exists() else b"", p.read_bytes()
+            diff = [i for i in range(min(len(before), len(after))) if before[i] != after[i]] if before != after else []
+            entry = {"sha256": frozen.sha256(p), "changed": before != after, "size": len(after),
+                     "first_diff": diff[0] if diff else None, "last_diff": diff[-1] if diff else None,
+                     "diff_bytes": len(diff)}
+            if arg:
+                lo, hi = max(0, arg - WINDOW), arg + WINDOW
+                entry.update(within_arg=bool(diff) and diff[-1] < arg, window=[lo, hi],
+                             window_before=before[lo:hi].hex(), window_after=after[lo:hi].hex())
+            out["slots"][f"{store.name}/{p.name}"] = entry
     return out
 
 
@@ -213,14 +303,16 @@ def _refusal(call) -> str | None:
 # Children: drive the lineage to the point, report, and wait to be killed
 # =====================================================================================================================
 
-def _caller_keep(lin: Lineage, runtime, state, name: str) -> str:
+def _caller_keep(lin: Lineage, runtime, state, name: str) -> None:
     """The caller keeps a copy of its state's bytes: release (the volatile work stays live), snapshot, write. The next
     operation rebinds and verifies it."""
     runtime.release(state)
-    envelope = state.snapshot()
     (lin.run / "caller").mkdir(exist_ok=True)
-    (lin.run / "caller" / name).write_bytes(envelope)
-    return hashlib.sha256(envelope).hexdigest()
+    (lin.run / "caller" / name).write_bytes(state.snapshot())
+
+
+def _stores(lin: Lineage) -> tuple:
+    return tuple(p for p in (lin.run / "checkpoint", lin.run / "checkpoint-composite") if p.exists())
 
 
 def _prepare(lin: Lineage, runtime, state, store: bool) -> dict:
@@ -251,13 +343,14 @@ def child_publish(lin: Lineage, point: str, arg: int, store: bool) -> None:
     state = lin.create()
     out = _prepare(lin, runtime, state, store)
     publish = runtime.publish_recoverable if store else runtime.publish_identity
+    out["files_before"] = snapshot_files(lin.run, _stores(lin), "before")
     if point.startswith("step:"):
         step = int(point[5:])
         runtime._core.testing_durable_fault(2, step, arg)
         pending = publish(state, wait=False)
+        out["ticket"] = _ticket(pending)        # captured at once: a request never waits for the worker
         d3, k3 = lin.learn(runtime, state, 2)       # the HOT lane is not blocked by the park
         _wait_parked(runtime, step)
-        out["ticket"] = _ticket(pending)
     else:                                            # delivered: the acknowledgment reached the caller
         ticket = publish(state)
         out["ticket"] = _ticket(ticket)
@@ -273,13 +366,14 @@ def child_uncertain(lin: Lineage, action: int) -> None:
     runtime = lin.runtime(lin.run / "checkpoint")
     state = lin.create()
     out = _prepare(lin, runtime, state, True)
+    out["files_before"] = snapshot_files(lin.run, _stores(lin), "before")
     runtime._core.testing_durable_fault(action)
     ticket = runtime.publish_recoverable(state)
     out["ticket"] = _ticket(ticket)
     out["lane_fault"] = runtime.durability().fault
     d3, k3 = lin.learn(runtime, state, 2)            # HOT continues under the lane fault
     out["D3"], out["keys"] = _hex(d3), out["keys"] + [_hex(k3)]
-    out["hot_after_fault"] = True
+    out["hot_after_fault"] = d3 not in (None, out["D2"])
     out["request_under_fault"] = _refusal(lambda: runtime.publish_recoverable(state))
     runtime.close()
     _say(ready=True, **out)
@@ -287,20 +381,25 @@ def child_uncertain(lin: Lineage, action: int) -> None:
 
 def child_identity_refused(lin: Lineage) -> None:
     """A composite lineage without a store: anchoring is identity-only; LEARN; an identity-only publication is refused
-    (its envelope size is stated only by a provisioned store), and nothing durable changes."""
+    (its envelope size is stated only by a provisioned store); a recoverable one has no store; nothing durable
+    changes."""
     runtime = lin.runtime(None)
     state = lin.create()
     out = {"D0": _hex(state.state_digest()), "anchor": runtime.anchor_cognition(state).generation}
     d, k = lin.learn(runtime, state, 0)
     out["D1"], out["keys"] = _hex(d), [_hex(k)]
+    out["files_before"] = snapshot_files(lin.run, (), "before")
     out["refusal"] = _refusal(lambda: runtime.publish_identity(state))
     out["recoverable_refusal"] = _refusal(lambda: runtime.publish_recoverable(state))
-    out["durable_after"] = _hex(runtime.continuity.snapshot().k1_state_digest)
+    snap = runtime.continuity.snapshot()
+    out["durable_after"] = {"authorized": _hex(snap.k1_state_digest), "generation": snap.generation,
+                            "format": snap.state_format}
+    out["last_acknowledged"] = _ticket(runtime.durability().last_acknowledged)
     runtime.close()
     _say(ready=True, **out)
 
 
-def _control(lin: Lineage, runtime, op: str, point: int, arg: int, call) -> dict:
+def _control(runtime, op: str, point: int, arg: int, call) -> dict:
     """Arm the control operation's fault (park at ``point``), run it on a thread, wait until it is parked."""
     runtime._core.testing_control_fault(CONTROL_OP[op], 2, point, arg)
     failure = {}
@@ -320,8 +419,8 @@ def _control(lin: Lineage, runtime, op: str, point: int, arg: int, call) -> dict
 def child_anchor(lin: Lineage, point: int, arg: int) -> None:
     runtime = lin.runtime(lin.run / "checkpoint")
     state = lin.create()
-    out = {"D0": _hex(state.state_digest())}
-    out["control"] = _control(lin, runtime, "anchor", point, arg, lambda: runtime.anchor_cognition(state))
+    out = {"D0": _hex(state.state_digest()), "files_before": snapshot_files(lin.run, _stores(lin), "before")}
+    out["control"] = _control(runtime, "anchor", point, arg, lambda: runtime.anchor_cognition(state))
     _say(ready=True, **out)
     time.sleep(3600)
 
@@ -331,10 +430,11 @@ def child_reconcile(lin: Lineage, op: str, point: int, arg: int) -> None:
     reconciliation of exactly it."""
     runtime = lin.runtime(lin.run / "checkpoint")
     r = runtime.recover_k1()
-    out = {"found": {"disposition": r.disposition, "authorized": _hex(r.authorized), "candidate": _hex(r.candidate)}}
+    out = {"found": {"disposition": r.disposition, "authorized": _hex(r.authorized), "candidate": _hex(r.candidate)},
+           "files_before": snapshot_files(lin.run, _stores(lin), "before")}
     call = (lambda: runtime.discard_k1_candidate(r.candidate)) if op == "discard" else \
         (lambda: runtime.adopt_k1_candidate(r.candidate))
-    out["control"] = _control(lin, runtime, op, point, arg, call)
+    out["control"] = _control(runtime, op, point, arg, call)
     _say(ready=True, **out)
     time.sleep(3600)
 
@@ -347,23 +447,24 @@ def child_import(lin: Lineage, point: int, arg: int) -> None:
     runtime = lin.runtime(lin.run / "checkpoint")
     state = lin.create()
     out = {"D0": _hex(state.state_digest())}
-    runtime.anchor_cognition(state)
+    out["anchor"] = runtime.anchor_cognition(state).generation
     k, _ = lin.learn(runtime, state, 0)
     out["first_ticket"] = _ticket(runtime.publish_recoverable(state))
     runtime.close()
     out["K"] = _hex(k)
-    k1_envelope = state.snapshot()
-    composite = CompositeState.import_k1(lin.libs.composite, lin.composite_config(), k1_envelope)
+    composite = CompositeState.import_k1(lin.libs.composite, lin.composite_config(), state.snapshot())
     out["C"] = _hex(composite.state_digest())
     runtime = lin.runtime(lin.run / "checkpoint-composite")
-    out["control"] = _control(lin, runtime, "import", point, arg, lambda: runtime.import_composite(composite))
+    out["files_before"] = snapshot_files(lin.run, _stores(lin), "before")
+    out["control"] = _control(runtime, "import", point, arg, lambda: runtime.import_composite(composite))
     _say(ready=True, **out)
     time.sleep(3600)
 
 
 def child_random(lin: Lineage, rng_seed: int) -> None:
     """Family random: LEARN repeatedly and request publications at random (some awaited); report every requested
-    identity and every acknowledgment as it happens. Killed at a random moment."""
+    identity, every delivered ticket and every resolution of an unawaited one as it happens. Killed at a random
+    moment."""
     fam = lin.plan["families"]["random"]
     rng = random.Random(rng_seed)
     runtime = lin.runtime(lin.run / "checkpoint")
@@ -381,10 +482,11 @@ def child_random(lin: Lineage, rng_seed: int) -> None:
             if wait:
                 _say(event="ticket", **_ticket(t))
             else:
-                pending.append(t)
-        for t in list(pending):
+                pending.append((d, t))
+        for requested, t in list(pending):
             if t.status != "PENDING":
-                pending.remove(t)
+                _say(event="resolved", requested=_hex(requested), **_ticket(t))
+                pending.remove((requested, t))
     _say(event="done")
     time.sleep(3600)
 
@@ -402,9 +504,7 @@ def _observe(lin: Lineage, store: Path | None) -> dict:
             r = runtime.recover_k1()
             out.update(disposition=r.disposition, recovered_authorized=_hex(r.authorized),
                        authorized_present=bool(r.authorized_present), candidate=_hex(r.candidate),
-                       envelope_sha256=None)
-            if r.envelope is not None:
-                out["envelope_sha256"] = hashlib.sha256(r.envelope).hexdigest()
+                       envelope_identity=_hex(r.envelope[-32:]) if r.envelope is not None else None)
         return out
     finally:
         runtime.close()
@@ -413,8 +513,8 @@ def _observe(lin: Lineage, store: Path | None) -> dict:
 
 
 def _resume(lin: Lineage, store: Path, keys: list, kind=None) -> dict:
-    """Restore exactly the RESUMABLE envelope, verify it against continuity, report the resident relation keys, then
-    LEARN once and publish recoverably once."""
+    """Restore exactly the RESUMABLE envelope, verify it against continuity, report the resident relation keys (and
+    the memory's occupancy), then LEARN once and publish recoverably once."""
     runtime = lin.runtime(store)
     try:
         r = runtime.recover_k1()
@@ -424,18 +524,35 @@ def _resume(lin: Lineage, store: Path, keys: list, kind=None) -> dict:
         state = lin.restore(r.envelope, kind)
         out["restored_identity"] = _hex(state.state_digest())
         out["continuity_identity"] = _hex(runtime.continuity.snapshot().k1_state_digest)
-        if type(state).__name__ == "CompositeState":
-            out["resident"] = {}
-            for key in keys:
-                if key is not None:
-                    slot = state.slot(bytes.fromhex(key))
-                    out["resident"][key] = None if slot is None else slot.assert_count
+        composite = type(state).__name__ == "CompositeState"
+        if composite:
+            out["resident"] = {k: (None if state.slot(bytes.fromhex(k)) is None else
+                                   state.slot(bytes.fromhex(k)).assert_count) for k in keys if k is not None}
+            out["memory_slots"] = state.inspect()["memory_slots_used"]
         d, _ = lin.learn(runtime, state, 50)
         t = runtime.publish_recoverable(state)
         out["continued"] = {"identity": _hex(d), "ticket": _ticket(t)}
+        if composite:
+            out["memory_slots_after"] = state.inspect()["memory_slots_used"]
         return out
     finally:
         runtime.close()
+
+
+def _cross_format(lin: Lineage, store: Path) -> dict:
+    """S4: a state of the other format, from the same seed, offered to this lineage: refused at bind, and continuity
+    is exactly as before (a digest or a shape that looks plausible authorizes nothing across formats)."""
+    other = "composite" if lin.kind == "k1" else "k1"
+    before = _observe(lin, store)
+    runtime = lin.runtime(store)
+    try:
+        state = lin.create(other)
+        refusal = _refusal(lambda: lin.learn(runtime, state, 80))
+    finally:
+        runtime.close()
+    after = _observe(lin, store)
+    keys = ("format", "authorized", "generation", "disposition", "candidate")
+    return {"offered": other, "refusal": refusal, "unchanged": all(before.get(k) == after.get(k) for k in keys)}
 
 
 def _publish_over_candidate(lin: Lineage, store: Path) -> dict:
@@ -455,21 +572,29 @@ def _publish_over_candidate(lin: Lineage, store: Path) -> dict:
 
 def restart(spec: dict) -> dict:
     lin = Lineage(spec)
-    family, run_index = spec["family"], spec["run_index"]
+    family, run_index, arg = spec["family"], spec["run_index"], spec.get("arg", 0)
     store = lin.run / "checkpoint"
-    child = spec.get("child", {})
-    keys = child.get("keys", [])
-    out = {}
+    keys = spec.get("child", {}).get("keys", [])
+    # The raw continuity records exactly as restart finds them, before anything here opens or changes them.
+    out = {"continuity_raw": {n: (lin.run / "continuity" / n).read_bytes().hex() for n in CONTINUITY_FILES
+                              if (lin.run / "continuity" / n).exists()}}
     if family == "identity_refused":
-        out["observed"] = _observe(lin, None)
+        from elpis.runtime.recovery import provision_k1_checkpoint
+
+        out["files_after"] = compare_files(lin.run, (), "before", 0)
+        out["before"] = _observe(lin, None)
+        provision_k1_checkpoint(lin.libs.runtime, store, lin.envelope_bytes())   # a store attached afterwards
+        out["observed"] = _observe(lin, store)
         return out
     if family == "identity":
         # No store ever held these bytes: restart attaches a freshly provisioned one and finds the authority missing.
         from elpis.runtime.recovery import provision_k1_checkpoint
 
+        out["files_after"] = compare_files(lin.run, (), "before", arg)
         out["before"] = _observe(lin, None)
         provision_k1_checkpoint(lin.libs.runtime, store, lin.envelope_bytes())
-        out["provisioned"] = Lineage.footprint(store)
+        out["provisioned"] = {p.name: {"size": p.stat().st_size, "inode": p.stat().st_ino}
+                              for p in sorted(store.iterdir())}
         out["observed"] = _observe(lin, store)
         authorized = out["observed"]["authorized"]
         caller = {name: (lin.run / "caller" / name).read_bytes() for name in ("D1", "D2")}
@@ -491,8 +616,10 @@ def restart(spec: dict) -> dict:
         finally:
             runtime.close()
         out["after"] = _observe(lin, store)
-        out["final_footprint"] = Lineage.footprint(store)
+        out["final_footprint"] = footprint(store)
         return out
+    stores = _stores(lin)
+    out["files_after"] = compare_files(lin.run, stores, "before", arg) if (lin.run / "raw-before").exists() else None
     if family == "import":
         composite_store = lin.run / "checkpoint-composite"
         out["action"] = None
@@ -504,8 +631,7 @@ def restart(spec: dict) -> dict:
 
             runtime = lin.runtime(store)
             try:
-                r = runtime.recover_k1()
-                k1_envelope = r.envelope
+                k1_envelope = runtime.recover_k1().envelope
             finally:
                 runtime.close()
             composite = CompositeState.import_k1(lin.libs.composite, lin.composite_config(), k1_envelope)
@@ -515,9 +641,11 @@ def restart(spec: dict) -> dict:
                                      "format": runtime.import_composite(composite).state_format}
             finally:
                 runtime.close()
+        out["after_action"] = _observe(lin, composite_store)
         out["resumed"] = _resume(lin, composite_store, [], kind="composite")
-        out["final_footprint"] = Lineage.footprint(store)
-        out["final_footprint_composite"] = Lineage.footprint(composite_store)
+        out["final"] = _observe(lin, composite_store)
+        out["final_footprint"] = footprint(store)
+        out["final_footprint_composite"] = footprint(composite_store)
         return out
     out["observed"] = _observe(lin, store)
     disposition = out["observed"]["disposition"]
@@ -545,20 +673,28 @@ def restart(spec: dict) -> dict:
         finally:
             runtime.close()
     out["action"] = action
-    out["after_action"] = _observe(lin, store) if action else None
+    out["after_action"] = _observe(lin, store)
+    if family in ("publish", "anchor") and out["after_action"]["disposition"] == "RESUMABLE":
+        out["cross_format"] = _cross_format(lin, store)
     out["resumed"] = _resume(lin, store, keys)
-    out["final_footprint"] = Lineage.footprint(store)
+    out["final"] = _observe(lin, store)
+    out["final_footprint"] = footprint(store)
     return out
 
 
+def footprint(store: Path) -> dict:
+    if not store.exists():
+        return {}
+    return {p.name: {"size": p.stat().st_size, "inode": p.stat().st_ino} for p in sorted(store.iterdir())}
+
+
 # =====================================================================================================================
-# The parent: deploy once, run every pre-registered point, write one record per run
+# The parent: verify, deploy once, run every pre-registered trial, write one record per trial
 # =====================================================================================================================
 
 def _spawn(role: str, spec: dict) -> subprocess.Popen:
-    env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "LANG": "C.UTF-8", "PYTHONDONTWRITEBYTECODE": "1",
-           "PYTHONHASHSEED": "0"}
-    return subprocess.Popen([sys.executable, "-I", str(Path(__file__).resolve()), role, json.dumps(spec)],
+    env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "LANG": "C.UTF-8"}   # -I ignores every PYTHON* variable
+    return subprocess.Popen([sys.executable, "-I", "-B", str(Path(__file__).resolve()), role, json.dumps(spec)],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, cwd=spec["run_dir"])
 
 
@@ -597,228 +733,197 @@ def _not_ready(proc) -> str:
     return f"exit {proc.returncode}: {proc.stderr.read()[-4000:]}"
 
 
-def _kill(proc) -> int:
+def _kill(proc) -> dict:
+    """SIGKILL the child and reap it: the wait status (``waitpid``) and the child's stderr are the evidence."""
     proc.send_signal(signal.SIGKILL)
     proc.wait(timeout=60)
-    return proc.returncode
+    err = proc.stderr.read()
+    return {"returncode": proc.returncode, "signaled": proc.returncode == -signal.SIGKILL,
+            "stderr_tail": err[-2000:], "stderr_sha256": hashlib.sha256(err.encode()).hexdigest()}
 
 
-def _finish(proc, timeout: float) -> tuple[dict | None, str]:
+def _finish(proc, timeout: float) -> tuple[dict | None, dict]:
     try:
         out, err = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
-        _kill(proc)
-        return None, "timeout"
+        return None, dict(_kill(proc), error="timeout")
     lines = [json.loads(line) for line in out.splitlines() if line.strip()]
-    return (lines[-1] if lines and proc.returncode == 0 else None), err[-4000:]
-
-
-# plan.json "torn_offsets.slot", in order: bytes of the slot (128-byte header + the envelope) written before the death.
-_SLOT_TORN = (lambda c: 1, lambda c: 127, lambda c: 128 + c // 2, lambda c: 128 + c - 1)
-
-
-def _torn(plan: dict, point: str, run_index: int, capacity: int) -> int:
-    if point == "step:3":
-        return _SLOT_TORN[run_index % 4](capacity)
-    if point in ("step:6", "control:4"):
-        return plan["torn_offsets"]["record"][run_index % 4]
-    return 0
-
-
-FREEZE_SCHEMA = "elpis.k1-recovery-r0-v4.freeze.v1"
-
-
-def libraries() -> tuple[str, ...]:
-    """The libraries a run admits, relative to the build tree: exactly the testing deployment's set, read from its one
-    authority (``elpis.runtime.deployment.deployable_libraries``), never a second list."""
-    from elpis.runtime.deployment import deployable_libraries
-
-    return tuple(relative for _, _, relative in deployable_libraries(testing=True))
-
-
-def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def instrument() -> dict:
-    """The digests of the instrument: the plan, this runner, the checker and the specification they implement."""
-    spec = HERE.parents[2] / "docs" / "qualification" / "K1_RECOVERY_R0_V4.md"
-    return {"plan.json": _sha(HERE / "plan.json"), "runner.py": _sha(HERE / "runner.py"),
-            "check.py": _sha(HERE / "check.py"), "specification": _sha(spec) if spec.exists() else None}
-
-
-def verify_freeze(freeze_path: Path, native_build: Path, source_commit: str) -> dict:
-    """Refuse to run anything unless the instrument, the libraries and the source commit are exactly the frozen ones."""
-    freeze = json.loads(freeze_path.read_text())
-    if freeze.get("schema") != FREEZE_SCHEMA:
-        raise SystemExit(f"{freeze_path}: not a {FREEZE_SCHEMA} record")
-    problems = []
-    if freeze["source_commit"] != source_commit:
-        problems.append(f"source commit {source_commit} is not the frozen {freeze['source_commit']}")
-    for name, digest in instrument().items():
-        if freeze["instrument"].get(name) != digest:
-            problems.append(f"{name} differs from the frozen instrument")
-    for rel in libraries():
-        if freeze["libraries"].get(rel) != _sha(native_build / rel):
-            problems.append(f"{rel} differs from the frozen library")
-    if problems:
-        raise SystemExit("freeze verification refused the run: " + "; ".join(problems))
-    return freeze
-
-
-def environment(work: Path) -> dict:
-    import platform
-
-    def tool(argv):
-        try:
-            return subprocess.run(argv, capture_output=True, text=True, check=True).stdout.splitlines()[0]
-        except (OSError, subprocess.CalledProcessError, IndexError):
-            return "unavailable"
-
-    return {"platform": platform.platform(), "machine": platform.machine(), "python": sys.version.split()[0],
-            "kernel": os.uname().release, "cpus": os.cpu_count(),
-            "work_filesystem": tool(["stat", "-f", "-c", "%T", str(work)]),
-            "elpis_package": str(Path(__import__("elpis").__file__).resolve().parent)}
-
-
-def run(args) -> int:
-    from elpis.runtime.deployment import Deployment, init_deployment
-    from elpis.runtime.recovery import provision_k1_checkpoint
-
-    native_build = Path(args.native_build).absolute()
-    freeze = verify_freeze(Path(args.freeze), native_build, args.source_commit) if args.freeze else None
-    if args.inputs == "qual" and freeze is None:
-        raise SystemExit("QUAL inputs run only under a verified freeze record (--freeze)")
-    plan_path = HERE / "plan.json"
-    plan = json.loads(plan_path.read_text())
-    inputs = plan["inputs"][args.inputs]
-    work = Path(args.work).absolute()
-    work.mkdir(mode=0o700, parents=True, exist_ok=False)
-    home = work / "home"
-    init_deployment(home, native_build, testing=True, source_commit=args.source_commit)
-    deployment = Deployment(home)
-    timeout = plan["bounds"]["child_timeout_seconds"]
-    records = open(args.out, "x")
-    count = 0
-    started = time.monotonic()
-    rng = random.Random(inputs["random_seed"])
-
-    def emit(record):
-        nonlocal count
-        record["schema"] = RECORD_SCHEMA
-        records.write(json.dumps(record, sort_keys=True) + "\n")
-        records.flush()
-        count += 1
-
-    if args.only is not None and args.inputs == "qual":
-        raise SystemExit("a QUAL run runs every family")
-    families = [f for f in plan["families"] if args.only is None or f in args.only.split(",")]
-    for family in families:
-        fam = plan["families"][family]
-        points = fam.get("points", [{"point": "random", "expect": {}}])
-        runs = fam.get("runs_per_lineage", plan["runs_per_point"])
-        for kind in fam["lineages"]:
-            for entry in points:
-                for run_index in range(runs):
-                    point = entry["point"]
-                    rid = f"{family}/{kind}/{point.replace(':', '-')}/{run_index}"
-                    run_dir = work / "runs" / rid.replace("/", "_")
-                    run_dir.mkdir(parents=True)
-                    seed = inputs["lineage_seed_base"] + count
-                    spec = {"plan": str(plan_path), "home": str(home), "run_dir": str(run_dir), "lineage": kind,
-                            "seed": seed, "family": family, "point": point, "run_index": run_index}
-                    record = {"id": rid, "family": family, "lineage": kind, "point": point, "run_index": run_index,
-                              "seed": seed, "expect": entry["expect"]}
-                    if fam["store"]:
-                        capacity = (deployment.libraries.k1.envelope_bytes(plan["lineages"]["k1"]["dim"],
-                                                                           plan["lineages"]["k1"]["width"])
-                                    if kind == "k1" else
-                                    deployment.libraries.composite.envelope_bytes(_composite_config(plan)))
-                        provision_k1_checkpoint(deployment.libraries.runtime, run_dir / "checkpoint", int(capacity))
-                        record["provisioned"] = Lineage.footprint(run_dir / "checkpoint")
-                    else:
-                        capacity = 0
-                    if family == "import":
-                        cap = deployment.libraries.composite.envelope_bytes(_composite_config(plan))
-                        provision_k1_checkpoint(deployment.libraries.runtime, run_dir / "checkpoint-composite",
-                                                int(cap))
-                        record["provisioned_composite"] = Lineage.footprint(run_dir / "checkpoint-composite")
-                    arg = _torn(plan, point, run_index, int(capacity))
-                    spec["arg"] = record["arg"] = arg
-                    if family == "random":
-                        spec["rng_seed"] = record["rng_seed"] = rng.randrange(1 << 63)
-                        spec["kill_after"] = record["kill_after"] = rng.randint(1, fam["max_learns"][kind] - 1)
-                    record.update(_drive(family, spec, timeout))
-                    if record.get("child_error") is None and record.get("reconcile_error") is None:
-                        if family == "random" and not record.get("events"):
-                            record["restart_error"] = "no events"
-                        else:
-                            keys = record["keys"] if family == "random" else (record["child"] or {}).get("keys", [])
-                            spec["child"] = {"keys": keys}
-                            proc = _spawn("restart", spec)
-                            result, err = _finish(proc, timeout)
-                            record["restart"] = result
-                            record["restart_error"] = None if result is not None else err
-                    emit(record)
-    records.close()
-    summary = {"records": count, "seconds": round(time.monotonic() - started, 1), "out": args.out,
-               "inputs": args.inputs, "source_commit": args.source_commit, "instrument": instrument(),
-               "freeze_sha256": _sha(Path(args.freeze)) if args.freeze else None, "environment": environment(work),
-               "catalog_sha256": json.loads((home / "elpis.json").read_text())["catalog_sha256"]}
-    with open(args.out + ".run.json", "x") as f:
-        f.write(json.dumps(summary, indent=1, sort_keys=True) + "\n")
-    print(json.dumps({"records": count, "seconds": summary["seconds"], "out": args.out}))
-    return 0
-
-
-def _composite_config(plan):
-    from elpis.ECS.composite import CompositeConfig
-
-    s = plan["lineages"]["composite"]
-    return CompositeConfig(s["dim"], s["width"], max_rows=s["max_rows"], memory_dim=s["memory_dim"], banks=s["banks"],
-                           slot_capacity=s["slot_capacity"], codebook_capacity=s["codebook_capacity"])
+    status = {"returncode": proc.returncode, "signaled": False, "stderr_tail": err[-2000:],
+              "stderr_sha256": hashlib.sha256(err.encode()).hexdigest()}
+    return (lines[-1] if lines and proc.returncode == 0 else None), status
 
 
 def _drive(family: str, spec: dict, timeout: float) -> dict:
     """Run the child (and, for a reconciliation, its second phase); kill it at its point."""
-    out = {"child": None, "child_error": None, "child_signal": None}
+    out = {"child": None, "child_error": None, "child_exit": None}
     if family in ("uncertain", "identity_refused"):
         proc = _spawn("child", spec)
-        result, err = _finish(proc, timeout)
-        out["child"], out["child_error"] = result, (None if result is not None else err)
-        out["child_signal"] = proc.returncode
+        result, status = _finish(proc, timeout)
+        out["child"], out["child_exit"] = result, status
+        out["child_error"] = None if result is not None else status["stderr_tail"] or "no report"
         return out
     if family == "random":
         proc = _spawn("child", spec)
-        lines, ready = _read_lines(proc, timeout, until=lambda l: l.get("event") == "ready")
+        lines, ready = _read_lines(proc, timeout, until=lambda line: line.get("event") == "ready")
         if not ready:
             out["child_error"] = _not_ready(proc)
             return out
         target = spec["kill_after"]           # kill as soon as that many LEARNs were reported
-        more, _ = _read_lines(proc, timeout, until=lambda l: l.get("event") == "learn" and l["i"] + 1 >= target)
-        out["child_signal"] = _kill(proc) if proc.poll() is None else proc.returncode
-        tail, _ = _read_lines(proc, 1.0)
-        out["events"] = lines + more + tail
+        more, _ = _read_lines(proc, timeout, until=lambda line: line.get("event") == "learn" and line["i"] + 1 >= target)
+        out["child_exit"] = _kill(proc)
+        out["events"] = lines + more + [json.loads(line) for line in proc.stdout.read().splitlines() if line.strip()]
         out["keys"] = [e.get("key") for e in out["events"] if e.get("event") == "learn"]
         return out
     proc = _spawn("child", spec)
-    lines, ready = _read_lines(proc, timeout, until=lambda l: l.get("ready"))
+    lines, ready = _read_lines(proc, timeout, until=lambda line: line.get("ready"))
     if not ready:
         out["child_error"] = _not_ready(proc)
         return out
     out["child"] = lines[-1]
-    out["child_signal"] = _kill(proc)
+    out["child_exit"] = _kill(proc)
     if family in ("discard", "adopt"):
-        second = dict(spec, phase="reconcile")
-        proc = _spawn("child", second)
-        lines, ready = _read_lines(proc, timeout, until=lambda l: l.get("ready"))
+        proc = _spawn("child", dict(spec, phase="reconcile"))
+        lines, ready = _read_lines(proc, timeout, until=lambda line: line.get("ready"))
         if not ready:
             out["reconcile_error"] = _not_ready(proc)
             return out
         out["reconcile"] = lines[-1]
-        out["reconcile_signal"] = _kill(proc)
+        out["reconcile_exit"] = _kill(proc)
         out["reconcile_error"] = None
     return out
+
+
+def _deployment_capacity(deployment, plan: dict, kind: str) -> int:
+    """The envelope size the admitted library states for the lineage's shape (it must be the plan's)."""
+    from elpis.ECS.composite import CompositeConfig
+
+    if kind == "k1":
+        return int(deployment.libraries.k1.envelope_bytes(plan["lineages"]["k1"]["dim"], plan["lineages"]["k1"]["width"]))
+    s = plan["lineages"]["composite"]
+    return int(deployment.libraries.composite.envelope_bytes(CompositeConfig(
+        s["dim"], s["width"], max_rows=s["max_rows"], memory_dim=s["memory_dim"], banks=s["banks"],
+        slot_capacity=s["slot_capacity"], codebook_capacity=s["codebook_capacity"])))
+
+
+def run(args) -> int:
+    native_build, work = Path(args.native_build).absolute(), Path(args.work).absolute()
+    if args.inputs == "qual" and (args.freeze is None or args.only is not None or args.dev_runs is not None):
+        raise SystemExit("a QUAL run runs every trial of the plan, only under a verified freeze record (--freeze)")
+    # 1. Measure the executing environment and refuse before anything is created, opened or read for the run.
+    observed = frozen.observe(native_build=native_build, work_root=work.parent)
+    freeze = None
+    if args.freeze:
+        freeze = json.loads(Path(args.freeze).read_text())
+        problems = frozen.compare(freeze, observed)
+        if problems:
+            raise SystemExit("freeze verification refused the run: " + "; ".join(problems))
+    from elpis.runtime.deployment import Deployment, init_deployment
+    from elpis.runtime.recovery import provision_k1_checkpoint
+
+    plan = plan_load()
+    inputs = plan["inputs"][args.inputs]
+    work.mkdir(mode=0o700, parents=False, exist_ok=False)
+    home = work / "home"
+    init_deployment(home, native_build, testing=True, source_commit=observed["source"]["commit"])
+    # 2. The deployed copies, their pins and the ABI the admitted libraries report.
+    deployed = frozen.deployed(home)
+    if freeze is not None:
+        problems = frozen.compare_deployed(freeze, deployed)
+        if problems:
+            raise SystemExit("deployment verification refused the run: " + "; ".join(problems))
+    deployment = Deployment(home)
+    for kind in plan["lineages"]:
+        stated = _deployment_capacity(deployment, plan, kind)
+        if stated != plan["lineages"][kind]["envelope_bytes"]:
+            raise SystemExit(f"the {kind} envelope is {stated} bytes, not the plan's")
+    timeout = plan["bounds"]["child_timeout_seconds"]
+    records = open(args.out, "x")
+    started = time.monotonic()
+    rng = random.Random(inputs["random_seed"])
+    only = None if args.only is None else set(args.only.split(","))
+    count = 0
+    for index, (family, kind, point, run_index) in enumerate(trials(plan, args.dev_runs)):
+        fam = plan["families"][family]
+        extra = {}
+        if family == "random":   # consumed for every random trial in order, run or not (plan.coordinates.random)
+            extra = {"rng_seed": rng.randrange(1 << 63), "kill_after": rng.randint(1, fam["max_learns"][kind] - 1)}
+        if only is not None and family not in only:
+            continue
+        rid = f"{family}/{kind}/{point.replace(':', '-')}/{run_index}"
+        run_dir = work / "runs" / f"{index:04d}"
+        run_dir.mkdir(parents=True)
+        seed = inputs["lineage_seed_base"] + index
+        arg = fault_arg(plan, kind, point, run_index)
+        spec = {"home": str(home), "run_dir": str(run_dir), "lineage": kind, "seed": seed, "family": family,
+                "point": point, "run_index": run_index, "arg": arg, "package_root": observed["python"]["package_root"],
+                **extra}
+        record = {"schema": RECORD_SCHEMA, "index": index, "id": rid, "family": family, "lineage": kind,
+                  "point": point, "run_index": run_index, "seed": seed, "arg": arg, "inputs": args.inputs, **extra}
+        if fam["store"]:
+            provision_k1_checkpoint(deployment.libraries.runtime, run_dir / "checkpoint", plan["lineages"][kind]
+                                    ["envelope_bytes"])
+            record["provisioned"] = footprint(run_dir / "checkpoint")
+        if family == "import":
+            provision_k1_checkpoint(deployment.libraries.runtime, run_dir / "checkpoint-composite",
+                                    plan["lineages"]["composite"]["envelope_bytes"])
+            record["provisioned_composite"] = footprint(run_dir / "checkpoint-composite")
+        record.update(_drive(family, spec, timeout))
+        if record.get("child_error") is None and record.get("reconcile_error") is None:
+            keys = record["keys"] if family == "random" else (record["child"] or {}).get("keys", [])
+            proc = _spawn("restart", dict(spec, child={"keys": keys}))
+            result, status = _finish(proc, timeout)
+            record["restart"], record["restart_exit"] = result, status
+            record["restart_error"] = None if result is not None else status["stderr_tail"] or "no report"
+        records.write(json.dumps(record, sort_keys=True) + "\n")
+        records.flush()
+        count += 1
+    records.close()
+    # 3. The checkout after the run: still exactly the frozen one.
+    after = frozen.observe(native_build=native_build, work_root=work.parent)
+    post = frozen.compare(freeze, after) if freeze is not None else frozen._preconditions(after)
+    summary = {"schema": RUN_SCHEMA, "records": count, "seconds": round(time.monotonic() - started, 1),
+               "inputs": args.inputs, "dev_runs": args.dev_runs, "only": args.only,
+               "records_sha256": frozen.sha256(Path(args.out)),
+               "freeze_sha256": frozen.sha256(Path(args.freeze)) if args.freeze else None,
+               "observed": observed, "deployed": deployed, "post_run_problems": post}
+    with open(args.out + ".run.json", "x") as f:
+        f.write(json.dumps(summary, indent=1, sort_keys=True) + "\n")
+    print(json.dumps({"records": count, "seconds": summary["seconds"], "out": args.out, "post_run_problems": post}))
+    return 0 if not post else 1
+
+
+def freeze_command(args) -> int:
+    native_build, work_root = Path(args.native_build).absolute(), Path(args.work_root).absolute()
+    if not work_root.is_dir():
+        raise SystemExit(f"{work_root}: the work root must exist (its filesystem is part of the freeze)")
+    plan = plan_load()
+    runs = {family: fam.get("runs_per_lineage", plan["runs_per_point"]) for family, fam in plan["families"].items()}
+    scratch = work_root / f"freeze-trial-{os.getpid()}"
+    record = frozen.record(native_build=native_build, work_root=work_root, plan_runs=runs, scratch=scratch)
+    fd = os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o444)
+    with os.fdopen(fd, "w") as f:
+        f.write(json.dumps(record, indent=1, sort_keys=True) + "\n")
+    print(json.dumps({"freeze": args.out, "sha256": frozen.sha256(Path(args.out)),
+                      "source_commit": record["source"]["commit"]}))
+    return 0
+
+
+def seal_command(args) -> int:
+    """Assemble the write-once evidence directory: the freeze record, the records, the run summary and the verdict,
+    read-only, with SHA256SUMS over exactly those files. The directory must not exist."""
+    out = Path(args.out)
+    out.mkdir(mode=0o755, parents=False, exist_ok=False)
+    names = {"freeze.json": args.freeze, "records.jsonl": args.records, "run.json": args.records + ".run.json",
+             "verdict.json": args.verdict}
+    for name, source in names.items():
+        shutil.copyfile(source, out / name)
+        os.chmod(out / name, 0o444)
+    sums = "".join(f"{frozen.sha256(out / name)}  {name}\n" for name in sorted(names))
+    fd = os.open(out / "SHA256SUMS", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o444)
+    with os.fdopen(fd, "w") as f:
+        f.write(sums)
+    print(json.dumps({"evidence": str(out), "files": sorted(names) + ["SHA256SUMS"]}))
+    return 0
 
 
 def child(spec: dict) -> None:
@@ -856,15 +961,25 @@ def main(argv=None) -> int:
         return 0
     p = argparse.ArgumentParser(prog="runner.py", description=__doc__.split("\n\n")[0])
     sub = p.add_subparsers(dest="command", required=True)
+    f = sub.add_parser("freeze")
+    f.add_argument("--native-build", required=True)
+    f.add_argument("--work-root", required=True)
+    f.add_argument("--out", required=True)
     r = sub.add_parser("run")
     r.add_argument("--native-build", required=True)
-    r.add_argument("--work", required=True)
-    r.add_argument("--source-commit", required=True)
+    r.add_argument("--work", required=True, help="a new directory inside the frozen work root")
     r.add_argument("--inputs", choices=("dev", "qual"), required=True)
     r.add_argument("--out", required=True)
-    r.add_argument("--only", default=None, help="comma-separated families (DEV runs only)")
     r.add_argument("--freeze", default=None, help="the freeze record; required for QUAL inputs")
-    return run(p.parse_args(argv))
+    r.add_argument("--only", default=None, help="comma-separated families (DEV only)")
+    r.add_argument("--dev-runs", type=int, default=None, help="runs per point and lineage (DEV only)")
+    s = sub.add_parser("seal")
+    s.add_argument("--freeze", required=True)
+    s.add_argument("--records", required=True)
+    s.add_argument("--verdict", required=True)
+    s.add_argument("--out", required=True)
+    args = p.parse_args(argv)
+    return {"freeze": freeze_command, "run": run, "seal": seal_command}[args.command](args)
 
 
 if __name__ == "__main__":

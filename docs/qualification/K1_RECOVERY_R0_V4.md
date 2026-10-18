@@ -21,11 +21,13 @@ Made before the freeze, on DEV inputs only; nothing of it was chosen after obser
   `elpis_runtime_testing_control_fault` (testing library only; docs/RUNTIME_CORE.md, "Control-operation crash
   points"): anchor, import, discard and adopt at begun / slot written / slot synced / record torn / record written /
   record synced, simulated (in-process tests) or parked for a real `SIGKILL` (this run).
-* **Instrument.** `research/qualification/k1_recovery_r0_v4/`: `plan.json` (every point, lineage, expectation,
-  operator action, torn offset, bound and input seed: the pre-registered crash-point list), `runner.py` (children
-  that drive a real lineage through the public runtime API over a pinned deployment of the testing build, parked and
-  `SIGKILL`ed; fresh restart processes), `check.py` (the gates, evaluated from the records alone; it imports no Elpis
-  code). The freeze record binds their digests, the source commit and the library digests before the QUAL run.
+* **Instrument.** `research/qualification/k1_recovery_r0_v4/`: `plan.json` (every trial's coordinate rule, point,
+  lineage, expectation, operator action, torn offset, envelope size, bound and input seed: the pre-registered
+  crash-point list), `freeze.py` (measures the executing object and compares it with the freeze record, fail
+  closed), `runner.py` (`freeze` writes the freeze record once; `run` drives real K1 and composite lineages through
+  the public runtime API over a pinned deployment of the testing build, parks each child at its point and `SIGKILL`s
+  it, then observes restart in a fresh process; `seal` writes the evidence directory once), `check.py` (the gates and
+  the evidence validation, from the plan and the records alone; it imports no Elpis code).
 * **Procedure as registered.** Families: `publish` (lane steps 1-9 and after delivery; both lineages), `identity`
   (sealed, record torn / written / synced, acknowledged; bare K1 only: a composite's envelope size is stated only by
   a provisioned store, so its identity-only publication is refused `CHECKPOINT_INVALID`, registered as
@@ -42,36 +44,60 @@ Made before the freeze, on DEV inputs only; nothing of it was chosen after obser
 * **Plan corrections made on DEV inputs** (before the freeze): a record sync that fails with the bytes lost leaves the
   synced candidate slot, so restart reports `CANDIDATE_UNRESOLVED`, not `RESUMABLE` (the crash law already said so:
   `test_k1_recovery.py`); composite identity-only publication is a registered refusal, not a point.
-* **Evidence schema.** `elpis.k1-recovery-r0-v4.record.v1` (one record per run), `.verdict.v1` (the checker's
-  output), and a freeze record and manifest that must bind source commit, tree, library digests, plan, runner,
-  checker, platform and filesystem (not yet enforced: review finding B1); `SHA256SUMS` over every evidence file. The
-  evidence would not be cryptographically signed (its custody is this repository's history).
+* **Evidence schema.** `elpis.k1-recovery-r0-v4.freeze.v2` (the freeze record), `.record.v2` (one record per trial),
+  `.run.v2` (the run summary: what was observed before, the deployment, what was observed after), `.verdict.v2` (the
+  checker's output), and `SHA256SUMS` over exactly those files (`runner.py seal`; `check.py evidence` validates). The
+  evidence is digest-bound to the qualifying commit and environment it measured; it is not cryptographically signed
+  (its custody is this repository's history).
+* **Freeze on the accepted source.** The freeze binds one exact commit. It is made only on the source finally
+  accepted (the merge commit of the integration into `main`, built and installed from a clean checkout of it), never
+  on a branch head that the merge would replace; a qualification of one commit is not claimed for any other.
 
-## Prerequisite review (2026-10-18): NOT SATISFIED, the freeze is blocked
+## Prerequisite review (2026-10-18) and its resolution
 
-An independent read-only review of the hooks and the instrument (commits 785faf9, f2e199f) found the hooks correct
-and production-safe (identical exported symbols and call targets with the feature off; every point's on-disk effect as
-documented; no armed fault outliving its operation) and a full DEV run of the instrument passing G1-G6. It found the
-instrument not yet freezable. No QUAL run may start until these are fixed and re-reviewed:
+An independent read-only review of the hooks and the first instrument (commits 785faf9, f2e199f) found the hooks
+correct and production-safe (identical exported symbols and call targets with the feature off; every point's
+on-disk effect as documented) and the instrument not freezable (B1, S1-S4, N1-N6). Every finding is resolved before
+any freeze, on DEV inputs only:
 
-* **B1 (blocking).** `verify_freeze` binds only digests the operator supplies: it does not check the checkout's HEAD,
-  tree or cleanliness, nor that the imported `elpis` package is the frozen source's, nor the deployed `home/lib`
-  copies; the freeze record producer is not part of the digest-bound instrument.
-* **S1.** `check.py` judges each record against the expectation the record carries, not the plan's for its point;
-  `arg` and `seed` are not checked against the plan.
-* **S2.** `identity_refused` registers authority D1; the durable authority must stay D0 (the checker hard-codes D0).
-* **S3.** Torn offsets 1 (slot and record) rewrite identical bytes, so no tear happens; offsets that leave one old
-  byte can complete a valid slot or record by chance. Registered replacements: slot 17 / 127 / 128 + c/2 /
-  128 + c - 32, record 24 / 50 / 100 / 144; restart must record the raw continuity and checkpoint files so a tear is
-  observed, not assumed.
-* **S4.** The continuity record's format (v2 K1 / v3 composite) is gated only for the import family.
-* **Notes.** Fixed: a control operation no longer disarms a continuity fault armed by another test (N1), a torn
-  record point takes 1..175 bytes (N2), `parked` is cleared after the 300 s fallback (N3). Open: an in-process test
-  of a slot point consumed without a write and in-process import points (N4); parked-ticket and import-memory
-  sub-checks that cannot fail (N5); `-I` ignores the `PYTHON*` variables the runner sets, unawaited random-family
-  tickets are not reported, and no tool writes `SHA256SUMS` (N6).
+* **B1, freeze verification.** `freeze.py` measures the executing object itself and the run refuses before it creates
+  or opens anything unless every measure equals the freeze record: the checkout's commit and tree and that it is
+  clean (again after the run), every instrument file (the freeze producer included) and the specification, the
+  subject source files, the interpreter (path, version, isolated mode) and the `elpis` package it actually imported
+  (its root, every loaded module's origin, and its content against the checkout's `src/elpis`), the build-tree
+  libraries, the deployed `home/lib` copies, their catalog pins and the ABI the admitted libraries report (against a
+  trial deployment made by the freeze producer), the toolchain, the platform and the work root's filesystem. Under
+  `python -I` the `PYTHON*` variables (`PYTHONPATH` included) are ignored and no script directory is added: the
+  package is whatever the interpreter's own `site-packages` resolves, which is why it is measured; children verify
+  they run isolated over the same package. `tests/research/qualification_k1_recovery_r0_v4/test_freeze.py` changes
+  each bound item alone and shows the refusal naming it, and that a refused QUAL run creates nothing.
+* **S1, independent checking.** Records carry no expectation. `check.py` derives every trial's coordinate (index,
+  family, lineage, point, run index), seed, fault argument, random-family draws, expected disposition, authority,
+  candidate, operator action and continuity generations from the plan; a record must sit at exactly its coordinate,
+  once, in order.
+* **S2.** `identity_refused` registers D0 as the authority; the checker proves the refused operations moved nothing
+  (continuity's raw records unchanged, generation unchanged, no acknowledgment, no slot and no candidate in a store
+  attached afterwards).
+* **S3, torn writes.** Offsets slot 17 / 127 / 128 + c/2 / 128 + c - 32 and record 24 / 50 / 100 / 144 (each writes a
+  differing byte and leaves the old checksum). Restart records both continuity records in full and every slot's
+  difference range against a copy taken before the point; a tear counts only when exactly one file changed, only
+  below the offset, by at least one byte, and the result does not verify.
+* **S4, format.** For every family the checker parses continuity's raw current record (magic, format byte, digest,
+  generation, checksum under the format's domain) and requires the lineage's format; restart offers a state of the
+  other format from the same seed and it must be refused (`CONTINUITY_STATE_MISMATCH`) with continuity unchanged.
+* **N1-N3** fixed (bd0f637). **N4:** a slot point its operation never writes is consumed and leaves nothing armed
+  (native test, with its mutant); every import point in process over the real libraries. **N5:** an imported
+  composite's memory is checked empty (0 slots, then 1 after the continuation's observation); the PENDING ticket check
+  stays: a request that waited for the worker would fail it. **N6:** children run `python -I -B` with no `PYTHON*`
+  variable; unawaited random-family tickets report their resolutions, and a superseded or failed request may never
+  become the authority; `runner.py seal` and `check.py evidence` produce and validate the manifest.
+* **Generations.** Exactly the expected continuity generation at restart, after the operator action and after the
+  continuation (one record): no retry and no duplicate publication.
+* **Adversarial check.** `test_instrument.py` generates a DEV run (one run per point), and every listed mutant fails
+  its gate (the list is in the test).
 
-The DEV records of the review's run are development records, not evidence. The subject stays `UNQUALIFIED`.
+A full DEV run of the corrected instrument (312 trials) passes G1-G6. DEV records are development records, never
+evidence. The subject stays `UNQUALIFIED` until its QUAL evidence says otherwise.
 
 ## Question
 

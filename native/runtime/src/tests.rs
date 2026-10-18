@@ -2441,14 +2441,48 @@ mod recovery {
                 c.anchor(&mut sub, key(1)).unwrap();
                 turn(&mut c, &mut sub, key(1)).unwrap();
                 assert_eq!(publish(&mut c, &mut sub, key(1)).unwrap().status(), Status::Acknowledged);
-                // An anchor's slot point that its operation never reaches leaves nothing armed behind it.
+                // A refusal before the operation's lifecycle checks pass does not consume the plan: it waits for the
+                // next anchor that gets that far.
                 drop(c);
                 let mut c = core(&dir, &ck);
                 c.testing_control_plan(plan(1, Point::SlotWritten, 0));
                 assert_eq!(c.anchor(&mut sub, key(1)).unwrap_err().error, Code::AlreadyAnchored.into());
-                c.testing_control_plan(None);
+                assert!(c.lane().take_control(crate::durable::control::Op::Anchor).is_some());
+            }
+
+            #[test]
+            fn a_slot_point_its_operation_never_writes_is_consumed_and_leaves_nothing_armed() {
+                // The anchor dies with its slot synced: the slot holds D0, continuity is unanchored.
+                let (dir, ck) = (Dir::new("ck-control-unwritten"), Ck::new("control-unwritten"));
+                let mut sub = Fake::new(0.1);
+                {
+                    let mut c = core(&dir, &ck);
+                    c.testing_control_plan(plan(1, Point::SlotSynced, 0));
+                    died(c.anchor(&mut sub, key(1)).unwrap_err().error, "first anchor");
+                }
+                let mut sub = Fake::new(0.1);
+                let mut c = core(&dir, &ck);
+                assert_eq!(c.recover().unwrap().disposition, Disposition::NothingToRecover);
+                // The operator anchors again under a slot-written plan: the slot already holds D0, nothing is
+                // written, so the point is never reached; the plan is consumed and does not fire.
+                c.testing_control_plan(plan(1, Point::SlotWritten, 0));
+                c.anchor(&mut sub, key(1)).unwrap();
+                assert!(c.lane().take_control(crate::durable::control::Op::Anchor).is_none());
+                let armed = c.lane().with_stores(|st| st.checkpoint.as_ref().map(|s| s.probe.plan)).unwrap();
+                assert_eq!(armed, Some(None), "a slot fault armed by the consumed plan outlived its operation");
+                // Nothing it armed survives: the next publication's slot write and sync, a candidate's withdrawal and
+                // the next continuity record all complete.
                 turn(&mut c, &mut sub, key(1)).unwrap();
                 assert_eq!(publish(&mut c, &mut sub, key(1)).unwrap().status(), Status::Acknowledged);
+                turn(&mut c, &mut sub, key(1)).unwrap();
+                let d = sub.identity();
+                c.testing_durable_plan(Some(Plan::At { step: Step::SlotSynced, park: false, arg: 0 }));
+                publish(&mut c, &mut sub, key(1)).unwrap();
+                drop(c);
+                let mut c = core(&dir, &ck);
+                assert_eq!(c.recover().unwrap().candidate, d);
+                c.checkpoint_discard(&d).unwrap();
+                assert_eq!(c.recover().unwrap().disposition, Disposition::Resumable);
             }
 
             #[test]

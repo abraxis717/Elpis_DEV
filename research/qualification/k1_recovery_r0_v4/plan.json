@@ -1,12 +1,13 @@
 {
- "schema": "elpis.k1-recovery-r0-v4.plan.v1",
+ "schema": "elpis.k1-recovery-r0-v4.plan.v2",
  "specification": "docs/qualification/K1_RECOVERY_R0_V4.md",
  "lineages": {
   "k1": {
    "format": "K1",
    "dim": 6,
    "width": 36,
-   "max_rows": 8
+   "max_rows": 8,
+   "envelope_bytes": 30376
   },
   "composite": {
    "format": "COMPOSITE",
@@ -16,7 +17,8 @@
    "memory_dim": 64,
    "banks": 2,
    "slot_capacity": 16,
-   "codebook_capacity": 32
+   "codebook_capacity": 32,
+   "envelope_bytes": 106664
   }
  },
  "stimulus": {
@@ -42,19 +44,19 @@
  },
  "torn_offsets": {
   "slot": [
-   "1",
+   "17",
    "127",
-   "128+capacity//2",
-   "128+capacity-1"
+   "128 + capacity // 2",
+   "128 + capacity - 32"
   ],
   "record": [
-   1,
+   24,
    50,
    100,
-   175
-  ]
+   144
+  ],
+  "rule": "run index modulo 4 selects the offset; capacity is the lineage's envelope_bytes. Each writes at least one byte that differs from the slot or record it tears (the slot generation at byte 16, the record generation at byte 23) and leaves the old checksum (slot header bytes 96..128 or the envelope trailer; record bytes 144..176), so the torn bytes can never complete a valid slot or record."
  },
- "operator_action_for_unresolved": "adopt when the run index is even, discard when odd",
  "families": {
   "publish": {
    "lineages": [
@@ -206,11 +208,13 @@
      "point": "request",
      "expect": {
       "refusal": "CHECKPOINT_INVALID",
-      "authority": "D1"
+      "recoverable_refusal": "RUNTIME_RECOVERY_UNAVAILABLE",
+      "authority": "D0",
+      "disposition": "CHECKPOINT_MISSING"
      }
     }
    ],
-   "note": "a composite's envelope size is stated only by a provisioned store: identity-only publication is refused, never guessed"
+   "note": "a composite's envelope size is stated only by a provisioned store: identity-only publication is refused, never guessed; continuity stays at D0 (the anchor), no ticket acknowledges, and a store attached afterwards holds no slot, so there is no candidate"
   },
   "anchor": {
    "lineages": [
@@ -454,5 +458,19 @@
   "max_runs_per_parked_point": 16,
   "max_random_kills_per_lineage": 64,
   "child_timeout_seconds": 120
+ },
+ "slot_header_bytes": 128,
+ "coordinates": {
+  "order": "families in plan order; within a family, lineages in order, then points in order, then run index 0..runs-1",
+  "index": "the 0-based position of the trial in that enumeration",
+  "seed": "inputs.<name>.lineage_seed_base + index",
+  "random": "one random.Random(inputs.<name>.random_seed) consumed only by the random family, in enumeration order: rng_seed = randrange(2**63), then kill_after = randint(1, max_learns[lineage] - 1)",
+  "record_order": "records appear exactly once each, in increasing index"
+ },
+ "operator_actions": {
+  "CANDIDATE_UNRESOLVED": "discard and adopt families: their own reconciliation; every other family: adopt when the run index is even, discard when odd",
+  "NOTHING_TO_RECOVER": "anchor family only: anchor the caller's recreated state explicitly",
+  "import_pending": "import family, continuity still K1: import again from the K1 store's RESUMABLE envelope",
+  "otherwise": "no action"
  }
 }

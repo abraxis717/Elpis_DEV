@@ -208,3 +208,53 @@ def test_the_production_library_exports_no_testing_entry_point():
     prod, test = ctypes.CDLL(str(production)), ctypes.CDLL(str(testing))
     assert not [n for n in names if hasattr(prod, n)]
     assert all(hasattr(test, n) for n in names)
+
+
+def _slot_identities(store):
+    """The identities the slot headers name on disk (evidence only; a slot authorizes nothing)."""
+    out = set()
+    for p in store.iterdir():
+        header = p.read_bytes()[:64]
+        if header[:8] == b"ELPK1CK\x01":
+            out.add(header[32:64])
+    return out
+
+
+@pytest.mark.parametrize("point,state_format,slot_holds_composite", [
+    (1, "K1", False), (2, "K1", True), (3, "K1", True), (4, "K1", True), (5, "COMPOSITE", True),
+    (6, "COMPOSITE", True)])
+def test_a_death_at_every_import_point_leaves_the_k1_lineage_or_the_composite(k1, library, tmp_path, point,  # noqa: F811
+                                                                              state_format, slot_holds_composite):
+    """In process, over the real libraries (simulated death, testing_control_fault action 1), every registered point
+    of the legacy import: the death has exactly its point's on-disk effect, and a fresh runtime decides from continuity
+    alone. The real SIGKILL matrix of every point is K1 Recovery R0 v4's."""
+    from elpis.runtime.core import ContinuityProcessDeath
+
+    k1_store = _provision(k1, tmp_path / "checkpoint")
+    composite_store = _store(library, tmp_path / "composite")
+    testing = lambda store: Runtime(replace(_config(tmp_path / "continuity", testing=True), k1_checkpoint_dir=store))
+    with world(k1, max_rows=8) as state:
+        with testing(k1_store) as runtime:
+            runtime.anchor_cognition(state)
+            runtime.run_learn(state, _learn("one"))
+            k = runtime.publish_recoverable(state).identity
+        with CompositeState.import_k1(library, CONFIG, state.snapshot()) as composite:
+            c = composite.state_digest()
+            runtime = testing(composite_store).open()
+            runtime._core.testing_control_fault(2, 1, point, 40)
+            with pytest.raises(ContinuityProcessDeath):
+                runtime.import_composite(composite)
+            assert runtime.fault == "CONTINUITY_TESTING_PROCESS_DEATH"   # the process is "gone"
+            runtime.close()
+    assert (c in _slot_identities(composite_store)) is slot_holds_composite
+    with _runtime(tmp_path, composite_store) as runtime:
+        durable, recovery = runtime.continuity.snapshot(), runtime.recover_k1()
+    assert durable.state_format == state_format
+    if state_format == "K1":
+        assert (durable.k1_state_digest, recovery.disposition, recovery.candidate) == (k, "CHECKPOINT_MISSING", None)
+        with _runtime(tmp_path, k1_store) as runtime:
+            assert (runtime.recover_k1().disposition, runtime.recover_k1().authorized) == ("RESUMABLE", k)
+    else:
+        assert (durable.k1_state_digest, recovery.disposition) == (c, "RESUMABLE")
+        with CompositeState.restore(library, CONFIG, recovery.envelope) as resumed:
+            assert resumed.state_digest() == c and resumed.inspect()["memory_slots_used"] == 0
