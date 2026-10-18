@@ -92,6 +92,23 @@ class _Counters(C.Structure):
                 ("txn_begins", _U64), ("txn_aborts", _U64), ("stale_refusals", _U64), ("busy_refusals", _U64)]
 
 
+class _FMSStats(C.Structure):
+    """``fms_stats`` (elpis/fms.h, FMS ABI v2): every field is a uint64."""
+    _fields_ = ([("tier_bytes", _U64 * 3), ("domain_bytes", _U64 * 3)]
+                + [(n, _U64) for n in ("objects", "pinned_bytes", "inflight_ops", "promotions", "demotions",
+                                       "bytes_promoted", "bytes_demoted", "zero_copy_placements", "cold_replica_reuse",
+                                       "cold_writes", "cold_reads", "digest_failures", "device_failures",
+                                       "forced_cpu_fallbacks", "forced_placements", "move_failures", "fence_timeouts",
+                                       "move_p50_ns", "move_p95_ns")])
+
+
+class _Metrics(C.Structure):
+    """``elpis_ecsg_k1_fms_metrics``: the FMS context's residency statistics, then the adapter's own counters."""
+    _fields_ = [("residency", _FMSStats)] + [(n, _U64) for n in (
+        "states", "logical_bytes", "resident_authoritative_bytes", "workspace_bytes", "resident_high_water", "leases",
+        "demotion_ns")]
+
+
 class _Info(C.Structure):
     _fields_ = [("logical_identity", C.c_uint8 * 32), ("object_handle", _U64), ("epoch", _U64),
                 ("generation", _U64), ("dim", C.c_size_t), ("width", C.c_size_t), ("max_rows", C.c_size_t),
@@ -547,6 +564,7 @@ _FMS_ABI = {
     "close": ([_VP, C.POINTER(_U64)], C.c_int),
     "inspect": ([_VP, _U64, C.POINTER(_Info)], C.c_int),
     "k1_stats": ([_VP, _U64, C.POINTER(_Counters)], C.c_int),
+    "stats": ([_VP, C.POINTER(_Metrics)], C.c_int),
     "pump": ([_VP], C.c_int),
     "reserve": ([_VP, _U64, C.c_size_t], C.c_int),
     "forward": ([_VP, _U64, _P, C.c_size_t, _P], C.c_int),
@@ -577,6 +595,8 @@ _FMS_ABI = {
                                  C.c_size_t, _SRP], C.c_int),
     "leased_txn_commit_identity": ([_VP, _U64, _U64, _U64, _CIP], C.c_int),
     "materialize": ([_VP, _U64], C.c_int),
+    "resident_hold": ([_VP, _U64], C.c_int),
+    "resident_release": ([_VP, _U64], C.c_int),
     "resident_holds": ([_VP, _U64, C.POINTER(C.c_uint32)], C.c_int),
 }
 
@@ -677,6 +697,18 @@ class K1FMSRuntime:
             raise _refused(rc, "K1 FMS stats")
         return _record(s)
 
+    def metrics(self):
+        """The adapter's counters and, under ``residency``, its FMS context's statistics (promotions, demotions,
+        cold reads and writes, ...). Read-only."""
+        m = _Metrics()
+        rc = self._f.stats(self._live(), C.byref(m))
+        if rc != 0:
+            raise _refused(rc, "K1 FMS stats")
+        out = {name: int(getattr(m, name)) for name, _ in _Metrics._fields_[1:]}
+        out["residency"] = {name: (tuple(int(v) for v in value) if isinstance(value, C.Array) else int(value))
+                            for name, value in ((n, getattr(m.residency, n)) for n, _ in _FMSStats._fields_)}
+        return out
+
     def pump(self):
         rc = self._f.pump(self._live())
         if rc != 0:
@@ -689,6 +721,22 @@ class K1FMSRuntime:
         rc = self._f.materialize(self._live(), state_id)
         if rc != 0:
             raise _refused(rc, "K1 FMS materialize")
+
+    def resident_hold(self, state_id):
+        """The owner's residency hold (``ecsg_k1_fms.h``, "Residency"): only if the state is WARM now, pin it where it
+        is, so FMS can no longer demote it, and from then on every operation on it pins resident-only (it never
+        promotes, reads the cold store or waits for a move). A state that is not WARM is refused ``NOT_RESIDENT``
+        with nothing pinned or promoted. Holds nest (one FMS pin for all of them) and ``close_state`` is refused
+        ``BUSY`` while one exists. A runtime binding the state takes a hold of its own; this changes no K1 state."""
+        rc = self._f.resident_hold(self._live(), state_id)
+        if rc != 0:
+            raise _refused(rc, "K1 FMS residency hold")
+
+    def resident_release(self, state_id):
+        """Drop one residency hold; the last one unpins (the state is demotable again). ``INVALID`` without a hold."""
+        rc = self._f.resident_release(self._live(), state_id)
+        if rc != 0:
+            raise _refused(rc, "K1 FMS residency release")
 
     def resident_holds(self, state_id):
         """The number of residency holds on a state (a bound runtime holds one)."""

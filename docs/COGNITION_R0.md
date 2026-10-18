@@ -134,7 +134,9 @@ task, its teachers and its thresholds stay in `research/` and grant nothing.
 
 ## Missing edges
 
-* **ECS <-> DSV semantic codec**: not defined; text generation unavailable.
+* **ECS <-> DSV semantic codec**: not defined; text generation unavailable. The interface a candidate map must
+  implement, the mechanical ECS-dependence gates it must pass and the scientific question it would answer are
+  specified in `docs/qualification/ECS_CODEC_R0.md` (NOT RUN; no map exists).
 * **FMS**: current FMS materializes immutable, digest-verified file assets.
   It cannot yet hold mutable ECS state; `W` lives in native ECS memory and
   persists through its snapshot bytes.

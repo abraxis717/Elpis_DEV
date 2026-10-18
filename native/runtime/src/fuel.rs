@@ -4,7 +4,7 @@
 //! Per-field bounds (64 experiences, 256 rows and 2^20 K1 steps each) still let one schedule ask for tens of
 //! millions of learning steps. Admission therefore bounds the totals: experiences, rows, rows of one experience
 //! (which is also the reservation ceiling, so the memory a schedule can make RuntimeCore reserve), learning steps,
-//! query rows, and **ECS work units**.
+//! query rows, **ECS work units**, and (ABI v5) the typed memory observations one managed turn records.
 //!
 //! An ECS work unit is one multiply-accumulate-class operation of the native K1 kernels as counted by this formula
 //! (not measured, not wall-clock, not machine-dependent). For a state of input dimension `d`, width `w` and
@@ -43,7 +43,12 @@ pub struct Budget {
     /// ECS work units of one operation.
     pub max_work_units: u64,
     pub max_query_rows: u64,
+    /// Typed memory observations one managed turn (LEARN or observe-only) may record (ABI v5).
+    pub max_observations: u64,
 }
+
+/// The largest number of observations one managed turn may record (the compiled ceiling of `max_observations`).
+pub const MAX_TURN_OBSERVATIONS: u64 = 256;
 
 /// The canonical ceiling, compiled in. No budget may exceed it.
 pub const CEILING: Budget = Budget {
@@ -53,6 +58,7 @@ pub const CEILING: Budget = Budget {
     max_steps: 1 << 20,
     max_work_units: 1 << 30,
     max_query_rows: 4096,
+    max_observations: MAX_TURN_OBSERVATIONS,
 };
 
 /// Why a request is outside its budget (all refused as `COGNITION_FUEL_EXCEEDED`).
@@ -65,6 +71,7 @@ pub enum Over {
     Steps,
     WorkUnits,
     QueryRows,
+    Observations,
 }
 
 impl Budget {
@@ -77,6 +84,7 @@ impl Budget {
             (self.max_steps, CEILING.max_steps),
             (self.max_work_units, CEILING.max_work_units),
             (self.max_query_rows, CEILING.max_query_rows),
+            (self.max_observations, CEILING.max_observations),
         ];
         pairs.iter().all(|&(v, c)| (1..=c).contains(&v))
     }
@@ -161,5 +169,25 @@ pub fn admit_query(budget: &Budget, dim: usize, width: usize, rows: usize) -> Re
     match query_units(dim, width, rows) {
         Some(units) if units <= budget.max_work_units => Ok(units),
         _ => Err(Over::WorkUnits),
+    }
+}
+
+/// Admit an observe-only managed turn under `budget` (ABI v5): the budget itself must narrow [`CEILING`]. It runs no
+/// K1 schedule, so it costs no ECS work units; its observations are counted one by one ([`admit_observation`]).
+pub fn admit_observe_turn(budget: &Budget) -> Result<(), Over> {
+    if budget.within_ceiling() {
+        Ok(())
+    } else {
+        Err(Over::Budget)
+    }
+}
+
+/// Admit one more observation in a managed turn that has recorded `recorded` under a turn bound `max` (the turn's
+/// budget's `max_observations`, admitted at begin).
+pub fn admit_observation(recorded: u64, max: u64) -> Result<(), Over> {
+    if recorded < max {
+        Ok(())
+    } else {
+        Err(Over::Observations)
     }
 }

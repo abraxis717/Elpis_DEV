@@ -192,6 +192,9 @@ AUTONOMOUS_OPERATIONS = frozenset({
     "release",             # gives a bound K1 state back (its managed lease); writes nothing
     "run_query",           # read-only: writes nothing at all
     "run_learn",           # explicit LearnAuthority; a volatile commit: writes nothing at all
+    "run_observe",         # explicit ObservationAuthority; a volatile observe-only commit: writes nothing at all
+    "run_numeric_query",   # read-only: writes nothing at all
+    "run_numeric_learn",   # explicit LearnAuthority; a volatile commit: writes nothing at all
     "run_turn",            # LEGACY learned turn: a LEARN (explicit LearnAuthority); writes nothing at all
     "publish_recoverable",  # explicit recoverable publication: the fixed checkpoint and continuity slots only
     "publish_identity",    # explicit identity-only publication: the fixed continuity slots only
@@ -204,6 +207,7 @@ OPERATOR_OPERATIONS = frozenset({
     "evolve",              # an explicit assertion under the pinned evolution policy, reserved before execution
     "discard_k1_candidate",   # explicit reconciliation of exactly one named checkpoint candidate
     "adopt_k1_candidate",     # explicit reconciliation: continuity authorized -> the named candidate
+    "import_composite",       # explicit lineage format change (K1 -> ECS composite): fixed checkpoint, then continuity
 })
 AUTONOMOUS_WRITERS = frozenset(w.id for w in WRITERS if w.classification is F)
 

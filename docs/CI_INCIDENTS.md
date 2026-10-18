@@ -66,3 +66,66 @@ evidence.
 
 The repair is accepted only with the required jobs green on its exact head commit (`docs/CI_POLICY.md` rules 1, 2).
 A recurrence with `--test-threads=1` reopens this incident and refutes the overlapping-lifetime explanation.
+
+## CI-HOTRES-1 — a released FMS-resident K1 state assumed to be the next eviction victim
+
+**Status:** repair applied (test contract); classified TEST-CONTRACT DEFECT. The FMS residency implementation is
+unchanged.
+
+### Observations
+
+| run | head | job | test | failure |
+|---|---|---|---|---|
+| PR #50 (38674420705) | `68e8bc3` | Python 3.11 | `tests/integration/test_hot_residency.py` | `assert before["tier"] == 2` (the released state was still WARM after four rounds of pressure), then `BUSY: K1 FMS runtime destroy` from the cleanup |
+| post-merge main (38674556226) | `21562cd` | Python without network | same | same |
+
+The same tree was green in the other Python jobs of both runs (Python 3.12, and Python 3.11 / 3.12 on main), and the
+test passed 10/10 locally: one tree, different verdicts (`docs/CI_POLICY.md` rule 3).
+
+### Mechanism (what is evidenced)
+
+* FMS chooses a demotion victim among *demotable* objects only (`fms_core.c`, `demotable`: never a pinned one) by the
+  largest `size / evict_cost_ns`, and `evict_cost_ns` weights the promotion cost by `p = tau / (tau + age)`: `age` is
+  the time since the last access and `tau` the mean inter-access interval, both on the PAL's monotonic wall clock.
+* `fms_release` sets `last_access_ns` (`fms_core.c`, `fms_release`), so releasing a state is an access: it makes the
+  state *more* recent, never the next victim.
+* The old test released a frequently accessed state and then expected one of up to four newcomers to demote it while
+  another unpinned state was also WARM. Which of the two FMS picked depended on access counts and on milliseconds of
+  wall-clock time. A diagnostic outside the repository (same FMS configuration, two unpinned WARM K1 states, varying
+  only the access order, the access count and a 0 / 5 / 50 ms wait) demoted either state depending on those alone.
+* The `BUSY` at destroy was a second test defect: the cleanup closed only the pressure states, so after the primary
+  failure the main state was still registered and its report hid the first one.
+* `native/runtime/tests/test_runtime_hot_io.c` had the same latent loop (it passed on CI timing).
+
+### Classification
+
+TEST-CONTRACT DEFECT: the test asked for a victim order FMS never promised. Not an FMS, K1 FMS adapter or RuntimeCore
+defect; no source of either changed.
+
+### Repair
+
+* Every COLD precondition is made exact through FMS's one hard law, a pinned object is never demoted: every other WARM
+  state is held (the adapter's residency hold) so that exactly one state is eligible, and only then a newcomer arrives.
+  The Python binding gained the adapter's existing `resident_hold` / `resident_release` and its read-only `stats`
+  (`K1FMSRuntime.metrics()`: FMS promotions, demotions, cold reads and writes), all ABI-v1 entry points already used
+  by RuntimeCore.
+* The invariants are separate tests (`test_hot_residency.py`): A (a bound state is never demoted and HOT work on it
+  promotes nothing and reads no cold replica; with every other WARM state held the newcomer is refused rather than the
+  bound state demoted), B (QUERY, LEARN and an identity-only durable request on a demoted state are refused
+  `RUNTIME_NOT_RESIDENT` with FMS counters, the adapter's state record, holds, continuity and the durability lane all
+  unchanged, and no fail-stop), C (only the explicit materialization reads the replica: exactly one promotion and one
+  cold read; the released live lineage resumes at its generation). The fixture closes every state it registered, so a
+  pass also proves no hold leaked and a failure keeps its own report.
+* The native test establishes its preconditions the same way, adds real pressure while bound and the refused
+  identity-only request with byte-exact continuity and lane status.
+* Mutation sensitivity (rebuilt mutants, outside the repository): RuntimeCore binding without the hold, the adapter
+  counting a hold without pinning it, a hold that promotes synchronously, NOT_RESIDENT ignored by RuntimeCore, a hold
+  leaked by release, a refusal that fail-stops, a refused durable request that publishes the released identity, and a
+  Python facade that materializes and retries: all eight killed by the corrected suite (the last but one only by B and
+  the native test; the old test let it survive).
+
+Not done, by policy: an `any(... == COLD)` relaxation, a mocked eviction, a retry loop, a sleep.
+
+### Closure condition
+
+The repair is accepted only with the required jobs green on its exact head commit (`docs/CI_POLICY.md` rules 1, 2).

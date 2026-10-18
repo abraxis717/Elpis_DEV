@@ -575,7 +575,9 @@ composite as substrate kind 3 exactly as K1: a volatile native commit on the HOT
 an explicit durable publication (capture -> seal -> checkpoint -> continuity; record v3 names the composite
 format); memory changes only through `turn_observe` in a managed turn.
 The typed HACF -> memory observation path (`libelpis_hacf_observation`, runtime subsystem) keeps structure the
-owner of hyperedge identity and validation. The Python runtime composition binds K1 lineages only.
+owner of hyperedge identity and validation. The Python runtime composition drives composite lineages through the
+same RuntimeCore substrate (`elpis.ECS.composite`; typed observations ride a managed LEARN turn under an explicit
+`ObservationAuthority`, all or nothing; docs/ECS_COMPOSITE_STATE.md, "Python composition"): mechanics only.
 
 ## Inference: the DSV4 codec and retained model mechanics (`elpis.inference`)
 
@@ -825,6 +827,8 @@ history:
 | `run_query` | codec -> one read-only native `leased_query` -> codec (`elpis.runtime.cognition`) | none (QUERY writes nothing) |
 | `run_learn` | codec -> native K1 transaction under an explicit `LearnAuthority` | none: the commit is volatile (ABI v4) |
 | `run_turn` | LEGACY learned turn: a LEARN whose S3 readout is decoded | none: the commit is volatile (ABI v4) |
+| `run_observe` | an observe-only managed turn on an ECS composite (RuntimeCore ABI v5): typed observations under an explicit `ObservationAuthority`, no K1 schedule | none: the commit is volatile; the K1 component stays byte-identical |
+| `run_numeric_query` / `run_numeric_learn` | QUERY / LEARN of an admitted numeric `QueryStimulus` / `Stimulus` (no codec, no text): the same managed native calls as `run_query` / `run_learn` | none: QUERY writes nothing; the LEARN commit is volatile |
 | `publish_recoverable` | RuntimeCore's durability lane: capture, seal, checkpoint slot (read back verified), continuity record; needs the checkpoint store | the acknowledged K1 state digest and its checkpoint slot |
 | `publish_identity` | RuntimeCore's durability lane: capture, seal, continuity record; only without a checkpoint store | the published K1 state digest (identity only; never an acknowledgment) |
 | `durability`, `live_identity` | read the durability lane / the bound state's identity | none |
@@ -960,6 +964,26 @@ in-place resolver (`elpis.structure.retrieval.objects`), whose cold reads run on
 the contextual worker before a view is published; a retrieval epoch never waits
 for vector residency unless its owner chose to (bridge ABI v3).
 
+**Context lane audit (2026-10-17).** One authority: `elpis.runtime.context` is the only definition of the active
+context's identity, version and predecessor the runtime uses; the DSV model-view context of `elpis.inference.context`
+/ `global_context` (ProposalOnly, its own `generation`) is a different object and nothing outside `elpis.inference`
+imports it (`test_context_authority.py::test_one_context_authority...`). The PR #51 HCA record is research only.
+
+| Concern | Mechanism | Proof |
+|---|---|---|
+| admission, source validation | `ContextReference` (verified HACF chunk, pinned corpus, provenance digest); `references_from_resolved`; `ResolveObservation` resolves in place on the worker | `test_cold_materialization_runs_on_the_worker_before_publication`, `test_a_refused_resolution_publishes_nothing` |
+| immutable views, version and predecessor | `ContextView` (frozen; digest over every field; `predecessor` = the previous view's digest); `successor` pure | `test_a_view_is_complete_immutable_versioned_and_chained`, `test_successor_is_pure_and_deterministic` |
+| typed axioms and relations, binding obligations, candidate vs admitted | `ContextAxiom` `PROVISIONAL`/`BINDING`; `ContextRelation` `CANDIDATE`/`ADMITTED` (only the structure layer's verified projection admits) | `test_references_and_relations_keep_their_epistemic_status`, `test_binding_axioms_are_never_evicted_downgraded_or_silently_dropped` |
+| asynchronous publication, backpressure | one WARM worker, reference-swap publication; bounded queue with `OVERFLOW_POLICY` (coalesce, evict or drop optional counted, refuse required) | `test_the_handoff_is_bounded_with_an_explicit_overflow_policy`, `test_concurrent_readers_only_ever_see_complete_valid_views` |
+| failure isolation | each observation all-or-nothing; a batch fault publishes nothing | `test_a_failed_batch_publishes_nothing_and_the_published_view_stays_intact` |
+| freshness | a cognitive operation records the consumed view's coordinate; a stale view carries no authority | acceptance N-check "stale context"; `test_the_active_view_and_the_durable_state_are_separate_coordinates` |
+| resource limits | `ContextLimits` (capacity, batch, axioms, relations, references); superseded views retire unread | `test_superseded_views_retire_when_unread_and_memory_stays_bounded` |
+| cancellation and shutdown | `close` joins the worker; queued observations `ABANDONED`; the last view stays readable; later submits `CONTEXT_CLOSED` | `test_close_abandons_what_is_pending_keeps_the_published_view_and_refuses_new_work` |
+| context -> ECS transport | none: only the coordinate is recorded; typed evidence enters the memory only through `record_evidence` / an explicit `ObservationAuthority` | `test_a_consumed_context_view_never_reaches_the_k1_schedule_or_the_memory`, `test_the_context_lane_imports_nothing_that_can_mutate_ecs_state` |
+
+Context mechanics are not contextual reasoning: no dynamics law is installed, and the working system exposes exact
+admitted context and typed structural memory instead of unqualified propagation.
+
 The evolution gate binds the current evolution authority and comes from the
 pinned evolution policy. Each admitted transition advances the authority, so
 an assertion built against an older revision is rejected before anything runs.
@@ -986,13 +1010,17 @@ the subsystem state unchanged.
 
 * **No qualified ECS codec.** Canonical text generation is unavailable until
   the ECS<->DSV semantic maps are defined and qualified.
-* **No canonical HACF -> ECS edge.** Structural memory is rendered through the
-  codec, but nothing canonical consumes it yet. `research/hacf_ecs_bridge_r0`
-  is RESEARCH_ONLY, unqualified infrastructure (read-only QUERY only).
+* **No HACF -> ECS meaning map.** Typed HACF evidence reaches the composite
+  memory as stored evidence only (`elpis.runtime.observation.record_evidence`,
+  an observe-only turn: no K1 learning); nothing maps structure to K1 stimuli
+  or interprets it. `research/hacf_ecs_bridge_r0` is RESEARCH_ONLY, unqualified
+  infrastructure (read-only QUERY only).
 * **No preemptive deadline.** Fuel bounds an operation before it starts; a
   running K1 schedule cannot be cancelled.
 * **Unqualified post-red-team mechanisms.** Their specifications
-  (docs/qualification) are NOT RUN.
+  (docs/qualification, including the ABI v4 successors and ECS Codec R0) are
+  NOT RUN; Cognitive Boundary R1's retrospective closure covers commit `bec6da7`
+  (ABI v3) only.
 * **Proposals only, not overlays.** Ingress overlays are not persisted.
 * **No steering epochs.** The steered engine is composed by the caller.
 * **No audit trail.** Runtime operations are not logged. Continuity holds

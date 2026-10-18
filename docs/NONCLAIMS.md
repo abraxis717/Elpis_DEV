@@ -168,8 +168,10 @@ are not evidence that the contract has any effect.
 * **Mechanics, not qualification.** Read-only QUERY and authority-gated LEARN,
   independent codec admission, total cognitive fuel, managed K1 lease
   ownership, sealed native admission and K1 Recovery R0 are implemented and
-  tested; none is qualified. Their specifications in `docs/qualification` are
-  NOT RUN.
+  tested; none is qualified at the ABI v4 head. Their specifications in
+  `docs/qualification` (the ABI v4 successors Cognitive Boundary R2 and K1
+  Recovery R0 under ABI v4 included) are NOT RUN. Cognitive Boundary R1's
+  retrospective closure covers commit `bec6da7` (ABI v3) only.
 * **Pins authenticate bytes, not authors.** The native, codec and evolution
   policy authorities verify exact bytes against SHA-256 pins from trusted
   configuration. They offer no protection against a malicious in-process

@@ -23,6 +23,14 @@ The single machine-readable system authority is
 [`docs/CI_POLICY.md`](docs/CI_POLICY.md): no merge while any workflow run for
 the head commit is red.
 
+**Running it.** [`docs/OPERATING_ELPIS.md`](docs/OPERATING_ELPIS.md) installs a
+local deployment and operates the canonical runtime through
+`python -m elpis.runtime.cli`: numeric QUERY and LEARN of the native ECS
+composite, typed structural evidence (no K1 learning), exact LOOKUP,
+recoverable publication, restart and operator reconciliation. There is no text
+interface (`ECS_CODEC_UNQUALIFIED`). `python -m elpis.runtime.acceptance` is
+the installed system's smoke and recovery test.
+
 ## Layout
 
 | Path | Subsystem |

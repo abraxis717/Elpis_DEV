@@ -8,7 +8,7 @@ The ECS memory is the bounded, model-free typed relational memory of the one ECS
 prefix (`elpis_ecs_mem_*`, `ELPIS_ECS_MEM_*`), capability gating, and **without the MF-R0 CONSOLIDATE (slow-bank)
 law**. It is a **component** of the ECS retained
 state, never an authority of its own: durable authority over it exists only through the composite retained state
-(`docs/ECS_COMPOSITE_STATE.md`). A managed turn that observes it commits volatile (RuntimeCore ABI v4); the memory
+(`docs/ECS_COMPOSITE_STATE.md`). A managed turn that observes it (a LEARN turn, or an observe-only turn: RuntimeCore ABI v5) commits volatile; the memory
 becomes durable only with an explicit durable publication of the composite. It is not the contextual (WARM) lane's
 active context (`elpis.runtime.context`), which is session-local, never persisted and holds references, not memory
 slots.
@@ -88,6 +88,37 @@ preserved; `test_runtime_composite` carries an asserted-and-negated hyperedge th
 volatile, then published durably) and recovers the byte-identical hyperedge from the committed memory, whose LOOKUP
 then reports the conflict instead of an answer.
 Mapping or observing never makes a record true, authorized or learned.
+
+From Python the same path is `elpis.runtime.observation.HacfObservationLibrary` over the admitted adapter (library
+identifier `elpis_hacf_observation`): structure's own native functions canonicalize participants and compute and
+validate every hyperedge and assertion identity (Python hashes nothing), the adapter maps the record, and the
+observation enters the composite memory only through `Runtime.run_learn(..., observations=...,
+observation_authority=...)` (docs/ECS_COMPOSITE_STATE.md, "Python composition"); `hyperedge_of` inverts a resident
+slot. `tests/integration/test_hacf_composite_observation.py` carries an asserted, negated, uncertain and re-asserted
+hyperedge through managed turns, a recoverable publication and a restart, and recovers the identical slot and
+hyperedge; it refuses a tampered identity, a changed provenance, an assertion of another hyperedge, an authority
+outside structure's range or outside the `ObservationAuthority`, undefined flags, query-local, too many and repeated
+participants, a self-consistent noncanonical record, a failed turn and an unmanaged mutation, and shows that the same
+LEARN with and without an observation leaves identical K1 components. This is mechanical transport and preservation
+only: no semantic interpretation, no qualified HACF -> ECS observation map and no cognitive use is established.
+
+**The direct evidence path.** `elpis.runtime.observation.record_evidence(runtime, substrate, adapter, evidence,
+observation_authority)` takes a tuple of `StructuralEvidence` (a structure-identified hyperedge, an assertion naming
+it, the caller's explicit polarity and a tick), maps every item through the adapter first (any refusal touches no
+runtime state: no native turn is begun), then records all of them in ONE observe-only managed turn (RuntimeCore ABI
+v5: no K1 learning), all or nothing, and returns an `EvidenceReceipt` binding each relation key to the hyperedge
+identity, assertion identity, provenance digest, source authority, polarity and tick it records. The memory keeps the
+provenance digest exactly; resolving it to source coordinates is structure's. Laws
+(`tests/integration/test_structural_evidence.py`, real native code): two sources asserting and negating one
+hyperedge are one relation with both kept, and LOOKUP answers by net evidence (it withholds an answer while they
+balance and never decides which source is right); duplicate evidence is counted again, never merged or dropped;
+invalid provenance, another hyperedge's assertion, 9 or query-local participants, an undefined polarity and an
+unadmitted source are refused with nothing native begun; evidence beyond the memory's slot capacity aborts its whole
+turn; simultaneous requests from 8 threads are serialized by RuntimeCore (`RUNTIME_TURN_OPEN` for the others) and
+each is recorded exactly once; evidence survives recoverable publication, SIGKILL and restore exactly. Footprint of
+the test configuration (K1 6x36, memory D = 64, B = 2, S = 16, E = 32): a fixed 106,664-byte ELPISEC1 envelope
+(K1 30,376; memory capacity 76,128) and 337,488 allocated bytes, unchanged by recording up to the 16-relation slot
+capacity. Four mutants of the path (polarity, receipt order, receipt provenance, authority) are killed.
 
 ## Resources
 

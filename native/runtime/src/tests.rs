@@ -11,15 +11,15 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-use elpis_continuity::{Code, Cognition, EvolutionState};
+use elpis_continuity::{Code, Cognition, EvolutionState, StateFormat};
 
 use crate::code::{Error, Rt};
 use crate::core::{Core, Counters, Stimulus, VolatileCommit};
 use crate::durable::{Kind, Status, Ticket};
 use crate::fuel::{self, Budget, CEILING};
 use crate::substrate::{
-    features, k1_envelope_bytes, Digest, Experience, K1Ops, Key, ResidentRelease, ScheduleOutcome, Sealer, Transition,
-    TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE,
+    features, k1_envelope_bytes, Digest, Experience, K1Ops, Key, Observation, ResidentRelease, ScheduleOutcome, Sealer,
+    Transition, TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE,
 };
 
 const DIM: usize = 2;
@@ -35,6 +35,8 @@ struct Txn {
     generation: u64,
     w: Vec<f64>,
     epoch: u64,
+    /// The memory candidate of a composite stand-in (the committed memory, plus this transaction's observations).
+    memory: Vec<Digest>,
 }
 
 /// One retained "state": W, epoch and a generation that every committed transition advances by one.
@@ -59,6 +61,12 @@ struct State {
     warm: bool,
     holds: u32,
     promotions: u64,
+    /// A composite stand-in: its retained state is (W, epoch) plus a memory of recorded observation keys, under one
+    /// identity (as ELPISEC1 binds the K1 trailer and the memory).
+    composite: bool,
+    memory: Vec<Digest>,
+    /// A faulty composite whose commit reports K1 learning (an epoch step) it never ran.
+    learn_on_commit: bool,
 }
 
 impl State {
@@ -109,11 +117,17 @@ unsafe extern "C" fn fake_seal(p: *mut u8, n: usize) -> c_int {
 }
 
 impl State {
-    /// The retained-state identity: the envelope's SHA-256 trailer (K1's law).
+    /// The retained-state identity: the envelope's SHA-256 trailer (K1's law); a composite's binds the K1 trailer
+    /// and every memory key together.
     fn identity(&self) -> Digest {
         let e = envelope_of(&self.w, self.epoch);
         let mut out = [0u8; 32];
         out.copy_from_slice(&e[ENVELOPE - 32..]);
+        if self.composite {
+            let mut parts: Vec<&[u8]> = vec![b"composite", &out];
+            parts.extend(self.memory.iter().map(|k| &k[..]));
+            return elpis_continuity::sha256::digest(&parts);
+        }
         out
     }
 
@@ -156,7 +170,21 @@ impl Fake {
             warm: true,
             holds: 0,
             promotions: 0,
+            composite: false,
+            memory: Vec::new(),
+            learn_on_commit: false,
         })))
+    }
+
+    /// A composite stand-in (K1 plus a memory; `ELPIS_RUNTIME_SUBSTRATE_COMPOSITE`).
+    fn composite(seed: f64) -> Fake {
+        let f = Fake::new(seed);
+        f.state().composite = true;
+        f
+    }
+
+    fn memory(&self) -> Vec<Digest> {
+        self.state().memory.clone()
     }
 
     /// An FMS-resident stand-in (WARM until demoted).
@@ -396,7 +424,14 @@ impl K1Ops for Fake {
         *token = s.next_token;
         *source_generation = s.generation;
         s.next_token += 1;
-        let txn = Txn { token: *token, lease, generation: s.generation, w: s.w.clone(), epoch: s.epoch };
+        let txn = Txn {
+            token: *token,
+            lease,
+            generation: s.generation,
+            w: s.w.clone(),
+            epoch: s.epoch,
+            memory: s.memory.clone(),
+        };
         s.txn = Some(txn);
         0
     }
@@ -464,7 +499,8 @@ impl K1Ops for Fake {
         out.epoch_before = s.epoch;
         out.generation_before = s.generation;
         s.w = txn.w;
-        s.epoch = txn.epoch;
+        s.epoch = txn.epoch + u64::from(s.learn_on_commit);
+        s.memory = txn.memory;
         s.generation += 1;
         out.epoch_after = s.epoch;
         out.generation_after = s.generation;
@@ -515,7 +551,51 @@ impl K1Ops for Fake {
     fn retain_resident(&self) -> Option<Box<dyn ResidentRelease>> {
         self.state().fms.then(|| Box::new(FakeResident(Arc::clone(&self.0))) as Box<dyn ResidentRelease>)
     }
+
+    fn format(&self) -> StateFormat {
+        if self.state().composite {
+            StateFormat::Composite
+        } else {
+            StateFormat::K1
+        }
+    }
+
+    /// The stand-in's OBSERVE: `observation` points at the 32-byte relation key the test chose (opaque to
+    /// RuntimeCore); a key starting 0xFF is refused by the "memory" (composite REFUSED, its own status -7).
+    fn txn_observe(
+        &mut self,
+        lease: u64,
+        token: u64,
+        observation: Observation,
+        key: &mut Digest,
+        memory_status: &mut i32,
+    ) -> i32 {
+        let mut s = self.state();
+        s.calls.push("txn_observe");
+        if !s.composite {
+            return K1_INVALID;
+        }
+        if s.lease != lease {
+            return K1_LEASED;
+        }
+        let txn = match s.txn.as_mut() {
+            Some(t) if t.token == token => t,
+            _ => return K1_INVALID,
+        };
+        // SAFETY: the tests pass a pointer to a live Digest.
+        let observed = unsafe { *(observation.0 as *const Digest) };
+        if observed[0] == 0xFF {
+            *memory_status = -7;
+            return COMPOSITE_REFUSED;
+        }
+        txn.memory.push(observed);
+        *key = observed;
+        0
+    }
 }
+
+/// `ELPIS_ECS_COMPOSITE_REFUSED`: the memory refused (its own status reported alongside).
+const COMPOSITE_REFUSED: i32 = -10;
 
 fn query(core: &mut Core, sub: &mut Fake, k: Key, rows: usize) -> Result<(Vec<f64>, u64), Error> {
     let x = query_rows(rows);
@@ -1898,6 +1978,39 @@ mod recovery {
     }
 
     #[test]
+    fn a_ticket_resolved_beyond_the_kept_window_reads_unknown_never_acknowledged() {
+        // The lane keeps the last 16 resolutions only (bounded state, no history). An older ticket reads UNKNOWN:
+        // not ACKNOWLEDGED, not recoverable, no identity, no code; what is durable is the separately reported last
+        // acknowledgment and continuity, never an inference from a forgotten ticket. A sequence never issued is
+        // refused, not UNKNOWN.
+        let (dir, ck) = (Dir::new("ck-unknown"), Ck::new("unknown"));
+        let mut sub = Fake::new(0.1);
+        let mut c = core(&dir, &ck);
+        c.anchor(&mut sub, key(1)).unwrap();
+        let mut tickets = Vec::new();
+        for _ in 0..17 {
+            turn(&mut c, &mut sub, key(1)).unwrap();
+            tickets.push(publish(&mut c, &mut sub, key(1)).unwrap());
+        }
+        assert!(tickets.iter().all(|t| (t.status(), t.recoverable) == (Status::Acknowledged, 1)));
+        let first = c.lane().wait(tickets[0].sequence, Some(Duration::ZERO)).unwrap();
+        assert_eq!(
+            (first.status(), first.sequence, first.recoverable, first.code, first.identity),
+            (Status::Unknown, tickets[0].sequence, 0, 0, [0u8; 32])
+        );
+        for t in &tickets[1..] {
+            // The newer ones are kept exactly.
+            assert_eq!(c.lane().wait(t.sequence, Some(Duration::ZERO)).unwrap(), *t);
+        }
+        let last = *tickets.last().unwrap();
+        let report = c.lane().report();
+        assert_eq!((report.last_requested, report.last_acknowledged), (last, last));
+        assert_eq!(on_disk(&dir).cognition(), Cognition::Anchored(last.identity));
+        assert_eq!(c.lane().wait(0, Some(Duration::ZERO)).unwrap_err(), Rt::Invalid.into());
+        assert_eq!(c.lane().wait(last.sequence + 1, Some(Duration::ZERO)).unwrap_err(), Rt::Invalid.into());
+    }
+
+    #[test]
     fn a_recoverable_request_without_a_checkpoint_store_is_refused_before_anything_is_captured() {
         let dir = Dir::new("kind-no-store");
         let mut sub = Fake::new(0.1);
@@ -2292,6 +2405,187 @@ mod recovery {
             c.testing_durable_hold(false);
         }
 
+        /// The registered crash points of the control operations (`durable::control`): a death at each leaves
+        /// exactly that point's on-disk effect, and restart decides from continuity alone.
+        mod control_points {
+            use super::*;
+            use crate::durable::control::{Plan as Control, Point};
+
+            fn plan(op: u32, point: Point, arg: u64) -> Option<Control> {
+                Some(Control::new(op, point as u32, false, arg).expect("a registered point"))
+            }
+
+            fn died(e: Error, name: &str) {
+                assert_eq!(e, Code::TestingProcessDeath.into(), "{name}");
+            }
+
+            /// The candidate's lineage (D1 authorized, D3 an unresolved candidate) and a plan of the reconciliation.
+            fn unresolved(name: &str) -> (Dir, Ck, Digest, Digest) {
+                let (dir, ck) = (Dir::new(&format!("ck-{name}")), Ck::new(name));
+                let mut sub = Fake::new(0.1);
+                let (d1, d3, _) =
+                    interrupted(&dir, &ck, &mut sub, Plan::At { step: Step::SlotSynced, park: false, arg: 0 });
+                (dir, ck, d1, d3)
+            }
+
+            #[test]
+            fn a_control_plan_names_only_its_operations_points_and_applies_once() {
+                assert!(Control::new(3, Point::RecordTorn as u32, false, 0).is_none()); // a discard writes no record
+                assert!(Control::new(4, Point::SlotWritten as u32, false, 0).is_none()); // an adopt writes no slot
+                assert!(Control::new(5, 1, false, 0).is_none() && Control::new(1, 7, false, 0).is_none());
+                assert_eq!(Control::new(2, 3, true, 0).unwrap().parked(), 203);
+                let (dir, ck) = (Dir::new("ck-control-once"), Ck::new("control-once"));
+                let mut sub = Fake::new(0.1);
+                let mut c = core(&dir, &ck);
+                c.testing_control_plan(plan(4, Point::Begun, 0)); // an adopt's: another kind never fires it
+                c.anchor(&mut sub, key(1)).unwrap();
+                turn(&mut c, &mut sub, key(1)).unwrap();
+                assert_eq!(publish(&mut c, &mut sub, key(1)).unwrap().status(), Status::Acknowledged);
+                // A refusal before the operation's lifecycle checks pass does not consume the plan: it waits for the
+                // next anchor that gets that far.
+                drop(c);
+                let mut c = core(&dir, &ck);
+                c.testing_control_plan(plan(1, Point::SlotWritten, 0));
+                assert_eq!(c.anchor(&mut sub, key(1)).unwrap_err().error, Code::AlreadyAnchored.into());
+                assert!(c.lane().take_control(crate::durable::control::Op::Anchor).is_some());
+            }
+
+            #[test]
+            fn a_slot_point_its_operation_never_writes_is_consumed_and_leaves_nothing_armed() {
+                // The anchor dies with its slot synced: the slot holds D0, continuity is unanchored.
+                let (dir, ck) = (Dir::new("ck-control-unwritten"), Ck::new("control-unwritten"));
+                let mut sub = Fake::new(0.1);
+                {
+                    let mut c = core(&dir, &ck);
+                    c.testing_control_plan(plan(1, Point::SlotSynced, 0));
+                    died(c.anchor(&mut sub, key(1)).unwrap_err().error, "first anchor");
+                }
+                let mut sub = Fake::new(0.1);
+                let mut c = core(&dir, &ck);
+                assert_eq!(c.recover().unwrap().disposition, Disposition::NothingToRecover);
+                // The operator anchors again under a slot-written plan: the slot already holds D0, nothing is
+                // written, so the point is never reached; the plan is consumed and does not fire.
+                c.testing_control_plan(plan(1, Point::SlotWritten, 0));
+                c.anchor(&mut sub, key(1)).unwrap();
+                assert!(c.lane().take_control(crate::durable::control::Op::Anchor).is_none());
+                let armed = c.lane().with_stores(|st| st.checkpoint.as_ref().map(|s| s.probe.plan)).unwrap();
+                assert_eq!(armed, Some(None), "a slot fault armed by the consumed plan outlived its operation");
+                // Nothing it armed survives: the next publication's slot write and sync, a candidate's withdrawal and
+                // the next continuity record all complete.
+                turn(&mut c, &mut sub, key(1)).unwrap();
+                assert_eq!(publish(&mut c, &mut sub, key(1)).unwrap().status(), Status::Acknowledged);
+                turn(&mut c, &mut sub, key(1)).unwrap();
+                let d = sub.identity();
+                c.testing_durable_plan(Some(Plan::At { step: Step::SlotSynced, park: false, arg: 0 }));
+                publish(&mut c, &mut sub, key(1)).unwrap();
+                drop(c);
+                let mut c = core(&dir, &ck);
+                assert_eq!(c.recover().unwrap().candidate, d);
+                c.checkpoint_discard(&d).unwrap();
+                assert_eq!(c.recover().unwrap().disposition, Disposition::Resumable);
+            }
+
+            #[test]
+            fn a_death_at_every_anchor_point_leaves_no_lineage_or_exactly_the_anchored_one() {
+                use Disposition::*;
+                // (point, torn bytes, a slot holds the state, what restart decides)
+                let cases = [
+                    (Point::Begun, 0, false, NothingToRecover),
+                    (Point::SlotWritten, 0, true, NothingToRecover), // a slot never creates a lineage
+                    (Point::SlotSynced, 0, true, NothingToRecover),
+                    (Point::RecordTorn, 50, true, NothingToRecover), // a torn record is not an authority
+                    (Point::RecordWritten, 0, true, Resumable),      // an unsynced record survives a process death
+                    (Point::RecordSynced, 0, true, Resumable),
+                ];
+                for (point, arg, held, expected) in cases {
+                    let name = format!("anchor-{point:?}");
+                    let (dir, ck) = (Dir::new(&format!("ck-{name}")), Ck::new(&name));
+                    let mut sub = Fake::new(0.1);
+                    let d0 = sub.identity();
+                    {
+                        let mut c = core(&dir, &ck);
+                        c.testing_control_plan(plan(1, point, arg));
+                        died(c.anchor(&mut sub, key(1)).unwrap_err().error, &name);
+                        assert_eq!(c.fault(), Some(Code::TestingProcessDeath), "{name}");
+                        died(turn(&mut c, &mut sub, key(1)).unwrap_err(), &name);
+                        // the process is "gone"
+                    }
+                    let slots = checkpoint::Store::open(&ck.0).unwrap().slots();
+                    assert_eq!(slots.iter().flatten().any(|s| s.identity == d0), held, "{name}");
+                    let mut sub = Fake::new(0.1); // a fresh process; the caller supplies the same state again
+                    let mut c = core(&dir, &ck);
+                    let r = c.recover().unwrap();
+                    assert_eq!(r.disposition, expected, "{name}");
+                    if expected == NothingToRecover {
+                        c.anchor(&mut sub, key(1)).unwrap(); // the operator anchors again, explicitly
+                    }
+                    let r = c.recover().unwrap();
+                    assert_eq!((r.disposition, r.authorized), (Resumable, d0), "{name}");
+                    assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(d0), "{name}");
+                    turn(&mut c, &mut sub, key(1)).unwrap();
+                    assert_eq!(publish(&mut c, &mut sub, key(1)).unwrap().status(), Status::Acknowledged, "{name}");
+                }
+            }
+
+            #[test]
+            fn a_death_at_every_discard_point_leaves_the_candidate_or_its_withdrawal() {
+                use Disposition::*;
+                for (point, expected) in [
+                    (Point::Begun, CandidateUnresolved),
+                    (Point::SlotWritten, Resumable),
+                    (Point::SlotSynced, Resumable),
+                ] {
+                    let name = format!("discard-{point:?}");
+                    let (dir, ck, d1, d3) = unresolved(&name);
+                    {
+                        let mut c = core(&dir, &ck);
+                        c.testing_control_plan(plan(3, point, 0));
+                        died(c.checkpoint_discard(&d3).unwrap_err().error, &name);
+                    }
+                    let mut c = core(&dir, &ck);
+                    let r = c.recover().unwrap();
+                    assert_eq!((r.disposition, r.authorized), (expected, d1), "{name}");
+                    if expected == CandidateUnresolved {
+                        assert_eq!(r.candidate, d3, "{name}");
+                        c.checkpoint_discard(&d3).unwrap(); // the operator's action, again: exactly that candidate
+                    }
+                    let r = c.recover().unwrap();
+                    assert_eq!((r.disposition, r.authorized, r.candidate), (Resumable, d1, [0u8; 32]), "{name}");
+                    assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(d1), "{name}");
+                }
+            }
+
+            #[test]
+            fn a_death_at_every_adopt_point_leaves_the_candidate_or_its_adoption() {
+                use Disposition::*;
+                for (point, arg, adopted) in [
+                    (Point::Begun, 0, false),
+                    (Point::RecordTorn, 50, false),
+                    (Point::RecordWritten, 0, true),
+                    (Point::RecordSynced, 0, true),
+                ] {
+                    let name = format!("adopt-{point:?}");
+                    let (dir, ck, d1, d3) = unresolved(&name);
+                    {
+                        let mut c = core(&dir, &ck);
+                        c.testing_control_plan(plan(4, point, arg));
+                        died(c.checkpoint_adopt(&d3).unwrap_err().error, &name);
+                    }
+                    let mut c = core(&dir, &ck);
+                    let r = c.recover().unwrap();
+                    if adopted {
+                        assert_eq!((r.disposition, r.authorized, r.candidate), (Resumable, d3, [0u8; 32]), "{name}");
+                    } else {
+                        assert_eq!((r.disposition, r.authorized, r.candidate), (CandidateUnresolved, d1, d3), "{name}");
+                        c.checkpoint_adopt(&d3).unwrap(); // the operator's action, again
+                    }
+                    let r = c.recover().unwrap();
+                    assert_eq!((r.disposition, r.authorized), (Resumable, d3), "{name}");
+                    assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(d3), "{name}");
+                }
+            }
+        }
+
         #[test]
         fn the_hot_lane_performs_no_continuity_or_checkpoint_io() {
             let (dir, ck) = (Dir::new("ck-io"), Ck::new("io"));
@@ -2372,5 +2666,199 @@ mod faults {
         let io = core.testing_continuity_counters(false);
         assert_eq!((io.opens, io.preads, io.pwrites, io.pwrite_bytes, io.data_syncs), (0, 0, 1, 176, 1));
         assert_eq!((io.dir_syncs, io.renames, io.unlinks), (0, 0, 0));
+    }
+}
+
+/// ABI v5: the observe-only managed turn of a composite substrate (docs/RUNTIME_CORE.md, "Observe-only turns").
+mod observe_only {
+    use super::*;
+
+    fn composite_key(owner: u64) -> Key {
+        Key { kind: 3, handle: 0x2000 + owner as usize, id: 0, owner, dim: DIM }
+    }
+
+    fn observation(byte: u8) -> Digest {
+        let mut d = [0u8; 32];
+        d[0] = byte;
+        d[31] = 0x5a;
+        d
+    }
+
+    fn observe(core: &mut Core, sub: &mut Fake, k: Key, d: &Digest) -> Result<Digest, (Error, i32)> {
+        let (result, memory_status) = core.turn_observe(sub, k, Observation(d as *const Digest as *const _));
+        result.map_err(|r| (r.error, memory_status))
+    }
+
+    fn anchored_composite(name: &str) -> (Dir, Core, Fake, Key, elpis_continuity::Snapshot) {
+        let dir = Dir::new(name);
+        let mut core = dir.core();
+        let mut sub = Fake::composite(0.2);
+        let k = composite_key(7);
+        let anchor = core.anchor(&mut sub, k).unwrap();
+        sub.clear_calls();
+        core.counters(true);
+        (dir, core, sub, k, anchor)
+    }
+
+    #[test]
+    fn an_observe_only_turn_records_evidence_without_any_k1_schedule_and_commits_volatile() {
+        let (dir, mut core, mut sub, k, anchor) = anchored_composite("observe-only");
+        let (k1_before, generation) = (sub.retained(), sub.generation());
+        let a = observation(1);
+        assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap(), generation);
+        assert_eq!(observe(&mut core, &mut sub, k, &a).unwrap(), a);
+        let c = core.turn_commit(&mut sub, k).unwrap();
+        // The live coordinate advanced by exactly one; K1 reports no step and no epoch change.
+        assert_eq!((c.transition.generation_before, c.transition.generation_after), (generation, generation + 1));
+        assert_eq!((c.transition.steps, c.transition.epoch_before, c.transition.epoch_after), (0, 0, 0));
+        assert_eq!((c.live_generation, core.live_generation()), (generation + 1, Some(generation + 1)));
+        // K1's retained values are byte-identical; only the memory moved.
+        assert_eq!(sub.retained(), k1_before);
+        assert_eq!(sub.memory(), vec![a]);
+        // Volatile: the durable authority did not move.
+        assert_eq!((core.snapshot().unwrap(), on_disk(&dir)), (anchor, anchor));
+        assert_ne!(sub.identity(), anchored(&core).unwrap());
+        // The first turn reads the state's shape once (cold path, cached); then begin, one observe, commit.
+        assert_eq!(sub.calls(), ["shape", "txn_begin_at", "txn_observe", "txn_commit"]);
+        // A warm observe-only turn: no schedule, no digest, no capture.
+        sub.clear_calls();
+        core.counters(true);
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        observe(&mut core, &mut sub, k, &observation(2)).unwrap();
+        core.turn_commit(&mut sub, k).unwrap();
+        assert_eq!(sub.calls(), ["txn_begin_at", "txn_observe", "txn_commit"]);
+        let expected = Counters { k1_txn_begins: 1, k1_observes: 1, k1_commits: 1, ..Counters::default() };
+        assert_eq!(core.counters(false), expected);
+        assert_eq!((sub.retained(), sub.memory()), (k1_before, vec![a, observation(2)]));
+        assert_eq!(core.fault(), None);
+    }
+
+    #[test]
+    fn a_k1_or_fms_substrate_is_refused_before_any_native_call() {
+        for (name, mut sub, k) in [
+            ("observe-k1", Fake::new(0.1), key(1)),
+            ("observe-fms", Fake::resident(0.1), Key { kind: 2, handle: 0x3000, id: 9, owner: 3, dim: DIM }),
+        ] {
+            let dir = Dir::new(name);
+            let mut core = dir.core();
+            core.anchor(&mut sub, k).unwrap();
+            sub.clear_calls();
+            assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap_err().error, Rt::Invalid.into());
+            assert!(sub.calls().is_empty() && !core.turn_is_open() && !sub.txn_open(), "{name}");
+            // A K1 lineage has no memory in a LEARN turn either.
+            let i = input(2, 1);
+            let mut s3 = vec![0.0; features(DIM)];
+            core.turn_begin(&mut sub, k, &stimulus(&i), &CEILING, &mut s3).unwrap();
+            assert_eq!(observe(&mut core, &mut sub, k, &observation(2)).unwrap_err().0, Rt::Invalid.into());
+            core.turn_abort(k).unwrap();
+        }
+    }
+
+    #[test]
+    fn a_commit_with_nothing_observed_is_refused_and_the_turn_stays_open() {
+        let (_dir, mut core, mut sub, k, _anchor) = anchored_composite("observe-empty");
+        let generation = sub.generation();
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        assert_eq!(core.turn_commit(&mut sub, k).unwrap_err().error, Rt::Invalid.into());
+        assert!(core.turn_is_open() && sub.txn_open());
+        // A refused observation does not count either.
+        assert_eq!(observe(&mut core, &mut sub, k, &observation(0xFF)).unwrap_err(), (Rt::EcsRefused.into(), -7));
+        assert_eq!(core.turn_commit(&mut sub, k).unwrap_err().error, Rt::Invalid.into());
+        core.turn_abort(k).unwrap();
+        assert!(!core.turn_is_open() && !sub.txn_open());
+        assert_eq!((sub.generation(), sub.memory()), (generation, vec![]));
+    }
+
+    #[test]
+    fn the_observation_bound_is_fuel_checked_before_the_native_call_and_recoverable() {
+        let (_dir, mut core, mut sub, k, _anchor) = anchored_composite("observe-fuel");
+        let two = Budget { max_observations: 2, ..CEILING };
+        core.turn_begin_observe(&mut sub, k, &two).unwrap();
+        let (a, b, c) = (observation(1), observation(2), observation(3));
+        observe(&mut core, &mut sub, k, &a).unwrap();
+        observe(&mut core, &mut sub, k, &b).unwrap();
+        assert_eq!(observe(&mut core, &mut sub, k, &c).unwrap_err().0, Rt::Fuel.into());
+        assert_eq!(core.counters(false).k1_observes, 2); // the refused one never crossed
+        assert!(core.turn_is_open());
+        core.turn_commit(&mut sub, k).unwrap();
+        assert_eq!(sub.memory(), vec![a, b]);
+        // The bound holds in a LEARN turn too.
+        let one = Budget { max_observations: 1, ..CEILING };
+        let i = input(2, 1);
+        let mut s3 = vec![0.0; features(DIM)];
+        core.turn_begin(&mut sub, k, &stimulus(&i), &one, &mut s3).unwrap();
+        observe(&mut core, &mut sub, k, &c).unwrap();
+        assert_eq!(observe(&mut core, &mut sub, k, &observation(4)).unwrap_err().0, Rt::Fuel.into());
+        core.turn_commit(&mut sub, k).unwrap();
+        assert_eq!(sub.memory(), vec![a, b, c]);
+        // A budget outside the ceiling is refused before anything is begun.
+        sub.clear_calls();
+        for bad in [Budget { max_observations: 0, ..CEILING }, Budget { max_observations: 257, ..CEILING }] {
+            assert_eq!(core.turn_begin_observe(&mut sub, k, &bad).unwrap_err().error, Rt::Fuel.into());
+        }
+        assert!(!sub.calls().contains(&"txn_begin_at") && !core.turn_is_open());
+        assert_eq!(fuel::CEILING.max_observations, fuel::MAX_TURN_OBSERVATIONS);
+    }
+
+    #[test]
+    fn a_refused_observation_leaves_the_candidate_and_an_abort_installs_nothing() {
+        let (_dir, mut core, mut sub, k, _anchor) = anchored_composite("observe-abort");
+        let generation = sub.generation();
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        observe(&mut core, &mut sub, k, &observation(1)).unwrap();
+        assert_eq!(observe(&mut core, &mut sub, k, &observation(0xFF)).unwrap_err(), (Rt::EcsRefused.into(), -7));
+        assert!(core.turn_is_open());
+        core.turn_abort(k).unwrap();
+        assert_eq!((sub.generation(), sub.memory(), core.live_generation()), (generation, vec![], Some(generation)));
+        // The next turn starts from the committed state, not from the aborted candidate.
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        observe(&mut core, &mut sub, k, &observation(2)).unwrap();
+        core.turn_commit(&mut sub, k).unwrap();
+        assert_eq!(sub.memory(), vec![observation(2)]);
+    }
+
+    #[test]
+    fn an_observe_only_commit_that_reports_k1_learning_fail_stops() {
+        let (_dir, mut core, mut sub, k, anchor) = anchored_composite("observe-learned");
+        sub.state().learn_on_commit = true;
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        observe(&mut core, &mut sub, k, &observation(1)).unwrap();
+        let refused = core.turn_commit(&mut sub, k).unwrap_err();
+        assert_eq!(refused.error, Code::StateMismatch.into());
+        assert_eq!(core.fault(), Some(Code::StateMismatch));
+        // Nothing is built on it: every HOT operation and publication is refused; durable authority unchanged.
+        assert!(core.turn_begin_observe(&mut sub, k, &CEILING).is_err());
+        assert!(core.durable_request(&mut sub, k, kind_of(&core)).is_err());
+        assert_eq!(core.snapshot().unwrap(), anchor);
+    }
+
+    #[test]
+    fn observe_only_turns_keep_the_lifecycle_refusals() {
+        let dir = Dir::new("observe-refusals");
+        let mut core = Core::new(&dir.0).unwrap();
+        let mut sub = Fake::composite(0.2);
+        let k = composite_key(7);
+        assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap_err().error, Rt::Closed.into());
+        core.open().unwrap();
+        assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap_err().error, Code::Unanchored.into());
+        assert!(sub.calls().is_empty());
+        core.anchor(&mut sub, k).unwrap();
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap_err().error, Rt::TurnOpen.into());
+        let mut other = Fake::composite(0.3);
+        assert_eq!(
+            observe(&mut core, &mut other, composite_key(8), &observation(1)).unwrap_err().0,
+            Rt::TurnNotOpen.into()
+        );
+        assert_eq!(core.durable_request(&mut sub, k, kind_of(&core)).unwrap_err().error, Rt::TurnOpen.into());
+        // Close ends the turn natively: nothing installed.
+        observe(&mut core, &mut sub, k, &observation(1)).unwrap();
+        core.close();
+        assert!(!sub.txn_open() && sub.memory().is_empty());
+        core.open().unwrap();
+        assert_eq!(
+            core.turn_begin_observe(&mut other, composite_key(8), &CEILING).unwrap_err().error,
+            Code::StateMismatch.into()
+        );
     }
 }

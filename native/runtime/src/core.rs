@@ -61,7 +61,24 @@ use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, StateF
 
 use crate::checkpoint::{self, Disposition};
 use crate::code::{Error, Rt};
+#[cfg(feature = "testing")]
+use crate::durable::control;
 use crate::durable::{Kind, Lane, Ticket};
+
+/// Testing builds: a registered control-operation crash point (`durable::control`). When the planned fault fires
+/// there, the operation ends as the simulated death (after parking, when planned). Nothing in production builds.
+#[cfg(feature = "testing")]
+macro_rules! control_point {
+    ($fire:expr) => {
+        if let Some(code) = $fire {
+            return Err(code.into());
+        }
+    };
+}
+#[cfg(not(feature = "testing"))]
+macro_rules! control_point {
+    ($fire:expr) => {};
+}
 use crate::fuel::{self, Budget};
 use crate::substrate::{
     features, k1_envelope_bytes, Experience, K1Ops, Key, Observation, ResidentRelease, ScheduleOutcome, Transition,
@@ -100,6 +117,8 @@ pub struct Counters {
     pub durable_superseded: u64,
     pub durable_acknowledged: u64,
     pub durable_failed: u64,
+    /// `leased_txn_observe` crossings (ABI v5): OBSERVE inside a managed turn, LEARN or observe-only.
+    pub k1_observes: u64,
 }
 
 /// An admitted, native-ready stimulus: `x` holds `y.len()` rows of the state's dimension, row-major.
@@ -145,11 +164,16 @@ fn ecs(error: Rt, k1_status: i32, schedule: ScheduleOutcome) -> Refusal {
 }
 
 /// The open managed turn: the bound substrate, its native transaction token and the retained capability that
-/// ends that transaction (abort only). It exists exactly while the native transaction is open.
+/// ends that transaction (abort only). It exists exactly while the native transaction is open. An observe-only
+/// turn (ABI v5) ran no K1 schedule; every turn counts the observations it recorded against the bound its budget
+/// admitted at begin.
 struct OpenTurn {
     key: Key,
     token: u64,
     abort: Box<dyn TxnAbort>,
+    observe_only: bool,
+    observations: u64,
+    max_observations: u64,
 }
 
 /// The bound state and its live coordinate: the native generation RuntimeCore last established for it.
@@ -418,19 +442,33 @@ impl Core {
             None => None,
         };
         let format = sub.format();
+        #[cfg(feature = "testing")]
+        let planned = self.lane.take_control(control::Op::Anchor);
+        #[cfg(feature = "testing")]
+        let lane = &*self.lane;
         let published = self.lane.with_stores(|st| -> Result<Snapshot, Refusal> {
-            if let (Some(store), Some(mut envelope)) = (st.checkpoint.as_mut(), envelope) {
+            if let (true, Some(mut envelope)) = (st.checkpoint.is_some(), envelope) {
                 // SAFETY: the substrate library's pure sealer over a buffer this call owns.
                 if unsafe { (sub.sealer())(envelope.as_mut_ptr(), envelope.len()) } != 0
                     || checkpoint::envelope_identity(&envelope) != Some(identity)
                 {
                     return Err(Rt::CheckpointShape.into());
                 }
-                if store.holding(&identity).is_none() {
-                    store.write_envelope(&envelope, None)?;
-                }
+                control_point!(lane.control_begun(planned, st));
+                let store = st.checkpoint.as_mut().expect("attached");
+                let written = match store.holding(&identity) {
+                    None => store.write_envelope(&envelope, None).map(|_| ()),
+                    Some(_) => Ok(()),
+                };
+                control_point!(lane.control_slot(planned, st));
+                written?;
+            } else {
+                control_point!(lane.control_begun(planned, st));
             }
-            Ok(st.continuity.anchor_cognition_as(format, Some(&identity))?)
+            control_point!(lane.control_publishing(planned, st));
+            let anchored = st.continuity.anchor_cognition_as(format, Some(&identity));
+            control_point!(lane.control_record(planned, &anchored, st));
+            Ok(anchored?)
         })?;
         match published {
             Ok(s) => {
@@ -756,8 +794,42 @@ impl Core {
         self.reconcile(sub, key)?;
         let abort = sub.retain_abort();
         let (token, result) = self.run_schedule(sub, stimulus, s3)?;
-        self.turn = Some(OpenTurn { key, token, abort });
+        let max_observations = budget.max_observations;
+        self.turn = Some(OpenTurn { key, token, abort, observe_only: false, observations: 0, max_observations });
         Ok(result)
+    }
+
+    /// Begin an OBSERVE-ONLY managed turn on a composite substrate (ABI v5): the lineage is verified and bound exactly
+    /// as for [`Core::turn_begin`], and the native composite transaction is opened at the live generation, but no K1
+    /// experience schedule runs: the K1 component's candidate is the unchanged copy of the live K1 state. The turn
+    /// then admits typed observations ([`Core::turn_observe`], at most the budget's `max_observations`) and ends by
+    /// [`Core::turn_commit`] (volatile; the live generation advances by one, as for every committed transaction, and
+    /// the K1 retained state stays byte-identical) or [`Core::turn_abort`]. A K1 or K1 FMS substrate has no memory
+    /// (`RUNTIME_INVALID`, before any native call). Returns the live generation the turn was opened on.
+    pub fn turn_begin_observe(&mut self, sub: &mut dyn K1Ops, key: Key, budget: &Budget) -> Result<u64, Refusal> {
+        self.live()?;
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        if key.kind != KIND_COMPOSITE || sub.format() != StateFormat::Composite {
+            return Err(Rt::Invalid.into());
+        }
+        match self.bound {
+            Some(bound) if bound.key != key => return Err(Rt::SubstrateSwitch.into()),
+            Some(_) => {}
+            None => {
+                self.expected()?; // unanchored: refused before any native call
+            }
+        }
+        // The shape is verified natively, then the budget, before the identity check or the transaction.
+        self.width(sub, key)?;
+        fuel::admit_observe_turn(budget).map_err(|_| Refusal::from(Rt::Fuel))?;
+        self.reconcile(sub, key)?;
+        let abort = sub.retain_abort();
+        let token = self.begin(sub)?;
+        let max_observations = budget.max_observations;
+        self.turn = Some(OpenTurn { key, token, abort, observe_only: true, observations: 0, max_observations });
+        Ok(self.bound.expect("bound").generation)
     }
 
     /// Begin the managed transaction under this runtime's lease; the same guarded K1 call reports the generation of
@@ -856,11 +928,17 @@ impl Core {
         if !self.open {
             return Err(Rt::Closed.into());
         }
+        // An observe-only turn that recorded nothing has nothing to commit: refused before the turn is taken, so it
+        // stays open for an observation or an abort.
+        if matches!(&self.turn, Some(t) if t.key == key && t.observe_only && t.observations == 0) {
+            return Err(Rt::Invalid.into());
+        }
         let turn = self.take_turn(key)?;
         if let Some(code) = self.fault() {
             self.terminate(turn);
             return Err(code.into());
         }
+        let observe_only = turn.observe_only;
         let live = self.bound.expect("a turn is begun on the bound state").generation;
         let mut transition = Transition::default();
         self.counters.k1_commits += 1;
@@ -876,8 +954,12 @@ impl Core {
             let error = if rc == K1_STALE { Rt::EcsStale } else { Rt::EcsRefused };
             return Err(ecs(error, rc, ScheduleOutcome::default()));
         }
-        if transition.generation_before != live || transition.generation_after != live.wrapping_add(1) {
-            // The state committed is not the continuation of the live coordinate: never built upon.
+        if transition.generation_before != live
+            || transition.generation_after != live.wrapping_add(1)
+            || (observe_only && (transition.steps != 0 || transition.epoch_after != transition.epoch_before))
+        {
+            // The state committed is not the continuation of the live coordinate (or an observe-only commit reports
+            // K1 learning it never ran): never built upon.
             self.fault = Some(Code::StateMismatch);
             return Err(Refusal { committed: Some(transition), ..Refusal::from(Code::StateMismatch) });
         }
@@ -899,8 +981,8 @@ impl Core {
         if !self.open {
             return (Err(Rt::Closed.into()), 0);
         }
-        let token = match &self.turn {
-            Some(turn) if turn.key == key => turn.token,
+        let (token, recorded, max) = match &self.turn {
+            Some(turn) if turn.key == key => (turn.token, turn.observations, turn.max_observations),
             _ => return (Err(Rt::TurnNotOpen.into()), 0),
         };
         if let Some(code) = self.fault() {
@@ -909,9 +991,19 @@ impl Core {
         if sub.format() != StateFormat::Composite || observation.0.is_null() {
             return (Err(Rt::Invalid.into()), 0);
         }
+        // The turn's observation bound (ABI v5), before the native call: recoverable, the turn stays open.
+        if fuel::admit_observation(recorded, max).is_err() {
+            return (Err(Rt::Fuel.into()), 0);
+        }
         let (mut relation, mut memory_status) = ([0u8; 32], 0i32);
+        self.counters.k1_observes += 1;
         match sub.txn_observe(self.lease, token, observation, &mut relation, &mut memory_status) {
-            0 => (Ok(relation), 0),
+            0 => {
+                if let Some(turn) = self.turn.as_mut() {
+                    turn.observations += 1;
+                }
+                (Ok(relation), 0)
+            }
             K1_LEASED => (Err(self.lineage_lost(K1_LEASED)), 0),
             rc => (Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default())), memory_status),
         }
@@ -1054,16 +1146,24 @@ impl Core {
         if self.lane.busy() {
             return Err(Rt::DurableBusy.into());
         }
+        #[cfg(feature = "testing")]
+        let planned = self.lane.take_control(control::Op::Discard);
+        #[cfg(feature = "testing")]
+        let lane = &*self.lane;
         self.lane.with_stores(|st| -> Result<(), Refusal> {
             let authorized = match st.continuity.snapshot()?.cognition() {
                 Cognition::Unanchored => return Err(Rt::CheckpointInvalid.into()),
                 Cognition::Anchored(d) => d,
             };
             let store = st.checkpoint.as_mut().ok_or(Rt::CheckpointInvalid)?;
-            match store.unresolved(&authorized) {
-                Some((slot, s)) if s.identity == *candidate => Ok(store.retract(slot)?),
-                _ => Err(Rt::CheckpointInvalid.into()),
-            }
+            let slot = match store.unresolved(&authorized) {
+                Some((slot, s)) if s.identity == *candidate => slot,
+                _ => return Err(Rt::CheckpointInvalid.into()),
+            };
+            control_point!(lane.control_begun(planned, st));
+            let withdrawn = st.checkpoint.as_mut().expect("attached").retract(slot);
+            control_point!(lane.control_slot(planned, st));
+            Ok(withdrawn?)
         })?
     }
 
@@ -1078,6 +1178,10 @@ impl Core {
         if self.lane.busy() {
             return Err(Rt::DurableBusy.into());
         }
+        #[cfg(feature = "testing")]
+        let planned = self.lane.take_control(control::Op::Adopt);
+        #[cfg(feature = "testing")]
+        let lane = &*self.lane;
         let adopted = self.lane.with_stores(|st| -> Result<Snapshot, Refusal> {
             let authorized = match st.continuity.snapshot()?.cognition() {
                 Cognition::Unanchored => return Err(Code::Unanchored.into()),
@@ -1092,7 +1196,11 @@ impl Core {
                 Some((s, _)) if s.identity == *candidate => {}
                 _ => return Err(Rt::CheckpointInvalid.into()),
             }
-            Ok(st.continuity.commit_cognition(Some(&authorized), Some(candidate))?)
+            control_point!(lane.control_begun(planned, st));
+            control_point!(lane.control_publishing(planned, st));
+            let adopted = st.continuity.commit_cognition(Some(&authorized), Some(candidate));
+            control_point!(lane.control_record(planned, &adopted, st));
+            Ok(adopted?)
         })?;
         match adopted {
             Ok(snapshot) => {
@@ -1169,15 +1277,27 @@ impl Core {
         if checkpoint::composite_import_identity(&envelope, k1) != Some(identity) {
             return Err(Code::StateMismatch.into()); // not the authorized K1 state with an empty memory
         }
+        #[cfg(feature = "testing")]
+        let planned = self.lane.take_control(control::Op::Import);
+        #[cfg(feature = "testing")]
+        let lane = &*self.lane;
         let published = self.lane.with_stores(|st| -> Result<Snapshot, Refusal> {
             let store = st.checkpoint.as_mut().ok_or(Rt::CheckpointInvalid)?;
             if store.unresolved(k1).is_some() {
                 return Err(Rt::CheckpointUnresolved.into());
             }
-            if store.holding(&identity).is_none() {
-                store.write_envelope(&envelope, Some(k1))?;
-            }
-            Ok(st.continuity.import_cognition(Some(k1), Some(&identity))?)
+            control_point!(lane.control_begun(planned, st));
+            let store = st.checkpoint.as_mut().expect("attached");
+            let written = match store.holding(&identity) {
+                None => store.write_envelope(&envelope, Some(k1)).map(|_| ()),
+                Some(_) => Ok(()),
+            };
+            control_point!(lane.control_slot(planned, st));
+            written?;
+            control_point!(lane.control_publishing(planned, st));
+            let imported = st.continuity.import_cognition(Some(k1), Some(&identity));
+            control_point!(lane.control_record(planned, &imported, st));
+            Ok(imported?)
         })?;
         match published {
             Ok(s) => {
@@ -1324,6 +1444,12 @@ impl Core {
     #[cfg(feature = "testing")]
     pub fn testing_durable_plan(&mut self, plan: Option<crate::durable::Plan>) {
         self.lane.plan(plan);
+    }
+
+    /// Plan (or clear) one fault of the next control operation of its kind (anchor, import, discard, adopt).
+    #[cfg(feature = "testing")]
+    pub fn testing_control_plan(&mut self, plan: Option<control::Plan>) {
+        self.lane.control_plan(plan);
     }
 }
 

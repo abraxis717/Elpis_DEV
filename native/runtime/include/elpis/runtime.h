@@ -1,7 +1,7 @@
 #ifndef ELPIS_RUNTIME_H
 #define ELPIS_RUNTIME_H
 
-/* Elpis RuntimeCore C ABI v4 (docs/RUNTIME_CORE.md), implemented in Rust (native/runtime).
+/* Elpis RuntimeCore C ABI v5 (docs/RUNTIME_CORE.md), implemented in Rust (native/runtime).
  *
  * One runtime handle owns one continuity directory and the mutable systems authority of an open Elpis
  * runtime: lifecycle, fail-stop, the binding of its K1 lineage to one native K1 state, the managed canonical
@@ -65,9 +65,23 @@
  * K1 table over composite identities plus leased_txn_observe; RuntimeCore binds, queries, learns, durably publishes
  * and recovers it exactly as a K1 state, and continuity records the lineage's format (a v3 record), so a K1 state
  * never stands for a composite lineage or the reverse (STATE_MISMATCH). The memory changes only through
- * elpis_runtime_turn_observe inside a managed turn. No memory LEARN or CONSOLIDATE is exposed (unqualified). A K1
+ * elpis_runtime_turn_observe inside a managed turn (a LEARN turn, or an observe-only turn below). No memory LEARN or
+ * CONSOLIDATE is exposed (unqualified). A K1
  * lineage moves to a composite one only through the explicit elpis_runtime_import_composite. A composite is durably
  * published only with a checkpoint store attached (its envelope size is the store's provisioned capacity).
+ *
+ * Observe-only turns (v5). elpis_runtime_turn_begin_observe opens a managed turn on a composite substrate that runs
+ * no K1 experience schedule: the lineage is verified and bound exactly as for turn_begin and the composite
+ * transaction is opened at the live generation, so the K1 candidate is the unchanged copy of the live K1 state.
+ * Typed observations then enter through elpis_runtime_turn_observe; the turn ends with turn_commit (VOLATILE, as
+ * every managed commit: the live generation advances by one and the K1 retained state stays byte-identical; a commit
+ * whose K1 transition reports a step or an epoch change fail-stops STATE_MISMATCH) or turn_abort. A commit while
+ * nothing was observed is refused RUNTIME_INVALID and keeps the turn open. A K1 or K1 FMS substrate is refused
+ * RUNTIME_INVALID before any native call. Every managed turn (LEARN or observe-only) records at most
+ * budget.max_observations observations; one more is refused COGNITION_FUEL_EXCEEDED before the native call and
+ * leaves the turn open. v5 added this entry point, budget.max_observations and counters.k1_observes; every v4 entry
+ * point keeps its meaning, and the ELPISGK1, ELPISEC1 and continuity formats are unchanged. A v4 caller refuses to
+ * load this library (the version check).
  *
  * The library also exports the continuity C ABI (elpis/continuity.h) of the store it embeds.
  *
@@ -85,7 +99,7 @@ extern "C" {
 #endif
 
 enum {
-    ELPIS_RUNTIME_ABI_V4 = 4u,
+    ELPIS_RUNTIME_ABI_V5 = 5u,
     ELPIS_RUNTIME_OK = 0,
     ELPIS_RUNTIME_INVALID = 64,                  /* malformed argument */
     ELPIS_RUNTIME_CLOSED = 65,                   /* the runtime is not open */
@@ -285,6 +299,13 @@ typedef struct {
     elpis_continuity_snapshot durable;
 } elpis_runtime_durability;
 
+/* An observe-only turn begun (v5). */
+typedef struct {
+    uint64_t live_generation;   /* the live generation the turn was opened on; zero on refusal */
+    int32_t k1_status;          /* the composite status behind an ECS_* refusal; 0 otherwise */
+    uint32_t reserved;
+} elpis_runtime_observe_begin_result;
+
 typedef struct {
     uint8_t relation_key[32];   /* the observation's relation key; zero on refusal */
     int32_t k1_status;          /* the composite status behind an ECS_* refusal; 0 otherwise */
@@ -308,6 +329,7 @@ typedef struct {
     uint64_t durable_superseded;
     uint64_t durable_acknowledged;
     uint64_t durable_failed;         /* FAILED and UNCERTAIN */
+    uint64_t k1_observes;            /* leased_txn_observe crossings (v5) */
 } elpis_runtime_counters;
 
 /* Total cognitive fuel (docs/RUNTIME_CORE.md). One operation's totals; every field >= 1 and at most the compiled
@@ -324,6 +346,7 @@ typedef struct {
     uint64_t max_steps;             /* total K1 learning steps of one schedule */
     uint64_t max_work_units;
     uint64_t max_query_rows;
+    uint64_t max_observations;      /* typed memory observations of one managed turn (v5) */
 } elpis_runtime_budget;
 
 /* K1 Recovery R0 (docs/K1_RECOVERY_R0.md): what restart may do with the lineage. Continuity decides; checkpoint
@@ -394,6 +417,13 @@ int elpis_runtime_turn_abort(elpis_runtime *runtime, const elpis_runtime_substra
  * A K1 substrate is RUNTIME_INVALID. `out` is nullable. */
 int elpis_runtime_turn_observe(elpis_runtime *runtime, const elpis_runtime_substrate *substrate, const void *observation,
                                elpis_runtime_observe_result *out);
+/* v5: begin an OBSERVE-ONLY managed turn on a composite substrate: the lineage verified and bound as by turn_begin,
+ * the composite transaction opened at the live generation, no K1 schedule run (fuel: the budget must narrow the
+ * ceiling; its max_observations bounds the turn's observations). End it with turn_commit (refused RUNTIME_INVALID,
+ * the turn kept open, while nothing was observed) or turn_abort. A K1 or K1 FMS substrate is RUNTIME_INVALID.
+ * `out` is nullable. */
+int elpis_runtime_turn_begin_observe(elpis_runtime *runtime, const elpis_runtime_substrate *substrate,
+                                     const elpis_runtime_budget *budget, elpis_runtime_observe_begin_result *out);
 /* LEGACY: move the open runtime's K1 lineage to a composite made by elpis_ecs_composite_import_k1 from exactly its
  * authorized K1 state (empty memory). Needs an attached checkpoint store provisioned for the composite envelope
  * size: the composite is claimed and captured, its envelope must name the authorized K1 identity with an empty memory

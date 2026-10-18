@@ -87,11 +87,12 @@ pub mod probe {
         TornFail(usize),
         /// The first `n` bytes are written, then the process dies (simulated: nothing more happens).
         TornDie(usize),
-        /// The complete slot is written, then the process dies before the sync.
+        /// The complete slot is written (a withdrawal: its zeroed header), then the process dies before the sync.
         DieBeforeSync,
         /// The sync reports failure (the bytes may or may not be durable).
         SyncFail,
-        /// The complete slot is written and synced, then the process dies (before anything else is published).
+        /// The complete slot is written and synced (a withdrawal: zeroed and synced), then the process dies (before
+        /// anything else is published).
         DieAfterSync,
         /// The complete slot is written and synced and the write reports success, but one envelope byte on disk
         /// differs from what was written (a lost or misdirected write): only a read-back can tell.
@@ -398,8 +399,20 @@ impl Store {
         self.slots[i] = None;
         self.files[i].write_all_at(&[0u8; HEADER], 0).map_err(io)?;
         self.count_write(HEADER);
+        #[cfg(any(test, feature = "testing"))]
+        if self.probe.plan == Some(probe::Fault::DieBeforeSync) {
+            self.probe.plan = None;
+            self.probe.died = true;
+            return Err(Rt::CheckpointIo);
+        }
         sync_data(&self.files[i]).map_err(io)?;
         self.count_sync();
+        #[cfg(any(test, feature = "testing"))]
+        if self.probe.plan == Some(probe::Fault::DieAfterSync) {
+            self.probe.plan = None;
+            self.probe.died = true;
+            return Err(Rt::CheckpointIo);
+        }
         Ok(())
     }
 

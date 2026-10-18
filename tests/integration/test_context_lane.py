@@ -163,6 +163,28 @@ def test_the_handoff_is_bounded_with_an_explicit_overflow_policy():
         assert view.dropped == 6                      # the loss is carried by the next view, never hidden
 
 
+def test_close_abandons_what_is_pending_keeps_the_published_view_and_refuses_new_work():
+    """Shutdown: the worker stops and is joined; observations still queued are ABANDONED (a required one included,
+    never reported APPLIED); the last published view stays readable and unchanged; nothing is accepted afterwards;
+    closing twice is harmless."""
+    lane = ContextLane(ContextLimits(capacity=4, max_axioms=64, batch=4))
+    applied = lane.submit(_axiom("kept"))[0]
+    assert _settle(lane, applied) == "APPLIED"
+    published = lane.view()
+    lane.testing_hold(True)
+    pending = [lane.submit(_axiom("pending"))[0], lane.submit(_binding("pending"))[0]]
+    lane.close()
+    assert not lane._thread.is_alive()
+    assert [lane.wait(s, 0) for s in pending] == ["ABANDONED", "ABANDONED"]
+    assert lane.view() is published and {a.key for a in lane.view().axioms} == {_hex("chunk kept")}
+    assert lane.status().pending == 0
+    for observation in (_axiom("late"), _binding("late")):
+        with pytest.raises(CompositionError, match="CONTEXT_CLOSED"):
+            lane.submit(observation)
+    lane.close()
+    assert lane.view() is published
+
+
 def test_a_stalled_worker_never_blocks_managed_cognition_that_consumes_the_view(k1, tmp_path):   # noqa: F811
     learn = LearnRequest("hot", ByteTokens(), admitted(FixtureMap()), LEARN)
     query = QueryRequest("query", ByteTokens(), admitted(FixtureMap()))

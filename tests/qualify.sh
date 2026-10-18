@@ -27,7 +27,8 @@ native() {
     step "configure ($build)" 300
     timeout 300 cmake -S "$repo" -B "$build" -DCMAKE_BUILD_TYPE=Release >/dev/null
     step "build (warm: no-op)" 1800
-    timeout 1800 cmake --build "$build" --parallel "$jobs" | grep -E "error|warning|Linking" || true
+    # The filter may match nothing (grep exits 1); only the build's own status may fail the step (pipefail).
+    timeout 1800 cmake --build "$build" --parallel "$jobs" | { grep -E "error|warning|Linking" || true; }
     step "NATIVE: ctest (ECS, K1, FMS, continuity, RuntimeCore, H-ECS mechanics, ...)" 600
     timeout 600 ctest --test-dir "$build" -j "$jobs" --timeout 300 --output-on-failure | tail -n 15
 }

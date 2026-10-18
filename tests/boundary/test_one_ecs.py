@@ -217,7 +217,8 @@ NATIVE_ABI_FORM = re.compile(
     r"|ELPIS_ECSG_\w*"                   # ELPIS_ECSG_* ABI constants
     r"|ECSG(?:Library|Error)\b"          # the ctypes binding classes
     r"|ecsg-k1-native(?:\.v\d+)?"         # the K1 native qualification authority id
-    r"|elpis\.ecsg\.[\w.-]+")              # persisted schema / digest-domain strings
+    r"|elpis\.ecsg\.[\w.-]+"               # persisted schema / digest-domain strings
+    r"|\b(?:DEV/ecsc_hca|research/ecsc_hca_r0)\b")  # the historical HCA record's directories (PR #51), by path only
 
 # Immutable evidence: any form may appear (recorded names, measured paths, frozen source text).
 FROZEN_EVIDENCE = {
@@ -246,6 +247,9 @@ FROZEN_EVIDENCE = {
         "H-ECS R3 successor C2M frozen supervisor source: names the K1 library it runs (K1 ABI name).",
     "research/hecs_r3/successor_c2m/freeze/source/generators/":
         "H-ECS R3 successor C2M supervisor generator template: names the K1 library it runs (K1 ABI name).",
+    "DEV/ecsc_hca/": "Historical ECS_C/HCA R0-R19 protocols (PR #51), byte-pinned by their migration manifest.",
+    "research/ecsc_hca_r0/": "Historical ECS_C/HCA R0-R19 research mechanics (PR #51), byte-pinned by DEV/ecsc_hca's "
+                             "migration manifest; the retired name is its recorded subject name.",
 }
 
 # Native sources whose exact bytes are recorded by research/ecs_runtime_r1/evidence (measured and sanitized
@@ -268,6 +272,7 @@ _HECS_K1 = "H-ECS R0 drives each level's K1 state through the qualified native A
 _HECS_R1_K1 = "H-ECS R1 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
 _HECS_R2_K1 = "H-ECS R2 drives each level's K1 state through the qualified native ABI (elpis_ecsg_k1)."
 _RUNTIME_K1 = "RuntimeCore reaches K1 only through tables of the qualified native ABI's entry points (elpis_ecsg_k1)."
+_DEPLOYMENT = "A deployment pins and admits the native ECS libraries by their library identifiers and file names."
 _COMPOSITE_K1 = ("ECS composite retained state (docs/ECS_COMPOSITE_STATE.md): holds a K1 state through the qualified "
                  "native ABI (elpis_ecsg_k1) and embeds its unchanged ELPISGK1 envelope.")
 _MEM_MF_K1 = ("ECS Memory MF-R0 M4 test: creates its own K1 state through the qualified native ABI (elpis_ecsg_k1) to "
@@ -343,6 +348,9 @@ NATIVE_ABI_FILES = {
     "native/runtime/tests/test_runtime_composite.c": _RUNTIME_K1,
     "native/runtime/tests/test_runtime_hot_io.c": _RUNTIME_K1,
     "src/elpis/runtime/core.py": _RUNTIME_K1,
+    "src/elpis/runtime/deployment.py": _DEPLOYMENT,
+    "src/elpis/runtime/acceptance.py": _DEPLOYMENT,
+    "tests/integration/test_cli.py": _DEPLOYMENT,
     "research/hecs_r1/CMakeLists.txt": _HECS_R1_K1,
     "research/hecs_r1/README.md": _HECS_R1_K1,
     "research/hecs_r1/rust/src/k1.rs": _HECS_R1_K1,

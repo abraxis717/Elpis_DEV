@@ -1,7 +1,11 @@
 # RuntimeCore: the runtime's systems authority in Rust
 
-`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v4) owns the mutable systems
+`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v5) owns the mutable systems
 authority of an open Elpis runtime. `elpis.runtime.Runtime` is its compatibility facade.
+
+ABI history: v2 the turn lifecycle, v3 managed ownership, v4 the live/durable split (volatile commits, explicit
+durability), v5 the observe-only managed turn ("Observe-only turns (ABI v5)" below). Each version is refused by a
+caller of another (`elpis_runtime_abi_version`).
 
 ## Live and durable authority (ABI v4)
 
@@ -149,8 +153,39 @@ and binding or committing a substrate of another format than the lineage's is `C
 
 `native/runtime/tests/test_runtime_composite.c` (testing library) covers the composite anchor, volatile turns with
 observations, refusals, the format mismatch, process death inside a durable publication (after the slot is synced;
-with the continuity record torn), recovery with the memory transition present exactly once or absent, and the
-legacy import.
+with the continuity record torn), recovery with the memory transition present exactly once or absent, the
+legacy import, and the observe-only turn below.
+
+### Observe-only turns (ABI v5)
+
+Up to v4, OBSERVE existed only inside a LEARN turn (`turn_begin` refuses an empty K1 schedule), so recording typed
+evidence forced a geometric learning transition. v5 separates them:
+
+* `elpis_runtime_turn_begin_observe(runtime, substrate, budget, out)` (a composite substrate only) verifies and
+  binds the lineage exactly as `turn_begin` does and opens the composite transaction at the live generation, but runs
+  **no K1 experience schedule**: the K1 candidate is the unchanged copy of the live K1 state. A K1 or K1 FMS
+  substrate is `RUNTIME_INVALID` before any native call; an open turn, an unanchored lineage, another substrate and a
+  budget outside the ceiling are refused as for `turn_begin`.
+* Observations enter through `elpis_runtime_turn_observe`. Every managed turn (LEARN or observe-only) records at most
+  `budget.max_observations` (ceiling 256); one more is `COGNITION_FUEL_EXCEEDED` before the native call and leaves
+  the turn open. `counters.k1_observes` counts the crossings.
+* `turn_commit` is volatile, as every managed commit: the live generation advances by one (the composite commits its
+  untouched K1 candidate: W, epoch, H and a reinstalled, the K1 identity unchanged, since the generation is not
+  state) and the memory candidate is installed. A commit while nothing was observed is `RUNTIME_INVALID` and keeps
+  the turn open; a commit whose K1 transition reports a step or an epoch change fail-stops `STATE_MISMATCH` (never
+  built upon). `turn_abort`, close and destroy end it as any turn.
+* Durability is unchanged: a recoverable publication captures the composite (its K1 bytes those of the last LEARN)
+  and the restart law is v4's.
+
+v5 changed the layout of `elpis_runtime_budget` (`max_observations`, 56 bytes) and `elpis_runtime_counters`
+(`k1_observes`, 136 bytes); every v4 entry point keeps its meaning and the ELPISGK1, ELPISEC1 and continuity formats
+are unchanged, so durable state written by a v4 library restores under v5. `Runtime.run_observe` is the Python
+operation (an explicit `ObservationAuthority`, all or nothing, the native bound narrowed to the authority's);
+laws: `native/runtime/src/tests.rs` (`observe_only`), `test_runtime_composite.c`, `tests/integration/test_observe_only.py`
+(including a SIGKILLed child). Mutation sensitivity (rebuilt mutants outside the repository, unmutated baseline green): a K1 substrate admitted,
+a commit with nothing observed, the native observation bound removed, an observe-only commit reporting K1 learning
+built upon, a refused observation not aborting the turn, the native bound not narrowed to the authority's, and
+`run_observe` skipping the authority: all seven killed.
 
 ## Laws
 
@@ -262,6 +297,27 @@ injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c
   but unsynced record (step 7) survives it; a power loss may drop it, and restart then finds the previous authority
   (in-process sync-loss faults cover that branch). The `SIGKILL` tests prove the process-death column only; no test
   here proves power-loss durability, which depends on the device honoring `fdatasync`.
+* **Control-operation crash points** (testing library only). The anchor, the legacy import and the operator
+  reconciliations run outside the lane's step machine, on the caller's thread with the stores held, so the lane's
+  steps cannot reach them. `elpis_runtime_testing_control_fault(rt, op, action, point, arg)` (`durable::control`;
+  `RuntimeCore.testing_control_fault`) plans one fault of the next operation of kind `op` (1 anchor, 2 import, 3
+  discard, 4 adopt) that gets past its lifecycle checks: a simulated death (action 1) or a park of the caller (2) at
+  `point`, with exactly that point's on-disk effect. A parked caller holds the handle, so only the process's death
+  ends the wait (after 300 s it is a simulated death); the durability status reports `parked` = 100 * op + point.
+  Every fault it arms in the checkpoint or continuity store is disarmed right after the step it targets. Restart
+  decides from continuity alone (`tests.rs` `control_points`; the real `SIGKILL` matrix is K1 Recovery R0 v4's):
+
+  | Point | Anchor | Import (K1 lineage, composite store) | Discard | Adopt |
+  |---|---|---|---|---|
+  | 1 begun (checks passed, nothing written) | unanchored: `NOTHING_TO_RECOVER` | the K1 authority | the candidate unresolved | the candidate unresolved |
+  | 2 slot written, not synced | unanchored; the slot holds the state but never creates a lineage | the K1 authority; the composite slot is no candidate (no slot of that store holds the authority) | withdrawn (process death keeps the zeroed header) | — |
+  | 3 slot synced, continuity not begun | the same | the same | withdrawn | — |
+  | 4 record torn after `arg` bytes | unanchored (a torn record is not an authority) | the K1 authority | — | the candidate unresolved |
+  | 5 record written, not synced | anchored (process death keeps it) | the composite, `RESUMABLE` from the composite store | — | adopted |
+  | 6 record synced, not returned | anchored | the composite | — | adopted |
+
+  The production library exports none of these entry points (`nm -D`: no `elpis_runtime_testing_*` symbol), and
+  its control operations carry no fault branch (the hooks compile only under the `testing` feature).
 * **K1 Recovery R0.** With an operator-provisioned checkpoint store attached (`elpis_runtime_checkpoint_attach`,
   `RuntimeConfig.k1_checkpoint_dir`), the anchor persists the anchored state's complete envelope before continuity
   anchors it, and every durable publication persists its capture's complete envelope in the slot that does not hold
@@ -324,14 +380,23 @@ struct changed):
   `release`, `close`, reopen and destruction (and when a bind fails after taking it); the adapter refuses `close`
   of a held state (`BUSY`). A RAM state (standalone K1, composite) needs no hold.
 
-Proofs: `runtime.test_runtime_hot_io` (real FMS and POSIX cold store: 40 held turns and queries under memory
-pressure with zero read or write calls on any thread and zero promotions; a demoted state's QUERY and LEARN refused
-with zero I/O and zero promotions; only the explicit materialization reads); `ECS.test_ecsg_k1_fms`
+Which *unpinned* WARM state FMS demotes is recency- and frequency-weighted on the wall clock (`fms_core.c`,
+`evict_cost_ns`; a release counts as an access), so a released state is not necessarily the next victim and no test
+relies on a victim order: every residency precondition is made exact by holding every other WARM state, so that exactly
+one state is eligible (CI-HOTRES-1, `docs/CI_INCIDENTS.md`).
+
+Proofs: `runtime.test_runtime_hot_io` (real FMS and POSIX cold store: pressure while bound demotes only the other
+arrival, and with nothing else eligible the newcomer is refused while the bound state stays WARM; 40 held turns and
+queries with zero read or write calls on any thread and zero promotions; a demoted state's QUERY, LEARN and identity-only
+durable request refused with zero I/O, zero promotions and continuity and the lane status byte-for-byte unchanged; only
+the explicit materialization reads); `ECS.test_ecsg_k1_fms`
 (`test_residency_hold`: already resident, demoted, budget exhaustion, a stalled promotion that blocks neither the
 held state nor the caller, a lost cold replica the hold never even reads, concurrent readers during demotion
 pressure, nested holds and their lifetime, FMS promotion and cold-read counters); `test_runtime_lifecycle.c` (the
 hold across abort, commit, close, destroy, reopen and fail-stop); `tests.rs` (the binding and refusal laws over the
-stand-in); `tests/integration/test_hot_residency.py`. This is mechanics: it says nothing about the latency of a
+stand-in); `tests/integration/test_hot_residency.py` (the three invariants as separate tests: A residency protection,
+B nonresident refusal with nothing promoted, read, pinned, held, published or fail-stopped, C explicit restoration of
+the released live lineage). This is mechanics: it says nothing about the latency of a
 promotion, which now happens only where an owner asks for it. The Rust suite proves the same over the stand-in and forbids, statically, any store,
 lane, sync or digest use in the HOT functions (`tests/boundary/test_one_ecs.py`).
 

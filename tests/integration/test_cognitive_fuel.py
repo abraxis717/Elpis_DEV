@@ -59,12 +59,12 @@ def test_the_python_formula_and_ceiling_are_runtimecores(library):
         library.work_units(6, 36, array("Q", [1 << 63, 1]))
     assert info.value.code == "RUNTIME_INVALID"
     # RuntimeLibrary refuses a library whose compiled ceiling is not the canonical one (checked at load).
-    assert CEILING.native_fields() == (64, 16_384, 256, 1 << 20, 1 << 30, 4096)
+    assert CEILING.native_fields() == (64, 16_384, 256, 1 << 20, 1 << 30, 4096, 256)
 
 
 def test_a_budget_only_narrows_the_ceiling():
     for name in ("max_experiences", "max_rows", "max_experience_rows", "max_steps", "max_work_units",
-                 "max_query_rows", "max_output_tokens"):
+                 "max_query_rows", "max_output_tokens", "max_observations"):
         with pytest.raises(CompositionError) as info:
             CognitiveBudget(**{name: getattr(CEILING, name) + 1})
         assert info.value.code == FUEL

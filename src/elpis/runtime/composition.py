@@ -84,6 +84,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from elpis.continuity import ContinuityError, ContinuitySnapshot, EvolutionAuthority
+from elpis.ECS.composite import CompositeState
 from elpis.evolution.path_gate import (
     EvolutionAuthorityBinding,
     EvolutionPathGate,
@@ -212,6 +213,15 @@ def _consumed_context(context):
     if type(context) is ContextView:
         return context.coordinate
     raise TypeError("context is a ContextLane or a ContextView")
+
+
+def _observation_budget(budget, observation_authority):
+    """The native budget of a managed turn that records observations: its ``max_observations`` narrowed to the
+    observation authority's bound, so RuntimeCore itself enforces what the authority admitted (ABI v5)."""
+    if observation_authority is None:
+        return budget
+    from dataclasses import replace
+    return replace(budget, max_observations=min(budget.max_observations, observation_authority.max_observations))
 
 
 class Runtime:
@@ -423,6 +433,20 @@ class Runtime:
         continuity's authority (``CHECKPOINT_INVALID`` for any other identity)."""
         self._core.checkpoint_discard(candidate)
 
+    def import_composite(self, substrate) -> ContinuitySnapshot:
+        """Operator, explicit and LEGACY: move the open K1 lineage to the ECS composite ``substrate``, made by
+        ``CompositeState.import_k1`` from exactly the authorized K1 state with an empty memory. Needs an attached
+        checkpoint store provisioned for the composite envelope: the composite is captured and made durable first,
+        then continuity publishes the import (a v3 record of format ``COMPOSITE``); the composite is then bound.
+        Anything else (another K1 state, a non-empty memory) is ``CONTINUITY_STATE_MISMATCH`` and publishes
+        nothing. A lineage never changes format implicitly."""
+        if type(substrate) is not CompositeState:
+            raise CompositionError("ECS_STATE", "the import target is an ECS CompositeState")
+        descriptor, owner = describe(substrate)
+        snapshot = self._core.import_composite(descriptor)
+        self._bound_owner, self._bound_substrate = owner, substrate
+        return snapshot
+
     def adopt_k1_candidate(self, candidate: bytes) -> ContinuitySnapshot:
         """Operator reconciliation: adopt exactly the unresolved candidate ``candidate`` after its complete envelope
         verified: continuity publishes authorized -> candidate. Refused while a K1 state is bound."""
@@ -449,7 +473,7 @@ class Runtime:
         from .cognition import QueryReadout, QueryResult, _decode_query, _encode_query, _validate_query_request
         from .fuel import admit_query
 
-        codec_map, classification = _validate_query_request(substrate, request, self._codec_pin())
+        codec_map, classification = _validate_query_request(substrate, request, self._codec_pin(), managed=True)
         descriptor, owner = describe(substrate)
         tokens, stimulus = _encode_query(substrate, request.text, request.tokenizer, codec_map)
         admit_query(stimulus, substrate.dim, substrate.width, request.budget, request.max_output_tokens)
@@ -461,33 +485,159 @@ class Runtime:
         return QueryResult(tokens, output, rendered, readout, classification, context=consumed)
 
     # -- cognition: LEARN (explicit authority) -------------------------------------------------------------------
-    def run_learn(self, substrate, request, *, context=None):
+    def run_learn(self, substrate, request, *, context=None, observations=(), observation_authority=None):
         """One managed LEARN under an explicit :class:`~elpis.runtime.cognition.LearnAuthority`.
 
-        RuntimeCore verifies the K1 lineage (its live coordinate), runs the admitted experience schedule on a native
+        RuntimeCore verifies the lineage (its live coordinate), runs the admitted experience schedule on a native
         candidate and commits it atomically into the live state. The commit is VOLATILE: nothing is checkpointed or
         published and no I/O happens (``result.durability == "VOLATILE"``; the result carries the live generations).
-        Durability is :meth:`publish_recoverable` (or :meth:`publish_identity`). A refused LEARN installs nothing. ``context``: see the module
-        docstring.
+        Durability is :meth:`publish_recoverable` (or :meth:`publish_identity`). A refused LEARN installs nothing.
+        ``context``: see the module docstring.
+
+        ``observations`` (an ECS composite lineage only): typed
+        :class:`~elpis.ECS.composite.MemoryObservation` values recorded into the memory candidate of the same turn,
+        under an explicit :class:`~elpis.runtime.cognition.ObservationAuthority` (admitted before anything native is
+        called). OBSERVE is exact evidence storage: it never changes the K1 schedule and is not learning or truth. The
+        turn is all or nothing: if any observation is refused the whole turn is aborted (nothing of it is installed)
+        and the refusal is raised; otherwise the K1 candidate and the memory candidate commit as one transition. No
+        memory LEARN is reachable (unqualified). ``result.observed`` holds the committed relation keys in order.
         """
         self._core.require_live()
         consumed = _consumed_context(context)
 
-        from .cognition import LearnResult, _encode, _validate_learn_request
+        from .cognition import LearnResult, _admit_observations, _encode, _validate_learn_request
         from .fuel import admit_learn
 
-        codec_map, classification, authority = _validate_learn_request(substrate, request, self._codec_pin())
+        codec_map, classification, authority = _validate_learn_request(substrate, request, self._codec_pin(),
+                                                                       managed=True)
+        observed = _admit_observations(substrate, observations, observation_authority)
         descriptor, owner = describe(substrate)
         tokens, stimulus = _encode(substrate, request.text, request.tokenizer, codec_map)
         admit_learn(stimulus, substrate.dim, substrate.width, authority.budget)
         if self._bound_owner is None:
             self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
-        self._core.turn_begin(descriptor, stimulus, authority.learning_rate, authority.budget)
-        committed = self._core.turn_commit(descriptor)
+        committed, keys = self._managed_learn(descriptor, stimulus, authority, observed, observation_authority)
         return LearnResult(tokens, stimulus.experiences, committed.epoch_before, committed.epoch_after,
                            classification, authority.grant, None, None,
                            generation_before=committed.generation_before, generation_after=committed.generation_after,
-                           durability="VOLATILE", context=consumed)
+                           durability="VOLATILE", context=consumed, observed=tuple(keys))
+
+    def _managed_learn(self, descriptor, stimulus, authority, observed, observation_authority):
+        """Begin, run the admitted schedule, OBSERVE every admitted observation, commit: one volatile turn."""
+        budget = _observation_budget(authority.budget, observation_authority if observed else None)
+        self._core.turn_begin(descriptor, stimulus, authority.learning_rate, budget)
+        keys = self._observe_all(descriptor, observed)
+        return self._core.turn_commit(descriptor), keys
+
+    # -- cognition: NUMERIC QUERY and LEARN (admitted numeric stimuli; no codec, no text) ---------------------
+    def run_numeric_query(self, substrate, stimulus, *, budget=None, context=None):
+        """One managed QUERY of an admitted numeric :class:`~elpis.runtime.cognition.QueryStimulus` (rows of the
+        lineage's dimension): ``f_W(x)`` from the LIVE K1 state in one native ``leased_query`` that also reports its
+        generation. Read-only exactly as :meth:`run_query`; it differs only in its edge: numbers in, numbers out. No
+        codec and no text are involved, so nothing here is a language operation and the text turn still fails closed
+        without a qualified codec (docs/ELPIS_MISSION.md)."""
+        self._core.require_live()
+        consumed = _consumed_context(context)
+        from .cognition import NumericAnswer, QueryStimulus, _MANAGED_SUBSTRATES
+        from .fuel import CEILING, CognitiveBudget, admit_query
+
+        budget = CEILING if budget is None else budget
+        if type(substrate) not in _MANAGED_SUBSTRATES:
+            raise CompositionError("ECS_STATE", "a native K1 state or an ECS CompositeState is required")
+        if type(stimulus) is not QueryStimulus or stimulus.dim != substrate.dim:
+            raise CompositionError("STIMULUS", "a QueryStimulus of the lineage's dimension is required")
+        if type(budget) is not CognitiveBudget:
+            raise CompositionError("STIMULUS", "budget must be a CognitiveBudget")
+        admit_query(stimulus, substrate.dim, substrate.width, budget, 0)
+        descriptor, owner = describe(substrate)
+        if self._bound_owner is None:
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this query binds stays alive
+        values, generation = self._core.query(descriptor, stimulus, budget)   # RuntimeCore re-admits natively
+        return NumericAnswer(tuple(values), stimulus.rows, substrate.dim, substrate.width, generation, consumed)
+
+    def run_numeric_learn(self, substrate, stimulus, authority, *, observations=(), observation_authority=None,
+                          context=None):
+        """One managed LEARN of an admitted numeric :class:`~elpis.runtime.cognition.Stimulus` (an experience
+        schedule of rows and targets) under an explicit :class:`~elpis.runtime.cognition.LearnAuthority`: the
+        qualified K1 law runs natively on a candidate, committed atomically and VOLATILE, exactly as
+        :meth:`run_learn`; typed ``observations`` ride the same turn under an explicit ``observation_authority`` (all
+        or nothing). No codec and no text are involved."""
+        self._core.require_live()
+        consumed = _consumed_context(context)
+        from .cognition import (LearnAuthority, NumericLearnResult, Stimulus, _MANAGED_SUBSTRATES,
+                                _admit_observations)
+        from .fuel import admit_learn
+
+        if type(substrate) not in _MANAGED_SUBSTRATES:
+            raise CompositionError("ECS_STATE", "a native K1 state or an ECS CompositeState is required")
+        if authority is None:
+            raise CompositionError("LEARN_UNAUTHORIZED", "LEARN requires an explicit LearnAuthority")
+        if type(authority) is not LearnAuthority:
+            raise CompositionError("LEARN_AUTHORITY", "authority must be a LearnAuthority")
+        if type(stimulus) is not Stimulus or stimulus.dim != substrate.dim:
+            raise CompositionError("STIMULUS", "a Stimulus of the lineage's dimension is required")
+        observed = _admit_observations(substrate, observations, observation_authority)
+        admit_learn(stimulus, substrate.dim, substrate.width, authority.budget)
+        descriptor, owner = describe(substrate)
+        if self._bound_owner is None:
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
+        committed, keys = self._managed_learn(descriptor, stimulus, authority, observed, observation_authority)
+        return NumericLearnResult(stimulus.experiences, stimulus.rows, stimulus.steps, committed.epoch_before,
+                                  committed.epoch_after, committed.generation_before, committed.generation_after,
+                                  authority.grant, tuple(keys), context=consumed)
+
+    # -- cognition: OBSERVE-ONLY (explicit authority; no K1 learning) -------------------------------------------
+    def run_observe(self, substrate, observations, observation_authority, *, budget=None):
+        """Record typed evidence into the memory of an ECS composite lineage WITHOUT any K1 learning (RuntimeCore
+        ABI v5, the observe-only managed turn).
+
+        ``observations``: a non-empty tuple of :class:`~elpis.ECS.composite.MemoryObservation` (for HACF evidence,
+        :meth:`elpis.runtime.observation.HacfObservationLibrary.observation` maps a validated hyperedge and
+        assertion to one), each from a source the explicit :class:`~elpis.runtime.cognition.ObservationAuthority`
+        admits, within its bound; all of it is admitted before anything native is called. RuntimeCore verifies and
+        binds the lineage, opens the composite transaction at the live generation and runs NO K1 schedule; the
+        observations are recorded on the memory candidate and committed as one VOLATILE transition: the live
+        generation advances by one, the K1 retained state stays byte-identical, nothing is published (durability is
+        :meth:`publish_recoverable`). All or nothing: any refused observation aborts the whole turn (nothing is
+        installed) and the refusal is raised. ``budget`` (a :class:`~elpis.runtime.fuel.CognitiveBudget`, default
+        the ceiling) is admitted natively; its ``max_observations`` is narrowed to the authority's bound.
+        Evidence is storage: an observation is not learning, truth or authority.
+        """
+        self._core.require_live()
+        from .cognition import ObserveResult, _admit_observations
+        from .fuel import CEILING, CognitiveBudget
+
+        if budget is None:
+            budget = CEILING
+        if type(budget) is not CognitiveBudget:
+            raise CompositionError("OBSERVATION", "budget must be a CognitiveBudget")
+        if type(observations) is not tuple or not observations:
+            raise CompositionError("OBSERVATION", "observations: a non-empty tuple of MemoryObservation")
+        observed = _admit_observations(substrate, observations, observation_authority)
+        descriptor, owner = describe(substrate)
+        if self._bound_owner is None:
+            self._bound_owner, self._bound_substrate = owner, substrate   # what this begin binds stays alive
+        generation = self._core.turn_begin_observe(descriptor, _observation_budget(budget, observation_authority))
+        keys = self._observe_all(descriptor, observed)
+        committed = self._core.turn_commit(descriptor)
+        if committed.generation_before != generation:
+            raise CompositionError("RUNTIME_INVALID", "the observe-only commit does not continue the turn's generation")
+        return ObserveResult(tuple(keys), observation_authority.grant, committed.generation_before,
+                             committed.generation_after, committed.steps)
+
+    def _observe_all(self, descriptor, observed) -> list:
+        """OBSERVE every admitted observation on the open turn; all or nothing (any refusal aborts the turn)."""
+        keys = []
+        try:
+            for observation in observed:
+                keys.append(self._core.turn_observe(descriptor, observation))
+        except BaseException:
+            try:
+                self._core.turn_abort(descriptor)   # all or nothing: no partial candidate is ever committed
+            except CompositionError:
+                pass   # a fail-stop already ended it natively, or close and destruction will (the turn law)
+            raise
+        return keys
 
     # -- durability: explicit, off the HOT lane -------------------------------------------------------------------
     def publish_recoverable(self, substrate, *, wait: bool = True, timeout: float | None = None) -> DurableTicket:

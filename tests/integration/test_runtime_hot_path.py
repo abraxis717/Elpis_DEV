@@ -146,7 +146,8 @@ def test_a_managed_turn_is_three_runtimecore_crossings_and_publishes_nothing(exp
         assert native == {"k1_state_digests": 0, "k1_reserves": 0, "k1_txn_begins": 1, "k1_run_schedules": 1,
                           "k1_commits": 1, "k1_aborts": 0, "publications": 0, "k1_queries": 0, "k1_shapes": 0,
                           "k1_lease_claims": 0, "k1_identities": 0, "k1_captures": 0, "durable_requests": 0,
-                          "durable_superseded": 0, "durable_acknowledged": 0, "durable_failed": 0}, native
+                          "durable_superseded": 0, "durable_acknowledged": 0, "durable_failed": 0,
+                          "k1_observes": 0}, native
         # No file I/O anywhere on the turn: not in Python, not in continuity, not in the checkpoint store.
         assert fs.calls == {}, fs.calls
         assert io == _NO_IO, io
