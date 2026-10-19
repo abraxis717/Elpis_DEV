@@ -1,0 +1,780 @@
+{
+  "schema": "elpis.ecs-c-recovery-q0.plan.v1",
+  "specification": "docs/qualification/ECS_C_RECOVERY_Q0.md",
+  "deployment": {
+    "init": [
+      "--capacity",
+      "16"
+    ],
+    "create": [
+      "--seed",
+      "<seed>"
+    ],
+    "capacity": 16,
+    "record_bytes": 3904,
+    "witness_bytes": 240,
+    "files": [
+      "authority/deployment.key",
+      "authority/witness.a",
+      "authority/witness.b",
+      "catalog",
+      "checkpoint/k1-checkpoint.a",
+      "checkpoint/k1-checkpoint.b",
+      "host.cfg",
+      "lib/libelpis_ecs_c_authority.so",
+      "lib/libelpis_ecs_composite.so",
+      "lib/libelpis_ecs_memory.so",
+      "lib/libelpis_ecsg_k1.so",
+      "lib/libelpis_ecsg_math.so",
+      "lib/libelpis_hacf_observation.so",
+      "lib/libelpis_runtime_testing.so",
+      "lineage.cfg",
+      "state/authority.a",
+      "state/authority.b"
+    ]
+  },
+  "source": {
+    "op": "source_found",
+    "label": "q0 source 1",
+    "source_authority": 1,
+    "per_turn": 8,
+    "scope_label": "q0 scope"
+  },
+  "stimulus": {
+    "learn": {
+      "op": "learn",
+      "y": [
+        0.1,
+        -0.2,
+        0.05,
+        0.3
+      ],
+      "schedule": [
+        [
+          2,
+          3
+        ],
+        [
+          2,
+          5
+        ]
+      ],
+      "rate": 0.002,
+      "grant": "ecs_c recovery q0: fixture numeric experience",
+      "x_rule": "x[i][j] = ((i * 7 + j * 3) % 11 - 5) / 16 for i in 0..4, j in 0..6, the same every turn (the host suite's fixture; each LEARN still moves W, so every turn has its own identity)"
+    },
+    "evidence": {
+      "op": "evidence",
+      "grant": "ecs_c recovery q0: source 1",
+      "sources": [
+        1
+      ],
+      "relation": "hyperedge:1",
+      "authority": 1,
+      "polarity": "ASSERT",
+      "roles": [
+        "incidence:1",
+        "incidence:2",
+        "incidence:3"
+      ],
+      "node_rule": "sha256('elpis.ecs-c-recovery-q0.node:' + name) for name in ('subject', 'object', 'role'): one relation, its evidence accumulating",
+      "provenance_rule": "sha256('elpis.ecs-c-recovery-q0.provenance:' + turn)",
+      "tick_rule": "turn + 1"
+    },
+    "turn": "one LEARN, then one evidence turn of one observation; the first turn of every trial is turn 0"
+  },
+  "runs_per_point": 4,
+  "inputs": {
+    "dev": {
+      "lineage_seed_base": 1000,
+      "random_seed": 7
+    },
+    "qual": {
+      "lineage_seed_base": 20261019,
+      "random_seed": 20261019
+    }
+  },
+  "families": {
+    "publish": {
+      "child": "turn, publish (D1 acknowledged), turn (D2 live); testing_durable_fault action 2 at the step; publish without waiting; testing_wait_parked at the step; testing_pause; SIGKILL",
+      "points": [
+        {
+          "point": "step:1",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D1",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "step:2",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D1",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "step:3",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D1",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "step:4",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "durable": "D1",
+            "candidate": "D2",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "step:5",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "durable": "D1",
+            "candidate": "D2",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "step:6",
+          "expect": {
+            "authority": "TRAILING_INCOMPLETE",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "durable": "D1",
+            "candidate": "D2",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "step:7",
+          "expect": {
+            "authority": "INTERRUPTED_COMPLETED",
+            "recovery": "RESUMABLE",
+            "durable": "D2",
+            "evidence": 3
+          }
+        },
+        {
+          "point": "step:8",
+          "expect": {
+            "authority": "INTERRUPTED_COMPLETED",
+            "recovery": "RESUMABLE",
+            "durable": "D2",
+            "evidence": 3
+          }
+        },
+        {
+          "point": "step:9",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D2",
+            "evidence": 3
+          }
+        }
+      ]
+    },
+    "failure": {
+      "child": "turn, publish (D1), turn (D2); testing_durable_fault with the plan (step 0, arg 64); publish (refused with its ticket); the child exits normally",
+      "points": [
+        {
+          "point": "plan:3",
+          "expect": {
+            "code": "DURABLE_FAILED",
+            "cause": "CHECKPOINT_IO",
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D1",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "plan:4",
+          "expect": {
+            "code": "DURABLE_FAILED",
+            "cause": "CHECKPOINT_IO",
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D1",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "plan:5",
+          "expect": {
+            "code": "DURABLE_FAILED",
+            "cause": "CHECKPOINT_IO",
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D1",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "plan:6",
+          "expect": {
+            "code": "DURABLE_FAILED",
+            "cause": "CONTINUITY_PUBLICATION_REFUSED",
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D1",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "plan:7",
+          "expect": {
+            "code": "DURABLE_FAILED",
+            "cause": "CONTINUITY_PUBLICATION_REFUSED",
+            "authority": "TRAILING_INCOMPLETE",
+            "recovery": "RESUMABLE",
+            "durable": "D1",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "plan:8",
+          "expect": {
+            "code": "DURABLE_UNCERTAIN",
+            "cause": "CONTINUITY_PUBLICATION_UNCERTAIN",
+            "authority": "CLEAN",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "durable": "D1",
+            "candidate": "D2",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "plan:9",
+          "expect": {
+            "code": "DURABLE_UNCERTAIN",
+            "cause": "CONTINUITY_PUBLICATION_UNCERTAIN",
+            "authority": "INTERRUPTED_COMPLETED",
+            "recovery": "RESUMABLE",
+            "durable": "D2",
+            "evidence": 3
+          }
+        },
+        {
+          "point": "plan:10",
+          "expect": {
+            "code": "DURABLE_FAILED",
+            "cause": "CHECKPOINT_IO",
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D1",
+            "evidence": 2
+          }
+        }
+      ]
+    },
+    "anchor": {
+      "child": "create --seed s --testing-anchor-park p --testing-fault-arg 100 (no source yet); SIGKILL when the watcher reports parked = 100 + p",
+      "points": [
+        {
+          "point": "control:1",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "NOTHING_TO_RECOVER",
+            "resumed": false,
+            "evidence": 1
+          }
+        },
+        {
+          "point": "control:2",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "NOTHING_TO_RECOVER",
+            "resumed": false,
+            "evidence": 1
+          }
+        },
+        {
+          "point": "control:3",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "NOTHING_TO_RECOVER",
+            "resumed": false,
+            "evidence": 1
+          }
+        },
+        {
+          "point": "control:4",
+          "expect": {
+            "authority": "TRAILING_INCOMPLETE",
+            "recovery": "NOTHING_TO_RECOVER",
+            "resumed": false,
+            "evidence": 1
+          }
+        },
+        {
+          "point": "control:5",
+          "expect": {
+            "authority": "INTERRUPTED_COMPLETED",
+            "recovery": "RESUMABLE",
+            "durable": "D0",
+            "resumed": true,
+            "evidence": 1
+          }
+        },
+        {
+          "point": "control:6",
+          "expect": {
+            "authority": "INTERRUPTED_COMPLETED",
+            "recovery": "RESUMABLE",
+            "durable": "D0",
+            "resumed": true,
+            "evidence": 1
+          }
+        }
+      ]
+    },
+    "discard": {
+      "child": "the publish family's step:5 child, killed there (D1 authorized, D2 the candidate); then testing_control_fault kind 3 action 2 at the point and reconcile --discard D2; SIGKILL when the watcher reports parked = 300 + p",
+      "points": [
+        {
+          "point": "control:1",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "durable": "D1",
+            "candidate": "D2",
+            "final": "D1",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "control:2",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D1",
+            "final": "D1",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "control:3",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D1",
+            "final": "D1",
+            "evidence": 2
+          }
+        }
+      ]
+    },
+    "adopt": {
+      "child": "as discard, with testing_control_fault kind 4 and reconcile --adopt D2; SIGKILL when the watcher reports parked = 400 + p",
+      "points": [
+        {
+          "point": "control:1",
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "durable": "D1",
+            "candidate": "D2",
+            "final": "D2",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "control:4",
+          "expect": {
+            "authority": "TRAILING_INCOMPLETE",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "durable": "D1",
+            "candidate": "D2",
+            "final": "D2",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "control:5",
+          "expect": {
+            "authority": "INTERRUPTED_COMPLETED",
+            "recovery": "RESUMABLE",
+            "durable": "D2",
+            "final": "D2",
+            "evidence": 2
+          }
+        },
+        {
+          "point": "control:6",
+          "expect": {
+            "authority": "INTERRUPTED_COMPLETED",
+            "recovery": "RESUMABLE",
+            "durable": "D2",
+            "final": "D2",
+            "evidence": 2
+          }
+        }
+      ]
+    },
+    "random": {
+      "runs": 32,
+      "child": "turns of LEARN and evidence; after each turn, a waited publish with probability publish_probability; the parent SIGKILLs the child as soon as it has read kill_after output lines",
+      "max_turns": 12,
+      "publish_probability": 0.35,
+      "expect": {
+        "authority_any_of": [
+          "CLEAN",
+          "TRAILING_INCOMPLETE",
+          "INTERRUPTED_COMPLETED"
+        ],
+        "recovery_any_of": [
+          "RESUMABLE",
+          "CANDIDATE_UNRESOLVED"
+        ],
+        "durable_rule": "the last identity the child reported acknowledged (D0 when none), or the identity of a publication requested after it whose result the child never reported",
+        "candidate_rule": "when CANDIDATE_UNRESOLVED: an identity the child reported, published or requested after the durable one"
+      }
+    },
+    "attack": {
+      "child": "six turns, each followed by its own process's publish (D1..D6 acknowledged); after each publication the parent saves both record slots; then the attack, with every process closed",
+      "points": [
+        {
+          "point": "rollback:1",
+          "attack": {
+            "kind": "copy_back",
+            "saved_after": 5
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "ROLLBACK",
+            "reconcile": "ROLLBACK",
+            "class": 0,
+            "accepted": "D5",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "candidate": "D6",
+            "evidence": 6
+          }
+        },
+        {
+          "point": "rollback:2",
+          "attack": {
+            "kind": "copy_back",
+            "saved_after": 4
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "ROLLBACK",
+            "reconcile": "ROLLBACK",
+            "class": 0,
+            "accepted": "D4",
+            "recovery": "CHECKPOINT_MISSING",
+            "evidence": 4
+          }
+        },
+        {
+          "point": "rollback:5",
+          "attack": {
+            "kind": "copy_back",
+            "saved_after": 1
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "ROLLBACK",
+            "reconcile": "ROLLBACK",
+            "class": 0,
+            "accepted": "D1",
+            "recovery": "CHECKPOINT_MISSING",
+            "evidence": 1
+          }
+        },
+        {
+          "point": "flip:header",
+          "attack": {
+            "kind": "flip",
+            "offset": 0
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "CORRUPT_ACKNOWLEDGED",
+            "reconcile": "ROLLBACK",
+            "class": 1,
+            "accepted": "D5",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "candidate": "D6",
+            "evidence": 6
+          }
+        },
+        {
+          "point": "flip:generation",
+          "attack": {
+            "kind": "flip",
+            "offset": 32
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "CORRUPT_ACKNOWLEDGED",
+            "reconcile": "ROLLBACK",
+            "class": 1,
+            "accepted": "D5",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "candidate": "D6",
+            "evidence": 6
+          }
+        },
+        {
+          "point": "flip:state",
+          "attack": {
+            "kind": "flip",
+            "offset": 356
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "CORRUPT_ACKNOWLEDGED",
+            "reconcile": "ROLLBACK",
+            "class": 1,
+            "accepted": "D5",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "candidate": "D6",
+            "evidence": 6
+          }
+        },
+        {
+          "point": "flip:mac",
+          "attack": {
+            "kind": "flip",
+            "offset": 3840
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "CORRUPT_ACKNOWLEDGED",
+            "reconcile": "ROLLBACK",
+            "class": 1,
+            "accepted": "D5",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "candidate": "D6",
+            "evidence": 6
+          }
+        },
+        {
+          "point": "flip:checksum",
+          "attack": {
+            "kind": "flip",
+            "offset": 3872
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "CORRUPT_ACKNOWLEDGED",
+            "reconcile": "ROLLBACK",
+            "class": 1,
+            "accepted": "D5",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "candidate": "D6",
+            "evidence": 6
+          }
+        },
+        {
+          "point": "shorten:0",
+          "attack": {
+            "kind": "shorten",
+            "length": 0
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "CORRUPT_ACKNOWLEDGED",
+            "reconcile": "ROLLBACK",
+            "class": 1,
+            "accepted": "D5",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "candidate": "D6",
+            "evidence": 6
+          }
+        },
+        {
+          "point": "shorten:half",
+          "attack": {
+            "kind": "shorten",
+            "length": 1952
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "CORRUPT_ACKNOWLEDGED",
+            "reconcile": "ROLLBACK",
+            "class": 1,
+            "accepted": "D5",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "candidate": "D6",
+            "evidence": 6
+          }
+        },
+        {
+          "point": "forge:generation",
+          "attack": {
+            "kind": "forge_generation",
+            "add": 5
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "UNAUTHENTICATED_ACKNOWLEDGED",
+            "reconcile": "ROLLBACK",
+            "class": 2,
+            "accepted": "D5",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "candidate": "D6",
+            "evidence": 6
+          }
+        },
+        {
+          "point": "forge:evolution",
+          "attack": {
+            "kind": "forge_evolution",
+            "revision": 7,
+            "head_label": "forged head"
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "UNAUTHENTICATED_ACKNOWLEDGED",
+            "reconcile": "ROLLBACK",
+            "class": 2,
+            "accepted": "D5",
+            "recovery": "CANDIDATE_UNRESOLVED",
+            "candidate": "D6",
+            "evidence": 6
+          }
+        },
+        {
+          "point": "substitute:other",
+          "attack": {
+            "kind": "substitute",
+            "add": 1
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "RESTRICTED_UNAUTHENTICATED",
+            "reconcile": "UNAUTHENTICATED",
+            "class": 2,
+            "accepted": "D6",
+            "recovery": "RESUMABLE",
+            "evidence": 7
+          }
+        }
+      ]
+    },
+    "rearrangement": {
+      "child": "as attack",
+      "points": [
+        {
+          "point": "swap",
+          "attack": {
+            "kind": "swap"
+          },
+          "expect": {
+            "authority": "CLEAN",
+            "recovery": "RESUMABLE",
+            "durable": "D6",
+            "evidence": 7
+          }
+        },
+        {
+          "point": "duplicate",
+          "attack": {
+            "kind": "duplicate"
+          },
+          "expect": {
+            "authority": "PREDECESSOR_UNAVAILABLE",
+            "recovery": "RESUMABLE",
+            "durable": "D6",
+            "evidence": 7
+          }
+        },
+        {
+          "point": "shorten:other",
+          "attack": {
+            "kind": "shorten_other",
+            "length": 100
+          },
+          "expect": {
+            "authority": "TRAILING_INCOMPLETE",
+            "recovery": "RESUMABLE",
+            "durable": "D6",
+            "evidence": 7
+          }
+        }
+      ]
+    },
+    "witness": {
+      "child": "as attack",
+      "points": [
+        {
+          "point": "witness:lost",
+          "attack": {
+            "kind": "witness_lost"
+          },
+          "expect": {
+            "open": "RUNTIME_AUTHORITY",
+            "authority": "WITNESS_MISSING",
+            "reconcile": "REPIN",
+            "witness_classes": [
+              "TORN",
+              "TORN"
+            ],
+            "accepted": "D6",
+            "recovery": "RESUMABLE",
+            "evidence": 7
+          }
+        }
+      ]
+    },
+    "bounded": {
+      "child": "one lineage: turns each followed by a publish in one process per block; the recovery work and the file set are recorded after 10, 100 and 1000 publications",
+      "runs": 1,
+      "publications": [
+        10,
+        100,
+        1000
+      ],
+      "block": 50
+    }
+  },
+  "attack_layout": {
+    "newest": "the record slot whose 8-byte little-endian generation at offset 32 is the higher of the two (both slots are complete before an attack)",
+    "flip": "XOR 0xFF at the offset of the newest record",
+    "shorten": "the newest record's file truncated to the length (in place, same inode)",
+    "shorten_other": "the other record's file truncated to the length",
+    "checksum": "bytes R-32..R: SHA-256('elpis.ecs_c.authority.record.v1\\0' || bytes 0..R-32)",
+    "state_root": "bytes 176..208: SHA-256('elpis.ecs_c.authority.state.v1\\0' || lineage (48..80) || generation u64le || capacity u32le || state (256..R-576))",
+    "forge_generation": "the newest record with its generation (32..40) raised by add; checksum recomputed; MAC unchanged; written over the newest",
+    "forge_evolution": "the newest record with state bytes 56..64 (evolution revision) set to revision and 64..96 (evolution head) to SHA-256(head_label); state root and checksum recomputed; MAC unchanged; written over the newest",
+    "substitute": "the newest record with its generation raised by add; checksum recomputed; MAC unchanged; written over the other slot",
+    "copy_back": "both record files rewritten in place with the bytes saved after publication saved_after",
+    "swap": "the two record files' bytes exchanged in place",
+    "duplicate": "the other record file rewritten with the newest record's bytes",
+    "witness_lost": "both witness files truncated to zero bytes (the authority directory: outside T1)"
+  },
+  "operator_actions": {
+    "attack": "even run index: authority-reconcile with exactly the kind and digest `authority` reports; odd: first the same kind with a wrong digest (64 'e'), which must be refused with AUTHORITY_RECONCILE_MISMATCH, then the exact one",
+    "witness": "as attack",
+    "CANDIDATE_UNRESOLVED": "discard and adopt families: their own reconciliation of D2 again; every other family: reconcile --adopt of the candidate on even run indices, --discard on odd",
+    "NOTHING_TO_RECOVER": "anchor family: create with the same arguments",
+    "CHECKPOINT_MISSING": "no action exists: recorded; continuation not attempted",
+    "otherwise": "no action"
+  },
+  "continuation": "unless the operator action leaves CHECKPOINT_MISSING: one more turn and publish in one process, then a fresh process's live and durable identities, which must both equal that publication",
+  "coordinates": {
+    "order": "families in plan order; within a family, points in order, then run index 0..runs-1",
+    "index": "the 0-based position of the trial in that enumeration",
+    "seed": "inputs.<name>.lineage_seed_base + index",
+    "random": "one random.Random(inputs.<name>.random_seed), consumed only by the random family in enumeration order: turns = randint(1, max_turns); publish flags = [random() < publish_probability for each turn]; kill_after = randint(1, the child's output line count - 1)",
+    "record_order": "records appear exactly once each, in increasing index"
+  },
+  "bounds": {
+    "child_timeout_seconds": 120,
+    "process_timeout_seconds": 600
+  },
+  "evidence_rule": "expect.evidence is the authority's evidence_count at the end of the trial (after the continuation, or after the reconciliation when no continuation exists): every turn commits one observation; an acknowledged publication carries the observations committed since the previous publication of its process; a checkpoint adoption carries none; an accepted rollback continues from the accepted record's count"
+}

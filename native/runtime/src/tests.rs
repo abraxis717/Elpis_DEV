@@ -7,7 +7,7 @@
 //! integration lane. Fault injection needs the `testing` feature (`cargo test --features testing`).
 
 use std::ffi::c_int;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
@@ -584,7 +584,7 @@ impl K1Ops for Fake {
         };
         // SAFETY: the tests pass a pointer to a live Digest.
         let observed = unsafe { *(observation.0 as *const Digest) };
-        if observed[0] == 0xFF {
+        if observed[4] == 0xFF {
             *memory_status = -7;
             return COMPOSITE_REFUSED;
         }
@@ -655,6 +655,47 @@ fn publish(core: &mut Core, sub: &mut Fake, k: Key) -> Result<Ticket, Error> {
     core.lane().wait(t.sequence, Some(Duration::from_secs(30)))
 }
 
+/// The durable authority the suite runs over: standalone continuity (the default), or the ECS_C authority
+/// (`ELPIS_RUNTIME_TEST_AUTHORITY=ecs_c`, ctest `runtime.cargo_test_ecs_c`). The same laws must hold over both.
+fn ecs_c_backend() -> bool {
+    let ecs_c = std::env::var("ELPIS_RUNTIME_TEST_AUTHORITY").map(|v| v == "ecs_c").unwrap_or(false);
+    assert!(!ecs_c || cfg!(feature = "testing"), "the ECS_C pass reads the authority back: --features testing");
+    ecs_c
+}
+
+fn ecs_c_dirs(p: &Path) -> (PathBuf, PathBuf) {
+    (p.join("state"), p.join("authority"))
+}
+
+/// Provision an ECS_C authority with one ACTIVE source whose memory source authority is 0 (the suite's
+/// observations record it), at the bound the managed turn's ceiling allows.
+fn provision_ecs_c(state: &Path, authority: &Path) {
+    use elpis_ecs_c_authority as e;
+    e::Authority::provision(state, authority, 16, &[1; 32], &[2; 32]).expect("provision");
+    let mut a = e::Authority::new(state, authority).unwrap();
+    a.open().unwrap();
+    let c = a.current().unwrap().clone();
+    let op = c.state.entities[0].id;
+    let id = a.next_entity_id(e::EntityKind::Source, &[3; 32]).unwrap();
+    let found = e::Event::entity_found(&op, 1, &id, e::EntityKind::Source, &[3; 32], &[4; 32], 1, 256, 0);
+    a.transition(c.generation, &c.state_root, &found).unwrap();
+    let c = a.current().unwrap().clone();
+    let active = e::Event::entity_lifecycle(&op, 2, &id, e::Lifecycle::Founded, e::Lifecycle::Active);
+    a.transition(c.generation, &c.state_root, &active).unwrap();
+}
+
+/// A closed runtime over `p` (under ECS_C, the authority is provisioned on first use).
+fn new_core(p: &Path) -> Core {
+    if !ecs_c_backend() {
+        return Core::new(p).expect("absolute");
+    }
+    let (state, authority) = ecs_c_dirs(p);
+    if !authority.join("witness.a").exists() {
+        provision_ecs_c(&state, &authority);
+    }
+    Core::new_ecs_c(&state, &authority).expect("absolute")
+}
+
 struct Dir(PathBuf);
 
 impl Dir {
@@ -665,7 +706,7 @@ impl Dir {
     }
 
     fn core(&self) -> Core {
-        let mut c = Core::new(&self.0).expect("absolute");
+        let mut c = new_core(&self.0);
         c.open().expect("open");
         c
     }
@@ -687,6 +728,12 @@ fn anchored(core: &Core) -> Option<Digest> {
 /// The durable authority as a restart would read it from disk (the two slot files, read directly: the runtime under
 /// test may hold the directory's lock).
 fn on_disk(dir: &Dir) -> elpis_continuity::Snapshot {
+    #[cfg(feature = "testing")]
+    if ecs_c_backend() {
+        let (state, authority) = ecs_c_dirs(&dir.0);
+        let record = elpis_ecs_c_authority::testing_peek(&state, &authority).unwrap();
+        return crate::authority::snapshot_of(&record).unwrap();
+    }
     let read = |n: &str| -> [u8; 176] { std::fs::read(dir.0.join(n)).unwrap().try_into().unwrap() };
     elpis_continuity::store::resolve(&[read("continuity.a"), read("continuity.b")]).unwrap().0
 }
@@ -707,7 +754,7 @@ fn features_and_envelope_bytes_are_k1s() {
 #[test]
 fn a_closed_runtime_refuses_everything() {
     let dir = Dir::new("closed");
-    let mut core = Core::new(&dir.0).unwrap();
+    let mut core = new_core(&dir.0);
     let mut sub = Fake::new(0.1);
     assert_eq!(core.anchor(&mut sub, key(1)).unwrap_err().error, Rt::Closed.into());
     assert_eq!(core.evolution_authority().unwrap_err(), Rt::Closed.into());
@@ -1224,7 +1271,7 @@ fn another_substrates_abort_is_refused_and_the_turn_stays_open_until_close() {
 fn lifecycle_without_a_turn_makes_no_native_call() {
     let dir = Dir::new("life-idle");
     let mut sub = Fake::new(0.1);
-    let mut core = Core::new(&dir.0).unwrap();
+    let mut core = new_core(&dir.0);
     core.close(); // close of a never-opened runtime
     core.open().unwrap();
     core.anchor(&mut sub, key(1)).unwrap();
@@ -1236,7 +1283,7 @@ fn lifecycle_without_a_turn_makes_no_native_call() {
     core.open().unwrap();
     drop(core); // destroy with no turn
     assert!(sub.calls().is_empty());
-    assert_eq!(Core::new(&dir.0).unwrap().counters(false), Counters::default());
+    assert_eq!(new_core(&dir.0).counters(false), Counters::default());
     // Double close after a turn: one abort, then nothing.
     let dir = Dir::new("life-idle-turn");
     let (mut core, sub, _) = begun(&dir);
@@ -2664,8 +2711,419 @@ mod faults {
         assert_eq!(core.testing_continuity_counters(false), Default::default()); // the turn: nothing
         publish(&mut core, &mut sub, key(1)).unwrap();
         let io = core.testing_continuity_counters(false);
-        assert_eq!((io.opens, io.preads, io.pwrites, io.pwrite_bytes, io.data_syncs), (0, 0, 1, 176, 1));
+        // Continuity: one 176-byte slot. ECS_C: the record slot (R = 1344 + 160 x 16) and the witness slot (240).
+        let expected = if ecs_c_backend() { (0, 0, 2, 3904 + 240, 2) } else { (0, 0, 1, 176, 1) };
+        assert_eq!((io.opens, io.preads, io.pwrites, io.pwrite_bytes, io.data_syncs), expected);
         assert_eq!((io.dir_syncs, io.renames, io.unlinks), (0, 0, 0));
+    }
+}
+
+/// ABI v6: RuntimeCore over the ECS_C authority, whichever backend `ELPIS_RUNTIME_TEST_AUTHORITY` selects for the
+/// rest of the suite (docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"): the HOT lane's I/O, typed-evidence
+/// admission, the evidence summary, operator events and a refused open.
+#[cfg(feature = "testing")]
+mod ecs_c {
+    use super::recovery::Ck;
+    use super::*;
+    use crate::authority::Store;
+    use crate::checkpoint::HEADER;
+    use elpis_ecs_c_authority as e;
+
+    const CAPACITY: u32 = 16; // provision_ecs_c's
+
+    /// A closed runtime over the ECS_C authority under `dir` (provisioned on first use).
+    fn closed(dir: &Dir) -> Core {
+        let (state, authority) = ecs_c_dirs(&dir.0);
+        if !authority.join("witness.a").exists() {
+            provision_ecs_c(&state, &authority);
+        }
+        Core::new_ecs_c(&state, &authority).unwrap()
+    }
+
+    fn open(dir: &Dir) -> Core {
+        let mut core = closed(dir);
+        core.open().unwrap();
+        core
+    }
+
+    /// The authority a restart would find (read without the locks the runtime under test holds).
+    fn peek(dir: &Dir) -> e::Record {
+        let (state, authority) = ecs_c_dirs(&dir.0);
+        e::testing_peek(&state, &authority).unwrap()
+    }
+
+    /// Every file of the authority's two directories, with its size.
+    fn files(dir: &Dir) -> Vec<(String, u64)> {
+        let (state, authority) = ecs_c_dirs(&dir.0);
+        let mut out = vec![];
+        for d in [state, authority] {
+            for f in std::fs::read_dir(&d).unwrap() {
+                let f = f.unwrap();
+                out.push((f.file_name().into_string().unwrap(), f.metadata().unwrap().len()));
+            }
+        }
+        out.sort();
+        out
+    }
+
+    fn composite_key(owner: u64) -> Key {
+        Key { kind: 3, handle: 0x2000 + owner as usize, id: 0, owner, dim: DIM }
+    }
+
+    /// A stand-in observation whose head reads as an `elpis_ecs_mem_observation` of ABI v1 recording memory source
+    /// authority `source` (bytes 24..28); `byte` tells them apart.
+    fn observation(source: u32, byte: u8) -> Digest {
+        let mut d = [0u8; 32];
+        d[0] = 1;
+        d[4] = byte;
+        d[24..28].copy_from_slice(&source.to_le_bytes());
+        d[31] = 0x5a;
+        d
+    }
+
+    fn observe(core: &mut Core, sub: &mut Fake, k: Key, d: &Digest) -> Result<Digest, Error> {
+        core.turn_observe(sub, k, Observation(d as *const Digest as *const _)).0.map_err(|r| r.error)
+    }
+
+    /// The operator's next sender identity and sequence.
+    fn operator(dir: &Dir) -> (Digest, u64) {
+        let op = &peek(dir).state.entities[0];
+        (op.id, op.sender_watermark + 1)
+    }
+
+    /// The operator founds a source and activates it, through the runtime that holds the authority.
+    fn found_source(core: &mut Core, dir: &Dir, label: u8, source_authority: u32, limit: u32) -> Digest {
+        let r = peek(dir);
+        let label = [label; 32];
+        let id = r.state.next_entity_id(&r.lineage, e::EntityKind::Source, &label);
+        let (op, seq) = operator(dir);
+        let kind = e::EntityKind::Source;
+        let found = e::Event::entity_found(&op, seq, &id, kind, &label, &[4; 32], 1, limit, source_authority);
+        core.authority_transition(&found).unwrap();
+        lifecycle(core, dir, &id, e::Lifecycle::Founded, e::Lifecycle::Active).unwrap();
+        id
+    }
+
+    fn lifecycle(core: &mut Core, dir: &Dir, id: &Digest, from: e::Lifecycle, to: e::Lifecycle) -> Result<u64, Error> {
+        let (op, seq) = operator(dir);
+        let event = e::Event::entity_lifecycle(&op, seq, id, from, to);
+        core.authority_transition(&event).map(|r| r.generation).map_err(|r| r.error)
+    }
+
+    #[test]
+    fn the_hot_lane_performs_no_authority_io_and_a_publication_writes_one_record_and_one_witness() {
+        let (dir, ck) = (Dir::new("ecsc-io"), Ck::new("ecsc-io"));
+        let mut sub = Fake::new(0.1);
+        let mut c = open(&dir);
+        c.checkpoint_attach(&ck.0).unwrap();
+        c.anchor(&mut sub, key(1)).unwrap();
+        turn(&mut c, &mut sub, key(1)).unwrap();
+        let before = files(&dir);
+        c.testing_continuity_counters(true);
+        c.testing_checkpoint_counters(true);
+        for _ in 0..100 {
+            turn(&mut c, &mut sub, key(1)).unwrap();
+            query(&mut c, &mut sub, key(1), 2).unwrap();
+        }
+        let (io, ck_io) = (c.testing_continuity_counters(false), c.testing_checkpoint_counters(false));
+        assert_eq!(io, Default::default(), "authority I/O on the HOT lane");
+        assert_eq!(ck_io, Default::default(), "checkpoint I/O on the HOT lane");
+        // One explicit durable publication: the record slot and the witness slot, each written in place and synced;
+        // no open, create, rename, removal or directory sync; one checkpoint slot.
+        let record = e::record_bytes(CAPACITY) as u64;
+        let mut published = None;
+        for n in 0..20 {
+            published = Some(publish(&mut c, &mut sub, key(1)).unwrap().identity);
+            let (io, ck_io) = (c.testing_continuity_counters(true), c.testing_checkpoint_counters(true));
+            assert_eq!(
+                (io.pwrites, io.pwrite_bytes, io.data_syncs, io.preads),
+                (2, record + e::WITNESS_BYTES as u64, 2, 0),
+                "publication {n}"
+            );
+            assert_eq!((io.opens, io.renames, io.unlinks, io.dir_syncs), (0, 0, 0, 0), "publication {n}");
+            assert_eq!((ck_io.pwrites, ck_io.pwrite_bytes, ck_io.data_syncs), (1, (HEADER + ENVELOPE) as u64, 1));
+            turn(&mut c, &mut sub, key(1)).unwrap();
+        }
+        // The fixed file set: the same five files at the same sizes, however many publications.
+        assert_eq!(files(&dir), before);
+        let names: Vec<_> = before.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(names, ["authority.a", "authority.b", "deployment.key", "witness.a", "witness.b"]);
+        assert_eq!(on_disk_identity(&dir), published);
+    }
+
+    fn on_disk_identity(dir: &Dir) -> Option<Digest> {
+        match peek(dir).state.cognition {
+            e::Cognition::Anchored { identity, .. } => Some(identity),
+            e::Cognition::Unanchored => None,
+        }
+    }
+
+    #[test]
+    fn typed_observations_are_admitted_against_the_authoritys_active_sources_before_the_native_call() {
+        let dir = Dir::new("ecsc-admission");
+        let mut core = open(&dir);
+        let (mut sub, k) = (Fake::composite(0.2), composite_key(7));
+        core.anchor(&mut sub, k).unwrap();
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        sub.clear_calls();
+        let a = observation(0, 1);
+        assert_eq!(observe(&mut core, &mut sub, k, &a).unwrap(), a);
+        // A source the authority does not know, and a record of another memory ABI: refused before the native call,
+        // recoverably (the turn stays open, its candidate unchanged).
+        let mut foreign = observation(0, 3);
+        foreign[0] = 2;
+        assert_eq!(observe(&mut core, &mut sub, k, &observation(9, 2)).unwrap_err(), Rt::ObservationRefused.into());
+        assert_eq!(observe(&mut core, &mut sub, k, &foreign).unwrap_err(), Rt::Invalid.into());
+        assert_eq!(sub.calls(), ["txn_observe"]);
+        assert!(core.turn_is_open() && core.fault().is_none());
+        core.turn_commit(&mut sub, k).unwrap();
+        assert_eq!(sub.memory(), vec![a]);
+        // Under continuity admission stays the boundary's: the same observation reaches the native call.
+        let cdir = Dir::new("ecsc-admission-continuity");
+        let mut cont = Core::new(&cdir.0).unwrap();
+        cont.open().unwrap();
+        let (mut sub, k) = (Fake::composite(0.2), composite_key(8));
+        cont.anchor(&mut sub, k).unwrap();
+        cont.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        assert_eq!(observe(&mut cont, &mut sub, k, &observation(9, 2)).unwrap(), observation(9, 2));
+        cont.turn_abort(k).unwrap();
+    }
+
+    #[test]
+    fn a_sources_per_turn_bound_and_its_lifecycle_follow_the_operators_events() {
+        let dir = Dir::new("ecsc-bound");
+        let mut core = open(&dir);
+        let (mut sub, k) = (Fake::composite(0.2), composite_key(7));
+        core.anchor(&mut sub, k).unwrap();
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        assert_eq!(observe(&mut core, &mut sub, k, &observation(5, 1)).unwrap_err(), Rt::ObservationRefused.into());
+        // An operator event while a managed turn is open is refused: its admission must not change under it.
+        let (op, seq) = operator(&dir);
+        let label = [9; 32];
+        let r = peek(&dir);
+        let id = r.state.next_entity_id(&r.lineage, e::EntityKind::Source, &label);
+        let found = e::Event::entity_found(&op, seq, &id, e::EntityKind::Source, &label, &[4; 32], 1, 2, 5);
+        assert_eq!(core.authority_transition(&found).unwrap_err().error, Rt::TurnOpen.into());
+        assert_eq!(peek(&dir).generation, r.generation);
+        core.turn_abort(k).unwrap();
+        assert_eq!(found_source(&mut core, &dir, 9, 5, 2), id);
+        // Source 5 admits two observations per turn; source 0 keeps its own bound.
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        for byte in [1, 2] {
+            observe(&mut core, &mut sub, k, &observation(5, byte)).unwrap();
+        }
+        assert_eq!(observe(&mut core, &mut sub, k, &observation(5, 3)).unwrap_err(), Rt::ObservationRefused.into());
+        observe(&mut core, &mut sub, k, &observation(0, 4)).unwrap();
+        core.turn_commit(&mut sub, k).unwrap();
+        // The bound is per turn.
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        observe(&mut core, &mut sub, k, &observation(5, 5)).unwrap();
+        core.turn_commit(&mut sub, k).unwrap();
+        let committed = sub.memory();
+        assert_eq!(committed.len(), 4);
+        // DORMANT: its observations are refused until it is ACTIVE again.
+        lifecycle(&mut core, &dir, &id, e::Lifecycle::Active, e::Lifecycle::Dormant).unwrap();
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        assert_eq!(observe(&mut core, &mut sub, k, &observation(5, 6)).unwrap_err(), Rt::ObservationRefused.into());
+        core.turn_abort(k).unwrap();
+        lifecycle(&mut core, &dir, &id, e::Lifecycle::Dormant, e::Lifecycle::Active).unwrap();
+        core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
+        observe(&mut core, &mut sub, k, &observation(5, 6)).unwrap();
+        core.turn_commit(&mut sub, k).unwrap();
+        assert_eq!(sub.memory().len(), 5);
+        // A refused operator event (stale sequence) changes nothing and leaves the exact ECS_C code.
+        let stale = e::Event::entity_lifecycle(&op, seq, &id, e::Lifecycle::Active, e::Lifecycle::Dormant);
+        let generation = peek(&dir).generation;
+        assert!(core.authority_transition(&stale).is_err());
+        assert_eq!(peek(&dir).generation, generation);
+        assert_ne!(core.authority_status().unwrap().ecs_c_code, 0);
+        assert_eq!(core.fault(), None);
+    }
+
+    #[test]
+    fn operator_events_are_ecs_c_only_and_never_runtime_core_s_own() {
+        // Continuity has no entities.
+        let cdir = Dir::new("ecsc-op-continuity");
+        let mut cont = Core::new(&cdir.0).unwrap();
+        cont.open().unwrap();
+        let any = e::Event::entity_reclaim(&[1; 32], 1, &[2; 32]);
+        assert_eq!(cont.authority_transition(&any).unwrap_err().error, Rt::Invalid.into());
+        assert_eq!(cont.authority_status().unwrap().backend, 1);
+        // RuntimeCore's own events and the reconciliations are refused before the authority sees them, whoever
+        // they claim to be from.
+        let dir = Dir::new("ecsc-op");
+        let mut core = open(&dir);
+        let generation = peek(&dir).generation;
+        let (op, seq) = operator(&dir);
+        let rt = peek(&dir).state.entities[1].id;
+        let e1 = EvolutionState::GENESIS;
+        for event in [
+            e::Event::anchor(&rt, 1, StateFormat::K1, &[3; 32]),
+            e::Event::publish(&rt, 1, StateFormat::K1, &[3; 32], &[4; 32], 0, &[0; 32]),
+            e::Event::import_composite(&rt, 1, &[3; 32], &[4; 32]),
+            e::Event::evolution_reserve(&rt, 1, &e1, &[5; 32]),
+            e::Event::evolution_finalize(&rt, 1, &e1, &[5; 32]),
+            e::Event::reconcile_unauthenticated(&op, seq, 0, 2, &[6; 32]),
+            e::Event::reconcile_repin(&op, seq, [0, 0], &[6; 32]),
+        ] {
+            assert_eq!(core.authority_transition(&event).unwrap_err().error, Rt::Invalid.into(), "{:?}", event.kind);
+        }
+        assert_eq!(peek(&dir).generation, generation);
+        // A closed runtime refuses them too.
+        core.close();
+        let event = e::Event::entity_reclaim(&op, seq, &[2; 32]);
+        assert_eq!(core.authority_transition(&event).unwrap_err().error, Rt::Closed.into());
+    }
+
+    #[test]
+    fn the_held_authority_reads_are_exactly_its_rows_and_change_nothing() {
+        // Continuity has no rows; a closed runtime refuses.
+        let cdir = Dir::new("ecsc-read-continuity");
+        let mut cont = Core::new(&cdir.0).unwrap();
+        cont.open().unwrap();
+        assert_eq!(cont.authority_entity(0).unwrap_err(), Rt::Invalid.into());
+        assert_eq!(cont.authority_next_entity_id(3, &[1; 32]).unwrap_err(), Rt::Invalid.into());
+        let dir = Dir::new("ecsc-read");
+        let mut core = closed(&dir);
+        assert_eq!(core.authority_entity(0).unwrap_err(), Rt::Closed.into());
+        core.open().unwrap();
+        // The rows a restart would find, in order, and nothing past them.
+        let found = found_source(&mut core, &dir, 9, 4242, 2);
+        let r = peek(&dir);
+        let n = r.state.entities.len() as u32; // operator, runtime, the provisioned source, this one
+        assert_eq!(n, 4);
+        assert_eq!(core.authority_status().unwrap().entity_count, n);
+        for (i, row) in r.state.entities.iter().enumerate() {
+            assert_eq!(&core.authority_entity(i as u32).unwrap(), row);
+        }
+        assert_eq!(core.authority_entity(n).unwrap_err(), Rt::Invalid.into());
+        assert_eq!(core.authority_entity(n - 1).unwrap().id, found);
+        // The next founding's identity is the authority's own, for each kind; an unknown kind is refused.
+        for kind in [e::EntityKind::Operator, e::EntityKind::Runtime, e::EntityKind::Source] {
+            assert_eq!(
+                core.authority_next_entity_id(kind as u8, &[7; 32]).unwrap(),
+                r.state.next_entity_id(&r.lineage, kind, &[7; 32])
+            );
+        }
+        assert_eq!(core.authority_next_entity_id(0, &[7; 32]).unwrap_err(), Rt::Invalid.into());
+        assert_eq!(core.authority_next_entity_id(4, &[7; 32]).unwrap_err(), Rt::Invalid.into());
+        // Reads: the authority did not move.
+        assert_eq!(peek(&dir), r);
+    }
+
+    #[test]
+    fn a_publication_records_the_evidence_summary_of_the_observations_it_makes_durable() {
+        // The durability lane sets the summary from the captured envelope before the PUBLISH. Store level: the fake
+        // composite's envelope is K1-shaped (it cannot be checkpointed), so the composite envelope is built here; the
+        // managed path over the real composite is tests/test_runtime_ecs_c.c.
+        let dir = Dir::new("ecsc-evidence");
+        let (state, authority) = ecs_c_dirs(&dir.0);
+        provision_ecs_c(&state, &authority);
+        let mut store = Store::ecs_c(&state, &authority).unwrap();
+        store.open().unwrap();
+        let composite = |memory: u8| {
+            let mut env = vec![0u8; 160];
+            env[..8].copy_from_slice(b"ELPISEC1");
+            env[80..112].copy_from_slice(&[memory; 32]);
+            env
+        };
+        let f = StateFormat::Composite;
+        let ids: Vec<Digest> = (1..=6).map(|i| [i; 32]).collect();
+        store.anchor_cognition_as(f, Some(&ids[0])).unwrap();
+        let status = |s: &Store| {
+            let x = s.status();
+            (x.evidence_count, x.evidence_head)
+        };
+        let (zero, head0) = status(&store);
+        assert_eq!(zero, 0);
+        // Three committed observations, then a publication: recorded once, with the memory's identity.
+        store.set_evidence(3, &composite(0x33));
+        store.commit_cognition_as(f, Some(&ids[0]), Some(&ids[1])).unwrap();
+        let (count, head1) = status(&store);
+        assert_eq!(count, 3);
+        assert_ne!(head1, head0);
+        // The PUBLISH itself (the record's newest event) carries the count and the memory identity.
+        let event = peek(&dir).event;
+        assert_eq!(event.kind, e::EventKind::Publish);
+        assert_eq!(u64::from_le_bytes(event.payload[72..80].try_into().unwrap()), 3);
+        assert_eq!(event.payload[80..112], [0x33; 32]);
+        // Nothing new since: the next publication records nothing.
+        store.set_evidence(3, &composite(0x44));
+        store.commit_cognition_as(f, Some(&ids[1]), Some(&ids[2])).unwrap();
+        assert_eq!(status(&store), (3, head1));
+        assert_eq!(peek(&dir).event.payload[72..112], [0; 40]); // zero count, zero digest: the law's pairing
+                                                                // A refused publication (stale before) consumes the summary but accounts for nothing: the next one carries
+                                                                // every observation since the last acknowledged publication.
+        store.set_evidence(5, &composite(0x55));
+        assert!(store.commit_cognition_as(f, Some(&ids[0]), Some(&ids[3])).is_err());
+        assert_eq!(status(&store), (3, head1));
+        store.set_evidence(6, &composite(0x55));
+        store.commit_cognition_as(f, Some(&ids[2]), Some(&ids[3])).unwrap();
+        assert_eq!(status(&store).0, 6);
+        // A publication without a summary from the lane (none set) carries none.
+        store.commit_cognition_as(f, Some(&ids[3]), Some(&ids[4])).unwrap();
+        assert_eq!(status(&store).0, 6);
+        // An envelope that is not a composite has no memory: it carries none.
+        let mut k1 = composite(0x66);
+        k1[..8].copy_from_slice(b"ELPISGK1");
+        store.set_evidence(9, &k1);
+        store.commit_cognition_as(f, Some(&ids[4]), Some(&ids[5])).unwrap();
+        assert_eq!(status(&store).0, 6);
+        assert_eq!(peek(&dir).state.evidence_count, 6);
+        // Continuity keeps no evidence and ignores the summary.
+        let cdir = Dir::new("ecsc-evidence-continuity");
+        let mut cont = Store::continuity(&cdir.0).unwrap();
+        cont.open().unwrap();
+        cont.set_evidence(3, &composite(0x33));
+        assert_eq!(cont.status().evidence_count, 0);
+    }
+
+    #[test]
+    fn an_authority_that_needs_reconciliation_refuses_the_open_and_reports_why() {
+        let dir = Dir::new("ecsc-rollback");
+        let mut core = open(&dir);
+        let mut sub = Fake::new(0.1);
+        core.anchor(&mut sub, key(1)).unwrap();
+        let (state, _) = ecs_c_dirs(&dir.0);
+        let read = |n: &str| std::fs::read(state.join(n)).unwrap();
+        let old = (read("authority.a"), read("authority.b"));
+        for _ in 0..2 {
+            turn(&mut core, &mut sub, key(1)).unwrap();
+            publish(&mut core, &mut sub, key(1)).unwrap();
+        }
+        let acknowledged = peek(&dir).generation;
+        core.close();
+        // Copied-back older records: every authenticated record is older than the witness pins.
+        std::fs::write(state.join("authority.a"), &old.0).unwrap();
+        std::fs::write(state.join("authority.b"), &old.1).unwrap();
+        assert_eq!(core.open().unwrap_err(), Rt::Authority.into());
+        let s = core.authority_status().unwrap();
+        assert_eq!(s.backend, 2);
+        assert_eq!(s.ecs_c_code, e::Code::ReconcileRequired as i32);
+        assert_eq!(s.disposition, e::Disposition::Rollback as u32);
+        assert_eq!(s.mode, 2);
+        assert!(s.generation < acknowledged);
+        // Nothing runs on it: every operation is refused closed, and nothing was written.
+        assert_eq!(core.anchor(&mut sub, key(1)).unwrap_err().error, Rt::Closed.into());
+        assert_eq!((read("authority.a"), read("authority.b")), old);
+        // A fresh handle is refused the same way.
+        let mut again = closed(&dir);
+        assert_eq!(again.open().unwrap_err(), Rt::Authority.into());
+        // Records recovery cannot resolve at all (both destroyed): refused by recovery itself, the report kept.
+        let size = old.0.len();
+        for n in ["authority.a", "authority.b"] {
+            std::fs::write(state.join(n), vec![0u8; size]).unwrap();
+        }
+        assert_eq!(again.open().unwrap_err(), Rt::Authority.into());
+        let s = again.authority_status().unwrap();
+        assert_eq!(s.ecs_c_code, e::Code::RecoveryRefused as i32);
+        assert_eq!(s.disposition, e::Disposition::Unrecoverable as u32);
+        // An unprovisioned authority is refused with its exact code.
+        let bare = Dir::new("ecsc-unprovisioned");
+        let (state, authority) = ecs_c_dirs(&bare.0);
+        let mut none = Core::new_ecs_c(&state, &authority).unwrap();
+        assert_eq!(none.open().unwrap_err(), Rt::Authority.into());
+        assert_eq!(none.authority_status().unwrap().ecs_c_code, e::Code::NotProvisioned as i32);
     }
 }
 
@@ -2677,9 +3135,12 @@ mod observe_only {
         Key { kind: 3, handle: 0x2000 + owner as usize, id: 0, owner, dim: DIM }
     }
 
+    /// A stand-in observation: 32 bytes whose head reads as an `elpis_ecs_mem_observation` of ABI v1 recording
+    /// source authority 0 (bytes 24..28), the source the ECS_C fixture provisions; `byte` tells them apart.
     fn observation(byte: u8) -> Digest {
         let mut d = [0u8; 32];
-        d[0] = byte;
+        d[0] = 1;
+        d[4] = byte;
         d[31] = 0x5a;
         d
     }
@@ -2835,7 +3296,7 @@ mod observe_only {
     #[test]
     fn observe_only_turns_keep_the_lifecycle_refusals() {
         let dir = Dir::new("observe-refusals");
-        let mut core = Core::new(&dir.0).unwrap();
+        let mut core = new_core(&dir.0);
         let mut sub = Fake::composite(0.2);
         let k = composite_key(7);
         assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap_err().error, Rt::Closed.into());

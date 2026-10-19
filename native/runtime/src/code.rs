@@ -53,10 +53,18 @@ pub enum Rt {
     /// flight): refused before anything touches it, without promoting it, reading the cold store or waiting; nothing
     /// bound, no fail-stop. Materialize it explicitly (a WARM operation) and retry.
     NotResident = 84,
+    /// ABI v6, ECS_C authority only: the authority refused in a way continuity has no code for. At open: it is not
+    /// provisioned, not protected, or recovery opened it restricted / reconcile-only or refused it (the operator
+    /// reconciles it with the runtime closed). Otherwise: the authority does not authorize the operation. The exact
+    /// ECS_C code is reported by `elpis_runtime_authority_status`.
+    Authority = 85,
+    /// ABI v6, ECS_C authority only: a typed observation names no present ACTIVE source of the authority, or exceeds
+    /// its source's per-turn bound. Refused before the native observe: the candidate is unchanged.
+    ObservationRefused = 86,
 }
 
 impl Rt {
-    pub const ALL: [Rt; 20] = [
+    pub const ALL: [Rt; 22] = [
         Rt::Invalid,
         Rt::Closed,
         Rt::SubstrateSwitch,
@@ -77,6 +85,8 @@ impl Rt {
         Rt::RecoveryUnavailable,
         Rt::CheckpointAttached,
         Rt::NotResident,
+        Rt::Authority,
+        Rt::ObservationRefused,
     ];
 
     pub fn name(self) -> &'static str {
@@ -101,6 +111,8 @@ impl Rt {
             Rt::RecoveryUnavailable => "RUNTIME_RECOVERY_UNAVAILABLE",
             Rt::CheckpointAttached => "RUNTIME_CHECKPOINT_ATTACHED",
             Rt::NotResident => "RUNTIME_NOT_RESIDENT",
+            Rt::Authority => "RUNTIME_AUTHORITY",
+            Rt::ObservationRefused => "RUNTIME_OBSERVATION_REFUSED",
         }
     }
 

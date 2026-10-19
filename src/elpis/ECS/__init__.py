@@ -1,4 +1,4 @@
-"""ECS: the one canonical ECS / EDEN-facing cognitive substrate of Elpis.
+"""ECS: Python bindings of ECS_G, the geometric ECS / EDEN-facing cognitive substrate of Elpis (native/ECS_G).
 
 The ECS owns the complete cognitive state ``(W, epoch, H, a)`` and its
 qualified mechanics: the native cubic/S3 kernel and stateful recurrence
@@ -12,6 +12,6 @@ imports only the standard library and its own native bindings: no inference,
 runtime, continuity or research code. The runtime composes it.
 
 Its native ABI (``elpis_ecsg_*`` symbols, ``elpis/ecsg_*.h`` headers and the
-``libelpis_ecsg_*`` libraries in ``native/ECS``) is the qualified, byte-bound
+``libelpis_ecsg_*`` libraries in ``native/ECS_G``) is the qualified, byte-bound
 implementation identity and is retained unchanged (docs/ARCHITECTURE.md).
 """

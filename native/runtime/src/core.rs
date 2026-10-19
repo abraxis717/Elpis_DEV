@@ -57,7 +57,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
-use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, StateFormat, Store};
+use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, StateFormat};
+
+use crate::authority::{Admission, Store};
 
 use crate::checkpoint::{self, Disposition};
 use crate::code::{Error, Rt};
@@ -81,9 +83,9 @@ macro_rules! control_point {
 }
 use crate::fuel::{self, Budget};
 use crate::substrate::{
-    features, k1_envelope_bytes, Experience, K1Ops, Key, Observation, ResidentRelease, ScheduleOutcome, Transition,
-    TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID, K1_LEASED, K1_NONFINITE,
-    K1_STALE, KIND_COMPOSITE, MAX_EXPERIENCES,
+    features, k1_envelope_bytes, observation_source, Experience, K1Ops, Key, Observation, ResidentRelease,
+    ScheduleOutcome, Transition, TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID,
+    K1_LEASED, K1_NONFINITE, K1_STALE, KIND_COMPOSITE, MAX_EXPERIENCES,
 };
 
 /// The next managed lease: unique and nonzero per RuntimeCore in this process (an aliasing defence between
@@ -174,6 +176,9 @@ struct OpenTurn {
     observe_only: bool,
     observations: u64,
     max_observations: u64,
+    /// Under the ECS_C authority: the observations this turn recorded per source (source authority, count);
+    /// bounded by `max_observations`.
+    per_source: Vec<(u32, u32)>,
 }
 
 /// The bound state and its live coordinate: the native generation RuntimeCore last established for it.
@@ -226,6 +231,11 @@ pub struct Core {
     turn: Option<OpenTurn>,
     evolution: Option<EvolutionState>,
     counters: Counters,
+    /// ABI v6, ECS_C authority only: the typed-evidence admission table (the ACTIVE sources and their per-turn
+    /// bounds), a copy refreshed at open and after every operator transition. None under continuity.
+    admission: Option<Admission>,
+    /// Typed observations committed since this open (the ECS_C evidence summary of the next publication).
+    observed: u64,
 }
 
 /// What [`Core::recover`] found: the disposition, the identities it is about and, when resumable, the envelope.
@@ -245,9 +255,20 @@ pub struct Recovery {
 impl Core {
     /// A closed runtime over one continuity directory (an absolute path).
     pub fn new(continuity_dir: &Path) -> Result<Core, Error> {
+        Core::with_store(Store::continuity(continuity_dir)?)
+    }
+
+    /// ABI v6: a closed runtime over a provisioned ECS_C authority (a state directory and its protected authority
+    /// directory, absolute paths; docs/ECS_C_AUTHORITY.md). The same laws as over continuity; in addition typed
+    /// observations are admitted against the authority's sources and every publication records an evidence summary.
+    pub fn new_ecs_c(state_dir: &Path, authority_dir: &Path) -> Result<Core, Error> {
+        Core::with_store(Store::ecs_c(state_dir, authority_dir)?)
+    }
+
+    fn with_store(store: Store) -> Result<Core, Error> {
         let live_mirror = Arc::new(AtomicU64::new(0));
         Ok(Core {
-            lane: Arc::new(Lane::new(Store::new(continuity_dir)?, Arc::clone(&live_mirror))),
+            lane: Arc::new(Lane::new(store, Arc::clone(&live_mirror))),
             live_mirror,
             worker: None,
             lease: next_lease(),
@@ -260,6 +281,8 @@ impl Core {
             turn: None,
             evolution: None,
             counters: Counters::default(),
+            admission: None,
+            observed: 0,
         })
     }
 
@@ -278,6 +301,7 @@ impl Core {
         }
         let snapshot = self.lane.open()?;
         self.reset();
+        self.admission = self.lane.with_stores(|s| s.continuity.admission())?;
         self.open = true;
         let lane = Arc::clone(&self.lane);
         self.worker = Some(
@@ -310,6 +334,8 @@ impl Core {
         self.released = None;
         self.shape = None;
         self.evolution = None;
+        self.admission = None;
+        self.observed = 0;
     }
 
     /// Abort the open managed turn, if any, through the capability retained at its begin.
@@ -795,7 +821,15 @@ impl Core {
         let abort = sub.retain_abort();
         let (token, result) = self.run_schedule(sub, stimulus, s3)?;
         let max_observations = budget.max_observations;
-        self.turn = Some(OpenTurn { key, token, abort, observe_only: false, observations: 0, max_observations });
+        self.turn = Some(OpenTurn {
+            key,
+            token,
+            abort,
+            observe_only: false,
+            observations: 0,
+            max_observations,
+            per_source: Vec::new(),
+        });
         Ok(result)
     }
 
@@ -828,7 +862,15 @@ impl Core {
         let abort = sub.retain_abort();
         let token = self.begin(sub)?;
         let max_observations = budget.max_observations;
-        self.turn = Some(OpenTurn { key, token, abort, observe_only: true, observations: 0, max_observations });
+        self.turn = Some(OpenTurn {
+            key,
+            token,
+            abort,
+            observe_only: true,
+            observations: 0,
+            max_observations,
+            per_source: Vec::new(),
+        });
         Ok(self.bound.expect("bound").generation)
     }
 
@@ -939,6 +981,7 @@ impl Core {
             return Err(code.into());
         }
         let observe_only = turn.observe_only;
+        let observations = turn.observations;
         let live = self.bound.expect("a turn is begun on the bound state").generation;
         let mut transition = Transition::default();
         self.counters.k1_commits += 1;
@@ -964,6 +1007,7 @@ impl Core {
             return Err(Refusal { committed: Some(transition), ..Refusal::from(Code::StateMismatch) });
         }
         self.set_live(key, transition.generation_after);
+        self.observed += observations;
         Ok(VolatileCommit { transition, live_generation: transition.generation_after })
     }
 
@@ -995,12 +1039,35 @@ impl Core {
         if fuel::admit_observation(recorded, max).is_err() {
             return (Err(Rt::Fuel.into()), 0);
         }
+        // ABI v6, under the ECS_C authority: the observation's source must be a present ACTIVE source within its
+        // per-turn bound, before the native call (recoverable; the candidate is unchanged).
+        if let Some(admission) = &self.admission {
+            let Some(source) = observation_source(&observation) else {
+                return (Err(Rt::Invalid.into()), 0);
+            };
+            let Some(bound) = admission.bound(source) else {
+                return (Err(Rt::ObservationRefused.into()), 0);
+            };
+            let turn = self.turn.as_ref().expect("checked above");
+            let used = turn.per_source.iter().find(|(s, _)| *s == source).map(|(_, n)| *n).unwrap_or(0);
+            if used >= bound {
+                return (Err(Rt::ObservationRefused.into()), 0);
+            }
+        }
         let (mut relation, mut memory_status) = ([0u8; 32], 0i32);
         self.counters.k1_observes += 1;
         match sub.txn_observe(self.lease, token, observation, &mut relation, &mut memory_status) {
             0 => {
                 if let Some(turn) = self.turn.as_mut() {
                     turn.observations += 1;
+                    if self.admission.is_some() {
+                        if let Some(source) = observation_source(&observation) {
+                            match turn.per_source.iter_mut().find(|(s, _)| *s == source) {
+                                Some((_, n)) => *n += 1,
+                                None => turn.per_source.push((source, 1)),
+                            }
+                        }
+                    }
                 }
                 (Ok(relation), 0)
             }
@@ -1063,7 +1130,7 @@ impl Core {
         let live = self.bound.expect("bound").generation;
         let provisioned = self.lane.capacity().is_some();
         let envelope = self.capture(sub, size, live, provisioned)?;
-        Ok(self.lane.enqueue(kind, live, sub.format(), envelope, sub.sealer())?)
+        Ok(self.lane.enqueue(kind, live, sub.format(), envelope, sub.sealer(), self.observed)?)
     }
 
     // -- K1 Recovery R0: the bounded checkpoint store -------------------------------------------------------------
@@ -1317,6 +1384,47 @@ impl Core {
     }
 
     // -- evolution: the durable reservation is synchronous and precedes execution --------------------------------
+
+    // -- ABI v6: the durable authority ----------------------------------------------------------------------------
+
+    /// The durable authority's backend and, under ECS_C, the recovery report of the last open, the current record
+    /// (while open) and the last refusal. Readable closed: after a refused open it is the operator's reason.
+    pub fn authority_status(&self) -> Result<crate::authority::Status, Error> {
+        self.lane.with_stores(|s| s.continuity.status())
+    }
+
+    /// An operator event on the ECS_C authority while this runtime holds it (founding, lifecycle, source versions,
+    /// reclamation, the legacy import; docs/ECS_C_AUTHORITY.md). Refused under continuity, while fail-stopped, while a
+    /// managed turn is open (its admission must not change under it) and for any other kind (`RUNTIME_INVALID`). The
+    /// admission table is refreshed from the authority afterwards, whatever the outcome.
+    pub fn authority_transition(
+        &mut self,
+        event: &elpis_ecs_c_authority::Event,
+    ) -> Result<elpis_ecs_c_authority::Receipt, Refusal> {
+        self.live()?;
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        let (result, admission) = self.lane.with_stores(|s| {
+            let r = s.continuity.operator_transition(event);
+            (r, s.continuity.admission())
+        })?;
+        self.admission = admission;
+        Ok(result?)
+    }
+
+    /// The held ECS_C authority's entity row at `index` and the identity of the next founding (read-only; what an
+    /// operator event is built from: docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"). Refused closed,
+    /// fail-stopped and under continuity.
+    pub fn authority_entity(&self, index: u32) -> Result<elpis_ecs_c_authority::Entity, Error> {
+        self.live()?;
+        self.lane.with_stores(|s| s.continuity.entity_at(index))?
+    }
+
+    pub fn authority_next_entity_id(&self, kind: u8, label: &Digest) -> Result<Digest, Error> {
+        self.live()?;
+        self.lane.with_stores(|s| s.continuity.next_entity_id(kind, label))?
+    }
 
     /// The current idle evolution authority an assertion must be built against.
     pub fn evolution_authority(&self) -> Result<Snapshot, Error> {

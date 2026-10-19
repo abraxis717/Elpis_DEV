@@ -1,5 +1,12 @@
 # Continuity: minimal durable runtime authority (`native/continuity`, `elpis.continuity`)
 
+> Successor: the ECS_C authority (`docs/ECS_C_AUTHORITY.md`, Stage C of `docs/NATIVE_SPLIT_CENSUS.md`). It imports a
+> continuity register explicitly and never writes it. RuntimeCore composes the successor since ABI v6 (Stage D), beside
+> this register, and the native host `elpis` (the production entry point) runs over it. This register is not retired:
+> it is the live authority of the offline Python reference interface and the backend of RuntimeCore's continuity law
+> suite, and `native/continuity` stays byte-identical (K1 Recovery R0 v4 premise P1) until ECS_C Recovery Q0's QUAL run
+> passes (NOT RUN; it waits for merge authorization).
+
 Continuity records the current durable lineage and authority that the runtime
 needs for safe restart. It is not an ECS, not context memory, not an event
 database, not topology, not a message bus and not an audit ledger. It retains
@@ -14,7 +21,7 @@ that owns no state, format, transition law or digest. The Rust implementation
 reproduces, byte for byte, vectors frozen from the qualified Python
 implementation it replaced (`native/continuity/tests/fixtures`).
 
-There is one ECS (`elpis.ECS`, `native/ECS`): the cognitive/dynamical
+The geometric ECS is ECS_G (`native/ECS_G`, `docs/ELPIS_MISSION.md` Amendment 1): the cognitive/dynamical
 substrate that owns `W`, epoch, `H`, `a`, recurrence, learning, consolidation,
 readout and K1 transactions. Continuity only remembers which retained ECS
 state the runtime is entitled to resume from.
@@ -280,7 +287,7 @@ three crossings into RuntimeCore, that RuntimeCore's K1 crossings are the transa
 commit) with no publication, that Python performs no file I/O, and that the store performs no I/O at all during the
 turn (testing-library I/O counters); `native/runtime/tests/test_runtime_hot_io.c` checks the same at the
 system-call boundary. Each explicit durable publication writes one 176-byte record and syncs it once (plus the
-checkpoint slot when a store is attached), on the durability lane. `tests/boundary/test_one_ecs.py` checks
+checkpoint slot when a store is attached), on the durability lane. `tests/boundary/test_ecs_split.py` checks
 statically that the turn, in Python and in RuntimeCore, reaches no receipt, history, event, scheduler, projection
 or compaction machinery, and no store, lane, sync or digest.
 

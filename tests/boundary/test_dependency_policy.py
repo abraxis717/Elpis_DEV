@@ -14,11 +14,15 @@ SRC = REPO / "src" / "elpis"
 POLICY = SYSTEM["boundary_policy"]
 
 
+# Python package -> owning subsystem (a subsystem's package is declared; ECS_G's keeps the name elpis.ECS).
+_PACKAGE_OWNER = {s["python_package"].split(".", 1)[1]: s["id"] for s in SYSTEM["subsystems"] if s["python_package"]}
+
+
 def _owner(name: str) -> str | None:
     parts = name.split(".")
     if parts[0] != "elpis" or len(parts) < 2:
         return None
-    return parts[1]
+    return _PACKAGE_OWNER.get(parts[1], parts[1])
 
 
 def test_no_forbidden_imports_anywhere_in_the_package():
@@ -85,12 +89,13 @@ print(json.dumps(sorted(m.split('.')[0] for m in sys.modules)))
 """
 
 
-@pytest.mark.parametrize("sub", [s["id"] for s in live_subsystems()] or ["<none>"])
+@pytest.mark.parametrize("sub", [s["id"] for s in live_subsystems() if s["python_package"]] or ["<none>"])
 def test_subsystem_import_does_not_pull_models_or_numerics(sub):
     if sub == "<none>":
         pytest.skip("no live subsystem yet")
+    package = next(s for s in SYSTEM["subsystems"] if s["id"] == sub)["python_package"]
     result = subprocess.run(
-        [sys.executable, "-c", _PROBE, "elpis." + sub],
+        [sys.executable, "-c", _PROBE, package],
         capture_output=True, text=True, cwd=REPO,
         env={"PYTHONPATH": str(REPO / "src"), "PYTHONDONTWRITEBYTECODE": "1"},
     )
@@ -100,7 +105,7 @@ def test_subsystem_import_does_not_pull_models_or_numerics(sub):
     assert not loaded & forbidden
     numeric = next(s for s in SYSTEM["subsystems"] if s["id"] == sub).get("uses_numpy", False)
     if not numeric:
-        assert "numpy" not in loaded, f"elpis.{sub} must not import numpy"
+        assert "numpy" not in loaded, f"{package} must not import numpy"
 
 
 def test_base_package_import_is_inert():

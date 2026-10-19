@@ -31,9 +31,9 @@ from ..conftest import native_build_dir, require_native_library
 
 REPO = Path(__file__).resolve().parents[2]
 _LIBS = ("native/runtime/libelpis_runtime.so", "native/runtime/libelpis_runtime_testing.so",
-         "native/runtime/libelpis_hacf_observation.so", "native/ECS/libelpis_ecsg_math.so",
-         "native/ECS/libelpis_ecsg_k1.so", "native/ECS/libelpis_ecsg_k1_fms.so", "native/ECS/libelpis_ecs_memory.so",
-         "native/ECS/libelpis_ecs_composite.so")
+         "native/runtime/libelpis_hacf_observation.so", "native/ECS_G/libelpis_ecsg_math.so",
+         "native/ECS_G/libelpis_ecsg_k1.so", "native/ECS_G/libelpis_ecsg_k1_fms.so", "native/ECS_C/libelpis_ecs_memory.so",
+         "native/runtime/composite/libelpis_ecs_composite.so")
 
 
 def node(name):
@@ -106,7 +106,7 @@ def test_a_session_learns_records_evidence_publishes_and_a_new_process_resumes_i
     assert live["durable"]["identity"] == initial != live["live"]["identity"]     # volatile until published
     assert published["ticket"]["acknowledged"] and published["durable"]["identity"] == live["live"]["identity"]
     assert status["recovery"]["disposition"] == "RESUMABLE" and status["fault"] is None
-    assert status["abi"] == {"runtime": 5, "composite": 1} and "ECS_CODEC_UNQUALIFIED" in status["capabilities"]["text"]
+    assert status["abi"] == {"runtime": 6, "composite": 1} and "ECS_CODEC_UNQUALIFIED" in status["capabilities"]["text"]
     # A new process: exactly the published state.
     rc, again = cli(home, script=[{"op": "query", "x": X}, LOOKUP, {"op": "live"}])
     assert rc == 0, again

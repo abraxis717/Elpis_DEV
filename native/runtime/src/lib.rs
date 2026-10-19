@@ -2,7 +2,8 @@
 //!
 //! One open runtime owns:
 //! * its lifecycle (open / close) and its fail-stop disposition;
-//! * the continuity authority (the `elpis_continuity` store, embedded: one implementation);
+//! * the durable authority (`authority`): the `elpis_continuity` store (ABI v5 handles) or the ECS_C authority
+//!   (`elpis_ecs_c_authority`, ABI v6 handles), each embedded: one implementation each;
 //! * the binding of its K1 lineage to one native K1 retained state, verified against continuity;
 //! * the managed canonical turn's native K1 transaction: begin, the experience schedule, commit or abort. A managed
 //!   commit is VOLATILE: it advances the live coordinate of the bound state and writes nothing;
@@ -19,6 +20,7 @@
 //! The production surface is the C ABI in [`ffi`] (include/elpis/runtime.h). The library also exports the
 //! continuity C ABI of the embedded store's crate, so one library serves both.
 
+pub mod authority;
 pub mod checkpoint;
 pub mod code;
 pub mod core;

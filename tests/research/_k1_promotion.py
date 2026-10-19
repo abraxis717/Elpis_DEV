@@ -24,17 +24,17 @@ R3_QUAL_SHA256 = "83ce2d61f30bb2927e1288995de5eb00ce41ff48767d54faedde88c8266c20
 
 K1_FILES = frozenset({
     "src/elpis/ECS/k1.py",
-    "native/ECS/include/elpis/ecsg_k1.h",
-    "native/ECS/include/elpis/ecsg_k1_fms.h",
-    "native/ECS/src/ecsg_k1.c",
-    "native/ECS/src/ecsg_k1_fms.c",
-    "native/ECS/src/ecsg_k1_internal.h",
-    "native/ECS/tests/test_ecsg_k1.c",
-    "native/ECS/tests/test_ecsg_k1_alloc.c",
-    "native/ECS/tests/test_ecsg_k1_fms.c",
-    "native/ECS/tests/test_ecsg_k1_fms_alloc.c",
-    "native/ECS/tests/test_ecsg_k1_fms_faults.c",
-    "native/ECS/tests/test_ecsg_k1_performance.c",
+    "native/ECS_G/include/elpis/ecsg_k1.h",
+    "native/ECS_G/include/elpis/ecsg_k1_fms.h",
+    "native/ECS_G/src/ecsg_k1.c",
+    "native/ECS_G/src/ecsg_k1_fms.c",
+    "native/ECS_G/src/ecsg_k1_internal.h",
+    "native/ECS_G/tests/test_ecsg_k1.c",
+    "native/ECS_G/tests/test_ecsg_k1_alloc.c",
+    "native/ECS_G/tests/test_ecsg_k1_fms.c",
+    "native/ECS_G/tests/test_ecsg_k1_fms_alloc.c",
+    "native/ECS_G/tests/test_ecsg_k1_fms_faults.c",
+    "native/ECS_G/tests/test_ecsg_k1_performance.c",
 })
 
 

@@ -7,8 +7,16 @@ name = "elpis_continuity"
 version = "0.1.0"
 
 [[package]]
+name = "elpis_ecs_c_authority"
+version = "0.1.0"
+dependencies = [
+ "elpis_continuity",
+]
+
+[[package]]
 name = "elpis_runtime"
 version = "0.1.0"
 dependencies = [
  "elpis_continuity",
+ "elpis_ecs_c_authority",
 ]

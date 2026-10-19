@@ -251,7 +251,7 @@ def test_no_result_is_claimed_before_terminal_evidence():
     assert not (REPO / RESULTS).exists(), f"{PREMATURE_RESULT}: {RESULTS} exists without terminal evidence"
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
     component = next(c for c in system["research"]["components"] if c["path"] == LAB)
-    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS")
+    ecsg = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
     interface = next(i for i in ecsg["incomplete_interfaces"] if "Retention R2" in i)
     cognition = (REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8")
     pointers = {"component": component["classification"],
@@ -268,8 +268,11 @@ def test_no_result_is_claimed_before_terminal_evidence():
 
 def test_no_canonical_retention_mechanism_is_promoted():
     vocabulary = re.compile(r"(?i)consolidat|retention|laplace|fibre|recondition|rehears")
+    # The native ECS sources at their current owners (docs/NATIVE_SPLIT_CENSUS.md): every file this guard scanned
+    # under native/ECS, now under native/ECS_G, native/ECS_C and native/runtime/composite.
     sources = sorted((REPO / "src" / "elpis" / "ECS").rglob("*.py")) + sorted(
-        p for p in (REPO / "native" / "ECS").rglob("*") if p.suffix in (".c", ".h"))
+        p for root in ("ECS_G", "ECS_C", "runtime/composite") for p in (REPO / "native" / root).rglob("*")
+        if p.suffix in (".c", ".h"))
     exempt = admitted(REPO)          # tests/research/_k1_promotion.py: the K1 milestone, only after R3 OUTCOME_A
     offenders = [str(p.relative_to(REPO)) for p in sources if vocabulary.search(p.read_text(encoding="utf-8"))
                  and str(p.relative_to(REPO)) not in exempt]

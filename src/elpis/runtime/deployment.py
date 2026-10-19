@@ -54,11 +54,11 @@ CATALOG_SCHEMA = "elpis.inference-authority.v1"   # the persisted PinnedAuthorit
 _W_DOMAIN = b"elpis.deployment.initial-w.v1"
 
 # (library id, file name, relative path in a build tree), in admission (dependency) order within each set.
-_ECS_SET = (("elpis_ecsg_math", "libelpis_ecsg_math.so", "native/ECS/libelpis_ecsg_math.so"),
-            ("elpis_ecsg_k1", "libelpis_ecsg_k1.so", "native/ECS/libelpis_ecsg_k1.so"),
-            ("elpis_ecsg_k1_fms", "libelpis_ecsg_k1_fms.so", "native/ECS/libelpis_ecsg_k1_fms.so"),
-            ("elpis_ecs_memory", "libelpis_ecs_memory.so", "native/ECS/libelpis_ecs_memory.so"),
-            ("elpis_ecs_composite", "libelpis_ecs_composite.so", "native/ECS/libelpis_ecs_composite.so"))
+_ECS_SET = (("elpis_ecsg_math", "libelpis_ecsg_math.so", "native/ECS_G/libelpis_ecsg_math.so"),
+            ("elpis_ecsg_k1", "libelpis_ecsg_k1.so", "native/ECS_G/libelpis_ecsg_k1.so"),
+            ("elpis_ecsg_k1_fms", "libelpis_ecsg_k1_fms.so", "native/ECS_G/libelpis_ecsg_k1_fms.so"),
+            ("elpis_ecs_memory", "libelpis_ecs_memory.so", "native/ECS_C/libelpis_ecs_memory.so"),
+            ("elpis_ecs_composite", "libelpis_ecs_composite.so", "native/runtime/composite/libelpis_ecs_composite.so"))
 _HACF = ("elpis_hacf_observation", "libelpis_hacf_observation.so", "native/runtime/libelpis_hacf_observation.so")
 _RUNTIME = {False: ("elpis_runtime", "libelpis_runtime.so", "native/runtime/libelpis_runtime.so"),
             True: ("elpis_runtime_testing", "libelpis_runtime_testing.so",
@@ -199,7 +199,7 @@ def init_deployment(home: Path, native_build: Path, *, testing: bool = False, so
     _write_once(home / "native-catalog.json", catalog, 0o400)
     config = {"schema": DEPLOYMENT_SCHEMA, "catalog": "native-catalog.json", "catalog_sha256": pin,
               "runtime_library_id": _RUNTIME[testing][0], "runtime_library": _RUNTIME[testing][1],
-              "abi": {"runtime": 5, "composite": 1}, "source_commit": source_commit}
+              "abi": {"runtime": 6, "composite": 1}, "source_commit": source_commit}
     _write_once(home / "elpis.json", _canonical(config), 0o600)
     return Deployment(home)
 
@@ -247,8 +247,8 @@ class Deployment:
             raise _refuse("DEPLOYMENT_CONFIG", f"elpis.json: {exc}") from exc
         if type(config) is not dict or config.get("schema") != DEPLOYMENT_SCHEMA:
             raise _refuse("DEPLOYMENT_CONFIG", f"elpis.json: schema {DEPLOYMENT_SCHEMA} required")
-        if config.get("abi") != {"runtime": 5, "composite": 1}:
-            raise _refuse("DEPLOYMENT_ABI", f"deployment ABI {config.get('abi')} is not this runtime's (5, 1)")
+        if config.get("abi") != {"runtime": 6, "composite": 1}:
+            raise _refuse("DEPLOYMENT_ABI", f"deployment ABI {config.get('abi')} is not this runtime's (6, 1)")
         self.config = config
         self.testing = config["runtime_library_id"] == "elpis_runtime_testing"
         catalog = _read_regular(self.home / config["catalog"], 1 << 20)

@@ -16,12 +16,64 @@ its mechanics are qualified.
 DSV4 is not the brain. It is the encode/decode boundary between human/token
 space and Elpis's internal computational substrate.
 
-There is one ECS (`elpis.ECS`, `native/ECS`). Continuity is not an ECS and not
-a history: it is a fixed-size, crash-safe register holding only the current
-durable authority the runtime must verify (the last explicitly acknowledged K1
-state digest and the evolution authority head). It has no entities, mailboxes,
-schedulers, projections, topology, event log, compaction or retention
-(`docs/CONTINUITY.md`). It does not decide when Elpis may think.
+The ECS has two native owners (Amendment 1, below): **ECS_G** (`native/ECS_G`)
+owns geometric cognition, and **ECS_C** (`native/ECS_C`) owns continuity and
+memory. Only RuntimeCore composes them. ECS_C holds the memory and, since
+Stage C of the native split, the ECS_C authority (`docs/ECS_C_AUTHORITY.md`):
+the entity, provenance, lineage and evolution authority that succeeds
+continuity, built and mechanically tested as a library (UNQUALIFIED: ECS_C
+Recovery Q0 is NOT RUN) and, since Stage D, composed by RuntimeCore (ABI v6)
+as one of its two durable-authority backends; the native host `elpis` runs
+over it. Standalone continuity is not retired: until ECS_C Recovery Q0's QUAL
+run passes it remains the live register of the offline Python reference
+interface, the backend of RuntimeCore's continuity law suite and K1 Recovery
+R0 v4's premise P1: a fixed-size, crash-safe
+register holding only the current durable authority the runtime must verify
+(the last explicitly acknowledged K1 state digest and the evolution authority
+head). Continuity has no entities, mailboxes, schedulers, projections,
+topology, event log, compaction or retention (`docs/CONTINUITY.md`). Neither
+decides when Elpis may think.
+
+## Amendment 1 (2026-10-18): the native ECS_G / ECS_C split
+
+Authority: the repository owner's instruction for the native split, chartered by
+`DEV/proposals/NATIVE_ECSC_ECSG_COMPLETION_R0.md`
+(`proposal/native-ecsc-ecsg-runtime-charter-r0`), census
+`docs/NATIVE_SPLIT_CENSUS.md`. It replaces "there is one ECS" and nothing else
+in this document.
+
+* **ECS_G** owns native K1 and its complete state `(W, epoch, H, a)`, the exact
+  forward map and `S3`, query and deterministic learning, the qualified
+  retention/consolidation law, transactions, geometric identities and snapshots,
+  and FMS materialization. It depends on the substrate only: never on ECS_C,
+  RuntimeCore, continuity or the codec.
+* **ECS_C** owns continuity and memory: the bounded typed relational memory,
+  and the lineage, entity, provenance and transition authority that succeeds
+  continuity (Stage C, `docs/ECS_C_AUTHORITY.md`). It depends on the substrate
+  and, only until standalone continuity retires into it (Stage F), on the
+  standard-library-only continuity crate it embeds for SHA-256, the evolution
+  digest and the legacy register reader (one implementation each, never a
+  copy): never on ECS_G, RuntimeCore or the codec, and continuity never on
+  ECS_C. It never performs geometric learning and never mutates ECS_G's
+  state.
+* **RuntimeCore** is the only composer: the composite retained state (K1 and
+  the memory in one object, `native/runtime/composite`), managed turns,
+  durability, recovery and reconciliation.
+* **Persistence.** There is zero autonomously ever-expanding Elpis-owned
+  persistence. ECS_C keeps no append log, segments, generations or compaction
+  archive. Its durable state is a fixed set of preallocated files rewritten in
+  place, and recovery reads a constant amount (`docs/NATIVE_SPLIT_CENSUS.md`,
+  section 5a).
+* **Unchanged:**
+  - DSV4 only communicates;
+  - the prohibited sidecar topology below;
+  - the fail-closed text path (`ECS_CODEC_UNQUALIFIED`);
+  - no per-turn durable work on the HOT lane;
+  - every qualified law, format and identity;
+  - every frozen record.
+* **Not claimed.** A relocation of qualified sources qualifies nothing new.
+  The successor gate is `tests/boundary/test_ecs_split.py`, which replaced
+  `tests/boundary/test_one_ecs.py`.
 
 ## Execution lanes (architectural correction, Elpis_DEV)
 
@@ -117,12 +169,13 @@ remain in public history as evidence and are removed from the canonical path.
 
 | Subsystem | Role | Must not |
 |---|---|---|
-| ECS (ECS/EDEN-facing geometric substrate) | owns active microscopic dynamical state (`W`), its qualified recurrence, coarse observables (`S3`) and snapshots; a qualified primitive of the cognitive substrate | import inference, codec, runtime or continuity; be an auxiliary conditioning vector for a model |
+| ECS_G (`native/ECS_G`; Python bindings `elpis.ECS`) | owns active microscopic dynamical state (`W`), its qualified recurrence, coarse observables (`S3`) and snapshots; a qualified primitive of the cognitive substrate | import inference, codec, runtime, continuity or ECS_C; be an auxiliary conditioning vector for a model |
+| ECS_C (`native/ECS_C`) | owns the bounded typed relational memory (exact typed evidence, LOOKUP) and the ECS_C authority (entities, lifecycles, sender attribution, source versions and scopes, the cognition lineage, the evolution authority, receipts, reconciliation; `docs/ECS_C_AUTHORITY.md`), which RuntimeCore composes from Stage D | import inference, codec, runtime or ECS_G; perform geometric learning or mutate ECS_G's state; keep growing persistence |
 | continuity (`native/continuity`, Rust behind a C ABI; `elpis.continuity` adapter) | the current durable runtime lineage/authority: one fixed-size two-slot register binding the last explicitly acknowledged K1 state digest and the evolution authority (revision, head); fail-closed restart verification | hold or substitute for active cognitive state; keep history, events, entities, schedules, projections or topology; supervise or gate foreground cognition; depend on ECS, K1 execution, runtime or inference |
 | DSV4 codec (`elpis.inference` codec modules) | communication: text/bytes <-> tokens, vocabulary identity, bounded rendering; the token side of encode/decode | own ECS state; run an autonomous transformer/MoE cognition path |
 | substrate / FMS | generic resource authority, residency and materialization: persistent logical capacity >= resident materialization >= active materialization | require DSV-specific tensor roles in its generic core; decide semantics |
 | structure / HACF | persistent structural memory, topology, representation, provenance | be defined solely as a context-window supplier for a model |
-| runtime | orchestrates codec -> ECS -> codec on the HOT lane (a managed commit is volatile: it advances the live coordinate only); on explicit request, its durability lane captures the live state and publishes it (checkpoint slot when provisioned, then one 176-byte continuity record and one fdatasync); its contextual lane keeps the bounded active context | route cognition through a DSV model; record per-turn receipts or event history; make a HOT operation wait for durable publication or for the contextual lane |
+| runtime | orchestrates codec -> ECS -> codec on the HOT lane (a managed commit is volatile: it advances the live coordinate only); on explicit request, its durability lane captures the live state and publishes it (checkpoint slot when provisioned, then one record of its durable authority: on the native host one ECS_C authority record and one witness, each written in place and synced; on the continuity backend one 176-byte record and one fdatasync); its contextual lane keeps the bounded active context | route cognition through a DSV model; record per-turn receipts or event history; make a HOT operation wait for durable publication or for the contextual lane |
 
 ## Classification of existing machinery
 
@@ -171,7 +224,10 @@ canonical code (`src/`, `native/`; `research/` is noncanonical):
 2. the runtime imports DSV model-execution machinery (anything in
    `elpis.inference` beyond the codec modules);
 3. a DSV4.1 tower module exists in the canonical tree;
-4. ECS depends on inference, runtime or continuity;
+4. ECS_G depends on inference, runtime, continuity or ECS_C, or ECS_C on
+   inference, runtime or ECS_G, or on continuity beyond the one embedded crate
+   it succeeds (sources; the build, crate and binary link graph is checked by
+   `tests/boundary/test_ecs_split.py` and `tests/boundary/test_abi_inventory.py`);
 5. the codec depends on ECS, continuity or the runtime;
 6. continuity and ECS depend on each other;
 7. the generic substrate names DSV-specific tensor roles;

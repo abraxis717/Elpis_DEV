@@ -20,6 +20,7 @@ from __future__ import annotations
 import ast
 import importlib
 import inspect
+import os
 import re
 import subprocess
 import sys
@@ -66,6 +67,25 @@ def test_writer_registry_resolves_to_real_code_with_one_class_each():
             path, symbol = entry.split(":", 1)
             assert symbol and symbol in (REPO / path).read_text(encoding="utf-8"), entry
     assert P.AUTONOMOUS_WRITERS == {"continuity_slots", "fms_posix_cold_store", "k1_checkpoint_slots"}
+    assert P.NATIVE_HOST_AUTONOMOUS_WRITERS == {"ecs_c_authority_slots", "k1_checkpoint_slots"}
+    # Each composer's set is exactly fixed-capacity, and together they account for every fixed-capacity writer.
+    fixed = {w.id for w in P.WRITERS if w.classification is P.WriterClass.FIXED_CAPACITY_AUTONOMOUS}
+    assert P.AUTONOMOUS_WRITERS | P.NATIVE_HOST_AUTONOMOUS_WRITERS == fixed
+
+
+def test_each_composer_reaches_only_its_own_durable_authority():
+    # The native host creates RuntimeCore over the ECS_C authority only, and builds no FMS cold store.
+    host = "".join((REPO / "native/runtime/host/src" / f).read_text(encoding="utf-8")
+                   for f in sorted(os.listdir(REPO / "native/runtime/host/src")))
+    assert "elpis_runtime_create_ecs_c" in host
+    assert not re.search(r"\belpis_runtime_create\b", host)
+    assert not re.search(r"\b(fms_|elpis_fms_|cold_root)", host)
+    # The Python Runtime publishes to continuity: no Python module loads or calls the ECS_C authority (the registry
+    # itself only names it).
+    for path in (REPO / "src/elpis").rglob("*.py"):
+        if path != REPO / "src/elpis/runtime/persistence.py":
+            text = path.read_text(encoding="utf-8")
+            assert not re.search(r"\b(elpis_ecs_c_\w+|elpis_runtime_create_ecs_c|libelpis_ecs_c_authority)", text), path
 
 
 def _operator_writer_names() -> set[str]:
@@ -139,7 +159,7 @@ def _native_sources():
 _WRITES = re.compile(r"\b(pwrite|pwritev|renameat2?|rename|fsync|fdatasync|mkdirat|mkdir|unlinkat|unlink|ftruncate|"
                      r"creat)\s*\(|O_CREAT|O_WRONLY|O_RDWR")
 # Sources that name write flags only to refuse them.
-_REFUSES_WRITES = {"native/runtime/containment/elpis_autonomous_run.c"}
+_REFUSES_WRITES = {"native/runtime/containment/elpis_autonomous_run.c", "native/runtime/host/src/host_contain.c"}
 # The bridges Python loads (elpis.structure.retrieval.hacf, elpis.pipeline.ingress): the native surface every
 # ordinary retrieval and ingress operation reaches.
 _LOADED_BRIDGES = ("native/structure/bridge/retrieval_bridge.c", "native/pipeline/ingress/bridge/ingress_bridge.c")

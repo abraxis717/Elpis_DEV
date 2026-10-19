@@ -1,7 +1,7 @@
 # ECS native K1 runtime
 
 `SEMANTICS=NONE` · `NO_LANGUAGE_CLAIM`. This document covers what is implemented in
-`native/ECS/include/elpis/ecsg_k1.h`, `ecsg_k1_fms.h` and `src/elpis/ECS/k1.py`. The headers are the normative
+`native/ECS_G/include/elpis/ecsg_k1.h`, `ecsg_k1_fms.h` and `src/elpis/ECS/k1.py`. The headers are the normative
 ABI.
 
 **Qualification:**

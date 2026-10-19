@@ -13,6 +13,7 @@ is `QUALIFIED` for commit `18f2f4d` only, within its stated scope (its "Qualifie
 | [Cognitive Boundary R2 under ABI v5](COGNITIVE_BOUNDARY_R2_V5.md) | the boundary under RuntimeCore ABI v5: R2's laws plus observe-only turn authority, memory mutation without K1 learning, `max_observations`, ABI compatibility and refusal of obsolete callers | NOT RUN · UNQUALIFIED |
 | [K1 Recovery R0](K1_RECOVERY_R0.md) | the bounded continuity-authorized K1 checkpoint owner (docs/K1_RECOVERY_R0.md), as pre-registered against ABI v3 | NOT RUN · UNQUALIFIED |
 | [K1 Recovery R0 under ABI v4](K1_RECOVERY_R0_V4.md) | the same owner under ABI v4: volatile LEARN, explicit publication, bare K1 and composite lineages | RUN PASS · QUALIFIED (commit `18f2f4d` only; crash consistency under `SIGKILL` and lost-sync faults, testing build; not power loss) |
+| [ECS_C Recovery Q0 under ABI v6](ECS_C_RECOVERY_Q0.md) | RuntimeCore ABI v6's durability protocol over the ECS_C authority through the native host: process death, state-directory attacks until explicit operator reconciliation, fixed storage and recovery work; the qualification standalone continuity's retirement waits for | NOT RUN · UNQUALIFIED (instrument written and rehearsed on DEV inputs; needs the merged, accepted source) |
 | [HACF-ECS Scientific Bridge R0](HACF_ECS_BRIDGE_R0.md) | research/hacf_ecs_bridge_r0 (RESEARCH_ONLY) | NOT RUN · UNQUALIFIED |
 | [Evolution Fitness R0](EVOLUTION_FITNESS_R0.md) | research/evolution_fitness_r0 and the evolution policy authority (docs/EVOLUTION_POLICY.md) | NOT RUN · UNQUALIFIED |
 | [ECS <-> DSV4 Codec R0](ECS_CODEC_R0.md) | the codec interface and its ECS-dependence gates (no map exists) | NOT RUN · UNQUALIFIED |
@@ -23,9 +24,10 @@ that ABI; their ABI v4 successors are separate documents with their own evidence
 
 **The R1 closure.** [closures/COGNITIVE_BOUNDARY_R1_CLOSURE_20261011.md](closures/COGNITIVE_BOUNDARY_R1_CLOSURE_20261011.md)
 records a retrospective, evidence-bound closure of Cognitive Boundary R1 (`QUALIFIED_UNDER_FROZEN_R1_SCOPE`) for commit
-`bec6da7` only: RuntimeCore ABI v3, 39 commits before the ABI v4 head this table describes. Its evidence is held
-outside this repository, so in this repository R1's status stays `NOT RUN` (the rule below), and nothing of the closure
-extends to ABI v4 code: Cognitive Boundary R2 is the open gate for it.
+`bec6da7` only: RuntimeCore ABI v3, 39 commits before the ABI v4 head at which this closure was recorded (the current
+head is ABI v6). Its evidence is held outside this repository, so in this repository R1's status stays `NOT RUN` (the
+rule below), and nothing of the closure extends to ABI v4 or later code: Cognitive Boundary R2 is the open gate for
+it.
 
 Rules shared by every specification:
 
@@ -51,10 +53,11 @@ unqualified** (implemented and refused or unreachable by design).
 | Interface | Implemented | Mechanically verified | Mechanically incomplete | Blocked by scientific authority | Formally qualified | Explicitly unqualified |
 |---|---|---|---|---|---|---|
 | Native K1 law `(W, epoch, H, a)` | yes | yes (native suites, legacy differential) | — | — | K1N-v2 attestation (research, frozen regime) | — |
-| RuntimeCore v4 QUERY / volatile LEARN | yes | yes | no preemptive deadline (no K1 cancellation point) | — | no (R2 NOT RUN) | — |
-| Durability lane (recoverable / identity-only, tickets, crash law) | yes | yes (simulated and real SIGKILL matrix, ticket law, UNKNOWN window) | — | — | K1 Recovery R0 v4 at commit `18f2f4d` only (crash consistency under `SIGKILL`, torn writes and lost-sync faults; testing build) | power-loss durability (never claimed) |
+| RuntimeCore v6 QUERY / volatile LEARN | yes | yes | no preemptive deadline (no K1 cancellation point) | — | no (R2 and R2 v5 not run; R2 v5 names ABI v5 and cannot cover v6) | — |
+| Durability lane (recoverable / identity-only, tickets, crash law) | yes | yes (simulated and real SIGKILL matrix, ticket law, UNKNOWN window) | — | — | K1 Recovery R0 v4 at commit `18f2f4d` only, over continuity (crash consistency under `SIGKILL`, torn writes and lost-sync faults; testing build); over the ECS_C authority: no | power-loss durability (never claimed) |
+| ECS_C authority through the native host (ABI v6) | yes | yes (the authority's crash, T1 adversary and boundedness suites; the host's end-to-end, crash, containment and fixed-file-set suites; the Q0 instrument's DEV rehearsal) | — | — | no (ECS_C Recovery Q0 not run) | power-loss durability (never claimed) |
 | HOT residency (FMS holds, NOT_RESIDENT, explicit materialization) | yes | yes (CI-HOTRES-1 mutants) | — | — | no | — |
-| ECS composite through the Python runtime | yes | yes (incl. real SIGKILL; the observe-only turn's laws and mutants) | — | — | no | memory LEARN / QUERY FAST (no capability is ever set), SLOW (not provided) |
+| ECS composite through the Python offline reference | yes | yes (incl. real SIGKILL; the observe-only turn's laws and mutants) | — | — | no | memory LEARN / QUERY FAST (no capability is ever set), SLOW (not provided) |
 | Typed HACF -> memory observation transport | yes | yes (adversarial records, mutants) | — | a HACF -> ECS meaning map | no | semantic interpretation |
 | Contextual (WARM) lane | yes | yes (bounds, immutability, isolation, no ECS path) | — | a contextual dynamics law (HCA) | no | — |
 | ECS <-> DSV4 codec | protocol and fail-closed refusal only | the refusal and the D1-D3 gate mechanics | token-distribution and memory-LOOKUP protocol methods (proposals) | the map itself | no (ECS Codec R0 NOT RUN) | text generation (`ECS_CODEC_UNQUALIFIED`) |
@@ -71,7 +74,10 @@ unchanged.
 
 ## Open formal gates
 
-Cognitive Boundary R2 under ABI v5 (its instrument is not built; R2 itself was superseded before any run); ECS Codec
+ECS_C Recovery Q0 under ABI v6 (instrument written and rehearsed on DEV inputs; its QUAL run needs the merged,
+accepted source, which needs the owner's merge authorization; standalone continuity's retirement waits for it);
+Cognitive Boundary R2 under ABI v5 (its instrument is not built, and it is runnable only at an ABI v5 commit; R2 itself
+was superseded before any run); ECS Codec
 R0 (blocked by the absence of any map); HACF-ECS Scientific Bridge R0 (blocked: no frozen evidence, map or meaningful
 state); Evolution Fitness R0 (runnable as specified; its scope is the instrument only).
 

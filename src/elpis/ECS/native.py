@@ -1,4 +1,4 @@
-"""Python binding to the native ECS kernel (``native/ECS``).
+"""Python binding to the native ECS kernel (``native/ECS_G``).
 
 The binding owns no loading policy: the caller passes an already loaded
 ``libelpis_ecsg_math`` handle (for example one opened through the substrate's

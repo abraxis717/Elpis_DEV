@@ -1,8 +1,11 @@
-# ECS — geometric dynamical substrate primitive
+# ECS_G — the geometric ECS
 
-`ECS` is a qualified native geometric/dynamical substrate primitive for
-Elpis's cognitive ECS/EDEN system (`docs/ELPIS_MISSION.md`: DSV4
-communicates, ECS computes and persists).
+`ECS_G` is the qualified native geometric/dynamical substrate of Elpis's
+cognitive ECS/EDEN system (`docs/ELPIS_MISSION.md`, Amendment 1: ECS_G owns
+geometric cognition, ECS_C continuity and memory, and only RuntimeCore composes
+them). Its sources moved here byte for byte from `native/ECS`
+(`docs/NATIVE_SPLIT_CENSUS.md`); the Runtime R1 evidence recorded them under
+these very paths.
 
 It is intentionally small and independent. It does not contain inference,
 codec, history, retrieval, planning, evolution, or legacy Elpis component code.

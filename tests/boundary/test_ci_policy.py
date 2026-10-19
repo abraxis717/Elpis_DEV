@@ -41,7 +41,7 @@ def test_scientific_authority_job_runs_the_evidence_suites_in_a_declared_environ
     assert "pytest -rs --lane scientific" in block   # every tests/research laboratory but the historical ones
     assert "tests/ECS" in block
     assert '"numpy==1.26.4"' in block and 'OPENBLAS_NUM_THREADS: "1"' in block
-    assert re.search(r'ctest .*-R "\^ECS', block), "native executor/reference tests not run"
+    assert re.search(r'ctest .*-R "\^\(ECS_G\|ECS_C\)\\\.', block), "native executor/reference tests not run"
 
 
 # -- lanes (tests/lanes.py): every test has exactly one lane, every lane an owning job -------------------------

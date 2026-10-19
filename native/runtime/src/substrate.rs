@@ -41,6 +41,24 @@ pub use elpis_continuity::StateFormat;
 #[derive(Clone, Copy, Debug)]
 pub struct Observation(pub *const c_void);
 
+/// The memory `source_authority` a typed observation records (`elpis_ecs_mem_observation`: `abi_version` u32 at 0,
+/// which must be `ELPIS_ECS_MEM_ABI_V1`; `source_authority` u32 at 24), or None for a NULL or foreign record. ABI v6
+/// admission under the ECS_C authority reads it; the memory itself records it and never interprets it.
+pub fn observation_source(observation: &Observation) -> Option<u32> {
+    if observation.0.is_null() {
+        return None;
+    }
+    let base = observation.0 as *const u8;
+    // SAFETY: a non-NULL observation is a valid `elpis_ecs_mem_observation` (the C ABI contract of the native
+    // observe it is passed to); both fields lie inside its fixed header.
+    unsafe {
+        if std::ptr::read_unaligned(base as *const u32) != 1 {
+            return None;
+        }
+        Some(std::ptr::read_unaligned(base.add(24) as *const u32))
+    }
+}
+
 pub type Digest = [u8; 32];
 
 /// K1 status values (`elpis_ecsg_k1_status`); the FMS adapter returns them too, or `-100 + fms_status`.

@@ -20,7 +20,7 @@ from . import _mission as M
 from ._system import REPO
 
 K1 = REPO / "src" / "elpis" / "ECS" / "k1.py"
-ADAPTER = REPO / "native" / "ECS" / "src" / "ecsg_k1_fms.c"
+ADAPTER = REPO / "native" / "ECS_G" / "src" / "ecsg_k1_fms.c"
 HOT = ("K1State.query", "K1State.query_into", "K1State.learn", "K1State.consolidate", "K1State.reset",
        "K1Transaction.learn", "K1Transaction.consolidate", "K1Transaction.query", "K1Transaction.commit",
        "K1FMSRuntime.query", "K1FMSRuntime.query_into", "K1FMSRuntime.learn", "K1FMSRuntime.consolidate",

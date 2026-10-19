@@ -264,7 +264,7 @@ def test_a_k1_lineage_becomes_a_composite_lineage_only_by_the_explicit_import(li
 
 def test_a_composite_from_an_unadmitted_library_is_refused_before_any_native_call(library, tmp_path):
     """The managed runtime drives only native code it admitted: the same bytes loaded by a pathname are not."""
-    path = native_build_dir() / "native" / "ECS" / "libelpis_ecs_composite.so"
+    path = native_build_dir() / "native" / "runtime" / "composite" / "libelpis_ecs_composite.so"
     unadmitted = CompositeLibrary(ctypes.CDLL(str(path)))
     with CompositeState.create(unadmitted, CONFIG, _w()) as x, Runtime(_config(tmp_path / "c")) as runtime:
         _refused(lambda: runtime.anchor_cognition(x), "ECS_NATIVE_UNADMITTED")

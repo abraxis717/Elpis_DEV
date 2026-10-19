@@ -1,11 +1,20 @@
-"""Bind frozen evidence to the current tree across the one ECS rename (ECS_G -> ECS).
+"""Bind frozen evidence to the current tree across the stated relocations of the ECS sources.
 
 Recorded evidence names the files it measured under the paths they had when it
 was recorded (``src/elpis/ECS_G/...``, ``native/ECS_G/...``) together with their
-SHA-256. The evidence is immutable and is never rewritten. The ECS was later
-renamed to its canonical name (docs/CONTINUITY.md, docs/ARCHITECTURE.md). This
-module states that rename exactly and proves, per file, that the current file is
-the measured file:
+SHA-256. The evidence is immutable and is never rewritten. Two relocations
+happened since, and only these are mapped:
+
+* CONT-4 (620210e, 2026-10-07) renamed ``src/elpis/ECS_G`` -> ``src/elpis/ECS``,
+  ``tests/ECS_G`` -> ``tests/ECS`` and ``native/ECS_G`` -> ``native/ECS``;
+* the native ECS_G / ECS_C split (docs/NATIVE_SPLIT_CENSUS.md, Stage B) moved the
+  geometric native sources back to ``native/ECS_G``, byte for byte. Every native
+  file evidence recorded under ``native/ECS_G`` is therefore at its recorded path
+  again, and native paths map to themselves. (The memory and the composite, which
+  no evidence recorded under ``native/ECS_G``, moved to ``native/ECS_C/memory`` and
+  ``native/runtime/composite``.) The Python package keeps the name ``elpis.ECS``.
+
+This module proves, per file, that the current file is the measured file:
 
 * native C sources, headers and tests moved byte-for-byte: the current bytes
   must have the recorded SHA-256;
@@ -25,10 +34,9 @@ import subprocess
 
 REPO = Path(__file__).resolve().parents[2]
 
-# The rename, exactly. Nothing else is mapped.
+# The net mapping, exactly: the Python roots stay renamed; native/ECS_G is current again. Nothing else is mapped.
 RENAMED_ROOTS = (
     ("src/elpis/ECS_G/", "src/elpis/ECS/"),
-    ("native/ECS_G/", "native/ECS/"),
     ("tests/ECS_G/", "tests/ECS/"),
 )
 

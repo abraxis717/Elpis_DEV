@@ -32,7 +32,7 @@ from .acceptance import _LIBS
 from .cli import CAPABILITIES, NONCLAIMS
 
 MANIFEST_SCHEMA = "elpis.release-bundle.v1"
-FORMATS = {"runtime_abi": 5, "composite_abi": 1, "continuity_record": 3, "ELPISEC1": 1, "ELPISGK1": 1,
+FORMATS = {"runtime_abi": 6, "composite_abi": 1, "continuity_record": 3, "ELPISEC1": 1, "ELPISGK1": 1,
            "ELPISEM1": 1, "deployment": "elpis.deployment.v1", "lineage": "elpis.lineage.v1",
            "native_catalog": "elpis.inference-authority.v1"}
 

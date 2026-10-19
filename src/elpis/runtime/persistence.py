@@ -1,9 +1,10 @@
 """Persistent-writer authority of the runtime: zero autonomously ever-expanding Elpis-owned persistence.
 
 Elpis may hold persistent state; it may not accumulate it monotonically on its own. Every persistent writer
-reachable from the canonical runtime (``elpis.runtime`` and the native libraries it loads) is classified here
-exactly once, and every public :class:`~elpis.runtime.composition.Runtime` operation is classified as either
-part of the ordinary autonomous path or as an explicit operator operation.
+reachable from either composer is classified here exactly once: the native host ``elpis`` (the production entry
+point, docs/NATIVE_HOST.md) and the Python ``elpis.runtime`` (the offline reference interface) with the native
+libraries it loads. Every public :class:`~elpis.runtime.composition.Runtime` operation is classified as either part
+of the ordinary autonomous path or as an explicit operator operation.
 ``tests/boundary/test_autonomous_persistence.py`` binds this table to the code, and
 ``tests/integration/test_autonomous_no_growth.py`` proves it on real native libraries under a write trap.
 
@@ -63,6 +64,15 @@ WRITERS: tuple[PersistentWriter, ...] = (
         "creates, grows, resizes, renames or multiplies them. No history; a slot never authorizes itself (continuity "
         "decides)."),
     PersistentWriter(
+        "ecs_c_authority_slots", F, (),
+        ("native/ECS_C/authority/src/store.rs:pub fn transition",),
+        "The ECS_C authority (docs/ECS_C_AUTHORITY.md): exactly two record slots of R(capacity) bytes in the state "
+        "directory and two 240-byte witness slots in the authority directory, all created by provisioning. Each "
+        "transition rewrites one record slot and one witness slot in place (R + 240 bytes, two fdatasync calls), "
+        "whatever the length of the history; nothing is created, renamed, removed or grown, and the entity rows are "
+        "bounded by the provisioned capacity (exhaustion refuses before any write). Reached from RuntimeCore (ABI "
+        "v6) only by an explicit publication or operator event; a LEARN, OBSERVE or QUERY never writes it."),
+    PersistentWriter(
         "fms_posix_cold_store", F, ("elpis.substrate.residency:Context",),
         ("native/substrate/src/fms_pal_posix.c:p_cold_put",),
         "Only behind a caller-constructed FMS Context with an explicit cold root, cold-tier budget and object "
@@ -79,6 +89,20 @@ WRITERS: tuple[PersistentWriter, ...] = (
         ("native/runtime/src/checkpoint.rs:pub fn provision",),
         "One new directory with exactly two zeroed, synced slot files per explicit operator command; an existing "
         "directory is refused (never overwritten, resized or adopted). Never reached by a Runtime operation."),
+    PersistentWriter(
+        "ecs_c_authority_provisioning", O, (),
+        ("native/ECS_C/authority/src/store.rs:pub fn provision",),
+        "One state directory and one authority directory with their fixed file sets (two record slots; the "
+        "deployment key and two witnesses) per explicit operator provisioning; an existing deployment is refused "
+        "(ALREADY_PROVISIONED). Never reached by a Runtime operation."),
+    PersistentWriter(
+        "native_host_deployment", O, (),
+        ("native/runtime/host/src/host_deploy.c:host_init", "native/runtime/host/src/host_deploy.c:host_create_lineage"),
+        "The native operator host (docs/NATIVE_HOST.md). init creates a home holding exactly host.cfg, catalog and "
+        "the seven pinned libraries (write-once files, never replaced) and provisions the ECS_C authority; create "
+        "writes lineage.cfg once and provisions the checkpoint store. Each is one explicit operator command, refused "
+        "when its files exist. Afterwards the host writes nothing itself: every later write is the ECS_C authority's "
+        "or the checkpoint store's fixed slots. No log, cache or history."),
     PersistentWriter(
         "publication_ledger_v1", O,
         ("elpis.pipeline.application.durable_ledger:DurableApplicationLedger.append",), (),
@@ -172,6 +196,13 @@ WRITERS: tuple[PersistentWriter, ...] = (
         "Deterministic synthetic fixtures written into a caller-supplied provider root; not reachable from "
         "the runtime."),
     PersistentWriter(
+        "native_host_testing_write_probe", R, (),
+        ("native/runtime/host/src/elpis_host.c:op_testing_write_probe",),
+        "The testing host's containment probe (compiled only with ELPIS_HOST_TESTING, run only over a testing "
+        "deployment): one attempted file creation removed at once, an in-place rewrite of one byte with itself, or "
+        "one byte past a slot's end, each at a path the test names, to show what containment refuses. Test support; "
+        "never in the production host."),
+    PersistentWriter(
         "research_laboratories", R, (), (),
         "Write-once laboratory evidence under research/; never imported by src/."),
     PersistentWriter(
@@ -209,7 +240,16 @@ OPERATOR_OPERATIONS = frozenset({
     "adopt_k1_candidate",     # explicit reconciliation: continuity authorized -> the named candidate
     "import_composite",       # explicit lineage format change (K1 -> ECS composite): fixed checkpoint, then continuity
 })
-AUTONOMOUS_WRITERS = frozenset(w.id for w in WRITERS if w.classification is F)
+# The fixed-capacity writers each composer's ordinary path reaches, by composer. Every FIXED_CAPACITY_AUTONOMOUS
+# writer belongs to at least one, and nothing else does (tests/boundary/test_autonomous_persistence.py).
+# * AUTONOMOUS_WRITERS: the Python Runtime (elpis.runtime.composition, the offline reference interface) and the native
+#   libraries it loads. Its durable authority is standalone continuity (elpis_runtime_create);
+#   tests/integration/test_autonomous_no_growth.py proves this set under a write trap.
+# * NATIVE_HOST_AUTONOMOUS_WRITERS: the native host (docs/NATIVE_HOST.md), the production entry point. Its durable
+#   authority is the ECS_C authority (elpis_runtime_create_ecs_c only), and it builds no FMS cold store;
+#   tests/integration/test_native_host.py proves its home a fixed file set under containment.
+AUTONOMOUS_WRITERS = frozenset({"continuity_slots", "fms_posix_cold_store", "k1_checkpoint_slots"})
+NATIVE_HOST_AUTONOMOUS_WRITERS = frozenset({"ecs_c_authority_slots", "k1_checkpoint_slots"})
 
 
 def writer(writer_id: str) -> PersistentWriter:

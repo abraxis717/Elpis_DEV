@@ -144,10 +144,10 @@ def test_admitted_claims_cite_the_evidence_and_stay_bounded():
     authority = (REPO / "docs" / "COGNITION_R0.md").read_text(encoding="utf-8")
     assert qual_digest in authority and frozen_digest in authority
     system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
-    ecs_g = next(s for s in system["subsystems"] if s["id"] == "ECS")
+    ecs_g = next(s for s in system["subsystems"] if s["id"] == "ECS_G")
     assert qual_digest[:8] in ecs_g["maturity"] and frozen_digest[:8] in ecs_g["maturity"]
     assert "under the qualified Cognitive R0 regime" in ecs_g["maturity"]
-    for name in ("docs/COGNITION_R0.md", "docs/research/COGNITION_R0_RESULTS.md", "native/ECS/README.md",
+    for name in ("docs/COGNITION_R0.md", "docs/research/COGNITION_R0_RESULTS.md", "native/ECS_G/README.md",
                  "docs/ARCHITECTURE.md", "README.md", "ELPIS_SYSTEM.json"):
         text = (REPO / name).read_text(encoding="utf-8").lower()
         assert not [o for o in OVERCLAIMS if o in text], name

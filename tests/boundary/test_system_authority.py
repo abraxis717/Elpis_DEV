@@ -8,7 +8,12 @@ import pytest
 
 from ._system import REPO, SYSTEM, live_subsystems, repository_files, subsystem_ids
 
-EXPECTED_SUBSYSTEMS = ["substrate", "ECS", "continuity", "structure", "pipeline", "evolution", "inference", "runtime"]
+EXPECTED_SUBSYSTEMS = ["substrate", "ECS_G", "ECS_C", "continuity", "structure", "pipeline", "evolution", "inference",
+                       "runtime"]
+# A subsystem's Python package is ``elpis.<id>``, none (a native-only subsystem, with a note), or a retained name
+# stated here with its reason (docs/NATIVE_SPLIT_CENSUS.md): the binding package of ECS_G keeps ``elpis.ECS``
+# because the byte-frozen laboratories import it (research/__init__.py maps their ``elpis.ECS_G`` to it).
+RETAINED_PACKAGE_NAMES = {"ECS_G": "elpis.ECS"}
 STATUSES = {"PLANNED", "MATERIALIZED_INCOMPLETE", "OPERATIONAL", "OPERATIONAL_INCOMPLETE_INTEGRATION"}
 
 
@@ -17,7 +22,11 @@ def test_authority_schema_and_subsystem_set():
     assert subsystem_ids() == EXPECTED_SUBSYSTEMS
     for sub in SYSTEM["subsystems"]:
         assert sub["status"] in STATUSES, sub["id"]
-        assert sub["python_package"] == "elpis." + sub["id"]
+        package = sub["python_package"]
+        if package is None:
+            assert sub.get("python_package_note"), sub["id"]
+        else:
+            assert package == RETAINED_PACKAGE_NAMES.get(sub["id"], "elpis." + sub["id"]), sub["id"]
         assert set(sub["depends_on"]) <= set(EXPECTED_SUBSYSTEMS) - {sub["id"]}
 
 
@@ -41,22 +50,25 @@ def test_subsystem_dependencies_are_acyclic():
 
 @pytest.mark.parametrize("sub", SYSTEM["subsystems"], ids=lambda s: s["id"])
 def test_declared_roots_exist_and_planned_subsystems_are_not_materialized(sub):
-    package_dir = REPO / "src" / "elpis" / sub["id"]
+    package = sub["python_package"]
+    package_dir = REPO / "src" / "elpis" / (package.split(".", 1)[1] if package else sub["id"])
     if sub["status"] == "PLANNED":
         assert not package_dir.exists(), f"{sub['id']} materialized without being declared live"
         assert not sub["implementation_roots"] and not sub["native_targets"]
         return
-    assert package_dir.is_dir()
+    assert package_dir.is_dir() if package else not package_dir.exists(), sub["id"]
     assert sub["implementation_roots"], sub["id"]
     for root in sub["implementation_roots"] + sub["test_roots"]:
         assert (REPO / root).exists(), root
-    assert any((REPO / root).rglob("test_*.py") for root in sub["test_roots"]), sub["id"]
+    # Python tests, or (a native-only subsystem) native tests
+    pattern = "test_*.py" if package else "test_*.c"
+    assert any((REPO / root).rglob(pattern) for root in sub["test_roots"]), sub["id"]
     for key in ("purpose", "mutation_authority", "runtime_participation", "model_dependency", "maturity"):
         assert sub.get(key), (sub["id"], key)
 
 
 def test_every_python_package_is_owned():
-    owned = {"elpis." + s["id"] for s in live_subsystems()}
+    owned = {s["python_package"] for s in live_subsystems() if s["python_package"]}
     shared = {m["module"] for m in SYSTEM["shared_modules"]}
     src = REPO / "src" / "elpis"
     for entry in sorted(src.iterdir()):

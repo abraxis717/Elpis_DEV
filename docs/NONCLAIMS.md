@@ -73,8 +73,9 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
   the scalar reference only; no optimized backend with a different
   accumulation order exists.
 * **Elpis does not generate text.** No ECS<->DSV semantic codec is defined or
-  qualified, so the canonical turn (`Runtime.run_turn`) fails closed with
-  `ECS_CODEC_UNQUALIFIED`. The only codec maps in the repository are
+  qualified, so every text path fails closed with `ECS_CODEC_UNQUALIFIED`:
+  the native host's `text` operation and, in the offline Python reference,
+  every codec operation (the legacy `Runtime.run_turn` included). The only codec maps in the repository are
   `TRAINING=NONE SEMANTICS=NONE` interface fixtures, never presented as
   cognition. A mechanics pass is not a mission pass (`docs/ELPIS_MISSION.md`).
   No geodesic-intelligence claim follows.
@@ -105,9 +106,11 @@ are not evidence that the contract has any effect.
   frozen from the qualified Python implementation (PR #36) and keeps format
   v2 unchanged. Parity covers the frozen records and the frozen store session;
   it is not a proof of equivalence for every possible input sequence.
-* **Python is not removed from production.** Only the continuity authority
-  moved to Rust. The runtime composition is still Python and reaches the
-  library through a `ctypes` adapter. A build needs a Rust toolchain.
+* **Python is off the production path, not removed.** The production entry
+  point is the native host `elpis` (RuntimeCore ABI v6 over the ECS_C
+  authority, no interpreter in the process). The Python runtime composition is
+  the offline reference interface over standalone continuity, reached through a
+  `ctypes` adapter. A build needs a Rust toolchain.
 
 * **Current authority, not history.** Continuity holds one fixed-size record
   (two 176-byte slots, 352 bytes in total, whatever the runtime lifetime):
@@ -156,7 +159,7 @@ are not evidence that the contract has any effect.
   replication or shared-reader semantics. One open runtime owns one K1
   lineage.
 * **Not cognitive state.** Continuity holds a digest of the K1 state, never
-  the state. ECS owns `W`, epoch, `H` and `a`, their snapshots and FMS
+  the state. ECS_G owns `W`, epoch, `H` and `a`, their snapshots and FMS
   residency. Continuity grants no authority over ECS mathematics. Resuming a
   lost in-memory state from its envelope is K1 Recovery R0's job, below.
 * **Legacy storage is refused, not converted.** The retired receipt-history
@@ -176,6 +179,10 @@ are not evidence that the contract has any effect.
   (Cognitive Boundary R2 and its ABI v5 successor included) are NOT RUN, so the
   cognitive boundary itself is unqualified. Cognitive Boundary R1's
   retrospective closure covers commit `bec6da7` (ABI v3) only.
+* **The ECS_C authority and the native host are unqualified.** ECS_C Recovery
+  Q0 is NOT RUN (its instrument is rehearsed on DEV inputs only). K1 Recovery
+  R0 v4's run extends to neither RuntimeCore ABI v6, the ECS_C authority nor
+  the native host.
 * **Pins authenticate bytes, not authors.** The native, codec and evolution
   policy authorities verify exact bytes against SHA-256 pins from trusted
   configuration. They offer no protection against a malicious in-process
@@ -244,11 +251,15 @@ are not evidence that the contract has any effect.
   `research/hacf_ecs_bridge_r0` is RESEARCH_ONLY, unqualified infrastructure:
   its only observation map is a TEST_ONLY fixture, it cannot detect
   well-formed misleading evidence, and no answer it produces is authority.
-* Global autonomous unlimited persistence is prohibited. The autonomous runtime
-  path may write only the two fixed continuity slots, a capacity-bounded FMS
-  cold store and, when an operator provisioned one, the two fixed K1 checkpoint
-  slots; every other persistent writer is operator-explicit, offline or
-  prohibited (`elpis.runtime.persistence`). This is a property of the code
+* Global autonomous unlimited persistence is prohibited.
+  - The native host's autonomous path writes only the ECS_C authority's two
+    record and two witness slots and the two fixed K1 checkpoint slots. Its home
+    is a fixed set of 17 files, with no log or history.
+  - The offline Python reference's path writes only the two fixed continuity
+    slots, a capacity-bounded FMS cold store and, when an operator provisioned
+    one, the two fixed K1 checkpoint slots.
+  - Every other persistent writer is operator-explicit, offline or prohibited
+    (`elpis.runtime.persistence`). This is a property of the code
   paths, proven by tests; it is not a claim about host filesystem accounting.
 
 ## Research laboratories (`research/`)
@@ -302,7 +313,7 @@ are not evidence that the contract has any effect.
   integration is NOT AUTHORIZED, no H-ECS or EDEN hierarchical runtime is
   canonical, and no runtime readiness is claimed.
 * `research/ecs_memory_mf_r0` (ECS Memory MF-R0, the successor of the PR #47 model-free memory) is
-  RESEARCH_ONLY with NO_RUNTIME_AUTHORITY (`docs/research/ECS_MEMORY_MF_R0.md`). It is not part of the one ECS,
+  RESEARCH_ONLY with NO_RUNTIME_AUTHORITY (`docs/research/ECS_MEMORY_MF_R0.md`). It is not part of ECS_C,
   continuity does not bind its state (a memory transition leaves the K1 digest unchanged, tested), and no
   composite retained state, checkpoint owner or LEARN authority exists for it (its canonical relocation is the
   next item). Its preregistered QUAL passed
@@ -315,7 +326,10 @@ are not evidence that the contract has any effect.
   structural evidence, not truth, meaning or learning; LEARN and the FAST channel are UNQUALIFIED (refused unless a
   host admits the recurrent capability; RuntimeCore never exposes them); the MF-R0 consolidation law is not
   canonical at all, and the frozen H4 NONPASS stands. A composite identity is durable authority only when
-  continuity names it after RuntimeCore's checkpoint -> commit -> publication; a composite snapshot round trip by
+  the durable authority names it (the ECS_C authority on the native host; continuity record v3 on the offline
+  reference) after RuntimeCore's checkpoint -> commit -> publication; a composite snapshot round trip by
   itself is not crash-consistent recovery, and FMS residency of an envelope is not checkpoint publication.
-  The Python runtime composition (codec, `Runtime.run_learn`) does not drive composite lineages, so canonical
-  cognitive integration of the memory into the managed turn of the full runtime is **not** complete.
+  The native host and the Python reference drive composite lineages as mechanics only (numeric LEARN and
+  observe-only evidence): nothing decides what to observe, no HACF -> meaning map exists, and no codec path exists
+  (`ECS_CODEC_UNQUALIFIED`). Canonical cognitive integration of the memory into the full text turn is **not**
+  complete.
