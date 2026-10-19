@@ -5,6 +5,10 @@
 #include "host_deploy.h"
 
 #include <dirent.h>
+#ifdef ELPIS_HOST_TESTING
+#include <pthread.h>
+#include <time.h>
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -617,38 +621,111 @@ void host_initial_weights(const host_lineage *l, double *w) {
 
 static int bounded(uint64_t v, uint64_t lo, uint64_t hi) { return v >= lo && v <= hi; }
 
+/* Publish `name` once: written and synced under `name`.new (debris of an interrupted create is removed first), then
+ * renamed into place without replacing anything, and the directory synced. Either the whole file exists or none. */
+static int publish_once(int dirfd, const char *name, const void *data, size_t len, mode_t mode, host_err *e) {
+    char tmp[64];
+    snprintf(tmp, sizeof tmp, "%s.new", name);
+    if (unlinkat(dirfd, tmp, 0) && errno != ENOENT)
+        return host_fail(e, "DEPLOYMENT_PATH", "cannot remove %s: %s", tmp, strerror(errno));
+    if (write_once(dirfd, tmp, data, len, mode, e)) return -1;
+    if (renameat2(dirfd, tmp, dirfd, name, RENAME_NOREPLACE) || sync_dir(dirfd))
+        return host_fail(e, "DEPLOYMENT_PATH", "cannot publish %s: %s", name, strerror(errno));
+    return 0;
+}
+
+/* Remove the debris of an interrupted checkpoint provisioning: `checkpoint.new` holding at most the store's two slot
+ * files (never an authority: the store is attached only as `checkpoint`). Anything else in it is refused. */
+static int clear_checkpoint_debris(int home_fd, host_err *e) {
+    static const char *const SLOTS[] = {"k1-checkpoint.a", "k1-checkpoint.b"};
+    const int fd = openat(home_fd, "checkpoint.new", O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    if (fd < 0) return errno == ENOENT ? 0 : host_fail(e, "DEPLOYMENT_PATH", "checkpoint.new: %s", strerror(errno));
+    DIR *dir = fdopendir(fd);
+    if (!dir) {
+        close(fd);
+        return host_fail(e, "DEPLOYMENT_PATH", "checkpoint.new: %s", strerror(errno));
+    }
+    int rc = 0;
+    for (struct dirent *ent; !rc && (ent = readdir(dir));) {
+        if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")) continue;
+        if (strcmp(ent->d_name, SLOTS[0]) && strcmp(ent->d_name, SLOTS[1]))
+            rc = host_fail(e, "LINEAGE_EXISTS", "checkpoint.new holds %s: not this host's provisioning debris",
+                           ent->d_name);
+    }
+    for (int i = 0; !rc && i < 2; ++i)
+        if (unlinkat(dirfd(dir), SLOTS[i], 0) && errno != ENOENT)
+            rc = host_fail(e, "DEPLOYMENT_PATH", "checkpoint.new/%s: %s", SLOTS[i], strerror(errno));
+    closedir(dir);
+    if (!rc && (unlinkat(home_fd, "checkpoint.new", AT_REMOVEDIR) || sync_dir(home_fd)))
+        rc = host_fail(e, "DEPLOYMENT_PATH", "checkpoint.new: %s", strerror(errno));
+    return rc;
+}
+
 int host_create_lineage(host_deployment *d, const host_lineage *l, uint8_t out_identity[32],
-                        elpis_continuity_snapshot *anchored, host_err *e) {
+                        elpis_continuity_snapshot *anchored, int *resumed, host_err *e) {
     const host_api *a = &d->api;
-    if (d->has_lineage || exists_beneath(d->home_fd, "lineage.cfg") || exists_beneath(d->home_fd, "checkpoint"))
-        return host_fail(e, "LINEAGE_EXISTS", "a lineage (or a partial one) exists: lineage data is never overwritten");
+    *resumed = 0;
     if (!bounded(l->dim, 1, 64) || !bounded(l->width, 1, 1u << 16) || !bounded(l->max_rows, 1, 1u << 16) ||
         !bounded(l->memory_dim, 1, UINT32_MAX) || !bounded(l->banks, 1, UINT32_MAX) ||
         !bounded(l->slot_capacity, 1, UINT32_MAX) || !bounded(l->codebook_capacity, 1, UINT32_MAX))
         return host_fail(e, "LINEAGE_CONFIG", "every lineage dimension is a positive integer (dim 1..64)");
-    const elpis_ecs_composite_config cfg = host_composite_config(d, l);
-    const uint64_t envelope = a->elpis_ecs_composite_envelope_bytes(&cfg);
-    if (!envelope) return host_fail(e, "LINEAGE_CONFIG", "configuration beyond the composite's declared bounds");
+    if (!d->has_lineage && exists_beneath(d->home_fd, "checkpoint"))
+        return host_fail(e, "LINEAGE_EXISTS", "a checkpoint store exists without lineage.cfg: never overwritten");
+    /* What this create would write, computed into a copy: an existing lineage is compared, never replaced. */
+    host_deployment *n = malloc(sizeof *n);
     double *w = malloc(sizeof(double) * l->dim * l->width);
-    if (!w) return host_fail(e, "HOST_RESOURCES", "out of memory");
+    if (!n || !w) {
+        free(n), free(w);
+        return host_fail(e, "HOST_RESOURCES", "out of memory");
+    }
+    *n = *d;
+    n->lineage = *l;
+    const elpis_ecs_composite_config cfg = host_composite_config(n, l);
+    n->envelope_bytes = a->elpis_ecs_composite_envelope_bytes(&cfg);
     host_initial_weights(l, w);
+    elpis_sha256(w, sizeof(double) * l->dim * l->width, n->initial_w_sha256); /* binary64, little-endian hosts */
     elpis_ecs_composite *x = NULL;
-    const int created = a->elpis_ecs_composite_create(&cfg, w, &x);
-    d->lineage = *l;
-    d->envelope_bytes = envelope;
-    elpis_sha256(w, sizeof(double) * l->dim * l->width, d->initial_w_sha256); /* binary64, little-endian hosts */
+    int rc = 0;
+    if (!n->envelope_bytes) rc = host_fail(e, "LINEAGE_CONFIG", "configuration beyond the composite's declared bounds");
+    const int created = rc ? 0 : a->elpis_ecs_composite_create(&cfg, w, &x);
     free(w);
-    if (created) return host_fail(e, "LINEAGE_CONFIG", "composite create refused: %s", a->elpis_ecs_composite_code_name(created));
-    int rc = a->elpis_ecs_composite_state_digest(x, d->initial_identity) ? host_fail(e, "ECS_STATE", "no identity") : 0;
+    if (created) rc = host_fail(e, "LINEAGE_CONFIG", "composite create refused: %s", a->elpis_ecs_composite_code_name(created));
+    if (!rc && a->elpis_ecs_composite_state_digest(x, n->initial_identity)) rc = host_fail(e, "ECS_STATE", "no identity");
     static char text[1 << 14];
     hjw jw;
     hjw_init(&jw, text, sizeof text);
-    write_lineage(&jw, d);
-    if (!rc) rc = write_once(d->home_fd, "lineage.cfg", text, jw.len, 0400, e);
+    if (!rc) write_lineage(&jw, n);
+    if (!rc && d->has_lineage) {
+        char *existing;
+        size_t len;
+        if (read_beneath(d->home_fd, "lineage.cfg", CONFIG_LIMIT, &existing, &len, e)) rc = -1;
+        else {
+            if (len != jw.len || memcmp(existing, text, len))
+                rc = host_fail(e, "LINEAGE_EXISTS", "another lineage exists: lineage data is never overwritten");
+            free(existing);
+        }
+    } else if (!rc) {
+        rc = publish_once(d->home_fd, "lineage.cfg", text, jw.len, 0400, e);
+    }
     if (!rc) {
-        const int p = a->elpis_runtime_checkpoint_provision((const uint8_t *)d->checkpoint_dir, strlen(d->checkpoint_dir),
-                                                            envelope);
-        if (p) rc = host_fail(e, a->elpis_runtime_code_name(p), "the checkpoint store could not be provisioned");
+        d->lineage = n->lineage;
+        d->envelope_bytes = n->envelope_bytes;
+        memcpy(d->initial_identity, n->initial_identity, 32);
+        memcpy(d->initial_w_sha256, n->initial_w_sha256, 32);
+        d->has_lineage = 1;
+    }
+    free(n);
+    if (!rc && !exists_beneath(d->home_fd, "checkpoint")) {
+        char staged[HOST_PATH];
+        int p = 0;
+        if (snprintf(staged, sizeof staged, "%s.new", d->checkpoint_dir) >= (int)sizeof staged)
+            rc = host_fail(e, "DEPLOYMENT_PATH", "the home path is too long");
+        if (!rc) rc = clear_checkpoint_debris(d->home_fd, e);
+        if (!rc) p = a->elpis_runtime_checkpoint_provision((const uint8_t *)staged, strlen(staged), d->envelope_bytes);
+        if (!rc && p) rc = host_fail(e, a->elpis_runtime_code_name(p), "the checkpoint store could not be provisioned");
+        if (!rc && (renameat2(d->home_fd, "checkpoint.new", d->home_fd, "checkpoint", RENAME_NOREPLACE) ||
+                    sync_dir(d->home_fd)))
+            rc = host_fail(e, "DEPLOYMENT_PATH", "cannot publish the checkpoint store: %s", strerror(errno));
     }
     elpis_runtime *rt = NULL;
     if (!rc) {
@@ -657,14 +734,77 @@ int host_create_lineage(host_deployment *d, const host_lineage *l, uint8_t out_i
         elpis_continuity_snapshot opened;
         if (!r) r = a->elpis_runtime_open(rt, &opened);
         if (!r) r = a->elpis_runtime_checkpoint_attach(rt, (const uint8_t *)d->checkpoint_dir, strlen(d->checkpoint_dir));
-        const elpis_runtime_substrate s = {ELPIS_RUNTIME_SUBSTRATE_COMPOSITE, 0, x, 0, 1, l->dim, &SUBSTRATE_API};
-        if (!r) r = a->elpis_runtime_anchor(rt, &s, anchored);
-        if (r) rc = host_fail(e, a->elpis_runtime_code_name(r), "the lineage could not be anchored");
+        elpis_runtime_recovery recovery;
+        uint8_t *envelope = r ? NULL : malloc(d->envelope_bytes);
+        if (!r && !envelope) rc = host_fail(e, "HOST_RESOURCES", "out of memory");
+        if (!r && !rc) r = a->elpis_runtime_checkpoint_recover(rt, &recovery, envelope, d->envelope_bytes);
+        free(envelope);
+        if (r) {
+            rc = host_fail(e, a->elpis_runtime_code_name(r), "the lineage could not be opened to be anchored");
+        } else if (!rc && recovery.disposition == ELPIS_RUNTIME_RECOVERY_NOTHING) {
+#ifdef ELPIS_HOST_TESTING
+            if (d->testing_anchor_point &&
+                (a->elpis_runtime_testing_control_fault(rt, 1, 2, d->testing_anchor_point, d->testing_anchor_arg) ||
+                 host_testing_watch(a, rt, 100 + d->testing_anchor_point)))
+                rc = host_fail(e, "TESTING_FAULT", "the anchor fault plan was refused");
+#endif
+            const elpis_runtime_substrate s = {ELPIS_RUNTIME_SUBSTRATE_COMPOSITE, 0, x, 0, 1, l->dim, &SUBSTRATE_API};
+            if (!rc && (r = a->elpis_runtime_anchor(rt, &s, anchored)))
+                rc = host_fail(e, a->elpis_runtime_code_name(r), "the lineage could not be anchored");
+        } else if (!rc && recovery.disposition == ELPIS_RUNTIME_RECOVERY_RESUMABLE &&
+                   !memcmp(recovery.authorized, d->initial_identity, 32)) {
+            /* The authority already holds this lineage at its initial identity: an earlier create completed. */
+            elpis_runtime_durability du;
+            if (a->elpis_runtime_durable_status(rt, &du) || !du.durable_known)
+                rc = host_fail(e, "RUNTIME_INVALID", "the durable authority could not be read");
+            else
+                *anchored = du.durable, *resumed = 1;
+        } else if (!rc) {
+            rc = host_fail(e, "LINEAGE_EXISTS", "the lineage was created and the authority holds another state: "
+                                                "lineage data is never overwritten (see `status`)");
+        }
     }
     if (rt) a->elpis_runtime_destroy(&rt);
-    a->elpis_ecs_composite_destroy(x);
+    if (x) a->elpis_ecs_composite_destroy(x);
     if (rc) return rc;
     memcpy(out_identity, d->initial_identity, 32);
-    d->has_lineage = 1;
     return 0;
 }
+
+#ifdef ELPIS_HOST_TESTING
+typedef struct {
+    const host_api *a;
+    elpis_runtime *rt;
+    uint32_t parked;
+} watch_args;
+
+static void *watch(void *p) {
+    const watch_args w = *(watch_args *)p;
+    free(p);
+    for (int waited = 0; waited < 300000; ++waited) { /* 1 ms polls: at most 300 s, the park's own bound */
+        elpis_runtime_durability du;
+        if (w.a->elpis_runtime_durable_status(w.rt, &du)) return NULL;
+        if (du.parked == w.parked) {
+            char line[64];
+            const int n = snprintf(line, sizeof line, "{\"op\":\"testing_parked\",\"parked\":%u}\n", w.parked);
+            if (write(STDOUT_FILENO, line, (size_t)n) != n) return NULL; /* one write: never interleaved */
+            return NULL;
+        }
+        nanosleep(&(struct timespec){0, 1000000}, NULL);
+    }
+    return NULL;
+}
+
+int host_testing_watch(const host_api *a, elpis_runtime *rt, uint32_t parked) {
+    watch_args *args = malloc(sizeof *args);
+    if (!args) return -1;
+    *args = (watch_args){a, rt, parked};
+    pthread_t t;
+    if (pthread_create(&t, NULL, watch, args)) {
+        free(args);
+        return -1;
+    }
+    pthread_detach(t);
+    return 0;
+}
+#endif

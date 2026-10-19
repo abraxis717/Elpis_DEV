@@ -1451,6 +1451,9 @@ static int op_testing_control_fault(host *h, const hj_value *op, hjw *w, host_er
     const int rc = h->d.api.elpis_runtime_testing_control_fault(h->rt, (uint32_t)kind, (uint32_t)action,
                                                                 (uint32_t)point, arg);
     if (rc) return host_fail(e, rt_code(h, rc), "the control fault plan was refused");
+    /* A park holds the caller inside the operation, so the session cannot say so: a watcher reports it. */
+    if (action == 2 && host_testing_watch(&h->d.api, h->rt, (uint32_t)(100 * kind + point)))
+        return host_fail(e, "HOST_RESOURCES", "the park watcher could not start");
     hjw_kbool(w, "armed", action != 0);
     return 0;
 }
@@ -1871,6 +1874,21 @@ static int cmd_create(host *h, int argc, char **argv) {
                     return 2;
                 }
             }
+#ifdef ELPIS_HOST_TESTING
+        /* Park the anchor at a control point (1..6) and report it (testing_parked): a harness kills it there. */
+        uint64_t v;
+        if (!strcmp(argv[i], "--testing-anchor-park") || !strcmp(argv[i], "--testing-fault-arg")) {
+            known = 1;
+            const int park = !strcmp(argv[i], "--testing-anchor-park");
+            if (i + 1 >= argc || parse_u64_arg(argv[i + 1], &v) || (park && (v < 1 || v > 6))) {
+                emit_failure("create", "CLI_INPUT", "--testing-anchor-park takes a point 1..6, --testing-fault-arg "
+                                                    "an unsigned integer");
+                return 2;
+            }
+            if (park) h->d.testing_anchor_point = (uint32_t)v;
+            else h->d.testing_anchor_arg = v;
+        }
+#endif
         if (!known) {
             emit_failure("create", "CLI_INPUT", "create: unknown option");
             return 2;
@@ -1879,7 +1897,8 @@ static int cmd_create(host *h, int argc, char **argv) {
     host_err e = {{0}, {0}, 0};
     uint8_t identity[32];
     elpis_continuity_snapshot anchored;
-    if (host_create_lineage(&h->d, &l, identity, &anchored, &e)) {
+    int resumed;
+    if (host_create_lineage(&h->d, &l, identity, &anchored, &resumed, &e)) {
         emit_failure("create", e.code, e.detail);
         return 3;
     }
@@ -1892,6 +1911,7 @@ static int cmd_create(host *h, int argc, char **argv) {
     hjw_ku64(&w, "authority_generation", anchored.generation);
     hjw_khex(&w, "initial_w_sha256", h->d.initial_w_sha256, 32);
     hjw_ku64(&w, "envelope_bytes", h->d.envelope_bytes);
+    hjw_kbool(&w, "resumed", resumed); /* an earlier create of this lineage had anchored it: nothing was written */
     hjw_kbool(&w, "ok", 1);
     hjw_end(&w, '}');
     emit(&w);

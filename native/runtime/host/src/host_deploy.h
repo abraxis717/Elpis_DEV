@@ -117,6 +117,10 @@ typedef struct {
     host_lineage lineage;
     uint8_t initial_identity[32], initial_w_sha256[32];
     uint64_t envelope_bytes;
+#ifdef ELPIS_HOST_TESTING
+    uint32_t testing_anchor_point; /* nonzero: create parks its anchor there (control fault 1, action 2) */
+    uint64_t testing_anchor_arg;
+#endif
 } host_deployment;
 
 /* The library set this host variant admits: catalog id, file name beneath lib/, SONAME, path in a build tree. */
@@ -138,10 +142,21 @@ const elpis_runtime_composite_api *host_substrate_api(void);
 elpis_ecs_composite_config host_composite_config(const host_deployment *d, const host_lineage *l);
 /* The deterministic initial K1 weights (elpis.deployment.initial-w.v1): dim * width values into `w`. */
 void host_initial_weights(const host_lineage *l, double *w);
-/* create: write lineage.cfg, provision the checkpoint store, create the composite and anchor it (durable first:
- * the checkpoint slot, then the ECS_C authority). Refused if any lineage file exists. Fills `out_identity`. */
+/* create: publish lineage.cfg, provision the checkpoint store, create the composite and anchor it (durable first:
+ * the checkpoint slot, then the ECS_C authority). Each file is published under a temporary name and renamed into
+ * place, so a create interrupted at any point leaves either nothing of a step or all of it. Another create of exactly
+ * the same lineage (lineage.cfg byte-identical) completes an interrupted one: what is missing is made, an unanchored
+ * lineage is anchored, and a lineage the authority already holds at its initial identity is reported (`resumed`),
+ * with nothing written. Any other existing lineage is refused (LINEAGE_EXISTS). Fills `out_identity`. */
 int host_create_lineage(host_deployment *d, const host_lineage *l, uint8_t out_identity[32],
-                        elpis_continuity_snapshot *anchored, host_err *e);
+                        elpis_continuity_snapshot *anchored, int *resumed, host_err *e);
+
+#ifdef ELPIS_HOST_TESTING
+/* Testing hosts: a detached thread that waits (bounded, 300 s) until the durability status of `rt` reports `parked`
+ * and then writes one line, {"op":"testing_parked","parked":N}, to standard output: the moment a harness kills a
+ * process whose caller is parked inside a control operation (which cannot report it itself). */
+int host_testing_watch(const host_api *a, elpis_runtime *rt, uint32_t parked);
+#endif
 
 /* A 32-byte label or scope of operator text: SHA-256("elpis.host.label.v1" || 0x00 || text). */
 void host_label(const char *text, uint8_t out[32]);
