@@ -3073,6 +3073,15 @@ mod ecs_c {
         // A fresh handle is refused the same way.
         let mut again = closed(&dir);
         assert_eq!(again.open().unwrap_err(), Rt::Authority.into());
+        // Records recovery cannot resolve at all (both destroyed): refused by recovery itself, the report kept.
+        let size = old.0.len();
+        for n in ["authority.a", "authority.b"] {
+            std::fs::write(state.join(n), vec![0u8; size]).unwrap();
+        }
+        assert_eq!(again.open().unwrap_err(), Rt::Authority.into());
+        let s = again.authority_status().unwrap();
+        assert_eq!(s.ecs_c_code, e::Code::RecoveryRefused as i32);
+        assert_eq!(s.disposition, e::Disposition::Unrecoverable as u32);
         // An unprovisioned authority is refused with its exact code.
         let bare = Dir::new("ecsc-unprovisioned");
         let (state, authority) = ecs_c_dirs(&bare.0);

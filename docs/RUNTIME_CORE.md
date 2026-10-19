@@ -247,8 +247,15 @@ Laws: `native/runtime/src/tests.rs` (`ecs_c`, and the whole suite a second time 
 `ELPIS_RUNTIME_TEST_AUTHORITY=ecs_c`, ctest `runtime.cargo_test_ecs_c`, every test except the continuity-specific
 HOT-lane I/O constants, pinned by the K1 Recovery R0 v4 premise), `runtime.test_runtime_ecs_c` (the production
 libraries, the real composite: provisioning, admission, operator events, the evidence summary, a copied-back authority
-refusing the open, the exact reconciliation, the reopen). The K1 Recovery R0 v4 RUN PASS is bound to its qualifying
-commit and does not extend to this RuntimeCore (its premise P4 pins `durable.rs`, which v6 changes).
+refusing the open, the exact reconciliation, the reopen), `runtime.test_runtime_hot_io_ecs_c` (Gate A at the
+system-call boundary over ECS_C). Mutation sensitivity (rebuilt mutants outside the repository, unmutated baseline
+green): an unknown source admitted, the per-turn bound off by one, a source's use never counted, the PUBLISH without
+its summary, the acknowledged total never advanced, a refused publication accounted, RuntimeCore's own kinds or a
+reconciliation accepted from an operator, an operator event while a turn is open, a non-normal authority opened, the
+admission table not refreshed after an operator event or not loaded at open, the composite's memory identity
+ignored, the observation's `source_authority` read at the wrong offset, a refused open's recovery report dropped:
+all fourteen killed. The K1 Recovery R0 v4 RUN PASS is bound to its qualifying commit and does not extend to this
+RuntimeCore (its premise P4 pins `durable.rs`, which v6 changes).
 
 ## Laws
 
