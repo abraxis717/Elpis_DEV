@@ -179,10 +179,16 @@ are not evidence that the contract has any effect.
   (Cognitive Boundary R2 and its ABI v5 successor included) are NOT RUN, so the
   cognitive boundary itself is unqualified. Cognitive Boundary R1's
   retrospective closure covers commit `bec6da7` (ABI v3) only.
-* **The ECS_C authority and the native host are unqualified.** ECS_C Recovery
-  Q0 is NOT RUN (its instrument is rehearsed on DEV inputs only). K1 Recovery
-  R0 v4's run extends to neither RuntimeCore ABI v6, the ECS_C authority nor
-  the native host.
+* **The ECS_C authority and the native host: one commit, one scope.** ECS_C
+  Recovery Q0 is RUN PASS for commit `117b41a` only: crash consistency of
+  RuntimeCore ABI v6's durability protocol over the ECS_C authority through
+  the testing native host under `SIGKILL`, and refusal of the registered T1
+  attacks until explicit operator reconciliation. The production build is
+  bound to it by a source premise, not by a fault run. No later commit
+  inherits it, nothing in it bears on power loss, and an accepted deep
+  rollback still leaves the lineage `CHECKPOINT_MISSING`. K1 Recovery R0 v4's
+  run extends to neither RuntimeCore ABI v6, the ECS_C authority nor the
+  native host.
 * **Pins authenticate bytes, not authors.** The native, codec and evolution
   policy authorities verify exact bytes against SHA-256 pins from trusted
   configuration. They offer no protection against a malicious in-process

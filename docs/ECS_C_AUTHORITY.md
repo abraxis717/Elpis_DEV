@@ -12,7 +12,8 @@ authoritative, and of which format), the evolution authority, receipts and recon
 typed event validated by one transition law before it is written; recovery replays the newest transition against
 its predecessor. It keeps no log, no segments, no generations and no compaction archive.
 
-**Status.** Built and mechanically tested as a library (UNQUALIFIED: ECS_C Recovery Q0 is NOT RUN), composed by
+**Status.** Built and mechanically tested as a library; its durability protocol through the native host is RUN PASS
+under ECS_C Recovery Q0, for commit `117b41a` only, within that specification's scope. Composed by
 RuntimeCore ABI v6
 (`elpis_runtime_create_ecs_c`; docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"), which publishes through it,
 admits typed evidence against its sources and records evidence summaries, and run by the native host `elpis`, the
@@ -215,5 +216,5 @@ records the legacy generation and record digest.
 
 ## Not claimed
 
-No qualification yet (ECS_C Recovery Q0 is NOT RUN); no protection beyond the threat model; no scientific claim of
-any kind.
+No qualification beyond ECS_C Recovery Q0's scope (commit `117b41a` only; `SIGKILL`, never power loss; the T1
+adversary); no protection beyond the threat model; no scientific claim of any kind.

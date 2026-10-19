@@ -21,11 +21,12 @@ owns geometric cognition, and **ECS_C** (`native/ECS_C`) owns continuity and
 memory. Only RuntimeCore composes them. ECS_C holds the memory and, since
 Stage C of the native split, the ECS_C authority (`docs/ECS_C_AUTHORITY.md`):
 the entity, provenance, lineage and evolution authority that succeeds
-continuity, built and mechanically tested as a library (UNQUALIFIED: ECS_C
-Recovery Q0 is NOT RUN) and, since Stage D, composed by RuntimeCore (ABI v6)
-as one of its two durable-authority backends; the native host `elpis` runs
-over it. Standalone continuity is not retired: until ECS_C Recovery Q0's QUAL
-run passes it remains the live register of the offline Python reference
+continuity, built and mechanically tested as a library and, since Stage D,
+composed by RuntimeCore (ABI v6) as one of its two durable-authority
+backends; the native host `elpis` runs over it, and that durability protocol
+is RUN PASS under ECS_C Recovery Q0 for commit `117b41a` only. Standalone
+continuity is not retired yet: until its retirement, which that pass
+unblocked, it remains the live register of the offline Python reference
 interface, the backend of RuntimeCore's continuity law suite and K1 Recovery
 R0 v4's premise P1: a fixed-size, crash-safe
 register holding only the current durable authority the runtime must verify

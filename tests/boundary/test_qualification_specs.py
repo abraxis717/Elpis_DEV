@@ -36,7 +36,8 @@ EVIDENCE = {
 EXPECTED = set(EVIDENCE)
 STATUS = re.compile(r"^Status: \*\*(?P<status>[A-Z ]+)\*\* · Subject: \*\*(?P<subject>[A-Z]+)\*\*", re.M)
 # Specifications whose evidence has an independent validator (a sealed directory it can digest-check and recompute).
-VALIDATORS = {"K1_RECOVERY_R0_V4.md": REPO / "research" / "qualification" / "k1_recovery_r0_v4" / "check.py"}
+VALIDATORS = {"K1_RECOVERY_R0_V4.md": REPO / "research" / "qualification" / "k1_recovery_r0_v4" / "check.py",
+              "ECS_C_RECOVERY_Q0.md": REPO / "research" / "qualification" / "ecs_c_recovery_q0" / "check.py"}
 STATUSES = ("NOT RUN", "RUN PASS", "RUN FAIL")
 
 
@@ -58,7 +59,10 @@ def _validate(name):
                 (sealed / p.stem).write_bytes(gzip.decompress(p.read_bytes()))
             else:
                 shutil.copyfile(p, sealed / p.name)
-        problems = check.verify_evidence(sealed, VALIDATORS[name].parent / "plan.json")
+        if hasattr(check, "verify_evidence"):     # K1 Recovery R0 v4's validator takes its plan
+            problems = check.verify_evidence(sealed, VALIDATORS[name].parent / "plan.json")
+        else:                                     # ECS_C Recovery Q0's reads the plan beside it
+            problems = check.evidence(sealed)
         verdict = json.loads((sealed / "verdict.json").read_text()).get("verdict") if not problems else None
     return problems, verdict
 

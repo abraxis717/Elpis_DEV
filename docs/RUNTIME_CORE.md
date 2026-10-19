@@ -248,7 +248,8 @@ anchor, import, evolution and recovery code paths are the same code over either 
 
 Not yet: RuntimeCore does not consult source versions or scopes at admission (an observation records neither; Stage E
 binds them through the memory's source invalidation), the offline Python reference still drives continuity (which
-is not retired until ECS_C Recovery Q0 passes; docs/NATIVE_SPLIT_CENSUS.md), and the testing library's durability fault plan maps continuity's publication steps onto
+is not retired yet; ECS_C Recovery Q0, which its retirement waited for, is RUN PASS for commit `117b41a` only;
+docs/NATIVE_SPLIT_CENSUS.md), and the testing library's durability fault plan maps continuity's publication steps onto
 the authority's record slot only (the witness faults are the authority's own suite's).
 
 Laws: `native/runtime/src/tests.rs` (`ecs_c`, and the whole suite a second time over ECS_C:

@@ -1,6 +1,6 @@
 # ECS_C Recovery Q0 under RuntimeCore ABI v6: qualification specification
 
-Status: **NOT RUN** · Subject: **UNQUALIFIED**
+Status: **RUN PASS** · Subject: **QUALIFIED**
 
 THE ECS_C AUTHORITY DECIDES. CHECKPOINT BYTES DO NOT AUTHORIZE THEMSELVES. ONLY THE OPERATOR RECONCILES AN ATTACK.
 
@@ -12,16 +12,65 @@ P1 binds `native/continuity`. It does not extend to the ECS_C authority, nor to 
 host. This specification asks the same question of the successor and adds the adversary the successor exists to
 defend against.
 
-## Why it cannot run yet (the conflict, stated)
+## Qualified scope
+
+Run once, on QUAL inputs, under the freeze record published before the run (`FREEZE.json`, commit `9c7c72b`), with the
+verdict recomputed by the independent checker: **RUN PASS**, G1-G6 over all 221 planned trials, with no gate failure
+and no mechanical failure. What is qualified, and only that:
+
+* **Subject:** RuntimeCore ABI v6's durability protocol over the ECS_C authority, operated through the native host:
+  - the durability lane;
+  - the two-slot checkpoint store;
+  - the authority's two records and two witnesses.
+
+  It covers the registered process deaths, state-directory attacks, rearrangements and witness loss (Inputs 2-8), and
+  recovery work and storage fixed in history length (10, 100 and 1,000 publications).
+* **Commit:** `117b41ad8a1a1fd25963489d4b29a66b284c4632` (tree `bcb8e46`), the merge commit of PR #55. It was built
+  from a fresh clone (`cmake -DCMAKE_BUILD_TYPE=Release`) and installed with the runtime and testing components.
+  - No other commit is qualified by this run, including the later commits that only add this record and its
+    evidence.
+* **Binaries:** the testing host `elpis_testing` (SHA-256
+  `1a2a8d95c341c6433008e4c2bc5c2f3abb38722ba4386d9f21670e41282ece87`) and the testing RuntimeCore build
+  `libelpis_runtime_testing.so` (`b8076c0b9f865de017ebaf292c6b0d0168a945d6339ffbcd9ea115f8450cf1e8`), because the
+  crash points exist only there.
+  - With them: the ECS_C authority library (`75e823db73c63dc8d13ea86063378efbeb8d8ede2f9f9e55e5b278af85e03315`) and
+    the other libraries whose digests the freeze record lists, deployed by `init --libraries` from that installation.
+  - That the production build (`elpis`, `libelpis_runtime.so`) carries the same protocol rests on the premise bound
+    at the freeze:
+    - the production views' digests;
+    - no testing symbol in the production RuntimeCore;
+    - no testing operation in the production host.
+
+    That is a binding to source, not a fault run of the production binaries.
+* **Environment:** one machine:
+  - Linux 6.18.44 x86_64, glibc 2.39;
+  - GCC 13.3.0, rustc 1.97.0, CMake 3.28.3;
+  - CPython 3.12.3, isolated, with no Elpis module imported;
+  - the work root on an ext2/ext3-family filesystem (statfs).
+* **Faults and attacks:** as registered.
+  - `SIGKILL` keeps the page cache, so nothing here bears on power loss or media durability.
+  - The attacks are the T1 adversary's (docs/ECS_C_AUTHORITY.md); witness loss is outside it.
+  - "Would establish / would not establish" holds as written.
+* **Deep rollback, as registered:**
+  - An accepted rollback of one publication leaves the newer candidate for the operator (`CANDIDATE_UNRESOLVED`).
+  - An accepted rollback of two or more publications leaves no checkpoint slot holding the accepted identity
+    (`CHECKPOINT_MISSING`), so cognition stays refused.
+  - That outcome is what this run qualifies. The re-authorization proposed for it (docs/NATIVE_SPLIT_CENSUS.md, "Stage
+    F conflict": K1 Recovery R1 / RuntimeCore ABI v7) is neither implemented nor qualified.
+
+## The accepted source and the instrument
 
 * **The accepted source.** As for K1 Recovery R0 v4, the freeze binds one exact commit: the merge commit integrating the
   native split (Stages B to F of docs/NATIVE_SPLIT_CENSUS.md) into `main`, built and installed from a clean checkout of
-  it. Those stages are open pull requests; merging needs the owner's explicit authorization. Until then no QUAL run is
-  possible, and standalone continuity stays (it is the authority the offline Python reference interface publishes to).
+  it.
+  - Until those stages were merged (PR #55, `117b41a`), no QUAL run was possible.
 * **The instrument.** `research/qualification/ecs_c_recovery_q0/` holds the plan, runner, checker, freeze verification
-  and seal, with the discipline of K1 Recovery R0 v4's instrument: the freeze verifies the executing object, records
-  carry no expectation, and an independent checker derives every expectation from the plan. It has been rehearsed on
-  DEV inputs (its README). DEV records are not evidence.
+  and seal, with the discipline of K1 Recovery R0 v4's instrument:
+  - the freeze verifies the executing object;
+  - records carry no expectation;
+  - an independent checker derives every expectation from the plan.
+
+  It was rehearsed on DEV inputs (its README) before the freeze. DEV records are not evidence.
 
 ## Question
 
@@ -193,6 +242,39 @@ It would **not** establish:
 
 ## Evidence
 
-`research/qualification/ecs_c_recovery_q0/evidence/` will hold the directory written once by the QUAL run on the
-accepted source and sealed by the instrument, validated by its independent checker. It does not exist: this
-specification is NOT RUN.
+`research/qualification/ecs_c_recovery_q0/evidence/` holds the directory written once by the QUAL run on `117b41a` and
+sealed by `runner.py seal`.
+- The repository keeps no file over 2 MiB, so `records.jsonl` (5948358 bytes) is committed gzip-compressed as
+  `records.jsonl.gz` (SHA-256 `6d40f11b7caf40e90734278db930c1188543460605411fc091407d4f6b8c33e7`).
+- Every other file is committed as sealed.
+
+To validate, restore the sealed directory, then run the frozen validator. It checks:
+- exactly its four files;
+- every SHA-256, so the restored records are the written bytes;
+- that the run was a complete QUAL run;
+- the verdict, recomputed from the records.
+
+```sh
+mkdir sealed && cp evidence/FREEZE.json evidence/verdict.json evidence/SHA256SUMS sealed/
+gunzip -c evidence/records.jsonl.gz > sealed/records.jsonl
+python -I -B check.py evidence sealed
+```
+
+| File | SHA-256 |
+|---|---|
+| `FREEZE.json` (byte-identical to the published `FREEZE.json`) | `fdfbde9fd184a0ca6255a94d26fe10a4d940e81add1adbc20afcb46b978c7a6f` |
+| `records.jsonl` (the run header and 221 trial records; committed as `records.jsonl.gz`) | `61bc0c46b46060cdbe9028b99dcdd072f913afe26be40a940790f3e75cf1902e` |
+| `verdict.json` | `5f59f912bc5bbc009d3c58d7ccfd97ae949b54eb9c3dcad31f177a4fb90bac4c` |
+| `SHA256SUMS` | `1f07fc8a2d01139d2c488bb3ad509b566218fc27bcf0f9d3954bf1c7e7b83ffb` |
+
+**The run.**
+- The QUAL run first compared the executing object with the freeze record and found no difference. The same
+  comparison after the run found none either, and the checkout stayed clean.
+- The run's stderr held only its timing: 88.3 s.
+- Every trial's home was removed once recorded.
+
+**In CI.**
+- `tests/research/qualification_ecs_c_recovery_q0/test_evidence.py` re-validates the evidence. It binds it to the
+  published freeze record and requires the instrument files in the tree to be the ones the freeze bound. A changed
+  instrument is a new instrument and needs new evidence.
+- `tests/boundary/test_qualification_specs.py` requires this document's status to repeat the recomputed verdict.

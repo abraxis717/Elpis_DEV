@@ -1,0 +1,36 @@
+{
+ "gates": {
+  "G1": {
+   "failures": [],
+   "pass": true
+  },
+  "G2": {
+   "failures": [],
+   "pass": true
+  },
+  "G3": {
+   "failures": [],
+   "pass": true
+  },
+  "G4": {
+   "failures": [],
+   "pass": true
+  },
+  "G5": {
+   "failures": [],
+   "pass": true
+  },
+  "G6": {
+   "failures": [],
+   "pass": true
+  }
+ },
+ "inputs": "qual",
+ "judged": 221,
+ "mechanical": [],
+ "plan": "elpis.ecs-c-recovery-q0.plan.v1",
+ "schema": "elpis.ecs-c-recovery-q0.verdict.v1",
+ "subset": false,
+ "trials": 221,
+ "verdict": "PASS"
+}
