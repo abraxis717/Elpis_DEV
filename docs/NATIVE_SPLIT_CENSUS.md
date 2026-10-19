@@ -328,5 +328,19 @@ restart, checkpoint and authority reconciliation, operator source events, the te
 process closure (no interpreter mapped, fixed descriptors), equality with the Python operator interface, the crash
 matrix, the attack refusals and a fixed file set over long runs (`tests/integration/test_native_host.py`,
 `runtime.native_host_smoke`). RuntimeCore ABI v6 gained two read-only entry points before any release
-(`elpis_runtime_authority_entity_at`, `elpis_runtime_authority_next_entity_id`). Not yet: the Python production path
-and standalone continuity are not retired (F2/F3); the containment launcher still grants the continuity slots.
+(`elpis_runtime_authority_entity_at`, `elpis_runtime_authority_next_entity_id`). The host contains itself after
+admission (`--contained`: Landlock grants writes to exactly the six fixed slots; the launcher's file size limit would
+stop admission's sealed copies). It is installed as `bin/elpis` and `lib/elpis/` (`cmake --install`, `init
+--libraries`), and the Installed system acceptance job runs the full native suite against the installed binaries.
+**F3** the Python deployment, CLI, acceptance and release modules are reclassified as the offline reference interface
+(differential tests, the qualification instruments bound to their commits, research); `docs/OPERATING_ELPIS.md`
+operates the native host.
+
+Stage F conflict, stated rather than worked around:
+
+* **Standalone continuity cannot be retired yet (F2).** Section 9 retires it only after its successor is qualified.
+  The successor's qualification is pre-registered: `docs/qualification/ECS_C_RECOVERY_Q0.md` (NOT RUN). Like K1
+  Recovery R0 v4, it freezes on the accepted source, the merge commit of these stages into `main`. Merging needs the
+  owner's explicit authorization, and its instrument is not written yet. Until both exist, continuity stays: it is the
+  authority the offline Python reference interface publishes to, the backend RuntimeCore's continuity law suite runs
+  over, and K1 Recovery R0 v4's premise P1. The containment launcher keeps granting its slots for that path.

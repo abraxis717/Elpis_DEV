@@ -484,9 +484,11 @@ static int empty_dir(int fd) {
     return empty;
 }
 
-static int copy_library(int lib_fd, const char *build, const host_library *l, host_pin *pin, host_err *e) {
+/* From a build tree (the library at its build path) or an installed library directory (flat: the file name). */
+static int copy_library(int lib_fd, const char *source, int flat, const host_library *l, host_pin *pin, host_err *e) {
     char path[HOST_PATH];
-    if (join(path, build, l->build_path)) return host_fail(e, "DEPLOYMENT_PATH", "the build path is too long");
+    if (join(path, source, flat ? l->file : l->build_path))
+        return host_fail(e, "DEPLOYMENT_PATH", "the library path is too long");
     const int fd = open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
     struct stat st;
     if (fd < 0 || fstat(fd, &st) || !S_ISREG(st.st_mode) || (uint64_t)st.st_size > LIBRARY_LIMIT) {
@@ -513,7 +515,7 @@ static int copy_library(int lib_fd, const char *build, const host_library *l, ho
     return rc;
 }
 
-int host_init(const char *home, const char *build, const char *authority_dir, uint32_t capacity,
+int host_init(const char *home, const char *build, int flat, const char *authority_dir, uint32_t capacity,
               const char *source_commit, host_deployment *d, host_err *e) {
     memset(d, 0, sizeof *d);
     d->home_fd = d->lib_fd = -1;
@@ -521,7 +523,8 @@ int host_init(const char *home, const char *build, const char *authority_dir, ui
     d->testing = 1;
 #endif
     if (check_home(home, 0, e)) return -1;
-    if (!clean_path(build)) return host_fail(e, "DEPLOYMENT_PATH", "the native build must be an absolute path");
+    if (!clean_path(build))
+        return host_fail(e, "DEPLOYMENT_PATH", "the native build or library directory must be an absolute path");
     if (source_commit) {
         if (!lower_hex(source_commit, 40))
             return host_fail(e, "DEPLOYMENT_CONFIG", "source_commit: a 40-character lowercase hex commit id");
@@ -546,7 +549,7 @@ int host_init(const char *home, const char *build, const char *authority_dir, ui
         (d->lib_fd = openat(d->home_fd, "lib", O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)) < 0)
         return host_fail(e, "DEPLOYMENT_PATH", "lib: %s", strerror(errno));
     for (int i = 0; i < HOST_LIBRARIES; ++i)
-        if (copy_library(d->lib_fd, build, &LIBRARIES[i], &d->pins[i], e)) return -1;
+        if (copy_library(d->lib_fd, build, flat, &LIBRARIES[i], &d->pins[i], e)) return -1;
     if (admit(d, e)) return -1; /* verified before anything names it */
     static char text[1 << 16];
     hjw w;

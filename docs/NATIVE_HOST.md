@@ -15,9 +15,21 @@ path is the remaining part of Stage F (see "Holds").
 elpis --home DIR init --native-build BUILD [--capacity N] [--authority-dir DIR] [--source-commit SHA]
 elpis --home DIR create [--dim 6 --width 36 --max-rows 64 --memory-dim 64 --banks 2 --slot-capacity 64
                          --codebook-capacity 128 --seed 0]
-elpis --home DIR <command> [options]
-elpis --home DIR session --script FILE|-
+elpis --home DIR [--contained] <command> [options]
+elpis --home DIR [--contained] session --script FILE|-
 ```
+
+## Installation
+
+`cmake --install BUILD --prefix P --component runtime` installs the host as `P/bin/elpis` and the seven libraries it
+admits, flat, in `P/lib/elpis/`. They are installed without a RUNPATH. `elpis init --libraries P/lib/elpis` pins them
+from there; `init --native-build BUILD` pins them from a build tree at their build paths. Either way the source is
+never used again.
+
+`--component testing` adds `P/bin/elpis_testing` and `P/lib/elpis/libelpis_runtime_testing.so`, for the crash suites
+only. With `ELPIS_NATIVE_HOST_PREFIX=P`, `tests/integration/test_native_host.py` runs against the installed binaries,
+and `native/runtime/host/tests/host_smoke.cmake` takes `-DLIBRARIES=P/lib/elpis`. The Installed system acceptance job
+of CI does both, offline and unprivileged.
 
 ## The home
 
@@ -81,6 +93,31 @@ against (as code inside the process is not). The ECS_C authority defends its own
 can write the state directory but neither read the deployment key nor write the authority directory
 (`docs/ECS_C_AUTHORITY.md`, "Threat model"). The authority directory is `<home>/authority` unless `init
 --authority-dir` names another protected directory.
+
+## Containment
+
+`elpis --home DIR --contained <command>` restricts the host to its deployment's fixed slots. The restriction is the
+policy of `native/runtime/containment/elpis_autonomous_run.c`, applied by the host to itself after admission. Admission
+copies the libraries into memfds, which a file size limit applied earlier would stop.
+
+1. **Before anything is opened.** A writable regular file or directory on a standard descriptor is refused (use a
+   pipe), and every inherited descriptor above them is closed.
+2. **After admission, the grant.** Landlock (ABI v5 or later) grants write access to exactly six files: the two
+   ECS_C records (`R(capacity)` bytes each), the two witnesses (240 bytes each) and the two checkpoint slots (128 +
+   the envelope size). Each is checked to be exactly that: a regular file of that size, one link, owned by the
+   user, private.
+3. **Everything else is refused.** Creating, removing, renaming, linking or truncating any file, writing any other
+   file, and device ioctls are refused.
+4. **Further limits.** `RLIMIT_FSIZE` stops any write past the largest slot. A seccomp filter refuses `chmod`,
+   `chown`, `utime`, extended attributes and `fallocate`. `PR_SET_NO_NEW_PRIVS` is set.
+
+Refused with `CONTAINMENT_REFUSED`: a privileged process (root keeps capabilities that leave the domain, as the
+launcher states), a kernel without Landlock ABI v5, a slot that is not exactly its fixed file, and any restriction that
+cannot be applied. `init` and `create` create files and are never contained (`CLI_INPUT`).
+
+One file size limit covers all six slots, so under containment each slot is bounded by the largest slot's size,
+not by its own: a fixed bound of six times the largest slot. The sizes a correct run writes are checked by the
+fixed-file-set tests. Linux x86-64 only (the seccomp table is reviewed for that architecture).
 
 ## Operations
 
@@ -168,6 +205,7 @@ A harness kills the process at a park or inspects it live.
 | Operation | publication and exact resumption; unpublished work is lost and reported; refusals carry stable codes and change nothing; operator events work directly and through the held runtime; capacity is refused before any write and reclamation frees a row |
 | Durability | SIGKILL at each of the nine durable steps, and every failure plan, resolve exactly as the durability law says; copied-back records and a corrupt newest record need the operator's exact reconciliation |
 | Boundedness | files, sizes and recovery work stay constant over 60 publications and 4 restarts (FAST), and over 1,000 publications and 20 restarts (STRESS) |
+| Containment | a contained session learns, records evidence, publishes and resumes; creating a file, writing the configuration or catalog, and extending a slot past the limit are refused (the same probes succeed uncontained), while the granted slots stay writable; the file set is unchanged. Refused: provisioning under containment, a writable file as stdout, a slot that is not exactly its size, a privileged process |
 
 `runtime.native_host_smoke` (ctest, every native build including the sanitizer and clang jobs) runs init, create, a
 session and a resumption with no interpreter. The suite passes on the Release and ASan+UBSan builds. Eight targeted
@@ -179,8 +217,9 @@ reconciliation digest, refusal translation, the all-or-nothing abort and the lea
 - **Python on the production path.** The Python deployment and CLI still exist, over standalone continuity: Stage F
   continues by retiring them as the production path, and by folding continuity into ECS_C once every consumer passes
   the successor's tests (census sections 5 and 9).
-- **Containment.** `elpis_autonomous_run` still grants the continuity slots; under ECS_C its grant becomes the
-  authority's fixed file set (census section 5).
+- **Containment.** The native host contains itself (`--contained`) with the ECS_C and checkpoint slots as its grant.
+  `elpis_autonomous_run` still grants the continuity slots, for the continuity-backed Python path, and retires with
+  it (census section 5).
 - **Release.** No installed release bundle exists for the native host yet (`ELPIS_SYSTEM.json`
   `identity.release_authority = NONE_DEFERRED`).
 

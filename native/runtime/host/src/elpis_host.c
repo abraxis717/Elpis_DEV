@@ -19,7 +19,10 @@
 #endif
 #include <errno.h>
 #include <math.h>
+#include <fcntl.h>
 #include <poll.h>
+#include <signal.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +30,7 @@
 #include <unistd.h>
 
 #include "elpis/sha256.h"
+#include "host_contain.h"
 #include "host_deploy.h"
 #include "host_json.h"
 
@@ -147,6 +151,8 @@ static int lineage(host *h, host_err *e) {
     if (rc) return host_fail(e, rt_code(h, rc), "the recovery disposition could not be read");
     h->recovered = 1;
     if (h->recovery.disposition != ELPIS_RUNTIME_RECOVERY_RESUMABLE) return 0;
+    if (h->recovery.envelope_bytes != h->d.envelope_bytes)
+        return host_fail(e, "LINEAGE_MISMATCH", "the authorized envelope is not the lineage's size");
     const elpis_ecs_composite_config cfg = host_composite_config(&h->d, &h->d.lineage);
     const int r = a->elpis_ecs_composite_restore(&cfg, h->envelope, h->recovery.envelope_bytes, &h->x);
     if (r) return host_fail(e, "LINEAGE_MISMATCH", "the authorized envelope does not restore: %s", composite_code(h, r));
@@ -955,9 +961,13 @@ static int op_publish(host *h, const hj_value *op, hjw *w, host_err *e) {
         if (rc && rc != ELPIS_RUNTIME_DURABLE_PENDING)
             return host_fail(e, rt_code(h, rc), "the publication's outcome could not be read");
     }
+    /* The acknowledgment law, re-checked: recoverable exactly when ACKNOWLEDGED, and only a recoverable request's. */
+    const int acknowledged = t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED;
+    if ((t.recoverable != 0) != acknowledged || (acknowledged && t.kind != ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE))
+        return host_fail(e, "RUNTIME_INVALID", "the durable ticket violates the acknowledgment law");
     ticket_out(h, w, "ticket", &t);
     durable_out(h, w);
-    if (t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED || t.status == ELPIS_RUNTIME_DURABLE_REQUESTED) return 0;
+    if (acknowledged || t.status == ELPIS_RUNTIME_DURABLE_REQUESTED) return 0;
     e->keep = 1; /* the ticket says what happened */
     return host_fail(e, t.status == ELPIS_RUNTIME_DURABLE_UNCERTAIN ? "DURABLE_UNCERTAIN"
                         : t.status == ELPIS_RUNTIME_DURABLE_SUPERSEDED ? "DURABLE_SUPERSEDED"
@@ -1480,6 +1490,39 @@ static int op_testing_pause(host *h, const hj_value *op, hjw *w, host_err *e) {
     return 0;
 }
 
+/* What a write would do here (under --contained: what the containment allows): "create" a new file, "write" an
+ * existing one, or "extend" one past `offset`. Reports the errno (0: it happened). */
+static int op_testing_write_probe(host *h, const hj_value *op, hjw *w, host_err *e) {
+    (void)h;
+    const char *path = str_member(op, "path"), *kind = str_member(op, "kind");
+    uint64_t offset;
+    if (!path || path[0] != '/' || !kind || u64_member(op, "offset", INT64_MAX, 0, &offset, e))
+        return input(e, "%s: an absolute path, a kind (create, write, extend) and an offset", "testing_write_probe");
+    signal(SIGXFSZ, SIG_IGN); /* past the file size limit a write fails EFBIG instead of killing the process */
+    errno = 0;
+    int rc;
+    if (!strcmp(kind, "create")) {
+        const int fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
+        rc = fd < 0 ? errno : 0;
+        if (fd >= 0) close(fd), unlink(path);
+    } else if (!strcmp(kind, "write") || !strcmp(kind, "extend")) {
+        const int fd = open(path, O_WRONLY | O_CLOEXEC);
+        rc = fd < 0 ? errno : 0;
+        if (fd >= 0) {
+            /* "write" rewrites the first byte with itself; "extend" writes one byte at `offset`. */
+            const off_t at = !strcmp(kind, "extend") ? (off_t)offset : 0;
+            char byte = 0;
+            if (at == 0 && pread(fd, &byte, 1, 0) != 1) byte = 0;
+            rc = pwrite(fd, &byte, 1, at) == 1 ? 0 : errno;
+            close(fd);
+        }
+    } else {
+        return input(e, "%s: kind is create, write or extend", "testing_write_probe");
+    }
+    hjw_ki64(w, "errno", rc);
+    return 0;
+}
+
 /* Process death at an operation boundary: no close, no destructor, nothing flushed but what was printed. */
 static int op_testing_exit(host *h, const hj_value *op, hjw *w, host_err *e) {
     (void)h, (void)op, (void)w, (void)e;
@@ -1518,6 +1561,7 @@ static const struct {
     {"testing_control_fault", op_testing_control_fault},
     {"testing_wait_parked", op_testing_wait_parked},
     {"testing_pause", op_testing_pause},
+    {"testing_write_probe", op_testing_write_probe},
     {"testing_exit", op_testing_exit},
 #endif
 };
@@ -1698,12 +1742,12 @@ static const command_spec COMMANDS[] = {
 };
 
 static void usage(void) {
-    fprintf(stderr, "usage: elpis --home DIR init --native-build BUILD [--capacity N] [--authority-dir DIR] "
-                    "[--source-commit SHA]\n"
+    fprintf(stderr, "usage: elpis --home DIR init (--native-build BUILD | --libraries DIR) [--capacity N] "
+                    "[--authority-dir DIR] [--source-commit SHA]\n"
                     "       elpis --home DIR create [--dim N --width N --max-rows N --memory-dim N --banks N "
                     "--slot-capacity N --codebook-capacity N --seed N]\n"
-                    "       elpis --home DIR session --script FILE|-\n"
-                    "       elpis --home DIR <command> [options]   (docs/NATIVE_HOST.md lists every command)\n");
+                    "       elpis --home DIR [--contained] session --script FILE|-\n"
+                    "       elpis --home DIR [--contained] <command> [options]   (docs/NATIVE_HOST.md)\n");
 }
 
 /* Build the operation object of a one-shot command (members parsed one argument at a time, never concatenated). */
@@ -1855,20 +1899,22 @@ static int cmd_create(host *h, int argc, char **argv) {
 }
 
 static int cmd_init(int argc, char **argv, const char *home) {
-    const char *build = NULL, *authority = NULL, *commit = NULL;
+    const char *build = NULL, *libraries = NULL, *authority = NULL, *commit = NULL;
     uint64_t capacity = 16;
     for (int i = 0; i < argc; i += 2) {
         if (i + 1 >= argc) return emit_failure("init", "CLI_INPUT", "every init option takes a value"), 2;
         if (!strcmp(argv[i], "--native-build")) build = argv[i + 1];
+        else if (!strcmp(argv[i], "--libraries")) libraries = argv[i + 1];
         else if (!strcmp(argv[i], "--authority-dir")) authority = argv[i + 1];
         else if (!strcmp(argv[i], "--source-commit")) commit = argv[i + 1];
         else if (!strcmp(argv[i], "--capacity") && !parse_u64_arg(argv[i + 1], &capacity) && capacity <= UINT32_MAX) continue;
         else return emit_failure("init", "CLI_INPUT", "init: unknown or malformed option"), 2;
     }
-    if (!build) return emit_failure("init", "CLI_INPUT", "init needs --native-build"), 2;
+    if (!build == !libraries)
+        return emit_failure("init", "CLI_INPUT", "init needs exactly one of --native-build or --libraries"), 2;
     static host_deployment d;
     host_err e = {{0}, {0}, 0};
-    if (host_init(home, build, authority, (uint32_t)capacity, commit, &d, &e)) {
+    if (host_init(home, build ? build : libraries, !build, authority, (uint32_t)capacity, commit, &d, &e)) {
         emit_failure("init", e.code, e.detail);
         return 4;
     }
@@ -1900,7 +1946,18 @@ static int cmd_init(int argc, char **argv, const char *home) {
 
 int main(int argc, char **argv) {
     if (argc < 4 || strcmp(argv[1], "--home")) return usage(), 2;
-    const char *home = argv[2], *command = argv[3];
+    const char *home = argv[2];
+    /* --contained: the host restricts itself after admission (docs/NATIVE_HOST.md, "Containment"). */
+    const int contained = !strcmp(argv[3], "--contained");
+    if (contained) {
+        argv += 1, argc -= 1;
+        if (argc < 4) return usage(), 2;
+        host_err ce = {{0}, {0}, 0};
+        if (host_contain_stdio(&ce)) return emit_failure(argv[3], ce.code, ce.detail), 4;
+    }
+    const char *command = argv[3];
+    if (contained && (!strcmp(command, "init") || !strcmp(command, "create")))
+        return emit_failure(command, "CLI_INPUT", "provisioning creates files: init and create are never contained"), 2;
     if (!strcmp(command, "init")) return cmd_init(argc - 4, argv + 4, home);
     /* Validate the command line before the deployment is touched. */
     const command_spec *spec = NULL;
@@ -1936,7 +1993,7 @@ int main(int argc, char **argv) {
     }
     static host h;
     host_err e = {{0}, {0}, 0};
-    if (host_open(home, &h.d, &e)) {
+    if (host_open(home, &h.d, &e) || (contained && host_contain(&h.d, &e))) {
         free(script);
         return emit_failure(spec ? spec->op : command, e.code, e.detail), 4;
     }

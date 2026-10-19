@@ -140,7 +140,7 @@ def _native_sources():
 _WRITES = re.compile(r"\b(pwrite|pwritev|renameat2?|rename|fsync|fdatasync|mkdirat|mkdir|unlinkat|unlink|ftruncate|"
                      r"creat)\s*\(|O_CREAT|O_WRONLY|O_RDWR")
 # Sources that name write flags only to refuse them.
-_REFUSES_WRITES = {"native/runtime/containment/elpis_autonomous_run.c"}
+_REFUSES_WRITES = {"native/runtime/containment/elpis_autonomous_run.c", "native/runtime/host/src/host_contain.c"}
 # The bridges Python loads (elpis.structure.retrieval.hacf, elpis.pipeline.ingress): the native surface every
 # ordinary retrieval and ingress operation reaches.
 _LOADED_BRIDGES = ("native/structure/bridge/retrieval_bridge.c", "native/pipeline/ingress/bridge/ingress_bridge.c")

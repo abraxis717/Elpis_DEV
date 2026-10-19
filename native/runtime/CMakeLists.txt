@@ -122,7 +122,8 @@ add_dependencies(test_runtime_hot_io elpis_runtime_testing elpis_ecs_c_authority
 # It links no Elpis library: each one is admitted at run time from the deployment's pinned lib/ directory (sealed
 # copy, SHA-256 against the catalog, dlopen of the seal), so the headers here give types only. Its own closure is the
 # C library and the static SHA-256.
-set(_host_sources host/src/elpis_host.c host/src/host_deploy.c host/src/host_admit.c host/src/host_json.c)
+set(_host_sources host/src/elpis_host.c host/src/host_deploy.c host/src/host_admit.c host/src/host_json.c
+    host/src/host_contain.c)
 set(_host_includes "${_crate}/include" "${_continuity}/include" "${_ecs_c}/include"
     "${CMAKE_SOURCE_DIR}/native/runtime/composite/include" "${CMAKE_SOURCE_DIR}/native/runtime/observation/include"
     "${CMAKE_SOURCE_DIR}/native/ECS_C/memory/include" "${CMAKE_SOURCE_DIR}/native/ECS_G/include"
@@ -191,3 +192,15 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     TIMEOUT 30)
   target_compile_definitions(test_autonomous_containment PRIVATE _GNU_SOURCE=1)
 endif()
+
+# The installed product (docs/NATIVE_HOST.md, "Installation"): the host in bin/ and the seven libraries it admits in
+# lib/elpis/, flat (`elpis init --libraries <prefix>/lib/elpis` pins them from there). The testing component adds the
+# testing host and the testing RuntimeCore build, for the acceptance's crash suites only.
+install(TARGETS elpis_host RUNTIME DESTINATION bin COMPONENT runtime)
+install(TARGETS elpis_ecsg_math elpis_ecsg_k1 elpis_ecs_memory elpis_ecs_composite elpis_hacf_observation
+        LIBRARY DESTINATION lib/elpis COMPONENT runtime)
+install(FILES "${_prod}" "${_ecs_c_lib}" DESTINATION lib/elpis COMPONENT runtime
+        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+install(TARGETS elpis_host_testing RUNTIME DESTINATION bin COMPONENT testing)
+install(FILES "${_testing}" DESTINATION lib/elpis COMPONENT testing
+        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)

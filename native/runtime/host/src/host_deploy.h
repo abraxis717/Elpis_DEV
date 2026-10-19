@@ -70,7 +70,8 @@ enum { LIB_MATH, LIB_K1, LIB_MEMORY, LIB_COMPOSITE, LIB_HACF, LIB_ECS_C, LIB_RUN
     X(elpis_ecs_obs_hacf_observation) X(elpis_ecs_obs_hacf_hyperedge)
 
 #define HOST_ECS_C_FUNCTIONS(X)                                                                                    \
-    X(elpis_ecs_c_abi_version) X(elpis_ecs_c_code_name) X(elpis_ecs_c_provision) X(elpis_ecs_c_open)              \
+    X(elpis_ecs_c_abi_version) X(elpis_ecs_c_code_name) X(elpis_ecs_c_record_bytes) X(elpis_ecs_c_provision)    \
+    X(elpis_ecs_c_open)                                                                                            \
     X(elpis_ecs_c_close) X(elpis_ecs_c_read_status) X(elpis_ecs_c_read_report) X(elpis_ecs_c_read_reconciliation) \
     X(elpis_ecs_c_entity_at) X(elpis_ecs_c_next_entity_id) X(elpis_ecs_c_transition)
 
@@ -124,9 +125,10 @@ typedef struct {
 } host_library;
 const host_library *host_libraries(void);
 
-/* init: a new deployment at `home` from the libraries of the operator build `build` (both absolute). `authority_dir`
- * NULL: <home>/authority. `source_commit` NULL or 40 lowercase hex. On success `d` is open (as host_open). */
-int host_init(const char *home, const char *build, const char *authority_dir, uint32_t capacity,
+/* init: a new deployment at `home` from the libraries of the operator build tree `build`, or (`flat`) of an installed
+ * library directory holding them by file name (both absolute). `authority_dir` NULL: <home>/authority.
+ * `source_commit` NULL or 40 lowercase hex. On success `d` is open (as host_open). */
+int host_init(const char *home, const char *build, int flat, const char *authority_dir, uint32_t capacity,
               const char *source_commit, host_deployment *d, host_err *e);
 /* Open an existing deployment: configuration, pins (host binary, catalog, every library), admission, lineage. */
 int host_open(const char *home, host_deployment *d, host_err *e);

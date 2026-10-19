@@ -20,6 +20,7 @@ Mechanics only: the stimuli and the evidence are fixtures; nothing here is a sci
 """
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import os
@@ -29,6 +30,7 @@ import signal
 import stat
 import subprocess
 import sys
+import tempfile
 
 import pytest
 
@@ -36,8 +38,12 @@ from ..conftest import native_build_dir
 
 REPO = Path(__file__).resolve().parents[2]
 BUILD = native_build_dir()
-HOST = BUILD / "native" / "runtime" / "elpis"
-HOST_TESTING = BUILD / "native" / "runtime" / "elpis_testing"
+# An installed product (docs/NATIVE_HOST.md, "Installation"): the host in <prefix>/bin, the libraries flat in
+# <prefix>/lib/elpis, provisioned with `init --libraries`. Otherwise the build tree.
+PREFIX = Path(os.environ["ELPIS_NATIVE_HOST_PREFIX"]) if os.environ.get("ELPIS_NATIVE_HOST_PREFIX") else None
+LIBDIR = PREFIX / "lib" / "elpis" if PREFIX else None
+HOST = PREFIX / "bin" / "elpis" if PREFIX else BUILD / "native" / "runtime" / "elpis"
+HOST_TESTING = PREFIX / "bin" / "elpis_testing" if PREFIX else BUILD / "native" / "runtime" / "elpis_testing"
 _LIBS = ("native/ECS_G/libelpis_ecsg_math.so", "native/ECS_G/libelpis_ecsg_k1.so", "native/ECS_C/libelpis_ecs_memory.so",
          "native/runtime/composite/libelpis_ecs_composite.so", "native/runtime/libelpis_hacf_observation.so",
          "native/ECS_C/authority/libelpis_ecs_c_authority.so", "native/runtime/libelpis_runtime.so",
@@ -122,19 +128,28 @@ class Live:
         return self.proc.wait(timeout=300), self.out
 
 
-def _staging(tmp_path):
-    root = tmp_path / "build-copy"
+def _staged(root, rel):
+    """Where library `rel` (a build-tree path) sits in a staged copy: flat for an installed product."""
+    return root / (Path(rel).name if LIBDIR else rel)
+
+
+def _staging(tmp_path, name="build-copy"):
+    root = tmp_path / name
     for rel in _LIBS:
-        (root / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(BUILD / rel, root / rel)
+        _staged(root, rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(LIBDIR / Path(rel).name if LIBDIR else BUILD / rel, _staged(root, rel))
     return root
+
+
+def _init_args(staging):
+    return ["--libraries" if LIBDIR else "--native-build", str(staging)]
 
 
 def deploy(tmp_path, *, testing=False, capacity=None, create=True, name="home"):
     staging = _staging(tmp_path)
     home = tmp_path / name
     extra = ["--capacity", str(capacity)] if capacity else []
-    rc, out = host(home, "init", "--native-build", str(staging), *extra, testing=testing)
+    rc, out = host(home, "init", *_init_args(staging), *extra, testing=testing)
     assert rc == 0 and out[0]["ok"], out
     shutil.rmtree(staging)                                    # never used again
     if not create:
@@ -230,9 +245,9 @@ def test_a_live_host_maps_no_interpreter_and_its_descriptors_never_grow(tmp_path
 
 def test_init_pins_the_libraries_and_the_host_and_the_build_tree_is_never_used_again(tmp_path):
     staging = _staging(tmp_path)
-    expected = {Path(rel).name: hashlib.sha256((staging / rel).read_bytes()).hexdigest() for rel in _LIBS}
+    expected = {Path(rel).name: hashlib.sha256(_staged(staging, rel).read_bytes()).hexdigest() for rel in _LIBS}
     home = tmp_path / "home"
-    rc, out = host(home, "init", "--native-build", str(staging))
+    rc, out = host(home, "init", *_init_args(staging))
     assert rc == 0, out
     shutil.rmtree(staging)
     pins = out[0]["libraries"]
@@ -254,12 +269,12 @@ def test_a_library_naming_an_unadmitted_dependency_is_refused_before_it_loads(tm
     # A pinned library is still checked: one whose dynamic section names a library that is neither admitted before
     # it nor part of the platform is refused at init, before the loader could resolve that name anywhere.
     staging = _staging(tmp_path)
-    lib = staging / "native/runtime/libelpis_hacf_observation.so"
+    lib = _staged(staging, "native/runtime/libelpis_hacf_observation.so")
     data = lib.read_bytes()
     needed = [n for n in _dynamic(lib)[0]]
     assert "libc.so.6" in needed and data.count(b"\0libc.so.6\0") == 1, needed
     lib.write_bytes(data.replace(b"\0libc.so.6\0", b"\0libX.so.6\0"))
-    rc, out = host(tmp_path / "home", "init", "--native-build", str(staging))
+    rc, out = host(tmp_path / "home", "init", *_init_args(staging))
     assert (rc, out[0]["code"]) == (4, "DEPLOYMENT_PIN"), out
     assert "libelpis_hacf_observation.so depends on libX.so.6" in out[0]["detail"]
     assert not (tmp_path / "home" / "host.cfg").exists()     # nothing was published
@@ -396,6 +411,7 @@ def test_a_session_publishes_and_a_new_process_resumes_it_exactly(tmp_path):
     assert live["durable"]["identity"] == initial != live["live"]["identity"]
     assert published["ticket"]["acknowledged"] and published["durable"]["identity"] == live["live"]["identity"]
     assert status["recovery"]["disposition"] == "RESUMABLE" and status["fault"] is None
+    assert status["footprint"]["capabilities"] == 0           # no memory capability is ever set (LEARN unqualified)
     assert authority["authority"]["evidence_count"] == 1      # the publication recorded the evidence summary
     assert [e["kind"] for e in authority["entities"]] == ["OPERATOR", "RUNTIME", "SOURCE"]
     key = recorded["entries"][0]["relation_key"]
@@ -686,3 +702,106 @@ def test_the_home_is_a_fixed_file_set_over_many_publications_and_restarts(tmp_pa
 def test_long_runs_keep_the_home_fixed(tmp_path):
     # STRESS lane (tests/lanes.py): 1,000 publications over 20 restarts.
     _bounded(tmp_path, rounds=20, turns=50)
+
+
+# ---- containment ------------------------------------------------------------------------------------------------
+
+# A contained host refuses a privileged process (as elpis_autonomous_run does): as root, these tests run the host as
+# an unprivileged user (uid 65534) over a deployment that user owns.
+UNPRIVILEGED = ["setpriv", "--reuid=65534", "--regid=65534", "--clear-groups", "--"] if os.geteuid() == 0 else []
+
+
+@pytest.fixture
+def user_dir(tmp_path):
+    if not UNPRIVILEGED:
+        yield tmp_path
+        return
+    root = Path(tempfile.mkdtemp(prefix="elpis-contained-"))
+    os.chown(root, 65534, 65534)
+    try:
+        yield root
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def host_as(home, *args, script=None, testing=False, contained=False, stdout=subprocess.PIPE):
+    """As `host`, as the deployment's (unprivileged) owner, optionally contained."""
+    cmd = UNPRIVILEGED + [str(HOST_TESTING if testing else HOST), "--home", str(home)] + \
+        (["--contained"] if contained else []) + list(args)
+    text = None
+    if script is not None:
+        cmd += ["session", "--script", "-"]
+        text = "\n".join(json.dumps(op) for op in script) + "\n"
+    run = subprocess.run(cmd, input=text, stdout=stdout, stderr=subprocess.PIPE, text=True, env=ENV, cwd="/",
+                         timeout=300)
+    assert run.stderr == "", run.stderr
+    lines = run.stdout.splitlines() if stdout is subprocess.PIPE else []
+    return run.returncode, [json.loads(line) for line in lines if line.strip()]
+
+
+def deploy_as(root, *, testing=True):
+    staging = _staging(root, "build")
+    if UNPRIVILEGED:
+        for p in [staging, *staging.rglob("*")]:
+            os.chown(p, 65534, 65534)
+    home = root / "home"
+    rc, out = host_as(home, "init", *_init_args(staging), testing=testing)
+    assert rc == 0, out
+    rc, out = host_as(home, "create", "--seed", "7", testing=testing)
+    assert rc == 0, out
+    shutil.rmtree(staging)
+    return home, out[0]["identity"]
+
+
+def probe(path, kind, offset=0):
+    return {"op": "testing_write_probe", "path": str(path), "kind": kind, "offset": offset}
+
+
+def test_a_contained_host_operates_and_writes_only_its_fixed_slots(user_dir):
+    home, initial = deploy_as(user_dir)
+    before = files(home)
+    slots = [f for f in before if f.startswith(("home/state/", "home/checkpoint/", "home/authority/witness"))]
+    assert len(slots) == 6
+    largest = max(before[f] for f in slots)
+    # Uncontained, the same probes create a file and write the configuration: containment is what refuses them.
+    rc, out = host_as(home, script=[probe(home / "new-file", "create"), probe(home / "host.cfg", "write")],
+                      testing=True)
+    assert [o["errno"] for o in out] == [0, 0]
+    rc, out = host_as(home, script=[
+        SOURCE, LEARN, evidence(1), {"op": "publish"}, LOOKUP,
+        probe(home / "new-file", "create"), probe(home / "state" / "authority.c", "create"),
+        probe(home / "host.cfg", "write"), probe(home / "catalog", "write"),
+        probe(home / "state" / "authority.a", "write"),                      # a granted slot, rewritten in place
+        probe(home / "checkpoint" / "k1-checkpoint.a", "extend", largest),   # past every fixed slot
+        {"op": "status"}], testing=True, contained=True)
+    assert rc == 0 and all(o["ok"] for o in out), out
+    published = out[3]["durable"]["identity"]
+    assert out[4]["answer"] == node("engineer") and published != initial
+    assert [o["errno"] for o in out if o["op"] == "testing_write_probe"] == \
+        [errno.EACCES, errno.EACCES, errno.EACCES, errno.EACCES, 0, errno.EFBIG]
+    assert files(home) == before                               # nothing created, removed or resized
+    # A new contained process resumes exactly the published state.
+    rc, again = host_as(home, script=[{"op": "live"}, LOOKUP], testing=True, contained=True)
+    assert rc == 0 and again[0]["live"]["identity"] == again[0]["durable"]["identity"] == published
+    assert again[1]["answer"] == node("engineer")
+
+
+def test_containment_refuses_what_it_cannot_contain(user_dir, tmp_path):
+    home, _ = deploy_as(user_dir)
+    rc, out = host_as(home, "create", contained=True, testing=True)
+    assert (rc, out[0]["code"]) == (2, "CLI_INPUT")            # provisioning is never contained
+    sink = user_dir / "out.json"
+    with open(sink, "w") as f:
+        if UNPRIVILEGED:
+            os.chown(sink, 65534, 65534)
+        rc, _ = host_as(home, "status", contained=True, testing=True, stdout=f)
+    assert rc == 4 and json.loads(sink.read_text())["code"] == "CONTAINMENT_REFUSED"   # a writable file as stdout
+    slot = home / "checkpoint" / "k1-checkpoint.b"
+    with open(slot, "ab") as f:                                # a slot that is not exactly its fixed file
+        f.write(b"\0")
+    rc, out = host_as(home, "status", contained=True, testing=True)
+    assert (rc, out[0]["code"]) == (4, "CONTAINMENT_REFUSED") and "k1-checkpoint.b" in out[0]["detail"]
+    if os.geteuid() == 0:                                      # a privileged process is never contained
+        root_home, _ = deploy(tmp_path)
+        rc, out = host(root_home, "--contained", "status")
+        assert (rc, out[0]["code"]) == (4, "CONTAINMENT_REFUSED")

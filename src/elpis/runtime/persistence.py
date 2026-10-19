@@ -195,6 +195,13 @@ WRITERS: tuple[PersistentWriter, ...] = (
         "Deterministic synthetic fixtures written into a caller-supplied provider root; not reachable from "
         "the runtime."),
     PersistentWriter(
+        "native_host_testing_write_probe", R, (),
+        ("native/runtime/host/src/elpis_host.c:op_testing_write_probe",),
+        "The testing host's containment probe (compiled only with ELPIS_HOST_TESTING, run only over a testing "
+        "deployment): one attempted file creation removed at once, an in-place rewrite of one byte with itself, or "
+        "one byte past a slot's end, each at a path the test names, to show what containment refuses. Test support; "
+        "never in the production host."),
+    PersistentWriter(
         "research_laboratories", R, (), (),
         "Write-once laboratory evidence under research/; never imported by src/."),
     PersistentWriter(

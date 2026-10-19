@@ -2,7 +2,7 @@
 # included): init from this build tree, create, a session that founds a source, learns, records typed evidence and
 # publishes; a new process resumes exactly the published state; the text interface is refused. No interpreter is
 # involved. The full suite is tests/integration/test_native_host.py.
-#   cmake -DHOST=<elpis> -DBUILD=<build tree> -DSCRATCH=<dir> -P host_smoke.cmake
+#   cmake -DHOST=<elpis> (-DBUILD=<build tree> | -DLIBRARIES=<installed lib/elpis>) -DSCRATCH=<dir> -P host_smoke.cmake
 file(REMOVE_RECURSE "${SCRATCH}")
 file(MAKE_DIRECTORY "${SCRATCH}")
 set(HOME "${SCRATCH}/home")
@@ -30,7 +30,11 @@ function(expect_equal what a b)
   endif()
 endfunction()
 
-host(0 init init --native-build "${BUILD}")
+if(DEFINED LIBRARIES)
+  host(0 init init --libraries "${LIBRARIES}")      # an installed product
+else()
+  host(0 init init --native-build "${BUILD}")
+endif()
 host(0 created create --seed 7)
 field("${created}" initial identity)
 

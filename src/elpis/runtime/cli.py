@@ -1,4 +1,9 @@
-"""The Elpis operator interface: ``python -m elpis.runtime.cli --home DIR <command>``.
+"""The offline reference operator interface: ``python -m elpis.runtime.cli --home DIR <command>``.
+
+Not the production path. The production entry point is the native operator host ``elpis`` (docs/NATIVE_HOST.md),
+which runs no interpreter. This interface operates the same composite lineage over the standalone continuity backend
+and exists for differential tests (the native host must answer exactly as it does), the qualification instruments bound
+to their own commits, and research (docs/OPERATING_ELPIS.md, "The offline reference interface").
 
 One deployment (``elpis.runtime.deployment``) holds one ECS composite lineage. Every command prints JSON (one object
 per operation) and exits 0 only when every operation succeeded or was refused exactly as its script expected:
