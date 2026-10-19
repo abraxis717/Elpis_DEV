@@ -301,10 +301,10 @@ jobs:
           tests/boundary/test_mission.py
 
   continuity:
-    # The Rust systems core: the continuity authority (native/continuity), its ECS_C successor
-    # (native/ECS_C/authority) and RuntimeCore (native/runtime): format, lint and their bounded deterministic suites.
-    # Every native job also builds them through CMake and runs `ctest -L continuity`, `ctest -L ECS_C` and
-    # `ctest -L runtime` (RuntimeCore's C ABI over real native K1).
+    # The Rust systems core: the ECS_C authority (native/ECS_C/authority), into which standalone continuity retired,
+    # and RuntimeCore (native/runtime, ABI v7: the ECS_C authority is its only durable authority): format, lint and
+    # their bounded deterministic suites. Every native job also builds them through CMake and runs `ctest -L ECS_C` and
+    # `ctest -L runtime` (RuntimeCore's C ABI over real native K1). The job keeps its id and name (a required check).
     name: Continuity and RuntimeCore (Rust)
     runs-on: ubuntu-latest
     steps:
@@ -313,30 +313,20 @@ jobs:
         run: |
           rustup component add rustfmt clippy
           cargo --version && rustc --version
-      - name: Format, lint and test (no crates; bounded)
-        working-directory: native/continuity
-        run: |
-          cargo fmt --check
-          timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
-          timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
-          timeout 600 cargo test --offline --locked --release
-      - name: RuntimeCore format, lint and test (embeds continuity and the ECS_C authority; bounded)
+      - name: RuntimeCore format, lint and test (embeds the ECS_C authority; bounded)
         working-directory: native/runtime
         run: |
           cargo fmt --check
           timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
           timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
           timeout 600 cargo test --offline --locked --release --features testing
-          # ABI v6: the same law suite over the ECS_C authority. One test is excluded by name, the continuity HOT-lane
-          # I/O constants pinned by the K1 Recovery R0 v4 premise; its ECS_C counterpart runs in both passes.
-          ELPIS_RUNTIME_TEST_AUTHORITY=ecs_c timeout 600 cargo test --offline --locked --release --features testing -- \
-            --skip recovery::crashes::the_hot_lane_performs_no_continuity_or_checkpoint_io
-      - name: ECS_C authority format, lint and test (embeds the continuity crate; bounded)
+      - name: ECS_C authority format, lint and test (no dependencies; bounded)
         working-directory: native/ECS_C/authority
         run: |
           cargo fmt --check
           timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
           timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
+          timeout 600 cargo clippy --offline --locked --release --all-targets --no-default-features -- -D warnings
           timeout 900 cargo test --offline --locked --release
       - name: H-ECS R0 research crate format and lint (its tests run under ctest -L hecs in the native jobs)
         working-directory: research/hecs_r0/rust

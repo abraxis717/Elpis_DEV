@@ -56,7 +56,8 @@ and no mechanical failure. What is qualified, and only that:
   - An accepted rollback of two or more publications leaves no checkpoint slot holding the accepted identity
     (`CHECKPOINT_MISSING`), so cognition stays refused.
   - That outcome is what this run qualifies. The re-authorization proposed for it (docs/NATIVE_SPLIT_CENSUS.md, "Stage
-    F conflict": K1 Recovery R1 / RuntimeCore ABI v7) is neither implemented nor qualified.
+    F conflict": K1 Recovery R1, now numbered RuntimeCore ABI v8 because v7 retired standalone continuity) is neither
+    implemented nor qualified.
 
 ## The accepted source and the instrument
 

@@ -168,41 +168,38 @@ def test_the_instrument_measure_covers_every_file_including_the_freeze_producer(
     assert "extra.py" in freeze.instrument(tmp_path / "repo")["files"]
 
 
-@pytest.fixture(scope="module")
-def trial(tmp_path_factory, observed):
-    root = tmp_path_factory.mktemp("trial")
-    return freeze.trial_deployment(native_build_dir(), root / "deployment")
+# The deployment the frozen run measured at the qualifying commit (its sealed freeze record).
+SEALED_FREEZE = json.loads((INSTRUMENT / "evidence" / "freeze.json").read_text())
 
 
-def test_the_deployed_copies_their_pins_and_the_reported_abi_are_verified(tmp_path, observed, trial):
-    # The qualified subject is RuntimeCore ABI v5 (the qualifying commit). This checkout's runtime is ABI v6 (Stage D,
-    # docs/NATIVE_SPLIT_CENSUS.md): the frozen instrument refuses its deployment, with exactly the ABI finding, so the
-    # RUN PASS can never be re-derived from, or extended to, the successor runtime.
-    frozen = dict(_as_freeze(observed), deployed=trial)
-    assert trial["reported_abi"]["runtime"] == 6 and trial["deployment_abi"] == {"runtime": 6, "composite": 1}
-    assert freeze.compare_deployed(frozen, copy.deepcopy(trial)) == [
-        f"the deployment is not RuntimeCore ABI v5 (composite ABI 1): {trial['deployment_abi']}, "
-        f"reported {trial['reported_abi']}"]
-    # The same copies and pins reporting ABI v5, as at the qualifying commit, are accepted: the ABI check is the only
-    # refusal, and every check below still binds.
-    v5 = dict(copy.deepcopy(trial), deployment_abi={"runtime": 5, "composite": 1},
-              reported_abi=dict(trial["reported_abi"], runtime=5))
-    frozen = dict(_as_freeze(observed), deployed=v5)
-    assert freeze.compare_deployed(frozen, copy.deepcopy(v5)) == []
-    trial = v5
-    # A swapped deployment library: another (valid, admissible) library under the testing runtime's name.
-    staged = tmp_path / "staged"
-    for rel in observed["native"]:
-        (staged / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(native_build_dir() / rel, staged / rel)
-    shutil.copyfile(native_build_dir() / "native/runtime/libelpis_runtime.so",
-                    staged / "native/runtime/libelpis_runtime_testing.so")
-    swapped = freeze.trial_deployment(staged, tmp_path / "swapped")
+def test_the_successor_runtime_cannot_be_deployed_by_the_frozen_instrument(tmp_path, observed):
+    # The qualified subject is RuntimeCore ABI v5 over standalone continuity (the qualifying commit). This checkout's
+    # RuntimeCore is ABI v7 (Stage F, docs/NATIVE_SPLIT_CENSUS.md, section 9): continuity retired into ECS_C, and the
+    # runtime no longer carries continuity's C ABI. The frozen instrument cannot even measure a deployment of it, so
+    # no freeze of this checkout can exist: the RUN PASS can never be re-derived from, or extended to, the successor.
+    with pytest.raises(AttributeError, match="elpis_continuity_abi_version"):
+        freeze.trial_deployment(native_build_dir(), tmp_path / "deployment")
+
+
+def test_the_deployed_copies_their_pins_and_the_reported_abi_are_verified():
+    # Over the deployment the qualifying run measured: the same copies, pins and ABI are accepted, and every check
+    # still binds (the successor's own deployment cannot be measured at all: see above).
+    frozen = copy.deepcopy(SEALED_FREEZE)
+    trial = copy.deepcopy(frozen["deployed"])
+    assert trial["deployment_abi"] == {"runtime": 5, "composite": 1} and trial["reported_abi"]["runtime"] == 5
+    assert freeze.compare_deployed(frozen, copy.deepcopy(trial)) == []
+    # A swapped deployment library: other bytes under the testing runtime's name.
+    swapped = dict(copy.deepcopy(trial), lib=dict(trial["lib"], **{"libelpis_runtime_testing.so": "0" * 64}))
     assert any("home/lib" in p for p in freeze.compare_deployed(frozen, swapped))
     for key, value in (("catalog_sha256", "0" * 64), ("deployment_abi", {"runtime": 4, "composite": 1}),
                        ("reported_abi", dict(trial["reported_abi"], runtime=4))):
         stale = dict(copy.deepcopy(trial), **{key: value})
         assert any(f"deployed.{key}" in p for p in freeze.compare_deployed(frozen, stale)), key
+    # A runtime of another ABI (the successor's, v7) is refused by name, whatever else matches.
+    v7 = dict(copy.deepcopy(trial), deployment_abi={"runtime": 7, "composite": 1},
+              reported_abi=dict(trial["reported_abi"], runtime=7))
+    assert f"the deployment is not RuntimeCore ABI v5 (composite ABI 1): {v7['deployment_abi']}, " \
+           f"reported {v7['reported_abi']}" in freeze.compare_deployed(dict(frozen, deployed=v7), v7)
 
 
 def test_a_refused_qual_run_creates_nothing(tmp_path, observed):
@@ -233,21 +230,20 @@ def test_the_production_view_drops_exactly_the_testing_only_items():
     assert premise.production(base.replace("a + b", "a - b")) != premise.production(base)   # a law change remains
 
 
-def test_the_unchanged_law_premise_held_at_the_qualifying_commit_and_breaks_here_with_exactly_p4():
+def test_the_unchanged_law_premise_held_at_the_qualifying_commit_and_breaks_here():
     # At the qualifying commit (the accepted source the evidence's RUN PASS names), the premise held: re-checked from
     # git, and equal to what the run recorded.
     observed = json.loads((INSTRUMENT / "evidence/run.json").read_text())["observed"]
     at_qualifying = premise.check(REPO, _V4, observed["source"]["commit"])
     assert at_qualifying["problems"] == [] and len(at_qualifying["abi_v4_recovery_tests"]) >= 21
     assert at_qualifying == observed["premise"]
-    # This checkout is Stage D (RuntimeCore ABI v6, docs/NATIVE_SPLIT_CENSUS.md): the production durability law moved
-    # behind the durable-authority interface and records the evidence summary, so the premise breaks with exactly P4,
-    # and the RUN PASS stays bound to its commit; it does not extend to this RuntimeCore. P1 (native/continuity), P2
-    # (the law tests) and P3 (the recovery test bodies) still hold.
+    # This checkout is past Stage F (RuntimeCore ABI v7, docs/NATIVE_SPLIT_CENSUS.md, section 9): standalone
+    # continuity retired into ECS_C, so P1 breaks, and the production durability law and its tests moved with the
+    # ECS_C authority (P2-P4). The RUN PASS stays bound to its commit; it does not extend to this RuntimeCore.
     here = premise.check(REPO, _V4)
-    assert here["problems"] == [
-        "P4: the production durability law in native/runtime/src/durable.rs differs from the ABI v4 commit"]
-    assert here["abi_v4_recovery_tests"] == at_qualifying["abi_v4_recovery_tests"]
+    assert here["problems"][0] == "P1: native/continuity differs from the ABI v4 commit", here["problems"]
+    assert "P4: the production durability law in native/runtime/src/durable.rs differs from the ABI v4 commit" in \
+        here["problems"]
 
 
 @pytest.mark.parametrize("path,edit,needle", [
@@ -257,7 +253,7 @@ def test_the_unchanged_law_premise_held_at_the_qualifying_commit_and_breaks_here
     ("tests/integration/test_k1_recovery.py", lambda t: t + "\n# changed\n", "P2"),
 ])
 def test_a_changed_law_or_law_test_breaks_the_premise(monkeypatch, path, edit, needle):
-    # Edited at the qualifying commit, where the premise holds (this checkout already breaks P4: see above).
+    # Edited at the qualifying commit, where the premise holds (this checkout already breaks it: see above).
     qualifying = json.loads((INSTRUMENT / "evidence/run.json").read_text())["observed"]["source"]["commit"]
     real = premise._show
 

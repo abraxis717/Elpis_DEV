@@ -43,8 +43,8 @@ lane has an owning job (`tests/boundary/test_ci_policy.py` proves both):
 
 | Lane | Contents | Owner | Local command |
 |---|---|---|---|
-| FAST | production contracts, runtime, continuity adapter, boundary, small integration | Python 3.11, Python 3.12 (`pytest --lane fast`) | `pytest` (the default) or `tests/qualify.sh fast` |
-| NATIVE | ECS, K1, FMS, continuity, RuntimeCore, H-ECS mechanics, native research mechanics (ctest) | Native gcc/clang Debug/Release | `tests/qualify.sh native` |
+| FAST | production contracts, runtime, boundary, small integration | Python 3.11, Python 3.12 (`pytest --lane fast`) | `pytest` (the default) or `tests/qualify.sh fast` |
+| NATIVE | ECS, K1, FMS, the ECS_C authority, RuntimeCore, H-ECS mechanics, native research mechanics (ctest) | Native gcc/clang Debug/Release | `tests/qualify.sh native` |
 | SCIENTIFIC | frozen ECS science, retention and H-ECS evidence, replay | Scientific authority (`pytest --lane scientific`) | `tests/qualify.sh scientific` |
 | STRESS | ASan+UBSan and TSan builds; multi-process contention, exhaustive fault matrices, scaling | Native ASan+UBSan, Native TSan; Python stress and historical (`pytest --lane stress`) | `tests/qualify.sh stress` |
 | HISTORICAL / RESEARCH | DSV4.1 tower, ECS dynamics laboratory, retained noncanonical model-execution mechanics; donor parity | Python stress and historical (`pytest --lane historical`); Donor parity | `tests/qualify.sh historical` |

@@ -2,12 +2,12 @@
 
 | Lane | What | Who runs it |
 |---|---|---|
-| FAST | production contracts, runtime, continuity adapter, boundary, small integration | bare ``pytest`` (the default), Python 3.11 / 3.12 jobs, ``tests/qualify.sh fast`` |
+| FAST | production contracts, runtime, boundary, small integration | bare ``pytest`` (the default), Python 3.11 / 3.12 jobs, ``tests/qualify.sh fast`` |
 | STRESS | multi-process contention, the publisher's exhaustive process-death matrix, long-history scaling | ``pytest --lane stress``: the "Python stress and historical" job |
 | SCIENTIFIC | frozen ECS science, retention and H-ECS evidence and replay | ``pytest --lane scientific``: the Scientific authority job |
 | HISTORICAL | the DSV4.1 tower, the ECS dynamics laboratory, donor parity, the retained noncanonical model-execution mechanics of ``elpis.inference`` (no production consumer: docs/PYTHON_AUTHORITY_CENSUS.md) | ``pytest --lane historical``: the "Python stress and historical" job; donor parity: the Donor parity job |
 
-NATIVE (ctest: ECS, K1, FMS, continuity, RuntimeCore, H-ECS mechanics) and the sanitizer STRESS builds are
+NATIVE (ctest: ECS, K1, FMS, the ECS_C authority, RuntimeCore, H-ECS mechanics) and the sanitizer STRESS builds are
 CMake/ctest lanes; the offline job runs every Python lane (``--lane all``) with no network.
 
 A bare ``pytest`` runs FAST only: ordinary local qualification never executes the research corpus by

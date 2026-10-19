@@ -1,25 +1,32 @@
-# Continuity: minimal durable runtime authority (`native/continuity`, `elpis.continuity`)
+# Continuity: minimal durable runtime authority (retired into ECS_C)
 
-> Successor: the ECS_C authority (`docs/ECS_C_AUTHORITY.md`, Stage C of `docs/NATIVE_SPLIT_CENSUS.md`). It imports a
-> continuity register explicitly and never writes it. RuntimeCore composes the successor since ABI v6 (Stage D), beside
-> this register, and the native host `elpis` (the production entry point) runs over it. This register is not retired:
-> it is the live authority of the offline Python reference interface and the backend of RuntimeCore's continuity law
-> suite, and `native/continuity` stays byte-identical (K1 Recovery R0 v4 premise P1) until its retirement. ECS_C
-> Recovery Q0, the qualification that retirement waited for, is RUN PASS for commit `117b41a` only.
+> **Retired (RuntimeCore ABI v7, Stage F of `docs/NATIVE_SPLIT_CENSUS.md`, section 9; `docs/ELPIS_MISSION.md`,
+> Amendment 2).** Its successor, the ECS_C authority (`docs/ECS_C_AUTHORITY.md`), was qualified first: ECS_C Recovery
+> Q0 is RUN PASS for commit `117b41a`. `native/continuity` (the crate, its C ABI `elpis_continuity_*` and
+> `libelpis_continuity.so`), the `elpis.continuity` adapter and their tests are deleted; RuntimeCore ABI v7 has no other
+> durable authority than the ECS_C authority, on the native host and the offline Python reference alike. Continuity's
+> laws were moved, not rewritten: the ECS_C authority carries the SHA-256, the evolution authority's law and its digest
+> (`elpis.continuity.evolution-authority.v2`), and the reader of the v2/v3 register below, which it uses only for an
+> explicit legacy import (it never writes one), with the known-answer fixtures
+> (`native/ECS_C/authority/tests/fixtures`). The register's format, the census and the corrections below stay as the
+> record of what continuity was and of the format a legacy import reads; the paths they name are this document's
+> history, not the tree. "Continuity" now names a role, binding the minimal durable runtime lineage, which the ECS_C
+> authority performs.
 
 Continuity records the current durable lineage and authority that the runtime
 needs for safe restart. It is not an ECS, not context memory, not an event
 database, not topology, not a message bus and not an audit ledger. It retains
 no history: it holds one fixed-size current-authority record.
 
-The authority is implemented in Rust (`native/continuity`: one crate, the
-standard library only) and reached through a stable C ABI
+Until its retirement the authority was implemented in Rust (`native/continuity`:
+one crate, the standard library only) and reached through a stable C ABI
 (`include/elpis/continuity.h`, ABI v1). Every law below — record format,
 digests, slot selection, locking, publication and the evolution transitions —
-is the Rust code's. `elpis.continuity` is a thin Python adapter over the ABI
-that owns no state, format, transition law or digest. The Rust implementation
-reproduces, byte for byte, vectors frozen from the qualified Python
-implementation it replaced (`native/continuity/tests/fixtures`).
+was the Rust code's. `elpis.continuity` was a thin Python adapter over the ABI
+that owned no state, format, transition law or digest. The Rust implementation
+reproduced, byte for byte, vectors frozen from the qualified Python
+implementation it replaced; the ECS_C authority still does
+(`native/ECS_C/authority/tests/fixtures`).
 
 The geometric ECS is ECS_G (`native/ECS_G`, `docs/ELPIS_MISSION.md` Amendment 1): the cognitive/dynamical
 substrate that owns `W`, epoch, `H`, `a`, recurrence, learning, consolidation,

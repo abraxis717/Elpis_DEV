@@ -100,41 +100,53 @@ digests stay as persisted identities: the code checks itself against them at
 import time. They identify *which* contract the mechanics implement. They
 are not evidence that the contract has any effect.
 
-## Continuity (`native/continuity`, `elpis.continuity`)
+## Continuity: the durable authority (the ECS_C authority; standalone continuity retired)
 
-* **Byte parity, not a new format.** The Rust authority reproduces vectors
-  frozen from the qualified Python implementation (PR #36) and keeps format
-  v2 unchanged. Parity covers the frozen records and the frozen store session;
-  it is not a proof of equivalence for every possible input sequence.
+Standalone continuity (`native/continuity`, `elpis.continuity`) retired into
+the ECS_C authority at RuntimeCore ABI v7 (`docs/ELPIS_MISSION.md`,
+Amendment 2). The retirement qualifies nothing new: ECS_C Recovery Q0 is RUN
+PASS for commit `117b41a` (ABI v6) only.
+
+* **Byte parity of the legacy reader, not a new format.** The ECS_C authority
+  reads a continuity v2/v3 register only for an explicit legacy import, and
+  reproduces the vectors frozen from the qualified Python implementation
+  (PR #36) and the retired crate. Parity covers the frozen records; it is not a
+  proof of equivalence for every possible input sequence.
 * **Python is off the production path, not removed.** The production entry
-  point is the native host `elpis` (RuntimeCore ABI v6 over the ECS_C
+  point is the native host `elpis` (RuntimeCore ABI v7 over the ECS_C
   authority, no interpreter in the process). The Python runtime composition is
-  the offline reference interface over standalone continuity, reached through a
-  `ctypes` adapter. A build needs a Rust toolchain.
+  the offline reference interface over the same authority, reached through
+  RuntimeCore. A build needs a Rust toolchain.
 
-* **Current authority, not history.** Continuity holds one fixed-size record
-  (two 176-byte slots, 352 bytes in total, whatever the runtime lifetime):
-  the committed K1 retained-state digest and the evolution authority
-  `(revision, head, pending_assertion)`. It keeps no turn log, no receipts, no events and no
-  audit trail. Nothing in it can answer what happened before the current
-  authority. Per-turn diagnostics live only on the returned turn result.
+* **Current authority, not history.** The ECS_C authority holds one fixed-size
+  materialized record (two record slots of R = 1344 + 160 × capacity bytes and
+  two 240-byte witness slots, fixed at provisioning, whatever the runtime
+  lifetime): the cognition lineage's retained-state digest, the evolution
+  authority `(revision, head, pending_assertion)`, the entities and their
+  sequences. Its receipts are a chain head, not a log; it keeps no turn log, no
+  event history and no audit trail. Nothing in it can answer what happened
+  before the current authority. Per-turn diagnostics live only on the returned
+  turn result.
 * **At-most-once, not automatic recovery.** Runtime reserves the exact
   assertion before execution. Pending authority refuses further evolution;
   the caller must establish the result externally before explicit finalization.
   An uncertain final publication may reopen pending or at the next idle
   revision; neither permits the old assertion to execute again. There is no
   automatic retry, pending reset or external-side-effect reconciliation.
-* **Integrity, not authentication.** The record checksum detects torn or
-  corrupted slots. It does not authenticate the writer: whoever can write the
-  directory can replace the register consistently. The K1 digest binds the
-  identity of a K1 state, not its provenance.
+* **Authentication only against the declared adversary.** A record is
+  authenticated by the deployment key and rollback is refused against the
+  witness, against the T1 adversary only (read and write access to the state
+  directory, but neither the key nor write access to the protected authority
+  directory). A key holder, in-process code or a writer of the authority
+  directory is not defended against. The retained-state digest binds the
+  identity of a state, not its provenance.
 * **Crash model.** The crash matrix simulates process death and torn writes
-  at every named publication and initialization step, and failed writes and
-  failed `fdatasync`. Durability under power loss rests on the host
+  at every write step and cut of a transition and of provisioning, and failed
+  writes and failed `fdatasync`. Durability under power loss rests on the host
   filesystem honouring `fdatasync` for an in-place, fixed-size write and on
-  the rename and directory-`fsync` ordering at initialization. A torn sector
-  is detected by the checksum and resolves to the other slot; stronger
-  power-failure atomicity is not claimed.
+  the rename and directory-`fsync` ordering at provisioning. A torn record is
+  detected and resolves to the other slot; stronger power-failure atomicity is
+  not claimed.
 * **No rollback, no synthesis.** A native K1 commit is volatile and stands; a
   failed durable publication changes nothing durable (or, uncertain, faults
   the durability lane until reopen) and never rolls the live state back.
@@ -154,17 +166,19 @@ are not evidence that the contract has any effect.
   its acknowledgment. Durability is POSIX `fdatasync` on the store's
   filesystem; a process kill keeps written-but-unsynced bytes, a power loss may
   not, and no test here proves power-loss behaviour of a device.
-* **Single process, single owner.** A directory `flock` excludes a second
-  owner on the same host. There is no cross-process transport, federation,
-  replication or shared-reader semantics. One open runtime owns one K1
-  lineage.
-* **Not cognitive state.** Continuity holds a digest of the K1 state, never
-  the state. ECS_G owns `W`, epoch, `H` and `a`, their snapshots and FMS
-  residency. Continuity grants no authority over ECS mathematics. Resuming a
+* **Single process, single owner.** RuntimeCore is the authority's only
+  writer while it holds it open; there is no cross-process transport,
+  federation, replication or shared-reader semantics. One open runtime owns
+  one lineage.
+* **Not cognitive state.** The durable authority holds a digest of the state,
+  never the state. ECS_G owns `W`, epoch, `H` and `a`, their snapshots and FMS
+  residency. The authority grants no authority over ECS mathematics. Resuming a
   lost in-memory state from its envelope is K1 Recovery R0's job, below.
-* **Legacy storage is refused, not converted.** The retired receipt-history
-  layout is detected and refused. Conversion is an offline step documented
-  in `docs/CONTINUITY.md`.
+* **Legacy storage is never converted implicitly.** The retired
+  receipt-history layout has no reader at all (its offline conversion is
+  documented in `docs/CONTINUITY.md`). A continuity v2/v3 register enters the
+  ECS_C authority only through an explicit legacy import, which reads it under
+  its own lock and never writes it.
 
 ## Runtime boundary after the red team (`elpis.runtime`, `native/runtime`)
 
@@ -186,9 +200,10 @@ are not evidence that the contract has any effect.
   attacks until explicit operator reconciliation. The production build is
   bound to it by a source premise, not by a fault run. No later commit
   inherits it, nothing in it bears on power loss, and an accepted deep
-  rollback still leaves the lineage `CHECKPOINT_MISSING`. K1 Recovery R0 v4's
-  run extends to neither RuntimeCore ABI v6, the ECS_C authority nor the
-  native host.
+  rollback still leaves the lineage `CHECKPOINT_MISSING`. Its ABI v7
+  successor, after the retirement of standalone continuity, is not run. K1
+  Recovery R0 v4's run extends to neither RuntimeCore ABI v6 or v7, the ECS_C
+  authority nor the native host.
 * **Pins authenticate bytes, not authors.** The native, codec and evolution
   policy authorities verify exact bytes against SHA-256 pins from trusted
   configuration. They offer no protection against a malicious in-process
@@ -261,9 +276,9 @@ are not evidence that the contract has any effect.
   - The native host's autonomous path writes only the ECS_C authority's two
     record and two witness slots and the two fixed K1 checkpoint slots. Its home
     is a fixed set of 17 files, with no log or history.
-  - The offline Python reference's path writes only the two fixed continuity
-    slots, a capacity-bounded FMS cold store and, when an operator provisioned
-    one, the two fixed K1 checkpoint slots.
+  - The offline Python reference's path writes only the same authority slots,
+    a capacity-bounded FMS cold store and, when an operator provisioned one,
+    the two fixed K1 checkpoint slots.
   - Every other persistent writer is operator-explicit, offline or prohibited
     (`elpis.runtime.persistence`). This is a property of the code
   paths, proven by tests; it is not a claim about host filesystem accounting.
@@ -320,7 +335,7 @@ are not evidence that the contract has any effect.
   canonical, and no runtime readiness is claimed.
 * `research/ecs_memory_mf_r0` (ECS Memory MF-R0, the successor of the PR #47 model-free memory) is
   RESEARCH_ONLY with NO_RUNTIME_AUTHORITY (`docs/research/ECS_MEMORY_MF_R0.md`). It is not part of ECS_C,
-  continuity does not bind its state (a memory transition leaves the K1 digest unchanged, tested), and no
+  the durable authority does not bind its state (a memory transition leaves the K1 digest unchanged, tested), and no
   composite retained state, checkpoint owner or LEARN authority exists for it (its canonical relocation is the
   next item). Its preregistered QUAL passed
   H1 (state-borne acquisition), H2 (updating), H3 (partial-cue completion, classified as algebraic completion
@@ -332,8 +347,8 @@ are not evidence that the contract has any effect.
   structural evidence, not truth, meaning or learning; LEARN and the FAST channel are UNQUALIFIED (refused unless a
   host admits the recurrent capability; RuntimeCore never exposes them); the MF-R0 consolidation law is not
   canonical at all, and the frozen H4 NONPASS stands. A composite identity is durable authority only when
-  the durable authority names it (the ECS_C authority on the native host; continuity record v3 on the offline
-  reference) after RuntimeCore's checkpoint -> commit -> publication; a composite snapshot round trip by
+  the durable authority names it (the ECS_C authority, on the native host and the offline reference alike) after
+  RuntimeCore's checkpoint -> commit -> publication; a composite snapshot round trip by
   itself is not crash-consistent recovery, and FMS residency of an envelope is not checkpoint publication.
   The native host and the Python reference drive composite lineages as mechanics only (numeric LEARN and
   observe-only evidence): nothing decides what to observe, no HACF -> meaning map exists, and no codec path exists

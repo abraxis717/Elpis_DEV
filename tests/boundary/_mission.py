@@ -142,8 +142,7 @@ def ecs_independence(root: Path) -> list[str]:
     ECS_G (native/ECS_G: math, executor, mutable FMS, K1, K1 FMS) includes only its own headers and the named
     substrate headers; ECS_C (native/ECS_C: the memory, the authority and the gated HCA research substrate) includes
     only its own headers and SHA-256.
-    Neither includes the other's headers, RuntimeCore's or continuity's: only RuntimeCore composes them
-    (native/runtime/composite).
+    Neither includes the other's headers or RuntimeCore's: only RuntimeCore composes them (native/runtime/composite).
     """
     out = []
     for path in _python(root, "ECS"):
@@ -195,7 +194,7 @@ def codec_independence(root: Path) -> list[str]:
     out = []
     for path in _python(root, "inference"):
         for name in imports_of(root, path):
-            for lane in ("elpis.ECS", "elpis.continuity", "elpis.runtime", "research"):
+            for lane in ("elpis.ECS", "elpis.runtime", "research"):
                 if _under(name, lane):
                     out.append(f"{path.relative_to(root)}: imports {name}")
         if re.search(r"\bWorldState\b|\becsg_", path.read_text(encoding="utf-8")):
@@ -203,12 +202,24 @@ def codec_independence(root: Path) -> list[str]:
     return out
 
 
-def ecs_continuity_separation(root: Path) -> list[str]:
-    """(6) The ECS bindings and continuity do not depend on each other; the runtime composes both."""
-    out = []
-    for package, other in (("continuity", "elpis.ECS"), ("ECS", "elpis.continuity")):
-        for path in _python(root, package):
-            out += [f"{path.relative_to(root)}: imports {n}" for n in imports_of(root, path) if _under(n, other)]
+# The surfaces of standalone continuity, retired into ECS_C at RuntimeCore ABI v7 (Amendment 2).
+RETIRED_CONTINUITY = ("native/continuity", "src/elpis/continuity")
+
+
+def continuity_retired(root: Path) -> list[str]:
+    """(6) Standalone continuity stays retired: neither its package nor its library returns, nothing canonical
+    imports ``elpis.continuity``, and no canonical native source includes its header or calls its C ABI."""
+    out = [f"{name}: exists" for name in RETIRED_CONTINUITY if (root / name).exists()]
+    for path in _canonical_files(root):
+        if path.suffix == ".py" and path.is_relative_to(root / "src"):
+            out += [f"{path.relative_to(root)}: imports {n}" for n in imports_of(root, path)
+                    if _under(n, "elpis.continuity")]
+        elif path.suffix in (".c", ".h", ".rs"):
+            code = _strip_comments(path.read_text(encoding="utf-8", errors="replace"), path.suffix)
+            found = re.search(r'#\s*include\s*"elpis/continuity\.h"|\belpis_continuity_(?!snapshot\b|evolution\b)\w+',
+                              code)
+            if found:
+                out.append(f"{path.relative_to(root)}: {found.group(0)}")
     return out
 
 
@@ -246,7 +257,7 @@ STATIC_CHECKS = {
     "canonical_tower": canonical_tower,
     "ecs_independence": ecs_independence,
     "codec_independence": codec_independence,
-    "ecs_continuity_separation": ecs_continuity_separation,
+    "continuity_retired": continuity_retired,
     "fms_genericity": fms_genericity,
     "ecsg_kernel_unchanged": ecsg_kernel_unchanged,
 }

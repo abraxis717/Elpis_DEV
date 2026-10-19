@@ -43,7 +43,7 @@ FINDINGS: dict[str, tuple[str, tuple[str, ...]]] = {
             "tests/integration/test_managed_ownership.py::test_a_second_runtime_taking_the_state_makes_the_first_fail_stop_before_any_mutation",
         )),
     "RT-05 native code by pathname": (
-        "sealed, pinned admission of RuntimeCore, K1, K1 FMS and continuity, with dependency verification", (
+        "sealed, pinned admission of RuntimeCore, K1, K1 FMS and the ECS_C authority, with dependency verification", (
             "tests/integration/test_native_admission.py::test_a_modified_library_is_refused",
             "tests/integration/test_native_admission.py::test_symlinks_and_escapes_are_refused",
             "tests/integration/test_native_admission.py::test_the_managed_runtime_refuses_k1_code_that_was_not_admitted",
@@ -77,7 +77,7 @@ FINDINGS: dict[str, tuple[str, tuple[str, ...]]] = {
         )),
     "RT-10 ever-expanding persistence": (
         "every writer classified; the autonomous path leaves only fixed slots", (
-            "tests/integration/test_autonomous_no_growth.py::test_ordinary_autonomous_path_leaves_only_the_two_continuity_slots",
+            "tests/integration/test_autonomous_no_growth.py::test_ordinary_autonomous_path_leaves_only_the_authoritys_fixed_files",
             "tests/integration/test_autonomous_no_growth.py::test_a_provisioned_k1_checkpoint_stays_two_fixed_slots_on_the_autonomous_path",
         )),
 }

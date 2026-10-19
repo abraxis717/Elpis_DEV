@@ -2,7 +2,7 @@
 
 Elpis executes native code it has verified, never native code a pathname happens to name. Admission is the
 existing substrate mechanism, generalized from the structure bridges to RuntimeCore, native K1, the K1 FMS adapter
-and the continuity authority:
+and the ECS_C authority:
 
 * **independent authority**: a deployment-pinned catalog (:class:`~elpis.substrate.authority.PinnedAuthority`)
   whose own SHA-256 arrives through trusted configuration and which lists each library's identifier, exact size

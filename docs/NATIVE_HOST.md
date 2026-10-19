@@ -2,13 +2,13 @@
 
 `elpis` (`native/runtime/host`) is the native production entry point of one Elpis deployment: one C program, no
 interpreter. It links only the C library and a static SHA-256. Every Elpis library it runs is admitted at run time
-from the deployment's pinned `lib/` directory (see "Admission"). RuntimeCore (ABI v6, `docs/RUNTIME_CORE.md`) composes every turn over
+from the deployment's pinned `lib/` directory (see "Admission"). RuntimeCore (ABI v7, `docs/RUNTIME_CORE.md`) composes every turn over
 the ECS_C authority (`docs/ECS_C_AUTHORITY.md`); the ECS composite holds the lineage's state; structure identifies
 every hyperedge. The host computes no ECS mathematics and touches no ECS byte: it validates operator input, marshals
 it into the admitted libraries' C ABIs and reports what they answer.
 
 It is Stage F of `docs/NATIVE_SPLIT_CENSUS.md`. The Python operator interface (`python -m elpis.runtime.cli`,
-`docs/OPERATING_ELPIS.md`) is the offline reference interface over the standalone continuity backend: differential
+`docs/OPERATING_ELPIS.md`) is the offline reference interface over the same ECS_C authority: differential
 tests, the qualification instruments bound to their commits, research. It is not the production path (see
 "Holds").
 
@@ -229,13 +229,12 @@ reconciliation digest, refusal translation, the all-or-nothing abort and the lea
 
 ## Holds
 
-- **Standalone continuity.** The Python deployment and CLI are the offline reference interface, over standalone
-  continuity, and off the production path. Continuity itself is not retired yet. ECS_C Recovery Q0 is RUN PASS for
-  commit `117b41a` only, which meets the census's condition for folding continuity into ECS_C; that retirement is the
-  remaining step (census sections 5, 9 and "Stage F conflict").
+- **Qualification of ABI v7.** Standalone continuity retired into ECS_C (RuntimeCore ABI v7; census section 9): the
+  Python deployment and CLI are the offline reference interface over the same ECS_C authority, off the production
+  path. ECS_C Recovery Q0 is RUN PASS for commit `117b41a` (ABI v6) only; its ABI v7 successor is not run.
 - **Containment.** The native host contains itself (`--contained`) with the ECS_C and checkpoint slots as its grant.
-  `elpis_autonomous_run` still grants the continuity slots, for the continuity-backed Python path, and retires with
-  it (census section 5).
+  `elpis_autonomous_run`, for the Python reference, grants the four files of a provisioned ECS_C authority (its two
+  record and two witness slots).
 - **Release.** No installed release bundle exists for the native host yet (`ELPIS_SYSTEM.json`
   `identity.release_authority = NONE_DEFERRED`).
 

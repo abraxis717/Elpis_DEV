@@ -13,23 +13,24 @@ typed event validated by one transition law before it is written; recovery repla
 its predecessor. It keeps no log, no segments, no generations and no compaction archive.
 
 **Status.** Built and mechanically tested as a library; its durability protocol through the native host is RUN PASS
-under ECS_C Recovery Q0, for commit `117b41a` only, within that specification's scope. Composed by
-RuntimeCore ABI v6
-(`elpis_runtime_create_ecs_c`; docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"), which publishes through it,
-admits typed evidence against its sources and records evidence summaries, and run by the native host `elpis`, the
-production entry point (docs/NATIVE_HOST.md). Standalone continuity remains the other backend (`elpis_runtime_create`)
-and the offline Python reference's; it stays byte-identical (the subject of the K1 Recovery R0 v4 premise P1) until
-the Q0 QUAL run passes. Nothing in this document is a scientific claim.
+under ECS_C Recovery Q0, for commit `117b41a` (RuntimeCore ABI v6) only, within that specification's scope. Composed
+by RuntimeCore since ABI v6 (`elpis_runtime_create_ecs_c`; docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"),
+which publishes through it, admits typed evidence against its sources and records evidence summaries, and run by the
+native host `elpis`, the production entry point (docs/NATIVE_HOST.md). Since ABI v7 it is RuntimeCore's only durable
+authority, on the native host and the offline Python reference alike: standalone continuity retired into it
+(docs/RUNTIME_CORE.md, "One durable authority (ABI v7)"; docs/ELPIS_MISSION.md, Amendment 2), and the crate carries
+continuity's SHA-256, evolution law and digest and register reader as its own, with no dependency. The ABI v7
+successor of Q0 is not run. Nothing in this document is a scientific claim.
 
 ## Ownership
 
 ECS_C owns the authority; it performs no geometric learning and never touches ECS_G state: it names retained-state
-identities (ELPISGK1 or ELPISEC1 digests), never the states. It embeds the standard-library-only continuity crate
-for SHA-256, the evolution-authority digest and the legacy register reader (one implementation each), and re-exports
-none of continuity's C ABI. Its own C ABI is the crate's default `c-abi` feature, so a crate that embeds it
-(RuntimeCore) does not re-export `elpis_ecs_c_*` either. The build script's `--exclude-libs` link argument is emitted
-for that feature only: Cargo also passes a dependency's cdylib link arguments to the dependent's cdylib, where it would
-hide RuntimeCore's re-export of continuity's C ABI. It links no ECS_G, memory, RuntimeCore or codec code.
+identities (ELPISGK1 or ELPISEC1 digests), never the states. The crate depends on nothing but the Rust standard
+library: SHA-256 (`sha256.rs`), the evolution authority and its digest (`register.rs`) and the legacy register reader
+(`legacy.rs`) are its own, moved unchanged from standalone continuity when it retired into ECS_C (one implementation
+each; until then the authority embedded the continuity crate for them). Its own C ABI is the crate's default `c-abi`
+feature, so a crate that embeds it (RuntimeCore) does not re-export `elpis_ecs_c_*`; there is no build script. It
+links no ECS_G, memory, RuntimeCore or codec code.
 
 ## Threat model
 
