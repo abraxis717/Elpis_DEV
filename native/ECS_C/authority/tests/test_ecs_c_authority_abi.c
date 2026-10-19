@@ -247,11 +247,61 @@ int main(int argc, char **argv) {
     RC(elpis_ecs_c_testing_counters(a, 0, &c), ELPIS_ECS_C_OK);
     CHECK(c.creates == 0 && c.renames == 0 && c.unlinks == 0);
 #endif
+    elpis_ecs_c_reconciliation rec;
+    RC(elpis_ecs_c_read_reconciliation(a, &rec), ELPIS_ECS_C_OK);
+    CHECK(rec.mode == ELPIS_ECS_C_MODE_NORMAL && rec.kind == 0);
+    elpis_ecs_c_close(a);
+
+    /* Copied-back records (a rollback): the open is reconcile-only, and the one reconciliation it accepts is read
+     * through the ABI and sent exactly; the lineage continues at the abandoned generation + 1. */
+    char path[4200];
+    size_t bytes = (size_t)elpis_ecs_c_record_bytes(8);
+    uint8_t *saved[2];
+    for (int i = 0; i < 2; i++) {
+        saved[i] = malloc(bytes);
+        snprintf(path, sizeof path, "%s/authority.%c", state_dir, 'a' + i);
+        int fd = open(path, O_RDONLY);
+        CHECK(saved[i] != NULL && fd >= 0 && pread(fd, saved[i], bytes, 0) == (ssize_t)bytes && close(fd) == 0);
+    }
+    RC(open_authority(&a, &report), ELPIS_ECS_C_OK);
+    for (int i = 0; i < 2; i++) { /* two transitions: both slots move past the saved records */
+        event(e, 3, operator_.id, next_seq(a, operator_.id), src);
+        e[80] = i ? ELPIS_ECS_C_DORMANT : ELPIS_ECS_C_ACTIVE;
+        e[81] = i ? ELPIS_ECS_C_ACTIVE : ELPIS_ECS_C_DORMANT;
+        RC(send(a, e, NULL), ELPIS_ECS_C_OK);
+    }
+    RC(elpis_ecs_c_read_status(a, &s), ELPIS_ECS_C_OK);
+    const uint64_t acknowledged = s.generation;
+    elpis_ecs_c_close(a);
+    for (int i = 0; i < 2; i++) {
+        snprintf(path, sizeof path, "%s/authority.%c", state_dir, 'a' + i);
+        int fd = open(path, O_WRONLY);
+        CHECK(fd >= 0 && pwrite(fd, saved[i], bytes, 0) == (ssize_t)bytes && close(fd) == 0);
+        free(saved[i]);
+    }
+    RC(open_authority(&a, &report), ELPIS_ECS_C_OK);
+    CHECK(report.disposition == ELPIS_ECS_C_ROLLBACK && report.mode == ELPIS_ECS_C_MODE_ROLLBACK);
+    RC(elpis_ecs_c_read_reconciliation(a, &rec), ELPIS_ECS_C_OK);
+    CHECK(rec.mode == ELPIS_ECS_C_MODE_ROLLBACK && rec.kind == 11 && rec.class_code == 0);
+    CHECK(rec.abandoned_generation == acknowledged && report.witness_generation == acknowledged);
+    RC(elpis_ecs_c_check_evidence(a, src, 1, scope, &limit), ELPIS_ECS_C_RECONCILE_REQUIRED);
+    event(e, 11, operator_.id, next_seq(a, operator_.id), NULL);
+    put_u64(e + 80, rec.abandoned_generation);
+    e[80 + 8] = rec.class_code;
+    memcpy(e + 80 + 16, rec.digest, 32);
+    e[80 + 16] ^= 1; /* any other abandonment is not this one */
+    RC(send(a, e, NULL), ELPIS_ECS_C_NOT_RECONCILABLE);
+    e[80 + 16] ^= 1;
+    RC(send(a, e, &r), ELPIS_ECS_C_OK);
+    CHECK(r.generation == acknowledged + 1);
+    RC(elpis_ecs_c_read_reconciliation(a, &rec), ELPIS_ECS_C_OK);
+    CHECK(rec.mode == ELPIS_ECS_C_MODE_NORMAL && rec.kind == 0);
+    elpis_ecs_c_close(a);
+    RC(open_authority(&a, &report), ELPIS_ECS_C_OK);
+    CHECK(report.disposition == ELPIS_ECS_C_CLEAN && report.current_generation == acknowledged + 1);
     elpis_ecs_c_close(a);
 
     /* A state directory whose records were destroyed: refused, with the disposition, and no handle. */
-    char path[4200];
-    size_t bytes = (size_t)elpis_ecs_c_record_bytes(8);
     uint8_t *zero = calloc(1, bytes);
     CHECK(zero != NULL);
     for (int i = 0; i < 2; i++) {

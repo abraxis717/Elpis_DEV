@@ -163,7 +163,10 @@ UNAUTHENTICATED_ACKNOWLEDGED.
 a transition (recorded in the reconciliation chain). RECONCILE_ROLLBACK adopts the newest authenticated older record
 and continues at the abandoned generation + 1, so no generation is ever reused. RECONCILE_UNAUTHENTICATED overwrites
 the substituted slot. RECONCILE_REPIN writes both witness slots for the newest authenticated record. Nothing is
-reconciled automatically.
+reconciled automatically. In a reconcile-only or restricted mode, `elpis_ecs_c_read_reconciliation` reports the one
+reconciliation the authority accepts: its event kind and every payload field it must name (the abandoned generation,
+class and record digest of a rollback; the slot and observed bytes of an unauthenticated substitution; the witness
+classes and current record of a repin). The operator still decides whether to send it, and who sends it.
 
 ## Provisioning and legacy import
 

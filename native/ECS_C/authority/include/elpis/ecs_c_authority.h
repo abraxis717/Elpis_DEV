@@ -238,6 +238,20 @@ typedef struct {
     uint8_t founded[32];
 } elpis_ecs_c_receipt;
 
+/* The one reconciliation the open authority accepts in its mode (elpis_ecs_c_read_reconciliation): the event kind
+ * and the payload fields it must name exactly. In the normal mode kind is 0 (none is accepted). */
+typedef struct {
+    uint32_t mode;                 /* ELPIS_ECS_C_MODE_* */
+    uint16_t kind;                 /* 11 RECONCILE_ROLLBACK, 12 RECONCILE_UNAUTHENTICATED, 13 RECONCILE_REPIN; or 0 */
+    uint8_t slot;                  /* RECONCILE_UNAUTHENTICATED: payload @0 */
+    uint8_t class_code;            /* RECONCILE_UNAUTHENTICATED: payload @1 (2); RECONCILE_ROLLBACK: payload @8 */
+    uint8_t witness_classes[2];    /* RECONCILE_REPIN: payload @0, @1 */
+    uint8_t reserved[6];
+    uint64_t abandoned_generation; /* RECONCILE_ROLLBACK: payload @0 */
+    uint8_t digest[32];            /* RECONCILE_ROLLBACK: the abandoned record @16; RECONCILE_UNAUTHENTICATED: the
+                                      observed slot bytes @8; RECONCILE_REPIN: the current record @8 */
+} elpis_ecs_c_reconciliation;
+
 typedef struct {
     uint64_t opens, creates, preads, pread_bytes, pwrites, pwrite_bytes, data_syncs, dir_syncs, renames, unlinks,
         replays, key_reads;
@@ -250,6 +264,7 @@ _Static_assert(sizeof(elpis_ecs_c_status) == 528, "elpis_ecs_c_status layout");
 _Static_assert(sizeof(elpis_ecs_c_entity) == 152, "elpis_ecs_c_entity layout");
 _Static_assert(sizeof(elpis_ecs_c_receipt) == 192, "elpis_ecs_c_receipt layout");
 _Static_assert(sizeof(elpis_ecs_c_counters) == 96, "elpis_ecs_c_counters layout");
+_Static_assert(sizeof(elpis_ecs_c_reconciliation) == 56, "elpis_ecs_c_reconciliation layout");
 #endif
 
 uint32_t elpis_ecs_c_abi_version(void);
@@ -270,6 +285,7 @@ void elpis_ecs_c_close(elpis_ecs_c_authority *authority);
 
 int32_t elpis_ecs_c_read_status(const elpis_ecs_c_authority *authority, elpis_ecs_c_status *out);
 int32_t elpis_ecs_c_read_report(const elpis_ecs_c_authority *authority, elpis_ecs_c_report *out);
+int32_t elpis_ecs_c_read_reconciliation(const elpis_ecs_c_authority *authority, elpis_ecs_c_reconciliation *out);
 int32_t elpis_ecs_c_entity_at(const elpis_ecs_c_authority *authority, uint32_t index, elpis_ecs_c_entity *out);
 int32_t elpis_ecs_c_entity_find(const elpis_ecs_c_authority *authority, const uint8_t id[32],
                                 elpis_ecs_c_entity *out);

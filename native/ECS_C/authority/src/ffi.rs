@@ -20,9 +20,9 @@ use elpis_continuity::RECORD_SIZE;
 
 use crate::error::Code;
 use crate::legacy::read_continuity;
-use crate::model::{Cognition, Digest, Entity, EntityKind, Event, EVENT_BYTES, ZERO};
-use crate::record::record_bytes;
-use crate::store::{Authority, Receipt, Report};
+use crate::model::{Cognition, Digest, Entity, EntityKind, Event, EventKind, EVENT_BYTES, ZERO};
+use crate::record::{record_bytes, SlotClass};
+use crate::store::{Authority, Mode, Receipt, Report};
 use crate::{MAX_CAPACITY, MIN_CAPACITY};
 
 pub const ABI_VERSION: u32 = 1;
@@ -127,7 +127,22 @@ pub struct CReceipt {
     pub founded: Digest,
 }
 
+/// The one reconciliation the open authority accepts in its mode (`elpis_ecs_c_reconciliation`).
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct CReconciliation {
+    pub mode: u32,
+    pub kind: u16,
+    pub slot: u8,
+    pub class_code: u8,
+    pub witness_classes: [u8; 2],
+    pub reserved: [u8; 6],
+    pub abandoned_generation: u64,
+    pub digest: Digest,
+}
+
 const _: () = assert!(std::mem::size_of::<CProvisioned>() == 144);
+const _: () = assert!(std::mem::size_of::<CReconciliation>() == 56);
 const _: () = assert!(std::mem::size_of::<CReport>() == 136);
 const _: () = assert!(std::mem::size_of::<CStatus>() == 528);
 const _: () = assert!(std::mem::size_of::<CEntity>() == 152);
@@ -385,6 +400,45 @@ pub unsafe extern "C" fn elpis_ecs_c_read_status(h: *const ElpisEcsCAuthority, o
 #[no_mangle]
 pub unsafe extern "C" fn elpis_ecs_c_read_report(h: *const ElpisEcsCAuthority, out: *mut CReport) -> i32 {
     rc((|| write(out, to_c_report(&handle(h)?.report()?)))())
+}
+
+/// The one reconciliation the open authority accepts in its mode: the event kind and every payload field it must name
+/// exactly (docs/ECS_C_AUTHORITY.md, "Transition and recovery"). In the normal mode `kind` is 0: none is accepted.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_ecs_c_read_reconciliation(
+    h: *const ElpisEcsCAuthority,
+    out: *mut CReconciliation,
+) -> i32 {
+    rc((|| {
+        let a = handle(h)?;
+        let mode = a.mode()?;
+        let mut r = CReconciliation {
+            mode: mode.code(),
+            kind: 0,
+            slot: 0,
+            class_code: 0,
+            witness_classes: [0; 2],
+            reserved: [0; 6],
+            abandoned_generation: 0,
+            digest: ZERO,
+        };
+        match mode {
+            Mode::Normal => {}
+            Mode::Restricted { slot, observed } => {
+                r.kind = EventKind::ReconcileUnauthenticated as u16;
+                (r.slot, r.class_code, r.digest) = (slot, SlotClass::Unauthenticated as u8, observed);
+            }
+            Mode::Rollback { abandoned_generation, abandoned_digest, class } => {
+                r.kind = EventKind::ReconcileRollback as u16;
+                (r.class_code, r.abandoned_generation, r.digest) = (class, abandoned_generation, abandoned_digest);
+            }
+            Mode::WitnessMissing { classes } => {
+                r.kind = EventKind::ReconcileRepin as u16;
+                (r.witness_classes, r.digest) = (classes, a.current()?.digest);
+            }
+        }
+        write(out, r)
+    })())
 }
 
 #[no_mangle]
