@@ -218,6 +218,28 @@ jobs:
             timeout 1800 "$RUNNER_TEMP/venv/bin/python" -m elpis.runtime.acceptance \
             --native-build "$RUNNER_TEMP/build" --work "$RUNNER_TEMP/acceptance" \
             --source-commit "$GITHUB_SHA" --report "$RUNNER_TEMP/acceptance.json"
+      # The production entry point (docs/NATIVE_HOST.md): the native host installed from the build (runtime and testing
+      # components), then, offline and unprivileged, its interpreter-free smoke and the full native suite (closure,
+      # pins, the crash matrix, the authority attacks, containment, boundedness) against the installed binaries.
+      - name: Native install and test harness (network allowed only here)
+        run: |
+          cmake --install "$RUNNER_TEMP/build" --prefix "$RUNNER_TEMP/prefix" --component runtime
+          cmake --install "$RUNNER_TEMP/build" --prefix "$RUNNER_TEMP/prefix" --component testing
+          # The harness: pytest, and the checkout's package (the offline reference the differential test compares
+          # against, which the integration conftest imports). Nothing of it runs on the production path.
+          python -m venv "$RUNNER_TEMP/harness"
+          "$RUNNER_TEMP/harness/bin/python" -m pip install . pytest
+      - name: Native installed acceptance, offline
+        run: |
+          sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
+            env -i PATH="$PATH" HOME="$HOME" \
+            cmake -DHOST="$RUNNER_TEMP/prefix/bin/elpis" -DLIBRARIES="$RUNNER_TEMP/prefix/lib/elpis" \
+            -DSCRATCH="$RUNNER_TEMP/native-smoke" -P native/runtime/host/tests/host_smoke.cmake
+          sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
+            env -i PATH="$PATH" HOME="$HOME" PYTHONDONTWRITEBYTECODE=1 \
+            ELPIS_NATIVE_HOST_PREFIX="$RUNNER_TEMP/prefix" ELPIS_NATIVE_BUILD="$RUNNER_TEMP/build" \
+            timeout 1800 "$RUNNER_TEMP/harness/bin/python" -m pytest -p no:cacheprovider -rs --lane all \
+            tests/integration/test_native_host.py
 
   authority:
     # Scientific authority gate (docs/CI_POLICY.md). Not a replacement for the full

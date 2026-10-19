@@ -1413,6 +1413,19 @@ impl Core {
         Ok(result?)
     }
 
+    /// The held ECS_C authority's entity row at `index` and the identity of the next founding (read-only; what an
+    /// operator event is built from: docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"). Refused closed,
+    /// fail-stopped and under continuity.
+    pub fn authority_entity(&self, index: u32) -> Result<elpis_ecs_c_authority::Entity, Error> {
+        self.live()?;
+        self.lane.with_stores(|s| s.continuity.entity_at(index))?
+    }
+
+    pub fn authority_next_entity_id(&self, kind: u8, label: &Digest) -> Result<Digest, Error> {
+        self.live()?;
+        self.lane.with_stores(|s| s.continuity.next_entity_id(kind, label))?
+    }
+
     /// The current idle evolution authority an assertion must be built against.
     pub fn evolution_authority(&self) -> Result<Snapshot, Error> {
         self.live()?;

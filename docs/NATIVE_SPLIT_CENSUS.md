@@ -319,3 +319,28 @@ invalidation, delayed memory, activation damage (and the unsupported-cycle limit
 matched-resource exact-storage controls. Gated: nothing canonical links or loads it (`tests/boundary/test_ecs_c_hca.py`).
 The memory's operations are unchanged: exact typed evidence and LOOKUP admitted, LEARN / QUERY FAST behind the
 unqualified capability, CONSOLIDATE not provided. No HCA law is admitted; no scientific claim is made.
+
+**F1** the native operator host (`docs/NATIVE_HOST.md`, `native/runtime/host`): `elpis`, one C program linking only the
+C library, admits the seven pinned libraries from sealed copies at every start (dependencies checked before loading,
+SONAMEs after), pins its own binary, and drives RuntimeCore over the ECS_C authority: provisioning, the lineage,
+QUERY, LEARN, typed evidence admitted by the authority's sources, LOOKUP, inspection, recoverable publication,
+restart, checkpoint and authority reconciliation, operator source events, the text refusal. Its suites prove the
+process closure (no interpreter mapped, fixed descriptors), equality with the Python operator interface, the crash
+matrix, the attack refusals and a fixed file set over long runs (`tests/integration/test_native_host.py`,
+`runtime.native_host_smoke`). RuntimeCore ABI v6 gained two read-only entry points before any release
+(`elpis_runtime_authority_entity_at`, `elpis_runtime_authority_next_entity_id`). The host contains itself after
+admission (`--contained`: Landlock grants writes to exactly the six fixed slots; the launcher's file size limit would
+stop admission's sealed copies). It is installed as `bin/elpis` and `lib/elpis/` (`cmake --install`, `init
+--libraries`), and the Installed system acceptance job runs the full native suite against the installed binaries.
+**F3** the Python deployment, CLI, acceptance and release modules are reclassified as the offline reference interface
+(differential tests, the qualification instruments bound to their commits, research); `docs/OPERATING_ELPIS.md`
+operates the native host.
+
+Stage F conflict, stated rather than worked around:
+
+* **Standalone continuity cannot be retired yet (F2).** Section 9 retires it only after its successor is qualified.
+  The successor's qualification is pre-registered: `docs/qualification/ECS_C_RECOVERY_Q0.md` (NOT RUN). Like K1
+  Recovery R0 v4, it freezes on the accepted source, the merge commit of these stages into `main`. Merging needs the
+  owner's explicit authorization, and its instrument is not written yet. Until both exist, continuity stays: it is the
+  authority the offline Python reference interface publishes to, the backend RuntimeCore's continuity law suite runs
+  over, and K1 Recovery R0 v4's premise P1. The containment launcher keeps granting its slots for that path.

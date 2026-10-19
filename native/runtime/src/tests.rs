@@ -2976,6 +2976,42 @@ mod ecs_c {
     }
 
     #[test]
+    fn the_held_authority_reads_are_exactly_its_rows_and_change_nothing() {
+        // Continuity has no rows; a closed runtime refuses.
+        let cdir = Dir::new("ecsc-read-continuity");
+        let mut cont = Core::new(&cdir.0).unwrap();
+        cont.open().unwrap();
+        assert_eq!(cont.authority_entity(0).unwrap_err(), Rt::Invalid.into());
+        assert_eq!(cont.authority_next_entity_id(3, &[1; 32]).unwrap_err(), Rt::Invalid.into());
+        let dir = Dir::new("ecsc-read");
+        let mut core = closed(&dir);
+        assert_eq!(core.authority_entity(0).unwrap_err(), Rt::Closed.into());
+        core.open().unwrap();
+        // The rows a restart would find, in order, and nothing past them.
+        let found = found_source(&mut core, &dir, 9, 4242, 2);
+        let r = peek(&dir);
+        let n = r.state.entities.len() as u32; // operator, runtime, the provisioned source, this one
+        assert_eq!(n, 4);
+        assert_eq!(core.authority_status().unwrap().entity_count, n);
+        for (i, row) in r.state.entities.iter().enumerate() {
+            assert_eq!(&core.authority_entity(i as u32).unwrap(), row);
+        }
+        assert_eq!(core.authority_entity(n).unwrap_err(), Rt::Invalid.into());
+        assert_eq!(core.authority_entity(n - 1).unwrap().id, found);
+        // The next founding's identity is the authority's own, for each kind; an unknown kind is refused.
+        for kind in [e::EntityKind::Operator, e::EntityKind::Runtime, e::EntityKind::Source] {
+            assert_eq!(
+                core.authority_next_entity_id(kind as u8, &[7; 32]).unwrap(),
+                r.state.next_entity_id(&r.lineage, kind, &[7; 32])
+            );
+        }
+        assert_eq!(core.authority_next_entity_id(0, &[7; 32]).unwrap_err(), Rt::Invalid.into());
+        assert_eq!(core.authority_next_entity_id(4, &[7; 32]).unwrap_err(), Rt::Invalid.into());
+        // Reads: the authority did not move.
+        assert_eq!(peek(&dir), r);
+    }
+
+    #[test]
     fn a_publication_records_the_evidence_summary_of_the_observations_it_makes_durable() {
         // The durability lane sets the summary from the captured envelope before the PUBLISH. Store level: the fake
         // composite's envelope is K1-shaped (it cannot be checkpointed), so the composite envelope is built here; the

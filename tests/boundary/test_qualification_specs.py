@@ -30,6 +30,8 @@ EVIDENCE = {
     "ECS_CODEC_R0.md": "research/qualification/ecs_codec_r0/evidence",
     # The ABI v5 successor of Cognitive Boundary R2 (R2 stays as pre-registered, unrun authority for ABI v4).
     "COGNITIVE_BOUNDARY_R2_V5.md": "research/qualification/cognitive_boundary_r2_v5/evidence",
+    # The successor of continuity as the authority register (RuntimeCore ABI v6 over the ECS_C authority).
+    "ECS_C_RECOVERY_Q0.md": "research/qualification/ecs_c_recovery_q0/evidence",
 }
 EXPECTED = set(EVIDENCE)
 STATUS = re.compile(r"^Status: \*\*(?P<status>[A-Z ]+)\*\* · Subject: \*\*(?P<subject>[A-Z]+)\*\*", re.M)

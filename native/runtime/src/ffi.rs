@@ -379,6 +379,29 @@ pub struct CAuthority {
 
 const _: () = assert!(std::mem::size_of::<CAuthority>() == 216);
 
+/// `elpis_runtime_authority_entity` (ABI v6, `elpis_runtime_authority_entity_at`): one entity row of the held ECS_C authority, laid out as
+/// `elpis_ecs_c_entity`.
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct CAuthorityEntity {
+    pub id: Digest,
+    pub kind: u8,
+    pub lifecycle: u8,
+    pub reserved: [u8; 2],
+    pub per_turn_limit: u32,
+    pub founding_index: u64,
+    pub founded_generation: u64,
+    pub last_generation: u64,
+    pub sender_watermark: u64,
+    pub source_version: u64,
+    pub label: Digest,
+    pub scope: Digest,
+    pub source_authority: u32,
+    pub reserved2: u32,
+}
+
+const _: () = assert!(std::mem::size_of::<CAuthorityEntity>() == 152);
+
 /// ABI v6: the durable authority's backend and, under ECS_C, its recovery report, current record and last refusal.
 #[no_mangle]
 pub unsafe extern "C" fn elpis_runtime_authority_status(rt: *mut ElpisRuntime, out: *mut CAuthority) -> i32 {
@@ -427,6 +450,54 @@ pub unsafe extern "C" fn elpis_runtime_authority_transition(
         if let Some(out) = out_generation.as_mut() {
             *out = receipt.generation;
         }
+        Ok(())
+    })())
+}
+
+/// ABI v6: the held ECS_C authority's entity row at `index` (what an operator event is built from: identities,
+/// lifecycles, sender watermarks). `RUNTIME_INVALID` under continuity and past the last row; refused closed.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_authority_entity_at(
+    rt: *mut ElpisRuntime,
+    index: u32,
+    out: *mut CAuthorityEntity,
+) -> i32 {
+    rc((|| {
+        let out = out.as_mut().ok_or(Error::Runtime(Rt::Invalid))?;
+        let e = runtime(rt)?.authority_entity(index)?;
+        *out = CAuthorityEntity {
+            id: e.id,
+            kind: e.kind as u8,
+            lifecycle: e.lifecycle as u8,
+            reserved: [0; 2],
+            per_turn_limit: e.per_turn_limit,
+            founding_index: e.founding_index,
+            founded_generation: e.founded_generation,
+            last_generation: e.last_generation,
+            sender_watermark: e.sender_watermark,
+            source_version: e.source_version,
+            label: e.label,
+            scope: e.scope,
+            source_authority: e.source_authority,
+            reserved2: 0,
+        };
+        Ok(())
+    })())
+}
+
+/// ABI v6: the identity the next ENTITY_FOUND of `kind` and `label` founds on the held ECS_C authority (the
+/// receiver that event must name). `RUNTIME_INVALID` under continuity and for an unknown kind; refused closed.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_authority_next_entity_id(
+    rt: *mut ElpisRuntime,
+    kind: u8,
+    label: *const u8,
+    out: *mut u8,
+) -> i32 {
+    rc((|| {
+        let label = digest(label)?;
+        let out = (out as *mut Digest).as_mut().ok_or(Error::Runtime(Rt::Invalid))?;
+        *out = runtime(rt)?.authority_next_entity_id(kind, label)?;
         Ok(())
     })())
 }

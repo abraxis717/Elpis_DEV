@@ -17,6 +17,10 @@
   {
    "stage": "E (docs/NATIVE_SPLIT_CENSUS.md)",
    "change": "adds libelpis_ecs_c_hca.so (the ECS_C HCA native research substrate, C ABI v1, include/elpis/ecs_c_hca.h; research only, gated: no other library links it); it carries the substrate's SHA-256 helpers as libelpis_ecs_memory.so does; no export or link of any library above changes"
+  },
+  {
+   "stage": "F (docs/NATIVE_SPLIT_CENSUS.md)",
+   "change": "RuntimeCore C ABI v6, amended before any release: libelpis_runtime.so and libelpis_runtime_testing.so add elpis_runtime_authority_entity_at and elpis_runtime_authority_next_entity_id (read-only views of the held ECS_C authority, what the native operator host builds operator events from); no other export or link changes"
   }
  ],
  "libraries": {
@@ -746,6 +750,8 @@
     "elpis_continuity_store_snapshot",
     "elpis_runtime_abi_version",
     "elpis_runtime_anchor",
+    "elpis_runtime_authority_entity_at",
+    "elpis_runtime_authority_next_entity_id",
     "elpis_runtime_authority_status",
     "elpis_runtime_authority_transition",
     "elpis_runtime_checkpoint_adopt",
@@ -812,6 +818,8 @@
     "elpis_continuity_testing_fault",
     "elpis_runtime_abi_version",
     "elpis_runtime_anchor",
+    "elpis_runtime_authority_entity_at",
+    "elpis_runtime_authority_next_entity_id",
     "elpis_runtime_authority_status",
     "elpis_runtime_authority_transition",
     "elpis_runtime_checkpoint_adopt",

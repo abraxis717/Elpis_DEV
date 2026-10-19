@@ -118,11 +118,43 @@ target_link_libraries(test_runtime_hot_io PRIVATE -lelpis_runtime ${CMAKE_DL_LIB
 set_target_properties(test_runtime_hot_io PROPERTIES BUILD_RPATH "${_testing_dir}")
 add_dependencies(test_runtime_hot_io elpis_runtime_testing elpis_ecs_c_authority)
 
+# The native operator host (docs/NATIVE_HOST.md): the production entry point, one executable per RuntimeCore build.
+# It links no Elpis library: each one is admitted at run time from the deployment's pinned lib/ directory (sealed
+# copy, SHA-256 against the catalog, dlopen of the seal), so the headers here give types only. Its own closure is the
+# C library and the static SHA-256.
+set(_host_sources host/src/elpis_host.c host/src/host_deploy.c host/src/host_admit.c host/src/host_json.c
+    host/src/host_contain.c)
+set(_host_includes "${_crate}/include" "${_continuity}/include" "${_ecs_c}/include"
+    "${CMAKE_SOURCE_DIR}/native/runtime/composite/include" "${CMAKE_SOURCE_DIR}/native/runtime/observation/include"
+    "${CMAKE_SOURCE_DIR}/native/ECS_C/memory/include" "${CMAKE_SOURCE_DIR}/native/ECS_G/include"
+    "${CMAKE_SOURCE_DIR}/native/structure/semantic/include" "${CMAKE_SOURCE_DIR}/native/structure/hacf/include")
+# The testing host (fault plans, a crash at an operation boundary) runs only a testing deployment; it is test support.
+add_executable(elpis_host ${_host_sources})
+_elpis_register(runtime elpis_host executable)
+add_executable(elpis_host_testing ${_host_sources})
+_elpis_register(runtime elpis_host_testing test)
+foreach(_variant IN ITEMS "" "_testing")
+  set_target_properties(elpis_host${_variant} PROPERTIES OUTPUT_NAME "elpis${_variant}")
+  target_include_directories(elpis_host${_variant} PRIVATE ${_host_includes})
+  target_compile_definitions(elpis_host${_variant} PRIVATE _GNU_SOURCE=1)
+  target_link_libraries(elpis_host${_variant} PRIVATE elpis_hash ${CMAKE_DL_LIBS})
+endforeach()
+target_compile_definitions(elpis_host_testing PRIVATE ELPIS_HOST_TESTING=1)
+# The host end to end in every native build (sanitizer and clang jobs included); no interpreter is involved.
+add_test(NAME runtime.native_host_smoke
+  COMMAND ${CMAKE_COMMAND} "-DHOST=$<TARGET_FILE:elpis_host>" "-DBUILD=${CMAKE_BINARY_DIR}"
+          "-DSCRATCH=${CMAKE_CURRENT_BINARY_DIR}/test-state/native_host_smoke"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/host/tests/host_smoke.cmake")
+set_tests_properties(runtime.native_host_smoke PROPERTIES LABELS runtime TIMEOUT 300)
+
 # Typed HACF -> ECS memory observation path (docs/ECS_MEMORY.md, "HACF observations"): joins structure (identity and
 # validation owner) and the ECS memory type at the composition layer; RuntimeCore itself still links neither.
 elpis_add_library(runtime elpis_hacf_observation SHARED observation/src/ecs_observation_hacf.c)
 target_include_directories(elpis_hacf_observation PUBLIC observation/include)
 target_link_libraries(elpis_hacf_observation PUBLIC elpis_ecs_memory elpis_semantic)
+# Name only the libraries it uses, whatever the toolchain's default (the native host refuses an admitted library that
+# depends on one it did not admit: docs/NATIVE_HOST.md, "Admission").
+target_link_options(elpis_hacf_observation PRIVATE "LINKER:--as-needed")
 elpis_add_test(runtime test_ecs_observation_hacf SOURCES observation/tests/test_ecs_observation_hacf.c
   INCLUDES "${CMAKE_SOURCE_DIR}/native/ECS_C/memory/tests"
   LIBS elpis_hacf_observation elpis_ecs_memory elpis_semantic elpis_hash TIMEOUT 120)
@@ -160,3 +192,15 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     TIMEOUT 30)
   target_compile_definitions(test_autonomous_containment PRIVATE _GNU_SOURCE=1)
 endif()
+
+# The installed product (docs/NATIVE_HOST.md, "Installation"): the host in bin/ and the seven libraries it admits in
+# lib/elpis/, flat (`elpis init --libraries <prefix>/lib/elpis` pins them from there). The testing component adds the
+# testing host and the testing RuntimeCore build, for the acceptance's crash suites only.
+install(TARGETS elpis_host RUNTIME DESTINATION bin COMPONENT runtime)
+install(TARGETS elpis_ecsg_math elpis_ecsg_k1 elpis_ecs_memory elpis_ecs_composite elpis_hacf_observation
+        LIBRARY DESTINATION lib/elpis COMPONENT runtime)
+install(FILES "${_prod}" "${_ecs_c_lib}" DESTINATION lib/elpis COMPONENT runtime
+        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+install(TARGETS elpis_host_testing RUNTIME DESTINATION bin COMPONENT testing)
+install(FILES "${_testing}" DESTINATION lib/elpis COMPONENT testing
+        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
