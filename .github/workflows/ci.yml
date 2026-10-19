@@ -225,8 +225,10 @@ jobs:
         run: |
           cmake --install "$RUNNER_TEMP/build" --prefix "$RUNNER_TEMP/prefix" --component runtime
           cmake --install "$RUNNER_TEMP/build" --prefix "$RUNNER_TEMP/prefix" --component testing
+          # The harness: pytest, and the checkout's package (the offline reference the differential test compares
+          # against, which the integration conftest imports). Nothing of it runs on the production path.
           python -m venv "$RUNNER_TEMP/harness"
-          "$RUNNER_TEMP/harness/bin/python" -m pip install pytest
+          "$RUNNER_TEMP/harness/bin/python" -m pip install . pytest
       - name: Native installed acceptance, offline
         run: |
           sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
