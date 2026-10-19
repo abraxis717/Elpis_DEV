@@ -118,6 +118,28 @@ target_link_libraries(test_runtime_hot_io PRIVATE -lelpis_runtime ${CMAKE_DL_LIB
 set_target_properties(test_runtime_hot_io PROPERTIES BUILD_RPATH "${_testing_dir}")
 add_dependencies(test_runtime_hot_io elpis_runtime_testing elpis_ecs_c_authority)
 
+# The native operator host (docs/NATIVE_HOST.md): the production entry point, one executable per RuntimeCore build.
+# It links no Elpis library: each one is admitted at run time from the deployment's pinned lib/ directory (sealed
+# copy, SHA-256 against the catalog, dlopen of the seal), so the headers here give types only. Its own closure is the
+# C library and the static SHA-256.
+set(_host_sources host/src/elpis_host.c host/src/host_deploy.c host/src/host_admit.c host/src/host_json.c)
+set(_host_includes "${_crate}/include" "${_continuity}/include" "${_ecs_c}/include"
+    "${CMAKE_SOURCE_DIR}/native/runtime/composite/include" "${CMAKE_SOURCE_DIR}/native/runtime/observation/include"
+    "${CMAKE_SOURCE_DIR}/native/ECS_C/memory/include" "${CMAKE_SOURCE_DIR}/native/ECS_G/include"
+    "${CMAKE_SOURCE_DIR}/native/structure/semantic/include" "${CMAKE_SOURCE_DIR}/native/structure/hacf/include")
+# The testing host (fault plans, a crash at an operation boundary) runs only a testing deployment; it is test support.
+add_executable(elpis_host ${_host_sources})
+_elpis_register(runtime elpis_host executable)
+add_executable(elpis_host_testing ${_host_sources})
+_elpis_register(runtime elpis_host_testing test)
+foreach(_variant IN ITEMS "" "_testing")
+  set_target_properties(elpis_host${_variant} PROPERTIES OUTPUT_NAME "elpis${_variant}")
+  target_include_directories(elpis_host${_variant} PRIVATE ${_host_includes})
+  target_compile_definitions(elpis_host${_variant} PRIVATE _GNU_SOURCE=1)
+  target_link_libraries(elpis_host${_variant} PRIVATE elpis_hash ${CMAKE_DL_LIBS})
+endforeach()
+target_compile_definitions(elpis_host_testing PRIVATE ELPIS_HOST_TESTING=1)
+
 # Typed HACF -> ECS memory observation path (docs/ECS_MEMORY.md, "HACF observations"): joins structure (identity and
 # validation owner) and the ECS memory type at the composition layer; RuntimeCore itself still links neither.
 elpis_add_library(runtime elpis_hacf_observation SHARED observation/src/ecs_observation_hacf.c)

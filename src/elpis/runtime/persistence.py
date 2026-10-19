@@ -63,6 +63,15 @@ WRITERS: tuple[PersistentWriter, ...] = (
         "creates, grows, resizes, renames or multiplies them. No history; a slot never authorizes itself (continuity "
         "decides)."),
     PersistentWriter(
+        "ecs_c_authority_slots", F, (),
+        ("native/ECS_C/authority/src/store.rs:pub fn transition",),
+        "The ECS_C authority (docs/ECS_C_AUTHORITY.md): exactly two record slots of R(capacity) bytes in the state "
+        "directory and two 240-byte witness slots in the authority directory, all created by provisioning. Each "
+        "transition rewrites one record slot and one witness slot in place (R + 240 bytes, two fdatasync calls), "
+        "whatever the length of the history; nothing is created, renamed, removed or grown, and the entity rows are "
+        "bounded by the provisioned capacity (exhaustion refuses before any write). Reached from RuntimeCore (ABI "
+        "v6) only by an explicit publication or operator event; a LEARN, OBSERVE or QUERY never writes it."),
+    PersistentWriter(
         "fms_posix_cold_store", F, ("elpis.substrate.residency:Context",),
         ("native/substrate/src/fms_pal_posix.c:p_cold_put",),
         "Only behind a caller-constructed FMS Context with an explicit cold root, cold-tier budget and object "
@@ -79,6 +88,20 @@ WRITERS: tuple[PersistentWriter, ...] = (
         ("native/runtime/src/checkpoint.rs:pub fn provision",),
         "One new directory with exactly two zeroed, synced slot files per explicit operator command; an existing "
         "directory is refused (never overwritten, resized or adopted). Never reached by a Runtime operation."),
+    PersistentWriter(
+        "ecs_c_authority_provisioning", O, (),
+        ("native/ECS_C/authority/src/store.rs:pub fn provision",),
+        "One state directory and one authority directory with their fixed file sets (two record slots; the "
+        "deployment key and two witnesses) per explicit operator provisioning; an existing deployment is refused "
+        "(ALREADY_PROVISIONED). Never reached by a Runtime operation."),
+    PersistentWriter(
+        "native_host_deployment", O, (),
+        ("native/runtime/host/src/host_deploy.c:host_init", "native/runtime/host/src/host_deploy.c:host_create_lineage"),
+        "The native operator host (docs/NATIVE_HOST.md). init creates a home holding exactly host.cfg, catalog and "
+        "the seven pinned libraries (write-once files, never replaced) and provisions the ECS_C authority; create "
+        "writes lineage.cfg once and provisions the checkpoint store. Each is one explicit operator command, refused "
+        "when its files exist. Afterwards the host writes nothing itself: every later write is the ECS_C authority's "
+        "or the checkpoint store's fixed slots. No log, cache or history."),
     PersistentWriter(
         "publication_ledger_v1", O,
         ("elpis.pipeline.application.durable_ledger:DurableApplicationLedger.append",), (),

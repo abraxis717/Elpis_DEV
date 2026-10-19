@@ -65,7 +65,8 @@ def test_writer_registry_resolves_to_real_code_with_one_class_each():
         for entry in w.native:
             path, symbol = entry.split(":", 1)
             assert symbol and symbol in (REPO / path).read_text(encoding="utf-8"), entry
-    assert P.AUTONOMOUS_WRITERS == {"continuity_slots", "fms_posix_cold_store", "k1_checkpoint_slots"}
+    assert P.AUTONOMOUS_WRITERS == {"continuity_slots", "ecs_c_authority_slots", "fms_posix_cold_store",
+                                    "k1_checkpoint_slots"}
 
 
 def _operator_writer_names() -> set[str]:
