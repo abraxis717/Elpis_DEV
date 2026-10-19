@@ -497,7 +497,7 @@ static void rank(uint32_t *cells, uint32_t n, const uint16_t *scores) {
 static int readout(const elpis_hca_graph *g, const elpis_hca_task *t, const prepared *p, const uint16_t *scores,
                    meter *m, elpis_hca_result *r) {
     uint32_t ranked[ELPIS_HCA_MAX_CELLS], ranked_count = 0;
-    r->prediction_count = r->evidence_count = r->constraint_count = r->omitted = 0;
+    memset(r, 0, sizeof(*r)); /* every byte of a result is defined: entries past the counts are zero */
     for (uint32_t c = 0; c < g->cell_count; ++c) {
         CHARGE(m, 1);
         if (!p->scoped[c]) continue;
