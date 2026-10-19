@@ -1,9 +1,10 @@
 """Persistent-writer authority of the runtime: zero autonomously ever-expanding Elpis-owned persistence.
 
 Elpis may hold persistent state; it may not accumulate it monotonically on its own. Every persistent writer
-reachable from the canonical runtime (``elpis.runtime`` and the native libraries it loads) is classified here
-exactly once, and every public :class:`~elpis.runtime.composition.Runtime` operation is classified as either
-part of the ordinary autonomous path or as an explicit operator operation.
+reachable from either composer is classified here exactly once: the native host ``elpis`` (the production entry
+point, docs/NATIVE_HOST.md) and the Python ``elpis.runtime`` (the offline reference interface) with the native
+libraries it loads. Every public :class:`~elpis.runtime.composition.Runtime` operation is classified as either part
+of the ordinary autonomous path or as an explicit operator operation.
 ``tests/boundary/test_autonomous_persistence.py`` binds this table to the code, and
 ``tests/integration/test_autonomous_no_growth.py`` proves it on real native libraries under a write trap.
 
@@ -239,7 +240,16 @@ OPERATOR_OPERATIONS = frozenset({
     "adopt_k1_candidate",     # explicit reconciliation: continuity authorized -> the named candidate
     "import_composite",       # explicit lineage format change (K1 -> ECS composite): fixed checkpoint, then continuity
 })
-AUTONOMOUS_WRITERS = frozenset(w.id for w in WRITERS if w.classification is F)
+# The fixed-capacity writers each composer's ordinary path reaches, by composer. Every FIXED_CAPACITY_AUTONOMOUS
+# writer belongs to at least one, and nothing else does (tests/boundary/test_autonomous_persistence.py).
+# * AUTONOMOUS_WRITERS: the Python Runtime (elpis.runtime.composition, the offline reference interface) and the native
+#   libraries it loads. Its durable authority is standalone continuity (elpis_runtime_create);
+#   tests/integration/test_autonomous_no_growth.py proves this set under a write trap.
+# * NATIVE_HOST_AUTONOMOUS_WRITERS: the native host (docs/NATIVE_HOST.md), the production entry point. Its durable
+#   authority is the ECS_C authority (elpis_runtime_create_ecs_c only), and it builds no FMS cold store;
+#   tests/integration/test_native_host.py proves its home a fixed file set under containment.
+AUTONOMOUS_WRITERS = frozenset({"continuity_slots", "fms_posix_cold_store", "k1_checkpoint_slots"})
+NATIVE_HOST_AUTONOMOUS_WRITERS = frozenset({"ecs_c_authority_slots", "k1_checkpoint_slots"})
 
 
 def writer(writer_id: str) -> PersistentWriter:
