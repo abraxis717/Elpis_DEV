@@ -29,7 +29,9 @@ local deployment and operates the canonical runtime through
 composite, typed structural evidence (no K1 learning), exact LOOKUP,
 recoverable publication, restart and operator reconciliation. There is no text
 interface (`ECS_CODEC_UNQUALIFIED`). `python -m elpis.runtime.acceptance` is
-the installed system's smoke and recovery test.
+the installed system's smoke and recovery test. The native operator host
+`elpis` ([`docs/NATIVE_HOST.md`](docs/NATIVE_HOST.md)) operates the same
+lineage natively over the ECS_C authority, with no interpreter in the process.
 
 ## Layout
 

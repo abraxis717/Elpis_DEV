@@ -71,7 +71,10 @@ def _tree(root):
 
 def test_ordinary_autonomous_path_leaves_only_the_two_continuity_slots(retrieval_library, ingress_library,
                                                                         k1, tmp_path):
-    assert P.AUTONOMOUS_WRITERS == {"continuity_slots", "fms_posix_cold_store", "k1_checkpoint_slots"}
+    # The ECS_C authority's fixed slots are the native host's durable authority (tests/integration/test_native_host.py
+    # proves its home a fixed file set); this path publishes to continuity.
+    assert P.AUTONOMOUS_WRITERS == {"continuity_slots", "ecs_c_authority_slots", "fms_posix_cold_store",
+                                    "k1_checkpoint_slots"}
     state_root, continuity = tmp_path / "structural-memory", tmp_path / "continuity"
     trap = _WriteTrap()
     with world(k1) as state, trap:

@@ -976,6 +976,8 @@ context's identity, version and predecessor the runtime uses; the DSV model-view
 / `global_context` (ProposalOnly, its own `generation`) is a different object and nothing outside `elpis.inference`
 imports it (`test_context_authority.py::test_one_context_authority...`). The PR #51 HCA record is research only; its
 native port (`native/ECS_C/hca`, `docs/ECS_C_HCA.md`) is a gated research substrate that nothing canonical links.
+The native production entry point is the operator host `elpis` (`native/runtime/host`, `docs/NATIVE_HOST.md`): it admits
+the pinned libraries from sealed copies and drives RuntimeCore over the ECS_C authority, with no interpreter.
 
 | Concern | Mechanism | Proof |
 |---|---|---|

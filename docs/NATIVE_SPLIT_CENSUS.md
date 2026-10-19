@@ -319,3 +319,14 @@ invalidation, delayed memory, activation damage (and the unsupported-cycle limit
 matched-resource exact-storage controls. Gated: nothing canonical links or loads it (`tests/boundary/test_ecs_c_hca.py`).
 The memory's operations are unchanged: exact typed evidence and LOOKUP admitted, LEARN / QUERY FAST behind the
 unqualified capability, CONSOLIDATE not provided. No HCA law is admitted; no scientific claim is made.
+
+**F1** the native operator host (`docs/NATIVE_HOST.md`, `native/runtime/host`): `elpis`, one C program linking only the
+C library, admits the seven pinned libraries from sealed copies at every start (dependencies checked before loading,
+SONAMEs after), pins its own binary, and drives RuntimeCore over the ECS_C authority: provisioning, the lineage,
+QUERY, LEARN, typed evidence admitted by the authority's sources, LOOKUP, inspection, recoverable publication,
+restart, checkpoint and authority reconciliation, operator source events, the text refusal. Its suites prove the
+process closure (no interpreter mapped, fixed descriptors), equality with the Python operator interface, the crash
+matrix, the attack refusals and a fixed file set over long runs (`tests/integration/test_native_host.py`,
+`runtime.native_host_smoke`). RuntimeCore ABI v6 gained two read-only entry points before any release
+(`elpis_runtime_authority_entity_at`, `elpis_runtime_authority_next_entity_id`). Not yet: the Python production path
+and standalone continuity are not retired (F2/F3); the containment launcher still grants the continuity slots.

@@ -139,6 +139,12 @@ foreach(_variant IN ITEMS "" "_testing")
   target_link_libraries(elpis_host${_variant} PRIVATE elpis_hash ${CMAKE_DL_LIBS})
 endforeach()
 target_compile_definitions(elpis_host_testing PRIVATE ELPIS_HOST_TESTING=1)
+# The host end to end in every native build (sanitizer and clang jobs included); no interpreter is involved.
+add_test(NAME runtime.native_host_smoke
+  COMMAND ${CMAKE_COMMAND} "-DHOST=$<TARGET_FILE:elpis_host>" "-DBUILD=${CMAKE_BINARY_DIR}"
+          "-DSCRATCH=${CMAKE_CURRENT_BINARY_DIR}/test-state/native_host_smoke"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/host/tests/host_smoke.cmake")
+set_tests_properties(runtime.native_host_smoke PROPERTIES LABELS runtime TIMEOUT 300)
 
 # Typed HACF -> ECS memory observation path (docs/ECS_MEMORY.md, "HACF observations"): joins structure (identity and
 # validation owner) and the ECS memory type at the composition layer; RuntimeCore itself still links neither.
