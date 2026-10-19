@@ -412,7 +412,8 @@ int main(int argc, char **argv) {
     assert(elpis_runtime_authority_transition(rt, e, NULL) == ELPIS_RUNTIME_INVALID);
     elpis_runtime_destroy(&rt);
 
-    sh("rm -rf '%s' '%s'", scratch, scratch);
+    /* The scratch is the test's working directory: emptied, never removed (the next run starts in it). */
+    sh("rm -rf '%s' && mkdir -p '%s'", scratch, scratch);
     printf("RuntimeCore over ECS_C: PASS\n");
     return 0;
 }
