@@ -55,7 +55,7 @@ use crate::durable::{Kind, Lane, Status, Ticket};
 use crate::fuel::Budget;
 use crate::substrate::{features, CSubstrate, Experience, Native, ScheduleOutcome, Transition};
 
-pub const ABI_VERSION: u32 = 5;
+pub const ABI_VERSION: u32 = 6;
 
 /// Opaque runtime handle: the HOT state machine behind its lock, and the durability lane its wait and status
 /// reads reach without that lock.
@@ -300,6 +300,8 @@ pub extern "C" fn elpis_runtime_code_name(code: i32) -> *const c_char {
             Rt::RecoveryUnavailable => c"RUNTIME_RECOVERY_UNAVAILABLE",
             Rt::CheckpointAttached => c"RUNTIME_CHECKPOINT_ATTACHED",
             Rt::NotResident => c"RUNTIME_NOT_RESIDENT",
+            Rt::Authority => c"RUNTIME_AUTHORITY",
+            Rt::ObservationRefused => c"RUNTIME_OBSERVATION_REFUSED",
         }
         .as_ptr(),
         None => match Code::from_i32(code) {
@@ -323,6 +325,110 @@ pub unsafe extern "C" fn elpis_runtime_create(path: *const u8, len: usize, out: 
         let lane = core.lane();
         *out = Box::into_raw(Box::new(ElpisRuntime { core: Mutex::new(core), lane }))
     }))
+}
+
+/// ABI v6: create a closed runtime over a provisioned ECS_C authority (`docs/ECS_C_AUTHORITY.md`): an absolute state
+/// directory and its protected authority directory (`*_len` bytes each, no terminator needed). Provisioning and
+/// operator reconciliation are the authority's own (`elpis/ecs_c_authority.h`), performed with no runtime open.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_create_ecs_c(
+    state_dir: *const u8,
+    state_len: usize,
+    authority_dir: *const u8,
+    authority_len: usize,
+    out: *mut *mut ElpisRuntime,
+) -> i32 {
+    if state_dir.is_null() || authority_dir.is_null() || out.is_null() {
+        return Rt::Invalid as i32;
+    }
+    *out = std::ptr::null_mut();
+    let state = Path::new(OsStr::from_bytes(std::slice::from_raw_parts(state_dir, state_len)));
+    let authority = Path::new(OsStr::from_bytes(std::slice::from_raw_parts(authority_dir, authority_len)));
+    rc(Core::new_ecs_c(state, authority).map(|core| {
+        let lane = core.lane();
+        *out = Box::into_raw(Box::new(ElpisRuntime { core: Mutex::new(core), lane }))
+    }))
+}
+
+/// `elpis_runtime_authority` (ABI v6).
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct CAuthority {
+    /// 1 continuity, 2 ECS_C.
+    pub backend: u32,
+    /// The last ECS_C refusal (`ELPIS_ECS_C_*`; 0 none, always 0 under continuity).
+    pub ecs_c_code: i32,
+    /// The ECS_C recovery disposition and mode of the last open (0 under continuity).
+    pub disposition: u32,
+    pub mode: u32,
+    pub replay_verified: u8,
+    pub witness_completed: u8,
+    pub reserved: [u8; 6],
+    /// The authority's generation (continuity's record generation under continuity).
+    pub generation: u64,
+    pub receipt_count: u64,
+    pub evidence_count: u64,
+    pub entity_count: u32,
+    pub capacity: u32,
+    pub lineage: Digest,
+    pub record_digest: Digest,
+    pub state_root: Digest,
+    pub receipt_head: Digest,
+    pub evidence_head: Digest,
+}
+
+const _: () = assert!(std::mem::size_of::<CAuthority>() == 216);
+
+/// ABI v6: the durable authority's backend and, under ECS_C, its recovery report, current record and last refusal.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_authority_status(rt: *mut ElpisRuntime, out: *mut CAuthority) -> i32 {
+    rc((|| {
+        let s = runtime(rt)?.authority_status()?;
+        let out = out.as_mut().ok_or(Error::Runtime(Rt::Invalid))?;
+        *out = CAuthority {
+            backend: s.backend,
+            ecs_c_code: s.ecs_c_code,
+            disposition: s.disposition,
+            mode: s.mode,
+            replay_verified: s.replay_verified as u8,
+            witness_completed: s.witness_completed as u8,
+            reserved: [0; 6],
+            generation: s.generation,
+            receipt_count: s.receipt_count,
+            evidence_count: s.evidence_count,
+            entity_count: s.entity_count,
+            capacity: s.capacity,
+            lineage: s.lineage,
+            record_digest: s.record_digest,
+            state_root: s.state_root,
+            receipt_head: s.receipt_head,
+            evidence_head: s.evidence_head,
+        };
+        Ok(())
+    })())
+}
+
+/// ABI v6, ECS_C authority only: one operator event (512 bytes, `elpis/ecs_c_authority.h`: ENTITY_FOUND,
+/// ENTITY_LIFECYCLE, SOURCE_VERSION, ENTITY_RECLAIM, IMPORT_LEGACY) while this runtime holds the authority; the
+/// typed-evidence admission table follows it. `out_generation` (optional) receives the new authority generation.
+#[no_mangle]
+pub unsafe extern "C" fn elpis_runtime_authority_transition(
+    rt: *mut ElpisRuntime,
+    event: *const u8,
+    out_generation: *mut u64,
+) -> i32 {
+    rc((|| {
+        if event.is_null() {
+            return Err(Rt::Invalid.into());
+        }
+        let event = elpis_ecs_c_authority::Event::decode(std::slice::from_raw_parts(event, 512))
+            .map_err(|_| Error::Runtime(Rt::Invalid))?;
+        let receipt = runtime(rt)?.authority_transition(&event).map_err(|r| r.error)?;
+        if let Some(out) = out_generation.as_mut() {
+            *out = receipt.generation;
+        }
+        Ok(())
+    })())
 }
 
 /// Close (if open) and free a runtime; sets `*rt` to NULL. An open managed turn is aborted natively first; a pending

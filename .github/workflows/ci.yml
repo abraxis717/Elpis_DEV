@@ -298,13 +298,17 @@ jobs:
           timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
           timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
           timeout 600 cargo test --offline --locked --release
-      - name: RuntimeCore format, lint and test (embeds continuity; bounded)
+      - name: RuntimeCore format, lint and test (embeds continuity and the ECS_C authority; bounded)
         working-directory: native/runtime
         run: |
           cargo fmt --check
           timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
           timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
           timeout 600 cargo test --offline --locked --release --features testing
+          # ABI v6: the same law suite over the ECS_C authority. One test is excluded by name, the continuity HOT-lane
+          # I/O constants pinned by the K1 Recovery R0 v4 premise; its ECS_C counterpart runs in both passes.
+          ELPIS_RUNTIME_TEST_AUTHORITY=ecs_c timeout 600 cargo test --offline --locked --release --features testing -- \
+            --skip recovery::crashes::the_hot_lane_performs_no_continuity_or_checkpoint_io
       - name: ECS_C authority format, lint and test (embeds the continuity crate; bounded)
         working-directory: native/ECS_C/authority
         run: |

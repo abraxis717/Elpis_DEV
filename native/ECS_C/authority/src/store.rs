@@ -1255,6 +1255,31 @@ impl Authority {
     }
 }
 
+/// Testing builds only: the authority recovery would resolve to, read without the directory locks and without
+/// writing anything (a witness completion is not performed). For tests that inspect what a restart would find
+/// while a live owner holds the directories.
+#[cfg(any(test, feature = "testing"))]
+pub fn testing_peek(state_dir: &Path, authority_dir: &Path) -> Result<Record, Code> {
+    let mut io = Io::default();
+    let euid = euid();
+    let mut master = read_key(&mut io, &authority_dir.join(KEY_FILE), euid)?;
+    let keys = Keys::derive(&master);
+    wipe(&mut master);
+    let read = |path: PathBuf| fs::read(path).map_err(io_code);
+    let raw = [read(state_dir.join(STATE_FILES[0]))?, read(state_dir.join(STATE_FILES[1]))?];
+    let wraw = [read(authority_dir.join(WITNESS_FILES[0]))?, read(authority_dir.join(WITNESS_FILES[1]))?];
+    if raw[0].len() != raw[1].len() {
+        return Err(Code::Corrupt);
+    }
+    let capacity = capacity_of(raw[0].len() as u64).ok_or(Code::Corrupt)?;
+    let slots = [Record::classify(&raw[0], capacity, &keys), Record::classify(&raw[1], capacity, &keys)];
+    let observed = [sha256::digest(&[&raw[0]]), sha256::digest(&[&raw[1]])];
+    let witnesses = [Witness::classify(&wraw[0], &keys), Witness::classify(&wraw[1], &keys)];
+    let recovered = recover(&mut io, capacity, &keys.deployment, &slots, &observed, &witnesses)
+        .map_err(|_| Code::RecoveryRefused)?;
+    Ok(slots[recovered.slot].1.clone().expect("recovered a valid record"))
+}
+
 /// Provisioning with explicit key material (tests use fixed material for reproducible vectors).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn provision_with(

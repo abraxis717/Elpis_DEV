@@ -78,7 +78,7 @@ valid by digest); "successor" means a new, versioned contract replaces it after 
 | HACF -> memory observation adapter (`native/runtime/observation`) | runtime | RuntimeCore | unchanged | none |
 | continuity register (`native/continuity`, Rust, C ABI v1, `libelpis_continuity`) | continuity | **ECS_C** authority | `native/ECS_C/authority` | Stage C successor (authenticated fixed-size authority records holding the materialized ECS_C state, bounded semantic replay, rollback witness; section 5a); the standalone library and the Python adapter are retired in Stage F after every consumer passes the successor's tests |
 | K1 Recovery R0 checkpoint store (`native/runtime/src/checkpoint.rs`) | runtime | RuntimeCore (bytes) under ECS_C authority (which identity resumes) | unchanged | Stage D: slots stay evidence; the authority that names them is ECS_C's |
-| RuntimeCore (`native/runtime`, Rust, ABI v5) | runtime | RuntimeCore | unchanged | Stage D: embeds the ECS_C authority instead of the standalone continuity crate |
+| RuntimeCore (`native/runtime`, Rust, ABI v5) | runtime | RuntimeCore | unchanged | Stage D (ABI v6): embeds the ECS_C authority beside the standalone continuity crate, one backend per handle; the continuity backend retires with continuity (Stage F) |
 | Python composition, deployment, CLI, acceptance (`src/elpis/runtime/*`) | runtime (Python) | **native** operator host | `native/runtime/host` | Stage D/F successor; Python stays as an offline harness only |
 | Python bindings (`src/elpis/ECS/*`, `src/elpis/continuity`, `src/elpis/runtime/core.py`) | ECS / continuity / runtime | offline verification tooling | unchanged | reclassified when Python leaves the production path (Stage F) |
 | contextual (WARM) lane (`src/elpis/runtime/context.py`) | runtime (Python) | ECS_C (context and structural-memory interface) | Stage E | native successor only where a production consumer exists; otherwise offline reference |
@@ -136,8 +136,8 @@ library:
 | Consumer | What it uses (baseline file:line) | Replacement obligation |
 |---|---|---|
 | RuntimeCore crate (`native/runtime`) | embeds and re-exports the crate (`lib.rs:36-37`, so `libelpis_runtime.so` exports every `elpis_continuity_*` symbol); `Store::new/open/close/snapshot`, `anchor_cognition_as`, `commit_cognition(_as)`, `import_cognition`, `reserve_evolution`, `finalize_evolution` (`core.rs:250-1418`, `durable.rs:529-1146`); `store::resolve`, `RECORD_SIZE`, the testing fault and counter probes; `sha256::digest` for the checkpoint slot and envelope digests (`checkpoint.rs:43-171`) | Stage D: the ECS_C authority serves every one of these behaviours; SHA-256 moves with it |
-| `runtime.h` and the five C runtime tests | `elpis_continuity_snapshot` / `_evolution` types in `open`, `snapshot`, `anchor`, `import_composite`, `adopt`, evolution and `elpis_runtime_durability.durable` (`runtime.h:95, 299, 380-504`) | Stage D: a versioned RuntimeCore ABI with the ECS_C snapshot types |
-| `native/runtime/containment/elpis_autonomous_run.c` and its test | the two slot names and the 176-byte size (`:35, 69-97, 154-195`) | Stage D/F: the grant becomes the ECS_C store's fixed file set and sizes |
+| `runtime.h` and the five C runtime tests | `elpis_continuity_snapshot` / `_evolution` types in `open`, `snapshot`, `anchor`, `import_composite`, `adopt`, evolution and `elpis_runtime_durability.durable` (`runtime.h:95, 299, 380-504`) | Stage D: a versioned RuntimeCore ABI (v6). The continuity snapshot types stay as the backend-neutral view (generation, cognition lineage, format, evolution); the ECS_C record is reported by `elpis_runtime_authority_status` |
+| `native/runtime/containment/elpis_autonomous_run.c` and its test | the two slot names and the 176-byte size (`:35, 69-97, 154-195`) | Stage F (not Stage D): the launcher still grants the continuity slots; under ECS_C the grant becomes the authority's fixed file set and sizes, with the native host |
 | Python `elpis.continuity` adapter, `runtime/core.py`, `composition.py`, `cli.py`, `deployment.py`, `acceptance.py`, `persistence.py`, `release.py` | `ContinuityLibrary` over the runtime library (requires the 15 re-exported symbols), snapshots, evolution, testing faults; the continuity directory of a deployment | Stage F: the native host replaces the production uses; the adapter and its tests retire with the standalone library |
 | `src/elpis/evolution/path_gate.py:39-50, 111-125, 330-332` | the evolution-authority **v2 digest** is persisted inside `elpis.evolution-path-assertion.v1` | the successor must keep that digest byte-identical for the same `(revision, head, pending, assertion)` |
 | `libelpis_continuity.so` itself | loaded only by `tests/continuity/test_adapter.py` and `native/continuity/tests/test_continuity_abi.c` | retired with the crate (Stage F) |
@@ -289,4 +289,25 @@ authority library (`docs/ECS_C_AUTHORITY.md`): materialized authority in two fix
 protected rollback witness, one transition law for validation and replay, every recovery disposition, explicit
 operator reconciliation, legacy import, crash / adversary / boundedness suites. The authority embeds the continuity
 crate until Stage F (an amendment of Amendment 1 stated in `docs/ELPIS_MISSION.md` and enforced by the mission and
-split gates), and no runtime consumer uses it before Stage D.
+split gates), and no runtime consumer uses it before Stage D. **D** RuntimeCore ABI v6 (`docs/RUNTIME_CORE.md`, "The
+durable authority (ABI v6)"): one durable-authority interface over two backends, the ECS_C authority composed natively
+(`elpis_runtime_create_ecs_c`): typed publication events, native typed-evidence admission against the authority's
+sources on the HOT lane (a bounded table, no I/O), evidence summaries recorded by the durability lane, operator events
+through the held authority, an open refused while the authority needs reconciliation; the whole RuntimeCore law suite
+runs over both backends. The K1 Recovery R0 v4 RUN PASS stays bound to `18f2f4d`: Stage D changes `durable.rs`, so the
+premise breaks with exactly P4 at this head (P1 to P3 hold), and its tests assert that, and re-check the premise at the
+qualifying commit, instead of asserting it at `HEAD`; the frozen instrument refuses an ABI v6 deployment.
+
+Stage D conflicts, stated rather than worked around:
+
+* **Cognitive Boundary R2 v5** (NOT RUN) names RuntimeCore ABI v5 as its subject and qualifies only its own frozen
+  commit. ABI v6 adds mutation paths that specification does not cover (operator events through a held authority, the
+  ECS_C publication path, native admission), so it cannot be run against a v6 head and stretched to cover them. It
+  stays as written, runnable only at an ABI v5 commit. Proposed successor: **Cognitive Boundary R2 v6**, a separately
+  versioned specification naming the v6 subject, adding to R2 v5's catalog an operator event sent while a turn is open,
+  RuntimeCore's own event kinds and reconciliations sent through `elpis_runtime_authority_transition`, an observation
+  from an unknown, DORMANT or exhausted source, a publication against a stale authority generation, and an open over a
+  reconcile-only authority; pre-registered before any run, not written in this stage.
+* **Deployments pinned to ABI 5** are refused (`DEPLOYMENT_ABI`) by this facade, as every ABI bump refuses an older
+  pin; a deployment is re-initialized against the new libraries. Its continuity lineage directory is the same format.
+* **The Python facade** still drives the continuity backend; it gains no ECS_C path (Stage F replaces it).

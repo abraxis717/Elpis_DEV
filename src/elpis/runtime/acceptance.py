@@ -136,7 +136,7 @@ class Acceptance:
                    and created["state_format"] == "COMPOSITE", identity=initial, home=str(home))
         pinned = {i: v["sha256"] for i, v in st["libraries"].items()}
         self.check("P02", "source, ABI and every admitted library are the pinned ones (the build's bytes)",
-                   st["abi"] == {"runtime": 5, "composite": 1} and st["deployment"]["source_commit"] == self.source_commit
+                   st["abi"] == {"runtime": 6, "composite": 1} and st["deployment"]["source_commit"] == self.source_commit
                    and sorted(pinned.values()) == sorted(lib_digests.values()) == sorted(build_digests.values()),
                    abi=st["abi"], libraries=pinned, source_commit=st["deployment"]["source_commit"])
         self.check("P03", "an admitted ECS composite: anchored, durable first, RESUMABLE",

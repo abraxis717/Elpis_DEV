@@ -1,10 +1,11 @@
 # RuntimeCore: the runtime's mutable systems authority, implemented in Rust behind a stable C ABI
-# (include/elpis/runtime.h). It embeds the continuity crate (one authority, one implementation) and reaches
-# native K1 only through caller-supplied K1 function tables. Two shared libraries from one crate:
+# (include/elpis/runtime.h). It embeds the continuity crate and, since ABI v6, the ECS_C authority crate (without its
+# C ABI): one implementation of each durable authority. It reaches native K1 only through caller-supplied K1 function
+# tables. Two shared libraries from one crate:
 #   libelpis_runtime.so          production (no test hooks)
 #   libelpis_runtime_testing.so  the same authority plus continuity fault injection and I/O counters
 # Both are built offline from Cargo.lock (no dependencies beyond the Rust standard library and the
-# continuity crate in this repository).
+# continuity and ECS_C authority crates in this repository).
 
 # The shared libraries carry a stable SONAME (passed to the final link only, so a crate that embeds this
 # one never inherits it), so C callers can link them by name.
@@ -12,9 +13,10 @@ find_program(ELPIS_CARGO cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/b
 
 set(_crate "${CMAKE_CURRENT_SOURCE_DIR}")
 set(_continuity "${CMAKE_SOURCE_DIR}/native/continuity")
-file(GLOB _rust_sources CONFIGURE_DEPENDS "${_crate}/src/*.rs" "${_continuity}/src/*.rs")
+set(_ecs_c "${CMAKE_SOURCE_DIR}/native/ECS_C/authority")
+file(GLOB _rust_sources CONFIGURE_DEPENDS "${_crate}/src/*.rs" "${_continuity}/src/*.rs" "${_ecs_c}/src/*.rs")
 set(_crate_inputs ${_rust_sources} "${_crate}/Cargo.toml" "${_crate}/Cargo.lock"
-    "${_continuity}/Cargo.toml")
+    "${_continuity}/Cargo.toml" "${_ecs_c}/Cargo.toml" "${_ecs_c}/build.rs")
 set(_prod "${CMAKE_CURRENT_BINARY_DIR}/libelpis_runtime.so")
 set(_testing "${CMAKE_CURRENT_BINARY_DIR}/libelpis_runtime_testing.so")
 
@@ -84,19 +86,37 @@ target_link_libraries(test_runtime_composite PRIVATE -lelpis_runtime)
 set_target_properties(test_runtime_composite PROPERTIES BUILD_RPATH "${_testing_dir}")
 add_dependencies(test_runtime_composite elpis_runtime_testing)
 
+# ABI v6: RuntimeCore over the ECS_C authority and the real composite, through the production libraries: the operator
+# provisions and reconciles with the authority's own ABI, the runtime admits typed evidence against its sources and
+# records the evidence summary with each durable publication, a copied-back authority refuses the open.
+set(_ecs_c_lib "${CMAKE_BINARY_DIR}/native/ECS_C/authority/libelpis_ecs_c_authority.so")
+elpis_add_test(runtime test_runtime_ecs_c
+  SOURCES tests/test_runtime_ecs_c.c
+  INCLUDES "${_crate}/include" "${_continuity}/include" "${_ecs_c}/include"
+  LIBS "${_prod}" "${_ecs_c_lib}" elpis_ecs_composite elpis_ecs_memory elpis_ecsg_k1
+  ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_ecs_c"
+  TIMEOUT 120)
+add_dependencies(test_runtime_ecs_c elpis_runtime elpis_ecs_c_authority)
+
 # Gate A at the system-call boundary: the executable interposes the C library's persistent-I/O entry points and
 # counts them per thread while managed turns run with the durability worker held (testing library: the hold).
 elpis_add_test(runtime test_runtime_hot_io
   SOURCES tests/test_runtime_hot_io.c
-  INCLUDES "${_crate}/include" "${_continuity}/include"
-  LIBS elpis_ecsg_k1_fms elpis_ecsg_k1
+  INCLUDES "${_crate}/include" "${_continuity}/include" "${_ecs_c}/include"
+  LIBS elpis_ecsg_k1_fms elpis_ecsg_k1 "${_ecs_c_lib}"
   ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_hot_io"
   TIMEOUT 120)
+# ABI v6: the same gate with every runtime publishing to a provisioned ECS_C authority.
+add_test(NAME runtime.test_runtime_hot_io_ecs_c
+  COMMAND test_runtime_hot_io "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_hot_io_ecs_c" ecs_c)
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_hot_io_ecs_c")
+set_tests_properties(runtime.test_runtime_hot_io_ecs_c PROPERTIES LABELS runtime TIMEOUT 120
+  WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_hot_io_ecs_c")
 target_compile_definitions(test_runtime_hot_io PRIVATE _GNU_SOURCE=1)
 target_link_options(test_runtime_hot_io PRIVATE "-L${_testing_dir}" "-rdynamic")
 target_link_libraries(test_runtime_hot_io PRIVATE -lelpis_runtime ${CMAKE_DL_LIBS})
 set_target_properties(test_runtime_hot_io PROPERTIES BUILD_RPATH "${_testing_dir}")
-add_dependencies(test_runtime_hot_io elpis_runtime_testing)
+add_dependencies(test_runtime_hot_io elpis_runtime_testing elpis_ecs_c_authority)
 
 # Typed HACF -> ECS memory observation path (docs/ECS_MEMORY.md, "HACF observations"): joins structure (identity and
 # validation owner) and the ECS memory type at the composition layer; RuntimeCore itself still links neither.
@@ -112,6 +132,15 @@ add_test(NAME runtime.cargo_test
   COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/cargo-test"
           "${ELPIS_CARGO}" test --offline --locked --release --features testing --manifest-path "${_crate}/Cargo.toml")
 set_tests_properties(runtime.cargo_test PROPERTIES LABELS runtime TIMEOUT 600)
+# ABI v6: the same law suite over the ECS_C authority (tests.rs, `ecs_c_backend`). One test is excluded by name: the
+# continuity HOT-lane I/O constants (one 176-byte slot per publication), pinned by the K1 Recovery R0 v4 premise; its
+# ECS_C counterpart (the record and the witness) is `ecs_c::the_hot_lane_performs_no_authority_io_...`, run in both.
+add_test(NAME runtime.cargo_test_ecs_c
+  COMMAND ${CMAKE_COMMAND} -E env --unset=MAKEFLAGS --unset=MFLAGS "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}/cargo-test"
+          ELPIS_RUNTIME_TEST_AUTHORITY=ecs_c
+          "${ELPIS_CARGO}" test --offline --locked --release --features testing --manifest-path "${_crate}/Cargo.toml"
+          -- --skip recovery::crashes::the_hot_lane_performs_no_continuity_or_checkpoint_io)
+set_tests_properties(runtime.cargo_test_ecs_c PROPERTIES LABELS runtime TIMEOUT 600)
 
 # Explicit opt-in Linux autonomous launcher. Linux Landlock+seccomp is the
 # process-wide enforcement boundary; without invocation it grants no protection.

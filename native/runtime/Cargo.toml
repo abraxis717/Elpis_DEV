@@ -7,9 +7,11 @@ description = "Elpis RuntimeCore: runtime lifecycle, fail-stop, K1 lineage bindi
 license = "UNLICENSED"
 publish = false
 
-# The continuity authority is embedded as a Rust crate (one implementation, no second store); nothing else.
+# The durable authority is embedded as Rust crates (one implementation each, no second store): standalone continuity
+# (the ABI v5 path) and the ECS_C authority (ABI v6), the latter without its C ABI (RuntimeCore never re-exports it).
 [dependencies]
 elpis_continuity = { path = "../continuity" }
+elpis_ecs_c_authority = { path = "../ECS_C/authority", default-features = false }
 
 [lib]
 name = "elpis_runtime"
@@ -17,8 +19,8 @@ crate-type = ["cdylib", "rlib"]
 doctest = false
 
 [features]
-# Test-only continuity fault injection and I/O counters, compiled into libelpis_runtime_testing.so only.
-testing = ["elpis_continuity/testing"]
+# Test-only authority fault injection and I/O counters, compiled into libelpis_runtime_testing.so only.
+testing = ["elpis_continuity/testing", "elpis_ecs_c_authority/testing"]
 
 [profile.release]
 panic = "abort"

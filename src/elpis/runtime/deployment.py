@@ -199,7 +199,7 @@ def init_deployment(home: Path, native_build: Path, *, testing: bool = False, so
     _write_once(home / "native-catalog.json", catalog, 0o400)
     config = {"schema": DEPLOYMENT_SCHEMA, "catalog": "native-catalog.json", "catalog_sha256": pin,
               "runtime_library_id": _RUNTIME[testing][0], "runtime_library": _RUNTIME[testing][1],
-              "abi": {"runtime": 5, "composite": 1}, "source_commit": source_commit}
+              "abi": {"runtime": 6, "composite": 1}, "source_commit": source_commit}
     _write_once(home / "elpis.json", _canonical(config), 0o600)
     return Deployment(home)
 
@@ -247,8 +247,8 @@ class Deployment:
             raise _refuse("DEPLOYMENT_CONFIG", f"elpis.json: {exc}") from exc
         if type(config) is not dict or config.get("schema") != DEPLOYMENT_SCHEMA:
             raise _refuse("DEPLOYMENT_CONFIG", f"elpis.json: schema {DEPLOYMENT_SCHEMA} required")
-        if config.get("abi") != {"runtime": 5, "composite": 1}:
-            raise _refuse("DEPLOYMENT_ABI", f"deployment ABI {config.get('abi')} is not this runtime's (5, 1)")
+        if config.get("abi") != {"runtime": 6, "composite": 1}:
+            raise _refuse("DEPLOYMENT_ABI", f"deployment ABI {config.get('abi')} is not this runtime's (6, 1)")
         self.config = config
         self.testing = config["runtime_library_id"] == "elpis_runtime_testing"
         catalog = _read_regular(self.home / config["catalog"], 1 << 20)

@@ -53,7 +53,9 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-use elpis_continuity::{Code, Cognition, Digest, Snapshot, StateFormat, Store};
+use elpis_continuity::{Code, Cognition, Digest, Snapshot, StateFormat};
+
+use crate::authority::Store;
 
 use crate::checkpoint;
 use crate::code::{Error, Rt};
@@ -168,6 +170,8 @@ pub struct Job {
     pub format: StateFormat,
     pub envelope: Vec<u8>,
     pub seal: Sealer,
+    /// RuntimeCore's committed-observation total at the capture (the ECS_C evidence summary; ABI v6).
+    pub observed: u64,
 }
 
 /// Testing builds only: a planned fault of the next job (docs/RUNTIME_CORE.md, "Durability crash matrix").
@@ -663,6 +667,7 @@ impl Lane {
         format: StateFormat,
         envelope: Vec<u8>,
         seal: Sealer,
+        observed: u64,
     ) -> Result<Ticket, Error> {
         let mut g = lock(&self.shared);
         if !g.open || g.shutdown {
@@ -688,7 +693,7 @@ impl Lane {
             Self::record(&mut g, t);
             Self::recycle(&mut g, old.envelope);
         }
-        g.pending = Some(Job { kind, ticket, format, envelope, seal });
+        g.pending = Some(Job { kind, ticket, format, envelope, seal, observed });
         g.last_requested = ticket;
         drop(g);
         self.cv.notify_all();
@@ -1105,6 +1110,7 @@ fn persist(stores: &mut Stores, job: &mut Job, plan: PlanArg, lane: &Lane) -> Ou
             let _ = stores.continuity.testing_arm(1, action, arg);
         }
     }
+    stores.continuity.set_evidence(job.observed, &job.envelope);
     let published = stores.continuity.commit_cognition_as(job.format, Some(&durable), Some(&identity));
     match published {
         Ok(_) => {

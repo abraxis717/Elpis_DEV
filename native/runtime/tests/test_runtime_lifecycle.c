@@ -365,7 +365,7 @@ int main(int argc, char **argv) {
     char cmd[3200];
     assert(snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", SCRATCH) < (int)sizeof(cmd));
     assert(system(cmd) == 0);
-    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V5);
+    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V6);
     assert(elpis_runtime_fuel_ceiling(&BUDGET) == ELPIS_RUNTIME_OK);
     for (int i = 0; i < DIM * WIDTH; ++i) W0[i] = 0.2 * (double)((i * 7) % 13 - 6) / 13.0;
     for (int i = 0; i < ROWS * DIM; ++i) X[i] = (double)((i * 5) % 11 - 5) / 16.0;

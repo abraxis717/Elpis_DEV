@@ -106,7 +106,7 @@ def test_a_session_learns_records_evidence_publishes_and_a_new_process_resumes_i
     assert live["durable"]["identity"] == initial != live["live"]["identity"]     # volatile until published
     assert published["ticket"]["acknowledged"] and published["durable"]["identity"] == live["live"]["identity"]
     assert status["recovery"]["disposition"] == "RESUMABLE" and status["fault"] is None
-    assert status["abi"] == {"runtime": 5, "composite": 1} and "ECS_CODEC_UNQUALIFIED" in status["capabilities"]["text"]
+    assert status["abi"] == {"runtime": 6, "composite": 1} and "ECS_CODEC_UNQUALIFIED" in status["capabilities"]["text"]
     # A new process: exactly the published state.
     rc, again = cli(home, script=[{"op": "query", "x": X}, LOOKUP, {"op": "live"}])
     assert rc == 0, again

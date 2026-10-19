@@ -32,5 +32,8 @@ pub use store::{
     WITNESS_FILES,
 };
 
+#[cfg(any(test, feature = "testing"))]
+pub use store::testing_peek;
+
 #[cfg(test)]
 mod tests;

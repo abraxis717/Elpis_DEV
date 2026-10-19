@@ -61,7 +61,7 @@ from .fuel import CEILING as _FUEL_CEILING
 __all__ = ("DurabilityStatus", "DurableTicket", "K1Recovery", "RuntimeCore", "RuntimeLibrary", "TurnBegun",
            "VolatileCommit")
 
-_ABI_VERSION = 5
+_ABI_VERSION = 6
 _TESTING_PROCESS_DEATH = 255
 _U64 = C.c_uint64
 _K1_NAMES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT",

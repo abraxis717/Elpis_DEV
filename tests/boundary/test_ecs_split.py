@@ -93,16 +93,21 @@ def test_dependency_directions_keep_runtime_as_the_only_composer():
     rust = "\n".join(p.read_text() for p in (crate / "src").rglob("*.rs"))
     for foreign in ("elpis_ecsg", "ecsg_", "elpis_ecs_mem", "extern crate", "#[link(", "dsv", "inference"):
         assert foreign not in rust, foreign
-    # RuntimeCore embeds the continuity crate and nothing else; it links no ECS code (K1 and the composite are reached
+    # RuntimeCore embeds the continuity crate and, since ABI v6, the ECS_C authority crate without its C ABI (the
+    # sole composer of the durable authority), and nothing else; it links no ECS code (K1 and the composite are reached
     # only through caller-supplied function tables) and knows nothing of inference or DSV.
     runtime_crate = REPO / "native/runtime"
     cargo = (runtime_crate / "Cargo.toml").read_text()
     deps = cargo[cargo.index("[dependencies]"):].split("\n[", 1)[0]
-    assert re.findall(r"(?m)^(\w+)\s*=", deps) == ["elpis_continuity"], deps
+    assert re.findall(r"(?m)^(\w+)\s*=", deps) == ["elpis_continuity", "elpis_ecs_c_authority"], deps
+    assert 'elpis_ecs_c_authority = { path = "../ECS_C/authority", default-features = false }' in deps
     assert "[build-dependencies]" not in cargo and "[dev-dependencies]" not in cargo
+    lock = (runtime_crate / "Cargo.lock").read_text()
+    assert sorted(re.findall(r'(?m)^name = "([^"]+)"', lock)) == ["elpis_continuity", "elpis_ecs_c_authority",
+                                                                  "elpis_runtime"]
     rust = "\n".join(line.split("//")[0] for p in (runtime_crate / "src").rglob("*.rs")
                      for line in p.read_text().splitlines())   # code only: doc comments cite the K1 ABI it mirrors
-    for foreign in ("elpis_ecsg", "extern crate", "#[link(", "dlopen", "dsv", "inference"):
+    for foreign in ("elpis_ecsg", "extern crate", "#[link(", "dlopen", "dsv", "inference", "ecs_c_authority::ffi"):
         assert foreign not in rust, foreign
     # The ECS_C authority (docs/ECS_C_AUTHORITY.md) embeds the continuity crate (SHA-256, the evolution digest, the
     # legacy register reader) and nothing else until continuity folds into ECS_C (census, section 9): no ECS_G, no
@@ -120,6 +125,9 @@ def test_dependency_directions_keep_runtime_as_the_only_composer():
         assert foreign not in rust, foreign
     build = "\n".join(line.split("//")[0] for line in (authority / "build.rs").read_text().splitlines())
     assert re.findall(r'println!\("([^"]*)"\)', build) == ["cargo:rustc-cdylib-link-arg=-Wl,--exclude-libs,ALL"]
+    # Only for its own C ABI library: Cargo passes a dependency's cdylib link arguments on to the dependent's cdylib,
+    # where it would hide RuntimeCore's re-export of continuity's C ABI (test_abi_inventory.py checks the binaries).
+    assert 'if std::env::var_os("CARGO_FEATURE_C_ABI").is_some() {' in build
     inference = _imports("inference")
     assert not [n for n in inference if _under(n, "elpis.ECS") or _under(n, "elpis.continuity")]
     cognition = imports_of(REPO, REPO / "src/elpis/runtime/cognition.py")

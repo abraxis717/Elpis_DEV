@@ -1,11 +1,13 @@
 # RuntimeCore: the runtime's systems authority in Rust
 
-`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v5) owns the mutable systems
-authority of an open Elpis runtime. `elpis.runtime.Runtime` is its compatibility facade.
+`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v6) owns the mutable systems
+authority of an open Elpis runtime and is the one native composer of ECS_G (K1, reached through function tables) and
+ECS_C (the durable authority, embedded). `elpis.runtime.Runtime` is its compatibility facade until Stage F
+(docs/NATIVE_SPLIT_CENSUS.md).
 
 ABI history: v2 the turn lifecycle, v3 managed ownership, v4 the live/durable split (volatile commits, explicit
-durability), v5 the observe-only managed turn ("Observe-only turns (ABI v5)" below). Each version is refused by a
-caller of another (`elpis_runtime_abi_version`).
+durability), v5 the observe-only managed turn ("Observe-only turns (ABI v5)" below), v6 the ECS_C durable authority
+("The durable authority (ABI v6)" below). Each version is refused by a caller of another (`elpis_runtime_abi_version`).
 
 ## Live and durable authority (ABI v4)
 
@@ -186,6 +188,67 @@ laws: `native/runtime/src/tests.rs` (`observe_only`), `test_runtime_composite.c`
 a commit with nothing observed, the native observation bound removed, an observe-only commit reporting K1 learning
 built upon, a refused observation not aborting the turn, the native bound not narrowed to the authority's, and
 `run_observe` skipping the authority: all seven killed.
+
+## The durable authority (ABI v6)
+
+The durable authority a runtime publishes to is chosen when the handle is created, and every law of this document
+holds over either:
+
+* `elpis_runtime_create(path)`: standalone continuity (docs/CONTINUITY.md), the v5 behaviour, unchanged.
+* `elpis_runtime_create_ecs_c(state_dir, authority_dir)`: the ECS_C authority (docs/ECS_C_AUTHORITY.md): bounded,
+  authenticated, replayed, with a rollback witness in a separately protected directory. The operator provisions and
+  reconciles it through its own ABI (`elpis/ecs_c_authority.h`) with no runtime open. RuntimeCore embeds the crate
+  without its C ABI: one implementation, one transition law.
+
+`native/runtime/src/authority.rs` puts both behind continuity's interface (`Store`), so the durability lane, the
+anchor, import, evolution and recovery code paths are the same code over either backend. Under ECS_C:
+
+* **Publications are typed events.** Each publication (anchor, durable publication, composite import, evolution
+  reserve and finalize) is one event of the authority's founding RUNTIME entity at its next sender sequence,
+  compare-and-publish on the authority's generation and state root. RuntimeCore is the authority's only writer while
+  it holds it open; a durable publication is still the checkpoint slot (verified) followed by the authority's record.
+  ECS_C writes two fixed slots per transition (the record, R = 1344 + 160 × capacity bytes, and the 240-byte witness,
+  each written in place and synced); nothing is created, renamed or removed, and the HOT lane performs no authority
+  I/O (`tests.rs` `ecs_c::the_hot_lane_performs_no_authority_io_...`).
+* **Typed-evidence admission is native.** At open, and after every operator event, RuntimeCore copies the authority's
+  ACTIVE sources (each with the 32-bit memory `source_authority` its observations record, and its per-turn bound) into
+  a bounded admission table (at most the authority's entity capacity). `elpis_runtime_turn_observe` reads the
+  observation's `source_authority` (`elpis_ecs_mem_observation`, ABI v1) and refuses, before the native call, an
+  observation whose source is not an ACTIVE source of the authority or that exceeds its source's per-turn bound
+  (`RUNTIME_OBSERVATION_REFUSED`, recoverable: the turn stays open, the candidate unchanged, `k1_observes` not
+  counted); a record of another memory ABI is `RUNTIME_INVALID`. The check is a table lookup on the HOT lane: no I/O,
+  no digest. Under continuity there is no table and admission stays the boundary's (`ObservationAuthority`).
+* **Each durable publication records an evidence summary.** RuntimeCore counts the typed observations its managed
+  commits install; the durability lane (never the HOT lane) gives the PUBLISH event the number committed since the
+  last acknowledged publication and the identity of the memory that holds them (the captured ELPISEC1 envelope's
+  memory component, offset 80), and the authority chains them into its evidence head. A refused publication accounts
+  for nothing, so the next one carries everything since the last acknowledged one; a K1 envelope has no memory and
+  carries none (a zero count pairs with a zero digest, the transition law's rule).
+* **Operator events reach a held authority only through `elpis_runtime_authority_transition`**: ENTITY_FOUND,
+  ENTITY_LIFECYCLE, SOURCE_VERSION, ENTITY_RECLAIM and IMPORT_LEGACY, sent by an operator entity. RuntimeCore's own
+  kinds and the reconciliations are `RUNTIME_INVALID` (whoever they claim to be from); an event while a managed turn
+  is open is `RUNTIME_TURN_OPEN` (a turn's admission never changes under it); closed or fail-stopped, refused as every
+  operation. The admission table follows the authority whatever the outcome.
+* **An authority that is not in its normal mode refuses the open** (`RUNTIME_AUTHORITY`): restricted, reconcile-only
+  (rollback, corrupt or unauthenticated acknowledged record, missing witness) or refused by recovery. The runtime stays
+  closed; `elpis_runtime_authority_status` reports the recovery disposition, the mode and the exact ECS_C code, readable
+  closed. The operator reconciles with the authority's ABI (`elpis_ecs_c_read_reconciliation` names the one
+  reconciliation it accepts) and reopens.
+* **Error domain.** The call sites speak continuity's codes: an ECS_C refusal with a continuity equivalent is that code;
+  any other is `RUNTIME_AUTHORITY` at open and `CONTINUITY_AUTHORITY_MISMATCH` in a publication (the realistic case:
+  the founding runtime is no longer ACTIVE). `elpis_runtime_authority.ecs_c_code` keeps the exact code.
+
+Not yet: RuntimeCore does not consult source versions or scopes at admission (an observation records neither; Stage E
+binds them through the memory's source invalidation), the Python facade still drives continuity (Stage F retires it,
+with standalone continuity), and the testing library's durability fault plan maps continuity's publication steps onto
+the authority's record slot only (the witness faults are the authority's own suite's).
+
+Laws: `native/runtime/src/tests.rs` (`ecs_c`, and the whole suite a second time over ECS_C:
+`ELPIS_RUNTIME_TEST_AUTHORITY=ecs_c`, ctest `runtime.cargo_test_ecs_c`, every test except the continuity-specific
+HOT-lane I/O constants, pinned by the K1 Recovery R0 v4 premise), `runtime.test_runtime_ecs_c` (the production
+libraries, the real composite: provisioning, admission, operator events, the evidence summary, a copied-back authority
+refusing the open, the exact reconciliation, the reopen). The K1 Recovery R0 v4 RUN PASS is bound to its qualifying
+commit and does not extend to this RuntimeCore (its premise P4 pins `durable.rs`, which v6 changes).
 
 ## Laws
 
@@ -460,8 +523,10 @@ authenticate bytes, not a publisher; the loader, kernel and platform libraries a
 ## Build and qualification
 
 * `libelpis_runtime.so` (production) and `libelpis_runtime_testing.so` (+ continuity fault injection and I/O
-  counters), built offline by CMake through `cargo rustc` (the SONAME is set on the final link only).
+  counters), built offline by CMake through `cargo rustc` (the SONAME is set on the final link only). Both embed the
+  continuity and ECS_C authority crates; neither exports `elpis_ecs_c_*` nor links `libelpis_ecs_c_authority.so`.
 * `ctest -L runtime`: `runtime.cargo_test` (the Rust law suite, including the durability crash matrix),
+  `runtime.cargo_test_ecs_c` (the same suite over the ECS_C authority), `runtime.test_runtime_ecs_c` (ABI v6),
   `runtime.test_runtime_abi` (C ABI over real K1), `runtime.test_runtime_lifecycle` (the turn lifecycle over real
   standalone and FMS-resident K1), `runtime.test_runtime_composite` and `runtime.test_runtime_hot_io` (Gate A at the
   system-call boundary). CI lints and tests the crate in the Rust job and runs both tests in every native job (gcc/clang, Debug/
@@ -470,7 +535,8 @@ authenticate bytes, not a publisher; the loader, kernel and platform libraries a
 ## Non-claims
 
 RuntimeCore is systems authority, not cognition: it qualifies no codec, makes no semantic claim, and does not
-make H-ECS or any hierarchy canonical. It does not authenticate the continuity directory (docs/CONTINUITY.md). The
+make H-ECS or any hierarchy canonical. It does not authenticate the continuity directory (docs/CONTINUITY.md); the
+ECS_C authority authenticates its records under its declared threat model only (docs/ECS_C_AUTHORITY.md). The
 durability lane's acknowledgment means durable under POSIX `fdatasync` semantics on the store's filesystem; it is not
 a claim about power-loss behaviour of a particular device. Performance figures for the corrected HOT lane are
 descriptive measurements on one host, not qualification.

@@ -20,11 +20,15 @@
  *
  * Read-side calls (read, positional reads, read-only opens) are counted separately so a cold-store read would show.
  *
- * Usage: test_runtime_hot_io <scratch-dir>. */
+ * With `ecs_c`, every runtime publishes to an ECS_C authority (ABI v6, elpis_runtime_create_ecs_c) provisioned for
+ * it, instead of standalone continuity: the same gate over the other durable authority.
+ *
+ * Usage: test_runtime_hot_io <scratch-dir> [ecs_c]. */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
 #define ELPIS_TEST_K1_FMS
+#include "elpis/ecs_c_authority.h"
 #include "elpis/ecsg_k1.h"
 #include "elpis/fms_pal_posix.h"
 #include "elpis/runtime.h"
@@ -48,6 +52,7 @@ int elpis_runtime_testing_durable_hold(elpis_runtime *runtime, int hold);
 
 #define OK(x) assert((x) == ELPIS_RUNTIME_OK)
 enum { DIM = 6, WIDTH = 36, ROWS = 4, S3 = 83, TURNS = 120 };
+static int ecs_c_backend; /* argv[2] == "ecs_c" */
 
 /* ---- the interposer -------------------------------------------------------------------------------------------- */
 
@@ -162,6 +167,27 @@ static fms_stats residency(elpis_ecsg_k1_fms *r) {
 }
 
 /* 4. HOT residency over a real FMS context with a POSIX cold store. */
+/* A closed runtime over `dir`: its continuity directory, or (ecs_c) the parent of a freshly provisioned ECS_C
+ * authority's state and protected authority directories. */
+static elpis_runtime *create_runtime(const char *dir) {
+    elpis_runtime *rt = NULL;
+    if (!ecs_c_backend) {
+        OK(elpis_runtime_create((const uint8_t *)dir, strlen(dir), &rt));
+        return rt;
+    }
+    char state[2200], authority[2200], cmd[4500];
+    const uint8_t op[32] = {1}, runtime[32] = {2};
+    assert(snprintf(state, sizeof state, "%s/state", dir) < (int)sizeof state);
+    assert(snprintf(authority, sizeof authority, "%s/authority", dir) < (int)sizeof authority);
+    assert(snprintf(cmd, sizeof cmd, "mkdir -p '%s'", dir) < (int)sizeof cmd);
+    assert(system(cmd) == 0);
+    assert(elpis_ecs_c_provision(state, strlen(state), authority, strlen(authority), 8, op, runtime, NULL) ==
+           ELPIS_ECS_C_OK);
+    OK(elpis_runtime_create_ecs_c((const uint8_t *)state, strlen(state), (const uint8_t *)authority,
+                                  strlen(authority), &rt));
+    return rt;
+}
+
 static void fms_resident(const char *scratch) {
     char cold[2048], continuity[2048], cmd[4300];
     assert(snprintf(cold, sizeof cold, "%s/cold", scratch) < (int)sizeof cold);
@@ -189,7 +215,7 @@ static void fms_resident(const char *scratch) {
     const elpis_runtime_substrate fd = {ELPIS_RUNTIME_SUBSTRATE_K1_FMS, 0, fr, a, 2, DIM, &FMS_API};
     elpis_runtime *rt = NULL;
     elpis_continuity_snapshot snap;
-    OK(elpis_runtime_create((const uint8_t *)continuity, strlen(continuity), &rt));
+    rt = create_runtime(continuity);
     OK(elpis_runtime_open(rt, &snap));
     OK(elpis_runtime_anchor(rt, &fd, &snap));   /* binds it: held resident from here on */
     uint64_t live = 0;
@@ -286,7 +312,8 @@ static void fms_resident(const char *scratch) {
 }
 
 int main(int argc, char **argv) {
-    assert(argc == 2);
+    assert(argc == 2 || (argc == 3 && !strcmp(argv[2], "ecs_c")));
+    ecs_c_backend = argc == 3;
     on_main = 1;
     /* The lifecycle test's fixture (test_runtime_lifecycle.c). */
     for (int i = 0; i < DIM * WIDTH; ++i) W0[i] = 0.2 * (double)((i * 7) % 13 - 6) / 13.0;
@@ -308,7 +335,7 @@ int main(int argc, char **argv) {
     elpis_continuity_snapshot snap;
     OK(elpis_runtime_checkpoint_provision((const uint8_t *)checkpoint, strlen(checkpoint),
                                           elpis_ecsg_k1_envelope_bytes(DIM, WIDTH)));
-    OK(elpis_runtime_create((const uint8_t *)continuity, strlen(continuity), &rt));
+    rt = create_runtime(continuity);
     OK(elpis_runtime_open(rt, &snap));
     OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)checkpoint, strlen(checkpoint)));
     OK(elpis_runtime_anchor(rt, &d, &snap));
@@ -383,6 +410,6 @@ int main(int argc, char **argv) {
     elpis_runtime_destroy(&rt);
     elpis_ecsg_k1_destroy(&k1);
     fms_resident(argv[1]);
-    printf("test_runtime_hot_io: OK\n");
+    printf("test_runtime_hot_io (%s): OK\n", ecs_c_backend ? "ECS_C" : "continuity");
     return 0;
 }

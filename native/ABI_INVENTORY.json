@@ -9,6 +9,10 @@
   {
    "stage": "C (docs/NATIVE_SPLIT_CENSUS.md)",
    "change": "adds libelpis_ecs_c_authority.so and libelpis_ecs_c_authority_testing.so (ECS_C authority C ABI v1, include/elpis/ecs_c_authority.h); no export or link of any library above changes"
+  },
+  {
+   "stage": "D (docs/NATIVE_SPLIT_CENSUS.md)",
+   "change": "RuntimeCore C ABI v6 (include/elpis/runtime.h): libelpis_runtime.so and libelpis_runtime_testing.so add elpis_runtime_create_ecs_c, elpis_runtime_authority_status and elpis_runtime_authority_transition; they embed the ECS_C authority crate without its C ABI, so neither exports elpis_ecs_c_* and neither links libelpis_ecs_c_authority.so; no other export or link changes"
   }
  ],
  "libraries": {
@@ -712,6 +716,8 @@
     "elpis_continuity_store_snapshot",
     "elpis_runtime_abi_version",
     "elpis_runtime_anchor",
+    "elpis_runtime_authority_status",
+    "elpis_runtime_authority_transition",
     "elpis_runtime_checkpoint_adopt",
     "elpis_runtime_checkpoint_attach",
     "elpis_runtime_checkpoint_discard",
@@ -720,6 +726,7 @@
     "elpis_runtime_close",
     "elpis_runtime_code_name",
     "elpis_runtime_create",
+    "elpis_runtime_create_ecs_c",
     "elpis_runtime_destroy",
     "elpis_runtime_durable_status",
     "elpis_runtime_durable_wait",
@@ -775,6 +782,8 @@
     "elpis_continuity_testing_fault",
     "elpis_runtime_abi_version",
     "elpis_runtime_anchor",
+    "elpis_runtime_authority_status",
+    "elpis_runtime_authority_transition",
     "elpis_runtime_checkpoint_adopt",
     "elpis_runtime_checkpoint_attach",
     "elpis_runtime_checkpoint_discard",
@@ -783,6 +792,7 @@
     "elpis_runtime_close",
     "elpis_runtime_code_name",
     "elpis_runtime_create",
+    "elpis_runtime_create_ecs_c",
     "elpis_runtime_destroy",
     "elpis_runtime_durable_status",
     "elpis_runtime_durable_wait",

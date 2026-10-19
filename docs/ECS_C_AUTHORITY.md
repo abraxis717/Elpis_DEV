@@ -12,9 +12,11 @@ authoritative, and of which format), the evolution authority, receipts and recon
 typed event validated by one transition law before it is written; recovery replays the newest transition against
 its predecessor. It keeps no log, no segments, no generations and no compaction archive.
 
-**Status (Stage C).** Built and qualified as a library. RuntimeCore does not compose it yet (Stage D): the live
-runtime still uses standalone continuity, which stays byte-identical (it is the subject of the K1 Recovery R0 v4
-premise). Nothing in this document is a scientific claim.
+**Status (Stage D).** Built and qualified as a library, and composed by RuntimeCore ABI v6
+(`elpis_runtime_create_ecs_c`; docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"), which publishes through it,
+admits typed evidence against its sources and records evidence summaries. Standalone continuity remains the other
+backend (`elpis_runtime_create`) and the Python facade's until Stage F; it stays byte-identical (the subject of the K1
+Recovery R0 v4 premise P1). Nothing in this document is a scientific claim.
 
 ## Ownership
 
@@ -22,8 +24,9 @@ ECS_C owns the authority; it performs no geometric learning and never touches EC
 identities (ELPISGK1 or ELPISEC1 digests), never the states. It embeds the standard-library-only continuity crate
 for SHA-256, the evolution-authority digest and the legacy register reader (one implementation each), and re-exports
 none of continuity's C ABI. Its own C ABI is the crate's default `c-abi` feature, so a crate that embeds it
-(RuntimeCore, Stage D) does not re-export `elpis_ecs_c_*` either. It links no ECS_G, memory, RuntimeCore or codec
-code.
+(RuntimeCore) does not re-export `elpis_ecs_c_*` either. The build script's `--exclude-libs` link argument is emitted
+for that feature only: Cargo also passes a dependency's cdylib link arguments to the dependent's cdylib, where it would
+hide RuntimeCore's re-export of continuity's C ABI. It links no ECS_G, memory, RuntimeCore or codec code.
 
 ## Threat model
 
@@ -155,7 +158,7 @@ corrupt complete → CORRUPT_ACKNOWLEDGED; an interrupted transition → INTERRU
 duplicated; a retried request is `DUPLICATE`); lost sync → the older authority (CLEAN after `PUBLICATION_UNCERTAIN`),
 or ROLLBACK when the device lost an acknowledged write; a partial cross-domain operation → `evolution_pending` in the
 report (a reservation whose result must be established and finalized; never cleared automatically; the checkpoint /
-authority pair of a durable publication is RuntimeCore's, Stage D); conflicting candidate → CONFLICT; recovered older
+authority pair of a durable publication is RuntimeCore's: the checkpoint slot first, then the record); conflicting candidate → CONFLICT; recovered older
 than acknowledged → ROLLBACK; unauthorized higher-generation replacement → RESTRICTED_UNAUTHENTICATED or
 UNAUTHENTICATED_ACKNOWLEDGED.
 
@@ -203,5 +206,5 @@ records the legacy generation and record digest.
 
 ## Not claimed
 
-No composition with RuntimeCore yet, no live consumer, no native operator surface (Stages D and F); no protection
-beyond the threat model; no scientific claim of any kind.
+No live production consumer yet (the Python facade drives continuity until Stage F) and no native operator surface
+(Stage F); no protection beyond the threat model; no scientific claim of any kind.
