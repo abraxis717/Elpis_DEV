@@ -311,3 +311,11 @@ Stage D conflicts, stated rather than worked around:
 * **Deployments pinned to ABI 5** are refused (`DEPLOYMENT_ABI`) by this facade, as every ABI bump refuses an older
   pin; a deployment is re-initialized against the new libraries. Its continuity lineage directory is the same format.
 * **The Python facade** still drives the continuity backend; it gains no ECS_C path (Stage F replaces it).
+
+**E** the HCA native research substrate (`docs/ECS_C_HCA.md`, `native/ECS_C/hca`): B0 (the exact control), B1 and B2
+ported from `research/ecsc_hca_r0`, equal to it on every prediction, refusal and B2 activation (offline differential,
+SCIENTIFIC lane), with the required mechanics natively: n-ary relations, interference and conflicting scope, source
+invalidation, delayed memory, activation damage (and the unsupported-cycle limitation), provenance misbinding and
+matched-resource exact-storage controls. Gated: nothing canonical links or loads it (`tests/boundary/test_ecs_c_hca.py`).
+The memory's operations are unchanged: exact typed evidence and LOOKUP admitted, LEARN / QUERY FAST behind the
+unqualified capability, CONSOLIDATE not provided. No HCA law is admitted; no scientific claim is made.

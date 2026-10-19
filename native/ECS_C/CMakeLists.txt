@@ -25,3 +25,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT (ELPIS_ENABLE_ASAN OR ELPIS_ENABLE
 endif()
 
 add_subdirectory(authority)
+
+# ECS_C HCA (docs/ECS_C_HCA.md): the native research substrate of typed-hypergraph cellular memory, the B0/B1/B2
+# comparators of research/ecsc_hca_r0. RESEARCH ONLY, GATED: nothing canonical links or loads it
+# (tests/boundary/test_ecs_c_hca.py); its tests and the offline differential are its only consumers.
+elpis_add_library(ECS_C elpis_ecs_c_hca SHARED hca/src/ecs_c_hca.c)
+target_include_directories(elpis_ecs_c_hca PUBLIC hca/include)
+target_link_libraries(elpis_ecs_c_hca PRIVATE elpis_hash)
+elpis_add_test(ECS_C test_ecs_c_hca SOURCES hca/tests/test_ecs_c_hca.c LIBS elpis_ecs_c_hca elpis_hash TIMEOUT 120)
+# One allocation per graph and per session, none per call: link-time allocator wrapping (uninstrumented builds only).
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT (ELPIS_ENABLE_ASAN OR ELPIS_ENABLE_UBSAN OR ELPIS_ENABLE_TSAN))
+  elpis_add_test(ECS_C test_ecs_c_hca_alloc SOURCES hca/tests/test_ecs_c_hca_alloc.c hca/src/ecs_c_hca.c
+    INCLUDES hca/include LIBS elpis_hash TIMEOUT 120)
+  target_link_options(test_ecs_c_hca_alloc PRIVATE
+    "LINKER:--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=aligned_alloc,--wrap=free")
+endif()

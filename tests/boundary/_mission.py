@@ -140,7 +140,8 @@ def ecs_independence(root: Path) -> list[str]:
     """(4) ECS mathematics is independent, and the two native ECS domains do not depend on each other.
 
     ECS_G (native/ECS_G: math, executor, mutable FMS, K1, K1 FMS) includes only its own headers and the named
-    substrate headers; ECS_C (native/ECS_C: the memory and the authority) includes only its own headers and SHA-256.
+    substrate headers; ECS_C (native/ECS_C: the memory, the authority and the gated HCA research substrate) includes
+    only its own headers and SHA-256.
     Neither includes the other's headers, RuntimeCore's or continuity's: only RuntimeCore composes them
     (native/runtime/composite).
     """
@@ -169,11 +170,15 @@ def ecs_independence(root: Path) -> list[str]:
         "tests/test_ecsg_k1_performance.c": {"elpis/fms_pal_posix.h"},
     }
     # ECS memory (docs/ECS_MEMORY.md): SHA-256 identities and the deterministic code derivation; nothing else.
-    memory = {"memory/src/ecs_memory.c": {"elpis/sha256.h"}, "memory/tests/ecs_memory_test_util.h": {"elpis/sha256.h"}}
+    memory = {"memory/src/ecs_memory.c": {"elpis/sha256.h"}, "memory/tests/ecs_memory_test_util.h": {"elpis/sha256.h"},
+              # The HCA research substrate (docs/ECS_C_HCA.md): SHA-256 for its identities and the B2 schedule.
+              "hca/src/ecs_c_hca.c": {"elpis/sha256.h"}, "hca/tests/hca_test_util.h": {"elpis/sha256.h"}}
     for domain, allowed, own in (
             ("ECS_G", geometric, lambda inc, rel: inc.startswith("elpis/ecsg_")),
-            ("ECS_C", memory, lambda inc, rel: inc in ("elpis/ecs_memory.h", "elpis/ecs_c_authority.h") or (
-                rel.startswith("memory/tests/test_ecs_memory") and inc == "ecs_memory_test_util.h"))):
+            ("ECS_C", memory, lambda inc, rel: inc in ("elpis/ecs_memory.h", "elpis/ecs_c_authority.h",
+                                                        "elpis/ecs_c_hca.h") or (
+                rel.startswith("memory/tests/test_ecs_memory") and inc == "ecs_memory_test_util.h") or (
+                rel.startswith("hca/tests/test_ecs_c_hca") and inc == "hca_test_util.h"))):
         base = root / "native" / domain
         for path in sorted(base.rglob("*")) if base.is_dir() else []:
             if path.suffix not in (".c", ".h"):

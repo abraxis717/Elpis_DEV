@@ -134,7 +134,7 @@
     {
       "id": "ECS_C",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "ECS_C, continuity and memory (docs/NATIVE_SPLIT_CENSUS.md). It holds (1) the ECS memory (docs/ECS_MEMORY.md, libelpis_ecs_memory): the bounded, model-free typed relational memory relocated from the frozen MF-R0 reference, ELPISEM1 v1. OBSERVE (exact typed evidence slots, entity codebook), QUERY LOOKUP (exact read-only scan), INSPECT, slot read, identity and SNAPSHOT/RESTORE are admitted mechanically; LEARN and QUERY FAST stay behind the RECURRENT capability (UNQUALIFIED, MF-R0 H4 NONPASS); CONSOLIDATE and QUERY SLOW are not provided. (2) The ECS_C authority (docs/ECS_C_AUTHORITY.md, native/ECS_C/authority, libelpis_ecs_c_authority, C ABI v1 include/elpis/ecs_c_authority.h): the successor of standalone continuity, built and qualified as a library in Stage C and composed by RuntimeCore ABI v6 in Stage D (elpis_runtime_create_ecs_c): genesis and lineage, entities (operator, runtime, source) and their lifecycles, sender attribution with per-sender sequences, the authority's logical clock (generation), source versions, scopes and per-turn bounds (native evidence admission), the cognition lineage (format-aware, K1 or composite), the evolution authority (continuity's law and digest), receipts kept as a chain head, explicit operator reconciliation, and explicit legacy import of a continuity v2/v3 register. One fixed-size materialized record in two preallocated slots plus an authenticated rollback witness in a separately protected directory; every transition is validated by one transition law before it is written and the newest is replayed at recovery. ECS_C links no geometric (ECS_G) or runtime code; the memory is a component of a composite retained state, never a durable authority of its own.",
+      "purpose": "ECS_C, continuity and memory (docs/NATIVE_SPLIT_CENSUS.md). It holds (1) the ECS memory (docs/ECS_MEMORY.md, libelpis_ecs_memory): the bounded, model-free typed relational memory relocated from the frozen MF-R0 reference, ELPISEM1 v1. OBSERVE (exact typed evidence slots, entity codebook), QUERY LOOKUP (exact read-only scan), INSPECT, slot read, identity and SNAPSHOT/RESTORE are admitted mechanically; LEARN and QUERY FAST stay behind the RECURRENT capability (UNQUALIFIED, MF-R0 H4 NONPASS); CONSOLIDATE and QUERY SLOW are not provided. (2) The ECS_C authority (docs/ECS_C_AUTHORITY.md, native/ECS_C/authority, libelpis_ecs_c_authority, C ABI v1 include/elpis/ecs_c_authority.h): the successor of standalone continuity, built and qualified as a library in Stage C and composed by RuntimeCore ABI v6 in Stage D (elpis_runtime_create_ecs_c): genesis and lineage, entities (operator, runtime, source) and their lifecycles, sender attribution with per-sender sequences, the authority's logical clock (generation), source versions, scopes and per-turn bounds (native evidence admission), the cognition lineage (format-aware, K1 or composite), the evolution authority (continuity's law and digest), receipts kept as a chain head, explicit operator reconciliation, and explicit legacy import of a continuity v2/v3 register. One fixed-size materialized record in two preallocated slots plus an authenticated rollback witness in a separately protected directory; every transition is validated by one transition law before it is written and the newest is replayed at recovery. (3) The HCA native research substrate (docs/ECS_C_HCA.md, native/ECS_C/hca, libelpis_ecs_c_hca, C ABI v1 include/elpis/ecs_c_hca.h): the B0/B1/B2 comparators of the DEV reference research/ecsc_hca_r0, proven equal to it by an offline differential; RESEARCH ONLY and gated: nothing canonical links or loads it and it enables no law. ECS_C links no geometric (ECS_G) or runtime code; the memory is a component of a composite retained state, never a durable authority of its own.",
       "python_package": null,
       "python_package_note": "No Python package: the memory is reached from Python only through the composite binding elpis.ECS.composite (CompositeState memory_query / memory_slot_read).",
       "implementation_roots": [
@@ -143,11 +143,14 @@
       "test_roots": [
         "native/ECS_C/memory/tests",
         "native/ECS_C/authority/src/tests.rs",
-        "native/ECS_C/authority/tests"
+        "native/ECS_C/authority/tests",
+        "native/ECS_C/hca/tests",
+        "tests/research/ecsc_hca_native"
       ],
       "native_targets": [
         "elpis_ecs_memory",
-        "elpis_ecs_c_authority"
+        "elpis_ecs_c_authority",
+        "elpis_ecs_c_hca"
       ],
       "depends_on": [
         "substrate",
@@ -169,7 +172,7 @@
         "Memory LEARN / QUERY FAST are UNQUALIFIED (MF-R0 H4 NONPASS: byte-matched exact storage retains more); the MF-R0 slow-bank (CONSOLIDATE) law is not canonical.",
         "No observation map from HACF structure to meaning exists: the typed HACF path (libelpis_hacf_observation, runtime subsystem) maps records, not meaning.",
         "The ECS_C authority is composed by RuntimeCore ABI v6, but the Python facade still drives standalone continuity until Stage F, and the authority depends on the continuity crate for SHA-256, the evolution digest and the legacy register reader (it folds into ECS_C in Stage F). Admission consults sources and per-turn bounds, not yet source versions or scopes (an observation records neither).",
-        "The typed-hypergraph cellular memory (HCA) is research only (research/ecsc_hca_r0) and has no native substrate yet."
+        "The typed-hypergraph cellular memory (HCA) is research only: its native substrate (native/ECS_C/hca) is gated, reproduces the DEV reference exactly and demonstrates no useful advantage (no repair advantage; the unsupported-cycle limitation persists); no HCA law is admitted, trained or canonical."
       ]
     },
     {

@@ -974,7 +974,8 @@ for vector residency unless its owner chose to (bridge ABI v3).
 **Context lane audit (2026-10-17).** One authority: `elpis.runtime.context` is the only definition of the active
 context's identity, version and predecessor the runtime uses; the DSV model-view context of `elpis.inference.context`
 / `global_context` (ProposalOnly, its own `generation`) is a different object and nothing outside `elpis.inference`
-imports it (`test_context_authority.py::test_one_context_authority...`). The PR #51 HCA record is research only.
+imports it (`test_context_authority.py::test_one_context_authority...`). The PR #51 HCA record is research only; its
+native port (`native/ECS_C/hca`, `docs/ECS_C_HCA.md`) is a gated research substrate that nothing canonical links.
 
 | Concern | Mechanism | Proof |
 |---|---|---|

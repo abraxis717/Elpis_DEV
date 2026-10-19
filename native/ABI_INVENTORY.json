@@ -13,6 +13,10 @@
   {
    "stage": "D (docs/NATIVE_SPLIT_CENSUS.md)",
    "change": "RuntimeCore C ABI v6 (include/elpis/runtime.h): libelpis_runtime.so and libelpis_runtime_testing.so add elpis_runtime_create_ecs_c, elpis_runtime_authority_status and elpis_runtime_authority_transition; they embed the ECS_C authority crate without its C ABI, so neither exports elpis_ecs_c_* and neither links libelpis_ecs_c_authority.so; no other export or link changes"
+  },
+  {
+   "stage": "E (docs/NATIVE_SPLIT_CENSUS.md)",
+   "change": "adds libelpis_ecs_c_hca.so (the ECS_C HCA native research substrate, C ABI v1, include/elpis/ecs_c_hca.h; research only, gated: no other library links it); it carries the substrate's SHA-256 helpers as libelpis_ecs_memory.so does; no export or link of any library above changes"
   }
  ],
  "libraries": {
@@ -114,6 +118,32 @@
     "elpis_ecs_c_testing_arm",
     "elpis_ecs_c_testing_counters",
     "elpis_ecs_c_transition"
+   ]
+  },
+  "libelpis_ecs_c_hca.so": {
+   "soname": "libelpis_ecs_c_hca.so",
+   "elpis_needed": [],
+   "exports": [
+    "elpis_digest_equal",
+    "elpis_hca_abi_version",
+    "elpis_hca_b2_damage",
+    "elpis_hca_b2_destroy",
+    "elpis_hca_b2_observe",
+    "elpis_hca_b2_reset",
+    "elpis_hca_b2_start",
+    "elpis_hca_b2_warm",
+    "elpis_hca_code_name",
+    "elpis_hca_graph_create",
+    "elpis_hca_graph_destroy",
+    "elpis_hca_graph_evidence",
+    "elpis_hca_limits_default",
+    "elpis_hca_predict",
+    "elpis_hex32",
+    "elpis_sha256",
+    "elpis_sha256_final",
+    "elpis_sha256_init",
+    "elpis_sha256_update",
+    "elpis_unhex32"
    ]
   },
   "libelpis_ecs_composite.so": {
