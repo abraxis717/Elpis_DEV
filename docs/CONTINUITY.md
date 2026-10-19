@@ -4,8 +4,8 @@
 > continuity register explicitly and never writes it. RuntimeCore composes the successor since ABI v6 (Stage D), beside
 > this register, and the native host `elpis` (the production entry point) runs over it. This register is not retired:
 > it is the live authority of the offline Python reference interface and the backend of RuntimeCore's continuity law
-> suite, and `native/continuity` stays byte-identical (K1 Recovery R0 v4 premise P1) until ECS_C Recovery Q0's QUAL run
-> passes (NOT RUN; it waits for merge authorization).
+> suite, and `native/continuity` stays byte-identical (K1 Recovery R0 v4 premise P1) until its retirement. ECS_C
+> Recovery Q0, the qualification that retirement waited for, is RUN PASS for commit `117b41a` only.
 
 Continuity records the current durable lineage and authority that the runtime
 needs for safe restart. It is not an ECS, not context memory, not an event

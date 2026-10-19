@@ -343,7 +343,7 @@ on DEV inputs. Deriving its plan from the recovery law found three defects, now 
 
 **G** documentation and the machine-readable authority (`ELPIS_SYSTEM.json`) describe what exists:
 - the native host is the production entry point, and the Python modules the offline reference interface;
-- the ECS_C authority is UNQUALIFIED (Q0 NOT RUN);
+- the ECS_C authority was UNQUALIFIED at that head (Q0 NOT RUN; it has since run: RUN PASS for `117b41a` only);
 - standalone continuity is not retired, and why;
 - K1 Recovery R0 v4's RUN PASS stays bound to `18f2f4d`;
 - each composer's fixed-capacity writers.
@@ -353,14 +353,16 @@ for the Q0 QUAL run.
 
 Stage F conflict, stated rather than worked around:
 
-* **Standalone continuity cannot be retired yet (F2).** Section 9 retires it only after its successor is qualified.
-  The successor's qualification is pre-registered: `docs/qualification/ECS_C_RECOVERY_Q0.md` (NOT RUN). Like K1
-  Recovery R0 v4, it freezes on the accepted source, the merge commit of these stages into `main`, and merging needs
-  the owner's explicit authorization.
+* **Standalone continuity could not be retired before its successor was qualified (F2).** Section 9 retires it only
+  after its successor is qualified. The successor's qualification, `docs/qualification/ECS_C_RECOVERY_Q0.md`, freezes
+  like K1 Recovery R0 v4 on the accepted source, the merge commit of these stages into `main`.
+  - **Resolved.** PR #55 merged the stages (`117b41a`). The freeze record was published before the run (`9c7c72b`),
+    and the QUAL run on `117b41a` is RUN PASS, for that commit only. Continuity's retirement is now unblocked, and it is
+    the remaining step of Stage F.
   - **The instrument.** `research/qualification/ecs_c_recovery_q0/` is written. Its rehearsal on DEV inputs passes,
     and the same instrument fails the Stage F1 build at exactly the two defects F2 fixed. DEV records are not
     evidence.
-  - **Until the QUAL run passes, continuity stays.** It is the authority the offline Python reference interface
+  - **Until it is retired, continuity stays.** It is the authority the offline Python reference interface
     publishes to, the backend RuntimeCore's continuity law suite runs over, and K1 Recovery R0 v4's premise P1. The
     containment launcher keeps granting its slots for that path.
 * **A deep rollback, once accepted, leaves the lineage without its state.** The K1 checkpoint store keeps two envelopes

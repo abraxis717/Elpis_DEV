@@ -230,9 +230,9 @@ reconciliation digest, refusal translation, the all-or-nothing abort and the lea
 ## Holds
 
 - **Standalone continuity.** The Python deployment and CLI are the offline reference interface, over standalone
-  continuity, and off the production path. Continuity itself is not retired: it folds into ECS_C only after ECS_C
-  Recovery Q0's QUAL run passes, which needs the merged, accepted source (census sections 5, 9 and "Stage F
-  conflict").
+  continuity, and off the production path. Continuity itself is not retired yet. ECS_C Recovery Q0 is RUN PASS for
+  commit `117b41a` only, which meets the census's condition for folding continuity into ECS_C; that retirement is the
+  remaining step (census sections 5, 9 and "Stage F conflict").
 - **Containment.** The native host contains itself (`--contained`) with the ECS_C and checkpoint slots as its grant.
   `elpis_autonomous_run` still grants the continuity slots, for the continuity-backed Python path, and retires with
   it (census section 5).

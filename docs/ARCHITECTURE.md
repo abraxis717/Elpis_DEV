@@ -14,9 +14,11 @@ composed only by RuntimeCore. Continuity (`elpis.continuity`)
 is not an ECS: it is a fixed-size register of the current durable authority.
 Its successor, the ECS_C authority (`docs/ECS_C_AUTHORITY.md`), is a mechanically tested library composed by
 RuntimeCore ABI v6 (`elpis_runtime_create_ecs_c`; docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"). The
-production entry point runs over it: the native host `elpis` (docs/NATIVE_HOST.md). It is UNQUALIFIED: ECS_C
-Recovery Q0 is NOT RUN. Standalone continuity is not retired. It is the offline Python reference's durable authority,
-the backend of RuntimeCore's continuity law suite and K1 Recovery R0 v4's premise P1, until the Q0 QUAL run passes.
+production entry point runs over it: the native host `elpis` (docs/NATIVE_HOST.md). Its durability protocol through
+the native host is RUN PASS under ECS_C Recovery Q0, for commit `117b41a` only, within that specification's scope.
+Standalone continuity is not retired yet. It is the offline Python reference's durable authority, the backend of
+RuntimeCore's continuity law suite and K1 Recovery R0 v4's premise P1. Q0's pass meets the census's condition for
+retiring it, and that retirement is the remaining step of Stage F.
 
 The canonical cognitive dataflow is `text -> DSV4 encode -> ECS stimulus ->
 ECS/EDEN dynamics -> ECS readout -> DSV4 decode -> text`. ECS as a sidecar
@@ -213,8 +215,8 @@ used by the substrate and inference. Callers branch on `Code` (`IDENTITY`,
 
 Continuity holds the current durable lineage/authority a continuity-backed runtime (`elpis_runtime_create`: the
 offline Python reference and RuntimeCore's continuity law suite) must verify on restart, and nothing else. The
-native host verifies the ECS_C authority instead. Continuity is not retired: it stays byte-identical (K1 Recovery R0
-v4 premise P1) until ECS_C Recovery Q0's QUAL run passes. [`CONTINUITY.md`](CONTINUITY.md) is the
+native host verifies the ECS_C authority instead. Continuity is not retired yet: it stays byte-identical (K1 Recovery
+R0 v4 premise P1) until its retirement, which ECS_C Recovery Q0's pass (commit `117b41a`) has unblocked. [`CONTINUITY.md`](CONTINUITY.md) is the
 full specification, including the consumer census that retired the event
 history kernel.
 
@@ -1043,8 +1045,8 @@ the subsystem state unchanged.
 * **No preemptive deadline.** Fuel bounds an operation before it starts; a
   running K1 schedule cannot be cancelled.
 * **Unqualified post-red-team mechanisms.** Their specifications
-  (docs/qualification: Cognitive Boundary R2 and R2 v5, ECS_C Recovery Q0, ECS Codec R0 and the research gates) are
-  NOT RUN; K1 Recovery R0 v4 is RUN PASS for commit `18f2f4d` only, within its stated scope; Cognitive Boundary R1's
+  (docs/qualification: Cognitive Boundary R2 and R2 v5, ECS Codec R0 and the research gates) are NOT RUN. K1 Recovery
+  R0 v4 is RUN PASS for commit `18f2f4d` only, and ECS_C Recovery Q0 is RUN PASS for commit `117b41a` only, within its stated scope. Cognitive Boundary R1's
   retrospective closure covers commit `bec6da7` (ABI v3) only.
 * **Proposals only, not overlays.** Ingress overlays are not persisted.
 * **No steering epochs.** The steered engine is composed by the caller.
