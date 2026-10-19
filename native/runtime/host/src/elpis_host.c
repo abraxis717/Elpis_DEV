@@ -19,6 +19,7 @@
 #endif
 #include <errno.h>
 #include <math.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1054,10 +1055,14 @@ static int held_send(held *t, const uint8_t event[512], uint64_t *generation, ho
     }
     const int rc = a->elpis_runtime_authority_transition(t->h->rt, event, generation);
     if (rc) {
+        /* RUNTIME_AUTHORITY and CONTINUITY_INVALID come back from a transition only when the authority itself
+         * refused, which RuntimeCore records as its exact last code: report that one, as the direct path does. */
         elpis_runtime_authority s;
         const int last = a->elpis_runtime_authority_status(t->h->rt, &s) ? 0 : s.ecs_c_code;
-        return host_fail(e, rt_code(t->h, rc), "the authority refused the event; nothing changed%s%s",
-                         last ? " (the authority's last refusal: " : "", last ? ecs_c_code(t->h, last) : "");
+        if (last && (rc == ELPIS_RUNTIME_AUTHORITY || rc == ELPIS_CONTINUITY_INVALID))
+            return host_fail(e, ecs_c_code(t->h, last), "the authority refused the event; nothing changed (through "
+                                                        "RuntimeCore: %s)", rt_code(t->h, rc));
+        return host_fail(e, rt_code(t->h, rc), "RuntimeCore refused the event before the authority saw it");
     }
     return 0;
 }
@@ -1152,6 +1157,12 @@ static void report_out(hjw *w, const elpis_ecs_c_report *r) {
     hjw_str(w, NAME(SLOT_CLASSES, r->witness_class[0]));
     hjw_str(w, NAME(SLOT_CLASSES, r->witness_class[1]));
     hjw_end(w, ']');
+    hjw_key(w, "slot_generations"); /* the slots' untrusted header claims (0 when unreadable) */
+    hjw_array(w);
+    hjw_u64(w, r->slot_generation[0]);
+    hjw_u64(w, r->slot_generation[1]);
+    hjw_end(w, ']');
+    hjw_ku64(w, "witness_generation", r->witness_generation);
     hjw_kbool(w, "replay_verified", r->replay_verified);
     hjw_kbool(w, "witness_completed", r->witness_completed);
     hjw_kbool(w, "evolution_pending", r->evolution_pending);
@@ -1453,6 +1464,22 @@ static int op_testing_wait_parked(host *h, const hj_value *op, hjw *w, host_err 
     return 0;
 }
 
+/* Pause at an operation boundary: print one line, then wait (bounded) for one byte on standard input. A harness
+ * inspects the live process meanwhile (its mappings, its descriptors) or kills it. */
+static int op_testing_pause(host *h, const hj_value *op, hjw *w, host_err *e) {
+    (void)h;
+    uint64_t timeout;
+    if (u64_member(op, "timeout_ms", 600000, 60000, &timeout, e)) return -1;
+    fputs("{\"op\":\"testing_pause\",\"paused\":true}\n", stdout);
+    fflush(stdout);
+    struct pollfd p = {0, POLLIN, 0};
+    char byte;
+    if (poll(&p, 1, (int)timeout) != 1 || read(0, &byte, 1) != 1)
+        return host_fail(e, "TESTING_NOT_RESUMED", "no byte arrived on standard input");
+    hjw_kbool(w, "resumed", 1);
+    return 0;
+}
+
 /* Process death at an operation boundary: no close, no destructor, nothing flushed but what was printed. */
 static int op_testing_exit(host *h, const hj_value *op, hjw *w, host_err *e) {
     (void)h, (void)op, (void)w, (void)e;
@@ -1490,6 +1517,7 @@ static const struct {
     {"testing_durable_fault", op_testing_durable_fault},
     {"testing_control_fault", op_testing_control_fault},
     {"testing_wait_parked", op_testing_wait_parked},
+    {"testing_pause", op_testing_pause},
     {"testing_exit", op_testing_exit},
 #endif
 };

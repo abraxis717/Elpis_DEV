@@ -36,6 +36,7 @@ RULES: tuple[tuple[str, str], ...] = (
     ("tests/pipeline/canonical_publisher/test_protocol.py::test_production_readers_during_successive_publications",
      "stress"),
     ("tests/pipeline/canonical_publisher/test_protocol.py::test_process_death_recovery", "stress"),
+    ("tests/integration/test_native_host.py::test_long_runs_keep_the_home_fixed", "stress"),
     # Mutation adequacy of the red-team regressions: a fresh interpreter per mutant over a sandbox copy.
     ("tests/boundary/test_redteam_mutations.py::test_the_regression_kills_the_mutant", "stress"),
     ("tests/", "fast"),
