@@ -23,7 +23,6 @@ import numpy as np
 import pytest
 
 from elpis.ECS.composite import CompositeConfig, CompositeError, CompositeLibrary, CompositeState, MemoryObservation
-from elpis.continuity import ContinuityError, ContinuityStore
 from elpis.ECS.k1 import K1State
 from elpis.runtime import Runtime
 from elpis.runtime.cognition import LearnRequest, ObservationAuthority, QueryRequest
@@ -272,17 +271,15 @@ def test_a_composite_from_an_unadmitted_library_is_refused_before_any_native_cal
         assert x.managed_lease == 0 and runtime.continuity.snapshot().k1_state_digest is None
 
 
-def test_a_composite_record_is_read_only_by_a_format_aware_reader(library, tmp_path):
-    """Continuity's v3 record names a composite identity and its format. RuntimeCore reads it as COMPOSITE; the
-    K1-only continuity adapter fails closed rather than misread a composite identity as a K1 digest."""
+def test_a_composite_record_is_read_back_with_its_format(library, tmp_path):
+    """The authority's record names a composite identity together with its format: a restart reads it back as
+    COMPOSITE, never as a K1 digest, with the same record digest. (The K1-only continuity adapter, which refused such
+    a record rather than misread it, retired with standalone continuity: RuntimeCore is the one reader.)"""
     with fresh(library) as x, Runtime(_config(tmp_path / "c")) as runtime:
         snapshot = runtime.anchor_cognition(x)
-        assert (snapshot.state_format, snapshot.k1_state_digest) == ("COMPOSITE", x.state_digest())
-        continuity = runtime._core.library.continuity
-    with pytest.raises(ContinuityError) as refused:
-        ContinuityStore(continuity, tmp_path / "c").open()
-    assert refused.value.code == "CONTINUITY_STATE_MISMATCH"
-    # Nor does the adapter ever encode a composite authority as a (v2, K1) record.
-    with pytest.raises(ContinuityError) as refused:
-        continuity.encode_record(snapshot)
-    assert refused.value.code == "CONTINUITY_CORRUPT"
+        identity = x.state_digest()
+        assert (snapshot.state_format, snapshot.k1_state_digest) == ("COMPOSITE", identity)
+    with Runtime(_config(tmp_path / "c")) as restarted:
+        again = restarted.continuity.snapshot()
+    assert (again.state_format, again.k1_state_digest, again.digest) == ("COMPOSITE", identity, snapshot.digest)
+    assert again.digest is not None

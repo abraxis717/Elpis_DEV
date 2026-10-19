@@ -1,9 +1,12 @@
-"""Thin Python adapter over RuntimeCore (``native/runtime``, ``include/elpis/runtime.h``, ABI v4).
+"""Thin Python adapter over RuntimeCore (``native/runtime``, ``include/elpis/runtime.h``, ABI v7).
 
 RuntimeCore (Rust) owns the runtime's mutable systems authority: lifecycle, fail-stop, the binding of the K1 lineage
 to one native state and its live coordinate, the managed turn's native K1 transaction (a VOLATILE commit), the
 durability lane (explicitly requested durable publication, on its own worker thread: recoverable = checkpoint slot,
-read back verified, then continuity record; identity-only = continuity record alone), and the evolution attempt's reservation and finalization. This module only marshals values across
+read back verified, then the authority's record; identity-only = the authority's record alone), and the evolution
+attempt's reservation and finalization. Its durable authority is the ECS_C authority (``.authority``), the only one
+since ABI v7: the operator provisions it, and RuntimeCore publishes to it and admits typed evidence against its
+sources. This module only marshals values across
 the C ABI and raises the stable code RuntimeCore returns. It holds no authority state, decides no transition and
 calls no K1 function: it hands RuntimeCore the K1 library's own entry points and the state's native handle.
 
@@ -37,31 +40,31 @@ from dataclasses import dataclass
 from pathlib import Path
 from struct import unpack_from as _unpack_from
 
-from elpis.continuity.adapter import (
-    _Counters as _IOCounters,
-    _Evolution,
-    _Snapshot,
-    _evolution_arg,
-    _from_c,
-    _hex_digest,
-    ContinuityLibrary,
-    ContinuityProcessDeath,
-    ContinuitySnapshot,
-    EvolutionAuthority,
-)
 from elpis.ECS.composite import CompositeState, MemoryObservation, MEMORY_CODES as _MEMORY_CODES
 from elpis.ECS.k1 import K1Error, K1FMSState, K1State
 
 from elpis.substrate.contracts import ContractError
 from elpis.substrate.native_admission import AdmittedLibrary, admission_of, admit_library
 
+from .authority import (
+    _Counters as _IOCounters,
+    _Evolution,
+    _Snapshot,
+    _evolution_arg,
+    _from_c,
+    _hex_digest,
+    AuthorityDirs,
+    ContinuityProcessDeath,
+    ContinuitySnapshot,
+    EvolutionAuthority,
+)
 from .errors import CompositionError
 from .fuel import CEILING as _FUEL_CEILING
 
 __all__ = ("DurabilityStatus", "DurableTicket", "K1Recovery", "RuntimeCore", "RuntimeLibrary", "TurnBegun",
            "VolatileCommit")
 
-_ABI_VERSION = 6
+_ABI_VERSION = 7
 _TESTING_PROCESS_DEATH = 255
 _U64 = C.c_uint64
 _K1_NAMES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT",
@@ -138,6 +141,30 @@ _FMS_ENTRIES = _API_ENTRIES + ("resident_hold", "resident_release")
 # same order (its leased_txn_commit is the composite's leased_txn_commit_at), then the memory OBSERVE of the open turn.
 _COMPOSITE_ENTRIES = tuple("leased_txn_commit_at" if n == "leased_txn_commit" else n for n in _API_ENTRIES) + (
     "leased_txn_observe",)
+
+
+class _AuthorityStatus(C.Structure):
+    """``elpis_runtime_authority`` (216 bytes)."""
+    _fields_ = [("backend", C.c_uint32), ("ecs_c_code", C.c_int32), ("disposition", C.c_uint32), ("mode", C.c_uint32),
+                ("replay_verified", C.c_uint8), ("witness_completed", C.c_uint8), ("reserved", C.c_uint8 * 6),
+                ("generation", _U64), ("receipt_count", _U64), ("evidence_count", _U64), ("entity_count", C.c_uint32),
+                ("capacity", C.c_uint32), ("lineage", C.c_uint8 * 32), ("record_digest", C.c_uint8 * 32),
+                ("state_root", C.c_uint8 * 32), ("receipt_head", C.c_uint8 * 32), ("evidence_head", C.c_uint8 * 32)]
+
+
+_AUTHORITY_DIGESTS = frozenset({"lineage", "record_digest", "state_root", "receipt_head", "evidence_head"})
+
+
+class _AuthorityEntity(C.Structure):
+    """``elpis_runtime_authority_entity`` (152 bytes, laid out as ``elpis_ecs_c_entity``)."""
+    _fields_ = [("id", C.c_uint8 * 32), ("kind", C.c_uint8), ("lifecycle", C.c_uint8), ("reserved", C.c_uint8 * 2),
+                ("per_turn_limit", C.c_uint32), ("founding_index", _U64), ("founded_generation", _U64),
+                ("last_generation", _U64), ("sender_watermark", _U64), ("source_version", _U64),
+                ("label", C.c_uint8 * 32), ("scope", C.c_uint8 * 32), ("source_authority", C.c_uint32),
+                ("reserved2", C.c_uint32)]
+
+
+assert C.sizeof(_AuthorityStatus) == 216 and C.sizeof(_AuthorityEntity) == 152
 
 
 class _Recovery(C.Structure):
@@ -338,10 +365,8 @@ RUNTIME_LIBRARY_IDS = ("elpis_runtime", "elpis_runtime_testing")
 
 class RuntimeLibrary:
     """The RuntimeCore library, admitted: deployment-pinned identity, opened beneath a trusted root, verified and
-    loaded from sealed bytes (``elpis.substrate.native_admission``). It is never loaded from a pathname.
-
-    It also exports the continuity C ABI of the store it embeds: ``continuity`` is the record codec over it.
-    """
+    loaded from sealed bytes (``elpis.substrate.native_admission``). It is never loaded from a pathname. It exports
+    RuntimeCore's C ABI only (ABI v7: no other crate's)."""
 
     @classmethod
     def admit(cls, root, path, authority, library_id: str = "elpis_runtime") -> "RuntimeLibrary":
@@ -367,7 +392,11 @@ class RuntimeLibrary:
         lib.elpis_runtime_features.argtypes = [C.c_size_t]
         S, E, P, D = C.POINTER(_Snapshot), C.POINTER(_Evolution), C.c_void_p, C.POINTER(C.c_double)
         sig = {
-            "create": [C.c_char_p, C.c_size_t, C.POINTER(C.c_void_p)],
+            "create_ecs_c": [C.c_char_p, C.c_size_t, C.c_char_p, C.c_size_t, C.POINTER(C.c_void_p)],
+            "authority_status": [P, C.POINTER(_AuthorityStatus)],
+            "authority_transition": [P, P, C.POINTER(_U64)],
+            "authority_entity_at": [P, C.c_uint32, C.POINTER(_AuthorityEntity)],
+            "authority_next_entity_id": [P, C.c_uint8, P, P],
             "open": [P, S],
             "fault": [P],
             "snapshot": [P, S],
@@ -420,7 +449,6 @@ class RuntimeLibrary:
                 tuple(getattr(ceiling, n) for n, _ in _Budget._fields_) != _FUEL_CEILING.native_fields():
             raise CompositionError("RUNTIME_INVALID", "the compiled fuel ceiling is not the canonical one")
         self.admission = admitted
-        self.continuity = ContinuityLibrary(lib)   # the continuity ABI of the same admitted bytes
         self._lib = lib
         self._features: dict[int, int] = {}
 
@@ -459,16 +487,19 @@ class RuntimeLibrary:
 
 
 class RuntimeCore:
-    """One RuntimeCore handle over one continuity directory. Every method is one call into RuntimeCore."""
+    """One RuntimeCore handle over one provisioned ECS_C authority (an :class:`AuthorityDirs` root). Every method is
+    one call into RuntimeCore."""
 
     def __init__(self, library: RuntimeLibrary, directory: str | Path):
         if type(library) is not RuntimeLibrary:
             raise TypeError("RuntimeCore takes a RuntimeLibrary")
         self.library = library
         self.directory = Path(directory)
-        raw = str(self.directory).encode()
+        self.authority = AuthorityDirs(self.directory)
+        state, authority = str(self.authority.state).encode(), str(self.authority.authority).encode()
         handle = C.c_void_p()
-        library.check(library._lib.elpis_runtime_create(raw, len(raw), C.byref(handle)))
+        library.check(library._lib.elpis_runtime_create_ecs_c(state, len(state), authority, len(authority),
+                                                              C.byref(handle)))
         self._handle = handle
         self._f = library._lib
 
@@ -481,7 +512,7 @@ class RuntimeCore:
     def _snapshot(self, name: str, *args, detail: str = "") -> ContinuitySnapshot:
         out = _Snapshot()
         self.library.check(getattr(self._f, "elpis_runtime_" + name)(self._handle, *args, C.byref(out)), detail)
-        return _from_c(out, composite=True)   # RuntimeCore is format-aware: a lineage is K1 or ECS composite
+        return _from_c(out)   # RuntimeCore is format-aware: a lineage is K1 or ECS composite
 
     # -- lifecycle --------------------------------------------------------------------------------------------
     def open(self) -> ContinuitySnapshot:
@@ -631,7 +662,7 @@ class RuntimeCore:
                                 self._ticket(out.running) if out.running.sequence else None,
                                 int(out.live_generation), bool(out.pending),
                                 self.library.code(out.fault) if out.fault else None, int(out.parked),
-                                int(out.checkpoint_capacity), _from_c(out.durable, composite=True) if out.durable_known else None)
+                                int(out.checkpoint_capacity), _from_c(out.durable) if out.durable_known else None)
 
     def live_identity(self, descriptor) -> tuple[bytes, int]:
         """The bound state's retained-state identity and live generation (cold path: one hashing native call)."""
@@ -693,6 +724,36 @@ class RuntimeCore:
     def checkpoint_adopt(self, candidate: bytes) -> ContinuitySnapshot:
         return self._snapshot("checkpoint_adopt", _digest_arg(candidate),
                               detail="the candidate was not adopted")
+
+    # -- the held authority (operator events while the runtime holds it) ---------------------------------------------
+    def authority_status(self) -> dict:
+        """``elpis_runtime_authority_status``: the authority's backend (always ECS_C), last refusal and recovery report,
+        and while open its generation, counts and chain heads. Readable closed."""
+        out = _AuthorityStatus()
+        self.library.check(self._f.elpis_runtime_authority_status(self._handle, C.byref(out)))
+        return {name: (bytes(getattr(out, name)).hex() if name in _AUTHORITY_DIGESTS else getattr(out, name))
+                for name, _ in _AuthorityStatus._fields_ if not name.startswith("reserved")}
+
+    def authority_entity(self, index: int) -> dict:
+        out = _AuthorityEntity()
+        self.library.check(self._f.elpis_runtime_authority_entity_at(self._handle, index, C.byref(out)))
+        return {"id": bytes(out.id), "kind": out.kind, "lifecycle": out.lifecycle, "per_turn": out.per_turn_limit,
+                "sender_watermark": out.sender_watermark, "source_authority": out.source_authority,
+                "label": bytes(out.label), "scope": bytes(out.scope)}
+
+    def authority_next_entity_id(self, kind: int, label: bytes) -> bytes:
+        out = (C.c_uint8 * 32)()
+        self.library.check(self._f.elpis_runtime_authority_next_entity_id(self._handle, kind, _digest_arg(label), out))
+        return bytes(out)
+
+    def authority_transition(self, event: bytes) -> int:
+        """One operator event (512 bytes) on the held authority; returns its new generation."""
+        if type(event) is not bytes or len(event) != 512:
+            raise CompositionError("RUNTIME_INVALID", "an operator event is 512 bytes")
+        generation = _U64()
+        self.library.check(self._f.elpis_runtime_authority_transition(
+            self._handle, (C.c_uint8 * 512).from_buffer_copy(event), C.byref(generation)))
+        return int(generation.value)
 
     # -- testing library only -------------------------------------------------------------------------------------------
     def testing_fault(self, publication: int, action: int, arg: int = 0) -> None:

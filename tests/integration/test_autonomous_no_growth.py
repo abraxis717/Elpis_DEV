@@ -1,11 +1,13 @@
-"""The ordinary autonomous path persists nothing but continuity, and its volatile resources are released.
+"""The ordinary autonomous path persists nothing but its durable authority's fixed files, and its volatile resources
+are released.
 
 Real native libraries (ELPIS_REQUIRE_NATIVE=1 makes them mandatory). Python-level filesystem mutations are
-observed through an armed audit hook; native mutations through the filesystem itself. One volatile HACF retrieval
-epoch, borrowed ingress, an explicit K1 anchor and three canonical turns may leave exactly the two fixed
-176-byte continuity slots behind (elpis.runtime.persistence: continuity_slots), and nothing else. Repeated epoch
-create/destroy holds file descriptors, threads and live owning handles constant, including an epoch dropped
-without destroy().
+observed through an armed audit hook; native mutations through the filesystem itself. The operator provisions the
+ECS_C authority (outside the trap). One volatile HACF retrieval epoch, borrowed ingress, an explicit K1 anchor and
+three canonical turns may then leave exactly the authority's five provisioned files behind, at their provisioned sizes
+and inodes (elpis.runtime.persistence: ecs_c_authority_slots), and nothing else. Until RuntimeCore ABI v7 this was
+standalone continuity's two fixed 176-byte slots, which retired into the authority. Repeated epoch create/destroy
+holds file descriptors, threads and live owning handles constant, including an epoch dropped without destroy().
 """
 from __future__ import annotations
 
@@ -19,7 +21,7 @@ from elpis.runtime import Runtime, RuntimeConfig
 from elpis.runtime import persistence as P
 from elpis.structure.retrieval.hacf import HacfHandle, build_corpus_and_index
 
-from ..conftest import require_runtime_library, runtime_config
+from ..conftest import TEST_AUTHORITY_CAPACITY, require_runtime_library, runtime_config
 from ._turn_fixtures import LEARN, TEST_CODEC_PIN, ByteTokens, FixtureMap, admitted
 from .conftest import DOCS, POSITIVE
 from .test_codec_ecs_turn import RATE, k1, world  # noqa: F401  (k1 is a module pytest fixture)
@@ -69,16 +71,29 @@ def _tree(root):
                   for p in root.rglob("*"))
 
 
-def test_ordinary_autonomous_path_leaves_only_the_two_continuity_slots(retrieval_library, ingress_library,
-                                                                        k1, tmp_path):
-    assert P.AUTONOMOUS_WRITERS == {"continuity_slots", "fms_posix_cold_store", "k1_checkpoint_slots"}
-    state_root, continuity = tmp_path / "structural-memory", tmp_path / "continuity"
+def _inodes(root):
+    return sorted((str(p.relative_to(root)), p.stat().st_size, p.stat().st_ino) for p in root.rglob("*") if p.is_file())
+
+
+_RECORD = 1344 + 160 * TEST_AUTHORITY_CAPACITY
+_AUTHORITY_TREE = [("authority", None), ("authority/deployment.key", 32), ("authority/witness.a", 240),
+                   ("authority/witness.b", 240), ("state", None), ("state/authority.a", _RECORD),
+                   ("state/authority.b", _RECORD)]
+
+
+def test_ordinary_autonomous_path_leaves_only_the_authoritys_fixed_files(retrieval_library, ingress_library,
+                                                                          k1, tmp_path):
+    assert P.AUTONOMOUS_WRITERS == {"ecs_c_authority_slots", "fms_posix_cold_store", "k1_checkpoint_slots"}
+    state_root, authority = tmp_path / "structural-memory", tmp_path / "authority"
+    config = runtime_config(authority, require_runtime_library(), TEST_CODEC_PIN)   # the operator provisions
+    provisioned = _inodes(authority)
+    assert _tree(authority) == _AUTHORITY_TREE, _tree(authority)
     trap = _WriteTrap()
     with world(k1) as state, trap:
         handle = build_corpus_and_index(retrieval_library, state_root, DOCS)
         try:
             with QueryIngress(ingress_library, handle) as ingress:
-                with Runtime(runtime_config(continuity, require_runtime_library(), TEST_CODEC_PIN)) as runtime:
+                with Runtime(config) as runtime:
                     runtime.run_ingress(ingress, POSITIVE)
                     runtime.anchor_cognition(state)
                     for text in ("one", "two", "three"):
@@ -88,8 +103,9 @@ def test_ordinary_autonomous_path_leaves_only_the_two_continuity_slots(retrieval
             handle.destroy()
     assert trap.events == [], trap.events
     assert not state_root.exists(), "a volatile retrieval epoch created a state root"
-    assert _tree(tmp_path) == [("continuity", None), ("continuity/continuity.a", 176),
-                               ("continuity/continuity.b", 176)], _tree(tmp_path)
+    assert _tree(tmp_path) == [("authority", None)] + [("authority/" + n, s) for n, s in _AUTHORITY_TREE], \
+        _tree(tmp_path)
+    assert _inodes(authority) == provisioned, "the authority's files are rewritten in place, never replaced"
 
 
 def test_a_provisioned_k1_checkpoint_stays_two_fixed_slots_on_the_autonomous_path(k1, tmp_path):  # noqa: F811
@@ -107,7 +123,8 @@ def test_a_provisioned_k1_checkpoint_stays_two_fixed_slots_on_the_autonomous_pat
     checkpoint = tmp_path / "k1-checkpoint"
     provision_k1_checkpoint(library, checkpoint, k1.envelope_bytes(DIM, WIDTH))
     slots = sorted((p.name, p.stat().st_size, p.stat().st_ino) for p in checkpoint.iterdir())
-    config = replace(runtime_config(tmp_path / "continuity", path, TEST_CODEC_PIN), k1_checkpoint_dir=checkpoint)
+    config = replace(runtime_config(tmp_path / "authority", path, TEST_CODEC_PIN), k1_checkpoint_dir=checkpoint)
+    authority = _inodes(tmp_path / "authority")
     trap = _WriteTrap()
     with world(k1) as state, trap:
         with Runtime(config) as runtime:
@@ -118,7 +135,8 @@ def test_a_provisioned_k1_checkpoint_stays_two_fixed_slots_on_the_autonomous_pat
             assert runtime.recover_k1().disposition == "RESUMABLE"
     assert trap.events == [], trap.events
     assert sorted((p.name, p.stat().st_size, p.stat().st_ino) for p in checkpoint.iterdir()) == slots
-    assert _tree(tmp_path / "continuity") == [("continuity.a", 176), ("continuity.b", 176)]
+    assert _tree(tmp_path / "authority") == _AUTHORITY_TREE
+    assert _inodes(tmp_path / "authority") == authority
 
 
 def _fds() -> int:

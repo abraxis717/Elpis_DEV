@@ -33,7 +33,7 @@ REPO = Path(__file__).resolve().parents[2]
 _LIBS = ("native/runtime/libelpis_runtime.so", "native/runtime/libelpis_runtime_testing.so",
          "native/runtime/libelpis_hacf_observation.so", "native/ECS_G/libelpis_ecsg_math.so",
          "native/ECS_G/libelpis_ecsg_k1.so", "native/ECS_G/libelpis_ecsg_k1_fms.so", "native/ECS_C/libelpis_ecs_memory.so",
-         "native/runtime/composite/libelpis_ecs_composite.so")
+         "native/runtime/composite/libelpis_ecs_composite.so", "native/ECS_C/authority/libelpis_ecs_c_authority.so")
 
 
 def node(name):
@@ -50,6 +50,10 @@ LEARN = {"op": "learn", "x": X, "y": [0.1, -0.2, 0.05, 0.3], "schedule": [[2, 3]
 EDGE = {"relation": "hyperedge:1", "participants": [{"node": node("alice"), "role": "incidence:1"},
                                                     {"node": node("acme"), "role": "incidence:2"},
                                                     {"node": node("engineer"), "role": "incidence:3"}]}
+# The operator founds source 1 on the lineage's ECS_C authority (the native host's op): typed evidence is admitted
+# only from an ACTIVE source of the durable authority.
+SOURCE = {"op": "source_found", "label": "fixture source 1", "source_authority": 1, "per_turn": 8,
+          "scope_label": "fixture scope"}
 EVIDENCE = {"op": "evidence", "items": [dict(EDGE, provenance=prov("record-17"), authority=1, polarity="ASSERT",
                                              tick=1)], "grant": "test operator: source 1", "sources": [1]}
 LOOKUP = {"op": "lookup", "relation": "hyperedge:1", "target_role": "incidence:3",
@@ -59,7 +63,8 @@ LOOKUP = {"op": "lookup", "relation": "hyperedge:1", "target_role": "incidence:3
 @pytest.fixture(scope="module")
 def build(tmp_path_factory):
     """A copy of just the libraries a deployment needs, laid out as a build tree (deleted after init)."""
-    for name in ("elpis_runtime", "elpis_runtime_testing", "elpis_ecs_composite", "elpis_hacf_observation"):
+    for name in ("elpis_runtime", "elpis_runtime_testing", "elpis_ecs_composite", "elpis_hacf_observation",
+                 "elpis_ecs_c_authority"):
         require_native_library(name)
     return native_build_dir()
 
@@ -91,7 +96,10 @@ def _deploy(build, tmp_path, *, testing=False):
     shutil.rmtree(staging)                                    # never used again
     rc, out = cli(home, "create", "--seed", "7")
     assert rc == 0 and out[0]["ok"] and out[0]["state_format"] == "COMPOSITE", out
-    return home, out[0]["identity"]
+    identity = out[0]["identity"]
+    rc, out = cli(home, script=[SOURCE])
+    assert rc == 0 and out[0]["ok"] and out[0]["lifecycle"] == "ACTIVE" and out[0]["source_authority"] == 1, out
+    return home, identity
 
 
 def test_a_session_learns_records_evidence_publishes_and_a_new_process_resumes_it_exactly(build, tmp_path):
@@ -106,7 +114,7 @@ def test_a_session_learns_records_evidence_publishes_and_a_new_process_resumes_i
     assert live["durable"]["identity"] == initial != live["live"]["identity"]     # volatile until published
     assert published["ticket"]["acknowledged"] and published["durable"]["identity"] == live["live"]["identity"]
     assert status["recovery"]["disposition"] == "RESUMABLE" and status["fault"] is None
-    assert status["abi"] == {"runtime": 6, "composite": 1} and "ECS_CODEC_UNQUALIFIED" in status["capabilities"]["text"]
+    assert status["abi"] == {"runtime": 7, "composite": 1, "ecs_c": 1} and "ECS_CODEC_UNQUALIFIED" in status["capabilities"]["text"]
     # A new process: exactly the published state.
     rc, again = cli(home, script=[{"op": "query", "x": X}, LOOKUP, {"op": "live"}])
     assert rc == 0, again

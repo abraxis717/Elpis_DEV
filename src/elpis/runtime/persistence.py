@@ -49,29 +49,23 @@ _GRID81 = "native/structure/semantic/src/grid81/"
 
 WRITERS: tuple[PersistentWriter, ...] = (
     PersistentWriter(
-        "continuity_slots", F, (),
-        ("native/continuity/src/store.rs:pub struct Store", "native/runtime/src/durable.rs:pub struct Stores"),
-        "Exactly two fixed 176-byte slot files in one explicit, exclusively owned directory; each publication "
-        "replaces the non-current slot in place. No log, history, compaction or growth. Published only by an explicit "
-        "operation (anchor, an explicit durable publication on the durability lane, evolution reservation and "
-        "finalization, operator reconciliation); a LEARN or QUERY never writes it (RuntimeCore ABI v4)."),
-    PersistentWriter(
         "k1_checkpoint_slots", F, (),
         ("native/runtime/src/checkpoint.rs:pub fn write", "native/runtime/src/checkpoint.rs:pub fn retract"),
         "K1 Recovery R0: exactly two slot files of one fixed size (header + the admitted K1 shape's envelope) in "
         "one operator-provisioned, exclusively locked directory. The anchor and each explicit durable publication "
         "rewrite the slot that does not hold the authorized state in place (a LEARN never does); the runtime never "
-        "creates, grows, resizes, renames or multiplies them. No history; a slot never authorizes itself (continuity "
-        "decides)."),
+        "creates, grows, resizes, renames or multiplies them. No history; a slot never authorizes itself (the durable "
+        "authority decides)."),
     PersistentWriter(
         "ecs_c_authority_slots", F, (),
-        ("native/ECS_C/authority/src/store.rs:pub fn transition",),
+        ("native/ECS_C/authority/src/store.rs:pub fn transition", "native/runtime/src/durable.rs:pub struct Stores"),
         "The ECS_C authority (docs/ECS_C_AUTHORITY.md): exactly two record slots of R(capacity) bytes in the state "
         "directory and two 240-byte witness slots in the authority directory, all created by provisioning. Each "
         "transition rewrites one record slot and one witness slot in place (R + 240 bytes, two fdatasync calls), "
         "whatever the length of the history; nothing is created, renamed, removed or grown, and the entity rows are "
         "bounded by the provisioned capacity (exhaustion refuses before any write). Reached from RuntimeCore (ABI "
-        "v6) only by an explicit publication or operator event; a LEARN, OBSERVE or QUERY never writes it."),
+        "v6; its only durable authority since ABI v7, when standalone continuity's two 176-byte slots retired into it) "
+        "only by an explicit publication or operator event; a LEARN, OBSERVE or QUERY never writes it."),
     PersistentWriter(
         "fms_posix_cold_store", F, ("elpis.substrate.residency:Context",),
         ("native/substrate/src/fms_pal_posix.c:p_cold_put",),
@@ -90,11 +84,12 @@ WRITERS: tuple[PersistentWriter, ...] = (
         "One new directory with exactly two zeroed, synced slot files per explicit operator command; an existing "
         "directory is refused (never overwritten, resized or adopted). Never reached by a Runtime operation."),
     PersistentWriter(
-        "ecs_c_authority_provisioning", O, (),
+        "ecs_c_authority_provisioning", O, ("elpis.runtime.authority:provision_authority",),
         ("native/ECS_C/authority/src/store.rs:pub fn provision",),
         "One state directory and one authority directory with their fixed file sets (two record slots; the "
-        "deployment key and two witnesses) per explicit operator provisioning; an existing deployment is refused "
-        "(ALREADY_PROVISIONED). Never reached by a Runtime operation."),
+        "deployment key and two witnesses) per explicit operator provisioning, with the sources the operator founds "
+        "(each an in-place transition of those files); an existing deployment is refused (ALREADY_PROVISIONED, "
+        "AUTHORITY_EXISTS). Never reached by a Runtime operation."),
     PersistentWriter(
         "native_host_deployment", O, (),
         ("native/runtime/host/src/host_deploy.c:host_init", "native/runtime/host/src/host_deploy.c:host_create_lineage"),
@@ -212,7 +207,7 @@ WRITERS: tuple[PersistentWriter, ...] = (
         "refuses. A retrieval epoch is volatile and diskless."),
     PersistentWriter(
         "persistent_log_sink", P, (), (),
-        "None exists. Stdout/stderr are not Elpis-owned storage; continuity is not a history."),
+        "None exists. Stdout/stderr are not Elpis-owned storage; the durable authority is not a history."),
 )
 
 # Every public Runtime operation, exactly once. Ordinary autonomous operations may reach only
@@ -227,8 +222,8 @@ AUTONOMOUS_OPERATIONS = frozenset({
     "run_numeric_query",   # read-only: writes nothing at all
     "run_numeric_learn",   # explicit LearnAuthority; a volatile commit: writes nothing at all
     "run_turn",            # LEGACY learned turn: a LEARN (explicit LearnAuthority); writes nothing at all
-    "publish_recoverable",  # explicit recoverable publication: the fixed checkpoint and continuity slots only
-    "publish_identity",    # explicit identity-only publication: the fixed continuity slots only
+    "publish_recoverable",  # explicit recoverable publication: the fixed checkpoint and authority slots only
+    "publish_identity",    # explicit identity-only publication: the fixed authority slots only
     "durability",          # read-only: the durability lane's state
     "live_identity",       # read-only: the live state's identity
     "recover_k1",          # read-only: what restart may do with the lineage
@@ -237,18 +232,18 @@ OPERATOR_OPERATIONS = frozenset({
     "publish_canonical",   # one-use promotion capability against an operator approval digest
     "evolve",              # an explicit assertion under the pinned evolution policy, reserved before execution
     "discard_k1_candidate",   # explicit reconciliation of exactly one named checkpoint candidate
-    "adopt_k1_candidate",     # explicit reconciliation: continuity authorized -> the named candidate
-    "import_composite",       # explicit lineage format change (K1 -> ECS composite): fixed checkpoint, then continuity
+    "adopt_k1_candidate",     # explicit reconciliation: the authority's authorized -> the named candidate
+    "import_composite",       # explicit lineage format change (K1 -> ECS composite): fixed checkpoint, then authority
 })
 # The fixed-capacity writers each composer's ordinary path reaches, by composer. Every FIXED_CAPACITY_AUTONOMOUS
 # writer belongs to at least one, and nothing else does (tests/boundary/test_autonomous_persistence.py).
+# Both composers' durable authority is the ECS_C authority (RuntimeCore ABI v7 has no other; standalone continuity's
+# slots retired into it).
 # * AUTONOMOUS_WRITERS: the Python Runtime (elpis.runtime.composition, the offline reference interface) and the native
-#   libraries it loads. Its durable authority is standalone continuity (elpis_runtime_create);
-#   tests/integration/test_autonomous_no_growth.py proves this set under a write trap.
-# * NATIVE_HOST_AUTONOMOUS_WRITERS: the native host (docs/NATIVE_HOST.md), the production entry point. Its durable
-#   authority is the ECS_C authority (elpis_runtime_create_ecs_c only), and it builds no FMS cold store;
-#   tests/integration/test_native_host.py proves its home a fixed file set under containment.
-AUTONOMOUS_WRITERS = frozenset({"continuity_slots", "fms_posix_cold_store", "k1_checkpoint_slots"})
+#   libraries it loads; tests/integration/test_autonomous_no_growth.py proves this set under a write trap.
+# * NATIVE_HOST_AUTONOMOUS_WRITERS: the native host (docs/NATIVE_HOST.md), the production entry point. It builds no FMS
+#   cold store; tests/integration/test_native_host.py proves its home a fixed file set under containment.
+AUTONOMOUS_WRITERS = frozenset({"ecs_c_authority_slots", "fms_posix_cold_store", "k1_checkpoint_slots"})
 NATIVE_HOST_AUTONOMOUS_WRITERS = frozenset({"ecs_c_authority_slots", "k1_checkpoint_slots"})
 
 

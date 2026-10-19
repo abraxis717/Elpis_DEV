@@ -1,8 +1,8 @@
 """Evolution end to end: gated attempts bound to the runtime's current evolution authority.
 
 The gate validates and executes at the boundary; RuntimeCore (native/runtime) owns the durable reservation,
-the finalization and the fail-stop. Everything below is observed through RuntimeCore: the continuity record,
-its testing faults, and the gate's own result.
+the finalization and the fail-stop. Everything below is observed through RuntimeCore: the durable authority's record
+(an ECS_C authority), its testing faults, and the gate's own result.
 """
 from __future__ import annotations
 
@@ -11,23 +11,24 @@ import hashlib
 
 import pytest
 
-from elpis.continuity import ContinuityProcessDeath
 from elpis.evolution import EvolutionAttempt, EvolutionPathAssertion, EvolutionPathGate, GateExecuted, GateRejected
 from elpis.runtime import CompositionError, Runtime, RuntimeConfig
+from elpis.runtime.authority import ContinuityProcessDeath
 
 from ..conftest import require_runtime_library, runtime_config
 from ..evolution._policy_fixtures import TEST_AUTHORITY, TEST_EVOLUTION_PIN
 from ..evolution import _policy_fixtures as policies
 from .conftest import POSITIVE
 
-SLOTS = ("continuity.a", "continuity.b")
-# Testing-library fault actions (native/continuity, elpis_continuity_testing_fault).
+RECORDS = ("authority.a", "authority.b")
+# Testing-library fault actions of the authority's record (elpis_runtime_testing_fault; RuntimeCore's
+# authority::Store::testing_arm, the numbering standalone continuity's own hook had).
 DIE, WRITE_FAIL, TORN_FAIL, SYNC_FAIL_LOST, SYNC_FAIL_DURABLE = 1, 2, 3, 5, 6
 STEPS = {"publish.begin": 0, "publish.written": 1, "publish.synced": 2}
 
 
 def config_at(tmp_path, testing=False, evolution_pin=TEST_EVOLUTION_PIN):
-    return runtime_config(tmp_path / "continuity", require_runtime_library(testing=testing),
+    return runtime_config(tmp_path / "authority", require_runtime_library(testing=testing),
                           evolution_pin=evolution_pin)
 
 
@@ -163,14 +164,15 @@ def test_publication_failure_never_reexecutes(tmp_path, monkeypatch, phase, fail
     with Runtime(config) as rt:
         initial = rt.continuity.snapshot().evolution
         a = assertion(episode, rt.evolution_authority(), initial.head)
-        library = rt.continuity.library
 
         def counted_advance(**kw):
             nonlocal calls
             # This assertion executes only with the exact reservation durable.
             snap = rt.continuity.snapshot()
             assert snap.evolution.pending_assertion == a.digest
-            assert any(library.decode_record((config.continuity_dir / name).read_bytes()) == snap for name in SLOTS)
+            # A record slot on disk is the authority's current record: its last 32 bytes are the record digest.
+            current = rt.continuity.status()["record_digest"]
+            assert any((config.authority_dir / "state" / n).read_bytes()[-32:].hex() == current for n in RECORDS)
             calls += 1
             return advance(**kw, label="1")
 
@@ -235,7 +237,7 @@ def test_advance_exception_or_invalid_result_preserves_pending(tmp_path, bad_res
 
 
 def test_explicit_reconciliation_finalizes_once_without_execution(tmp_path, monkeypatch):
-    from elpis.continuity import ContinuityError
+    from elpis.runtime.authority import ContinuityError
     config = config_at(tmp_path, testing=True)
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
     # The completed receipt, as an external reconciler could establish it. RuntimeCore never persists this

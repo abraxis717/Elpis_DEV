@@ -24,7 +24,7 @@ from elpis.runtime.composition import CompositionError
 from elpis.runtime.core import RuntimeLibrary
 from elpis.runtime.recovery import provision_k1_checkpoint
 
-from ..conftest import library_id_of, native_authority, require_runtime_library
+from ..conftest import AUTHORITY_FILES, authority_files, library_id_of, native_authority, require_runtime_library
 from ._turn_fixtures import LEARN, ByteTokens, FixtureMap, admitted
 from .test_codec_ecs_turn import DIM, WIDTH, _config, _Resident, adapter, k1, world  # noqa: F401 (fixtures)
 
@@ -337,7 +337,7 @@ def test_without_an_attached_store_recovery_is_refused_and_learn_is_unchanged(k1
         ticket = runtime.publish_identity(state)
         # Identity only: no store holds the bytes, so it is never a (recoverable) acknowledgment.
         assert ticket.identity_published and not ticket.acknowledged and not ticket.recoverable
-        assert sorted(os.listdir(tmp_path / "c")) == ["continuity.a", "continuity.b"]
+        assert authority_files(tmp_path / "c") == AUTHORITY_FILES
 
 
 _READ_BACK_FAIL, _SYNC_LOST, _SYNC_DURABLE = 10, 8, 9
@@ -390,7 +390,7 @@ def test_every_publication_disposition_restarts_at_exactly_what_it_reported(k1, 
         assert durable == names.get(disposition, anchored), disposition
         if not with_store:
             _refused(runtime.recover_k1, "CHECKPOINT_INVALID")                  # no bytes anywhere to resume
-            assert sorted(os.listdir(tmp_path / "c")) == ["continuity.a", "continuity.b"]
+            assert authority_files(tmp_path / "c") == AUTHORITY_FILES
             return
         recovery = runtime.recover_k1()
         if disposition == "uncertain-lost":

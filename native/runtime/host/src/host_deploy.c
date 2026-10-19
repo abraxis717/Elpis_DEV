@@ -376,7 +376,7 @@ static int read_host_cfg(host_deployment *d, host_err *e) {
         if (!abi || abi->kind != HJ_OBJECT || abi->count != 3 || u64_of(abi, "runtime", &r) ||
             u64_of(abi, "composite", &c) || u64_of(abi, "ecs_c", &x) || r != ELPIS_RUNTIME_ABI_V7 ||
             c != ELPIS_ECS_COMPOSITE_ABI_V1 || x != ELPIS_ECS_C_ABI_VERSION)
-            rc = host_fail(e, "DEPLOYMENT_ABI", "the deployment's ABI is not this host's (runtime 6, composite 1, ECS_C 1)");
+            rc = host_fail(e, "DEPLOYMENT_ABI", "the deployment's ABI is not this host's (runtime 7, composite 1, ECS_C 1)");
     }
     if (!rc) {
         const hj_value *t = hj_get(root, "testing");

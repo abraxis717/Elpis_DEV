@@ -78,7 +78,7 @@ class _Subject:
 
 def _core(path):
     config = _config(path)
-    core = RuntimeCore(RuntimeLibrary(admit_native(config.runtime_library)), config.continuity_dir)
+    core = RuntimeCore(RuntimeLibrary(admit_native(config.runtime_library)), config.authority_dir)
     core.open()
     return core
 
@@ -111,7 +111,7 @@ def subject(request, k1, adapter, tmp_path):   # noqa: F811 (module fixtures)
 
 @pytest.mark.parametrize("path", PATHS)
 def test_an_open_turn_is_ended_natively_on_every_lifecycle_path(subject, path, tmp_path):
-    directory = tmp_path / "continuity"
+    directory = tmp_path / "authority"
     core = _core(directory)
     descriptor, _owner = describe(subject.state)
     core.anchor(descriptor)
@@ -182,7 +182,7 @@ def test_an_open_turn_is_ended_natively_on_every_lifecycle_path(subject, path, t
 
 
 def test_a_commit_ends_the_turn_without_an_abort(subject, tmp_path):
-    core = _core(tmp_path / "continuity")
+    core = _core(tmp_path / "authority")
     descriptor, _owner = describe(subject.state)
     core.anchor(descriptor)
     aborts = subject.native_aborts()
@@ -199,7 +199,7 @@ def test_a_commit_ends_the_turn_without_an_abort(subject, tmp_path):
 
 
 def test_lifecycle_without_a_turn_makes_no_native_call(subject, tmp_path):
-    core = _core(tmp_path / "continuity")
+    core = _core(tmp_path / "authority")
     descriptor, _owner = describe(subject.state)
     core.anchor(descriptor)
     core.counters(reset=True)

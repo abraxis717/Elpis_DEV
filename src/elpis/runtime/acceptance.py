@@ -9,7 +9,7 @@ the exit status is 0 only when every check passed.
 Positive sequence (one lineage, several processes): pinned identity of source, ABI and libraries; an admitted ECS
 composite; QUERY; an authorized LEARN (a live transition, nothing published); validated HACF evidence recorded by the
 observe-only turn (the K1 component unchanged) and LOOKUP; a contextual (WARM) view that changes no ECS state; a
-recoverable publication with checkpoint and continuity in agreement; a restart in a new process that recovers the
+recoverable publication with the checkpoint and the durable authority in agreement; a restart in a new process that recovers the
 geometric and memory components exactly; another transition and publication; then crashes at registered durability
 boundaries (the testing RuntimeCore build parks its worker) with the prescribed dispositions: an unresolved
 candidate that only the operator resolves, a synced record that resumes directly, volatile work that is lost.
@@ -42,7 +42,7 @@ REPORT_SCHEMA = "elpis.acceptance-report.v1"
 _LIBS = ("native/runtime/libelpis_runtime.so", "native/runtime/libelpis_runtime_testing.so",
          "native/runtime/libelpis_hacf_observation.so", "native/ECS_G/libelpis_ecsg_math.so",
          "native/ECS_G/libelpis_ecsg_k1.so", "native/ECS_G/libelpis_ecsg_k1_fms.so", "native/ECS_C/libelpis_ecs_memory.so",
-         "native/runtime/composite/libelpis_ecs_composite.so")
+         "native/runtime/composite/libelpis_ecs_composite.so", "native/ECS_C/authority/libelpis_ecs_c_authority.so")
 
 
 def node(label: str) -> str:
@@ -71,6 +71,10 @@ def evidence(label, source=1, polarity="ASSERT", tick=1, grant="acceptance opera
     item = dict(EDGE, provenance=provenance(label), authority=source, polarity=polarity, tick=tick)
     return dict({"op": "evidence", "items": [item], "grant": grant, "sources": [1, 2]}, **extra)
 
+
+# The operator founds the two fixture sources the evidence names (ACTIVE in the lineage's ECS_C authority).
+SOURCES = [{"op": "source_found", "label": f"acceptance source {n}", "source_authority": n, "per_turn": 8,
+            "scope_label": "acceptance fixture scope"} for n in (1, 2)]
 
 LOOKUP = {"op": "lookup", "relation": "hyperedge:1", "target_role": "incidence:3",
           "cues": [{"role": "incidence:1", "node": node("alice")}, {"role": "incidence:2", "node": node("acme")}]}
@@ -121,6 +125,9 @@ class Acceptance:
         rc, created = self.cli(home, "create", "--seed", str(seed))
         if rc != 0:
             raise RuntimeError(f"create refused: {created}")
+        rc, founded = self.cli(home, script=SOURCES)
+        if rc != 0:
+            raise RuntimeError(f"source_found refused: {founded}")
         return home, created[0]
 
     # -- the positive sequence --------------------------------------------------------------------------------------
@@ -136,7 +143,8 @@ class Acceptance:
                    and created["state_format"] == "COMPOSITE", identity=initial, home=str(home))
         pinned = {i: v["sha256"] for i, v in st["libraries"].items()}
         self.check("P02", "source, ABI and every admitted library are the pinned ones (the build's bytes)",
-                   st["abi"] == {"runtime": 6, "composite": 1} and st["deployment"]["source_commit"] == self.source_commit
+                   st["abi"] == {"runtime": 7, "composite": 1, "ecs_c": 1}
+                   and st["deployment"]["source_commit"] == self.source_commit
                    and sorted(pinned.values()) == sorted(lib_digests.values()) == sorted(build_digests.values()),
                    abi=st["abi"], libraries=pinned, source_commit=st["deployment"]["source_commit"])
         self.check("P03", "an admitted ECS composite: anchored, durable first, RESUMABLE",
@@ -188,7 +196,7 @@ class Acceptance:
         acked = pub["ticket"]
         self.check("P14", "a recoverable publication is acknowledged", acked["acknowledged"] and acked["recoverable"]
                    and acked["identity"] == live3["live"]["identity"], ticket=acked)
-        self.check("P15", "checkpoint and continuity agree on the complete state",
+        self.check("P15", "checkpoint and the durable authority agree on the complete state",
                    cand["recovery"]["disposition"] == "RESUMABLE"
                    and cand["recovery"]["authorized"] == pub["durable"]["identity"] == acked["identity"]
                    and cand["recovery"]["envelope_bytes"] == st1["footprint"]["envelope_bytes"],
@@ -277,7 +285,7 @@ time.sleep(3600)
         rc, o = self.cli(home, script=[evidence("before-crash"), {"op": "publish"}])
         authorized = o[1]["ticket"]["identity"]
         evidence_key = o[0]["entries"][0]["relation_key"]
-        # 1. Killed with the checkpoint slot synced and continuity not published: an unresolved candidate.
+        # 1. Killed with the checkpoint slot synced and the authority not published: an unresolved candidate.
         c1 = self.crash(home, 5, "park")
         rc, cand = self.cli(home, "candidates")
         rc_q, refused = self.cli(home, "query", "--x", json.dumps(X))
@@ -295,7 +303,7 @@ time.sleep(3600)
                    and after[1]["negate_count"] == 1 and after[2]["assert_count"] == 1
                    and after[1]["assert_count"] == 1,   # the same relation: one assert (before) and one negate
                    live=after[0]["live"])
-        # 2. Killed with the continuity record synced but the acknowledgment not delivered: resumes directly.
+        # 2. Killed with the authority's record synced but the acknowledgment not delivered: resumes directly.
         c2 = self.crash(home, 8, "park")
         rc, cand2 = self.cli(home, "candidates")
         self.check("P25", "SIGKILL after the record sync (boundary 8, never acknowledged to the caller) resumes it",
@@ -506,7 +514,9 @@ time.sleep(3600)
         q = QueryStimulus(array("d", [v for row in X for v in row]), dim=6)
         stimulus = Stimulus(array("d", [v for row in X for v in row]), array("d", Y), array("Q", [4, 3]), dim=6)
         grant = LearnAuthority(0.002, "acceptance operator: residency fixture")
-        config = RuntimeConfig(self.work / "fms-continuity", d.home / "lib" / d.config["runtime_library"],
+        from elpis.runtime.authority import provision_authority
+        authority = provision_authority(d.libraries.authority, self.work / "fms-authority", capacity=4)
+        config = RuntimeConfig(authority.root, d.home / "lib" / d.config["runtime_library"],
                                native_authority=d.authority, runtime_library_id=d.config["runtime_library_id"])
         try:
             lineage = register(1)

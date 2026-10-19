@@ -93,7 +93,7 @@ def test_numeric_operations_refuse_without_authority_outside_fuel_and_for_the_wr
 
 def test_a_k1_lineage_learns_and_queries_numerically_too(k1, tmp_path):   # noqa: F811
     from .test_codec_ecs_turn import world
-    with world(k1) as state, Runtime(_config(tmp_path / "continuity")) as runtime:
+    with world(k1) as state, Runtime(_config(tmp_path / "authority")) as runtime:
         runtime.anchor_cognition(state)
         before = runtime.run_numeric_query(state, QueryStimulus(_x(2), dim=DIM))
         result = runtime.run_numeric_learn(state, _stimulus(), GRANT)

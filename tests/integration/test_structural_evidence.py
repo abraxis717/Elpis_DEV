@@ -243,7 +243,7 @@ time.sleep(3600)
 def test_evidence_survives_process_death_and_restore_exactly(hacf, library, tmp_path):   # noqa: F811
     _store(library, tmp_path / "checkpoint")
     env = dict(os.environ, PYTHONPATH=f"{REPO / 'src'}{os.pathsep}{REPO}", PYTHONDONTWRITEBYTECODE="1")
-    child = subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO), str(tmp_path / "continuity"),
+    child = subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO), str(tmp_path / "authority"),
                               str(tmp_path / "checkpoint")], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                              text=True, env=env, cwd=REPO)
     try:
@@ -258,7 +258,7 @@ def test_evidence_survives_process_death_and_restore_exactly(hacf, library, tmp_
     from elpis.runtime.cognition import ObservationAuthority  # noqa: F401
     from .test_codec_ecs_turn import _config
     from dataclasses import replace
-    with Runtime(replace(_config(tmp_path / "continuity"), k1_checkpoint_dir=tmp_path / "checkpoint")) as runtime:
+    with Runtime(replace(_config(tmp_path / "authority"), k1_checkpoint_dir=tmp_path / "checkpoint")) as runtime:
         recovery = runtime.recover_k1()
         assert recovery.disposition == "RESUMABLE" and recovery.authorized == authorized
         with CompositeState.restore(library, CONFIG, recovery.envelope) as y:

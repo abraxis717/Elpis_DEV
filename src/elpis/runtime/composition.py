@@ -83,7 +83,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from elpis.continuity import ContinuityError, ContinuitySnapshot, EvolutionAuthority
 from elpis.ECS.composite import CompositeState
 from elpis.evolution.path_gate import (
     EvolutionAuthorityBinding,
@@ -102,6 +101,8 @@ from elpis.structure.retrieval.validation import validate_bundle
 from elpis.substrate.authority import PinnedAuthority
 from elpis.substrate.digests import raw_digest
 
+from .authority import ACTIVE, FOUNDED, SOURCE, ContinuityError, ContinuitySnapshot, EvolutionAuthority, \
+    SourceGrant, label, lifecycle_event, source_found_event
 from .core import DurabilityStatus, DurableTicket, K1Recovery, RuntimeCore, RuntimeLibrary, describe
 from .edges import from_regex_hacf, object_claims
 from .errors import CompositionError
@@ -119,14 +120,18 @@ class ContextPreparation:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """The runtime's continuity directory, its RuntimeCore library and the deployment authorities it trusts.
+    """The runtime's durable authority, its RuntimeCore library and the deployment authorities it trusts.
+
+    ``authority_dir`` is the root of an operator-provisioned ECS_C authority (``elpis.runtime.authority``:
+    ``provision_authority``; its ``state/`` and protected ``authority/`` directories), the runtime's durable authority:
+    RuntimeCore publishes to it and admits typed evidence against its ACTIVE sources. It is never provisioned here.
 
     ``runtime_library`` is the built ``libelpis_runtime.so`` (native/runtime), named by an explicit absolute path.
     It is never loaded from that path: it is admitted (``elpis.substrate.native_admission``) beneath its directory
     as the trusted descriptor root, as the library ``runtime_library_id`` of the deployment-pinned
     ``native_authority`` (a ``PinnedAuthority`` whose own pin came from trusted configuration), verified and loaded
     from sealed bytes. Without a ``native_authority`` the runtime refuses to start (``RUNTIME_UNPINNED``). The
-    library embeds the continuity authority (native/continuity).
+    library embeds the ECS_C authority (native/ECS_C/authority), its only durable authority (RuntimeCore ABI v7).
 
     ``codec_authority_sha256`` is the independent SHA-256 pin of the one codec authority catalog
     (``elpis.runtime.codec_authority``) whose admissions this runtime's cognitive operations accept. It is
@@ -144,7 +149,7 @@ class RuntimeConfig:
     touches it.
     """
 
-    continuity_dir: Path
+    authority_dir: Path
     runtime_library: Path
     codec_authority_sha256: str | None = None
     native_authority: PinnedAuthority | None = None
@@ -153,7 +158,7 @@ class RuntimeConfig:
     evolution_policy_sha256: str | None = None
 
     def __post_init__(self):
-        paths = (self.continuity_dir, self.runtime_library)
+        paths = (self.authority_dir, self.runtime_library)
         if self.k1_checkpoint_dir is not None:
             paths += (self.k1_checkpoint_dir,)
         for value in paths:
@@ -167,19 +172,22 @@ class RuntimeConfig:
 
 
 class RuntimeContinuity:
-    """The open runtime's continuity authority as RuntimeCore exposes it. It holds nothing.
+    """The open runtime's durable authority as RuntimeCore exposes it (``runtime.continuity``, the name RuntimeCore's
+    ABI keeps for its durable view). It holds nothing.
 
     ``snapshot`` reads the current durable record (also while fail-stopped: it is what restart
     sees). ``commit_evolution_transition`` is the explicit reconciliation of a durable pending
-    evolution authority with an externally established receipt. The testing library adds fault
-    injection and the store's I/O counters. ``library`` is the record codec of the same library.
-    Refusals raise :class:`~elpis.continuity.ContinuityError` with RuntimeCore's stable code.
+    evolution authority with an externally established receipt. ``status`` is the ECS_C authority's report, and
+    ``found_source`` the operator founding a source on the held authority. The testing library adds fault
+    injection and the authority's I/O counters. ``directory`` is the authority's root (``authority.state`` and
+    ``authority.authority`` its two directories). Refusals raise :class:`~elpis.runtime.authority.ContinuityError`
+    with RuntimeCore's stable code.
     """
 
     def __init__(self, core: RuntimeCore):
         self._core = core
-        self.library = core.library.continuity
         self.directory = core.directory
+        self.authority = core.authority
 
     @staticmethod
     def _call(fn, *args):
@@ -193,6 +201,25 @@ class RuntimeContinuity:
 
     def commit_evolution_transition(self, expected: EvolutionAuthority, receipt_digest: str) -> ContinuitySnapshot:
         return self._call(self._core.evolution_reconcile, expected, receipt_digest)
+
+    def status(self) -> dict:
+        return self._call(self._core.authority_status)
+
+    def found_source(self, grant: SourceGrant) -> dict:
+        """Found (and, with ``grant.activate``, activate) a source on the authority RuntimeCore holds: the operator's
+        events, sent by the operator entity (row 0) at its next sequences, as the native host's ``source_found``."""
+        if type(grant) is not SourceGrant:
+            raise TypeError("found_source takes a SourceGrant")
+        core = self._core
+        operator = self._call(core.authority_entity, 0)
+        receiver = self._call(core.authority_next_entity_id, SOURCE, label(grant.label))
+        seq = operator["sender_watermark"] + 1
+        generation = self._call(core.authority_transition, source_found_event(operator["id"], seq, receiver, grant))
+        if grant.activate:
+            generation = self._call(core.authority_transition,
+                                    lifecycle_event(operator["id"], seq + 1, receiver, FOUNDED, ACTIVE))
+        return {"id": receiver.hex(), "label": label(grant.label).hex(), "source_authority": grant.source_authority,
+                "lifecycle": "ACTIVE" if grant.activate else "FOUNDED", "generation": generation}
 
     def testing_fault(self, publication: int, action: int, arg: int = 0) -> None:
         self._call(self._core.testing_fault, publication, action, arg)
@@ -233,7 +260,7 @@ class Runtime:
             raise CompositionError("RUNTIME_UNPINNED", "a deployment-pinned native authority is required")
         library = RuntimeLibrary.admit(config.runtime_library.parent, config.runtime_library.name,
                                        config.native_authority, config.runtime_library_id)
-        self._core = RuntimeCore(library, config.continuity_dir)
+        self._core = RuntimeCore(library, config.authority_dir)
         self.continuity = RuntimeContinuity(self._core)
         # Keeps the owner of the bound K1 state alive, so its identity cannot be reused while
         # RuntimeCore holds the binding (lifetime only: RuntimeCore decides the binding), and the bound

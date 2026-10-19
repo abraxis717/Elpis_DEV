@@ -11,6 +11,7 @@ from elpis.inference.context import initial_snapshot
 from elpis.inference.contracts import ContractError
 from elpis.inference.text import DSV41_RENDERER
 
+from ..conftest import TEST_AUTHORITY_GENERATION
 from ..inference.test_text import official, tokenizer  # noqa: F401  (fixtures)
 from .conftest import POSITIVE
 
@@ -32,7 +33,7 @@ def test_real_hacf_content_is_rendered_by_the_admitted_tokenizer(runtime, tokeni
                                      text_tokenizer=tokenizer, hacf_handle=corpus[0])
     admission = prepared.admission
     assert admission.renderer == DSV41_RENDERER and admission.objects
-    assert prepared.ingress.batch_published and runtime.continuity.snapshot().generation == 1
+    assert prepared.ingress.batch_published and runtime.continuity.snapshot().generation == TEST_AUTHORITY_GENERATION
 
 
 def test_context_budget_and_tokenizer_binding(tokenizer):
