@@ -229,7 +229,8 @@ def test_a_live_host_maps_no_interpreter_and_its_descriptors_never_grow(tmp_path
         others = {os.path.basename(p) for p in paths if not p.startswith("/memfd:")}
         if SANITIZED:                                         # the sanitizer runtime and what it needs
             others = {o for o in others if not o.startswith(_SANITIZERS + ("libstdc++.so", "libm.so"))}
-        assert others <= {"elpis_testing", "libc.so.6", "ld-linux-x86-64.so.2", "ld-linux-aarch64.so.1",
+        # The C runtime (libm too: a build may link the ECS_G libraries against it), the loader, the unwinder.
+        assert others <= {"elpis_testing", "libc.so.6", "libm.so.6", "ld-linux-x86-64.so.2", "ld-linux-aarch64.so.1",
                           "libgcc_s.so.1"}, others
         seen.append(_descriptors(pid))
         live.resume()

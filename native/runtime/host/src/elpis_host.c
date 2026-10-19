@@ -1506,14 +1506,14 @@ static int op_testing_write_probe(host *h, const hj_value *op, hjw *w, host_err 
         rc = fd < 0 ? errno : 0;
         if (fd >= 0) close(fd), unlink(path);
     } else if (!strcmp(kind, "write") || !strcmp(kind, "extend")) {
-        const int fd = open(path, O_WRONLY | O_CLOEXEC);
+        const int fd = open(path, O_RDWR | O_CLOEXEC); /* read-write: "write" must read the byte it rewrites */
         rc = fd < 0 ? errno : 0;
         if (fd >= 0) {
             /* "write" rewrites the first byte with itself; "extend" writes one byte at `offset`. */
             const off_t at = !strcmp(kind, "extend") ? (off_t)offset : 0;
             char byte = 0;
-            if (at == 0 && pread(fd, &byte, 1, 0) != 1) byte = 0;
-            rc = pwrite(fd, &byte, 1, at) == 1 ? 0 : errno;
+            if (at == 0 && pread(fd, &byte, 1, 0) != 1) rc = errno ? errno : EIO; /* never write a guessed byte */
+            else rc = pwrite(fd, &byte, 1, at) == 1 ? 0 : errno;
             close(fd);
         }
     } else {
