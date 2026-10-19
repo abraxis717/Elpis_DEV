@@ -21,8 +21,10 @@ owns geometric cognition, and **ECS_C** (`native/ECS_C`) owns continuity and
 memory. Only RuntimeCore composes them. ECS_C holds the memory and, since
 Stage C of the native split, the ECS_C authority (`docs/ECS_C_AUTHORITY.md`):
 the entity, provenance, lineage and evolution authority that succeeds
-continuity, built and qualified as a library. Until RuntimeCore composes it
-(Stage D), continuity is still the live register: a fixed-size, crash-safe
+continuity, built and qualified as a library and, since Stage D, composed by
+RuntimeCore (ABI v6) as one of its two durable-authority backends. Until the
+Python facade and standalone continuity retire (Stage F), continuity remains
+the facade's live register: a fixed-size, crash-safe
 register holding only the current durable authority the runtime must verify
 (the last explicitly acknowledged K1 state digest and the evolution authority
 head). Continuity has no entities, mailboxes, schedulers, projections,

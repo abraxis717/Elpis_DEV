@@ -13,7 +13,8 @@ The ECS has two native owners (`docs/ELPIS_MISSION.md`, Amendment 1): ECS_G
 composed only by RuntimeCore. Continuity (`elpis.continuity`)
 is not an ECS: it is a fixed-size register of the current durable authority.
 Its successor, the ECS_C authority (`docs/ECS_C_AUTHORITY.md`), is built and
-qualified as a library and is not yet composed by RuntimeCore.
+qualified as a library and composed by RuntimeCore ABI v6 (`elpis_runtime_create_ecs_c`; docs/RUNTIME_CORE.md,
+"The durable authority (ABI v6)"); the Python facade still drives continuity until Stage F.
 
 The canonical cognitive dataflow is `text -> DSV4 encode -> ECS stimulus ->
 ECS/EDEN dynamics -> ECS readout -> DSV4 decode -> text`. ECS as a sidecar
