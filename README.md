@@ -23,15 +23,22 @@ The single machine-readable system authority is
 [`docs/CI_POLICY.md`](docs/CI_POLICY.md): no merge while any workflow run for
 the head commit is red.
 
-**Running it.** [`docs/OPERATING_ELPIS.md`](docs/OPERATING_ELPIS.md) installs a
-local deployment and operates the canonical runtime through
-`python -m elpis.runtime.cli`: numeric QUERY and LEARN of the native ECS
-composite, typed structural evidence (no K1 learning), exact LOOKUP,
-recoverable publication, restart and operator reconciliation. There is no text
-interface (`ECS_CODEC_UNQUALIFIED`). `python -m elpis.runtime.acceptance` is
-the installed system's smoke and recovery test. The native operator host
-`elpis` ([`docs/NATIVE_HOST.md`](docs/NATIVE_HOST.md)) operates the same
-lineage natively over the ECS_C authority, with no interpreter in the process.
+**Running it.** The production entry point is the native operator host `elpis`
+([`docs/NATIVE_HOST.md`](docs/NATIVE_HOST.md)): RuntimeCore ABI v6 over the
+ECS_C authority, with no interpreter in the process.
+[`docs/OPERATING_ELPIS.md`](docs/OPERATING_ELPIS.md) installs it and operates
+one deployment. It covers:
+- numeric QUERY and LEARN of the native ECS composite;
+- typed structural evidence (no K1 learning) and exact LOOKUP;
+- recoverable publication, restart and operator reconciliation.
+
+After `create` the home is a fixed set of 17 files, with no log or history.
+There is no text interface (`ECS_CODEC_UNQUALIFIED`).
+
+`python -m elpis.runtime.cli` (with `.deployment`, `.acceptance` and
+`.release`) is the offline reference interface over standalone continuity. It
+serves differential tests, the qualification instruments bound to their
+commits, and research; it is not the production path.
 
 ## Layout
 
@@ -39,23 +46,24 @@ lineage natively over the ECS_C authority, with no interpreter in the process.
 |---|---|
 | `src/elpis/substrate`, `native/substrate` | resource authority, residency and materialization (FMS, PAL, file assets, execution port) |
 | `native/ECS_G`, `src/elpis/ECS` (Python bindings) | ECS_G, the geometric ECS: cognitive/dynamical substrate (state `W`, epoch, `H`, `a`; `S3` observable; recurrence, learning, consolidation, readout; native K1 transactions, snapshots, FMS residency) |
-| `native/ECS_C` | ECS_C, continuity and memory: the bounded typed relational memory (`docs/ECS_MEMORY.md`) and the ECS_C authority, the successor of continuity (`docs/ECS_C_AUTHORITY.md`; a qualified library, composed by RuntimeCore ABI v6 since Stage D of `docs/NATIVE_SPLIT_CENSUS.md`) |
+| `native/ECS_C` | ECS_C, continuity and memory: the bounded typed relational memory (`docs/ECS_MEMORY.md`) and the ECS_C authority, the successor of continuity (`docs/ECS_C_AUTHORITY.md`; a mechanically tested library, composed by RuntimeCore ABI v6 since Stage D of `docs/NATIVE_SPLIT_CENSUS.md` and run by the native host; UNQUALIFIED: ECS_C Recovery Q0 is NOT RUN) |
 | `native/runtime/composite` | the composite retained state (K1 + memory, `ELPISEC1`), RuntimeCore's composition of the two |
-| `native/continuity`, `src/elpis/continuity` | minimal durable runtime authority in Rust behind a stable C ABI (`include/elpis/continuity.h`): a fixed-size two-slot register of the committed K1 state digest and the evolution authority ([spec](docs/CONTINUITY.md)); `elpis.continuity` is a thin Python adapter |
+| `native/continuity`, `src/elpis/continuity` | minimal durable runtime authority in Rust behind a stable C ABI (`include/elpis/continuity.h`): a fixed-size two-slot register of the committed K1 state digest and the evolution authority ([spec](docs/CONTINUITY.md)); `elpis.continuity` is a thin Python adapter. Not retired: the offline reference's durable authority, the backend of RuntimeCore's continuity law suite and K1 Recovery R0 v4's premise P1, until ECS_C Recovery Q0 passes |
 | `src/elpis/structure`, `native/structure` | HACF structural memory, semantic core, retrieval, Grid81 representation |
 | `src/elpis/pipeline`, `native/pipeline` | bounded Regex → HACF ingress; the canonical Grid81 writer path |
 | `src/elpis/evolution` | deterministic heredity, selection, gated promotion |
 | `src/elpis/inference` | the DSV4 communication codec (tokenizer, rendering); retained noncanonical model-execution mechanics for historical replay |
 | `native/runtime` | RuntimeCore, the runtime's systems authority in Rust behind a stable C ABI (`include/elpis/runtime.h`): lifecycle, fail-stop, the embedded durable authority (continuity, or since ABI v6 the ECS_C authority with native typed-evidence admission), K1 lineage binding, the managed turn's native K1 transaction and the evolution reservation ([spec](docs/RUNTIME_CORE.md)) |
-| `src/elpis/runtime` | the one runtime composition: codec -> ECS -> codec (fails closed until the ECS codec is qualified); a thin facade over RuntimeCore |
+| `native/runtime/host` | the native operator host `elpis`, the production entry point: pinned sealed admission, one deployment, RuntimeCore over the ECS_C authority, self-containment ([spec](docs/NATIVE_HOST.md)) |
+| `src/elpis/runtime` | the Python facade over RuntimeCore (codec -> ECS_G/ECS_C composite -> codec; fails closed until the ECS codec is qualified) and the offline reference interface (`cli`, `deployment`, `acceptance`, `release`) over standalone continuity; not the production path |
 | `research/ecs_dynamics` | RESEARCH_ONLY synthetic dynamics laboratory; not packaged, never imported by `src` ([results](docs/research/ECS_DYNAMICS_RESULTS.md)) |
 | `research/dsv41_tower` | RESEARCH_ONLY DSV4.1 transformer/MoE tower, native backend, provider stream, clock and materializer; donor/oracle qualification, not Elpis cognition |
 
 ## Build and test
 
 The native build needs CMake, a C11/C++17 compiler, pkg-config, SQLite 3,
-PCRE2 and a Rust toolchain (cargo and rustc >= 1.89, for `native/continuity` and
-`native/runtime`; no crates are downloaded). On Manjaro:
+PCRE2 and a Rust toolchain (cargo and rustc >= 1.89, for `native/continuity`,
+`native/ECS_C/authority` and `native/runtime`; no crates are downloaded). On Manjaro:
 `sudo pacman -S --needed base-devel cmake pkgconf sqlite pcre2 rust`.
 
 ```bash

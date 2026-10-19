@@ -2,8 +2,10 @@
 
 > Successor: the ECS_C authority (`docs/ECS_C_AUTHORITY.md`, Stage C of `docs/NATIVE_SPLIT_CENSUS.md`). It imports a
 > continuity register explicitly and never writes it. RuntimeCore composes the successor since ABI v6 (Stage D), beside
-> this register; until the Python facade retires (Stage F) this register remains its live authority, and
-> `native/continuity` stays byte-identical (K1 Recovery R0 v4 premise P1).
+> this register, and the native host `elpis` (the production entry point) runs over it. This register is not retired:
+> it is the live authority of the offline Python reference interface and the backend of RuntimeCore's continuity law
+> suite, and `native/continuity` stays byte-identical (K1 Recovery R0 v4 premise P1) until ECS_C Recovery Q0's QUAL run
+> passes (NOT RUN; it waits for merge authorization).
 
 Continuity records the current durable lineage and authority that the runtime
 needs for safe restart. It is not an ECS, not context memory, not an event

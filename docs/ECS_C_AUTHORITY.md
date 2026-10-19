@@ -12,11 +12,13 @@ authoritative, and of which format), the evolution authority, receipts and recon
 typed event validated by one transition law before it is written; recovery replays the newest transition against
 its predecessor. It keeps no log, no segments, no generations and no compaction archive.
 
-**Status (Stage D).** Built and qualified as a library, and composed by RuntimeCore ABI v6
+**Status.** Built and mechanically tested as a library (UNQUALIFIED: ECS_C Recovery Q0 is NOT RUN), composed by
+RuntimeCore ABI v6
 (`elpis_runtime_create_ecs_c`; docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"), which publishes through it,
-admits typed evidence against its sources and records evidence summaries. Standalone continuity remains the other
-backend (`elpis_runtime_create`) and the Python facade's until Stage F; it stays byte-identical (the subject of the K1
-Recovery R0 v4 premise P1). Nothing in this document is a scientific claim.
+admits typed evidence against its sources and records evidence summaries, and run by the native host `elpis`, the
+production entry point (docs/NATIVE_HOST.md). Standalone continuity remains the other backend (`elpis_runtime_create`)
+and the offline Python reference's; it stays byte-identical (the subject of the K1 Recovery R0 v4 premise P1) until
+the Q0 QUAL run passes. Nothing in this document is a scientific claim.
 
 ## Ownership
 
@@ -213,5 +215,5 @@ records the legacy generation and record digest.
 
 ## Not claimed
 
-No live production consumer yet (the Python facade drives continuity until Stage F) and no native operator surface
-(Stage F); no protection beyond the threat model; no scientific claim of any kind.
+No qualification yet (ECS_C Recovery Q0 is NOT RUN); no protection beyond the threat model; no scientific claim of
+any kind.

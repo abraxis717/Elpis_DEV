@@ -335,6 +335,21 @@ stop admission's sealed copies). It is installed as `bin/elpis` and `lib/elpis/`
 **F3** the Python deployment, CLI, acceptance and release modules are reclassified as the offline reference interface
 (differential tests, the qualification instruments bound to their commits, research); `docs/OPERATING_ELPIS.md`
 operates the native host.
+**F2** the successor's qualification instrument (`research/qualification/ecs_c_recovery_q0/`), written and rehearsed
+on DEV inputs. Deriving its plan from the recovery law found three defects, now fixed:
+- a shortened authority slot refused open with no reconciliation (it is now a torn prefix);
+- an interrupted `create` stranded the home (the same `create` now completes it);
+- a parked control operation could not be observed through the host (a watcher reports it).
+
+**G** documentation and the machine-readable authority (`ELPIS_SYSTEM.json`) describe what exists:
+- the native host is the production entry point, and the Python modules the offline reference interface;
+- the ECS_C authority is UNQUALIFIED (Q0 NOT RUN);
+- standalone continuity is not retired, and why;
+- K1 Recovery R0 v4's RUN PASS stays bound to `18f2f4d`;
+- each composer's fixed-capacity writers.
+
+The mission, continuity and architecture documents carry the split's final wording, except the retirement that waits
+for the Q0 QUAL run.
 
 Stage F conflict, stated rather than worked around:
 
