@@ -135,7 +135,14 @@ exactly one authority.
 
 Open reads the two record slots, the two witness slots and the key, classifies each slot EMPTY, TORN,
 UNAUTHENTICATED, INVALID (authenticated but invalid) or VALID, takes the highest valid witness as the pin, and
-decides:
+decides as below.
+
+**File sizes.**
+- A slot or witness file shorter than its fixed size is a prefix and is classified TORN, like any other incomplete
+  write. The transition that next rewrites it in place restores its size.
+- A file longer than its fixed size is refused at open (`CORRUPT`): no in-place write produces one, and its length
+  bounds nothing. So are a missing, extra, symlinked or swapped file.
+- The capacity is the slots' common size. When a shortened slot leaves them none, it is the authenticated pin's.
 
 | Situation | Disposition | Handle |
 |---|---|---|

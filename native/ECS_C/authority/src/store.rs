@@ -1000,16 +1000,22 @@ impl Authority {
         let keys = Keys::derive(&master);
         wipe(&mut master);
 
-        let mut wraw = [[0u8; WITNESS_BYTES]; 2];
+        // A file shorter than its fixed size is a prefix: it is read as the torn write it is, and the transition
+        // that rewrites it in place restores its size. A longer one is produced by no in-place write and is not
+        // read (its length bounds nothing): open refuses.
+        let mut wraw = [Vec::new(), Vec::new()];
         let mut witness_files = Vec::with_capacity(2);
         for (i, name) in WITNESS_FILES.iter().enumerate() {
             let file = open_checked(&mut self.io, &ad.join(name), euid, true)?;
-            if file.metadata().map_err(io_code)?.len() != WITNESS_BYTES as u64 {
+            let len = file.metadata().map_err(io_code)?.len();
+            if len > WITNESS_BYTES as u64 {
                 return Err(Code::Corrupt);
             }
+            wraw[i] = vec![0u8; len as usize];
             self.io.read_at(&file, &mut wraw[i]).map_err(io_code)?;
             witness_files.push(file);
         }
+        let witnesses = [Witness::classify(&wraw[0], &keys), Witness::classify(&wraw[1], &keys)];
         let mut slot_files = Vec::with_capacity(2);
         let mut lens = [0u64; 2];
         for (i, name) in STATE_FILES.iter().enumerate() {
@@ -1017,18 +1023,27 @@ impl Authority {
             lens[i] = file.metadata().map_err(io_code)?.len();
             slot_files.push(file);
         }
-        if lens[0] != lens[1] {
+        // The capacity is the slots' common size; when a shortened slot leaves them none, the authenticated pin's
+        // (recovery then judges every slot against it, and the witnesses against the records).
+        let pinned: Vec<u32> = witnesses.iter().filter_map(|(_, w)| w.map(|w| w.capacity)).collect();
+        let capacity = match (lens[0] == lens[1]).then(|| capacity_of(lens[0])).flatten() {
+            Some(c) => c,
+            None => match pinned.as_slice() {
+                [c, rest @ ..] if rest.iter().all(|r| r == c) => *c,
+                _ => return Err(Code::Corrupt),
+            },
+        };
+        let total = record_bytes(capacity) as u64;
+        if lens.iter().any(|&len| len > total) {
             return Err(Code::Corrupt);
         }
-        let capacity = capacity_of(lens[0]).ok_or(Code::Corrupt)?;
-        let mut raw = [vec![0u8; lens[0] as usize], vec![0u8; lens[0] as usize]];
+        let mut raw = [vec![0u8; lens[0] as usize], vec![0u8; lens[1] as usize]];
         for i in 0..2 {
             self.io.read_at(&slot_files[i], &mut raw[i]).map_err(io_code)?;
         }
 
         let slots = [Record::classify(&raw[0], capacity, &keys), Record::classify(&raw[1], capacity, &keys)];
         let observed = [sha256::digest(&[&raw[0]]), sha256::digest(&[&raw[1]])];
-        let witnesses = [Witness::classify(&wraw[0], &keys), Witness::classify(&wraw[1], &keys)];
         report.slot_class = [slots[0].0 as u8, slots[1].0 as u8];
         report.witness_class = [witnesses[0].0 as u8, witnesses[1].0 as u8];
         report.slot_generation = [Record::claimed_generation(&raw[0]), Record::claimed_generation(&raw[1])];

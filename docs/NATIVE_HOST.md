@@ -113,7 +113,9 @@ copies the libraries into memfds, which a file size limit applied earlier would 
 
 Refused with `CONTAINMENT_REFUSED`: a privileged process (root keeps capabilities that leave the domain, as the
 launcher states), a kernel without Landlock ABI v5, a slot that is not exactly its fixed file, and any restriction that
-cannot be applied. `init` and `create` create files and are never contained (`CLI_INPUT`).
+cannot be applied. `init` and `create` create files and are never contained (`CLI_INPUT`). An authority slot
+shortened by an adversary is a torn prefix to the authority (docs/ECS_C_AUTHORITY.md, "File sizes") but not exactly
+its fixed file to containment: reconcile it uncontained, which rewrites the slot at its fixed size.
 
 One file size limit covers all six slots, so under containment each slot is bounded by the largest slot's size,
 not by its own: a fixed bound of six times the largest slot. The sizes a correct run writes are checked by the
