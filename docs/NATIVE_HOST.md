@@ -8,8 +8,9 @@ every hyperedge. The host computes no ECS mathematics and touches no ECS byte: i
 it into the admitted libraries' C ABIs and reports what they answer.
 
 It is Stage F of `docs/NATIVE_SPLIT_CENSUS.md`. The Python operator interface (`python -m elpis.runtime.cli`,
-`docs/OPERATING_ELPIS.md`) still exists over the standalone continuity backend; its retirement from the production
-path is the remaining part of Stage F (see "Holds").
+`docs/OPERATING_ELPIS.md`) is the offline reference interface over the standalone continuity backend: differential
+tests, the qualification instruments bound to their commits, research. It is not the production path (see
+"Holds").
 
 ```
 elpis --home DIR init --native-build BUILD [--capacity N] [--authority-dir DIR] [--source-commit SHA]
@@ -228,9 +229,10 @@ reconciliation digest, refusal translation, the all-or-nothing abort and the lea
 
 ## Holds
 
-- **Python on the production path.** The Python deployment and CLI still exist, over standalone continuity: Stage F
-  continues by retiring them as the production path, and by folding continuity into ECS_C once every consumer passes
-  the successor's tests (census sections 5 and 9).
+- **Standalone continuity.** The Python deployment and CLI are the offline reference interface, over standalone
+  continuity, and off the production path. Continuity itself is not retired: it folds into ECS_C only after ECS_C
+  Recovery Q0's QUAL run passes, which needs the merged, accepted source (census sections 5, 9 and "Stage F
+  conflict").
 - **Containment.** The native host contains itself (`--contained`) with the ECS_C and checkpoint slots as its grant.
   `elpis_autonomous_run` still grants the continuity slots, for the continuity-backed Python path, and retires with
   it (census section 5).

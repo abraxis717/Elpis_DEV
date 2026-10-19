@@ -2,8 +2,10 @@
 
 `native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v6) owns the mutable systems
 authority of an open Elpis runtime and is the one native composer of ECS_G (K1, reached through function tables) and
-ECS_C (the durable authority, embedded). `elpis.runtime.Runtime` is its compatibility facade until Stage F
-(docs/NATIVE_SPLIT_CENSUS.md).
+ECS_C (the memory, through the composite table; the ECS_C authority, embedded as one of two durable-authority
+backends beside standalone continuity). Its production caller is the native host `elpis` (docs/NATIVE_HOST.md), over
+the ECS_C authority. `elpis.runtime.Runtime` is the offline reference interface's facade, over standalone continuity
+(docs/NATIVE_SPLIT_CENSUS.md, F3).
 
 ABI history: v2 the turn lifecycle, v3 managed ownership, v4 the live/durable split (volatile commits, explicit
 durability), v5 the observe-only managed turn ("Observe-only turns (ABI v5)" below), v6 the ECS_C durable authority
@@ -16,7 +18,8 @@ RuntimeCore keeps two coordinates and never equates them:
 * **Live**: the bound state's K1 generation under RuntimeCore's managed lease (the K1 header's "Live coordinate").
   It advances by exactly one per managed commit. QUERY and LEARN operate on the live state and check this coordinate
   inside the same guarded K1 call; nothing is hashed on the HOT lane.
-* **Durable**: continuity's record (the retained-state identity of the last completed durable publication) and,
+* **Durable**: the durable authority's record (continuity's, or under ABI v6 the ECS_C authority's: the
+  retained-state identity of the last completed durable publication) and,
   with a checkpoint store, a verified slot holding that state's complete envelope. Restart resumes exactly this,
   never anything later.
 
@@ -36,7 +39,7 @@ for the other:
 |---|---|---|
 | Request | `elpis_runtime_recoverable_request`, Python `Runtime.publish_recoverable` | `elpis_runtime_identity_request`, Python `Runtime.publish_identity` |
 | Requires | an attached checkpoint store (the owner of the bytes); otherwise refused `RUNTIME_RECOVERY_UNAVAILABLE` before anything is bound or captured, never downgraded | no checkpoint store attached; otherwise refused `RUNTIME_CHECKPOINT_ATTACHED` (with a store every publication must be recoverable) |
-| Lane | seal + verify, slot write + `fdatasync`, **read back and verify** the slot is exactly the captured envelope (`CHECKPOINT_IO` and the slot withdrawn otherwise), then the continuity record + `fdatasync` | seal + verify, the continuity record + `fdatasync` |
+| Lane | seal + verify, slot write + `fdatasync`, **read back and verify** the slot is exactly the captured envelope (`CHECKPOINT_IO` and the slot withdrawn otherwise), then the durable authority's record (continuity: one record + `fdatasync`; ECS_C: one record and one witness, each synced) | seal + verify, the durable authority's record, synced |
 | Success | `ACKNOWLEDGED`, `recoverable` always 1: restart resumes exactly this state from the store | `IDENTITY_PUBLISHED`, `recoverable` always 0: never an acknowledgment; the caller keeps the bytes and restart can rebind only a state the caller supplies |
 
 The ticket carries its `kind`; `last_acknowledged` in the lane's status and the `durable_acknowledged` counter count
@@ -71,9 +74,9 @@ recorded evidence produced under v3 stays as recorded.
 
 | Authority | Before (Python `composition.py`) | Now (RuntimeCore, Rust) |
 |---|---|---|
-| Lifecycle (open / close / reopen) | `Runtime.open` / `close` around a `ContinuityStore` | `Core::open` / `close`; the continuity store is embedded |
-| Fail-stop disposition | `Runtime._continuity_fault` | `Core.fault` (a continuity code); every lineage- or authority-dependent call refuses with it until reopen |
-| Continuity store | a Python `ContinuityStore` handle | the `elpis_continuity::Store`, embedded as a crate (one implementation; the library also exports the continuity C ABI) |
+| Lifecycle (open / close / reopen) | `Runtime.open` / `close` around a `ContinuityStore` | `Core::open` / `close`; the durable authority is embedded |
+| Fail-stop disposition | `Runtime._continuity_fault` | `Core.fault` (a durable-authority code); every lineage- or authority-dependent call refuses with it until reopen |
+| Durable authority | a Python `ContinuityStore` handle | one per handle behind one interface (`authority.rs`): the `elpis_continuity::Store` (`elpis_runtime_create`; the library also exports the continuity C ABI) or the ECS_C authority (`elpis_runtime_create_ecs_c`), each embedded as a crate |
 | K1 lineage binding | `Runtime._turn_substrate` and `_reconcile_cognition_substrate` | `Core.bound` (`Key`: kind, native handle, resident id, owner identity, dimension; and the live generation), verified once against the durable expected identity (or the live identity an explicit release gave back) |
 | Managed QUERY (read-only) | none (the turn was the only cognitive operation) | `query`: one native `leased_query` (the answer `f_W(x)` and the generation of the state that computed it, under one K1 guard); no transaction, no commit, no publication, no digest |
 | Managed LEARN (the turn's native transaction) | Python sequenced `txn_begin`, `run_schedule`, `commit_identity`, abort | `turn_begin` (lineage check at the live generation, begin, one schedule, cold-path capacity growth) and `turn_commit` (volatile) / `turn_abort` |
@@ -244,8 +247,8 @@ anchor, import, evolution and recovery code paths are the same code over either 
   the founding runtime is no longer ACTIVE). `elpis_runtime_authority.ecs_c_code` keeps the exact code.
 
 Not yet: RuntimeCore does not consult source versions or scopes at admission (an observation records neither; Stage E
-binds them through the memory's source invalidation), the Python facade still drives continuity (Stage F retires it,
-with standalone continuity), and the testing library's durability fault plan maps continuity's publication steps onto
+binds them through the memory's source invalidation), the offline Python reference still drives continuity (which
+is not retired until ECS_C Recovery Q0 passes; docs/NATIVE_SPLIT_CENSUS.md), and the testing library's durability fault plan maps continuity's publication steps onto
 the authority's record slot only (the witness faults are the authority's own suite's).
 
 Laws: `native/runtime/src/tests.rs` (`ecs_c`, and the whole suite a second time over ECS_C:

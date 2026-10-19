@@ -21,10 +21,13 @@ owns geometric cognition, and **ECS_C** (`native/ECS_C`) owns continuity and
 memory. Only RuntimeCore composes them. ECS_C holds the memory and, since
 Stage C of the native split, the ECS_C authority (`docs/ECS_C_AUTHORITY.md`):
 the entity, provenance, lineage and evolution authority that succeeds
-continuity, built and qualified as a library and, since Stage D, composed by
-RuntimeCore (ABI v6) as one of its two durable-authority backends. Until the
-Python facade and standalone continuity retire (Stage F), continuity remains
-the facade's live register: a fixed-size, crash-safe
+continuity, built and mechanically tested as a library (UNQUALIFIED: ECS_C
+Recovery Q0 is NOT RUN) and, since Stage D, composed by RuntimeCore (ABI v6)
+as one of its two durable-authority backends; the native host `elpis` runs
+over it. Standalone continuity is not retired: until ECS_C Recovery Q0's QUAL
+run passes it remains the live register of the offline Python reference
+interface, the backend of RuntimeCore's continuity law suite and K1 Recovery
+R0 v4's premise P1: a fixed-size, crash-safe
 register holding only the current durable authority the runtime must verify
 (the last explicitly acknowledged K1 state digest and the evolution authority
 head). Continuity has no entities, mailboxes, schedulers, projections,
@@ -172,7 +175,7 @@ remain in public history as evidence and are removed from the canonical path.
 | DSV4 codec (`elpis.inference` codec modules) | communication: text/bytes <-> tokens, vocabulary identity, bounded rendering; the token side of encode/decode | own ECS state; run an autonomous transformer/MoE cognition path |
 | substrate / FMS | generic resource authority, residency and materialization: persistent logical capacity >= resident materialization >= active materialization | require DSV-specific tensor roles in its generic core; decide semantics |
 | structure / HACF | persistent structural memory, topology, representation, provenance | be defined solely as a context-window supplier for a model |
-| runtime | orchestrates codec -> ECS -> codec on the HOT lane (a managed commit is volatile: it advances the live coordinate only); on explicit request, its durability lane captures the live state and publishes it (checkpoint slot when provisioned, then one 176-byte continuity record and one fdatasync); its contextual lane keeps the bounded active context | route cognition through a DSV model; record per-turn receipts or event history; make a HOT operation wait for durable publication or for the contextual lane |
+| runtime | orchestrates codec -> ECS -> codec on the HOT lane (a managed commit is volatile: it advances the live coordinate only); on explicit request, its durability lane captures the live state and publishes it (checkpoint slot when provisioned, then one record of its durable authority: on the native host one ECS_C authority record and one witness, each written in place and synced; on the continuity backend one 176-byte record and one fdatasync); its contextual lane keeps the bounded active context | route cognition through a DSV model; record per-turn receipts or event history; make a HOT operation wait for durable publication or for the contextual lane |
 
 ## Classification of existing machinery
 
