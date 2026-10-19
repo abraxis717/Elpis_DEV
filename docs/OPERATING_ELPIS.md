@@ -69,8 +69,9 @@ A changed library, catalog, pin, ABI or host binary refuses every start (`DEPLOY
 4. Anchors it durably.
 
 The home must be an absolute path that is not a symlink, owned by you and not writable by group or others. `init`
-refuses a non-empty home and `create` an existing lineage: nothing is overwritten. After `create` the home is a fixed
-set of 17 files; every later write rewrites a fixed slot in place.
+refuses a non-empty home and `create` an existing lineage: nothing is overwritten. A `create` that was interrupted is
+completed by running exactly the same `create` again (docs/NATIVE_HOST.md, "The home"). After `create` the home is a
+fixed set of 17 files; every later write rewrites a fixed slot in place.
 
 ## Operate
 

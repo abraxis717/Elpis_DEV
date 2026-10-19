@@ -18,10 +18,10 @@ defend against.
   native split (Stages B to F of docs/NATIVE_SPLIT_CENSUS.md) into `main`, built and installed from a clean checkout of
   it. Those stages are open pull requests; merging needs the owner's explicit authorization. Until then no QUAL run is
   possible, and standalone continuity stays (it is the authority the offline Python reference interface publishes to).
-* **The instrument.** `research/qualification/ecs_c_recovery_q0/` (plan, runner, checker, freeze verification, seal) does
-  not exist yet. It must be written, reviewed and rehearsed on DEV inputs before the freeze, with the discipline of
-  K1 Recovery R0 v4's instrument: the freeze verifies the executing object, records carry no expectation, and an
-  independent checker derives every expectation from the plan.
+* **The instrument.** `research/qualification/ecs_c_recovery_q0/` holds the plan, runner, checker, freeze verification
+  and seal, with the discipline of K1 Recovery R0 v4's instrument: the freeze verifies the executing object, records
+  carry no expectation, and an independent checker derives every expectation from the plan. It has been rehearsed on
+  DEV inputs (its README). DEV records are not evidence.
 
 ## Question
 
@@ -64,67 +64,115 @@ Under RuntimeCore ABI v6 over the ECS_C authority, operated through the native h
 
 ## Inputs (the pre-registered list)
 
+The machine-readable list is the instrument's `plan.json` (`research/qualification/ecs_c_recovery_q0/`); where it is
+more exact than this text, it governs.
+
 1. **Lineage.** One ECS composite lineage (`create --seed s`, the LineageConfig defaults) and one ACTIVE source
    (per-turn bound 8). Every LEARN turn is followed by one evidence turn of one observation.
 2. **Publication faults.**
    - `publish`: `SIGKILL` while the worker is parked at each lane step 1-9 (`testing_durable_fault` action 2).
    - `failure`: the in-process failure plans 3-10 (no kill).
-   - Each runs 4 times per point.
-3. **Control-operation faults.** The anchor (points 1-6), and the checkpoint discard (points 1-3) and adopt (points 1,
-   4-6) of a candidate left by a step-5 kill, each parked and `SIGKILL`ed (`testing_control_fault` action 2), 4 runs
-   per point.
+3. **Control-operation faults**, each parked (`testing_control_fault` action 2, reported by the testing host's
+   watcher) and `SIGKILL`ed:
+   - the anchor at points 1-6, parked inside `create` (`--testing-anchor-park`);
+   - the checkpoint discard (points 1-3) and adopt (points 1, 4-6) of a candidate left by a step-5 kill.
 4. **Random kills.** 32 randomized `SIGKILL`s while learning, observing and publishing.
-5. **Attacks**, each made with the runtime closed, against the state directory only (the T1 adversary of
-   docs/ECS_C_AUTHORITY.md), 4 runs each:
-   - copying back both records saved 1, 2 and 5 publications earlier (a rollback);
-   - a byte flip in the newest record at registered offsets: the header, the generation, the payload, the MAC and
-     the checksum;
-   - a validly checksummed substitute: a field changed and the checksum recomputed, the MAC left unchanged;
-   - a forged generation, and a forged evolution revision and head, each with a valid checksum;
-   - the newest record deleted (truncated to zero), and both slots swapped.
-6. **Witness loss.** The authority directory's witnesses truncated to zero. This is outside T1 and is the
-   `WITNESS_MISSING` path.
-7. **Boundedness.** Histories of 10, 100 and 1,000 publications; the home's file set and the recovery work are recorded
+5. **Attacks the recovery law refuses**, each made with the runtime closed, against the state directory only (the T1
+   adversary of docs/ECS_C_AUTHORITY.md). "The newest record" is the record slot holding the acknowledged authority.
+   - **Rollback.** Copying back both records saved 1, 2 and 5 publications earlier.
+   - **Byte flips** in the newest record at registered offsets: the header, the generation, the state, the MAC and
+     the checksum.
+   - **Shortening** the newest record, to zero bytes and to half its size.
+   - **Forged generation.** The newest record with its generation raised and its checksum recomputed, MAC unchanged.
+   - **Forged evolution revision and head**, the same way, with the state root also recomputed.
+   - **A validly checksummed substitute** in the other slot: the newest record with its generation advanced by one
+     and its checksum recomputed, MAC unchanged.
+6. **Rearrangements the recovery law accepts**, made the same way. Each must resume exactly the acknowledged state with
+   no operator action:
+   - both record slots swapped;
+   - the newest record duplicated into the other slot;
+   - the other slot shortened.
+7. **Witness loss.** Both witnesses shortened to zero bytes: the `WITNESS_MISSING` path. This is outside T1 (it needs
+   the authority directory).
+8. **Boundedness.** Histories of 10, 100 and 1,000 publications; the home's file set and the recovery work are recorded
    after each.
 
+Every point runs 4 times.
+
 The operator action is pre-registered:
-- **For an attack:** reconcile exactly what `authority` reports on even run indices, and on odd ones first a
-  reconciliation with a wrong digest, which must be refused, then the exact one.
-- **For a checkpoint candidate:** adopt on even run indices, discard on odd ones.
+- **For a refused attack or witness loss:**
+  - on even run indices, reconcile exactly what `authority` reports;
+  - on odd ones, first a reconciliation with a wrong digest, which must be refused, then the exact one.
+- **For a checkpoint candidate:** the candidate's own reconciliation in the discard and adopt families. Elsewhere,
+  adopt on even run indices and discard on odd ones.
+- **For an interrupted anchor:** `create` again with the same arguments.
 
 ## Procedure
 
-For every point and run, a fresh deployment is made:
-1. `init --libraries`, `create`, and the source.
-2. A child learns, observes and publishes (acknowledged), then learns and observes again (the candidate).
-3. The child is parked at the point, or the fault or attack is applied, and is killed where the family says.
-4. A fresh process records:
+For every point and run a fresh deployment is made: `init --libraries`, then `create`. The source is founded
+afterwards, except in the anchor family, whose child is `create` itself.
+
+1. **The child.** It learns, observes and publishes (acknowledged: D1), then learns and observes again (D2, live).
+2. **The fault.** The child is parked at the point, or the fault or attack is applied, and it is killed where the
+   family says.
+3. **Observation.** A fresh process records:
    - the authority report and reconciliation;
    - the status, the recovery disposition, the durable and live identities and the resident relation keys;
    - the home's files (names, sizes, inodes);
    - the outcome of the pre-registered operator action.
-5. It then learns, observes and publishes once more, and a further fresh process checks that it resumes exactly that
-   publication.
+4. **Continuation.** The process learns, observes and publishes once more. A further fresh process checks that it
+   resumes exactly that publication.
 
 ## Gates (pre-registered)
 
 * **G1 (process death).** Every recovery disposition and authority report is the one the crash law prescribes for its
-  point (docs/RUNTIME_CORE.md, "Durability crash matrix"; the table in `tests/integration/test_native_host.py` states
-  the expectation the instrument must derive independently). No process-death trial ever needs authority
-  reconciliation.
-* **G2 (exactness).** Every resumed state's identity equals the authority's. A publication's observations are present
-  exactly when it became authoritative. The evidence count advances exactly by the committed observations of
-  acknowledged publications.
-* **G3 (no silent acceptance).** Every attack refuses the runtime's open (`RUNTIME_AUTHORITY`) with the disposition the
-  authority's recovery law prescribes. A wrong reconciliation is refused and changes nothing. After the exact one,
-  the authority continues from the accepted record at the abandoned generation + 1, and the K1 checkpoint is
-  reconciled separately. No attack ever resumes a state the operator did not accept.
-* **G4 (no implicit action).** Nothing is adopted, discarded or resumed without its explicit call. No recoverable
-  publication succeeds over an unresolved candidate. No ticket violates the acknowledgment law.
-* **G5 (fixed storage).** After every trial the home holds exactly its 17 files, at their provisioned sizes and
-  inodes.
+  point (docs/RUNTIME_CORE.md, "Durability crash matrix" and "Control-operation crash points"; docs/ECS_C_AUTHORITY.md,
+  "Transition and recovery"). `plan.json` states each expectation, and the checker derives every verdict from the plan
+  and the records alone. No process-death trial ever needs authority reconciliation.
+* **G2 (exactness).**
+  - Every resumed state's identity equals the authority's.
+  - A publication's observations are present exactly when it became authoritative.
+  - The evidence count advances exactly by the committed observations of acknowledged publications.
+  - An acknowledged publication is never lost, except by an attack the operator explicitly accepted.
+* **G3 (no silent acceptance).**
+  - Every refused attack refuses the runtime's open (`RUNTIME_AUTHORITY`) with the disposition the authority's
+    recovery law prescribes. Witness loss does the same.
+  - A wrong reconciliation is refused and changes nothing.
+  - After the exact one:
+    - the authority continues from the accepted record, at the abandoned generation + 1 for a rollback acceptance;
+    - the K1 checkpoint is reconciled separately.
+  - Every accepted rearrangement opens in its prescribed disposition at exactly the acknowledged state.
+  - No attack ever resumes a state the operator did not accept.
+* **G4 (no implicit action).**
+  - Nothing is adopted, discarded or resumed without its explicit call.
+  - No recoverable publication succeeds over an unresolved candidate.
+  - No ticket violates the acknowledgment law.
+* **G5 (fixed storage).** After every trial's continuation, the home holds exactly its 17 files, at their provisioned
+  sizes and inodes. Attacks rewrite files in place.
 * **G6 (bounded recovery).** The recovery work (reads, bytes read, replays) is the same after 10, 100 and 1,000
   publications.
+
+## Revisions before the freeze
+
+This specification was revised while its instrument was written. Revisions 1-3 came before any run, DEV runs
+included, and nothing had been observed yet. Their reasons were found by deriving the plan from the recovery law:
+
+1. **Swapped and duplicated slots.** The law recovers both without loss (`swapped_or_duplicated_slots_recover_without_loss`),
+   so G3's "every attack refuses" overclaimed. Both are now rearrangements the law accepts (input 6), each with a
+   prescribed disposition.
+2. **A shortened record.** Open refused a slot of the wrong size with `CORRUPT` before recovery, which left the operator
+   no reconciliation for a truncated newest record. The authority now reads a shortened file as the torn prefix it is
+   (docs/ECS_C_AUTHORITY.md, "File sizes"), and input 5 registers it at two lengths. Witness loss is now "shortened to
+   zero bytes" for the same reason.
+3. **The anchor.** The native host anchors only inside `create`. A `create` that died after writing `lineage.cfg` left a
+   home that refused both `create` and every operation. `create` now publishes its files atomically and completes an
+   interrupted create of the same lineage (docs/NATIVE_HOST.md). The testing host parks the anchor there, and a
+   watcher reports any parked control operation.
+4. **The stimulus** (after the first DEV rehearsal, which is not evidence). The plan's first LEARN input varied with
+   the turn. After about 930 turns K1 refused a LEARN as non-finite, before any commit, as its law requires. That ended
+   the 1,000-publication history before G6 could be judged. The input is now the host suite's fixed fixture, which a
+   1,000-publication history is known to keep finite (`test_long_runs_keep_the_home_fixed`). Every LEARN still moves
+   W, so every turn still has its own identity. No gate, point or expectation changed.
 
 ## Would establish / would not establish
 

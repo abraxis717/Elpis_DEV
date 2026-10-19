@@ -340,7 +340,23 @@ Stage F conflict, stated rather than worked around:
 
 * **Standalone continuity cannot be retired yet (F2).** Section 9 retires it only after its successor is qualified.
   The successor's qualification is pre-registered: `docs/qualification/ECS_C_RECOVERY_Q0.md` (NOT RUN). Like K1
-  Recovery R0 v4, it freezes on the accepted source, the merge commit of these stages into `main`. Merging needs the
-  owner's explicit authorization, and its instrument is not written yet. Until both exist, continuity stays: it is the
-  authority the offline Python reference interface publishes to, the backend RuntimeCore's continuity law suite runs
-  over, and K1 Recovery R0 v4's premise P1. The containment launcher keeps granting its slots for that path.
+  Recovery R0 v4, it freezes on the accepted source, the merge commit of these stages into `main`, and merging needs
+  the owner's explicit authorization.
+  - **The instrument.** `research/qualification/ecs_c_recovery_q0/` is written. Its rehearsal on DEV inputs passes,
+    and the same instrument fails the Stage F1 build at exactly the two defects F2 fixed. DEV records are not
+    evidence.
+  - **Until the QUAL run passes, continuity stays.** It is the authority the offline Python reference interface
+    publishes to, the backend RuntimeCore's continuity law suite runs over, and K1 Recovery R0 v4's premise P1. The
+    containment launcher keeps granting its slots for that path.
+* **A deep rollback, once accepted, leaves the lineage without its state.** The K1 checkpoint store keeps two envelopes
+  (the fixed-storage law), and K1 Recovery R0's law never offers a slot as a candidate when no slot holds the
+  authorized identity (`CHECKPOINT_MISSING`, `checkpoint.rs` `unresolved`).
+  - **The case.** A state-directory adversary copies back records two or more publications old, and the operator
+    accepts the rollback (the only reconciliation the authority offers). The authority then names a state neither slot
+    holds: cognition is refused, although the newest acknowledged envelope is intact in the store. Nothing is accepted
+    silently, but the lineage cannot continue. ECS_C Recovery Q0 registers exactly this outcome (`rollback:2`,
+    `rollback:5`). The remedy today is restoring the state directory from outside.
+  - **The proposal: K1 Recovery R1, RuntimeCore ABI v7.** An explicit operator re-authorization of a verified slot
+    under `CHECKPOINT_MISSING`: the operator names the slot's identity, and the runtime publishes it as the authority's
+    next state. It changes K1 Recovery R0's qualified recovery law, so it needs its own versioned law and
+    qualification; it is not made here.

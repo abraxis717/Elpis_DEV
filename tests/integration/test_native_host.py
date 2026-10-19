@@ -227,8 +227,9 @@ def test_a_live_host_maps_no_interpreter_and_its_descriptors_never_grow(tmp_path
         sealed = {(dev, ino) for dev, ino, p in objects if p.startswith("/memfd:elpis-admitted")}
         assert len(sealed) == 7, paths                        # seven distinct admitted objects, each from its seal
         others = {os.path.basename(p) for p in paths if not p.startswith("/memfd:")}
-        if SANITIZED:                                         # the sanitizer runtime and what it needs
-            others = {o for o in others if not o.startswith(_SANITIZERS + ("libstdc++.so", "libm.so"))}
+        if SANITIZED:          # the sanitizer runtime, what it needs, and the shadow file TSan maps and unlinks itself
+            others = {o for o in others if not o.startswith(_SANITIZERS + ("libstdc++.so", "libm.so"))
+                      and not (o.startswith("tsan.") and o.endswith(" (deleted)"))}
         # The C runtime (libm too: a build may link the ECS_G libraries against it), the loader, the unwinder.
         assert others <= {"elpis_testing", "libc.so.6", "libm.so.6", "ld-linux-x86-64.so.2", "ld-linux-aarch64.so.1",
                           "libgcc_s.so.1"}, others
@@ -342,6 +343,97 @@ def test_the_home_path_is_checked_and_nothing_is_overwritten(tmp_path):
     home.chmod(0o700)
     rc, out = host(tmp_path / "missing", "status")
     assert (rc, out[0]["code"]) == (4, "DEPLOYMENT_MISSING")
+
+
+def _inodes(home):
+    return {str(q.relative_to(home)): (q.stat().st_ino, q.stat().st_size) for q in sorted(home.rglob("*")) if q.is_file()}
+
+
+def _parked(cmd, timeout=120):
+    """Run a testing-host command until its watcher reports the park, then SIGKILL it (a real process death)."""
+    proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, text=True, env=ENV, cwd="/")
+    lines = []
+    try:
+        for line in proc.stdout:
+            lines.append(json.loads(line))
+            if lines[-1].get("op") == "testing_parked":
+                break
+        assert lines and lines[-1].get("op") == "testing_parked", lines
+    finally:
+        proc.send_signal(signal.SIGKILL)
+        proc.wait(timeout=timeout)
+    return lines
+
+
+# Death inside create's anchor at each control point (docs/RUNTIME_CORE.md, "Control-operation crash points"):
+# whether the authority holds the anchor, and the authority's recovery disposition after the death.
+ANCHOR = {1: (False, "CLEAN"), 2: (False, "CLEAN"), 3: (False, "CLEAN"), 4: (False, "TRAILING_INCOMPLETE"),
+          5: (True, "INTERRUPTED_COMPLETED"), 6: (True, "INTERRUPTED_COMPLETED")}
+
+
+@pytest.mark.parametrize("point", sorted(ANCHOR))
+def test_an_interrupted_create_is_completed_by_the_same_create(tmp_path, point):
+    reference, initial = deploy(tmp_path, testing=True, name="reference")
+    home, _ = deploy(tmp_path, testing=True, create=False)
+    _parked([str(HOST_TESTING), "--home", str(home), "create", "--seed", "7", "--testing-anchor-park", str(point),
+             "--testing-fault-arg", "100"])
+    anchored, disposition = ANCHOR[point]
+    rc, out = host(home, script=[{"op": "authority"}, {"op": "status"}], testing=True)
+    assert rc == 0 and out[0]["report"]["disposition"] == disposition and out[0]["reconciliation"] is None, out
+    assert out[1]["recovery"]["disposition"] == ("RESUMABLE" if anchored else "NOTHING_TO_RECOVER"), out[1]
+    rc, out = host(home, "create", "--seed", "8", testing=True)
+    assert (rc, out[0]["code"]) == (3, "LINEAGE_EXISTS")      # another lineage: never overwritten
+    rc, out = host(home, "create", "--seed", "7", testing=True)
+    assert rc == 0 and out[0]["ok"] and out[0]["identity"] == initial and out[0]["resumed"] is anchored, out
+    rc, out = host(home, script=[SOURCE, LEARN, evidence(1), {"op": "publish"}], testing=True)
+    assert rc == 0 and all(o["ok"] for o in out), out
+    # The same 17 files as an uninterrupted create, the lineage's and the slots' at the same sizes (host.cfg names the
+    # home's own path).
+    sizes = lambda h: {k: v[1] for k, v in _inodes(h).items() if k != "host.cfg"}
+    assert sorted(_inodes(home)) == sorted(_inodes(reference)) and sizes(home) == sizes(reference)
+    rc, out = host(home, "create", "--seed", "7", testing=True)
+    assert (rc, out[0]["code"]) == (3, "LINEAGE_EXISTS")      # past its anchor: the lineage has moved on
+
+
+def test_create_removes_only_its_own_debris_and_a_created_lineage_is_never_touched(tmp_path):
+    home, _ = deploy(tmp_path, create=False)
+    (home / "lineage.cfg.new").write_text("partial")          # what a death inside the first publication leaves
+    (home / "checkpoint.new").mkdir()
+    (home / "checkpoint.new" / "k1-checkpoint.a").write_bytes(b"\0" * 64)
+    rc, out = host(home, "create", "--seed", "7")
+    assert rc == 0 and out[0]["resumed"] is False, out
+    assert not (home / "lineage.cfg.new").exists() and not (home / "checkpoint.new").exists()
+    before = _inodes(home)
+    rc, out = host(home, "create", "--seed", "7")             # an untouched lineage at its initial identity
+    assert rc == 0 and out[0]["resumed"] is True and _inodes(home) == before, out
+    # Debris that is not this host's own is refused, and nothing is removed.
+    other, _ = deploy(tmp_path, create=False, name="other")
+    (other / "checkpoint.new").mkdir()
+    (other / "checkpoint.new" / "notes").write_text("someone else's")
+    rc, out = host(other, "create", "--seed", "7")
+    assert (rc, out[0]["code"]) == (3, "LINEAGE_EXISTS") and (other / "checkpoint.new" / "notes").exists()
+
+
+def test_a_parked_checkpoint_reconciliation_killed_there_resolves_exactly(tmp_path):
+    home, old = deploy(tmp_path, testing=True)
+    live = Live(home, [SOURCE, LEARN, {"op": "testing_durable_fault", "action": 2, "step": 5, "arg": 0},
+                       {"op": "publish", "wait": False}, {"op": "testing_wait_parked", "parked": 5},
+                       {"op": "testing_pause"}], tmp_path)
+    live.until_pause()
+    live.kill()
+    new = live.out[1]["identity"]
+    rc, out = host(home, "status", testing=True)
+    assert out[0]["recovery"]["disposition"] == "CANDIDATE_UNRESOLVED" and out[0]["recovery"]["candidate"] == new
+    script = tmp_path / "discard.jsonl"
+    script.write_text("\n".join(json.dumps(o) for o in [
+        {"op": "testing_control_fault", "kind": 3, "action": 2, "point": 2, "arg": 0},
+        {"op": "reconcile", "action": "discard", "candidate": new}]) + "\n")
+    lines = _parked([str(HOST_TESTING), "--home", str(home), "session", "--script", str(script)])
+    assert lines[-1]["parked"] == 302 and lines[0]["armed"] is True
+    rc, out = host(home, script=[{"op": "authority"}, {"op": "status"}], testing=True)
+    assert out[0]["report"]["disposition"] == "CLEAN" and out[0]["reconciliation"] is None, out[0]
+    assert out[1]["recovery"]["disposition"] == "RESUMABLE" and out[1]["recovery"]["candidate"] is None  # withdrawn
+    assert out[1]["durable"]["identity"] == old
 
 
 # ---- the operator surface --------------------------------------------------------------------------------------

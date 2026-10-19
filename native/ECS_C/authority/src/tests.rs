@@ -520,12 +520,27 @@ fn open_refuses_an_unprotected_authority_directory_key_or_witness() {
 }
 
 #[test]
-fn open_refuses_foreign_missing_or_resized_files() {
-    let cases: [(&str, Damage, Code); 6] = [
+fn open_refuses_foreign_missing_or_grown_files() {
+    // A shortened file is a torn prefix (a_shortened_record_or_witness_is_a_torn_prefix); a grown one is refused.
+    let cases: [(&str, Damage, Code); 8] = [
         ("extra file in the state directory", |t| fs::write(t.state().join("x"), b"x").unwrap(), Code::Corrupt),
         (
-            "truncated slot",
-            |t| fs::OpenOptions::new().write(true).open(t.slot(1)).unwrap().set_len(100).unwrap(),
+            "grown slot",
+            |t| {
+                fs::OpenOptions::new().write(true).open(t.slot(1)).unwrap().set_len(record_bytes(4) as u64 + 1).unwrap()
+            },
+            Code::Corrupt,
+        ),
+        (
+            "grown witness",
+            |t| {
+                fs::OpenOptions::new()
+                    .write(true)
+                    .open(t.witness(1))
+                    .unwrap()
+                    .set_len(WITNESS_BYTES as u64 + 1)
+                    .unwrap()
+            },
             Code::Corrupt,
         ),
         (
@@ -549,6 +564,17 @@ fn open_refuses_foreign_missing_or_resized_files() {
         ),
         ("missing witness", |t| fs::remove_file(t.witness(1)).unwrap(), Code::Corrupt),
         ("missing state directory", |t| fs::remove_dir_all(t.state()).unwrap(), Code::Corrupt),
+        (
+            // Without a valid witness the capacity is the slots' common size: two sizes name none.
+            "no valid witness and slots of two sizes",
+            |t| {
+                for i in 0..2 {
+                    put_raw(&t.witness(i), &[0u8; WITNESS_BYTES]);
+                }
+                put_raw(&t.slot(1), &[0u8; 100]);
+            },
+            Code::Corrupt,
+        ),
     ];
     for (name, damage, code) in cases {
         let t = TempDir::new();
@@ -557,6 +583,89 @@ fn open_refuses_foreign_missing_or_resized_files() {
         assert_eq!(refused(reopen(&t).0), (code, None), "{name}");
     }
     assert_eq!(refused(reopen(&TempDir::new()).0), (Code::NotProvisioned, None));
+}
+
+fn sizes(t: &TempDir) -> [u64; 4] {
+    let len = |p: PathBuf| fs::metadata(p).unwrap().len();
+    [len(t.slot(0)), len(t.slot(1)), len(t.witness(0)), len(t.witness(1))]
+}
+
+#[test]
+fn a_shortened_record_or_witness_is_a_torn_prefix() {
+    let fixed = [record_bytes(4) as u64, record_bytes(4) as u64, WITNESS_BYTES as u64, WITNESS_BYTES as u64];
+
+    // The slot that does not hold the authority, shortened (to nothing, or to a prefix): an incomplete trailing
+    // write. The next transition rewrites it in place at its full size.
+    for cut in [0usize, 100, record_bytes(4) - 1] {
+        let (t, a) = with_history(4);
+        let c = a.current().unwrap().clone();
+        drop(a);
+        let other = 1 - slot_of(&t, &c.digest);
+        let bytes = raw(&t.slot(other));
+        put_raw(&t.slot(other), &bytes[..cut]);
+        let (opened, mut b) = reopen(&t);
+        let report = opened.unwrap();
+        assert_eq!(disposition(&report), Disposition::TrailingIncomplete, "cut {cut}");
+        assert_eq!(report.slot_class[other], SlotClass::Torn as u8);
+        assert_eq!(*b.current().unwrap(), c);
+        publish_next(&mut b, "rewrites it").unwrap();
+        b.close();
+        assert_eq!(sizes(&t), fixed, "cut {cut}: the rewrite restored the fixed size");
+        assert_eq!(disposition(&reopen(&t).0.unwrap()), Disposition::Clean);
+    }
+
+    // The pinned record shortened: a corrupt acknowledged record, reconciled only by an explicit rollback acceptance
+    // (the record slot's class is TORN), whose transition restores the slot's size.
+    for cut in [0usize, record_bytes(4) / 2] {
+        let (t, a) = with_history(4);
+        let c = a.current().unwrap().clone();
+        drop(a);
+        let cs = slot_of(&t, &c.digest);
+        let bytes = raw(&t.slot(cs));
+        put_raw(&t.slot(cs), &bytes[..cut]);
+        let (opened, mut b) = reopen(&t);
+        let report = opened.unwrap();
+        assert_eq!(disposition(&report), Disposition::CorruptAcknowledged, "cut {cut}");
+        assert_eq!(report.slot_class[cs], SlotClass::Torn as u8);
+        assert_eq!(b.current().unwrap().generation, c.generation - 1, "the candidate is the older authority");
+        accept_rollback(&mut b, c.generation, &c.digest, 1);
+        b.close();
+        assert_eq!(sizes(&t), fixed, "cut {cut}");
+        assert_eq!(disposition(&reopen(&t).0.unwrap()), Disposition::Clean);
+    }
+
+    // Both record slots shortened: nothing authenticated remains.
+    let (t, a) = with_history(4);
+    drop(a);
+    for i in 0..2 {
+        put_raw(&t.slot(i), &[]);
+    }
+    assert_eq!(refused(reopen(&t).0), (Code::RecoveryRefused, Some(Disposition::Unrecoverable)));
+
+    // One witness shortened: the other still pins. Both: the witness is missing, and only an exact re-pin, which
+    // writes both witness slots at their full size, reopens it.
+    let (t, a) = with_history(4);
+    let c = a.current().unwrap().clone();
+    drop(a);
+    put_raw(&t.witness(0), &[]);
+    let (opened, b) = reopen(&t);
+    assert!(opened.is_ok());
+    assert_eq!(*b.current().unwrap(), c);
+    drop(b);
+    put_raw(&t.witness(1), &raw(&t.witness(1))[..WITNESS_BYTES / 2]);
+    let (opened, mut b) = reopen(&t);
+    let report = opened.unwrap();
+    assert_eq!(disposition(&report), Disposition::WitnessMissing);
+    assert_eq!(report.witness_class, [SlotClass::Torn as u8; 2]);
+    assert_eq!(publish_next(&mut b, "blocked").unwrap_err(), Code::ReconcileRequired);
+    let o = op(&b);
+    let e = Event::reconcile_repin(&o, seq(&b, &o), [0, 0], &c.digest);
+    assert_eq!(send!(b, &e).unwrap_err(), Code::NotReconcilable, "the classes observed are TORN, not EMPTY");
+    send!(b, &Event::reconcile_repin(&o, seq(&b, &o), [1, 1], &c.digest)).unwrap();
+    b.close();
+    assert_eq!(sizes(&t), fixed);
+    let (opened, _b) = reopen(&t);
+    assert_eq!(disposition(&opened.unwrap()), Disposition::Clean);
 }
 
 #[test]
