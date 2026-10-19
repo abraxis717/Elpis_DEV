@@ -227,8 +227,9 @@ def test_a_live_host_maps_no_interpreter_and_its_descriptors_never_grow(tmp_path
         sealed = {(dev, ino) for dev, ino, p in objects if p.startswith("/memfd:elpis-admitted")}
         assert len(sealed) == 7, paths                        # seven distinct admitted objects, each from its seal
         others = {os.path.basename(p) for p in paths if not p.startswith("/memfd:")}
-        if SANITIZED:                                         # the sanitizer runtime and what it needs
-            others = {o for o in others if not o.startswith(_SANITIZERS + ("libstdc++.so", "libm.so"))}
+        if SANITIZED:          # the sanitizer runtime, what it needs, and the shadow file TSan maps and unlinks itself
+            others = {o for o in others if not o.startswith(_SANITIZERS + ("libstdc++.so", "libm.so"))
+                      and not (o.startswith("tsan.") and o.endswith(" (deleted)"))}
         # The C runtime (libm too: a build may link the ECS_G libraries against it), the loader, the unwinder.
         assert others <= {"elpis_testing", "libc.so.6", "libm.so.6", "ld-linux-x86-64.so.2", "ld-linux-aarch64.so.1",
                           "libgcc_s.so.1"}, others
