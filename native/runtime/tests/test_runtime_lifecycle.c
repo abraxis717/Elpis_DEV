@@ -15,6 +15,7 @@
 #include "elpis/fms_pal_posix.h"
 #include "elpis/runtime.h"
 #define ELPIS_TEST_K1_FMS
+#include "ecs_c_runtime.h"
 #include "k1_tables.h"
 
 #include <assert.h>
@@ -170,7 +171,7 @@ static elpis_runtime *runtime_at(const char *dir, int fresh) {
     }
     elpis_runtime *rt = NULL;
     elpis_continuity_snapshot snap;
-    OK(elpis_runtime_create((const uint8_t *)dir, strlen(dir), &rt));
+    OK(test_runtime_create(dir, &rt));
     OK(elpis_runtime_open(rt, &snap));
     return rt;
 }
@@ -339,7 +340,7 @@ static void idle(int resident) {
     elpis_continuity_snapshot snap;
     elpis_runtime *rt = runtime_at(dir, 1);
     elpis_runtime_destroy(&rt);
-    OK(elpis_runtime_create((const uint8_t *)dir, strlen(dir), &rt));
+    OK(test_runtime_create(dir, &rt));
     elpis_runtime_close(rt);   /* never opened */
     OK(elpis_runtime_open(rt, &snap));
     OK(elpis_runtime_anchor(rt, &s.d, &snap));
@@ -365,7 +366,7 @@ int main(int argc, char **argv) {
     char cmd[3200];
     assert(snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", SCRATCH) < (int)sizeof(cmd));
     assert(system(cmd) == 0);
-    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V6);
+    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V7);
     assert(elpis_runtime_fuel_ceiling(&BUDGET) == ELPIS_RUNTIME_OK);
     for (int i = 0; i < DIM * WIDTH; ++i) W0[i] = 0.2 * (double)((i * 7) % 13 - 6) / 13.0;
     for (int i = 0; i < ROWS * DIM; ++i) X[i] = (double)((i * 5) % 11 - 5) / 16.0;

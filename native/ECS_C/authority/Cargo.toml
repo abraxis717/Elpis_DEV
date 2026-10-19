@@ -7,10 +7,9 @@ description = "Elpis ECS_C authority: the bounded, authenticated, semantically r
 license = "UNLICENSED"
 publish = false
 
-# The continuity crate supplies SHA-256, the evolution-authority digest and the legacy v2/v3 record reader (one
-# implementation each, never a copy). It folds into ECS_C when standalone continuity retires (census, section 9).
+# No dependencies. SHA-256, the evolution authority and its v2 digest, and the reader of a continuity v2/v3 register
+# (for an explicit legacy import) are ECS_C's own since standalone continuity retired into it (census, section 9).
 [dependencies]
-elpis_continuity = { path = "../../continuity" }
 
 [lib]
 name = "elpis_ecs_c_authority"

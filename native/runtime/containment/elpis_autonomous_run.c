@@ -1,8 +1,12 @@
 /* Elpis autonomous execution: Linux fail-closed filesystem mutation boundary.
  * This launcher is not an authority to run arbitrary tools; the host controls
- * argv and may optionally grant the two already-initialized continuity slots.
- * No inherited writable file descriptors, no file creation, no truncation,
- * no expansion beyond a fixed-size continuity record.
+ * argv and may optionally grant the four fixed files of an already-provisioned
+ * ECS_C authority (docs/ECS_C_AUTHORITY.md): its two record slots and its two
+ * witness slots. No inherited writable file descriptors, no file creation, no
+ * truncation, no expansion beyond the authority's record size (one file size
+ * limit covers the four slots, so each is bounded by the largest, the record,
+ * not by its own size). Until RuntimeCore ABI v7 the grant was standalone
+ * continuity's two 176-byte slots; continuity retired into ECS_C.
  */
 #define _GNU_SOURCE 1
 #include <errno.h>
@@ -32,7 +36,20 @@
 _Static_assert(LANDLOCK_ACCESS_FS_IOCTL_DEV == (1ULL << 15),
                "unexpected Landlock ioctl device access bit");
 
-#define CONTINUITY_SLOT_BYTES 176u
+/* The authority's fixed files: two record slots of one size R = 1344 + 160 x capacity (capacity 2..4096) in its
+ * state directory, and two 240-byte witness slots in its protected authority directory. */
+#define AUTHORITY_RECORD_BASE 1344u
+#define AUTHORITY_RECORD_PER_ENTITY 160u
+#define AUTHORITY_MIN_CAPACITY 2u
+#define AUTHORITY_MAX_CAPACITY 4096u
+#define AUTHORITY_WITNESS_BYTES 240u
+
+static int is_record_size(off_t n) {
+    if (n < (off_t)(AUTHORITY_RECORD_BASE + AUTHORITY_RECORD_PER_ENTITY * AUTHORITY_MIN_CAPACITY) ||
+        n > (off_t)(AUTHORITY_RECORD_BASE + AUTHORITY_RECORD_PER_ENTITY * AUTHORITY_MAX_CAPACITY))
+        return 0;
+    return (n - (off_t)AUTHORITY_RECORD_BASE) % (off_t)AUTHORITY_RECORD_PER_ENTITY == 0;
+}
 
 static void report(const char *msg) {
     int e = errno;
@@ -66,15 +83,18 @@ static int ruleset_create(int abi) {
     return (int)syscall(SYS_landlock_create_ruleset, &attr, sizeof(attr), 0);
 }
 
-static int grant_continuity_slot(int rs, int dirfd, const char *name) {
+/* Grant writes to one existing slot of exactly `size` bytes (any record size when `size` is 0; its size is returned):
+ * a single-linked regular file owned by this user, accessible to it only. */
+static int grant_slot(int rs, int dirfd, const char *name, off_t size, off_t *found) {
     int fd = openat(dirfd, name, O_PATH | O_NOFOLLOW | O_CLOEXEC);
     if (fd < 0) return -1;
     struct stat st;
     int ok = fstat(fd, &st) == 0 && S_ISREG(st.st_mode) &&
-        st.st_size == (off_t)CONTINUITY_SLOT_BYTES && st.st_nlink == 1 &&
+        (size ? st.st_size == size : is_record_size(st.st_size)) && st.st_nlink == 1 &&
         st.st_uid == geteuid() && !(st.st_mode & (S_IRWXG | S_IRWXO)) &&
         (st.st_mode & S_IWUSR);
     if (!ok) { close(fd); errno = EPERM; return -1; }
+    *found = st.st_size;
     struct landlock_path_beneath_attr rule = {
         .allowed_access = LANDLOCK_ACCESS_FS_WRITE_FILE, .parent_fd = fd
     };
@@ -86,18 +106,33 @@ static int grant_continuity_slot(int rs, int dirfd, const char *name) {
     return rc;
 }
 
-static int grant_continuity(int rs, const char *dir) {
+static int open_owned_dir(const char *dir) {
     int dfd = open(dir, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
     if (dfd < 0) return -1;
     struct stat st;
     int ok = fstat(dfd, &st) == 0 && S_ISDIR(st.st_mode) &&
         st.st_uid == geteuid() && !(st.st_mode & (S_IWGRP | S_IWOTH));
     if (!ok) { close(dfd); errno = EPERM; return -1; }
-    int rc = grant_continuity_slot(rs, dfd, "continuity.a");
-    if (rc == 0) rc = grant_continuity_slot(rs, dfd, "continuity.b");
+    return dfd;
+}
+
+/* The authority's four slots; the two records must have one size, returned in `record`. */
+static int grant_authority(int rs, const char *state, const char *authority, off_t *record) {
+    int sfd = open_owned_dir(state);
+    if (sfd < 0) return -1;
+    int afd = open_owned_dir(authority);
+    if (afd < 0) { int saved = errno; close(sfd); errno = saved; return -1; }
+    off_t a = 0, b = 0, w = 0;
+    int rc = grant_slot(rs, sfd, "authority.a", 0, &a);
+    if (rc == 0) rc = grant_slot(rs, sfd, "authority.b", 0, &b);
+    if (rc == 0 && a != b) { errno = EPERM; rc = -1; }
+    if (rc == 0) rc = grant_slot(rs, afd, "witness.a", AUTHORITY_WITNESS_BYTES, &w);
+    if (rc == 0) rc = grant_slot(rs, afd, "witness.b", AUTHORITY_WITNESS_BYTES, &w);
     int saved = errno;
-    close(dfd);
+    close(sfd);
+    close(afd);
     errno = saved;
+    *record = a;
     return rc;
 }
 
@@ -151,17 +186,19 @@ static int deny_metadata_syscalls(void) {
 }
 
 int main(int argc, char **argv) {
-    const char *continuity = NULL;
+    const char *state = NULL, *authority = NULL;
     int i = 1;
-    if (argc > 2 && strcmp(argv[i], "--continuity-dir") == 0) {
-        continuity = argv[i + 1];
-        i += 2;
-        if (!continuity[0] || continuity[0] != '/') {
-            errno = EINVAL; report("continuity directory must be absolute"); return 125;
+    if (argc > 3 && strcmp(argv[i], "--authority") == 0) {
+        state = argv[i + 1];
+        authority = argv[i + 2];
+        i += 3;
+        if (state[0] != '/' || authority[0] != '/') {
+            errno = EINVAL; report("authority directories must be absolute"); return 125;
         }
     }
     if (i >= argc || strcmp(argv[i], "--") != 0 || i + 1 >= argc) {
-        fprintf(stderr, "usage: elpis_autonomous_run [--continuity-dir ABSOLUTE_DIR] -- COMMAND [ARG...]\n");
+        fprintf(stderr, "usage: elpis_autonomous_run [--authority ABSOLUTE_STATE_DIR ABSOLUTE_AUTHORITY_DIR] -- "
+                        "COMMAND [ARG...]\n");
         return 125;
     }
     ++i;
@@ -173,8 +210,9 @@ int main(int argc, char **argv) {
     if (abi < 5) { errno = ENOTSUP; report("Landlock ABI v5+ required"); return 125; }
     int rs = ruleset_create(abi);
     if (rs < 0) { report("ruleset creation"); return 125; }
-    if (continuity && grant_continuity(rs, continuity) != 0) {
-        report("continuity slot preflight or rule"); close(rs); return 125;
+    off_t record = 0;
+    if (state && grant_authority(rs, state, authority, &record) != 0) {
+        report("authority slot preflight or rule"); close(rs); return 125;
     }
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
         report("no_new_privs"); close(rs); return 125;
@@ -187,8 +225,9 @@ int main(int argc, char **argv) {
     if (syscall(SYS_close_range, 3u, ~0u, 0u) != 0) {
         report("close inherited descriptors"); return 125;
     }
-    if (continuity) {
-        struct rlimit limit = { CONTINUITY_SLOT_BYTES, CONTINUITY_SLOT_BYTES };
+    if (state) {
+        /* The record is the largest slot: no write may extend any file past it. */
+        struct rlimit limit = { (rlim_t)record, (rlim_t)record };
         if (setrlimit(RLIMIT_FSIZE, &limit) != 0) {
             report("file size hard limit"); return 125;
         }

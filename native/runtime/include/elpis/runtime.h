@@ -1,10 +1,10 @@
 #ifndef ELPIS_RUNTIME_H
 #define ELPIS_RUNTIME_H
 
-/* Elpis RuntimeCore C ABI v6 (docs/RUNTIME_CORE.md), implemented in Rust (native/runtime).
+/* Elpis RuntimeCore C ABI v7 (docs/RUNTIME_CORE.md), implemented in Rust (native/runtime).
  *
- * One runtime handle owns one durable authority (a continuity directory, or since v6 an ECS_C authority) and the
- * mutable systems authority of an open Elpis
+ * One runtime handle owns one durable authority (an ECS_C authority: elpis/ecs_c_authority.h) and the mutable systems
+ * authority of an open Elpis
  * runtime: lifecycle, fail-stop, the binding of its K1 lineage to one native K1 state, the managed canonical
  * turn's native K1 transaction, the durability lane (explicit durable publication of the live state) and the
  * evolution attempt's durable reservation and finalization. It owns no semantics: callers hand it a validated
@@ -18,7 +18,7 @@
  *   live     the bound state's native generation (ecsg_k1.h, "Live coordinate") under this runtime's lease, as
  *            RuntimeCore last established it. Every HOT operation (QUERY, the managed turn, OBSERVE) is checked
  *            against it; none performs file I/O, computes a digest or waits for the durability lane.
- *   durable  continuity's record (and, when provisioned, the K1 checkpoint slot holding the same envelope): the
+ *   durable  the authority's record (and, when provisioned, the K1 checkpoint slot holding the same envelope): the
  *            last state a durable publication completed. Restart binds only a state whose identity is it.
  * A managed commit is VOLATILE: it installs the candidate and advances the live generation by one; nothing is
  * checkpointed or published. Durable publication is an explicit request of one of two kinds, never confused:
@@ -84,11 +84,11 @@
  * point keeps its meaning, and the ELPISGK1, ELPISEC1 and continuity formats are unchanged. A v4 caller refuses to
  * load this library (the version check).
  *
- * Durable authority (v6; docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"). The authority a runtime publishes
- * to is chosen at create: standalone continuity (elpis_runtime_create: the v5 behavior, unchanged) or the ECS_C
- * authority (elpis_runtime_create_ecs_c; elpis/ecs_c_authority.h, docs/ECS_C_AUTHORITY.md), which the operator
- * provisions and reconciles through its own ABI with no runtime open. Every law above holds over either; "continuity"
- * below names whichever is the handle's. Under ECS_C, in addition: each publication (anchor, durable publication,
+ * Durable authority (v6; docs/RUNTIME_CORE.md, "The durable authority"). v6 chose the authority at create:
+ * standalone continuity (elpis_runtime_create) or the ECS_C authority (elpis_runtime_create_ecs_c;
+ * elpis/ecs_c_authority.h, docs/ECS_C_AUTHORITY.md), which the operator provisions and reconciles through its own ABI
+ * with no runtime open. "continuity" in this header names the handle's durable authority, the register's name the
+ * laws above were first stated in. Under ECS_C, in addition: each publication (anchor, durable publication,
  * import, evolution reserve and finalize) is one typed event of the authority's founding RUNTIME entity at its next
  * sequence, compare-and-publish on the authority's generation and state root; a typed observation is admitted only
  * from an ACTIVE source of the authority (named by the memory source_authority the observation records) within that
@@ -102,23 +102,80 @@
  * CONTINUITY_AUTHORITY_MISMATCH in a publication, the exact code kept in elpis_runtime_authority.ecs_c_code. v6 added
  * these entry points and codes; every v5 entry point keeps its meaning. A v5 caller refuses to load this library.
  *
- * The library also exports the continuity C ABI (elpis/continuity.h) of the store it embeds.
+ * One durable authority (v7). The ECS_C authority is the only one: standalone continuity retired into it
+ * (docs/NATIVE_SPLIT_CENSUS.md, section 9), so elpis_runtime_create and the re-export of continuity's own C ABI
+ * (elpis_continuity_*) are gone, and elpis_runtime_authority.backend is always ELPIS_RUNTIME_BACKEND_ECS_C. The
+ * durable view keeps continuity's layout, values and names, now declared below rather than by elpis/continuity.h:
+ * elpis_continuity_snapshot (whose record_digest is the continuity register digest of the view, unchanged),
+ * elpis_continuity_evolution, the format constants and the authority codes ELPIS_CONTINUITY_* (1..17, 255). Every
+ * other v6 entry point keeps its meaning. A v6 caller refuses to load this library (the version check).
  *
- * Every function returns 0 or a positive code: a continuity code (1..17, 255) or a runtime code below.
+ * The library exports this ABI only.
+ *
+ * Every function returns 0 or a positive code: an authority code (ELPIS_CONTINUITY_*, 1..17, 255) or a runtime code
+ * below.
  * Calls on one handle are serialized by the handle, except elpis_runtime_durable_wait and _durable_status, which
  * take only the durability lane's lock (they never wait behind a HOT operation, nor a HOT operation behind them). */
 
 #include <stddef.h>
 #include <stdint.h>
 
-#include "elpis/continuity.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/* The durable authority's codes (the names and values elpis/continuity.h gave them until v7). */
 enum {
-    ELPIS_RUNTIME_ABI_V6 = 6u,
+    ELPIS_CONTINUITY_OK = 0,
+    ELPIS_CONTINUITY_UNINITIALIZED = 1,
+    ELPIS_CONTINUITY_UNANCHORED = 2,
+    ELPIS_CONTINUITY_ALREADY_ANCHORED = 3,
+    ELPIS_CONTINUITY_STATE_MISMATCH = 4,
+    ELPIS_CONTINUITY_CORRUPT = 5,
+    ELPIS_CONTINUITY_PUBLICATION_REFUSED = 6,
+    ELPIS_CONTINUITY_PUBLICATION_UNCERTAIN = 7,
+    ELPIS_CONTINUITY_LOCKED = 8,
+    ELPIS_CONTINUITY_AUTHORITY_MISMATCH = 9,
+    ELPIS_CONTINUITY_EVOLUTION_PENDING = 10,
+    ELPIS_CONTINUITY_EVOLUTION_NOT_PENDING = 11,
+    ELPIS_CONTINUITY_EXHAUSTED = 12,
+    ELPIS_CONTINUITY_INVALID = 13,
+    ELPIS_CONTINUITY_PATH = 14,
+    ELPIS_CONTINUITY_OPEN = 15,
+    ELPIS_CONTINUITY_LEGACY_STORAGE = 16,
+    ELPIS_CONTINUITY_IO = 17,
+    /* Produced only by the testing library (simulated process death). */
+    ELPIS_CONTINUITY_TESTING_PROCESS_DEATH = 255,
+};
+
+/* Evolution authority. pending == 0: idle, assertion must be zero. pending == 1: reserved for exactly `assertion`.
+ * revision 0 if and only if head is zero. reserved bytes zero. */
+typedef struct {
+    uint64_t revision;
+    uint8_t head[32];
+    uint8_t pending;
+    uint8_t reserved[7];
+    uint8_t assertion[32];
+} elpis_continuity_evolution;
+
+/* One verified durable authority. anchored == 0: no lineage (k1_state_digest zero). state_format names what the
+ * anchored digest identifies: ELPIS_CONTINUITY_FORMAT_K1 (0; the field keeps its historical name) or
+ * ELPIS_CONTINUITY_FORMAT_COMPOSITE (1, anchored only). The two digests are outputs (the evolution-authority v2
+ * digest and the continuity register record digest of this view); they are ignored on input. */
+enum { ELPIS_CONTINUITY_FORMAT_K1 = 0u, ELPIS_CONTINUITY_FORMAT_COMPOSITE = 1u };
+typedef struct {
+    uint64_t generation;
+    uint8_t anchored;
+    uint8_t state_format;
+    uint8_t reserved[6];
+    uint8_t k1_state_digest[32];
+    elpis_continuity_evolution evolution;
+    uint8_t evolution_digest[32];
+    uint8_t record_digest[32];
+} elpis_continuity_snapshot;
+
+enum {
+    ELPIS_RUNTIME_ABI_V7 = 7u,
     ELPIS_RUNTIME_OK = 0,
     ELPIS_RUNTIME_INVALID = 64,                  /* malformed argument */
     ELPIS_RUNTIME_CLOSED = 65,                   /* the runtime is not open */
@@ -148,8 +205,7 @@ enum {
     ELPIS_RUNTIME_OBSERVATION_REFUSED = 86,      /* v6, ECS_C: the observation's source is not an ACTIVE source of
                                                     the authority, or is past its per-turn bound: refused before the
                                                     native call, the turn stays open */
-    ELPIS_RUNTIME_BACKEND_CONTINUITY = 1,        /* elpis_runtime_authority.backend */
-    ELPIS_RUNTIME_BACKEND_ECS_C = 2,
+    ELPIS_RUNTIME_BACKEND_ECS_C = 2,             /* elpis_runtime_authority.backend (v6's 1 was continuity) */
     ELPIS_RUNTIME_RECOVERY_NOTHING = 1,          /* continuity unanchored: no lineage; a slot never creates one */
     ELPIS_RUNTIME_RECOVERY_RESUMABLE = 2,        /* a verified slot holds continuity's identity; no candidate */
     ELPIS_RUNTIME_RECOVERY_CANDIDATE_UNRESOLVED = 3, /* a newer unauthorized slot exists: operator discard/adopt */
@@ -327,10 +383,10 @@ typedef struct {
 
 /* The durable authority (v6, elpis_runtime_authority_status). */
 typedef struct {
-    uint32_t backend;           /* ELPIS_RUNTIME_BACKEND_* */
-    int32_t ecs_c_code;         /* the last ECS_C refusal (ELPIS_ECS_C_*); 0 none, always 0 under continuity */
+    uint32_t backend;           /* ELPIS_RUNTIME_BACKEND_ECS_C (v7: the only backend) */
+    int32_t ecs_c_code;         /* the last ECS_C refusal (ELPIS_ECS_C_*); 0 none */
     uint32_t disposition;       /* ECS_C: the recovery disposition of the last open, also when it was refused (0: none
-                                   ran; always 0 under continuity) */
+                                   ran) */
     uint32_t mode;              /* ECS_C: ELPIS_ECS_C_MODE_* of the last open */
     uint8_t replay_verified;    /* ECS_C: the last open verified the newest transition by replay */
     uint8_t witness_completed;  /* ECS_C: the last open completed the rollback witness */
@@ -440,9 +496,8 @@ int elpis_runtime_query_work_units(size_t dim, size_t width, size_t rows, uint64
 /* Static name of any code ("RUNTIME_OK" for 0), or NULL for an unknown value. */
 const char *elpis_runtime_code_name(int code);
 
-/* Lifecycle. create takes an absolute continuity directory path of `len` bytes; create_ecs_c (v6) an absolute state
- * directory and the absolute, protected authority directory of a provisioned ECS_C authority. */
-int elpis_runtime_create(const uint8_t *path, size_t len, elpis_runtime **out);
+/* Lifecycle. create_ecs_c (v6) takes an absolute state directory and the absolute, protected authority directory of
+ * a provisioned ECS_C authority (elpis_ecs_c_provision). */
 int elpis_runtime_create_ecs_c(const uint8_t *state_dir, size_t state_len, const uint8_t *authority_dir,
                                size_t authority_len, elpis_runtime **out);
 void elpis_runtime_destroy(elpis_runtime **runtime);   /* aborts an open turn natively, then frees */
@@ -576,14 +631,14 @@ int elpis_runtime_evolution_reconcile(elpis_runtime *runtime, const elpis_contin
 /* The durable authority (v6). status: the backend and, under ECS_C, the last open's recovery report, the current
  * record while open and the last refusal; readable closed (after a refused open it states why). transition, ECS_C
  * only: one operator event (ELPIS_ECS_C_EVENT_BYTES bytes: ENTITY_FOUND, ENTITY_LIFECYCLE, SOURCE_VERSION,
- * ENTITY_RECLAIM or IMPORT_LEGACY) on the held authority, which then governs observation admission; refused under
- * continuity and for any other kind (RUNTIME_INVALID), while a managed turn is open (RUNTIME_TURN_OPEN), closed or
+ * ENTITY_RECLAIM or IMPORT_LEGACY) on the held authority, which then governs observation admission; refused for any
+ * other kind (RUNTIME_INVALID), while a managed turn is open (RUNTIME_TURN_OPEN), closed or
  * fail-stopped. out_generation (optional) receives the authority's new generation. */
 int elpis_runtime_authority_status(elpis_runtime *runtime, elpis_runtime_authority *out);
 int elpis_runtime_authority_transition(elpis_runtime *runtime, const uint8_t *event, uint64_t *out_generation);
 /* Reads of the held ECS_C authority (v6), what an operator event is built from: the entity row at `index` (below
  * elpis_runtime_authority.entity_count) and the identity the next ENTITY_FOUND of `kind` and `label` founds (the
- * receiver that event must name). RUNTIME_INVALID under continuity, past the last row and for an unknown kind;
+ * receiver that event must name). RUNTIME_INVALID past the last row and for an unknown kind;
  * refused closed or fail-stopped. Neither changes anything. */
 int elpis_runtime_authority_entity_at(elpis_runtime *runtime, uint32_t index, elpis_runtime_authority_entity *out);
 int elpis_runtime_authority_next_entity_id(elpis_runtime *runtime, uint8_t kind, const uint8_t label[32],

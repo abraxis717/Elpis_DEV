@@ -206,7 +206,7 @@ static int zero32(const uint8_t *p) {
 
 int main(int argc, char **argv) {
     assert(argc == 2);
-    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V6);
+    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V7);
     assert(!strcmp(elpis_runtime_code_name(ELPIS_RUNTIME_AUTHORITY), "RUNTIME_AUTHORITY"));
     assert(!strcmp(elpis_runtime_code_name(ELPIS_RUNTIME_OBSERVATION_REFUSED), "RUNTIME_OBSERVATION_REFUSED"));
     OK(elpis_runtime_fuel_ceiling(&BUDGET));
@@ -401,16 +401,6 @@ int main(int argc, char **argv) {
     assert(s.evidence_count == 4); /* the authority it continues from */
     elpis_runtime_destroy(&rt);
     elpis_ecs_composite_destroy(x);
-
-    /* A continuity runtime reports its backend, and has no operator events. */
-    char cont[4300];
-    assert(snprintf(cont, sizeof(cont), "%s/continuity", scratch) < (int)sizeof(cont));
-    OK(elpis_runtime_create((const uint8_t *)cont, strlen(cont), &rt));
-    OK(elpis_runtime_open(rt, &snap));
-    s = status_of(rt);
-    assert(s.backend == ELPIS_RUNTIME_BACKEND_CONTINUITY && s.ecs_c_code == 0 && s.disposition == 0);
-    assert(elpis_runtime_authority_transition(rt, e, NULL) == ELPIS_RUNTIME_INVALID);
-    elpis_runtime_destroy(&rt);
 
     /* The scratch is the test's working directory: emptied, never removed (the next run starts in it). */
     sh("rm -rf '%s' && mkdir -p '%s'", scratch, scratch);

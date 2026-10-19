@@ -2,15 +2,12 @@
 # behind a stable C ABI (include/elpis/ecs_c_authority.h). Two shared libraries are built from one crate:
 #   libelpis_ecs_c_authority.so          production (no test hooks)
 #   libelpis_ecs_c_authority_testing.so  the same authority plus fault injection and I/O counters
-# Built offline from Cargo.lock; the only dependency is the continuity crate (path), which it embeds without
-# re-exporting its C ABI (build.rs).
+# Built offline from Cargo.lock; the crate has no dependencies.
 find_program(ELPIS_CARGO cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin" REQUIRED)
 
 set(_crate "${CMAKE_CURRENT_SOURCE_DIR}")
-set(_continuity "${CMAKE_SOURCE_DIR}/native/continuity")
-file(GLOB _rust_sources CONFIGURE_DEPENDS "${_crate}/src/*.rs" "${_continuity}/src/*.rs")
-set(_crate_inputs ${_rust_sources} "${_crate}/build.rs" "${_crate}/Cargo.toml" "${_crate}/Cargo.lock"
-    "${_continuity}/Cargo.toml")
+file(GLOB _rust_sources CONFIGURE_DEPENDS "${_crate}/src/*.rs")
+set(_crate_inputs ${_rust_sources} "${_crate}/Cargo.toml" "${_crate}/Cargo.lock")
 set(_prod "${CMAKE_CURRENT_BINARY_DIR}/libelpis_ecs_c_authority.so")
 set(_testing "${CMAKE_CURRENT_BINARY_DIR}/libelpis_ecs_c_authority_testing.so")
 

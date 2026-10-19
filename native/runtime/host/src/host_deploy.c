@@ -199,7 +199,7 @@ static int resolve(host_deployment *d, host_err *e) {
     HOST_HACF_FUNCTIONS(R_HACF)
     HOST_ECS_C_FUNCTIONS(R_ECS_C)
 #undef RESOLVE
-    if (a->elpis_runtime_abi_version() != ELPIS_RUNTIME_ABI_V6)
+    if (a->elpis_runtime_abi_version() != ELPIS_RUNTIME_ABI_V7)
         return host_fail(e, "DEPLOYMENT_ABI", "RuntimeCore ABI %u is not this host's (6)", a->elpis_runtime_abi_version());
     if (a->elpis_ecs_c_abi_version() != ELPIS_ECS_C_ABI_VERSION)
         return host_fail(e, "DEPLOYMENT_ABI", "ECS_C ABI %u is not this host's (%u)", a->elpis_ecs_c_abi_version(),
@@ -347,7 +347,7 @@ static void write_host_cfg(hjw *w, const host_deployment *d) {
     else hjw_null(w);
     hjw_key(w, "abi");
     hjw_object(w);
-    hjw_ku64(w, "runtime", ELPIS_RUNTIME_ABI_V6);
+    hjw_ku64(w, "runtime", ELPIS_RUNTIME_ABI_V7);
     hjw_ku64(w, "composite", ELPIS_ECS_COMPOSITE_ABI_V1);
     hjw_ku64(w, "ecs_c", ELPIS_ECS_C_ABI_VERSION);
     hjw_end(w, '}');
@@ -374,7 +374,7 @@ static int read_host_cfg(host_deployment *d, host_err *e) {
         const hj_value *abi = hj_get(root, "abi");
         uint64_t r = 0, c = 0, x = 0;
         if (!abi || abi->kind != HJ_OBJECT || abi->count != 3 || u64_of(abi, "runtime", &r) ||
-            u64_of(abi, "composite", &c) || u64_of(abi, "ecs_c", &x) || r != ELPIS_RUNTIME_ABI_V6 ||
+            u64_of(abi, "composite", &c) || u64_of(abi, "ecs_c", &x) || r != ELPIS_RUNTIME_ABI_V7 ||
             c != ELPIS_ECS_COMPOSITE_ABI_V1 || x != ELPIS_ECS_C_ABI_VERSION)
             rc = host_fail(e, "DEPLOYMENT_ABI", "the deployment's ABI is not this host's (runtime 6, composite 1, ECS_C 1)");
     }

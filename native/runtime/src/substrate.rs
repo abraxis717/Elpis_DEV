@@ -34,7 +34,7 @@
 
 use std::ffi::{c_int, c_void};
 
-pub use elpis_continuity::StateFormat;
+pub use crate::authority::StateFormat;
 
 /// A caller's observation record (`elpis_ecs_mem_observation *`), opaque to RuntimeCore: it is never read here,
 /// only handed to the composite's `leased_txn_observe`. The C ABI caller guarantees it is valid for the call.

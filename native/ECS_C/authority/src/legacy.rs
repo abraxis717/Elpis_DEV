@@ -1,17 +1,32 @@
 //! Explicit import of a standalone continuity register (v2 or v3): read, never reinterpreted in place.
 //!
 //! The current record is read under the continuity directory's own lock and resolved exactly as continuity
-//! resolves it. It is then carried verbatim inside an IMPORT_LEGACY event, so the import replays at recovery like
-//! every other transition. The continuity directory is never written.
+//! resolved it ([`resolve`], moved here unchanged when continuity retired into ECS_C). It is then carried verbatim
+//! inside an IMPORT_LEGACY event, so the import replays at recovery like every other transition. The continuity
+//! directory is never written.
 
 use std::fs::{self, File, TryLockError};
 use std::os::unix::fs::FileExt;
 use std::path::Path;
 
-use elpis_continuity::store::resolve;
-use elpis_continuity::{RECORD_SIZE, SLOT_NAMES};
-
 use crate::error::Code;
+use crate::register::{Snapshot, RECORD_SIZE};
+
+/// The two slot files of a continuity register directory.
+pub const SLOT_NAMES: [&str; 2] = ["continuity.a", "continuity.b"];
+
+/// The current authority of a register: the valid record with the higher generation. Torn or stale slots are
+/// skipped; no valid record or two records of equal generation fail closed.
+pub fn resolve(records: &[[u8; RECORD_SIZE]; 2]) -> Result<(Snapshot, usize), Code> {
+    let decoded: Vec<Option<Snapshot>> = records.iter().map(|r| Snapshot::decode(r).ok().flatten()).collect();
+    match (decoded[0], decoded[1]) {
+        (None, None) => Err(Code::Corrupt),
+        (Some(a), Some(b)) if a.generation() == b.generation() => Err(Code::Corrupt),
+        (Some(a), Some(b)) => Ok(if b.generation() > a.generation() { (b, 1) } else { (a, 0) }),
+        (Some(a), None) => Ok((a, 0)),
+        (None, Some(b)) => Ok((b, 1)),
+    }
+}
 
 pub fn read_continuity(directory: &Path) -> Result<[u8; RECORD_SIZE], Code> {
     if !directory.is_absolute() {

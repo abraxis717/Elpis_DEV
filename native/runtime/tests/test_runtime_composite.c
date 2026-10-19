@@ -18,6 +18,7 @@
 #include "elpis/ecs_observation_hacf.h"
 #include "elpis/ecsg_k1.h"
 #include "elpis/runtime.h"
+#include "ecs_c_runtime.h"
 #include "k1_tables.h"
 
 #include <assert.h>
@@ -233,7 +234,7 @@ static void observe_only_phase(const char *scratch) {
     OK(elpis_runtime_checkpoint_provision((const uint8_t *)ck, strlen(ck), envelope));
     elpis_runtime *rt = NULL;
     elpis_continuity_snapshot snap;
-    OK(elpis_runtime_create((const uint8_t *)dir, strlen(dir), &rt));
+    OK(test_runtime_create(dir, &rt));
     OK(elpis_runtime_open(rt, &snap));
     OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)ck, strlen(ck)));
     elpis_ecs_composite *x = fresh();
@@ -312,7 +313,7 @@ static void observe_only_phase(const char *scratch) {
     identity(x, published);
     elpis_runtime_destroy(&rt);
     elpis_ecs_composite_destroy(x);
-    OK(elpis_runtime_create((const uint8_t *)dir, strlen(dir), &rt));
+    OK(test_runtime_create(dir, &rt));
     OK(elpis_runtime_open(rt, &snap));
     OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)ck, strlen(ck)));
     elpis_runtime_recovery rec;
@@ -356,7 +357,7 @@ int main(int argc, char **argv) {
     /* ---- anchor, managed turns, refusals ------------------------------------------------------------------ */
     elpis_runtime *rt = NULL;
     elpis_continuity_snapshot snap;
-    OK(elpis_runtime_create((const uint8_t *)dir, strlen(dir), &rt));
+    OK(test_runtime_create(dir, &rt));
     OK(elpis_runtime_open(rt, &snap));
     OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)ck, strlen(ck)));
     elpis_ecs_composite *x = fresh();
@@ -439,7 +440,7 @@ int main(int argc, char **argv) {
         elpis_ecsg_k1 *k = NULL;
         assert(elpis_ecsg_k1_create(DIM, WIDTH, 8, W0, &k) == ELPIS_ECSG_K1_OK);
         elpis_runtime_substrate dk = ksub(k, 2);
-        OK(elpis_runtime_create((const uint8_t *)dir, strlen(dir), &rt));
+        OK(test_runtime_create(dir, &rt));
         OK(elpis_runtime_open(rt, &snap));
         double s3[F];
         elpis_runtime_turn_begin_result begun;
@@ -455,7 +456,7 @@ int main(int argc, char **argv) {
     uint8_t *got = malloc(envelope);
     assert(got);
     for (uint32_t point = 1; point <= 2; ++point) {
-        OK(elpis_runtime_create((const uint8_t *)dir, strlen(dir), &rt));
+        OK(test_runtime_create(dir, &rt));
         OK(elpis_runtime_open(rt, &snap));
         OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)ck, strlen(ck)));
         uint8_t authorized[32];
@@ -473,7 +474,7 @@ int main(int argc, char **argv) {
         elpis_runtime_destroy(&rt); /* the process ends: only continuity and the checkpoint slots remain */
         elpis_ecs_composite_destroy(x);
 
-        OK(elpis_runtime_create((const uint8_t *)dir, strlen(dir), &rt));
+        OK(test_runtime_create(dir, &rt));
         OK(elpis_runtime_open(rt, &snap));
         assert(!memcmp(snap.k1_state_digest, authorized, 32)); /* never published */
         OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)ck, strlen(ck)));
@@ -523,7 +524,7 @@ int main(int argc, char **argv) {
         elpis_ecsg_k1 *k = NULL;
         assert(elpis_ecsg_k1_create(DIM, WIDTH, 8, W0, &k) == ELPIS_ECSG_K1_OK);
         elpis_runtime_substrate dk = ksub(k, 20);
-        OK(elpis_runtime_create((const uint8_t *)dir2, strlen(dir2), &rt));
+        OK(test_runtime_create(dir2, &rt));
         OK(elpis_runtime_open(rt, &snap));
         OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)kck, strlen(kck)));
         OK(elpis_runtime_anchor(rt, &dk, &snap));

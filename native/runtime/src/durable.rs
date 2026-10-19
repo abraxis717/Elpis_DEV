@@ -53,12 +53,9 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-use elpis_continuity::{Code, Cognition, Digest, Snapshot, StateFormat};
-
-use crate::authority::Store;
-
+use crate::authority::{Cognition, Digest, Snapshot, StateFormat, Store};
 use crate::checkpoint;
-use crate::code::{Error, Rt};
+use crate::code::{Code, Error, Rt};
 use crate::substrate::Sealer;
 
 /// What happened to one durable publication request.
@@ -159,7 +156,7 @@ pub struct Counters {
 /// The two stores the lane owns. Held by exactly one party at a time: the worker (during a job) or a control
 /// operation (anchor, evolution, recovery, ...). The HOT lane never holds them.
 pub struct Stores {
-    pub continuity: Store,
+    pub authority: Store,
     pub checkpoint: Option<checkpoint::Store>,
 }
 
@@ -292,8 +289,10 @@ pub mod control {
                 Op::Discard => matches!(point, Begun | SlotWritten | SlotSynced),
                 Op::Adopt => matches!(point, Begun | RecordTorn | RecordWritten | RecordSynced),
             };
-            // A torn record writes at least one byte and leaves at least the checksum's last byte unwritten.
-            let torn = point != RecordTorn || (1..elpis_continuity::RECORD_SIZE as u64).contains(&arg);
+            // A torn record writes at least one byte and leaves at least the checksum's last byte unwritten, for an
+            // authority record of any capacity (the smallest is the bound).
+            let smallest = elpis_ecs_c_authority::record_bytes(elpis_ecs_c_authority::MIN_CAPACITY) as u64;
+            let torn = point != RecordTorn || (1..smallest).contains(&arg);
             (valid && torn).then_some(Plan { op, point, park, arg })
         }
 
@@ -479,11 +478,11 @@ fn lock(m: &Mutex<Shared>) -> Held<'_> {
 }
 
 impl Lane {
-    pub fn new(continuity: Store, live_generation: Arc<AtomicU64>) -> Lane {
+    pub fn new(authority: Store, live_generation: Arc<AtomicU64>) -> Lane {
         Lane {
             shared: Mutex::new(Shared {
                 open: false,
-                stores: Some(Stores { continuity, checkpoint: None }),
+                stores: Some(Stores { authority, checkpoint: None }),
                 pending: None,
                 running: None,
                 resolved: [Ticket::default(); RING],
@@ -530,7 +529,7 @@ impl Lane {
         };
         let r = f(&mut stores);
         let mut g = lock(&self.shared);
-        g.durable = stores.continuity.snapshot().ok();
+        g.durable = stores.authority.snapshot().ok();
         g.capacity = stores.checkpoint.as_ref().map(|c| c.capacity());
         g.stores = Some(stores);
         drop(g);
@@ -540,7 +539,7 @@ impl Lane {
 
     /// Open the stores (continuity resolves the current authority) and the lane. The caller spawns the worker.
     pub fn open(&self) -> Result<Snapshot, Error> {
-        let snapshot = self.with_stores(|s| s.continuity.open())??;
+        let snapshot = self.with_stores(|s| s.authority.open())??;
         let mut g = lock(&self.shared);
         g.open = true;
         g.shutdown = false;
@@ -569,7 +568,7 @@ impl Lane {
     pub fn close(&self) {
         let mut g = lock(&self.shared);
         if let Some(s) = g.stores.as_mut() {
-            s.continuity.close();
+            s.authority.close();
             s.checkpoint = None;
         }
         g.open = false;
@@ -596,7 +595,7 @@ impl Lane {
         if let Some(code) = g.fault {
             return Err(code.into());
         }
-        g.durable.ok_or(Error::Continuity(Code::Uninitialized))
+        g.durable.ok_or(Error::Authority(Code::Uninitialized))
     }
 
     pub fn fault(&self) -> Option<Code> {
@@ -833,7 +832,7 @@ impl Lane {
     #[cfg(feature = "testing")]
     pub fn control_publishing(&self, plan: Option<control::Plan>, stores: &mut Stores) -> Option<Code> {
         if let Some((action, arg)) = control::record_fault(plan) {
-            let _ = stores.continuity.testing_arm(1, action, arg);
+            let _ = stores.authority.testing_arm(1, action, arg);
         }
         None
     }
@@ -848,7 +847,7 @@ impl Lane {
         stores: &mut Stores,
     ) -> Option<Code> {
         control::record_fault(plan)?; // no record point planned: an armed continuity fault is not this plan's
-        let _ = stores.continuity.testing_arm(0, 0, 0);
+        let _ = stores.authority.testing_arm(0, 0, 0);
         if matches!(published, Err(Code::TestingProcessDeath)) {
             return Some(self.control_fire(plan, stores));
         }
@@ -871,7 +870,7 @@ impl Lane {
             }
             g.parked = 0;
         }
-        stores.continuity.close();
+        stores.authority.close();
         stores.checkpoint = None;
         let mut g = lock(&self.shared);
         g.fault = Some(Code::TestingProcessDeath);
@@ -914,7 +913,7 @@ impl Lane {
                     // refuses. Restart (close + open) reads whatever the disk holds.
                     g.fault = Some(Code::TestingProcessDeath);
                     self.dead.store(true, Ordering::Release);
-                    stores.continuity.close();
+                    stores.authority.close();
                     (t, Some(Stores { checkpoint: None, ..stores }))
                 }
             };
@@ -929,7 +928,7 @@ impl Lane {
                 _ => {}
             }
             if let Some(s) = stores {
-                g.durable = s.continuity.snapshot().ok();
+                g.durable = s.authority.snapshot().ok();
                 g.capacity = s.checkpoint.as_ref().map(|c| c.capacity());
                 g.stores = Some(s);
             }
@@ -1005,7 +1004,7 @@ fn persist(stores: &mut Stores, job: &mut Job, plan: PlanArg, lane: &Lane) -> Ou
     let failed = |code: i32| Outcome::Done(ticket.resolve(Status::Failed, code));
     step!(Step::Sealed, ticket);
 
-    let authority = match stores.continuity.snapshot() {
+    let authority = match stores.authority.snapshot() {
         Ok(s) => s,
         Err(code) => return failed(code as i32),
     };
@@ -1107,11 +1106,11 @@ fn persist(stores: &mut Stores, job: &mut Job, plan: PlanArg, lane: &Lane) -> Ou
             _ => None,
         };
         if let Some((action, arg)) = arm {
-            let _ = stores.continuity.testing_arm(1, action, arg);
+            let _ = stores.authority.testing_arm(1, action, arg);
         }
     }
-    stores.continuity.set_evidence(job.observed, &job.envelope);
-    let published = stores.continuity.commit_cognition_as(job.format, Some(&durable), Some(&identity));
+    stores.authority.set_evidence(job.observed, &job.envelope);
+    let published = stores.authority.commit_cognition_as(job.format, Some(&durable), Some(&identity));
     match published {
         Ok(_) => {
             lane.count_publication();

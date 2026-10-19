@@ -423,7 +423,7 @@ static int op_status(host *h, const hj_value *op, hjw *w, host_err *e) {
     hjw_end(w, '}');
     hjw_key(w, "abi");
     hjw_object(w);
-    hjw_ku64(w, "runtime", ELPIS_RUNTIME_ABI_V6);
+    hjw_ku64(w, "runtime", ELPIS_RUNTIME_ABI_V7);
     hjw_ku64(w, "composite", ELPIS_ECS_COMPOSITE_ABI_V1);
     hjw_ku64(w, "ecs_c", ELPIS_ECS_C_ABI_VERSION);
     hjw_end(w, '}');

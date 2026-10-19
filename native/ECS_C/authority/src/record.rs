@@ -51,12 +51,11 @@
 //! | 176 | 32 | MAC: HMAC-SHA256(witness key, `elpis.ecs_c.authority.witness-mac.v1\0` ‖ bytes 0..176) |
 //! | 208 | 32 | checksum: SHA-256(`elpis.ecs_c.authority.witness.v1\0` ‖ bytes 0..208) |
 
-use elpis_continuity::sha256;
-use elpis_continuity::MAX_COUNTER;
-
 use crate::error::Code;
 use crate::hmac::{equal, hmac, wipe};
 use crate::model::*;
+use crate::register::MAX_COUNTER;
+use crate::sha256;
 
 pub const RECORD_MAGIC: &[u8; 8] = b"ELPECA01";
 pub const WITNESS_MAGIC: &[u8; 8] = b"ELPECW01";

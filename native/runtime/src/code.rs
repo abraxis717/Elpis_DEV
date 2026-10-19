@@ -1,7 +1,85 @@
-//! Stable RuntimeCore refusal codes. Continuity codes (1..=17, 255) pass through with their own values and
-//! names; RuntimeCore's own codes start at 64. The numeric values are C ABI (include/elpis/runtime.h).
+//! Stable RuntimeCore refusal codes: the durable-authority codes (1..=17, 255) and RuntimeCore's own, from 64. The
+//! numeric values are C ABI (include/elpis/runtime.h).
 
-use elpis_continuity::Code;
+/// The durable-authority refusal codes. They are the code space RuntimeCore has reported for its durable authority
+/// since ABI v1, standalone continuity's when it was the authority, kept with their values and names
+/// (`CONTINUITY_*`) by ABI v7, which retired continuity; an ECS_C refusal with an equivalent maps to one
+/// (`authority::map`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(i32)]
+pub enum Code {
+    Uninitialized = 1,
+    Unanchored = 2,
+    AlreadyAnchored = 3,
+    StateMismatch = 4,
+    Corrupt = 5,
+    PublicationRefused = 6,
+    PublicationUncertain = 7,
+    Locked = 8,
+    AuthorityMismatch = 9,
+    EvolutionPending = 10,
+    EvolutionNotPending = 11,
+    Exhausted = 12,
+    Invalid = 13,
+    Path = 14,
+    Open = 15,
+    LegacyStorage = 16,
+    /// An operating-system failure outside publication (directory creation, open, lock, read).
+    Io = 17,
+    /// Testing library only: a simulated process death at a named step.
+    TestingProcessDeath = 255,
+}
+
+impl Code {
+    pub const ALL: [Code; 18] = [
+        Code::Uninitialized,
+        Code::Unanchored,
+        Code::AlreadyAnchored,
+        Code::StateMismatch,
+        Code::Corrupt,
+        Code::PublicationRefused,
+        Code::PublicationUncertain,
+        Code::Locked,
+        Code::AuthorityMismatch,
+        Code::EvolutionPending,
+        Code::EvolutionNotPending,
+        Code::Exhausted,
+        Code::Invalid,
+        Code::Path,
+        Code::Open,
+        Code::LegacyStorage,
+        Code::Io,
+        Code::TestingProcessDeath,
+    ];
+
+    /// The stable name (`elpis_runtime_code_name`).
+    pub fn name(self) -> &'static std::ffi::CStr {
+        match self {
+            Code::Uninitialized => c"CONTINUITY_UNINITIALIZED",
+            Code::Unanchored => c"CONTINUITY_UNANCHORED",
+            Code::AlreadyAnchored => c"CONTINUITY_ALREADY_ANCHORED",
+            Code::StateMismatch => c"CONTINUITY_STATE_MISMATCH",
+            Code::Corrupt => c"CONTINUITY_CORRUPT",
+            Code::PublicationRefused => c"CONTINUITY_PUBLICATION_REFUSED",
+            Code::PublicationUncertain => c"CONTINUITY_PUBLICATION_UNCERTAIN",
+            Code::Locked => c"CONTINUITY_LOCKED",
+            Code::AuthorityMismatch => c"CONTINUITY_AUTHORITY_MISMATCH",
+            Code::EvolutionPending => c"CONTINUITY_EVOLUTION_PENDING",
+            Code::EvolutionNotPending => c"CONTINUITY_EVOLUTION_NOT_PENDING",
+            Code::Exhausted => c"CONTINUITY_EXHAUSTED",
+            Code::Invalid => c"CONTINUITY_INVALID",
+            Code::Path => c"CONTINUITY_PATH",
+            Code::Open => c"CONTINUITY_OPEN",
+            Code::LegacyStorage => c"CONTINUITY_LEGACY_STORAGE",
+            Code::Io => c"CONTINUITY_IO",
+            Code::TestingProcessDeath => c"CONTINUITY_TESTING_PROCESS_DEATH",
+        }
+    }
+
+    pub fn from_i32(value: i32) -> Option<Code> {
+        Code::ALL.iter().copied().find(|c| *c as i32 == value)
+    }
+}
 
 /// RuntimeCore's own refusals.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -121,17 +199,18 @@ impl Rt {
     }
 }
 
-/// Any RuntimeCore refusal: a continuity code (the store's own, or a fail-stop disposition) or a runtime code.
+/// Any RuntimeCore refusal: a durable-authority code (the authority's own, or a fail-stop disposition) or a runtime
+/// code.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
-    Continuity(Code),
+    Authority(Code),
     Runtime(Rt),
 }
 
 impl Error {
     pub fn code(self) -> i32 {
         match self {
-            Error::Continuity(c) => c as i32,
+            Error::Authority(c) => c as i32,
             Error::Runtime(r) => r as i32,
         }
     }
@@ -139,7 +218,7 @@ impl Error {
 
 impl From<Code> for Error {
     fn from(c: Code) -> Self {
-        Error::Continuity(c)
+        Error::Authority(c)
     }
 }
 

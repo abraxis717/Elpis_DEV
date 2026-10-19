@@ -9,13 +9,12 @@ use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use elpis_continuity::sha256;
-use elpis_continuity::{EvolutionState, StateFormat, MAX_COUNTER};
-
 use crate::error::Code;
-use crate::legacy::read_continuity;
+use crate::legacy::{read_continuity, resolve, SLOT_NAMES};
 use crate::model::*;
 use crate::record::*;
+use crate::register::{self, EvolutionState, StateFormat, MAX_COUNTER, RECORD_SIZE};
+use crate::sha256;
 use crate::store::probe::{Fault, Probe};
 use crate::store::*;
 
@@ -926,14 +925,7 @@ fn evolution_law_and_digest_match_continuity() {
     assert_eq!(send!(a, &e).unwrap_err(), Code::Invalid);
     send!(a, &Event::evolution_finalize(&o, seq(&a, &o), &pending, &d("result"))).unwrap();
     assert_eq!(ev(&a), EvolutionState::idle(1, d("result")).unwrap());
-    // The same law and digest as a continuity store driven through the same steps.
-    let t = TempDir::new();
-    let mut c = elpis_continuity::Store::new(&t.0.join("continuity")).unwrap();
-    c.open().unwrap();
-    c.reserve_evolution(Some(&EvolutionState::GENESIS), Some(&d("assertion"))).unwrap();
-    let snap = c.finalize_evolution(Some(&pending), Some(&d("result"))).unwrap();
-    assert_eq!(snap.evolution(), ev(&a));
-    assert_eq!(snap.evolution().digest(), ev(&a).digest());
+    // The same law and digest as continuity's: the frozen session below drives both through the same steps.
 }
 
 #[test]
@@ -982,14 +974,18 @@ fn a_rollback_acceptance_only_moves_forward() {
 fn legacy_import_reads_a_continuity_register_exactly_once() {
     let t = TempDir::new();
     let dir = t.0.join("continuity");
-    let mut c = elpis_continuity::Store::new(&dir).unwrap();
-    c.open().unwrap();
-    c.anchor_cognition(Some(&d("k1-legacy"))).unwrap();
-    let snap = c.reserve_evolution(Some(&EvolutionState::GENESIS), Some(&d("assertion"))).unwrap();
+    // A continuity register as standalone continuity left it: generation 2 (anchored) in slot b over the genesis in
+    // slot a, then generation 3 (the reservation) in slot a. Its encoding is pinned to the frozen vectors below.
+    let anchored = register_snapshot(2, Some(d("k1-legacy")), EvolutionState::GENESIS);
+    let pending = EvolutionState::pending(0, ZERO, d("assertion")).unwrap();
+    let snap = register::Snapshot::new(3, register::Cognition::Anchored(d("k1-legacy")), pending).unwrap();
+    write_register(&dir, &snap.encode(), &anchored.encode());
+    let held = fs::File::open(&dir).unwrap();
+    held.lock().unwrap();
     assert_eq!(read_continuity(&dir), Err(Code::Locked), "read only under continuity's own lock");
-    c.close();
+    held.unlock().unwrap();
     let record = read_continuity(&dir).unwrap();
-    assert_eq!(elpis_continuity::Snapshot::decode(&record), Ok(Some(snap)));
+    assert_eq!(register::Snapshot::decode(&record), Ok(Some(snap)));
 
     let (_t2, mut a) = fixture(4);
     let o = op(&a);
@@ -1013,10 +1009,14 @@ fn legacy_import_reads_a_continuity_register_exactly_once() {
     // A v3 (composite) lineage imports with its format.
     let t4 = TempDir::new();
     let dir4 = t4.0.join("continuity");
-    let mut c4 = elpis_continuity::Store::new(&dir4).unwrap();
-    c4.open().unwrap();
-    c4.anchor_cognition_as(StateFormat::Composite, Some(&d("ec"))).unwrap();
-    c4.close();
+    let composite = register::Snapshot::with_format(
+        2,
+        register::Cognition::Anchored(d("ec")),
+        StateFormat::Composite,
+        EvolutionState::GENESIS,
+    )
+    .unwrap();
+    write_register(&dir4, &register::Snapshot::GENESIS.encode(), &composite.encode());
     let (_t5, mut e) = fixture(4);
     let o = op(&e);
     send!(e, &Event::import_legacy(&o, seq(&e, &o), &read_continuity(&dir4).unwrap())).unwrap();
@@ -1783,4 +1783,258 @@ fn long_sequences_keep_files_bytes_recovery_work_and_metadata_constant() {
     assert!(st.receipt_count > n && st.next_founding_index >= n / 8);
     assert_eq!(st.entities.len() as u64 + st.reclaimed_count, st.next_founding_index);
     assert_eq!(st.to_bytes(capacity).len(), state_bytes(capacity), "retained metadata is fixed-size");
+}
+
+// -- the continuity register: ECS_C's legacy reader and evolution law (moved from standalone continuity) ----------
+//
+// The frozen vectors were recorded from the qualified Python continuity authority (PR #36) and moved here byte for
+// byte (tests/fixtures/README.md). Standalone continuity's store retired with it; what ECS_C still owns of it is the
+// record (read for an explicit import, never written), the slot resolution of a register directory and the evolution
+// authority with its v2 digest, and each is held to the frozen bytes.
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn unhex(s: &str) -> Vec<u8> {
+    (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
+}
+
+fn digest_of(s: &str) -> Digest {
+    unhex(s).try_into().unwrap()
+}
+
+fn frozen(name: &str) -> String {
+    fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures").join(name)).unwrap()
+}
+
+fn frozen_lines(name: &str) -> Vec<Vec<String>> {
+    frozen(name)
+        .lines()
+        .filter(|l| !l.starts_with('#') && !l.trim().is_empty())
+        .map(|l| l.split_whitespace().map(str::to_owned).collect())
+        .collect()
+}
+
+fn write_register(dir: &Path, a: &[u8], b: &[u8]) {
+    fs::create_dir_all(dir).unwrap();
+    fs::write(dir.join(SLOT_NAMES[0]), a).unwrap();
+    fs::write(dir.join(SLOT_NAMES[1]), b).unwrap();
+}
+
+fn register_snapshot(generation: u64, k1: Option<Digest>, evolution: EvolutionState) -> register::Snapshot {
+    let cognition = k1.map(register::Cognition::Anchored).unwrap_or(register::Cognition::Unanchored);
+    register::Snapshot::new(generation, cognition, evolution).unwrap()
+}
+
+#[test]
+fn frozen_v2_records_decode_encode_and_digest_exactly() {
+    let (mut ok, mut empty, mut corrupt) = (0, 0, 0);
+    for f in frozen_lines("continuity_v2_vectors.txt") {
+        assert_eq!(f.len(), 12, "{f:?}");
+        let raw = unhex(&f[11]);
+        match f[1].as_str() {
+            "ok" => {
+                let s = register::Snapshot::decode(&raw).unwrap().unwrap_or_else(|| panic!("{}", f[0]));
+                assert_eq!(s.generation(), f[2].parse::<u64>().unwrap(), "{}", f[0]);
+                let k1 = digest_of(&f[4]);
+                let cognition =
+                    if f[3] == "1" { register::Cognition::Anchored(k1) } else { register::Cognition::Unanchored };
+                assert_eq!(s.cognition(), cognition, "{}", f[0]);
+                let e = s.evolution();
+                assert_eq!(e.revision(), f[5].parse::<u64>().unwrap());
+                assert_eq!(hex(&e.head()), f[6]);
+                assert_eq!(e.assertion().map(|a| hex(&a)), (f[7] == "1").then(|| f[8].clone()));
+                assert_eq!(hex(&e.digest()), f[9], "{} evolution digest", f[0]);
+                assert_eq!(hex(&s.digest()), f[10], "{} record digest", f[0]);
+                assert_eq!(s.encode().to_vec(), raw, "{} re-encodes to the frozen bytes", f[0]);
+                ok += 1;
+            }
+            "empty" => {
+                assert_eq!(register::Snapshot::decode(&raw), Ok(None), "{}", f[0]);
+                empty += 1;
+            }
+            "corrupt" => {
+                assert_eq!(register::Snapshot::decode(&raw), Err(Code::Corrupt), "{}", f[0]);
+                corrupt += 1;
+            }
+            other => panic!("unknown expectation {other}"),
+        }
+    }
+    assert_eq!((ok, empty, corrupt), (9, 1, 19));
+}
+
+/// The frozen continuity store session, step by step: every slot decodes and re-encodes to the frozen bytes, the
+/// current authority resolves as continuity resolved it, and each step is exactly continuity's law (the anchor and
+/// commits move the cognition, a reservation and a finalization move the evolution authority, a reopen nothing). The
+/// evolution steps are then sent to an ECS_C authority, whose own evolution law must reach the same states and digests.
+#[test]
+fn the_frozen_continuity_session_resolves_and_its_evolution_law_is_ecs_cs() {
+    let (_t, mut a) = fixture(4);
+    let o = op(&a);
+    let mut previous: Option<register::Snapshot> = None;
+    let mut steps = 0;
+    for f in frozen_lines("continuity_v2_sequence.txt") {
+        let slots: [[u8; RECORD_SIZE]; 2] = [0, 1].map(|i| unhex(&f[4 + i]).try_into().unwrap());
+        for slot in &slots {
+            if let Some(s) = register::Snapshot::decode(slot).unwrap() {
+                assert_eq!(&s.encode(), slot, "step {}", f[0]);
+            }
+        }
+        let (current, _) = resolve(&slots).unwrap();
+        let arg = |i: usize| digest_of(&f[i]);
+        match (f[1].as_str(), previous) {
+            ("open", None) => assert_eq!(current, register::Snapshot::GENESIS),
+            ("reopen", Some(p)) => assert_eq!(current, p),
+            (op_name, Some(p)) => {
+                assert_eq!(current.generation(), p.generation() + 1, "step {}", f[0]);
+                let (cognition, evolution) = match op_name {
+                    "anchor" => (register::Cognition::Anchored(arg(2)), p.evolution()),
+                    "commit" => {
+                        assert_eq!(p.cognition(), register::Cognition::Anchored(arg(2)));
+                        (register::Cognition::Anchored(arg(3)), p.evolution())
+                    }
+                    "reserve" => {
+                        let e = p.evolution();
+                        let next = EvolutionState::pending(e.revision(), e.head(), arg(2)).unwrap();
+                        send!(a, &Event::evolution_reserve(&o, seq(&a, &o), &e, &arg(2))).unwrap();
+                        (p.cognition(), next)
+                    }
+                    "finalize" => {
+                        let e = p.evolution();
+                        let next = EvolutionState::idle(e.revision() + 1, arg(2)).unwrap();
+                        send!(a, &Event::evolution_finalize(&o, seq(&a, &o), &e, &arg(2))).unwrap();
+                        (p.cognition(), next)
+                    }
+                    other => panic!("unknown op {other}"),
+                };
+                assert_eq!((current.cognition(), current.evolution()), (cognition, evolution), "step {}", f[0]);
+                let ecs_c = a.current().unwrap().state.evolution;
+                assert_eq!(ecs_c, current.evolution(), "step {}", f[0]);
+                assert_eq!(ecs_c.digest(), current.evolution().digest(), "step {}", f[0]);
+            }
+            (other, None) => panic!("the session starts with open, not {other}"),
+        }
+        previous = Some(current);
+        steps += 1;
+    }
+    assert_eq!(steps, 10);
+    assert_eq!(a.current().unwrap().state.evolution.revision(), 2, "two finalized assertions");
+}
+
+#[test]
+fn a_register_resolves_to_the_higher_valid_generation_and_ambiguity_is_refused() {
+    let older = register_snapshot(6, Some(d("k1-6")), EvolutionState::GENESIS);
+    let newer = register_snapshot(7, Some(d("k1-7")), EvolutionState::GENESIS);
+    let t = TempDir::new();
+    for (i, (a, b)) in [(older, newer), (newer, older)].into_iter().enumerate() {
+        let dir = t.0.join(format!("c{i}"));
+        write_register(&dir, &a.encode(), &b.encode());
+        assert_eq!(register::Snapshot::decode(&read_continuity(&dir).unwrap()), Ok(Some(newer)));
+        assert_eq!(resolve(&[a.encode(), b.encode()]).unwrap(), (newer, 1 - i));
+    }
+    // Equal generations are ambiguous, and no valid record is corrupt: the import is refused.
+    let one = register_snapshot(5, Some(d("k1-1")), EvolutionState::GENESIS);
+    let two = register_snapshot(5, Some(d("k1-2")), EvolutionState::GENESIS);
+    assert_eq!(resolve(&[one.encode(), two.encode()]), Err(Code::Corrupt));
+    assert_eq!(resolve(&[[1u8; RECORD_SIZE], [0u8; RECORD_SIZE]]), Err(Code::Corrupt));
+    write_register(&t.0.join("eq"), &one.encode(), &two.encode());
+    assert_eq!(read_continuity(&t.0.join("eq")), Err(Code::LegacyRefused));
+    // A checksum fault in the newer slot leaves the older record the current one: integrity evidence only.
+    let mut torn = newer.encode();
+    torn[40] ^= 1;
+    write_register(&t.0.join("torn"), &older.encode(), &torn);
+    assert_eq!(register::Snapshot::decode(&read_continuity(&t.0.join("torn")).unwrap()), Ok(Some(older)));
+    // A slot of the wrong size is not a register.
+    write_register(&t.0.join("short"), &older.encode()[..RECORD_SIZE - 1], &newer.encode());
+    assert_eq!(read_continuity(&t.0.join("short")), Err(Code::LegacyRefused));
+}
+
+fn composite_snapshot(generation: u64, digest: Digest) -> register::Snapshot {
+    register::Snapshot::with_format(
+        generation,
+        register::Cognition::Anchored(digest),
+        StateFormat::Composite,
+        EvolutionState::GENESIS,
+    )
+    .unwrap()
+}
+
+#[test]
+fn v3_records_encode_only_composite_lineages_and_round_trip() {
+    let s = composite_snapshot(7, d("ec-7"));
+    let raw = s.encode();
+    assert_eq!(&raw[0..8], b"ELPCONT\x03");
+    assert_eq!(raw[8..10], 3u16.to_be_bytes());
+    assert_eq!((raw[24], raw[25]), (1, 1));
+    assert_eq!(&raw[32..64], &d("ec-7"));
+    assert_eq!(raw[144..], sha256::digest(&[b"elpis.continuity.register.v3\0", &raw[..144]]));
+    assert_eq!(register::Snapshot::decode(&raw), Ok(Some(s)));
+    assert_eq!(s.digest(), digest_of(&hex(&raw[144..])));
+    // The same identity in a K1 lineage is a different record (v2, byte 25 zero, another checksum domain).
+    let k1 = register_snapshot(7, Some(d("ec-7")), EvolutionState::GENESIS);
+    let v2 = k1.encode();
+    assert_eq!(&v2[0..8], b"ELPCONT\x02");
+    assert_eq!(v2[25], 0);
+    assert_ne!(k1.digest(), s.digest());
+    // An unanchored composite authority does not exist, in either representation.
+    assert_eq!(
+        register::Snapshot::with_format(
+            3,
+            register::Cognition::Unanchored,
+            StateFormat::Composite,
+            EvolutionState::GENESIS
+        ),
+        Err(Code::Corrupt)
+    );
+    let mut bad = raw;
+    bad[24] = 0;
+    bad[32..64].copy_from_slice(&ZERO);
+    let sum = sha256::digest(&[b"elpis.continuity.register.v3\0", &bad[..144]]);
+    bad[144..].copy_from_slice(&sum);
+    assert_eq!(register::Snapshot::decode(&bad), Err(Code::Corrupt));
+}
+
+#[test]
+fn v3_and_v2_markers_cannot_be_mixed() {
+    let raw = composite_snapshot(4, d("ec")).encode();
+    let reseal = |mut r: [u8; RECORD_SIZE], domain: &[u8]| {
+        let sum = sha256::digest(&[domain, &r[..144]]);
+        r[144..].copy_from_slice(&sum);
+        r
+    };
+    let v2_domain: &[u8] = b"elpis.continuity.register.v2\0";
+    let v3_domain: &[u8] = b"elpis.continuity.register.v3\0";
+    for format in [0u8, 2, 255] {
+        let mut r = raw;
+        r[25] = format;
+        assert_eq!(register::Snapshot::decode(&reseal(r, v3_domain)), Err(Code::Corrupt), "format {format}");
+    }
+    assert_eq!(register::Snapshot::decode(&reseal(raw, v2_domain)), Err(Code::Corrupt));
+    let mut r = raw;
+    r[0..8].copy_from_slice(b"ELPCONT\x02");
+    r[8..10].copy_from_slice(&2u16.to_be_bytes());
+    assert_eq!(register::Snapshot::decode(&reseal(r, v2_domain)), Err(Code::Corrupt));
+    let mut r = raw;
+    r[8..10].copy_from_slice(&2u16.to_be_bytes());
+    assert_eq!(register::Snapshot::decode(&reseal(r, v3_domain)), Err(Code::Corrupt));
+    for at in 26..32 {
+        let mut r = raw;
+        r[at] = 1;
+        assert_eq!(register::Snapshot::decode(&reseal(r, v3_domain)), Err(Code::Corrupt), "byte {at}");
+    }
+}
+
+#[cfg(feature = "c-abi")]
+#[test]
+fn an_idle_evolution_authority_cannot_carry_an_assertion_in_the_c_abi() {
+    use crate::ffi::{elpis_ecs_c_evolution_digest, CEvolution};
+    let mut e = CEvolution { revision: 0, ..Default::default() };
+    let mut out = [0u8; 32];
+    assert_eq!(unsafe { elpis_ecs_c_evolution_digest(&e, out.as_mut_ptr()) }, 0);
+    assert_eq!(out, EvolutionState::GENESIS.digest());
+    e.assertion = d("arbitrary");
+    assert_eq!(unsafe { elpis_ecs_c_evolution_digest(&e, out.as_mut_ptr()) }, Code::Invalid as i32);
+    e.pending = 2;
+    assert_eq!(unsafe { elpis_ecs_c_evolution_digest(&e, out.as_mut_ptr()) }, Code::Invalid as i32);
 }
