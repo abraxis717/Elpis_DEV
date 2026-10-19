@@ -1,9 +1,10 @@
 /* Native admission of the host's libraries (docs/NATIVE_HOST.md, "Admission"): the native counterpart of
  * elpis.substrate.native_admission. Every library is opened beneath the deployment's lib directory with
  * openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS), copied into a sealed memfd, hashed there against its catalog pin and
- * loaded from the seal, in dependency order; afterwards every Elpis dependency the loader binds by SONAME is checked
- * to be the object admitted under that name. The pins authenticate bytes, not a publisher; the loader, the kernel and
- * the platform libraries are trusted. */
+ * loaded from the seal, in dependency order. Before the loader sees a library, every DT_NEEDED it names must be the
+ * SONAME of a library admitted before it or a platform library (the C runtime, the loader, the sanitizer runtimes);
+ * afterwards every SONAME is checked to bind exactly the object admitted under it. The pins authenticate bytes, not a
+ * publisher; the loader, the kernel and the platform libraries are trusted. */
 #ifndef ELPIS_HOST_ADMIT_H
 #define ELPIS_HOST_ADMIT_H
 

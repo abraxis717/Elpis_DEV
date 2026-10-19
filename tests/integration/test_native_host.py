@@ -163,9 +163,15 @@ def _dynamic(path):
     return needed, paths
 
 
+# A sanitizer build adds its runtime (and that runtime's own dependencies) to every process; nothing else.
+_SANITIZERS = ("libasan.so", "libubsan.so", "libtsan.so")
+SANITIZED = any(n.startswith(_SANITIZERS) for n in (_dynamic(HOST)[0] if HOST.exists() else ()))
+
+
 def test_the_host_links_only_the_c_library():
     for exe in (HOST, HOST_TESTING):
         needed, paths = _dynamic(exe)
+        needed = [n for n in needed if not n.startswith(_SANITIZERS)]
         assert needed == ["libc.so.6"] and paths == [], (exe, needed, paths)
         data = exe.read_bytes()
         assert b"libpython" not in data and b"Py_Initialize" not in data
@@ -206,6 +212,8 @@ def test_a_live_host_maps_no_interpreter_and_its_descriptors_never_grow(tmp_path
         sealed = {(dev, ino) for dev, ino, p in objects if p.startswith("/memfd:elpis-admitted")}
         assert len(sealed) == 7, paths                        # seven distinct admitted objects, each from its seal
         others = {os.path.basename(p) for p in paths if not p.startswith("/memfd:")}
+        if SANITIZED:                                         # the sanitizer runtime and what it needs
+            others = {o for o in others if not o.startswith(_SANITIZERS + ("libstdc++.so", "libm.so"))}
         assert others <= {"elpis_testing", "libc.so.6", "ld-linux-x86-64.so.2", "ld-linux-aarch64.so.1",
                           "libgcc_s.so.1"}, others
         seen.append(_descriptors(pid))
@@ -240,6 +248,21 @@ def test_init_pins_the_libraries_and_the_host_and_the_build_tree_is_never_used_a
     assert rc == 0 and out[0]["lineage"] is None and out[0]["authority"]["disposition"] == "CLEAN"
     assert out[0]["abi"] == {"runtime": 6, "composite": 1, "ecs_c": 1}
     assert out[0]["capabilities"]["text"].startswith("UNAVAILABLE: ECS_CODEC_UNQUALIFIED")
+
+
+def test_a_library_naming_an_unadmitted_dependency_is_refused_before_it_loads(tmp_path):
+    # A pinned library is still checked: one whose dynamic section names a library that is neither admitted before
+    # it nor part of the platform is refused at init, before the loader could resolve that name anywhere.
+    staging = _staging(tmp_path)
+    lib = staging / "native/runtime/libelpis_hacf_observation.so"
+    data = lib.read_bytes()
+    needed = [n for n in _dynamic(lib)[0]]
+    assert "libc.so.6" in needed and data.count(b"\0libc.so.6\0") == 1, needed
+    lib.write_bytes(data.replace(b"\0libc.so.6\0", b"\0libX.so.6\0"))
+    rc, out = host(tmp_path / "home", "init", "--native-build", str(staging))
+    assert (rc, out[0]["code"]) == (4, "DEPLOYMENT_PIN"), out
+    assert "libelpis_hacf_observation.so depends on libX.so.6" in out[0]["detail"]
+    assert not (tmp_path / "home" / "host.cfg").exists()     # nothing was published
 
 
 def _drift(home, what):
@@ -307,8 +330,19 @@ def test_the_home_path_is_checked_and_nothing_is_overwritten(tmp_path):
 
 # ---- the operator surface --------------------------------------------------------------------------------------
 
+def _sanitizer_preload():
+    """The sanitizer runtimes the host links, by path: an uninstrumented interpreter loading sanitizer-built
+    libraries must preload them (the native host links them itself)."""
+    text = subprocess.run(["ldd", str(HOST)], capture_output=True, text=True, check=True).stdout
+    paths = [line.split("=>", 1)[1].split("(", 1)[0].strip() for line in text.splitlines()
+             if "=>" in line and line.strip().startswith(_SANITIZERS)]
+    return {"LD_PRELOAD": " ".join(paths), "ASAN_OPTIONS": "detect_leaks=0"}
+
+
 def _python_cli(home, *args, script=None):
     env = dict(os.environ, PYTHONPATH=str(REPO / "src"), PYTHONDONTWRITEBYTECODE="1")
+    if SANITIZED:
+        env.update(_sanitizer_preload())
     cmd = [sys.executable, "-m", "elpis.runtime.cli", "--home", str(home), *args]
     if script is not None:
         cmd += ["session", "--script", "-"]

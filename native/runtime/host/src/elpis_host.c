@@ -1918,10 +1918,12 @@ int main(int argc, char **argv) {
         if (!(script = read_script(argv[5], &script_len, err, sizeof err))) return emit_failure("session", "CLI_INPUT", err), 2;
         size_t b = 0;
         while (b < script_len && (script[b] == ' ' || script[b] == '\n' || script[b] == '\t' || script[b] == '\r')) ++b;
-        if (b < script_len && script[b] == '[') {
-            if (parse_json(script, script_len, &script_doc, err, sizeof err))
-                return emit_failure("session", "CLI_INPUT", err), 2;
-        } else if (script_lines(script, script_len, 0, NULL, NULL, err, sizeof err)) {
+        const int malformed = b < script_len && script[b] == '['
+                                  ? parse_json(script, script_len, &script_doc, err, sizeof err)
+                                  : script_lines(script, script_len, 0, NULL, NULL, err, sizeof err);
+        if (malformed || (script_doc && script_doc->kind != HJ_ARRAY)) {
+            if (!malformed) snprintf(err, sizeof err, "a script is a JSON array or JSON lines of operations");
+            free(script);
             return emit_failure("session", "CLI_INPUT", err), 2;
         }
     } else if (spec) {
@@ -1934,16 +1936,15 @@ int main(int argc, char **argv) {
     }
     static host h;
     host_err e = {{0}, {0}, 0};
-    if (host_open(home, &h.d, &e)) return emit_failure(spec ? spec->op : command, e.code, e.detail), 4;
+    if (host_open(home, &h.d, &e)) {
+        free(script);
+        return emit_failure(spec ? spec->op : command, e.code, e.detail), 4;
+    }
     h.d.api.elpis_runtime_fuel_ceiling(&h.ceiling);
     int all_ok = 1;
     if (!strcmp(command, "create")) {
         all_ok = cmd_create(&h, argc - 4, argv + 4) == 0;
     } else if (script_doc) {
-        if (script_doc->kind != HJ_ARRAY) {
-            emit_failure("session", "CLI_INPUT", "a script is a JSON array or JSON lines of operations");
-            return 2;
-        }
         for (size_t i = 0; i < script_doc->count; ++i) all_ok &= run(&h, &script_doc->items[i]);
     } else if (script) {
         script_lines(script, script_len, 1, &h, &all_ok, err, sizeof err);
@@ -1959,5 +1960,6 @@ int main(int argc, char **argv) {
     }
     session_close(&h);
     free(script);
+    free(ARENA.bytes);
     return all_ok ? 0 : 3;
 }

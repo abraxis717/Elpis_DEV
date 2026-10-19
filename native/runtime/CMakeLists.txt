@@ -145,6 +145,9 @@ target_compile_definitions(elpis_host_testing PRIVATE ELPIS_HOST_TESTING=1)
 elpis_add_library(runtime elpis_hacf_observation SHARED observation/src/ecs_observation_hacf.c)
 target_include_directories(elpis_hacf_observation PUBLIC observation/include)
 target_link_libraries(elpis_hacf_observation PUBLIC elpis_ecs_memory elpis_semantic)
+# Name only the libraries it uses, whatever the toolchain's default (the native host refuses an admitted library that
+# depends on one it did not admit: docs/NATIVE_HOST.md, "Admission").
+target_link_options(elpis_hacf_observation PRIVATE "LINKER:--as-needed")
 elpis_add_test(runtime test_ecs_observation_hacf SOURCES observation/tests/test_ecs_observation_hacf.c
   INCLUDES "${CMAKE_SOURCE_DIR}/native/ECS_C/memory/tests"
   LIBS elpis_hacf_observation elpis_ecs_memory elpis_semantic elpis_hash TIMEOUT 120)

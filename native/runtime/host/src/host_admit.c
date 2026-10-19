@@ -5,6 +5,7 @@
 #include "host_admit.h"
 
 #include <dlfcn.h>
+#include <elf.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/openat2.h>
@@ -81,10 +82,97 @@ int host_digest_self(uint8_t out[32], char *err, size_t errlen) {
     return rc ? fail(err, errlen, "cannot read", "/proc/self/exe") : 0;
 }
 
+/* ---- the dependencies a library names (its ELF dynamic section), checked before it is loaded ----------------- */
+
+#if defined(__x86_64__)
+#define HOST_MACHINE EM_X86_64
+#elif defined(__aarch64__)
+#define HOST_MACHINE EM_AARCH64
+#else
+#error "the native host admits 64-bit x86 or AArch64 ELF objects only"
+#endif
+
+/* The platform the loader, the kernel and the C runtime provide (trusted, docs/NATIVE_HOST.md), sanitizer runtimes
+ * included. Every other dependency must be a library admitted before this one. */
+static int platform_library(const char *name) {
+    static const char *const exact[] = {"libc.so.6", "libm.so.6", "libgcc_s.so.1", "libdl.so.2", "libpthread.so.0",
+                                        "librt.so.1", "ld-linux-x86-64.so.2", "ld-linux-aarch64.so.1"};
+    static const char *const prefix[] = {"libasan.so.", "libubsan.so.", "libtsan.so."};
+    for (size_t i = 0; i < sizeof exact / sizeof *exact; ++i)
+        if (!strcmp(name, exact[i])) return 1;
+    for (size_t i = 0; i < sizeof prefix / sizeof *prefix; ++i)
+        if (!strncmp(name, prefix[i], strlen(prefix[i]))) return 1;
+    return 0;
+}
+
+/* The file offset of virtual address `va` (inside a PT_LOAD segment's file image), or (uint64_t)-1. */
+static uint64_t file_offset(const Elf64_Phdr *ph, size_t n, uint64_t va, uint64_t size) {
+    for (size_t i = 0; i < n; ++i)
+        if (ph[i].p_type == PT_LOAD && va >= ph[i].p_vaddr && va - ph[i].p_vaddr < ph[i].p_filesz) {
+            const uint64_t off = ph[i].p_offset + (va - ph[i].p_vaddr);
+            return off < size ? off : (uint64_t)-1;
+        }
+    return (uint64_t)-1;
+}
+
+/* Refuse unless every DT_NEEDED of the sealed image names an admitted SONAME (pins[0..i)) or a platform library. */
+static int check_needed(int sealed, const host_pin *pins, size_t i, char *err, size_t errlen) {
+    const host_pin *pin = &pins[i];
+    void *map = mmap(NULL, pin->size, PROT_READ, MAP_PRIVATE, sealed, 0);
+    if (map == MAP_FAILED) return fail(err, errlen, "cannot map", pin->file);
+    const uint8_t *img = map;
+    const uint64_t size = pin->size;
+    int rc = -1;
+    const char *why = "not a well-formed 64-bit ELF shared object for this machine";
+    const Elf64_Ehdr *eh = (const Elf64_Ehdr *)img;
+    if (size < sizeof *eh || memcmp(eh->e_ident, ELFMAG, SELFMAG) || eh->e_ident[EI_CLASS] != ELFCLASS64 ||
+        eh->e_ident[EI_DATA] != ELFDATA2LSB || eh->e_type != ET_DYN || eh->e_machine != HOST_MACHINE ||
+        eh->e_phentsize != sizeof(Elf64_Phdr) || eh->e_phoff > size || eh->e_phnum > (size - eh->e_phoff) / sizeof(Elf64_Phdr))
+        goto out;
+    const Elf64_Phdr *ph = (const Elf64_Phdr *)(img + eh->e_phoff);
+    const Elf64_Dyn *dyn = NULL;
+    size_t ndyn = 0;
+    for (size_t k = 0; k < eh->e_phnum; ++k)
+        if (ph[k].p_type == PT_DYNAMIC) {
+            if (ph[k].p_offset > size || ph[k].p_filesz > size - ph[k].p_offset) goto out;
+            dyn = (const Elf64_Dyn *)(img + ph[k].p_offset), ndyn = ph[k].p_filesz / sizeof(Elf64_Dyn);
+        }
+    uint64_t strtab = (uint64_t)-1, strsz = 0;
+    for (size_t k = 0; dyn && k < ndyn && dyn[k].d_tag != DT_NULL; ++k) {
+        if (dyn[k].d_tag == DT_STRTAB) strtab = file_offset(ph, eh->e_phnum, dyn[k].d_un.d_ptr, size);
+        if (dyn[k].d_tag == DT_STRSZ) strsz = dyn[k].d_un.d_val;
+    }
+    if (!dyn || strtab == (uint64_t)-1 || strsz > size - strtab) goto out;
+    for (size_t k = 0; k < ndyn && dyn[k].d_tag != DT_NULL; ++k) {
+        if (dyn[k].d_tag != DT_NEEDED) continue;
+        const uint64_t at = dyn[k].d_un.d_val;
+        if (at >= strsz || !memchr(img + strtab + at, 0, strsz - at)) goto out;
+        const char *name = (const char *)img + strtab + at;
+        int admitted = platform_library(name);
+        for (size_t j = 0; j < i && !admitted; ++j) admitted = !strcmp(name, pins[j].soname);
+        if (!admitted) {
+            errno = 0;
+            snprintf(err, errlen, "%s depends on %s, which is neither admitted before it nor a platform library",
+                     pin->file, name);
+            rc = -2;
+            goto out;
+        }
+    }
+    rc = 0;
+out:
+    munmap(map, pin->size);
+    if (rc == -1) {
+        errno = 0;
+        snprintf(err, errlen, "%s: %s", pin->file, why);
+    }
+    return rc ? -1 : 0;
+}
+
 /* Copy, seal, hash, then load from the seal: the verified bytes are the bytes that run. The sealed descriptor stays
  * open (*kept): the loader knows a loaded object by its path, and a closed descriptor's number, reused by the next
  * memfd, would name the next library exactly as this one. */
-static void *load_sealed(int dirfd, const host_pin *pin, int *kept, char *err, size_t errlen) {
+static void *load_sealed(int dirfd, const host_pin *pins, size_t index, int *kept, char *err, size_t errlen) {
+    const host_pin *pin = &pins[index];
     static uint8_t buf[CHUNK];
     errno = 0;
     const int src = host_open_beneath(dirfd, pin->file);
@@ -128,6 +216,7 @@ static void *load_sealed(int dirfd, const host_pin *pin, int *kept, char *err, s
         fail(err, errlen, "SHA-256 differs from its pin", pin->file);
         goto out;
     }
+    if (check_needed(sealed, pins, index, err, errlen)) goto out; /* before the loader sees it */
     char path[64];
     snprintf(path, sizeof path, "/proc/self/fd/%d", sealed);
     handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
@@ -147,7 +236,7 @@ int host_admit(int dirfd, const host_pin *pins, size_t n, void **handles, int *s
     if (err && errlen) err[0] = 0;
     for (size_t i = 0; i < n; ++i) {
         sealed[i] = -1;
-        handles[i] = load_sealed(dirfd, &pins[i], &sealed[i], err, errlen);
+        handles[i] = load_sealed(dirfd, pins, i, &sealed[i], err, errlen);
         if (!handles[i]) return -1;
         for (size_t j = 0; j < i; ++j)
             if (handles[j] == handles[i]) { /* the loader handed back an object it already had: never this one */
