@@ -1,0 +1,123 @@
+{
+ "evidence_schema": {
+  "freeze": "elpis.ecs-c-recovery-q0.freeze.v1",
+  "record": "elpis.ecs-c-recovery-q0.record.v1",
+  "run": "elpis.ecs-c-recovery-q0.run.v1",
+  "verdict": "elpis.ecs-c-recovery-q0.verdict.v1"
+ },
+ "filesystem": {
+  "type": "ext2/ext3",
+  "work_root": "/home/user/elpis-work/q0-117b41a"
+ },
+ "gates": [
+  "G1",
+  "G2",
+  "G3",
+  "G4",
+  "G5",
+  "G6"
+ ],
+ "inputs": "qual",
+ "installed": {
+  "bin": {
+   "elpis": "fbec15530b8709168f84649bf36e4f8c5ba47cda5c9f1686a06c2c8cbd93d9e0",
+   "elpis_testing": "1a2a8d95c341c6433008e4c2bc5c2f3abb38722ba4386d9f21670e41282ece87"
+  },
+  "lib": {
+   "libelpis_ecs_c_authority.so": "75e823db73c63dc8d13ea86063378efbeb8d8ede2f9f9e55e5b278af85e03315",
+   "libelpis_ecs_composite.so": "ee7586a1c246fcc844ad831ac6aff559b52de52d69ad0ae17052e248d22d570a",
+   "libelpis_ecs_memory.so": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+   "libelpis_ecsg_k1.so": "d8d352f075d80d9d6dd4dcabc5b0ac9ef4f1324efd9b4e93db95dcfe003d64da",
+   "libelpis_ecsg_math.so": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+   "libelpis_hacf_observation.so": "485c274668efd10cd4bced5c01b6317fb810e81c5b0a193bf0ad616a7b65174a",
+   "libelpis_runtime.so": "bb23ad120a42cc87c94b15cac99488d1eacfda5d2d879b8f7c552d70609d211d",
+   "libelpis_runtime_testing.so": "b8076c0b9f865de017ebaf292c6b0d0168a945d6339ffbcd9ea115f8450cf1e8"
+  }
+ },
+ "instrument": {
+  "files": {
+   "README.md": "df4977235384f6ab14f459d4bee81e723eddbb498f5aa5939d4118cefab18732",
+   "check.py": "f2267798fcf65d8046fd4925c994b62c98d3c12498d4805c5fbe4bc306f8c34c",
+   "freeze.py": "6a6f4a96162b66f4bb941209918807b8303612f0dd971d25e8d9243920bfdb9a",
+   "plan.json": "18e0ebbe44da225a8ed58616127e9befe41cc943e210020b890cb7fdcd1205fb",
+   "runner.py": "c5eba0e1117d37c1693473e30fd278917fa6e3741d186ec05618f91ae96e99b2"
+  },
+  "specification": "95e2a6825506cf965f2cd04f018046a719181e5bdb436045b2c50ff6b7d0d937"
+ },
+ "plan": "elpis.ecs-c-recovery-q0.plan.v1",
+ "platform": {
+  "kernel": "6.18.44-fc-v139",
+  "libc": "glibc-2.39",
+  "machine": "x86_64",
+  "system": "Linux"
+ },
+ "premise": {
+  "problems": [],
+  "production_views": {
+   "native/ECS_C/authority/src/record.rs": "b46d369542df5151e48b3d94289861e4293cb718593935e1e5f614b79025730e",
+   "native/ECS_C/authority/src/store.rs": "53da7d25bca69b01a1408c88e644315c2014f809e8e1ce9d9b24e79c87469ab3",
+   "native/runtime/src/authority.rs": "43de3f87bab4485c95e73292b590cc2b795be039b3ff52f273ce00bf83444d11",
+   "native/runtime/src/checkpoint.rs": "3b77747da37136da463a8881e01b674433b034998a36350e14b53514059d972d",
+   "native/runtime/src/core.rs": "b8ef83fded616751eceec095bbeda8849ef4bcbd1c9df2261271bff905572f78",
+   "native/runtime/src/durable.rs": "a14c350eefe3fc2e2ea0510566c82f50cb45b7ca968ebee4f46b2e6f6f655e17",
+   "native/runtime/src/ffi.rs": "8609ef676ffe85a84fdc04fd77779bf15ef06d187911efa7085b7a3e1f5875f3"
+  },
+  "testing_symbols": [
+   "elpis_runtime_testing_checkpoint_io_counters",
+   "elpis_runtime_testing_control_fault",
+   "elpis_runtime_testing_durable_fault",
+   "elpis_runtime_testing_durable_hold",
+   "elpis_runtime_testing_fault",
+   "elpis_runtime_testing_io_counters"
+  ]
+ },
+ "python": {
+  "elpis_imported": [],
+  "executable": "/usr/bin/python3.12",
+  "implementation": "CPython",
+  "isolated": 1,
+  "no_bytecode": 1,
+  "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+ },
+ "schema": "elpis.ecs-c-recovery-q0.freeze.v1",
+ "source": {
+  "clean": true,
+  "commit": "117b41ad8a1a1fd25963489d4b29a66b284c4632",
+  "status": [],
+  "tree": "bcb8e462189cff11cb924e8ee6346b988425d7c9"
+ },
+ "specification": "docs/qualification/ECS_C_RECOVERY_Q0.md",
+ "subject": {
+  "native/ECS_C/authority/src/error.rs": "f21d9a09076d930f450b7a6ca8286155c43143443a290a594ade757ada63556c",
+  "native/ECS_C/authority/src/ffi.rs": "2dcbb641f9abf89c0398fc57d287455d7d9cd854228685e4ef2a4ccf7a2f5e3d",
+  "native/ECS_C/authority/src/hmac.rs": "ec1edd9c5297643ef86edde32f550fce1e41156fe2d7c9acbf40e751c9bcac29",
+  "native/ECS_C/authority/src/legacy.rs": "28ffd5a87c36f3a3c060d1738213853390c31066bc3df4325372aeaf2c96e6b3",
+  "native/ECS_C/authority/src/lib.rs": "aed4e3cf917790e573fdbe35728bf9e577b3f88a846f008580423633a4c98215",
+  "native/ECS_C/authority/src/model.rs": "95c78d77cc52c201329631068ee2746b0446cc31b4f3bd4d1434fe4261dbce13",
+  "native/ECS_C/authority/src/record.rs": "b941176b3ab8bb830b6c9c6bf7080b3650af8a039e27628eb8363e58303c9670",
+  "native/ECS_C/authority/src/store.rs": "5a9b46f95bb5df1714e3176b364ce4b347af3ec9876e4d89a45e16c0b62901e2",
+  "native/ECS_C/authority/src/tests.rs": "900cca60547af3cece854ed48d6b18928f6409149421a3b4a774dddedad1f0ff",
+  "native/runtime/host/src/elpis_host.c": "8962824ae1b8eadaa1d9f953876814228771ec7a5711d6bba2193cf37414ab2f",
+  "native/runtime/host/src/host_admit.c": "96b9b2a91bc0aea20b7d099e77ae35ca623c20da75e77f247c140b54b320c19e",
+  "native/runtime/host/src/host_admit.h": "346b36ad9c4290cac097767ecb8331e4e1d9fe6d00802d19e5efd2932c830258",
+  "native/runtime/host/src/host_contain.c": "25e5bd5c1f45ebce87ebd57ea00b1fc935891d79abf52fab80d6e2ef5190a629",
+  "native/runtime/host/src/host_contain.h": "bc8e7b7e43aac3c5e0ec726889dc0b9729001a4d4e32f4ec6929ba06353ddef6",
+  "native/runtime/host/src/host_deploy.c": "000810ee42aea85bc4c32fa9a8c951456d09274e62d6a0ac030e07b21fee5052",
+  "native/runtime/host/src/host_deploy.h": "6cc4c38ab1ce179ec0f74af8586b349f8a86f4f6d5417ec0af0ddb58f4f7461c",
+  "native/runtime/host/src/host_json.c": "fbb99af6dad37834feacd5d8bf213945cef3eb53ede7df246bd1d996016ecd0d",
+  "native/runtime/host/src/host_json.h": "519e4784f97eaadb5837f91f4f8369a479cf2578b3cf95231c4e3c8dd9e65e14",
+  "native/runtime/include/elpis/runtime.h": "4673eb768b22851b535c15a317b86ab7aa45cb0b8d8a19601f166eb06b333bf1",
+  "native/runtime/src/authority.rs": "cd3f2e709e1c4d60dd194eb276bad6678554046cb98cb291cde81597e2588cd7",
+  "native/runtime/src/checkpoint.rs": "74282dc5538c8191478e774e5444edd0b11bf0fd34ca214d3cb43af6efa9fd0c",
+  "native/runtime/src/core.rs": "e8dd1009fbb8b201803f30f1fee5633bfcb725afa03843f58b96e31162820a07",
+  "native/runtime/src/durable.rs": "d4d37a66ca7119f3e42d256839fabcc39b68122c7c5c65f252284b6465509346",
+  "native/runtime/src/ffi.rs": "a35713733c0031dbf4d7e7f9307d45cd56675257a443d4d64e20d84e995e837b"
+ },
+ "toolchain": {
+  "c++": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "cargo": "cargo 1.97.0 (c980f4866 2026-06-30)",
+  "cc": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "cmake": "cmake version 3.28.3",
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)"
+ }
+}
