@@ -228,7 +228,12 @@ anchor, import, evolution and recovery code paths are the same code over either 
   ENTITY_LIFECYCLE, SOURCE_VERSION, ENTITY_RECLAIM and IMPORT_LEGACY, sent by an operator entity. RuntimeCore's own
   kinds and the reconciliations are `RUNTIME_INVALID` (whoever they claim to be from); an event while a managed turn
   is open is `RUNTIME_TURN_OPEN` (a turn's admission never changes under it); closed or fail-stopped, refused as every
-  operation. The admission table follows the authority whatever the outcome.
+  operation. The admission table follows the authority whatever the outcome. The caller builds an event from what
+  the held authority reads back: `elpis_runtime_authority_entity_at` (one entity row, laid out as
+  `elpis_ecs_c_entity`: identities, lifecycles, sender watermarks) and `elpis_runtime_authority_next_entity_id` (the
+  receiver the next ENTITY_FOUND must name). Both are reads (they change nothing), refused closed or fail-stopped, and
+  `RUNTIME_INVALID` under continuity, past the last row or for an unknown kind. They were added to ABI v6 before any
+  release, for the native operator host (Stage F, docs/NATIVE_HOST.md).
 * **An authority that is not in its normal mode refuses the open** (`RUNTIME_AUTHORITY`): restricted, reconcile-only
   (rollback, corrupt or unauthenticated acknowledged record, missing witness) or refused by recovery. The runtime stays
   closed; `elpis_runtime_authority_status` reports the recovery disposition, the mode and the exact ECS_C code, readable

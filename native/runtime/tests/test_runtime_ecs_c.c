@@ -6,7 +6,8 @@
  *   admitted against the authority's sources before the native call (an unknown source, and a source past its
  *   per-turn bound, are refused RUNTIME_OBSERVATION_REFUSED with the turn kept and nothing crossing); operator events
  *   reach the held authority only through elpis_runtime_authority_transition (refused while a turn is open, and for
- *   RuntimeCore's own kinds), and a DORMANT source is refused; every durable publication records the evidence summary
+ *   RuntimeCore's own kinds), built from the rows the runtime reads back (byte-identical to the authority's own), and
+ *   a DORMANT source is refused; every durable publication records the evidence summary
  *   of what it makes durable; a restart through the authority's ABI reads the same record; copied-back records refuse
  *   the runtime's open (RUNTIME_AUTHORITY, the disposition reported), the operator reconciles exactly what the
  *   authority names, and the runtime reopens at the abandoned generation + 1.
@@ -154,6 +155,12 @@ static uint64_t next_seq(elpis_ecs_c_authority *a, const uint8_t who[32]) {
     EOK(elpis_ecs_c_entity_find(a, who, &e));
     return e.sender_watermark + 1;
 }
+/* The same, read through the runtime that holds the authority (row 0 is the operator). */
+static uint64_t held_seq(elpis_runtime *rt, uint32_t row) {
+    elpis_runtime_authority_entity e;
+    OK(elpis_runtime_authority_entity_at(rt, row, &e));
+    return e.sender_watermark + 1;
+}
 
 static elpis_runtime *open_runtime(void) {
     elpis_runtime *rt = NULL;
@@ -235,7 +242,11 @@ int main(int argc, char **argv) {
     EOK(send(a, e));
     lifecycle(e, op, next_seq(a, op), src, ELPIS_ECS_C_FOUNDED, ELPIS_ECS_C_ACTIVE);
     EOK(send(a, e));
-    uint64_t op_seq = next_seq(a, op);
+    elpis_ecs_c_entity rows[3];
+    uint8_t next_label[32], next_id[32];
+    memset(next_label, 9, 32);
+    for (uint32_t i = 0; i < 3; ++i) EOK(elpis_ecs_c_entity_at(a, i, &rows[i]));
+    EOK(elpis_ecs_c_next_entity_id(a, ELPIS_ECS_C_SOURCE, next_label, next_id));
     elpis_ecs_c_close(a);
 
     /* The runtime opens the authority it does not own and anchors a composite lineage (checkpointed). */
@@ -247,6 +258,20 @@ int main(int argc, char **argv) {
     assert(s.backend == ELPIS_RUNTIME_BACKEND_ECS_C && s.ecs_c_code == 0 && s.disposition == ELPIS_ECS_C_CLEAN);
     assert(s.mode == ELPIS_ECS_C_MODE_NORMAL && s.replay_verified == 1 && s.capacity == CAPACITY);
     assert(s.entity_count == 3 && s.evidence_count == 0 && zero32(s.evidence_head));
+    /* The held authority's rows, read through the runtime, are the authority's own, byte for byte. */
+    _Static_assert(sizeof(elpis_runtime_authority_entity) == sizeof(elpis_ecs_c_entity), "entity layout");
+    for (uint32_t i = 0; i < 3; ++i) {
+        elpis_runtime_authority_entity row;
+        memset(&row, 0xA5, sizeof(row));
+        OK(elpis_runtime_authority_entity_at(rt, i, &row));
+        assert(memcmp(&row, &rows[i], sizeof(row)) == 0);
+    }
+    elpis_runtime_authority_entity none;
+    assert(elpis_runtime_authority_entity_at(rt, 3, &none) == ELPIS_RUNTIME_INVALID);
+    uint8_t held_next[32];
+    OK(elpis_runtime_authority_next_entity_id(rt, ELPIS_ECS_C_SOURCE, next_label, held_next));
+    assert(memcmp(held_next, next_id, 32) == 0);
+    assert(elpis_runtime_authority_next_entity_id(rt, 0, next_label, held_next) == ELPIS_RUNTIME_INVALID);
     const uint64_t provisioned = s.generation;
     elpis_ecs_composite *x = NULL;
     assert(elpis_ecs_composite_create(&cfg, W0, &x) == ELPIS_ECS_COMPOSITE_OK);
@@ -281,22 +306,23 @@ int main(int argc, char **argv) {
     /* Operator events through the held authority: refused while a turn is open and for RuntimeCore's own kinds. */
     elpis_runtime_observe_begin_result b;
     OK(elpis_runtime_turn_begin_observe(rt, &d, &BUDGET, &b));
-    lifecycle(e, op, op_seq, src, ELPIS_ECS_C_ACTIVE, ELPIS_ECS_C_DORMANT);
+    lifecycle(e, op, held_seq(rt, 0), src, ELPIS_ECS_C_ACTIVE, ELPIS_ECS_C_DORMANT);
     uint64_t generation = 0;
     assert(elpis_runtime_authority_transition(rt, e, &generation) == ELPIS_RUNTIME_TURN_OPEN && generation == 0);
     OK(elpis_runtime_turn_abort(rt, &d));
+    const uint64_t before_seq = held_seq(rt, 0);
     OK(elpis_runtime_authority_transition(rt, e, &generation));
-    op_seq++;
+    assert(held_seq(rt, 0) == before_seq + 1); /* the operator's watermark moved with its event */
     assert(generation == provisioned + 3 && status_of(rt).generation == generation);
     uint8_t anchor_event[512];
-    event(anchor_event, 5, op, op_seq, NULL);
+    event(anchor_event, 5, op, held_seq(rt, 0), NULL);
     assert(elpis_runtime_authority_transition(rt, anchor_event, NULL) == ELPIS_RUNTIME_INVALID);
     assert(elpis_runtime_authority_transition(rt, NULL, NULL) == ELPIS_RUNTIME_INVALID);
     /* A DORMANT source is refused; ACTIVE again, admitted. */
     assert(observe_turn(rt, &d, one, 1, 30, codes) == ELPIS_RUNTIME_INVALID); /* nothing observed: kept open */
     assert(codes[0] == ELPIS_RUNTIME_OBSERVATION_REFUSED);
     OK(elpis_runtime_turn_abort(rt, &d));
-    lifecycle(e, op, op_seq++, src, ELPIS_ECS_C_DORMANT, ELPIS_ECS_C_ACTIVE);
+    lifecycle(e, op, held_seq(rt, 0), src, ELPIS_ECS_C_DORMANT, ELPIS_ECS_C_ACTIVE);
     OK(elpis_runtime_authority_transition(rt, e, NULL));
     OK(observe_turn(rt, &d, one, 1, 40, codes));
     assert(codes[0] == 0);

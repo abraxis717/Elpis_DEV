@@ -95,7 +95,8 @@
  * source's per-turn bound, checked before the native call (RUNTIME_OBSERVATION_REFUSED; recoverable, the turn stays
  * open); each durable publication records the evidence summary of the typed observations it makes durable (their
  * count and the composite's memory identity); operator events reach a held authority only through
- * elpis_runtime_authority_transition; and an authority that is not in its normal mode refuses the open
+ * elpis_runtime_authority_transition, built from its rows as elpis_runtime_authority_entity_at and
+ * elpis_runtime_authority_next_entity_id read them; and an authority that is not in its normal mode refuses the open
  * (RUNTIME_AUTHORITY) until the operator reconciles it, elpis_runtime_authority_status reporting why. An ECS_C
  * refusal with a continuity equivalent is reported as that continuity code; any other as RUNTIME_AUTHORITY at open and
  * CONTINUITY_AUTHORITY_MISMATCH in a publication, the exact code kept in elpis_runtime_authority.ecs_c_code. v6 added
@@ -346,6 +347,25 @@ typedef struct {
     uint8_t evidence_head[32];
 } elpis_runtime_authority;
 
+/* One entity row of the held ECS_C authority (v6, elpis_runtime_authority_entity_at), laid out as elpis_ecs_c_entity
+ * (elpis/ecs_c_authority.h): the operator's view for building an event. */
+typedef struct {
+    uint8_t id[32];
+    uint8_t kind;               /* ELPIS_ECS_C_OPERATOR, _RUNTIME, _SOURCE */
+    uint8_t lifecycle;          /* ELPIS_ECS_C_FOUNDED, _ACTIVE, _DORMANT, _TERMINATED */
+    uint8_t reserved[2];
+    uint32_t per_turn_limit;
+    uint64_t founding_index;
+    uint64_t founded_generation;
+    uint64_t last_generation;
+    uint64_t sender_watermark;  /* the entity's next event carries sequence sender_watermark + 1 */
+    uint64_t source_version;
+    uint8_t label[32];
+    uint8_t scope[32];
+    uint32_t source_authority;  /* sources: the memory source_authority its observations record */
+    uint32_t reserved2;
+} elpis_runtime_authority_entity;
+
 /* An observe-only turn begun (v5). */
 typedef struct {
     uint64_t live_generation;   /* the live generation the turn was opened on; zero on refusal */
@@ -561,6 +581,13 @@ int elpis_runtime_evolution_reconcile(elpis_runtime *runtime, const elpis_contin
  * fail-stopped. out_generation (optional) receives the authority's new generation. */
 int elpis_runtime_authority_status(elpis_runtime *runtime, elpis_runtime_authority *out);
 int elpis_runtime_authority_transition(elpis_runtime *runtime, const uint8_t *event, uint64_t *out_generation);
+/* Reads of the held ECS_C authority (v6), what an operator event is built from: the entity row at `index` (below
+ * elpis_runtime_authority.entity_count) and the identity the next ENTITY_FOUND of `kind` and `label` founds (the
+ * receiver that event must name). RUNTIME_INVALID under continuity, past the last row and for an unknown kind;
+ * refused closed or fail-stopped. Neither changes anything. */
+int elpis_runtime_authority_entity_at(elpis_runtime *runtime, uint32_t index, elpis_runtime_authority_entity *out);
+int elpis_runtime_authority_next_entity_id(elpis_runtime *runtime, uint8_t kind, const uint8_t label[32],
+                                           uint8_t out[32]);
 
 #ifdef __cplusplus
 }

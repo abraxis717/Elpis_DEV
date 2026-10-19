@@ -350,6 +350,26 @@ impl Store {
         })
     }
 
+    /// ECS_C, while held: the entity row at `index` of the current record (the operator's view for building an
+    /// event: identities, lifecycles, sender watermarks). `RUNTIME_INVALID` under continuity and past the last row.
+    pub fn entity_at(&self, index: u32) -> Result<ecs_c::Entity, Error> {
+        let Store::EcsC(e) = self else {
+            return Err(Rt::Invalid.into());
+        };
+        let entity = e.current()?.state.entities.get(index as usize).copied();
+        entity.ok_or_else(|| Rt::Invalid.into())
+    }
+
+    /// ECS_C, while held: the identity the next ENTITY_FOUND of `kind` and `label` founds (the receiver that event
+    /// must name). `RUNTIME_INVALID` under continuity and for an unknown kind.
+    pub fn next_entity_id(&self, kind: u8, label: &Digest) -> Result<Digest, Error> {
+        let Store::EcsC(e) = self else {
+            return Err(Rt::Invalid.into());
+        };
+        let kind = ecs_c::EntityKind::from_u8(kind).ok_or(Rt::Invalid)?;
+        e.authority.next_entity_id(kind, label).map_err(|code| transition_code(code).into())
+    }
+
     pub fn status(&self) -> Status {
         match self {
             Store::Continuity(s) => {
