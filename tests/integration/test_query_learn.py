@@ -19,6 +19,7 @@ from elpis.runtime.cognition import (CognitiveOperation, LearnAuthority, LearnRe
                                      QueryResult, QueryStimulus, run_learn, run_query, run_turn)
 from elpis.runtime.composition import CompositionError
 
+from ..conftest import authority_slots
 from ._turn_fixtures import LEARN, ByteTokens, FixtureMap, admitted, fixture_authority
 from .test_codec_ecs_turn import DIM, _config, _Resident, adapter, k1, world  # noqa: F401 (module fixtures)
 
@@ -64,8 +65,7 @@ def subject(request, k1, adapter, tmp_path):   # noqa: F811 (module fixtures)
 
 
 def _slots(runtime):
-    directory = runtime.continuity.directory
-    return tuple((directory / name).read_bytes() for name in ("continuity.a", "continuity.b"))
+    return authority_slots(runtime.continuity.directory)
 
 
 def _warm(state):

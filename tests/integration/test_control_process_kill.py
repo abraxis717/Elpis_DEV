@@ -59,7 +59,7 @@ from elpis.runtime import Runtime
 root, mode = Path(sys.argv[2]), sys.argv[3]
 k1 = K1Library(admit_k1_set()[1].lib)
 say = lambda **kw: (sys.stdout.write(json.dumps(kw) + "\n"), sys.stdout.flush())
-open_at = lambda store: Runtime(replace(_config(root / "continuity", testing=True), k1_checkpoint_dir=store)).open()
+open_at = lambda store: Runtime(replace(_config(root / "authority", testing=True), k1_checkpoint_dir=store)).open()
 OPS = {"anchor": 1, "import": 2, "discard": 3, "adopt": 4}
 
 
@@ -130,7 +130,7 @@ def _killed(tmp_path, mode) -> dict:
 
 
 def _runtime(tmp_path, store):
-    return Runtime(replace(_config(tmp_path / "continuity"), k1_checkpoint_dir=store))
+    return Runtime(replace(_config(tmp_path / "authority"), k1_checkpoint_dir=store))
 
 
 @pytest.mark.parametrize("point,disposition", [(3, "NOTHING_TO_RECOVER"), (5, "RESUMABLE")])
@@ -204,7 +204,7 @@ def test_the_production_library_exports_no_testing_entry_point():
     production, testing = require_runtime_library(testing=False), require_runtime_library(testing=True)
     names = ("elpis_runtime_testing_fault", "elpis_runtime_testing_io_counters", "elpis_runtime_testing_durable_hold",
              "elpis_runtime_testing_durable_fault", "elpis_runtime_testing_control_fault",
-             "elpis_runtime_testing_checkpoint_io_counters", "elpis_continuity_testing_fault")
+             "elpis_runtime_testing_checkpoint_io_counters")
     prod, test = ctypes.CDLL(str(production)), ctypes.CDLL(str(testing))
     assert not [n for n in names if hasattr(prod, n)]
     assert all(hasattr(test, n) for n in names)
@@ -232,7 +232,7 @@ def test_a_death_at_every_import_point_leaves_the_k1_lineage_or_the_composite(k1
 
     k1_store = _provision(k1, tmp_path / "checkpoint")
     composite_store = _store(library, tmp_path / "composite")
-    testing = lambda store: Runtime(replace(_config(tmp_path / "continuity", testing=True), k1_checkpoint_dir=store))
+    testing = lambda store: Runtime(replace(_config(tmp_path / "authority", testing=True), k1_checkpoint_dir=store))
     with world(k1, max_rows=8) as state:
         with testing(k1_store) as runtime:
             runtime.anchor_cognition(state)

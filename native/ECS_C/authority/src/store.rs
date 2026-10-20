@@ -32,12 +32,11 @@ use std::io::{self, ErrorKind, Read};
 use std::os::unix::fs::{DirBuilderExt, FileExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
-use elpis_continuity::sha256;
-
 use crate::error::Code;
 use crate::hmac::wipe;
 use crate::model::*;
 use crate::record::*;
+use crate::sha256;
 
 pub const STATE_FILES: [&str; 2] = ["authority.a", "authority.b"];
 pub const KEY_FILE: &str = "deployment.key";

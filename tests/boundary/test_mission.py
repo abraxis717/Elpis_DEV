@@ -133,7 +133,7 @@ def test_runtime_import_closure_loads_no_dsv_model_machinery():
 # (for example a model decode or a model text path) must update this list,
 # which is reviewed against docs/ELPIS_MISSION.md.
 #
-# ``anchor_cognition`` is the explicit, one-time continuity bootstrap of the
+# ``anchor_cognition`` is the explicit, one-time durable-authority bootstrap of the
 # canonical K1 turn: it reads the caller's K1 retained-state identity and
 # publishes it as the expected lineage identity. It executes no model, mutates
 # no K1 state and is never invoked implicitly (reconciliation never anchors).
@@ -198,15 +198,15 @@ def test_system_authority_encodes_the_mission():
     assert system["mission"]["gate"] == "tests/boundary/test_mission.py"
     subs = {s["id"]: s for s in system["subsystems"]}
     assert tuple(subs["inference"]["canonical_modules"]) == M.CODEC_MODULES
-    # The two native ECS domains never depend on each other: ECS_G on the substrate only, ECS_C on the substrate and,
-    # until standalone continuity retires into it (Stage F), the continuity crate its authority embeds.
+    # The two native ECS domains never depend on each other: each on the substrate only (standalone continuity, which
+    # ECS_C's authority embedded until then, retired into it at RuntimeCore ABI v7; mission Amendment 2).
     assert subs["ECS_G"]["depends_on"] == ["substrate"]
-    assert subs["ECS_C"]["depends_on"] == ["substrate", "continuity"]
+    assert subs["ECS_C"]["depends_on"] == ["substrate"]
+    assert "continuity" not in subs
     for ecs in ("ECS_G", "ECS_C"):
         assert not subs[ecs].get("uses_numpy"), ecs
-        assert ecs not in subs["inference"]["depends_on"] and ecs not in subs["continuity"]["depends_on"], ecs
-    assert {"ECS_G", "ECS_C", "continuity", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
-    assert not subs["continuity"]["depends_on"] and "continuity" not in subs["inference"]["depends_on"]
+        assert ecs not in subs["inference"]["depends_on"], ecs
+    assert {"ECS_G", "ECS_C", "inference", "substrate"} <= set(subs["runtime"]["depends_on"])
     assert not [t for t in subs["inference"]["native_targets"] if "dsv41" in t]
     assert set(system["research"]["native_targets"]) == {"elpis_dsv41_native", "elpis_dsv41_clock",
                                                          "elpis_dsv41_materializer"}

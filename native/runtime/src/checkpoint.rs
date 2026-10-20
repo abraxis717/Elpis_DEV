@@ -40,9 +40,9 @@ use std::io::{self, ErrorKind};
 use std::os::unix::fs::{FileExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 
-use elpis_continuity::sha256::digest as sha256;
-use elpis_continuity::{Digest, StateFormat};
+use elpis_ecs_c_authority::sha256::digest as sha256;
 
+use crate::authority::{Digest, StateFormat};
 use crate::code::Rt;
 
 pub const SLOT_NAMES: [&str; 2] = ["k1-checkpoint.a", "k1-checkpoint.b"];

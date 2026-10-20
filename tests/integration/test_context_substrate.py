@@ -33,14 +33,14 @@ from elpis.inference.principal import PrincipalEngine, PrincipalRequest
 from elpis.pipeline.ingress import QueryIngress
 from elpis.runtime import Runtime, RuntimeConfig
 from elpis.runtime.composition import ContextPreparation
-from elpis.continuity import ContinuityStore
+from elpis.runtime.core import RuntimeCore
 from elpis.structure.retrieval.hacf import build_corpus_and_index
 from elpis.structure.retrieval.objects import ObjectResolutionError, normalize
 from elpis.substrate.synthetic import SyntheticFileAssets
 
 from ..inference.test_token_stream_kernel import Recorder
 from .conftest import POSITIVE
-from ..conftest import runtime_config
+from ..conftest import TEST_AUTHORITY_GENERATION, runtime_config
 
 NS = "elpis.docs"
 CONTEXT = initial_snapshot().digest
@@ -161,7 +161,7 @@ def test_ingress_to_admission_through_verified_hacf_objects(runtime, ingress_lib
     assert result.commit.admission == admission.digest
     assert result.commit.prefill == len(admission.tokens) + len(request.prompt)
     # The runtime renders structural memory only; it runs no model and writes no continuity.
-    assert runtime.continuity.snapshot().generation == 1
+    assert runtime.continuity.snapshot().generation == TEST_AUTHORITY_GENERATION
     assert engine.replay(state, request, admission, result.commit).commit == result.commit
 
 
@@ -171,9 +171,9 @@ TRAPPED = [
     (edges, "from_regex_hacf"), (edges, "object_claims"), (edges, "from_retrieval_bundle"),
     (composition, "from_regex_hacf"), (composition, "object_claims"), (composition, "resolve_chunks"),
     (composition, "admit_context"), (objects_module, "resolve_chunks"), (objects_module, "_read_document"),
-    (admission_module, "admit_context"), (ContinuityStore, "anchor_cognition"),
-    (ContinuityStore, "commit_cognition_transition"), (ContinuityStore, "reserve_evolution_assertion"),
-    (ContinuityStore, "commit_evolution_transition"), (boundary.RootCapability, "open_file"),
+    (admission_module, "admit_context"), (RuntimeCore, "anchor"), (RuntimeCore, "recoverable_request"),
+    (RuntimeCore, "identity_request"), (RuntimeCore, "evolution_reserve"), (RuntimeCore, "evolution_finalize"),
+    (RuntimeCore, "evolution_reconcile"), (RuntimeCore, "authority_transition"), (boundary.RootCapability, "open_file"),
     (elpis.identity, "content_digest"), (digests, "content_digest"), (digests, "identity"), (digests, "raw_digest"),
 ]
 
@@ -211,7 +211,7 @@ def test_resident_model_state_stays_bounded_as_hacf_grows(retrieval_library, ing
         corpus_root, manifest = build(retrieval_library, root, extra)
         chunks = json.loads(manifest)["chunk_count"]
         sizes.append(sum(d["size_bytes"] for d in json.loads(manifest)["documents"]))
-        with Runtime(runtime_config(root / "continuity", runtime_library)) as runtime:
+        with Runtime(runtime_config(root / "authority", runtime_library)) as runtime:
             admission = prepare(runtime, ingress_library, corpus_root, manifest, engine).admission
             state = engine.initial(CONTEXT)
             sequence = engine.begin(state, PrincipalRequest("r", (1,), 20), admission,
@@ -252,14 +252,14 @@ def test_tampered_volatile_source_or_wrong_manifest_refuses_admission(ingress_li
         data = bytearray(authentic(digest, size))
         if data: data[0] ^= 1
         return bytes(data)
-    with Runtime(runtime_config(tmp_path / "continuity", runtime_library)) as runtime:
+    with Runtime(runtime_config(tmp_path / "authority", runtime_library)) as runtime:
         with monkeypatch.context() as scope:
             scope.setattr(corpus_root, "read_document", tamper)
             with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
                 prepare(runtime, ingress_library, corpus_root, manifest, engine)
         with pytest.raises(ObjectResolutionError, match="INTEGRITY"):
             prepare(runtime, ingress_library, corpus_root, json.dumps({"documents": []}), engine)
-        assert runtime.continuity.snapshot().generation == 1
+        assert runtime.continuity.snapshot().generation == TEST_AUTHORITY_GENERATION
 
 
 def test_scaling_benchmark_reports_bounded_state_and_separate_costs(monkeypatch):

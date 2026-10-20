@@ -142,8 +142,9 @@ through the existing RuntimeCore substrate kind 3:
   commit in which the K1 component is byte-identical and only the memory moves (`docs/RUNTIME_CORE.md`, "Observe-only
   turns (ABI v5)"). All or nothing, as above; the native per-turn bound is the authority's.
 * `Runtime.import_composite` (an operator operation) is the explicit legacy move of a K1 lineage to a composite one.
-* The direct continuity adapter (`elpis.continuity.ContinuityStore`) still binds K1 lineages only: it refuses to
-  read, or encode, a composite record.
+* The direct continuity adapter (`elpis.continuity.ContinuityStore`) bound K1 lineages only, refusing to read or
+  encode a composite record; it retired with standalone continuity (RuntimeCore ABI v7), and the ECS_C authority names
+  either format.
 
 Tests: `tests/integration/test_composite_runtime.py` (ownership and lease refusal, atomic observe + commit, every
 refusal installing nothing, exact snapshot / restore, bounded allocation and checkpoint footprint, restart losing

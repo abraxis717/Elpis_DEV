@@ -1,8 +1,10 @@
-"""K1 Recovery R0 v4: the checker cannot be talked into a PASS (controlled mutants over a real DEV run).
+"""K1 Recovery R0 v4: the checker cannot be talked into a PASS (controlled mutants over the real QUAL run).
 
-A DEV run of the frozen instrument (every family, one run per point and lineage; DEV seeds, never QUAL inputs) is
-generated over the real libraries, judged PASS by the checker, and then tampered with one way at a time. Every
-mutant must fail the gate that exists to catch it: an altered expectation (in the plan, since records carry none), a
+The records are the sealed QUAL evidence of the qualifying commit (every family, the complete plan), real records of
+the qualified subject: since standalone continuity retired into ECS_C (RuntimeCore ABI v7), no later checkout can
+generate a run of the frozen instrument, whose subject was ABI v5 over continuity (test_freeze.py shows it cannot even
+be deployed). Until then this module generated a DEV run; the sealed run is judged PASS by the checker here, and then
+tampered with one way at a time. Every mutant must fail the gate that exists to catch it: an altered expectation (in the plan, since records carry none), a
 wrong seed, fault argument or coordinate, a missing, duplicated or reordered trial, no actual torn write, a wrong
 continuity format, an incorrect restart state, an unregistered operator action, a duplicate publication, a broken
 acknowledgment law, a lost lane fault, a moved slot file, a never-requested state as the authority, and an
@@ -11,6 +13,7 @@ incomplete or altered evidence manifest.
 from __future__ import annotations
 
 import copy
+import gzip
 import importlib.util
 import json
 from pathlib import Path
@@ -20,7 +23,6 @@ import sys
 
 import pytest
 
-from ...conftest import native_build_dir, require_runtime_library
 
 REPO = Path(__file__).resolve().parents[3]
 INSTRUMENT = REPO / "research" / "qualification" / "k1_recovery_r0_v4"
@@ -38,20 +40,19 @@ PLAN = json.loads((INSTRUMENT / "plan.json").read_text())
 
 
 @pytest.fixture(scope="module")
-def dev(tmp_path_factory):
-    require_runtime_library(testing=True)
-    root = tmp_path_factory.mktemp("dev")
+def qual(tmp_path_factory):
+    """The sealed QUAL records (committed gzip-compressed: the repository keeps no file over 2 MiB), with the run
+    summary the runner wrote beside them."""
+    root = tmp_path_factory.mktemp("qual")
     out = root / "records.jsonl"
-    done = subprocess.run([sys.executable, "-I", "-B", str(INSTRUMENT / "runner.py"), "run", "--native-build",
-                           str(native_build_dir()), "--work", str(root / "work"), "--inputs", "dev", "--dev-runs", "1",
-                           "--out", str(out)], capture_output=True, text=True, timeout=1800)
-    assert out.exists(), done.stderr[-4000:]
+    out.write_bytes(gzip.decompress((INSTRUMENT / "evidence" / "records.jsonl.gz").read_bytes()))
+    shutil.copyfile(INSTRUMENT / "evidence" / "run.json", root / "records.jsonl.run.json")
     records = [json.loads(line) for line in out.read_text().splitlines() if line.strip()]
     return root, out, records
 
 
 def _verdict(records, plan=PLAN):
-    return check.evaluate(plan, records, inputs="dev", runs_override=1)
+    return check.evaluate(plan, records, inputs="qual")
 
 
 def _first(records, **match):
@@ -77,8 +78,8 @@ def test_the_runner_keeps_every_line_a_child_wrote_past_the_one_it_waited_for(tm
     assert runner._kill(proc)["signaled"] and out.rest() == []
 
 
-def test_the_dev_run_is_complete_and_passes_every_gate(dev):
-    _, _, records = dev
+def test_the_sealed_qual_run_is_complete_and_passes_every_gate(qual):
+    _, _, records = qual
     result = _verdict(records)
     assert result["complete"] and result["verdict"] == "PASS", {g: v["failures"][:3] for g, v in result["gates"].items()}
     assert {r["family"] for r in records} == set(PLAN["families"])
@@ -106,8 +107,8 @@ def _flip_magic(raw: dict) -> dict:
     return out
 
 
-def test_every_mutant_fails_the_gate_that_exists_to_catch_it(dev):
-    _, _, records = dev
+def test_every_mutant_fails_the_gate_that_exists_to_catch_it(qual):
+    _, _, records = qual
     pub = lambda kind, point: _first(records, family="publish", lineage=kind, point=point)
     unresolved, resumable = pub("composite", "step:5"), pub("composite", "step:2")
     slot_torn, record_torn = pub("k1", "step:3"), pub("k1", "step:6")
@@ -175,13 +176,13 @@ def test_every_mutant_fails_the_gate_that_exists_to_catch_it(dev):
     assert _fails(swapped, "G1")
 
 
-def test_the_evidence_manifest_is_complete_intact_and_bound(dev, tmp_path):
-    root, out, records = dev
+def test_the_evidence_manifest_is_complete_intact_and_bound(qual, tmp_path):
+    root, out, records = qual
     verdict = root / "verdict.json"
     if not verdict.exists():
         verdict.write_text(json.dumps(dict(_verdict(records), plan_sha256=check._sha(INSTRUMENT / "plan.json"),
                                            records_sha256=check._sha(out))))
-    stand_in = root / "freeze.json"   # a DEV stand-in: the manifest checks are what is exercised here
+    stand_in = root / "freeze.json"   # a stand-in freeze: the manifest checks are what is exercised here
     if not stand_in.exists():
         stand_in.write_text(json.dumps({"schema": check.FREEZE_SCHEMA}))
     sealed = tmp_path / "evidence"
@@ -190,7 +191,7 @@ def test_the_evidence_manifest_is_complete_intact_and_bound(dev, tmp_path):
                    capture_output=True)
     assert sorted(p.name for p in sealed.iterdir()) == sorted(check.EVIDENCE_FILES)
     baseline = check.verify_evidence(sealed, INSTRUMENT / "plan.json")
-    assert "the run is not a complete QUAL run" in baseline     # a DEV run is never QUAL evidence
+    assert baseline     # bound to a stand-in, not to the frozen record, the set is never QUAL evidence
 
     def copy_of():
         target = tmp_path / f"copy-{len(list(tmp_path.iterdir()))}"

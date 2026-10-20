@@ -144,6 +144,19 @@ library:
 | `research/qualification/k1_recovery_r0_v4` (`check.py:43-118`, `runner.py`, `freeze.py`, `premise.py`) | an independent reader of v2/v3 records; premise **P1**: `native/continuity` byte-identical to `65287ad` | the qualified evidence is bound to `18f2f4d` and stays valid there; `tests/research/qualification_k1_recovery_r0_v4/test_freeze.py` asserts the premise at `HEAD` and must instead assert it at the qualified commit once continuity changes (the qualification does not extend to the successor) |
 | tests | `tests/continuity`, about 30 integration and boundary suites reading continuity snapshots, raw slots, I/O counters or the symbol set (`test_one_ecs.py:63-176`, `test_autonomous_persistence.py`, `test_runtime_hot_path.py`, ...) | each is ported to the successor or retired with what it guards, never deleted without its successor |
 
+**Stage F (RuntimeCore ABI v7): every consumer above is ported or retired with what it guards.**
+
+| Consumer | Disposition |
+|---|---|
+| RuntimeCore crate | embeds the ECS_C authority crate only (no `elpis_continuity`); the re-export of continuity's C ABI and `elpis_runtime_create` are removed (ABI v7; `native/ABI_INVENTORY.json`, Stage F amendment); SHA-256 is the authority crate's |
+| `runtime.h` and the C runtime tests | the snapshot and evolution types and the `ELPIS_CONTINUITY_*` codes are kept, declared by `runtime.h`; the tests run over a provisioned ECS_C authority (`native/runtime/tests/ecs_c_runtime.h`) |
+| `elpis_autonomous_run` and its test | the grant is the four fixed files of a provisioned ECS_C authority (two records of one size R, two 240-byte witnesses) |
+| Python adapter and the offline reference | `elpis.continuity` and `tests/continuity` retired; `elpis.runtime.authority` is the durable view and the operator's closed-runtime ABI; every handle is `elpis_runtime_create_ecs_c` |
+| the evolution-path assertion's v2 digest | byte-identical: computed by the authority crate (`register.rs`, tested equal) |
+| `libelpis_continuity.so` | no longer built |
+| the K1 Recovery R0 v4 instrument | its evidence stays valid for `18f2f4d`; its tests check the premise at the qualifying commit (it breaks at this head, P1 first), run the checker's mutants over the sealed QUAL run (no later head can generate one) and show the frozen instrument cannot deploy ABI v7 |
+| the remaining tests | ported to the successor; `tests/boundary/test_one_ecs.py` retired with the script that named it |
+
 Duplicated behaviour to remove with it: RuntimeCore's prechecks ahead of the store's own (`core.rs:422-424,
 1238-1245, 1325-1341`, `durable.rs:1003-1013`) and the lane's cached snapshot mirror; the stale documentation noted
 by the inventory (`docs/ARCHITECTURE.md` `ContinuityLibrary(path)`, `docs/PYTHON_AUTHORITY_CENSUS.md:27`,
@@ -251,8 +264,8 @@ table; `native/runtime/tests/test_runtime_composite.c` already builds one in C).
 | Surface | Retired when | Successor | Condition |
 |---|---|---|---|
 | subsystem id `ECS`, `native/ECS` | Stage B | `ECS_G`, `ECS_C`, `native/runtime/composite` | byte moves verified; ABI inventory equal; every native suite green under its new label |
-| `tests/boundary/test_one_ecs.py` (one-ECS assertions) | Stage B | `tests/boundary/test_ecs_split.py` | the successor enforces the split's dependency directions, ownership and the HOT-lane prohibitions at least as strongly. The path itself stays until Stage F as a runner of the successor: `native/continuity/qualify.sh` names it and cannot be edited, because the K1 Recovery R0 v4 premise P1 binds `native/continuity` byte for byte to the ABI v4 commit |
-| `libelpis_continuity.so`, `elpis.continuity` adapter, `native/continuity` | Stage F | ECS_C authority (`native/ECS_C/authority`) | every consumer listed in section 5 passes the successor's contract tests; legacy v2/v3 directories are imported explicitly, never reinterpreted |
+| `tests/boundary/test_one_ecs.py` (one-ECS assertions) | Stage B | `tests/boundary/test_ecs_split.py` | the successor enforces the split's dependency directions, ownership and the HOT-lane prohibitions at least as strongly. The path itself stayed until Stage F as a runner of the successor (`native/continuity/qualify.sh` named it and could not be edited, because the K1 Recovery R0 v4 premise P1 bound `native/continuity` byte for byte to the ABI v4 commit); it retired with `native/continuity` |
+| `libelpis_continuity.so`, `elpis.continuity` adapter, `native/continuity` | Stage F (**done**, RuntimeCore ABI v7, after ECS_C Recovery Q0's RUN PASS on `117b41a`) | ECS_C authority (`native/ECS_C/authority`) | every consumer listed in section 5 passes the successor's contract tests (section 5, "Stage F"); legacy v2/v3 directories are imported explicitly, never reinterpreted |
 | Python `Runtime` facade, deployment, CLI as the production path | Stage F | native host `elpis` | native end-to-end, crash and acceptance suites pass on the installed native binary; the process closure loads no Python |
 | one-ECS wording of `ELPIS_MISSION.md`, `CONTINUITY.md`, `ARCHITECTURE.md` | Stage B (mission amendment), Stage G (final text) | the amended mission | documentation describes only what exists |
 
@@ -310,7 +323,8 @@ Stage D conflicts, stated rather than worked around:
   reconcile-only authority; pre-registered before any run, not written in this stage.
 * **Deployments pinned to ABI 5** are refused (`DEPLOYMENT_ABI`) by this facade, as every ABI bump refuses an older
   pin; a deployment is re-initialized against the new libraries. Its continuity lineage directory is the same format.
-* **The Python facade** still drives the continuity backend; it gains no ECS_C path (Stage F replaces it).
+* **The Python facade** still drives the continuity backend; it gains no ECS_C path (Stage F replaces it: since ABI
+  v7 it drives the ECS_C authority).
 
 **E** the HCA native research substrate (`docs/ECS_C_HCA.md`, `native/ECS_C/hca`): B0 (the exact control), B1 and B2
 ported from `research/ecsc_hca_r0`, equal to it on every prediction, refusal and B2 activation (offline differential,
@@ -344,12 +358,26 @@ on DEV inputs. Deriving its plan from the recovery law found three defects, now 
 **G** documentation and the machine-readable authority (`ELPIS_SYSTEM.json`) describe what exists:
 - the native host is the production entry point, and the Python modules the offline reference interface;
 - the ECS_C authority was UNQUALIFIED at that head (Q0 NOT RUN; it has since run: RUN PASS for `117b41a` only);
-- standalone continuity is not retired, and why;
+- standalone continuity is not retired, and why (it has since retired: F4 below);
 - K1 Recovery R0 v4's RUN PASS stays bound to `18f2f4d`;
 - each composer's fixed-capacity writers.
 
 The mission, continuity and architecture documents carry the split's final wording, except the retirement that waits
-for the Q0 QUAL run.
+for the Q0 QUAL run (since done: F4).
+
+**F4** the retirement of standalone continuity (section 9), after ECS_C Recovery Q0's RUN PASS on `117b41a`:
+- the ECS_C authority carries continuity's SHA-256, evolution law and digest and register reader as its own, with no
+  dependency, and its fixtures (`native/ECS_C/authority/tests/fixtures`);
+- RuntimeCore ABI v7 (`docs/RUNTIME_CORE.md`, "One durable authority (ABI v7)"): the ECS_C authority is the only
+  durable authority; `elpis_runtime_create` and the re-export of continuity's C ABI are removed; the law suite runs
+  over ECS_C;
+- the offline Python reference drives the same authority (`elpis.runtime.authority`);
+- `native/continuity`, `elpis.continuity`, `tests/continuity` and `libelpis_continuity.so` are deleted (their paths are
+  post-migration retirements in `ELPIS_SYSTEM.json`), and the mission records it (`docs/ELPIS_MISSION.md`,
+  Amendment 2).
+
+The retirement qualifies nothing new. Q0's pass is for `117b41a` (ABI v6) only; its ABI v7 successor, a versioned
+specification frozen on the retirement's accepted source, is not yet written or run.
 
 Stage F conflict, stated rather than worked around:
 
@@ -357,14 +385,15 @@ Stage F conflict, stated rather than worked around:
   after its successor is qualified. The successor's qualification, `docs/qualification/ECS_C_RECOVERY_Q0.md`, freezes
   like K1 Recovery R0 v4 on the accepted source, the merge commit of these stages into `main`.
   - **Resolved.** PR #55 merged the stages (`117b41a`). The freeze record was published before the run (`9c7c72b`),
-    and the QUAL run on `117b41a` is RUN PASS, for that commit only. Continuity's retirement is now unblocked, and it is
-    the remaining step of Stage F.
+    and the QUAL run on `117b41a` is RUN PASS, for that commit only. That unblocked continuity's retirement, the
+    remaining step of Stage F, done at F4.
   - **The instrument.** `research/qualification/ecs_c_recovery_q0/` is written. Its rehearsal on DEV inputs passes,
     and the same instrument fails the Stage F1 build at exactly the two defects F2 fixed. DEV records are not
     evidence.
-  - **Until it is retired, continuity stays.** It is the authority the offline Python reference interface
-    publishes to, the backend RuntimeCore's continuity law suite runs over, and K1 Recovery R0 v4's premise P1. The
-    containment launcher keeps granting its slots for that path.
+  - **Until it is retired, continuity stays.** It was the authority the offline Python reference interface
+    published to, the backend RuntimeCore's continuity law suite ran over, and K1 Recovery R0 v4's premise P1, and the
+    containment launcher granted its slots for that path. **Retired at F4** (above): the reference, the law suite and
+    the launcher now use the ECS_C authority, and the premise is checked at its qualifying commit.
 * **A deep rollback, once accepted, leaves the lineage without its state.** The K1 checkpoint store keeps two envelopes
   (the fixed-storage law), and K1 Recovery R0's law never offers a slot as a candidate when no slot holds the
   authorized identity (`CHECKPOINT_MISSING`, `checkpoint.rs` `unresolved`).
@@ -373,7 +402,8 @@ Stage F conflict, stated rather than worked around:
     holds: cognition is refused, although the newest acknowledged envelope is intact in the store. Nothing is accepted
     silently, but the lineage cannot continue. ECS_C Recovery Q0 registers exactly this outcome (`rollback:2`,
     `rollback:5`). The remedy today is restoring the state directory from outside.
-  - **The proposal: K1 Recovery R1, RuntimeCore ABI v7.** An explicit operator re-authorization of a verified slot
+  - **The proposal: K1 Recovery R1, RuntimeCore ABI v8** (v7 retired standalone continuity). An explicit operator
+    re-authorization of a verified slot
     under `CHECKPOINT_MISSING`: the operator names the slot's identity, and the runtime publishes it as the authority's
     next state. It changes K1 Recovery R0's qualified recovery law, so it needs its own versioned law and
     qualification; it is not made here.

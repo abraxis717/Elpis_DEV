@@ -168,15 +168,16 @@ CI runs it against an installed prefix, offline, in the Installed system accepta
 
 `python -m elpis.runtime.cli` (with `elpis.runtime.deployment`, `elpis.runtime.acceptance` and
 `elpis.runtime.release`) is the **offline reference interface**. It is not the production path. It operates the same
-composite lineage over the standalone continuity backend, through the Python facade over RuntimeCore, and exists for:
+composite lineage over the same ECS_C authority, through the Python facade over RuntimeCore, and exists for:
 - differential tests (the native host must answer exactly as it does);
 - the K1 Recovery R0 qualification instruments, which are bound to their own commits;
 - research.
 
 Its acceptance run (`python -m elpis.runtime.acceptance --native-build build --work DIR --report acceptance.json`)
 and its release bundle (`python -m elpis.runtime.release`) keep their documented behavior for that purpose.
-Standalone continuity, and with it this interface's durable backend, is retired once the ECS_C successor is
-qualified (docs/NATIVE_SPLIT_CENSUS.md, sections 9 and 11).
+Standalone continuity, its durable backend until RuntimeCore ABI v7, retired into the ECS_C authority once that
+successor was qualified (docs/NATIVE_SPLIT_CENSUS.md, sections 9 and 11): a deployment provisions an ECS_C authority
+as the native host's does, and this interface opens RuntimeCore over it.
 
 ## Capabilities and nonclaims
 

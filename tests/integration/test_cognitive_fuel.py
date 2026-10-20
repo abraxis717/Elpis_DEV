@@ -22,7 +22,7 @@ from elpis.runtime.core import RuntimeLibrary, _Budget, describe
 from elpis.runtime.fuel import CEILING, CognitiveBudget, query_units, schedule_units
 
 from ._turn_fixtures import RATE, ByteTokens, FixtureMap, admitted
-from ..conftest import admit_native
+from ..conftest import admit_native, authority_slots, require_runtime_library
 from .test_codec_ecs_turn import DIM, WIDTH, _config, k1, world  # noqa: F401 (module fixture)
 
 FUEL = "COGNITION_FUEL_EXCEEDED"
@@ -41,7 +41,7 @@ def _k1_evidence(state):
 
 @pytest.fixture(scope="module")
 def library():
-    return RuntimeLibrary(admit_native(_config(__import__("pathlib").Path("/unused")).runtime_library))
+    return RuntimeLibrary(admit_native(require_runtime_library()))
 
 
 def test_the_python_formula_and_ceiling_are_runtimecores(library):
@@ -120,7 +120,7 @@ def test_query_rows_and_output_tokens_are_bounded_before_the_native_query(k1):
 
 
 def _slots(runtime):
-    return tuple((runtime.continuity.directory / n).read_bytes() for n in ("continuity.a", "continuity.b"))
+    return authority_slots(runtime.continuity.directory)
 
 
 def test_managed_oversized_learn_is_refused_before_reserve_begin_schedule_commit_and_publication(k1, tmp_path):

@@ -15,17 +15,51 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::sync::OnceLock;
 
-use elpis_continuity::ffi::{from_c_evolution, to_c_evolution, CEvolution};
-use elpis_continuity::RECORD_SIZE;
-
 use crate::error::Code;
 use crate::legacy::read_continuity;
 use crate::model::{Cognition, Digest, Entity, EntityKind, Event, EventKind, EVENT_BYTES, ZERO};
 use crate::record::{record_bytes, SlotClass};
+use crate::register::{EvolutionState, RECORD_SIZE};
 use crate::store::{Authority, Mode, Receipt, Report};
 use crate::{MAX_CAPACITY, MIN_CAPACITY};
 
 pub const ABI_VERSION: u32 = 1;
+
+/// `elpis_ecs_c_evolution`: the evolution authority, in the layout continuity's C ABI gave it (80 bytes).
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct CEvolution {
+    pub revision: u64,
+    pub head: Digest,
+    pub pending: u8,
+    pub reserved: [u8; 7],
+    pub assertion: Digest,
+}
+
+const _: () = assert!(std::mem::size_of::<CEvolution>() == 80);
+
+fn to_c_evolution(e: &EvolutionState) -> CEvolution {
+    CEvolution {
+        revision: e.revision(),
+        head: e.head(),
+        pending: e.assertion().is_some() as u8,
+        reserved: [0; 7],
+        assertion: e.assertion().unwrap_or(ZERO),
+    }
+}
+
+/// A well-formed evolution authority, or `Corrupt` (malformed flag or reserved bytes, an idle authority carrying an
+/// assertion, counter bounds or the genesis rule).
+fn from_c_evolution(e: &CEvolution) -> Result<EvolutionState, Code> {
+    if e.reserved != [0; 7] {
+        return Err(Code::Corrupt);
+    }
+    match e.pending {
+        0 if e.assertion == ZERO => EvolutionState::idle(e.revision, e.head),
+        1 => EvolutionState::pending(e.revision, e.head, e.assertion),
+        _ => Err(Code::Corrupt),
+    }
+}
 
 #[repr(C)]
 #[derive(Clone, Copy)]

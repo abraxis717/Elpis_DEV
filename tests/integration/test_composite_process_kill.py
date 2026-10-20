@@ -82,7 +82,7 @@ time.sleep(3600)                                          # killed here
 
 def _child(tmp_path, mode):
     env = dict(os.environ, PYTHONPATH=f"{REPO / 'src'}{os.pathsep}{REPO}", PYTHONDONTWRITEBYTECODE="1")
-    return subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO), str(tmp_path / "continuity"),
+    return subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO), str(tmp_path / "authority"),
                              str(tmp_path / "checkpoint"), mode],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, cwd=REPO)
 
@@ -110,7 +110,7 @@ def test_sigkill_in_a_composite_publication_recovers_the_memory_transition_exact
     authorized, candidate, volatile = (bytes.fromhex(report[k]) for k in ("authorized", "candidate", "volatile"))
     first, second, third = (bytes.fromhex(k) for k in report["keys"])
     assert len({authorized, candidate, volatile}) == 3 and len({first, second, third}) == 3
-    with Runtime(replace(_config(tmp_path / "continuity"), k1_checkpoint_dir=tmp_path / "checkpoint")) as runtime:
+    with Runtime(replace(_config(tmp_path / "authority"), k1_checkpoint_dir=tmp_path / "checkpoint")) as runtime:
         durable = runtime.continuity.snapshot()
         assert durable.state_format == "COMPOSITE"
         recovery = runtime.recover_k1()

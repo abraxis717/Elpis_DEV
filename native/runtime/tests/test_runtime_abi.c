@@ -6,6 +6,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "elpis/ecsg_k1.h"
 #include "elpis/runtime.h"
+#include "ecs_c_runtime.h"
 #include "k1_tables.h"
 
 #include <assert.h>
@@ -58,7 +59,7 @@ int main(int argc, char **argv) {
     assert(argc == 2);
     for (int i = 0; i < ROWS * DIM; ++i) X[i] = (double)((i * 5) % 11 - 5) / 16.0;
     for (int i = 0; i < ROWS; ++i) Y[i] = (double)(i % 3 - 1) / 8.0;
-    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V6);
+    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V7);
     assert(elpis_runtime_fuel_ceiling(&BUDGET) == ELPIS_RUNTIME_OK);
     assert(elpis_runtime_features(DIM) == elpis_ecsg_k1_features(DIM));
     for (size_t d = 1; d <= 64; ++d) assert(elpis_runtime_features(d) == elpis_ecsg_k1_features(d));
@@ -74,7 +75,7 @@ int main(int argc, char **argv) {
     assert(system(cmd) == 0);
 
     elpis_runtime *rt = NULL;
-    OK(elpis_runtime_create((const uint8_t *)dir, strlen(dir), &rt));
+    OK(test_runtime_create(dir, &rt));
     elpis_continuity_snapshot snap;
     assert(elpis_runtime_snapshot(rt, &snap) == ELPIS_RUNTIME_CLOSED);
     OK(elpis_runtime_open(rt, &snap));
@@ -279,7 +280,7 @@ int main(int argc, char **argv) {
     assert(system(cmd) == 0);
     char dir2[4200];
     assert(snprintf(dir2, sizeof(dir2), "%s2", dir) < (int)sizeof(dir2));
-    OK(elpis_runtime_create((const uint8_t *)dir2, strlen(dir2), &rt));
+    OK(test_runtime_create(dir2, &rt));
     OK(elpis_runtime_open(rt, &snap));
     elpis_runtime_substrate lying = sub(b, 3, DIM - 1);
     OK(elpis_runtime_anchor(rt, &lying, &snap));
@@ -297,7 +298,7 @@ int main(int argc, char **argv) {
         assert(snprintf(dir3, sizeof(dir3), "%s3", dir) < (int)sizeof(dir3));
         assert(snprintf(cmd, sizeof(cmd), "rm -rf '%s'", dir3) < (int)sizeof(cmd));
         assert(system(cmd) == 0);
-        OK(elpis_runtime_create((const uint8_t *)dir3, strlen(dir3), &rt));
+        OK(test_runtime_create(dir3, &rt));
         OK(elpis_runtime_open(rt, &snap));
         elpis_ecsg_k1 *c = state(0.4);
         elpis_runtime_substrate dc = sub(c, 9, DIM);
@@ -341,7 +342,7 @@ int main(int argc, char **argv) {
         OK(elpis_runtime_checkpoint_provision((const uint8_t *)ck, strlen(ck), envelope));
         assert(elpis_runtime_checkpoint_provision((const uint8_t *)ck, strlen(ck), envelope) ==
                ELPIS_RUNTIME_CHECKPOINT_INVALID);   /* never overwritten */
-        OK(elpis_runtime_create((const uint8_t *)dir4, strlen(dir4), &rt));
+        OK(test_runtime_create(dir4, &rt));
         OK(elpis_runtime_open(rt, &snap));
         OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)ck, strlen(ck)));
         elpis_runtime_recovery rec;
@@ -364,7 +365,7 @@ int main(int argc, char **argv) {
         elpis_runtime_destroy(&rt);   /* the process ends: only continuity and the checkpoint remain */
         assert(elpis_ecsg_k1_destroy(&e) == ELPIS_ECSG_K1_OK);
 
-        OK(elpis_runtime_create((const uint8_t *)dir4, strlen(dir4), &rt));
+        OK(test_runtime_create(dir4, &rt));
         OK(elpis_runtime_open(rt, &snap));
         OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)ck, strlen(ck)));
         OK(elpis_runtime_checkpoint_recover(rt, &rec, got, envelope));

@@ -8,8 +8,9 @@ import pytest
 
 from ._system import REPO, SYSTEM, live_subsystems, repository_files, subsystem_ids
 
-EXPECTED_SUBSYSTEMS = ["substrate", "ECS_G", "ECS_C", "continuity", "structure", "pipeline", "evolution", "inference",
-                       "runtime"]
+# Standalone continuity retired into ECS_C at RuntimeCore ABI v7 (docs/ELPIS_MISSION.md, Amendment 2; its paths are
+# post-migration retirements).
+EXPECTED_SUBSYSTEMS = ["substrate", "ECS_G", "ECS_C", "structure", "pipeline", "evolution", "inference", "runtime"]
 # A subsystem's Python package is ``elpis.<id>``, none (a native-only subsystem, with a note), or a retained name
 # stated here with its reason (docs/NATIVE_SPLIT_CENSUS.md): the binding package of ECS_G keeps ``elpis.ECS``
 # because the byte-frozen laboratories import it (research/__init__.py maps their ``elpis.ECS_G`` to it).

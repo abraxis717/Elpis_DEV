@@ -17,7 +17,8 @@ digest) but had no durable copy of the state itself: an in-memory K1 lost with i
 two existing durable owners cannot hold it:
 
 * **continuity** (`native/continuity`, docs/CONTINUITY.md) is the current-authority register: two fixed 176-byte
-  slots holding identities, not state. Turning it into a state store or an event log is prohibited.
+  slots holding identities, not state. Turning it into a state store or an event log is prohibited. (Since RuntimeCore
+  ABI v7 the ECS_C authority holds that authority instead, identities likewise, never state; docs/ECS_C_AUTHORITY.md.)
 * **FMS COLD** is scratch residency: it reclaims orphans of a crashed owner on open. Scratch is not a checkpoint
   and must never become checkpoint authority.
 

@@ -1,6 +1,6 @@
-//! HMAC-SHA256 (RFC 2104) over the continuity crate's SHA-256; checked against the RFC 4231 vectors.
+//! HMAC-SHA256 (RFC 2104) over [`crate::sha256`]; checked against the RFC 4231 vectors.
 
-use elpis_continuity::sha256::{self, Sha256};
+use crate::sha256::{self, Sha256};
 
 const BLOCK: usize = 64;
 

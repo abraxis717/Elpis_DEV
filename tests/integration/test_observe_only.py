@@ -136,7 +136,7 @@ def test_refused_observe_only_turns_install_nothing_and_leave_the_runtime_health
 
 def test_a_k1_lineage_refuses_the_observe_only_turn_natively(k1, tmp_path):   # noqa: F811
     from elpis.runtime.core import describe
-    with world(k1) as state, Runtime(_config(tmp_path / "continuity")) as runtime:
+    with world(k1) as state, Runtime(_config(tmp_path / "authority")) as runtime:
         runtime.anchor_cognition(state)
         live = runtime.live_identity(state)
         descriptor, _ = describe(state)
@@ -176,7 +176,7 @@ time.sleep(3600)                                                            # ki
 def test_an_observation_published_recoverably_survives_process_death_exactly(library, tmp_path):
     _store(library, tmp_path / "checkpoint")
     env = dict(os.environ, PYTHONPATH=f"{REPO / 'src'}{os.pathsep}{REPO}", PYTHONDONTWRITEBYTECODE="1")
-    child = subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO), str(tmp_path / "continuity"),
+    child = subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO), str(tmp_path / "authority"),
                               str(tmp_path / "checkpoint")], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                              text=True, env=env, cwd=REPO)
     try:
@@ -191,7 +191,7 @@ def test_an_observation_published_recoverably_survives_process_death_exactly(lib
     first, second = (bytes.fromhex(k) for k in report["keys"])
     initial = bytes.fromhex(report["initial"])
     assert authorized != volatile and first != second
-    with Runtime(replace(_config(tmp_path / "continuity"), k1_checkpoint_dir=tmp_path / "checkpoint")) as runtime:
+    with Runtime(replace(_config(tmp_path / "authority"), k1_checkpoint_dir=tmp_path / "checkpoint")) as runtime:
         durable = runtime.continuity.snapshot()
         assert (durable.state_format, durable.k1_state_digest) == ("COMPOSITE", authorized)
         recovery = runtime.recover_k1()

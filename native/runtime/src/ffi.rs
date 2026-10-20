@@ -1,7 +1,7 @@
 //! The stable C ABI (include/elpis/runtime.h).
 //!
-//! Every function returns 0 or a positive stable code: a continuity code (1..=17, 255) or a RuntimeCore code
-//! (64..). A runtime handle serializes its calls internally (one lock per handle), except the durability lane's
+//! Every function returns 0 or a positive stable code: a durable-authority code (1..=17, 255; `CONTINUITY_*`, the names
+//! ABI v1 gave them) or a RuntimeCore code (64..). A runtime handle serializes its calls internally (one lock per handle), except the durability lane's
 //! wait and status reads, which take only the lane's lock: they never wait behind a HOT operation, and a HOT
 //! operation never waits behind them.
 //!
@@ -20,11 +20,20 @@
 //! v4 entry point keeps its meaning; the envelope and continuity formats are unchanged. A v4 caller refuses to load
 //! this library (the version check), so no caller reads the v5 budget or counters with the v4 layout.
 //!
+//! ABI v6 (docs/RUNTIME_CORE.md, "The durable authority"): a second durable-authority backend, the ECS_C authority
+//! (`elpis_runtime_create_ecs_c`), with native typed-evidence admission, evidence summaries and operator events.
+//!
+//! ABI v7: the ECS_C authority is the only one. `elpis_runtime_create` (standalone continuity) is gone, and so is the
+//! re-export of continuity's own C ABI (`elpis_continuity_*`); standalone continuity retired into ECS_C
+//! (docs/NATIVE_SPLIT_CENSUS.md, section 9). The snapshot and evolution types and the durable-authority codes keep
+//! their layouts, values and names (`elpis_continuity_snapshot`, `ELPIS_CONTINUITY_*`), now declared by runtime.h
+//! itself. A v6 caller refuses to load this library (the version check), so none creates a continuity runtime.
+//!
 //! # Safety
 //!
 //! Every pointer argument is either NULL (refused with `RUNTIME_INVALID`, or the documented meaning) or valid
 //! for its declared size: 32 bytes for a digest, `len` elements for a buffer, one struct otherwise. Runtime
-//! handles come from `elpis_runtime_create` and are used until `elpis_runtime_destroy`. A substrate
+//! handles come from `elpis_runtime_create_ecs_c` and are used until `elpis_runtime_destroy`. A substrate
 //! descriptor's handle and function table must be live for the duration of the call; the table is copied.
 //!
 //! Managed ownership (ABI v3): RuntimeCore claims every K1 state it binds with its own lease (ecsg_k1.h "Managed
@@ -46,16 +55,85 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
-use elpis_continuity::ffi::{from_c_evolution, to_c, CEvolution, CSnapshot};
-use elpis_continuity::{Code, Digest, Snapshot};
-
-use crate::code::{Error, Rt};
+use crate::authority::{Cognition, Digest, EvolutionState, Snapshot, ZERO};
+use crate::code::{Code, Error, Rt};
 use crate::core::{Core, Counters, Recovery, Refusal, Stimulus, VolatileCommit};
 use crate::durable::{Kind, Lane, Status, Ticket};
 use crate::fuel::Budget;
 use crate::substrate::{features, CSubstrate, Experience, Native, ScheduleOutcome, Transition};
 
-pub const ABI_VERSION: u32 = 6;
+pub const ABI_VERSION: u32 = 7;
+
+/// `elpis_continuity_evolution` (runtime.h): the evolution authority (80 bytes).
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct CEvolution {
+    pub revision: u64,
+    pub head: Digest,
+    pub pending: u8,
+    pub reserved: [u8; 7],
+    pub assertion: Digest,
+}
+
+/// `elpis_continuity_snapshot` (runtime.h): one verified durable authority (192 bytes). `k1_state_digest` keeps its
+/// historical name; `state_format` says what it identifies. The two digests are outputs.
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct CSnapshot {
+    pub generation: u64,
+    pub anchored: u8,
+    /// `StateFormat` of the anchored digest: 0 K1 (`ELPISGK1`), 1 composite (`ELPISEC1`).
+    pub state_format: u8,
+    pub reserved: [u8; 6],
+    pub k1_state_digest: Digest,
+    pub evolution: CEvolution,
+    pub evolution_digest: Digest,
+    pub record_digest: Digest,
+}
+
+const _: () = assert!(std::mem::size_of::<CEvolution>() == 80);
+
+pub fn to_c_evolution(e: &EvolutionState) -> CEvolution {
+    CEvolution {
+        revision: e.revision(),
+        head: e.head(),
+        pending: e.assertion().is_some() as u8,
+        reserved: [0; 7],
+        assertion: e.assertion().unwrap_or(ZERO),
+    }
+}
+
+/// The C form of a snapshot: its record digest is the continuity register record's (`register::Snapshot::digest`).
+pub fn to_c(s: &Snapshot) -> CSnapshot {
+    let (anchored, k1) = match s.cognition() {
+        Cognition::Unanchored => (0, ZERO),
+        Cognition::Anchored(d) => (1, d),
+    };
+    CSnapshot {
+        generation: s.generation(),
+        anchored,
+        state_format: s.format() as u8,
+        reserved: [0; 6],
+        k1_state_digest: k1,
+        evolution: to_c_evolution(&s.evolution()),
+        evolution_digest: s.evolution().digest(),
+        record_digest: s.digest(),
+    }
+}
+
+/// A well-formed evolution authority, or `Corrupt` (malformed flag or reserved bytes, an idle authority carrying an
+/// assertion, counter bounds or the genesis rule).
+pub fn from_c_evolution(e: &CEvolution) -> Result<EvolutionState, Code> {
+    if e.reserved != [0; 7] {
+        return Err(Code::Corrupt);
+    }
+    let state = match e.pending {
+        0 if e.assertion == ZERO => EvolutionState::idle(e.revision, e.head),
+        1 => EvolutionState::pending(e.revision, e.head, e.assertion),
+        _ => return Err(Code::Corrupt),
+    };
+    state.map_err(|_| Code::Corrupt)
+}
 
 /// Opaque runtime handle: the HOT state machine behind its lock, and the durability lane its wait and status
 /// reads reach without that lock.
@@ -305,7 +383,7 @@ pub extern "C" fn elpis_runtime_code_name(code: i32) -> *const c_char {
         }
         .as_ptr(),
         None => match Code::from_i32(code) {
-            Some(_) => elpis_continuity::ffi::elpis_continuity_code_name(code),
+            Some(c) => c.name().as_ptr(),
             None => std::ptr::null(),
         },
     }
@@ -313,21 +391,7 @@ pub extern "C" fn elpis_runtime_code_name(code: i32) -> *const c_char {
 
 // -- lifecycle ---------------------------------------------------------------------------------------------
 
-/// Create a closed runtime over an absolute continuity directory (`len` bytes, no terminator needed).
-#[no_mangle]
-pub unsafe extern "C" fn elpis_runtime_create(path: *const u8, len: usize, out: *mut *mut ElpisRuntime) -> i32 {
-    if path.is_null() || out.is_null() {
-        return Rt::Invalid as i32;
-    }
-    *out = std::ptr::null_mut();
-    let dir = Path::new(OsStr::from_bytes(std::slice::from_raw_parts(path, len)));
-    rc(Core::new(dir).map(|core| {
-        let lane = core.lane();
-        *out = Box::into_raw(Box::new(ElpisRuntime { core: Mutex::new(core), lane }))
-    }))
-}
-
-/// ABI v6: create a closed runtime over a provisioned ECS_C authority (`docs/ECS_C_AUTHORITY.md`): an absolute state
+/// Create a closed runtime over a provisioned ECS_C authority (`docs/ECS_C_AUTHORITY.md`; ABI v6): an absolute state
 /// directory and its protected authority directory (`*_len` bytes each, no terminator needed). Provisioning and
 /// operator reconciliation are the authority's own (`elpis/ecs_c_authority.h`), performed with no runtime open.
 #[no_mangle]
@@ -354,17 +418,17 @@ pub unsafe extern "C" fn elpis_runtime_create_ecs_c(
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub struct CAuthority {
-    /// 1 continuity, 2 ECS_C.
+    /// `ELPIS_RUNTIME_BACKEND_ECS_C` (2), the only backend since ABI v7 (v6 also had 1, standalone continuity).
     pub backend: u32,
-    /// The last ECS_C refusal (`ELPIS_ECS_C_*`; 0 none, always 0 under continuity).
+    /// The last ECS_C refusal (`ELPIS_ECS_C_*`; 0 none).
     pub ecs_c_code: i32,
-    /// The ECS_C recovery disposition and mode of the last open (0 under continuity).
+    /// The ECS_C recovery disposition and mode of the last open.
     pub disposition: u32,
     pub mode: u32,
     pub replay_verified: u8,
     pub witness_completed: u8,
     pub reserved: [u8; 6],
-    /// The authority's generation (continuity's record generation under continuity).
+    /// The authority's generation.
     pub generation: u64,
     pub receipt_count: u64,
     pub evidence_count: u64,
@@ -1044,7 +1108,7 @@ pub unsafe extern "C" fn elpis_runtime_evolution_reserve(
 ) -> i32 {
     let run = || -> Result<Snapshot, Error> {
         let observed = observed.as_ref().ok_or(Error::Runtime(Rt::Invalid))?;
-        let observed = from_c_evolution(observed).map_err(|_| Error::Continuity(Code::AuthorityMismatch))?;
+        let observed = from_c_evolution(observed).map_err(|_| Error::Authority(Code::AuthorityMismatch))?;
         let assertion = digest(assertion)?;
         runtime(rt)?.evolution_reserve(&observed, assertion)
     };
@@ -1081,7 +1145,7 @@ pub unsafe extern "C" fn elpis_runtime_evolution_reconcile(
 ) -> i32 {
     let run = || -> Result<Snapshot, Error> {
         let expected = expected.as_ref().ok_or(Error::Runtime(Rt::Invalid))?;
-        let expected = from_c_evolution(expected).map_err(|_| Error::Continuity(Code::AuthorityMismatch))?;
+        let expected = from_c_evolution(expected).map_err(|_| Error::Authority(Code::AuthorityMismatch))?;
         let receipt = digest(receipt)?;
         runtime(rt)?.evolution_reconcile(&expected, receipt)
     };
@@ -1093,9 +1157,10 @@ pub unsafe extern "C" fn elpis_runtime_evolution_reconcile(
 #[cfg(feature = "testing")]
 mod testing {
     use super::*;
-    use elpis_continuity::store::probe::Counters as IoCounters;
+    use crate::authority::IoCounters;
 
-    /// Arm one continuity fault (the actions of `elpis_continuity_testing_fault`).
+    /// Arm one fault of the authority's record (`authority::Store::testing_arm`: the actions ABI v6 shared with
+    /// continuity's own testing hook).
     #[no_mangle]
     pub unsafe extern "C" fn elpis_runtime_testing_fault(
         rt: *mut ElpisRuntime,
@@ -1201,6 +1266,6 @@ mod testing {
         if out.is_null() {
             return Rt::Invalid as i32;
         }
-        rc(runtime(rt).map(|mut core| *out = core.testing_continuity_counters(reset != 0)))
+        rc(runtime(rt).map(|mut core| *out = core.testing_authority_counters(reset != 0)))
     }
 }

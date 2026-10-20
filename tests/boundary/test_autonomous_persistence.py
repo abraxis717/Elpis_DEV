@@ -66,26 +66,38 @@ def test_writer_registry_resolves_to_real_code_with_one_class_each():
         for entry in w.native:
             path, symbol = entry.split(":", 1)
             assert symbol and symbol in (REPO / path).read_text(encoding="utf-8"), entry
-    assert P.AUTONOMOUS_WRITERS == {"continuity_slots", "fms_posix_cold_store", "k1_checkpoint_slots"}
+    assert P.AUTONOMOUS_WRITERS == {"ecs_c_authority_slots", "fms_posix_cold_store", "k1_checkpoint_slots"}
     assert P.NATIVE_HOST_AUTONOMOUS_WRITERS == {"ecs_c_authority_slots", "k1_checkpoint_slots"}
     # Each composer's set is exactly fixed-capacity, and together they account for every fixed-capacity writer.
     fixed = {w.id for w in P.WRITERS if w.classification is P.WriterClass.FIXED_CAPACITY_AUTONOMOUS}
     assert P.AUTONOMOUS_WRITERS | P.NATIVE_HOST_AUTONOMOUS_WRITERS == fixed
 
 
-def test_each_composer_reaches_only_its_own_durable_authority():
+# The ECS_C authority's C ABI calls that write it or open it for writing: what only the operator's closed-runtime
+# surface (elpis.runtime.authority: provisioning and operator events) may call.
+_AUTHORITY_WRITERS = re.compile(r"\belpis_ecs_c_(?:provision|open|transition|reconcile\w*|import\w*)\b")
+
+
+def test_each_composer_reaches_only_the_ecs_c_authority():
     # The native host creates RuntimeCore over the ECS_C authority only, and builds no FMS cold store.
     host = "".join((REPO / "native/runtime/host/src" / f).read_text(encoding="utf-8")
                    for f in sorted(os.listdir(REPO / "native/runtime/host/src")))
     assert "elpis_runtime_create_ecs_c" in host
     assert not re.search(r"\belpis_runtime_create\b", host)
     assert not re.search(r"\b(fms_|elpis_fms_|cold_root)", host)
-    # The Python Runtime publishes to continuity: no Python module loads or calls the ECS_C authority (the registry
-    # itself only names it).
+    # The Python Runtime has the same, only, durable authority (RuntimeCore ABI v7; standalone continuity retired):
+    # RuntimeCore is created over it alone, nothing loads or calls continuity, and the authority's own C ABI is called
+    # only by the operator's closed-runtime surface, never by the composer (the registry itself only names it).
+    core = (REPO / "src/elpis/runtime/core.py").read_text(encoding="utf-8")
+    assert "elpis_runtime_create_ecs_c" in core
+    operator = REPO / "src/elpis/runtime/authority.py"
+    assert _AUTHORITY_WRITERS.search(operator.read_text(encoding="utf-8"))
     for path in (REPO / "src/elpis").rglob("*.py"):
-        if path != REPO / "src/elpis/runtime/persistence.py":
-            text = path.read_text(encoding="utf-8")
-            assert not re.search(r"\b(elpis_ecs_c_\w+|elpis_runtime_create_ecs_c|libelpis_ecs_c_authority)", text), path
+        text = path.read_text(encoding="utf-8")
+        assert not re.search(r"\belpis_runtime_create\b(?!_)|libelpis_continuity|"
+                             r"\belpis_continuity_(?!snapshot\b|evolution\b)\w+", text), path
+        if path not in (operator, REPO / "src/elpis/runtime/persistence.py"):
+            assert not _AUTHORITY_WRITERS.search(text), path
 
 
 def _operator_writer_names() -> set[str]:

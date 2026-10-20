@@ -1,8 +1,8 @@
 """The offline reference operator interface: ``python -m elpis.runtime.cli --home DIR <command>``.
 
 Not the production path. The production entry point is the native operator host ``elpis`` (docs/NATIVE_HOST.md),
-which runs no interpreter. This interface operates the same composite lineage over the standalone continuity backend
-and exists for differential tests (the native host must answer exactly as it does), the qualification instruments bound
+which runs no interpreter. This interface operates the same composite lineage over the same durable authority, an ECS_C
+authority (RuntimeCore ABI v7), and exists for differential tests (the native host must answer exactly as it does), the qualification instruments bound
 to their own commits, and research (docs/OPERATING_ELPIS.md, "The offline reference interface").
 
 One deployment (``elpis.runtime.deployment``) holds one ECS composite lineage. Every command prints JSON (one object
@@ -14,12 +14,16 @@ per operation) and exits 0 only when every operation succeeded or was refused ex
     query --x ROWS                                 numeric QUERY of the live state (read-only)
     learn --x ROWS --y TARGETS --schedule PAIRS --rate R --grant TEXT [--publish]
     evidence --items JSON --grant TEXT --sources 1,2 [--publish]    typed HACF evidence, no K1 learning
+                                                   (each source must be an ACTIVE source of the authority)
     lookup --relation R --target-role R --cues JSON                 exact LOOKUP by net evidence
     slot --key HEX                                 one memory slot and the hyperedge it was observed from
     publish                                        recoverable publication of the live state
     candidates                                     the recovery disposition (an unresolved candidate, if any)
     reconcile (--discard ID | --adopt ID)          operator reconciliation of exactly one candidate
-    session --script FILE|-                        many operations in one process (volatile work lives here)
+    session --script FILE|-                        many operations in one process (volatile work lives here);
+                                                   a script may also found a source on the held authority
+                                                   ({"op": "source_found", "label", "source_authority", "per_turn",
+                                                   "scope_label"[, "version", "activate"]}), as the native host's
 
 Volatile work lives only inside one process: a one-shot ``learn`` or ``evidence`` reports ``durability: VOLATILE``
 and is lost at exit unless ``--publish`` is given (or a ``session`` publishes it). Every restart resumes exactly the
@@ -40,6 +44,7 @@ import sys
 
 from elpis.ECS.k1 import K1Error
 
+from .authority import SourceGrant
 from .cognition import LearnAuthority, ObservationAuthority, QueryStimulus, Stimulus
 from .context import (CANDIDATE, ContextAxiom, ContextLane, ContextReference, ContextRelation, Observation,
                       PROVISIONAL)
@@ -56,7 +61,7 @@ CAPABILITIES = {
     "typed_evidence": "WORKING, mechanically verified: validated HACF hyperedge + assertion recorded by an "
                       "observe-only turn (RuntimeCore ABI v5: no K1 learning)",
     "lookup": "WORKING: exact relation LOOKUP by net evidence; a conflict between sources is reported, never resolved",
-    "recoverable_publication": "WORKING: checkpoint slot read back verified, then continuity (ACKNOWLEDGED)",
+    "recoverable_publication": "WORKING: checkpoint slot read back verified, then the authority (ACKNOWLEDGED)",
     "restart_recovery": "WORKING: exactly the last acknowledged state; an unresolved candidate needs reconcile",
     "context_lane": "WORKING, session-local: bounded immutable versioned views of admitted references; never "
                     "persisted; never authorizes ECS learning",
@@ -301,6 +306,20 @@ class Console:
                 "participants": [{"role": r, "ordinal": o, "node": n.hex()} for r, o, n in slot.participants]}
 
     # -- durability ---------------------------------------------------------------------------------------------------
+    def op_source_found(self, op) -> dict:
+        """The operator founds (and by default activates) a source on the held authority (the native host's op)."""
+        text, scope = op.get("label"), op.get("scope_label")
+        if type(text) is not str or not text or type(scope) is not str or not scope:
+            raise CompositionError("CLI_INPUT", "label and scope_label: non-empty strings")
+        activate = op.get("activate", True)
+        if type(activate) is not bool:
+            raise CompositionError("CLI_INPUT", "activate: a boolean")
+        values = [op.get("source_authority"), op.get("per_turn"), op.get("version", 1)]
+        if any(type(v) is not int for v in values):
+            raise CompositionError("CLI_INPUT", "source_authority, per_turn and version: integers")
+        grant = SourceGrant(text, values[0], values[1], scope, values[2], activate)
+        return self.session.runtime.continuity.found_source(grant)
+
     def op_publish(self, op) -> dict:
         s = self.session
         state = s.require_state()

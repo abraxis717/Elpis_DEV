@@ -7,10 +7,9 @@
 //!
 //! Integers are little-endian. Every domain string ends in a NUL byte.
 
-use elpis_continuity::sha256;
-use elpis_continuity::{EvolutionState, Snapshot, StateFormat, MAX_COUNTER};
-
 use crate::error::Code;
+use crate::register::{EvolutionState, Snapshot, StateFormat, MAX_COUNTER};
+use crate::sha256;
 
 pub type Digest = [u8; 32];
 pub const ZERO: Digest = [0; 32];
@@ -28,7 +27,7 @@ pub const EVENT_BYTES: usize = 512;
 pub const PAYLOAD_AT: usize = 80;
 pub const PAYLOAD_BYTES: usize = EVENT_BYTES - PAYLOAD_AT;
 /// The continuity register record an IMPORT_LEGACY event carries verbatim.
-pub const LEGACY_RECORD_BYTES: usize = elpis_continuity::RECORD_SIZE;
+pub const LEGACY_RECORD_BYTES: usize = crate::register::RECORD_SIZE;
 
 pub const fn state_bytes(capacity: u32) -> usize {
     STATE_FIXED + capacity as usize * ENTITY_BYTES
@@ -1190,12 +1189,12 @@ pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Cod
                 return Err(Code::LegacyRefused);
             }
             let anchored = match snapshot.cognition() {
-                elpis_continuity::Cognition::Anchored(identity) => {
+                crate::register::Cognition::Anchored(identity) => {
                     s.cognition = Cognition::Anchored { format: snapshot.format(), identity };
                     publish(&mut s)?;
                     true
                 }
-                elpis_continuity::Cognition::Unanchored => false,
+                crate::register::Cognition::Unanchored => false,
             };
             s.evolution = snapshot.evolution();
             s.legacy = Some(Legacy {

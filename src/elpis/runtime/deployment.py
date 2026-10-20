@@ -6,7 +6,8 @@ Layout (created by this module, never edited by hand)::
     <home>/native-catalog.json    the catalog of the pinned native libraries (``PinnedAuthority``)
     <home>/lib/                   the pinned libraries, copied from an operator build at ``init``
     <home>/lineage/lineage.json   the composite configuration and the provenance of its initial state
-    <home>/lineage/continuity/    RuntimeCore's continuity directory (the durable identity and authority register)
+    <home>/lineage/authority/     RuntimeCore's durable authority, an ECS_C authority (``state/``, the protected
+                                  ``authority/``), provisioned at ``create``
     <home>/lineage/checkpoint/    the K1 Recovery R0 store, provisioned for the composite envelope
 
 Trust. ``elpis.json`` is the operator's configuration: its ``catalog_sha256`` is the independent pin every start
@@ -17,7 +18,8 @@ authenticates bytes, not authors (docs/NONCLAIMS.md).
 
 Safety. The home must be an absolute path that is not a symlink, owned by the current user and not writable by group
 or others; ``init`` refuses a non-empty home and ``create`` an existing lineage: lineage data is never overwritten.
-Nothing here keeps logs or history: the durable state is exactly continuity and the checkpoint slots.
+Nothing here keeps logs or history: the durable state is exactly the authority's five fixed files and the checkpoint
+slots.
 
 The lineage is an ECS composite (K1 + typed memory, ELPISEC1) driven only through ``elpis.runtime.Runtime``: QUERY and
 LEARN of admitted numeric stimuli, observe-only typed evidence, explicit recoverable publication, restart from the
@@ -39,6 +41,7 @@ from elpis.ECS.composite import CompositeConfig, CompositeLibrary, CompositeStat
 from elpis.substrate.authority import PinnedAuthority
 from elpis.substrate.native_admission import admit_libraries, admit_library
 
+from .authority import AUTHORITY_LIBRARY_ID, AuthorityLibrary, provision_authority
 from .composition import Runtime, RuntimeConfig
 from .core import RuntimeLibrary
 from .errors import CompositionError
@@ -60,6 +63,9 @@ _ECS_SET = (("elpis_ecsg_math", "libelpis_ecsg_math.so", "native/ECS_G/libelpis_
             ("elpis_ecs_memory", "libelpis_ecs_memory.so", "native/ECS_C/libelpis_ecs_memory.so"),
             ("elpis_ecs_composite", "libelpis_ecs_composite.so", "native/runtime/composite/libelpis_ecs_composite.so"))
 _HACF = ("elpis_hacf_observation", "libelpis_hacf_observation.so", "native/runtime/libelpis_hacf_observation.so")
+# The ECS_C authority's own ABI: the operator provisions the lineage's durable authority through it (RuntimeCore embeds
+# the same authority; the runtime itself never loads this library).
+_AUTHORITY = (AUTHORITY_LIBRARY_ID, "libelpis_ecs_c_authority.so", "native/ECS_C/authority/libelpis_ecs_c_authority.so")
 _RUNTIME = {False: ("elpis_runtime", "libelpis_runtime.so", "native/runtime/libelpis_runtime.so"),
             True: ("elpis_runtime_testing", "libelpis_runtime_testing.so",
                    "native/runtime/libelpis_runtime_testing.so")}
@@ -69,7 +75,7 @@ def deployable_libraries(testing: bool = False) -> tuple[tuple[str, str, str], .
     """The native library set one deployment pins and admits, in admission order: ``(library id, file name, path
     relative to an operator build tree)``. ``testing`` selects the testing RuntimeCore build. This is the one list of
     the files a deployment runs; ``init_deployment``, admission and the qualification instruments read it."""
-    return (_RUNTIME[bool(testing)],) + _ECS_SET + (_HACF,)
+    return (_RUNTIME[bool(testing)],) + _ECS_SET + (_HACF, _AUTHORITY)
 
 
 def _refuse(code, detail):
@@ -162,6 +168,7 @@ class LineageConfig:
     slot_capacity: int = 64
     codebook_capacity: int = 128
     seed: int = 0
+    authority_capacity: int = 16   # the ECS_C authority's entity rows: the operator, the runtime and the sources
 
     def composite(self) -> CompositeConfig:
         return CompositeConfig(self.dim, self.width, max_rows=self.max_rows, memory_dim=self.memory_dim,
@@ -199,7 +206,7 @@ def init_deployment(home: Path, native_build: Path, *, testing: bool = False, so
     _write_once(home / "native-catalog.json", catalog, 0o400)
     config = {"schema": DEPLOYMENT_SCHEMA, "catalog": "native-catalog.json", "catalog_sha256": pin,
               "runtime_library_id": _RUNTIME[testing][0], "runtime_library": _RUNTIME[testing][1],
-              "abi": {"runtime": 6, "composite": 1}, "source_commit": source_commit}
+              "abi": {"runtime": 7, "composite": 1, "ecs_c": 1}, "source_commit": source_commit}
     _write_once(home / "elpis.json", _canonical(config), 0o600)
     return Deployment(home)
 
@@ -208,9 +215,10 @@ class _Libraries:
     """The admitted native libraries of one deployment (one process admits them once)."""
 
     def __init__(self, runtime_library: RuntimeLibrary, composite: CompositeLibrary, hacf: HacfObservationLibrary,
-                 identities: dict, k1, k1_fms):
+                 identities: dict, k1, k1_fms, authority: AuthorityLibrary):
         self.runtime, self.composite, self.hacf, self.identities = runtime_library, composite, hacf, identities
         self.k1, self.k1_fms = k1, k1_fms   # K1Library and the admitted K1 FMS adapter (FMS-resident K1 states)
+        self.authority = authority          # the ECS_C authority's own ABI (the operator's provisioning)
 
     @classmethod
     def admit(cls, lib: Path, authority: PinnedAuthority, testing: bool) -> "_Libraries":
@@ -219,17 +227,18 @@ class _Libraries:
             runtime_library = RuntimeLibrary.admit(lib, runtime_name, authority, runtime_id)
             ecs = admit_libraries(lib, authority, tuple((i, n) for i, n, _ in _ECS_SET))
             hacf = admit_library(lib, _HACF[1], authority, _HACF[0])
+            authority_library = AuthorityLibrary.admit(lib, _AUTHORITY[1], authority)
         except CompositionError:
             raise
         except Exception as exc:   # ContractError and loader errors: an unadmissible library set
             raise _refuse("DEPLOYMENT_PIN", f"native library admission refused: {exc}") from exc
         identities = {a.library_id: {"sha256": a.identity.sha256, "size": a.identity.size}
-                      for a in ecs + (hacf,)}
+                      for a in ecs + (hacf, authority_library.admission)}
         pinned = authority.libraries[runtime_id]
         identities[runtime_id] = {"sha256": pinned.sha256, "size": pinned.size}
         from elpis.ECS.k1 import K1Library
         return cls(runtime_library, CompositeLibrary(ecs[4].lib), HacfObservationLibrary(hacf), identities,
-                   K1Library(ecs[1].lib), ecs[2].lib)
+                   K1Library(ecs[1].lib), ecs[2].lib, authority_library)
 
 
 class Deployment:
@@ -247,8 +256,8 @@ class Deployment:
             raise _refuse("DEPLOYMENT_CONFIG", f"elpis.json: {exc}") from exc
         if type(config) is not dict or config.get("schema") != DEPLOYMENT_SCHEMA:
             raise _refuse("DEPLOYMENT_CONFIG", f"elpis.json: schema {DEPLOYMENT_SCHEMA} required")
-        if config.get("abi") != {"runtime": 6, "composite": 1}:
-            raise _refuse("DEPLOYMENT_ABI", f"deployment ABI {config.get('abi')} is not this runtime's (6, 1)")
+        if config.get("abi") != {"runtime": 7, "composite": 1, "ecs_c": 1}:
+            raise _refuse("DEPLOYMENT_ABI", f"deployment ABI {config.get('abi')} is not this runtime's (7, 1, 1)")
         self.config = config
         self.testing = config["runtime_library_id"] == "elpis_runtime_testing"
         catalog = _read_regular(self.home / config["catalog"], 1 << 20)
@@ -275,14 +284,15 @@ class Deployment:
         return LineageConfig(**document["config"])
 
     def runtime_config(self) -> RuntimeConfig:
-        return RuntimeConfig(self.lineage_dir / "continuity", self.home / "lib" / self.config["runtime_library"],
+        return RuntimeConfig(self.lineage_dir / "authority", self.home / "lib" / self.config["runtime_library"],
                              native_authority=self.authority, runtime_library_id=self.config["runtime_library_id"],
                              k1_checkpoint_dir=self.lineage_dir / "checkpoint")
 
     def create_lineage(self, config: LineageConfig) -> dict:
-        """Create the one lineage: provision its checkpoint store, create the composite from the deterministic initial
-        weights, anchor it (durable first: the checkpoint slot, then continuity), record its configuration. Refused
-        if a lineage (or a partial one) exists: lineage data is never overwritten."""
+        """Create the one lineage: provision its durable authority (an ECS_C authority with no sources yet: the
+        operator founds them, ``source_found``) and its checkpoint store, create the composite from the deterministic
+        initial weights, anchor it (durable first: the checkpoint slot, then the authority), record its configuration.
+        Refused if a lineage (or a partial one) exists: lineage data is never overwritten."""
         if type(config) is not LineageConfig:
             raise _refuse("LINEAGE_CONFIG", "a LineageConfig is required")
         if self.lineage_dir.exists():
@@ -290,6 +300,8 @@ class Deployment:
         composite = config.composite()
         w = initial_weights(config.dim, config.width, config.seed)
         self.lineage_dir.mkdir(mode=0o700)
+        provision_authority(self.libraries.authority, self.lineage_dir / "authority",
+                            capacity=config.authority_capacity)
         provision_k1_checkpoint(self.libraries.runtime, self.lineage_dir / "checkpoint",
                                 self.libraries.composite.envelope_bytes(composite))
         with CompositeState.create(self.libraries.composite, composite, memoryview(w)) as x, \
@@ -301,7 +313,7 @@ class Deployment:
                     "initial_identity": identity.hex(), "initialization": _W_DOMAIN.decode()}
         _write_once(self.lineage_dir / "lineage.json", _canonical(document), 0o400)
         return {"identity": identity.hex(), "state_format": anchored.state_format,
-                "continuity_generation": anchored.generation, "initial_w_sha256": document["initial_w_sha256"]}
+                "authority_generation": anchored.generation, "initial_w_sha256": document["initial_w_sha256"]}
 
     def session(self) -> "Session":
         """Open the runtime over the lineage and restore exactly the last acknowledged composite (RESUMABLE), or report
@@ -327,7 +339,7 @@ class Session:
                 self.state = CompositeState.restore(deployment.libraries.composite, config.composite(),
                                                     self.recovery.envelope)
                 if self.state.state_digest() != self.recovery.authorized:
-                    raise _refuse("LINEAGE_MISMATCH", "the restored composite is not continuity's identity")
+                    raise _refuse("LINEAGE_MISMATCH", "the restored composite is not the authority's identity")
         except BaseException:
             self.close()
             raise

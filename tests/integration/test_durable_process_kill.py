@@ -112,7 +112,7 @@ else:                                                         # "loop": learn an
 
 def _child(tmp_path, mode):
     env = dict(os.environ, PYTHONPATH=f"{REPO / 'src'}{os.pathsep}{REPO}", PYTHONDONTWRITEBYTECODE="1")
-    return subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO), str(tmp_path / "continuity"),
+    return subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO), str(tmp_path / "authority"),
                              str(tmp_path / "checkpoint"), mode],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, cwd=REPO)
 
@@ -124,7 +124,7 @@ def _kill(child):
 
 
 def _restart(tmp_path):
-    return Runtime(replace(_config(tmp_path / "continuity"), k1_checkpoint_dir=tmp_path / "checkpoint"))
+    return Runtime(replace(_config(tmp_path / "authority"), k1_checkpoint_dir=tmp_path / "checkpoint"))
 
 
 def _resume(k1, runtime, envelope):   # noqa: F811
@@ -216,7 +216,7 @@ def test_random_sigkill_while_learning_and_publishing_recovers_only_a_complete_a
     with world(k1, max_rows=8) as fresh:
         anchor = fresh.state_digest()
     for kill in range(KILLS):
-        for d in ("continuity", "checkpoint"):
+        for d in ("authority", "checkpoint"):
             subprocess.run(["rm", "-rf", str(tmp_path / d)], check=True)
         _provision(k1, tmp_path / "checkpoint")
         child = _child(tmp_path, "loop")

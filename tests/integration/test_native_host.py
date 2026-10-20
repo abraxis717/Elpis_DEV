@@ -263,7 +263,7 @@ def test_init_pins_the_libraries_and_the_host_and_the_build_tree_is_never_used_a
     assert all(stat.S_IMODE(p.stat().st_mode) == 0o500 for p in (home / "lib").iterdir())
     rc, out = host(home, "status")
     assert rc == 0 and out[0]["lineage"] is None and out[0]["authority"]["disposition"] == "CLEAN"
-    assert out[0]["abi"] == {"runtime": 6, "composite": 1, "ecs_c": 1}
+    assert out[0]["abi"] == {"runtime": 7, "composite": 1, "ecs_c": 1}
     assert out[0]["capabilities"]["text"].startswith("UNAVAILABLE: ECS_CODEC_UNQUALIFIED")
 
 
@@ -295,7 +295,7 @@ def _drift(home, what):
         cat.write_text(cat.read_text().replace('"schema"', ' "schema"', 1))
     elif what == "abi":
         cfg = home / "host.cfg"
-        cfg.write_text(cfg.read_text().replace('"runtime":6', '"runtime":5'))
+        cfg.write_text(cfg.read_text().replace('"runtime":7', '"runtime":6'))
     elif what == "pin":
         cfg = home / "host.cfg"
         doc = json.loads(cfg.read_text())
@@ -460,8 +460,9 @@ def _python_cli(home, *args, script=None):
 
 
 def test_the_native_host_answers_exactly_as_the_python_operator_interface(tmp_path):
-    # The Python deployment pins its own library set (K1 FMS included) and publishes to continuity; the composite's
-    # identities are the authority-independent part, so they must agree byte for byte.
+    # The Python deployment pins its own library set (K1 FMS included) and publishes to its own ECS_C authority, as the
+    # host does (RuntimeCore ABI v7 has no other); the composite's identities, independent of either authority's own
+    # deployment key and lineage, must agree byte for byte.
     py_staging = tmp_path / "py-build"
     for rel in _LIBS + ("native/ECS_G/libelpis_ecsg_k1_fms.so",):
         (py_staging / rel).parent.mkdir(parents=True, exist_ok=True)
@@ -470,14 +471,17 @@ def test_the_native_host_answers_exactly_as_the_python_operator_interface(tmp_pa
     assert _python_cli(py_home, "init", "--native-build", str(py_staging))[0] == 0
     rc, created = _python_cli(py_home, "create", "--seed", "7")
     assert rc == 0, created
-    script = [{"op": "query", "x": X}, LEARN, {"op": "query", "x": X}, EVIDENCE, LOOKUP, {"op": "live"}]
+    script = [SOURCE, {"op": "query", "x": X}, LEARN, {"op": "query", "x": X}, EVIDENCE, LOOKUP, {"op": "live"}]
     rc, py = _python_cli(py_home, script=script)
     assert rc == 0 and all(o["ok"] for o in py), py
     home, initial = deploy(tmp_path)
     assert initial == created[0]["identity"]
-    rc, out = host(home, script=[SOURCE] + script)
+    rc, out = host(home, script=script)
     assert rc == 0 and all(o["ok"] for o in out), out
-    native = out[1:]
+    # Both operators found the same source the same way (one label domain); its identity is each authority's own.
+    for key in ("label", "source_authority", "lifecycle"):
+        assert out[0][key] == py[0][key], key
+    native, py = out[1:], py[1:]
     for a, b in zip(py, native):
         assert a["op"] == b["op"]
     assert native[0]["values"] == py[0]["values"] and native[0]["values_sha256"] == py[0]["values_sha256"]

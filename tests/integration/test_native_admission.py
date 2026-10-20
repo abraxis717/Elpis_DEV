@@ -1,6 +1,6 @@
 """High-impact native code runs only from sealed, pinned bytes (elpis.substrate.native_admission).
 
-RuntimeCore, native K1, the K1 FMS adapter and the continuity ABI are admitted exactly as the HACF bridges are: a
+RuntimeCore, native K1, the K1 FMS adapter and the ECS_C authority are admitted exactly as the HACF bridges are: a
 deployment-pinned catalog (its own pin from trusted configuration), a trusted descriptor root without symlink escape,
 bytes copied into a sealed memfd, hashed against the pin and loaded from the seal. Every attack below is refused
 before the library runs; the managed runtime additionally refuses a K1 state whose library was not admitted. The
@@ -112,14 +112,14 @@ def test_a_wrong_digest_and_an_unauthorized_identifier_are_refused(workspace):
     genuine = _bytes(workspace / "libelpis_runtime.so")
     wrong = _catalog({"elpis_runtime": genuine + b"x"})               # the pin names other bytes
     assert _refused(lambda: admit_library(workspace, "libelpis_runtime.so", wrong, "elpis_runtime")) == "IDENTITY"
-    other = _catalog({"elpis_continuity": genuine})                    # the right bytes, another identifier
+    other = _catalog({"elpis_ecs_c_authority": genuine})               # the right bytes, another identifier
     assert _refused(lambda: admit_library(workspace, "libelpis_runtime.so", other, "elpis_runtime")) == "IDENTITY"
     # Admitted under a non-RuntimeCore identifier, the right bytes still do not make a RuntimeLibrary.
     with pytest.raises(CompositionError) as info:
-        RuntimeLibrary.admit(workspace, "libelpis_runtime.so", other, "elpis_continuity")
+        RuntimeLibrary.admit(workspace, "libelpis_runtime.so", other, "elpis_ecs_c_authority")
     assert info.value.code == "RUNTIME_UNPINNED"
     with pytest.raises(CompositionError) as info:
-        RuntimeLibrary(admit_library(workspace, "libelpis_runtime.so", other, "elpis_continuity"))
+        RuntimeLibrary(admit_library(workspace, "libelpis_runtime.so", other, "elpis_ecs_c_authority"))
     assert info.value.code == "RUNTIME_UNPINNED"
     synthetic = _catalog({"elpis_runtime": genuine}, provenance="synthetic-test")
     assert _refused(lambda: admit_library(workspace, "libelpis_runtime.so", synthetic, "elpis_runtime")) == "IDENTITY"

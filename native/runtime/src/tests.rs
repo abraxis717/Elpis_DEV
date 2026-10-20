@@ -4,16 +4,16 @@
 //! NONFINITE from the schedule and STALE discard it, a commit installs the complete candidate or nothing) and its
 //! live coordinate (a generation advanced by exactly one per committed transition, reported under the lease) but
 //! computes nothing of K1's mathematics; the real native state is exercised by the C ABI tests and the Python
-//! integration lane. Fault injection needs the `testing` feature (`cargo test --features testing`).
+//! integration lane. The suite runs over the ECS_C authority and reads it back from disk, so it needs the `testing`
+//! feature (`cargo test --features testing`), which also compiles the fault injection.
 
 use std::ffi::c_int;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-use elpis_continuity::{Code, Cognition, EvolutionState, StateFormat};
-
-use crate::code::{Error, Rt};
+use crate::authority::{Cognition, EvolutionState, Snapshot, StateFormat};
+use crate::code::{Code, Error, Rt};
 use crate::core::{Core, Counters, Stimulus, VolatileCommit};
 use crate::durable::{Kind, Status, Ticket};
 use crate::fuel::{self, Budget, CEILING};
@@ -99,7 +99,7 @@ fn unsealed(w: &[f64], epoch: u64) -> Vec<u8> {
 
 fn seal_in_place(e: &mut [u8]) {
     let n = e.len();
-    let trailer = elpis_continuity::sha256::digest(&[&e[..n - 32]]);
+    let trailer = elpis_ecs_c_authority::sha256::digest(&[&e[..n - 32]]);
     e[n - 32..].copy_from_slice(&trailer);
 }
 
@@ -126,7 +126,7 @@ impl State {
         if self.composite {
             let mut parts: Vec<&[u8]> = vec![b"composite", &out];
             parts.extend(self.memory.iter().map(|k| &k[..]));
-            return elpis_continuity::sha256::digest(&parts);
+            return elpis_ecs_c_authority::sha256::digest(&parts);
         }
         out
     }
@@ -655,14 +655,8 @@ fn publish(core: &mut Core, sub: &mut Fake, k: Key) -> Result<Ticket, Error> {
     core.lane().wait(t.sequence, Some(Duration::from_secs(30)))
 }
 
-/// The durable authority the suite runs over: standalone continuity (the default), or the ECS_C authority
-/// (`ELPIS_RUNTIME_TEST_AUTHORITY=ecs_c`, ctest `runtime.cargo_test_ecs_c`). The same laws must hold over both.
-fn ecs_c_backend() -> bool {
-    let ecs_c = std::env::var("ELPIS_RUNTIME_TEST_AUTHORITY").map(|v| v == "ecs_c").unwrap_or(false);
-    assert!(!ecs_c || cfg!(feature = "testing"), "the ECS_C pass reads the authority back: --features testing");
-    ecs_c
-}
-
+/// The durable authority the suite runs over is the ECS_C authority, the only one since ABI v7 (ABI v6 ran the whole
+/// suite a second time over standalone continuity, which retired into it).
 fn ecs_c_dirs(p: &Path) -> (PathBuf, PathBuf) {
     (p.join("state"), p.join("authority"))
 }
@@ -684,11 +678,8 @@ fn provision_ecs_c(state: &Path, authority: &Path) {
     a.transition(c.generation, &c.state_root, &active).unwrap();
 }
 
-/// A closed runtime over `p` (under ECS_C, the authority is provisioned on first use).
+/// A closed runtime over `p` (the authority is provisioned on first use).
 fn new_core(p: &Path) -> Core {
-    if !ecs_c_backend() {
-        return Core::new(p).expect("absolute");
-    }
     let (state, authority) = ecs_c_dirs(p);
     if !authority.join("witness.a").exists() {
         provision_ecs_c(&state, &authority);
@@ -725,17 +716,12 @@ fn anchored(core: &Core) -> Option<Digest> {
     }
 }
 
-/// The durable authority as a restart would read it from disk (the two slot files, read directly: the runtime under
-/// test may hold the directory's lock).
-fn on_disk(dir: &Dir) -> elpis_continuity::Snapshot {
-    #[cfg(feature = "testing")]
-    if ecs_c_backend() {
-        let (state, authority) = ecs_c_dirs(&dir.0);
-        let record = elpis_ecs_c_authority::testing_peek(&state, &authority).unwrap();
-        return crate::authority::snapshot_of(&record).unwrap();
-    }
-    let read = |n: &str| -> [u8; 176] { std::fs::read(dir.0.join(n)).unwrap().try_into().unwrap() };
-    elpis_continuity::store::resolve(&[read("continuity.a"), read("continuity.b")]).unwrap().0
+/// The durable authority as a restart would read it from disk (the record files, read directly: the runtime under
+/// test may hold the authority's locks).
+fn on_disk(dir: &Dir) -> Snapshot {
+    let (state, authority) = ecs_c_dirs(&dir.0);
+    let record = elpis_ecs_c_authority::testing_peek(&state, &authority).unwrap();
+    crate::authority::snapshot_of(&record).unwrap()
 }
 
 #[test]
@@ -762,7 +748,7 @@ fn a_closed_runtime_refuses_everything() {
     assert_eq!(core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap_err().error, Rt::Closed.into());
     assert_eq!(core.snapshot().unwrap_err(), Rt::Closed.into());
     assert!(sub.calls().is_empty());
-    assert!(Core::new(std::path::Path::new("relative")).is_err());
+    assert!(Core::new_ecs_c(std::path::Path::new("relative"), std::path::Path::new("authority")).is_err());
 }
 
 #[test]
@@ -1088,7 +1074,7 @@ struct Witness {
     retained: (Vec<u64>, u64),
     generation: u64,
     identity: Digest,
-    durable: elpis_continuity::Snapshot,
+    durable: Snapshot,
 }
 
 fn witness(core: &Core, sub: &Fake) -> Witness {
@@ -2178,7 +2164,7 @@ mod recovery {
         slot[16..24].copy_from_slice(&generation.to_le_bytes());
         slot[24..32].copy_from_slice(&(ENVELOPE as u64).to_le_bytes());
         slot[32..64].copy_from_slice(&forged[ENVELOPE - 32..]);
-        let sum = elpis_continuity::sha256::digest(&[b"elpis.k1-checkpoint.slot.v1\0", &slot[..96], &forged]);
+        let sum = elpis_ecs_c_authority::sha256::digest(&[b"elpis.k1-checkpoint.slot.v1\0", &slot[..96], &forged]);
         slot[96..128].copy_from_slice(&sum);
         slot.extend_from_slice(&forged);
         ck.write_slot(held, &slot);
@@ -2634,25 +2620,26 @@ mod recovery {
         }
 
         #[test]
-        fn the_hot_lane_performs_no_continuity_or_checkpoint_io() {
+        fn the_hot_lane_performs_no_authority_or_checkpoint_io() {
             let (dir, ck) = (Dir::new("ck-io"), Ck::new("io"));
             let mut sub = Fake::new(0.1);
             let mut c = core(&dir, &ck);
             c.anchor(&mut sub, key(1)).unwrap();
             turn(&mut c, &mut sub, key(1)).unwrap();
-            c.testing_continuity_counters(true);
+            c.testing_authority_counters(true);
             c.testing_checkpoint_counters(true);
             for _ in 0..100 {
                 turn(&mut c, &mut sub, key(1)).unwrap();
                 query(&mut c, &mut sub, key(1), 2).unwrap();
             }
-            let (io, ck_io) = (c.testing_continuity_counters(false), c.testing_checkpoint_counters(false));
-            assert_eq!(io, Default::default(), "continuity I/O on the HOT lane");
+            let (io, ck_io) = (c.testing_authority_counters(false), c.testing_checkpoint_counters(false));
+            assert_eq!(io, Default::default(), "authority I/O on the HOT lane");
             assert_eq!(ck_io, Default::default(), "checkpoint I/O on the HOT lane");
-            // One explicit durable publication: one slot write + sync, one record write + sync.
+            // One explicit durable publication: one slot write + sync; the authority's record slot (R = 1344 + 160 x
+            // 16) and its witness slot (240), each written in place and synced; nothing opened or renamed.
             publish(&mut c, &mut sub, key(1)).unwrap();
-            let (io, ck_io) = (c.testing_continuity_counters(false), c.testing_checkpoint_counters(false));
-            assert_eq!((io.pwrites, io.pwrite_bytes, io.data_syncs, io.opens, io.renames), (1, 176, 1, 0, 0));
+            let (io, ck_io) = (c.testing_authority_counters(false), c.testing_checkpoint_counters(false));
+            assert_eq!((io.pwrites, io.pwrite_bytes, io.data_syncs, io.opens, io.renames), (2, 3904 + 240, 2, 0, 0));
             assert_eq!((ck_io.pwrites, ck_io.pwrite_bytes, ck_io.data_syncs), (1, (HEADER + ENVELOPE) as u64, 1));
         }
     }
@@ -2706,21 +2693,19 @@ mod faults {
         let mut sub = Fake::new(0.1);
         core.anchor(&mut sub, key(1)).unwrap();
         turn(&mut core, &mut sub, key(1)).unwrap();
-        core.testing_continuity_counters(true);
+        core.testing_authority_counters(true);
         turn(&mut core, &mut sub, key(1)).unwrap();
-        assert_eq!(core.testing_continuity_counters(false), Default::default()); // the turn: nothing
+        assert_eq!(core.testing_authority_counters(false), Default::default()); // the turn: nothing
         publish(&mut core, &mut sub, key(1)).unwrap();
-        let io = core.testing_continuity_counters(false);
-        // Continuity: one 176-byte slot. ECS_C: the record slot (R = 1344 + 160 x 16) and the witness slot (240).
-        let expected = if ecs_c_backend() { (0, 0, 2, 3904 + 240, 2) } else { (0, 0, 1, 176, 1) };
-        assert_eq!((io.opens, io.preads, io.pwrites, io.pwrite_bytes, io.data_syncs), expected);
+        let io = core.testing_authority_counters(false);
+        // The record slot (R = 1344 + 160 x 16) and the witness slot (240).
+        assert_eq!((io.opens, io.preads, io.pwrites, io.pwrite_bytes, io.data_syncs), (0, 0, 2, 3904 + 240, 2));
         assert_eq!((io.dir_syncs, io.renames, io.unlinks), (0, 0, 0));
     }
 }
 
-/// ABI v6: RuntimeCore over the ECS_C authority, whichever backend `ELPIS_RUNTIME_TEST_AUTHORITY` selects for the
-/// rest of the suite (docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"): the HOT lane's I/O, typed-evidence
-/// admission, the evidence summary, operator events and a refused open.
+/// RuntimeCore's ECS_C-specific laws (docs/RUNTIME_CORE.md, "The durable authority"): the HOT lane's I/O,
+/// typed-evidence admission, the evidence summary, operator events and a refused open.
 #[cfg(feature = "testing")]
 mod ecs_c {
     use super::recovery::Ck;
@@ -2819,13 +2804,13 @@ mod ecs_c {
         c.anchor(&mut sub, key(1)).unwrap();
         turn(&mut c, &mut sub, key(1)).unwrap();
         let before = files(&dir);
-        c.testing_continuity_counters(true);
+        c.testing_authority_counters(true);
         c.testing_checkpoint_counters(true);
         for _ in 0..100 {
             turn(&mut c, &mut sub, key(1)).unwrap();
             query(&mut c, &mut sub, key(1), 2).unwrap();
         }
-        let (io, ck_io) = (c.testing_continuity_counters(false), c.testing_checkpoint_counters(false));
+        let (io, ck_io) = (c.testing_authority_counters(false), c.testing_checkpoint_counters(false));
         assert_eq!(io, Default::default(), "authority I/O on the HOT lane");
         assert_eq!(ck_io, Default::default(), "checkpoint I/O on the HOT lane");
         // One explicit durable publication: the record slot and the witness slot, each written in place and synced;
@@ -2834,7 +2819,7 @@ mod ecs_c {
         let mut published = None;
         for n in 0..20 {
             published = Some(publish(&mut c, &mut sub, key(1)).unwrap().identity);
-            let (io, ck_io) = (c.testing_continuity_counters(true), c.testing_checkpoint_counters(true));
+            let (io, ck_io) = (c.testing_authority_counters(true), c.testing_checkpoint_counters(true));
             assert_eq!(
                 (io.pwrites, io.pwrite_bytes, io.data_syncs, io.preads),
                 (2, record + e::WITNESS_BYTES as u64, 2, 0),
@@ -2878,15 +2863,6 @@ mod ecs_c {
         assert!(core.turn_is_open() && core.fault().is_none());
         core.turn_commit(&mut sub, k).unwrap();
         assert_eq!(sub.memory(), vec![a]);
-        // Under continuity admission stays the boundary's: the same observation reaches the native call.
-        let cdir = Dir::new("ecsc-admission-continuity");
-        let mut cont = Core::new(&cdir.0).unwrap();
-        cont.open().unwrap();
-        let (mut sub, k) = (Fake::composite(0.2), composite_key(8));
-        cont.anchor(&mut sub, k).unwrap();
-        cont.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
-        assert_eq!(observe(&mut cont, &mut sub, k, &observation(9, 2)).unwrap(), observation(9, 2));
-        cont.turn_abort(k).unwrap();
     }
 
     #[test]
@@ -2942,17 +2918,11 @@ mod ecs_c {
 
     #[test]
     fn operator_events_are_ecs_c_only_and_never_runtime_core_s_own() {
-        // Continuity has no entities.
-        let cdir = Dir::new("ecsc-op-continuity");
-        let mut cont = Core::new(&cdir.0).unwrap();
-        cont.open().unwrap();
-        let any = e::Event::entity_reclaim(&[1; 32], 1, &[2; 32]);
-        assert_eq!(cont.authority_transition(&any).unwrap_err().error, Rt::Invalid.into());
-        assert_eq!(cont.authority_status().unwrap().backend, 1);
         // RuntimeCore's own events and the reconciliations are refused before the authority sees them, whoever
         // they claim to be from.
         let dir = Dir::new("ecsc-op");
         let mut core = open(&dir);
+        assert_eq!(core.authority_status().unwrap().backend, crate::authority::BACKEND_ECS_C, "the only backend");
         let generation = peek(&dir).generation;
         let (op, seq) = operator(&dir);
         let rt = peek(&dir).state.entities[1].id;
@@ -2977,12 +2947,7 @@ mod ecs_c {
 
     #[test]
     fn the_held_authority_reads_are_exactly_its_rows_and_change_nothing() {
-        // Continuity has no rows; a closed runtime refuses.
-        let cdir = Dir::new("ecsc-read-continuity");
-        let mut cont = Core::new(&cdir.0).unwrap();
-        cont.open().unwrap();
-        assert_eq!(cont.authority_entity(0).unwrap_err(), Rt::Invalid.into());
-        assert_eq!(cont.authority_next_entity_id(3, &[1; 32]).unwrap_err(), Rt::Invalid.into());
+        // A closed runtime refuses; an unknown kind has no next identity.
         let dir = Dir::new("ecsc-read");
         let mut core = closed(&dir);
         assert_eq!(core.authority_entity(0).unwrap_err(), Rt::Closed.into());
@@ -3070,12 +3035,6 @@ mod ecs_c {
         store.commit_cognition_as(f, Some(&ids[4]), Some(&ids[5])).unwrap();
         assert_eq!(status(&store).0, 6);
         assert_eq!(peek(&dir).state.evidence_count, 6);
-        // Continuity keeps no evidence and ignores the summary.
-        let cdir = Dir::new("ecsc-evidence-continuity");
-        let mut cont = Store::continuity(&cdir.0).unwrap();
-        cont.open().unwrap();
-        cont.set_evidence(3, &composite(0x33));
-        assert_eq!(cont.status().evidence_count, 0);
     }
 
     #[test]
@@ -3150,7 +3109,7 @@ mod observe_only {
         result.map_err(|r| (r.error, memory_status))
     }
 
-    fn anchored_composite(name: &str) -> (Dir, Core, Fake, Key, elpis_continuity::Snapshot) {
+    fn anchored_composite(name: &str) -> (Dir, Core, Fake, Key, Snapshot) {
         let dir = Dir::new(name);
         let mut core = dir.core();
         let mut sub = Fake::composite(0.2);

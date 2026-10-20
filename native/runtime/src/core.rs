@@ -57,12 +57,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
-use elpis_continuity::{Code, Cognition, Digest, EvolutionState, Snapshot, StateFormat};
-
-use crate::authority::{Admission, Store};
-
+use crate::authority::{Admission, Cognition, Digest, EvolutionState, Snapshot, StateFormat, Store};
 use crate::checkpoint::{self, Disposition};
-use crate::code::{Error, Rt};
+use crate::code::{Code, Error, Rt};
 #[cfg(feature = "testing")]
 use crate::durable::control;
 use crate::durable::{Kind, Lane, Ticket};
@@ -253,14 +250,9 @@ pub struct Recovery {
 }
 
 impl Core {
-    /// A closed runtime over one continuity directory (an absolute path).
-    pub fn new(continuity_dir: &Path) -> Result<Core, Error> {
-        Core::with_store(Store::continuity(continuity_dir)?)
-    }
-
-    /// ABI v6: a closed runtime over a provisioned ECS_C authority (a state directory and its protected authority
-    /// directory, absolute paths; docs/ECS_C_AUTHORITY.md). The same laws as over continuity; in addition typed
-    /// observations are admitted against the authority's sources and every publication records an evidence summary.
+    /// A closed runtime over a provisioned ECS_C authority (a state directory and its protected authority directory,
+    /// absolute paths; docs/ECS_C_AUTHORITY.md). Typed observations are admitted against the authority's sources and
+    /// every publication records an evidence summary.
     pub fn new_ecs_c(state_dir: &Path, authority_dir: &Path) -> Result<Core, Error> {
         Core::with_store(Store::ecs_c(state_dir, authority_dir)?)
     }
@@ -301,7 +293,7 @@ impl Core {
         }
         let snapshot = self.lane.open()?;
         self.reset();
-        self.admission = self.lane.with_stores(|s| s.continuity.admission())?;
+        self.admission = self.lane.with_stores(|s| s.authority.admission())?;
         self.open = true;
         let lane = Arc::clone(&self.lane);
         self.worker = Some(
@@ -492,7 +484,7 @@ impl Core {
                 control_point!(lane.control_begun(planned, st));
             }
             control_point!(lane.control_publishing(planned, st));
-            let anchored = st.continuity.anchor_cognition_as(format, Some(&identity));
+            let anchored = st.authority.anchor_cognition_as(format, Some(&identity));
             control_point!(lane.control_record(planned, &anchored, st));
             Ok(anchored?)
         })?;
@@ -503,9 +495,9 @@ impl Core {
                 Ok(s)
             }
             Err(r) => {
-                if matches!(r.error, Error::Continuity(Code::PublicationUncertain | Code::TestingProcessDeath)) {
+                if matches!(r.error, Error::Authority(Code::PublicationUncertain | Code::TestingProcessDeath)) {
                     self.fault = Some(match r.error {
-                        Error::Continuity(c) => c,
+                        Error::Authority(c) => c,
                         _ => unreachable!(),
                     });
                 }
@@ -1166,7 +1158,7 @@ impl Core {
             return Err(Rt::TurnOpen.into());
         }
         self.lane.with_stores(|st| -> Result<Recovery, Refusal> {
-            let authorized = match st.continuity.snapshot()?.cognition() {
+            let authorized = match st.authority.snapshot()?.cognition() {
                 Cognition::Unanchored => None,
                 Cognition::Anchored(d) => Some(d),
             };
@@ -1218,7 +1210,7 @@ impl Core {
         #[cfg(feature = "testing")]
         let lane = &*self.lane;
         self.lane.with_stores(|st| -> Result<(), Refusal> {
-            let authorized = match st.continuity.snapshot()?.cognition() {
+            let authorized = match st.authority.snapshot()?.cognition() {
                 Cognition::Unanchored => return Err(Rt::CheckpointInvalid.into()),
                 Cognition::Anchored(d) => d,
             };
@@ -1250,7 +1242,7 @@ impl Core {
         #[cfg(feature = "testing")]
         let lane = &*self.lane;
         let adopted = self.lane.with_stores(|st| -> Result<Snapshot, Refusal> {
-            let authorized = match st.continuity.snapshot()?.cognition() {
+            let authorized = match st.authority.snapshot()?.cognition() {
                 Cognition::Unanchored => return Err(Code::Unanchored.into()),
                 Cognition::Anchored(d) => d,
             };
@@ -1265,7 +1257,7 @@ impl Core {
             }
             control_point!(lane.control_begun(planned, st));
             control_point!(lane.control_publishing(planned, st));
-            let adopted = st.continuity.commit_cognition(Some(&authorized), Some(candidate));
+            let adopted = st.authority.commit_cognition(Some(&authorized), Some(candidate));
             control_point!(lane.control_record(planned, &adopted, st));
             Ok(adopted?)
         })?;
@@ -1276,7 +1268,7 @@ impl Core {
                 Ok(snapshot)
             }
             Err(r) => {
-                if let Error::Continuity(
+                if let Error::Authority(
                     code @ (Code::PublicationRefused | Code::PublicationUncertain | Code::TestingProcessDeath),
                 ) = r.error
                 {
@@ -1329,7 +1321,7 @@ impl Core {
         let (identity, generation) = self.leased_identity(sub)?;
         let mut envelope = match self.capture(sub, capacity, generation, true) {
             Ok(e) => e,
-            Err(r) if r.error == Error::Continuity(Code::StateMismatch) => {
+            Err(r) if r.error == Error::Authority(Code::StateMismatch) => {
                 self.fault = None; // a capture refusal of a state never bound is not a lineage loss
                 return Err(Rt::CheckpointShape.into());
             }
@@ -1362,7 +1354,7 @@ impl Core {
             control_point!(lane.control_slot(planned, st));
             written?;
             control_point!(lane.control_publishing(planned, st));
-            let imported = st.continuity.import_cognition(Some(k1), Some(&identity));
+            let imported = st.authority.import_cognition(Some(k1), Some(&identity));
             control_point!(lane.control_record(planned, &imported, st));
             Ok(imported?)
         })?;
@@ -1375,7 +1367,7 @@ impl Core {
                 Ok(s)
             }
             Err(r) => {
-                if let Error::Continuity(code @ (Code::PublicationUncertain | Code::TestingProcessDeath)) = r.error {
+                if let Error::Authority(code @ (Code::PublicationUncertain | Code::TestingProcessDeath)) = r.error {
                     self.fault = Some(code);
                 }
                 Err(r)
@@ -1390,7 +1382,7 @@ impl Core {
     /// The durable authority's backend and, under ECS_C, the recovery report of the last open, the current record
     /// (while open) and the last refusal. Readable closed: after a refused open it is the operator's reason.
     pub fn authority_status(&self) -> Result<crate::authority::Status, Error> {
-        self.lane.with_stores(|s| s.continuity.status())
+        self.lane.with_stores(|s| s.authority.status())
     }
 
     /// An operator event on the ECS_C authority while this runtime holds it (founding, lifecycle, source versions,
@@ -1406,8 +1398,8 @@ impl Core {
             return Err(Rt::TurnOpen.into());
         }
         let (result, admission) = self.lane.with_stores(|s| {
-            let r = s.continuity.operator_transition(event);
-            (r, s.continuity.admission())
+            let r = s.authority.operator_transition(event);
+            (r, s.authority.admission())
         })?;
         self.admission = admission;
         Ok(result?)
@@ -1418,12 +1410,12 @@ impl Core {
     /// fail-stopped and under continuity.
     pub fn authority_entity(&self, index: u32) -> Result<elpis_ecs_c_authority::Entity, Error> {
         self.live()?;
-        self.lane.with_stores(|s| s.continuity.entity_at(index))?
+        self.lane.with_stores(|s| s.authority.entity_at(index))?
     }
 
     pub fn authority_next_entity_id(&self, kind: u8, label: &Digest) -> Result<Digest, Error> {
         self.live()?;
-        self.lane.with_stores(|s| s.continuity.next_entity_id(kind, label))?
+        self.lane.with_stores(|s| s.authority.next_entity_id(kind, label))?
     }
 
     /// The current idle evolution authority an assertion must be built against.
@@ -1447,7 +1439,7 @@ impl Core {
         if self.lane.durable()?.evolution().assertion().is_some() {
             return Err(Code::EvolutionPending.into());
         }
-        match self.lane.with_stores(|st| st.continuity.reserve_evolution(Some(observed), Some(assertion)))? {
+        match self.lane.with_stores(|st| st.authority.reserve_evolution(Some(observed), Some(assertion)))? {
             Ok(snapshot) => {
                 self.lane.count_publication();
                 self.evolution = Some(snapshot.evolution());
@@ -1470,7 +1462,7 @@ impl Core {
         if let Some(code) = self.fault() {
             return Err(code.into());
         }
-        match self.lane.with_stores(|st| st.continuity.finalize_evolution(Some(&pending), Some(receipt)))? {
+        match self.lane.with_stores(|st| st.authority.finalize_evolution(Some(&pending), Some(receipt)))? {
             Ok(snapshot) => {
                 self.lane.count_publication();
                 Ok(snapshot)
@@ -1499,7 +1491,7 @@ impl Core {
         if self.evolution.is_some() {
             return Err(Rt::EvolutionInFlight.into());
         }
-        match self.lane.with_stores(|st| st.continuity.finalize_evolution(Some(expected), Some(receipt)))? {
+        match self.lane.with_stores(|st| st.authority.finalize_evolution(Some(expected), Some(receipt)))? {
             Ok(snapshot) => {
                 self.lane.count_publication();
                 Ok(snapshot)
@@ -1517,13 +1509,13 @@ impl Core {
 
     #[cfg(feature = "testing")]
     pub fn testing_arm(&mut self, publication: u64, action: u32, arg: u64) -> Result<(), Error> {
-        self.lane.with_stores(|st| st.continuity.testing_arm(publication, action, arg))??;
+        self.lane.with_stores(|st| st.authority.testing_arm(publication, action, arg))??;
         Ok(())
     }
 
     #[cfg(feature = "testing")]
-    pub fn testing_continuity_counters(&mut self, reset: bool) -> elpis_continuity::store::probe::Counters {
-        self.lane.with_stores(|st| st.continuity.testing_counters(reset)).unwrap_or_default()
+    pub fn testing_authority_counters(&mut self, reset: bool) -> crate::authority::IoCounters {
+        self.lane.with_stores(|st| st.authority.testing_counters(reset)).unwrap_or_default()
     }
 
     #[cfg(feature = "testing")]

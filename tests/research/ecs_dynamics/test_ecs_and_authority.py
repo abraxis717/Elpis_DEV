@@ -33,18 +33,20 @@ def test_production_code_never_imports_the_laboratory():
 
 
 def test_importing_ecs_does_not_load_the_laboratory_or_numpy():
-    probe = ("import sys, elpis.ECS, elpis.ECS.native, elpis.ECS.k1, elpis.continuity; "
+    probe = ("import sys, elpis.ECS, elpis.ECS.native, elpis.ECS.k1, elpis.runtime.authority; "
              "print(sorted(m for m in sys.modules if m.startswith('research') or m.startswith('numpy')))")
     out = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, cwd=REPO,
                          env={"PYTHONPATH": str(REPO / "src"), "PYTHONDONTWRITEBYTECODE": "1"}, check=True)
     assert out.stdout.strip() == "[]"
 
 
-def test_neural_law_is_not_in_the_ecs_or_continuity_and_numpy_is_not_a_base_dependency():
+def test_neural_law_is_not_in_the_ecs_or_the_durable_authority_and_numpy_is_not_a_base_dependency():
     import ast
 
-    for root in ("ECS", "continuity"):
-        for path in (REPO / "src" / "elpis" / root).rglob("*.py"):
+    # The ECS bindings, and the durable authority's Python view (the ECS_C authority through RuntimeCore, into which
+    # standalone continuity retired at RuntimeCore ABI v7).
+    for paths in (sorted((REPO / "src" / "elpis" / "ECS").rglob("*.py")), [REPO / "src/elpis/runtime/authority.py"]):
+        for path in paths:
             tree = ast.parse(path.read_text())
             imported = {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
             imported |= {node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}

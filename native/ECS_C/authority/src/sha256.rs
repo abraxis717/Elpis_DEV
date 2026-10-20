@@ -1,4 +1,7 @@
 //! SHA-256 (FIPS 180-4). Small, dependency-free; checked against NIST vectors and the frozen v2 records.
+//!
+//! The implementation standalone continuity carried (`native/continuity/src/sha256.rs`), moved here unchanged when
+//! continuity retired into ECS_C (docs/NATIVE_SPLIT_CENSUS.md, section 9): every digest it computes is the same.
 
 const K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98,

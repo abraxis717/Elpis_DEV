@@ -1,5 +1,11 @@
 //! The continuity register record (docs/CONTINUITY.md): one fixed 176-byte current authority.
 //!
+//! Moved here unchanged from standalone continuity (`native/continuity/src/record.rs`) when continuity retired into
+//! ECS_C (docs/NATIVE_SPLIT_CENSUS.md, section 9). ECS_C owns what it defines: the evolution authority and its v2
+//! digest (`elpis.continuity.evolution-authority.v2`, unchanged), the retained-state format, and the v2/v3 record
+//! itself, which ECS_C reads only for an explicit legacy import (`legacy`) and never writes. RuntimeCore reports its
+//! durable authority in this shape (its snapshot view), so the record digest it reports is unchanged too.
+//!
 //! Two record versions share one layout. **v2** (`ELPCONT\x02`) is unchanged: its anchored digest is a K1 retained-state
 //! identity (`ELPISGK1`). **v3** (`ELPCONT\x03`, register domain v3) is written only for a lineage anchored at an ECS
 //! composite retained-state identity (`ELPISEC1`, docs/ECS_COMPOSITE_STATE.md): it is the v2 layout with byte 25 = 1

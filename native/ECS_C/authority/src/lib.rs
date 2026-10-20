@@ -19,6 +19,8 @@ pub mod hmac;
 pub mod legacy;
 pub mod model;
 pub mod record;
+pub mod register;
+pub mod sha256;
 pub mod store;
 
 pub use error::Code;
@@ -27,6 +29,7 @@ pub use model::{
     Lifecycle, Prior, State, MAX_CAPACITY, MAX_PER_TURN, MIN_CAPACITY, ZERO,
 };
 pub use record::{capacity_of, record_bytes, Record, SlotClass, Witness, WITNESS_BYTES};
+pub use register::{EvolutionState, StateFormat, MAX_COUNTER};
 pub use store::{
     Authority, Counters, Disposition, Mode, Provisioned, Receipt, Refusal, Report, Step, KEY_FILE, STATE_FILES,
     WITNESS_FILES,

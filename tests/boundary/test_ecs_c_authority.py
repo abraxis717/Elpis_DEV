@@ -1,8 +1,8 @@
 """The ECS_C authority's ABI and persistence bounds are one declaration, checked in the sources (docs/ECS_C_AUTHORITY.md).
 
 * The C header, the Rust FFI and the ABI inventory name the same functions: the production library exports the
-  header's functions except the two testing hooks, the testing library all of them, and neither re-exports the
-  embedded continuity crate's ``elpis_continuity_*`` ABI (the binaries are checked by test_abi_inventory.py).
+  header's functions except the two testing hooks, the testing library all of them, and neither exports the retired
+  standalone continuity's ``elpis_continuity_*`` ABI (the binaries are checked by test_abi_inventory.py).
 * The persistence surface is the fixed file set of the census's persistence invariant (section 5a): the crate
   names exactly five files, creates files only while provisioning and never renames or removes one afterwards.
 * The record and witness sizes in the header, the Rust layout and the docs agree.

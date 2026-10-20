@@ -21,6 +21,7 @@ from elpis.runtime.composition import CompositionError
 from elpis.runtime.core import describe
 from elpis.runtime.fuel import CEILING
 
+from ..conftest import authority_slots
 from ._turn_fixtures import LEARN, RATE, ByteTokens, FixtureMap, admitted
 from .test_codec_ecs_turn import _config, _Resident, adapter, k1, world  # noqa: F401 (module fixtures)
 
@@ -58,7 +59,7 @@ def _generation(state):
 
 
 def _evidence(state, runtime):
-    slots = tuple((runtime.continuity.directory / n).read_bytes() for n in ("continuity.a", "continuity.b"))
+    slots = authority_slots(runtime.continuity.directory)
     return state.snapshot(), state.state_digest(), state.epoch, slots, runtime.continuity.snapshot()
 
 

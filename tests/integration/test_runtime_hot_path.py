@@ -8,16 +8,17 @@ checkpoint store attached, so durable publication *could* write if it were on th
   commit;
 * RuntimeCore's K1 crossings are those of the transaction itself (begin at the live generation, one schedule,
   commit): no state digest, no identity read, no envelope capture, no reservation, no abort;
-* nothing is published: zero continuity I/O and zero checkpoint I/O (testing-library I/O counters), and Python
+* nothing is published: zero authority I/O and zero checkpoint I/O (testing-library I/O counters), and Python
   performs no file I/O at all;
 * no retired history, receipt, event, scheduler or projection module is loaded;
-* the durable footprint (two continuity slots, two checkpoint slots) is byte-for-byte unchanged by the turn.
+* the durable footprint (the ECS_C authority's two records, two witnesses and key; two checkpoint slots) is
+  byte-for-byte unchanged by the turn.
 
 Gate A (HOT isolation): with the durability worker stalled behind a pending durable request, well over a hundred
-managed transitions and queries complete with no continuity or checkpoint I/O; they cannot have waited for the lane,
+managed transitions and queries complete with no authority or checkpoint I/O; they cannot have waited for the lane,
 since it never ran. When the worker resumes, the newest request publishes the state captured when it was requested
-(never a later volatile one), the older waiting request is superseded, and continuity names exactly the acknowledged
-identity.
+(never a later volatile one), the older waiting request is superseded, and the authority names exactly the
+acknowledged identity.
 
 Interface mechanics only (TRAINING=NONE SEMANTICS=NONE fixture map); no cognition claim.
 """
@@ -35,14 +36,15 @@ from elpis.runtime.cognition import LearnRequest, QueryRequest, run_turn
 from elpis.runtime.core import RuntimeLibrary
 from elpis.runtime.recovery import provision_k1_checkpoint
 
-from ..conftest import (admit_k1_set, library_id_of, native_authority, require_runtime_library,
+from ..conftest import (AUTHORITY_SLOTS, admit_k1_set, authority_slots, library_id_of, native_authority,
+                        require_runtime_library,
                         runtime_config)
 from ._turn_fixtures import LEARN, TEST_CODEC_PIN, ByteTokens, FixtureMap, admitted
 from .test_codec_ecs_turn import DIM, WIDTH, _Counting, k1, world  # noqa: F401 (the k1 fixture)
 
 _OS_CALLS = ("open", "close", "pwrite", "write", "pread", "read", "fsync", "fdatasync", "rename", "replace", "unlink",
              "scandir", "fstat", "stat")
-_SLOTS = ("continuity.a", "continuity.b")
+_SLOTS = tuple(sorted([n for _, n in AUTHORITY_SLOTS] + ["deployment.key"]))
 _CHECKPOINT_SLOTS = ("k1-checkpoint.a", "k1-checkpoint.b")
 
 
@@ -90,12 +92,18 @@ def _config(tmp_path, k1):
     library = RuntimeLibrary.admit(path.parent, path.name, native_authority(), library_id_of(path))
     store = tmp_path / "k1-checkpoint"
     provision_k1_checkpoint(library, store, k1.envelope_bytes(DIM, WIDTH))
-    return replace(runtime_config(tmp_path / "continuity", path, TEST_CODEC_PIN), k1_checkpoint_dir=store)
+    return replace(runtime_config(tmp_path / "authority", path, TEST_CODEC_PIN), k1_checkpoint_dir=store)
 
 
 def _durable_bytes(tmp_path):
-    return (tuple((tmp_path / "continuity" / n).read_bytes() for n in _SLOTS)
+    return (authority_slots(tmp_path / "authority")
             + tuple((tmp_path / "k1-checkpoint" / n).read_bytes() for n in _CHECKPOINT_SLOTS))
+
+
+def _footprint(tmp_path):
+    """Every durable file, by name and size: the authority's five, then the checkpoint's two."""
+    return (sorted((p.name, p.stat().st_size) for p in (tmp_path / "authority").rglob("*") if p.is_file())
+            + sorted((p.name, p.stat().st_size) for p in (tmp_path / "k1-checkpoint").iterdir()))
 
 
 @pytest.mark.parametrize("experiences,steps", [(1, 1), (8, 60)])
@@ -116,8 +124,7 @@ def test_a_managed_turn_is_three_runtimecore_crossings_and_publishes_nothing(exp
         runtime.anchor_cognition(state)
         runtime.run_turn(state, "warm", tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)
         durable = _durable_bytes(tmp_path)
-        footprint = sorted((p.name, p.stat().st_size) for d in ("continuity", "k1-checkpoint")
-                           for p in (tmp_path / d).iterdir())
+        footprint = _footprint(tmp_path)
         generation = runtime.durability().live_generation
         runtime.continuity.testing_counters(reset=True)
         runtime._core.testing_checkpoint_io_counters(reset=True)
@@ -148,13 +155,12 @@ def test_a_managed_turn_is_three_runtimecore_crossings_and_publishes_nothing(exp
                           "k1_lease_claims": 0, "k1_identities": 0, "k1_captures": 0, "durable_requests": 0,
                           "durable_superseded": 0, "durable_acknowledged": 0, "durable_failed": 0,
                           "k1_observes": 0}, native
-        # No file I/O anywhere on the turn: not in Python, not in continuity, not in the checkpoint store.
+        # No file I/O anywhere on the turn: not in Python, not in the authority, not in the checkpoint store.
         assert fs.calls == {}, fs.calls
         assert io == _NO_IO, io
         assert checkpoint_io == _NO_CHECKPOINT_IO, checkpoint_io
         assert _durable_bytes(tmp_path) == durable
-        assert sorted((p.name, p.stat().st_size) for d in ("continuity", "k1-checkpoint")
-                      for p in (tmp_path / d).iterdir()) == footprint
+        assert _footprint(tmp_path) == footprint
         assert [n for n, _ in footprint] == [*_SLOTS, *_CHECKPOINT_SLOTS]
 
     assert not [m for m in sys.modules if m.startswith(_RETIRED_MODULES)]

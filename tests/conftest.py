@@ -114,24 +114,8 @@ def require_native_library(stem: str) -> Path:
     return found
 
 
-def require_continuity_library(testing: bool = False) -> Path:
-    """The Rust continuity library at its exact build path (native/continuity).
-
-    Located by path, never by search: the cargo target directories inside the build tree
-    also contain files named libelpis_continuity.so (including the testing build).
-    """
-    name = "libelpis_continuity_testing.so" if testing else "libelpis_continuity.so"
-    path = native_build_dir() / "native" / "continuity" / name
-    if not path.is_file():
-        message = f"{name} not built under {native_build_dir()}; build with `cmake --build build`"
-        if native_required():
-            pytest.fail(message)
-        pytest.skip(message + " (never an implicit PASS)")
-    return path
-
-
 def require_runtime_library(testing: bool = False) -> Path:
-    """The Rust RuntimeCore library at its exact build path (native/runtime); it embeds continuity.
+    """The Rust RuntimeCore library at its exact build path (native/runtime); it embeds the ECS_C authority.
 
     Located by path, never by search (the cargo target directories hold same-named files).
     """
@@ -149,18 +133,6 @@ def require_runtime_library(testing: bool = False) -> Path:
 def runtime_library() -> Path:
     """Production RuntimeCore library path (no test hooks)."""
     return require_runtime_library()
-
-
-@pytest.fixture(scope="session")
-def continuity_library() -> Path:
-    """Production continuity library path (no test hooks)."""
-    return require_continuity_library()
-
-
-@pytest.fixture(scope="session")
-def continuity_testing_library() -> Path:
-    """Testing continuity library path: the same authority plus fault injection and I/O counters."""
-    return require_continuity_library(testing=True)
 
 
 @pytest.fixture
@@ -195,14 +167,13 @@ def fms_file_library(native_workspace):
 _PINNED = {   # library id -> path relative to the build tree
     "elpis_runtime": "native/runtime/libelpis_runtime.so",
     "elpis_runtime_testing": "native/runtime/libelpis_runtime_testing.so",
-    "elpis_continuity": "native/continuity/libelpis_continuity.so",
-    "elpis_continuity_testing": "native/continuity/libelpis_continuity_testing.so",
     "elpis_ecsg_math": "native/ECS_G/libelpis_ecsg_math.so",
     "elpis_ecsg_k1": "native/ECS_G/libelpis_ecsg_k1.so",
     "elpis_ecsg_k1_fms": "native/ECS_G/libelpis_ecsg_k1_fms.so",
     "elpis_ecs_memory": "native/ECS_C/libelpis_ecs_memory.so",
     "elpis_ecs_composite": "native/runtime/composite/libelpis_ecs_composite.so",
     "elpis_hacf_observation": "native/runtime/libelpis_hacf_observation.so",
+    "elpis_ecs_c_authority": "native/ECS_C/authority/libelpis_ecs_c_authority.so",
 }
 _AUTHORITY = {}
 
@@ -267,9 +238,61 @@ def admit_composite_set():
     return admit_libraries(native, native_authority(), tuple((name.rsplit("/", 1)[1][3:-3], name) for name in names))
 
 
-def runtime_config(continuity_dir: Path, runtime_library: Path, codec_pin: str | None = None,
+# The tests' durable authority (RuntimeCore ABI v7 has only the ECS_C authority): provisioned by the test author, the
+# operator here, with one ACTIVE source for every memory source authority the suites' typed observations record, so
+# the authority's admission never decides what a test measures (tests of admission found their own sources).
+TEST_AUTHORITY_CAPACITY = 20
+# The generation of a freshly provisioned test authority, before any publication: genesis, then each test source's
+# founding and activation (two transitions each).
+TEST_AUTHORITY_GENERATION = 1 + 2 * 16
+_AUTHORITY_LIBRARY = {}
+
+
+def test_sources():
+    from elpis.runtime.authority import SourceGrant
+    return tuple(SourceGrant(f"test source {n}", n, 64, "test scope") for n in range(16))
+
+
+def authority_library():
+    """The ECS_C authority's own ABI over this build tree's library, admitted under the test catalog (once)."""
+    from elpis.runtime.authority import AuthorityLibrary
+    key = str(native_build_dir())
+    if key not in _AUTHORITY_LIBRARY:
+        path = require_native_library("elpis_ecs_c_authority")
+        _AUTHORITY_LIBRARY[key] = AuthorityLibrary.admit(path.parent, path.name, native_authority())
+    return _AUTHORITY_LIBRARY[key]
+
+
+def provision_test_authority(root: Path, sources=None, capacity: int = TEST_AUTHORITY_CAPACITY):
+    """Provision an ECS_C authority under ``root`` (the operator's act) with ``sources`` (default: the test sources)."""
+    from elpis.runtime.authority import provision_authority
+    return provision_authority(authority_library(), root, capacity=capacity,
+                               sources=test_sources() if sources is None else sources)
+
+
+AUTHORITY_SLOTS = (("state", "authority.a"), ("state", "authority.b"), ("authority", "witness.a"),
+                   ("authority", "witness.b"))
+AUTHORITY_FILES = sorted(["authority", "authority/deployment.key", "authority/witness.a", "authority/witness.b",
+                          "state", "state/authority.a", "state/authority.b"])
+
+
+def authority_slots(root: Path) -> tuple[bytes, ...]:
+    """The raw bytes of the durable authority's four slots under ``root`` (its two records and two witnesses; the
+    deployment key is never rewritten). Two reads are equal exactly when nothing durable was published in between."""
+    return tuple((root / d / n).read_bytes() for d, n in AUTHORITY_SLOTS)
+
+
+def authority_files(root: Path) -> list[str]:
+    """Every path under an authority root: exactly AUTHORITY_FILES once provisioned (nothing is ever added)."""
+    return sorted(str(p.relative_to(root)) for p in root.rglob("*"))
+
+
+def runtime_config(authority_dir: Path, runtime_library: Path, codec_pin: str | None = None,
                    evolution_pin: str | None = None):
-    """A RuntimeConfig over a built RuntimeCore library, admitted under the test catalog."""
+    """A RuntimeConfig over a built RuntimeCore library, admitted under the test catalog, publishing to the ECS_C
+    authority under ``authority_dir`` (provisioned on first use: see :func:`provision_test_authority`)."""
     from elpis.runtime import RuntimeConfig
-    return RuntimeConfig(continuity_dir, runtime_library, codec_pin, native_authority(),
+    if not authority_dir.exists():
+        provision_test_authority(authority_dir)
+    return RuntimeConfig(authority_dir, runtime_library, codec_pin, native_authority(),
                          library_id_of(runtime_library), evolution_policy_sha256=evolution_pin)
