@@ -553,10 +553,45 @@ time.sleep(3600)
                     pass
 
     def incompatible_lineage(self, home: Path):
-        rc, o = self._tampered_copy(home, "lineage", lambda h: _rewrite_lineage(h / "lineage" / "lineage.json"))
-        code = o[0].get("code")
+        # N12 mutates one lineage configuration only. _tampered_copy is not suitable here:
+        # it makes *every* copied file owner-writable, including the protected ECS_C key
+        # that must retain its original mode, triggering a different refusal first.
+        copy = self.work / "tamper-lineage"
+        shutil.copytree(home, copy, symlinks=True)
+        lineage = copy / "lineage" / "lineage.json"
+        original_mode = lineage.stat().st_mode & 0o7777
+        try:
+            lineage.chmod(original_mode | 0o200)
+            _rewrite_lineage(lineage)
+        finally:
+            lineage.chmod(original_mode)
+
+        # The tamper is the *only* permitted byte change. A read-only refusal
+        # must not alter any key, witness, record, checkpoint, pin or configuration.
+        def files_snapshot(root):
+            result = {}
+            for path in sorted(root.rglob("*")):
+                if path.is_symlink():
+                    result[str(path.relative_to(root))] = ("symlink", os.readlink(path))
+                elif path.is_file():
+                    data = path.read_bytes()
+                    result[str(path.relative_to(root))] = (
+                        "file", len(data), path.stat().st_mode & 0o7777,
+                        hashlib.sha256(data).hexdigest())
+            return result
+
+        before = files_snapshot(copy)
+        rc, o = self.cli(copy, "status")
+        after = files_snapshot(copy)
+        unchanged = before == after
+        code = o[0].get("code") if len(o) == 1 else None
         self.check("N12", "an incompatible recovery lineage (another composite shape) is refused, nothing adopted",
-                   o[0]["ok"] is False and code == "CORRUPT", code=code)
+                   rc == 3 and len(o) == 1 and o[0].get("ok") is False
+                   and code == "CORRUPT" and unchanged,
+                   rc=rc, code=code, unchanged=unchanged,
+                   files_before=len(before), files_after=len(after),
+                   changed_paths=sorted(set(before) ^ set(after) |
+                                        {p for p in before.keys() & after.keys() if before[p] != after[p]}))
 
     # -- the whole run ----------------------------------------------------------------------------------------------
     def run(self) -> dict:

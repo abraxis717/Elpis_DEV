@@ -34,26 +34,38 @@ def _load(name: str):
 
 freeze = _load("freeze")
 
-_OBSERVE = r"""
+# The frozen ABI v5 freeze instrument cannot observe a current ABI v7 checkout:
+# premise.py requires HEAD:native/continuity, which was deliberately retired. Its
+# historical recorded observation remains valid for pure instrument/contract tests.
+# Never represent that historical observation as the current executable subject.
+_PYTHON_PROBE = r"""
 import importlib.util, json, sys
 from pathlib import Path
 spec = importlib.util.spec_from_file_location("f", sys.argv[1])
 f = importlib.util.module_from_spec(spec); spec.loader.exec_module(f)
-print(json.dumps(f.observe(native_build=Path(sys.argv[2]), work_root=Path(sys.argv[3]))))
+print(json.dumps({"python": f.python(Path(sys.argv[2]))}))
 """
 
 
 def _observe(tmp_path, *flags, env=None) -> dict:
-    out = subprocess.run([sys.executable, *flags, "-c", _OBSERVE, str(INSTRUMENT / "freeze.py"),
-                          str(native_build_dir()), str(tmp_path)], capture_output=True, text=True, check=True,
+    """Probe only the current installed package, without asserting the retired premise."""
+    out = subprocess.run([sys.executable, *flags, "-c", _PYTHON_PROBE, str(INSTRUMENT / "freeze.py"),
+                          str(REPO)], capture_output=True, text=True, check=True,
                          env=env, cwd=tmp_path)
     return json.loads(out.stdout)
 
 
 @pytest.fixture(scope="module")
-def observed(tmp_path_factory):
-    require_runtime_library(testing=True)
-    return _observe(tmp_path_factory.mktemp("observe"), "-I", "-B")
+def observed():
+    """Exactly the historical QUAL observation; never a current-ABI qualification."""
+    frozen = json.loads((INSTRUMENT / "evidence/freeze.json").read_text())
+    result = json.loads((INSTRUMENT / "evidence/run.json").read_text())
+    assert frozen["schema"] == freeze.FREEZE_SCHEMA
+    assert result["freeze_sha256"] == freeze.sha256(INSTRUMENT / "evidence/freeze.json")
+    historical = result["observed"]
+    assert historical["source"]["commit"] == frozen["source"]["commit"]
+    assert freeze.compare(frozen, historical) == []  # Check the archived claim against its archived observations.
+    return historical
 
 
 def _as_freeze(observed: dict) -> dict:
@@ -61,15 +73,16 @@ def _as_freeze(observed: dict) -> dict:
 
 
 def test_an_isolated_interpreter_imports_the_checkouts_own_package_whatever_pythonpath_says(tmp_path, observed):
-    assert observed["python"]["isolated"] == 1
-    assert observed["python"]["package"] == observed["python"]["source_package"]
-    assert observed["python"]["modules_outside_package"] == []
+    live = _observe(tmp_path, "-I", "-B")  # Current installed package; not historical QUAL subject.
+    assert live["python"]["isolated"] == 1
+    assert live["python"]["package"] == live["python"]["source_package"]
+    assert live["python"]["modules_outside_package"] == []
     # A decoy package on PYTHONPATH: isolated mode ignores it, so the measured package is still the real one ...
     decoy = tmp_path / "decoy" / "elpis"
     decoy.mkdir(parents=True)
     (decoy / "__init__.py").write_text("DECOY = True\n")
     env = dict(os.environ, PYTHONPATH=str(decoy.parent))
-    assert _observe(tmp_path, "-I", "-B", env=env)["python"]["package_root"] == observed["python"]["package_root"]
+    assert _observe(tmp_path, "-I", "-B", env=env)["python"]["package_root"] == live["python"]["package_root"]
     # ... while a non-isolated interpreter would import the decoy (it shadows the real package): such an observation
     # is refused, as not isolated and as not the checkout's package.
     shadow = subprocess.run([sys.executable, "-B", "-c", "import elpis; print(elpis.__file__)"], capture_output=True,
@@ -208,13 +221,22 @@ def test_a_refused_qual_run_creates_nothing(tmp_path, observed):
             "--inputs", "qual", "--out", str(tmp_path / "records.jsonl")]
     record = tmp_path / "FREEZE.json"
     record.write_text(json.dumps(dict(_as_freeze(observed), source=dict(observed["source"], commit="0" * 40))))
+    # These two runner refusals are explicit pre-admission guards. A Python
+    # traceback is NOT an acceptable substitute for a controlled refusal.
     for extra, needle in (([], "only under a verified freeze record"),
-                          (["--freeze", str(record), "--only", "publish"], "every trial"),
-                          (["--freeze", str(record)], "source.commit differs")):
+                          (["--freeze", str(record), "--only", "publish"], "every trial")):
         work = tmp_path / f"work-{len(extra)}"
         done = subprocess.run(base + ["--work", str(work)] + extra, capture_output=True, text=True, cwd=tmp_path)
         assert done.returncode != 0 and needle in done.stderr, done.stderr
+        assert "Traceback" not in done.stderr, done.stderr
         assert not work.exists() and not (tmp_path / "records.jsonl").exists()
+    # The old ABI v5 runner is inapplicable to HEAD at ABI v7 because its
+    # frozen premise requires HEAD:native/continuity. Test the *pure* freeze
+    # comparison on the archived observation without executing QUAL inputs.
+    # This proves the mismatch classifier, NOT ABI v7 runner qualification.
+    assert "source.commit differs from the freeze" in freeze.compare(
+        json.loads(record.read_text()), copy.deepcopy(observed))
+    assert not (tmp_path / "records.jsonl").exists()
 
 
 premise = _load("premise")
@@ -237,13 +259,16 @@ def test_the_unchanged_law_premise_held_at_the_qualifying_commit_and_breaks_here
     at_qualifying = premise.check(REPO, _V4, observed["source"]["commit"])
     assert at_qualifying["problems"] == [] and len(at_qualifying["abi_v4_recovery_tests"]) >= 21
     assert at_qualifying == observed["premise"]
-    # This checkout is past Stage F (RuntimeCore ABI v7, docs/NATIVE_SPLIT_CENSUS.md, section 9): standalone
-    # continuity retired into ECS_C, so P1 breaks, and the production durability law and its tests moved with the
-    # ECS_C authority (P2-P4). The RUN PASS stays bound to its commit; it does not extend to this RuntimeCore.
-    here = premise.check(REPO, _V4)
-    assert here["problems"][0] == "P1: native/continuity differs from the ABI v4 commit", here["problems"]
-    assert "P4: the production durability law in native/runtime/src/durable.rs differs from the ABI v4 commit" in \
-        here["problems"]
+    # RuntimeCore ABI v7 retired HEAD:native/continuity. The frozen checker
+    # assumes the source exists and therefore cannot diagnose P1/P4 on this
+    # checkout: it raises before returning a premise result. Preserve that
+    # non-applicability explicitly; never synthesize a PASS or modify premise.py.
+    assert premise._tree(REPO, _V4, "native/continuity")
+    missing = subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", "HEAD:native/continuity"],
+                             capture_output=True)
+    assert missing.returncode != 0
+    with pytest.raises(subprocess.CalledProcessError):
+        premise.check(REPO, _V4)
 
 
 @pytest.mark.parametrize("path,edit,needle", [
