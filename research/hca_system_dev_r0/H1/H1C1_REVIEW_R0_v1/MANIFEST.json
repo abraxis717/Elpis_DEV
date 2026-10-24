@@ -1,0 +1,11 @@
+{
+  "files": {
+    "PROTOCOL.md": "e6b7c03449607c395f44086ec435b50bcfa2e982d3fdd9b4a708c9b9273a1aec",
+    "README.md": "c758b98a1ae814b92a9481dbd62b3bd3114579169933a78e99b90a738c0c6a6e",
+    "independent.py": "0c54b1ce0d7927a279c0ca1d67656af52c8a8e418341c8ed43d10ec31f2e3de4",
+    "run.py": "cbf11044f1f10150ddc6dc6f7791d27d615d5fa3657a518c61896e9c3b8004dd",
+    "tests.py": "38d93c0477e4ff8599945f90526e6af7eb316be17cd885101d460fe858742a43",
+    "worker.py": "83051f18fc3e2360a12bb654fc7836214ba776b32bf8a113fc4db6cf33ce5249"
+  },
+  "schema": "elpis.hca.h1c1.package.v1"
+}
