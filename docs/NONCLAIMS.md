@@ -179,6 +179,15 @@ PASS for commit `117b41a` (ABI v6) only.
   documented in `docs/CONTINUITY.md`). A continuity v2/v3 register enters the
   ECS_C authority only through an explicit legacy import, which reads it under
   its own lock and never writes it.
+* **The ECS_C relational view is DEV.** `native/ECS_C/relational`
+  (`docs/ECS_C_RELATIONAL.md`, ECSC_DYNAMIC_RELATIONAL_DEV_R0) keeps typed
+  evidence per (source, version, scope) binding and answers only from
+  evidence the authority's admission law still accepts. Nothing canonical
+  composes it: RuntimeCore's HOT lane still admits by `source_authority` alone,
+  and memory LOOKUP stays source-blind. It persists nothing and qualifies
+  nothing. Its evidence counts are not truth. Its HCA comparison
+  (`research/ecsc_dynamic_relational_r0`) is a DEV measurement, not a
+  qualification of HCA or of the view.
 
 ## Runtime boundary after the red team (`elpis.runtime`, `native/runtime`)
 
