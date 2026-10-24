@@ -1,0 +1,47 @@
+{
+  "classification": "DEV_PREP_ONLY_NOT_QUAL",
+  "files": [
+    {
+      "path": "hca_system_dev_r0/H1/H1_OPERATOR_NOTES.md",
+      "sha256": "23ead4ccfe197b8db2e20dab4b8cacf2937e6c32bfdd82ad1139f6643776f6e6",
+      "size": 1709
+    },
+    {
+      "path": "hca_system_dev_r0/H1/H1_PROTOCOL.md",
+      "sha256": "9345061877a70238620188120846b7568057ae0e59ee522b572918ef2692fbf4",
+      "size": 9758
+    },
+    {
+      "path": "hca_system_dev_r0/H1/README_FIRST.txt",
+      "sha256": "08327b7362ad730268bff7e85e4df5206926092bec9c6b23956071e1eb8b3c41",
+      "size": 1396
+    },
+    {
+      "path": "hca_system_dev_r0/H1/RUN_H1.sh",
+      "sha256": "d1f68cee779b9dc36141288efe31aa3c608031e85961611d7689c6c9d30efe5c",
+      "size": 5788
+    },
+    {
+      "path": "hca_system_dev_r0/H1/h1_audit.py",
+      "sha256": "7eb1f1a977e2160febbd3e774bee7f528b083a473c1a23d41927fcf2bedc517d",
+      "size": 5720
+    },
+    {
+      "path": "hca_system_dev_r0/H1/h1_controls.py",
+      "sha256": "053f7daf13a2733290765fcae96280a17f292f9936b648490998834e83ad01d2",
+      "size": 3149
+    },
+    {
+      "path": "hca_system_dev_r0/H1/h1_data.py",
+      "sha256": "04da0d9146bc0d76ef3e471d13a0436239b0cfb95bb6b1b6f9d220221434f5e6",
+      "size": 5832
+    },
+    {
+      "path": "hca_system_dev_r0/H1/h1_mutations.py",
+      "sha256": "64b57b28f7daa9b1e9287bb980cf4711869627a2b22acca723a8dadee2cc809a",
+      "size": 3540
+    }
+  ],
+  "schema": "elpis.hca.h1a.bundle.v1",
+  "target_commit": "2c7588733180d1ab2e8e978cf277c30f9e4ab371"
+}

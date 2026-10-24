@@ -1,0 +1,13 @@
+{
+  "files": {
+    "PROTOCOL.md": "e8b4da7da1d3c5ec81d6615a9b29eb8bc371c49623bab3d1302a25e9d4ea1de1",
+    "README.md": "585d14b40d13487ba901ea7b61a4f3a2984960058a2a7bb6deabf2032aa19e8d",
+    "attacks.py": "bab1417ee8fb530349700ea6861abebe8da9fc5579da2ee24313cdb8469a99a0",
+    "checker.py": "21aa650e6b6a668a45f9fd5fe74b796700e2e3d3741a59cec26d8eeac85e2f6b",
+    "contract.py": "54c7344d9b64c751c548066606edbf7b56bd487b7cb5ac5dadf8ff367dc52b6c",
+    "engines.py": "29312f6c93468efcf55ff08b5cfb54f58be59a09cb36a07039c077e8fa9560ea",
+    "oracle.py": "ef5cd01fd1106fb02881ed2c49662dc4e8b49885a5ad2a36bef900f0d0ca0f90",
+    "run.py": "7741f44f4bd46dc5dd29b8488afbb40c74bf87a3aef5e2eba3105d9a06f683cf"
+  },
+  "schema": "elpis.hca.h1c0.package.v1"
+}
