@@ -1,0 +1,16 @@
+--- a/research/ecsc_dynamic_relational_r0/bench_hca_revision.c (471ef8a)
++++ b/research/ecsc_dynamic_relational_r0/bench_hca_revision.c (run: predeclared)
+@@ -404,9 +404,10 @@
+     uint32_t live_n = 0;
+ #define ADMIT(edge, row)                                                                                       \
+     do {                                                                                                       \
+-        const elpis_ecs_mem_observation o_ = pair(5, ELPIS_ECS_MEM_ASSERT, tick++,                             \
+-                                                  w.rows[row].source_authority, pool[edge].from, pool[edge].to); \
+-        OK(admit_as(v, &w, row, &o_, NULL));                                                                   \
++        const uint32_t r_ = (row), e_ = (edge); /* each argument evaluated once */                             \
++        const elpis_ecs_mem_observation o_ = pair(5, ELPIS_ECS_MEM_ASSERT, tick++, w.rows[r_].source_authority,  \
++                                                  pool[e_].from, pool[e_].to);                                 \
++        OK(admit_as(v, &w, r_, &o_, NULL));                                                                    \
+     } while (0)
+     if (local) {
+         for (uint32_t i = 0; i < 8; ++i) {

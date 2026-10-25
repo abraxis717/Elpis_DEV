@@ -25,6 +25,10 @@
   {
    "stage": "F (docs/NATIVE_SPLIT_CENSUS.md, section 9)",
    "change": "RuntimeCore C ABI v7 (include/elpis/runtime.h): standalone continuity retires into ECS_C. libelpis_continuity.so and libelpis_continuity_testing.so are removed; libelpis_runtime.so and libelpis_runtime_testing.so drop elpis_runtime_create and their re-export of continuity's C ABI (elpis_continuity_*, and the testing library's two continuity testing hooks), so the ECS_C authority, embedded without its C ABI, is their only durable authority; no export is added, and no other export or link changes"
+  },
+  {
+   "stage": "DEV (docs/ECS_C_RELATIONAL.md, ECSC_DYNAMIC_RELATIONAL_DEV_R0)",
+   "change": "adds libelpis_ecs_c_relational.so (the ECS_C relational view, C ABI v1, include/elpis/ecs_c_relational.h; DEV, not composed: no other library links it); it links libelpis_ecs_memory.so (relation keys, and the substrate's SHA-256 helpers that library carries) and no authority code; no export or link of any library above changes"
   }
  ],
  "libraries": {
@@ -102,6 +106,33 @@
     "elpis_sha256_init",
     "elpis_sha256_update",
     "elpis_unhex32"
+   ]
+  },
+  "libelpis_ecs_c_relational.so": {
+   "soname": "libelpis_ecs_c_relational.so",
+   "elpis_needed": [
+    "libelpis_ecs_memory.so"
+   ],
+   "exports": [
+    "elpis_ecs_c_rel_abi_version",
+    "elpis_ecs_c_rel_admit",
+    "elpis_ecs_c_rel_check",
+    "elpis_ecs_c_rel_code_name",
+    "elpis_ecs_c_rel_config_default",
+    "elpis_ecs_c_rel_create",
+    "elpis_ecs_c_rel_dependents",
+    "elpis_ecs_c_rel_destroy",
+    "elpis_ecs_c_rel_export",
+    "elpis_ecs_c_rel_identity",
+    "elpis_ecs_c_rel_query",
+    "elpis_ecs_c_rel_read_status",
+    "elpis_ecs_c_rel_rebuild",
+    "elpis_ecs_c_rel_relation_read",
+    "elpis_ecs_c_rel_required_bytes",
+    "elpis_ecs_c_rel_reset",
+    "elpis_ecs_c_rel_support_of",
+    "elpis_ecs_c_rel_sync",
+    "elpis_ecs_c_rel_verify"
    ]
   },
   "libelpis_ecs_composite.so": {

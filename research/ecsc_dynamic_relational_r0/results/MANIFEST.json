@@ -1,0 +1,45 @@
+{
+ "bench_sources": {
+  "instrumented_run": {
+   "sha256": "4fe95932518d2757717dd33f9a4250faebfa36f32fc75874c2eccde795f340b7",
+   "source": "research/ecsc_dynamic_relational_r0/bench_hca_revision.c"
+  },
+  "predeclared_run": {
+   "base": "471ef8a:research/ecsc_dynamic_relational_r0/bench_hca_revision.c",
+   "base_sha256": "13b3d73cd7af1b726f9e7b625d1bcda916e1204e77d4eb629e61b31937769bc4",
+   "patch": "results/bench_predeclared_admit_fix.patch",
+   "patched_sha256": "75b421da1abbd60c50932fd7c766df63070c7f0d2a7b3d47eb4352e652772755"
+  }
+ },
+ "classification": "DEV, NOT QUAL; SALIENCE_ONLY; B3 NOT_AUTHORIZED",
+ "mutation_round3_source_sha256": "e865e38c643ffe59dbf7e7254acfb9c4bfa328ad78ac98e79e6097d32af0bfea",
+ "protocol_commit": "471ef8a",
+ "results": {
+  "ENVIRONMENT.txt": "203cdc7602b5ab57b2d3cbb3ad6e1fbb3bc0a4579a10600fa54fbacd96305e55",
+  "bench_predeclared_admit_fix.patch": "c04e869cbdac12848fc016ae9cf1ff47536c9c9ab634e58e83939663759b7126",
+  "hca_revision_r0_instrumented.json": "6c77ec978051176cb4a0b7483dae6d14bab1daf250e77a676c89338dc1bd084e",
+  "hca_revision_r0_predeclared.json": "ed53b95514b2b1485188df1cc0d594ffff7101e2d6c6de3884bd3697710556ff",
+  "mutants_round1.json": "b94e641541f57007545f9d4d7fb892045103052837a4a6c0c1ac4c4a702dd12d",
+  "mutants_round1.log": "7b009af3e805e99bc05f55bda64de91d39ddab429e62131ee664dd85f8f02644",
+  "mutants_round2.json": "9ca1808f7ee0ed7f149bfdddb7c9cc6054a7001220eb1d9adb1c73ffec079cc0",
+  "mutants_round2.log": "256c67d365adec19d71fc40bdee5c7522c9a062b035065475af1f5582a998290",
+  "mutants_round3.json": "82539e6932cda8038a0a6ee880de82e9657b8e3c2e34614400308f4e030ded78",
+  "mutants_round3.log": "79241824d67f607b84276bb4c0cbfd69462dafc742dbbd8286275a14c09701b5"
+ },
+ "schema": "elpis.ecsc-dynamic-relational-r0.manifest.v1",
+ "sources": {
+  "native/ECS_C/hca/src/ecs_c_hca.c": "47f1f492f690ca9b8f5be144acc143c0ce1e357a0eb44f89bc990e3e6c4a817a",
+  "native/ECS_C/memory/src/ecs_memory.c": "2cd15d2bd4a21407b2f5ccdf3d250504fbe7ba589506935058345fec1de1a07d",
+  "native/ECS_C/relational/include/elpis/ecs_c_relational.h": "c797ee4be96961d4cfacdc9330a98dcbcae20b301998665d630f499f53f32b9c",
+  "native/ECS_C/relational/src/ecs_c_relational.c": "e865e38c643ffe59dbf7e7254acfb9c4bfa328ad78ac98e79e6097d32af0bfea",
+  "native/ECS_C/relational/tests/relational_test_util.h": "b9eef20d6ad30f95f542b43d70a0a38158bdf6d2754aa656827b592150909910",
+  "native/ECS_C/relational/tests/test_ecs_c_relational.c": "08dd2611434e9d42c4c8c421565e6db7b5f8521c3374ad90fe0155c1719c558a",
+  "native/ECS_C/relational/tests/test_ecs_c_relational_alloc.c": "443ee982ceff8ffcb23a41e3644da1f07f60c5192ce4b4c1642c45fdafa3f5c6",
+  "native/ECS_C/relational/tests/test_ecs_c_relational_authority.c": "02520940fd81f9e8833926f4d353c16ce56f235a2e0df36b7e4ee8e28ab81da5",
+  "native/substrate/src/sha256.c": "3607f994d8adc3ba95fae9137947b12a1821760d8e4ca9c79bd87a1e481373b7",
+  "research/ecsc_dynamic_relational_r0/PROTOCOL_HCA_REVISION_R0.md": "98162fdb1ac15a210c9ee36238a178ebcb96059b2d4017e07234ffc7b030e595",
+  "research/ecsc_dynamic_relational_r0/bench_hca_revision.c": "4fe95932518d2757717dd33f9a4250faebfa36f32fc75874c2eccde795f340b7",
+  "research/ecsc_dynamic_relational_r0/build_bench.sh": "411a1956915d49d6358830626e7686ec6f7309e063d41d346c3d02b83da716f4",
+  "research/ecsc_dynamic_relational_r0/mutants.py": "72467c97e68aac52cc61649692631dd1a7a485b25877f553c01e6f8a88d0cc66"
+ }
+}

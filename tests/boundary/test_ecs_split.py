@@ -49,7 +49,8 @@ def test_the_two_native_ecs_domains_exist_and_the_one_ecs_tree_does_not():
     subs = {s["id"]: s for s in SYSTEM["subsystems"]}
     assert set(subs["ECS_G"]["native_targets"]) == {"elpis_ecsg_math", "elpis_ecsg_fms", "elpis_ecsg_k1",
                                                     "elpis_ecsg_k1_fms"}
-    assert subs["ECS_C"]["native_targets"] == ["elpis_ecs_memory", "elpis_ecs_c_authority", "elpis_ecs_c_hca"]
+    assert subs["ECS_C"]["native_targets"] == ["elpis_ecs_memory", "elpis_ecs_c_authority", "elpis_ecs_c_hca",
+                                               "elpis_ecs_c_relational"]
     assert "elpis_ecs_composite" in subs["runtime"]["native_targets"]
     # Python bindings keep their historical package; no Python ECS_G / ECS_C package or kernel exists, and the
     # retired continuity adapter does not either.
