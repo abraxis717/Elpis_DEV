@@ -1,0 +1,813 @@
+{
+ "control": {
+  "compiled": true,
+  "e2e": {
+   "first_failure": "",
+   "rc": 0,
+   "seconds": 0.01
+  },
+  "unit": {
+   "first_failure": "  differential vs the exact rebuild (a fresh ECS_C memory replaying the LIVE evidence): 2291328 answers, 190944 slots, 2652 states, 0 mismatches: PASS",
+   "rc": 0,
+   "seconds": 15.57
+  }
+ },
+ "judges": [
+  "test_ecs_c_relational (unit + differential)",
+  "test_ecs_c_relational_authority (e2e)"
+ ],
+ "killed": 35,
+ "mutants": [
+  {
+   "breaks": "liveness ignores the binding's version",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": "a retained contribution's version is its source's current version (older versions are retired at sync)",
+   "id": "M01",
+   "killed": false,
+   "killed_by": [],
+   "unit": {
+    "first_failure": "  differential vs the exact rebuild (a fresh ECS_C memory replaying the LIVE evidence): 2291328 answers, 190944 slots, 2652 states, 0 mismatches: PASS",
+    "rc": 0,
+    "seconds": 16.24
+   }
+  },
+  {
+   "breaks": "liveness ignores the binding's scope",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.02
+   },
+   "equivalent_predicted": "scope changes only with a version, so a retained contribution's scope is its source's current scope",
+   "id": "M02",
+   "killed": false,
+   "killed_by": [],
+   "unit": {
+    "first_failure": "  differential vs the exact rebuild (a fresh ECS_C memory replaying the LIVE evidence): 2291328 answers, 190944 slots, 2652 states, 0 mismatches: PASS",
+    "rc": 0,
+    "seconds": 14.05
+   }
+  },
+  {
+   "breaks": "a DORMANT source counts as live",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational_authority.c:300: CHECK failed: r.contributions_flipped == 1",
+    "rc": 1,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M03",
+   "killed": true,
+   "killed_by": [
+    "unit",
+    "e2e"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:334: CHECK failed: r.contributions_flipped == 1 && !r.contributions_retired && r.relations_recomputed == 1",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "a superseded version is never retired",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational_authority.c:291: CHECK failed: r.sources_changed == 1 && r.contributions_retired == 1 && r.relations_released == 1",
+    "rc": 1,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M04",
+   "killed": true,
+   "killed_by": [
+    "unit",
+    "e2e"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:310: CHECK failed: r.sources_changed == 1 && r.contributions_retired == 1 && r.relations_released == 1 && !r.contributions_flipped",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "TERMINATED does not retire",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M05",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:365: CHECK failed: r.contributions_retired == 1",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "admission skips the version (SOURCE_STALE)",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational_authority.c:169: CHECK failed: want >= 0 && elpis_ecs_c_rel_check(v, id, version, scopes[sc]) == want",
+    "rc": 1,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M06",
+   "killed": true,
+   "killed_by": [
+    "unit",
+    "e2e"
+   ],
+   "unit": {
+    "first_failure": "  authority table: structure, successor laws, idempotent re-sync: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "admission skips the scope (SCOPE_CONFLICT)",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational_authority.c:169: CHECK failed: want >= 0 && elpis_ecs_c_rel_check(v, id, version, scopes[sc]) == want",
+    "rc": 1,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M07",
+   "killed": true,
+   "killed_by": [
+    "unit",
+    "e2e"
+   ],
+   "unit": {
+    "first_failure": "  authority table: structure, successor laws, idempotent re-sync: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "admission skips the lifecycle",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational_authority.c:169: CHECK failed: want >= 0 && elpis_ecs_c_rel_check(v, id, version, scopes[sc]) == want",
+    "rc": 1,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M08",
+   "killed": true,
+   "killed_by": [
+    "unit",
+    "e2e"
+   ],
+   "unit": {
+    "first_failure": "  authority table: structure, successor laws, idempotent re-sync: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "admission skips the 32-bit source_authority binding",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M09",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  authority table: structure, successor laws, idempotent re-sync: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "admission skips the clock",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M10",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  authority table: structure, successor laws, idempotent re-sync: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "sync accepts a decreasing source version",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational_authority.c:374: CHECK failed: sync_to(v, a, &r) == ELPIS_ECS_C_REL_REGRESSION",
+    "rc": 1,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M11",
+   "killed": true,
+   "killed_by": [
+    "unit",
+    "e2e"
+   ],
+   "unit": {
+    "first_failure": "  configuration and the unsynced view: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "sync accepts TERMINATED -> live again",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M12",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  configuration and the unsynced view: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "sync accepts a vanished row without a reclamation",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M13",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  configuration and the unsynced view: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "sync accepts another lineage",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M14",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  configuration and the unsynced view: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "sync does not see a version change as a binding change",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational_authority.c:291: CHECK failed: r.sources_changed == 1 && r.contributions_retired == 1 && r.relations_released == 1",
+    "rc": 1,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M15",
+   "killed": true,
+   "killed_by": [
+    "unit",
+    "e2e"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:511: CHECK failed: r.sources_changed == 1 && r.contributions_retired == 5 && r.relations_released == 4",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "an equal generation is a no-op without comparing",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M16",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  configuration and the unsynced view: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "the aggregate's latest observation chosen wrongly",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M17",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:875: CHECK failed: present ? rc == ELPIS_ECS_C_REL_OK && slots_equal(&want, &got) : rc == ELPIS_ECS_C_REL_NOT_FOUND",
+    "rc": 1,
+    "seconds": 0.06
+   }
+  },
+  {
+   "breaks": "the aggregate's first observation chosen wrongly",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M18",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:875: CHECK failed: present ? rc == ELPIS_ECS_C_REL_OK && slots_equal(&want, &got) : rc == ELPIS_ECS_C_REL_NOT_FOUND",
+    "rc": 1,
+    "seconds": 0.06
+   }
+  },
+  {
+   "breaks": "scoped reads ignore the scope",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M19",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:399: CHECK failed: s1.found && entity_index_of(&s1.answer) == 2 && s1.conflicts == 0 && s1.matches == 1",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "aggregation counts suspended contributions",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational_authority.c:304: CHECK failed: answer_of(&am) == 3 && !av.found && !av.matches",
+    "rc": 1,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M20",
+   "killed": true,
+   "killed_by": [
+    "unit",
+    "e2e"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:336: CHECK failed: !ans.found && !ans.matches",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "LOOKUP answers a relation with zero net evidence",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.02
+   },
+   "equivalent_predicted": null,
+   "id": "M21",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:537: CHECK failed: !ans.found && ans.matches == 1 && !ans.contradicted",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "LOOKUP filler tie order reversed",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M22",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "answer mismatch: template 0 target 0 cues 0 scope -1",
+    "rc": 1,
+    "seconds": 0.07
+   }
+  },
+  {
+   "breaks": "LOOKUP counts relations with no live evidence",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational_authority.c:304: CHECK failed: answer_of(&am) == 3 && !av.found && !av.matches",
+    "rc": 1,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M23",
+   "killed": true,
+   "killed_by": [
+    "unit",
+    "e2e"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:336: CHECK failed: !ans.found && !ans.matches",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "export is not ordered by key",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M24",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:667: CHECK failed: n == 3 && memcmp(out[0].key.b, out[1].key.b, 32) < 0 && memcmp(out[1].key.b, out[2].key.b, 32) < 0",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "damage is sealed into a recomputed aggregate",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M25",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  resources: relation/contribution/row capacity, overflow guard, all-or-nothing outputs: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "a damaged contribution is resealed by a flip",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M26",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  resources: relation/contribution/row capacity, overflow guard, all-or-nothing outputs: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "admission merges another version's contribution",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": "a source's retained contributions are all at its current version, the only version admission accepts",
+   "id": "M27",
+   "killed": false,
+   "killed_by": [],
+   "unit": {
+    "first_failure": "  differential vs the exact rebuild (a fresh ECS_C memory replaying the LIVE evidence): 2291328 answers, 190944 slots, 2652 states, 0 mismatches: PASS",
+    "rc": 0,
+    "seconds": 15.16
+   }
+  },
+  {
+   "breaks": "a coordinate check ignores the state root",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.02
+   },
+   "equivalent_predicted": null,
+   "id": "M28",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  authority table: structure, successor laws, idempotent re-sync: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "pinned reads ignore the caller's coordinate",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M29",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  admission law (UNKNOWN, NOT_SOURCE, LIFECYCLE x2, SOURCE_STALE x2, SCOPE, BINDING, CLOCK, coordinate, 8 malformed): PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "the relation check does not cover the aggregate",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M30",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  resources: relation/contribution/row capacity, overflow guard, all-or-nothing outputs: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "verify does not compare aggregates",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M31",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:728: CHECK failed: bad >= 1",
+    "rc": 1,
+    "seconds": 0.01
+   }
+  },
+  {
+   "breaks": "the identity omits the assert counts",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M32",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:760: CHECK failed: memcmp(id_sound, id_damaged, 32)",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "a flipped contribution's relation is not recomputed",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational_authority.c:304: CHECK failed: answer_of(&am) == 3 && !av.found && !av.matches",
+    "rc": 1,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M33",
+   "killed": true,
+   "killed_by": [
+    "unit",
+    "e2e"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:334: CHECK failed: r.contributions_flipped == 1 && !r.contributions_retired && r.relations_recomputed == 1",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "retirement does not recompute the relation",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational_authority.c:291: CHECK failed: r.sources_changed == 1 && r.contributions_retired == 1 && r.relations_released == 1",
+    "rc": 1,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M34",
+   "killed": true,
+   "killed_by": [
+    "unit",
+    "e2e"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:310: CHECK failed: r.sources_changed == 1 && r.contributions_retired == 1 && r.relations_released == 1 && !r.contributions_flipped",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "participants are not canonicalized",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M35",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "<repo>/native/ECS_C/relational/tests/test_ecs_c_relational.c:875: CHECK failed: present ? rc == ELPIS_ECS_C_REL_OK && slots_equal(&want, &got) : rc == ELPIS_ECS_C_REL_NOT_FOUND",
+    "rc": 1,
+    "seconds": 0.07
+   }
+  },
+  {
+   "breaks": "a non-LOOKUP request is accepted",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M36",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  source revision: VALID->STALE, pinned reads, revalidation, DORMANT suspension, TERMINATED, reuse: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "a founder may vanish",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.02
+   },
+   "equivalent_predicted": null,
+   "id": "M37",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  configuration and the unsynced view: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "rebuild ignores the binding invariant",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M38",
+   "killed": true,
+   "killed_by": [
+    "unit"
+   ],
+   "unit": {
+    "first_failure": "  resources: relation/contribution/row capacity, overflow guard, all-or-nothing outputs: PASS",
+    "rc": 1,
+    "seconds": 0.0
+   }
+  },
+  {
+   "breaks": "verify ignores the binding invariant",
+   "compiled": true,
+   "e2e": {
+    "first_failure": "",
+    "rc": 0,
+    "seconds": 0.01
+   },
+   "equivalent_predicted": null,
+   "id": "M39",
+   "killed": false,
+   "killed_by": [],
+   "unit": {
+    "first_failure": "  differential vs the exact rebuild (a fresh ECS_C memory replaying the LIVE evidence): 2291328 answers, 190944 slots, 2652 states, 0 mismatches: PASS",
+    "rc": 0,
+    "seconds": 14.91
+   }
+  }
+ ],
+ "predicted_equivalent_killed": [],
+ "schema": "elpis.ecsc-dynamic-relational-r0.mutants.v1",
+ "source": "native/ECS_C/relational/src/ecs_c_relational.c",
+ "source_sha256": "e865e38c643ffe59dbf7e7254acfb9c4bfa328ad78ac98e79e6097d32af0bfea",
+ "survived_not_predicted_equivalent": [
+  "M39"
+ ],
+ "total": 39
+}

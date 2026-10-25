@@ -151,8 +151,9 @@ same logical work over 100, 1 000 and 10 000 unrelated relations; a full `rebuil
 
 **Mutation sensitivity.** 39 targeted mutants of the law, judged by both suites
 (`research/ecsc_dynamic_relational_r0/mutants.py`). Three are predicted equivalent: they remove terms of the liveness
-and admission laws that the invariant above makes redundant in every reachable state. The outcome is recorded in
-`research/ecsc_dynamic_relational_r0/README.md`.
+and admission laws that the invariant above makes redundant in every reachable state. Final round: 36/39 killed,
+and the 3 survivors are exactly the predicted-equivalent ones. Rounds 1 and 2 exposed 5 test gaps, all closed by the
+tests above (`research/ecsc_dynamic_relational_r0/README.md`, `results/mutants_round*.json`).
 
 ## Not claimed
 

@@ -1,0 +1,38 @@
+M01 SURVIVED by -: liveness ignores the binding's version
+M02 SURVIVED by -: liveness ignores the binding's scope
+M03 KILLED by ['unit', 'e2e']: a DORMANT source counts as live
+M04 KILLED by ['unit', 'e2e']: a superseded version is never retired
+M05 KILLED by ['unit']: TERMINATED does not retire
+M06 KILLED by ['unit', 'e2e']: admission skips the version (SOURCE_STALE)
+M07 KILLED by ['unit', 'e2e']: admission skips the scope (SCOPE_CONFLICT)
+M08 KILLED by ['unit', 'e2e']: admission skips the lifecycle
+M09 KILLED by ['unit']: admission skips the 32-bit source_authority binding
+M10 KILLED by ['unit']: admission skips the clock
+M11 KILLED by ['unit', 'e2e']: sync accepts a decreasing source version
+M12 KILLED by ['unit']: sync accepts TERMINATED -> live again
+M13 KILLED by ['unit']: sync accepts a vanished row without a reclamation
+M14 KILLED by ['unit']: sync accepts another lineage
+M15 KILLED by ['unit', 'e2e']: sync does not see a version change as a binding change
+M16 KILLED by ['unit']: an equal generation is a no-op without comparing
+M17 KILLED by ['unit']: the aggregate's latest observation chosen wrongly
+M18 KILLED by ['unit']: the aggregate's first observation chosen wrongly
+M19 KILLED by ['unit']: scoped reads ignore the scope
+M20 KILLED by ['unit', 'e2e']: aggregation counts suspended contributions
+M21 KILLED by ['unit']: LOOKUP answers a relation with zero net evidence
+M22 KILLED by ['unit']: LOOKUP filler tie order reversed
+M23 KILLED by ['unit', 'e2e']: LOOKUP counts relations with no live evidence
+M24 KILLED by ['unit']: export is not ordered by key
+M25 KILLED by ['unit']: damage is sealed into a recomputed aggregate
+M26 SURVIVED by -: a damaged contribution is resealed by a flip
+M27 SURVIVED by -: admission merges another version's contribution
+M28 KILLED by ['unit']: a coordinate check ignores the state root
+M29 KILLED by ['unit']: pinned reads ignore the caller's coordinate
+M30 KILLED by ['unit']: the relation check does not cover the aggregate
+M31 KILLED by ['unit']: verify does not compare aggregates
+M32 SURVIVED by -: the identity omits the assert counts
+M33 KILLED by ['unit', 'e2e']: a flipped contribution's relation is not recomputed
+M34 KILLED by ['unit', 'e2e']: retirement does not recompute the relation
+M35 SURVIVED by -: participants are not canonicalized
+M36 SURVIVED by -: a non-LOOKUP request is accepted
+M37 KILLED by ['unit']: a founder may vanish
+30/37 killed

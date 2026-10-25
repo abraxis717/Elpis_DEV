@@ -255,6 +255,7 @@ static uint32_t cell_index(uint32_t nc, const uint8_t key[32]) {
 typedef struct {
     double seconds;
     uint64_t work;
+    double create_seconds; /* of `seconds`: elpis_hca_graph_create alone (the rest is the research adapter) */
 } cost;
 
 static elpis_hca_graph *build_graph(size_t n, uint32_t e, uint32_t *nc_out, cost *c) {
@@ -301,7 +302,9 @@ static elpis_hca_graph *build_graph(size_t n, uint32_t e, uint32_t *nc_out, cost
     l.state_bytes = ELPIS_HCA_MAX_STATE_BYTES;
     elpis_hca_graph *g = NULL;
     uint64_t used = 0;
+    const double tc = now();
     const int rc = elpis_hca_graph_create(&l, cells, nc, &schema, 1, factors, n, ELPIS_HCA_MAX_WORK, &g, &used);
+    c->create_seconds += now() - tc;
     if (rc) fprintf(stderr, "graph_create: %s\n", elpis_hca_code_name(rc));
     CHECK(rc == ELPIS_HCA_OK);
     c->seconds += now() - t0;
@@ -339,8 +342,15 @@ typedef struct {
     uint64_t work[EVENTS][NM];
     uint32_t exact[NM], events;
     uint32_t b2_ticks[EVENTS], b2_converged, carry_refused, carry_attempts, b1_exact;
+    /* H3 instrument: carry outcomes by whether the post-event graph's evidence identity equals the previous one. */
+    uint32_t carry_same_graph, carry_same_accepted, carry_changed_graph, carry_changed_refused;
     double acc_stale[EVENTS], acc_b2_best_before_inc[EVENTS];
     uint32_t h4_events;
+    /* Post-hoc, timing-free H4 instrument: the best accuracy of any non-converged B2 readout, at any cost. */
+    double acc_b2_best_partial_any[EVENTS];
+    /* Post-hoc M-B0 breakdown: export, research adapter, elpis_hca_graph_create, elpis_hca_predict B0. */
+    double b0_part[EVENTS][4];
+    uint32_t h4_any_cost_events;
     uint64_t delta[EVENTS];
     uint64_t graph_bytes, session_bytes, inc_bytes, view_arena;
     uint32_t cells_max, factors_max;
@@ -404,9 +414,10 @@ static void run_regime(int local, uint32_t scale, uint64_t seed, run_t *out) {
     uint32_t live_n = 0;
 #define ADMIT(edge, row)                                                                                       \
     do {                                                                                                       \
-        const elpis_ecs_mem_observation o_ = pair(5, ELPIS_ECS_MEM_ASSERT, tick++,                             \
-                                                  w.rows[row].source_authority, pool[edge].from, pool[edge].to); \
-        OK(admit_as(v, &w, row, &o_, NULL));                                                                   \
+        const uint32_t r_ = (row), e_ = (edge); /* each argument evaluated once */                             \
+        const elpis_ecs_mem_observation o_ = pair(5, ELPIS_ECS_MEM_ASSERT, tick++, w.rows[r_].source_authority,  \
+                                                  pool[e_].from, pool[e_].to);                                 \
+        OK(admit_as(v, &w, r_, &o_, NULL));                                                                    \
     } while (0)
     if (local) {
         for (uint32_t i = 0; i < 8; ++i) {
@@ -430,6 +441,7 @@ static void run_regime(int local, uint32_t scale, uint64_t seed, run_t *out) {
     static uint32_t score[MAXE], ref[MAXE], prev[MAXE], full[MAXE], hscore[MAXE];
     (void)closure(score, live, e);
     elpis_hca_graph *prev_graph = NULL;
+    uint8_t prev_evidence[32] = {0};
     elpis_hca_b2 *prev_session = NULL;
     elpis_hca_activation prev_act;
     const elpis_hca_task task = make_task();
@@ -528,10 +540,11 @@ static void run_regime(int local, uint32_t scale, uint64_t seed, run_t *out) {
         for (uint32_t i = 0; i < pool_n; ++i) CHECK(live_full[i] == live[i]); /* the bench's mirror is the view's */
 
         /* M-B0: export, adapter, graph, predict. */
-        cost base = {0, 0};
+        cost base = {0, 0, 0};
         t0 = now();
         OK(elpis_ecs_c_rel_export(v, NULL, NULL, exported, POOL, &n, NULL));
         base.seconds += now() - t0;
+        out->b0_part[ev][0] = base.seconds;
         base.work += n;
         uint32_t nc = 0;
         tracking = 1, tracked_bytes = 0;
@@ -545,6 +558,9 @@ static void run_regime(int local, uint32_t scale, uint64_t seed, run_t *out) {
         t0 = now();
         CHECK(elpis_hca_predict(g, &task, ELPIS_HCA_B0, &result, hs, &used) == ELPIS_HCA_OK);
         out->seconds[ev][M_B0] = base.seconds + (now() - t0);
+        out->b0_part[ev][2] = base.create_seconds;
+        out->b0_part[ev][1] = base.seconds - base.create_seconds - out->b0_part[ev][0];
+        out->b0_part[ev][3] = out->seconds[ev][M_B0] - base.seconds;
         out->work[ev][M_B0] = base.work + used;
         memset(ref, 0, sizeof(uint32_t) * e);
         for (uint32_t i = 0; i < nc; ++i) ref[cell_entity[i]] = hs[i];
@@ -576,7 +592,7 @@ static void run_regime(int local, uint32_t scale, uint64_t seed, run_t *out) {
         if (tracked_bytes > out->session_bytes) out->session_bytes = tracked_bytes;
         b2w += used;
         uint32_t k = 0;
-        double best_partial = 0;
+        double best_partial = 0, best_any = 0;
         for (;; ++k) {
             /* The instrument (not charged): this tick's activation against the reference. */
             memset(hscore, 0, sizeof(uint32_t) * e);
@@ -584,6 +600,7 @@ static void run_regime(int local, uint32_t scale, uint64_t seed, run_t *out) {
             if (!memcmp(ref, hscore, sizeof(uint32_t) * e) || k == MAX_TICKS) break;
             const double acc = accuracy(hscore, ref, e);
             if (b2s < inc_seconds + out->seconds[ev][M_SYNC] && acc > best_partial) best_partial = acc;
+            if (acc > best_any) best_any = acc;
             t0 = now();
             CHECK(elpis_hca_b2_warm(session, &act, 0, &next, &used) == ELPIS_HCA_OK);
             b2s += now() - t0;
@@ -604,17 +621,31 @@ static void run_regime(int local, uint32_t scale, uint64_t seed, run_t *out) {
         out->acc_stale[ev] = accuracy(prev, ref, e);
         out->acc_b2_best_before_inc[ev] = best_partial;
         out->h4_events += best_partial > out->acc_stale[ev];
+        out->acc_b2_best_partial_any[ev] = best_any;
+        out->h4_any_cost_events += best_any > out->acc_stale[ev];
         /* M-B2-CARRY: the previous event's activation on this event's session. */
+        uint8_t evidence[32];
+        CHECK(elpis_hca_graph_evidence(g, evidence) == ELPIS_HCA_OK);
         if (prev_session) {
             out->carry_attempts++;
             const int rc = elpis_hca_b2_warm(session, &prev_act, 0, &next, &used);
             out->carry_refused += rc == ELPIS_HCA_INVALID_STATE;
+            CHECK(rc == ELPIS_HCA_OK || rc == ELPIS_HCA_INVALID_STATE);
+            if (!memcmp(evidence, prev_evidence, 32)) {
+                out->carry_same_graph++;
+                out->carry_same_accepted += rc == ELPIS_HCA_OK;
+                CHECK(out->delta[ev] == 0 || ndel == ni); /* an unchanged graph: no net change of live relations */
+            } else {
+                out->carry_changed_graph++;
+                out->carry_changed_refused += rc == ELPIS_HCA_INVALID_STATE;
+            }
             const int rc2 = elpis_hca_b2_observe(session, &prev_act, 0, &result, &used);
             CHECK((rc == ELPIS_HCA_INVALID_STATE) == (rc2 == ELPIS_HCA_INVALID_STATE));
             elpis_hca_b2_destroy(prev_session);
             elpis_hca_graph_destroy(prev_graph);
         }
         prev_session = session, prev_graph = g, prev_act = act;
+        memcpy(prev_evidence, evidence, 32);
         out->events++;
     }
     elpis_hca_b2_destroy(prev_session);
@@ -658,10 +689,11 @@ static void regime(int local, uint32_t scale, uint64_t seed, int first) {
         }
         med[m] = median(per_event, a->events);
     }
-    double acc_stale = 0, acc_b2 = 0, ticks = 0, delta = 0;
+    double acc_stale = 0, acc_b2 = 0, acc_any = 0, ticks = 0, delta = 0;
     uint32_t tick_max = 0;
     for (uint32_t ev = 0; ev < a->events; ++ev) {
         acc_stale += a->acc_stale[ev], acc_b2 += a->acc_b2_best_before_inc[ev], ticks += a->b2_ticks[ev];
+        acc_any += a->acc_b2_best_partial_any[ev];
         delta += (double)a->delta[ev];
         if (a->b2_ticks[ev] > tick_max) tick_max = a->b2_ticks[ev];
     }
@@ -679,11 +711,29 @@ static void regime(int local, uint32_t scale, uint64_t seed, int first) {
     printf("},\n   \"mean_logical_work\": {");
     for (int m = 0; m < NM; ++m) printf("%s\"%s\": %.1f", m ? ", " : "", method_name[m], (double)work[m] / n);
     printf("},\n   \"b2\": {\"mean_ticks_to_exact\": %.2f, \"max_ticks\": %u, \"converged\": %u, "
-           "\"carry_attempts\": %u, \"carry_refused_invalid_state\": %u},\n",
-           ticks / n, tick_max, a->b2_converged, a->carry_attempts, a->carry_refused);
+           "\"carry_attempts\": %u, \"carry_refused_invalid_state\": %u, \"carry_graph_unchanged\": %u, "
+           "\"carry_accepted_graph_unchanged\": %u, \"carry_graph_changed\": %u, \"carry_refused_graph_changed\": %u},\n",
+           ticks / n, tick_max, a->b2_converged, a->carry_attempts, a->carry_refused, a->carry_same_graph,
+           a->carry_same_accepted, a->carry_changed_graph, a->carry_changed_refused);
     printf("   \"h4\": {\"mean_accuracy_stale\": %.4f, \"mean_best_b2_partial_accuracy_cheaper_than_inc\": %.4f, "
-           "\"events_where_b2_partial_beats_stale_cheaper_than_inc\": %u},\n",
-           acc_stale / n, acc_b2 / n, a->h4_events);
+           "\"events_where_b2_partial_beats_stale_cheaper_than_inc\": %u, "
+           "\"posthoc_mean_best_b2_partial_accuracy_any_cost\": %.4f, "
+           "\"posthoc_events_where_any_b2_partial_beats_stale\": %u},\n",
+           acc_stale / n, acc_b2 / n, a->h4_events, acc_any / n, a->h4_any_cost_events);
+    {
+        static const char *const part[4] = {"export", "adapter", "graph_create", "predict_b0"};
+        printf("   \"posthoc_b0_median_us\": {");
+        for (int p = 0; p < 4; ++p) {
+            double per_event[EVENTS];
+            for (uint32_t ev = 0; ev < a->events; ++ev) {
+                double reps[REPLICATES];
+                for (uint32_t r = 0; r < REPLICATES; ++r) reps[r] = runs[r].b0_part[ev][p];
+                per_event[ev] = median(reps, REPLICATES);
+            }
+            printf("%s\"%s\": %.2f", p ? ", " : "", part[p], median(per_event, a->events) * 1e6);
+        }
+        printf("},\n");
+    }
     printf("   \"retained_bytes\": {\"view_arena_all_methods\": %llu, \"M-INC_closure\": %llu, \"hca_graph_max\": %llu, "
            "\"hca_session_max\": %llu, \"hca_activation\": %zu}}",
            (unsigned long long)a->view_arena, (unsigned long long)a->inc_bytes, (unsigned long long)a->graph_bytes,
