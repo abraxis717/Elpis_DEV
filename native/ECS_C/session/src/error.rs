@@ -1,4 +1,6 @@
-//! Stable ECS_C authority refusal codes. The numeric values are C ABI (include/elpis/ecs_c_authority.h).
+//! Stable ECS_C refusal codes. The numeric values are C ABI: 1..33 and 255 are the retiring durable authority's
+//! (include/elpis/ecs_c_authority.h, unchanged); 34..37 are the volatile session's (include/elpis/ecs_c_session.h).
+//! A session returns only the codes of its own law and [`Code::VOLATILE`]: never a storage code.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(i32)]
@@ -57,6 +59,15 @@ pub enum Code {
     NotReconcilable = 31,
     Open = 32,
     Closed = 33,
+    /// Volatile session: a coordinate names another session (or another instance of one).
+    SessionMismatch = 34,
+    /// Volatile session: the operation existed only for persistence (legacy import of a durable register, rollback,
+    /// unauthenticated-slot or witness reconciliation) and is retired: a session has no storage to reconcile.
+    PersistenceRetired = 35,
+    /// Volatile session: a reservation of session memory failed at creation; nothing was created.
+    NoMem = 36,
+    /// Volatile session: no nonce was supplied and the kernel's random source refused one; nothing was created.
+    EntropyUnavailable = 37,
     /// Testing library only: a simulated process death at a named step.
     TestingProcessDeath = 255,
 }
@@ -99,6 +110,10 @@ impl Code {
         Code::TestingProcessDeath,
     ];
 
+    /// The volatile session's own codes (not in [`Code::ALL`], whose set is the durable C ABI's).
+    pub const VOLATILE: [Code; 4] =
+        [Code::SessionMismatch, Code::PersistenceRetired, Code::NoMem, Code::EntropyUnavailable];
+
     pub fn name(self) -> &'static str {
         match self {
             Code::Invalid => "ECS_C_INVALID",
@@ -135,6 +150,10 @@ impl Code {
             Code::Open => "ECS_C_OPEN",
             Code::Closed => "ECS_C_CLOSED",
             Code::TestingProcessDeath => "ECS_C_TESTING_PROCESS_DEATH",
+            Code::SessionMismatch => "ECS_C_SESSION_MISMATCH",
+            Code::PersistenceRetired => "ECS_C_PERSISTENCE_RETIRED",
+            Code::NoMem => "ECS_C_NOMEM",
+            Code::EntropyUnavailable => "ECS_C_ENTROPY_UNAVAILABLE",
         }
     }
 

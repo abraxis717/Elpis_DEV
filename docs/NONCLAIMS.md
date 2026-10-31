@@ -16,6 +16,23 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
 * Mechanics qualification is not scientific qualification, and it is not
   runtime admission of any learned model. No neural model is authority over
   ECS state, structural memory or canonical Grid81 state.
+* **Elpis is not yet diskless** (VOLATILE MIGRATION: INCOMPLETE;
+  `docs/ELPIS_MISSION.md`, Amendment 3; `docs/VOLATILE_RUNTIME_CENSUS.md`).
+  The volatile-native directive retires every persistent runtime write.
+  - Only phases V0 to V2 are implemented: the census, the volatile ECS_C session
+    (`docs/ECS_C_SESSION.md`) and the relational view's binding to it.
+  - RuntimeCore ABI v7, the native host and the Python reference interface
+    still create, open, publish to and recover from the durable ECS_C authority
+    and the K1 checkpoint store.
+  - The FMS posix cold store, the H-gram association writer and canonical
+    publication from a runtime remain.
+
+  The session's zero-write evidence (`research/volatile_runtime_v0`) covers its
+  own test paths only, not any composed runtime path. No crash-persistent
+  identity, resurrection or exactly-once-across-restart guarantee is claimed
+  for a session. Process-level containment does not stop unrelated host
+  services from writing to storage (swap, crash collectors, journals, backups).
+  The census, section 6, lists what the host must configure.
 
 ## Inference (`elpis.inference`)
 
@@ -101,6 +118,11 @@ import time. They identify *which* contract the mechanics implement. They
 are not evidence that the contract has any effect.
 
 ## Continuity: the durable authority (the ECS_C authority; standalone continuity retired)
+
+**RETIRING** (`docs/ELPIS_MISSION.md`, Amendment 3): the durable authority
+below is superseded by the volatile session (`docs/ECS_C_SESSION.md`), which
+nothing composes yet. The claims and non-claims below describe the durable
+authority as it still runs. None of them extends to the session.
 
 Standalone continuity (`native/continuity`, `elpis.continuity`) retired into
 the ECS_C authority at RuntimeCore ABI v7 (`docs/ELPIS_MISSION.md`,

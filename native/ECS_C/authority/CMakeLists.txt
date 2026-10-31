@@ -6,8 +6,10 @@
 find_program(ELPIS_CARGO cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin" REQUIRED)
 
 set(_crate "${CMAKE_CURRENT_SOURCE_DIR}")
-file(GLOB _rust_sources CONFIGURE_DEPENDS "${_crate}/src/*.rs")
-set(_crate_inputs ${_rust_sources} "${_crate}/Cargo.toml" "${_crate}/Cargo.lock")
+# The transition law is the volatile session crate's (embedded without its C ABI): its sources are inputs here too.
+set(_session "${CMAKE_SOURCE_DIR}/native/ECS_C/session")
+file(GLOB _rust_sources CONFIGURE_DEPENDS "${_crate}/src/*.rs" "${_session}/src/*.rs")
+set(_crate_inputs ${_rust_sources} "${_crate}/Cargo.toml" "${_crate}/Cargo.lock" "${_session}/Cargo.toml")
 set(_prod "${CMAKE_CURRENT_BINARY_DIR}/libelpis_ecs_c_authority.so")
 set(_testing "${CMAKE_CURRENT_BINARY_DIR}/libelpis_ecs_c_authority_testing.so")
 
@@ -38,14 +40,14 @@ elpis_add_cargo_target(ECS_C elpis_ecs_c_authority_testing test "${_testing}")
 # through the C fault hooks).
 elpis_add_test(ECS_C test_ecs_c_authority_abi
   SOURCES tests/test_ecs_c_authority_abi.c
-  INCLUDES "${_crate}/include"
+  INCLUDES "${_crate}/include" "${_session}/include"
   LIBS "${_prod}"
   ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_ecs_c_authority_abi/scratch"
   TIMEOUT 60)
 add_dependencies(test_ecs_c_authority_abi elpis_ecs_c_authority)
 elpis_add_test(ECS_C test_ecs_c_authority_abi_testing
   SOURCES tests/test_ecs_c_authority_abi.c
-  INCLUDES "${_crate}/include"
+  INCLUDES "${_crate}/include" "${_session}/include"
   DEFINES ELPIS_ECS_C_TESTING
   LIBS "${_testing}"
   ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_ecs_c_authority_abi_testing/scratch"

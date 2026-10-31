@@ -19,8 +19,18 @@ HEADER = (CRATE / "include/elpis/ecs_c_authority.h").read_text(encoding="utf-8")
 TESTING = {"elpis_ecs_c_testing_arm", "elpis_ecs_c_testing_counters"}
 
 
+# The transition law (model.rs) and the code space (error.rs) moved to the volatile session crate, which this durable
+# crate embeds and re-exports (docs/ECS_C_SESSION.md); the ECS_C types moved to its header.
+SESSION = REPO / "native/ECS_C/session"
+TYPES = (SESSION / "include/elpis/ecs_c_types.h").read_text(encoding="utf-8")
+
+
 def _rust(name: str) -> str:
-    return (CRATE / "src" / name).read_text(encoding="utf-8")
+    path = CRATE / "src" / name
+    if name in ("model.rs", "error.rs", "register.rs", "sha256.rs"):
+        assert not path.exists(), f"{name} has one home: the session crate"
+        path = SESSION / "src" / name
+    return path.read_text(encoding="utf-8")
 
 
 def _code(text: str) -> str:
@@ -78,6 +88,7 @@ def test_record_and_witness_sizes_agree_with_the_header_and_the_docs():
     for constant, value in (("STATE_FIXED", 512), ("ENTITY_BYTES", 160), ("EVENT_BYTES", 512), ("PAYLOAD_AT", 80)):
         assert f"pub const {constant}: usize = {value};" in model, constant
     assert "pub const HEADER_BYTES: usize = 256;" in record and "pub const TRAILER_BYTES: usize = 64;" in record
-    assert "#define ELPIS_ECS_C_MAX_CAPACITY 4096u" in HEADER and "pub const MAX_CAPACITY: u32 = 4096;" in model
+    assert '#include "elpis/ecs_c_types.h"' in HEADER
+    assert "#define ELPIS_ECS_C_MAX_CAPACITY 4096u" in TYPES and "pub const MAX_CAPACITY: u32 = 4096;" in model
     doc = (REPO / "docs/ECS_C_AUTHORITY.md").read_text(encoding="utf-8")
     assert "R = 1344 + 160 × capacity" in doc and "240 bytes" in doc

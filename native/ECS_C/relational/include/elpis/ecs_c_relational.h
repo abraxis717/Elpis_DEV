@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "elpis/ecs_c_authority.h"
+#include "elpis/ecs_c_types.h"
 #include "elpis/ecs_memory.h"
 
 #ifdef __cplusplus
@@ -26,8 +26,9 @@ extern "C" {
  * old evidence to a source that never asserted it.
  *
  * Objects (the real ECS_C types throughout):
- *   authority table  the synced copy of the ECS_C authority's entity rows (elpis_ecs_c_entity, read through
- *                    elpis_ecs_c_read_status and elpis_ecs_c_entity_at) and its coordinate (lineage, generation,
+ *   authority table  the synced copy of the ECS_C authority's entity rows (elpis_ecs_c_entity, read through the
+ *                    volatile session's elpis_ecs_c_session_status and elpis_ecs_c_session_entity_at; the retiring
+ *                    durable authority's read ABI gives the same rows) and its coordinate (lineage, generation,
  *                    state root, next founding index, reclaimed count).
  *   binding          (source entity id, source version, scope): what an observation was admitted under. Entity ids
  *                    are never reused (founding indices only grow), so a binding never names two sources.
@@ -110,8 +111,9 @@ typedef struct {
     uint64_t byte_budget;           /* the one allocation must fit (and ELPIS_ECS_C_REL_MAX_ARENA_BYTES) */
 } elpis_ecs_c_rel_config;
 
-/* An ECS_C authority state as sync consumes it: elpis_ecs_c_read_status (coordinate and counters) and
- * elpis_ecs_c_entity_at for every index below entity_count (the rows, in the authority's order). */
+/* An ECS_C authority state as sync consumes it: elpis_ecs_c_session_status (coordinate and counters; the lineage is
+ * the session's identity) and elpis_ecs_c_session_entity_at for every index below entity_count (the rows, in the
+ * authority's order). */
 typedef struct {
     uint32_t abi_version; /* ELPIS_ECS_C_REL_ABI_VERSION */
     uint32_t entity_count;

@@ -1,5 +1,9 @@
 //! Elpis ECS_C authority: the bounded, authenticated continuity and entity authority (docs/ECS_C_AUTHORITY.md).
 //!
+//! RETIRING (docs/ELPIS_MISSION.md, Amendment 3): this durable implementation writes persistent records and witnesses
+//! and is non-conforming under the volatile-runtime directive. Its logic now lives in the volatile session crate
+//! (`elpis_ecs_c_session`), which it re-exports; it remains only until RuntimeCore stops composing it.
+//!
 //! ECS_C owns entities and their lifecycles, sender attribution and logical clocks, source versions and scopes,
 //! the cognition lineage (which retained-state identity is authoritative), the evolution authority, receipts and
 //! reconciliation. It holds the **complete materialized authority** in one fixed-size record, written alternately
@@ -12,15 +16,15 @@
 //! RuntimeCore embeds the crate without it. The `testing` feature adds fault injection and is built only into
 //! `libelpis_ecs_c_authority_testing.so`.
 
-pub mod error;
+// The transition law and its primitives belong to the volatile session crate (native/ECS_C/session,
+// docs/ECS_C_SESSION.md), which outlives this durable authority; it is re-exported here unchanged.
+pub use elpis_ecs_c_session::{error, model, register, sha256};
+
 #[cfg(feature = "c-abi")]
 pub mod ffi;
 pub mod hmac;
 pub mod legacy;
-pub mod model;
 pub mod record;
-pub mod register;
-pub mod sha256;
 pub mod store;
 
 pub use error::Code;

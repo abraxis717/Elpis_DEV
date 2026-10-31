@@ -1,5 +1,12 @@
 # Native ECS_G / ECS_C split: source and authority census (Stage A)
 
+> **VOLATILE MIGRATION: INCOMPLETE** (`docs/ELPIS_MISSION.md`, Amendment 3). This census predates the volatile-native
+> directive. Its persistence invariant (section 5a: bounded, preallocated, rewritten in place) is superseded: no
+> runtime state may be written to persistent storage at all. The storage-write census that replaces it is
+> `docs/VOLATILE_RUNTIME_CENSUS.md`. ECS_C gained `native/ECS_C/session` (the volatile session authority,
+> `docs/ECS_C_SESSION.md`), which now owns the ECS_C transition law; the durable authority consumes it. The rows
+> below are historical.
+
 Status: **census and plan**. It moves no code and changes no law, format, evidence or qualification. It records what
 exists at the baseline, who owns it, what binds it, and the dependency-ordered transition to the target architecture
 of `proposal/native-ecsc-ecsg-runtime-charter-r0` (`DEV/proposals/NATIVE_ECSC_ECSG_COMPLETION_R0.md`, commit

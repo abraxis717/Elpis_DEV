@@ -1,11 +1,15 @@
-//! The ECS_C authority model: the materialized state, the typed events, and the one transition law ([`apply`]).
+//! The ECS_C authority model: the materialized state, the typed events, and the one transition law ([`apply`],
+//! [`apply_into`]).
 //!
-//! The same law validates a request before anything is written and replays the newest transition at recovery, so
-//! a durable record is admitted only if its predecessor plus its event reproduce it byte for byte. Nothing here
-//! performs I/O. Every structure is fixed-size for a provisioned capacity: the state holds at most `capacity`
-//! entity rows, counters and chain heads, never a collection that grows with turns, events or time.
+//! The law is the ECS_C authority's, moved unchanged from `native/ECS_C/authority` into the volatile session crate
+//! (docs/ECS_C_SESSION.md): the volatile session ([`crate::session`]) applies it to RAM-only state, and the retiring
+//! durable authority (`elpis_ecs_c_authority`, still RuntimeCore ABI v7's) re-exports it. Nothing here performs I/O.
+//! Every structure is fixed-size for a capacity: the state holds at most `capacity` entity rows, counters and chain
+//! heads, never a collection that grows with turns, events or time.
 //!
 //! Integers are little-endian. Every domain string ends in a NUL byte.
+
+use alloc::vec::Vec;
 
 use crate::error::Code;
 use crate::register::{EvolutionState, Snapshot, StateFormat, MAX_COUNTER};
@@ -33,6 +37,16 @@ pub const fn state_bytes(capacity: u32) -> usize {
     STATE_FIXED + capacity as usize * ENTITY_BYTES
 }
 
+/// The record slot classes a durable RECONCILE_UNAUTHENTICATED / RECONCILE_REPIN event names (the retiring durable
+/// authority's `record::SlotClass`, whose values these must equal). A volatile session refuses every reconciliation.
+pub const SLOT_CLASS_UNAUTHENTICATED: u8 = 2;
+pub const SLOT_CLASS_VALID: u8 = 4;
+
+/// The state root: SHA-256 over the lineage, the generation, the capacity and the encoded state.
+pub fn state_root(lineage: &Digest, generation: u64, capacity: u32, state: &[u8]) -> Digest {
+    sha256::digest(&[domain::STATE_ROOT, lineage, &generation.to_le_bytes(), &capacity.to_le_bytes(), state])
+}
+
 pub mod domain {
     pub const ENTITY_ID: &[u8] = b"elpis.ecs_c.entity.v1\x00";
     pub const LINEAGE: &[u8] = b"elpis.ecs_c.authority.lineage.v1\x00";
@@ -46,40 +60,48 @@ pub mod domain {
 
 // -- byte helpers ------------------------------------------------------------------------------------------
 
-pub(crate) fn u32_at(b: &[u8], at: usize) -> u32 {
+#[doc(hidden)]
+pub fn u32_at(b: &[u8], at: usize) -> u32 {
     u32::from_le_bytes(b[at..at + 4].try_into().expect("4 bytes"))
 }
 
-pub(crate) fn u64_at(b: &[u8], at: usize) -> u64 {
+#[doc(hidden)]
+pub fn u64_at(b: &[u8], at: usize) -> u64 {
     u64::from_le_bytes(b[at..at + 8].try_into().expect("8 bytes"))
 }
 
-pub(crate) fn digest_at(b: &[u8], at: usize) -> Digest {
+#[doc(hidden)]
+pub fn digest_at(b: &[u8], at: usize) -> Digest {
     b[at..at + 32].try_into().expect("32 bytes")
 }
 
-pub(crate) fn put_u32(b: &mut [u8], at: usize, v: u32) {
+#[doc(hidden)]
+pub fn put_u32(b: &mut [u8], at: usize, v: u32) {
     b[at..at + 4].copy_from_slice(&v.to_le_bytes());
 }
 
-pub(crate) fn put_u64(b: &mut [u8], at: usize, v: u64) {
+#[doc(hidden)]
+pub fn put_u64(b: &mut [u8], at: usize, v: u64) {
     b[at..at + 8].copy_from_slice(&v.to_le_bytes());
 }
 
-pub(crate) fn put_digest(b: &mut [u8], at: usize, d: &Digest) {
+#[doc(hidden)]
+pub fn put_digest(b: &mut [u8], at: usize, d: &Digest) {
     b[at..at + 32].copy_from_slice(d);
 }
 
-pub(crate) fn zero(b: &[u8]) -> bool {
+#[doc(hidden)]
+pub fn zero(b: &[u8]) -> bool {
     b.iter().all(|&x| x == 0)
 }
 
+/// The next head of a hash chain. At most three parts (every chain of the law); no allocation.
 fn chain(domain: &[u8], head: &Digest, parts: &[&[u8]]) -> Digest {
-    let mut all: Vec<&[u8]> = Vec::with_capacity(parts.len() + 2);
-    all.push(domain);
-    all.push(head);
-    all.extend_from_slice(parts);
-    sha256::digest(&all)
+    let mut all: [&[u8]; 5] = [&[]; 5];
+    all[0] = domain;
+    all[1] = head;
+    all[2..2 + parts.len()].copy_from_slice(parts);
+    sha256::digest(&all[..2 + parts.len()])
 }
 
 fn bump(v: u64, by: u64) -> Result<u64, Code> {
@@ -383,7 +405,7 @@ impl State {
     }
 
     pub fn to_bytes(&self, capacity: u32) -> Vec<u8> {
-        let mut out = vec![0u8; state_bytes(capacity)];
+        let mut out = alloc::vec![0u8; state_bytes(capacity)];
         self.encode(capacity, &mut out);
         out
     }
@@ -914,6 +936,17 @@ impl State {
 
 /// The genesis of a lineage: the founding operator and runtime (ACTIVE), no cognition, evolution at genesis.
 pub fn genesis(deployment: &Digest, capacity: u32, event: &Event) -> Result<(Digest, State, Digest), Code> {
+    genesis_with(deployment, capacity, event, Vec::with_capacity(2))
+}
+
+/// [`genesis`] into a caller-supplied, empty entity vector (a session reserves `capacity` rows up front, so its
+/// later transitions never allocate).
+pub fn genesis_with(
+    deployment: &Digest,
+    capacity: u32,
+    event: &Event,
+    mut entities: Vec<Entity>,
+) -> Result<(Digest, State, Digest), Code> {
     if event.kind != EventKind::Genesis || event.sender != ZERO || event.seq != 0 || event.receiver != ZERO {
         return Err(Code::Invalid);
     }
@@ -942,6 +975,9 @@ pub fn genesis(deployment: &Digest, capacity: u32, event: &Event) -> Result<(Dig
         source_authority: 0,
     };
     let receipt = receipt(&lineage, 1, 0, &ZERO, &ZERO, &event.encode());
+    entities.clear();
+    entities.push(founder(0, EntityKind::Operator, operator_label));
+    entities.push(founder(1, EntityKind::Runtime, runtime_label));
     let state = State {
         cognition: Cognition::Unanchored,
         publications: 0,
@@ -957,10 +993,7 @@ pub fn genesis(deployment: &Digest, capacity: u32, event: &Event) -> Result<(Dig
         reclaimed_count: 0,
         next_founding_index: 2,
         legacy: None,
-        entities: vec![
-            founder(0, EntityKind::Operator, operator_label),
-            founder(1, EntityKind::Runtime, runtime_label),
-        ],
+        entities,
     };
     state.check(capacity, &lineage, 1)?;
     Ok((lineage, state, receipt))
@@ -968,6 +1001,21 @@ pub fn genesis(deployment: &Digest, capacity: u32, event: &Event) -> Result<(Dig
 
 /// Apply one event to `prior`: the complete semantic validation of a transition, and its result. Pure.
 pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Code> {
+    let mut state = prior.state.clone();
+    let (generation, receipt, founded) = apply_into(prior, capacity, event, &mut state)?;
+    Ok(Applied { generation, state, receipt, founded })
+}
+
+/// [`apply`] in place: `s` must enter equal to `*prior.state` and holds the successor state on `Ok` (the new
+/// generation, the receipt and any founded identity are returned). On `Err` its content is unspecified and must be
+/// discarded: the caller publishes `s` only on `Ok`. It allocates nothing when `s.entities` has room for `capacity`
+/// rows, so a session that stages into a reserved buffer transitions without touching the allocator.
+pub fn apply_into(
+    prior: &Prior,
+    capacity: u32,
+    event: &Event,
+    s: &mut State,
+) -> Result<(u64, Digest, Option<Digest>), Code> {
     let kind = event.kind;
     if kind == EventKind::Genesis {
         return Err(Code::Invalid);
@@ -984,7 +1032,6 @@ pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Cod
     } else {
         bump(prior.generation, 1)?
     };
-    let mut s = prior.state.clone();
     let sender = *s.entity(&event.sender).ok_or(Code::UnknownEntity)?;
     if !kind.sender_may_be(sender.kind) || sender.lifecycle != Lifecycle::Active {
         return Err(Code::Unauthorized);
@@ -1105,7 +1152,7 @@ pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Cod
                 return Err(Code::AlreadyAnchored);
             }
             s.cognition = Cognition::Anchored { format, identity };
-            publish(&mut s)?;
+            publish(s)?;
         }
         EventKind::Publish => {
             let format = format_from(p[0]).ok_or(Code::Invalid)?;
@@ -1121,7 +1168,7 @@ pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Cod
                 Cognition::Anchored { .. } => {}
             }
             s.cognition = Cognition::Anchored { format, identity: after };
-            publish(&mut s)?;
+            publish(s)?;
             if count > 0 {
                 s.evidence_count = bump(s.evidence_count, count)?;
                 s.evidence_head = chain(
@@ -1142,7 +1189,7 @@ pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Cod
                 Cognition::Anchored { .. } => return Err(Code::StateMismatch),
             }
             s.cognition = Cognition::Anchored { format: StateFormat::Composite, identity: composite };
-            publish(&mut s)?;
+            publish(s)?;
         }
         EventKind::EvolutionReserve => {
             let expected = evolution_from(p, 0)?;
@@ -1191,7 +1238,7 @@ pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Cod
             let anchored = match snapshot.cognition() {
                 crate::register::Cognition::Anchored(identity) => {
                     s.cognition = Cognition::Anchored { format: snapshot.format(), identity };
-                    publish(&mut s)?;
+                    publish(s)?;
                     true
                 }
                 crate::register::Cognition::Unanchored => false,
@@ -1210,7 +1257,7 @@ pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Cod
             }
         }
         EventKind::ReconcileUnauthenticated => {
-            if p[0] > 1 || p[1] != crate::record::SlotClass::Unauthenticated as u8 || !zero(&p[2..8]) {
+            if p[0] > 1 || p[1] != SLOT_CLASS_UNAUTHENTICATED || !zero(&p[2..8]) {
                 return Err(Code::Invalid);
             }
             if digest_at(p, 8) == ZERO {
@@ -1218,7 +1265,7 @@ pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Cod
             }
         }
         EventKind::ReconcileRepin => {
-            let valid = crate::record::SlotClass::Valid as u8;
+            let valid = SLOT_CLASS_VALID;
             if p[0] > valid || p[1] > valid || !zero(&p[2..8]) {
                 return Err(Code::Invalid);
             }
@@ -1251,5 +1298,5 @@ pub fn apply(prior: &Prior, capacity: u32, event: &Event) -> Result<Applied, Cod
     s.receipt_head = receipt_chain(&s.receipt_head, &receipt);
     // The law never produces a state its own validator refuses; if it did, nothing is written.
     s.check(capacity, &lineage, generation)?;
-    Ok(Applied { generation, state: s, receipt, founded })
+    Ok((generation, receipt, founded))
 }

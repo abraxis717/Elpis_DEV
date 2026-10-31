@@ -12,8 +12,10 @@ find_program(ELPIS_CARGO cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/b
 
 set(_crate "${CMAKE_CURRENT_SOURCE_DIR}")
 set(_ecs_c "${CMAKE_SOURCE_DIR}/native/ECS_C/authority")
-file(GLOB _rust_sources CONFIGURE_DEPENDS "${_crate}/src/*.rs" "${_ecs_c}/src/*.rs")
-set(_crate_inputs ${_rust_sources} "${_crate}/Cargo.toml" "${_crate}/Cargo.lock" "${_ecs_c}/Cargo.toml")
+set(_ecs_c_session "${CMAKE_SOURCE_DIR}/native/ECS_C/session")
+file(GLOB _rust_sources CONFIGURE_DEPENDS "${_crate}/src/*.rs" "${_ecs_c}/src/*.rs" "${_ecs_c_session}/src/*.rs")
+set(_crate_inputs ${_rust_sources} "${_crate}/Cargo.toml" "${_crate}/Cargo.lock" "${_ecs_c}/Cargo.toml"
+    "${_ecs_c_session}/Cargo.toml")
 set(_prod "${CMAKE_CURRENT_BINARY_DIR}/libelpis_runtime.so")
 set(_testing "${CMAKE_CURRENT_BINARY_DIR}/libelpis_runtime_testing.so")
 
@@ -45,7 +47,7 @@ elpis_add_cargo_target(runtime elpis_runtime_testing test "${_testing}")
 set(_ecs_c_lib "${CMAKE_BINARY_DIR}/native/ECS_C/authority/libelpis_ecs_c_authority.so")
 elpis_add_test(runtime test_runtime_abi
   SOURCES tests/test_runtime_abi.c
-  INCLUDES "${_crate}/include" "${_ecs_c}/include"
+  INCLUDES "${_crate}/include" "${_ecs_c}/include" "${_ecs_c_session}/include"
   LIBS "${_prod}" "${_ecs_c_lib}" elpis_ecsg_k1
   ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_abi"
   TIMEOUT 60)
@@ -56,7 +58,7 @@ add_dependencies(test_runtime_abi elpis_runtime elpis_ecs_c_authority)
 # fail-stop + close), the authority is unchanged by an implicit abort and the resident WRITE pin is released.
 elpis_add_test(runtime test_runtime_lifecycle
   SOURCES tests/test_runtime_lifecycle.c
-  INCLUDES "${_crate}/include" "${_ecs_c}/include"
+  INCLUDES "${_crate}/include" "${_ecs_c}/include" "${_ecs_c_session}/include"
   LIBS "${_prod}" "${_ecs_c_lib}" elpis_ecsg_k1_fms elpis_ecsg_k1
   ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_lifecycle"
   TIMEOUT 120)
@@ -75,7 +77,7 @@ add_custom_command(TARGET elpis_runtime_testing POST_BUILD
   VERBATIM)
 elpis_add_test(runtime test_runtime_composite
   SOURCES tests/test_runtime_composite.c
-  INCLUDES "${_crate}/include" "${_ecs_c}/include"
+  INCLUDES "${_crate}/include" "${_ecs_c}/include" "${_ecs_c_session}/include"
   LIBS elpis_hacf_observation elpis_semantic elpis_ecs_composite elpis_ecs_memory elpis_ecsg_k1 "${_ecs_c_lib}"
   ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_composite"
   TIMEOUT 120)
@@ -89,7 +91,7 @@ add_dependencies(test_runtime_composite elpis_runtime_testing elpis_ecs_c_author
 # records the evidence summary with each durable publication, a copied-back authority refuses the open.
 elpis_add_test(runtime test_runtime_ecs_c
   SOURCES tests/test_runtime_ecs_c.c
-  INCLUDES "${_crate}/include" "${_ecs_c}/include"
+  INCLUDES "${_crate}/include" "${_ecs_c}/include" "${_ecs_c_session}/include"
   LIBS "${_prod}" "${_ecs_c_lib}" elpis_ecs_composite elpis_ecs_memory elpis_ecsg_k1
   ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_ecs_c"
   TIMEOUT 120)
@@ -99,7 +101,7 @@ add_dependencies(test_runtime_ecs_c elpis_runtime elpis_ecs_c_authority)
 # counts them per thread while managed turns run with the durability worker held (testing library: the hold).
 elpis_add_test(runtime test_runtime_hot_io
   SOURCES tests/test_runtime_hot_io.c
-  INCLUDES "${_crate}/include" "${_ecs_c}/include"
+  INCLUDES "${_crate}/include" "${_ecs_c}/include" "${_ecs_c_session}/include"
   LIBS elpis_ecsg_k1_fms elpis_ecsg_k1 "${_ecs_c_lib}"
   ARGS "${CMAKE_CURRENT_BINARY_DIR}/test-state/test_runtime_hot_io"
   TIMEOUT 120)
@@ -115,7 +117,7 @@ add_dependencies(test_runtime_hot_io elpis_runtime_testing elpis_ecs_c_authority
 # C library and the static SHA-256.
 set(_host_sources host/src/elpis_host.c host/src/host_deploy.c host/src/host_admit.c host/src/host_json.c
     host/src/host_contain.c)
-set(_host_includes "${_crate}/include" "${_ecs_c}/include"
+set(_host_includes "${_crate}/include" "${_ecs_c}/include" "${_ecs_c_session}/include"
     "${CMAKE_SOURCE_DIR}/native/runtime/composite/include" "${CMAKE_SOURCE_DIR}/native/runtime/observation/include"
     "${CMAKE_SOURCE_DIR}/native/ECS_C/memory/include" "${CMAKE_SOURCE_DIR}/native/ECS_G/include"
     "${CMAKE_SOURCE_DIR}/native/structure/semantic/include" "${CMAKE_SOURCE_DIR}/native/structure/hacf/include")

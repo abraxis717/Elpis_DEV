@@ -144,10 +144,6 @@ pub struct Record {
     pub digest: Digest,
 }
 
-pub fn state_root(lineage: &Digest, generation: u64, capacity: u32, state: &[u8]) -> Digest {
-    sha256::digest(&[domain::STATE_ROOT, lineage, &generation.to_le_bytes(), &capacity.to_le_bytes(), state])
-}
-
 impl Record {
     /// Seal a record: the state root, checksum and MAC are computed here. Returns the record and its bytes.
     #[allow(clippy::too_many_arguments)]
@@ -404,6 +400,14 @@ impl Witness {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The law (moved into the session crate) names two slot classes in RECONCILE_* payloads by value; they must stay
+    /// this record format's.
+    #[test]
+    fn the_laws_slot_class_values_are_the_records() {
+        assert_eq!(SlotClass::Unauthenticated as u8, crate::model::SLOT_CLASS_UNAUTHENTICATED);
+        assert_eq!(SlotClass::Valid as u8, crate::model::SLOT_CLASS_VALID);
+    }
 
     /// Bytes that carry a valid MAC and checksum under `keys`, after `edit` (a key holder's forgery).
     fn resealed(keys: &Keys, mut b: Vec<u8>, edit: impl Fn(&mut [u8])) -> Vec<u8> {

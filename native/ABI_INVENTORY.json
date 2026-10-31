@@ -29,6 +29,10 @@
   {
    "stage": "DEV (docs/ECS_C_RELATIONAL.md, ECSC_DYNAMIC_RELATIONAL_DEV_R0)",
    "change": "adds libelpis_ecs_c_relational.so (the ECS_C relational view, C ABI v1, include/elpis/ecs_c_relational.h; DEV, not composed: no other library links it); it links libelpis_ecs_memory.so (relation keys, and the substrate's SHA-256 helpers that library carries) and no authority code; no export or link of any library above changes"
+  },
+  {
+   "stage": "V1 (docs/ECS_C_SESSION.md, ECSC_VOLATILE_SESSION_R0; docs/ELPIS_MISSION.md, Amendment 3)",
+   "change": "adds libelpis_ecs_c_session.so (the ECS_C volatile session authority, C ABI v1, include/elpis/ecs_c_session.h and the shared include/elpis/ecs_c_types.h): the ECS_C transition law in volatile memory only, no path, file or descriptor in its ABI; it links no Elpis library. The durable authority crate now consumes the law from this crate (embedded without its C ABI), so libelpis_ecs_c_authority.so, libelpis_ecs_c_authority_testing.so, libelpis_runtime.so and libelpis_runtime_testing.so keep their exports and links exactly; no export or link of any library above changes"
   }
  ],
  "libraries": {
@@ -133,6 +137,27 @@
     "elpis_ecs_c_rel_support_of",
     "elpis_ecs_c_rel_sync",
     "elpis_ecs_c_rel_verify"
+   ]
+  },
+  "libelpis_ecs_c_session.so": {
+   "soname": "libelpis_ecs_c_session.so",
+   "elpis_needed": [],
+   "exports": [
+    "elpis_ecs_c_session_abi_version",
+    "elpis_ecs_c_session_bytes",
+    "elpis_ecs_c_session_check_evidence",
+    "elpis_ecs_c_session_code_name",
+    "elpis_ecs_c_session_create",
+    "elpis_ecs_c_session_destroy",
+    "elpis_ecs_c_session_entity_at",
+    "elpis_ecs_c_session_entity_find",
+    "elpis_ecs_c_session_evolution_digest",
+    "elpis_ecs_c_session_next_entity_id",
+    "elpis_ecs_c_session_read_coordinate",
+    "elpis_ecs_c_session_read_status",
+    "elpis_ecs_c_session_receipt_chain",
+    "elpis_ecs_c_session_source_for_authority",
+    "elpis_ecs_c_session_transition"
    ]
   },
   "libelpis_ecs_composite.so": {
