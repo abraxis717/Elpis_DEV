@@ -16,7 +16,8 @@ Tested paths: built binaries. Nothing is rebuilt here except the probe.
   P4 nomem_probe                    memory exhaustion under RLIMIT_AS: NOMEM, nothing spilled
 
 Each path runs in three modes:
-  plain     no tracer: exit status, wall time, peak RSS of that process alone (wait4).
+  plain     no tracer: exit status, wall time, and the command's peak RSS, measured by peak_rss.c from a small
+            parent (ru_maxrss also counts the image a process was forked from).
   observed  as root, so any write would be permitted, under strace -f -y. The claim: no write is even attempted.
   confined  inside a private mount namespace, with every mount but /proc remounted read-only (topmost mount per
             mount point verified). It runs as uid/gid 65534 with no groups and no capabilities, under
@@ -203,28 +204,18 @@ def traced(argv: list[str], mode: str, launcher: Path | None, timeout: int) -> t
     return run, b"".join(chunks).decode("utf-8", "replace"), time.monotonic() - start
 
 
-def plain(argv: list[str], timeout: int) -> dict:
+def plain(argv: list[str], peak_rss: Path, timeout: int) -> dict:
+    """No tracer. The peak RSS is measured by peak_rss.c, a small parent: ru_maxrss counts the image a process was
+    forked from, so a command forked from this (large) interpreter would report the interpreter's size."""
     start = time.monotonic()
-    proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            env={"PATH": "/usr/bin:/bin"}, cwd="/")
-    out: dict[str, bytes] = {}
-    readers = [threading.Thread(target=lambda k=k, s=s: out.__setitem__(k, s.read()))
-               for k, s in (("stdout", proc.stdout), ("stderr", proc.stderr))]
-    for t in readers:
-        t.start()
-    deadline = start + timeout
-    while True:
-        pid, status, usage = os.wait4(proc.pid, os.WNOHANG)
-        if pid:
-            break
-        if time.monotonic() > deadline:
-            proc.kill()
-            raise Fail(f"timeout: {argv[0]}")
-        time.sleep(0.01)
-    for t in readers:
-        t.join()
-    proc.returncode = os.waitstatus_to_exitcode(status)
-    return {"exit": proc.returncode, "seconds": round(time.monotonic() - start, 3), "peak_rss_kib": usage.ru_maxrss}
+    run = subprocess.run([str(peak_rss), *argv], stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                         env={"PATH": "/usr/bin:/bin"}, cwd="/", timeout=timeout)
+    seconds = round(time.monotonic() - start, 3)
+    last = run.stderr.strip().splitlines()[-1] if run.stderr.strip() else ""
+    m = re.fullmatch(r"peak_rss_kib=(\d+) exit=(-?\d+)", last)
+    if not m:
+        raise Fail(f"peak_rss reported nothing for {argv[0]}")
+    return {"exit": int(m.group(2)), "seconds": seconds, "peak_rss_kib": int(m.group(1))}
 
 
 def tail(text: str, clean: Sanitizer, lines: int = 6) -> list[str]:
@@ -297,6 +288,9 @@ def main(argv=None) -> int:
                     "-I", str(repo / "native/ECS_C/session/include"),
                     str(repo / "research/volatile_runtime_v0/nomem_probe.c"), str(session_lib),
                     f"-Wl,-rpath,{session_lib.parent}", "-o", str(p4)], check=True)
+    peak_rss = probe_dir / "peak_rss"
+    subprocess.run(["cc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror",
+                    str(repo / "research/volatile_runtime_v0/peak_rss.c"), "-o", str(peak_rss)], check=True)
 
     # Static: what the session library can call at all.
     undefined = subprocess.run(["nm", "-D", "--undefined-only", str(session_lib)], capture_output=True, text=True,
@@ -313,7 +307,7 @@ def main(argv=None) -> int:
     paths = {"P1": [str(p1)], "P2": [str(p2)], "P3": [str(p3), "--test-threads=1"], "P4": [str(p4)]}
     runs = {}
     for key, cmd in paths.items():
-        entry = {"argv": [clean(a) for a in cmd], "sha256": sha256(Path(cmd[0])), "plain": plain(cmd, args.timeout)}
+        entry = {"argv": [clean(a) for a in cmd], "sha256": sha256(Path(cmd[0])), "plain": plain(cmd, peak_rss, args.timeout)}
         for mode in ("observed", "confined"):
             run, log, seconds = traced(cmd, mode, launcher, args.timeout)
             events = write_events(log)
@@ -408,7 +402,8 @@ def main(argv=None) -> int:
          repo / "native/ECS_C/relational/src/ecs_c_relational.c",
          repo / "native/ECS_C/relational/include/elpis/ecs_c_relational.h",
          repo / "native/runtime/containment/elpis_autonomous_run.c",
-         repo / "research/volatile_runtime_v0/nomem_probe.c", repo / "research/volatile_runtime_v0/zero_write.py",
+         repo / "research/volatile_runtime_v0/nomem_probe.c", repo / "research/volatile_runtime_v0/peak_rss.c",
+         repo / "research/volatile_runtime_v0/zero_write.py",
          repo / "tests/boundary/test_volatile_runtime.py"])
     manifest = {"schema": "elpis.volatile-runtime-v0.manifest.v1", "source_commit": head,
                 "sources": {str(p.relative_to(repo)): sha256(p) for p in sources},

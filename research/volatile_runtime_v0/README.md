@@ -19,7 +19,8 @@ The harness `zero_write.py` runs built binaries:
 | P4 | `nomem_probe` (`nomem_probe.c`, built by the harness) | memory exhaustion under `RLIMIT_AS`: `NOMEM` with nothing created, survivors still transition, reclaimed memory is reusable |
 
 Each path runs in three modes:
-- **plain**: exit status, wall time, and the process's own peak RSS (`wait4`).
+- **plain**: exit status, wall time, and the command's peak RSS. `peak_rss.c`, a small launcher, measures it
+  with `wait4`, because `ru_maxrss` also counts the image a process was forked from.
 - **observed**: as root, where any write would be permitted, under `strace -f -y`. The claim is that no write is
   even attempted.
 - **confined**: all of the following, under `strace -f -y`:
