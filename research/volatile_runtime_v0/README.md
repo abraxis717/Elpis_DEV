@@ -78,3 +78,56 @@ Reproduce, as root on Linux x86-64 with strace, unshare, setpriv, a C compiler a
   controls cannot stop them (census, section 6).
 - Nothing beyond the exercised inputs. Tracing shows what these runs did, not what every possible input would do.
   The static properties (`no_std`, the import set, an ABI without paths) are what bound the latter.
+
+## Results (recorded run at `e61d5dd`, clean tree; `results/`)
+
+**Verdict: `ZERO_WRITE_PASS`.** Every pass criterion holds.
+
+| Path | plain: exit, peak RSS, s | observed: exit, write events (traced calls) | confined: exit, write events (traced calls) |
+|---|---|---|---|
+| P1 session C ABI | 0, 1,812 KiB, 0.66 | 0, **0** (20) | 0, **0** (56) |
+| P2 relational over the session | 0, 1,904 KiB, 0.005 | 0, **0** (36) | 0, **0** (72) |
+| P3 cargo tests (12 passed) | 0, 3,588 KiB, 1.20 | 0, **0** (75) | 0, **0** (111) |
+| P4 memory exhaustion | 0, 18,500 KiB, 0.19 | 0, **0** (101) | 0, **0** (137) |
+
+What the traced calls were:
+- read-only `openat` of libraries and system files, and `/proc/self/statm` in P4;
+- private or anonymous `mmap`s;
+- `write`s to the stdout pipe.
+
+The confined runs trace more calls because `setpriv` and `elpis_autonomous_run` run under the tracer too.
+
+**P4** (`nomem_probe`) ran with `RLIMIT_AS` set to its mapping plus 48 MiB:
+- 26 sessions of capacity 4,096 (1,901,968 bytes each) were created;
+- the 27th was refused `ECS_C_NOMEM` with nothing created and no abort;
+- all 26 then transitioned, with a constant footprint;
+- after 13 were destroyed, creation succeeded again.
+
+Memory pressure caused no write-class call on any file in either mode.
+
+**Negative controls**, all as predicted:
+
+| Control | Exit | File created | Detected |
+|---|---|---|---|
+| root, unconfined | 0 | yes (then renamed and removed) | the create `openat`, `write`, `renameat2`, `sync` and `unlinkat` |
+| uid 65534 alone, in a directory it owns | 0 | **yes** | the create `openat`: the uid layer alone is not containment |
+| uid 65534 + Landlock (`elpis_autonomous_run`) | 1 | no | the create `openat` = −1 `EACCES`, and `utimensat` = −1 `EPERM` (seccomp) |
+| full confinement (+ read-only mounts) | 1 | no | the create `openat` = −1 `EROFS`, and `utimensat` = −1 `EPERM` |
+
+**Static.** `libelpis_ecs_c_session.so` (SHA-256 `4d864fc6…`) imports the weak C runtime symbols plus `abort`,
+`free`, `getrandom`, `malloc`, `memcpy`, `memmove` and `memset`, and nothing else. Its footprint is exactly
+2,352 / 8,848 / 31,120 / 120,208 / 476,560 / 1,901,968 bytes at capacity 2 / 16 / 64 / 256 / 1,024 / 4,096, and 0
+(refused) at 1 and 4,097.
+
+**Bounds from the tests themselves.** These figures come from the test output, not the harness:
+- 0 heap allocations over 20,000 transitions (P3);
+- creation makes 3 allocations;
+- heap in use is constant over a 100,000-event run (12,544 → 12,544 bytes) and over 1,000 sessions
+  (17,584 → 17,584 bytes, after one warm-up cycle for glibc's tcache) (P1).
+
+**Environment** (`results/ENVIRONMENT.txt`): Linux 6.18 x86-64, Landlock ABI 7, strace 6.8, GCC 13.3, rustc 1.97.
+Swap is 0. `core_pattern` is `core` (`RLIMIT_CORE` 0 in the confined runs). `/` and `/tmp` are on persistent ext4.
+`results/MANIFEST.json` binds the SHA-256 of every source and result.
+
+An earlier run at `6161ae8` passed identically on writes. Its plain-mode RSS figures were invalid (they counted the
+Python harness's image; see `e61d5dd`), so its results were not kept.
