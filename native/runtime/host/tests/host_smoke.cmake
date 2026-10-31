@@ -1,20 +1,49 @@
-# The native host end to end in every native build (ctest runtime.native_host_smoke; sanitizer and clang jobs
-# included): init from this build tree, create, a session that founds a source, learns, records typed evidence and
-# publishes; a new process resumes exactly the published state; the text interface is refused. No interpreter is
-# involved. The full suite is tests/integration/test_native_host.py.
-#   cmake -DHOST=<elpis> (-DBUILD=<build tree> | -DLIBRARIES=<installed lib/elpis>) -DSCRATCH=<dir> -P host_smoke.cmake
+# The RAM-only native host end to end in every native build (ctest runtime.native_host_smoke; sanitizer and clang jobs
+# included): the catalog pin, a session that founds a source, learns, records typed evidence and answers LOOKUP; the
+# retired durable operations refused; `close` discarding the session; a new process starting at the lineage's initial
+# identity (nothing resumed); the pin, privilege and storage refusals; and no file created or changed by the host. No
+# interpreter is involved. The full suite is tests/integration/test_native_host.py.
+#   cmake -DHOST=<elpis> -DTESTING_HOST=<elpis_testing> (-DBUILD=<build tree> | -DLIBRARIES=<installed lib/elpis>)
+#         -DSCRATCH=<dir> -P host_smoke.cmake
+# The host refuses a privileged process: as root, it runs as uid 65534 (setpriv), reading the build tree.
 file(REMOVE_RECURSE "${SCRATCH}")
 file(MAKE_DIRECTORY "${SCRATCH}")
-set(HOME "${SCRATCH}/home")
+if(DEFINED LIBRARIES)
+  set(SOURCE --libraries "${LIBRARIES}")
+  set(LIBDIR "${LIBRARIES}")
+else()
+  set(SOURCE --native-build "${BUILD}")
+  set(LIBDIR "${BUILD}")
+endif()
+execute_process(COMMAND id -u OUTPUT_VARIABLE uid OUTPUT_STRIP_TRAILING_WHITESPACE)
+set(AS)
+if(uid STREQUAL "0")
+  find_program(SETPRIV setpriv REQUIRED)
+  set(AS "${SETPRIV}" --reuid=65534 --regid=65534 --clear-groups --)
+endif()
 
-# Run the host; every line must be a JSON object; the exit status must be `expect`; stderr must be empty.
-function(host expect out)
-  execute_process(COMMAND "${HOST}" --home "${HOME}" ${ARGN} RESULT_VARIABLE rc OUTPUT_VARIABLE stdout
-                  ERROR_VARIABLE stderr)
+# Every library and both hosts, hashed before anything runs: none may change.
+file(GLOB_RECURSE libraries LIST_DIRECTORIES false "${LIBDIR}/*libelpis_*.so")
+set(before "")
+foreach(f IN LISTS libraries ITEMS "${HOST}" "${TESTING_HOST}")
+  file(SHA256 "${f}" h)
+  string(APPEND before "${f}=${h};")
+endforeach()
+
+# Run the host (stdin from `input`, or none); every line must be a JSON object; the exit status must be `expect`;
+# stderr must be empty.
+function(host expect out input)
+  set(stdin)
+  if(input)
+    set(stdin INPUT_FILE "${input}")
+  endif()
+  execute_process(COMMAND ${AS} ${ARGN} ${stdin} RESULT_VARIABLE rc OUTPUT_VARIABLE stdout ERROR_VARIABLE stderr)
   if(NOT rc EQUAL expect OR NOT stderr STREQUAL "")
-    message(FATAL_ERROR "elpis ${ARGN}: exit ${rc} (expected ${expect})\n${stdout}\n${stderr}")
+    message(FATAL_ERROR "${ARGN}: exit ${rc} (expected ${expect})\n${stdout}\n${stderr}")
   endif()
   string(STRIP "${stdout}" stdout)
+  # JSON uses no ';' outside strings: a ';' in a detail must not split the line list.
+  string(REPLACE ";" "," stdout "${stdout}")
   string(REPLACE "\n" ";" lines "${stdout}")
   set(${out} "${lines}" PARENT_SCOPE)
 endfunction()
@@ -30,65 +59,142 @@ function(expect_equal what a b)
   endif()
 endfunction()
 
-if(DEFINED LIBRARIES)
-  host(0 init init --libraries "${LIBRARIES}")      # an installed product
-else()
-  host(0 init init --native-build "${BUILD}")
-endif()
-host(0 created create --seed 7)
-field("${created}" initial identity)
+host(0 catalog "" "${HOST}" ${SOURCE} catalog)
+field("${catalog}" pin catalog_sha256)
+set(ELPIS "${HOST}" ${SOURCE} --catalog-sha256 "${pin}" --seed 7)
 
 string(REPEAT "1" 64 n1)
 string(REPEAT "2" 64 n2)
 string(REPEAT "a" 64 provenance)
 set(x "[[0.1,0.2,0.3,0.4,0.5,0.6],[0.6,0.5,0.4,0.3,0.2,0.1]]")
 set(edge "\"relation\": \"hyperedge:1\", \"participants\": [{\"node\": \"${n1}\", \"role\": \"incidence:1\"}, {\"node\": \"${n2}\", \"role\": \"incidence:2\"}]")
+set(lookup "{\"op\": \"lookup\", \"relation\": \"hyperedge:1\", \"target_role\": \"incidence:2\", \"cues\": [{\"role\": \"incidence:1\", \"node\": \"${n1}\"}]}")
 file(WRITE "${SCRATCH}/first.jsonl"
+  "{\"op\": \"status\"}\n"
   "{\"op\": \"source_found\", \"label\": \"smoke source\", \"source_authority\": 1, \"scope_label\": \"smoke\"}\n"
   "{\"op\": \"learn\", \"x\": ${x}, \"y\": [0.1, -0.1], \"schedule\": [[2, 3]], \"rate\": 0.002, \"grant\": \"smoke\"}\n"
   "{\"op\": \"evidence\", \"grant\": \"smoke\", \"sources\": [1], \"items\": [{${edge}, \"provenance\": \"${provenance}\", \"authority\": 1, \"polarity\": \"ASSERT\", \"tick\": 1}]}\n"
   "{\"op\": \"query\", \"x\": ${x}}\n"
-  "{\"op\": \"publish\"}\n")
-host(0 first session --script "${SCRATCH}/first.jsonl")
+  "${lookup}\n"
+  "{\"op\": \"publish\", \"expect\": \"OPERATION_RETIRED\"}\n"
+  "{\"op\": \"close\"}\n"
+  "${lookup}\n"
+  "{\"op\": \"live\"}\n")
+host(0 first "${SCRATCH}/first.jsonl" ${ELPIS} session --script -)
 list(LENGTH first n)
-expect_equal("operations" "${n}" 5)
+expect_equal("operations" "${n}" 10)
 foreach(line IN LISTS first)
   field("${line}" ok ok)
-  expect_equal("ok" "${ok}" "ON")
+  field("${line}" op op)
+  if(NOT op STREQUAL "publish")
+    expect_equal("ok" "${ok}" "ON")
+  endif()
 endforeach()
-list(GET first 2 recorded)
-list(GET first 3 answered)
-list(GET first 4 published)
-field("${recorded}" live identity)
-field("${published}" acknowledged ticket acknowledged)
-field("${published}" durable_identity durable identity)
-expect_equal("acknowledged" "${acknowledged}" "ON")
-expect_equal("published identity" "${durable_identity}" "${live}")
-if(live STREQUAL initial)
+list(GET first 0 status)
+foreach(member IN ITEMS "restricted;ON" "write_grants;0" "core_limit;0" "dumpable;OFF" "fsize_limit;0")
+  list(GET member 0 key)
+  list(GET member 1 want)
+  field("${status}" got containment ${key})
+  expect_equal("containment ${key}" "${got}" "${want}")
+endforeach()
+field("${status}" persistence host persistence)
+expect_equal("persistence" "${persistence}" "NONE")
+field("${status}" initial lineage initial_identity)
+list(GET first 3 recorded)
+list(GET first 5 found)
+list(GET first 7 closed)
+list(GET first 8 forgotten)
+list(GET first 9 fresh)
+field("${recorded}" learned identity)
+if(learned STREQUAL initial)
   message(FATAL_ERROR "learning and evidence left the identity unchanged")
 endif()
-field("${answered}" values_sha256 values_sha256)
-
-file(WRITE "${SCRATCH}/second.jsonl"
-  "{\"op\": \"live\"}\n"
-  "{\"op\": \"query\", \"x\": ${x}}\n"
-  "{\"op\": \"lookup\", \"relation\": \"hyperedge:1\", \"target_role\": \"incidence:2\", \"cues\": [{\"role\": \"incidence:1\", \"node\": \"${n1}\"}]}\n")
-host(0 second session --script "${SCRATCH}/second.jsonl")
-list(GET second 0 resumed)
-list(GET second 1 again)
-list(GET second 2 found)
-field("${resumed}" a live identity)
-field("${resumed}" b durable identity)
-expect_equal("resumed live identity" "${a}" "${durable_identity}")
-expect_equal("resumed durable identity" "${b}" "${durable_identity}")
-field("${again}" again_sha values_sha256)
-expect_equal("QUERY after restart" "${again_sha}" "${values_sha256}")
 field("${found}" answer answer)
-expect_equal("LOOKUP after restart" "${answer}" "${n2}")
+expect_equal("LOOKUP in the session" "${answer}" "${n2}")
+field("${closed}" discarded discarded learned)
+expect_equal("close discarded learned state" "${discarded}" "ON")
+field("${forgotten}" again found)
+expect_equal("LOOKUP in a new session" "${again}" "OFF")
+field("${fresh}" fresh_identity live identity)
+expect_equal("a new session starts at the initial identity" "${fresh_identity}" "${initial}")
 
-host(3 text text --input hello)
+# A new process: a new session at the lineage's initial identity (nothing was kept to resume).
+file(WRITE "${SCRATCH}/second.jsonl" "{\"op\": \"live\"}\n${lookup}\n")
+host(0 second "${SCRATCH}/second.jsonl" ${ELPIS} session --script -)
+list(GET second 0 restarted)
+list(GET second 1 lookup2)
+field("${restarted}" restarted_identity live identity)
+expect_equal("restart identity" "${restarted_identity}" "${initial}")
+field("${lookup2}" found2 found)
+expect_equal("LOOKUP after restart" "${found2}" "OFF")
+
+# Refusals: the text interface, the retired durable commands, a wrong pin, a privileged process.
+host(3 text "" ${ELPIS} text --input hello)
 field("${text}" code code)
 expect_equal("text refusal" "${code}" "ECS_CODEC_UNQUALIFIED")
+foreach(retired IN ITEMS init create publish reconcile candidates)
+  host(2 out "" "${HOST}" ${SOURCE} --catalog-sha256 "${pin}" ${retired})
+  field("${out}" code code)
+  expect_equal("${retired}" "${code}" "OPERATION_RETIRED")
+endforeach()
+host(2 out "" "${HOST}" --home "${SCRATCH}/home" status)
+field("${out}" code code)
+expect_equal("--home" "${code}" "OPERATION_RETIRED")
+string(REPEAT "0" 64 zero)
+host(4 out "" "${HOST}" ${SOURCE} --catalog-sha256 "${zero}" status)
+field("${out}" code code)
+expect_equal("a wrong pin" "${code}" "INSTALL_PIN")
+if(uid STREQUAL "0")
+  execute_process(COMMAND "${HOST}" ${SOURCE} --catalog-sha256 "${pin}" status RESULT_VARIABLE rc OUTPUT_VARIABLE out)
+  string(STRIP "${out}" out)
+  field("${out}" code code)
+  expect_equal("a privileged process" "${rc}/${code}" "4/CONTAINMENT_REFUSED")
+endif()
+
+# The negative control: deliberate write attempts by the contained testing host, beside a file it may read.
+host(0 tcatalog "" "${TESTING_HOST}" ${SOURCE} catalog)
+field("${tcatalog}" tpin catalog_sha256)
+set(probe "${SCRATCH}/probe")
+file(MAKE_DIRECTORY "${probe}")
+file(WRITE "${probe}/existing" "existing")
+file(CHMOD "${probe}" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE
+     WORLD_READ WORLD_WRITE WORLD_EXECUTE)
+file(CHMOD "${probe}/existing" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ GROUP_WRITE WORLD_READ WORLD_WRITE)
+# Uncontained, the same user may create and remove a file there: the refusals below are the containment's.
+execute_process(COMMAND ${AS} "${CMAKE_COMMAND}" -E touch "${probe}/control" RESULT_VARIABLE rc)
+if(NOT rc EQUAL 0 OR NOT EXISTS "${probe}/control")
+  message(FATAL_ERROR "the uncontained control could not create a file in ${probe}")
+endif()
+file(REMOVE "${probe}/control")
+set(probes "")
+foreach(p IN ITEMS "new;create" "existing;write" "existing;extend" "existing;remove" "existing;rename" "dir;mkdir")
+  list(GET p 0 target)
+  list(GET p 1 kind)
+  string(APPEND probes "{\"op\": \"testing_write_probe\", \"path\": \"${probe}/${target}\", \"kind\": \"${kind}\", \"offset\": 64}\n")
+endforeach()
+file(WRITE "${SCRATCH}/probes.jsonl" "${probes}")
+host(0 refused "${SCRATCH}/probes.jsonl" "${TESTING_HOST}" ${SOURCE} --catalog-sha256 "${tpin}" session --script -)
+foreach(line IN LISTS refused)
+  field("${line}" errno errno)
+  if(errno EQUAL 0)
+    message(FATAL_ERROR "a contained write attempt succeeded: ${line}")
+  endif()
+endforeach()
+file(GLOB left LIST_DIRECTORIES true "${probe}/*")
+expect_equal("the probe directory" "${left}" "${probe}/existing")
+file(READ "${probe}/existing" content)
+expect_equal("the probed file" "${content}" "existing")
+
+# Nothing the host read changed, and the host created nothing beside what this script wrote.
+set(after "")
+foreach(f IN LISTS libraries ITEMS "${HOST}" "${TESTING_HOST}")
+  file(SHA256 "${f}" h)
+  string(APPEND after "${f}=${h};")
+endforeach()
+expect_equal("library and host hashes" "${after}" "${before}")
+file(GLOB_RECURSE created LIST_DIRECTORIES true RELATIVE "${SCRATCH}" "${SCRATCH}/*")
+list(SORT created)
+expect_equal("files beside the scripts" "${created}" "first.jsonl;probe;probe/existing;probes.jsonl;second.jsonl")
 file(REMOVE_RECURSE "${SCRATCH}")
 file(MAKE_DIRECTORY "${SCRATCH}")
-message(STATUS "native host smoke: PASS")
+message(STATUS "native host smoke (RAM-only): PASS")

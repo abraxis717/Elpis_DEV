@@ -1,4 +1,4 @@
-/* Native admission (host_admit.h). Linux only: openat2, sealed memfd, dlopen of /proc/self/fd/N. */
+/* Native admission (host_admit.h). Linux only: openat2 (read-only), sealed memfd, dlopen of /proc/self/fd/N. */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
@@ -18,7 +18,7 @@
 
 #include "elpis/sha256.h"
 
-#define CHUNK (1u << 20)
+#define CHUNK (1u << 16)
 
 static int fail(char *err, size_t errlen, const char *what, const char *name) {
     if (err && errlen) snprintf(err, errlen, "%s: %s%s%s", what, name, errno ? ": " : "", errno ? strerror(errno) : "");
@@ -55,21 +55,6 @@ static int digest_fd(int fd, uint64_t size, uint8_t out[32]) {
     }
     elpis_sha256_final(&h, out);
     return 0;
-}
-
-int host_digest_file(int dirfd, const char *name, uint64_t *size, uint8_t out[32], char *err, size_t errlen) {
-    errno = 0;
-    const int fd = host_open_beneath(dirfd, name);
-    if (fd < 0) return fail(err, errlen, "cannot open", name);
-    struct stat st;
-    if (fstat(fd, &st) || !S_ISREG(st.st_mode)) {
-        close(fd);
-        return fail(err, errlen, "not a regular file", name);
-    }
-    *size = (uint64_t)st.st_size;
-    const int rc = digest_fd(fd, *size, out);
-    close(fd);
-    return rc ? fail(err, errlen, "cannot read", name) : 0;
 }
 
 int host_digest_self(uint8_t out[32], char *err, size_t errlen) {
@@ -168,32 +153,31 @@ out:
     return rc ? -1 : 0;
 }
 
-/* Copy, seal, hash, then load from the seal: the verified bytes are the bytes that run. The sealed descriptor stays
- * open (*kept): the loader knows a loaded object by its path, and a closed descriptor's number, reused by the next
- * memfd, would name the next library exactly as this one. */
-static void *load_sealed(int dirfd, const host_pin *pins, size_t index, int *kept, char *err, size_t errlen) {
-    const host_pin *pin = &pins[index];
+int host_seal(int dirfd, const char *path, host_pin *pin, int *sealed, char *err, size_t errlen) {
     static uint8_t buf[CHUNK];
+    if (err && errlen) err[0] = 0;
+    *sealed = -1;
     errno = 0;
-    const int src = host_open_beneath(dirfd, pin->file);
-    if (src < 0) return fail(err, errlen, "cannot open beneath lib/", pin->file), NULL;
+    const int src = host_open_beneath(dirfd, path);
+    if (src < 0) return fail(err, errlen, "cannot open read-only", path);
     struct stat before, after;
-    if (fstat(src, &before) || !S_ISREG(before.st_mode) || (uint64_t)before.st_size != pin->size) {
+    if (fstat(src, &before) || !S_ISREG(before.st_mode) || (uint64_t)before.st_size > ((uint64_t)1 << 28)) {
         close(src);
         errno = 0;
-        return fail(err, errlen, "size differs from its pin", pin->file), NULL;
+        return fail(err, errlen, "not a regular library file of at most 256 MiB", path);
     }
-    const int sealed = memfd_create("elpis-admitted", MFD_CLOEXEC | MFD_ALLOW_SEALING);
-    if (sealed < 0) {
+    const uint64_t size = (uint64_t)before.st_size;
+    const int fd = memfd_create("elpis-admitted", MFD_CLOEXEC | MFD_ALLOW_SEALING);
+    if (fd < 0) {
         close(src);
-        return fail(err, errlen, "memfd_create", pin->file), NULL;
+        return fail(err, errlen, "memfd_create", path);
     }
-    void *handle = NULL;
-    for (uint64_t at = 0; at < pin->size; at += CHUNK) {
-        const size_t n = (size_t)(pin->size - at < CHUNK ? pin->size - at : CHUNK);
+    int rc = -1;
+    for (uint64_t at = 0; at < size; at += CHUNK) {
+        const size_t n = (size_t)(size - at < CHUNK ? size - at : CHUNK);
         if (read_exact(src, buf, n, (off_t)at)) goto out;
         for (size_t done = 0; done < n;) {
-            const ssize_t w = write(sealed, buf + done, n - done);
+            const ssize_t w = write(fd, buf + done, n - done); /* the memfd: anonymous memory, not a file */
             if (w < 0 && errno == EINTR) continue;
             if (w <= 0) goto out;
             done += (size_t)w;
@@ -202,42 +186,38 @@ static void *load_sealed(int dirfd, const host_pin *pins, size_t index, int *kep
     if (fstat(src, &after) || after.st_size != before.st_size || after.st_mtim.tv_sec != before.st_mtim.tv_sec ||
         after.st_mtim.tv_nsec != before.st_mtim.tv_nsec || after.st_ino != before.st_ino) {
         errno = 0;
-        fail(err, errlen, "changed while being copied", pin->file);
+        fail(err, errlen, "changed while being copied", path);
         goto out;
     }
     const int seals = F_SEAL_WRITE | F_SEAL_GROW | F_SEAL_SHRINK | F_SEAL_SEAL;
-    if (fcntl(sealed, F_ADD_SEALS, seals) || (fcntl(sealed, F_GET_SEALS) & seals) != seals) {
-        fail(err, errlen, "cannot seal", pin->file);
+    if (fcntl(fd, F_ADD_SEALS, seals) || (fcntl(fd, F_GET_SEALS) & seals) != seals) {
+        fail(err, errlen, "cannot seal", path);
         goto out;
     }
-    uint8_t digest[32];
-    if (digest_fd(sealed, pin->size, digest) || memcmp(digest, pin->sha256, 32)) {
-        errno = 0;
-        fail(err, errlen, "SHA-256 differs from its pin", pin->file);
-        goto out;
-    }
-    if (check_needed(sealed, pins, index, err, errlen)) goto out; /* before the loader sees it */
-    char path[64];
-    snprintf(path, sizeof path, "/proc/self/fd/%d", sealed);
-    handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
-    if (!handle) {
-        errno = 0;
-        snprintf(err, errlen, "dlopen %s: %s", pin->file, dlerror());
-    }
+    if (digest_fd(fd, size, pin->sha256)) goto out;
+    pin->size = size;
+    rc = 0;
 out:
-    if (!handle && err && !err[0]) fail(err, errlen, "cannot copy", pin->file);
+    if (rc && err && !err[0]) fail(err, errlen, "cannot copy", path);
     close(src);
-    if (handle) *kept = sealed;
-    else close(sealed);
-    return handle;
+    if (rc) close(fd);
+    else *sealed = fd;
+    return rc;
 }
 
-int host_admit(int dirfd, const host_pin *pins, size_t n, void **handles, int *sealed, char *err, size_t errlen) {
+int host_load(const host_pin *pins, const int *sealed, size_t n, void **handles, char *err, size_t errlen) {
     if (err && errlen) err[0] = 0;
     for (size_t i = 0; i < n; ++i) {
-        sealed[i] = -1;
-        handles[i] = load_sealed(dirfd, pins, i, &sealed[i], err, errlen);
-        if (!handles[i]) return -1;
+        handles[i] = NULL;
+        if (check_needed(sealed[i], pins, i, err, errlen)) return -1; /* before the loader sees it */
+        char path[64];
+        snprintf(path, sizeof path, "/proc/self/fd/%d", sealed[i]);
+        handles[i] = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+        if (!handles[i]) {
+            errno = 0;
+            snprintf(err, errlen, "dlopen %s: %s", pins[i].file, dlerror());
+            return -1;
+        }
         for (size_t j = 0; j < i; ++j)
             if (handles[j] == handles[i]) { /* the loader handed back an object it already had: never this one */
                 errno = 0;
