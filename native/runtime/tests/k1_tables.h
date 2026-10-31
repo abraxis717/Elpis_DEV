@@ -1,4 +1,4 @@
-/* The K1 function tables the RuntimeCore C tests hand to RuntimeCore (ABI v4): typed wrappers over the K1 library's
+/* The K1 function tables the RuntimeCore C tests hand to RuntimeCore (ABI v8): typed wrappers over the K1 library's
  * own leased and live-coordinate entry points (ecsg_k1.h / ecsg_k1_fms.h, "Managed ownership", "Live coordinate").
  * No casts of function pointers. */
 #ifndef ELPIS_RUNTIME_TEST_K1_TABLES_H
@@ -41,14 +41,9 @@ static int k1_commit(void *s, uint64_t lease, uint64_t token, elpis_runtime_tran
     return elpis_ecsg_k1_leased_txn_commit(s, lease, token, (elpis_ecsg_k1_transition *)t);
 }
 static int k1_abort(void *s, uint64_t token) { return elpis_ecsg_k1_txn_abort(s, token); }
-static int k1_capture(void *s, uint64_t lease, uint8_t *out, size_t size, uint64_t *generation) {
-    return elpis_ecsg_k1_leased_capture(s, lease, out, size, generation);
-}
-static int k1_seal(uint8_t *envelope, size_t size) { return elpis_ecsg_k1_envelope_seal(envelope, size); }
 
-static const elpis_runtime_k1_api K1_API = {k1_digest,   k1_shape,  k1_claim, k1_release, k1_reserve,
-                                            k1_identity, k1_query,  k1_begin, k1_schedule, k1_commit,
-                                            k1_abort,    k1_capture, k1_seal};
+static const elpis_runtime_k1_api K1_API = {k1_digest,   k1_shape, k1_claim, k1_release,  k1_reserve, k1_identity,
+                                            k1_query,    k1_begin, k1_schedule, k1_commit, k1_abort};
 
 #ifdef ELPIS_TEST_K1_FMS
 static int k1fms_digest(void *r, uint64_t id, uint8_t out[32]) { return elpis_ecsg_k1_fms_state_digest(r, id, out); }
@@ -81,34 +76,13 @@ static int k1fms_commit(void *r, uint64_t id, uint64_t lease, uint64_t token, el
     return elpis_ecsg_k1_fms_leased_txn_commit(r, id, lease, token, (elpis_ecsg_k1_transition *)t);
 }
 static int k1fms_abort(void *r, uint64_t id, uint64_t token) { return elpis_ecsg_k1_fms_txn_abort(r, id, token); }
-static int k1fms_capture(void *r, uint64_t id, uint64_t lease, uint8_t *out, size_t size, uint64_t *generation) {
-    return elpis_ecsg_k1_fms_leased_capture(r, id, lease, out, size, generation);
-}
-static int k1fms_seal(uint8_t *envelope, size_t size) { return elpis_ecsg_k1_fms_envelope_seal(envelope, size); }
 static int k1fms_hold(void *r, uint64_t id) { return elpis_ecsg_k1_fms_resident_hold(r, id); }
 static int k1fms_unhold(void *r, uint64_t id) { return elpis_ecsg_k1_fms_resident_release(r, id); }
 
 static const elpis_runtime_k1_fms_api FMS_API = {k1fms_digest,   k1fms_shape,    k1fms_claim,  k1fms_release,
                                                  k1fms_reserve,  k1fms_identity, k1fms_query,  k1fms_begin,
-                                                 k1fms_schedule, k1fms_commit,   k1fms_abort,  k1fms_capture,
-                                                 k1fms_seal,     k1fms_hold,     k1fms_unhold};
+                                                 k1fms_schedule, k1fms_commit,   k1fms_abort,  k1fms_hold,
+                                                 k1fms_unhold};
 #endif
-
-/* Request a durable publication of `kind` (ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE: the complete state, a checkpoint
- * store attached; _IDENTITY: only the identity, none attached) and wait for it to resolve (the caller's explicit
- * choice; never on the HOT lane). */
-static elpis_runtime_durable_ticket durable_publish(elpis_runtime *rt, const elpis_runtime_substrate *d,
-                                                   uint32_t kind) {
-    elpis_runtime_durable_ticket t;
-    const int rc = kind == ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE ? elpis_runtime_recoverable_request(rt, d, &t)
-                                                                  : elpis_runtime_identity_request(rt, d, &t);
-    if (rc != ELPIS_RUNTIME_OK) {
-        t.status = ELPIS_RUNTIME_DURABLE_NONE;
-        return t;
-    }
-    elpis_runtime_durable_ticket done;
-    if (elpis_runtime_durable_wait(rt, t.sequence, 30000u, &done) != ELPIS_RUNTIME_OK) done.status = 0;
-    return done;
-}
 
 #endif

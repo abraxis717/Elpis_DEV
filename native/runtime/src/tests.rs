@@ -4,23 +4,20 @@
 //! NONFINITE from the schedule and STALE discard it, a commit installs the complete candidate or nothing) and its
 //! live coordinate (a generation advanced by exactly one per committed transition, reported under the lease) but
 //! computes nothing of K1's mathematics; the real native state is exercised by the C ABI tests and the Python
-//! integration lane. The suite runs over the ECS_C authority and reads it back from disk, so it needs the `testing`
-//! feature (`cargo test --features testing`), which also compiles the fault injection.
+//! integration lane. The suite runs over the volatile ECS_C session (ABI v8) and reads it back through the runtime;
+//! no file, directory or feature is involved.
 
-use std::ffi::c_int;
-use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::time::{Duration, Instant};
 
-use crate::authority::{Cognition, EvolutionState, Snapshot, StateFormat};
+use crate::authority::{Cognition, EvolutionState, SessionTemplate, Snapshot, StateFormat};
 use crate::code::{Code, Error, Rt};
 use crate::core::{Core, Counters, Stimulus, VolatileCommit};
-use crate::durable::{Kind, Status, Ticket};
 use crate::fuel::{self, Budget, CEILING};
 use crate::substrate::{
-    features, k1_envelope_bytes, Digest, Experience, K1Ops, Key, Observation, ResidentRelease, ScheduleOutcome, Sealer,
-    Transition, TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE,
+    features, Digest, Experience, K1Ops, Key, Observation, ResidentRelease, ScheduleOutcome, Transition, TxnAbort,
+    K1_BUSY, K1_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID, K1_LEASED, K1_NONFINITE, K1_STALE,
 };
+use elpis_ecs_c_session::model as m;
 
 const DIM: usize = 2;
 /// The stand-in's declared width (fuel admission reads it natively once per state).
@@ -99,21 +96,8 @@ fn unsealed(w: &[f64], epoch: u64) -> Vec<u8> {
 
 fn seal_in_place(e: &mut [u8]) {
     let n = e.len();
-    let trailer = elpis_ecs_c_authority::sha256::digest(&[&e[..n - 32]]);
+    let trailer = elpis_ecs_c_session::sha256::digest(&[&e[..n - 32]]);
     e[n - 32..].copy_from_slice(&trailer);
-}
-
-/// The stand-in's `envelope_seal`: pure; refuses another size or magic (as K1's validates the header and size).
-unsafe extern "C" fn fake_seal(p: *mut u8, n: usize) -> c_int {
-    if p.is_null() || n != ENVELOPE {
-        return K1_INVALID;
-    }
-    let e = std::slice::from_raw_parts_mut(p, n);
-    if &e[..8] != b"ELPISGK1" {
-        return K1_INVALID;
-    }
-    seal_in_place(e);
-    0
 }
 
 impl State {
@@ -126,7 +110,7 @@ impl State {
         if self.composite {
             let mut parts: Vec<&[u8]> = vec![b"composite", &out];
             parts.extend(self.memory.iter().map(|k| &k[..]));
-            return elpis_ecs_c_authority::sha256::digest(&parts);
+            return elpis_ecs_c_session::sha256::digest(&parts);
         }
         out
     }
@@ -241,11 +225,6 @@ impl Fake {
 
     fn epoch(&self) -> u64 {
         self.state().epoch
-    }
-
-    fn envelope(&self) -> Vec<u8> {
-        let s = self.state();
-        envelope_of(&s.w, s.epoch)
     }
 
     fn generation(&self) -> u64 {
@@ -512,25 +491,6 @@ impl K1Ops for Fake {
         self.state().abort(token)
     }
 
-    fn leased_capture(&mut self, lease: u64, out: &mut [u8], generation: &mut u64) -> i32 {
-        let mut s = self.state();
-        s.calls.push("leased_capture");
-        s.pin();
-        if out.len() < ENVELOPE {
-            return K1_INVALID;
-        }
-        if s.lease != lease {
-            return K1_LEASED;
-        }
-        out[..ENVELOPE].copy_from_slice(&unsealed(&s.w, s.epoch));
-        *generation = s.generation;
-        0
-    }
-
-    fn sealer(&self) -> Sealer {
-        fake_seal
-    }
-
     fn retain_abort(&self) -> Box<dyn TxnAbort> {
         Box::new(FakeAbort(Arc::clone(&self.0)))
     }
@@ -638,74 +598,44 @@ fn turn(core: &mut Core, sub: &mut Fake, k: Key) -> Result<VolatileCommit, Error
     core.turn_commit(sub, k).map_err(|r| r.error)
 }
 
-/// The publication kind the core admits: RECOVERABLE with a checkpoint store attached, IDENTITY without.
-fn kind_of(core: &Core) -> Kind {
-    if core.checkpoint_attached() {
-        Kind::Recoverable
-    } else {
-        Kind::Identity
-    }
+/// The suite's runtime: sessions of capacity 16, a fixed nonce seed (deterministic sessions).
+fn new_core() -> Core {
+    Core::new(SessionTemplate { capacity: 16, nonce_seed: [7; 32], operator_label: [1; 32], runtime_label: [2; 32] })
+        .expect("valid template")
 }
 
-/// Request durable publication of the live state (the kind the core admits) and wait (the caller's explicit choice)
-/// for its resolution.
-fn publish(core: &mut Core, sub: &mut Fake, k: Key) -> Result<Ticket, Error> {
-    let t = core.durable_request(sub, k, kind_of(core)).map_err(|r| r.error)?;
-    assert_eq!(t.status(), Status::Pending);
-    core.lane().wait(t.sequence, Some(Duration::from_secs(30)))
+/// The operator founds the suite's source in the open session: one ACTIVE source whose memory source authority is 0
+/// (the suite's observations record it), at the bound the managed turn's ceiling allows.
+fn found_test_source(core: &mut Core) {
+    let op = core.authority_entity(0).unwrap();
+    let id = core.authority_next_entity_id(m::EntityKind::Source as u8, &[3; 32]).unwrap();
+    let seq = op.sender_watermark;
+    let found = m::Event::entity_found(&op.id, seq + 1, &id, m::EntityKind::Source, &[3; 32], &[4; 32], 1, 256, 0);
+    core.authority_transition(&found).unwrap();
+    let active = m::Event::entity_lifecycle(&op.id, seq + 2, &id, m::Lifecycle::Founded, m::Lifecycle::Active);
+    core.authority_transition(&active).unwrap();
 }
 
-/// The durable authority the suite runs over is the ECS_C authority, the only one since ABI v7 (ABI v6 ran the whole
-/// suite a second time over standalone continuity, which retired into it).
-fn ecs_c_dirs(p: &Path) -> (PathBuf, PathBuf) {
-    (p.join("state"), p.join("authority"))
+/// Open `core` (a new session) and found the suite's source.
+fn open(core: &mut Core) -> Snapshot {
+    core.open().expect("open");
+    found_test_source(core);
+    core.snapshot().unwrap()
 }
 
-/// Provision an ECS_C authority with one ACTIVE source whose memory source authority is 0 (the suite's
-/// observations record it), at the bound the managed turn's ceiling allows.
-fn provision_ecs_c(state: &Path, authority: &Path) {
-    use elpis_ecs_c_authority as e;
-    e::Authority::provision(state, authority, 16, &[1; 32], &[2; 32]).expect("provision");
-    let mut a = e::Authority::new(state, authority).unwrap();
-    a.open().unwrap();
-    let c = a.current().unwrap().clone();
-    let op = c.state.entities[0].id;
-    let id = a.next_entity_id(e::EntityKind::Source, &[3; 32]).unwrap();
-    let found = e::Event::entity_found(&op, 1, &id, e::EntityKind::Source, &[3; 32], &[4; 32], 1, 256, 0);
-    a.transition(c.generation, &c.state_root, &found).unwrap();
-    let c = a.current().unwrap().clone();
-    let active = e::Event::entity_lifecycle(&op, 2, &id, e::Lifecycle::Founded, e::Lifecycle::Active);
-    a.transition(c.generation, &c.state_root, &active).unwrap();
-}
-
-/// A closed runtime over `p` (the authority is provisioned on first use).
-fn new_core(p: &Path) -> Core {
-    let (state, authority) = ecs_c_dirs(p);
-    if !authority.join("witness.a").exists() {
-        provision_ecs_c(&state, &authority);
-    }
-    Core::new_ecs_c(&state, &authority).expect("absolute")
-}
-
-struct Dir(PathBuf);
+/// What the suite once named a deployment directory: v8 has none. `Dir::new(name).core()` is an open runtime over a
+/// fresh session with the suite's source.
+struct Dir;
 
 impl Dir {
-    fn new(name: &str) -> Dir {
-        let p = std::env::temp_dir().join(format!("elpis-runtime-{}-{}", std::process::id(), name));
-        let _ = std::fs::remove_dir_all(&p);
-        Dir(p)
+    fn new(_name: &str) -> Dir {
+        Dir
     }
 
     fn core(&self) -> Core {
-        let mut c = new_core(&self.0);
-        c.open().expect("open");
+        let mut c = new_core();
+        open(&mut c);
         c
-    }
-}
-
-impl Drop for Dir {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
     }
 }
 
@@ -716,43 +646,36 @@ fn anchored(core: &Core) -> Option<Digest> {
     }
 }
 
-/// The durable authority as a restart would read it from disk (the record files, read directly: the runtime under
-/// test may hold the authority's locks).
-fn on_disk(dir: &Dir) -> Snapshot {
-    let (state, authority) = ecs_c_dirs(&dir.0);
-    let record = elpis_ecs_c_authority::testing_peek(&state, &authority).unwrap();
-    crate::authority::snapshot_of(&record).unwrap()
-}
-
 #[test]
-fn features_and_envelope_bytes_are_k1s() {
+fn features_are_k1s() {
     assert_eq!(
         (features(0), features(1), features(2), features(6), features(64), features(65)),
         (0, 3, 9, 83, 47904, 0)
     );
-    // elpis_ecsg_k1_envelope_bytes: 64 + 8 * (d*w + F(F+1)/2 + F) + 32.
-    assert_eq!(k1_envelope_bytes(6, 1024), Some(77_800));
-    assert_eq!(k1_envelope_bytes(6, 36), Some(64 + 8 * (216 + 3486 + 83) + 32));
-    assert_eq!(k1_envelope_bytes(DIM, WIDTH), Some(ENVELOPE));
-    assert_eq!((k1_envelope_bytes(0, 3), k1_envelope_bytes(2, 0), k1_envelope_bytes(65, 1)), (None, None, None));
 }
 
 #[test]
 fn a_closed_runtime_refuses_everything() {
-    let dir = Dir::new("closed");
-    let mut core = new_core(&dir.0);
+    let mut core = new_core();
     let mut sub = Fake::new(0.1);
     assert_eq!(core.anchor(&mut sub, key(1)).unwrap_err().error, Rt::Closed.into());
     assert_eq!(core.evolution_authority().unwrap_err(), Rt::Closed.into());
     assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Rt::Closed.into());
-    assert_eq!(core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap_err().error, Rt::Closed.into());
     assert_eq!(core.snapshot().unwrap_err(), Rt::Closed.into());
+    assert_eq!(core.authority_entity(0).unwrap_err(), Rt::Closed.into());
     assert!(sub.calls().is_empty());
-    assert!(Core::new_ecs_c(std::path::Path::new("relative"), std::path::Path::new("authority")).is_err());
+    // No session exists while closed: the status names none.
+    let status = core.authority_status();
+    assert_eq!((status.instance, status.volatile_bytes, status.sessions), (0, 0, 0));
+    // A capacity outside the session's bounds is refused at create, before any session exists.
+    for capacity in [0, 1, 4097] {
+        let t = SessionTemplate { capacity, nonce_seed: [0; 32], operator_label: [1; 32], runtime_label: [2; 32] };
+        assert_eq!(Core::new(t).err(), Some(Rt::Invalid.into()));
+    }
 }
 
 #[test]
-fn anchor_is_explicit_once_durable_reads_the_state_only_and_binds() {
+fn anchor_is_explicit_once_in_the_session_reads_the_state_only_and_binds() {
     let dir = Dir::new("anchor");
     let mut core = dir.core();
     let mut sub = Fake::new(0.1);
@@ -761,8 +684,8 @@ fn anchor_is_explicit_once_durable_reads_the_state_only_and_binds() {
     let s = core.anchor(&mut sub, key(1)).unwrap();
     assert_eq!(s.generation(), initial + 1);
     assert_eq!(anchored(&core), Some(sub.identity()));
-    assert_eq!(on_disk(&dir), s); // durable when it returns: the anchor is the lineage's durable baseline
-                                  // Claims managed ownership (the lease), then reads identity and generation together under it; mutates nothing.
+    assert_eq!(core.snapshot().unwrap(), s); // the session records the anchor, in memory
+                                             // Claims managed ownership (the lease), then reads identity and generation together under it; mutates nothing.
     assert_eq!((sub.retained(), sub.calls()), (before, vec!["lease_claim", "leased_identity"]));
     assert_ne!(sub.lease(), 0);
     assert_eq!(core.live_generation(), Some(sub.generation()));
@@ -776,7 +699,6 @@ fn an_unanchored_turn_is_refused_before_any_k1_call() {
     let mut core = dir.core();
     let mut sub = Fake::new(0.1);
     assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::Unanchored.into());
-    assert_eq!(core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap_err().error, Code::Unanchored.into());
     assert!(sub.calls().is_empty() && sub.epoch() == 0);
     assert_eq!(anchored(&core), None);
 }
@@ -795,9 +717,8 @@ fn a_managed_turn_is_volatile_three_k1_crossings_no_digest_no_publication() {
     // The live coordinate advanced by exactly one; the commit reports it.
     assert_eq!((c.transition.generation_before, c.transition.generation_after), (generation, generation + 1));
     assert_eq!((c.live_generation, core.live_generation()), (sub.generation(), Some(sub.generation())));
-    // The durable authority did not move: no checkpoint, no publication, nothing on disk.
+    // The session's authority did not move: the commit is the live coordinate's alone.
     assert_eq!(core.snapshot().unwrap(), anchor);
-    assert_eq!(on_disk(&dir), anchor);
     assert_ne!(sub.identity(), anchored(&core).unwrap());
     // The warm managed turn: begin, one schedule, commit; no digest anywhere.
     assert_eq!(sub.calls(), ["txn_begin_at", "txn_run_schedule", "txn_commit"]);
@@ -824,54 +745,13 @@ fn queries_between_volatile_transitions_answer_from_the_live_state() {
 }
 
 #[test]
-fn restart_without_a_durable_publication_never_adopts_the_volatile_state() {
-    let dir = Dir::new("restart-volatile");
-    let mut sub = Fake::new(0.1);
-    let anchor = {
-        let mut core = dir.core();
-        let a = core.anchor(&mut sub, key(1)).unwrap();
-        turn(&mut core, &mut sub, key(1)).unwrap();
-        turn(&mut core, &mut sub, key(1)).unwrap();
-        a
-    }; // the process ends with volatile work only
-    let mut core = dir.core();
-    assert_eq!(core.snapshot().unwrap(), anchor); // restart sees the last durable authority
-    sub.clear_calls();
-    let lease = sub.lease();
-    assert_eq!(turn(&mut core, &mut sub, key(7)).unwrap_err(), Code::StateMismatch.into());
-    // The advanced state is checked before any claim and never adopted: nothing claimed, nothing mutated.
-    assert_eq!(sub.calls(), ["shape", "state_digest"]);
-    assert_eq!((sub.lease(), core.fault()), (lease, Some(Code::StateMismatch)));
-}
-
-#[test]
-fn restart_after_a_durable_publication_resumes_with_one_identity_check() {
-    let dir = Dir::new("restart");
-    let mut sub = Fake::new(0.1);
-    {
-        let mut core = dir.core();
-        core.anchor(&mut sub, key(1)).unwrap();
-        turn(&mut core, &mut sub, key(1)).unwrap();
-        let t = publish(&mut core, &mut sub, key(1)).unwrap();
-        assert_eq!((t.status(), t.identity, t.recoverable), (Status::IdentityPublished, sub.identity(), 0));
-    }
-    let mut core = dir.core();
-    let durable = core.snapshot().unwrap();
-    assert_eq!(durable.cognition(), Cognition::Anchored(sub.identity()));
-    sub.clear_calls();
-    turn(&mut core, &mut sub, key(7)).unwrap(); // a fresh runtime binds whichever matching wrapper it is given
-                                                // Read-only checks first (fuel shape, identity), then the claim and the identity + generation under the lease.
-    assert_eq!(sub.calls()[..4], ["shape", "state_digest", "lease_claim", "leased_identity"]);
-    assert_eq!(core.snapshot().unwrap(), durable); // the turn itself is volatile
-}
-
-#[test]
 fn a_mismatched_state_fail_stops_before_any_mutation() {
     let dir = Dir::new("mismatch");
     let mut sub = Fake::new(0.1);
-    dir.core().anchor(&mut sub, key(1)).unwrap();
-    let mut other = Fake::new(0.2);
     let mut core = dir.core();
+    core.anchor(&mut sub, key(1)).unwrap();
+    core.release(&mut sub, key(1)).unwrap(); // the lineage is unbound: the next state is verified against it
+    let mut other = Fake::new(0.2);
     let durable = core.snapshot().unwrap();
     let before = other.retained();
     assert_eq!(turn(&mut core, &mut other, key(2)).unwrap_err(), Code::StateMismatch.into());
@@ -881,11 +761,13 @@ fn a_mismatched_state_fail_stops_before_any_mutation() {
     // Fail-stopped for every lineage-dependent operation, the matching state included; nothing synthesized.
     assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::StateMismatch.into());
     assert_eq!(core.evolution_authority().unwrap_err(), Code::StateMismatch.into());
-    assert_eq!(core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap_err().error, Code::StateMismatch.into());
     assert_eq!(core.snapshot().unwrap(), durable);
-    // Reopen reconciles: the matching state resumes.
+    // The fail-stop ends with the session: close + open is a new session (unanchored, nothing resumed), in which the
+    // state may be anchored afresh.
     core.close();
-    core.open().unwrap();
+    open(&mut core);
+    assert_eq!((anchored(&core), core.fault()), (None, None));
+    core.anchor(&mut sub, key(1)).unwrap();
     turn(&mut core, &mut sub, key(1)).unwrap();
 }
 
@@ -896,10 +778,7 @@ fn an_open_runtime_refuses_another_state_without_a_native_call() {
     let (mut first, mut second) = (Fake::new(0.1), Fake::new(0.1)); // identical bytes, different owner
     core.anchor(&mut first, key(1)).unwrap();
     assert_eq!(turn(&mut core, &mut second, key(2)).unwrap_err(), Rt::SubstrateSwitch.into());
-    assert_eq!(
-        core.durable_request(&mut second, key(2), kind_of(&core)).unwrap_err().error,
-        Rt::SubstrateSwitch.into()
-    );
+    assert_eq!(core.live_identity(&mut second, key(2)).unwrap_err().error, Rt::SubstrateSwitch.into());
     assert!(second.calls().is_empty());
     assert_eq!(core.fault(), None); // a refusal, not a fail-stop
     let reused = Key { owner: 9, ..key(1) }; // a reused handle address under another owner is another state
@@ -948,7 +827,7 @@ fn refusals_before_the_commit_leave_the_retained_state_unchanged() {
         Rt::TurnOpen.into()
     );
     assert_eq!(core.turn_commit(&mut sub, key(2)).unwrap_err().error, Rt::TurnNotOpen.into());
-    assert_eq!(core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap_err().error, Rt::TurnOpen.into());
+    assert_eq!(core.live_identity(&mut sub, key(1)).unwrap_err().error, Rt::TurnOpen.into());
     core.turn_abort(key(1)).unwrap();
     assert_eq!(core.turn_abort(key(1)).unwrap_err().error, Rt::TurnNotOpen.into());
     assert_eq!(sub.retained(), before);
@@ -994,82 +873,74 @@ fn rows_beyond_the_reservation_grow_it_on_the_cold_path() {
 }
 
 #[test]
-fn evolution_reserves_executes_once_and_finalizes() {
+fn evolution_reserves_executes_once_and_finalizes_in_the_session() {
     let dir = Dir::new("evolution");
     let mut core = dir.core();
     let authority = core.evolution_authority().unwrap().evolution();
     let assertion = [7u8; 32];
     let pending = core.evolution_reserve(&authority, &assertion).unwrap().evolution();
     assert_eq!(pending.assertion(), Some(assertion));
-    // The reservation is durable when reserve returns (before the boundary may execute).
-    assert_eq!(on_disk(&dir).evolution().assertion(), Some(assertion));
+    // The reservation is in the session when reserve returns (before the boundary may execute).
+    assert_eq!(core.snapshot().unwrap().evolution().assertion(), Some(assertion));
     assert_eq!(core.evolution_reserve(&authority, &assertion).unwrap_err(), Rt::EvolutionInFlight.into());
     let done = core.evolution_finalize(&[9u8; 32]).unwrap().evolution();
     assert_eq!((done.revision(), done.head(), done.assertion()), (1, [9u8; 32], None));
-    assert_eq!(on_disk(&dir).evolution(), done);
+    assert_eq!(core.snapshot().unwrap().evolution(), done);
     assert_eq!(core.evolution_finalize(&[9u8; 32]).unwrap_err(), Rt::EvolutionNotInFlight.into());
-    // A stale observation cannot reserve; it fail-stops (nothing executed).
+    // A stale observation cannot reserve: refused, nothing changed and nothing executed (no fail-stop in v8; the
+    // caller reads the authority again).
     assert_eq!(core.evolution_reserve(&authority, &assertion).unwrap_err(), Code::AuthorityMismatch.into());
-    assert_eq!(core.fault(), Some(Code::AuthorityMismatch));
+    assert_eq!((core.fault(), core.snapshot().unwrap().evolution()), (None, done));
+    let current = core.evolution_authority().unwrap().evolution();
+    core.evolution_reserve(&current, &[8u8; 32]).unwrap();
+    assert_eq!(core.evolution_finalize(&[6u8; 32]).unwrap().evolution().revision(), 2);
 }
 
 #[test]
-fn an_abandoned_attempt_stays_pending_and_is_reconciled_explicitly_once() {
+fn an_abandoned_attempt_stays_pending_for_the_rest_of_the_session_and_a_new_session_starts_idle() {
     let dir = Dir::new("abandon");
     let assertion = [3u8; 32];
-    {
-        let mut core = dir.core();
-        let authority = core.evolution_authority().unwrap().evolution();
-        core.evolution_reserve(&authority, &assertion).unwrap();
-        core.evolution_abandon().unwrap();
-        assert_eq!(core.fault(), Some(Code::EvolutionPending));
-        assert_eq!(core.evolution_authority().unwrap_err(), Code::EvolutionPending.into());
-    }
     let mut core = dir.core();
-    let pending = core.snapshot().unwrap().evolution();
-    assert_eq!(pending.assertion(), Some(assertion));
+    let authority = core.evolution_authority().unwrap().evolution();
+    core.evolution_reserve(&authority, &assertion).unwrap();
+    core.evolution_abandon().unwrap();
+    assert_eq!(core.fault(), Some(Code::EvolutionPending));
     assert_eq!(core.evolution_authority().unwrap_err(), Code::EvolutionPending.into());
-    assert_eq!(core.evolution_reserve(&pending, &assertion).unwrap_err(), Code::EvolutionPending.into());
+    assert_eq!(core.evolution_abandon().unwrap_err(), Rt::EvolutionNotInFlight.into());
+    // The session still holds the pending reservation (readable while fail-stopped); nothing finalizes it.
+    assert_eq!(core.snapshot().unwrap().evolution().assertion(), Some(assertion));
+    // No reconciliation exists: the session ends, and the next one starts at genesis (no attempt survives it).
+    core.close();
+    open(&mut core);
     assert_eq!(core.fault(), None);
-    let done = core.evolution_reconcile(&pending, &[5u8; 32]).unwrap().evolution();
-    assert_eq!(done, EvolutionState::idle(1, [5u8; 32]).unwrap());
-    assert_eq!(core.evolution_reconcile(&pending, &[5u8; 32]).unwrap_err(), Code::AuthorityMismatch.into());
-    assert_eq!(core.fault(), None); // an operator refusal, not a fail-stop
-    assert_eq!(core.evolution_authority().unwrap().evolution(), done);
+    let idle = core.evolution_authority().unwrap().evolution();
+    assert_eq!((idle.revision(), idle.assertion()), (0, None));
 }
 
 #[test]
 fn volatile_cognition_never_makes_a_pending_evolution_attempt_retryable() {
-    // An attempt reserved, then abandoned (it may have had an external effect). Neither volatile turns nor a durable
-    // publication of cognition clears, finalizes or retries it: they carry the pending authority unchanged.
+    // An attempt reserved, then abandoned (it may have had an external effect). Volatile turns never clear, finalize or
+    // retry it: the session carries the pending authority unchanged until it ends.
     let dir = Dir::new("evolution-volatile");
     let mut sub = Fake::new(0.1);
     let assertion = [4u8; 32];
-    {
-        let mut core = dir.core();
-        core.anchor(&mut sub, key(1)).unwrap();
-        let authority = core.evolution_authority().unwrap().evolution();
-        core.evolution_reserve(&authority, &assertion).unwrap();
-        turn(&mut core, &mut sub, key(1)).unwrap(); // cognition stays HOT while the attempt is in flight
-        core.evolution_abandon().unwrap();
-        assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::EvolutionPending.into());
-    }
     let mut core = dir.core();
+    core.anchor(&mut sub, key(1)).unwrap();
+    let authority = core.evolution_authority().unwrap().evolution();
+    core.evolution_reserve(&authority, &assertion).unwrap();
+    turn(&mut core, &mut sub, key(1)).unwrap(); // cognition stays HOT while the attempt is in flight
+    core.evolution_abandon().unwrap();
+    assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::EvolutionPending.into());
     let pending = core.snapshot().unwrap().evolution();
     assert_eq!(pending.assertion(), Some(assertion));
     assert_eq!(core.evolution_reserve(&pending, &[8u8; 32]).unwrap_err(), Code::EvolutionPending.into());
-    // A state matching the durable lineage (the anchored bytes) thinks and is durably published meanwhile.
-    let mut fresh = Fake::new(0.1);
-    turn(&mut core, &mut fresh, key(2)).unwrap();
-    let t = publish(&mut core, &mut fresh, key(2)).unwrap();
-    assert_eq!(t.status(), Status::IdentityPublished);
-    assert_eq!(on_disk(&dir).evolution(), pending); // the reservation is still pending, untouched
-    assert_eq!(core.evolution_authority().unwrap_err(), Code::EvolutionPending.into());
+    assert_eq!(core.evolution_finalize(&[8u8; 32]).unwrap_err(), Rt::EvolutionNotInFlight.into());
+    assert_eq!(core.snapshot().unwrap().evolution(), pending);
 }
 
 // -- turn lifecycle: an open native transaction is never forgotten ------------------------------------------------
 
-/// What an implicit abort must leave untouched: the retained K1 state, its generation and digest, and continuity.
+/// What an implicit abort must leave untouched: the retained K1 state, its generation and digest, and the session.
 struct Witness {
     retained: (Vec<u64>, u64),
     generation: u64,
@@ -1086,10 +957,8 @@ fn witness(core: &Core, sub: &Fake) -> Witness {
     }
 }
 
-fn unchanged(w: &Witness, dir: &Dir, sub: &Fake) {
+fn unchanged(w: &Witness, _dir: &Dir, sub: &Fake) {
     assert_eq!((sub.retained(), sub.generation(), sub.identity()), (w.retained.clone(), w.generation, w.identity));
-    // Continuity as restart will see it: unchanged by the turn.
-    assert_eq!(on_disk(dir), w.durable);
 }
 
 /// An anchored runtime with one committed turn and a second turn begun (schedule ran on the candidate).
@@ -1122,9 +991,9 @@ fn an_explicit_abort_ends_the_turn_once_and_installs_nothing() {
     core.close();
     assert_eq!(sub.calls(), ["txn_abort"]); // close finds nothing left to end
     unchanged(&w, &dir, &sub);
-    // The state moved (volatile) past the anchor: a new open must not adopt it.
+    // A new open is a new session: it knows no lineage, so nothing of the last one is adopted.
     core.open().unwrap();
-    assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::StateMismatch.into());
+    assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::Unanchored.into());
 }
 
 #[test]
@@ -1176,13 +1045,12 @@ fn reopening_an_open_runtime_is_refused_and_keeps_the_turn() {
 fn close_then_open_after_a_fail_stop_aborts_the_open_turn() {
     let dir = Dir::new("life-failstop");
     let (mut core, sub, w) = begun(&dir);
-    // An evolution attempt completes; a reservation against the authority it replaced fail-stops, turn open.
-    let stale = core.evolution_authority().unwrap().evolution();
-    core.evolution_reserve(&stale, &[1u8; 32]).unwrap();
-    core.evolution_finalize(&[2u8; 32]).unwrap();
+    // An evolution attempt is reserved and abandoned: the runtime fail-stops, turn open.
+    let authority = core.evolution_authority().unwrap().evolution();
+    core.evolution_reserve(&authority, &[1u8; 32]).unwrap();
+    core.evolution_abandon().unwrap();
     let durable = core.snapshot().unwrap();
-    assert_eq!(core.evolution_reserve(&stale, &[3u8; 32]).unwrap_err(), Code::AuthorityMismatch.into());
-    assert_eq!(core.fault(), Some(Code::AuthorityMismatch));
+    assert_eq!(core.fault(), Some(Code::EvolutionPending));
     assert!(core.turn_is_open() && sub.txn_open());
     core.close();
     assert_eq!((sub.calls(), aborts(&mut core)), (vec!["txn_abort"], 1));
@@ -1255,9 +1123,8 @@ fn another_substrates_abort_is_refused_and_the_turn_stays_open_until_close() {
 
 #[test]
 fn lifecycle_without_a_turn_makes_no_native_call() {
-    let dir = Dir::new("life-idle");
     let mut sub = Fake::new(0.1);
-    let mut core = new_core(&dir.0);
+    let mut core = new_core();
     core.close(); // close of a never-opened runtime
     core.open().unwrap();
     core.anchor(&mut sub, key(1)).unwrap();
@@ -1269,7 +1136,7 @@ fn lifecycle_without_a_turn_makes_no_native_call() {
     core.open().unwrap();
     drop(core); // destroy with no turn
     assert!(sub.calls().is_empty());
-    assert_eq!(new_core(&dir.0).counters(false), Counters::default());
+    assert_eq!(new_core().counters(false), Counters::default());
     // Double close after a turn: one abort, then nothing.
     let dir = Dir::new("life-idle-turn");
     let (mut core, sub, _) = begun(&dir);
@@ -1352,8 +1219,9 @@ fn a_query_never_publishes_and_never_anchors() {
 fn a_query_of_a_state_the_lineage_never_committed_fail_stops_and_withholds_the_answer() {
     let dir = Dir::new("query-mismatch");
     let mut sub = Fake::new(0.1);
-    dir.core().anchor(&mut sub, key(1)).unwrap();
     let mut core = dir.core();
+    core.anchor(&mut sub, key(1)).unwrap();
+    core.release(&mut sub, key(1)).unwrap();
     let durable = core.snapshot().unwrap();
     let mut other = Fake::new(0.2);
     let x = vec![0.5; 2 * DIM];
@@ -1516,7 +1384,10 @@ fn excessive_work_is_refused_before_reserve_begin_schedule_and_commit() {
         // No reserve, no transaction, no schedule, no commit; at most the read-only shape.
         assert!(sub.calls().iter().all(|c| *c == "shape"), "{:?}", sub.calls());
         let c = core.counters(false);
-        assert_eq!((c.k1_reserves, c.k1_txn_begins, c.k1_run_schedules, c.k1_commits, c.publications), (0, 0, 0, 0, 0));
+        assert_eq!(
+            (c.k1_reserves, c.k1_txn_begins, c.k1_run_schedules, c.k1_commits, c.session_transitions),
+            (0, 0, 0, 0, 0)
+        );
         assert_eq!((sub.max_rows(), sub.retained(), sub.txn_open()), (8, retained.clone(), false));
         assert_eq!((core.snapshot().unwrap(), core.fault(), core.turn_is_open()), (durable, None, false));
     }
@@ -1567,8 +1438,8 @@ fn a_lost_lease_fail_stops_before_any_k1_mutation() {
     assert_eq!((refused.error, refused.k1_status), (Code::StateMismatch.into(), K1_LEASED));
     assert_eq!(sub.calls(), ["txn_begin_at"]); // refused natively: nothing begun, nothing scheduled
     assert_eq!((sub.retained(), core.snapshot().unwrap()), (retained, durable));
-    assert_eq!((core.fault(), core.counters(false).publications), (Some(Code::StateMismatch), 0));
-    assert_eq!(core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap_err().error, Code::StateMismatch.into());
+    assert_eq!((core.fault(), core.counters(false).session_transitions), (Some(Code::StateMismatch), 0));
+    assert_eq!(core.live_identity(&mut sub, key(1)).unwrap_err().error, Code::StateMismatch.into());
 }
 
 #[test]
@@ -1596,26 +1467,12 @@ fn a_bound_state_that_moved_is_caught_inside_the_transaction_begin() {
 }
 
 #[test]
-fn a_moved_state_is_never_captured_for_durable_publication() {
-    let dir = Dir::new("lease-moved-durable");
-    let mut core = dir.core();
-    let mut sub = Fake::new(0.1);
-    let anchor = core.anchor(&mut sub, key(1)).unwrap();
-    turn(&mut core, &mut sub, key(1)).unwrap();
-    sub.interlope();
-    assert_eq!(core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap_err().error, Code::StateMismatch.into());
-    assert_eq!((core.fault(), on_disk(&dir)), (Some(Code::StateMismatch), anchor));
-    assert_eq!(core.lane().report().last_requested, Ticket::default()); // nothing reached the lane
-}
-
-#[test]
 fn release_gives_the_state_back_and_rebinding_verifies_it_again() {
     let dir = Dir::new("lease-release");
     let mut core = dir.core();
     let mut sub = Fake::new(0.1);
     core.anchor(&mut sub, key(1)).unwrap();
     turn(&mut core, &mut sub, key(1)).unwrap();
-    publish(&mut core, &mut sub, key(1)).unwrap();
     let mut other = Fake::new(0.3);
     assert_eq!(core.release(&mut other, key(2)).unwrap_err().error, Rt::SubstrateSwitch.into());
     core.release(&mut sub, key(1)).unwrap();
@@ -1628,17 +1485,17 @@ fn release_gives_the_state_back_and_rebinding_verifies_it_again() {
 }
 
 #[test]
-fn an_explicit_release_keeps_volatile_work_live_without_publishing_it() {
+fn an_explicit_release_keeps_volatile_work_live_for_the_session() {
     let dir = Dir::new("lease-release-volatile");
     let mut core = dir.core();
     let mut sub = Fake::new(0.1);
     let anchor = core.anchor(&mut sub, key(1)).unwrap();
-    turn(&mut core, &mut sub, key(1)).unwrap(); // volatile: the durable authority is still the anchor
+    turn(&mut core, &mut sub, key(1)).unwrap(); // volatile: the session's identity is still the anchor
     core.release(&mut sub, key(1)).unwrap();
-    assert_eq!((sub.lease(), on_disk(&dir)), (0, anchor)); // a release publishes nothing
-                                                           // Rebinding the exact bytes it gave back resumes the live lineage; nothing durable was needed or written.
+    assert_eq!((sub.lease(), core.snapshot().unwrap()), (0, anchor)); // a release records nothing
+                                                                      // Rebinding the exact bytes it gave back resumes the live lineage.
     let committed = turn(&mut core, &mut sub, key(1)).unwrap();
-    assert_eq!((core.fault(), on_disk(&dir)), (None, anchor));
+    assert_eq!((core.fault(), core.snapshot().unwrap()), (None, anchor));
     assert_eq!(committed.live_generation, sub.generation());
     // A move while released is outside the lineage: refused before any claim, and the runtime fail-stops.
     core.release(&mut sub, key(1)).unwrap();
@@ -1646,30 +1503,31 @@ fn an_explicit_release_keeps_volatile_work_live_without_publishing_it() {
     sub.clear_calls();
     assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::StateMismatch.into());
     assert_eq!((sub.calls(), sub.lease()), (vec!["shape", "state_digest"], 0));
-    // A restart knows only acknowledged state: the released live identity was never persisted.
-    drop(core);
+    // A new session knows nothing of the last one: unanchored, the released identity gone with it.
+    core.close();
+    open(&mut core);
     let mut fresh = Fake::new(0.1);
-    let mut restarted = dir.core();
-    turn(&mut restarted, &mut fresh, key(1)).unwrap();
-    assert_eq!(restarted.fault(), None);
+    assert_eq!(turn(&mut core, &mut fresh, key(1)).unwrap_err(), Code::Unanchored.into());
+    assert!(fresh.calls().is_empty());
 }
 
 #[test]
-fn after_a_release_the_durable_state_may_be_rebound_and_the_volatile_work_is_abandoned() {
-    let dir = Dir::new("lease-release-durable");
+fn after_a_release_the_anchored_state_may_be_rebound_and_the_volatile_work_is_abandoned() {
+    let dir = Dir::new("lease-release-anchored");
     let mut core = dir.core();
     let mut sub = Fake::new(0.1);
     let anchor = core.anchor(&mut sub, key(1)).unwrap();
     turn(&mut core, &mut sub, key(1)).unwrap();
     core.release(&mut sub, key(1)).unwrap();
-    // The operator binds the durable state instead (as a restart would): accepted; the released work is not.
-    let mut durable = Fake::new(0.1);
+    // The caller binds a copy of the anchored state instead (an in-memory rollback to the session's identity):
+    // accepted; the released work is not.
+    let mut kept = Fake::new(0.1);
     for _ in 0..2 {
-        turn(&mut core, &mut durable, key(2)).unwrap();
+        turn(&mut core, &mut kept, key(2)).unwrap();
     }
-    core.release(&mut durable, key(2)).unwrap(); // now the released identity is two turns past the anchor
+    core.release(&mut kept, key(2)).unwrap(); // now the released identity is two turns past the anchor
     assert_eq!(turn(&mut core, &mut sub, key(1)).unwrap_err(), Code::StateMismatch.into()); // one turn past it
-    assert_eq!((sub.lease(), on_disk(&dir)), (0, anchor));
+    assert_eq!((sub.lease(), core.snapshot().unwrap()), (0, anchor));
 }
 
 #[test]
@@ -1744,8 +1602,9 @@ fn the_residency_hold_lives_exactly_as_long_as_the_binding() {
         assert_eq!(sub.holds(), 1);
         core.close();
         assert_eq!(sub.holds(), 0); // close unbinds
-        core.open().unwrap();
-        query(&mut core, &mut sub, key(1), 1).unwrap(); // rebinding takes exactly one hold again
+        core.open().unwrap(); // a new session: the state is anchored afresh
+        core.anchor(&mut sub, key(1)).unwrap(); // binding takes exactly one hold again
+        query(&mut core, &mut sub, key(1), 1).unwrap();
         query(&mut core, &mut sub, key(1), 1).unwrap();
         assert_eq!(sub.holds(), 1);
         core.release(&mut sub, key(1)).unwrap();
@@ -1758,6 +1617,9 @@ fn the_residency_hold_lives_exactly_as_long_as_the_binding() {
     // A bind that fails after the hold (a state that is not the lineage) gives the hold back.
     let mut other = Fake::resident(0.7);
     let mut core = dir.core();
+    let mut lineage = Fake::new(0.1);
+    core.anchor(&mut lineage, key(4)).unwrap();
+    core.release(&mut lineage, key(4)).unwrap();
     assert_eq!(query(&mut core, &mut other, key(2), 1).unwrap_err(), Code::StateMismatch.into());
     assert_eq!((other.holds(), other.lease()), (0, 0));
     // A RAM state takes no hold at all.
@@ -1769,987 +1631,10 @@ fn the_residency_hold_lives_exactly_as_long_as_the_binding() {
     assert!(!ram.calls().contains(&"resident_hold"));
 }
 
-#[test]
-fn a_durable_request_captures_at_the_live_generation_and_returns_without_waiting() {
-    let dir = Dir::new("durable-request");
-    let mut core = dir.core();
-    let mut sub = Fake::new(0.1);
-    let anchor = core.anchor(&mut sub, key(1)).unwrap();
-    turn(&mut core, &mut sub, key(1)).unwrap();
-    core.testing_durable_hold(true); // the worker takes nothing: the request must not care
-    sub.clear_calls();
-    let t = core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap();
-    assert_eq!((t.status(), t.generation, t.sequence, t.identity), (Status::Pending, sub.generation(), 1, [0u8; 32]));
-    assert_eq!(sub.calls(), ["leased_capture"]); // one synchronous crossing: the unsealed capture
-    let r = core.lane().report();
-    assert_eq!((r.pending, r.last_requested, r.live_generation), (1, t, sub.generation()));
-    assert_eq!(on_disk(&dir), anchor); // nothing durable yet
-                                       // A bounded wait times out PENDING; an unknown sequence is refused.
-    assert_eq!(core.lane().wait(1, Some(Duration::from_millis(20))).unwrap().status(), Status::Pending);
-    assert_eq!(core.lane().wait(9, Some(Duration::ZERO)).unwrap_err(), Rt::Invalid.into());
-    // The HOT lane is unaffected by the waiting job: a turn moves the live state on.
-    turn(&mut core, &mut sub, key(1)).unwrap();
-    core.testing_durable_hold(false);
-    let done = core.lane().wait(1, None).unwrap();
-    // Identity published: continuity names exactly the captured state (the generation it was taken at), not the
-    // newer live one; without a checkpoint store only the identity is durable, and that is never an acknowledgment.
-    assert_eq!((done.status(), done.recoverable, done.generation), (Status::IdentityPublished, 0, t.generation));
-    assert_ne!(done.identity, sub.identity());
-    assert_eq!(on_disk(&dir).cognition(), Cognition::Anchored(done.identity));
-    assert_eq!(core.snapshot().unwrap(), on_disk(&dir));
-    let report = core.lane().report();
-    assert_eq!((report.last_requested, report.last_acknowledged), (done, Ticket::default()));
-}
+// -- the volatile session authority (ABI v8) ---------------------------------------------------------------------
 
-#[test]
-fn a_waiting_request_is_superseded_never_silently_acknowledged() {
-    let dir = Dir::new("durable-coalesce");
-    let mut core = dir.core();
-    let mut sub = Fake::new(0.1);
-    core.anchor(&mut sub, key(1)).unwrap();
-    core.testing_durable_hold(true);
-    core.counters(true);
-    let mut tickets = Vec::new();
-    for _ in 0..3 {
-        turn(&mut core, &mut sub, key(1)).unwrap();
-        tickets.push(core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap());
-    }
-    // Capacity one waiting job: the first two were replaced, immediately and visibly.
-    for t in &tickets[..2] {
-        assert_eq!(core.lane().wait(t.sequence, Some(Duration::ZERO)).unwrap().status(), Status::Superseded);
-    }
-    core.testing_durable_hold(false);
-    let last = core.lane().wait(tickets[2].sequence, None).unwrap();
-    assert_eq!((last.status(), last.identity), (Status::IdentityPublished, sub.identity()));
-    let c = core.counters(false);
-    // Identity-only: published, never a recoverable acknowledgment.
-    assert_eq!((c.durable_requests, c.durable_superseded, c.durable_acknowledged, c.publications), (3, 2, 0, 1));
-}
-
-#[test]
-fn the_hot_lane_never_waits_for_a_stalled_durability_worker() {
-    let dir = Dir::new("durable-stalled");
-    let mut core = dir.core();
-    let mut sub = Fake::new(0.1);
-    let anchor = core.anchor(&mut sub, key(1)).unwrap();
-    core.testing_durable_hold(true);
-    let pending = core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap();
-    let start = Instant::now();
-    for n in 0..120 {
-        let c = turn(&mut core, &mut sub, key(1)).unwrap();
-        assert_eq!(c.live_generation, sub.generation());
-        let (answer, g) = query(&mut core, &mut sub, key(1), 2).unwrap();
-        assert_eq!((answer, g), (sub.answer(&query_rows(2)), sub.generation()), "transition {n}");
-        if n % 30 == 0 {
-            core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap(); // supersedes, never waits
-        }
-    }
-    assert!(start.elapsed() < Duration::from_secs(20)); // bounded by the stand-in's work, not by the stalled lane
-    assert_eq!((on_disk(&dir), core.snapshot().unwrap(), core.fault()), (anchor, anchor, None));
-    assert_eq!(core.lane().wait(pending.sequence, Some(Duration::ZERO)).unwrap().status(), Status::Superseded);
-    core.testing_durable_hold(false);
-    let last = core.lane().report().last_requested;
-    assert_eq!(core.lane().wait(last.sequence, None).unwrap().status(), Status::IdentityPublished);
-}
-
-#[test]
-fn a_republication_of_the_durable_state_writes_nothing() {
-    let dir = Dir::new("durable-idempotent");
-    let mut core = dir.core();
-    let mut sub = Fake::new(0.1);
-    core.anchor(&mut sub, key(1)).unwrap();
-    turn(&mut core, &mut sub, key(1)).unwrap();
-    let first = publish(&mut core, &mut sub, key(1)).unwrap();
-    let durable = on_disk(&dir);
-    let again = publish(&mut core, &mut sub, key(1)).unwrap();
-    assert_eq!((again.status(), again.identity), (Status::IdentityPublished, first.identity));
-    assert_eq!(on_disk(&dir), durable); // no new generation
-}
-
-#[test]
-fn close_abandons_a_waiting_request_and_restart_sees_the_previous_authority() {
-    let dir = Dir::new("durable-close");
-    let mut core = dir.core();
-    let mut sub = Fake::new(0.1);
-    let anchor = core.anchor(&mut sub, key(1)).unwrap();
-    turn(&mut core, &mut sub, key(1)).unwrap();
-    core.testing_durable_hold(true);
-    let t = core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap();
-    let lane = core.lane();
-    core.close();
-    let abandoned = lane.wait(t.sequence, Some(Duration::ZERO)).unwrap();
-    assert_eq!((abandoned.status(), abandoned.code), (Status::Abandoned, Rt::Closed as i32));
-    assert_eq!(on_disk(&dir), anchor);
-    core.open().unwrap();
-    assert_eq!(core.snapshot().unwrap(), anchor);
-    assert_eq!(core.durable_request(&mut sub, key(1), kind_of(&core)).unwrap_err().error, Code::StateMismatch.into());
-}
-
-#[test]
-fn a_composite_without_a_checkpoint_store_is_never_captured_blind() {
-    let dir = Dir::new("durable-composite");
-    let mut core = dir.core();
-    let mut sub = Fake::new(0.1);
-    core.anchor(&mut sub, key(1)).unwrap();
-    core.release(&mut sub, key(1)).unwrap();
-    // A composite's envelope size depends on its memory capacity, which only a provisioned store states: refused,
-    // never guessed.
-    let composite = Key { kind: crate::substrate::KIND_COMPOSITE, ..key(1) };
-    assert_eq!(
-        core.durable_request(&mut sub, composite, kind_of(&core)).unwrap_err().error,
-        Rt::CheckpointInvalid.into()
-    );
-}
-
-// -- K1 Recovery R0: the bounded checkpoint store, written only by explicit durability --------------------------
-
-mod recovery {
+mod session {
     use super::*;
-    use crate::checkpoint::{self, Disposition, HEADER, SLOT_NAMES};
-
-    pub struct Ck(pub PathBuf);
-
-    impl Ck {
-        pub fn new(name: &str) -> Ck {
-            let p = std::env::temp_dir().join(format!("elpis-k1ck-{}-{}", std::process::id(), name));
-            let _ = std::fs::remove_dir_all(&p);
-            checkpoint::Store::provision(&p, ENVELOPE).unwrap();
-            Ck(p)
-        }
-
-        pub fn slot_bytes(&self, i: usize) -> Vec<u8> {
-            std::fs::read(self.0.join(SLOT_NAMES[i])).unwrap()
-        }
-
-        fn write_slot(&self, i: usize, bytes: &[u8]) {
-            std::fs::write(self.0.join(SLOT_NAMES[i]), bytes).unwrap();
-        }
-    }
-
-    impl Drop for Ck {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
-        }
-    }
-
-    pub fn core(dir: &Dir, ck: &Ck) -> Core {
-        let mut c = dir.core();
-        c.checkpoint_attach(&ck.0).unwrap();
-        c
-    }
-
-    fn resume(core: &mut Core) -> (Disposition, Option<Vec<u8>>) {
-        let r = core.recover().unwrap();
-        (r.disposition, r.envelope)
-    }
-
-    #[test]
-    fn provisioning_is_fixed_and_never_overwrites() {
-        let ck = Ck::new("provision");
-        assert_eq!(ck.slot_bytes(0), vec![0u8; HEADER + ENVELOPE]);
-        assert_eq!(ck.slot_bytes(1).len(), HEADER + ENVELOPE);
-        assert_eq!(checkpoint::Store::provision(&ck.0, ENVELOPE).unwrap_err(), Rt::CheckpointInvalid);
-        assert_eq!(
-            checkpoint::Store::provision(std::path::Path::new("relative"), ENVELOPE).unwrap_err(),
-            Rt::CheckpointInvalid
-        );
-        std::fs::write(ck.0.join("stray"), b"x").unwrap(); // anything but the two slots refuses the store
-        assert!(checkpoint::Store::open(&ck.0).is_err());
-        std::fs::remove_file(ck.0.join("stray")).unwrap();
-        ck.write_slot(1, &[0u8; 10]); // unequal sizes refuse it too
-        assert!(checkpoint::Store::open(&ck.0).is_err());
-    }
-
-    #[test]
-    fn volatile_turns_never_touch_the_slots_and_durable_publications_keep_the_state_resumable() {
-        let (dir, ck) = (Dir::new("ck-learn"), Ck::new("learn"));
-        let mut sub = Fake::new(0.1);
-        let mut c = core(&dir, &ck);
-        c.anchor(&mut sub, key(1)).unwrap();
-        let (d, envelope) = resume(&mut c);
-        assert_eq!(d, Disposition::Resumable);
-        assert_eq!(checkpoint::envelope_identity(&envelope.unwrap()), Some(sub.identity()));
-        for n in 0..5 {
-            let slots = (ck.slot_bytes(0), ck.slot_bytes(1));
-            for _ in 0..3 {
-                turn(&mut c, &mut sub, key(1)).unwrap();
-            }
-            assert_eq!((ck.slot_bytes(0), ck.slot_bytes(1)), slots, "volatile turns wrote a slot ({n})");
-            let t = publish(&mut c, &mut sub, key(1)).unwrap();
-            assert_eq!((t.status(), t.recoverable, t.identity), (Status::Acknowledged, 1, sub.identity()));
-            let (d, envelope) = resume(&mut c);
-            assert_eq!(d, Disposition::Resumable, "publication {n}");
-            assert_eq!(envelope.unwrap(), sub.envelope());
-        }
-        // Physically bounded: exactly two slot files of the provisioned size, whatever the number of publications.
-        let mut names: Vec<_> = std::fs::read_dir(&ck.0).unwrap().map(|e| e.unwrap().file_name()).collect();
-        names.sort();
-        assert_eq!(names, SLOT_NAMES.map(std::ffi::OsString::from));
-        assert!(SLOT_NAMES
-            .iter()
-            .all(|n| std::fs::metadata(ck.0.join(n)).unwrap().len() == (HEADER + ENVELOPE) as u64));
-    }
-
-    #[test]
-    fn restart_resumes_exactly_the_last_acknowledged_state_never_a_later_volatile_one() {
-        let (dir, ck) = (Dir::new("ck-restart"), Ck::new("restart"));
-        let mut sub = Fake::new(0.1);
-        let acknowledged = {
-            let mut c = core(&dir, &ck);
-            c.anchor(&mut sub, key(1)).unwrap();
-            turn(&mut c, &mut sub, key(1)).unwrap();
-            let t = publish(&mut c, &mut sub, key(1)).unwrap();
-            turn(&mut c, &mut sub, key(1)).unwrap(); // volatile, then the process ends
-            turn(&mut c, &mut sub, key(1)).unwrap();
-            t
-        };
-        let mut c = core(&dir, &ck);
-        let r = c.recover().unwrap();
-        assert_eq!((r.disposition, r.authorized), (Disposition::Resumable, acknowledged.identity));
-        assert_eq!(checkpoint::envelope_identity(r.envelope.as_ref().unwrap()), Some(acknowledged.identity));
-        assert_ne!(sub.identity(), acknowledged.identity); // the volatile state is not what restart resumes
-    }
-
-    #[test]
-    fn a_ticket_resolved_beyond_the_kept_window_reads_unknown_never_acknowledged() {
-        // The lane keeps the last 16 resolutions only (bounded state, no history). An older ticket reads UNKNOWN:
-        // not ACKNOWLEDGED, not recoverable, no identity, no code; what is durable is the separately reported last
-        // acknowledgment and continuity, never an inference from a forgotten ticket. A sequence never issued is
-        // refused, not UNKNOWN.
-        let (dir, ck) = (Dir::new("ck-unknown"), Ck::new("unknown"));
-        let mut sub = Fake::new(0.1);
-        let mut c = core(&dir, &ck);
-        c.anchor(&mut sub, key(1)).unwrap();
-        let mut tickets = Vec::new();
-        for _ in 0..17 {
-            turn(&mut c, &mut sub, key(1)).unwrap();
-            tickets.push(publish(&mut c, &mut sub, key(1)).unwrap());
-        }
-        assert!(tickets.iter().all(|t| (t.status(), t.recoverable) == (Status::Acknowledged, 1)));
-        let first = c.lane().wait(tickets[0].sequence, Some(Duration::ZERO)).unwrap();
-        assert_eq!(
-            (first.status(), first.sequence, first.recoverable, first.code, first.identity),
-            (Status::Unknown, tickets[0].sequence, 0, 0, [0u8; 32])
-        );
-        for t in &tickets[1..] {
-            // The newer ones are kept exactly.
-            assert_eq!(c.lane().wait(t.sequence, Some(Duration::ZERO)).unwrap(), *t);
-        }
-        let last = *tickets.last().unwrap();
-        let report = c.lane().report();
-        assert_eq!((report.last_requested, report.last_acknowledged), (last, last));
-        assert_eq!(on_disk(&dir).cognition(), Cognition::Anchored(last.identity));
-        assert_eq!(c.lane().wait(0, Some(Duration::ZERO)).unwrap_err(), Rt::Invalid.into());
-        assert_eq!(c.lane().wait(last.sequence + 1, Some(Duration::ZERO)).unwrap_err(), Rt::Invalid.into());
-    }
-
-    #[test]
-    fn a_recoverable_request_without_a_checkpoint_store_is_refused_before_anything_is_captured() {
-        let dir = Dir::new("kind-no-store");
-        let mut sub = Fake::new(0.1);
-        let mut c = dir.core();
-        c.anchor(&mut sub, key(1)).unwrap();
-        turn(&mut c, &mut sub, key(1)).unwrap();
-        let before = (c.counters(false), on_disk(&dir), sub.lease());
-        let r = c.durable_request(&mut sub, key(1), Kind::Recoverable).unwrap_err();
-        assert_eq!(r.error, Rt::RecoveryUnavailable.into());
-        // Nothing captured, enqueued or published; the lineage and its lease are as they were.
-        assert_eq!((c.counters(false), on_disk(&dir), sub.lease()), before);
-        assert_eq!(c.lane().report().last_requested, Ticket::default());
-        // Identity-only publication is its own, explicitly named request: never an acknowledgment.
-        let t = publish(&mut c, &mut sub, key(1)).unwrap();
-        assert_eq!((t.status(), t.recoverable, t.kind), (Status::IdentityPublished, 0, Kind::Identity as u32));
-        assert_eq!(c.lane().report().last_acknowledged, Ticket::default());
-        drop(c);
-        // Restart: continuity names the identity, but no store holds its bytes; nothing is resumable from here.
-        let mut c = dir.core();
-        assert_eq!(anchored(&c), Some(t.identity));
-        assert_eq!(c.recover().unwrap_err().error, Rt::CheckpointInvalid.into());
-        let ck = Ck::new("kind-no-store");
-        c.checkpoint_attach(&ck.0).unwrap();
-        let r = c.recover().unwrap();
-        assert_eq!((r.disposition, r.authorized, r.envelope), (Disposition::CheckpointMissing, t.identity, None));
-    }
-
-    #[test]
-    fn an_identity_request_with_a_checkpoint_store_is_refused_and_a_recoverable_one_is_read_back_verified() {
-        let (dir, ck) = (Dir::new("kind-store"), Ck::new("kind-store"));
-        let mut sub = Fake::new(0.1);
-        let mut c = core(&dir, &ck);
-        c.anchor(&mut sub, key(1)).unwrap();
-        turn(&mut c, &mut sub, key(1)).unwrap();
-        let before = (c.counters(false), on_disk(&dir), ck.slot_bytes(0), ck.slot_bytes(1));
-        let r = c.durable_request(&mut sub, key(1), Kind::Identity).unwrap_err();
-        assert_eq!(r.error, Rt::CheckpointAttached.into());
-        assert_eq!((c.counters(false), on_disk(&dir), ck.slot_bytes(0), ck.slot_bytes(1)), before);
-        #[cfg(feature = "testing")]
-        c.testing_checkpoint_counters(true);
-        let t = publish(&mut c, &mut sub, key(1)).unwrap();
-        assert_eq!((t.status(), t.recoverable, t.kind), (Status::Acknowledged, 1, Kind::Recoverable as u32));
-        #[cfg(feature = "testing")]
-        {
-            // The slot was read back (one full-slot pread) before continuity named it.
-            let io = c.testing_checkpoint_counters(false);
-            assert_eq!((io.pwrites, io.data_syncs, io.preads), (1, 1, 1));
-        }
-        assert_eq!(c.lane().report().last_acknowledged, t);
-        drop(c);
-        let mut c = core(&dir, &ck);
-        let r = c.recover().unwrap();
-        assert_eq!((r.disposition, r.authorized), (Disposition::Resumable, t.identity));
-        assert_eq!(r.envelope.unwrap(), sub.envelope());
-    }
-
-    #[test]
-    fn a_store_attached_after_an_identity_anchor_makes_the_same_state_recoverable_without_a_new_record() {
-        let (dir, ck) = (Dir::new("kind-late-store"), Ck::new("kind-late-store"));
-        let mut sub = Fake::new(0.1);
-        let mut c = dir.core();
-        c.anchor(&mut sub, key(1)).unwrap(); // identity-only anchor: no store attached
-        c.checkpoint_attach(&ck.0).unwrap();
-        assert_eq!(c.recover().unwrap().disposition, Disposition::CheckpointMissing);
-        let publications = c.counters(false).publications;
-        let t = publish(&mut c, &mut sub, key(1)).unwrap();
-        assert_eq!((t.status(), t.recoverable, t.identity), (Status::Acknowledged, 1, sub.identity()));
-        assert_eq!(c.counters(false).publications, publications); // continuity already named it
-        let r = c.recover().unwrap();
-        assert_eq!((r.disposition, r.envelope.unwrap()), (Disposition::Resumable, sub.envelope()));
-    }
-
-    #[test]
-    fn a_checkpoint_store_is_not_attached_under_a_pending_publication() {
-        let (dir, ck) = (Dir::new("kind-attach-busy"), Ck::new("kind-attach-busy"));
-        let mut sub = Fake::new(0.1);
-        let mut c = dir.core();
-        c.anchor(&mut sub, key(1)).unwrap();
-        turn(&mut c, &mut sub, key(1)).unwrap();
-        c.testing_durable_hold(true);
-        let t = c.durable_request(&mut sub, key(1), Kind::Identity).unwrap();
-        assert_eq!(c.checkpoint_attach(&ck.0).unwrap_err().error, Rt::DurableBusy.into());
-        c.testing_durable_hold(false);
-        assert_eq!(c.lane().wait(t.sequence, None).unwrap().status(), Status::IdentityPublished);
-        c.checkpoint_attach(&ck.0).unwrap();
-    }
-
-    #[test]
-    fn checkpoint_bytes_never_authorize_themselves() {
-        let (dir, ck) = (Dir::new("ck-self"), Ck::new("self"));
-        let mut sub = Fake::new(0.1);
-        {
-            // Unanchored: a valid slot (written straight into the store) is never a lineage.
-            let mut store = checkpoint::Store::open(&ck.0).unwrap();
-            let envelope = envelope_of(&sub.state().w, 7);
-            store.envelope_buffer().copy_from_slice(&envelope);
-            store.write(None).unwrap();
-            drop(store);
-            let mut c = dir.core();
-            c.checkpoint_attach(&ck.0).unwrap();
-            let r = c.recover().unwrap();
-            assert_eq!(r.disposition, Disposition::NothingToRecover);
-        }
-        let mut c = core(&dir, &ck);
-        c.anchor(&mut sub, key(1)).unwrap();
-        turn(&mut c, &mut sub, key(1)).unwrap();
-        publish(&mut c, &mut sub, key(1)).unwrap();
-        drop(c);
-        // A checksum-valid slot of another identity replaces the authorized one: not resumable.
-        let other = Fake::new(0.7);
-        let forged = envelope_of(&other.state().w, 99);
-        let held = (0..2).find(|&i| ck.slot_bytes(i)[32..64] == sub.identity()).unwrap();
-        let raw = ck.slot_bytes(held);
-        let generation = u64::from_le_bytes(raw[16..24].try_into().unwrap());
-        let mut slot = vec![0u8; HEADER];
-        slot[..8].copy_from_slice(b"ELPK1CK\x01");
-        slot[8..10].copy_from_slice(&1u16.to_le_bytes());
-        slot[16..24].copy_from_slice(&generation.to_le_bytes());
-        slot[24..32].copy_from_slice(&(ENVELOPE as u64).to_le_bytes());
-        slot[32..64].copy_from_slice(&forged[ENVELOPE - 32..]);
-        let sum = elpis_ecs_c_authority::sha256::digest(&[b"elpis.k1-checkpoint.slot.v1\0", &slot[..96], &forged]);
-        slot[96..128].copy_from_slice(&sum);
-        slot.extend_from_slice(&forged);
-        ck.write_slot(held, &slot);
-        let mut c = core(&dir, &ck);
-        let r = c.recover().unwrap();
-        assert_eq!((r.disposition, r.envelope), (Disposition::CheckpointMissing, None));
-        assert_eq!(r.authorized, sub.identity());
-    }
-
-    #[test]
-    fn a_torn_or_corrupted_slot_is_not_a_checkpoint() {
-        let (dir, ck) = (Dir::new("ck-torn"), Ck::new("torn"));
-        let mut sub = Fake::new(0.1);
-        let mut c = core(&dir, &ck);
-        c.anchor(&mut sub, key(1)).unwrap();
-        turn(&mut c, &mut sub, key(1)).unwrap();
-        publish(&mut c, &mut sub, key(1)).unwrap();
-        drop(c);
-        let held = (0..2).find(|&i| ck.slot_bytes(i)[32..64] == sub.identity()).unwrap();
-        let other = 1 - held;
-        let mut torn = ck.slot_bytes(other);
-        torn[HEADER + 20] ^= 0xff; // the older slot, corrupted: never a candidate
-        ck.write_slot(other, &torn);
-        let mut c = core(&dir, &ck);
-        assert_eq!(resume(&mut c).0, Disposition::Resumable);
-        drop(c);
-        let mut torn = ck.slot_bytes(held);
-        torn[HEADER + 20] ^= 0xff; // the authorized slot itself: the authorized state is not recoverable here
-        ck.write_slot(held, &torn);
-        let mut c = core(&dir, &ck);
-        assert_eq!(resume(&mut c).0, Disposition::CheckpointMissing);
-    }
-
-    #[test]
-    fn a_state_of_another_shape_is_refused_never_resized_for() {
-        let (dir, ck) =
-            (Dir::new("ck-shape"), Ck(std::env::temp_dir().join(format!("elpis-k1ck-{}-shape", std::process::id()))));
-        let _ = std::fs::remove_dir_all(&ck.0);
-        checkpoint::Store::provision(&ck.0, ENVELOPE + 8).unwrap();
-        let mut sub = Fake::new(0.1);
-        let mut c = core(&dir, &ck);
-        assert_eq!(c.anchor(&mut sub, key(1)).unwrap_err().error, Rt::CheckpointShape.into());
-        assert_eq!((anchored(&c), sub.lease()), (None, 0)); // nothing anchored, the claim given back
-        assert_eq!(std::fs::metadata(ck.0.join(SLOT_NAMES[0])).unwrap().len(), (HEADER + ENVELOPE + 8) as u64);
-        // A smaller store refuses the capture itself: still CHECKPOINT_SHAPE, never written short.
-        let small = Ck(std::env::temp_dir().join(format!("elpis-k1ck-{}-shape-small", std::process::id())));
-        let _ = std::fs::remove_dir_all(&small.0);
-        checkpoint::Store::provision(&small.0, ENVELOPE - 8).unwrap();
-        let dir2 = Dir::new("ck-shape-small");
-        let mut c = core(&dir2, &small);
-        assert_eq!(c.anchor(&mut sub, key(1)).unwrap_err().error, Rt::CheckpointShape.into());
-    }
-
-    #[cfg(feature = "testing")]
-    pub mod crashes {
-        use super::*;
-        use crate::durable::{Plan, Step};
-
-        /// D1 durable (anchor, a turn, an acknowledged publication), then two volatile turns and a request for D3
-        /// under `plan`. Returns (D1, D3, the request's final ticket).
-        fn interrupted(dir: &Dir, ck: &Ck, sub: &mut Fake, plan: Plan) -> (Digest, Digest, Ticket) {
-            let mut c = core(dir, ck);
-            c.anchor(sub, key(1)).unwrap();
-            turn(&mut c, sub, key(1)).unwrap();
-            let d1 = publish(&mut c, sub, key(1)).unwrap().identity;
-            turn(&mut c, sub, key(1)).unwrap();
-            turn(&mut c, sub, key(1)).unwrap();
-            let d3 = sub.identity();
-            c.testing_durable_plan(Some(plan));
-            let t = publish(&mut c, sub, key(1)).unwrap();
-            (d1, d3, t) // a died process ends here: the core and the in-memory state are gone
-        }
-
-        #[test]
-        fn every_durable_step_resolves_to_an_exact_state_or_an_explicit_disposition() {
-            use Disposition::*;
-            // (step, torn bytes, the request's status, what restart decides, whether restart sees D3)
-            let cases = [
-                (Step::Taken, 0, Status::Abandoned, Resumable, false),
-                (Step::Sealed, 0, Status::Abandoned, Resumable, false),
-                (Step::SlotTorn, 77, Status::Abandoned, Resumable, false), // a torn slot is not a checkpoint
-                (Step::SlotWritten, 0, Status::Abandoned, CandidateUnresolved, false),
-                (Step::SlotSynced, 0, Status::Abandoned, CandidateUnresolved, false),
-                (Step::RecordTorn, 50, Status::Uncertain, CandidateUnresolved, false),
-                (Step::RecordWritten, 0, Status::Uncertain, Resumable, true), // an unsynced record survives a crash
-                (Step::RecordSynced, 0, Status::Uncertain, Resumable, true),
-                (Step::Acknowledged, 0, Status::Acknowledged, Resumable, true),
-            ];
-            for (step, arg, status, expected, newer) in cases {
-                let name = format!("{step:?}");
-                let (dir, ck) = (Dir::new(&format!("ck-die-{name}")), Ck::new(&format!("die-{name}")));
-                let mut sub = Fake::new(0.1);
-                let (d1, d3, t) = interrupted(&dir, &ck, &mut sub, Plan::At { step, park: false, arg });
-                assert_eq!(t.status(), status, "{name}");
-                assert_eq!(t.recoverable, (status == Status::Acknowledged) as u32, "{name}");
-                let mut c = core(&dir, &ck);
-                let r = c.recover().unwrap();
-                if status == Status::Acknowledged {
-                    // An acknowledgment is never without independently re-read, complete state bytes.
-                    assert_eq!((r.disposition, r.authorized), (Resumable, t.identity), "{name}");
-                }
-                assert_eq!(r.disposition, expected, "{name}");
-                let want = if newer { d3 } else { d1 };
-                assert_eq!(r.authorized, want, "{name}");
-                match expected {
-                    Resumable => {
-                        // Exactly the authorized state, from its complete checkpoint; never the other one.
-                        assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(want), "{name}");
-                    }
-                    _ => {
-                        // Continuity holds D1, a complete D3 exists: never rolled forward or back silently.
-                        assert_eq!((r.candidate, r.authorized_present, r.envelope), (d3, true, None), "{name}");
-                    }
-                }
-            }
-        }
-
-        #[test]
-        fn a_simulated_death_on_the_lane_stops_the_hot_lane_too() {
-            let (dir, ck) = (Dir::new("ck-death-hot"), Ck::new("death-hot"));
-            let mut sub = Fake::new(0.1);
-            let mut c = core(&dir, &ck);
-            c.anchor(&mut sub, key(1)).unwrap();
-            c.testing_durable_plan(Some(Plan::At { step: Step::Sealed, park: false, arg: 0 }));
-            publish(&mut c, &mut sub, key(1)).unwrap();
-            assert_eq!(c.fault(), Some(Code::TestingProcessDeath)); // the process is "gone"
-            assert_eq!(turn(&mut c, &mut sub, key(1)).unwrap_err(), Code::TestingProcessDeath.into());
-            assert_eq!(query(&mut c, &mut sub, key(1), 1).unwrap_err(), Code::TestingProcessDeath.into());
-        }
-
-        #[test]
-        fn io_failures_are_definitive_and_leave_the_previous_authority() {
-            for (plan, code) in [
-                (Plan::SlotWriteFail, Rt::CheckpointIo as i32),
-                (Plan::SlotTornFail(90), Rt::CheckpointIo as i32),
-                (Plan::SlotSyncFail, Rt::CheckpointIo as i32),
-                (Plan::RecordWriteFail, Code::PublicationRefused as i32),
-                (Plan::RecordTornFail(60), Code::PublicationRefused as i32),
-            ] {
-                let name = format!("{plan:?}");
-                let (dir, ck) = (Dir::new(&format!("ck-fail-{name}")), Ck::new(&format!("fail-{name}")));
-                let mut sub = Fake::new(0.1);
-                let (d1, _, t) = interrupted(&dir, &ck, &mut sub, plan);
-                assert_eq!((t.status(), t.code), (Status::Failed, code), "{name}");
-                // Nothing durable changed and the failed write was withdrawn: restart resumes D1 exactly.
-                let mut c = core(&dir, &ck);
-                let r = c.recover().unwrap();
-                assert_eq!((r.disposition, r.authorized), (Disposition::Resumable, d1), "{name}");
-            }
-        }
-
-        #[test]
-        fn a_slot_that_does_not_read_back_exactly_is_never_acknowledged() {
-            let (dir, ck) = (Dir::new("ck-readback"), Ck::new("readback"));
-            let mut sub = Fake::new(0.1);
-            let (d1, _, t) = interrupted(&dir, &ck, &mut sub, Plan::SlotReadBackFail);
-            // The write and its sync reported success; only the read-back caught the bytes: nothing published.
-            assert_eq!((t.status(), t.code, t.recoverable), (Status::Failed, Rt::CheckpointIo as i32, 0));
-            assert_eq!(on_disk(&dir).cognition(), Cognition::Anchored(d1));
-            let mut c = core(&dir, &ck);
-            let r = c.recover().unwrap();
-            // The unverified slot was withdrawn: no candidate, the previous authority resumes exactly.
-            assert_eq!((r.disposition, r.authorized, r.candidate), (Disposition::Resumable, d1, [0u8; 32]));
-            assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(d1));
-        }
-
-        #[test]
-        fn a_failed_request_never_stops_the_hot_lane_and_the_next_request_succeeds() {
-            let (dir, ck) = (Dir::new("ck-retry"), Ck::new("retry"));
-            let mut sub = Fake::new(0.1);
-            let mut c = core(&dir, &ck);
-            c.anchor(&mut sub, key(1)).unwrap();
-            let anchor = on_disk(&dir);
-            for plan in [Plan::SlotWriteFail, Plan::SlotTornFail(33), Plan::SlotSyncFail, Plan::RecordWriteFail] {
-                turn(&mut c, &mut sub, key(1)).unwrap();
-                c.testing_durable_plan(Some(plan));
-                let failed = publish(&mut c, &mut sub, key(1)).unwrap();
-                assert_eq!(failed.status(), Status::Failed, "{plan:?}");
-                assert_eq!((on_disk(&dir), c.snapshot().unwrap(), c.fault()), (anchor, anchor, None), "{plan:?}");
-                // The failed write left no unresolved candidate (withdrawn): durability is not stuck.
-                assert_eq!(c.recover().unwrap().disposition, Disposition::Resumable, "{plan:?}");
-                let (answer, _) = query(&mut c, &mut sub, key(1), 1).unwrap();
-                assert_eq!(answer, sub.answer(&query_rows(1)));
-            }
-            let ok = publish(&mut c, &mut sub, key(1)).unwrap();
-            assert_eq!((ok.status(), ok.recoverable, ok.identity), (Status::Acknowledged, 1, sub.identity()));
-            assert_eq!(c.recover().unwrap().disposition, Disposition::Resumable);
-        }
-
-        #[test]
-        fn an_uncertain_publication_faults_the_lane_until_restart_and_the_hot_lane_continues() {
-            for (plan, durable_new) in [(Plan::RecordSyncLost, false), (Plan::RecordSyncDurable, true)] {
-                let name = format!("{plan:?}");
-                let (dir, ck) = (Dir::new(&format!("ck-uncertain-{name}")), Ck::new(&format!("uncertain-{name}")));
-                let mut sub = Fake::new(0.1);
-                let mut c = core(&dir, &ck);
-                c.anchor(&mut sub, key(1)).unwrap();
-                let d0 = sub.identity();
-                turn(&mut c, &mut sub, key(1)).unwrap();
-                let d1 = sub.identity();
-                c.testing_durable_plan(Some(plan));
-                let t = publish(&mut c, &mut sub, key(1)).unwrap();
-                assert_eq!((t.status(), t.code), (Status::Uncertain, Code::PublicationUncertain as i32), "{name}");
-                // The lane is faulted (sticky); its durable view is unknown; the HOT lane is not stopped.
-                assert_eq!(c.snapshot().unwrap_err(), Code::PublicationUncertain.into());
-                let r = c.durable_request(&mut sub, key(1), kind_of(&c)).unwrap_err();
-                assert_eq!(r.error, Code::PublicationUncertain.into());
-                assert_eq!(c.fault(), None);
-                turn(&mut c, &mut sub, key(1)).unwrap();
-                query(&mut c, &mut sub, key(1), 2).unwrap();
-                assert_eq!(c.lane().report().fault, Code::PublicationUncertain as i32);
-                drop(c);
-                // Restart resolves to exactly one complete record.
-                let mut c = core(&dir, &ck);
-                let r = c.recover().unwrap();
-                if durable_new {
-                    assert_eq!((r.disposition, r.authorized), (Disposition::Resumable, d1), "{name}");
-                } else {
-                    assert_eq!((r.disposition, r.authorized, r.candidate), (Disposition::CandidateUnresolved, d0, d1));
-                }
-            }
-        }
-
-        #[test]
-        fn an_unresolved_candidate_waits_for_the_operator() {
-            let (dir, ck) = (Dir::new("ck-unresolved"), Ck::new("unresolved"));
-            let mut sub = Fake::new(0.1);
-            let (d1, d3, _) =
-                interrupted(&dir, &ck, &mut sub, Plan::At { step: Step::SlotSynced, park: false, arg: 0 });
-            let mut c = core(&dir, &ck);
-            let r = c.recover().unwrap();
-            assert_eq!((r.disposition, r.authorized, r.candidate), (Disposition::CandidateUnresolved, d1, d3));
-            assert_eq!(c.checkpoint_discard(&d1).unwrap_err().error, Rt::CheckpointInvalid.into());
-            c.checkpoint_discard(&d3).unwrap();
-            assert_eq!(c.recover().unwrap().disposition, Disposition::Resumable);
-        }
-
-        #[test]
-        fn an_operator_discards_or_adopts_an_unresolved_candidate_explicitly() {
-            for adopt in [false, true] {
-                let (dir, ck) = (Dir::new(&format!("ck-resolve-{adopt}")), Ck::new(&format!("resolve-{adopt}")));
-                let mut sub = Fake::new(0.1);
-                let plan = Plan::At { step: Step::SlotSynced, park: false, arg: 0 };
-                let (d1, d3, _) = interrupted(&dir, &ck, &mut sub, plan);
-                let mut c = core(&dir, &ck);
-                if adopt {
-                    let s = c.checkpoint_adopt(&d3).unwrap();
-                    assert_eq!(s.cognition(), Cognition::Anchored(d3));
-                } else {
-                    c.checkpoint_discard(&d3).unwrap();
-                }
-                let r = c.recover().unwrap();
-                let want = if adopt { d3 } else { d1 };
-                assert_eq!((r.disposition, r.authorized), (Disposition::Resumable, want));
-                assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(want));
-            }
-        }
-
-        #[test]
-        fn operator_reconciliation_refuses_while_a_publication_is_in_flight() {
-            let (dir, ck) = (Dir::new("ck-busy"), Ck::new("busy"));
-            let mut sub = Fake::new(0.1);
-            let mut c = core(&dir, &ck);
-            c.anchor(&mut sub, key(1)).unwrap();
-            turn(&mut c, &mut sub, key(1)).unwrap();
-            c.testing_durable_hold(true);
-            c.durable_request(&mut sub, key(1), kind_of(&c)).unwrap();
-            assert_eq!(c.checkpoint_discard(&[1u8; 32]).unwrap_err().error, Rt::DurableBusy.into());
-            c.release(&mut sub, key(1)).unwrap();
-            assert_eq!(c.checkpoint_adopt(&[1u8; 32]).unwrap_err().error, Rt::DurableBusy.into());
-            c.testing_durable_hold(false);
-        }
-
-        /// The registered crash points of the control operations (`durable::control`): a death at each leaves
-        /// exactly that point's on-disk effect, and restart decides from continuity alone.
-        mod control_points {
-            use super::*;
-            use crate::durable::control::{Plan as Control, Point};
-
-            fn plan(op: u32, point: Point, arg: u64) -> Option<Control> {
-                Some(Control::new(op, point as u32, false, arg).expect("a registered point"))
-            }
-
-            fn died(e: Error, name: &str) {
-                assert_eq!(e, Code::TestingProcessDeath.into(), "{name}");
-            }
-
-            /// The candidate's lineage (D1 authorized, D3 an unresolved candidate) and a plan of the reconciliation.
-            fn unresolved(name: &str) -> (Dir, Ck, Digest, Digest) {
-                let (dir, ck) = (Dir::new(&format!("ck-{name}")), Ck::new(name));
-                let mut sub = Fake::new(0.1);
-                let (d1, d3, _) =
-                    interrupted(&dir, &ck, &mut sub, Plan::At { step: Step::SlotSynced, park: false, arg: 0 });
-                (dir, ck, d1, d3)
-            }
-
-            #[test]
-            fn a_control_plan_names_only_its_operations_points_and_applies_once() {
-                assert!(Control::new(3, Point::RecordTorn as u32, false, 0).is_none()); // a discard writes no record
-                assert!(Control::new(4, Point::SlotWritten as u32, false, 0).is_none()); // an adopt writes no slot
-                assert!(Control::new(5, 1, false, 0).is_none() && Control::new(1, 7, false, 0).is_none());
-                assert_eq!(Control::new(2, 3, true, 0).unwrap().parked(), 203);
-                let (dir, ck) = (Dir::new("ck-control-once"), Ck::new("control-once"));
-                let mut sub = Fake::new(0.1);
-                let mut c = core(&dir, &ck);
-                c.testing_control_plan(plan(4, Point::Begun, 0)); // an adopt's: another kind never fires it
-                c.anchor(&mut sub, key(1)).unwrap();
-                turn(&mut c, &mut sub, key(1)).unwrap();
-                assert_eq!(publish(&mut c, &mut sub, key(1)).unwrap().status(), Status::Acknowledged);
-                // A refusal before the operation's lifecycle checks pass does not consume the plan: it waits for the
-                // next anchor that gets that far.
-                drop(c);
-                let mut c = core(&dir, &ck);
-                c.testing_control_plan(plan(1, Point::SlotWritten, 0));
-                assert_eq!(c.anchor(&mut sub, key(1)).unwrap_err().error, Code::AlreadyAnchored.into());
-                assert!(c.lane().take_control(crate::durable::control::Op::Anchor).is_some());
-            }
-
-            #[test]
-            fn a_slot_point_its_operation_never_writes_is_consumed_and_leaves_nothing_armed() {
-                // The anchor dies with its slot synced: the slot holds D0, continuity is unanchored.
-                let (dir, ck) = (Dir::new("ck-control-unwritten"), Ck::new("control-unwritten"));
-                let mut sub = Fake::new(0.1);
-                {
-                    let mut c = core(&dir, &ck);
-                    c.testing_control_plan(plan(1, Point::SlotSynced, 0));
-                    died(c.anchor(&mut sub, key(1)).unwrap_err().error, "first anchor");
-                }
-                let mut sub = Fake::new(0.1);
-                let mut c = core(&dir, &ck);
-                assert_eq!(c.recover().unwrap().disposition, Disposition::NothingToRecover);
-                // The operator anchors again under a slot-written plan: the slot already holds D0, nothing is
-                // written, so the point is never reached; the plan is consumed and does not fire.
-                c.testing_control_plan(plan(1, Point::SlotWritten, 0));
-                c.anchor(&mut sub, key(1)).unwrap();
-                assert!(c.lane().take_control(crate::durable::control::Op::Anchor).is_none());
-                let armed = c.lane().with_stores(|st| st.checkpoint.as_ref().map(|s| s.probe.plan)).unwrap();
-                assert_eq!(armed, Some(None), "a slot fault armed by the consumed plan outlived its operation");
-                // Nothing it armed survives: the next publication's slot write and sync, a candidate's withdrawal and
-                // the next continuity record all complete.
-                turn(&mut c, &mut sub, key(1)).unwrap();
-                assert_eq!(publish(&mut c, &mut sub, key(1)).unwrap().status(), Status::Acknowledged);
-                turn(&mut c, &mut sub, key(1)).unwrap();
-                let d = sub.identity();
-                c.testing_durable_plan(Some(Plan::At { step: Step::SlotSynced, park: false, arg: 0 }));
-                publish(&mut c, &mut sub, key(1)).unwrap();
-                drop(c);
-                let mut c = core(&dir, &ck);
-                assert_eq!(c.recover().unwrap().candidate, d);
-                c.checkpoint_discard(&d).unwrap();
-                assert_eq!(c.recover().unwrap().disposition, Disposition::Resumable);
-            }
-
-            #[test]
-            fn a_death_at_every_anchor_point_leaves_no_lineage_or_exactly_the_anchored_one() {
-                use Disposition::*;
-                // (point, torn bytes, a slot holds the state, what restart decides)
-                let cases = [
-                    (Point::Begun, 0, false, NothingToRecover),
-                    (Point::SlotWritten, 0, true, NothingToRecover), // a slot never creates a lineage
-                    (Point::SlotSynced, 0, true, NothingToRecover),
-                    (Point::RecordTorn, 50, true, NothingToRecover), // a torn record is not an authority
-                    (Point::RecordWritten, 0, true, Resumable),      // an unsynced record survives a process death
-                    (Point::RecordSynced, 0, true, Resumable),
-                ];
-                for (point, arg, held, expected) in cases {
-                    let name = format!("anchor-{point:?}");
-                    let (dir, ck) = (Dir::new(&format!("ck-{name}")), Ck::new(&name));
-                    let mut sub = Fake::new(0.1);
-                    let d0 = sub.identity();
-                    {
-                        let mut c = core(&dir, &ck);
-                        c.testing_control_plan(plan(1, point, arg));
-                        died(c.anchor(&mut sub, key(1)).unwrap_err().error, &name);
-                        assert_eq!(c.fault(), Some(Code::TestingProcessDeath), "{name}");
-                        died(turn(&mut c, &mut sub, key(1)).unwrap_err(), &name);
-                        // the process is "gone"
-                    }
-                    let slots = checkpoint::Store::open(&ck.0).unwrap().slots();
-                    assert_eq!(slots.iter().flatten().any(|s| s.identity == d0), held, "{name}");
-                    let mut sub = Fake::new(0.1); // a fresh process; the caller supplies the same state again
-                    let mut c = core(&dir, &ck);
-                    let r = c.recover().unwrap();
-                    assert_eq!(r.disposition, expected, "{name}");
-                    if expected == NothingToRecover {
-                        c.anchor(&mut sub, key(1)).unwrap(); // the operator anchors again, explicitly
-                    }
-                    let r = c.recover().unwrap();
-                    assert_eq!((r.disposition, r.authorized), (Resumable, d0), "{name}");
-                    assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(d0), "{name}");
-                    turn(&mut c, &mut sub, key(1)).unwrap();
-                    assert_eq!(publish(&mut c, &mut sub, key(1)).unwrap().status(), Status::Acknowledged, "{name}");
-                }
-            }
-
-            #[test]
-            fn a_death_at_every_discard_point_leaves_the_candidate_or_its_withdrawal() {
-                use Disposition::*;
-                for (point, expected) in [
-                    (Point::Begun, CandidateUnresolved),
-                    (Point::SlotWritten, Resumable),
-                    (Point::SlotSynced, Resumable),
-                ] {
-                    let name = format!("discard-{point:?}");
-                    let (dir, ck, d1, d3) = unresolved(&name);
-                    {
-                        let mut c = core(&dir, &ck);
-                        c.testing_control_plan(plan(3, point, 0));
-                        died(c.checkpoint_discard(&d3).unwrap_err().error, &name);
-                    }
-                    let mut c = core(&dir, &ck);
-                    let r = c.recover().unwrap();
-                    assert_eq!((r.disposition, r.authorized), (expected, d1), "{name}");
-                    if expected == CandidateUnresolved {
-                        assert_eq!(r.candidate, d3, "{name}");
-                        c.checkpoint_discard(&d3).unwrap(); // the operator's action, again: exactly that candidate
-                    }
-                    let r = c.recover().unwrap();
-                    assert_eq!((r.disposition, r.authorized, r.candidate), (Resumable, d1, [0u8; 32]), "{name}");
-                    assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(d1), "{name}");
-                }
-            }
-
-            #[test]
-            fn a_death_at_every_adopt_point_leaves_the_candidate_or_its_adoption() {
-                use Disposition::*;
-                for (point, arg, adopted) in [
-                    (Point::Begun, 0, false),
-                    (Point::RecordTorn, 50, false),
-                    (Point::RecordWritten, 0, true),
-                    (Point::RecordSynced, 0, true),
-                ] {
-                    let name = format!("adopt-{point:?}");
-                    let (dir, ck, d1, d3) = unresolved(&name);
-                    {
-                        let mut c = core(&dir, &ck);
-                        c.testing_control_plan(plan(4, point, arg));
-                        died(c.checkpoint_adopt(&d3).unwrap_err().error, &name);
-                    }
-                    let mut c = core(&dir, &ck);
-                    let r = c.recover().unwrap();
-                    if adopted {
-                        assert_eq!((r.disposition, r.authorized, r.candidate), (Resumable, d3, [0u8; 32]), "{name}");
-                    } else {
-                        assert_eq!((r.disposition, r.authorized, r.candidate), (CandidateUnresolved, d1, d3), "{name}");
-                        c.checkpoint_adopt(&d3).unwrap(); // the operator's action, again
-                    }
-                    let r = c.recover().unwrap();
-                    assert_eq!((r.disposition, r.authorized), (Resumable, d3), "{name}");
-                    assert_eq!(checkpoint::envelope_identity(&r.envelope.unwrap()), Some(d3), "{name}");
-                }
-            }
-        }
-
-        #[test]
-        fn the_hot_lane_performs_no_authority_or_checkpoint_io() {
-            let (dir, ck) = (Dir::new("ck-io"), Ck::new("io"));
-            let mut sub = Fake::new(0.1);
-            let mut c = core(&dir, &ck);
-            c.anchor(&mut sub, key(1)).unwrap();
-            turn(&mut c, &mut sub, key(1)).unwrap();
-            c.testing_authority_counters(true);
-            c.testing_checkpoint_counters(true);
-            for _ in 0..100 {
-                turn(&mut c, &mut sub, key(1)).unwrap();
-                query(&mut c, &mut sub, key(1), 2).unwrap();
-            }
-            let (io, ck_io) = (c.testing_authority_counters(false), c.testing_checkpoint_counters(false));
-            assert_eq!(io, Default::default(), "authority I/O on the HOT lane");
-            assert_eq!(ck_io, Default::default(), "checkpoint I/O on the HOT lane");
-            // One explicit durable publication: one slot write + sync; the authority's record slot (R = 1344 + 160 x
-            // 16) and its witness slot (240), each written in place and synced; nothing opened or renamed.
-            publish(&mut c, &mut sub, key(1)).unwrap();
-            let (io, ck_io) = (c.testing_authority_counters(false), c.testing_checkpoint_counters(false));
-            assert_eq!((io.pwrites, io.pwrite_bytes, io.data_syncs, io.opens, io.renames), (2, 3904 + 240, 2, 0, 0));
-            assert_eq!((ck_io.pwrites, ck_io.pwrite_bytes, ck_io.data_syncs), (1, (HEADER + ENVELOPE) as u64, 1));
-        }
-    }
-}
-
-#[cfg(feature = "testing")]
-mod faults {
-    use super::*;
-
-    const DIE: u32 = 1;
-    const WRITE_FAIL: u32 = 2;
-
-    #[test]
-    fn evolution_publication_failures_fail_stop_and_never_reexecute() {
-        for phase in [1u64, 2] {
-            let dir = Dir::new(&format!("evolution-fault-{phase}"));
-            let mut core = dir.core();
-            let authority = core.evolution_authority().unwrap().evolution();
-            core.testing_arm(phase, WRITE_FAIL, 0).unwrap();
-            let reserved = core.evolution_reserve(&authority, &[1u8; 32]);
-            if phase == 1 {
-                assert_eq!(reserved.unwrap_err(), Code::PublicationRefused.into());
-                assert_eq!(core.evolution_finalize(&[2u8; 32]).unwrap_err(), Rt::EvolutionNotInFlight.into());
-            } else {
-                reserved.unwrap();
-                assert_eq!(core.evolution_finalize(&[2u8; 32]).unwrap_err(), Code::PublicationRefused.into());
-            }
-            assert_eq!(core.fault(), Some(Code::PublicationRefused));
-            assert_eq!(core.evolution_authority().unwrap_err(), Code::PublicationRefused.into());
-            drop(core);
-            let core = dir.core();
-            let e = core.snapshot().unwrap().evolution();
-            assert_eq!(e.assertion().is_some(), phase == 2); // a refused finalization leaves the reservation
-        }
-    }
-
-    #[test]
-    fn process_death_during_an_evolution_publication_fail_stops() {
-        let dir = Dir::new("death");
-        let mut core = dir.core();
-        let authority = core.evolution_authority().unwrap().evolution();
-        core.testing_arm(1, DIE, 1).unwrap(); // after the record is written, before it is synced
-        assert_eq!(core.evolution_reserve(&authority, &[1u8; 32]).unwrap_err(), Code::TestingProcessDeath.into());
-        assert_eq!(core.fault(), Some(Code::TestingProcessDeath));
-    }
-
-    #[test]
-    fn a_durable_publication_without_a_store_writes_one_record_and_syncs_once() {
-        let dir = Dir::new("io");
-        let mut core = dir.core();
-        let mut sub = Fake::new(0.1);
-        core.anchor(&mut sub, key(1)).unwrap();
-        turn(&mut core, &mut sub, key(1)).unwrap();
-        core.testing_authority_counters(true);
-        turn(&mut core, &mut sub, key(1)).unwrap();
-        assert_eq!(core.testing_authority_counters(false), Default::default()); // the turn: nothing
-        publish(&mut core, &mut sub, key(1)).unwrap();
-        let io = core.testing_authority_counters(false);
-        // The record slot (R = 1344 + 160 x 16) and the witness slot (240).
-        assert_eq!((io.opens, io.preads, io.pwrites, io.pwrite_bytes, io.data_syncs), (0, 0, 2, 3904 + 240, 2));
-        assert_eq!((io.dir_syncs, io.renames, io.unlinks), (0, 0, 0));
-    }
-}
-
-/// RuntimeCore's ECS_C-specific laws (docs/RUNTIME_CORE.md, "The durable authority"): the HOT lane's I/O,
-/// typed-evidence admission, the evidence summary, operator events and a refused open.
-#[cfg(feature = "testing")]
-mod ecs_c {
-    use super::recovery::Ck;
-    use super::*;
-    use crate::authority::Store;
-    use crate::checkpoint::HEADER;
-    use elpis_ecs_c_authority as e;
-
-    const CAPACITY: u32 = 16; // provision_ecs_c's
-
-    /// A closed runtime over the ECS_C authority under `dir` (provisioned on first use).
-    fn closed(dir: &Dir) -> Core {
-        let (state, authority) = ecs_c_dirs(&dir.0);
-        if !authority.join("witness.a").exists() {
-            provision_ecs_c(&state, &authority);
-        }
-        Core::new_ecs_c(&state, &authority).unwrap()
-    }
-
-    fn open(dir: &Dir) -> Core {
-        let mut core = closed(dir);
-        core.open().unwrap();
-        core
-    }
-
-    /// The authority a restart would find (read without the locks the runtime under test holds).
-    fn peek(dir: &Dir) -> e::Record {
-        let (state, authority) = ecs_c_dirs(&dir.0);
-        e::testing_peek(&state, &authority).unwrap()
-    }
-
-    /// Every file of the authority's two directories, with its size.
-    fn files(dir: &Dir) -> Vec<(String, u64)> {
-        let (state, authority) = ecs_c_dirs(&dir.0);
-        let mut out = vec![];
-        for d in [state, authority] {
-            for f in std::fs::read_dir(&d).unwrap() {
-                let f = f.unwrap();
-                out.push((f.file_name().into_string().unwrap(), f.metadata().unwrap().len()));
-            }
-        }
-        out.sort();
-        out
-    }
 
     fn composite_key(owner: u64) -> Key {
         Key { kind: 3, handle: 0x2000 + owner as usize, id: 0, owner, dim: DIM }
@@ -2770,90 +1655,101 @@ mod ecs_c {
         core.turn_observe(sub, k, Observation(d as *const Digest as *const _)).0.map_err(|r| r.error)
     }
 
-    /// The operator's next sender identity and sequence.
-    fn operator(dir: &Dir) -> (Digest, u64) {
-        let op = &peek(dir).state.entities[0];
+    /// The operator's identity and next sender sequence, read from the open session.
+    fn operator(core: &Core) -> (Digest, u64) {
+        let op = core.authority_entity(0).unwrap();
         (op.id, op.sender_watermark + 1)
     }
 
-    /// The operator founds a source and activates it, through the runtime that holds the authority.
-    fn found_source(core: &mut Core, dir: &Dir, label: u8, source_authority: u32, limit: u32) -> Digest {
-        let r = peek(dir);
+    /// The operator founds a source and activates it, through the runtime.
+    fn found_source(core: &mut Core, label: u8, source_authority: u32, limit: u32) -> Digest {
         let label = [label; 32];
-        let id = r.state.next_entity_id(&r.lineage, e::EntityKind::Source, &label);
-        let (op, seq) = operator(dir);
-        let kind = e::EntityKind::Source;
-        let found = e::Event::entity_found(&op, seq, &id, kind, &label, &[4; 32], 1, limit, source_authority);
+        let id = core.authority_next_entity_id(m::EntityKind::Source as u8, &label).unwrap();
+        let (op, seq) = operator(core);
+        let kind = m::EntityKind::Source;
+        let found = m::Event::entity_found(&op, seq, &id, kind, &label, &[4; 32], 1, limit, source_authority);
         core.authority_transition(&found).unwrap();
-        lifecycle(core, dir, &id, e::Lifecycle::Founded, e::Lifecycle::Active).unwrap();
+        lifecycle(core, &id, m::Lifecycle::Founded, m::Lifecycle::Active).unwrap();
         id
     }
 
-    fn lifecycle(core: &mut Core, dir: &Dir, id: &Digest, from: e::Lifecycle, to: e::Lifecycle) -> Result<u64, Error> {
-        let (op, seq) = operator(dir);
-        let event = e::Event::entity_lifecycle(&op, seq, id, from, to);
+    fn lifecycle(core: &mut Core, id: &Digest, from: m::Lifecycle, to: m::Lifecycle) -> Result<u64, Error> {
+        let (op, seq) = operator(core);
+        let event = m::Event::entity_lifecycle(&op, seq, id, from, to);
         core.authority_transition(&event).map(|r| r.generation).map_err(|r| r.error)
     }
 
+    fn template(seed: u8) -> SessionTemplate {
+        SessionTemplate { capacity: 16, nonce_seed: [seed; 32], operator_label: [1; 32], runtime_label: [2; 32] }
+    }
+
     #[test]
-    fn the_hot_lane_performs_no_authority_io_and_a_publication_writes_one_record_and_one_witness() {
-        let (dir, ck) = (Dir::new("ecsc-io"), Ck::new("ecsc-io"));
+    fn each_open_is_a_new_session_at_genesis_and_close_ends_it() {
+        let mut core = Core::new(template(7)).unwrap();
+        let first = core.open().unwrap();
+        assert_eq!((first.generation(), first.cognition()), (1, Cognition::Unanchored));
+        let s1 = core.authority_status();
+        assert_eq!((s1.backend, s1.sessions, s1.generation, s1.entity_count), (3, 1, 1, 2));
+        assert_ne!(s1.instance, 0);
+        assert_eq!(s1.volatile_bytes, elpis_ecs_c_session::Session::volatile_bytes_for(16) as u64);
+        // The session evolves in memory: a source founded, the lineage anchored.
         let mut sub = Fake::new(0.1);
-        let mut c = open(&dir);
-        c.checkpoint_attach(&ck.0).unwrap();
-        c.anchor(&mut sub, key(1)).unwrap();
-        turn(&mut c, &mut sub, key(1)).unwrap();
-        let before = files(&dir);
-        c.testing_authority_counters(true);
-        c.testing_checkpoint_counters(true);
-        for _ in 0..100 {
-            turn(&mut c, &mut sub, key(1)).unwrap();
-            query(&mut c, &mut sub, key(1), 2).unwrap();
-        }
-        let (io, ck_io) = (c.testing_authority_counters(false), c.testing_checkpoint_counters(false));
-        assert_eq!(io, Default::default(), "authority I/O on the HOT lane");
-        assert_eq!(ck_io, Default::default(), "checkpoint I/O on the HOT lane");
-        // One explicit durable publication: the record slot and the witness slot, each written in place and synced;
-        // no open, create, rename, removal or directory sync; one checkpoint slot.
-        let record = e::record_bytes(CAPACITY) as u64;
-        let mut published = None;
-        for n in 0..20 {
-            published = Some(publish(&mut c, &mut sub, key(1)).unwrap().identity);
-            let (io, ck_io) = (c.testing_authority_counters(true), c.testing_checkpoint_counters(true));
-            assert_eq!(
-                (io.pwrites, io.pwrite_bytes, io.data_syncs, io.preads),
-                (2, record + e::WITNESS_BYTES as u64, 2, 0),
-                "publication {n}"
-            );
-            assert_eq!((io.opens, io.renames, io.unlinks, io.dir_syncs), (0, 0, 0, 0), "publication {n}");
-            assert_eq!((ck_io.pwrites, ck_io.pwrite_bytes, ck_io.data_syncs), (1, (HEADER + ENVELOPE) as u64, 1));
-            turn(&mut c, &mut sub, key(1)).unwrap();
-        }
-        // The fixed file set: the same five files at the same sizes, however many publications.
-        assert_eq!(files(&dir), before);
-        let names: Vec<_> = before.iter().map(|(n, _)| n.as_str()).collect();
-        assert_eq!(names, ["authority.a", "authority.b", "deployment.key", "witness.a", "witness.b"]);
-        assert_eq!(on_disk_identity(&dir), published);
-    }
-
-    fn on_disk_identity(dir: &Dir) -> Option<Digest> {
-        match peek(dir).state.cognition {
-            e::Cognition::Anchored { identity, .. } => Some(identity),
-            e::Cognition::Unanchored => None,
-        }
+        found_source(&mut core, 9, 0, 8);
+        core.anchor(&mut sub, key(1)).unwrap();
+        turn(&mut core, &mut sub, key(1)).unwrap();
+        assert_eq!(core.authority_status().generation, 4);
+        assert_eq!(core.open().unwrap_err(), Code::Open.into()); // open twice: refused, the session kept
+                                                                 // Close ends it: nothing of it is kept, and the status names no session.
+        core.close();
+        let closed = core.authority_status();
+        assert_eq!((closed.instance, closed.volatile_bytes, closed.sessions, closed.entity_count), (0, 0, 1, 0));
+        // The next open is another session: another lineage and instance, at genesis, unanchored, no source.
+        let second = core.open().unwrap();
+        assert_eq!((second.generation(), second.cognition()), (1, Cognition::Unanchored));
+        let s2 = core.authority_status();
+        assert_eq!((s2.sessions, s2.entity_count, s2.generation), (2, 2, 1));
+        assert_ne!(s2.session, s1.session);
+        assert_ne!(s2.instance, s1.instance);
+        assert_eq!(core.authority_entity(2).unwrap_err(), Rt::Invalid.into());
+        // Its sources are its own: an observation of the last session's source is refused.
+        let (mut comp, k) = (Fake::composite(0.2), composite_key(7));
+        core.anchor(&mut comp, k).unwrap();
+        core.turn_begin_observe(&mut comp, k, &CEILING).unwrap();
+        assert_eq!(observe(&mut core, &mut comp, k, &observation(0, 1)).unwrap_err(), Rt::ObservationRefused.into());
     }
 
     #[test]
-    fn typed_observations_are_admitted_against_the_authoritys_active_sources_before_the_native_call() {
-        let dir = Dir::new("ecsc-admission");
-        let mut core = open(&dir);
+    fn a_nonce_seed_makes_sessions_reproducible_across_runtimes_and_distinct_within_one() {
+        let (mut a, mut b, mut c) =
+            (Core::new(template(7)).unwrap(), Core::new(template(7)).unwrap(), Core::new(template(8)).unwrap());
+        let lineage = |core: &mut Core| {
+            core.open().unwrap();
+            let s = core.authority_status();
+            core.close();
+            (s.session, s.state_root)
+        };
+        let (a1, b1, c1) = (lineage(&mut a), lineage(&mut b), lineage(&mut c));
+        assert_eq!(a1, b1); // configured alike: the same first session (differential testing)
+        assert_ne!(a1, c1);
+        let (a2, b2) = (lineage(&mut a), lineage(&mut b));
+        assert_eq!(a2, b2);
+        assert_ne!(a1, a2); // one runtime's successive sessions differ
+                            // A zero seed draws every session's nonce from the kernel: two runtimes never share one.
+        let (mut x, mut y) = (Core::new(template(0)).unwrap(), Core::new(template(0)).unwrap());
+        assert_ne!(lineage(&mut x), lineage(&mut y));
+    }
+
+    #[test]
+    fn typed_observations_are_admitted_against_the_sessions_active_sources_before_the_native_call() {
+        let dir = Dir::new("session-admission");
+        let mut core = dir.core();
         let (mut sub, k) = (Fake::composite(0.2), composite_key(7));
         core.anchor(&mut sub, k).unwrap();
         core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
         sub.clear_calls();
         let a = observation(0, 1);
         assert_eq!(observe(&mut core, &mut sub, k, &a).unwrap(), a);
-        // A source the authority does not know, and a record of another memory ABI: refused before the native call,
+        // A source the session does not know, and a record of another memory ABI: refused before the native call,
         // recoverably (the turn stays open, its candidate unchanged).
         let mut foreign = observation(0, 3);
         foreign[0] = 2;
@@ -2867,22 +1763,22 @@ mod ecs_c {
 
     #[test]
     fn a_sources_per_turn_bound_and_its_lifecycle_follow_the_operators_events() {
-        let dir = Dir::new("ecsc-bound");
-        let mut core = open(&dir);
+        let dir = Dir::new("session-bound");
+        let mut core = dir.core();
         let (mut sub, k) = (Fake::composite(0.2), composite_key(7));
         core.anchor(&mut sub, k).unwrap();
         core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
         assert_eq!(observe(&mut core, &mut sub, k, &observation(5, 1)).unwrap_err(), Rt::ObservationRefused.into());
         // An operator event while a managed turn is open is refused: its admission must not change under it.
-        let (op, seq) = operator(&dir);
+        let (op, seq) = operator(&core);
         let label = [9; 32];
-        let r = peek(&dir);
-        let id = r.state.next_entity_id(&r.lineage, e::EntityKind::Source, &label);
-        let found = e::Event::entity_found(&op, seq, &id, e::EntityKind::Source, &label, &[4; 32], 1, 2, 5);
+        let id = core.authority_next_entity_id(m::EntityKind::Source as u8, &label).unwrap();
+        let found = m::Event::entity_found(&op, seq, &id, m::EntityKind::Source, &label, &[4; 32], 1, 2, 5);
+        let generation = core.authority_status().generation;
         assert_eq!(core.authority_transition(&found).unwrap_err().error, Rt::TurnOpen.into());
-        assert_eq!(peek(&dir).generation, r.generation);
+        assert_eq!(core.authority_status().generation, generation);
         core.turn_abort(k).unwrap();
-        assert_eq!(found_source(&mut core, &dir, 9, 5, 2), id);
+        assert_eq!(found_source(&mut core, 9, 5, 2), id);
         // Source 5 admits two observations per turn; source 0 keeps its own bound.
         core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
         for byte in [1, 2] {
@@ -2895,198 +1791,111 @@ mod ecs_c {
         core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
         observe(&mut core, &mut sub, k, &observation(5, 5)).unwrap();
         core.turn_commit(&mut sub, k).unwrap();
-        let committed = sub.memory();
-        assert_eq!(committed.len(), 4);
+        assert_eq!(sub.memory().len(), 4);
         // DORMANT: its observations are refused until it is ACTIVE again.
-        lifecycle(&mut core, &dir, &id, e::Lifecycle::Active, e::Lifecycle::Dormant).unwrap();
+        lifecycle(&mut core, &id, m::Lifecycle::Active, m::Lifecycle::Dormant).unwrap();
         core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
         assert_eq!(observe(&mut core, &mut sub, k, &observation(5, 6)).unwrap_err(), Rt::ObservationRefused.into());
         core.turn_abort(k).unwrap();
-        lifecycle(&mut core, &dir, &id, e::Lifecycle::Dormant, e::Lifecycle::Active).unwrap();
+        lifecycle(&mut core, &id, m::Lifecycle::Dormant, m::Lifecycle::Active).unwrap();
         core.turn_begin_observe(&mut sub, k, &CEILING).unwrap();
         observe(&mut core, &mut sub, k, &observation(5, 6)).unwrap();
         core.turn_commit(&mut sub, k).unwrap();
         assert_eq!(sub.memory().len(), 5);
-        // A refused operator event (stale sequence) changes nothing and leaves the exact ECS_C code.
-        let stale = e::Event::entity_lifecycle(&op, seq, &id, e::Lifecycle::Active, e::Lifecycle::Dormant);
-        let generation = peek(&dir).generation;
-        assert!(core.authority_transition(&stale).is_err());
-        assert_eq!(peek(&dir).generation, generation);
-        assert_ne!(core.authority_status().unwrap().ecs_c_code, 0);
+        // A refused operator event (a stale sequence) changes nothing and leaves the exact session code.
+        let stale = m::Event::entity_lifecycle(&op, seq, &id, m::Lifecycle::Active, m::Lifecycle::Dormant);
+        let generation = core.authority_status().generation;
+        assert_eq!(core.authority_transition(&stale).unwrap_err().error, Rt::Authority.into());
+        assert_eq!(core.authority_status().generation, generation);
+        assert_eq!(core.authority_status().ecs_c_code, elpis_ecs_c_session::Code::Duplicate as i32);
         assert_eq!(core.fault(), None);
     }
 
     #[test]
-    fn operator_events_are_ecs_c_only_and_never_runtime_core_s_own() {
-        // RuntimeCore's own events and the reconciliations are refused before the authority sees them, whoever
-        // they claim to be from.
-        let dir = Dir::new("ecsc-op");
-        let mut core = open(&dir);
-        assert_eq!(core.authority_status().unwrap().backend, crate::authority::BACKEND_ECS_C, "the only backend");
-        let generation = peek(&dir).generation;
-        let (op, seq) = operator(&dir);
-        let rt = peek(&dir).state.entities[1].id;
+    fn operator_events_are_the_operators_and_persistence_only_kinds_are_retired() {
+        let dir = Dir::new("session-op");
+        let mut core = dir.core();
+        let generation = core.authority_status().generation;
+        let (op, seq) = operator(&core);
+        let rt = core.authority_entity(1).unwrap().id;
         let e1 = EvolutionState::GENESIS;
+        // RuntimeCore's own events are refused before the session sees them, whoever they claim to be from.
         for event in [
-            e::Event::anchor(&rt, 1, StateFormat::K1, &[3; 32]),
-            e::Event::publish(&rt, 1, StateFormat::K1, &[3; 32], &[4; 32], 0, &[0; 32]),
-            e::Event::import_composite(&rt, 1, &[3; 32], &[4; 32]),
-            e::Event::evolution_reserve(&rt, 1, &e1, &[5; 32]),
-            e::Event::evolution_finalize(&rt, 1, &e1, &[5; 32]),
-            e::Event::reconcile_unauthenticated(&op, seq, 0, 2, &[6; 32]),
-            e::Event::reconcile_repin(&op, seq, [0, 0], &[6; 32]),
+            m::Event::anchor(&rt, 1, StateFormat::K1, &[3; 32]),
+            m::Event::publish(&rt, 1, StateFormat::K1, &[3; 32], &[4; 32], 0, &[0; 32]),
+            m::Event::import_composite(&rt, 1, &[3; 32], &[4; 32]),
+            m::Event::evolution_reserve(&rt, 1, &e1, &[5; 32]),
+            m::Event::evolution_finalize(&rt, 1, &e1, &[5; 32]),
         ] {
             assert_eq!(core.authority_transition(&event).unwrap_err().error, Rt::Invalid.into(), "{:?}", event.kind);
         }
-        assert_eq!(peek(&dir).generation, generation);
+        // The operations of durable storage are retired: refused RUNTIME_RETIRED, nothing changed, no fail-stop.
+        for event in [
+            m::Event::import_legacy(&op, seq, &[0; m::LEGACY_RECORD_BYTES]),
+            m::Event::reconcile_rollback(&op, seq, 1, &[6; 32], 2),
+            m::Event::reconcile_unauthenticated(&op, seq, 0, 2, &[6; 32]),
+            m::Event::reconcile_repin(&op, seq, [0, 0], &[6; 32]),
+        ] {
+            assert_eq!(core.authority_transition(&event).unwrap_err().error, Rt::Retired.into(), "{:?}", event.kind);
+            assert_eq!(core.authority_status().ecs_c_code, elpis_ecs_c_session::Code::PersistenceRetired as i32);
+        }
+        assert_eq!((core.authority_status().generation, core.fault()), (generation, None));
         // A closed runtime refuses them too.
         core.close();
-        let event = e::Event::entity_reclaim(&op, seq, &[2; 32]);
+        let event = m::Event::entity_reclaim(&op, seq, &[2; 32]);
         assert_eq!(core.authority_transition(&event).unwrap_err().error, Rt::Closed.into());
     }
 
     #[test]
-    fn the_held_authority_reads_are_exactly_its_rows_and_change_nothing() {
-        // A closed runtime refuses; an unknown kind has no next identity.
-        let dir = Dir::new("ecsc-read");
-        let mut core = closed(&dir);
+    fn the_session_reads_are_exactly_its_rows_and_change_nothing() {
+        let mut core = new_core();
         assert_eq!(core.authority_entity(0).unwrap_err(), Rt::Closed.into());
-        core.open().unwrap();
-        // The rows a restart would find, in order, and nothing past them.
-        let found = found_source(&mut core, &dir, 9, 4242, 2);
-        let r = peek(&dir);
-        let n = r.state.entities.len() as u32; // operator, runtime, the provisioned source, this one
+        open(&mut core);
+        let found = found_source(&mut core, 9, 4242, 2);
+        let status = core.authority_status();
+        let n = status.entity_count; // operator, runtime, the suite's source, this one
         assert_eq!(n, 4);
-        assert_eq!(core.authority_status().unwrap().entity_count, n);
-        for (i, row) in r.state.entities.iter().enumerate() {
-            assert_eq!(&core.authority_entity(i as u32).unwrap(), row);
-        }
+        let rows: Vec<_> = (0..n).map(|i| core.authority_entity(i).unwrap()).collect();
         assert_eq!(core.authority_entity(n).unwrap_err(), Rt::Invalid.into());
-        assert_eq!(core.authority_entity(n - 1).unwrap().id, found);
-        // The next founding's identity is the authority's own, for each kind; an unknown kind is refused.
-        for kind in [e::EntityKind::Operator, e::EntityKind::Runtime, e::EntityKind::Source] {
-            assert_eq!(
-                core.authority_next_entity_id(kind as u8, &[7; 32]).unwrap(),
-                r.state.next_entity_id(&r.lineage, kind, &[7; 32])
-            );
+        assert_eq!(rows[3].id, found);
+        assert_eq!(
+            (rows[0].kind, rows[1].kind, rows[2].kind),
+            (m::EntityKind::Operator, m::EntityKind::Runtime, m::EntityKind::Source)
+        );
+        for kind in [m::EntityKind::Operator, m::EntityKind::Runtime, m::EntityKind::Source] {
+            let a = core.authority_next_entity_id(kind as u8, &[7; 32]).unwrap();
+            assert_eq!(a, core.authority_next_entity_id(kind as u8, &[7; 32]).unwrap());
         }
         assert_eq!(core.authority_next_entity_id(0, &[7; 32]).unwrap_err(), Rt::Invalid.into());
         assert_eq!(core.authority_next_entity_id(4, &[7; 32]).unwrap_err(), Rt::Invalid.into());
-        // Reads: the authority did not move.
-        assert_eq!(peek(&dir), r);
+        // Reads change nothing.
+        assert_eq!(core.authority_status(), status);
     }
 
     #[test]
-    fn a_publication_records_the_evidence_summary_of_the_observations_it_makes_durable() {
-        // The durability lane sets the summary from the captured envelope before the PUBLISH. Store level: the fake
-        // composite's envelope is K1-shaped (it cannot be checkpointed), so the composite envelope is built here; the
-        // managed path over the real composite is tests/test_runtime_ecs_c.c.
-        let dir = Dir::new("ecsc-evidence");
-        let (state, authority) = ecs_c_dirs(&dir.0);
-        provision_ecs_c(&state, &authority);
-        let mut store = Store::ecs_c(&state, &authority).unwrap();
-        store.open().unwrap();
-        let composite = |memory: u8| {
-            let mut env = vec![0u8; 160];
-            env[..8].copy_from_slice(b"ELPISEC1");
-            env[80..112].copy_from_slice(&[memory; 32]);
-            env
-        };
-        let f = StateFormat::Composite;
-        let ids: Vec<Digest> = (1..=6).map(|i| [i; 32]).collect();
-        store.anchor_cognition_as(f, Some(&ids[0])).unwrap();
-        let status = |s: &Store| {
-            let x = s.status();
-            (x.evidence_count, x.evidence_head)
-        };
-        let (zero, head0) = status(&store);
-        assert_eq!(zero, 0);
-        // Three committed observations, then a publication: recorded once, with the memory's identity.
-        store.set_evidence(3, &composite(0x33));
-        store.commit_cognition_as(f, Some(&ids[0]), Some(&ids[1])).unwrap();
-        let (count, head1) = status(&store);
-        assert_eq!(count, 3);
-        assert_ne!(head1, head0);
-        // The PUBLISH itself (the record's newest event) carries the count and the memory identity.
-        let event = peek(&dir).event;
-        assert_eq!(event.kind, e::EventKind::Publish);
-        assert_eq!(u64::from_le_bytes(event.payload[72..80].try_into().unwrap()), 3);
-        assert_eq!(event.payload[80..112], [0x33; 32]);
-        // Nothing new since: the next publication records nothing.
-        store.set_evidence(3, &composite(0x44));
-        store.commit_cognition_as(f, Some(&ids[1]), Some(&ids[2])).unwrap();
-        assert_eq!(status(&store), (3, head1));
-        assert_eq!(peek(&dir).event.payload[72..112], [0; 40]); // zero count, zero digest: the law's pairing
-                                                                // A refused publication (stale before) consumes the summary but accounts for nothing: the next one carries
-                                                                // every observation since the last acknowledged publication.
-        store.set_evidence(5, &composite(0x55));
-        assert!(store.commit_cognition_as(f, Some(&ids[0]), Some(&ids[3])).is_err());
-        assert_eq!(status(&store), (3, head1));
-        store.set_evidence(6, &composite(0x55));
-        store.commit_cognition_as(f, Some(&ids[2]), Some(&ids[3])).unwrap();
-        assert_eq!(status(&store).0, 6);
-        // A publication without a summary from the lane (none set) carries none.
-        store.commit_cognition_as(f, Some(&ids[3]), Some(&ids[4])).unwrap();
-        assert_eq!(status(&store).0, 6);
-        // An envelope that is not a composite has no memory: it carries none.
-        let mut k1 = composite(0x66);
-        k1[..8].copy_from_slice(b"ELPISGK1");
-        store.set_evidence(9, &k1);
-        store.commit_cognition_as(f, Some(&ids[4]), Some(&ids[5])).unwrap();
-        assert_eq!(status(&store).0, 6);
-        assert_eq!(peek(&dir).state.evidence_count, 6);
-    }
-
-    #[test]
-    fn an_authority_that_needs_reconciliation_refuses_the_open_and_reports_why() {
-        let dir = Dir::new("ecsc-rollback");
-        let mut core = open(&dir);
+    fn a_session_at_capacity_refuses_a_founding_and_stays_usable() {
+        let mut core = Core::new(SessionTemplate { capacity: 3, ..template(5) }).unwrap();
+        core.open().unwrap();
+        let generation = core.authority_status().generation;
+        found_source(&mut core, 1, 0, 4); // the third and last row
+        let label = [2; 32];
+        let id = core.authority_next_entity_id(m::EntityKind::Source as u8, &label).unwrap();
+        let (op, seq) = operator(&core);
+        let found = m::Event::entity_found(&op, seq, &id, m::EntityKind::Source, &label, &[4; 32], 1, 4, 1);
+        let before = core.authority_status();
+        assert_eq!(before.generation, generation + 2);
+        assert_eq!(core.authority_transition(&found).unwrap_err().error, Rt::Authority.into());
+        let after = core.authority_status();
+        assert_eq!(after.ecs_c_code, elpis_ecs_c_session::Code::Capacity as i32);
+        assert_eq!((after.generation, after.entity_count, after.state_root), (before.generation, 3, before.state_root));
+        // Still usable: the lineage anchors and learns in the full session.
         let mut sub = Fake::new(0.1);
         core.anchor(&mut sub, key(1)).unwrap();
-        let (state, _) = ecs_c_dirs(&dir.0);
-        let read = |n: &str| std::fs::read(state.join(n)).unwrap();
-        let old = (read("authority.a"), read("authority.b"));
-        for _ in 0..2 {
-            turn(&mut core, &mut sub, key(1)).unwrap();
-            publish(&mut core, &mut sub, key(1)).unwrap();
-        }
-        let acknowledged = peek(&dir).generation;
-        core.close();
-        // Copied-back older records: every authenticated record is older than the witness pins.
-        std::fs::write(state.join("authority.a"), &old.0).unwrap();
-        std::fs::write(state.join("authority.b"), &old.1).unwrap();
-        assert_eq!(core.open().unwrap_err(), Rt::Authority.into());
-        let s = core.authority_status().unwrap();
-        assert_eq!(s.backend, 2);
-        assert_eq!(s.ecs_c_code, e::Code::ReconcileRequired as i32);
-        assert_eq!(s.disposition, e::Disposition::Rollback as u32);
-        assert_eq!(s.mode, 2);
-        assert!(s.generation < acknowledged);
-        // Nothing runs on it: every operation is refused closed, and nothing was written.
-        assert_eq!(core.anchor(&mut sub, key(1)).unwrap_err().error, Rt::Closed.into());
-        assert_eq!((read("authority.a"), read("authority.b")), old);
-        // A fresh handle is refused the same way.
-        let mut again = closed(&dir);
-        assert_eq!(again.open().unwrap_err(), Rt::Authority.into());
-        // Records recovery cannot resolve at all (both destroyed): refused by recovery itself, the report kept.
-        let size = old.0.len();
-        for n in ["authority.a", "authority.b"] {
-            std::fs::write(state.join(n), vec![0u8; size]).unwrap();
-        }
-        assert_eq!(again.open().unwrap_err(), Rt::Authority.into());
-        let s = again.authority_status().unwrap();
-        assert_eq!(s.ecs_c_code, e::Code::RecoveryRefused as i32);
-        assert_eq!(s.disposition, e::Disposition::Unrecoverable as u32);
-        // An unprovisioned authority is refused with its exact code.
-        let bare = Dir::new("ecsc-unprovisioned");
-        let (state, authority) = ecs_c_dirs(&bare.0);
-        let mut none = Core::new_ecs_c(&state, &authority).unwrap();
-        assert_eq!(none.open().unwrap_err(), Rt::Authority.into());
-        assert_eq!(none.authority_status().unwrap().ecs_c_code, e::Code::NotProvisioned as i32);
+        turn(&mut core, &mut sub, key(1)).unwrap();
+        assert_eq!(core.fault(), None);
     }
 }
 
-/// ABI v5: the observe-only managed turn of a composite substrate (docs/RUNTIME_CORE.md, "Observe-only turns").
 mod observe_only {
     use super::*;
 
@@ -3122,7 +1931,7 @@ mod observe_only {
 
     #[test]
     fn an_observe_only_turn_records_evidence_without_any_k1_schedule_and_commits_volatile() {
-        let (dir, mut core, mut sub, k, anchor) = anchored_composite("observe-only");
+        let (_dir, mut core, mut sub, k, anchor) = anchored_composite("observe-only");
         let (k1_before, generation) = (sub.retained(), sub.generation());
         let a = observation(1);
         assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap(), generation);
@@ -3135,8 +1944,8 @@ mod observe_only {
         // K1's retained values are byte-identical; only the memory moved.
         assert_eq!(sub.retained(), k1_before);
         assert_eq!(sub.memory(), vec![a]);
-        // Volatile: the durable authority did not move.
-        assert_eq!((core.snapshot().unwrap(), on_disk(&dir)), (anchor, anchor));
+        // Volatile: the session's authority did not move.
+        assert_eq!(core.snapshot().unwrap(), anchor);
         assert_ne!(sub.identity(), anchored(&core).unwrap());
         // The first turn reads the state's shape once (cold path, cached); then begin, one observe, commit.
         assert_eq!(sub.calls(), ["shape", "txn_begin_at", "txn_observe", "txn_commit"]);
@@ -3246,20 +2055,19 @@ mod observe_only {
         let refused = core.turn_commit(&mut sub, k).unwrap_err();
         assert_eq!(refused.error, Code::StateMismatch.into());
         assert_eq!(core.fault(), Some(Code::StateMismatch));
-        // Nothing is built on it: every HOT operation and publication is refused; durable authority unchanged.
+        // Nothing is built on it: every HOT operation is refused; the session's authority is unchanged.
         assert!(core.turn_begin_observe(&mut sub, k, &CEILING).is_err());
-        assert!(core.durable_request(&mut sub, k, kind_of(&core)).is_err());
+        assert!(core.live_identity(&mut sub, k).is_err());
         assert_eq!(core.snapshot().unwrap(), anchor);
     }
 
     #[test]
     fn observe_only_turns_keep_the_lifecycle_refusals() {
-        let dir = Dir::new("observe-refusals");
-        let mut core = new_core(&dir.0);
+        let mut core = new_core();
         let mut sub = Fake::composite(0.2);
         let k = composite_key(7);
         assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap_err().error, Rt::Closed.into());
-        core.open().unwrap();
+        open(&mut core);
         assert_eq!(core.turn_begin_observe(&mut sub, k, &CEILING).unwrap_err().error, Code::Unanchored.into());
         assert!(sub.calls().is_empty());
         core.anchor(&mut sub, k).unwrap();
@@ -3270,15 +2078,16 @@ mod observe_only {
             observe(&mut core, &mut other, composite_key(8), &observation(1)).unwrap_err().0,
             Rt::TurnNotOpen.into()
         );
-        assert_eq!(core.durable_request(&mut sub, k, kind_of(&core)).unwrap_err().error, Rt::TurnOpen.into());
+        assert_eq!(core.live_identity(&mut sub, k).unwrap_err().error, Rt::TurnOpen.into());
         // Close ends the turn natively: nothing installed.
         observe(&mut core, &mut sub, k, &observation(1)).unwrap();
         core.close();
         assert!(!sub.txn_open() && sub.memory().is_empty());
-        core.open().unwrap();
+        // The next session is unanchored: nothing of the last one is resumed.
+        open(&mut core);
         assert_eq!(
             core.turn_begin_observe(&mut other, composite_key(8), &CEILING).unwrap_err().error,
-            Code::StateMismatch.into()
+            Code::Unanchored.into()
         );
     }
 }

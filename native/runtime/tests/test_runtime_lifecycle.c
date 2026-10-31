@@ -1,22 +1,21 @@
-/* RuntimeCore's turn lifecycle over real native K1 (production runtime library): once a managed turn has opened a
- * native transaction, exactly one terminal native action ends it (commit or abort) before RuntimeCore forgets it,
- * whatever lifecycle path the caller takes: explicit abort, commit, close, destroy, reopen, fail-stop then close.
+/* RuntimeCore's turn lifecycle over real native K1 (production runtime library, ABI v8): once a managed turn has
+ * opened a native transaction, exactly one terminal native action ends it (commit or abort) before RuntimeCore forgets
+ * it, whatever lifecycle path the caller takes: explicit abort, commit, close, destroy, reopen, fail-stop then close.
  * Each case runs over a standalone K1 state (libelpis_ecsg_k1) and an FMS-resident one (libelpis_ecsg_k1_fms over a
- * real FMS context), and checks the native abort count, the retained-state digest, epoch and generation, the
- * durable continuity record, that the state takes another transaction, and for the resident state that the
- * transaction's WRITE pin is released and the adapter's own lifetime guard holds while the turn is open. A managed
- * commit is volatile (ABI v4): each case makes its state durable by an explicit durable publication first, so the
- * durable record restart sees is exactly the one the turn under test must not move.
+ * real, RAM-only FMS context), and checks the native abort count, the retained-state digest, epoch and generation,
+ * the session's authority, that the state takes another transaction, and for the resident state that the
+ * transaction's WRITE pin is released and the adapter's own lifetime guard holds while the turn is open. Everything is
+ * volatile: no path, file or directory is involved; a new runtime is a new session, which anchors the state afresh.
  *
- * Usage: test_runtime_lifecycle <scratch-dir>. Deterministic: no test threads, no sleeps. */
+ * Usage: test_runtime_lifecycle. Deterministic: no test threads, no sleeps. */
 #define _POSIX_C_SOURCE 200809L
 #include "elpis/ecsg_k1.h"
 #include "elpis/ecsg_k1_fms.h"
 #include "elpis/fms_pal_posix.h"
 #include "elpis/runtime.h"
 #define ELPIS_TEST_K1_FMS
-#include "ecs_c_runtime.h"
 #include "k1_tables.h"
+#include "session_runtime.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -31,7 +30,6 @@ enum { DIM = 6, WIDTH = 36, ROWS = 4, S3 = 83 };
 static elpis_runtime_budget BUDGET;
 static double W0[DIM * WIDTH], X[ROWS * DIM], Y[ROWS];
 static const elpis_runtime_experience SCHEDULE[2] = {{2, 3}, {2, 5}};
-static char SCRATCH[3072];
 
 /* One native K1 state of either kind, as RuntimeCore's descriptor and as the test inspects it natively. */
 typedef struct {
@@ -42,7 +40,7 @@ typedef struct {
     elpis_runtime_substrate d;
 } subject;
 
-static subject make(int resident, unsigned n) {
+static subject make(int resident) {
     subject s;
     memset(&s, 0, sizeof(s));
     s.resident = resident;
@@ -52,21 +50,16 @@ static subject make(int resident, unsigned n) {
         s.d = d;
         return s;
     }
-    char root[3200];
-    assert(snprintf(root, sizeof(root), "%s/cold-%u", SCRATCH, n) < (int)sizeof(root));
-    char cmd[3300];
-    assert(snprintf(cmd, sizeof(cmd), "rm -rf '%s' && mkdir -p '%s'", root, root) < (int)sizeof(cmd));
-    assert(system(cmd) == 0);
+    /* A RAM-only FMS context: WARM residency only, no COLD tier and no filesystem at all. */
     size_t envelope = elpis_ecsg_k1_envelope_bytes(DIM, WIDTH);
     fms_config c;
     memset(&c, 0, sizeof(c));
     c.tier_budget[FMS_WARM] = c.domain_ceiling[FMS_DOM_RAM] = (uint64_t)envelope * 8u;
-    c.tier_budget[FMS_COLD] = c.domain_ceiling[FMS_DOM_STORAGE] = (uint64_t)envelope * 100u;
     c.high_wm = 0.9f;
     c.low_wm = 0.7f;
     c.max_objects = 4;
     c.hot_absent_policy = c.cold_absent_policy = FMS_REJECT;
-    fms_pal *pal = fms_pal_posix_create(root);
+    fms_pal *pal = fms_pal_posix_create_ram_only();
     assert(pal);
     fms_ctx *ctx = fms_create(&c, pal);
     assert(ctx);
@@ -163,16 +156,12 @@ static void released(const subject *s) {
     }
 }
 
-static elpis_runtime *runtime_at(const char *dir, int fresh) {
-    if (fresh) {
-        char cmd[3300];
-        assert(snprintf(cmd, sizeof(cmd), "rm -rf '%s'", dir) < (int)sizeof(cmd));
-        assert(system(cmd) == 0);
-    }
+/* A new runtime, open: a new session. */
+static elpis_runtime *runtime(void) {
     elpis_runtime *rt = NULL;
     elpis_continuity_snapshot snap;
-    OK(test_runtime_create(dir, &rt));
-    OK(elpis_runtime_open(rt, &snap));
+    OK(test_runtime_create(&rt));
+    OK(test_runtime_open(rt, &snap));
     return rt;
 }
 
@@ -189,23 +178,10 @@ static void commit_turn(elpis_runtime *rt, const subject *s) {
     assert(out.committed == 1 && out.live_generation == out.transition.generation_after);
 }
 
-/* An explicit identity-only publication of the live state (no checkpoint store here), waited for. */
-static void make_durable(elpis_runtime *rt, const subject *s) {
-    elpis_runtime_durable_ticket t = durable_publish(rt, &s->d, ELPIS_RUNTIME_DURABLE_KIND_IDENTITY);
-    assert(t.status == ELPIS_RUNTIME_DURABLE_IDENTITY_PUBLISHED && t.recoverable == 0);
-}
-
 static uint64_t aborts(elpis_runtime *rt) {
     elpis_runtime_counters c;
     OK(elpis_runtime_read_counters(rt, &c, 0));
     return c.k1_aborts;
-}
-
-/* The durable record restart will see (read through a fresh runtime over the same directory). */
-static void durable(const char *dir, elpis_continuity_snapshot *out) {
-    elpis_runtime *rt = runtime_at(dir, 0);
-    OK(elpis_runtime_snapshot(rt, out));
-    elpis_runtime_destroy(&rt);
 }
 
 static int same_record(const elpis_continuity_snapshot *a, const elpis_continuity_snapshot *b) {
@@ -217,14 +193,11 @@ enum { CASE_ABORT, CASE_COMMIT, CASE_CLOSE, CASE_DESTROY, CASE_REOPEN, CASE_FAIL
 static const char *const NAMES[CASES] = {"abort", "commit", "close", "destroy", "reopen", "fail-stop+close"};
 
 static void lifecycle(int resident, int which) {
-    char dir[3200];
-    assert(snprintf(dir, sizeof(dir), "%s/continuity-%d-%d", SCRATCH, resident, which) < (int)sizeof(dir));
-    subject s = make(resident, (unsigned)(resident * 100 + which));
-    elpis_continuity_snapshot snap, before_record, after_record;
-    elpis_runtime *rt = runtime_at(dir, 1);
+    subject s = make(resident);
+    elpis_continuity_snapshot snap, before_record;
+    elpis_runtime *rt = runtime();
     OK(elpis_runtime_anchor(rt, &s.d, &snap));
     commit_turn(rt, &s);
-    make_durable(rt, &s);
     OK(elpis_runtime_snapshot(rt, &before_record));
     retained before = observe(&s);
     OK(begin(rt, &s));   /* the schedule ran on the candidate; nothing committed yet */
@@ -259,13 +232,13 @@ static void lifecycle(int resident, int which) {
         retained after = observe(&s);
         assert(after.generation == before.generation + 1 && after.epoch == before.epoch + 8);
         assert(out.live_generation == after.generation && out.transition.generation_before == before.generation);
-        /* Volatile: the durable record has not moved. */
+        /* Volatile: the session's anchored identity has not moved; the live identity is the new state's. */
         OK(elpis_runtime_snapshot(rt, &snap));
         assert(same_record(&snap, &before_record));
-        /* Explicit durability makes it the authority restart resumes. */
-        make_durable(rt, &s);
-        OK(elpis_runtime_snapshot(rt, &snap));
-        assert(!memcmp(snap.k1_state_digest, after.digest, 32));
+        uint8_t live[32];
+        uint64_t generation = 0;
+        OK(elpis_runtime_live_identity(rt, &s.d, live, &generation));
+        assert(!memcmp(live, after.digest, 32) && generation == after.generation);
         break;
     }
     case CASE_CLOSE:
@@ -283,25 +256,22 @@ static void lifecycle(int resident, int which) {
         assert(aborts(rt) == 0 && txn_open(&s, NULL));   /* refused, and the turn is kept, not forgotten */
         elpis_runtime_close(rt);
         assert(aborts(rt) == 1);
-        OK(elpis_runtime_open(rt, &snap));   /* open -> close -> open */
+        OK(test_runtime_open(rt, &snap));   /* open -> close -> open: a new session, unanchored */
+        assert(!snap.anchored);
         break;
     case CASE_FAIL_STOP: {
         elpis_continuity_snapshot authority;
-        uint8_t assertion[32], receipt[32];
+        uint8_t assertion[32];
         memset(assertion, 0x11, 32);
-        memset(receipt, 0x22, 32);
         OK(elpis_runtime_evolution_authority(rt, &authority));
         OK(elpis_runtime_evolution_reserve(rt, &authority.evolution, assertion, &snap));
-        OK(elpis_runtime_evolution_finalize(rt, receipt, &snap));
-        OK(elpis_runtime_snapshot(rt, &before_record));
-        /* A reservation against the replaced authority fail-stops the runtime with the turn still open. */
-        assert(elpis_runtime_evolution_reserve(rt, &authority.evolution, assertion, &snap) ==
-               ELPIS_CONTINUITY_AUTHORITY_MISMATCH);
-        assert(elpis_runtime_fault(rt) == ELPIS_CONTINUITY_AUTHORITY_MISMATCH && txn_open(&s, NULL));
+        /* The boundary could not complete the attempt: the runtime fail-stops with the turn still open. */
+        OK(elpis_runtime_evolution_abandon(rt));
+        assert(elpis_runtime_fault(rt) == ELPIS_CONTINUITY_EVOLUTION_PENDING && txn_open(&s, NULL));
         elpis_runtime_close(rt);
         assert(aborts(rt) == 1);
-        OK(elpis_runtime_open(rt, &snap));
-        assert(elpis_runtime_fault(rt) == 0);
+        OK(test_runtime_open(rt, &snap));   /* a new session: the fail-stop ended with the last one */
+        assert(elpis_runtime_fault(rt) == 0 && !snap.anchored);
         break;
     }
     default:
@@ -309,21 +279,20 @@ static void lifecycle(int resident, int which) {
     }
 
     if (which != CASE_COMMIT) {
-        /* Nothing installed, nothing published: W, epoch, H, a (the digest), generation and continuity. */
+        /* Nothing installed: W, epoch, H, a (the digest) and generation. */
         assert(same(before, observe(&s)));
-        if (rt) {
-            elpis_runtime_destroy(&rt);
+        if (rt && (which == CASE_ABORT)) {
+            OK(elpis_runtime_snapshot(rt, &snap)); /* the session's authority did not move either */
+            assert(same_record(&snap, &before_record));
         }
-        durable(dir, &after_record);
-        assert(same_record(&before_record, &after_record));
-        assert(!memcmp(after_record.k1_state_digest, before.digest, 32));
     }
     if (rt) {
-        elpis_runtime_destroy(&rt);   /* unbinds the state: the residency hold is dropped */
+        elpis_runtime_destroy(&rt);   /* unbinds the state: the residency hold is dropped; the session ends */
     }
     released(&s);
-    /* The same live state takes the next managed turn, over a runtime resumed from the same continuity. */
-    rt = runtime_at(dir, 0);
+    /* The same live state takes the next managed turn in a new session, which anchors it afresh. */
+    rt = runtime();
+    OK(elpis_runtime_anchor(rt, &s.d, &snap));
     commit_turn(rt, &s);
     assert(observe(&s).generation == before.generation + (which == CASE_COMMIT ? 2u : 1u));
     elpis_runtime_destroy(&rt);
@@ -334,13 +303,11 @@ static void lifecycle(int resident, int which) {
 
 /* Lifecycle calls with no turn open make no native K1 call. */
 static void idle(int resident) {
-    char dir[3200];
-    assert(snprintf(dir, sizeof(dir), "%s/continuity-idle-%d", SCRATCH, resident) < (int)sizeof(dir));
-    subject s = make(resident, (unsigned)(900 + resident));
+    subject s = make(resident);
     elpis_continuity_snapshot snap;
-    elpis_runtime *rt = runtime_at(dir, 1);
+    elpis_runtime *rt = runtime();
     elpis_runtime_destroy(&rt);
-    OK(test_runtime_create(dir, &rt));
+    OK(test_runtime_create(&rt));
     elpis_runtime_close(rt);   /* never opened */
     OK(elpis_runtime_open(rt, &snap));
     OK(elpis_runtime_anchor(rt, &s.d, &snap));
@@ -360,13 +327,8 @@ static void idle(int resident) {
     printf("lifecycle %-10s %-16s PASS\n", resident ? "fms-k1" : "k1", "no turn");
 }
 
-int main(int argc, char **argv) {
-    assert(argc == 2 && strlen(argv[1]) < 2048);
-    strcpy(SCRATCH, argv[1]);
-    char cmd[3200];
-    assert(snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", SCRATCH) < (int)sizeof(cmd));
-    assert(system(cmd) == 0);
-    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V7);
+int main(void) {
+    assert(elpis_runtime_abi_version() == ELPIS_RUNTIME_ABI_V8);
     assert(elpis_runtime_fuel_ceiling(&BUDGET) == ELPIS_RUNTIME_OK);
     for (int i = 0; i < DIM * WIDTH; ++i) W0[i] = 0.2 * (double)((i * 7) % 13 - 6) / 13.0;
     for (int i = 0; i < ROWS * DIM; ++i) X[i] = (double)((i * 5) % 11 - 5) / 16.0;

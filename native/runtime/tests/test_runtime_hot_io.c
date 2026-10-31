@@ -1,39 +1,28 @@
-/* Gate A at the system-call boundary: a managed HOT turn performs no persistent I/O, and never waits for durability.
+/* Zero persistent I/O at the C library's boundary, over a complete RuntimeCore ABI v8 session lifecycle.
  *
  * This executable interposes the C library's persistent-I/O entry points (every write, positional write, sync,
- * rename, unlink, truncate, directory creation and every open that can create or write) and counts each call by
- * the thread that made it. RuntimeCore (the testing runtime library: its worker can be held) runs over a real
- * standalone K1 state with a provisioned K1 checkpoint store attached, so a publication on the HOT lane would have
- * real files to write:
+ * rename, unlink, truncate, directory creation and every open that can create or write) and its read-side entry
+ * points, and counts each call by the thread that made it. RuntimeCore (the production library) then runs a whole
+ * lifecycle over a real standalone K1 state: create, open (a session), the operator's sources and events (founding,
+ * lifecycle, a version change, the retired persistence-only kinds), the anchor, 120 managed turns and 12 queries, the
+ * live identity, an evolution reservation and finalization, a release and a rebind, close, a second session and
+ * destroy. RuntimeCore must make zero persistent-I/O calls and zero reads on every thread: it has no persistent-state
+ * path at all. A deliberate write to a pipe by the test itself is counted first, so the interposer is shown live.
  *
- *   1. anchor (explicit, durable: it does write) and one durable publication: the interposer sees the writes, so it
- *      is live, and they are made by the durability worker for the publication;
- *   2. the durability worker is held with a captured request pending; 120 managed turns (begin + commit) and 12
- *      queries run on this thread: zero persistent-I/O calls on ANY thread while they run (the worker cannot have
- *      written either: it is held), and none of them waited (the only durability work is stalled);
- *   3. the worker is released: the pending request resolves ACKNOWLEDGED (the capture taken when it was requested,
- *      not the live state after 120 more turns), with its I/O on the worker thread only, never this one;
- *   4. an FMS-resident K1 state with a real cold store (docs/RUNTIME_CORE.md, "HOT residency"): while bound it is
- *      held resident, so managed turns and queries under memory pressure perform no read or write at all and FMS
- *      promotes nothing; unbound and demoted, a HOT operation is refused RUNTIME_NOT_RESIDENT with no read, write or
- *      promotion; only the explicit materialization reads the cold store.
+ * Then an FMS-resident K1 state over a real, RAM-only FMS context (no COLD tier, no filesystem): while bound it is
+ * held resident, managed turns and queries under memory pressure perform no read or write, FMS promotes nothing, and
+ * a registration past the WARM budget is refused (FMS_E_LIMIT) rather than spilled anywhere.
  *
- * Read-side calls (read, positional reads, read-only opens) are counted separately so a cold-store read would show.
- *
- * Every runtime publishes to an ECS_C authority provisioned for it (ecs_c_runtime.h), the only durable authority
- * since ABI v7 (v6 ran this gate a second time over standalone continuity).
- *
- * Usage: test_runtime_hot_io <scratch-dir>. */
+ * Usage: test_runtime_hot_io. */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
 #define ELPIS_TEST_K1_FMS
-#include "elpis/ecs_c_authority.h"
 #include "elpis/ecsg_k1.h"
 #include "elpis/fms_pal_posix.h"
 #include "elpis/runtime.h"
-#include "ecs_c_runtime.h"
 #include "k1_tables.h"
+#include "session_runtime.h"
 
 #include <assert.h>
 #include <dlfcn.h>
@@ -47,9 +36,6 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
-
-/* The testing library's durability controls (not in the production header). */
-int elpis_runtime_testing_durable_hold(elpis_runtime *runtime, int hold);
 
 #define OK(x) assert((x) == ELPIS_RUNTIME_OK)
 enum { DIM = 6, WIDTH = 36, ROWS = 4, S3 = 83, TURNS = 120 };
@@ -166,67 +152,122 @@ static fms_stats residency(elpis_ecsg_k1_fms *r) {
     return m.residency;
 }
 
-/* 4. HOT residency over a real FMS context with a POSIX cold store. */
-/* A closed runtime over a freshly provisioned ECS_C authority under `dir`. */
-static elpis_runtime *create_runtime(const char *dir) {
+/* The complete session lifecycle over one standalone K1 state; the test's own calls between are not RuntimeCore's,
+ * so every RuntimeCore call is bracketed by the counters. */
+static void lifecycle(void) {
+    elpis_ecsg_k1 *k1 = NULL;
+    assert(elpis_ecsg_k1_create(DIM, WIDTH, 8, W0, &k1) == ELPIS_ECSG_K1_OK);
+    const elpis_runtime_substrate d = {ELPIS_RUNTIME_SUBSTRATE_K1, 0, k1, 0, 1, DIM, &K1_API};
+    all_io();
     elpis_runtime *rt = NULL;
-    OK(test_runtime_create(dir, &rt));
-    return rt;
+    elpis_continuity_snapshot snap;
+    OK(test_runtime_create(&rt));
+    OK(test_runtime_open(rt, &snap)); /* a session and the operator's three sources */
+    OK(elpis_runtime_anchor(rt, &d, &snap));
+    uint64_t live = 0;
+    {
+        uint8_t digest[32];
+        OK(elpis_runtime_live_identity(rt, &d, digest, &live));
+    }
+    for (int n = 0; n < TURNS; ++n) {
+        turn(rt, &d, &live);
+        if (n % 10 == 0) {
+            double out[ROWS];
+            elpis_runtime_query_result q;
+            OK(elpis_runtime_query(rt, &d, X, ROWS * DIM, out, ROWS, &BUDGET, &q));
+            assert(q.live_generation == live);
+        }
+    }
+    /* Operator events: a source's lifecycle and version; the retired persistence-only kinds are refused. */
+    {
+        elpis_runtime_authority_entity row;
+        OK(elpis_runtime_authority_entity_at(rt, 2, &row));
+        uint8_t e[512];
+        memset(e, 0, sizeof e);
+        e[80] = ELPIS_ECS_C_ACTIVE;
+        e[81] = ELPIS_ECS_C_DORMANT;
+        OK(test_runtime_operator(rt, 3, row.id, e));
+        memset(e, 0, sizeof e);
+        test_runtime_put_u64(e + 80, 1);
+        test_runtime_put_u64(e + 88, 2);
+        test_runtime_put_u32(e + 96, 8);
+        memset(e + 104, 9, 32);
+        OK(test_runtime_operator(rt, 4, row.id, e));
+        static const uint8_t none[32] = {0};
+        for (uint16_t kind = 10; kind <= 13; ++kind) { /* the retired persistence-only kinds */
+            memset(e, 0, sizeof e);
+            assert(test_runtime_operator(rt, kind, none, e) == ELPIS_RUNTIME_RETIRED);
+        }
+    }
+    /* Evolution, in the session. */
+    {
+        uint8_t assertion[32], receipt[32];
+        memset(assertion, 0x11, 32);
+        memset(receipt, 0x22, 32);
+        OK(elpis_runtime_evolution_authority(rt, &snap));
+        OK(elpis_runtime_evolution_reserve(rt, &snap.evolution, assertion, &snap));
+        OK(elpis_runtime_evolution_finalize(rt, receipt, &snap));
+    }
+    /* Release and rebind (the live lineage), status and counters, close, a second session, destroy. */
+    OK(elpis_runtime_release(rt, &d));
+    turn(rt, &d, &live);
+    elpis_runtime_authority status;
+    OK(elpis_runtime_authority_status(rt, &status));
+    elpis_runtime_counters counters;
+    OK(elpis_runtime_read_counters(rt, &counters, 0));
+    assert(counters.k1_commits == TURNS + 1 && counters.k1_queries == 12);
+    elpis_runtime_close(rt);
+    OK(test_runtime_open(rt, &snap));
+    OK(elpis_runtime_anchor(rt, &d, &snap));
+    turn(rt, &d, &live);
+    elpis_runtime_destroy(&rt);
+    const long writes_main = take(&main_io), writes_other = take(&other_io);
+    const long reads_main = take(&main_reads), reads_other = take(&other_reads);
+    printf("a complete session lifecycle (%d turns, 12 queries, operator events, evolution, two sessions): "
+           "%ld+%ld persistent-I/O calls, %ld+%ld reads (this thread + others)\n",
+           TURNS + 2, writes_main, writes_other, reads_main, reads_other);
+    assert(writes_main == 0 && writes_other == 0 && reads_main == 0 && reads_other == 0);
+    assert(elpis_ecsg_k1_destroy(&k1) == ELPIS_ECSG_K1_OK);
 }
 
-static void fms_resident(const char *scratch) {
-    char cold[2048], continuity[2048], cmd[4300];
-    assert(snprintf(cold, sizeof cold, "%s/cold", scratch) < (int)sizeof cold);
-    assert(snprintf(continuity, sizeof continuity, "%s/continuity-fms", scratch) < (int)sizeof continuity);
-    assert(snprintf(cmd, sizeof cmd, "rm -rf '%s' '%s' && mkdir -p '%s'", cold, continuity, cold) < (int)sizeof cmd);
-    assert(system(cmd) == 0);
+/* An FMS-resident K1 state over a real, RAM-only FMS context. */
+static void fms_resident(void) {
     const uint64_t image = elpis_ecsg_k1_image_bytes(DIM, WIDTH);
     fms_config c;
     memset(&c, 0, sizeof c);
-    c.tier_budget[FMS_WARM] = c.domain_ceiling[FMS_DOM_RAM] = 2u * image + image / 2u;   /* two images fit */
-    c.tier_budget[FMS_COLD] = c.domain_ceiling[FMS_DOM_STORAGE] = 64u * image;
+    c.tier_budget[FMS_WARM] = c.domain_ceiling[FMS_DOM_RAM] = 2u * image + image / 2u; /* two images fit */
     c.high_wm = 0.9f;
     c.low_wm = 0.7f;
     c.max_objects = 8;
     c.hot_absent_policy = c.cold_absent_policy = FMS_REJECT;
-    fms_pal *pal = fms_pal_posix_create(cold);
+    fms_pal *pal = fms_pal_posix_create_ram_only();
     assert(pal);
     fms_ctx *ctx = fms_create(&c, pal);
     assert(ctx);
     elpis_ecsg_k1_fms *fr = NULL;
     assert(elpis_ecsg_k1_fms_create(ctx, 8, &fr) == ELPIS_ECSG_K1_OK);
-    uint64_t a = 0, others[4] = {0, 0, 0, 0};
+    uint64_t a = 0, b = 0, refused = 0;
     uint8_t key[32] = {1};
     assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &a) == ELPIS_ECSG_K1_OK);
     const elpis_runtime_substrate fd = {ELPIS_RUNTIME_SUBSTRATE_K1_FMS, 0, fr, a, 2, DIM, &FMS_API};
     elpis_runtime *rt = NULL;
     elpis_continuity_snapshot snap;
-    rt = create_runtime(continuity);
-    OK(elpis_runtime_open(rt, &snap));
-    OK(elpis_runtime_anchor(rt, &fd, &snap));   /* binds it: held resident from here on */
+    OK(test_runtime_create(&rt));
+    OK(test_runtime_open(rt, &snap));
+    OK(elpis_runtime_anchor(rt, &fd, &snap)); /* binds it: held resident from here on */
     uint64_t live = 0;
     {
         uint8_t digest[32];
         OK(elpis_runtime_live_identity(rt, &fd, digest, &live));
     }
-    /* Which unpinned WARM state FMS demotes is recency-weighted on the wall clock (fms_core.c, evict_cost_ns; a release
-     * counts as an access), so no precondition here relies on it. Each is exact through FMS's one hard law, a pinned
-     * object is never demoted: when exactly one WARM state is unpinned, an arrival can displace only that one.
-     *
-     * Memory pressure while bound: two states arrive and the pump runs; the second can displace only the first,
-     * never the held bound state. With every other WARM state held too, nothing is eligible: the newcomer is
-     * refused rather than the bound state demoted (without the runtime's hold, `a` would be the one victim). */
+    /* Memory pressure while bound: a second state fits; a third is refused (FMS_E_LIMIT). With no COLD tier there is
+     * nothing to demote to: nothing is spilled, and the bound state stays WARM. */
     key[0] = 2;
-    assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &others[0]) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &b) == ELPIS_ECSG_K1_OK);
     key[0] = 3;
-    assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &others[1]) == ELPIS_ECSG_K1_OK);
-    assert(elpis_ecsg_k1_fms_pump(fr) == ELPIS_ECSG_K1_OK);
-    assert(info_of(fr, a).tier == FMS_WARM && info_of(fr, others[0]).tier == FMS_COLD);
-    OK(elpis_ecsg_k1_fms_resident_hold(fr, others[1]));
-    key[0] = 4;
-    assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &others[2]) ==
+    assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &refused) ==
            ELPIS_ECSG_K1_FMS_ERROR_BASE + FMS_E_LIMIT);
-    assert(others[2] == 0u && info_of(fr, a).tier == FMS_WARM && info_of(fr, a).lease_count == 1u);
+    assert(refused == 0u && info_of(fr, a).tier == FMS_WARM && info_of(fr, b).tier == FMS_WARM);
     const fms_stats s0 = residency(fr);
     all_io();
     for (int n = 0; n < 40; ++n) {
@@ -238,67 +279,20 @@ static void fms_resident(const char *scratch) {
             assert(q.live_generation == live);
         }
     }
-    long io = all_io();
-    fms_stats s1 = residency(fr);
-    printf("40 held FMS-resident turns: %ld read or write calls; %llu promotions\n", io,
-           (unsigned long long)(s1.promotions - s0.promotions));
-    assert(io == 0 && s1.promotions == s0.promotions && s1.cold_reads == s0.cold_reads);
-
-    /* Unbound, it may be demoted; then a HOT operation is refused before anything touches it: no I/O at all. The only
-     * other WARM state is still held, so the next arrival can displace only `a`. */
-    OK(elpis_runtime_release(rt, &fd));
-    assert(info_of(fr, a).lease_count == 0u);
-    key[0] = 5;
-    assert(elpis_ecsg_k1_fms_register(fr, key, DIM, WIDTH, 8, W0, &others[3]) == ELPIS_ECSG_K1_OK);
-    assert(info_of(fr, a).tier == FMS_COLD && info_of(fr, others[1]).tier == FMS_WARM);
-    const fms_stats s2 = residency(fr);
-    elpis_continuity_snapshot durable_before, durable_after;
-    elpis_runtime_durability lane_before, lane_after;
-    OK(elpis_runtime_snapshot(rt, &durable_before));
-    OK(elpis_runtime_durable_status(rt, &lane_before));
-    all_io();
-    {
-        double out[ROWS], s3[S3];
-        elpis_runtime_query_result q;
-        elpis_runtime_turn_begin_result begun;
-        elpis_runtime_durable_ticket ticket;
-        assert(elpis_runtime_query(rt, &fd, X, ROWS * DIM, out, ROWS, &BUDGET, &q) == ELPIS_RUNTIME_NOT_RESIDENT);
-        assert(elpis_runtime_turn_begin(rt, &fd, X, ROWS * DIM, Y, ROWS, SCHEDULE, 2, 0.002, &BUDGET, s3, S3,
-                                        &begun) == ELPIS_RUNTIME_NOT_RESIDENT);
-        /* A durable request needs the bytes too: refused before any capture, and nothing durable moves. */
-        assert(elpis_runtime_identity_request(rt, &fd, &ticket) == ELPIS_RUNTIME_NOT_RESIDENT);
-    }
-    OK(elpis_runtime_snapshot(rt, &durable_after));
-    OK(elpis_runtime_durable_status(rt, &lane_after));
-    assert(memcmp(&durable_before, &durable_after, sizeof durable_before) == 0);
-    assert(memcmp(&lane_before, &lane_after, sizeof lane_before) == 0);
-    io = all_io();
-    fms_stats s3 = residency(fr);
-    printf("HOT operations on a demoted state: refused NOT_RESIDENT with %ld read or write calls, %llu promotions\n",
-           io, (unsigned long long)(s3.promotions - s2.promotions));
-    assert(io == 0 && s3.promotions == s2.promotions && s3.cold_reads == s2.cold_reads);
-    assert(elpis_runtime_fault(rt) == 0 && info_of(fr, a).tier == FMS_COLD && info_of(fr, a).lease_count == 0);
-
-    /* The explicit materialization (a WARM operation) is the only path that reads it back; then HOT work resumes
-     * on the live lineage with no I/O. */
-    assert(elpis_ecsg_k1_fms_materialize(fr, a) == ELPIS_ECSG_K1_OK);
-    const long reads = take(&main_reads);
-    all_io();
-    assert(reads > 0 && residency(fr).promotions == s2.promotions + 1u);
-    turn(rt, &fd, &live);
-    assert(all_io() == 0);
-    printf("explicit materialization: %ld read calls, then HOT work resumed with none\n", reads);
-
-    elpis_runtime_destroy(&rt);   /* unbinds: the residency hold is dropped */
+    const long io = all_io();
+    const fms_stats s1 = residency(fr);
+    printf("40 held FMS-resident turns (RAM-only FMS): %ld read or write calls; %llu promotions, %llu demotions\n", io,
+           (unsigned long long)(s1.promotions - s0.promotions), (unsigned long long)(s1.demotions - s0.demotions));
+    assert(io == 0 && s1.promotions == s0.promotions && s1.demotions == s0.demotions && s1.cold_reads == 0);
+    assert(s1.tier_bytes[FMS_COLD] == 0);
+    elpis_runtime_destroy(&rt); /* unbinds: the residency hold is dropped */
     assert(info_of(fr, a).lease_count == 0);
-    OK(elpis_ecsg_k1_fms_resident_release(fr, others[1]));
     assert(elpis_ecsg_k1_fms_close(fr, &a) == ELPIS_ECSG_K1_OK);
-    for (int k = 0; k < 4; ++k) assert(elpis_ecsg_k1_fms_close(fr, &others[k]) == ELPIS_ECSG_K1_OK);
+    assert(elpis_ecsg_k1_fms_close(fr, &b) == ELPIS_ECSG_K1_OK);
     assert(elpis_ecsg_k1_fms_destroy(&fr) == ELPIS_ECSG_K1_OK);
 }
 
-int main(int argc, char **argv) {
-    assert(argc == 2);
+int main(void) {
     on_main = 1;
     /* The lifecycle test's fixture (test_runtime_lifecycle.c). */
     for (int i = 0; i < DIM * WIDTH; ++i) W0[i] = 0.2 * (double)((i * 7) % 13 - 6) / 13.0;
@@ -306,95 +300,19 @@ int main(int argc, char **argv) {
     for (int i = 0; i < ROWS; ++i) Y[i] = (double)(i % 3 - 1) / 8.0;
     OK(elpis_runtime_fuel_ceiling(&BUDGET));
 
-    char continuity[2048], checkpoint[2048], cmd[4200];
-    assert(snprintf(continuity, sizeof continuity, "%s/continuity", argv[1]) < (int)sizeof continuity);
-    assert(snprintf(checkpoint, sizeof checkpoint, "%s/checkpoint", argv[1]) < (int)sizeof checkpoint);
-    assert(snprintf(cmd, sizeof cmd, "rm -rf '%s' '%s' && mkdir -p '%s'", continuity, checkpoint, argv[1]) <
-           (int)sizeof cmd);
-    assert(system(cmd) == 0);
-
-    elpis_ecsg_k1 *k1 = NULL;
-    assert(elpis_ecsg_k1_create(DIM, WIDTH, 8, W0, &k1) == ELPIS_ECSG_K1_OK);
-    const elpis_runtime_substrate d = {ELPIS_RUNTIME_SUBSTRATE_K1, 0, k1, 0, 1, DIM, &K1_API};
-    elpis_runtime *rt = NULL;
-    elpis_continuity_snapshot snap;
-    OK(elpis_runtime_checkpoint_provision((const uint8_t *)checkpoint, strlen(checkpoint),
-                                          elpis_ecsg_k1_envelope_bytes(DIM, WIDTH)));
-    rt = create_runtime(continuity);
-    OK(elpis_runtime_open(rt, &snap));
-    OK(elpis_runtime_checkpoint_attach(rt, (const uint8_t *)checkpoint, strlen(checkpoint)));
-    OK(elpis_runtime_anchor(rt, &d, &snap));
-
-    /* 1. The interposer is live: a durable publication writes and syncs, on the worker thread only. */
-    uint64_t live = 0;
-    {
-        uint8_t digest[32];
-        OK(elpis_runtime_live_identity(rt, &d, digest, &live));
-    }
-    turn(rt, &d, &live);
-    take(&main_io);
-    take(&other_io);
-    elpis_runtime_durable_ticket t = durable_publish(rt, &d, ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE);
-    assert(t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED && t.recoverable == 1);
-    const long published_main = take(&main_io), published_worker = take(&other_io);
-    printf("durable publication: %ld persistent-I/O calls on the worker, %ld on the caller\n", published_worker,
-           published_main);
-    assert(published_worker >= 4);   /* slot write + sync, record write + sync at least */
-    assert(published_main == 0);
-
-    /* 2. The worker is held with a captured request pending: HOT turns and queries do no persistent I/O. */
-    assert(elpis_runtime_testing_durable_hold(rt, 1) == ELPIS_RUNTIME_OK);
-    turn(rt, &d, &live);
-    elpis_runtime_durable_ticket pending;
-    OK(elpis_runtime_recoverable_request(rt, &d, &pending));
-    assert(pending.status == ELPIS_RUNTIME_DURABLE_REQUESTED && pending.generation == live);
-    uint8_t captured[32];
-    {
-        uint64_t g = 0;
-        OK(elpis_runtime_live_identity(rt, &d, captured, &g));
-        assert(g == live);
-    }
-    elpis_runtime_counters before;
-    OK(elpis_runtime_read_counters(rt, &before, 1));
+    /* The interposer is live: the test's own write to a pipe (not storage) is counted on this thread. */
+    int fds[2];
+    assert(pipe(fds) == 0);
     all_io();
-    for (int n = 0; n < TURNS; ++n) {
-        turn(rt, &d, &live);
-        if (n % 10 == 0) {
-            double out[ROWS];
-            elpis_runtime_query_result q;
-            OK(elpis_runtime_query(rt, &d, X, ROWS * DIM, out, ROWS, &BUDGET, &q));
-            assert(q.live_generation == live);
-        }
-    }
-    const long hot_main = take(&main_io), hot_other = take(&other_io);
-    elpis_runtime_counters after;
-    OK(elpis_runtime_read_counters(rt, &after, 0));
-    printf("%d held turns: %ld persistent-I/O calls on the HOT thread, %ld on any other thread\n", TURNS, hot_main,
-           hot_other);
-    assert(hot_main == 0 && hot_other == 0);
-    assert(take(&main_reads) == 0 && take(&other_reads) == 0);   /* and no read either */
-    assert(after.k1_commits == TURNS && after.publications == 0 && after.k1_state_digests == 0 &&
-           after.k1_identities == 0 && after.k1_captures == 0 && after.durable_requests == 0);
-    elpis_runtime_durability status;
-    OK(elpis_runtime_durable_status(rt, &status));
-    assert(status.pending == 1 && status.live_generation == live);
+    assert(write(fds[1], "x", 1) == 1);
+    char c = 0;
+    assert(read(fds[0], &c, 1) == 1 && c == 'x');
+    assert(take(&main_io) == 1 && take(&main_reads) == 1);
+    close(fds[0]);
+    close(fds[1]);
 
-    /* 3. Released: the pending capture (not the live state) becomes durable, written by the worker only. */
-    assert(elpis_runtime_testing_durable_hold(rt, 0) == ELPIS_RUNTIME_OK);
-    elpis_runtime_durable_ticket done;
-    OK(elpis_runtime_durable_wait(rt, pending.sequence, 30000u, &done));
-    assert(done.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED && done.recoverable == 1);
-    assert(!memcmp(done.identity, captured, 32));
-    OK(elpis_runtime_snapshot(rt, &snap));
-    assert(!memcmp(snap.k1_state_digest, captured, 32));
-    const long released_main = take(&main_io), released_worker = take(&other_io);
-    printf("released publication: %ld persistent-I/O calls on the worker, %ld on the caller\n", released_worker,
-           released_main);
-    assert(released_main == 0 && released_worker >= 4);
-
-    elpis_runtime_destroy(&rt);
-    elpis_ecsg_k1_destroy(&k1);
-    fms_resident(argv[1]);
-    printf("test_runtime_hot_io: OK\n");
+    lifecycle();
+    fms_resident();
+    printf("test_runtime_hot_io (ABI v8): OK\n");
     return 0;
 }
