@@ -1,5 +1,17 @@
 # RuntimeCore: the runtime's systems authority in Rust
 
+> **VOLATILE MIGRATION: INCOMPLETE** (`docs/ELPIS_MISSION.md`, Amendment 3; `docs/VOLATILE_RUNTIME_CENSUS.md`).
+> RuntimeCore ABI v7, described below, is **nonconforming** under the volatile-native directive. It still reaches
+> persistent storage through these paths (`elpis.runtime.persistence.RUNTIME_CORE_PERSISTENT_ABI`):
+> - durable publication: `elpis_runtime_create_ecs_c` over the authority's directories, the anchor's publication,
+>   `recoverable_request` and `identity_request`, and the durability lane, a background worker that writes;
+> - the checkpoint store: provision, attach, recover, discard and adopt;
+> - the evolution reservation's durable transitions, and `authority_transition`.
+>
+> Its successor is ABI v8, over the volatile ECS_C session (`docs/ECS_C_SESSION.md`), with no permitted
+> persistent-state write path (phase V3; not implemented). This document is kept as the historical v7
+> specification. Its durability sections describe what is being retired, not a target.
+
 `native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v7) owns the mutable systems
 authority of an open Elpis runtime and is the one native composer of ECS_G (K1, reached through function tables) and
 ECS_C (the memory, through the composite table; the ECS_C authority, embedded as its only durable authority). Its

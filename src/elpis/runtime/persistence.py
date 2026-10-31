@@ -18,6 +18,14 @@ Classes:
 * ``OFFLINE_RESEARCH_ONLY``: generators and laboratories outside the runtime; never reachable from it.
 * ``PROHIBITED_FROM_AUTONOMOUS_RUNTIME``: must not exist on, or be reconnected to, the autonomous path.
 
+Superseded in direction (docs/ELPIS_MISSION.md, Amendment 3; docs/VOLATILE_RUNTIME_CENSUS.md). The volatile-native
+directive retires the persistent runtime: no operational state may be written to persistent storage under any
+circumstance, bounded or not, autonomous or operator-requested. The classes above describe the code as it still is;
+:data:`VOLATILE_CENSUS` gives every writer its standing under the directive, and :data:`RUNTIME_CORE_PERSISTENT_ABI`
+and :data:`NONCONFORMING_OPERATIONS` name the still-reachable durable paths. While any of them is non-empty
+(:data:`VOLATILE_MIGRATION_COMPLETE` is False) no document may describe the runtime as diskless
+(``tests/boundary/test_volatile_runtime.py``).
+
 This module is declarative. It holds no state, opens nothing and grants nothing.
 """
 from __future__ import annotations
@@ -201,6 +209,25 @@ WRITERS: tuple[PersistentWriter, ...] = (
         "research_laboratories", R, (), (),
         "Write-once laboratory evidence under research/; never imported by src/."),
     PersistentWriter(
+        "python_reference_deployment", O,
+        ("elpis.runtime.deployment:init_deployment", "elpis.runtime.deployment:Deployment.create_lineage"), (),
+        "The offline reference interface's deployment (elpis.runtime.deployment, docs/OPERATING_ELPIS.md): init "
+        "creates a home holding elpis.json, native-catalog.json and the pinned libraries (write-once files, synced, "
+        "never replaced); create writes lineage/lineage.json once and provisions the ECS_C authority and the "
+        "checkpoint store beneath it. Each is one explicit operator command, refused when its files exist. Not "
+        "reached by a Runtime operation (recorded by the volatile census of the V0 phase; it was unregistered)."),
+    PersistentWriter(
+        "acceptance_harness", R, ("elpis.runtime.acceptance:Acceptance",), (),
+        "System acceptance of an installed deployment (python -m elpis.runtime.acceptance): fresh deployments, "
+        "copies and one JSON report under a caller-supplied work directory that must not exist or be empty. A "
+        "qualification instrument run by a developer; never imported by a composer (recorded by the volatile "
+        "census of the V0 phase; it was unregistered)."),
+    PersistentWriter(
+        "developer_release_bundle", R, ("elpis.runtime.release:build_bundle",), (),
+        "A developer installation bundle (python -m elpis.runtime.release): one new directory per explicit "
+        "packaging command (source archive, libraries, manifest, sums). Packaging, never imported by a composer "
+        "(recorded by the volatile census of the V0 phase; it was unregistered)."),
+    PersistentWriter(
         "persistent_hacf_corpus", P, (),
         ("native/pipeline/ingress/bridge/ingress_bridge.c:elpis_ingress_env_open",),
         "Retired: the corpus is SQLite :memory: only (elpis_corpus_open_ephemeral) and persistent ingress "
@@ -252,3 +279,134 @@ def writer(writer_id: str) -> PersistentWriter:
         if w.id == writer_id:
             return w
     raise KeyError(writer_id)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# The volatile-native census (V0; docs/VOLATILE_RUNTIME_CENSUS.md, docs/ELPIS_MISSION.md, Amendment 3).
+# ---------------------------------------------------------------------------------------------------------------
+
+class VolatileDisposition(str, Enum):
+    """A writer's standing under the volatile-native directive.
+
+    * ``NONCONFORMING_RUNTIME``: writes operational state (records, slots, checkpoints, journals, learned
+      associations, cold-tier objects, deployment state) to persistent storage. To be retired from the active
+      architecture; kept only as clearly labelled archival code once retired, never behind a flag.
+    * ``OFFLINE_ARTIFACT_PRODUCER``: produces persistent artifacts outside the runtime; never reachable from a
+      composer, and every run is a separately and explicitly authorized offline act (directive V7).
+    * ``DEVELOPMENT_ONLY``: tests, qualification instruments, laboratories and packaging; never part of the runtime.
+    * ``RETIRED``: no persistent path exists (the writer is absent or refuses).
+    """
+    NONCONFORMING_RUNTIME = "NONCONFORMING_RUNTIME"
+    OFFLINE_ARTIFACT_PRODUCER = "OFFLINE_ARTIFACT_PRODUCER"
+    DEVELOPMENT_ONLY = "DEVELOPMENT_ONLY"
+    RETIRED = "RETIRED"
+
+
+@dataclass(frozen=True)
+class VolatileEntry:
+    disposition: VolatileDisposition
+    phase: str      # the migration phase that retires or isolates it (V3, V4), or "-" when nothing remains
+    action: str
+
+
+_N, _A, _D, _X = (VolatileDisposition.NONCONFORMING_RUNTIME, VolatileDisposition.OFFLINE_ARTIFACT_PRODUCER,
+                  VolatileDisposition.DEVELOPMENT_ONLY, VolatileDisposition.RETIRED)
+
+VOLATILE_CENSUS: dict[str, VolatileEntry] = {
+    "k1_checkpoint_slots": VolatileEntry(_N, "V3",
+        "Retire with RuntimeCore ABI v8: no checkpoint store, attach, recover, adopt or discard; restart is a new "
+        "session (nothing is resumed)."),
+    "ecs_c_authority_slots": VolatileEntry(_N, "V3",
+        "Replaced by the volatile session (native/ECS_C/session, ECSC_VOLATILE_SESSION_R0; built and tested, not yet "
+        "composed). RuntimeCore ABI v8 holds a session instead of the durable store; the durable crate becomes "
+        "archival."),
+    "fms_posix_cold_store": VolatileEntry(_N, "V4",
+        "COLD must not write modified state to storage: every composer builds FMS RAM-only "
+        "(fms_pal_posix_create_ram_only, as the retrieval epoch already does) and the posix cold store leaves the "
+        "Python composer's reach."),
+    "canonical_grid81_publication": VolatileEntry(_N, "V4",
+        "Reachable from the runtime through Runtime.publish_canonical: remove that operation. The publisher may "
+        "survive only as a separately authorized offline artifact tool (V7), never from a runtime."),
+    "k1_checkpoint_provisioning": VolatileEntry(_N, "V3", "Retire with the checkpoint store."),
+    "ecs_c_authority_provisioning": VolatileEntry(_N, "V3",
+        "Retire with the durable authority: a session needs no provisioning, directory or key file."),
+    "native_host_deployment": VolatileEntry(_N, "V3",
+        "RAM-only host initialization: no writable home, authority, checkpoint or lineage files; pinned libraries "
+        "read from a read-only location; containment grants no write."),
+    "python_reference_deployment": VolatileEntry(_N, "V3",
+        "As the native host: the reference interface becomes a volatile session over read-only pinned libraries."),
+    "publication_ledger_v1": VolatileEntry(_A, "V4",
+        "A persistent journal: allowed only inside separately authorized offline artifact production, never from "
+        "a runtime."),
+    "application_ledger_v2": VolatileEntry(_A, "V4",
+        "A persistent journal: allowed only inside separately authorized offline artifact production, never from "
+        "a runtime."),
+    "canonical_candidate_construction": VolatileEntry(_A, "V4",
+        "Offline promotion tooling; leaves the runtime's reach with Runtime.publish_canonical."),
+    "evolution_child_materialization": VolatileEntry(_A, "V4",
+        "Offline workspace materialization (a development artifact); the durable reservation Runtime.evolve makes "
+        "retires with the durable authority (V3)."),
+    "hgram_fixed_capacity_store": VolatileEntry(_N, "V4",
+        "Persistent H-gram association writes are prohibited outright (no persistent H-gram learning). Not reachable "
+        "from either composer (no built library carries it; only the operator executable elpis_hgram_init and "
+        "tests). Retire the in-place association writer; a retained H-gram is a read-only static resource."),
+    "semantic_snapshot_publication": VolatileEntry(_A, "V4",
+        "Offline semantic artifact production; never called from a composer (gated)."),
+    "semantic_context_artifacts": VolatileEntry(_A, "V4", "Offline artifact production; never called from a composer."),
+    "semantic_embedding_files": VolatileEntry(_A, "V4", "Offline artifact production; never called from a composer."),
+    "semantic_evidence_records": VolatileEntry(_A, "V4", "Offline artifact production; never called from a composer."),
+    "semantic_view_directory": VolatileEntry(_A, "V4", "Offline artifact production; never called from a composer."),
+    "semantic_topology_artifacts": VolatileEntry(_A, "V4", "Offline compilation output; never called from a composer."),
+    "semantic_grid81_artifacts": VolatileEntry(_A, "V4", "Offline compilation output; never called from a composer."),
+    "dsv4_synthetic_fixture_generator": VolatileEntry(_D, "-", "Test fixtures; never reachable from the runtime."),
+    "native_host_testing_write_probe": VolatileEntry(_D, "V3",
+        "Testing host only; rewritten with the host's RAM-only initialization (it probes the slots that retire)."),
+    "research_laboratories": VolatileEntry(_D, "-", "Write-once laboratory evidence; never imported by src/."),
+    "acceptance_harness": VolatileEntry(_D, "V3",
+        "Qualifies the persistent product (restart, crash dispositions): historical once V3 lands; to be replaced "
+        "by a volatile session acceptance."),
+    "developer_release_bundle": VolatileEntry(_D, "-", "Packaging of a source commit and its libraries; not runtime."),
+    "persistent_hacf_corpus": VolatileEntry(_X, "-",
+        "SQLite :memory: only (temp_store=MEMORY, journal_mode=MEMORY); persistent ingress refuses."),
+    "persistent_log_sink": VolatileEntry(_X, "-", "None exists; importing the runtime installs no handler (gated)."),
+}
+
+# The RuntimeCore C ABI v7 (native/runtime/include/elpis/runtime.h) functions whose effect writes persistent storage,
+# opens it for writing, or resumes from it. RuntimeCore stays nonconforming while any is declared: the target is a
+# runtime with no permitted persistent-state write path (ABI v8 over the volatile session).
+RUNTIME_CORE_PERSISTENT_ABI = frozenset({
+    "elpis_runtime_create_ecs_c",            # opens the durable authority's directories read-write (and locks them)
+    "elpis_runtime_anchor",                  # publishes the anchor to the authority (and the checkpoint slot)
+    "elpis_runtime_import_composite",        # a durable lineage format change
+    "elpis_runtime_recoverable_request",     # durable publication (checkpoint slot + authority record), lane worker
+    "elpis_runtime_identity_request",        # durable identity-only publication (authority record), lane worker
+    "elpis_runtime_durable_wait",            # the durability lane
+    "elpis_runtime_durable_status",          # the durability lane
+    "elpis_runtime_checkpoint_provision",    # creates the checkpoint directory and its two slot files
+    "elpis_runtime_checkpoint_attach",       # opens the checkpoint slots read-write
+    "elpis_runtime_checkpoint_recover",      # crash recovery: resumes a persisted state
+    "elpis_runtime_checkpoint_discard",      # rewrites a checkpoint slot
+    "elpis_runtime_checkpoint_adopt",        # durable reconciliation
+    "elpis_runtime_evolution_reserve",       # durable authority transitions of the evolution attempt
+    "elpis_runtime_evolution_finalize",
+    "elpis_runtime_evolution_abandon",
+    "elpis_runtime_evolution_reconcile",
+    "elpis_runtime_authority_transition",    # an operator event on the durable authority
+})
+
+# Public Runtime operations that write persistent state or resume from it. The composer itself is nonconforming as
+# long as Runtime construction requires RuntimeConfig.authority_dir (RuntimeCore over the durable authority).
+NONCONFORMING_OPERATIONS = frozenset({
+    "open",                  # attaches a configured checkpoint store (read-write)
+    "anchor_cognition", "publish_recoverable", "publish_identity", "durability", "recover_k1",
+    "discard_k1_candidate", "adopt_k1_candidate", "import_composite", "evolve", "publish_canonical",
+})
+
+# The volatile replacements that exist (built and tested), and whether a composer uses them yet.
+VOLATILE_REPLACEMENTS = {
+    "ecs_c_authority_slots": ("native/ECS_C/session", "ECSC_VOLATILE_SESSION_R0", "not composed"),
+}
+
+VOLATILE_MIGRATION_COMPLETE = not (
+    any(e.disposition is VolatileDisposition.NONCONFORMING_RUNTIME for e in VOLATILE_CENSUS.values())
+    or RUNTIME_CORE_PERSISTENT_ABI or NONCONFORMING_OPERATIONS)

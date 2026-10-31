@@ -1,0 +1,346 @@
+{
+ "classification": "DEV evidence for phases V1/V2; the session's own test paths only; not a composed runtime",
+ "controls": {
+  "full_confinement": {
+   "exit": 1,
+   "file_created": false,
+   "stderr_tail": [
+    "/usr/bin/touch: cannot touch '<build>/research/volatile_runtime_v0/control/full_confinement.file': Read-only file system"
+   ],
+   "write_events": [
+    "16836 openat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v0/control/full_confinement.file\", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666) = -1 EROFS (Read-only file system)",
+    "16836 utimensat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v0/control/full_confinement.file\", NULL, 0) = -1 EPERM (Operation not permitted)"
+   ]
+  },
+  "landlock_only": {
+   "exit": 1,
+   "file_created": false,
+   "stderr_tail": [
+    "/usr/bin/touch: cannot touch '<build>/research/volatile_runtime_v0/control/landlock_only.file': Permission denied"
+   ],
+   "write_events": [
+    "16801 openat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v0/control/landlock_only.file\", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666) = -1 EACCES (Permission denied)",
+    "16801 utimensat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v0/control/landlock_only.file\", NULL, 0) = -1 EPERM (Operation not permitted)"
+   ]
+  },
+  "root_unconfined": {
+   "exit": 0,
+   "write_events": [
+    "16788 openat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v0/control/probe.a\", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 3<<build>/research/volatile_runtime_v0/control/probe.a>",
+    "16788 write(1<<build>/research/volatile_runtime_v0/control/probe.a>, \"x\\n\", 2) = 2",
+    "16789 renameat2(AT_FDCWD</>, \"<build>/research/volatile_runtime_v0/control/probe.a\", AT_FDCWD</>, \"<build>/research/volatile_runtime_v0/control/probe.b\", RENAME_NOREPLACE) = 0",
+    "16790 sync()                            = 0",
+    "16791 unlinkat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v0/control/probe.b\", 0) = 0"
+   ]
+  },
+  "uid_only": {
+   "exit": 0,
+   "file_created": true,
+   "stderr_tail": [],
+   "write_events": [
+    "16796 openat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v0/control/uid_only.file\", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666) = 3<<build>/research/volatile_runtime_v0/control/uid_only.file>",
+    "16796 utimensat(0<<build>/research/volatile_runtime_v0/control/uid_only.file>, NULL, NULL, 0) = 0"
+   ]
+  }
+ },
+ "environment": {
+  "cc": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "core_pattern": "core",
+  "kernel": "6.18.44-fc-v185",
+  "landlock_abi": 7,
+  "machine": "x86_64",
+  "python": "3.13.17",
+  "root_fs": "ext4",
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "strace": "strace -- version 6.8",
+  "swap_total_kib": 0,
+  "tmp_fs": "ext4"
+ },
+ "problems": [],
+ "runs": {
+  "P1": {
+   "argv": [
+    "<build>/native/ECS_C/session/test_ecs_c_session_abi"
+   ],
+   "confined": {
+    "exit": 0,
+    "seconds": 0.863,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "long run: 33339 accepted, 66667 refused, heap in use 12544 -> 12544 bytes",
+     "  1000 sessions of capacity 64 (31120 bytes each): heap in use 17584 -> 17584 bytes",
+     "ECS_C volatile session C ABI: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 32,
+     "openat": 23,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "seconds": 0.808,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "long run: 33339 accepted, 66667 refused, heap in use 12544 -> 12544 bytes",
+     "  1000 sessions of capacity 64 (31120 bytes each): heap in use 17584 -> 17584 bytes",
+     "ECS_C volatile session C ABI: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 12,
+     "openat": 7,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 1812,
+    "seconds": 0.662
+   },
+   "sha256": "f8c17a28ee1eeac519e96a2ac4eb80724218c1d76f50470c5ca7182f549ae45d"
+  },
+  "P2": {
+   "argv": [
+    "<build>/native/ECS_C/test_ecs_c_relational_session"
+   ],
+   "confined": {
+    "exit": 0,
+    "seconds": 0.127,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "SOURCE_VERSION: memory LOOKUP 1->3 (score 2, from v1 evidence); view 1->2 (score 1); after revalidation 1->3 at score 1 (v2 only)",
+     "  reclaim + reuse of source_authority 9: memory attributes 4->5 to the new source; view retired it",
+     "  session lifecycle: the next session's table is refused LINEAGE until reset; the reset view is empty",
+     "  admission law == elpis_ecs_c_session_check_evidence on 975 probes over 7 session states",
+     "ECS_C relational view over the volatile ECS_C session: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 41,
+     "openat": 30,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "seconds": 0.019,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "SOURCE_VERSION: memory LOOKUP 1->3 (score 2, from v1 evidence); view 1->2 (score 1); after revalidation 1->3 at score 1 (v2 only)",
+     "  reclaim + reuse of source_authority 9: memory attributes 4->5 to the new source; view retired it",
+     "  session lifecycle: the next session's table is refused LINEAGE until reset; the reset view is empty",
+     "  admission law == elpis_ecs_c_session_check_evidence on 975 probes over 7 session states",
+     "ECS_C relational view over the volatile ECS_C session: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 21,
+     "openat": 14,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 1904,
+    "seconds": 0.005
+   },
+   "sha256": "ed568bff2e7cc13242cb2c25e79780c8bee905f9d1adbe4480a70e491f94b46a"
+  },
+  "P3": {
+   "argv": [
+    "<build>/native/ECS_C/session/cargo-test/release/deps/elpis_ecs_c_session-354b0427281f76c3",
+    "--test-threads=1"
+   ],
+   "confined": {
+    "exit": 0,
+    "seconds": 1.292,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "test tests::persistence_only_operations_are_retired_even_when_well_formed ... ok",
+     "test tests::the_c_abi_creates_transitions_and_destroys ... ok",
+     "test tests::the_session_applies_exactly_the_pure_law_and_refuses_atomically ... ok",
+     "test tests::transitions_never_allocate_and_the_footprint_is_constant ... ok",
+     "",
+     "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.19s"
+    ],
+    "traced_calls": {
+     "mmap": 48,
+     "openat": 20,
+     "write": 43
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "seconds": 1.204,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "test tests::persistence_only_operations_are_retired_even_when_well_formed ... ok",
+     "test tests::the_c_abi_creates_transitions_and_destroys ... ok",
+     "test tests::the_session_applies_exactly_the_pure_law_and_refuses_atomically ... ok",
+     "test tests::transitions_never_allocate_and_the_footprint_is_constant ... ok",
+     "",
+     "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.19s"
+    ],
+    "traced_calls": {
+     "mmap": 28,
+     "openat": 4,
+     "write": 43
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 3588,
+    "seconds": 1.199
+   },
+   "sha256": "0462cd69a901368750eabef6eb8c888331dbe11b8840cc31329fcedcd4b06540"
+  },
+  "P4": {
+   "argv": [
+    "<build>/research/volatile_runtime_v0/nomem_probe"
+   ],
+   "confined": {
+    "exit": 0,
+    "seconds": 0.297,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "nomem_probe: RLIMIT_AS = mapping + 48 MiB; 26 sessions of capacity 4096 (1901968 bytes each) created, the next refused ECS_C_NOMEM with nothing created; all 26 then transitioned with a constant footprint; after destroying 13, creation succeeded again",
+     "nomem_probe: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 112,
+     "openat": 24,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "seconds": 0.231,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "nomem_probe: RLIMIT_AS = mapping + 48 MiB; 26 sessions of capacity 4096 (1901968 bytes each) created, the next refused ECS_C_NOMEM with nothing created; all 26 then transitioned with a constant footprint; after destroying 13, creation succeeded again",
+     "nomem_probe: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 92,
+     "openat": 8,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 18500,
+    "seconds": 0.191
+   },
+   "sha256": "570a68778cfc243c561310cfc4719e7dab8490fd49935cbc3f1d4458b76c5507"
+  }
+ },
+ "schema": "elpis.volatile-runtime-v0.zero-write.v1",
+ "session_library": {
+  "exports": [
+   "elpis_ecs_c_session_abi_version",
+   "elpis_ecs_c_session_bytes",
+   "elpis_ecs_c_session_check_evidence",
+   "elpis_ecs_c_session_code_name",
+   "elpis_ecs_c_session_create",
+   "elpis_ecs_c_session_destroy",
+   "elpis_ecs_c_session_entity_at",
+   "elpis_ecs_c_session_entity_find",
+   "elpis_ecs_c_session_evolution_digest",
+   "elpis_ecs_c_session_next_entity_id",
+   "elpis_ecs_c_session_read_coordinate",
+   "elpis_ecs_c_session_read_status",
+   "elpis_ecs_c_session_receipt_chain",
+   "elpis_ecs_c_session_source_for_authority",
+   "elpis_ecs_c_session_transition",
+   "rust_eh_personality"
+  ],
+  "footprint_bytes": {
+   "1": 0,
+   "1024": 476560,
+   "16": 8848,
+   "2": 2352,
+   "256": 120208,
+   "4096": 1901968,
+   "4097": 0,
+   "64": 31120
+  },
+  "imports": [
+   "_ITM_deregisterTMCloneTable",
+   "_ITM_registerTMCloneTable",
+   "__cxa_finalize",
+   "__gmon_start__",
+   "abort",
+   "free",
+   "getrandom",
+   "malloc",
+   "memcpy",
+   "memmove",
+   "memset"
+  ],
+  "sha256": "4d864fc692a92475e1f54dd0f64cbe91ce642b09fbdc47fb05481a5ac7da6f13"
+ },
+ "source_commit": "e61d5dd14c4989e24b5e5385d1d4474717a42c35",
+ "source_tree_clean": true,
+ "traced_syscalls": [
+  "open",
+  "openat",
+  "openat2",
+  "creat",
+  "write",
+  "writev",
+  "pwrite64",
+  "pwritev",
+  "pwritev2",
+  "rename",
+  "renameat",
+  "renameat2",
+  "unlink",
+  "unlinkat",
+  "mkdir",
+  "mkdirat",
+  "rmdir",
+  "truncate",
+  "ftruncate",
+  "fallocate",
+  "fsync",
+  "fdatasync",
+  "sync",
+  "syncfs",
+  "sync_file_range",
+  "msync",
+  "link",
+  "linkat",
+  "symlink",
+  "symlinkat",
+  "mknod",
+  "mknodat",
+  "chmod",
+  "fchmod",
+  "fchmodat",
+  "chown",
+  "fchown",
+  "lchown",
+  "fchownat",
+  "utimensat",
+  "setxattr",
+  "lsetxattr",
+  "fsetxattr",
+  "removexattr",
+  "lremovexattr",
+  "fremovexattr",
+  "mmap",
+  "copy_file_range",
+  "sendfile",
+  "splice",
+  "io_uring_setup",
+  "name_to_handle_at",
+  "open_by_handle_at"
+ ],
+ "verdict": "ZERO_WRITE_PASS"
+}

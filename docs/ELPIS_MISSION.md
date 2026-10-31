@@ -13,6 +13,11 @@ its mechanics are qualified.
     HACF / STRUCTURE ORGANIZES PERSISTENT STRUCTURAL MEMORY.
     CONTINUITY BINDS MINIMAL DURABLE RUNTIME LINEAGE/AUTHORITY.
 
+Amendment 3 (below) retires persistent runtime state: Elpis computes, learns
+and binds its lineage and authority in volatile memory only, and reads
+immutable resources. Where this section or Amendments 1 and 2 say "persists"
+or "durable", Amendment 3 governs. The migration is incomplete; see its Status.
+
 DSV4 is not the brain. It is the encode/decode boundary between human/token
 space and Elpis's internal computational substrate.
 
@@ -92,6 +97,101 @@ roles, and enforcement items 4 to 6), and nothing else.
   runtime lineage and authority, which the ECS_C authority performs.
 * **Not claimed.** The retirement qualifies nothing new: Q0's pass is for
   `117b41a` (ABI v6) only, and its ABI v7 successor is not run.
+
+## Amendment 3 (2026-10-31): the volatile-native runtime
+
+Authority: the repository owner's directive "ELPIS_DEV — VOLATILE-NATIVE
+ARCHITECTURAL MIGRATION" (primary directive: eliminate all persistent runtime
+state). Census: `docs/VOLATILE_RUNTIME_CENSUS.md`.
+
+It supersedes every design of this repository that persists, recovers or
+resumes runtime state: bounded persistent files, recoverable state, the
+durability lane, checkpoint slots and crash-consistent authority. In this
+document it replaces:
+* "PERSISTS" in the mission's second line and "DURABLE" in its fifth;
+* "PERSISTENT" in its fourth, for anything the runtime mutates;
+* Amendment 1's Persistence bullet;
+* Amendment 2's durable-authority clauses;
+* the opening paragraph's durability protocol, as a target.
+
+It is not a configuration option, and no persistent operating mode is offered:
+the persistent runtime is retired, not optimized.
+
+**VOLATILE MIGRATION: INCOMPLETE.** See Status below. Elpis is not diskless.
+
+* **The invariant.** Elpis may read immutable resources from persistent
+  storage. Every mutable operational state transition occurs only in volatile
+  memory. No runtime state is written to persistent storage under any
+  circumstance:
+  - not at initialization, inference or learning;
+  - not on an operator command or a failure;
+  - not at shutdown or restart;
+  - not even when a publication is explicitly requested.
+* **Prohibited in the runtime:**
+  - persistent record publication, in-place slot overwrites, and checkpoints or
+    snapshot files;
+  - persistent event journals, and SQLite or other state databases;
+  - persistent activation stores;
+  - automatic model-weight updates, or H-gram or expert-relationship mutation,
+    on disk;
+  - writeback caches, and filesystem synchronization for runtime state;
+  - recovery metadata or rollback witnesses;
+  - runtime log files and persistent temporary files;
+  - automatic state export at shutdown.
+* **Volatile only:**
+  - heap, arenas, in-memory tables, and volatile staging and caches;
+  - source-version state in RAM, and ephemeral session identities;
+  - read-only mappings of static artifacts;
+  - bounded in-memory snapshots for rollback;
+  - anonymous memory and memfd, only where non-persistence holds.
+
+  There is no persistent fallback.
+* **Static resources are read-only.** They are never modified at runtime.
+  Adaptive state lives in separate volatile memory and is never copied back.
+* **A session is finite.** It starts clean, and its state is lost on
+  termination or crash. A restart is a new session. No crash-persistent
+  identity, resurrection or exactly-once-across-restart guarantee is claimed.
+* **Bounded.** Every mutable subsystem has a hard ceiling and refuses
+  atomically when exhausted. Nothing spills to storage.
+* **No hidden persistent channels.** The census audits caches, temporary
+  directories, logging, mappings, swap, crash dumps and background components
+  (section 5), and lists what the host must provide (section 6). Where the host
+  cannot run Elpis over read-only persistent filesystems, Elpis fails closed.
+  Process-level controls do not stop unrelated host services from writing.
+* **Runtime is not development.** Git and source editing are development
+  operations. They are never a channel for operational checkpointing,
+  training-state writes or model-state export. An offline process that produces
+  persistent model artifacts needs its own explicit authorization.
+* **ECS_C** binds the session's lineage and authority in volatile memory,
+  through the volatile session authority `ECSC_VOLATILE_SESSION_R0`
+  (`native/ECS_C/session`, `docs/ECS_C_SESSION.md`), which holds the one
+  transition law. The durable authority is RETIRING
+  (`docs/ECS_C_AUTHORITY.md`). It remains only until RuntimeCore stops reaching
+  it, then becomes archival. Its durability mechanisms are not kept behind a
+  flag.
+* **HCA** stays research only. B0, B1 and B2 may remain as in-memory
+  comparators; B3 is not authorized.
+* **Phases.**
+  - V0: census and authority documents.
+  - V1: the volatile ECS_C session.
+  - V2: the relational view rebound to the session.
+  - V3: RuntimeCore (ABI v8) and the host.
+  - V4: FMS, HACF and the remaining writers.
+  - V5: adversarial zero-write qualification.
+* **Status.**
+  - V0 to V2 are implemented. V3 to V5 are not.
+  - RuntimeCore ABI v7, the native host and the Python reference interface
+    still create, open, publish to and recover from the durable authority and
+    the checkpoint store.
+  - The FMS cold store, the H-gram association writer and canonical
+    publication from a runtime remain.
+  - No document may describe the runtime as diskless until
+    `elpis.runtime.persistence.VOLATILE_MIGRATION_COMPLETE` is true
+    (`tests/boundary/test_volatile_runtime.py`).
+* **Historical qualifications** remain the record of what their commits did:
+  ECS_C Recovery Q0, K1 Recovery R0, and the native host's containment and
+  acceptance. They qualify nothing under this amendment and are not promoted
+  to it.
 
 ## Execution lanes (architectural correction, Elpis_DEV)
 

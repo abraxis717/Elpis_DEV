@@ -246,7 +246,7 @@ impl Snapshot {
         if checksum(body, format) != sum {
             return Err(Code::Corrupt);
         }
-        let zero = |r: std::ops::Range<usize>| body[r].iter().all(|&b| b == 0);
+        let zero = |r: core::ops::Range<usize>| body[r].iter().all(|&b| b == 0);
         if !zero(10..16) || !zero(26..32) {
             return Err(Code::Corrupt);
         }

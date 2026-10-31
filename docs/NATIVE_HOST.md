@@ -1,5 +1,20 @@
 # The native operator host
 
+> **VOLATILE MIGRATION: INCOMPLETE** (`docs/ELPIS_MISSION.md`, Amendment 3; `docs/VOLATILE_RUNTIME_CENSUS.md`).
+> The host described below is **nonconforming** under the volatile-native directive:
+> - `init` and `create` write a deployment home, a lineage file, the durable ECS_C authority and the checkpoint
+>   store;
+> - `publish`, `reconcile` and the authority operations write them in place;
+> - every start resumes the last acknowledged state.
+>
+> Phase V3 replaces this with a RAM-only initialization:
+> - no writable home, authority, checkpoint or lineage files;
+> - pinned libraries read from a read-only location;
+> - containment that grants no write;
+> - refusal to start without the host prerequisites of the census, section 6.
+>
+> This document describes the host as it still runs.
+
 `elpis` (`native/runtime/host`) is the native production entry point of one Elpis deployment: one C program, no
 interpreter. It links only the C library and a static SHA-256. Every Elpis library it runs is admitted at run time
 from the deployment's pinned `lib/` directory (see "Admission"). RuntimeCore (ABI v7, `docs/RUNTIME_CORE.md`) composes every turn over

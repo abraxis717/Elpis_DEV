@@ -46,7 +46,7 @@ def test_nothing_canonical_uses_the_relational_view():
     # In its own CMake file: one library and its tests, and nothing else links it.
     cmake = (REPO / "native/ECS_C/CMakeLists.txt").read_text(encoding="utf-8")
     linked = [line.strip() for line in cmake.splitlines() if "elpis_ecs_c_relational" in line and "LIBS" in line]
-    assert linked == ['LIBS elpis_ecs_c_relational "${CMAKE_CURRENT_BINARY_DIR}/authority/libelpis_ecs_c_authority.so"'], linked
+    assert linked == ['LIBS elpis_ecs_c_relational "${CMAKE_CURRENT_BINARY_DIR}/session/libelpis_ecs_c_session.so"'], linked
     assert "elpis_ecs_c_relational" not in (REPO / "src/elpis/runtime/deployment.py").read_text(encoding="utf-8")
 
 
@@ -91,7 +91,9 @@ def test_the_header_the_source_and_the_inventory_declare_one_abi():
 
 
 def test_it_reads_the_authority_layout_but_links_no_authority_code():
-    # The authority header supplies elpis_ecs_c_entity (a layout); no authority function is called.
+    # The ECS_C types header supplies elpis_ecs_c_entity (a layout); no authority or session function is called, and
+    # the view does not include the retiring durable authority's header.
+    assert '#include "elpis/ecs_c_types.h"' in HEADER and "ecs_c_authority.h" not in HEADER
     code = _code(SOURCE)
     authority_calls = set(re.findall(r"\b(elpis_ecs_c_(?!rel_)\w+)\s*\(", code))
     assert not authority_calls, authority_calls

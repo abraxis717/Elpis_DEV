@@ -1,0 +1,35 @@
+{
+ "results": {
+  "ENVIRONMENT.txt": "309a6d4008e16fe4c0a860ed302759e0e028d1a30b7d05494740f817dabf592b",
+  "zero_write_v0.json": "80a1cd433a7d40b6ec6da21e30f886599bc0d9b16ce2eac5f5cdcda37b26a25e"
+ },
+ "schema": "elpis.volatile-runtime-v0.manifest.v1",
+ "source_commit": "e61d5dd14c4989e24b5e5385d1d4474717a42c35",
+ "sources": {
+  "native/ECS_C/relational/include/elpis/ecs_c_relational.h": "e978b6347d2e0b95be6d5f25b58e75add6485edacd137925c8c246273961377f",
+  "native/ECS_C/relational/src/ecs_c_relational.c": "e865e38c643ffe59dbf7e7254acfb9c4bfa328ad78ac98e79e6097d32af0bfea",
+  "native/ECS_C/relational/tests/test_ecs_c_relational_session.c": "b4de6ab01435db515ceb83f84c6a8b2f181689b8b7a6d7e87ca5f3cd88de3359",
+  "native/ECS_C/session/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+  "native/ECS_C/session/CMakeLists.txt": "95fa593b2045e8f69664a29217132dbe3a44aed261952eb9ceda8e7ae818fda5",
+  "native/ECS_C/session/Cargo.lock": "5e47e515445c879b5d742d4e30ed0e3beaff6e3a2bd80fe8a0c1f2156da1a300",
+  "native/ECS_C/session/Cargo.toml": "1ed867cec00820d2a58fc98573f0641bbcba6aa3fd12a590b619160956524b88",
+  "native/ECS_C/session/include/elpis/ecs_c_session.h": "583fdeb58b66ed9c09ae6b7a64b017f3e3f66d8e5007bdbb1c0bfd891f392a73",
+  "native/ECS_C/session/include/elpis/ecs_c_types.h": "f94c451e5b85d50fb14505b66f93144ade6f751ac18b3fe4c6d4f0102a3566d2",
+  "native/ECS_C/session/rustfmt.toml": "93ed1668bb2ca659e88711456b72320bf2f53369ecf278c4a61af0cb63cc3a1e",
+  "native/ECS_C/session/src/error.rs": "75e364b306a5fd934a62580c4a37dc79cb086ec20ee28d3bb7d1838e483830c0",
+  "native/ECS_C/session/src/ffi.rs": "0bf671276b5f21718bf85d325883bbbd0b61a19b6cb85399574e54107ff06ae6",
+  "native/ECS_C/session/src/lib.rs": "4990fcc6283edafbe0fc382f3719e585cd39f9c543344ec0a4ad14ecf1103899",
+  "native/ECS_C/session/src/model.rs": "d682d7aa93e0b7d77adeb416d9f64ea3c1d086405e3bcd9475e209721b80def9",
+  "native/ECS_C/session/src/register.rs": "91f68c5c535045595b954bd59e65e15a2ab4751d0b6001be2e6d235652250e24",
+  "native/ECS_C/session/src/runtime_support.rs": "56e37941751eef0b0166a416edaf77d57c111e148709b943e21ddec3aa18de89",
+  "native/ECS_C/session/src/session.rs": "e360247a187bd1d71b38f4399877886c35081d44fd4d68702528b08124975a7c",
+  "native/ECS_C/session/src/sha256.rs": "b40e971df23326578f59bfd95760e2f63f5173f76016457e83402dfa18950e83",
+  "native/ECS_C/session/src/tests.rs": "9a5175a0b5f6728589a5e28c9ea26c8b4e098a2a91fa6b3041f7aabebb6cd2b8",
+  "native/ECS_C/session/tests/test_ecs_c_session_abi.c": "dcb506f8861fea1b20e70a973c0926b527547028fafbe0d22cb40edaee0e83d8",
+  "native/runtime/containment/elpis_autonomous_run.c": "381fdc8705b5b497ce3250e0fcabf86295b5023a519605237c596768b3ab69a7",
+  "research/volatile_runtime_v0/nomem_probe.c": "9bdd5a1301beee7dc7f18acf82bf01ff3ac0ed23ad9d5f6b02450427e645f41e",
+  "research/volatile_runtime_v0/peak_rss.c": "04234c5f4d9dd8a367b2beb2a9782aa6c2e21ebc9c59aee2adff2c578fbb88de",
+  "research/volatile_runtime_v0/zero_write.py": "d832c44aa10f7f0243ea28b2be6736fb722592b4ca870c241183dd9bb399d4b2",
+  "tests/boundary/test_volatile_runtime.py": "1f1db126117db24a44ab1d814ef6beb101c5aedabcc192914eb6fba9147da92f"
+ }
+}

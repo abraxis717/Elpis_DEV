@@ -1,0 +1,33 @@
+[package]
+name = "elpis_ecs_c_session"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+description = "Elpis ECS_C volatile session authority (ECSC_VOLATILE_SESSION_R0): the ECS_C transition law over bounded, RAM-only session state, behind a stable C ABI. no_std: no file, clock, thread or environment access exists in it."
+license = "UNLICENSED"
+publish = false
+
+# No dependencies. no_std + alloc: the crate links nothing but the C library's memory functions (malloc, free,
+# posix_memalign, abort and the mem* intrinsics) and getrandom(2) (a session nonce), so it has no way to reach a
+# filesystem at all.
+[dependencies]
+
+# An rlib for embedding Rust crates (which bring their own std runtime). The shared library is built explicitly:
+#   cargo rustc --lib --crate-type cdylib --features c-abi   (native/ECS_C/session/CMakeLists.txt)
+[lib]
+name = "elpis_ecs_c_session"
+crate-type = ["rlib"]
+doctest = false
+
+[features]
+default = []
+# The C ABI (include/elpis/ecs_c_session.h), its malloc-backed allocator and its abort-on-panic handler: only in
+# libelpis_ecs_c_session.so.
+c-abi = []
+
+[profile.release]
+panic = "abort"
+debug = false
+
+[profile.dev]
+panic = "abort"

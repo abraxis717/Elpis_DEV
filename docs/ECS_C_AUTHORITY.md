@@ -1,5 +1,15 @@
 # ECS_C authority (R0)
 
+> **RETIRING** (`docs/ELPIS_MISSION.md`, Amendment 3, the volatile-native runtime). **VOLATILE MIGRATION: INCOMPLETE.**
+> - Its persistence is superseded: the record and witness slots, the deployment key file, provisioning, recovery,
+>   reconciliation, legacy import and every `fdatasync` path.
+> - Its law lives on in the volatile session authority `ECSC_VOLATILE_SESSION_R0` (`docs/ECS_C_SESSION.md`,
+>   `native/ECS_C/session`). This crate now consumes the law from there.
+> - It remains only because RuntimeCore ABI v7, the native host and the Python reference interface still reach it.
+>   Once RuntimeCore ABI v8 holds a session instead (phase V3), it becomes archival, never a disabled mode.
+> - This document describes it as it still runs. Nothing in it is a target design
+>   (`docs/VOLATILE_RUNTIME_CENSUS.md`, sections 2 and 3).
+
 Authority: `docs/ELPIS_MISSION.md` (Amendment 1), `docs/NATIVE_SPLIT_CENSUS.md` (sections 5a and 11, Stage C).
 Contract: `native/ECS_C/authority/include/elpis/ecs_c_authority.h` (normative C ABI v1). Implementation:
 `native/ECS_C/authority` (Rust crate `elpis_ecs_c_authority`; libraries `libelpis_ecs_c_authority.so` and
@@ -25,10 +35,13 @@ successor of Q0 is not run. Nothing in this document is a scientific claim.
 ## Ownership
 
 ECS_C owns the authority; it performs no geometric learning and never touches ECS_G state: it names retained-state
-identities (ELPISGK1 or ELPISEC1 digests), never the states. The crate depends on nothing but the Rust standard
-library: SHA-256 (`sha256.rs`), the evolution authority and its digest (`register.rs`) and the legacy register reader
-(`legacy.rs`) are its own, moved unchanged from standalone continuity when it retired into ECS_C (one implementation
-each; until then the authority embedded the continuity crate for them). Its own C ABI is the crate's default `c-abi`
+identities (ELPISGK1 or ELPISEC1 digests), never the states. SHA-256 (`sha256.rs`), the evolution authority and its
+digest (`register.rs`) and the legacy register reader (`legacy.rs`) moved unchanged from standalone continuity when
+it retired into ECS_C (one implementation each; until then the authority embedded the continuity crate for them).
+Since the volatile migration's phase V1, the transition law (`model.rs`), `register.rs`, `sha256.rs` and the codes
+(`error.rs`) live in the `no_std` session crate `native/ECS_C/session`. This crate depends on that crate alone and
+re-exports the modules unchanged (`pub use elpis_ecs_c_session::{error, model, register, sha256}`), so the law has
+one implementation; the storage (`store.rs`, `record.rs`, `hmac.rs`, `legacy.rs`, `ffi.rs`) is this crate's own. Its own C ABI is the crate's default `c-abi`
 feature, so a crate that embeds it (RuntimeCore) does not re-export `elpis_ecs_c_*`; there is no build script. It
 links no ECS_G, memory, RuntimeCore or codec code.
 
@@ -83,7 +96,7 @@ Capacity exhaustion never discards authoritative state; a larger capacity is a n
 
 ## Record (ELPECA01 v1) and witness (ELPECW01 v1)
 
-Layouts are specified field by field in `native/ECS_C/authority/src/record.rs` and `src/model.rs` and summarized in
+Layouts are specified field by field in `native/ECS_C/authority/src/record.rs` and `native/ECS_C/session/src/model.rs` (the shared law) and summarized in
 the header. A record carries the header (generation, predecessor generation, lineage, deployment id, predecessor
 record digest and state root, state root, receipt), the materialized state (512 fixed bytes plus `capacity` entity
 rows of 160 bytes), the one 512-byte event that produced it, then the MAC and the checksum. The checksum is the

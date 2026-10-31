@@ -22,7 +22,26 @@
     ],
     "canonical_dataflow": "text -> DSV4 encode -> admitted ECS stimulus -> ECS/EDEN dynamics -> ECS readout -> DSV4 decode -> text (runtime.cognition.run_turn)",
     "prohibited": "ECS as a sidecar around a full DSV model: ECS state conditioning a DSV model, or ECS driven by a DSV model's output statistics (forensic: f4e1f05, 75313fb).",
-    "gate": "tests/boundary/test_mission.py"
+    "gate": "tests/boundary/test_mission.py",
+    "volatile_migration": {
+      "amendment": "docs/ELPIS_MISSION.md, Amendment 3",
+      "status": "VOLATILE MIGRATION: INCOMPLETE",
+      "invariant": "Elpis may read immutable resources from persistent storage, but every mutable operational state transition must occur only in volatile memory. No runtime state is to be written to NAND/NVMe, under any circumstance.",
+      "census": "docs/VOLATILE_RUNTIME_CENSUS.md",
+      "registry": "elpis.runtime.persistence (VOLATILE_CENSUS, RUNTIME_CORE_PERSISTENT_ABI, NONCONFORMING_OPERATIONS)",
+      "gate": "tests/boundary/test_volatile_runtime.py",
+      "implemented_phases": [
+        "V0",
+        "V1",
+        "V2"
+      ],
+      "pending_phases": [
+        "V3",
+        "V4",
+        "V5"
+      ],
+      "remaining": "RuntimeCore ABI v7, the native host and the Python reference interface still create, open, publish to and recover from the durable ECS_C authority and the K1 checkpoint store; the FMS posix cold store, the H-gram association writer and canonical publication from a runtime remain. Elpis is not diskless."
+    }
   },
   "donor": {
     "repository": "https://github.com/abraxis717/Elpis_beta",
@@ -134,7 +153,7 @@
     {
       "id": "ECS_C",
       "status": "OPERATIONAL_INCOMPLETE_INTEGRATION",
-      "purpose": "ECS_C: the durable authority and memory (docs/NATIVE_SPLIT_CENSUS.md); standalone continuity retired into it at RuntimeCore ABI v7. It holds (1) the ECS memory (docs/ECS_MEMORY.md, libelpis_ecs_memory): the bounded, model-free typed relational memory relocated from the frozen MF-R0 reference, ELPISEM1 v1. OBSERVE (exact typed evidence slots, entity codebook), QUERY LOOKUP (exact read-only scan), INSPECT, slot read, identity and SNAPSHOT/RESTORE are admitted mechanically; LEARN and QUERY FAST stay behind the RECURRENT capability (UNQUALIFIED, MF-R0 H4 NONPASS); CONSOLIDATE and QUERY SLOW are not provided. (2) The ECS_C authority (docs/ECS_C_AUTHORITY.md, native/ECS_C/authority, libelpis_ecs_c_authority, C ABI v1 include/elpis/ecs_c_authority.h): the successor of standalone continuity, built and mechanically tested as a library in Stage C, composed by RuntimeCore ABI v6 in Stage D (elpis_runtime_create_ecs_c) and run by the native host elpis (its durability protocol through the host is RUN PASS under docs/qualification/ECS_C_RECOVERY_Q0.md for commit 117b41a only, within that scope), and RuntimeCore's only durable authority since ABI v7 (Stage F), when continuity retired into it: it carries its own SHA-256, continuity's evolution law and digest and the legacy register reader: genesis and lineage, entities (operator, runtime, source) and their lifecycles, sender attribution with per-sender sequences, the authority's logical clock (generation), source versions, scopes and per-turn bounds (native evidence admission), the cognition lineage (format-aware, K1 or composite), the evolution authority (continuity's law and digest), receipts kept as a chain head, explicit operator reconciliation, and explicit legacy import of a continuity v2/v3 register. One fixed-size materialized record in two preallocated slots plus an authenticated rollback witness in a separately protected directory; every transition is validated by one transition law before it is written and the newest is replayed at recovery. (3) The HCA native research substrate (docs/ECS_C_HCA.md, native/ECS_C/hca, libelpis_ecs_c_hca, C ABI v1 include/elpis/ecs_c_hca.h): the B0/B1/B2 comparators of the DEV reference research/ecsc_hca_r0, proven equal to it by an offline differential; RESEARCH ONLY and gated: nothing canonical links or loads it and it enables no law. (4) The ECS_C relational view (docs/ECS_C_RELATIONAL.md, native/ECS_C/relational, libelpis_ecs_c_relational, C ABI v1 include/elpis/ecs_c_relational.h; ECSC_DYNAMIC_RELATIONAL_DEV_R0): DEV, NOT COMPOSED: the source-revision-aware bounded maintenance of admitted typed evidence per (source, version, scope) binding, synced from the authority's entity rows, so LOOKUP answers only from evidence the authority's own admission law still accepts; nothing canonical links or loads it, it persists nothing and qualifies nothing. ECS_C links no geometric (ECS_G) or runtime code; the memory is a component of a composite retained state, never a durable authority of its own.",
+      "purpose": "ECS_C: the authority and memory (docs/NATIVE_SPLIT_CENSUS.md). VOLATILE MIGRATION: INCOMPLETE (docs/ELPIS_MISSION.md, Amendment 3; docs/VOLATILE_RUNTIME_CENSUS.md): the volatile session authority (docs/ECS_C_SESSION.md, native/ECS_C/session, libelpis_ecs_c_session, C ABI v1 include/elpis/ecs_c_session.h; ECSC_VOLATILE_SESSION_R0) holds the one ECS_C transition law over bounded RAM-only session state, with no path, file or descriptor and with legacy import and reconciliation refused PERSISTENCE_RETIRED; it is built and tested, not composed, and the durable authority (2) is RETIRING until RuntimeCore ABI v8 replaces it (phase V3). standalone continuity retired into it at RuntimeCore ABI v7. It holds (1) the ECS memory (docs/ECS_MEMORY.md, libelpis_ecs_memory): the bounded, model-free typed relational memory relocated from the frozen MF-R0 reference, ELPISEM1 v1. OBSERVE (exact typed evidence slots, entity codebook), QUERY LOOKUP (exact read-only scan), INSPECT, slot read, identity and SNAPSHOT/RESTORE are admitted mechanically; LEARN and QUERY FAST stay behind the RECURRENT capability (UNQUALIFIED, MF-R0 H4 NONPASS); CONSOLIDATE and QUERY SLOW are not provided. (2) The ECS_C authority (docs/ECS_C_AUTHORITY.md, native/ECS_C/authority, libelpis_ecs_c_authority, C ABI v1 include/elpis/ecs_c_authority.h): the successor of standalone continuity, built and mechanically tested as a library in Stage C, composed by RuntimeCore ABI v6 in Stage D (elpis_runtime_create_ecs_c) and run by the native host elpis (its durability protocol through the host is RUN PASS under docs/qualification/ECS_C_RECOVERY_Q0.md for commit 117b41a only, within that scope), and RuntimeCore's only durable authority since ABI v7 (Stage F), when continuity retired into it: it consumes the transition law, SHA-256 and continuity's evolution law and digest from the session crate (one implementation) and carries the legacy register reader: genesis and lineage, entities (operator, runtime, source) and their lifecycles, sender attribution with per-sender sequences, the authority's logical clock (generation), source versions, scopes and per-turn bounds (native evidence admission), the cognition lineage (format-aware, K1 or composite), the evolution authority (continuity's law and digest), receipts kept as a chain head, explicit operator reconciliation, and explicit legacy import of a continuity v2/v3 register. One fixed-size materialized record in two preallocated slots plus an authenticated rollback witness in a separately protected directory; every transition is validated by one transition law before it is written and the newest is replayed at recovery. (3) The HCA native research substrate (docs/ECS_C_HCA.md, native/ECS_C/hca, libelpis_ecs_c_hca, C ABI v1 include/elpis/ecs_c_hca.h): the B0/B1/B2 comparators of the DEV reference research/ecsc_hca_r0, proven equal to it by an offline differential; RESEARCH ONLY and gated: nothing canonical links or loads it and it enables no law. (4) The ECS_C relational view (docs/ECS_C_RELATIONAL.md, native/ECS_C/relational, libelpis_ecs_c_relational, C ABI v1 include/elpis/ecs_c_relational.h; ECSC_DYNAMIC_RELATIONAL_DEV_R0): DEV, NOT COMPOSED: the source-revision-aware bounded maintenance of admitted typed evidence per (source, version, scope) binding, synced from an ECS_C authority's entity rows (its end-to-end test runs over the volatile session), so LOOKUP answers only from evidence the authority's own admission law still accepts; nothing canonical links or loads it, it persists nothing and qualifies nothing. ECS_C links no geometric (ECS_G) or runtime code; the memory is a component of a composite retained state, never a durable authority of its own.",
       "python_package": null,
       "python_package_note": "No Python package: the memory is reached from Python only through the composite binding elpis.ECS.composite (CompositeState memory_query / memory_slot_read).",
       "implementation_roots": [
@@ -142,6 +161,8 @@
       ],
       "test_roots": [
         "native/ECS_C/memory/tests",
+        "native/ECS_C/session/src/tests.rs",
+        "native/ECS_C/session/tests",
         "native/ECS_C/authority/src/tests.rs",
         "native/ECS_C/authority/tests",
         "native/ECS_C/relational/tests",
@@ -150,6 +171,7 @@
       ],
       "native_targets": [
         "elpis_ecs_memory",
+        "elpis_ecs_c_session",
         "elpis_ecs_c_authority",
         "elpis_ecs_c_hca",
         "elpis_ecs_c_relational"
@@ -172,7 +194,7 @@
       "incomplete_interfaces": [
         "Memory LEARN / QUERY FAST are UNQUALIFIED (MF-R0 H4 NONPASS: byte-matched exact storage retains more); the MF-R0 slow-bank (CONSOLIDATE) law is not canonical.",
         "No observation map from HACF structure to meaning exists: the typed HACF path (libelpis_hacf_observation, runtime subsystem) maps records, not meaning.",
-        "The ECS_C authority is RuntimeCore's only durable authority (ABI v7), driven by the native host and by the offline Python reference; it depends on no other crate (standalone continuity retired into it, Stage F). ECS_C Recovery Q0 qualifies the ABI v6 protocol at commit 117b41a only; its ABI v7 successor is not run. Admission consults sources and per-turn bounds, not yet source versions or scopes (an observation records neither).",
+        "The ECS_C authority is RuntimeCore's only durable authority (ABI v7), driven by the native host and by the offline Python reference; it depends only on the volatile session crate, whose law it consumes (standalone continuity retired into it, Stage F). It is RETIRING under the volatile-native directive (VOLATILE MIGRATION: INCOMPLETE): the volatile session that replaces it is not composed yet. ECS_C Recovery Q0 qualifies the ABI v6 protocol at commit 117b41a only; its ABI v7 successor is not run. Admission consults sources and per-turn bounds, not yet source versions or scopes (an observation records neither).",
         "The typed-hypergraph cellular memory (HCA) is research only: its native substrate (native/ECS_C/hca) is gated, reproduces the DEV reference exactly and demonstrates no useful advantage (no repair advantage; the unsupported-cycle limitation persists); no HCA law is admitted, trained or canonical."
       ]
     },
@@ -510,6 +532,10 @@
       {
         "path": "DEV/ecsc_hca",
         "classification": "RESEARCH_ONLY, HISTORICAL DEV PROTOCOLS: the R0-R19 protocols, audits and reports of the HCA research record, byte-pinned by MIGRATION_PROVENANCE.md; read-only record, not a specification of the canonical runtime."
+      },
+      {
+        "path": "research/volatile_runtime_v0",
+        "classification": "DEV EVIDENCE, NO_RUNTIME_AUTHORITY: zero filesystem writes on the volatile ECS_C session's own test paths (phases V1/V2 of docs/ELPIS_MISSION.md, Amendment 3): strace-observed runs as root and confined runs (read-only mounts, uid 65534, Landlock, seccomp), negative controls per containment layer, a memory-exhaustion probe; not evidence for any composed runtime path (VOLATILE MIGRATION: INCOMPLETE)."
       }
     ],
     "native_targets": [
@@ -615,7 +641,8 @@
     "Cognitive fuel is a deterministic integer work-unit bound admitted before an operation starts; no wall-clock deadline or preemption is claimed.",
     "Evolution policy confinement is TRUSTED_OPERATOR_CALLBACKS: evaluators and attempt callbacks are not sandboxed; no evolutionary process is claimed to improve anything.",
     "ECS Memory MF-R0 (research/ecs_memory_mf_r0) is RESEARCH_ONLY: not part of ECS_C, not bound by the durable authority, not admitted; its QUAL (H1-H3, H5 PASS; H4 NONPASS) is a mechanism finding in a synthetic regime, with no semantic, generalization or better-than-storage claim.",
-    "The canonical ECS memory (libelpis_ecs_memory) and the ELPISEC1 composite retained state (libelpis_ecs_composite) are mechanical integration: OBSERVE/LOOKUP are exact typed evidence storage, not truth or learning; LEARN/FAST are UNQUALIFIED and never exposed by RuntimeCore; MF-R0 consolidation is not canonical; H4 NONPASS stands. A composite identity is durable authority only once the durable authority names it (the ECS_C authority, on the native host and the offline reference alike) after an explicit durable publication (capture -> seal -> checkpoint -> authority record; the commit itself is volatile). The native host and the Python reference drive composite lineages through RuntimeCore as mechanics only: nothing decides what to observe, no observation map from HACF structure to meaning is defined, and no cognitive use of the memory is qualified."
+    "The canonical ECS memory (libelpis_ecs_memory) and the ELPISEC1 composite retained state (libelpis_ecs_composite) are mechanical integration: OBSERVE/LOOKUP are exact typed evidence storage, not truth or learning; LEARN/FAST are UNQUALIFIED and never exposed by RuntimeCore; MF-R0 consolidation is not canonical; H4 NONPASS stands. A composite identity is durable authority only once the durable authority names it (the ECS_C authority, on the native host and the offline reference alike) after an explicit durable publication (capture -> seal -> checkpoint -> authority record; the commit itself is volatile). The native host and the Python reference drive composite lineages through RuntimeCore as mechanics only: nothing decides what to observe, no observation map from HACF structure to meaning is defined, and no cognitive use of the memory is qualified.",
+    "Elpis is not yet diskless (VOLATILE MIGRATION: INCOMPLETE; docs/VOLATILE_RUNTIME_CENSUS.md): RuntimeCore ABI v7, the native host and the Python reference interface still reach durable publication; the volatile ECS_C session (docs/ECS_C_SESSION.md) is not composed, and its zero-write evidence covers its own test paths only."
   ],
   "post_migration_relocations": [],
   "post_migration_retirements": [

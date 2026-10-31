@@ -1,6 +1,10 @@
 /*
  * ECS_C authority: the bounded, authenticated continuity and entity authority (C ABI v1).
  *
+ * RETIRING (docs/ELPIS_MISSION.md, Amendment 3): every transition of this authority writes persistent records and
+ * witnesses, which the volatile-runtime directive prohibits. Its successor is the volatile session
+ * (include/elpis/ecs_c_session.h); this ABI remains only while RuntimeCore ABI v7 composes it.
+ *
  * Normative description: docs/ECS_C_AUTHORITY.md. Implementation: native/ECS_C/authority (Rust).
  *
  * One deployment is two directories:
@@ -20,40 +24,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* The entity row, the evolution authority, kinds, lifecycles, capacity bounds and the transition law's codes are the
+ * ECS_C types the volatile session owns (native/ECS_C/session/include/elpis/ecs_c_types.h). */
+#include "elpis/ecs_c_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define ELPIS_ECS_C_ABI_VERSION 1u
 
-#define ELPIS_ECS_C_MIN_CAPACITY 2u
-#define ELPIS_ECS_C_MAX_CAPACITY 4096u
-#define ELPIS_ECS_C_MAX_PER_TURN 256u
-#define ELPIS_ECS_C_EVENT_BYTES 512u
-#define ELPIS_ECS_C_PAYLOAD_AT 80u
 #define ELPIS_ECS_C_LEGACY_RECORD_BYTES 176u
 #define ELPIS_ECS_C_WITNESS_BYTES 240u
 
-/* Codes. */
-#define ELPIS_ECS_C_OK 0
-#define ELPIS_ECS_C_INVALID 1
-#define ELPIS_ECS_C_STALE 2
-#define ELPIS_ECS_C_UNAUTHORIZED 3
-#define ELPIS_ECS_C_UNKNOWN_ENTITY 4
-#define ELPIS_ECS_C_LIFECYCLE 5
-#define ELPIS_ECS_C_DUPLICATE 6
-#define ELPIS_ECS_C_SEQUENCE_GAP 7
-#define ELPIS_ECS_C_CAPACITY 8
-#define ELPIS_ECS_C_EXHAUSTED 9
-#define ELPIS_ECS_C_SOURCE_STALE 10
-#define ELPIS_ECS_C_SCOPE_CONFLICT 11
-#define ELPIS_ECS_C_UNANCHORED 12
-#define ELPIS_ECS_C_ALREADY_ANCHORED 13
-#define ELPIS_ECS_C_STATE_MISMATCH 14
-#define ELPIS_ECS_C_EVOLUTION_MISMATCH 15
-#define ELPIS_ECS_C_EVOLUTION_PENDING 16
-#define ELPIS_ECS_C_EVOLUTION_NOT_PENDING 17
-#define ELPIS_ECS_C_LEGACY_REFUSED 18
+/* Codes of durable storage (the transition law's are in ecs_c_types.h). */
 #define ELPIS_ECS_C_PUBLICATION_REFUSED 19   /* nothing changed */
 #define ELPIS_ECS_C_PUBLICATION_UNCERTAIN 20 /* handle closed; reopen resolves to exactly one authority */
 #define ELPIS_ECS_C_LOCKED 21
@@ -63,7 +47,6 @@ extern "C" {
 #define ELPIS_ECS_C_NOT_PROVISIONED 25
 #define ELPIS_ECS_C_ALREADY_PROVISIONED 26
 #define ELPIS_ECS_C_PROVISION_INCOMPLETE 27
-#define ELPIS_ECS_C_CORRUPT 28
 #define ELPIS_ECS_C_RECOVERY_REFUSED 29 /* the recovery report names the disposition */
 #define ELPIS_ECS_C_RECONCILE_REQUIRED 30
 #define ELPIS_ECS_C_NOT_RECONCILABLE 31
@@ -99,14 +82,6 @@ extern "C" {
 #define ELPIS_ECS_C_SLOT_INVALID 3u
 #define ELPIS_ECS_C_SLOT_VALID 4u
 
-/* Entity kinds and lifecycles. FOUNDED -> ACTIVE <-> DORMANT; any non-terminal -> TERMINATED (final). */
-#define ELPIS_ECS_C_OPERATOR 1u
-#define ELPIS_ECS_C_RUNTIME 2u
-#define ELPIS_ECS_C_SOURCE 3u
-#define ELPIS_ECS_C_FOUNDED 1u
-#define ELPIS_ECS_C_ACTIVE 2u
-#define ELPIS_ECS_C_DORMANT 3u
-#define ELPIS_ECS_C_TERMINATED 4u
 
 /*
  * Events (512 bytes): kind u16 @0, reserved zero @2..8, sender id @8, sender sequence u64 @40 (the sender's
@@ -167,15 +142,6 @@ typedef struct {
     uint8_t observed[2][32]; /* SHA-256 of each slot's raw bytes */
 } elpis_ecs_c_report;
 
-/* The evolution authority, laid out as continuity's (include/elpis/continuity.h). */
-typedef struct {
-    uint64_t revision;
-    uint8_t head[32];
-    uint8_t pending;
-    uint8_t reserved[7];
-    uint8_t assertion[32];
-} elpis_ecs_c_evolution;
-
 typedef struct {
     uint64_t generation;
     uint64_t record_bytes;
@@ -207,23 +173,6 @@ typedef struct {
     uint64_t legacy_generation;
     uint8_t legacy_digest[32];
 } elpis_ecs_c_status;
-
-typedef struct {
-    uint8_t id[32];
-    uint8_t kind;
-    uint8_t lifecycle;
-    uint8_t reserved[2];
-    uint32_t per_turn_limit;
-    uint64_t founding_index;
-    uint64_t founded_generation;
-    uint64_t last_generation;
-    uint64_t sender_watermark;
-    uint64_t source_version;
-    uint8_t label[32];
-    uint8_t scope[32];
-    uint32_t source_authority; /* sources: the 32-bit source_authority its typed memory observations record */
-    uint32_t reserved2;
-} elpis_ecs_c_entity;
 
 typedef struct {
     uint64_t generation;
@@ -261,7 +210,6 @@ typedef struct {
 _Static_assert(sizeof(elpis_ecs_c_provisioned) == 144, "elpis_ecs_c_provisioned layout");
 _Static_assert(sizeof(elpis_ecs_c_report) == 136, "elpis_ecs_c_report layout");
 _Static_assert(sizeof(elpis_ecs_c_status) == 528, "elpis_ecs_c_status layout");
-_Static_assert(sizeof(elpis_ecs_c_entity) == 152, "elpis_ecs_c_entity layout");
 _Static_assert(sizeof(elpis_ecs_c_receipt) == 192, "elpis_ecs_c_receipt layout");
 _Static_assert(sizeof(elpis_ecs_c_counters) == 96, "elpis_ecs_c_counters layout");
 _Static_assert(sizeof(elpis_ecs_c_reconciliation) == 56, "elpis_ecs_c_reconciliation layout");

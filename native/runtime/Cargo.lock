@@ -5,6 +5,13 @@ version = 4
 [[package]]
 name = "elpis_ecs_c_authority"
 version = "0.1.0"
+dependencies = [
+ "elpis_ecs_c_session",
+]
+
+[[package]]
+name = "elpis_ecs_c_session"
+version = "0.1.0"
 
 [[package]]
 name = "elpis_runtime"

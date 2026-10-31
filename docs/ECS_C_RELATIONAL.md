@@ -20,9 +20,10 @@ The ECS_C memory (`docs/ECS_MEMORY.md`) is source-blind:
 RuntimeCore's HOT-lane admission checks only that `source_authority` maps to an ACTIVE source within its per-turn
 bound.
 
-`ECS_C.test_ecs_c_relational_authority` runs this against the real authority and the real memory:
+`ECS_C.test_ecs_c_relational_session` runs this against the ECS_C authority's law (the volatile session,
+`docs/ECS_C_SESSION.md`) and the real memory:
 
-| Authority transition | `elpis_ecs_c_check_evidence` on the old evidence | memory LOOKUP | relational view |
+| Authority transition | the law's `check_evidence` on the old evidence | memory LOOKUP | relational view |
 |---|---|---|---|
 | `SOURCE_VERSION` v1 → v2 | `SOURCE_STALE` | still 1 → 3 (score 2, from v1 evidence) | 1 → 2 (score 1: only admissible evidence) |
 | `ACTIVE` → `DORMANT` | `LIFECYCLE` | still 1 → 3 | no live evidence |
@@ -31,7 +32,9 @@ bound.
 ## Objects and law
 
 Every input uses the real ECS_C types:
-- authority rows: `elpis_ecs_c_entity`, read through `elpis_ecs_c_read_status` and `elpis_ecs_c_entity_at`;
+- authority rows: `elpis_ecs_c_entity` (`elpis/ecs_c_types.h`), read through the volatile session's
+  `elpis_ecs_c_session_read_status` and `elpis_ecs_c_session_entity_at` (or the retiring durable authority's
+  equivalents);
 - observations: `elpis_ecs_mem_observation`, keyed by `elpis_ecs_mem_relation_key`;
 - requests and answers: `elpis_ecs_mem_request` and `elpis_ecs_mem_answer`;
 - slots: `elpis_ecs_mem_slot`.
@@ -68,8 +71,10 @@ sync(A -> A'):  refused unless A' succeeds A; then RETIRED_A' evidence is releas
 - no row founded before the synced coordinate appearing later;
 - at an equal generation, the identical table (an idempotent no-op).
 
-Anything else is `REGRESSION`, for example a real `RECONCILE_ROLLBACK` that returns a source to an older version. The
-view keeps its coordinate until an explicit reset.
+Anything else is `REGRESSION`, for example a durable authority's `RECONCILE_ROLLBACK` that returns a source to an
+older version. A volatile session refuses that event `PERSISTENCE_RETIRED`, so over a session a `REGRESSION`
+can only come from a caller handing the view inconsistent tables. A session's successor is another lineage
+(`LINEAGE`). The view keeps its coordinate until an explicit reset.
 
 **Invariant.** Every retained contribution names its source's present, non-TERMINATED, current version and scope.
 Sync releases RETIRED evidence and admission is at the current binding only. `verify` counts violations and `rebuild`
@@ -142,10 +147,20 @@ same logical work over 100, 1 000 and 10 000 unrelated relations; a full `rebuil
   observations. Result: 2,274,048 answers, 189,504 slots and 2,632 states, with 0 mismatches. The comparison is not
   vacuous: 75% of the answers name a filler, 49% carry conflicts and 48% contradictions.
 
-**`ECS_C.test_ecs_c_relational_authority`** (production libraries and the real authority).
-- The gap above.
-- The view's admission law equals `elpis_ecs_c_check_evidence` on 750 probes over 5 authority states.
-- A real rollback (records copied back, then `RECONCILE_ROLLBACK`) is refused `REGRESSION` until reset.
+**`ECS_C.test_ecs_c_relational_session`** (production libraries over the volatile session; phase V2 of the
+volatile migration, `docs/ELPIS_MISSION.md`, Amendment 3).
+- The gap above, including DORMANT suspension and restoration and revalidation under a new version.
+- The view's admission law equals `elpis_ecs_c_session_check_evidence` on 975 probes over 7 session states.
+- Contradictory evidence from two session sources, and the view's capacity refusal.
+- Session lifecycle: a view synced to one session refuses the next session's tables `LINEAGE` until reset, and the
+  reset view is empty. No volatile view outlives its session.
+- Nothing opens or writes a file. Under strace, its run makes no write-class system call
+  (`tests/boundary/test_volatile_runtime.py`).
+
+Until V2 this end-to-end test ran over the durable authority as `test_ecs_c_relational_authority`. That run covered
+750 probes over 5 authority states, and a real rollback (records copied back, then `RECONCILE_ROLLBACK`) refused
+`REGRESSION` until reset. The R0 evidence and its mutation rounds (`research/ecsc_dynamic_relational_r0`) were
+produced with that test at commit `6e6f037` and reproduce there. They are not re-run against the session test.
 
 **Sanitizers.** Both suites are clean under GCC ASan+UBSan.
 

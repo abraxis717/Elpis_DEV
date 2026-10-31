@@ -110,6 +110,7 @@ pub fn digest(parts: &[&[u8]]) -> [u8; 32] {
 #[cfg(test)]
 mod tests {
     use super::digest;
+    use std::{format, string::String, vec};
 
     fn hex(d: [u8; 32]) -> String {
         d.iter().map(|b| format!("{b:02x}")).collect()

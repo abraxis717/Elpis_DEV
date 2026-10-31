@@ -49,8 +49,8 @@ def test_the_two_native_ecs_domains_exist_and_the_one_ecs_tree_does_not():
     subs = {s["id"]: s for s in SYSTEM["subsystems"]}
     assert set(subs["ECS_G"]["native_targets"]) == {"elpis_ecsg_math", "elpis_ecsg_fms", "elpis_ecsg_k1",
                                                     "elpis_ecsg_k1_fms"}
-    assert subs["ECS_C"]["native_targets"] == ["elpis_ecs_memory", "elpis_ecs_c_authority", "elpis_ecs_c_hca",
-                                               "elpis_ecs_c_relational"]
+    assert subs["ECS_C"]["native_targets"] == ["elpis_ecs_memory", "elpis_ecs_c_session", "elpis_ecs_c_authority",
+                                               "elpis_ecs_c_hca", "elpis_ecs_c_relational"]
     assert "elpis_ecs_composite" in subs["runtime"]["native_targets"]
     # Python bindings keep their historical package; no Python ECS_G / ECS_C package or kernel exists, and the
     # retired continuity adapter does not either.
@@ -96,22 +96,34 @@ def test_dependency_directions_keep_runtime_as_the_only_composer():
     assert 'elpis_ecs_c_authority = { path = "../ECS_C/authority", default-features = false }' in deps
     assert "[build-dependencies]" not in cargo and "[dev-dependencies]" not in cargo
     lock = (runtime_crate / "Cargo.lock").read_text()
-    assert sorted(re.findall(r'(?m)^name = "([^"]+)"', lock)) == ["elpis_ecs_c_authority", "elpis_runtime"]
+    assert sorted(re.findall(r'(?m)^name = "([^"]+)"', lock)) == ["elpis_ecs_c_authority", "elpis_ecs_c_session",
+                                                                    "elpis_runtime"]
     rust = "\n".join(line.split("//")[0] for p in (runtime_crate / "src").rglob("*.rs")
                      for line in p.read_text().splitlines())   # code only: doc comments cite the K1 ABI it mirrors
     for foreign in ("elpis_ecsg", "extern crate", "#[link(", "dlopen", "dsv", "inference", "ecs_c_authority::ffi"):
         assert foreign not in rust, foreign
-    # The ECS_C authority (docs/ECS_C_AUTHORITY.md) depends on nothing but the Rust standard library: since standalone
-    # continuity retired into it (census, section 9) its SHA-256, the evolution law and digest and the legacy register
-    # reader are its own. No ECS_G, no memory, no RuntimeCore, no codec, and no build script.
-    authority = REPO / "native/ECS_C/authority"
-    cargo = (authority / "Cargo.toml").read_text()
+    # The volatile ECS_C session (docs/ECS_C_SESSION.md) owns the transition law, SHA-256 and the evolution law and
+    # digest. It depends on nothing, not even the Rust standard library (no_std), and has no build script.
+    session = REPO / "native/ECS_C/session"
+    cargo = (session / "Cargo.toml").read_text()
     deps = cargo[cargo.index("[dependencies]"):].split("\n[", 1)[0]
     assert re.findall(r"(?m)^(\w+)\s*=", deps) == [], deps
     assert "[build-dependencies]" not in cargo and "[dev-dependencies]" not in cargo
+    assert not (session / "build.rs").exists()
+    assert "#![no_std]" in (session / "src/lib.rs").read_text()
+    assert sorted(re.findall(r'(?m)^name = "([^"]+)"', (session / "Cargo.lock").read_text())) == ["elpis_ecs_c_session"]
+    # The retiring durable ECS_C authority (docs/ECS_C_AUTHORITY.md) depends only on the session crate, embedded
+    # without its C ABI; the legacy register reader is its own. No ECS_G, no memory, no RuntimeCore, no codec, and no
+    # build script.
+    authority = REPO / "native/ECS_C/authority"
+    cargo = (authority / "Cargo.toml").read_text()
+    deps = cargo[cargo.index("[dependencies]"):].split("\n[", 1)[0]
+    assert re.findall(r"(?m)^(\w+)\s*=", deps) == ["elpis_ecs_c_session"], deps
+    assert 'elpis_ecs_c_session = { path = "../session", default-features = false }' in deps
+    assert "[build-dependencies]" not in cargo and "[dev-dependencies]" not in cargo
     assert not (authority / "build.rs").exists()
     lock = (authority / "Cargo.lock").read_text()
-    assert sorted(re.findall(r'(?m)^name = "([^"]+)"', lock)) == ["elpis_ecs_c_authority"]
+    assert sorted(re.findall(r'(?m)^name = "([^"]+)"', lock)) == ["elpis_ecs_c_authority", "elpis_ecs_c_session"]
     rust = "\n".join(line.split("//")[0] for p in (authority / "src").rglob("*.rs") for line in p.read_text().splitlines())
     for foreign in ("elpis_ecsg", "ecsg_", "elpis_ecs_mem", "elpis_runtime", "extern crate", "#[link(", "dlopen",
                     "dsv", "inference"):
