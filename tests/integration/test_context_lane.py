@@ -35,6 +35,7 @@ from elpis.structure.retrieval.objects import ChunkClaim, CorpusManifest, chunk_
 
 from ._turn_fixtures import LEARN, ByteTokens, FixtureMap, admitted
 from .test_codec_ecs_turn import _config, k1, world  # noqa: F401 (the k1 fixture)
+from ..conftest import session_marks
 
 PROFILE = "ab" * 32
 PROVENANCE = "cd" * 32
@@ -189,7 +190,7 @@ def test_a_stalled_worker_never_blocks_managed_cognition_that_consumes_the_view(
     learn = LearnRequest("hot", ByteTokens(), admitted(FixtureMap()), LEARN)
     query = QueryRequest("query", ByteTokens(), admitted(FixtureMap()))
     with ContextLane(ContextLimits(capacity=8)) as lane, world(k1, max_rows=8) as state, \
-            Runtime(_config(tmp_path / "c")) as runtime:
+            Runtime(_config()) as runtime:
         runtime.anchor_cognition(state)
         assert _settle(lane, lane.submit(_axiom("seed"))[0]) == "APPLIED"
         published = lane.view()
@@ -401,22 +402,20 @@ def test_successor_is_pure_and_deterministic():
 
 # -- separate coordinates ----------------------------------------------------------------------------------------------
 
-def test_the_active_view_and_the_durable_state_are_separate_coordinates(k1, tmp_path):   # noqa: F811
+def test_the_active_view_and_the_session_are_separate_coordinates(k1, tmp_path):   # noqa: F811
     learn = LearnRequest("learn", ByteTokens(), admitted(FixtureMap()), LEARN)
     with world(k1, max_rows=8) as state:
-        with ContextLane() as lane, Runtime(_config(tmp_path / "c", testing=True)) as runtime:
+        with ContextLane() as lane, Runtime(_config()) as runtime:
             runtime.anchor_cognition(state)
             assert _settle(lane, lane.submit(_axiom("a"))[0]) == "APPLIED"
             result = runtime.run_learn(state, learn, context=lane)
-            durable = runtime.continuity.snapshot()
-            io = runtime.continuity.testing_counters(reset=True)
-            for n in range(20):                       # WARM updates write nothing durable
+            session, marks = runtime.continuity.snapshot(), session_marks(runtime)
+            live = runtime.live_identity(state)
+            for n in range(20):                       # WARM updates touch neither the session nor the lineage
                 lane.submit(_axiom(f"w{n}"))
             assert _settle(lane, lane.submit(_axiom("z"))[0]) == "APPLIED"
-            assert runtime.continuity.snapshot() == durable
-            assert all(v == 0 for v in runtime.continuity.testing_counters().values()), io
-            ticket = runtime.publish_identity(state)  # durable publication neither includes nor waits for the view
-            assert ticket.identity_published and not hasattr(ticket, "context")
+            assert runtime.continuity.snapshot() == session and session_marks(runtime) == marks
+            assert runtime.live_identity(state) == live
             assert result.context.version == 1 and lane.view().version > 1
         with ContextLane() as fresh:                  # a restart starts from the empty view
             assert fresh.view() is EMPTY_VIEW

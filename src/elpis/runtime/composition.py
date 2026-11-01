@@ -9,9 +9,6 @@ entry point and returns that subsystem's result:
 * ``run_ingress``: pipeline ingress on caller bytes.
 * ``admit_retrieval``: structure retrieval-bundle validation against the
   expected query and corpus.
-* ``publish_canonical``: the canonical Grid81 publisher, with the caller's
-  one-use promotion capability. The pipeline ledger owns publication
-  durability and idempotent replay.
 * ``admit_context``: structural memory rendered through the DSV4 codec.
   Pipeline ingress on the turn's bytes, then the edge adapter (address
   proposals and chunk claims from the pinned export), then HACF object
@@ -22,8 +19,8 @@ entry point and returns that subsystem's result:
   authority (``evolution_authority``). The gate must be issued by the
   deployment-pinned evolution policy (``elpis.evolution.policy``;
   ``RuntimeConfig.evolution_policy_sha256``): a caller-built gate is refused.
-  The exact assertion is durably reserved before execution and finalized
-  afterwards. Pending authority and stale assertions execute nothing.
+  The exact assertion is reserved in the session before execution and
+  finalized afterwards. Pending authority and stale assertions execute nothing.
 * ``anchor_cognition``: the explicit anchor of the first managed K1 lineage.
 * ``run_query``: the canonical read-only QUERY, codec -> ``f_W(x)`` of the
   authoritative K1 state -> codec (:mod:`elpis.runtime.cognition`). No state
@@ -37,19 +34,14 @@ entry point and returns that subsystem's result:
   a pinned :class:`~elpis.runtime.context.ContextView`. The result records the
   view's coordinate (``result.context``); no encoding of a view into the K1
   stimulus exists (docs/ARCHITECTURE.md, "Execution lanes").
-* ``publish_recoverable`` / ``publish_identity``: the explicit durable
-  publication of the live state, of one of two kinds never confused
-  (docs/RUNTIME_CORE.md, "Recoverable and identity-only publication"):
-  RuntimeCore captures it and its durability lane makes it durable off the HOT
-  lane; the caller chooses whether to wait. ``publish_recoverable`` needs the
-  checkpoint store and is ``ACKNOWLEDGED`` only with a read-back verified slot;
-  ``publish_identity`` (no store) resolves ``IDENTITY_PUBLISHED``, never an
-  acknowledgment. ``durability`` reads the lane's state; ``live_identity``
-  reads the live state's identity on request.
-* ``recover_k1``: K1 Recovery R0 (docs/K1_RECOVERY_R0.md), read-only: what
-  restart may do with the lineage, and the complete authorized envelope when it
-  is resumable. ``discard_k1_candidate`` / ``adopt_k1_candidate`` are the
-  explicit operator reconciliation of an unresolved checkpoint candidate.
+* ``live_identity``: the live state's identity on request.
+* Nothing persists (docs/ELPIS_MISSION.md, Amendment 3; RuntimeCore ABI v8).
+  Each ``open`` is a new volatile ECS_C session at a fresh genesis, with the
+  configured sources founded again; ``close`` ends it and everything learned,
+  observed or reserved in it. The persistent operations of ABI v7
+  (``publish_recoverable``, ``publish_identity``, ``durability``,
+  ``recover_k1``, ``discard_k1_candidate``, ``adopt_k1_candidate``,
+  ``import_composite``) and ``publish_canonical`` do not exist.
 * ``run_turn``: the LEGACY learned turn (LEARN, then the decode of its S3
   readout), kept for replay; it needs the same explicit learning authority.
   Without a qualified ECS codec map every cognitive operation refuses with
@@ -57,21 +49,19 @@ entry point and returns that subsystem's result:
 
 THE AUTHORITY IS RUNTIMECORE'S, NOT THIS MODULE'S. Every mutable systems decision
 of an open runtime belongs to RuntimeCore (native/runtime, Rust; docs/RUNTIME_CORE.md):
-its lifecycle and fail-stop disposition, the binding of the K1 lineage to one native
-state (verified once against continuity) and its live coordinate, the managed
-turn's native K1 transaction (begin, schedule, volatile commit or abort), the
-durability lane (explicit durable publication) and the evolution attempt's durable
-reservation and finalization. This module is the compatibility facade: it validates requests at
+its lifecycle and fail-stop disposition, its volatile session, the binding of the K1
+lineage to one native state (verified against the session's anchor) and its live
+coordinate, the managed turn's native K1 transaction (begin, schedule, volatile commit
+or abort) and the evolution attempt's reservation and finalization in the session.
+This module is the compatibility facade: it validates requests at
 the language boundary (token codec, ECS codec map, evolution gate), hands
 RuntimeCore native-ready values and raises the code RuntimeCore returns. It holds
 no fail-stop flag, no lineage state, no transaction and no authority value; the
 only state it keeps is a reference that keeps the bound K1 state's owner alive
 (lifetime, not authority).
 
-There are no generic receipts and no history. Continuity holds only the current
-durable authority restart and evolution need (docs/CONTINUITY.md); the live state
-may be ahead of it, and a crash loses at most the volatile work since the last
-acknowledged durable publication.
+There are no generic receipts and no history, and nothing survives the session: a
+restart, a crash or ``close`` begins again at genesis from what the caller supplies.
 
 The runtime composes no DSV model execution (docs/ELPIS_MISSION.md: DSV4
 communicates, ECS computes). Nothing is chained implicitly. No hidden
@@ -92,7 +82,6 @@ from elpis.evolution.path_gate import (
 )
 from elpis.evolution.policy import EvolutionPolicyError, policy_of
 from elpis.inference.admission import ContextAdmission, ContextBudget, admit_context
-from elpis.pipeline.canonical.publisher import CanonicalPublicationReceipt, publish_candidate
 from elpis.pipeline.ingress import QueryIngress, QueryIngressResult
 from elpis.structure.retrieval.budget import RetrievalBudget
 from elpis.structure.retrieval.contracts import RetrievalBundle
@@ -101,13 +90,13 @@ from elpis.structure.retrieval.validation import validate_bundle
 from elpis.substrate.authority import PinnedAuthority
 from elpis.substrate.digests import raw_digest
 
-from .authority import ACTIVE, FOUNDED, SOURCE, ContinuityError, ContinuitySnapshot, EvolutionAuthority, \
-    SourceGrant, label, lifecycle_event, source_found_event
-from .core import DurabilityStatus, DurableTicket, K1Recovery, RuntimeCore, RuntimeLibrary, describe
+from .authority import ACTIVE, FOUNDED, SOURCE, ContinuityError, ContinuitySnapshot, SessionConfig, SourceGrant, \
+    label, lifecycle_event, source_found_event
+from .core import RuntimeCore, RuntimeLibrary, describe
 from .edges import from_regex_hacf, object_claims
 from .errors import CompositionError
 
-__all__ = ("CompositionError", "ContextPreparation", "Runtime", "RuntimeConfig", "RuntimeContinuity")
+__all__ = ("CompositionError", "ContextPreparation", "Runtime", "RuntimeConfig", "RuntimeContinuity", "SessionConfig")
 
 
 @dataclass(frozen=True)
@@ -120,18 +109,18 @@ class ContextPreparation:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
-    """The runtime's durable authority, its RuntimeCore library and the deployment authorities it trusts.
-
-    ``authority_dir`` is the root of an operator-provisioned ECS_C authority (``elpis.runtime.authority``:
-    ``provision_authority``; its ``state/`` and protected ``authority/`` directories), the runtime's durable authority:
-    RuntimeCore publishes to it and admits typed evidence against its ACTIVE sources. It is never provisioned here.
+    """The runtime's RuntimeCore library, the deployment authorities it trusts and its sessions' configuration.
 
     ``runtime_library`` is the built ``libelpis_runtime.so`` (native/runtime), named by an explicit absolute path.
     It is never loaded from that path: it is admitted (``elpis.substrate.native_admission``) beneath its directory
     as the trusted descriptor root, as the library ``runtime_library_id`` of the deployment-pinned
     ``native_authority`` (a ``PinnedAuthority`` whose own pin came from trusted configuration), verified and loaded
     from sealed bytes. Without a ``native_authority`` the runtime refuses to start (``RUNTIME_UNPINNED``). The
-    library embeds the ECS_C authority (native/ECS_C/authority), its only durable authority (RuntimeCore ABI v7).
+    library embeds the volatile ECS_C session (native/ECS_C/session), its only authority (RuntimeCore ABI v8).
+
+    ``session`` (a :class:`~elpis.runtime.authority.SessionConfig`) is what every session is created with: its entity
+    capacity, an optional nonce seed and the sources founded (and activated) at every open. A session lives in memory
+    only; there is no authority directory, checkpoint store or any other path.
 
     ``codec_authority_sha256`` is the independent SHA-256 pin of the one codec authority catalog
     (``elpis.runtime.codec_authority``) whose admissions this runtime's cognitive operations accept. It is
@@ -141,29 +130,20 @@ class RuntimeConfig:
     ``evolution_policy_sha256`` is the independent SHA-256 pin of the one evolution policy
     (``elpis.evolution.policy``) whose gates ``Runtime.evolve`` accepts. Without it ``evolve`` refuses
     (``EVOLUTION_POLICY_UNPINNED``): no caller configures the scopes, budgets or contract of an attempt.
-
-    ``k1_checkpoint_dir`` (optional) is an operator-provisioned K1 Recovery R0 store
-    (:func:`elpis.runtime.recovery.provision_k1_checkpoint`). When set, every open attaches it (a missing or malformed
-    store refuses the open), the anchor and every durable publication persist the complete envelope before continuity
-    names it, and :meth:`Runtime.recover_k1` can resume the last acknowledged state after restart. A LEARN never
-    touches it.
     """
 
-    authority_dir: Path
     runtime_library: Path
     codec_authority_sha256: str | None = None
     native_authority: PinnedAuthority | None = None
     runtime_library_id: str = "elpis_runtime"
-    k1_checkpoint_dir: Path | None = None
     evolution_policy_sha256: str | None = None
+    session: SessionConfig = SessionConfig()
 
     def __post_init__(self):
-        paths = (self.authority_dir, self.runtime_library)
-        if self.k1_checkpoint_dir is not None:
-            paths += (self.k1_checkpoint_dir,)
-        for value in paths:
-            if not isinstance(value, Path) or not value.is_absolute():
-                raise CompositionError("RUNTIME_PATH", "runtime paths must be absolute Paths")
+        if not isinstance(self.runtime_library, Path) or not self.runtime_library.is_absolute():
+            raise CompositionError("RUNTIME_PATH", "the runtime library must be an absolute Path")
+        if type(self.session) is not SessionConfig:
+            raise CompositionError("RUNTIME_INVALID", "session: a SessionConfig")
         for pin, code in ((self.codec_authority_sha256, "CODEC_AUTHORITY"),
                           (self.evolution_policy_sha256, "EVOLUTION_POLICY")):
             if pin is not None and (type(pin) is not str or len(pin) != 64
@@ -172,22 +152,17 @@ class RuntimeConfig:
 
 
 class RuntimeContinuity:
-    """The open runtime's durable authority as RuntimeCore exposes it (``runtime.continuity``, the name RuntimeCore's
-    ABI keeps for its durable view). It holds nothing.
+    """The open runtime's session as RuntimeCore exposes it (``runtime.continuity``, the name RuntimeCore's ABI keeps
+    for its authority view). It holds nothing.
 
-    ``snapshot`` reads the current durable record (also while fail-stopped: it is what restart
-    sees). ``commit_evolution_transition`` is the explicit reconciliation of a durable pending
-    evolution authority with an externally established receipt. ``status`` is the ECS_C authority's report, and
-    ``found_source`` the operator founding a source on the held authority. The testing library adds fault
-    injection and the authority's I/O counters. ``directory`` is the authority's root (``authority.state`` and
-    ``authority.authority`` its two directories). Refusals raise :class:`~elpis.runtime.authority.ContinuityError`
-    with RuntimeCore's stable code.
+    ``snapshot`` reads the session's current authority (also while fail-stopped). ``status`` is the session's report
+    (generation, counts, footprint, chain heads), and ``found_source`` the operator founding a source on the open
+    session. Refusals raise :class:`~elpis.runtime.authority.ContinuityError` with RuntimeCore's stable code.
     """
 
     def __init__(self, core: RuntimeCore):
         self._core = core
-        self.directory = core.directory
-        self.authority = core.authority
+        self.session = core.session
 
     @staticmethod
     def _call(fn, *args):
@@ -199,15 +174,12 @@ class RuntimeContinuity:
     def snapshot(self) -> ContinuitySnapshot:
         return self._call(self._core.snapshot)
 
-    def commit_evolution_transition(self, expected: EvolutionAuthority, receipt_digest: str) -> ContinuitySnapshot:
-        return self._call(self._core.evolution_reconcile, expected, receipt_digest)
-
     def status(self) -> dict:
         return self._call(self._core.authority_status)
 
     def found_source(self, grant: SourceGrant) -> dict:
-        """Found (and, with ``grant.activate``, activate) a source on the authority RuntimeCore holds: the operator's
-        events, sent by the operator entity (row 0) at its next sequences, as the native host's ``source_found``."""
+        """Found (and, with ``grant.activate``, activate) a source on the open session: the operator's events, sent by
+        the operator entity (row 0) at its next sequences, as the native host's ``source_found``."""
         if type(grant) is not SourceGrant:
             raise TypeError("found_source takes a SourceGrant")
         core = self._core
@@ -220,13 +192,6 @@ class RuntimeContinuity:
                                     lifecycle_event(operator["id"], seq + 1, receiver, FOUNDED, ACTIVE))
         return {"id": receiver.hex(), "label": label(grant.label).hex(), "source_authority": grant.source_authority,
                 "lifecycle": "ACTIVE" if grant.activate else "FOUNDED", "generation": generation}
-
-    def testing_fault(self, publication: int, action: int, arg: int = 0) -> None:
-        self._call(self._core.testing_fault, publication, action, arg)
-
-    def testing_counters(self, reset: bool = False) -> dict[str, int]:
-        return self._call(self._core.testing_io_counters, reset)
-
 
 def _consumed_context(context):
     """The coordinate of the published context view a cognitive operation consumes: one reference read of a
@@ -260,7 +225,7 @@ class Runtime:
             raise CompositionError("RUNTIME_UNPINNED", "a deployment-pinned native authority is required")
         library = RuntimeLibrary.admit(config.runtime_library.parent, config.runtime_library.name,
                                        config.native_authority, config.runtime_library_id)
-        self._core = RuntimeCore(library, config.authority_dir)
+        self._core = RuntimeCore(library, config.session)
         self.continuity = RuntimeContinuity(self._core)
         # Keeps the owner of the bound K1 state alive, so its identity cannot be reused while
         # RuntimeCore holds the binding (lifetime only: RuntimeCore decides the binding), and the bound
@@ -269,21 +234,22 @@ class Runtime:
         self._bound_substrate = None
 
     def open(self) -> "Runtime":
+        """Start a new session (a fresh genesis in memory) and found the configured sources in it."""
         # An open runtime is refused and keeps its turn, so the owner is released only once RuntimeCore opened
         # (unbound) and can retain nothing of it.
         self._core.open()
         self._bound_owner = self._bound_substrate = None
-        if self.config.k1_checkpoint_dir is not None:
-            try:
-                self._core.checkpoint_attach(self.config.k1_checkpoint_dir)
-            except CompositionError:
-                self._core.close()   # a configured store that cannot be attached refuses the open
-                raise
+        try:
+            for grant in self.config.session.sources:
+                self.continuity.found_source(grant)
+        except BaseException:
+            self._core.close()   # a session whose sources cannot be founded is not opened
+            raise
         return self
 
     def close(self) -> None:
         """Give the bound K1 state back (end any open managed turn on it natively, release its managed lease), then
-        close RuntimeCore. A state its owner already closed has nothing to give back."""
+        end the session: everything it held is gone. A state its owner already closed has nothing to give back."""
         substrate, self._bound_substrate = self._bound_substrate, None
         if substrate is not None:
             try:
@@ -331,13 +297,6 @@ class Runtime:
             raise TypeError("admit_retrieval takes a RetrievalBundle")
         return validate_bundle(bundle, expected_query, expected_corpus, budget or RetrievalBudget())
 
-    # -- pipeline: canonical publication --------------------------------------------
-    def publish_canonical(self, *, project_root, candidate_root, ledger, promotion_capability,
-                          lock_path=None) -> CanonicalPublicationReceipt:
-        return publish_candidate(project_root=project_root, candidate_root=candidate_root,
-                                 ledger=ledger, promotion_capability=promotion_capability,
-                                 lock_path=lock_path)
-
     # -- evolution: gated attempts bound to the current evolution authority -------------
     def evolution_authority(self) -> EvolutionAuthorityBinding:
         """The current evolution authority an assertion must be built against."""
@@ -353,10 +312,11 @@ class Runtime:
         (``EVOLUTION_POLICY_UNPINNED`` / ``EVOLUTION_POLICY_UNAUTHORIZED``). ``advance`` is a trusted operator
         callback (the policy's confinement is ``TRUSTED_OPERATOR_CALLBACKS``); Elpis does not sandbox it.
 
-        RuntimeCore refuses while fail-stopped or pending, durably reserves the exact assertion
-        before anything executes and fail-stops on any reservation or finalization failure. An
-        attempt that raises or returns an invalid result may already have had an external effect:
-        RuntimeCore keeps its reservation pending and fail-stops; nothing is retried or inferred.
+        RuntimeCore refuses while fail-stopped or pending, reserves the exact assertion in the session
+        before anything executes and fail-stops on a finalization failure. An attempt that raises or
+        returns an invalid result may already have had an external effect: RuntimeCore keeps its
+        reservation pending and fail-stops; nothing is retried or inferred. The reservation, like the
+        session, is volatile: it is gone with the session.
         """
         if type(gate) is not EvolutionPathGate:
             raise TypeError("evolve takes an EvolutionPathGate")
@@ -444,41 +404,6 @@ class Runtime:
         self._bound_owner, self._bound_substrate = owner, substrate
         return anchored
 
-    # -- cognition: K1 Recovery R0 -------------------------------------------------------------------------------
-    def recover_k1(self) -> K1Recovery:
-        """What restart may do with the K1 lineage (read-only; requires an attached checkpoint store).
-
-        Continuity decides; the checkpoint slots are evidence. ``RESUMABLE`` carries the complete authorized
-        ``(W, epoch, H, a)`` envelope: restore it (``K1State.restore``) and the next QUERY or LEARN binds it after
-        verifying its identity against continuity. Nothing rolls forward or back implicitly: a newer unauthorized
-        candidate is ``CANDIDATE_UNRESOLVED`` until an operator discards or adopts it.
-        """
-        return self._core.checkpoint_recover()
-
-    def discard_k1_candidate(self, candidate: bytes) -> None:
-        """Operator reconciliation: withdraw exactly the unresolved candidate ``candidate``; the lineage stays at
-        continuity's authority (``CHECKPOINT_INVALID`` for any other identity)."""
-        self._core.checkpoint_discard(candidate)
-
-    def import_composite(self, substrate) -> ContinuitySnapshot:
-        """Operator, explicit and LEGACY: move the open K1 lineage to the ECS composite ``substrate``, made by
-        ``CompositeState.import_k1`` from exactly the authorized K1 state with an empty memory. Needs an attached
-        checkpoint store provisioned for the composite envelope: the composite is captured and made durable first,
-        then continuity publishes the import (a v3 record of format ``COMPOSITE``); the composite is then bound.
-        Anything else (another K1 state, a non-empty memory) is ``CONTINUITY_STATE_MISMATCH`` and publishes
-        nothing. A lineage never changes format implicitly."""
-        if type(substrate) is not CompositeState:
-            raise CompositionError("ECS_STATE", "the import target is an ECS CompositeState")
-        descriptor, owner = describe(substrate)
-        snapshot = self._core.import_composite(descriptor)
-        self._bound_owner, self._bound_substrate = owner, substrate
-        return snapshot
-
-    def adopt_k1_candidate(self, candidate: bytes) -> ContinuitySnapshot:
-        """Operator reconciliation: adopt exactly the unresolved candidate ``candidate`` after its complete envelope
-        verified: continuity publishes authorized -> candidate. Refused while a K1 state is bound."""
-        return self._core.checkpoint_adopt(candidate)
-
     def _codec_pin(self) -> str:
         """The deployment pin every admitted codec's authority must match; ``""`` (matches nothing) when none is
         configured, so admission refuses (``CODEC_AUTHORITY``) after the fail-closed missing-codec check."""
@@ -491,8 +416,8 @@ class Runtime:
         The boundary validates the :class:`~elpis.runtime.cognition.QueryRequest` and encodes the query rows.
         RuntimeCore answers ``f_W(x)`` from the lineage's LIVE K1 state in one native call that also reports the
         state's generation; it must be the live one (otherwise the lineage is lost: fail-stop, the answer withheld).
-        Nothing is begun, committed, published, hashed or written: W, epoch, H, a and continuity are unchanged. The
-        answer reflects every managed LEARN before it, durable or not. ``context``: see the module docstring.
+        Nothing is begun, committed, hashed or written: W, epoch, H, a and the session are unchanged. The answer
+        reflects every managed LEARN of the session before it. ``context``: see the module docstring.
         """
         self._core.require_live()
         consumed = _consumed_context(context)
@@ -516,10 +441,9 @@ class Runtime:
         """One managed LEARN under an explicit :class:`~elpis.runtime.cognition.LearnAuthority`.
 
         RuntimeCore verifies the lineage (its live coordinate), runs the admitted experience schedule on a native
-        candidate and commits it atomically into the live state. The commit is VOLATILE: nothing is checkpointed or
-        published and no I/O happens (``result.durability == "VOLATILE"``; the result carries the live generations).
-        Durability is :meth:`publish_recoverable` (or :meth:`publish_identity`). A refused LEARN installs nothing.
-        ``context``: see the module docstring.
+        candidate and commits it atomically into the live state. The commit is VOLATILE: no I/O happens
+        (``result.durability == "VOLATILE"``; the result carries the live generations), and it lasts as long as the
+        session. A refused LEARN installs nothing. ``context``: see the module docstring.
 
         ``observations`` (an ECS composite lineage only): typed
         :class:`~elpis.ECS.composite.MemoryObservation` values recorded into the memory candidate of the same turn,
@@ -624,8 +548,8 @@ class Runtime:
         admits, within its bound; all of it is admitted before anything native is called. RuntimeCore verifies and
         binds the lineage, opens the composite transaction at the live generation and runs NO K1 schedule; the
         observations are recorded on the memory candidate and committed as one VOLATILE transition: the live
-        generation advances by one, the K1 retained state stays byte-identical, nothing is published (durability is
-        :meth:`publish_recoverable`). All or nothing: any refused observation aborts the whole turn (nothing is
+        generation advances by one, the K1 retained state stays byte-identical, nothing is written (it lasts as long
+        as the session). All or nothing: any refused observation aborts the whole turn (nothing is
         installed) and the refusal is raised. ``budget`` (a :class:`~elpis.runtime.fuel.CognitiveBudget`, default
         the ceiling) is admitted natively; its ``max_observations`` is narrowed to the authority's bound.
         Evidence is storage: an observation is not learning, truth or authority.
@@ -665,47 +589,6 @@ class Runtime:
                 pass   # a fail-stop already ended it natively, or close and destruction will (the turn law)
             raise
         return keys
-
-    # -- durability: explicit, off the HOT lane -------------------------------------------------------------------
-    def publish_recoverable(self, substrate, *, wait: bool = True, timeout: float | None = None) -> DurableTicket:
-        """Request RECOVERABLE durable publication of the live state of ``substrate`` (binding it first if needed).
-
-        The complete state becomes durable, so a checkpoint store must be attached (``k1_checkpoint_dir``): without
-        one this is refused with ``RUNTIME_RECOVERY_UNAVAILABLE`` before anything is bound or captured; it is never
-        silently downgraded to an identity-only publication. RuntimeCore captures the state's envelope under its
-        lease (the one synchronous step) and hands it to its durability lane, which seals it, writes and syncs the
-        checkpoint slot, reads it back and verifies it is exactly the captured envelope, then writes and syncs the
-        continuity record, off the HOT lane. With ``wait`` (the caller's explicit choice) this returns the resolved
-        :class:`~elpis.runtime.core.DurableTicket`; otherwise the PENDING one at once. ``ACKNOWLEDGED`` (always
-        ``recoverable``) means restart resumes exactly this state (K1 Recovery R0). ``UNCERTAIN`` means the outcome is
-        unknown until restart resolves it; it never means the state is not durable. A newer request supersedes a
-        waiting one. Refused while the lane is faulted.
-        """
-        return self._publish(substrate, self._core.recoverable_request, wait, timeout)
-
-    def publish_identity(self, substrate, *, wait: bool = True, timeout: float | None = None) -> DurableTicket:
-        """Request IDENTITY-ONLY durable publication: continuity names the live state's identity; no store holds its
-        bytes (the caller keeps them, and restart can rebind only a state the caller supplies).
-
-        For runtimes without a checkpoint store; refused with ``RUNTIME_CHECKPOINT_ATTACHED`` while one is attached
-        (every publication must then be recoverable). Resolves ``IDENTITY_PUBLISHED`` (never ``recoverable``), never
-        ``ACKNOWLEDGED``: it is not a recoverable-state acknowledgment. Otherwise as :meth:`publish_recoverable`.
-        """
-        return self._publish(substrate, self._core.identity_request, wait, timeout)
-
-    def _publish(self, substrate, request, wait: bool, timeout: float | None) -> DurableTicket:
-        self._core.require_live()
-        descriptor, owner = describe(substrate)
-        if self._bound_owner is None:
-            self._bound_owner, self._bound_substrate = owner, substrate   # what this request binds stays alive
-        ticket = request(descriptor)
-        if not wait:
-            return ticket
-        return self._core.durable_wait(ticket.sequence, timeout)
-
-    def durability(self) -> DurabilityStatus:
-        """The durability lane's state (read without waiting for any HOT operation)."""
-        return self._core.durable_status()
 
     def live_identity(self, substrate) -> tuple[bytes, int]:
         """The bound state's retained-state identity and live generation, on request (cold path: it hashes)."""

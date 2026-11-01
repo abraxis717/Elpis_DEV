@@ -1,10 +1,10 @@
 """QUERY and LEARN are different operations (docs/COGNITION_R0.md), over real native K1.
 
 QUERY reads the authoritative K1 state and runs the native forward map ``f_W(x)``: it does not learn, consolidate,
-advance the epoch, write W, H or a, open a transaction or publish continuity. These tests prove that exactly, by
-comparing the complete retained state ``(W, epoch, H, a)`` (its portable envelope, its retained-state digest and its
-components), the native generation and the continuity slot *bytes* before and after every successful and every
-refused query, unmanaged and managed, standalone and FMS-resident. LEARN needs an explicit ``LearnAuthority`` and
+advance the epoch, write W, H or a, open a transaction or make a session transition. These tests prove that exactly,
+by comparing the complete retained state ``(W, epoch, H, a)`` (its portable envelope, its retained-state digest and its
+components), the native generation and the session's generation, commit and state root before and after every
+successful and every refused query, unmanaged and managed, standalone and FMS-resident. LEARN needs an explicit ``LearnAuthority`` and
 commits atomically or not at all. The fixture map is TRAINING=NONE SEMANTICS=NONE: interface mechanics only.
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ from elpis.runtime.cognition import (CognitiveOperation, LearnAuthority, LearnRe
                                      QueryResult, QueryStimulus, run_learn, run_query, run_turn)
 from elpis.runtime.composition import CompositionError
 
-from ..conftest import authority_slots
+from ..conftest import session_marks
 from ._turn_fixtures import LEARN, ByteTokens, FixtureMap, admitted, fixture_authority
 from .test_codec_ecs_turn import DIM, _config, _Resident, adapter, k1, world  # noqa: F401 (module fixtures)
 
@@ -65,7 +65,7 @@ def subject(request, k1, adapter, tmp_path):   # noqa: F811 (module fixtures)
 
 
 def _slots(runtime):
-    return authority_slots(runtime.continuity.directory)
+    return session_marks(runtime)
 
 
 def _warm(state):
@@ -179,35 +179,32 @@ def test_learn_commits_the_whole_schedule_atomically_and_equals_the_legacy_learn
         assert info.value.code == "ECS_REFUSED" and a.snapshot() == before
 
 
-# --- managed (RuntimeCore + continuity) ---------------------------------------------------------------------------
+# --- managed (RuntimeCore + its session) ---------------------------------------------------------------------------
 
 def test_a_managed_query_changes_no_state_and_no_continuity_byte(subject, tmp_path):
-    with Runtime(_config(tmp_path / "c", testing=True)) as runtime:
+    with Runtime(_config()) as runtime:
         runtime.anchor_cognition(subject.state)
         runtime.run_learn(subject.state, _learn("warm"))
         before, slots, durable = subject.retained(), _slots(runtime), runtime.continuity.snapshot()
         runtime._core.counters(reset=True)
-        runtime.continuity.testing_counters(reset=True)
         results = [runtime.run_query(subject.state, _query(text=t)) for t in ("first", "second", "first")]
         assert subject.retained() == before                    # W, epoch, H, a, generation
-        assert _slots(runtime) == slots                        # continuity slot bytes
-        assert runtime.continuity.snapshot() == durable        # continuity current authority
-        # Answered from the LIVE state (one volatile LEARN past the durable anchor): its generation, no digest.
+        assert _slots(runtime) == slots                        # the session's generation, commit and state root
+        assert runtime.continuity.snapshot() == durable        # the session's current authority
+        # Answered from the LIVE state (one volatile LEARN past the anchor): its generation, no digest.
         assert durable.k1_state_digest != before[1]
         assert all(r.live_generation == subject.generation() and r.state_digest is None for r in results)
         assert results[0].readout == results[2].readout
         native = runtime._core.counters()
-        assert native["k1_queries"] == 3 and native["publications"] == 0
-        assert native["k1_state_digests"] == native["k1_identities"] == native["k1_captures"] == 0
+        assert native["k1_queries"] == 3 and native["session_transitions"] == 0
+        assert native["k1_state_digests"] == native["k1_identities"] == 0
         assert native["k1_txn_begins"] == native["k1_commits"] == native["k1_aborts"] == native["k1_reserves"] == 0
-        io = runtime.continuity.testing_counters()
-        assert not any(io.values()), io                        # the store did no I/O at all
         assert runtime.fault is None
 
 
 @pytest.mark.parametrize("case", ["no_codec", "learn_request", "nonfinite_row", "decode_out_of_vocab"])
 def test_a_refused_managed_query_changes_no_state_and_no_continuity_byte(subject, tmp_path, case):
-    with Runtime(_config(tmp_path / "c")) as runtime:
+    with Runtime(_config()) as runtime:
         runtime.anchor_cognition(subject.state)
         before, slots, durable = subject.retained(), _slots(runtime), runtime.continuity.snapshot()
         fixture = FixtureMap(reply=(300,) if case == "decode_out_of_vocab" else b"ok",
@@ -222,7 +219,7 @@ def test_a_refused_managed_query_changes_no_state_and_no_continuity_byte(subject
 
 
 def test_a_managed_query_of_an_unanchored_or_foreign_state_is_refused_and_writes_nothing(k1, tmp_path):
-    with world(k1) as state, world(k1, w=None) as other, Runtime(_config(tmp_path / "c")) as runtime:
+    with world(k1) as state, world(k1, w=None) as other, Runtime(_config()) as runtime:
         before, slots = state.snapshot(), _slots(runtime)
         with pytest.raises(CompositionError) as info:
             runtime.run_query(state, _query())
@@ -235,7 +232,7 @@ def test_a_managed_query_of_an_unanchored_or_foreign_state_is_refused_and_writes
 
 
 def test_an_unmanaged_learn_on_a_bound_state_is_refused_and_the_managed_query_continues(k1, tmp_path):
-    with world(k1) as state, Runtime(_config(tmp_path / "c")) as runtime:
+    with world(k1) as state, Runtime(_config()) as runtime:
         runtime.anchor_cognition(state)
         answer = runtime.run_query(state, _query())
         before, slots, durable = state.snapshot(), _slots(runtime), runtime.continuity.snapshot()
@@ -247,7 +244,7 @@ def test_an_unmanaged_learn_on_a_bound_state_is_refused_and_the_managed_query_co
 
 
 def test_a_managed_query_of_a_state_moved_after_release_fail_stops_and_withholds_the_answer(k1, tmp_path):
-    with world(k1) as state, Runtime(_config(tmp_path / "c")) as runtime:
+    with world(k1) as state, Runtime(_config()) as runtime:
         runtime.anchor_cognition(state)
         runtime.run_query(state, _query())
         runtime.release(state)                    # given back: unmanaged again, outside the lineage
@@ -261,7 +258,7 @@ def test_a_managed_query_of_a_state_moved_after_release_fail_stops_and_withholds
 
 
 def test_managed_learn_needs_authority_commits_volatile_and_publishes_only_on_request(subject, tmp_path):
-    with Runtime(_config(tmp_path / "c")) as runtime:
+    with Runtime(_config()) as runtime:
         runtime.anchor_cognition(subject.state)
         before, slots = subject.retained(), _slots(runtime)
         for request in (_learn(authority=None), _query()):
@@ -282,19 +279,15 @@ def test_managed_learn_needs_authority_commits_volatile_and_publishes_only_on_re
         after = subject.retained()
         assert runtime.run_query(subject.state, _query()).live_generation == result.generation_after
         assert subject.retained() == after
-        # Durable publication is explicit: then, and only then, continuity names exactly the learned state.
-        ticket = runtime.publish_identity(subject.state)   # no checkpoint store: identity only
-        assert (ticket.status, ticket.identity, ticket.generation) == \
-            ("IDENTITY_PUBLISHED", subject.state.state_digest(), result.generation_after)
-        assert runtime.continuity.snapshot().k1_state_digest == subject.state.state_digest()
-        assert runtime.continuity.snapshot().generation == durable.generation + 1
+        # Nothing is ever published: the session still names the anchor, and the learned state lives only in memory.
+        assert runtime.continuity.snapshot() == durable and durable.k1_state_digest != subject.state.state_digest()
 
 
 def test_gate_b_queries_and_transactions_follow_the_live_state_between_volatile_transitions(subject, k1, tmp_path):   # noqa: F811
     """Between volatile transitions, a managed QUERY answers ``f_W(x)`` of the LIVE state and the next managed LEARN
-    begins on it: neither is refused or redirected because the durable authority names an older state."""
+    begins on it: neither is refused or redirected because the session's anchor names an older state."""
     rows = memoryview(FixtureMap().query_rows_of(ByteTokens().encode("what is f_W here?")))
-    with Runtime(_config(tmp_path / "c")) as runtime:
+    with Runtime(_config()) as runtime:
         runtime.anchor_cognition(subject.state)
         durable, anchored = runtime.continuity.snapshot(), subject.state.snapshot()
         answers = []
@@ -306,5 +299,5 @@ def test_gate_b_queries_and_transactions_follow_the_live_state_between_volatile_
             answers.append(result.readout.values)
         assert len(set(answers)) == len(answers)                             # each transition is visible at once
         assert runtime.continuity.snapshot() == durable and runtime.fault is None
-        with K1State.restore(k1, anchored) as old:                           # the durable state answers otherwise
+        with K1State.restore(k1, anchored) as old:                           # the anchored state answers otherwise
             assert old.query(rows) != answers[-1]

@@ -116,7 +116,7 @@ def test_a_bound_state_is_never_demoted_by_memory_pressure_and_hot_work_on_it_ne
     learn, query = _requests()
     with _Residency(k1, adapter, tmp_path) as fms:
         state = fms.state(1)
-        with Runtime(_config(tmp_path / "c")) as runtime:
+        with Runtime(_config()) as runtime:
             runtime.anchor_cognition(state)
             assert fms.holds(state) == 1 and fms.runtime.inspect(state.id)["lease_count"] == 1   # bound: held
             before = fms.residency()
@@ -155,7 +155,7 @@ def test_b_hot_operations_on_a_demoted_state_are_refused_and_touch_nothing(k1, a
     learn, query = _requests()
     with _Residency(k1, adapter, tmp_path) as fms:
         state = fms.state(1)
-        with Runtime(_config(tmp_path / "c")) as runtime:
+        with Runtime(_config()) as runtime:
             runtime.anchor_cognition(state)
             runtime.run_learn(state, learn)   # volatile live work the release keeps
             live = runtime.live_identity(state)
@@ -164,11 +164,11 @@ def test_b_hot_operations_on_a_demoted_state_are_refused_and_touch_nothing(k1, a
 
             fms.state(2)
             fms.demote(state, 3)   # the deterministic precondition: COLD, its replica the only copy
-            durable, status = runtime.continuity.snapshot(), runtime.durability()
+            durable = runtime.continuity.snapshot()
             info, counters = fms.runtime.inspect(state.id), fms.residency()
 
             refusals = (lambda: runtime.run_query(state, query), lambda: runtime.run_learn(state, learn),
-                        lambda: runtime.publish_identity(state))
+                        lambda: runtime.live_identity(state))
             for operation in refusals:
                 with pytest.raises(CompositionError) as refused:
                     operation()
@@ -178,13 +178,11 @@ def test_b_hot_operations_on_a_demoted_state_are_refused_and_touch_nothing(k1, a
             assert fms.residency() == counters
             assert fms.runtime.inspect(state.id) == info and info["tier"] == COLD and info["lease_count"] == 0
             assert fms.holds(state) == 0
-            # No fail-stop; nothing durable moved; no ticket was issued and the lane is untouched.
+            # No fail-stop; the session did not move.
             assert runtime.fault is None
-            assert runtime.continuity.snapshot() == durable and runtime.durability() == status
-        # On disk too, continuity is the record the refusals found; and the demoted bytes are exactly the live state
-        # the release gave back (read only after the explicit materialization; test C proves the resumption).
-        with Runtime(_config(tmp_path / "c")) as reopened:
-            assert reopened.continuity.snapshot() == durable
+            assert runtime.continuity.snapshot() == durable
+        # The demoted bytes are exactly the live state the release gave back (read only after the explicit
+        # materialization; test C proves the resumption).
         state.materialize()
         assert fms.runtime.state_digest(state.id) == live[0]
 
@@ -194,7 +192,7 @@ def test_c_explicit_materialization_restores_residency_and_resumes_the_live_line
     learn, query = _requests()
     with _Residency(k1, adapter, tmp_path) as fms:
         state = fms.state(1)
-        with Runtime(_config(tmp_path / "c")) as runtime:
+        with Runtime(_config()) as runtime:
             runtime.anchor_cognition(state)
             runtime.run_learn(state, learn)
             answer = runtime.run_query(state, query).readout

@@ -21,8 +21,7 @@ from elpis.runtime.composition import CompositionError
 from elpis.runtime.fuel import CEILING
 
 from .test_codec_ecs_turn import DIM, WIDTH, _config, initial_w, k1  # noqa: F401 (module fixture)
-from .test_composite_runtime import AUTHORITY, _query, _store, fresh, library, obs  # noqa: F401
-from .test_k1_recovery import _cfg
+from .test_composite_runtime import AUTHORITY, _query, fresh, library, obs  # noqa: F401
 
 GRANT = LearnAuthority(0.002, "test: numeric fixture experience (TEST_ONLY)")
 
@@ -50,8 +49,7 @@ def test_the_managed_numeric_learn_is_the_qualified_k1_law_and_volatile(k1, libr
             tx.commit()
         expected_k1 = reference.state_digest()
         expected_answer = reference.query(_x(3, 0.25))
-    store = _store(library, tmp_path / "ck")
-    with fresh(library) as x, Runtime(_cfg(tmp_path, store)) as runtime:
+    with fresh(library) as x, Runtime(_config()) as runtime:
         anchored = runtime.anchor_cognition(x)
         result = runtime.run_numeric_learn(x, stimulus, GRANT)
         assert (result.durability, result.experiences, result.rows, result.steps) == ("VOLATILE", 2, 4, 8)
@@ -67,8 +65,7 @@ def test_the_managed_numeric_learn_is_the_qualified_k1_law_and_volatile(k1, libr
 
 
 def test_numeric_operations_refuse_without_authority_outside_fuel_and_for_the_wrong_shape(library, tmp_path):   # noqa: F811
-    store = _store(library, tmp_path / "ck")
-    with fresh(library) as x, Runtime(_cfg(tmp_path, store)) as runtime:
+    with fresh(library) as x, Runtime(_config()) as runtime:
         runtime.anchor_cognition(x)
         state = x.state_digest()
         _refused(lambda: runtime.run_numeric_learn(x, _stimulus(), None), "LEARN_UNAUTHORIZED")
@@ -93,7 +90,7 @@ def test_numeric_operations_refuse_without_authority_outside_fuel_and_for_the_wr
 
 def test_a_k1_lineage_learns_and_queries_numerically_too(k1, tmp_path):   # noqa: F811
     from .test_codec_ecs_turn import world
-    with world(k1) as state, Runtime(_config(tmp_path / "authority")) as runtime:
+    with world(k1) as state, Runtime(_config()) as runtime:
         runtime.anchor_cognition(state)
         before = runtime.run_numeric_query(state, QueryStimulus(_x(2), dim=DIM))
         result = runtime.run_numeric_learn(state, _stimulus(), GRANT)

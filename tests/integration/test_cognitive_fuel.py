@@ -22,7 +22,7 @@ from elpis.runtime.core import RuntimeLibrary, _Budget, describe
 from elpis.runtime.fuel import CEILING, CognitiveBudget, query_units, schedule_units
 
 from ._turn_fixtures import RATE, ByteTokens, FixtureMap, admitted
-from ..conftest import admit_native, authority_slots, require_runtime_library
+from ..conftest import admit_native, require_runtime_library, session_marks
 from .test_codec_ecs_turn import DIM, WIDTH, _config, k1, world  # noqa: F401 (module fixture)
 
 FUEL = "COGNITION_FUEL_EXCEEDED"
@@ -120,11 +120,11 @@ def test_query_rows_and_output_tokens_are_bounded_before_the_native_query(k1):
 
 
 def _slots(runtime):
-    return authority_slots(runtime.continuity.directory)
+    return session_marks(runtime)
 
 
-def test_managed_oversized_learn_is_refused_before_reserve_begin_schedule_commit_and_publication(k1, tmp_path):
-    with world(k1, max_rows=2) as state, Runtime(_config(tmp_path / "c")) as runtime:
+def test_managed_oversized_learn_is_refused_before_reserve_begin_schedule_and_commit(k1, tmp_path):
+    with world(k1, max_rows=2) as state, Runtime(_config()) as runtime:
         runtime.anchor_cognition(state)
         before, slots, durable = _k1_evidence(state), _slots(runtime), runtime.continuity.snapshot()
         runtime._core.counters(reset=True)
@@ -150,22 +150,20 @@ def test_managed_oversized_learn_is_refused_before_reserve_begin_schedule_commit
         assert runtime._core.library.code(rc) == FUEL
         counters = runtime._core.counters()
         assert counters["k1_reserves"] == counters["k1_txn_begins"] == counters["k1_run_schedules"] == 0
-        assert counters["k1_commits"] == counters["publications"] == counters["k1_aborts"] == 0
+        assert counters["k1_commits"] == counters["session_transitions"] == counters["k1_aborts"] == 0
         assert _k1_evidence(state) == before                       # max_rows still 2: nothing reserved
         assert (_slots(runtime), runtime.continuity.snapshot(), runtime.fault) == (slots, durable, None)
         # Within budget the same LEARN runs (reserving on the cold path as before) and commits volatile: the live
-        # generation advances, the durable record does not, until an explicit durable publication.
+        # generation advances, the session's anchor does not (nothing is ever published).
         generation = state.generation
         result = runtime.run_learn(state, LearnRequest("x", ByteTokens(), admitted(FixtureMap()),
                                                        _authority(max_work_units=DEFAULT_UNITS)))
         assert result.generation_after == state.generation == generation + 1 and state.max_rows >= 4
-        assert runtime.continuity.snapshot() == durable
-        assert runtime.publish_identity(state).identity_published
-        assert runtime.continuity.snapshot().generation == durable.generation + 1
+        assert runtime.continuity.snapshot() == durable and _slots(runtime) == slots
 
 
 def test_managed_query_beyond_its_budget_is_refused_natively(k1, tmp_path):
-    with world(k1) as state, Runtime(_config(tmp_path / "c")) as runtime:
+    with world(k1) as state, Runtime(_config()) as runtime:
         runtime.anchor_cognition(state)
         descriptor, _ = describe(state)
         query = FixtureMap().encode_query(ByteTokens().encode("q"))

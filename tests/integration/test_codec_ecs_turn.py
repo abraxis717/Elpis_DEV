@@ -372,58 +372,44 @@ def test_canonical_turn_exposes_the_commit_bound_retained_state_identities(k1):
         assert result.state_after_digest == after[-32:] == state.state_digest()
 
 
-# -- runtime lineage through continuity (docs/CONTINUITY.md) -------------------------------------
+# -- the runtime lineage in its volatile session (RuntimeCore ABI v8, docs/RUNTIME_CORE.md) -------------------------
 
-def _config(path, testing=False):
-    from elpis.runtime import RuntimeConfig
+def _config():
     from ..conftest import require_runtime_library, runtime_config
-    return runtime_config(path, require_runtime_library(testing=testing), TEST_CODEC_PIN)
+    return runtime_config(require_runtime_library(), TEST_CODEC_PIN)
 
 
-def test_a_runtime_turn_is_volatile_and_durable_publication_is_explicit(k1, tmp_path):
-    """RuntimeCore ABI v4 (docs/RUNTIME_CORE.md, "Live and durable authority"): a managed turn commits natively and
-    advances the live state; it publishes nothing. An explicit durable publication then makes exactly that state the
-    durable authority."""
+def test_a_runtime_turn_is_volatile_and_nothing_is_ever_published(k1):
+    """A managed turn commits natively and advances the live state; the session's anchor does not move, and there is
+    no publication operation to move it (ABI v8 has no persistent path)."""
     from elpis.runtime import Runtime
 
     with world(k1) as state:
-        with Runtime(_config(tmp_path / "c")) as runtime:
+        with Runtime(_config()) as runtime:
             anchored = runtime.anchor_cognition(state)
             assert anchored.k1_state_digest == state.state_digest()
             generation = state.generation
             result = runtime.run_turn(state, "one", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
                                       authority=LEARN)
-            # Volatile: the live state moved by exactly one committed transition; the durable record did not.
+            # Volatile: the live state moved by exactly one committed transition; the session's anchor did not.
             assert (result.durability, result.generation_before, result.generation_after) == \
                 ("VOLATILE", generation, generation + 1) == ("VOLATILE", generation, state.generation)
             assert result.state_after_digest is None   # no identity is computed on the HOT path
             assert runtime.continuity.snapshot() == anchored
             assert state.state_digest() != anchored.k1_state_digest
-            # The live identity on request is the live state's; durability is a separate, explicit act.
+            # The live identity on request is the live state's.
             assert runtime.live_identity(state) == (state.state_digest(), state.generation)
-            # Recoverable durability needs a checkpoint owner: refused (never downgraded), nothing captured.
-            with pytest.raises(CompositionError) as info:
-                runtime.publish_recoverable(state)
-            assert info.value.code == "RUNTIME_RECOVERY_UNAVAILABLE"
-            assert runtime.continuity.snapshot() == anchored and runtime.durability().last_requested.sequence == 0
-            ticket = runtime.publish_identity(state)
-            assert (ticket.status, ticket.kind, ticket.identity, ticket.generation) == \
-                ("IDENTITY_PUBLISHED", "IDENTITY", state.state_digest(), state.generation)
-            # No checkpoint store: only the identity is durable, and that is never an acknowledgment.
-            assert not ticket.recoverable and not ticket.acknowledged and ticket.identity_published
-            snap = runtime.continuity.snapshot()
-            assert snap.k1_state_digest == state.state_digest()
-            assert snap.generation == anchored.generation + 1
-            # Nothing else is durable: no epochs or token identities; the evolution authority is untouched.
-            assert snap.evolution == anchored.evolution
+            for retired in ("publish_recoverable", "publish_identity", "durability", "recover_k1",
+                            "discard_k1_candidate", "adopt_k1_candidate", "import_composite"):
+                assert not hasattr(runtime, retired)
 
 
-def test_runtime_refuses_unanchored_cognition_before_k1_mutation(k1, tmp_path):
+def test_runtime_refuses_unanchored_cognition_before_k1_mutation(k1):
     from elpis.runtime import Runtime
 
     with world(k1) as state:
         before = state.snapshot()
-        with Runtime(_config(tmp_path / "unanchored")) as runtime:
+        with Runtime(_config()) as runtime:
             with pytest.raises(CompositionError) as info:
                 runtime.run_turn(state, "must anchor first", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
                                  authority=LEARN)
@@ -432,135 +418,72 @@ def test_runtime_refuses_unanchored_cognition_before_k1_mutation(k1, tmp_path):
             assert not runtime.continuity.snapshot().anchored  # no implicit anchor, ever
 
 
-def test_explicit_anchor_is_durable_once_and_does_not_mutate_k1(k1, tmp_path):
+def test_an_explicit_anchor_is_once_per_session_and_does_not_mutate_k1(k1):
     from elpis.runtime import Runtime
 
     with world(k1) as state:
         before = state.snapshot()
-        with Runtime(_config(tmp_path / "anchor")) as runtime:
+        with Runtime(_config()) as runtime:
             runtime.anchor_cognition(state)
             assert state.snapshot() == before
             with pytest.raises(CompositionError) as info:
                 runtime.anchor_cognition(state)
             assert info.value.code == "CONTINUITY_ALREADY_ANCHORED"
-        with Runtime(_config(tmp_path / "anchor")) as restarted:
-            assert restarted.continuity.snapshot().k1_state_digest == before[-32:]
-            with pytest.raises(CompositionError) as info:
-                restarted.anchor_cognition(state)
-            assert info.value.code == "CONTINUITY_ALREADY_ANCHORED"
+        with Runtime(_config()) as fresh:   # a new session starts at genesis: nothing is anchored
+            assert not fresh.continuity.snapshot().anchored
+            assert fresh.anchor_cognition(state).k1_state_digest == before[-32:]
 
 
-def test_matched_restart_resumes_without_a_new_anchor(k1, tmp_path):
+def test_a_new_session_never_resumes_the_last_one(k1):
+    """Nothing survives a session: a new one is unanchored, so the state the last session learned is not adopted (an
+    unanchored turn is refused before any mutation); the caller may only anchor it anew, explicitly."""
     from elpis.runtime import Runtime
 
     with world(k1) as state:
-        with Runtime(_config(tmp_path / "c")) as first:
+        with Runtime(_config()) as first:
             first.anchor_cognition(state)
-            first.run_turn(state, "before restart", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
-                           authority=LEARN)
-            assert first.publish_identity(state).identity_published
-            generation = first.continuity.snapshot().generation
-        with Runtime(_config(tmp_path / "c")) as restarted:
-            result = restarted.run_turn(state, "resume", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
-                                        authority=LEARN)
-            assert result.generation_after == state.generation
-            snap = restarted.continuity.snapshot()
-            assert snap.generation == generation  # the resumed turn is volatile: no anchor, no publication
-
-
-def test_a_restart_never_adopts_volatile_work_that_was_not_durably_published(k1, tmp_path):
-    """A crash (or a close) loses at most the volatile work since the last acknowledgment: restart binds only a state
-    whose identity is the durable one, and an advanced unpublished state is refused before any mutation."""
-    from elpis.runtime import Runtime
-
-    with world(k1) as state:
-        with Runtime(_config(tmp_path / "c")) as first:
-            anchored = first.anchor_cognition(state)
             for text in ("one", "two"):
                 first.run_turn(state, text, tokenizer=ByteTokens(), codec=admitted(FixtureMap()), authority=LEARN)
+            first_session = first.continuity.status()["session"]
         moved = state.snapshot()
-        with Runtime(_config(tmp_path / "c")) as restarted:
-            assert restarted.continuity.snapshot() == anchored
+        with Runtime(_config()) as second:
+            assert second.continuity.status()["session"] != first_session
+            assert not second.continuity.snapshot().anchored
             with pytest.raises(CompositionError) as info:
-                restarted.run_turn(state, "adopt?", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
-                                   authority=LEARN)
-            assert info.value.code == "CONTINUITY_STATE_MISMATCH"
+                second.run_turn(state, "adopt?", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
+                                authority=LEARN)
+            assert info.value.code == "CONTINUITY_UNANCHORED"
             assert state.snapshot() == moved and state.managed_lease == 0   # never claimed, never mutated
 
 
-def test_mismatched_restart_fails_before_k1_mutation(k1, tmp_path):
+def test_a_mismatched_state_fails_before_k1_mutation(k1):
     from elpis.runtime import Runtime
 
     with world(k1) as anchored, world(k1) as other:
-        with Runtime(_config(tmp_path / "c")) as first:
-            first.anchor_cognition(anchored)
-        run_turn(other, "out of band", tokenizer=ByteTokens(), codec=admitted(FixtureMap()), authority=LEARN)
-        before = other.snapshot()
-        with Runtime(_config(tmp_path / "c")) as restarted:
-            durable = restarted.continuity.snapshot()
+        with Runtime(_config()) as runtime:
+            runtime.anchor_cognition(anchored)
+            runtime.release(anchored)
+            run_turn(other, "out of band", tokenizer=ByteTokens(), codec=admitted(FixtureMap()), authority=LEARN)
+            before = other.snapshot()
+            session = runtime.continuity.snapshot()
             with pytest.raises(CompositionError) as info:
-                restarted.run_turn(other, "must refuse", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
-                                   authority=LEARN)
+                runtime.run_turn(other, "must refuse", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
+                                 authority=LEARN)
             assert info.value.code == "CONTINUITY_STATE_MISMATCH"
             assert other.snapshot() == before
             # Fail-stopped, and nothing synthesized.
-            assert restarted.continuity.snapshot() == durable
+            assert runtime.continuity.snapshot() == session
             with pytest.raises(CompositionError) as info:
-                restarted.run_turn(anchored, "still stopped", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
-                                   authority=LEARN)
+                runtime.run_turn(anchored, "still stopped", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
+                                 authority=LEARN)
             assert info.value.code == "CONTINUITY_STATE_MISMATCH"
-
-
-# Testing-library faults of the durability lane (runtime.h, "Durability crash matrix"): 6 the continuity record write
-# fails, 8 its sync fails with the bytes lost, 9 its sync fails although the record is durable.
-@pytest.mark.parametrize("failure", ["write", "sync-lost", "sync-durable"])
-def test_a_failed_durable_publication_never_stops_thinking_and_restart_resolves_it(k1, tmp_path, failure):
-    """A durable publication that fails or is uncertain is reported as such (FAILED / UNCERTAIN), never as an
-    acknowledgment; the HOT lane keeps thinking; restart resolves an uncertain outcome to exactly one record and
-    refuses a live state that is not it."""
-    from elpis.runtime import Runtime
-
-    with world(k1) as state:
-        with Runtime(_config(tmp_path / "c", testing=True)) as runtime:
-            anchored = runtime.anchor_cognition(state)
-            runtime.run_turn(state, "commit", tokenizer=ByteTokens(), codec=admitted(FixtureMap()), authority=LEARN)
-            published = state.snapshot()
-            action = {"write": 6, "sync-lost": 8, "sync-durable": 9}[failure]
-            runtime._core.testing_durable_fault(action)
-            ticket = runtime.publish_identity(state)
-            if failure == "write":
-                assert (ticket.status, ticket.code) == ("FAILED", "CONTINUITY_PUBLICATION_REFUSED")
-                assert runtime.continuity.snapshot() == anchored        # nothing durable changed
-            else:
-                assert (ticket.status, ticket.code) == ("UNCERTAIN", "CONTINUITY_PUBLICATION_UNCERTAIN")
-                assert runtime.durability().fault == "CONTINUITY_PUBLICATION_UNCERTAIN"   # sticky until reopen
-                with pytest.raises(CompositionError) as info:
-                    runtime.publish_identity(state)
-                assert info.value.code == "CONTINUITY_PUBLICATION_UNCERTAIN"
-            # The HOT lane is not fail-stopped: thinking continues on the live state.
-            assert runtime.fault is None
-            runtime.run_turn(state, "again", tokenizer=ByteTokens(), codec=admitted(FixtureMap()), authority=LEARN)
-            assert state.epoch > 0 and state.snapshot() != published
-        with Runtime(_config(tmp_path / "c")) as restarted:
-            durable = restarted.continuity.snapshot().k1_state_digest
-            if failure == "sync-durable":
-                assert durable == published[-32:]   # the record did land: the captured state is the authority
-            else:
-                assert durable == anchored.k1_state_digest
-            # Either way the live state (one volatile turn further) is not the durable one: refused, untouched.
-            before = state.snapshot()
-            with pytest.raises(CompositionError) as info:
-                restarted.run_turn(state, "after restart", tokenizer=ByteTokens(), codec=admitted(FixtureMap()),
-                                   authority=LEARN)
-            assert info.value.code == "CONTINUITY_STATE_MISMATCH"
-            assert state.snapshot() == before
 
 
 def test_open_runtime_refuses_switching_k1_lineage_handles(k1, tmp_path):
     from elpis.runtime import Runtime
 
     with world(k1) as first_state, world(k1) as second_state:
-        with Runtime(_config(tmp_path / "switch")) as runtime:
+        with Runtime(_config()) as runtime:
             runtime.anchor_cognition(first_state)
             first_before = first_state.snapshot()
             second_before = second_state.snapshot()
@@ -577,7 +500,7 @@ def test_managed_fms_resident_turns_equal_managed_standalone_turns(k1, adapter, 
     from elpis.runtime import Runtime
 
     with world(k1, max_rows=4) as standalone, _Resident(k1, adapter, tmp_path, max_rows=4) as resident:
-        with Runtime(_config(tmp_path / "a")) as ra, Runtime(_config(tmp_path / "b")) as rb:
+        with Runtime(_config()) as ra, Runtime(_config()) as rb:
             ra.anchor_cognition(standalone)
             rb.anchor_cognition(resident)
             for i, text in enumerate(("first", "a second, longer turn")):
@@ -609,7 +532,7 @@ def test_a_closed_bound_state_is_refused_without_a_native_call(k1, tmp_path):
     from elpis.runtime import Runtime
 
     state = world(k1)
-    with Runtime(_config(tmp_path / "closed")) as runtime:
+    with Runtime(_config()) as runtime:
         runtime.anchor_cognition(state)
         state.close()
         with pytest.raises(CompositionError) as info:

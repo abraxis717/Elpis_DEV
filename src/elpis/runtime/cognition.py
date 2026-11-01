@@ -24,10 +24,8 @@ native calls each one can reach:
 
   A LEARN returns the committed transition. Unmanaged, it carries the exact retained-state identities of the
   commit. Managed (:meth:`elpis.runtime.Runtime.run_learn`), the commit is VOLATILE: it carries the live generations
-  instead (``durability == "VOLATILE"``) and nothing is published; durability is the separate, explicit
-  :meth:`elpis.runtime.Runtime.publish_recoverable` (or, without a checkpoint store, the identity-only
-  :meth:`elpis.runtime.Runtime.publish_identity`; docs/RUNTIME_CORE.md, "Live and durable authority"). A LEARN
-  produces no text: a response is a QUERY.
+  instead (``durability == "VOLATILE"``) and nothing is written: it lasts as long as the session (RuntimeCore ABI
+  v8 has no persistent path; docs/RUNTIME_CORE.md). A LEARN produces no text: a response is a QUERY.
 
 * **Legacy learned turn** (:func:`run_turn`, :meth:`elpis.runtime.Runtime.run_turn`): the original synthetic
   scaffold, LEARN followed by the decode of ``S3`` of the candidate W (the kernel's coarse observable) into tokens.
@@ -54,10 +52,10 @@ PYTHON MAY CONTROL THE ECS; IT MAY NOT EXECUTE THE ECS HOT PATH. A query is one 
 cross as contiguous buffers; nothing in this module walks an ECS scalar, a row, a feature or a step. A refused
 operation leaves ``(W, epoch, H, a)`` byte-for-byte unchanged.
 
-This module performs no durable writes and holds no state. Its functions are the unmanaged operations over a native
-K1 state (no continuity); the managed operations of :class:`elpis.runtime.Runtime` share this module's boundary
+This module performs no persistent writes and holds no state. Its functions are the unmanaged operations over a
+native K1 state (no session); the managed operations of :class:`elpis.runtime.Runtime` share this module's boundary
 (request validation, encode, decode) and hand the native work to RuntimeCore (native/runtime,
-docs/RUNTIME_CORE.md), whose managed commits are volatile; durable publication is a separate explicit operation.
+docs/RUNTIME_CORE.md), whose managed commits are volatile.
 """
 from __future__ import annotations
 from array import array

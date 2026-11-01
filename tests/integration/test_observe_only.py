@@ -8,14 +8,12 @@ and commits one VOLATILE transition. Over real native libraries these tests chec
 * the K1 component's envelope is byte-identical before and after (its recorded identity too), the memory and the
   composite identity moved, no K1 schedule crossed into native code, QUERY answers exactly as before, and LOOKUP
   answers the recorded relation exactly;
-* volatile: continuity and the checkpoint slots did not move until an explicit recoverable publication;
+* volatile: the session's anchor did not move (RuntimeCore ABI v8 publishes nothing);
 * all or nothing: an unauthorized, unadmitted, over-bound (in Python and natively) or memory-refused observation
   installs nothing (composite identity, K1 bytes, live generation and continuity unchanged) and the runtime stays
   healthy;
-* real process death: a child publishes one observation recoverably, records a second volatile one and is killed
-  (SIGKILL); a fresh process recovers exactly the acknowledged composite (the first observation once, the second
-  never, K1 bytes those of the initial state), LOOKUP still answers, and a refused observation after restart moves
-  nothing.
+* real process death: a child records two observations and is killed (SIGKILL); it wrote nothing, and a new session
+  holds neither (nothing is ever recovered); a refused observation in the new session moves nothing.
 
 Mechanics only: the observations are TEST_ONLY fixture records; evidence is storage, never learning or truth.
 """
@@ -39,9 +37,8 @@ from elpis.runtime.composition import CompositionError
 from elpis.runtime.fuel import CEILING
 
 from .test_codec_ecs_turn import _config, k1, world  # noqa: F401 (module fixtures)
-from .test_composite_runtime import (AUTHORITY, CONFIG, _query, _refused, _store, ent, fresh, library,  # noqa: F401
+from .test_composite_runtime import (AUTHORITY, CONFIG, _query, _refused, ent, fresh, library,  # noqa: F401
                                      obs)
-from .test_k1_recovery import _cfg
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -52,8 +49,7 @@ def _k1_bytes(envelope: bytes) -> bytes:
 
 
 def test_an_observe_only_turn_records_evidence_and_leaves_k1_byte_identical(library, tmp_path):
-    store = _store(library, tmp_path / "ck")
-    with fresh(library) as x, Runtime(_cfg(tmp_path, store)) as runtime:
+    with fresh(library) as x, Runtime(_config()) as runtime:
         anchored = runtime.anchor_cognition(x)
         before = x.snapshot()
         answer_before = runtime.run_query(x, _query())
@@ -66,9 +62,8 @@ def test_an_observe_only_turn_records_evidence_and_leaves_k1_byte_identical(libr
         assert result.grant == AUTHORITY.grant and len(result.observed) == 2 and len(set(result.observed)) == 2
         # No K1 schedule crossed into native code: begin, two observations, commit.
         assert {k: counted[k] for k in ("k1_txn_begins", "k1_run_schedules", "k1_observes", "k1_commits",
-                                        "k1_captures", "publications")} == \
-            {"k1_txn_begins": 1, "k1_run_schedules": 0, "k1_observes": 2, "k1_commits": 1, "k1_captures": 0,
-             "publications": 0}
+                                        "session_transitions")} == \
+            {"k1_txn_begins": 1, "k1_run_schedules": 0, "k1_observes": 2, "k1_commits": 1, "session_transitions": 0}
         after = x.snapshot()
         assert _k1_bytes(after) == _k1_bytes(before)                    # K1 byte-identical
         c0, k0, m0 = library.envelope_identities(before)
@@ -84,17 +79,12 @@ def test_an_observe_only_turn_records_evidence_and_leaves_k1_byte_identical(libr
         slot = x.slot(result.observed[0])
         assert (slot.assert_count, slot.negate_count, slot.last_authority) == (1, 0, 1)
         assert slot.participants == obs(1, 2, 10).participants and slot.first_provenance == obs(1, 2, 10).provenance
-        # Volatile: nothing durable moved.
-        assert runtime.continuity.snapshot() == anchored
-        assert runtime.recover_k1().envelope == before
-        ticket = runtime.publish_recoverable(x)
-        assert ticket.acknowledged and runtime.continuity.snapshot().k1_state_digest == x.state_digest()
-        assert runtime.recover_k1().envelope == after
+        # Volatile: the session's anchor did not move, and nothing can publish the new state.
+        assert runtime.continuity.snapshot() == anchored and not hasattr(runtime, "publish_recoverable")
 
 
 def test_refused_observe_only_turns_install_nothing_and_leave_the_runtime_healthy(library, tmp_path):
-    store = _store(library, tmp_path / "ck")
-    with fresh(library) as x, Runtime(_cfg(tmp_path, store)) as runtime:
+    with fresh(library) as x, Runtime(_config()) as runtime:
         anchored = runtime.anchor_cognition(x)
         runtime.run_observe(x, (obs(1, 2, 10),), AUTHORITY)
         state, envelope, live = x.state_digest(), x.snapshot(), runtime.live_identity(x)
@@ -136,7 +126,7 @@ def test_refused_observe_only_turns_install_nothing_and_leave_the_runtime_health
 
 def test_a_k1_lineage_refuses_the_observe_only_turn_natively(k1, tmp_path):   # noqa: F811
     from elpis.runtime.core import describe
-    with world(k1) as state, Runtime(_config(tmp_path / "authority")) as runtime:
+    with world(k1) as state, Runtime(_config()) as runtime:
         runtime.anchor_cognition(state)
         live = runtime.live_identity(state)
         descriptor, _ = describe(state)
@@ -148,8 +138,6 @@ def test_a_k1_lineage_refuses_the_observe_only_turn_natively(k1, tmp_path):   # 
 
 _CHILD = r"""
 import json, sys, time
-from dataclasses import replace
-from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from tests.integration.test_codec_ecs_turn import _config
 from tests.integration.test_composite_runtime import AUTHORITY, fresh, obs
@@ -157,28 +145,23 @@ from tests.conftest import admit_composite_set
 from elpis.ECS.composite import CompositeLibrary
 from elpis.runtime import Runtime
 
-continuity, checkpoint = Path(sys.argv[2]), Path(sys.argv[3])
 library = CompositeLibrary(admit_composite_set()[3].lib)
 x = fresh(library)
 initial = x.snapshot()
-runtime = Runtime(replace(_config(continuity), k1_checkpoint_dir=checkpoint)).open()
+runtime = Runtime(_config()).open()
 runtime.anchor_cognition(x)
 first = runtime.run_observe(x, (obs(1, 2, 10),), AUTHORITY).observed[0]
-acked = runtime.publish_recoverable(x)
-assert acked.acknowledged and acked.recoverable
-second = runtime.run_observe(x, (obs(3, 4, 11),), AUTHORITY).observed[0]   # volatile: never published
-print(json.dumps({"authorized": acked.identity.hex(), "volatile": x.state_digest().hex(),
-                  "keys": [first.hex(), second.hex()], "initial": initial.hex()}), flush=True)
+second = runtime.run_observe(x, (obs(3, 4, 11),), AUTHORITY).observed[0]
+print(json.dumps({"live": x.state_digest().hex(), "keys": [first.hex(), second.hex()],
+                  "initial": initial.hex()}), flush=True)
 time.sleep(3600)                                                            # killed here
 """
 
 
-def test_an_observation_published_recoverably_survives_process_death_exactly(library, tmp_path):
-    _store(library, tmp_path / "checkpoint")
+def test_observations_are_volatile_and_a_killed_process_leaves_none_of_them(library, tmp_path):
     env = dict(os.environ, PYTHONPATH=f"{REPO / 'src'}{os.pathsep}{REPO}", PYTHONDONTWRITEBYTECODE="1")
-    child = subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO), str(tmp_path / "authority"),
-                              str(tmp_path / "checkpoint")], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             text=True, env=env, cwd=REPO)
+    child = subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO)], stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True, env=env, cwd=tmp_path)
     try:
         line = child.stdout.readline()
         assert line, child.stderr.read()
@@ -187,28 +170,21 @@ def test_an_observation_published_recoverably_survives_process_death_exactly(lib
         child.send_signal(signal.SIGKILL)
         child.wait(timeout=30)
     assert child.returncode == -signal.SIGKILL
-    authorized, volatile = bytes.fromhex(report["authorized"]), bytes.fromhex(report["volatile"])
+    assert list(tmp_path.iterdir()) == []                                   # the killed process wrote nothing
     first, second = (bytes.fromhex(k) for k in report["keys"])
-    initial = bytes.fromhex(report["initial"])
-    assert authorized != volatile and first != second
-    with Runtime(replace(_config(tmp_path / "authority"), k1_checkpoint_dir=tmp_path / "checkpoint")) as runtime:
-        durable = runtime.continuity.snapshot()
-        assert (durable.state_format, durable.k1_state_digest) == ("COMPOSITE", authorized)
-        recovery = runtime.recover_k1()
-        assert recovery.disposition == "RESUMABLE" and recovery.candidate is None
-        with CompositeState.restore(library, CONFIG, recovery.envelope) as y:
-            assert y.state_digest() == authorized
-            assert y.slot(first).assert_count == 1 and y.slot(second) is None   # exactly what was acknowledged
-            assert _k1_bytes(y.snapshot()) == _k1_bytes(initial)                # K1 never learned
-            assert y.lookup(3, 2, ((1, 0, ent(1)),)).answer == ent(2)
-            # A refused observation after restart moves nothing, durable or live.
-            _refused(lambda: runtime.run_observe(y, (obs(3, 4, 11), obs(7, 8, 2)), AUTHORITY), "ECS_REFUSED")
-            assert y.state_digest() == authorized and runtime.continuity.snapshot() == durable
-            # The recovered lineage continues: the second observation recorded again, once, and published.
-            again = runtime.run_observe(y, (obs(3, 4, 11),), AUTHORITY)
-            assert again.observed == (second,) and y.slot(second).assert_count == 1
-            assert runtime.publish_recoverable(y).acknowledged
-            assert runtime.continuity.snapshot().k1_state_digest == y.state_digest()
+    assert first != second
+    with Runtime(_config()) as runtime, fresh(library) as y:
+        assert not runtime.continuity.snapshot().anchored                   # nothing is ever recovered
+        runtime.anchor_cognition(y)
+        assert y.state_digest() != bytes.fromhex(report["live"])
+        assert y.slot(first) is None and y.slot(second) is None
+        assert _k1_bytes(y.snapshot()) == _k1_bytes(bytes.fromhex(report["initial"]))
+        # A refused observation moves nothing; the session continues.
+        before, session = y.state_digest(), runtime.continuity.snapshot()
+        _refused(lambda: runtime.run_observe(y, (obs(3, 4, 11), obs(7, 8, 2)), AUTHORITY), "ECS_REFUSED")
+        assert y.state_digest() == before and runtime.continuity.snapshot() == session
+        again = runtime.run_observe(y, (obs(3, 4, 11),), AUTHORITY)
+        assert again.observed == (second,) and y.slot(second).assert_count == 1
 
 
 def test_the_native_observation_bound_is_the_authority_bound():

@@ -6,9 +6,9 @@ release authority is ``NONE_DEFERRED``: ELPIS_SYSTEM.json); it writes one direct
 
     elpis-dev-<version>-<commit12>/
         MANIFEST.json      source identity, library digests, toolchain, ABI and format declarations, dependencies,
-                           capability and nonclaim manifests, the install / smoke / recovery commands
+                           capability and nonclaim manifests, the install / catalog / session / acceptance commands
         source.tar.gz      ``git archive`` of the commit (deterministic: gzip mtime 0)
-        native-build/      the deployable libraries in build-tree layout (``init --native-build`` takes it)
+        native-build/      the deployable libraries in build-tree layout (``--native-build`` reads it, read-only)
         INSTALL.md         the operator guide (docs/OPERATING_ELPIS.md)
         examples/          the example session scripts (docs/examples)
         SHA256SUMS         every file above
@@ -32,8 +32,8 @@ from .acceptance import _LIBS
 from .cli import CAPABILITIES, NONCLAIMS
 
 MANIFEST_SCHEMA = "elpis.release-bundle.v1"
-FORMATS = {"runtime_abi": 7, "composite_abi": 1, "ecs_c_abi": 1, "ELPECA01": 1, "ELPECW01": 1, "ELPISEC1": 1, "ELPISGK1": 1,
-           "ELPISEM1": 1, "deployment": "elpis.deployment.v1", "lineage": "elpis.lineage.v1",
+FORMATS = {"runtime_abi": 8, "composite_abi": 1, "ecs_c_session": "ECSC_VOLATILE_SESSION_R0", "ELPECA01": 1,
+           "ELPECW01": 1, "ELPISEC1": 1, "ELPISGK1": 1, "ELPISEM1": 1, "persistence": "NONE",
            "native_catalog": "elpis.inference-authority.v1"}
 
 
@@ -74,7 +74,6 @@ def build_bundle(repo: Path, native_build: Path, out: Path) -> Path:
         libraries.append({"path": "native-build/" + rel, "sha256": _sha(target), "size": target.stat().st_size})
     shutil.copyfile(repo / "docs" / "OPERATING_ELPIS.md", root / "INSTALL.md")
     shutil.copytree(repo / "docs" / "examples", root / "examples")
-    home = "$HOME/elpis-home"
     manifest = {
         "schema": MANIFEST_SCHEMA, "distribution": "elpis-dev", "version": version, "source_commit": commit,
         "source_tree": tree, "source_archive_sha256": _sha(root / "source.tar.gz"), "libraries": libraries,
@@ -87,17 +86,15 @@ def build_bundle(repo: Path, native_build: Path, out: Path) -> Path:
         "commands": {
             "install": "python3 -m venv .venv && .venv/bin/python -m pip install ./elpis-dev",
             "build": "cmake -S elpis-dev -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --parallel",
-            "init": f".venv/bin/python -m elpis.runtime.cli --home {home} init --native-build $PWD/native-build "
-                    f"--source-commit {commit}",
-            "create": f".venv/bin/python -m elpis.runtime.cli --home {home} create --seed 0",
-            "session": f".venv/bin/python -m elpis.runtime.cli --home {home} session --script examples/demo-session.json",
-            "smoke_and_recovery": ".venv/bin/python -m elpis.runtime.acceptance --native-build $PWD/native-build "
-                                  f"--work $PWD/acceptance --source-commit {commit} --report acceptance.json"},
+            "catalog": ".venv/bin/python -m elpis.runtime.cli --native-build $PWD/native-build catalog",
+            "session": ".venv/bin/python -m elpis.runtime.cli --native-build $PWD/native-build --catalog-sha256 PIN "
+                       "session --script examples/demo-session.json",
+            "acceptance": ".venv/bin/python -m elpis.runtime.acceptance --native-build $PWD/native-build "
+                          f"--work $PWD/acceptance --source-commit {commit} --report acceptance.json"},
         "capabilities": CAPABILITIES, "nonclaims": list(NONCLAIMS),
         "known_limitations": [
             "no text interface: no qualified ECS<->DSV4 codec map (ECS_CODEC_UNQUALIFIED)",
-            "one lineage per deployment home; volatile work is lost at process exit unless published",
-            "crash consistency for process death only; power loss is not claimed",
+            "RAM-only: everything learned or recorded lasts one session; nothing is published or recovered",
             "memory LEARN (recurrent FAST) and SLOW consolidation are not available",
             "Linux x86_64 only (sealed memfd admission, openat2)",
         ],

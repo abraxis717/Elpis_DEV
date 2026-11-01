@@ -1,33 +1,34 @@
-"""The offline reference operator interface: ``python -m elpis.runtime.cli --home DIR <command>``.
+"""The offline reference operator interface: ``python -m elpis.runtime.cli (--native-build BUILD | --libraries DIR)
+[--catalog-sha256 HEX] [lineage options] <command>``.
 
 Not the production path. The production entry point is the native operator host ``elpis`` (docs/NATIVE_HOST.md),
-which runs no interpreter. This interface operates the same composite lineage over the same durable authority, an ECS_C
-authority (RuntimeCore ABI v7), and exists for differential tests (the native host must answer exactly as it does), the qualification instruments bound
-to their own commits, and research (docs/OPERATING_ELPIS.md, "The offline reference interface").
+which runs no interpreter. This interface runs the same composite lineage in the same volatile ECS_C session
+(RuntimeCore ABI v8) and exists for differential tests (the native host must answer exactly as it does), the
+qualification instruments bound to their own commits, and research (docs/OPERATING_ELPIS.md, "The offline reference
+interface").
 
-One deployment (``elpis.runtime.deployment``) holds one ECS composite lineage. Every command prints JSON (one object
-per operation) and exits 0 only when every operation succeeded or was refused exactly as its script expected:
+RAM-only (docs/ELPIS_MISSION.md, Amendment 3). The libraries are read, read-only, from an operator build tree or an
+installed library directory and admitted only against the operator's catalog pin; there is no home and nothing is
+written. A process is one session at a time: the lineage's deterministic initial composite, built in memory and
+anchored at a fresh genesis. Every command prints JSON (one object per operation) and exits 0 only when every operation
+succeeded or was refused exactly as its script expected:
 
-    init --native-build BUILD [--testing] [--source-commit SHA]   pin an operator build's libraries into the home
-    status                                         deployment, pins, ABI, lineage, live vs durable, footprint, limits
-    create [--dim 6 --width 36 --seed 0 ...]       create and anchor the lineage (durable baseline)
+    catalog                                        the catalog of the libraries and its SHA-256 (the pin); no write
+    status                                         installation, pins, ABI, lineage, session, live state, footprint
     query --x ROWS                                 numeric QUERY of the live state (read-only)
-    learn --x ROWS --y TARGETS --schedule PAIRS --rate R --grant TEXT [--publish]
-    evidence --items JSON --grant TEXT --sources 1,2 [--publish]    typed HACF evidence, no K1 learning
-                                                   (each source must be an ACTIVE source of the authority)
+    learn --x ROWS --y TARGETS --schedule PAIRS --rate R --grant TEXT
+    evidence --items JSON --grant TEXT --sources 1,2              typed HACF evidence, no K1 learning
+                                                   (each source must be an ACTIVE source of the session)
     lookup --relation R --target-role R --cues JSON                 exact LOOKUP by net evidence
     slot --key HEX                                 one memory slot and the hyperedge it was observed from
-    publish                                        recoverable publication of the live state
-    candidates                                     the recovery disposition (an unresolved candidate, if any)
-    reconcile (--discard ID | --adopt ID)          operator reconciliation of exactly one candidate
-    session --script FILE|-                        many operations in one process (volatile work lives here);
-                                                   a script may also found a source on the held authority
-                                                   ({"op": "source_found", "label", "source_authority", "per_turn",
-                                                   "scope_label"[, "version", "activate"]}), as the native host's
+    session --script FILE|-                        many operations in one process; a script founds the session's
+                                                   sources ({"op": "source_found", "label", "source_authority",
+                                                   "per_turn", "scope_label"[, "version", "activate"]}), and
+                                                   "close" / "open" end the session and start a new one
 
-Volatile work lives only inside one process: a one-shot ``learn`` or ``evidence`` reports ``durability: VOLATILE``
-and is lost at exit unless ``--publish`` is given (or a ``session`` publishes it). Every restart resumes exactly the
-last acknowledged state. There is no text interface: no qualified ECS<->DSV4 codec map exists
+Everything learned or recorded is VOLATILE: it lasts until the session ends (``close``, or the process). The
+persistent commands of ABI v7 (init, create, publish, candidates, reconcile, --home, --publish) are refused
+``OPERATION_RETIRED``. There is no text interface: no qualified ECS<->DSV4 codec map exists
 (``ECS_CODEC_UNQUALIFIED``); QUERY and LEARN take admitted numeric stimuli and return numbers.
 
 The ``elpis`` console command is deliberately not claimed by this development distribution (ELPIS_SYSTEM.json,
@@ -48,7 +49,7 @@ from .authority import SourceGrant
 from .cognition import LearnAuthority, ObservationAuthority, QueryStimulus, Stimulus
 from .context import (CANDIDATE, ContextAxiom, ContextLane, ContextReference, ContextRelation, Observation,
                       PROVISIONAL)
-from .deployment import Deployment, LineageConfig, init_deployment, struct_digest
+from .deployment import Installation, LineageConfig, catalog_of, struct_digest
 from .errors import CompositionError
 from .fuel import CEILING, CognitiveBudget
 from .observation import (HYPEREDGE_NAMESPACE, INCIDENCE_NAMESPACE, HacfParticipant, StructuralEvidence,
@@ -57,23 +58,26 @@ from .observation import (HYPEREDGE_NAMESPACE, INCIDENCE_NAMESPACE, HacfParticip
 CAPABILITIES = {
     "numeric_query": "WORKING, mechanically verified: f_W(x) of the live K1 state (read-only)",
     "numeric_learn": "WORKING, mechanically verified: the qualified K1 law (qualified only in its frozen regime) "
-                     "under an explicit LearnAuthority; volatile until published",
+                     "under an explicit LearnAuthority; volatile: discarded when the session ends",
     "typed_evidence": "WORKING, mechanically verified: validated HACF hyperedge + assertion recorded by an "
                       "observe-only turn (RuntimeCore ABI v5: no K1 learning)",
     "lookup": "WORKING: exact relation LOOKUP by net evidence; a conflict between sources is reported, never resolved",
-    "recoverable_publication": "WORKING: checkpoint slot read back verified, then the authority (ACKNOWLEDGED)",
-    "restart_recovery": "WORKING: exactly the last acknowledged state; an unresolved candidate needs reconcile",
+    "persistence": "NONE: nothing is written; every session starts at a fresh genesis from the lineage's initial state",
+    "recoverable_publication": "RETIRED (OPERATION_RETIRED): no persistent writer exists",
+    "restart_recovery": "RETIRED (OPERATION_RETIRED): a restart is a new session",
     "context_lane": "WORKING, session-local: bounded immutable versioned views of admitted references; never "
                     "persisted; never authorizes ECS learning",
     "text": "UNAVAILABLE: ECS_CODEC_UNQUALIFIED (no qualified ECS<->DSV4 codec map)",
     "memory_learn": "UNQUALIFIED: never enabled (no memory capability is ever set)",
     "memory_slow_consolidation": "NOT PROVIDED",
     "contextual_dynamics": "NOT IMPLEMENTED: no qualified law (HCA research is research-only)",
-    "power_loss_durability": "NOT CLAIMED: crash consistency is established for process death only",
 }
 NONCLAIMS = ("no language understanding", "no general intelligence", "no autonomous evolution",
              "no hierarchical superiority", "an observation is evidence storage, never truth or authority",
              "pins authenticate bytes, not authors")
+
+
+RETIRED = ("init", "create", "publish", "candidates", "reconcile", "authority_reconcile")
 
 
 class Expectation(Exception):
@@ -113,12 +117,6 @@ def _rows(value, dim, what) -> array:
     return out
 
 
-def _ticket(t) -> dict:
-    return {"sequence": t.sequence, "status": t.status, "kind": t.kind, "recoverable": t.recoverable,
-            "acknowledged": t.acknowledged, "identity": t.identity.hex() if t.identity else None,
-            "generation": t.generation, "code": t.code}
-
-
 def _snapshot(s) -> dict | None:
     if s is None:
         return None
@@ -126,17 +124,12 @@ def _snapshot(s) -> dict | None:
             "generation": s.generation}
 
 
-def _recovery(r) -> dict:
-    return {"disposition": r.disposition, "authorized": r.authorized.hex() if r.authorized else None,
-            "candidate": r.candidate.hex() if r.candidate else None,
-            "envelope_bytes": len(r.envelope) if r.envelope else 0}
-
-
 class Console:
-    """The operations of one process over one deployment (``session`` runs many; one-shot commands run one)."""
+    """The operations of one process over one installation: one session at a time (``session`` runs many operations;
+    one-shot commands run one)."""
 
-    def __init__(self, deployment: Deployment):
-        self.deployment = deployment
+    def __init__(self, installation: Installation, lineage: LineageConfig, nonce_seed: bytes | None = None):
+        self.installation, self.lineage, self.nonce_seed = installation, lineage, nonce_seed
         self._session = None
         self._context = None
 
@@ -144,7 +137,7 @@ class Console:
     @property
     def session(self):
         if self._session is None:
-            self._session = self.deployment.session()
+            self._session = self.installation.session(self.lineage, nonce_seed=self.nonce_seed)
         return self._session
 
     def close(self):
@@ -160,6 +153,9 @@ class Console:
         if type(op) is not dict or type(op.get("op")) is not str:
             raise CompositionError("CLI_INPUT", "each operation is an object with an 'op' name")
         name = op["op"]
+        if name in RETIRED:
+            raise CompositionError("OPERATION_RETIRED", f"{name!r} belonged to the retired persistent runtime: Elpis "
+                                                        "writes no state; a session ends with the process or `close`")
         handler = getattr(self, "op_" + name, None)
         if handler is None:
             raise CompositionError("CLI_INPUT", f"unknown operation {name!r}")
@@ -167,49 +163,50 @@ class Console:
 
     # -- inspection ---------------------------------------------------------------------------------------------------
     def op_status(self, op) -> dict:
-        d = self.deployment
-        out = {"deployment": {"home": str(d.home), "schema": d.config["schema"], "testing_build": d.testing,
-                              "source_commit": d.config["source_commit"],
-                              "catalog_sha256": d.config["catalog_sha256"]},
-               "abi": dict(d.config["abi"]), "libraries": d.libraries.identities,
+        i = self.installation
+        out = {"installation": {"source": str(i.source), "build_tree": i.build_tree, "catalog_sha256": i.catalog_sha256,
+                                "persistence": "NONE"},
+               "abi": {"runtime": 8, "composite": 1}, "libraries": i.libraries.identities,
                "budget_ceiling": {k: v for k, v in asdict(CEILING).items()},
-               "capabilities": CAPABILITIES, "nonclaims": list(NONCLAIMS)}
-        lineage = d.lineage()
-        out["lineage"] = None if lineage is None else asdict(lineage)
-        if lineage is None:
-            return out
-        s = self.session
-        out["recovery"] = _recovery(s.recovery)
-        out["durable"] = _snapshot(s.runtime.continuity.snapshot())
-        if s.state is not None:
+               "capabilities": CAPABILITIES, "nonclaims": list(NONCLAIMS), "lineage": asdict(self.lineage)}
+        s = self._session
+        out["session"] = None if s is None else s.runtime.continuity.status()
+        if s is not None and s.state is not None:
             identity, generation = s.runtime.live_identity(s.state)
             out["live"] = {"identity": identity.hex(), "generation": generation}
+            out["initial_identity"] = s.initial_identity.hex()
             out["footprint"] = s.state.inspect()
             out["residency"] = "RAM: an ECS composite substrate (FMS residency holds apply to K1 FMS lineages)"
-        durability = s.runtime.durability()
-        out["durability"] = {"live_generation": durability.live_generation, "pending": durability.pending,
-                             "fault": durability.fault,
-                             "last_acknowledged": _ticket(durability.last_acknowledged),
-                             "checkpoint_capacity": durability.checkpoint_capacity}
-        out["fault"] = s.runtime.fault
+            out["fault"] = s.runtime.fault
         return out
+
+    def op_open(self, op) -> dict:
+        s = self.session
+        return {"session": s.runtime.continuity.status(), "anchored": _snapshot(s.anchored),
+                "initial_identity": s.initial_identity.hex()}
+
+    def op_close(self, op) -> dict:
+        """End the session: everything it learned, recorded or founded is discarded (it was only ever in memory)."""
+        s, discarded = self._session, None
+        if s is not None and s.state is not None:
+            identity, generation = s.runtime.live_identity(s.state)
+            discarded = {"live_identity": identity.hex(), "live_generation": generation,
+                         "learned": identity != s.initial_identity}
+        self.close()
+        return {"closed": s is not None, "discarded": discarded}
 
     def op_live(self, op) -> dict:
         s = self.session
         state = s.require_state()
         identity, generation = s.runtime.live_identity(state)
-        composite, k1, memory = self.deployment.libraries.composite.envelope_identities(state.snapshot())
+        composite, k1, memory = self.installation.libraries.composite.envelope_identities(state.snapshot())
         return {"live": {"identity": identity.hex(), "generation": generation, "k1_identity": k1.hex(),
                          "memory_identity": memory.hex()},
-                "durable": _snapshot(s.runtime.continuity.snapshot())}
+                "initial_identity": s.initial_identity.hex()}
 
     def op_counters(self, op) -> dict:
-        """RuntimeCore's native crossings since this process opened the runtime (``reset`` restarts the count)."""
+        """RuntimeCore's native crossings since this session opened (``reset`` restarts the count)."""
         return {"counters": self.session.runtime._core.counters(reset=bool(op.get("reset", False)))}
-
-    def op_candidates(self, op) -> dict:
-        s = self.session
-        return {"recovery": _recovery(s.runtime.recover_k1())}
 
     # -- cognition: numeric QUERY and LEARN ---------------------------------------------------------------------------
     def op_query(self, op) -> dict:
@@ -248,7 +245,7 @@ class Console:
     def op_evidence(self, op) -> dict:
         s = self.session
         state = s.require_state()
-        hacf = self.deployment.libraries.hacf
+        hacf = self.installation.libraries.hacf
         items = op.get("items")
         if type(items) is not list or not items:
             raise CompositionError("CLI_INPUT", "items: a non-empty list of evidence objects")
@@ -297,7 +294,7 @@ class Console:
         slot = state.slot(_hex32(op.get("key"), "key"))
         if slot is None:
             return {"found": False}
-        edge = self.deployment.libraries.hacf.hyperedge_of(slot)
+        edge = self.installation.libraries.hacf.hyperedge_of(slot)
         return {"found": True, "relation_type": slot.relation_type, "assert_count": slot.assert_count,
                 "negate_count": slot.negate_count, "uncertain_count": slot.uncertain_count,
                 "last_polarity": slot.last_polarity, "last_authority": slot.last_authority,
@@ -305,9 +302,9 @@ class Console:
                 "structure_ref": slot.structure_ref.hex(), "hyperedge": edge.identity.hex(),
                 "participants": [{"role": r, "ordinal": o, "node": n.hex()} for r, o, n in slot.participants]}
 
-    # -- durability ---------------------------------------------------------------------------------------------------
+    # -- the operator's sources ---------------------------------------------------------------------------------------
     def op_source_found(self, op) -> dict:
-        """The operator founds (and by default activates) a source on the held authority (the native host's op)."""
+        """The operator founds (and by default activates) a source on the open session (the native host's op)."""
         text, scope = op.get("label"), op.get("scope_label")
         if type(text) is not str or not text or type(scope) is not str or not scope:
             raise CompositionError("CLI_INPUT", "label and scope_label: non-empty strings")
@@ -319,28 +316,6 @@ class Console:
             raise CompositionError("CLI_INPUT", "source_authority, per_turn and version: integers")
         grant = SourceGrant(text, values[0], values[1], scope, values[2], activate)
         return self.session.runtime.continuity.found_source(grant)
-
-    def op_publish(self, op) -> dict:
-        s = self.session
-        state = s.require_state()
-        ticket = s.runtime.publish_recoverable(state, wait=op.get("wait", True) is not False)
-        return {"ticket": _ticket(ticket), "durable": _snapshot(s.runtime.continuity.snapshot())}
-
-    def op_reconcile(self, op) -> dict:
-        s = self.session
-        if s.state is not None:
-            raise CompositionError("LINEAGE_BOUND", "nothing to reconcile: the lineage is resumable")
-        action = op.get("action")
-        candidate = _hex32(op.get("candidate"), "candidate")
-        if action == "discard":
-            s.runtime.discard_k1_candidate(candidate)
-        elif action == "adopt":
-            s.runtime.adopt_k1_candidate(candidate)
-        else:
-            raise CompositionError("CLI_INPUT", "action: discard or adopt")
-        s.refresh()
-        return {"action": action, "recovery": _recovery(s.recovery),
-                "durable": _snapshot(s.runtime.continuity.snapshot())}
 
     # -- the contextual (WARM) lane: session-local ---------------------------------------------------------------------
     @property
@@ -409,16 +384,16 @@ def _script(path: str) -> list:
 
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m elpis.runtime.cli", description=__doc__.split("\n\n")[0])
-    p.add_argument("--home", required=True, help="the deployment home (absolute path)")
-    sub = p.add_subparsers(dest="command", required=True)
-    i = sub.add_parser("init")
-    i.add_argument("--native-build", required=True)
-    i.add_argument("--testing", action="store_true")
-    i.add_argument("--source-commit")
-    sub.add_parser("status")
-    c = sub.add_parser("create")
+    where = p.add_mutually_exclusive_group(required=True)
+    where.add_argument("--native-build", help="an operator build tree (absolute path; read-only)")
+    where.add_argument("--libraries", help="an installed library directory (absolute path; read-only)")
+    p.add_argument("--catalog-sha256", help="the pin of the libraries' catalog (`catalog` prints it)")
+    p.add_argument("--nonce-seed", help="64 hex: reproducible sessions for differential runs")
     for name, default in asdict(LineageConfig()).items():
-        c.add_argument("--" + name.replace("_", "-"), type=int, default=default)
+        p.add_argument("--" + name.replace("_", "-"), type=int, default=default)
+    sub = p.add_subparsers(dest="command", required=True)
+    sub.add_parser("catalog")
+    sub.add_parser("status")
     q = sub.add_parser("query")
     q.add_argument("--x", required=True)
     learn = sub.add_parser("learn")
@@ -426,24 +401,16 @@ def _parser() -> argparse.ArgumentParser:
         learn.add_argument("--" + name, required=True)
     learn.add_argument("--rate", type=float, default=0.002)
     learn.add_argument("--grant")
-    learn.add_argument("--publish", action="store_true")
     e = sub.add_parser("evidence")
     e.add_argument("--items", required=True)
     e.add_argument("--grant")
     e.add_argument("--sources", default="")
-    e.add_argument("--publish", action="store_true")
     lk = sub.add_parser("lookup")
     lk.add_argument("--relation", required=True)
     lk.add_argument("--target-role", required=True)
     lk.add_argument("--cues", required=True)
     s = sub.add_parser("slot")
     s.add_argument("--key", required=True)
-    sub.add_parser("publish")
-    sub.add_parser("candidates")
-    r = sub.add_parser("reconcile")
-    g = r.add_mutually_exclusive_group(required=True)
-    g.add_argument("--discard")
-    g.add_argument("--adopt")
     sc = sub.add_parser("session")
     sc.add_argument("--script", required=True, help="a JSON array or JSON lines of operations; '-' reads stdin")
     return p
@@ -461,56 +428,78 @@ def _ops(args) -> list:
     if cmd == "query":
         return [{"op": "query", "x": json.loads(args.x)}]
     if cmd == "learn":
-        ops = [{"op": "learn", "x": json.loads(args.x), "y": json.loads(args.y),
-                "schedule": json.loads(args.schedule), "rate": args.rate, "grant": args.grant}]
-        return ops + ([{"op": "publish"}] if args.publish else [])
+        return [{"op": "learn", "x": json.loads(args.x), "y": json.loads(args.y),
+                 "schedule": json.loads(args.schedule), "rate": args.rate, "grant": args.grant}]
     if cmd == "evidence":
         sources = [int(v) for v in args.sources.split(",") if v.strip()]
-        ops = [{"op": "evidence", "items": json.loads(args.items), "grant": args.grant, "sources": sources}]
-        return ops + ([{"op": "publish"}] if args.publish else [])
+        return [{"op": "evidence", "items": json.loads(args.items), "grant": args.grant, "sources": sources}]
     if cmd == "lookup":
         return [{"op": "lookup", "relation": _role(args.relation), "target_role": _role(args.target_role),
                  "cues": json.loads(args.cues)}]
     if cmd == "slot":
         return [{"op": "slot", "key": args.key}]
-    if cmd == "publish":
-        return [{"op": "publish"}]
-    if cmd == "candidates":
-        return [{"op": "candidates"}]
-    if cmd == "reconcile":
-        action, candidate = ("discard", args.discard) if args.discard else ("adopt", args.adopt)
-        return [{"op": "reconcile", "action": action, "candidate": candidate}]
     if cmd == "session":
         return _script(args.script)
     raise AssertionError(cmd)
 
 
+_RETIRED_COMMANDS = ("init", "create", "publish", "candidates", "reconcile", "authority-reconcile")
+_RETIRED_OPTIONS = ("--home", "--publish", "--testing", "--source-commit")
+
+
+def _retired(argv) -> str | None:
+    """A retired option anywhere, or a retired command in the command position (the first token that is neither an
+    option nor a global option's value)."""
+    valued = {"--native-build", "--libraries", "--catalog-sha256", "--nonce-seed"} | {
+        "--" + name.replace("_", "-") for name in asdict(LineageConfig())}
+    retired = next((token for token in argv if token in _RETIRED_OPTIONS), None)
+    if retired is not None:
+        return retired
+    skip = False
+    for token in argv:
+        if skip:
+            skip = False
+        elif token.startswith("--"):
+            skip = token in valued
+        else:
+            return token if token in _RETIRED_COMMANDS else None
+    return None
+
+
 def main(argv=None) -> int:
+    argv = sys.argv[1:] if argv is None else list(argv)
+    retired = _retired(argv)
+    if retired is not None:
+        _emit({"op": retired.lstrip("-"), "ok": False, "code": "OPERATION_RETIRED",
+               "detail": "the persistent interface is retired: there is no home, no deployment state, no publication "
+                         "and no recovery (docs/OPERATING_ELPIS.md)"})
+        return 2
     args = _parser().parse_args(argv)
-    home = Path(args.home)
-    if not home.is_absolute():
-        home = Path.cwd() / home   # made absolute without resolving symlinks (the home is then checked as given)
+    source = Path(args.native_build or args.libraries)
+    if not source.is_absolute():
+        source = Path.cwd() / source   # made absolute without resolving symlinks
+    build_tree = args.native_build is not None
     try:
-        if args.command == "init":
-            d = init_deployment(home, Path(args.native_build).absolute(), testing=args.testing,
-                                source_commit=args.source_commit)
-            _emit({"op": "init", "ok": True, "home": str(d.home), "catalog_sha256": d.config["catalog_sha256"],
-                   "libraries": d.libraries.identities, "testing_build": d.testing})
+        if args.command == "catalog":
+            catalog, pin = catalog_of(source, build_tree=build_tree)
+            _emit({"op": "catalog", "ok": True, "catalog": json.loads(catalog), "catalog_sha256": pin})
             return 0
-        deployment = Deployment(home)
-        if args.command == "create":
-            fields = {name: getattr(args, name) for name in asdict(LineageConfig())}
-            out, ok = _result("create", {}, lambda: deployment.create_lineage(LineageConfig(**fields)))
-            _emit(out)
-            return 0 if ok else 3
+        if args.catalog_sha256 is None:
+            raise CompositionError("CLI_INPUT", "--catalog-sha256: the pin of the catalog (`catalog` prints it)")
+        nonce = None if args.nonce_seed is None else _hex32(args.nonce_seed, "--nonce-seed")
+        lineage = LineageConfig(**{name: getattr(args, name) for name in asdict(LineageConfig())})
+        installation = Installation(source, args.catalog_sha256, build_tree=build_tree)
         ops = _ops(args)
-    except (CompositionError, K1Error) as exc:
+    except CompositionError as exc:
+        _emit({"op": args.command, "ok": False, "code": exc.code, "detail": str(exc)})
+        return 2 if exc.code == "CLI_INPUT" else 4
+    except K1Error as exc:
         _emit({"op": args.command, "ok": False, "code": exc.code, "detail": str(exc)})
         return 4
     except (json.JSONDecodeError, ValueError, OSError) as exc:
         _emit({"op": args.command, "ok": False, "code": "CLI_INPUT", "detail": str(exc)})
         return 2
-    console = Console(deployment)
+    console = Console(installation, lineage, nonce)
     all_ok = True
     try:
         for op in ops:

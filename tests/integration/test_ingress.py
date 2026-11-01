@@ -8,7 +8,7 @@ import pytest
 from elpis.runtime import CompositionError, Runtime, RuntimeConfig
 
 from .conftest import CONTRADICTION, POSITIVE
-from ..conftest import runtime_config
+from ..conftest import TEST_SESSION_GENERATION, runtime_config
 
 ZERO_AUTHORITY = ("semantic_authority", "admission_authority", "execution_authority", "runtime_admission")
 
@@ -37,37 +37,21 @@ def test_same_input_is_deterministic(runtime, ingress):
     assert again.proposal_digest == first.proposal_digest
 
 
-_ECS_C_NOT_PROVISIONED, _ECS_C_RECOVERY_REFUSED, _ECS_C_UNRECOVERABLE = 25, 29, 23   # elpis/ecs_c_authority.h
-
-
-def test_reopen_keeps_the_authority_and_a_tampered_authority_is_refused(tmp_path, ingress, runtime_library):
-    config = runtime_config(tmp_path / "authority", runtime_library)
+def test_each_open_is_a_new_session_and_nothing_of_the_last_one_remains(ingress, runtime_library):
+    config = runtime_config(runtime_library)
     with Runtime(config) as rt:
         rt.run_ingress(ingress, POSITIVE)
-        before = rt.continuity.snapshot()
+        first, before = rt.continuity.status(), rt.continuity.snapshot()
     with Runtime(config) as rt:
-        assert rt.continuity.snapshot() == before
-    for name in ("authority.a", "authority.b"):
-        path = config.authority_dir / "state" / name
-        data = bytearray(path.read_bytes())
-        data[20] ^= 0x01
-        path.write_bytes(bytes(data))
-    runtime = Runtime(config)
-    with pytest.raises(CompositionError) as info:
-        runtime.open()
-    # Neither record verifies: recovery refuses (UNRECOVERABLE), and the open with it; nothing is reinterpreted.
-    assert info.value.code == "RUNTIME_AUTHORITY"
-    status = runtime.continuity.status()
-    assert (status["ecs_c_code"], status["disposition"]) == (_ECS_C_RECOVERY_REFUSED, _ECS_C_UNRECOVERABLE)
+        second, after = rt.continuity.status(), rt.continuity.snapshot()
+    # Ingress made no session transition; each open is a fresh genesis with the configured sources founded again.
+    assert before.generation == after.generation == TEST_SESSION_GENERATION
+    assert first["session"] != second["session"] and first["instance"] != second["instance"]
 
 
-def test_a_directory_that_is_not_a_provisioned_authority_is_refused(tmp_path, runtime_library):
-    path = tmp_path / "legacy"   # here the retired continuity receipt-history layout: never read, never adopted
-    path.mkdir()
-    (path / "MANIFEST").write_bytes(b"retired receipt-history layout")
-    runtime = Runtime(runtime_config(path, runtime_library))
-    with pytest.raises(CompositionError) as info:
-        runtime.open()
-    assert info.value.code == "RUNTIME_AUTHORITY"
-    assert runtime.continuity.status()["ecs_c_code"] == _ECS_C_NOT_PROVISIONED
-    assert sorted(p.name for p in path.iterdir()) == ["MANIFEST"]
+def test_the_runtime_names_no_authority_path(runtime_library):
+    from elpis.runtime import RuntimeConfig
+    assert "authority_dir" not in RuntimeConfig.__dataclass_fields__
+    assert "k1_checkpoint_dir" not in RuntimeConfig.__dataclass_fields__
+    with Runtime(runtime_config(runtime_library)) as rt:
+        assert rt.continuity.status()["backend"] == 3   # ELPIS_RUNTIME_BACKEND_ECS_C_SESSION

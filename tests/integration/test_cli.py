@@ -1,16 +1,16 @@
-"""The operator interface (``python -m elpis.runtime.cli``) over a real deployment, as separate processes.
+"""The operator interface (``python -m elpis.runtime.cli``) over the build's libraries, as separate processes.
 
-* init pins an operator build's libraries into the home; afterwards the build tree is never used (deleted here);
-* create anchors one ECS composite lineage; a session learns numerically, queries, records typed HACF evidence
-  (observe-only: no K1 learning), looks it up and publishes recoverably; a NEW process resumes exactly that state
-  (byte-identical QUERY answers, the same LOOKUP, live identity == durable identity);
-* volatile work not published is lost at exit, and the API says so;
-* refusals: an existing deployment or lineage is never overwritten; a symlinked or group-writable home; a changed
-  library, catalog, pin or ABI (pin drift) refuses every start; unauthorized LEARN and evidence; a script whose
-  declared expectation is not met exits non-zero;
-* an interrupted publication (the testing RuntimeCore build parks the durability worker after the checkpoint slot
-  is synced; the process is SIGKILLed) leaves an unresolved candidate: cognitive operations are refused until the
-  operator adopts or discards exactly that candidate.
+RAM-only (RuntimeCore ABI v8): the libraries are read, read-only, and admitted only against the operator's catalog pin;
+there is no home and nothing is written.
+
+* ``catalog`` measures the libraries read-only and prints their catalog and its SHA-256 (the pin);
+* a session founds a source, learns numerically, queries, records typed HACF evidence (observe-only: no K1 learning)
+  and looks it up, all in memory; ``close`` discards the session and the next starts at the lineage's initial
+  identity; a NEW process starts there too (nothing is resumed: byte-identical first QUERY answers, no LOOKUP answer);
+* refusals: every retired persistent command (init, create, publish, candidates, reconcile, --home, --publish); a
+  changed library or a wrong pin (pin drift) refuses every start; a missing pin; unauthorized LEARN and evidence; a
+  script whose declared expectation is not met exits non-zero;
+* no process writes anything (the working directory stays empty).
 
 Every output is machine-readable JSON. Mechanics only: the evidence and stimuli are fixtures.
 """
@@ -21,7 +21,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import signal
 import subprocess
 import sys
 
@@ -30,10 +29,10 @@ import pytest
 from ..conftest import native_build_dir, require_native_library
 
 REPO = Path(__file__).resolve().parents[2]
-_LIBS = ("native/runtime/libelpis_runtime.so", "native/runtime/libelpis_runtime_testing.so",
-         "native/runtime/libelpis_hacf_observation.so", "native/ECS_G/libelpis_ecsg_math.so",
-         "native/ECS_G/libelpis_ecsg_k1.so", "native/ECS_G/libelpis_ecsg_k1_fms.so", "native/ECS_C/libelpis_ecs_memory.so",
-         "native/runtime/composite/libelpis_ecs_composite.so", "native/ECS_C/authority/libelpis_ecs_c_authority.so")
+_LIBS = ("native/runtime/libelpis_runtime.so", "native/runtime/libelpis_hacf_observation.so",
+         "native/ECS_G/libelpis_ecsg_math.so", "native/ECS_G/libelpis_ecsg_k1.so",
+         "native/ECS_G/libelpis_ecsg_k1_fms.so", "native/ECS_C/libelpis_ecs_memory.so",
+         "native/runtime/composite/libelpis_ecs_composite.so")
 
 
 def node(name):
@@ -50,8 +49,8 @@ LEARN = {"op": "learn", "x": X, "y": [0.1, -0.2, 0.05, 0.3], "schedule": [[2, 3]
 EDGE = {"relation": "hyperedge:1", "participants": [{"node": node("alice"), "role": "incidence:1"},
                                                     {"node": node("acme"), "role": "incidence:2"},
                                                     {"node": node("engineer"), "role": "incidence:3"}]}
-# The operator founds source 1 on the lineage's ECS_C authority (the native host's op): typed evidence is admitted
-# only from an ACTIVE source of the durable authority.
+# The operator founds source 1 in the session (the native host's op): typed evidence is admitted only from an ACTIVE
+# source of the session.
 SOURCE = {"op": "source_found", "label": "fixture source 1", "source_authority": 1, "per_turn": 8,
           "scope_label": "fixture scope"}
 EVIDENCE = {"op": "evidence", "items": [dict(EDGE, provenance=prov("record-17"), authority=1, polarity="ASSERT",
@@ -61,170 +60,110 @@ LOOKUP = {"op": "lookup", "relation": "hyperedge:1", "target_role": "incidence:3
 
 
 @pytest.fixture(scope="module")
-def build(tmp_path_factory):
-    """A copy of just the libraries a deployment needs, laid out as a build tree (deleted after init)."""
-    for name in ("elpis_runtime", "elpis_runtime_testing", "elpis_ecs_composite", "elpis_hacf_observation",
-                 "elpis_ecs_c_authority"):
+def build():
+    for name in ("elpis_runtime", "elpis_ecs_composite", "elpis_hacf_observation", "elpis_ecsg_k1_fms"):
         require_native_library(name)
     return native_build_dir()
 
 
-def _copy_build(build, root):
-    for rel in _LIBS:
-        (root / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(build / rel, root / rel)
-    return root
-
-
-def cli(home, *args, script=None):
+def cli(source, *args, script=None, pin=None, cwd="/"):
     env = dict(os.environ, PYTHONPATH=str(REPO / "src"), PYTHONDONTWRITEBYTECODE="1")
-    cmd = [sys.executable, "-m", "elpis.runtime.cli", "--home", str(home), *args]
+    cmd = [sys.executable, "-m", "elpis.runtime.cli", "--native-build", str(source)]
+    if pin is not None:
+        cmd += ["--catalog-sha256", pin]
+    cmd += ["--seed", "7", *args]
     if script is not None:
         cmd += ["session", "--script", "-"]
     run = subprocess.run(cmd, input=json.dumps(script) if script is not None else None, capture_output=True,
-                         text=True, env=env, cwd="/", timeout=300)
+                         text=True, env=env, cwd=cwd, timeout=300)
     out = [json.loads(line) for line in run.stdout.splitlines() if line.strip()]
     assert run.stderr == "" or run.returncode != 0, run.stderr
     return run.returncode, out
 
 
-def _deploy(build, tmp_path, *, testing=False):
-    staging = _copy_build(build, tmp_path / "build-copy")
-    home = tmp_path / "home"
-    rc, out = cli(home, "init", "--native-build", str(staging), *(["--testing"] if testing else []))
+def _pin(build):
+    rc, out = cli(build, "catalog")
     assert rc == 0 and out[0]["ok"], out
-    shutil.rmtree(staging)                                    # never used again
-    rc, out = cli(home, "create", "--seed", "7")
-    assert rc == 0 and out[0]["ok"] and out[0]["state_format"] == "COMPOSITE", out
-    identity = out[0]["identity"]
-    rc, out = cli(home, script=[SOURCE])
-    assert rc == 0 and out[0]["ok"] and out[0]["lifecycle"] == "ACTIVE" and out[0]["source_authority"] == 1, out
-    return home, identity
+    return out[0]["catalog_sha256"]
 
 
-def test_a_session_learns_records_evidence_publishes_and_a_new_process_resumes_it_exactly(build, tmp_path):
-    home, initial = _deploy(build, tmp_path)
-    rc, out = cli(home, script=[{"op": "query", "x": X}, LEARN, {"op": "query", "x": X}, EVIDENCE, LOOKUP,
-                                {"op": "live"}, {"op": "publish"}, {"op": "status"}])
+def _copy_build(build, root, flip=None):
+    for rel in _LIBS:
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(build / rel, root / rel)
+    if flip is not None:
+        data = bytearray((root / flip).read_bytes())
+        data[-1] ^= 1
+        (root / flip).write_bytes(bytes(data))
+    return root
+
+
+def test_the_catalog_measures_the_libraries_read_only(build, tmp_path):
+    before = {r: hashlib.sha256((build / r).read_bytes()).hexdigest() for r in _LIBS}
+    rc, out = cli(build, "catalog", cwd=tmp_path)
+    assert rc == 0 and out[0]["ok"] and len(out[0]["catalog_sha256"]) == 64
+    pinned = {e["library_id"]: e["sha256"] for e in out[0]["catalog"]["libraries"]}
+    assert pinned == {Path(r).name[3:-3]: h for r, h in before.items()}
+    assert list(tmp_path.iterdir()) == []                                  # nothing written
+    assert {r: hashlib.sha256((build / r).read_bytes()).hexdigest() for r in _LIBS} == before
+
+
+def test_a_session_works_in_memory_and_nothing_survives_it(build, tmp_path):
+    pin = _pin(build)
+    rc, out = cli(build, pin=pin, cwd=tmp_path, script=[
+        {"op": "open"}, SOURCE, {"op": "query", "x": X}, LEARN, {"op": "query", "x": X}, EVIDENCE, LOOKUP,
+        {"op": "live"}, {"op": "status"}, {"op": "close"}, {"op": "live"}, LOOKUP, {"op": "query", "x": X}])
     assert rc == 0 and all(o["ok"] for o in out), out
-    before, learned, after, evidence, found, live, published, status = out
-    assert learned["durability"] == "VOLATILE" and learned["epoch"] == [0, 8] and before["values"] != after["values"]
-    assert evidence["k1_steps"] == 0 and evidence["durability"] == "VOLATILE"
-    assert (found["found"], found["answer"]) == (True, node("engineer"))
-    assert live["durable"]["identity"] == initial != live["live"]["identity"]     # volatile until published
-    assert published["ticket"]["acknowledged"] and published["durable"]["identity"] == live["live"]["identity"]
-    assert status["recovery"]["disposition"] == "RESUMABLE" and status["fault"] is None
-    assert status["abi"] == {"runtime": 7, "composite": 1, "ecs_c": 1} and "ECS_CODEC_UNQUALIFIED" in status["capabilities"]["text"]
-    # A new process: exactly the published state.
-    rc, again = cli(home, script=[{"op": "query", "x": X}, LOOKUP, {"op": "live"}])
-    assert rc == 0, again
-    assert again[0]["values_sha256"] == after["values_sha256"] and again[0]["values"] == after["values"]
-    assert again[1]["answer"] == node("engineer")
-    assert again[2]["live"]["identity"] == again[2]["durable"]["identity"] == published["durable"]["identity"]
+    opened, source, before, learned, after, evidence, found, live, status, closed, fresh, lost, again = out
+    initial = opened["initial_identity"]
+    assert opened["anchored"]["identity"] == initial and opened["anchored"]["state_format"] == "COMPOSITE"
+    assert source["lifecycle"] == "ACTIVE" and source["source_authority"] == 1
+    assert learned["durability"] == "VOLATILE" and after["values"] != before["values"]
+    assert evidence["durability"] == "VOLATILE" and evidence["k1_steps"] == 0
+    assert found["found"] and found["answer"] == node("engineer")
+    assert live["live"]["identity"] != initial
+    assert status["installation"]["persistence"] == "NONE" and status["abi"] == {"runtime": 8, "composite": 1}
+    assert closed["closed"] and closed["discarded"]["learned"]
+    assert fresh["live"]["identity"] == initial and not lost["found"]
+    assert again["values_sha256"] == before["values_sha256"]               # the initial state answers again
+    # A new process: the same initial identity and answers; nothing was kept to resume.
+    rc, out = cli(build, pin=pin, cwd=tmp_path, script=[{"op": "live"}, {"op": "query", "x": X}, LOOKUP])
+    assert rc == 0 and out[0]["live"]["identity"] == initial
+    assert out[1]["values_sha256"] == before["values_sha256"] and not out[2]["found"]
+    assert list(tmp_path.iterdir()) == []                                  # no process wrote anything
 
 
-def test_volatile_work_is_lost_at_exit_and_the_api_says_so(build, tmp_path):
-    home, initial = _deploy(build, tmp_path)
-    rc, out = cli(home, "learn", "--x", json.dumps(X), "--y", "[0.1,-0.2,0.05,0.3]", "--schedule", "[[4,2]]",
-                  "--grant", "test operator")
-    assert rc == 0 and out[0]["durability"] == "VOLATILE" and out[0]["identity"] != initial
-    rc, out = cli(home, "status")
-    assert out[0]["live"]["identity"] == out[0]["durable"]["identity"] == initial      # lost, as reported
-    rc, out = cli(home, "learn", "--x", json.dumps(X), "--y", "[0.1,-0.2,0.05,0.3]", "--schedule", "[[4,2]]",
-                  "--grant", "test operator", "--publish")
-    assert rc == 0 and out[1]["ticket"]["acknowledged"]
-    rc, status = cli(home, "status")
-    assert status[0]["durable"]["identity"] == out[0]["identity"] != initial
+@pytest.mark.parametrize("args", [("init",), ("create",), ("publish",), ("candidates",), ("reconcile",),
+                                  ("--home", "/nowhere", "status"), ("learn", "--publish")])
+def test_every_retired_persistent_command_is_refused(build, tmp_path, args):
+    rc, out = cli(build, *args, pin=_pin(build), cwd=tmp_path)
+    assert (rc, out[0]["code"]) == (2, "OPERATION_RETIRED"), out
+    assert list(tmp_path.iterdir()) == []
 
 
-def test_refusals_and_expectations_are_reported_and_never_overwrite(build, tmp_path):
-    home, _ = _deploy(build, tmp_path)
-    assert cli(home, "create")[1][0]["code"] == "LINEAGE_EXISTS"
-    rc, out = cli(home, "init", "--native-build", str(build))
-    assert (rc, out[0]["code"]) == (4, "DEPLOYMENT_EXISTS")
-    rc, out = cli(home, script=[dict(LEARN, grant=None, expect="LEARN_UNAUTHORIZED"),
-                                dict(EVIDENCE, grant=None, expect="OBSERVATION_UNAUTHORIZED"),
-                                dict(EVIDENCE, sources=[2], expect="OBSERVATION_AUTHORITY")])
+def test_retired_operations_in_a_script_are_refused_and_unmet_expectations_fail(build, tmp_path):
+    pin = _pin(build)
+    rc, out = cli(build, pin=pin, script=[{"op": "publish", "expect": "OPERATION_RETIRED"},
+                                          {"op": "candidates", "expect": "OPERATION_RETIRED"},
+                                          {"op": "reconcile", "expect": "OPERATION_RETIRED"}])
     assert rc == 0 and all(o["met"] for o in out), out
-    rc, out = cli(home, script=[dict(LEARN, expect="LEARN_UNAUTHORIZED")])           # it succeeds: not as expected
+    rc, out = cli(build, pin=pin, script=[dict(LEARN, grant=None, expect="LEARN_UNAUTHORIZED"),
+                                          dict(EVIDENCE, grant=None, expect="OBSERVATION_UNAUTHORIZED"),
+                                          SOURCE, dict(EVIDENCE, sources=[2], expect="OBSERVATION_AUTHORITY")])
+    assert rc == 0 and [o["met"] for o in out if "met" in o] == [True, True, True], out
+    rc, out = cli(build, pin=pin, script=[dict(LEARN, expect="LEARN_UNAUTHORIZED")])   # it succeeds: unmet
     assert rc == 3 and out[0]["ok"] and not out[0]["met"]
-    link = tmp_path / "link"
-    link.symlink_to(home)
-    assert cli(link, "status")[1][0]["code"] == "DEPLOYMENT_PATH"
-    open_home = tmp_path / "open"
-    open_home.mkdir(mode=0o777)
-    open_home.chmod(0o777)
-    assert cli(open_home, "init", "--native-build", str(build))[1][0]["code"] == "DEPLOYMENT_PATH"
 
 
-@pytest.mark.parametrize("target,code", [("lib/libelpis_runtime.so", "RUNTIME_UNPINNED"),
-                                         ("lib/libelpis_ecs_composite.so", "DEPLOYMENT_PIN"),
-                                         ("native-catalog.json", "DEPLOYMENT_PIN"),
-                                         ("elpis.json:pin", "DEPLOYMENT_PIN"),
-                                         ("elpis.json:abi", "DEPLOYMENT_ABI")])
-def test_pin_drift_refuses_every_start(build, tmp_path, target, code):
-    home, _ = _deploy(build, tmp_path)
-    if target.startswith("elpis.json:"):
-        path = home / "elpis.json"
-        config = json.loads(path.read_text())
-        if target.endswith("pin"):
-            config["catalog_sha256"] = "0" * 64
-        else:
-            config["abi"] = {"runtime": 4, "composite": 1}
-        path.write_text(json.dumps(config))
-    else:
-        path = home / target
-        path.chmod(0o600)
-        data = bytearray(path.read_bytes())
-        data[-1] ^= 0x01
-        path.write_bytes(bytes(data))
-    rc, out = cli(home, "status")
-    assert (rc, out[0]["ok"], out[0]["code"]) == (4, False, code), out
-
-
-_CRASH = r"""
-import json, sys, time
-from array import array
-from pathlib import Path
-sys.path.insert(0, sys.argv[1] + "/src")
-from elpis.runtime.cognition import LearnAuthority, Stimulus
-from elpis.runtime.deployment import Deployment
-s = Deployment(Path(sys.argv[2])).session()
-x = array("d", [((i * 7 + j * 3) % 11 - 5) / 16.0 for i in range(4) for j in range(6)])
-s.runtime.run_numeric_learn(s.state, Stimulus(x, array("d", [0.1, -0.2, 0.05, 0.3]), array("Q", [4, 3]), dim=6),
-                            LearnAuthority(0.002, "test operator: crash fixture"))
-candidate = s.runtime.live_identity(s.state)[0]
-s.runtime._core.testing_durable_fault(2, int(sys.argv[3]), 0)      # park the durability worker at the step
-s.runtime.publish_recoverable(s.state, wait=False)
-while s.runtime.durability().parked != int(sys.argv[3]):
-    time.sleep(0.005)
-print(json.dumps({"candidate": candidate.hex()}), flush=True)
-time.sleep(3600)
-"""
-
-
-@pytest.mark.parametrize("action", ["adopt", "discard"])
-def test_an_interrupted_publication_is_reconciled_only_by_the_operator(build, tmp_path, action):
-    home, initial = _deploy(build, tmp_path, testing=True)
-    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
-    child = subprocess.Popen([sys.executable, "-c", _CRASH, str(REPO), str(home), "5"], stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, text=True, env=env)
-    try:
-        line = child.stdout.readline()
-        assert line, child.stderr.read()
-        candidate = json.loads(line)["candidate"]
-    finally:
-        child.send_signal(signal.SIGKILL)
-        child.wait(timeout=30)
-    assert child.returncode == -signal.SIGKILL
-    rc, out = cli(home, "candidates")
-    assert out[0]["recovery"]["disposition"] == "CANDIDATE_UNRESOLVED"
-    assert (out[0]["recovery"]["authorized"], out[0]["recovery"]["candidate"]) == (initial, candidate)
-    rc, out = cli(home, "query", "--x", json.dumps(X))
-    assert (rc, out[0]["code"]) == (3, "LINEAGE_CANDIDATE_UNRESOLVED")              # no implicit adoption
-    rc, out = cli(home, "reconcile", "--" + action, candidate)
-    assert rc == 0 and out[0]["recovery"]["disposition"] == "RESUMABLE", out
-    expected = candidate if action == "adopt" else initial
-    assert out[0]["durable"]["identity"] == expected
-    rc, out = cli(home, script=[{"op": "live"}, {"op": "query", "x": X}])
-    assert rc == 0 and out[0]["live"]["identity"] == out[0]["durable"]["identity"] == expected
+def test_pin_drift_and_a_missing_pin_refuse_every_start(build, tmp_path):
+    pin = _pin(build)
+    changed = _copy_build(build, tmp_path / "changed", flip="native/runtime/composite/libelpis_ecs_composite.so")
+    rc, out = cli(changed, "status", pin=pin)
+    assert (rc, out[0]["code"]) == (4, "INSTALL_PIN"), out
+    runtime = _copy_build(build, tmp_path / "runtime", flip="native/runtime/libelpis_runtime.so")
+    rc, out = cli(runtime, "status", pin=pin)
+    assert (rc, out[0]["code"]) == (4, "INSTALL_PIN"), out
+    rc, out = cli(build, "status", pin="0" * 64)
+    assert (rc, out[0]["code"]) == (4, "INSTALL_PIN"), out
+    rc, out = cli(build, "status")
+    assert (rc, out[0]["code"]) == (2, "CLI_INPUT"), out

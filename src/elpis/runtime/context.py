@@ -29,9 +29,8 @@ acknowledged state. This module is the contextual lane's mechanical foundation: 
   refused materialization, a relation over an axiom not held, binding capacity): it publishes nothing of itself and
   never costs the others. A batch-level fault publishes nothing at all. Either way the published view stays
   exactly as it was until a successor is complete.
-* **Separate coordinates.** The view is session-local and never persisted. It is not part of the durable state: a
-  durable publication neither includes nor waits for it, a view update writes nothing, and a restart starts from
-  the empty view.
+* **Separate coordinates.** The view is session-local and never persisted. It is not part of the K1 lineage's
+  state: a view update writes nothing, and a restart starts from the empty view.
 
 Not implemented, and not claimed: no contextual dynamics law (Hypergraph Cellular Automata are an unqualified
 candidate mechanism; nothing here infers, scores, propagates or promotes a relationship); no encoding of a view into

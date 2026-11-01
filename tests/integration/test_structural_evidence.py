@@ -2,8 +2,8 @@
 
 validated HACF hyperedge + assertion (structure computes and checks every identity) -> native typed observation
 (``libelpis_hacf_observation``) -> ONE observe-only managed turn (RuntimeCore ABI v5: no K1 learning) under an
-explicit ObservationAuthority -> atomic volatile commit -> exact slot and LOOKUP -> recoverable publication ->
-restart -> restore. Real native code throughout; no mock storage.
+explicit ObservationAuthority -> atomic volatile commit -> exact slot and LOOKUP, for as long as the session lives
+(RuntimeCore ABI v8 publishes nothing). Real native code throughout; no mock storage.
 
 * two sources asserting and negating one hyperedge: one relation, both polarities and provenances kept; LOOKUP
   answers by the memory's net-evidence law (asserts - negates > 0), so it withholds an answer while they balance and
@@ -12,8 +12,8 @@ restart -> restore. Real native code throughout; no mock storage.
 * invalid provenance, another hyperedge's assertion, unsupported (9) and query-local participants, an undefined
   polarity, an unadmitted source: refused before the runtime is touched (no native turn begun);
 * over-capacity evidence aborts its whole turn (the memory's slot capacity); nothing of it is installed;
-* the evidence survives recoverable publication, process death (SIGKILL) and restore exactly, and the inverse map
-  rebuilds the identical hyperedge;
+* the inverse map rebuilds the identical hyperedge; the evidence is volatile: a process killed (SIGKILL) after
+  recording it leaves nothing behind, and a new session holds none of it;
 * simultaneous requests from several threads: RuntimeCore admits one turn at a time (``RUNTIME_TURN_OPEN`` for the
   others, nothing partial); every item is recorded exactly once;
 * the resource footprint is fixed: the envelope and the allocated bytes never grow with the evidence.
@@ -39,9 +39,9 @@ from elpis.runtime.composition import CompositionError
 from elpis.runtime.observation import (INCIDENCE_NAMESPACE, HacfParticipant, StructuralEvidence, _Assertion,
                                        record_evidence)
 
-from .test_composite_runtime import CONFIG, _store, fresh, library  # noqa: F401 (fixture)
+from .test_composite_runtime import CONFIG, fresh, library  # noqa: F401 (fixture)
 from .test_hacf_composite_observation import RELATION, SOURCES, _edge, _tampered, hacf, node, provenance  # noqa: F401
-from .test_k1_recovery import _cfg
+from .test_codec_ecs_turn import _config
 from .test_observe_only import _k1_bytes
 
 REPO = Path(__file__).resolve().parents[2]
@@ -62,8 +62,7 @@ def _evidence(hacf, nodes, source, tick, polarity="ASSERT", prov=None):   # noqa
 
 def test_two_sources_asserting_and_negating_one_hyperedge_keep_both_and_lookup_reports_the_conflict(
         hacf, library, tmp_path):   # noqa: F811
-    store = _store(library, tmp_path / "ck")
-    with fresh(library) as x, Runtime(_cfg(tmp_path, store)) as runtime:
+    with fresh(library) as x, Runtime(_config()) as runtime:
         runtime.anchor_cognition(x)
         before = x.snapshot()
         live = runtime.live_identity(x)
@@ -94,8 +93,7 @@ def test_two_sources_asserting_and_negating_one_hyperedge_keep_both_and_lookup_r
 
 def test_duplicate_evidence_is_recorded_as_repeated_observations_never_merged_or_dropped(
         hacf, library, tmp_path):   # noqa: F811
-    store = _store(library, tmp_path / "ck")
-    with fresh(library) as x, Runtime(_cfg(tmp_path, store)) as runtime:
+    with fresh(library) as x, Runtime(_config()) as runtime:
         runtime.anchor_cognition(x)
         same = _evidence(hacf, (0, 1, 2), 1, 40)
         key = record_evidence(runtime, x, hacf, (same,), SOURCES).entries[0].relation_key
@@ -105,8 +103,7 @@ def test_duplicate_evidence_is_recorded_as_repeated_observations_never_merged_or
 
 
 def test_each_receipt_entry_names_the_slot_of_exactly_its_own_evidence(hacf, library, tmp_path):   # noqa: F811
-    store = _store(library, tmp_path / "ck")
-    with fresh(library) as x, Runtime(_cfg(tmp_path, store)) as runtime:
+    with fresh(library) as x, Runtime(_config()) as runtime:
         runtime.anchor_cognition(x)
         batch = tuple(_evidence(hacf, (30 + i, 80 + i, 150 + i), 1 + i % 2, 45, prov=0x40 + i) for i in range(3))
         receipt = record_evidence(runtime, x, hacf, batch, SOURCES)
@@ -120,8 +117,7 @@ def test_each_receipt_entry_names_the_slot_of_exactly_its_own_evidence(hacf, lib
 
 
 def test_invalid_or_unsupported_evidence_is_refused_before_the_runtime_is_touched(hacf, library, tmp_path):   # noqa: F811
-    store = _store(library, tmp_path / "ck")
-    with fresh(library) as x, Runtime(_cfg(tmp_path, store)) as runtime:
+    with fresh(library) as x, Runtime(_config()) as runtime:
         runtime.anchor_cognition(x)
         state = x.state_digest()
         runtime._core.counters(reset=True)
@@ -158,8 +154,7 @@ def replace_assertion(evidence, assertion):
 
 
 def test_over_capacity_evidence_aborts_its_whole_turn_and_the_footprint_is_fixed(hacf, library, tmp_path):   # noqa: F811
-    store = _store(library, tmp_path / "ck")
-    with fresh(library) as x, Runtime(_cfg(tmp_path, store)) as runtime:
+    with fresh(library) as x, Runtime(_config()) as runtime:
         runtime.anchor_cognition(x)
         footprint = x.inspect()
         capacity = CONFIG.slot_capacity
@@ -182,8 +177,7 @@ def test_over_capacity_evidence_aborts_its_whole_turn_and_the_footprint_is_fixed
 
 
 def test_simultaneous_requests_record_every_item_exactly_once(hacf, library, tmp_path):   # noqa: F811
-    store = _store(library, tmp_path / "ck")
-    with fresh(library) as x, Runtime(_cfg(tmp_path, store)) as runtime:
+    with fresh(library) as x, Runtime(_config()) as runtime:
         runtime.anchor_cognition(x)
         items = [_evidence(hacf, (20 + i, 70 + i, 140 + i), 1 + i % 2, 70) for i in range(8)]
         receipts, refusals, errors = [None] * len(items), [0] * len(items), []
@@ -213,8 +207,6 @@ def test_simultaneous_requests_record_every_item_exactly_once(hacf, library, tmp
 
 _CHILD = r"""
 import json, sys, time
-from dataclasses import replace
-from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 from tests.integration.test_codec_ecs_turn import _config
 from tests.integration.test_composite_runtime import fresh
@@ -226,26 +218,24 @@ from elpis.runtime.observation import HacfObservationLibrary, StructuralEvidence
 
 hacf = HacfObservationLibrary(admit_native(native_build_dir() / "native" / "runtime" / "libelpis_hacf_observation.so"))
 x = fresh(CompositeLibrary(admit_composite_set()[3].lib))
-runtime = Runtime(replace(_config(Path(sys.argv[2])), k1_checkpoint_dir=Path(sys.argv[3]))).open()
+runtime = Runtime(_config()).open()
 runtime.anchor_cognition(x)
 edge = _edge(hacf)
 ev = lambda src, pol, tick: StructuralEvidence(edge, hacf.assertion(edge, provenance(src), src), pol, tick)
 first = record_evidence(runtime, x, hacf, (ev(1, "ASSERT", 10), ev(2, "NEGATE", 11)), SOURCES)
-acked = runtime.publish_recoverable(x)
-assert acked.acknowledged
-lost = record_evidence(runtime, x, hacf, (ev(1, "ASSERT", 12),), SOURCES)          # volatile: never published
-print(json.dumps({"authorized": acked.identity.hex(), "key": first.entries[0].relation_key.hex(),
-                  "edge": edge.identity.hex(), "volatile": x.state_digest().hex()}), flush=True)
+slot = x.slot(first.entries[0].relation_key)
+print(json.dumps({"key": first.entries[0].relation_key.hex(), "edge": edge.identity.hex(),
+                  "inverse": hacf.hyperedge_of(slot).identity.hex(), "counts": [slot.assert_count, slot.negate_count],
+                  "provenance": [slot.first_provenance.hex(), slot.last_provenance.hex()],
+                  "live": x.state_digest().hex()}), flush=True)
 time.sleep(3600)
 """
 
 
-def test_evidence_survives_process_death_and_restore_exactly(hacf, library, tmp_path):   # noqa: F811
-    _store(library, tmp_path / "checkpoint")
+def test_evidence_is_volatile_and_a_killed_process_leaves_none_of_it(hacf, library, tmp_path):   # noqa: F811
     env = dict(os.environ, PYTHONPATH=f"{REPO / 'src'}{os.pathsep}{REPO}", PYTHONDONTWRITEBYTECODE="1")
-    child = subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO), str(tmp_path / "authority"),
-                              str(tmp_path / "checkpoint")], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             text=True, env=env, cwd=REPO)
+    child = subprocess.Popen([sys.executable, "-c", _CHILD, str(REPO)], stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True, env=env, cwd=tmp_path)
     try:
         line = child.stdout.readline()
         assert line, child.stderr.read()
@@ -254,20 +244,11 @@ def test_evidence_survives_process_death_and_restore_exactly(hacf, library, tmp_
         child.send_signal(signal.SIGKILL)
         child.wait(timeout=30)
     assert child.returncode == -signal.SIGKILL
-    authorized, key = bytes.fromhex(report["authorized"]), bytes.fromhex(report["key"])
-    from elpis.runtime.cognition import ObservationAuthority  # noqa: F401
-    from .test_codec_ecs_turn import _config
-    from dataclasses import replace
-    with Runtime(replace(_config(tmp_path / "authority"), k1_checkpoint_dir=tmp_path / "checkpoint")) as runtime:
-        recovery = runtime.recover_k1()
-        assert recovery.disposition == "RESUMABLE" and recovery.authorized == authorized
-        with CompositeState.restore(library, CONFIG, recovery.envelope) as y:
-            assert y.state_digest() == authorized != bytes.fromhex(report["volatile"])
-            slot = y.slot(key)
-            assert (slot.assert_count, slot.negate_count) == (1, 1)              # the lost third never recovered
-            assert (slot.first_provenance, slot.last_provenance) == (provenance(1), provenance(2))
-            assert hacf.hyperedge_of(slot).identity == bytes.fromhex(report["edge"])
-            again = record_evidence(runtime, y, hacf, (StructuralEvidence(
-                hacf.hyperedge_of(slot), hacf.assertion(hacf.hyperedge_of(slot), provenance(1), 1), "ASSERT", 12),),
-                ObservationAuthority("test: restart", frozenset({1})))
-            assert again.entries[0].relation_key == key and y.slot(key).assert_count == 2
+    # In its session the evidence was exact, and the inverse map rebuilt the identical hyperedge.
+    assert report["counts"] == [1, 1] and report["inverse"] == report["edge"]
+    assert report["provenance"] == [provenance(1).hex(), provenance(2).hex()]
+    assert list(tmp_path.iterdir()) == []                     # the killed process wrote nothing
+    key = bytes.fromhex(report["key"])
+    with Runtime(_config()) as runtime, fresh(library) as y:  # a new session holds none of it
+        runtime.anchor_cognition(y)
+        assert y.slot(key) is None and y.state_digest() != bytes.fromhex(report["live"])

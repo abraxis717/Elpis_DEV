@@ -56,7 +56,7 @@ def test_warm_context_work_never_promotes_pins_or_waits_on_the_hot_resident_stat
 
     with _Resident(k1, adapter, tmp_path, max_rows=8) as state, ContextLane(ContextLimits(capacity=8)) as lane, \
             build_corpus_and_index(library, tmp_path / "epoch", list(sources.documents)) as epoch, \
-            Runtime(_config(tmp_path / "c")) as runtime:
+            Runtime(_config()) as runtime:
         manifest = CorpusManifest.verified(epoch.corpus_manifest_json, expected_digest=epoch.corpus_digest)
         runtime.anchor_cognition(state)
         resident = state._r.inspect(state.id)
