@@ -1,8 +1,9 @@
 """The ECS_C relational view stays DEV: consumer-free, I/O-free, HCA-free and one declared ABI
 (docs/ECS_C_RELATIONAL.md).
 
-* Not composed: no library, executable or Python module outside its own directory and its tests uses it. Not
-  RuntimeCore, not the composite, not the memory, not the deployment's admitted library set, not src/.
+* Not composed: no library, executable or Python module outside its own directory uses it. Not RuntimeCore, not the
+  composite, not the memory, not the deployment's admitted library set, not src/. Test executables may (RuntimeCore's
+  session test syncs the view from the runtime's own session rows): every target that links the view is a test.
 * Isolated from HCA research: the view neither names nor links the HCA substrate, and no function of its ABI takes a
   salience, a candidate or an HCA object. The research interface (research/ecsc_dynamic_relational_r0) reads the
   view's export one way.
@@ -35,18 +36,28 @@ def test_nothing_canonical_uses_the_relational_view():
         if not path.is_file() or path.suffix not in (".c", ".h", ".rs", ".txt", ".cmake", ".toml", ".cpp", ".hpp"):
             continue
         rel = path.relative_to(REPO).as_posix()
-        if rel.startswith("native/ECS_C/relational/") or rel == "native/ECS_C/CMakeLists.txt":
-            continue
+        if rel.startswith("native/ECS_C/relational/") or "/tests/" in rel or path.name == "CMakeLists.txt":
+            continue                          # its own tree; test sources; build files are checked target by target
         if any(n in path.read_text(encoding="utf-8", errors="replace") for n in names):
             offenders.append(rel)
     for path in sorted((REPO / "src").rglob("*.py")):
         if any(n in path.read_text(encoding="utf-8") for n in names):
             offenders.append(path.relative_to(REPO).as_posix())
     assert not offenders, offenders
-    # In its own CMake file: one library and its tests, and nothing else links it.
-    cmake = (REPO / "native/ECS_C/CMakeLists.txt").read_text(encoding="utf-8")
-    linked = [line.strip() for line in cmake.splitlines() if "elpis_ecs_c_relational" in line and "LIBS" in line]
-    assert linked == ['LIBS elpis_ecs_c_relational "${CMAKE_CURRENT_BINARY_DIR}/session/libelpis_ecs_c_session.so"'], linked
+    # Build files: one library, and every target that links it is a test (elpis_add_test).
+    for cmake in sorted((REPO / "native").rglob("CMakeLists.txt")):
+        text = cmake.read_text(encoding="utf-8")
+        for call in re.findall(r"(\w+)\(([^()]*(?:\([^()]*\)[^()]*)*)\)", text):
+            command, args = call
+            if "elpis_ecs_c_relational" not in args:
+                continue
+            if command == "elpis_add_library":
+                assert cmake == REPO / "native/ECS_C/CMakeLists.txt" and args.split()[1] == "elpis_ecs_c_relational"
+            elif command == "elpis_add_test":
+                assert re.search(r"\bLIBS\b[^\n]*\belpis_ecs_c_relational\b", args), (cmake, args.split()[1])
+            else:
+                assert command in ("target_include_directories", "target_link_libraries") and \
+                    args.split()[0] == "elpis_ecs_c_relational", (cmake, command, args[:80])
     assert "elpis_ecs_c_relational" not in (REPO / "src/elpis/runtime/deployment.py").read_text(encoding="utf-8")
 
 

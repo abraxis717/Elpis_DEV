@@ -1,5 +1,6 @@
-//! Stable ECS_C refusal codes. The numeric values are C ABI: 1..33 and 255 are the retiring durable authority's
-//! (include/elpis/ecs_c_authority.h, unchanged); 34..37 are the volatile session's (include/elpis/ecs_c_session.h).
+//! Stable ECS_C refusal codes. The numeric values are C ABI: 1..33 and 255 are the code space the retired durable
+//! authority defined (its header is in git history; the values are unchanged); 34..37 are the volatile session's
+//! (include/elpis/ecs_c_session.h).
 //! A session returns only the codes of its own law and [`Code::VOLATILE`]: never a storage code.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

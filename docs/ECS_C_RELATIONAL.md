@@ -33,8 +33,8 @@ bound.
 
 Every input uses the real ECS_C types:
 - authority rows: `elpis_ecs_c_entity` (`elpis/ecs_c_types.h`), read through the volatile session's
-  `elpis_ecs_c_session_read_status` and `elpis_ecs_c_session_entity_at` (or the retiring durable authority's
-  equivalents);
+  `elpis_ecs_c_session_read_status` and `elpis_ecs_c_session_entity_at`, or RuntimeCore's
+  `elpis_runtime_authority_status` and `elpis_runtime_authority_entity_at` over the session it holds;
 - observations: `elpis_ecs_mem_observation`, keyed by `elpis_ecs_mem_relation_key`;
 - requests and answers: `elpis_ecs_mem_request` and `elpis_ecs_mem_answer`;
 - slots: `elpis_ecs_mem_slot`.
@@ -71,8 +71,8 @@ sync(A -> A'):  refused unless A' succeeds A; then RETIRED_A' evidence is releas
 - no row founded before the synced coordinate appearing later;
 - at an equal generation, the identical table (an idempotent no-op).
 
-Anything else is `REGRESSION`, for example a durable authority's `RECONCILE_ROLLBACK` that returns a source to an
-older version. A volatile session refuses that event `PERSISTENCE_RETIRED`, so over a session a `REGRESSION`
+Anything else is `REGRESSION`, for example the retired durable authority's `RECONCILE_ROLLBACK` that returned a
+source to an older version. A volatile session refuses that event `PERSISTENCE_RETIRED`, so over a session a `REGRESSION`
 can only come from a caller handing the view inconsistent tables. A session's successor is another lineage
 (`LINEAGE`). The view keeps its coordinate until an explicit reset.
 

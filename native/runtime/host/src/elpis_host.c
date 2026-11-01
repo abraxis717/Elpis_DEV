@@ -1,42 +1,61 @@
-/* elpis: the native Elpis operator host (docs/NATIVE_HOST.md). One process over one deployment; no interpreter.
+/* elpis: the native Elpis operator host (docs/NATIVE_HOST.md). One process, one RAM-only runtime; no interpreter, no
+ * home, no state on disk (docs/ELPIS_MISSION.md, Amendment 3).
  *
- *   elpis --home DIR init --native-build BUILD [--capacity N] [--authority-dir DIR] [--source-commit SHA]
- *   elpis --home DIR <command> [options]          one operation (learn/evidence --publish: two)
- *   elpis --home DIR session --script FILE|-      many operations in one process (volatile work lives here)
+ *   elpis (--libraries DIR | --native-build BUILD) catalog
+ *   elpis (--libraries DIR | --native-build BUILD) --catalog-sha256 HEX [session options] session --script FILE|-
+ *   elpis (--libraries DIR | --native-build BUILD) --catalog-sha256 HEX [session options] <command> [options]
+ *
+ * The libraries are read, never written: each is copied read-only into a sealed memfd, measured, and loaded from the
+ * seal only when the catalog of this host binary and every library (`catalog` prints it) matches the operator's pin.
+ * Session options: --dim N --width N --max-rows N --memory-dim N --banks N --slot-capacity N --codebook-capacity N
+ * --seed N (the lineage every session starts from: its deterministic initial composite, built in memory),
+ * --capacity N (the session's ECS_C entities, default 16), --nonce-seed HEX (64 hex: reproducible sessions for
+ * differential runs; default: the kernel draws a fresh nonce for each session).
+ *
+ * A session is one volatile ECS_C session and one composite: `open` (or the first operation that needs it) starts
+ * one at a fresh genesis, anchored at the lineage's initial identity; `close` ends it and discards everything it
+ * learned or recorded. Nothing is published, checkpointed, recovered or resumed: the retired durable commands (init,
+ * create, publish, reconcile, candidates, authority-reconcile, --home, --publish) are refused OPERATION_RETIRED.
+ *
+ * Containment is mandatory (host_contain.h): a privileged process, writable storage on a standard descriptor, an
+ * unreadable or unlockable swap policy, or a kernel without Landlock v5 is refused before any operation runs; the
+ * process then runs with no write permission to any file, no core dump and no child process.
  *
  * Every operation prints one JSON object on one line: {"op": ..., <its members>, "ok": true} or
  * {"op": ..., "ok": false, "code": ..., "detail": ...}; an operation that names "expect": CODE is met exactly when
  * it is refused with CODE. Exit status: 0 every operation succeeded or was refused as expected; 2 the command line,
- * an argument or a script is malformed (nothing ran); 3 an operation was refused (or an expectation unmet); 4 the
- * deployment could not be opened (nothing ran).
+ * an argument or a script is malformed, or names a retired command (nothing ran); 3 an operation was refused (or an
+ * expectation unmet); 4 the host could not start: containment, admission or the catalog pin refused (nothing ran).
  *
  * The host computes no ECS mathematics and touches no ECS byte: it validates operator input, marshals it into the
- * admitted libraries' C ABIs and reports what they answer. RuntimeCore composes every turn; the ECS_C authority
- * decides every durable transition; structure identifies every hyperedge. There is no text interface: no qualified
- * ECS<->DSV4 codec map exists (ECS_CODEC_UNQUALIFIED). */
+ * admitted libraries' C ABIs and reports what they answer. RuntimeCore composes every turn and decides every session
+ * transition; structure identifies every hyperedge. There is no text interface: no qualified ECS<->DSV4 codec map
+ * exists (ECS_CODEC_UNQUALIFIED). */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
 #include <errno.h>
-#include <math.h>
 #include <fcntl.h>
+#include <math.h>
 #include <poll.h>
 #include <signal.h>
-#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
+#include "elpis/ecs_c_types.h"
 #include "elpis/sha256.h"
 #include "host_contain.h"
-#include "host_deploy.h"
+#include "host_install.h"
 #include "host_json.h"
 
 #define MAX_INPUT ((size_t)8 << 20)  /* one operation's JSON, or a script */
 #define ARENA_PER_BYTE 32            /* parser arena bytes per input byte */
-#define MAX_OUTPUT ((size_t)8 << 20) /* one operation's output line */
+/* One operation's output line: the largest is `authority` of a 4096-entity session (~1.9 MB). The host's memory stays
+ * small enough to be locked whole under a common 8 MiB RLIMIT_MEMLOCK when swap is active (host_contain.h). */
+#define MAX_OUTPUT ((size_t)2 << 20)
 #define MAX_QUERY_ROWS 4096u
 #define MAX_EXPERIENCES 64u
 #define MAX_EXPERIENCE_ROWS 256u
@@ -48,15 +67,14 @@
 /* ---- the process ---------------------------------------------------------------------------------------------- */
 
 typedef struct {
-    host_deployment d;
-    elpis_runtime *rt;  /* the session's runtime (created at the first operation that needs it) */
-    int opened;         /* rt is open */
-    int recovered;      /* the lineage's recovery disposition was read */
-    elpis_runtime_recovery recovery;
-    elpis_ecs_composite *x; /* the restored composite (RESUMABLE) */
+    host_install d;
+    host_containment contain;
+    elpis_runtime *rt;       /* created at the first session; each open is a new session */
+    int opened;              /* a session is open */
+    elpis_ecs_composite *x;  /* the session's composite */
     uint64_t owner;
     elpis_runtime_substrate sub;
-    uint8_t *envelope; /* d.envelope_bytes */
+    uint8_t *envelope;       /* d.envelope_bytes of memory: `live` reads the component identities from it */
     double *s3;
     elpis_runtime_budget ceiling;
 } host;
@@ -65,114 +83,86 @@ static const char *rt_code(const host *h, int rc) {
     const char *name = h->d.api.elpis_runtime_code_name(rc);
     return name ? name : "RUNTIME_UNKNOWN_CODE";
 }
-static const char *ecs_c_code(const host *h, int rc) {
-    const char *name = h->d.api.elpis_ecs_c_code_name(rc);
-    return name ? name : "ECS_C_UNKNOWN_CODE";
-}
 static const char *composite_code(const host *h, int rc) {
     const char *name = h->d.api.elpis_ecs_composite_code_name(rc);
     return name ? name : "ECS_COMPOSITE_UNKNOWN";
 }
+/* The session's exact refusal codes (elpis/ecs_c_types.h): the host loads no ECS_C library to name them. */
+static const char *ecs_c_code(int code) {
+    static const char *const LAW[] = {"ECS_C_OK", "ECS_C_INVALID", "ECS_C_STALE", "ECS_C_UNAUTHORIZED",
+                                      "ECS_C_UNKNOWN_ENTITY", "ECS_C_LIFECYCLE", "ECS_C_DUPLICATE",
+                                      "ECS_C_SEQUENCE_GAP", "ECS_C_CAPACITY", "ECS_C_EXHAUSTED", "ECS_C_SOURCE_STALE",
+                                      "ECS_C_SCOPE_CONFLICT", "ECS_C_UNANCHORED", "ECS_C_ALREADY_ANCHORED",
+                                      "ECS_C_STATE_MISMATCH", "ECS_C_EVOLUTION_MISMATCH", "ECS_C_EVOLUTION_PENDING",
+                                      "ECS_C_EVOLUTION_NOT_PENDING", "ECS_C_LEGACY_REFUSED"};
+    if (code >= 0 && code < (int)(sizeof LAW / sizeof *LAW)) return LAW[code];
+    switch (code) {
+    case ELPIS_ECS_C_CORRUPT: return "ECS_C_CORRUPT";
+    case ELPIS_ECS_C_SESSION_MISMATCH: return "ECS_C_SESSION_MISMATCH";
+    case ELPIS_ECS_C_PERSISTENCE_RETIRED: return "ECS_C_PERSISTENCE_RETIRED";
+    case ELPIS_ECS_C_NOMEM: return "ECS_C_NOMEM";
+    case ELPIS_ECS_C_ENTROPY_UNAVAILABLE: return "ECS_C_ENTROPY_UNAVAILABLE";
+    default: return "ECS_C_UNKNOWN_CODE";
+    }
+}
 
-static const char *const DISPOSITIONS[] = {"NONE", "NOTHING_TO_RECOVER", "RESUMABLE", "CANDIDATE_UNRESOLVED",
-                                           "CHECKPOINT_MISSING"};
-static const char *const DURABLE[] = {"NONE",       "PENDING",   "ACKNOWLEDGED", "FAILED",           "UNCERTAIN",
-                                      "SUPERSEDED", "ABANDONED", "UNKNOWN",      "IDENTITY_PUBLISHED"};
 static const char *const POLARITIES[] = {"NONE", "ASSERT", "NEGATE", "UNCERTAIN"};
 static const char *const KINDS[] = {"NONE", "OPERATOR", "RUNTIME", "SOURCE"};
 static const char *const LIFECYCLES[] = {"NONE", "FOUNDED", "ACTIVE", "DORMANT", "TERMINATED"};
-static const char *const MODES[] = {"NORMAL", "RESTRICTED", "ROLLBACK", "WITNESS_MISSING"};
-static const char *const SLOT_CLASSES[] = {"EMPTY", "TORN", "UNAUTHENTICATED", "INVALID", "VALID"};
 #define NAME(table, i) ((size_t)(i) < sizeof(table) / sizeof(*(table)) ? (table)[i] : "UNKNOWN")
 
-static const char *disposition_name(uint32_t d) {
-    switch (d) {
-    case 1: return "CLEAN";
-    case 2: return "TRAILING_INCOMPLETE";
-    case 3: return "INTERRUPTED_COMPLETED";
-    case 4: return "RESTRICTED_UNAUTHENTICATED";
-    case 5: return "PREDECESSOR_UNAVAILABLE";
-    case 10: return "ROLLBACK";
-    case 11: return "CORRUPT_ACKNOWLEDGED";
-    case 12: return "UNAUTHENTICATED_ACKNOWLEDGED";
-    case 13: return "WITNESS_MISSING";
-    case 20: return "CONFLICT";
-    case 21: return "WITNESS_INCONSISTENT";
-    case 22: return "REPLAY_MISMATCH";
-    case 23: return "UNRECOVERABLE";
-    default: return d ? "UNKNOWN" : "NONE";
-    }
-}
-
-/* ---- the session: the runtime over the ECS_C authority, the attached store, the restored composite ------------ */
-
-static int runtime_open(host *h, host_err *e) {
-    const host_api *a = &h->d.api;
-    if (h->opened) return 0;
-    if (!h->rt) {
-        const int rc = a->elpis_runtime_create_ecs_c((const uint8_t *)h->d.state_dir, strlen(h->d.state_dir),
-                                                     (const uint8_t *)h->d.authority_dir, strlen(h->d.authority_dir),
-                                                     &h->rt);
-        if (rc) return host_fail(e, rt_code(h, rc), "the runtime could not be created over the ECS_C authority");
-    }
-    elpis_continuity_snapshot snap;
-    const int rc = a->elpis_runtime_open(h->rt, &snap);
-    if (rc == ELPIS_RUNTIME_AUTHORITY)
-        return host_fail(e, rt_code(h, rc), "the ECS_C authority is not in its normal mode: `authority` reports why; "
-                                            "the operator reconciles it with `authority-reconcile`");
-    if (rc) return host_fail(e, rt_code(h, rc), "the runtime could not open its authority");
-    h->opened = 1;
-    if (h->d.has_lineage) {
-        const int at = a->elpis_runtime_checkpoint_attach(h->rt, (const uint8_t *)h->d.checkpoint_dir,
-                                                          strlen(h->d.checkpoint_dir));
-        if (at) return host_fail(e, rt_code(h, at), "the checkpoint store could not be attached");
-    }
-    return 0;
-}
+/* ---- the session: a volatile ECS_C session and the lineage's composite, both in memory ------------------------ */
 
 static void session_close(host *h) {
     const host_api *a = &h->d.api;
-    if (h->rt) a->elpis_runtime_destroy(&h->rt); /* aborts an open turn natively; never touches the state */
+    if (h->rt) a->elpis_runtime_close(h->rt); /* aborts an open turn natively; the session ends, nothing remains */
     if (h->x) a->elpis_ecs_composite_destroy(h->x);
-    free(h->envelope);
-    free(h->s3);
-    h->rt = NULL, h->x = NULL, h->envelope = NULL, h->s3 = NULL, h->opened = h->recovered = 0;
+    h->x = NULL, h->opened = 0;
 }
 
-/* Open the lineage: the runtime, the recovery disposition and, when RESUMABLE, exactly the authorized composite. */
-static int lineage(host *h, host_err *e) {
+/* Start a session: a fresh genesis, the lineage's initial composite built in memory, anchored. */
+static int session_open(host *h, host_err *e) {
     const host_api *a = &h->d.api;
-    if (!h->d.has_lineage) return host_fail(e, "LINEAGE_MISSING", "no lineage: run create");
-    if (runtime_open(h, e)) return -1;
-    if (h->recovered) return 0;
-    if (!h->envelope && !(h->envelope = malloc(h->d.envelope_bytes)))
-        return host_fail(e, "HOST_RESOURCES", "out of memory");
-    const int rc = a->elpis_runtime_checkpoint_recover(h->rt, &h->recovery, h->envelope, h->d.envelope_bytes);
-    if (rc) return host_fail(e, rt_code(h, rc), "the recovery disposition could not be read");
-    h->recovered = 1;
-    if (h->recovery.disposition != ELPIS_RUNTIME_RECOVERY_RESUMABLE) return 0;
-    if (h->recovery.envelope_bytes != h->d.envelope_bytes)
-        return host_fail(e, "LINEAGE_MISMATCH", "the authorized envelope is not the lineage's size");
-    const elpis_ecs_composite_config cfg = host_composite_config(&h->d, &h->d.lineage);
-    const int r = a->elpis_ecs_composite_restore(&cfg, h->envelope, h->recovery.envelope_bytes, &h->x);
-    if (r) return host_fail(e, "LINEAGE_MISMATCH", "the authorized envelope does not restore: %s", composite_code(h, r));
-    uint8_t digest[32];
-    if (a->elpis_ecs_composite_state_digest(h->x, digest) || memcmp(digest, h->recovery.authorized, 32))
-        return host_fail(e, "LINEAGE_MISMATCH", "the restored composite is not the authority's identity");
-    h->sub = (elpis_runtime_substrate){ELPIS_RUNTIME_SUBSTRATE_COMPOSITE, 0, h->x, 0, ++h->owner, h->d.lineage.dim,
-                                       host_substrate_api()};
+    if (h->opened) return 0;
+    if (!h->rt) {
+        const int rc = a->elpis_runtime_create(&h->d.session, &h->rt);
+        if (rc) return host_fail(e, rt_code(h, rc), "the runtime could not be created");
+    }
     const size_t f = a->elpis_runtime_features(h->d.lineage.dim);
     if (!h->s3 && !(h->s3 = malloc(sizeof(double) * (f ? f : 1)))) return host_fail(e, "HOST_RESOURCES", "out of memory");
+    if (!h->envelope && !(h->envelope = malloc(h->d.envelope_bytes)))
+        return host_fail(e, "HOST_RESOURCES", "out of memory");
+    elpis_continuity_snapshot opened;
+    int rc = a->elpis_runtime_open(h->rt, &opened);
+    if (rc) return host_fail(e, rt_code(h, rc), "the session could not be opened");
+    const elpis_ecs_composite_config cfg = host_composite_config(&h->d);
+    double *w = malloc(sizeof(double) * h->d.lineage.dim * h->d.lineage.width);
+    if (!w) {
+        a->elpis_runtime_close(h->rt);
+        return host_fail(e, "HOST_RESOURCES", "out of memory");
+    }
+    host_initial_weights(&h->d.lineage, w);
+    rc = a->elpis_ecs_composite_create(&cfg, w, &h->x);
+    free(w);
+    uint8_t identity[32];
+    if (!rc) rc = a->elpis_ecs_composite_state_digest(h->x, identity);
+    if (rc || memcmp(identity, h->d.initial_identity, 32)) {
+        session_close(h);
+        return host_fail(e, "ECS_STATE", "the lineage's initial composite could not be built");
+    }
+    h->sub = (elpis_runtime_substrate){ELPIS_RUNTIME_SUBSTRATE_COMPOSITE, 0, h->x, 0, ++h->owner, h->d.lineage.dim,
+                                       host_substrate_api()};
+    elpis_continuity_snapshot anchored;
+    rc = a->elpis_runtime_anchor(h->rt, &h->sub, &anchored);
+    if (rc) {
+        session_close(h);
+        return host_fail(e, rt_code(h, rc), "the session could not anchor the lineage's initial state");
+    }
+    h->opened = 1;
     return 0;
 }
 
-static int require_state(host *h, host_err *e) {
-    if (lineage(h, e)) return -1;
-    if (!h->x)
-        return host_fail(e, "LINEAGE_NOT_RESUMABLE", "the lineage is %s: see `status`; an unresolved candidate needs "
-                                                     "`reconcile`", NAME(DISPOSITIONS, h->recovery.disposition));
-    return 0;
-}
+static int require_state(host *h, host_err *e) { return session_open(h, e); }
 
 /* ---- input --------------------------------------------------------------------------------------------------- */
 
@@ -252,26 +242,6 @@ static int stated(const char *s) {
 
 /* ---- output -------------------------------------------------------------------------------------------------- */
 
-static void snapshot_out(hjw *w, const char *key, const elpis_continuity_snapshot *s) {
-    hjw_key(w, key);
-    if (!s) {
-        hjw_null(w);
-        return;
-    }
-    hjw_object(w);
-    hjw_kstr(w, "state_format", s->state_format == ELPIS_CONTINUITY_FORMAT_COMPOSITE ? "COMPOSITE" : "K1");
-    hjw_key(w, "identity");
-    if (s->anchored) hjw_hex(w, s->k1_state_digest, 32);
-    else hjw_null(w);
-    hjw_ku64(w, "generation", s->generation);
-    hjw_end(w, '}');
-}
-
-static void durable_out(host *h, hjw *w) {
-    elpis_continuity_snapshot s;
-    snapshot_out(w, "durable", h->opened && !h->d.api.elpis_runtime_snapshot(h->rt, &s) ? &s : NULL);
-}
-
 static int zero32(const uint8_t *p) {
     for (int i = 0; i < 32; ++i)
         if (p[i]) return 0;
@@ -284,32 +254,46 @@ static void hex_or_null(hjw *w, const char *key, const uint8_t *p) {
     else hjw_hex(w, p, 32);
 }
 
-static void ticket_out(host *h, hjw *w, const char *key, const elpis_runtime_durable_ticket *t) {
-    hjw_key(w, key);
+/* The open session (elpis_runtime_authority_status), or null. */
+static void session_out(host *h, hjw *w) {
+    elpis_runtime_authority s;
+    hjw_key(w, "session");
+    if (!h->opened || h->d.api.elpis_runtime_authority_status(h->rt, &s)) {
+        hjw_null(w);
+        return;
+    }
     hjw_object(w);
-    hjw_ku64(w, "sequence", t->sequence);
-    hjw_kstr(w, "status", NAME(DURABLE, t->status));
-    hjw_key(w, "kind");
-    if (t->kind == ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE) hjw_str(w, "RECOVERABLE");
-    else if (t->kind == ELPIS_RUNTIME_DURABLE_KIND_IDENTITY) hjw_str(w, "IDENTITY");
-    else hjw_null(w);
-    hjw_kbool(w, "recoverable", (int)t->recoverable);
-    hjw_kbool(w, "acknowledged", t->status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED);
-    hex_or_null(w, "identity", t->identity);
-    hjw_ku64(w, "generation", t->generation);
-    hjw_key(w, "code");
-    if (t->code) hjw_str(w, rt_code(h, t->code));
+    hjw_kstr(w, "backend", "ECS_C_SESSION");
+    hjw_kstr(w, "durability", "VOLATILE");
+    hjw_ku64(w, "ordinal", s.sessions);
+    hjw_khex(w, "lineage", s.session, 32);
+    hjw_ku64(w, "generation", s.generation);
+    hjw_ku64(w, "entity_count", s.entity_count);
+    hjw_ku64(w, "capacity", s.capacity);
+    hjw_ku64(w, "receipt_count", s.receipt_count);
+    hjw_ku64(w, "evidence_count", s.evidence_count);
+    hjw_ku64(w, "volatile_bytes", s.volatile_bytes);
+    hjw_khex(w, "commit", s.commit, 32);
+    hjw_khex(w, "state_root", s.state_root, 32);
+    hjw_khex(w, "receipt_head", s.receipt_head, 32);
+    hex_or_null(w, "evidence_head", s.evidence_head);
+    hjw_key(w, "ecs_c_code");
+    if (s.ecs_c_code) hjw_str(w, ecs_c_code(s.ecs_c_code));
     else hjw_null(w);
     hjw_end(w, '}');
 }
 
-static void recovery_out(hjw *w, const elpis_runtime_recovery *r) {
-    hjw_key(w, "recovery");
+static void live_out(host *h, hjw *w) {
+    uint8_t identity[32];
+    uint64_t generation;
+    hjw_key(w, "live");
+    if (!h->opened || h->d.api.elpis_runtime_live_identity(h->rt, &h->sub, identity, &generation)) {
+        hjw_null(w);
+        return;
+    }
     hjw_object(w);
-    hjw_kstr(w, "disposition", NAME(DISPOSITIONS, r->disposition));
-    hex_or_null(w, "authorized", r->authorized);
-    hex_or_null(w, "candidate", r->candidate);
-    hjw_ku64(w, "envelope_bytes", r->envelope_bytes);
+    hjw_khex(w, "identity", identity, 32);
+    hjw_ku64(w, "generation", generation);
     hjw_end(w, '}');
 }
 
@@ -333,34 +317,31 @@ static void budget_out(hjw *w, const elpis_runtime_budget *b) {
 static const char *const CAPABILITIES[][2] = {
     {"numeric_query", "WORKING, mechanically verified: f_W(x) of the live K1 state (read-only)"},
     {"numeric_learn", "WORKING, mechanically verified: the qualified K1 law (qualified only in its frozen regime) under "
-                      "an explicit grant and learning rate; volatile until published"},
+                      "an explicit grant and learning rate; volatile: discarded when the session ends"},
     {"typed_evidence", "WORKING, mechanically verified: validated HACF hyperedge + assertion recorded by an "
-                       "observe-only turn, admitted only from ACTIVE sources of the ECS_C authority"},
+                       "observe-only turn, admitted only from ACTIVE sources of the session; volatile"},
     {"lookup", "WORKING: exact relation LOOKUP by net evidence; a conflict between sources is reported, never resolved"},
-    {"recoverable_publication", "WORKING: checkpoint slot read back verified, then one authenticated ECS_C record "
-                                "and its rollback witness (ACKNOWLEDGED)"},
-    {"restart_recovery", "WORKING: exactly the last acknowledged state, replay-verified; an unresolved candidate "
-                         "needs reconcile, a non-normal authority authority-reconcile"},
-    {"operator_authority", "WORKING: source founding, lifecycle, versions and reclamation as typed ECS_C events"},
+    {"operator_authority", "WORKING: source founding, lifecycle, versions and reclamation as typed events of the "
+                           "volatile ECS_C session"},
+    {"persistence", "NONE: the host writes no file and its containment grants no write permission; every session "
+                    "starts at a fresh genesis from the lineage's initial state"},
+    {"recoverable_publication", "RETIRED (OPERATION_RETIRED): no persistent writer exists"},
+    {"restart_recovery", "RETIRED (OPERATION_RETIRED): a restart is a new session"},
     {"text", "UNAVAILABLE: ECS_CODEC_UNQUALIFIED (no qualified ECS<->DSV4 codec map)"},
     {"memory_learn", "UNQUALIFIED: never enabled (no memory capability is ever set)"},
     {"memory_slow_consolidation", "NOT PROVIDED"},
     {"contextual_dynamics", "NOT IMPLEMENTED: no qualified law (the HCA substrate is gated research)"},
-    {"power_loss_durability", "NOT CLAIMED: crash consistency is established for process death only"},
 };
 static const char *const NONCLAIMS[] = {"no language understanding", "no general intelligence",
                                         "no autonomous evolution", "no hierarchical superiority",
                                         "an observation is evidence storage, never truth or authority",
                                         "pins authenticate bytes, not authors",
-                                        "the deployment key authenticates records, not the operator"};
+                                        ("containment covers this process: it does not make the operating system, "
+                                         "its other processes or the reader of this output write nothing")};
 
-static void lineage_config_out(hjw *w, const host_deployment *d) {
+static void lineage_out(hjw *w, const host_install *d) {
     const host_lineage *l = &d->lineage;
     hjw_key(w, "lineage");
-    if (!d->has_lineage) {
-        hjw_null(w);
-        return;
-    }
     hjw_object(w);
     hjw_ku64(w, "dim", l->dim);
     hjw_ku64(w, "width", l->width);
@@ -373,59 +354,40 @@ static void lineage_config_out(hjw *w, const host_deployment *d) {
     hjw_khex(w, "initial_identity", d->initial_identity, 32);
     hjw_khex(w, "initial_w_sha256", d->initial_w_sha256, 32);
     hjw_ku64(w, "envelope_bytes", d->envelope_bytes);
+    hjw_ku64(w, "session_capacity", d->session.capacity);
+    hjw_kbool(w, "reproducible_nonce", !zero32(d->session.nonce));
     hjw_end(w, '}');
 }
 
-static void authority_summary_out(host *h, hjw *w) {
-    elpis_runtime_authority s;
-    hjw_key(w, "authority");
-    if (!h->rt || h->d.api.elpis_runtime_authority_status(h->rt, &s)) {
-        hjw_null(w);
-        return;
-    }
+static void containment_out(hjw *w, const host_containment *c) {
+    hjw_key(w, "containment");
     hjw_object(w);
-    hjw_kbool(w, "held", h->opened);
-    hjw_kstr(w, "disposition", disposition_name(s.disposition));
-    hjw_kstr(w, "mode", NAME(MODES, s.mode));
-    hjw_key(w, "ecs_c_code");
-    if (s.ecs_c_code) hjw_str(w, ecs_c_code(h, s.ecs_c_code));
-    else hjw_null(w);
-    hjw_ku64(w, "generation", s.generation);
-    hjw_kbool(w, "replay_verified", s.replay_verified);
-    hjw_kbool(w, "witness_completed", s.witness_completed);
-    hjw_ku64(w, "receipt_count", s.receipt_count);
-    hjw_ku64(w, "evidence_count", s.evidence_count);
-    hjw_ku64(w, "entity_count", s.entity_count);
-    hjw_ku64(w, "capacity", s.capacity);
-    hjw_khex(w, "lineage", s.lineage, 32);
-    hjw_khex(w, "record_digest", s.record_digest, 32);
-    hjw_khex(w, "state_root", s.state_root, 32);
-    hjw_khex(w, "receipt_head", s.receipt_head, 32);
-    hjw_khex(w, "evidence_head", s.evidence_head, 32);
+    hjw_kbool(w, "restricted", c->restricted);
+    hjw_ku64(w, "landlock_abi", (uint64_t)c->landlock_abi);
+    hjw_ku64(w, "write_grants", 0);
+    hjw_ku64(w, "core_limit", c->core_limit);
+    hjw_kbool(w, "dumpable", c->dumpable);
+    hjw_ku64(w, "fsize_limit", c->fsize_limit);
+    hjw_ku64(w, "swap_areas", c->swap_areas);
+    hjw_kbool(w, "memory_locked", c->memory_locked);
     hjw_end(w, '}');
 }
 
 static int op_status(host *h, const hj_value *op, hjw *w, host_err *e) {
-    (void)op;
-    const host_deployment *d = &h->d;
-    hjw_key(w, "deployment");
+    (void)op, (void)e;
+    const host_install *d = &h->d;
+    hjw_key(w, "host");
     hjw_object(w);
-    hjw_kstr(w, "home", d->home);
-    hjw_kstr(w, "schema", "elpis.native-host.v1");
+    hjw_kstr(w, "schema", "elpis.native-host.v2");
     hjw_kbool(w, "testing_build", d->testing);
-    hjw_key(w, "source_commit");
-    if (d->source_commit[0]) hjw_str(w, d->source_commit);
-    else hjw_null(w);
     hjw_khex(w, "catalog_sha256", d->catalog_sha256, 32);
     hjw_khex(w, "host_sha256", d->host_sha256, 32);
-    hjw_kstr(w, "state_dir", d->state_dir);
-    hjw_kstr(w, "authority_dir", d->authority_dir);
+    hjw_kstr(w, "persistence", "NONE");
     hjw_end(w, '}');
     hjw_key(w, "abi");
     hjw_object(w);
-    hjw_ku64(w, "runtime", ELPIS_RUNTIME_ABI_V7);
+    hjw_ku64(w, "runtime", ELPIS_RUNTIME_ABI_V8);
     hjw_ku64(w, "composite", ELPIS_ECS_COMPOSITE_ABI_V1);
-    hjw_ku64(w, "ecs_c", ELPIS_ECS_C_ABI_VERSION);
     hjw_end(w, '}');
     hjw_key(w, "libraries");
     hjw_object(w);
@@ -437,6 +399,7 @@ static int op_status(host *h, const hj_value *op, hjw *w, host_err *e) {
         hjw_end(w, '}');
     }
     hjw_end(w, '}');
+    containment_out(w, &h->contain);
     budget_out(w, &h->ceiling);
     hjw_key(w, "capabilities");
     hjw_object(w);
@@ -446,36 +409,12 @@ static int op_status(host *h, const hj_value *op, hjw *w, host_err *e) {
     hjw_array(w);
     for (size_t i = 0; i < sizeof NONCLAIMS / sizeof *NONCLAIMS; ++i) hjw_str(w, NONCLAIMS[i]);
     hjw_end(w, ']');
-    lineage_config_out(w, d);
-    /* The session's state; a session that cannot open is reported, not an error of status. */
-    host_err why = {{0}, {0}, 0};
-    const int session = d->has_lineage ? lineage(h, &why) : runtime_open(h, &why);
-    authority_summary_out(h, w);
-    hjw_key(w, "session_refusal");
-    if (session) {
-        hjw_object(w);
-        hjw_kstr(w, "code", why.code);
-        hjw_kstr(w, "detail", why.detail);
-        hjw_end(w, '}');
-    } else {
-        hjw_null(w);
-    }
-    if (!d->has_lineage || session) return 0;
-    const host_api *a = &d->api;
-    recovery_out(w, &h->recovery);
-    durable_out(h, w);
-    if (h->x) {
-        uint8_t identity[32];
-        uint64_t generation;
-        const int rc = a->elpis_runtime_live_identity(h->rt, &h->sub, identity, &generation);
-        if (rc) return host_fail(e, rt_code(h, rc), "the live identity could not be read");
-        hjw_key(w, "live");
-        hjw_object(w);
-        hjw_khex(w, "identity", identity, 32);
-        hjw_ku64(w, "generation", generation);
-        hjw_end(w, '}');
+    lineage_out(w, d);
+    session_out(h, w);
+    live_out(h, w);
+    if (h->opened) {
         elpis_ecs_composite_stats st;
-        if (!a->elpis_ecs_composite_inspect(h->x, &st)) {
+        if (!h->d.api.elpis_ecs_composite_inspect(h->x, &st)) {
             hjw_key(w, "footprint");
             hjw_object(w);
             hjw_ku64(w, "envelope_bytes", st.envelope_bytes);
@@ -490,20 +429,7 @@ static int op_status(host *h, const hj_value *op, hjw *w, host_err *e) {
             hjw_end(w, '}');
         }
     }
-    elpis_runtime_durability du;
-    if (!a->elpis_runtime_durable_status(h->rt, &du)) {
-        hjw_key(w, "durability");
-        hjw_object(w);
-        hjw_ku64(w, "live_generation", du.live_generation);
-        hjw_kbool(w, "pending", (int)du.pending);
-        hjw_key(w, "fault");
-        if (du.fault) hjw_str(w, rt_code(h, du.fault));
-        else hjw_null(w);
-        ticket_out(h, w, "last_acknowledged", &du.last_acknowledged);
-        hjw_ku64(w, "checkpoint_capacity", du.checkpoint_capacity);
-        hjw_end(w, '}');
-    }
-    const int fault = a->elpis_runtime_fault(h->rt);
+    const int fault = h->rt ? h->d.api.elpis_runtime_fault(h->rt) : 0;
     hjw_key(w, "fault");
     if (fault) hjw_str(w, rt_code(h, fault));
     else hjw_null(w);
@@ -512,23 +438,34 @@ static int op_status(host *h, const hj_value *op, hjw *w, host_err *e) {
 
 static int op_open(host *h, const hj_value *op, hjw *w, host_err *e) {
     (void)op;
-    if (lineage(h, e)) return -1;
-    recovery_out(w, &h->recovery);
-    durable_out(h, w);
-    authority_summary_out(h, w);
+    if (session_open(h, e)) return -1;
+    session_out(h, w);
+    live_out(h, w);
     return 0;
 }
 
+/* End the session: everything it learned, recorded or founded is discarded (it was never anywhere but memory). */
 static int op_close(host *h, const hj_value *op, hjw *w, host_err *e) {
     (void)op, (void)e;
-    int volatile_work = 0;
-    elpis_runtime_durability du;
-    if (h->opened && h->x && !h->d.api.elpis_runtime_durable_status(h->rt, &du))
-        volatile_work = !du.durable_known || du.durable.generation == 0 ||
-                        du.live_generation != du.last_acknowledged.generation;
+    const int was_open = h->opened;
+    hjw_key(w, "discarded");
+    if (was_open) {
+        uint8_t identity[32];
+        uint64_t generation = 0;
+        elpis_runtime_authority s;
+        const int live = h->d.api.elpis_runtime_live_identity(h->rt, &h->sub, identity, &generation) == 0;
+        const int status = h->d.api.elpis_runtime_authority_status(h->rt, &s) == 0;
+        hjw_object(w);
+        hex_or_null(w, "live_identity", live ? identity : (const uint8_t[32]){0});
+        hjw_ku64(w, "live_generation", live ? generation : 0);
+        hjw_ku64(w, "session_generation", status ? s.generation : 0);
+        hjw_kbool(w, "learned", live && memcmp(identity, h->d.initial_identity, 32) != 0);
+        hjw_end(w, '}');
+    } else {
+        hjw_null(w);
+    }
     session_close(h);
-    hjw_kbool(w, "closed", 1);
-    hjw_kbool(w, "volatile_work_discarded", volatile_work);
+    hjw_kbool(w, "closed", was_open);
     return 0;
 }
 
@@ -540,6 +477,7 @@ static int op_live(host *h, const hj_value *op, hjw *w, host_err *e) {
     uint64_t generation;
     int rc = a->elpis_runtime_live_identity(h->rt, &h->sub, identity, &generation);
     if (rc) return host_fail(e, rt_code(h, rc), "the live identity could not be read");
+    /* The composite's envelope, written into this process's memory (never to a file), names its components. */
     rc = a->elpis_ecs_composite_snapshot_write(h->x, h->envelope, h->d.envelope_bytes);
     if (!rc) rc = a->elpis_ecs_composite_envelope_identities(h->envelope, h->d.envelope_bytes, composite, k1, memory);
     if (rc) return host_fail(e, composite_code(h, rc), "the live envelope could not be read");
@@ -550,13 +488,13 @@ static int op_live(host *h, const hj_value *op, hjw *w, host_err *e) {
     hjw_khex(w, "k1_identity", k1, 32);
     hjw_khex(w, "memory_identity", memory, 32);
     hjw_end(w, '}');
-    durable_out(h, w);
+    hjw_khex(w, "initial_identity", h->d.initial_identity, 32);
     return 0;
 }
 
 static int op_counters(host *h, const hj_value *op, hjw *w, host_err *e) {
     const hj_value *reset = hj_get(op, "reset");
-    if (lineage(h, e)) return -1;
+    if (require_state(h, e)) return -1;
     elpis_runtime_counters c;
     const int rc = h->d.api.elpis_runtime_read_counters(h->rt, &c, reset && reset->kind == HJ_BOOL && reset->boolean);
     if (rc) return host_fail(e, rt_code(h, rc), "the counters could not be read");
@@ -564,20 +502,9 @@ static int op_counters(host *h, const hj_value *op, hjw *w, host_err *e) {
     hjw_object(w);
 #define C(f) hjw_ku64(w, #f, c.f);
     C(k1_state_digests) C(k1_reserves) C(k1_txn_begins) C(k1_run_schedules) C(k1_commits) C(k1_aborts)
-    C(publications) C(k1_queries) C(k1_shapes) C(k1_lease_claims) C(k1_identities) C(k1_captures)
-    C(durable_requests) C(durable_superseded) C(durable_acknowledged) C(durable_failed) C(k1_observes)
+    C(session_transitions) C(k1_queries) C(k1_shapes) C(k1_lease_claims) C(k1_identities) C(k1_observes)
 #undef C
     hjw_end(w, '}');
-    return 0;
-}
-
-static int op_candidates(host *h, const hj_value *op, hjw *w, host_err *e) {
-    (void)op;
-    if (lineage(h, e)) return -1;
-    elpis_runtime_recovery r;
-    const int rc = h->d.api.elpis_runtime_checkpoint_recover(h->rt, &r, NULL, 0);
-    if (rc) return host_fail(e, rt_code(h, rc), "the recovery disposition could not be read");
-    recovery_out(w, &r);
     return 0;
 }
 
@@ -945,136 +872,34 @@ static int op_slot(host *h, const hj_value *op, hjw *w, host_err *e) {
     return 0;
 }
 
-/* ---- durability ---------------------------------------------------------------------------------------------- */
+/* ---- the session's authority: inspection and the operator's events --------------------------------------------- */
 
-static int op_publish(host *h, const hj_value *op, hjw *w, host_err *e) {
-    const host_api *a = &h->d.api;
-    if (require_state(h, e)) return -1;
-    const hj_value *wait = hj_get(op, "wait");
-    uint64_t timeout;
-    if (u64_member(op, "timeout_ms", INT64_MAX, UINT64_MAX, &timeout, e)) return -1;
-    elpis_runtime_durable_ticket t;
-    int rc = a->elpis_runtime_recoverable_request(h->rt, &h->sub, &t);
-    if (rc) return host_fail(e, rt_code(h, rc), "the recoverable publication was refused before capture");
-    if (!(wait && wait->kind == HJ_BOOL && !wait->boolean)) {
-        rc = a->elpis_runtime_durable_wait(h->rt, t.sequence, timeout, &t);
-        if (rc && rc != ELPIS_RUNTIME_DURABLE_PENDING)
-            return host_fail(e, rt_code(h, rc), "the publication's outcome could not be read");
-    }
-    /* The acknowledgment law, re-checked: recoverable exactly when ACKNOWLEDGED, and only a recoverable request's. */
-    const int acknowledged = t.status == ELPIS_RUNTIME_DURABLE_ACKNOWLEDGED;
-    if ((t.recoverable != 0) != acknowledged || (acknowledged && t.kind != ELPIS_RUNTIME_DURABLE_KIND_RECOVERABLE))
-        return host_fail(e, "RUNTIME_INVALID", "the durable ticket violates the acknowledgment law");
-    ticket_out(h, w, "ticket", &t);
-    durable_out(h, w);
-    if (acknowledged || t.status == ELPIS_RUNTIME_DURABLE_REQUESTED) return 0;
-    e->keep = 1; /* the ticket says what happened */
-    return host_fail(e, t.status == ELPIS_RUNTIME_DURABLE_UNCERTAIN ? "DURABLE_UNCERTAIN"
-                        : t.status == ELPIS_RUNTIME_DURABLE_SUPERSEDED ? "DURABLE_SUPERSEDED"
-                        : t.status == ELPIS_RUNTIME_DURABLE_ABANDONED  ? "DURABLE_ABANDONED"
-                                                                       : "DURABLE_FAILED",
-                     "the publication was not acknowledged%s%s", t.code ? ": " : "", t.code ? rt_code(h, t.code) : "");
-}
-
-static int op_reconcile(host *h, const hj_value *op, hjw *w, host_err *e) {
-    const host_api *a = &h->d.api;
-    if (lineage(h, e)) return -1;
-    if (h->x) return host_fail(e, "LINEAGE_BOUND", "nothing to reconcile: the lineage is resumable");
-    const char *action = str_member(op, "action");
-    uint8_t candidate[32];
-    if (hex_member(op, "candidate", candidate, e)) return -1;
-    int rc;
-    if (action && !strcmp(action, "discard")) rc = a->elpis_runtime_checkpoint_discard(h->rt, candidate);
-    else if (action && !strcmp(action, "adopt")) rc = a->elpis_runtime_checkpoint_adopt(h->rt, candidate, &(elpis_continuity_snapshot){0});
-    else return input(e, "%s: discard or adopt", "action");
-    if (rc) return host_fail(e, rt_code(h, rc), "the reconciliation of exactly this candidate was refused");
-    h->recovered = 0;
-    if (lineage(h, e)) return -1;
-    hjw_kstr(w, "action", action);
-    recovery_out(w, &h->recovery);
-    durable_out(h, w);
+static int entity_at(host *h, uint32_t i, elpis_runtime_authority_entity *out, host_err *e) {
+    const int rc = h->d.api.elpis_runtime_authority_entity_at(h->rt, i, out);
+    if (rc) return host_fail(e, rt_code(h, rc), "entity %u could not be read", i);
     return 0;
 }
 
-/* ---- the ECS_C authority: inspection, operator events, reconciliation ---------------------------------------- */
-
-/* The authority an operator event reaches: through the runtime that holds it, or opened directly (no runtime open). */
-typedef struct {
-    host *h;
-    elpis_ecs_c_authority *direct;
-    elpis_ecs_c_report report;
-} held;
-
-static int held_begin(host *h, held *t, host_err *e) {
-    memset(t, 0, sizeof *t);
-    t->h = h;
-    if (h->opened) return 0;
-    if (h->rt) h->d.api.elpis_runtime_destroy(&h->rt); /* a runtime whose open was refused holds nothing */
-    const int rc = h->d.api.elpis_ecs_c_open(h->d.state_dir, strlen(h->d.state_dir), h->d.authority_dir,
-                                             strlen(h->d.authority_dir), &t->direct, &t->report);
-    if (rc) return host_fail(e, ecs_c_code(h, rc), "the ECS_C authority refused to open (disposition %s)",
-                             disposition_name(t->report.disposition));
-    return 0;
-}
-
-static void held_end(held *t) {
-    if (t->direct) t->h->d.api.elpis_ecs_c_close(t->direct);
-    t->direct = NULL;
-}
-
-static int held_count(held *t, uint32_t *n, host_err *e) {
-    const host_api *a = &t->h->d.api;
-    if (t->direct) {
-        elpis_ecs_c_status s;
-        const int rc = a->elpis_ecs_c_read_status(t->direct, &s);
-        if (rc) return host_fail(e, ecs_c_code(t->h, rc), "the authority's status could not be read");
-        return *n = s.entity_count, 0;
-    }
+static int entity_count(host *h, uint32_t *n, host_err *e) {
     elpis_runtime_authority s;
-    const int rc = a->elpis_runtime_authority_status(t->h->rt, &s);
-    if (rc) return host_fail(e, rt_code(t->h, rc), "the authority's status could not be read");
+    const int rc = h->d.api.elpis_runtime_authority_status(h->rt, &s);
+    if (rc) return host_fail(e, rt_code(h, rc), "the session's status could not be read");
     return *n = s.entity_count, 0;
 }
 
-static int held_entity(held *t, uint32_t i, elpis_ecs_c_entity *out, host_err *e) {
-    const host_api *a = &t->h->d.api;
-    _Static_assert(sizeof(elpis_runtime_authority_entity) == sizeof(elpis_ecs_c_entity), "entity layout");
-    const int rc = t->direct ? a->elpis_ecs_c_entity_at(t->direct, i, out)
-                             : a->elpis_runtime_authority_entity_at(t->h->rt, i, (elpis_runtime_authority_entity *)out);
-    if (rc) return host_fail(e, t->direct ? ecs_c_code(t->h, rc) : rt_code(t->h, rc), "entity %u could not be read", i);
-    return 0;
-}
-
-static int held_next_id(held *t, uint8_t kind, const uint8_t label[32], uint8_t out[32], host_err *e) {
-    const host_api *a = &t->h->d.api;
-    const int rc = t->direct ? a->elpis_ecs_c_next_entity_id(t->direct, kind, label, out)
-                             : a->elpis_runtime_authority_next_entity_id(t->h->rt, kind, label, out);
-    if (rc) return host_fail(e, t->direct ? ecs_c_code(t->h, rc) : rt_code(t->h, rc), "the next identity is unknown");
-    return 0;
-}
-
-static int held_send(held *t, const uint8_t event[512], uint64_t *generation, host_err *e) {
-    const host_api *a = &t->h->d.api;
-    if (t->direct) {
-        elpis_ecs_c_status s;
-        elpis_ecs_c_receipt r;
-        int rc = a->elpis_ecs_c_read_status(t->direct, &s);
-        if (!rc) rc = a->elpis_ecs_c_transition(t->direct, s.generation, s.state_root, event, &r);
-        if (rc) return host_fail(e, ecs_c_code(t->h, rc), "the authority refused the event; nothing changed");
-        return *generation = r.generation, 0;
-    }
-    const int rc = a->elpis_runtime_authority_transition(t->h->rt, event, generation);
-    if (rc) {
-        /* RUNTIME_AUTHORITY and CONTINUITY_INVALID come back from a transition only when the authority itself
-         * refused, which RuntimeCore records as its exact last code: report that one, as the direct path does. */
-        elpis_runtime_authority s;
-        const int last = a->elpis_runtime_authority_status(t->h->rt, &s) ? 0 : s.ecs_c_code;
-        if (last && (rc == ELPIS_RUNTIME_AUTHORITY || rc == ELPIS_CONTINUITY_INVALID))
-            return host_fail(e, ecs_c_code(t->h, last), "the authority refused the event; nothing changed (through "
-                                                        "RuntimeCore: %s)", rt_code(t->h, rc));
-        return host_fail(e, rt_code(t->h, rc), "RuntimeCore refused the event before the authority saw it");
-    }
-    return 0;
+/* One event through RuntimeCore, which validates it and sends it to the session at the session's coordinate. */
+static int send_event(host *h, const uint8_t event[512], uint64_t *generation, host_err *e) {
+    const host_api *a = &h->d.api;
+    const int rc = a->elpis_runtime_authority_transition(h->rt, event, generation);
+    if (!rc) return 0;
+    /* A refusal of the session itself (the authority code space, or RUNTIME_AUTHORITY) is recorded by RuntimeCore as
+     * its exact last code: report that one. RuntimeCore's own refusals (RUNTIME_*) are its own. */
+    elpis_runtime_authority s;
+    const int last = a->elpis_runtime_authority_status(h->rt, &s) ? 0 : s.ecs_c_code;
+    if (last && (rc == ELPIS_RUNTIME_AUTHORITY || rc < 64))
+        return host_fail(e, ecs_c_code(last), "the session refused the event; nothing changed (through RuntimeCore: "
+                                              "%s)", rt_code(h, rc));
+    return host_fail(e, rt_code(h, rc), "RuntimeCore refused the event before the session saw it");
 }
 
 static void put_u64(uint8_t *p, uint64_t v) {
@@ -1084,10 +909,10 @@ static void put_u32(uint8_t *p, uint32_t v) {
     for (int i = 0; i < 4; i++) p[i] = (uint8_t)(v >> (8 * i));
 }
 
-/* An operator event (elpis/ecs_c_authority.h, "Events"): the operator (row 0) at its next sequence. */
-static int operator_event(held *t, uint16_t kind, const uint8_t *receiver, uint8_t ev[512], host_err *e) {
-    elpis_ecs_c_entity op;
-    if (held_entity(t, 0, &op, e)) return -1;
+/* An operator event (elpis/ecs_c_types.h): the session's founding operator (row 0) at its next sequence. */
+static int operator_event(host *h, uint16_t kind, const uint8_t *receiver, uint8_t ev[512], host_err *e) {
+    elpis_runtime_authority_entity op;
+    if (entity_at(h, 0, &op, e)) return -1;
     if (op.kind != ELPIS_ECS_C_OPERATOR) return host_fail(e, "ECS_C_UNAUTHORIZED", "row 0 is not the operator");
     memset(ev, 0, 512);
     ev[0] = (uint8_t)kind, ev[1] = (uint8_t)(kind >> 8);
@@ -1097,17 +922,17 @@ static int operator_event(held *t, uint16_t kind, const uint8_t *receiver, uint8
     return 0;
 }
 
-static int find_source(held *t, uint32_t source_authority, elpis_ecs_c_entity *out, host_err *e) {
-    uint32_t n;
-    if (held_count(t, &n, e)) return -1;
+static int find_source(host *h, uint32_t source_authority, elpis_runtime_authority_entity *out, host_err *e) {
+    uint32_t n = 0;
+    if (entity_count(h, &n, e)) return -1;
     for (uint32_t i = 0; i < n; ++i) {
-        if (held_entity(t, i, out, e)) return -1;
+        if (entity_at(h, i, out, e)) return -1;
         if (out->kind == ELPIS_ECS_C_SOURCE && out->source_authority == source_authority) return 0;
     }
     return host_fail(e, "ECS_C_UNKNOWN_ENTITY", "no source owns source authority %u", source_authority);
 }
 
-static void entity_out(hjw *w, const elpis_ecs_c_entity *x, uint32_t index) {
+static void entity_out(hjw *w, const elpis_runtime_authority_entity *x, uint32_t index) {
     hjw_object(w);
     hjw_ku64(w, "index", index);
     hjw_khex(w, "id", x->id, 32);
@@ -1125,163 +950,21 @@ static void entity_out(hjw *w, const elpis_ecs_c_entity *x, uint32_t index) {
     hjw_end(w, '}');
 }
 
-static const char *const RECONCILE_KINDS[] = {"ROLLBACK", "UNAUTHENTICATED", "REPIN"};
-
-static void reconciliation_out(hjw *w, const elpis_ecs_c_reconciliation *r) {
-    hjw_key(w, "reconciliation");
-    if (r->kind < 11 || r->kind > 13) {
-        hjw_null(w);
-        return;
-    }
-    hjw_object(w);
-    hjw_kstr(w, "kind", RECONCILE_KINDS[r->kind - 11]);
-    hjw_khex(w, "digest", r->digest, 32);
-    if (r->kind == 11) {
-        hjw_ku64(w, "abandoned_generation", r->abandoned_generation);
-        hjw_ku64(w, "class", r->class_code);
-    } else if (r->kind == 12) {
-        hjw_ku64(w, "slot", r->slot);
-        hjw_ku64(w, "class", r->class_code);
-    } else {
-        hjw_key(w, "witness_classes");
-        hjw_array(w);
-        hjw_str(w, NAME(SLOT_CLASSES, r->witness_classes[0]));
-        hjw_str(w, NAME(SLOT_CLASSES, r->witness_classes[1]));
-        hjw_end(w, ']');
-    }
-    hjw_end(w, '}');
-}
-
-static void report_out(hjw *w, const elpis_ecs_c_report *r) {
-    hjw_key(w, "report");
-    hjw_object(w);
-    hjw_kstr(w, "disposition", disposition_name(r->disposition));
-    hjw_kstr(w, "mode", NAME(MODES, r->mode));
-    hjw_key(w, "slot_classes");
-    hjw_array(w);
-    hjw_str(w, NAME(SLOT_CLASSES, r->slot_class[0]));
-    hjw_str(w, NAME(SLOT_CLASSES, r->slot_class[1]));
-    hjw_end(w, ']');
-    hjw_key(w, "witness_classes");
-    hjw_array(w);
-    hjw_str(w, NAME(SLOT_CLASSES, r->witness_class[0]));
-    hjw_str(w, NAME(SLOT_CLASSES, r->witness_class[1]));
-    hjw_end(w, ']');
-    hjw_key(w, "slot_generations"); /* the slots' untrusted header claims (0 when unreadable) */
-    hjw_array(w);
-    hjw_u64(w, r->slot_generation[0]);
-    hjw_u64(w, r->slot_generation[1]);
-    hjw_end(w, ']');
-    hjw_ku64(w, "witness_generation", r->witness_generation);
-    hjw_kbool(w, "replay_verified", r->replay_verified);
-    hjw_kbool(w, "witness_completed", r->witness_completed);
-    hjw_kbool(w, "evolution_pending", r->evolution_pending);
-    hjw_ku64(w, "current_generation", r->current_generation);
-    hjw_ku64(w, "reads", r->reads);
-    hjw_ku64(w, "read_bytes", r->read_bytes);
-    hjw_ku64(w, "replays", r->replays);
-    hjw_end(w, '}');
-}
-
 static int op_authority(host *h, const hj_value *op, hjw *w, host_err *e) {
     (void)op;
-    held t;
-    if (h->opened) {
-        authority_summary_out(h, w);
-    } else {
-        const int rc = held_begin(h, &t, e);
-        if (rc && !strcmp(e->code, "ECS_C_RECOVERY_REFUSED")) {
-            hjw_kbool(w, "held", 0);
-            report_out(w, &t.report);
-            e->keep = 1; /* the report says why */
-            return -1;
-        }
-        if (rc) return -1;
-        elpis_ecs_c_status s;
-        elpis_ecs_c_reconciliation r;
-        const host_api *a = &h->d.api;
-        if (a->elpis_ecs_c_read_status(t.direct, &s) || a->elpis_ecs_c_read_reconciliation(t.direct, &r)) {
-            held_end(&t);
-            return host_fail(e, "ECS_C_CLOSED", "the authority could not be read");
-        }
-        hjw_key(w, "authority");
-        hjw_object(w);
-        hjw_kbool(w, "held", 0);
-        hjw_ku64(w, "generation", s.generation);
-        hjw_kstr(w, "mode", NAME(MODES, s.mode));
-        hjw_kbool(w, "anchored", s.anchored);
-        hjw_ku64(w, "receipt_count", s.receipt_count);
-        hjw_ku64(w, "evidence_count", s.evidence_count);
-        hjw_ku64(w, "entity_count", s.entity_count);
-        hjw_ku64(w, "capacity", s.capacity);
-        hjw_ku64(w, "publications", s.publications);
-        hjw_ku64(w, "reconcile_count", s.reconcile_count);
-        hjw_ku64(w, "reclaimed_count", s.reclaimed_count);
-        hjw_khex(w, "lineage", s.lineage, 32);
-        hjw_khex(w, "deployment", s.deployment, 32);
-        hjw_khex(w, "record_digest", s.record_digest, 32);
-        hjw_khex(w, "state_root", s.state_root, 32);
-        hjw_khex(w, "receipt_head", s.receipt_head, 32);
-        hjw_khex(w, "evidence_head", s.evidence_head, 32);
-        hjw_end(w, '}');
-        report_out(w, &t.report);
-        reconciliation_out(w, &r);
-        held_end(&t);
-    }
-    if (held_begin(h, &t, e)) return -1;
-    uint32_t n;
-    int rc = held_count(&t, &n, e);
+    if (session_open(h, e)) return -1;
+    session_out(h, w);
+    uint32_t n = 0;
+    int rc = entity_count(h, &n, e);
     hjw_key(w, "entities");
     hjw_array(w);
     for (uint32_t i = 0; !rc && i < n; ++i) {
-        elpis_ecs_c_entity x;
-        rc = held_entity(&t, i, &x, e);
+        elpis_runtime_authority_entity x;
+        rc = entity_at(h, i, &x, e);
         if (!rc) entity_out(w, &x, i);
     }
     hjw_end(w, ']');
-    held_end(&t);
     return rc;
-}
-
-static int op_authority_reconcile(host *h, const hj_value *op, hjw *w, host_err *e) {
-    const host_api *a = &h->d.api;
-    if (h->opened)
-        return host_fail(e, "ECS_C_NOT_RECONCILABLE", "the runtime holds the authority in its normal mode: nothing to "
-                                                      "reconcile");
-    const char *kind = str_member(op, "kind");
-    uint8_t digest[32];
-    if (hex_member(op, "digest", digest, e)) return -1;
-    int k = 0;
-    for (int i = 0; i < 3; ++i)
-        if (kind && !strcmp(kind, RECONCILE_KINDS[i])) k = 11 + i;
-    if (!k) return input(e, "%s: ROLLBACK, UNAUTHENTICATED or REPIN (as `authority` reports it)", "kind");
-    held t;
-    if (held_begin(h, &t, e)) return -1;
-    elpis_ecs_c_reconciliation r;
-    int rc = a->elpis_ecs_c_read_reconciliation(t.direct, &r);
-    if (rc || !r.kind) {
-        held_end(&t);
-        return host_fail(e, rc ? ecs_c_code(h, rc) : "ECS_C_NOT_RECONCILABLE", "the authority accepts no reconciliation");
-    }
-    /* The operator names exactly what the authority reported; anything else is refused before an event exists. */
-    if (r.kind != k || memcmp(r.digest, digest, 32)) {
-        held_end(&t);
-        return host_fail(e, "AUTHORITY_RECONCILE_MISMATCH", "the authority accepts only the %s reconciliation of the "
-                                                            "digest `authority` reports", RECONCILE_KINDS[r.kind - 11]);
-    }
-    uint8_t ev[512];
-    rc = operator_event(&t, (uint16_t)k, NULL, ev, e);
-    uint8_t *p = ev + ELPIS_ECS_C_PAYLOAD_AT;
-    if (k == 11) put_u64(p, r.abandoned_generation), p[8] = r.class_code, memcpy(p + 16, r.digest, 32);
-    else if (k == 12) p[0] = r.slot, p[1] = r.class_code, memcpy(p + 8, r.digest, 32);
-    else p[0] = r.witness_classes[0], p[1] = r.witness_classes[1], memcpy(p + 8, r.digest, 32);
-    uint64_t generation = 0;
-    if (!rc) rc = held_send(&t, ev, &generation, e);
-    held_end(&t);
-    if (rc) return -1;
-    hjw_kstr(w, "kind", kind);
-    hjw_ku64(w, "generation", generation);
-    return 0;
 }
 
 static int lifecycle_of(const char *s) {
@@ -1313,12 +996,12 @@ static int op_source_found(host *h, const hj_value *op, hjw *w, host_err *e) {
     if (authority == UINT64_MAX) return input(e, "%s: the memory source_authority its observations record", "source_authority");
     if (activate && activate->kind != HJ_BOOL) return input(e, "%s: a boolean", "activate");
     host_label(text, label);
-    held t;
-    if (held_begin(h, &t, e)) return -1;
+    if (session_open(h, e)) return -1;
     uint8_t ev[512];
     uint64_t generation = 0;
-    int rc = held_next_id(&t, ELPIS_ECS_C_SOURCE, label, id, e);
-    if (!rc) rc = operator_event(&t, 2, id, ev, e);
+    int rc = h->d.api.elpis_runtime_authority_next_entity_id(h->rt, ELPIS_ECS_C_SOURCE, label, id);
+    if (rc) return host_fail(e, rt_code(h, rc), "the next identity is unknown");
+    rc = operator_event(h, 2, id, ev, e);
     if (!rc) {
         uint8_t *p = ev + ELPIS_ECS_C_PAYLOAD_AT;
         p[0] = ELPIS_ECS_C_SOURCE;
@@ -1327,14 +1010,13 @@ static int op_source_found(host *h, const hj_value *op, hjw *w, host_err *e) {
         memcpy(p + 16, label, 32);
         memcpy(p + 48, scope, 32);
         put_u32(p + 80, (uint32_t)authority);
-        rc = held_send(&t, ev, &generation, e);
+        rc = send_event(h, ev, &generation, e);
     }
     const int active = !activate || activate->boolean;
-    if (!rc && active && !(rc = operator_event(&t, 3, id, ev, e))) {
+    if (!rc && active && !(rc = operator_event(h, 3, id, ev, e))) {
         ev[ELPIS_ECS_C_PAYLOAD_AT] = ELPIS_ECS_C_FOUNDED, ev[ELPIS_ECS_C_PAYLOAD_AT + 1] = ELPIS_ECS_C_ACTIVE;
-        rc = held_send(&t, ev, &generation, e);
+        rc = send_event(h, ev, &generation, e);
     }
-    held_end(&t);
     if (rc) return -1;
     hjw_khex(w, "id", id, 32);
     hjw_khex(w, "label", label, 32);
@@ -1350,17 +1032,15 @@ static int op_source_lifecycle(host *h, const hj_value *op, hjw *w, host_err *e)
     if (u64_member(op, "source_authority", UINT32_MAX, UINT64_MAX, &authority, e)) return -1;
     if (authority == UINT64_MAX) return input(e, "%s: the source's memory source_authority", "source_authority");
     if (to < (int)ELPIS_ECS_C_ACTIVE) return input(e, "%s: ACTIVE, DORMANT or TERMINATED", "to");
-    held t;
-    if (held_begin(h, &t, e)) return -1;
-    elpis_ecs_c_entity s;
+    if (session_open(h, e)) return -1;
+    elpis_runtime_authority_entity s;
     uint8_t ev[512];
     uint64_t generation = 0;
-    int rc = find_source(&t, (uint32_t)authority, &s, e);
-    if (!rc && !(rc = operator_event(&t, 3, s.id, ev, e))) {
+    int rc = find_source(h, (uint32_t)authority, &s, e);
+    if (!rc && !(rc = operator_event(h, 3, s.id, ev, e))) {
         ev[ELPIS_ECS_C_PAYLOAD_AT] = s.lifecycle, ev[ELPIS_ECS_C_PAYLOAD_AT + 1] = (uint8_t)to;
-        rc = held_send(&t, ev, &generation, e);
+        rc = send_event(h, ev, &generation, e);
     }
-    held_end(&t);
     if (rc) return -1;
     hjw_khex(w, "id", s.id, 32);
     hjw_kstr(w, "from", NAME(LIFECYCLES, s.lifecycle));
@@ -1377,26 +1057,24 @@ static int op_source_version(host *h, const hj_value *op, hjw *w, host_err *e) {
         return -1;
     if (authority == UINT64_MAX || expected == UINT64_MAX || version == UINT64_MAX)
         return input(e, "%s: source_authority, expected (the current version) and version are required", "source_version");
-    held t;
-    if (held_begin(h, &t, e)) return -1;
-    elpis_ecs_c_entity s;
+    if (session_open(h, e)) return -1;
+    elpis_runtime_authority_entity s;
     uint8_t ev[512], scope[32];
     uint64_t generation = 0;
-    int rc = find_source(&t, (uint32_t)authority, &s, e);
+    int rc = find_source(h, (uint32_t)authority, &s, e);
     if (!rc) {
         memcpy(scope, s.scope, 32);
         if (u64_member(op, "per_turn", ELPIS_ECS_C_MAX_PER_TURN, s.per_turn_limit, &bound, e) || scope_in(op, 0, scope, e))
             rc = -1;
     }
-    if (!rc && !(rc = operator_event(&t, 4, s.id, ev, e))) {
+    if (!rc && !(rc = operator_event(h, 4, s.id, ev, e))) {
         uint8_t *p = ev + ELPIS_ECS_C_PAYLOAD_AT;
-        put_u64(p, expected); /* compare-and-set: the authority refuses a stale expectation */
+        put_u64(p, expected); /* compare-and-set: the session refuses a stale expectation */
         put_u64(p + 8, version);
         put_u32(p + 16, (uint32_t)bound);
         memcpy(p + 24, scope, 32);
-        rc = held_send(&t, ev, &generation, e);
+        rc = send_event(h, ev, &generation, e);
     }
-    held_end(&t);
     if (rc) return -1;
     hjw_khex(w, "id", s.id, 32);
     hjw_ku64(w, "version", version);
@@ -1409,14 +1087,12 @@ static int op_source_reclaim(host *h, const hj_value *op, hjw *w, host_err *e) {
     uint64_t authority;
     if (u64_member(op, "source_authority", UINT32_MAX, UINT64_MAX, &authority, e)) return -1;
     if (authority == UINT64_MAX) return input(e, "%s: the TERMINATED source's memory source_authority", "source_authority");
-    held t;
-    if (held_begin(h, &t, e)) return -1;
-    elpis_ecs_c_entity s;
+    if (session_open(h, e)) return -1;
+    elpis_runtime_authority_entity s;
     uint8_t ev[512];
     uint64_t generation = 0;
-    int rc = find_source(&t, (uint32_t)authority, &s, e);
-    if (!rc && !(rc = operator_event(&t, 14, s.id, ev, e))) rc = held_send(&t, ev, &generation, e);
-    held_end(&t);
+    int rc = find_source(h, (uint32_t)authority, &s, e);
+    if (!rc && !(rc = operator_event(h, 14, s.id, ev, e))) rc = send_event(h, ev, &generation, e);
     if (rc) return -1;
     hjw_khex(w, "id", s.id, 32);
     hjw_ku64(w, "generation", generation);
@@ -1429,53 +1105,16 @@ static int op_text(host *h, const hj_value *op, hjw *w, host_err *e) {
                                                  "interface (QUERY and LEARN take admitted numeric stimuli)");
 }
 
+/* The durable operations of the retired persistent host: refused, nothing happens. */
+static int op_retired(host *h, const hj_value *op, hjw *w, host_err *e) {
+    (void)h, (void)w;
+    return host_fail(e, "OPERATION_RETIRED", "'%s' belonged to the retired persistent runtime: Elpis writes no state "
+                                             "(docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process "
+                                             "or `close`", str_member(op, "op"));
+}
+
 #ifdef ELPIS_HOST_TESTING
-/* ---- testing host only: the runtime's fault plans and a crash at an operation boundary ------------------------ */
-
-static int op_testing_durable_fault(host *h, const hj_value *op, hjw *w, host_err *e) {
-    uint64_t action, step, arg;
-    if (lineage(h, e) || u64_member(op, "action", 10, 0, &action, e) || u64_member(op, "step", 9, 0, &step, e) ||
-        u64_member(op, "arg", INT64_MAX, 0, &arg, e))
-        return -1;
-    const int rc = h->d.api.elpis_runtime_testing_durable_fault(h->rt, (uint32_t)action, (uint32_t)step, arg);
-    if (rc) return host_fail(e, rt_code(h, rc), "the durable fault plan was refused");
-    hjw_kbool(w, "armed", action != 0);
-    return 0;
-}
-
-static int op_testing_control_fault(host *h, const hj_value *op, hjw *w, host_err *e) {
-    uint64_t kind, action, point, arg;
-    if (lineage(h, e) || u64_member(op, "kind", 4, 0, &kind, e) || u64_member(op, "action", 2, 0, &action, e) ||
-        u64_member(op, "point", 6, 0, &point, e) || u64_member(op, "arg", INT64_MAX, 0, &arg, e))
-        return -1;
-    const int rc = h->d.api.elpis_runtime_testing_control_fault(h->rt, (uint32_t)kind, (uint32_t)action,
-                                                                (uint32_t)point, arg);
-    if (rc) return host_fail(e, rt_code(h, rc), "the control fault plan was refused");
-    /* A park holds the caller inside the operation, so the session cannot say so: a watcher reports it. */
-    if (action == 2 && host_testing_watch(&h->d.api, h->rt, (uint32_t)(100 * kind + point)))
-        return host_fail(e, "HOST_RESOURCES", "the park watcher could not start");
-    hjw_kbool(w, "armed", action != 0);
-    return 0;
-}
-
-/* Wait (bounded) until the durability worker is parked at `parked`: the moment a harness kills the process. */
-static int op_testing_wait_parked(host *h, const hj_value *op, hjw *w, host_err *e) {
-    uint64_t parked, timeout;
-    if (lineage(h, e) || u64_member(op, "parked", 1000, 0, &parked, e) ||
-        u64_member(op, "timeout_ms", 600000, 30000, &timeout, e))
-        return -1;
-    for (uint64_t waited = 0;; ++waited) {
-        elpis_runtime_durability du;
-        const int rc = h->d.api.elpis_runtime_durable_status(h->rt, &du);
-        if (rc) return host_fail(e, rt_code(h, rc), "the durability status could not be read");
-        if (du.parked == parked) break;
-        if (waited >= timeout) return host_fail(e, "TESTING_NOT_PARKED", "the worker did not park at %llu",
-                                                (unsigned long long)parked);
-        nanosleep(&(struct timespec){0, 1000000}, NULL);
-    }
-    hjw_ku64(w, "parked", parked);
-    return 0;
-}
+/* ---- testing host only: the negative controls ------------------------------------------------------------------- */
 
 /* Pause at an operation boundary: print one line, then wait (bounded) for one byte on standard input. A harness
  * inspects the live process meanwhile (its mappings, its descriptors) or kills it. */
@@ -1493,34 +1132,42 @@ static int op_testing_pause(host *h, const hj_value *op, hjw *w, host_err *e) {
     return 0;
 }
 
-/* What a write would do here (under --contained: what the containment allows): "create" a new file, "write" an
- * existing one, or "extend" one past `offset`. Reports the errno (0: it happened). */
+/* A deliberate write attempt (the negative control of the containment): "create" a new file, "write" an existing one,
+ * "extend" one past `offset`, "remove" or "rename" one, or "mkdir". Reports the errno (0: it happened). */
 static int op_testing_write_probe(host *h, const hj_value *op, hjw *w, host_err *e) {
     (void)h;
     const char *path = str_member(op, "path"), *kind = str_member(op, "kind");
     uint64_t offset;
     if (!path || path[0] != '/' || !kind || u64_member(op, "offset", INT64_MAX, 0, &offset, e))
-        return input(e, "%s: an absolute path, a kind (create, write, extend) and an offset", "testing_write_probe");
+        return input(e, "%s: an absolute path, a kind (create, write, extend, remove, rename, mkdir) and an offset",
+                     "testing_write_probe");
     signal(SIGXFSZ, SIG_IGN); /* past the file size limit a write fails EFBIG instead of killing the process */
     errno = 0;
     int rc;
     if (!strcmp(kind, "create")) {
         const int fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
         rc = fd < 0 ? errno : 0;
-        if (fd >= 0) close(fd), unlink(path);
+        if (fd >= 0) close(fd);
     } else if (!strcmp(kind, "write") || !strcmp(kind, "extend")) {
         const int fd = open(path, O_RDWR | O_CLOEXEC); /* read-write: "write" must read the byte it rewrites */
         rc = fd < 0 ? errno : 0;
         if (fd >= 0) {
-            /* "write" rewrites the first byte with itself; "extend" writes one byte at `offset`. */
             const off_t at = !strcmp(kind, "extend") ? (off_t)offset : 0;
             char byte = 0;
             if (at == 0 && pread(fd, &byte, 1, 0) != 1) rc = errno ? errno : EIO; /* never write a guessed byte */
             else rc = pwrite(fd, &byte, 1, at) == 1 ? 0 : errno;
             close(fd);
         }
+    } else if (!strcmp(kind, "remove")) {
+        rc = unlink(path) ? errno : 0;
+    } else if (!strcmp(kind, "rename")) {
+        char to[4200];
+        snprintf(to, sizeof to, "%s.renamed", path);
+        rc = rename(path, to) ? errno : 0;
+    } else if (!strcmp(kind, "mkdir")) {
+        rc = mkdir(path, 0700) ? errno : 0;
     } else {
-        return input(e, "%s: kind is create, write or extend", "testing_write_probe");
+        return input(e, "%s: kind is create, write, extend, remove, rename or mkdir", "testing_write_probe");
     }
     hjw_ki64(w, "errno", rc);
     return 0;
@@ -1544,25 +1191,24 @@ static const struct {
     {"close", op_close},
     {"live", op_live},
     {"counters", op_counters},
-    {"candidates", op_candidates},
     {"query", op_query},
     {"learn", op_learn},
     {"evidence", op_evidence},
     {"lookup", op_lookup},
     {"slot", op_slot},
-    {"publish", op_publish},
-    {"reconcile", op_reconcile},
     {"authority", op_authority},
-    {"authority_reconcile", op_authority_reconcile},
     {"source_found", op_source_found},
     {"source_lifecycle", op_source_lifecycle},
     {"source_version", op_source_version},
     {"source_reclaim", op_source_reclaim},
     {"text", op_text},
+    {"publish", op_retired},
+    {"reconcile", op_retired},
+    {"candidates", op_retired},
+    {"authority_reconcile", op_retired},
+    {"init", op_retired},
+    {"create", op_retired},
 #ifdef ELPIS_HOST_TESTING
-    {"testing_durable_fault", op_testing_durable_fault},
-    {"testing_control_fault", op_testing_control_fault},
-    {"testing_wait_parked", op_testing_wait_parked},
     {"testing_pause", op_testing_pause},
     {"testing_write_probe", op_testing_write_probe},
     {"testing_exit", op_testing_exit},
@@ -1635,7 +1281,7 @@ static int run(host *h, const hj_value *op) {
 static hj_arena ARENA;
 
 static int arena_for(size_t len) {
-    const size_t need = len * ARENA_PER_BYTE + ((size_t)1 << 20);
+    const size_t need = len * ARENA_PER_BYTE + ((size_t)1 << 18);
     if (ARENA.cap_bytes < need) {
         free(ARENA.bytes);
         ARENA.bytes = malloc(need);
@@ -1657,12 +1303,26 @@ static int parse_json(const char *text, size_t len, hj_value **out, char *err, s
 static char *read_script(const char *path, size_t *len, char *err, size_t errlen) {
     FILE *f = strcmp(path, "-") ? fopen(path, "rb") : stdin;
     if (!f) return snprintf(err, errlen, "%s: %s", path, strerror(errno)), NULL;
-    char *buf = malloc(MAX_INPUT + 1);
-    size_t n = buf ? fread(buf, 1, MAX_INPUT + 1, f) : 0;
+    /* A buffer that grows with the script (never the 8 MiB bound up front: the host's memory is kept small enough to
+     * be locked whole when swap is active). */
+    size_t cap = (size_t)1 << 16, n = 0;
+    char *buf = malloc(cap + 1);
+    while (buf) {
+        n += fread(buf + n, 1, cap - n, f);
+        if (n < cap || cap > MAX_INPUT) break;
+        char *grown = realloc(buf, 2 * cap + 1);
+        if (!grown) {
+            free(buf);
+            buf = NULL;
+            break;
+        }
+        buf = grown, cap *= 2;
+    }
+    const int failed = ferror(f);
     if (f != stdin) fclose(f);
-    if (!buf || n > MAX_INPUT) {
+    if (!buf || failed || n > MAX_INPUT) {
         free(buf);
-        return snprintf(err, errlen, "a script is at most %zu bytes", MAX_INPUT), NULL;
+        return snprintf(err, errlen, "a script is at most %zu bytes and must be readable", MAX_INPUT), NULL;
     }
     buf[n] = 0;
     *len = n;
@@ -1697,60 +1357,56 @@ typedef struct {
 typedef struct {
     const char *command, *op;
     arg_spec args[10];
-    int publish; /* --publish appends a publication */
 } command_spec;
 
 static const command_spec COMMANDS[] = {
-    {"status", "status", {{0}}, 0},
-    {"live", "live", {{0}}, 0},
-    {"counters", "counters", {{"--reset", "reset", A_FLAG}}, 0},
-    {"candidates", "candidates", {{0}}, 0},
-    {"query", "query", {{"--x", "x", A_JSON}}, 0},
+    {"status", "status", {{0}}},
+    {"live", "live", {{0}}},
+    {"counters", "counters", {{"--reset", "reset", A_FLAG}}},
+    {"query", "query", {{"--x", "x", A_JSON}}},
     {"learn",
      "learn",
      {{"--x", "x", A_JSON}, {"--y", "y", A_JSON}, {"--schedule", "schedule", A_JSON}, {"--rate", "rate", A_DOUBLE},
-      {"--grant", "grant", A_STRING}},
-     1},
+      {"--grant", "grant", A_STRING}}},
     {"evidence",
      "evidence",
-     {{"--items", "items", A_JSON}, {"--grant", "grant", A_STRING}, {"--sources", "sources", A_SOURCES}},
-     1},
+     {{"--items", "items", A_JSON}, {"--grant", "grant", A_STRING}, {"--sources", "sources", A_SOURCES}}},
     {"lookup",
      "lookup",
-     {{"--relation", "relation", A_ID}, {"--target-role", "target_role", A_ID}, {"--cues", "cues", A_JSON}},
-     0},
-    {"slot", "slot", {{"--key", "key", A_STRING}}, 0},
-    {"publish", "publish", {{0}}, 0},
-    {"reconcile", "reconcile", {{"--discard", "discard", A_STRING}, {"--adopt", "adopt", A_STRING}}, 0},
-    {"authority", "authority", {{0}}, 0},
-    {"authority-reconcile", "authority_reconcile", {{"--kind", "kind", A_STRING}, {"--digest", "digest", A_STRING}}, 0},
+     {{"--relation", "relation", A_ID}, {"--target-role", "target_role", A_ID}, {"--cues", "cues", A_JSON}}},
+    {"slot", "slot", {{"--key", "key", A_STRING}}},
+    {"authority", "authority", {{0}}},
     {"source-found",
      "source_found",
      {{"--label", "label", A_STRING}, {"--source-authority", "source_authority", A_U64}, {"--per-turn", "per_turn", A_U64},
       {"--version", "version", A_U64}, {"--scope", "scope", A_STRING}, {"--scope-label", "scope_label", A_STRING},
-      {"--dormant", "dormant", A_FLAG}},
-     0},
+      {"--dormant", "dormant", A_FLAG}}},
     {"source-lifecycle",
      "source_lifecycle",
-     {{"--source-authority", "source_authority", A_U64}, {"--to", "to", A_STRING}},
-     0},
+     {{"--source-authority", "source_authority", A_U64}, {"--to", "to", A_STRING}}},
     {"source-version",
      "source_version",
      {{"--source-authority", "source_authority", A_U64}, {"--expected", "expected", A_U64},
       {"--version", "version", A_U64}, {"--per-turn", "per_turn", A_U64}, {"--scope", "scope", A_STRING},
-      {"--scope-label", "scope_label", A_STRING}},
-     0},
-    {"source-reclaim", "source_reclaim", {{"--source-authority", "source_authority", A_U64}}, 0},
-    {"text", "text", {{"--input", "input", A_STRING}}, 0},
+      {"--scope-label", "scope_label", A_STRING}}},
+    {"source-reclaim", "source_reclaim", {{"--source-authority", "source_authority", A_U64}}},
+    {"text", "text", {{"--input", "input", A_STRING}}},
 };
 
+/* The commands and options of the retired persistent host. */
+static const char *const RETIRED_COMMANDS[] = {"init", "create", "publish", "reconcile", "candidates",
+                                               "authority-reconcile", "--home", "--contained", "--publish"};
+
+/* Like every refusal, the usage text never goes onto storage. */
 static void usage(void) {
-    fprintf(stderr, "usage: elpis --home DIR init (--native-build BUILD | --libraries DIR) [--capacity N] "
-                    "[--authority-dir DIR] [--source-commit SHA]\n"
-                    "       elpis --home DIR create [--dim N --width N --max-rows N --memory-dim N --banks N "
-                    "--slot-capacity N --codebook-capacity N --seed N]\n"
-                    "       elpis --home DIR [--contained] session --script FILE|-\n"
-                    "       elpis --home DIR [--contained] <command> [options]   (docs/NATIVE_HOST.md)\n");
+    if (host_writable_storage(STDERR_FILENO)) return;
+    fprintf(stderr, "usage: elpis (--libraries DIR | --native-build BUILD) catalog\n"
+                    "       elpis (--libraries DIR | --native-build BUILD) --catalog-sha256 HEX [session options] "
+                    "session --script FILE|-\n"
+                    "       elpis (--libraries DIR | --native-build BUILD) --catalog-sha256 HEX [session options] "
+                    "<command> [options]   (docs/NATIVE_HOST.md)\n"
+                    "session options: --dim N --width N --max-rows N --memory-dim N --banks N --slot-capacity N "
+                    "--codebook-capacity N --seed N --capacity N --nonce-seed HEX\n");
 }
 
 /* Build the operation object of a one-shot command (members parsed one argument at a time, never concatenated). */
@@ -1764,7 +1420,6 @@ static int command_op(const command_spec *c, int argc, char **argv, hj_value *op
         const arg_spec *s = NULL;
         for (int j = 0; j < 10 && c->args[j].option; ++j)
             if (!strcmp(argv[i], c->args[j].option)) s = &c->args[j];
-        if (c->publish && !strcmp(argv[i], "--publish")) continue;
         if (!s) return snprintf(err, errlen, "%s: unknown option %s", c->command, argv[i]), -1;
         for (size_t k = 1; k < n; ++k)
             if (!strcmp(keys[k], s->member)) return snprintf(err, errlen, "%s given twice", s->option), -1;
@@ -1837,14 +1492,6 @@ static int command_op(const command_spec *c, int argc, char **argv, hj_value *op
         items[n] = (hj_value){.kind = HJ_BOOL, .boolean = 0};
         keys[n++] = "activate";
     }
-    if (!strcmp(c->op, "reconcile")) { /* --discard ID | --adopt ID */
-        if (n != 2) return snprintf(err, errlen, "reconcile: exactly one of --discard or --adopt"), -1;
-        items[2] = items[1];
-        keys[2] = "candidate";
-        items[1] = (hj_value){.kind = HJ_STRING, .string = keys[1], .length = strlen(keys[1])};
-        keys[1] = "action";
-        n = 3;
-    }
     *op = (hj_value){.kind = HJ_OBJECT, .items = items, .keys = keys, .count = n};
     return 0;
 }
@@ -1858,141 +1505,127 @@ static int parse_u64_arg(const char *v, uint64_t *out) {
     return 0;
 }
 
-static int cmd_create(host *h, int argc, char **argv) {
-    host_lineage l = {6, 36, 64, 64, 2, 64, 128, 0}; /* the Python LineageConfig's defaults */
+/* The global options: where the libraries are, the catalog pin, and every session's configuration. */
+typedef struct {
+    host_source source;
+    int pinned;
+    uint8_t pin[32];
+} host_options;
+
+static int global_options(int argc, char **argv, int *at, host_options *o, host_install *d, char *err, size_t errlen) {
     static const char *const names[] = {"--dim", "--width", "--max-rows", "--memory-dim", "--banks",
                                         "--slot-capacity", "--codebook-capacity", "--seed"};
-    uint64_t *fields[] = {&l.dim, &l.width, &l.max_rows, &l.memory_dim, &l.banks, &l.slot_capacity,
-                          &l.codebook_capacity, &l.seed};
-    for (int i = 0; i < argc; i += 2) {
+    host_lineage *l = &d->lineage;
+    *l = (host_lineage){6, 36, 64, 64, 2, 64, 128, 0}; /* the Python LineageConfig's defaults */
+    uint64_t *fields[] = {&l->dim, &l->width, &l->max_rows, &l->memory_dim, &l->banks, &l->slot_capacity,
+                          &l->codebook_capacity, &l->seed};
+    uint64_t capacity = 16;
+    memset(&d->session, 0, sizeof d->session);
+    int i = 1;
+    for (; i < argc && !strncmp(argv[i], "--", 2); i += 2) {
+        for (size_t r = 0; r < sizeof RETIRED_COMMANDS / sizeof *RETIRED_COMMANDS; ++r)
+            if (!strcmp(argv[i], RETIRED_COMMANDS[r])) return *at = i, 1;
+        if (i + 1 >= argc) return snprintf(err, errlen, "%s needs a value", argv[i]), -1;
+        const char *v = argv[i + 1];
         int known = 0;
         for (int j = 0; j < 8; ++j)
             if (!strcmp(argv[i], names[j])) {
                 known = 1;
-                if (i + 1 >= argc || parse_u64_arg(argv[i + 1], fields[j])) {
-                    emit_failure("create", "CLI_INPUT", "every create option takes an unsigned integer");
-                    return 2;
-                }
+                if (parse_u64_arg(v, fields[j])) return snprintf(err, errlen, "%s: an unsigned integer", argv[i]), -1;
             }
-#ifdef ELPIS_HOST_TESTING
-        /* Park the anchor at a control point (1..6) and report it (testing_parked): a harness kills it there. */
-        uint64_t v;
-        if (!strcmp(argv[i], "--testing-anchor-park") || !strcmp(argv[i], "--testing-fault-arg")) {
-            known = 1;
-            const int park = !strcmp(argv[i], "--testing-anchor-park");
-            if (i + 1 >= argc || parse_u64_arg(argv[i + 1], &v) || (park && (v < 1 || v > 6))) {
-                emit_failure("create", "CLI_INPUT", "--testing-anchor-park takes a point 1..6, --testing-fault-arg "
-                                                    "an unsigned integer");
-                return 2;
-            }
-            if (park) h->d.testing_anchor_point = (uint32_t)v;
-            else h->d.testing_anchor_arg = v;
-        }
-#endif
-        if (!known) {
-            emit_failure("create", "CLI_INPUT", "create: unknown option");
-            return 2;
+        if (known) continue;
+        if (!strcmp(argv[i], "--libraries") || !strcmp(argv[i], "--native-build")) {
+            if (o->source.dir) return snprintf(err, errlen, "exactly one of --libraries or --native-build"), -1;
+            o->source = (host_source){v, !strcmp(argv[i], "--native-build")};
+        } else if (!strcmp(argv[i], "--catalog-sha256")) {
+            if (host_unhex32(v, o->pin)) return snprintf(err, errlen, "--catalog-sha256: 64 lowercase hex characters"), -1;
+            o->pinned = 1;
+        } else if (!strcmp(argv[i], "--capacity")) {
+            if (parse_u64_arg(v, &capacity) || capacity < ELPIS_ECS_C_MIN_CAPACITY || capacity > ELPIS_ECS_C_MAX_CAPACITY)
+                return snprintf(err, errlen, "--capacity: %u..%u entities", ELPIS_ECS_C_MIN_CAPACITY,
+                                ELPIS_ECS_C_MAX_CAPACITY), -1;
+        } else if (!strcmp(argv[i], "--nonce-seed")) {
+            if (host_unhex32(v, d->session.nonce)) return snprintf(err, errlen, "--nonce-seed: 64 lowercase hex"), -1;
+        } else {
+            return snprintf(err, errlen, "unknown option %s", argv[i]), -1;
         }
     }
-    host_err e = {{0}, {0}, 0};
-    uint8_t identity[32];
-    elpis_continuity_snapshot anchored;
-    int resumed;
-    if (host_create_lineage(&h->d, &l, identity, &anchored, &resumed, &e)) {
-        emit_failure("create", e.code, e.detail);
-        return 3;
-    }
-    hjw w;
-    hjw_init(&w, OUT, sizeof OUT);
-    hjw_object(&w);
-    hjw_kstr(&w, "op", "create");
-    hjw_khex(&w, "identity", identity, 32);
-    hjw_kstr(&w, "state_format", anchored.state_format == ELPIS_CONTINUITY_FORMAT_COMPOSITE ? "COMPOSITE" : "K1");
-    hjw_ku64(&w, "authority_generation", anchored.generation);
-    hjw_khex(&w, "initial_w_sha256", h->d.initial_w_sha256, 32);
-    hjw_ku64(&w, "envelope_bytes", h->d.envelope_bytes);
-    hjw_kbool(&w, "resumed", resumed); /* an earlier create of this lineage had anchored it: nothing was written */
-    hjw_kbool(&w, "ok", 1);
-    hjw_end(&w, '}');
-    emit(&w);
+    if (!o->source.dir) return snprintf(err, errlen, "the libraries: --libraries DIR or --native-build BUILD"), -1;
+    d->source = o->source;
+    d->session.abi_version = ELPIS_RUNTIME_ABI_V8;
+    d->session.capacity = (uint32_t)capacity;
+    host_label("operator", d->session.operator_label);
+    host_label("runtime", d->session.runtime_label);
+    *at = i;
     return 0;
 }
 
-static int cmd_init(int argc, char **argv, const char *home) {
-    const char *build = NULL, *libraries = NULL, *authority = NULL, *commit = NULL;
-    uint64_t capacity = 16;
-    for (int i = 0; i < argc; i += 2) {
-        if (i + 1 >= argc) return emit_failure("init", "CLI_INPUT", "every init option takes a value"), 2;
-        if (!strcmp(argv[i], "--native-build")) build = argv[i + 1];
-        else if (!strcmp(argv[i], "--libraries")) libraries = argv[i + 1];
-        else if (!strcmp(argv[i], "--authority-dir")) authority = argv[i + 1];
-        else if (!strcmp(argv[i], "--source-commit")) commit = argv[i + 1];
-        else if (!strcmp(argv[i], "--capacity") && !parse_u64_arg(argv[i + 1], &capacity) && capacity <= UINT32_MAX) continue;
-        else return emit_failure("init", "CLI_INPUT", "init: unknown or malformed option"), 2;
-    }
-    if (!build == !libraries)
-        return emit_failure("init", "CLI_INPUT", "init needs exactly one of --native-build or --libraries"), 2;
-    static host_deployment d;
-    host_err e = {{0}, {0}, 0};
-    if (host_init(home, build ? build : libraries, !build, authority, (uint32_t)capacity, commit, &d, &e)) {
-        emit_failure("init", e.code, e.detail);
-        return 4;
-    }
+static void emit_catalog(const char *catalog, const uint8_t digest[32]) {
     hjw w;
     hjw_init(&w, OUT, sizeof OUT);
     hjw_object(&w);
-    hjw_kstr(&w, "op", "init");
-    hjw_kstr(&w, "home", d.home);
-    hjw_khex(&w, "catalog_sha256", d.catalog_sha256, 32);
-    hjw_khex(&w, "host_sha256", d.host_sha256, 32);
-    hjw_kstr(&w, "authority_dir", d.authority_dir);
-    hjw_ku64(&w, "capacity", d.capacity);
-    hjw_key(&w, "libraries");
-    hjw_object(&w);
-    for (int i = 0; i < HOST_LIBRARIES; ++i) {
-        hjw_key(&w, d.pins[i].id);
-        hjw_object(&w);
-        hjw_khex(&w, "sha256", d.pins[i].sha256, 32);
-        hjw_ku64(&w, "size", d.pins[i].size);
-        hjw_end(&w, '}');
-    }
-    hjw_end(&w, '}');
-    hjw_kbool(&w, "testing_build", d.testing);
+    hjw_kstr(&w, "op", "catalog");
+    hjw_key(&w, "catalog_sha256");
+    hjw_hex(&w, digest, 32);
     hjw_kbool(&w, "ok", 1);
     hjw_end(&w, '}');
-    emit(&w);
-    return 0;
+    /* {"op":"catalog","catalog_sha256":...,"ok":true} with the catalog object spliced in before "ok". */
+    const char *ok = strstr(OUT, ",\"ok\":");
+    fwrite(OUT, 1, (size_t)(ok - OUT), stdout);
+    fputs(",\"catalog\":", stdout);
+    fputs(catalog, stdout);
+    fputs(ok, stdout);
+    fputc('\n', stdout);
+    fflush(stdout);
 }
 
 int main(int argc, char **argv) {
-    if (argc < 4 || strcmp(argv[1], "--home")) return usage(), 2;
-    const char *home = argv[2];
-    /* --contained: the host restricts itself after admission (docs/NATIVE_HOST.md, "Containment"). */
-    const int contained = !strcmp(argv[3], "--contained");
-    if (contained) {
-        argv += 1, argc -= 1;
-        if (argc < 4) return usage(), 2;
-        host_err ce = {{0}, {0}, 0};
-        if (host_contain_stdio(&ce)) return emit_failure(argv[3], ce.code, ce.detail), 4;
+    /* Never a byte onto storage: with standard output on writable storage the host refuses without writing there
+     * (the reason goes to standard error only when that is not storage either). */
+    if (host_writable_storage(STDOUT_FILENO)) {
+        static const char why[] = "elpis: CONTAINMENT_REFUSED: standard output is writable storage (a file, a "
+                                  "directory or a device): nothing was written; use a pipe or a terminal\n";
+        if (!host_writable_storage(STDERR_FILENO) && write(STDERR_FILENO, why, sizeof why - 1) < 0) return 4;
+        return 4;
     }
-    const char *command = argv[3];
-    if (contained && (!strcmp(command, "init") || !strcmp(command, "create")))
-        return emit_failure(command, "CLI_INPUT", "provisioning creates files: init and create are never contained"), 2;
-    if (!strcmp(command, "init")) return cmd_init(argc - 4, argv + 4, home);
-    /* Validate the command line before the deployment is touched. */
+    static host h;
+    host_options o;
+    memset(&o, 0, sizeof o);
+#ifdef ELPIS_HOST_TESTING
+    h.d.testing = 1;
+#endif
+    char err[256] = {0};
+    int at = 0;
+    const int g = global_options(argc, argv, &at, &o, &h.d, err, sizeof err);
+    if (g < 0) return usage(), emit_failure(NULL, "CLI_INPUT", err), 2;
+    if (g > 0 || at >= argc) {
+        if (at >= argc) return usage(), 2;
+    }
+    const char *command = argv[at];
+    for (size_t r = 0; r < sizeof RETIRED_COMMANDS / sizeof *RETIRED_COMMANDS; ++r)
+        if (!strcmp(command, RETIRED_COMMANDS[r]))
+            return emit_failure(command, "OPERATION_RETIRED", "the persistent host is retired: there is no home, no "
+                                                              "deployment state, no publication and no recovery "
+                                                              "(docs/NATIVE_HOST.md)"), 2;
+    for (int i = at + 1; i < argc; ++i)
+        if (!strcmp(argv[i], "--publish"))
+            return emit_failure(command, "OPERATION_RETIRED", "--publish: no persistent writer exists"), 2;
+    const int catalog = !strcmp(command, "catalog");
+    if (catalog && at + 1 != argc) return usage(), 2;
+    if (!catalog && !o.pinned)
+        return emit_failure(command, "CLI_INPUT", "--catalog-sha256: the pin of the catalog (`catalog` prints it)"), 2;
+    /* Validate the command line (and read the script) before anything is admitted. */
     const command_spec *spec = NULL;
     for (size_t i = 0; i < sizeof COMMANDS / sizeof *COMMANDS; ++i)
         if (!strcmp(COMMANDS[i].command, command)) spec = &COMMANDS[i];
-    char err[256] = {0};
     static hj_value items[16], one_shot;
     static const char *keys[16];
     char *script = NULL;
     size_t script_len = 0;
     hj_value *script_doc = NULL;
-    int publish = 0;
     if (!strcmp(command, "session")) {
-        if (argc != 6 || strcmp(argv[4], "--script")) return usage(), 2;
-        if (!(script = read_script(argv[5], &script_len, err, sizeof err))) return emit_failure("session", "CLI_INPUT", err), 2;
+        if (argc != at + 3 || strcmp(argv[at + 1], "--script")) return usage(), 2;
+        if (!(script = read_script(argv[at + 2], &script_len, err, sizeof err))) return emit_failure("session", "CLI_INPUT", err), 2;
         size_t b = 0;
         while (b < script_len && (script[b] == ' ' || script[b] == '\n' || script[b] == '\t' || script[b] == '\r')) ++b;
         const int malformed = b < script_len && script[b] == '['
@@ -2004,38 +1637,48 @@ int main(int argc, char **argv) {
             return emit_failure("session", "CLI_INPUT", err), 2;
         }
     } else if (spec) {
-        if (arena_for(MAX_INPUT)) return emit_failure(command, "HOST_RESOURCES", "out of memory"), 2;
-        if (command_op(spec, argc - 4, argv + 4, &one_shot, items, keys, err, sizeof err))
+        size_t args = 0; /* the arena holds exactly what the arguments can parse into */
+        for (int i = at + 1; i < argc; ++i) args += strlen(argv[i]) + 1;
+        if (args > MAX_INPUT) return emit_failure(command, "CLI_INPUT", "the arguments exceed 8 MiB"), 2;
+        if (arena_for(args)) return emit_failure(command, "HOST_RESOURCES", "out of memory"), 2;
+        if (command_op(spec, argc - at - 1, argv + at + 1, &one_shot, items, keys, err, sizeof err))
             return emit_failure(spec->op, "CLI_INPUT", err), 2;
-        for (int i = 4; i < argc; ++i) publish |= spec->publish && !strcmp(argv[i], "--publish");
-    } else if (strcmp(command, "create")) {
+    } else if (!catalog) {
         return usage(), 2;
     }
-    static host h;
+    /* Containment of the process, then admission, then the filesystem: nothing runs uncontained. */
     host_err e = {{0}, {0}, 0};
-    if (host_open(home, &h.d, &e) || (contained && host_contain(&h.d, &e))) {
+    const char *name = spec ? spec->op : command;
+    static char catalog_text[1 << 14];
+    size_t catalog_len = 0;
+    if (host_contain_process(&h.contain, &e) ||
+        host_measure(&h.d, catalog ? catalog_text : NULL, sizeof catalog_text, &catalog_len, &e)) {
         free(script);
-        return emit_failure(spec ? spec->op : command, e.code, e.detail), 4;
+        return emit_failure(name, e.code, e.detail), 4;
     }
+    if (!catalog && memcmp(h.d.catalog_sha256, o.pin, 32)) {
+        free(script);
+        return emit_failure(name, "INSTALL_PIN", "the measured catalog (this host binary and its libraries) does not "
+                                                 "match --catalog-sha256"), 4;
+    }
+    if (host_load_libraries(&h.d, &e) || host_lineage_check(&h.d, &e) || host_contain_files(&h.contain, &e)) {
+        free(script);
+        return emit_failure(name, e.code, e.detail), 4;
+    }
+    if (catalog) return emit_catalog(catalog_text, h.d.catalog_sha256), 0;
     h.d.api.elpis_runtime_fuel_ceiling(&h.ceiling);
     int all_ok = 1;
-    if (!strcmp(command, "create")) {
-        all_ok = cmd_create(&h, argc - 4, argv + 4) == 0;
-    } else if (script_doc) {
+    if (script_doc) {
         for (size_t i = 0; i < script_doc->count; ++i) all_ok &= run(&h, &script_doc->items[i]);
     } else if (script) {
         script_lines(script, script_len, 1, &h, &all_ok, err, sizeof err);
     } else {
         all_ok = run(&h, &one_shot);
-        if (publish) {
-            static hj_value p_items[1];
-            static const char *p_keys[1] = {"op"};
-            p_items[0] = (hj_value){.kind = HJ_STRING, .string = "publish", .length = 7};
-            const hj_value p = {.kind = HJ_OBJECT, .items = p_items, .keys = p_keys, .count = 1};
-            all_ok &= run(&h, &p);
-        }
     }
     session_close(&h);
+    if (h.rt) h.d.api.elpis_runtime_destroy(&h.rt);
+    free(h.envelope);
+    free(h.s3);
     free(script);
     free(ARENA.bytes);
     return all_ok ? 0 : 3;

@@ -1,6 +1,12 @@
-/* elpis/fms_pal.h - Platform Abstraction Layer, ABI v2.
+/* elpis/fms_pal.h - Platform Abstraction Layer, ABI v3.
  * Every PAL instance owns its state. No globals. All entry points must be
- * callable concurrently from multiple threads on distinct objects. */
+ * callable concurrently from multiple threads on distinct objects.
+ *
+ * ABI v3 (docs/ELPIS_MISSION.md, Amendment 3): no PAL writes storage. ABI v2's COLD entries (cold_put: a durable,
+ * content-addressed file per demoted object; cold_get; cold_drop: unlink; cold_digest and cold_bytes over an opaque
+ * token) and the FMS_CAP_COLD capability are retired with their return codes: there is no WARM -> COLD operation.
+ * Immutable COLD backing (read-only, verified file assets loaded into WARM) is the file-asset service
+ * (elpis/fms_file_service.h), which reads and never writes. */
 #ifndef ELPIS_FMS_PAL_H
 #define ELPIS_FMS_PAL_H
 
@@ -10,16 +16,13 @@
 extern "C" {
 #endif
 
-/* Capability bits reported by the PAL. The core honours these literally. */
-enum { FMS_CAP_DEVICE = 0x1u, FMS_CAP_COLD = 0x2u, FMS_CAP_ZERO_COPY = 0x4u };
+/* Capability bits reported by the PAL. The core honours these literally. 0x2u (ABI v2's FMS_CAP_COLD) is retired and
+ * never reused. */
+enum { FMS_CAP_DEVICE = 0x1u, FMS_CAP_ZERO_COPY = 0x4u };
 
-/* PAL cold return codes (negative). Mapped by the core onto fms_status. */
-enum { FMS_PAL_OK = 0, FMS_PAL_EIO = -1, FMS_PAL_EDIGEST = -2, FMS_PAL_ESIZE = -3,
-       FMS_PAL_ENOMEM = -4, FMS_PAL_EDEVICE = -5 };
-
-/* Opaque, PAL-owned reference to a durable cold object. The core stores the
- * pointer and nothing else; it never sees a path. */
-typedef struct fms_cold_token fms_cold_token;
+/* PAL return codes (negative). Mapped by the core onto fms_status. -2 and -3 (ABI v2's cold digest and size
+ * failures) are retired and never reused. */
+enum { FMS_PAL_OK = 0, FMS_PAL_EIO = -1, FMS_PAL_ENOMEM = -4, FMS_PAL_EDEVICE = -5 };
 
 /* How a HOT allocation consumes physical resources. */
 typedef struct fms_hot_profile {
@@ -55,16 +58,6 @@ struct fms_pal {
     /* --- WARM (CPU-addressable residency) ---------------------------------- */
     int  (*ram_alloc)(void *self, uint64_t bytes, void **out);
     void (*ram_free)(void *self, void *p, uint64_t bytes);
-
-    /* --- COLD (durable, content-verified) ---------------------------------- */
-    /* Must be crash-atomic: temp file -> full write -> fsync -> digest -> rename
-     * -> fsync(dir). The token is published only after all of that succeeds. */
-    int  (*cold_put)(void *self, const void *src, uint64_t bytes, fms_cold_token **out);
-    /* Must verify byte count and digest before returning any data. */
-    int  (*cold_get)(void *self, const fms_cold_token *t, void *dst, uint64_t bytes);
-    void (*cold_drop)(void *self, fms_cold_token *t);   /* unlink backing store, free token */
-    int  (*cold_digest)(const fms_cold_token *t, uint8_t out[32]);
-    uint64_t (*cold_bytes)(const fms_cold_token *t);
 
     uint64_t (*bandwidth)(void *self, int from_tier, int to_tier);
 };

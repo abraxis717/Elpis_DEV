@@ -1,23 +1,29 @@
 """The volatile-native migration (docs/ELPIS_MISSION.md, Amendment 3; docs/VOLATILE_RUNTIME_CENSUS.md).
 
-Phases V0 (census), V1 (the volatile ECS_C session) and V2 (the relational view rebound to it):
+Phases V0 to V5. Each property is checked against the code and the built binaries:
 
-* The census is complete. Every persistent writer of the registry (elpis.runtime.persistence) has exactly one
-  volatile disposition, and every Python and Rust source that writes persistent storage belongs to a registered
-  writer (tests/boundary/test_autonomous_persistence.py scans the C/C++ sources). The RuntimeCore functions and the
-  Runtime operations the census names as persistent are the ones the code declares.
-* It fails closed. While anything is nonconforming, the authority documents say the migration is INCOMPLETE, and no
-  document claims the runtime is diskless.
-* The volatile ECS_C session has no persistent path. It is no_std, with no dependency and no build script. Its extern
-  surface is memory, abort and getrandom only. Its header names no path or descriptor. Its built library imports no
-  file or I/O function.
-* Its test paths make no write-class system call on any file. This is traced with strace when the build and strace
-  exist, and is never an implicit PASS.
+* The census is closed. Every persistent writer of the registry (elpis.runtime.persistence) has exactly one final
+  disposition, and every active-runtime writer is RETIRED, REPLACED_WITH_VOLATILE or READ_ONLY_STATIC_RESOURCE.
+* Every Python source that writes persistent storage is a registered offline producer or development code; no Rust
+  source writes at all.
+* RuntimeCore is ABI v8: no function that writes, opens for writing or resumes persistent storage is declared or
+  exported, and the Runtime has no persistent operation or configuration.
+* No binary the runtime loads (the production host, every library it admits, the bridges the Python runtime loads,
+  the file-asset library) imports a write-class C library function.
+* The documents state the migration as it is: VOLATILE MIGRATION: COMPLETE exactly when every closure condition
+  holds, INCOMPLETE otherwise. No document claims the runtime is diskless or that the operating system writes
+  nothing.
+* The closure is evidenced: condition 11's composed-runtime qualification is the recorded run, read back here.
+* The volatile ECS_C session has no persistent path (no_std, no dependency, memory/abort/getrandom only, a header
+  without paths), and its test paths make no write-class system call (strace, when available; never an implicit
+  PASS).
 """
 from __future__ import annotations
 
 import ast
+import hashlib
 import inspect
+import json
 import os
 import re
 import shutil
@@ -35,6 +41,7 @@ from ._system import REPO
 SESSION = REPO / "native/ECS_C/session"
 DOCS = REPO / "docs"
 INCOMPLETE = "VOLATILE MIGRATION: INCOMPLETE"
+COMPLETE = "VOLATILE MIGRATION: COMPLETE"
 
 
 def _missing(message: str):
@@ -46,31 +53,24 @@ def _missing(message: str):
 # ------------------------------------------------------------------------------------------------- the census
 
 
-def test_every_writer_has_exactly_one_volatile_disposition():
-    ids = {w.id for w in P.WRITERS}
-    assert set(P.VOLATILE_CENSUS) == ids, sorted(set(P.VOLATILE_CENSUS) ^ ids)
-    for wid, entry in P.VOLATILE_CENSUS.items():
-        assert type(entry.disposition) is P.VolatileDisposition and entry.action.strip(), wid
-        assert entry.phase in {"V3", "V4", "-"}, (wid, entry.phase)
-        if entry.disposition is P.VolatileDisposition.NONCONFORMING_RUNTIME:
-            assert entry.phase in {"V3", "V4"}, wid           # a nonconforming writer has a retirement phase
-    by = lambda d: {w for w, e in P.VOLATILE_CENSUS.items() if e.disposition is d}   # noqa: E731
-    # Every writer the ordinary path or the native host reaches writes operational state: none conforms.
-    assert P.AUTONOMOUS_WRITERS | P.NATIVE_HOST_AUTONOMOUS_WRITERS <= by(P.VolatileDisposition.NONCONFORMING_RUNTIME)
-    assert {"native_host_deployment", "python_reference_deployment", "ecs_c_authority_provisioning",
-            "k1_checkpoint_provisioning", "hgram_fixed_capacity_store", "canonical_grid81_publication"} <= by(
-        P.VolatileDisposition.NONCONFORMING_RUNTIME)
-    # What already refuses is the registry's prohibited set, and only that.
-    prohibited = {w.id for w in P.WRITERS if w.classification is P.WriterClass.PROHIBITED_FROM_AUTONOMOUS_RUNTIME}
-    assert by(P.VolatileDisposition.RETIRED) == prohibited
-    # Offline research is never runtime; an offline artifact producer is never an autonomous writer.
-    research = {w.id for w in P.WRITERS if w.classification is P.WriterClass.OFFLINE_RESEARCH_ONLY}
-    assert by(P.VolatileDisposition.DEVELOPMENT_ONLY) == research
-    assert not by(P.VolatileDisposition.OFFLINE_ARTIFACT_PRODUCER) & (P.AUTONOMOUS_WRITERS |
-                                                                     P.NATIVE_HOST_AUTONOMOUS_WRITERS)
-    # The one volatile replacement that exists is the session, and nothing composes it yet.
-    assert P.VOLATILE_REPLACEMENTS == {
-        "ecs_c_authority_slots": ("native/ECS_C/session", "ECSC_VOLATILE_SESSION_R0", "not composed")}
+def test_every_writer_has_exactly_one_final_disposition():
+    for w in P.WRITERS:
+        assert type(w.disposition) is P.Disposition, w.id
+        if w.runtime:
+            assert w.disposition in P.RUNTIME_DISPOSITIONS, w.id
+        else:
+            assert w.disposition in (P.Disposition.OFFLINE_ARTIFACT_PRODUCER, P.Disposition.DEVELOPMENT_ONLY), w.id
+    assert "NONCONFORMING" not in json.dumps([w.disposition.value for w in P.WRITERS])
+    by = {d: {w.id for w in P.WRITERS if w.disposition is d} for d in P.Disposition}
+    # Everything the persistent runtime wrote is retired or replaced; COLD is read only.
+    assert {"k1_checkpoint_slots", "k1_checkpoint_provisioning", "runtime_durability_lane", "ecs_c_authority_provisioning",
+            "fms_posix_cold_store", "hgram_fixed_capacity_store", "runtime_canonical_publication"} <= \
+        by[P.Disposition.RETIRED]
+    assert {"ecs_c_authority_slots", "native_host_deployment", "python_reference_deployment",
+            "evolution_reservation", "operator_authority_events"} <= by[P.Disposition.REPLACED_WITH_VOLATILE]
+    assert {"pinned_native_libraries", "fms_cold_backing", "hgram_retained_store"} <= \
+        by[P.Disposition.READ_ONLY_STATIC_RESOURCE]
+    assert P.VOLATILE_REPLACEMENTS["ecs_c_authority_slots"].startswith("the volatile ECS_C session")
 
 
 # A persistent write from Python: write-mode opens, path mutation, syncs, temporary files, databases, file logging,
@@ -84,25 +84,43 @@ _PY_WRITES = re.compile(
     r"""|\b(?:np|numpy)\.(?:save|savez|savetxt|memmap)\(|\.tofile\(|ACCESS_WRITE|\bshelve\.|\bdbm\.""")
 
 
-def _python_writer_modules() -> set[str]:
-    return {entry.split(":")[0] for w in P.WRITERS for entry in w.python}
+# Functions that name write access modes only to refuse a descriptor opened with them (the offline CLI's storage-stdio
+# check, as the native host's): their names are not writes. Everything else in the module is still scanned.
+_CHECKS_ONLY = {"elpis.runtime.cli": "_storage"}
+
+
+def _without_function(text: str, name: str) -> str:
+    tree = ast.parse(text)
+    node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
+    body = ast.get_source_segment(text, node)
+    assert "open(" not in body and "fdopen" not in body, "a refusal check must not open anything"
+    return text.replace(body, "")
 
 
 def test_every_python_source_that_writes_is_a_registered_writer():
-    registered = _python_writer_modules()
+    registered = {entry.split(":")[0] for w in P.WRITERS
+                  if w.disposition in (P.Disposition.OFFLINE_ARTIFACT_PRODUCER, P.Disposition.DEVELOPMENT_ONLY)
+                  for entry in w.python}
     writers, unregistered = set(), []
     for path in sorted((REPO / "src").rglob("*.py")):
         text = path.read_text(encoding="utf-8")
+        module = ".".join(path.relative_to(REPO / "src").with_suffix("").parts)
+        if module in _CHECKS_ONLY:
+            text = _without_function(text, _CHECKS_ONLY[module])
         if not _PY_WRITES.search(text):
             continue
-        module = ".".join(path.relative_to(REPO / "src").with_suffix("").parts)
         writers.add(module)
         if module not in registered:
             unregistered.append((module, sorted({m.group(0) for m in _PY_WRITES.finditer(text)})))
     assert not unregistered, ("classify each persistent writer in elpis.runtime.persistence", unregistered)
-    # The scan is not vacuous: it finds the writers the census of V0 found.
-    assert {"elpis.runtime.deployment", "elpis.runtime.acceptance", "elpis.runtime.release",
-            "elpis.runtime.authority", "elpis.pipeline.canonical.publisher"} <= writers, sorted(writers)
+    # The scan is not vacuous: it finds the offline and development writers.
+    assert {"elpis.runtime.acceptance", "elpis.runtime.release", "elpis.pipeline.canonical.publisher",
+            "elpis.evolution.materialize"} <= writers, sorted(writers)
+    # None of the composer's own modules writes.
+    composer = {"elpis.runtime.composition", "elpis.runtime.core", "elpis.runtime.cognition", "elpis.runtime.authority",
+                "elpis.runtime.deployment", "elpis.runtime.cli", "elpis.runtime.context", "elpis.runtime.environment",
+                "elpis.substrate.residency", "elpis.evolution.promotion", "elpis.evolution.policy"}
+    assert not writers & composer, sorted(writers & composer)
 
 
 # A persistent write from Rust: write opens, creation, sync, rename, removal, positional writes, resizing.
@@ -111,8 +129,7 @@ _RS_WRITES = re.compile(r"\bFile::create\b|\.write\(true\)|\.create(?:_new)?\(tr
                         r"write|copy|hard_link)\b|\bDirBuilder\b|\bwrite_all_at\(|\bwrite_at\(|\bset_len\(")
 
 
-def test_every_rust_source_that_writes_is_a_registered_writer():
-    classified = {entry.split(":", 1)[0] for w in P.WRITERS for entry in w.native}
+def test_no_rust_source_writes_persistent_storage():
     writers = set()
     for path in sorted((REPO / "native").rglob("*.rs")):
         rel = path.relative_to(REPO).as_posix()
@@ -120,10 +137,8 @@ def test_every_rust_source_that_writes_is_a_registered_writer():
             continue
         if _RS_WRITES.search(path.read_text(encoding="utf-8")):
             writers.add(rel)
-    assert writers == {"native/ECS_C/authority/src/store.rs", "native/runtime/src/checkpoint.rs"}, sorted(writers)
-    assert writers <= classified, sorted(writers - classified)
-    # The session crate is not among them, and never will be: it is no_std (below).
-    assert not any(w.startswith("native/ECS_C/session/") for w in writers)
+    assert writers == set(), sorted(writers)
+    assert not (REPO / "native/runtime/src/checkpoint.rs").exists() and not (REPO / "native/runtime/src/durable.rs").exists()
 
 
 def _declared_runtime_functions() -> set[str]:
@@ -131,42 +146,139 @@ def _declared_runtime_functions() -> set[str]:
     return set(re.findall(r"\b(elpis_runtime_\w+)\s*\(", header))
 
 
-def test_the_persistent_runtime_core_abi_and_operations_are_the_declared_ones():
+def test_the_runtime_core_abi_has_no_persistent_function():
     declared = _declared_runtime_functions()
-    assert P.RUNTIME_CORE_PERSISTENT_ABI <= declared, sorted(P.RUNTIME_CORE_PERSISTENT_ABI - declared)
-    # ABI v7 is still the implemented version (v8, over the volatile session, retires these functions).
+    assert not declared & P.RETIRED_RUNTIME_CORE_ABI, sorted(declared & P.RETIRED_RUNTIME_CORE_ABI)
+    assert P.RUNTIME_CORE_PERSISTENT_ABI == frozenset()
+    assert "elpis_runtime_create" in declared
     ffi = (REPO / "native/runtime/src/ffi.rs").read_text(encoding="utf-8")
-    assert re.search(r"pub const ABI_VERSION: u32 = 7;", ffi)
-    assert "RuntimeCore C ABI v7" in (REPO / "native/runtime/include/elpis/runtime.h").read_text(encoding="utf-8")
+    assert re.search(r"pub const ABI_VERSION: u32 = 8;", ffi)
+    assert re.search(r"\bELPIS_RUNTIME_ABI_V8 = 8u\b", (REPO / "native/runtime/include/elpis/runtime.h").read_text(
+        encoding="utf-8"))
+    inventory = json.loads((REPO / "native/ABI_INVENTORY.json").read_text(encoding="utf-8"))["libraries"]
+    exported = set(inventory["libelpis_runtime.so"]["exports"])
+    assert not exported & P.RETIRED_RUNTIME_CORE_ABI and "libelpis_runtime_testing.so" not in inventory
+    # The Runtime: no persistent operation, no persistent configuration.
     operations = {name for name, _ in inspect.getmembers(Runtime) if not name.startswith("_")}
-    assert P.NONCONFORMING_OPERATIONS <= operations, sorted(P.NONCONFORMING_OPERATIONS - operations)
-    # The composer is constructed over the durable authority's directory.
+    for retired in ("publish_recoverable", "publish_identity", "durability", "recover_k1", "discard_k1_candidate",
+                    "adopt_k1_candidate", "import_composite", "publish_canonical"):
+        assert retired not in operations, retired
     tree = ast.parse((REPO / "src/elpis/runtime/composition.py").read_text(encoding="utf-8"))
     config = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "RuntimeConfig")
     fields = {n.target.id for n in config.body if isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name)}
-    assert "authority_dir" in fields
-    assert P.VOLATILE_MIGRATION_COMPLETE is False
+    assert not {"authority_dir", "checkpoint_dir", "home", "durability"} & fields, fields
+
+
+# C library functions that write, create, remove, rename, link, resize or sync storage, or make temporary files.
+# write/fwrite (to a pipe or terminal checked at startup) and open/fopen (read-only modes, checked in the sources below
+# and on the running process by strace) are not in the set.
+_WRITE_CLASS = {"rename", "renameat", "renameat2", "unlink", "unlinkat", "mkdir", "mkdirat", "rmdir", "ftruncate",
+                "ftruncate64", "truncate", "truncate64", "fallocate", "fallocate64", "posix_fallocate",
+                "posix_fallocate64", "fsync", "fdatasync", "sync", "syncfs", "sync_file_range", "pwrite", "pwrite64",
+                "pwritev", "pwritev2", "link", "linkat", "symlink", "symlinkat", "creat", "creat64", "msync", "mkstemp",
+                "mkstemp64", "mkstemps", "mkostemp", "mkdtemp", "tmpfile", "tmpfile64", "tempnam", "tmpnam", "chmod",
+                "fchmod", "fchmodat", "chown", "fchown", "lchown", "fchownat", "utimensat", "futimens", "utime",
+                "utimes", "setxattr", "fsetxattr", "lsetxattr", "removexattr", "fremovexattr", "copy_file_range",
+                "sendfile", "splice", "mknod", "mknodat", "mkfifo", "remove"}
+# What the runtime loads: the production host and the six libraries it admits; the volatile session RuntimeCore
+# embeds; the bridges and libraries the Python runtime loads.
+_LOADED = ("native/runtime/elpis", "native/runtime/libelpis_runtime.so", "native/runtime/libelpis_hacf_observation.so",
+           "native/runtime/composite/libelpis_ecs_composite.so", "native/ECS_G/libelpis_ecsg_math.so",
+           "native/ECS_G/libelpis_ecsg_k1.so", "native/ECS_G/libelpis_ecsg_k1_fms.so", "native/ECS_G/libelpis_ecsg_fms.so",
+           "native/ECS_C/libelpis_ecs_memory.so", "native/ECS_C/session/libelpis_ecs_c_session.so",
+           "native/substrate/libelpis_fms_file_assets.so", "native/structure/libelpis_retrieval_bridge.so",
+           "native/pipeline/libelpis_ingress_bridge.so", "native/substrate/libelpis_execution.so")
+
+
+def test_no_binary_the_runtime_loads_imports_a_write_function():
+    nm = shutil.which("nm")
+    if nm is None:
+        _missing("nm is not available")
+    build = native_build_dir()
+    for rel in _LOADED:
+        path = build / rel
+        if not path.is_file():
+            _missing(f"{rel} is not built under {build}")
+        table = subprocess.run([nm, "-D", "--undefined-only", str(path)], capture_output=True, text=True,
+                               check=True).stdout
+        imports = {line.split()[-1].split("@")[0] for line in table.splitlines() if line.split()}
+        assert not imports & _WRITE_CLASS, (rel, sorted(imports & _WRITE_CLASS))
+    # The testing host is the one binary with writers (its probe), and it is never installed.
+    testing = build / "native/runtime/elpis_testing"
+    if testing.is_file():
+        table = subprocess.run([nm, "-D", "--undefined-only", str(testing)], capture_output=True, text=True,
+                               check=True).stdout
+        assert {"rename", "unlink", "mkdir"} & {l.split()[-1].split("@")[0] for l in table.splitlines() if l.split()}
+    # fopen in what the runtime links opens for reading only.
+    for source in ("native/runtime/host/src/elpis_host.c", "native/structure/semantic/src/graph/snapshot_manifest.c"):
+        modes = re.findall(r'\bfopen\s*\([^;]*?,\s*"([^"]*)"\s*\)', (REPO / source).read_text(encoding="utf-8"))
+        assert modes and all(set(m) <= set("rb") for m in modes), (source, modes)
 
 
 _DISKLESS_CLAIM = re.compile(r"(?i)\b(?:the\s+)?(?:runtime|elpis)\s+is\s+(?:now\s+)?(?:fully\s+|entirely\s+)?"
                              r"(?:diskless|volatile[- ]only)\b")
+_OS_CLAIM = re.compile(r"(?i)\b(?:the\s+)?(?:operating system|whole system|host|machine)\s+(?:performs|makes|issues)\s+"
+                       r"(?:no|zero)\s+(?:NAND\s+|storage\s+|disk\s+)?writes\b")
 
 
-def test_the_documents_fail_closed_while_the_migration_is_incomplete():
+def test_the_documents_state_the_migration_as_it_is():
     authority = {name: (DOCS / name).read_text(encoding="utf-8") for name in (
         "ELPIS_MISSION.md", "VOLATILE_RUNTIME_CENSUS.md", "ECS_C_SESSION.md", "NONCLAIMS.md", "ECS_C_AUTHORITY.md",
         "RUNTIME_CORE.md", "NATIVE_HOST.md", "NATIVE_SPLIT_CENSUS.md")}
+    state = COMPLETE if P.VOLATILE_MIGRATION_COMPLETE else INCOMPLETE
+    other = INCOMPLETE if P.VOLATILE_MIGRATION_COMPLETE else COMPLETE
     for name, text in authority.items():
-        assert (INCOMPLETE in text) is (not P.VOLATILE_MIGRATION_COMPLETE), name
-    assert "Elpis is not yet diskless" in authority["NONCLAIMS.md"]
+        assert state in text and other not in text, name
+    system = (REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8")
+    assert state in system and other not in system
     assert "Amendment 3" in authority["ELPIS_MISSION.md"]
+    # Precise claims only: the runtime issues no persistent write; nothing more is claimed of the machine.
+    assert "outside Elpis's process-control boundary" in authority["NONCLAIMS.md"]
     claims = []
     for path in [REPO / "README.md", REPO / "ELPIS_SYSTEM.json", *sorted(DOCS.rglob("*.md"))]:
-        for m in _DISKLESS_CLAIM.finditer(path.read_text(encoding="utf-8")):
-            claims.append((path.relative_to(REPO).as_posix(), m.group(0)))
+        text = path.read_text(encoding="utf-8")
+        for pattern in (_DISKLESS_CLAIM, _OS_CLAIM):
+            for m in pattern.finditer(text):
+                claims.append((path.relative_to(REPO).as_posix(), m.group(0)))
     assert not claims, claims
-    system = (REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8")
-    assert INCOMPLETE in system
+
+
+def test_the_closure_is_evidenced():
+    assert [c.number for c in P.CLOSURE] == list(range(1, 15))
+    for c in P.CLOSURE:
+        assert c.statement.strip() and c.evidence, c.number
+    assert P.VOLATILE_MIGRATION_COMPLETE is (all(c.holds for c in P.CLOSURE)
+                                             and not P.REMAINING_DEPENDENCIES)
+    composed = next(c for c in P.CLOSURE if c.number == 11)
+    results = REPO / P.COMPOSED_QUALIFICATION
+    if composed.holds:
+        document = json.loads(results.read_text(encoding="utf-8"))
+        assert document["verdict"] == "ZERO_WRITE_PASS" and document["problems"] == [], document["problems"]
+        assert document["source_tree_clean"] is True
+        manifest = json.loads((results.parent / "MANIFEST.json").read_text(encoding="utf-8"))
+        for name, digest in manifest["results"].items():
+            assert hashlib.sha256((results.parent / name).read_bytes()).hexdigest() == digest, name
+        # It is the composed runtime: the host, RuntimeCore, the Python reference and FMS/HACF all ran, every traced
+        # path in both traced modes with zero write events, and the recorded run is of this branch's history.
+        runs = document["runs"]
+        assert {"host_session", "host_long", "host_restarts", "python_cli", "python_fms_hacf", "fms_cold", "hgram_read",
+                "runtime_core.session", "runtime_core.composite", "runtime_core.hot_io"} <= set(runs), sorted(runs)
+        traced = [(name, mode) for name, run in runs.items() for mode in ("observed", "confined")
+                  if isinstance(run, dict) and mode in run]
+        assert len(traced) >= 20, traced
+        for name, mode in traced:
+            assert runs[name][mode]["exit"] == 0 and runs[name][mode]["write_events"] == [], (name, mode)
+        # The recorded commit is in this branch's history. A shallow checkout (CI's) does not hold that history, so
+        # there the ancestry is not checkable; everything above still is.
+        commit = document["source_commit"]
+        known = subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", f"{commit}^{{commit}}"],
+                               capture_output=True).returncode == 0
+        shallow = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--is-shallow-repository"],
+                                 capture_output=True, text=True).stdout.strip() == "true"
+        assert known or shallow, f"the recorded commit {commit} is unknown to a full clone"
+        if known:
+            assert subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", commit, "HEAD"],
+                                  capture_output=True).returncode == 0, commit
 
 
 # ------------------------------------------------------------------------------------------------- the session

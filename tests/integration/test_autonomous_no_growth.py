@@ -1,13 +1,14 @@
-"""The ordinary autonomous path persists nothing but its durable authority's fixed files, and its volatile resources
-are released.
+"""The ordinary autonomous path persists nothing at all, and its volatile resources are released.
 
 Real native libraries (ELPIS_REQUIRE_NATIVE=1 makes them mandatory). Python-level filesystem mutations are
-observed through an armed audit hook; native mutations through the filesystem itself. The operator provisions the
-ECS_C authority (outside the trap). One volatile HACF retrieval epoch, borrowed ingress, an explicit K1 anchor and
-three canonical turns may then leave exactly the authority's five provisioned files behind, at their provisioned sizes
-and inodes (elpis.runtime.persistence: ecs_c_authority_slots), and nothing else. Until RuntimeCore ABI v7 this was
-standalone continuity's two fixed 176-byte slots, which retired into the authority. Repeated epoch create/destroy
-holds file descriptors, threads and live owning handles constant, including an epoch dropped without destroy().
+observed through an armed audit hook; native mutations through the filesystem itself. RuntimeCore ABI v8 holds a
+volatile ECS_C session (docs/ELPIS_MISSION.md, Amendment 3): no authority is provisioned, so nothing exists before the
+trap and nothing may exist after it. One volatile HACF retrieval epoch, borrowed ingress, an explicit K1 anchor and
+three canonical turns, and then three sessions of LEARN and QUERY, leave the directory exactly as empty as they found
+it. (Until
+ABI v8 this left exactly the durable authority's five provisioned files, and before ABI v7 standalone continuity's two
+slots: elpis.runtime.persistence names those writers RETIRED.) Repeated epoch create/destroy holds file descriptors,
+threads and live owning handles constant, including an epoch dropped without destroy().
 """
 from __future__ import annotations
 
@@ -17,11 +18,11 @@ import sys
 import threading
 
 from elpis.pipeline.ingress import QueryIngress
-from elpis.runtime import Runtime, RuntimeConfig
+from elpis.runtime import Runtime
 from elpis.runtime import persistence as P
 from elpis.structure.retrieval.hacf import HacfHandle, build_corpus_and_index
 
-from ..conftest import TEST_AUTHORITY_CAPACITY, require_runtime_library, runtime_config
+from ..conftest import require_runtime_library, runtime_config
 from ._turn_fixtures import LEARN, TEST_CODEC_PIN, ByteTokens, FixtureMap, admitted
 from .conftest import DOCS, POSITIVE
 from .test_codec_ecs_turn import RATE, k1, world  # noqa: F401  (k1 is a module pytest fixture)
@@ -71,23 +72,11 @@ def _tree(root):
                   for p in root.rglob("*"))
 
 
-def _inodes(root):
-    return sorted((str(p.relative_to(root)), p.stat().st_size, p.stat().st_ino) for p in root.rglob("*") if p.is_file())
-
-
-_RECORD = 1344 + 160 * TEST_AUTHORITY_CAPACITY
-_AUTHORITY_TREE = [("authority", None), ("authority/deployment.key", 32), ("authority/witness.a", 240),
-                   ("authority/witness.b", 240), ("state", None), ("state/authority.a", _RECORD),
-                   ("state/authority.b", _RECORD)]
-
-
-def test_ordinary_autonomous_path_leaves_only_the_authoritys_fixed_files(retrieval_library, ingress_library,
-                                                                          k1, tmp_path):
-    assert P.AUTONOMOUS_WRITERS == {"ecs_c_authority_slots", "fms_posix_cold_store", "k1_checkpoint_slots"}
-    state_root, authority = tmp_path / "structural-memory", tmp_path / "authority"
-    config = runtime_config(authority, require_runtime_library(), TEST_CODEC_PIN)   # the operator provisions
-    provisioned = _inodes(authority)
-    assert _tree(authority) == _AUTHORITY_TREE, _tree(authority)
+def test_ordinary_autonomous_path_writes_nothing_at_all(retrieval_library, ingress_library, k1, tmp_path):
+    assert P.AUTONOMOUS_WRITERS == frozenset() and P.NATIVE_HOST_AUTONOMOUS_WRITERS == frozenset()
+    state_root = tmp_path / "structural-memory"
+    config = runtime_config(require_runtime_library(), TEST_CODEC_PIN)   # nothing to provision: a session is memory
+    assert _tree(tmp_path) == []
     trap = _WriteTrap()
     with world(k1) as state, trap:
         handle = build_corpus_and_index(retrieval_library, state_root, DOCS)
@@ -103,40 +92,25 @@ def test_ordinary_autonomous_path_leaves_only_the_authoritys_fixed_files(retriev
             handle.destroy()
     assert trap.events == [], trap.events
     assert not state_root.exists(), "a volatile retrieval epoch created a state root"
-    assert _tree(tmp_path) == [("authority", None)] + [("authority/" + n, s) for n, s in _AUTHORITY_TREE], \
-        _tree(tmp_path)
-    assert _inodes(authority) == provisioned, "the authority's files are rewritten in place, never replaced"
+    assert _tree(tmp_path) == [], _tree(tmp_path)
 
 
-def test_a_provisioned_k1_checkpoint_stays_two_fixed_slots_on_the_autonomous_path(k1, tmp_path):  # noqa: F811
-    """K1 Recovery R0: the operator provisions the store (outside the trap); the autonomous path then rewrites
-    its two slots in place and creates, grows or renames nothing (elpis.runtime.persistence: k1_checkpoint_slots)."""
-    from dataclasses import replace
+def test_sessions_queries_and_learning_write_nothing_across_opens(k1, tmp_path):  # noqa: F811
+    """Several sessions in a row (each a fresh genesis), with managed LEARN and QUERY: no file is created anywhere the
+    test can see, and no Python-level write happens."""
     from elpis.runtime.cognition import LearnRequest, QueryRequest
-    from elpis.runtime.core import RuntimeLibrary
-    from elpis.runtime.recovery import provision_k1_checkpoint
-    from ..conftest import library_id_of, native_authority
-    from .test_codec_ecs_turn import DIM, WIDTH
 
-    path = require_runtime_library()
-    library = RuntimeLibrary.admit(path.parent, path.name, native_authority(), library_id_of(path))
-    checkpoint = tmp_path / "k1-checkpoint"
-    provision_k1_checkpoint(library, checkpoint, k1.envelope_bytes(DIM, WIDTH))
-    slots = sorted((p.name, p.stat().st_size, p.stat().st_ino) for p in checkpoint.iterdir())
-    config = replace(runtime_config(tmp_path / "authority", path, TEST_CODEC_PIN), k1_checkpoint_dir=checkpoint)
-    authority = _inodes(tmp_path / "authority")
+    config = runtime_config(require_runtime_library(), TEST_CODEC_PIN)
     trap = _WriteTrap()
     with world(k1) as state, trap:
-        with Runtime(config) as runtime:
-            runtime.anchor_cognition(state)
-            for text in ("one", "two", "three"):
-                runtime.run_learn(state, LearnRequest(text, ByteTokens(), admitted(FixtureMap()), LEARN))
-                runtime.run_query(state, QueryRequest(text, ByteTokens(), admitted(FixtureMap())))
-            assert runtime.recover_k1().disposition == "RESUMABLE"
+        for _ in range(3):
+            with Runtime(config) as runtime:
+                runtime.anchor_cognition(state)
+                for text in ("one", "two", "three"):
+                    runtime.run_learn(state, LearnRequest(text, ByteTokens(), admitted(FixtureMap()), LEARN))
+                    runtime.run_query(state, QueryRequest(text, ByteTokens(), admitted(FixtureMap())))
     assert trap.events == [], trap.events
-    assert sorted((p.name, p.stat().st_size, p.stat().st_ino) for p in checkpoint.iterdir()) == slots
-    assert _tree(tmp_path / "authority") == _AUTHORITY_TREE
-    assert _inodes(tmp_path / "authority") == authority
+    assert _tree(tmp_path) == []
 
 
 def _fds() -> int:

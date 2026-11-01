@@ -17,7 +17,7 @@ from elpis.runtime.codec_authority import (CODEC_AUTHORITY_SCHEMA, QUALIFIED_COD
 from elpis.runtime.cognition import LearnRequest, QueryRequest, run_learn, run_query, run_turn
 from elpis.runtime.composition import CompositionError
 
-from ..conftest import authority_slots
+from ..conftest import session_marks
 from ._turn_fixtures import (FIXTURE, LEARN, TEST_CODEC_AUTHORITY, ByteTokens, FixtureMap, admitted, catalog,
                              codec_id, fixture_authority, fixture_entry)
 from .test_codec_ecs_turn import _config, k1, world  # noqa: F401 (module fixture)
@@ -155,10 +155,10 @@ def test_the_right_bytes_under_the_wrong_authority_are_refused(k1, tmp_path):
         CodecAuthority(TEST_CODEC_AUTHORITY._document + b" ", expected_sha256=TEST_CODEC_AUTHORITY.digest)
     assert info.value.code == "CODEC_AUTHORITY"
     own = admitted(fixture, fixture_authority(fixture))   # correct bytes, self-made authority
-    with world(k1) as state, Runtime(_config(tmp_path / "c")) as runtime:
+    with world(k1) as state, Runtime(_config()) as runtime:
         runtime.anchor_cognition(state)
         before, durable = state.snapshot(), runtime.continuity.snapshot()
-        slots = authority_slots(runtime.continuity.directory)
+        slots = session_marks(runtime)
         for call in (lambda: runtime.run_query(state, QueryRequest("q", ByteTokens(), own)),
                      lambda: runtime.run_learn(state, LearnRequest("l", ByteTokens(), own, LEARN)),
                      lambda: runtime.run_turn(state, "t", tokenizer=ByteTokens(), codec=own, authority=LEARN)):
@@ -166,7 +166,7 @@ def test_the_right_bytes_under_the_wrong_authority_are_refused(k1, tmp_path):
                 call()
             assert info.value.code == "CODEC_AUTHORITY"
         assert state.snapshot() == before and runtime.continuity.snapshot() == durable
-        assert slots == authority_slots(runtime.continuity.directory)
+        assert slots == session_marks(runtime)
         assert fixture.calls == [] and runtime.fault is None
         # The same codec admitted by the deployment-pinned authority runs.
         assert runtime.run_query(state, QueryRequest("q", ByteTokens(), admitted(FixtureMap()))).text == "ok"
@@ -174,7 +174,7 @@ def test_the_right_bytes_under_the_wrong_authority_are_refused(k1, tmp_path):
 
 def test_a_runtime_without_a_deployment_pinned_codec_authority_admits_no_codec(k1, tmp_path):
     from dataclasses import replace
-    config = replace(_config(tmp_path / "c"), codec_authority_sha256=None)
+    config = replace(_config(), codec_authority_sha256=None)
     fixture = FixtureMap()
     with world(k1) as state, Runtime(config) as runtime:
         runtime.anchor_cognition(state)

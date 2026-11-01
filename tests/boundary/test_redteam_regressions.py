@@ -4,7 +4,7 @@ Each red-team finding the post-red-team roster closed is listed with the law tha
 reproduce the attack and prove its refusal. This gate fails when a listed regression disappears or is renamed, so a
 finding cannot silently lose its test. ``tests/boundary/test_redteam_mutations.py`` (STRESS lane) proves the Python
 guards are load-bearing: removing each one makes its regression fail (mutation adequacy). Native guards (K1 lease,
-RuntimeCore fuel, checkpoint protocol) are held by the Rust and C suites (``ctest -L runtime``/``-L ECS``).
+RuntimeCore fuel, the session's capacity) are held by the Rust and C suites (``ctest -L runtime``/``-L ECS``).
 """
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ FINDINGS: dict[str, tuple[str, tuple[str, ...]]] = {
         "total integer fuel admitted before reserve, transaction or mutation; no deadline claimed", (
             "tests/integration/test_cognitive_fuel.py::test_the_per_field_maximum_schedule_is_refused_before_anything_native",
             "tests/integration/test_cognitive_fuel.py::test_each_total_binds_at_its_exact_integer_boundary",
-            "tests/integration/test_cognitive_fuel.py::test_managed_oversized_learn_is_refused_before_reserve_begin_schedule_commit_and_publication",
+            "tests/integration/test_cognitive_fuel.py::test_managed_oversized_learn_is_refused_before_reserve_begin_schedule_and_commit",
         )),
     "RT-04 unmanaged mutation of a bound K1 state": (
         "managed lease: refused (LEASED) or fail-stop, never silently incorporated", (
@@ -43,18 +43,19 @@ FINDINGS: dict[str, tuple[str, tuple[str, ...]]] = {
             "tests/integration/test_managed_ownership.py::test_a_second_runtime_taking_the_state_makes_the_first_fail_stop_before_any_mutation",
         )),
     "RT-05 native code by pathname": (
-        "sealed, pinned admission of RuntimeCore, K1, K1 FMS and the ECS_C authority, with dependency verification", (
+        "sealed, pinned admission of RuntimeCore, K1, K1 FMS and the ECS_C session, with dependency verification", (
             "tests/integration/test_native_admission.py::test_a_modified_library_is_refused",
             "tests/integration/test_native_admission.py::test_symlinks_and_escapes_are_refused",
             "tests/integration/test_native_admission.py::test_the_managed_runtime_refuses_k1_code_that_was_not_admitted",
             "tests/integration/test_native_admission.py::test_a_dependency_bound_to_unpinned_bytes_refuses_the_admission",
         )),
     "RT-06 an unrecoverable K1 state": (
-        "K1 Recovery R0: two fixed slots; bytes never authorize themselves; explicit acknowledged publication", (
-            "tests/integration/test_k1_recovery.py::test_checkpoint_bytes_never_authorize_themselves",
-            "tests/integration/test_k1_recovery.py::test_a_crash_inside_a_durable_publication_needs_explicit_reconciliation",
-            "tests/integration/test_k1_recovery.py::test_volatile_learns_never_touch_the_slots_and_each_durable_publication_is_resumable",
-            "tests/integration/test_k1_recovery.py::test_restart_resumes_exactly_the_last_acknowledged_state",
+        "superseded by the volatile law (docs/ELPIS_MISSION.md, Amendment 3): no K1 state is ever persisted, so none is "
+        "recovered, resumed or half-restored; a killed process leaves nothing and a restart is a new, empty session "
+        "(K1 Recovery R0's checkpoint protocol, which closed this finding before, is retired; git history)", (
+            "tests/integration/test_native_host.py::test_a_killed_process_leaves_nothing",
+            "tests/integration/test_native_host.py::test_a_session_works_in_memory_and_nothing_survives_it",
+            "tests/integration/test_observe_only.py::test_observations_are_volatile_and_a_killed_process_leaves_none_of_them",
         )),
     "RT-07 evolution authorized and evaluated itself": (
         "pinned evolution policy: issued gates, independent evaluation, operator-approved promotion", (
@@ -76,9 +77,10 @@ FINDINGS: dict[str, tuple[str, tuple[str, ...]]] = {
             "tests/research/evolution_fitness_r0/test_fitness.py::test_leakage_malformed_and_baseline_candidates_fail_their_gates",
         )),
     "RT-10 ever-expanding persistence": (
-        "every writer classified; the autonomous path leaves only fixed slots", (
-            "tests/integration/test_autonomous_no_growth.py::test_ordinary_autonomous_path_leaves_only_the_authoritys_fixed_files",
-            "tests/integration/test_autonomous_no_growth.py::test_a_provisioned_k1_checkpoint_stays_two_fixed_slots_on_the_autonomous_path",
+        "no persistence at all: every runtime writer retired or volatile (src/elpis/runtime/persistence.py); the "
+        "runtime writes nothing, bounded or not", (
+            "tests/integration/test_autonomous_no_growth.py::test_ordinary_autonomous_path_writes_nothing_at_all",
+            "tests/integration/test_autonomous_no_growth.py::test_sessions_queries_and_learning_write_nothing_across_opens",
         )),
 }
 

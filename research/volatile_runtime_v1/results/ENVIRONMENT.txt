@@ -1,0 +1,13 @@
+kernel: 6.18.44-fc-v185
+machine: x86_64
+landlock_abi: 7
+strace: strace -- version 6.8
+cc: cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+rustc: rustc 1.97.0 (2d8144b78 2026-07-07)
+python: 3.13.17
+swap_total_kib: 0
+core_pattern: core
+root_fs: ext4
+build_fs: ext4
+source_commit: 66a11a4c6f3f343f99abd6e57e7184ec41d6d7d4 (tree clean for native/, src/ and the harnesses: True)
+run: 2026-11-01 12:27 UTC

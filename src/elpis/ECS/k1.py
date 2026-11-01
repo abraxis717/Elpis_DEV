@@ -699,7 +699,7 @@ class K1FMSRuntime:
 
     def metrics(self):
         """The adapter's counters and, under ``residency``, its FMS context's statistics (promotions, demotions,
-        cold reads and writes, ...). Read-only."""
+        ...; under FMS ABI v3 the cold counters are always 0). Read-only."""
         m = _Metrics()
         rc = self._f.stats(self._live(), C.byref(m))
         if rc != 0:
@@ -715,17 +715,17 @@ class K1FMSRuntime:
             raise _refused(rc, "K1 FMS pump")
 
     def materialize(self, state_id):
-        """The explicit, synchronous WARM-lane promotion of a demoted state (COLD -> WARM through FMS, verified).
-        A HOT operation never does this: a runtime-bound state that is not WARM is refused ``RUNTIME_NOT_RESIDENT``
-        until its owner materializes it here."""
+        """The explicit WARM-lane residency check: OK when the state is WARM. Under FMS ABI v3 (volatile residency,
+        no COLD tier) a state is never demoted below WARM, so nothing is ever promoted or read here. A HOT operation
+        never calls this: a runtime-bound state that is not WARM is refused ``RUNTIME_NOT_RESIDENT``."""
         rc = self._f.materialize(self._live(), state_id)
         if rc != 0:
             raise _refused(rc, "K1 FMS materialize")
 
     def resident_hold(self, state_id):
         """The owner's residency hold (``ecsg_k1_fms.h``, "Residency"): only if the state is WARM now, pin it where it
-        is, so FMS can no longer demote it, and from then on every operation on it pins resident-only (it never
-        promotes, reads the cold store or waits for a move). A state that is not WARM is refused ``NOT_RESIDENT``
+        is, and from then on every operation on it pins resident-only (it never promotes or waits for a move). A
+        state that is not WARM is refused ``NOT_RESIDENT``
         with nothing pinned or promoted. Holds nest (one FMS pin for all of them) and ``close_state`` is refused
         ``BUSY`` while one exists. A runtime binding the state takes a hold of its own; this changes no K1 state."""
         rc = self._f.resident_hold(self._live(), state_id)

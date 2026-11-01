@@ -1,0 +1,5353 @@
+{
+ "adversarial": {
+  "address_space_10mib": {
+   "exit": 0,
+   "mode": "uid_only",
+   "output": [
+    {
+     "abi": {
+      "composite": 1,
+      "runtime": 8
+     },
+     "budget_ceiling": {
+      "max_experience_rows": 256,
+      "max_experiences": 64,
+      "max_observations": 256,
+      "max_query_rows": 4096,
+      "max_rows": 16384,
+      "max_steps": 1048576,
+      "max_work_units": 1073741824
+     },
+     "capabilities": {
+      "contextual_dynamics": "NOT IMPLEMENTED: no qualified law (the HCA substrate is gated research)",
+      "lookup": "WORKING: exact relation LOOKUP by net evidence; a conflict between sources is reported, never resolved",
+      "memory_learn": "UNQUALIFIED: never enabled (no memory capability is ever set)",
+      "memory_slow_consolidation": "NOT PROVIDED",
+      "numeric_learn": "WORKING, mechanically verified: the qualified K1 law (qualified only in its frozen regime) under an explicit grant and learning rate; volatile: discarded when the session ends",
+      "numeric_query": "WORKING, mechanically verified: f_W(x) of the live K1 state (read-only)",
+      "operator_authority": "WORKING: source founding, lifecycle, versions and reclamation as typed events of the volatile ECS_C session",
+      "persistence": "NONE: the host writes no file and its containment grants no write permission; every session starts at a fresh genesis from the lineage's initial state",
+      "recoverable_publication": "RETIRED (OPERATION_RETIRED): no persistent writer exists",
+      "restart_recovery": "RETIRED (OPERATION_RETIRED): a restart is a new session",
+      "text": "UNAVAILABLE: ECS_CODEC_UNQUALIFIED (no qualified ECS<->DSV4 codec map)",
+      "typed_evidence": "WORKING, mechanically verified: validated HACF hyperedge + assertion recorded by an observe-only turn, admitted only from ACTIVE sources of the session; volatile"
+     },
+     "containment": {
+      "core_limit": 0,
+      "dumpable": false,
+      "fsize_limit": 0,
+      "landlock_abi": 7,
+      "memory_locked": false,
+      "restricted": true,
+      "swap_areas": 0,
+      "write_grants": 0
+     },
+     "fault": null,
+     "host": {
+      "catalog_sha256": "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+      "host_sha256": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464",
+      "persistence": "NONE",
+      "schema": "elpis.native-host.v2",
+      "testing_build": false
+     },
+     "libraries": {
+      "elpis_ecs_composite": {
+       "sha256": "92647da3ca9171dbc88fb70f14ff675fb4c1526c08cd8e98358b9130fd27d1c7",
+       "size": 36192
+      },
+      "elpis_ecs_memory": {
+       "sha256": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+       "size": 59016
+      },
+      "elpis_ecsg_k1": {
+       "sha256": "31720853d39217b2751024fb3a1e2cd2d9acc03ffb0ab4a64b7cd8ac8e18d1d4",
+       "size": 78000
+      },
+      "elpis_ecsg_math": {
+       "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+       "size": 56232
+      },
+      "elpis_hacf_observation": {
+       "sha256": "c41b482bc6c2ac52bd5467b6e7980513c64b095ad5b62ec178b44f0c38509160",
+       "size": 21368
+      },
+      "elpis_runtime": {
+       "sha256": "86d9dc331a03ea13059a35e1e1d51a7ed1e6470854b5226229fcb258bd5bf99d",
+       "size": 498176
+      }
+     },
+     "lineage": {
+      "banks": 2,
+      "codebook_capacity": 128,
+      "dim": 6,
+      "envelope_bytes": 137960,
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "initial_w_sha256": "96dd9f32722799dfd258de3655d778e780fc40daa13a94a07bffa08221d5111c",
+      "max_rows": 64,
+      "memory_dim": 64,
+      "reproducible_nonce": false,
+      "seed": 7,
+      "session_capacity": 16,
+      "slot_capacity": 64,
+      "width": 36
+     },
+     "live": null,
+     "nonclaims": [
+      "no language understanding",
+      "no general intelligence",
+      "no autonomous evolution",
+      "no hierarchical superiority",
+      "an observation is evidence storage, never truth or authority",
+      "pins authenticate bytes, not authors",
+      "containment covers this process: it does not make the operating system, its other processes or the reader of this output write nothing"
+     ],
+     "ok": true,
+     "op": "status",
+     "session": null
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    {
+     "generation": 4,
+     "id": "33d7bf28ed3b42bb4185cf420b441872d34328f8e944a1499a0492a27917ff34",
+     "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+     "lifecycle": "ACTIVE",
+     "ok": true,
+     "op": "source_found",
+     "source_authority": 1
+    },
+    {
+     "generation": 6,
+     "id": "59aa8ad363891772fcc93b698017d2e06d9da38a0fda840d548c92dfb17654d8",
+     "label": "0ee111be65f08557d14f7005d809d439b5f9215b6c3fd3e52d7a3221ce94b8f0",
+     "lifecycle": "ACTIVE",
+     "ok": true,
+     "op": "source_found",
+     "source_authority": 2
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      0,
+      8
+     ],
+     "experiences": 2,
+     "generation": [
+      0,
+      1
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "d5b7cf452e39af9117d2fc732afd33c7043c35e8c3ca03b6f61cb2bb8e992e5c",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      8,
+      16
+     ],
+     "experiences": 2,
+     "generation": [
+      1,
+      2
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "5a68d1c2f7e71be5c64837831aac818facebca3910a85357199561a1b8d5a001",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      16,
+      24
+     ],
+     "experiences": 2,
+     "generation": [
+      2,
+      3
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "712eb6c43243a340c3ab4494010abd255ebfed8128b662cc0f3c7f04d5fa14f5",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      24,
+      32
+     ],
+     "experiences": 2,
+     "generation": [
+      3,
+      4
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "932ebc0d02fa865e571f66ad92bba58715ad77c58ada3423b48013dccc99104f",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      32,
+      40
+     ],
+     "experiences": 2,
+     "generation": [
+      4,
+      5
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "859e9f64ede0a6812fc0e01cc9e696130beed091136743fd9e21513f2f29110b",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "entries": [
+      {
+       "assertion": "034e984d3aae7039354b676316307ef0d2959ff62af04818228634ddc3bb5aed",
+       "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+       "polarity": "ASSERT",
+       "provenance": "7b021de1856add9ce24dcb0ec5dcf440db96a4cc325caff9c279e28c78e82f10",
+       "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+       "source_authority": 1,
+       "tick": 1
+      }
+     ],
+     "generation": [
+      5,
+      6
+     ],
+     "grant": "qualification: source",
+     "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+     "k1_steps": 0,
+     "ok": true,
+     "op": "evidence"
+    },
+    {
+     "live_generation": 6,
+     "ok": true,
+     "op": "query",
+     "rows": 4,
+     "values": [
+      -0.007169938043577337,
+      0.12146199343094594,
+      0.02271639062590049,
+      0.22021039843364335
+     ],
+     "values_sha256": "b7cb0abb7f66dcd98b58e9031109716875998d1a1001a6271d3e040aa007ee2d"
+    },
+    {
+     "answer": "30b8e35c093a408a39445ab3003e0c2e7312cdca6b5e3270c25b03aabf23b432",
+     "conflicts": 0,
+     "contradicted": 0,
+     "found": true,
+     "matches": 1,
+     "ok": true,
+     "op": "lookup",
+     "state_identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+     "uncertain": 0
+    },
+    {
+     "from": "ACTIVE",
+     "generation": 7,
+     "id": "59aa8ad363891772fcc93b698017d2e06d9da38a0fda840d548c92dfb17654d8",
+     "ok": true,
+     "op": "source_lifecycle",
+     "to": "DORMANT"
+    },
+    {
+     "code": "RUNTIME_OBSERVATION_REFUSED",
+     "detail": "observation 0 refused (memory status 0); nothing was installed",
+     "expected": "RUNTIME_OBSERVATION_REFUSED",
+     "met": true,
+     "ok": false,
+     "op": "evidence"
+    },
+    {
+     "code": "ECS_C_SOURCE_STALE",
+     "detail": "the session refused the event; nothing changed (through RuntimeCore: RUNTIME_AUTHORITY)",
+     "expected": "ECS_C_SOURCE_STALE",
+     "met": true,
+     "ok": false,
+     "op": "source_version"
+    },
+    {
+     "code": "OBSERVATION_UNSUPPORTED",
+     "detail": "the HACF observation adapter refused (-5)",
+     "expected": "OBSERVATION_UNSUPPORTED",
+     "met": true,
+     "ok": false,
+     "op": "evidence"
+    },
+    {
+     "code": "OBSERVATION_INVALID",
+     "detail": "polarity: ASSERT, NEGATE or UNCERTAIN (the caller's)",
+     "expected": "OBSERVATION_INVALID",
+     "met": true,
+     "ok": false,
+     "op": "evidence"
+    },
+    {
+     "code": "COGNITION_FUEL_EXCEEDED",
+     "detail": "LEARN refused before any commit",
+     "expected": "COGNITION_FUEL_EXCEEDED",
+     "met": true,
+     "ok": false,
+     "op": "learn"
+    },
+    {
+     "code": "LEARNING_RATE",
+     "detail": "explicit positive finite learning rate",
+     "expected": "LEARNING_RATE",
+     "met": true,
+     "ok": false,
+     "op": "learn"
+    },
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "'publish' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+     "expected": "OPERATION_RETIRED",
+     "met": true,
+     "ok": false,
+     "op": "publish"
+    },
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "'reconcile' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+     "expected": "OPERATION_RETIRED",
+     "met": true,
+     "ok": false,
+     "op": "reconcile"
+    },
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "'candidates' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+     "expected": "OPERATION_RETIRED",
+     "met": true,
+     "ok": false,
+     "op": "candidates"
+    },
+    {
+     "counters": {
+      "k1_aborts": 1,
+      "k1_commits": 6,
+      "k1_identities": 2,
+      "k1_lease_claims": 1,
+      "k1_observes": 1,
+      "k1_queries": 1,
+      "k1_reserves": 0,
+      "k1_run_schedules": 5,
+      "k1_shapes": 1,
+      "k1_state_digests": 0,
+      "k1_txn_begins": 7,
+      "session_transitions": 6
+     },
+     "ok": true,
+     "op": "counters"
+    },
+    {
+     "entities": [
+      {
+       "founded_generation": 1,
+       "founding_index": 0,
+       "id": "149d4d2a039a0ae04df1079c801edb75e1ec2cc5fc739a12771cd7e6539ac15e",
+       "index": 0,
+       "kind": "OPERATOR",
+       "label": "0f4ce5c1620a48ba9ade7bf0fb5b85bb002e6b77dd72ee15144045c43f72f2bf",
+       "last_generation": 7,
+       "lifecycle": "ACTIVE",
+       "per_turn_limit": 0,
+       "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+       "sender_watermark": 5,
+       "source_authority": 0,
+       "source_version": 0
+      },
+      {
+       "founded_generation": 1,
+       "founding_index": 1,
+       "id": "1b78ccda660f5a8c1779fd017d38099b9acb423a6c88ed8cc632806beb319e7e",
+       "index": 1,
+       "kind": "RUNTIME",
+       "label": "7928d5684e28d060c22df8004bb8af997265ac6be0f96842ecadfd707203838a",
+       "last_generation": 2,
+       "lifecycle": "ACTIVE",
+       "per_turn_limit": 0,
+       "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+       "sender_watermark": 1,
+       "source_authority": 0,
+       "source_version": 0
+      },
+      {
+       "founded_generation": 3,
+       "founding_index": 2,
+       "id": "33d7bf28ed3b42bb4185cf420b441872d34328f8e944a1499a0492a27917ff34",
+       "index": 2,
+       "kind": "SOURCE",
+       "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+       "last_generation": 4,
+       "lifecycle": "ACTIVE",
+       "per_turn_limit": 8,
+       "scope": "2706bf6adaa982c2d8c7cbaa67533229f914fda84afabea1afd73cf87c534a4b",
+       "sender_watermark": 0,
+       "source_authority": 1,
+       "source_version": 1
+      },
+      {
+       "founded_generation": 5,
+       "founding_index": 3,
+       "id": "59aa8ad363891772fcc93b698017d2e06d9da38a0fda840d548c92dfb17654d8",
+       "index": 3,
+       "kind": "SOURCE",
+       "label": "0ee111be65f08557d14f7005d809d439b5f9215b6c3fd3e52d7a3221ce94b8f0",
+       "last_generation": 7,
+       "lifecycle": "DORMANT",
+       "per_turn_limit": 8,
+       "scope": "2706bf6adaa982c2d8c7cbaa67533229f914fda84afabea1afd73cf87c534a4b",
+       "sender_watermark": 0,
+       "source_authority": 2,
+       "source_version": 1
+      }
+     ],
+     "ok": true,
+     "op": "authority",
+     "session": {
+      "backend": "ECS_C_SESSION",
+      "capacity": 16,
+      "commit": "c443e9f4881a4b71288ab6e9d9a13a92b7870d18145258bca83d88657aad451b",
+      "durability": "VOLATILE",
+      "ecs_c_code": "ECS_C_SOURCE_STALE",
+      "entity_count": 4,
+      "evidence_count": 0,
+      "evidence_head": null,
+      "generation": 7,
+      "lineage": "90fa7dbe8e8d50ca99b110932bd019768c829914ae1fe5731801b9747fd893f8",
+      "ordinal": 1,
+      "receipt_count": 7,
+      "receipt_head": "5ba23ab9bf8ce9e0acca8fc0f466b5ef21a5562508910e968b5184e0383f3ff7",
+      "state_root": "edb8ab12654902c6c24fa2eca9eb1d29085a1291647dd06436bb0b347c7d4b2c",
+      "volatile_bytes": 8848
+     }
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 6,
+      "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "k1_identity": "b4ddbe2b96ec72868774f929b70c40f8c90f39ee55375760efd6075eb7ae3c9b",
+      "memory_identity": "4ddf93d2ec73917a49524404cd263e3f429dead1ed3d9d559a44c877cae190e3"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    {
+     "closed": true,
+     "discarded": {
+      "learned": true,
+      "live_generation": 6,
+      "live_identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "session_generation": 7
+     },
+     "ok": true,
+     "op": "close"
+    },
+    {
+     "answer": null,
+     "conflicts": 0,
+     "contradicted": 0,
+     "found": false,
+     "matches": 0,
+     "ok": true,
+     "op": "lookup",
+     "state_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "uncertain": 0
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "address_space_14mib": {
+   "exit": 0,
+   "mode": "uid_only",
+   "output": [
+    {
+     "abi": {
+      "composite": 1,
+      "runtime": 8
+     },
+     "budget_ceiling": {
+      "max_experience_rows": 256,
+      "max_experiences": 64,
+      "max_observations": 256,
+      "max_query_rows": 4096,
+      "max_rows": 16384,
+      "max_steps": 1048576,
+      "max_work_units": 1073741824
+     },
+     "capabilities": {
+      "contextual_dynamics": "NOT IMPLEMENTED: no qualified law (the HCA substrate is gated research)",
+      "lookup": "WORKING: exact relation LOOKUP by net evidence; a conflict between sources is reported, never resolved",
+      "memory_learn": "UNQUALIFIED: never enabled (no memory capability is ever set)",
+      "memory_slow_consolidation": "NOT PROVIDED",
+      "numeric_learn": "WORKING, mechanically verified: the qualified K1 law (qualified only in its frozen regime) under an explicit grant and learning rate; volatile: discarded when the session ends",
+      "numeric_query": "WORKING, mechanically verified: f_W(x) of the live K1 state (read-only)",
+      "operator_authority": "WORKING: source founding, lifecycle, versions and reclamation as typed events of the volatile ECS_C session",
+      "persistence": "NONE: the host writes no file and its containment grants no write permission; every session starts at a fresh genesis from the lineage's initial state",
+      "recoverable_publication": "RETIRED (OPERATION_RETIRED): no persistent writer exists",
+      "restart_recovery": "RETIRED (OPERATION_RETIRED): a restart is a new session",
+      "text": "UNAVAILABLE: ECS_CODEC_UNQUALIFIED (no qualified ECS<->DSV4 codec map)",
+      "typed_evidence": "WORKING, mechanically verified: validated HACF hyperedge + assertion recorded by an observe-only turn, admitted only from ACTIVE sources of the session; volatile"
+     },
+     "containment": {
+      "core_limit": 0,
+      "dumpable": false,
+      "fsize_limit": 0,
+      "landlock_abi": 7,
+      "memory_locked": false,
+      "restricted": true,
+      "swap_areas": 0,
+      "write_grants": 0
+     },
+     "fault": null,
+     "host": {
+      "catalog_sha256": "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+      "host_sha256": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464",
+      "persistence": "NONE",
+      "schema": "elpis.native-host.v2",
+      "testing_build": false
+     },
+     "libraries": {
+      "elpis_ecs_composite": {
+       "sha256": "92647da3ca9171dbc88fb70f14ff675fb4c1526c08cd8e98358b9130fd27d1c7",
+       "size": 36192
+      },
+      "elpis_ecs_memory": {
+       "sha256": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+       "size": 59016
+      },
+      "elpis_ecsg_k1": {
+       "sha256": "31720853d39217b2751024fb3a1e2cd2d9acc03ffb0ab4a64b7cd8ac8e18d1d4",
+       "size": 78000
+      },
+      "elpis_ecsg_math": {
+       "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+       "size": 56232
+      },
+      "elpis_hacf_observation": {
+       "sha256": "c41b482bc6c2ac52bd5467b6e7980513c64b095ad5b62ec178b44f0c38509160",
+       "size": 21368
+      },
+      "elpis_runtime": {
+       "sha256": "86d9dc331a03ea13059a35e1e1d51a7ed1e6470854b5226229fcb258bd5bf99d",
+       "size": 498176
+      }
+     },
+     "lineage": {
+      "banks": 2,
+      "codebook_capacity": 128,
+      "dim": 6,
+      "envelope_bytes": 137960,
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "initial_w_sha256": "96dd9f32722799dfd258de3655d778e780fc40daa13a94a07bffa08221d5111c",
+      "max_rows": 64,
+      "memory_dim": 64,
+      "reproducible_nonce": false,
+      "seed": 7,
+      "session_capacity": 16,
+      "slot_capacity": 64,
+      "width": 36
+     },
+     "live": null,
+     "nonclaims": [
+      "no language understanding",
+      "no general intelligence",
+      "no autonomous evolution",
+      "no hierarchical superiority",
+      "an observation is evidence storage, never truth or authority",
+      "pins authenticate bytes, not authors",
+      "containment covers this process: it does not make the operating system, its other processes or the reader of this output write nothing"
+     ],
+     "ok": true,
+     "op": "status",
+     "session": null
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    {
+     "generation": 4,
+     "id": "0eaf0a68b5488414d65a6f8f29dac8e5f529d52c2206704a9fc7fbe7bc8a823c",
+     "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+     "lifecycle": "ACTIVE",
+     "ok": true,
+     "op": "source_found",
+     "source_authority": 1
+    },
+    {
+     "generation": 6,
+     "id": "a6380256d1cd74b4903eac13c08cd9d0653918b58975403a1d19949ab5282b61",
+     "label": "0ee111be65f08557d14f7005d809d439b5f9215b6c3fd3e52d7a3221ce94b8f0",
+     "lifecycle": "ACTIVE",
+     "ok": true,
+     "op": "source_found",
+     "source_authority": 2
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      0,
+      8
+     ],
+     "experiences": 2,
+     "generation": [
+      0,
+      1
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "d5b7cf452e39af9117d2fc732afd33c7043c35e8c3ca03b6f61cb2bb8e992e5c",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      8,
+      16
+     ],
+     "experiences": 2,
+     "generation": [
+      1,
+      2
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "5a68d1c2f7e71be5c64837831aac818facebca3910a85357199561a1b8d5a001",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      16,
+      24
+     ],
+     "experiences": 2,
+     "generation": [
+      2,
+      3
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "712eb6c43243a340c3ab4494010abd255ebfed8128b662cc0f3c7f04d5fa14f5",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      24,
+      32
+     ],
+     "experiences": 2,
+     "generation": [
+      3,
+      4
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "932ebc0d02fa865e571f66ad92bba58715ad77c58ada3423b48013dccc99104f",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      32,
+      40
+     ],
+     "experiences": 2,
+     "generation": [
+      4,
+      5
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "859e9f64ede0a6812fc0e01cc9e696130beed091136743fd9e21513f2f29110b",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "entries": [
+      {
+       "assertion": "034e984d3aae7039354b676316307ef0d2959ff62af04818228634ddc3bb5aed",
+       "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+       "polarity": "ASSERT",
+       "provenance": "7b021de1856add9ce24dcb0ec5dcf440db96a4cc325caff9c279e28c78e82f10",
+       "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+       "source_authority": 1,
+       "tick": 1
+      }
+     ],
+     "generation": [
+      5,
+      6
+     ],
+     "grant": "qualification: source",
+     "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+     "k1_steps": 0,
+     "ok": true,
+     "op": "evidence"
+    },
+    {
+     "live_generation": 6,
+     "ok": true,
+     "op": "query",
+     "rows": 4,
+     "values": [
+      -0.007169938043577337,
+      0.12146199343094594,
+      0.02271639062590049,
+      0.22021039843364335
+     ],
+     "values_sha256": "b7cb0abb7f66dcd98b58e9031109716875998d1a1001a6271d3e040aa007ee2d"
+    },
+    {
+     "answer": "30b8e35c093a408a39445ab3003e0c2e7312cdca6b5e3270c25b03aabf23b432",
+     "conflicts": 0,
+     "contradicted": 0,
+     "found": true,
+     "matches": 1,
+     "ok": true,
+     "op": "lookup",
+     "state_identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+     "uncertain": 0
+    },
+    {
+     "from": "ACTIVE",
+     "generation": 7,
+     "id": "a6380256d1cd74b4903eac13c08cd9d0653918b58975403a1d19949ab5282b61",
+     "ok": true,
+     "op": "source_lifecycle",
+     "to": "DORMANT"
+    },
+    {
+     "code": "RUNTIME_OBSERVATION_REFUSED",
+     "detail": "observation 0 refused (memory status 0); nothing was installed",
+     "expected": "RUNTIME_OBSERVATION_REFUSED",
+     "met": true,
+     "ok": false,
+     "op": "evidence"
+    },
+    {
+     "code": "ECS_C_SOURCE_STALE",
+     "detail": "the session refused the event; nothing changed (through RuntimeCore: RUNTIME_AUTHORITY)",
+     "expected": "ECS_C_SOURCE_STALE",
+     "met": true,
+     "ok": false,
+     "op": "source_version"
+    },
+    {
+     "code": "OBSERVATION_UNSUPPORTED",
+     "detail": "the HACF observation adapter refused (-5)",
+     "expected": "OBSERVATION_UNSUPPORTED",
+     "met": true,
+     "ok": false,
+     "op": "evidence"
+    },
+    {
+     "code": "OBSERVATION_INVALID",
+     "detail": "polarity: ASSERT, NEGATE or UNCERTAIN (the caller's)",
+     "expected": "OBSERVATION_INVALID",
+     "met": true,
+     "ok": false,
+     "op": "evidence"
+    },
+    {
+     "code": "COGNITION_FUEL_EXCEEDED",
+     "detail": "LEARN refused before any commit",
+     "expected": "COGNITION_FUEL_EXCEEDED",
+     "met": true,
+     "ok": false,
+     "op": "learn"
+    },
+    {
+     "code": "LEARNING_RATE",
+     "detail": "explicit positive finite learning rate",
+     "expected": "LEARNING_RATE",
+     "met": true,
+     "ok": false,
+     "op": "learn"
+    },
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "'publish' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+     "expected": "OPERATION_RETIRED",
+     "met": true,
+     "ok": false,
+     "op": "publish"
+    },
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "'reconcile' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+     "expected": "OPERATION_RETIRED",
+     "met": true,
+     "ok": false,
+     "op": "reconcile"
+    },
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "'candidates' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+     "expected": "OPERATION_RETIRED",
+     "met": true,
+     "ok": false,
+     "op": "candidates"
+    },
+    {
+     "counters": {
+      "k1_aborts": 1,
+      "k1_commits": 6,
+      "k1_identities": 2,
+      "k1_lease_claims": 1,
+      "k1_observes": 1,
+      "k1_queries": 1,
+      "k1_reserves": 0,
+      "k1_run_schedules": 5,
+      "k1_shapes": 1,
+      "k1_state_digests": 0,
+      "k1_txn_begins": 7,
+      "session_transitions": 6
+     },
+     "ok": true,
+     "op": "counters"
+    },
+    {
+     "entities": [
+      {
+       "founded_generation": 1,
+       "founding_index": 0,
+       "id": "34706507ff7845329389cb192345d0076b143ea615fc6a76f35abbaf6884c533",
+       "index": 0,
+       "kind": "OPERATOR",
+       "label": "0f4ce5c1620a48ba9ade7bf0fb5b85bb002e6b77dd72ee15144045c43f72f2bf",
+       "last_generation": 7,
+       "lifecycle": "ACTIVE",
+       "per_turn_limit": 0,
+       "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+       "sender_watermark": 5,
+       "source_authority": 0,
+       "source_version": 0
+      },
+      {
+       "founded_generation": 1,
+       "founding_index": 1,
+       "id": "d5965d894fd8542b7f337a4ad5f04ab3e262d7ad52005f6c4ab2cdcf4072f165",
+       "index": 1,
+       "kind": "RUNTIME",
+       "label": "7928d5684e28d060c22df8004bb8af997265ac6be0f96842ecadfd707203838a",
+       "last_generation": 2,
+       "lifecycle": "ACTIVE",
+       "per_turn_limit": 0,
+       "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+       "sender_watermark": 1,
+       "source_authority": 0,
+       "source_version": 0
+      },
+      {
+       "founded_generation": 3,
+       "founding_index": 2,
+       "id": "0eaf0a68b5488414d65a6f8f29dac8e5f529d52c2206704a9fc7fbe7bc8a823c",
+       "index": 2,
+       "kind": "SOURCE",
+       "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+       "last_generation": 4,
+       "lifecycle": "ACTIVE",
+       "per_turn_limit": 8,
+       "scope": "2706bf6adaa982c2d8c7cbaa67533229f914fda84afabea1afd73cf87c534a4b",
+       "sender_watermark": 0,
+       "source_authority": 1,
+       "source_version": 1
+      },
+      {
+       "founded_generation": 5,
+       "founding_index": 3,
+       "id": "a6380256d1cd74b4903eac13c08cd9d0653918b58975403a1d19949ab5282b61",
+       "index": 3,
+       "kind": "SOURCE",
+       "label": "0ee111be65f08557d14f7005d809d439b5f9215b6c3fd3e52d7a3221ce94b8f0",
+       "last_generation": 7,
+       "lifecycle": "DORMANT",
+       "per_turn_limit": 8,
+       "scope": "2706bf6adaa982c2d8c7cbaa67533229f914fda84afabea1afd73cf87c534a4b",
+       "sender_watermark": 0,
+       "source_authority": 2,
+       "source_version": 1
+      }
+     ],
+     "ok": true,
+     "op": "authority",
+     "session": {
+      "backend": "ECS_C_SESSION",
+      "capacity": 16,
+      "commit": "0323b251eccb67f4ec7512672576fb7bfd3c8bc0856972fc4ea3579520486475",
+      "durability": "VOLATILE",
+      "ecs_c_code": "ECS_C_SOURCE_STALE",
+      "entity_count": 4,
+      "evidence_count": 0,
+      "evidence_head": null,
+      "generation": 7,
+      "lineage": "5f2974da076be8d43c1a00952b4cd1f4e69c01e66c1b87872dbc3c7b608d40ff",
+      "ordinal": 1,
+      "receipt_count": 7,
+      "receipt_head": "0947f58fdad3aaae72a2981ada69a222d38c9fcf6f7bc080c1384be066974dfe",
+      "state_root": "ab59b0ba78b68710d24ee70c04a1f024d08128be70b5dd8f7eb707cbe12c8fa5",
+      "volatile_bytes": 8848
+     }
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 6,
+      "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "k1_identity": "b4ddbe2b96ec72868774f929b70c40f8c90f39ee55375760efd6075eb7ae3c9b",
+      "memory_identity": "4ddf93d2ec73917a49524404cd263e3f429dead1ed3d9d559a44c877cae190e3"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    {
+     "closed": true,
+     "discarded": {
+      "learned": true,
+      "live_generation": 6,
+      "live_identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "session_generation": 7
+     },
+     "ok": true,
+     "op": "close"
+    },
+    {
+     "answer": null,
+     "conflicts": 0,
+     "contradicted": 0,
+     "found": false,
+     "matches": 0,
+     "ok": true,
+     "op": "lookup",
+     "state_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "uncertain": 0
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "address_space_6mib": {
+   "exit": 4,
+   "mode": "uid_only",
+   "output": [
+    {
+     "code": "INSTALL_PIN",
+     "detail": "native library admission refused: cannot map: libelpis_runtime.so: Cannot allocate memory",
+     "ok": false,
+     "op": "session"
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "core_unlimited": {
+   "exit": 0,
+   "mode": "observed",
+   "output": [
+    {
+     "abi": {
+      "composite": 1,
+      "runtime": 8
+     },
+     "budget_ceiling": {
+      "max_experience_rows": 256,
+      "max_experiences": 64,
+      "max_observations": 256,
+      "max_query_rows": 4096,
+      "max_rows": 16384,
+      "max_steps": 1048576,
+      "max_work_units": 1073741824
+     },
+     "capabilities": {
+      "contextual_dynamics": "NOT IMPLEMENTED: no qualified law (the HCA substrate is gated research)",
+      "lookup": "WORKING: exact relation LOOKUP by net evidence; a conflict between sources is reported, never resolved",
+      "memory_learn": "UNQUALIFIED: never enabled (no memory capability is ever set)",
+      "memory_slow_consolidation": "NOT PROVIDED",
+      "numeric_learn": "WORKING, mechanically verified: the qualified K1 law (qualified only in its frozen regime) under an explicit grant and learning rate; volatile: discarded when the session ends",
+      "numeric_query": "WORKING, mechanically verified: f_W(x) of the live K1 state (read-only)",
+      "operator_authority": "WORKING: source founding, lifecycle, versions and reclamation as typed events of the volatile ECS_C session",
+      "persistence": "NONE: the host writes no file and its containment grants no write permission; every session starts at a fresh genesis from the lineage's initial state",
+      "recoverable_publication": "RETIRED (OPERATION_RETIRED): no persistent writer exists",
+      "restart_recovery": "RETIRED (OPERATION_RETIRED): a restart is a new session",
+      "text": "UNAVAILABLE: ECS_CODEC_UNQUALIFIED (no qualified ECS<->DSV4 codec map)",
+      "typed_evidence": "WORKING, mechanically verified: validated HACF hyperedge + assertion recorded by an observe-only turn, admitted only from ACTIVE sources of the session; volatile"
+     },
+     "containment": {
+      "core_limit": 0,
+      "dumpable": false,
+      "fsize_limit": 0,
+      "landlock_abi": 7,
+      "memory_locked": false,
+      "restricted": true,
+      "swap_areas": 0,
+      "write_grants": 0
+     },
+     "fault": null,
+     "host": {
+      "catalog_sha256": "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+      "host_sha256": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464",
+      "persistence": "NONE",
+      "schema": "elpis.native-host.v2",
+      "testing_build": false
+     },
+     "libraries": {
+      "elpis_ecs_composite": {
+       "sha256": "92647da3ca9171dbc88fb70f14ff675fb4c1526c08cd8e98358b9130fd27d1c7",
+       "size": 36192
+      },
+      "elpis_ecs_memory": {
+       "sha256": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+       "size": 59016
+      },
+      "elpis_ecsg_k1": {
+       "sha256": "31720853d39217b2751024fb3a1e2cd2d9acc03ffb0ab4a64b7cd8ac8e18d1d4",
+       "size": 78000
+      },
+      "elpis_ecsg_math": {
+       "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+       "size": 56232
+      },
+      "elpis_hacf_observation": {
+       "sha256": "c41b482bc6c2ac52bd5467b6e7980513c64b095ad5b62ec178b44f0c38509160",
+       "size": 21368
+      },
+      "elpis_runtime": {
+       "sha256": "86d9dc331a03ea13059a35e1e1d51a7ed1e6470854b5226229fcb258bd5bf99d",
+       "size": 498176
+      }
+     },
+     "lineage": {
+      "banks": 2,
+      "codebook_capacity": 128,
+      "dim": 6,
+      "envelope_bytes": 137960,
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "initial_w_sha256": "96dd9f32722799dfd258de3655d778e780fc40daa13a94a07bffa08221d5111c",
+      "max_rows": 64,
+      "memory_dim": 64,
+      "reproducible_nonce": false,
+      "seed": 7,
+      "session_capacity": 16,
+      "slot_capacity": 64,
+      "width": 36
+     },
+     "live": null,
+     "nonclaims": [
+      "no language understanding",
+      "no general intelligence",
+      "no autonomous evolution",
+      "no hierarchical superiority",
+      "an observation is evidence storage, never truth or authority",
+      "pins authenticate bytes, not authors",
+      "containment covers this process: it does not make the operating system, its other processes or the reader of this output write nothing"
+     ],
+     "ok": true,
+     "op": "status",
+     "session": null
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "drifted_library": {
+   "exit": 4,
+   "mode": "uid_only",
+   "output": [
+    {
+     "code": "INSTALL_PIN",
+     "detail": "the measured catalog (this host binary and its libraries) does not match --catalog-sha256",
+     "ok": false,
+     "op": "status"
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "inherited_writable_descriptor": {
+   "exit": 0,
+   "mode": "uid_only",
+   "output": [
+    {
+     "abi": {
+      "composite": 1,
+      "runtime": 8
+     },
+     "budget_ceiling": {
+      "max_experience_rows": 256,
+      "max_experiences": 64,
+      "max_observations": 256,
+      "max_query_rows": 4096,
+      "max_rows": 16384,
+      "max_steps": 1048576,
+      "max_work_units": 1073741824
+     },
+     "capabilities": {
+      "contextual_dynamics": "NOT IMPLEMENTED: no qualified law (the HCA substrate is gated research)",
+      "lookup": "WORKING: exact relation LOOKUP by net evidence; a conflict between sources is reported, never resolved",
+      "memory_learn": "UNQUALIFIED: never enabled (no memory capability is ever set)",
+      "memory_slow_consolidation": "NOT PROVIDED",
+      "numeric_learn": "WORKING, mechanically verified: the qualified K1 law (qualified only in its frozen regime) under an explicit grant and learning rate; volatile: discarded when the session ends",
+      "numeric_query": "WORKING, mechanically verified: f_W(x) of the live K1 state (read-only)",
+      "operator_authority": "WORKING: source founding, lifecycle, versions and reclamation as typed events of the volatile ECS_C session",
+      "persistence": "NONE: the host writes no file and its containment grants no write permission; every session starts at a fresh genesis from the lineage's initial state",
+      "recoverable_publication": "RETIRED (OPERATION_RETIRED): no persistent writer exists",
+      "restart_recovery": "RETIRED (OPERATION_RETIRED): a restart is a new session",
+      "text": "UNAVAILABLE: ECS_CODEC_UNQUALIFIED (no qualified ECS<->DSV4 codec map)",
+      "typed_evidence": "WORKING, mechanically verified: validated HACF hyperedge + assertion recorded by an observe-only turn, admitted only from ACTIVE sources of the session; volatile"
+     },
+     "containment": {
+      "core_limit": 0,
+      "dumpable": false,
+      "fsize_limit": 0,
+      "landlock_abi": 7,
+      "memory_locked": false,
+      "restricted": true,
+      "swap_areas": 0,
+      "write_grants": 0
+     },
+     "fault": null,
+     "host": {
+      "catalog_sha256": "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+      "host_sha256": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464",
+      "persistence": "NONE",
+      "schema": "elpis.native-host.v2",
+      "testing_build": false
+     },
+     "libraries": {
+      "elpis_ecs_composite": {
+       "sha256": "92647da3ca9171dbc88fb70f14ff675fb4c1526c08cd8e98358b9130fd27d1c7",
+       "size": 36192
+      },
+      "elpis_ecs_memory": {
+       "sha256": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+       "size": 59016
+      },
+      "elpis_ecsg_k1": {
+       "sha256": "31720853d39217b2751024fb3a1e2cd2d9acc03ffb0ab4a64b7cd8ac8e18d1d4",
+       "size": 78000
+      },
+      "elpis_ecsg_math": {
+       "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+       "size": 56232
+      },
+      "elpis_hacf_observation": {
+       "sha256": "c41b482bc6c2ac52bd5467b6e7980513c64b095ad5b62ec178b44f0c38509160",
+       "size": 21368
+      },
+      "elpis_runtime": {
+       "sha256": "86d9dc331a03ea13059a35e1e1d51a7ed1e6470854b5226229fcb258bd5bf99d",
+       "size": 498176
+      }
+     },
+     "lineage": {
+      "banks": 2,
+      "codebook_capacity": 128,
+      "dim": 6,
+      "envelope_bytes": 137960,
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "initial_w_sha256": "96dd9f32722799dfd258de3655d778e780fc40daa13a94a07bffa08221d5111c",
+      "max_rows": 64,
+      "memory_dim": 64,
+      "reproducible_nonce": false,
+      "seed": 7,
+      "session_capacity": 16,
+      "slot_capacity": 64,
+      "width": 36
+     },
+     "live": null,
+     "nonclaims": [
+      "no language understanding",
+      "no general intelligence",
+      "no autonomous evolution",
+      "no hierarchical superiority",
+      "an observation is evidence storage, never truth or authority",
+      "pins authenticate bytes, not authors",
+      "containment covers this process: it does not make the operating system, its other processes or the reader of this output write nothing"
+     ],
+     "ok": true,
+     "op": "status",
+     "session": null
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "legacy:--home status": {
+   "exit": 2,
+   "mode": "uid_only",
+   "output": [
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "the persistent host is retired: there is no home, no deployment state, no publication and no recovery (docs/NATIVE_HOST.md)",
+     "ok": false,
+     "op": "--home"
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "legacy:init": {
+   "exit": 2,
+   "mode": "uid_only",
+   "output": [
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "the persistent host is retired: there is no home, no deployment state, no publication and no recovery (docs/NATIVE_HOST.md)",
+     "ok": false,
+     "op": "init"
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "legacy:publish": {
+   "exit": 2,
+   "mode": "uid_only",
+   "output": [
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "the persistent host is retired: there is no home, no deployment state, no publication and no recovery (docs/NATIVE_HOST.md)",
+     "ok": false,
+     "op": "publish"
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "legacy:reconcile": {
+   "exit": 2,
+   "mode": "uid_only",
+   "output": [
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "the persistent host is retired: there is no home, no deployment state, no publication and no recovery (docs/NATIVE_HOST.md)",
+     "ok": false,
+     "op": "reconcile"
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "missing_library": {
+   "exit": 4,
+   "mode": "uid_only",
+   "output": [
+    {
+     "code": "INSTALL_PIN",
+     "detail": "native library admission refused: cannot open read-only: libelpis_ecs_memory.so: No such file or directory",
+     "ok": false,
+     "op": "status"
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "privileged_start": {
+   "exit": 4,
+   "mode": "observed",
+   "output": [
+    {
+     "code": "CONTAINMENT_REFUSED",
+     "detail": "a privileged process cannot be contained: run Elpis as an unprivileged user",
+     "ok": false,
+     "op": "status"
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  },
+  "storage_stdout": {
+   "exit": 4,
+   "mode": "uid_only",
+   "output": [],
+   "sink_bytes": 0,
+   "stderr_tail": [
+    "elpis: CONTAINMENT_REFUSED: standard output is writable storage (a file, a directory or a device): nothing was written; use a pipe or a terminal"
+   ],
+   "write_events": []
+  },
+  "swap_active": {
+   "exit": 0,
+   "mode": "uid_only",
+   "output": [
+    {
+     "abi": {
+      "composite": 1,
+      "runtime": 8
+     },
+     "budget_ceiling": {
+      "max_experience_rows": 256,
+      "max_experiences": 64,
+      "max_observations": 256,
+      "max_query_rows": 4096,
+      "max_rows": 16384,
+      "max_steps": 1048576,
+      "max_work_units": 1073741824
+     },
+     "capabilities": {
+      "contextual_dynamics": "NOT IMPLEMENTED: no qualified law (the HCA substrate is gated research)",
+      "lookup": "WORKING: exact relation LOOKUP by net evidence; a conflict between sources is reported, never resolved",
+      "memory_learn": "UNQUALIFIED: never enabled (no memory capability is ever set)",
+      "memory_slow_consolidation": "NOT PROVIDED",
+      "numeric_learn": "WORKING, mechanically verified: the qualified K1 law (qualified only in its frozen regime) under an explicit grant and learning rate; volatile: discarded when the session ends",
+      "numeric_query": "WORKING, mechanically verified: f_W(x) of the live K1 state (read-only)",
+      "operator_authority": "WORKING: source founding, lifecycle, versions and reclamation as typed events of the volatile ECS_C session",
+      "persistence": "NONE: the host writes no file and its containment grants no write permission; every session starts at a fresh genesis from the lineage's initial state",
+      "recoverable_publication": "RETIRED (OPERATION_RETIRED): no persistent writer exists",
+      "restart_recovery": "RETIRED (OPERATION_RETIRED): a restart is a new session",
+      "text": "UNAVAILABLE: ECS_CODEC_UNQUALIFIED (no qualified ECS<->DSV4 codec map)",
+      "typed_evidence": "WORKING, mechanically verified: validated HACF hyperedge + assertion recorded by an observe-only turn, admitted only from ACTIVE sources of the session; volatile"
+     },
+     "containment": {
+      "core_limit": 0,
+      "dumpable": false,
+      "fsize_limit": 0,
+      "landlock_abi": 7,
+      "memory_locked": true,
+      "restricted": true,
+      "swap_areas": 1,
+      "write_grants": 0
+     },
+     "fault": null,
+     "host": {
+      "catalog_sha256": "a477cdb18271712531998dde97c28d568f157871af143c42dfc54753839018eb",
+      "host_sha256": "98ebe99b3488bf21ecba7fd7920d14c6d3027e9793fea673d51a9be79c7bf807",
+      "persistence": "NONE",
+      "schema": "elpis.native-host.v2",
+      "testing_build": true
+     },
+     "libraries": {
+      "elpis_ecs_composite": {
+       "sha256": "92647da3ca9171dbc88fb70f14ff675fb4c1526c08cd8e98358b9130fd27d1c7",
+       "size": 36192
+      },
+      "elpis_ecs_memory": {
+       "sha256": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+       "size": 59016
+      },
+      "elpis_ecsg_k1": {
+       "sha256": "31720853d39217b2751024fb3a1e2cd2d9acc03ffb0ab4a64b7cd8ac8e18d1d4",
+       "size": 78000
+      },
+      "elpis_ecsg_math": {
+       "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+       "size": 56232
+      },
+      "elpis_hacf_observation": {
+       "sha256": "c41b482bc6c2ac52bd5467b6e7980513c64b095ad5b62ec178b44f0c38509160",
+       "size": 21368
+      },
+      "elpis_runtime": {
+       "sha256": "86d9dc331a03ea13059a35e1e1d51a7ed1e6470854b5226229fcb258bd5bf99d",
+       "size": 498176
+      }
+     },
+     "lineage": {
+      "banks": 2,
+      "codebook_capacity": 128,
+      "dim": 6,
+      "envelope_bytes": 137960,
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "initial_w_sha256": "96dd9f32722799dfd258de3655d778e780fc40daa13a94a07bffa08221d5111c",
+      "max_rows": 64,
+      "memory_dim": 64,
+      "reproducible_nonce": false,
+      "seed": 7,
+      "session_capacity": 16,
+      "slot_capacity": 64,
+      "width": 36
+     },
+     "live": null,
+     "nonclaims": [
+      "no language understanding",
+      "no general intelligence",
+      "no autonomous evolution",
+      "no hierarchical superiority",
+      "an observation is evidence storage, never truth or authority",
+      "pins authenticate bytes, not authors",
+      "containment covers this process: it does not make the operating system, its other processes or the reader of this output write nothing"
+     ],
+     "ok": true,
+     "op": "status",
+     "session": null
+    }
+   ],
+   "stderr_tail": [],
+   "write_events": []
+  }
+ },
+ "boundedness": {
+  "composite_envelope_bytes": 137960,
+  "host_long_peak_rss_kib": 4620,
+  "host_long_short_peak_rss_kib": 3920,
+  "restart_peak_rss_kib": [
+   3468,
+   3536,
+   3600,
+   3636,
+   3664,
+   3768,
+   3780,
+   3784
+  ],
+  "script_delta_kib": 1050,
+  "state_delta_kib": -350
+ },
+ "catalog_pins": {
+  "host": "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+  "python_reference": "b4b4eb4a86f6813247dbfd284089615402d7094b373b97485eb57720f2587084",
+  "testing_host": "a477cdb18271712531998dde97c28d568f157871af143c42dfc54753839018eb"
+ },
+ "classification": "QUALIFICATION evidence for closure condition 11: the composed runtime (native host, RuntimeCore, the Python reference, FMS COLD/WARM/HOT, HACF, the H-gram read path)",
+ "controls": {
+  "full_confinement": {
+   "exit": 1,
+   "file_created": false,
+   "write_events": [
+    "12517 openat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/control/full_confinement.file\", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666) = -1 EROFS (Read-only file system)",
+    "12517 utimensat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/control/full_confinement.file\", NULL, 0) = -1 EPERM (Operation not permitted)"
+   ]
+  },
+  "landlock_only": {
+   "exit": 1,
+   "file_created": false,
+   "write_events": [
+    "12482 openat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/control/landlock_only.file\", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666) = -1 EACCES (Permission denied)",
+    "12482 utimensat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/control/landlock_only.file\", NULL, 0) = -1 EPERM (Operation not permitted)"
+   ]
+  },
+  "root_unconfined": {
+   "exit": 0,
+   "write_events": [
+    "12469 openat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/control/probe.a\", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 3<<build>/research/volatile_runtime_v1/work/control/probe.a>",
+    "12469 write(1<<build>/research/volatile_runtime_v1/work/control/probe.a>, \"x\\n\", 2) = 2",
+    "12470 renameat2(AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/control/probe.a\", AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/control/probe.b\", RENAME_NOREPLACE) = 0",
+    "12471 sync()                            = 0",
+    "12472 unlinkat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/control/probe.b\", 0) = 0"
+   ]
+  },
+  "testing_host_write_probes": {
+   "exit": 0,
+   "output": [
+    {
+     "errno": 30,
+     "ok": true,
+     "op": "testing_write_probe"
+    },
+    {
+     "errno": 30,
+     "ok": true,
+     "op": "testing_write_probe"
+    },
+    {
+     "errno": 30,
+     "ok": true,
+     "op": "testing_write_probe"
+    },
+    {
+     "errno": 1,
+     "ok": true,
+     "op": "testing_write_probe"
+    },
+    {
+     "errno": 1,
+     "ok": true,
+     "op": "testing_write_probe"
+    },
+    {
+     "errno": 1,
+     "ok": true,
+     "op": "testing_write_probe"
+    }
+   ],
+   "probe_dir": [
+    "existing"
+   ],
+   "write_events": [
+    "12552 openat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/probe/created\", O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC, 0600) = -1 EROFS (Read-only file system)",
+    "12552 openat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/probe/existing\", O_RDWR|O_CLOEXEC) = -1 EROFS (Read-only file system)",
+    "12552 openat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/probe/existing\", O_RDWR|O_CLOEXEC) = -1 EROFS (Read-only file system)",
+    "12552 unlink(\"<build>/research/volatile_runtime_v1/work/probe/existing\") = -1 EPERM (Operation not permitted)",
+    "12552 rename(\"<build>/research/volatile_runtime_v1/work/probe/existing\", \"<build>/research/volatile_runtime_v1/work/probe/existing.renamed\") = -1 EPERM (Operation not permitted)",
+    "12552 mkdir(\"<build>/research/volatile_runtime_v1/work/probe/made\", 0700) = -1 EPERM (Operation not permitted)"
+   ]
+  },
+  "uid_only": {
+   "exit": 0,
+   "file_created": true,
+   "write_events": [
+    "12477 openat(AT_FDCWD</>, \"<build>/research/volatile_runtime_v1/work/control/uid_only.file\", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666) = 3<<build>/research/volatile_runtime_v1/work/control/uid_only.file>",
+    "12477 utimensat(0<<build>/research/volatile_runtime_v1/work/control/uid_only.file>, NULL, NULL, 0) = 0"
+   ]
+  }
+ },
+ "environment": {
+  "build_fs": "ext4",
+  "cc": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "core_pattern": "core",
+  "kernel": "6.18.44-fc-v185",
+  "landlock_abi": 7,
+  "machine": "x86_64",
+  "python": "3.13.17",
+  "root_fs": "ext4",
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "strace": "strace -- version 6.8",
+  "swap_total_kib": 0
+ },
+ "problems": [],
+ "runs": {
+  "ecs_c_session.abi": {
+   "argv": [
+    "<build>/native/ECS_C/session/test_ecs_c_session_abi"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": null,
+    "seconds": 0.691,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "long run: 33339 accepted, 66667 refused, heap in use 12544 -> 12544 bytes",
+     "  1000 sessions of capacity 64 (31120 bytes each): heap in use 17584 -> 17584 bytes",
+     "ECS_C volatile session C ABI: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 32,
+     "openat": 24,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "observed",
+    "output": null,
+    "seconds": 0.612,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "long run: 33339 accepted, 66667 refused, heap in use 12544 -> 12544 bytes",
+     "  1000 sessions of capacity 64 (31120 bytes each): heap in use 17584 -> 17584 bytes",
+     "ECS_C volatile session C ABI: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 12,
+     "openat": 7,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 1896,
+    "seconds": 0.535
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 0,
+    "last": null,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "plain_output": null,
+   "sha256": "f8c17a28ee1eeac519e96a2ac4eb80724218c1d76f50470c5ca7182f549ae45d"
+  },
+  "ecs_c_session.relational": {
+   "argv": [
+    "<build>/native/ECS_C/test_ecs_c_relational_session"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": null,
+    "seconds": 0.08,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "  session lifecycle: the next session's table is refused LINEAGE until reset; the reset view is empty",
+     "  admission law == elpis_ecs_c_session_check_evidence on 975 probes over 7 session states",
+     "ECS_C relational view over the volatile ECS_C session: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 41,
+     "openat": 31,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "observed",
+    "output": null,
+    "seconds": 0.013,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "  session lifecycle: the next session's table is refused LINEAGE until reset; the reset view is empty",
+     "  admission law == elpis_ecs_c_session_check_evidence on 975 probes over 7 session states",
+     "ECS_C relational view over the volatile ECS_C session: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 21,
+     "openat": 14,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 1924,
+    "seconds": 0.005
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 0,
+    "last": null,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "plain_output": null,
+   "sha256": "ed568bff2e7cc13242cb2c25e79780c8bee905f9d1adbe4480a70e491f94b46a"
+  },
+  "fms_cold": {
+   "argv": [
+    "<build>/native/substrate/test_fms_volatile_cold",
+    "--asset",
+    "<build>/research/volatile_runtime_v1/work/cold/cold.asset",
+    "--rw-fd",
+    "3"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": null,
+    "seconds": 0.544,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "FMS v3 volatile residency: cases 1-8 and 10, failed materialization, unavailable resource and HOT exhaustion PASS (0 write attempts; the COLD asset is byte-identical)"
+    ],
+    "traced_calls": {
+     "mmap": 40,
+     "openat": 35,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "observed",
+    "output": null,
+    "seconds": 0.514,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "FMS v3 volatile residency: cases 1-8 and 10, failed materialization, unavailable resource and HOT exhaustion PASS (0 write attempts; the COLD asset is byte-identical)"
+    ],
+    "traced_calls": {
+     "mmap": 20,
+     "openat": 18,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 2464,
+    "seconds": 0.092
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 0,
+    "last": null,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "plain_output": null,
+   "sha256": "b4563739262e6f85b47de18fe28b48ffab482a8857c1de50653d44e520e400f1"
+  },
+  "hgram_read": {
+   "argv": [
+    "<build>/research/volatile_runtime_v1/hgram_read",
+    "<build>/research/volatile_runtime_v1/work/hgram/hgram.bin",
+    "17",
+    "42",
+    "99"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": [],
+    "seconds": 0.073,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "key=17 status=0 generation=2 value0=114",
+     "key=42 status=0 generation=7 value0=69",
+     "key=99 status=1 generation=0 value0=0"
+    ],
+    "traced_calls": {
+     "mmap": 28,
+     "openat": 27,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "uid_only",
+    "output": [],
+    "seconds": 0.021,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "key=17 status=0 generation=2 value0=114",
+     "key=42 status=0 generation=7 value0=69",
+     "key=99 status=1 generation=0 value0=0"
+    ],
+    "traced_calls": {
+     "mmap": 20,
+     "openat": 24,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 2256,
+    "seconds": 0.007
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 0,
+    "last": null,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "plain_output": [],
+   "sha256": "2c4ada1a8dc8e27ada00034953f73cfa9ed74a575b9a9001f50620119d3a1eb8"
+  },
+  "host_differential": {
+   "argv": [
+    "<build>/native/runtime/elpis",
+    "--native-build",
+    "<build>",
+    "--catalog-sha256",
+    "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+    "--seed",
+    "7",
+    "session",
+    "--script",
+    "<build>/research/volatile_runtime_v1/work/scripts/differential.jsonl"
+   ],
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 3536,
+    "seconds": 0.026
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 19,
+    "last": {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    "sha256": "e0e815809655f47de2b7408e19c63d8d04283f4d10700e09b22faec1adb108cc"
+   },
+   "plain_output": [
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    {
+     "generation": 4,
+     "id": "75dae845583502afa4c3b6c66afff05b21b69ee4c4c368f728ad5f950addaf89",
+     "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+     "lifecycle": "ACTIVE",
+     "ok": true,
+     "op": "source_found",
+     "source_authority": 1
+    },
+    {
+     "live_generation": 0,
+     "ok": true,
+     "op": "query",
+     "rows": 4,
+     "values": [
+      -0.025092914353495678,
+      0.13945929300340484,
+      0.019857245511372017,
+      0.2196099319389631
+     ],
+     "values_sha256": "67d6efe3fcdaca3811f7420c77b6b4aa74a9b0732deb4e928d51ce2002ca1723"
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      0,
+      8
+     ],
+     "experiences": 2,
+     "generation": [
+      0,
+      1
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "d5b7cf452e39af9117d2fc732afd33c7043c35e8c3ca03b6f61cb2bb8e992e5c",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      8,
+      16
+     ],
+     "experiences": 2,
+     "generation": [
+      1,
+      2
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "5a68d1c2f7e71be5c64837831aac818facebca3910a85357199561a1b8d5a001",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      16,
+      24
+     ],
+     "experiences": 2,
+     "generation": [
+      2,
+      3
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "712eb6c43243a340c3ab4494010abd255ebfed8128b662cc0f3c7f04d5fa14f5",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      24,
+      32
+     ],
+     "experiences": 2,
+     "generation": [
+      3,
+      4
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "932ebc0d02fa865e571f66ad92bba58715ad77c58ada3423b48013dccc99104f",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      32,
+      40
+     ],
+     "experiences": 2,
+     "generation": [
+      4,
+      5
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "859e9f64ede0a6812fc0e01cc9e696130beed091136743fd9e21513f2f29110b",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "live_generation": 5,
+     "ok": true,
+     "op": "query",
+     "rows": 4,
+     "values": [
+      -0.007169938043577337,
+      0.12146199343094594,
+      0.02271639062590049,
+      0.22021039843364335
+     ],
+     "values_sha256": "b7cb0abb7f66dcd98b58e9031109716875998d1a1001a6271d3e040aa007ee2d"
+    },
+    {
+     "durability": "VOLATILE",
+     "entries": [
+      {
+       "assertion": "034e984d3aae7039354b676316307ef0d2959ff62af04818228634ddc3bb5aed",
+       "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+       "polarity": "ASSERT",
+       "provenance": "7b021de1856add9ce24dcb0ec5dcf440db96a4cc325caff9c279e28c78e82f10",
+       "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+       "source_authority": 1,
+       "tick": 1
+      }
+     ],
+     "generation": [
+      5,
+      6
+     ],
+     "grant": "qualification: source",
+     "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+     "k1_steps": 0,
+     "ok": true,
+     "op": "evidence"
+    },
+    {
+     "durability": "VOLATILE",
+     "entries": [
+      {
+       "assertion": "5e0ae891c1a0aa27e0c6b7fe970514bd2635f0e10bb7e4e18f43bb12f8494ed9",
+       "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+       "polarity": "ASSERT",
+       "provenance": "760d57b0f87120164a1fd630d91ba43f2806c9d5faebfa3d6a54ac95ee9b3369",
+       "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+       "source_authority": 1,
+       "tick": 2
+      }
+     ],
+     "generation": [
+      6,
+      7
+     ],
+     "grant": "qualification: source",
+     "identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+     "k1_steps": 0,
+     "ok": true,
+     "op": "evidence"
+    },
+    {
+     "answer": "30b8e35c093a408a39445ab3003e0c2e7312cdca6b5e3270c25b03aabf23b432",
+     "conflicts": 0,
+     "contradicted": 0,
+     "found": true,
+     "matches": 1,
+     "ok": true,
+     "op": "lookup",
+     "state_identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+     "uncertain": 0
+    },
+    {
+     "code": "COGNITION_FUEL_EXCEEDED",
+     "detail": "LEARN refused before any commit",
+     "expected": "COGNITION_FUEL_EXCEEDED",
+     "met": true,
+     "ok": false,
+     "op": "learn"
+    },
+    {
+     "code": "LEARNING_RATE",
+     "detail": "explicit positive finite learning rate",
+     "expected": "LEARNING_RATE",
+     "met": true,
+     "ok": false,
+     "op": "learn"
+    },
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "'publish' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+     "expected": "OPERATION_RETIRED",
+     "met": true,
+     "ok": false,
+     "op": "publish"
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 7,
+      "identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+      "k1_identity": "b4ddbe2b96ec72868774f929b70c40f8c90f39ee55375760efd6075eb7ae3c9b",
+      "memory_identity": "e594c92923369fda0059b6ef34979c325a0e1579a1c14987a63f351a42936d64"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    {
+     "closed": true,
+     "discarded": {
+      "learned": true,
+      "live_generation": 7,
+      "live_identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+      "session_generation": 4
+     },
+     "ok": true,
+     "op": "close"
+    },
+    {
+     "answer": null,
+     "conflicts": 0,
+     "contradicted": 0,
+     "found": false,
+     "matches": 0,
+     "ok": true,
+     "op": "lookup",
+     "state_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "uncertain": 0
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    }
+   ],
+   "sha256": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464"
+  },
+  "host_long": {
+   "argv": [
+    "<build>/native/runtime/elpis",
+    "--native-build",
+    "<build>",
+    "--catalog-sha256",
+    "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+    "--seed",
+    "7",
+    "session",
+    "--script",
+    "<build>/research/volatile_runtime_v1/work/scripts/long_3000.jsonl"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": null,
+    "seconds": 3.319,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "{\"op\":\"learn\",\"durability\":\"VOLATILE\",\"experiences\":2,\"rows\":4,\"steps\":8,\"epoch\":[8400,8408],\"generation\":[1782,1783],\"grant\":\"qualification: numeric experience\",\"identity\":\"c95128c3182297cef4ec7d1421b3a8513437d8cf1cd2d5e895e22e0a8cd1013e\",\"ok\":true}",
+     "{\"op\":\"evidence\",\"durability\":\"VOLATILE\",\"k1_steps\":0,\"generation\":[1783,1784],\"entries\":[{\"relation_key\":\"f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09\",\"hyperedge\":\"c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061\",\"assertion\":\"f977c93202bded5664154db4cb326df45951e9c6a16dfd0822337bf2b12e4011\",\"provenance\":\"69ce008f8a705a896ca7078da4ca678942d4d6f4c2eb22d1a5d8d62043ddbe4c\",\"source_authority\":1,\"polarity\":\"ASSERT\",\"tick\":3009}],\"grant\":\"qualification: source\",\"identity\":\"2825ec0b339edc6ac49e1c40999886019448fa15b094822cee00a285cd993cea\",\"ok\":true}",
+     "{\"op\":\"live\",\"live\":{\"identity\":\"2825ec0b339edc6ac49e1c40999886019448fa15b094822cee00a285cd993cea\",\"generation\":1784,\"k1_identity\":\"733af1c2ca664e319f9e9d1ecd5fdcf1b7d6415bac9c944d6ee6b469cc8632e6\",\"memory_identity\":\"24e903008d7208e90ececc351aa38f65adcc34997818eb1759f9b2cf2c921f7d\"},\"initial_identity\":\"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\",\"ok\":true}"
+    ],
+    "traced_calls": {
+     "mmap": 66,
+     "openat": 37,
+     "openat2": 6,
+     "write": 3016
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "uid_only",
+    "output": null,
+    "seconds": 3.382,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "{\"op\":\"learn\",\"durability\":\"VOLATILE\",\"experiences\":2,\"rows\":4,\"steps\":8,\"epoch\":[8400,8408],\"generation\":[1782,1783],\"grant\":\"qualification: numeric experience\",\"identity\":\"c95128c3182297cef4ec7d1421b3a8513437d8cf1cd2d5e895e22e0a8cd1013e\",\"ok\":true}",
+     "{\"op\":\"evidence\",\"durability\":\"VOLATILE\",\"k1_steps\":0,\"generation\":[1783,1784],\"entries\":[{\"relation_key\":\"f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09\",\"hyperedge\":\"c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061\",\"assertion\":\"f977c93202bded5664154db4cb326df45951e9c6a16dfd0822337bf2b12e4011\",\"provenance\":\"69ce008f8a705a896ca7078da4ca678942d4d6f4c2eb22d1a5d8d62043ddbe4c\",\"source_authority\":1,\"polarity\":\"ASSERT\",\"tick\":3009}],\"grant\":\"qualification: source\",\"identity\":\"2825ec0b339edc6ac49e1c40999886019448fa15b094822cee00a285cd993cea\",\"ok\":true}",
+     "{\"op\":\"live\",\"live\":{\"identity\":\"2825ec0b339edc6ac49e1c40999886019448fa15b094822cee00a285cd993cea\",\"generation\":1784,\"k1_identity\":\"733af1c2ca664e319f9e9d1ecd5fdcf1b7d6415bac9c944d6ee6b469cc8632e6\",\"memory_identity\":\"24e903008d7208e90ececc351aa38f65adcc34997818eb1759f9b2cf2c921f7d\"},\"initial_identity\":\"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\",\"ok\":true}"
+    ],
+    "traced_calls": {
+     "mmap": 58,
+     "openat": 34,
+     "openat2": 6,
+     "write": 3016
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 4620,
+    "seconds": 2.655
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 3002,
+    "last": {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 1784,
+      "identity": "2825ec0b339edc6ac49e1c40999886019448fa15b094822cee00a285cd993cea",
+      "k1_identity": "733af1c2ca664e319f9e9d1ecd5fdcf1b7d6415bac9c944d6ee6b469cc8632e6",
+      "memory_identity": "24e903008d7208e90ececc351aa38f65adcc34997818eb1759f9b2cf2c921f7d"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    "sha256": "fe2ac21790be842d1e8aaddd17aed34000afa9a6ac743cc678710e15d5e027fc"
+   },
+   "plain_output": null,
+   "sha256": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464"
+  },
+  "host_long_short": {
+   "argv": [
+    "<build>/native/runtime/elpis",
+    "--native-build",
+    "<build>",
+    "--catalog-sha256",
+    "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+    "--seed",
+    "7",
+    "session",
+    "--script",
+    "<build>/research/volatile_runtime_v1/work/scripts/long_300.jsonl"
+   ],
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 3920,
+    "seconds": 0.272
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 302,
+    "last": {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 187,
+      "identity": "c62074b8a3abd2d362b6173a95fb48e4e58e275e8af5dec37be3e64426db9bab",
+      "k1_identity": "66fa2640c181cb2dc987a4886690ca2297395fc38c8b40662a944e7089625197",
+      "memory_identity": "652ab09a798bc098db8251af3b044500b33b3be14e78b155183db77d67475103"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    "sha256": "df5493f4481e4a96df8424c4926099ebdadb7fac0559f5cffef646c52eaf0e78"
+   },
+   "plain_output": null,
+   "sha256": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464"
+  },
+  "host_restarts": {
+   "processes": [
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3780
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3468
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3468
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3768
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3536
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3536
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3468
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3468
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3768
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3468
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3600
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3468
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3768
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3536
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3784
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3536
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3784
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3636
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3664
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3468
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3468
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3636
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3636
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3784
+    },
+    {
+     "after_close_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "peak_rss_kib": 3468
+    },
+    {
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "traced": true,
+     "write_events": []
+    },
+    {
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "traced": true,
+     "write_events": []
+    },
+    {
+     "exit": 0,
+     "initial_live": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "traced": true,
+     "write_events": []
+    }
+   ]
+  },
+  "host_session": {
+   "argv": [
+    "<build>/native/runtime/elpis",
+    "--native-build",
+    "<build>",
+    "--catalog-sha256",
+    "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+    "--seed",
+    "7",
+    "session",
+    "--script",
+    "<build>/research/volatile_runtime_v1/work/scripts/composed.jsonl"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": [
+     {
+      "abi": {
+       "composite": 1,
+       "runtime": 8
+      },
+      "budget_ceiling": {
+       "max_experience_rows": 256,
+       "max_experiences": 64,
+       "max_observations": 256,
+       "max_query_rows": 4096,
+       "max_rows": 16384,
+       "max_steps": 1048576,
+       "max_work_units": 1073741824
+      },
+      "capabilities": {
+       "contextual_dynamics": "NOT IMPLEMENTED: no qualified law (the HCA substrate is gated research)",
+       "lookup": "WORKING: exact relation LOOKUP by net evidence; a conflict between sources is reported, never resolved",
+       "memory_learn": "UNQUALIFIED: never enabled (no memory capability is ever set)",
+       "memory_slow_consolidation": "NOT PROVIDED",
+       "numeric_learn": "WORKING, mechanically verified: the qualified K1 law (qualified only in its frozen regime) under an explicit grant and learning rate; volatile: discarded when the session ends",
+       "numeric_query": "WORKING, mechanically verified: f_W(x) of the live K1 state (read-only)",
+       "operator_authority": "WORKING: source founding, lifecycle, versions and reclamation as typed events of the volatile ECS_C session",
+       "persistence": "NONE: the host writes no file and its containment grants no write permission; every session starts at a fresh genesis from the lineage's initial state",
+       "recoverable_publication": "RETIRED (OPERATION_RETIRED): no persistent writer exists",
+       "restart_recovery": "RETIRED (OPERATION_RETIRED): a restart is a new session",
+       "text": "UNAVAILABLE: ECS_CODEC_UNQUALIFIED (no qualified ECS<->DSV4 codec map)",
+       "typed_evidence": "WORKING, mechanically verified: validated HACF hyperedge + assertion recorded by an observe-only turn, admitted only from ACTIVE sources of the session; volatile"
+      },
+      "containment": {
+       "core_limit": 0,
+       "dumpable": false,
+       "fsize_limit": 0,
+       "landlock_abi": 7,
+       "memory_locked": false,
+       "restricted": true,
+       "swap_areas": 0,
+       "write_grants": 0
+      },
+      "fault": null,
+      "host": {
+       "catalog_sha256": "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+       "host_sha256": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464",
+       "persistence": "NONE",
+       "schema": "elpis.native-host.v2",
+       "testing_build": false
+      },
+      "libraries": {
+       "elpis_ecs_composite": {
+        "sha256": "92647da3ca9171dbc88fb70f14ff675fb4c1526c08cd8e98358b9130fd27d1c7",
+        "size": 36192
+       },
+       "elpis_ecs_memory": {
+        "sha256": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+        "size": 59016
+       },
+       "elpis_ecsg_k1": {
+        "sha256": "31720853d39217b2751024fb3a1e2cd2d9acc03ffb0ab4a64b7cd8ac8e18d1d4",
+        "size": 78000
+       },
+       "elpis_ecsg_math": {
+        "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+        "size": 56232
+       },
+       "elpis_hacf_observation": {
+        "sha256": "c41b482bc6c2ac52bd5467b6e7980513c64b095ad5b62ec178b44f0c38509160",
+        "size": 21368
+       },
+       "elpis_runtime": {
+        "sha256": "86d9dc331a03ea13059a35e1e1d51a7ed1e6470854b5226229fcb258bd5bf99d",
+        "size": 498176
+       }
+      },
+      "lineage": {
+       "banks": 2,
+       "codebook_capacity": 128,
+       "dim": 6,
+       "envelope_bytes": 137960,
+       "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+       "initial_w_sha256": "96dd9f32722799dfd258de3655d778e780fc40daa13a94a07bffa08221d5111c",
+       "max_rows": 64,
+       "memory_dim": 64,
+       "reproducible_nonce": false,
+       "seed": 7,
+       "session_capacity": 16,
+       "slot_capacity": 64,
+       "width": 36
+      },
+      "live": null,
+      "nonclaims": [
+       "no language understanding",
+       "no general intelligence",
+       "no autonomous evolution",
+       "no hierarchical superiority",
+       "an observation is evidence storage, never truth or authority",
+       "pins authenticate bytes, not authors",
+       "containment covers this process: it does not make the operating system, its other processes or the reader of this output write nothing"
+      ],
+      "ok": true,
+      "op": "status",
+      "session": null
+     },
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 0,
+       "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+       "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+       "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+      },
+      "ok": true,
+      "op": "live"
+     },
+     {
+      "generation": 4,
+      "id": "ac79d2ceefb5639f26bf6a87ef52327704751a8d95e1e36f16ff13d4de83e794",
+      "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+      "lifecycle": "ACTIVE",
+      "ok": true,
+      "op": "source_found",
+      "source_authority": 1
+     },
+     {
+      "generation": 6,
+      "id": "3c7436ebf2590f5df52fda66185fe02ca9fb22fb51d0d6ef4d3a2ba72b4c61a2",
+      "label": "0ee111be65f08557d14f7005d809d439b5f9215b6c3fd3e52d7a3221ce94b8f0",
+      "lifecycle": "ACTIVE",
+      "ok": true,
+      "op": "source_found",
+      "source_authority": 2
+     },
+     {
+      "durability": "VOLATILE",
+      "epoch": [
+       0,
+       8
+      ],
+      "experiences": 2,
+      "generation": [
+       0,
+       1
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "d5b7cf452e39af9117d2fc732afd33c7043c35e8c3ca03b6f61cb2bb8e992e5c",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "durability": "VOLATILE",
+      "epoch": [
+       8,
+       16
+      ],
+      "experiences": 2,
+      "generation": [
+       1,
+       2
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "5a68d1c2f7e71be5c64837831aac818facebca3910a85357199561a1b8d5a001",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "durability": "VOLATILE",
+      "epoch": [
+       16,
+       24
+      ],
+      "experiences": 2,
+      "generation": [
+       2,
+       3
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "712eb6c43243a340c3ab4494010abd255ebfed8128b662cc0f3c7f04d5fa14f5",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "durability": "VOLATILE",
+      "epoch": [
+       24,
+       32
+      ],
+      "experiences": 2,
+      "generation": [
+       3,
+       4
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "932ebc0d02fa865e571f66ad92bba58715ad77c58ada3423b48013dccc99104f",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "durability": "VOLATILE",
+      "epoch": [
+       32,
+       40
+      ],
+      "experiences": 2,
+      "generation": [
+       4,
+       5
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "859e9f64ede0a6812fc0e01cc9e696130beed091136743fd9e21513f2f29110b",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "durability": "VOLATILE",
+      "entries": [
+       {
+        "assertion": "034e984d3aae7039354b676316307ef0d2959ff62af04818228634ddc3bb5aed",
+        "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+        "polarity": "ASSERT",
+        "provenance": "7b021de1856add9ce24dcb0ec5dcf440db96a4cc325caff9c279e28c78e82f10",
+        "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+        "source_authority": 1,
+        "tick": 1
+       }
+      ],
+      "generation": [
+       5,
+       6
+      ],
+      "grant": "qualification: source",
+      "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "k1_steps": 0,
+      "ok": true,
+      "op": "evidence"
+     },
+     {
+      "live_generation": 6,
+      "ok": true,
+      "op": "query",
+      "rows": 4,
+      "values": [
+       -0.007169938043577337,
+       0.12146199343094594,
+       0.02271639062590049,
+       0.22021039843364335
+      ],
+      "values_sha256": "b7cb0abb7f66dcd98b58e9031109716875998d1a1001a6271d3e040aa007ee2d"
+     },
+     {
+      "answer": "30b8e35c093a408a39445ab3003e0c2e7312cdca6b5e3270c25b03aabf23b432",
+      "conflicts": 0,
+      "contradicted": 0,
+      "found": true,
+      "matches": 1,
+      "ok": true,
+      "op": "lookup",
+      "state_identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "uncertain": 0
+     },
+     {
+      "from": "ACTIVE",
+      "generation": 7,
+      "id": "3c7436ebf2590f5df52fda66185fe02ca9fb22fb51d0d6ef4d3a2ba72b4c61a2",
+      "ok": true,
+      "op": "source_lifecycle",
+      "to": "DORMANT"
+     },
+     {
+      "code": "RUNTIME_OBSERVATION_REFUSED",
+      "detail": "observation 0 refused (memory status 0); nothing was installed",
+      "expected": "RUNTIME_OBSERVATION_REFUSED",
+      "met": true,
+      "ok": false,
+      "op": "evidence"
+     },
+     {
+      "code": "ECS_C_SOURCE_STALE",
+      "detail": "the session refused the event; nothing changed (through RuntimeCore: RUNTIME_AUTHORITY)",
+      "expected": "ECS_C_SOURCE_STALE",
+      "met": true,
+      "ok": false,
+      "op": "source_version"
+     },
+     {
+      "code": "OBSERVATION_UNSUPPORTED",
+      "detail": "the HACF observation adapter refused (-5)",
+      "expected": "OBSERVATION_UNSUPPORTED",
+      "met": true,
+      "ok": false,
+      "op": "evidence"
+     },
+     {
+      "code": "OBSERVATION_INVALID",
+      "detail": "polarity: ASSERT, NEGATE or UNCERTAIN (the caller's)",
+      "expected": "OBSERVATION_INVALID",
+      "met": true,
+      "ok": false,
+      "op": "evidence"
+     },
+     {
+      "code": "COGNITION_FUEL_EXCEEDED",
+      "detail": "LEARN refused before any commit",
+      "expected": "COGNITION_FUEL_EXCEEDED",
+      "met": true,
+      "ok": false,
+      "op": "learn"
+     },
+     {
+      "code": "LEARNING_RATE",
+      "detail": "explicit positive finite learning rate",
+      "expected": "LEARNING_RATE",
+      "met": true,
+      "ok": false,
+      "op": "learn"
+     },
+     {
+      "code": "OPERATION_RETIRED",
+      "detail": "'publish' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+      "expected": "OPERATION_RETIRED",
+      "met": true,
+      "ok": false,
+      "op": "publish"
+     },
+     {
+      "code": "OPERATION_RETIRED",
+      "detail": "'reconcile' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+      "expected": "OPERATION_RETIRED",
+      "met": true,
+      "ok": false,
+      "op": "reconcile"
+     },
+     {
+      "code": "OPERATION_RETIRED",
+      "detail": "'candidates' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+      "expected": "OPERATION_RETIRED",
+      "met": true,
+      "ok": false,
+      "op": "candidates"
+     },
+     {
+      "counters": {
+       "k1_aborts": 1,
+       "k1_commits": 6,
+       "k1_identities": 2,
+       "k1_lease_claims": 1,
+       "k1_observes": 1,
+       "k1_queries": 1,
+       "k1_reserves": 0,
+       "k1_run_schedules": 5,
+       "k1_shapes": 1,
+       "k1_state_digests": 0,
+       "k1_txn_begins": 7,
+       "session_transitions": 6
+      },
+      "ok": true,
+      "op": "counters"
+     },
+     {
+      "entities": [
+       {
+        "founded_generation": 1,
+        "founding_index": 0,
+        "id": "52a0094bbebbb159859027d79dfe3ccbfe9e2b2fe407ec7a90ca88372ef792a8",
+        "index": 0,
+        "kind": "OPERATOR",
+        "label": "0f4ce5c1620a48ba9ade7bf0fb5b85bb002e6b77dd72ee15144045c43f72f2bf",
+        "last_generation": 7,
+        "lifecycle": "ACTIVE",
+        "per_turn_limit": 0,
+        "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+        "sender_watermark": 5,
+        "source_authority": 0,
+        "source_version": 0
+       },
+       {
+        "founded_generation": 1,
+        "founding_index": 1,
+        "id": "6313b273d0833637e2a4860a186d4a75bcfcf2f7b8da7c2241fef88ec1a11104",
+        "index": 1,
+        "kind": "RUNTIME",
+        "label": "7928d5684e28d060c22df8004bb8af997265ac6be0f96842ecadfd707203838a",
+        "last_generation": 2,
+        "lifecycle": "ACTIVE",
+        "per_turn_limit": 0,
+        "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+        "sender_watermark": 1,
+        "source_authority": 0,
+        "source_version": 0
+       },
+       {
+        "founded_generation": 3,
+        "founding_index": 2,
+        "id": "ac79d2ceefb5639f26bf6a87ef52327704751a8d95e1e36f16ff13d4de83e794",
+        "index": 2,
+        "kind": "SOURCE",
+        "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+        "last_generation": 4,
+        "lifecycle": "ACTIVE",
+        "per_turn_limit": 8,
+        "scope": "2706bf6adaa982c2d8c7cbaa67533229f914fda84afabea1afd73cf87c534a4b",
+        "sender_watermark": 0,
+        "source_authority": 1,
+        "source_version": 1
+       },
+       {
+        "founded_generation": 5,
+        "founding_index": 3,
+        "id": "3c7436ebf2590f5df52fda66185fe02ca9fb22fb51d0d6ef4d3a2ba72b4c61a2",
+        "index": 3,
+        "kind": "SOURCE",
+        "label": "0ee111be65f08557d14f7005d809d439b5f9215b6c3fd3e52d7a3221ce94b8f0",
+        "last_generation": 7,
+        "lifecycle": "DORMANT",
+        "per_turn_limit": 8,
+        "scope": "2706bf6adaa982c2d8c7cbaa67533229f914fda84afabea1afd73cf87c534a4b",
+        "sender_watermark": 0,
+        "source_authority": 2,
+        "source_version": 1
+       }
+      ],
+      "ok": true,
+      "op": "authority",
+      "session": {
+       "backend": "ECS_C_SESSION",
+       "capacity": 16,
+       "commit": "50004fb5d88f1769964f55903e09e3c14b09cf830ebbe7001f961e5c86acc7de",
+       "durability": "VOLATILE",
+       "ecs_c_code": "ECS_C_SOURCE_STALE",
+       "entity_count": 4,
+       "evidence_count": 0,
+       "evidence_head": null,
+       "generation": 7,
+       "lineage": "9705b66d3cbdf26b428d5bc74fbc19ce5e6e6b5ec9269f6e52008707c9945543",
+       "ordinal": 1,
+       "receipt_count": 7,
+       "receipt_head": "0afa8e495dfe50e8948bfdb2f26ddbdf512e77a6a13c6e35894dc5b88f7eb47a",
+       "state_root": "96b65b5f21551226e3ea84683ee034b76440c69f0ef2bd95229856a85a22c780",
+       "volatile_bytes": 8848
+      }
+     },
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 6,
+       "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+       "k1_identity": "b4ddbe2b96ec72868774f929b70c40f8c90f39ee55375760efd6075eb7ae3c9b",
+       "memory_identity": "4ddf93d2ec73917a49524404cd263e3f429dead1ed3d9d559a44c877cae190e3"
+      },
+      "ok": true,
+      "op": "live"
+     },
+     {
+      "closed": true,
+      "discarded": {
+       "learned": true,
+       "live_generation": 6,
+       "live_identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+       "session_generation": 7
+      },
+      "ok": true,
+      "op": "close"
+     },
+     {
+      "answer": null,
+      "conflicts": 0,
+      "contradicted": 0,
+      "found": false,
+      "matches": 0,
+      "ok": true,
+      "op": "lookup",
+      "state_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "uncertain": 0
+     },
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 0,
+       "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+       "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+       "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+      },
+      "ok": true,
+      "op": "live"
+     }
+    ],
+    "seconds": 0.121,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "{\"op\":\"close\",\"discarded\":{\"live_identity\":\"25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616\",\"live_generation\":6,\"session_generation\":7,\"learned\":true},\"closed\":true,\"ok\":true}",
+     "{\"op\":\"lookup\",\"found\":false,\"answer\":null,\"matches\":0,\"conflicts\":0,\"contradicted\":0,\"uncertain\":0,\"state_identity\":\"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\",\"ok\":true}",
+     "{\"op\":\"live\",\"live\":{\"identity\":\"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\",\"generation\":0,\"k1_identity\":\"acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb\",\"memory_identity\":\"308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d\"},\"initial_identity\":\"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\",\"ok\":true}"
+    ],
+    "traced_calls": {
+     "mmap": 66,
+     "openat": 37,
+     "openat2": 6,
+     "write": 42
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "uid_only",
+    "output": [
+     {
+      "abi": {
+       "composite": 1,
+       "runtime": 8
+      },
+      "budget_ceiling": {
+       "max_experience_rows": 256,
+       "max_experiences": 64,
+       "max_observations": 256,
+       "max_query_rows": 4096,
+       "max_rows": 16384,
+       "max_steps": 1048576,
+       "max_work_units": 1073741824
+      },
+      "capabilities": {
+       "contextual_dynamics": "NOT IMPLEMENTED: no qualified law (the HCA substrate is gated research)",
+       "lookup": "WORKING: exact relation LOOKUP by net evidence; a conflict between sources is reported, never resolved",
+       "memory_learn": "UNQUALIFIED: never enabled (no memory capability is ever set)",
+       "memory_slow_consolidation": "NOT PROVIDED",
+       "numeric_learn": "WORKING, mechanically verified: the qualified K1 law (qualified only in its frozen regime) under an explicit grant and learning rate; volatile: discarded when the session ends",
+       "numeric_query": "WORKING, mechanically verified: f_W(x) of the live K1 state (read-only)",
+       "operator_authority": "WORKING: source founding, lifecycle, versions and reclamation as typed events of the volatile ECS_C session",
+       "persistence": "NONE: the host writes no file and its containment grants no write permission; every session starts at a fresh genesis from the lineage's initial state",
+       "recoverable_publication": "RETIRED (OPERATION_RETIRED): no persistent writer exists",
+       "restart_recovery": "RETIRED (OPERATION_RETIRED): a restart is a new session",
+       "text": "UNAVAILABLE: ECS_CODEC_UNQUALIFIED (no qualified ECS<->DSV4 codec map)",
+       "typed_evidence": "WORKING, mechanically verified: validated HACF hyperedge + assertion recorded by an observe-only turn, admitted only from ACTIVE sources of the session; volatile"
+      },
+      "containment": {
+       "core_limit": 0,
+       "dumpable": false,
+       "fsize_limit": 0,
+       "landlock_abi": 7,
+       "memory_locked": false,
+       "restricted": true,
+       "swap_areas": 0,
+       "write_grants": 0
+      },
+      "fault": null,
+      "host": {
+       "catalog_sha256": "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+       "host_sha256": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464",
+       "persistence": "NONE",
+       "schema": "elpis.native-host.v2",
+       "testing_build": false
+      },
+      "libraries": {
+       "elpis_ecs_composite": {
+        "sha256": "92647da3ca9171dbc88fb70f14ff675fb4c1526c08cd8e98358b9130fd27d1c7",
+        "size": 36192
+       },
+       "elpis_ecs_memory": {
+        "sha256": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+        "size": 59016
+       },
+       "elpis_ecsg_k1": {
+        "sha256": "31720853d39217b2751024fb3a1e2cd2d9acc03ffb0ab4a64b7cd8ac8e18d1d4",
+        "size": 78000
+       },
+       "elpis_ecsg_math": {
+        "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+        "size": 56232
+       },
+       "elpis_hacf_observation": {
+        "sha256": "c41b482bc6c2ac52bd5467b6e7980513c64b095ad5b62ec178b44f0c38509160",
+        "size": 21368
+       },
+       "elpis_runtime": {
+        "sha256": "86d9dc331a03ea13059a35e1e1d51a7ed1e6470854b5226229fcb258bd5bf99d",
+        "size": 498176
+       }
+      },
+      "lineage": {
+       "banks": 2,
+       "codebook_capacity": 128,
+       "dim": 6,
+       "envelope_bytes": 137960,
+       "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+       "initial_w_sha256": "96dd9f32722799dfd258de3655d778e780fc40daa13a94a07bffa08221d5111c",
+       "max_rows": 64,
+       "memory_dim": 64,
+       "reproducible_nonce": false,
+       "seed": 7,
+       "session_capacity": 16,
+       "slot_capacity": 64,
+       "width": 36
+      },
+      "live": null,
+      "nonclaims": [
+       "no language understanding",
+       "no general intelligence",
+       "no autonomous evolution",
+       "no hierarchical superiority",
+       "an observation is evidence storage, never truth or authority",
+       "pins authenticate bytes, not authors",
+       "containment covers this process: it does not make the operating system, its other processes or the reader of this output write nothing"
+      ],
+      "ok": true,
+      "op": "status",
+      "session": null
+     },
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 0,
+       "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+       "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+       "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+      },
+      "ok": true,
+      "op": "live"
+     },
+     {
+      "generation": 4,
+      "id": "24e04431956e8a95534d75182fe36fe805c291cf56e5ff781a64d8d05c19acfa",
+      "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+      "lifecycle": "ACTIVE",
+      "ok": true,
+      "op": "source_found",
+      "source_authority": 1
+     },
+     {
+      "generation": 6,
+      "id": "db169627b67f240dd98e2091c0fbb27fa4d57266d0a89be0e767cadee0937d15",
+      "label": "0ee111be65f08557d14f7005d809d439b5f9215b6c3fd3e52d7a3221ce94b8f0",
+      "lifecycle": "ACTIVE",
+      "ok": true,
+      "op": "source_found",
+      "source_authority": 2
+     },
+     {
+      "durability": "VOLATILE",
+      "epoch": [
+       0,
+       8
+      ],
+      "experiences": 2,
+      "generation": [
+       0,
+       1
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "d5b7cf452e39af9117d2fc732afd33c7043c35e8c3ca03b6f61cb2bb8e992e5c",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "durability": "VOLATILE",
+      "epoch": [
+       8,
+       16
+      ],
+      "experiences": 2,
+      "generation": [
+       1,
+       2
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "5a68d1c2f7e71be5c64837831aac818facebca3910a85357199561a1b8d5a001",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "durability": "VOLATILE",
+      "epoch": [
+       16,
+       24
+      ],
+      "experiences": 2,
+      "generation": [
+       2,
+       3
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "712eb6c43243a340c3ab4494010abd255ebfed8128b662cc0f3c7f04d5fa14f5",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "durability": "VOLATILE",
+      "epoch": [
+       24,
+       32
+      ],
+      "experiences": 2,
+      "generation": [
+       3,
+       4
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "932ebc0d02fa865e571f66ad92bba58715ad77c58ada3423b48013dccc99104f",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "durability": "VOLATILE",
+      "epoch": [
+       32,
+       40
+      ],
+      "experiences": 2,
+      "generation": [
+       4,
+       5
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "859e9f64ede0a6812fc0e01cc9e696130beed091136743fd9e21513f2f29110b",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "durability": "VOLATILE",
+      "entries": [
+       {
+        "assertion": "034e984d3aae7039354b676316307ef0d2959ff62af04818228634ddc3bb5aed",
+        "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+        "polarity": "ASSERT",
+        "provenance": "7b021de1856add9ce24dcb0ec5dcf440db96a4cc325caff9c279e28c78e82f10",
+        "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+        "source_authority": 1,
+        "tick": 1
+       }
+      ],
+      "generation": [
+       5,
+       6
+      ],
+      "grant": "qualification: source",
+      "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "k1_steps": 0,
+      "ok": true,
+      "op": "evidence"
+     },
+     {
+      "live_generation": 6,
+      "ok": true,
+      "op": "query",
+      "rows": 4,
+      "values": [
+       -0.007169938043577337,
+       0.12146199343094594,
+       0.02271639062590049,
+       0.22021039843364335
+      ],
+      "values_sha256": "b7cb0abb7f66dcd98b58e9031109716875998d1a1001a6271d3e040aa007ee2d"
+     },
+     {
+      "answer": "30b8e35c093a408a39445ab3003e0c2e7312cdca6b5e3270c25b03aabf23b432",
+      "conflicts": 0,
+      "contradicted": 0,
+      "found": true,
+      "matches": 1,
+      "ok": true,
+      "op": "lookup",
+      "state_identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "uncertain": 0
+     },
+     {
+      "from": "ACTIVE",
+      "generation": 7,
+      "id": "db169627b67f240dd98e2091c0fbb27fa4d57266d0a89be0e767cadee0937d15",
+      "ok": true,
+      "op": "source_lifecycle",
+      "to": "DORMANT"
+     },
+     {
+      "code": "RUNTIME_OBSERVATION_REFUSED",
+      "detail": "observation 0 refused (memory status 0); nothing was installed",
+      "expected": "RUNTIME_OBSERVATION_REFUSED",
+      "met": true,
+      "ok": false,
+      "op": "evidence"
+     },
+     {
+      "code": "ECS_C_SOURCE_STALE",
+      "detail": "the session refused the event; nothing changed (through RuntimeCore: RUNTIME_AUTHORITY)",
+      "expected": "ECS_C_SOURCE_STALE",
+      "met": true,
+      "ok": false,
+      "op": "source_version"
+     },
+     {
+      "code": "OBSERVATION_UNSUPPORTED",
+      "detail": "the HACF observation adapter refused (-5)",
+      "expected": "OBSERVATION_UNSUPPORTED",
+      "met": true,
+      "ok": false,
+      "op": "evidence"
+     },
+     {
+      "code": "OBSERVATION_INVALID",
+      "detail": "polarity: ASSERT, NEGATE or UNCERTAIN (the caller's)",
+      "expected": "OBSERVATION_INVALID",
+      "met": true,
+      "ok": false,
+      "op": "evidence"
+     },
+     {
+      "code": "COGNITION_FUEL_EXCEEDED",
+      "detail": "LEARN refused before any commit",
+      "expected": "COGNITION_FUEL_EXCEEDED",
+      "met": true,
+      "ok": false,
+      "op": "learn"
+     },
+     {
+      "code": "LEARNING_RATE",
+      "detail": "explicit positive finite learning rate",
+      "expected": "LEARNING_RATE",
+      "met": true,
+      "ok": false,
+      "op": "learn"
+     },
+     {
+      "code": "OPERATION_RETIRED",
+      "detail": "'publish' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+      "expected": "OPERATION_RETIRED",
+      "met": true,
+      "ok": false,
+      "op": "publish"
+     },
+     {
+      "code": "OPERATION_RETIRED",
+      "detail": "'reconcile' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+      "expected": "OPERATION_RETIRED",
+      "met": true,
+      "ok": false,
+      "op": "reconcile"
+     },
+     {
+      "code": "OPERATION_RETIRED",
+      "detail": "'candidates' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+      "expected": "OPERATION_RETIRED",
+      "met": true,
+      "ok": false,
+      "op": "candidates"
+     },
+     {
+      "counters": {
+       "k1_aborts": 1,
+       "k1_commits": 6,
+       "k1_identities": 2,
+       "k1_lease_claims": 1,
+       "k1_observes": 1,
+       "k1_queries": 1,
+       "k1_reserves": 0,
+       "k1_run_schedules": 5,
+       "k1_shapes": 1,
+       "k1_state_digests": 0,
+       "k1_txn_begins": 7,
+       "session_transitions": 6
+      },
+      "ok": true,
+      "op": "counters"
+     },
+     {
+      "entities": [
+       {
+        "founded_generation": 1,
+        "founding_index": 0,
+        "id": "471ba5c2a9e1013779bbe2851d30f46034a75cc803160840d9c997a4547386ea",
+        "index": 0,
+        "kind": "OPERATOR",
+        "label": "0f4ce5c1620a48ba9ade7bf0fb5b85bb002e6b77dd72ee15144045c43f72f2bf",
+        "last_generation": 7,
+        "lifecycle": "ACTIVE",
+        "per_turn_limit": 0,
+        "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+        "sender_watermark": 5,
+        "source_authority": 0,
+        "source_version": 0
+       },
+       {
+        "founded_generation": 1,
+        "founding_index": 1,
+        "id": "2611b5c235e84a4be9561505f3a3355d5706ad2866e53ef210b9505123b06cd2",
+        "index": 1,
+        "kind": "RUNTIME",
+        "label": "7928d5684e28d060c22df8004bb8af997265ac6be0f96842ecadfd707203838a",
+        "last_generation": 2,
+        "lifecycle": "ACTIVE",
+        "per_turn_limit": 0,
+        "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+        "sender_watermark": 1,
+        "source_authority": 0,
+        "source_version": 0
+       },
+       {
+        "founded_generation": 3,
+        "founding_index": 2,
+        "id": "24e04431956e8a95534d75182fe36fe805c291cf56e5ff781a64d8d05c19acfa",
+        "index": 2,
+        "kind": "SOURCE",
+        "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+        "last_generation": 4,
+        "lifecycle": "ACTIVE",
+        "per_turn_limit": 8,
+        "scope": "2706bf6adaa982c2d8c7cbaa67533229f914fda84afabea1afd73cf87c534a4b",
+        "sender_watermark": 0,
+        "source_authority": 1,
+        "source_version": 1
+       },
+       {
+        "founded_generation": 5,
+        "founding_index": 3,
+        "id": "db169627b67f240dd98e2091c0fbb27fa4d57266d0a89be0e767cadee0937d15",
+        "index": 3,
+        "kind": "SOURCE",
+        "label": "0ee111be65f08557d14f7005d809d439b5f9215b6c3fd3e52d7a3221ce94b8f0",
+        "last_generation": 7,
+        "lifecycle": "DORMANT",
+        "per_turn_limit": 8,
+        "scope": "2706bf6adaa982c2d8c7cbaa67533229f914fda84afabea1afd73cf87c534a4b",
+        "sender_watermark": 0,
+        "source_authority": 2,
+        "source_version": 1
+       }
+      ],
+      "ok": true,
+      "op": "authority",
+      "session": {
+       "backend": "ECS_C_SESSION",
+       "capacity": 16,
+       "commit": "3b6a5d51e957ea3349b9d9437f28837f1795980fbd8b8b68c6065b15329b3188",
+       "durability": "VOLATILE",
+       "ecs_c_code": "ECS_C_SOURCE_STALE",
+       "entity_count": 4,
+       "evidence_count": 0,
+       "evidence_head": null,
+       "generation": 7,
+       "lineage": "ab47add03dc696a8741cdfe52a77b3aa14987249afb25bfe7213408e3c4ac505",
+       "ordinal": 1,
+       "receipt_count": 7,
+       "receipt_head": "b33728e044c413aefdf05e0f03c023fb22a6ad439226263cd8c0786f39c34d87",
+       "state_root": "f2538ef9f4b84d58fa83b39676de38aa0c714a80c1f08c1b92113887bc25a56a",
+       "volatile_bytes": 8848
+      }
+     },
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 6,
+       "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+       "k1_identity": "b4ddbe2b96ec72868774f929b70c40f8c90f39ee55375760efd6075eb7ae3c9b",
+       "memory_identity": "4ddf93d2ec73917a49524404cd263e3f429dead1ed3d9d559a44c877cae190e3"
+      },
+      "ok": true,
+      "op": "live"
+     },
+     {
+      "closed": true,
+      "discarded": {
+       "learned": true,
+       "live_generation": 6,
+       "live_identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+       "session_generation": 7
+      },
+      "ok": true,
+      "op": "close"
+     },
+     {
+      "answer": null,
+      "conflicts": 0,
+      "contradicted": 0,
+      "found": false,
+      "matches": 0,
+      "ok": true,
+      "op": "lookup",
+      "state_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "uncertain": 0
+     },
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 0,
+       "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+       "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+       "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+      },
+      "ok": true,
+      "op": "live"
+     }
+    ],
+    "seconds": 0.07,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "{\"op\":\"close\",\"discarded\":{\"live_identity\":\"25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616\",\"live_generation\":6,\"session_generation\":7,\"learned\":true},\"closed\":true,\"ok\":true}",
+     "{\"op\":\"lookup\",\"found\":false,\"answer\":null,\"matches\":0,\"conflicts\":0,\"contradicted\":0,\"uncertain\":0,\"state_identity\":\"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\",\"ok\":true}",
+     "{\"op\":\"live\",\"live\":{\"identity\":\"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\",\"generation\":0,\"k1_identity\":\"acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb\",\"memory_identity\":\"308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d\"},\"initial_identity\":\"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\",\"ok\":true}"
+    ],
+    "traced_calls": {
+     "mmap": 58,
+     "openat": 34,
+     "openat2": 6,
+     "write": 42
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 3792,
+    "seconds": 0.028
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 28,
+    "last": {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    "sha256": "1b2b10f84417f7b5550d56258354da9b2ac8839f917a1cec12739f7a69c56222"
+   },
+   "plain_output": [
+    {
+     "abi": {
+      "composite": 1,
+      "runtime": 8
+     },
+     "budget_ceiling": {
+      "max_experience_rows": 256,
+      "max_experiences": 64,
+      "max_observations": 256,
+      "max_query_rows": 4096,
+      "max_rows": 16384,
+      "max_steps": 1048576,
+      "max_work_units": 1073741824
+     },
+     "capabilities": {
+      "contextual_dynamics": "NOT IMPLEMENTED: no qualified law (the HCA substrate is gated research)",
+      "lookup": "WORKING: exact relation LOOKUP by net evidence; a conflict between sources is reported, never resolved",
+      "memory_learn": "UNQUALIFIED: never enabled (no memory capability is ever set)",
+      "memory_slow_consolidation": "NOT PROVIDED",
+      "numeric_learn": "WORKING, mechanically verified: the qualified K1 law (qualified only in its frozen regime) under an explicit grant and learning rate; volatile: discarded when the session ends",
+      "numeric_query": "WORKING, mechanically verified: f_W(x) of the live K1 state (read-only)",
+      "operator_authority": "WORKING: source founding, lifecycle, versions and reclamation as typed events of the volatile ECS_C session",
+      "persistence": "NONE: the host writes no file and its containment grants no write permission; every session starts at a fresh genesis from the lineage's initial state",
+      "recoverable_publication": "RETIRED (OPERATION_RETIRED): no persistent writer exists",
+      "restart_recovery": "RETIRED (OPERATION_RETIRED): a restart is a new session",
+      "text": "UNAVAILABLE: ECS_CODEC_UNQUALIFIED (no qualified ECS<->DSV4 codec map)",
+      "typed_evidence": "WORKING, mechanically verified: validated HACF hyperedge + assertion recorded by an observe-only turn, admitted only from ACTIVE sources of the session; volatile"
+     },
+     "containment": {
+      "core_limit": 0,
+      "dumpable": false,
+      "fsize_limit": 0,
+      "landlock_abi": 7,
+      "memory_locked": false,
+      "restricted": true,
+      "swap_areas": 0,
+      "write_grants": 0
+     },
+     "fault": null,
+     "host": {
+      "catalog_sha256": "92694587147290960e4ab30a41bcaa9f400ff4c4c747ffaa6df8cc2128373e28",
+      "host_sha256": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464",
+      "persistence": "NONE",
+      "schema": "elpis.native-host.v2",
+      "testing_build": false
+     },
+     "libraries": {
+      "elpis_ecs_composite": {
+       "sha256": "92647da3ca9171dbc88fb70f14ff675fb4c1526c08cd8e98358b9130fd27d1c7",
+       "size": 36192
+      },
+      "elpis_ecs_memory": {
+       "sha256": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+       "size": 59016
+      },
+      "elpis_ecsg_k1": {
+       "sha256": "31720853d39217b2751024fb3a1e2cd2d9acc03ffb0ab4a64b7cd8ac8e18d1d4",
+       "size": 78000
+      },
+      "elpis_ecsg_math": {
+       "sha256": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+       "size": 56232
+      },
+      "elpis_hacf_observation": {
+       "sha256": "c41b482bc6c2ac52bd5467b6e7980513c64b095ad5b62ec178b44f0c38509160",
+       "size": 21368
+      },
+      "elpis_runtime": {
+       "sha256": "86d9dc331a03ea13059a35e1e1d51a7ed1e6470854b5226229fcb258bd5bf99d",
+       "size": 498176
+      }
+     },
+     "lineage": {
+      "banks": 2,
+      "codebook_capacity": 128,
+      "dim": 6,
+      "envelope_bytes": 137960,
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "initial_w_sha256": "96dd9f32722799dfd258de3655d778e780fc40daa13a94a07bffa08221d5111c",
+      "max_rows": 64,
+      "memory_dim": 64,
+      "reproducible_nonce": false,
+      "seed": 7,
+      "session_capacity": 16,
+      "slot_capacity": 64,
+      "width": 36
+     },
+     "live": null,
+     "nonclaims": [
+      "no language understanding",
+      "no general intelligence",
+      "no autonomous evolution",
+      "no hierarchical superiority",
+      "an observation is evidence storage, never truth or authority",
+      "pins authenticate bytes, not authors",
+      "containment covers this process: it does not make the operating system, its other processes or the reader of this output write nothing"
+     ],
+     "ok": true,
+     "op": "status",
+     "session": null
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    {
+     "generation": 4,
+     "id": "136a561716f07dcebf967c047d6f2ad3bc2e176eb8e85fa1cce5a192c8a72231",
+     "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+     "lifecycle": "ACTIVE",
+     "ok": true,
+     "op": "source_found",
+     "source_authority": 1
+    },
+    {
+     "generation": 6,
+     "id": "5b5564eb5025d349248ee906db76f2131a487009a27f6cacb4fc21fd19043510",
+     "label": "0ee111be65f08557d14f7005d809d439b5f9215b6c3fd3e52d7a3221ce94b8f0",
+     "lifecycle": "ACTIVE",
+     "ok": true,
+     "op": "source_found",
+     "source_authority": 2
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      0,
+      8
+     ],
+     "experiences": 2,
+     "generation": [
+      0,
+      1
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "d5b7cf452e39af9117d2fc732afd33c7043c35e8c3ca03b6f61cb2bb8e992e5c",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      8,
+      16
+     ],
+     "experiences": 2,
+     "generation": [
+      1,
+      2
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "5a68d1c2f7e71be5c64837831aac818facebca3910a85357199561a1b8d5a001",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      16,
+      24
+     ],
+     "experiences": 2,
+     "generation": [
+      2,
+      3
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "712eb6c43243a340c3ab4494010abd255ebfed8128b662cc0f3c7f04d5fa14f5",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      24,
+      32
+     ],
+     "experiences": 2,
+     "generation": [
+      3,
+      4
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "932ebc0d02fa865e571f66ad92bba58715ad77c58ada3423b48013dccc99104f",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "epoch": [
+      32,
+      40
+     ],
+     "experiences": 2,
+     "generation": [
+      4,
+      5
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "859e9f64ede0a6812fc0e01cc9e696130beed091136743fd9e21513f2f29110b",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "durability": "VOLATILE",
+     "entries": [
+      {
+       "assertion": "034e984d3aae7039354b676316307ef0d2959ff62af04818228634ddc3bb5aed",
+       "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+       "polarity": "ASSERT",
+       "provenance": "7b021de1856add9ce24dcb0ec5dcf440db96a4cc325caff9c279e28c78e82f10",
+       "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+       "source_authority": 1,
+       "tick": 1
+      }
+     ],
+     "generation": [
+      5,
+      6
+     ],
+     "grant": "qualification: source",
+     "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+     "k1_steps": 0,
+     "ok": true,
+     "op": "evidence"
+    },
+    {
+     "live_generation": 6,
+     "ok": true,
+     "op": "query",
+     "rows": 4,
+     "values": [
+      -0.007169938043577337,
+      0.12146199343094594,
+      0.02271639062590049,
+      0.22021039843364335
+     ],
+     "values_sha256": "b7cb0abb7f66dcd98b58e9031109716875998d1a1001a6271d3e040aa007ee2d"
+    },
+    {
+     "answer": "30b8e35c093a408a39445ab3003e0c2e7312cdca6b5e3270c25b03aabf23b432",
+     "conflicts": 0,
+     "contradicted": 0,
+     "found": true,
+     "matches": 1,
+     "ok": true,
+     "op": "lookup",
+     "state_identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+     "uncertain": 0
+    },
+    {
+     "from": "ACTIVE",
+     "generation": 7,
+     "id": "5b5564eb5025d349248ee906db76f2131a487009a27f6cacb4fc21fd19043510",
+     "ok": true,
+     "op": "source_lifecycle",
+     "to": "DORMANT"
+    },
+    {
+     "code": "RUNTIME_OBSERVATION_REFUSED",
+     "detail": "observation 0 refused (memory status 0); nothing was installed",
+     "expected": "RUNTIME_OBSERVATION_REFUSED",
+     "met": true,
+     "ok": false,
+     "op": "evidence"
+    },
+    {
+     "code": "ECS_C_SOURCE_STALE",
+     "detail": "the session refused the event; nothing changed (through RuntimeCore: RUNTIME_AUTHORITY)",
+     "expected": "ECS_C_SOURCE_STALE",
+     "met": true,
+     "ok": false,
+     "op": "source_version"
+    },
+    {
+     "code": "OBSERVATION_UNSUPPORTED",
+     "detail": "the HACF observation adapter refused (-5)",
+     "expected": "OBSERVATION_UNSUPPORTED",
+     "met": true,
+     "ok": false,
+     "op": "evidence"
+    },
+    {
+     "code": "OBSERVATION_INVALID",
+     "detail": "polarity: ASSERT, NEGATE or UNCERTAIN (the caller's)",
+     "expected": "OBSERVATION_INVALID",
+     "met": true,
+     "ok": false,
+     "op": "evidence"
+    },
+    {
+     "code": "COGNITION_FUEL_EXCEEDED",
+     "detail": "LEARN refused before any commit",
+     "expected": "COGNITION_FUEL_EXCEEDED",
+     "met": true,
+     "ok": false,
+     "op": "learn"
+    },
+    {
+     "code": "LEARNING_RATE",
+     "detail": "explicit positive finite learning rate",
+     "expected": "LEARNING_RATE",
+     "met": true,
+     "ok": false,
+     "op": "learn"
+    },
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "'publish' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+     "expected": "OPERATION_RETIRED",
+     "met": true,
+     "ok": false,
+     "op": "publish"
+    },
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "'reconcile' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+     "expected": "OPERATION_RETIRED",
+     "met": true,
+     "ok": false,
+     "op": "reconcile"
+    },
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "'candidates' belonged to the retired persistent runtime: Elpis writes no state (docs/ELPIS_MISSION.md, Amendment 3); a session ends with the process or `close`",
+     "expected": "OPERATION_RETIRED",
+     "met": true,
+     "ok": false,
+     "op": "candidates"
+    },
+    {
+     "counters": {
+      "k1_aborts": 1,
+      "k1_commits": 6,
+      "k1_identities": 2,
+      "k1_lease_claims": 1,
+      "k1_observes": 1,
+      "k1_queries": 1,
+      "k1_reserves": 0,
+      "k1_run_schedules": 5,
+      "k1_shapes": 1,
+      "k1_state_digests": 0,
+      "k1_txn_begins": 7,
+      "session_transitions": 6
+     },
+     "ok": true,
+     "op": "counters"
+    },
+    {
+     "entities": [
+      {
+       "founded_generation": 1,
+       "founding_index": 0,
+       "id": "ad65ff993dcc904f56c20016835535a9edc1581e40773ac37429ce9099f948b7",
+       "index": 0,
+       "kind": "OPERATOR",
+       "label": "0f4ce5c1620a48ba9ade7bf0fb5b85bb002e6b77dd72ee15144045c43f72f2bf",
+       "last_generation": 7,
+       "lifecycle": "ACTIVE",
+       "per_turn_limit": 0,
+       "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+       "sender_watermark": 5,
+       "source_authority": 0,
+       "source_version": 0
+      },
+      {
+       "founded_generation": 1,
+       "founding_index": 1,
+       "id": "9e696765d0d97e4afbe0f6a51358e1c6fbc7825ccb0b9e6517a950abe71cfeb6",
+       "index": 1,
+       "kind": "RUNTIME",
+       "label": "7928d5684e28d060c22df8004bb8af997265ac6be0f96842ecadfd707203838a",
+       "last_generation": 2,
+       "lifecycle": "ACTIVE",
+       "per_turn_limit": 0,
+       "scope": "0000000000000000000000000000000000000000000000000000000000000000",
+       "sender_watermark": 1,
+       "source_authority": 0,
+       "source_version": 0
+      },
+      {
+       "founded_generation": 3,
+       "founding_index": 2,
+       "id": "136a561716f07dcebf967c047d6f2ad3bc2e176eb8e85fa1cce5a192c8a72231",
+       "index": 2,
+       "kind": "SOURCE",
+       "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+       "last_generation": 4,
+       "lifecycle": "ACTIVE",
+       "per_turn_limit": 8,
+       "scope": "2706bf6adaa982c2d8c7cbaa67533229f914fda84afabea1afd73cf87c534a4b",
+       "sender_watermark": 0,
+       "source_authority": 1,
+       "source_version": 1
+      },
+      {
+       "founded_generation": 5,
+       "founding_index": 3,
+       "id": "5b5564eb5025d349248ee906db76f2131a487009a27f6cacb4fc21fd19043510",
+       "index": 3,
+       "kind": "SOURCE",
+       "label": "0ee111be65f08557d14f7005d809d439b5f9215b6c3fd3e52d7a3221ce94b8f0",
+       "last_generation": 7,
+       "lifecycle": "DORMANT",
+       "per_turn_limit": 8,
+       "scope": "2706bf6adaa982c2d8c7cbaa67533229f914fda84afabea1afd73cf87c534a4b",
+       "sender_watermark": 0,
+       "source_authority": 2,
+       "source_version": 1
+      }
+     ],
+     "ok": true,
+     "op": "authority",
+     "session": {
+      "backend": "ECS_C_SESSION",
+      "capacity": 16,
+      "commit": "356dc7a12f7f62c2dbabdeb3e8437c5956532cb4ec6b8d7c0378000db33bbe3d",
+      "durability": "VOLATILE",
+      "ecs_c_code": "ECS_C_SOURCE_STALE",
+      "entity_count": 4,
+      "evidence_count": 0,
+      "evidence_head": null,
+      "generation": 7,
+      "lineage": "2762d2923f6727cca103be28669ddb490c4a2525f0a7cfe81ff3912e4ee580a8",
+      "ordinal": 1,
+      "receipt_count": 7,
+      "receipt_head": "fc501a18cfbeea07b1847071a406202d969d9dc336b93d83cee970a948e22d19",
+      "state_root": "b614df16cca6ef8a86e5be98d0753860b22232432b5facf82bde5696a9ebb0a8",
+      "volatile_bytes": 8848
+     }
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 6,
+      "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "k1_identity": "b4ddbe2b96ec72868774f929b70c40f8c90f39ee55375760efd6075eb7ae3c9b",
+      "memory_identity": "4ddf93d2ec73917a49524404cd263e3f429dead1ed3d9d559a44c877cae190e3"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    {
+     "closed": true,
+     "discarded": {
+      "learned": true,
+      "live_generation": 6,
+      "live_identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "session_generation": 7
+     },
+     "ok": true,
+     "op": "close"
+    },
+    {
+     "answer": null,
+     "conflicts": 0,
+     "contradicted": 0,
+     "found": false,
+     "matches": 0,
+     "ok": true,
+     "op": "lookup",
+     "state_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "uncertain": 0
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    }
+   ],
+   "sha256": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464"
+  },
+  "python_cli": {
+   "argv": [
+    "/usr/bin/python3",
+    "-B",
+    "-m",
+    "elpis.runtime.cli",
+    "--native-build",
+    "<build>",
+    "--catalog-sha256",
+    "b4b4eb4a86f6813247dbfd284089615402d7094b373b97485eb57720f2587084",
+    "--seed",
+    "7",
+    "session",
+    "--script",
+    "<build>/research/volatile_runtime_v1/work/scripts/differential.jsonl"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": [
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 0,
+       "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+       "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+       "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+      },
+      "ok": true,
+      "op": "live"
+     },
+     {
+      "generation": 4,
+      "id": "261dac3cfbc8bd92675c6b58803d9df2d89703da4af41859bbca9b35288d87aa",
+      "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+      "lifecycle": "ACTIVE",
+      "ok": true,
+      "op": "source_found",
+      "source_authority": 1
+     },
+     {
+      "context": null,
+      "live_generation": 0,
+      "ok": true,
+      "op": "query",
+      "rows": 4,
+      "values": [
+       -0.025092914353495678,
+       0.13945929300340484,
+       0.019857245511372017,
+       0.2196099319389631
+      ],
+      "values_sha256": "67d6efe3fcdaca3811f7420c77b6b4aa74a9b0732deb4e928d51ce2002ca1723"
+     },
+     {
+      "context": null,
+      "durability": "VOLATILE",
+      "epoch": [
+       0,
+       8
+      ],
+      "experiences": 2,
+      "generation": [
+       0,
+       1
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "d5b7cf452e39af9117d2fc732afd33c7043c35e8c3ca03b6f61cb2bb8e992e5c",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "context": null,
+      "durability": "VOLATILE",
+      "epoch": [
+       8,
+       16
+      ],
+      "experiences": 2,
+      "generation": [
+       1,
+       2
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "5a68d1c2f7e71be5c64837831aac818facebca3910a85357199561a1b8d5a001",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "context": null,
+      "durability": "VOLATILE",
+      "epoch": [
+       16,
+       24
+      ],
+      "experiences": 2,
+      "generation": [
+       2,
+       3
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "712eb6c43243a340c3ab4494010abd255ebfed8128b662cc0f3c7f04d5fa14f5",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "context": null,
+      "durability": "VOLATILE",
+      "epoch": [
+       24,
+       32
+      ],
+      "experiences": 2,
+      "generation": [
+       3,
+       4
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "932ebc0d02fa865e571f66ad92bba58715ad77c58ada3423b48013dccc99104f",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "context": null,
+      "durability": "VOLATILE",
+      "epoch": [
+       32,
+       40
+      ],
+      "experiences": 2,
+      "generation": [
+       4,
+       5
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "859e9f64ede0a6812fc0e01cc9e696130beed091136743fd9e21513f2f29110b",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "context": null,
+      "live_generation": 5,
+      "ok": true,
+      "op": "query",
+      "rows": 4,
+      "values": [
+       -0.007169938043577337,
+       0.12146199343094594,
+       0.02271639062590049,
+       0.22021039843364335
+      ],
+      "values_sha256": "b7cb0abb7f66dcd98b58e9031109716875998d1a1001a6271d3e040aa007ee2d"
+     },
+     {
+      "durability": "VOLATILE",
+      "entries": [
+       {
+        "assertion": "034e984d3aae7039354b676316307ef0d2959ff62af04818228634ddc3bb5aed",
+        "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+        "polarity": "ASSERT",
+        "provenance": "7b021de1856add9ce24dcb0ec5dcf440db96a4cc325caff9c279e28c78e82f10",
+        "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+        "source_authority": 1,
+        "tick": 1
+       }
+      ],
+      "generation": [
+       5,
+       6
+      ],
+      "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "k1_steps": 0,
+      "ok": true,
+      "op": "evidence"
+     },
+     {
+      "durability": "VOLATILE",
+      "entries": [
+       {
+        "assertion": "5e0ae891c1a0aa27e0c6b7fe970514bd2635f0e10bb7e4e18f43bb12f8494ed9",
+        "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+        "polarity": "ASSERT",
+        "provenance": "760d57b0f87120164a1fd630d91ba43f2806c9d5faebfa3d6a54ac95ee9b3369",
+        "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+        "source_authority": 1,
+        "tick": 2
+       }
+      ],
+      "generation": [
+       6,
+       7
+      ],
+      "identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+      "k1_steps": 0,
+      "ok": true,
+      "op": "evidence"
+     },
+     {
+      "answer": "30b8e35c093a408a39445ab3003e0c2e7312cdca6b5e3270c25b03aabf23b432",
+      "conflicts": 0,
+      "contradicted": 0,
+      "found": true,
+      "matches": 1,
+      "ok": true,
+      "op": "lookup",
+      "state_identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+      "uncertain": 0
+     },
+     {
+      "code": "COGNITION_FUEL_EXCEEDED",
+      "detail": "COGNITION_FUEL_EXCEEDED: ECS work units",
+      "expected": "COGNITION_FUEL_EXCEEDED",
+      "met": true,
+      "ok": false,
+      "op": "learn"
+     },
+     {
+      "code": "LEARNING_RATE",
+      "detail": "LEARNING_RATE: explicit positive finite learning rate",
+      "expected": "LEARNING_RATE",
+      "met": true,
+      "ok": false,
+      "op": "learn"
+     },
+     {
+      "code": "OPERATION_RETIRED",
+      "detail": "OPERATION_RETIRED: 'publish' belonged to the retired persistent runtime: Elpis writes no state; a session ends with the process or `close`",
+      "expected": "OPERATION_RETIRED",
+      "met": true,
+      "ok": false,
+      "op": "publish"
+     },
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 7,
+       "identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+       "k1_identity": "b4ddbe2b96ec72868774f929b70c40f8c90f39ee55375760efd6075eb7ae3c9b",
+       "memory_identity": "e594c92923369fda0059b6ef34979c325a0e1579a1c14987a63f351a42936d64"
+      },
+      "ok": true,
+      "op": "live"
+     },
+     {
+      "closed": true,
+      "discarded": {
+       "learned": true,
+       "live_generation": 7,
+       "live_identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df"
+      },
+      "ok": true,
+      "op": "close"
+     },
+     {
+      "answer": null,
+      "conflicts": 0,
+      "contradicted": 0,
+      "found": false,
+      "matches": 0,
+      "ok": true,
+      "op": "lookup",
+      "state_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "uncertain": 0
+     },
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 0,
+       "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+       "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+       "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+      },
+      "ok": true,
+      "op": "live"
+     }
+    ],
+    "seconds": 0.487,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "{\"closed\": true, \"discarded\": {\"learned\": true, \"live_generation\": 7, \"live_identity\": \"124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df\"}, \"ok\": true, \"op\": \"close\"}",
+     "{\"answer\": null, \"conflicts\": 0, \"contradicted\": 0, \"found\": false, \"matches\": 0, \"ok\": true, \"op\": \"lookup\", \"state_identity\": \"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\", \"uncertain\": 0}",
+     "{\"initial_identity\": \"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\", \"live\": {\"generation\": 0, \"identity\": \"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\", \"k1_identity\": \"acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb\", \"memory_identity\": \"308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d\"}, \"ok\": true, \"op\": \"live\"}"
+    ],
+    "traced_calls": {
+     "mmap": 133,
+     "open": 1,
+     "openat": 220,
+     "openat2": 14,
+     "write": 28
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "observed",
+    "output": [
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 0,
+       "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+       "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+       "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+      },
+      "ok": true,
+      "op": "live"
+     },
+     {
+      "generation": 4,
+      "id": "ab964473eb8c8128a73eb0bfaaf56c5a02a61fe981cc38dae03aa62e6e003f17",
+      "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+      "lifecycle": "ACTIVE",
+      "ok": true,
+      "op": "source_found",
+      "source_authority": 1
+     },
+     {
+      "context": null,
+      "live_generation": 0,
+      "ok": true,
+      "op": "query",
+      "rows": 4,
+      "values": [
+       -0.025092914353495678,
+       0.13945929300340484,
+       0.019857245511372017,
+       0.2196099319389631
+      ],
+      "values_sha256": "67d6efe3fcdaca3811f7420c77b6b4aa74a9b0732deb4e928d51ce2002ca1723"
+     },
+     {
+      "context": null,
+      "durability": "VOLATILE",
+      "epoch": [
+       0,
+       8
+      ],
+      "experiences": 2,
+      "generation": [
+       0,
+       1
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "d5b7cf452e39af9117d2fc732afd33c7043c35e8c3ca03b6f61cb2bb8e992e5c",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "context": null,
+      "durability": "VOLATILE",
+      "epoch": [
+       8,
+       16
+      ],
+      "experiences": 2,
+      "generation": [
+       1,
+       2
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "5a68d1c2f7e71be5c64837831aac818facebca3910a85357199561a1b8d5a001",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "context": null,
+      "durability": "VOLATILE",
+      "epoch": [
+       16,
+       24
+      ],
+      "experiences": 2,
+      "generation": [
+       2,
+       3
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "712eb6c43243a340c3ab4494010abd255ebfed8128b662cc0f3c7f04d5fa14f5",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "context": null,
+      "durability": "VOLATILE",
+      "epoch": [
+       24,
+       32
+      ],
+      "experiences": 2,
+      "generation": [
+       3,
+       4
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "932ebc0d02fa865e571f66ad92bba58715ad77c58ada3423b48013dccc99104f",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "context": null,
+      "durability": "VOLATILE",
+      "epoch": [
+       32,
+       40
+      ],
+      "experiences": 2,
+      "generation": [
+       4,
+       5
+      ],
+      "grant": "qualification: numeric experience",
+      "identity": "859e9f64ede0a6812fc0e01cc9e696130beed091136743fd9e21513f2f29110b",
+      "ok": true,
+      "op": "learn",
+      "rows": 4,
+      "steps": 8
+     },
+     {
+      "context": null,
+      "live_generation": 5,
+      "ok": true,
+      "op": "query",
+      "rows": 4,
+      "values": [
+       -0.007169938043577337,
+       0.12146199343094594,
+       0.02271639062590049,
+       0.22021039843364335
+      ],
+      "values_sha256": "b7cb0abb7f66dcd98b58e9031109716875998d1a1001a6271d3e040aa007ee2d"
+     },
+     {
+      "durability": "VOLATILE",
+      "entries": [
+       {
+        "assertion": "034e984d3aae7039354b676316307ef0d2959ff62af04818228634ddc3bb5aed",
+        "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+        "polarity": "ASSERT",
+        "provenance": "7b021de1856add9ce24dcb0ec5dcf440db96a4cc325caff9c279e28c78e82f10",
+        "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+        "source_authority": 1,
+        "tick": 1
+       }
+      ],
+      "generation": [
+       5,
+       6
+      ],
+      "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+      "k1_steps": 0,
+      "ok": true,
+      "op": "evidence"
+     },
+     {
+      "durability": "VOLATILE",
+      "entries": [
+       {
+        "assertion": "5e0ae891c1a0aa27e0c6b7fe970514bd2635f0e10bb7e4e18f43bb12f8494ed9",
+        "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+        "polarity": "ASSERT",
+        "provenance": "760d57b0f87120164a1fd630d91ba43f2806c9d5faebfa3d6a54ac95ee9b3369",
+        "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+        "source_authority": 1,
+        "tick": 2
+       }
+      ],
+      "generation": [
+       6,
+       7
+      ],
+      "identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+      "k1_steps": 0,
+      "ok": true,
+      "op": "evidence"
+     },
+     {
+      "answer": "30b8e35c093a408a39445ab3003e0c2e7312cdca6b5e3270c25b03aabf23b432",
+      "conflicts": 0,
+      "contradicted": 0,
+      "found": true,
+      "matches": 1,
+      "ok": true,
+      "op": "lookup",
+      "state_identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+      "uncertain": 0
+     },
+     {
+      "code": "COGNITION_FUEL_EXCEEDED",
+      "detail": "COGNITION_FUEL_EXCEEDED: ECS work units",
+      "expected": "COGNITION_FUEL_EXCEEDED",
+      "met": true,
+      "ok": false,
+      "op": "learn"
+     },
+     {
+      "code": "LEARNING_RATE",
+      "detail": "LEARNING_RATE: explicit positive finite learning rate",
+      "expected": "LEARNING_RATE",
+      "met": true,
+      "ok": false,
+      "op": "learn"
+     },
+     {
+      "code": "OPERATION_RETIRED",
+      "detail": "OPERATION_RETIRED: 'publish' belonged to the retired persistent runtime: Elpis writes no state; a session ends with the process or `close`",
+      "expected": "OPERATION_RETIRED",
+      "met": true,
+      "ok": false,
+      "op": "publish"
+     },
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 7,
+       "identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+       "k1_identity": "b4ddbe2b96ec72868774f929b70c40f8c90f39ee55375760efd6075eb7ae3c9b",
+       "memory_identity": "e594c92923369fda0059b6ef34979c325a0e1579a1c14987a63f351a42936d64"
+      },
+      "ok": true,
+      "op": "live"
+     },
+     {
+      "closed": true,
+      "discarded": {
+       "learned": true,
+       "live_generation": 7,
+       "live_identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df"
+      },
+      "ok": true,
+      "op": "close"
+     },
+     {
+      "answer": null,
+      "conflicts": 0,
+      "contradicted": 0,
+      "found": false,
+      "matches": 0,
+      "ok": true,
+      "op": "lookup",
+      "state_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "uncertain": 0
+     },
+     {
+      "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "live": {
+       "generation": 0,
+       "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+       "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+       "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+      },
+      "ok": true,
+      "op": "live"
+     }
+    ],
+    "seconds": 0.469,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "{\"closed\": true, \"discarded\": {\"learned\": true, \"live_generation\": 7, \"live_identity\": \"124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df\"}, \"ok\": true, \"op\": \"close\"}",
+     "{\"answer\": null, \"conflicts\": 0, \"contradicted\": 0, \"found\": false, \"matches\": 0, \"ok\": true, \"op\": \"lookup\", \"state_identity\": \"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\", \"uncertain\": 0}",
+     "{\"initial_identity\": \"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\", \"live\": {\"generation\": 0, \"identity\": \"4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa\", \"k1_identity\": \"acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb\", \"memory_identity\": \"308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d\"}, \"ok\": true, \"op\": \"live\"}"
+    ],
+    "traced_calls": {
+     "mmap": 113,
+     "open": 1,
+     "openat": 205,
+     "openat2": 14,
+     "write": 28
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 27108,
+    "seconds": 0.202
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 19,
+    "last": {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    "sha256": "b7ee418e38879308edc9b39d6b44dbbb939da755eefd42739a0196104c19fdb2"
+   },
+   "plain_output": [
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    {
+     "generation": 4,
+     "id": "b19cd3d2dcfef3b843fefd57bac44bcf9d1ac1cb6f850258bf8d112a18adee82",
+     "label": "cc348745c65f8def7c7acb9fd3a1170baf80efeb020a9c191b1bb17996217e7e",
+     "lifecycle": "ACTIVE",
+     "ok": true,
+     "op": "source_found",
+     "source_authority": 1
+    },
+    {
+     "context": null,
+     "live_generation": 0,
+     "ok": true,
+     "op": "query",
+     "rows": 4,
+     "values": [
+      -0.025092914353495678,
+      0.13945929300340484,
+      0.019857245511372017,
+      0.2196099319389631
+     ],
+     "values_sha256": "67d6efe3fcdaca3811f7420c77b6b4aa74a9b0732deb4e928d51ce2002ca1723"
+    },
+    {
+     "context": null,
+     "durability": "VOLATILE",
+     "epoch": [
+      0,
+      8
+     ],
+     "experiences": 2,
+     "generation": [
+      0,
+      1
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "d5b7cf452e39af9117d2fc732afd33c7043c35e8c3ca03b6f61cb2bb8e992e5c",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "context": null,
+     "durability": "VOLATILE",
+     "epoch": [
+      8,
+      16
+     ],
+     "experiences": 2,
+     "generation": [
+      1,
+      2
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "5a68d1c2f7e71be5c64837831aac818facebca3910a85357199561a1b8d5a001",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "context": null,
+     "durability": "VOLATILE",
+     "epoch": [
+      16,
+      24
+     ],
+     "experiences": 2,
+     "generation": [
+      2,
+      3
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "712eb6c43243a340c3ab4494010abd255ebfed8128b662cc0f3c7f04d5fa14f5",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "context": null,
+     "durability": "VOLATILE",
+     "epoch": [
+      24,
+      32
+     ],
+     "experiences": 2,
+     "generation": [
+      3,
+      4
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "932ebc0d02fa865e571f66ad92bba58715ad77c58ada3423b48013dccc99104f",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "context": null,
+     "durability": "VOLATILE",
+     "epoch": [
+      32,
+      40
+     ],
+     "experiences": 2,
+     "generation": [
+      4,
+      5
+     ],
+     "grant": "qualification: numeric experience",
+     "identity": "859e9f64ede0a6812fc0e01cc9e696130beed091136743fd9e21513f2f29110b",
+     "ok": true,
+     "op": "learn",
+     "rows": 4,
+     "steps": 8
+    },
+    {
+     "context": null,
+     "live_generation": 5,
+     "ok": true,
+     "op": "query",
+     "rows": 4,
+     "values": [
+      -0.007169938043577337,
+      0.12146199343094594,
+      0.02271639062590049,
+      0.22021039843364335
+     ],
+     "values_sha256": "b7cb0abb7f66dcd98b58e9031109716875998d1a1001a6271d3e040aa007ee2d"
+    },
+    {
+     "durability": "VOLATILE",
+     "entries": [
+      {
+       "assertion": "034e984d3aae7039354b676316307ef0d2959ff62af04818228634ddc3bb5aed",
+       "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+       "polarity": "ASSERT",
+       "provenance": "7b021de1856add9ce24dcb0ec5dcf440db96a4cc325caff9c279e28c78e82f10",
+       "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+       "source_authority": 1,
+       "tick": 1
+      }
+     ],
+     "generation": [
+      5,
+      6
+     ],
+     "identity": "25010bd5675173d56c5316ea96ad480016c8fa06c17177711d52375cd91c0616",
+     "k1_steps": 0,
+     "ok": true,
+     "op": "evidence"
+    },
+    {
+     "durability": "VOLATILE",
+     "entries": [
+      {
+       "assertion": "5e0ae891c1a0aa27e0c6b7fe970514bd2635f0e10bb7e4e18f43bb12f8494ed9",
+       "hyperedge": "c96209ab993df992fb6133e0be4410d8e51c43f12752415bd732937bbf010061",
+       "polarity": "ASSERT",
+       "provenance": "760d57b0f87120164a1fd630d91ba43f2806c9d5faebfa3d6a54ac95ee9b3369",
+       "relation_key": "f0aa6b20d07eab13ba3cb754d60b15a19275f937ca9450ee416f5c307b976d09",
+       "source_authority": 1,
+       "tick": 2
+      }
+     ],
+     "generation": [
+      6,
+      7
+     ],
+     "identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+     "k1_steps": 0,
+     "ok": true,
+     "op": "evidence"
+    },
+    {
+     "answer": "30b8e35c093a408a39445ab3003e0c2e7312cdca6b5e3270c25b03aabf23b432",
+     "conflicts": 0,
+     "contradicted": 0,
+     "found": true,
+     "matches": 1,
+     "ok": true,
+     "op": "lookup",
+     "state_identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+     "uncertain": 0
+    },
+    {
+     "code": "COGNITION_FUEL_EXCEEDED",
+     "detail": "COGNITION_FUEL_EXCEEDED: ECS work units",
+     "expected": "COGNITION_FUEL_EXCEEDED",
+     "met": true,
+     "ok": false,
+     "op": "learn"
+    },
+    {
+     "code": "LEARNING_RATE",
+     "detail": "LEARNING_RATE: explicit positive finite learning rate",
+     "expected": "LEARNING_RATE",
+     "met": true,
+     "ok": false,
+     "op": "learn"
+    },
+    {
+     "code": "OPERATION_RETIRED",
+     "detail": "OPERATION_RETIRED: 'publish' belonged to the retired persistent runtime: Elpis writes no state; a session ends with the process or `close`",
+     "expected": "OPERATION_RETIRED",
+     "met": true,
+     "ok": false,
+     "op": "publish"
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 7,
+      "identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df",
+      "k1_identity": "b4ddbe2b96ec72868774f929b70c40f8c90f39ee55375760efd6075eb7ae3c9b",
+      "memory_identity": "e594c92923369fda0059b6ef34979c325a0e1579a1c14987a63f351a42936d64"
+     },
+     "ok": true,
+     "op": "live"
+    },
+    {
+     "closed": true,
+     "discarded": {
+      "learned": true,
+      "live_generation": 7,
+      "live_identity": "124154a9adca3bb360d42217ba88a59b5d0a5fd1e7fb4fa8c7723ea9e43b20df"
+     },
+     "ok": true,
+     "op": "close"
+    },
+    {
+     "answer": null,
+     "conflicts": 0,
+     "contradicted": 0,
+     "found": false,
+     "matches": 0,
+     "ok": true,
+     "op": "lookup",
+     "state_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "uncertain": 0
+    },
+    {
+     "initial_identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+     "live": {
+      "generation": 0,
+      "identity": "4a6de1e4ca162933221d66f527eae4475f8de1c5d8116b27bb36e6e82e6f26fa",
+      "k1_identity": "acbf2f62e53470a5c1f4c7508dc31c8ba212c09c4e34d991c14560a7a832dddb",
+      "memory_identity": "308ef6a3df06641c5f10da6acc40c34a4be3949e3e08721fbea186f452f5867d"
+     },
+     "ok": true,
+     "op": "live"
+    }
+   ],
+   "sha256": "c15c998db703a51a2b5b9591fa1f37ca3cea605884e82472ca1dcca72a948ad5"
+  },
+  "python_fms_hacf": {
+   "argv": [
+    "/usr/bin/python3",
+    "-I",
+    "-B",
+    "<repo>/research/volatile_runtime_v1/python_fms_hacf.py",
+    "<repo>",
+    "<build>"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": [
+     {
+      "answers": 12,
+      "checks": {
+       "epoch_state_root_never_created": true,
+       "fuel_refusal": true,
+       "ingress_ran:0": true,
+       "ingress_ran:1": true,
+       "ingress_ran:2": true,
+       "learning_moved_the_live_state": true,
+       "new_session_starts_at_genesis": true,
+       "process_gate": true,
+       "residency_never_moved": true,
+       "retired_cold_root_refused": true,
+       "retired_operation_absent:adopt_k1_candidate": true,
+       "retired_operation_absent:discard_k1_candidate": true,
+       "retired_operation_absent:durability": true,
+       "retired_operation_absent:import_composite": true,
+       "retired_operation_absent:publish_canonical": true,
+       "retired_operation_absent:publish_identity": true,
+       "retired_operation_absent:publish_recoverable": true,
+       "retired_operation_absent:recover_k1": true,
+       "warm_budget_refuses_a_newcomer": true
+      },
+      "ok": true
+     }
+    ],
+    "seconds": 0.458,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "{\"answers\": 12, \"checks\": {\"epoch_state_root_never_created\": true, \"fuel_refusal\": true, \"ingress_ran:0\": true, \"ingress_ran:1\": true, \"ingress_ran:2\": true, \"learning_moved_the_live_state\": true, \"new_session_starts_at_genesis\": true, \"process_gate\": true, \"residency_never_moved\": true, \"retired_cold_root_refused\": true, \"retired_operation_absent:adopt_k1_candidate\": true, \"retired_operation_absent:discard_k1_candidate\": true, \"retired_operation_absent:durability\": true, \"retired_operation_absent:import_composite\": true, \"retired_operation_absent:publish_canonical\": true, \"retired_operation_absent:publish_identity\": true, \"retired_operation_absent:publish_recoverable\": true, \"retired_operation_absent:recover_k1\": true, \"warm_budget_refuses_a_newcomer\": true}, \"ok\": true}"
+    ],
+    "traced_calls": {
+     "mmap": 131,
+     "open": 1,
+     "openat": 214,
+     "openat2": 12,
+     "write": 8
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "observed",
+    "output": [
+     {
+      "answers": 12,
+      "checks": {
+       "epoch_state_root_never_created": true,
+       "fuel_refusal": true,
+       "ingress_ran:0": true,
+       "ingress_ran:1": true,
+       "ingress_ran:2": true,
+       "learning_moved_the_live_state": true,
+       "new_session_starts_at_genesis": true,
+       "process_gate": true,
+       "residency_never_moved": true,
+       "retired_cold_root_refused": true,
+       "retired_operation_absent:adopt_k1_candidate": true,
+       "retired_operation_absent:discard_k1_candidate": true,
+       "retired_operation_absent:durability": true,
+       "retired_operation_absent:import_composite": true,
+       "retired_operation_absent:publish_canonical": true,
+       "retired_operation_absent:publish_identity": true,
+       "retired_operation_absent:publish_recoverable": true,
+       "retired_operation_absent:recover_k1": true,
+       "warm_budget_refuses_a_newcomer": true
+      },
+      "ok": true
+     }
+    ],
+    "seconds": 0.373,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "{\"answers\": 12, \"checks\": {\"epoch_state_root_never_created\": true, \"fuel_refusal\": true, \"ingress_ran:0\": true, \"ingress_ran:1\": true, \"ingress_ran:2\": true, \"learning_moved_the_live_state\": true, \"new_session_starts_at_genesis\": true, \"process_gate\": true, \"residency_never_moved\": true, \"retired_cold_root_refused\": true, \"retired_operation_absent:adopt_k1_candidate\": true, \"retired_operation_absent:discard_k1_candidate\": true, \"retired_operation_absent:durability\": true, \"retired_operation_absent:import_composite\": true, \"retired_operation_absent:publish_canonical\": true, \"retired_operation_absent:publish_identity\": true, \"retired_operation_absent:publish_recoverable\": true, \"retired_operation_absent:recover_k1\": true, \"warm_budget_refuses_a_newcomer\": true}, \"ok\": true}"
+    ],
+    "traced_calls": {
+     "mmap": 111,
+     "open": 1,
+     "openat": 197,
+     "openat2": 12,
+     "write": 8
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 28212,
+    "seconds": 0.192
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 1,
+    "last": {
+     "answers": 12,
+     "checks": {
+      "epoch_state_root_never_created": true,
+      "fuel_refusal": true,
+      "ingress_ran:0": true,
+      "ingress_ran:1": true,
+      "ingress_ran:2": true,
+      "learning_moved_the_live_state": true,
+      "new_session_starts_at_genesis": true,
+      "process_gate": true,
+      "residency_never_moved": true,
+      "retired_cold_root_refused": true,
+      "retired_operation_absent:adopt_k1_candidate": true,
+      "retired_operation_absent:discard_k1_candidate": true,
+      "retired_operation_absent:durability": true,
+      "retired_operation_absent:import_composite": true,
+      "retired_operation_absent:publish_canonical": true,
+      "retired_operation_absent:publish_identity": true,
+      "retired_operation_absent:publish_recoverable": true,
+      "retired_operation_absent:recover_k1": true,
+      "warm_budget_refuses_a_newcomer": true
+     },
+     "ok": true
+    },
+    "sha256": "0ed13e52811357cb341c57573563f867cc8046354bda4dab7d4c3688fc91a9d0"
+   },
+   "plain_output": [
+    {
+     "answers": 12,
+     "checks": {
+      "epoch_state_root_never_created": true,
+      "fuel_refusal": true,
+      "ingress_ran:0": true,
+      "ingress_ran:1": true,
+      "ingress_ran:2": true,
+      "learning_moved_the_live_state": true,
+      "new_session_starts_at_genesis": true,
+      "process_gate": true,
+      "residency_never_moved": true,
+      "retired_cold_root_refused": true,
+      "retired_operation_absent:adopt_k1_candidate": true,
+      "retired_operation_absent:discard_k1_candidate": true,
+      "retired_operation_absent:durability": true,
+      "retired_operation_absent:import_composite": true,
+      "retired_operation_absent:publish_canonical": true,
+      "retired_operation_absent:publish_identity": true,
+      "retired_operation_absent:publish_recoverable": true,
+      "retired_operation_absent:recover_k1": true,
+      "warm_budget_refuses_a_newcomer": true
+     },
+     "ok": true
+    }
+   ],
+   "sha256": "c15c998db703a51a2b5b9591fa1f37ca3cea605884e82472ca1dcca72a948ad5"
+  },
+  "runtime_core.abi": {
+   "argv": [
+    "<build>/native/runtime/test_runtime_abi"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": null,
+    "seconds": 0.095,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "runtime ABI v8: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 45,
+     "openat": 32,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "observed",
+    "output": null,
+    "seconds": 0.017,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "runtime ABI v8: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 25,
+     "openat": 15,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 2468,
+    "seconds": 0.007
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 0,
+    "last": null,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "plain_output": null,
+   "sha256": "79387f8b6e409235385509f9d541068263a22123798743ba5fa046f875077025"
+  },
+  "runtime_core.composite": {
+   "argv": [
+    "<build>/native/runtime/test_runtime_composite"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": null,
+    "seconds": 0.099,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "runtime composite (ABI v8, volatile): PASS"
+    ],
+    "traced_calls": {
+     "mmap": 57,
+     "openat": 52,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "observed",
+    "output": null,
+    "seconds": 0.038,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "runtime composite (ABI v8, volatile): PASS"
+    ],
+    "traced_calls": {
+     "mmap": 37,
+     "openat": 35,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 3284,
+    "seconds": 0.022
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 0,
+    "last": null,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "plain_output": null,
+   "sha256": "a888fb07a73a1fa8c4c76f49a332f8b7e07d3de9175c94d7607ebc1ab7e60fc1"
+  },
+  "runtime_core.hot_io": {
+   "argv": [
+    "<build>/native/runtime/test_runtime_hot_io"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": null,
+    "seconds": 0.092,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "a complete session lifecycle (122 turns, 12 queries, operator events, evolution, two sessions): 0+0 persistent-I/O calls, 0+0 reads (this thread + others)",
+     "40 held FMS-resident turns (RAM-only FMS): 0 read or write calls; 0 promotions, 0 demotions",
+     "test_runtime_hot_io (ABI v8): OK"
+    ],
+    "traced_calls": {
+     "mmap": 49,
+     "openat": 34,
+     "write": 2
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "observed",
+    "output": null,
+    "seconds": 0.029,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "a complete session lifecycle (122 turns, 12 queries, operator events, evolution, two sessions): 0+0 persistent-I/O calls, 0+0 reads (this thread + others)",
+     "40 held FMS-resident turns (RAM-only FMS): 0 read or write calls; 0 promotions, 0 demotions",
+     "test_runtime_hot_io (ABI v8): OK"
+    ],
+    "traced_calls": {
+     "mmap": 29,
+     "openat": 17,
+     "write": 2
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 2868,
+    "seconds": 0.018
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 0,
+    "last": null,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "plain_output": null,
+   "sha256": "d68b15a1728c681d380dc0cda2a80f73a89ed6930f31c980a0965031010ba08f"
+  },
+  "runtime_core.lifecycle": {
+   "argv": [
+    "<build>/native/runtime/test_runtime_lifecycle"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": null,
+    "seconds": 0.103,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "lifecycle fms-k1     fail-stop+close  PASS",
+     "lifecycle fms-k1     no turn          PASS",
+     "runtime lifecycle: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 49,
+     "openat": 34,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "observed",
+    "output": null,
+    "seconds": 0.04,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "lifecycle fms-k1     fail-stop+close  PASS",
+     "lifecycle fms-k1     no turn          PASS",
+     "runtime lifecycle: PASS"
+    ],
+    "traced_calls": {
+     "mmap": 29,
+     "openat": 17,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 2600,
+    "seconds": 0.022
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 0,
+    "last": null,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "plain_output": null,
+   "sha256": "33b944e8b94b129aad6d31e5ff013a3926c15f29c242973a28bd4f6bd83edccb"
+  },
+  "runtime_core.session": {
+   "argv": [
+    "<build>/native/runtime/test_runtime_session"
+   ],
+   "confined": {
+    "exit": 0,
+    "mode": "confined",
+    "output": null,
+    "seconds": 0.083,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "runtime session (ABI v8, volatile, composed): PASS"
+    ],
+    "traced_calls": {
+     "mmap": 58,
+     "openat": 46,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "observed": {
+    "exit": 0,
+    "mode": "observed",
+    "output": null,
+    "seconds": 0.02,
+    "stderr_tail": [],
+    "stdout_tail": [
+     "runtime session (ABI v8, volatile, composed): PASS"
+    ],
+    "traced_calls": {
+     "mmap": 38,
+     "openat": 29,
+     "write": 1
+    },
+    "write_events": []
+   },
+   "plain": {
+    "exit": 0,
+    "peak_rss_kib": 2732,
+    "seconds": 0.009
+   },
+   "plain_answers": {
+    "all_met": true,
+    "count": 0,
+    "last": null,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   },
+   "plain_output": null,
+   "sha256": "e0e5d71918b3b8a901b4816e77abd7be2249815dbfed472c2fdf137f647bc7d8"
+  }
+ },
+ "schema": "elpis.volatile-runtime-v1.zero-write.v1",
+ "source_commit": "66a11a4c6f3f343f99abd6e57e7184ec41d6d7d4",
+ "source_tree_clean": true,
+ "static": {
+  "input_sha256": {
+   "<build>/native/ECS_C/libelpis_ecs_memory.so": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+   "<build>/native/ECS_C/session/libelpis_ecs_c_session.so": "0b5f9b6c684945d8f050c6e2f477ff2fb86d1dcede0f7364d95165149ba85068",
+   "<build>/native/ECS_C/session/test_ecs_c_session_abi": "f8c17a28ee1eeac519e96a2ac4eb80724218c1d76f50470c5ca7182f549ae45d",
+   "<build>/native/ECS_C/test_ecs_c_relational_session": "ed568bff2e7cc13242cb2c25e79780c8bee905f9d1adbe4480a70e491f94b46a",
+   "<build>/native/ECS_G/libelpis_ecsg_fms.so": "42d44b9dbe470a7f4f2cf23ac8a2b820d02454cfcc310b32009759aa49a32c3e",
+   "<build>/native/ECS_G/libelpis_ecsg_k1.so": "31720853d39217b2751024fb3a1e2cd2d9acc03ffb0ab4a64b7cd8ac8e18d1d4",
+   "<build>/native/ECS_G/libelpis_ecsg_k1_fms.so": "c9147cf1bf53b10233d241db19c25e28288f8dfd76de99d3a767e8cf8e4f8602",
+   "<build>/native/ECS_G/libelpis_ecsg_math.so": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+   "<build>/native/pipeline/libelpis_ingress_bridge.so": "a9d1c7f5d96b81de8de165759f4730d432540f703b3751e3eb4f44d6719430df",
+   "<build>/native/runtime/composite/libelpis_ecs_composite.so": "92647da3ca9171dbc88fb70f14ff675fb4c1526c08cd8e98358b9130fd27d1c7",
+   "<build>/native/runtime/elpis": "abe117d4bd5a739fd7d69e4267118e6c79cd0ec04091ca38098380fda4ed3464",
+   "<build>/native/runtime/elpis_autonomous_run": "1d2690e9c6bd3f7c01f4a4d75dff185ff86871be7d2208a977e2881fcdb63e2d",
+   "<build>/native/runtime/elpis_testing": "98ebe99b3488bf21ecba7fd7920d14c6d3027e9793fea673d51a9be79c7bf807",
+   "<build>/native/runtime/libelpis_hacf_observation.so": "c41b482bc6c2ac52bd5467b6e7980513c64b095ad5b62ec178b44f0c38509160",
+   "<build>/native/runtime/libelpis_runtime.so": "86d9dc331a03ea13059a35e1e1d51a7ed1e6470854b5226229fcb258bd5bf99d",
+   "<build>/native/runtime/test_runtime_abi": "79387f8b6e409235385509f9d541068263a22123798743ba5fa046f875077025",
+   "<build>/native/runtime/test_runtime_composite": "a888fb07a73a1fa8c4c76f49a332f8b7e07d3de9175c94d7607ebc1ab7e60fc1",
+   "<build>/native/runtime/test_runtime_hot_io": "d68b15a1728c681d380dc0cda2a80f73a89ed6930f31c980a0965031010ba08f",
+   "<build>/native/runtime/test_runtime_lifecycle": "33b944e8b94b129aad6d31e5ff013a3926c15f29c242973a28bd4f6bd83edccb",
+   "<build>/native/runtime/test_runtime_session": "e0e5d71918b3b8a901b4816e77abd7be2249815dbfed472c2fdf137f647bc7d8",
+   "<build>/native/structure/libelpis_retrieval_bridge.so": "9ccd9306eb87259e156adf6e24fe25331d535b1090b161615ec7255bc8820c56",
+   "<build>/native/substrate/libelpis_execution.so": "0bc6b209ae60d21eb3ff0aa9415401199e0ae1840df261f69e2690b10ecf5691",
+   "<build>/native/substrate/libelpis_fms_file_assets.so": "520520e0e3a6d46e02e45a10f72771b49f9125ae9e112a16a940297ecfbcb114",
+   "<build>/native/substrate/test_fms_volatile_cold": "b4563739262e6f85b47de18fe28b48ffab482a8857c1de50653d44e520e400f1",
+   "<build>/research/volatile_runtime_v1/hgram_read": "2c4ada1a8dc8e27ada00034953f73cfa9ed74a575b9a9001f50620119d3a1eb8",
+   "<build>/research/volatile_runtime_v1/peak_rss": "5eb4ae8e950e4745ef366e20475198ef75b966e4120840279afb37b2873fcc4e",
+   "<build>/research/volatile_runtime_v1/work/cold/cold.asset": "be175d2cfa41ea63b14a3846daf670d4ad35e8c3574dedcf87aefa79b3279bbd",
+   "<build>/research/volatile_runtime_v1/work/drifted-library/libelpis_ecs_composite.so": "75e12787be866eb65451b31a0fe2475708925e8e2563cf4ff2a587d29a44c652",
+   "<build>/research/volatile_runtime_v1/work/drifted-library/libelpis_ecs_memory.so": "0df9767417a4d4a68a390eb3532048f0857f7f57fcd1289e6b62154dc734a268",
+   "<build>/research/volatile_runtime_v1/work/drifted-library/libelpis_ecsg_k1.so": "31720853d39217b2751024fb3a1e2cd2d9acc03ffb0ab4a64b7cd8ac8e18d1d4",
+   "<build>/research/volatile_runtime_v1/work/drifted-library/libelpis_ecsg_math.so": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+   "<build>/research/volatile_runtime_v1/work/drifted-library/libelpis_hacf_observation.so": "c41b482bc6c2ac52bd5467b6e7980513c64b095ad5b62ec178b44f0c38509160",
+   "<build>/research/volatile_runtime_v1/work/drifted-library/libelpis_runtime.so": "86d9dc331a03ea13059a35e1e1d51a7ed1e6470854b5226229fcb258bd5bf99d",
+   "<build>/research/volatile_runtime_v1/work/hgram/hgram.bin": "c8172200138e43c3120373b76bdd85780af7e03932cf8993586a89a35ce1e423",
+   "<build>/research/volatile_runtime_v1/work/missing-library/libelpis_ecs_composite.so": "92647da3ca9171dbc88fb70f14ff675fb4c1526c08cd8e98358b9130fd27d1c7",
+   "<build>/research/volatile_runtime_v1/work/missing-library/libelpis_ecsg_k1.so": "31720853d39217b2751024fb3a1e2cd2d9acc03ffb0ab4a64b7cd8ac8e18d1d4",
+   "<build>/research/volatile_runtime_v1/work/missing-library/libelpis_ecsg_math.so": "2374876e3a837761c87bdbc39389a2c5b2e007fcbaa81dd4b39e05deb1e5dc09",
+   "<build>/research/volatile_runtime_v1/work/missing-library/libelpis_hacf_observation.so": "c41b482bc6c2ac52bd5467b6e7980513c64b095ad5b62ec178b44f0c38509160",
+   "<build>/research/volatile_runtime_v1/work/missing-library/libelpis_runtime.so": "86d9dc331a03ea13059a35e1e1d51a7ed1e6470854b5226229fcb258bd5bf99d",
+   "<build>/research/volatile_runtime_v1/work/scripts/composed.jsonl": "09cb3470b3b000d875957b418994787c04bd080593fe1dea4c1e58f27a39ceda",
+   "<build>/research/volatile_runtime_v1/work/scripts/differential.jsonl": "5fbd53117c56f9a6cb88c04627981d0e42dcf395829373f1a43d161be30b4a40",
+   "<build>/research/volatile_runtime_v1/work/scripts/long_300.jsonl": "64baa1d66da0f83cf73b4163c00406d27ca2ac2cf8ce61e14a3b8944335d3c1e",
+   "<build>/research/volatile_runtime_v1/work/scripts/long_3000.jsonl": "634bee35e4d5b8c5674c91c4899780b7f040d6be7987f55b4f960c9403f0ccbd",
+   "<build>/research/volatile_runtime_v1/work/scripts/probes.jsonl": "a69c2531955562efe18506389f6e224442e622967390c2016a82cecf0c084c9f",
+   "<build>/research/volatile_runtime_v1/work/scripts/restart.jsonl": "9f65bac6c73901432a58f3579add4bddede4256b0955509d3eedb631d4c9dc27"
+  },
+  "inputs_unchanged": true,
+  "write_class_imports": {
+   "native/ECS_C/libelpis_ecs_memory.so": [],
+   "native/ECS_C/session/libelpis_ecs_c_session.so": [],
+   "native/ECS_G/libelpis_ecsg_fms.so": [],
+   "native/ECS_G/libelpis_ecsg_k1.so": [],
+   "native/ECS_G/libelpis_ecsg_k1_fms.so": [],
+   "native/ECS_G/libelpis_ecsg_math.so": [],
+   "native/pipeline/libelpis_ingress_bridge.so": [],
+   "native/runtime/composite/libelpis_ecs_composite.so": [],
+   "native/runtime/elpis": [],
+   "native/runtime/libelpis_hacf_observation.so": [],
+   "native/runtime/libelpis_runtime.so": [],
+   "native/structure/libelpis_retrieval_bridge.so": [],
+   "native/substrate/libelpis_execution.so": [],
+   "native/substrate/libelpis_fms_file_assets.so": []
+  }
+ },
+ "traced_syscalls": [
+  "open",
+  "openat",
+  "openat2",
+  "creat",
+  "write",
+  "writev",
+  "pwrite64",
+  "pwritev",
+  "pwritev2",
+  "rename",
+  "renameat",
+  "renameat2",
+  "unlink",
+  "unlinkat",
+  "mkdir",
+  "mkdirat",
+  "rmdir",
+  "truncate",
+  "ftruncate",
+  "fallocate",
+  "fsync",
+  "fdatasync",
+  "sync",
+  "syncfs",
+  "sync_file_range",
+  "msync",
+  "link",
+  "linkat",
+  "symlink",
+  "symlinkat",
+  "mknod",
+  "mknodat",
+  "chmod",
+  "fchmod",
+  "fchmodat",
+  "chown",
+  "fchown",
+  "lchown",
+  "fchownat",
+  "utimensat",
+  "setxattr",
+  "lsetxattr",
+  "fsetxattr",
+  "removexattr",
+  "lremovexattr",
+  "fremovexattr",
+  "mmap",
+  "copy_file_range",
+  "sendfile",
+  "splice",
+  "io_uring_setup",
+  "name_to_handle_at",
+  "open_by_handle_at"
+ ],
+ "verdict": "ZERO_WRITE_PASS"
+}

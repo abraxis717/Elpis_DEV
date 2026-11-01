@@ -1,8 +1,15 @@
-/* elpis/fms.h - Fluid Memory Stabilizer, ABI v2.
+/* elpis/fms.h - Fluid Memory Stabilizer, ABI v3.
+ *
+ * ABI v3 (docs/ELPIS_MISSION.md, Amendment 3): volatile only. Every object lives in WARM or HOT; there is no WARM ->
+ * COLD operation, no COLD residency and no spill. A registration or acquisition that asks for FMS_COLD is refused
+ * (FMS_E_UNSUPPORTED, whatever cold_absent_policy says), and a configuration that budgets FMS_COLD or the storage
+ * domain is refused (fms_create returns NULL). FMS_COLD remains the name of the tier of immutable backing, which the
+ * read-only file-asset service (elpis/fms_file_service.h) loads into WARM. The stats' cold_* counters, digest_failures
+ * and fms_object_info.cold_replica are kept for layout and are always 0.
  *
  * Changes from v1 (see docs/ARCHITECTURE.md, substrate section):
  *   - physical domain accounting decoupled from logical tiers (shared-RAM iGPU case)
- *   - opaque PAL-owned cold tokens; no path buffers in the core
+ *   - opaque PAL-owned cold tokens; no path buffers in the core (v2; the cold store retired in v3)
  *   - explicit tier-collapse policy; no silent device emulation
  *   - leases with device fences; demotion forbidden while a fence is pending
  *   - context-level mutex; PAL owns its own state
@@ -17,7 +24,7 @@
 extern "C" {
 #endif
 
-#define FMS_ABI_VERSION 2u
+#define FMS_ABI_VERSION 3u
 
 typedef uint64_t fms_id;
 
@@ -35,10 +42,10 @@ typedef enum {
     FMS_E_NOTFOUND    = -3,
     FMS_E_BUSY        = -4,   /* pinned, fence pending, or move in flight */
     FMS_E_UNSUPPORTED = -5,   /* tier absent and policy is REJECT */
-    FMS_E_IO          = -6,
+    FMS_E_IO          = -6,   /* I/O failure (the file-asset service's reads) */
     FMS_E_LIMIT       = -7,   /* no headroom obtainable without violating an invariant */
     FMS_E_STATE       = -8,
-    FMS_E_DIGEST      = -9,   /* cold replica failed verification - never soft-recovered */
+    FMS_E_DIGEST      = -9,   /* verification failed - never soft-recovered */
     FMS_E_DEVICE      = -10,  /* device lost or dispatch failed */
     FMS_E_TIMEOUT     = -11,
     FMS_E_NOT_RESIDENT = -12  /* fms_acquire_resident only: not resident in the requested tier (demoted, or a
@@ -47,7 +54,7 @@ typedef enum {
 
 enum { FMS_ST_RESIDENT = 0, FMS_ST_MOVING = 1, FMS_ST_FAILED = 2, FMS_ST_LOST = 3 };
 
-/* Access intent. WRITE invalidates the cold replica. */
+/* Access intent. */
 enum { FMS_READ = 0x1u, FMS_WRITE = 0x2u };
 
 /* Policy when a tier is unavailable. */
@@ -73,7 +80,7 @@ typedef struct fms_object_info {
     uint8_t  tier;
     uint8_t  state;
     uint8_t  zero_copy;
-    uint8_t  cold_replica;                 /* a verified cold copy exists */
+    uint8_t  cold_replica;                 /* always 0 (ABI v3: no cold copy ever exists) */
     uint32_t pin_count;
     uint32_t lease_count;
     uint64_t size_bytes;
@@ -115,12 +122,13 @@ fms_status fms_register(fms_ctx *c, uint32_t kind, uint64_t bytes, int want_tier
                         float pin_priority, const void *init, fms_id *out);
 fms_status fms_unregister(fms_ctx *c, fms_id id);
 
-/* Unfenced pin. Returns the actual tier (>=0). Promotes synchronously (a COLD object is materialized from the
- * cold store before this returns). */
+/* Unfenced pin. Returns the actual tier (>=0). Promotes synchronously (WARM -> HOT; nothing resides below WARM), but
+ * only an object nobody else holds: an object already pinned or leased never moves, so it is pinned where it is and
+ * the actual tier is returned (stats.forced_placements counts it, as a refused promotion). */
 fms_status fms_acquire(fms_ctx *c, fms_id id, int want_tier, unsigned mode, void **ptr);
 /* Resident-only unfenced pin (additive; existing callers are unaffected). Pins the object only where it already
- * is: never promotes, never touches the cold store, never waits for a move. FMS_E_NOT_RESIDENT when the object
- * sits below `want_tier` (demoted) or a move is in flight. Returns the actual tier (>=0); release with
+ * is: never promotes, never waits for a move. FMS_E_NOT_RESIDENT when the object sits below `want_tier` (demoted from
+ * HOT) or a move is in flight. Returns the actual tier (>=0); release with
  * fms_release. A pinned object is never demoted, so a held pin keeps the object resident. */
 fms_status fms_acquire_resident(fms_ctx *c, fms_id id, int want_tier, unsigned mode, void **ptr);
 fms_status fms_release(fms_ctx *c, fms_id id);

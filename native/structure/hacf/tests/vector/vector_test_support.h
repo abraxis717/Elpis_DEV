@@ -44,24 +44,23 @@ inline void mkdirp(const std::string &p) {
     mkdir(p.c_str(), 0700);
 }
 
-/* WARM+COLD context. hot_absent_policy is REJECT on purpose: if any HACF vector code
- * path ever asked for FMS_HOT it would fail loudly instead of folding down. */
-inline fms_ctx *make_fms(const std::string &cold_root, uint64_t warm_bytes,
-                         uint64_t cold_bytes = 512ull << 20, uint32_t max_objects = 64) {
-    mkdirp(cold_root);
+/* A volatile WARM-only context (FMS ABI v3: no COLD tier, no storage domain, the RAM-only POSIX PAL): nothing
+ * is ever written anywhere, and a shard that does not fit the WARM ceiling is refused (FMS_E_LIMIT), never
+ * spilled. hot_absent_policy is REJECT on purpose: if any HACF vector code path ever asked for FMS_HOT it would
+ * fail loudly instead of folding down. `label` names the context in messages only; no path is created. */
+inline fms_ctx *make_fms(const std::string &label, uint64_t warm_bytes, uint32_t max_objects = 64) {
+    (void)label;
     fms_config cfg;
     std::memset(&cfg, 0, sizeof cfg);
     cfg.tier_budget[FMS_WARM] = warm_bytes;
-    cfg.tier_budget[FMS_COLD] = cold_bytes;
     cfg.domain_ceiling[FMS_DOM_RAM] = warm_bytes;
     cfg.domain_ceiling[FMS_DOM_DEVICE] = 1;
-    cfg.domain_ceiling[FMS_DOM_STORAGE] = cold_bytes;
     cfg.high_wm = 0.90f;
     cfg.low_wm = 0.70f;
     cfg.max_objects = max_objects;
     cfg.hot_absent_policy = FMS_REJECT;
-    cfg.cold_absent_policy = FMS_FOLD_DOWN;
-    fms_pal *pal = fms_pal_posix_create(cold_root.c_str());
+    cfg.cold_absent_policy = FMS_REJECT;
+    fms_pal *pal = fms_pal_posix_create_ram_only();
     if (!pal) return nullptr;
     fms_ctx *c = fms_create(&cfg, pal);
     if (!c) pal->destroy(pal->self);
@@ -124,25 +123,6 @@ inline std::vector<uint8_t> build_shard(const Corpus &c, const char *corpus_dige
     std::vector<uint8_t> v((uint8_t *)b, (uint8_t *)b + n);
     std::free(b);
     return v;
-}
-
-/* Flip one byte in every cold blob under a root, simulating bit rot. */
-inline int corrupt_cold_blobs(const std::string &root) {
-    DIR *d = opendir(root.c_str());
-    if (!d) return 0;
-    struct dirent *e;
-    int n = 0;
-    while ((e = readdir(d))) {
-        if (!std::strstr(e->d_name, ".blob")) continue;
-        std::string p = root + "/" + e->d_name;
-        int fd = open(p.c_str(), O_RDWR);
-        if (fd < 0) continue;
-        unsigned char x = 0xA5;
-        if (pwrite(fd, &x, 1, 512) == 1) n++;
-        close(fd);
-    }
-    closedir(d);
-    return n;
 }
 
 } // namespace vecfix

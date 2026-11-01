@@ -54,7 +54,6 @@ from .promotion import (
     EvaluationEvidence,
     HarnessManifest,
     SelectionReceipt,
-    atomic_materialize,
     build_manifest_from_tree,
     content_map_digest,
     digest_tree,
@@ -91,3 +90,12 @@ __all__ = [
     "content_map_digest", "derive_mutation_seed", "digest_tree", "eligibility",
     "execute_reproduction", "mutate_genotype", "policy_of", "select", "transition_lifecycle",
 ]
+
+
+def __getattr__(name: str):
+    """``atomic_materialize`` is offline artifact production (elpis.evolution.materialize): imported on first use
+    only, so importing this package, as the runtime's evolution gate does, imports no writer."""
+    if name == "atomic_materialize":
+        from .materialize import atomic_materialize
+        return atomic_materialize
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

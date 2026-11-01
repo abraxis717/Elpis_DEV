@@ -39,9 +39,7 @@ struct Env {
     }
 
     int build(const std::string &base) {
-        root = base;
-        vecfix::rmtree(root);
-        vecfix::mkdirp(root);
+        root = base;   /* a label: the corpus is ephemeral and the FMS context volatile, so nothing is created */
         struct D { const char *label, *text, *ns, *auth; } docs[] = {
             {"alpha", "alpha engine exact retrieval anchor", "elpis.docs", "canonical"},
             {"beta",  "beta companion context bridge", "elpis.docs", "reference"},
@@ -92,7 +90,7 @@ struct Env {
         char shard_digest[65];
         if (elpis_vshard_build(inputs.data(), inputs.size(), &profile, corpus_digest,
                                &shard_bytes, &shard_len, shard_digest) != 0) return -1;
-        fms = vecfix::make_fms(root + "/cold", 16ull << 20);
+        fms = vecfix::make_fms(root, 16ull << 20);
         if (!fms) return -1;
         if (elpis_vector_index_create(fms, &profile, corpus_digest, &index) != ELPIS_VEC_OK)
             return -1;

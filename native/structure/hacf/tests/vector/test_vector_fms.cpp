@@ -3,7 +3,11 @@
  * Every context here is built with hot_absent_policy = FMS_REJECT. If any HACF vector
  * code path ever requested FMS_HOT it would return FMS_E_UNSUPPORTED instead of
  * quietly folding down, so "no HOT request occurs in HACF vector" is enforced by the
- * configuration rather than asserted in prose. */
+ * configuration rather than asserted in prose.
+ *
+ * FMS ABI v3: residency is volatile (WARM in RAM, HOT never requested here). There is no COLD
+ * tier: a shard beyond the WARM ceiling is refused, never spilled, and no case creates, writes or
+ * reads a file. */
 #include "vector_test_support.h"
 
 #include "elpis/vector_index.h"
@@ -24,7 +28,7 @@ static const char *cur = "?";
 #define CASE(name) do { cur = (name); std::printf("- %s\n", cur); } while (0)
 
 static const uint32_t D = ELPIS_EMBEDDING_DIM;
-static std::string base;
+
 static const char *kCorpusDg = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 
 /* One 512-vector shard is ~800 KiB of payload. */
@@ -32,8 +36,7 @@ static const uint32_t kShardVectors = 512;
 
 static void case_registration_and_lifecycle() {
     CASE("shard is an FMS object, leased at WARM, released on completion");
-    std::string cold = base + "/life";
-    fms_ctx *fms = vecfix::make_fms(cold, 8ull << 20);
+    fms_ctx *fms = vecfix::make_fms("life", 8ull << 20);
     CHECK(fms != nullptr, "fms");
     if (!fms) return;
     CHECK(fms_hot_available(fms) == 0, "posix PAL must not offer a HOT tier");
@@ -87,26 +90,28 @@ static void case_registration_and_lifecycle() {
     CHECK(st.tier_bytes[FMS_HOT] == 0, "HOT residency after search");
     CHECK(st.forced_placements == 0, "a placement was forced down: HOT may have been requested");
 
-    /* Demotion is permitted once the lease is gone. */
+    /* The pump has nowhere to demote a WARM shard to: it stays resident and intact. */
     for (int i = 0; i < 4; i++) fms_pump(fms);
-    CHECK(fms_unregister(fms, id) == FMS_E_BUSY || true, "unregister probe");   /* index owns it */
+    CHECK(fms_query(fms, id, &info) == FMS_OK && info.tier == FMS_WARM && info.state == FMS_ST_RESIDENT,
+          "the pump moved or dropped a WARM shard");
 
     elpis_vector_index_destroy(ix);
     fms_get_stats(fms, &st);
     CHECK(st.objects == 0, "object leak after index destroy: %llu", (unsigned long long)st.objects);
-    CHECK(st.tier_bytes[FMS_WARM] == 0 && st.tier_bytes[FMS_COLD] == 0, "tier bytes leaked");
+    CHECK(st.tier_bytes[FMS_WARM] == 0, "tier bytes leaked");
+    CHECK(st.tier_bytes[FMS_COLD] == 0 && st.domain_bytes[FMS_DOM_STORAGE] == 0 && st.cold_writes == 0 &&
+          st.cold_reads == 0, "storage was charged or touched");
     CHECK(st.domain_bytes[FMS_DOM_RAM] == 0, "RAM charge leaked");
 
     fms_destroy(fms);
     elpis_embedder_destroy(emb);
 }
 
-static void case_ceiling_and_demotion() {
-    CASE("RAM ceiling is enforced; shards demote and are promoted again per query");
-    std::string cold = base + "/ceiling";
-    /* Four shards of ~800 KiB against a 2 MiB ceiling: they cannot all be WARM. */
+static void case_ceiling_without_spill() {
+    CASE("RAM ceiling is enforced: a shard beyond WARM is refused, never spilled; resident shards stay exact");
+    /* Four shards of ~800 KiB against a 2 MiB ceiling: two fit, the third is refused at admission. */
     const uint64_t warm = 2ull << 20;
-    fms_ctx *fms = vecfix::make_fms(cold, warm);
+    fms_ctx *fms = vecfix::make_fms("ceiling", warm);
     CHECK(fms != nullptr, "fms");
     if (!fms) return;
 
@@ -118,47 +123,54 @@ static void case_ceiling_and_demotion() {
     elpis_vector_index_create(fms, &prof, kCorpusDg, &ix);
 
     std::vector<vecfix::Corpus> shards(4);
+    std::vector<std::vector<uint8_t>> images(4);
     std::vector<std::string> ids;
+    int admitted = 0, refused = 0;
     for (int i = 0; i < 4; i++) {
         char tag[32];
         std::snprintf(tag, sizeof tag, "ceil-%d", i);
         shards[(size_t)i].build(tag, kShardVectors, emb);
         char sd[65];
-        std::vector<uint8_t> img = vecfix::build_shard(shards[(size_t)i], kCorpusDg, sd);
-        CHECK(elpis_vector_index_add_shard_bytes(ix, img.data(), img.size(), nullptr) == 0,
-              "admit %d: %s", i, elpis_vector_index_error(ix));
+        images[(size_t)i] = vecfix::build_shard(shards[(size_t)i], kCorpusDg, sd);
         ids.emplace_back(sd);
+        int rc = elpis_vector_index_add_shard_bytes(ix, images[(size_t)i].data(), images[(size_t)i].size(), nullptr);
+        if (rc == ELPIS_VEC_OK) {
+            admitted++;
+        } else {
+            refused++;
+            CHECK(rc == ELPIS_VEC_E_RESIDENCY, "shard %d: expected ELPIS_VEC_E_RESIDENCY, got %d (%s)", i, rc,
+                  elpis_vec_strerror(rc));
+            const elpis_vec_error *err = elpis_vector_index_last_error(ix);
+            CHECK(err && err->cause == FMS_E_LIMIT, "shard %d: cause %d, expected FMS_E_LIMIT", i,
+                  err ? err->cause : 0);
+        }
         fms_stats st;
         fms_get_stats(fms, &st);
         CHECK(st.domain_bytes[FMS_DOM_RAM] <= warm, "RAM ceiling breached after shard %d: %llu",
               i, (unsigned long long)st.domain_bytes[FMS_DOM_RAM]);
     }
+    CHECK(admitted == 2 && refused == 2, "admitted %d, refused %d (expected 2 and 2)", admitted, refused);
+    CHECK(elpis_vector_index_shard_count(ix) == 2, "a refused shard is listed");
 
     fms_stats st;
     fms_get_stats(fms, &st);
-    CHECK(st.tier_bytes[FMS_COLD] > 0, "nothing was demoted despite pressure");
-    CHECK(st.demotions > 0, "no demotions recorded");
+    CHECK(st.objects == 2, "objects %llu", (unsigned long long)st.objects);
+    CHECK(st.demotions == 0 && st.bytes_demoted == 0, "a shard was demoted");
+    CHECK(st.tier_bytes[FMS_COLD] == 0 && st.domain_bytes[FMS_DOM_STORAGE] == 0 && st.cold_writes == 0,
+          "something spilled to storage");
 
-    /* Searching all four still works: each shard is promoted under lease. */
+    /* The resident shards answer exactly, and keep answering exactly across pumps. */
     elpis_vector_query q;
     std::memset(&q, 0, sizeof q);
-    q.vector = shards[3].vec[9].data();
+    q.vector = shards[1].vec[9].data();
     q.dimensions = D;
     q.k = 5;
     std::vector<elpis_vector_hit> hits(q.k);
     uint32_t n = 0;
-    CHECK(elpis_vector_index_search(ix, &q, hits.data(), &n) == 0, "search under pressure: %s",
+    CHECK(elpis_vector_index_search(ix, &q, hits.data(), &n) == 0, "search at the ceiling: %s",
           elpis_vector_index_error(ix));
     CHECK(n == 5, "hits %u", n);
-    if (n) CHECK(hits[0].chunk_digest == shards[3].chunk[9], "wrong nearest under pressure");
-
-    fms_get_stats(fms, &st);
-    CHECK(st.domain_bytes[FMS_DOM_RAM] <= warm, "RAM ceiling breached during search");
-    CHECK(st.promotions > 0, "no promotions recorded");
-    CHECK(st.pinned_bytes == 0, "pins leaked under pressure");
-    CHECK(st.tier_bytes[FMS_HOT] == 0, "HOT used under pressure");
-
-    /* Repeated searches remain correct and bounded. */
+    if (n) CHECK(hits[0].chunk_digest == shards[1].chunk[9], "wrong nearest at the ceiling");
     char first[65] = {0}, later[65] = {0};
     elpis_vector_result_digest(hits.data(), n, first);
     for (int i = 0; i < 6; i++) {
@@ -168,7 +180,20 @@ static void case_ceiling_and_demotion() {
         CHECK(st.domain_bytes[FMS_DOM_RAM] <= warm, "RAM ceiling breached in loop");
     }
     elpis_vector_result_digest(hits.data(), n, later);
-    CHECK(std::strcmp(first, later) == 0, "results changed across demote/promote cycles");
+    CHECK(std::strcmp(first, later) == 0, "results changed across searches and pumps");
+    fms_get_stats(fms, &st);
+    CHECK(st.promotions == 0 && st.demotions == 0, "residency moved: %llu promotions, %llu demotions",
+          (unsigned long long)st.promotions, (unsigned long long)st.demotions);
+    CHECK(st.pinned_bytes == 0, "pins leaked at the ceiling");
+    CHECK(st.tier_bytes[FMS_HOT] == 0, "HOT used at the ceiling");
+
+    /* Bounded, not stuck: closing a resident shard makes room, and a refused shard is then admitted. */
+    CHECK(elpis_vector_index_close_shard(ix, ids[0].c_str()) == 0, "close");
+    CHECK(elpis_vector_index_add_shard_bytes(ix, images[2].data(), images[2].size(), nullptr) == 0,
+          "re-admission after close: %s", elpis_vector_index_error(ix));
+    CHECK(elpis_vector_index_shard_count(ix) == 2, "shard count after re-admission");
+    fms_get_stats(fms, &st);
+    CHECK(st.domain_bytes[FMS_DOM_RAM] <= warm && st.tier_bytes[FMS_COLD] == 0, "re-admission breached a bound");
 
     elpis_vector_index_destroy(ix);
     fms_destroy(fms);
@@ -177,9 +202,8 @@ static void case_ceiling_and_demotion() {
 
 static void case_no_headroom() {
     CASE("a shard that cannot be made WARM-resident fails structurally");
-    std::string cold = base + "/nohead";
     /* Ceiling far below one shard: admission itself must fail, loudly. */
-    fms_ctx *fms = vecfix::make_fms(cold, 64ull << 10);
+    fms_ctx *fms = vecfix::make_fms("nohead", 64ull << 10);
     CHECK(fms != nullptr, "fms");
     if (!fms) return;
     elpis_embedder *emb = nullptr;
@@ -224,11 +248,9 @@ static void case_no_headroom() {
     elpis_embedder_destroy(emb);
 }
 
-static void case_cold_corruption() {
-    CASE("a corrupted cold replica surfaces as an integrity failure, not an empty result");
-    std::string cold = base + "/rot";
-    const uint64_t warm = 2ull << 20;
-    fms_ctx *fms = vecfix::make_fms(cold, warm);
+static void case_resident_corruption() {
+    CASE("a resident shard corrupted in RAM is an integrity failure, never not-found or empty");
+    fms_ctx *fms = vecfix::make_fms("rot", 4ull << 20);
     CHECK(fms != nullptr, "fms");
     if (!fms) return;
     elpis_embedder *emb = nullptr;
@@ -238,52 +260,33 @@ static void case_cold_corruption() {
     elpis_vector_index *ix = nullptr;
     elpis_vector_index_create(fms, &prof, kCorpusDg, &ix);
 
-    std::vector<vecfix::Corpus> shards(3);
-    for (int i = 0; i < 3; i++) {
-        char tag[32];
-        std::snprintf(tag, sizeof tag, "rot-%d", i);
-        shards[(size_t)i].build(tag, kShardVectors, emb);
-        char sd[65];
-        std::vector<uint8_t> img = vecfix::build_shard(shards[(size_t)i], kCorpusDg, sd);
-        CHECK(elpis_vector_index_add_shard_bytes(ix, img.data(), img.size(), nullptr) == 0, "admit %d", i);
-    }
-    for (int i = 0; i < 6; i++) fms_pump(fms);          /* push shards to COLD */
+    vecfix::Corpus c;
+    c.build("rot", kShardVectors, emb);
+    char sd[65];
+    std::vector<uint8_t> img = vecfix::build_shard(c, kCorpusDg, sd);
+    CHECK(elpis_vector_index_add_shard_bytes(ix, img.data(), img.size(), nullptr) == 0, "admit");
+    CHECK(elpis_vector_index_verify(ix, sd) == ELPIS_VEC_OK, "intact shard failed verify: %s",
+          elpis_vector_index_error(ix));
+
+    /* Flip one payload byte of the resident copy (a RAM fault): the only copy there is. */
+    fms_id id = 0;
+    CHECK(elpis_vector_index_shard_object(ix, sd, &id) == 0, "shard object");
+    void *p = nullptr;
+    CHECK((int)fms_acquire(fms, id, FMS_WARM, FMS_WRITE, &p) == (int)FMS_WARM && p, "acquire for the fault");
+    if (p) ((unsigned char *)p)[img.size() / 2] ^= 0xA5;
+    fms_release(fms, id);
+
+    int rc = elpis_vector_index_verify(ix, sd);
+    CHECK(rc == ELPIS_VEC_E_INTEGRITY, "expected ELPIS_VEC_E_INTEGRITY, got %d (%s)", rc, elpis_vec_strerror(rc));
+    CHECK(rc != ELPIS_VEC_E_NOTFOUND && rc != ELPIS_VEC_E_RESIDENCY, "integrity failure downgraded");
+    const elpis_vec_error *err = elpis_vector_index_last_error(ix);
+    CHECK(err && err->status == ELPIS_VEC_E_INTEGRITY, "structured status %d", err ? err->status : 0);
+    if (err) CHECK(std::strstr(err->detail, "verify") != nullptr, "detail: %s", err->detail);
 
     fms_stats st;
     fms_get_stats(fms, &st);
-    CHECK(st.tier_bytes[FMS_COLD] > 0, "no shard reached COLD");
-
-    int hit = vecfix::corrupt_cold_blobs(cold);
-    CHECK(hit > 0, "no cold replica to corrupt");
-
-    elpis_vector_query q;
-    std::memset(&q, 0, sizeof q);
-    q.vector = shards[0].vec[1].data();
-    q.dimensions = D;
-    q.k = 4;
-    std::vector<elpis_vector_hit> hits(q.k);
-    uint32_t n = 77;
-    int rc = elpis_vector_index_search(ix, &q, hits.data(), &n);
-    CHECK(rc != ELPIS_VEC_OK, "search over a corrupted replica returned success");
-    CHECK(n == 0, "corrupted search reported %u hits", n);
-    CHECK(rc == ELPIS_VEC_E_INTEGRITY, "expected ELPIS_VEC_E_INTEGRITY, got %d (%s)",
-          rc, elpis_vec_strerror(rc));
-    /* Integrity must not be downgraded to not-found, out-of-memory or empty. */
-    CHECK(rc != ELPIS_VEC_E_NOTFOUND && rc != ELPIS_VEC_E_RESIDENCY,
-          "integrity failure downgraded");
-    const elpis_vec_error *err = elpis_vector_index_last_error(ix);
-    CHECK(err != nullptr, "no structured error");
-    if (err) {
-        CHECK(err->status == ELPIS_VEC_E_INTEGRITY, "structured status %d", err->status);
-        CHECK(err->cause == FMS_E_DIGEST, "underlying cause not preserved: %d (expected %d)",
-              err->cause, (int)FMS_E_DIGEST);
-        CHECK(err->cause != FMS_E_NOMEM, "integrity failure reported as memory exhaustion");
-        CHECK(std::strstr(err->detail, "digest") != nullptr, "detail: %s", err->detail);
-    }
-
-    fms_get_stats(fms, &st);
-    CHECK(st.digest_failures > 0, "FMS digest failure not counted");
     CHECK(st.pinned_bytes == 0, "lease leaked on the failure path");
+    CHECK(st.tier_bytes[FMS_COLD] == 0 && st.cold_reads == 0 && st.cold_writes == 0, "storage touched");
 
     elpis_vector_index_destroy(ix);
     fms_destroy(fms);
@@ -292,8 +295,7 @@ static void case_cold_corruption() {
 
 static void case_close_shard() {
     CASE("closing a shard releases its FMS object");
-    std::string cold = base + "/close";
-    fms_ctx *fms = vecfix::make_fms(cold, 8ull << 20);
+    fms_ctx *fms = vecfix::make_fms("close", 8ull << 20);
     if (!fms) { CHECK(false, "fms"); return; }
     elpis_embedder *emb = nullptr;
     elpis_embedder_fixture_create(ELPIS_NORM_L2, &emb);
@@ -328,10 +330,9 @@ static void case_close_shard() {
 }
 
 static void case_nowait_never_waits() {
-    CASE("the no-wait search refuses a shard that cannot be made resident now; only the explicit search waits");
-    std::string cold = base + "/nowait";
-    /* A 1 MiB ceiling holds one ~800 KiB shard WARM at a time. */
-    fms_ctx *fms = vecfix::make_fms(cold, 1ull << 20);
+    CASE("every admitted shard is resident: the no-wait search is the exact search and never waits, even "
+         "while another holder pins a shard");
+    fms_ctx *fms = vecfix::make_fms("nowait", 2ull << 20);
     CHECK(fms != nullptr, "fms");
     if (!fms) return;
     elpis_embedder *emb = nullptr;
@@ -359,8 +360,6 @@ static void case_nowait_never_waits() {
     q.k = 4;
     std::vector<elpis_vector_hit> hits(q.k);
     uint32_t n = 0;
-    /* Without contention the no-wait search is the same exact search (the COLD shard is materialized by the
-     * attempt itself, synchronously: that is a promotion, not a wait). */
     CHECK(elpis_vector_index_search_nowait(ix, &q, hits.data(), &n) == ELPIS_VEC_OK, "nowait search: %s",
           elpis_vector_index_error(ix));
     char a[65] = {0}, b[65] = {0};
@@ -369,58 +368,41 @@ static void case_nowait_never_waits() {
     elpis_vector_result_digest(hits.data(), n, b);
     CHECK(std::strcmp(a, b) == 0, "the two entries disagree");
 
-    /* Another holder pins whichever shard is WARM: the other one has no headroom now (FMS_E_LIMIT). */
+    /* Another holder pins a shard: a pin is shared, residency does not move, so neither entry waits. */
     fms_id held = 0;
-    for (const std::string &sd : ids) {
-        fms_id id = 0;
-        fms_object_info info;
-        elpis_vector_index_shard_object(ix, sd.c_str(), &id);
-        if (fms_query(fms, id, &info) == FMS_OK && info.tier == FMS_WARM) held = id;
-    }
-    CHECK(held != 0, "no WARM shard to pin");
+    elpis_vector_index_shard_object(ix, ids[0].c_str(), &held);
     void *ptr = nullptr;
     CHECK((int)fms_acquire(fms, held, FMS_WARM, FMS_READ, &ptr) == (int)FMS_WARM, "external pin");
-    const auto t0 = std::chrono::steady_clock::now();
-    n = 99;
-    int rc = elpis_vector_index_search_nowait(ix, &q, hits.data(), &n);
-    const auto waited = std::chrono::steady_clock::now() - t0;
-    CHECK(rc == ELPIS_VEC_E_RESIDENCY && n == 0, "expected an immediate residency refusal, got %d (%u hits)", rc, n);
-    const elpis_vec_error *err = elpis_vector_index_last_error(ix);
-    CHECK(err && err->cause == FMS_E_LIMIT, "cause not preserved: %d", err ? err->cause : 0);
-    CHECK(waited < std::chrono::milliseconds(1000), "the no-wait search waited %lld ms",
-          (long long)std::chrono::duration_cast<std::chrono::milliseconds>(waited).count());
-    /* The explicit search waits (bounded) and succeeds once the holder lets go. */
-    std::thread holder([&] {
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        fms_release(fms, held);
-    });
-    const auto t1 = std::chrono::steady_clock::now();
-    rc = elpis_vector_index_search(ix, &q, hits.data(), &n);
-    const auto blocked = std::chrono::steady_clock::now() - t1;
-    holder.join();
-    CHECK(rc == ELPIS_VEC_OK && n == 4, "the waiting search failed: %d (%s)", rc, elpis_vector_index_error(ix));
-    CHECK(blocked >= std::chrono::milliseconds(100), "the waiting search did not wait");
-    elpis_vector_result_digest(hits.data(), n, b);
-    CHECK(std::strcmp(a, b) == 0, "the waited result differs");
+    for (int entry = 0; entry < 2; entry++) {
+        const auto t0 = std::chrono::steady_clock::now();
+        n = 99;
+        int rc = entry ? elpis_vector_index_search(ix, &q, hits.data(), &n)
+                       : elpis_vector_index_search_nowait(ix, &q, hits.data(), &n);
+        const auto waited = std::chrono::steady_clock::now() - t0;
+        CHECK(rc == ELPIS_VEC_OK && n == 4, "entry %d under an external pin: %d (%u hits)", entry, rc, n);
+        CHECK(waited < std::chrono::milliseconds(1000), "entry %d waited %lld ms", entry,
+              (long long)std::chrono::duration_cast<std::chrono::milliseconds>(waited).count());
+        elpis_vector_result_digest(hits.data(), n, b);
+        CHECK(std::strcmp(a, b) == 0, "entry %d differs under an external pin", entry);
+    }
+    fms_release(fms, held);
     fms_stats st;
     fms_get_stats(fms, &st);
     CHECK(st.pinned_bytes == 0, "pins leaked");
+    CHECK(st.promotions == 0 && st.demotions == 0, "residency moved");
 
     elpis_vector_index_destroy(ix);
     fms_destroy(fms);
     elpis_embedder_destroy(emb);
 }
 
-int main(int argc, char **argv) {
-    base = argc > 1 ? argv[1] : "/tmp/elpis-vector-fms";
-    vecfix::rmtree(base);
-    vecfix::mkdirp(base);
-    std::printf("R2 FMS residency suite, root=%s\n", base.c_str());
+int main() {
+    std::printf("R2 FMS residency suite (volatile: FMS ABI v3, no COLD tier, no file)\n");
 
     case_registration_and_lifecycle();
-    case_ceiling_and_demotion();
+    case_ceiling_without_spill();
     case_no_headroom();
-    case_cold_corruption();
+    case_resident_corruption();
     case_close_shard();
     case_nowait_never_waits();
 

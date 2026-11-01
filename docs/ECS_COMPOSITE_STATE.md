@@ -25,8 +25,8 @@ B keeps every frozen authority bit-for-bit and adds exactly one new versioned th
 
 ## ELPISEC1 v1
 
-Little-endian; the size is fixed by the configuration (it never depends on how full the memory is), so a
-checkpoint slot can be provisioned once.
+Little-endian; the size is fixed by the configuration (it never depends on how full the memory is), so a buffer
+for it can be sized once.
 
 | Offset | Field |
 |---|---|
@@ -56,8 +56,8 @@ refused (`CORRUPT`): there is no implicit migration.
 
 **Legacy.** A bare `ELPISGK1` v1 envelope is a K1-only retained state. `restore` refuses it (`CORRUPT`).
 `import_k1` admits it explicitly as a composite with an empty memory and a new composite identity; its K1
-component bytes are preserved exactly. Moving a durable lineage from a K1 identity to a composite identity is
-an explicit, authority-checked publication, never a reinterpretation (see "Authority").
+component bytes are preserved exactly. It is an in-memory construction: a session anchors the resulting composite
+as a new lineage. A lineage never changes format within a session (see "Authority"), and nothing is reinterpreted.
 
 **Resource limits.** Memory capacity ≤ `ELPIS_ECS_COMPOSITE_MAX_MEMORY_BYTES` (64 MiB); K1 within its own image
 budget; total ≤ `ELPIS_ECS_COMPOSITE_MAX_ENVELOPE_BYTES`. A configuration beyond them is refused `CAPACITY`
@@ -92,34 +92,29 @@ identity, commits K1, then installs the memory candidate by pointer exchange, wh
 
 ## Authority
 
-The composite object provides process-local atomicity only. Durable authority is the established path's, now
-format-aware (C ABI and laws in `docs/RUNTIME_CORE.md`, "Composite substrates"):
+The composite object provides process-local atomicity only. The runtime's authority over it is RuntimeCore's
+volatile session (RuntimeCore ABI v8; C ABI and laws in `docs/RUNTIME_CORE.md`, "Composite substrates"):
 
-1. **Continuity** names the authoritative composite identity in a v3 record (`docs/CONTINUITY.md`, "Record v3").
-   It holds the identity and its format, never memory content. A lineage keeps its format; only the explicit
-   legacy import moves a K1 lineage to a composite one.
-2. **Checkpoint (K1 Recovery R0)** holds the complete `ELPISEC1` envelope in a store provisioned for its size
-   (`docs/K1_RECOVERY_R0.md`, "Composite envelopes"). Slots are evidence; they never authorize themselves.
-3. **RuntimeCore** is the one mutation owner: it holds the composite's lease, so every unmanaged mutation is
-   refused `LEASED`; the memory changes only through `turn_observe` inside a managed turn (a LEARN turn, or since
-   RuntimeCore ABI v5 an observe-only turn that runs no K1 schedule), whose native commit is volatile (RuntimeCore
-   ABI v4 onward: the live coordinate advances; nothing is checkpointed or published). It becomes
-   durable only through an explicit durable publication: the composite is captured under the lease
-   (`elpis_ecs_composite_leased_capture`: the K1 component unsealed, the memory component sealed by its own
-   format), sealed by the pure `elpis_ecs_composite_envelope_seal`, checkpointed, then published. A memory
-   transition is therefore durably authoritative under exactly K1's discipline, and never otherwise. (Through ABI
-   v3 every turn's candidate envelope was checkpointed before the native commit and published after it; that
-   per-turn durability is superseded.)
-4. **Recovery**: restart reads continuity's identity, the checkpoint returns the matching envelope,
-   `elpis_ecs_composite_restore` rebuilds the state exactly, and binding verifies its identity against
-   continuity before anything is built on it. An interrupted durable publication leaves an unresolved candidate
-   slot that the operator discards (resume the acknowledged state) or adopts (the captured state): a transition is
-   either absent or present once, never duplicated (tested with process death after the slot sync and with the
-   continuity record torn). Volatile transitions since the last acknowledgment are lost by a crash.
+1. **The session** names the anchored composite identity and its format (`state_format` COMPOSITE), never memory
+   content. A lineage keeps its format for the session: a K1 state never stands for a composite lineage, or the
+   reverse (`STATE_MISMATCH`).
+2. **RuntimeCore** is the one mutation owner. It holds the composite's lease, so every unmanaged mutation is
+   refused `LEASED`. The memory changes only through `turn_observe` inside a managed turn: a LEARN turn, or, since
+   RuntimeCore ABI v5, an observe-only turn that runs no K1 schedule. The turn's native commit is volatile: the live
+   coordinate advances in memory, and nothing is captured, sealed, checkpointed or published.
+3. **Lifetime.** A transition lasts as long as its session. A new session starts unanchored and resumes nothing. A
+   caller may keep its own in-memory snapshot (`elpis_ecs_composite_snapshot_write` into a buffer) and restore and
+   anchor it again in a later session: an in-memory rollback, never a recovery from storage.
 
-What this does **not** claim: that RuntimeCore admits memory LEARN or CONSOLIDATE (it does not; unqualified), or
-that any memory operation has scientific qualification. A snapshot round trip alone is not crash-consistent
-recovery; the recovery claim rests on the checkpoint + continuity tests above.
+**History.** Until RuntimeCore ABI v7 a composite became durable through an explicit durable publication (captured
+under the lease, sealed by `elpis_ecs_composite_envelope_seal`, written to a K1 Recovery R0 checkpoint slot, then
+named by the durable authority's record), and restart recovered it from the slot. That path, the checkpoint store
+and the legacy import of a durable K1 lineage are retired (`docs/ELPIS_MISSION.md`, Amendment 3;
+`docs/history/RUNTIME_CORE_ABI_V7.md`, "Composite substrates"). The composite's capture and seal entry points remain
+pure in-memory functions of its own ABI.
+
+What this does **not** claim: that RuntimeCore admits memory LEARN or CONSOLIDATE (it does not; unqualified), that
+any memory operation has scientific qualification, or that anything survives the session.
 
 ## Python composition (mechanics)
 
@@ -127,11 +122,10 @@ recovery; the recovery claim rests on the checkpoint + continuity tests above.
 Python); its configuration never sets a memory capability, so OBSERVE and LOOKUP are reachable and memory LEARN /
 QUERY FAST are not. The managed runtime admits it under the library identifier `elpis_ecs_composite` (math, K1, the
 memory and the composite are admitted in dependency order and bound by SONAME to the pinned objects) and drives it
-through the existing RuntimeCore substrate kind 3:
+through RuntimeCore substrate kind 3:
 
-* `Runtime.anchor_cognition`, `run_query`, `run_learn`, `publish_recoverable` (a checkpoint store provisioned for
-  the composite envelope), `recover_k1` (the ELPISEC1 envelope; `CompositeState.restore`) and `release` work on a
-  `CompositeState` exactly as on K1; `ContinuitySnapshot.state_format` is `"COMPOSITE"` for its lineage.
+* `Runtime.anchor_cognition`, `run_query`, `run_learn` and `release` work on a `CompositeState` exactly as on K1;
+  `ContinuitySnapshot.state_format` is `"COMPOSITE"` for its lineage.
 * `run_learn(..., observations=..., observation_authority=ObservationAuthority(...))` carries typed
   `MemoryObservation` values into the same managed turn: admitted at the boundary before anything native (an
   explicit grant, the source identifiers it admits, a per-turn bound of at most 64), observed natively on the memory
@@ -141,17 +135,18 @@ through the existing RuntimeCore substrate kind 3:
   **no K1 learning**: the same admission, then an observe-only managed turn (no experience schedule), one volatile
   commit in which the K1 component is byte-identical and only the memory moves (`docs/RUNTIME_CORE.md`, "Observe-only
   turns (ABI v5)"). All or nothing, as above; the native per-turn bound is the authority's.
-* `Runtime.import_composite` (an operator operation) is the explicit legacy move of a K1 lineage to a composite one.
-* The direct continuity adapter (`elpis.continuity.ContinuityStore`) bound K1 lineages only, refusing to read or
-  encode a composite record; it retired with standalone continuity (RuntimeCore ABI v7), and the ECS_C authority names
-  either format.
+* `publish_recoverable`, `recover_k1` and `import_composite` do not exist (RuntimeCore ABI v8).
 
-Tests: `tests/integration/test_composite_runtime.py` (ownership and lease refusal, atomic observe + commit, every
-refusal installing nothing, exact snapshot / restore, bounded allocation and checkpoint footprint, restart losing
-exactly the volatile work, K1 / composite non-substitution, the explicit import, unadmitted libraries, format-aware
-readers) and `tests/integration/test_composite_process_kill.py` (real SIGKILL inside a composite publication: the
-memory transition is present exactly once when continuity authorizes it, never the volatile one). Mechanics only:
-nothing decides what to observe, and an observation is evidence, never truth or a learning instruction.
+Tests: `tests/integration/test_composite_runtime.py` covers:
+- ownership and lease refusal, and an atomic observe + commit in one volatile turn;
+- every refusal installing nothing;
+- a volatile, bounded session, and a new session resuming nothing;
+- K1 / composite non-substitution, and no format change within a session;
+- unadmitted libraries refused before any native call;
+- the anchor read back with its format.
+
+Mechanics only: nothing decides what to observe, and an observation is evidence, never truth or a learning
+instruction.
 
 ## Tests
 

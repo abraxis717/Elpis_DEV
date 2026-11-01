@@ -1,111 +1,117 @@
 # RuntimeCore: the runtime's systems authority in Rust
 
-> **VOLATILE MIGRATION: INCOMPLETE** (`docs/ELPIS_MISSION.md`, Amendment 3; `docs/VOLATILE_RUNTIME_CENSUS.md`).
-> RuntimeCore ABI v7, described below, is **nonconforming** under the volatile-native directive. It still reaches
-> persistent storage through these paths (`elpis.runtime.persistence.RUNTIME_CORE_PERSISTENT_ABI`):
-> - durable publication: `elpis_runtime_create_ecs_c` over the authority's directories, the anchor's publication,
->   `recoverable_request` and `identity_request`, and the durability lane, a background worker that writes;
-> - the checkpoint store: provision, attach, recover, discard and adopt;
-> - the evolution reservation's durable transitions, and `authority_transition`.
->
-> Its successor is ABI v8, over the volatile ECS_C session (`docs/ECS_C_SESSION.md`), with no permitted
-> persistent-state write path (phase V3; not implemented). This document is kept as the historical v7
-> specification. Its durability sections describe what is being retired, not a target.
+> **VOLATILE MIGRATION: COMPLETE** (`docs/ELPIS_MISSION.md`, Amendment 3; `docs/VOLATILE_RUNTIME_CENSUS.md`).
+> RuntimeCore ABI v8, specified here, holds one volatile ECS_C session per open runtime and has no persistent-state
+> write path: no file, directory, checkpoint, journal, publication, durability lane, recovery or resumption exists in
+> its ABI. The persistent v7 interface is retired; its specification is history
+> (`docs/history/RUNTIME_CORE_ABI_V7.md`), not a target.
 
-`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v7) owns the mutable systems
-authority of an open Elpis runtime and is the one native composer of ECS_G (K1, reached through function tables) and
-ECS_C (the memory, through the composite table; the ECS_C authority, embedded as its only durable authority). Its
-production caller is the native host `elpis` (docs/NATIVE_HOST.md). `elpis.runtime.Runtime` is the offline reference
-interface's facade, over the same ECS_C authority (docs/NATIVE_SPLIT_CENSUS.md, F3).
+`native/runtime` (crate `elpis_runtime`, C ABI `include/elpis/runtime.h` v8) owns the mutable systems authority of an
+open Elpis runtime. It is the one native composer of:
+- ECS_G: K1, reached through function tables;
+- ECS_C: the memory, through the composite table, and the volatile ECS_C session (`docs/ECS_C_SESSION.md`), embedded
+  without its C ABI as the runtime's only authority.
 
-ABI history: v2 the turn lifecycle, v3 managed ownership, v4 the live/durable split (volatile commits, explicit
-durability), v5 the observe-only managed turn ("Observe-only turns (ABI v5)" below), v6 the ECS_C durable authority
-("The durable authority (ABI v6)" below), v7 the ECS_C authority as the only one ("One durable authority (ABI v7)"
-below). Each version is refused by a caller of another (`elpis_runtime_abi_version`).
+Its production caller is the native host `elpis` (`docs/NATIVE_HOST.md`). `elpis.runtime.Runtime` is the offline
+reference interface's facade over the same library (`docs/NATIVE_SPLIT_CENSUS.md`, F3).
 
-## Live and durable authority (ABI v4)
+Everything RuntimeCore owns lives in memory: its lifecycle and fail-stop disposition, its session, the binding of the
+K1 lineage to one native state and its live coordinate, the managed turn's native transaction, and the evolution
+attempt's reservation and finalization. It owns no semantics: callers hand it a validated native-ready stimulus or
+an assertion digest.
 
-RuntimeCore keeps two coordinates and never equates them:
+ABI history:
+- v2: the turn lifecycle;
+- v3: managed ownership;
+- v4: the live coordinate, with volatile commits;
+- v5: the observe-only managed turn;
+- v6 and v7: the durable ECS_C authority;
+- **v8: one volatile ECS_C session per open, and nothing persistent.**
 
-* **Live**: the bound state's K1 generation under RuntimeCore's managed lease (the K1 header's "Live coordinate").
-  It advances by exactly one per managed commit. QUERY and LEARN operate on the live state and check this coordinate
-  inside the same guarded K1 call; nothing is hashed on the HOT lane.
-* **Durable**: the durable authority's record (the ECS_C authority's; standalone continuity's through ABI v6: the
-  retained-state identity of the last completed durable publication) and,
-  with a checkpoint store, a verified slot holding that state's complete envelope. Restart resumes exactly this,
-  never anything later.
+Each version is refused by a caller of another (`elpis_runtime_abi_version`), so a v7 caller cannot mistake a v8
+library for a durable runtime.
 
-A managed commit is **volatile**: it installs the native candidate and advances the live coordinate; nothing is
-checkpointed, published, hashed or written. Durable publication is a separate, explicit WARM request of one of two
-kinds (below): the HOT lane captures the envelope unsealed under the lease (the one synchronous step, a copy) and
-hands it to the runtime's **durability lane**, a worker thread that seals and verifies it, makes it durable and
-resolves the request's ticket. The caller chooses whether to wait (`durable_wait`). A crash may lose the volatile work
-since the last completed publication; the API says so (`durability == "VOLATILE"`, the ticket's status).
-
-### Recoverable and identity-only publication
-
-Making a *state* durable and making its *identity* durable are different promises, and the ABI never lets one stand
-for the other:
-
-| | Recoverable | Identity-only |
-|---|---|---|
-| Request | `elpis_runtime_recoverable_request`, Python `Runtime.publish_recoverable` | `elpis_runtime_identity_request`, Python `Runtime.publish_identity` |
-| Requires | an attached checkpoint store (the owner of the bytes); otherwise refused `RUNTIME_RECOVERY_UNAVAILABLE` before anything is bound or captured, never downgraded | no checkpoint store attached; otherwise refused `RUNTIME_CHECKPOINT_ATTACHED` (with a store every publication must be recoverable) |
-| Lane | seal + verify, slot write + `fdatasync`, **read back and verify** the slot is exactly the captured envelope (`CHECKPOINT_IO` and the slot withdrawn otherwise), then the durable authority's record (the ECS_C authority: one record and one witness, each synced) | seal + verify, the durable authority's record, synced |
-| Success | `ACKNOWLEDGED`, `recoverable` always 1: restart resumes exactly this state from the store | `IDENTITY_PUBLISHED`, `recoverable` always 0: never an acknowledgment; the caller keeps the bytes and restart can rebind only a state the caller supplies |
-
-The ticket carries its `kind`; `last_acknowledged` in the lane's status and the `durable_acknowledged` counter count
-recoverable acknowledgments only; the Python adapter re-checks the law on every ticket (an `ACKNOWLEDGED` ticket that
-is not recoverable, or a recoverable identity-only one, is refused as a contract violation). Attaching a checkpoint
-store is refused while a publication is pending or running (`RUNTIME_DURABLE_BUSY`), so an identity-only request never
-runs against a store. The explicit anchor is a control operation, not a publication request: it persists the
-envelope when a store is attached and otherwise anchors the identity only (`recover` then reports
-`CHECKPOINT_MISSING` until a recoverable publication of a state makes it resumable; a recoverable publication of the
-anchored state itself writes and verifies the slot without a new continuity record).
-
-**Superseded requirement.** Through ABI v3, every committed LEARN published its new expected K1 identity to
-continuity before returning (one 176-byte record write and one `fdatasync`), and with a checkpoint store also wrote
-and synced the candidate's complete envelope before the native commit; QUERY and every begin hashed the state to
-compare it with the durable identity. That coupled every HOT transition to filesystem synchronization and made
-continuity decide when the runtime could think. It is withdrawn by this correction (Elpis_DEV), not reinterpreted:
-recorded evidence produced under v3 stays as recorded.
+## Sessions (ABI v8)
 
 ```text
-  HOT (caller thread, handle lock)                       WARM durability lane (one worker per open runtime)
-  query        leased_query at the live generation       (idle)
-  turn_begin   leased_txn_begin_at the live generation
-  turn_commit  leased_txn_commit: volatile, no I/O
-  recoverable_request | identity_request                 seal + verify
-               leased_capture (unsealed copy) --->       [recoverable] slot write + fdatasync + read-back verify
-               returns PENDING at once                   -> record write + fdatasync -> ticket
-  durable_wait / durable_status: lane lock only  <---    ACKNOWLEDGED | IDENTITY_PUBLISHED / FAILED / UNCERTAIN /
-                                                         ABANDONED / SUPERSEDED / ...
+  elpis_runtime_create(config)  ->  CLOSED  --open-->  OPEN (session n, a fresh genesis)  --close-->  CLOSED
+                                       ^                     |  anchor, QUERY, LEARN, OBSERVE,             |
+                                       |                     |  operator events, evolution                 |
+                                       +---------------------+-------------- (session n is gone) ----------+
+  elpis_runtime_destroy: aborts an open turn natively, ends the session, frees the handle
 ```
+
+- **Create.** `elpis_runtime_create(const elpis_runtime_config *, elpis_runtime **)` takes a configuration, never a
+  path:
+  - the session's ECS_C entity capacity (2..4096; the founders occupy two rows);
+  - the founding operator's and runtime's label digests;
+  - an optional 32-byte nonce seed.
+
+  `RUNTIME_INVALID` for a NULL argument, another `abi_version` or a capacity outside the bounds. No session exists
+  until `open`.
+- **Open.** Each `elpis_runtime_open` starts a new session at a fresh genesis: the founding operator and runtime,
+  both ACTIVE, at generation 1, with nothing anchored. Two failures leave the runtime closed:
+  - `RUNTIME_NOMEM` if the session's memory cannot be reserved;
+  - `RUNTIME_AUTHORITY` if no nonce can be drawn.
+
+  An open runtime refuses another open (`CONTINUITY_OPEN`) and keeps any open turn.
+- **Nonce.** A zero seed draws each session's nonce from the kernel (`getrandom(2)`). A nonzero seed derives the n-th
+  session's nonce as `SHA-256("elpis.runtime.session-nonce.v1\0" || seed || n, u64 LE)`. Runtimes configured alike
+  then open identical sessions, which differential testing uses, while one runtime's successive sessions differ.
+- **Close.** `elpis_runtime_close` aborts an open turn natively, drops the residency hold and the binding, and ends
+  the session together with everything in it: the anchor, the operator's sources and events, evidence and receipt
+  chains, and any evolution reservation. Close then open is the only way to clear a fail-stop, and it clears the
+  session that the fail-stop belonged to.
+- **Restart.** A restart is a new session. Nothing is resumed. No crash-persistent identity, recovery, or
+  exactly-once guarantee across restarts is claimed. A crash loses the session, which is the specified behavior,
+  not a failure mode to recover from.
+- **Footprint.** The session's memory is reserved once, at open. `elpis_runtime_authority.volatile_bytes` reports
+  it, and it is exact and constant for the session's life: `1,424 + 464 × capacity` bytes, for example 8,848 at
+  capacity 16 (`docs/ECS_C_SESSION.md`, "Footprint"). No transition allocates. Exhaustion refuses before anything
+  changes, and nothing spills anywhere.
+
+`elpis_runtime_authority_status` reports the session, and is readable while the runtime is closed. Closed, it reports
+the number of sessions opened and the session code of the last refused open, with everything else zero. Open, it
+reports:
+- the backend: `ELPIS_RUNTIME_BACKEND_ECS_C_SESSION`, 3;
+- the instance, the generation, the entity count and the capacity;
+- the lineage, the commit, the state root and the receipt and evidence heads;
+- `volatile_bytes`.
+
+## The live coordinate
+
+The bound state's native generation (ecsg_k1.h, "Live coordinate") under RuntimeCore's lease, as RuntimeCore last
+established it. It advances by exactly one per managed commit. QUERY, the managed turn and OBSERVE are checked against
+it inside the same guarded K1 call. None of them performs I/O or computes a digest.
+
+The session records the lineage's **anchored** identity: the retained-state identity of the state that the explicit
+anchor bound. A managed commit installs the candidate and advances the live generation, in memory. The session never
+needs to name the new state, and nothing ever publishes it. ABI v4 to v7 kept a second, durable coordinate beside
+this one. ABI v8 has no durable coordinate: the live coordinate and the session's anchor are all there is.
 
 ## What RuntimeCore owns
 
-| Authority | Before (Python `composition.py`) | Now (RuntimeCore, Rust) |
-|---|---|---|
-| Lifecycle (open / close / reopen) | `Runtime.open` / `close` around a `ContinuityStore` | `Core::open` / `close`; the durable authority is embedded |
-| Fail-stop disposition | `Runtime._continuity_fault` | `Core.fault` (a durable-authority code); every lineage- or authority-dependent call refuses with it until reopen |
-| Durable authority | a Python `ContinuityStore` handle | one per handle (`authority.rs`): the ECS_C authority (`elpis_runtime_create_ecs_c`), embedded as a crate without its C ABI; through ABI v6 also standalone continuity (`elpis_runtime_create`) |
-| K1 lineage binding | `Runtime._turn_substrate` and `_reconcile_cognition_substrate` | `Core.bound` (`Key`: kind, native handle, resident id, owner identity, dimension; and the live generation), verified once against the durable expected identity (or the live identity an explicit release gave back) |
-| Managed QUERY (read-only) | none (the turn was the only cognitive operation) | `query`: one native `leased_query` (the answer `f_W(x)` and the generation of the state that computed it, under one K1 guard); no transaction, no commit, no publication, no digest |
-| Managed LEARN (the turn's native transaction) | Python sequenced `txn_begin`, `run_schedule`, `commit_identity`, abort | `turn_begin` (lineage check at the live generation, begin, one schedule, cold-path capacity growth) and `turn_commit` (volatile) / `turn_abort` |
-| Durable publication | Python `commit_cognition_transition` + fault flag, once per turn | explicit `recoverable_request` / `identity_request` on the durability lane (`durable.rs`); `durable_wait`, `durable_status` |
-| Evolution reservation / finalization | Python reserve, execute, finalize, fault on exception | `evolution_reserve` / `evolution_finalize` / `evolution_abandon` / `evolution_reconcile`: one attempt in flight |
+| Authority | RuntimeCore (Rust), ABI v8 |
+|---|---|
+| Lifecycle (create / open / close / destroy) | `Core::open` / `close`. Each open is a new session at a fresh genesis (`authority.rs`, `SessionTemplate`) |
+| Fail-stop disposition | `Core.fault`, a session-authority code. Every lineage- or session-dependent call refuses with it until close and open |
+| Authority | One volatile ECS_C session per open (`authority.rs`), embedded without its C ABI, with one transition law (`native/ECS_C/session`) |
+| K1 lineage binding | `Core.bound` (`Key`: kind, native handle, resident id, owner identity, dimension) and the live generation. Verified once against the session's anchored identity, or against the live identity that an explicit release gave back |
+| Managed QUERY (read-only) | `query`: one native `leased_query`, which returns the answer `f_W(x)` and the generation of the state that computed it under one K1 guard. No transaction, commit, publication or digest |
+| Managed LEARN (the turn's native transaction) | `turn_begin`: the lineage check at the live generation, begin, one schedule, and cold-path capacity growth. Then `turn_commit` (volatile) or `turn_abort` |
+| Typed-evidence admission | The admission table: the session's ACTIVE sources, with their per-turn bounds. A table lookup on the HOT lane |
+| Evolution reservation / finalization | `evolution_reserve` / `evolution_finalize` / `evolution_abandon`: session transitions, with one attempt in flight |
 
 What stays at the language boundary, because it is semantics or validation rather than mutable authority:
+- the token codec and the (unqualified) ECS codec map: `cognition._validate_turn_request`, `_encode` (text to tokens
+  to a validated native-ready `Stimulus`) and `_decode` (readout to tokens to text);
+- the evolution gate's validation and execution (`EvolutionPathGate.reject_reason` / `execute`): immutable values and
+  digest identities, with no mutable state;
+- the reference that keeps the bound K1 state's Python owner alive while RuntimeCore holds the binding. This is
+  lifetime only: RuntimeCore decides the binding.
 
-* the token codec and the (unqualified) ECS codec map: `cognition._validate_turn_request`, `_encode` (text
-  -> tokens -> a validated native-ready `Stimulus`) and `_decode` (readout -> tokens -> text);
-* the evolution gate's validation and execution (`EvolutionPathGate.reject_reason` / `execute`): immutable
-  values and digest identities, no mutable state (see the census);
-* the reference that keeps the bound K1 state's Python owner alive while RuntimeCore holds the binding
-  (lifetime only: RuntimeCore decides the binding).
-
-No ECS<->DSV semantic codec is defined; RuntimeCore adds none. The turn still refuses with
-`ECS_CODEC_UNQUALIFIED` before anything else.
+No ECS<->DSV semantic codec is defined, and RuntimeCore adds none. The turn still refuses with `ECS_CODEC_UNQUALIFIED`
+before anything else.
 
 ## How RuntimeCore reaches K1
 
@@ -113,484 +119,442 @@ RuntimeCore links no ECS code and computes no ECS mathematics. The caller passes
 
 ```c
 typedef struct {
-    uint32_t kind;          /* 1: standalone K1 (ecsg_k1.h); 2: FMS-resident K1 (ecsg_k1_fms.h) */
+    uint32_t kind;          /* 1: standalone K1 (ecsg_k1.h); 2: FMS-resident K1 (ecsg_k1_fms.h); 3: composite */
     uint32_t reserved;
-    void *handle;           /* elpis_ecsg_k1 * or elpis_ecsg_k1_fms * */
+    void *handle;           /* elpis_ecsg_k1 *, elpis_ecsg_k1_fms * or elpis_ecs_composite * */
     uint64_t id;            /* resident state id (kind 2) */
     uint64_t owner;         /* caller identity of the handle's owner (unique while bound) */
     uint64_t dim;           /* verified natively */
-    const void *api;        /* the K1 library's own entry points */
+    const void *api;        /* the library's own entry points */
 } elpis_runtime_substrate;
 ```
 
-`api` is a table of the K1 library's own functions (ABI v4: `state_digest`, `shape`, `lease_claim`,
-`lease_release`, `leased_reserve`, `leased_identity`, `leased_query`, `leased_txn_begin_at`,
-`leased_txn_run_schedule`, `leased_txn_commit`, `txn_abort`, `leased_capture`, `envelope_seal`); the Python adapter
-takes their addresses from the
-loaded library, a C or C++ host passes them directly (`native/runtime/tests/test_runtime_abi.c`). The declared
-dimension is verified natively: K1 compares the readout length it implies with the state's own before it reads
-any input byte (`schedule_check`).
+`api` is a table of the K1 library's own functions:
+- `state_digest`, `shape`;
+- `lease_claim`, `lease_release`, `leased_reserve`, `leased_identity`, `leased_query`;
+- `leased_txn_begin_at`, `leased_txn_run_schedule`, `leased_txn_commit`, `txn_abort`.
+
+The K1 FMS adapter's table adds `resident_hold` and `resident_release`; the composite's adds `leased_txn_observe`.
+ABI v8 removed `leased_capture` and `envelope_seal` from the tables: they produced the envelope that durable
+publication wrote. The Python adapter takes the entries' addresses from the loaded library; a C host passes them
+directly (`native/runtime/tests/k1_tables.h`).
+
+The declared dimension is verified natively: K1 compares the readout length it implies with the state's own before it
+reads any input byte (`schedule_check`).
 
 ### Substrate lifetime (ABI v2)
 
-Outside a managed turn a descriptor need only be live for the call. A successful `turn_begin` opens a native K1
-transaction, and to end it on every path RuntimeCore retains, until the turn ends, an abort-only capability over
-the state: a copy of the descriptor's handle, resident id and `txn_abort` entry (never commit, schedule or any
-other entry). The native state must stay live, and its library loaded, for that interval. This is the v2 change
-from v1, under which a turn could be forgotten and the state then destroyed; the bump makes a v1 caller refuse to
-load the library rather than inherit the new obligation silently.
+Outside a managed turn, a descriptor need only be live for the call. A successful `turn_begin` opens a native K1
+transaction. To end it on every path, RuntimeCore retains an abort-only capability over the state until the turn ends:
+a copy of the descriptor's handle, resident id and `txn_abort` entry, and never commit, schedule or any other entry.
+The native state must stay live, and its library loaded, for that interval.
 
-* FMS-resident K1: enforced natively by the adapter (`ecsg_k1_fms.h`): a resident state with an open transaction
-  cannot be closed and its runtime cannot be destroyed while a state is registered (both `BUSY`), so the retained
-  handle and id are live for as long as the transaction RuntimeCore holds is open.
-* Standalone K1: `elpis_ecsg_k1_destroy` frees a state whatever transaction it holds, so the owner must not destroy
+- **FMS-resident K1:** enforced natively by the adapter (`ecsg_k1_fms.h`). A resident state with an open transaction
+  cannot be closed, and its runtime cannot be destroyed while a state is registered (both `BUSY`).
+- **Standalone K1:** `elpis_ecsg_k1_destroy` frees a state whatever transaction it holds, so the owner must not destroy
   it while a turn on it is open. The Python adapter satisfies this: native K1 handles are freed only by an explicit
-  `close` (no finalizer frees them), and `Runtime` keeps the bound state's owner alive until RuntimeCore has ended
-  the turn (`close` and `open` release it only afterwards).
+  `close`, and `Runtime` keeps the bound state's owner alive until RuntimeCore has ended the turn.
 
 ### Composite substrates
 
 A substrate of kind `ELPIS_RUNTIME_SUBSTRATE_COMPOSITE` (3) is an ECS composite retained state
-(docs/ECS_COMPOSITE_STATE.md). Its table, `elpis_runtime_composite_api`, is the K1 table (same signatures and
-status numbers; the digests are `ELPISEC1` identities) plus `leased_txn_observe`. RuntimeCore binds, queries,
-learns, publishes durably and recovers it exactly as a K1 state (a composite's envelope size depends on its memory
-capacity, so its durable publication needs an attached, provisioned checkpoint store: `CHECKPOINT_INVALID`
-otherwise); continuity records the lineage's format (record v3),
-and binding or committing a substrate of another format than the lineage's is `CONTINUITY_STATE_MISMATCH`
-(fail-stop on binding, as an identity mismatch is).
+(`docs/ECS_COMPOSITE_STATE.md`): K1 and the ECS memory under one `ELPISEC1` identity. Its table,
+`elpis_runtime_composite_api`, is the K1 table over composite identities plus `leased_txn_observe`. RuntimeCore binds,
+queries and learns it exactly as a K1 state.
 
-* `elpis_runtime_turn_observe` records an opaque `elpis_ecs_mem_observation` on the open turn's memory candidate
-  (RuntimeCore never reads it). The memory therefore changes only inside a managed turn, becomes live with that
-  turn's native commit, and durable only through an explicit durable publication. A refusal is recoverable
-  (`ECS_REFUSED`, with the composite and memory statuses reported); the turn stays open.
-* No memory LEARN or CONSOLIDATE is exposed: those operations are UNQUALIFIED (docs/ECS_MEMORY.md).
-* `elpis_runtime_import_composite` moves a K1 lineage to a composite made by `elpis_ecs_composite_import_k1`
-  from exactly the authorized K1 state with an empty memory; it requires an attached checkpoint store sized for
-  the composite envelope, makes the envelope durable, then publishes `import_cognition`.
+The session records the lineage's format. A K1 state never stands for a composite lineage, or the reverse:
+`CONTINUITY_STATE_MISMATCH`, which fail-stops on binding as an identity mismatch does.
 
-`native/runtime/tests/test_runtime_composite.c` (testing library) covers the composite anchor, volatile turns with
-observations, refusals, the format mismatch, process death inside a durable publication (after the slot is synced;
-with the continuity record torn), recovery with the memory transition present exactly once or absent, the
-legacy import, and the observe-only turn below.
+- `elpis_runtime_turn_observe` records an opaque `elpis_ecs_mem_observation` on the open turn's memory candidate.
+  RuntimeCore reads only its source. The memory therefore changes only inside a managed turn and becomes live with
+  that turn's native commit, in memory. A refusal is recoverable (`ECS_REFUSED`, with the composite and memory
+  statuses reported), and the turn stays open.
+- No memory LEARN or CONSOLIDATE is exposed: those operations are UNQUALIFIED (`docs/ECS_MEMORY.md`).
+- The v7 legacy import (`elpis_runtime_import_composite`), which moved a durable K1 lineage to a composite, is
+  retired. A composite lineage is anchored directly.
+
+`native/runtime/tests/test_runtime_composite.c` covers:
+- the composite anchor;
+- volatile turns with observations, and their refusals;
+- unmanaged mutation refused while bound, and the format mismatch;
+- an in-memory rollback: a snapshot buffer restored to the anchored state and rebound, with the volatile work
+  abandoned;
+- the typed HACF path;
+- the observe-only turn below.
 
 ### Observe-only turns (ABI v5)
 
 Up to v4, OBSERVE existed only inside a LEARN turn (`turn_begin` refuses an empty K1 schedule), so recording typed
-evidence forced a geometric learning transition. v5 separates them:
+evidence forced a geometric learning transition. v5 separates them.
 
-* `elpis_runtime_turn_begin_observe(runtime, substrate, budget, out)` (a composite substrate only) verifies and
-  binds the lineage exactly as `turn_begin` does and opens the composite transaction at the live generation, but runs
-  **no K1 experience schedule**: the K1 candidate is the unchanged copy of the live K1 state. A K1 or K1 FMS
-  substrate is `RUNTIME_INVALID` before any native call; an open turn, an unanchored lineage, another substrate and a
-  budget outside the ceiling are refused as for `turn_begin`.
-* Observations enter through `elpis_runtime_turn_observe`. Every managed turn (LEARN or observe-only) records at most
-  `budget.max_observations` (ceiling 256); one more is `COGNITION_FUEL_EXCEEDED` before the native call and leaves
-  the turn open. `counters.k1_observes` counts the crossings.
-* `turn_commit` is volatile, as every managed commit: the live generation advances by one (the composite commits its
-  untouched K1 candidate: W, epoch, H and a reinstalled, the K1 identity unchanged, since the generation is not
-  state) and the memory candidate is installed. A commit while nothing was observed is `RUNTIME_INVALID` and keeps
-  the turn open; a commit whose K1 transition reports a step or an epoch change fail-stops `STATE_MISMATCH` (never
-  built upon). `turn_abort`, close and destroy end it as any turn.
-* Durability is unchanged: a recoverable publication captures the composite (its K1 bytes those of the last LEARN)
-  and the restart law is v4's.
+- **Begin.** `elpis_runtime_turn_begin_observe(runtime, substrate, budget, out)`, on a composite substrate only:
+  - It verifies and binds the lineage exactly as `turn_begin` does, and opens the composite transaction at the live
+    generation.
+  - It runs **no K1 experience schedule**: the K1 candidate is the unchanged copy of the live K1 state.
+  - A K1 or K1 FMS substrate is `RUNTIME_INVALID` before any native call. An open turn, an unanchored lineage,
+    another substrate, and a budget outside the ceiling are refused as for `turn_begin`.
+- **Observe.** Observations enter through `elpis_runtime_turn_observe`. Every managed turn, LEARN or observe-only,
+  records at most `budget.max_observations` (ceiling 256). One more is `COGNITION_FUEL_EXCEEDED` before the native call
+  and leaves the turn open. `counters.k1_observes` counts the crossings.
+- **Commit.** `turn_commit` is volatile, as every managed commit. The live generation advances by one: the composite
+  commits its untouched K1 candidate, so the K1 identity is unchanged, and installs the memory candidate.
+  - A commit while nothing was observed is `RUNTIME_INVALID` and keeps the turn open.
+  - A commit whose K1 transition reports a step or an epoch change fail-stops `STATE_MISMATCH` and is never built
+    upon.
+  - `turn_abort`, close and destroy end it as any turn.
 
-v5 changed the layout of `elpis_runtime_budget` (`max_observations`, 56 bytes) and `elpis_runtime_counters`
-(`k1_observes`, 136 bytes); every v4 entry point keeps its meaning and the ELPISGK1, ELPISEC1 and continuity formats
-are unchanged, so durable state written by a v4 library restores under v5. `Runtime.run_observe` is the Python
-operation (an explicit `ObservationAuthority`, all or nothing, the native bound narrowed to the authority's);
-laws: `native/runtime/src/tests.rs` (`observe_only`), `test_runtime_composite.c`, `tests/integration/test_observe_only.py`
-(including a SIGKILLed child). Mutation sensitivity (rebuilt mutants outside the repository, unmutated baseline green): a K1 substrate admitted,
-a commit with nothing observed, the native observation bound removed, an observe-only commit reporting K1 learning
-built upon, a refused observation not aborting the turn, the native bound not narrowed to the authority's, and
-`run_observe` skipping the authority: all seven killed.
+`Runtime.run_observe` is the Python operation: an explicit `ObservationAuthority`, all or nothing, with the native
+bound narrowed to the authority's. Laws are in:
+- `native/runtime/src/tests.rs` (`observe_only`);
+- `test_runtime_composite.c`;
+- `tests/integration/test_observe_only.py`.
 
-## The durable authority (ABI v6)
+## The session authority (ABI v8)
 
-The durable authority a runtime publishes to is chosen when the handle is created, and every law of this document
-holds over either:
+RuntimeCore holds one volatile ECS_C session (`native/runtime/src/authority.rs`; `docs/ECS_C_SESSION.md`). The
+transition law is the one the durable authority ran. The session crate owns it, and the crate is `no_std` with no
+dependency and can reach no filesystem.
 
-* `elpis_runtime_create(path)`: standalone continuity (docs/CONTINUITY.md), the v5 behaviour, unchanged (removed by
-  ABI v7, below).
-* `elpis_runtime_create_ecs_c(state_dir, authority_dir)`: the ECS_C authority (docs/ECS_C_AUTHORITY.md): bounded,
-  authenticated, replayed, with a rollback witness in a separately protected directory. The operator provisions and
-  reconciles it through its own ABI (`elpis/ecs_c_authority.h`) with no runtime open. RuntimeCore embeds the crate
-  without its C ABI: one implementation, one transition law.
+- **RuntimeCore's events are session transitions.** The anchor, an evolution reservation and an evolution
+  finalization are each one typed event of the session's founding RUNTIME entity at its next sender sequence.
+  - Each is compare-and-publish on the session's coordinate, in memory.
+  - Nothing is written, synced or recorded anywhere else.
+  - The HOT lane makes no session transition at all. A managed commit is not an event.
+- **Typed-evidence admission is native.** At open, and after every operator event, RuntimeCore copies the session's
+  ACTIVE sources into a bounded admission table, at most the session's entity capacity. Each source carries:
+  - the 32-bit memory `source_authority` its observations record;
+  - its per-turn bound.
 
-`native/runtime/src/authority.rs` puts both behind continuity's interface (`Store`), so the durability lane, the
-anchor, import, evolution and recovery code paths are the same code over either backend. Under ECS_C:
+  `elpis_runtime_turn_observe` reads the observation's `source_authority` and refuses the observation before the
+  native call (`RUNTIME_OBSERVATION_REFUSED`) if:
+  - its source is not an ACTIVE source of the session; or
+  - it would exceed its source's per-turn bound.
 
-* **Publications are typed events.** Each publication (anchor, durable publication, composite import, evolution
-  reserve and finalize) is one event of the authority's founding RUNTIME entity at its next sender sequence,
-  compare-and-publish on the authority's generation and state root. RuntimeCore is the authority's only writer while
-  it holds it open; a durable publication is still the checkpoint slot (verified) followed by the authority's record.
-  ECS_C writes two fixed slots per transition (the record, R = 1344 + 160 × capacity bytes, and the 240-byte witness,
-  each written in place and synced); nothing is created, renamed or removed, and the HOT lane performs no authority
-  I/O (`tests.rs` `ecs_c::the_hot_lane_performs_no_authority_io_...`).
-* **Typed-evidence admission is native.** At open, and after every operator event, RuntimeCore copies the authority's
-  ACTIVE sources (each with the 32-bit memory `source_authority` its observations record, and its per-turn bound) into
-  a bounded admission table (at most the authority's entity capacity). `elpis_runtime_turn_observe` reads the
-  observation's `source_authority` (`elpis_ecs_mem_observation`, ABI v1) and refuses, before the native call, an
-  observation whose source is not an ACTIVE source of the authority or that exceeds its source's per-turn bound
-  (`RUNTIME_OBSERVATION_REFUSED`, recoverable: the turn stays open, the candidate unchanged, `k1_observes` not
-  counted); a record of another memory ABI is `RUNTIME_INVALID`. The check is a table lookup on the HOT lane: no I/O,
-  no digest. (Under ABI v6's continuity backend there was no table and admission was the boundary's.)
-* **Each durable publication records an evidence summary.** RuntimeCore counts the typed observations its managed
-  commits install; the durability lane (never the HOT lane) gives the PUBLISH event the number committed since the
-  last acknowledged publication and the identity of the memory that holds them (the captured ELPISEC1 envelope's
-  memory component, offset 80), and the authority chains them into its evidence head. A refused publication accounts
-  for nothing, so the next one carries everything since the last acknowledged one; a K1 envelope has no memory and
-  carries none (a zero count pairs with a zero digest, the transition law's rule).
-* **Operator events reach a held authority only through `elpis_runtime_authority_transition`**: ENTITY_FOUND,
-  ENTITY_LIFECYCLE, SOURCE_VERSION, ENTITY_RECLAIM and IMPORT_LEGACY, sent by an operator entity. RuntimeCore's own
-  kinds and the reconciliations are `RUNTIME_INVALID` (whoever they claim to be from); an event while a managed turn
-  is open is `RUNTIME_TURN_OPEN` (a turn's admission never changes under it); closed or fail-stopped, refused as every
-  operation. The admission table follows the authority whatever the outcome. The caller builds an event from what
-  the held authority reads back: `elpis_runtime_authority_entity_at` (one entity row, laid out as
-  `elpis_ecs_c_entity`: identities, lifecycles, sender watermarks) and `elpis_runtime_authority_next_entity_id` (the
-  receiver the next ENTITY_FOUND must name). Both are reads (they change nothing), refused closed or fail-stopped, and
-  `RUNTIME_INVALID` past the last row or for an unknown kind (and, under ABI v6, over continuity). They were added to ABI v6 before any
-  release, for the native operator host (Stage F, docs/NATIVE_HOST.md).
-* **An authority that is not in its normal mode refuses the open** (`RUNTIME_AUTHORITY`): restricted, reconcile-only
-  (rollback, corrupt or unauthenticated acknowledged record, missing witness) or refused by recovery. The runtime stays
-  closed; `elpis_runtime_authority_status` reports the recovery disposition, the mode and the exact ECS_C code, readable
-  closed. The operator reconciles with the authority's ABI (`elpis_ecs_c_read_reconciliation` names the one
-  reconciliation it accepts) and reopens.
-* **Error domain.** The call sites speak continuity's codes: an ECS_C refusal with a continuity equivalent is that code;
-  any other is `RUNTIME_AUTHORITY` at open and `CONTINUITY_AUTHORITY_MISMATCH` in a publication (the realistic case:
-  the founding runtime is no longer ACTIVE). `elpis_runtime_authority.ecs_c_code` keeps the exact code.
+  The refusal is recoverable: the turn stays open, the candidate is unchanged, and `k1_observes` is not counted. A
+  record of another memory ABI is `RUNTIME_INVALID`. The check is a table lookup on the HOT lane: no I/O, no digest.
+- **Operator events reach the session only through `elpis_runtime_authority_transition`.** The accepted kinds are
+  ENTITY_FOUND, ENTITY_LIFECYCLE, SOURCE_VERSION and ENTITY_RECLAIM, sent by an operator entity. The refusals:
 
-Not yet: RuntimeCore does not consult source versions or scopes at admission (an observation records neither; Stage E
-binds them through the memory's source invalidation), and the testing library's durability fault plan maps the
-publication steps onto the authority's record slot only (the witness faults are the authority's own suite's).
+  | Event or state | Outcome |
+  |---|---|
+  | The persistence-only kinds: IMPORT_LEGACY and the three reconciliations | `RUNTIME_RETIRED`, even when well formed. Nothing changes |
+  | RuntimeCore's own kinds, whoever they claim to be from | `RUNTIME_INVALID` |
+  | Any event while a managed turn is open | `RUNTIME_TURN_OPEN`. A turn's admission never changes under it |
+  | Any event while closed or fail-stopped | Refused, as every operation |
 
-Laws: `native/runtime/src/tests.rs` (`ecs_c`, and since ABI v7 the whole suite over ECS_C, ctest `runtime.cargo_test`;
-under ABI v6 it ran a second time over ECS_C, `ELPIS_RUNTIME_TEST_AUTHORITY=ecs_c`), `runtime.test_runtime_ecs_c` (the production
-libraries, the real composite: provisioning, admission, operator events, the evidence summary, a copied-back authority
-refusing the open, the exact reconciliation, the reopen), `runtime.test_runtime_hot_io_ecs_c` (Gate A at the
-system-call boundary over ECS_C). Mutation sensitivity (rebuilt mutants outside the repository, unmutated baseline
-green): an unknown source admitted, the per-turn bound off by one, a source's use never counted, the PUBLISH without
-its summary, the acknowledged total never advanced, a refused publication accounted, RuntimeCore's own kinds or a
-reconciliation accepted from an operator, an operator event while a turn is open, a non-normal authority opened, the
-admission table not refreshed after an operator event or not loaded at open, the composite's memory identity
-ignored, the observation's `source_authority` read at the wrong offset, a refused open's recovery report dropped:
-all fourteen killed. The K1 Recovery R0 v4 RUN PASS is bound to its qualifying commit and does not extend to this
-RuntimeCore (its premise P4 pins `durable.rs`, which v6 changes, and P1 `native/continuity`, which v7 retires).
+  The admission table follows the session whatever the outcome.
+- **Reads.** The caller builds an event from what the session reads back:
+  - `elpis_runtime_authority_entity_at`: one entity row, laid out as `elpis_ecs_c_entity`, with identities,
+    lifecycles and sender watermarks;
+  - `elpis_runtime_authority_next_entity_id`: the receiver the next ENTITY_FOUND must name.
 
-## One durable authority (ABI v7)
+  Both are pure. They are refused while closed or fail-stopped, and `RUNTIME_INVALID` past the last row or for an
+  unknown kind. The ECS_C relational view (`docs/ECS_C_RELATIONAL.md`) syncs from these rows. It refuses the next
+  session's table (`LINEAGE`) until it is reset.
+- **Error domain.** The call sites speak the authority codes (`ELPIS_CONTINUITY_*`, the names and values continuity
+  gave them, kept for the view's layout):
+  - a session refusal with an equivalent is that code;
+  - `NOMEM` is `RUNTIME_NOMEM`;
+  - a persistence-only kind is `RUNTIME_RETIRED`;
+  - any other is `RUNTIME_AUTHORITY` for an operator event, or `CONTINUITY_AUTHORITY_MISMATCH` for one of RuntimeCore's
+    own.
 
-Standalone continuity retired into ECS_C (docs/NATIVE_SPLIT_CENSUS.md, section 9; docs/ELPIS_MISSION.md, Amendment 2)
-once its successor was qualified: ECS_C Recovery Q0 is RUN PASS for commit `117b41a` (ABI v6). ABI v7 removes what only
-continuity used, and changes nothing else:
+  `elpis_runtime_authority.ecs_c_code` keeps the exact session code.
 
-* **Removed:** `elpis_runtime_create` (a handle over standalone continuity) and the library's re-export of continuity's
-  own C ABI (`elpis_continuity_*`, and in the testing library its two testing hooks). `libelpis_continuity.so` is no
-  longer built (native/ABI_INVENTORY.json, the Stage F amendment).
-* **Kept:** every other function, layout, code and name. The durable view keeps continuity's layout, values and names,
-  now declared by `runtime.h` itself: `elpis_continuity_snapshot` (its `record_digest` the continuity register digest
-  of the view, unchanged), `elpis_continuity_evolution`, the format constants and the authority codes
-  `ELPIS_CONTINUITY_*`. The evolution digest is `elpis.continuity.evolution-authority.v2`, computed by the ECS_C
-  authority's crate.
-* **One interface, one backend.** `authority.rs` still puts the authority behind the one `Store` interface the
-  durability lane, anchor, import, evolution and recovery paths share; it has exactly one implementation. RuntimeCore's
-  crate depends on the ECS_C authority crate only (no `elpis_continuity`), which depends on nothing.
-* **Both composers are the same.** The native host and the offline Python reference (`elpis.runtime.authority`: the
-  durable view, the operator's provisioning and events with the runtime closed) create every handle with
-  `elpis_runtime_create_ecs_c`.
-
-Not claimed: the retirement qualifies nothing new. Q0's pass is for `117b41a` (ABI v6) only; its ABI v7 successor is
-not run.
+Laws:
+- `native/runtime/src/tests.rs`, module `session`:
+  - each open is a new genesis and close ends it;
+  - seeded nonces are reproducible across runtimes and distinct within one;
+  - admission, per-turn bounds and lifecycles follow the operator's events;
+  - the retired kinds are refused;
+  - the reads change nothing;
+  - capacity exhaustion refuses atomically.
+- `runtime.test_runtime_session`: the production libraries, the real composite and the relational view, composed in
+  memory.
 
 ## Laws
 
-Each law is a test in `native/runtime/src/tests.rs` (deterministic in-memory K1 stand-in, authority fault
-injection) and, over real native K1, in `native/runtime/tests/test_runtime_abi.c`,
-`native/runtime/tests/test_runtime_lifecycle.c` and `tests/integration`.
+Each law is a test in `native/runtime/src/tests.rs`, which runs a deterministic in-memory K1 stand-in over the real
+volatile session (59 tests). Over real native K1, they are tested in `native/runtime/tests/test_runtime_abi.c`,
+`test_runtime_lifecycle.c`, `test_runtime_composite.c`, `test_runtime_session.c` and `tests/integration`.
 
-* **Anchor.** The first managed lineage is anchored explicitly at the state's retained identity; RuntimeCore
-  reads the identity only (and claims the state, below). A second anchor is `CONTINUITY_ALREADY_ANCHORED`.
-* **Bind and verify.** The first operation after open (QUERY, LEARN or a durable request) binds the lineage to the
-  supplied state after comparing its identity with the durable expectation (one digest, before any claim):
-  unanchored is `CONTINUITY_UNANCHORED` (no fail-stop), a mismatch is `CONTINUITY_STATE_MISMATCH` and fail-stops;
-  both before any K1 mutation. Then the state is claimed and its identity and generation are read together under
-  the lease (`leased_identity`): the identity must still be the one checked, and the generation becomes the live
-  coordinate. A bound runtime refuses any other state, by handle or owner, with `COGNITION_SUBSTRATE_SWITCH` and no
-  native call.
-* **Managed ownership.** Binding claims the state under this runtime's K1 lease (the K1 header's "Managed
-  ownership"; `lease_claim` refuses `BUSY`, without a fail-stop, while an unmanaged transaction is open). From then
-  on the state refuses every unmanaged mutating entry point (`LEASED`, before anything is touched): direct learn,
-  consolidate, reset and reserve, an unmanaged transaction begin, and the plain candidate calls on a leased
-  transaction. RuntimeCore mutates only through the `leased_*` entries, and every managed transaction begin
-  re-establishes the state's live coordinate inside the same guarded K1 call (`leased_txn_begin_at` returns the
-  generation of exactly the source it copied), even on a warm binding. Under the lease no unmanaged entry can move
-  the state, so an equal generation is the same retained state. A bound state that is not provably the lineage
-  (another generation: the begin is aborted; or its lease taken by another owner: refused natively) fail-stops with
-  `CONTINUITY_STATE_MISMATCH` before the schedule touches the candidate: nothing outside the lineage is built on or
-  published. `release` (`elpis_runtime_release`; the Python facade's `close` and `release`) gives the state back,
-  keeping the live identity it read under the lease just before: rebinding accepts exactly those bytes (the live
-  lineage, volatile work included) or the durable identity (as a restart would); `close` without a descriptor does
-  not touch the state. Reads stay open to anyone. The lease is an aliasing defence between cooperating local callers, not a secret or a
-  credential: in-process code can replace it (and the owner then fail-stops). Before this law an out-of-band
-  mutation was accepted by K1 and the next managed LEARN committed on top of it before publication refused it
-  (`tests/integration/test_managed_ownership.py`).
-* **QUERY.** Read-only (docs/COGNITION_R0.md). One native call (`leased_query`) answers `f_W(x)` from the LIVE
-  state and returns that same state's generation under one K1 guard, so no operation can move the state between
-  the answer and its coordinate. The generation must be the live one: unanchored is `CONTINUITY_UNANCHORED`; a
-  lease taken by another owner or a generation that moved is `CONTINUITY_STATE_MISMATCH` (fail-stop) and the answer
-  is withheld (zeroed). The answer reflects every managed LEARN before it, durable or not. A query is refused while
-  a managed turn is open (`RUNTIME_TURN_OPEN`). It begins no transaction, commits nothing, publishes nothing and
-  hashes nothing: W, epoch, H, a, the generation and both continuity slots are byte-for-byte unchanged
-  (`tests/integration/test_query_learn.py`).
-* **Total fuel.** Every QUERY and LEARN is admitted against a budget of totals (`elpis_runtime_budget`: experiences,
-  rows, rows of one experience (also the reserve ceiling), K1 learning steps, ECS work units, query rows) before the
-  identity check, any reserve, the transaction or a candidate mutation; a refusal is `COGNITION_FUEL_EXCEEDED` and
-  is not a fail-stop. The budget can only narrow the compiled ceiling (`elpis_runtime_fuel_ceiling`: 64
-  experiences, 16384 rows, 256 rows per experience, 2^20 steps, 2^30 work units, 4096 query rows), and the Python
-  boundary refuses a library whose ceiling differs. An ECS work unit is one multiply-accumulate-class operation
-  of the K1 kernels as counted by a fixed integer formula (`native/runtime/src/fuel.rs`, `elpis.runtime.fuel`;
-  tested equal): a K1 step on r rows is `2rdw + 2dwF + F^2`, a consolidation `rF^2 + dwF`, a QUERY `rdw`. It is
-  a deterministic proxy, not wall-clock. **No deadline is claimed**: the K1 ABI is synchronous and has no
-  cooperative cancellation point, so a running schedule cannot be preempted; preemptive deadlines are a missing
-  interface. RuntimeCore reads the state's immutable shape once per state (`shape`, cold path) to count width.
-* **Turn (LEARN).** begin (at the live generation) -> one native schedule on the candidate -> (boundary decodes) ->
-  native commit (volatile: the live generation advances by one; no publication, no checkpoint, no digest, no I/O).
-  Capacity beyond the reservation is grown on the cold path (abort, `reserve`, begin again). Every refusal before
-  the commit leaves `(W, epoch, H, a)` byte-for-byte unchanged; a stale source is `ECS_STALE`.
-* **Durable publication.** `recoverable_request` / `identity_request` (the kind checked against the attached store
-  first; bind if needed; refused while a turn is open, on an unanchored lineage and while the lane is faulted)
-  captures the envelope unsealed under the lease at the live generation and returns a `PENDING` ticket at once. The
-  handoff is bounded: one job runs and at most one waits; a newer request replaces a waiting one (`SUPERSEDED`,
-  never silently acknowledged); a request never waits for the worker. The worker seals and verifies the capture.
-  Recoverable: it refuses while an unresolved candidate exists (`CHECKPOINT_UNRESOLVED`), writes and syncs the slot
-  that does not hold the authority (unless a slot already holds the capture), reads the slot back and verifies it,
-  and, unless the capture already is the durable authority, continuity publishes `durable -> captured`.
-  Identity-only: continuity publishes `durable -> captured` (nothing when it already is the authority). Ticket
-  statuses: `ACKNOWLEDGED` (recoverable only, always `recoverable`), `IDENTITY_PUBLISHED` (identity-only only, never
-  `recoverable`), `FAILED` (nothing durable changed: a written slot is withdrawn; not a lane fault), `UNCERTAIN`
-  (outcome unknown: continuity's record was being written or synced when the publication failed or the process
-  died; the lane faults, sticky until reopen, and restart resolves it to exactly one complete record, possibly this
-  one), `ABANDONED` (not published: closed, or the process died, before continuity's record was begun), `UNKNOWN`
-  (resolved too long ago to be kept).
-  Operator discard / adopt and the legacy import refuse while the lane is busy (`RUNTIME_DURABLE_BUSY`). The HOT
-  lane keeps thinking through a FAILED or UNCERTAIN publication; only a lost lineage (above) or a simulated process
-  death fail-stops it.
-* **Turn lifecycle.** Once a native transaction is open, exactly one terminal native action ends it before
-  RuntimeCore forgets the turn: the commit, or an abort. There is no third disposition. `turn_abort`, a commit
-  refused natively or on a fail-stopped runtime, `close`, and destruction (`elpis_runtime_destroy`, Rust `Drop`,
-  Python `RuntimeCore.__del__`) all abort it through the retained capability; `open` on an open runtime is refused
-  (`CONTINUITY_OPEN`) and keeps it; `turn_abort` with another substrate is refused and keeps it. An abort refused
-  `BUSY` (a concurrent overlapping call on the same state, which did nothing) is retried until the state admits
-  it, never dropped. An implicit abort installs nothing and publishes nothing: `(W, epoch, generation, H, a)`, the
-  retained-state digest and continuity are unchanged; the state takes the next transaction, and an FMS-resident
-  state's transaction WRITE pin is released. Proven over a stand-in (`tests.rs`, including the `BUSY` retry) and
-  over real standalone and FMS-resident K1 (`native/runtime/tests/test_runtime_lifecycle.c`,
-  `tests/integration/test_runtime_lifecycle.py`): abort, commit, close, double close, destroy, reopen, fail-stop
-  then close, and lifecycle calls without a turn (no native call).
-* **Crash law.** A K1 commit is never rolled back. Three things are kept apart: the **durable publication** (the
-  synced continuity record), the **caller's acknowledgment** (the lane's report of it), and an **unknown outcome**
-  (a death or failure between the two, or during the record's write or sync). The invariant: *restart recovers only
-  a complete, authorized durable state, which may include a publication completed immediately before the caller
-  lost its acknowledgment.* A missing acknowledgment is never evidence that nothing became durable; restart never
-  recovers volatile work that was never requested, and never a state continuity does not name (checkpoint bytes
-  never authorize themselves; a candidate waits for the operator). Checksums, generation ordering, the predecessor
-  authority of every record and operator reconciliation are unchanged. Durability crash matrix (`durable.rs` steps;
-  `tests.rs` simulated death at every step; `tests/integration/test_durable_process_kill.py` real `SIGKILL` at every
-  step and after the acknowledgment was delivered):
+- **Anchor.** The first managed lineage of a session is anchored explicitly at the state's retained identity.
+  RuntimeCore reads the identity only, and claims the state (below). A second anchor in the same session is
+  `CONTINUITY_ALREADY_ANCHORED`. A new session anchors afresh.
+- **Bind and verify.** The first QUERY or LEARN after open, or after a release, binds the lineage to the supplied state
+  after comparing its identity with the session's expectation: one digest, before any claim.
+  - Unanchored is `CONTINUITY_UNANCHORED`, without a fail-stop.
+  - A mismatch is `CONTINUITY_STATE_MISMATCH` and fail-stops.
+  - Both are refused before any K1 mutation.
 
-  | Death at | Ticket (in-process view) | On disk | Restart |
-  |---|---|---|---|
-  | 1 taken, 2 sealed (before the checkpoint write) | `ABANDONED` | nothing | the previous authority |
-  | 3 slot torn (a partial checkpoint write) | `ABANDONED` | a partial slot | the previous authority (a torn slot is not a checkpoint) |
-  | 4 slot written, 5 slot synced (before continuity) | `ABANDONED` | a complete candidate slot | the previous authority; `CANDIDATE_UNRESOLVED` until an operator discards or adopts it |
-  | 6 record torn (a partial continuity write) | `UNCERTAIN` | the slot and a partial record | the previous authority (a torn record is not an authority); candidate unresolved |
-  | 7 record written, not synced | `UNCERTAIN` | the complete record in the page cache | process kill: the new state; power loss: possibly the previous authority (the record may be lost) |
-  | 8 record synced, before the acknowledgment | `UNCERTAIN` | the synced record | the new state, although the caller was never acknowledged |
-  | 9 acknowledged, before or after delivery | `ACKNOWLEDGED` | everything | the new state |
+  The state is then claimed, and its identity and generation are read together under the lease (`leased_identity`).
+  The identity must still be the one checked, and the generation becomes the live coordinate. A bound runtime refuses
+  any other state, by handle or owner, with `COGNITION_SUBSTRATE_SWITCH` and no native call.
+- **Managed ownership.** Binding claims the state under this runtime's K1 lease (the K1 header's "Managed
+  ownership"). `lease_claim` refuses `BUSY`, without a fail-stop, while an unmanaged transaction is open. From then on
+  the state refuses every unmanaged mutating entry point (`LEASED`, before anything is touched):
+  - direct learn, consolidate, reset and reserve;
+  - an unmanaged transaction begin;
+  - the plain candidate calls on a leased transaction.
 
-  **Process kill is not power loss.** A process death (`SIGKILL`, abort) keeps the kernel's page cache, so a written
-  but unsynced record (step 7) survives it; a power loss may drop it, and restart then finds the previous authority
-  (in-process sync-loss faults cover that branch). The `SIGKILL` tests prove the process-death column only; no test
-  here proves power-loss durability, which depends on the device honoring `fdatasync`.
-* **Control-operation crash points** (testing library only). The anchor, the legacy import and the operator
-  reconciliations run outside the lane's step machine, on the caller's thread with the stores held, so the lane's
-  steps cannot reach them. `elpis_runtime_testing_control_fault(rt, op, action, point, arg)` (`durable::control`;
-  `RuntimeCore.testing_control_fault`) plans one fault of the next operation of kind `op` (1 anchor, 2 import, 3
-  discard, 4 adopt) that gets past its lifecycle checks: a simulated death (action 1) or a park of the caller (2) at
-  `point`, with exactly that point's on-disk effect. A parked caller holds the handle, so only the process's death
-  ends the wait (after 300 s it is a simulated death); the durability status reports `parked` = 100 * op + point.
-  Every fault it arms in the checkpoint or continuity store is disarmed right after the step it targets. Restart
-  decides from continuity alone (`tests.rs` `control_points`; the real `SIGKILL` matrix is K1 Recovery R0 v4's):
+  RuntimeCore mutates only through the `leased_*` entries. Every managed transaction begin re-establishes the state's
+  live coordinate inside the same guarded K1 call: `leased_txn_begin_at` returns the generation of exactly the source
+  it copied. A bound state that is not provably the lineage fail-stops with `CONTINUITY_STATE_MISMATCH` before the
+  schedule touches the candidate. That is a state at another generation (the begin is aborted), or one whose lease
+  another owner took (refused natively).
 
-  | Point | Anchor | Import (K1 lineage, composite store) | Discard | Adopt |
-  |---|---|---|---|---|
-  | 1 begun (checks passed, nothing written) | unanchored: `NOTHING_TO_RECOVER` | the K1 authority | the candidate unresolved | the candidate unresolved |
-  | 2 slot written, not synced | unanchored; the slot holds the state but never creates a lineage | the K1 authority; the composite slot is no candidate (no slot of that store holds the authority) | withdrawn (process death keeps the zeroed header) | — |
-  | 3 slot synced, continuity not begun | the same | the same | withdrawn | — |
-  | 4 record torn after `arg` bytes | unanchored (a torn record is not an authority) | the K1 authority | — | the candidate unresolved |
-  | 5 record written, not synced | anchored (process death keeps it) | the composite, `RESUMABLE` from the composite store | — | adopted |
-  | 6 record synced, not returned | anchored | the composite | — | adopted |
+  `release` (`elpis_runtime_release`) gives the state back and keeps the live identity it read under the lease just
+  before. Rebinding then accepts exactly one of:
+  - those bytes: the live lineage, volatile work included;
+  - the session's anchored identity: an in-memory rollback that abandons the volatile work.
 
-  The production library exports none of these entry points (`nm -D`: no `elpis_runtime_testing_*` symbol), and
-  its control operations carry no fault branch (the hooks compile only under the `testing` feature).
-* **K1 Recovery R0.** With an operator-provisioned checkpoint store attached (`elpis_runtime_checkpoint_attach`,
-  `RuntimeConfig.k1_checkpoint_dir`), the anchor persists the anchored state's complete envelope before continuity
-  anchors it, and every durable publication persists its capture's complete envelope in the slot that does not hold
-  the authorized state before continuity names it. A LEARN never touches the store. Restart asks `recover`
-  (read-only): `NOTHING_TO_RECOVER`, `RESUMABLE` (the authorized envelope), `CANDIDATE_UNRESOLVED` (durable
-  publication refused with `CHECKPOINT_UNRESOLVED` until an operator `discard`s or `adopt`s exactly that candidate;
-  LEARN and QUERY proceed on the live state) or `CHECKPOINT_MISSING`. Checkpoint bytes never authorize themselves;
-  continuity remains the current-authority register. Two fixed slot files, no history (docs/K1_RECOVERY_R0.md).
-* **Evolution.** One attempt in flight. Reserve (durable and synchronous, before execution: a control operation,
-  never volatile) -> execute once at the boundary -> finalize. A reservation or finalization failure fail-stops; an attempt the boundary could not complete is
-  abandoned: the reservation stays pending, the runtime fail-stops with `CONTINUITY_EVOLUTION_PENDING`. Nothing
-  is retried or inferred: volatile cognition makes no executed attempt retryable. `evolution_reconcile` is the
-  explicit operator finalization after restart; its `CONTINUITY_AUTHORITY_MISMATCH` refusal is not a fail-stop.
-* **Nothing else.** No history, receipt log, trajectory or second store: the durable footprint is the ECS_C
-  authority's fixed files (two record slots, two witness slots and the key, fixed at provisioning; through ABI v6
-  standalone continuity's two 176-byte slots), plus, only when the operator provisioned one, the two fixed K1
-  checkpoint slots.
-* **Concurrency.** A handle serializes its HOT and control calls with one lock; the durability lane has its own
-  lock, and `durable_wait` / `durable_status` take only that one, so they never wait behind a HOT operation and the
-  HOT lane never waits for the worker. No call blocks on another runtime.
+  The lease is an aliasing defence between cooperating local callers, not a secret or a credential: in-process code
+  can replace it, and the owner then fail-stops.
+- **QUERY.** Read-only (`docs/COGNITION_R0.md`).
+  - One native call (`leased_query`) answers `f_W(x)` from the live state and returns that same state's generation
+    under one K1 guard.
+  - The generation must be the live one. A lease taken by another owner, or a generation that moved, is
+    `CONTINUITY_STATE_MISMATCH` (fail-stop), and the answer is withheld (zeroed).
+  - The answer reflects every managed LEARN before it.
+  - A query is refused while a managed turn is open (`RUNTIME_TURN_OPEN`).
+  - It begins no transaction, commits nothing and hashes nothing: W, epoch, H, a, the generation and the session are
+    byte-for-byte unchanged.
+- **Total fuel.** Every QUERY, LEARN and observe-only turn is admitted against a budget of totals
+  (`elpis_runtime_budget`). The admission comes before the identity check, any reserve, the transaction, or a candidate
+  mutation. A refusal is `COGNITION_FUEL_EXCEEDED` and is not a fail-stop.
+  - **The ceiling.** The budget can only narrow the compiled ceiling (`elpis_runtime_fuel_ceiling`), and the Python
+    boundary refuses a library whose ceiling differs:
+
+    | Budget field | Ceiling |
+    |---|---:|
+    | Experiences | 64 |
+    | Rows | 16,384 |
+    | Rows per experience (also the reserve ceiling) | 256 |
+    | K1 learning steps | 2^20 |
+    | ECS work units | 2^30 |
+    | Query rows | 4,096 |
+    | Observations per turn | 256 |
+
+  - **Work units.** An ECS work unit is one multiply-accumulate-class operation of the K1 kernels, counted by a fixed
+    integer formula (`native/runtime/src/fuel.rs` and `elpis.runtime.fuel`, tested equal):
+    - a K1 step on r rows: `2rdw + 2dwF + F^2`;
+    - a consolidation: `rF^2 + dwF`;
+    - a QUERY: `rdw`.
+
+    It is a deterministic proxy, not wall-clock time.
+  - **No deadline is claimed.** The K1 ABI is synchronous and has no cooperative cancellation point, so a running
+    schedule cannot be preempted.
+- **Turn (LEARN).** Begin at the live generation, run one native schedule on the candidate, let the boundary decode,
+  then make the native commit.
+  - The commit is volatile: the live generation advances by one. There is no publication, checkpoint, digest or I/O.
+  - Capacity beyond the reservation is grown on the cold path (abort, `reserve`, begin again).
+  - Every refusal before the commit leaves `(W, epoch, H, a)` byte-for-byte unchanged.
+  - A stale source is `ECS_STALE`.
+- **Turn lifecycle.** Once a native transaction is open, exactly one terminal native action ends it before RuntimeCore
+  forgets the turn: the commit, or an abort. There is no third disposition.
+  - **Paths that abort it,** through the retained capability:
+    - `turn_abort`;
+    - a commit refused natively, or on a fail-stopped runtime;
+    - `close`;
+    - destruction (`elpis_runtime_destroy`, Rust `Drop`, Python `RuntimeCore.__del__`).
+  - **Paths that keep it:** `open` on an open runtime is refused (`CONTINUITY_OPEN`), and `turn_abort` with another
+    substrate is refused.
+  - **A `BUSY` abort is retried.** An abort refused `BUSY` (a concurrent overlapping call on the same state, which did
+    nothing) is retried until the state admits it, never dropped.
+  - **An implicit abort installs nothing.** `(W, epoch, generation, H, a)` and the retained-state digest are
+    unchanged. The state takes the next transaction, and an FMS-resident state's transaction WRITE pin is released.
+
+  Proven over the stand-in (`tests.rs`, including the `BUSY` retry) and over real standalone and FMS-resident K1
+  (`test_runtime_lifecycle.c`, `tests/integration/test_runtime_lifecycle.py`).
+- **Evolution.** One attempt in flight: authority, then the caller validates, then reserve, then the caller executes
+  once, then finalize.
+  - The reservation is a session transition. It is in the session when `reserve` returns, before execution.
+  - A refused reservation changes nothing and does not fail-stop.
+  - A refused finalization fail-stops: the attempt executed, and it is never re-executed.
+  - An attempt the boundary could not complete is abandoned. The reservation stays pending, and the runtime
+    fail-stops with `CONTINUITY_EVOLUTION_PENDING` for the rest of the session. Nothing is retried or inferred.
+
+  A new session starts with the evolution authority idle. The operator's `evolution_reconcile` existed to finalize a
+  durable reservation after a restart, and is retired with it.
+- **Restart law.** A restart, a crash or a close followed by an open begins again at genesis from what the caller
+  supplies:
+  - nothing learned, observed, founded or reserved in an earlier session is resumed;
+  - no state that an earlier session bound can be adopted without being anchored again.
+
+  This replaces v7's crash law and durability crash matrix (`docs/history/RUNTIME_CORE_ABI_V7.md`). There is no
+  publication whose outcome could be unknown.
+- **Nothing else.** There is no history, receipt log, trajectory or store. RuntimeCore's persistent footprint is zero
+  bytes: it opens no file or directory, for reading or for writing. Its memory is the handle, the session (exact and
+  constant, above), the admission table (at most the session's capacity) and the bound key.
+- **Concurrency.** A handle serializes its calls with one lock. There is no worker thread, so no call waits for
+  background work, and no call blocks on another runtime.
 
 ## Hot path
 
-A managed `Runtime.run_query` is one Python crossing into RuntimeCore for the query (after the fail-stop probe) and
-one K1 crossing (`leased_query`); nothing is hashed and nothing is written.
+A managed `Runtime.run_query` is one Python crossing into RuntimeCore for the query (after the fail-stop probe), and
+one K1 crossing (`leased_query`). Nothing is hashed and nothing is written.
 
-A warm managed `Runtime.run_turn` (`tests/integration/test_runtime_hot_path.py`, every run, with a checkpoint store
-attached): Python makes no K1 call and three crossings into RuntimeCore (the fail-stop probe, `turn_begin`,
-`turn_commit`); RuntimeCore makes three K1 crossings (`leased_txn_begin_at`, `leased_txn_run_schedule`,
-`leased_txn_commit`): no digest, identity read or capture, no publication; zero continuity and zero checkpoint I/O;
-Python performs no file I/O. The unmanaged `elpis.runtime.cognition.run_turn` (no continuity) keeps its own three
-K1 crossings plus `max_rows`.
+A warm managed `Runtime.run_turn` is measured on every run by `tests/integration/test_runtime_hot_path.py`:
+- Python makes no K1 call, and three crossings into RuntimeCore: the fail-stop probe, `turn_begin` and `turn_commit`.
+- RuntimeCore makes three K1 crossings: `leased_txn_begin_at`, `leased_txn_run_schedule` and `leased_txn_commit`.
+- There is no digest, identity read, reservation, abort or session transition.
+- Python performs no file I/O.
 
-Gate A (HOT isolation): with the durability worker held behind a pending request, 120 managed transitions and 12
-queries complete with no continuity or checkpoint I/O (`test_runtime_hot_path.py`), and at the system-call boundary
-no write, positional write, sync, rename, unlink, truncate or open-for-write, and no read, positional read or
-read-only open, on any thread (`native/runtime/tests/test_runtime_hot_io.c`, an interposer counting per thread;
-each durable publication is 4 write-side calls, all on the worker).
+**Gate A (zero persistent I/O).** `native/runtime/tests/test_runtime_hot_io.c` interposes the C library's
+persistent-I/O and read-side entry points, and counts each call by the thread that made it. It counts the test's own
+deliberate pipe write first, so the interposer is shown live. Over a complete session lifecycle, RuntimeCore makes
+**zero** persistent-I/O calls and **zero** reads on every thread. The lifecycle is:
+- create and open;
+- the operator's sources and events, including the retired kinds;
+- the anchor, 120 managed turns and 12 queries;
+- the live identity, an evolution reservation and finalization;
+- a release and a rebind;
+- close, a second session, and destroy.
+
+The same holds over an FMS-resident state on a RAM-only FMS context under memory pressure. The composed qualification
+(`research/volatile_runtime_v1`) shows the same at the system-call boundary, under `strace`, for the whole process.
 
 ### HOT residency
 
-An FMS-resident K1 state lives in FMS: when WARM its image is in memory, but FMS may demote it to the cold store,
-and the K1 FMS adapter's ordinary pin materializes a demoted state synchronously (`fms_acquire`: a cold read, a
-digest check and an allocation) inside whatever operation touched it. A HOT operation must never do that. The
-guarantee is a **residency hold** (additive to the adapter's ABI v1 and to FMS ABI v2; no existing entry point or
-struct changed):
+An FMS-resident K1 state lives in FMS (`native/substrate/include/elpis/fms.h`, FMS ABI v3: WARM in RAM, HOT, no COLD
+tier). A HOT operation must never move it. The guarantee is a **residency hold**:
 
-* **Binding holds.** Before RuntimeCore binds an FMS-resident state (the first QUERY / LEARN / durable request after
-  open or release, and the explicit anchor) and before anything else touches it (the identity precheck included),
-  it takes the adapter's hold (`elpis_ecsg_k1_fms_resident_hold`), which succeeds only if the state is WARM now:
-  `fms_acquire_resident` pins it where it is and never promotes, reads the cold store or waits for a move.
-* **A held state stays resident.** The hold's pin makes the object non-demotable (FMS never demotes a pinned
-  object; memory pressure picks other victims or refuses the newcomer), and while any hold exists every operation
-  on the state pins resident-only, so a promotion on the HOT path is impossible rather than merely unlikely.
-* **Not resident: a precise refusal.** A state that is demoted (or in motion) when it would be bound is refused
-  `RUNTIME_NOT_RESIDENT` (84; K1 FMS `-112`): nothing is claimed, read, pinned, promoted or bound, and the runtime
-  is not fail-stopped. A concurrent explicit materialization of the same state is refused `ECS_REFUSED` (K1 `BUSY`,
-  the adapter's single-writer guard) without waiting.
-* **Materialization is WARM work.** The owner promotes the state explicitly (`elpis_ecsg_k1_fms_materialize`,
-  Python `K1FMSState.materialize()`), then retries; the lineage resumes (a release keeps its live identity).
-* **Lifetime.** RuntimeCore retains the hold's release capability exactly while the state is bound and drops it on
-  `release`, `close`, reopen and destruction (and when a bind fails after taking it); the adapter refuses `close`
-  of a held state (`BUSY`). A RAM state (standalone K1, composite) needs no hold.
+- **Binding holds.** RuntimeCore takes the adapter's hold (`elpis_ecsg_k1_fms_resident_hold`) before it binds an
+  FMS-resident state, and before anything else touches it, the identity precheck included. Binding happens at the
+  first QUERY or LEARN after open or release, and at the explicit anchor. The hold succeeds only if the state is
+  WARM now: `fms_acquire_resident` pins it where it is, and never promotes it or waits for a move.
+- **A held state stays resident.** The hold's pin makes the object non-displaceable, and while any hold exists every
+  operation on the state pins resident-only. Memory pressure refuses the newcomer (K1 FMS `-100 + FMS_E_LIMIT`;
+  Python `K1Error` `CAPACITY`). Under FMS v3 nothing is demoted below WARM, and a state beyond the WARM budget is
+  refused, never spilled.
+- **Not resident: a precise refusal.** A state that is not WARM when it would be bound (in motion) is refused
+  `RUNTIME_NOT_RESIDENT` (84; K1 FMS `-112`). Nothing is claimed, read, pinned, promoted or bound, and the runtime is
+  not fail-stopped. Over a RAM-only context this is unreachable, because nothing demotes; the check stays, as a
+  defence.
+- **Materialization is a check.** `elpis_ecsg_k1_fms_materialize` (Python `K1FMSState.materialize()`) finds the state
+  WARM and moves nothing. Before FMS v3 it was the one path that read a cold replica back.
+- **Lifetime.** RuntimeCore retains the hold's release capability exactly while the state is bound. It drops it on
+  `release`, `close`, reopen and destruction, and when a bind fails after taking it. The adapter refuses `close` of a
+  held state (`BUSY`). A RAM state (standalone K1, composite) needs no hold.
 
-Which *unpinned* WARM state FMS demotes is recency- and frequency-weighted on the wall clock (`fms_core.c`,
-`evict_cost_ns`; a release counts as an access), so a released state is not necessarily the next victim and no test
-relies on a victim order: every residency precondition is made exact by holding every other WARM state, so that exactly
-one state is eligible (CI-HOTRES-1, `docs/CI_INCIDENTS.md`).
+Proofs:
+- `runtime.test_runtime_hot_io`: held turns and queries under pressure, with zero read or write calls and zero
+  promotions;
+- `ECS.test_ecsg_k1_fms` (`test_residency_hold`);
+- `test_runtime_lifecycle.c`: the hold across abort, commit, close, destroy, reopen and fail-stop;
+- `tests.rs`: the binding and refusal laws over the stand-in;
+- `tests/integration/test_hot_residency.py`.
 
-Proofs: `runtime.test_runtime_hot_io` (real FMS and POSIX cold store: pressure while bound demotes only the other
-arrival, and with nothing else eligible the newcomer is refused while the bound state stays WARM; 40 held turns and
-queries with zero read or write calls on any thread and zero promotions; a demoted state's QUERY, LEARN and identity-only
-durable request refused with zero I/O, zero promotions and continuity and the lane status byte-for-byte unchanged; only
-the explicit materialization reads); `ECS.test_ecsg_k1_fms`
-(`test_residency_hold`: already resident, demoted, budget exhaustion, a stalled promotion that blocks neither the
-held state nor the caller, a lost cold replica the hold never even reads, concurrent readers during demotion
-pressure, nested holds and their lifetime, FMS promotion and cold-read counters); `test_runtime_lifecycle.c` (the
-hold across abort, commit, close, destroy, reopen and fail-stop); `tests.rs` (the binding and refusal laws over the
-stand-in); `tests/integration/test_hot_residency.py` (the three invariants as separate tests: A residency protection,
-B nonresident refusal with nothing promoted, read, pinned, held, published or fail-stopped, C explicit restoration of
-the released live lineage). This is mechanics: it says nothing about the latency of a
-promotion, which now happens only where an owner asks for it. The Rust suite proves the same over the stand-in and forbids, statically, any store,
-lane, sync or digest use in the HOT functions (`tests/boundary/test_ecs_split.py`).
+The Rust suite's HOT functions are also checked statically (`tests/boundary/test_ecs_split.py`). They name no store,
+lane, sync, publication, digest or identity read.
 
 ### Legacy surface
 
-The live-coordinate entry points the correction added to K1, the K1 FMS adapter and the ECS composite (and the
-residency hold) are additive. Reviewed against the pre-correction tree (`81b738e`):
+The live-coordinate entry points that the HOT/WARM correction added to K1, the K1 FMS adapter and the ECS composite,
+and the residency hold, are additive.
+- `native/runtime/composite/tests/test_k1_legacy_differential.c` Part A drives only pre-correction entry points and
+  records every status, transition, readout, digest and envelope byte. In this tree it proves the battery
+  deterministic: two runs give one transcript.
+- Part B proves the additive entry points against the legacy ones in the same build.
 
-* **Exports.** Every symbol the pre-correction `libelpis_ecsg_k1`, `libelpis_ecsg_k1_fms`, `libelpis_ecs_composite`,
-  `libelpis_ecs_memory` and `libelpis_ecsg_math` export is still exported; the change only adds symbols. No public
-  struct changed layout; no status value changed meaning.
-* **Source.** K1's envelope check and encoder were split by pure extraction (`check_header` + checksum,
-  `encode_body` + trailer: the same checks, order, return codes and bytes); `txn_begin_as` gained an optional
-  generation output; the commit path is unchanged. In the FMS adapter and the composite, the new branches are
-  reachable only from the new entry points (the legacy leased commit-identity still refuses a NULL identity before
-  reaching them); the composite's legacy commit keeps its digest poison check, and its cached K1 generation is
-  neither state nor envelope nor identity. `ELPISGK1`, `ELPISEM1` and `ELPISEC1` are written and checked by the
-  same code; K1 mathematics is untouched.
-* **Behavior.** `native/runtime/composite/tests/test_k1_legacy_differential.c` Part A drives only pre-correction entry points
-  (K1 create/learn/forward/query-identity, transactions with commit, commit-identity, abort and the
-  experience schedule, the refusal contract, the managed lease, restore and reset; FMS-resident states including a
-  demotion and the legacy materializing access; the composite's leased turns with observations; K1's
-  retention-vocabulary entry point is left to the K1 milestone's own suites, as the Retention R1/R2/R3 guards
-  require of every non-milestone file) and records every
-  status, transition, readout, digest and envelope byte. Compiled against the pre-correction headers and linked
-  over the pre-correction, the `200f73f`-era and the current libraries, the three transcripts are byte-identical
-  (882,398 bytes, SHA-256 `1db0250f9328c150806d7d618bafbbfb58ed611c3576746ce0c9d0fd39bd63de` on the review host).
-  In CI the same battery must be deterministic and Part B proves the new entry points against the legacy ones in
-  the same build (capture + seal equals `snapshot_write` for all three; `begin_at`/`commit` install the bytes
-  `begin`/`commit_identity` install; the generation advances by one per installing mutation and never on a
-  refusal; another lease is refused before anything is read). The digest is not asserted in CI: the K1 kernels are
-  multi-versioned per ISA, so a transcript is compared across builds of one host, not against a constant.
-* **Recorded, unchanged.** The adapter's `close` of a state under a managed K1 lease succeeds (the lease guards
-  K1's mutating entry points, not the adapter's lifecycle), as before; a runtime-bound state is now additionally
-  protected by the residency hold (`close` refused `BUSY`).
+The cross-version transcript recorded against the pre-correction tree (`81b738e`) is history
+(`docs/history/RUNTIME_CORE_ABI_V7.md`, "Legacy surface"). It predates FMS v3, whose volatile residency changed the
+battery's FMS section by design: a second state is now refused at the WARM bound instead of demoting the first. It is
+not reproducible over FMS v3 libraries.
 
-Reproduce: `git worktree add <base> 81b738e`, build it, compile the test against `<base>/native/ECS/include` and
-`<base>/native/substrate/include` without `ELPIS_K1_LIVE_COORDINATE`, link the one object against each tree's
-libraries (and its `libelpis_fms.a`, `libelpis_hash.a`), run each with a scratch directory and a transcript path,
-and compare the transcripts byte for byte.
+## Retired by v8
+
+Each of these v7 entry points is absent from the library (`dlsym` finds none of them: `test_runtime_abi.c`) and
+from the ABI inventory (`native/ABI_INVENTORY.json`, amendment V3). They are listed in
+`elpis.runtime.persistence.RETIRED_RUNTIME_CORE_ABI`.
+
+| Retired (v7) | What it did | ABI v8 |
+|---|---|---|
+| `elpis_runtime_create_ecs_c(state_dir, authority_dir)` | A handle over the durable ECS_C authority's directories | `elpis_runtime_create(config)`: no path |
+| `elpis_runtime_import_composite` | Made a composite durable and published the import | Anchor a composite lineage directly |
+| `elpis_runtime_recoverable_request`, `_identity_request` | Durable publication, through the durability lane's worker | None: a managed commit is volatile, and nothing publishes |
+| `elpis_runtime_durable_wait`, `_durable_status` | The lane's tickets | None: there is no lane |
+| `elpis_runtime_checkpoint_provision`, `_attach`, `_recover`, `_discard`, `_adopt` | The K1 checkpoint store's two slot files | None: a restart is a new session |
+| `elpis_runtime_evolution_reconcile` | Finalized a durable reservation after restart | None: a reservation lives for its session |
+
+Also retired:
+- the testing library `libelpis_runtime_testing.so` and its fault hooks;
+- the substrate tables' `leased_capture` and `envelope_seal`;
+- the authority codes 1, 6, 7, 8, 14, 16, 17 and 255, and the runtime codes 76..83.
+
+Those codes are never returned and never reused: `elpis_runtime_code_name` returns NULL for them.
+
+The Python facade has no persistent operation either: no `publish_recoverable`, `publish_identity`, `durability`,
+`recover_k1`, `discard_k1_candidate`, `adopt_k1_candidate`, `import_composite` or `publish_canonical`
+(`tests/boundary/test_mission.py`, `tests/boundary/test_autonomous_persistence.py`).
+
+Recorded evidence cites sections of the v7 specification that this document no longer has. The qualification records
+of K1 Recovery R0 v4 and ECS_C Recovery Q0, and the performance record of the live/durable separation, are kept as
+written, so their citations stand. Those sections are in `docs/history/RUNTIME_CORE_ABI_V7.md`:
+- "Live and durable authority (ABI v4)" and "Recoverable and identity-only publication";
+- "The durable authority (ABI v6)" and "One durable authority (ABI v7)";
+- the laws "Durable publication", "Crash law" (with the durability crash matrix), "Control-operation crash points"
+  and "K1 Recovery R0".
 
 ## Native admission
 
-RuntimeCore is never loaded from a pathname. `RuntimeConfig` names the library by an absolute path and supplies a
-deployment-pinned `native_authority` (`PinnedAuthority`, whose own SHA-256 comes from trusted configuration);
-`Runtime` admits the library through the substrate's one native admission mechanism
-(`elpis.substrate.native_admission`, the mechanism the HACF bridges use): opened beneath its directory as the
-trusted descriptor root with `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS)`, copied into a sealed memfd, hashed
-against the exact pin and loaded from the seal, under a RuntimeCore library identifier (`elpis_runtime`,
-`elpis_runtime_testing`); the ABI version and the compiled fuel ceiling are then checked. Without an authority the
-runtime refuses to start (`RUNTIME_UNPINNED`). RuntimeCore embeds the ECS_C authority, so no second library holds the
-durable authority (the operator's closed-runtime ABI, `libelpis_ecs_c_authority.so`, is admitted the same way under
-`elpis_ecs_c_authority`). The managed runtime drives only K1 code it admitted: a K1 or K1 FMS state
-whose library was not admitted under `elpis_ecsg_k1` / `elpis_ecsg_k1_fms` is refused (`ECS_NATIVE_UNADMITTED`)
-before any native call. K1 sets are admitted in dependency order (`elpis_ecsg_math`, `elpis_ecsg_k1`,
-`elpis_ecsg_k1_fms`), and every Elpis dependency the dynamic loader binds by SONAME is verified to be pinned bytes
-(a sealed object, or a mapped file whose inode and SHA-256 equal the pin); anything else refuses the admission.
-Research and unmanaged code may still load K1 by pathname; the managed runtime refuses those states. The pins
-authenticate bytes, not a publisher; the loader, kernel and platform libraries are trusted
-(`tests/integration/test_native_admission.py`).
+RuntimeCore is never loaded from a pathname.
+- **The pin.** `RuntimeConfig` names the library by an absolute path and supplies a deployment-pinned
+  `native_authority`: a `PinnedAuthority`, whose own SHA-256 comes from trusted configuration.
+- **The admission.** `Runtime` admits the library through the substrate's one native admission mechanism
+  (`elpis.substrate.native_admission`, the mechanism the HACF bridges use):
+  1. opened beneath its directory, as the trusted descriptor root, with `openat2(RESOLVE_BENEATH |
+     RESOLVE_NO_SYMLINKS)`;
+  2. copied into a sealed memfd;
+  3. hashed against the exact pin;
+  4. loaded from the seal, under the RuntimeCore library identifier `elpis_runtime`.
+
+  The ABI version and the compiled fuel ceiling are then checked. Without an authority the runtime refuses to start
+  (`RUNTIME_UNPINNED`).
+- **K1 libraries.** The managed runtime drives only K1 code it admitted. A K1 or K1 FMS state whose library was not
+  admitted under `elpis_ecsg_k1` / `elpis_ecsg_k1_fms` is refused (`ECS_NATIVE_UNADMITTED`) before any native call. K1
+  sets are admitted in dependency order: `elpis_ecsg_math`, `elpis_ecsg_k1`, `elpis_ecsg_k1_fms`.
+- **Dependencies.** Every Elpis dependency the dynamic loader binds by SONAME is verified to be pinned bytes: a sealed
+  object, or a mapped file whose inode and SHA-256 equal the pin. Anything else refuses the admission.
+- **Trust.** The pins authenticate bytes, not a publisher. The loader, kernel and platform libraries are trusted
+  (`tests/integration/test_native_admission.py`).
+
+Admission writes nothing to storage: the sealed copy is an anonymous memory object.
 
 ## Build and qualification
 
-* `libelpis_runtime.so` (production) and `libelpis_runtime_testing.so` (+ authority fault injection and I/O
-  counters), built offline by CMake through `cargo rustc` (the SONAME is set on the final link only). Both embed the
-  ECS_C authority crate, and no other; neither exports `elpis_ecs_c_*` or `elpis_continuity_*` nor links
-  `libelpis_ecs_c_authority.so`.
-* `ctest -L runtime`: `runtime.cargo_test` (the Rust law suite over the ECS_C authority, including the durability
-  crash matrix), `runtime.test_runtime_ecs_c` (provisioning, admission, operator events, reconciliation),
-  `runtime.test_runtime_abi` (C ABI over real K1), `runtime.test_runtime_lifecycle` (the turn lifecycle over real
-  standalone and FMS-resident K1), `runtime.test_runtime_composite` and `runtime.test_runtime_hot_io` (Gate A at the
-  system-call boundary). CI lints and tests the crate in the Rust job and runs both tests in every native job (gcc/clang, Debug/
-  Release, ASan+UBSan, TSan).
+- **The library.** `libelpis_runtime.so`, the production library, is the only build. CMake builds it offline through
+  `cargo rustc`, and sets the SONAME on the final link only. It embeds the volatile ECS_C session crate and no other
+  authority. It exports neither `elpis_ecs_c_*` nor `elpis_continuity_*`.
+- **The import gate.** It imports no write-class C library function (`tests/boundary/test_volatile_runtime.py`, the
+  import gate over every binary the runtime loads).
+- **`ctest -L runtime`:**
+
+  | Test | What it covers |
+  |---|---|
+  | `runtime.cargo_test` | The Rust law suite over the session |
+  | `runtime.test_runtime_abi` | The C ABI over real K1; the v7 entry points absent |
+  | `runtime.test_runtime_lifecycle` | The turn lifecycle over real standalone and FMS-resident K1 |
+  | `runtime.test_runtime_composite` | Composite substrates |
+  | `runtime.test_runtime_session` | The session authority and the relational view, composed |
+  | `runtime.test_runtime_hot_io` | Gate A at the C library boundary |
+  | `runtime.test_k1_legacy_differential` | The legacy surface |
+  | `runtime.native_host_smoke` | The production host |
+  | `runtime.test_ecs_observation_hacf` | Typed HACF observations |
+  | `runtime.test_autonomous_containment` | The launcher's containment |
+
+- **CI.** CI lints and tests the crate in the Rust job, and runs the native tests in every native job: gcc and clang,
+  Debug and Release, ASan+UBSan and TSan.
+- **Composed qualification.** `research/volatile_runtime_v1` (`ZERO_WRITE_PASS`) runs RuntimeCore's suites, the
+  native host and the Python reference under `strace`, unconfined and confined. Every path records zero write-class
+  events on storage.
 
 ## Non-claims
 
-RuntimeCore is systems authority, not cognition: it qualifies no codec, makes no semantic claim, and does not
-make H-ECS or any hierarchy canonical. The ECS_C authority authenticates its records under its declared threat model
-only (docs/ECS_C_AUTHORITY.md). The
-durability lane's acknowledgment means durable under POSIX `fdatasync` semantics on the store's filesystem; it is not
-a claim about power-loss behaviour of a particular device. Performance figures for the corrected HOT lane are
-descriptive measurements on one host, not qualification.
+- RuntimeCore is systems authority, not cognition. It qualifies no codec and makes no semantic claim. It does not make
+  H-ECS or any hierarchy canonical.
+- The session's lineage and commit identify a session's state within its life. They authenticate nothing to anyone
+  outside the process, and nothing survives the process (`docs/ECS_C_SESSION.md`, "What is not claimed").
+- RuntimeCore issues no persistent write. Whether its pages can reach swap, and what host services outside its process
+  write, are host properties (`docs/VOLATILE_RUNTIME_CENSUS.md`, section 6; `docs/NONCLAIMS.md`).
+- Performance figures for the HOT lane are descriptive measurements on one host, not qualification.

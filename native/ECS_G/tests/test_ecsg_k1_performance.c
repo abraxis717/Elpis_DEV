@@ -120,20 +120,19 @@ static int restore_once(const uint8_t *env, size_t n)
     return rc;
 }
 
-static elpis_ecsg_k1_fms *fms_runtime(const char *root, uint64_t warm)
+/* FMS ABI v3: a volatile WARM-only context (RAM-only PAL, no COLD tier, no storage domain). */
+static elpis_ecsg_k1_fms *fms_runtime(uint64_t warm)
 {
-    const size_t env = elpis_ecsg_k1_envelope_bytes(D, N);
     fms_config c;
     elpis_ecsg_k1_fms *r = NULL;
     fms_ctx *ctx;
     memset(&c, 0, sizeof(c));
     c.tier_budget[FMS_WARM] = c.domain_ceiling[FMS_DOM_RAM] = warm;
-    c.tier_budget[FMS_COLD] = c.domain_ceiling[FMS_DOM_STORAGE] = (uint64_t)env * 16u;
     c.high_wm = 0.9f;
     c.low_wm = 0.7f;
     c.max_objects = 4;
     c.hot_absent_policy = c.cold_absent_policy = FMS_REJECT;
-    ctx = fms_create(&c, fms_pal_posix_create(root));
+    ctx = elpis_fms_create_ram_only(&c);
     assert(ctx && elpis_ecsg_k1_fms_create(ctx, 4, &r) == 0);
     return r;
 }
@@ -183,7 +182,7 @@ int main(void)
     assert(elpis_ecsg_k1_destroy(&s) == 0);
 
     /* FMS-resident, WARM */
-    r = fms_runtime("k1-perf-warm", (uint64_t)image * 8u);
+    r = fms_runtime((uint64_t)image * 8u);
     assert(elpis_ecsg_k1_fms_register(r, key, D, N, R, W0, &id) == 0);
     assert(elpis_ecsg_k1_fms_consolidate(r, id, X, R, NULL) == 0);
     h0 = fms_heap(r, id);
@@ -196,34 +195,27 @@ int main(void)
     assert(fms_heap(r, id) == h0 && "a warm FMS operation allocated in the K1 workspace (or rebuilt a state)");
     assert(elpis_ecsg_k1_fms_close(r, &id) == 0 && elpis_ecsg_k1_fms_destroy(&r) == 0);
 
-    /* FMS COLD <-> WARM: the WARM budget holds less than one image, so every pump demotes */
-    r = fms_runtime("k1-perf-cold", (uint64_t)image);
+    /* FMS at its bound: the WARM budget holds one state. The pump has nowhere to demote it (no COLD tier), so it
+     * stays resident and nothing is written anywhere; a second state is refused, never spilled. */
+    r = fms_runtime((uint64_t)image + (uint64_t)image / 2u);
     assert(elpis_ecsg_k1_fms_register(r, key, D, N, R, W0, &id) == 0);
     {
-        uint64_t demote[MAX_RUNS];
+        uint8_t other[32] = {2};
+        uint64_t refused = 0;
         unsigned j;
         elpis_ecsg_k1_fms_info info;
+        elpis_ecsg_k1_fms_metrics m;
         for (j = 0; j < runs; ++j) {
             uint64_t t = ns();
             assert(elpis_ecsg_k1_fms_pump(r) == 0);
-            demote[j] = ns() - t;
-            assert(elpis_ecsg_k1_fms_inspect(r, id, &info) == 0 && info.tier == FMS_COLD);
-            t = ns();
-            assert(elpis_ecsg_k1_fms_forward(r, id, X, R, O) == 0);   /* COLD -> WARM, then the query */
             samples[j] = ns() - t;
+            assert(elpis_ecsg_k1_fms_inspect(r, id, &info) == 0 && info.tier == FMS_WARM);
         }
-        report("fms COLD->WARM + query", runs, 0.0);
-        memcpy(samples, demote, runs * sizeof(samples[0]));
-        report("fms WARM->COLD, replica valid", runs, 0.0);
-        for (j = 0; j < runs; ++j) {   /* a write invalidates the cold replica: demotion writes it back */
-            uint64_t t;
-            assert(elpis_ecsg_k1_fms_learn(r, id, X, Y, R, 0.002, 1, NULL) == 0);
-            t = ns();
-            assert(elpis_ecsg_k1_fms_pump(r) == 0);
-            samples[j] = ns() - t;
-            assert(elpis_ecsg_k1_fms_inspect(r, id, &info) == 0 && info.tier == FMS_COLD);
-        }
-        report("fms WARM->COLD, dirty (write-back)", runs, 0.0);
+        report("fms pump at the bound (nothing to demote)", runs, 0.0);
+        assert(elpis_ecsg_k1_fms_register(r, other, D, N, R, W0, &refused) == ELPIS_ECSG_K1_FMS_ERROR_BASE + FMS_E_LIMIT && !refused);
+        assert(elpis_ecsg_k1_fms_stats(r, &m) == 0);
+        assert(!m.residency.demotions && !m.residency.cold_reads && !m.residency.cold_writes &&
+               !m.residency.tier_bytes[FMS_COLD] && !m.residency.domain_bytes[FMS_DOM_STORAGE]);
     }
     assert(elpis_ecsg_k1_fms_close(r, &id) == 0 && elpis_ecsg_k1_fms_destroy(&r) == 0);
     free(env);

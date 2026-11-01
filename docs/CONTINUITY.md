@@ -12,6 +12,11 @@
 > record of what continuity was and of the format a legacy import reads; the paths they name are this document's
 > history, not the tree. "Continuity" now names a role, binding the minimal durable runtime lineage, which the ECS_C
 > authority performs.
+>
+> **Its successor is retired too** (RuntimeCore ABI v8; `docs/ELPIS_MISSION.md`, Amendment 3). The durable ECS_C
+> authority, with its legacy-import reader and fixtures, is deleted. "Continuity" now names the role of the volatile
+> ECS_C session (`docs/ECS_C_SESSION.md`), which binds the runtime's lineage and authority for one session in memory:
+> nothing is written, recovered or imported. The register format below is no longer read by anything.
 
 Continuity records the current durable lineage and authority that the runtime
 needs for safe restart. It is not an ECS, not context memory, not an event
@@ -66,7 +71,7 @@ or hypothetical future use did not count as a consumer.
 superseded. Continuity still keeps exactly one current expected identity, but it is the last **explicitly
 published** one: a managed commit is volatile (it advances the live coordinate only), and the identity is published
 by RuntimeCore's durability lane when a caller requests durable publication, recoverable (the state's bytes in the
-checkpoint store first) or identity-only (docs/RUNTIME_CORE.md, "Live and durable authority"). Continuity no longer decides when the runtime may think. Nothing else in this census
+checkpoint store first) or identity-only (docs/history/RUNTIME_CORE_ABI_V7.md, "Live and durable authority (ABI v4)"). Continuity no longer decides when the runtime may think. Nothing else in this census
 changes; the retired event-history kernel stays retired, and continuity is not the contextual lane's memory.
 
 ## K1 identity rule

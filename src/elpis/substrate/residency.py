@@ -1,11 +1,15 @@
-"""Lifecycle binding for a generic owned mutable FMS context.
+"""Lifecycle binding for a generic owned mutable FMS context (FMS ABI v3: volatile).
 
-The POSIX PAL owns an explicit scratch root. This storage is independent of
-admitted immutable file assets. Ownership transfers to a native consumer; the
-Context handle is cleared after a successful transfer.
+The context is RAM-only: WARM residency in process memory (the RAM-only POSIX PAL offers no HOT device), no COLD
+tier, no storage domain, no scratch root and no file. An object that does not fit the WARM budget is refused
+(FMS_E_LIMIT), never spilled. Ownership transfers to a native consumer; the Context handle is cleared after a
+successful transfer.
+
+Until FMS ABI v3 the POSIX PAL owned an explicit writable scratch root for COLD residency (``cold_root`` and
+``cold_bytes``). That writer is retired, not configurable: there is no such parameter, and passing one is a
+``TypeError``. Immutable COLD assets are read, never written, through ``elpis.substrate.file_assets``.
 """
 import ctypes as C
-import os
 
 
 class Config(C.Structure):
@@ -25,22 +29,22 @@ class Config(C.Structure):
 
 
 class Context:
-    """Explicit POSIX FMS context, owned until transferred or closed."""
+    """A volatile RAM-only FMS context, owned until transferred or closed."""
 
-    def __init__(self, library, *, warm_bytes, cold_bytes, max_objects, cold_root):
-        if not all(type(v) is int and v > 0 for v in (warm_bytes, cold_bytes, max_objects)):
-            raise ValueError("positive FMS budgets and capacity required")
-        root = os.fsencode(cold_root)
-        if not os.path.isabs(root) or b"\0" in root:
-            raise ValueError("explicit absolute scratch root required")
-        library.elpis_fms_create_posix.argtypes = [C.POINTER(Config), C.c_char_p]
-        library.elpis_fms_create_posix.restype = C.c_void_p
+    def __init__(self, library, *, warm_bytes, max_objects):
+        if not all(type(v) is int and v > 0 for v in (warm_bytes, max_objects)):
+            raise ValueError("a positive WARM budget and capacity are required")
+        library.elpis_fms_create_ram_only.argtypes = [C.POINTER(Config)]
+        library.elpis_fms_create_ram_only.restype = C.c_void_p
         library.fms_destroy.argtypes = [C.c_void_p]
         library.fms_destroy.restype = None
-        cfg = Config((0, warm_bytes, cold_bytes), (warm_bytes, 1, cold_bytes),
+        # HOT, WARM, COLD budgets and RAM, DEVICE, STORAGE ceilings: no COLD budget and no storage ceiling (fms_create
+        # refuses either). HOT is absent from the RAM-only PAL; both absent-tier policies are REJECT (1), so a HOT
+        # request is refused rather than folded down, and a COLD request is refused whatever the policy says.
+        cfg = Config((0, warm_bytes, 0), (warm_bytes, 1, 0),
                      0.90, 0.70, 0, 0, 0, 0, max_objects, 1, 1)
         self.library = library
-        self.handle = C.c_void_p(library.elpis_fms_create_posix(C.byref(cfg), root))
+        self.handle = C.c_void_p(library.elpis_fms_create_ram_only(C.byref(cfg)))
         if not self.handle.value:
             raise ValueError("FMS context creation refused")
 

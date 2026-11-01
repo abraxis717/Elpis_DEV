@@ -1,0 +1,14 @@
+{
+ "results": {
+  "ENVIRONMENT.txt": "7cfe30a2a52fc1c4b911d3724086b34c65b480ca581246292f80274ee4a98599",
+  "zero_write_v1.json": "d141e2da221d0053238e08538d5b6e016ea40f88ac07a8f2eae192b6a74e0168"
+ },
+ "schema": "elpis.volatile-runtime-v1.manifest.v1",
+ "source_commit": "66a11a4c6f3f343f99abd6e57e7184ec41d6d7d4",
+ "sources": {
+  "research/volatile_runtime_v0/zero_write.py": "d832c44aa10f7f0243ea28b2be6736fb722592b4ca870c241183dd9bb399d4b2",
+  "research/volatile_runtime_v1/hgram_read.c": "1113aed5220710412a3ae4e79644ffd1d2d34a458584737a1790c53fb22f8457",
+  "research/volatile_runtime_v1/python_fms_hacf.py": "fdbd25342fa0b93dc3ecffef0475a2854990b758a318e5c152309defac79be35",
+  "research/volatile_runtime_v1/zero_write_composed.py": "6df4a6f13d32480278a7a82d281d3edbbaba0696273582d08e4363f88a2f4df0"
+ }
+}

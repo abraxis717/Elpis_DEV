@@ -1,8 +1,10 @@
 """Evolution end to end: gated attempts bound to the runtime's current evolution authority.
 
-The gate validates and executes at the boundary; RuntimeCore (native/runtime) owns the durable reservation,
-the finalization and the fail-stop. Everything below is observed through RuntimeCore: the durable authority's record
-(an ECS_C authority), its testing faults, and the gate's own result.
+The gate validates and executes at the boundary; RuntimeCore (native/runtime) owns the reservation, the finalization
+and the fail-stop, all in its volatile session (ABI v8): the evolution authority lives and ends with the session, and a
+new session starts at revision 0. Everything below is observed through RuntimeCore and the gate's own result. (ABI
+v7's durable reservation, its publication faults, process death inside it and the explicit reconciliation of a
+durable pending authority retired with the durable authority.)
 """
 from __future__ import annotations
 
@@ -12,24 +14,15 @@ import hashlib
 import pytest
 
 from elpis.evolution import EvolutionAttempt, EvolutionPathAssertion, EvolutionPathGate, GateExecuted, GateRejected
-from elpis.runtime import CompositionError, Runtime, RuntimeConfig
-from elpis.runtime.authority import ContinuityProcessDeath
+from elpis.runtime import CompositionError, Runtime
 
 from ..conftest import require_runtime_library, runtime_config
 from ..evolution._policy_fixtures import TEST_AUTHORITY, TEST_EVOLUTION_PIN
 from ..evolution import _policy_fixtures as policies
 from .conftest import POSITIVE
 
-RECORDS = ("authority.a", "authority.b")
-# Testing-library fault actions of the authority's record (elpis_runtime_testing_fault; RuntimeCore's
-# authority::Store::testing_arm, the numbering standalone continuity's own hook had).
-DIE, WRITE_FAIL, TORN_FAIL, SYNC_FAIL_LOST, SYNC_FAIL_DURABLE = 1, 2, 3, 5, 6
-STEPS = {"publish.begin": 0, "publish.written": 1, "publish.synced": 2}
-
-
-def config_at(tmp_path, testing=False, evolution_pin=TEST_EVOLUTION_PIN):
-    return runtime_config(tmp_path / "authority", require_runtime_library(testing=testing),
-                          evolution_pin=evolution_pin)
+def config_at(evolution_pin=TEST_EVOLUTION_PIN):
+    return runtime_config(require_runtime_library(), evolution_pin=evolution_pin)
 
 
 def d(label: str) -> str:
@@ -84,7 +77,7 @@ def advance(*, state, label):
     return EvolutionAttempt(after, d("attempt-" + label), d("result-" + label), "ATTEMPT_COMMITTED")
 
 
-def test_attempts_advance_the_durable_evolution_authority(runtime, ingress):
+def test_attempts_advance_the_sessions_evolution_authority(runtime, ingress):
     runtime.run_ingress(ingress, POSITIVE)  # unrelated operations do not move the evolution authority
     authority0 = runtime.evolution_authority()
     assert authority0.revision == 0
@@ -120,99 +113,28 @@ def test_attempts_advance_the_durable_evolution_authority(runtime, ingress):
     assert runtime.evolution_authority().revision == 2
 
 
-def test_evolution_authority_survives_restart(tmp_path):
-    config = config_at(tmp_path)
+def test_the_evolution_authority_lives_and_ends_with_the_session():
+    config = config_at()
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
     with Runtime(config) as rt:
-        first = rt.evolve(GATE, assertion=assertion(episode, rt.evolution_authority(), "0" * 64),
+        genesis = rt.evolution_authority()
+        first = rt.evolve(GATE, assertion=assertion(episode, genesis, "0" * 64),
                           state=episode, advance=advance, advance_kwargs={"label": "1"})
         authority = rt.evolution_authority()
-    with Runtime(config) as rt:
-        assert rt.evolution_authority() == authority
-        stale = assertion(first.result.state_after, type(authority)(0, "0" * 64, "0" * 64), first.receipt.receipt_digest)
+        assert authority.revision == 1
+    with Runtime(config) as rt:     # a new session: revision 0 again, nothing of the last one remains
+        fresh = rt.evolution_authority()
+        assert fresh.revision == 0 and fresh.head == "0" * 64 and fresh != authority
+        # An assertion built against the last session's authority is stale here.
+        stale = assertion(first.result.state_after, authority, first.receipt.receipt_digest)
         rejected = rt.evolve(GATE, assertion=stale, state=first.result.state_after,
                              advance=lambda **kw: pytest.fail("must not run"), advance_kwargs={})
         assert isinstance(rejected, GateRejected)
 
 
-def test_reservation_refusal_executes_nothing_and_fail_stops_evolution(tmp_path):
-    config = config_at(tmp_path, testing=True)
-    episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
-    with Runtime(config) as rt:
-        before = rt.evolution_authority()
-        calls = []
-        rt.continuity.testing_fault(1, WRITE_FAIL)
-        with pytest.raises(CompositionError) as info:
-            rt.evolve(GATE, assertion=assertion(episode, before, "0" * 64), state=episode,
-                      advance=lambda **kw: calls.append(kw), advance_kwargs={})
-        assert calls == []
-        assert info.value.code == "CONTINUITY_PUBLICATION_REFUSED"
-        with pytest.raises(CompositionError) as info:
-            rt.evolution_authority()
-        assert info.value.code == "CONTINUITY_PUBLICATION_REFUSED"
-    with Runtime(config) as rt:
-        assert rt.evolution_authority() == before
-
-@pytest.mark.parametrize("phase", ["reservation", "finalization"])
-@pytest.mark.parametrize("failure", ["refused", "torn", "uncertain-lost", "uncertain-durable"])
-def test_publication_failure_never_reexecutes(tmp_path, monkeypatch, phase, failure):
-    """Exercise both outcomes of uncertain publication, including lost dirty bytes."""
-    config = config_at(tmp_path, testing=True)
-    episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
-    calls = 0
-    receipts = capture_receipts(monkeypatch)
-    with Runtime(config) as rt:
-        initial = rt.continuity.snapshot().evolution
-        a = assertion(episode, rt.evolution_authority(), initial.head)
-
-        def counted_advance(**kw):
-            nonlocal calls
-            # This assertion executes only with the exact reservation durable.
-            snap = rt.continuity.snapshot()
-            assert snap.evolution.pending_assertion == a.digest
-            # A record slot on disk is the authority's current record: its last 32 bytes are the record digest.
-            current = rt.continuity.status()["record_digest"]
-            assert any((config.authority_dir / "state" / n).read_bytes()[-32:].hex() == current for n in RECORDS)
-            calls += 1
-            return advance(**kw, label="1")
-
-        action, arg = {"refused": (WRITE_FAIL, 0), "torn": (TORN_FAIL, 80), "uncertain-lost": (SYNC_FAIL_LOST, 0),
-                       "uncertain-durable": (SYNC_FAIL_DURABLE, 0)}[failure]
-        rt.continuity.testing_fault(1 if phase == "reservation" else 2, action, arg)
-        with pytest.raises(CompositionError) as info:
-            rt.evolve(GATE, assertion=a, state=episode, advance=counted_advance, advance_kwargs={})
-        code = "CONTINUITY_PUBLICATION_UNCERTAIN" if failure.startswith("uncertain") else "CONTINUITY_PUBLICATION_REFUSED"
-        assert info.value.code == code
-        assert calls == (0 if phase == "reservation" else 1)
-        with pytest.raises(CompositionError, match=code):
-            rt.evolve(GATE, assertion=a, state=episode, advance=counted_advance, advance_kwargs={})
-
-    expected_pending = ((phase == "reservation" and failure == "uncertain-durable")
-                        or (phase == "finalization" and failure != "uncertain-durable"))
-    for _ in range(4):
-        with Runtime(config) as rt:
-            authority = rt.continuity.snapshot().evolution
-            if expected_pending:
-                assert authority.revision == initial.revision and authority.head == initial.head
-                assert authority.pending_assertion == a.digest
-                with pytest.raises(CompositionError, match="CONTINUITY_EVOLUTION_PENDING"):
-                    rt.evolve(GATE, assertion=a, state=episode, advance=counted_advance, advance_kwargs={})
-                with pytest.raises(CompositionError, match="CONTINUITY_EVOLUTION_PENDING"):
-                    rt.evolution_authority()
-            elif phase == "finalization":
-                assert authority.pending_assertion is None
-                assert authority.revision == initial.revision + 1 and authority.head == receipts[0]
-                result = rt.evolve(GATE, assertion=a, state=episode,
-                                   advance=counted_advance, advance_kwargs={})
-                assert isinstance(result, GateRejected) and result.reason == "STALE_EVOLUTION_AUTHORITY"
-            else:
-                assert authority == initial  # Reservation was lost; no execution occurred.
-            assert calls == (0 if phase == "reservation" else 1)
-
-
 @pytest.mark.parametrize("bad_result", [False, True])
-def test_advance_exception_or_invalid_result_preserves_pending(tmp_path, bad_result):
-    config = config_at(tmp_path)
+def test_advance_exception_or_invalid_result_keeps_pending_for_the_rest_of_the_session(bad_result):
+    config = config_at()
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
     calls = 0
 
@@ -229,44 +151,17 @@ def test_advance_exception_or_invalid_result_preserves_pending(tmp_path, bad_res
             rt.evolve(GATE, assertion=a, state=episode, advance=broken, advance_kwargs={})
         with pytest.raises(CompositionError, match="CONTINUITY_EVOLUTION_PENDING"):
             rt.evolution_authority()
-    with Runtime(config) as rt:
         assert rt.continuity.snapshot().evolution.pending_assertion == a.digest
         with pytest.raises(CompositionError, match="CONTINUITY_EVOLUTION_PENDING"):
             rt.evolve(GATE, assertion=a, state=episode, advance=broken, advance_kwargs={})
+    with Runtime(config) as rt:     # the pending reservation ended with its session: nothing is ever re-executed
+        assert rt.continuity.snapshot().evolution.pending_assertion is None
+        assert rt.evolution_authority().revision == 0
     assert calls == 1
 
 
-def test_explicit_reconciliation_finalizes_once_without_execution(tmp_path, monkeypatch):
-    from elpis.runtime.authority import ContinuityError
-    config = config_at(tmp_path, testing=True)
-    episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
-    # The completed receipt, as an external reconciler could establish it. RuntimeCore never persists this
-    # value or infers a result after a publication failure.
-    receipts = capture_receipts(monkeypatch)
-    with Runtime(config) as rt:
-        a = assertion(episode, rt.evolution_authority(), "0" * 64)
-        rt.continuity.testing_fault(2, WRITE_FAIL)  # the finalization's publication is refused
-        with pytest.raises(CompositionError, match="CONTINUITY_PUBLICATION_REFUSED"):
-            rt.evolve(GATE, assertion=a, state=episode, advance=advance, advance_kwargs={"label": "1"})
-    [completed] = receipts
-    with Runtime(config) as rt:
-        pending = rt.continuity.snapshot().evolution
-        assert pending.pending_assertion == a.digest
-        final = rt.continuity.commit_evolution_transition(pending, completed).evolution
-        assert final.revision == pending.revision + 1 and final.head == completed
-        assert final.pending_assertion is None
-        with pytest.raises(ContinuityError, match="CONTINUITY_AUTHORITY_MISMATCH"):
-            rt.continuity.commit_evolution_transition(pending, completed)
-        assert rt.fault is None  # an operator refusal, not a fail-stop
-        result = rt.evolve(GATE, assertion=a, state=episode,
-                           advance=lambda **kw: pytest.fail("must not run"), advance_kwargs={})
-        assert isinstance(result, GateRejected) and result.reason == "STALE_EVOLUTION_AUTHORITY"
-    with Runtime(config) as rt:
-        assert rt.continuity.snapshot().evolution == final
-
-
-def test_forged_predecessor_refused_before_reservation_or_execution(tmp_path):
-    with Runtime(config_at(tmp_path)) as rt:
+def test_forged_predecessor_refused_before_reservation_or_execution():
+    with Runtime(config_at()) as rt:
         episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
         # Test genesis and a nonzero authoritative head.
         for n in range(2):
@@ -276,51 +171,13 @@ def test_forged_predecessor_refused_before_reservation_or_execution(tmp_path):
             result = rt.evolve(GATE, assertion=a, state=episode,
                                advance=lambda **kw: pytest.fail("must not execute"), advance_kwargs={})
             assert isinstance(result, GateRejected) and result.reason == "PATH_PREDECESSOR_MISMATCH"
-            assert rt.continuity.snapshot() == durable  # nothing reserved: no publication at all
+            assert rt.continuity.snapshot() == durable  # nothing reserved: no session transition at all
             good = rt.evolve(GATE, assertion=assertion(episode, authority, authority.head),
                              state=episode, advance=advance, advance_kwargs={"label": str(n)})
             assert good.receipt.previous_path_receipt_digest == authority.head
             episode = good.result.state_after
 
-@pytest.mark.parametrize("phase", ["reservation", "finalization"])
-@pytest.mark.parametrize("step", ["publish.begin", "publish.written", "publish.synced"])
-def test_process_death_during_evolution_publication(tmp_path, phase, step):
-    config = config_at(tmp_path, testing=True)
-    episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
-    calls = 0
-    rt = Runtime(config).open()
-    a = assertion(episode, rt.evolution_authority(), "0" * 64)
-
-    def counted(**kw):
-        nonlocal calls
-        calls += 1
-        return advance(**kw, label="1")
-
-    rt.continuity.testing_fault(1 if phase == "reservation" else 2, DIE, STEPS[step])
-    try:
-        with pytest.raises(ContinuityProcessDeath):
-            rt.evolve(GATE, assertion=a, state=episode, advance=counted, advance_kwargs={})
-    finally:
-        rt.close()
-    assert calls == (0 if phase == "reservation" else 1)
-    for _ in range(3):
-        with Runtime(config) as rt:
-            authority = rt.continuity.snapshot().evolution
-            if phase == "reservation" and step == "publish.begin":
-                assert authority.pending_assertion is None and authority.revision == 0
-            elif phase == "finalization" and step != "publish.begin":
-                assert authority.pending_assertion is None and authority.revision == 1
-                result = rt.evolve(GATE, assertion=a, state=episode,
-                                   advance=counted, advance_kwargs={})
-                assert isinstance(result, GateRejected)
-            else:
-                assert authority.pending_assertion == a.digest and authority.revision == 0
-                with pytest.raises(CompositionError, match="CONTINUITY_EVOLUTION_PENDING"):
-                    rt.evolve(GATE, assertion=a, state=episode, advance=counted, advance_kwargs={})
-            assert calls == (0 if phase == "reservation" else 1)
-
-
-def test_only_the_pinned_policy_gate_reaches_reservation(tmp_path):
+def test_only_the_pinned_policy_gate_reaches_reservation():
     """A caller-built gate, another policy's gate or an altered issued gate is refused before RuntimeCore reserves
     anything: no caller configures the scopes, budgets or contract of an attempt (elpis.evolution.policy)."""
     episode = Episode("episode", 0, d("genesis-attempt"), d("state-0"))
@@ -332,7 +189,7 @@ def test_only_the_pinned_policy_gate_reaches_reservation(tmp_path):
     altered.allowed_component_scopes = frozenset({"evolution/population", "policy"})
     other = policies.authority(budget={"max_edit_budget": 99, "max_resource_cost": 100, "max_candidates": 4})
     calls = []
-    with Runtime(config_at(tmp_path)) as rt:
+    with Runtime(config_at()) as rt:
         before = rt.continuity.snapshot()
         a = assertion(episode, rt.evolution_authority(), "0" * 64)
         for gate, code in ((lookalike, "EVOLUTION_POLICY_UNAUTHORIZED"), (altered, "EVOLUTION_POLICY_UNAUTHORIZED"),
@@ -344,7 +201,7 @@ def test_only_the_pinned_policy_gate_reaches_reservation(tmp_path):
         # The pinned policy's own gate is admitted.
         assert isinstance(rt.evolve(GATE, assertion=a, state=episode, advance=advance, advance_kwargs={"label": "1"}),
                           GateExecuted)
-    with Runtime(config_at(tmp_path / "unpinned", evolution_pin=None)) as rt:
+    with Runtime(config_at(evolution_pin=None)) as rt:
         with pytest.raises(CompositionError) as info:
             rt.evolve(GATE, assertion=assertion(episode, rt.evolution_authority(), "0" * 64), state=episode,
                       advance=lambda **kw: calls.append(kw), advance_kwargs={})

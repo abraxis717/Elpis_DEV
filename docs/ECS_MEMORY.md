@@ -8,9 +8,10 @@ The ECS memory is the bounded, model-free typed relational memory of ECS_C. It i
 (`research/ecs_memory_mf_r0`, `docs/research/ECS_MEMORY_MF_R0.md`) relocated under `native/ECS_C/memory` with the canonical
 prefix (`elpis_ecs_mem_*`, `ELPIS_ECS_MEM_*`), capability gating, and **without the MF-R0 CONSOLIDATE (slow-bank)
 law**. It is a **component** of the ECS retained
-state, never an authority of its own: durable authority over it exists only through the composite retained state
-(`docs/ECS_COMPOSITE_STATE.md`). A managed turn that observes it (a LEARN turn, or an observe-only turn: RuntimeCore ABI v5) commits volatile; the memory
-becomes durable only with an explicit durable publication of the composite. It is not the contextual (WARM) lane's
+state, never an authority of its own: the runtime's authority over it exists only through the composite retained
+state, in a volatile session (`docs/ECS_COMPOSITE_STATE.md`). A managed turn that observes it (a LEARN turn, or an
+observe-only turn: RuntimeCore ABI v5) commits volatile, and the memory lasts as long as the session: nothing
+publishes it (RuntimeCore ABI v8; `docs/ELPIS_MISSION.md`, Amendment 3). It is not the contextual (WARM) lane's
 active context (`elpis.runtime.context`), which is session-local, never persisted and holds references, not memory
 slots.
 

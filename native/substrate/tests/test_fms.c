@@ -7,8 +7,6 @@
 #include "elpis/fms_pal_test.h"
 #include "elpis/sha256.h"
 
-#include <dirent.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,51 +21,27 @@ static const char *cur = "?";
         putchar('\n'); fails++; } } while (0)
 #define CASE(name) do { cur = (name); printf("- %s\n", cur); } while (0)
 
-static char root_base[512];
-
-static const char *mkroot(const char *sub) {
-    static char buf[640];
-    snprintf(buf, sizeof buf, "%s/%s", root_base, sub);
-    return buf;
-}
-
-static void rmtree(const char *path) {
-    DIR *d = opendir(path);
-    if (!d) return;
-    struct dirent *e;
-    char p[1024];
-    while ((e = readdir(d))) {
-        if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
-        snprintf(p, sizeof p, "%s/%s", path, e->d_name);
-        if (unlink(p) != 0) rmtree(p);
-    }
-    closedir(d);
-    rmdir(path);
-}
-
-static int count_prefixed(const char *dir, const char *prefix) {
-    DIR *d = opendir(dir);
-    if (!d) return -1;
-    struct dirent *e; int n = 0;
-    while ((e = readdir(d))) if (!strncmp(e->d_name, prefix, strlen(prefix))) n++;
-    closedir(d);
-    return n;
-}
-
-static fms_config base_cfg(uint64_t hot, uint64_t warm, uint64_t cold, uint64_t ram_ceiling) {
+/* FMS ABI v3: HOT and WARM only; no COLD residency, no storage domain, nothing ever written. */
+static fms_config base_cfg(uint64_t hot, uint64_t warm, uint64_t ram_ceiling) {
     fms_config c;
     memset(&c, 0, sizeof c);
     c.tier_budget[FMS_HOT] = hot;
     c.tier_budget[FMS_WARM] = warm;
-    c.tier_budget[FMS_COLD] = cold;
     c.domain_ceiling[FMS_DOM_RAM] = ram_ceiling;
     c.domain_ceiling[FMS_DOM_DEVICE] = hot ? hot : 1;
-    c.domain_ceiling[FMS_DOM_STORAGE] = cold ? cold : 1;
     c.high_wm = 0.90f; c.low_wm = 0.70f;
     c.max_objects = 64;
     c.hot_absent_policy = FMS_FOLD_DOWN;
-    c.cold_absent_policy = FMS_FOLD_DOWN;
+    c.cold_absent_policy = FMS_REJECT;
     return c;
+}
+
+/* Nothing was ever charged to storage or moved through it. */
+static void no_storage(fms_ctx *c, const char *where) {
+    fms_stats st; fms_get_stats(c, &st);
+    CHECK(st.tier_bytes[FMS_COLD] == 0 && st.domain_bytes[FMS_DOM_STORAGE] == 0, "%s: storage charged", where);
+    CHECK(st.cold_writes == 0 && st.cold_reads == 0 && st.cold_replica_reuse == 0 && st.digest_failures == 0,
+          "%s: cold traffic", where);
 }
 
 static void fill(unsigned char *p, size_t n, unsigned char v) { memset(p, v, n); }
@@ -79,38 +53,35 @@ static int verify(const unsigned char *p, size_t n, unsigned char v) {
 /* ---------------------------------------------------------------- cases --- */
 
 static void case_budget_and_integrity(void) {
-    CASE("budget enforcement + data integrity through demote/promote");
+    CASE("the WARM budget is enforced without spill and placed data stays intact");
     fms_pal_test_opts o; memset(&o, 0, sizeof o);
-    o.cold_root = mkroot("c1");
-    fms_config cfg = base_cfg(0, 8 * MB, 512 * MB, 8 * MB);
+    fms_config cfg = base_cfg(0, 8 * MB, 8 * MB);
     fms_ctx *c = fms_create(&cfg, fms_pal_test_create(&o));
     CHECK(c != NULL, "create");
     if (!c) return;
 
-    fms_id id[16]; unsigned char exp[16];
+    fms_id id[16]; unsigned char exp[16]; int placed = 0;
     unsigned char *buf = malloc(MB);
     for (int i = 0; i < 16; i++) {
         exp[i] = (unsigned char)(i + 1);
         fill(buf, MB, exp[i]);
-        int r = fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &id[i]);
-        CHECK(r >= 0, "register %d: %s", i, fms_strerror(r));
+        int r = fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &id[placed]);
+        if (r >= 0) { CHECK(r == FMS_WARM, "placed in tier %d", r); exp[placed++] = exp[i]; }
+        else CHECK(r == FMS_E_LIMIT, "beyond the budget: %s (expected a refusal, never a spill)", fms_strerror(r));
     }
+    CHECK(placed == 8, "exactly the 8 MiB budget is placed, placed %d", placed);
     fms_stats st; fms_get_stats(c, &st);
-    CHECK(st.tier_bytes[FMS_WARM] <= 8 * MB, "warm over budget: %llu",
-          (unsigned long long)st.tier_bytes[FMS_WARM]);
-    CHECK(st.domain_bytes[FMS_DOM_RAM] <= 8 * MB, "ram over ceiling");
-    CHECK(st.tier_bytes[FMS_COLD] >= 8 * MB, "nothing demoted to cold");
-
+    CHECK(st.tier_bytes[FMS_WARM] == 8 * MB && st.domain_bytes[FMS_DOM_RAM] == 8 * MB, "warm accounting");
+    CHECK(st.demotions == 0, "something was demoted");
     for (int pass = 0; pass < 3; pass++)
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < placed; i++) {
             void *p = NULL;
-            int r = fms_acquire(c, id[i], FMS_WARM, FMS_READ, &p);
-            CHECK(r >= 0, "acquire %d: %s", i, fms_strerror(r));
+            int r = fms_acquire(c, id[i], FMS_WARM, FMS_READ | FMS_WRITE, &p);
+            CHECK(r == FMS_WARM, "acquire %d: %s", i, fms_strerror(r));
             if (r >= 0) { CHECK(verify(p, MB, exp[i]), "corruption %d", i); fms_release(c, id[i]); }
-            fms_get_stats(c, &st);
-            CHECK(st.domain_bytes[FMS_DOM_RAM] <= 8 * MB, "ram ceiling breached mid-run");
         }
-    for (int i = 0; i < 16; i++) CHECK(fms_unregister(c, id[i]) == FMS_OK, "unregister %d", i);
+    no_storage(c, "budget");
+    for (int i = 0; i < placed; i++) CHECK(fms_unregister(c, id[i]) == FMS_OK, "unregister %d", i);
     fms_get_stats(c, &st);
     CHECK(st.tier_bytes[0] + st.tier_bytes[1] + st.tier_bytes[2] == 0, "tier leak");
     CHECK(st.domain_bytes[0] + st.domain_bytes[1] + st.domain_bytes[2] == 0, "domain leak");
@@ -121,22 +92,24 @@ static void case_budget_and_integrity(void) {
 static void case_shared_ram_ceiling(void) {
     CASE("HOT+WARM shared physical ceiling (integrated GPU model)");
     fms_pal_test_opts o; memset(&o, 0, sizeof o);
-    o.cold_root = mkroot("c2");
     o.emulate_device = 1;
     o.device_domain = FMS_DOM_RAM;      /* iGPU: HOT bytes are system RAM */
     o.zero_copy = 0;
-    fms_config cfg = base_cfg(8 * MB, 8 * MB, 512 * MB, 10 * MB);   /* 16 MiB logical, 10 MiB physical */
+    fms_config cfg = base_cfg(8 * MB, 8 * MB, 10 * MB);   /* 16 MiB logical, 10 MiB physical */
     fms_pal *pal = fms_pal_test_create(&o);
     fms_ctx *c = fms_create(&cfg, pal);
     CHECK(c != NULL, "create");
     if (!c) return;
     CHECK(fms_hot_available(c) == 1, "hot should be available");
 
-    fms_id id[14]; unsigned char *buf = malloc(MB);
+    fms_id id[14]; int placed = 0; unsigned char *buf = malloc(MB);
     for (int i = 0; i < 14; i++) {
         fill(buf, MB, (unsigned char)i);
-        int r = fms_register(c, 1, MB, FMS_HOT, 0.0f, buf, &id[i]);
-        CHECK(r >= 0, "register %d: %s", i, fms_strerror(r));
+        int r = fms_register(c, 1, MB, FMS_HOT, 0.0f, buf, &id[placed]);
+        /* RAM is the one physical domain of both tiers and nothing lies below WARM: once it is full, a
+         * registration is refused, never spilled. */
+        if (r >= 0) placed++;
+        else CHECK(r == FMS_E_LIMIT, "register %d: %s", i, fms_strerror(r));
         fms_stats st; fms_get_stats(c, &st);
         CHECK(st.domain_bytes[FMS_DOM_RAM] <= 10 * MB,
               "RAM ceiling breached at %d: %llu", i, (unsigned long long)st.domain_bytes[FMS_DOM_RAM]);
@@ -148,7 +121,9 @@ static void case_shared_ram_ceiling(void) {
     CHECK(pal_ram == st.domain_bytes[FMS_DOM_RAM],
           "accounting drift: pal=%llu fms=%llu", (unsigned long long)pal_ram,
           (unsigned long long)st.domain_bytes[FMS_DOM_RAM]);
-    for (int i = 0; i < 14; i++) fms_unregister(c, id[i]);
+    CHECK(placed == 10, "the 10 MiB physical ceiling holds exactly 10 objects, held %d", placed);
+    no_storage(c, "shared ceiling");
+    for (int i = 0; i < placed; i++) fms_unregister(c, id[i]);
     free(buf);
     fms_destroy(c);
 }
@@ -156,9 +131,8 @@ static void case_shared_ram_ceiling(void) {
 static void case_zero_copy_accounting(void) {
     CASE("zero-copy placement is charged once, not twice");
     fms_pal_test_opts o; memset(&o, 0, sizeof o);
-    o.cold_root = mkroot("c3");
     o.emulate_device = 1; o.device_domain = FMS_DOM_RAM; o.zero_copy = 1;
-    fms_config cfg = base_cfg(8 * MB, 8 * MB, 512 * MB, 8 * MB);
+    fms_config cfg = base_cfg(8 * MB, 8 * MB, 8 * MB);
     fms_pal *pal = fms_pal_test_create(&o);
     fms_ctx *c = fms_create(&cfg, pal);
     CHECK(c != NULL, "create");
@@ -189,14 +163,13 @@ static void case_zero_copy_accounting(void) {
 }
 
 static void case_tier_collapse(void) {
-    CASE("tier collapse: WARM+COLD, WARM-only, REJECT vs FOLD_DOWN");
+    CASE("tier collapse: REJECT vs FOLD_DOWN, WARM-only; COLD is refused (no writeback, ABI v3)");
     unsigned char *buf = malloc(MB);
     fill(buf, MB, 7);
 
     /* (a) No device, FOLD_DOWN: HOT request lands WARM. */
     fms_pal_test_opts o; memset(&o, 0, sizeof o);
-    o.cold_root = mkroot("c4a");
-    fms_config cfg = base_cfg(4 * MB, 8 * MB, 64 * MB, 8 * MB);
+    fms_config cfg = base_cfg(4 * MB, 8 * MB, 8 * MB);
     fms_ctx *c = fms_create(&cfg, fms_pal_test_create(&o));
     CHECK(c != NULL, "create a");
     if (c) {
@@ -211,8 +184,8 @@ static void case_tier_collapse(void) {
     }
 
     /* (b) No device, REJECT: HOT request is refused explicitly. */
-    memset(&o, 0, sizeof o); o.cold_root = mkroot("c4b");
-    cfg = base_cfg(4 * MB, 8 * MB, 64 * MB, 8 * MB);
+    memset(&o, 0, sizeof o);
+    cfg = base_cfg(4 * MB, 8 * MB, 8 * MB);
     cfg.hot_absent_policy = FMS_REJECT;
     c = fms_create(&cfg, fms_pal_test_create(&o));
     CHECK(c != NULL, "create b");
@@ -224,9 +197,9 @@ static void case_tier_collapse(void) {
         fms_destroy(c);
     }
 
-    /* (c) WARM only: no cold tier. Over-budget registration fails loudly. */
-    memset(&o, 0, sizeof o); o.cold_root = mkroot("c4c"); o.no_cold = 1;
-    cfg = base_cfg(0, 4 * MB, 0, 4 * MB);
+    /* (c) WARM only. Over-budget registration fails loudly. */
+    memset(&o, 0, sizeof o);
+    cfg = base_cfg(0, 4 * MB, 4 * MB);
     cfg.cold_absent_policy = FMS_REJECT;
     c = fms_create(&cfg, fms_pal_test_create(&o));
     CHECK(c != NULL, "create c");
@@ -244,13 +217,46 @@ static void case_tier_collapse(void) {
         for (int i = 0; i < placed; i++) fms_unregister(c, id[i]);
         fms_destroy(c);
     }
+
+    /* (d) The legacy writeback is refused explicitly: a configuration budgeting COLD or storage is not created, and
+     * a registration or acquisition that asks for COLD is refused under either absent policy. */
+    memset(&o, 0, sizeof o);
+    cfg = base_cfg(0, 4 * MB, 4 * MB);
+    cfg.tier_budget[FMS_COLD] = 64 * MB;
+    fms_pal *pal = fms_pal_test_create(&o);
+    c = fms_create(&cfg, pal);
+    CHECK(c == NULL, "a COLD budget must be refused");
+    if (c) fms_destroy(c); else pal->destroy(pal->self);
+    cfg = base_cfg(0, 4 * MB, 4 * MB);
+    cfg.domain_ceiling[FMS_DOM_STORAGE] = 64 * MB;
+    pal = fms_pal_test_create(&o);
+    c = fms_create(&cfg, pal);
+    CHECK(c == NULL, "a storage ceiling must be refused");
+    if (c) fms_destroy(c); else pal->destroy(pal->self);
+    for (int policy = FMS_FOLD_DOWN; policy <= FMS_REJECT; ++policy) {
+        cfg = base_cfg(0, 4 * MB, 4 * MB);
+        cfg.cold_absent_policy = (uint8_t)policy;
+        c = fms_create(&cfg, fms_pal_test_create(&o));
+        CHECK(c != NULL, "create d");
+        if (!c) continue;
+        fms_id id;
+        CHECK((int)fms_register(c, 1, MB, FMS_COLD, 0.0f, buf, &id) == FMS_E_UNSUPPORTED, "COLD registration");
+        CHECK((int)fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &id) == FMS_WARM, "warm registration");
+        void *p = NULL;
+        CHECK((int)fms_acquire(c, id, FMS_COLD, FMS_READ, &p) == FMS_E_UNSUPPORTED, "COLD acquisition");
+        fms_object_info info; fms_query(c, id, &info);
+        CHECK(info.tier == FMS_WARM && info.cold_replica == 0, "no cold replica");
+        no_storage(c, "cold refused");
+        fms_unregister(c, id);
+        fms_destroy(c);
+    }
     free(buf);
 }
 
 static void case_pinning(void) {
     CASE("pinned objects are never demoted");
-    fms_pal_test_opts o; memset(&o, 0, sizeof o); o.cold_root = mkroot("c5");
-    fms_config cfg = base_cfg(0, 4 * MB, 64 * MB, 4 * MB);
+    fms_pal_test_opts o; memset(&o, 0, sizeof o);
+    fms_config cfg = base_cfg(0, 4 * MB, 4 * MB);
     fms_ctx *c = fms_create(&cfg, fms_pal_test_create(&o));
     CHECK(c != NULL, "create");
     if (!c) return;
@@ -260,7 +266,8 @@ static void case_pinning(void) {
     void *p = NULL;
     CHECK((int)fms_acquire(c, pinned, FMS_WARM, FMS_READ, &p) == FMS_WARM, "acquire");
     for (int i = 0; i < 8; i++) {
-        fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &other[i]);
+        int r = fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &other[i]);   /* refused once WARM is full */
+        CHECK(r == FMS_WARM || r == FMS_E_LIMIT, "register other %d: %s", i, fms_strerror(r));
         fms_pump(c);
     }
     fms_object_info info; fms_query(c, pinned, &info);
@@ -276,9 +283,8 @@ static void case_pinning(void) {
 static void case_lease_fence(void) {
     CASE("lease + fence: no demotion or release while a dispatch is in flight");
     fms_pal_test_opts o; memset(&o, 0, sizeof o);
-    o.cold_root = mkroot("c6");
     o.emulate_device = 1; o.device_domain = FMS_DOM_DEVICE; o.fence_mode = FMS_FENCE_PENDING;
-    fms_config cfg = base_cfg(4 * MB, 4 * MB, 64 * MB, 8 * MB);
+    fms_config cfg = base_cfg(4 * MB, 4 * MB, 8 * MB);
     cfg.fence_timeout_ns = 0;
     fms_pal *pal = fms_pal_test_create(&o);
     fms_ctx *c = fms_create(&cfg, pal);
@@ -314,9 +320,8 @@ static void case_lease_fence(void) {
 static void case_device_loss(void) {
     CASE("device loss quarantines the object and forces CPU fallback");
     fms_pal_test_opts o; memset(&o, 0, sizeof o);
-    o.cold_root = mkroot("c7");
     o.emulate_device = 1; o.device_domain = FMS_DOM_DEVICE; o.fence_mode = FMS_FENCE_PENDING;
-    fms_config cfg = base_cfg(4 * MB, 4 * MB, 64 * MB, 8 * MB);
+    fms_config cfg = base_cfg(4 * MB, 4 * MB, 8 * MB);
     fms_pal *pal = fms_pal_test_create(&o);
     fms_ctx *c = fms_create(&cfg, pal);
     CHECK(c != NULL, "create");
@@ -347,9 +352,8 @@ static void case_device_loss(void) {
 static void case_upload_failure_fallback(void) {
     CASE("device upload failure leaves data intact on the CPU path");
     fms_pal_test_opts o; memset(&o, 0, sizeof o);
-    o.cold_root = mkroot("c8");
     o.emulate_device = 1; o.device_domain = FMS_DOM_DEVICE;
-    fms_config cfg = base_cfg(4 * MB, 4 * MB, 64 * MB, 8 * MB);
+    fms_config cfg = base_cfg(4 * MB, 4 * MB, 8 * MB);
     fms_pal *pal = fms_pal_test_create(&o);
     fms_ctx *c = fms_create(&cfg, pal);
     CHECK(c != NULL, "create");
@@ -371,175 +375,14 @@ static void case_upload_failure_fallback(void) {
     fms_destroy(c);
 }
 
-static void case_cold_durability(void) {
-    CASE("cold commit is atomic, content-addressed and digest-verified");
-    const char *root = mkroot("c9");
-    fms_pal_test_opts o; memset(&o, 0, sizeof o); o.cold_root = root;
-    fms_config cfg = base_cfg(0, 2 * MB, 64 * MB, 2 * MB);
-    fms_ctx *c = fms_create(&cfg, fms_pal_test_create(&o));
-    CHECK(c != NULL, "create");
-    if (!c) return;
-
-    unsigned char *buf = malloc(MB); fill(buf, MB, 0x66);
-    fms_id a, b;
-    fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &a);
-    fill(buf, MB, 0x77);
-    fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &b);
-    fill(buf, MB, 0x88);
-    fms_id d; fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &d);   /* forces a demotion */
-
-    CHECK(count_prefixed(root, ".fms-tmp-") == 0, "temporary files left behind");
-    CHECK(count_prefixed(root, "") >= 3, "no cold blob written");   /* . .. blob */
-
-    fms_stats st; fms_get_stats(c, &st);
-    CHECK(st.cold_writes >= 1, "cold write not counted");
-
-    /* Blob names are the digest of their content. */
-    DIR *dh = opendir(root); struct dirent *e; int checked = 0;
-    while (dh && (e = readdir(dh))) {
-        if (strstr(e->d_name, ".blob") == NULL) continue;
-        char path[1024]; snprintf(path, sizeof path, "%s/%s", root, e->d_name);
-        int fd = open(path, O_RDONLY);
-        if (fd < 0) continue;
-        unsigned char *tmp = malloc(MB);
-        ssize_t got = read(fd, tmp, MB); close(fd);
-        uint8_t dg[32]; char hex[65];
-        elpis_sha256(tmp, (size_t)(got > 0 ? got : 0), dg);
-        elpis_hex32(dg, hex);
-        CHECK(strncmp(e->d_name, hex, 64) == 0, "blob name is not its digest: %s", e->d_name);
-        checked++;
-        free(tmp);
-    }
-    if (dh) closedir(dh);
-    CHECK(checked >= 1, "no blob inspected");
-
-    /* Round-trip through cold must be byte-exact. */
-    void *p = NULL;
-    int r = fms_acquire(c, a, FMS_WARM, FMS_READ, &p);
-    CHECK(r >= 0, "reload from cold: %s", fms_strerror(r));
-    if (r >= 0) { CHECK(verify(p, MB, 0x66), "cold round trip corrupted"); fms_release(c, a); }
-    free(buf);
-    fms_destroy(c);
-    CHECK(count_prefixed(root, ".blob") <= 0, "cold blobs survived destroy");
-}
-
-static void case_digest_rejection(void) {
-    CASE("corrupted cold replica is rejected, never silently repaired");
-    const char *root = mkroot("c10");
-    fms_pal_test_opts o; memset(&o, 0, sizeof o); o.cold_root = root;
-    fms_config cfg = base_cfg(0, 2 * MB, 64 * MB, 2 * MB);
-    fms_ctx *c = fms_create(&cfg, fms_pal_test_create(&o));
-    CHECK(c != NULL, "create");
-    if (!c) return;
-    unsigned char *buf = malloc(MB);
-    fms_id id[4];
-    for (int i = 0; i < 4; i++) { fill(buf, MB, (unsigned char)(0xC0 + i));
-                                  fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &id[i]); }
-    /* id[0] is the oldest and coldest by now. */
-    fms_object_info info; fms_query(c, id[0], &info);
-    CHECK(info.tier == FMS_COLD, "expected id0 in cold, tier=%u", info.tier);
-
-    /* Corrupt one byte in every blob. */
-    DIR *dh = opendir(root); struct dirent *e; int touched = 0;
-    while (dh && (e = readdir(dh))) {
-        if (!strstr(e->d_name, ".blob")) continue;
-        char path[1024]; snprintf(path, sizeof path, "%s/%s", root, e->d_name);
-        int fd = open(path, O_RDWR);
-        if (fd >= 0) { unsigned char x = 0xFF; if (pwrite(fd, &x, 1, 4096) == 1) touched++; close(fd); }
-    }
-    if (dh) closedir(dh);
-    CHECK(touched >= 1, "no blob to corrupt");
-
-    void *p = NULL;
-    int r = fms_acquire(c, id[0], FMS_WARM, FMS_READ, &p);
-    CHECK(r == FMS_E_DIGEST, "corrupt replica must give E_DIGEST, got %d (%s)", r, fms_strerror(r));
-    CHECK(p == NULL, "unverified bytes handed to the caller");
-    fms_stats st; fms_get_stats(c, &st);
-    CHECK(st.digest_failures == 1, "digest failure not counted: %llu",
-          (unsigned long long)st.digest_failures);
-    fms_query(c, id[0], &info);
-    CHECK(info.state == FMS_ST_FAILED, "object state after corruption: %u", info.state);
-    r = fms_acquire(c, id[0], FMS_WARM, FMS_READ, &p);
-    CHECK(r == FMS_E_STATE, "failed object must stay failed, got %s", fms_strerror(r));
-    free(buf);
-    fms_destroy(c);
-}
-
-static void case_cold_write_failure(void) {
-    CASE("failed cold commit leaves no partial state");
-    const char *root = mkroot("c11");
-    fms_pal_test_opts o; memset(&o, 0, sizeof o); o.cold_root = root; o.fail_cold_put = 1;
-    fms_config cfg = base_cfg(0, 2 * MB, 64 * MB, 2 * MB);
-    fms_ctx *c = fms_create(&cfg, fms_pal_test_create(&o));
-    CHECK(c != NULL, "create");
-    if (!c) return;
-    unsigned char *buf = malloc(MB);
-    fms_id id[4]; int refused = 0;
-    for (int i = 0; i < 4; i++) {
-        fill(buf, MB, (unsigned char)i);
-        int r = fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &id[i]);
-        if (r < 0) { refused++; CHECK(r == FMS_E_LIMIT, "expected E_LIMIT, got %s", fms_strerror(r)); }
-    }
-    CHECK(refused >= 1, "registration should fail when demotion cannot commit");
-    CHECK(count_prefixed(root, ".fms-tmp-") == 0, "temp file left after failed commit");
-    CHECK(count_prefixed(root, ".blob") <= 0, "blob published despite failure");
-    fms_stats st; fms_get_stats(c, &st);
-    CHECK(st.cold_writes == 0, "cold write counted on failure");
-    free(buf);
-    fms_destroy(c);
-}
-
-static void case_replica_reuse(void) {
-    CASE("clean cold replica is reused instead of rewritten");
-    fms_pal_test_opts o; memset(&o, 0, sizeof o); o.cold_root = mkroot("c12");
-    fms_config cfg = base_cfg(0, 3 * MB, 64 * MB, 3 * MB);
-    fms_ctx *c = fms_create(&cfg, fms_pal_test_create(&o));
-    CHECK(c != NULL, "create");
-    if (!c) return;
-    unsigned char *buf = malloc(MB);
-    fms_id id[6];
-    for (int i = 0; i < 6; i++) { fill(buf, MB, (unsigned char)i);
-                                  fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &id[i]); }
-    fms_stats a; fms_get_stats(c, &a);
-    for (int pass = 0; pass < 4; pass++)
-        for (int i = 0; i < 6; i++) {
-            void *p = NULL;
-            if (fms_acquire(c, id[i], FMS_WARM, FMS_READ, &p) >= 0) fms_release(c, id[i]);
-        }
-    fms_stats b; fms_get_stats(c, &b);
-    CHECK(b.cold_replica_reuse > 0, "no replica reuse observed");
-    CHECK(b.cold_writes - a.cold_writes < b.demotions - a.demotions,
-          "every demotion rewrote the replica (%llu writes / %llu demotions)",
-          (unsigned long long)(b.cold_writes - a.cold_writes),
-          (unsigned long long)(b.demotions - a.demotions));
-    /* A write must invalidate the replica. */
-    void *p = NULL;
-    if (fms_acquire(c, id[0], FMS_WARM, FMS_WRITE, &p) >= 0) {
-        fill(p, MB, 0xEE);
-        fms_release(c, id[0]);
-    }
-    for (int i = 1; i < 6; i++) { void *q; if (fms_acquire(c, id[i], FMS_WARM, FMS_READ, &q) >= 0) fms_release(c, id[i]); }
-    if (fms_acquire(c, id[0], FMS_WARM, FMS_READ, &p) >= 0) {
-        CHECK(verify(p, MB, 0xEE), "dirty data lost through a cold round trip");
-        fms_release(c, id[0]);
-    }
-    free(buf);
-    fms_destroy(c);
-}
-
 static void case_two_contexts(void) {
     CASE("two contexts, two PALs, no shared global state");
-    /* mkroot() returns one static buffer: copy each root so the two PALs
-     * really own two distinct cold roots (one live owner per root). */
-    char r1[640], r2[640];
-    snprintf(r1, sizeof r1, "%s", mkroot("c13a"));
-    snprintf(r2, sizeof r2, "%s", mkroot("c13b"));
-    fms_pal_test_opts o1; memset(&o1, 0, sizeof o1); o1.cold_root = r1;
-    fms_pal_test_opts o2; memset(&o2, 0, sizeof o2); o2.cold_root = r2;
+    fms_pal_test_opts o1; memset(&o1, 0, sizeof o1);
+    fms_pal_test_opts o2; memset(&o2, 0, sizeof o2);
     o2.emulate_device = 1; o2.device_domain = FMS_DOM_DEVICE;
 
-    fms_config cfg1 = base_cfg(0, 2 * MB, 64 * MB, 2 * MB);
-    fms_config cfg2 = base_cfg(2 * MB, 2 * MB, 64 * MB, 4 * MB);
+    fms_config cfg1 = base_cfg(0, 2 * MB, 2 * MB);
+    fms_config cfg2 = base_cfg(2 * MB, 2 * MB, 4 * MB);
     fms_ctx *a = fms_create(&cfg1, fms_pal_test_create(&o1));
     fms_ctx *b = fms_create(&cfg2, fms_pal_test_create(&o2));
     CHECK(a && b, "create both");
@@ -563,24 +406,32 @@ static void case_two_contexts(void) {
             fms_release(b, ib[i]);
         }
     }
-    CHECK(count_prefixed(r1, ".blob") >= 0 && count_prefixed(r2, ".blob") >= 0, "cold roots independent");
+    no_storage(a, "context a");
+    no_storage(b, "context b");
     free(buf);
     fms_destroy(a);
     fms_destroy(b);
 }
 
 static void case_telemetry(void) {
-    CASE("telemetry is populated and observational only");
-    fms_pal_test_opts o; memset(&o, 0, sizeof o); o.cold_root = mkroot("c14");
-    fms_config cfg = base_cfg(0, 4 * MB, 64 * MB, 4 * MB);
+    CASE("telemetry is populated and observational only (HOT <-> WARM movement; nothing below WARM)");
+    fms_pal_test_opts o; memset(&o, 0, sizeof o);
+    o.emulate_device = 1; o.device_domain = FMS_DOM_DEVICE;
+    fms_config cfg = base_cfg(4 * MB, 8 * MB, 8 * MB);
     fms_ctx *c = fms_create(&cfg, fms_pal_test_create(&o));
     CHECK(c != NULL, "create");
     if (!c) return;
     unsigned char *buf = malloc(MB);
     fms_id id[8];
     for (int i = 0; i < 8; i++) { fill(buf, MB, (unsigned char)i);
-                                  fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &id[i]); }
-    for (int i = 0; i < 8; i++) { void *p; if (fms_acquire(c, id[i], FMS_WARM, FMS_READ, &p) >= 0) fms_release(c, id[i]); }
+                                  CHECK(fms_register(c, 1, MB, FMS_HOT, 0.0f, buf, &id[i]) >= 0, "register %d", i); }
+    for (int i = 0; i < 8; i++) {
+        void *p;
+        if (fms_acquire(c, id[i], FMS_HOT, FMS_READ, &p) >= 0) {
+            CHECK(verify(p, MB, (unsigned char)i), "data %d", i);
+            fms_release(c, id[i]);
+        }
+    }
     fms_stats st; fms_get_stats(c, &st);
     CHECK(st.demotions > 0 && st.promotions > 0, "movement counters empty");
     CHECK(st.bytes_demoted > 0 && st.bytes_promoted > 0, "byte counters empty");
@@ -588,27 +439,73 @@ static void case_telemetry(void) {
     CHECK(st.move_p95_ns >= st.move_p50_ns, "p95 < p50");
     CHECK(st.objects == 8, "object count %llu", (unsigned long long)st.objects);
     CHECK(st.inflight_ops == 0, "in-flight ops leaked");
+    no_storage(c, "telemetry");
     free(buf);
     fms_destroy(c);
 }
 
-int main(int argc, char **argv) {
-    snprintf(root_base, sizeof root_base, "%s", argc > 1 ? argv[1] : "/tmp/elpis-fms");
-    rmtree(root_base);
-    printf("FMS invariant suite, root=%s\n", root_base);
+static void case_a_held_object_never_moves(void) {
+    CASE("an object another holder has pinned or leased is never moved: its bytes stay where the holder reads them");
+    fms_pal_test_opts o; memset(&o, 0, sizeof o);
+    o.emulate_device = 1; o.device_domain = FMS_DOM_DEVICE;   /* not zero-copy: a WARM -> HOT hop frees the WARM copy */
+    fms_config cfg = base_cfg(4 * MB, 8 * MB, 8 * MB);
+    fms_ctx *c = fms_create(&cfg, fms_pal_test_create(&o));
+    CHECK(c != NULL, "create");
+    if (!c) return;
+    unsigned char *buf = malloc(MB);
+    fill(buf, MB, 0x5a);
+    fms_id id;
+    CHECK((int)fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &id) == FMS_WARM, "register WARM");
+    fms_stats before; fms_get_stats(c, &before);
+
+    /* A reader holds the WARM copy; a second acquirer asks for HOT. The object must not move under the reader. */
+    void *reader = NULL, *second = NULL;
+    CHECK((int)fms_acquire(c, id, FMS_WARM, FMS_READ, &reader) == FMS_WARM, "the reader's pin is WARM");
+    int r = fms_acquire(c, id, FMS_HOT, FMS_READ, &second);
+    CHECK(r == FMS_WARM, "a held object is pinned where it is, got tier %d", r);
+    CHECK(second == reader, "both holders read the same WARM bytes");
+    CHECK(verify(reader, MB, 0x5a), "the first holder's bytes are intact");
+    fms_stats st; fms_get_stats(c, &st);
+    CHECK(st.promotions == before.promotions, "nothing was promoted while held");
+    CHECK(st.forced_placements == before.forced_placements + 1, "the refused move is counted as a forced placement");
+    CHECK(fms_release(c, id) == FMS_OK && fms_release(c, id) == FMS_OK, "release both pins");
+
+    /* A lease holds the object the same way. */
+    fms_lease *lease = NULL;
+    CHECK(fms_lease_acquire(c, id, FMS_WARM, FMS_READ, &lease) == FMS_OK && fms_lease_tier(lease) == FMS_WARM,
+          "a WARM lease");
+    r = fms_acquire(c, id, FMS_HOT, FMS_READ, &second);
+    CHECK(r == FMS_WARM && second == fms_lease_ptr(lease), "a leased object is pinned where it is, got tier %d", r);
+    CHECK(verify(fms_lease_ptr(lease), MB, 0x5a), "the lease's bytes are intact");
+    CHECK(fms_release(c, id) == FMS_OK, "release the pin");
+    CHECK(fms_lease_release(c, lease) == FMS_OK, "release the lease");
+
+    /* Nobody holds it now: the promotion happens, and the bytes move intact. */
+    r = fms_acquire(c, id, FMS_HOT, FMS_READ, &second);
+    CHECK(r == FMS_HOT, "an unheld object is promoted, got tier %d", r);
+    CHECK(r == FMS_HOT && verify(second, MB, 0x5a), "the promoted bytes are intact");
+    fms_get_stats(c, &st);
+    CHECK(st.promotions == before.promotions + 1, "one promotion");
+    if (r >= 0) fms_release(c, id);
+    CHECK(fms_unregister(c, id) == FMS_OK, "unregister");
+    no_storage(c, "held objects");
+    free(buf);
+    fms_destroy(c);
+}
+
+int main(void) {
+    printf("FMS invariant suite (ABI v3, volatile: HOT and WARM only)\n");
+    CHECK(FMS_ABI_VERSION == 3u, "ABI");
 
     case_budget_and_integrity();
     case_shared_ram_ceiling();
     case_zero_copy_accounting();
     case_tier_collapse();
     case_pinning();
+    case_a_held_object_never_moves();
     case_lease_fence();
     case_device_loss();
     case_upload_failure_fallback();
-    case_cold_durability();
-    case_digest_rejection();
-    case_cold_write_failure();
-    case_replica_reuse();
     case_two_contexts();
     case_telemetry();
 

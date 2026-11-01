@@ -44,12 +44,13 @@ def _catalog(entries, provenance="deployment"):
 
 @pytest.fixture
 def workspace(tmp_path):
-    """A trusted root holding copies of the built RuntimeCore libraries."""
+    """A trusted root holding a copy of the built RuntimeCore library, and a substitute with the same ABI and other
+    bytes (the same object with bytes appended past its last section: it loads and passes the ABI check)."""
     root = tmp_path / "native"
     root.mkdir()
-    for testing in (False, True):
-        source = require_runtime_library(testing=testing)
-        shutil.copyfile(source, root / source.name)
+    source = require_runtime_library()
+    shutil.copyfile(source, root / source.name)
+    (root / "libelpis_runtime_substitute.so").write_bytes(source.read_bytes() + b"\0" * 64)
     return root.resolve()
 
 
@@ -82,9 +83,9 @@ def test_a_modified_library_is_refused(workspace):
 
 
 def test_a_substituted_path_and_the_right_abi_with_the_wrong_bytes_are_refused(workspace):
-    # The testing library exports the same RuntimeCore ABI (v3) with different bytes.
+    # The substitute exports the same RuntimeCore ABI with different bytes.
     authority = _catalog({"elpis_runtime": _bytes(workspace / "libelpis_runtime.so")})
-    shutil.copyfile(workspace / "libelpis_runtime_testing.so", workspace / "substitute.so")
+    shutil.copyfile(workspace / "libelpis_runtime_substitute.so", workspace / "substitute.so")
     with pytest.raises(CompositionError) as info:
         RuntimeLibrary.admit(workspace, "substitute.so", authority)
     assert info.value.code == "RUNTIME_UNPINNED"
@@ -112,22 +113,22 @@ def test_a_wrong_digest_and_an_unauthorized_identifier_are_refused(workspace):
     genuine = _bytes(workspace / "libelpis_runtime.so")
     wrong = _catalog({"elpis_runtime": genuine + b"x"})               # the pin names other bytes
     assert _refused(lambda: admit_library(workspace, "libelpis_runtime.so", wrong, "elpis_runtime")) == "IDENTITY"
-    other = _catalog({"elpis_ecs_c_authority": genuine})               # the right bytes, another identifier
+    other = _catalog({"elpis_ecs_composite": genuine})                 # the right bytes, another identifier
     assert _refused(lambda: admit_library(workspace, "libelpis_runtime.so", other, "elpis_runtime")) == "IDENTITY"
     # Admitted under a non-RuntimeCore identifier, the right bytes still do not make a RuntimeLibrary.
     with pytest.raises(CompositionError) as info:
-        RuntimeLibrary.admit(workspace, "libelpis_runtime.so", other, "elpis_ecs_c_authority")
+        RuntimeLibrary.admit(workspace, "libelpis_runtime.so", other, "elpis_ecs_composite")
     assert info.value.code == "RUNTIME_UNPINNED"
     with pytest.raises(CompositionError) as info:
-        RuntimeLibrary(admit_library(workspace, "libelpis_runtime.so", other, "elpis_ecs_c_authority"))
+        RuntimeLibrary(admit_library(workspace, "libelpis_runtime.so", other, "elpis_ecs_composite"))
     assert info.value.code == "RUNTIME_UNPINNED"
     synthetic = _catalog({"elpis_runtime": genuine}, provenance="synthetic-test")
     assert _refused(lambda: admit_library(workspace, "libelpis_runtime.so", synthetic, "elpis_runtime")) == "IDENTITY"
 
 
 def test_the_runtime_never_loads_an_unpinned_library(workspace, tmp_path):
-    for config in (RuntimeConfig(tmp_path / "c", workspace / "libelpis_runtime.so", TEST_CODEC_PIN),
-                   RuntimeConfig(tmp_path / "c", workspace / "libelpis_runtime.so", TEST_CODEC_PIN,
+    for config in (RuntimeConfig(workspace / "libelpis_runtime.so", TEST_CODEC_PIN),
+                   RuntimeConfig(workspace / "libelpis_runtime.so", TEST_CODEC_PIN,
                                  _catalog({"elpis_runtime": b"other bytes"}))):
         with pytest.raises(CompositionError) as info:
             Runtime(config)
@@ -144,7 +145,7 @@ def test_the_managed_runtime_refuses_k1_code_that_was_not_admitted(tmp_path):
     assert admission_of(k1._lib) is None
     with K1State.create(k1, DIM, WIDTH, initial_w().reshape(-1).tolist()) as state:
         before = state.snapshot()
-        with Runtime(_config(tmp_path / "c")) as runtime:
+        with Runtime(_config()) as runtime:
             for call in (lambda: runtime.anchor_cognition(state),
                          lambda: runtime.run_query(state, QueryRequest("q", ByteTokens(), admitted(FixtureMap())))):
                 with pytest.raises(CompositionError) as info:

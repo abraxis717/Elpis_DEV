@@ -54,6 +54,10 @@ jobs:
           ELPIS_REQUIRE_NATIVE: "1"
           ELPIS_NATIVE_BUILD: ${{ github.workspace }}/build
         run: |
+          # GitHub runners have swap on. The Python process gate (elpis.runtime.environment) then requires the
+          # process memory to be lockable, and refuses otherwise. Raise this shell's memory-lock limit, the documented
+          # remedy, so the gate takes its lock path; the runner's swap configuration is never changed.
+          sudo prlimit --pid $$ --memlock=unlimited:unlimited
           # Base neutrality was proved above before inference dependencies existed.
           # The closure probe intentionally imports every inference module, so
           # qualify it in the explicit inference environment.
@@ -117,7 +121,9 @@ jobs:
           /tmp/elpis-venv/bin/python -m pip install --upgrade pip
           /tmp/elpis-venv/bin/python -m pip install ".[test]"
       - name: FAST lane (tests/lanes.py; the research corpus has its own lanes and jobs)
-        run: /tmp/elpis-venv/bin/python -m pytest --lane fast --durations=10
+        run: |
+          sudo prlimit --pid $$ --memlock=unlimited:unlimited   # swap is on: the process gate locks memory
+          /tmp/elpis-venv/bin/python -m pytest --lane fast --durations=10
 
   lanes:
     # The STRESS and HISTORICAL Python lanes (tests/lanes.py): multi-process contention, exhaustive fault
@@ -149,9 +155,13 @@ jobs:
           /tmp/elpis-venv/bin/python -m pip install --upgrade pip
           /tmp/elpis-venv/bin/python -m pip install ".[test]"
       - name: STRESS lane
-        run: timeout 1800 /tmp/elpis-venv/bin/python -m pytest -rs --lane stress --durations=10
+        run: |
+          sudo prlimit --pid $$ --memlock=unlimited:unlimited   # swap is on: the process gate locks memory
+          timeout 1800 /tmp/elpis-venv/bin/python -m pytest -rs --lane stress --durations=10
       - name: HISTORICAL lane
-        run: timeout 1800 /tmp/elpis-venv/bin/python -m pytest -rs --lane historical --durations=10
+        run: |
+          sudo prlimit --pid $$ --memlock=unlimited:unlimited   # swap is on: the process gate locks memory
+          timeout 1800 /tmp/elpis-venv/bin/python -m pytest -rs --lane historical --durations=10
 
   airgap:
     name: Python without network
@@ -176,7 +186,7 @@ jobs:
       - name: Every Python lane in a network namespace with no interfaces up
         run: |
           run_isolated() {
-            sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
+            sudo unshare --net -- prlimit --memlock=unlimited:unlimited -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
               env -i PATH="$PATH" HOME="$HOME" PYTHONDONTWRITEBYTECODE=1 ELPIS_REQUIRE_NATIVE=1 \
               ELPIS_NATIVE_BUILD="$ELPIS_NATIVE_BUILD" "$@"
           }
@@ -215,29 +225,30 @@ jobs:
       - name: System acceptance, offline, from outside the checkout
         run: |
           cd "$RUNNER_TEMP"
-          sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
+          sudo unshare --net -- prlimit --memlock=unlimited:unlimited -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
             env -i PATH="$PATH" HOME="$HOME" PYTHONDONTWRITEBYTECODE=1 \
             timeout 1800 "$RUNNER_TEMP/venv/bin/python" -m elpis.runtime.acceptance \
             --native-build "$RUNNER_TEMP/build" --work "$RUNNER_TEMP/acceptance" \
             --source-commit "$GITHUB_SHA" --report "$RUNNER_TEMP/acceptance.json"
-      # The production entry point (docs/NATIVE_HOST.md): the native host installed from the build (runtime and testing
-      # components), then, offline and unprivileged, its interpreter-free smoke and the full native suite (closure,
-      # pins, the crash matrix, the authority attacks, containment, boundedness) against the installed binaries.
+      # The production entry point (docs/NATIVE_HOST.md): the RAM-only native host installed from the build (the runtime
+      # component; the testing host is test support and is never installed), then, offline and unprivileged, its
+      # interpreter-free smoke and the full native suite (closure, pins, sessions in memory, killed processes,
+      # containment and its write refusals, the swap policy) against the installed binaries.
       - name: Native install and test harness (network allowed only here)
         run: |
           cmake --install "$RUNNER_TEMP/build" --prefix "$RUNNER_TEMP/prefix" --component runtime
-          cmake --install "$RUNNER_TEMP/build" --prefix "$RUNNER_TEMP/prefix" --component testing
           # The harness: pytest, and the checkout's package (the offline reference the differential test compares
           # against, which the integration conftest imports). Nothing of it runs on the production path.
           python -m venv "$RUNNER_TEMP/harness"
           "$RUNNER_TEMP/harness/bin/python" -m pip install . pytest
       - name: Native installed acceptance, offline
         run: |
-          sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
+          sudo unshare --net -- prlimit --memlock=unlimited:unlimited -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
             env -i PATH="$PATH" HOME="$HOME" \
             cmake -DHOST="$RUNNER_TEMP/prefix/bin/elpis" -DLIBRARIES="$RUNNER_TEMP/prefix/lib/elpis" \
+            -DTESTING_HOST="$RUNNER_TEMP/build/native/runtime/elpis_testing" \
             -DSCRATCH="$RUNNER_TEMP/native-smoke" -P native/runtime/host/tests/host_smoke.cmake
-          sudo unshare --net -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
+          sudo unshare --net -- prlimit --memlock=unlimited:unlimited -- setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups \
             env -i PATH="$PATH" HOME="$HOME" PYTHONDONTWRITEBYTECODE=1 \
             ELPIS_NATIVE_HOST_PREFIX="$RUNNER_TEMP/prefix" ELPIS_NATIVE_BUILD="$RUNNER_TEMP/build" \
             timeout 1800 "$RUNNER_TEMP/harness/bin/python" -m pytest -p no:cacheprovider -rs --lane all \
@@ -292,9 +303,12 @@ jobs:
         # reference, K1), ECS_C (memory) and RuntimeCore's composite tests, the set this step ran as ^ECS. before.
         run: ctest --test-dir build --output-on-failure -R "^(ECS_G|ECS_C)\.|^runtime\.test_(ecs_composite|k1_legacy_differential)$"
       - name: SCIENTIFIC lane (evidence integrity, chronology, replay contracts of every laboratory; tests/lanes.py)
-        run: /tmp/elpis-venv/bin/python -m pytest -rs --lane scientific --durations=10
+        run: |
+          sudo prlimit --pid $$ --memlock=unlimited:unlimited   # swap is on: the process gate locks memory
+          /tmp/elpis-venv/bin/python -m pytest -rs --lane scientific --durations=10
       - name: Current-runtime regressions behind the evidence (declared environment)
         run: >-
+          sudo prlimit --pid $$ --memlock=unlimited:unlimited &&
           /tmp/elpis-venv/bin/python -m pytest -rs
           tests/ECS
           tests/boundary/test_cognition_r0.py
@@ -303,11 +317,11 @@ jobs:
           tests/boundary/test_mission.py
 
   continuity:
-    # The Rust systems core: the ECS_C volatile session (native/ECS_C/session, the transition law's owner), the
-    # retiring durable ECS_C authority (native/ECS_C/authority), into which standalone continuity retired, and
-    # RuntimeCore (native/runtime, ABI v7: the ECS_C authority is its only durable authority): format, lint and
-    # their bounded deterministic suites. Every native job also builds them through CMake and runs `ctest -L ECS_C` and
-    # `ctest -L runtime` (RuntimeCore's C ABI over real native K1). The job keeps its id and name (a required check).
+    # The Rust systems core: the ECS_C volatile session (native/ECS_C/session, the transition law's owner) and
+    # RuntimeCore (native/runtime, ABI v8: one volatile session per open, nothing persisted): format, lint and their
+    # bounded deterministic suites. The durable ECS_C authority is retired (git history). Every native job also builds
+    # them through CMake and runs `ctest -L ECS_C` and `ctest -L runtime` (RuntimeCore's C ABI over real native K1).
+    # The job keeps its id and name (a required check).
     name: Continuity and RuntimeCore (Rust)
     runs-on: ubuntu-latest
     steps:
@@ -316,13 +330,12 @@ jobs:
         run: |
           rustup component add rustfmt clippy
           cargo --version && rustc --version
-      - name: RuntimeCore format, lint and test (embeds the ECS_C authority; bounded)
+      - name: RuntimeCore format, lint and test (embeds the ECS_C session; bounded)
         working-directory: native/runtime
         run: |
           cargo fmt --check
           timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
-          timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
-          timeout 600 cargo test --offline --locked --release --features testing
+          timeout 600 cargo test --offline --locked --release
       - name: ECS_C volatile session format, lint and test (no_std, no dependencies; bounded)
         working-directory: native/ECS_C/session
         run: |
@@ -330,14 +343,6 @@ jobs:
           timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
           timeout 600 cargo clippy --offline --locked --release --all-targets --features c-abi -- -D warnings
           timeout 900 cargo test --offline --locked --release --features c-abi
-      - name: ECS_C authority format, lint and test (consumes the session crate's law; bounded)
-        working-directory: native/ECS_C/authority
-        run: |
-          cargo fmt --check
-          timeout 600 cargo clippy --offline --locked --release --all-targets -- -D warnings
-          timeout 600 cargo clippy --offline --locked --release --all-targets --features testing -- -D warnings
-          timeout 600 cargo clippy --offline --locked --release --all-targets --no-default-features -- -D warnings
-          timeout 900 cargo test --offline --locked --release
       - name: H-ECS R0 research crate format and lint (its tests run under ctest -L hecs in the native jobs)
         working-directory: research/hecs_r0/rust
         run: |

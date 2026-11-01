@@ -16,9 +16,9 @@ from pathlib import Path
 from elpis.runtime import Runtime
 from elpis.runtime.context import BINDING, ContextAxiom, ContextLane, ContextLimits, Observation
 
-from .test_composite_runtime import AUTHORITY, _learn, _store, fresh, library, obs  # noqa: F401 (fixture)
+from .test_codec_ecs_turn import _config
+from .test_composite_runtime import AUTHORITY, _learn, fresh, library, obs  # noqa: F401 (fixture)
 from .test_context_lane import _axiom, _hex, _relation, _settle
-from .test_k1_recovery import _cfg
 
 SRC = Path(__file__).resolve().parents[2] / "src" / "elpis" / "runtime"
 
@@ -93,8 +93,7 @@ def test_a_consumed_context_view_never_reaches_the_k1_schedule_or_the_memory(lib
         view = lane.view()
         assert view.axioms and view.relations
         with fresh(library) as x, fresh(library) as twin, \
-                Runtime(_cfg(tmp_path, _store(library, tmp_path / "ck"))) as runtime, \
-                Runtime(_cfg(tmp_path, _store(library, tmp_path / "ck-twin"), continuity="twin")) as other:
+                Runtime(_config()) as runtime, Runtime(_config()) as other:
             runtime.anchor_cognition(x)
             other.anchor_cognition(twin)
             with_context = runtime.run_learn(x, _learn(), context=lane)

@@ -16,22 +16,22 @@ its mechanics are qualified.
 Amendment 3 (below) retires persistent runtime state: Elpis computes, learns
 and binds its lineage and authority in volatile memory only, and reads
 immutable resources. Where this section or Amendments 1 and 2 say "persists"
-or "durable", Amendment 3 governs. The migration is incomplete; see its Status.
+or "durable", Amendment 3 governs. The migration is complete; see its Status.
 
 DSV4 is not the brain. It is the encode/decode boundary between human/token
 space and Elpis's internal computational substrate.
 
 The ECS has two native owners (Amendment 1, below): **ECS_G** (`native/ECS_G`)
 owns geometric cognition, and **ECS_C** (`native/ECS_C`) owns continuity and
-memory. Only RuntimeCore composes them. ECS_C holds the memory and the ECS_C
-authority (`docs/ECS_C_AUTHORITY.md`): the entity, provenance, lineage and
-evolution authority that binds the minimal durable runtime lineage, RuntimeCore's
-only durable authority since ABI v7 (Amendment 2, below). Its durability
-protocol through the native host `elpis` is RUN PASS under ECS_C Recovery Q0
-for commit `117b41a` (ABI v6) only. It is a fixed set of preallocated files
-holding only the current authority the runtime must verify; it keeps no event
-log, compaction or retention. Neither ECS_G nor ECS_C decides when Elpis may
-think.
+memory. Only RuntimeCore composes them. ECS_C holds the memory and the
+volatile session authority (`docs/ECS_C_SESSION.md`): the entity, provenance,
+lineage and evolution authority that binds the runtime's lineage for one
+session, in volatile memory, RuntimeCore's only authority since ABI v8
+(Amendment 3, below). It keeps no event log, compaction or retention, and
+nothing of it outlives its session. The durable ECS_C authority it succeeded
+(Amendment 2) is retired (`docs/ECS_C_AUTHORITY.md`, history); its ECS_C
+Recovery Q0 pass for commit `117b41a` (ABI v6) remains the record of that
+commit. Neither ECS_G nor ECS_C decides when Elpis may think.
 
 ## Amendment 1 (2026-10-18): the native ECS_G / ECS_C split
 
@@ -117,7 +117,8 @@ document it replaces:
 It is not a configuration option, and no persistent operating mode is offered:
 the persistent runtime is retired, not optimized.
 
-**VOLATILE MIGRATION: INCOMPLETE.** See Status below. Elpis is not diskless.
+**VOLATILE MIGRATION: COMPLETE.** See Status below for what it covers and
+what it does not.
 
 * **The invariant.** Elpis may read immutable resources from persistent
   storage. Every mutable operational state transition occurs only in volatile
@@ -165,10 +166,10 @@ the persistent runtime is retired, not optimized.
 * **ECS_C** binds the session's lineage and authority in volatile memory,
   through the volatile session authority `ECSC_VOLATILE_SESSION_R0`
   (`native/ECS_C/session`, `docs/ECS_C_SESSION.md`), which holds the one
-  transition law. The durable authority is RETIRING
-  (`docs/ECS_C_AUTHORITY.md`). It remains only until RuntimeCore stops reaching
-  it, then becomes archival. Its durability mechanisms are not kept behind a
-  flag.
+  transition law. The durable authority is RETIRED
+  (`docs/ECS_C_AUTHORITY.md`, history): no source, build target or library
+  remains, and git history keeps it. Its durability mechanisms are not kept
+  behind a flag.
 * **HCA** stays research only. B0, B1 and B2 may remain as in-memory
   comparators; B3 is not authorized.
 * **Phases.**
@@ -178,15 +179,32 @@ the persistent runtime is retired, not optimized.
   - V3: RuntimeCore (ABI v8) and the host.
   - V4: FMS, HACF and the remaining writers.
   - V5: adversarial zero-write qualification.
-* **Status.**
-  - V0 to V2 are implemented. V3 to V5 are not.
-  - RuntimeCore ABI v7, the native host and the Python reference interface
-    still create, open, publish to and recover from the durable authority and
-    the checkpoint store.
-  - The FMS cold store, the H-gram association writer and canonical
-    publication from a runtime remain.
-  - No document may describe the runtime as diskless until
-    `elpis.runtime.persistence.VOLATILE_MIGRATION_COMPLETE` is true
+* **Status.** V0 to V5 are implemented; the census records each phase's
+  commits (`docs/VOLATILE_RUNTIME_CENSUS.md`, section 7).
+  - RuntimeCore ABI v8 holds one volatile ECS_C session per open. Its
+    persistent v7 interface is retired (`docs/RUNTIME_CORE.md`; the v7
+    specification is history, `docs/history/RUNTIME_CORE_ABI_V7.md`).
+  - The native host starts with no writable deployment home, and contains
+    itself before its first session (`docs/NATIVE_HOST.md`). The Python
+    reference interface has no reachable persistent-state writer, and
+    refuses to open in a process that could write bytecode, dump core or
+    page its state to swap (`elpis.runtime.environment`).
+  - Retired: the durable ECS_C authority, the checkpoint store, the
+    durability lane, recovery and publication from a runtime; the writable
+    FMS COLD store (FMS ABI v3: WARM and HOT in RAM, COLD an immutable,
+    read-only backing); the H-gram association writer.
+  - `elpis.runtime.persistence.VOLATILE_MIGRATION_COMPLETE` is true: every
+    runtime-connected writer is RETIRED, REPLACED_WITH_VOLATILE or a
+    READ_ONLY_STATIC_RESOURCE, and all 14 closure conditions hold
+    (`docs/VOLATILE_RUNTIME_CENSUS.md`, section 8). The composed runtime
+    recorded zero write-class events on storage in every traced path
+    (`research/volatile_runtime_v1`, `ZERO_WRITE_PASS`).
+  - What it covers is Elpis's own processes. Host services outside Elpis's
+    process-control boundary (swap configuration, crash collectors, journald,
+    backups, filesystem metadata) are the host's, and the census, section 6,
+    lists what the host must provide (`docs/NONCLAIMS.md`).
+  - The documents must state the status exactly as
+    `VOLATILE_MIGRATION_COMPLETE` computes it
     (`tests/boundary/test_volatile_runtime.py`).
 * **Historical qualifications** remain the record of what their commits did:
   ECS_C Recovery Q0, K1 Recovery R0, and the native host's containment and
@@ -211,17 +229,18 @@ has its own lane and its own coordinate:
   law (HCA) is qualified or implemented;
 * **HACF addresses** existing resources and their relationships in place;
   **FMS materializes** bounded resources;
-* the **durability lane preserves explicitly acknowledged state**: on an
-  explicit request it checkpoints and publishes a captured state off the HOT
-  lane, and acknowledges only what restart can recover.
+* the **durability lane** (ABI v4 to v7), which checkpointed and published a
+  captured state on explicit request, is **retired** by Amendment 3: nothing
+  is acknowledged durable, and a restart is a new session.
 
-The live state, the published context view, the last durably acknowledged
-state and the reserved irreversible operations (evolution) are four separate
-coordinates. **Superseded:** through RuntimeCore ABI v3 the runtime published
-continuity (and, with a checkpoint store, a complete checkpoint) after every
-native K1 commit, before the turn returned. That per-turn durability
-requirement is withdrawn by this correction; evidence recorded under it is
-not reinterpreted.
+The live state, the published context view and the reserved irreversible
+operation (evolution, a transition of the session) are separate coordinates,
+all in volatile memory. **Superseded:** through RuntimeCore ABI v3 the runtime
+published continuity (and, with a checkpoint store, a complete checkpoint)
+after every native K1 commit, before the turn returned. That per-turn
+durability requirement was withdrawn by this correction, and Amendment 3
+retired durability altogether; evidence recorded under either is not
+reinterpreted.
 
 ## The topology
 
@@ -237,11 +256,12 @@ admitted ECS stimulus / perturbation
     v
 ==================================================
 ECS / EDEN
-  persistent, evolving computational substrate
-  recurrent dynamics, distributed state, relations,
-  attractors, dynamically materialized computation
-  (FMS materializes what is active; HACF/structure
-   supplies persistent structural relationships)
+  evolving computational substrate (volatile:
+  Amendment 3), recurrent dynamics, distributed state,
+  relations, attractors, dynamically materialized
+  computation (FMS materializes what is active;
+  HACF/structure supplies structural relationships
+  from immutable resources and volatile epochs)
 ==================================================
     |
     v
@@ -288,18 +308,18 @@ remain in public history as evidence and are removed from the canonical path.
 | Subsystem | Role | Must not |
 |---|---|---|
 | ECS_G (`native/ECS_G`; Python bindings `elpis.ECS`) | owns active microscopic dynamical state (`W`), its qualified recurrence, coarse observables (`S3`) and snapshots; a qualified primitive of the cognitive substrate | import inference, codec, runtime or ECS_C; be an auxiliary conditioning vector for a model |
-| ECS_C (`native/ECS_C`) | owns the bounded typed relational memory (exact typed evidence, LOOKUP) and the ECS_C authority (entities, lifecycles, sender attribution, source versions and scopes, the cognition lineage, the evolution authority, receipts, reconciliation; `docs/ECS_C_AUTHORITY.md`): the current durable runtime lineage/authority, RuntimeCore's only durable authority since ABI v7, with fail-closed recovery | import inference, codec, runtime or ECS_G; perform geometric learning or mutate ECS_G's state; hold or substitute for active cognitive state; keep history, an event log or growing persistence; supervise or gate foreground cognition |
+| ECS_C (`native/ECS_C`) | owns the bounded typed relational memory (exact typed evidence, LOOKUP) and the volatile session authority (entities, lifecycles, sender attribution, source versions and scopes, the cognition lineage, the evolution authority, receipts; `docs/ECS_C_SESSION.md`): the runtime's lineage/authority for one session, in volatile memory, RuntimeCore's only authority since ABI v8 | import inference, codec, runtime or ECS_G; perform geometric learning or mutate ECS_G's state; hold or substitute for active cognitive state; keep history, an event log or any persistence; supervise or gate foreground cognition |
 | DSV4 codec (`elpis.inference` codec modules) | communication: text/bytes <-> tokens, vocabulary identity, bounded rendering; the token side of encode/decode | own ECS state; run an autonomous transformer/MoE cognition path |
-| substrate / FMS | generic resource authority, residency and materialization: persistent logical capacity >= resident materialization >= active materialization | require DSV-specific tensor roles in its generic core; decide semantics |
-| structure / HACF | persistent structural memory, topology, representation, provenance | be defined solely as a context-window supplier for a model |
-| runtime | orchestrates codec -> ECS -> codec on the HOT lane (a managed commit is volatile: it advances the live coordinate only); on explicit request, its durability lane captures the live state and publishes it (checkpoint slot when provisioned, then one record of its durable authority, the ECS_C authority: one record and one witness, each written in place and synced); its contextual lane keeps the bounded active context | route cognition through a DSV model; record per-turn receipts or event history; make a HOT operation wait for durable publication or for the contextual lane |
+| substrate / FMS | generic resource authority, residency and materialization: immutable read-only backing (COLD) >= resident materialization (WARM, RAM) >= active materialization (HOT); FMS ABI v3 holds WARM and HOT in volatile memory only | require DSV-specific tensor roles in its generic core; decide semantics; write or spill anything to storage |
+| structure / HACF | structural memory, topology, representation, provenance: immutable resources read in place, and volatile retrieval epochs | be defined solely as a context-window supplier for a model; mutate a structural resource at runtime |
+| runtime | orchestrates codec -> ECS -> codec on the HOT lane (a managed commit is volatile: it advances the live coordinate only); holds one volatile ECS_C session per open (RuntimeCore ABI v8); its contextual lane keeps the bounded active context | route cognition through a DSV model; record per-turn receipts or event history; make a HOT operation wait for the contextual lane; write any runtime state to persistent storage (Amendment 3) |
 
 ## Classification of existing machinery
 
 | Machinery | Classification | Where |
 |---|---|---|
 | V4.1 tokenizer, chat/text rendering, incremental decode (`text.py`), codec contracts (`contracts.py`), budgeted rendering of admitted structural memory (`admission.py`, `structural.py`) | CODEC / COMMUNICATION (canonical) | `src/elpis/inference` |
-| execution port, descriptor capabilities, resource authority, FMS file service and HOT/WARM/COLD residency | GENERIC SUBSTRATE (canonical) | `src/elpis/substrate`, `native/substrate` |
+| execution port, descriptor capabilities, resource authority, FMS file service (read-only COLD backing) and WARM/HOT residency | GENERIC SUBSTRATE (canonical) | `src/elpis/substrate`, `native/substrate` |
 | production-shaped DSV4.1 tower (attention, Engram, mHC, routed/shared MoE, layer recurrence), sealed CPU-native backend, YTS-R0 provider stream, Native Clock R0, DSV-specific Native Materializer R1, donor differentials | FULL DSV COGNITIVE TOWER + DONOR / ORACLE / QUALIFICATION (noncanonical) | `research/dsv41_tower` (Python and native), `tests/research/dsv41_tower`, `docs/research/dsv41_tower` |
 | legacy DSV4 compact synthetic target, decode transaction, sequence path, principal engine, steering, speculative drafting, associative rows, experts, prefetch, global context, safetensors preflight | DSV MODEL-EXECUTION MECHANICS, retained for historical replay of persisted identities and qualification (noncanonical; never composed by the runtime) | `src/elpis/inference` outside the codec modules |
 | ECS-as-DSV-conditioning (`TurnConditioning`, `ConditioningProjection`, `FEATURE_CONDITIONING`, `WorldModelLoop`, `DriveMap`) | OBSOLETE SIDECAR INTEGRATION (removed) | public history only (`f4e1f05`, `75313fb`) |
@@ -352,3 +372,12 @@ canonical code (`src/`, `native/`; `research/` is noncanonical):
 9. the gate itself no longer rejects the forensic sidecar topology;
 10. the qualified ECS kernel sources change without an explicit,
     reviewed update of their pinned digests.
+
+Amendment 3 has its own gates. `tests/boundary/test_volatile_runtime.py` and
+`tests/boundary/test_autonomous_persistence.py` fail when:
+- a source that writes storage is not a registered writer of the census;
+- a runtime-connected writer has a disposition other than RETIRED,
+  REPLACED_WITH_VOLATILE or READ_ONLY_STATIC_RESOURCE;
+- a retired entry point reappears;
+- a binary the runtime loads imports a write-class C library function;
+- a document states the migration's status other than as it is computed.

@@ -219,7 +219,7 @@ elpis_ecs_composite_status elpis_ecs_composite_leased_txn_commit_identity(elpis_
 /* Discard both candidates (any caller; installs nothing). No open transaction: OK. Wrong token: INVALID. */
 elpis_ecs_composite_status elpis_ecs_composite_txn_abort(elpis_ecs_composite *composite, uint64_t token);
 
-/* ---- Live coordinate (additive; docs/RUNTIME_CORE.md, "Live and durable authority") --------------------------
+/* ---- Live coordinate (additive; docs/RUNTIME_CORE.md, "The live coordinate") ---------------------------------
  * The composite's generation is its private K1 state's (ecsg_k1.h, "Live coordinate"): every composite commit is
  * exactly one K1 commit, so it advances by exactly one per committed composite transition and by nothing else; it
  * is not state, not in the envelope and not in any identity (create, restore and import start it at 0). For the

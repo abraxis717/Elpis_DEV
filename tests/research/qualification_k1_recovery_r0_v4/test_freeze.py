@@ -186,12 +186,15 @@ SEALED_FREEZE = json.loads((INSTRUMENT / "evidence" / "freeze.json").read_text()
 
 
 def test_the_successor_runtime_cannot_be_deployed_by_the_frozen_instrument(tmp_path, observed):
-    # The qualified subject is RuntimeCore ABI v5 over standalone continuity (the qualifying commit). This checkout's
-    # RuntimeCore is ABI v7 (Stage F, docs/NATIVE_SPLIT_CENSUS.md, section 9): continuity retired into ECS_C, and the
-    # runtime no longer carries continuity's C ABI. The frozen instrument cannot even measure a deployment of it, so
-    # no freeze of this checkout can exist: the RUN PASS can never be re-derived from, or extended to, the successor.
-    with pytest.raises(AttributeError, match="elpis_continuity_abi_version"):
+    # The qualified subject is RuntimeCore ABI v5 over standalone continuity (the qualifying commit). Stage F
+    # (RuntimeCore ABI v7, docs/NATIVE_SPLIT_CENSUS.md, section 9) retired continuity into ECS_C, and the volatile-native
+    # migration (RuntimeCore ABI v8) retired durable deployment itself: no deployment is initialised, provisioned or
+    # published any more (elpis.runtime.deployment is RAM-only). The frozen instrument cannot even start to deploy the
+    # successor, so no freeze of this checkout can exist: the RUN PASS can never be re-derived from, or extended to,
+    # the successor.
+    with pytest.raises(ImportError, match="init_deployment"):
         freeze.trial_deployment(native_build_dir(), tmp_path / "deployment")
+    assert not (tmp_path / "deployment").exists()
 
 
 def test_the_deployed_copies_their_pins_and_the_reported_abi_are_verified():

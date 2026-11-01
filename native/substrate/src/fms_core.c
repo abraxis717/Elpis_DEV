@@ -1,11 +1,16 @@
-/* fms_core.c - FMS v2 core. Platform-free: no syscalls, no libm, no file paths.
+/* fms_core.c - FMS v3 core. Platform-free: no syscalls, no libm, no file paths.
+ *
+ * Volatile only (ABI v3; docs/ELPIS_MISSION.md, Amendment 3): every object lives in WARM (CPU memory) or HOT
+ * (accelerator memory). There is no WARM -> COLD operation and no COLD residency: ABI v2's writeback of demoted
+ * objects into a durable cold store (cold_put / cold_get / cold_drop) is retired. When WARM is full a registration or a
+ * promotion is refused (FMS_E_LIMIT); nothing spills. Immutable COLD backing (read-only, verified file assets loaded
+ * into WARM) is the file-asset service (elpis/fms_file_service.h), above this core.
  *
  * Locking order (single level, no nesting of FMS locks):
  *   ctx->mu  ->  PAL entry points
- * The lock is dropped around slow PAL work (cold_put/cold_get, hot_upload/
- * hot_download). Safety comes from reserving the destination charge BEFORE the
- * lock is dropped and marking the object FMS_ST_MOVING: a moving object cannot
- * be selected as a victim, unregistered, or moved again.
+ * The lock is dropped around slow PAL work (hot_upload/hot_download). Safety comes from reserving the destination
+ * charge BEFORE the lock is dropped and marking the object FMS_ST_MOVING: a moving object cannot be selected as a
+ * victim, unregistered, or moved again.
  */
 #include "elpis/fms.h"
 #include "elpis/fms_pal.h"
@@ -33,7 +38,7 @@ typedef struct lease_s {
 typedef struct {
     fms_id   id;
     uint32_t kind;
-    uint8_t  live, tier, state, dirty, zero_copy, cold_valid;
+    uint8_t  live, tier, state, zero_copy;
     uint32_t pin_count, lease_count;
     float    pin_priority;
     uint64_t size;
@@ -43,7 +48,6 @@ typedef struct {
     uint8_t  pending_tier, has_pending;
     void    *host_ptr;
     void    *dev_ptr;
-    fms_cold_token *cold;
     uint64_t charge[FMS_NDOMAINS];
 } slot_t;
 
@@ -51,7 +55,7 @@ struct fms_ctx {
     fms_config      cfg;
     fms_pal        *pal;
     fms_hot_profile hot;
-    int             hot_live, cold_live, device_lost;
+    int             hot_live, device_lost;
     slot_t         *slots;
     uint32_t        nslots, gen;
     uint64_t        tier_bytes[FMS_NTIERS];
@@ -99,15 +103,7 @@ static void charge_for(const fms_ctx *c, uint64_t size, int tier, int zero_copy,
     memset(out, 0, sizeof(uint64_t) * FMS_NDOMAINS);
     if (tier == FMS_HOT)       out[zero_copy ? (int)FMS_DOM_RAM : (int)c->hot.domain] = size;
     else if (tier == FMS_WARM) out[FMS_DOM_RAM] = size;
-    else                       out[FMS_DOM_STORAGE] = size;
-}
-
-/* Charge including a retained cold replica: a promoted object that keeps its
- * verified replica still occupies storage and must keep paying for it. */
-static void plan_charge(const fms_ctx *c, const slot_t *s, uint64_t size, int tier,
-                        int zero_copy, uint64_t out[FMS_NDOMAINS]) {
-    charge_for(c, size, tier, zero_copy, out);
-    if (tier != FMS_COLD && s->cold) out[FMS_DOM_STORAGE] = size;
+    /* No object is ever charged to FMS_DOM_STORAGE: nothing resides in storage (ABI v3). */
 }
 
 static void apply_charge(slot_t *s, const uint64_t add[FMS_NDOMAINS]) {
@@ -132,18 +128,16 @@ static slot_t *lookup(fms_ctx *c, fms_id id) {
 
 static int tier_available(const fms_ctx *c, int tier) {
     if (tier == FMS_HOT)  return c->hot_live;
-    if (tier == FMS_COLD) return c->cold_live;
-    return 1;
+    return tier == FMS_WARM;   /* COLD holds no mutable object (ABI v3) */
 }
 
-/* Returns the tier to use, or -1 when policy says reject. */
+/* Returns the tier to use, or -1 when refused. COLD is refused whatever the policy: a mutable object never resides
+ * in, or folds into, storage (ABI v3). */
 static int eff_tier(fms_ctx *c, int t) {
     if (t < FMS_HOT) t = FMS_HOT;
-    if (t > FMS_COLD) t = FMS_COLD;
+    if (t >= FMS_COLD) return -1;
     if (t == FMS_HOT && !c->hot_live)
         return c->cfg.hot_absent_policy == FMS_REJECT ? -1 : FMS_WARM;
-    if (t == FMS_COLD && !c->cold_live)
-        return c->cfg.cold_absent_policy == FMS_REJECT ? -1 : FMS_WARM;
     return t;
 }
 
@@ -153,7 +147,6 @@ static double evict_cost_ns(fms_ctx *c, const slot_t *s, uint64_t now) {
     double sz = (double)s->size, demote_ns, promote_ns, tau, age, p;
 
     if (s->tier == FMS_HOT && s->zero_copy)      demote_ns = 1000.0;   /* drop an alias */
-    else if (s->tier == FMS_WARM && s->cold && s->cold_valid && !s->dirty) demote_ns = 1000.0;
     else demote_ns = sz * NS_PER_SEC / (double)bw(c, s->tier, s->tier + 1);
     promote_ns = sz * NS_PER_SEC / (double)bw(c, s->tier + 1, s->tier);
 
@@ -169,9 +162,8 @@ static double evict_cost_ns(fms_ctx *c, const slot_t *s, uint64_t now) {
 static int demotable(const fms_ctx *c, const slot_t *s) {
     if (!s->live || s->pin_count || s->lease_count) return 0;
     if (s->state != FMS_ST_RESIDENT) return 0;
-    if (s->tier >= FMS_COLD) return 0;
-    if (s->tier + 1 == FMS_COLD && !c->cold_live) return 0;
-    return 1;
+    (void)c;
+    return s->tier == FMS_HOT;   /* only HOT -> WARM: WARM has nowhere lower to go (ABI v3) */
 }
 
 /* Victim in one tier (tier pressure). */
@@ -192,7 +184,7 @@ static slot_t *victim_in_tier(fms_ctx *c, int tier, uint64_t now, int relax) {
 }
 
 /* Victim whose demotion actually reduces pressure on `dom`. On an integrated
- * GPU, demoting HOT->WARM does not free RAM; only WARM->COLD does. */
+ * GPU, demoting HOT->WARM does not free RAM, and nothing below WARM exists: RAM pressure is refused. */
 static slot_t *victim_for_domain(fms_ctx *c, int dom, uint64_t now, int relax) {
     slot_t *best = NULL; double best_v = -1.0;
     uint64_t after[FMS_NDOMAINS];
@@ -276,8 +268,6 @@ static void commit_move(fms_ctx *c, slot_t *s, int to, const uint64_t add[FMS_ND
                         uint64_t now, uint64_t t0) {
     uint64_t final_charge[FMS_NDOMAINS];
     memcpy(final_charge, add, sizeof final_charge);
-    /* s->cold may have been created during this hop. */
-    if (to != FMS_COLD && s->cold) final_charge[FMS_DOM_STORAGE] = s->size;
     for (int d = 0; d < FMS_NDOMAINS; d++) {
         c->dom_bytes[d] -= s->charge[d];
         c->dom_bytes[d] -= s->pending[d];
@@ -296,12 +286,11 @@ static void commit_move(fms_ctx *c, slot_t *s, int to, const uint64_t add[FMS_ND
 }
 
 static fms_status hop_down(fms_ctx *c, slot_t *s, uint64_t now) {
-    int from = s->tier, to = from + 1;
-    if (to > FMS_COLD) return FMS_E_LIMIT;
-    if (to == FMS_COLD && !c->cold_live) return FMS_E_UNSUPPORTED;
+    int to = s->tier + 1;
+    if (to >= FMS_COLD) return FMS_E_LIMIT;   /* no WARM -> COLD operation exists (ABI v3) */
 
     uint64_t add[FMS_NDOMAINS], t0 = now_of(c);
-    plan_charge(c, s, s->size, to, 0, add);
+    charge_for(c, s->size, to, 0, add);
 
     /* Delta reservation: the object already holds its current charge. */
     uint64_t delta[FMS_NDOMAINS];
@@ -314,49 +303,27 @@ static fms_status hop_down(fms_ctx *c, slot_t *s, uint64_t now) {
     hold_reservation(c, s, to, delta);
 
     c->st.inflight_ops++;
-    if (from == FMS_HOT) {
-        if (s->zero_copy) {                       /* device view is an alias: just drop it */
-            c->pal->hot_free(c->pal->self, s->dev_ptr, s->size);
-            s->dev_ptr = NULL; s->zero_copy = 0;
-        } else {
-            void *h = NULL;
-            if (c->pal->ram_alloc(c->pal->self, s->size, &h) != 0) {
-                c->st.inflight_ops--; drop_reservation(c, s); s->state = FMS_ST_RESIDENT;
-                return FMS_E_NOMEM;
-            }
-            void *dev = s->dev_ptr;
-            unlock(c);
-            int rc = c->pal->hot_download(c->pal->self, h, dev, s->size);
-            lock(c);
-            if (rc != 0) {
-                c->pal->ram_free(c->pal->self, h, s->size);
-                c->st.inflight_ops--; drop_reservation(c, s); c->st.device_failures++;
-                c->st.move_failures++; s->state = FMS_ST_FAILED;
-                return FMS_E_DEVICE;
-            }
-            c->pal->hot_free(c->pal->self, dev, s->size);
-            s->dev_ptr = NULL; s->host_ptr = h;
+    if (s->zero_copy) {                           /* device view is an alias: just drop it */
+        c->pal->hot_free(c->pal->self, s->dev_ptr, s->size);
+        s->dev_ptr = NULL; s->zero_copy = 0;
+    } else {
+        void *h = NULL;
+        if (c->pal->ram_alloc(c->pal->self, s->size, &h) != 0) {
+            c->st.inflight_ops--; drop_reservation(c, s); s->state = FMS_ST_RESIDENT;
+            return FMS_E_NOMEM;
         }
-    } else {                                       /* WARM -> COLD */
-        if (!s->cold || !s->cold_valid || s->dirty) {
-            void *src = s->host_ptr; uint64_t n = s->size;
-            fms_cold_token *tok = NULL;
-            unlock(c);
-            int rc = c->pal->cold_put(c->pal->self, src, n, &tok);
-            lock(c);
-            if (rc != 0) {
-                c->st.inflight_ops--; drop_reservation(c, s); c->st.move_failures++;
-                s->state = FMS_ST_RESIDENT;
-                return rc == FMS_PAL_ENOMEM ? FMS_E_NOMEM : FMS_E_IO;
-            }
-            if (s->cold) c->pal->cold_drop(c->pal->self, s->cold);
-            s->cold = tok; s->cold_valid = 1; s->dirty = 0;
-            c->st.cold_writes++;
-        } else {
-            c->st.cold_replica_reuse++;
+        void *dev = s->dev_ptr;
+        unlock(c);
+        int rc = c->pal->hot_download(c->pal->self, h, dev, s->size);
+        lock(c);
+        if (rc != 0) {
+            c->pal->ram_free(c->pal->self, h, s->size);
+            c->st.inflight_ops--; drop_reservation(c, s); c->st.device_failures++;
+            c->st.move_failures++; s->state = FMS_ST_FAILED;
+            return FMS_E_DEVICE;
         }
-        c->pal->ram_free(c->pal->self, s->host_ptr, s->size);
-        s->host_ptr = NULL;
+        c->pal->hot_free(c->pal->self, dev, s->size);
+        s->dev_ptr = NULL; s->host_ptr = h;
     }
     c->st.inflight_ops--;
     commit_move(c, s, to, add, now, t0);
@@ -365,13 +332,13 @@ static fms_status hop_down(fms_ctx *c, slot_t *s, uint64_t now) {
 }
 
 static fms_status hop_up(fms_ctx *c, slot_t *s, uint64_t now) {
-    int from = s->tier, to = from - 1;
+    int to = s->tier - 1;
     if (to < FMS_HOT) return FMS_E_LIMIT;
     if (to == FMS_HOT && !c->hot_live) return FMS_E_UNSUPPORTED;
 
     int zc = (to == FMS_HOT) ? c->hot.zero_copy : 0;
     uint64_t add[FMS_NDOMAINS], t0 = now_of(c);
-    plan_charge(c, s, s->size, to, zc, add);
+    charge_for(c, s->size, to, zc, add);
 
     uint64_t delta[FMS_NDOMAINS];
     for (int d = 0; d < FMS_NDOMAINS; d++) {
@@ -389,29 +356,7 @@ static fms_status hop_up(fms_ctx *c, slot_t *s, uint64_t now) {
     hold_reservation(c, s, to, delta);
 
     c->st.inflight_ops++;
-    if (from == FMS_COLD) {
-        void *h = NULL;
-        if (c->pal->ram_alloc(c->pal->self, s->size, &h) != 0) {
-            c->st.inflight_ops--; drop_reservation(c, s); s->state = FMS_ST_RESIDENT;
-            return FMS_E_NOMEM;
-        }
-        const fms_cold_token *tok = s->cold; uint64_t n = s->size;
-        unlock(c);
-        int rc = tok ? c->pal->cold_get(c->pal->self, tok, h, n) : FMS_PAL_EIO;
-        lock(c);
-        if (rc != 0) {
-            c->pal->ram_free(c->pal->self, h, s->size);
-            c->st.inflight_ops--; drop_reservation(c, s); c->st.move_failures++;
-            s->state = FMS_ST_FAILED;                       /* never soft-recover corruption */
-            if (rc == FMS_PAL_EDIGEST || rc == FMS_PAL_ESIZE) {
-                c->st.digest_failures++;
-                return FMS_E_DIGEST;
-            }
-            return FMS_E_IO;
-        }
-        c->st.cold_reads++;
-        s->host_ptr = h;                                    /* cold replica retained */
-    } else {                                                /* WARM -> HOT */
+    {                                                       /* WARM -> HOT: the only promotion (ABI v3) */
         void *dev = NULL;
         int rc = c->pal->hot_alloc(c->pal->self, s->size, zc ? s->host_ptr : NULL, &dev);
         if (rc != 0) {
@@ -454,6 +399,8 @@ fms_ctx *fms_create(const fms_config *cfg, fms_pal *pal) {
     if (!cfg || !pal_complete(pal) || pal->abi != FMS_ABI_VERSION) return NULL;
     if (!cfg->max_objects) return NULL;
     if (!cfg->tier_budget[FMS_WARM] || !cfg->domain_ceiling[FMS_DOM_RAM]) return NULL;
+    /* ABI v2's writable COLD tier is retired: a configuration that budgets COLD or storage is refused explicitly. */
+    if (cfg->tier_budget[FMS_COLD] || cfg->domain_ceiling[FMS_DOM_STORAGE]) return NULL;
     if (!(cfg->low_wm > 0.0f && cfg->low_wm <= cfg->high_wm && cfg->high_wm <= 1.0f)) return NULL;
 
     fms_ctx *c = calloc(1, sizeof *c);
@@ -476,8 +423,6 @@ fms_ctx *fms_create(const fms_config *cfg, fms_pal *pal) {
     if (c->hot.zero_copy && !(pal->caps & FMS_CAP_ZERO_COPY)) c->hot.zero_copy = 0;
     if (c->hot.domain >= FMS_NDOMAINS) c->hot.domain = FMS_DOM_DEVICE;
 
-    c->cold_live = (pal->caps & FMS_CAP_COLD) && cfg->tier_budget[FMS_COLD] &&
-                   pal->cold_put && pal->cold_get && pal->cold_drop;
 
     c->last_pump_ns = now_of(c);
     return c;
@@ -493,7 +438,6 @@ void fms_destroy(fms_ctx *c) {
         if (!s->live) continue;
         if (s->dev_ptr)  c->pal->hot_free(c->pal->self, s->dev_ptr, s->size);
         if (s->host_ptr) c->pal->ram_free(c->pal->self, s->host_ptr, s->size);
-        if (s->cold)     c->pal->cold_drop(c->pal->self, s->cold);
     }
     unlock(c);
     pthread_mutex_destroy(&c->mu);
@@ -535,7 +479,6 @@ fms_status fms_register(fms_ctx *c, uint32_t kind, uint64_t bytes, int want_tier
     *out = s->id;
 
     if (want == FMS_HOT) { if (hop_up(c, s, now) != FMS_OK) c->st.forced_placements++; }
-    else if (want == FMS_COLD) { if (hop_down(c, s, now) != FMS_OK) c->st.forced_placements++; }
     int tier = s->tier;
     unlock(c);
     return (fms_status)tier;
@@ -549,7 +492,6 @@ fms_status fms_unregister(fms_ctx *c, fms_id id) {
     if (s->pin_count || s->lease_count || s->state == FMS_ST_MOVING) { unlock(c); return FMS_E_BUSY; }
     if (s->dev_ptr)  c->pal->hot_free(c->pal->self, s->dev_ptr, s->size);
     if (s->host_ptr) c->pal->ram_free(c->pal->self, s->host_ptr, s->size);
-    if (s->cold)     c->pal->cold_drop(c->pal->self, s->cold);
     for (int d = 0; d < FMS_NDOMAINS; d++) c->dom_bytes[d] -= s->charge[d];
     c->tier_bytes[s->tier] -= s->size;
     s->live = 0; c->st.objects--;
@@ -559,26 +501,29 @@ fms_status fms_unregister(fms_ctx *c, fms_id id) {
 
 /* ---- access --------------------------------------------------------------- */
 
-/* Caller holds the lock. Pins first so the target can never be its own victim. */
+/* Caller holds the lock. Pins first so the target can never be its own victim.
+ *
+ * An object that another holder has pinned or leased never moves. Its current bytes are in use: a promotion would
+ * copy them while a writer may be writing, and a non-zero-copy WARM -> HOT hop frees the WARM copy that every earlier
+ * pin points into. So a held object is pinned where it is, and the caller is told the tier it actually got (a forced
+ * placement), exactly as when a promotion is refused. */
 static fms_status pin_at(fms_ctx *c, slot_t *s, int want, unsigned mode, void **ptr, int *tier_out) {
     if (s->state == FMS_ST_FAILED || s->state == FMS_ST_LOST) return FMS_E_STATE;
     if (s->state == FMS_ST_MOVING) return FMS_E_BUSY;
 
     uint64_t now = now_of(c);
+    const int held = s->pin_count || s->lease_count;
     s->pin_count++;
-    while ((int)s->tier > want) {
+    if (held && (int)s->tier > want) c->st.forced_placements++;
+    while (!held && (int)s->tier > want) {
         fms_status r = hop_up(c, s, now);
-        /* Corruption is fatal and never soft-recovered. A device transport
-         * failure is not corruption: the CPU copy is still authoritative, so
-         * the object stays where it is and the caller is told which tier it
-         * actually got. hop_up() has already counted the fallback. */
-        if (r == FMS_E_DIGEST || (r != FMS_OK && s->tier == FMS_COLD)) {
-            s->pin_count--; return r;
-        }
+        /* A device transport failure is not corruption: the CPU copy is still authoritative, so the object stays
+         * where it is and the caller is told which tier it actually got. hop_up() has already counted the
+         * fallback. */
         if (r != FMS_OK) { if (r != FMS_E_DEVICE) c->st.forced_placements++; break; }
     }
     s->last_access_ns = now; s->access_count++;
-    if (mode & FMS_WRITE) { s->dirty = 1; s->cold_valid = 0; }
+    (void)mode;
 
     void *p = (s->tier == FMS_HOT && !s->zero_copy) ? s->dev_ptr
             : (s->tier == FMS_HOT) ? s->dev_ptr : s->host_ptr;
@@ -842,7 +787,7 @@ fms_status fms_query(fms_ctx *c, fms_id id, fms_object_info *o) {
     if (!s) { unlock(c); return FMS_E_NOTFOUND; }
     memset(o, 0, sizeof *o);
     o->id = s->id; o->kind = s->kind; o->tier = s->tier; o->state = s->state;
-    o->zero_copy = s->zero_copy; o->cold_replica = (uint8_t)(s->cold && s->cold_valid);
+    o->zero_copy = s->zero_copy; o->cold_replica = 0;   /* ABI v3: no cold replica ever exists */
     o->pin_count = s->pin_count; o->lease_count = s->lease_count;
     o->size_bytes = s->size; o->last_access_ns = s->last_access_ns;
     o->access_count = s->access_count; o->pin_priority = s->pin_priority;
@@ -881,10 +826,10 @@ const char *fms_strerror(int s) {
     case FMS_E_NOTFOUND: return "no such object";
     case FMS_E_BUSY: return "busy (pinned or fence pending)";
     case FMS_E_UNSUPPORTED: return "tier unavailable under policy";
-    case FMS_E_IO: return "cold io failure";
+    case FMS_E_IO: return "io failure";
     case FMS_E_LIMIT: return "no headroom";
     case FMS_E_STATE: return "bad object state";
-    case FMS_E_DIGEST: return "cold digest mismatch";
+    case FMS_E_DIGEST: return "digest mismatch";
     case FMS_E_DEVICE: return "device failure";
     case FMS_E_TIMEOUT: return "fence timeout";
     case FMS_E_NOT_RESIDENT: return "not resident in the requested tier";

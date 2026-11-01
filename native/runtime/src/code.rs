@@ -1,78 +1,55 @@
-//! Stable RuntimeCore refusal codes: the durable-authority codes (1..=17, 255) and RuntimeCore's own, from 64. The
+//! Stable RuntimeCore refusal codes: the authority codes (2..=5, 9..=13, 15) and RuntimeCore's own, from 64. The
 //! numeric values are C ABI (include/elpis/runtime.h).
+//!
+//! ABI v8 retired every code of the persistent runtime and never reuses its values: the durable authority's storage
+//! codes (1 UNINITIALIZED, 6 PUBLICATION_REFUSED, 7 PUBLICATION_UNCERTAIN, 8 LOCKED, 14 PATH, 16 LEGACY_STORAGE, 17 IO,
+//! 255 TESTING_PROCESS_DEATH) and the checkpoint and durability-lane codes (76..=83). `elpis_runtime_code_name` names
+//! none of them.
 
-/// The durable-authority refusal codes. They are the code space RuntimeCore has reported for its durable authority
-/// since ABI v1, standalone continuity's when it was the authority, kept with their values and names
-/// (`CONTINUITY_*`) by ABI v7, which retired continuity; an ECS_C refusal with an equivalent maps to one
-/// (`authority::map`).
+/// The authority refusal codes: the code space RuntimeCore has reported for its authority since ABI v1, kept with
+/// their values and names (`CONTINUITY_*`); a session refusal with an equivalent maps to one (`authority::map`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(i32)]
 pub enum Code {
-    Uninitialized = 1,
     Unanchored = 2,
     AlreadyAnchored = 3,
     StateMismatch = 4,
     Corrupt = 5,
-    PublicationRefused = 6,
-    PublicationUncertain = 7,
-    Locked = 8,
     AuthorityMismatch = 9,
     EvolutionPending = 10,
     EvolutionNotPending = 11,
     Exhausted = 12,
     Invalid = 13,
-    Path = 14,
     Open = 15,
-    LegacyStorage = 16,
-    /// An operating-system failure outside publication (directory creation, open, lock, read).
-    Io = 17,
-    /// Testing library only: a simulated process death at a named step.
-    TestingProcessDeath = 255,
 }
 
 impl Code {
-    pub const ALL: [Code; 18] = [
-        Code::Uninitialized,
+    pub const ALL: [Code; 10] = [
         Code::Unanchored,
         Code::AlreadyAnchored,
         Code::StateMismatch,
         Code::Corrupt,
-        Code::PublicationRefused,
-        Code::PublicationUncertain,
-        Code::Locked,
         Code::AuthorityMismatch,
         Code::EvolutionPending,
         Code::EvolutionNotPending,
         Code::Exhausted,
         Code::Invalid,
-        Code::Path,
         Code::Open,
-        Code::LegacyStorage,
-        Code::Io,
-        Code::TestingProcessDeath,
     ];
 
     /// The stable name (`elpis_runtime_code_name`).
     pub fn name(self) -> &'static std::ffi::CStr {
         match self {
-            Code::Uninitialized => c"CONTINUITY_UNINITIALIZED",
             Code::Unanchored => c"CONTINUITY_UNANCHORED",
             Code::AlreadyAnchored => c"CONTINUITY_ALREADY_ANCHORED",
             Code::StateMismatch => c"CONTINUITY_STATE_MISMATCH",
             Code::Corrupt => c"CONTINUITY_CORRUPT",
-            Code::PublicationRefused => c"CONTINUITY_PUBLICATION_REFUSED",
-            Code::PublicationUncertain => c"CONTINUITY_PUBLICATION_UNCERTAIN",
-            Code::Locked => c"CONTINUITY_LOCKED",
             Code::AuthorityMismatch => c"CONTINUITY_AUTHORITY_MISMATCH",
             Code::EvolutionPending => c"CONTINUITY_EVOLUTION_PENDING",
             Code::EvolutionNotPending => c"CONTINUITY_EVOLUTION_NOT_PENDING",
             Code::Exhausted => c"CONTINUITY_EXHAUSTED",
             Code::Invalid => c"CONTINUITY_INVALID",
-            Code::Path => c"CONTINUITY_PATH",
             Code::Open => c"CONTINUITY_OPEN",
-            Code::LegacyStorage => c"CONTINUITY_LEGACY_STORAGE",
-            Code::Io => c"CONTINUITY_IO",
-            Code::TestingProcessDeath => c"CONTINUITY_TESTING_PROCESS_DEATH",
         }
     }
 
@@ -108,41 +85,26 @@ pub enum Rt {
     /// The operation is outside its cognitive fuel budget (or the budget outside the ceiling); refused before
     /// any reserve, transaction or K1 mutation.
     Fuel = 75,
-    /// The K1 checkpoint store is not provisioned as required (missing, wrong files or sizes, locked, refused).
-    CheckpointInvalid = 76,
-    /// A K1 checkpoint slot could not be written, synced, or read back verified (its bytes are not exactly the
-    /// envelope written); the authorized slot is intact.
-    CheckpointIo = 77,
-    /// The K1 state's envelope is not the provisioned checkpoint capacity (another shape): refused, never resized.
-    CheckpointShape = 78,
-    /// A newer unauthorized checkpoint candidate needs explicit operator reconciliation (discard or adopt) first.
-    CheckpointUnresolved = 79,
-    /// A durable publication is pending or running; the operation would change the lineage under it.
-    DurableBusy = 80,
-    /// The durable publication waited for has not resolved yet (a wait that timed out). Not a failure.
-    DurablePending = 81,
-    /// A recoverable-state publication was requested without an attached checkpoint store: no owner could hold the
-    /// complete state, so nothing was captured or published (identity-only publication is a separate request).
-    RecoveryUnavailable = 82,
-    /// An identity-only publication was requested while a checkpoint store is attached: every publication must then
-    /// be recoverable (continuity never names an identity the attached store does not hold).
-    CheckpointAttached = 83,
-    /// The FMS-resident state is not resident (WARM) where a HOT operation requires it (demoted, or a move in
-    /// flight): refused before anything touches it, without promoting it, reading the cold store or waiting; nothing
-    /// bound, no fail-stop. Materialize it explicitly (a WARM operation) and retry.
+    /// The FMS-resident state is not resident (WARM) where a HOT operation requires it: refused before anything
+    /// touches it, without promoting it or waiting; nothing bound, no fail-stop. Materialize it explicitly (a WARM
+    /// operation) and retry.
     NotResident = 84,
-    /// ABI v6, ECS_C authority only: the authority refused in a way continuity has no code for. At open: it is not
-    /// provisioned, not protected, or recovery opened it restricted / reconcile-only or refused it (the operator
-    /// reconciles it with the runtime closed). Otherwise: the authority does not authorize the operation. The exact
-    /// ECS_C code is reported by `elpis_runtime_authority_status`.
+    /// The session refused in a way the authority code space has no equivalent for (the exact session code is
+    /// reported by `elpis_runtime_authority_status`): an operator event the transition law refuses, or a session
+    /// that could not draw a nonce at open.
     Authority = 85,
-    /// ABI v6, ECS_C authority only: a typed observation names no present ACTIVE source of the authority, or exceeds
-    /// its source's per-turn bound. Refused before the native observe: the candidate is unchanged.
+    /// A typed observation names no present ACTIVE source of the session, or exceeds its source's per-turn bound.
+    /// Refused before the native observe: the candidate is unchanged.
     ObservationRefused = 86,
+    /// ABI v8: the session's memory could not be reserved at open (nothing was opened; the runtime stays closed).
+    NoMem = 87,
+    /// ABI v8: an operation of the retired persistent runtime (a legacy import or a reconciliation event): refused,
+    /// nothing changed.
+    Retired = 88,
 }
 
 impl Rt {
-    pub const ALL: [Rt; 22] = [
+    pub const ALL: [Rt; 16] = [
         Rt::Invalid,
         Rt::Closed,
         Rt::SubstrateSwitch,
@@ -154,17 +116,11 @@ impl Rt {
         Rt::EvolutionInFlight,
         Rt::EvolutionNotInFlight,
         Rt::Fuel,
-        Rt::CheckpointInvalid,
-        Rt::CheckpointIo,
-        Rt::CheckpointShape,
-        Rt::CheckpointUnresolved,
-        Rt::DurableBusy,
-        Rt::DurablePending,
-        Rt::RecoveryUnavailable,
-        Rt::CheckpointAttached,
         Rt::NotResident,
         Rt::Authority,
         Rt::ObservationRefused,
+        Rt::NoMem,
+        Rt::Retired,
     ];
 
     pub fn name(self) -> &'static str {
@@ -180,17 +136,11 @@ impl Rt {
             Rt::EvolutionInFlight => "RUNTIME_EVOLUTION_IN_FLIGHT",
             Rt::EvolutionNotInFlight => "RUNTIME_EVOLUTION_NOT_IN_FLIGHT",
             Rt::Fuel => "COGNITION_FUEL_EXCEEDED",
-            Rt::CheckpointInvalid => "CHECKPOINT_INVALID",
-            Rt::CheckpointIo => "CHECKPOINT_IO",
-            Rt::CheckpointShape => "CHECKPOINT_SHAPE",
-            Rt::CheckpointUnresolved => "CHECKPOINT_UNRESOLVED",
-            Rt::DurableBusy => "RUNTIME_DURABLE_BUSY",
-            Rt::DurablePending => "RUNTIME_DURABLE_PENDING",
-            Rt::RecoveryUnavailable => "RUNTIME_RECOVERY_UNAVAILABLE",
-            Rt::CheckpointAttached => "RUNTIME_CHECKPOINT_ATTACHED",
             Rt::NotResident => "RUNTIME_NOT_RESIDENT",
             Rt::Authority => "RUNTIME_AUTHORITY",
             Rt::ObservationRefused => "RUNTIME_OBSERVATION_REFUSED",
+            Rt::NoMem => "RUNTIME_NOMEM",
+            Rt::Retired => "RUNTIME_RETIRED",
         }
     }
 
@@ -199,8 +149,7 @@ impl Rt {
     }
 }
 
-/// Any RuntimeCore refusal: a durable-authority code (the authority's own, or a fail-stop disposition) or a runtime
-/// code.
+/// Any RuntimeCore refusal: an authority code (the session's, or a fail-stop disposition) or a runtime code.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
     Authority(Code),

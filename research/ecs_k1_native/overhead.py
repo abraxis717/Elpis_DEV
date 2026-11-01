@@ -14,7 +14,6 @@ import json
 from pathlib import Path
 import random
 import statistics
-import tempfile
 import time
 from array import array
 
@@ -77,9 +76,7 @@ def run(library: Path, samples: int = 300) -> dict:
         out["K1State.consolidate"] = _measure(timed, lambda: s.consolidate(x), samples)
     adapter = ctypes.CDLL(str(lib.with_name("libelpis_ecsg_k1_fms.so")))
     image = k1.envelope_bytes(D, N) - 32
-    with tempfile.TemporaryDirectory() as cold, \
-            Context(adapter, warm_bytes=8 * image, cold_bytes=10 ** 6, max_objects=4,
-                    cold_root=Path(cold) / "cold") as ctx, K1FMSRuntime(k1, ctx, adapter, max_states=2) as r:
+    with Context(adapter, warm_bytes=8 * image, max_objects=4) as ctx, K1FMSRuntime(k1, ctx, adapter, max_states=2) as r:
         ftimed = _Timed(r._f)
         sid = r.register(b"\x05" * 32, D, N, w, max_rows=R)
         r.consolidate(sid, x)

@@ -1,5 +1,7 @@
-# ECS_C: continuity and memory (docs/NATIVE_SPLIT_CENSUS.md): the memory, and the authority successor of
-# native/continuity (authority/, docs/ECS_C_AUTHORITY.md).
+# ECS_C: continuity and memory (docs/NATIVE_SPLIT_CENSUS.md): the memory and the volatile session authority
+# (session/, docs/ECS_C_SESSION.md). The durable ECS_C authority (native/ECS_C/authority: record and witness slots,
+# provisioning, crash recovery) is retired by the volatile-native migration (docs/ELPIS_MISSION.md, Amendment 3); it
+# is in git history only and nothing builds, links or loads it.
 
 # ECS_C memory (docs/ECS_MEMORY.md): the bounded model-free typed relational memory, relocated from
 # research/ecs_memory_mf_r0 (the byte-frozen independent reference; never linked here). Integer arithmetic only. The
@@ -24,10 +26,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT (ELPIS_ENABLE_ASAN OR ELPIS_ENABLE
     "LINKER:--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=aligned_alloc,--wrap=free")
 endif()
 
-# The volatile session authority (docs/ECS_C_SESSION.md), the surviving owner of the ECS_C transition law, before the
-# retiring durable authority that embeds it.
+# The volatile session authority (docs/ECS_C_SESSION.md), the owner of the ECS_C transition law: RAM only, no
+# provisioning, directory, key file or slot.
 add_subdirectory(session)
-add_subdirectory(authority)
 
 # ECS_C HCA (docs/ECS_C_HCA.md): the native research substrate of typed-hypergraph cellular memory, the B0/B1/B2
 # comparators of research/ecsc_hca_r0. RESEARCH ONLY, GATED: nothing canonical links or loads it

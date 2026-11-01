@@ -1,5 +1,11 @@
 # Production Python authority census (R2, after Rust continuity)
 
+> **History** (`docs/ELPIS_MISSION.md`, Amendment 3; `docs/VOLATILE_RUNTIME_CENSUS.md`). This census predates the
+> volatile-native runtime, and its rows are the record of `c5e619a`. The canonical Grid81 publisher and the
+> application ledgers it lists as durable production authority are now offline operator processes, never reachable
+> from a runtime composer (census: OFFLINE_ARTIFACT_PRODUCER). `Runtime.publish_canonical` is retired, and continuity
+> and every runtime durability path are retired.
+
 Base: `c5e619a` (main after PRs #36, #37, #38). This census drives the migration on this branch. It traces the
 live production path from its entry points, `elpis.runtime.Runtime` (composition) and the canonical turn
 (`Runtime.run_turn`), through every subsystem it composes. Each surface is classified as:

@@ -77,19 +77,19 @@ elpis_add_test(structure test_embedding_provider SOURCES ${HACF}/tests/vector/te
   LIBS elpis_embedding)
 elpis_add_test(structure test_vector_shard SOURCES ${HACF}/tests/vector/test_vector_shard.cpp
   LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-shard-state)
+# The vector suites run over a volatile FMS context (ABI v3: WARM in RAM, no COLD tier) and create no file.
 elpis_add_test(structure test_vector_search SOURCES ${HACF}/tests/vector/test_vector_search.cpp
-  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-search-state)
+  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector)
 elpis_add_test(structure test_vector_fms SOURCES ${HACF}/tests/vector/test_vector_fms.cpp
-  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-fms-state)
-# Dominated by real cold I/O under deliberate shard thrashing; the timeout is
-# finite so a liveness defect fails instead of hanging.
+  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector)
+# The timeout is finite so a liveness defect fails instead of hanging.
 elpis_add_test(structure test_vector_concurrency SOURCES ${HACF}/tests/vector/test_vector_concurrency.cpp
-  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-conc-state TIMEOUT 600)
+  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector TIMEOUT 600)
 elpis_add_test(structure test_vector_crosshost_fixture SOURCES ${HACF}/tests/vector/test_vector_crosshost_fixture.cpp
-  LIBS elpis_corpus ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-xhost-state
+  LIBS elpis_corpus ${VEC_LIBS} INCLUDES ${HACF}/tests/vector
   DEFINES HACF_FIXTURE_DIR="${HACF}/tests/vector/fixture")
 elpis_add_test(structure test_vector_adversarial SOURCES ${HACF}/tests/vector/test_vector_adversarial.cpp
-  LIBS elpis_corpus ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-adv-state)
+  LIBS elpis_corpus ${VEC_LIBS} INCLUDES ${HACF}/tests/vector)
 elpis_add_test(structure test_context_graph SOURCES ${HACF}/tests/hybrid/test_context_graph.cpp
   LIBS elpis_hybrid INCLUDES ${HACF}/tests/vector ${HACF}/tests/hybrid)
 elpis_add_test(structure test_hybrid_fusion SOURCES ${HACF}/tests/hybrid/test_hybrid_fusion.cpp
@@ -118,6 +118,7 @@ elpis_add_library(structure elpis_semantic STATIC
   ${SEM}/src/graph/segment_writer.c
   ${SEM}/src/graph/segment_reader.c
   ${SEM}/src/graph/snapshot_manifest.c
+  ${SEM}/src/graph/snapshot_publish.c
   ${SEM}/src/graph/active_head_b2b.c
   ${SEM}/src/graph/snapshot_view.c
   ${SEM}/src/graph/query_overlay.c
@@ -358,29 +359,25 @@ elpis_add_test(structure test_retrieval_semantic_projection
   LIBS elpis_retrieval_bridge elpis_semantic elpis_corpus
   INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/bridge ${HACF}/include TIMEOUT 60)
 
-# HACF's one user-provisioned, physically preallocated associative-state file.
-# The initializer runs only on explicit operator invocation. No inference-time
-# initialization, append, resize or persistent metadata sidecars.
+# A retained H-gram is a READ-ONLY static resource (elpis/hgram_store.h): probe and association reads only. The
+# initializer executable (elpis_hgram_init) and the in-place association writer are retired by the volatile-native
+# migration (docs/ELPIS_MISSION.md, Amendment 3); the tests build their fixture files with test-only code
+# (tests/kernel/hgram_fixture.h), never through the library.
 target_sources(elpis_cascade PRIVATE ${HACF}/src/kernel/hgram_store.c)
 elpis_add_test(structure test_hgram_store
   SOURCES ${HACF}/tests/kernel/test_hgram_store.c
   LIBS elpis_cascade TIMEOUT 45)
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  add_executable(elpis_hgram_init ${HACF}/src/kernel/hgram_init.c)
-  _elpis_register(structure elpis_hgram_init executable)
-  target_link_libraries(elpis_hgram_init PRIVATE elpis_cascade)
-endif()
 
-# R1 direct, operator-gated fixed association mechanics. Never a runtime writer.
+# Association reads over fixture files: found, absent, conflicting, torn and corrupt cells, a shared lock.
 elpis_add_test(structure test_hgram_assoc
   SOURCES ${HACF}/tests/kernel/test_hgram_assoc.c
   LIBS elpis_cascade TIMEOUT 45)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  # Test-only mutation trap: proves every association write stays inside the
-  # provisioned extent (portable, unlike host st_blocks accounting).
+  # Test-only mutation trap: every probe and read must issue zero storage mutations (no write, resize, creation,
+  # rename, unlink or sync), and open nothing for writing.
   target_compile_definitions(test_hgram_assoc PRIVATE HGRAM_WRITE_TRAP=1)
   target_link_options(test_hgram_assoc PRIVATE
     "-Wl,--wrap=pwrite" "-Wl,--wrap=write" "-Wl,--wrap=ftruncate" "-Wl,--wrap=fallocate"
     "-Wl,--wrap=posix_fallocate" "-Wl,--wrap=open" "-Wl,--wrap=openat" "-Wl,--wrap=__openat_2"
-    "-Wl,--wrap=renameat" "-Wl,--wrap=unlinkat")
+    "-Wl,--wrap=renameat" "-Wl,--wrap=unlinkat" "-Wl,--wrap=fsync" "-Wl,--wrap=fdatasync")
 endif()

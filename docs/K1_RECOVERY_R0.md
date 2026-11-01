@@ -2,6 +2,12 @@
 
 **CHECKPOINT BYTES DO NOT AUTHORIZE THEMSELVES. CONTINUITY REMAINS THE CURRENT-AUTHORITY REGISTER.**
 
+> **RETIRED. HISTORY** (`docs/ELPIS_MISSION.md`, Amendment 3; `docs/VOLATILE_RUNTIME_CENSUS.md`). RuntimeCore ABI v8
+> has no checkpoint store: `checkpoint.rs`, `durable.rs`, `elpis.runtime.recovery` and the
+> `elpis_runtime_checkpoint_*` functions are deleted, and a restart is a new session. This document specifies the
+> mechanism as it was, so that its retirement and its qualification record (RUN PASS for commit `18f2f4d` only) can
+> be reviewed. Nothing in it is a target design.
+
 Status: implemented systems mechanism (`native/runtime/src/checkpoint.rs`, written by the durability lane of
 `native/runtime/src/durable.rs`, RuntimeCore ABI v4, `elpis.runtime.recovery`).
 UNQUALIFIED here: this document specifies the mechanism and its tests and qualifies nothing by itself. Its ABI v4
@@ -136,7 +142,7 @@ and the composite in `native/runtime/tests/test_runtime_composite.c`; with real 
 every step and after the acknowledgment was delivered in `tests/integration/test_durable_process_kill.py`, plus
 randomized kills while learning and publishing. Restart recovers only a complete, authorized durable state, which
 may include a publication completed immediately before the caller lost its acknowledgment: a missing
-acknowledgment is not evidence that nothing became durable (docs/RUNTIME_CORE.md, "Crash law").
+acknowledgment is not evidence that nothing became durable (docs/history/RUNTIME_CORE_ABI_V7.md, "Crash law").
 
 | Process dies / fails ... | Durable state | After restart |
 |---|---|---|

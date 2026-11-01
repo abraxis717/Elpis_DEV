@@ -6,9 +6,10 @@ and `include/elpis/ecs_c_types.h` (the shared entity, evolution, kind, lifecycle
 Implementation: `native/ECS_C/session` (Rust crate `elpis_ecs_c_session`, `no_std`; library
 `libelpis_ecs_c_session.so`).
 
-**VOLATILE MIGRATION: INCOMPLETE.** The session is built and tested, and the relational view's end-to-end test runs
-over it (phase V2). Nothing composes it yet. RuntimeCore ABI v7, the native host and the Python reference interface
-still hold the durable authority (`docs/ECS_C_AUTHORITY.md`, RETIRING). Phase V3 replaces it there.
+**VOLATILE MIGRATION: COMPLETE.** RuntimeCore ABI v8 holds one session per open runtime, embedded without its C ABI
+(`docs/RUNTIME_CORE.md`, "The session authority (ABI v8)"), on the native host and the Python reference interface
+alike. The relational view runs over it (phase V2). The durable authority it replaced is retired
+(`docs/ECS_C_AUTHORITY.md`, history).
 
 ## What it is
 
@@ -20,9 +21,9 @@ The ECS_C authority's logic as bounded state in volatile memory only. It covers:
 - the cognition lineage and the evolution authority;
 - receipts.
 
-It runs the **same transition law** as the durable authority. `model.rs` (with `register.rs`, `sha256.rs` and
-`error.rs`) moved into this crate unchanged. The durable crate now consumes the law from here: it has one
-implementation, not a copy. What the session does not have:
+It runs the **same transition law** as the durable authority did. `model.rs` (with `register.rs`, `sha256.rs` and
+`error.rs`) moved into this crate unchanged, and the durable crate consumed the law from here until it was retired:
+there was always one implementation, never a copy. What the session does not have:
 - records, witness slots or a deployment key file;
 - provisioning or reconciliation;
 - legacy import, recovery or resumption;
@@ -113,8 +114,9 @@ NULL for them.
 - No protection against code inside the process, which can read or corrupt the session's memory.
 - The session is not swap-proof by itself. Whether its pages can reach swap is a host property (swap disabled, or
   the process locked into memory). The census, section 6, lists what the host must provide.
-- No qualification. The tests and the zero-write evidence (`research/volatile_runtime_v0`) cover the session's own
-  test paths only, not a composed runtime.
+- No qualification of cognition or of the law's semantics. The zero-write evidence covers the session's own test
+  paths (`research/volatile_runtime_v0`) and the composed runtime that holds it (`research/volatile_runtime_v1`): what
+  those runs did, not every possible input.
 
 ## Tests
 

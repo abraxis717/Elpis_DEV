@@ -82,11 +82,12 @@ int  elpis_vector_index_search(elpis_vector_index *ix, const elpis_vector_query 
                                elpis_vector_hit *hits, uint32_t *n_out);
 
 /* The same search, but it never waits: one lease attempt per shard, and a shard
- * that is mid-move, being promoted by another reader, or has no WARM headroom
- * right now is refused at once with ELPIS_VEC_E_RESIDENCY (cause FMS_E_BUSY or
- * FMS_E_LIMIT), never an empty or partial result. A COLD shard is still
- * materialized by the attempt itself (that is FMS's synchronous promotion, not
- * a wait); FMS_E_DIGEST stays an integrity failure. */
+ * that is mid-move or has no WARM headroom right now is refused at once with
+ * ELPIS_VEC_E_RESIDENCY (cause FMS_E_BUSY or FMS_E_LIMIT), never an empty or
+ * partial result. Under FMS ABI v3 (volatile residency, no COLD tier) an
+ * admitted shard stays WARM-resident until it is closed, so neither refusal
+ * arises for HACF's own shards; FMS_E_DIGEST, if ever reported, stays an
+ * integrity failure. */
 int  elpis_vector_index_search_nowait(elpis_vector_index *ix, const elpis_vector_query *q,
                                       elpis_vector_hit *hits, uint32_t *n_out);
 

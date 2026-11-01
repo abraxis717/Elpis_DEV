@@ -1,4 +1,7 @@
-"""Mutable ECS FMS residency mechanics; no scientific claims."""
+"""Mutable ECS FMS residency mechanics; no scientific claims.
+
+FMS ABI v3: residency is volatile (WARM in RAM; no COLD tier, no storage, no scratch root). A state beyond the WARM
+budget is refused (``CAPACITY``), never spilled, and the pump never moves a resident state."""
 from array import array
 import ctypes
 import hashlib
@@ -24,13 +27,13 @@ def _adapter_path():
 
 
 @pytest.fixture
-def runtime(tmp_path):
+def runtime():
     math = ctypes.CDLL(str(_library_path()))
     adapter = ctypes.CDLL(str(_adapter_path()))
     api = ECSGLibrary(math)
     snapshot = 40 + 6 * 72 * 8
-    with Context(adapter, warm_bytes=2 * snapshot, cold_bytes=100000,
-                 max_objects=16, cold_root=tmp_path / "cold") as ctx:
+    with Context(adapter, warm_bytes=2 * snapshot,
+                 max_objects=16) as ctx:
         with FMSRuntime(api, ctx, adapter, max_states=16) as r:
             assert ctx.handle.value is None
             yield api, r
@@ -76,23 +79,26 @@ def test_parity(runtime, width, rows, steps):
             assert restored.snapshot() == blob and restored.forward(x) == e.forward(x)
 
 
-def test_identity_scaling_isolation_and_accounting(runtime):
+def test_identity_isolation_bounded_residency_and_accounting(runtime):
     _, r = runtime
     w, x, y = data(717, 72, 32)
+    snapshot = 40 + 6 * 72 * 8
     states = []
     try:
-        for i in range(10):
+        for i in range(2):                    # the WARM budget holds exactly two states of this shape
             s = r.create(key(i), 6, 72, w)
             states.append(s)
             s.learn(x, array("d", (v + i * 0.1 for v in y)), 0.002, i + 1)
+        with pytest.raises(ECSGError, match="CAPACITY"):
+            r.create(key(2), 6, 72, w)        # refused at the bound, never spilled
         infos = [r.inspect(s) for s in states]
         identities = [i["logical_identity"] for i in infos]
-        assert len(set(identities)) == 10
+        assert len(set(identities)) == 2
         expected = hashlib.sha256(b"elpis.ecsg.logical.v1\0" + key(0) + struct.pack("<QQ", 6, 72)).hexdigest()
         assert identities[0] == expected
         answers = [s.forward(x) for s in states]
-        assert len(set(answers)) == 10
-        a, b = states[:2]
+        assert len(set(answers)) == 2
+        a, b = states
         assert a.forward(x) == answers[0]
         b.learn(x, y, 0.002, 10)
         r.pump()
@@ -100,20 +106,23 @@ def test_identity_scaling_isolation_and_accounting(runtime):
         assert a.epoch == 1 and b.epoch == 12
         assert r.inspect(a)["logical_identity"] == identities[0]
         assert r.inspect(b)["logical_identity"] == identities[1]
+        assert all(r.inspect(s)["tier"] == 1 and r.inspect(s)["cold_replica"] == 0 for s in states)
         m = r.stats()
-        snapshot = 40 + 6 * 72 * 8
-        assert m["states"] == 10 and m["logical_bytes"] == 10 * snapshot
-        assert m["logical_bytes"] > m["resident_authoritative_bytes"]
-        assert m["resident_authoritative_bytes"] <= 2 * snapshot
+        assert m["states"] == 2 and m["logical_bytes"] == 2 * snapshot
+        assert m["resident_authoritative_bytes"] == m["logical_bytes"]       # everything is resident, nothing spilled
         assert m["resident_high_water"] <= 2 * snapshot
         assert m["leases"] == 0 and m["residency"]["pinned_bytes"] == 0
-        assert m["residency"]["cold_reads"] > 0 and m["residency"]["cold_writes"] > 0
+        assert m["residency"]["cold_reads"] == m["residency"]["cold_writes"] == 0
+        assert m["residency"]["demotions"] == 0 and m["residency"]["tier_bytes"][2] == 0
+        assert m["residency"]["domain_bytes"][2] == 0
         assert m["residency"]["tier_bytes"][0] == 0
         assert m["active_workspace_bytes"] == 0
         with pytest.raises(ECSGError, match="INVALID"):
             r.create(key(0), 6, 72, w)
         with pytest.raises(ECSGError, match="BUSY"):
             r.close()
+        states.pop().close()                  # bounded, not stuck: a closed state frees its place
+        states.append(r.create(key(3), 6, 72, w))
     finally:
         for s in states:
             s.close()
@@ -160,30 +169,39 @@ def test_refusals_transactions_and_cognitive_core(runtime):
         assert s.max_rows == 512 and s.snapshot() == moved
 
 
-def test_capacity_and_cold_lifecycle(tmp_path):
+def test_capacity_bound_and_volatile_lifecycle():
     math = ctypes.CDLL(str(_library_path()))
     adapter = ctypes.CDLL(str(_adapter_path()))
     api = ECSGLibrary(math)
     size = 40 + 6 * 36 * 8
     w, x, y = data(31, 36, 64)
-    with Context(adapter, warm_bytes=size, cold_bytes=size * 8, max_objects=4,
-                 cold_root=tmp_path / "cold") as ctx, FMSRuntime(api, ctx, adapter, max_states=4) as r:
-        with r.create(key(1), 6, 36, w) as a, r.create(key(2), 6, 36, w) as b:
-            assert r.inspect(a)["tier"] == 2
+    with Context(adapter, warm_bytes=size, max_objects=4) as ctx, FMSRuntime(api, ctx, adapter, max_states=4) as r:
+        with r.create(key(1), 6, 36, w) as a:
+            assert r.inspect(a)["tier"] == 1
+            with pytest.raises(ECSGError, match="CAPACITY"):
+                r.create(key(2), 6, 36, w)    # one state fits: the second is refused, the first is not displaced
             with a.transaction():
-                with pytest.raises(ECSGError, match="CAPACITY"):
-                    b.forward(x)
                 r.pump()
                 info = r.inspect(a)
                 assert info["tier"] == 1 and info["lease_count"] == 1
             r.pump()
-            assert r.inspect(a)["tier"] == 2
+            assert r.inspect(a)["tier"] == 1
             a.forward(x)
-            assert r.inspect(a)["cold_replica"] == 1
             a.learn(x, y, 0.002, 3)
-            assert r.inspect(a)["cold_replica"] == 0
             learned = a.snapshot()
             r.pump()
-            assert r.inspect(a)["tier"] == 2
-            assert a.snapshot() == learned
-            assert r.inspect(a)["cold_replica"] == 1
+            assert r.inspect(a)["tier"] == 1 and a.snapshot() == learned
+            assert r.inspect(a)["cold_replica"] == 0
+            residency = r.stats()["residency"]
+            assert residency["demotions"] == residency["cold_reads"] == residency["cold_writes"] == 0
+            assert residency["tier_bytes"][2] == 0 and residency["domain_bytes"][2] == 0
+        with r.create(key(2), 6, 36, w) as b:   # the closed state's place is free again
+            assert r.inspect(b)["tier"] == 1
+
+
+def test_the_retired_cold_root_is_not_a_parameter():
+    adapter = ctypes.CDLL(str(_adapter_path()))
+    with pytest.raises(TypeError):
+        Context(adapter, warm_bytes=4096, cold_bytes=4096, max_objects=4, cold_root="/nonexistent")
+    with pytest.raises(TypeError):
+        Context(adapter, warm_bytes=4096, max_objects=4, cold_root="/nonexistent")

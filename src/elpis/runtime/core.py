@@ -1,22 +1,17 @@
-"""Thin Python adapter over RuntimeCore (``native/runtime``, ``include/elpis/runtime.h``, ABI v7).
+"""Thin Python adapter over RuntimeCore (``native/runtime``, ``include/elpis/runtime.h``, ABI v8).
 
 RuntimeCore (Rust) owns the runtime's mutable systems authority: lifecycle, fail-stop, the binding of the K1 lineage
-to one native state and its live coordinate, the managed turn's native K1 transaction (a VOLATILE commit), the
-durability lane (explicitly requested durable publication, on its own worker thread: recoverable = checkpoint slot,
-read back verified, then the authority's record; identity-only = the authority's record alone), and the evolution
-attempt's reservation and finalization. Its durable authority is the ECS_C authority (``.authority``), the only one
-since ABI v7: the operator provisions it, and RuntimeCore publishes to it and admits typed evidence against its
-sources. This module only marshals values across
-the C ABI and raises the stable code RuntimeCore returns. It holds no authority state, decides no transition and
-calls no K1 function: it hands RuntimeCore the K1 library's own entry points and the state's native handle.
+to one native state and its live coordinate, the managed turn's native K1 transaction (a VOLATILE commit), and the
+evolution attempt's reservation and finalization. ABI v8 is volatile only (docs/ELPIS_MISSION.md, Amendment 3): its
+authority is one volatile ECS_C session (native/ECS_C/session) per open, created from a :class:`SessionConfig`
+(``.authority``) at a fresh genesis and gone at close. Nothing is published, checkpointed, recovered or resumed, and no
+directory is involved anywhere. This module only marshals values across the C ABI and raises the stable code
+RuntimeCore returns. It holds no authority state, decides no transition and calls no K1 function: it hands RuntimeCore
+the K1 library's own entry points and the state's native handle.
 
-Live and durable authority (ABI v4, docs/RUNTIME_CORE.md). ``turn_commit`` returns a :class:`VolatileCommit`: the
-native transition and the live generation it established; nothing was checkpointed or published. Durability is an
-explicit request of one of two kinds, never confused: ``recoverable_request`` (the complete state; a checkpoint store
-must be attached; ``ACKNOWLEDGED`` only with a read-back verified slot) or ``identity_request`` (only the identity; no
-store attached; ``IDENTITY_PUBLISHED``, never ``ACKNOWLEDGED``). Either returns a PENDING :class:`DurableTicket` at
-once; ``durable_wait`` is the caller's choice to wait; ``durable_status`` reads the lane without the HOT lock. A v3
-library is refused (version check).
+``turn_commit`` returns a :class:`VolatileCommit`: the native transition and the live generation it established. The
+v7 durability lane, checkpoint store, restart recovery, legacy import and evolution reconciliation are retired with
+their codes; a v7 library is refused (version check).
 
 The substrate descriptor names the native state, its library's entry points, its declared dimension (verified
 natively) and the identity of the Python object that owns the handle (``owner``). The caller keeps that owner
@@ -47,25 +42,22 @@ from elpis.substrate.contracts import ContractError
 from elpis.substrate.native_admission import AdmittedLibrary, admission_of, admit_library
 
 from .authority import (
-    _Counters as _IOCounters,
     _Evolution,
     _Snapshot,
     _evolution_arg,
     _from_c,
     _hex_digest,
-    AuthorityDirs,
-    ContinuityProcessDeath,
     ContinuitySnapshot,
     EvolutionAuthority,
+    SessionConfig,
+    label,
 )
 from .errors import CompositionError
 from .fuel import CEILING as _FUEL_CEILING
 
-__all__ = ("DurabilityStatus", "DurableTicket", "K1Recovery", "RuntimeCore", "RuntimeLibrary", "TurnBegun",
-           "VolatileCommit")
+__all__ = ("RuntimeCore", "RuntimeLibrary", "TurnBegun", "VolatileCommit")
 
-_ABI_VERSION = 7
-_TESTING_PROCESS_DEATH = 255
+_ABI_VERSION = 8
 _U64 = C.c_uint64
 _K1_NAMES = {-1: "INVALID", -2: "NONFINITE", -3: "STALE", -4: "BUSY", -5: "CAPACITY", -6: "NOMEM", -7: "CORRUPT",
              -8: "LEASED"}
@@ -99,29 +91,17 @@ class _Query(C.Structure):
     _fields_ = [("live_generation", _U64), ("k1_status", C.c_int32), ("reserved", C.c_uint32)]
 
 
-class _Ticket(C.Structure):
-    """``elpis_runtime_durable_ticket``."""
-    _fields_ = [("sequence", _U64), ("generation", _U64), ("status", C.c_uint32), ("recoverable", C.c_uint32),
-                ("code", C.c_int32), ("kind", C.c_uint32), ("identity", C.c_uint8 * 32)]
-
-
-class _Durability(C.Structure):
-    """``elpis_runtime_durability``."""
-    _fields_ = [("last_requested", _Ticket), ("last_acknowledged", _Ticket), ("running", _Ticket),
-                ("live_generation", _U64), ("pending", C.c_uint32), ("fault", C.c_int32), ("parked", C.c_uint32),
-                ("durable_known", C.c_uint32), ("checkpoint_capacity", _U64), ("durable", _Snapshot)]
-
-
-class _CheckpointCounters(C.Structure):
-    _fields_ = [(n, _U64) for n in ("preads", "pread_bytes", "pwrites", "pwrite_bytes", "data_syncs")]
-
-
 class _Counters(C.Structure):
+    """``elpis_runtime_counters`` (ABI v8, 96 bytes)."""
     _fields_ = [(n, _U64) for n in ("k1_state_digests", "k1_reserves", "k1_txn_begins", "k1_run_schedules",
-                                    "k1_commits", "k1_aborts", "publications", "k1_queries", "k1_shapes",
-                                    "k1_lease_claims", "k1_identities", "k1_captures", "durable_requests",
-                                    "durable_superseded", "durable_acknowledged", "durable_failed",
-                                    "k1_observes")]
+                                    "k1_commits", "k1_aborts", "session_transitions", "k1_queries", "k1_shapes",
+                                    "k1_lease_claims", "k1_identities", "k1_observes")]
+
+
+class _Config(C.Structure):
+    """``elpis_runtime_config`` (ABI v8, 104 bytes): what every session of a runtime is created with."""
+    _fields_ = [("abi_version", C.c_uint32), ("capacity", C.c_uint32), ("nonce", C.c_uint8 * 32),
+                ("operator_label", C.c_uint8 * 32), ("runtime_label", C.c_uint8 * 32)]
 
 
 class _Budget(C.Structure):
@@ -129,12 +109,11 @@ class _Budget(C.Structure):
                                     "max_work_units", "max_query_rows", "max_observations")]
 
 
-# The K1 library's own entry points RuntimeCore calls, in the ABI v4 table order. Every mutating entry is a leased
+# The K1 library's own entry points RuntimeCore calls, in the ABI v8 table order. Every mutating entry is a leased
 # one (ecsg_k1.h, "Managed ownership"); the live-coordinate entries report the generation (ecsg_k1.h, "Live
-# coordinate"); envelope_seal is pure (the durability lane calls it on its own thread).
+# coordinate"). v8 removed leased_capture and envelope_seal (they existed for durable publication).
 _API_ENTRIES = ("state_digest", "shape", "lease_claim", "lease_release", "leased_reserve", "leased_identity",
-                "leased_query", "leased_txn_begin_at", "leased_txn_run_schedule", "leased_txn_commit", "txn_abort",
-                "leased_capture", "envelope_seal")
+                "leased_query", "leased_txn_begin_at", "leased_txn_run_schedule", "leased_txn_commit", "txn_abort")
 # The K1 FMS adapter's table appends its residency hold (docs/RUNTIME_CORE.md, "HOT residency").
 _FMS_ENTRIES = _API_ENTRIES + ("resident_hold", "resident_release")
 # The ECS composite's table (elpis_runtime_composite_api): the K1 table's entries over composite identities, in the
@@ -144,15 +123,18 @@ _COMPOSITE_ENTRIES = tuple("leased_txn_commit_at" if n == "leased_txn_commit" el
 
 
 class _AuthorityStatus(C.Structure):
-    """``elpis_runtime_authority`` (216 bytes)."""
-    _fields_ = [("backend", C.c_uint32), ("ecs_c_code", C.c_int32), ("disposition", C.c_uint32), ("mode", C.c_uint32),
-                ("replay_verified", C.c_uint8), ("witness_completed", C.c_uint8), ("reserved", C.c_uint8 * 6),
-                ("generation", _U64), ("receipt_count", _U64), ("evidence_count", _U64), ("entity_count", C.c_uint32),
-                ("capacity", C.c_uint32), ("lineage", C.c_uint8 * 32), ("record_digest", C.c_uint8 * 32),
-                ("state_root", C.c_uint8 * 32), ("receipt_head", C.c_uint8 * 32), ("evidence_head", C.c_uint8 * 32)]
+    """``elpis_runtime_authority`` (ABI v8, 240 bytes): the open session; while closed only ``backend``, ``sessions``
+    and the code of the last refused open."""
+    _fields_ = [("backend", C.c_uint32), ("ecs_c_code", C.c_int32), ("entity_count", C.c_uint32),
+                ("capacity", C.c_uint32), ("generation", _U64), ("instance", _U64), ("receipt_count", _U64),
+                ("evidence_count", _U64), ("volatile_bytes", _U64), ("sessions", _U64),
+                ("next_founding_index", _U64), ("reclaimed_count", _U64), ("session", C.c_uint8 * 32),
+                ("commit", C.c_uint8 * 32), ("state_root", C.c_uint8 * 32), ("receipt_head", C.c_uint8 * 32),
+                ("evidence_head", C.c_uint8 * 32)]
 
 
-_AUTHORITY_DIGESTS = frozenset({"lineage", "record_digest", "state_root", "receipt_head", "evidence_head"})
+_AUTHORITY_DIGESTS = frozenset({"session", "commit", "state_root", "receipt_head", "evidence_head"})
+BACKEND_ECS_C_SESSION = 3
 
 
 class _AuthorityEntity(C.Structure):
@@ -164,25 +146,13 @@ class _AuthorityEntity(C.Structure):
                 ("reserved2", C.c_uint32)]
 
 
-assert C.sizeof(_AuthorityStatus) == 216 and C.sizeof(_AuthorityEntity) == 152
-
-
-class _Recovery(C.Structure):
-    _fields_ = [("disposition", C.c_uint32), ("authorized_present", C.c_uint32), ("authorized", C.c_uint8 * 32),
-                ("candidate", C.c_uint8 * 32), ("envelope_bytes", _U64)]
-
-
-_DISPOSITIONS = {1: "NOTHING_TO_RECOVER", 2: "RESUMABLE", 3: "CANDIDATE_UNRESOLVED", 4: "CHECKPOINT_MISSING"}
-_DURABLE = {0: "NONE", 1: "PENDING", 2: "ACKNOWLEDGED", 3: "FAILED", 4: "UNCERTAIN", 5: "SUPERSEDED", 6: "ABANDONED",
-            7: "UNKNOWN", 8: "IDENTITY_PUBLISHED"}
-_KIND = {1: "RECOVERABLE", 2: "IDENTITY"}   # elpis_runtime_durable_ticket.kind
-_DURABLE_PENDING = 81   # RUNTIME_DURABLE_PENDING: a wait that timed out
+assert C.sizeof(_AuthorityStatus) == 240 and C.sizeof(_AuthorityEntity) == 152 and C.sizeof(_Config) == 104
 
 
 @dataclass(frozen=True)
 class VolatileCommit:
-    """A managed commit (ABI v4): VOLATILE. The native transition and the live generation it established. Nothing
-    was checkpointed or published: the durable authority is unchanged until an explicit durable publication."""
+    """A managed commit: VOLATILE. The native transition and the live generation it established. Nothing was
+    written anywhere (ABI v8 has no persistent path)."""
 
     epoch_before: int
     epoch_after: int
@@ -190,75 +160,6 @@ class VolatileCommit:
     generation_after: int
     steps: int
     live_generation: int
-
-
-@dataclass(frozen=True)
-class DurableTicket:
-    """One durable publication request (``elpis_runtime_durable_ticket``).
-
-    ``kind`` is what was asked: ``RECOVERABLE`` (the complete state) or ``IDENTITY`` (only the identity).
-    ``status``: ``PENDING`` (captured; waiting for, or in, the durability worker), ``ACKNOWLEDGED`` (RECOVERABLE only:
-    a checkpoint slot holding exactly the captured envelope was synced and read back verified, and continuity names
-    ``identity``; ``recoverable`` is always True: restart resumes exactly this state), ``IDENTITY_PUBLISHED``
-    (IDENTITY only: continuity names ``identity``; no store holds the bytes, the caller keeps them; ``recoverable`` is
-    always False; never an acknowledgment), ``FAILED`` (nothing durable changed; ``code`` says why), ``UNCERTAIN``
-    (outcome unknown: continuity's record was being written or synced when the publication failed or the process
-    died; the lane is faulted until reopen; restart resolves it to exactly one complete record, possibly this one; it
-    never means "not durable"), ``SUPERSEDED`` (a newer request replaced it before the worker took it), ``ABANDONED``
-    (not published: closed, or the process died, before continuity's record was begun) or ``UNKNOWN`` (resolved too
-    long ago to be recorded). ``generation`` is the live generation captured.
-    """
-
-    sequence: int
-    generation: int
-    status: str
-    recoverable: bool
-    code: str | None
-    identity: bytes | None
-    kind: str | None = None
-
-    @property
-    def acknowledged(self) -> bool:
-        """Recoverable state acknowledged: restart resumes exactly ``identity``. Never true for identity-only."""
-        return self.status == "ACKNOWLEDGED"
-
-    @property
-    def identity_published(self) -> bool:
-        """Only the identity is durable (the caller keeps the bytes). Never a recoverable acknowledgment."""
-        return self.status == "IDENTITY_PUBLISHED"
-
-
-@dataclass(frozen=True)
-class DurabilityStatus:
-    """The durability lane as a status read sees it (lane lock only; never waits behind a HOT operation)."""
-
-    last_requested: DurableTicket
-    last_acknowledged: DurableTicket
-    running: DurableTicket | None
-    live_generation: int
-    pending: bool
-    fault: str | None
-    parked: int
-    checkpoint_capacity: int
-    durable: ContinuitySnapshot | None
-
-
-@dataclass(frozen=True)
-class K1Recovery:
-    """What restart may do with the K1 lineage (K1 Recovery R0, docs/K1_RECOVERY_R0.md). Continuity decides; the
-    checkpoint slots are evidence and never authorize themselves.
-
-    ``disposition`` is one of ``NOTHING_TO_RECOVER`` (continuity unanchored), ``RESUMABLE`` (``envelope`` is the
-    complete authorized ``(W, epoch, H, a)`` envelope: restore it into a K1 state), ``CANDIDATE_UNRESOLVED`` (a
-    newer unauthorized ``candidate`` needs an explicit operator discard or adopt) or ``CHECKPOINT_MISSING`` (no
-    verified slot holds continuity's identity ``authorized``).
-    """
-
-    disposition: str
-    authorized: bytes | None
-    authorized_present: bool
-    candidate: bytes | None
-    envelope: bytes | None
 
 
 class _K1Api(C.Structure):
@@ -283,11 +184,9 @@ class _Substrate(C.Structure):
                 ("owner", _U64), ("dim", _U64), ("api", C.c_void_p)]
 
 
-assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 64 and C.sizeof(_Counters) == 136
-assert C.sizeof(_Budget) == 56 and C.sizeof(_Ticket) == 64
-assert C.sizeof(_Query) == 16 and C.sizeof(_Recovery) == 80
-assert C.sizeof(_CompositeApi) == 14 * C.sizeof(C.c_void_p) and C.sizeof(_ObserveResult) == 40
-assert C.sizeof(_Durability) == 3 * 64 + 32 + C.sizeof(_Snapshot)
+assert C.sizeof(_Begin) == 48 and C.sizeof(_Commit) == 64 and C.sizeof(_Counters) == 96
+assert C.sizeof(_Budget) == 56 and C.sizeof(_Query) == 16
+assert C.sizeof(_CompositeApi) == 12 * C.sizeof(C.c_void_p) and C.sizeof(_ObserveResult) == 40
 
 
 def _api(lib, prefix):
@@ -360,13 +259,13 @@ class TurnBegun(tuple):
     epoch_after = property(lambda self: self[2])
 
 
-RUNTIME_LIBRARY_IDS = ("elpis_runtime", "elpis_runtime_testing")
+RUNTIME_LIBRARY_IDS = ("elpis_runtime",)   # ABI v7's testing build (fault injection) retired with the durability lane
 
 
 class RuntimeLibrary:
     """The RuntimeCore library, admitted: deployment-pinned identity, opened beneath a trusted root, verified and
     loaded from sealed bytes (``elpis.substrate.native_admission``). It is never loaded from a pathname. It exports
-    RuntimeCore's C ABI only (ABI v7: no other crate's)."""
+    RuntimeCore's C ABI only (ABI v8: the session crate is embedded without its C ABI)."""
 
     @classmethod
     def admit(cls, root, path, authority, library_id: str = "elpis_runtime") -> "RuntimeLibrary":
@@ -392,7 +291,7 @@ class RuntimeLibrary:
         lib.elpis_runtime_features.argtypes = [C.c_size_t]
         S, E, P, D = C.POINTER(_Snapshot), C.POINTER(_Evolution), C.c_void_p, C.POINTER(C.c_double)
         sig = {
-            "create_ecs_c": [C.c_char_p, C.c_size_t, C.c_char_p, C.c_size_t, C.POINTER(C.c_void_p)],
+            "create": [C.POINTER(_Config), C.POINTER(C.c_void_p)],
             "authority_status": [P, C.POINTER(_AuthorityStatus)],
             "authority_transition": [P, P, C.POINTER(_U64)],
             "authority_entity_at": [P, C.c_uint32, C.POINTER(_AuthorityEntity)],
@@ -409,10 +308,6 @@ class RuntimeLibrary:
             "work_units": [C.c_size_t, C.c_size_t, C.POINTER(_Experience), C.c_size_t, C.POINTER(_U64)],
             "query_work_units": [C.c_size_t, C.c_size_t, C.c_size_t, C.POINTER(_U64)],
             "turn_commit": [P, C.POINTER(_Substrate), C.POINTER(_Commit)],
-            "recoverable_request": [P, C.POINTER(_Substrate), C.POINTER(_Ticket)],
-            "identity_request": [P, C.POINTER(_Substrate), C.POINTER(_Ticket)],
-            "durable_wait": [P, _U64, _U64, C.POINTER(_Ticket)],
-            "durable_status": [P, C.POINTER(_Durability)],
             "live_identity": [P, C.POINTER(_Substrate), P, C.POINTER(_U64)],
             "turn_abort": [P, C.POINTER(_Substrate)],
             "release": [P, C.POINTER(_Substrate)],
@@ -420,15 +315,8 @@ class RuntimeLibrary:
             "evolution_reserve": [P, E, P, S],
             "evolution_finalize": [P, P, S],
             "evolution_abandon": [P],
-            "evolution_reconcile": [P, E, P, S],
-            "checkpoint_provision": [C.c_char_p, C.c_size_t, C.c_size_t],
-            "checkpoint_attach": [P, C.c_char_p, C.c_size_t],
-            "checkpoint_recover": [P, C.POINTER(_Recovery), P, C.c_size_t],
-            "checkpoint_discard": [P, P],
-            "checkpoint_adopt": [P, P, S],
             "turn_observe": [P, C.POINTER(_Substrate), P, C.POINTER(_ObserveResult)],
             "turn_begin_observe": [P, C.POINTER(_Substrate), C.POINTER(_Budget), C.POINTER(_Query)],
-            "import_composite": [P, C.POINTER(_Substrate), S],
         }
         for name, args in sig.items():
             fn = getattr(lib, "elpis_runtime_" + name)
@@ -436,14 +324,6 @@ class RuntimeLibrary:
         for name, args in (("close", [P]), ("destroy", [C.POINTER(C.c_void_p)])):
             fn = getattr(lib, "elpis_runtime_" + name)
             fn.argtypes, fn.restype = args, None
-        self.testing = hasattr(lib, "elpis_runtime_testing_fault")
-        if self.testing:
-            lib.elpis_runtime_testing_fault.argtypes = [P, C.c_uint64, C.c_uint32, C.c_uint64]
-            lib.elpis_runtime_testing_io_counters.argtypes = [P, C.POINTER(_IOCounters), C.c_int]
-            lib.elpis_runtime_testing_durable_hold.argtypes = [P, C.c_int]
-            lib.elpis_runtime_testing_durable_fault.argtypes = [P, C.c_uint32, C.c_uint32, C.c_uint64]
-            lib.elpis_runtime_testing_control_fault.argtypes = [P, C.c_uint32, C.c_uint32, C.c_uint32, C.c_uint64]
-            lib.elpis_runtime_testing_checkpoint_io_counters.argtypes = [P, C.POINTER(_CheckpointCounters), C.c_int]
         ceiling = _Budget()
         if lib.elpis_runtime_fuel_ceiling(C.byref(ceiling)) != 0 or \
                 tuple(getattr(ceiling, n) for n, _ in _Budget._fields_) != _FUEL_CEILING.native_fields():
@@ -479,27 +359,29 @@ class RuntimeLibrary:
     def check(self, rc: int, detail: str = "", k1_status: int = 0) -> None:
         if rc == 0:
             return
-        if rc == _TESTING_PROCESS_DEATH:
-            raise ContinuityProcessDeath("simulated process death")
         if k1_status:
             detail = f"{detail}; K1 {_K1_NAMES.get(k1_status, k1_status)}" if detail else f"K1 {_K1_NAMES.get(k1_status, k1_status)}"
         raise CompositionError(self.code(rc), detail, k1_status=k1_status)
 
 
 class RuntimeCore:
-    """One RuntimeCore handle over one provisioned ECS_C authority (an :class:`AuthorityDirs` root). Every method is
-    one call into RuntimeCore."""
+    """One RuntimeCore handle whose sessions are created from ``session`` (a :class:`SessionConfig`): each
+    :meth:`open` is a new volatile ECS_C session at a fresh genesis, :meth:`close` ends it. No directory, file or
+    path is involved. Every method is one call into RuntimeCore."""
 
-    def __init__(self, library: RuntimeLibrary, directory: str | Path):
+    def __init__(self, library: RuntimeLibrary, session: SessionConfig):
         if type(library) is not RuntimeLibrary:
             raise TypeError("RuntimeCore takes a RuntimeLibrary")
+        if type(session) is not SessionConfig:
+            raise TypeError("RuntimeCore takes a SessionConfig")
         self.library = library
-        self.directory = Path(directory)
-        self.authority = AuthorityDirs(self.directory)
-        state, authority = str(self.authority.state).encode(), str(self.authority.authority).encode()
+        self.session = session
+        digest = C.c_uint8 * 32
+        config = _Config(_ABI_VERSION, session.capacity, digest.from_buffer_copy(session.nonce_seed or bytes(32)),
+                         digest.from_buffer_copy(label(session.operator_label)),
+                         digest.from_buffer_copy(label(session.runtime_label)))
         handle = C.c_void_p()
-        library.check(library._lib.elpis_runtime_create_ecs_c(state, len(state), authority, len(authority),
-                                                              C.byref(handle)))
+        library.check(library._lib.elpis_runtime_create(C.byref(config), C.byref(handle)))
         self._handle = handle
         self._f = library._lib
 
@@ -516,10 +398,11 @@ class RuntimeCore:
 
     # -- lifecycle --------------------------------------------------------------------------------------------
     def open(self) -> ContinuitySnapshot:
+        """Start a new session: a fresh genesis (the founding operator and runtime), nothing anchored."""
         return self._snapshot("open")
 
     def close(self) -> None:
-        """Close; an open managed turn is aborted natively first (nothing installed, nothing published)."""
+        """End the session; an open managed turn is aborted natively first. Everything the session held is gone."""
         self._f.elpis_runtime_close(self._handle)
 
     def fault(self) -> str | None:
@@ -529,7 +412,7 @@ class RuntimeCore:
     def require_live(self) -> None:
         """Raise the fail-stop disposition (or RUNTIME_CLOSED), if any."""
         rc = self._f.elpis_runtime_fault(self._handle)
-        self.library.check(rc, "runtime is fail-stopped pending restart/reconciliation")
+        self.library.check(rc, "runtime is fail-stopped: close it and open a new session")
 
     def snapshot(self) -> ContinuitySnapshot:
         return self._snapshot("snapshot")
@@ -599,12 +482,6 @@ class RuntimeCore:
         self.library.check(rc, "", out.k1_status)
         return int(out.live_generation)
 
-    def import_composite(self, descriptor) -> ContinuitySnapshot:
-        """LEGACY, explicit: move the K1 lineage to the ECS composite ``descriptor`` names (made by
-        ``CompositeState.import_k1`` from exactly the authorized K1 state, empty memory); durable before continuity
-        publishes the import. Needs an attached checkpoint store sized for the composite envelope."""
-        return self._snapshot("import_composite", C.byref(descriptor))
-
     def turn_commit(self, descriptor) -> VolatileCommit:
         """The volatile native commit of the open turn: nothing is checkpointed or published."""
         out = _Commit()
@@ -615,54 +492,6 @@ class RuntimeCore:
         t = out.transition
         return VolatileCommit(int(t.epoch_before), int(t.epoch_after), int(t.generation_before),
                               int(t.generation_after), int(t.steps), int(out.live_generation))
-
-    # -- durable publication (the explicit WARM lane) -----------------------------------------------------------------
-    def _ticket(self, t: _Ticket) -> DurableTicket:
-        identity = bytes(t.identity)
-        code = self.library.code(t.code) if t.code else None
-        ticket = DurableTicket(int(t.sequence), int(t.generation), _DURABLE.get(t.status, f"STATUS_{t.status}"),
-                               bool(t.recoverable), code, identity if any(identity) else None, _KIND.get(t.kind))
-        # The ABI's law, re-checked at the boundary: an acknowledgment is recoverable and only ever a recoverable
-        # request's; identity-only publication is never recoverable. Anything else is a contract violation.
-        if ticket.recoverable != ticket.acknowledged or (ticket.acknowledged and ticket.kind != "RECOVERABLE") or \
-                (ticket.identity_published and ticket.kind != "IDENTITY"):
-            raise CompositionError("RUNTIME_INVALID", f"durable ticket violates the acknowledgment law: {ticket}")
-        return ticket
-
-    def recoverable_request(self, descriptor) -> DurableTicket:
-        """Capture the live state (unsealed, under the lease) and hand it to the durability lane for RECOVERABLE
-        publication (checkpoint slot, read back verified, then continuity): PENDING at once. Refused with
-        ``RUNTIME_RECOVERY_UNAVAILABLE`` (nothing bound or captured) unless a checkpoint store is attached."""
-        out = _Ticket()
-        self.library.check(self._f.elpis_runtime_recoverable_request(self._handle, C.byref(descriptor), C.byref(out)))
-        return self._ticket(out)
-
-    def identity_request(self, descriptor) -> DurableTicket:
-        """Capture the live state and hand it to the durability lane for IDENTITY-ONLY publication (continuity alone;
-        the caller keeps the bytes): PENDING at once. Refused with ``RUNTIME_CHECKPOINT_ATTACHED`` (nothing bound or
-        captured) while a checkpoint store is attached."""
-        out = _Ticket()
-        self.library.check(self._f.elpis_runtime_identity_request(self._handle, C.byref(descriptor), C.byref(out)))
-        return self._ticket(out)
-
-    def durable_wait(self, sequence: int, timeout: float | None = None) -> DurableTicket:
-        """Wait (the caller's explicit choice) until request ``sequence`` resolves, at most ``timeout`` seconds (None:
-        without limit). Returns the ticket as it stands (``PENDING`` after a timeout)."""
-        ms = (1 << 64) - 1 if timeout is None else max(0, int(timeout * 1000))
-        out = _Ticket()
-        rc = self._f.elpis_runtime_durable_wait(self._handle, sequence, ms, C.byref(out))
-        if rc != _DURABLE_PENDING:
-            self.library.check(rc)
-        return self._ticket(out)
-
-    def durable_status(self) -> DurabilityStatus:
-        out = _Durability()
-        self.library.check(self._f.elpis_runtime_durable_status(self._handle, C.byref(out)))
-        return DurabilityStatus(self._ticket(out.last_requested), self._ticket(out.last_acknowledged),
-                                self._ticket(out.running) if out.running.sequence else None,
-                                int(out.live_generation), bool(out.pending),
-                                self.library.code(out.fault) if out.fault else None, int(out.parked),
-                                int(out.checkpoint_capacity), _from_c(out.durable) if out.durable_known else None)
 
     def live_identity(self, descriptor) -> tuple[bytes, int]:
         """The bound state's retained-state identity and live generation (cold path: one hashing native call)."""
@@ -693,42 +522,10 @@ class RuntimeCore:
     def evolution_abandon(self) -> None:
         self.library.check(self._f.elpis_runtime_evolution_abandon(self._handle))
 
-    def evolution_reconcile(self, expected: EvolutionAuthority, receipt_digest: str) -> ContinuitySnapshot:
-        return self._snapshot("evolution_reconcile", _ref(_evolution_arg(expected)), _hex_digest(receipt_digest))
-
-    # -- K1 Recovery R0 ------------------------------------------------------------------------------------------------
-    def checkpoint_attach(self, directory: Path) -> None:
-        raw = str(directory).encode()
-        self.library.check(self._f.elpis_runtime_checkpoint_attach(self._handle, raw, len(raw)))
-
-    def checkpoint_recover(self) -> K1Recovery:
-        """Read-only: the disposition, and the authorized envelope when resumable (one sizing call, one copy)."""
-        out = _Recovery()
-        self.library.check(self._f.elpis_runtime_checkpoint_recover(self._handle, C.byref(out), None, 0))
-        envelope = None
-        if out.envelope_bytes:
-            size = int(out.envelope_bytes)
-            buffer, again = (C.c_uint8 * size)(), _Recovery()
-            self.library.check(self._f.elpis_runtime_checkpoint_recover(self._handle, C.byref(again), buffer, size))
-            if bytes(again.authorized) != bytes(out.authorized) or again.envelope_bytes != size:
-                raise CompositionError("CHECKPOINT_INVALID", "the checkpoint changed while it was read")
-            envelope = bytes(buffer)
-        present = bool(out.authorized_present)
-        authorized, candidate = bytes(out.authorized), bytes(out.candidate)
-        return K1Recovery(_DISPOSITIONS[out.disposition], authorized if any(authorized) else None, present,
-                          candidate if any(candidate) else None, envelope)
-
-    def checkpoint_discard(self, candidate: bytes) -> None:
-        self.library.check(self._f.elpis_runtime_checkpoint_discard(self._handle, _digest_arg(candidate)))
-
-    def checkpoint_adopt(self, candidate: bytes) -> ContinuitySnapshot:
-        return self._snapshot("checkpoint_adopt", _digest_arg(candidate),
-                              detail="the candidate was not adopted")
-
-    # -- the held authority (operator events while the runtime holds it) ---------------------------------------------
+    # -- the session (operator events while it is open) ----------------------------------------------------------------
     def authority_status(self) -> dict:
-        """``elpis_runtime_authority_status``: the authority's backend (always ECS_C), last refusal and recovery report,
-        and while open its generation, counts and chain heads. Readable closed."""
+        """``elpis_runtime_authority_status``: the session's backend (always the volatile ECS_C session), last refusal,
+        and while open its generation, counts, footprint and chain heads. Readable closed."""
         out = _AuthorityStatus()
         self.library.check(self._f.elpis_runtime_authority_status(self._handle, C.byref(out)))
         return {name: (bytes(getattr(out, name)).hex() if name in _AUTHORITY_DIGESTS else getattr(out, name))
@@ -738,7 +535,9 @@ class RuntimeCore:
         out = _AuthorityEntity()
         self.library.check(self._f.elpis_runtime_authority_entity_at(self._handle, index, C.byref(out)))
         return {"id": bytes(out.id), "kind": out.kind, "lifecycle": out.lifecycle, "per_turn": out.per_turn_limit,
-                "sender_watermark": out.sender_watermark, "source_authority": out.source_authority,
+                "founding_index": out.founding_index, "founded_generation": out.founded_generation,
+                "last_generation": out.last_generation, "sender_watermark": out.sender_watermark,
+                "source_version": out.source_version, "source_authority": out.source_authority,
                 "label": bytes(out.label), "scope": bytes(out.scope)}
 
     def authority_next_entity_id(self, kind: int, label: bytes) -> bytes:
@@ -747,54 +546,13 @@ class RuntimeCore:
         return bytes(out)
 
     def authority_transition(self, event: bytes) -> int:
-        """One operator event (512 bytes) on the held authority; returns its new generation."""
+        """One operator event (512 bytes) on the open session; returns its new generation."""
         if type(event) is not bytes or len(event) != 512:
             raise CompositionError("RUNTIME_INVALID", "an operator event is 512 bytes")
         generation = _U64()
         self.library.check(self._f.elpis_runtime_authority_transition(
             self._handle, (C.c_uint8 * 512).from_buffer_copy(event), C.byref(generation)))
         return int(generation.value)
-
-    # -- testing library only -------------------------------------------------------------------------------------------
-    def testing_fault(self, publication: int, action: int, arg: int = 0) -> None:
-        self._require_testing()
-        self.library.check(self._f.elpis_runtime_testing_fault(self._handle, publication, action, arg))
-
-    def testing_io_counters(self, reset: bool = False) -> dict[str, int]:
-        self._require_testing()
-        out = _IOCounters()
-        self.library.check(self._f.elpis_runtime_testing_io_counters(self._handle, C.byref(out), int(reset)))
-        return {name: getattr(out, name) for name, _ in _IOCounters._fields_}
-
-    def testing_durable_hold(self, hold: bool) -> None:
-        """Hold (or release) the durability worker before it takes a new job (the HOT lane must not care)."""
-        self._require_testing()
-        self.library.check(self._f.elpis_runtime_testing_durable_hold(self._handle, int(bool(hold))))
-
-    def testing_durable_fault(self, action: int, step: int = 0, arg: int = 0) -> None:
-        """Plan one fault of the next durable publication (runtime.c ABI: 1 die / 2 park at ``step``; 3..9 I/O
-        failures; 10 a checkpoint slot that does not read back exactly); docs/RUNTIME_CORE.md, "Crash law"."""
-        self._require_testing()
-        self.library.check(self._f.elpis_runtime_testing_durable_fault(self._handle, action, step, arg))
-
-    def testing_control_fault(self, op: int, action: int, point: int = 0, arg: int = 0) -> None:
-        """Plan one fault of the next control operation of kind ``op`` (1 anchor, 2 legacy import, 3 discard, 4 adopt):
-        action 0 clear, 1 die (simulated) / 2 park the caller at ``point`` (1 begun, 2 slot written, 3 slot synced,
-        4 record torn after ``arg`` bytes, 5 record written, 6 record synced; ``durability().parked`` reports
-        ``100 * op + point``); docs/RUNTIME_CORE.md, "Control-operation crash points"."""
-        self._require_testing()
-        self.library.check(self._f.elpis_runtime_testing_control_fault(self._handle, op, action, point, arg))
-
-    def testing_checkpoint_io_counters(self, reset: bool = False) -> dict[str, int]:
-        self._require_testing()
-        out = _CheckpointCounters()
-        self.library.check(self._f.elpis_runtime_testing_checkpoint_io_counters(self._handle, C.byref(out),
-                                                                                int(reset)))
-        return {name: getattr(out, name) for name, _ in _CheckpointCounters._fields_}
-
-    def _require_testing(self) -> None:
-        if not self.library.testing:
-            raise CompositionError("RUNTIME_INVALID", "fault injection exists only in the testing library")
 
 
 def _ref(value):

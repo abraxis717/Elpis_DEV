@@ -3,23 +3,19 @@ name = "elpis_runtime"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.89"
-description = "Elpis RuntimeCore: runtime lifecycle, fail-stop, K1 lineage binding, managed K1 turns and evolution reservation over the ECS_C authority, behind a stable C ABI."
+description = "Elpis RuntimeCore: runtime lifecycle, fail-stop, K1 lineage binding, managed K1 turns and evolution reservation over a volatile ECS_C session, behind a stable C ABI. No persistent-state write path."
 license = "UNLICENSED"
 publish = false
 
-# The durable authority is embedded as a Rust crate (one implementation, no second store): the ECS_C authority,
-# without its C ABI (RuntimeCore never re-exports it). Standalone continuity retired into it (ABI v7).
+# The authority is embedded as a Rust crate (one implementation): the volatile ECS_C session, without its C ABI
+# (RuntimeCore never re-exports it). ABI v8 retired the durable ECS_C authority (docs/ELPIS_MISSION.md, Amendment 3).
 [dependencies]
-elpis_ecs_c_authority = { path = "../ECS_C/authority", default-features = false }
+elpis_ecs_c_session = { path = "../ECS_C/session", default-features = false }
 
 [lib]
 name = "elpis_runtime"
 crate-type = ["cdylib", "rlib"]
 doctest = false
-
-[features]
-# Test-only authority fault injection and I/O counters, compiled into libelpis_runtime_testing.so only.
-testing = ["elpis_ecs_c_authority/testing"]
 
 [profile.release]
 panic = "abort"

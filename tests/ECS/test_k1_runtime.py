@@ -152,13 +152,12 @@ def test_w_only_snapshot_imports_only_as_unconsolidated(libs):
             assert s.w() == e.w() and not any(s.h_packed()) and not any(s.a())
 
 
-def test_fms_warm_path_runs_over_resident_bytes(libs, tmp_path):
+def test_fms_warm_path_runs_over_resident_bytes(libs):
     _, k1 = libs
     adapter = ctypes.CDLL(str(_beside("libelpis_ecsg_k1_fms.so")))
     w, x, y = data(15)
     image = k1.envelope_bytes(D, N) - 32
-    with Context(adapter, warm_bytes=8 * image, cold_bytes=10 ** 6, max_objects=4,
-                 cold_root=tmp_path / "cold") as ctx, K1FMSRuntime(k1, ctx, adapter, max_states=4) as r, \
+    with Context(adapter, warm_bytes=8 * image, max_objects=4) as ctx, K1FMSRuntime(k1, ctx, adapter, max_states=4) as r, \
             K1State.create(k1, D, N, w) as s:
         assert ctx.handle.value is None
         sid = r.register(b"\x01" * 32, D, N, w)
@@ -226,15 +225,14 @@ def test_transaction_refusal_contract_recoverable_then_commit(libs):
             t.learn(x8, y8, 0.002, 1)
 
 
-def test_fms_transaction_refusal_contract_matches(libs, tmp_path):
+def test_fms_transaction_refusal_contract_matches(libs):
     _, k1 = libs
     adapter = ctypes.CDLL(str(_beside("libelpis_ecsg_k1_fms.so")))
     w, x, y = data(19)
     big_x, big_y = data(20, rows=16)[1:]
     x8, y8 = x[:8 * D], y[:8]
     image = k1.envelope_bytes(D, N) - 32
-    with Context(adapter, warm_bytes=8 * image, cold_bytes=10 ** 6, max_objects=4,
-                 cold_root=tmp_path / "cold") as ctx, K1FMSRuntime(k1, ctx, adapter, max_states=2) as r, \
+    with Context(adapter, warm_bytes=8 * image, max_objects=4) as ctx, K1FMSRuntime(k1, ctx, adapter, max_states=2) as r, \
             K1State.create(k1, D, N, w, max_rows=8) as ref:
         sid = r.register(b"\x02" * 32, D, N, w, max_rows=8)
         t = r.transaction(sid)

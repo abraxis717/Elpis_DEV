@@ -16,7 +16,7 @@ typedef struct {
     uint64_t id;
     fms_id object;
     int pinned;      /* this adapter holds one FMS pin on the object */
-    int pin_write;   /* ... acquired with FMS_WRITE (dirty, cold replica invalidated) */
+    int pin_write;   /* ... acquired with FMS_WRITE */
     uint8_t *image;  /* valid while pinned: a pinned object cannot move */
     elpis_ecsg_k1 *k1;
     int txn_open;
@@ -138,7 +138,7 @@ static int release(elpis_ecsg_k1_fms *r, slot *s)
     return ELPIS_ECSG_K1_OK;
 }
 
-/* Pin the resident image WARM (FMS materializes COLD -> WARM when needed; that is the only allocating path) and
+/* Pin the resident image WARM (FMS ABI v3: it is always WARM-resident; nothing is materialized from storage) and
  * bind the workspace to it. A CPU operation needs no accelerator fence, so the unfenced pin is used: on a WARM
  * object it allocates nothing. A pin this adapter already holds (an open transaction's WRITE pin, or one whose
  * release failed) is reused when it grants the access asked for; a READ pin is never reused for a write. */
@@ -158,8 +158,8 @@ static int acquire(elpis_ecsg_k1_fms *r, slot *s, unsigned mode)
         }
     }
     start = now_ns();
-    /* Under a residency hold the state cannot have been demoted (the hold pins it); the resident-only pin makes
-     * that a checked fact: it never promotes, reads the cold store or waits. */
+    /* Under a residency hold the state cannot move (the hold pins it); the resident-only pin makes that a checked
+     * fact: it never promotes or waits. */
     rc = s->resident_holds ? fms_acquire_resident(r->fms, s->object, FMS_WARM, mode, &ptr)
                            : fms_acquire(r->fms, s->object, FMS_WARM, mode, &ptr);
     s->info.materialization_ns += now_ns() - start;

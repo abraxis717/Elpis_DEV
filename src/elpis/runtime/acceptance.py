@@ -1,23 +1,23 @@
 """System acceptance of an installed Elpis: ``python -m elpis.runtime.acceptance --native-build BUILD --work DIR``.
 
 It exercises the supported product, not the test suite: every operator step runs the installed CLI
-(``python -m elpis.runtime.cli``) as a separate process over a fresh deployment in ``DIR`` (which must not exist or
-be empty), and the adversarial checks use only the public runtime API and the deployment's own admitted libraries.
-No test fixture or research module is imported. The result is one machine-readable JSON report (``--report``);
-the exit status is 0 only when every check passed.
+(``python -m elpis.runtime.cli``) as a separate process over the build's libraries, read-only and pinned, and the
+adversarial checks use only the public runtime API and the installation's own admitted libraries. No test fixture or
+research module is imported. The result is one machine-readable JSON report (``--report``); the exit status is 0 only
+when every check passed. ``DIR`` (which must not exist or be empty) holds only what this harness itself writes: its
+tamper copies and the ABI stub. Elpis writes nothing (docs/ELPIS_MISSION.md, Amendment 3), which the harness checks.
 
-Positive sequence (one lineage, several processes): pinned identity of source, ABI and libraries; an admitted ECS
-composite; QUERY; an authorized LEARN (a live transition, nothing published); validated HACF evidence recorded by the
-observe-only turn (the K1 component unchanged) and LOOKUP; a contextual (WARM) view that changes no ECS state; a
-recoverable publication with the checkpoint and the durable authority in agreement; a restart in a new process that recovers the
-geometric and memory components exactly; another transition and publication; then crashes at registered durability
-boundaries (the testing RuntimeCore build parks its worker) with the prescribed dispositions: an unresolved
-candidate that only the operator resolves, a synced record that resumes directly, volatile work that is lost.
+Positive sequence (one lineage, several processes, RuntimeCore ABI v8): the catalog measured read-only and pinned;
+pinned identity of ABI and libraries; a session anchored at the lineage's initial identity at a fresh genesis; QUERY;
+an authorized LEARN (a live transition, volatile); validated HACF evidence recorded by the observe-only turn (the K1
+component unchanged) and LOOKUP; a contextual (WARM) view that changes no ECS state; ``close`` discarding the session
+and the next one starting at the initial identity; a new process starting there too (nothing resumed); a killed
+process leaving nothing; and no file created or changed by any Elpis process.
 
 Negative sequence: no codec authority, QUERY-to-LEARN escalation, unauthorized and unadmitted observations, an
-invalid source identity, an unsupported memory capability, stale context, a wrong runtime ABI, a wrong state
-envelope, pin drift, budget exhaustion, a COLD state on the HOT path, an incompatible recovery lineage, an existing
-write-once destination and an unresolved candidate: each must be refused with its exact code, with nothing changed.
+invalid source identity, an unsupported memory capability, stale context, a wrong runtime ABI, pin drift, budget
+exhaustion, a K1 FMS lineage at the WARM budget (refused, never spilled), and every retired persistent command: each
+must be refused with its exact code, with nothing changed.
 
 Mechanics only: the stimuli and the evidence are acceptance fixtures (TRAINING=NONE SEMANTICS=NONE); passing
 establishes that the installed system's interfaces and laws hold here, not any cognitive capability.
@@ -38,11 +38,11 @@ import subprocess
 import sys
 import time
 
-REPORT_SCHEMA = "elpis.acceptance-report.v1"
-_LIBS = ("native/runtime/libelpis_runtime.so", "native/runtime/libelpis_runtime_testing.so",
-         "native/runtime/libelpis_hacf_observation.so", "native/ECS_G/libelpis_ecsg_math.so",
-         "native/ECS_G/libelpis_ecsg_k1.so", "native/ECS_G/libelpis_ecsg_k1_fms.so", "native/ECS_C/libelpis_ecs_memory.so",
-         "native/runtime/composite/libelpis_ecs_composite.so", "native/ECS_C/authority/libelpis_ecs_c_authority.so")
+REPORT_SCHEMA = "elpis.acceptance-report.v2"
+_LIBS = ("native/runtime/libelpis_runtime.so", "native/runtime/libelpis_hacf_observation.so",
+         "native/ECS_G/libelpis_ecsg_math.so", "native/ECS_G/libelpis_ecsg_k1.so",
+         "native/ECS_G/libelpis_ecsg_k1_fms.so", "native/ECS_C/libelpis_ecs_memory.so",
+         "native/runtime/composite/libelpis_ecs_composite.so")
 
 
 def node(label: str) -> str:
@@ -84,6 +84,7 @@ class Acceptance:
     def __init__(self, native_build: Path, work: Path, source_commit: str | None):
         self.build, self.work, self.source_commit = native_build, work, source_commit
         self.checks: list[dict] = []
+        self.pin: str | None = None
 
     # -- recording ------------------------------------------------------------------------------------------------
     def check(self, cid: str, what: str, ok: bool, **evidence) -> bool:
@@ -91,8 +92,11 @@ class Acceptance:
         return bool(ok)
 
     # -- the installed CLI, as a separate process ------------------------------------------------------------------
-    def cli(self, home: Path, *args, script=None) -> tuple[int, list]:
-        cmd = [sys.executable, "-m", "elpis.runtime.cli", "--home", str(home), *args]
+    def cli(self, *args, script=None, source: Path | None = None, pin: str | None = None) -> tuple[int, list]:
+        cmd = [sys.executable, "-m", "elpis.runtime.cli", "--native-build", str(source or self.build)]
+        if pin or self.pin:
+            cmd += ["--catalog-sha256", pin or self.pin]
+        cmd += ["--seed", "11", *args]
         if script is not None:
             cmd += ["session", "--script", "-"]
         env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH",)}
@@ -100,66 +104,48 @@ class Acceptance:
         run = subprocess.run(cmd, input=json.dumps(script) if script is not None else None, capture_output=True,
                              text=True, env=env, cwd=str(self.work), timeout=600)
         out = [json.loads(line) for line in run.stdout.splitlines() if line.strip()]
-        if run.returncode not in (0, 3, 4):
+        if run.returncode not in (0, 2, 3, 4):
             raise RuntimeError(f"cli {args} crashed ({run.returncode}): {run.stderr[-2000:]}")
         return run.returncode, out
 
-    def staged_build(self, name: str) -> Path:
-        """Copy just the deployable libraries out of the build (removed after init: never used again)."""
-        root = self.work / name
-        for rel in _LIBS:
-            (root / rel).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(self.build / rel, root / rel)
-        return root
-
-    def deploy(self, name: str, *, testing=False, seed=11) -> tuple[Path, dict]:
-        staging = self.staged_build(name + "-build")
-        home = self.work / name
-        args = ["init", "--native-build", str(staging)] + (["--testing"] if testing else [])
-        if self.source_commit:
-            args += ["--source-commit", self.source_commit]
-        rc, out = self.cli(home, *args)
-        if rc != 0:
-            raise RuntimeError(f"init refused: {out}")
-        shutil.rmtree(staging)
-        rc, created = self.cli(home, "create", "--seed", str(seed))
-        if rc != 0:
-            raise RuntimeError(f"create refused: {created}")
-        rc, founded = self.cli(home, script=SOURCES)
-        if rc != 0:
-            raise RuntimeError(f"source_found refused: {founded}")
-        return home, created[0]
+    def tree(self) -> dict:
+        """Every file under the work directory and every library of the build, with its SHA-256."""
+        files = {str(p.relative_to(self.work)): hashlib.sha256(p.read_bytes()).hexdigest()
+                 for p in sorted(self.work.rglob("*")) if p.is_file()}
+        files.update({r: hashlib.sha256((self.build / r).read_bytes()).hexdigest() for r in _LIBS})
+        return files
 
     # -- the positive sequence --------------------------------------------------------------------------------------
     def positive(self):
-        home, created = self.deploy("home")
-        initial = created["identity"]
-        rc, status = self.cli(home, "status")
+        before = self.tree()
+        rc, catalog = self.cli("catalog")
+        self.pin = catalog[0].get("catalog_sha256")
+        self.check("P01", "the catalog is measured read-only and its pin printed; nothing is written",
+                   rc == 0 and catalog[0]["ok"] and len(self.pin or "") == 64 and self.tree() == before,
+                   catalog_sha256=self.pin)
+        rc, status = self.cli("status")
         st = status[0]
-        lib_digests = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (home / "lib").iterdir()}
-        build_digests = {Path(r).name: hashlib.sha256((self.build / r).read_bytes()).hexdigest() for r in _LIBS
-                         if not r.endswith("_testing.so")}
-        self.check("P01", "a new lineage starts in an empty persistent directory", rc == 0 and st["ok"]
-                   and created["state_format"] == "COMPOSITE", identity=initial, home=str(home))
+        build_digests = {Path(r).name[3:-3]: hashlib.sha256((self.build / r).read_bytes()).hexdigest() for r in _LIBS}
         pinned = {i: v["sha256"] for i, v in st["libraries"].items()}
-        self.check("P02", "source, ABI and every admitted library are the pinned ones (the build's bytes)",
-                   st["abi"] == {"runtime": 7, "composite": 1, "ecs_c": 1}
-                   and st["deployment"]["source_commit"] == self.source_commit
-                   and sorted(pinned.values()) == sorted(lib_digests.values()) == sorted(build_digests.values()),
-                   abi=st["abi"], libraries=pinned, source_commit=st["deployment"]["source_commit"])
-        self.check("P03", "an admitted ECS composite: anchored, durable first, RESUMABLE",
-                   st["recovery"]["disposition"] == "RESUMABLE" and st["durable"]["identity"] == initial
-                   and st["durable"]["state_format"] == "COMPOSITE", recovery=st["recovery"])
-        s1 = [{"op": "live"}, {"op": "query", "x": X}, {"op": "counters", "reset": True}, learn(),
-              {"op": "counters"}, {"op": "query", "x": X}, {"op": "live"},
+        self.check("P02", "ABI and every admitted library are the pinned ones (the build's bytes); no persistence",
+                   rc == 0 and st["abi"] == {"runtime": 8, "composite": 1} and pinned == build_digests
+                   and st["installation"]["persistence"] == "NONE", abi=st["abi"], libraries=pinned)
+        s1 = [{"op": "open"}, *SOURCES, {"op": "live"}, {"op": "query", "x": X}, {"op": "counters", "reset": True},
+              learn(), {"op": "counters"}, {"op": "query", "x": X}, {"op": "live"},
               evidence("record-1"), {"op": "counters"}, {"op": "live"}, LOOKUP,
               {"op": "context_axiom", "key": node("ctx-1"),
                "references": [{"chunk": node("chunk"), "corpus": node("corpus"), "provenance": provenance("p")}]},
-              {"op": "context_view", "wait": 1}, {"op": "live"}, {"op": "publish"}, {"op": "candidates"},
-              {"op": "status"}]
-        rc, o = self.cli(home, script=s1)
-        (live0, q0, _, learned, after_learn, q1, live1, ev, after_ev, live2, found, axiom, view, live3, pub,
-         cand, st1) = o
+              {"op": "context_view", "wait": 1}, {"op": "live"}, {"op": "close"}, {"op": "open"}, {"op": "live"},
+              LOOKUP]
+        rc, o = self.cli(script=s1)
+        (opened, src1, src2, live0, q0, _, learned, after_learn, q1, live1, ev, after_ev, live2, found, axiom, view,
+         live3, closed, reopened, live4, lost) = o
+        initial = opened["initial_identity"]
+        self.check("P03", "a session: a fresh genesis, anchored at the lineage's initial identity, sources founded",
+                   opened["ok"] and opened["anchored"]["identity"] == initial
+                   and opened["anchored"]["state_format"] == "COMPOSITE" and opened["session"]["generation"] == 2
+                   and src1["ok"] and src2["ok"] and live0["live"]["identity"] == initial,
+                   initial=initial, session=opened["session"]["session"])
         self.check("P04", "QUERY answers from the initial live state", q0["ok"] and q0["live_generation"] == 0,
                    values_sha256=q0.get("values_sha256"))
         self.check("P05", "an authorized LEARN runs the K1 schedule natively, volatile",
@@ -168,161 +154,81 @@ class Acceptance:
         self.check("P06", "the live state moved: new answers, generation + 1, new identity",
                    q1["values"] != q0["values"] and q1["live_generation"] == 1
                    and live1["live"]["identity"] != initial, values_sha256=q1["values_sha256"])
-        self.check("P07", "no implicit durable publication", live1["durable"]["identity"] == initial,
-                   durable=live1["durable"])
         entry = ev["entries"][0] if ev["ok"] else {}
-        self.check("P08", "a structure hyperedge and assertion are validated and identified by structure",
-                   ev["ok"] and len(entry.get("hyperedge", "")) == 64 and len(entry.get("assertion", "")) == 64,
-                   entry=entry)
-        self.check("P09", "the evidence is recorded by the observe-only managed turn (no K1 schedule)",
-                   ev["ok"] and ev["k1_steps"] == 0 and after_ev["counters"]["k1_run_schedules"] == 1
-                   and after_ev["counters"]["k1_observes"] == 1, counters=after_ev["counters"])
-        rc_slot, slot = self.cli(home, script=[{"op": "slot", "key": entry.get("relation_key", "0" * 64)}])
-        # (Session 1 published before it exited, so the next process reads the slot from the recovered state.)
-        self.check("P10", "the memory slot keeps the exact identity and provenance; LOOKUP answers it",
-                   found["found"] and found["answer"] == node("engineer") and slot[0]["found"]
-                   and slot[0]["structure_ref"] == slot[0]["hyperedge"] == entry["hyperedge"]
-                   and slot[0]["first_provenance"] == provenance("record-1") and slot[0]["last_authority"] == 1,
-                   lookup=found, slot={k: slot[0].get(k) for k in ("structure_ref", "first_provenance")})
-        self.check("P11", "the K1 component changed only with the authorized LEARN, never with the evidence",
+        self.check("P07", "the evidence is validated and identified by structure and recorded by the observe-only "
+                          "managed turn (no K1 schedule)",
+                   ev["ok"] and len(entry.get("hyperedge", "")) == 64 and ev["k1_steps"] == 0
+                   and after_ev["counters"]["k1_run_schedules"] == 1 and after_ev["counters"]["k1_observes"] == 1,
+                   entry=entry, counters=after_ev["counters"])
+        self.check("P08", "LOOKUP answers the recorded evidence in the session",
+                   found["found"] and found["answer"] == node("engineer"), lookup=found)
+        self.check("P09", "the K1 component changed only with the authorized LEARN, never with the evidence",
                    live2["live"]["k1_identity"] == live1["live"]["k1_identity"]
                    and live2["live"]["memory_identity"] != live1["live"]["memory_identity"]
                    and live1["live"]["k1_identity"] != live0["live"]["k1_identity"],
                    k1=[live0["live"]["k1_identity"], live1["live"]["k1_identity"], live2["live"]["k1_identity"]])
-        self.check("P12", "contextual WARM work publishes a complete versioned view",
+        self.check("P10", "contextual WARM work publishes a complete versioned view and changes no ECS state",
                    axiom["ok"] and view["ok"] and view["waited"] == "APPLIED" and view["version"] == 1
-                   and view["axioms"][0]["key"] == node("ctx-1"), view={k: view[k] for k in ("version", "digest")})
-        self.check("P13", "context work changes no ECS state", live3["live"] == live2["live"])
-        acked = pub["ticket"]
-        self.check("P14", "a recoverable publication is acknowledged", acked["acknowledged"] and acked["recoverable"]
-                   and acked["identity"] == live3["live"]["identity"], ticket=acked)
-        self.check("P15", "checkpoint and the durable authority agree on the complete state",
-                   cand["recovery"]["disposition"] == "RESUMABLE"
-                   and cand["recovery"]["authorized"] == pub["durable"]["identity"] == acked["identity"]
-                   and cand["recovery"]["envelope_bytes"] == st1["footprint"]["envelope_bytes"],
-                   recovery=cand["recovery"])
-        published = acked["identity"]
-        # -- restart: a new process (the previous one closed and exited) --------------------------------------------
-        rc, o2 = self.cli(home, script=[{"op": "live"}, {"op": "query", "x": X}, LOOKUP,
-                                        {"op": "slot", "key": entry["relation_key"]}])
-        live_r, q_r, found_r, slot_r = o2
-        self.check("P16", "the runtime closes and a new process opens the same directory", rc == 0, rc=rc)
-        self.check("P17", "restart recovers the acknowledged state", live_r["live"]["identity"] == published
-                   and live_r["durable"]["identity"] == published)
-        self.check("P18", "the geometric and memory components are exactly the published ones",
-                   live_r["live"]["k1_identity"] == live3["live"]["k1_identity"]
-                   and live_r["live"]["memory_identity"] == live3["live"]["memory_identity"])
-        self.check("P19", "QUERY and LOOKUP operate after restart, byte-identically",
-                   q_r["values_sha256"] == q1["values_sha256"] and found_r["answer"] == found["answer"]
-                   and slot_r["structure_ref"] == entry["hyperedge"] and slot_r["assert_count"] == 1
-                   and slot_r["first_provenance"] == provenance("record-1"))
-        rc, o3 = self.cli(home, script=[learn(), {"op": "publish"}, {"op": "live"}])
-        self.check("P20", "another authorized transition, re-published: lineage continuity",
-                   rc == 0 and o3[1]["ticket"]["acknowledged"]
-                   and o3[1]["durable"]["generation"] == pub["durable"]["generation"] + 1
-                   and o3[2]["durable"]["identity"] == o3[2]["live"]["identity"] != published,
-                   durable=o3[1]["durable"])
-        # Context is never an ECS input: the same LEARN with and without a consumed view yields one identity.
-        rc, with_ctx = self.cli(home, script=[
+                   and live3["live"] == live2["live"], view={k: view[k] for k in ("version", "digest")})
+        self.check("P11", "close discards the session; the next starts at a fresh genesis and the initial identity",
+                   closed["ok"] and closed["discarded"]["learned"] and reopened["ok"]
+                   and reopened["session"]["session"] != opened["session"]["session"]
+                   and reopened["session"]["generation"] == 2 and live4["live"]["identity"] == initial
+                   and lost["ok"] and not lost["found"], discarded=closed.get("discarded"))
+        rc, o2 = self.cli(script=[{"op": "live"}, {"op": "query", "x": X}, LOOKUP])
+        live_r, q_r, lookup_r = o2
+        self.check("P12", "a new process starts at the initial identity: nothing was kept to resume",
+                   rc == 0 and live_r["live"]["identity"] == initial and q_r["values_sha256"] == q0["values_sha256"]
+                   and not lookup_r["found"])
+        killed = self.kill_mid_session()
+        rc, o3 = self.cli(script=[{"op": "live"}])
+        self.check("P13", "a process killed mid-session leaves nothing; the next starts at the initial identity",
+                   killed is not None and killed != initial and rc == 0 and o3[0]["live"]["identity"] == initial,
+                   killed_live=killed)
+        rc, with_ctx = self.cli(script=[
             {"op": "context_axiom", "key": node("ctx-2"),
              "references": [{"chunk": node("c2"), "corpus": node("corpus"), "provenance": provenance("p2")}]},
             {"op": "context_view", "wait": 1}, learn(consume_context=True)])
-        rc2, without = self.cli(home, script=[learn()])
-        self.check("P21", "a LEARN that consumed a context view equals its twin without one (no context-to-ECS path)",
+        rc2, without = self.cli(script=[learn()])
+        self.check("P14", "a LEARN that consumed a context view equals its twin without one (no context-to-ECS path)",
                    with_ctx[2]["ok"] and with_ctx[2]["context"]["version"] == 1
                    and with_ctx[2]["identity"] == without[0]["identity"], identity=without[0].get("identity"))
-        self.home = home
-        return home
+        self.check("P15", "no Elpis process wrote anything: the work directory and the build's libraries are "
+                          "unchanged", self.tree() == before, files=len(before))
 
-    # -- registered durability boundaries (the testing RuntimeCore build) -----------------------------------------
-    _CRASH = r"""
+    _KILL = r"""
 import json, sys, time
 from array import array
 from pathlib import Path
-from elpis.runtime.cognition import LearnAuthority, ObservationAuthority, Stimulus
-from elpis.runtime.deployment import Deployment
-from elpis.runtime.observation import HacfParticipant, StructuralEvidence, record_evidence
-home, step, mode = Path(sys.argv[1]), int(sys.argv[2]), sys.argv[3]
-d = Deployment(home)
-s = d.session()
-x = array("d", [((i * 7 + j * 3) % 11 - 5) / 16.0 for i in range(4) for j in range(6)])
+from elpis.runtime.cognition import LearnAuthority, Stimulus
+from elpis.runtime.deployment import Installation, LineageConfig
+i = Installation(Path(sys.argv[1]), sys.argv[2], build_tree=True)
+s = i.session(LineageConfig(seed=11))
+x = array("d", [((r * 7 + c * 3) % 11 - 5) / 16.0 for r in range(4) for c in range(6)])
 s.runtime.run_numeric_learn(s.state, Stimulus(x, array("d", [0.1, -0.2, 0.05, 0.3]), array("Q", [4, 3]), dim=6),
-                            LearnAuthority(0.002, "acceptance operator: crash fixture"))
-edge = d.libraries.hacf.hyperedge(0x20000001, tuple(HacfParticipant(bytes.fromhex(n), 0x30000000 | (i + 1))
-                                                    for i, n in enumerate(sys.argv[4:7])))
-a = d.libraries.hacf.assertion(edge, bytes.fromhex(sys.argv[7]), 2)
-key = record_evidence(s.runtime, s.state, d.libraries.hacf, (StructuralEvidence(edge, a, "NEGATE", 5),),
-                      ObservationAuthority("acceptance operator: crash fixture", frozenset({2}))).entries[0].relation_key
-candidate = s.runtime.live_identity(s.state)[0]
-if mode == "park":
-    s.runtime._core.testing_durable_fault(2, step, 0)
-    s.runtime.publish_recoverable(s.state, wait=False)
-    while s.runtime.durability().parked != step:
-        time.sleep(0.005)
-print(json.dumps({"candidate": candidate.hex(), "key": key.hex()}), flush=True)
+                            LearnAuthority(0.002, "acceptance operator: kill fixture"))
+print(json.dumps({"live": s.runtime.live_identity(s.state)[0].hex()}), flush=True)
 time.sleep(3600)
 """
 
-    def crash(self, home: Path, step: int, mode: str) -> dict:
-        env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    def kill_mid_session(self) -> str | None:
+        """A process that learned and is killed (SIGKILL) mid-session: its live identity, or None."""
+        env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH",)}
         env["PYTHONDONTWRITEBYTECODE"] = "1"
-        child = subprocess.Popen([sys.executable, "-c", self._CRASH, str(home), str(step), mode, node("alice"),
-                                  node("acme"), node("engineer"), provenance("crash")], stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, text=True, env=env, cwd=str(self.work))
+        proc = subprocess.Popen([sys.executable, "-c", self._KILL, str(self.build), self.pin], stdout=subprocess.PIPE,
+                                text=True, env=env, cwd=str(self.work))
         try:
-            line = child.stdout.readline()
-            if not line:
-                raise RuntimeError(child.stderr.read())
-            report = json.loads(line)
+            line = proc.stdout.readline()
+            return json.loads(line)["live"] if line else None
         finally:
-            child.send_signal(signal.SIGKILL)
-            child.wait(timeout=60)
-        report["returncode"] = child.returncode
-        return report
+            proc.send_signal(signal.SIGKILL)
+            proc.wait(timeout=60)
 
-    def crashes(self):
-        home, created = self.deploy("home-testing", testing=True)
-        rc, o = self.cli(home, script=[evidence("before-crash"), {"op": "publish"}])
-        authorized = o[1]["ticket"]["identity"]
-        evidence_key = o[0]["entries"][0]["relation_key"]
-        # 1. Killed with the checkpoint slot synced and the authority not published: an unresolved candidate.
-        c1 = self.crash(home, 5, "park")
-        rc, cand = self.cli(home, "candidates")
-        rc_q, refused = self.cli(home, "query", "--x", json.dumps(X))
-        self.check("P22", "SIGKILL after the slot sync (registered boundary 5) leaves an unresolved candidate",
-                   c1["returncode"] == -signal.SIGKILL and cand[0]["recovery"]["disposition"] == "CANDIDATE_UNRESOLVED"
-                   and cand[0]["recovery"]["authorized"] == authorized
-                   and cand[0]["recovery"]["candidate"] == c1["candidate"], recovery=cand[0]["recovery"])
-        self.check("P23", "no implicit adoption: cognition is refused until the operator acts",
-                   rc_q == 3 and refused[0]["code"] == "LINEAGE_CANDIDATE_UNRESOLVED")
-        rc, adopted = self.cli(home, "reconcile", "--adopt", c1["candidate"])
-        rc, after = self.cli(home, script=[{"op": "live"}, {"op": "slot", "key": c1["key"]},
-                                           {"op": "slot", "key": evidence_key}])
-        self.check("P24", "the operator's adoption resumes exactly the candidate, every observation once",
-                   adopted[0]["ok"] and after[0]["live"]["identity"] == after[0]["durable"]["identity"] == c1["candidate"]
-                   and after[1]["negate_count"] == 1 and after[2]["assert_count"] == 1
-                   and after[1]["assert_count"] == 1,   # the same relation: one assert (before) and one negate
-                   live=after[0]["live"])
-        # 2. Killed with the authority's record synced but the acknowledgment not delivered: resumes directly.
-        c2 = self.crash(home, 8, "park")
-        rc, cand2 = self.cli(home, "candidates")
-        self.check("P25", "SIGKILL after the record sync (boundary 8, never acknowledged to the caller) resumes it",
-                   cand2[0]["recovery"]["disposition"] == "RESUMABLE"
-                   and cand2[0]["recovery"]["authorized"] == c2["candidate"])
-        # 3. Killed with only volatile work: the last acknowledged state, nothing lost or invented.
-        c3 = self.crash(home, 0, "volatile")
-        rc, live3 = self.cli(home, script=[{"op": "live"}])
-        self.check("P26", "volatile work is lost by a crash; the acknowledged state is never lost",
-                   live3[0]["live"]["identity"] == live3[0]["durable"]["identity"] == c2["candidate"] != c3["candidate"])
-        return home
-
-    # -- the negative sequence --------------------------------------------------------------------------------------
     def negative(self):
-        home = self.home
         from elpis.ECS.composite import CompositeError, CompositeState
         from elpis.runtime.cognition import QueryRequest, QueryStimulus
         from elpis.runtime.composition import CompositionError
-        from elpis.runtime.deployment import Deployment
+        from elpis.runtime.deployment import Installation, LineageConfig
         from elpis.runtime.context import ContextAxiom, ContextLane, ContextReference, Observation
 
         def refused(call):
@@ -332,8 +238,9 @@ time.sleep(3600)
                 return exc.code
             return None
 
-        d = Deployment(home)
-        with d.session() as s:
+        d = Installation(self.build, self.pin, build_tree=True)
+        lineage = LineageConfig(seed=11)
+        with d.session(lineage) as s:
             before = s.state.state_digest()
             codes = [refused(lambda: s.runtime.run_query(s.state, QueryRequest("text", object()))),
                      refused(lambda: s.runtime.run_query(s.state, QueryRequest("text", object(), codec=object())))]
@@ -362,7 +269,7 @@ time.sleep(3600)
                        stale=stale.context.version, current=fresh.context.version)
             # Unsupported memory capability: the configuration never carries one; the native memory LEARN refuses.
             caps = s.state.inspect()["capabilities"]
-        with CompositeState.create(d.libraries.composite, d.lineage().composite(),
+        with CompositeState.create(d.libraries.composite, lineage.composite(),
                                    memoryview(array("d", [0.01] * (6 * 36)))) as scratch:
             tx = scratch.transaction()
             fn = d.libraries.composite._lib.elpis_ecs_composite_leased_txn_memory_learn
@@ -373,32 +280,30 @@ time.sleep(3600)
             tx.abort()
         self.check("N05", "an unsupported memory capability: never configured; the native memory LEARN refuses",
                    caps == 0 and rc == -9, composite_status=rc, memory_status=memory_status.value)
-        # CLI refusals over the live deployment (nothing may change).
-        rc, o = self.cli(home, script=[
-            {"op": "live"},
+        # CLI refusals in one session (nothing may change).
+        rc, o = self.cli(script=[
+            *SOURCES, {"op": "live"},
             learn(grant=None, expect="LEARN_UNAUTHORIZED"),
             evidence("unauthorized", grant=None, expect="OBSERVATION_UNAUTHORIZED"),
             dict(evidence("unadmitted"), sources=[2], expect="OBSERVATION_AUTHORITY"),
             dict(evidence("bad-source", source=9), expect="OBSERVATION_STRUCTURE"),
             dict(learn(), schedule=[[4, 1048576]], expect="COGNITION_FUEL_EXCEEDED"),
             {"op": "live"}])
+        o = o[2:]
         self.check("N03", "unauthorized and unadmitted observations are refused", o[2]["met"] and o[3]["met"])
         self.check("N04", "an invalid source identity (outside structure's authority range) is refused", o[4]["met"])
         self.check("N10", "budget exhaustion is refused before any native work", o[5]["met"])
         self.check("N02b", "an unauthorized LEARN is refused", o[1]["met"])
-        self.check("N00", "every refusal left the live and durable state unchanged", o[0]["live"] == o[6]["live"]
-                   and o[0]["durable"] == o[6]["durable"])
+        self.check("N00", "every refusal left the live state unchanged", o[0]["live"] == o[6]["live"])
         self.wrong_abi()
-        self.wrong_envelope(d)
-        self.pin_drift(home)
-        self.cold_from_hot(d)
-        self.incompatible_lineage(home)
-        rc, o = self.cli(home, "create")
-        rc2, o2 = self.cli(home, "init", "--native-build", str(self.build))
-        self.check("N13", "an existing write-once destination is never overwritten (lineage, deployment)",
-                   o[0]["code"] == "LINEAGE_EXISTS" and o2[0]["code"] == "DEPLOYMENT_EXISTS")
-        self.check("N14", "an unresolved candidate refuses cognition (P23)",
-                   any(c["id"] == "P23" and c["ok"] for c in self.checks))
+        self.pin_drift()
+        self.warm_budget(d)
+        results = {}
+        for retired in (("init",), ("create",), ("publish",), ("candidates",), ("reconcile",), ("--home", "x")):
+            rc, out = self.cli(*retired)
+            results[retired[0]] = (rc, out[0].get("code"))
+        self.check("N13", "every retired persistent command is refused and does nothing",
+                   all(v == (2, "OPERATION_RETIRED") for v in results.values()), results=results)
 
     def wrong_abi(self):
         """A RuntimeCore library of another ABI version (a stub exporting only the version, 4) is refused."""
@@ -424,174 +329,73 @@ time.sleep(3600)
             code = None
         except CompositionError as exc:
             code, detail = exc.code, str(exc)
-        rc, o = self._tampered_copy(self.home, "abi", lambda h: _rewrite_json(h / "elpis.json", abi={"runtime": 4,
-                                                                                                     "composite": 1}))
-        self.check("N07", "a wrong runtime ABI is refused (the version check; a deployment of another ABI)",
-                   code == "RUNTIME_INVALID" and o[0]["code"] == "DEPLOYMENT_ABI", code=code,
-                   deployment=o[0]["code"])
+        self.check("N07", "a wrong runtime ABI is refused (the version check)", code == "RUNTIME_INVALID",
+                   code=code)
 
-    def wrong_envelope(self, d):
-        from elpis.ECS.composite import CompositeError, CompositeState
-        from elpis.ECS.k1 import K1Error, K1State
-        from elpis.runtime.composition import CompositionError
-        config = d.lineage().composite()
-        with d.session() as s:
-            envelope = s.state.snapshot()
-        codes = []
-        for bad in (envelope[:-1] + bytes([envelope[-1] ^ 1]), b"ELPISGK1" + envelope[8:]):
-            try:
-                CompositeState.restore(d.libraries.composite, config, bad).close()
-                codes.append(None)
-            except CompositeError as exc:
-                codes.append(exc.code)
-        with K1State.create(d.libraries.k1, 6, 36, memoryview(array("d", [0.01] * 216))) as k1, d.session() as s:
-            try:
-                s.runtime.run_numeric_query(k1, __import__("elpis.runtime.cognition", fromlist=["x"]).QueryStimulus(
-                    array("d", [0.1] * 6), dim=6))
-                mismatch = None
-            except (CompositionError, K1Error) as exc:
-                mismatch = exc.code
-        self.check("N08", "a wrong state envelope or format is refused (corrupt trailer, K1 magic, K1 for composite)",
-                   codes == ["CORRUPT", "CORRUPT"] and mismatch == "CONTINUITY_STATE_MISMATCH",
-                   restore=codes, bind=mismatch)
-
-    def _tampered_copy(self, home: Path, name: str, tamper) -> tuple[int, list]:
-        copy = self.work / ("tamper-" + name)
-        shutil.copytree(home, copy, symlinks=True)
-        for p in [copy, *copy.rglob("*")]:
-            p.chmod(p.stat().st_mode | 0o200)
-        tamper(copy)
-        return self.cli(copy, "status")
-
-    def pin_drift(self, home: Path):
-        def flip(path):
-            data = bytearray(path.read_bytes())
-            data[-1] ^= 1
-            path.write_bytes(bytes(data))
+    def pin_drift(self):
+        """A changed library, or a wrong pin, refuses every start (INSTALL_PIN): copies of the build's libraries, one
+        byte of one library flipped (the harness's own copies; the build is never touched)."""
+        def staged(name, flip=None):
+            root = self.work / ("tamper-" + name)
+            for rel in _LIBS:
+                (root / rel).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(self.build / rel, root / rel)
+            if flip:
+                data = bytearray((root / flip).read_bytes())
+                data[-1] ^= 1
+                (root / flip).write_bytes(bytes(data))
+            return root
         results = {}
-        for name, tamper in (("library", lambda h: flip(h / "lib" / "libelpis_ecs_composite.so")),
-                             ("runtime", lambda h: flip(h / "lib" / "libelpis_runtime.so")),
-                             ("catalog", lambda h: flip(h / "native-catalog.json")),
-                             ("pin", lambda h: _rewrite_json(h / "elpis.json", catalog_sha256="0" * 64))):
-            rc, o = self._tampered_copy(home, name, tamper)
+        for name, flip in (("library", "native/runtime/composite/libelpis_ecs_composite.so"),
+                           ("runtime", "native/runtime/libelpis_runtime.so")):
+            rc, o = self.cli("status", source=staged(name, flip))
             results[name] = (rc, o[0].get("code"))
-        self.check("N09", "source/binary pin drift refuses every start", results == {
-            "library": (4, "DEPLOYMENT_PIN"), "runtime": (4, "RUNTIME_UNPINNED"), "catalog": (4, "DEPLOYMENT_PIN"),
-            "pin": (4, "DEPLOYMENT_PIN")}, results=results)
+        rc, o = self.cli("status", source=staged("pin"), pin="0" * 64)
+        results["pin"] = (rc, o[0].get("code"))
+        self.check("N09", "pin drift refuses every start", results == {
+            "library": (4, "INSTALL_PIN"), "runtime": (4, "INSTALL_PIN"), "pin": (4, "INSTALL_PIN")}, results=results)
 
-    def cold_from_hot(self, d):
-        """A COLD FMS-resident K1 state on the HOT path (the HOT residency invariants B and C, on the deployment's own
-        admitted libraries): the bound lineage is released, demoted exactly (every other WARM state held, then a
-        newcomer), refused RUNTIME_NOT_RESIDENT by QUERY and LEARN with nothing promoted, read or fail-stopped, and
-        resumed only by the owner's explicit materialization."""
-        from elpis.ECS.k1 import K1FMSRuntime
-        from elpis.runtime import Runtime
+    def warm_budget(self, d):
+        """An FMS-resident K1 lineage on a RAM-only FMS context (no COLD tier: nothing can spill): at the WARM budget
+        a new state is refused (FMS_E_LIMIT) with nothing demoted, spilled or written, and the bound lineage keeps
+        answering from WARM (the HOT residency hold)."""
+        from elpis.ECS.k1 import K1Error, K1FMSRuntime
+        from elpis.runtime import Runtime, SessionConfig
         from elpis.runtime.cognition import LearnAuthority, QueryStimulus, Stimulus
-        from elpis.runtime.composition import CompositionError, RuntimeConfig
         from elpis.substrate.residency import Context
         image = d.libraries.k1.envelope_bytes(6, 36) - 32
-        ctx = Context(d.libraries.k1_fms, warm_bytes=2 * image + image // 2, cold_bytes=10 ** 7, max_objects=8,
-                      cold_root=self.work / "fms-cold")
+        ctx = Context(d.libraries.k1_fms, warm_bytes=2 * image + image // 2, max_objects=8)
         fms = K1FMSRuntime(d.libraries.k1, ctx, d.libraries.k1_fms, max_states=8)
         w = memoryview(array("d", [0.01 * ((i % 13) - 6) for i in range(216)]))
-        states, held = [], []
-
-        def register(key):
-            states.append(fms.state(fms.register(bytes([key]) * 32, 6, 36, w, max_rows=8)))
-            return states[-1]
-
-        def residency():
-            r = fms.metrics()["residency"]
-            return {k: r[k] for k in ("promotions", "demotions", "cold_reads", "cold_writes")}
-
-        def refused(call):
-            try:
-                call()
-            except CompositionError as exc:
-                return exc.code
-            return None
-
+        states = []
         q = QueryStimulus(array("d", [v for row in X for v in row]), dim=6)
         stimulus = Stimulus(array("d", [v for row in X for v in row]), array("d", Y), array("Q", [4, 3]), dim=6)
         grant = LearnAuthority(0.002, "acceptance operator: residency fixture")
-        from elpis.runtime.authority import provision_authority
-        authority = provision_authority(d.libraries.authority, self.work / "fms-authority", capacity=4)
-        config = RuntimeConfig(authority.root, d.home / "lib" / d.config["runtime_library"],
-                               native_authority=d.authority, runtime_library_id=d.config["runtime_library_id"])
         try:
-            lineage = register(1)
-            with Runtime(config) as runtime:
-                runtime.anchor_cognition(lineage)
-                runtime.run_numeric_learn(lineage, stimulus, grant)
-                live = runtime.live_identity(lineage)
-                runtime.release(lineage)
-                other = register(2)
-                fms.resident_hold(other.id)
-                held.append(other)
-                register(3)                                   # WARM must make room: only the lineage is demotable
-                cold = fms.inspect(lineage.id)["tier"] == 2
-                before = residency()
-                codes = [refused(lambda: runtime.run_numeric_query(lineage, q)),
-                         refused(lambda: runtime.run_numeric_learn(lineage, stimulus, grant))]
-                untouched = residency() == before and runtime.fault is None
-                fms.resident_release(other.id)
-                held.remove(other)
-                lineage.materialize()                         # the explicit WARM-lane restoration
-                answer = runtime.run_numeric_query(lineage, q)
-                resumed = runtime.live_identity(lineage)
-            self.check("N11", "COLD access from HOT is refused without promotion or cold read; explicit "
-                              "materialization resumes the same live lineage",
-                       cold and codes == ["RUNTIME_NOT_RESIDENT"] * 2 and untouched and resumed[0] == live[0]
-                       and len(answer.values) == 4, codes=codes, residency=before)
+            states.append(fms.state(fms.register(bytes([1]) * 32, 6, 36, w, max_rows=8)))
+            with Runtime(d.runtime_config(SessionConfig(capacity=4))) as runtime:
+                runtime.anchor_cognition(states[0])
+                runtime.run_numeric_learn(states[0], stimulus, grant)
+                states.append(fms.state(fms.register(bytes([2]) * 32, 6, 36, w, max_rows=8)))
+                try:
+                    fms.register(bytes([3]) * 32, 6, 36, w, max_rows=8)
+                    code = None
+                except K1Error as exc:
+                    code = exc.code
+                r = fms.metrics()["residency"]
+                answer = runtime.run_numeric_query(states[0], q)
+                fault = runtime.fault            # read while the session is open: closed, RuntimeCore reports CLOSED
+            self.check("N11", "at the WARM budget a new FMS state is refused without spill; the HOT lineage answers",
+                       code is not None and r["promotions"] == r["demotions"] == r["cold_reads"] == r["cold_writes"]
+                       == 0 and len(answer.values) == 4 and fault is None,
+                       code=code, fault=fault,
+                       residency={k: r[k] for k in ("promotions", "demotions", "cold_reads", "cold_writes")})
         finally:
-            for s in held:
-                fms.resident_release(s.id)
             for s in states:
                 try:
                     fms.close_state(s.id)
                 except Exception:
                     pass
-
-    def incompatible_lineage(self, home: Path):
-        # N12 mutates one lineage configuration only. _tampered_copy is not suitable here:
-        # it makes *every* copied file owner-writable, including the protected ECS_C key
-        # that must retain its original mode, triggering a different refusal first.
-        copy = self.work / "tamper-lineage"
-        shutil.copytree(home, copy, symlinks=True)
-        lineage = copy / "lineage" / "lineage.json"
-        original_mode = lineage.stat().st_mode & 0o7777
-        try:
-            lineage.chmod(original_mode | 0o200)
-            _rewrite_lineage(lineage)
-        finally:
-            lineage.chmod(original_mode)
-
-        # The tamper is the *only* permitted byte change. A read-only refusal
-        # must not alter any key, witness, record, checkpoint, pin or configuration.
-        def files_snapshot(root):
-            result = {}
-            for path in sorted(root.rglob("*")):
-                if path.is_symlink():
-                    result[str(path.relative_to(root))] = ("symlink", os.readlink(path))
-                elif path.is_file():
-                    data = path.read_bytes()
-                    result[str(path.relative_to(root))] = (
-                        "file", len(data), path.stat().st_mode & 0o7777,
-                        hashlib.sha256(data).hexdigest())
-            return result
-
-        before = files_snapshot(copy)
-        rc, o = self.cli(copy, "status")
-        after = files_snapshot(copy)
-        unchanged = before == after
-        code = o[0].get("code") if len(o) == 1 else None
-        self.check("N12", "an incompatible recovery lineage (another composite shape) is refused, nothing adopted",
-                   rc == 3 and len(o) == 1 and o[0].get("ok") is False
-                   and code == "CORRUPT" and unchanged,
-                   rc=rc, code=code, unchanged=unchanged,
-                   files_before=len(before), files_after=len(after),
-                   changed_paths=sorted(set(before) ^ set(after) |
-                                        {p for p in before.keys() & after.keys() if before[p] != after[p]}))
 
     # -- the whole run ----------------------------------------------------------------------------------------------
     def run(self) -> dict:
@@ -602,7 +406,6 @@ time.sleep(3600)
         failure = None
         try:
             self.positive()
-            self.crashes()
             self.negative()
         except Exception as exc:   # a crashed harness is a failed acceptance, reported, never hidden
             failure = f"{type(exc).__name__}: {exc}"
@@ -615,25 +418,14 @@ time.sleep(3600)
                                 "source_commit": self.source_commit},
                 "seconds": round(time.time() - started, 1),
                 "nonclaims": ["mechanics only: fixture stimuli and evidence (TRAINING=NONE SEMANTICS=NONE)",
-                              "process death, not power loss", "no language, reasoning or learning capability claim"]}
-
-
-def _rewrite_json(path: Path, **fields):
-    document = json.loads(path.read_text())
-    document.update(fields)
-    path.write_text(json.dumps(document))
-
-
-def _rewrite_lineage(path: Path):
-    document = json.loads(path.read_text())
-    document["config"]["slot_capacity"] = document["config"]["slot_capacity"] // 2
-    path.write_text(json.dumps(document))
+                              "no language, reasoning or learning capability claim",
+                              "the harness's own writes (tamper copies, the ABI stub, the report) are not Elpis's"]}
 
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m elpis.runtime.acceptance", description=__doc__.split("\n\n")[0])
     p.add_argument("--native-build", required=True, help="an operator CMake build tree (absolute)")
-    p.add_argument("--work", required=True, help="an empty or new directory for the acceptance deployments")
+    p.add_argument("--work", required=True, help="an empty or new directory for the harness's own files")
     p.add_argument("--source-commit")
     p.add_argument("--report", help="write the JSON report here as well")
     args = p.parse_args(argv)

@@ -6,9 +6,9 @@ K1 lease (the K1 header's "Managed ownership"): every unmanaged mutating entry p
 touches anything, and every managed transaction begins at the state's live coordinate (its native generation, checked
 inside the same guarded K1 call; the K1 header's "Live coordinate"). Binding verifies the exact retained-state
 identity before claiming. A bound state that is not provably the lineage (its lease taken by another owner, or a move
-no guard could see) fail-stops before anything is built on it or published. Managed commits are volatile; durable
-publication is the explicit ``publish_identity`` (no checkpoint store here). Real native K1, standalone and
-FMS-resident; the fixture map is TEST_ONLY TRAINING=NONE SEMANTICS=NONE.
+no guard could see) fail-stops before anything is built on it. Managed commits are volatile and nothing is ever
+published (RuntimeCore ABI v8). Real native K1, standalone and FMS-resident; the fixture map is TEST_ONLY
+TRAINING=NONE SEMANTICS=NONE.
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from elpis.runtime.composition import CompositionError
 from elpis.runtime.core import describe
 from elpis.runtime.fuel import CEILING
 
-from ..conftest import authority_slots
+from ..conftest import session_marks
 from ._turn_fixtures import LEARN, RATE, ByteTokens, FixtureMap, admitted
 from .test_codec_ecs_turn import _config, _Resident, adapter, k1, world  # noqa: F401 (module fixtures)
 
@@ -37,7 +37,7 @@ def _learn(text="managed"):
 def bound(request, k1, adapter, tmp_path):   # noqa: F811 (module fixtures)
     """A K1 state of either kind, bound to an open runtime by an anchor and one managed LEARN."""
     def opened(state):
-        runtime = Runtime(_config(tmp_path / "c")).open()
+        runtime = Runtime(_config()).open()
         runtime.anchor_cognition(state)
         runtime.run_learn(state, _learn("warm"))
         return runtime
@@ -48,7 +48,7 @@ def bound(request, k1, adapter, tmp_path):   # noqa: F811 (module fixtures)
             yield state, runtime
             runtime.close()
     else:
-        with _Resident(k1, adapter, tmp_path, max_rows=8) as state:
+        with _Resident(k1, adapter, max_rows=8) as state:
             runtime = opened(state)
             yield state, runtime
             runtime.close()
@@ -59,7 +59,7 @@ def _generation(state):
 
 
 def _evidence(state, runtime):
-    slots = authority_slots(runtime.continuity.directory)
+    slots = session_marks(runtime)
     return state.snapshot(), state.state_digest(), state.epoch, slots, runtime.continuity.snapshot()
 
 
@@ -105,8 +105,7 @@ def test_every_unmanaged_mutation_of_a_bound_state_is_refused_and_the_lineage_co
     assert (result.generation_before, result.generation_after) == (generation, _generation(state))
     assert result.durability == "VOLATILE" and runtime.fault is None
     assert runtime.live_identity(state) == (state.state_digest(), _generation(state))
-    assert runtime.publish_identity(state).identity_published
-    assert runtime.continuity.snapshot().k1_state_digest == state.state_digest()
+    assert runtime.continuity.snapshot().k1_state_digest != state.state_digest()   # nothing is published
 
 
 def test_an_unmanaged_mutation_during_an_open_managed_transaction_is_refused(bound):
@@ -127,37 +126,35 @@ def test_an_unmanaged_mutation_during_an_open_managed_transaction_is_refused(bou
 
 def test_a_second_runtime_taking_the_state_makes_the_first_fail_stop_before_any_mutation(k1, tmp_path):
     with world(k1) as state:
-        first = Runtime(_config(tmp_path / "a")).open()
+        first = Runtime(_config()).open()
         first.anchor_cognition(state)
         first.run_learn(state, _learn("first"))
-        second = Runtime(_config(tmp_path / "b")).open()
+        second = Runtime(_config()).open()
         second.anchor_cognition(state)        # proves its own lineage on the same bytes, then takes the lease
         before = state.snapshot()
         with pytest.raises(CompositionError) as info:
             first.run_learn(state, _learn("lost"))
         assert info.value.code == MISMATCH and first.fault == MISMATCH
-        assert state.snapshot() == before      # refused natively at the leased begin: nothing built, nothing published
+        assert state.snapshot() == before      # refused natively at the leased begin: nothing built
         second.run_learn(state, _learn("second"))
-        assert second.publish_identity(state).identity_published
-        assert second.continuity.snapshot().k1_state_digest == state.state_digest()
+        assert second.live_identity(state) == (state.state_digest(), _generation(state))
         first.close()
         second.close()
 
 
-def test_close_gives_the_state_back_and_restart_verifies_it(k1, tmp_path):
+def test_close_gives_the_state_back_and_a_new_session_never_claims_it_implicitly(k1, tmp_path):
     with world(k1) as state:
-        with Runtime(_config(tmp_path / "c")) as runtime:
+        with Runtime(_config()) as runtime:
             runtime.anchor_cognition(state)
             runtime.run_learn(state, _learn())
-            assert runtime.publish_identity(state).identity_published   # so only the unmanaged move below can mismatch
             assert state.managed_lease != 0
         assert state.managed_lease == 0
-        state.learn(X.x, X.y, RATE, 1)        # unmanaged again: outside the lineage
-        with Runtime(_config(tmp_path / "c")) as restarted:
+        state.learn(X.x, X.y, RATE, 1)        # unmanaged again: outside any lineage
+        with Runtime(_config()) as restarted:
             with pytest.raises(CompositionError) as info:
                 restarted.run_learn(state, _learn())
-            assert info.value.code == MISMATCH
-            assert state.managed_lease == 0    # a state that is not the lineage is never claimed
+            assert info.value.code == "CONTINUITY_UNANCHORED"   # a new session resumes nothing
+            assert state.managed_lease == 0    # never claimed
 
 
 def test_an_explicit_release_and_rebind_verifies_identity_again(bound):
@@ -172,7 +169,7 @@ def test_an_explicit_release_and_rebind_verifies_identity_again(bound):
 
 def test_close_after_the_owner_closed_the_state_is_clean(k1, tmp_path):
     state = world(k1)
-    runtime = Runtime(_config(tmp_path / "c")).open()
+    runtime = Runtime(_config()).open()
     runtime.anchor_cognition(state)
     state.close()                              # the owner freed it while bound: nothing to give back
     runtime.close()

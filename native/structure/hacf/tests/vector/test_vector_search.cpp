@@ -20,7 +20,6 @@ static const char *cur = "?";
 #define CASE(name) do { cur = (name); std::printf("- %s\n", cur); } while (0)
 
 static const uint32_t D = ELPIS_EMBEDDING_DIM;
-static std::string base;
 static const char *kCorpusDg = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 struct Env {
@@ -36,7 +35,7 @@ struct Env {
 };
 
 static bool env_up(Env &e, const std::string &sub, uint64_t warm = 8ull << 20) {
-    e.fms = vecfix::make_fms(base + "/" + sub, warm);
+    e.fms = vecfix::make_fms(sub, warm);
     if (!e.fms) return false;
     if (elpis_embedder_fixture_create(ELPIS_NORM_L2, &e.emb) != 0) return false;
     elpis_embedder_profile(e.emb, &e.profile);
@@ -495,11 +494,8 @@ static void case_index_manifest() {
     std::free(j2);
 }
 
-int main(int argc, char **argv) {
-    base = argc > 1 ? argv[1] : "/tmp/elpis-vector-search";
-    vecfix::rmtree(base);
-    vecfix::mkdirp(base);
-    std::printf("R2 exact search suite, root=%s\n", base.c_str());
+int main() {
+    std::printf("R2 exact search suite (volatile FMS: no file)\n");
 
     case_known_neighbour();
     case_determinism_and_ties();

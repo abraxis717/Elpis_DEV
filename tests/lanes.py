@@ -7,7 +7,7 @@
 | SCIENTIFIC | frozen ECS science, retention and H-ECS evidence and replay | ``pytest --lane scientific``: the Scientific authority job |
 | HISTORICAL | the DSV4.1 tower, the ECS dynamics laboratory, donor parity, the retained noncanonical model-execution mechanics of ``elpis.inference`` (no production consumer: docs/PYTHON_AUTHORITY_CENSUS.md) | ``pytest --lane historical``: the "Python stress and historical" job; donor parity: the Donor parity job |
 
-NATIVE (ctest: ECS, K1, FMS, the ECS_C authority, RuntimeCore, H-ECS mechanics) and the sanitizer STRESS builds are
+NATIVE (ctest: ECS, K1, FMS, the ECS_C session, RuntimeCore, H-ECS mechanics) and the sanitizer STRESS builds are
 CMake/ctest lanes; the offline job runs every Python lane (``--lane all``) with no network.
 
 A bare ``pytest`` runs FAST only: ordinary local qualification never executes the research corpus by
@@ -36,7 +36,6 @@ RULES: tuple[tuple[str, str], ...] = (
     ("tests/pipeline/canonical_publisher/test_protocol.py::test_production_readers_during_successive_publications",
      "stress"),
     ("tests/pipeline/canonical_publisher/test_protocol.py::test_process_death_recovery", "stress"),
-    ("tests/integration/test_native_host.py::test_long_runs_keep_the_home_fixed", "stress"),
     # Mutation adequacy of the red-team regressions: a fresh interpreter per mutant over a sandbox copy.
     ("tests/boundary/test_redteam_mutations.py::test_the_regression_kills_the_mutant", "stress"),
     ("tests/", "fast"),

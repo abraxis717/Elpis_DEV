@@ -2,10 +2,8 @@
 #include "elpis/ecsg_fms.h"
 #include "elpis/fms_pal_posix.h"
 #include <assert.h>
-#include <dirent.h>
-#include <fcntl.h>
-#include <math.h>
 #include <pthread.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,17 +23,17 @@ static void data(void) {
     for (size_t i = 0; i < sizeof(x)/sizeof(*x); ++i) x[i] = random_value();
     for (size_t i = 0; i < sizeof(y)/sizeof(*y); ++i) y[i] = random_value();
 }
+/* FMS ABI v3: WARM only, RAM only; nothing below WARM, nothing written. */
 static fms_config config(size_t warm, unsigned objects) {
     fms_config c = {0};
     c.tier_budget[FMS_WARM] = c.domain_ceiling[FMS_DOM_RAM] = warm;
-    c.tier_budget[FMS_COLD] = c.domain_ceiling[FMS_DOM_STORAGE] = BYTES * 100;
     c.high_wm = 0.9f; c.low_wm = 0.7f; c.max_objects = objects;
     c.hot_absent_policy = c.cold_absent_policy = FMS_REJECT;
     return c;
 }
-static elpis_ecsg_fms *runtime(const char *root, size_t warm, unsigned objects) {
+static elpis_ecsg_fms *runtime(size_t warm, unsigned objects) {
     fms_config c = config(warm, objects);
-    fms_ctx *ctx = elpis_fms_create_posix(&c, root);
+    fms_ctx *ctx = elpis_fms_create_ram_only(&c);
     assert(ctx);
     elpis_ecsg_fms *r = NULL;
     OK(elpis_ecsg_fms_create(ctx, objects, &r));
@@ -63,7 +61,7 @@ static void equal(elpis_ecsg_fms *r, uint64_t id, elpis_ecsg_executor *e) {
     assert(!memcmp(sm, tm, sizeof(sm)));
 }
 static void parity(void) {
-    elpis_ecsg_fms *r = runtime("parity", BYTES * 3, 8);
+    elpis_ecsg_fms *r = runtime(BYTES * 3, 8);
     const size_t widths[] = {36,48,72}, rows[] = {1,7,8,17,64};
     const uint64_t steps[] = {1,3,17};
     unsigned cases = 0;
@@ -120,45 +118,43 @@ static void parity(void) {
     OK(elpis_ecsg_fms_destroy(&r));
     printf("bitwise differential: %u cases; forward/K/schedule/candidate/commit/S3/snapshot/epoch PASS\n",cases);
 }
+/* Bounded residency without spill (FMS ABI v3): WARM holds exactly what its budget admits; a state beyond it is
+ * refused (FMS_E_LIMIT), never written anywhere, and the resident states keep their exact behaviour. */
 static void scaling(void) {
-    elpis_ecsg_fms *r = runtime("scaling", BYTES*2, 12);
-    uint64_t ids[10];
-    double baseline[10][64], out[64];
-    for (unsigned i=0; i<10; ++i) {
+    elpis_ecsg_fms *r = runtime(BYTES*2, 12);
+    uint64_t ids[2];
+    double baseline[2][64], out[64];
+    for (unsigned i=0; i<2; ++i) {
         data(); ids[i]=state(r,i+1,36);
         OK(elpis_ecsg_fms_learn(r,ids[i],x,y,64,0.002,i+1,NULL));
     }
-    for (unsigned i=0; i<10; ++i) OK(elpis_ecsg_fms_forward(r,ids[i],x,64,baseline[i]));
+    for (unsigned i=0; i<2; ++i) OK(elpis_ecsg_fms_forward(r,ids[i],x,64,baseline[i]));
+    uint8_t k[32] = {9}; uint64_t refused = 0;
+    assert(elpis_ecsg_fms_register(r, k, 6, 36, 64, w, &refused) == ELPIS_ECSG_FMS_ERROR_BASE + FMS_E_LIMIT);
+    assert(!refused);
+    OK(elpis_ecsg_fms_pump(r));
     elpis_ecsg_fms_metrics m;
     OK(elpis_ecsg_fms_stats(r,&m));
-    assert(m.states==10 && m.logical_bytes==10*BYTES);
-    assert(m.resident_authoritative_bytes<=2*BYTES && m.logical_bytes>m.resident_authoritative_bytes);
-    assert(m.residency.cold_reads && m.residency.cold_writes && !m.leases && !m.residency.pinned_bytes);
-    OK(elpis_ecsg_fms_forward(r,ids[0],x,64,out));
-    assert(!memcmp(out,baseline[0],sizeof(out)));
-    OK(elpis_ecsg_fms_learn(r,ids[1],x,y,64,0.002,7,NULL));
-    OK(elpis_ecsg_fms_pump(r));
-    for (unsigned i=0; i<10; ++i) {
+    assert(m.states==2 && m.logical_bytes==2*BYTES && m.resident_authoritative_bytes==2*BYTES);
+    assert(!m.residency.cold_reads && !m.residency.cold_writes && !m.residency.demotions && !m.leases);
+    assert(!m.residency.tier_bytes[FMS_COLD] && !m.residency.domain_bytes[FMS_DOM_STORAGE]);
+    for (unsigned i=0; i<2; ++i) {
         OK(elpis_ecsg_fms_forward(r,ids[i],x,64,out));
-        if (i==1) assert(memcmp(out,baseline[i],sizeof(out)));
-        else assert(!memcmp(out,baseline[i],sizeof(out)));
+        assert(!memcmp(out,baseline[i],sizeof(out)));
         elpis_ecsg_fms_info info;
         OK(elpis_ecsg_fms_inspect(r,ids[i],&info));
-        assert(info.epoch==i+1+(i==1?7:0));
+        assert(info.epoch==i+1 && info.tier==FMS_WARM && !info.cold_replica);
     }
-    printf("scaling: logical=%llu resident=%llu active_workspace=%llu WARM=%llu HOT=%llu COLD=%llu storage=%llu pins=%llu leases=%llu high_water=%llu\n",
-        (unsigned long long)m.logical_bytes,(unsigned long long)m.resident_authoritative_bytes,
-        (unsigned long long)m.active_workspace_bytes,
-        (unsigned long long)m.residency.tier_bytes[1],(unsigned long long)m.residency.tier_bytes[0],
-        (unsigned long long)m.residency.tier_bytes[2],(unsigned long long)m.residency.domain_bytes[2],
-        (unsigned long long)m.residency.pinned_bytes,(unsigned long long)m.leases,
-        (unsigned long long)m.resident_high_water);
-    for(unsigned i=0;i<10;++i) OK(elpis_ecsg_fms_close(r,&ids[i]));
+    printf("bounded residency: logical=%llu resident=%llu WARM=%llu COLD=%llu storage=%llu; the third state refused "
+           "(no spill)\n", (unsigned long long)m.logical_bytes, (unsigned long long)m.resident_authoritative_bytes,
+           (unsigned long long)m.residency.tier_bytes[1], (unsigned long long)m.residency.tier_bytes[2],
+           (unsigned long long)m.residency.domain_bytes[2]);
+    for(unsigned i=0;i<2;++i) OK(elpis_ecsg_fms_close(r,&ids[i]));
     OK(elpis_ecsg_fms_destroy(&r));
 }
 static void atomicity(void) {
     data();
-    elpis_ecsg_fms *r=runtime("atomicity",BYTES*2,4);
+    elpis_ecsg_fms *r=runtime(BYTES*2,4);
     uint64_t id=state(r,1,36), other=state(r,2,36), token;
     uint8_t before[BYTES], after[sizeof(before)];
     OK(elpis_ecsg_fms_snapshot_write(r,id,before,sizeof(before)));
@@ -205,16 +201,9 @@ static void atomicity(void) {
 static int fail_ram(void *self, uint64_t bytes, void **out) {
     (void)self;(void)bytes;(void)out; return FMS_PAL_ENOMEM;
 }
-static int fail_read(void *self, const fms_cold_token *t, void *out, uint64_t bytes) {
-    (void)self;(void)t;(void)out;(void)bytes; return FMS_PAL_EIO;
-}
-static int fail_put(void *self,const void *src,uint64_t bytes,fms_cold_token **out) {
-    (void)self;(void)src;(void)bytes;(void)out;return FMS_PAL_EIO;
-}
 static void faults(void) {
-    for(int mode=0;mode<5;++mode) {
-        char root[32]; snprintf(root,sizeof(root),"fault-%d",mode);
-        fms_pal *pal=fms_pal_posix_create(root); assert(pal);
+    for(int mode=0;mode<2;++mode) {
+        fms_pal *pal=fms_pal_posix_create_ram_only(); assert(pal);
         fms_config cfg=config(BYTES,2);
         fms_ctx *ctx=fms_create(&cfg,pal); assert(ctx);
         elpis_ecsg_fms *r=NULL; OK(elpis_ecsg_fms_create(ctx,4,&r));
@@ -224,113 +213,81 @@ static void faults(void) {
         int (*ram)(void *,uint64_t,void **)=pal->ram_alloc;
         if(mode==0) {
             pal->ram_alloc=fail_ram;
-            /* registration allocation failure after a successful eviction */
-            assert(elpis_ecsg_fms_register(r,key,6,36,64,w,&other)==-102 && !other);
-            assert(elpis_ecsg_fms_forward(r,id,x,64,y)==-102);
+            /* a registration beyond the budget is refused: nothing is evicted to make room (nothing below WARM) */
+            assert(elpis_ecsg_fms_register(r,key,6,36,64,w,&other)==-107 && !other);
+            OK(elpis_ecsg_fms_forward(r,id,x,64,y));
             pal->ram_alloc=ram;
             OK(elpis_ecsg_fms_forward(r,id,x,64,y));
-        } else if(mode==1) {
+        } else {
             uint64_t token; OK(elpis_ecsg_fms_txn_begin(r,id,&token));
             assert(elpis_ecsg_fms_register(r,key,6,36,64,w,&other)==-107 && !other);
             OK(elpis_ecsg_fms_txn_abort(r,id,token));
-        } else if(mode==2) {
-            OK(elpis_ecsg_fms_pump(r)); pal->cold_get=fail_read;
-            assert(elpis_ecsg_fms_forward(r,id,x,64,y)==-106);
-            assert(elpis_ecsg_fms_forward(r,id,x,64,y)==-108);
-        } else if(mode==3) {
-            OK(elpis_ecsg_fms_pump(r));
-            DIR *dir=opendir(root); assert(dir); struct dirent *ent; int changed=0;
-            while((ent=readdir(dir))) if(strstr(ent->d_name,".blob")) {
-                int fd=openat(dirfd(dir),ent->d_name,O_WRONLY); assert(fd>=0);
-                uint8_t bad=0xff; assert(pwrite(fd,&bad,1,16)==1); close(fd); ++changed;
-            }
-            closedir(dir); assert(changed==1);
-            assert(elpis_ecsg_fms_forward(r,id,x,64,y)==-109);
-            assert(elpis_ecsg_fms_forward(r,id,x,64,y)==-108);
-        } else {
-            pal->cold_put=fail_put;
-            assert(elpis_ecsg_fms_register(r,key,6,36,64,w,&other)==-107 && !other);
-            OK(elpis_ecsg_fms_forward(r,id,x,64,y)); /* intact WARM source */
         }
         elpis_ecsg_fms_metrics m; OK(elpis_ecsg_fms_stats(r,&m));
-        assert(!m.leases && !m.residency.pinned_bytes && m.states==1);
+        assert(!m.leases && !m.residency.pinned_bytes && m.states==1 && !m.residency.cold_writes);
         OK(elpis_ecsg_fms_close(r,&id)); OK(elpis_ecsg_fms_destroy(&r));
     }
-    elpis_ecsg_fms *r=runtime("slots",BYTES*3,1);
+    elpis_ecsg_fms *r=runtime(BYTES*3,1);
     uint64_t id=state(r,1,36), another=0; uint8_t key[32]={2};
     assert(elpis_ecsg_fms_register(r,key,6,36,64,w,&another)==-5);
     OK(elpis_ecsg_fms_close(r,&id)); OK(elpis_ecsg_fms_destroy(&r));
-    puts("registration, capacity, promotion allocation, cold read/digest/write failures PASS");
+    puts("registration beyond the budget refused without spill; capacity PASS");
 }
 
-/* Deterministic BUSY contract. State A is COLD, so any operation on A promotes it through the PAL's cold_get,
- * which FMS calls with its own lock dropped while the ECS slot for A is already held. A test PAL hook parks the
- * worker inside that cold_get (gate) until the observer has probed: the worker provably holds exclusive authority
- * over A for the whole probe window. No sleeps, no retries, no scheduler assumptions. */
-static pthread_mutex_t gate_mu = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t gate_cv = PTHREAD_COND_INITIALIZER;
-static int gate_armed, gate_entered, gate_open;
-static int (*posix_cold_get)(void *, const fms_cold_token *, void *, uint64_t);
-static int gated_cold_get(void *self, const fms_cold_token *t, void *dst, uint64_t bytes) {
-    pthread_mutex_lock(&gate_mu);
-    if (gate_armed) {
-        gate_armed = 0;              /* only the worker's promotion of A is parked */
-        gate_entered = 1;
-        pthread_cond_broadcast(&gate_cv);
-        while (!gate_open) pthread_cond_wait(&gate_cv, &gate_mu);
+/* Same-state exclusion (FMS ABI v3). The ABI v2 version of this case parked a worker inside A's COLD -> WARM
+ * promotion to hold A deterministically; no promotion exists any more, so nothing parks. What stays deterministic:
+ * while A's transaction is open, a second transaction, a reserve and a close of A are BUSY; direct operations run on
+ * the transaction's candidate (ecsg_fms.h); independent states stay usable and the pump is safe meanwhile; after the
+ * commit A carries exactly its committed learn. Then a race: two threads call forward on one state at once, and
+ * every call either answers exactly or is refused BUSY (single writer), never anything else. */
+typedef struct { elpis_ecsg_fms *r; uint64_t id; const double *expect; int bad, busy, ok; } racer;
+
+static void *race(void *p) {
+    racer *q = p;
+    double out[64];
+    for (int i = 0; i < 4000; ++i) {
+        const int rc = elpis_ecsg_fms_forward(q->r, q->id, x, 64, out);
+        if (rc == -4) q->busy++;
+        else if (rc == 0 && !memcmp(out, q->expect, sizeof out)) q->ok++;
+        else q->bad++;
     }
-    pthread_mutex_unlock(&gate_mu);
-    return posix_cold_get(self, t, dst, bytes);
-}
-typedef struct { elpis_ecsg_fms *r; uint64_t id; } worker;
-static void *learn_worker(void *arg) {
-    worker *a = arg;
-    /* No retry: nothing else touches A before the gate opens, so the slot is free and the learn must succeed. */
-    OK(elpis_ecsg_fms_learn(a->r, a->id, x, y, 64, 0.002, 20, NULL));
     return NULL;
 }
+
 static void concurrency(void) {
     data();
-    fms_pal *pal = fms_pal_posix_create("concurrency"); assert(pal);
-    posix_cold_get = pal->cold_get; pal->cold_get = gated_cold_get;
-    fms_config cfg = config(BYTES * 3, 4);
-    fms_ctx *ctx = fms_create(&cfg, pal); assert(ctx);
-    elpis_ecsg_fms *r = NULL; OK(elpis_ecsg_fms_create(ctx, 4, &r));
-    worker a = {.r = r, .id = state(r, 1, 36)};
-    uint64_t other = state(r, 2, 36), third = state(r, 3, 36);
-    OK(elpis_ecsg_fms_pump(r));      /* 3/3 of WARM > high water: the oldest state (A) is demoted to COLD */
-    elpis_ecsg_fms_info ia, ib, ic;
-    OK(elpis_ecsg_fms_inspect(r, a.id, &ia)); OK(elpis_ecsg_fms_inspect(r, other, &ib));
-    OK(elpis_ecsg_fms_inspect(r, third, &ic));
-    assert(ia.tier == FMS_COLD && ib.tier == FMS_WARM && ic.tier == FMS_WARM);
-
-    pthread_mutex_lock(&gate_mu); gate_armed = 1; gate_entered = gate_open = 0; pthread_mutex_unlock(&gate_mu);
-    pthread_t th; assert(!pthread_create(&th, NULL, learn_worker, &a));
-    pthread_mutex_lock(&gate_mu);
-    while (!gate_entered) pthread_cond_wait(&gate_cv, &gate_mu);
-    pthread_mutex_unlock(&gate_mu);
-
-    /* The worker now holds exclusive authority over A (inside its promotion). */
-    double out[64]; uint64_t token = 0;
-    assert(elpis_ecsg_fms_forward(r, a.id, x, 64, out) == -4);
-    assert(elpis_ecsg_fms_learn(r, a.id, x, y, 64, 0.002, 1, NULL) == -4);
-    assert(elpis_ecsg_fms_txn_begin(r, a.id, &token) == -4 && !token);
-    /* Independent states stay usable and pump is safe while A's promotion is in flight. */
+    elpis_ecsg_fms *r = runtime(BYTES * 3, 4);
+    uint64_t a = state(r, 1, 36), other = state(r, 2, 36), third = state(r, 3, 36);
+    uint64_t token = 0, refused = 0;
+    OK(elpis_ecsg_fms_txn_begin(r, a, &token));
+    double out[64];
+    assert(elpis_ecsg_fms_txn_begin(r, a, &refused) == -4 && !refused);
+    assert(elpis_ecsg_fms_reserve(r, a, 128) == -4);
+    { uint64_t held = a; assert(elpis_ecsg_fms_close(r, &held) == -4 && held == a); }
+    OK(elpis_ecsg_fms_forward(r, a, x, 64, out));
     OK(elpis_ecsg_fms_forward(r, other, x, 64, out));
     OK(elpis_ecsg_fms_pump(r));
     OK(elpis_ecsg_fms_forward(r, third, x, 64, out));
-    OK(elpis_ecsg_fms_forward(r, other, x, 64, out));
-
-    pthread_mutex_lock(&gate_mu); gate_open = 1; pthread_cond_broadcast(&gate_cv); pthread_mutex_unlock(&gate_mu);
-    assert(!pthread_join(th, NULL));
-    /* Released: A is usable again and carries the worker's committed learn. */
-    OK(elpis_ecsg_fms_forward(r, a.id, x, 64, out));
-    OK(elpis_ecsg_fms_inspect(r, a.id, &ia)); assert(ia.epoch == 20 && !ia.lease_count);
+    OK(elpis_ecsg_fms_txn_learn(r, a, token, x, y, 64, 0.002, 20, NULL));
+    OK(elpis_ecsg_fms_txn_commit(r, a, token, NULL));
+    OK(elpis_ecsg_fms_forward(r, a, x, 64, out));
+    elpis_ecsg_fms_info ia; OK(elpis_ecsg_fms_inspect(r, a, &ia)); assert(ia.epoch == 20 && !ia.lease_count);
     elpis_ecsg_fms_metrics m; OK(elpis_ecsg_fms_stats(r, &m)); assert(!m.leases && m.states == 3);
-    OK(elpis_ecsg_fms_close(r, &a.id)); OK(elpis_ecsg_fms_close(r, &other)); OK(elpis_ecsg_fms_close(r, &third));
+
+    double expect[64];
+    OK(elpis_ecsg_fms_forward(r, other, x, 64, expect));
+    racer q[2] = {{r, other, expect, 0, 0, 0}, {r, other, expect, 0, 0, 0}};
+    pthread_t t[2];
+    for (int i = 0; i < 2; ++i) assert(!pthread_create(&t[i], NULL, race, &q[i]));
+    for (int i = 0; i < 2; ++i) assert(!pthread_join(t[i], NULL));
+    assert(!q[0].bad && !q[1].bad && q[0].ok + q[1].ok > 0);
+    OK(elpis_ecsg_fms_stats(r, &m)); assert(!m.leases && !m.residency.pinned_bytes && !m.residency.cold_reads);
+
+    OK(elpis_ecsg_fms_close(r, &a)); OK(elpis_ecsg_fms_close(r, &other)); OK(elpis_ecsg_fms_close(r, &third));
     OK(elpis_ecsg_fms_destroy(&r));
-    puts("same-state BUSY (forward, learn, txn_begin) while A is held; independent states and pump during the "
-         "hold; A usable after release PASS");
+    printf("an open transaction holds A (second transaction, reserve, close BUSY); independent states and pump "
+           "during the hold; A carries its commit; same-state race: %d exact, %d BUSY, 0 other PASS\n",
+           q[0].ok + q[1].ok, q[0].busy + q[1].busy);
 }
 int main(void) {
     assert(elpis_ecsg_fms_abi_version()==1);

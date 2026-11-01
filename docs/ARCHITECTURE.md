@@ -8,15 +8,20 @@ facts describe. Both answer to [`ELPIS_MISSION.md`](ELPIS_MISSION.md):
     FMS MATERIALIZES.  HACF / STRUCTURE ORGANIZES PERSISTENT STRUCTURAL MEMORY.
     CONTINUITY BINDS MINIMAL DURABLE RUNTIME LINEAGE/AUTHORITY.
 
+Amendment 3 (`docs/ELPIS_MISSION.md`, the volatile-native runtime) governs the words "persists" and "durable" above:
+every mutable operational state lives in volatile memory only, and persistent storage holds immutable resources that
+the runtime reads. No runtime state is written back (`docs/VOLATILE_RUNTIME_CENSUS.md`; VOLATILE MIGRATION:
+COMPLETE).
+
 The ECS has two native owners (`docs/ELPIS_MISSION.md`, Amendment 1): ECS_G
 (`native/ECS_G`, geometry) and ECS_C (`native/ECS_C`, continuity and memory),
-composed only by RuntimeCore. Continuity, binding the minimal durable runtime lineage, is the ECS_C authority's
-role (`docs/ECS_C_AUTHORITY.md`): a bounded, authenticated, fixed-footprint authority, RuntimeCore's only durable
-authority since ABI v7 (`elpis_runtime_create_ecs_c`; docs/RUNTIME_CORE.md, "One durable authority (ABI v7)"), on the
-production entry point, the native host `elpis` (docs/NATIVE_HOST.md), and on the offline Python reference alike. Its
-durability protocol through the native host is RUN PASS under ECS_C Recovery Q0, for commit `117b41a` (ABI v6) only,
-within that specification's scope. Standalone continuity, the register it succeeds, retired into it once that pass
-existed (`docs/ELPIS_MISSION.md`, Amendment 2); the retirement qualifies nothing new.
+composed only by RuntimeCore. Continuity, binding the runtime's lineage and authority, is the volatile ECS_C
+session's role (`docs/ECS_C_SESSION.md`): a bounded authority with an exact, constant footprint, held by RuntimeCore
+ABI v8 for one session per open (docs/RUNTIME_CORE.md, "Sessions (ABI v8)"), on the production entry point, the
+native host `elpis` (docs/NATIVE_HOST.md), and on the offline Python reference alike. A restart is a new session.
+The durable ECS_C authority (ABI v6 and v7) and standalone continuity before it are retired; their specifications
+(`docs/ECS_C_AUTHORITY.md`, `docs/CONTINUITY.md`) and qualifications (ECS_C Recovery Q0 for commit `117b41a`) are
+history.
 
 The canonical cognitive dataflow is `text -> DSV4 encode -> ECS stimulus ->
 ECS/EDEN dynamics -> ECS readout -> DSV4 decode -> text`. ECS as a sidecar
@@ -132,8 +137,8 @@ The substrate manages bytes, descriptors, residency and native code. It does
 not know which model, if any, consumes them.
 
 In Python, one native admission mechanism (`elpis.substrate.native_admission`) loads every
-high-impact native library the offline reference loads: RuntimeCore, native K1, the K1 FMS adapter and the
-ECS_C authority's operator ABI, as well as the structure bridges. The native host performs the same sealed admission itself,
+high-impact native library the offline reference loads: RuntimeCore, native K1 and the K1 FMS adapter, as well as
+the structure bridges. The native host performs the same sealed admission itself,
 in C, for its seven pinned libraries (docs/NATIVE_HOST.md, "Admission"). A library is opened
 beneath a trusted root descriptor without symlinks, copied into a sealed memfd,
 hashed against a deployment-pinned catalog and loaded from the seal; a set is
@@ -143,15 +148,17 @@ admitted K1 code (`ECS_NATIVE_UNADMITTED`).
 
 ### FMS residency (native)
 
-FMS ABI v2 separates **logical latency tiers** (HOT, WARM, COLD) from
-**physical resource domains** (RAM, device, storage). On an integrated GPU,
-HOT and WARM both charge RAM. Objects are registered with a kind, size and
-preferred tier. Readers take **leases**, and demotion is forbidden while a
-lease or device fence is pending. Budgets and high/low watermarks drive
-deterministic eviction. The **platform abstraction layer** (PAL) owns
-storage: the POSIX PAL provides file-backed COLD tokens or a RAM-only mode.
-There is no silent device emulation, and the tier-collapse policy
-(`FOLD_DOWN` or `REJECT`) is explicit.
+FMS ABI v3 (`native/substrate/include/elpis/fms.h`; `docs/ELPIS_MISSION.md`, Amendment 3) separates **logical
+latency tiers** (HOT, WARM, COLD) from **physical resource domains** (RAM, device, storage), and holds every object in
+WARM or HOT, in volatile memory only. COLD names the tier of immutable backing: the read-only file-asset service below
+loads it into WARM, and nothing is ever written to it. A configuration that budgets COLD or the storage domain is
+refused (`fms_create` returns NULL), a COLD registration or acquisition is `FMS_E_UNSUPPORTED`, and there is no
+WARM -> COLD operation and no spill. On an integrated GPU, HOT and WARM both charge RAM. Objects are registered with a
+kind, size and preferred tier. Readers take **leases**, and a leased object cannot move. Budgets refuse a newcomer
+atomically when exhausted (`FMS_E_LIMIT`). When a promotion to HOT fails, `fms_acquire` keeps the object where it is,
+returns the tier it is actually in, and counts a forced placement. The POSIX PAL is RAM-only
+(`fms_pal_posix_create_ram_only`); its writable COLD store is retired, not kept behind a flag. There is no silent
+device emulation, and the tier-collapse policy (`FOLD_DOWN` or `REJECT`) is explicit.
 
 ### File-backed assets (Python + native bridge)
 
@@ -190,8 +197,8 @@ authority and resolves no path:
 2. A page load re-checks the stamp, reads with bounded `pread` (`EINTR`
    retried, a zero-byte read is `IO`), verifies the exact
    `elpis.inference.raw-bytes.r0` page digest, re-checks the stamp, and only
-   then registers the verified bytes as one FMS ABI v2 WARM object.
-3. Each service owns one private FMS context: FMS ABI v2 remains the residency
+   then registers the verified bytes as one FMS ABI v3 WARM object.
+3. Each service owns one private FMS context: FMS ABI v3 remains the residency
    authority. Range leases pin pages; leased pages are never evicted; the
    victim is the least-recently-used unleased page, chosen only when FMS
    refuses a registration — the same policy, counters and failure codes as
@@ -209,49 +216,51 @@ there is no writable COLD replica; the CPU PAL has no accelerator fences.
 used by the substrate and inference. Callers branch on `Code` (`IDENTITY`,
 `INTEGRITY`, `LIMIT`, `BUSY`, `STALE`, …), never on message text.
 
-## Continuity: the durable runtime authority (the ECS_C authority)
+## Continuity: the session authority (the volatile ECS_C session)
 
-The runtime must verify, on restart, the current durable lineage and authority, and nothing else. Since RuntimeCore
-ABI v7 the ECS_C authority holds it, for both composers ([`ECS_C_AUTHORITY.md`](ECS_C_AUTHORITY.md) is the full
-specification):
+The runtime binds its lineage and authority for one session, in volatile memory, and nothing else. Since RuntimeCore
+ABI v8 the volatile ECS_C session holds it, for both composers ([`ECS_C_SESSION.md`](ECS_C_SESSION.md) is the full
+specification; [`RUNTIME_CORE.md`](RUNTIME_CORE.md), "The session authority (ABI v8)", is how RuntimeCore holds it):
 
-* **State.** One fixed-size materialized record: genesis and lineage, the entities (operator, runtime, source) and
-  their lifecycles, sender sequences, the cognition lineage (the retained-state digest of the last explicitly
-  published K1 or composite state, or "unanchored"), and the evolution authority `(revision, head,
-  pending_assertion)` with continuity's law and digest.
-* **Layout.** Two record slots of R = 1344 + 160 × capacity bytes in the state directory and, in a separately
-  protected authority directory, the deployment key and two 240-byte witness slots, all created by provisioning.
-  Nothing is created, renamed or removed afterwards; restart reads two records, two witnesses and the key.
-* **Publication.** Every transition is one typed event, compare-and-publish against the current generation and state
-  root, validated by one transition law, then written in place into the non-current record slot and the witness, each
-  synced. A refused write leaves the previous authority intact; an uncertain one resolves at recovery to exactly one
-  complete record.
-* **Threat model.** Integrity against crashes and torn writes; against the T1 adversary (read and write access to the
-  state directory, neither the key nor the authority directory) forgery is unauthenticated and rollback is refused
-  against the witness, until explicit operator reconciliation.
-* **Implementation.** Rust (`native/ECS_C/authority`, no dependencies), behind its own C ABI for the operator
-  (`include/elpis/ecs_c_authority.h`), embedded without it in RuntimeCore: one implementation. The Python reference
-  reads the durable view through RuntimeCore and drives provisioning and operator events through
-  `elpis.runtime.authority`.
+* **State.** Bounded state in memory, reserved once when the session is created, with an exact and constant footprint
+  (`1,424 + 464 × capacity` bytes). It holds:
+  - the session's lineage, and the entities (operator, runtime, source) and their lifecycles;
+  - sender sequences, source versions and scopes;
+  - the cognition lineage: the retained-state digest of the anchored K1 or composite state, or "unanchored";
+  - the evolution authority `(revision, head, pending_assertion)`, with continuity's law and digest;
+  - the receipt, evidence and reclamation chains.
+* **Transitions.** Every transition is one typed event, compare-and-publish against the session's coordinate,
+  validated by the one transition law on a staging copy and published by a buffer swap. A refusal changes nothing.
+  No transition allocates, and exhaustion refuses before anything changes.
+* **Lifetime.** A session starts at a fresh genesis when the runtime opens, and is gone when it closes or the process
+  ends. A restart is a new session: nothing is recovered, resumed or adopted. The lineage and commit identify a
+  session's state within its life and authenticate nothing outside the process.
+* **Retired kinds.** The event kinds that existed only for persistence (the legacy import and the three
+  reconciliations) are refused `PERSISTENCE_RETIRED`, and RuntimeCore reports them `RUNTIME_RETIRED`.
+* **Implementation.** Rust (`native/ECS_C/session`, `no_std`, no dependency, no build script), with an extern surface
+  of memory, abort and the kernel's random source. It has its own C ABI (`elpis/ecs_c_session.h`, no path or
+  descriptor anywhere) and is embedded without it in RuntimeCore: one implementation. The Python reference reads the
+  session's view through RuntimeCore and sends the operator's events through `elpis.runtime.authority`.
 
-**History.** Until ABI v7 standalone continuity (`native/continuity`, `elpis.continuity`) was the register: two fixed
-176-byte slots holding the K1 digest and the evolution authority. It retired into ECS_C (census, section 9); the
-ECS_C authority keeps its SHA-256, its evolution law and digest, and a reader of its v2/v3 register for an explicit
-legacy import. [`CONTINUITY.md`](CONTINUITY.md) keeps its specification and the consumer census that retired the
-event-history kernel.
+**History.** Standalone continuity (`native/continuity`, two fixed 176-byte slots) retired into the durable ECS_C
+authority at ABI v7 ([`CONTINUITY.md`](CONTINUITY.md)). The durable ECS_C authority (record slots, rollback witnesses
+and a deployment key, provisioned and reconciled by the operator) retired at ABI v8 under Amendment 3
+([`ECS_C_AUTHORITY.md`](ECS_C_AUTHORITY.md)). Its transition law moved into the session crate unchanged; its storage,
+provisioning, recovery and reconciliation have no source, build target or library. Git history keeps them.
 
-The durable authority's codes keep continuity's names (RuntimeCore ABI v7 declares them): `CONTINUITY_UNINITIALIZED`,
+The session authority's codes keep continuity's names and values (RuntimeCore ABI v8 declares them):
 `CONTINUITY_UNANCHORED`, `CONTINUITY_ALREADY_ANCHORED`, `CONTINUITY_STATE_MISMATCH`, `CONTINUITY_CORRUPT`,
-`CONTINUITY_PUBLICATION_REFUSED`, `CONTINUITY_PUBLICATION_UNCERTAIN`, `CONTINUITY_LOCKED`,
 `CONTINUITY_AUTHORITY_MISMATCH`, `CONTINUITY_EVOLUTION_PENDING`, `CONTINUITY_EVOLUTION_NOT_PENDING`,
-`CONTINUITY_EXHAUSTED`, plus `CONTINUITY_INVALID`, `CONTINUITY_PATH`, `CONTINUITY_OPEN`, `CONTINUITY_LEGACY_STORAGE`
-and `CONTINUITY_IO` (an operating-system failure outside publication); the exact ECS_C code is reported beside them.
+`CONTINUITY_EXHAUSTED`, `CONTINUITY_INVALID` and `CONTINUITY_OPEN`. The exact session code is reported beside them.
+The storage codes of the durable authority are never returned and never reused.
 
 ## Pipeline: ingress and canonical publication (`elpis.pipeline`, `native/pipeline`)
 
 The pipeline has two paths. **Ingress** turns bytes into zero-authority
-proposals. The **canonical writer path** is the only way canonical Grid81 state
-changes.
+proposals, in memory. The **canonical writer path** is the only way canonical
+Grid81 state changes. It is an offline operator process outside the runtime
+(census: OFFLINE_ARTIFACT_PRODUCER): `Runtime.publish_canonical` is retired, and
+no runtime composer reaches it (docs/VOLATILE_RUNTIME_CENSUS.md, section 3).
 
 ### Bounded ingress (`native/pipeline/ingress`, `elpis.pipeline.ingress`)
 
@@ -442,21 +451,22 @@ An `EvolutionPathAssertion` (`elpis.evolution-path-assertion.v1`) binds:
 * a component scope;
 * a resource budget and an evaluation contract;
 * the evolution authority the caller reasoned over: its revision and digest
-  (`EvolutionAuthorityBinding`, read from continuity).
+  (`EvolutionAuthorityBinding`, read from the session).
 
 The gate re-checks every binding against the live state and the current
 authority (`STALE_EVOLUTION_AUTHORITY`, `EVOLUTION_AUTHORITY_MISMATCH`). A
-rejected assertion executes nothing. Before execution, the runtime durably
-reserves the exact assertion identity. A pending authority refuses further
-evolution until explicit reconciliation. An admitted one executes one
-attempt, which must return a typed `EvolutionAttempt`. The result is a
-`PathTransitionReceipt` chained to the previous receipt by digest; the
-runtime then advances the authority to revision + 1 with that receipt's
-digest as head. The receipt predecessor comes from the trusted authority
-binding's head; a conflicting assertion claim is refused before reservation.
-An uncertain final publication may reopen pending or at the next idle
-revision, both forbidding re-execution. See CONTINUITY.md for reconciliation.
-The gate imports no storage.
+rejected assertion executes nothing. Before execution, the runtime reserves
+the exact assertion identity in the session (a session transition, in memory).
+An admitted one executes one attempt, which must return a typed
+`EvolutionAttempt`. The result is a `PathTransitionReceipt` chained to the
+previous receipt by digest; the runtime then advances the authority to
+revision + 1 with that receipt's digest as head. The receipt predecessor comes
+from the trusted authority binding's head; a conflicting assertion claim is
+refused before reservation. An attempt that cannot be finalized leaves the
+reservation pending and fail-stops the runtime for the rest of the session
+(`CONTINUITY_EVOLUTION_PENDING`), so it is never re-executed; a new session
+starts with the authority idle. There is no reconciliation: it existed for a
+durable reservation, which Amendment 3 retired. The gate imports no storage.
 
 The retired v0 schema (history projection digest, head event digest, final
 state root) stays as `EvolutionPathAssertionV0` so its persisted identity
@@ -496,10 +506,13 @@ hold:
 * the OOD delta stays above the regression floor.
 
 Ties break by held-out gain, then resource cost, then edit count, then
-candidate digest. Otherwise the incumbent is retained. Materialization copies
-the parent and applies explicit edits in a private stage directory. The child
-is renamed into place only if its content map equals the selected manifest.
-Symlinks, special files and escaping edit paths are refused. The `elpis.rsi.*`
+candidate digest. Otherwise the incumbent is retained. Materialization
+(`elpis.evolution.materialize`) is an offline operator act under a promotion
+grant of the pinned policy, never reachable from the runtime's composer (census:
+OFFLINE_ARTIFACT_PRODUCER). It copies the parent and applies explicit edits in
+a private stage directory, and renames the child into place only if its
+content map equals the selected manifest. Symlinks, special files and escaping
+edit paths are refused. The `elpis.rsi.*`
 schema identifiers are historical and carry no self-improvement claim.
 
 ### Incomplete interfaces
@@ -513,8 +526,8 @@ schema identifiers are historical and carry no self-improvement claim.
   policy authority refuses evidence it did not issue; its issuance registries
   are process-local.
 * **No receipt history.** Transition receipts are returned to the caller.
-  Continuity keeps only the digest of the last admitted one as the authority
-  head.
+  The session keeps only the digest of the last admitted one as the authority
+  head, for the session's life.
 
 ## ECS_G: the geometric cognitive/dynamical substrate (`native/ECS_G`; Python bindings `elpis.ECS`)
 
@@ -563,14 +576,14 @@ LEARN behind an explicit capability, relocated from the frozen MF-R0 reference a
 the MF-R0 slow-bank (consolidation) law is not canonical. The **composite retained state**
 ([`ECS_COMPOSITE_STATE.md`](ECS_COMPOSITE_STATE.md), `libelpis_ecs_composite`, envelope `ELPISEC1` v1) owns K1
 and the memory under one transaction owner and one identity; `ELPISGK1` and `ELPISEM1` keep their bytes and
-meanings inside it, and a bare `ELPISGK1` becomes composite only by explicit import. RuntimeCore drives a
-composite as substrate kind 3 exactly as K1: a volatile native commit on the HOT lane, and durability only through
-an explicit durable publication (capture -> seal -> checkpoint -> the durable authority's record: the ECS_C
-authority's record, which names the composite format); memory changes only
-through `turn_observe` in a managed turn.
+meanings inside it, and a bare `ELPISGK1` becomes composite only by explicit import (an in-memory construction,
+`elpis_ecs_composite_import_k1`). RuntimeCore drives a composite as substrate kind 3 exactly as K1: a volatile native
+commit on the HOT lane, with the session recording the lineage's composite format; nothing is captured, sealed,
+checkpointed or published (RuntimeCore ABI v8). Memory changes only through `turn_observe` in a managed turn.
 The typed HACF -> memory observation path (`libelpis_hacf_observation`, runtime subsystem) keeps structure the
-owner of hyperedge identity and validation. The native host drives the production composite lineage over the ECS_C authority. The offline Python reference
-drives composite lineages through the same RuntimeCore substrate over the same authority (`elpis.ECS.composite`;
+owner of hyperedge identity and validation. The native host drives the production composite lineage in its volatile
+session. The offline Python reference drives composite lineages through the same RuntimeCore substrate in its own
+volatile session (`elpis.ECS.composite`;
 typed observations ride a managed LEARN turn or an observe-only turn, `Runtime.run_observe`, under an explicit
 `ObservationAuthority`, all or nothing; docs/ECS_COMPOSITE_STATE.md, "Python composition"). Both are mechanics
 only.
@@ -728,11 +741,12 @@ path composes it.
 
 ## Structural memory through the codec, and the retained principal path
 
-HACF is Elpis's persistent structural memory, not a model's context window.
-Its autonomous retrieval path persists nothing: a retrieval epoch is volatile
-and diskless (in-memory corpus, RAM-only FMS tiers), and persistent structural
-writers (the operator-provisioned fixed-capacity H-gram, semantic admission and
-snapshot publication) are explicit operator operations, never a runtime turn.
+HACF is Elpis's structural memory (immutable resources read in place), not a
+model's context window. Its autonomous retrieval path writes nothing: a
+retrieval epoch lives in memory (in-memory corpus, RAM-only FMS tiers). The
+H-gram's writers are retired, and a retained H-gram is a read-only static
+resource. Semantic admission and snapshot publication are offline operator
+processes (census: OFFLINE_ARTIFACT_PRODUCER), never a runtime turn.
 `Runtime.admit_context` resolves proposed HACF objects (verified bytes,
 recomputed chunk identity, pinned corpus manifest) and renders them, budgeted
 and frozen, through the DSV4 codec; that is a communication operation. No
@@ -792,119 +806,109 @@ costs separately, per boundary.
 
 ## Runtime: RuntimeCore and its two callers (`native/runtime/host`, `elpis.runtime`)
 
-RuntimeCore is the one composer of ECS_G and ECS_C. Its production caller is the native host `elpis`, over the
-ECS_C authority (docs/NATIVE_HOST.md). `elpis.runtime`, documented below, is the offline reference interface over
-the same authority. The beta's numbered runtime generations (R0–R4, R3SOT) are retired.
+RuntimeCore is the one composer of ECS_G and ECS_C. Its production caller is the native host `elpis`, which starts
+with no writable deployment home and holds one volatile session per open (docs/NATIVE_HOST.md). `elpis.runtime`,
+documented below, is the offline reference interface over the same library. The beta's numbered runtime generations
+(R0–R4, R3SOT) are retired.
 
 ### Composition
 
-`Runtime(RuntimeConfig(authority_dir, runtime_library, ...))` is the offline reference facade over RuntimeCore
-(`native/runtime`, Rust, C ABI v7; docs/RUNTIME_CORE.md), created over an operator-provisioned ECS_C authority
-(`elpis_runtime_create_ecs_c`). RuntimeCore owns the runtime's lifecycle, fail-stop, the embedded durable authority
-(the ECS_C authority, as for the native host), K1 lineage binding and managed K1 lease, total cognitive fuel admission, the QUERY and
-LEARN native calls, the optional K1 Recovery R0 checkpoint store and the evolution reservation. RuntimeCore
-and the K1 libraries it drives are loaded only from sealed, deployment-pinned bytes
-(`elpis.substrate.native_admission`); the codec authority and the evolution policy are pinned by SHA-256 in
-`RuntimeConfig`. The facade keeps only the edge adapters (`elpis.runtime.edges`) that turn ingress exports and
-retrieval bundles into object claims and address proposals for
-structural-memory rendering. The caller supplies everything else explicitly:
-library paths, corpus roots, file assets, ledgers and capabilities. Each
-operation goes through its subsystem's own fail-closed entry point and
-returns that subsystem's result. There are no generic receipts and no
-history:
+`Runtime(RuntimeConfig(runtime_library, ..., session=SessionConfig(...)))` is the offline reference facade over
+RuntimeCore (`native/runtime`, Rust, C ABI v8; docs/RUNTIME_CORE.md). It names no directory: each `open` creates a
+new volatile ECS_C session at a fresh genesis, with the configured sources founded again, and `close` ends it.
+- **RuntimeCore owns** the runtime's lifecycle and fail-stop, the session, K1 lineage binding and the managed K1 lease,
+  total cognitive fuel admission, the QUERY and LEARN native calls, and the evolution reservation.
+- **Admission.** RuntimeCore and the K1 libraries it drives are loaded only from sealed, deployment-pinned bytes
+  (`elpis.substrate.native_admission`). The codec authority and the evolution policy are pinned by SHA-256 in
+  `RuntimeConfig`.
+- **The process gate.** Before anything is loaded, `open` admits the process itself
+  (`elpis.runtime.environment.require_volatile_process`):
+  - bytecode writing must already be off;
+  - core dumps are disabled (`RLIMIT_CORE` 0, `PR_SET_DUMPABLE` 0, each read back);
+  - with swap active, the process must lock its memory, or it is refused (`ENVIRONMENT_REFUSED`).
+- **The edge adapters.** The facade keeps only the edge adapters (`elpis.runtime.edges`), which turn ingress exports
+  and retrieval bundles into object claims and address proposals for structural-memory rendering.
 
-| Operation | Subsystem entry point | Durable effect in continuity |
+The caller supplies everything else explicitly: library paths, read-only corpus roots, file assets and capabilities.
+Each operation goes through its subsystem's own fail-closed entry point and returns that subsystem's result. There
+are no generic receipts and no history:
+
+| Operation | Subsystem entry point | Effect on the session |
 |---|---|---|
 | `run_ingress` | `QueryIngress.run` | none |
 | `admit_retrieval` | `validate_bundle` | none |
-| `publish_canonical` | `publish_candidate` | none (the pipeline ledger owns publication durability and replay) |
-| `evolution_authority` | continuity snapshot | none (read) |
-| `evolve` | a gate issued by the pinned evolution policy, `EvolutionPathGate.execute` bound to the current evolution authority | admitted attempt: revision + 1, head = transition receipt digest |
+| `evolution_authority` | the session's evolution authority | none (read) |
+| `evolve` | a gate issued by the pinned evolution policy, `EvolutionPathGate.execute` bound to the current evolution authority | admitted attempt: revision + 1, head = transition receipt digest (in memory) |
 | `admit_context` | ingress, edge adapter, `resolve_chunks`, codec rendering | none |
-| `anchor_cognition` | the K1 state's `state_digest()` (no K1 mutation) | explicit anchor of the first managed K1 lineage |
-| `run_query` | codec -> one read-only native `leased_query` -> codec (`elpis.runtime.cognition`) | none (QUERY writes nothing) |
-| `run_learn` | codec -> native K1 transaction under an explicit `LearnAuthority` | none: the commit is volatile (ABI v4) |
-| `run_turn` | LEGACY learned turn: a LEARN whose S3 readout is decoded | none: the commit is volatile (ABI v4) |
+| `anchor_cognition` | the K1 state's `state_digest()` (no K1 mutation) | the session's explicit anchor of the managed K1 lineage |
+| `run_query` | codec -> one read-only native `leased_query` -> codec (`elpis.runtime.cognition`) | none |
+| `run_learn` | codec -> native K1 transaction under an explicit `LearnAuthority` | none: the commit is volatile |
+| `run_turn` | LEGACY learned turn: a LEARN whose S3 readout is decoded | none: the commit is volatile |
 | `run_observe` | an observe-only managed turn on an ECS composite (RuntimeCore ABI v5): typed observations under an explicit `ObservationAuthority`, no K1 schedule | none: the commit is volatile; the K1 component stays byte-identical |
-| `run_numeric_query` / `run_numeric_learn` | QUERY / LEARN of an admitted numeric `QueryStimulus` / `Stimulus` (no codec, no text): the same managed native calls as `run_query` / `run_learn` | none: QUERY writes nothing; the LEARN commit is volatile |
-| `publish_recoverable` | RuntimeCore's durability lane: capture, seal, checkpoint slot (read back verified), continuity record; needs the checkpoint store | the acknowledged K1 state digest and its checkpoint slot |
-| `publish_identity` | RuntimeCore's durability lane: capture, seal, continuity record; only without a checkpoint store | the published K1 state digest (identity only; never an acknowledgment) |
-| `durability`, `live_identity` | read the durability lane / the bound state's identity | none |
+| `run_numeric_query` / `run_numeric_learn` | QUERY / LEARN of an admitted numeric `QueryStimulus` / `Stimulus` (no codec, no text): the same managed native calls as `run_query` / `run_learn` | none |
+| `live_identity` | the bound state's identity (one hash, cold path) | none |
 | `release` | RuntimeCore releases the bound state's K1 lease | none |
-| `recover_k1` | K1 Recovery R0 disposition (read-only) | none |
-| `discard_k1_candidate` / `adopt_k1_candidate` | operator reconciliation of one named checkpoint candidate | adopt: authorized -> candidate |
 
-The runtime composes no DSV model execution: there is no decode, principal
+The persistent operations of ABI v7 (`publish_recoverable`, `publish_identity`, `durability`, `recover_k1`,
+`discard_k1_candidate`, `adopt_k1_candidate`, `import_composite`) and `publish_canonical` do not exist
+(`tests/boundary/test_mission.py`). The runtime composes no DSV model execution: there is no decode, principal
 sequence or model text operation, and the mission gate pins this list.
 
-### Autonomous persistence
+### Persistent writers: none in the runtime
 
-There is zero autonomously ever-expanding Elpis-owned persistence.
-`elpis.runtime.persistence` classifies every persistent writer reachable
-from the runtime exactly once, and every public `Runtime` operation as
-autonomous or operator:
+`elpis.runtime.persistence` is the census as code (docs/VOLATILE_RUNTIME_CENSUS.md, section 3). It gives every
+persistent writer the repository contains exactly one disposition, bound to its code, and classifies every public
+`Runtime` operation as autonomous or operator:
 
-* `FIXED_CAPACITY_AUTONOMOUS`, by composer:
-  - both: the ECS_C authority's two record and two witness slots, and the two K1 checkpoint slots of an
-    operator-provisioned K1 Recovery R0 store;
-  - the offline Python reference alone (`AUTONOMOUS_WRITERS`): the FMS cold store (the native host,
-    `NATIVE_HOST_AUTONOMOUS_WRITERS`, builds none).
+| Disposition | What it means |
+|---|---|
+| RETIRED | The writer is gone. Its entry points are absent, and the test asserts that they are |
+| REPLACED_WITH_VOLATILE | The function survives in memory: the session, the RAM-only host, the volatile retrieval epoch |
+| READ_ONLY_STATIC_RESOURCE | Read-only use of immutable resources: pinned native libraries, the FMS COLD backing, a retained H-gram |
+| OFFLINE_ARTIFACT_PRODUCER | An explicit offline operator process outside the runtime, never reachable from its composer: canonical Grid81 publication and its ledgers, evolution materialization, semantic snapshot publication |
+| DEVELOPMENT_ONLY | Fixtures, research laboratories and test harnesses |
 
-  Each is rewritten in place, never created, grown or renamed by the runtime. The native host's home is a fixed set
-  of 17 files after `create`, with no log, cache or history. The cold store is bounded by the cold budget and object
-  capacity fixed at `Context` creation. Its root has one live owner, and a
-  crashed owner's files are reclaimed.
-* `OPERATOR_EXPLICIT_BOUNDED`: each write needs an explicit operator act.
-  - canonical publication, with its ledgers and candidate construction;
-  - evolution materialization (only for an operator-approved grant of the
-    pinned evolution policy);
-  - K1 checkpoint provisioning (`elpis.runtime.recovery`);
-  - ECS_C authority provisioning, and the native host's `init` and `create`;
-  - the H-gram, which is operator-provisioned and fully preallocated and is
-    written only by preapproved in-place updates;
-  - semantic admission and snapshot publication.
-* `OFFLINE_RESEARCH_ONLY`: synthetic fixture generators and research
-  laboratories.
-* `PROHIBITED_FROM_AUTONOMOUS_RUNTIME`: a persistent HACF corpus or ingress
-  (retired), and any persistent log sink.
+Every runtime-connected writer is RETIRED, REPLACED_WITH_VOLATILE or a READ_ONLY_STATIC_RESOURCE. `AUTONOMOUS_WRITERS`,
+`NATIVE_HOST_AUTONOMOUS_WRITERS` and `RUNTIME_CORE_PERSISTENT_ABI` are empty. The only operator operation, `evolve`,
+writes nothing either: its reservation and finalization are session transitions.
 
-The HACF retrieval epoch is volatile and diskless. A process launched under
-`elpis_autonomous_run` cannot create, truncate or grow files; its only
-optional writable grant is the four fixed files of a provisioned ECS_C authority (its two record and two witness
-slots; until ABI v7 standalone continuity's two slots). The native host contains
-itself instead (`elpis --contained`: Landlock grants exactly its six fixed slots).
-`tests/boundary/test_autonomous_persistence.py` binds the table to the code.
-`tests/integration/test_autonomous_no_growth.py` runs an epoch, ingress, an
-anchor and canonical turns on real libraries under a write trap: they leave
-exactly the two 176-byte slots; with a provisioned checkpoint store, its two
-slots keep their names, sizes and inodes. Repeated epoch create/destroy holds
-file descriptors, threads and live handles constant.
+- **Gates.**
+  - `tests/boundary/test_volatile_runtime.py` binds the census to the code. Every Python source that can write must be
+    a registered writer, no Rust source may write, and the binaries the runtime loads import no write-class C library
+    function.
+  - `tests/boundary/test_autonomous_persistence.py` binds the operations.
+  - `tests/integration/test_autonomous_no_growth.py` runs an epoch, ingress, an anchor, canonical turns and three
+    sessions on real libraries under a write trap, and they leave the directory exactly as empty as they found it.
+- **Containment.** A process launched under `elpis_autonomous_run` has no writable grant at all:
+  - Landlock with no grant;
+  - a seccomp filter;
+  - `RLIMIT_CORE` 0;
+  - inherited descriptors beyond the standard three closed;
+  - and it refuses to start with swap active.
+
+  The native host contains itself in the same way before its first session (`docs/NATIVE_HOST.md`).
+- **Evidence.** The composed qualification (`research/volatile_runtime_v1`, `ZERO_WRITE_PASS`) traced the host,
+  RuntimeCore, the Python reference and the FMS/HACF paths under `strace`, unconfined and confined, and recorded zero
+  write-class events on storage.
 
 ### K1 restart law
 
-The first managed lineage is anchored explicitly; nothing anchors
-implicitly. When the runtime binds a K1 state it compares the state's
-`state_digest()` with the durable identity: unanchored refuses with
-`CONTINUITY_UNANCHORED`, a different state with `CONTINUITY_STATE_MISMATCH`,
-and a second substrate object in the same open runtime with
-`COGNITION_SUBSTRATE_SWITCH`. From then on the live coordinate is the bound
-state's K1 generation under RuntimeCore's lease (no digest on the HOT lane); a
-managed commit is volatile and publishes nothing. An explicit durable
-publication publishes `durable -> captured` off the HOT lane; if it fails,
-nothing durable changed (or, uncertain, restart resolves it), the committed K1
-state is not rolled back and the HOT lane keeps thinking. Restart resumes
-exactly the last completed publication (possibly one whose acknowledgment a
-crash prevented); volatile work since then is lost by a crash and never
-adopted. A bound state is claimed under RuntimeCore's K1
-lease, so an unmanaged mutation is refused (`LEASED`).
+Each session starts unanchored. The first managed lineage is anchored explicitly; nothing anchors implicitly.
+- **Binding.** When the runtime binds a K1 state it compares the state's `state_digest()` with the session's anchored
+  identity:
+  - unanchored refuses with `CONTINUITY_UNANCHORED`;
+  - a different state refuses with `CONTINUITY_STATE_MISMATCH`;
+  - a second substrate object in the same open runtime refuses with `COGNITION_SUBSTRATE_SWITCH`.
+- **The live coordinate.** From then on, the live coordinate is the bound state's K1 generation under RuntimeCore's
+  lease, with no digest on the HOT lane. A managed commit is volatile, and nothing is ever published. A bound state is
+  claimed under the lease, so an unmanaged mutation is refused (`LEASED`).
+- **Release and rollback.** A release gives the state back, and rebinding accepts exactly the live bytes it gave back
+  or the anchored identity. The anchored identity is an in-memory rollback, which abandons the volatile work.
+- **Restart.** A restart, a crash or close-and-open is a new session. Nothing learned or observed in an earlier
+  session is resumed, and a state is bound again only after it is anchored again.
 
-With an operator-provisioned K1 Recovery R0 store (docs/K1_RECOVERY_R0.md) the
-anchored state and every durably published state are checkpointed in full
-before they become authoritative, and restart can resume a lost in-memory
-state.
-Checkpoint bytes never authorize themselves: a slot is resumable only when its
-identity is the one the durable authority (the ECS_C authority) holds; a newer unauthorized candidate is
-`CANDIDATE_UNRESOLVED` until an operator discards or adopts it.
+K1 Recovery R0 (operator-provisioned checkpoint slots, recovery, discard and adopt) is retired with the durable
+authority. Its specification and its RUN PASS for commit `18f2f4d` are history (docs/K1_RECOVERY_R0.md).
 
 ### The canonical turn
 
@@ -958,8 +962,11 @@ lanes").
 |---|---|---|---|
 | geometric (HOT): RuntimeCore `query`, `turn_begin`, `turn_commit` | qualified K1 computation on the live state | the bound state's K1 generation (live) | nothing outside its own native call |
 | contextual (WARM): `elpis.runtime.context.ContextLane` | the bounded, session-local active relational context: admitted HACF references, provisional/binding axioms, candidate/admitted typed relations; immutable versioned views | the view's version and digest (never persisted) | its own WARM worker only; `view()` and `submit()` never wait |
-| durability (WARM): RuntimeCore's durability lane (`durable.rs`) | explicit durable publication: capture, seal, checkpoint slot, the durable authority's record (the ECS_C authority's record and witness) | that authority's record (durable) | its own worker; callers wait only by explicit choice (`durable_wait`) |
-| evolution (control) | reservation before, finalization after an irreversible attempt | the durable authority's evolution authority | synchronous by design: never volatile |
+| evolution (control) | reservation before, finalization after an irreversible attempt | the session's evolution authority (in memory) | synchronous: a session transition |
+
+The durability lane of ABI v4 to v7 (RuntimeCore's `durable.rs`: capture, seal, checkpoint slot, the durable
+authority's record) is retired with everything it wrote (`docs/ELPIS_MISSION.md`, Amendment 3). RuntimeCore has no
+worker thread.
 
 The HOT lane consumes the most recently published context view by one
 reference read (`Runtime.run_query(..., context=lane)` records its coordinate);
@@ -975,7 +982,8 @@ context's identity, version and predecessor the runtime uses; the DSV model-view
 imports it (`test_context_authority.py::test_one_context_authority...`). The PR #51 HCA record is research only; its
 native port (`native/ECS_C/hca`, `docs/ECS_C_HCA.md`) is a gated research substrate that nothing canonical links.
 The native production entry point is the operator host `elpis` (`native/runtime/host`, `docs/NATIVE_HOST.md`): it admits
-the pinned libraries from sealed copies and drives RuntimeCore over the ECS_C authority, with no interpreter.
+the pinned libraries from sealed copies and drives RuntimeCore in a volatile session, with no interpreter and no
+writable deployment home.
 
 | Concern | Mechanism | Proof |
 |---|---|---|
@@ -984,7 +992,7 @@ the pinned libraries from sealed copies and drives RuntimeCore over the ECS_C au
 | typed axioms and relations, binding obligations, candidate vs admitted | `ContextAxiom` `PROVISIONAL`/`BINDING`; `ContextRelation` `CANDIDATE`/`ADMITTED` (only the structure layer's verified projection admits) | `test_references_and_relations_keep_their_epistemic_status`, `test_binding_axioms_are_never_evicted_downgraded_or_silently_dropped` |
 | asynchronous publication, backpressure | one WARM worker, reference-swap publication; bounded queue with `OVERFLOW_POLICY` (coalesce, evict or drop optional counted, refuse required) | `test_the_handoff_is_bounded_with_an_explicit_overflow_policy`, `test_concurrent_readers_only_ever_see_complete_valid_views` |
 | failure isolation | each observation all-or-nothing; a batch fault publishes nothing | `test_a_failed_batch_publishes_nothing_and_the_published_view_stays_intact` |
-| freshness | a cognitive operation records the consumed view's coordinate; a stale view carries no authority | acceptance N-check "stale context"; `test_the_active_view_and_the_durable_state_are_separate_coordinates` |
+| freshness | a cognitive operation records the consumed view's coordinate; a stale view carries no authority | acceptance N-check "stale context"; `test_the_active_view_and_the_session_are_separate_coordinates` |
 | resource limits | `ContextLimits` (capacity, batch, axioms, relations, references); superseded views retire unread | `test_superseded_views_retire_when_unread_and_memory_stays_bounded` |
 | cancellation and shutdown | `close` joins the worker; queued observations `ABANDONED`; the last view stays readable; later submits `CONTEXT_CLOSED` | `test_close_abandons_what_is_pending_keeps_the_published_view_and_refuses_new_work` |
 | context -> ECS transport | none: only the coordinate is recorded; typed evidence enters the memory only through `record_evidence` / an explicit `ObservationAuthority` | `test_a_consumed_context_view_never_reaches_the_k1_schedule_or_the_memory`, `test_the_context_lane_imports_nothing_that_can_mutate_ecs_state` |
@@ -1007,11 +1015,12 @@ Each suite runs over the real native libraries and a real HACF corpus:
 * structural-memory rendering through the codec;
 * the canonical codec -> ECS -> codec turn (`test_codec_ecs_turn.py`), QUERY
   and LEARN (`test_query_learn.py`), codec admission, cognitive fuel, managed
-  ownership, native admission and K1 recovery;
+  ownership, native admission, the process gate (`test_environment_gate.py`)
+  and the autonomous path's empty footprint (`test_autonomous_no_growth.py`);
 * the post-red-team regression index (`tests/boundary/test_redteam_regressions.py`)
   and its mutation adequacy (`tests/boundary/test_redteam_mutations.py`).
 
-Each suite also checks that refused operations leave both continuity and
+Each suite also checks that refused operations leave both the session and
 the subsystem state unchanged.
 
 ### Incomplete interfaces
@@ -1027,13 +1036,15 @@ the subsystem state unchanged.
   running K1 schedule cannot be cancelled.
 * **Unqualified post-red-team mechanisms.** Their specifications
   (docs/qualification: Cognitive Boundary R2 and R2 v5, ECS Codec R0 and the research gates) are NOT RUN. K1 Recovery
-  R0 v4 is RUN PASS for commit `18f2f4d` only, and ECS_C Recovery Q0 is RUN PASS for commit `117b41a` (ABI v6) only, within its stated scope; its ABI v7 successor is not run. Cognitive Boundary R1's
+  R0 v4 (RUN PASS for commit `18f2f4d` only) and ECS_C Recovery Q0 (RUN PASS for commit `117b41a`, ABI v6, only) are
+  historical: their subjects are retired, and neither qualifies anything under Amendment 3. Cognitive Boundary R1's
   retrospective closure covers commit `bec6da7` (ABI v3) only.
 * **Proposals only, not overlays.** Ingress overlays are not persisted.
 * **No steering epochs.** The steered engine is composed by the caller.
-* **No audit trail.** Runtime operations are not logged. The durable authority
-  holds only the current authority and its receipts' chain head; per-turn
-  diagnostics live on the returned result.
+* **No audit trail.** Runtime operations are not logged, by design: a log is a
+  persistent writer. The session holds only the current authority and its
+  receipts' chain head, for its life; per-turn diagnostics live on the
+  returned result.
 * **Single process.** There is no cross-process transport.
 
 ## ECS mutable FMS residency (R0)
@@ -1042,6 +1053,7 @@ the subsystem state unchanged.
 An idle logical ECS state is the existing portable W+epoch snapshot stored as a
 generic FMS object. Direct operations restore the unchanged Runtime R1 executor
 transiently; transactions retain one executor and WRITE lease. Successful mutation
-publishes one complete replacement snapshot. FMS owns placement and verified cold
-replicas but no cognitive semantics. This is single-process CPU residency mechanics,
-not a new learning law, persistent catalog or crash-durable commit protocol.
+publishes one complete replacement snapshot, in memory. FMS owns placement but no
+cognitive semantics; under FMS ABI v3 there are no cold replicas, and a state beyond
+the WARM budget is refused rather than demoted. This is single-process CPU residency
+mechanics, not a new learning law, persistent catalog or crash-durable commit protocol.

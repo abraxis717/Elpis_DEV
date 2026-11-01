@@ -2,8 +2,8 @@
 
 validated HACF hyperedge + assertion -> typed observation (``libelpis_hacf_observation``; structure computes and
 checks every identity) -> managed composite OBSERVE under an explicit ObservationAuthority -> atomic volatile commit
--> exact slot and LOOKUP -> recoverable publication -> restart -> restore -> the identical slot, and the inverse map
-rebuilds the identical hyperedge. Adversarial: a tampered identity, a changed provenance, an assertion of another
+-> exact slot and LOOKUP -> the caller's in-memory snapshot restored -> the identical slot, and the inverse map
+rebuilds the identical hyperedge (RuntimeCore ABI v8 publishes nothing: nothing is restored from storage). Adversarial: a tampered identity, a changed provenance, an assertion of another
 hyperedge, undefined flags, query-local and unrepresentable participants, a noncanonical order, a source the
 authority does not admit, a failed turn, an unauthorized mutation, an unadmitted adapter.
 
@@ -28,8 +28,8 @@ from elpis.runtime.observation import (HYPEREDGE_NAMESPACE, INCIDENCE_NAMESPACE,
                                        HacfObservationLibrary, HacfParticipant, _Assertion, _Hyperedge, _Participant)
 
 from ..conftest import admit_native, native_build_dir
-from .test_composite_runtime import AUTHORITY, CONFIG, _learn, _store, fresh, library, obs  # noqa: F401 (fixture)
-from .test_k1_recovery import _cfg
+from .test_codec_ecs_turn import _config
+from .test_composite_runtime import AUTHORITY, CONFIG, _learn, fresh, library, obs  # noqa: F401 (fixture)
 
 RELATION = HYPEREDGE_NAMESPACE | 1
 SOURCES = ObservationAuthority("test: two fixture HACF sources (TEST_ONLY TRAINING=NONE SEMANTICS=NONE)",
@@ -84,8 +84,7 @@ def test_a_validated_hacf_assertion_reaches_the_committed_memory_and_survives_re
         (RELATION, "ASSERT", 30, 1, provenance(0xA0), edge.identity, edge.payload_digest)
     assert o.participants == tuple((p.incidence_role, p.ordinal, p.node_identity) for p in edge.participants)
 
-    store = _store(library, tmp_path / "ck")
-    with fresh(library) as x, Runtime(_cfg(tmp_path, store)) as runtime:
+    with fresh(library) as x, Runtime(_config()) as runtime:
         runtime.anchor_cognition(x)
         result = runtime.run_learn(x, _learn(), observations=observations, observation_authority=SOURCES)
         assert result.observed[0] == result.observed[1]          # one relation, two observations
@@ -104,12 +103,10 @@ def test_a_validated_hacf_assertion_reaches_the_committed_memory_and_survives_re
         runtime.run_learn(x, _learn(), observations=(uncertain, again), observation_authority=SOURCES)
         answer = x.lookup(RELATION, target[0], cues)
         assert (answer.found, answer.answer, answer.uncertain) == (True, target[2], 1)
-        assert runtime.publish_recoverable(x).acknowledged
-        published, published_slot = x.snapshot(), x.slot(result.observed[0])
-    with Runtime(_cfg(tmp_path, store)) as runtime:
-        recovery = runtime.recover_k1()
-        assert (recovery.disposition, recovery.envelope) == ("RESUMABLE", published)
-        with CompositeState.restore(library, CONFIG, recovery.envelope) as y:
+        published, published_slot = x.snapshot(), x.slot(result.observed[0])   # the caller's bytes, in memory
+    with Runtime(_config()) as runtime:
+        with CompositeState.restore(library, CONFIG, published) as y:
+            runtime.anchor_cognition(y)
             restored = y.slot(result.observed[0])
             assert restored == published_slot and (restored.assert_count, restored.uncertain_count) == (2, 1)
             assert hacf.hyperedge_of(restored) == edge
@@ -171,8 +168,7 @@ def test_hacf_observations_need_explicit_authority_and_never_change_what_k1_lear
     edge = _edge(hacf)
     o = hacf.observation(edge, hacf.assertion(edge, provenance(0xA0), 1), "ASSERT", 30)
     stranger = hacf.observation(edge, hacf.assertion(edge, provenance(0xA9), 3), "ASSERT", 31)   # valid, not admitted
-    with fresh(library) as x, fresh(library) as twin, Runtime(_cfg(tmp_path, _store(library, tmp_path / "ck"))) \
-            as runtime, Runtime(_cfg(tmp_path, _store(library, tmp_path / "ck-twin"), continuity="twin")) as other:
+    with fresh(library) as x, fresh(library) as twin, Runtime(_config()) as runtime, Runtime(_config()) as other:
         runtime.anchor_cognition(x)
         other.anchor_cognition(twin)
         state = x.snapshot()

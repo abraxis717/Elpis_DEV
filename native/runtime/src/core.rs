@@ -1,88 +1,61 @@
 //! RuntimeCore: the one state machine behind an open Elpis runtime.
 //!
 //! ```text
-//!   closed --open--> open --close--> closed
-//!                     |
-//!                     +-- fail-stop (a continuity code): every lineage- or authority-dependent operation is
-//!                         refused with that code until close + open (restart reconciles against continuity)
+//!   closed --open (a new session)--> open --close (the session ends)--> closed
+//!                                     |
+//!                                     +-- fail-stop: every lineage- or authority-dependent operation is refused
+//!                                         with that code until close + open, which starts a new session
 //! ```
 //!
-//! Two lanes (docs/RUNTIME_CORE.md, "Live and durable authority"):
-//!
-//! * HOT (this module, the caller's thread, under the runtime handle's lock): binding, QUERY, the managed turn,
-//!   OBSERVE, release. It performs no file I/O and never waits for the durability lane. Its authority is the
-//!   **live coordinate** of the bound state: the native generation, under this runtime's managed lease, as last
-//!   established by RuntimeCore itself (verified against the durable identity once, when the state is bound).
-//! * WARM (`durable`, one worker thread): durable publication of a captured live state (checkpoint slot, then the
-//!   continuity record), explicitly requested; and the stores every control operation uses.
+//! ABI v8 (docs/RUNTIME_CORE.md, docs/ELPIS_MISSION.md, Amendment 3): one lane, volatile only. Every operation runs
+//! on the caller's thread under the runtime handle's lock and performs no file I/O. The authority is a volatile ECS_C
+//! session ([`crate::authority`]): opened at a fresh genesis, it holds the lineage's cognition identity, the
+//! evolution authority and the sources typed evidence is admitted against, in memory, until the runtime closes.
+//! There is no durability lane, no checkpoint, no publication, no recovery and no resumption: a closed runtime's
+//! session is gone, and the next open starts another.
 //!
 //! Laws (each is a test in `tests.rs`):
-//! * K1 lineage: the first managed lineage is anchored explicitly, durably, at the state's retained identity; an
-//!   open runtime binds its lineage to one native state, verified once against the durable expected identity (a
-//!   mismatch fail-stops; a mismatched state is never claimed); another state is refused
-//!   (`COGNITION_SUBSTRATE_SWITCH`) without a native call.
-//! * Live and durable authority are distinct coordinates. The live state may advance beyond the last durable
-//!   acknowledgment; every HOT operation is checked against the live coordinate, never against continuity. A
-//!   crash loses at most the volatile work since the last acknowledgment; restart binds only a state whose identity
-//!   is the durable one (an unacknowledged live state is a mismatch, never adopted).
+//! * K1 lineage: the session's lineage is anchored explicitly at the state's retained identity (in memory); the open
+//!   runtime binds its lineage to one native state, verified once against the session's identity (a mismatch
+//!   fail-stops; a mismatched state is never claimed); another state is refused (`COGNITION_SUBSTRATE_SWITCH`)
+//!   without a native call.
+//! * The live coordinate: the bound state's native generation, under this runtime's managed lease, as last
+//!   established by RuntimeCore itself. Every operation is checked against it. The session's identity is the
+//!   anchored one; the live state advances beyond it by volatile commits, which the session never needs to name.
 //! * QUERY: read-only. One native call answers `f_W(x)` and reports the generation of the state it answered from,
 //!   under the lease; it must be the live generation (otherwise the lineage is lost: fail-stop, answer withheld).
 //! * Managed turn (LEARN): begin (the source generation must be the live one) -> one native schedule on the
-//!   candidate -> (the boundary decodes) -> native commit, which advances the live generation by exactly one. A
-//!   VOLATILE commit: no checkpoint, no continuity publication, no I/O. Every refusal before the commit leaves the
-//!   complete retained state byte-for-byte unchanged (the native transaction law).
-//! * Durable publication: `durable_request` captures the live state (unsealed, under the lease, at the live
-//!   generation) and hands it to the durability lane; it returns at once. A RECOVERABLE request (checkpoint store
-//!   required) is ACKNOWLEDGED only after the slot is read back verified and continuity names it: acknowledgment
-//!   means recoverable (docs/K1_RECOVERY_R0.md). An IDENTITY request (no store attached) resolves
-//!   IDENTITY_PUBLISHED, never ACKNOWLEDGED. Never implied by a turn.
+//!   candidate -> (the boundary decodes) -> native commit, which advances the live generation by exactly one. No
+//!   I/O. Every refusal before the commit leaves the complete retained state byte-for-byte unchanged (the native
+//!   transaction law).
 //! * Turn lifecycle: once a native transaction is open, exactly one terminal native action ends it before
 //!   RuntimeCore forgets the turn: the commit, or an abort. There is no third disposition. An explicit
 //!   `turn_abort`, a refused commit, `close`, a reopen and destruction (`Drop`) all abort through the capability
 //!   retained at begin ([`crate::substrate::TxnAbort`]); an abort refused BUSY (a concurrent overlapping call) is
-//!   retried, never dropped. An implicit abort installs nothing and publishes nothing.
-//! * Evolution: one attempt at a time. Its assertion is durably reserved (synchronously, on the caller's thread)
-//!   before the boundary may execute it and finalized with the executed receipt; a failed reservation or
-//!   finalization fail-stops, and an attempt the boundary could not complete leaves the durable reservation pending
-//!   (fail-stop `CONTINUITY_EVOLUTION_PENDING`); execution is never retried or inferred. Volatile cognition never
-//!   relaxes this.
-//! * Composite lineages (docs/ECS_COMPOSITE_STATE.md): a substrate of the ECS composite kind is bound, queried,
-//!   learned, durably published and recovered exactly as a K1 state; continuity records the lineage's format, and a
-//!   substrate of another format never stands for it (`CONTINUITY_STATE_MISMATCH`). The memory changes only through
-//!   `turn_observe` inside the managed turn. RuntimeCore exposes no memory LEARN or CONSOLIDATE (unqualified).
-//! * Nothing else is durable or retained: no history, receipts, events or trajectory.
+//!   retried, never dropped. An implicit abort installs nothing.
+//! * Evolution: one attempt at a time. Its assertion is reserved in the session (synchronously) before the boundary
+//!   may execute it and finalized with the executed receipt; an attempt the boundary could not complete leaves the
+//!   reservation pending and fail-stops (`CONTINUITY_EVOLUTION_PENDING`) for the rest of the session; execution is
+//!   never retried or inferred.
+//! * Typed evidence: an observation is admitted only from an ACTIVE source of the session within its per-turn bound,
+//!   checked before the native call.
+//! * Composite lineages (docs/ECS_COMPOSITE_STATE.md): a substrate of the ECS composite kind is bound, queried and
+//!   learned exactly as a K1 state; the session records the lineage's format, and a substrate of another format never
+//!   stands for it (`CONTINUITY_STATE_MISMATCH`). The memory changes only through `turn_observe` inside the managed
+//!   turn. RuntimeCore exposes no memory LEARN or CONSOLIDATE (unqualified).
+//! * Nothing is persistent and nothing is retained beyond the session: no history, receipts, events or trajectory.
 
-use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-use std::thread::JoinHandle;
 
-use crate::authority::{Admission, Cognition, Digest, EvolutionState, Snapshot, StateFormat, Store};
-use crate::checkpoint::{self, Disposition};
+use crate::authority::{
+    Admission, Authority, Cognition, Digest, EvolutionState, SessionTemplate, Snapshot, StateFormat, Status,
+};
 use crate::code::{Code, Error, Rt};
-#[cfg(feature = "testing")]
-use crate::durable::control;
-use crate::durable::{Kind, Lane, Ticket};
-
-/// Testing builds: a registered control-operation crash point (`durable::control`). When the planned fault fires
-/// there, the operation ends as the simulated death (after parking, when planned). Nothing in production builds.
-#[cfg(feature = "testing")]
-macro_rules! control_point {
-    ($fire:expr) => {
-        if let Some(code) = $fire {
-            return Err(code.into());
-        }
-    };
-}
-#[cfg(not(feature = "testing"))]
-macro_rules! control_point {
-    ($fire:expr) => {};
-}
 use crate::fuel::{self, Budget};
 use crate::substrate::{
-    features, k1_envelope_bytes, observation_source, Experience, K1Ops, Key, Observation, ResidentRelease,
-    ScheduleOutcome, Transition, TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID,
-    K1_LEASED, K1_NONFINITE, K1_STALE, KIND_COMPOSITE, MAX_EXPERIENCES,
+    features, observation_source, Experience, K1Ops, Key, Observation, ResidentRelease, ScheduleOutcome, Transition,
+    TxnAbort, K1_BUSY, K1_CAPACITY, K1_FMS_CAPACITY, K1_FMS_NOT_RESIDENT, K1_INVALID, K1_LEASED, K1_NONFINITE,
+    K1_STALE, KIND_COMPOSITE, MAX_EXPERIENCES,
 };
 
 /// The next managed lease: unique and nonzero per RuntimeCore in this process (an aliasing defence between
@@ -93,7 +66,7 @@ fn next_lease() -> u64 {
     (u64::from(std::process::id()) << 40) ^ n | 1 << 63
 }
 
-/// Native crossings and publications RuntimeCore performed (diagnostics; never authority). ABI v4 layout.
+/// Native crossings and session transitions RuntimeCore performed (diagnostics; never authority). ABI v8 layout.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Counters {
@@ -103,20 +76,15 @@ pub struct Counters {
     pub k1_run_schedules: u64,
     pub k1_commits: u64,
     pub k1_aborts: u64,
-    /// Continuity publications (control operations and the durability lane).
-    pub publications: u64,
+    /// Accepted session transitions RuntimeCore sent (the anchor, evolution reservations and finalizations, and the
+    /// operator's events).
+    pub session_transitions: u64,
     pub k1_queries: u64,
     pub k1_shapes: u64,
     pub k1_lease_claims: u64,
-    /// `leased_identity` crossings (binding, `live_identity`).
+    /// `leased_identity` crossings (anchor, binding, release, `live_identity`).
     pub k1_identities: u64,
-    /// `leased_capture` crossings (durable requests and control-plane durability).
-    pub k1_captures: u64,
-    pub durable_requests: u64,
-    pub durable_superseded: u64,
-    pub durable_acknowledged: u64,
-    pub durable_failed: u64,
-    /// `leased_txn_observe` crossings (ABI v5): OBSERVE inside a managed turn, LEARN or observe-only.
+    /// `leased_txn_observe` crossings: OBSERVE inside a managed turn, LEARN or observe-only.
     pub k1_observes: u64,
 }
 
@@ -135,8 +103,8 @@ pub struct Refusal {
     /// The K1 status that caused it (0: no native refusal was involved).
     pub k1_status: i32,
     pub schedule: ScheduleOutcome,
-    /// The committed native transition when the refusal came after the native commit (never in v4 except a
-    /// generation that does not continue the live coordinate, which fail-stops).
+    /// The committed native transition when the refusal came after the native commit (only a generation that does
+    /// not continue the live coordinate, which fail-stops).
     pub committed: Option<Transition>,
 }
 
@@ -173,8 +141,7 @@ struct OpenTurn {
     observe_only: bool,
     observations: u64,
     max_observations: u64,
-    /// Under the ECS_C authority: the observations this turn recorded per source (source authority, count);
-    /// bounded by `max_observations`.
+    /// The observations this turn recorded per source (source authority, count); bounded by `max_observations`.
     per_source: Vec<(u32, u32)>,
 }
 
@@ -207,64 +174,46 @@ fn terminate(counters: &mut Counters, mut abort: impl FnMut() -> i32) {
 }
 
 pub struct Core {
-    lane: Arc<Lane>,
-    /// The live generation's diagnostics mirror (the durability status reads it without the handle's lock).
-    live_mirror: Arc<AtomicU64>,
-    worker: Option<JoinHandle<()>>,
+    /// What every session of this runtime is created with.
+    template: SessionTemplate,
+    /// Sessions opened so far (the ordinal of the open one, while open).
+    sessions: u64,
+    /// The open session (None while closed).
+    authority: Option<Authority>,
+    /// The session refusal of the last refused open (reported by `authority_status` while closed).
+    refused: Option<i32>,
     /// This runtime's managed lease: claimed on every state it binds, presented on every K1 mutation.
     lease: u64,
-    open: bool,
     fault: Option<Code>,
     bound: Option<Bound>,
     /// The residency hold of the bound FMS-resident state (docs/RUNTIME_CORE.md, "HOT residency"): taken before a
     /// state is bound, dropped whenever it is unbound (release, close, reopen, destruction). None for RAM states.
     resident: Option<Box<dyn ResidentRelease>>,
     /// The live identity an explicit release gave back (format and retained-state identity, read under the lease
-    /// just before releasing it). Rebinding accepts it besides the durable identity, so volatile work survives an
-    /// explicit release without being made durable; restart never sees it (it is never persisted).
+    /// just before releasing it). Rebinding accepts it besides the session's anchored identity, so volatile work
+    /// survives an explicit release; it lives only as long as the session.
     released: Option<(StateFormat, Digest)>,
     /// The width read natively for one state (immutable for that state's lifetime); fuel admission needs it.
     shape: Option<(Key, usize)>,
     turn: Option<OpenTurn>,
     evolution: Option<EvolutionState>,
     counters: Counters,
-    /// ABI v6, ECS_C authority only: the typed-evidence admission table (the ACTIVE sources and their per-turn
-    /// bounds), a copy refreshed at open and after every operator transition. None under continuity.
-    admission: Option<Admission>,
-    /// Typed observations committed since this open (the ECS_C evidence summary of the next publication).
-    observed: u64,
-}
-
-/// What [`Core::recover`] found: the disposition, the identities it is about and, when resumable, the envelope.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Recovery {
-    pub disposition: Disposition,
-    /// Continuity's identity (zero when unanchored).
-    pub authorized: Digest,
-    /// Whether a verified slot holds the authorized identity.
-    pub authorized_present: bool,
-    /// The newer unauthorized candidate's identity (zero when none).
-    pub candidate: Digest,
-    /// The authorized envelope, when the disposition is [`Disposition::Resumable`].
-    pub envelope: Option<Vec<u8>>,
+    /// The typed-evidence admission table (the session's ACTIVE sources and their per-turn bounds), a copy refreshed
+    /// at open and after every operator transition.
+    admission: Admission,
 }
 
 impl Core {
-    /// A closed runtime over a provisioned ECS_C authority (a state directory and its protected authority directory,
-    /// absolute paths; docs/ECS_C_AUTHORITY.md). Typed observations are admitted against the authority's sources and
-    /// every publication records an evidence summary.
-    pub fn new_ecs_c(state_dir: &Path, authority_dir: &Path) -> Result<Core, Error> {
-        Core::with_store(Store::ecs_c(state_dir, authority_dir)?)
-    }
-
-    fn with_store(store: Store) -> Result<Core, Error> {
-        let live_mirror = Arc::new(AtomicU64::new(0));
+    /// A closed runtime whose sessions are created from `template`. `RUNTIME_INVALID` for a capacity outside the
+    /// session's bounds. No session exists until `open`.
+    pub fn new(template: SessionTemplate) -> Result<Core, Error> {
+        template.validate()?;
         Ok(Core {
-            lane: Arc::new(Lane::new(store, Arc::clone(&live_mirror))),
-            live_mirror,
-            worker: None,
+            template,
+            sessions: 0,
+            authority: None,
+            refused: None,
             lease: next_lease(),
-            open: false,
             fault: None,
             bound: None,
             resident: None,
@@ -273,48 +222,40 @@ impl Core {
             turn: None,
             evolution: None,
             counters: Counters::default(),
-            admission: None,
-            observed: 0,
+            admission: Admission::default(),
         })
-    }
-
-    /// The durability lane (the C ABI's wait and status read it without the handle's lock).
-    pub fn lane(&self) -> Arc<Lane> {
-        Arc::clone(&self.lane)
     }
 
     // -- lifecycle ----------------------------------------------------------------------------------------
 
-    /// Open (or reopen after close): the store resolves the current authority; nothing is bound; the durability
-    /// worker starts. An open runtime is refused (`CONTINUITY_OPEN`) and keeps everything, its open turn included.
+    /// Open: a new session at a fresh genesis; nothing anchored, nothing bound. An open runtime is refused
+    /// (`CONTINUITY_OPEN`) and keeps everything, its open turn included. `RUNTIME_NOMEM` when the session's memory
+    /// cannot be reserved (`RUNTIME_AUTHORITY` when no nonce can be drawn): the runtime stays closed.
     pub fn open(&mut self) -> Result<Snapshot, Error> {
-        if self.open {
+        if self.authority.is_some() {
             return Err(Code::Open.into());
         }
-        let snapshot = self.lane.open()?;
+        let authority = match Authority::create(&self.template, self.sessions + 1) {
+            Ok(a) => a,
+            Err((error, code)) => {
+                self.refused = Some(code as i32);
+                return Err(error);
+            }
+        };
         self.reset();
-        self.admission = self.lane.with_stores(|s| s.authority.admission())?;
-        self.open = true;
-        let lane = Arc::clone(&self.lane);
-        self.worker = Some(
-            std::thread::Builder::new()
-                .name("elpis-durable".into())
-                .spawn(move || lane.work())
-                .map_err(|_| Error::Runtime(Rt::Invalid))?,
-        );
+        self.sessions += 1;
+        self.refused = None;
+        self.admission = authority.admission();
+        let snapshot = authority.snapshot();
+        self.authority = Some(authority);
         Ok(snapshot)
     }
 
-    /// Close. An open managed turn is aborted natively first (nothing installed, nothing published). A pending
-    /// durable request is abandoned; a running one completes first (its I/O cannot be interrupted).
+    /// Close: the session ends. An open managed turn is aborted natively first (nothing installed); the bound
+    /// state's lease and residency hold are given back by its owner's release or destruction, never written anywhere.
     pub fn close(&mut self) {
         self.reset();
-        self.lane.shutdown();
-        if let Some(worker) = self.worker.take() {
-            let _ = worker.join();
-        }
-        self.lane.close();
-        self.open = false;
+        self.authority = None;
     }
 
     /// Forget the open runtime's bindings. Never forgets an open native transaction: it ends it first.
@@ -326,8 +267,7 @@ impl Core {
         self.released = None;
         self.shape = None;
         self.evolution = None;
-        self.admission = None;
-        self.observed = 0;
+        self.admission = Admission::default();
     }
 
     /// Abort the open managed turn, if any, through the capability retained at its begin.
@@ -348,44 +288,39 @@ impl Core {
     }
 
     pub fn is_open(&self) -> bool {
-        self.open
+        self.authority.is_some()
     }
 
-    /// The fail-stop disposition, if any (a simulated process death on the durability lane is one).
+    /// The fail-stop disposition, if any.
     pub fn fault(&self) -> Option<Code> {
-        if self.lane.is_dead() {
-            return Some(Code::TestingProcessDeath);
-        }
         self.fault
     }
 
     fn live(&self) -> Result<(), Error> {
-        if !self.open {
+        if self.authority.is_none() {
             return Err(Rt::Closed.into());
         }
-        match self.fault() {
+        match self.fault {
             Some(code) => Err(code.into()),
             None => Ok(()),
         }
     }
 
-    /// The current durable authority (readable while fail-stopped: it is what restart will see; refused while the
-    /// durability lane does not know it: an uncertain publication).
+    fn authority(&self) -> Result<&Authority, Error> {
+        self.authority.as_ref().ok_or(Error::Runtime(Rt::Closed))
+    }
+
+    fn authority_mut(&mut self) -> Result<&mut Authority, Error> {
+        self.authority.as_mut().ok_or(Error::Runtime(Rt::Closed))
+    }
+
+    /// The session's view (readable while fail-stopped).
     pub fn snapshot(&self) -> Result<Snapshot, Error> {
-        if !self.open {
-            return Err(Rt::Closed.into());
-        }
-        self.lane.durable()
+        Ok(self.authority()?.snapshot())
     }
 
     pub fn counters(&mut self, reset: bool) -> Counters {
-        let warm = self.lane.counters(reset);
-        let mut c = self.counters;
-        c.publications += warm.publications;
-        c.durable_requests = warm.requests;
-        c.durable_superseded = warm.superseded;
-        c.durable_acknowledged = warm.acknowledged;
-        c.durable_failed = warm.failed + warm.uncertain;
+        let c = self.counters;
         if reset {
             self.counters = Counters::default();
         }
@@ -399,7 +334,6 @@ impl Core {
 
     fn set_live(&mut self, key: Key, generation: u64) {
         self.bound = Some(Bound { key, generation });
-        self.live_mirror.store(generation, Ordering::Relaxed);
     }
 
     // -- K1 lineage -----------------------------------------------------------------------------------------
@@ -423,21 +357,23 @@ impl Core {
         }
     }
 
-    /// The durable expected identity of the anchored lineage.
+    /// The session's anchored identity of the lineage.
     fn expected(&self) -> Result<Digest, Refusal> {
-        match self.lane.durable()?.cognition() {
+        match self.authority()?.snapshot().cognition() {
             Cognition::Unanchored => Err(Code::Unanchored.into()),
             Cognition::Anchored(d) => Ok(d),
         }
     }
 
-    /// Explicitly and durably anchor the first managed lineage at the state's retained identity (reads the state
-    /// only). The state is claimed, its identity and generation read in one guarded call, its complete envelope made
-    /// durable in the checkpoint store when one is attached, and only then continuity anchors it. This is a control
-    /// operation: it waits for its own I/O (anchoring is the durable baseline every restart verifies against).
+    /// Explicitly anchor the session's lineage at the state's retained identity (reads the state only). The state is
+    /// claimed, its identity and generation read in one guarded call, and the session records the anchor (in
+    /// memory); the state is bound at that generation.
     pub fn anchor(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<Snapshot, Refusal> {
         self.live()?;
-        if self.lane.durable()?.cognition() != Cognition::Unanchored {
+        if self.turn.is_some() {
+            return Err(Rt::TurnOpen.into());
+        }
+        if self.authority()?.snapshot().cognition() != Cognition::Unanchored {
             return Err(Code::AlreadyAnchored.into());
         }
         self.hold(sub)?;
@@ -455,89 +391,12 @@ impl Core {
 
     fn anchor_claimed(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<Snapshot, Refusal> {
         let (identity, generation) = self.leased_identity(sub)?;
-        let envelope = match self.lane.capacity() {
-            Some(capacity) => Some(self.capture(sub, capacity, generation, true)?),
-            None => None,
-        };
         let format = sub.format();
-        #[cfg(feature = "testing")]
-        let planned = self.lane.take_control(control::Op::Anchor);
-        #[cfg(feature = "testing")]
-        let lane = &*self.lane;
-        let published = self.lane.with_stores(|st| -> Result<Snapshot, Refusal> {
-            if let (true, Some(mut envelope)) = (st.checkpoint.is_some(), envelope) {
-                // SAFETY: the substrate library's pure sealer over a buffer this call owns.
-                if unsafe { (sub.sealer())(envelope.as_mut_ptr(), envelope.len()) } != 0
-                    || checkpoint::envelope_identity(&envelope) != Some(identity)
-                {
-                    return Err(Rt::CheckpointShape.into());
-                }
-                control_point!(lane.control_begun(planned, st));
-                let store = st.checkpoint.as_mut().expect("attached");
-                let written = match store.holding(&identity) {
-                    None => store.write_envelope(&envelope, None).map(|_| ()),
-                    Some(_) => Ok(()),
-                };
-                control_point!(lane.control_slot(planned, st));
-                written?;
-            } else {
-                control_point!(lane.control_begun(planned, st));
-            }
-            control_point!(lane.control_publishing(planned, st));
-            let anchored = st.authority.anchor_cognition_as(format, Some(&identity));
-            control_point!(lane.control_record(planned, &anchored, st));
-            Ok(anchored?)
-        })?;
-        match published {
-            Ok(s) => {
-                self.lane.count_publication();
-                self.set_live(key, generation);
-                Ok(s)
-            }
-            Err(r) => {
-                if matches!(r.error, Error::Authority(Code::PublicationUncertain | Code::TestingProcessDeath)) {
-                    self.fault = Some(match r.error {
-                        Error::Authority(c) => c,
-                        _ => unreachable!(),
-                    });
-                }
-                Err(r)
-            }
-        }
-    }
-
-    /// Capture the bound state's envelope (unsealed) at the live generation `generation` into a fresh lane buffer.
-    /// `provisioned`: `size` is the checkpoint store's capacity, so a capture the state refuses as malformed
-    /// (`INVALID`: another envelope size) is `CHECKPOINT_SHAPE` (never resized for).
-    fn capture(
-        &mut self,
-        sub: &mut dyn K1Ops,
-        size: usize,
-        generation: u64,
-        provisioned: bool,
-    ) -> Result<Vec<u8>, Refusal> {
-        let mut buffer = self.lane.buffer(size);
-        let mut captured = 0u64;
-        self.counters.k1_captures += 1;
-        match sub.leased_capture(self.lease, &mut buffer, &mut captured) {
-            0 if captured == generation => Ok(buffer),
-            0 => {
-                self.lane.give_back(buffer);
-                Err(self.lineage_lost(0))
-            }
-            K1_LEASED => {
-                self.lane.give_back(buffer);
-                Err(self.lineage_lost(K1_LEASED))
-            }
-            K1_INVALID if provisioned => {
-                self.lane.give_back(buffer);
-                Err(ecs(Rt::CheckpointShape, K1_INVALID, ScheduleOutcome::default()))
-            }
-            rc => {
-                self.lane.give_back(buffer);
-                Err(ecs(Rt::EcsRefused, rc, ScheduleOutcome::default()))
-            }
-        }
+        let snapshot = self.authority_mut()?.anchor_cognition_as(format, &identity)?;
+        self.counters.session_transitions += 1;
+        self.released = None;
+        self.set_live(key, generation);
+        Ok(snapshot)
     }
 
     /// Claim managed ownership of the state (its K1 lease). Refused, without a fail-stop, while an unmanaged
@@ -560,8 +419,8 @@ impl Core {
     /// Bind the lineage to this state, or verify it is the bound one. Binding checks the state's identity before
     /// claiming it (a mismatched state is never claimed), claims it, then reads identity and generation together
     /// under the lease: the identity must still be the one checked, and the generation becomes the live coordinate.
-    /// The state must be the durable identity (what a fresh open or restart resumes: only acknowledged state) or the
-    /// live identity an explicit release of this open runtime gave back (its volatile work, never persisted).
+    /// The state must be the session's anchored identity or the live identity an explicit release of this session
+    /// gave back (its volatile work).
     fn reconcile(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(), Refusal> {
         if let Some(bound) = self.bound {
             return if bound.key == key { Ok(()) } else { Err(Rt::SubstrateSwitch.into()) };
@@ -607,14 +466,14 @@ impl Core {
     }
 
     fn bind(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(), Refusal> {
-        let durable = self.lane.durable()?;
-        let anchored = match durable.cognition() {
+        let session = self.authority()?.snapshot();
+        let anchored = match session.cognition() {
             Cognition::Unanchored => return Err(Code::Unanchored.into()),
             Cognition::Anchored(d) => d,
         };
         // An identity of one format never stands for a state of another (a K1 state for a composite lineage).
         let (format, expected) = (sub.format(), self.digest(sub)?);
-        if (format, expected) != (durable.format(), anchored) && Some((format, expected)) != self.released {
+        if (format, expected) != (session.format(), anchored) && Some((format, expected)) != self.released {
             self.fault = Some(Code::StateMismatch);
             return Err(Code::StateMismatch.into());
         }
@@ -641,10 +500,10 @@ impl Core {
     /// again. Refused while a managed turn is open; another state is refused (`COGNITION_SUBSTRATE_SWITCH`). A lease
     /// already taken by another owner is reported, and the state unbound. The live identity is read under the lease
     /// first (one hash: a control operation, never on the HOT lane) and kept, so rebinding the exact bytes it gave
-    /// back resumes the live lineage: volatile work since the last durable acknowledgment is neither published nor
-    /// lost by a release. Rebinding the durable state instead abandons that work, as a restart would.
+    /// back resumes the live lineage: volatile work is not lost by a release. Rebinding the anchored state instead
+    /// abandons that work.
     pub fn release(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<(), Refusal> {
-        if !self.open {
+        if self.authority.is_none() {
             return Err(Rt::Closed.into());
         }
         if self.turn.is_some() {
@@ -658,7 +517,7 @@ impl Core {
         self.bound = None;
         self.shape = None;
         // A lease already taken (or a generation that moved under it) gives back no live identity: the state is not
-        // provably the lineage, and rebinding falls back to the durable identity.
+        // provably the lineage, and rebinding falls back to the anchored identity.
         self.released = match self.leased_identity(sub) {
             Ok((identity, generation)) if generation == live => Some((sub.format(), identity)),
             _ => None,
@@ -715,8 +574,8 @@ impl Core {
     /// One native crossing answers and reports the generation of the same state under this runtime's lease
     /// (`leased_query`): it must be the live generation. A state whose lease was taken, or whose generation moved
     /// outside RuntimeCore, fail-stops (`CONTINUITY_STATE_MISMATCH`) and its answer is never returned. No
-    /// transaction is opened, nothing is committed, published or written, no digest is computed, and the durable
-    /// authority is not consulted (except, once, to bind). `out` receives the answer (one value per row; zeroed on
+    /// transaction is opened, nothing is committed or written, no digest is computed, and the session is not
+    /// consulted (except, once, to bind). `out` receives the answer (one value per row; zeroed on
     /// any refusal). Returns the live generation the answer was computed from.
     pub fn query(
         &mut self,
@@ -954,12 +813,11 @@ impl Core {
     }
 
     /// Commit the open turn natively: a VOLATILE commit. The candidate is installed and the live generation
-    /// advances by exactly one; nothing is checkpointed, published or written, and the durability lane is not
-    /// touched. A fail-stopped runtime, or a refused commit, aborts the turn instead: either way the turn has ended
-    /// when this returns, unless it was refused before the turn was taken (`RUNTIME_CLOSED`,
-    /// `RUNTIME_TURN_NOT_OPEN`). Durability is a separate, explicit request ([`Core::durable_request`]).
+    /// advances by exactly one; nothing is written anywhere. A fail-stopped runtime, or a refused commit, aborts the
+    /// turn instead: either way the turn has ended when this returns, unless it was refused before the turn was taken
+    /// (`RUNTIME_CLOSED`, `RUNTIME_TURN_NOT_OPEN`).
     pub fn turn_commit(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<VolatileCommit, Refusal> {
-        if !self.open {
+        if self.authority.is_none() {
             return Err(Rt::Closed.into());
         }
         // An observe-only turn that recorded nothing has nothing to commit: refused before the turn is taken, so it
@@ -973,7 +831,6 @@ impl Core {
             return Err(code.into());
         }
         let observe_only = turn.observe_only;
-        let observations = turn.observations;
         let live = self.bound.expect("a turn is begun on the bound state").generation;
         let mut transition = Transition::default();
         self.counters.k1_commits += 1;
@@ -999,13 +856,11 @@ impl Core {
             return Err(Refusal { committed: Some(transition), ..Refusal::from(Code::StateMismatch) });
         }
         self.set_live(key, transition.generation_after);
-        self.observed += observations;
         Ok(VolatileCommit { transition, live_generation: transition.generation_after })
     }
 
     /// OBSERVE inside the open managed turn of a composite substrate: the observation (opaque here) is recorded on
-    /// the turn's memory candidate, which becomes live only with the turn's commit (and durable only by an explicit
-    /// durable publication). A refusal is recoverable: the turn stays open and its candidate unchanged. A K1
+    /// the turn's memory candidate, which becomes live only with the turn's commit (in memory). A refusal is recoverable: the turn stays open and its candidate unchanged. A K1
     /// substrate has no memory (`RUNTIME_INVALID`). Returns the relation key; the second value is the memory's own
     /// status behind a composite refusal (0 otherwise).
     pub fn turn_observe(
@@ -1014,7 +869,7 @@ impl Core {
         key: Key,
         observation: Observation,
     ) -> (Result<Digest, Refusal>, i32) {
-        if !self.open {
+        if self.authority.is_none() {
             return (Err(Rt::Closed.into()), 0);
         }
         let (token, recorded, max) = match &self.turn {
@@ -1031,15 +886,15 @@ impl Core {
         if fuel::admit_observation(recorded, max).is_err() {
             return (Err(Rt::Fuel.into()), 0);
         }
-        // ABI v6, under the ECS_C authority: the observation's source must be a present ACTIVE source within its
-        // per-turn bound, before the native call (recoverable; the candidate is unchanged).
-        if let Some(admission) = &self.admission {
-            let Some(source) = observation_source(&observation) else {
-                return (Err(Rt::Invalid.into()), 0);
-            };
-            let Some(bound) = admission.bound(source) else {
-                return (Err(Rt::ObservationRefused.into()), 0);
-            };
+        // The observation's source must be a present ACTIVE source of the session within its per-turn bound, before
+        // the native call (recoverable; the candidate is unchanged).
+        let Some(source) = observation_source(&observation) else {
+            return (Err(Rt::Invalid.into()), 0);
+        };
+        let Some(bound) = self.admission.bound(source) else {
+            return (Err(Rt::ObservationRefused.into()), 0);
+        };
+        {
             let turn = self.turn.as_ref().expect("checked above");
             let used = turn.per_source.iter().find(|(s, _)| *s == source).map(|(_, n)| *n).unwrap_or(0);
             if used >= bound {
@@ -1052,13 +907,9 @@ impl Core {
             0 => {
                 if let Some(turn) = self.turn.as_mut() {
                     turn.observations += 1;
-                    if self.admission.is_some() {
-                        if let Some(source) = observation_source(&observation) {
-                            match turn.per_source.iter_mut().find(|(s, _)| *s == source) {
-                                Some((_, n)) => *n += 1,
-                                None => turn.per_source.push((source, 1)),
-                            }
-                        }
+                    match turn.per_source.iter_mut().find(|(s, _)| *s == source) {
+                        Some((_, n)) => *n += 1,
+                        None => turn.per_source.push((source, 1)),
                     }
                 }
                 (Ok(relation), 0)
@@ -1076,399 +927,101 @@ impl Core {
         Ok(())
     }
 
-    // -- durable publication: an explicit request, served by the durability lane -----------------------------
+    // -- the session authority (ABI v8) ------------------------------------------------------------------------
 
-    /// The capture size of the bound substrate's envelope: the attached checkpoint store's capacity, else the K1
-    /// envelope size of its shape (verified natively by the capture and the seal). A composite without a checkpoint
-    /// store is refused (`CHECKPOINT_INVALID`): its memory capacity is not known here.
-    fn capture_size(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<usize, Refusal> {
-        if let Some(capacity) = self.lane.capacity() {
-            return Ok(capacity);
-        }
-        if key.kind == KIND_COMPOSITE {
-            return Err(Rt::CheckpointInvalid.into());
-        }
-        let width = self.width(sub, key)?;
-        k1_envelope_bytes(key.dim, width).ok_or_else(|| Rt::Invalid.into())
-    }
-
-    /// Request durable publication of the live state (binding it first if needed). The state's envelope is captured
-    /// UNSEALED under this runtime's lease at the live generation (`leased_capture`: the one synchronous step) and
-    /// handed to the durability lane, which seals, checkpoints and publishes it. Returns at once with a PENDING
-    /// ticket; it never waits for the lane. `kind` is what the caller asks to make durable: the complete state
-    /// ([`Kind::Recoverable`], refused with `RUNTIME_RECOVERY_UNAVAILABLE` unless a checkpoint store is attached) or
-    /// only its identity ([`Kind::Identity`], refused with `RUNTIME_CHECKPOINT_ATTACHED` while one is attached).
-    /// Refused, before anything is bound or captured, while a managed turn is open, while the lane is faulted (its
-    /// fault code) and on an unanchored lineage (anchoring is explicit). A request that finds an earlier one still
-    /// waiting supersedes it (bounded: one waiting job).
-    pub fn durable_request(&mut self, sub: &mut dyn K1Ops, key: Key, kind: Kind) -> Result<Ticket, Refusal> {
-        self.live()?;
-        if self.turn.is_some() {
-            return Err(Rt::TurnOpen.into());
-        }
-        if matches!(self.bound, Some(bound) if bound.key != key) {
-            return Err(Rt::SubstrateSwitch.into());
-        }
-        if let Some(code) = self.lane.fault() {
-            return Err(code.into());
-        }
-        match (kind, self.lane.capacity().is_some()) {
-            (Kind::Recoverable, false) => return Err(Rt::RecoveryUnavailable.into()),
-            (Kind::Identity, true) => return Err(Rt::CheckpointAttached.into()),
-            _ => {}
-        }
-        self.reconcile(sub, key)?;
-        let size = self.capture_size(sub, key)?;
-        let live = self.bound.expect("bound").generation;
-        let provisioned = self.lane.capacity().is_some();
-        let envelope = self.capture(sub, size, live, provisioned)?;
-        Ok(self.lane.enqueue(kind, live, sub.format(), envelope, sub.sealer(), self.observed)?)
-    }
-
-    // -- K1 Recovery R0: the bounded checkpoint store -------------------------------------------------------------
-
-    /// Attach the provisioned checkpoint store (an open runtime with no turn in flight and no durable publication
-    /// pending or running: an identity-only request admitted without a store never runs with one). From then on the
-    /// anchor and every durable publication persist the complete envelope before continuity names it.
-    pub fn checkpoint_attach(&mut self, directory: &Path) -> Result<(), Refusal> {
-        if !self.open {
-            return Err(Rt::Closed.into());
-        }
-        if self.turn.is_some() {
-            return Err(Rt::TurnOpen.into());
-        }
-        if self.lane.busy() {
-            return Err(Rt::DurableBusy.into());
-        }
-        let store = checkpoint::Store::open(directory)?;
-        self.lane.with_stores(|st| st.checkpoint = Some(store))?;
-        Ok(())
-    }
-
-    pub fn checkpoint_attached(&self) -> bool {
-        self.lane.capacity().is_some()
-    }
-
-    /// What restart may do with the lineage. Continuity decides; the slots are evidence. Read-only.
-    pub fn recover(&mut self) -> Result<Recovery, Refusal> {
-        if !self.open {
-            return Err(Rt::Closed.into());
-        }
-        if self.turn.is_some() {
-            return Err(Rt::TurnOpen.into());
-        }
-        self.lane.with_stores(|st| -> Result<Recovery, Refusal> {
-            let authorized = match st.authority.snapshot()?.cognition() {
-                Cognition::Unanchored => None,
-                Cognition::Anchored(d) => Some(d),
-            };
-            let store = st.checkpoint.as_mut().ok_or(Rt::CheckpointInvalid)?;
-            let candidate = authorized.and_then(|d| store.unresolved(&d));
-            let mut out = Recovery {
-                disposition: Disposition::NothingToRecover,
-                authorized: authorized.unwrap_or([0u8; 32]),
-                authorized_present: false,
-                candidate: candidate.map_or([0u8; 32], |(_, s)| s.identity),
-                envelope: None,
-            };
-            let authorized = match authorized {
-                Some(d) => d,
-                None => return Ok(out),
-            };
-            let held = store.holding(&authorized);
-            out.authorized_present = held.is_some();
-            out.disposition = if candidate.is_some() {
-                Disposition::CandidateUnresolved
-            } else if let Some(i) = held {
-                match store.envelope(i)? {
-                    Some((slot, envelope)) if slot.identity == authorized => {
-                        out.envelope = Some(envelope.to_vec());
-                        Disposition::Resumable
-                    }
-                    _ => Disposition::CheckpointMissing, // it no longer verifies
-                }
-            } else {
-                Disposition::CheckpointMissing
-            };
-            Ok(out)
-        })?
-    }
-
-    /// Operator reconciliation: discard the unresolved candidate `candidate` (withdraw its slot). The lineage stays
-    /// at continuity's authority. Refused unless `candidate` is exactly the unresolved candidate, and while a durable
-    /// publication is pending or running (`RUNTIME_DURABLE_BUSY`).
-    pub fn checkpoint_discard(&mut self, candidate: &Digest) -> Result<(), Refusal> {
-        self.live()?;
-        if self.turn.is_some() {
-            return Err(Rt::TurnOpen.into());
-        }
-        if self.lane.busy() {
-            return Err(Rt::DurableBusy.into());
-        }
-        #[cfg(feature = "testing")]
-        let planned = self.lane.take_control(control::Op::Discard);
-        #[cfg(feature = "testing")]
-        let lane = &*self.lane;
-        self.lane.with_stores(|st| -> Result<(), Refusal> {
-            let authorized = match st.authority.snapshot()?.cognition() {
-                Cognition::Unanchored => return Err(Rt::CheckpointInvalid.into()),
-                Cognition::Anchored(d) => d,
-            };
-            let store = st.checkpoint.as_mut().ok_or(Rt::CheckpointInvalid)?;
-            let slot = match store.unresolved(&authorized) {
-                Some((slot, s)) if s.identity == *candidate => slot,
-                _ => return Err(Rt::CheckpointInvalid.into()),
-            };
-            control_point!(lane.control_begun(planned, st));
-            let withdrawn = st.checkpoint.as_mut().expect("attached").retract(slot);
-            control_point!(lane.control_slot(planned, st));
-            Ok(withdrawn?)
-        })?
-    }
-
-    /// Operator reconciliation: adopt the unresolved candidate `candidate` as the lineage's authority (continuity
-    /// publishes authorized -> candidate). Its complete envelope is verified first. A publication failure fail-stops.
-    /// Refused while a state is bound or a durable publication is pending or running.
-    pub fn checkpoint_adopt(&mut self, candidate: &Digest) -> Result<Snapshot, Refusal> {
-        self.live()?;
-        if self.turn.is_some() || self.bound.is_some() {
-            return Err(Rt::TurnOpen.into()); // adopting under a bound state would contradict its identity
-        }
-        if self.lane.busy() {
-            return Err(Rt::DurableBusy.into());
-        }
-        #[cfg(feature = "testing")]
-        let planned = self.lane.take_control(control::Op::Adopt);
-        #[cfg(feature = "testing")]
-        let lane = &*self.lane;
-        let adopted = self.lane.with_stores(|st| -> Result<Snapshot, Refusal> {
-            let authorized = match st.authority.snapshot()?.cognition() {
-                Cognition::Unanchored => return Err(Code::Unanchored.into()),
-                Cognition::Anchored(d) => d,
-            };
-            let store = st.checkpoint.as_mut().ok_or(Rt::CheckpointInvalid)?;
-            let slot = match store.unresolved(&authorized) {
-                Some((slot, s)) if s.identity == *candidate => slot,
-                _ => return Err(Rt::CheckpointInvalid.into()),
-            };
-            match store.envelope(slot)? {
-                Some((s, _)) if s.identity == *candidate => {}
-                _ => return Err(Rt::CheckpointInvalid.into()),
-            }
-            control_point!(lane.control_begun(planned, st));
-            control_point!(lane.control_publishing(planned, st));
-            let adopted = st.authority.commit_cognition(Some(&authorized), Some(candidate));
-            control_point!(lane.control_record(planned, &adopted, st));
-            Ok(adopted?)
-        })?;
-        match adopted {
-            Ok(snapshot) => {
-                self.lane.count_publication();
-                self.released = None; // the durable authority moved: a released live identity no longer applies
-                Ok(snapshot)
-            }
-            Err(r) => {
-                if let Error::Authority(
-                    code @ (Code::PublicationRefused | Code::PublicationUncertain | Code::TestingProcessDeath),
-                ) = r.error
-                {
-                    self.fault = Some(code);
-                }
-                Err(r)
-            }
+    /// The session's status; while closed, the number of sessions opened and the session refusal of the last refused
+    /// open, if any.
+    pub fn authority_status(&self) -> Status {
+        match &self.authority {
+            Some(a) => a.status(self.sessions),
+            None => Status {
+                backend: crate::authority::BACKEND_ECS_C_SESSION,
+                ecs_c_code: self.refused.unwrap_or(0),
+                sessions: self.sessions,
+                ..Status::default()
+            },
         }
     }
 
-    /// LEGACY import (docs/ECS_COMPOSITE_STATE.md): move this runtime's K1 lineage to the composite substrate
-    /// `sub`, made by `elpis_ecs_composite_import_k1` from exactly the authorized K1 state with an empty memory.
-    /// Explicit and authority-checked: the lineage must be K1-format and anchored, no turn open and nothing bound,
-    /// and a checkpoint store provisioned for the composite envelope size must be attached. The composite is claimed,
-    /// its envelope captured and sealed; it must name the authorized K1 identity and hold an empty memory (otherwise
-    /// the claim is released, `CONTINUITY_STATE_MISMATCH`); it is made durable in the checkpoint store before
-    /// continuity publishes the import. Then the composite is bound under this runtime's lease.
-    pub fn import_composite(&mut self, sub: &mut dyn K1Ops, key: Key) -> Result<Snapshot, Refusal> {
-        self.live()?;
-        if self.turn.is_some() || self.bound.is_some() {
-            return Err(Rt::TurnOpen.into());
-        }
-        if self.lane.busy() {
-            return Err(Rt::DurableBusy.into());
-        }
-        let durable = self.lane.durable()?;
-        let k1 = match durable.cognition() {
-            Cognition::Unanchored => return Err(Code::Unanchored.into()),
-            Cognition::Anchored(d) => d,
-        };
-        if durable.format() != StateFormat::K1 || sub.format() != StateFormat::Composite {
-            return Err(Code::StateMismatch.into());
-        }
-        let capacity = self.lane.capacity().ok_or(Rt::CheckpointInvalid)?;
-        self.claim(sub)?;
-        let imported = self.import_claimed(sub, key, &k1, capacity);
-        if imported.is_err() {
-            let _ = sub.lease_release(self.lease);
-        }
-        imported
-    }
-
-    fn import_claimed(
-        &mut self,
-        sub: &mut dyn K1Ops,
-        key: Key,
-        k1: &Digest,
-        capacity: usize,
-    ) -> Result<Snapshot, Refusal> {
-        let (identity, generation) = self.leased_identity(sub)?;
-        let mut envelope = match self.capture(sub, capacity, generation, true) {
-            Ok(e) => e,
-            Err(r) if r.error == Error::Authority(Code::StateMismatch) => {
-                self.fault = None; // a capture refusal of a state never bound is not a lineage loss
-                return Err(Rt::CheckpointShape.into());
-            }
-            Err(r) => return Err(r),
-        };
-        // SAFETY: the substrate library's pure sealer over a buffer this call owns.
-        if unsafe { (sub.sealer())(envelope.as_mut_ptr(), envelope.len()) } != 0
-            || checkpoint::envelope_identity(&envelope) != Some(identity)
-        {
-            return Err(Rt::CheckpointShape.into());
-        }
-        if checkpoint::composite_import_identity(&envelope, k1) != Some(identity) {
-            return Err(Code::StateMismatch.into()); // not the authorized K1 state with an empty memory
-        }
-        #[cfg(feature = "testing")]
-        let planned = self.lane.take_control(control::Op::Import);
-        #[cfg(feature = "testing")]
-        let lane = &*self.lane;
-        let published = self.lane.with_stores(|st| -> Result<Snapshot, Refusal> {
-            let store = st.checkpoint.as_mut().ok_or(Rt::CheckpointInvalid)?;
-            if store.unresolved(k1).is_some() {
-                return Err(Rt::CheckpointUnresolved.into());
-            }
-            control_point!(lane.control_begun(planned, st));
-            let store = st.checkpoint.as_mut().expect("attached");
-            let written = match store.holding(&identity) {
-                None => store.write_envelope(&envelope, Some(k1)).map(|_| ()),
-                Some(_) => Ok(()),
-            };
-            control_point!(lane.control_slot(planned, st));
-            written?;
-            control_point!(lane.control_publishing(planned, st));
-            let imported = st.authority.import_cognition(Some(k1), Some(&identity));
-            control_point!(lane.control_record(planned, &imported, st));
-            Ok(imported?)
-        })?;
-        match published {
-            Ok(s) => {
-                self.lane.count_publication();
-                self.released = None;
-                self.set_live(key, generation);
-                self.shape = None;
-                Ok(s)
-            }
-            Err(r) => {
-                if let Error::Authority(code @ (Code::PublicationUncertain | Code::TestingProcessDeath)) = r.error {
-                    self.fault = Some(code);
-                }
-                Err(r)
-            }
-        }
-    }
-
-    // -- evolution: the durable reservation is synchronous and precedes execution --------------------------------
-
-    // -- ABI v6: the durable authority ----------------------------------------------------------------------------
-
-    /// The durable authority's backend and, under ECS_C, the recovery report of the last open, the current record
-    /// (while open) and the last refusal. Readable closed: after a refused open it is the operator's reason.
-    pub fn authority_status(&self) -> Result<crate::authority::Status, Error> {
-        self.lane.with_stores(|s| s.authority.status())
-    }
-
-    /// An operator event on the ECS_C authority while this runtime holds it (founding, lifecycle, source versions,
-    /// reclamation, the legacy import; docs/ECS_C_AUTHORITY.md). Refused under continuity, while fail-stopped, while a
-    /// managed turn is open (its admission must not change under it) and for any other kind (`RUNTIME_INVALID`). The
-    /// admission table is refreshed from the authority afterwards, whatever the outcome.
+    /// An operator event on the open session (founding, lifecycle, source versions, reclamation;
+    /// docs/ECS_C_SESSION.md). Refused while fail-stopped, while a managed turn is open (its admission must not
+    /// change under it), for RuntimeCore's own kinds (`RUNTIME_INVALID`) and, as retired, for the persistence-only
+    /// kinds (`RUNTIME_RETIRED`). The admission table is refreshed from the session afterwards.
     pub fn authority_transition(
         &mut self,
-        event: &elpis_ecs_c_authority::Event,
-    ) -> Result<elpis_ecs_c_authority::Receipt, Refusal> {
+        event: &elpis_ecs_c_session::model::Event,
+    ) -> Result<elpis_ecs_c_session::SessionReceipt, Refusal> {
         self.live()?;
         if self.turn.is_some() {
             return Err(Rt::TurnOpen.into());
         }
-        let (result, admission) = self.lane.with_stores(|s| {
-            let r = s.authority.operator_transition(event);
-            (r, s.authority.admission())
-        })?;
+        let authority = self.authority_mut()?;
+        let result = authority.operator_transition(event);
+        let admission = authority.admission();
         self.admission = admission;
+        if result.is_ok() {
+            self.counters.session_transitions += 1;
+        }
         Ok(result?)
     }
 
-    /// The held ECS_C authority's entity row at `index` and the identity of the next founding (read-only; what an
-    /// operator event is built from: docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"). Refused closed,
-    /// fail-stopped and under continuity.
-    pub fn authority_entity(&self, index: u32) -> Result<elpis_ecs_c_authority::Entity, Error> {
+    /// The session's entity row at `index` (read-only; what an operator event is built from). Refused closed and
+    /// fail-stopped.
+    pub fn authority_entity(&self, index: u32) -> Result<elpis_ecs_c_session::model::Entity, Error> {
         self.live()?;
-        self.lane.with_stores(|s| s.authority.entity_at(index))?
+        self.authority()?.entity_at(index)
     }
 
     pub fn authority_next_entity_id(&self, kind: u8, label: &Digest) -> Result<Digest, Error> {
         self.live()?;
-        self.lane.with_stores(|s| s.authority.next_entity_id(kind, label))?
+        self.authority()?.next_entity_id(kind, label)
     }
+
+    // -- evolution: the reservation precedes execution ------------------------------------------------------------
 
     /// The current idle evolution authority an assertion must be built against.
     pub fn evolution_authority(&self) -> Result<Snapshot, Error> {
         self.live()?;
-        let snapshot = self.lane.durable()?;
+        let snapshot = self.authority()?.snapshot();
         if snapshot.evolution().assertion().is_some() {
             return Err(Code::EvolutionPending.into());
         }
         Ok(snapshot)
     }
 
-    /// Durably reserve the exact assertion against the authority the caller validated it with. Only after
-    /// this returns may the boundary execute the attempt, once. Synchronous: the reservation is durable (written
-    /// and synced) when it returns; volatile cognition never stands in for it.
+    /// Reserve the exact assertion in the session against the authority the caller validated it with. Only after
+    /// this returns may the boundary execute the attempt, once. A refused reservation changes nothing and executed
+    /// nothing (no fail-stop): the caller may read the authority again.
     pub fn evolution_reserve(&mut self, observed: &EvolutionState, assertion: &Digest) -> Result<Snapshot, Error> {
         self.live()?;
         if self.evolution.is_some() {
             return Err(Rt::EvolutionInFlight.into());
         }
-        if self.lane.durable()?.evolution().assertion().is_some() {
+        if self.authority()?.snapshot().evolution().assertion().is_some() {
             return Err(Code::EvolutionPending.into());
         }
-        match self.lane.with_stores(|st| st.authority.reserve_evolution(Some(observed), Some(assertion)))? {
-            Ok(snapshot) => {
-                self.lane.count_publication();
-                self.evolution = Some(snapshot.evolution());
-                Ok(snapshot)
-            }
-            Err(code) => {
-                // Nothing executed; whether the reservation became durable is for restart to resolve.
-                self.fault = Some(code);
-                Err(code.into())
-            }
-        }
+        let snapshot = self.authority_mut()?.reserve_evolution(observed, assertion)?;
+        self.counters.session_transitions += 1;
+        self.evolution = Some(snapshot.evolution());
+        Ok(snapshot)
     }
 
-    /// Finalize the attempt in flight with the receipt its execution produced.
+    /// Finalize the attempt in flight with the receipt its execution produced. A refused finalization fail-stops for
+    /// the rest of the session (the attempt executed; it is never re-executed).
     pub fn evolution_finalize(&mut self, receipt: &Digest) -> Result<Snapshot, Error> {
-        if !self.open {
+        if self.authority.is_none() {
             return Err(Rt::Closed.into());
         }
         let pending = self.evolution.take().ok_or(Rt::EvolutionNotInFlight)?;
-        if let Some(code) = self.fault() {
+        if let Some(code) = self.fault {
             return Err(code.into());
         }
-        match self.lane.with_stores(|st| st.authority.finalize_evolution(Some(&pending), Some(receipt)))? {
+        match self.authority_mut()?.finalize_evolution(&pending, receipt) {
             Ok(snapshot) => {
-                self.lane.count_publication();
+                self.counters.session_transitions += 1;
                 Ok(snapshot)
             }
             Err(code) => {
-                // The attempt executed; its finalization is not certain. Never re-executed.
                 self.fault = Some(code);
                 Err(code.into())
             }
@@ -1476,7 +1029,7 @@ impl Core {
     }
 
     /// The boundary could not complete the attempt in flight (an exception or an invalid result may follow an
-    /// external effect): the durable reservation stays pending and the runtime fail-stops.
+    /// external effect): the reservation stays pending and the runtime fail-stops for the rest of the session.
     pub fn evolution_abandon(&mut self) -> Result<(), Error> {
         if self.evolution.take().is_none() {
             return Err(Rt::EvolutionNotInFlight.into());
@@ -1484,86 +1037,13 @@ impl Core {
         self.fault.get_or_insert(Code::EvolutionPending);
         Ok(())
     }
-
-    /// Explicit reconciliation: finalize a durable pending authority with an externally established receipt.
-    pub fn evolution_reconcile(&mut self, expected: &EvolutionState, receipt: &Digest) -> Result<Snapshot, Error> {
-        self.live()?;
-        if self.evolution.is_some() {
-            return Err(Rt::EvolutionInFlight.into());
-        }
-        match self.lane.with_stores(|st| st.authority.finalize_evolution(Some(expected), Some(receipt)))? {
-            Ok(snapshot) => {
-                self.lane.count_publication();
-                Ok(snapshot)
-            }
-            Err(code) => {
-                if matches!(code, Code::PublicationRefused | Code::PublicationUncertain | Code::TestingProcessDeath) {
-                    self.fault = Some(code);
-                }
-                Err(code.into())
-            }
-        }
-    }
-
-    // -- testing builds -------------------------------------------------------------------------------------------
-
-    #[cfg(feature = "testing")]
-    pub fn testing_arm(&mut self, publication: u64, action: u32, arg: u64) -> Result<(), Error> {
-        self.lane.with_stores(|st| st.authority.testing_arm(publication, action, arg))??;
-        Ok(())
-    }
-
-    #[cfg(feature = "testing")]
-    pub fn testing_authority_counters(&mut self, reset: bool) -> crate::authority::IoCounters {
-        self.lane.with_stores(|st| st.authority.testing_counters(reset)).unwrap_or_default()
-    }
-
-    #[cfg(feature = "testing")]
-    pub fn testing_checkpoint_counters(&mut self, reset: bool) -> checkpoint::probe::Counters {
-        self.lane
-            .with_stores(|st| match st.checkpoint.as_mut() {
-                Some(c) => {
-                    let counters = c.probe.counters;
-                    if reset {
-                        c.probe.counters = checkpoint::probe::Counters::default();
-                    }
-                    counters
-                }
-                None => checkpoint::probe::Counters::default(),
-            })
-            .unwrap_or_default()
-    }
-
-    /// Hold (or release) the durability worker before it takes a new job (testing builds: the HOT lane must not
-    /// depend on it).
-    #[cfg(any(test, feature = "testing"))]
-    pub fn testing_durable_hold(&mut self, hold: bool) {
-        self.lane.hold(hold);
-    }
-
-    #[cfg(feature = "testing")]
-    pub fn testing_durable_plan(&mut self, plan: Option<crate::durable::Plan>) {
-        self.lane.plan(plan);
-    }
-
-    /// Plan (or clear) one fault of the next control operation of its kind (anchor, import, discard, adopt).
-    #[cfg(feature = "testing")]
-    pub fn testing_control_plan(&mut self, plan: Option<control::Plan>) {
-        self.lane.control_plan(plan);
-    }
 }
 
 impl Drop for Core {
-    /// Destruction ends an open managed turn exactly as `close` does: one native abort through the retained
-    /// capability, never a forgotten transaction; then the durability worker stops (a pending request is
-    /// abandoned, a running one completes) and the stores release themselves.
+    /// Destruction ends an open managed turn exactly as `close` does (one native abort through the retained
+    /// capability, never a forgotten transaction), drops the residency hold, and the session's memory is released.
     fn drop(&mut self) {
         self.end_turn();
         self.unhold();
-        self.lane.shutdown();
-        if let Some(worker) = self.worker.take() {
-            let _ = worker.join();
-        }
-        self.lane.close();
     }
 }
