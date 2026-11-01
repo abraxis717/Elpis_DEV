@@ -78,6 +78,9 @@ V0 = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(V0)
 
 SCHEMA = "elpis.volatile-runtime-v1.zero-write.v1"
+# Paths whose answers the verdict judges one by one: recorded in full. The others record a count, a digest and the
+# last answer (a long run's transcript is its script, replayed).
+JUDGED = {"host_session", "host_differential", "python_cli", "python_fms_hacf", "hgram_read"}
 NOBODY = 65534
 SETPRIV = [shutil.which("setpriv") or "/usr/bin/setpriv", f"--reuid={NOBODY}", f"--regid={NOBODY}", "--clear-groups", "--inh-caps=-all",
            "--bounding-set=-all", "--"]
@@ -451,7 +454,11 @@ def main(argv=None) -> int:
         entry = {"argv": [clean(a) for a in spec["argv"]], "sha256": V0.sha256(Path(spec["argv"][0])),
                  "plain": plain([*prefix, *spec["argv"]], peak_rss, args.timeout, spec.get("env"),
                                 spec.get("fds", ()))}
-        entry["plain_output"] = lines(entry["plain"].pop("stdout"))
+        said = lines(entry["plain"].pop("stdout"))
+        entry["plain_answers"] = {"count": len(said), "all_met": all(o.get("met", o.get("ok", True)) for o in said),
+                                  "sha256": hashlib.sha256(json.dumps(said, sort_keys=True).encode()).hexdigest(),
+                                  "last": said[-1] if said else None}
+        entry["plain_output"] = said if name in JUDGED else None
         if not spec.get("plain_only"):
             observed_mode = "uid_only" if spec.get("unprivileged") else "observed"
             for label, mode in (("observed", observed_mode), ("confined", "confined")):
@@ -592,6 +599,9 @@ def main(argv=None) -> int:
                 if n.get(key) != p.get(key) and n.get("op") not in ("status", "counters", "authority", "catalog"):
                     problems.append(f"python_cli differs at {n.get('op')}: {key} {n.get(key)!r} != {p.get(key)!r}")
                     break
+    for name in ("host_long", "host_long_short"):
+        if not runs[name]["plain_answers"]["all_met"] or runs[name]["plain_answers"]["count"] < 300:
+            problems.append(f"{name}: an operation of the randomized session failed")
     # Boundedness: a ten times longer randomized session. The host holds its whole script in memory, so its peak may
     # grow by the script's extra bytes; what remains (the session's state) must stay within 512 KiB.
     long_peak, short_peak = runs["host_long"]["plain"]["peak_rss_kib"], runs["host_long_short"]["plain"]["peak_rss_kib"]
