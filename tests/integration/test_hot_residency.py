@@ -1,26 +1,24 @@
 """HOT residency of an FMS-resident K1 state bound to the runtime (docs/RUNTIME_CORE.md, "HOT residency").
 
-A HOT operation (QUERY, LEARN) must never trigger a synchronous disk-backed restoration. Three invariants, each its
-own test so that each discriminates on its own:
+A HOT operation (QUERY, LEARN) must never trigger a synchronous restoration. Under FMS ABI v3 residency is volatile:
+WARM in RAM, no COLD tier, no storage, nothing ever demoted below WARM, and a state beyond the WARM budget refused
+(``CAPACITY``), never spilled. Three invariants, each its own test so that each discriminates on its own:
 
 * **A. Residency protection.** Binding a state takes the K1 FMS adapter's residency hold before anything touches it;
-  while bound the hold pins it, so memory pressure demotes other states or refuses the newcomer, and HOT work on it
-  promotes nothing and reads no cold replica.
-* **B. Nonresident refusal.** Unbound and demoted, a managed QUERY, LEARN or durable request is refused
-  ``RUNTIME_NOT_RESIDENT``: nothing is promoted, read from the cold store, pinned or held, K1 is unchanged, nothing
-  durable moves, no ticket is issued and the runtime is not fail-stopped.
-* **C. Explicit restoration.** The owner's explicit materialization (WARM work) is the one path that reads the cold
-  replica back; the released live lineage then resumes, held resident again.
+  memory pressure refuses the newcomer and never displaces the bound state, and HOT work on it promotes nothing,
+  demotes nothing and reads nothing.
+* **B. No demotion at all.** A released (unbound) state is not displaced either: pressure refuses the newcomer, the
+  released state stays WARM-resident with exactly the live bytes the release gave back, and the runtime binds it
+  again with no restoration of any kind.
+* **C. Materialization is a check.** The owner's explicit materialization finds the state WARM and moves nothing
+  (before FMS v3 it was the one path that read a cold replica back); the live lineage then resumes, held again.
 
-Which *unpinned* WARM state FMS demotes is recency- and frequency-weighted on the PAL's wall clock (``fms_core.c``,
-``evict_cost_ns``; a release counts as an access), so it is no contract that a released state is the next victim.
-Every precondition here is therefore made exact through FMS's one hard law, a pinned object is never demoted: the
-fixture holds every other WARM state (the owner's residency hold, ``K1FMSRuntime.resident_hold``) so that exactly one
-state is eligible, and only then admits a newcomer.
+``RUNTIME_NOT_RESIDENT`` (a bound state not WARM) is unreachable over a RAM-only context: nothing demotes and a K1
+state is never moved to a device. The runtime's check stays (defensive) and is the native suites' to exercise.
 
 Mechanics only: the fixture map is TEST_ONLY TRAINING=NONE SEMANTICS=NONE. The syscall-level proof (no read or write
-on any thread) is native: ``runtime.test_runtime_hot_io``; stalled promotion, budget exhaustion, a lost cold replica
-and concurrent readers are the K1 FMS adapter's native suite (its residency-hold case).
+on any thread) is native: ``runtime.test_runtime_hot_io``; budget exhaustion and concurrent readers are the K1 FMS
+adapter's native suite (its residency-hold case).
 """
 from __future__ import annotations
 
@@ -30,27 +28,25 @@ import pytest
 from elpis.ECS.k1 import K1Error, K1FMSRuntime
 from elpis.runtime import Runtime
 from elpis.runtime.cognition import LearnRequest, QueryRequest
-from elpis.runtime.composition import CompositionError
 from elpis.substrate.residency import Context
 
 from ._turn_fixtures import LEARN, ByteTokens, FixtureMap, admitted
 from .test_codec_ecs_turn import DIM, WIDTH, _config, adapter, initial_w, k1  # noqa: F401 (module fixtures)
 
-WARM, COLD = 1, 2
+WARM = 1
 
 
 class _Residency:
-    """FMS-resident K1 states over a WARM budget of two and a half images: two fit, a third displaces one.
+    """FMS-resident K1 states over a WARM budget of two and a half images: two fit, a third is refused.
 
     It tracks every state it registered and every hold it took itself (never the runtime's), so that closing it
     after a failure reports the failure rather than a leftover state, and closing it after a pass proves that no
     hold leaked: a held state cannot be closed (``BUSY``).
     """
 
-    def __init__(self, k1, adapter, tmp_path):   # noqa: F811
+    def __init__(self, k1, adapter):   # noqa: F811
         image = k1.envelope_bytes(DIM, WIDTH) - 32
-        self.ctx = Context(adapter, warm_bytes=2 * image + image // 2, cold_bytes=10 ** 7, max_objects=8,
-                           cold_root=tmp_path / "cold")
+        self.ctx = Context(adapter, warm_bytes=2 * image + image // 2, max_objects=8)
         self.runtime = K1FMSRuntime(k1, self.ctx, adapter, max_states=8)
         self.states, self.held = [], []
 
@@ -63,6 +59,14 @@ class _Residency:
         self.states.append(state)
         return state
 
+    def refused(self, key):
+        """A newcomer at the bound: refused ``CAPACITY``, nothing registered and nothing displaced."""
+        tiers = [self.tier(s) for s in self.states]
+        with pytest.raises(K1Error) as refused:
+            self.state(key)
+        assert refused.value.code == "CAPACITY"
+        assert [self.tier(s) for s in self.states] == tiers == [WARM] * len(tiers)
+
     def tier(self, state):
         return self.runtime.inspect(state.id)["tier"]
 
@@ -70,28 +74,13 @@ class _Residency:
         return self.runtime.resident_holds(state.id)
 
     def residency(self):
-        """The FMS context's promotion, demotion and cold-store counters."""
+        """The FMS context's promotion, demotion and cold-store counters (all of them stay 0 under FMS v3)."""
         r = self.runtime.metrics()["residency"]
         return {k: r[k] for k in ("promotions", "demotions", "cold_reads", "cold_writes")}
 
     def hold(self, state):
         self.runtime.resident_hold(state.id)
         self.held.append(state)
-
-    def isolate(self, victim):
-        """Hold every other WARM state that nobody holds yet: ``victim`` becomes the only state FMS may demote."""
-        for s in self.states:
-            if s is not victim and self.tier(s) == WARM and self.holds(s) == 0:
-                self.hold(s)
-
-    def demote(self, victim, key):
-        """Demote exactly ``victim``: every other WARM state is held, then a newcomer arrives (WARM must make room)."""
-        self.isolate(victim)
-        others = [s for s in self.states if s is not victim and self.tier(s) == WARM]
-        newcomer = self.state(key)
-        assert self.tier(victim) == COLD, "the only demotable WARM state was not the one demoted"
-        assert all(self.tier(s) == WARM for s in others) and self.tier(newcomer) == WARM
-        return newcomer
 
     def __exit__(self, exc_type, *_):
         for s in self.held:
@@ -106,113 +95,85 @@ class _Residency:
         self.ctx.close()
 
 
+NOTHING_MOVED = {"promotions": 0, "demotions": 0, "cold_reads": 0, "cold_writes": 0}
+
+
 def _requests():
     return (LearnRequest("hot", ByteTokens(), admitted(FixtureMap()), LEARN),
             QueryRequest("query", ByteTokens(), admitted(FixtureMap())))
 
 
-def test_a_bound_state_is_never_demoted_by_memory_pressure_and_hot_work_on_it_never_promotes(
-        k1, adapter, tmp_path):   # noqa: F811
+def test_a_a_bound_state_is_never_displaced_by_memory_pressure_and_hot_work_on_it_moves_nothing(
+        k1, adapter):   # noqa: F811
     learn, query = _requests()
-    with _Residency(k1, adapter, tmp_path) as fms:
+    with _Residency(k1, adapter) as fms:
         state = fms.state(1)
         with Runtime(_config()) as runtime:
             runtime.anchor_cognition(state)
             assert fms.holds(state) == 1 and fms.runtime.inspect(state.id)["lease_count"] == 1   # bound: held
-            before = fms.residency()
+            assert fms.residency() == NOTHING_MOVED
 
-            # Pressure with one eligible competitor: each arrival must displace the previous arrival, never the bound
-            # state, and HOT work between arrivals runs on the WARM image.
-            arrivals = [fms.state(10)]
+            # Pressure: a second state fits, every further arrival is refused; HOT work between arrivals runs on
+            # the bound state's WARM image.
+            other = fms.state(10)
             for n in range(1, 4):
-                arrivals.append(fms.state(10 + n))
+                fms.refused(10 + n)
                 fms.runtime.pump()
                 runtime.run_learn(state, learn)
                 runtime.run_query(state, query)
-                assert fms.tier(state) == WARM and fms.tier(arrivals[-2]) == COLD
-            assert [fms.tier(s) for s in arrivals] == [COLD, COLD, COLD, WARM]
-
-            # No eligible competitor at all: every other WARM state is held. FMS refuses the newcomer rather than
-            # demote the bound state (without the runtime's hold, the bound state would be the one victim).
-            fms.isolate(state)
-            with pytest.raises(K1Error) as refused:
-                fms.state(20)
-            assert refused.value.code == "CAPACITY"
-            runtime.run_learn(state, learn)
-            runtime.run_query(state, query)
+                assert fms.tier(state) == fms.tier(other) == WARM
 
             info = fms.runtime.inspect(state.id)
             assert (info["tier"], info["lease_count"], info["transaction_open"]) == (WARM, 1, 0)
-            after = fms.residency()
-            # The bound state was never promoted and no cold replica was read; only the arrivals were demoted.
-            assert (after["promotions"], after["cold_reads"]) == (before["promotions"], before["cold_reads"])
-            assert after["demotions"] == before["demotions"] + 3
+            assert fms.residency() == NOTHING_MOVED
             assert fms.holds(state) == 1
         assert fms.holds(state) == 0   # closing the runtime drops its hold
 
 
-def test_b_hot_operations_on_a_demoted_state_are_refused_and_touch_nothing(k1, adapter, tmp_path):   # noqa: F811
+def test_b_a_released_state_is_not_displaced_either_and_binds_again_without_restoration(
+        k1, adapter):   # noqa: F811
     learn, query = _requests()
-    with _Residency(k1, adapter, tmp_path) as fms:
+    with _Residency(k1, adapter) as fms:
         state = fms.state(1)
         with Runtime(_config()) as runtime:
             runtime.anchor_cognition(state)
             runtime.run_learn(state, learn)   # volatile live work the release keeps
             live = runtime.live_identity(state)
+            answer = runtime.run_query(state, query).readout
             runtime.release(state)
             assert fms.holds(state) == 0 and fms.runtime.inspect(state.id)["lease_count"] == 0
 
             fms.state(2)
-            fms.demote(state, 3)   # the deterministic precondition: COLD, its replica the only copy
-            durable = runtime.continuity.snapshot()
-            info, counters = fms.runtime.inspect(state.id), fms.residency()
+            fms.refused(3)   # the released state is the one unheld state: still nothing is demoted
+            assert fms.tier(state) == WARM
+            assert fms.runtime.state_digest(state.id) == live[0]
 
-            refusals = (lambda: runtime.run_query(state, query), lambda: runtime.run_learn(state, learn),
-                        lambda: runtime.live_identity(state))
-            for operation in refusals:
-                with pytest.raises(CompositionError) as refused:
-                    operation()
-                assert refused.value.code == "RUNTIME_NOT_RESIDENT"
-
-            # Not promoted, no cold read, nothing pinned, held or acquired, no transaction, K1 unchanged.
-            assert fms.residency() == counters
-            assert fms.runtime.inspect(state.id) == info and info["tier"] == COLD and info["lease_count"] == 0
-            assert fms.holds(state) == 0
-            # No fail-stop; the session did not move.
+            # The next cognitive operation binds the released lineage again: no restoration, the same bytes at the
+            # same generation, held again.
+            assert runtime.live_identity(state) == live and fms.holds(state) == 1
+            again = runtime.run_query(state, query).readout
+            assert (again.values, again.live_generation) == (answer.values, live[1])
+            assert fms.residency() == NOTHING_MOVED
             assert runtime.fault is None
-            assert runtime.continuity.snapshot() == durable
-        # The demoted bytes are exactly the live state the release gave back (read only after the explicit
-        # materialization; test C proves the resumption).
-        state.materialize()
-        assert fms.runtime.state_digest(state.id) == live[0]
 
 
-def test_c_explicit_materialization_restores_residency_and_resumes_the_live_lineage(
-        k1, adapter, tmp_path):   # noqa: F811
+def test_c_explicit_materialization_is_a_residency_check_and_the_live_lineage_resumes(
+        k1, adapter):   # noqa: F811
     learn, query = _requests()
-    with _Residency(k1, adapter, tmp_path) as fms:
+    with _Residency(k1, adapter) as fms:
         state = fms.state(1)
         with Runtime(_config()) as runtime:
             runtime.anchor_cognition(state)
             runtime.run_learn(state, learn)
             answer = runtime.run_query(state, query).readout
             live = runtime.live_identity(state)
-            durable = runtime.continuity.snapshot()
             runtime.release(state)
             fms.state(2)
-            newcomer = fms.demote(state, 3)
-            with pytest.raises(CompositionError) as refused:
-                runtime.run_query(state, query)
-            assert refused.value.code == "RUNTIME_NOT_RESIDENT"
-            counters = fms.residency()
+            fms.refused(3)
 
-            # The explicit WARM-lane materialization: exactly one promotion and one cold read. WARM must make room,
-            # and the newcomer is the only state it may displace.
+            # The explicit WARM-lane materialization finds the state WARM: nothing is promoted or read.
             state.materialize()
-            assert fms.tier(state) == WARM and fms.tier(newcomer) == COLD
-            restored = fms.residency()
-            assert restored["promotions"] == counters["promotions"] + 1
-            assert restored["cold_reads"] == counters["cold_reads"] + 1
+            assert fms.tier(state) == WARM and fms.residency() == NOTHING_MOVED
 
             # The same live lineage resumes, held again: the exact bytes the release gave back, at their generation.
             assert runtime.live_identity(state) == live
@@ -223,8 +184,5 @@ def test_c_explicit_materialization_restores_residency_and_resumes_the_live_line
             result = runtime.run_learn(state, learn)
             assert (result.generation_before, result.generation_after) == (live[1], live[1] + 1)
             assert runtime.run_query(state, query).readout.live_generation == live[1] + 1
-            # HOT work after the restoration reads nothing back and publishes nothing (volatile).
-            after = fms.residency()
-            assert (after["promotions"], after["cold_reads"]) == (restored["promotions"], restored["cold_reads"])
-            assert runtime.continuity.snapshot() == durable and runtime.fault is None
+            assert fms.residency() == NOTHING_MOVED and runtime.fault is None
         assert fms.holds(state) == 0

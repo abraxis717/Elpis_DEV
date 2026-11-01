@@ -83,7 +83,6 @@ static const char *cur = "?";
 #define CASE(name) do { cur = (name); std::printf("- %s\n", cur); } while (0)
 
 static const uint32_t D = ELPIS_EMBEDDING_DIM;
-static std::string base;
 static const char *kCorpusDg = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 enum : size_t { OFF_FLAGS = 44, OFF_PAYLOAD_LEN = 48, OFF_HEADER_DG = 192, OFF_RESERVED = 224 };
@@ -231,7 +230,7 @@ static void case_same_address_metadata() {
 
 static void case_verify_missing_shard() {
     CASE("3: verifying an absent shard reports NOTFOUND, not OK");
-    fms_ctx *fms = vecfix::make_fms(base + "/verify", 8ull << 20);
+    fms_ctx *fms = vecfix::make_fms("verify", 8ull << 20);
     elpis_embedder *emb = nullptr;
     elpis_embedder_fixture_create(ELPIS_NORM_L2, &emb);
     elpis_embedding_profile prof;
@@ -283,7 +282,6 @@ static void case_verify_missing_shard() {
 
 static void case_filter_validation() {
     CASE("4: invalid namespace and authority filters fail, they do not return empty");
-    std::string root = base + "/filters";
     elpis_corpus *corpus = nullptr;
     CHECK(elpis_corpus_open_ephemeral(&corpus) == 0, "corpus open");
     if (!corpus) return;
@@ -335,7 +333,7 @@ static void case_filter_validation() {
     elpis_corpus_close(corpus);
 
     /* Vector search applies the same policy. */
-    fms_ctx *fms = vecfix::make_fms(base + "/filters-fms", 8ull << 20);
+    fms_ctx *fms = vecfix::make_fms("filters-fms", 8ull << 20);
     elpis_embedder *emb = nullptr;
     elpis_embedder_fixture_create(ELPIS_NORM_L2, &emb);
     elpis_embedding_profile prof;
@@ -467,7 +465,7 @@ static void case_canonical_digests() {
     }
     /* Index corpus binding must be canonical. */
     {
-        fms_ctx *fms = vecfix::make_fms(base + "/canon-fms", 4ull << 20);
+        fms_ctx *fms = vecfix::make_fms("canon-fms", 4ull << 20);
         elpis_vector_index *ix = nullptr;
         std::string up(kCorpusDg);
         for (char &ch : up) ch = (char)std::toupper((unsigned char)ch);
@@ -588,7 +586,7 @@ static void case_shard_flags_reserved_l2() {
 
 static void case_read_accessor_concurrency() {
     CASE("10: read accessors are safe against concurrent admission and close");
-    fms_ctx *fms = vecfix::make_fms(base + "/accessors", 16ull << 20);
+    fms_ctx *fms = vecfix::make_fms("accessors", 16ull << 20);
     elpis_embedder *emb = nullptr;
     elpis_embedder_fixture_create(ELPIS_NORM_L2, &emb);
     elpis_embedding_profile prof;
@@ -658,7 +656,7 @@ static void case_read_accessor_concurrency() {
 static void case_bounded_score_domain() {
     CASE("11: searchable indexes are L2-bound and canonical ranking cannot saturate");
 
-    fms_ctx *fms = vecfix::make_fms(base + "/score-domain", 8ull << 20);
+    fms_ctx *fms = vecfix::make_fms("score-domain", 8ull << 20);
     CHECK(fms != nullptr, "fms");
     if (!fms) return;
 
@@ -805,7 +803,7 @@ static void case_exception_containment() {
     /* The close path previously allocated while formatting errors. It is now
      * guarded and fixed-buffer. Closing a real shard must remain successful
      * with the C++ allocator armed and must not consume the failure. */
-    fms_ctx *fms = vecfix::make_fms(base + "/alloc-close", 8ull << 20);
+    fms_ctx *fms = vecfix::make_fms("alloc-close", 8ull << 20);
     elpis_vector_index *ix = nullptr;
     CHECK(elpis_vector_index_create(fms, &prof, kCorpusDg, &ix) == ELPIS_VEC_OK, "index create");
     CHECK(elpis_vector_index_add_shard_bytes(ix, img.data(), img.size(), nullptr) == ELPIS_VEC_OK,
@@ -829,7 +827,7 @@ static void case_exception_containment() {
 static void case_digest_operation_policy() {
     CASE("13: every digest-taking index operation applies one canonical policy");
 
-    fms_ctx *fms = vecfix::make_fms(base + "/digest-policy", 8ull << 20);
+    fms_ctx *fms = vecfix::make_fms("digest-policy", 8ull << 20);
     elpis_embedder *emb = nullptr;
     elpis_embedder_fixture_create(ELPIS_NORM_L2, &emb);
     elpis_embedding_profile prof{};
@@ -895,11 +893,8 @@ static void case_fixture_v2_identity() {
     elpis_embedder_destroy(emb);
 }
 
-int main(int argc, char **argv) {
-    base = argc > 1 ? argv[1] : "/tmp/elpis-vector-adversarial";
-    vecfix::rmtree(base);
-    vecfix::mkdirp(base);
-    std::printf("R2 adversarial suite (Remediation 02), root=%s\n", base.c_str());
+int main() {
+    std::printf("R2 adversarial suite (Remediation 02; volatile FMS: no file)\n");
 
     case_fixed_field_overread();
     case_same_address_metadata();

@@ -77,19 +77,19 @@ elpis_add_test(structure test_embedding_provider SOURCES ${HACF}/tests/vector/te
   LIBS elpis_embedding)
 elpis_add_test(structure test_vector_shard SOURCES ${HACF}/tests/vector/test_vector_shard.cpp
   LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-shard-state)
+# The vector suites run over a volatile FMS context (ABI v3: WARM in RAM, no COLD tier) and create no file.
 elpis_add_test(structure test_vector_search SOURCES ${HACF}/tests/vector/test_vector_search.cpp
-  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-search-state)
+  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector)
 elpis_add_test(structure test_vector_fms SOURCES ${HACF}/tests/vector/test_vector_fms.cpp
-  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-fms-state)
-# Dominated by real cold I/O under deliberate shard thrashing; the timeout is
-# finite so a liveness defect fails instead of hanging.
+  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector)
+# The timeout is finite so a liveness defect fails instead of hanging.
 elpis_add_test(structure test_vector_concurrency SOURCES ${HACF}/tests/vector/test_vector_concurrency.cpp
-  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-conc-state TIMEOUT 600)
+  LIBS ${VEC_LIBS} INCLUDES ${HACF}/tests/vector TIMEOUT 600)
 elpis_add_test(structure test_vector_crosshost_fixture SOURCES ${HACF}/tests/vector/test_vector_crosshost_fixture.cpp
-  LIBS elpis_corpus ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-xhost-state
+  LIBS elpis_corpus ${VEC_LIBS} INCLUDES ${HACF}/tests/vector
   DEFINES HACF_FIXTURE_DIR="${HACF}/tests/vector/fixture")
 elpis_add_test(structure test_vector_adversarial SOURCES ${HACF}/tests/vector/test_vector_adversarial.cpp
-  LIBS elpis_corpus ${VEC_LIBS} INCLUDES ${HACF}/tests/vector ARGS ${STATE}/vector-adv-state)
+  LIBS elpis_corpus ${VEC_LIBS} INCLUDES ${HACF}/tests/vector)
 elpis_add_test(structure test_context_graph SOURCES ${HACF}/tests/hybrid/test_context_graph.cpp
   LIBS elpis_hybrid INCLUDES ${HACF}/tests/vector ${HACF}/tests/hybrid)
 elpis_add_test(structure test_hybrid_fusion SOURCES ${HACF}/tests/hybrid/test_hybrid_fusion.cpp

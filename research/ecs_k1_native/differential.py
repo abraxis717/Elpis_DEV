@@ -12,7 +12,6 @@ import copy
 import ctypes
 import hashlib
 from pathlib import Path
-import tempfile
 import time
 
 import numpy as np
@@ -96,9 +95,7 @@ def resident_envelopes(nat: Native, world: T.World, rate: float, steps: int) -> 
     """The same K1 sequence on one FMS-resident state; its envelope after every boundary."""
     image = nat.k1.envelope_bytes(*world.w0.shape) - 32
     rows = len(world.tasks["A"].y_train)
-    with tempfile.TemporaryDirectory() as cold, \
-            Context(nat.adapter, warm_bytes=8 * image, cold_bytes=10 ** 6, max_objects=4,
-                    cold_root=Path(cold) / "cold") as ctx, \
+    with Context(nat.adapter, warm_bytes=8 * image, max_objects=4) as ctx, \
             K1FMSRuntime(nat.k1, ctx, nat.adapter, max_states=2) as runtime:
         sid = runtime.register(hashlib.sha256(world.world.encode()).digest(), *world.w0.shape, _mv(world.w0),
                                max_rows=rows)

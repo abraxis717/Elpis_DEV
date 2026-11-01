@@ -67,11 +67,10 @@ def world(k1, w=None, max_rows=64):
 class _Resident:
     """One FMS-resident K1 state over a fresh, test-owned FMS context."""
 
-    def __init__(self, k1, adapter, tmp_path, w=None, max_rows=64):
+    def __init__(self, k1, adapter, w=None, max_rows=64):
         image = k1.envelope_bytes(DIM, WIDTH) - 32
         w = initial_w() if w is None else w
-        self.ctx = Context(adapter, warm_bytes=8 * image, cold_bytes=10 ** 6, max_objects=4,
-                           cold_root=tmp_path / "cold")
+        self.ctx = Context(adapter, warm_bytes=8 * image, max_objects=4)
         self.runtime = K1FMSRuntime(k1, self.ctx, adapter, max_states=2)
         sid = self.runtime.register(b"\x07" * 32, DIM, WIDTH, memoryview(np.ascontiguousarray(w).reshape(-1)),
                                     max_rows=max_rows)
@@ -219,7 +218,7 @@ def test_turns_are_deterministic_and_retained_snapshots_continue(k1):
 
 def test_fms_resident_turns_equal_standalone_turns_bitwise(k1, adapter, tmp_path):
     texts = ("first", "a second, longer turn", "third")
-    with world(k1) as standalone, _Resident(k1, adapter, tmp_path) as resident:
+    with world(k1) as standalone, _Resident(k1, adapter) as resident:
         for i, text in enumerate(texts):
             fixture = dict(experiences=1 + i, steps=2 + i)
             a = run_turn(standalone, text, tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)
@@ -239,7 +238,7 @@ def test_fms_resident_turns_equal_standalone_turns_bitwise(k1, adapter, tmp_path
 
 
 def test_fms_rows_beyond_capacity_grow_on_the_cold_path(k1, adapter, tmp_path):
-    with _Resident(k1, adapter, tmp_path, max_rows=4) as resident, world(k1, max_rows=4) as standalone:
+    with _Resident(k1, adapter, max_rows=4) as resident, world(k1, max_rows=4) as standalone:
         for state in (resident, standalone):
             run_turn(state, "rows", tokenizer=ByteTokens(), codec=admitted(FixtureMap(rows=12)), authority=LEARN)
             assert state.max_rows >= 12
@@ -350,7 +349,7 @@ def test_one_schedule_crossing_per_turn_whatever_experiences_or_steps(experience
         run_turn(state, "turn", tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)
         assert counter.calls == {"max_rows": 1, "txn_begin": 1, "txn_run_schedule": 1, "txn_commit_identity": 1}, counter.calls
         assert state.stats()["heap_allocations"] == heap   # no allocation on the prepared hot path
-    with _Resident(k1, adapter, tmp_path) as resident:
+    with _Resident(k1, adapter) as resident:
         fcounter = _Counting(resident._r._f)
         run_turn(resident, "warm", tokenizer=ByteTokens(), codec=admitted(FixtureMap(**fixture)), authority=LEARN)
         heap = resident._r.k1_stats(resident.id)["heap_allocations"]
@@ -499,7 +498,7 @@ def test_managed_fms_resident_turns_equal_managed_standalone_turns(k1, adapter, 
     """RuntimeCore drives an FMS-resident state through the FMS adapter's table, bitwise like a standalone one."""
     from elpis.runtime import Runtime
 
-    with world(k1, max_rows=4) as standalone, _Resident(k1, adapter, tmp_path, max_rows=4) as resident:
+    with world(k1, max_rows=4) as standalone, _Resident(k1, adapter, max_rows=4) as resident:
         with Runtime(_config()) as ra, Runtime(_config()) as rb:
             ra.anchor_cognition(standalone)
             rb.anchor_cognition(resident)

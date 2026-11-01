@@ -90,7 +90,7 @@ def subject(request, k1, adapter, tmp_path):   # noqa: F811 (module fixtures)
         with world(k1, max_rows=8) as state:
             yield _Subject(state, False)
     else:
-        with _Resident(k1, adapter, tmp_path, max_rows=8) as state:
+        with _Resident(k1, adapter, max_rows=8) as state:
             yield _Subject(state, True)
 
 

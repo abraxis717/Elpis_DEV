@@ -1,4 +1,4 @@
-/* fms_pal_test.c - test PAL: real durable cold store, explicitly emulated device. */
+/* fms_pal_test.c - test PAL: RAM (the RAM-only PAL's) and an explicitly emulated device. No storage (FMS ABI v3). */
 #define _POSIX_C_SOURCE 200809L
 
 #include "elpis/fms_pal_test.h"
@@ -10,7 +10,7 @@
 #include <stdio.h>
 
 typedef struct {
-    fms_pal          *inner;      /* posix PAL, owns the cold store */
+    fms_pal          *inner;      /* the RAM-only PAL */
     fms_pal_test_opts o;
     pthread_mutex_t   mu;
     uint64_t          host_bytes, device_bytes;
@@ -90,21 +90,6 @@ static int t_fence_query(void *self, void *fence) {
     return t->o.fence_mode;
 }
 
-static int t_cold_put(void *self, const void *src, uint64_t n, fms_cold_token **out) {
-    tpal *t = S(self);
-    if (t->o.fail_cold_put) return FMS_PAL_EIO;
-    return t->inner->cold_put(t->inner->self, src, n, out);
-}
-static int t_cold_get(void *self, const fms_cold_token *tok, void *dst, uint64_t n) {
-    tpal *t = S(self);
-    return t->inner->cold_get(t->inner->self, tok, dst, n);
-}
-static void t_cold_drop(void *self, fms_cold_token *tok) {
-    tpal *t = S(self);
-    t->inner->cold_drop(t->inner->self, tok);
-}
-/* The cold store is the posix PAL's, so its token accessors are used directly. */
-
 static uint64_t t_bandwidth(void *self, int from, int to) {
     tpal *t = S(self);
     return t->inner->bandwidth(t->inner->self, from, to);
@@ -119,8 +104,8 @@ static void t_destroy(void *self) {
 }
 
 fms_pal *fms_pal_test_create(const fms_pal_test_opts *o) {
-    if (!o || !o->cold_root) return NULL;
-    fms_pal *inner = fms_pal_posix_create(o->cold_root);
+    if (!o) return NULL;
+    fms_pal *inner = fms_pal_posix_create_ram_only();
     if (!inner) return NULL;
 
     tbundle *b = (tbundle *)calloc(1, sizeof *b);
@@ -133,7 +118,6 @@ fms_pal *fms_pal_test_create(const fms_pal_test_opts *o) {
     p->self = &b->st;
     p->abi = FMS_ABI_VERSION;
     p->caps = 0;
-    if (!o->no_cold) p->caps |= FMS_CAP_COLD;
     if (o->emulate_device) {
         p->caps |= FMS_CAP_DEVICE;
         if (o->zero_copy) p->caps |= FMS_CAP_ZERO_COPY;
@@ -145,8 +129,6 @@ fms_pal *fms_pal_test_create(const fms_pal_test_opts *o) {
     p->hot_upload = t_hot_upload; p->hot_download = t_hot_download;
     p->fence_query = t_fence_query;
     p->ram_alloc = t_ram_alloc; p->ram_free = t_ram_free;
-    p->cold_put = t_cold_put; p->cold_get = t_cold_get; p->cold_drop = t_cold_drop;
-    p->cold_digest = fms_pal_posix_token_digest; p->cold_bytes = fms_pal_posix_token_bytes;
     p->bandwidth = t_bandwidth;
     return p;
 }

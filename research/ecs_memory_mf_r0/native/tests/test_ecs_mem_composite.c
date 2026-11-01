@@ -1,19 +1,20 @@
-/* M4: MF-R0 next to the one ECS (native K1) and the generic substrate (FMS ABI v2), without new authority.
+/* M4: MF-R0 next to the one ECS (native K1) and the generic substrate, without new authority.
  *
  * 1. Authority gap, demonstrated: the K1 retained-state digest (the only cognitive identity continuity binds)
  *    is unchanged by any MF-R0 transition, so continuity cannot detect, order or restore memory state. The
  *    composite identity changes with either component; nothing durable holds it.
- * 2. Residency: the ELPISEM1 envelope is an opaque generic FMS object. Demoted to COLD under WARM pressure and
- *    rematerialized (FMS verifies its own cold replica), it restores the identical memory state. FMS
- *    interprets nothing; this is placement, not a checkpoint authority (docs/K1_RECOVERY_R0.md). */
+ * 2. Residency: the ELPISEM1 envelope is an opaque generic FMS object, and its resident bytes restore the
+ *    identical memory state. FMS interprets nothing; this is placement, not a checkpoint authority.
+ *
+ * M4 was recorded over FMS ABI v2, where WARM pressure demoted the envelope to a COLD file and an access
+ * rematerialized it (that version of this test is in git history). FMS ABI v3 (the volatile-native migration) has
+ * no COLD tier: the same pressure is refused at admission and the envelope stays resident; nothing is written. */
 #define _POSIX_C_SOURCE 200809L
 #include "ecs_mem_composite.h"
 #include "ecs_mem_test_util.h"
 #include "elpis/ecsg_k1.h"
 #include "elpis/fms.h"
 #include "elpis/fms_pal_posix.h"
-
-#include <sys/stat.h>
 
 enum { DIM = 6, WIDTH = 36 };
 
@@ -80,30 +81,27 @@ static void test_generic_fms_residency(void) {
     size_t written;
     assert(env && filler && ecs_mem_snapshot(m, env, n, &written) == ECS_MEM_OK && written == n);
 
-    mkdir("ecs_mem_cold", 0700);
     fms_config fc;
     memset(&fc, 0, sizeof(fc));
     fc.tier_budget[FMS_WARM] = fc.domain_ceiling[FMS_DOM_RAM] = (uint64_t)n + n / 2; /* room for one object */
-    fc.tier_budget[FMS_COLD] = fc.domain_ceiling[FMS_DOM_STORAGE] = (uint64_t)n * 8;
     fc.high_wm = 0.9f;
     fc.low_wm = 0.5f;
     fc.max_objects = 4;
     fc.hot_absent_policy = fc.cold_absent_policy = FMS_REJECT;
-    fms_pal *pal = fms_pal_posix_create("ecs_mem_cold");
-    assert(pal);
-    fms_ctx *ctx = fms_create(&fc, pal);
+    fms_ctx *ctx = elpis_fms_create_ram_only(&fc);
     assert(ctx);
     fms_id obj, other;
     assert(fms_register(ctx, 7, n, FMS_WARM, 0.0f, env, &obj) >= 0);
-    assert(fms_register(ctx, 7, n, FMS_WARM, 0.0f, filler, &other) >= 0); /* pressure: the envelope is demoted */
+    /* pressure: the second object is refused at the bound, never spilled; the envelope stays resident */
+    assert((int)fms_register(ctx, 7, n, FMS_WARM, 0.0f, filler, &other) == (int)FMS_E_LIMIT);
+    assert(fms_pump(ctx) == FMS_OK);
     fms_object_info info;
-    assert(fms_query(ctx, obj, &info) == FMS_OK && info.tier == FMS_COLD && info.cold_replica);
-    fms_stats before, after;
-    fms_get_stats(ctx, &before);
+    assert(fms_query(ctx, obj, &info) == FMS_OK && info.tier == FMS_WARM && info.state == FMS_ST_RESIDENT);
     void *p = NULL;
     assert(fms_acquire(ctx, obj, FMS_WARM, FMS_READ, &p) >= 0 && p);
-    fms_get_stats(ctx, &after);
-    assert(after.cold_reads > before.cold_reads);
+    fms_stats st;
+    fms_get_stats(ctx, &st);
+    assert(!st.demotions && !st.cold_reads && !st.cold_writes && !st.tier_bytes[FMS_COLD]);
     ecs_mem *back;
     assert(ecs_mem_restore((const uint8_t *)p, n, c.byte_budget, &back) == ECS_MEM_OK);
     assert(fms_release(ctx, obj) == FMS_OK);

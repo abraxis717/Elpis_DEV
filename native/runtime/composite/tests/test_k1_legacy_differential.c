@@ -14,7 +14,12 @@
  * generation advances by exactly one per installing mutation and never on a refusal; a lease other than the
  * holder's is refused before anything is read.
  *
- * Usage: test_k1_legacy_differential <scratch-dir> [transcript-file]. */
+ * FMS ABI v3 (volatile residency: WARM in RAM, no COLD tier) changed the FMS section of the battery by design: where
+ * a second state used to demote the first to a COLD file (and an operation materialized it back), the second state
+ * is now refused at the WARM bound and the first stays resident. The recorded cross-version transcript
+ * (docs/RUNTIME_CORE.md) predates FMS v3 and is history: it is not reproducible over FMS v3 libraries.
+ *
+ * Usage: test_k1_legacy_differential [transcript-file]. Nothing else is written. */
 #define _POSIX_C_SOURCE 200809L
 #include "elpis/ecs_composite.h"
 #include "elpis/ecsg_k1.h"
@@ -31,7 +36,6 @@
 
 enum { D = 6, N = 36, R = 32, WC = D * N, F = 83, LEASE = 0x5EED };
 static double W0[WC], X[R * D], Y[R], X2[R * D], Y2[R];
-static const char *SCRATCH;
 
 /* ---- the transcript ------------------------------------------------------------------------------------------- */
 
@@ -196,21 +200,17 @@ static void legacy_k1(void) {
     st("k1.destroy.twin", elpis_ecsg_k1_destroy(&twin));
 }
 
-static elpis_ecsg_k1_fms *fms_runtime(const char *name, uint64_t warm) {
-    char root[2048];
+/* A volatile WARM-only K1 FMS runtime (FMS ABI v3: RAM-only PAL, no COLD tier, no storage domain). */
+static elpis_ecsg_k1_fms *fms_runtime(uint64_t warm) {
     fms_config c;
     elpis_ecsg_k1_fms *r = NULL;
-    assert(snprintf(root, sizeof root, "%s/%s", SCRATCH, name) < (int)sizeof root);
     memset(&c, 0, sizeof(c));
     c.tier_budget[FMS_WARM] = c.domain_ceiling[FMS_DOM_RAM] = warm;
-    c.tier_budget[FMS_COLD] = c.domain_ceiling[FMS_DOM_STORAGE] = 64u * (uint64_t)elpis_ecsg_k1_envelope_bytes(D, N);
     c.high_wm = 0.9f;
     c.low_wm = 0.7f;
     c.max_objects = 8;
     c.hot_absent_policy = c.cold_absent_policy = FMS_REJECT;
-    fms_pal *pal = fms_pal_posix_create(root);
-    assert(pal);
-    fms_ctx *ctx = fms_create(&c, pal);
+    fms_ctx *ctx = elpis_fms_create_ram_only(&c);
     assert(ctx);
     assert(elpis_ecsg_k1_fms_create(ctx, 8, &r) == 0);
     return r;
@@ -238,7 +238,7 @@ static void fms_envelope(const char *tag, elpis_ecsg_k1_fms *r, uint64_t id) {
 
 static void legacy_fms(void) {
     const uint64_t image = (uint64_t)elpis_ecsg_k1_image_bytes(D, N);
-    elpis_ecsg_k1_fms *r = fms_runtime("legacy-fms", image + image / 2u);   /* one image fits */
+    elpis_ecsg_k1_fms *r = fms_runtime(image + image / 2u);   /* one image fits */
     uint8_t ka[32] = {1}, kb[32] = {2}, digest[32] = {0};
     uint64_t a = 0, b = 0, tok = 0;
     elpis_ecsg_k1_transition t;
@@ -264,13 +264,14 @@ static void legacy_fms(void) {
     st("fms.txn_commit_identity", elpis_ecsg_k1_fms_txn_commit_identity(r, a, tok, &ci));
     rec("fms.commit_identity", &ci, sizeof(ci));
     fms_envelope("fms.committed", r, a);
-    /* a second state demotes the first (one WARM image); an operation on it materializes it (the legacy law) */
+    /* FMS v3: a second state is refused at the WARM bound (one image fits), nothing is demoted, and the first
+     * stays resident across the pump (before v3 the first was demoted to COLD and materialized back here) */
     st("fms.register.b", elpis_ecsg_k1_fms_register(r, kb, D, N, R, W0, &b));
     st("fms.pump", elpis_ecsg_k1_fms_pump(r));
-    st("fms.query_identity.demoted", elpis_ecsg_k1_fms_query_identity(r, a, D, X, R, out, digest));
+    st("fms.query_identity.resident", elpis_ecsg_k1_fms_query_identity(r, a, D, X, R, out, digest));
     rec("fms.query_identity.out", out, sizeof(out));
     rec("fms.query_identity.digest", digest, 32);
-    fms_envelope("fms.materialized", r, a);
+    fms_envelope("fms.resident", r, a);
     /* lease and refusals */
     st("fms.lease_claim", elpis_ecsg_k1_fms_lease_claim(r, a, LEASE));
     st("fms.learn.leased", elpis_ecsg_k1_fms_learn(r, a, X, Y, R, 0.002, 1, &t));
@@ -456,7 +457,7 @@ static void live_coordinate_laws(void) {
     /* K1 FMS: the same laws on a resident state. */
     {
         const uint64_t image = (uint64_t)elpis_ecsg_k1_image_bytes(D, N);
-        elpis_ecsg_k1_fms *r = fms_runtime("live-fms", 4u * image);
+        elpis_ecsg_k1_fms *r = fms_runtime(4u * image);
         uint8_t key[32] = {7};
         uint64_t a = 0;
         assert(elpis_ecsg_k1_fms_register(r, key, D, N, R, W0, &a) == 0);
@@ -510,8 +511,6 @@ static void live_coordinate_laws(void) {
 #endif
 
 int main(int argc, char **argv) {
-    assert(argc >= 2);
-    SCRATCH = argv[1];
     fixture();
     battery();
     const size_t first_len = T_len;
@@ -524,8 +523,8 @@ int main(int argc, char **argv) {
     printf("legacy transcript: %zu bytes, sha256 ", T_len);
     for (int i = 0; i < 32; ++i) printf("%02x", digest[i]);
     printf("\n");
-    if (argc >= 3) {
-        FILE *f = fopen(argv[2], "wb");
+    if (argc >= 2) {   /* only on explicit request: a transcript file for the cross-version comparison */
+        FILE *f = fopen(argv[1], "wb");
         assert(f && fwrite(T, 1, T_len, f) == T_len && fclose(f) == 0);
     }
 #ifdef ELPIS_K1_LIVE_COORDINATE

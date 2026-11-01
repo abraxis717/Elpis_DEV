@@ -1,5 +1,5 @@
-/* test_fms_concurrency.c - concurrent retrieval-style access to one context.
- * Run under ThreadSanitizer and AddressSanitizer. */
+/* test_fms_concurrency.c - concurrent retrieval-style access to one context, with objects moving between WARM and an
+ * emulated HOT tier (FMS ABI v3: nothing below WARM). Run under ThreadSanitizer and AddressSanitizer. */
 #define _POSIX_C_SOURCE 200809L
 
 #include "elpis/fms.h"
@@ -32,7 +32,7 @@ static void *worker(void *arg) {
         rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5;
         int i = (int)(rng % N_OBJ);
         void *p = NULL;
-        int r = fms_acquire(g_ctx, g_id[i], FMS_WARM, FMS_READ, &p);
+        int r = fms_acquire(g_ctx, g_id[i], (it & 1) ? FMS_HOT : FMS_WARM, FMS_READ, &p);
         if (r < 0) {
             if (r != FMS_E_BUSY && r != FMS_E_LIMIT) fail("acquire", i);
             continue;
@@ -52,24 +52,24 @@ static void *pumper(void *arg) {
         fms_pump(g_ctx);
         fms_stats st;
         fms_get_stats(g_ctx, &st);
-        if (st.domain_bytes[FMS_DOM_RAM] > 2 * MB) { fail("ram ceiling breached", -1); break; }
+        if (st.domain_bytes[FMS_DOM_RAM] > 3 * MB) { fail("ram ceiling breached", -1); break; }
+        if (st.tier_bytes[FMS_COLD] || st.domain_bytes[FMS_DOM_STORAGE]) { fail("storage charged", -1); break; }
     }
     return NULL;
 }
 
-int main(int argc, char **argv) {
-    const char *root = argc > 1 ? argv[1] : "/tmp/elpis-fms-conc";
+int main(void) {
     fms_pal_test_opts o;
     memset(&o, 0, sizeof o);
-    o.cold_root = root;
+    o.emulate_device = 1;
+    o.device_domain = FMS_DOM_DEVICE;
 
     fms_config cfg;
     memset(&cfg, 0, sizeof cfg);
-    cfg.tier_budget[FMS_WARM] = 2 * MB;
-    cfg.tier_budget[FMS_COLD] = 64 * MB;
-    cfg.domain_ceiling[FMS_DOM_RAM] = 2 * MB;
-    cfg.domain_ceiling[FMS_DOM_DEVICE] = 1;
-    cfg.domain_ceiling[FMS_DOM_STORAGE] = 64 * MB;
+    cfg.tier_budget[FMS_HOT] = 1 * MB;
+    cfg.tier_budget[FMS_WARM] = 3 * MB;
+    cfg.domain_ceiling[FMS_DOM_RAM] = 3 * MB;
+    cfg.domain_ceiling[FMS_DOM_DEVICE] = 1 * MB;
     cfg.high_wm = 0.90f; cfg.low_wm = 0.70f;
     cfg.max_objects = 32;
 
@@ -97,7 +97,8 @@ int main(int argc, char **argv) {
     if (st.inflight_ops != 0) { fprintf(stderr, "FAIL inflight leak\n"); g_fail = 1; }
     if (st.pinned_bytes != 0) { fprintf(stderr, "FAIL pin leak: %llu\n",
                                         (unsigned long long)st.pinned_bytes); g_fail = 1; }
-    if (st.domain_bytes[FMS_DOM_RAM] > 2 * MB) { fprintf(stderr, "FAIL final ram\n"); g_fail = 1; }
+    if (st.domain_bytes[FMS_DOM_RAM] > 3 * MB) { fprintf(stderr, "FAIL final ram\n"); g_fail = 1; }
+    if (st.cold_writes || st.cold_reads) { fprintf(stderr, "FAIL cold traffic\n"); g_fail = 1; }
     printf("threads=%d iters=%d promotions=%llu demotions=%llu p50=%lluns p95=%lluns\n",
            N_THREAD, N_ITER, (unsigned long long)st.promotions,
            (unsigned long long)st.demotions, (unsigned long long)st.move_p50_ns,

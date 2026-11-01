@@ -11,15 +11,14 @@
 extern "C" {
 #endif
 
+/* FMS ABI v3: no COLD tier exists (no cold root, no FMS_CAP_COLD, no cold fault). */
 typedef struct fms_pal_test_opts {
-    const char *cold_root;
-    int      emulate_device;    /* 0 => WARM+COLD only */
+    int      emulate_device;    /* 0 => WARM only */
     int      device_domain;     /* FMS_DOM_RAM = integrated/shared, FMS_DOM_DEVICE = discrete */
     int      zero_copy;         /* device view aliases the host allocation */
     uint64_t stage_bytes_max;
-    int      no_cold;           /* drop FMS_CAP_COLD: WARM-only configuration */
     /* fault injection */
-    int      fail_hot_alloc, fail_hot_upload, fail_hot_download, fail_cold_put;
+    int      fail_hot_alloc, fail_hot_upload, fail_hot_download;
     int      fence_mode;        /* FMS_FENCE_COMPLETE | FMS_FENCE_PENDING | FMS_FENCE_LOST */
 } fms_pal_test_opts;
 

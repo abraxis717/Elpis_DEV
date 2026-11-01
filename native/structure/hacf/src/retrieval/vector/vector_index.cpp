@@ -6,8 +6,13 @@
  *   - scoring holds fms_lease_acquire(FMS_WARM, FMS_READ) for its whole duration
  *   - every exit path releases the lease, including error paths
  *   - FMS_HOT is never passed to any FMS entry point in this translation unit
- *   - a promotion failure is a structured error, never an empty result
- *   - FMS_E_DIGEST from a corrupt cold replica surfaces as an integrity failure */
+ *   - a residency failure is a structured error, never an empty result
+ *   - FMS_E_DIGEST, if FMS ever reports it, surfaces as an integrity failure
+ *
+ * FMS ABI v3: residency is volatile (WARM in RAM; there is no COLD tier, no
+ * storage, no replica). An admitted shard stays WARM-resident until it is
+ * closed; a shard that does not fit the WARM ceiling is refused at admission
+ * (fms_register: FMS_E_LIMIT), never spilled. */
 
 #include "elpis/vector_index.h"
 #include "elpis/vector_execution.h"
@@ -50,21 +55,19 @@ struct ShardEntry {
  * bound; everything else, above all FMS_E_DIGEST, is returned immediately so a
  * real failure can never be hidden by waiting.
  *
- *   FMS_E_BUSY   the object is mid-move: another reader is promoting it, or the
- *                background pump is demoting it.
- *   FMS_E_LIMIT  no headroom right now because concurrent readers hold pins on
- *                other shards. Those pins are released when their scans finish.
+ *   FMS_E_BUSY   the object is mid-move (a HOT/WARM transition; HACF never
+ *                requests HOT, so this does not arise for its own shards).
+ *   FMS_E_LIMIT  no headroom right now. Under FMS ABI v3 an admitted shard is
+ *                always resident, so this too is defensive for a lease.
  *
  * Sizing rule this implies, stated in docs/R2_MEMORY_ACCOUNTING.md: the WARM
  * ceiling must exceed (concurrent queries x largest shard), otherwise readers
  * serialise on the retry path and, in the limit, fail. A ceiling smaller than a
  * single shard fails immediately at admission instead, in fms_register. */
-/* The wait is bounded by wall time, not by an attempt count: a transient move
- * costs one cold I/O round trip, and that is orders of magnitude slower under a
- * sanitizer or on the MacBook target than on an unsanitized workstation. A
- * fixed attempt count silently becomes a different timeout on every host. Five
- * seconds is long enough for a slow cold write and short enough that a genuine
- * deadlock still surfaces as a structured failure. */
+/* The wait is bounded by wall time, not by an attempt count: a fixed attempt
+ * count silently becomes a different timeout on every host (and under a
+ * sanitizer). Five seconds is short enough that a genuine deadlock still
+ * surfaces as a structured failure. */
 const int      kBusyDeadlineMs = 5000;
 const unsigned kBusyBackoffUs = 200;
 /* On the shared execution pool a shard task never sleeps for this: it makes one
@@ -657,8 +660,8 @@ static int verify_impl(elpis_vector_index *ix, const char *shard_digest) {
         LeaseGuard g(ix->fms, s.id);
         fms_status r = g.acquire(&p);
         if (r != FMS_OK) {
-            /* A corrupt cold replica arrives as FMS_E_DIGEST and stays an
-             * integrity failure, with the FMS cause preserved. */
+            /* FMS_E_DIGEST, if ever reported, stays an integrity failure,
+             * with the FMS cause preserved. */
             return set_errf(ix, residency_status(r), r,
                             "shard residency failure: %s", fms_strerror(r));
         }

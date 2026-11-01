@@ -15,5 +15,4 @@ elpis_add_test(runtime test_ecs_composite SOURCES tests/test_ecs_composite.c
 elpis_add_test(runtime test_k1_legacy_differential SOURCES tests/test_k1_legacy_differential.c
   DEFINES ELPIS_K1_LIVE_COORDINATE
   LIBS elpis_ecs_composite elpis_ecsg_k1_fms elpis_ecsg_k1 elpis_ecs_memory elpis_ecsg_math elpis_hash m
-  ARGS "."
   TIMEOUT 120)

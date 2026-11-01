@@ -48,7 +48,7 @@ def bound(request, k1, adapter, tmp_path):   # noqa: F811 (module fixtures)
             yield state, runtime
             runtime.close()
     else:
-        with _Resident(k1, adapter, tmp_path, max_rows=8) as state:
+        with _Resident(k1, adapter, max_rows=8) as state:
             runtime = opened(state)
             yield state, runtime
             runtime.close()

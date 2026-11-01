@@ -76,10 +76,7 @@ static std::map<std::string, std::string> parse_expected(const std::string &text
     return kv;
 }
 
-int main(int argc, char **argv) {
-    std::string base = argc > 1 ? argv[1] : "/tmp/elpis-vector-xhost";
-    vecfix::rmtree(base);
-    vecfix::mkdirp(base);
+int main() {
     const std::string fixture_dir = HACF_FIXTURE_DIR;
     const std::string expected_path = fixture_dir + "/expected.txt";
     const bool regenerate = std::getenv("ELPIS_VECTOR_FIXTURE_REGENERATE") != nullptr;
@@ -169,7 +166,7 @@ int main(int argc, char **argv) {
 
     /* ---- 4. admit and query ---------------------------------------------- */
     CASE("index admission and query over the fixture shard");
-    fms_ctx *fms = vecfix::make_fms(base + "/cold", 8ull << 20);
+    fms_ctx *fms = vecfix::make_fms("xhost", 8ull << 20);
     CHECK(fms != nullptr, "fms");
     elpis_vector_index *ix = nullptr;
     CHECK(elpis_vector_index_create(fms, &profile, corpus_manifest_digest, &ix) == 0, "index");

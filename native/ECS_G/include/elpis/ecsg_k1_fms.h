@@ -11,14 +11,16 @@ extern "C" {
 /* K1 residency over generic FMS (docs/ECS_K1_RUNTIME.md), ABI v1.
  *
  * One FMS object per logical K1 state holds its complete resident image (header, W, H packed, a). FMS owns the
- * bytes, logical identity, tier, leases, pins, cold replicas and materialization; it never interprets them. The
+ * bytes, logical identity, tier, leases and pins; it never interprets them. Under FMS ABI v3 residency is volatile
+ * (WARM in RAM; no COLD tier, no storage, nothing written anywhere): a state is never demoted below WARM, a state
+ * beyond the WARM budget is refused at registration (-100 + FMS_E_LIMIT), and `cold_replica` is always 0. The
  * adapter owns the cognitive interpretation through one persistent native K1 workspace per state:
  *
  *   warm path:  pin the object WARM (READ for query/copy/snapshot, WRITE for learn/consolidate/reset)
  *               -> native K1 operation directly over the resident bytes -> unpin
  *
  * The pin is FMS's unfenced acquire: a CPU operation needs no accelerator fence, and on a WARM object it allocates
- * nothing (FMS allocates only to materialize COLD -> WARM).
+ * nothing.
  *
  * There is no per-operation restore, executor construction, deserialization or serialization. A failed operation
  * changes no resident byte (K1 stages outside the image and installs only on success). A transaction holds its
@@ -33,8 +35,8 @@ extern "C" {
  */
 enum { ELPIS_ECSG_K1_FMS_ABI_V1 = 1u, ELPIS_ECSG_K1_FMS_ERROR_BASE = -100 };
 
-/* The resident state is not resident in WARM (demoted, or a move in flight) while a residency hold requires it:
- * refused without pinning, promoting, reading the cold store or waiting (-100 + FMS_E_NOT_RESIDENT). */
+/* The resident state is not resident in WARM (a move in flight) while a residency hold requires it: refused
+ * without pinning, promoting or waiting (-100 + FMS_E_NOT_RESIDENT). */
 enum { ELPIS_ECSG_K1_FMS_NOT_RESIDENT = ELPIS_ECSG_K1_FMS_ERROR_BASE + FMS_E_NOT_RESIDENT };
 
 typedef struct elpis_ecsg_k1_fms elpis_ecsg_k1_fms;
@@ -103,16 +105,15 @@ int elpis_ecsg_k1_fms_reserve(elpis_ecsg_k1_fms *, uint64_t id, size_t rows);
 
 /* Residency (additive; ABI v1 entry points and structs unchanged). A HOT caller that must never trigger a
  * synchronous materialization holds the state resident:
- *   resident_hold      only if the state is WARM now: pins it (it can no longer be demoted) and from then on every
- *                      operation on it pins resident-only (fms_acquire_resident): an operation never promotes, never
- *                      reads the cold store and never waits for a move. A demoted state (or one in motion) is
- *                      refused ELPIS_ECSG_K1_FMS_NOT_RESIDENT; nothing is pinned or promoted. Holds nest.
- *   resident_release   drops one hold; the last one unpins (the state is demotable again). INVALID without a hold.
- *   materialize        the explicit, synchronous WARM-lane promotion (COLD -> WARM through FMS, verified); never
- *                      called by a HOT operation. OK when the state already is WARM.
+ *   resident_hold      only if the state is WARM now: pins it and from then on every operation on it pins
+ *                      resident-only (fms_acquire_resident): an operation never promotes and never waits for a
+ *                      move. A state in motion is refused ELPIS_ECSG_K1_FMS_NOT_RESIDENT; nothing is pinned or
+ *                      promoted. Holds nest.
+ *   resident_release   drops one hold; the last one unpins. INVALID without a hold.
+ *   materialize        the explicit WARM-lane residency check: OK when the state is WARM. Under FMS ABI v3 a state
+ *                      is never demoted below WARM, so there is never anything to promote (and nothing is read).
  *   resident_holds     the current number of holds.
- * Without a hold every entry point keeps its ABI v1 behavior (an operation materializes a demoted state). close is
- * refused BUSY while a hold exists. */
+ * close is refused BUSY while a hold exists. */
 int elpis_ecsg_k1_fms_resident_hold(elpis_ecsg_k1_fms *, uint64_t id);
 int elpis_ecsg_k1_fms_resident_release(elpis_ecsg_k1_fms *, uint64_t id);
 int elpis_ecsg_k1_fms_materialize(elpis_ecsg_k1_fms *, uint64_t id);

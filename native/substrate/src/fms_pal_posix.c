@@ -1,96 +1,18 @@
-/* fms_pal_posix.c - durable cold store. Per-instance state; no globals.
+/* fms_pal_posix.c - the CPU PAL: RAM only. Per-instance state; no globals.
  *
- * Commit protocol (crash-atomic):
- *   1. mkstemp() in the cold root (same directory, same filesystem)
- *   2. write() every byte, retrying short writes
- *   3. fsync(file)
- *   4. SHA-256 computed over the same bytes that were written
- *   5. rename() onto the final content-addressed name
- *   6. fsync(directory)
- *   7. only then is the token published to the caller
- *
- * Load verifies size and digest before returning any data. A mismatch is
- * reported as FMS_PAL_EDIGEST and no bytes are handed back.
- *
- * Finite physical envelope. Cold tokens are process-local: no API re-adopts a
- * cold file after its owner exits, and fms_destroy drops every live object.
- * The PAL therefore owns its cold root exclusively (a directory flock held
- * for the PAL's lifetime; a second live owner is refused) and, on open,
- * reclaims every file it alone names (".fms-tmp-XXXXXX" from an interrupted
- * commit, "<sha256 hex>.<serial>.blob" from a crashed owner). Anything else
- * in the root is left untouched. The live footprint is bounded by the FMS
- * cold budget and object capacity; crashes cannot accumulate files.
+ * It performs no filesystem operation: no open, no write, no rename, no fsync, no unlink. ABI v2's durable cold
+ * store (a content-addressed file per demoted object under a locked cold root) is retired with FMS ABI v3
+ * (docs/ELPIS_MISSION.md, Amendment 3); immutable COLD backing is the read-only file-asset service.
  */
 #define _POSIX_C_SOURCE 200809L
 #define _DEFAULT_SOURCE 1
 
 #include "elpis/fms_pal_posix.h"
-#include "elpis/sha256.h"
 
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <time.h>
-#include <unistd.h>
-
-struct fms_cold_token {
-    uint8_t  digest[32];
-    uint64_t bytes;
-    char    *path;
-};
-
-typedef struct {
-    char           *root;
-    int             dirfd;
-    pthread_mutex_t mu;
-    uint64_t        serial;
-} posix_pal;
-
-/* ---- utilities ------------------------------------------------------------ */
-
-static int mkdir_p(const char *path) {
-    char buf[4096];
-    size_t n = strlen(path);
-    if (n == 0 || n >= sizeof buf) return -1;
-    memcpy(buf, path, n + 1);
-    for (size_t i = 1; i < n; i++) {
-        if (buf[i] != '/') continue;
-        buf[i] = 0;
-        if (mkdir(buf, 0700) != 0 && errno != EEXIST) return -1;
-        buf[i] = '/';
-    }
-    if (mkdir(buf, 0700) != 0 && errno != EEXIST) return -1;
-    return 0;
-}
-
-static int write_all(int fd, const void *buf, size_t n) {
-    const uint8_t *p = (const uint8_t *)buf;
-    while (n) {
-        ssize_t w = write(fd, p, n);
-        if (w < 0) { if (errno == EINTR) continue; return -1; }
-        if (w == 0) return -1;
-        p += (size_t)w; n -= (size_t)w;
-    }
-    return 0;
-}
-
-static int read_all(int fd, void *buf, size_t n) {
-    uint8_t *p = (uint8_t *)buf;
-    while (n) {
-        ssize_t r = read(fd, p, n);
-        if (r < 0) { if (errno == EINTR) continue; return -1; }
-        if (r == 0) return -1;
-        p += (size_t)r; n -= (size_t)r;
-    }
-    return 0;
-}
 
 /* ---- PAL entry points ------------------------------------------------------ */
 
@@ -119,209 +41,35 @@ static int p_hot_profile(void *self, fms_hot_profile *out) {
     return 0;
 }
 
-static int p_cold_put(void *self, const void *src, uint64_t bytes, fms_cold_token **out) {
-    posix_pal *pp = (posix_pal *)self;
-    char tmpl[4200], final[4200], hex[65];
-    uint8_t digest[32];
-    int fd = -1;
-
-    snprintf(tmpl, sizeof tmpl, "%s/.fms-tmp-XXXXXX", pp->root);
-    fd = mkstemp(tmpl);
-    if (fd < 0) return FMS_PAL_EIO;
-
-    if (write_all(fd, src, (size_t)bytes) != 0) goto fail;
-    if (fsync(fd) != 0) goto fail;
-    close(fd); fd = -1;
-
-    elpis_sha256(src, (size_t)bytes, digest);
-    elpis_hex32(digest, hex);
-
-    pthread_mutex_lock(&pp->mu);
-    uint64_t serial = ++pp->serial;
-    pthread_mutex_unlock(&pp->mu);
-    snprintf(final, sizeof final, "%s/%s.%llu.blob", pp->root, hex, (unsigned long long)serial);
-
-    if (rename(tmpl, final) != 0) goto fail;
-    if (pp->dirfd >= 0 && fsync(pp->dirfd) != 0) { unlink(final); return FMS_PAL_EIO; }
-
-    fms_cold_token *t = (fms_cold_token *)calloc(1, sizeof *t);
-    if (!t) { unlink(final); return FMS_PAL_ENOMEM; }
-    memcpy(t->digest, digest, 32);
-    t->bytes = bytes;
-    t->path = strdup(final);
-    if (!t->path) { free(t); unlink(final); return FMS_PAL_ENOMEM; }
-    *out = t;
-    return FMS_PAL_OK;
-
-fail:
-    if (fd >= 0) close(fd);
-    unlink(tmpl);
-    return FMS_PAL_EIO;
-}
-
-static int p_cold_get(void *self, const fms_cold_token *t, void *dst, uint64_t bytes) {
-    (void)self;
-    if (!t || !t->path) return FMS_PAL_EIO;
-    if (t->bytes != bytes) return FMS_PAL_ESIZE;
-
-    int fd = open(t->path, O_RDONLY);
-    if (fd < 0) return FMS_PAL_EIO;
-
-    struct stat sb;
-    if (fstat(fd, &sb) != 0) { close(fd); return FMS_PAL_EIO; }
-    if ((uint64_t)sb.st_size != bytes) { close(fd); return FMS_PAL_ESIZE; }
-
-    /* dst is an unpublished MOVING allocation reserved by the core. Reading
-     * directly avoids an unaccounted second full-size RAM allocation. */
-    if (read_all(fd, dst, (size_t)bytes) != 0) {
-        memset(dst, 0, (size_t)bytes);
-        close(fd);
-        return FMS_PAL_EIO;
-    }
-    close(fd);
-
-    uint8_t got[32];
-    elpis_sha256(dst, (size_t)bytes, got);
-    if (memcmp(got, t->digest, 32) != 0) {
-        memset(dst, 0, (size_t)bytes);
-        return FMS_PAL_EDIGEST;
-    }
-    return FMS_PAL_OK;
-}
-
-static void p_cold_drop(void *self, fms_cold_token *t) {
-    (void)self;
-    if (!t) return;
-    if (t->path) { unlink(t->path); free(t->path); }
-    free(t);
-}
-
-int fms_pal_posix_token_digest(const fms_cold_token *t, uint8_t out[32]) {
-    if (!t) return FMS_PAL_EIO;
-    memcpy(out, t->digest, 32);
-    return FMS_PAL_OK;
-}
-
-uint64_t fms_pal_posix_token_bytes(const fms_cold_token *t) { return t ? t->bytes : 0; }
-
 static uint64_t p_bandwidth(void *self, int from, int to) {
     (void)self;
     int lo = from < to ? from : to, hi = from < to ? to : from;
-    if (lo == FMS_HOT && hi == FMS_WARM)  return 12ull << 30;
-    if (lo == FMS_WARM && hi == FMS_COLD) return (from == FMS_COLD) ? (2ull << 30) : (1ull << 30);
+    if (lo == FMS_HOT && hi == FMS_WARM) return 12ull << 30;
     return 1ull << 30;
 }
 
-/* The fms_pal struct is allocated together with the instance state so that
- * destroy() releases both. */
-typedef struct { fms_pal pal; posix_pal state; } posix_bundle;
+static void p_destroy(void *self) { free(self); }
 
-static void bundle_destroy(void *self) {
-    posix_pal *pp = (posix_pal *)self;
-    posix_bundle *b = (posix_bundle *)((char *)pp - offsetof(posix_bundle, state));
-    if (pp->dirfd >= 0) close(pp->dirfd);
-    pthread_mutex_destroy(&pp->mu);
-    free(pp->root);
-    free(b);
-}
-
-/* Names only this PAL ever creates in its cold root. */
-static int is_hex_lower(char ch) { return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'); }
-static int is_owned_cold_name(const char *n) {
-    static const char tmp[] = ".fms-tmp-";
-    if (strncmp(n, tmp, sizeof tmp - 1) == 0) return strlen(n) == sizeof tmp - 1 + 6;
-    for (int i = 0; i < 64; ++i) if (!is_hex_lower(n[i])) return 0;
-    if (n[64] != '.') return 0;
-    const char *d = n + 65;
-    size_t digits = 0;
-    while (d[digits] >= '0' && d[digits] <= '9') ++digits;
-    return digits >= 1 && digits <= 20 && strcmp(d + digits, ".blob") == 0;
-}
-
-/* Unlink every regular file this PAL names; called only while holding the
- * exclusive root lock, so none of them can belong to a live owner. */
-static int reclaim_orphans(int dirfd) {
-    int scan = openat(dirfd, ".", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-    if (scan < 0) return -1;
-    DIR *d = fdopendir(scan);
-    if (!d) { close(scan); return -1; }
-    int removed = 0, rc = 0;
-    struct dirent *e;
-    while ((e = readdir(d)) != NULL) {
-        if (!is_owned_cold_name(e->d_name)) continue;
-        struct stat st;
-        if (fstatat(dirfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) { rc = -1; break; }
-        if (!S_ISREG(st.st_mode)) continue;
-        if (unlinkat(dirfd, e->d_name, 0) != 0) { rc = -1; break; }
-        removed = 1;
-    }
-    closedir(d);
-    if (rc == 0 && removed && fsync(dirfd) != 0) rc = -1;
-    return rc;
-}
-
-fms_pal *fms_pal_posix_create(const char *cold_root) {
-    if (!cold_root || !*cold_root) return NULL;
-    if (mkdir_p(cold_root) != 0) return NULL;
-    int dirfd = open(cold_root, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-    if (dirfd < 0) return NULL;
-    /* One live owner per cold root; released when the PAL closes dirfd. */
-    if (flock(dirfd, LOCK_EX | LOCK_NB) != 0 || reclaim_orphans(dirfd) != 0) {
-        close(dirfd);
-        return NULL;
-    }
-
-    posix_bundle *b = (posix_bundle *)calloc(1, sizeof *b);
-    if (!b) { close(dirfd); return NULL; }
-    b->state.root = strdup(cold_root);
-    if (!b->state.root) { free(b); close(dirfd); return NULL; }
-    if (pthread_mutex_init(&b->state.mu, NULL) != 0) {
-        free(b->state.root); free(b); close(dirfd); return NULL;
-    }
-    b->state.dirfd = dirfd;
-
-    fms_pal *p = &b->pal;
-    p->self = &b->state;
-    p->abi = FMS_ABI_VERSION;
-    p->caps = FMS_CAP_COLD;
-    p->destroy = bundle_destroy;
-    p->now_ns = p_now;
-    p->hot_profile = p_hot_profile;
-    p->hot_alloc = NULL; p->hot_free = NULL; p->hot_upload = NULL; p->hot_download = NULL;
-    p->fence_query = NULL;
-    p->ram_alloc = p_ram_alloc; p->ram_free = p_ram_free;
-    p->cold_put = p_cold_put; p->cold_get = p_cold_get; p->cold_drop = p_cold_drop;
-    p->cold_digest = fms_pal_posix_token_digest; p->cold_bytes = fms_pal_posix_token_bytes;
-    p->bandwidth = p_bandwidth;
-    return p;
-}
-
-const char *fms_pal_posix_token_path(const fms_cold_token *t) { return t ? t->path : NULL; }
-
-fms_ctx *elpis_fms_create_posix(const fms_config *cfg, const char *root) {
-    fms_pal *pal = fms_pal_posix_create(root);
-    fms_ctx *ctx;
-    if (!pal) return NULL;
-    ctx = fms_create(cfg, pal);
-    if (!ctx) pal->destroy(pal->self);
-    return ctx;
-}
-
-/* File-backed inference owns external COLD descriptors in Python. Its native
- * page cache needs RAM only: no scratch directory and no native path handling. */
 fms_pal *fms_pal_posix_create_ram_only(void) {
-    posix_bundle *b = (posix_bundle *)calloc(1, sizeof *b);
-    if (!b) return NULL;
-    b->state.dirfd = -1;
-    if (pthread_mutex_init(&b->state.mu, NULL) != 0) { free(b); return NULL; }
-    fms_pal *p = &b->pal;
-    p->self = &b->state;
+    fms_pal *p = (fms_pal *)calloc(1, sizeof *p);
+    if (!p) return NULL;
+    p->self = p;
     p->abi = FMS_ABI_VERSION;
-    p->destroy = bundle_destroy;
+    p->caps = 0;
+    p->destroy = p_destroy;
     p->now_ns = p_now;
     p->hot_profile = p_hot_profile;
     p->ram_alloc = p_ram_alloc;
     p->ram_free = p_ram_free;
     p->bandwidth = p_bandwidth;
     return p;
+}
+
+fms_ctx *elpis_fms_create_ram_only(const fms_config *cfg) {
+    fms_pal *pal = fms_pal_posix_create_ram_only();
+    fms_ctx *ctx;
+    if (!pal) return NULL;
+    ctx = fms_create(cfg, pal);
+    if (!ctx) pal->destroy(pal->self);
+    return ctx;
 }

@@ -1,5 +1,9 @@
 /* test_vector_concurrency.cpp - concurrent read-only dense search.
- * Run under ThreadSanitizer as well as the functional suite. */
+ * Run under ThreadSanitizer as well as the functional suite.
+ *
+ * FMS ABI v3: residency is volatile and has no COLD tier, so every admitted shard stays WARM-resident until it is
+ * closed. Concurrency is exercised over resident shards with a pump running underneath (it has nothing to demote);
+ * a full, pinned ceiling refuses a new shard at admission instead of spilling one. No file is created. */
 #include "vector_test_support.h"
 
 #include "elpis/vector_execution.h"
@@ -28,16 +32,12 @@ static void report(const char *what, const std::string &detail) {
     g_fail.store(1);
 }
 
-int main(int argc, char **argv) {
-    std::string base = argc > 1 ? argv[1] : "/tmp/elpis-vector-conc";
-    vecfix::rmtree(base);
-    vecfix::mkdirp(base);
-    std::printf("R2 concurrent search suite, root=%s\n", base.c_str());
+int main() {
+    std::printf("R2 concurrent search suite (volatile: FMS ABI v3, no COLD tier, no file)\n");
 
-    /* Deliberately tight: four ~800 KiB shards against a 2 MiB ceiling, so
-     * queries race each other through promotion and demotion. */
-    const uint64_t warm = 2ull << 20;
-    fms_ctx *fms = vecfix::make_fms(base + "/cold", warm);
+    /* Four ~600 KiB shards resident in a 4 MiB ceiling; the headroom left is what the hog below fills. */
+    const uint64_t warm = 4ull << 20;
+    fms_ctx *fms = vecfix::make_fms("conc", warm);
     if (!fms) { std::printf("  FAIL fms\n"); return 1; }
 
     elpis_embedder *emb = nullptr;
@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
             }
         });
     }
-    /* A pump thread demotes underneath the readers the whole time. */
+    /* A pump thread runs underneath the readers the whole time (with nowhere to demote to, it moves nothing). */
     std::thread pumper([&]() {
         for (int i = 0; i < iters * threads; i++) {
             fms_pump(fms);
@@ -137,10 +137,9 @@ int main(int argc, char **argv) {
     if (st.inflight_ops != 0) report("inflight leak", std::to_string(st.inflight_ops));
     if (st.digest_failures != 0) report("digest failures", std::to_string(st.digest_failures));
 
-    /* Parallel executor under residency pressure. A shard task whose WARM lease
-     * is refused (LIMIT while other objects are pinned, BUSY while one moves)
-     * returns ELPIS_EXEC_DEFER: it must not hold a pool thread while it waits,
-     * and it must still produce the serial result. */
+    /* Parallel executor at a full ceiling. A WARM hog takes the remaining headroom and stays pinned: the resident
+     * shards are still searched at once (no shard task defers, nothing moves), and a new shard is refused at
+     * admission with the FMS cause preserved, never spilled. */
     auto digest_of = [&](elpis_vector_executor *vx, const Q &qq, std::string *dg_out) {
         elpis_vector_query q;
         std::memset(&q, 0, sizeof q);
@@ -158,70 +157,50 @@ int main(int argc, char **argv) {
         return 0;
     };
     {
-        /* Deterministic: pin 1.5 MiB of the 2 MiB ceiling so no ~800 KiB shard
-         * can become WARM, search, and hold the pin until every shard task has
-         * deferred. Meanwhile unrelated CPU work must run on all four threads. */
+        fms_get_stats(fms, &st);
+        const uint64_t headroom = warm - st.domain_bytes[FMS_DOM_RAM];
         fms_id hog = 0;
         void *hog_ptr = nullptr;
-        if (fms_register(fms, 0x7e57u, 3ull << 19, FMS_WARM, 0.0f, nullptr, &hog) < 0 ||
+        if (fms_register(fms, 0x7e57u, headroom, FMS_WARM, 0.0f, nullptr, &hog) < 0 ||
             static_cast<int>(fms_acquire(fms, hog, FMS_WARM, FMS_READ, &hog_ptr)) != FMS_WARM) {
             report("residency hog", "could not pin the WARM hog");
         } else {
             elpis_vector_executor *vx = nullptr;
             if (elpis_vector_executor_create(ix, 4, &vx) != 0) report("executor", "create");
+            const auto t0 = std::chrono::steady_clock::now();
             std::string got;
-            int rc = -1;
-            std::thread searcher([&]() { rc = digest_of(vx, queries[0], &got); });
+            int rc = digest_of(vx, queries[0], &got);
+            const auto took = std::chrono::steady_clock::now() - t0;
+            if (rc != 0) report("search at a full ceiling", std::to_string(rc) + " " + elpis_vector_index_error(ix));
+            else if (got != queries[0].digest) report("search at a full ceiling", got + " != " + queries[0].digest);
+            if (took > std::chrono::milliseconds(2000)) report("search at a full ceiling", "it waited");
             elpis_exec_metrics m{};
-            for (int i = 0; i < 20000; i++) {
-                elpis_vector_executor_metrics(vx, &m);
-                if (m.deferred >= 4) break;
-                std::this_thread::sleep_for(std::chrono::microseconds(100));
-            }
-            if (m.deferred < 4) report("deferral", "shard tasks did not defer under a pinned ceiling");
-            if (m.running != 0) report("deferral", "a refused shard task occupies a pool thread");
-
-            elpis_exec_config cfg{};
-            cfg.workers = 4; cfg.capacity = 16; cfg.max_input_bytes = 8; cfg.max_output_bytes = 8;
-            elpis_exec_runtime *other = nullptr;
-            if (elpis_exec_create(&cfg, &other) != ELPIS_EXEC_OK) report("runtime", "create");
-            auto echo = [](const elpis_exec_buffer *in, size_t, elpis_exec_buffer **out) {
-                *out = elpis_exec_buffer_alloc(elpis_exec_buffer_size(in));
-                if (!*out) return ELPIS_EXEC_INTERNAL;
-                std::memcpy(elpis_exec_buffer_mutable_data(*out), elpis_exec_buffer_data(in),
-                            elpis_exec_buffer_size(in));
-                return ELPIS_EXEC_OK;
-            };
-            for (unsigned i = 0; other && i < 8; i++) {
-                elpis_exec_task t{1, 0, i, 0, i, echo};
-                elpis_exec_buffer *b = elpis_exec_buffer_alloc(8);
-                std::memset(elpis_exec_buffer_mutable_data(b), static_cast<int>(i), 8);
-                uint64_t seq = 0;
-                if (elpis_exec_submit(other, &t, &b, &seq) != ELPIS_EXEC_OK) report("runtime", "submit");
-            }
-            for (unsigned i = 0; other && i < 8; i++) {
-                elpis_exec_result res{};
-                /* Well inside the 5 s residency deadline the hog still holds. */
-                if (elpis_exec_take(other, 2000, &res) != ELPIS_EXEC_OK || res.status != ELPIS_EXEC_OK)
-                    report("pool", "CPU work stalled behind deferred shard tasks");
-                elpis_exec_buffer_release(res.output);
-            }
-            elpis_exec_destroy(other);
-
-            fms_release(fms, hog);
-            searcher.join();
-            if (rc != 0) report("deferred search", std::to_string(rc) + " " + elpis_vector_index_error(ix));
-            else if (got != queries[0].digest) report("deferred search digest", got + " != " + queries[0].digest);
             elpis_vector_executor_metrics(vx, &m);
-            std::printf("executor under pinned ceiling: deferred=%llu completed=%llu\n",
+            if (m.deferred != 0) report("deferral", "a resident shard's task deferred");
+            std::printf("executor at a full ceiling: deferred=%llu completed=%llu\n",
                         (unsigned long long)m.deferred, (unsigned long long)m.completed);
             elpis_vector_executor_destroy(vx);
+
+            vecfix::Corpus extra;
+            extra.build("conc-extra", 384, emb);
+            char sd[65];
+            std::vector<uint8_t> img = vecfix::build_shard(extra, kCorpusDg, sd);
+            rc = elpis_vector_index_add_shard_bytes(ix, img.data(), img.size(), nullptr);
+            const elpis_vec_error *err = elpis_vector_index_last_error(ix);
+            if (rc != ELPIS_VEC_E_RESIDENCY || !err || err->cause != FMS_E_LIMIT)
+                report("admission at a full ceiling", "expected ELPIS_VEC_E_RESIDENCY with FMS_E_LIMIT, got " +
+                                                      std::to_string(rc));
+            fms_get_stats(fms, &st);
+            if (st.domain_bytes[FMS_DOM_RAM] > warm) report("ram ceiling", std::to_string(st.domain_bytes[FMS_DOM_RAM]));
+            if (st.demotions || st.tier_bytes[FMS_COLD] || st.domain_bytes[FMS_DOM_STORAGE] || st.cold_writes)
+                report("spill", "a full ceiling moved or spilled something");
+            fms_release(fms, hog);
             fms_unregister(fms, hog);
         }
     }
     {
         /* Racing: one executor per querying thread on the shared pool, a pump
-         * demoting underneath. Every result must equal the serial reference. */
+         * running underneath. Every result must equal the serial reference. */
         std::vector<elpis_vector_executor *> vx(static_cast<size_t>(threads), nullptr);
         for (auto &e : vx)
             if (elpis_vector_executor_create(ix, 4, &e) != 0) report("executor", "create");
@@ -265,11 +244,10 @@ int main(int argc, char **argv) {
     elpis_vector_index_list_shards(ix, nullptr, 0, &shard_n);
     if (shard_n != 4) report("shard count", std::to_string(shard_n));
 
-    std::printf("threads=%d iters=%d promotions=%llu demotions=%llu bytes_promoted=%llu "
-                "bytes_demoted=%llu ram_peak_ok=%s\n",
-                threads, iters, (unsigned long long)st.promotions,
-                (unsigned long long)st.demotions, (unsigned long long)st.bytes_promoted,
-                (unsigned long long)st.bytes_demoted,
+    if (st.promotions || st.demotions || st.tier_bytes[FMS_COLD] || st.cold_reads || st.cold_writes)
+        report("residency", "a resident shard moved, or storage was touched");
+    std::printf("threads=%d iters=%d promotions=%llu demotions=%llu ram_peak_ok=%s\n",
+                threads, iters, (unsigned long long)st.promotions, (unsigned long long)st.demotions,
                 st.domain_bytes[FMS_DOM_RAM] <= warm ? "yes" : "no");
 
     elpis_vector_index_destroy(ix);

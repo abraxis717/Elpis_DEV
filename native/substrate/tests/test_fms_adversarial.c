@@ -8,15 +8,14 @@
 
 #define MB (1024ull * 1024ull)
 
-static fms_config cfg_base(uint64_t hot, uint64_t warm, uint64_t cold) {
+/* FMS ABI v3: HOT and WARM only (no COLD tier, no storage domain). */
+static fms_config cfg_base(uint64_t hot, uint64_t warm) {
     fms_config c;
     memset(&c, 0, sizeof c);
     c.tier_budget[FMS_HOT] = hot;
     c.tier_budget[FMS_WARM] = warm;
-    c.tier_budget[FMS_COLD] = cold;
     c.domain_ceiling[FMS_DOM_RAM] = warm + hot + 4 * MB;
     c.domain_ceiling[FMS_DOM_DEVICE] = hot ? hot : 1;
-    c.domain_ceiling[FMS_DOM_STORAGE] = cold ? cold : 1;
     c.high_wm = 0.50f;
     c.low_wm = 0.40f;
     c.max_objects = 16;
@@ -25,15 +24,14 @@ static fms_config cfg_base(uint64_t hot, uint64_t warm, uint64_t cold) {
     return c;
 }
 
-static int lease_after_reap(const char *root) {
+static int lease_after_reap(void) {
     fms_pal_test_opts opts;
     memset(&opts, 0, sizeof opts);
-    opts.cold_root = root;
     opts.emulate_device = 1;
     opts.device_domain = FMS_DOM_DEVICE;
     opts.fence_mode = FMS_FENCE_PENDING;
     fms_pal *pal = fms_pal_test_create(&opts);
-    fms_config cfg = cfg_base(2 * MB, 2 * MB, 8 * MB);
+    fms_config cfg = cfg_base(2 * MB, 2 * MB);
     fms_ctx *ctx = fms_create(&cfg, pal);
     if (!ctx) return 1;
 
@@ -58,11 +56,12 @@ static int lease_after_reap(const char *root) {
     return 0;
 }
 
-static int pressure_does_not_poison(const char *root) {
+/* Pressure above the watermarks with nowhere to demote (nothing below WARM): the pump leaves every object
+ * intact and resident; nothing spills. */
+static int pressure_does_not_poison(void) {
     fms_pal_test_opts opts;
     memset(&opts, 0, sizeof opts);
-    opts.cold_root = root;
-    fms_config cfg = cfg_base(0, 4 * MB, 1 * MB);
+    fms_config cfg = cfg_base(0, 4 * MB);
     cfg.domain_ceiling[FMS_DOM_RAM] = 4 * MB;
     fms_ctx *ctx = fms_create(&cfg, fms_pal_test_create(&opts));
     if (!ctx) return 1;
@@ -85,6 +84,10 @@ static int pressure_does_not_poison(const char *root) {
     fms_query(ctx, ia, &x);
     fms_query(ctx, ib, &y);
     if (x.state != FMS_ST_RESIDENT || y.state != FMS_ST_RESIDENT) return 1;
+    if (x.tier != FMS_WARM || y.tier != FMS_WARM) return 1;
+    fms_stats st;
+    fms_get_stats(ctx, &st);
+    if (st.demotions || st.cold_writes || st.tier_bytes[FMS_COLD] || st.domain_bytes[FMS_DOM_STORAGE]) return 1;
 
     fms_unregister(ctx, ia);
     fms_unregister(ctx, ib);
@@ -94,16 +97,12 @@ static int pressure_does_not_poison(const char *root) {
     return 0;
 }
 
-int main(int argc, char **argv) {
-    const char *base = argc > 1 ? argv[1] : "/tmp/elpis-fms-adversarial";
-    char a[512], b[512];
-    snprintf(a, sizeof a, "%s/lease", base);
-    snprintf(b, sizeof b, "%s/pressure", base);
-    if (lease_after_reap(a) != 0) {
+int main(void) {
+    if (lease_after_reap() != 0) {
         fprintf(stderr, "lease-after-reap invariant failed\n");
         return 1;
     }
-    if (pressure_does_not_poison(b) != 0) {
+    if (pressure_does_not_poison() != 0) {
         fprintf(stderr, "pressure poisoned an intact object\n");
         return 1;
     }
