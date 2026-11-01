@@ -2,6 +2,11 @@
 
 `MECHANICS_ONLY` · `NO_SCIENTIFIC_CLAIM` · `NO_NEW_LEARNING_LAW`
 
+> **FMS ABI v3** (`docs/ELPIS_MISSION.md`, Amendment 3; `native/substrate/include/elpis/fms.h`) retired the writable
+> COLD tier this record describes. Every object now lives in WARM or HOT, in RAM only. A state beyond the WARM budget
+> is refused rather than demoted, and nothing is written to storage. The demotion, cold-replica and cold-read
+> passages below are the R0 record, kept as written. They are not current behavior.
+
 Mutable FMS R0 is an additive residency adapter for the already-qualified
 ECS Runtime R1 executor. It changes where an idle logical ECS state is
 materialized; it does not change what ECS computes.

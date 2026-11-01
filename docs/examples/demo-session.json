@@ -3,6 +3,13 @@
   "op": "status"
  },
  {
+  "op": "source_found",
+  "label": "example HR source",
+  "source_authority": 1,
+  "per_turn": 8,
+  "scope_label": "example scope"
+ },
+ {
   "op": "query",
   "x": [
    [
@@ -180,9 +187,24 @@
   "op": "live"
  },
  {
-  "op": "publish"
+  "op": "close"
  },
  {
   "op": "live"
+ },
+ {
+  "op": "lookup",
+  "relation": "hyperedge:1",
+  "target_role": "incidence:3",
+  "cues": [
+   {
+    "role": "incidence:1",
+    "node": "0c23af0a6e30e51e2b8d33ba6be29e7fa708b416e92168d8a99f4cba3e88ca4b"
+   },
+   {
+    "role": "incidence:2",
+    "node": "6f1ea30b9d9346c9c2e1df379358852ff1edd832874b491305f267c839173580"
+   }
+  ]
  }
 ]

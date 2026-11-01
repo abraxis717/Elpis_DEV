@@ -189,7 +189,8 @@ entries (`ecsg_k1.h`, "Live coordinate"; additive, no numerical law changes): `l
 generation of the same state), `leased_identity` (digest and generation together), `leased_txn_begin_at` (the
 source generation), `leased_txn_commit` (no digest), `leased_capture` (the envelope unsealed, with its generation)
 and the pure `envelope_seal`. Under the lease no unmanaged entry can move the state, so the generation identifies
-the live retained state without hashing it; the digest is computed only where durability needs it. Reads (`forward`,
+the live retained state without hashing it; the digest is computed only where binding needs it (RuntimeCore ABI v8
+publishes nothing, and no longer calls `leased_capture` or `envelope_seal`). Reads (`forward`,
 `query_identity`, copies, snapshot, digest, stats, getters, `txn_forward`, `txn_epoch`) and `txn_abort` stay open
 to anyone. The FMS adapter delegates to the resident K1 object and refuses an unmanaged write before taking a WRITE
 pin (the object is not dirtied). The lease is not part of the retained state, the envelope or the digest, and it
@@ -210,28 +211,29 @@ an aliasing defence, not a secret.
 ## FMS residency (`libelpis_ecsg_k1_fms`)
 
 One generic FMS object per state holds the resident image. FMS never interprets it, and FMS code names no K1
-concept (boundary gate `fms_genericity`).
+concept (boundary gate `fms_genericity`). Under FMS ABI v3 residency is volatile: WARM in RAM, no COLD tier, no
+storage, and nothing written anywhere. A state is never demoted below WARM, and a state beyond the WARM budget is
+refused at registration (`-100 + FMS_E_LIMIT`; Python `K1Error` `CAPACITY`), never spilled.
 
 **Warm path:** pin the object WARM, run the native K1 operation directly over the resident bytes, unpin. Queries,
-copies and snapshots pin READ; writes pin WRITE, which marks the object dirty and invalidates the cold replica.
+copies and snapshots pin READ; writes pin WRITE.
 
 - No executor or state is rebuilt per operation.
 - No (de)serialization happens per operation.
 - On a WARM object nothing is allocated.
 - A transaction holds its WRITE pin from begin to commit or abort.
 
-**COLD to WARM** is FMS materialization, the only allocating path:
-
-- a failed cold read leaves the object FAILED, and it is never soft-recovered;
-- a corrupted cold replica is refused by its digest.
+**COLD to WARM** no longer exists for a K1 state. Before FMS ABI v3 it was FMS materialization from a cold replica,
+the only allocating path. That cold store is retired (`docs/ELPIS_MISSION.md`, Amendment 3), and the immutable COLD
+backing of FMS v3 is for read-only file assets, not for mutable state.
 
 **Residency hold** (additive; docs/RUNTIME_CORE.md, "HOT residency"): `elpis_ecsg_k1_fms_resident_hold` succeeds
-only on a WARM state (`fms_acquire_resident`: never promotes, reads the cold store or waits), keeps one pin so the
-state cannot be demoted, and makes every operation on the state pin resident-only until the last
-`elpis_ecsg_k1_fms_resident_release`. A demoted state is refused `ELPIS_ECSG_K1_FMS_NOT_RESIDENT` (-112).
-`elpis_ecsg_k1_fms_materialize` is the explicit COLD to WARM promotion (a WARM-lane operation);
-`elpis_ecsg_k1_fms_resident_holds` reports the count. `close` is refused `BUSY` while a hold exists. Without a hold
-every entry point behaves exactly as before. RuntimeCore holds every FMS-resident state it binds.
+only on a WARM state (`fms_acquire_resident`: never promotes or waits), keeps one pin so the state cannot move, and
+makes every operation on the state pin resident-only until the last `elpis_ecsg_k1_fms_resident_release`. A state in
+motion is refused `ELPIS_ECSG_K1_FMS_NOT_RESIDENT` (-112). `elpis_ecsg_k1_fms_materialize` is now the explicit
+WARM-lane residency check: it finds the state WARM and reads nothing. `elpis_ecsg_k1_fms_resident_holds` reports the
+count. `close` is refused `BUSY` while a hold exists. Without a hold every entry point behaves exactly as before.
+RuntimeCore holds every FMS-resident state it binds.
 
 **Failed release:** if FMS release fails, the adapter keeps the pin FMS still holds. That pin stays consistent and
 is retried by the next operation and by close. A held READ pin never serves a write. A committed result is never

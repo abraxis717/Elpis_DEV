@@ -1,11 +1,12 @@
 # Native ECS_G / ECS_C split: source and authority census (Stage A)
 
-> **VOLATILE MIGRATION: INCOMPLETE** (`docs/ELPIS_MISSION.md`, Amendment 3). This census predates the volatile-native
-> directive. Its persistence invariant (section 5a: bounded, preallocated, rewritten in place) is superseded: no
-> runtime state may be written to persistent storage at all. The storage-write census that replaces it is
-> `docs/VOLATILE_RUNTIME_CENSUS.md`. ECS_C gained `native/ECS_C/session` (the volatile session authority,
-> `docs/ECS_C_SESSION.md`), which now owns the ECS_C transition law; the durable authority consumes it. The rows
-> below are historical.
+> **VOLATILE MIGRATION: COMPLETE** (`docs/ELPIS_MISSION.md`, Amendment 3; `docs/VOLATILE_RUNTIME_CENSUS.md`). This
+> census predates the volatile-native directive, and its rows are historical. Its persistence invariant (section 5a:
+> bounded, preallocated, rewritten in place) is superseded: no runtime state is written to persistent storage at all.
+> `docs/VOLATILE_RUNTIME_CENSUS.md` replaces it. ECS_C's transition law lives in `native/ECS_C/session` (the volatile
+> session authority, `docs/ECS_C_SESSION.md`), which RuntimeCore ABI v8 holds. The durable ECS_C authority of Stages
+> C to F (`native/ECS_C/authority`) is retired, with the durability lane, the checkpoint store and the native host's
+> deployment home. The paths below that name them no longer exist.
 
 Status: **census and plan**. It moves no code and changes no law, format, evidence or qualification. It records what
 exists at the baseline, who owns it, what binds it, and the dependency-ordered transition to the target architecture
@@ -309,8 +310,9 @@ authority library (`docs/ECS_C_AUTHORITY.md`): materialized authority in two fix
 protected rollback witness, one transition law for validation and replay, every recovery disposition, explicit
 operator reconciliation, legacy import, crash / adversary / boundedness suites. The authority embeds the continuity
 crate until Stage F (an amendment of Amendment 1 stated in `docs/ELPIS_MISSION.md` and enforced by the mission and
-split gates), and no runtime consumer uses it before Stage D. **D** RuntimeCore ABI v6 (`docs/RUNTIME_CORE.md`, "The
-durable authority (ABI v6)"): one durable-authority interface over two backends, the ECS_C authority composed natively
+split gates), and no runtime consumer uses it before Stage D. **D** RuntimeCore ABI v6
+(`docs/history/RUNTIME_CORE_ABI_V7.md`, "The durable authority (ABI v6)"): one durable-authority interface over two
+backends, the ECS_C authority composed natively
 (`elpis_runtime_create_ecs_c`): typed publication events, native typed-evidence admission against the authority's
 sources on the HOT lane (a bounded table, no I/O), evidence summaries recorded by the durability lane, operator events
 through the held authority, an open refused while the authority needs reconciliation; the whole RuntimeCore law suite
@@ -375,7 +377,7 @@ for the Q0 QUAL run (since done: F4).
 **F4** the retirement of standalone continuity (section 9), after ECS_C Recovery Q0's RUN PASS on `117b41a`:
 - the ECS_C authority carries continuity's SHA-256, evolution law and digest and register reader as its own, with no
   dependency, and its fixtures (`native/ECS_C/authority/tests/fixtures`);
-- RuntimeCore ABI v7 (`docs/RUNTIME_CORE.md`, "One durable authority (ABI v7)"): the ECS_C authority is the only
+- RuntimeCore ABI v7 (`docs/history/RUNTIME_CORE_ABI_V7.md`, "One durable authority (ABI v7)"): the ECS_C authority is the only
   durable authority; `elpis_runtime_create` and the re-export of continuity's C ABI are removed; the law suite runs
   over ECS_C;
 - the offline Python reference drives the same authority (`elpis.runtime.authority`);

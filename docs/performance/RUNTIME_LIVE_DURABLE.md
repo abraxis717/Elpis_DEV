@@ -1,7 +1,7 @@
 # RuntimeCore live/durable separation: matched before/after timings
 
 PERFORMANCE_ONLY. NO_SCIENTIFIC_CLAIM. DESCRIPTIVE: single-host observations of the managed HOT lane before and
-after the live/durable separation (docs/RUNTIME_CORE.md, "Live and durable authority"). They qualify nothing and
+after the live/durable separation (docs/history/RUNTIME_CORE_ABI_V7.md, "Live and durable authority (ABI v4)"). They qualify nothing and
 are not evidence of model-level inference throughput. The fixture map is TEST_ONLY TRAINING=NONE SEMANTICS=NONE.
 
 ## Identity of what was measured
@@ -45,7 +45,7 @@ round 2: 318), consistent with a shared VM.
 
 ## Appendix: the driver
 
-The driver predates the split of durable publication into two named kinds (docs/RUNTIME_CORE.md, "Recoverable and
+The driver predates the split of durable publication into two named kinds (docs/history/RUNTIME_CORE_ABI_V7.md, "Recoverable and
 identity-only publication"). Its `publish_durable` ran without a checkpoint store, which is today's
 `publish_identity` (identical lane work); it is kept as run. A recoverable publication now also reads its slot back
 before continuity names it (one slot-sized `pread` per publication); that path was not part of these measurements.

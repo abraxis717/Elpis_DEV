@@ -1,261 +1,269 @@
 # The native operator host
 
-> **VOLATILE MIGRATION: INCOMPLETE** (`docs/ELPIS_MISSION.md`, Amendment 3; `docs/VOLATILE_RUNTIME_CENSUS.md`).
-> The host described below is **nonconforming** under the volatile-native directive:
-> - `init` and `create` write a deployment home, a lineage file, the durable ECS_C authority and the checkpoint
->   store;
-> - `publish`, `reconcile` and the authority operations write them in place;
-> - every start resumes the last acknowledged state.
+> **VOLATILE MIGRATION: COMPLETE** (`docs/ELPIS_MISSION.md`, Amendment 3; `docs/VOLATILE_RUNTIME_CENSUS.md`).
+> The host is RAM-only:
+> - it has no deployment home, configuration file, lineage file, authority, checkpoint or log;
+> - it reads immutable libraries and admits them into sealed memory;
+> - it contains itself so that it holds no write permission to any file;
+> - it refuses to start where it cannot establish that.
 >
-> Phase V3 replaces this with a RAM-only initialization:
-> - no writable home, authority, checkpoint or lineage files;
-> - pinned libraries read from a read-only location;
-> - containment that grants no write;
-> - refusal to start without the host prerequisites of the census, section 6.
->
-> This document describes the host as it still runs.
+> Each session lives in memory and ends with `close` or the process. The persistent host of RuntimeCore ABI v7 (`init`,
+> `create`, `publish`, `reconcile`, `--home`) is retired; git history keeps its specification.
 
-`elpis` (`native/runtime/host`) is the native production entry point of one Elpis deployment: one C program, no
-interpreter. It links only the C library and a static SHA-256. Every Elpis library it runs is admitted at run time
-from the deployment's pinned `lib/` directory (see "Admission"). RuntimeCore (ABI v7, `docs/RUNTIME_CORE.md`) composes every turn over
-the ECS_C authority (`docs/ECS_C_AUTHORITY.md`); the ECS composite holds the lineage's state; structure identifies
-every hyperedge. The host computes no ECS mathematics and touches no ECS byte: it validates operator input, marshals
-it into the admitted libraries' C ABIs and reports what they answer.
+`elpis` (`native/runtime/host`) is the native production entry point of Elpis: one C program, no interpreter. It links
+only the C library and a static SHA-256. Every Elpis library it runs is read, never written, and admitted at run time
+into sealed memory against the operator's catalog pin (see "Admission").
+- **RuntimeCore** (ABI v8, `docs/RUNTIME_CORE.md`) composes every turn in a volatile ECS_C session
+  (`docs/ECS_C_SESSION.md`).
+- **The ECS composite** holds the lineage's state, in memory.
+- **Structure** identifies every hyperedge.
+
+The host computes no ECS mathematics and touches no ECS byte: it validates operator input, marshals it into the
+admitted libraries' C ABIs and reports what they answer.
 
 It is Stage F of `docs/NATIVE_SPLIT_CENSUS.md`. The Python operator interface (`python -m elpis.runtime.cli`,
-`docs/OPERATING_ELPIS.md`) is the offline reference interface over the same ECS_C authority: differential
-tests, the qualification instruments bound to their commits, research. It is not the production path (see
-"Holds").
+`docs/OPERATING_ELPIS.md`) is the offline reference interface over the same RuntimeCore library. It serves differential
+tests and research, and is not the production path.
 
 ```
-elpis --home DIR init --native-build BUILD [--capacity N] [--authority-dir DIR] [--source-commit SHA]
-elpis --home DIR create [--dim 6 --width 36 --max-rows 64 --memory-dim 64 --banks 2 --slot-capacity 64
-                         --codebook-capacity 128 --seed 0]
-elpis --home DIR [--contained] <command> [options]
-elpis --home DIR [--contained] session --script FILE|-
+elpis (--libraries DIR | --native-build BUILD) catalog
+elpis (--libraries DIR | --native-build BUILD) --catalog-sha256 HEX [session options] <command> [options]
+elpis (--libraries DIR | --native-build BUILD) --catalog-sha256 HEX [session options] session --script FILE|-
+
+session options: --dim 6 --width 36 --max-rows 64 --memory-dim 64 --banks 2 --slot-capacity 64
+                 --codebook-capacity 128 --seed 0   (the lineage every session starts from)
+                 --capacity 16                      (the session's ECS_C entities, 2..4096)
+                 --nonce-seed HEX                   (64 hex: reproducible sessions, for differential runs)
 ```
 
 ## Installation
 
-`cmake --install BUILD --prefix P --component runtime` installs the host as `P/bin/elpis` and the seven libraries it
-admits, flat, in `P/lib/elpis/`. They are installed without a RUNPATH. `elpis init --libraries P/lib/elpis` pins them
-from there; `init --native-build BUILD` pins them from a build tree at their build paths. Either way the source is
-never used again.
+`cmake --install BUILD --prefix P --component runtime` installs:
+- the host as `P/bin/elpis`;
+- the six libraries it admits, flat, in `P/lib/elpis/`, without a RUNPATH.
 
-`--component testing` adds `P/bin/elpis_testing` and `P/lib/elpis/libelpis_runtime_testing.so`, for the crash suites
-only. With `ELPIS_NATIVE_HOST_PREFIX=P`, `tests/integration/test_native_host.py` runs against the installed binaries,
-and `native/runtime/host/tests/host_smoke.cmake` takes `-DLIBRARIES=P/lib/elpis`. The Installed system acceptance job
-of CI does both, offline and unprivileged.
+The host reads them with `--libraries P/lib/elpis`, or from a build tree at their build paths with `--native-build
+BUILD`. Either way the directory is only read. It may be, and in deployment should be, on a read-only mount.
 
-## The home
+The testing host `elpis_testing` is test support, built in the build tree and never installed. With
+`ELPIS_NATIVE_HOST_PREFIX=P`, `tests/integration/test_native_host.py` runs against the installed host, and
+`native/runtime/host/tests/host_smoke.cmake` takes `-DLIBRARIES=P/lib/elpis`. The Installed system acceptance job of CI
+does both, offline and unprivileged.
 
-| Path | Written | Content |
-|---|---|---|
-| `host.cfg` | once, by `init` (0600) | the configuration and trust root: the host binary's SHA-256, the catalog's SHA-256, the ABI (runtime 7, composite 1, ECS_C 1), the build variant, the authority directory, the entity capacity |
-| `catalog` | once, by `init` (0400) | the seven pinned libraries in admission order: id, file, SONAME, size, SHA-256 |
-| `lib/` | once, by `init` (files 0500) | the libraries, copied from the operator build; the build tree is never used again |
-| `state/` | provisioned by `init` | the ECS_C state directory: `authority.a`, `authority.b`, fixed-size records |
-| `authority/` (or `--authority-dir`) | provisioned by `init` | the ECS_C authority directory: `deployment.key`, `witness.a`, `witness.b` |
-| `lineage.cfg` | once, by `create` (0400) | the lineage configuration (the Python deployment's `LineageConfig`, same defaults), its initial identity and envelope size, and the provenance of its initial weights |
-| `checkpoint/` | provisioned by `create` | the K1 Recovery R0 store: `k1-checkpoint.a`, `k1-checkpoint.b`, sized for the composite envelope |
+## The catalog pin
 
-The home must be an absolute path without `.` or `..` components, a real directory (not a symlink) owned by the
-current user and writable by nobody else.
+There is nothing to initialize. `elpis catalog` measures the host binary (`/proc/self/exe`) and every library from
+its sealed copy. It prints the catalog, one canonical JSON object naming:
+- the host binary's SHA-256;
+- for each library in admission order: its id, file, SONAME, size and SHA-256.
 
-- **`init`** refuses a non-empty home (`DEPLOYMENT_EXISTS`). `host.cfg` is written last: an interrupted `init` leaves a
-  home that neither `init` nor any other command accepts, and the operator removes it (it holds no lineage).
-- **`create`** publishes `lineage.cfg` and the checkpoint store under temporary names (`lineage.cfg.new`,
-  `checkpoint.new`) renamed into place, so each exists whole or not at all. Then it anchors.
-- **An interrupted `create`** (process death, or a refusal after `lineage.cfg`) is completed by `create` with the same
-  arguments:
-  - `lineage.cfg` must be byte-identical to what it would write, or it is refused (`LINEAGE_EXISTS`);
-  - its own debris (`*.new`) is removed and what is missing is made;
-  - an unanchored lineage (`NOTHING_TO_RECOVER`) is anchored;
-  - a lineage the authority already holds at its initial identity is reported (`"resumed": true`) with nothing
-    written.
-- **Anything else** is refused (`LINEAGE_EXISTS`): another lineage, a checkpoint store without `lineage.cfg`, or a
-  lineage that has moved past its anchor. Nothing is ever overwritten.
+It also prints the catalog's SHA-256. Every other command requires that SHA-256 (`--catalog-sha256`), so the
+operator's one pin authenticates the host binary and every library byte that runs. Any drift refuses the start with
+`INSTALL_PIN`, before any operation: a library, the host binary, a missing library, or a library naming an unadmitted
+dependency.
 
-**Bounded persistence** (census section 5a; `elpis.runtime.persistence`: `native_host_deployment`,
-`ecs_c_authority_provisioning`, `ecs_c_authority_slots`, `k1_checkpoint_slots`). After `create` the home is a fixed set
-of 17 files of fixed sizes. Every later write rewrites a fixed slot in place: one authority record and one witness per
-transition, and one checkpoint slot per recoverable publication. The host writes nothing itself after `create`: no
-log, cache, history or temporary file. Recovery reads the two record slots and two witnesses whatever the length of
-the history. Entity rows are bounded by the provisioned capacity: founding past it is refused before any write
-(`ECS_C_CAPACITY`), and a TERMINATED source's row is freed only by an explicit `source-reclaim`.
+The lineage is not a file. Every session starts from a deterministic initial composite, built in memory from the
+session options (the same defaults as the Python `LineageConfig`). The same options and seed always give the same
+initial identity.
 
 ## Admission
 
-At every start, after the home checks:
+At every start, after the process containment below:
 
-1. **The host binary.** The SHA-256 of `/proc/self/exe` must equal `host.cfg`'s pin (`DEPLOYMENT_PIN`). A rebuilt
-   host is a different host: the deployment is re-initialized, never re-pinned implicitly.
-2. **The configuration.** `host.cfg` must have this schema and ABI (`DEPLOYMENT_ABI`) and this build variant: the
-   production host refuses a testing deployment and the testing host a production one (`DEPLOYMENT_CONFIG`).
-3. **The catalog.** Its SHA-256 must equal `host.cfg`'s pin, and it must name exactly this host's library set, in
-   order, with these files and SONAMEs (`DEPLOYMENT_PIN`, `DEPLOYMENT_CONFIG`).
-4. **Each library, in dependency order:**
-   1. it is opened beneath `lib/` with `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS)`;
-   2. its size must equal its pin;
-   3. it is copied into a memfd and checked to be unchanged by the copy (`fstat` before and after);
-   4. the memfd is sealed against writes and resizing;
-   5. the seal's SHA-256 must equal the pin;
-   6. the seal's ELF dynamic section is read: every `DT_NEEDED` must be the SONAME of a library admitted before it,
-      or a platform library (the C runtime, `libm`, `libgcc_s`, the loader, the sanitizer runtimes);
-   7. only then is it `dlopen`ed from `/proc/self/fd/N` (`RTLD_NOW | RTLD_LOCAL`).
+1. **The host binary** is measured: the SHA-256 of `/proc/self/exe`.
+2. **Each library, in dependency order:**
+   1. it is opened read-only beneath the library directory with `openat2(RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS |
+      RESOLVE_NO_MAGICLINKS)`;
+   2. it is copied into a memfd, which is then sealed against writes and resizing;
+   3. the seal's size and SHA-256 are measured.
 
-   The sealed descriptor stays open for the life of the process (seven descriptors). The loader knows a loaded object
-   by its path, and a reused descriptor number would make it hand back the earlier object. A handle that repeats an
-   earlier one is refused.
-5. **SONAME binding.** Afterwards every SONAME must bind exactly the object admitted under it (`dlopen(soname,
-   RTLD_NOLOAD)`). Every function the host calls is then resolved from those handles. RuntimeCore's ABI must be 7
-   and ECS_C's 1.
+   The library file is read, never written. The bytes that run are the sealed in-memory copy.
+3. **The pin.** The measured catalog's SHA-256 must equal `--catalog-sha256` (`INSTALL_PIN`). Only then is anything
+   loaded.
+4. **Loading, in order.** Each seal's ELF dynamic section is read: every `DT_NEEDED` must be the SONAME of a library
+   admitted before it, or a platform library (the C runtime, `libm`, `libgcc_s`, the loader, the sanitizer runtimes).
+   Then it is `dlopen`ed from `/proc/self/fd/N` (`RTLD_NOW | RTLD_LOCAL`).
+
+   The sealed descriptors stay open for the life of the process (six descriptors). The loader knows a loaded object by
+   its path, and a reused descriptor number would make it hand back the earlier object. Each sealed descriptor is
+   reopened read-only, so no descriptor the process holds can write anything.
+5. **SONAME binding.** Every SONAME must bind exactly the object admitted under it (`dlopen(soname, RTLD_NOLOAD)`).
+   Every function the host calls is then resolved from those handles. RuntimeCore's ABI must be 8 (`INSTALL_ABI`).
 
 Admission order: `libelpis_ecsg_math`, `libelpis_ecsg_k1`, `libelpis_ecs_memory`, `libelpis_ecs_composite`,
-`libelpis_hacf_observation`, `libelpis_ecs_c_authority`, `libelpis_runtime` (the testing host:
-`libelpis_runtime_testing`, whose SONAME is the production one).
+`libelpis_hacf_observation`, `libelpis_runtime`. RuntimeCore embeds the volatile ECS_C session, and no other ECS_C
+library is loaded.
 
 **Threat model.** The pins authenticate bytes, not a publisher. The loader, the kernel and the platform libraries are
-trusted. The home is the operator's: an adversary who can write `host.cfg`, `catalog` or `lib/` is not defended
-against (as code inside the process is not). The ECS_C authority defends its own threat model T1: an adversary who
-can write the state directory but neither read the deployment key nor write the authority directory
-(`docs/ECS_C_AUTHORITY.md`, "Threat model"). The authority directory is `<home>/authority` unless `init
---authority-dir` names another protected directory.
+trusted. Code inside the process can read and corrupt its memory; nothing defends against it. There is no persistent
+state to protect. The durable authority's threat model T1 is retired with it.
 
 ## Containment
 
-`elpis --home DIR --contained <command>` restricts the host to its deployment's fixed slots. The restriction is the
-policy of `native/runtime/containment/elpis_autonomous_run.c`, applied by the host to itself after admission. Admission
-copies the libraries into memfds, which a file size limit applied earlier would stop.
+Containment is mandatory: there is no uncontained mode, and the v7 `--contained` flag is retired. It runs in two
+stages (`host_contain.h`), and any failure refuses the start with exit 4, before any operation runs.
 
-1. **Before anything is opened.** A writable regular file or directory on a standard descriptor is refused (use a
-   pipe), and every inherited descriptor above them is closed.
-2. **After admission, the grant.** Landlock (ABI v5 or later) grants write access to exactly six files: the two
-   ECS_C records (`R(capacity)` bytes each), the two witnesses (240 bytes each) and the two checkpoint slots (128 +
-   the envelope size). Each is checked to be exactly that: a regular file of that size, one link, owned by the
-   user, private.
-3. **Everything else is refused.** Creating, removing, renaming, linking or truncating any file, writing any other
-   file, and device ioctls are refused.
-4. **Further limits.** `RLIMIT_FSIZE` stops any write past the largest slot. A seccomp filter refuses `chmod`,
-   `chown`, `utime`, extended attributes and `fallocate`. `PR_SET_NO_NEW_PRIVS` is set.
+1. **The process, first, before any library is read.**
+   - **Privilege.** A privileged process is refused (`CONTAINMENT_REFUSED`). Root keeps capabilities, mounts and
+     module loading, which leave the domain.
+   - **Standard descriptors.** A standard descriptor that is writable storage is refused: a regular file, a directory,
+     a block device, or a character device other than a terminal, `/dev/null`, `/dev/zero` or `/dev/full`. When
+     standard output is storage, the refusal goes to standard error, or nowhere if that is storage too: the host
+     never writes a byte through such a descriptor. Every inherited descriptor above the standard three is closed.
+   - **Core dumps.** `RLIMIT_CORE` is set to 0 and `PR_SET_DUMPABLE` to 0, and both are read back.
+   - **Swap.** `/proc/swaps` is read. With any swap area active, every page of the process is locked in RAM
+     (`mlockall(MCL_CURRENT | MCL_FUTURE)`), or the host refuses (`SWAP_POLICY`). An unreadable `/proc/swaps` is
+     refused too. The host never changes the machine's swap configuration. The host's memory is sized to lock whole
+     under a common 8 MiB `RLIMIT_MEMLOCK`.
+2. **The files, after admission and before the first operation.**
+   - **Landlock** (ABI v5 or later) handles every filesystem mutation right and grants none, so no file anywhere may
+     be written, created, removed, renamed, linked or truncated. Device ioctls are refused too.
+   - **`RLIMIT_FSIZE`** is set to 0, so no write may give any file a byte. It is set only now, because the memfd seals
+     of admission are written before it.
+   - **No new privileges, and a seccomp filter.** The filter refuses:
+     - the metadata calls Landlock does not mediate: `chmod`, `chown`, `utime` and extended attributes;
+     - preallocation and truncation;
+     - every namespace operation that can mount or remove names;
+     - `sync` and `syncfs`, `swapon` and `swapoff`, and module and `kexec` loading;
+     - sockets, so no logging daemon is reachable;
+     - `io_uring`, `ptrace` and `process_vm_writev`;
+     - process creation, so no hidden writer child exists.
 
-Refused with `CONTAINMENT_REFUSED`: a privileged process (root keeps capabilities that leave the domain, as the
-launcher states), a kernel without Landlock ABI v5, a slot that is not exactly its fixed file, and any restriction that
-cannot be applied. `init` and `create` create files and are never contained (`CLI_INPUT`). An authority slot
-shortened by an adversary is a torn prefix to the authority (docs/ECS_C_AUTHORITY.md, "File sizes") but not exactly
-its fixed file to containment: reconcile it uncontained, which rewrites the slot at its fixed size.
+`status` reports what was established: the Landlock ABI, the restriction, the core limit read back, `dumpable`, the
+file size limit, the swap areas and whether memory is locked. Linux x86-64 only (the seccomp table is reviewed for
+that architecture).
 
-One file size limit covers all six slots, so under containment each slot is bounded by the largest slot's size,
-not by its own: a fixed bound of six times the largest slot. The sizes a correct run writes are checked by the
-fixed-file-set tests. Linux x86-64 only (the seccomp table is reviewed for that architecture).
+## Sessions
+
+A session is one volatile ECS_C session and one composite, both in memory.
+- **Opening.** `open`, or the first operation that needs a session, starts one at a fresh genesis, anchored at the
+  lineage's initial identity.
+- **Closing.** `close` ends it and discards everything it learned or recorded.
+- **Restarting.** A new process starts again at the same initial identity. Nothing is published, checkpointed,
+  recovered or resumed.
+
+Without `--nonce-seed`, the kernel draws each session's nonce. With it, sessions are reproducible across processes,
+which differential runs need.
+
+The session's footprint is fixed when it opens: the session (`1,424 + 464 × capacity` bytes), the composite envelope,
+and its memory's slot capacity. Exhaustion refuses atomically. Founding a source past the capacity is refused before
+anything changes (`ECS_C_CAPACITY`), and a TERMINATED source's row is freed only by an explicit `source-reclaim`.
 
 ## Operations
 
-A one-shot command runs one operation; `learn --publish` and `evidence --publish` run two. A `session` script runs
-many in one process. A script is a JSON array of operations, or JSON lines, in which blank lines and lines starting
-with `#` are skipped. Every line is parsed before anything runs.
+A one-shot command runs one operation. A `session` script runs many in one process. A script is a JSON array of
+operations, or JSON lines, in which blank lines and lines starting with `#` are skipped. Every line is parsed before
+anything runs.
 
 | Operation (command) | What it does |
 |---|---|
-| `status` | deployment, pins, ABI, budget ceiling, capabilities and non-claims, lineage, the authority summary, the recovery disposition, durable and live identities, footprint, the durability lane, the fail-stop. A session that cannot open is reported (`session_refusal`), not an error of `status` |
-| `open` / `close` | open the lineage explicitly; close it (`volatile_work_discarded` says whether unpublished work was dropped). The next operation reopens: a restart inside one process |
-| `query --x ROWS` | numeric QUERY of the live state (read-only); values, their SHA-256, the live generation |
-| `learn --x --y --schedule --rate --grant` | one managed LEARN turn: VOLATILE until published. Requires an explicit grant and a positive finite rate |
-| `evidence --items --grant --sources` | typed HACF evidence in one observe-only turn, all or nothing. Every item's source must be in the grant's sources and be an ACTIVE source of the authority within its per-turn bound (checked natively before the call) |
-| `lookup --relation --target-role --cues` | exact LOOKUP by net evidence (a conflict between sources is reported, never resolved) |
-| `slot --key` | one memory slot and the hyperedge structure rebuilds from it |
-| `live`, `counters [--reset]`, `candidates` | the live identities; RuntimeCore's native crossings; the recovery disposition |
-| `publish` | recoverable publication (checkpoint slot verified, then one authority record and witness). Anything but ACKNOWLEDGED is refused with its ticket: `DURABLE_FAILED`, `DURABLE_UNCERTAIN`, `DURABLE_SUPERSEDED`, `DURABLE_ABANDONED` |
-| `reconcile (--discard ID \| --adopt ID)` | the K1 checkpoint's unresolved candidate, exactly the one named |
-| `authority` | the authority: summary or (no runtime open) its record status, recovery report and the one reconciliation it accepts; every entity row |
-| `authority-reconcile --kind --digest` | send exactly the reconciliation `authority` reports (`ROLLBACK`, `UNAUTHENTICATED`, `REPIN` and its digest); anything else is refused before an event exists (`AUTHORITY_RECONCILE_MISMATCH`) |
-| `source-found`, `source-lifecycle`, `source-version`, `source-reclaim` | operator events (ENTITY_FOUND then FOUNDED -> ACTIVE unless `--dormant`; ENTITY_LIFECYCLE; SOURCE_VERSION, compare-and-set on `--expected`; ENTITY_RECLAIM of a TERMINATED source) |
+| `status` | the installation (schema `elpis.native-host.v2`, the host and library pins), `persistence: NONE`, the ABI (runtime 8, composite 1), the containment established, the budget ceiling, capabilities and non-claims; with a session open, the session summary and the footprint |
+| `open` / `close` | open a session explicitly; close it, discarding its work |
+| `query --x ROWS` | numeric QUERY of the live state (read-only): the values, their SHA-256 and the live generation |
+| `learn --x --y --schedule --rate --grant` | one managed LEARN turn, volatile. Requires an explicit grant and a positive finite rate |
+| `evidence --items --grant --sources` | typed HACF evidence in one observe-only turn, all or nothing. Every item's source must be in the grant's sources, and must be an ACTIVE source of the session within its per-turn bound (checked natively before the call) |
+| `lookup --relation --target-role --cues` | exact LOOKUP by net evidence. A conflict between sources is reported, never resolved |
+| `slot --key` | one memory slot, and the hyperedge structure that rebuilds from it |
+| `live`, `counters [--reset]` | the live identities; RuntimeCore's native crossings and session transitions |
+| `authority` | the session: summary and every entity row |
+| `source-found`, `source-lifecycle`, `source-version`, `source-reclaim` | operator events: ENTITY_FOUND, then FOUNDED -> ACTIVE unless `--dormant`; ENTITY_LIFECYCLE; SOURCE_VERSION, compare-and-set on `--expected`; ENTITY_RECLAIM of a TERMINATED source |
 | `text` | refused: `ECS_CODEC_UNQUALIFIED`. No qualified ECS<->DSV4 codec map exists |
 
-Operator events reach the authority through RuntimeCore while it holds the authority: the host builds them from
-`elpis_runtime_authority_entity_at` and `elpis_runtime_authority_next_entity_id`. When no runtime is open in the
-process, they go to the authority directly through its own ABI. Either way an authority refusal is reported by its
-exact ECS_C code.
-A source's label and a scope given as text (`scope_label`) are hashed:
-SHA-256(`elpis.host.label.v1` || 0x00 || text). A scope given as `scope` is 64 hex characters. A source needs a
-non-zero scope. A memory source authority identifier names one present source row (a second is
-`ECS_C_SCOPE_CONFLICT`).
+Operator events reach the session through RuntimeCore (`elpis_runtime_authority_transition`). The host builds them
+from `elpis_runtime_authority_entity_at` and `elpis_runtime_authority_next_entity_id`, and reports a session refusal
+by its exact ECS_C code.
+- **Labels.** A source's label, and a scope given as text (`scope_label`), are hashed:
+  SHA-256(`elpis.host.label.v1` || 0x00 || text).
+- **Scopes.** A scope given as `scope` is 64 hex characters. A source needs a non-zero scope.
+- **Source authorities.** A memory source authority identifier names one present source row. A second is
+  `ECS_C_SCOPE_CONFLICT`.
 
-**Output and exit status.** Each operation prints one JSON object on one line:
-`{"op": ..., <its members>, "ok": true}`, or `{"op": ..., "ok": false, "code": ..., "detail": ...}`. An operation
-that names `"expect": CODE` is met exactly when it is refused with CODE.
+**Retired commands** are refused with `OPERATION_RETIRED` and exit 2, and nothing runs. They are the v7 commands
+`init`, `create`, `publish`, `reconcile`, `candidates` and `authority-reconcile`, and the options `--home`,
+`--contained` and `--publish`. They belonged to the persistent runtime: there is no home, no publication and nothing
+to reconcile.
+
+**Output and exit status.** Each operation prints one JSON object on one line: `{"op": ..., <its members>, "ok":
+true}`, or `{"op": ..., "ok": false, "code": ..., "detail": ...}`. An operation that names `"expect": CODE` is met
+exactly when it is refused with CODE.
 
 | Exit | Meaning |
 |---|---|
 | 0 | every operation succeeded or was refused as expected |
-| 2 | the command line, an argument or a script is malformed; nothing ran |
+| 2 | the command line, an argument or a script is malformed, or names a retired command; nothing ran |
 | 3 | an operation was refused, or an expectation was unmet |
-| 4 | the deployment could not be opened; nothing ran |
+| 4 | the host could not start: containment, the swap policy, admission or the catalog pin refused; nothing ran |
 
 Codes are stable names:
-- RuntimeCore's (`RUNTIME_*`, and `CONTINUITY_*` for its continuity-space codes);
-- the composite's (`ECS_COMPOSITE_*`) and ECS_C's (`ECS_C_*`);
-- the host's: `CLI_INPUT`, `DEPLOYMENT_*`, `LINEAGE_*`, `LEARN_UNAUTHORIZED`, `LEARN_AUTHORITY`, `LEARNING_RATE`,
-  `STIMULUS`, `OBSERVATION_*`, `DURABLE_*`, `AUTHORITY_RECONCILE_MISMATCH`, `HOST_RESOURCES`, `HOST_OUTPUT`,
-  `ECS_CODEC_UNQUALIFIED`.
+- RuntimeCore's: `RUNTIME_*`, and `CONTINUITY_*` for its authority-space codes;
+- the composite's (`ECS_COMPOSITE_*`) and the session's (`ECS_C_*`);
+- the host's: `CLI_INPUT`, `INSTALL_*`, `CONTAINMENT_REFUSED`, `SWAP_POLICY`, `OPERATION_RETIRED`,
+  `LEARN_UNAUTHORIZED`, `LEARN_AUTHORITY`, `LEARNING_RATE`, `STIMULUS`, `OBSERVATION_*`, `HOST_RESOURCES`,
+  `HOST_OUTPUT` and `ECS_CODEC_UNQUALIFIED`.
 
-**Limits.** One operation's JSON, and a script, is at most 8 MiB, and one output line at most 8 MiB. Integers in
-operator JSON are exact up to 2^53. QUERY takes at most 4,096 rows; LEARN at most 64 experiences of 1..256 rows
-and 1..2^20 steps; one evidence turn at most 64 observations. Structure's assertion validator admits HACF authority
-values 0..3 only, so at most four sources can record HACF evidence.
-
-**Volatile and durable.** A session's work is volatile until `publish`. A process that exits without publishing
-loses it, and restart resumes exactly the last acknowledged state (`docs/K1_RECOVERY_R0.md`). Process death during a
-publication is resolved by the next open: no authority reconciliation is needed. An interrupted checkpoint write
-leaves an unresolved candidate, which the operator discards or adopts. Copied-back records, a corrupt newest record,
-an unauthenticated substitute and a missing witness refuse the runtime (`RUNTIME_AUTHORITY`) until the operator
-reconciles exactly what the authority names.
+**Limits.**
+- One operation's JSON, and a script, is at most 8 MiB. One output line is at most 2 MiB.
+- Integers in operator JSON are exact up to 2^53.
+- QUERY takes at most 4,096 rows. LEARN takes at most 64 experiences of 1..256 rows and 1..2^20 steps. One evidence
+  turn takes at most 64 observations.
+- Structure's assertion validator admits HACF authority values 0..3 only, so at most four sources can record HACF
+  evidence.
 
 ## The testing host
 
-`elpis_testing` runs only a testing deployment (`libelpis_runtime_testing`). It adds four operations:
-- `testing_durable_fault`: RuntimeCore's durability fault plans;
-- `testing_control_fault`: its control-operation plans;
-- `testing_wait_parked`: wait, bounded, until the durability worker parks at a step;
-- `testing_pause`, `testing_exit`: pause at an operation boundary until one byte arrives on standard input, or die
-  there.
+`elpis_testing` is the same RAM-only host, never installed. It adds three operations:
+- `testing_pause`: pause at an operation boundary until one byte arrives on standard input;
+- `testing_exit`: die there;
+- `testing_write_probe`: deliberately attempt a file write (create, write, extend, remove, rename or mkdir) in a
+  directory the harness names, so that containment can be shown to refuse it.
 
-A harness kills the process at a park or inspects it live.
+It also reads a file in the format of `/proc/swaps` in place of the real one, so that the swap policy is exercised
+without changing the machine's swap configuration. The production host has none of these: its binary imports no
+write-class C library function (`tests/boundary/test_volatile_runtime.py`).
 
 ## Tests
 
-`tests/integration/test_native_host.py` runs the host as separate processes with a minimal environment (no
-`PYTHONPATH`, no `LD_*`):
+`tests/integration/test_native_host.py` runs the host as separate processes with a minimal environment: no
+`PYTHONPATH` and no `LD_*` variables. As root, every host process runs as uid 65534.
 
 | Area | What is checked |
 |---|---|
-| Closure | the binaries need only `libc.so.6` and carry no RUNPATH; a live session maps only the C runtime and seven distinct sealed objects; its descriptors are one fixed set across 30 publications and 20 evidence turns |
-| Pins | every drift refuses every start: a library, the catalog, the ABI, the catalog pin, the host binary, the build variant; a pinned library naming an unadmitted dependency is refused before it loads |
-| Differential | identities, QUERY values, the LEARN transition, relation keys, the LOOKUP answer and the component identities equal the Python operator interface's, over the other durable authority |
-| Operation | publication and exact resumption; unpublished work is lost and reported; refusals carry stable codes and change nothing; operator events work directly and through the held runtime; capacity is refused before any write and reclamation frees a row |
-| Durability | SIGKILL at each of the nine durable steps, and every failure plan, resolve exactly as the durability law says; copied-back records and a corrupt newest record need the operator's exact reconciliation |
-| Boundedness | files, sizes and recovery work stay constant over 60 publications and 4 restarts (FAST), and over 1,000 publications and 20 restarts (STRESS) |
-| Containment | a contained session learns, records evidence, publishes and resumes; creating a file, writing the configuration or catalog, and extending a slot past the limit are refused (the same probes succeed uncontained), while the granted slots stay writable; the file set is unchanged. Refused: provisioning under containment, a writable file as stdout, a slot that is not exactly its size, a privileged process |
+| Closure | the binary links only the C library and carries no RUNPATH; a live process maps only the C runtime and the six sealed objects; it holds no writable file descriptor and no writable shared file mapping; core dumps and file growth are disabled; its descriptors are one fixed set that long sessions never grow |
+| Pins | measured read-only; drift of a library or of the host binary, or a library naming an unadmitted dependency, refuses every start |
+| Differential | the initial identity, QUERY values, the LEARN transition, relation keys, the LOOKUP answer and the component identities equal the Python operator interface's |
+| Sessions | learning and typed evidence admitted by the session's ACTIVE sources, in memory; `close` and a new process both start again at the lineage's initial identity |
+| Operator events | lifecycles, versions, capacity and reclamation are typed events of the volatile session |
+| Retirement and containment | every retired command is refused; a privileged process and writable storage on a standard descriptor are refused; the contained testing host's deliberate write attempts are refused, while the same uncontained user may write there; the swap policy locks the process memory or refuses |
+| Death | a killed process leaves nothing behind |
 
-`runtime.native_host_smoke` (ctest, every native build including the sanitizer and clang jobs) runs init, create, a
-session and a resumption with no interpreter. The suite passes on the Release and ASan+UBSan builds. Eight targeted
-mutants of the host are each killed by it: each pin, failed-publication reporting, the grant's sources, the
-reconciliation digest, refusal translation, the all-or-nothing abort and the learning rate.
+`runtime.native_host_smoke` (ctest, in every native build, including the sanitizer and clang jobs) runs, with no
+interpreter:
+- the catalog pin;
+- a session that founds a source, learns, records typed evidence and answers LOOKUP;
+- the retired operations refused, and `close` discarding the session;
+- a new process starting at the initial identity;
+- the pin, privilege and storage refusals.
+
+It checks that no file is created or changed.
+
+The composed qualification (`research/volatile_runtime_v1`, `ZERO_WRITE_PASS`) traced the host under `strace`,
+unconfined and confined, over short, long (3,000-operation) and restart sessions and an adversarial set. It recorded
+zero write-class events on storage.
 
 ## Holds
 
-- **Qualification of ABI v7.** Standalone continuity retired into ECS_C (RuntimeCore ABI v7; census section 9): the
-  Python deployment and CLI are the offline reference interface over the same ECS_C authority, off the production
-  path. ECS_C Recovery Q0 is RUN PASS for commit `117b41a` (ABI v6) only; its ABI v7 successor is not run.
-- **Containment.** The native host contains itself (`--contained`) with the ECS_C and checkpoint slots as its grant.
-  `elpis_autonomous_run`, for the Python reference, grants the four files of a provisioned ECS_C authority (its two
-  record and two witness slots).
 - **Release.** No installed release bundle exists for the native host yet (`ELPIS_SYSTEM.json`
   `identity.release_authority = NONE_DEFERRED`).
+- **Host prerequisites.** The census, section 6, lists what the host must provide that a process cannot enforce on
+  itself:
+  - read-only mounts for the code, the libraries and every static resource;
+  - swap off, unless locking the runtime's memory is acceptable;
+  - standard output and error to a pipe or a terminal;
+  - no host service that persists the runtime's memory or I/O.
 
 ## Not claimed
 
 - No text interface and no language understanding.
-- No durability across power loss: crash consistency is established for process death only.
-- No protection beyond the threat model above.
+- No persistence, crash survival or resumption: a crash loses the session, by design.
+- Nothing about writes by host services outside Elpis's process-control boundary (`docs/NONCLAIMS.md`).
 - No scientific claim of any kind.

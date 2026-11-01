@@ -258,8 +258,19 @@ def test_the_closure_is_evidenced():
         manifest = json.loads((results.parent / "MANIFEST.json").read_text(encoding="utf-8"))
         for name, digest in manifest["results"].items():
             assert hashlib.sha256((results.parent / name).read_bytes()).hexdigest() == digest, name
-        # It is the composed runtime: the host, RuntimeCore, the Python reference and FMS/HACF all ran.
-        assert {"host_session", "runtime_core", "python_reference", "fms_cold", "hgram_read"} <= set(document["runs"])
+        # It is the composed runtime: the host, RuntimeCore, the Python reference and FMS/HACF all ran, every traced
+        # path in both traced modes with zero write events, and the recorded run is of this branch's history.
+        runs = document["runs"]
+        assert {"host_session", "host_long", "host_restarts", "python_cli", "python_fms_hacf", "fms_cold", "hgram_read",
+                "runtime_core.session", "runtime_core.composite", "runtime_core.hot_io"} <= set(runs), sorted(runs)
+        traced = [(name, mode) for name, run in runs.items() for mode in ("observed", "confined")
+                  if isinstance(run, dict) and mode in run]
+        assert len(traced) >= 20, traced
+        for name, mode in traced:
+            assert runs[name][mode]["exit"] == 0 and runs[name][mode]["write_events"] == [], (name, mode)
+        commit = document["source_commit"]
+        assert subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", commit, "HEAD"],
+                              capture_output=True).returncode == 0, commit
 
 
 # ------------------------------------------------------------------------------------------------- the session

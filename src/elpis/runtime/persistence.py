@@ -395,7 +395,7 @@ CLOSURE: tuple[Condition, ...] = (
     Condition(10, "All remaining runtime-connected storage writers have been eliminated or made read-only.", True, (
         "tests/boundary/test_volatile_runtime.py::test_every_writer_has_exactly_one_final_disposition",
         "tests/boundary/test_volatile_runtime.py::test_no_binary_the_runtime_loads_imports_a_write_function")),
-    Condition(11, "The composed runtime passes independent zero-write verification.", False, (COMPOSED_QUALIFICATION,)),
+    Condition(11, "The composed runtime passes independent zero-write verification.", True, (COMPOSED_QUALIFICATION,)),
     Condition(12, "Environmental prerequisites are enforced or fail closed.", True, (
         _HOST + "test_containment_refuses_what_it_cannot_contain",
         _HOST + "test_the_swap_policy_locks_the_process_memory_or_refuses",

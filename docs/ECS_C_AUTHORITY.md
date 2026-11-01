@@ -1,14 +1,19 @@
 # ECS_C authority (R0)
 
-> **RETIRING** (`docs/ELPIS_MISSION.md`, Amendment 3, the volatile-native runtime). **VOLATILE MIGRATION: INCOMPLETE.**
-> - Its persistence is superseded: the record and witness slots, the deployment key file, provisioning, recovery,
+> **RETIRED. HISTORY** (`docs/ELPIS_MISSION.md`, Amendment 3, the volatile-native runtime).
+> **VOLATILE MIGRATION: COMPLETE** (`docs/VOLATILE_RUNTIME_CENSUS.md`).
+> - Its persistence is retired: the record and witness slots, the deployment key file, provisioning, recovery,
 >   reconciliation, legacy import and every `fdatasync` path.
-> - Its law lives on in the volatile session authority `ECSC_VOLATILE_SESSION_R0` (`docs/ECS_C_SESSION.md`,
->   `native/ECS_C/session`). This crate now consumes the law from there.
-> - It remains only because RuntimeCore ABI v7, the native host and the Python reference interface still reach it.
->   Once RuntimeCore ABI v8 holds a session instead (phase V3), it becomes archival, never a disabled mode.
-> - This document describes it as it still runs. Nothing in it is a target design
->   (`docs/VOLATILE_RUNTIME_CENSUS.md`, sections 2 and 3).
+> - `native/ECS_C/authority` (the crate, its C ABI and both libraries) is deleted. No build file, Cargo manifest,
+>   source, test or tool links, includes or loads it (`tests/boundary/test_ecs_c_authority.py`). The research
+>   instruments of its recorded qualification fail closed. Git history keeps it. It is not kept behind a flag or as
+>   a disabled mode.
+> - Its transition law lives on unchanged in the volatile session authority `ECSC_VOLATILE_SESSION_R0`
+>   (`docs/ECS_C_SESSION.md`, `native/ECS_C/session`), which RuntimeCore ABI v8 holds instead
+>   (`docs/RUNTIME_CORE.md`, "The session authority (ABI v8)").
+> - This document is kept as the specification of what the durable authority was, so that its retirement and the
+>   ECS_C Recovery Q0 record (RUN PASS for commit `117b41a`, ABI v6 only) can be reviewed. The paths it names no
+>   longer exist, and nothing in it is a target design.
 
 Authority: `docs/ELPIS_MISSION.md` (Amendment 1), `docs/NATIVE_SPLIT_CENSUS.md` (sections 5a and 11, Stage C).
 Contract: `native/ECS_C/authority/include/elpis/ecs_c_authority.h` (normative C ABI v1). Implementation:
@@ -24,11 +29,11 @@ its predecessor. It keeps no log, no segments, no generations and no compaction 
 
 **Status.** Built and mechanically tested as a library; its durability protocol through the native host is RUN PASS
 under ECS_C Recovery Q0, for commit `117b41a` (RuntimeCore ABI v6) only, within that specification's scope. Composed
-by RuntimeCore since ABI v6 (`elpis_runtime_create_ecs_c`; docs/RUNTIME_CORE.md, "The durable authority (ABI v6)"),
+by RuntimeCore since ABI v6 (`elpis_runtime_create_ecs_c`; docs/history/RUNTIME_CORE_ABI_V7.md, "The durable authority (ABI v6)"),
 which publishes through it, admits typed evidence against its sources and records evidence summaries, and run by the
 native host `elpis`, the production entry point (docs/NATIVE_HOST.md). Since ABI v7 it is RuntimeCore's only durable
 authority, on the native host and the offline Python reference alike: standalone continuity retired into it
-(docs/RUNTIME_CORE.md, "One durable authority (ABI v7)"; docs/ELPIS_MISSION.md, Amendment 2), and the crate carries
+(docs/history/RUNTIME_CORE_ABI_V7.md, "One durable authority (ABI v7)"; docs/ELPIS_MISSION.md, Amendment 2), and the crate carries
 continuity's SHA-256, evolution law and digest and register reader as its own, with no dependency. The ABI v7
 successor of Q0 is not run. Nothing in this document is a scientific claim.
 
