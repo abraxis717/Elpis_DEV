@@ -217,6 +217,7 @@ int main(void)
         assert(!m.residency.demotions && !m.residency.cold_reads && !m.residency.cold_writes &&
                !m.residency.tier_bytes[FMS_COLD] && !m.residency.domain_bytes[FMS_DOM_STORAGE]);
     }
+    assert(elpis_ecsg_k1_fms_close(r, &id) == 0 && elpis_ecsg_k1_fms_destroy(&r) == 0);
     free(env);
     printf("structural: no allocation on any warm standalone or FMS operation; one native call per operation "
            "whatever K; no state rebuilt per warm query\n");

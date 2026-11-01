@@ -268,9 +268,17 @@ def test_the_closure_is_evidenced():
         assert len(traced) >= 20, traced
         for name, mode in traced:
             assert runs[name][mode]["exit"] == 0 and runs[name][mode]["write_events"] == [], (name, mode)
+        # The recorded commit is in this branch's history. A shallow checkout (CI's) does not hold that history, so
+        # there the ancestry is not checkable; everything above still is.
         commit = document["source_commit"]
-        assert subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", commit, "HEAD"],
-                              capture_output=True).returncode == 0, commit
+        known = subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", f"{commit}^{{commit}}"],
+                               capture_output=True).returncode == 0
+        shallow = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--is-shallow-repository"],
+                                 capture_output=True, text=True).stdout.strip() == "true"
+        assert known or shallow, f"the recorded commit {commit} is unknown to a full clone"
+        if known:
+            assert subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", commit, "HEAD"],
+                                  capture_output=True).returncode == 0, commit
 
 
 # ------------------------------------------------------------------------------------------------- the session

@@ -113,6 +113,13 @@ add_test(NAME runtime.native_host_smoke
           "-DBUILD=${CMAKE_BINARY_DIR}" "-DSCRATCH=${CMAKE_CURRENT_BINARY_DIR}/test-state/native_host_smoke"
           -P "${CMAKE_CURRENT_SOURCE_DIR}/host/tests/host_smoke.cmake")
 set_tests_properties(runtime.native_host_smoke PROPERTIES LABELS runtime TIMEOUT 300)
+# LeakSanitizer's exit-time scan stops the world with ptrace and a non-thread clone, both of which the host's own
+# seccomp containment refuses by design (docs/NATIVE_HOST.md, "Containment"), so LSan cannot run inside a contained
+# host. AddressSanitizer itself stays on; the libraries the host admits are leak-checked by their own C suites.
+if(ELPIS_ENABLE_ASAN)
+  set_tests_properties(runtime.native_host_smoke PROPERTIES
+    ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
+endif()
 
 # Typed HACF -> ECS memory observation path (docs/ECS_MEMORY.md, "HACF observations"): joins structure (identity and
 # validation owner) and the ECS memory type at the composition layer; RuntimeCore itself still links neither.
@@ -150,6 +157,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     ARGS $<TARGET_FILE:elpis_autonomous_run>
     TIMEOUT 30)
   target_compile_definitions(test_autonomous_containment PRIVATE _GNU_SOURCE=1)
+  # The launched children run under the launcher's seccomp policy, which LeakSanitizer's exit-time scan cannot run
+  # inside (as for the native host smoke above); AddressSanitizer stays on.
+  if(ELPIS_ENABLE_ASAN)
+    set_tests_properties(runtime.test_autonomous_containment PROPERTIES
+      ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1")
+  endif()
 endif()
 
 # The installed product (docs/NATIVE_HOST.md, "Installation"): the host in bin/ and the six libraries it admits in

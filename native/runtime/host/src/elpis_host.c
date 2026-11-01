@@ -336,8 +336,8 @@ static const char *const NONCLAIMS[] = {"no language understanding", "no general
                                         "no autonomous evolution", "no hierarchical superiority",
                                         "an observation is evidence storage, never truth or authority",
                                         "pins authenticate bytes, not authors",
-                                        "containment covers this process: it does not make the operating system, "
-                                        "its other processes or the reader of this output write nothing"};
+                                        ("containment covers this process: it does not make the operating system, "
+                                         "its other processes or the reader of this output write nothing")};
 
 static void lineage_out(hjw *w, const host_install *d) {
     const host_lineage *l = &d->lineage;
