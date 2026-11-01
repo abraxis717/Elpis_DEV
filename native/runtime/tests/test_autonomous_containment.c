@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -59,9 +60,18 @@ static int probe(const char *mode, const char *dir) {
         return s >= 0 ? 1 : 0;
     }
     if (!strcmp(mode, "limits")) {
-        struct rlimit core, fsize;
-        if (getrlimit(RLIMIT_CORE, &core) || getrlimit(RLIMIT_FSIZE, &fsize)) return 1;
-        return core.rlim_cur || core.rlim_max || fsize.rlim_cur || fsize.rlim_max;
+        struct rlimit core;
+        if (getrlimit(RLIMIT_CORE, &core)) return 1;
+        return core.rlim_cur || core.rlim_max;
+    }
+    /* In-memory staging stays possible (a contained runtime seals the libraries it admits into a memfd): an anonymous
+     * file is written and read back; nothing on any path is touched. */
+    if (!strcmp(mode, "memfd")) {
+        int m = memfd_create("elpis-containment-probe", MFD_CLOEXEC);
+        char back = 0;
+        int ok = m >= 0 && write(m, "M", 1) == 1 && pread(m, &back, 1, 0) == 1 && back == 'M';
+        if (m >= 0) close(m);
+        return ok ? 0 : 1;
     }
     return 2;
 }
@@ -120,7 +130,7 @@ int main(int argc, char **argv) {
     const int swapping = swap_active();
     const char *tests[] = {"read", "create", "overwrite", "append", "truncate", "rename", "unlink", "mkdir",
                            "hardlink", "symlink", "chmod", "fd_escape", "stdio_escape", "sync", "socket", "limits",
-                           "authority_grant"};
+                           "memfd", "authority_grant"};
     int errors = 0;
     for (size_t j = 0; j < sizeof tests / sizeof tests[0]; j++) {
         int rc = child(argv[1], argv[0], dir, tests[j]);

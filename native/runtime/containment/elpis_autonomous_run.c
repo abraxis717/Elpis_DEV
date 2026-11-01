@@ -1,10 +1,15 @@
 /* Elpis autonomous execution: Linux fail-closed filesystem mutation boundary with NO write grant
  * (docs/ELPIS_MISSION.md, Amendment 3). This launcher is not an authority to run arbitrary tools; the host controls
  * argv. The contained command can create, write, truncate, extend, rename, link or remove no file anywhere: Landlock
- * handles every mutation right and has no rule, RLIMIT_FSIZE is 0, and seccomp refuses the metadata syscalls Landlock
- * does not mediate, preallocation, sync/syncfs, mount and swap control, module and kexec loading, reboot, sockets (no
- * logging daemon is reachable), io_uring and ptrace. No core dump (RLIMIT_CORE 0, inherited across exec), no
- * inherited writable storage descriptor, nothing inherited above stderr.
+ * handles every mutation right and has no rule (no path can be opened for writing, created, truncated, renamed,
+ * linked or removed), and seccomp refuses the metadata syscalls Landlock does not mediate, preallocation and
+ * truncation, sync/syncfs, mount and swap control, module and kexec loading, reboot, sockets (no logging daemon is
+ * reachable), io_uring and ptrace. No core dump (RLIMIT_CORE 0, inherited across exec), no inherited writable storage
+ * descriptor, nothing inherited above stderr.
+ *
+ * No RLIMIT_FSIZE here: the contained runtime seals each library it admits into an anonymous memfd (in memory, never
+ * persistent) after exec, and a zero file-size limit would refuse that seal. With no writable path and no writable
+ * descriptor, the limit would protect nothing persistent; the native host applies it itself once its seals exist.
  *
  * Swap: with any swap area active the launcher refuses, since memory locks do not survive exec (the native host locks
  * its own memory instead: docs/NATIVE_HOST.md). It never changes the host's swap configuration.
@@ -176,10 +181,6 @@ int main(int argc, char **argv) {
     close(rs);
     /* Any preopened descriptor > 2 would bypass path-opening mediation. */
     if (syscall(SYS_close_range, 3u, ~0u, 0u) != 0) { report("close inherited descriptors"); return 125; }
-    /* No write may give any file a byte. */
-    if (setrlimit(RLIMIT_FSIZE, &none) != 0 || getrlimit(RLIMIT_FSIZE, &got) != 0 || got.rlim_cur || got.rlim_max) {
-        report("file size hard limit"); return 125;
-    }
     if (install_filter() != 0) { report("seccomp filter"); return 125; }
     execvp(argv[2], &argv[2]);
     report("exec command");
