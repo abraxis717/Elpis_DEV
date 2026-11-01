@@ -1,8 +1,13 @@
-"""ECS_C Recovery Q0: the instrument, rehearsed on DEV inputs, and the checker cannot be talked into a PASS.
+"""ECS_C Recovery Q0: the instrument, and the checker cannot be talked into a PASS.
 
-A DEV run (every family but the long bounded history, two runs per point so both operator parities run; DEV seeds,
-never QUAL inputs) drives the real testing host and is judged by the checker. Then it is tampered with one way at a
-time, and every mutant must fail the gate that exists to catch it:
+The subject of this qualification, the durable ECS_C authority and its crash-recovery law, was retired by the
+volatile-native migration (RuntimeCore ABI v8, docs/RUNTIME_CORE.md): no host can publish, recover or reconcile any
+more, so the DEV rehearsal that drove a live testing host (in git history before that migration) cannot run, and the
+host suite's crash-law tables it was cross-checked against are retired with it. The frozen instrument fails closed
+over this checkout (its premise cannot even be stated). The checker's adversarial guarantees are kept over the sealed
+QUAL run's own records (research/qualification/ecs_c_recovery_q0/evidence, proved byte-identical to what was sealed by
+test_evidence.py): they recompute the recorded PASS, and every mutant of them must fail the gate that exists to catch
+it:
 - a wrong recovery disposition, candidate or authority report;
 - a lost acknowledged publication, a wrong evidence count, a resumption that is not exact;
 - an attack that opened the runtime, a wrong reconciliation accepted, a rollback continuing at the wrong generation;
@@ -14,6 +19,7 @@ The plan's statement of the crash law is cross-checked against the host suite's 
 from __future__ import annotations
 
 import copy
+import gzip
 import importlib.util
 import json
 import os
@@ -24,17 +30,10 @@ import sys
 
 import pytest
 
-from ...conftest import native_build_dir, native_required
 
 REPO = Path(__file__).resolve().parents[3]
 INSTRUMENT = REPO / "research" / "qualification" / "ecs_c_recovery_q0"
 PLAN = json.loads((INSTRUMENT / "plan.json").read_text())
-# The installed layout, staged from a build tree when no prefix is given: binary and library build paths.
-_BINARIES = {"elpis": "native/runtime/elpis", "elpis_testing": "native/runtime/elpis_testing"}
-_LIBRARIES = ("native/ECS_G/libelpis_ecsg_math.so", "native/ECS_G/libelpis_ecsg_k1.so",
-              "native/ECS_C/libelpis_ecs_memory.so", "native/runtime/composite/libelpis_ecs_composite.so",
-              "native/runtime/libelpis_hacf_observation.so", "native/ECS_C/authority/libelpis_ecs_c_authority.so",
-              "native/runtime/libelpis_runtime.so", "native/runtime/libelpis_runtime_testing.so")
 
 
 def _load(name: str):
@@ -70,26 +69,6 @@ def test_the_plan_is_coherent_with_the_record_layout():
     for family in ("publish", "failure", "anchor", "discard", "adopt", "attack", "rearrangement", "witness"):
         for p in PLAN["families"][family]["points"]:
             assert "evidence" in p["expect"], (family, p["point"])
-
-
-def test_the_plan_states_the_crash_law_the_host_suite_states():
-    """Two independent statements of the same law (plan.json and tests/integration/test_native_host.py) agree."""
-    from ...integration import test_native_host as suite
-    for p in PLAN["families"]["publish"]["points"]:
-        durable, candidate, disposition = suite.CRASH[int(p["point"].split(":")[1])]
-        e = p["expect"]
-        assert e["authority"] == disposition and e["durable"] == ("D2" if durable == "new" else "D1")
-        assert (e["recovery"] == "CANDIDATE_UNRESOLVED") is candidate
-    for p in PLAN["families"]["failure"]["points"]:
-        code, cause, disposition, durable, authority = suite.FAILURES[int(p["point"].split(":")[1])]
-        e = p["expect"]
-        assert (e["code"], e["cause"], e["recovery"], e["authority"]) == (code, cause, disposition, authority)
-        assert e["durable"] == ("D2" if durable == "new" else "D1")
-    for p in PLAN["families"]["anchor"]["points"]:
-        anchored, disposition = suite.ANCHOR[int(p["point"].split(":")[1])]
-        e = p["expect"]
-        assert e["authority"] == disposition and e["resumed"] is anchored
-        assert e["recovery"] == ("RESUMABLE" if anchored else "NOTHING_TO_RECOVER")
 
 
 @pytest.mark.parametrize("inputs", ["dev", "qual"])
@@ -154,52 +133,32 @@ def test_a_qual_run_without_its_freeze_creates_nothing(tmp_path):
     assert not work.exists() and not (tmp_path / "r.jsonl").exists()
 
 
-# ---- the DEV rehearsal -----------------------------------------------------------------------------------------
+# ---- the retired subject ----------------------------------------------------------------------------------------
 
-def _prefix(root: Path) -> Path:
-    if os.environ.get("ELPIS_NATIVE_HOST_PREFIX"):
-        return Path(os.environ["ELPIS_NATIVE_HOST_PREFIX"]).resolve()
-    build = native_build_dir()
-    if not (build / _BINARIES["elpis_testing"]).is_file():
-        message = f"the native host is not built under {build}"
-        if native_required():
-            pytest.fail(message)
-        pytest.skip(message + " (never an implicit PASS)")
-    prefix = root / "prefix"
-    (prefix / "bin").mkdir(parents=True)
-    (prefix / "lib" / "elpis").mkdir(parents=True)
-    for name, rel in _BINARIES.items():
-        shutil.copy2(build / rel, prefix / "bin" / name)
-    for rel in _LIBRARIES:
-        shutil.copy2(build / rel, prefix / "lib" / "elpis" / Path(rel).name)
-    return prefix
+def test_the_frozen_instrument_cannot_state_its_premise_over_the_volatile_runtime(tmp_path):
+    """The premise binds the durable RuntimeCore sources (native/runtime/src/durable.rs among them) and a testing
+    host with publication and recovery operations. Both are retired: the frozen instrument fails closed here, so the
+    recorded PASS can never be re-derived from, or extended to, the volatile runtime."""
+    assert not (REPO / "native" / "runtime" / "src" / "durable.rs").exists()
+    with pytest.raises(FileNotFoundError):
+        freeze.premise(REPO, tmp_path)
 
+
+# ---- the checker over the sealed QUAL records -------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
-def dev(tmp_path_factory):
-    root = tmp_path_factory.mktemp("q0-dev")
-    prefix = _prefix(root)
-    families = ",".join(f for f in PLAN["families"] if f != "bounded")
-    out = root / "records.jsonl"
-    done = subprocess.run([sys.executable, "-I", "-B", str(INSTRUMENT / "runner.py"), "run", "--prefix", str(prefix),
-                           "--work", str(root / "work"), "--inputs", "dev", "--families", families, "--runs", "2",
-                           "--out", str(out)], capture_output=True, text=True, timeout=5400,
-                          env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"})
-    assert done.returncode == 0 and out.exists(), (done.stdout[-3000:], done.stderr[-3000:])
-    return prefix, check.read_records(out)
+def recorded():
+    data = gzip.decompress((INSTRUMENT / "evidence" / "records.jsonl.gz").read_bytes()).decode()
+    return [json.loads(line) for line in data.splitlines() if line.strip()]
 
 
-def test_the_premise_holds_for_the_prefix(dev):
-    prefix, _ = dev
-    assert freeze.premise(REPO, prefix)["problems"] == []
-
-
-def test_the_dev_rehearsal_passes_every_gate(dev):
-    _, rows = dev
-    result = check.evaluate(rows, "dev")
-    assert result["mechanical"] == [] and result["verdict"] == "PARTIAL_PASS", \
+def test_the_sealed_qual_records_recompute_the_recorded_pass(recorded):
+    rows = recorded
+    result = check.evaluate(rows, "qual")
+    assert result["mechanical"] == [] and result["verdict"] == "PASS", \
         {g: v["failures"][:3] for g, v in result["gates"].items()}
-    assert {r["family"] for r in rows[1:]} == set(PLAN["families"]) - {"bounded"}
+    assert result == json.loads((INSTRUMENT / "evidence" / "verdict.json").read_text())
+    assert {r["family"] for r in rows[1:]} == set(PLAN["families"])
     assert result["judged"] == len(rows) - 1
 
 
@@ -208,10 +167,10 @@ def _where(rows, **match):
 
 
 def _fails(rows, gate, plan=PLAN):
-    result = check.evaluate(rows, "dev", plan)
+    result = check.evaluate(rows, "qual", plan)
     if gate == "mechanical":
         return result["verdict"] == "INCOMPLETE"
-    return result["verdict"] == "PARTIAL_NONPASS" and not result["gates"][gate]["pass"]
+    return result["verdict"] == "NONPASS" and not result["gates"][gate]["pass"]
 
 
 def _edit(rows, index, fn):
@@ -224,8 +183,8 @@ def _line(run, op):
     return next(o for o in run["lines"] if o.get("op") == op)
 
 
-def test_every_mutant_fails_the_gate_that_exists_to_catch_it(dev):
-    _, rows = dev
+def test_every_mutant_fails_the_gate_that_exists_to_catch_it(recorded):
+    rows = recorded
     trailing = _where(rows, family="publish", point="step:6", run=0)
     candidate = _where(rows, family="publish", point="step:5", run=0)
     completed = _where(rows, family="publish", point="step:7", run=0)
@@ -291,12 +250,12 @@ def test_every_mutant_fails_the_gate_that_exists_to_catch_it(dev):
     errored = copy.deepcopy(rows)
     errored[1].update(observed=None, instrument_error="OSError: x")
     assert _fails(errored, "mechanical")
-    assert check.evaluate(errored, "dev")["verdict"] == "INCOMPLETE"
+    assert check.evaluate(errored, "qual")["verdict"] == "INCOMPLETE"
 
 
-def test_growing_recovery_work_or_files_fail_the_bounded_gate(dev):
-    """The bounded family over the DEV rehearsal's real outputs: constant work passes, growing work fails G6."""
-    _, rows = dev
+def test_growing_recovery_work_or_files_fail_the_bounded_gate(recorded):
+    """The bounded family over the sealed run's real outputs: constant work passes, growing work fails G6."""
+    rows = recorded
     swap = rows[_where(rows, family="rearrangement", point="swap", run=0)]["observed"]
     authority = copy.deepcopy(swap["continuation"]["authority"])
     baseline = swap["deploy"]["baseline"]
@@ -315,12 +274,17 @@ def test_growing_recovery_work_or_files_fail_the_bounded_gate(dev):
     assert j.failures["G6"]
 
 
-def test_a_dev_run_is_never_evidence_and_a_sealed_directory_is_verified(dev, tmp_path):
-    _, rows = dev
+def test_a_partial_run_is_never_evidence_and_a_sealed_directory_is_verified(recorded, tmp_path):
+    head = dict(recorded[0], families=["publish"])
+    rows = [head] + [r for r in recorded[1:] if r["family"] == "publish"]
+    expected = [t for t in check.expected_trials("qual", PLAN) if t["family"] == "publish"]
+    assert [r["index"] for r in rows[1:]] == [t["index"] for t in expected]
     records = tmp_path / "records.jsonl"
     records.write_text("".join(json.dumps(r) + "\n" for r in rows))
     verdict = tmp_path / "verdict.json"
-    verdict.write_text(json.dumps(check.evaluate(rows, "dev")))
+    result = check.evaluate(rows, "qual")
+    assert result["verdict"] == "PARTIAL_PASS" and result["subset"]
+    verdict.write_text(json.dumps(result))
     frozen = tmp_path / "FREEZE.json"
     frozen.write_text("{}")
     sealed = tmp_path / "evidence"
