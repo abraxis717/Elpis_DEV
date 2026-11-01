@@ -384,10 +384,12 @@ time.sleep(3600)
                     code = exc.code
                 r = fms.metrics()["residency"]
                 answer = runtime.run_numeric_query(states[0], q)
+                fault = runtime.fault            # read while the session is open: closed, RuntimeCore reports CLOSED
             self.check("N11", "at the WARM budget a new FMS state is refused without spill; the HOT lineage answers",
                        code is not None and r["promotions"] == r["demotions"] == r["cold_reads"] == r["cold_writes"]
-                       == 0 and len(answer.values) == 4 and runtime.fault is None,
-                       code=code, residency={k: r[k] for k in ("promotions", "demotions", "cold_reads", "cold_writes")})
+                       == 0 and len(answer.values) == 4 and fault is None,
+                       code=code, fault=fault,
+                       residency={k: r[k] for k in ("promotions", "demotions", "cold_reads", "cold_writes")})
         finally:
             for s in states:
                 try:
