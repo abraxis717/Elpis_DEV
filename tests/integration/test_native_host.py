@@ -330,7 +330,10 @@ def _sanitizer_preload():
 
 def _python_cli(*args, script=None):
     env = dict(os.environ, PYTHONPATH=str(REPO / "src"), PYTHONDONTWRITEBYTECODE="1", **_sanitizer_preload())
-    source = ["--libraries", str(LIBDIR)] if LIBDIR else ["--native-build", str(BUILD)]
+    # The Python reference is an offline tool, not part of the installed product (whose lib/elpis holds the host's six
+    # libraries, not the K1 FMS adapter the reference also admits): it always reads the build tree, while the host
+    # under test may be the installed one.
+    source = ["--native-build", str(BUILD)]
     catalog = subprocess.run([sys.executable, "-m", "elpis.runtime.cli", *source, "catalog"], capture_output=True,
                              text=True, env=env, timeout=300)
     python_pin = json.loads(catalog.stdout)["catalog_sha256"]
