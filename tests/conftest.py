@@ -18,10 +18,17 @@ import os
 from pathlib import Path
 import shutil
 import socket
+import sys
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# The harness never writes bytecode caches from here on, and every Runtime the tests open passes the process gate
+# (elpis.runtime.environment), which refuses a process that would (run pytest with -B or PYTHONDONTWRITEBYTECODE=1
+# to keep the imports before this line from writing them too). Child interpreters the tests spawn inherit it.
+sys.dont_write_bytecode = True
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 
 def pytest_addoption(parser):

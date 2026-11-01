@@ -67,7 +67,6 @@ from .promotion import (
     EvaluationEvidence,
     HarnessManifest,
     SelectionReceipt,
-    atomic_materialize,
     digest_tree,
     select,
 )
@@ -437,4 +436,6 @@ class EvolutionPolicyAuthority:
         if type(expected_manifest) is not HarnessManifest or \
                 expected_manifest.digest != grant.selected_harness_manifest_digest:
             _refuse("PROMOTION_UNAUTHORIZED", "the manifest is not the granted selection")
+        from .materialize import atomic_materialize   # the offline writer: imported only by this call
+
         return atomic_materialize(parent_dir, dest_dir, edits, expected_manifest)

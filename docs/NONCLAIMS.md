@@ -16,23 +16,29 @@ useful, that a model behaves well, or that any scientific hypothesis holds.
 * Mechanics qualification is not scientific qualification, and it is not
   runtime admission of any learned model. No neural model is authority over
   ECS state, structural memory or canonical Grid81 state.
-* **Elpis is not yet diskless** (VOLATILE MIGRATION: INCOMPLETE;
+* **The volatile-native migration is not closed** (VOLATILE MIGRATION: INCOMPLETE;
   `docs/ELPIS_MISSION.md`, Amendment 3; `docs/VOLATILE_RUNTIME_CENSUS.md`).
-  The volatile-native directive retires every persistent runtime write.
-  - Only phases V0 to V2 are implemented: the census, the volatile ECS_C session
-    (`docs/ECS_C_SESSION.md`) and the relational view's binding to it.
-  - RuntimeCore ABI v7, the native host and the Python reference interface
-    still create, open, publish to and recover from the durable ECS_C authority
-    and the K1 checkpoint store.
-  - The FMS posix cold store, the H-gram association writer and canonical
-    publication from a runtime remain.
+  Phases V0 to V4 are implemented:
+  - RuntimeCore ABI v8 holds one volatile ECS_C session per open;
+  - the native host and the Python reference write nothing;
+  - FMS has no COLD writeback;
+  - the H-gram writers and the durable ECS_C authority are retired;
+  - every runtime writer of the census is retired, replaced with volatile state, or a read-only static resource
+    (`elpis.runtime.persistence`).
 
-  The session's zero-write evidence (`research/volatile_runtime_v0`) covers its
-  own test paths only, not any composed runtime path. No crash-persistent
-  identity, resurrection or exactly-once-across-restart guarantee is claimed
-  for a session. Process-level containment does not stop unrelated host
-  services from writing to storage (swap, crash collectors, journals, backups).
-  The census, section 6, lists what the host must configure.
+  What remains is closure condition 11, the independent zero-write verification of the composed runtime
+  (`research/volatile_runtime_v1`). Until it is recorded, the flag `VOLATILE_MIGRATION_COMPLETE` stays false.
+  No crash-persistent identity, resurrection or exactly-once-across-restart guarantee is claimed for a session:
+  a restart is a new, empty session.
+* **The guarantee ends at Elpis's process-control boundary.** Elpis claims only that its runtime issues no
+  persistent-storage mutation:
+  - the native host's containment denies every filesystem write;
+  - it refuses to start without its environmental prerequisites (no core dumps, the swap policy, no storage
+    standard output).
+
+  Services outside Elpis's process-control boundary are not Elpis's: swap configuration, crash collectors,
+  journals, backups and the filesystems' own metadata activity. Elpis claims nothing about how much the operating
+  system or the machine writes to storage. The census, section 6, lists what the host must configure.
 
 ## Inference (`elpis.inference`)
 

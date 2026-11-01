@@ -133,38 +133,33 @@ def test_runtime_import_closure_loads_no_dsv_model_machinery():
 # (for example a model decode or a model text path) must update this list,
 # which is reviewed against docs/ELPIS_MISSION.md.
 #
-# ``anchor_cognition`` is the explicit, one-time durable-authority bootstrap of the
-# canonical K1 turn: it reads the caller's K1 retained-state identity and
-# publishes it as the expected lineage identity. It executes no model, mutates
-# no K1 state and is never invoked implicitly (reconciliation never anchors).
+# ``anchor_cognition`` is the explicit, one-time bootstrap of the canonical K1
+# turn in the session: it reads the caller's K1 retained-state identity and
+# records it in the volatile session as the expected lineage identity. It executes
+# no model, mutates no K1 state and is never invoked implicitly.
 # ``evolution_authority`` reads the current evolution authority an assertion
 # must be bound to; it writes nothing. ``fault`` reads RuntimeCore's fail-stop
-# disposition (native/runtime); it writes nothing. ``recover_k1`` reads what restart
-# may do with the K1 lineage (K1 Recovery R0); ``discard_k1_candidate`` and
-# ``adopt_k1_candidate`` are the explicit operator reconciliation of one named
-# checkpoint candidate. ``publish_recoverable`` and ``publish_identity`` are the
-# explicit durable publications of the live K1 state, of two kinds never confused
-# (RuntimeCore ABI v4, docs/RUNTIME_CORE.md "Live and durable authority": a
-# managed LEARN is volatile, durability is requested separately);
-# ``durability`` reads the durability lane's state and ``live_identity`` the live
-# state's identity. None of them executes a model.
-RUNTIME_OPERATIONS = {"open", "close", "run_ingress", "admit_retrieval", "publish_canonical",
+# disposition (native/runtime); it writes nothing. ``live_identity`` reads the
+# live state's identity. None of them executes a model, and nothing is written:
+# RuntimeCore ABI v8 holds one volatile ECS_C session per open.
+RUNTIME_OPERATIONS = {"open", "close", "run_ingress", "admit_retrieval",
                       "evolution_authority", "evolve", "admit_context", "run_turn", "anchor_cognition", "fault",
-                      "run_query", "run_learn", "release", "recover_k1", "discard_k1_candidate",
-                      "adopt_k1_candidate", "publish_recoverable", "publish_identity", "durability",
-                      "live_identity",
-                      # the explicit legacy move of a K1 lineage to an ECS composite one (a control operation)
-                      "import_composite",
+                      "run_query", "run_learn", "release", "live_identity",
                       # the observe-only managed turn (RuntimeCore ABI v5): typed evidence, no K1 learning
                       "run_observe",
                       # managed QUERY / LEARN of admitted numeric stimuli: numbers in and out, no codec, no text
                       "run_numeric_query", "run_numeric_learn"}
+# Retired with the persistent runtime (RuntimeCore ABI v8; docs/ELPIS_MISSION.md, Amendment 3): no Runtime operation
+# publishes, checkpoints, recovers, reconciles, imports a lineage format or reads a durability lane.
+RETIRED_OPERATIONS = {"publish_canonical", "publish_recoverable", "publish_identity", "durability", "recover_k1",
+                      "discard_k1_candidate", "adopt_k1_candidate", "import_composite"}
 
 
 def test_runtime_composes_no_model_operation():
     import elpis.runtime.composition as composition
     public = {n for n in vars(composition.Runtime) if not n.startswith("_")}
     assert public == RUNTIME_OPERATIONS, sorted(public ^ RUNTIME_OPERATIONS)
+    assert not RETIRED_OPERATIONS & {n for n in dir(composition.Runtime)}
 
 
 def test_the_cognitive_turn_is_codec_then_ecs_then_codec():

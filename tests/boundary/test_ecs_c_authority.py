@@ -44,7 +44,8 @@ def test_the_durable_authority_has_no_source_target_or_library():
 
 def test_nothing_builds_links_includes_or_loads_the_durable_authority():
     """Code, not prose: comments and docstrings may name the retired authority as history; no build file, source or
-    script may reach it. Research instruments pinned to their recorded runs are history and are not scanned."""
+    script may reach it. Research instruments pinned to their recorded runs are history and are not scanned, and the
+    guards that assert its absence (the census, the boundary tests) are not reaches."""
     offenders = []
     for root in ("native", "src", "containment", "tests"):
         base = REPO / root
@@ -53,7 +54,10 @@ def test_nothing_builds_links_includes_or_loads_the_durable_authority():
         for path in base.rglob("*"):
             if not path.is_file() or (path.suffix not in _SCANNED and path.name != "CMakeLists.txt"):
                 continue
-            if "target" in path.relative_to(REPO).parts or path.name == "test_ecs_c_authority.py":
+            rel = path.relative_to(REPO)
+            # The guards name the retired authority to assert its absence: the census and the boundary tests.
+            if "target" in rel.parts or rel.as_posix().startswith("tests/boundary/") or \
+                    rel.as_posix() == "src/elpis/runtime/persistence.py":
                 continue
             code = _code(path.read_text(encoding="utf-8", errors="replace"),
                          ".cmake" if path.name == "CMakeLists.txt" else path.suffix)

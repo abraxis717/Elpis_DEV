@@ -118,6 +118,7 @@ elpis_add_library(structure elpis_semantic STATIC
   ${SEM}/src/graph/segment_writer.c
   ${SEM}/src/graph/segment_reader.c
   ${SEM}/src/graph/snapshot_manifest.c
+  ${SEM}/src/graph/snapshot_publish.c
   ${SEM}/src/graph/active_head_b2b.c
   ${SEM}/src/graph/snapshot_view.c
   ${SEM}/src/graph/query_overlay.c

@@ -93,6 +93,7 @@ from elpis.substrate.digests import raw_digest
 from .authority import ACTIVE, FOUNDED, SOURCE, ContinuityError, ContinuitySnapshot, SessionConfig, SourceGrant, \
     label, lifecycle_event, source_found_event
 from .core import RuntimeCore, RuntimeLibrary, describe
+from .environment import require_volatile_process
 from .edges import from_regex_hacf, object_claims
 from .errors import CompositionError
 
@@ -234,7 +235,11 @@ class Runtime:
         self._bound_substrate = None
 
     def open(self) -> "Runtime":
-        """Start a new session (a fresh genesis in memory) and found the configured sources in it."""
+        """Start a new session (a fresh genesis in memory) and found the configured sources in it.
+
+        The process gate runs first (elpis.runtime.environment): no bytecode cache writes, no core dumps, the swap
+        policy; a process that cannot be established refuses ``ENVIRONMENT_REFUSED`` before any session exists."""
+        self.containment = require_volatile_process()
         # An open runtime is refused and keeps its turn, so the owner is released only once RuntimeCore opened
         # (unbound) and can retain nothing of it.
         self._core.open()

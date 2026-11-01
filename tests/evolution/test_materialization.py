@@ -5,8 +5,8 @@ import shutil
 
 import pytest
 
+from elpis.evolution.materialize import atomic_materialize
 from elpis.evolution.promotion import (
-    atomic_materialize,
     build_manifest_from_tree,
     digest_tree,
     domain_digest,

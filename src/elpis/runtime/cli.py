@@ -40,6 +40,7 @@ import argparse
 from array import array
 from dataclasses import asdict
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -466,8 +467,47 @@ def _retired(argv) -> str | None:
     return None
 
 
+def _storage(fd: int) -> bool:
+    """True when ``fd`` is open for writing onto storage: a regular file, a directory, a block device, or a character
+    device other than a terminal or /dev/null, /dev/zero, /dev/full (the native host's rule)."""
+    import fcntl
+    import stat
+    try:
+        st, flags = os.fstat(fd), fcntl.fcntl(fd, fcntl.F_GETFL)
+    except OSError:
+        return False
+    if flags & os.O_ACCMODE not in (os.O_WRONLY, os.O_RDWR):
+        return False
+    if stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode) or stat.S_ISBLK(st.st_mode):
+        return True
+    return stat.S_ISCHR(st.st_mode) and not os.isatty(fd) and (os.major(st.st_rdev), os.minor(st.st_rdev)) not in {
+        (1, 3), (1, 5), (1, 7)}
+
+
+def _environment_refusal() -> str | None:
+    """The process gate of the interface itself, before any operation (docs/OPERATING_ELPIS.md, "Environment"): the
+    interpreter was started with bytecode writing disabled (otherwise the imports before this point may already have
+    written a cache), and standard error is not storage. Standard output is checked by ``main`` first, since a refusal
+    is printed there."""
+    if not sys.flags.dont_write_bytecode:
+        return "start the interpreter with -B (or PYTHONDONTWRITEBYTECODE=1): bytecode caches are persistent writes"
+    if _storage(2):
+        return "standard error is writable storage (a file, a directory or a device): use a pipe or a terminal"
+    return None
+
+
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
+    if _storage(1):
+        # Never a byte onto storage: refuse without writing to it (the reason reaches standard error only if that
+        # is not storage either).
+        if not _storage(2):
+            sys.stderr.write("ENVIRONMENT_REFUSED: standard output is writable storage: use a pipe or a terminal\n")
+        return 4
+    refusal = _environment_refusal()
+    if refusal is not None:
+        _emit({"op": "environment", "ok": False, "code": "ENVIRONMENT_REFUSED", "detail": refusal})
+        return 4
     retired = _retired(argv)
     if retired is not None:
         _emit({"op": retired.lstrip("-"), "ok": False, "code": "OPERATION_RETIRED",
