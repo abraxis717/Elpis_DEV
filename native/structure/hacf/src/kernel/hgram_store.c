@@ -1,3 +1,10 @@
+/* H-gram store: READ-ONLY (docs/ELPIS_MISSION.md, Amendment 3; elpis/hgram_store.h).
+ *
+ * A retained H-gram file is a read-only static resource: this file probes it and reads association cells from it,
+ * and nothing in it creates, preallocates, initializes, resizes or writes a file. The initializer
+ * (elpis_hgram_init_once, the elpis_hgram_init executable) and the in-place association writer
+ * (elpis_hgram_assoc_store_preapproved) are retired by the volatile-native migration; their code is in git history
+ * only. No descriptor here is ever opened for writing. */
 #define _GNU_SOURCE 1
 #include "elpis/hgram_store.h"
 #include <errno.h>
@@ -8,12 +15,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/statvfs.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #define MIB 1048576ULL
-#define GIB 1073741824ULL
 #define HEADER ELPIS_HGRAM_HEADER_BYTES
 #define SLOT ELPIS_HGRAM_SLOT_BYTES
 static const unsigned char magic[8] = {'E','L','P','H','G','R','A','1'};
@@ -24,27 +29,10 @@ static uint32_t get32(const unsigned char *p) {
 static uint64_t get64(const unsigned char *p) {
     return (uint64_t)get32(p) | (uint64_t)get32(p+4)<<32;
 }
-static void put32(unsigned char *p,uint32_t v) {
-    for (unsigned i=0;i<4;i++) p[i]=(unsigned char)(v>>(8*i));
-}
-static void put64(unsigned char *p,uint64_t v) {
-    for (unsigned i=0;i<8;i++) p[i]=(unsigned char)(v>>(8*i));
-}
 static uint64_t fnv(const unsigned char *p, size_t n) {
     uint64_t h=UINT64_C(14695981039346656037);
     for(size_t i=0;i<n;i++) { h ^= p[i]; h *= UINT64_C(1099511628211); }
     return h;
-}
-static void header_make(unsigned char h[HEADER], uint64_t bytes) {
-    memset(h, 0, HEADER);
-    memcpy(h, magic, 8);
-    put32(h+8,ELPIS_HGRAM_ABI);
-    put32(h+12,HEADER);
-    put64(h+16,bytes);
-    put64(h+24,bytes-HEADER);
-    put32(h+32,SLOT);
-    put64(h+40,(bytes-HEADER)/SLOT);
-    put64(h+48,fnv(h,48));
 }
 static int header_check(const unsigned char h[HEADER], uint64_t file_len,
                         elpis_hgram_info *out) {
@@ -81,9 +69,10 @@ static int parse_path(const char *p,int *dirfd,char leaf[NAME_MAX+1]) {
 static int probe_fd(int fd,elpis_hgram_info *out) {
     struct stat st;
     if(fstat(fd,&st)!=0) return ELPIS_HGRAM_IO;
+    /* Owned by this user and private to it; a read-only static resource need not be writable (mode 0400 or 0600). */
     if(!S_ISREG(st.st_mode) || st.st_nlink!=1 || st.st_uid!=geteuid() ||
        (uint64_t)st.st_blocks < ((uint64_t)st.st_size+511)/512 ||
-       (st.st_mode & (S_IRWXG|S_IRWXO)) || !(st.st_mode & S_IWUSR) ||
+       (st.st_mode & (S_IRWXG|S_IRWXO)) || !(st.st_mode & S_IRUSR) ||
        st.st_size < (off_t)MIB) return ELPIS_HGRAM_INVALID;
     unsigned char h[HEADER];
     size_t done=0;
@@ -107,73 +96,8 @@ int elpis_hgram_probe(const char *path,elpis_hgram_info *out) {
     if(rc==ELPIS_HGRAM_EXISTS) *out=tmp;
     return rc;
 }
-int elpis_hgram_init_once(const char *path,uint64_t size_mib,
-                          elpis_hgram_info *out) {
-    if(!out || !size_mib || size_mib>INT64_MAX/MIB) return ELPIS_HGRAM_INVALID;
-    uint64_t bytes=size_mib*MIB;
-    if(bytes < HEADER+SLOT) return ELPIS_HGRAM_INVALID;
-    int dfd=-1;char leaf[NAME_MAX+1];
-    if(parse_path(path,&dfd,leaf)!=0) return ELPIS_HGRAM_PATH;
-    /* Do not even create a directory/file when an object already exists. */
-    struct stat target;
-    if(fstatat(dfd,leaf,&target,AT_SYMLINK_NOFOLLOW)==0) {
-        close(dfd);
-        elpis_hgram_info existing;
-        int rc=elpis_hgram_probe(path,&existing);
-        if(rc==ELPIS_HGRAM_EXISTS && existing.capacity_mib==size_mib) {
-            *out=existing;return ELPIS_HGRAM_EXISTS;
-        }
-        return ELPIS_HGRAM_INVALID;
-    }
-    if(errno!=ENOENT) {close(dfd);return ELPIS_HGRAM_IO;}
-    struct statvfs sv;
-    if(fstatvfs(dfd,&sv)!=0) {close(dfd);return ELPIS_HGRAM_IO;}
-    uint64_t unit=sv.f_frsize ? sv.f_frsize : sv.f_bsize;
-    if(!unit || sv.f_bavail > UINT64_MAX/unit) {close(dfd);return ELPIS_HGRAM_SPACE;}
-    uint64_t freebytes=(uint64_t)sv.f_bavail*unit;
-    uint64_t reserve=freebytes/10;
-    if(reserve<GIB) reserve=GIB;
-    if(bytes>freebytes || reserve>freebytes-bytes) {close(dfd);return ELPIS_HGRAM_SPACE;}
-    int fd=openat(dfd,leaf,O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);
-    if(fd<0) {int rc=errno==EEXIST ? ELPIS_HGRAM_RACE : ELPIS_HGRAM_IO;
-              close(dfd);return rc;}
-    int rc=ELPIS_HGRAM_IO;
-    struct stat made;
-    if(fstat(fd,&made)!=0) goto failed;
-    /* Full preallocation: a sparse logical-size-only ftruncate is forbidden. */
-    int alloc=posix_fallocate(fd,0,(off_t)bytes);
-    if(alloc!=0) {errno=alloc;goto failed;}
-    unsigned char h[HEADER];header_make(h,bytes);
-    size_t done=0;
-    while(done<sizeof h) {
-        ssize_t n=pwrite(fd,h+done,sizeof h-done,(off_t)done);
-        if(n<=0)goto failed;
-        done+=(size_t)n;
-    }
-    if(fdatasync(fd)!=0 || fsync(dfd)!=0)goto failed;
-    rc=probe_fd(fd,out);
-    if(rc!=ELPIS_HGRAM_EXISTS) {rc=ELPIS_HGRAM_IO;goto failed;}
-    if(close(fd)!=0) {close(dfd);return ELPIS_HGRAM_IO;}
-    close(dfd);return ELPIS_HGRAM_CREATED;
-failed:
-    close(fd);
-    /* Only unlink our own inode; another process may have replaced the path. */
-    struct stat current;
-    if(fstatat(dfd,leaf,&current,AT_SYMLINK_NOFOLLOW)==0 &&
-       made.st_dev==current.st_dev && made.st_ino==current.st_ino) {
-        unlinkat(dfd,leaf,0);
-        fsync(dfd);
-    }
-    close(dfd);
-    return rc;
-}
-
-/* R1: fixed-capacity, dual-copy, collision-refusing association mechanics.
- * The provisioner above and its ABI=1 header intentionally stay unchanged.
- * All durable per-association metadata lives inside paired 256-byte slots.
- * No LRU or eviction occurs in this phase: avoiding catastrophic churn under
- * erroneous requests is more important than accepting every association.
- */
+/* R1 association cells, read only: paired 256-byte records per deterministic bucket (the format the retired
+ * writer produced, unchanged). */
 #define ASSOC_REC_BYTES ELPIS_HGRAM_SLOT_BYTES
 #define ASSOC_PAIR_BYTES (2u * ASSOC_REC_BYTES)
 #define ASSOC_VALID 1u
@@ -185,19 +109,15 @@ typedef struct assoc_cell {
     uint64_t generation;
 } assoc_cell;
 
-/* No resizing, reallocation, auxiliary files or bypass via a preopened fd.
- * Open by the same owner-controlled path rules as the R0 provisioner, and
- * validate the exact opened inode under an advisory process lock. The lock
- * does NOT defeat hostile same-UID code; only OS isolation can do that.
- */
-static int assoc_open(const char *path, int writable,
-                      int *fd_out, elpis_hgram_info *info) {
+/* Read-only: opened O_RDONLY by the same owner-controlled path rules as the probe, and the exact opened inode
+ * validated under a shared advisory lock (an exclusive holder, any other tool, makes the read BUSY). */
+static int assoc_open(const char *path, int *fd_out, elpis_hgram_info *info) {
     int dfd=-1;
     char leaf[NAME_MAX+1];
     if(parse_path(path,&dfd,leaf)!=0) return ELPIS_HGRAM_PATH;
-    int fd=openat(dfd,leaf,(writable?O_RDWR:O_RDONLY)|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK);
+    int fd=openat(dfd,leaf,O_RDONLY|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK);
     if(fd<0) { close(dfd); return ELPIS_HGRAM_INVALID; }
-    if(flock(fd,(writable?LOCK_EX:LOCK_SH)|LOCK_NB)!=0) {
+    if(flock(fd,LOCK_SH|LOCK_NB)!=0) {
         close(fd);close(dfd);return ELPIS_HGRAM_ASSOC_BUSY;
     }
     struct stat opened,current;
@@ -213,18 +133,6 @@ static int assoc_open(const char *path, int writable,
 static int assoc_blank(const uint8_t p[ASSOC_REC_BYTES]) {
     for(size_t i=0;i<ASSOC_REC_BYTES;i++) if(p[i])return 0;
     return 1;
-}
-static void assoc_encode(uint8_t p[ASSOC_REC_BYTES], uint64_t bucket,
-                         const assoc_cell *c) {
-    memset(p,0,ASSOC_REC_BYTES);
-    memcpy(p,assoc_magic,8);
-    put32(p+8,ELPIS_HGRAM_ASSOC_RECORD_ABI);
-    put32(p+12,ASSOC_VALID);
-    put64(p+16,bucket);
-    put64(p+24,c->generation);
-    memcpy(p+32,c->key,ELPIS_HGRAM_ASSOC_KEY_BYTES);
-    memcpy(p+64,c->value,ELPIS_HGRAM_ASSOC_VALUE_BYTES);
-    put64(p+248,fnv(p,248));
 }
 static int assoc_decode(const uint8_t p[ASSOC_REC_BYTES],uint64_t bucket,
                         assoc_cell *c) {
@@ -299,7 +207,7 @@ int elpis_hgram_assoc_get(const char *path,
                            elpis_hgram_assoc_record *out) {
     if(!key || !out) return ELPIS_HGRAM_INVALID;
     int fd=-1;elpis_hgram_info info;
-    int rc=assoc_open(path,0,&fd,&info);
+    int rc=assoc_open(path,&fd,&info);
     if(rc!=ELPIS_HGRAM_ASSOC_OK) return rc;
     if(info.slots<2){close(fd);return ELPIS_HGRAM_INVALID;}
     assoc_pair pair;
@@ -308,56 +216,6 @@ int elpis_hgram_assoc_get(const char *path,
         if(memcmp(pair.selected.key,key,ELPIS_HGRAM_ASSOC_KEY_BYTES)!=0)
             rc=ELPIS_HGRAM_ASSOC_CONFLICT;
         else assoc_output(&pair.selected,out);
-    }
-    if(close(fd)!=0) return ELPIS_HGRAM_IO;
-    return rc;
-}
-int elpis_hgram_assoc_store_preapproved(const char *path,
-             const uint8_t key[ELPIS_HGRAM_ASSOC_KEY_BYTES],
-             const uint8_t value[ELPIS_HGRAM_ASSOC_VALUE_BYTES],
-             uint64_t expected_generation, elpis_hgram_assoc_record *out) {
-    if(!key || !value || !out) return ELPIS_HGRAM_INVALID;
-    int fd=-1;elpis_hgram_info info;
-    int rc=assoc_open(path,1,&fd,&info);
-    if(rc!=ELPIS_HGRAM_ASSOC_OK) return rc;
-    if(info.slots<2){close(fd);return ELPIS_HGRAM_INVALID;}
-    uint64_t bucket=assoc_bucket(key,&info);
-    assoc_pair pair;
-    rc=assoc_read_pair(fd,bucket,&pair);
-    if(rc==ELPIS_HGRAM_ASSOC_NOT_FOUND) {
-        if(expected_generation!=0) rc=ELPIS_HGRAM_ASSOC_STALE;
-    } else if(rc==ELPIS_HGRAM_ASSOC_OK) {
-        if(memcmp(pair.selected.key,key,ELPIS_HGRAM_ASSOC_KEY_BYTES)!=0)
-            rc=ELPIS_HGRAM_ASSOC_CONFLICT;
-        else if(memcmp(pair.selected.value,value,ELPIS_HGRAM_ASSOC_VALUE_BYTES)==0 &&
-                (expected_generation==pair.selected.generation ||
-                 (expected_generation!=UINT64_MAX &&
-                  expected_generation+1==pair.selected.generation))) {
-            assoc_output(&pair.selected,out);close(fd);return ELPIS_HGRAM_ASSOC_OK;
-        } else if(expected_generation!=pair.selected.generation)
-            rc=ELPIS_HGRAM_ASSOC_STALE;
-        else if(pair.selected.generation==UINT64_MAX)
-            rc=ELPIS_HGRAM_ASSOC_STALE;
-    }
-    if(rc==ELPIS_HGRAM_ASSOC_OK || rc==ELPIS_HGRAM_ASSOC_NOT_FOUND) {
-        assoc_cell candidate;
-        memcpy(candidate.key,key,sizeof candidate.key);
-        memcpy(candidate.value,value,sizeof candidate.value);
-        candidate.generation=pair.active<0?1:pair.selected.generation+1;
-        uint8_t wire[ASSOC_REC_BYTES];
-        assoc_encode(wire,bucket,&candidate);
-        int inactive=pair.active<0?0:1-pair.active;
-        uint64_t off=pair.offset+(uint64_t)inactive*ASSOC_REC_BYTES;
-        ssize_t n;
-        do { n=pwrite(fd,wire,sizeof wire,(off_t)off); } while(n<0 && errno==EINTR);
-        if(n!=(ssize_t)sizeof wire || fdatasync(fd)!=0) rc=ELPIS_HGRAM_IO;
-        else {
-            uint8_t check[ASSOC_REC_BYTES];
-            ssize_t got=pread(fd,check,sizeof check,(off_t)off);
-            if(got!=(ssize_t)sizeof check || memcmp(wire,check,sizeof wire)!=0)
-                rc=ELPIS_HGRAM_IO;
-            else { assoc_output(&candidate,out); rc=ELPIS_HGRAM_ASSOC_OK; }
-        }
     }
     if(close(fd)!=0) return ELPIS_HGRAM_IO;
     return rc;
