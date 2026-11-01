@@ -444,6 +444,55 @@ static void case_telemetry(void) {
     fms_destroy(c);
 }
 
+static void case_a_held_object_never_moves(void) {
+    CASE("an object another holder has pinned or leased is never moved: its bytes stay where the holder reads them");
+    fms_pal_test_opts o; memset(&o, 0, sizeof o);
+    o.emulate_device = 1; o.device_domain = FMS_DOM_DEVICE;   /* not zero-copy: a WARM -> HOT hop frees the WARM copy */
+    fms_config cfg = base_cfg(4 * MB, 8 * MB, 8 * MB);
+    fms_ctx *c = fms_create(&cfg, fms_pal_test_create(&o));
+    CHECK(c != NULL, "create");
+    if (!c) return;
+    unsigned char *buf = malloc(MB);
+    fill(buf, MB, 0x5a);
+    fms_id id;
+    CHECK((int)fms_register(c, 1, MB, FMS_WARM, 0.0f, buf, &id) == FMS_WARM, "register WARM");
+    fms_stats before; fms_get_stats(c, &before);
+
+    /* A reader holds the WARM copy; a second acquirer asks for HOT. The object must not move under the reader. */
+    void *reader = NULL, *second = NULL;
+    CHECK((int)fms_acquire(c, id, FMS_WARM, FMS_READ, &reader) == FMS_WARM, "the reader's pin is WARM");
+    int r = fms_acquire(c, id, FMS_HOT, FMS_READ, &second);
+    CHECK(r == FMS_WARM, "a held object is pinned where it is, got tier %d", r);
+    CHECK(second == reader, "both holders read the same WARM bytes");
+    CHECK(verify(reader, MB, 0x5a), "the first holder's bytes are intact");
+    fms_stats st; fms_get_stats(c, &st);
+    CHECK(st.promotions == before.promotions, "nothing was promoted while held");
+    CHECK(st.forced_placements == before.forced_placements + 1, "the refused move is counted as a forced placement");
+    CHECK(fms_release(c, id) == FMS_OK && fms_release(c, id) == FMS_OK, "release both pins");
+
+    /* A lease holds the object the same way. */
+    fms_lease *lease = NULL;
+    CHECK(fms_lease_acquire(c, id, FMS_WARM, FMS_READ, &lease) == FMS_OK && fms_lease_tier(lease) == FMS_WARM,
+          "a WARM lease");
+    r = fms_acquire(c, id, FMS_HOT, FMS_READ, &second);
+    CHECK(r == FMS_WARM && second == fms_lease_ptr(lease), "a leased object is pinned where it is, got tier %d", r);
+    CHECK(verify(fms_lease_ptr(lease), MB, 0x5a), "the lease's bytes are intact");
+    CHECK(fms_release(c, id) == FMS_OK, "release the pin");
+    CHECK(fms_lease_release(c, lease) == FMS_OK, "release the lease");
+
+    /* Nobody holds it now: the promotion happens, and the bytes move intact. */
+    r = fms_acquire(c, id, FMS_HOT, FMS_READ, &second);
+    CHECK(r == FMS_HOT, "an unheld object is promoted, got tier %d", r);
+    CHECK(r == FMS_HOT && verify(second, MB, 0x5a), "the promoted bytes are intact");
+    fms_get_stats(c, &st);
+    CHECK(st.promotions == before.promotions + 1, "one promotion");
+    if (r >= 0) fms_release(c, id);
+    CHECK(fms_unregister(c, id) == FMS_OK, "unregister");
+    no_storage(c, "held objects");
+    free(buf);
+    fms_destroy(c);
+}
+
 int main(void) {
     printf("FMS invariant suite (ABI v3, volatile: HOT and WARM only)\n");
     CHECK(FMS_ABI_VERSION == 3u, "ABI");
@@ -453,6 +502,7 @@ int main(void) {
     case_zero_copy_accounting();
     case_tier_collapse();
     case_pinning();
+    case_a_held_object_never_moves();
     case_lease_fence();
     case_device_loss();
     case_upload_failure_fallback();

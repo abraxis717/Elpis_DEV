@@ -501,14 +501,21 @@ fms_status fms_unregister(fms_ctx *c, fms_id id) {
 
 /* ---- access --------------------------------------------------------------- */
 
-/* Caller holds the lock. Pins first so the target can never be its own victim. */
+/* Caller holds the lock. Pins first so the target can never be its own victim.
+ *
+ * An object that another holder has pinned or leased never moves. Its current bytes are in use: a promotion would
+ * copy them while a writer may be writing, and a non-zero-copy WARM -> HOT hop frees the WARM copy that every earlier
+ * pin points into. So a held object is pinned where it is, and the caller is told the tier it actually got (a forced
+ * placement), exactly as when a promotion is refused. */
 static fms_status pin_at(fms_ctx *c, slot_t *s, int want, unsigned mode, void **ptr, int *tier_out) {
     if (s->state == FMS_ST_FAILED || s->state == FMS_ST_LOST) return FMS_E_STATE;
     if (s->state == FMS_ST_MOVING) return FMS_E_BUSY;
 
     uint64_t now = now_of(c);
+    const int held = s->pin_count || s->lease_count;
     s->pin_count++;
-    while ((int)s->tier > want) {
+    if (held && (int)s->tier > want) c->st.forced_placements++;
+    while (!held && (int)s->tier > want) {
         fms_status r = hop_up(c, s, now);
         /* A device transport failure is not corruption: the CPU copy is still authoritative, so the object stays
          * where it is and the caller is told which tier it actually got. hop_up() has already counted the

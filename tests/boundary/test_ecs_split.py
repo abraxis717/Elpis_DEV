@@ -179,9 +179,9 @@ def test_the_canonical_turn_has_no_history_machinery_statically():
         code = ast.unparse(_strip_docstrings(ast.parse(_dedent(source))))
         assert not FORBIDDEN_HOT_PATH.findall(code), FORBIDDEN_HOT_PATH.findall(code)
     # RuntimeCore's HOT operations (Rust): the live lineage and the native transaction, nothing else. Each HOT
-    # function body is checked on its own: no history machinery, and (ABI v4, docs/RUNTIME_CORE.md "Live and
-    # durable authority") no store, no durability lane, no checkpoint, no publication and no sync. A managed commit
-    # is volatile; durable publication is the separate, explicit durable_request.
+    # function body is checked on its own: no history machinery, and (docs/RUNTIME_CORE.md, "The live coordinate")
+    # no store, no lane, no checkpoint, no publication, no sync and no digest. A managed commit is volatile, and ABI v8
+    # has no durable request at all.
     core = (REPO / "native/runtime/src/core.rs").read_text()
     durable_machinery = re.compile(r"\b(with_stores|Stores|lane|checkpoint|publish\w*|sync\w*|snapshot_write|"
                                    r"continuity|commit_cognition\w*|digest|leased_identity)\b")

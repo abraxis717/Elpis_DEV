@@ -5,7 +5,7 @@
 //! declared input dimension and the caller identity of the handle's owner. Every [`K1Ops`] call is exactly one
 //! native K1 crossing; RuntimeCore computes no ECS mathematics and touches no ECS byte.
 //!
-//! ABI v4 (docs/RUNTIME_CORE.md, "Live and durable authority"): the managed operations reach the state through its
+//! ABI v4 (docs/RUNTIME_CORE.md, "The live coordinate"): the managed operations reach the state through its
 //! live coordinate (ecsg_k1.h, "Live coordinate"): `leased_query`, `leased_txn_begin_at` and `leased_txn_commit`
 //! bind every answer, begin and commit to the state's generation under RuntimeCore's lease and compute no digest;
 //! `leased_identity` (the SHA-256 retained-state identity with the generation) is read once when a state is bound.

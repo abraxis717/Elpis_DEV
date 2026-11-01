@@ -122,7 +122,9 @@ fms_status fms_register(fms_ctx *c, uint32_t kind, uint64_t bytes, int want_tier
                         float pin_priority, const void *init, fms_id *out);
 fms_status fms_unregister(fms_ctx *c, fms_id id);
 
-/* Unfenced pin. Returns the actual tier (>=0). Promotes synchronously (WARM -> HOT; nothing resides below WARM). */
+/* Unfenced pin. Returns the actual tier (>=0). Promotes synchronously (WARM -> HOT; nothing resides below WARM), but
+ * only an object nobody else holds: an object already pinned or leased never moves, so it is pinned where it is and
+ * the actual tier is returned (stats.forced_placements counts it, as a refused promotion). */
 fms_status fms_acquire(fms_ctx *c, fms_id id, int want_tier, unsigned mode, void **ptr);
 /* Resident-only unfenced pin (additive; existing callers are unaffected). Pins the object only where it already
  * is: never promotes, never waits for a move. FMS_E_NOT_RESIDENT when the object sits below `want_tier` (demoted from

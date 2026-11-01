@@ -276,13 +276,13 @@ elpis_ecsg_k1_leased_txn_commit_identity(elpis_ecsg_k1 *state, uint64_t lease, u
                                          elpis_ecsg_k1_commit_identity *identity);
 
 /*
- * Live coordinate (docs/RUNTIME_CORE.md, "Live and durable authority"). The generation counts the committed
+ * Live coordinate (docs/RUNTIME_CORE.md, "The live coordinate"). The generation counts the committed
  * transitions of this object: every installing mutation (learn, consolidate, reset, a committed transaction)
  * advances it by exactly one and nothing else changes it. It is not part of the retained state, its envelope or
  * its digest (create, restore and import start it at 0). While a managed owner holds the lease, only that owner's
  * leased entry points can advance it, so (lease, generation) names the live retained state between the owner's
- * own transitions without hashing it; the retained-state identity (the SHA-256 digest) stays what restart and
- * durable publication verify. These entry points are additive: they change no law, no refusal of an existing
+ * own transitions without hashing it; the retained-state identity (the SHA-256 digest) stays what binding
+ * verifies (RuntimeCore ABI v8 publishes nothing). These entry points are additive: they change no law, no refusal of an existing
  * entry point and no byte of the retained state or its envelope. Each enters the guard once.
  *
  *   leased_query         QUERY for the lease holder: out[r] = f_W(x_r) and *generation of the same authoritative
