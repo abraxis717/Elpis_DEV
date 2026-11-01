@@ -1,11 +1,10 @@
-"""The ECS_C authority's ABI and persistence bounds are one declaration, checked in the sources (docs/ECS_C_AUTHORITY.md).
+"""The durable ECS_C authority is RETIRED (docs/ELPIS_MISSION.md, Amendment 3; docs/ECS_C_AUTHORITY.md).
 
-* The C header, the Rust FFI and the ABI inventory name the same functions: the production library exports the
-  header's functions except the two testing hooks, the testing library all of them, and neither exports the retired
-  standalone continuity's ``elpis_continuity_*`` ABI (the binaries are checked by test_abi_inventory.py).
-* The persistence surface is the fixed file set of the census's persistence invariant (section 5a): the crate
-  names exactly five files, creates files only while provisioning and never renames or removes one afterwards.
-* The record and witness sizes in the header, the Rust layout and the docs agree.
+It held two record slots, an authenticated rollback witness and a deployment key on persistent storage, provisioned
+them, recovered from them and imported continuity's legacy register. The volatile-native migration removed it: no
+source, no build target, no library in the ABI inventory or the system manifest, no Cargo dependency, no link, no
+include, no load. The ECS_C transition law it consumed is owned by the volatile session crate (native/ECS_C/session),
+which RuntimeCore ABI v8 holds instead, and that crate can reach no filesystem. Git history keeps the durable code.
 """
 from __future__ import annotations
 
@@ -14,81 +13,69 @@ import re
 
 from ._system import REPO
 
-CRATE = REPO / "native/ECS_C/authority"
-HEADER = (CRATE / "include/elpis/ecs_c_authority.h").read_text(encoding="utf-8")
-TESTING = {"elpis_ecs_c_testing_arm", "elpis_ecs_c_testing_counters"}
-
-
-# The transition law (model.rs) and the code space (error.rs) moved to the volatile session crate, which this durable
-# crate embeds and re-exports (docs/ECS_C_SESSION.md); the ECS_C types moved to its header.
 SESSION = REPO / "native/ECS_C/session"
-TYPES = (SESSION / "include/elpis/ecs_c_types.h").read_text(encoding="utf-8")
+_TOKENS = ("elpis/ecs_c_authority.h", "libelpis_ecs_c_authority", "elpis_ecs_c_authority", "ECS_C/authority")
+_SCANNED = (".c", ".h", ".cpp", ".rs", ".toml", ".cmake", ".py", ".sh")
 
 
-def _rust(name: str) -> str:
-    path = CRATE / "src" / name
-    if name in ("model.rs", "error.rs", "register.rs", "sha256.rs"):
-        assert not path.exists(), f"{name} has one home: the session crate"
-        path = SESSION / "src" / name
-    return path.read_text(encoding="utf-8")
+def _code(text: str, suffix: str) -> str:
+    """The text without comments (C/C++/Rust // and block comments, Python/CMake/shell # comments, and docstrings)."""
+    if suffix in (".c", ".h", ".cpp", ".rs"):
+        text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+        return "\n".join(line.split("//")[0] for line in text.splitlines())
+    if suffix == ".py":
+        text = re.sub(r'"""[\s\S]*?"""', "", text)
+    return "\n".join(line.split("#")[0] for line in text.splitlines())
 
 
-def _code(text: str) -> str:
-    return "\n".join(line.split("//")[0] for line in text.splitlines())
-
-
-def test_the_header_the_ffi_and_the_inventory_declare_one_abi():
-    declared = set(re.findall(r"\b(elpis_ecs_c_\w+)\s*\(", HEADER))
-    ffi = _rust("ffi.rs")
-    defined = set(re.findall(r'#\[no_mangle\]\s*pub (?:unsafe )?extern "C" fn (\w+)', ffi))
-    assert defined == declared, sorted(defined ^ declared)
-    gated = set(re.findall(r'#\[cfg\(feature = "testing"\)\]\s*#\[no_mangle\]\s*pub (?:unsafe )?extern "C" fn (\w+)', ffi))
-    assert gated == TESTING
-    # The C ABI is the default `c-abi` feature: an embedding crate (RuntimeCore) builds without it.
-    assert '#[cfg(feature = "c-abi")]\npub mod ffi;' in _rust("lib.rs")
-    assert 'default = ["c-abi"]' in (CRATE / "Cargo.toml").read_text(encoding="utf-8")
+def test_the_durable_authority_has_no_source_target_or_library():
+    assert not (REPO / "native/ECS_C/authority").exists()
+    assert "add_subdirectory(authority)" not in (REPO / "native/ECS_C/CMakeLists.txt").read_text(encoding="utf-8")
     inventory = json.loads((REPO / "native/ABI_INVENTORY.json").read_text(encoding="utf-8"))["libraries"]
-    production = inventory["libelpis_ecs_c_authority.so"]
-    testing = inventory["libelpis_ecs_c_authority_testing.so"]
-    assert production == {"soname": "libelpis_ecs_c_authority.so", "elpis_needed": [],
-                          "exports": sorted(declared - TESTING)}
-    assert testing == {"soname": "libelpis_ecs_c_authority_testing.so", "elpis_needed": [],
-                       "exports": sorted(declared)}
-    assert not [s for e in (production, testing) for s in e["exports"] if s.startswith("elpis_continuity_")]
+    assert not [name for name in inventory if "ecs_c_authority" in name]
+    assert not [s for entry in inventory.values() for s in entry["exports"]
+                if s.startswith(("elpis_ecs_c_open", "elpis_ecs_c_provision", "elpis_ecs_c_recover",
+                                 "elpis_ecs_c_reconcile", "elpis_continuity_"))]
+    system = json.loads((REPO / "ELPIS_SYSTEM.json").read_text(encoding="utf-8"))
+    ecs_c = next(s for s in system["subsystems"] if s["id"] == "ECS_C")
+    assert "elpis_ecs_c_authority" not in ecs_c["native_targets"] and ecs_c["persistence"].startswith("NONE")
+    assert any(r["path"] == "native/ECS_C/authority" for r in system["post_migration_retirements"])
 
 
-def test_the_persistence_surface_is_the_fixed_file_set():
-    store = _code(_rust("store.rs"))
-    assert 'STATE_FILES: [&str; 2] = ["authority.a", "authority.b"]' in store
-    assert 'KEY_FILE: &str = "deployment.key"' in store
-    assert 'WITNESS_FILES: [&str; 2] = ["witness.a", "witness.b"]' in store
-    # Every file creation, rename and removal goes through Io, and Io's are called only by provisioning.
-    for primitive in ("create_new(", "fs::rename(", "fs::remove_file(", "create_dir"):
-        assert store.count(primitive) == 1, primitive
-    provisioning = store[store.index("pub(crate) fn provision_with("):]
-    preparing = store[store.index("fn prepare_dir("):store.index("struct Recovered")]
-    for call in ("io.create(", "io.rename(", "io.unlink("):
-        outside = store.replace(provisioning, "").count(call)
-        assert outside == 0, call
-    assert "create_dir" in preparing
-    # No crate source writes anything but the fixed files: no log, no segments, no generations, no compaction.
-    for name in ("model.rs", "record.rs", "store.rs", "legacy.rs", "ffi.rs", "lib.rs", "error.rs", "hmac.rs"):
-        code = _code(_rust(name))
-        assert not re.search(r"\b(OpenOptions::new\(\)\.append|append\(true\)|create\(true\)|"
-                             r"set_len|tempfile|mkstemp)\b", code), name
-    legacy = _code(_rust("legacy.rs"))
-    assert "write" not in legacy, "the continuity directory is read only"
+def test_nothing_builds_links_includes_or_loads_the_durable_authority():
+    """Code, not prose: comments and docstrings may name the retired authority as history; no build file, source or
+    script may reach it. Research instruments pinned to their recorded runs are history and are not scanned."""
+    offenders = []
+    for root in ("native", "src", "containment", "tests"):
+        base = REPO / root
+        if not base.exists():
+            continue
+        for path in base.rglob("*"):
+            if not path.is_file() or (path.suffix not in _SCANNED and path.name != "CMakeLists.txt"):
+                continue
+            if "target" in path.relative_to(REPO).parts or path.name == "test_ecs_c_authority.py":
+                continue
+            code = _code(path.read_text(encoding="utf-8", errors="replace"),
+                         ".cmake" if path.name == "CMakeLists.txt" else path.suffix)
+            if any(token in code for token in _TOKENS):
+                offenders.append(str(path.relative_to(REPO)))
+    assert not offenders, offenders
+    for crate in (REPO / "native/runtime", SESSION):
+        manifest = (crate / "Cargo.toml").read_text(encoding="utf-8")
+        assert "elpis_ecs_c_authority" not in manifest
+        assert "elpis_ecs_c_authority" not in (crate / "Cargo.lock").read_text(encoding="utf-8")
 
 
-def test_record_and_witness_sizes_agree_with_the_header_and_the_docs():
-    record = _code(_rust("record.rs"))
-    model = _code(_rust("model.rs"))
-    assert "pub const WITNESS_BYTES: usize = 240;" in record
-    assert "#define ELPIS_ECS_C_WITNESS_BYTES 240u" in HEADER
-    for constant, value in (("STATE_FIXED", 512), ("ENTITY_BYTES", 160), ("EVENT_BYTES", 512), ("PAYLOAD_AT", 80)):
-        assert f"pub const {constant}: usize = {value};" in model, constant
-    assert "pub const HEADER_BYTES: usize = 256;" in record and "pub const TRAILER_BYTES: usize = 64;" in record
-    assert '#include "elpis/ecs_c_types.h"' in HEADER
-    assert "#define ELPIS_ECS_C_MAX_CAPACITY 4096u" in TYPES and "pub const MAX_CAPACITY: u32 = 4096;" in model
-    doc = (REPO / "docs/ECS_C_AUTHORITY.md").read_text(encoding="utf-8")
-    assert "R = 1344 + 160 × capacity" in doc and "240 bytes" in doc
+def test_the_session_owns_the_law_and_can_reach_no_filesystem():
+    lib = (SESSION / "src/lib.rs").read_text(encoding="utf-8")
+    assert "#![no_std]" in lib
+    manifest = (SESSION / "Cargo.toml").read_text(encoding="utf-8")
+    assert re.search(r"(?ms)^\[dependencies\]\s*\n(?:#[^\n]*\n|\s*\n)*(?:\[|\Z)", manifest), "no dependencies"
+    for path in (SESSION / "src").glob("*.rs"):
+        code = _code(path.read_text(encoding="utf-8"), ".rs")
+        if path.name == "tests.rs":
+            continue                                   # #[cfg(test)] only (extern crate std in tests)
+        for forbidden in ("std::fs", "std::io", "std::net", "std::process", "std::env", "File::", "OpenOptions",
+                          "libc::open", "fn open(", "pwrite", "fsync"):
+            assert forbidden not in code, (path.name, forbidden)
+    assert (SESSION / "src/model.rs").is_file() and (SESSION / "src/error.rs").is_file()

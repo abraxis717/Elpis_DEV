@@ -315,7 +315,7 @@ typedef struct {
     uint64_t evidence_count;
     uint64_t volatile_bytes;    /* the session's exact, constant memory footprint (0: none open) */
     uint64_t sessions;          /* sessions this runtime has opened */
-    uint64_t next_founding_index; /* with the rows: what a relational view (elpis/ecs_c_relational.h) syncs from */
+    uint64_t next_founding_index; /* with the rows: what the ECS_C relational view syncs from */
     uint64_t reclaimed_count;
     uint8_t session[32];        /* the session's lineage */
     uint8_t commit[32];         /* the in-memory commit digest of the current generation */

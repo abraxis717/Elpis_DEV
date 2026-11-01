@@ -62,7 +62,7 @@ commits, and research; it is not the production path.
 
 The native build needs CMake, a C11/C++17 compiler, pkg-config, SQLite 3,
 PCRE2 and a Rust toolchain (cargo and rustc >= 1.89, for
-`native/ECS_C/authority` and `native/runtime`; no crates are downloaded). On Manjaro:
+`native/ECS_C/session` and `native/runtime`; no crates are downloaded). On Manjaro:
 `sudo pacman -S --needed base-devel cmake pkgconf sqlite pcre2 rust`.
 
 ```bash

@@ -1,9 +1,10 @@
 //! The ECS_C authority model: the materialized state, the typed events, and the one transition law ([`apply`],
 //! [`apply_into`]).
 //!
-//! The law is the ECS_C authority's, moved unchanged from `native/ECS_C/authority` into the volatile session crate
-//! (docs/ECS_C_SESSION.md): the volatile session ([`crate::session`]) applies it to RAM-only state, and the retiring
-//! durable authority (`elpis_ecs_c_authority`, still RuntimeCore ABI v7's) re-exports it. Nothing here performs I/O.
+//! The law is the ECS_C authority's, moved unchanged from the durable authority (`native/ECS_C/authority`, retired by
+//! the volatile-native migration; git history) into the volatile session crate (docs/ECS_C_SESSION.md): the volatile
+//! session ([`crate::session`]) applies it to RAM-only state, and RuntimeCore ABI v8 holds that session. Nothing here
+//! performs I/O.
 //! Every structure is fixed-size for a capacity: the state holds at most `capacity` entity rows, counters and chain
 //! heads, never a collection that grows with turns, events or time.
 //!

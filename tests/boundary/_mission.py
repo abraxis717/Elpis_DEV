@@ -178,9 +178,9 @@ def ecs_independence(root: Path) -> list[str]:
               "relational/tests/relational_test_util.h": {"elpis/sha256.h"}}
     for domain, allowed, own in (
             ("ECS_G", geometric, lambda inc, rel: inc.startswith("elpis/ecsg_")),
-            ("ECS_C", memory, lambda inc, rel: inc in ("elpis/ecs_memory.h", "elpis/ecs_c_authority.h",
-                                                        "elpis/ecs_c_hca.h", "elpis/ecs_c_relational.h",
-                                                        "elpis/ecs_c_session.h", "elpis/ecs_c_types.h") or (
+            ("ECS_C", memory, lambda inc, rel: inc in ("elpis/ecs_memory.h", "elpis/ecs_c_hca.h",
+                                                        "elpis/ecs_c_relational.h", "elpis/ecs_c_session.h",
+                                                        "elpis/ecs_c_types.h") or (
                 rel.startswith("memory/tests/test_ecs_memory") and inc == "ecs_memory_test_util.h") or (
                 rel.startswith("hca/tests/test_ecs_c_hca") and inc == "hca_test_util.h") or (
                 rel.startswith("relational/tests/test_ecs_c_relational") and inc == "relational_test_util.h"))):

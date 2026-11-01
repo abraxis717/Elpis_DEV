@@ -4,12 +4,13 @@ The successor of the one-ECS gate (tests/boundary/test_one_ecs.py, retired with 
 the native split). It keeps every prohibition that still applies and adds the split's:
 
 * ``native/ECS_G`` (geometry: math, Runtime R1 executor, mutable FMS, K1, K1 FMS) and ``native/ECS_C`` (the memory
-  and the authority) exist, ``native/ECS`` does not; ELPIS_SYSTEM.json declares ``ECS_G`` and ``ECS_C`` and no ``ECS``.
+  and the volatile session authority) exist, ``native/ECS`` does not; ELPIS_SYSTEM.json declares ``ECS_G`` and
+  ``ECS_C`` and no ``ECS``.
 * Dependency directions, in the sources, the build graph and the authority: ECS_G and ECS_C each depend on the
-  substrate only (standalone continuity, which ECS_C's authority embedded until then, retired into it at RuntimeCore
-  ABI v7); neither ever on the other or on RuntimeCore; the composite (both domains in one object) is RuntimeCore's;
-  RuntimeCore's crate embeds only the ECS_C authority crate and links no ECS code. The built binaries' link graph is
-  checked by tests/boundary/test_abi_inventory.py and tests/boundary/test_ecs_c_authority.py.
+  substrate only; neither ever on the other or on RuntimeCore; the composite (both domains in one object) is
+  RuntimeCore's; RuntimeCore's crate embeds only the ECS_C volatile session crate (ABI v8) and links no ECS code. The
+  durable ECS_C authority is retired (tests/boundary/test_ecs_c_authority.py). The built binaries' link graph is
+  checked by tests/boundary/test_abi_inventory.py.
 * Standalone continuity stays retired: its library, its adapter and their tests are gone, and RuntimeCore's header
   declares none of its functions.
 * Python is not the target execution architecture: no ``elpis.ECS_G`` / ``elpis.ECS_C`` package exists (the
@@ -49,8 +50,8 @@ def test_the_two_native_ecs_domains_exist_and_the_one_ecs_tree_does_not():
     subs = {s["id"]: s for s in SYSTEM["subsystems"]}
     assert set(subs["ECS_G"]["native_targets"]) == {"elpis_ecsg_math", "elpis_ecsg_fms", "elpis_ecsg_k1",
                                                     "elpis_ecsg_k1_fms"}
-    assert subs["ECS_C"]["native_targets"] == ["elpis_ecs_memory", "elpis_ecs_c_session", "elpis_ecs_c_authority",
-                                               "elpis_ecs_c_hca", "elpis_ecs_c_relational"]
+    assert subs["ECS_C"]["native_targets"] == ["elpis_ecs_memory", "elpis_ecs_c_session", "elpis_ecs_c_hca",
+                                               "elpis_ecs_c_relational"]
     assert "elpis_ecs_composite" in subs["runtime"]["native_targets"]
     # Python bindings keep their historical package; no Python ECS_G / ECS_C package or kernel exists, and the
     # retired continuity adapter does not either.
@@ -86,21 +87,21 @@ def test_dependency_directions_keep_runtime_as_the_only_composer():
     ecs = _imports("ECS")
     assert not [n for n in ecs if any(_under(n, p) for p in
                                       ("elpis.inference", "elpis.runtime", "elpis.continuity", "research"))]
-    # RuntimeCore embeds the ECS_C authority crate without its C ABI (the sole composer of the durable authority, its
-    # only one since ABI v7), and nothing else; it links no ECS code (K1 and the composite are reached only through
-    # caller-supplied function tables) and knows nothing of inference or DSV.
+    # RuntimeCore embeds the ECS_C volatile session crate without its C ABI (ABI v8: one session per open), and
+    # nothing else; it links no ECS code (K1 and the composite are reached only through caller-supplied function
+    # tables) and knows nothing of inference or DSV.
     runtime_crate = REPO / "native/runtime"
     cargo = (runtime_crate / "Cargo.toml").read_text()
     deps = cargo[cargo.index("[dependencies]"):].split("\n[", 1)[0]
-    assert re.findall(r"(?m)^(\w+)\s*=", deps) == ["elpis_ecs_c_authority"], deps
-    assert 'elpis_ecs_c_authority = { path = "../ECS_C/authority", default-features = false }' in deps
+    assert re.findall(r"(?m)^(\w+)\s*=", deps) == ["elpis_ecs_c_session"], deps
+    assert 'elpis_ecs_c_session = { path = "../ECS_C/session", default-features = false }' in deps
     assert "[build-dependencies]" not in cargo and "[dev-dependencies]" not in cargo
     lock = (runtime_crate / "Cargo.lock").read_text()
-    assert sorted(re.findall(r'(?m)^name = "([^"]+)"', lock)) == ["elpis_ecs_c_authority", "elpis_ecs_c_session",
-                                                                    "elpis_runtime"]
+    assert sorted(re.findall(r'(?m)^name = "([^"]+)"', lock)) == ["elpis_ecs_c_session", "elpis_runtime"]
     rust = "\n".join(line.split("//")[0] for p in (runtime_crate / "src").rglob("*.rs")
                      for line in p.read_text().splitlines())   # code only: doc comments cite the K1 ABI it mirrors
-    for foreign in ("elpis_ecsg", "extern crate", "#[link(", "dlopen", "dsv", "inference", "ecs_c_authority::ffi"):
+    for foreign in ("elpis_ecsg", "extern crate", "#[link(", "dlopen", "dsv", "inference", "ecs_c_authority",
+                    "elpis_ecs_c_session::ffi", "std::fs", "File::", "OpenOptions"):
         assert foreign not in rust, foreign
     # The volatile ECS_C session (docs/ECS_C_SESSION.md) owns the transition law, SHA-256 and the evolution law and
     # digest. It depends on nothing, not even the Rust standard library (no_std), and has no build script.
@@ -112,27 +113,13 @@ def test_dependency_directions_keep_runtime_as_the_only_composer():
     assert not (session / "build.rs").exists()
     assert "#![no_std]" in (session / "src/lib.rs").read_text()
     assert sorted(re.findall(r'(?m)^name = "([^"]+)"', (session / "Cargo.lock").read_text())) == ["elpis_ecs_c_session"]
-    # The retiring durable ECS_C authority (docs/ECS_C_AUTHORITY.md) depends only on the session crate, embedded
-    # without its C ABI; the legacy register reader is its own. No ECS_G, no memory, no RuntimeCore, no codec, and no
-    # build script.
-    authority = REPO / "native/ECS_C/authority"
-    cargo = (authority / "Cargo.toml").read_text()
-    deps = cargo[cargo.index("[dependencies]"):].split("\n[", 1)[0]
-    assert re.findall(r"(?m)^(\w+)\s*=", deps) == ["elpis_ecs_c_session"], deps
-    assert 'elpis_ecs_c_session = { path = "../session", default-features = false }' in deps
-    assert "[build-dependencies]" not in cargo and "[dev-dependencies]" not in cargo
-    assert not (authority / "build.rs").exists()
-    lock = (authority / "Cargo.lock").read_text()
-    assert sorted(re.findall(r'(?m)^name = "([^"]+)"', lock)) == ["elpis_ecs_c_authority", "elpis_ecs_c_session"]
-    rust = "\n".join(line.split("//")[0] for p in (authority / "src").rglob("*.rs") for line in p.read_text().splitlines())
-    for foreign in ("elpis_ecsg", "ecsg_", "elpis_ecs_mem", "elpis_runtime", "extern crate", "#[link(", "dlopen",
-                    "dsv", "inference"):
-        assert foreign not in rust, foreign
+    # The durable ECS_C authority (docs/ECS_C_AUTHORITY.md) is retired: no crate, nothing depends on it.
+    assert not (REPO / "native/ECS_C/authority").exists()
     inference = _imports("inference")
     assert not [n for n in inference if _under(n, "elpis.ECS") or _under(n, "elpis.continuity")]
     cognition = imports_of(REPO, REPO / "src/elpis/runtime/cognition.py")
     assert any(_under(n, "elpis.ECS") for n in cognition)
-    # The Python reference reaches its durable authority only through RuntimeCore (elpis.runtime.authority).
+    # The Python reference reaches its session authority only through RuntimeCore (elpis.runtime.authority).
     composition = imports_of(REPO, REPO / "src/elpis/runtime/composition.py")
     assert any(_under(n, "elpis.runtime.authority") for n in composition)
     assert not [n for n in composition if _under(n, "elpis.continuity")]
@@ -237,16 +224,19 @@ def _strip_docstrings(tree):
 
 
 def test_standalone_continuity_stays_retired():
-    """Continuity retired into ECS_C at RuntimeCore ABI v7 (docs/ELPIS_MISSION.md, Amendment 2): RuntimeCore's header
-    declares none of its functions and no creation over it; the durable view keeps continuity's layout and names
-    (``elpis_continuity_snapshot`` and ``_evolution``, the ``ELPIS_CONTINUITY_*`` codes), now declared by runtime.h."""
+    """Continuity retired into ECS_C at RuntimeCore ABI v7 (docs/ELPIS_MISSION.md, Amendment 2), and the durable ECS_C
+    authority after it under ABI v8 (Amendment 3): RuntimeCore's header declares none of continuity's functions, no
+    include of it and no creation over the durable authority; ``elpis_runtime_create`` takes an ABI v8 configuration
+    (a volatile session). The session view keeps continuity's layout and names (``elpis_continuity_snapshot`` and
+    ``_evolution``, the ``ELPIS_CONTINUITY_*`` codes), declared by runtime.h."""
     header = (REPO / "native/runtime/include/elpis/runtime.h").read_text()
     code = re.sub(r"/\*.*?\*/", "", header, flags=re.S)
     assert not re.findall(r"\b(elpis_continuity_\w+)\s*\(", code)
-    assert not re.search(r"\belpis_runtime_create\s*\(", code) and "elpis/continuity.h" not in code
-    assert re.search(r"\belpis_runtime_create_ecs_c\s*\(", code)
+    assert "elpis/continuity.h" not in code and "ecs_c_authority" not in code
+    assert not re.search(r"\belpis_runtime_create_ecs_c\s*\(", code)
+    assert re.search(r"\bint elpis_runtime_create\(const elpis_runtime_config \*config, elpis_runtime \*\*out\);", code)
     assert "} elpis_continuity_snapshot;" in code and "} elpis_continuity_evolution;" in code
-    assert re.search(r"\bELPIS_RUNTIME_ABI_V7 = 7u\b", code), "RuntimeCore ABI v7"
+    assert re.search(r"\bELPIS_RUNTIME_ABI_V8 = 8u\b", code), "RuntimeCore ABI v8"
     for name in ("CMakeLists.txt", ".github/workflows/ci.yml"):
         text = (REPO / name).read_text()
         assert "native/continuity" not in text and "elpis_continuity" not in text, name

@@ -41,59 +41,13 @@
   {
    "stage": "V4 (FMS ABI v3; docs/ELPIS_MISSION.md, Amendment 3)",
    "change": "FMS ABI v3 is volatile (WARM and HOT only; no COLD residency, no storage domain): the writable POSIX cold store and its constructors are retired, so elpis_fms_create_posix is replaced by elpis_fms_create_ram_only in libelpis_ecsg_fms.so, libelpis_ecsg_k1_fms.so, libelpis_fms_file_assets.so and libelpis_retrieval_bridge.so (which embed the FMS core). No Elpis link changes."
+  },
+  {
+   "stage": "V4 (the durable ECS_C authority retired; docs/ELPIS_MISSION.md, Amendment 3)",
+   "change": "libelpis_ecs_c_authority.so and libelpis_ecs_c_authority_testing.so are removed with the durable ECS_C authority (native/ECS_C/authority; git history): nothing links or loads them. No other export or link changes."
   }
  ],
  "libraries": {
-  "libelpis_ecs_c_authority.so": {
-   "soname": "libelpis_ecs_c_authority.so",
-   "elpis_needed": [],
-   "exports": [
-    "elpis_ecs_c_abi_version",
-    "elpis_ecs_c_check_evidence",
-    "elpis_ecs_c_close",
-    "elpis_ecs_c_code_name",
-    "elpis_ecs_c_entity_at",
-    "elpis_ecs_c_entity_find",
-    "elpis_ecs_c_evolution_digest",
-    "elpis_ecs_c_legacy_record",
-    "elpis_ecs_c_next_entity_id",
-    "elpis_ecs_c_open",
-    "elpis_ecs_c_provision",
-    "elpis_ecs_c_read_reconciliation",
-    "elpis_ecs_c_read_report",
-    "elpis_ecs_c_read_status",
-    "elpis_ecs_c_receipt_chain",
-    "elpis_ecs_c_record_bytes",
-    "elpis_ecs_c_source_for_authority",
-    "elpis_ecs_c_transition"
-   ]
-  },
-  "libelpis_ecs_c_authority_testing.so": {
-   "soname": "libelpis_ecs_c_authority_testing.so",
-   "elpis_needed": [],
-   "exports": [
-    "elpis_ecs_c_abi_version",
-    "elpis_ecs_c_check_evidence",
-    "elpis_ecs_c_close",
-    "elpis_ecs_c_code_name",
-    "elpis_ecs_c_entity_at",
-    "elpis_ecs_c_entity_find",
-    "elpis_ecs_c_evolution_digest",
-    "elpis_ecs_c_legacy_record",
-    "elpis_ecs_c_next_entity_id",
-    "elpis_ecs_c_open",
-    "elpis_ecs_c_provision",
-    "elpis_ecs_c_read_reconciliation",
-    "elpis_ecs_c_read_report",
-    "elpis_ecs_c_read_status",
-    "elpis_ecs_c_receipt_chain",
-    "elpis_ecs_c_record_bytes",
-    "elpis_ecs_c_source_for_authority",
-    "elpis_ecs_c_testing_arm",
-    "elpis_ecs_c_testing_counters",
-    "elpis_ecs_c_transition"
-   ]
-  },
   "libelpis_ecs_c_hca.so": {
    "soname": "libelpis_ecs_c_hca.so",
    "elpis_needed": [],
