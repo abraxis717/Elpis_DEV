@@ -20,6 +20,7 @@ Interface mechanics only (TRAINING=NONE SEMANTICS=NONE fixture map); no cognitio
 """
 from __future__ import annotations
 
+import gc
 import os
 import sys
 
@@ -96,11 +97,19 @@ def test_a_managed_turn_is_three_runtimecore_crossings_and_writes_nothing(experi
         generation = runtime.live_identity(state)[1]
         runtime._core.counters(reset=True)
         codec = admitted(FixtureMap(**fixture))   # admission is the cold path (it measures the codec's source)
+        # The counters wrap the shared, cached library, so a finalizer of another test's unreferenced runtime would be
+        # counted too (elpis_runtime_destroy). Collect before the window and keep the collector out of it: the window
+        # then holds exactly this turn's crossings.
+        gc.collect()
         core_calls = _CountingSymbols(runtime._core._f, "elpis_runtime_")
         counter.calls.clear()
-        with monkeypatch.context() as patch:
-            fs = _CountingOS(patch)
-            result = runtime.run_turn(state, "turn", tokenizer=ByteTokens(), codec=codec, authority=LEARN)
+        gc.disable()
+        try:
+            with monkeypatch.context() as patch:
+                fs = _CountingOS(patch)
+                result = runtime.run_turn(state, "turn", tokenizer=ByteTokens(), codec=codec, authority=LEARN)
+        finally:
+            gc.enable()
         python_k1_calls, turn_core_calls = dict(counter.calls), dict(core_calls.calls)
         native = runtime._core.counters()
 
