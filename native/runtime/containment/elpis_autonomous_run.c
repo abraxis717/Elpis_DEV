@@ -39,24 +39,30 @@
 #endif
 _Static_assert(LANDLOCK_ACCESS_FS_IOCTL_DEV == (1ULL << 15), "unexpected Landlock ioctl device access bit");
 
-static void report(const char *msg) {
-    int e = errno;
-    fprintf(stderr, "ELPIS_AUTONOMOUS_CONTAINMENT_REFUSED: %s (errno=%d)\n", msg, e);
+/* Writable storage: a descriptor open for writing onto a regular file, a directory, a block device, or a character
+ * device other than a terminal or /dev/null, /dev/zero, /dev/full. */
+static int writable_storage(int fd) {
+    struct stat st;
+    int flags = fcntl(fd, F_GETFL);
+    if (flags < 0 || fstat(fd, &st) != 0) return 0;
+    int acc = flags & O_ACCMODE;
+    if (acc != O_WRONLY && acc != O_RDWR) return 0;
+    if (S_ISREG(st.st_mode) || S_ISDIR(st.st_mode) || S_ISBLK(st.st_mode)) return 1;
+    return S_ISCHR(st.st_mode) && !isatty(fd) &&
+           !(major(st.st_rdev) == 1 && (minor(st.st_rdev) == 3 || minor(st.st_rdev) == 5 || minor(st.st_rdev) == 7));
 }
 
-/* No writable storage on a standard descriptor: a regular file, a directory, a block device, or a character device
- * other than a terminal or /dev/null, /dev/zero, /dev/full. */
+/* The refusal goes to standard error only when that is not storage: the launcher writes nothing onto storage. */
+static void report(const char *msg) {
+    int e = errno;
+    if (!writable_storage(STDERR_FILENO)) fprintf(stderr, "ELPIS_AUTONOMOUS_CONTAINMENT_REFUSED: %s (errno=%d)\n", msg, e);
+}
+
 static int is_safe_stdio(void) {
     for (int fd = 0; fd <= 2; ++fd) {
         struct stat st;
-        int flags = fcntl(fd, F_GETFL);
-        if (flags < 0 || fstat(fd, &st) != 0) return -1;
-        int acc = flags & O_ACCMODE;
-        if (acc != O_WRONLY && acc != O_RDWR) continue;
-        if (S_ISREG(st.st_mode) || S_ISDIR(st.st_mode) || S_ISBLK(st.st_mode)) return -1;
-        if (S_ISCHR(st.st_mode) && !isatty(fd) &&
-            !(major(st.st_rdev) == 1 && (minor(st.st_rdev) == 3 || minor(st.st_rdev) == 5 || minor(st.st_rdev) == 7)))
-            return -1;
+        if (fcntl(fd, F_GETFL) < 0 || fstat(fd, &st) != 0) return -1;
+        if (writable_storage(fd)) return -1;
     }
     return 0;
 }

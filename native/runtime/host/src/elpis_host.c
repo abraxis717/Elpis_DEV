@@ -1397,7 +1397,9 @@ static const command_spec COMMANDS[] = {
 static const char *const RETIRED_COMMANDS[] = {"init", "create", "publish", "reconcile", "candidates",
                                                "authority-reconcile", "--home", "--contained", "--publish"};
 
+/* Like every refusal, the usage text never goes onto storage. */
 static void usage(void) {
+    if (host_writable_storage(STDERR_FILENO)) return;
     fprintf(stderr, "usage: elpis (--libraries DIR | --native-build BUILD) catalog\n"
                     "       elpis (--libraries DIR | --native-build BUILD) --catalog-sha256 HEX [session options] "
                     "session --script FILE|-\n"
@@ -1578,6 +1580,14 @@ static void emit_catalog(const char *catalog, const uint8_t digest[32]) {
 }
 
 int main(int argc, char **argv) {
+    /* Never a byte onto storage: with standard output on writable storage the host refuses without writing there
+     * (the reason goes to standard error only when that is not storage either). */
+    if (host_writable_storage(STDOUT_FILENO)) {
+        static const char why[] = "elpis: CONTAINMENT_REFUSED: standard output is writable storage (a file, a "
+                                  "directory or a device): nothing was written; use a pipe or a terminal\n";
+        if (!host_writable_storage(STDERR_FILENO) && write(STDERR_FILENO, why, sizeof why - 1) < 0) return 4;
+        return 4;
+    }
     static host h;
     host_options o;
     memset(&o, 0, sizeof o);

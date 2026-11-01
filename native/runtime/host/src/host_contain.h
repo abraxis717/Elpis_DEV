@@ -36,6 +36,10 @@ typedef struct {
     int memory_locked;     /* mlockall(MCL_CURRENT | MCL_FUTURE) applied (required when swap_areas > 0) */
 } host_containment;
 
+/* 1 when `fd` is open for writing onto storage (a regular file, a directory, a block device, or a character device
+ * that is neither a terminal nor /dev/null, /dev/zero, /dev/full): the host never writes through such a descriptor,
+ * not even its refusal. */
+int host_writable_storage(int fd);
 int host_contain_process(host_containment *c, host_err *e);
 int host_contain_files(host_containment *c, host_err *e);
 

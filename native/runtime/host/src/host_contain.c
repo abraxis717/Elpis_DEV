@@ -34,21 +34,26 @@ static int inert_device(dev_t rdev) {
     return major(rdev) == 1 && (minor(rdev) == 3 || minor(rdev) == 5 || minor(rdev) == 7);
 }
 
+int host_writable_storage(int fd) {
+    struct stat st;
+    const int flags = fcntl(fd, F_GETFL);
+    if (flags < 0 || fstat(fd, &st)) return 0;   /* not open: nothing could be written through it */
+    const int acc = flags & O_ACCMODE;
+    if (acc != O_WRONLY && acc != O_RDWR) return 0;
+    if (S_ISREG(st.st_mode) || S_ISDIR(st.st_mode) || S_ISBLK(st.st_mode)) return 1;
+    return S_ISCHR(st.st_mode) && !inert_device(st.st_rdev) && !isatty(fd);
+}
+
 static int contain_stdio(host_err *e) {
     for (int fd = 0; fd <= 2; ++fd) {
         struct stat st;
-        const int flags = fcntl(fd, F_GETFL);
-        if (flags < 0 || fstat(fd, &st))
+        if (fcntl(fd, F_GETFL) < 0 || fstat(fd, &st))
             return host_fail(e, "CONTAINMENT_REFUSED", "standard descriptor %d is not open", fd);
-        const int acc = flags & O_ACCMODE;
-        if (acc != O_WRONLY && acc != O_RDWR) continue;
         /* Writable storage on a standard descriptor would be a persistent write path that bypasses every check. */
-        if (S_ISREG(st.st_mode) || S_ISDIR(st.st_mode) || S_ISBLK(st.st_mode))
-            return host_fail(e, "CONTAINMENT_REFUSED", "standard descriptor %d is writable storage: use a pipe or a "
-                                                       "terminal", fd);
-        if (S_ISCHR(st.st_mode) && !inert_device(st.st_rdev) && !isatty(fd))
-            return host_fail(e, "CONTAINMENT_REFUSED", "standard descriptor %d is a writable device (%u:%u): use a "
-                                                       "pipe or a terminal", fd, major(st.st_rdev), minor(st.st_rdev));
+        if (host_writable_storage(fd))
+            return host_fail(e, "CONTAINMENT_REFUSED", "standard descriptor %d is writable storage (a file, a "
+                                                       "directory, a block device or a non-terminal character "
+                                                       "device): use a pipe or a terminal", fd);
     }
     /* Nothing inherited beyond them: a preopened descriptor would bypass path mediation. */
     if (syscall(SYS_close_range, 3u, ~0u, 0u))

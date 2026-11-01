@@ -167,7 +167,7 @@ int host_seal(int dirfd, const char *path, host_pin *pin, int *sealed, char *err
         return fail(err, errlen, "not a regular library file of at most 256 MiB", path);
     }
     const uint64_t size = (uint64_t)before.st_size;
-    const int fd = memfd_create("elpis-admitted", MFD_CLOEXEC | MFD_ALLOW_SEALING);
+    int fd = memfd_create("elpis-admitted", MFD_CLOEXEC | MFD_ALLOW_SEALING);
     if (fd < 0) {
         close(src);
         return fail(err, errlen, "memfd_create", path);
@@ -195,6 +195,20 @@ int host_seal(int dirfd, const char *path, host_pin *pin, int *sealed, char *err
         goto out;
     }
     if (digest_fd(fd, size, pin->sha256)) goto out;
+    /* Keep only a read-only descriptor of the seal: nothing in the process holds the library writable, even
+     * though the seals already refuse every write. */
+    char self[64];
+    snprintf(self, sizeof self, "/proc/self/fd/%d", fd);
+    const int ro = open(self, O_RDONLY | O_CLOEXEC);
+    struct stat a, b;
+    if (ro < 0 || fstat(ro, &a) || fstat(fd, &b) || a.st_ino != b.st_ino || a.st_dev != b.st_dev ||
+        (fcntl(ro, F_GET_SEALS) & seals) != seals) {
+        if (ro >= 0) close(ro);
+        fail(err, errlen, "cannot reopen the seal read-only", path);
+        goto out;
+    }
+    close(fd);
+    fd = ro;
     pin->size = size;
     rc = 0;
 out:
