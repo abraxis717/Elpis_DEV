@@ -137,8 +137,10 @@ admissible rule sits on one Bayes frontier between clean learning and corrupted 
 Priors restricted to {clean, q=0.4} are Bayes rules for every weighting of CLEAN and FLIP40 risk, so by
 the complete-class argument they trace the best attainable trade-off for this information. Conservative
 advantage thresholds, minimax regret, reliability-gated CGC proposals and information-directed or greedy
-acquisition all landed on or inside it (RESEARCH_LOG.md). A learned estimator cannot beat the Bayes risk
-under the design distribution, so family D was not built. Information-directed acquisition lowers online
+acquisition all landed on or inside it (RESEARCH_LOG.md). A learned estimator using the same
+information cannot beat the Bayes risk under the design distribution, so no new family-D network was
+trained. The one frozen learned update rule in the study, the ES-trained 120-weight CGC_REFERENCE, sits
+inside the frontier (76% clean retention, FLIP40 +0.0011). Information-directed acquisition lowers online
 regret by about 27% but raises the identification AUC only from 0.80 to 0.83. A fixed-log diagnostic
 (identical NOOP action logs for every learner) reproduces the same FLIP40 deltas, so the failure is not
 acquisition bias.
@@ -255,6 +257,10 @@ machines; records are reproduced to about 1e-12 relative, and recomputed decisio
 **Nonclaims.** Synthetic SLB1 only; not the Q4E5/Q4E14 simulator or its holdout (unopened, untouched);
 no production, RALPH, runtime or native admission; no claim of Bayes optimality beyond the stated model;
 no robustness claim outside the measured regimes; `ORIGINAL` remains unsolved at these gates.
+
+**Partitions consumed.** SLB1 v1's VALIDATION and HOLDOUT partitions have been used for these frozen
+candidates. Any revised candidate must be qualified on fresh partitions (for example, a new root label
+`elpis/cgc_lao/solver_lab/v2/`), never on these.
 
 **Next experiments.** (1) A hypothesis grid reaching 0.49 and an audited estimate of reading-level
 correlation, to close the FLIP45 and EVENT40 boundaries before any deployment discussion. (2) Adaptive
