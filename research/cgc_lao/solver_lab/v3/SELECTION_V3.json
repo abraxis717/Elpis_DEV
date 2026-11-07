@@ -1,0 +1,247 @@
+{
+ "schema": "cgc-lao-solver-lab.selection.v3",
+ "primary": "RMF_NOEVENT",
+ "fallback": "SAFE3_P4",
+ "primary_rows": {
+  "RMF3": {
+   "gates": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": true
+   },
+   "eligible": true,
+   "ALL": 0.052246267267604174,
+   "complexity": [
+    24,
+    48
+   ]
+  },
+  "RMF4_E25": {
+   "gates": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": true
+   },
+   "eligible": true,
+   "ALL": 0.052421633167499995,
+   "complexity": [
+    31,
+    64
+   ]
+  },
+  "RMF4_W": {
+   "gates": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": true
+   },
+   "eligible": true,
+   "ALL": 0.05192192713885416,
+   "complexity": [
+    31,
+    64
+   ]
+  },
+  "RMF_NOEVENT": {
+   "gates": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": true
+   },
+   "eligible": true,
+   "ALL": 0.05138132085208333,
+   "complexity": [
+    31,
+    64
+   ]
+  },
+  "RMF5_E25": {
+   "gates": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": true
+   },
+   "eligible": true,
+   "ALL": 0.05155420610020833,
+   "complexity": [
+    38,
+    80
+   ]
+  },
+  "RMF_V1": {
+   "gates": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": true
+   },
+   "eligible": false,
+   "ALL": 0.05131847554520833,
+   "complexity": [
+    31,
+    64
+   ]
+  },
+  "BETA_ALL": {
+   "gates": {
+    "G1": false,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": false
+   },
+   "eligible": false,
+   "ALL": 0.053764379261458335,
+   "complexity": [
+    12,
+    1
+   ]
+  },
+  "SGD_ALL": {
+   "gates": {
+    "G1": false,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": false
+   },
+   "eligible": false,
+   "ALL": 0.05316460481197917,
+   "complexity": [
+    6,
+    1
+   ]
+  },
+  "DISAGREE_SGD": {
+   "gates": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": true
+   },
+   "eligible": false,
+   "ALL": 0.05226795013572917,
+   "complexity": [
+    8,
+    1
+   ]
+  },
+  "PLUGIN_Q_BAYES": {
+   "gates": {
+    "G1": false,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": true
+   },
+   "eligible": false,
+   "ALL": 0.0514288636103125,
+   "complexity": [
+    11,
+    16
+   ]
+  },
+  "STATIC_ATT_ALL": {
+   "gates": {
+    "G1": true,
+    "G2": true,
+    "G3": false,
+    "G4": false,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": false
+   },
+   "eligible": false,
+   "ALL": 0.055771636212395836,
+   "complexity": [
+    6,
+    1
+   ]
+  }
+ },
+ "fallback_rows": {
+  "SAFE4_P8": {
+   "gates": {
+    "F1": true,
+    "F2": true,
+    "F3": true,
+    "F4": true,
+    "F5": true,
+    "F6": true
+   },
+   "eligible": true,
+   "CLEAN": 0.0511695430809375,
+   "clean_retention": 0.49528646906504686
+  },
+  "SAFE4_P4": {
+   "gates": {
+    "F1": true,
+    "F2": true,
+    "F3": false,
+    "F4": true,
+    "F5": true,
+    "F6": true
+   },
+   "eligible": false,
+   "CLEAN": 0.04904811464875,
+   "clean_retention": 0.5998425060935557
+  },
+  "SAFE3_P4": {
+   "gates": {
+    "F1": true,
+    "F2": true,
+    "F3": true,
+    "F4": true,
+    "F5": true,
+    "F6": true
+   },
+   "eligible": true,
+   "CLEAN": 0.049964744304375,
+   "clean_retention": 0.554665792724002
+  }
+ },
+ "record_sha256": "8847d5f3f07f0fb1dbc68b3306d29a86b957c08d5c5c1c9c9b168e71edff2d23"
+}

@@ -1,0 +1,425 @@
+{
+ "schema": "cgc-lao-solver-lab.freeze.v3",
+ "note": "Frozen before any v3 VALIDATION, HOLDOUT or OOD run; selection by SELECTION_V3.json.",
+ "candidates": {
+  "PRIMARY": {
+   "name": "RMF_NOEVENT",
+   "config": {
+    "hypotheses": [
+     [
+      0.0,
+      0.0
+     ],
+     [
+      0.2,
+      0.0
+     ],
+     [
+      0.4,
+      0.0
+     ],
+     [
+      0.48,
+      0.0
+     ]
+    ],
+    "prior": [
+     1,
+     1,
+     1,
+     1
+    ]
+   },
+   "contract": "DUP2_4",
+   "mode": "DUPLICATE"
+  },
+  "FALLBACK": {
+   "name": "SAFE3_P4",
+   "config": {
+    "hypotheses": [
+     [
+      0.0,
+      0.0
+     ],
+     [
+      0.4,
+      0.0
+     ],
+     [
+      0.48,
+      0.0
+     ]
+    ],
+    "prior": [
+     1,
+     4,
+     4
+    ]
+   },
+   "contract": "DUP2_4",
+   "mode": "FIRST_ONLY"
+  }
+ },
+ "rng_root": "elpis/cgc_lao/solver_lab/v3/",
+ "source_sha256": "6b2719b4ec9359b9eacdb2bfd7acdef6f36b6d4992b79e20102adb47d341e80a",
+ "source_files_sha256": {
+  "v3/__init__.py": "4587abbfdc9e95469a98787102f34a3b3eb3e994eac83c146489aaf59c17ff58",
+  "v3/env3.py": "84445d3f51acaf151415496f37c7b81015b0d903a3db0d3c845c0dd8ed97fad7",
+  "v3/study3.py": "75f160dfba824dca4022fe0d39e76e0e158c1d4546b5444af173fd4b0184a858",
+  "v2/__init__.py": "b5cee9dab9fbce43462e9f3b9203b94dec8a74f32f82436c2128f348247503c8",
+  "v2/agents2.py": "a4961fb1966a81873343e29591d1f6a3908b49bf0b42c23baeea70fe546c6134",
+  "v2/arms2.py": "6d89f6aaaa3f8de8d777647bbecf153d9d0cfc4387cccc67b4f454c3c7fe2d05",
+  "v2/calibrate2.py": "524af60d6a085b72bbc540ccc9dde58fc27bcac09c5d3901e26a0774bee8d679",
+  "v2/candidates2.py": "d23a67f841d883e5d1e7eaf854996668fb25866105fd8b8cca0522f45558db4c",
+  "v2/env2.py": "dfeff06d3fb300da4621ae26a708f60dbce09ca430bd5fb398609eb97426188b",
+  "v2/evaluate2.py": "a9f2d6d7ac9bce0f1bd76dad89cf74830e084023f1bfb3c07d85da8d2a3ec4f7",
+  "v2/filter2.py": "427a7221a9998ab89d4a393c7ce8e3dcc666b937486a6c7c8f03b72690a1a1cb",
+  "v2/freeze2.py": "f3f83a5157ec6a855f6bfc1900c257cc000c20991af3c4e845aced3b9f15e476",
+  "v2/harness2.py": "f0e0280e54cb48ec3322ebd093c98db727f6f01c3f4dfd28a926bd590690eb83",
+  "v2/host.py": "e953a2cb780c5a248e7a88855f1271bc9b74cd929934a5e1d2a002304359e0ec",
+  "v2/native.py": "663195e616ed9f953597b3f9dafbebea1a947eed5f66abc6b10ee1608a27b763",
+  "v2/parity2.py": "6f400287ca60241da8f37cf0a045f0880fc89bd92a6009a052755bea0c85028a",
+  "v2/providers.py": "c46dadc4c9da8652f59d83c497814b317f9fdd639df3a2ae279fa9e8114f610d",
+  "v2/report2.py": "660b37e1ac89e2e391c4f4ad1b5fae668177aed8839175b1f65298e62ba63909",
+  "v2/scalar2.py": "911e4a2c653780ee46c72cd934d7787139a4e61f8636f7957133057816fdc474",
+  "v1/__init__.py": "2a84f905e60773d89addb2058814db8fb3fe0272e21da3827588033e244b59f5",
+  "v1/agents.py": "446772d17df6b5b879af82f0fb4bd2edb35333221aec3f50de949251b8fd8f35",
+  "v1/arms.py": "3cb74ff6c930f769a60ab384de40ec7d4bd47d7c7d0ffd2d964b0149de2facb0",
+  "v1/calibrate.py": "7eb4995ff0fbc96ecd41085e0c5b2dcd714b934660a5f74f2c87f5cd603b94e1",
+  "v1/candidates.py": "b1bf55f286be9663324d78dbe1b8981be90de1a61575a0e288137b6b91eb7450",
+  "v1/cgc.py": "482b51ca2915084719c326b6ab848523f5d9415ca059b0773bdcfb2f051ee49b",
+  "v1/diagnostics.py": "201c9064a544bfb7d1f5cbb13462adf4d5dd21c7c5fb04c93bf8663ffb7e8be8",
+  "v1/env.py": "7d48386e82569104d88900c2e854c83ba4d3862877685b769514a6e34d8657ce",
+  "v1/evaluate.py": "b17c9aa4d0f24f4fc257008de4c059fe1d3acf04c95650f1709166f598fb9dc2",
+  "v1/filters.py": "bcf42f0932e9b73c8f95f91fb94b5bf32e67f0ebe20a3e7e9c127f4efacd575a",
+  "v1/freeze.py": "e2d21aeaabb181ceec95ac3da53353698d521f79c5ed69573fa0f52020dc81f9",
+  "v1/harness.py": "9b3ca1d7aa091b31922bcc2f7f0cc44d28badf24119d362b93a712a6aa911835",
+  "v1/report.py": "7467b175f7ccf2026c0427f29facb22d30ae9e9b63d9a67532aa58307874fe41",
+  "v1/resources.py": "a7f177923a8fd770b76ae397c264856494793f01e3f328b8a714993598ca95d8",
+  "v1/rng.py": "cf2113a49d4548259461d9c6d1da064250341e2bc0d26524705a203738051441",
+  "v1/scalar_rmf.py": "626bef5dd4ce1863255aa4cdd4bdaf5b6d56b6eb5dd1a4e1e03a7ff2afd2384b",
+  "v1/selector.py": "0c5a546fa0505fb52293dcf8eaedf6c8c7d0a63f694f646f242811f4c2e92286",
+  "v1/stats.py": "8e32b89ec71bfda85f1f1d107b42d941fa56fe05403c1c8de5f9f94e13bec6e5",
+  "v1/train_cgc.py": "7b973ea2523c3104607da5490988a409a1f3a448f6dced103e3a64e063325fd5"
+ },
+ "native_files_sha256": {
+  "CMakeLists.txt": "7902b65ca45db976686cc465d677dcb278b42589ab3169166e2d0c24678247ea",
+  "include/cgc_lao_rmf.h": "a52bed45d8a76ae0d34339e41d413f2f40accc8d17eb9ac58da1144247db1b07",
+  "src/cgc_lao_rmf.c": "bbf47ca72db7f27f8366785a597ca5991bc5ade5c4b968f0f74e808d8c3a9e3f",
+  "tests/test_cgc_lao_rmf.c": "ac4d560a2db82b24cedc7b4fe2e66a772e438ac00d6078e1d099969e6e28f7a3"
+ },
+ "spec_sha256": {
+  "slb1": "ef965e1dddcf3269a1a32cd3730716569cb40293d5b6322dc5c27ea8da7ee122",
+  "slb2": "22d2654c8d628bf65aa7addf2330456cdeaa82688cdf1d87667b87862d5b4c65"
+ },
+ "coefficients_sha256": {
+  "baselines.v2.json": "84309be05cb11aaad8ab9b9f9f8e3a9458678a62ed077b548a9f2ae14db3305c",
+  "cgc_reference.v2.json": "f909333eedfa5c7413be3506fc35ecf608ddaae2c00ada3799f72908f87cb8dc"
+ },
+ "plans": {
+  "VALIDATION": {
+   "partition": "VALIDATION",
+   "seeds": [
+    0,
+    32
+   ],
+   "episodes": 4096,
+   "regimes": [
+    "CLEAN",
+    "FLIP20",
+    "FLIP40",
+    "FLIP45",
+    "FLIP48",
+    "QUNIF",
+    "BURST",
+    "EVENT40"
+   ]
+  },
+  "HOLDOUT": {
+   "partition": "HOLDOUT",
+   "seeds": [
+    0,
+    64
+   ],
+   "episodes": 4096,
+   "regimes": [
+    "CLEAN",
+    "FLIP20",
+    "FLIP40",
+    "FLIP45",
+    "FLIP48",
+    "QUNIF",
+    "BURST",
+    "EVENT40"
+   ]
+  },
+  "OOD": {
+   "partition": "OOD",
+   "seeds": [
+    0,
+    64
+   ],
+   "episodes": 2048,
+   "regimes": [
+    "FLIP40",
+    "CORR10",
+    "CORR25",
+    "CORR50",
+    "CORR75",
+    "CORR90",
+    "EVENT40",
+    "FLIP30",
+    "ASYM40",
+    "CTXQ40",
+    "BIASWIDE",
+    "BIASWIDE40",
+    "ROUTERWIDE40",
+    "SHARED_SRC",
+    "SECOND_EVENT40"
+   ]
+  }
+ },
+ "specs": {
+  "VALIDATION": {
+   "NOOP": {
+    "arm": "NOOP",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "SGD": {
+    "arm": "SGD",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "BETA": {
+    "arm": "BETA",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "CGC_REFERENCE": {
+    "arm": "CGC_REFERENCE",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "STATIC_ATTENUATION": {
+    "arm": "STATIC_ATTENUATION",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "CLEAN_BAYES": {
+    "arm": "CLEAN_BAYES",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "KNOWN_Q_ORACLE": {
+    "arm": "KNOWN_Q_ORACLE",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "RMF_NOEVENT": {
+    "arm": "RMF_NOEVENT",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "SAFE3_P4": {
+    "arm": "SAFE3_P4",
+    "contract": "DUP2_4",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "RMF_V1": {
+    "arm": "RMF_V1",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "BETA_ALL": {
+    "arm": "BETA_ALL",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "SGD_ALL": {
+    "arm": "SGD_ALL",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "DISAGREE_SGD": {
+    "arm": "DISAGREE_SGD",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "PLUGIN_Q_BAYES": {
+    "arm": "PLUGIN_Q_BAYES",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "STATIC_ATT_ALL": {
+    "arm": "STATIC_ATT_ALL",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "KNOWN_Q_DUP": {
+    "arm": "KNOWN_Q_ORACLE",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   }
+  },
+  "HOLDOUT": {
+   "NOOP": {
+    "arm": "NOOP",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "SGD": {
+    "arm": "SGD",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "BETA": {
+    "arm": "BETA",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "CGC_REFERENCE": {
+    "arm": "CGC_REFERENCE",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "STATIC_ATTENUATION": {
+    "arm": "STATIC_ATTENUATION",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "CLEAN_BAYES": {
+    "arm": "CLEAN_BAYES",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "KNOWN_Q_ORACLE": {
+    "arm": "KNOWN_Q_ORACLE",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "RMF_NOEVENT": {
+    "arm": "RMF_NOEVENT",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "SAFE3_P4": {
+    "arm": "SAFE3_P4",
+    "contract": "DUP2_4",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "RMF_V1": {
+    "arm": "RMF_V1",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "BETA_ALL": {
+    "arm": "BETA_ALL",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "SGD_ALL": {
+    "arm": "SGD_ALL",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "DISAGREE_SGD": {
+    "arm": "DISAGREE_SGD",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "PLUGIN_Q_BAYES": {
+    "arm": "PLUGIN_Q_BAYES",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "STATIC_ATT_ALL": {
+    "arm": "STATIC_ATT_ALL",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "KNOWN_Q_DUP": {
+    "arm": "KNOWN_Q_ORACLE",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   }
+  },
+  "OOD": {
+   "NOOP": {
+    "arm": "NOOP",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "RMF_NOEVENT": {
+    "arm": "RMF_NOEVENT",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "RMF_NOEVENT@SECOND_EVENT": {
+    "arm": "RMF_NOEVENT",
+    "contract": "DUP2_4",
+    "mode": "SECOND_EVENT",
+    "overrides": {}
+   },
+   "SAFE3_P4": {
+    "arm": "SAFE3_P4",
+    "contract": "DUP2_4",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "RMF_V1": {
+    "arm": "RMF_V1",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   },
+   "CLEAN_BAYES": {
+    "arm": "CLEAN_BAYES",
+    "contract": "ORIGINAL",
+    "mode": "FIRST_ONLY",
+    "overrides": {}
+   },
+   "KNOWN_Q_DUP": {
+    "arm": "KNOWN_Q_ORACLE",
+    "contract": "DUP2_4",
+    "mode": "DUPLICATE",
+    "overrides": {}
+   }
+  }
+ },
+ "holdout_rule": "open HOLDOUT only if the PRIMARY passes G1-G5, G7, G9, G10 on VALIDATION"
+}
