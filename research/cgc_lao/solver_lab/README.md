@@ -43,7 +43,7 @@ Main findings:
 | `coefficients/` | TRAIN-fitted baseline coefficients and ES-trained CGC weights (JSON, digest-checked) |
 | `evidence/` | sealed records: `train/`, `dev/`, `validation/`, `holdout/`, `DISPOSITION.json`, `resources.json` |
 | `cgc_lao_lab_tests/` | 51 mechanical and evidence tests (unittest) |
-| `scripts/fixed_log.py` | post-holdout fixed-action-log diagnostic |
+| `scripts/` | post-holdout DEV diagnostics: fixed action log, next-experiment hypothesis grid |
 
 ## Run
 

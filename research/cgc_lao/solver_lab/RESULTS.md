@@ -262,8 +262,22 @@ no robustness claim outside the measured regimes; `ORIGINAL` remains unsolved at
 candidates. Any revised candidate must be qualified on fresh partitions (for example, a new root label
 `elpis/cgc_lao/solver_lab/v2/`), never on these.
 
-**Next experiments.** (1) A hypothesis grid reaching 0.49 and an audited estimate of reading-level
-correlation, to close the FLIP45 and EVENT40 boundaries before any deployment discussion. (2) Adaptive
-duplicates: request a second reading only while the regime posterior is uncertain (expected < 4 extra
-readings; the information curve suggests 3 suffice in-distribution). (3) A native C port of
-`scalar_rmf.py` with the parity test as its oracle.
+**Next experiments.** A post-holdout DEV diagnostic ([`scripts/next_grid.py`](scripts/next_grid.py),
+[`evidence/dev/next_grid.json`](evidence/dev/next_grid.json); fresh seeds 80–95; *not* a qualification)
+fixes the starting point:
+
+| DUP2_4 learner | clean retention | FLIP40 Δ vs NOOP | FLIP45 Δ | EVENT40 Δ |
+|---|---:|---:|---:|---:|
+| `RMF_U3E25` (frozen) | 95.6% | −0.00084 | +0.00148 (harm) | +0.00388 (harm) |
+| + channel hypothesis q = 0.48, event prior 0.25 | 94.7% | −0.00139 | +0.00033 [−0.00001, +0.00067] | +0.00325 (harm) |
+| + q = 0.48, event prior 1 | 87.8% | −0.00152 | +0.00016 (n.s.) | +0.00070 (harm) |
+| + q = 0.48, event prior 3 | 76.4% | −0.00159 | +0.00006 (n.s.) | −0.00052 (useful) |
+
+1. Extend the grid to q = 0.48. That closes most of the FLIP45 boundary at about 1% of the clean gain,
+   and qualify the result on fresh v2 partitions.
+2. Treat EVENT40 as a contract question, not a learner question. Closing it inside the learner costs
+   about 20% of the clean gain (the original trade-off returns, as the mechanism predicts), so
+   reading-level independence must be established and audited by the host.
+3. Adaptive duplicates: request a second reading only while the regime posterior is uncertain (the
+   information curve suggests 3 readings suffice in-distribution).
+4. A native C port of `scalar_rmf.py`, with the parity test as its oracle.

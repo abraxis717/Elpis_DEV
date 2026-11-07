@@ -104,3 +104,9 @@ phases): FLIP45 for both candidates, EVENT40 for both, ROUTERWIDE40 for `RMF_U3`
 with every learner updated on NOOP's own action log, FLIP40 deltas vs NOOP are RMF_U3 +0.0012, CLEAN_BAYES
 +0.0122, KNOWN_Q −0.0012, RMF_P67 −0.0004, and RMF_U3E25 (DUP2_4) −0.0008 with 96% clean retention. These
 match the on-policy results, so the original-contract failure is not acquisition bias.
+
+**Post-holdout next-experiment diagnostic** (DEV seeds 80–95; [`evidence/dev/next_grid.json`](evidence/dev/next_grid.json);
+not a qualification). Adding a q = 0.48 channel hypothesis to the frozen DUP2_4 learner cuts the FLIP45 harm
+from +0.0015 to +0.0003 (n.s.) at about 1% of the clean gain, and improves FLIP40 to −0.0014. Raising
+event-level prior mass to 3 makes EVENT40 useful (−0.0005) but drops clean retention to 76%. Event-level
+corruption is the original single-reading problem, so it must be handled by auditing the contract.
