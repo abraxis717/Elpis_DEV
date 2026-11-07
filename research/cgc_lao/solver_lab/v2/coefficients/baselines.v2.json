@@ -1,0 +1,63 @@
+{
+ "schema": "cgc-lao-solver-lab.baseline-coefficients.v2",
+ "coefficients": {
+  "SGD": {
+   "eta": 0.5
+  },
+  "BETA": {
+   "kappa": 8.0
+  },
+  "SGD_ALL": {
+   "eta": 0.5
+  },
+  "BETA_ALL": {
+   "kappa": 8.0
+  },
+  "DISAGREE_SGD": {
+   "eta": 1.0
+  },
+  "STATIC_ATTENUATION": {
+   "attenuation": 0.5
+  }
+ },
+ "selection": "SLB2 TRAIN seeds 0-15, 2048 episodes, min ALL terminal regret; ORIGINAL-contract baselines under ORIGINAL, equal-information controls under DUP2_4 with every reading",
+ "all_terminal_table": {
+  "SGD@0.05": 0.06119423,
+  "SGD@0.1": 0.05960173,
+  "SGD@0.2": 0.05726775,
+  "SGD@0.3": 0.05598374,
+  "SGD@0.5": 0.05580471,
+  "SGD@0.75": 0.05852593,
+  "SGD@1.0": 0.06293853,
+  "SGD@1.5": 0.07193469,
+  "BETA@0.5": 0.07981576,
+  "BETA@1.0": 0.07569978,
+  "BETA@2.0": 0.06824898,
+  "BETA@4.0": 0.06000545,
+  "BETA@8.0": 0.05635207,
+  "BETA@16.0": 0.05680733,
+  "BETA@32.0": 0.05870891,
+  "SGD_ALL@0.05": 0.06118183,
+  "SGD_ALL@0.1": 0.059554,
+  "SGD_ALL@0.2": 0.05706114,
+  "SGD_ALL@0.3": 0.0555801,
+  "SGD_ALL@0.5": 0.05483512,
+  "SGD_ALL@0.75": 0.05696697,
+  "SGD_ALL@1.0": 0.06089283,
+  "SGD_ALL@1.5": 0.06982864,
+  "BETA_ALL@0.5": 0.07543518,
+  "BETA_ALL@1.0": 0.07142017,
+  "BETA_ALL@2.0": 0.06465351,
+  "BETA_ALL@4.0": 0.05784427,
+  "BETA_ALL@8.0": 0.05539784,
+  "BETA_ALL@16.0": 0.05642049,
+  "BETA_ALL@32.0": 0.05856863,
+  "DISAGREE_SGD@0.1": 0.06111778,
+  "DISAGREE_SGD@0.2": 0.0594219,
+  "DISAGREE_SGD@0.3": 0.05800745,
+  "DISAGREE_SGD@0.5": 0.05587502,
+  "DISAGREE_SGD@0.75": 0.05437635,
+  "DISAGREE_SGD@1.0": 0.05391763,
+  "DISAGREE_SGD@1.5": 0.05506306
+ }
+}
