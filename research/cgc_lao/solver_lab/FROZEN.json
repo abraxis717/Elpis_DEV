@@ -1,0 +1,145 @@
+{
+ "schema": "cgc-lao-solver-lab.freeze.v1",
+ "note": "Selected on DEV round 2 by the preregistered rule (most gates passed by point estimate, ties broken by ALL terminal regret); frozen before any VALIDATION run.",
+ "candidates": {
+  "ORIGINAL": {
+   "name": "RMF_U3",
+   "config": {
+    "family": "A",
+    "qs": [
+     0.0,
+     0.2,
+     0.4
+    ],
+    "prior": [
+     1,
+     1,
+     1
+    ]
+   },
+   "contract_reads": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  "DUP2_4": {
+   "name": "RMF_U3E25",
+   "config": {
+    "family": "E",
+    "qs": [
+     0.0,
+     0.2,
+     0.4,
+     0.4
+    ],
+    "prior": [
+     1,
+     1,
+     1,
+     0.25
+    ],
+    "kinds": [
+     "channel",
+     "channel",
+     "channel",
+     "event"
+    ]
+   },
+   "contract_reads": [
+    2,
+    2,
+    2,
+    2,
+    1,
+    1,
+    1,
+    1
+   ]
+  }
+ },
+ "source_sha256": "5fd2e9b28250d1f77e21cd719a7b4e5fb8df33d36cb39a5826976efa04364251",
+ "source_files_sha256": {
+  "__init__.py": "2a84f905e60773d89addb2058814db8fb3fe0272e21da3827588033e244b59f5",
+  "agents.py": "446772d17df6b5b879af82f0fb4bd2edb35333221aec3f50de949251b8fd8f35",
+  "arms.py": "3cb74ff6c930f769a60ab384de40ec7d4bd47d7c7d0ffd2d964b0149de2facb0",
+  "calibrate.py": "7eb4995ff0fbc96ecd41085e0c5b2dcd714b934660a5f74f2c87f5cd603b94e1",
+  "candidates.py": "b1bf55f286be9663324d78dbe1b8981be90de1a61575a0e288137b6b91eb7450",
+  "cgc.py": "482b51ca2915084719c326b6ab848523f5d9415ca059b0773bdcfb2f051ee49b",
+  "diagnostics.py": "201c9064a544bfb7d1f5cbb13462adf4d5dd21c7c5fb04c93bf8663ffb7e8be8",
+  "env.py": "7d48386e82569104d88900c2e854c83ba4d3862877685b769514a6e34d8657ce",
+  "evaluate.py": "b17c9aa4d0f24f4fc257008de4c059fe1d3acf04c95650f1709166f598fb9dc2",
+  "filters.py": "bcf42f0932e9b73c8f95f91fb94b5bf32e67f0ebe20a3e7e9c127f4efacd575a",
+  "freeze.py": "e2d21aeaabb181ceec95ac3da53353698d521f79c5ed69573fa0f52020dc81f9",
+  "harness.py": "9b3ca1d7aa091b31922bcc2f7f0cc44d28badf24119d362b93a712a6aa911835",
+  "report.py": "7467b175f7ccf2026c0427f29facb22d30ae9e9b63d9a67532aa58307874fe41",
+  "resources.py": "a7f177923a8fd770b76ae397c264856494793f01e3f328b8a714993598ca95d8",
+  "rng.py": "cf2113a49d4548259461d9c6d1da064250341e2bc0d26524705a203738051441",
+  "scalar_rmf.py": "626bef5dd4ce1863255aa4cdd4bdaf5b6d56b6eb5dd1a4e1e03a7ff2afd2384b",
+  "selector.py": "0c5a546fa0505fb52293dcf8eaedf6c8c7d0a63f694f646f242811f4c2e92286",
+  "stats.py": "8e32b89ec71bfda85f1f1d107b42d941fa56fe05403c1c8de5f9f94e13bec6e5",
+  "train_cgc.py": "7b973ea2523c3104607da5490988a409a1f3a448f6dced103e3a64e063325fd5"
+ },
+ "spec_sha256": "ef965e1dddcf3269a1a32cd3730716569cb40293d5b6322dc5c27ea8da7ee122",
+ "coefficients_sha256": {
+  "baselines.v1.json": "a94b164dc663fdda4853131ea86a8acb7ca7258168e416f859c190a04d8dcd23",
+  "cgc_reference.v1.json": "b3d7654765e3759817d43b93261d9bd2e57e81fba3c2d781afe03eecf14fe34f"
+ },
+ "regimes": [
+  "CLEAN",
+  "FLIP20",
+  "FLIP40",
+  "QUNIF",
+  "FLIP30",
+  "FLIP45",
+  "BURST",
+  "ASYM40",
+  "CTXQ40",
+  "BIASWIDE",
+  "BIASWIDE40",
+  "ROUTERWIDE40",
+  "EVENT40"
+ ],
+ "reference_arms": [
+  "NOOP",
+  "SGD",
+  "BETA",
+  "CGC_REFERENCE",
+  "STATIC_ATTENUATION",
+  "CLEAN_BAYES",
+  "KNOWN_Q_ORACLE"
+ ],
+ "plans": {
+  "VALIDATION": {
+   "partition": "VALIDATION",
+   "seeds": [
+    0,
+    32
+   ],
+   "episodes": 4096
+  },
+  "HOLDOUT": {
+   "partition": "HOLDOUT",
+   "seeds": [
+    0,
+    64
+   ],
+   "episodes": 4096
+  }
+ },
+ "commands": {
+  "VALIDATION": [
+   "python3 -m cgc_lao_lab.report VALIDATION --partition VALIDATION --seeds 0:32 --episodes 4096 --regimes CLEAN,FLIP20,FLIP40,QUNIF,FLIP30,FLIP45,BURST,ASYM40,CTXQ40,BIASWIDE,BIASWIDE40,ROUTERWIDE40,EVENT40 --contract ORIGINAL --arms NOOP,SGD,BETA,CGC_REFERENCE,STATIC_ATTENUATION,CLEAN_BAYES,KNOWN_Q_ORACLE,RMF_U3 --out evidence/validation/original.json",
+   "python3 -m cgc_lao_lab.report VALIDATION --partition VALIDATION --seeds 0:32 --episodes 4096 --regimes CLEAN,FLIP20,FLIP40,QUNIF,FLIP30,FLIP45,BURST,ASYM40,CTXQ40,BIASWIDE,BIASWIDE40,ROUTERWIDE40,EVENT40 --contract DUP2_4 --arms RMF_U3E25,KNOWN_Q_ORACLE --out evidence/validation/dup2_4.json"
+  ],
+  "HOLDOUT": [
+   "python3 -m cgc_lao_lab.report HOLDOUT --partition HOLDOUT --seeds 0:64 --episodes 4096 --regimes CLEAN,FLIP20,FLIP40,QUNIF,FLIP30,FLIP45,BURST,ASYM40,CTXQ40,BIASWIDE,BIASWIDE40,ROUTERWIDE40,EVENT40 --contract ORIGINAL --arms NOOP,SGD,BETA,CGC_REFERENCE,STATIC_ATTENUATION,CLEAN_BAYES,KNOWN_Q_ORACLE,RMF_U3 --out evidence/holdout/original.json",
+   "python3 -m cgc_lao_lab.report HOLDOUT --partition HOLDOUT --seeds 0:64 --episodes 4096 --regimes CLEAN,FLIP20,FLIP40,QUNIF,FLIP30,FLIP45,BURST,ASYM40,CTXQ40,BIASWIDE,BIASWIDE40,ROUTERWIDE40,EVENT40 --contract DUP2_4 --arms RMF_U3E25,KNOWN_Q_ORACLE --out evidence/holdout/dup2_4.json"
+  ]
+ }
+}

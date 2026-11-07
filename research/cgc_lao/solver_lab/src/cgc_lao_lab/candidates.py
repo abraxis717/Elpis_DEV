@@ -26,4 +26,26 @@ CANDIDATES: dict = {
     # Family C: acquisition.
     "RMF_U3_GREEDY": {"family": "C", "qs": Q3, "prior": [1, 1, 1], "acquisition": "greedy"},
     "RMF_U3_INFOQ": {"family": "C", "qs": Q3, "prior": [1, 1, 1], "acquisition": "infoq", "lam": 1.0},
+    # DEV round 1. Family A: two-hypothesis Bayes rules trace the CLEAN-vs-FLIP40 frontier directly
+    # (a Lagrangian of CLEAN and FLIP40 risk is the Bayes risk of a prior on {clean, q=0.4} only).
+    "RMF_Q2_E": {"family": "A", "qs": [0.0, 0.4], "prior": [1, 1]},
+    "RMF_Q2_P60": {"family": "A", "qs": [0.0, 0.4], "prior": [2, 3]},
+    "RMF_Q2_P67": {"family": "A", "qs": [0.0, 0.4], "prior": [1, 2]},
+    # Family B: a less strict conservative-advantage threshold; minimax regret over plausible hypotheses.
+    "RMF_U3_CONS025": {"family": "B", "qs": Q3, "prior": [1, 1, 1], "decision": "conservative", "tau": 0.25},
+    "RMF_U3_MINIMAX": {"family": "B", "qs": Q3, "prior": [1, 1, 1], "decision": "minimax", "tau": 0.05},
+    # Family C: reliability-information-heavy acquisition (score = MI + 0.1 * predicted success).
+    "RMF_U3_INFOQ01": {"family": "C", "qs": Q3, "prior": [1, 1, 1], "acquisition": "infoq", "lam": 0.1},
+    # Family E: an event-level corruption hypothesis keeps duplicate agreement from certifying cleanliness.
+    "RMF_U3E": {"family": "E", "qs": [0.0, 0.2, 0.4, 0.4], "prior": [1, 1, 1, 0.5],
+                "kinds": ["channel", "channel", "channel", "event"]},
+    # DEV round 2 (final selection round). Design rule fixed before the round: a learner run under a
+    # duplicate-reading contract keeps an event-level hypothesis, because duplicate agreement cannot test
+    # the contract's own independence assumption.
+    "RMF_U3E_GREEDY": {"family": "E", "qs": [0.0, 0.2, 0.4, 0.4], "prior": [1, 1, 1, 0.5],
+                       "kinds": ["channel", "channel", "channel", "event"], "acquisition": "greedy"},
+    "RMF_U3E25": {"family": "E", "qs": [0.0, 0.2, 0.4, 0.4], "prior": [1, 1, 1, 0.25],
+                  "kinds": ["channel", "channel", "channel", "event"]},
+    "RMF_P67E": {"family": "E", "qs": [0.0, 0.2, 0.4, 0.4], "prior": [1, 1, 4, 1],
+                 "kinds": ["channel", "channel", "channel", "event"]},
 }

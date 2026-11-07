@@ -1,0 +1,132 @@
+{
+ "schema": "cgc-lao-solver-lab.record.v1",
+ "phase": "RESOURCES",
+ "note": "measured on this machine; not asserted by tests",
+ "source_sha256": "18c94db0aa4fc8bcdf608242ab955a4bc93a8374dfd908ac8e3256b8c2ad7fa9",
+ "spec_sha256": "ef965e1dddcf3269a1a32cd3730716569cb40293d5b6322dc5c27ea8da7ee122",
+ "coefficients_sha256": {
+  "baselines.v1.json": "a94b164dc663fdda4853131ea86a8acb7ca7258168e416f859c190a04d8dcd23",
+  "cgc_reference.v1.json": "b3d7654765e3759817d43b93261d9bd2e57e81fba3c2d781afe03eecf14fe34f"
+ },
+ "environment": {
+  "python": "3.13.18",
+  "numpy": "2.5.3",
+  "machine": "x86_64",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "openblas_threads": "1"
+ },
+ "rows": [
+  {
+   "arm": "NOOP",
+   "contract": "ORIGINAL",
+   "state_scalars": 6,
+   "state_bytes_float64": 48,
+   "state_bytes_float32_equivalent": 24,
+   "peak_temporary_bytes_episode": 11050,
+   "updates_per_episode": 8,
+   "terminal_decisions_per_episode": 16,
+   "update_latency_us_median_b1": 11.3,
+   "decision_latency_us_median_b1": 22.2,
+   "episode_latency_us_amortised_b4096": 6.27
+  },
+  {
+   "arm": "SGD",
+   "contract": "ORIGINAL",
+   "state_scalars": 6,
+   "state_bytes_float64": 48,
+   "state_bytes_float32_equivalent": 24,
+   "peak_temporary_bytes_episode": 9535,
+   "updates_per_episode": 8,
+   "terminal_decisions_per_episode": 16,
+   "update_latency_us_median_b1": 43.3,
+   "decision_latency_us_median_b1": 34.0,
+   "episode_latency_us_amortised_b4096": 9.11
+  },
+  {
+   "arm": "BETA",
+   "contract": "ORIGINAL",
+   "state_scalars": 12,
+   "state_bytes_float64": 96,
+   "state_bytes_float32_equivalent": 48,
+   "peak_temporary_bytes_episode": 10313,
+   "updates_per_episode": 8,
+   "terminal_decisions_per_episode": 16,
+   "update_latency_us_median_b1": 69.4,
+   "decision_latency_us_median_b1": 32.8,
+   "episode_latency_us_amortised_b4096": 9.51
+  },
+  {
+   "arm": "CGC_REFERENCE",
+   "contract": "ORIGINAL",
+   "state_scalars": 6,
+   "state_bytes_float64": 24,
+   "state_bytes_float32_equivalent": 24,
+   "peak_temporary_bytes_episode": 13021,
+   "updates_per_episode": 8,
+   "terminal_decisions_per_episode": 16,
+   "update_latency_us_median_b1": 48.7,
+   "decision_latency_us_median_b1": 25.9,
+   "episode_latency_us_amortised_b4096": 8.54
+  },
+  {
+   "arm": "STATIC_ATTENUATION",
+   "contract": "ORIGINAL",
+   "state_scalars": 6,
+   "state_bytes_float64": 24,
+   "state_bytes_float32_equivalent": 24,
+   "peak_temporary_bytes_episode": 10053,
+   "updates_per_episode": 8,
+   "terminal_decisions_per_episode": 16,
+   "update_latency_us_median_b1": 49.8,
+   "decision_latency_us_median_b1": 26.6,
+   "episode_latency_us_amortised_b4096": 9.9
+  },
+  {
+   "arm": "CLEAN_BAYES",
+   "contract": "ORIGINAL",
+   "state_scalars": 10,
+   "state_bytes_float64": 80,
+   "state_bytes_float32_equivalent": 40,
+   "peak_temporary_bytes_episode": 40386,
+   "updates_per_episode": 8,
+   "terminal_decisions_per_episode": 16,
+   "update_latency_us_median_b1": 85.3,
+   "decision_latency_us_median_b1": 59.3,
+   "episode_latency_us_amortised_b4096": 55.18
+  },
+  {
+   "arm": "RMF_U3",
+   "contract": "ORIGINAL",
+   "state_scalars": 24,
+   "state_bytes_float64": 192,
+   "state_bytes_float32_equivalent": 96,
+   "peak_temporary_bytes_episode": 102892,
+   "updates_per_episode": 8,
+   "terminal_decisions_per_episode": 16,
+   "update_latency_us_median_b1": 135.9,
+   "decision_latency_us_median_b1": 89.6,
+   "episode_latency_us_amortised_b4096": 118.64,
+   "scalar_update_latency_us_median": 47.3,
+   "scalar_decision_latency_us_median_16_queries": 641.1,
+   "flops_per_update_approx": 576,
+   "flops_per_query_decision_approx": 1152
+  },
+  {
+   "arm": "RMF_U3E25",
+   "contract": "DUP2_4",
+   "state_scalars": 31,
+   "state_bytes_float64": 248,
+   "state_bytes_float32_equivalent": 124,
+   "peak_temporary_bytes_episode": 134893,
+   "updates_per_episode": 8,
+   "terminal_decisions_per_episode": 16,
+   "update_latency_us_median_b1": 102.5,
+   "decision_latency_us_median_b1": 88.4,
+   "episode_latency_us_amortised_b4096": 192.89,
+   "scalar_update_latency_us_median": 80.9,
+   "scalar_decision_latency_us_median_16_queries": 1412.7,
+   "flops_per_update_approx": 768,
+   "flops_per_query_decision_approx": 1536
+  }
+ ]
+}

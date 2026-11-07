@@ -18,3 +18,5 @@ from cgc_lao_lab_tests.test_benchmark import *  # noqa: E402,F401,F403
 from cgc_lao_lab_tests.test_boundaries import *  # noqa: E402,F401,F403
 from cgc_lao_lab_tests.test_mechanics import *  # noqa: E402,F401,F403
 from cgc_lao_lab_tests.test_statistics import *  # noqa: E402,F401,F403
+from cgc_lao_lab_tests.test_scalar_reference import *  # noqa: E402,F401,F403
+from cgc_lao_lab_tests.test_evidence import *  # noqa: E402,F401,F403

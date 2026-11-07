@@ -190,7 +190,7 @@ class BayesAgent(Agent):
     def __init__(self, qs, prior, bias_var=1.0, kinds=None, acquisition="probe", decision="bayes",
                  lam=1.0, tau=0.0, single_read=False, name=None, privileged=False):
         self.filter = ReliabilityMixtureFilter(qs, prior, bias_var, kinds)
-        if acquisition not in ("probe", "greedy", "infoq") or decision not in ("bayes", "conservative"):
+        if acquisition not in ("probe", "greedy", "infoq") or decision not in ("bayes", "conservative", "minimax"):
             raise ValueError("BAYES_AGENT_RULES")
         self.acquisition, self.decision = acquisition, decision
         self.lam, self.tau = float(lam), float(tau)
@@ -224,6 +224,8 @@ class BayesAgent(Agent):
         base = logits(self.router_w, xq)
         if self.decision == "bayes":
             return decide_from_pred(self.filter.predictive(base))
+        if self.decision == "minimax":
+            return minimax_regret_decisions(self.filter, base, self.tau)
         return conservative_decisions(self.filter, base, self.tau)
 
     def state_scalars(self) -> int:
@@ -260,6 +262,18 @@ def conservative_decisions(filt: ReliabilityMixtureFilter, base: np.ndarray, tau
     sd = np.sqrt(np.maximum(ed2 - ed * ed, 0.0))
     adopt = (d_star != d0) & (ed > tau * sd)
     return np.where(adopt, d_star, d0)
+
+
+def minimax_regret_decisions(filt: ReliabilityMixtureFilter, base: np.ndarray, floor: float) -> np.ndarray:
+    """Minimax expected regret across the reliability hypotheses still plausible (posterior weight above
+    ``floor``): for each hypothesis, the expected utility of every action (experts and STOP); choose the
+    action whose worst-case shortfall from that hypothesis's best action is smallest."""
+    mean, _ = filt.component_moments(base)                           # [E, Q, M, K]
+    util = np.concatenate((mean, np.full(mean.shape[:3] + (1,), STOP_PAYOFF)), -1)   # [E, Q, M, K+1]
+    shortfall = util.max(-1, keepdims=True) - util
+    plausible = (filt.weights() > floor)[:, None, :, None]
+    worst = np.where(plausible, shortfall, -np.inf).max(2)           # [E, Q, K+1]
+    return worst.argmin(-1)
 
 
 class GatedCGCAgent(Agent):

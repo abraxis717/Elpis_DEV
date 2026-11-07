@@ -37,6 +37,11 @@ def source_digest() -> str:
     return h.hexdigest()
 
 
+def source_file_digests() -> dict:
+    """Per-file SHA-256 of the lab's Python sources (a freeze binds every one of them)."""
+    return {path.name: file_digest(path) for path in sorted(SRC.glob("*.py"))}
+
+
 def coefficient_digests() -> dict:
     return {p.name: file_digest(p) for p in sorted((LAB / "coefficients").glob("*.json"))}
 
@@ -84,7 +89,8 @@ def run(partition: str, seeds, regimes, arm_specs: dict, contract: str = "ORIGIN
 
 def seal(record: dict, phase: str, note: str = "") -> dict:
     return {"schema": "cgc-lao-solver-lab.record.v1", "phase": phase, "note": note,
-            "source_sha256": source_digest(), "spec_sha256": file_digest(SPEC),
+            "source_sha256": source_digest(), "source_files_sha256": source_file_digests(),
+            "spec_sha256": file_digest(SPEC),
             "coefficients_sha256": coefficient_digests(), "environment": environment(), **record}
 
 
