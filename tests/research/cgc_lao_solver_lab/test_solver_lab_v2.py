@@ -15,3 +15,6 @@ for _path in (str(V2 / "src"), str(V2)):
         sys.path.insert(0, _path)
 
 from cgc_lao_v2_tests.test_v2_core import *  # noqa: E402,F401,F403
+from cgc_lao_v2_tests.test_v2_evidence import *  # noqa: E402,F401,F403
+from cgc_lao_v2_tests.test_v2_host import *  # noqa: E402,F401,F403
+from cgc_lao_v2_tests.test_v2_native import *  # noqa: E402,F401,F403
