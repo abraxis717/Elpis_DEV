@@ -87,3 +87,20 @@ estimate, ties by ALL terminal regret):
   FLIP40 +0.0012, retention 87%).
 - DUP2_4: all event-hedged candidates pass 5/5 (also by CI); best ALL: **`RMF_U3E25`** (0.05273;
   FLIP40 −0.00086, CI upper −0.00056; retention 95%).
+
+## Phase 2: freeze, VALIDATION, HOLDOUT (frozen code; per-file digests in `FROZEN.json`)
+
+| Candidate | Phase | G1 FLIP40 vs NOOP | G3 CLEAN vs CLEAN_BAYES | G2, G4, G5, G7 | Status |
+|---|---|---|---|---|---|
+| `RMF_U3` (ORIGINAL) | VALIDATION | +0.00118 [+0.00097, +0.00138] **fail** | +0.00265 (upper +0.00286) | pass | |
+| `RMF_U3` (ORIGINAL) | HOLDOUT | +0.00113 [+0.00096, +0.00131] **fail** | +0.00265 (upper +0.00282) | pass | NOT_QUALIFIED |
+| `RMF_U3E25` (DUP2_4) | VALIDATION | −0.00091 [−0.00107, −0.00074] | +0.00089 (upper +0.00098) | pass | |
+| `RMF_U3E25` (DUP2_4) | HOLDOUT | −0.00094 [−0.00109, −0.00079] | +0.00089 (upper +0.00095) | pass | QUALIFIED_SYNTHETIC |
+
+VALIDATION was used once per contract; no candidate was revised after it. Disclosed shift harms (both
+phases): FLIP45 for both candidates, EVENT40 for both, ROUTERWIDE40 for `RMF_U3` only.
+
+**Post-holdout fixed-log diagnostic** (DEV seeds 64–79; [`evidence/dev/fixed_log.json`](evidence/dev/fixed_log.json)):
+with every learner updated on NOOP's own action log, FLIP40 deltas vs NOOP are RMF_U3 +0.0012, CLEAN_BAYES
++0.0122, KNOWN_Q −0.0012, RMF_P67 −0.0004, and RMF_U3E25 (DUP2_4) −0.0008 with 96% clean retention. These
+match the on-policy results, so the original-contract failure is not acquisition bias.
