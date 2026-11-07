@@ -1,0 +1,241 @@
+{
+ "schema": "cgc-lao-solver-lab.selection.v4",
+ "primary": "RMF3",
+ "fallback": "SAFE4_P8",
+ "primary_rows": {
+  "RMF3": {
+   "gates_999": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": true
+   },
+   "eligible": true,
+   "ALL": 0.053458688086979164,
+   "complexity": [
+    24,
+    48
+   ]
+  },
+  "RMF4_W": {
+   "gates_999": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": true
+   },
+   "eligible": true,
+   "ALL": 0.05313405876072917,
+   "complexity": [
+    31,
+    64
+   ]
+  },
+  "RMF4_E25": {
+   "gates_999": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": true
+   },
+   "eligible": true,
+   "ALL": 0.0536491523834375,
+   "complexity": [
+    31,
+    64
+   ]
+  },
+  "RMF_NOEVENT": {
+   "gates_999": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": true
+   },
+   "eligible": false,
+   "ALL": 0.05259514318458333,
+   "complexity": [
+    31,
+    64
+   ]
+  },
+  "RMF5_E25": {
+   "gates_999": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": true
+   },
+   "eligible": false,
+   "ALL": 0.05276467732645833,
+   "complexity": [
+    38,
+    80
+   ]
+  },
+  "RMF_V1": {
+   "gates_999": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": true
+   },
+   "eligible": false,
+   "ALL": 0.05252109997677083,
+   "complexity": [
+    31,
+    64
+   ]
+  },
+  "BETA_ALL": {
+   "gates_999": {
+    "G1": false,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": false
+   },
+   "eligible": false,
+   "ALL": 0.0549877221165625,
+   "complexity": [
+    12,
+    1
+   ]
+  },
+  "SGD_ALL": {
+   "gates_999": {
+    "G1": false,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": false
+   },
+   "eligible": false,
+   "ALL": 0.05447988488104166,
+   "complexity": [
+    6,
+    1
+   ]
+  },
+  "DISAGREE_SGD": {
+   "gates_999": {
+    "G1": false,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": false
+   },
+   "eligible": false,
+   "ALL": 0.05350356731375,
+   "complexity": [
+    8,
+    1
+   ]
+  },
+  "PLUGIN_Q_BAYES": {
+   "gates_999": {
+    "G1": false,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": true
+   },
+   "eligible": false,
+   "ALL": 0.05258634962854167,
+   "complexity": [
+    11,
+    16
+   ]
+  },
+  "STATIC_ATT_ALL": {
+   "gates_999": {
+    "G1": true,
+    "G2": true,
+    "G3": false,
+    "G4": false,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": false
+   },
+   "eligible": false,
+   "ALL": 0.057157771706354166,
+   "complexity": [
+    6,
+    1
+   ]
+  }
+ },
+ "fallback_rows": {
+  "SAFE3_P4": {
+   "gates_999": {
+    "F1": true,
+    "F2": true,
+    "F3": false,
+    "F4": true,
+    "F5": true,
+    "F6": true
+   },
+   "eligible": false,
+   "CLEAN": 0.05109682112,
+   "complexity": [
+    24,
+    48
+   ]
+  },
+  "SAFE4_P8": {
+   "gates_999": {
+    "F1": true,
+    "F2": true,
+    "F3": true,
+    "F4": true,
+    "F5": true,
+    "F6": true
+   },
+   "eligible": true,
+   "CLEAN": 0.052367766437500005,
+   "complexity": [
+    31,
+    64
+   ]
+  }
+ },
+ "rule": "eligible: every gate at 99.9% on DEV; choose fewest state scalars, then fewest likelihood evaluations, then lowest DEV ALL (fallback: CLEAN) regret, then name",
+ "record_sha256": "efc5767613c25674c833930f98ab410923dba49ae77eef3fd1f56356bd4f0cb0"
+}
