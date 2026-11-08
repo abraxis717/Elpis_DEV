@@ -20,7 +20,7 @@ sys.path.insert(0, str(V4 / "src"))
 
 from cgc_lao_v4 import study4  # noqa: E402
 from cgc_lao_lab import stats  # noqa: E402
-from cgc_lao_v2 import report2  # noqa: E402
+from cgc_lao_v2 import env2, report2  # noqa: E402
 
 EV = V4 / "evidence"
 RHO_GRID = ((0.0, "FLIP40"), (0.1, "CORR10"), (0.25, "CORR25"), (0.5, "CORR50"), (0.75, "CORR75"),
@@ -119,13 +119,21 @@ def tables() -> None:
     rec = load(EV / "holdout" / "qualification.json")
     cols = ("CLEAN", "FLIP20", "FLIP40", "FLIP45", "FLIP48", "QUNIF", "BURST", "EVENT40", "ALL")
 
+    def avail(r, arm):
+        regimes = env2.ALL_MIXTURE if r == "ALL" else (r,)
+        return all(report2.has(rec, x, arm) for x in regimes)
+
     def row(label, a, b):
         cells = []
         for r in cols:
+            if not (avail(r, a) and avail(r, b)):
+                cells.append("n/a")
+                continue
             x = d(rec, r, a, b)
             cells.append(f"{x['mean']:+.5f}{'' if x['hi'] < 0 or x['lo'] > 0 else '~'}")
         print(f"| {label} | " + " | ".join(cells) + " |")
-    print("HOLDOUT, Delta = row arm - column... (~: 95% interval contains 0)\n")
+    print("HOLDOUT terminal-regret differences A - B per regime (negative favours A; ~: the 95% interval "
+          "contains 0)\n")
     print("| | " + " | ".join(cols) + " |\n|---|" + "---|" * len(cols))
     row(f"{primary} - NOOP", primary, "NOOP")
     row(f"{fallback} - NOOP", fallback, "NOOP")
@@ -134,9 +142,53 @@ def tables() -> None:
             row(f"{primary} - {c}", primary, c)
     for b in ("SGD", "BETA", "CGC_REFERENCE", "STATIC_ATTENUATION", "CLEAN_BAYES", "KNOWN_Q_ORACLE", "KNOWN_Q_DUP"):
         row(f"{primary} - {b}", primary, b)
-    print("\n| arm | " + " | ".join(cols) + " |\n|---|" + "---|" * len(cols))
+    print("\nHOLDOUT mean terminal regret\n\n| arm | " + " | ".join(cols) + " |\n|---|" + "---|" * len(cols))
     for a in ("NOOP", primary, fallback, "RMF_V1", "CLEAN_BAYES", "KNOWN_Q_DUP"):
-        print(f"| {a} | " + " | ".join(f"{float(report2.series(rec, r, a).mean()):.5f}" for r in cols) + " |")
+        print(f"| {a} | " + " | ".join(f"{float(report2.series(rec, r, a).mean()):.5f}" if avail(r, a) else "n/a"
+                                      for r in cols) + " |")
+    print(f"\nHOLDOUT diagnostics of {primary} (NOOP in brackets): STOP rate, STOP-boundary and ranking regret, "
+          "posterior P(clean)\n\n| regime | STOP rate | boundary regret | ranking regret | P(clean) |\n|---|---|---|---|---|")
+    for r in cols[:-1]:
+        m = {k: float(report2.series(rec, r, primary, k).mean()) for k in ("stop", "boundary", "ranking", "p_clean")}
+        n = {k: float(report2.series(rec, r, "NOOP", k).mean()) for k in ("stop", "boundary", "ranking")}
+        print(f"| {r} | {m['stop']:.4f} ({n['stop']:.4f}) | {m['boundary']:.5f} ({n['boundary']:.5f}) | "
+              f"{m['ranking']:.5f} ({n['ranking']:.5f}) | {m['p_clean']:.3f} |")
+    print("\nPrimary gates at 95% (G7: 97.5%): mean [lo, hi] of the deciding difference\n\n"
+          "| gate | VALIDATION | HOLDOUT |\n|---|---|---|")
+    gates = {p: report2.primary_gates(load(EV / p.lower() / "qualification.json"), primary)
+             for p in ("VALIDATION", "HOLDOUT")}
+
+    def cell(g, key):
+        x = g[key]
+        if key == "G9":
+            a, b = x["vs_NOOP"], x["vs_RMF_V1"]
+            return f"vs NOOP {a['mean']:+.6f} [{a['lo']:+.6f}, {a['hi']:+.6f}]; vs RMF_V1 {b['mean']:+.6f} (hi {b['hi']:+.6f})"
+        if key == "G7":
+            return "; ".join(f"{r} {s['mean']:+.6f} (hi {s['hi']:+.6f})" for r, s in x["shifts"].items())
+        return f"{x['mean']:+.6f} [{x['lo']:+.6f}, {x['hi']:+.6f}]"
+    for k in study4.PRIMARY_GATES:
+        print(f"| {k} | " + " | ".join(f"{cell(gates[p], k)} {'PASS' if gates[p][k]['pass'] else 'FAIL'}"
+                                      for p in gates) + " |")
+    print("\nEqual-information controls on HOLDOUT: primary gates failed at 95%\n")
+    for c in study4.CONTROLS4:
+        if c != primary and report2.has(rec, "CLEAN", c):
+            g = report2.primary_gates(rec, c)
+            print(f"- {c} ({study4.complexity(c)[0]} scalars): fails {[k for k in study4.PRIMARY_GATES if not g[k]['pass']]}")
+    path = EV / "ood" / "characterization.json"
+    if path.exists():
+        ch = load(path)
+        print(f"\nOOD rho sweep ({primary} DUPLICATE and {fallback} FIRST_ONLY, Delta vs NOOP, 95%); "
+              f"rho_admit = {ch['rho_admit']}\n\n| rho | regime | primary | fallback |\n|---|---|---|---|")
+        for s in ch["rho_sweep"]:
+            p, f = s["primary_vs_NOOP"], s["fallback_vs_NOOP"]
+            print(f"| {s['rho']} | {s['regime']} | {p[0]:+.5f} [{p[1]:+.5f}, {p[2]:+.5f}] | "
+                  f"{f[0]:+.5f} [{f[1]:+.5f}, {f[2]:+.5f}] |")
+        labels = (primary, f"{primary}@SECOND_EVENT", fallback, "RMF_V1", "KNOWN_Q_DUP")
+        print("\nOOD regimes, Delta vs NOOP (claim at 95%)\n\n| regime | " + " | ".join(labels) + " |\n|---|"
+              + "---|" * len(labels))
+        for r, row_ in ch["regimes"].items():
+            print(f"| {r} | " + " | ".join(f"{row_[lb]['vs_NOOP'][0]:+.5f} {row_[lb]['claim']}" if lb in row_ else "n/a"
+                                          for lb in labels) + " |")
 
 
 def main(argv) -> None:

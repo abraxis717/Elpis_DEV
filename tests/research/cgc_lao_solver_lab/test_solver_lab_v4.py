@@ -13,3 +13,4 @@ for _path in (str(V4 / "src"), str(V4)):
         sys.path.insert(0, _path)
 
 from cgc_lao_v4_tests.test_v4 import *  # noqa: E402,F401,F403
+from cgc_lao_v4_tests.test_v4_closure import *  # noqa: E402,F401,F403
