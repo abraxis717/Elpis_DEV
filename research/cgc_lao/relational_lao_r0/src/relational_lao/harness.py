@@ -65,8 +65,10 @@ def terminal(batch, learners: dict) -> dict:
     zq = batch.logits(batch.xq)
     out = {}
     for name, L in learners.items():
-        eu = expected_utilities(L, zq, tpl, struct)
-        choice = decide(eu, stops)
+        if hasattr(L, "decide_queries"):                       # HCA readouts decide from saliences
+            choice = L.decide_queries(zq, tpl, struct)
+        else:
+            choice = decide(expected_utilities(L, zq, tpl, struct), stops)
         got = np.where(choice >= 0, np.take_along_axis(U, np.maximum(choice, 0)[..., None], -1)[..., 0], stops[None])
         regret = best_true - got                                  # [E, QN]
         boundary = (choice < 0) != stop_best
