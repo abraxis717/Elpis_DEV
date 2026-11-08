@@ -71,3 +71,74 @@ Indications, for compositional regret:
 - A hypothesis set {0, 0.2, 0.4, 0.48} recovered FLIP20, with a small FLIP45 cost.
 - The coupled readout was indistinguishable from the marginal readout.
 - VOI_R improved terminal regret slightly, at about twice the online regret.
+
+## R3/R4: TRAIN, the DEV round and the on-policy runs (DEV_PROTOCOL.md)
+
+**TRAIN** (`evidence/train/round.json`, 32 × 2048, DESIGN) fixes the gate scales (`evidence/train/scales.json`):
+- `δ_clean` = 0.00140298;
+- `online_budget` = 0.21609027;
+- `τ_safe` = 0.0005.
+
+**DEV** (`evidence/dev/round.json`, 32 × 2048, 16 regimes, every arm on one shared NOOP + PROBE_R log, 2438 s).
+
+Every candidate is eligible at 99.9% on RG1–RG7 and RG9. Compositional regret, paired over world seeds, at 99.9%:
+
+| Candidate | ALL − NOOP | ALL − `:IND` | FLIP45 − NOOP (upper) |
+|---|---|---|---|
+| RRMF3 | −0.002083 [−0.002349, −0.001817] | −0.000292 [−0.000394, −0.000190] | +0.000275 |
+| RRMF3_M | −0.002086 [−0.002353, −0.001819] | −0.000295 [−0.000400, −0.000191] | +0.000272 |
+| RRMF3_A | −0.002083 [−0.002349, −0.001817] | −0.000292 [−0.000394, −0.000190] | +0.000275 |
+| RRMF4 | −0.002266 [−0.002553, −0.001980] | −0.000377 [−0.000455, −0.000300] | +0.000403 |
+| RRMF4_M | −0.002268 [−0.002555, −0.001980] | −0.000379 [−0.000458, −0.000300] | +0.000406 |
+| RRMF4_W | −0.002166 [−0.002433, −0.001900] | −0.000482 [−0.000563, −0.000402] | +0.000273 |
+| RRMF4_W_M | −0.002167 [−0.002435, −0.001898] | −0.000482 [−0.000563, −0.000402] | +0.000277 |
+
+Mean ALL compositional regret of the controls: NOOP 0.039022, STATIC_COUNTS 0.038262, EXACT_RELATIONAL 0.132814,
+HCA_ONLY 0.128585, KNOWN_RELIABILITY (privileged reference) 0.036515.
+
+- RRMF3 and RRMF3_A coincide on ALL because the DESIGN regimes have no authority event; the invalidation strategies
+  differ only on the AUTHORITY regimes.
+- The coupled and marginal readouts differ by at most 0.000003.
+
+**Selection** (robust Occam, key: state scalars, likelihood evaluations, readout products, then ALL):
+- **RRMF3_M**: {0, 0.4, 0.48}, uniform prior, marginal readout, replay invalidation. Its key is (80, 48, 1).
+- **Fallback SAFE3_P4**: F1–F4 hold at 99.9%. Its DEV CLEAN regret is 0.036355, against 0.036745 for SAFE4_P8.
+
+**On-policy** (`evidence/dev/onpolicy_*`, DEV 32–63 × 2048, DESIGN):
+- With PROBE_R, every candidate has the same online regret, 0.191870 [0.187508, 0.196232], within the budget
+  0.21609 (RG9).
+  - PROBE_R forces coverage of the 8 relations in 8 steps, and an unseen relation's predictive does not depend on the
+    reliability posterior. The schedule is therefore the same for every learner.
+- RRMF3 with VOI_R against PROBE_R:
+  - ALL compositional −0.000562 [−0.000791, −0.000333], at 99.9%;
+  - but online regret is 0.327887 [0.319017, 0.336756], over the budget;
+  - so VOI_R is not adopted for RRMF3.
+
+## Disclosure: changes after the DEV round, before the freeze
+
+The DEV, TRAIN and on-policy records seal the source digest of commit 2e4eac3. The changes below were made after those
+records and before `FROZEN_R6.json`. None of them changes a learner, a world, an acquisition rule as evaluated on DEV,
+or a metric of a DEV record. `select` on the DEV record returns the same selection, and the new `gate_parts` agree with
+`gates` for every candidate on DEV at 99.9%.
+
+1. **`scalar.py` and `host.py`.** Readout modes (coupled, marginal, independent) in the explicit-loop reference, so
+   the host can run the selected marginal readout, and the readout in the host configuration. `config_from_freeze`
+   builds the host configuration from `FROZEN_R6.json`. The host differential now also covers the marginal readout.
+2. **`acquisition.py`.** `voi_r` accepts a read-only view: the selected RRMF3_M is a view of the RRMF3 filter. The
+   decision value stays the filter's coupled posterior value. For a Bayes learner the code path is unchanged, so the
+   RRMF3 VOI record is unaffected.
+3. **`study.py`:**
+   - **A defect in the frozen path.** `arms_for(subset=…)` looked up `:STALE` arms that exist only in authority
+     regimes, so the qualification path raised `KeyError`. It was found by a dry run before the freeze and fixed.
+   - **Record contents.** Records now also keep `boundary` regret and per-kind compositional regret (`path`, `conj`,
+     `reach`; null where a topology has no query of that kind).
+   - **The preregistered analysis:** `acquisition_decision`, `gate_parts`, `families`, `claims`, `primary_status`,
+     `fallback_status`, `rho_admission`, `ood_characterisation`, and the `disposition` and `ood` commands.
+   - **Guards on `qualify`.** It refuses sources that differ from `FROZEN_R6.json` and refuses to run a phase twice.
+     HOLDOUT opens only if every VALIDATION gate part passes, and OOD only after the HOLDOUT.
+   - **The freeze** also binds the protocol documents.
+4. **Dry runs.** Every frozen path was dry-run on TRAIN seeds, with templates substituted in-process: V_LADDER, and
+   generated H_RANDOM topologies whose keys are outside the HOLDOUT and OOD derivations, including topologies without
+   a CONJ or a REACH query. No VALIDATION, HOLDOUT or OOD episode was generated.
+5. **The native C11 adapter** (`native/`) was drafted during R2–R5 against the scalar reference, to confirm a bounded,
+   allocation-free layout. It is not built, not committed, and not used by any record until the qualification outcome.

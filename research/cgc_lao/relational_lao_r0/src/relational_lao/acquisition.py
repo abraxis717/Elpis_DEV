@@ -48,8 +48,8 @@ def planning(batch):
 
 
 def voi_r(learner, batch, t: int, admissible: np.ndarray, n_reads: int) -> np.ndarray:
-    """VOI_R for a Bayes learner (its coupled readout)."""
-    f = learner.filter
+    """VOI_R for a Bayes learner or a readout view of one (the decision value is the filter's coupled readout)."""
+    f = learner.filter if hasattr(learner, "filter") else learner.base.filter
     E, R = batch.count, batch.R
     struct, zp, alt_mask, stops = planning(batch)
     z_t = batch.logits(batch.x[:, t])

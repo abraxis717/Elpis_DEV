@@ -27,7 +27,7 @@ from .world import AUTHORITY, DESIGN, ROBUSTNESS
 
 SRC = R0_ROOT / "src" / "relational_lao"
 LAB = R0_ROOT.parent / "solver_lab"
-METRICS = ("comp", "direct", "terminal", "stop", "edge_mse", "online")
+METRICS = ("comp", "direct", "terminal", "stop", "boundary", "edge_mse", "online", "path", "conj", "reach")
 CANDIDATES = {
     "RRMF3": (H3, (1.0, 1.0, 1.0), "coupled", "replay"),
     "RRMF3_M": (H3, (1.0, 1.0, 1.0), "marginal", "replay"),
@@ -104,8 +104,8 @@ def arms_for(regime: str, driver: str = "NOOP", subset=None) -> dict:
                  "KNOWN_RELIABILITY": Bayes("KNOWN_RELIABILITY", oracle=True)})
     if driver != "NOOP":
         arms = {driver: arms[driver], **{k: v for k, v in arms.items() if k != driver}}
-    if subset is not None:
-        keep = [driver] + [k for k in subset if k != driver]
+    if subset is not None:                                    # a :STALE arm exists only in authority regimes
+        keep = [driver] + [k for k in subset if k != driver and k in arms]
         arms = {k: arms[k] for k in keep}
         for k, v in list(arms.items()):                       # a view needs its base arm's updates
             base = getattr(getattr(v, "inner", v), "base", None)
@@ -163,8 +163,10 @@ def run(partition, seeds, regimes, n_episodes, driver="NOOP", policy="PROBE", su
     results = {}
     for r in regimes:
         for arm in by_seed[seeds[0]][r]:
-            results.setdefault(r, {})[arm] = {m: [float(f"{by_seed[s][r][arm][m]:.10g}") for s in seeds]
-                                              for m in by_seed[seeds[0]][r][arm]}
+            names = dict.fromkeys(m for s in seeds for m in by_seed[s][r][arm])   # a topology may lack a kind
+            results.setdefault(r, {})[arm] = {m: [float(f"{by_seed[s][r][arm][m]:.10g}")
+                                                  if m in by_seed[s][r][arm] else None for s in seeds]
+                                              for m in names}
     from .world import template_for
     return {"partition": partition, "seeds": seeds, "episodes_per_seed": n_episodes, "regimes": list(regimes),
             "templates": [template_for(partition, s).name for s in seeds], "driver": driver, "policy": policy,
@@ -279,6 +281,151 @@ def select(rec, scales: dict, online_records: dict, level: float = 0.999) -> dic
     return {"primary": chosen, "fallback": fchosen, "rows": rows, "fallback_rows": frows, "level": level}
 
 
+# -- qualification analysis (PREREGISTRATION_R6.md) -------------------------------------------------------------
+QUAL_LEVEL = 0.95
+FAMILY_REGIMES = ("CLEAN", "FLIP20", "FLIP40", "FLIP45", "FLIP48", "QUNIF", "BURST", "EVENT40")
+FAMILY_LEVEL = 1.0 - 0.05 / len(FAMILY_REGIMES)                 # Bonferroni over the 8 families: 99.375%
+RHO_GRID = (("FLIP40", 0.0), ("CORR10", 0.1), ("CORR25", 0.25), ("CORR50", 0.5), ("CORR75", 0.75),
+            ("CORR90", 0.9), ("EVENT40", 1.0))
+KINDS = ("path", "conj", "reach")
+COUPLING_PARTS = ("RG3_IND", "RG8_IND")
+
+
+def _iv(x: dict) -> list:
+    return [x["mean"], x["lo"], x["hi"]]
+
+
+def gate_parts(rec, cand: str, scales: dict, level: float, online: dict | None = None) -> dict:
+    """The gates of `gates` split into their named comparisons (the disposition names each failing part)."""
+    hi = lambda regime, b, lv=level, seeds=None: d(rec, regime, cand, b, lv, seeds=seeds)["hi"]  # noqa: E731
+    p = {"RG1": hi("ALL", "NOOP") < 0, "RG2_NOOP": hi("CLEAN", "NOOP") < 0,
+         "RG2_KNOWN": hi("CLEAN", "KNOWN_RELIABILITY") <= scales["delta_clean"]}
+    for c in ("EXACT_RELATIONAL", "STATIC_COUNTS", "HCA_ONLY"):
+        p[f"RG3_{c}"] = hi("ALL", c) < 0
+    p["RG3_IND"] = hi("ALL", counterpart(cand, "IND")) < 0
+    p["RG3_HCA"] = hi("ALL", counterpart(cand, "HCA")) < 0
+    p["RG4_FLIP40"], p["RG4_FLIP45"] = hi("FLIP40", "NOOP") <= TAU_SAFE, hi("FLIP45", "NOOP") <= TAU_SAFE
+    p["RG5"] = any(hi(r, "NOOP", max(level, 0.975)) < 0 for r in ("QUNIF", "BURST"))
+    p["RG6"] = hi("ALL", counterpart(cand, "PERM")) < 0
+    if all(r in rec["results"] for r in REVISION):
+        p["RG7_STALE"] = hi("REVISION", counterpart(cand, "STALE")) < 0
+        p["RG7_NOOP"] = hi("REVISION", "NOOP") < 0
+    held = heldout_seeds(rec)
+    if held is not None:
+        p["RG8_NOOP"] = hi("ALL", "NOOP", seeds=held) < 0
+        p["RG8_IND"] = hi("ALL", counterpart(cand, "IND"), seeds=held) < 0
+    if online is not None:
+        p["RG9"] = stats.mean_ci(series(online, "ALL", cand, "online"), level)["hi"] <= scales["online_budget"]
+    whole = gates(rec, cand, scales, level, online)
+    for g, ok in whole.items():                                 # the parts are exactly the gates
+        assert ok == all(v for k, v in p.items() if k == g or k.startswith(g + "_")), g
+    return {k: bool(v) for k, v in p.items()}
+
+
+def families(rec, cand: str, level: float = FAMILY_LEVEL) -> dict:
+    out = {}
+    for r in FAMILY_REGIMES:
+        hi = d(rec, r, cand, "NOOP", level)["hi"]
+        out[r] = "USEFUL" if hi < 0 else "SAFE" if hi <= TAU_SAFE else "NOT_QUALIFIED"
+    return out
+
+
+def _kind(rec, regime: str, arm: str, kind: str) -> np.ndarray:
+    regs = DESIGN if regime == "ALL" else (regime,)
+    n = len(rec["seeds"])
+    rows = [[np.nan if v is None else v for v in rec["results"][r][arm].get(kind, [None] * n)] for r in regs]
+    return np.mean(np.asarray(rows, dtype=np.float64), axis=0)
+
+
+def claims(rec, cand: str, level: float = QUAL_LEVEL) -> dict:
+    """The secondary estimates reported with the disposition (95% paired intervals, [mean, lo, hi]; not gates)."""
+    controls = ["EXACT_RELATIONAL", "STATIC_COUNTS", "HCA_ONLY", counterpart(cand, "IND"), counterpart(cand, "HCA")]
+    best = min(controls, key=lambda c: (float(series(rec, "ALL", c).mean()), c))
+    gain = series(rec, "CLEAN", "NOOP") - series(rec, "CLEAN", cand)
+    oracle = series(rec, "CLEAN", "NOOP") - series(rec, "CLEAN", "KNOWN_RELIABILITY")
+    kinds = {}
+    for k in KINDS:
+        a, b = _kind(rec, "ALL", cand, k), _kind(rec, "ALL", "NOOP", k)
+        ok = np.isfinite(a) & np.isfinite(b)
+        kinds[k] = _iv(stats.paired(a[ok], b[ok], level)) + [int(ok.sum())] if ok.sum() >= 2 else None
+    out = {"level": level,
+           "DIRECT_RELATION_GAIN": _iv(d(rec, "ALL", cand, "NOOP", level, "direct")),
+           "COMPOSITIONAL_GAIN_VS_NOOP": _iv(d(rec, "ALL", cand, "NOOP", level)),
+           "COMPOSITIONAL_GAIN_VS_BEST_CONTROL": {"control": best, "delta": _iv(d(rec, "ALL", cand, best, level))},
+           "RELATIONAL_COUPLING_VS_IND": _iv(d(rec, "ALL", cand, counterpart(cand, "IND"), level)),
+           "RELATION_IDENTITY_ABLATION": _iv(d(rec, "ALL", cand, counterpart(cand, "PERM"), level)),
+           "GEOMETRIC_PROJECTION_GAIN": _iv(d(rec, "ALL", counterpart(cand, "HCA"), cand, level)),
+           "CONTRADICTION_VS_NOOP": {r: _iv(d(rec, r, cand, "NOOP", level)) for r in ("FLIP45", "FLIP48", "EVENT40")},
+           "STOP": {"stop_rate": float(series(rec, "ALL", cand, "stop").mean()),
+                    "noop_stop_rate": float(series(rec, "ALL", "NOOP", "stop").mean()),
+                    "known_stop_rate": float(series(rec, "ALL", "KNOWN_RELIABILITY", "stop").mean()),
+                    "boundary_vs_NOOP": _iv(d(rec, "ALL", cand, "NOOP", level, "boundary"))},
+           "ONLINE_REGRET": _iv(stats.mean_ci(series(rec, "ALL", cand, "online"), level)),
+           "CLEAN_VS_KNOWN": _iv(d(rec, "CLEAN", cand, "KNOWN_RELIABILITY", level)),
+           "CLEAN_RETENTION": float(gain.mean() / oracle.mean()),
+           "EDGE_MSE_VS_NOOP": _iv(d(rec, "ALL", cand, "NOOP", level, "edge_mse")),
+           "KINDS_VS_NOOP": kinds}
+    if all(r in rec["results"] for r in REVISION):
+        out["SOURCE_REVISION_VS_STALE"] = _iv(d(rec, "REVISION", cand, counterpart(cand, "STALE"), level))
+        out["SOURCE_REVISION_VS_NOOP"] = _iv(d(rec, "REVISION", cand, "NOOP", level))
+    held = heldout_seeds(rec)
+    if held is not None:
+        out["HELDOUT_TOPOLOGY"] = {"seeds": int(len(held)),
+                                   "vs_NOOP": _iv(d(rec, "ALL", cand, "NOOP", level, seeds=held)),
+                                   "vs_IND": _iv(d(rec, "ALL", cand, counterpart(cand, "IND"), level, seeds=held))}
+    return out
+
+
+def primary_status(parts: dict) -> tuple:
+    """parts: {phase: gate parts or None (not opened)}. Returns (status, failing parts per opened phase)."""
+    failing = {ph: [k for k, ok in p.items() if not ok] for ph, p in parts.items() if p is not None}
+    if parts.get("HOLDOUT") is None:
+        return "NOT_QUALIFIED", failing
+    if not failing["VALIDATION"] and not failing["HOLDOUT"]:
+        return "QUALIFIED_SYNTHETIC_RELATIONAL_CONTRACT_I", failing
+    if not failing["VALIDATION"] and set(failing["HOLDOUT"]) <= set(COUPLING_PARTS):
+        return "INDEPENDENT_RELATIONAL_FILTER_ADAPTER", failing
+    return "NOT_QUALIFIED", failing
+
+
+def fallback_status(parts: dict) -> tuple:
+    failing = {ph: [k for k, ok in p.items() if not ok] for ph, p in parts.items() if p is not None}
+    ok = parts.get("HOLDOUT") is not None and not any(failing.values())
+    return ("QUALIFIED_SYNTHETIC_RELATIONAL_CONTRACT_II_CONSERVATIVE" if ok else "NOT_QUALIFIED"), failing
+
+
+def rho_admission(ood, cand: str, level: float = QUAL_LEVEL) -> dict:
+    """The largest grid rho whose every rho' <= rho has compositional C - NOOP upper <= tau_safe (None if rho = 0
+    already fails); the host can use at most the strict cap MAX_QUALIFIED_RHO."""
+    from host_closure.strict_host import MAX_QUALIFIED_RHO
+    rows, admit, ok = [], None, True
+    for regime, rho in RHO_GRID:
+        x = d(ood, regime, cand, "NOOP", level)
+        safe = x["hi"] <= TAU_SAFE
+        ok = ok and safe
+        if ok:
+            admit = rho
+        rows.append({"regime": regime, "rho": rho, "vs_NOOP": _iv(x), "safe": bool(safe)})
+    return {"rho_admit": admit, "host_rho_admit": None if admit is None else min(admit, MAX_QUALIFIED_RHO),
+            "strict_cap": MAX_QUALIFIED_RHO, "grid": rows}
+
+
+def ood_characterisation(ood, cand: str, level: float = QUAL_LEVEL) -> dict:
+    regimes = {}
+    for r in ood["regimes"]:
+        x = d(ood, r, cand, "NOOP", level)
+        regimes[r] = {"vs_NOOP": _iv(x), "label": "USEFUL" if x["hi"] < 0 else "SAFE" if x["hi"] <= TAU_SAFE
+                      else "NOT_QUALIFIED"}
+    groups: dict = {}
+    for i, name in enumerate(ood["templates"]):
+        groups.setdefault("H_RANDOM" if name.startswith("H_RANDOM") else name, []).append(i)
+    topologies = {g: {"seeds": len(ix),
+                      "vs_NOOP": _iv(d(ood, "ALL", cand, "NOOP", level, seeds=np.array(ix))),
+                      "vs_IND": _iv(d(ood, "ALL", cand, counterpart(cand, "IND"), level, seeds=np.array(ix)))}
+                  if len(ix) >= 2 else {"seeds": len(ix)} for g, ix in groups.items()}
+    return {"level": level, "regimes": regimes, "topologies": topologies}
+
+
 ROUND_REGIMES = list(DESIGN + ROBUSTNESS + AUTHORITY)
 __all__ = ["run", "seal", "write", "gates", "select", "arms_for", "ROUND_REGIMES", "CANDIDATES", "FALLBACKS"]
 
@@ -303,6 +450,10 @@ PLANS = {
 }
 
 
+FROZEN_DOCUMENTS = ("DEV_PROTOCOL.md", "PREREGISTRATION_R6.md", "SELECTION_R6.json", "evidence/train/scales.json",
+                    "evidence/train/round.json", "evidence/dev/round.json")
+
+
 def qualification_arms(primary: str, fallback: str) -> list:
     """The frozen primary (the driver), every arm its gates read, the fallback and the controls."""
     arms = [primary, "NOOP", counterpart(primary, "IND"), counterpart(primary, "HCA"), counterpart(primary, "PERM"),
@@ -322,14 +473,37 @@ def freeze() -> dict:
             "fallback": {"name": fallback, "config": [list(map(list, FALLBACKS[fallback][0])),
                                                        list(FALLBACKS[fallback][1])], "contract": "II"},
             "arms": qualification_arms(primary, fallback), "scales": sel["scales"],
-            "source_sha256": source_digest(), "source_files_sha256": source_file_digests(), "plans": PLANS,
+            "source_sha256": source_digest(), "source_files_sha256": source_file_digests(),
+            "documents_sha256": {name: ev1.file_digest(R0_ROOT / name) for name in FROZEN_DOCUMENTS}, "plans": PLANS,
             "holdout_rule": "open HOLDOUT only if the primary passes every gate RG1-RG9 on VALIDATION at 95%"}
+
+
+def acquisition_decision(cand: str, sc: dict, level: float = 0.999) -> dict:
+    """DEV_PROTOCOL: VOI_R replaces PROBE_R only if on-policy ALL compositional regret is lower at 99.9% AND VOI_R's
+    online regret meets the budget (RG9)."""
+    if cand is None:
+        return {"adopt_voi": False, "reason": "NO_PRIMARY"}
+    paths = {k: EVIDENCE / "dev" / f"onpolicy_{cand}_{k}.json" for k in ("PROBE", "VOI")}
+    if not all(p.exists() for p in paths.values()):
+        return {"adopt_voi": False, "reason": "NO_VOI_RECORD"}
+    rec = {k: json.loads(p.read_text(encoding="utf-8")) for k, p in paths.items()}
+    diff = stats.paired(series(rec["VOI"], "ALL", cand), series(rec["PROBE"], "ALL", cand), level)
+    online = stats.mean_ci(series(rec["VOI"], "ALL", cand, "online"), level)
+    better, within = diff["hi"] < 0, online["hi"] <= sc["online_budget"]
+    return {"adopt_voi": bool(better and within), "voi_minus_probe_ALL": [diff["mean"], diff["lo"], diff["hi"]],
+            "voi_online_ALL": [online["mean"], online["lo"], online["hi"]], "online_budget": sc["online_budget"],
+            "better_at_999": bool(better), "online_within_budget": bool(within)}
+
+
+def _load(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def main(argv=None) -> None:
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=("train", "dev", "onpolicy", "select", "freeze", "qualify"))
+    ap.add_argument("command", choices=("train", "dev", "onpolicy", "select", "freeze", "qualify", "disposition",
+                                        "ood"))
     ap.add_argument("--phase", default="")
     ap.add_argument("--candidate", default="RRMF3")
     ap.add_argument("--policy", default="PROBE", choices=("PROBE", "VOI"))
@@ -359,6 +533,9 @@ def main(argv=None) -> None:
             if p.exists():
                 online[c] = json.loads(p.read_text(encoding="utf-8"))
         out = select(dev, sc, online)
+        out["acquisition"], out["acquisition_rule"] = "PROBE", acquisition_decision(out["primary"], sc)
+        if out["acquisition_rule"].get("adopt_voi"):
+            out["acquisition"] = "VOI"
         out = {"schema": "relational-lao-r0.selection.v1", **out, "scales": sc,
                "record_sha256": hashlib.sha256((EVIDENCE / "dev" / "round.json").read_bytes()).hexdigest()}
         (R0_ROOT / "SELECTION_R6.json").write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
@@ -368,10 +545,58 @@ def main(argv=None) -> None:
         print(source_digest())
     elif a.command == "qualify":
         frozen = json.loads((R0_ROOT / "FROZEN_R6.json").read_text(encoding="utf-8"))
+        if frozen["source_sha256"] != source_digest():
+            raise SystemExit("SOURCES_DIFFER_FROM_FROZEN_R6")
+        out = EVIDENCE / a.phase.lower() / "qualification.json"
+        if out.exists():
+            raise SystemExit(f"{a.phase}_ALREADY_RUN")                # every partition is opened once
+        if a.phase == "HOLDOUT":
+            if not (EVIDENCE / "validation" / "qualification.json").exists():
+                raise SystemExit("HOLDOUT_STAYS_SEALED no VALIDATION record")
+            val = _load(EVIDENCE / "validation" / "qualification.json")
+            parts = gate_parts(val, frozen["primary"]["name"], frozen["scales"], QUAL_LEVEL, val)
+            if not all(parts.values()):
+                raise SystemExit(f"HOLDOUT_STAYS_SEALED {[k for k, v in parts.items() if not v]}")
+        if a.phase == "OOD" and not (EVIDENCE / "holdout" / "qualification.json").exists():
+            raise SystemExit("OOD_AFTER_HOLDOUT_ONLY")
         plan = frozen["plans"][a.phase]
         rec = run(plan["partition"], range(*plan["seeds"]), plan["regimes"], plan["episodes"],
                   driver=frozen["primary"]["name"], policy=frozen["primary"]["acquisition"], subset=frozen["arms"])
-        print(write(seal(rec, f"R6-{a.phase}"), EVIDENCE / a.phase.lower() / "qualification.json"), rec["seconds"])
+        print(write(seal(rec, f"R6-{a.phase}"), out), rec["seconds"])
+    elif a.command == "disposition":
+        frozen = json.loads((R0_ROOT / "FROZEN_R6.json").read_text(encoding="utf-8"))
+        prim, fb, sc = frozen["primary"]["name"], frozen["fallback"]["name"], frozen["scales"]
+        phases, pparts, fparts = {}, {}, {}
+        for ph in ("VALIDATION", "HOLDOUT"):
+            path = EVIDENCE / ph.lower() / "qualification.json"
+            if not path.exists():
+                pparts[ph] = fparts[ph] = None
+                continue
+            rec = _load(path)
+            pparts[ph] = gate_parts(rec, prim, sc, QUAL_LEVEL, rec)
+            fparts[ph] = fallback_gates(rec, fb, QUAL_LEVEL)
+            phases[ph] = {"primary": pparts[ph], "fallback": fparts[ph], "families": families(rec, prim),
+                          "claims": claims(rec, prim), "record_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                          "source_sha256": rec["source_sha256"]}
+        status, failing = primary_status(pparts)
+        fstatus, ffailing = fallback_status(fparts)
+        out = {"schema": "relational-lao-r0.disposition.v1", "level": QUAL_LEVEL, "family_level": FAMILY_LEVEL,
+               "intervals": "[mean, lo, hi], paired Student-t over world seeds, two-sided",
+               "primary": {"name": prim, "status": status, "failing": failing},
+               "fallback": {"name": fb, "status": fstatus, "failing": ffailing},
+               "holdout": "OPENED_ONCE" if pparts["HOLDOUT"] is not None else "SEALED",
+               "frozen_source_sha256": frozen["source_sha256"], "phases": phases}
+        (EVIDENCE / "DISPOSITION_R6.json").write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
+        print(status, fstatus, failing)
+    elif a.command == "ood":
+        frozen = json.loads((R0_ROOT / "FROZEN_R6.json").read_text(encoding="utf-8"))
+        path = EVIDENCE / "ood" / "qualification.json"
+        rec, prim = _load(path), frozen["primary"]["name"]
+        out = {"schema": "relational-lao-r0.ood.v1", "primary": prim, "rho": rho_admission(rec, prim),
+               "characterisation": ood_characterisation(rec, prim),
+               "record_sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "source_sha256": rec["source_sha256"]}
+        (EVIDENCE / "ood" / "characterization.json").write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
+        print(out["rho"]["rho_admit"], out["rho"]["host_rho_admit"])
 
 
 if __name__ == "__main__":

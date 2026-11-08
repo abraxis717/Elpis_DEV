@@ -203,18 +203,24 @@ class TestHost(unittest.TestCase):
         return h
 
     def test_host_over_the_real_view_equals_the_vectorised_learner(self):
-        for regime in ("FLIP20", "CLEAN+REV_DRIFT", "FLIP20+DORMANT", "CLEAN+RECLAIM_DRIFT", "EVENT40"):
-            for strategy in ("replay", "slot"):
-                b = W.episodes("DEV", 21, regime, 0, 24)
-                arm = Lr.Bayes("R", invalidation=strategy)
-                harness.rollout(b, {"R": arm}, "R")
-                _, _, st = W.query_tensors(b.template)
-                dec = Lr.decide(Lr.expected_utilities(arm, b.logits(b.xq), b.template, b.query_struct),
-                                st[b.query_struct])
-                for e in range(b.count):
-                    got, chosen = self.hostrun.run_episode(self.new_host(strategy), b, e)
-                    self.assertEqual(chosen, list(arm.log.rel[e]), (regime, strategy, e))
-                    self.assertEqual(got, list(dec[e]), (regime, strategy, e))
+        cases = [(r, s_, "coupled") for r in ("FLIP20", "CLEAN+REV_DRIFT", "FLIP20+DORMANT", "CLEAN+RECLAIM_DRIFT",
+                                              "EVENT40") for s_ in ("replay", "slot")]
+        cases += [(r, "replay", "marginal") for r in ("FLIP20", "CLEAN+REV_DRIFT", "CLEAN+RECLAIM_DRIFT")]
+        for regime, strategy, readout in cases:
+            b = W.episodes("DEV", 21, regime, 0, 24)
+            arm = Lr.Bayes("R", readout=readout, invalidation=strategy)
+            harness.rollout(b, {"R": arm}, "R")
+            _, _, st = W.query_tensors(b.template)
+            dec = Lr.decide(Lr.expected_utilities(arm, b.logits(b.xq), b.template, b.query_struct),
+                            st[b.query_struct])
+            frozen = dict(self.host.FROZEN_DEFAULT, invalidation=strategy,
+                          PRIMARY=dict(self.host.FROZEN_DEFAULT["PRIMARY"], readout=readout))
+            for e in range(b.count):
+                h = self.host.RelationalHost(REGISTRY, 0.0, frozen)
+                h.initialize(independent())
+                got, chosen = self.hostrun.run_episode(h, b, e)
+                self.assertEqual(chosen, list(arm.log.rel[e]), (regime, strategy, e))
+                self.assertEqual(got, list(dec[e]), (regime, strategy, e))
 
     def test_revoked_source_cannot_reach_later_proposals(self):
         """After a sync that retires a source, the host's learner is bitwise the learner fed only the evidence the

@@ -25,10 +25,15 @@ def sigmoid(z: float) -> float:
 
 
 class ScalarRelational:
+    READOUTS = ("coupled", "marginal", "independent")
+
     def __init__(self, hypotheses=((0.0, 0.0), (0.4, 0.0), (0.48, 0.0)), prior=(1.0, 1.0, 1.0), slots: int = R_MAX,
-                 bias_var: float = 1.0):
+                 bias_var: float = 1.0, readout: str = "coupled"):
         if not (1 <= len(hypotheses) <= M_MAX) or len(prior) != len(hypotheses) or not (1 <= slots <= R_MAX):
             raise ValueError("SCALAR_REL_CONFIG")
+        if readout not in self.READOUTS:
+            raise ValueError("SCALAR_REL_CONFIG")
+        self.readout = readout
         for q, rho in hypotheses:
             if not (0.0 <= q < 0.5 and 0.0 <= rho <= 1.0):
                 raise ValueError("SCALAR_REL_CONFIG")
@@ -150,8 +155,39 @@ class ScalarRelational:
             out.append(acc)
         return out
 
+    def slot_predictive(self, z_row) -> list:
+        """INDEPENDENT readout: each slot under its own reliability posterior (log prior + its own evidence)."""
+        out = []
+        for r in range(self.R):
+            lw = [self.log_prior[m] + self.lam[m][r] for m in range(self.M)]
+            top = max(lw)
+            w = [math.exp(x - top) for x in lw]
+            s = 0.0
+            for x in w:
+                s += x
+            acc = 0.0
+            for m in range(self.M):
+                acc += (w[m] / s) * self.mean(m, r, z_row[r])
+            out.append(acc)
+        return out
+
+    @staticmethod
+    def _compose(alternative, p) -> float:
+        miss = 1.0
+        for path in alternative:
+            prod = 1.0
+            for r in path:
+                prod *= p[r]
+            miss *= 1.0 - prod
+        return 1.0 - miss
+
     def expected_utility(self, alternative, z_row) -> float:
-        """sum_h w_h (1 - prod_paths (1 - prod_relations E_h[p])) for an alternative = (path, ...)."""
+        """coupled: sum_h w_h (1 - prod_paths (1 - prod_relations E_h[p])); marginal: the same composition of the
+        mixture predictive; independent: of the per-slot predictive. An alternative = (path, ...)."""
+        if self.readout == "marginal":
+            return self._compose(alternative, self.predictive(z_row))
+        if self.readout == "independent":
+            return self._compose(alternative, self.slot_predictive(z_row))
         w = self.weights()
         total = 0.0
         for m in range(self.M):

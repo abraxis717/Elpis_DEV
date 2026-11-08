@@ -24,10 +24,21 @@ from . import ecsc
 from .scalar import R_MAX, ScalarRelational
 
 FROZEN_DEFAULT = {
-    "PRIMARY": {"hypotheses": ((0.0, 0.0), (0.4, 0.0), (0.48, 0.0)), "prior": (1.0, 1.0, 1.0)},
-    "FALLBACK": {"hypotheses": ((0.0, 0.0), (0.2, 0.0), (0.4, 0.0), (0.48, 0.0)), "prior": (1.0, 1.0, 8.0, 8.0)},
+    "PRIMARY": {"hypotheses": ((0.0, 0.0), (0.4, 0.0), (0.48, 0.0)), "prior": (1.0, 1.0, 1.0), "readout": "coupled"},
+    "FALLBACK": {"hypotheses": ((0.0, 0.0), (0.2, 0.0), (0.4, 0.0), (0.48, 0.0)), "prior": (1.0, 1.0, 8.0, 8.0),
+                 "readout": "coupled"},
     "horizon": 8, "reads": QUALIFIED_READ_SCHEDULE, "invalidation": "replay",
 }
+
+
+def config_from_freeze(frozen_r6: dict) -> dict:
+    """The host configuration bound by FROZEN_R6.json: the primary (hypotheses, prior, readout, invalidation) and
+    the Contract II fallback (hypotheses, prior; coupled readout of the first reading only)."""
+    hyp, prior, readout, invalidation = frozen_r6["primary"]["config"]
+    fhyp, fprior = frozen_r6["fallback"]["config"]
+    return {"PRIMARY": {"hypotheses": tuple(map(tuple, hyp)), "prior": tuple(prior), "readout": readout},
+            "FALLBACK": {"hypotheses": tuple(map(tuple, fhyp)), "prior": tuple(fprior), "readout": "coupled"},
+            "horizon": 8, "reads": QUALIFIED_READ_SCHEDULE, "invalidation": invalidation}
 
 
 @dataclass
@@ -94,7 +105,8 @@ class RelationalHost:
         if code != ecsc.OK:
             raise HostError(f"SYNC_{code}")
         cfg = self.frozen[self.admission.configuration]
-        self.learner = ScalarRelational(cfg["hypotheses"], cfg["prior"], slots=len(keys))
+        self.learner = ScalarRelational(cfg["hypotheses"], cfg["prior"], slots=len(keys),
+                                        readout=cfg.get("readout", "coupled"))
         self.ep = _Episode(status="ACTIVE")
 
     def _z(self, x, rel: int) -> float:
