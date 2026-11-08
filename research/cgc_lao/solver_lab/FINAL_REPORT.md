@@ -449,3 +449,17 @@ The same pattern applies to `v2` and `v3`. CI runs all of these in the SCIENTIFI
   3. a separately validated integration.
 
   No such provider exists in this repository. Without one, a host must run Contract II.
+
+## Post-freeze host admission boundary (PR #70 correction)
+
+The v4 frozen scientific source and evidence remain byte-identical. Its historical
+`v2/src/cgc_lao_v2/host.py` is retained **for reproducing the frozen experiment**,
+not for new provider admission: that historical host permitted a Contract I
+`DUP2_4` episode to advance after only one reading at a two-reading step.
+
+New research integrations **must** import
+[`host_closure.strict_host.StrictResearchHost`](host_closure/README.md) and
+`strict_admit`. These enforce exact duplicate counts, valid two-reading provider
+capacity, finite correlation bounds, and fail-closed state zeroization. The
+supplement does not change RMF3 coefficients, SLB2 qualification results,
+source/evidence digests, or imply that an external provider has been audited.
