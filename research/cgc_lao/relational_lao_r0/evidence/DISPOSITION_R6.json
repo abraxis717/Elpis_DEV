@@ -5,19 +5,21 @@
  "intervals": "[mean, lo, hi], paired Student-t over world seeds, two-sided",
  "primary": {
   "name": "RRMF3_M",
-  "status": "NOT_QUALIFIED",
+  "status": "QUALIFIED_SYNTHETIC_RELATIONAL_CONTRACT_I",
   "failing": {
-   "VALIDATION": []
+   "VALIDATION": [],
+   "HOLDOUT": []
   }
  },
  "fallback": {
   "name": "SAFE3_P4",
-  "status": "NOT_QUALIFIED",
+  "status": "QUALIFIED_SYNTHETIC_RELATIONAL_CONTRACT_II_CONSERVATIVE",
   "failing": {
-   "VALIDATION": []
+   "VALIDATION": [],
+   "HOLDOUT": []
   }
  },
- "holdout": "SEALED",
+ "holdout": "OPENED_ONCE",
  "frozen_source_sha256": "e5a17b0ef0d4d8f906fa4e161cd09cbb25d29974a0484330166f7e113e923de1",
  "phases": {
   "VALIDATION": {
@@ -179,6 +181,167 @@
     }
    },
    "record_sha256": "4c2721dd353202261e7983da1a4ccae2291d52573d1fbf74e32d42225b3715b0",
+   "source_sha256": "e5a17b0ef0d4d8f906fa4e161cd09cbb25d29974a0484330166f7e113e923de1"
+  },
+  "HOLDOUT": {
+   "primary": {
+    "RG1": true,
+    "RG2_NOOP": true,
+    "RG2_KNOWN": true,
+    "RG3_EXACT_RELATIONAL": true,
+    "RG3_STATIC_COUNTS": true,
+    "RG3_HCA_ONLY": true,
+    "RG3_IND": true,
+    "RG3_HCA": true,
+    "RG4_FLIP40": true,
+    "RG4_FLIP45": true,
+    "RG5": true,
+    "RG6": true,
+    "RG7_STALE": true,
+    "RG7_NOOP": true,
+    "RG8_NOOP": true,
+    "RG8_IND": true,
+    "RG9": true
+   },
+   "fallback": {
+    "F1": true,
+    "F2": true,
+    "F3": true,
+    "F4": true
+   },
+   "families": {
+    "CLEAN": "USEFUL",
+    "FLIP20": "USEFUL",
+    "FLIP40": "USEFUL",
+    "FLIP45": "SAFE",
+    "FLIP48": "SAFE",
+    "QUNIF": "USEFUL",
+    "BURST": "USEFUL",
+    "EVENT40": "NOT_QUALIFIED"
+   },
+   "claims": {
+    "level": 0.95,
+    "DIRECT_RELATION_GAIN": [
+     -0.0031938622038541666,
+     -0.00347544463054891,
+     -0.0029122797771594234
+    ],
+    "COMPOSITIONAL_GAIN_VS_NOOP": [
+     -0.0020082770080729166,
+     -0.0021102426192153106,
+     -0.0019063113969305225
+    ],
+    "COMPOSITIONAL_GAIN_VS_BEST_CONTROL": {
+     "control": "RRMF3:IND",
+     "delta": [
+      -0.00025546886390625097,
+      -0.00027954379481688,
+      -0.00023139393299562193
+     ]
+    },
+    "RELATIONAL_COUPLING_VS_IND": [
+     -0.00025546886390625097,
+     -0.00027954379481688,
+     -0.00023139393299562193
+    ],
+    "RELATION_IDENTITY_ABLATION": [
+     -0.003201568297916667,
+     -0.0033416005615324153,
+     -0.003061536034300919
+    ],
+    "GEOMETRIC_PROJECTION_GAIN": [
+     0.01306591024453125,
+     0.012028375679337592,
+     0.014103444809724907
+    ],
+    "CONTRADICTION_VS_NOOP": {
+     "FLIP45": [
+      9.548779312500003e-05,
+      6.087439611555416e-05,
+      0.0001301011901344459
+     ],
+     "FLIP48": [
+      0.00019647881921875028,
+      0.00016334480160204898,
+      0.00022961283683545157
+     ],
+     "EVENT40": [
+      0.0020516300792187505,
+      0.0019352078822881971,
+      0.002168052276149304
+     ]
+    },
+    "STOP": {
+     "stop_rate": 0.5820174217229166,
+     "noop_stop_rate": 0.5918366114286457,
+     "known_stop_rate": 0.5804505348203125,
+     "boundary_vs_NOOP": [
+      -0.0019376827915624998,
+      -0.0020660461323129906,
+      -0.001809319450812009
+     ]
+    },
+    "ONLINE_REGRET": [
+     0.19094828277239584,
+     0.18897216549501808,
+     0.1929244000497736
+    ],
+    "CLEAN_VS_KNOWN": [
+     0.0001274111643749999,
+     0.0001071486885116184,
+     0.0001476736402383814
+    ],
+    "CLEAN_RETENTION": 0.9748272213167054,
+    "EDGE_MSE_VS_NOOP": [
+     -0.0017095058183854168,
+     -0.0017495221972405784,
+     -0.0016694894395302552
+    ],
+    "KINDS_VS_NOOP": {
+     "path": [
+      -0.00219234541609375,
+      -0.0023338087335981928,
+      -0.002050882098589307,
+      64
+     ],
+     "conj": [
+      -0.0025351905569791673,
+      -0.002733848504735822,
+      -0.002336532609222513,
+      64
+     ],
+     "reach": [
+      -0.0010202682122343754,
+      -0.0011738201618769007,
+      -0.0008667162625918502,
+      64
+     ]
+    },
+    "SOURCE_REVISION_VS_STALE": [
+     -0.00027162648648437505,
+     -0.00029125478141469035,
+     -0.00025199819155405975
+    ],
+    "SOURCE_REVISION_VS_NOOP": [
+     -0.0020709233373046878,
+     -0.0021723932117101944,
+     -0.001969453462899181
+    ],
+    "HELDOUT_TOPOLOGY": {
+     "seeds": 32,
+     "vs_NOOP": [
+      -0.0018117928609375001,
+      -0.0019347360059305504,
+      -0.0016888497159444499
+     ],
+     "vs_IND": [
+      -0.0002629018300000016,
+      -0.00029317963378134253,
+      -0.0002326240262186607
+     ]
+    }
+   },
+   "record_sha256": "61f1f1007a78f2ecc88dd8b0a0d61154b715d38cd074f2c6933d9ba20f182efd",
    "source_sha256": "e5a17b0ef0d4d8f906fa4e161cd09cbb25d29974a0484330166f7e113e923de1"
   }
  }
