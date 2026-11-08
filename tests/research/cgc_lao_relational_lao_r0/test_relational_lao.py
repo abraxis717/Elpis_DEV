@@ -16,3 +16,4 @@ for _path in (str(R0 / "src"), str(R0)):
 
 from relational_lao_tests.test_mechanics import *  # noqa: E402,F401,F403
 from relational_lao_tests.test_r2_gate import *  # noqa: E402,F401,F403
+from relational_lao_tests.test_r5_hca import *  # noqa: E402,F401,F403

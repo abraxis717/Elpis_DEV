@@ -165,9 +165,10 @@ def run(partition, seeds, regimes, n_episodes, driver="NOOP", policy="PROBE", su
         for arm in by_seed[seeds[0]][r]:
             results.setdefault(r, {})[arm] = {m: [float(f"{by_seed[s][r][arm][m]:.10g}") for s in seeds]
                                               for m in by_seed[seeds[0]][r][arm]}
+    from .world import template_for
     return {"partition": partition, "seeds": seeds, "episodes_per_seed": n_episodes, "regimes": list(regimes),
-            "driver": driver, "policy": policy, "subset": subset, "results": results,
-            "seconds": round(time.time() - t0, 1)}
+            "templates": [template_for(partition, s).name for s in seeds], "driver": driver, "policy": policy,
+            "subset": subset, "results": results, "seconds": round(time.time() - t0, 1)}
 
 
 def source_file_digests() -> dict:
@@ -204,16 +205,30 @@ def write(record: dict, path: Path) -> str:
 TAU_SAFE = 0.0005
 
 
-def series(rec, regime, arm, metric="comp") -> np.ndarray:
+def series(rec, regime, arm, metric="comp", seeds=None) -> np.ndarray:
     if regime == "ALL":
-        return np.mean([rec["results"][r][arm][metric] for r in DESIGN], axis=0)
-    if regime == "REVISION":
-        return np.mean([rec["results"][r][arm][metric] for r in REVISION], axis=0)
-    return np.asarray(rec["results"][regime][arm][metric])
+        out = np.mean([rec["results"][r][arm][metric] for r in DESIGN], axis=0)
+    elif regime == "REVISION":
+        out = np.mean([rec["results"][r][arm][metric] for r in REVISION], axis=0)
+    else:
+        out = np.asarray(rec["results"][regime][arm][metric])
+    return out if seeds is None else out[seeds]
 
 
-def d(rec, regime, a, b, level, metric="comp"):
-    return stats.paired(series(rec, regime, a, metric), series(rec, regime, b, metric), level)
+def heldout_seeds(rec) -> np.ndarray | None:
+    """Seed positions of the partition's held-out topology (V_LADDER on VALIDATION, H_RANDOM on HOLDOUT)."""
+    names = rec.get("templates", [])
+    if rec["partition"] == "VALIDATION":
+        mask = np.array([n == "V_LADDER" for n in names])
+    elif rec["partition"] == "HOLDOUT":
+        mask = np.array([n.startswith("H_RANDOM") for n in names])
+    else:
+        return None
+    return np.nonzero(mask)[0] if mask.any() else None
+
+
+def d(rec, regime, a, b, level, metric="comp", seeds=None):
+    return stats.paired(series(rec, regime, a, metric, seeds), series(rec, regime, b, metric, seeds), level)
 
 
 def gates(rec, cand: str, scales: dict, level: float, online: dict | None = None) -> dict:
@@ -229,6 +244,10 @@ def gates(rec, cand: str, scales: dict, level: float, online: dict | None = None
     if all(r in rec["results"] for r in REVISION):
         g["RG7"] = d(rec, "REVISION", cand, counterpart(cand, "STALE"), level)["hi"] < 0 \
             and d(rec, "REVISION", cand, "NOOP", level)["hi"] < 0
+    held = heldout_seeds(rec)
+    if held is not None:
+        g["RG8"] = d(rec, "ALL", cand, "NOOP", level, seeds=held)["hi"] < 0 \
+            and d(rec, "ALL", cand, counterpart(cand, "IND"), level, seeds=held)["hi"] < 0
     if online is not None:
         g["RG9"] = stats.mean_ci(series(online, "ALL", cand, "online"), level)["hi"] <= scales["online_budget"]
     return g
@@ -275,10 +294,43 @@ def scales_from(train: dict) -> dict:
             "tau_safe": TAU_SAFE}
 
 
+PLANS = {
+    "VALIDATION": {"partition": "VALIDATION", "seeds": [0, 32], "episodes": 4096, "regimes": ROUND_REGIMES},
+    "HOLDOUT": {"partition": "HOLDOUT", "seeds": [0, 64], "episodes": 4096, "regimes": ROUND_REGIMES},
+    "OOD": {"partition": "OOD", "seeds": [0, 64], "episodes": 2048,
+            "regimes": ["CLEAN", "FLIP20", "FLIP40", "CORR10", "CORR25", "CORR50", "CORR75", "CORR90", "EVENT40",
+                        "SHARED_SRC", "SECOND_EVENT40", "ASYM40", "CTXQ40", "FLIP30"]},
+}
+
+
+def qualification_arms(primary: str, fallback: str) -> list:
+    """The frozen primary (the driver), every arm its gates read, the fallback and the controls."""
+    arms = [primary, "NOOP", counterpart(primary, "IND"), counterpart(primary, "HCA"), counterpart(primary, "PERM"),
+            counterpart(primary, "STALE"), fallback, "EXACT_RELATIONAL", "STATIC_COUNTS", "HCA_ONLY",
+            "KNOWN_RELIABILITY"]
+    return list(dict.fromkeys(arms))
+
+
+def freeze() -> dict:
+    sel = json.loads((R0_ROOT / "SELECTION_R6.json").read_text(encoding="utf-8"))
+    primary, fallback = sel["primary"], sel["fallback"]
+    return {"schema": "relational-lao-r0.freeze.v1",
+            "note": "Frozen before any VALIDATION, HOLDOUT or OOD run; selection by SELECTION_R6.json.",
+            "primary": {"name": primary, "config": [list(map(list, CANDIDATES[primary][0])),
+                                                     list(CANDIDATES[primary][1])] + list(CANDIDATES[primary][2:]),
+                        "contract": "I", "acquisition": sel.get("acquisition", "PROBE")},
+            "fallback": {"name": fallback, "config": [list(map(list, FALLBACKS[fallback][0])),
+                                                       list(FALLBACKS[fallback][1])], "contract": "II"},
+            "arms": qualification_arms(primary, fallback), "scales": sel["scales"],
+            "source_sha256": source_digest(), "source_files_sha256": source_file_digests(), "plans": PLANS,
+            "holdout_rule": "open HOLDOUT only if the primary passes every gate RG1-RG9 on VALIDATION at 95%"}
+
+
 def main(argv=None) -> None:
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=("train", "dev", "onpolicy", "select"))
+    ap.add_argument("command", choices=("train", "dev", "onpolicy", "select", "freeze", "qualify"))
+    ap.add_argument("--phase", default="")
     ap.add_argument("--candidate", default="RRMF3")
     ap.add_argument("--policy", default="PROBE", choices=("PROBE", "VOI"))
     a = ap.parse_args(argv)
@@ -311,6 +363,15 @@ def main(argv=None) -> None:
                "record_sha256": hashlib.sha256((EVIDENCE / "dev" / "round.json").read_bytes()).hexdigest()}
         (R0_ROOT / "SELECTION_R6.json").write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
         print(out["primary"], out["fallback"])
+    elif a.command == "freeze":
+        (R0_ROOT / "FROZEN_R6.json").write_text(json.dumps(freeze(), indent=1) + "\n", encoding="utf-8")
+        print(source_digest())
+    elif a.command == "qualify":
+        frozen = json.loads((R0_ROOT / "FROZEN_R6.json").read_text(encoding="utf-8"))
+        plan = frozen["plans"][a.phase]
+        rec = run(plan["partition"], range(*plan["seeds"]), plan["regimes"], plan["episodes"],
+                  driver=frozen["primary"]["name"], policy=frozen["primary"]["acquisition"], subset=frozen["arms"])
+        print(write(seal(rec, f"R6-{a.phase}"), EVIDENCE / a.phase.lower() / "qualification.json"), rec["seconds"])
 
 
 if __name__ == "__main__":
