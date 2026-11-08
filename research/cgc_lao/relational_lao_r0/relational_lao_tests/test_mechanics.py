@@ -222,6 +222,29 @@ class TestHost(unittest.TestCase):
                 self.assertEqual(chosen, list(arm.log.rel[e]), (regime, strategy, e))
                 self.assertEqual(got, list(dec[e]), (regime, strategy, e))
 
+    def test_a_step_without_an_admissible_relation_passes_without_evidence(self):
+        """DEV episodes in which the dormant source reports every relation at one step: nothing is admissible, so
+        the host abstains for that step (no proposal, no reading, no learning) exactly as the evaluated rollout does,
+        and the rest of the episode equals the vectorised learner (selections and terminal decisions)."""
+        frozen = dict(self.host.FROZEN_DEFAULT, PRIMARY=dict(self.host.FROZEN_DEFAULT["PRIMARY"], readout="marginal"))
+        for regime, seed, e, step in (("CLEAN+DORMANT", 65, 21, 4), ("CLEAN+DORMANT", 117, 42, 3),
+                                      ("FLIP20+DORMANT", 112, 41, 4)):
+            b = W.episodes("DEV", seed, regime, e, 1)
+            self.assertFalse(b.admissible(step)[0].any())
+            arm = Lr.Bayes("R", readout="marginal")
+            harness.rollout(b, {"R": arm}, "R")
+            _, _, st = W.query_tensors(b.template)
+            dec = Lr.decide(Lr.expected_utilities(arm, b.logits(b.xq), b.template, b.query_struct),
+                            st[b.query_struct])
+            h = self.host.RelationalHost(REGISTRY, 0.0, frozen)
+            h.initialize(independent())
+            got, chosen = self.hostrun.run_episode(h, b, 0)
+            self.assertEqual(chosen[step], -1)
+            self.assertEqual(chosen, list(arm.log.rel[0]), (regime, seed, e))
+            self.assertEqual(got, list(dec[0]), (regime, seed, e))
+            self.assertEqual(len(h.learner.buffer), W.T - 1)
+            self.assertEqual(h.close_episode()["status"], "ACTIVE")
+
     def test_revoked_source_cannot_reach_later_proposals(self):
         """After a sync that retires a source, the host's learner is bitwise the learner fed only the evidence the
         view still holds LIVE; so every later proposal and decision is a function of LIVE evidence alone."""

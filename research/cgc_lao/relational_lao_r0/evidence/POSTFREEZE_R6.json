@@ -1,0 +1,125 @@
+{
+ "schema": "relational-lao-r0.postfreeze.v1",
+ "frozen_source_sha256": "e5a17b0ef0d4d8f906fa4e161cd09cbb25d29974a0484330166f7e113e923de1",
+ "source_sha256_after": "86edce1560197d87bf888970d78864ec0443c13eeb9dd024698589bb450051fa",
+ "changed_files_sha256": {
+  "relational_lao/host.py": [
+   "f89277ac5650f6d13f744c363204b26b02524c07a5afd08482b96e182c6268b4",
+   "f8b96af3be6f17371e1bf91bcf2d167f12e29eac9f7a0d812a0730831df99764"
+  ],
+  "relational_lao/hostrun.py": [
+   "4c6c6bada378861e621d7cb5179d23c453855c24220404449b457315123ea0c2",
+   "37915dbde32b666a0db166a177f299bca69a7f3acd90089b42e1284a62bae0e7"
+  ]
+ },
+ "change": "RelationalHost.propose_relation returns -1 and advances the step when no relation is admissible (abstention, the semantics of the evaluated rollout) instead of failing the episode closed with NO_ADMISSIBLE_RELATION; hostrun.run_episode passes such a step. Integrity and contract failures still fail closed.",
+ "found_by": "the preregistered host parity (PREREGISTRATION_R6.md) with the frozen host: 3 VALIDATION and 2 HOLDOUT sampled episodes (DORMANT regimes) had a step at which the dormant source reported every relation; the frozen host failed them closed, the evaluated rollout abstained",
+ "records_unaffected": "the study's import graph (study -> harness, hca, learners, world, acquisition) never imports host, hostrun, scalar or ecsc; every qualification record was produced by the vectorised rollout and reproduces from the frozen sources (commit cf05013)",
+ "regression_test": "relational_lao_tests/test_mechanics.py::TestHost::test_a_step_without_an_admissible_relation_passes_without_evidence",
+ "parity": {
+  "validation/parity_frozen_host": {
+   "sha256": "4a882ba3cf0ca69dd833c9e8dac969ebbbac42d6295174211cb06c0cf0b86c42",
+   "host_matches_vectorised": false,
+   "native_operations_compared": 3571420,
+   "host_failures": {
+    "PRIMARY": 3,
+    "FALLBACK": 3
+   },
+   "selection_mismatches": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "decision_mismatches": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "near_ties": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "host_sources_sha256": {
+    "host.py": "f89277ac5650f6d13f744c363204b26b02524c07a5afd08482b96e182c6268b4",
+    "hostrun.py": "4c6c6bada378861e621d7cb5179d23c453855c24220404449b457315123ea0c2",
+    "scalar.py": "a094af67a99ad4ad65fef9c33a755beed90dcbe54188f3397409ac858ebc18fd"
+   }
+  },
+  "validation/parity": {
+   "sha256": "2b3844be33595e44cbec91d843dc4eb8e684a45bb767778e62f2a861a46efe74",
+   "host_matches_vectorised": true,
+   "native_operations_compared": 3571696,
+   "host_failures": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "selection_mismatches": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "decision_mismatches": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "near_ties": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "host_sources_sha256": {
+    "host.py": "f8b96af3be6f17371e1bf91bcf2d167f12e29eac9f7a0d812a0730831df99764",
+    "hostrun.py": "37915dbde32b666a0db166a177f299bca69a7f3acd90089b42e1284a62bae0e7",
+    "scalar.py": "a094af67a99ad4ad65fef9c33a755beed90dcbe54188f3397409ac858ebc18fd"
+   }
+  },
+  "holdout/parity_frozen_host": {
+   "sha256": "0aaa81e55276371495e44401676ffa35d904b4dc1b3ba01259d370d412703d03",
+   "host_matches_vectorised": false,
+   "native_operations_compared": 3448648,
+   "host_failures": {
+    "PRIMARY": 2,
+    "FALLBACK": 2
+   },
+   "selection_mismatches": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "decision_mismatches": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "near_ties": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "host_sources_sha256": {
+    "host.py": "f89277ac5650f6d13f744c363204b26b02524c07a5afd08482b96e182c6268b4",
+    "hostrun.py": "4c6c6bada378861e621d7cb5179d23c453855c24220404449b457315123ea0c2",
+    "scalar.py": "a094af67a99ad4ad65fef9c33a755beed90dcbe54188f3397409ac858ebc18fd"
+   }
+  },
+  "holdout/parity": {
+   "sha256": "a75b3b3894ff6747ac3427371e5c06a8a54f9e2e0507359779207468346fb705",
+   "host_matches_vectorised": true,
+   "native_operations_compared": 3448824,
+   "host_failures": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "selection_mismatches": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "decision_mismatches": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "near_ties": {
+    "PRIMARY": 0,
+    "FALLBACK": 0
+   },
+   "host_sources_sha256": {
+    "host.py": "f8b96af3be6f17371e1bf91bcf2d167f12e29eac9f7a0d812a0730831df99764",
+    "hostrun.py": "37915dbde32b666a0db166a177f299bca69a7f3acd90089b42e1284a62bae0e7",
+    "scalar.py": "a094af67a99ad4ad65fef9c33a755beed90dcbe54188f3397409ac858ebc18fd"
+   }
+  }
+ }
+}

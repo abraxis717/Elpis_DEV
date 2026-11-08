@@ -160,11 +160,15 @@ class RelationalHost:
 
     def propose_relation(self, x) -> int:
         """PROBE_R over admissible slots (argmax predictive; best unseen probed at steps 1-2 and forced by the
-        coverage deadline)."""
+        coverage deadline). Returns -1 when no relation is admissible (every reporting source suspended at this
+        step): the step then passes without evidence, which is the abstention of the evaluated rollout. Nothing is
+        proposed, admitted or learned, and the episode goes on; integrity failures still fail closed."""
         self._require(self.ep.status == "ACTIVE" and self.ep.proposed is None, "PROPOSAL_STATE")
         self._require(self.ep.t < self.frozen["horizon"], "HORIZON_EXHAUSTED")
         adm = self.admissible(self.ep.t)
-        self._require(any(adm), "NO_ADMISSIBLE_RELATION")
+        if not any(adm):
+            self.ep.t += 1
+            return -1
         pred = self.learner.predictive(self.z_row(x))
         unseen = [adm[s] and self.learner.counts[s] == 0 for s in range(len(adm))]
         need = sum(unseen)

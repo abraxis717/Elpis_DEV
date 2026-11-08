@@ -183,3 +183,65 @@ or a metric of a DEV record. `select` on the DEV record returns the same selecti
     sealed the RRMF3_M VOI record;
   - the protocol documents, the plans and the arms.
 - **Guards.** `study qualify` refuses any other source digest and runs each phase once.
+
+## R6: VALIDATION, HOLDOUT, OOD (once each, frozen sources e5a17b0e…)
+
+| Phase | Record | Seconds | Outcome |
+|---|---|---|---|
+| VALIDATION 32 × 4096 | `evidence/validation/qualification.json` (4c2721dd…) | 1405 | every primary gate part passes; F1–F4 pass |
+| HOLDOUT 64 × 4096 | `evidence/holdout/qualification.json` (61f1f100…) | 2849 | opened once; every primary gate part passes; F1–F4 pass |
+| OOD 64 × 2048 | `evidence/ood/qualification.json` (8c636bf6…) | 1073 | opened once after the HOLDOUT; ρ_admit = 0.25 |
+
+**Disposition** (`evidence/DISPOSITION_R6.json`):
+- RRMF3_M: **QUALIFIED_SYNTHETIC_RELATIONAL_CONTRACT_I**, subject to the mechanical gate (CI on the exact head).
+- SAFE3_P4: **QUALIFIED_SYNTHETIC_RELATIONAL_CONTRACT_II_CONSERVATIVE**.
+- The full numbers are in [FINAL_REPORT_R0.md](FINAL_REPORT_R0.md).
+
+**The coupling depends on the regime.** On the preregistered ALL, the coupled readout beats independent per-slot
+reliability (HOLDOUT C − `:IND` −0.000255 [−0.000280, −0.000231]), and it does so on every topology. The sign
+depends on the regime:
+- The coupling helps where reliability really is shared across relations: CLEAN, every CLEAN authority regime,
+  FLIP45 and FLIP48.
+- It costs where the corruption rate is not in H3 or varies: FLIP20, QUNIF, BURST, and EVENT40, whose duplicates
+  are correlated.
+- Most of the compositional gain over NOOP comes at the answer/STOP boundary. On HOLDOUT, the boundary regret
+  difference is −0.001938 of the terminal −0.002274.
+
+## Post-freeze: the research host's empty-step semantics (found by the preregistered parity)
+
+**The finding.** The preregistered native and host parity ran through the frozen host over the real ECS_C view, on
+VALIDATION and HOLDOUT seeds 0–7 × 256 episodes per regime, for the primary and the fallback
+(`evidence/*/parity_frozen_host.json`).
+
+What matched:
+- **The native adapter** equals the scalar reference bitwise on every operation: 3,571,420 comparisons on
+  VALIDATION and 3,448,648 on HOLDOUT.
+- **The host** reproduces every selection and every terminal decision of the vectorised frozen arms, with 0 near-ties,
+  with one exception.
+
+The exception is a step at which **no relation is admissible**. This happens when the dormant source reports every
+relation at that step: 3 sampled VALIDATION episodes and 2 HOLDOUT episodes, all in DORMANT regimes.
+- The vectorised rollout, which produced every qualification record, abstains for such a step: no proposal, no
+  evidence, and the step still counts toward the horizon.
+- The frozen host instead failed the whole episode closed (`NO_ADMISSIBLE_RELATION`), discarding a legitimate
+  episode as if an authority state were an integrity violation.
+- SPEC.md does not define this case. The R1 host differential had no such step in its DEV episodes.
+
+**The correction**, after the freeze and after the HOLDOUT; `evidence/POSTFREEZE_R6.json` records the digests.
+- `host.propose_relation` returns −1 and advances the step when nothing is admissible.
+- `hostrun.run_episode` passes that step.
+- Integrity and contract failures still fail closed.
+- A regression test covers three DEV episodes with such a step: the host abstains and then equals the vectorised
+  learner.
+
+**Why no record changes.** The study's import graph (study → harness, hca, learners, world, acquisition) never
+imports `host`, `hostrun`, `scalar` or `ecsc`. No qualification record depends on the changed files, and re-running
+any phase would give the same numbers under a different source digest. `FROZEN_R6.json` is left as written: the
+records reproduce from the frozen sources at commit cf05013.
+
+**The rerun.** The parity was then re-run with the corrected host on the same preregistered samples
+(`evidence/*/parity.json`).
+
+**A harness fix along the way.** The first parity attempt also showed that the harness leaked: one native view per
+discarded host. The harness now keeps one long-lived host per configuration and resets it per episode, as a
+deployment does. The host already reuses its view, so that change is harness-only.

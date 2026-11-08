@@ -60,6 +60,9 @@ def run_episode(host, batch, e: int, tamper=None):
         for table in ew.transitions(t):
             host.sync(table)
         slot = host.propose_relation(batch.x[e, t])
+        if slot < 0:                                        # nothing admissible: the step passes without evidence
+            chosen.append(-1)
+            continue
         rel = host.rel_of[slot]
         n = READS["I"][t]
         readings = [Reading(f"{e}/{t}", f"{e}/{t}/{k}", f"chan-{'AB'[k]}", slot, int(batch.y[e, t, rel, k]))

@@ -19,6 +19,7 @@ import numpy as np
 
 from relational_lao_tests import _native
 import relational_lao  # noqa: F401  (paths)
+from cgc_lao_v2.host import HostError
 from cgc_lao_v2.providers import MechanismRegistry, ProviderDeclaration, slb2_digest
 from relational_lao import R0_ROOT, harness, host as H, hostrun, learners as Lr, study, world as W
 from relational_lao.scalar import ScalarRelational
@@ -135,8 +136,14 @@ def run(frozen: dict, phase: str) -> dict:
     if frozen["primary"]["acquisition"] != "PROBE":
         raise SystemExit("the host implements PROBE_R only")
     saved, H.ScalarRelational = H.ScalarRelational, DualRelational
-    res = {k: {"episodes": 0, "selection_mismatches": [], "decision_mismatches": [], "near_ties": []}
-           for k in ("PRIMARY", "FALLBACK")}
+    res = {k: {"episodes": 0, "selection_mismatches": [], "decision_mismatches": [], "near_ties": [],
+               "host_failures": []} for k in ("PRIMARY", "FALLBACK")}
+    hosts = {}                       # one long-lived host per configuration, reset per episode (as deployed)
+    for kind, decl in (("PRIMARY", DUPLICATE), ("FALLBACK", FIRST_ONLY)):
+        hosts[kind] = H.RelationalHost(REGISTRY, 0.0, cfg)
+        adm = hosts[kind].initialize(decl)
+        if adm.configuration != kind:
+            raise ParityError(f"admission {adm}")
     t0 = time.time()
     try:
         for regime in study.ROUND_REGIMES:
@@ -155,39 +162,49 @@ def run(frozen: dict, phase: str) -> dict:
                 feu = Lr.expected_utilities(fa, zq, tpl, struct)
                 fdec, frel = Lr.decide(feu, stops), fa.log.rel
                 for e in range(b.count):
-                    for kind, decl, d_, eu_, rel_ in (("PRIMARY", DUPLICATE, dec, eu, rel),
-                                                      ("FALLBACK", FIRST_ONLY, fdec, feu, frel)):
-                        h = H.RelationalHost(REGISTRY, 0.0, cfg)
-                        adm = h.initialize(decl)
-                        if adm.configuration != kind:
-                            raise ParityError(f"admission {adm}")
-                        got, chosen = hostrun.run_episode(h, b, e)
+                    for kind, d_, eu_, rel_ in (("PRIMARY", dec, eu, rel), ("FALLBACK", fdec, feu, frel)):
+                        h = hosts[kind]
+                        try:
+                            got, chosen = hostrun.run_episode(h, b, e)
+                        except HostError as exc:                # a fail-closed host episode is a divergence
+                            res[kind]["episodes"] += 1
+                            res[kind]["host_failures"].append([b.regime.name, b.seed, e, str(exc)])
+                            continue
                         _compare(kind, b, e, got, chosen, d_, eu_, stops, rel_, res[kind])
                         h.close_episode()
             print(regime, f"{time.time() - t0:.0f}s", {k: (v["episodes"], len(v["selection_mismatches"]),
-                                                        len(v["decision_mismatches"]), len(v["near_ties"]))
-                                                    for k, v in res.items()}, flush=True)
+                                                        len(v["decision_mismatches"]), len(v["near_ties"]),
+                                                        len(v["host_failures"])) for k, v in res.items()},
+                  flush=True)
     finally:
         H.ScalarRelational = saved
+        for h in hosts.values():
+            if h.view is not None:
+                h.view.close()
     native = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
               for p in sorted((R0_ROOT / "native").rglob("*")) if p.is_file()}
-    ok = all(not v["selection_mismatches"] and not v["decision_mismatches"] for v in res.values())
+    ok = all(not v["selection_mismatches"] and not v["decision_mismatches"] and not v["host_failures"]
+             for v in res.values())
+    host_files = {n: hashlib.sha256((R0_ROOT / "src" / "relational_lao" / n).read_bytes()).hexdigest()
+                  for n in ("host.py", "hostrun.py", "scalar.py")}
     return {"schema": "relational-lao-r0.parity.v1", "phase": phase, "partition": partition, "seeds": list(seeds),
             "episodes_per_seed": n, "regimes": study.ROUND_REGIMES, "near_tie": NEAR_TIE,
             "native_bitwise": True, "native_operations_compared": DualRelational.operations,
             "host_matches_vectorised": ok, "results": res, "frozen_source_sha256": frozen["source_sha256"],
             "sources_match_frozen": study.source_digest() == frozen["source_sha256"],
-            "native_sources_sha256": native, "seconds": round(time.time() - t0, 1)}
+            "host_sources_sha256": host_files, "native_sources_sha256": native,
+            "seconds": round(time.time() - t0, 1)}
 
 
 def main(argv) -> None:
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--phase", required=True, choices=sorted(SAMPLE))
+    ap.add_argument("--label", default="parity")
     a = ap.parse_args(argv)
     frozen = json.loads((R0_ROOT / "FROZEN_R6.json").read_text(encoding="utf-8"))
     out = run(frozen, a.phase)
-    path = R0_ROOT / "evidence" / a.phase.lower() / "parity.json"
+    path = R0_ROOT / "evidence" / a.phase.lower() / f"{a.label}.json"
     path.write_text(json.dumps(out, separators=(",", ":")) + "\n", encoding="utf-8")
     print(hashlib.sha256(path.read_bytes()).hexdigest(), out["host_matches_vectorised"], out["seconds"])
 
