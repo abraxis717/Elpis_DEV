@@ -113,6 +113,13 @@ HCA_ONLY 0.128585, KNOWN_RELIABILITY (privileged reference) 0.036515.
   - ALL compositional −0.000562 [−0.000791, −0.000333], at 99.9%;
   - but online regret is 0.327887 [0.319017, 0.336756], over the budget;
   - so VOI_R is not adopted for RRMF3.
+- RRMF3_M with VOI_R against PROBE_R (`onpolicy_RRMF3_M_VOI.json`, sealed with the sources of b0d8c1b):
+  - ALL compositional −0.000562 [−0.000791, −0.000334], at 99.9% (CLEAN −0.000919, FLIP20 −0.000604, FLIP40
+    −0.000164);
+  - online regret 0.327887 [0.319017, 0.336756], over the budget;
+  - so VOI_R is not adopted, and the frozen acquisition is PROBE_R (`SELECTION_R6.json`).
+- VOI_R buys about 0.0006 of terminal compositional regret per episode for about 0.14 of extra online regret per
+  step. Under this benchmark's online budget, that trade is refused.
 
 ## Disclosure: changes after the DEV round, before the freeze
 
@@ -140,5 +147,39 @@ or a metric of a DEV record. `select` on the DEV record returns the same selecti
 4. **Dry runs.** Every frozen path was dry-run on TRAIN seeds, with templates substituted in-process: V_LADDER, and
    generated H_RANDOM topologies whose keys are outside the HOLDOUT and OOD derivations, including topologies without
    a CONJ or a REACH query. No VALIDATION, HOLDOUT or OOD episode was generated.
+   - **Deviation.** This breaks the letter of SPEC.md: "Templates for VALIDATION and HOLDOUT are never evaluated
+     earlier." The arms ran on V_LADDER over TRAIN worlds, at 32–48 episodes per seed, and the printed summaries
+     mixed the templates.
+   - **Why it does not matter.** Selection had been fixed on DEV before the dry runs. The only changes after them
+     are a guard for single-seed topology groups and the `boundary` metric; no candidate, gate or threshold changed.
+     The VALIDATION and HOLDOUT worlds were never generated.
 5. **The native C11 adapter** (`native/`) was drafted during R2–R5 against the scalar reference, to confirm a bounded,
    allocation-free layout. It is not built, not committed, and not used by any record until the qualification outcome.
+   - **Deviation.** It was compiled in local tests (`relational_lao_tests/_native.py`, a temporary directory). SPEC.md
+     says the adapter is built only after the candidate qualifies.
+   - **What was done about it.** It stays outside the CMake build and the committed tree unless a disposition
+     qualifies.
+6. **The parity harness** `relational_lao_tests/parity_r6.py` (test support, outside the sealed sources) implements
+   the preregistered native and host parity. It was checked on DEV seeds 40–41 × 16 episodes per regime:
+   - 1,024 host episodes over the real view;
+   - 55,808 native operations compared bitwise;
+   - 0 mismatches.
+
+## Freeze (R6)
+
+- **Selection** (`SELECTION_R6.json`): primary RRMF3_M, fallback SAFE3_P4, acquisition PROBE_R.
+- **[PREREGISTRATION_R6.md](PREREGISTRATION_R6.md)** covers:
+  - the 95% gate parts, with RG5 at 97.5%;
+  - RG8 on the held-out topologies;
+  - the fallback gates;
+  - the dispositions;
+  - the Bonferroni family claims;
+  - the secondary estimates and how they are interpreted;
+  - the ρ admission rule;
+  - the native and host parity;
+  - resources, and continuation if not qualified.
+- **`FROZEN_R6.json`** binds:
+  - the sources, digest `e5a17b0ef0d4d8f906fa4e161cd09cbb25d29974a0484330166f7e113e923de1`, the same sources that
+    sealed the RRMF3_M VOI record;
+  - the protocol documents, the plans and the arms.
+- **Guards.** `study qualify` refuses any other source digest and runs each phase once.
