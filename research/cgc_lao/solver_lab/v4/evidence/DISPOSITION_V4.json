@@ -1,0 +1,130 @@
+{
+ "schema": "cgc-lao-solver-lab.disposition.v4",
+ "phases": {
+  "VALIDATION": {
+   "primary": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": true
+   },
+   "fallback": {
+    "F1": true,
+    "F2": true,
+    "F3": true,
+    "F4": true,
+    "F5": true,
+    "F6": true
+   },
+   "families": {
+    "CLEAN": "USEFUL",
+    "FLIP20": "USEFUL",
+    "FLIP40": "USEFUL",
+    "FLIP45": "SAFE",
+    "FLIP48": "NOT_QUALIFIED",
+    "QUNIF": "USEFUL",
+    "BURST": "USEFUL",
+    "EVENT40": "NOT_QUALIFIED"
+   },
+   "clean_retention": {
+    "primary": 0.9857757369108714,
+    "fallback": 0.49600239280244757
+   },
+   "FLIP40_vs_NOOP": [
+    -0.0013709961515624993,
+    -0.001584081401964678,
+    -0.0011579109011603207
+   ],
+   "FLIP45_vs_NOOP": [
+    -0.00017381514218749996,
+    -0.0003099437137538664,
+    -3.7686570621133506e-05
+   ],
+   "FLIP48_vs_NOOP": [
+    0.0005022292484375007,
+    0.00040064149654634834,
+    0.000603817000328653
+   ],
+   "intervals": "[mean, lo, hi], paired Student-t over router seeds, 95% two-sided",
+   "native_parity": {
+    "PRIMARY": true,
+    "FALLBACK": true
+   },
+   "record_sha256": "2a594b9f667f91d6ee5174d9fa225eeec38aab015a6e17a63a326e147e4aa90f",
+   "native_parity_sha256": "1d48896ecf7a72c538126c6fee5a7cd888d809c49ec4e190c927132017598dbf"
+  },
+  "HOLDOUT": {
+   "primary": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": true,
+    "G10": true
+   },
+   "fallback": {
+    "F1": true,
+    "F2": true,
+    "F3": true,
+    "F4": true,
+    "F5": true,
+    "F6": true
+   },
+   "families": {
+    "CLEAN": "USEFUL",
+    "FLIP20": "USEFUL",
+    "FLIP40": "USEFUL",
+    "FLIP45": "USEFUL",
+    "FLIP48": "NOT_QUALIFIED",
+    "QUNIF": "USEFUL",
+    "BURST": "USEFUL",
+    "EVENT40": "NOT_QUALIFIED"
+   },
+   "clean_retention": {
+    "primary": 0.9829671188301001,
+    "fallback": 0.4910316973989955
+   },
+   "FLIP40_vs_NOOP": [
+    -0.00110617679125,
+    -0.0012297479398985125,
+    -0.0009826056426014873
+   ],
+   "FLIP45_vs_NOOP": [
+    -0.00014662653749999966,
+    -0.0002176032336837795,
+    -7.564984131621981e-05
+   ],
+   "FLIP48_vs_NOOP": [
+    0.00048720694515625004,
+    0.0004016443581398815,
+    0.0005727695321726186
+   ],
+   "intervals": "[mean, lo, hi], paired Student-t over router seeds, 95% two-sided",
+   "native_parity": {
+    "PRIMARY": true,
+    "FALLBACK": true
+   },
+   "record_sha256": "0434cf0c7025af3e11cadd2df930ae708e5df6461147d7c52ab67e63d989272c",
+   "native_parity_sha256": "83d56c59347031b4df5a697792461a6a7b5f35c532ad1b0d32963c87638db112"
+  }
+ },
+ "primary": {
+  "name": "RMF3",
+  "failing": [],
+  "status": "QUALIFIED_SYNTHETIC_CONTRACT_I"
+ },
+ "fallback": {
+  "name": "SAFE4_P8",
+  "failing": [],
+  "status": "QUALIFIED_SYNTHETIC_CONTRACT_II_CONSERVATIVE"
+ },
+ "holdout": "OPENED_ONCE",
+ "ood": "opened once after this disposition was committed: evidence/ood/characterization.json",
+ "scope": "Synthetic SLB2 qualification only. It is not a production admission: a real host must establish its provider's measurement independence separately (registered, audited provenance)."
+}
