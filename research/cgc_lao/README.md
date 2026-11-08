@@ -49,3 +49,9 @@ untouched. It finds the original eight-step, single-reading contract information
 candidate passed its preregistered gates. A bounded reliability-mixture learner (31 volatile scalars)
 qualifies synthetically under a changed contract that adds four independent re-readings of selected events.
 See [solver_lab/RESULTS.md](solver_lab/RESULTS.md) for the scope and failure boundaries.
+The final qualification on a fresh SLB2 benchmark covers:
+- a smaller learner, `RMF3`;
+- a measurement-independence contract (Contract I or a conservative Contract II fallback);
+- a native C11 reference and a fail-closed research host.
+
+It closes at Level B, research component only. See [solver_lab/FINAL_REPORT.md](solver_lab/FINAL_REPORT.md).

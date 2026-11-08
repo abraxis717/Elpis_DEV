@@ -1,6 +1,25 @@
 # CGC-LAO solver lab (research only)
 
-**Status (2026-11-07):**
+**Final closure (2026-11-08): Level B.** See [FINAL_REPORT.md](FINAL_REPORT.md).
+- `RMF3` (reliability hypotheses q ∈ {0, 0.4, 0.48}, 24 logical scalars) is `QUALIFIED_SYNTHETIC_CONTRACT_I`.
+  Contract I means audited independent re-reads, or an audited reading correlation ρ ≤ 0.25. The evidence is the
+  fresh SLB2 v4 VALIDATION and a holdout opened once.
+- `SAFE4_P8` is the Contract II fallback (one reading per step).
+- The learner has a bounded C11 reference with bitwise parity and runs behind a fail-closed research host.
+- Production readiness (Level C) depends on the host and is not claimed.
+
+The qualification versions are additive and each has its own partitions:
+- [`v2/`](v2/): SLB2, the native component, the provider contract and the host. Primary not qualified (G9).
+- [`v3/`](v3/): primary not qualified (G9).
+- [`v4/`](v4/): final, qualified.
+
+The only native code is the research component in `v2/native`, built as test-kind ctest targets through one
+`add_subdirectory` line in the root `CMakeLists.txt`. Nothing changes in `src/elpis`, RuntimeCore, system
+authority or dependencies.
+
+The v1 study below is frozen and unchanged.
+
+**v1 status (2026-11-07):**
 - `ORIGINAL` contract (8 single readings): **NOT_QUALIFIED**, information-limited.
 - `DUP2_4` contract (+4 independent readings, +0 expert queries): **QUALIFIED_SYNTHETIC** on SLB1, on
   VALIDATION and on a holdout opened once.
