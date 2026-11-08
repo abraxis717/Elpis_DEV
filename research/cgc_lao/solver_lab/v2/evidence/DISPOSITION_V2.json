@@ -1,0 +1,72 @@
+{
+ "schema": "cgc-lao-solver-lab.disposition.v2",
+ "phases": {
+  "VALIDATION": {
+   "primary": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": true
+   },
+   "fallback": {
+    "F1": true,
+    "F2": true,
+    "F3": true,
+    "F4": true,
+    "F5": true,
+    "F6": true
+   },
+   "families": {
+    "CLEAN": "USEFUL",
+    "FLIP20": "USEFUL",
+    "FLIP40": "USEFUL",
+    "FLIP45": "NOT_QUALIFIED",
+    "FLIP48": "NOT_QUALIFIED",
+    "QUNIF": "USEFUL",
+    "BURST": "USEFUL",
+    "EVENT40": "NOT_QUALIFIED"
+   },
+   "primary_numbers": {
+    "FLIP40_vs_NOOP": [
+     -0.0012276956500000002,
+     -0.0014593750139633122,
+     -0.0009960162860366882
+    ],
+    "FLIP45_vs_NOOP": [
+     0.0004962614809375006,
+     0.00033799891402816755,
+     0.0006545240478468336
+    ],
+    "FLIP45_vs_RMF_V1": [
+     -0.0009531948628124988,
+     -0.0010961620845717326,
+     -0.0008102276410532652
+    ],
+    "clean_retention": 0.9786211872221858
+   },
+   "native_parity": {
+    "PRIMARY": true,
+    "FALLBACK": true
+   }
+  }
+ },
+ "primary": {
+  "name": "RMF_NOEVENT",
+  "status": "NOT_QUALIFIED",
+  "failing": [
+   "G9@VALIDATION"
+  ],
+  "diagnosis": "FLIP45 harm reduced by two thirds against the v1 learner (paired, significant) but its 95% upper bound (+0.000655) exceeds tau_safe (+0.0005). The Occam rule selected on point estimates; the DEV round-1 upper bound (+0.00060) had already exceeded the tolerance (disclosed in SELECTION_V2.json). Mechanism: with four duplicate pairs a near-noise channel (q=0.45) leaves weight on the q=0.2 hypothesis whenever chance produces few disagreements, and that hypothesis over-adapts."
+ },
+ "fallback": {
+  "name": "SAFE4_P8",
+  "status": "VALIDATION_PASS_HOLDOUT_NOT_OPENED"
+ },
+ "holdout": "NOT_OPENED (PREREGISTRATION_V2: the HOLDOUT opens only if the primary passes VALIDATION)",
+ "ood": "NOT_OPENED",
+ "next": "A fresh qualification version (v3: new RNG root, new DEV/VALIDATION/HOLDOUT/OOD partitions) whose selection requires the DEV 95% bounds, not point estimates, to meet the gates."
+}

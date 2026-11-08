@@ -40,3 +40,18 @@ Most useful contributions: (1) information-theoretic analysis of unknown observa
 ## Evidence provenance and honest limitations
 
 The Q4E/Q4F results here are **operator-reported experimental summaries** and source/hash pins carried through the Elpis research sessions; not all raw qualification archives or trained weights are published in this bounded change. They should be independently reproduced before being used as definitive external evidence. Historical R97W sources and portable reproduction **are** publicly available in the separate CGC repo. Nothing in this handoff proves autonomous learning, safe self-modification, or RALPH on-policy competence.
+
+## Independent solver lab (added 2026-11-07)
+
+[`solver_lab/`](solver_lab/README.md) is a self-contained follow-up study on an **independent** benchmark
+(SLB1). Its numbers are not comparable to the historical Q4E/Q4F measurements above, which it leaves
+untouched. It finds the original eight-step, single-reading contract information-limited: no admissible
+candidate passed its preregistered gates. A bounded reliability-mixture learner (31 volatile scalars)
+qualifies synthetically under a changed contract that adds four independent re-readings of selected events.
+See [solver_lab/RESULTS.md](solver_lab/RESULTS.md) for the scope and failure boundaries.
+The final qualification on a fresh SLB2 benchmark covers:
+- a smaller learner, `RMF3`;
+- a measurement-independence contract (Contract I or a conservative Contract II fallback);
+- a native C11 reference and a fail-closed research host.
+
+It closes at Level B, research component only. See [solver_lab/FINAL_REPORT.md](solver_lab/FINAL_REPORT.md).

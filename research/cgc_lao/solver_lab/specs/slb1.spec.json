@@ -1,0 +1,58 @@
+{
+  "schema": "cgc-lao-solver-lab.benchmark.v1",
+  "name": "SLB1",
+  "status": "FROZEN_BEFORE_EXPERIMENTS",
+  "relation_to_history": "INDEPENDENT_ILLUSTRATIVE_BENCHMARK: not the Q4E5/Q4E14/Q4F simulator; numbers are not comparable to historical qualification measurements.",
+  "experts": 3,
+  "context_dim": 4,
+  "router": {"distribution": "normal", "scale": 0.65, "public": true, "float32_representable": true},
+  "context": {"distribution": "normal(0, I4)", "float32_representable": true},
+  "bias": {"distribution": "normal", "scale": 1.0, "hidden": true},
+  "reward_probability": "sigmoid(W[a].x + b[a])",
+  "horizon_primary": 8,
+  "horizon_max_generated": 16,
+  "reads_max_generated": 2,
+  "terminal_queries": 16,
+  "stop_payoff": 0.6,
+  "terminal_regret": "mean over the 16 queries of max(max_a p(a|x'), stop_payoff) - U(decision); U(expert a) = p(a|x'), U(STOP) = stop_payoff; expected (clean) utilities, not sampled outcomes",
+  "online_regret": "mean over acquisition steps of max_a p_t(a) - p_t(a_t); expected (clean) utilities",
+  "acquisition_cost": "No explicit per-observation cost in any contract. Each contract reports terminal regret, online regret, expert queries and feedback reads separately; no conversion to a single net utility is made.",
+  "potential_outcomes": "C[e,t,a] = 1[Ur[e,t,a] < p[e,t,a]] (clean event); Y[e,t,a,r] = C[e,t,a] XOR F[e,t,a,r] (reading r of that event). A policy that selects a_t receives Y[e,t,a_t,0..R-1] only.",
+  "design_regimes": {
+    "CLEAN": {"mechanism": "symmetric", "q": 0.0},
+    "FLIP20": {"mechanism": "symmetric", "q": 0.2},
+    "FLIP40": {"mechanism": "symmetric", "q": 0.4}
+  },
+  "primary_corrupted_regime": "FLIP40",
+  "all_mixture": ["CLEAN", "FLIP20", "FLIP40"],
+  "shift_regimes": {
+    "QUNIF": {"mechanism": "qunif", "qmax": 0.5},
+    "FLIP30": {"mechanism": "symmetric", "q": 0.3},
+    "FLIP45": {"mechanism": "symmetric", "q": 0.45},
+    "BURST": {"mechanism": "burst", "enter": 0.25, "exit": 0.25, "flip_in_burst": 0.5},
+    "ASYM40": {"mechanism": "asym10", "q": 0.4},
+    "CTXQ40": {"mechanism": "context", "q": 0.4},
+    "BIASWIDE": {"mechanism": "symmetric", "q": 0.0, "bias_scale": 1.6},
+    "BIASWIDE40": {"mechanism": "symmetric", "q": 0.4, "bias_scale": 1.6},
+    "ROUTERWIDE40": {"mechanism": "symmetric", "q": 0.4, "router_scale": 1.0},
+    "EVENT40": {"mechanism": "event", "q": 0.4}
+  },
+  "primary_shift_regimes": ["QUNIF", "BURST"],
+  "contracts": {
+    "ORIGINAL": {"horizon": 8, "reads": [1, 1, 1, 1, 1, 1, 1, 1], "changed": false},
+    "DUP2": {"horizon": 8, "reads": [2, 2, 2, 2, 2, 2, 2, 2], "changed": true},
+    "DUP2_4": {"horizon": 8, "reads": [2, 2, 2, 2, 1, 1, 1, 1], "changed": true},
+    "T12": {"horizon": 12, "reads": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], "changed": true},
+    "T16": {"horizon": 16, "reads": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], "changed": true}
+  },
+  "seed_derivation": "uint64 key = first 8 bytes (little endian) of SHA-256('elpis/cgc_lao/solver_lab/v1/' + '/'.join(labels)); element i of a stream = splitmix64 finalizer of key + (i+1)*0x9E3779B97F4A7C15 (mod 2^64), top 53 bits / 2^53",
+  "partitions": {
+    "TRAIN": {"router_seeds": 64, "use": "fitting baseline coefficients (CGC weights, SGD rate, BETA strength) and gate scales"},
+    "DEV": {"router_seeds": 256, "round_size": 16, "use": "research loop; each round uses fresh seeds"},
+    "VALIDATION": {"router_seeds": 32, "use": "confirmation of the selected candidates before freezing"},
+    "HOLDOUT": {"router_seeds": 64, "use": "opened once for the frozen candidates"}
+  },
+  "pairing_unit": "router seed",
+  "ci_method": "two-sided 95% Student-t interval of the per-router-seed paired mean difference (n_seeds - 1 degrees of freedom)",
+  "state_scalar_budget": 64
+}

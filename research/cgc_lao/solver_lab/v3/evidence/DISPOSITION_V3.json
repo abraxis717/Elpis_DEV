@@ -1,0 +1,58 @@
+{
+ "schema": "cgc-lao-solver-lab.disposition.v3",
+ "phases": {
+  "VALIDATION": {
+   "primary": {
+    "G1": true,
+    "G2": true,
+    "G3": true,
+    "G4": true,
+    "G5": true,
+    "G7": true,
+    "G9": false,
+    "G10": true
+   },
+   "fallback": {
+    "F1": true,
+    "F2": true,
+    "F3": true,
+    "F4": true,
+    "F5": true,
+    "F6": true
+   },
+   "families": {
+    "CLEAN": "USEFUL",
+    "FLIP20": "USEFUL",
+    "FLIP40": "USEFUL",
+    "FLIP45": "NOT_QUALIFIED",
+    "FLIP48": "NOT_QUALIFIED",
+    "QUNIF": "USEFUL",
+    "BURST": "USEFUL",
+    "EVENT40": "NOT_QUALIFIED"
+   },
+   "FLIP45_vs_NOOP": [
+    0.0004730456309375002,
+    0.0003145664336841416,
+    0.0006315248281908588
+   ],
+   "native_parity": {
+    "PRIMARY": true,
+    "FALLBACK": true
+   }
+  }
+ },
+ "primary": {
+  "name": "RMF_NOEVENT",
+  "status": "NOT_QUALIFIED",
+  "failing": [
+   "G9@VALIDATION"
+  ]
+ },
+ "fallback": {
+  "name": "SAFE3_P4",
+  "status": "VALIDATION_PASS_HOLDOUT_NOT_OPENED"
+ },
+ "holdout": "NOT_OPENED",
+ "ood": "NOT_OPENED",
+ "diagnosis": "Two independent VALIDATION measurements of RMF_NOEVENT's FLIP45 harm (v2 +0.000496, v3 +0.000473) place it at the +0.0005 tolerance: it cannot pass G9 reliably. Choosing the best ALL regret among DEV-eligible arms systematically picks the arm on the FLIP45 boundary (the q = 0.2 hypothesis that helps FLIP20 is the one that over-adapts near noise). The next version selects the smallest mechanism that passes every gate with a margin (DEV 99.9% bounds)."
+}

@@ -1,0 +1,32 @@
+{
+ "schema": "cgc-lao-solver-lab.baseline-coefficients.v1",
+ "coefficients": {
+  "SGD": {
+   "eta": 0.5
+  },
+  "BETA": {
+   "kappa": 8.0
+  },
+  "STATIC_ATTENUATION": {
+   "attenuation": 0.5
+  }
+ },
+ "selection": "TRAIN router seeds 0-15, 2048 episodes, min ALL-mixture terminal regret; STATIC_ATTENUATION fixed a priori at 0.5",
+ "all_terminal_table": {
+  "SGD@0.05": 0.06151314,
+  "SGD@0.1": 0.05996461,
+  "SGD@0.2": 0.05765555,
+  "SGD@0.3": 0.05638327,
+  "SGD@0.5": 0.05618031,
+  "SGD@0.75": 0.05895853,
+  "SGD@1.0": 0.06322629,
+  "SGD@1.5": 0.07205488,
+  "BETA@0.5": 0.08035606,
+  "BETA@1.0": 0.07607249,
+  "BETA@2.0": 0.06862414,
+  "BETA@4.0": 0.06041133,
+  "BETA@8.0": 0.05675725,
+  "BETA@16.0": 0.0571606,
+  "BETA@32.0": 0.05911073
+ }
+}

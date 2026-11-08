@@ -1,0 +1,88 @@
+{
+  "schema": "cgc-lao-solver-lab.benchmark.v2",
+  "name": "SLB2",
+  "status": "FROZEN_BEFORE_V2_EXPERIMENTS",
+  "relation_to_v1": "Same world, utility and regret as SLB1 (specs/slb1.spec.json, unchanged); new RNG root, fresh partitions, added corruption mechanisms and provider modes. v1 records and its consumed partitions are never reused.",
+  "rng_root": "elpis/cgc_lao/solver_lab/v2/",
+  "seed_derivation": "uint64 key = first 8 bytes (little endian) of SHA-256(rng_root + '/'.join(labels)); element i = splitmix64 finaliser of key + (i+1)*0x9E3779B97F4A7C15 (mod 2^64), top 53 bits / 2^53; Gaussians by Box-Muller (cosine branch)",
+  "experts": 3,
+  "context_dim": 4,
+  "router": {"distribution": "normal", "scale": 0.65, "public": true, "float32_representable": true},
+  "context": {"distribution": "normal(0, I4)", "float32_representable": true},
+  "bias": {"distribution": "normal", "scale": 1.0, "hidden": true},
+  "horizon_max_generated": 16,
+  "reads_max_generated": 2,
+  "terminal_queries": 16,
+  "stop_payoff": 0.6,
+  "terminal_regret": "as SLB1: mean over 16 queries of max(max_a p(a|x'), 0.6) - U(decision)",
+  "online_regret": "as SLB1: mean over acquisition steps of max_a p_t(a) - p_t(a_t)",
+  "potential_outcomes": "C[e,t,a] = 1[Ur < p] (clean event); reading r: Y[e,t,a,r] = C XOR F[e,t,a,r], except second_event where reading 1 belongs to an independent second event C2 = 1[Ur2 < p]",
+  "mechanisms": {
+    "symmetric(q)": "F_r = 1[U_r < q], independent across readings",
+    "qunif(qmax)": "per episode q ~ U(0, qmax), then symmetric(q)",
+    "burst(enter, exit, f)": "hidden per-episode Markov state c_t, stationary start; F_r = c_t * 1[U_r < f]",
+    "event(q)": "F_1 = F_0 = 1[U_0 < q] (readings share their corruption; rho = 1)",
+    "correlated(q, rho)": "F_0 = 1[U_0 < q]; F_1 = F_0 if U_c < rho else 1[U_1 < q]. Marginal flip rate q; Pearson correlation of F_0, F_1 = rho; P(Y_0 != Y_1) = (1 - rho) 2q(1-q)",
+    "shared_source(qs, qn)": "S = 1[U_s < qs]; F_r = S XOR 1[U_r < qn] (a shared corruption source plus independent reading noise)",
+    "second_event(q)": "Y_0 = C XOR 1[U_0 < q]; Y_1 = C2 XOR 1[U_1 < q] with C2 an independent event of the same expert and context",
+    "asym10(q)": "F_r = C * 1[U_r < q]",
+    "context(q)": "symmetric(q) when x_t[0] > 0, clean otherwise"
+  },
+  "regimes": {
+    "DESIGN": {
+      "CLEAN": {"mechanism": "symmetric", "q": 0.0},
+      "FLIP20": {"mechanism": "symmetric", "q": 0.2},
+      "FLIP40": {"mechanism": "symmetric", "q": 0.4}
+    },
+    "ROBUSTNESS": {
+      "FLIP45": {"mechanism": "symmetric", "q": 0.45},
+      "FLIP48": {"mechanism": "symmetric", "q": 0.48},
+      "QUNIF": {"mechanism": "qunif", "qmax": 0.5},
+      "BURST": {"mechanism": "burst", "enter": 0.25, "exit": 0.25, "flip_in_burst": 0.5},
+      "EVENT40": {"mechanism": "event", "q": 0.4}
+    },
+    "CORRELATION": {
+      "CORR10": {"mechanism": "correlated", "q": 0.4, "rho": 0.1},
+      "CORR25": {"mechanism": "correlated", "q": 0.4, "rho": 0.25},
+      "CORR50": {"mechanism": "correlated", "q": 0.4, "rho": 0.5},
+      "CORR75": {"mechanism": "correlated", "q": 0.4, "rho": 0.75},
+      "CORR90": {"mechanism": "correlated", "q": 0.4, "rho": 0.9}
+    },
+    "OOD": {
+      "FLIP30": {"mechanism": "symmetric", "q": 0.3},
+      "ASYM40": {"mechanism": "asym10", "q": 0.4},
+      "CTXQ40": {"mechanism": "context", "q": 0.4},
+      "BIASWIDE": {"mechanism": "symmetric", "q": 0.0, "bias_scale": 1.6},
+      "BIASWIDE40": {"mechanism": "symmetric", "q": 0.4, "bias_scale": 1.6},
+      "ROUTERWIDE40": {"mechanism": "symmetric", "q": 0.4, "router_scale": 1.0},
+      "SHARED_SRC": {"mechanism": "shared_source", "q_shared": 0.3, "q_noise": 0.15},
+      "SECOND_EVENT40": {"mechanism": "second_event", "q": 0.4}
+    }
+  },
+  "regime_use": {
+    "DESIGN": "TRAIN, DEV, VALIDATION, HOLDOUT",
+    "ROBUSTNESS": "DEV, VALIDATION, HOLDOUT",
+    "CORRELATION": "DEV (development of the admission rule) and the OOD partition (final characterisation)",
+    "OOD": "OOD partition only, after the HOLDOUT, for frozen arms"
+  },
+  "all_mixture": ["CLEAN", "FLIP20", "FLIP40"],
+  "contracts": {
+    "ORIGINAL": {"horizon": 8, "reads": [1, 1, 1, 1, 1, 1, 1, 1]},
+    "DUP2_4": {"horizon": 8, "reads": [2, 2, 2, 2, 1, 1, 1, 1]},
+    "DUP2": {"horizon": 8, "reads": [2, 2, 2, 2, 2, 2, 2, 2]}
+  },
+  "provider_modes": {
+    "DUPLICATE": "every reading of a step is a reading of the selected event (one learner update with R readings)",
+    "FIRST_ONLY": "only the first reading of a step reaches the learner (the original single-reading contract)",
+    "SECOND_EVENT": "each reading is its own event of the selected expert at the same context (one advancing update, then one non-advancing update)"
+  },
+  "partitions": {
+    "TRAIN": {"router_seeds": 64, "use": "baseline coefficients, CGC retraining, gate scales"},
+    "DEV": {"router_seeds": 256, "round_size": 16, "use": "development and candidate selection"},
+    "VALIDATION": {"router_seeds": 32, "use": "frozen candidates, once"},
+    "HOLDOUT": {"router_seeds": 64, "use": "frozen candidates, opened once"},
+    "OOD": {"router_seeds": 64, "use": "out-of-distribution and correlation characterisation of frozen arms, once"}
+  },
+  "pairing_unit": "router seed",
+  "state_scalar_budget": 64
+}
