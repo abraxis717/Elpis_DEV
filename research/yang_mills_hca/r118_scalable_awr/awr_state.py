@@ -50,7 +50,7 @@ class AWRState:
     def __init__(self, registry, capacity: StateCapacity = StateCapacity()):
         self.registry = registry
         self.capacity = capacity
-        n_i, n_r, k = capacity.max_instances, capacity.max_materialized_relations, capacity.max_bindings_per_relation
+        n_i, n_r = capacity.max_instances, capacity.max_materialized_relations
         self.inst_id = np.zeros(n_i, dtype=np.uint64)
         self.inst_live = np.zeros(n_i, dtype=np.uint8)
         self.inst_gen = np.zeros(n_i, dtype=np.uint32)
@@ -64,7 +64,11 @@ class AWRState:
         self.pool = np.zeros((n_r, SLOT_COORDS), dtype=np.float64)
         self.row_rel = np.full(n_r, -1, dtype=np.int32)
         self.row_ref = np.zeros(n_r, dtype=np.int32)
-        self.row_bind = np.full((n_r, k), -1, dtype=np.int32)  # handle * 4 + slot
+        # Binding reverse index, O(bindings): a doubly linked list per row over binding
+        # codes c = handle * 4 + slot (never a dense rows x max_bindings table).
+        self.row_head = np.full(n_r, -1, dtype=np.int32)
+        self.bind_next = np.full(n_i * SLOTS, -1, dtype=np.int32)
+        self.bind_prev = np.full(n_i * SLOTS, -1, dtype=np.int32)
         self.rel_row = np.full(registry.num_relations, -1, dtype=np.int32)
         self._free_rows = list(range(n_r - 1, -1, -1))
         self.mark = np.full(n_r, -1, dtype=np.int32)  # native compaction scratch; all -1 between steps
@@ -157,12 +161,27 @@ class AWRState:
         self.slot_row[handles] = slot_row
         win, slot = np.nonzero(mask)
         b_rows = slot_row[win, slot]
-        codes = handles[win].astype(np.int64) * SLOTS + slot
+        codes = (handles[win].astype(np.int64) * SLOTS + slot).astype(np.int32)
         order = np.argsort(b_rows, kind="stable")
-        srows = b_rows[order]
-        start = np.searchsorted(srows, srows, side="left")
-        rank = np.arange(srows.size) - start
-        self.row_bind[srows, self.row_ref[srows] + rank] = codes[order].astype(np.int32)
+        srows, scodes = b_rows[order], codes[order]
+        if srows.size:
+            # Prepend each row's new bindings, chained in order, in front of its old head.
+            first = np.ones(srows.size, dtype=bool)
+            first[1:] = srows[1:] != srows[:-1]
+            last = np.ones(srows.size, dtype=bool)
+            last[:-1] = srows[1:] != srows[:-1]
+            old_head = self.row_head[srows]
+            nxt = np.empty_like(scodes)
+            nxt[:-1] = scodes[1:]
+            nxt[last] = old_head[last]
+            prv = np.empty_like(scodes)
+            prv[1:] = scodes[:-1]
+            prv[first] = -1
+            self.bind_next[scodes] = nxt
+            self.bind_prev[scodes] = prv
+            tails, heads = scodes[last], old_head[last]
+            self.bind_prev[heads[heads >= 0]] = tails[heads >= 0]
+            self.row_head[srows[first]] = scodes[first]
         np.add.at(self.row_ref, b_rows, 1)
         for i, h in zip(ids.tolist(), handles.tolist()):
             self._handle_of[i] = h
@@ -176,13 +195,20 @@ class AWRState:
             row = int(self.slot_row[h, d])
             if row < 0:
                 continue
-            k = int(self.row_ref[row])
-            entries = self.row_bind[row, :k]
-            pos = int(np.nonzero(entries == h * SLOTS + d)[0][0])
-            entries[pos] = entries[k - 1]
-            self.row_bind[row, k - 1] = -1
-            self.row_ref[row] = k - 1
-            if k - 1 == 0:
+            c = h * SLOTS + d
+            p, n = int(self.bind_prev[c]), int(self.bind_next[c])
+            if p >= 0:
+                self.bind_next[p] = n
+            else:
+                self.row_head[row] = n
+            if n >= 0:
+                self.bind_prev[n] = p
+            self.bind_next[c] = -1
+            self.bind_prev[c] = -1
+            self.row_ref[row] -= 1
+            if self.row_ref[row] == 0:
+                if self.row_head[row] != -1:
+                    raise StateError("BINDING_INDEX_CORRUPT", str(row))
                 r = int(self.row_rel[row])
                 self.rel_row[r] = -1
                 self.row_rel[row] = -1
@@ -255,11 +281,28 @@ class AWRState:
         row = int(self.rel_row[relation_index])
         if row < 0:
             return np.zeros(0, dtype=np.int32)
-        return (self.row_bind[row, :self.row_ref[row]] // SLOTS).astype(np.int32)
+        out = []
+        c = int(self.row_head[row])
+        while c >= 0:
+            out.append(c // SLOTS)
+            c = int(self.bind_next[c])
+        return np.array(out, dtype=np.int32)
+
+    def binding_codes(self, rows: np.ndarray) -> np.ndarray:
+        """All binding codes (handle * 4 + slot) of the given rows; vectorized list walk."""
+        cur = self.row_head[np.asarray(rows, dtype=np.int64)]
+        cur = cur[cur >= 0]
+        parts = []
+        while cur.size:
+            parts.append(cur)
+            cur = self.bind_next[cur]
+            cur = cur[cur >= 0]
+        return np.concatenate(parts) if parts else np.zeros(0, dtype=np.int32)
 
     def nbytes(self) -> dict:
         names = ("inst_id", "inst_live", "inst_gen", "slot_rel", "slot_row", "inst_links", "inst_memberships",
-                 "inst_bound", "pool", "row_rel", "row_ref", "row_bind", "rel_row", "mark")
+                 "inst_bound", "pool", "row_rel", "row_ref", "row_head", "bind_next", "bind_prev", "rel_row",
+                 "mark")
         out = {n: int(getattr(self, n).nbytes) for n in names}
         out["total"] = sum(out.values())
         return out

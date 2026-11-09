@@ -17,7 +17,7 @@ from . import provenance as P
 
 SOURCE = P.COMPONENT / "csrc" / "awr_kernel.c"
 CFLAGS = ("-std=c11", "-O2", "-ffp-contract=off", "-fPIC", "-shared", "-Wall", "-Wextra", "-Werror")
-ABI_VERSION = 3
+ABI_VERSION = 4
 
 STATUS = {
     0: "OK",
@@ -49,7 +49,8 @@ class NativeKernel:
         lib.awr_release_marks.argtypes = [i32, vp, vp]
         lib.awr_release_marks.restype = None
         lib.awr_execute.argtypes = [i32, vp, vp, i32, vp, vp, vp, vp, vp, vp, vp, vp, vp, vp, i32, f64, f64,
-                                    i32, i32, vp, vp, vp, i64p]
+                                    i32, i32, vp, vp, vp, i64p, i32]
+        lib.awr_mxcsr_probe.restype = ctypes.c_uint
         lib.awr_execute.restype = ctypes.c_int
         lib.awr_candidates.argtypes = [i32, vp, vp, vp, vp, vp, vp, vp, vp, vp, i32, f64, f64, i64p]
         lib.awr_candidates.restype = ctypes.c_int

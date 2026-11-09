@@ -64,5 +64,30 @@ class NativeKernel(unittest.TestCase):
             self.assertTrue(got == want and math.copysign(1, got) == math.copysign(1, want), (v, got, want))
 
 
+class FlushSubnormals(unittest.TestCase):
+    def test_ftz_is_scoped_to_the_call_and_default_is_exact(self):
+        from .. import engine as E
+        from ..awr_state import AWRState, StateCapacity
+        from ..fixtures import synthetic_registry
+        from ._util import compare_with_simple, random_windows
+
+        k = native.build()
+        reg = synthetic_registry(80, 300, 3, arity=(2, 5))
+        st = AWRState(reg, StateCapacity(max_instances=40, max_materialized_relations=160, max_bindings_per_relation=64))
+        rel, mask = random_windows(reg, 40, 2)
+        h, _ = st.create_instances(np.arange(40, dtype=np.uint64), rel, mask)
+        rows = np.nonzero(st.row_ref > 0)[0]
+        st.pool[rows] = np.random.default_rng(1).normal(0, 1e-150, size=(rows.size, 8))  # deep-underflow regime
+        before = k.lib.awr_mxcsr_probe()
+        ftz = E.Engine(st, "54007/STATE8", controller="R104", flush_subnormals=True)
+        self.assertEqual(ftz.step(h, passes=3).disposition, "EXECUTED")
+        self.assertEqual(k.lib.awr_mxcsr_probe(), before)          # caller's FP environment untouched
+        self.assertEqual(before & 0x8040, 0)
+        with self.assertRaises(ValueError):
+            E.Engine(st, "54007/STATE8", backend="oracle", flush_subnormals=True)
+        res, diff, eq, n = compare_with_simple(E.Engine(st, "54007/STATE8", controller="R104"), h, passes=3)
+        self.assertEqual((res.disposition, eq), ("EXECUTED", n))  # default (no FTZ) stays bitwise exact
+
+
 if __name__ == "__main__":
     unittest.main()

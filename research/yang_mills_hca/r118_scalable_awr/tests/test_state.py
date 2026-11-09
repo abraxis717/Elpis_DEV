@@ -12,7 +12,7 @@ from ._util import random_windows
 
 def snapshot(st):
     names = ("inst_id", "inst_live", "inst_gen", "slot_rel", "slot_row", "inst_links", "inst_memberships",
-             "inst_bound", "pool", "row_rel", "row_ref", "row_bind", "rel_row", "mark")
+             "inst_bound", "pool", "row_rel", "row_ref", "row_head", "bind_next", "bind_prev", "rel_row", "mark")
     return {n: getattr(st, n).copy() for n in names} | {"handles": dict(st._handle_of),
                                                          "free_h": list(st._free_handles),
                                                          "free_r": list(st._free_rows)}
@@ -102,6 +102,40 @@ class StateContracts(unittest.TestCase):
         st.release_instance(h2, g2)
         self.assertIsNone(st.relation_state(r[1]))
         self.assertEqual(int(st.row_ref.sum()), 1)
+
+    def test_binding_index_matches_full_scan_under_churn(self):
+        st = AWRState(self.reg, StateCapacity(max_instances=120, max_materialized_relations=480,
+                                              max_bindings_per_relation=64))
+        rng = np.random.default_rng(99)
+        live = {}
+        next_id = 1
+        for step in range(400):
+            if live and (rng.random() < 0.45 or len(live) == 120):
+                iid = int(rng.choice(sorted(live)))
+                h, g = live.pop(iid)
+                st.release_instance(h, g)
+            else:
+                rels = rng.choice(60, size=int(rng.integers(1, 5)), replace=False)  # heavy overlap on 60 relations
+                slots = [None] * 4
+                for d, r in zip(rng.permutation(4), rels):
+                    slots[d] = int(self.reg.relation_ids[r])
+                try:
+                    live[next_id] = st.create_instance(next_id, slots)
+                except StateError as exc:
+                    self.assertEqual(exc.code, "BINDING_CAPACITY")
+                next_id += 1
+            if step % 20 == 0 or step == 399:
+                expect = {}
+                for h in np.nonzero(st.inst_live)[0].tolist():
+                    for d in range(4):
+                        if st.slot_row[h, d] >= 0:
+                            expect.setdefault(int(st.slot_row[h, d]), set()).add(h * 4 + d)
+                for row in range(480):
+                    codes = set(st.binding_codes(np.array([row])).tolist())
+                    self.assertEqual(codes, expect.get(row, set()), row)
+                    self.assertEqual(int(st.row_ref[row]), len(codes))
+                    if not codes:
+                        self.assertEqual(int(st.row_rel[row]), -1)
 
     def test_capacities(self):
         """Distinct logical instance capacities 1 .. 50,000: fill, refuse N+1, release, refill."""

@@ -27,6 +27,12 @@
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
+#if defined(__x86_64__) || defined(__SSE2__)
+#include <xmmintrin.h>
+#define AWR_HAVE_MXCSR 1
+#else
+#define AWR_HAVE_MXCSR 0
+#endif
 
 #define AWR_SLOTS 4
 #define AWR_SC 8            /* coordinates per relation node: A[4], B[4] */
@@ -46,7 +52,7 @@ enum {
     AWR_ERR_ROW_CAPACITY = 8
 };
 
-int awr_abi_version(void) { return 3; }
+int awr_abi_version(void) { return 4; }
 
 /* ---- exactly rounded summation: a port of CPython's math.fsum (finite inputs) ---- */
 static double awr_fsum(const double *v, int n) {
@@ -318,26 +324,44 @@ int awr_execute(int32_t n, const int32_t *slot_rel, const int32_t *slot_cmp, int
                 const int64_t *rel_off, const int32_t *members, const double *frames,
                 const double *W, const double *bias, int32_t correct, double alpha, double beta,
                 int32_t passes, int32_t mode, int32_t *count, int32_t *off, int32_t *list,
-                int64_t *links_out) {
+                int64_t *links_out, int32_t flush_subnormals) {
+    /* Optional flush-to-zero / denormals-are-zero for this call only (opt-in, default off):
+     * the caller's floating-point environment is restored on every exit path. */
+#if AWR_HAVE_MXCSR
+    const unsigned int csr = _mm_getcsr();
+    if (flush_subnormals) _mm_setcsr(csr | 0x8040u);
+#else
+    if (flush_subnormals) { *links_out = 0; return AWR_ERR_ARGUMENT; }
+#endif
+    int rc = AWR_OK;
     for (int32_t r = 0; r < nr; r++)
         memcpy(buf_a + (int64_t)r * AWR_SC, pool + (int64_t)rows[r] * AWR_SC, sizeof(double) * AWR_SC);
     double *cur = buf_a, *nxt = buf_b;
     int64_t links = 0;
-    for (int32_t pss = 0; pss < passes; pss++) {
-        for (int32_t i = 0; i < n; i++) {
-            int rc = instance_pass(slot_rel + i * AWR_SLOTS, slot_cmp + i * AWR_SLOTS, cur, rel_off, members,
-                                   frames, W, bias, correct, alpha, beta, cand + (int64_t)i * AWR_SLOTS * AWR_SC,
-                                   &links);
-            if (rc != AWR_OK) { *links_out = links; return rc; }
-        }
-        int rc = reconcile(n, slot_cmp, cand, nr, nxt, mode, count, off, list);
-        if (rc != AWR_OK) { *links_out = links; return rc; }
-        double *t = cur; cur = nxt; nxt = t;
+    for (int32_t pss = 0; pss < passes && rc == AWR_OK; pss++) {
+        for (int32_t i = 0; i < n && rc == AWR_OK; i++)
+            rc = instance_pass(slot_rel + i * AWR_SLOTS, slot_cmp + i * AWR_SLOTS, cur, rel_off, members,
+                               frames, W, bias, correct, alpha, beta, cand + (int64_t)i * AWR_SLOTS * AWR_SC,
+                               &links);
+        if (rc == AWR_OK) rc = reconcile(n, slot_cmp, cand, nr, nxt, mode, count, off, list);
+        if (rc == AWR_OK) { double *t = cur; cur = nxt; nxt = t; }
     }
-    for (int32_t r = 0; r < nr; r++)
-        memcpy(pool + (int64_t)rows[r] * AWR_SC, cur + (int64_t)r * AWR_SC, sizeof(double) * AWR_SC);
+    if (rc == AWR_OK)
+        for (int32_t r = 0; r < nr; r++)
+            memcpy(pool + (int64_t)rows[r] * AWR_SC, cur + (int64_t)r * AWR_SC, sizeof(double) * AWR_SC);
     *links_out = links;
-    return AWR_OK;
+#if AWR_HAVE_MXCSR
+    if (flush_subnormals) _mm_setcsr(csr);
+#endif
+    return rc;
+}
+
+unsigned int awr_mxcsr_probe(void) {
+#if AWR_HAVE_MXCSR
+    return _mm_getcsr();
+#else
+    return 0u;
+#endif
 }
 
 /* Candidate-only entry for parity tests: one pass, no reconciliation, no commit. */

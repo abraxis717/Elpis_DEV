@@ -86,7 +86,8 @@ def load_weights(checkpoint: str) -> tuple[np.ndarray, np.ndarray, str]:
 
 class Engine:
     def __init__(self, state: AWRState, checkpoint: str, controller: str = "R114",
-                 budgets: Budgets = Budgets(), reconciliation: str = "MEAN", backend: str = "native"):
+                 budgets: Budgets = Budgets(), reconciliation: str = "MEAN", backend: str = "native",
+                 flush_subnormals: bool = False):
         if reconciliation not in RECONCILIATION:
             raise ValueError("RECONCILIATION")
         if backend not in BACKENDS:
@@ -101,6 +102,12 @@ class Engine:
         self.budgets = budgets
         self.reconciliation = reconciliation
         self.backend = backend
+        if flush_subnormals and backend != "native":
+            raise ValueError("FLUSH_SUBNORMALS_NATIVE_ONLY")
+        # Opt-in FTZ/DAZ inside the native call only. Default False keeps the native path
+        # bit-identical to the simple reference; enabling it changes results in the subnormal
+        # range (|x| < 2.2e-308), measured separately (R118-D subnormal diagnostic).
+        self.flush_subnormals = bool(flush_subnormals)
         self.W, self.b, self.weights_sha256 = load_weights(checkpoint)
         A = budgets.max_active_instances
         R = min(budgets.max_active_relations, A * C.SLOTS)
@@ -159,13 +166,7 @@ class Engine:
             rels = empty
         rows = st.rel_row[rels]
         rows = rows[rows >= 0]
-        if rows.size:
-            refs = st.row_ref[rows]
-            binds = st.row_bind[rows]
-            mask = np.arange(binds.shape[1])[None, :] < refs[:, None]
-            handles = np.unique(binds[mask] // C.SLOTS).astype(np.int32)
-        else:
-            handles = empty
+        handles = np.unique(st.binding_codes(rows) // C.SLOTS).astype(np.int32) if rows.size else empty
         omitted = max(0, handles.size - bud.max_active_instances)
         if omitted:
             if not allow_partial:
@@ -251,7 +252,7 @@ class Engine:
         rc = k.awr_execute(n, ptr["slot_rel"], ptr["slot_cmp"], nr, ptr["rows"], pool, ptr["buf_a"], ptr["buf_b"],
                            ptr["cand"], rel_off, members, frames, W, b, int(self.gains is not None), alpha, beta,
                            passes, 1 if self.reconciliation == "EXCLUSIVE" else 0, ptr["count"], ptr["off"],
-                           ptr["list"], ptr["links"])
+                           ptr["list"], ptr["links"], int(self.flush_subnormals))
         k.awr_release_marks(nr, ptr["rows"], mark)
         if rc != 0:
             from .native import STATUS
