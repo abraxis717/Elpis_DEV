@@ -109,3 +109,12 @@ the `test` extra, because the full suite exercises inference). Importing
 `elpis` or `elpis.runtime` needs neither Torch nor NumPy. The distribution is
 `elpis-dev`, marked `Private :: Do Not Upload`. No release, tag or PyPI
 publication exists.
+
+## Current Yang–Mills / equivariant HCA research (independent)
+
+The frozen 88-parameter, checkpoint-gated geometric HCA research is described in
+[`research/yang_mills_hca/`](research/yang_mills_hca/README.md), with its
+[results](research/yang_mills_hca/RESULTS.md) and
+[original Yang–Mills upstream attribution](research/yang_mills_hca/PROVENANCE.md).
+This is independent RESEARCH_ONLY work, not the older ECS_C native HCA comparator
+or a production AWR implementation. The R93 normalized-denominator HOLD remains.

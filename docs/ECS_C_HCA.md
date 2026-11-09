@@ -1,3 +1,5 @@
+> **Different newer research line:** [Yang–Mills-inspired equivariant HCA / AWR](../research/yang_mills_hca/README.md). The following ECS_C native HCA is a historical typed-hypergraph salience comparator, not the newer 88-parameter frozen geometric HCA. Neither is qualified as a production AWR.
+
 # ECS_C HCA: the native research substrate (gated)
 
 `native/ECS_C/hca` (`libelpis_ecs_c_hca`, C ABI v1 `include/elpis/ecs_c_hca.h`) is the native port of the DEV

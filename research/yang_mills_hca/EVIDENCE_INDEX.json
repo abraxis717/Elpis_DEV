@@ -1,0 +1,87 @@
+{
+  "schema": "elpis.ym_hca.handoff_archive_index.v1",
+  "scope": "uploaded bounded debrief files, not full host historical authority",
+  "r93_gate": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+  "bundles": [
+    {
+      "archive": "YM_R101_DEBRIEF_R0_c267cb352e9c06d3.tar.gz",
+      "archive_sha256": "333dbd784782896485503783b3c183dac7cd0b8936ffe570a3a3151778f4e68f",
+      "bytes": 4096
+    },
+    {
+      "archive": "YM_R102_DEBRIEF_R0_72129ec24d659302.tar.gz",
+      "archive_sha256": "47da31174db082a73a16aa9bde48412e0a0655d67c81e560fe3fb8ac089e1a8c",
+      "bytes": 217238
+    },
+    {
+      "archive": "YM_R103_DEBRIEF_R0_2a66fd7b12c4fff9.tar.gz",
+      "archive_sha256": "b1857fff945af85a268f0091d65a75ada577d1c5d89681cbfd6524fe0f1a5504",
+      "bytes": 175799
+    },
+    {
+      "archive": "YM_R104_DEBRIEF_R0_e398f44b65e4a71e.tar.gz",
+      "archive_sha256": "deadf1b3d0061f9a362f3dafc7a324ebb56acdd9e01447fb51a12c4536a1b842",
+      "bytes": 297355
+    },
+    {
+      "archive": "YM_R105_DEBRIEF_R0_32b135dcfa70b059.zip",
+      "archive_sha256": "c7b0f152ae950ed86ec81f18f2148ac418a0b5b8185676714de915bc4ddf6eb7",
+      "bytes": 14185
+    },
+    {
+      "archive": "YM_R106_DEBRIEF_R0_dbf07a64065c20fb.zip",
+      "archive_sha256": "48f96803c8eb38612a95b2fa104109f6d4025e1a28696423d1fc357ecac467d2",
+      "bytes": 4614
+    },
+    {
+      "archive": "YM_R107_DEBRIEF_R0_faef8f526ebf9fe3.zip",
+      "archive_sha256": "bed450412ec30007648ebba0169abb0479dbf9a323c40804b962f303139e5b50",
+      "bytes": 16713
+    },
+    {
+      "archive": "YM_R108_DEBRIEF_R0_2fa65c8ab916e3aa.zip",
+      "archive_sha256": "e65d9e82102a4b39e6f3c833c27b7bd13a1aec26ab383684202cb4bf5bc5a836",
+      "bytes": 12553
+    },
+    {
+      "archive": "YM_R109_DEBRIEF_R0_82952a23a0dd7599.zip",
+      "archive_sha256": "ca6eb333a6c508faf11ffa12c90179dbf0a1b42dfc6923b7f757a5e22230d17e",
+      "bytes": 11418
+    },
+    {
+      "archive": "YM_R110_DEBRIEF_R0_c7c0b734b26cc31d.zip",
+      "archive_sha256": "08a14b7a6711263deae2aba066ce797b030bfcab26e3f83fa7c9ca481b83b850",
+      "bytes": 13651
+    },
+    {
+      "archive": "YM_R111_DEBRIEF_R0_03007e8a9a3e5aef.zip",
+      "archive_sha256": "4f69f6456eb00b695660d1a1fa8a22e5e66d6b45a8266421c0d4c2ad13b63829",
+      "bytes": 8259
+    },
+    {
+      "archive": "YM_R112_DEBRIEF_R0_53f3fef786d334ce.zip",
+      "archive_sha256": "e033342b5fb994aea3bc659e3538dd0d26ec2172083f035ba5219504c1fd4c1a",
+      "bytes": 15247
+    },
+    {
+      "archive": "YM_R113_DEBRIEF_R0_92a12e0a042ea369.zip",
+      "archive_sha256": "3a181337e76e7105708fce37ecf7880cdb93707a0d64205ad80cd92d9679f47f",
+      "bytes": 17594
+    },
+    {
+      "archive": "YM_R114_DEBRIEF_R0_4057d48c2445febf.zip",
+      "archive_sha256": "0a051e5d4797e398eff5c9b5bf137088e611a57c6954053ecaee9ebd794eed81",
+      "bytes": 11056
+    },
+    {
+      "archive": "YM_R115_DEBRIEF_R0_d92743b84a32e8f4.zip",
+      "archive_sha256": "8e7d5b51502db409427db3dfd40241bdc2b0086cfd93f3c90ae3d078551ca03f",
+      "bytes": 9806
+    },
+    {
+      "archive": "YM_R116_DEBRIEF_R0_affb36f753699909.zip",
+      "archive_sha256": "8df180f7f7f0a2992db638caa4cc053346ef07b2571dc3dfdde7dff62fe0a962",
+      "bytes": 12283
+    }
+  ]
+}
