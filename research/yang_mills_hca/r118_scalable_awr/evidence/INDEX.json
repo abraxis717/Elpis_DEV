@@ -1,0 +1,59 @@
+{
+ "dispositions": {
+  "R118-A": "PASS",
+  "R118-B": "PASS (test suite)",
+  "R118-C": "PASS",
+  "R118-D": "HOT_PATH_QUALIFIED for the registered workload; exact path exceeds the A=1,024 target in input-free deeply decayed regimes (subnormal arithmetic); opt-in FTZ/DAZ measured, not default",
+  "R118-E": "DESCRIPTIVE_ONLY_NO_R93_CLEARANCE"
+ },
+ "files": {
+  "r118a.json": {
+   "bytes": 8015,
+   "code_state": "final tree, component digest in file",
+   "phase": "R118-A",
+   "produced_by": "qualify_a.py (with historical replay)",
+   "sha256": "3a43270cd2ed817fd925a49ca23acdab479ef9a6efc9f912570fcc26241c3c0d"
+  },
+  "r118c.json": {
+   "bytes": 6863,
+   "code_state": "final tree, component digest in file",
+   "phase": "R118-C",
+   "produced_by": "qualify_c.py",
+   "sha256": "371c64c295632a39a3f177a1a5e48af9c6834a7a5b4f006ff04196194f96b650"
+  },
+  "r118d_run1.json": {
+   "bytes": 25221,
+   "code_state": "commit 92080f4 (dense binding table; AWRState ~800 MiB)",
+   "phase": "R118-D",
+   "produced_by": "bench.py --all (registered protocol, run 1)",
+   "sha256": "120c6f60e2dd1cad87202a275ec12416042bd9548a88f8b16ada72a5681909fc"
+  },
+  "r118d_run2.json": {
+   "bytes": 25193,
+   "code_state": "commit 448bd73; hot-path sources byte-identical to the final tree",
+   "phase": "R118-D",
+   "produced_by": "bench.py --all (registered protocol, run 2)",
+   "sha256": "f561206114674e4794ab935b83dfb383ac346fd5062568d2ab23ebfc4c431b28"
+  },
+  "r118d_subnormal_diagnostic.json": {
+   "bytes": 6112,
+   "code_state": "commit 448bd73 code; FTZ opt-in",
+   "phase": "R118-D diagnostic (not admission)",
+   "produced_by": "diag_subnormal.py",
+   "sha256": "90bca0e0ab3dc8c6cabadb23a62cb24073b3c640946b7fe41bc9dc64629144fc"
+  },
+  "r118e.json": {
+   "bytes": 146656,
+   "code_state": "final tree, component digest in file",
+   "phase": "R118-E",
+   "produced_by": "characterize_e.py",
+   "sha256": "57c48caaa565fb82761d7c2b12f9b64226d7ea1b6fb4294ec096fc301ad7dfe4"
+  }
+ },
+ "frozen_manifest_sha256": "b0415964e83c2dba01d2a1b6bd9f2f55dad53f147a3747119433a3e07524d855",
+ "frozen_snapshot_digest": "2776a730b0ec3ce0f9af22cb2cf5e7c7bc90d91a32d064cd2bc774f6dc9c24ef",
+ "performance_protocol_commit": "027dc3c",
+ "performance_protocol_sha256": "7ac1a0f7377772af1e9a0a891dfdbe01104d6621e10ca8dff1310fa476710fbc",
+ "r93_gate": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+ "schema": "elpis.ym_hca.r118.evidence_index.v1"
+}

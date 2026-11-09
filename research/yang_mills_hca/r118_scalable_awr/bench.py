@@ -205,6 +205,7 @@ def run_registry(name) -> dict:
         eng = E.Engine(st, "54007/STATE8_SIGNED8", controller="R114", budgets=HOT)
         out["parity_native_vs_simple_max_abs"] = parity(st, eng, primary_seq[64])
     out["environment"] = P.environment_fingerprint()
+    out["component_digest"] = P.component_digest()
     out["torch_imported"] = "torch" in sys.modules
     return out
 

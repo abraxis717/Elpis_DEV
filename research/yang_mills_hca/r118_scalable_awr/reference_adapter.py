@@ -45,7 +45,7 @@ def _adj_key(adj) -> bytes:
     return b"|".join(parts)
 
 
-def oracle_candidates(registry, slot_rel, slot_row, cur: dict, checkpoint: str, controller: str):
+def oracle_candidates(registry, slot_rel, slot_row, cur: dict, checkpoint: str, controller: str, law=None):
     """Candidates {row: [8-vectors in instance order]}, or None if any value is nonfinite.
 
     Instances whose windows have byte-identical link tensors are executed as one
@@ -56,7 +56,9 @@ def oracle_candidates(registry, slot_rel, slot_row, cur: dict, checkpoint: str, 
 
     o = get_oracle()
     T = o.torch
-    model = o.models()[checkpoint]
+    # ``law``: any historical per-slot law callable as law((a, b), sal, col) -- e.g. the R30
+    # NonlinearTeacher for *evaluation-only* composed references (never an inference input).
+    model = o.models()[checkpoint] if law is None else law
     rel_rows = np.asarray(slot_rel)
     row_rows = np.asarray(slot_row)
     groups: dict[bytes, tuple] = {}

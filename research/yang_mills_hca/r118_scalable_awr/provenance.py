@@ -231,6 +231,24 @@ def stage_snapshot(dest: pathlib.Path) -> dict:
     return staged
 
 
+HOT_PATH_SOURCES = ("engine.py", "awr_state.py", "registry.py", "native.py", "contract.py", "csrc/awr_kernel.c")
+
+
+def component_sources() -> dict:
+    """SHA-256 of every R118 source file (python, C, protocol), excluding evidence/."""
+    out = {}
+    for path in sorted(COMPONENT.rglob("*")):
+        rel = path.relative_to(COMPONENT).as_posix()
+        if path.is_file() and not rel.startswith("evidence/") and path.suffix in (".py", ".c", ".json"):
+            out[rel] = sha256_file(path)
+    return out
+
+
+def component_digest() -> str:
+    lines = "".join(f"{h}  {n}\n" for n, h in sorted(component_sources().items()))
+    return sha256_bytes(lines.encode())
+
+
 def environment_fingerprint() -> dict:
     """Interpreter, library and hardware identity recorded with every result."""
     info = {

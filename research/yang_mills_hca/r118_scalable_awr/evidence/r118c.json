@@ -1,0 +1,167 @@
+{
+ "component_digest": "770411b1f6788f9593f5f7adf1d4f6efb57a564f8c207d13dd7f55352af0df71",
+ "component_sources": {
+  "PROTOCOL_R118D.json": "7ac1a0f7377772af1e9a0a891dfdbe01104d6621e10ca8dff1310fa476710fbc",
+  "__init__.py": "a1fe5db68eac49e1e2e85b2ef95119bf6fffa6045c1617494f2cfb522993e80e",
+  "awr_state.py": "0496fa923032c9c321a0a56606c780abaabf211bb88e6d0260e08778bb4bbae4",
+  "bench.py": "e1c3717e38d561566869583db427d55ef9a6642f580f8c7290cf6c77039b39fd",
+  "characterize_e.py": "b13c79abd323f49ba925e2d0cdf1ccff7170a4470689144eae2dc128641a2068",
+  "contract.py": "5d84d507a77dcb47eb165d2bb371069ed88b845b5ea5d8c7c7061f325c006e10",
+  "csrc/awr_kernel.c": "87b53392c475fe2bb15290a52f73c9dfb6acb04294d2c22a859e5fc2d0e31e54",
+  "diag_subnormal.py": "96cef0854b6a36008fee23508c44d798435ad1910b364667138108f0b93a7848",
+  "engine.py": "c333025311ddda24be10ab62b546f62da53014dfa233c0f47aa0224f822ea125",
+  "fixtures.py": "4bfa78b252d42a431fcefb7978d5da016f7788d24cf85336813620a23e548aa0",
+  "frozen_oracle.py": "85582b4915ba15042ca259896be545a0f3f08ad6269252e075dd1f50fe83d490",
+  "gauge.py": "ebc8597a33d13354c0358dba133d0aec45fa787e5e75df82eb0fe9f68385baea",
+  "historical_replay.py": "10dad6bbbe935ba1208d898739653e07cefeacda5d90f5e50cfbd3c4c5c6b8b3",
+  "native.py": "ed7c454d4247ebb86933168b429d15fd00909ce2ceb864f56b1141d059a1c620",
+  "provenance.py": "f88d9ebd54ce64415292042be197b1678b4749eb82c1fb7326a178d918928245",
+  "qualify_a.py": "db1da3e9c669401c17156df980e580cb8a372fdf6faba0148ced8479a5d37dbf",
+  "qualify_c.py": "508ead69c15e8d39a5c2e3fa49ef3112d118a84e6459e16e6219a1a78655b62a",
+  "reference_adapter.py": "8e0c3da04f50b9f6f47163a62b01eaef89d33e244ea9e3c3976e6b07b7cd0e6e",
+  "registry.py": "4107915b3fd21ea3689d5c0fc579e0082d953605762b2cd38e7ca07fd973eb34",
+  "simple_reference.py": "644b8c92bb116cddf39c62768aacc7d41a4b5220bd491d556286f1821c412d76",
+  "tests/__init__.py": "1b9b782ec6978b22357c22c7f1a4a65388c47665cc496075ccadd6f7f5fcdb3e",
+  "tests/_util.py": "6bfb2dce64f5abeba2dcac0d9d06ffad7deb0ddf6d4283017f281d1ee5b3ca5f",
+  "tests/test_engine_substrate.py": "77e2e543d98ac65dd5679669e606caf94bab7af03cbb3d380efa420099088ad7",
+  "tests/test_geometry.py": "33299ebc0209db8e3d4d97efba42097d7ed13a580ac169bd2941af064d8df99a",
+  "tests/test_provenance_native.py": "cabfdc3b8bf2936012ea4a0c9100920f5b963efae4dbc041b2a796284f926c4b",
+  "tests/test_registry.py": "9ce8c5deb35f787fab9956410352002eefeb5ed2e9e6a856b1aa6ea3bf1b2bb7",
+  "tests/test_state.py": "a9100de99b1f43dbda78eddb2e69ed8424562731fcabdf612cd7a1830e1b22e6"
+ },
+ "covariance": {
+  "max_relation_bindings": 14,
+  "native/NATIVE/54007/STATE8_TF1": {
+   "negative_frames_only": 1.1219246756463968,
+   "negative_inverse_frames": 0.6275855132651416,
+   "negative_state_only": 0.4707882484790375,
+   "participant_gauge_invariance": 9.575673587391975e-16,
+   "relation_gauge_covariance": 8.326672684688674e-16
+  },
+  "native/R114/54007/STATE8_SIGNED8": {
+   "negative_frames_only": 0.45312515504248885,
+   "negative_inverse_frames": 0.4156004483463672,
+   "negative_state_only": 0.31257150030897973,
+   "participant_gauge_invariance": 6.392456008974534e-16,
+   "relation_gauge_covariance": 4.85722573273506e-16
+  },
+  "native/R114/54031/STATE8": {
+   "negative_frames_only": 0.5008362569707825,
+   "negative_inverse_frames": 0.4855284869287406,
+   "negative_state_only": 0.41374617269290564,
+   "participant_gauge_invariance": 7.849623728795052e-16,
+   "relation_gauge_covariance": 6.591949208711867e-16
+  },
+  "oracle/NATIVE/54007/STATE8_TF1": {
+   "negative_frames_only": 2.0666949691084007,
+   "negative_inverse_frames": 0.7059507475623997,
+   "negative_state_only": 0.7182287191453034,
+   "participant_gauge_invariance": 7.632783294297951e-15,
+   "relation_gauge_covariance": 2.373101715136272e-15
+  },
+  "oracle/R114/54007/STATE8_SIGNED8": {
+   "negative_frames_only": 0.8096578321080568,
+   "negative_inverse_frames": 0.5803374211277879,
+   "negative_state_only": 1.1178976061983756,
+   "participant_gauge_invariance": 3.4416913763379853e-15,
+   "relation_gauge_covariance": 1.4432899320127035e-15
+  },
+  "oracle/R114/54031/STATE8": {
+   "negative_frames_only": 1.2049541835632775,
+   "negative_inverse_frames": 0.6755809646531281,
+   "negative_state_only": 1.0198762354410913,
+   "participant_gauge_invariance": 7.271960811294775e-15,
+   "relation_gauge_covariance": 2.7200464103316335e-15
+  }
+ },
+ "environment": {
+  "cpu_count": 4,
+  "cpu_flags_avx512f": true,
+  "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "implementation": "CPython",
+  "machine": "x86_64",
+  "numpy": "2.5.3",
+  "python": "3.13.18",
+  "system": "Linux",
+  "torch": "2.15.0+cpu",
+  "torch_threads": 1
+ },
+ "gate": "R118C_PASS",
+ "gates": {
+  "controlled_native_vs_oracle": true,
+  "covariance": true,
+  "historical_replay_native": true,
+  "historical_replay_oracle_bitwise": true,
+  "native_vs_simple": true,
+  "negative_controls": true,
+  "no_hidden_channels": true,
+  "pass_composition": true,
+  "sparse_native_vs_oracle": true,
+  "weights_unchanged": true
+ },
+ "hidden_channels": {
+  "active_rows_bitwise_unchanged": true,
+  "five_passes_one_call_equals_five_calls_bitwise": true,
+  "foreign_relations_perturbed": 534,
+  "inactive_states_perturbed": 51,
+  "unshared_and_foreign_frames_perturbed": 141
+ },
+ "historical_replay": {
+  "cases": 96,
+  "native_controlled_vs_oracle_h20_max_abs": 1.3877787807814457e-16,
+  "native_h1_max_abs": 3.608224830031759e-16,
+  "native_h20_max_abs": 1.1102230246251565e-16,
+  "oracle_bitwise_cases": 96,
+  "oracle_max_abs": 0.0
+ },
+ "native_kernel": {
+  "abi_version": 4,
+  "binary_sha256": "7ebc2f677474d60076c4d166aaee8b6746a839dbf5cc51d020b53ae0c9d7cf0d",
+  "cflags": [
+   "-std=c11",
+   "-O2",
+   "-ffp-contract=off",
+   "-fPIC",
+   "-shared",
+   "-Wall",
+   "-Wextra",
+   "-Werror"
+  ],
+  "compiler": "/usr/bin/cc",
+  "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "source_sha256": "87b53392c475fe2bb15290a52f73c9dfb6acb04294d2c22a859e5fc2d0e31e54"
+ },
+ "phase": "R118-C",
+ "schema": "elpis.ym_hca.r118c.v1",
+ "seconds": 72.4,
+ "sparse_parity": {
+  "connected_sparse": {
+   "max_relation_bindings": 5,
+   "max_slot_in_degree": 7,
+   "multi_pass_max_abs": 3.608224830031759e-16,
+   "native_vs_simple_max_abs": 0.0,
+   "one_pass_max_abs": 3.552713678800501e-15
+  },
+  "hub_high_arity": {
+   "max_relation_bindings": 8,
+   "max_slot_in_degree": 23,
+   "multi_pass_max_abs": 1.249000902703301e-16,
+   "native_vs_simple_max_abs": 0.0,
+   "one_pass_max_abs": 3.497202527569243e-15
+  },
+  "zipf_overlap": {
+   "max_relation_bindings": 7,
+   "max_slot_in_degree": 18,
+   "multi_pass_max_abs": 2.3592239273284576e-16,
+   "native_vs_simple_max_abs": 0.0,
+   "one_pass_max_abs": 6.661338147750939e-15
+  }
+ },
+ "thresholds": {
+  "covariance": 1e-09,
+  "multi_pass": 1e-10,
+  "negative_min": 1e-06,
+  "one_pass": 1e-12
+ },
+ "weights_unchanged": true
+}

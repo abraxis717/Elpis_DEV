@@ -18,6 +18,8 @@ The post-hoc teacher-norm-matched quotient error is only a diagnostic oracle. Do
 
 ## Large sparse AWR (NOT IMPLEMENTED / NOT QUALIFIED)
 
+> **R118 update:** a research implementation of this substrate now exists in [`r118_scalable_awr/`](r118_scalable_awr/ARCHITECTURE.md). It derives that the frozen operator's nodes are the four *relations* of a window (participants are stateless frame anchors), keeps the 4-slot local arity, and composes overlapping windows with order-independent reconciliation. It is engineering-qualified for its registered workload only; it is not production integration and does not resolve R93.
+
 AWR's target is a large addressable relational substrate, potentially millions of relationships, not ten permanently materialized slots. The intended representation is a bounded-arity **sparse hypergraph** with global participant IDs, relation IDs and an incidence index. Its logical storage should scale with `O(P + R + M)` for P participants, R relations and M total incidence memberships, before indexes, metadata and dynamic state overhead; it must never materialize a dense global `P×P` adjacency matrix.
 
 A shared, fixed-parameter local HCA would be repeatedly applied to selected bounded neighborhoods. This separates global addressability from a **strictly budgeted active working set** in volatile RAM/VRAM. Immutable H-grams/relations on NVMe are read-only; inference must never modify checkpoint tensors or NAND storage. Active identity, membership counts, relation arity, scheduler work and per-turn state must be bounded with explicit refusal/eviction semantics.

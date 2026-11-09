@@ -8,6 +8,8 @@ The local Yang–Mills/AWR studies R64–R117 use an **88-trainable-parameter eq
 
 Read [ARCHITECTURE.md](ARCHITECTURE.md), [RESULTS.md](RESULTS.md), [PROVENANCE.md](PROVENANCE.md), and [EVIDENCE_INDEX.json](EVIDENCE_INDEX.json).
 
+**R118 update (research engineering, not promotion):** [`r118_scalable_awr/`](r118_scalable_awr/README.md) authenticates the frozen sources, reconstructs the six checkpoints from a clean checkout (R77 evaluation replays bitwise; the R78 result archive replays byte-identically), and implements an executable bounded sparse AWR substrate (1–50,000 addressable instances, 1,000,000-relation stress registry) that invokes the authentic frozen HCA. The hot path is latency-qualified for its registered workload with a disclosed regime exception. R93 remains `ENERGY_NORMALIZED_DENOMINATOR_HOLD`; local transition fidelity is not solved.
+
 **Original upstream attribution:** [creelie/4Y-M](https://github.com/creelie/4Y-M), *Mass Gap of Four-Dimensional Lattice Yang–Mills Theory for Every Compact Simple Group*, by Deep Bhattacharjee, Ushashi Bhattacharya, James Montgomery Lockwood, and Tristan Romanov. Pinned v4.21.0, MIT. The original mathematical project is a research reference, **not** a source of Elpis-trained weights or independent qualification of the Elpis HCA. See [PROVENANCE.md](PROVENANCE.md).
 
 **Critical scientific boundary:** `R93_GATE=ENERGY_NORMALIZED_DENOMINATOR_HOLD`; no production AWR/GDN integration or million-relation capacity is qualified. Teacher-forced local transition fidelity remains poor. This publication does not contain historical frozen weights, full host evaluation runner, or executable large-scale AWR runtime. It does not establish clean-checkout numerical reproduction.

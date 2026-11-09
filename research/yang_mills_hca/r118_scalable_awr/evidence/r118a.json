@@ -1,0 +1,175 @@
+{
+ "checkpoints": {
+  "54007/STATE8": "3212d1d8a512d010dafc464e7b8fb90adac55f631bbf7d61a9b7baef317a5c0a",
+  "54007/STATE8_SIGNED8": "25e555914e000f2c521a71b5d062c716969428a288681fc42226013b32d87d70",
+  "54007/STATE8_TF1": "1c764544ac67a16234dfa62383b678b05745af87ef89b5f570ad48a7458cdc7e",
+  "54031/STATE8": "4c37c40b9d7656021db39d38ed7caca43877940c395a686fbba0c6c91a636a03",
+  "54031/STATE8_SIGNED8": "711d47c25c96fd20229b65f7e54508e34a701fa2e0500b21bb59a65a4367995f",
+  "54031/STATE8_TF1": "abb9906d0259f4854f1f44942f546aa27e250be070aa42574084772591e640f3"
+ },
+ "component_digest": "770411b1f6788f9593f5f7adf1d4f6efb57a564f8c207d13dd7f55352af0df71",
+ "component_sources": {
+  "PROTOCOL_R118D.json": "7ac1a0f7377772af1e9a0a891dfdbe01104d6621e10ca8dff1310fa476710fbc",
+  "__init__.py": "a1fe5db68eac49e1e2e85b2ef95119bf6fffa6045c1617494f2cfb522993e80e",
+  "awr_state.py": "0496fa923032c9c321a0a56606c780abaabf211bb88e6d0260e08778bb4bbae4",
+  "bench.py": "e1c3717e38d561566869583db427d55ef9a6642f580f8c7290cf6c77039b39fd",
+  "characterize_e.py": "b13c79abd323f49ba925e2d0cdf1ccff7170a4470689144eae2dc128641a2068",
+  "contract.py": "5d84d507a77dcb47eb165d2bb371069ed88b845b5ea5d8c7c7061f325c006e10",
+  "csrc/awr_kernel.c": "87b53392c475fe2bb15290a52f73c9dfb6acb04294d2c22a859e5fc2d0e31e54",
+  "diag_subnormal.py": "96cef0854b6a36008fee23508c44d798435ad1910b364667138108f0b93a7848",
+  "engine.py": "c333025311ddda24be10ab62b546f62da53014dfa233c0f47aa0224f822ea125",
+  "fixtures.py": "4bfa78b252d42a431fcefb7978d5da016f7788d24cf85336813620a23e548aa0",
+  "frozen_oracle.py": "85582b4915ba15042ca259896be545a0f3f08ad6269252e075dd1f50fe83d490",
+  "gauge.py": "ebc8597a33d13354c0358dba133d0aec45fa787e5e75df82eb0fe9f68385baea",
+  "historical_replay.py": "10dad6bbbe935ba1208d898739653e07cefeacda5d90f5e50cfbd3c4c5c6b8b3",
+  "native.py": "ed7c454d4247ebb86933168b429d15fd00909ce2ceb864f56b1141d059a1c620",
+  "provenance.py": "f88d9ebd54ce64415292042be197b1678b4749eb82c1fb7326a178d918928245",
+  "qualify_a.py": "db1da3e9c669401c17156df980e580cb8a372fdf6faba0148ced8479a5d37dbf",
+  "qualify_c.py": "508ead69c15e8d39a5c2e3fa49ef3112d118a84e6459e16e6219a1a78655b62a",
+  "reference_adapter.py": "8e0c3da04f50b9f6f47163a62b01eaef89d33e244ea9e3c3976e6b07b7cd0e6e",
+  "registry.py": "4107915b3fd21ea3689d5c0fc579e0082d953605762b2cd38e7ca07fd973eb34",
+  "simple_reference.py": "644b8c92bb116cddf39c62768aacc7d41a4b5220bd491d556286f1821c412d76",
+  "tests/__init__.py": "1b9b782ec6978b22357c22c7f1a4a65388c47665cc496075ccadd6f7f5fcdb3e",
+  "tests/_util.py": "6bfb2dce64f5abeba2dcac0d9d06ffad7deb0ddf6d4283017f281d1ee5b3ca5f",
+  "tests/test_engine_substrate.py": "77e2e543d98ac65dd5679669e606caf94bab7af03cbb3d380efa420099088ad7",
+  "tests/test_geometry.py": "33299ebc0209db8e3d4d97efba42097d7ed13a580ac169bd2941af064d8df99a",
+  "tests/test_provenance_native.py": "cabfdc3b8bf2936012ea4a0c9100920f5b963efae4dbc041b2a796284f926c4b",
+  "tests/test_registry.py": "9ce8c5deb35f787fab9956410352002eefeb5ed2e9e6a856b1aa6ea3bf1b2bb7",
+  "tests/test_state.py": "a9100de99b1f43dbda78eddb2e69ed8424562731fcabdf612cd7a1830e1b22e6"
+ },
+ "controller_parity": {
+  "instances_compared": 144,
+  "vectorized_vs_reference_max_abs": 4.440892098500626e-16
+ },
+ "covariance": {
+  "cases": 96,
+  "negative_links_only_h1": 0.785121895420643,
+  "negative_nonorthogonal_scaling_h1": 0.18889451380265354,
+  "negative_slot_mismatched_gauge_h1": 0.4392738420664476,
+  "negative_state_only_h1": 0.27229226796114303,
+  "negative_transposed_link_convention_h1": 0.2724549209383658,
+  "o4_covariance_native_h20": 3.0531133177191805e-16,
+  "participant_gauge_invariance_h20": 1.6653345369377348e-16,
+  "slot_permutation_equivariance_h20": 1.1102230246251565e-16,
+  "so2x2_covariance_controlled_h20": 1.6653345369377348e-16,
+  "so2x2_covariance_native_h1": 8.881784197001252e-16,
+  "so2x2_covariance_native_h20": 1.6653345369377348e-16
+ },
+ "environment": {
+  "cpu_count": 4,
+  "cpu_flags_avx512f": true,
+  "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "implementation": "CPython",
+  "machine": "x86_64",
+  "numpy": "2.5.3",
+  "python": "3.13.18",
+  "system": "Linux",
+  "torch": "2.15.0+cpu",
+  "torch_threads": 1
+ },
+ "gate": "R118A_PASS",
+ "gates": {
+  "checkpoint_hashes": true,
+  "controller_parity": true,
+  "covariance": true,
+  "historical_replay": true,
+  "isolation": true,
+  "negative_controls_detected": true,
+  "no_weight_mutation": true,
+  "provenance": true,
+  "r77_parity": true
+ },
+ "historical_replay": {
+  "disposition": "HISTORICAL_R78_REPLAY_PASS",
+  "exits": {
+   "run": 0,
+   "spot": 0,
+   "verify": 0
+  },
+  "r78_replayed_sha256": "7646e113fa8dcef48ff2b0ae724504ddc745d68fe7a8fd6699cb73ef662ab40e",
+  "r78_result_byte_identical": true,
+  "spot_tail": "R78_FROZEN_DYNAMICS_TANGENT_SPOT=72/72 MAX_LOG_GAIN_DELTA=0 GAUGE_MAX=1.39e-16 GENERATOR_IDENTITY_MAX=1.43e-11",
+  "verify_tail": "ADVERSARIAL_REJECTIONS=12/12 SCIENTIFIC_GATE=RETROSPECTIVE_TANGENT_ASSOCIATION_BOUNDED"
+ },
+ "isolation": {
+  "batch_vs_single_instance_bitwise": false,
+  "batch_vs_single_instance_h20_max_abs": 2.7755575615628914e-17,
+  "cross_instance_leak_h20": 0.0,
+  "isolated_zero_slot_max_abs_h20": 0.0,
+  "perturbed_instance_changed_h20": 0.0733898384300907
+ },
+ "oracle": {
+  "executed_modules": [
+   "make_proto",
+   "portable_mechanics",
+   "r30_source",
+   "r62_source",
+   "r63_source",
+   "r64",
+   "r77",
+   "r78"
+  ],
+  "parameter_count": {
+   "54007/STATE8": 88,
+   "54007/STATE8_SIGNED8": 88,
+   "54007/STATE8_TF1": 88,
+   "54031/STATE8": 88,
+   "54031/STATE8_SIGNED8": 88,
+   "54031/STATE8_TF1": 88
+  },
+  "parameter_pins": {
+   "54007/STATE8": "3212d1d8a512d010dafc464e7b8fb90adac55f631bbf7d61a9b7baef317a5c0a",
+   "54007/STATE8_SIGNED8": "25e555914e000f2c521a71b5d062c716969428a288681fc42226013b32d87d70",
+   "54007/STATE8_TF1": "1c764544ac67a16234dfa62383b678b05745af87ef89b5f570ad48a7458cdc7e",
+   "54031/STATE8": "4c37c40b9d7656021db39d38ed7caca43877940c395a686fbba0c6c91a636a03",
+   "54031/STATE8_SIGNED8": "711d47c25c96fd20229b65f7e54508e34a701fa2e0500b21bb59a65a4367995f",
+   "54031/STATE8_TF1": "abb9906d0259f4854f1f44942f546aa27e250be070aa42574084772591e640f3"
+  },
+  "source_sha256": {
+   "make_proto.py": "30d72f4c876926b5b207270f8088846f09efac83b8d13d883af27b1d147880cf",
+   "portable_mechanics.py": "60bbf1fbf6e85774d37533ab6029b4942699b06830364535bc20db8cb0f97b0d",
+   "r30_source.py": "51e05a242b9ec6411d8a2bb093f779b4d7ac8bab4e1ac9def28d4d89f6b3d8b9",
+   "r62_source.py": "fe272da88e3833ad5deaad305dc5ab4d07b666af1fe357a07da7df10e1a799ee",
+   "r63_source.py": "6f2fb05aabbc06e8b1892f35949bdcc168941831a368ede9b1f895a6b4877eea",
+   "r64.py": "2d3b66ea4ace2e0ecfab0c7fa33ccf9edde12e0bd57e1b94b9e38c09e8cdf60c",
+   "r77.py": "e7c44ba01277da9cd0c880064f6ff134f5c18e958d84fe44bd80eac0c832713c",
+   "r78.py": "67481c2e621381674bef1108440263f97b91bfd04de48f87b644e6937bd83a3c"
+  },
+  "torch_threads_after_import": 1,
+  "torch_threads_before_import": 1
+ },
+ "oracle_timing": {
+  "instances_per_step": 1152,
+  "step_ms_max": 4.373757,
+  "step_ms_p50": 3.823518,
+  "torch_threads": 1
+ },
+ "phase": "R118-A",
+ "provenance": {
+  "files_verified": 39,
+  "ledger_entries_verified": 26,
+  "manifest_sha256": "b0415964e83c2dba01d2a1b6bd9f2f55dad53f147a3747119433a3e07524d855",
+  "unmanifested_files": 0
+ },
+ "provenance_after": {
+  "files_verified": 39,
+  "ledger_entries_verified": 26,
+  "manifest_sha256": "b0415964e83c2dba01d2a1b6bd9f2f55dad53f147a3747119433a3e07524d855",
+  "unmanifested_files": 0
+ },
+ "r77_full_evaluation_replay": {
+  "bitwise_identical": true,
+  "rows": 576,
+  "rows_canonical_sha256": "051fa3bc48eba4852749c6f8de6eb34a9edd46a33973c33a8f7201563e12d38b",
+  "sealed_rows_canonical_sha256": "051fa3bc48eba4852749c6f8de6eb34a9edd46a33973c33a8f7201563e12d38b"
+ },
+ "schema": "elpis.ym_hca.r118a.v1",
+ "seconds": 18.82,
+ "snapshot_digest": "2776a730b0ec3ce0f9af22cb2cf5e7c7bc90d91a32d064cd2bc774f6dc9c24ef",
+ "thresholds": {
+  "horizon": 20,
+  "negative_min": 1e-06,
+  "pass_tol": 1e-09
+ },
+ "weights_unchanged_after_suite": true
+}

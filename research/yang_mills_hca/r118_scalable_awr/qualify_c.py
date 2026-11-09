@@ -265,6 +265,8 @@ def run() -> dict:
     ev["gates"] = gates
     ev["gate"] = "R118C_PASS" if all(gates.values()) else "R118C_FAIL"
     ev["environment"] = P.environment_fingerprint()
+    ev["component_digest"] = P.component_digest()
+    ev["component_sources"] = P.component_sources()
     from . import native
 
     ev["native_kernel"] = native.build().info

@@ -338,6 +338,8 @@ def run(replay=True) -> dict:
     ev["gate"] = "R118A_PASS" if all(gates.values()) else "R118A_FAIL"
     ev["thresholds"] = {"pass_tol": PASS_TOL, "negative_min": NEGATIVE_MIN, "horizon": HORIZON}
     ev["environment"] = P.environment_fingerprint()
+    ev["component_digest"] = P.component_digest()
+    ev["component_sources"] = P.component_sources()
     ev["seconds"] = round(time.time() - t0, 2)
     ev["provenance_after"] = P.verify_manifest()
     return ev

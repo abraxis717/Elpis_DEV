@@ -62,7 +62,8 @@ def run(checkpoint="54007/STATE8", controller="R104") -> dict:
             lat = ([], [])
     return {"phase": "R118-D-diagnostic", "protocol_sha256": psha, "checkpoint": checkpoint,
             "controller": controller, "instances": int(allh.size), "steps": STEPS, "blocks": blocks,
-            "environment": P.environment_fingerprint()}
+            "environment": P.environment_fingerprint(),
+            "component_digest": P.component_digest(), "component_sources": P.component_sources()}
 
 
 def main(argv=None) -> int:
