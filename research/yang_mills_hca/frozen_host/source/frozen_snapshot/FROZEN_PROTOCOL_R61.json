@@ -1,0 +1,1632 @@
+{
+  "adam_weight_decay": 0.0,
+  "adapt_batch": 8,
+  "adapt_fixtures_per_seed": 18,
+  "adapt_horizon": 8,
+  "adapt_train_seeds": [
+    3701,
+    3719
+  ],
+  "adaptation_notes": "The static floor=0.1 and signed lambda=0.05 were fixed using only R47 training-record gradient probes. This is not dynamic per-update balancing. Retains exact 20 active parameters and 8-step state trajectory weights.",
+  "arms": {
+    "BASE_LS": [],
+    "RET_SCALED_SIGNED8": [
+      0,
+      4
+    ],
+    "SAL_FLOOR_SIGNED8": [
+      1,
+      5
+    ],
+    "SAL_ORIG_SIGNED8": [
+      1,
+      5
+    ],
+    "SAL_SCALED_SIGNED8": [
+      1,
+      5
+    ],
+    "SAL_STATE8": [
+      1,
+      5
+    ]
+  },
+  "audit_horizons": [
+    4,
+    6,
+    8,
+    12,
+    16,
+    20
+  ],
+  "base_fit_seeds": [
+    3607,
+    3617
+  ],
+  "base_fixtures_per_seed": 16,
+  "base_snapshots": [
+    0,
+    2,
+    6
+  ],
+  "base_train_batch": 8,
+  "combination": {
+    "goal": "measure conflicts and attenuation, not select an optimizer using old holdout data",
+    "gradient_source": "STATE + 0.05 * RESPONSE_FLOOR_0.1, separately evaluated at H8 H12 H16 H20",
+    "hypothetical_clip": 1.0,
+    "loss_direction": "reported grad dot proposed descent vector positive = first-order loss decrease",
+    "methods": [
+      "H8_ONLY",
+      "H20_ONLY",
+      "MEAN4",
+      "NORM4",
+      "PCGRAD4",
+      "MINNORM8_20"
+    ],
+    "minnorm_endpoints": "closed-form min-norm convex combination of H8 and H20; alpha clipped [0,1]",
+    "no_holdout_access": true,
+    "no_training": true,
+    "norm_balancing": "equal unit-direction contributions rescaled by arithmetic mean original gradient norm",
+    "pcgrad_order": [
+      8,
+      12,
+      16,
+      20
+    ]
+  },
+  "diagnostic": {
+    "arms": [
+      "BASE_LS",
+      "SAL_STATE8",
+      "SAL_ORIG_SIGNED8",
+      "SAL_SCALED_SIGNED8"
+    ],
+    "floors": [
+      0.0001,
+      0.1
+    ],
+    "grad_clip_norm": 1.0,
+    "horizons": [
+      8,
+      12,
+      16,
+      20
+    ],
+    "no_holdout_access": true,
+    "no_new_training": true,
+    "preflight_indices": [
+      0
+    ],
+    "record_indices": [
+      0,
+      5,
+      12,
+      17,
+      23,
+      35
+    ],
+    "training_records_only": true
+  },
+  "evaluation_seeds": [
+    3907,
+    3911,
+    3919,
+    3923,
+    3931,
+    3943,
+    3947,
+    3967
+  ],
+  "evaluations": {
+    "batch": 8,
+    "cases": {
+      "r48_anti192": [
+        0.020833333333333332,
+        4.0,
+        "antialigned"
+      ],
+      "r48_reverse192": [
+        4.0,
+        0.020833333333333332,
+        "independent"
+      ],
+      "r48_weak192": [
+        0.020833333333333332,
+        4.0,
+        "independent"
+      ]
+    },
+    "connected_graphs": [
+      "r48_crosshatch",
+      "r48_spur_lattice",
+      "r48_twin_arc"
+    ],
+    "disconnected_graph": "r48_disconnected",
+    "eval_offset": 40370000000,
+    "gauge_case": "r48_weak192",
+    "gauge_graph": "r48_crosshatch",
+    "graphs": {
+      "r48_crosshatch": [
+        [
+          0,
+          1,
+          4,
+          6
+        ],
+        [
+          1,
+          2,
+          5,
+          7
+        ],
+        [
+          2,
+          3,
+          6,
+          8
+        ],
+        [
+          3,
+          4,
+          7,
+          9
+        ]
+      ],
+      "r48_disconnected": [
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          1,
+          3,
+          5
+        ],
+        [
+          3,
+          4,
+          6
+        ],
+        [
+          7,
+          8,
+          9
+        ]
+      ],
+      "r48_spur_lattice": [
+        [
+          0,
+          1,
+          4,
+          7
+        ],
+        [
+          0,
+          2,
+          5,
+          8
+        ],
+        [
+          1,
+          3,
+          6,
+          9
+        ],
+        [
+          2,
+          3,
+          5,
+          7
+        ]
+      ],
+      "r48_twin_arc": [
+        [
+          0,
+          1,
+          3,
+          8
+        ],
+        [
+          1,
+          2,
+          4,
+          6
+        ],
+        [
+          2,
+          5,
+          7,
+          9
+        ],
+        [
+          3,
+          4,
+          5,
+          8
+        ]
+      ]
+    },
+    "horizon": 20
+  },
+  "excluded_preflight_seed": 3991,
+  "grad_clip_norm": 1.0,
+  "learning_rate": 0.003,
+  "no_inference_mutations": true,
+  "no_native_gdn_or_semantic_claim": true,
+  "objective_variants": {
+    "BASE_LS": {
+      "response_floor": 0.0001,
+      "response_lambda": 0.0
+    },
+    "RET_SCALED_SIGNED8": {
+      "response_floor": 0.1,
+      "response_lambda": 0.05
+    },
+    "SAL_FLOOR_SIGNED8": {
+      "response_floor": 0.1,
+      "response_lambda": 0.5
+    },
+    "SAL_ORIG_SIGNED8": {
+      "response_floor": 0.0001,
+      "response_lambda": 0.5
+    },
+    "SAL_SCALED_SIGNED8": {
+      "response_floor": 0.1,
+      "response_lambda": 0.05
+    },
+    "SAL_STATE8": {
+      "response_floor": 0.0001,
+      "response_lambda": 0.0
+    }
+  },
+  "prospective": {
+    "adam_weight_decay": 0.0,
+    "adapt_batch": 8,
+    "adapt_fixtures_per_seed": 18,
+    "adapt_horizon": 20,
+    "adapt_train_seeds": [
+      4303,
+      4319
+    ],
+    "arms": [
+      "BASE_LS",
+      "SAL_STATE8",
+      "SAL_H20_ONLY",
+      "SAL_MEAN4",
+      "SAL_PCGRAD4"
+    ],
+    "base_fit_seeds": [
+      4201,
+      4211
+    ],
+    "base_fixtures_per_seed": 16,
+    "base_snapshots": [
+      0,
+      2,
+      6
+    ],
+    "base_train_batch": 8,
+    "disjoint_novel_evaluation": true,
+    "eval_offset": 54930000000,
+    "evaluation_seeds": [
+      4409,
+      4421,
+      4423,
+      4441,
+      4447,
+      4451,
+      4463,
+      4481
+    ],
+    "evaluations": {
+      "batch": 8,
+      "cases": {
+        "r52_anti160": [
+          0.025,
+          4.0,
+          "antialigned"
+        ],
+        "r52_reverse160": [
+          4.0,
+          0.025,
+          "independent"
+        ],
+        "r52_weak160": [
+          0.025,
+          4.0,
+          "independent"
+        ]
+      },
+      "cases_order": [
+        "r52_weak160",
+        "r52_reverse160",
+        "r52_anti160"
+      ],
+      "connected_graphs": [
+        "r52_fan",
+        "r52_weave",
+        "r52_cross"
+      ],
+      "disconnected_graph": "r52_disconnected",
+      "eval_offset": 54930000000,
+      "gauge_case": "r52_weak160",
+      "gauge_graph": "r52_fan",
+      "graphs": {
+        "r52_cross": [
+          [
+            0,
+            1,
+            2,
+            7
+          ],
+          [
+            1,
+            3,
+            4,
+            8
+          ],
+          [
+            2,
+            4,
+            5,
+            9
+          ],
+          [
+            3,
+            5,
+            6,
+            7
+          ]
+        ],
+        "r52_disconnected": [
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            1,
+            3,
+            5
+          ],
+          [
+            3,
+            4,
+            6
+          ],
+          [
+            7,
+            8,
+            9
+          ]
+        ],
+        "r52_fan": [
+          [
+            0,
+            1,
+            4,
+            7
+          ],
+          [
+            1,
+            2,
+            4,
+            9
+          ],
+          [
+            2,
+            3,
+            5,
+            9
+          ],
+          [
+            3,
+            6,
+            7,
+            8
+          ]
+        ],
+        "r52_weave": [
+          [
+            0,
+            1,
+            5,
+            8
+          ],
+          [
+            1,
+            3,
+            6,
+            10
+          ],
+          [
+            2,
+            3,
+            5,
+            10
+          ],
+          [
+            3,
+            4,
+            6,
+            8
+          ]
+        ]
+      },
+      "graphs_order": [
+        "r52_fan",
+        "r52_weave",
+        "r52_cross",
+        "r52_disconnected"
+      ],
+      "horizon": 20
+    },
+    "excluded_preflight_seed": 4493,
+    "grad_clip_norm": 1.0,
+    "learning_rate": 0.003,
+    "loss_horizons": [
+      8,
+      12,
+      16,
+      20
+    ],
+    "no_inference_teacher": true,
+    "no_runtime_persistent_mutation": true,
+    "notes": "Sources R51-R0 pinned; PCGrad deterministic horizon order on one true minibatch of 8 original+8 flipped; 64 equal optimizer updates and 20 active learned scalars; FLOPs differ; no eval-driven tuning.",
+    "response_floor": 0.1,
+    "response_lambda": 0.05,
+    "scientific_acceptance": {
+      "anti_gain_max": 1.25,
+      "anti_gain_min": 0.75,
+      "anti_worst_max": 2.0,
+      "max_clip_updates": 32,
+      "paired_cells_min": 20,
+      "paired_seeds_min": 6,
+      "reverse_gain_max": 1.25,
+      "reverse_gain_min": 0.75,
+      "reverse_median_max": 0.5,
+      "reverse_worst_max": 1.0,
+      "signed_fraction_min": 0.95,
+      "weak_gain_max": 1.25,
+      "weak_gain_min": 0.75,
+      "weak_median_max": 0.5,
+      "weak_worst_max": 1.0
+    },
+    "train_cases": {
+      "r52_train_anti64": [
+        0.0625,
+        4.0,
+        "antialigned"
+      ],
+      "r52_train_reverse64": [
+        4.0,
+        0.0625,
+        "independent"
+      ],
+      "r52_train_weak64": [
+        0.0625,
+        4.0,
+        "independent"
+      ]
+    },
+    "train_init_offset": 52830000000,
+    "updates": 64
+  },
+  "r44_archive": "YM_AWR_R43_EARLY_COEFFICIENT_PAIR_FACTORIAL_R44.zip",
+  "r44_protocol_sha256": "65926986eb7e95c7132fc7067e7c9fbf0e6aa203d0f764238f3719a91a2e36d0",
+  "r44_script_sha256": "68b957dc5b57637ef72009095b2b823ff9a5f26aa88a9ce2fafc01892f375cf1",
+  "r44_sha256": "98e48029e7d10dc436d68af9f8b2931589fe89fb32866690c54981f90f532ce9",
+  "r45_archive": "YM_AWR_R44_PROSPECTIVE_SALIENT_PAIR_LEARNING_R45.zip",
+  "r45_protocol_sha256": "eac4b6fa3aeadeb5ffc1618a36d45b6db5cfd411a02a334fd7b1dae33ad5dc55",
+  "r45_script_sha256": "e03cfe070098560358dc5f71d2e20ad29be91decd93e0894ebd5cca5ac5f5c6b",
+  "r45_sha256": "e7edbb95102b2a9604214f731639d3e12c4da9d4bb746f155036f49cca57af77",
+  "r46_archive": "YM_AWR_R45_SIGNED_RESPONSE_AWARE_LEARNING_R46.zip",
+  "r46_protocol_sha256": "659d14b0b93e589ca747782289d28a5dbb1f4e2c54ae69a464f9210517c66d85",
+  "r46_script_sha256": "99c7e34f185f468a6af90f6752ee2cee3813e590e18e44dcd6a72a5c4dadf745",
+  "r46_sha256": "523e7ad216253219fe6ddd4ef9bec1159f635c6fda7e21471d64376cc6bbee35",
+  "r47_archive": "YM_AWR_R46_TRAINING_GRADIENT_NORMALIZATION_AUDIT_R47.zip",
+  "r47_protocol_sha256": "2389cddc71d5e081034f47261fb0647f1c620d41ab665191dbe2717e044f3660",
+  "r47_script_sha256": "802873311f39d76e9d1877874f423ac060b30351dc1a61b717b99d9970b2e612",
+  "r47_sha256": "3f2f1cbbd4570789d4d374105b72a95551deecd00fbe3f41a131fab940ea40af",
+  "r48_archive": "YM_AWR_R47_SCALED_SIGNED_LEARNING_R48.zip",
+  "r48_h20_reference": {
+    "r48_anti192": {
+      "BASE_LS": [
+        2.12907554,
+        1.78772701
+      ],
+      "RET_SCALED_SIGNED8": [
+        101381.337,
+        0.366373552
+      ],
+      "SAL_FLOOR_SIGNED8": [
+        3982.69261,
+        3.38141377
+      ],
+      "SAL_ORIG_SIGNED8": [
+        22.4524895,
+        2.98870513
+      ],
+      "SAL_SCALED_SIGNED8": [
+        445.890553,
+        3.51345647
+      ],
+      "SAL_STATE8": [
+        24718.0909,
+        3.07423206
+      ]
+    },
+    "r48_reverse192": {
+      "BASE_LS": [
+        0.33380773,
+        0.666429308
+      ],
+      "RET_SCALED_SIGNED8": [
+        0.805789516,
+        0.106006722
+      ],
+      "SAL_FLOOR_SIGNED8": [
+        0.144870402,
+        0.780248996
+      ],
+      "SAL_ORIG_SIGNED8": [
+        0.24463541,
+        0.714438176
+      ],
+      "SAL_SCALED_SIGNED8": [
+        0.193284401,
+        0.746172038
+      ],
+      "SAL_STATE8": [
+        0.00395856929,
+        0.963674257
+      ]
+    },
+    "r48_weak192": {
+      "BASE_LS": [
+        2.11187979,
+        1.78757816
+      ],
+      "RET_SCALED_SIGNED8": [
+        1004.04142,
+        0.367304459
+      ],
+      "SAL_FLOOR_SIGNED8": [
+        54.2951532,
+        3.38105121
+      ],
+      "SAL_ORIG_SIGNED8": [
+        7.94343383,
+        2.98867669
+      ],
+      "SAL_SCALED_SIGNED8": [
+        15.9574932,
+        3.51317628
+      ],
+      "SAL_STATE8": [
+        286.125201,
+        3.07409782
+      ]
+    }
+  },
+  "r48_protocol_sha256": "22277c42d609df5429a1c18e41341cfc65fdd88ebf9bb3f109afd158f79df749",
+  "r48_script_sha256": "f2de3c2013c0f18a42ecd9362e67d0de577031879f74e3280b20e3c20de59a91",
+  "r48_sha256": "bb36ef2f4ab7888369e75ab50c3d5e99e093c97c5bd6c600a98f06b9558c842e",
+  "r49_archive": "YM_AWR_R48_HORIZON_SIGNED_TRANSFER_AUDIT_R49.zip",
+  "r49_protocol_sha256": "9debdf58f64953996e0fc3cbaa414a5560d655d148115072539aedd3f3af8759",
+  "r49_script_sha256": "ce9eea4a2ea91825ac656a2ecb18e905df62790286da367df5ebd975b8514c19",
+  "r49_sha256": "e40a1c9a9b56f73eafc78c838e31dda917bec87daef54bc2f08aed0156ca5d2b",
+  "r50_archive": "YM_AWR_R49_TRAIN_ONLY_HORIZON_GRADIENT_AUDIT_R50.zip",
+  "r50_protocol_sha256": "42c9a9d323275598ce8ee6ffd72dda21cb2c7b99eec8733d69c73b91640d0cc9",
+  "r50_script_sha256": "74ed79e8b6d7aa6004243c84530d223b5634712d66f18f3fdb91afb6ace4a64c",
+  "r50_sha256": "2f43393e17336666716ce15bd392d08ea7ee5f08852c8be27a44336e3a796b9c",
+  "r51_archive": "YM_AWR_R50_TRAIN_ONLY_GRADIENT_COMBINATION_R51.zip",
+  "r51_protocol_sha256": "e2a4a3253f98e6a87db2d675cab3318cea34d16567d889958f4a36862d70a4b3",
+  "r51_script_sha256": "3c4b7cc6b04b961ed88a97d7274d372d1f7338fb5574c858a59156a08d88f818",
+  "r51_sha256": "5a7856fb4c5fe623ad59432abeb4dad5190da75784ec5dc3b60c4fb5ef42fb19",
+  "r52_archive": "YM_AWR_R51_PROSPECTIVE_MULTIHORIZON_TRAINING_R52.zip",
+  "r52_protocol_sha256": "288868f173322ccd7e2695f4adaf34fc1a4d99f83503be58f686da05f0d0d0b3",
+  "r52_script_sha256": "f88ef35ac7a22efd5419182c06a862a122bb6c77e437f6cfaa26e9cd08792b3f",
+  "r52_sha256": "2c5894e1041d575fd833b84a3eecbe49add212cca8b9851f17c3420f6fe1e111",
+  "r53_archive": "YM_AWR_R52_TRAIN_ONLY_OPTIMIZER_TRAJECTORY_R53.zip",
+  "r53_diagnostic": {
+    "arms": [
+      "BASE_LS",
+      "SAL_STATE8",
+      "SAL_H20_ONLY",
+      "SAL_MEAN4",
+      "SAL_PCGRAD4"
+    ],
+    "checkpoints": [
+      0,
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      48,
+      64
+    ],
+    "loss_gradient_audit": "Original per-minibatch combined horizon gradients, negative pairwise dot products and gradient-update directional conflicts",
+    "no_evaluation_seed_or_graph_access": true,
+    "no_new_eval": true,
+    "no_new_objective": true,
+    "no_weight_mutation_during_diagnostic": true,
+    "original_R52_fit_reference": {
+      "SAL_H20_ONLY": {
+        "clipped": 4,
+        "delta": 0.11976896,
+        "last": 0.00284809652,
+        "max_grad": 2.66410884
+      },
+      "SAL_MEAN4": {
+        "clipped": 8,
+        "delta": 0.163874972,
+        "last": 0.00396027071,
+        "max_grad": 17.8475616
+      },
+      "SAL_PCGRAD4": {
+        "clipped": 11,
+        "delta": 0.200354898,
+        "last": 0.00233881308,
+        "max_grad": 17.8475616
+      },
+      "SAL_STATE8": {
+        "clipped": 1,
+        "delta": 0.135948381,
+        "last": 0.000394166271,
+        "max_grad": 2.27790839
+      }
+    },
+    "output_checkpoints": [
+      0,
+      8,
+      16,
+      32,
+      64
+    ],
+    "preflight_indices": [
+      0
+    ],
+    "probe_indices": [
+      0,
+      3,
+      6,
+      18,
+      21,
+      24
+    ],
+    "supervision_horizons": [
+      8,
+      12,
+      16,
+      20
+    ]
+  },
+  "r53_protocol_sha256": "a2fbdd0a40719e4cc966a2961ddb451cfa7f16cf4579ecb03aafe7338a6e4f8a",
+  "r53_script_sha256": "0759b8b595b956be9d255e0d502e9c60e1fb117047649734d3c755292ed777a6",
+  "r53_sha256": "1299392df10df99a9f3a91a8a4669dc2c4dffc8e0d8936cba7c2ee9f8ca4caad",
+  "r54_archive": "YM_AWR_R53_TOPOLOGY_SOURCE_FACTORIAL_R54.zip",
+  "r54_factorial": {
+    "amplitudes": {
+      "FAMILIAR64": 0.0625,
+      "NOVEL160": 0.025
+    },
+    "arms": [
+      "BASE_LS",
+      "SAL_STATE8",
+      "SAL_H20_ONLY",
+      "SAL_MEAN4",
+      "SAL_PCGRAD4"
+    ],
+    "cases": [
+      "weak",
+      "reverse",
+      "anti"
+    ],
+    "cases_spec": "weak=(s,4,independent); reverse=(4,s,independent); anti=(s,4,antialigned) for s=1/16 or 1/40. Graphs and familiar ratio appeared in R52 training, novel graphs and ratio appeared in R52 eval; fresh seeds for all cells.",
+    "controls": "paired source amplitudes use identical RNG seeds within each topology/graph and case; model arms use identical teacher reference and inputs",
+    "covariance_tolerance": 1e-09,
+    "design": "2x2 topology-familiarity x source-strength familiarity on R52 frozen trained models; 3 signed cases each; no training updates beyond exact R52 replay",
+    "disconnected_tolerance": 1e-10,
+    "eval_batch": 8,
+    "eval_offset": 66190000000,
+    "evaluation_seeds": [
+      5501,
+      5503,
+      5507,
+      5519,
+      5521,
+      5527,
+      5531,
+      5557
+    ],
+    "excluded_preflight_seed": 5591,
+    "horizon": 20,
+    "limits": [
+      "R52 graph families and source-strength values previously used, but seeds are new",
+      "graph family differs in structure, which is intended as topology axis",
+      "no new model selection or optimization after observations",
+      "contrast is descriptive on synthetic graphs; not a proof of independent causal effects",
+      "no native GDN or semantic contradiction claims",
+      "no persistent inference mutation"
+    ],
+    "model_replay": "Exactly reconstruct R52 original 64-update fits, check published fitstats, and never train on factorial seeds.",
+    "r52_fitstats_reference": {
+      "SAL_H20_ONLY": {
+        "clipped": 4,
+        "delta": 0.11976896,
+        "last": 0.00284809652,
+        "max_grad": 2.66410884
+      },
+      "SAL_MEAN4": {
+        "clipped": 8,
+        "delta": 0.163874972,
+        "last": 0.00396027071,
+        "max_grad": 17.8475616
+      },
+      "SAL_PCGRAD4": {
+        "clipped": 11,
+        "delta": 0.200354898,
+        "last": 0.00233881308,
+        "max_grad": 17.8475616
+      },
+      "SAL_STATE8": {
+        "clipped": 1,
+        "delta": 0.135948381,
+        "last": 0.000394166271,
+        "max_grad": 2.27790839
+      }
+    },
+    "scientific_status": "RETROSPECTIVE_FACTORIAL_NOT_NEW_LEARNED_UTILITY",
+    "status": "FROZEN_BEFORE_NEW_SEEDS",
+    "topology": {
+      "FAMILIAR": [
+        "deep_3a",
+        "split_2a",
+        "shortcut_1a"
+      ],
+      "NOVEL": [
+        "r52_fan",
+        "r52_weave",
+        "r52_cross"
+      ]
+    }
+  },
+  "r54_protocol_sha256": "102096dfac382e22729f25a9044e8a66bf0ec2b1a4a65d64b098d2ed2fdf5a75",
+  "r54_script_sha256": "66886dbc3328ed01db5880e7d42ff4a849c78c05e11766aeefbd8a6d16d7b10d",
+  "r54_sha256": "c0ed31faaa97018cf72af6dea45ced5ed706fbcb5656d0bd7217c86cbd49662f",
+  "r55_archive": "YM_AWR_R54_DEGREE_PRESERVING_STRUCTURAL_REWIRE_R55.zip",
+  "r55_protocol_sha256": "8c6b9b52e1d211db7794698e79783579bd18c03f99b1384be84588b8f55de319",
+  "r55_script_sha256": "cc5f4d45e94e80698e0881df89c237fa2e89ea513fbf84dda4cced27bc27d293",
+  "r55_sha256": "707f555e9352d1e8dfee10d0b8fa3d80bed37b81d688044aaa1c058ad819a2de",
+  "r55_structural": {
+    "arms": [
+      "BASE_LS",
+      "SAL_STATE8",
+      "SAL_H20_ONLY",
+      "SAL_MEAN4",
+      "SAL_PCGRAD4"
+    ],
+    "cases": {
+      "anti": [
+        0.0625,
+        4.0,
+        "antialigned"
+      ],
+      "reverse": [
+        4.0,
+        0.0625,
+        "independent"
+      ],
+      "weak": [
+        0.0625,
+        4.0,
+        "independent"
+      ]
+    },
+    "covariance_tolerance": 1e-09,
+    "degree_histogram": {
+      "1": 4,
+      "2": 6,
+      "3": 0,
+      "4": 0
+    },
+    "degree_preserving_moves_only": true,
+    "direct_2hop_targets": {
+      "D1_P1": [
+        1,
+        1
+      ],
+      "D1_P2": [
+        1,
+        2
+      ],
+      "D2_P1": [
+        2,
+        1
+      ],
+      "D2_P2": [
+        2,
+        2
+      ]
+    },
+    "disconnected_tolerance": 1e-10,
+    "eval_batch": 8,
+    "eval_offset": 73990000000,
+    "evaluation_seeds": [
+      5603,
+      5609,
+      5617,
+      5623,
+      5639,
+      5641,
+      5651,
+      5669
+    ],
+    "excluded_preflight_seed": 5693,
+    "graphs": {
+      "D1_P1": [
+        [
+          0,
+          1,
+          2,
+          7
+        ],
+        [
+          1,
+          3,
+          4,
+          5
+        ],
+        [
+          2,
+          4,
+          5,
+          9
+        ],
+        [
+          3,
+          6,
+          7,
+          8
+        ]
+      ],
+      "D1_P2": [
+        [
+          0,
+          1,
+          2,
+          7
+        ],
+        [
+          1,
+          3,
+          4,
+          8
+        ],
+        [
+          2,
+          4,
+          5,
+          9
+        ],
+        [
+          3,
+          5,
+          6,
+          7
+        ]
+      ],
+      "D2_P1": [
+        [
+          0,
+          1,
+          2,
+          7
+        ],
+        [
+          1,
+          3,
+          4,
+          8
+        ],
+        [
+          4,
+          5,
+          6,
+          9
+        ],
+        [
+          2,
+          3,
+          5,
+          7
+        ]
+      ],
+      "D2_P2": [
+        [
+          0,
+          1,
+          2,
+          7
+        ],
+        [
+          1,
+          3,
+          4,
+          5
+        ],
+        [
+          4,
+          6,
+          8,
+          9
+        ],
+        [
+          2,
+          3,
+          5,
+          7
+        ]
+      ]
+    },
+    "graphs_new_to_evaluation": false,
+    "horizon": 20,
+    "limitations": [
+      "2x2 direct and two-hop walk counts co-vary with other relation overlaps and remote adjacency; not orthogonal causal interventions",
+      "Natural source-to-remote path counts are descriptive topology statistics; relations transport vectors via SO2xSO2 connections",
+      "Fixed participant-degree distribution and arity, source seeds paired; no trained-utility claim",
+      "D1_P2 graph is the historic r52_cross control; other three membership rewires are new, and evaluation seeds are new",
+      "Transport connection matrices and intermediate overlaps also change with membership rewiring; path-count labels alone cannot establish causality",
+      "New evaluation seeds but teacher and graph family selected following R54; no independent preregistration",
+      "No native GDN or semantic contradiction claim",
+      "No persistent runtime inference mutation"
+    ],
+    "metric": "Mean H20 source-flip normalized squared remote A error, signed gain, worst cell, graph overlaps, exact 2x2 log1p interactions",
+    "no_eval_train_overlap": true,
+    "no_retraining": true,
+    "reference_graph": "r52_cross",
+    "source_nodes": [
+      0,
+      1
+    ],
+    "source_ratio": 64,
+    "source_relation": [
+      0,
+      1,
+      2,
+      7
+    ],
+    "status": "FROZEN_BEFORE_NEW_SEEDS"
+  },
+  "r56_archive": "YM_AWR_R55_CONNECTIVITY_TRANSPORT_FACTORIAL_R56.zip",
+  "r56_protocol_sha256": "758263c0dff71fe23711cfa51bd7f79db6c77f591521e7739c911ab8bda1182f",
+  "r56_script_sha256": "80b681c0187633ee7afffc6705c8cc33a30614ee45fb11c4a1642ac5d3574554",
+  "r56_sha256": "21826eca364c604f431edccc331b8ec0230041c61998ec9a8935b9a3b05e8bed",
+  "r56_transport": {
+    "arms": [
+      "BASE_LS",
+      "SAL_STATE8",
+      "SAL_H20_ONLY",
+      "SAL_MEAN4",
+      "SAL_PCGRAD4"
+    ],
+    "cases": [
+      "weak",
+      "reverse",
+      "anti"
+    ],
+    "causal_scope": "Fixed graph and same source/case/seed isolates the local edge transport intervention. Across graphs connectivity co-varies with relation overlaps; 4 graph patterns are not an exhaustive balanced random topology sample.",
+    "covariance_tolerance": 1e-09,
+    "disconnected_tolerance": 1e-10,
+    "eval_batch": 8,
+    "eval_offset": 80170000000,
+    "evaluation_seeds": [
+      5701,
+      5707,
+      5711,
+      5717,
+      5723,
+      5737,
+      5741,
+      5749
+    ],
+    "excluded_preflight_seed": 5779,
+    "gauge_metric_tolerance": 1e-09,
+    "gauge_shift": [
+      0.21,
+      -0.13
+    ],
+    "graphs": [
+      "D1_P1",
+      "D1_P2",
+      "D2_P1",
+      "D2_P2"
+    ],
+    "horizon": 20,
+    "limitations": [
+      "Original R3 transport is separable in relation and participant, so BASE effective pair operator is p-independent. The earlier R55 transport-confound statement is incorrect at effective link level.",
+      "Pure gauge rotation changes coordinate frames, not the source-conditioned normalized error and gain; this is a mandatory negative control.",
+      "Nonfactor perturbation is generated deterministically from mapped participant index p; p depends on seeded permutation. This tests transport structure on fixed graphs but not deployment",
+      "Teacher and HCA receive identical altered transport operator, and source input initial states are identical across modes.",
+      "A nonflat perturbation can change transport holonomy and salience aggregation together; does not independently identify the salience vs collective channel.",
+      "R55 graph variants reused with fresh seeds, no new optimization or utility gates.",
+      "No native GDN, no semantic contradiction, and no persistent runtime inference mutation"
+    ],
+    "method": "For fixed graph and paired seed, reuse generator mapped participant memberships, source initial states, and source-flipped states. BASE uses original matrices. GAUGE_ONLY rotates every relation frame left by fixed G_r (G_0=I), a mathematically equivalent change. PARTICIPANT_NONFLAT rotates incidence frame (r,p) by Q_rp with r=0 identity; R4 build_links and teacher/model both use altered edges. All SO2xSO2, exact same source init.",
+    "no_utility_claim": true,
+    "nonflat": {
+      "a_theta1": 0.45,
+      "a_theta2": -0.35,
+      "p_factor_1": 0.73,
+      "p_factor_2": 1.11,
+      "r_scale": 3
+    },
+    "source_anchor_relation": 0,
+    "source_parity_tolerance": 1e-12,
+    "source_ratio": 64,
+    "source_states_identical": true,
+    "status": "FROZEN_BEFORE_NEW_SEEDS",
+    "train_frozen": true,
+    "transport_control_tolerance": 1e-12,
+    "transport_modes": [
+      "BASE_SEPARABLE",
+      "GAUGE_ONLY",
+      "PARTICIPANT_NONFLAT"
+    ]
+  },
+  "r57_archive": "YM_AWR_R56_SPLIT_CHANNEL_TRANSPORT_FACTORIAL_R57.zip",
+  "r57_channels": {
+    "arms": [
+      "BASE_LS",
+      "SAL_STATE8",
+      "SAL_H20_ONLY",
+      "SAL_MEAN4",
+      "SAL_PCGRAD4"
+    ],
+    "cases": [
+      "weak",
+      "reverse",
+      "anti"
+    ],
+    "eval_batch": 8,
+    "eval_offset": 80390000000,
+    "eval_seeds": [
+      5801,
+      5807,
+      5813,
+      5821,
+      5827,
+      5839,
+      5843,
+      5851
+    ],
+    "excluded_preflight_seed": 5897,
+    "frozen_models": true,
+    "graphs": [
+      "D1_P1",
+      "D1_P2",
+      "D2_P1",
+      "D2_P2"
+    ],
+    "horizon": 20,
+    "limitations": [
+      "Split channel transport may not correspond to one physical gauge connection, but preserves SO(2)xSO(2) equivariance when both adjacencies transform consistently.",
+      "Teacher references change with each channel intervention, so between-mode normalized error changes are not purely model-side effects. Report teacher reference norm alongside errors.",
+      "A and B represent incoming salience and collective aggregates, not exclusive A-state and B-state pathways: gated recurrence couples them.",
+      "Existing R55 connectivity patterns and R56 transport phases reused; eight evaluation seeds fresh; no retraining.",
+      "Factorial interactions are conditional to frozen graphs and transport perturbation; descriptive mechanistic counterfactual, no utility claim.",
+      "No native GDN, semantic contradiction, or persistent inference mutation."
+    ],
+    "method": "A-channel salience uses the softmax-weighted transported a-state on adjacency adj_A. B-channel collective uses the mean transported b-state on adjacency adj_B. BASE_AB and NONFLAT_AB must reproduce exact native r4.graph_step; A-only/B-only are synthetic seam ablations, not physical single-link transport. Teacher and trained HCA both receive the same channel-specific adjacencies, with source states unchanged.",
+    "modes": [
+      "BASE_AB",
+      "NONFLAT_A",
+      "NONFLAT_B",
+      "NONFLAT_AB",
+      "GAUGE_AB"
+    ],
+    "no_new_learning": true,
+    "source_init_identical": true,
+    "source_ratio": 64,
+    "status": "FROZEN_BEFORE_NEW_SEEDS",
+    "teacher_and_models_same_mode": true,
+    "technical": {
+      "direct_stacked": 1e-10,
+      "disconnected": 1e-10,
+      "gauge": 1e-09,
+      "max_cov": 1e-09,
+      "min_nonflat_spread": 0.001,
+      "native_forward": 1e-10,
+      "source": 1e-12
+    },
+    "transport_source": "EXACT_R56_PARTICIPANT_NONFLAT_AND_GAUGE_PHASES"
+  },
+  "r57_protocol_sha256": "17f551bec3131dcce78e8dc3e959da39815acd6581f8e4c0617b7c01f9575e22",
+  "r57_script_sha256": "7c78157ef1815374a3c3b5c2929378c37ce3a0bb10d5062adc4791d6b4be72c4",
+  "r57_sha256": "3b6ceba669836d4fe3d011671eb7fa85bb72b91718db24540cb89a7fefa29fbb",
+  "r58_archive": "YM_AWR_R57_FIXED_REFERENCE_CHANNEL_DECOMPOSITION_R58.zip",
+  "r58_protocol_sha256": "c84fd20bdc36d45a9838e190c4fbf79ac0c92d0aa787e640a27aacc515c15187",
+  "r58_reference": {
+    "arms": [
+      "BASE_LS",
+      "SAL_STATE8",
+      "SAL_H20_ONLY",
+      "SAL_MEAN4",
+      "SAL_PCGRAD4"
+    ],
+    "cases": [
+      "weak",
+      "reverse",
+      "anti"
+    ],
+    "channel_split_synthetic": true,
+    "denominator": "PER_SAMPLE_NORM_SQUARED_BASE_AB_TEACHER_RESPONSE_UNFLOORED",
+    "eval_batch": 8,
+    "eval_offset": 80450000000,
+    "eval_seeds": [
+      5903,
+      5917,
+      5923,
+      5939,
+      5953,
+      5959,
+      5963,
+      5981
+    ],
+    "excluded_preflight_seed": 5999,
+    "fixed_teacher": "BASE_AB_TEACHER_ON_SAME_SEED_GRAPH_CASE",
+    "frozen_models": true,
+    "gauge_excluded_from_common_frame_comparisons": true,
+    "graphs": [
+      "D1_P1",
+      "D1_P2",
+      "D2_P1",
+      "D2_P2"
+    ],
+    "horizon": 20,
+    "limitations": [
+      "Fixed-denominator per-example ratios can still be dominated by very small baseline references; report base norms and energy-weighted checks.",
+      "Only mode-specific teacher-model error is a matched-physics comparison; fixed baseline teacher is a diagnostic counterfactual not a valid changed-transport target.",
+      "Gauge-only mode changes relation-local coordinates and is excluded from fixed-frame decomposition, used only as equivalence negative control.",
+      "Split A-only and B-only incidence transport is a synthetic seam, not one physical gauge connection.",
+      "Fresh seeds, same frozen graphs/teacher/model weights; descriptive mechanism decomposition not new utility.",
+      "No persistent inference mutation and no native GDN or semantic contradiction claim."
+    ],
+    "metrics": {
+      "baseline_error": "||P0-T0||^2/||T0||^2",
+      "cosine_fixed": "cos(Pm,T0)",
+      "cosine_matched": "cos(Pm,Tm)",
+      "cosine_shift": "cos(Pm-P0,Tm-T0)",
+      "difference_interaction": "joint_fixed-model_only-teacher_only+baseline_error = -2*(Pm-P0).(Tm-T0)/||T0||^2",
+      "joint_fixed": "||Pm-Tm||^2/||T0||^2",
+      "joint_matched": "||Pm-Tm||^2/||Tm||^2",
+      "model_only": "||Pm-T0||^2/||T0||^2",
+      "model_shift": "||Pm-P0||^2/||T0||^2",
+      "ratio_ref_energy": "||Tm||^2/||T0||^2",
+      "target_error_cross": "joint_fixed-model_only-teacher_shift = -2*(Pm-T0).(Tm-T0)/||T0||^2",
+      "teacher_only": "||P0-Tm||^2/||T0||^2",
+      "teacher_shift": "||Tm-T0||^2/||T0||^2"
+    },
+    "modes": [
+      "BASE_AB",
+      "NONFLAT_A",
+      "NONFLAT_B",
+      "NONFLAT_AB",
+      "GAUGE_AB"
+    ],
+    "no_new_training": true,
+    "source_ratio": 64,
+    "status": "FROZEN_BEFORE_NEW_SEEDS",
+    "teacher_and_models_same_transport_mode": true,
+    "technical": {
+      "max_cov": 1e-09,
+      "max_decomp": 1e-08,
+      "max_disconnected": 1e-10,
+      "max_gauge": 1e-09,
+      "max_metric": 1e-08,
+      "max_native": 1e-10,
+      "max_parity": 1e-10,
+      "max_source": 1e-12,
+      "min_spread": 0.001
+    },
+    "transport_source": "EXACT_R57_SPLIT_CHANNEL_TRANSPORT_AND_GAUGE"
+  },
+  "r58_script_sha256": "c0d0e580172f7f1ebadcc8db369671a22ee534991740c502ce758d38db783023",
+  "r58_sha256": "e084de8902c024786f6726f67b4eca3571e690b7415cfd8b24eed2c7218d991b",
+  "r59_archive": "YM_AWR_R58_FIXED_REFERENCE_HORIZON_PROPAGATION_R59.zip",
+  "r59_protocol_sha256": "1bd0fc0a02070f38fd95709dd86730a4c92a8e13fad95bd5514a3fd27734cd40",
+  "r59_script_sha256": "083f2358f314204e3a552eef56034a82d5778a37b19a2220d4000f530acfa365",
+  "r59_sha256": "d5af541b8972b08e5764fd6fdf72deb25f98ce45a8a3c942bdb7b33892d5a6bb",
+  "r59_trace": {
+    "analyzed_arms": [
+      "SAL_STATE8",
+      "SAL_PCGRAD4"
+    ],
+    "analyzed_modes": [
+      "BASE_AB",
+      "NONFLAT_B"
+    ],
+    "arms": [
+      "BASE_LS",
+      "SAL_STATE8",
+      "SAL_H20_ONLY",
+      "SAL_MEAN4",
+      "SAL_PCGRAD4"
+    ],
+    "cases": [
+      "weak",
+      "reverse",
+      "anti"
+    ],
+    "denominator": "BASE_AB_TEACHER_SAME_SAMPLE_H_AT_EACH_H_UNFLOORED",
+    "eval_batch": 8,
+    "eval_offset": 80610000000,
+    "eval_seeds": [
+      6007,
+      6011,
+      6029,
+      6037,
+      6043,
+      6053,
+      6067,
+      6073
+    ],
+    "excluded_preflight_seed": 6091,
+    "graphs": [
+      "D1_P1",
+      "D1_P2",
+      "D2_P1",
+      "D2_P2"
+    ],
+    "horizons": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "limits": [
+      "Uses fresh R59 seeds but original R55 graphs and frozen R52 model weights.",
+      "Transport perturbation changes teacher and model trajectory simultaneously; fixed baseline teacher comparison is counterfactual, not matched-physics utility.",
+      "Early horizons can have zero remote reference. Normalized ratios omit such samples, with valid/possible counts; absolute values retain all.",
+      "B-only split transport is a synthetic seam, not an independent physical link.",
+      "No native GDN, semantic contradiction or inference NAND mutation."
+    ],
+    "modes": [
+      "BASE_AB",
+      "NONFLAT_A",
+      "NONFLAT_B",
+      "NONFLAT_AB",
+      "GAUGE_AB"
+    ],
+    "no_retraining": true,
+    "source_ratio": 64,
+    "status": "FROZEN_BEFORE_NEW_SEEDS",
+    "technical": {
+      "max_cov": 1e-09,
+      "max_decomp": 1e-08,
+      "max_disconnected": 1e-10,
+      "max_gauge": 1e-09,
+      "max_metric": 1e-08,
+      "max_native": 1e-10,
+      "max_parity": 1e-10,
+      "max_source": 1e-12,
+      "min_spread": 0.001,
+      "trace_decomposition": 1e-08,
+      "trace_metric": 1e-08
+    },
+    "transport": "EXACT_R57_ORIGINAL_AND_B_ONLY_NONFLAT",
+    "zero_response": "EXCLUDE_EACH_SAMPLE_FROM_RELATIVE_METRICS_IF_NORM2_LE_1e-25_AND_REPORT_VALID_N;ALWAYS_REPORT_ABSOLUTE_ENERGY"
+  },
+  "r60_archive": "YM_AWR_R59_B_TRANSPORT_STEP_WINDOWS_R60.zip",
+  "r60_protocol_sha256": "9b14c0996dad107042387acc29ce03172acc58836dcc0f44dc961f032cacaafb",
+  "r60_script_sha256": "39375d09e72862a42b9bdc545912fb86607e523d54f6949f63e67bf1c992f9ef",
+  "r60_sha256": "f8f8053716dcb319a30d4f5fcc97f4d4a094e2fd570e68f6022e7f3e6b9a056d",
+  "r60_windows": {
+    "arms": [
+      "SAL_STATE8",
+      "SAL_PCGRAD4"
+    ],
+    "cases": [
+      "weak",
+      "reverse",
+      "anti"
+    ],
+    "changed_teacher": "TEACHER_USES_EXACT_SAME_STEP_WINDOW_AS_MODEL_ONLY_FOR_MATCHED_MODE_METRICS",
+    "denominator": "UNFLOORED_PER_SAMPLE_T0_REMOTE_A_SOURCE_FLIP_NORM2",
+    "eval_batch": 8,
+    "eval_offset": 80930000000,
+    "eval_seeds": [
+      6101,
+      6113,
+      6121,
+      6131,
+      6143,
+      6151,
+      6163,
+      6173
+    ],
+    "excluded_preflight_seed": 6193,
+    "graphs": [
+      "D1_P1",
+      "D1_P2",
+      "D2_P1",
+      "D2_P2"
+    ],
+    "limits": [
+      "Fresh R60 seeds with R55 topology variants; no retraining.",
+      "Step-window intervention is synthetic split B seam; it changes the physics seen by teacher and model in that interval.",
+      "Single-window effects do not necessarily sum to all-window effect because recurrence is nonlinear and path dependent.",
+      "Fixed baseline teacher comparator is counterfactual and not a mode-matched physics score.",
+      "Very small baseline references can inflate per-example relative errors: report energy-weighted error as additional diagnostic.",
+      "No native GDN, semantic contradiction inference, or persistent NAND/weight mutation."
+    ],
+    "modes": {
+      "BASE_AB": [],
+      "B_ALL": [
+        [
+          1,
+          20
+        ]
+      ],
+      "B_H01_04": [
+        [
+          1,
+          4
+        ]
+      ],
+      "B_H05_08": [
+        [
+          5,
+          8
+        ]
+      ],
+      "B_H09_12": [
+        [
+          9,
+          12
+        ]
+      ],
+      "B_H13_16": [
+        [
+          13,
+          16
+        ]
+      ],
+      "B_H17_20": [
+        [
+          17,
+          20
+        ]
+      ]
+    },
+    "nonflat_source": "EXACT_R56_PARTICIPANT_NONFLAT_ONLY_IN_B_CHANNEL",
+    "scientific_disposition": "RETROSPECTIVE_ONLY_NO_LEARNED_UTILITY",
+    "source_ratio": 64,
+    "status": "FROZEN_BEFORE_NEW_SEEDS",
+    "steps": 20,
+    "teacher_reference": "BASE_AB_UNCHANGED_TEACHER_SAME_SEED_GRAPH_CASE",
+    "technical": {
+      "max_cov": 1e-09,
+      "max_disconnected": 1e-10,
+      "max_gauge": 1e-09,
+      "max_parity": 1e-10,
+      "max_prefix": 1e-10,
+      "max_window_decomp": 1e-08,
+      "min_spread": 0.001
+    }
+  },
+  "r61_early_steps": {
+    "arms": [
+      "SAL_STATE8",
+      "SAL_PCGRAD4"
+    ],
+    "cases": [
+      "weak",
+      "reverse",
+      "anti"
+    ],
+    "comparison": "PAIRED_GRAPH_CASE_SEED_SOURCE_FLIP_FIXED_REFERENCE",
+    "eval_batch": 8,
+    "eval_offset": 81420000000,
+    "eval_seeds": [
+      6203,
+      6211,
+      6221,
+      6233,
+      6247,
+      6257,
+      6263,
+      6277
+    ],
+    "excluded_preflight_seed": 6299,
+    "graphs": [
+      "D1_P1",
+      "D1_P2",
+      "D2_P1",
+      "D2_P2"
+    ],
+    "independent_steps": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "limits": [
+      "R52 model weights and all older artifacts immutable.",
+      "Only new R61 seed indices; historical R55 topology family reused; no new training.",
+      "Single-step and prefix interventions are synthetic B-only seams, not physical edge controls.",
+      "Factual window attribution for the frozen teacher and learned systems; no optimizer or HCA utility qualification.",
+      "Early interventions change later recurrent states; apparent effects need not add, and no monotonicity is assumed.",
+      "Source amplitudes 64:1 only; error may be dominated by small fixed-reference norms, retain energy-weighted errors.",
+      "A-channel transport never altered, but changes in B naturally feed later coupled A/B recurrent dynamics.",
+      "No persistent inference mutation, semantic contradiction, or native GDN claim."
+    ],
+    "matched_teacher": "INTERVENED_TEACHER_RECOMPUTED_WITH_SAME_MODE",
+    "modes": {
+      "BASE_AB": [],
+      "B_ALL": [
+        [
+          1,
+          20
+        ]
+      ],
+      "B_H01": [
+        [
+          1,
+          1
+        ]
+      ],
+      "B_H01_02": [
+        [
+          1,
+          2
+        ]
+      ],
+      "B_H01_03": [
+        [
+          1,
+          3
+        ]
+      ],
+      "B_H01_04": [
+        [
+          1,
+          4
+        ]
+      ],
+      "B_H02": [
+        [
+          2,
+          2
+        ]
+      ],
+      "B_H02_04": [
+        [
+          2,
+          4
+        ]
+      ],
+      "B_H03": [
+        [
+          3,
+          3
+        ]
+      ],
+      "B_H04": [
+        [
+          4,
+          4
+        ]
+      ],
+      "B_H05_08": [
+        [
+          5,
+          8
+        ]
+      ]
+    },
+    "primary_horizon": 20,
+    "reference_denominator": "UNFLOORED_PER_SAMPLE_BASELINE_TEACHER_REMOTE_RESPONSE_NORM2",
+    "scientific_disposition": "RETROSPECTIVE_DIAGNOSTIC_ONLY_NO_UTILITY",
+    "source": "EXACT_R56_NONFACTORIZABLE_B_ONLY_TRANSPORT;H1_H4_TIME_SEAMS",
+    "source_ratio": 64,
+    "status": "FROZEN_BEFORE_NEW_SEEDS",
+    "steps": 20,
+    "teacher_reference": "SAME_BASE_AB_TEACHER_RESPONSE_UNDER_ALL_MODES",
+    "technical": {
+      "max_cov": 1e-09,
+      "max_disconnected": 1e-10,
+      "max_gauge": 1e-09,
+      "max_parity": 1e-10,
+      "max_prefix": 1e-10,
+      "max_window_decomp": 1e-08,
+      "min_spread": 0.001
+    }
+  },
+  "response_horizons": [
+    4,
+    6,
+    8
+  ],
+  "response_lambda": 0.5,
+  "response_normalizer_floor": 0.0001,
+  "schema": "elpis.ym.awr.g5.r61_early_b_individual_prefix_factorial.v1",
+  "science": "Frozen R52 models, held-fixed original teacher, new seeds; four single steps and cumulative prefix/suffix probes of H1-H4 B transport, negative and all-horizon controls; no learning utility",
+  "scientific_acceptance": {
+    "anti_cells_min": 20,
+    "anti_gain_max": 1.25,
+    "anti_gain_min": 0.75,
+    "anti_seed_min": 6,
+    "anti_worst_nondegrade_max_factor": 1.0,
+    "beat_floor_only_seeds_min": 6,
+    "beat_original_signed_seeds_min": 6,
+    "beat_retention_seeds_min": 6,
+    "reverse_cells_min": 20,
+    "reverse_gain_max": 1.25,
+    "reverse_gain_min": 0.75,
+    "reverse_median_max": 0.5,
+    "reverse_seed_min": 6,
+    "reverse_worst_max": 1.0,
+    "scaled_max_clipped_updates": 12,
+    "signed_fraction_min": 0.95,
+    "weak_cells_min": 20,
+    "weak_gain_max": 1.25,
+    "weak_gain_min": 0.75,
+    "weak_median_max": 0.5,
+    "weak_seed_min": 6,
+    "weak_worst_max": 1.0
+  },
+  "source_integrity": "R48 exact archive/script/protocol pins plus R48 full upstream transitive chain, full postchecks; R41 SHA-identical reupload fallback.",
+  "status": "FROZEN_RETROSPECTIVE_EARLY_B_STEP_ATTRIBUTION_NO_UTILITY",
+  "technical_tolerances": {
+    "covariance": 1e-09,
+    "disconnected": 1e-10,
+    "h20_replay_abs": 0.0001,
+    "h20_replay_rel": 2e-07,
+    "model_weight_freeze": 0,
+    "nonfinite": 0,
+    "reference_min_norm": 1e-12,
+    "teacher_forward_parity": 1e-10
+  },
+  "title": "R61 Frozen early B transport single-step and cumulative-prefix factorial",
+  "train_cases": {
+    "r48_train_anti48": [
+      0.08333333333333333,
+      4.0,
+      "antialigned"
+    ],
+    "r48_train_reverse48": [
+      4.0,
+      0.08333333333333333,
+      "independent"
+    ],
+    "r48_train_weak48": [
+      0.08333333333333333,
+      4.0,
+      "independent"
+    ]
+  },
+  "train_init_offset": 38370000000,
+  "training_records_all": 36,
+  "updates": 64
+}

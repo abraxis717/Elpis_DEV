@@ -1,0 +1,405 @@
+{
+  "boundary": {
+    "R52": "NOT_REPRODUCED",
+    "cgc": "SHADOW_ONLY",
+    "frozen_88_weights": true,
+    "learned_utility": false,
+    "native_gdn": false,
+    "offline_training_only": true,
+    "oracle_inference": false,
+    "production_hacf": false
+  },
+  "eval_base_arms": [
+    "STATE8",
+    "STATE8_SIGNED8"
+  ],
+  "eval_controls": [
+    "FROZEN",
+    "GLOBAL",
+    "TOPO"
+  ],
+  "eval_graph_generation_seed": 747411,
+  "eval_graph_schedule": [
+    [
+      "R74_HELDOUT_D2",
+      2
+    ],
+    [
+      "R74_HELDOUT_D3A",
+      3
+    ],
+    [
+      "R74_HELDOUT_D3B",
+      3
+    ],
+    [
+      "R74_HELDOUT_D4",
+      4
+    ]
+  ],
+  "eval_graphs": {
+    "R74_HELDOUT_D2": [
+      [
+        1,
+        5,
+        6,
+        7
+      ],
+      [
+        0,
+        1,
+        8,
+        9
+      ],
+      [
+        4,
+        5,
+        6,
+        7
+      ],
+      [
+        0,
+        2,
+        3,
+        8
+      ]
+    ],
+    "R74_HELDOUT_D3A": [
+      [
+        0,
+        2,
+        6,
+        8
+      ],
+      [
+        4,
+        5,
+        6,
+        9
+      ],
+      [
+        3,
+        7,
+        8,
+        9
+      ],
+      [
+        1,
+        6,
+        8,
+        9
+      ]
+    ],
+    "R74_HELDOUT_D3B": [
+      [
+        0,
+        3,
+        7,
+        8
+      ],
+      [
+        0,
+        2,
+        4,
+        5
+      ],
+      [
+        0,
+        4,
+        5,
+        6
+      ],
+      [
+        1,
+        5,
+        7,
+        9
+      ]
+    ],
+    "R74_HELDOUT_D4": [
+      [
+        0,
+        3,
+        5,
+        7
+      ],
+      [
+        0,
+        1,
+        3,
+        6
+      ],
+      [
+        2,
+        3,
+        8,
+        9
+      ],
+      [
+        1,
+        3,
+        4,
+        6
+      ]
+    ]
+  },
+  "eval_model_initializations": [
+    21011,
+    21031
+  ],
+  "eval_model_order_seeds": [
+    21071,
+    21091
+  ],
+  "evaluation_batch": 8,
+  "evaluation_cases": [
+    "weak",
+    "reverse",
+    "anti"
+  ],
+  "evaluation_horizon": 20,
+  "evaluation_ratio": 160,
+  "evaluation_seeds": [
+    31103,
+    31111,
+    31121,
+    31139,
+    31147,
+    31153,
+    31169,
+    31181
+  ],
+  "gain_function": "0.7+0.6*sigmoid(dot(theta, [1, (max_degree-2)/2, mean_pair_overlap/4, trace(W^3)/384]))",
+  "hypothesis": "4-parameter incidence-invariant recurrent collective-B gain improves H20 signed response generalization over no-gain and learned global-gain controls.",
+  "mechanism": "at every HCA step pass positive scalar*collective_B to BOTH invariant gate features and collective state injection; salience A unchanged; no weight or bank mutations during inference",
+  "parameter_counts": {
+    "global_gain": 1,
+    "topology_gain": 4,
+    "unmodified_hca": 88
+  },
+  "parent_reference": {
+    "R73_archive_sha256": "5d17461a11349a4d9c6d08a0008e79c8da6c4d74e369de048807fdef68021ff9",
+    "R73_result_sha256": "b770dfe741569034c731ef59924786ae66c229ac199f86a8418e74bb125e7b49"
+  },
+  "phase": "YM_AWR_R74_BOUNDED_TOPOLOGY_CONDITIONED_COLLECTIVE_GAIN_R0",
+  "predeclared_success": {
+    "max_graph_absolute_harm_vs_unmodified": 0.03,
+    "max_relative_pooled_error": 0.95,
+    "minimum_graphs_better_than_both": 3,
+    "minimum_models_better_than_both": 6
+  },
+  "result_limit_bytes": 18000000,
+  "source_sha256": {
+    "FROZEN_PROTOCOL_R61.json": "632222d5ecfdb8fd0acb51a6de732a819251bfe2cdc3351e900be78445a9dda4",
+    "FROZEN_PROTOCOL_R62.json": "39ae807dd4a40039912240933c2d5004b002acd3f8458c96636cedb42ef1a886",
+    "FROZEN_PROTOCOL_R63.json": "c900364137f00309c34a7ca49c89f7cb8bfffb63b10257b6e2d28cb5a4ccd81b",
+    "FROZEN_PROTOCOL_R64.json": "a95db14c02bf5506e89a4891fbdbd5c3cf6cd16bf4cdc7471c1a69d125540660",
+    "FROZEN_PROTOCOL_R70.json": "4909f1994f990ccebbddcb90f5845cb5e18c896e698aef6cdfbcaf598b5d7701",
+    "FROZEN_PROTOCOL_R71.json": "a11aa85d32d44a0aae51007a73b54809c848c9342763e87f517c42922e687a49",
+    "FROZEN_PROTOCOL_R72.json": "e8972901dc0cd2af8d6133ee7233773ae7d040432004dc5393d6626878edbc58",
+    "FROZEN_PROTOCOL_R73.json": "ee473b0b121699956e75be7aa3ca294517dcd9e8876dc4d314db23d6fab544bd",
+    "YM_AWR_R72_RESULT.zip": "3f845809d7001e79ef2d104507489fe1adfed991655019404ca856149b26adc9",
+    "YM_AWR_R73_RESULT.zip": "b770dfe741569034c731ef59924786ae66c229ac199f86a8418e74bb125e7b49",
+    "portable_mechanics.py": "60bbf1fbf6e85774d37533ab6029b4942699b06830364535bc20db8cb0f97b0d",
+    "r30_source.py": "51e05a242b9ec6411d8a2bb093f779b4d7ac8bab4e1ac9def28d4d89f6b3d8b9",
+    "r62_source.py": "fe272da88e3833ad5deaad305dc5ab4d07b666af1fe357a07da7df10e1a799ee",
+    "r63_source.py": "6f2fb05aabbc06e8b1892f35949bdcc168941831a368ede9b1f895a6b4877eea",
+    "r64.py": "2d3b66ea4ace2e0ecfab0c7fa33ccf9edde12e0bd57e1b94b9e38c09e8cdf60c",
+    "r70.py": "f419d19b117ea1680bce912d49e553bc2a69d4be693726be374d4a44726047f4",
+    "r71.py": "80ad729c9c2043f2121358471d1e00f49e0750c826f412a20f11bbf542a445ff",
+    "r72.py": "5422432509e47c4b9785fa2a1db7ee0714190dbbd47d9ee3563c175a719721bb",
+    "r73.py": "133603f6208d9df63764ec2e89cbf8372b656cecf781f7a475484e401a3cc4f7"
+  },
+  "targets": {
+    "checkpoints": 8,
+    "graphs": 4,
+    "records": 2304,
+    "training_updates": 48
+  },
+  "training_batch": 4,
+  "training_cases": [
+    "weak",
+    "reverse",
+    "anti"
+  ],
+  "training_graphs": {
+    "D1_P2": [
+      [
+        0,
+        1,
+        2,
+        7
+      ],
+      [
+        1,
+        3,
+        4,
+        8
+      ],
+      [
+        2,
+        4,
+        5,
+        9
+      ],
+      [
+        3,
+        5,
+        6,
+        7
+      ]
+    ],
+    "D2_P2": [
+      [
+        0,
+        1,
+        2,
+        7
+      ],
+      [
+        1,
+        3,
+        4,
+        5
+      ],
+      [
+        4,
+        6,
+        8,
+        9
+      ],
+      [
+        2,
+        3,
+        5,
+        7
+      ]
+    ],
+    "R70_STAR": [
+      [
+        0,
+        1,
+        2,
+        7
+      ],
+      [
+        0,
+        3,
+        4,
+        5
+      ],
+      [
+        0,
+        4,
+        6,
+        8
+      ],
+      [
+        0,
+        5,
+        7,
+        9
+      ]
+    ],
+    "R70_TRIPLE": [
+      [
+        0,
+        1,
+        2,
+        7
+      ],
+      [
+        1,
+        3,
+        6,
+        8
+      ],
+      [
+        2,
+        4,
+        5,
+        8
+      ],
+      [
+        2,
+        3,
+        7,
+        9
+      ]
+    ],
+    "R71_FAN": [
+      [
+        0,
+        1,
+        2,
+        3
+      ],
+      [
+        0,
+        1,
+        4,
+        5
+      ],
+      [
+        0,
+        1,
+        6,
+        7
+      ],
+      [
+        2,
+        4,
+        8,
+        9
+      ]
+    ],
+    "R71_RING": [
+      [
+        0,
+        1,
+        2,
+        3
+      ],
+      [
+        2,
+        3,
+        4,
+        5
+      ],
+      [
+        4,
+        5,
+        6,
+        7
+      ],
+      [
+        6,
+        7,
+        8,
+        9
+      ]
+    ]
+  },
+  "training_learning_rate": 0.03,
+  "training_loss": "H8 full A+B mean squared error + 0.02*paired signed relative loss, averaged equally over state-only and signed HCAs",
+  "training_model_factors": [
+    {
+      "arms": [
+        "STATE8",
+        "STATE8_SIGNED8"
+      ],
+      "init": 21011,
+      "order": 21071
+    }
+  ],
+  "training_ratio": 64,
+  "training_seeds": [
+    31001,
+    31009,
+    31019,
+    31033
+  ],
+  "training_unroll": 8,
+  "training_updates_each_controller": 24,
+  "version": 1
+}

@@ -1,0 +1,254 @@
+{
+  "batch_per_seed": 4,
+  "boundaries": {
+    "CGC": "SHADOW_ONLY",
+    "GDN": "NOT_EXECUTED",
+    "HACF": "NOT_PRODUCTION_AUTHENTICATED",
+    "R52": "NOT_REPRODUCED",
+    "runtime_writes": false
+  },
+  "cases": [
+    "weak",
+    "reverse",
+    "anti"
+  ],
+  "evaluation_seeds": [
+    41107,
+    41117,
+    41131,
+    41143,
+    41149,
+    41161,
+    41177,
+    41189
+  ],
+  "gain_controller": "R74 GLOBAL fixed offline-trained 1-param scalar",
+  "graph_generation_seed": 751107,
+  "graph_schedule": [
+    [
+      "R75_D3X",
+      3
+    ],
+    [
+      "R75_D3Y",
+      3
+    ],
+    [
+      "R75_D4X",
+      4
+    ],
+    [
+      "R75_D4Y",
+      4
+    ]
+  ],
+  "graphs": {
+    "R75_D3X": [
+      [
+        0,
+        4,
+        6,
+        8
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        1,
+        3,
+        4,
+        5
+      ],
+      [
+        1,
+        3,
+        7,
+        9
+      ]
+    ],
+    "R75_D3Y": [
+      [
+        1,
+        2,
+        3,
+        9
+      ],
+      [
+        4,
+        5,
+        6,
+        8
+      ],
+      [
+        0,
+        2,
+        3,
+        7
+      ],
+      [
+        1,
+        2,
+        3,
+        4
+      ]
+    ],
+    "R75_D4X": [
+      [
+        5,
+        7,
+        8,
+        9
+      ],
+      [
+        1,
+        4,
+        5,
+        7
+      ],
+      [
+        3,
+        5,
+        6,
+        7
+      ],
+      [
+        0,
+        2,
+        5,
+        7
+      ]
+    ],
+    "R75_D4Y": [
+      [
+        2,
+        3,
+        5,
+        7
+      ],
+      [
+        2,
+        4,
+        6,
+        8
+      ],
+      [
+        2,
+        3,
+        5,
+        9
+      ],
+      [
+        0,
+        1,
+        2,
+        3
+      ]
+    ]
+  },
+  "horizon": 20,
+  "model_arms": [
+    "STATE8",
+    "STATE8_SIGNED8"
+  ],
+  "modes": {
+    "FROZEN": [],
+    "GLOBAL_EARLY": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "GLOBAL_FULL": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "GLOBAL_LATE": [
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "GLOBAL_MID": [
+      9,
+      10,
+      11,
+      12
+    ]
+  },
+  "new_training": false,
+  "parent_disposition": "R74 reference evidence PASS; learned topology gain NONQUAL",
+  "phase": "YM_AWR_R75_TIME_WINDOW_B_GAIN_RECURRENT_STABILITY_R0",
+  "predeclared_success": {
+    "max_graph_absolute_harm_vs_frozen": 0.03,
+    "minimum_graphs_better_than_both": 3,
+    "required_pooled_vs_frozen_ratio": 0.95
+  },
+  "purpose": "Predeclared static time-window intervention on frozen R74 global B gain; teacher-blind single-stream A/B state indicators; no online trigger/adaptation.",
+  "ratio": 160,
+  "records": 3840,
+  "samples_per_record": 4,
+  "scientific_interpretation": "Mechanistic fixed-window causal interventions, NOT autonomous stop or teacher-independent failure detector. Snapshots only, no extra controller.",
+  "snapshot_horizons": [
+    8,
+    12,
+    16,
+    20
+  ],
+  "source_sha256": {
+    "FROZEN_PROTOCOL_R61.json": "632222d5ecfdb8fd0acb51a6de732a819251bfe2cdc3351e900be78445a9dda4",
+    "FROZEN_PROTOCOL_R62.json": "39ae807dd4a40039912240933c2d5004b002acd3f8458c96636cedb42ef1a886",
+    "FROZEN_PROTOCOL_R63.json": "c900364137f00309c34a7ca49c89f7cb8bfffb63b10257b6e2d28cb5a4ccd81b",
+    "FROZEN_PROTOCOL_R64.json": "a95db14c02bf5506e89a4891fbdbd5c3cf6cd16bf4cdc7471c1a69d125540660",
+    "FROZEN_PROTOCOL_R70.json": "4909f1994f990ccebbddcb90f5845cb5e18c896e698aef6cdfbcaf598b5d7701",
+    "FROZEN_PROTOCOL_R71.json": "a11aa85d32d44a0aae51007a73b54809c848c9342763e87f517c42922e687a49",
+    "FROZEN_PROTOCOL_R72.json": "e8972901dc0cd2af8d6133ee7233773ae7d040432004dc5393d6626878edbc58",
+    "FROZEN_PROTOCOL_R73.json": "ee473b0b121699956e75be7aa3ca294517dcd9e8876dc4d314db23d6fab544bd",
+    "FROZEN_PROTOCOL_R74.json": "05a81386aa450f464860e947d90ce2d01954cb2c90c94d7e4b9cb2dc4354f9c6",
+    "YM_AWR_R72_RESULT.zip": "3f845809d7001e79ef2d104507489fe1adfed991655019404ca856149b26adc9",
+    "YM_AWR_R73_RESULT.zip": "b770dfe741569034c731ef59924786ae66c229ac199f86a8418e74bb125e7b49",
+    "YM_AWR_R74_RESULT.zip": "a549c2265b449936d03caebf76a1682f9347f48ba50f651a9e6518bbdcca775f",
+    "portable_mechanics.py": "60bbf1fbf6e85774d37533ab6029b4942699b06830364535bc20db8cb0f97b0d",
+    "r30_source.py": "51e05a242b9ec6411d8a2bb093f779b4d7ac8bab4e1ac9def28d4d89f6b3d8b9",
+    "r62_source.py": "fe272da88e3833ad5deaad305dc5ab4d07b666af1fe357a07da7df10e1a799ee",
+    "r63_source.py": "6f2fb05aabbc06e8b1892f35949bdcc168941831a368ede9b1f895a6b4877eea",
+    "r64.py": "2d3b66ea4ace2e0ecfab0c7fa33ccf9edde12e0bd57e1b94b9e38c09e8cdf60c",
+    "r70.py": "f419d19b117ea1680bce912d49e553bc2a69d4be693726be374d4a44726047f4",
+    "r71.py": "80ad729c9c2043f2121358471d1e00f49e0750c826f412a20f11bbf542a445ff",
+    "r72.py": "5422432509e47c4b9785fa2a1db7ee0714190dbbd47d9ee3563c175a719721bb",
+    "r73.py": "133603f6208d9df63764ec2e89cbf8372b656cecf781f7a475484e401a3cc4f7",
+    "r74.py": "8b6b52686a9b75d083ec87f6630eb780834de4be45b01893cf85cfa71850f9de"
+  },
+  "source_status": "synthetic graph signatures unseen in R61/R70/R71/R72/R73/R74; original R30 teacher reused",
+  "teacher_online": false,
+  "version": 1,
+  "weights_frozen": true
+}

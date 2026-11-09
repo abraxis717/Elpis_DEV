@@ -1,0 +1,208 @@
+{
+  "evaluation_cases": [
+    "weak",
+    "reverse",
+    "anti"
+  ],
+  "evaluation_horizons": [
+    4,
+    8,
+    12,
+    20
+  ],
+  "evaluation_ratio": 160,
+  "evaluation_seeds": [
+    12007,
+    12011,
+    12037,
+    12043,
+    12049,
+    12071,
+    12073,
+    12097
+  ],
+  "evaluation_transport": "PARTICIPANT_NONFLAT",
+  "features": [
+    "a_level12",
+    "b_level12",
+    "ab_alignment12",
+    "a_velocity8_12",
+    "b_velocity8_12",
+    "a_turn8_12",
+    "b_turn8_12",
+    "b_over_a12",
+    "b_log_growth8_12",
+    "b_accel4_8_12"
+  ],
+  "gradient_clip_norm": 1.0,
+  "graph_strata": {
+    "historical_heldout": [
+      "D1_P2",
+      "D2_P2"
+    ],
+    "novel_synthetic": [
+      "R70_STAR",
+      "R70_TRIPLE"
+    ]
+  },
+  "graphs": {
+    "D1_P2": [
+      [
+        0,
+        1,
+        2,
+        7
+      ],
+      [
+        1,
+        3,
+        4,
+        8
+      ],
+      [
+        2,
+        4,
+        5,
+        9
+      ],
+      [
+        3,
+        5,
+        6,
+        7
+      ]
+    ],
+    "D2_P2": [
+      [
+        0,
+        1,
+        2,
+        7
+      ],
+      [
+        1,
+        3,
+        4,
+        5
+      ],
+      [
+        4,
+        6,
+        8,
+        9
+      ],
+      [
+        2,
+        3,
+        5,
+        7
+      ]
+    ],
+    "R70_STAR": [
+      [
+        0,
+        1,
+        2,
+        7
+      ],
+      [
+        0,
+        3,
+        4,
+        5
+      ],
+      [
+        0,
+        4,
+        6,
+        8
+      ],
+      [
+        0,
+        5,
+        7,
+        9
+      ]
+    ],
+    "R70_TRIPLE": [
+      [
+        0,
+        1,
+        2,
+        7
+      ],
+      [
+        1,
+        3,
+        6,
+        8
+      ],
+      [
+        2,
+        4,
+        5,
+        8
+      ],
+      [
+        2,
+        3,
+        7,
+        9
+      ]
+    ]
+  },
+  "interpretation": "Prospective synthetic independent-initialization and topology transfer diagnostic; evaluation examples reuse R64 heldout seed list; no R52 reproduction, autonomous correction, physical GDN, or CGC learned utility",
+  "learning_rate": 0.012,
+  "loss_weights": {
+    "signed_floor": 0.1,
+    "signed_h4": 0.0125,
+    "signed_h8": 0.05,
+    "state_h4": 0.25,
+    "state_h8": 1.0
+  },
+  "model_parameter_count": 88,
+  "novel_topology_qualification": "Two new 4x4 incidence families with new participant-degree distributions distinct from all four R61 graphs; no hidden graph selection or learned topology tuning",
+  "parent_sha256": "8d85ab3ad4e4cd18d1993908b6ba0e92ceefb551b995e2fef680fa9d53e09481",
+  "parent_zip": "YM_AWR_R69_SINGLE_STREAM_AB_STABILITY_TRANSFER_R0.zip",
+  "phase": "YM_AWR_R70_INDEPENDENT_HCA_INITIALIZATIONS_AND_NOVEL_TOPOLOGY_R0",
+  "primary_metric": "signed-supervised minus state-only H20 per-example normalized squared error (lower better) paired by training seed, graph, eval seed, case; report graph and initialization effects; no utility pass threshold",
+  "report_byte_limit": 36000000,
+  "runtime": "CPU float64, no project-source edits, /dev/shm volatile runner, no runtime model mutation",
+  "source_reference": "R69 byte-pinned lineage, directly reused unmodified R64 code and R30/R62/R63 teacher/geometry",
+  "target_records": 768,
+  "teacher_blind_rule": {
+    "calibration": "single-feature threshold maximize calibration balanced accuracy, report single-class HOLD",
+    "decision_step": 12,
+    "feature_order_fixed": "R69 feature list, ascending",
+    "heldout_initializations": [
+      19051,
+      19069
+    ],
+    "negative_controls": [
+      "always_negative",
+      "always_positive",
+      "model_identity"
+    ],
+    "offline_failure_threshold": 0.1,
+    "train_calibration_graph": "D1_P2",
+    "train_initializations": [
+      19001,
+      19031
+    ]
+  },
+  "training_arms": [
+    "STATE8",
+    "STATE8_SIGNED8"
+  ],
+  "training_data_source": "R64 fixed 48 episodes = eight seeds x D1_P1,D2_P1 x weak/reverse/anti, ratio64, base transport. Per-training-initialization deterministic episode shuffle. No heldout data in fit.",
+  "training_initialization_rule": "Original R64 HCA gate base biases + independent seeded Gaussian noise (sigma=0.01) on 80 affine weights and sigma=0.002 on eight biases. Counterpart objectives share identical initialization and update order.",
+  "training_initializations": [
+    19001,
+    19031,
+    19051,
+    19069
+  ],
+  "training_updates": 48,
+  "version": 1,
+  "weight_decay": 0.0
+}

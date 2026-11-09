@@ -1,0 +1,240 @@
+{
+  "arms": [
+    "STATE8",
+    "STATE8_SIGNED8",
+    "STATE8_TF1"
+  ],
+  "batch_per_seed": 4,
+  "episode_order_seed": 55001,
+  "evaluation_cases": [
+    "weak",
+    "reverse",
+    "anti"
+  ],
+  "evaluation_horizons": [
+    8,
+    12,
+    20
+  ],
+  "evaluation_ratio": 160,
+  "evaluation_seeds": [
+    53003,
+    53011,
+    53017,
+    53027,
+    53039,
+    53047,
+    53053,
+    53069
+  ],
+  "evaluation_transport": "PARTICIPANT_NONFLAT",
+  "graph_generation_seed": 770077,
+  "graph_schedule": [
+    [
+      "R77_OOD_D2",
+      2
+    ],
+    [
+      "R77_OOD_A3",
+      3
+    ],
+    [
+      "R77_OOD_B3",
+      3
+    ],
+    [
+      "R77_OOD_D4",
+      4
+    ]
+  ],
+  "graphs": {
+    "R77_OOD_A3": [
+      [
+        0,
+        6,
+        7,
+        9
+      ],
+      [
+        4,
+        5,
+        7,
+        9
+      ],
+      [
+        2,
+        3,
+        6,
+        8
+      ],
+      [
+        1,
+        4,
+        5,
+        6
+      ]
+    ],
+    "R77_OOD_B3": [
+      [
+        3,
+        4,
+        6,
+        8
+      ],
+      [
+        0,
+        1,
+        4,
+        6
+      ],
+      [
+        0,
+        2,
+        3,
+        8
+      ],
+      [
+        5,
+        7,
+        8,
+        9
+      ]
+    ],
+    "R77_OOD_D2": [
+      [
+        1,
+        2,
+        3,
+        7
+      ],
+      [
+        0,
+        4,
+        6,
+        8
+      ],
+      [
+        6,
+        7,
+        8,
+        9
+      ],
+      [
+        0,
+        1,
+        2,
+        5
+      ]
+    ],
+    "R77_OOD_D4": [
+      [
+        0,
+        3,
+        6,
+        7
+      ],
+      [
+        2,
+        6,
+        8,
+        9
+      ],
+      [
+        1,
+        4,
+        5,
+        6
+      ],
+      [
+        3,
+        4,
+        6,
+        9
+      ]
+    ]
+  },
+  "initialization": "Seeded Gaussian weights sigma=.01, biases sigma=.002 added to frozen R64 initialization; matched initializations/order across three arms.",
+  "limitations": {
+    "CGC": "SHADOW_ONLY",
+    "HACF": "NOT_PRODUCTION_ATTESTED",
+    "R52": "NOT_REPRODUCED",
+    "Spark_GDN": "NOT_EXECUTED",
+    "autonomous_correction": "NOT_QUALIFIED",
+    "data_class": "SYNTHETIC",
+    "production_utility": false,
+    "teacher_state_online": false
+  },
+  "loss_weights": {
+    "signed_h4": 0.0125,
+    "signed_h8": 0.05,
+    "signed_norm_floor": 0.1,
+    "state_h4": 0.25,
+    "state_h8": 1.0,
+    "tf_h4_h5": 0.1,
+    "tf_h7_h8": 0.1
+  },
+  "models": 6,
+  "parent_r76_archive_sha256": "11fadd1213e8f52425f0f92d80481ad49682bde0ab7b7c14a5e3c452732ba00d",
+  "parent_r76_ouroboros": "INDEPENDENT_R76_EVIDENCE_REVIEW_PASS / SYNTHETIC_STATE_GAIN_NONQUAL",
+  "phase": "YM_AWR_R77_88P_OFFLINE_ONE_STEP_CONSISTENCY_R0",
+  "predeclared_success": {
+    "max_graph_absolute_harm_vs_state": 0.05,
+    "min_graphs_better_than_state": 3,
+    "relative_pooled_H20_nse_vs_state_and_signed_at_most": 0.95,
+    "same_init_paired_comparison": true
+  },
+  "purpose": "Prospective 88-param HCA offline teacher-state one-step consistency at H4->H5 and H7->H8, compared to matched state-only and signed-state-only objectives. No teacher online, no inference-time resets or gain controllers.",
+  "runtime": "CPU torch.float64, offline training in volatile RAM only, inference frozen, no host project files modified, no persistent memory state.",
+  "source_sha256": {
+    "FROZEN_PROTOCOL_R61.json": "632222d5ecfdb8fd0acb51a6de732a819251bfe2cdc3351e900be78445a9dda4",
+    "FROZEN_PROTOCOL_R62.json": "39ae807dd4a40039912240933c2d5004b002acd3f8458c96636cedb42ef1a886",
+    "FROZEN_PROTOCOL_R63.json": "c900364137f00309c34a7ca49c89f7cb8bfffb63b10257b6e2d28cb5a4ccd81b",
+    "FROZEN_PROTOCOL_R64.json": "a95db14c02bf5506e89a4891fbdbd5c3cf6cd16bf4cdc7471c1a69d125540660",
+    "FROZEN_PROTOCOL_R70.json": "4909f1994f990ccebbddcb90f5845cb5e18c896e698aef6cdfbcaf598b5d7701",
+    "FROZEN_PROTOCOL_R71.json": "a11aa85d32d44a0aae51007a73b54809c848c9342763e87f517c42922e687a49",
+    "FROZEN_PROTOCOL_R72.json": "e8972901dc0cd2af8d6133ee7233773ae7d040432004dc5393d6626878edbc58",
+    "FROZEN_PROTOCOL_R73.json": "ee473b0b121699956e75be7aa3ca294517dcd9e8876dc4d314db23d6fab544bd",
+    "FROZEN_PROTOCOL_R74.json": "05a81386aa450f464860e947d90ce2d01954cb2c90c94d7e4b9cb2dc4354f9c6",
+    "FROZEN_PROTOCOL_R75.json": "f411fd8fb097680b390479f23aeb6f66c0ccbd87866f93fb63ae2e3fc46f252d",
+    "FROZEN_PROTOCOL_R76.json": "e44f268f64b328bd8909ee6a807d2601bb02039d5f3a63a768c74ad77493212d",
+    "portable_mechanics.py": "60bbf1fbf6e85774d37533ab6029b4942699b06830364535bc20db8cb0f97b0d",
+    "r30_source.py": "51e05a242b9ec6411d8a2bb093f779b4d7ac8bab4e1ac9def28d4d89f6b3d8b9",
+    "r62_source.py": "fe272da88e3833ad5deaad305dc5ab4d07b666af1fe357a07da7df10e1a799ee",
+    "r63_source.py": "6f2fb05aabbc06e8b1892f35949bdcc168941831a368ede9b1f895a6b4877eea",
+    "r64.py": "2d3b66ea4ace2e0ecfab0c7fa33ccf9edde12e0bd57e1b94b9e38c09e8cdf60c"
+  },
+  "target_records": 576,
+  "train_cases": [
+    "weak",
+    "reverse",
+    "anti"
+  ],
+  "train_graphs": [
+    "D1_P1",
+    "D2_P1"
+  ],
+  "train_horizon": 8,
+  "train_initializations": [
+    54007,
+    54031
+  ],
+  "train_ratio": 64,
+  "train_updates_per_model": 48,
+  "training_episode_seeds": [
+    52003,
+    52009,
+    52021,
+    52033,
+    52039,
+    52051,
+    52057,
+    52069
+  ],
+  "training_optimizer": {
+    "clip_norm": 1.0,
+    "lr": 0.012,
+    "type": "Adam",
+    "weight_decay": 0.0
+  },
+  "version": 1
+}

@@ -1,0 +1,82 @@
+{
+  "acceptance_policy": "descriptive prospective comparison, no predefined utility qualification threshold; never assert superior causal reasoning from synthetic results",
+  "arms": [
+    "FROZEN_INIT",
+    "STATE8",
+    "STATE8_SIGNED8"
+  ],
+  "batch_per_seed": 8,
+  "cases": [
+    "weak",
+    "reverse",
+    "anti"
+  ],
+  "eval_graphs": [
+    "D1_P1",
+    "D1_P2",
+    "D2_P1",
+    "D2_P2"
+  ],
+  "eval_horizons": [
+    1,
+    8,
+    20
+  ],
+  "eval_ratios": [
+    64,
+    160
+  ],
+  "eval_seeds": [
+    12007,
+    12011,
+    12037,
+    12043,
+    12049,
+    12071,
+    12073,
+    12097
+  ],
+  "eval_transport": [
+    "BASE_SEPARABLE",
+    "PARTICIPANT_NONFLAT"
+  ],
+  "evaluation_policy": "frozen parameters, no teacher gates or model-state resets, paired source difference at relation 3, mode-matched teacher and fixed-reference displacement both reported",
+  "excluded_preflight_seed": 10973,
+  "gradient_clip_norm": 1.0,
+  "heldout_graphs": [
+    "D1_P2",
+    "D2_P2"
+  ],
+  "initialization": "constant HCA gate biases [0.65,0.25,0.10,0.03,0.80,-0.10,0.18,0.02], zero affine weights, shared across arms",
+  "learning_rate": 0.012,
+  "phase": "YM_AWR_R64_PORTABLE_PROSPECTIVE_SIGNED_HCA_LEARNING_R0",
+  "protocol_version": 1,
+  "reference_lineage": "R30 nonlinear invariant teacher and R55-R63 exact geometric recurrence, portable fixture generator; NOT historical R52 reproduction",
+  "report_schema": "per-seed per-graph per-case per-ratio per-transport per-arm scalar metrics at H1,H8,H20 with frozen pin checks",
+  "research_question": "Does matched-compute signed-response supervision improve eight-step learned HCA source fidelity over state-only optimization on held-out graph structures and nonflat transport?",
+  "runtime": "CPU, float64, PYTHONDONTWRITEBYTECODE, all transient workspace /dev/shm, no checkpoint writes or host changes",
+  "signed_h4_weight": 0.0125,
+  "signed_h8_weight": 0.05,
+  "signed_norm_floor": 0.1,
+  "state_h4_weight": 0.25,
+  "state_h8_weight": 1.0,
+  "train_episode_seeds": [
+    10009,
+    10037,
+    10039,
+    10061,
+    10067,
+    10069,
+    10079,
+    10091
+  ],
+  "train_graphs": [
+    "D1_P1",
+    "D2_P1"
+  ],
+  "train_horizon": 8,
+  "train_ratio": 64,
+  "train_transport": "BASE_SEPARABLE",
+  "train_updates_per_arm": 48,
+  "weight_decay": 0.0
+}

@@ -1,0 +1,248 @@
+{
+  "boundaries": {
+    "AUTONOMOUS_CORRECTION": "NO",
+    "CGC": "SHADOW_ONLY",
+    "HACF_PRODUCTION": "NOT_ATTESTED",
+    "NEW_GRAPH_EVAL": "PROSPECTIVE",
+    "NEW_TRAINING": "NONE",
+    "R52": "NOT_REPRODUCED",
+    "R72_OUTCOMES": "DEVELOPMENT_ONLY",
+    "SPARK_GDN": "NOT_EXECUTED",
+    "STATE_MUTATION_AT_RUNTIME": "NONE"
+  },
+  "development_source": "R72 four-graph OOD results are now DEVELOPMENT ONLY; maximum relation overlap 3 favored signed in 2 cases, max overlap 2 favored state in 2 cases. Rule is post-hoc to R72 and must never be claimed as R72-heldout evidence.",
+  "disposition": "PROSPECTIVE_SYNTHETIC_FROZEN_R72_OVERLAP_SELECTOR_TRANSFER_NO_DEPLOYMENT_CLAIM",
+  "episode_order_seeds": [
+    21071,
+    21091
+  ],
+  "eval_batch_per_seed": 8,
+  "evaluation_cases": [
+    "weak",
+    "reverse",
+    "anti"
+  ],
+  "evaluation_graphs": {
+    "R73_D33_O2": [
+      [
+        3,
+        5,
+        6,
+        8
+      ],
+      [
+        0,
+        2,
+        5,
+        8
+      ],
+      [
+        2,
+        4,
+        5,
+        7
+      ],
+      [
+        1,
+        7,
+        8,
+        9
+      ]
+    ],
+    "R73_D33_O3": [
+      [
+        1,
+        5,
+        8,
+        9
+      ],
+      [
+        1,
+        2,
+        3,
+        7
+      ],
+      [
+        1,
+        2,
+        7,
+        8
+      ],
+      [
+        0,
+        4,
+        6,
+        7
+      ]
+    ],
+    "R73_D3_O2": [
+      [
+        2,
+        4,
+        6,
+        9
+      ],
+      [
+        0,
+        5,
+        7,
+        8
+      ],
+      [
+        1,
+        2,
+        3,
+        6
+      ],
+      [
+        1,
+        4,
+        6,
+        8
+      ]
+    ],
+    "R73_D3_O3": [
+      [
+        0,
+        2,
+        5,
+        8
+      ],
+      [
+        3,
+        4,
+        7,
+        8
+      ],
+      [
+        1,
+        3,
+        4,
+        6
+      ],
+      [
+        0,
+        2,
+        8,
+        9
+      ]
+    ]
+  },
+  "evaluation_ratio": 160,
+  "evaluation_seeds": [
+    24101,
+    24107,
+    24121,
+    24137,
+    24143,
+    24151,
+    24163,
+    24179
+  ],
+  "evaluation_transport": "PARTICIPANT_NONFLAT",
+  "graph_generation": "First distinct 4\u00d74, 10-active-participant connected relation sets satisfying fixed exact participant-degree signature, max pairwise overlap and novel degree+overlap signature (vs R61/R71/R72), sampled with Python random.Random(seed) continuously across schedule, without using labels or predictions.",
+  "graph_generation_seed": 713731,
+  "graph_schedule": [
+    {
+      "degree_signature": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        3
+      ],
+      "max_pairwise_overlap": 2,
+      "name": "R73_D3_O2"
+    },
+    {
+      "degree_signature": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        3
+      ],
+      "max_pairwise_overlap": 3,
+      "name": "R73_D3_O3"
+    },
+    {
+      "degree_signature": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3
+      ],
+      "max_pairwise_overlap": 2,
+      "name": "R73_D33_O2"
+    },
+    {
+      "degree_signature": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3
+      ],
+      "max_pairwise_overlap": 3,
+      "name": "R73_D33_O3"
+    }
+  ],
+  "horizon": 20,
+  "hypothesis": "Maximum pairwise relation overlap >=3 predicts advantage from STATE8_SIGNED8; otherwise STATE8. Evaluation uses degree-matched graph pairs to test transfer.",
+  "matched_pairs": [
+    [
+      "R73_D3_O2",
+      "R73_D3_O3"
+    ],
+    [
+      "R73_D33_O2",
+      "R73_D33_O3"
+    ]
+  ],
+  "max_graph_harm_vs_state": 0.02,
+  "max_report_bytes": 40000000,
+  "minimum_correct_graphs": 3,
+  "minimum_fractional_improvement_vs_both_static": 0.1,
+  "minimum_improved_pairs_vs_both_static": 2,
+  "parent_archive": "YM_AWR_R72_PROSPECTIVE_TOPOLOGY_OBJECTIVE_SELECTION_R0.zip",
+  "parent_report_sha256": "a1d90dda68f37db9143f5c98b48cf7546fecc26825cdb74afe3ad9324f34af23",
+  "parent_sha256": "e7136747e3b888f1c2653839da5c774326f8c48b4855fae3985028a6bec5e47c",
+  "phase": "YM_AWR_R73_DEGREE_MATCHED_RELATION_OVERLAP_PROSPECTIVE_R0",
+  "scope": "FROZEN_R72_WEIGHTS_PROSPECTIVE_NEW_GRAPH_NEW_EVAL_SEED_SYNTHETIC",
+  "selection_rule": "SIGNED_IF_MAX_PAIRWISE_RELATION_OVERLAP_GE_3_ELSE_STATE8",
+  "success_criteria": "Policy mean H20 NSE <=0.9 times EACH static baseline; at least 3/4 graph-level selections correct; each matched degree pair has improved mean policy NSE against always STATE8 and always SIGNED; no graph policy harm >0.02 absolute NSE against state; each of 4 training init/order cells policy better than both static baselines. All requirements mandatory; otherwise NONQUAL.",
+  "target_checkpoints": 8,
+  "target_graphs": 4,
+  "target_records": 768,
+  "train_initialization_seeds": [
+    21011,
+    21031
+  ],
+  "training_arms": [
+    "STATE8",
+    "STATE8_SIGNED8"
+  ],
+  "training_checkpoint_origin": "All eight R72 independently sealed trained weights are reused without any retraining; train init and episode order factors unchanged.",
+  "version": 1
+}

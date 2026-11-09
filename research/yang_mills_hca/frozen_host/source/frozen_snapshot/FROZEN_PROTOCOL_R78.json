@@ -1,0 +1,103 @@
+{
+  "arms": [
+    "STATE8",
+    "STATE8_SIGNED8",
+    "STATE8_TF1"
+  ],
+  "batch_per_seed": 4,
+  "cases": [
+    "weak",
+    "reverse",
+    "anti"
+  ],
+  "channels": [
+    "A",
+    "B"
+  ],
+  "epsilons": [
+    1e-05,
+    5e-06
+  ],
+  "evaluation_seeds": [
+    53003,
+    53011,
+    53017,
+    53027
+  ],
+  "graphs": [
+    "R77_OOD_D2",
+    "R77_OOD_A3",
+    "R77_OOD_B3",
+    "R77_OOD_D4"
+  ],
+  "horizons": [
+    8,
+    12,
+    20
+  ],
+  "initialization_seeds": [
+    54007,
+    54031
+  ],
+  "limitations": {
+    "R52": "NOT_REPRODUCED",
+    "R77": "PREVIOUSLY_TRAINED_FROZEN_88P_CHECKPOINTS",
+    "autonomous_correction": "NOT_QUALIFIED",
+    "cgc": "SHADOW_ONLY",
+    "evaluation": "RETROSPECTIVE_R77_GRAPH_AND_EVAL_SEED_REUSE",
+    "physical_gdn": "NOT_EXECUTED",
+    "production_hacf": "NOT_ATTESTED",
+    "runtime_nand_mutation": "FORBIDDEN",
+    "teacher": "OFFLINE_LABELS_ONLY_NOT_USED_IN_DERIVATIVE"
+  },
+  "method": "two_sided_central_difference",
+  "mode": "retrospective_frozen_HCA_tangent_growth",
+  "native_r77_parity_atol": 4e-12,
+  "numerical_agreement_log_absolute_tolerance": 0.03,
+  "parent_r77_bundle_sha256": "d20bccce235c25586a8cf63e31cb7ec7a80c28c4aabc5e59c33d324668398b2a",
+  "parent_r77_report_sha256": "93fd66f3ef5589ff7af40f0fcdba6c790661429a0bf2a7b857df5f0caf599f57",
+  "perturbation": "J90_per_SO2_plane_on_every_node_relative_to_self",
+  "phase": "YM_AWR_R78_FINITE_HORIZON_EQUIVARIANT_TANGENT_GROWTH_R0",
+  "positive_graph_requirement": 3,
+  "rank_correlation_threshold": 0.25,
+  "ratio": 160,
+  "records": 288,
+  "simultaneous_A_B_gauge_tangent_identity_max_abs": 1e-07,
+  "source_sha256": {
+    "FROZEN_PROTOCOL_R61.json": "632222d5ecfdb8fd0acb51a6de732a819251bfe2cdc3351e900be78445a9dda4",
+    "FROZEN_PROTOCOL_R62.json": "39ae807dd4a40039912240933c2d5004b002acd3f8458c96636cedb42ef1a886",
+    "FROZEN_PROTOCOL_R63.json": "c900364137f00309c34a7ca49c89f7cb8bfffb63b10257b6e2d28cb5a4ccd81b",
+    "FROZEN_PROTOCOL_R64.json": "a95db14c02bf5506e89a4891fbdbd5c3cf6cd16bf4cdc7471c1a69d125540660",
+    "FROZEN_PROTOCOL_R70.json": "4909f1994f990ccebbddcb90f5845cb5e18c896e698aef6cdfbcaf598b5d7701",
+    "FROZEN_PROTOCOL_R71.json": "a11aa85d32d44a0aae51007a73b54809c848c9342763e87f517c42922e687a49",
+    "FROZEN_PROTOCOL_R72.json": "e8972901dc0cd2af8d6133ee7233773ae7d040432004dc5393d6626878edbc58",
+    "FROZEN_PROTOCOL_R73.json": "ee473b0b121699956e75be7aa3ca294517dcd9e8876dc4d314db23d6fab544bd",
+    "FROZEN_PROTOCOL_R74.json": "05a81386aa450f464860e947d90ce2d01954cb2c90c94d7e4b9cb2dc4354f9c6",
+    "FROZEN_PROTOCOL_R75.json": "f411fd8fb097680b390479f23aeb6f66c0ccbd87866f93fb63ae2e3fc46f252d",
+    "FROZEN_PROTOCOL_R76.json": "e44f268f64b328bd8909ee6a807d2601bb02039d5f3a63a768c74ad77493212d",
+    "FROZEN_PROTOCOL_R77.json": "38b81cb279ef47951faae597634e143ff6faf89c6275ac6325de712b48bf3eae",
+    "YM_AWR_R77_RESULT.zip": "93fd66f3ef5589ff7af40f0fcdba6c790661429a0bf2a7b857df5f0caf599f57",
+    "make_proto.py": "30d72f4c876926b5b207270f8088846f09efac83b8d13d883af27b1d147880cf",
+    "portable_mechanics.py": "60bbf1fbf6e85774d37533ab6029b4942699b06830364535bc20db8cb0f97b0d",
+    "r30_source.py": "51e05a242b9ec6411d8a2bb093f779b4d7ac8bab4e1ac9def28d4d89f6b3d8b9",
+    "r62_source.py": "fe272da88e3833ad5deaad305dc5ab4d07b666af1fe357a07da7df10e1a799ee",
+    "r63_source.py": "6f2fb05aabbc06e8b1892f35949bdcc168941831a368ede9b1f895a6b4877eea",
+    "r64.py": "2d3b66ea4ace2e0ecfab0c7fa33ccf9edde12e0bd57e1b94b9e38c09e8cdf60c",
+    "r77.py": "e7c44ba01277da9cd0c880064f6ff134f5c18e958d84fe44bd80eac0c832713c"
+  },
+  "statistic": "within_graph_spearman_tangent_growth_vs_log_relative_H20_H12_NSE",
+  "time_windows": [
+    [
+      8,
+      12
+    ],
+    [
+      8,
+      20
+    ],
+    [
+      12,
+      20
+    ]
+  ]
+}
