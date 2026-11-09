@@ -1,0 +1,193 @@
+{
+ "schema": "relational-lao-r0.selection.v1",
+ "primary": "RRMF3_M",
+ "fallback": "SAFE3_P4",
+ "rows": {
+  "RRMF3": {
+   "gates": {
+    "RG1": true,
+    "RG2": true,
+    "RG3": true,
+    "RG4": true,
+    "RG5": true,
+    "RG6": true,
+    "RG7": true,
+    "RG9": true
+   },
+   "eligible": true,
+   "complexity": [
+    80,
+    48,
+    3
+   ],
+   "ALL": 0.03693915154218751,
+   "REVISION": 0.03681672354382813
+  },
+  "RRMF3_M": {
+   "gates": {
+    "RG1": true,
+    "RG2": true,
+    "RG3": true,
+    "RG4": true,
+    "RG5": true,
+    "RG6": true,
+    "RG7": true,
+    "RG9": true
+   },
+   "eligible": true,
+   "complexity": [
+    80,
+    48,
+    1
+   ],
+   "ALL": 0.03693616999354167,
+   "REVISION": 0.036817756184921877
+  },
+  "RRMF3_A": {
+   "gates": {
+    "RG1": true,
+    "RG2": true,
+    "RG3": true,
+    "RG4": true,
+    "RG5": true,
+    "RG6": true,
+    "RG7": true,
+    "RG9": true
+   },
+   "eligible": true,
+   "complexity": [
+    80,
+    48,
+    3
+   ],
+   "ALL": 0.03693915154218751,
+   "REVISION": 0.03681672354382813
+  },
+  "RRMF4": {
+   "gates": {
+    "RG1": true,
+    "RG2": true,
+    "RG3": true,
+    "RG4": true,
+    "RG5": true,
+    "RG6": true,
+    "RG7": true,
+    "RG9": true
+   },
+   "eligible": true,
+   "complexity": [
+    104,
+    64,
+    4
+   ],
+   "ALL": 0.0367559226415625,
+   "REVISION": 0.03669157312296875
+  },
+  "RRMF4_M": {
+   "gates": {
+    "RG1": true,
+    "RG2": true,
+    "RG3": true,
+    "RG4": true,
+    "RG5": true,
+    "RG6": true,
+    "RG7": true,
+    "RG9": true
+   },
+   "eligible": true,
+   "complexity": [
+    104,
+    64,
+    1
+   ],
+   "ALL": 0.03675440316364584,
+   "REVISION": 0.0366933803509375
+  },
+  "RRMF4_W": {
+   "gates": {
+    "RG1": true,
+    "RG2": true,
+    "RG3": true,
+    "RG4": true,
+    "RG5": true,
+    "RG6": true,
+    "RG7": true,
+    "RG9": true
+   },
+   "eligible": true,
+   "complexity": [
+    104,
+    64,
+    4
+   ],
+   "ALL": 0.03685583710854167,
+   "REVISION": 0.036831138343359375
+  },
+  "RRMF4_W_M": {
+   "gates": {
+    "RG1": true,
+    "RG2": true,
+    "RG3": true,
+    "RG4": true,
+    "RG5": true,
+    "RG6": true,
+    "RG7": true,
+    "RG9": true
+   },
+   "eligible": true,
+   "complexity": [
+    104,
+    64,
+    1
+   ],
+   "ALL": 0.036855570318020836,
+   "REVISION": 0.03683173235875
+  }
+ },
+ "fallback_rows": {
+  "SAFE4_P8": {
+   "gates": {
+    "F1": true,
+    "F2": true,
+    "F3": true,
+    "F4": true
+   },
+   "eligible": true,
+   "CLEAN": 0.036744574266874996
+  },
+  "SAFE3_P4": {
+   "gates": {
+    "F1": true,
+    "F2": true,
+    "F3": true,
+    "F4": true
+   },
+   "eligible": true,
+   "CLEAN": 0.036355165876875
+  }
+ },
+ "level": 0.999,
+ "acquisition": "PROBE",
+ "acquisition_rule": {
+  "adopt_voi": false,
+  "voi_minus_probe_ALL": [
+   -0.0005621770872916664,
+   -0.0007905415339084917,
+   -0.000333812640674841
+  ],
+  "voi_online_ALL": [
+   0.3278865749947917,
+   0.31901703738103276,
+   0.3367561126085506
+  ],
+  "online_budget": 0.21609027,
+  "better_at_999": true,
+  "online_within_budget": false
+ },
+ "scales": {
+  "delta_clean": 0.00140298,
+  "online_budget": 0.21609027,
+  "tau_safe": 0.0005
+ },
+ "record_sha256": "770c386cb6ad8e97ef5ddf5d661f4e88efb5921e5fca388c705cb9031c4a5ed3"
+}

@@ -1,0 +1,187 @@
+{
+ "schema": "relational-lao-r0.freeze.v1",
+ "note": "Frozen before any VALIDATION, HOLDOUT or OOD run; selection by SELECTION_R6.json.",
+ "primary": {
+  "name": "RRMF3_M",
+  "config": [
+   [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.4,
+     0.0
+    ],
+    [
+     0.48,
+     0.0
+    ]
+   ],
+   [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "marginal",
+   "replay"
+  ],
+  "contract": "I",
+  "acquisition": "PROBE"
+ },
+ "fallback": {
+  "name": "SAFE3_P4",
+  "config": [
+   [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.4,
+     0.0
+    ],
+    [
+     0.48,
+     0.0
+    ]
+   ],
+   [
+    1.0,
+    4.0,
+    4.0
+   ]
+  ],
+  "contract": "II"
+ },
+ "arms": [
+  "RRMF3_M",
+  "NOOP",
+  "RRMF3:IND",
+  "RRMF3:HCA",
+  "RRMF3_M:PERM",
+  "RRMF3_M:STALE",
+  "SAFE3_P4",
+  "EXACT_RELATIONAL",
+  "STATIC_COUNTS",
+  "HCA_ONLY",
+  "KNOWN_RELIABILITY"
+ ],
+ "scales": {
+  "delta_clean": 0.00140298,
+  "online_budget": 0.21609027,
+  "tau_safe": 0.0005
+ },
+ "source_sha256": "e5a17b0ef0d4d8f906fa4e161cd09cbb25d29974a0484330166f7e113e923de1",
+ "source_files_sha256": {
+  "relational_lao/__init__.py": "74ea25dbd6b09f8fd5a53c4eab4efc4e0f591c5e1750c33a4faa9db4c41430cd",
+  "relational_lao/acquisition.py": "a71b8dfc90ff10816c26481c9495737344229e47ee84891b5364ebf4fdd219bc",
+  "relational_lao/ecsc.py": "59c277c249074e9d6b1cb94aacbad9844870e3233cff80f5db7af276e5757be1",
+  "relational_lao/harness.py": "c4392caa263254dda528dfbdb16d6764fb7f2672a559cba4c0db43913c9b7f36",
+  "relational_lao/hca.py": "8b51ee882850b969618b182004219919f58d25fc364f3c13a36fb0e28579419d",
+  "relational_lao/hca_native.py": "17769778ef96ae2f74d824a4185e38db231816379171403c4d207957468b0348",
+  "relational_lao/host.py": "f89277ac5650f6d13f744c363204b26b02524c07a5afd08482b96e182c6268b4",
+  "relational_lao/hostrun.py": "4c6c6bada378861e621d7cb5179d23c453855c24220404449b457315123ea0c2",
+  "relational_lao/learners.py": "57c85c1115e96b0bcf8f79f0e752c8fab9a3d2b22cc681b916731677ce3c5b9d",
+  "relational_lao/scalar.py": "a094af67a99ad4ad65fef9c33a755beed90dcbe54188f3397409ac858ebc18fd",
+  "relational_lao/study.py": "b51b22a3a2371ae206db7d3b8662a4c074ff0cea81f926428bb2af869118221e",
+  "relational_lao/world.py": "4b2af2e9eb60195000b5805d68fd3b53a3fc3987d46ef0a065ffffc1577e4f5d",
+  "SPEC.md": "4f01d3d9542f4a8f8801bda2b4eb877f12c1dd2384cbf9dee112409f3c20ce9b",
+  "solver_lab/src/cgc_lao_lab/rng.py": "cf2113a49d4548259461d9c6d1da064250341e2bc0d26524705a203738051441",
+  "solver_lab/src/cgc_lao_lab/stats.py": "8e32b89ec71bfda85f1f1d107b42d941fa56fe05403c1c8de5f9f94e13bec6e5",
+  "solver_lab/src/cgc_lao_lab/filters.py": "bcf42f0932e9b73c8f95f91fb94b5bf32e67f0ebe20a3e7e9c127f4efacd575a",
+  "solver_lab/src/cgc_lao_lab/env.py": "7d48386e82569104d88900c2e854c83ba4d3862877685b769514a6e34d8657ce",
+  "solver_lab/src/cgc_lao_lab/selector.py": "0c5a546fa0505fb52293dcf8eaedf6c8c7d0a63f694f646f242811f4c2e92286",
+  "solver_lab/v2/src/cgc_lao_v2/env2.py": "dfeff06d3fb300da4621ae26a708f60dbce09ca430bd5fb398609eb97426188b",
+  "solver_lab/v2/src/cgc_lao_v2/providers.py": "c46dadc4c9da8652f59d83c497814b317f9fdd639df3a2ae279fa9e8114f610d",
+  "solver_lab/v2/src/cgc_lao_v2/host.py": "e953a2cb780c5a248e7a88855f1271bc9b74cd929934a5e1d2a002304359e0ec",
+  "solver_lab/host_closure/strict_host.py": "a65110346c3ac706ca29c7cd9a36cc47842d786294b8107759d6d2c7ca7fd5e1"
+ },
+ "documents_sha256": {
+  "DEV_PROTOCOL.md": "b9d8300191b734498e2dc0c78671299ceed51d6e21cbd6f4a934800b3f004460",
+  "PREREGISTRATION_R6.md": "17df59b4e7672d4c63792de98eb07783388da8e8e6c80130e466d80b1eb98d23",
+  "SELECTION_R6.json": "0b1c01ed2ea4fb4fcf319a9f5631a2d1b8bbfbcba112449f922707a46975f54f",
+  "evidence/train/scales.json": "c1bfbf7e0009b633a9fbc61ed0ceed1338c1cd2fb62508bcd73d90b51e3e6f80",
+  "evidence/train/round.json": "18404457265ae5369bd763b35c6ad48508ffcd2817b539e85772a6f61121061e",
+  "evidence/dev/round.json": "770c386cb6ad8e97ef5ddf5d661f4e88efb5921e5fca388c705cb9031c4a5ed3"
+ },
+ "plans": {
+  "VALIDATION": {
+   "partition": "VALIDATION",
+   "seeds": [
+    0,
+    32
+   ],
+   "episodes": 4096,
+   "regimes": [
+    "CLEAN",
+    "FLIP20",
+    "FLIP40",
+    "FLIP45",
+    "FLIP48",
+    "QUNIF",
+    "BURST",
+    "EVENT40",
+    "CLEAN+REV_DRIFT",
+    "CLEAN+REV_SAME",
+    "CLEAN+DORMANT",
+    "CLEAN+RECLAIM_DRIFT",
+    "FLIP20+REV_DRIFT",
+    "FLIP20+REV_SAME",
+    "FLIP20+DORMANT",
+    "FLIP20+RECLAIM_DRIFT"
+   ]
+  },
+  "HOLDOUT": {
+   "partition": "HOLDOUT",
+   "seeds": [
+    0,
+    64
+   ],
+   "episodes": 4096,
+   "regimes": [
+    "CLEAN",
+    "FLIP20",
+    "FLIP40",
+    "FLIP45",
+    "FLIP48",
+    "QUNIF",
+    "BURST",
+    "EVENT40",
+    "CLEAN+REV_DRIFT",
+    "CLEAN+REV_SAME",
+    "CLEAN+DORMANT",
+    "CLEAN+RECLAIM_DRIFT",
+    "FLIP20+REV_DRIFT",
+    "FLIP20+REV_SAME",
+    "FLIP20+DORMANT",
+    "FLIP20+RECLAIM_DRIFT"
+   ]
+  },
+  "OOD": {
+   "partition": "OOD",
+   "seeds": [
+    0,
+    64
+   ],
+   "episodes": 2048,
+   "regimes": [
+    "CLEAN",
+    "FLIP20",
+    "FLIP40",
+    "CORR10",
+    "CORR25",
+    "CORR50",
+    "CORR75",
+    "CORR90",
+    "EVENT40",
+    "SHARED_SRC",
+    "SECOND_EVENT40",
+    "ASYM40",
+    "CTXQ40",
+    "FLIP30"
+   ]
+  }
+ },
+ "holdout_rule": "open HOLDOUT only if the primary passes every gate RG1-RG9 on VALIDATION at 95%"
+}

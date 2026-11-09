@@ -55,3 +55,21 @@ The final qualification on a fresh SLB2 benchmark covers:
 - a native C11 reference and a fail-closed research host.
 
 It closes at Level B, research component only. See [solver_lab/FINAL_REPORT.md](solver_lab/FINAL_REPORT.md).
+
+## Relational LAO R0 (added 2026-11-08)
+
+[`relational_lao_r0/`](relational_lao_r0/README.md) generalises the qualified `RMF3` reliability law from independent
+expert biases to a bounded relational belief state: 8 relation slots and 80 volatile scalars, bound to evidence that
+the ECS_C relational view admitted. The flow is admitted evidence → relational belief → a salience-only HCA projection
+→ host decision or STOP, with no reverse write.
+
+On the synthetic RLB1 benchmark, the frozen primary `RRMF3_M` qualified as Contract I
+(`QUALIFIED_SYNTHETIC_RELATIONAL_CONTRACT_I`), and the `SAFE3_P4` fallback as Contract II, on preregistered VALIDATION
+and HOLDOUT partitions:
+- compositional decisions improve over NOOP, exact maintenance, static counts, HCA, and independent per-edge filters;
+- the gain carries over to held-out topologies;
+- this workload's own correlation bound is ρ_admit = 0.25.
+
+The HCA projection adds no decision value, and correlated duplicates (EVENT40) are not qualified. This is research
+only: nothing is admitted to a runtime. See
+[relational_lao_r0/FINAL_REPORT_R0.md](relational_lao_r0/FINAL_REPORT_R0.md).

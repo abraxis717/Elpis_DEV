@@ -58,5 +58,6 @@ add_subdirectory(research/hecs_r2)
 add_subdirectory(research/ecs_memory_mf_r0)
 add_subdirectory(research/ecs_memory_mf_r0/integration)
 add_subdirectory(research/cgc_lao/solver_lab/v2/native)
+add_subdirectory(research/cgc_lao/relational_lao_r0/native)
 
 elpis_verify_targets()
