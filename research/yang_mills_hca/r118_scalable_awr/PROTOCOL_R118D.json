@@ -1,0 +1,100 @@
+{
+  "schema": "elpis.ym_hca.r118d.protocol.v1",
+  "phase": "R118-D",
+  "status": "FROZEN_BEFORE_ANY_LATENCY_MEASUREMENT",
+  "purpose": "Admission measurement of the full AWR hot path. Targets are provisional engineering thresholds fixed before measurement; they are not relaxed after observing results.",
+  "measured_path": "Engine.step(handles) end to end, called from Python: active-set canonicalization and validation, budget checks, native compaction, sparse gather, per-window gauge transport, shared frozen 88-parameter HCA, controller, MEAN reconciliation, transactional commit into the volatile pool.",
+  "cold_phases_reported_separately": [
+    "registry index construction",
+    "instance window extraction and bulk creation",
+    "native kernel compilation",
+    "engine construction"
+  ],
+  "registries": {
+    "SMALL": {
+      "participants": 2000,
+      "relations": 8000,
+      "instances": 1024,
+      "arity": [
+        2,
+        6
+      ],
+      "zipf": 0.5,
+      "seed": 11801
+    },
+    "INST50K": {
+      "participants": 50000,
+      "relations": 200000,
+      "instances": 50000,
+      "arity": [
+        2,
+        6
+      ],
+      "zipf": 0.5,
+      "seed": 11802
+    },
+    "STRESS1M": {
+      "participants": 50000,
+      "relations": 1000000,
+      "instances": 50000,
+      "arity": [
+        2,
+        6
+      ],
+      "zipf": 0.5,
+      "seed": 11803
+    }
+  },
+  "windows": "fixtures.extract_window(seed relation, max_incidences=65536): the seed plus up to 3 relations sharing the most participants; slot roles are a random permutation; seeds drawn without replacement (numpy PCG64, registry seed + 1). Disclosed per registry: participant degree, relation arity, window links, relation binding overlap distributions.",
+  "active_sizes": [
+    64,
+    256,
+    1024
+  ],
+  "primary_configuration": {
+    "controller": "R114",
+    "checkpoint": "54007/STATE8_SIGNED8",
+    "passes": 1,
+    "reconciliation": "MEAN"
+  },
+  "secondary_configurations": [
+    {
+      "controller": "NATIVE",
+      "checkpoint": "54007/STATE8_SIGNED8",
+      "passes": 1
+    },
+    {
+      "controller": "R104",
+      "checkpoint": "54007/STATE8",
+      "passes": 1
+    },
+    {
+      "controller": "R114",
+      "checkpoint": "54007/STATE8_SIGNED8",
+      "passes": 4
+    }
+  ],
+  "workload": "Each iteration activates a fresh uniform random sample of A live instance handles without replacement (numpy PCG64 seeded 118400 + A), generated before timing. Random access over the whole registry is the conservative cache case.",
+  "initial_state": "Every materialized relation row seeded N(0, 1) per coordinate (PCG64 seed 118500) before warmup.",
+  "warmup_steps": 100,
+  "measured_steps": 2000,
+  "timer": "time.perf_counter_ns immediately around each Engine.step call. Every measured call is recorded, including refused calls; any non-EXECUTED disposition is counted as a failure and keeps its latency in the statistics.",
+  "process": "One subprocess per registry; Python gc enabled (default); single thread (OMP/MKL/OPENBLAS=1); torch is not imported in measurement processes.",
+  "statistics": "nearest-rank p50, p95, p99; max; mean; over all measured samples.",
+  "admission_targets_p95_ms": {
+    "64": 2.0,
+    "256": 5.0,
+    "1024": 20.0
+  },
+  "admission_rule": "HOT_PATH_QUALIFIED only if, for the primary configuration, every registry meets every p95 target with zero failures, the capacity-regression rule holds, and the parity check on the benchmark fixture passes. Otherwise PERFORMANCE_NONQUAL with the bottleneck identified. Secondary configurations are reported, not gating.",
+  "capacity_regression_rule": "for each A: p95(INST50K) <= 2.0 * p95(SMALL) and p95(STRESS1M) <= 2.0 * p95(SMALL)",
+  "memory": "peak RSS (getrusage ru_maxrss) after cold construction and after measurement; Registry.nbytes, AWRState.nbytes, engine scratch bytes.",
+  "allocations": "separate untimed run of 200 primary steps per A under tracemalloc: transient peak traced bytes above the pre-step baseline (mean, max), net retained bytes per step, and net live Python blocks per step (sys.getallocatedblocks). tracemalloc cannot count freed transient allocations, so a total allocation count is not claimed. The native kernel performs no heap allocation (stack buffers only; preallocated engine scratch).",
+  "full_population_sweep": "INST50K and STRESS1M: one synchronous step over all 50,000 instances with a sweep-sized budget; 2 warmup + 10 timed repeats; reported separately and never as hot-path latency.",
+  "parity_on_benchmark_fixture": "STRESS1M: 3 active sets of 64 drawn from the measured workload; native vs simple reference after one pass must be <= 1e-12.",
+  "oracle_baseline": "torch oracle adapter on SMALL, A=64, R114, 1 pass: 3 warmup + 20 timed steps (justification baseline for the native backend, not a candidate).",
+  "nonclaims": [
+    "Latency qualification is not scientific qualification; R93 ENERGY_NORMALIZED_DENOMINATOR_HOLD is unaffected.",
+    "Measured on the session host only; other hardware is not characterized."
+  ]
+}
