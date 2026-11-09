@@ -76,7 +76,8 @@ def build(cfg):
         mask[i, perm] = True
     t["window_extraction_s"] = time.perf_counter() - t0
     t0 = time.perf_counter()
-    st = AWRState(reg, StateCapacity(max_instances=n, max_materialized_relations=4 * n, max_bindings_per_relation=64))
+    st = AWRState(reg, StateCapacity(max_instances=n, max_materialized_relations=4 * n,
+                                     max_bindings_per_relation=1024))  # registered windows bind up to 411x
     st.create_instances(np.arange(n, dtype=np.uint64) * 2654435761 + 17, rel, mask)
     t["instance_creation_s"] = time.perf_counter() - t0
     rows = np.nonzero(st.row_ref > 0)[0]
