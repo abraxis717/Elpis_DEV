@@ -1,0 +1,159 @@
+{
+  "cases": [
+    "weak",
+    "anti"
+  ],
+  "checkpoints": "all 6 frozen R77 checkpoints",
+  "delayed_primary": "H8 bit-identity vs NATIVE; H20 pooled NSE below NATIVE in EACH k=0,2,6; for each k no single new graph-block mean H20 NSE exceeds NATIVE by >0.20",
+  "delayed_schedule": "STATE8_SIGNED8 NATIVE steps 1..8, R114 steps 9..20; unsigned checkpoints NATIVE at all times",
+  "discovery": "R120 FRESH evidence consumed. H8 pooled worse than native in all k, all twelve graph/overlap blocks; H20 pooled pass not graphwise uniform.",
+  "evaluation_seeds": [
+    121101,
+    121103,
+    121107,
+    121109
+  ],
+  "graph_generation": "Fixed after deterministic Python random.Random(121400) scan of four-relation, four-distinct-member graphs on ten participants with complete coverage and connected relation-overlap, max participant degrees 2/3/3/4; audited against all 4 R61, 4 R76, and 4 R77 evaluation graph incidence-isomorphism signatures before source registration. Explicit graph definitions are authority.",
+  "graphs": {
+    "R121_HOLDOUT_1": [
+      [
+        3,
+        4,
+        5,
+        7
+      ],
+      [
+        0,
+        1,
+        2,
+        6
+      ],
+      [
+        2,
+        4,
+        6,
+        9
+      ],
+      [
+        0,
+        1,
+        3,
+        8
+      ]
+    ],
+    "R121_HOLDOUT_2": [
+      [
+        0,
+        1,
+        5,
+        8
+      ],
+      [
+        2,
+        3,
+        6,
+        7
+      ],
+      [
+        3,
+        4,
+        6,
+        7
+      ],
+      [
+        2,
+        3,
+        8,
+        9
+      ]
+    ],
+    "R121_HOLDOUT_3": [
+      [
+        2,
+        4,
+        7,
+        8
+      ],
+      [
+        2,
+        6,
+        7,
+        9
+      ],
+      [
+        1,
+        3,
+        5,
+        9
+      ],
+      [
+        0,
+        1,
+        5,
+        7
+      ]
+    ],
+    "R121_HOLDOUT_4": [
+      [
+        0,
+        5,
+        7,
+        9
+      ],
+      [
+        1,
+        3,
+        5,
+        7
+      ],
+      [
+        2,
+        4,
+        7,
+        8
+      ],
+      [
+        1,
+        6,
+        7,
+        8
+      ]
+    ]
+  },
+  "horizons": [
+    8,
+    20
+  ],
+  "k_values": [
+    0,
+    2,
+    6
+  ],
+  "limitation": "Four new 10-participant/4-relation incidence classes, fresh seeds and structures; no broad generalization, no model-runtime scientific qualification, no R93 clearance. Both decisions registered separately.",
+  "maximum_graph_harm_vs_native": 0.2,
+  "no_persistent_inference_mutation": true,
+  "no_teacher_in_inference": true,
+  "no_training": true,
+  "novel_topology_gate": "all 4 signatures mutually distinct and absent from 4 R61, 4 R76 and 4 R77 graph classes",
+  "phase": "R121",
+  "policies": [
+    "NATIVE",
+    "R114",
+    "SIGNED_ONLY",
+    "DELAYED8"
+  ],
+  "policy_sha256": "e0d42c6476a394a82c363c9dae3d0424d7b768e3f31fa1302edfd17abae0b74a",
+  "qualify_sha256": "e76485f0b114a54d5784267436c5b75bb2b7bb5484dc5de3334e6b811c613e19",
+  "r118_characterize_e_sha256": "b13c79abd323f49ba925e2d0cdf1ccff7170a4470689144eae2dc128641a2068",
+  "r118_component_digest": "770411b1f6788f9593f5f7adf1d4f6efb57a564f8c207d13dd7f55352af0df71",
+  "r119_kernel_sha256": "125e138b11d0189bc46093b257ec0885ea7e49e875c67fc11b4f91ca21d291e2",
+  "r120_raw_sha256": "ed734e0ac9ac9973a65a71411092aecd5133726f9a147b1e0c88d7eeabdb4f6a",
+  "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+  "schema": "elpis.ym_hca.r121.protocol.v1",
+  "secondary": "Per-graph harms, H20 relative to SIGNED_ONLY, energy ratios, matched-direction error, teacher composition shift; descriptive only.",
+  "source": "Frozen R118-E composed teacher, original R119 exact-guarded native runtime, same R118E metrics, no new training.",
+  "source_commit_parent": "e2447ae427e5e4fb8196e396e152d52d2e9c1ca3",
+  "status": "SOURCE_PREREGISTERED_BEFORE_NEW_GRAPH_RUN",
+  "structure_seed": 121300,
+  "transfer_primary": "SIGNED_ONLY H20 pooled NSE below both NATIVE and R114 in EACH k=0,2,6 (strict)"
+}
