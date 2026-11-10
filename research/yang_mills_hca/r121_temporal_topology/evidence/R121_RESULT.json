@@ -1,0 +1,4312 @@
+{
+  "aggregate": {
+    "k0/DELAYED8/H20": {
+      "energy_ratio": 1.9761962841785412,
+      "matched_nse": 0.0006178855817497216,
+      "nse": 0.29554831288324634
+    },
+    "k0/DELAYED8/H8": {
+      "energy_ratio": 0.7262414409937827,
+      "matched_nse": 0.00010899946742484272,
+      "nse": 0.03754699164512892
+    },
+    "k0/NATIVE/H20": {
+      "energy_ratio": 2.8025585999247107,
+      "matched_nse": 0.0006394448896342962,
+      "nse": 0.7332768006754712
+    },
+    "k0/NATIVE/H8": {
+      "energy_ratio": 0.7262414409937827,
+      "matched_nse": 0.00010899946742484272,
+      "nse": 0.03754699164512892
+    },
+    "k0/R114/H20": {
+      "energy_ratio": 0.6337851371325561,
+      "matched_nse": 0.3338008483288517,
+      "nse": 0.36603599117140045
+    },
+    "k0/R114/H8": {
+      "energy_ratio": 0.367603298354452,
+      "matched_nse": 0.0006049791668281691,
+      "nse": 0.17704325096314114
+    },
+    "k0/SIGNED_ONLY/H20": {
+      "energy_ratio": 1.4283888914009093,
+      "matched_nse": 0.0005884416784205952,
+      "nse": 0.10278675028760435
+    },
+    "k0/SIGNED_ONLY/H8": {
+      "energy_ratio": 0.55462534189184,
+      "matched_nse": 0.00018240782871069717,
+      "nse": 0.07842063698458629
+    },
+    "k2/DELAYED8/H20": {
+      "energy_ratio": 2.2906721231659986,
+      "matched_nse": 0.0006484527197799031,
+      "nse": 0.4795909736658575
+    },
+    "k2/DELAYED8/H8": {
+      "energy_ratio": 0.7440353825947309,
+      "matched_nse": 7.781559153797011e-05,
+      "nse": 0.04178679104122238
+    },
+    "k2/NATIVE/H20": {
+      "energy_ratio": 4.275966054153383,
+      "matched_nse": 0.0006145774130312942,
+      "nse": 1.6637130546750611
+    },
+    "k2/NATIVE/H8": {
+      "energy_ratio": 0.7440353825947309,
+      "matched_nse": 7.781559153797011e-05,
+      "nse": 0.04178679104122238
+    },
+    "k2/R114/H20": {
+      "energy_ratio": 0.43345150094628515,
+      "matched_nse": 0.33368643238564927,
+      "nse": 0.46999613976338556
+    },
+    "k2/R114/H8": {
+      "energy_ratio": 0.29077137289724325,
+      "matched_nse": 0.0002755926470555574,
+      "nse": 0.24063128364068934
+    },
+    "k2/SIGNED_ONLY/H20": {
+      "energy_ratio": 1.4995876738600096,
+      "matched_nse": 0.0006833768805992703,
+      "nse": 0.21830498234768173
+    },
+    "k2/SIGNED_ONLY/H8": {
+      "energy_ratio": 0.5369363394102807,
+      "matched_nse": 9.146322042471635e-05,
+      "nse": 0.09327608501257456
+    },
+    "k6/DELAYED8/H20": {
+      "energy_ratio": 1.4312728136344746,
+      "matched_nse": 0.0003370688622643594,
+      "nse": 0.22607817991037513
+    },
+    "k6/DELAYED8/H8": {
+      "energy_ratio": 0.6479419541986443,
+      "matched_nse": 1.1684152885332519e-05,
+      "nse": 0.061207825365104794
+    },
+    "k6/NATIVE/H20": {
+      "energy_ratio": 4.044956688631877,
+      "matched_nse": 0.00017413422075360577,
+      "nse": 1.7172904217328055
+    },
+    "k6/NATIVE/H8": {
+      "energy_ratio": 0.6479419541986443,
+      "matched_nse": 1.1684152885332519e-05,
+      "nse": 0.061207825365104794
+    },
+    "k6/R114/H20": {
+      "energy_ratio": 0.14558734535187937,
+      "matched_nse": 0.3217267808723005,
+      "nse": 0.5917192611423004
+    },
+    "k6/R114/H8": {
+      "energy_ratio": 0.1763141002723115,
+      "matched_nse": 0.000216352068663788,
+      "nse": 0.3542590866593042
+    },
+    "k6/SIGNED_ONLY/H20": {
+      "energy_ratio": 0.9332348474171783,
+      "matched_nse": 0.0006369496058036397,
+      "nse": 0.20983073533848376
+    },
+    "k6/SIGNED_ONLY/H8": {
+      "energy_ratio": 0.42947552824315416,
+      "matched_nse": 4.913383159328103e-05,
+      "nse": 0.14209039113403923
+    }
+  },
+  "by_cell": {
+    "R121_HOLDOUT_1/k0/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 1.79922827001888,
+      "matched_nse": 9.659647361087015e-05,
+      "n": 32,
+      "nse": 0.11669932107464481,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.7296418308073008,
+      "matched_nse": 9.535377147234375e-05,
+      "n": 32,
+      "nse": 0.021353197507950034,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 4.424862587495831,
+      "matched_nse": 0.00019957252619191845,
+      "n": 32,
+      "nse": 1.2183056090964506,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.0016013876745984,
+      "matched_nse": 2.0154983197927245e-05,
+      "n": 32,
+      "nse": 3.566170579054115e-05,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.8312519861733492,
+      "matched_nse": 9.655283957038518e-05,
+      "n": 32,
+      "nse": 0.12495584200555725,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.7376512618959843,
+      "matched_nse": 9.407932485561848e-05,
+      "n": 32,
+      "nse": 0.020011144776678244,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 1.5896679540010028,
+      "matched_nse": 2.1892314466288865e-05,
+      "n": 32,
+      "nse": 0.06807758226286982,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.6092099677902173,
+      "matched_nse": 1.994944370423135e-05,
+      "n": 32,
+      "nse": 0.04819226517952151,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 3.9228451205146477,
+      "matched_nse": 0.00029877129194895435,
+      "n": 32,
+      "nse": 0.9623703220801549,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9931710744606688,
+      "matched_nse": 4.992715430248568e-05,
+      "n": 32,
+      "nse": 8.193396681691692e-05,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.625265054150072,
+      "matched_nse": 2.1328983267059065e-05,
+      "n": 32,
+      "nse": 0.07559694081785173,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.6186883757610083,
+      "matched_nse": 1.941473085635692e-05,
+      "n": 32,
+      "nse": 0.04557354539592546,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 1.79922827001888,
+      "matched_nse": 9.659647361087015e-05,
+      "n": 32,
+      "nse": 0.11669932107464481,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.7296418308073008,
+      "matched_nse": 9.535377147234375e-05,
+      "n": 32,
+      "nse": 0.021353197507950034,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 7.610425697435939,
+      "matched_nse": 7.315162573461043e-05,
+      "n": 32,
+      "nse": 3.093400272575659,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.0016013876745984,
+      "matched_nse": 2.0154983197927245e-05,
+      "n": 32,
+      "nse": 3.566170579054115e-05,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.8312519861733492,
+      "matched_nse": 9.655283957038518e-05,
+      "n": 32,
+      "nse": 0.12495584200555725,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.7376512618959843,
+      "matched_nse": 9.407932485561848e-05,
+      "n": 32,
+      "nse": 0.020011144776678244,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 1.5896679540010028,
+      "matched_nse": 2.1892314466288865e-05,
+      "n": 32,
+      "nse": 0.06807758226286982,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.6092099677902173,
+      "matched_nse": 1.994944370423135e-05,
+      "n": 32,
+      "nse": 0.04819226517952151,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 6.80963991541939,
+      "matched_nse": 0.00016898123270811527,
+      "n": 32,
+      "nse": 2.591275903519366,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9931710744606688,
+      "matched_nse": 4.992715430248568e-05,
+      "n": 32,
+      "nse": 8.193396681691692e-05,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.625265054150072,
+      "matched_nse": 2.1328983267059065e-05,
+      "n": 32,
+      "nse": 0.07559694081785173,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.6186883757610083,
+      "matched_nse": 1.941473085635692e-05,
+      "n": 32,
+      "nse": 0.04557354539592546,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54007/STATE8/H20": {
+      "energy_ratio": 0.1894201002756547,
+      "matched_nse": 0.00019927817312059837,
+      "n": 32,
+      "nse": 0.3190588113939768,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.41567126511014074,
+      "matched_nse": 0.0022565381941494003,
+      "n": 32,
+      "nse": 0.12768342748435613,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.0332833115008073,
+      "matched_nse": 0.0002621241696938864,
+      "n": 32,
+      "nse": 0.1818556675795262,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.46036192358969197,
+      "matched_nse": 0.0009760530805491968,
+      "n": 32,
+      "nse": 0.10403821315283744,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.190994935880552,
+      "matched_nse": 0.00019887292989163863,
+      "n": 32,
+      "nse": 0.3170229374205651,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.42057861309980804,
+      "matched_nse": 0.002248664076766653,
+      "n": 32,
+      "nse": 0.12500524392537243,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.1468163511666276,
+      "matched_nse": 0.00017220018026468942,
+      "n": 32,
+      "nse": 0.38055156725329575,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.30588184539574226,
+      "matched_nse": 0.0011553721650700843,
+      "n": 32,
+      "nse": 0.20039263525661544,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.5675621716831554,
+      "matched_nse": 0.0003204429837429523,
+      "n": 32,
+      "nse": 0.3634595224843053,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.5585784057687506,
+      "matched_nse": 0.0016554969148350196,
+      "n": 32,
+      "nse": 0.06507015456804714,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.14691361699395955,
+      "matched_nse": 0.00017081048532436444,
+      "n": 32,
+      "nse": 0.380394382420859,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.3107528080044616,
+      "matched_nse": 0.0011487346318812194,
+      "n": 32,
+      "nse": 0.1964925574485783,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 1.79922827001888,
+      "matched_nse": 9.659647361087015e-05,
+      "n": 32,
+      "nse": 0.11669932107464481,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.7296418308073008,
+      "matched_nse": 9.535377147234375e-05,
+      "n": 32,
+      "nse": 0.021353197507950034,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.0332833115008073,
+      "matched_nse": 0.0002621241696938864,
+      "n": 32,
+      "nse": 0.1818556675795262,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.46036192358969197,
+      "matched_nse": 0.0009760530805491968,
+      "n": 32,
+      "nse": 0.10403821315283744,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.8312519861733492,
+      "matched_nse": 9.655283957038518e-05,
+      "n": 32,
+      "nse": 0.12495584200555725,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.7376512618959843,
+      "matched_nse": 9.407932485561848e-05,
+      "n": 32,
+      "nse": 0.020011144776678244,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 1.5896679540010028,
+      "matched_nse": 2.1892314466288865e-05,
+      "n": 32,
+      "nse": 0.06807758226286982,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.6092099677902173,
+      "matched_nse": 1.994944370423135e-05,
+      "n": 32,
+      "nse": 0.04819226517952151,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.5675621716831554,
+      "matched_nse": 0.0003204429837429523,
+      "n": 32,
+      "nse": 0.3634595224843053,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.5585784057687506,
+      "matched_nse": 0.0016554969148350196,
+      "n": 32,
+      "nse": 0.06507015456804714,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.625265054150072,
+      "matched_nse": 2.1328983267059065e-05,
+      "n": 32,
+      "nse": 0.07559694081785173,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k0/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.6186883757610083,
+      "matched_nse": 1.941473085635692e-05,
+      "n": 32,
+      "nse": 0.04557354539592546,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 2.6375068697344,
+      "matched_nse": 0.0012693611836757657,
+      "n": 32,
+      "nse": 0.391531417425032,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.8309236827034467,
+      "matched_nse": 3.985476173307134e-05,
+      "n": 32,
+      "nse": 0.007868216808026525,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 5.776483914883354,
+      "matched_nse": 0.0002801003942747293,
+      "n": 32,
+      "nse": 1.9703264478702933,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.1653077679862827,
+      "matched_nse": 1.2548076681856424e-05,
+      "n": 32,
+      "nse": 0.006343637343565396,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 2.6889575582305447,
+      "matched_nse": 0.0012571384414093584,
+      "n": 32,
+      "nse": 0.41145489511449684,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.8404674289492458,
+      "matched_nse": 3.943197941636695e-05,
+      "n": 32,
+      "nse": 0.006972010254708626,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 1.9088970892007824,
+      "matched_nse": 0.0002900314995954792,
+      "n": 32,
+      "nse": 0.14606159753343728,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.6640540840547358,
+      "matched_nse": 9.626647776400654e-06,
+      "n": 32,
+      "nse": 0.034276112466730575,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 5.99536014871124,
+      "matched_nse": 0.000703536597125097,
+      "n": 32,
+      "nse": 2.1000526790615623,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.1811749842944994,
+      "matched_nse": 2.3590342315672752e-05,
+      "n": 32,
+      "nse": 0.007576750360606005,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.9403134158423485,
+      "matched_nse": 0.0002828737860618574,
+      "n": 32,
+      "nse": 0.15482513654726257,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.6743692776011737,
+      "matched_nse": 9.414261669393742e-06,
+      "n": 32,
+      "nse": 0.031981681647399,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 2.6375068697344,
+      "matched_nse": 0.0012693611836757657,
+      "n": 32,
+      "nse": 0.391531417425032,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.8309236827034467,
+      "matched_nse": 3.985476173307134e-05,
+      "n": 32,
+      "nse": 0.007868216808026525,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 14.400630841748463,
+      "matched_nse": 0.00015146663164151974,
+      "n": 32,
+      "nse": 7.8116595297665175,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.1653077679862827,
+      "matched_nse": 1.2548076681856424e-05,
+      "n": 32,
+      "nse": 0.006343637343565396,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 2.6889575582305447,
+      "matched_nse": 0.0012571384414093584,
+      "n": 32,
+      "nse": 0.41145489511449684,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.8404674289492458,
+      "matched_nse": 3.943197941636695e-05,
+      "n": 32,
+      "nse": 0.006972010254708626,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 1.9088970892007824,
+      "matched_nse": 0.0002900314995954792,
+      "n": 32,
+      "nse": 0.14606159753343728,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.6640540840547358,
+      "matched_nse": 9.626647776400654e-06,
+      "n": 32,
+      "nse": 0.034276112466730575,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 14.153676962180334,
+      "matched_nse": 0.00046069058179565997,
+      "n": 32,
+      "nse": 7.631248374281026,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.1811749842944994,
+      "matched_nse": 2.3590342315672752e-05,
+      "n": 32,
+      "nse": 0.007576750360606005,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.9403134158423485,
+      "matched_nse": 0.0002828737860618574,
+      "n": 32,
+      "nse": 0.15482513654726257,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.6743692776011737,
+      "matched_nse": 9.414261669393742e-06,
+      "n": 32,
+      "nse": 0.031981681647399,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/R114/54007/STATE8/H20": {
+      "energy_ratio": 0.0995327976283454,
+      "matched_nse": 0.005488281760615804,
+      "n": 32,
+      "nse": 0.47029237444097655,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.36953534520362935,
+      "matched_nse": 0.0007376253510193165,
+      "n": 32,
+      "nse": 0.15420164718118193,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.4905845261472304,
+      "matched_nse": 0.000552355948929481,
+      "n": 32,
+      "nse": 0.049497059864261825,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.42329256507308266,
+      "matched_nse": 0.00020130148911607498,
+      "n": 32,
+      "nse": 0.12221140752038384,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.09955745739403926,
+      "matched_nse": 0.005556743895944183,
+      "n": 32,
+      "nse": 0.47026064908022025,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.3747146372459865,
+      "matched_nse": 0.0007298966860121367,
+      "n": 32,
+      "nse": 0.15088904153198876,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.07627090792309962,
+      "matched_nse": 0.0011273740942990135,
+      "n": 32,
+      "nse": 0.5242415574671563,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.2505850866655557,
+      "matched_nse": 0.0002475375362640114,
+      "n": 32,
+      "nse": 0.24954241168385471,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.675445298402738,
+      "matched_nse": 0.0009039337966265937,
+      "n": 32,
+      "nse": 0.4056102211402044,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.5745924415953927,
+      "matched_nse": 0.0004183074571479997,
+      "n": 32,
+      "nse": 0.05887807908807355,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.07482489854429246,
+      "matched_nse": 0.0011222581165331105,
+      "n": 32,
+      "nse": 0.5280520427649018,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.25455531583227425,
+      "matched_nse": 0.0002425092453474456,
+      "n": 32,
+      "nse": 0.24561107005780802,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 2.6375068697344,
+      "matched_nse": 0.0012693611836757657,
+      "n": 32,
+      "nse": 0.391531417425032,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.8309236827034467,
+      "matched_nse": 3.985476173307134e-05,
+      "n": 32,
+      "nse": 0.007868216808026525,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.4905845261472304,
+      "matched_nse": 0.000552355948929481,
+      "n": 32,
+      "nse": 0.049497059864261825,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.42329256507308266,
+      "matched_nse": 0.00020130148911607498,
+      "n": 32,
+      "nse": 0.12221140752038384,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 2.6889575582305447,
+      "matched_nse": 0.0012571384414093584,
+      "n": 32,
+      "nse": 0.41145489511449684,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.8404674289492458,
+      "matched_nse": 3.943197941636695e-05,
+      "n": 32,
+      "nse": 0.006972010254708626,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 1.9088970892007824,
+      "matched_nse": 0.0002900314995954792,
+      "n": 32,
+      "nse": 0.14606159753343728,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.6640540840547358,
+      "matched_nse": 9.626647776400654e-06,
+      "n": 32,
+      "nse": 0.034276112466730575,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.675445298402738,
+      "matched_nse": 0.0009039337966265937,
+      "n": 32,
+      "nse": 0.4056102211402044,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.5745924415953927,
+      "matched_nse": 0.0004183074571479997,
+      "n": 32,
+      "nse": 0.05887807908807355,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.9403134158423485,
+      "matched_nse": 0.0002828737860618574,
+      "n": 32,
+      "nse": 0.15482513654726257,
+      "teacher_shift_nse": 0.17929779971432594
+    },
+    "R121_HOLDOUT_1/k2/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.6743692776011737,
+      "matched_nse": 9.414261669393742e-06,
+      "n": 32,
+      "nse": 0.031981681647399,
+      "teacher_shift_nse": 0.008619778962337865
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 1.2739647816072068,
+      "matched_nse": 0.0003400603537888694,
+      "n": 32,
+      "nse": 0.017000962345367795,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.7471119113817538,
+      "matched_nse": 1.1306774437239153e-05,
+      "n": 32,
+      "nse": 0.01841608851093808,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.076230041239926,
+      "matched_nse": 0.0008988102971239642,
+      "n": 32,
+      "nse": 0.19652715288621392,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.082470253739495,
+      "matched_nse": 9.603115862975853e-06,
+      "n": 32,
+      "nse": 0.0016522865692112027,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.3058591410675704,
+      "matched_nse": 0.00033395382809671414,
+      "n": 32,
+      "nse": 0.020809864822406057,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.756417231943672,
+      "matched_nse": 1.131574359688331e-05,
+      "n": 32,
+      "nse": 0.016989264021240263,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 1.1174134271139928,
+      "matched_nse": 0.0001206084954404954,
+      "n": 32,
+      "nse": 0.0034229745978704715,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.5892630994394891,
+      "matched_nse": 7.511576252353103e-06,
+      "n": 32,
+      "nse": 0.05400422470798959,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.074135293934734,
+      "matched_nse": 0.002517005315188399,
+      "n": 32,
+      "nse": 0.19941726401750526,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.10616236139311,
+      "matched_nse": 1.136172373469857e-05,
+      "n": 32,
+      "nse": 0.002699026389565167,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.1388013555149905,
+      "matched_nse": 0.00011641745813692483,
+      "n": 32,
+      "nse": 0.004669583388048042,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.5990200380256998,
+      "matched_nse": 7.4435982775691856e-06,
+      "n": 32,
+      "nse": 0.05110295623969682,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 1.2739647816072068,
+      "matched_nse": 0.0003400603537888694,
+      "n": 32,
+      "nse": 0.017000962345367795,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.7471119113817538,
+      "matched_nse": 1.1306774437239153e-05,
+      "n": 32,
+      "nse": 0.01841608851093808,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 11.806101190068194,
+      "matched_nse": 0.00019237712518410666,
+      "n": 32,
+      "nse": 5.934916338728904,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.082470253739495,
+      "matched_nse": 9.603115862975853e-06,
+      "n": 32,
+      "nse": 0.0016522865692112027,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.3058591410675704,
+      "matched_nse": 0.00033395382809671414,
+      "n": 32,
+      "nse": 0.020809864822406057,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.756417231943672,
+      "matched_nse": 1.131574359688331e-05,
+      "n": 32,
+      "nse": 0.016989264021240263,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 1.1174134271139928,
+      "matched_nse": 0.0001206084954404954,
+      "n": 32,
+      "nse": 0.0034229745978704715,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.5892630994394891,
+      "matched_nse": 7.511576252353103e-06,
+      "n": 32,
+      "nse": 0.05400422470798959,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 10.719082476680782,
+      "matched_nse": 0.0005671277437135566,
+      "n": 32,
+      "nse": 5.173285645994861,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.10616236139311,
+      "matched_nse": 1.136172373469857e-05,
+      "n": 32,
+      "nse": 0.002699026389565167,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.1388013555149905,
+      "matched_nse": 0.00011641745813692483,
+      "n": 32,
+      "nse": 0.004669583388048042,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.5990200380256998,
+      "matched_nse": 7.4435982775691856e-06,
+      "n": 32,
+      "nse": 0.05110295623969682,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/R114/54007/STATE8/H20": {
+      "energy_ratio": 0.011208353689589997,
+      "matched_nse": 0.011809655365716848,
+      "n": 32,
+      "nse": 0.8009974165760845,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.2186023728444651,
+      "matched_nse": 6.65262216241469e-05,
+      "n": 32,
+      "nse": 0.2835389878221932,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.27536990482341017,
+      "matched_nse": 0.002438395637552049,
+      "n": 32,
+      "nse": 0.22805903952774126,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.30749432899353984,
+      "matched_nse": 1.3997479541338897e-05,
+      "n": 32,
+      "nse": 0.19846138148944592,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.011082507580670684,
+      "matched_nse": 0.012790299620742733,
+      "n": 32,
+      "nse": 0.8021857431355452,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.22279412983881772,
+      "matched_nse": 6.540848861404103e-05,
+      "n": 32,
+      "nse": 0.27880773788454555,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.01751173580747417,
+      "matched_nse": 0.0004058295045901786,
+      "n": 32,
+      "nse": 0.7529068025708325,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.1623219178209487,
+      "matched_nse": 2.240652329407733e-05,
+      "n": 32,
+      "nse": 0.35654934567631613,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.4823799972332773,
+      "matched_nse": 0.00602053467280577,
+      "n": 32,
+      "nse": 0.10025741748088668,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.3964835831387834,
+      "matched_nse": 2.5077075981864982e-05,
+      "n": 32,
+      "nse": 0.13716277434478422,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.01713647188185151,
+      "matched_nse": 0.00039771005658826436,
+      "n": 32,
+      "nse": 0.755380391006355,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.16564160934737404,
+      "matched_nse": 2.1781802824881458e-05,
+      "n": 32,
+      "nse": 0.35167090347037544,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 1.2739647816072068,
+      "matched_nse": 0.0003400603537888694,
+      "n": 32,
+      "nse": 0.017000962345367795,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.7471119113817538,
+      "matched_nse": 1.1306774437239153e-05,
+      "n": 32,
+      "nse": 0.01841608851093808,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.27536990482341017,
+      "matched_nse": 0.002438395637552049,
+      "n": 32,
+      "nse": 0.22805903952774126,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.30749432899353984,
+      "matched_nse": 1.3997479541338897e-05,
+      "n": 32,
+      "nse": 0.19846138148944592,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.3058591410675704,
+      "matched_nse": 0.00033395382809671414,
+      "n": 32,
+      "nse": 0.020809864822406057,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.756417231943672,
+      "matched_nse": 1.131574359688331e-05,
+      "n": 32,
+      "nse": 0.016989264021240263,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 1.1174134271139928,
+      "matched_nse": 0.0001206084954404954,
+      "n": 32,
+      "nse": 0.0034229745978704715,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.5892630994394891,
+      "matched_nse": 7.511576252353103e-06,
+      "n": 32,
+      "nse": 0.05400422470798959,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.4823799972332773,
+      "matched_nse": 0.00602053467280577,
+      "n": 32,
+      "nse": 0.10025741748088668,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.3964835831387834,
+      "matched_nse": 2.5077075981864982e-05,
+      "n": 32,
+      "nse": 0.13716277434478422,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.1388013555149905,
+      "matched_nse": 0.00011641745813692483,
+      "n": 32,
+      "nse": 0.004669583388048042,
+      "teacher_shift_nse": 0.3038715904446908
+    },
+    "R121_HOLDOUT_1/k6/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.5990200380256998,
+      "matched_nse": 7.4435982775691856e-06,
+      "n": 32,
+      "nse": 0.05110295623969682,
+      "teacher_shift_nse": 0.004776614260457375
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 0.33972247862964877,
+      "matched_nse": 5.6882543229802573e-05,
+      "n": 32,
+      "nse": 0.17406932983497675,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.4700766716599063,
+      "matched_nse": 1.0345914349167706e-05,
+      "n": 32,
+      "nse": 0.0988473653107346,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 3.574987002336039,
+      "matched_nse": 1.581121404508473e-05,
+      "n": 32,
+      "nse": 0.7935117265804005,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.8502003368820054,
+      "matched_nse": 7.204592428464163e-06,
+      "n": 32,
+      "nse": 0.006086757170350493,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.3482641341169621,
+      "matched_nse": 5.6709282026869146e-05,
+      "n": 32,
+      "nse": 0.16804770629792765,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.4761625029350976,
+      "matched_nse": 1.039856483824736e-05,
+      "n": 32,
+      "nse": 0.0960855229768115,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 0.45190792455449014,
+      "matched_nse": 1.8613400009429015e-05,
+      "n": 32,
+      "nse": 0.10744968715803213,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.387309324255815,
+      "matched_nse": 6.765375929737583e-06,
+      "n": 32,
+      "nse": 0.14263369853722566,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 3.3488836631229892,
+      "matched_nse": 2.703686871272093e-05,
+      "n": 32,
+      "nse": 0.6889799151420437,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.7755960677688037,
+      "matched_nse": 1.0446369309705106e-05,
+      "n": 32,
+      "nse": 0.014254869112064427,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.46068407953968005,
+      "matched_nse": 1.8182117864924685e-05,
+      "n": 32,
+      "nse": 0.10323322012135777,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.39418794410812424,
+      "matched_nse": 6.719034762903142e-06,
+      "n": 32,
+      "nse": 0.1385081763511261,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 0.33972247862964877,
+      "matched_nse": 5.6882543229802573e-05,
+      "n": 32,
+      "nse": 0.17406932983497675,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.4700766716599063,
+      "matched_nse": 1.0345914349167706e-05,
+      "n": 32,
+      "nse": 0.0988473653107346,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 6.864948221630073,
+      "matched_nse": 1.801989737104659e-05,
+      "n": 32,
+      "nse": 2.624825631612869,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.8502003368820054,
+      "matched_nse": 7.204592428464163e-06,
+      "n": 32,
+      "nse": 0.006086757170350493,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.3482641341169621,
+      "matched_nse": 5.6709282026869146e-05,
+      "n": 32,
+      "nse": 0.16804770629792765,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.4761625029350976,
+      "matched_nse": 1.039856483824736e-05,
+      "n": 32,
+      "nse": 0.0960855229768115,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 0.45190792455449014,
+      "matched_nse": 1.8613400009429015e-05,
+      "n": 32,
+      "nse": 0.10744968715803213,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.387309324255815,
+      "matched_nse": 6.765375929737583e-06,
+      "n": 32,
+      "nse": 0.14263369853722566,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 6.060687529165852,
+      "matched_nse": 2.8315675934628692e-05,
+      "n": 32,
+      "nse": 2.137123244089845,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.7755960677688037,
+      "matched_nse": 1.0446369309705106e-05,
+      "n": 32,
+      "nse": 0.014254869112064427,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.46068407953968005,
+      "matched_nse": 1.8182117864924685e-05,
+      "n": 32,
+      "nse": 0.10323322012135777,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.39418794410812424,
+      "matched_nse": 6.719034762903142e-06,
+      "n": 32,
+      "nse": 0.1385081763511261,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54007/STATE8/H20": {
+      "energy_ratio": 0.0025343605697782127,
+      "matched_nse": 3.999587654157097,
+      "n": 32,
+      "nse": 1.1031975436454426,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.1509355508785627,
+      "matched_nse": 1.575043646696167e-05,
+      "n": 32,
+      "nse": 0.37393869643837613,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.2128704130851338,
+      "matched_nse": 2.0801463415612287e-05,
+      "n": 32,
+      "nse": 0.010303885588479552,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.28465682667676223,
+      "matched_nse": 7.34752297323199e-06,
+      "n": 32,
+      "nse": 0.21759947852880082,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.002939098628902409,
+      "matched_nse": 3.999622793729853,
+      "n": 32,
+      "nse": 1.1113446002613334,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.1536040956207872,
+      "matched_nse": 1.5836678037457752e-05,
+      "n": 32,
+      "nse": 0.36976873444597524,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.011271357203225422,
+      "matched_nse": 1.8435608879374676e-05,
+      "n": 32,
+      "nse": 0.7989416744040838,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.11871231351681175,
+      "matched_nse": 7.824661899816232e-06,
+      "n": 32,
+      "nse": 0.4296243907143869,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.9164549891288007,
+      "matched_nse": 2.7956545526369725e-05,
+      "n": 32,
+      "nse": 0.14779889848796474,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.3217006581912322,
+      "matched_nse": 8.228893855273534e-06,
+      "n": 32,
+      "nse": 0.18733642871866352,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.010633537797110628,
+      "matched_nse": 1.8079562133052618e-05,
+      "n": 32,
+      "nse": 0.8043988437125008,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.12115965411295616,
+      "matched_nse": 7.728678208432371e-06,
+      "n": 32,
+      "nse": 0.4250048770146392,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 0.33972247862964877,
+      "matched_nse": 5.6882543229802573e-05,
+      "n": 32,
+      "nse": 0.17406932983497675,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.4700766716599063,
+      "matched_nse": 1.0345914349167706e-05,
+      "n": 32,
+      "nse": 0.0988473653107346,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.2128704130851338,
+      "matched_nse": 2.0801463415612287e-05,
+      "n": 32,
+      "nse": 0.010303885588479552,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.28465682667676223,
+      "matched_nse": 7.34752297323199e-06,
+      "n": 32,
+      "nse": 0.21759947852880082,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.3482641341169621,
+      "matched_nse": 5.6709282026869146e-05,
+      "n": 32,
+      "nse": 0.16804770629792765,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.4761625029350976,
+      "matched_nse": 1.039856483824736e-05,
+      "n": 32,
+      "nse": 0.0960855229768115,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 0.45190792455449014,
+      "matched_nse": 1.8613400009429015e-05,
+      "n": 32,
+      "nse": 0.10744968715803213,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.387309324255815,
+      "matched_nse": 6.765375929737583e-06,
+      "n": 32,
+      "nse": 0.14263369853722566,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.9164549891288007,
+      "matched_nse": 2.7956545526369725e-05,
+      "n": 32,
+      "nse": 0.14779889848796474,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.3217006581912322,
+      "matched_nse": 8.228893855273534e-06,
+      "n": 32,
+      "nse": 0.18733642871866352,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.46068407953968005,
+      "matched_nse": 1.8182117864924685e-05,
+      "n": 32,
+      "nse": 0.10323322012135777,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k0/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.39418794410812424,
+      "matched_nse": 6.719034762903142e-06,
+      "n": 32,
+      "nse": 0.1385081763511261,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 0.15769385376664663,
+      "matched_nse": 8.410739349241914e-05,
+      "n": 32,
+      "nse": 0.3635352620215034,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.4475843938974592,
+      "matched_nse": 8.741492276684304e-06,
+      "n": 32,
+      "nse": 0.10956050206106344,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.00298257807902,
+      "matched_nse": 5.552187743704945e-05,
+      "n": 32,
+      "nse": 7.914374119185229e-05,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.801097857522576,
+      "matched_nse": 6.1876527868570674e-06,
+      "n": 32,
+      "nse": 0.011026963936190636,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.16249729604960955,
+      "matched_nse": 8.372887297338621e-05,
+      "n": 32,
+      "nse": 0.3563338243635076,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.4536024111514039,
+      "matched_nse": 8.765167772102622e-06,
+      "n": 32,
+      "nse": 0.1066133519112297,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 0.2399701913904983,
+      "matched_nse": 1.8810340478077336e-05,
+      "n": 32,
+      "nse": 0.260252943463138,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.36487642047065094,
+      "matched_nse": 6.5310599873386055e-06,
+      "n": 32,
+      "nse": 0.15678387098811342,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.8271201766551142,
+      "matched_nse": 0.0001243843773129777,
+      "n": 32,
+      "nse": 0.00836049891136428,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.7338506741728382,
+      "matched_nse": 8.329153415316537e-06,
+      "n": 32,
+      "nse": 0.020562522917628678,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.24600468663931052,
+      "matched_nse": 1.8351660766829925e-05,
+      "n": 32,
+      "nse": 0.25404508540313653,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.3715377749778831,
+      "matched_nse": 6.477986601138852e-06,
+      "n": 32,
+      "nse": 0.15246729035095602,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 0.15769385376664663,
+      "matched_nse": 8.410739349241914e-05,
+      "n": 32,
+      "nse": 0.3635352620215034,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.4475843938974592,
+      "matched_nse": 8.741492276684304e-06,
+      "n": 32,
+      "nse": 0.10956050206106344,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 4.074923397230721,
+      "matched_nse": 2.035996210926483e-05,
+      "n": 32,
+      "nse": 1.0376936167663724,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.801097857522576,
+      "matched_nse": 6.1876527868570674e-06,
+      "n": 32,
+      "nse": 0.011026963936190636,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.16249729604960955,
+      "matched_nse": 8.372887297338621e-05,
+      "n": 32,
+      "nse": 0.3563338243635076,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.4536024111514039,
+      "matched_nse": 8.765167772102622e-06,
+      "n": 32,
+      "nse": 0.1066133519112297,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 0.2399701913904983,
+      "matched_nse": 1.8810340478077336e-05,
+      "n": 32,
+      "nse": 0.260252943463138,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.36487642047065094,
+      "matched_nse": 6.5310599873386055e-06,
+      "n": 32,
+      "nse": 0.15678387098811342,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 3.1255064056522057,
+      "matched_nse": 4.19130983205368e-05,
+      "n": 32,
+      "nse": 0.5897864996345121,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.7338506741728382,
+      "matched_nse": 8.329153415316537e-06,
+      "n": 32,
+      "nse": 0.020562522917628678,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.24600468663931052,
+      "matched_nse": 1.8351660766829925e-05,
+      "n": 32,
+      "nse": 0.25404508540313653,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.3715377749778831,
+      "matched_nse": 6.477986601138852e-06,
+      "n": 32,
+      "nse": 0.15246729035095602,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/R114/54007/STATE8/H20": {
+      "energy_ratio": 0.0012266482440362254,
+      "matched_nse": 3.9898291122880147,
+      "n": 32,
+      "nse": 1.0708594703850887,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.11155278534847396,
+      "matched_nse": 1.2810724742913504e-05,
+      "n": 32,
+      "nse": 0.44357055327269945,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.16511817797102002,
+      "matched_nse": 0.0001072810232925353,
+      "n": 32,
+      "nse": 0.3524911150262394,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.24187918092533137,
+      "matched_nse": 3.7842599131115984e-06,
+      "n": 32,
+      "nse": 0.2582584690432758,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.0013623020552836855,
+      "matched_nse": 3.990329802179926,
+      "n": 32,
+      "nse": 1.0747659600304806,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.1139605225404173,
+      "matched_nse": 1.2776040840684066e-05,
+      "n": 32,
+      "nse": 0.43880794072047374,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.0022825142391043004,
+      "matched_nse": 0.0001643745352422829,
+      "n": 32,
+      "nse": 0.9067417102633968,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.09692783713809339,
+      "matched_nse": 6.721108985266455e-06,
+      "n": 32,
+      "nse": 0.4742671097117882,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.23728281390352018,
+      "matched_nse": 0.00024111952669818304,
+      "n": 32,
+      "nse": 0.26323246947267165,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.2470096891893827,
+      "matched_nse": 4.313217480837739e-06,
+      "n": 32,
+      "nse": 0.2530123912831942,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.0021715344252764826,
+      "matched_nse": 0.00019045040849339362,
+      "n": 32,
+      "nse": 0.9089837255703968,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.09933631162428963,
+      "matched_nse": 6.589334981106643e-06,
+      "n": 32,
+      "nse": 0.46898699786082676,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 0.15769385376664663,
+      "matched_nse": 8.410739349241914e-05,
+      "n": 32,
+      "nse": 0.3635352620215034,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.4475843938974592,
+      "matched_nse": 8.741492276684304e-06,
+      "n": 32,
+      "nse": 0.10956050206106344,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.16511817797102002,
+      "matched_nse": 0.0001072810232925353,
+      "n": 32,
+      "nse": 0.3524911150262394,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.24187918092533137,
+      "matched_nse": 3.7842599131115984e-06,
+      "n": 32,
+      "nse": 0.2582584690432758,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.16249729604960955,
+      "matched_nse": 8.372887297338621e-05,
+      "n": 32,
+      "nse": 0.3563338243635076,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.4536024111514039,
+      "matched_nse": 8.765167772102622e-06,
+      "n": 32,
+      "nse": 0.1066133519112297,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 0.2399701913904983,
+      "matched_nse": 1.8810340478077336e-05,
+      "n": 32,
+      "nse": 0.260252943463138,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.36487642047065094,
+      "matched_nse": 6.5310599873386055e-06,
+      "n": 32,
+      "nse": 0.15678387098811342,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.23728281390352018,
+      "matched_nse": 0.00024111952669818304,
+      "n": 32,
+      "nse": 0.26323246947267165,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.2470096891893827,
+      "matched_nse": 4.313217480837739e-06,
+      "n": 32,
+      "nse": 0.2530123912831942,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.24600468663931052,
+      "matched_nse": 1.8351660766829925e-05,
+      "n": 32,
+      "nse": 0.25404508540313653,
+      "teacher_shift_nse": 8.550278833660235e-06
+    },
+    "R121_HOLDOUT_2/k2/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.3715377749778831,
+      "matched_nse": 6.477986601138852e-06,
+      "n": 32,
+      "nse": 0.15246729035095602,
+      "teacher_shift_nse": 0.0007696894402813418
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 0.11657277022574794,
+      "matched_nse": 6.109273891756473e-05,
+      "n": 32,
+      "nse": 0.4337541665730902,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.4434586926249137,
+      "matched_nse": 8.234431620575411e-06,
+      "n": 32,
+      "nse": 0.11161519813314531,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.4776050978697524,
+      "matched_nse": 3.4939710714783356e-05,
+      "n": 32,
+      "nse": 0.09546309621945911,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.7872949177360578,
+      "matched_nse": 5.923507920023441e-06,
+      "n": 32,
+      "nse": 0.012712072263060484,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.12051215369731166,
+      "matched_nse": 6.049310386428003e-05,
+      "n": 32,
+      "nse": 0.4262516435778062,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.44948099869421476,
+      "matched_nse": 8.250821446613432e-06,
+      "n": 32,
+      "nse": 0.10862459807538229,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 0.1632173922293665,
+      "matched_nse": 1.794346073829417e-05,
+      "n": 32,
+      "nse": 0.3552280155752435,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.35932931018481046,
+      "matched_nse": 6.428776707777251e-06,
+      "n": 32,
+      "nse": 0.16045495554665276,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.3325867928428613,
+      "matched_nse": 0.00010737440296444689,
+      "n": 32,
+      "nse": 0.17927562223740093,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.7219479243666678,
+      "matched_nse": 7.808918635089646e-06,
+      "n": 32,
+      "nse": 0.022610137241369094,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.16801550264132348,
+      "matched_nse": 1.7486309711552128e-05,
+      "n": 32,
+      "nse": 0.34823552718023604,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.3659467635414506,
+      "matched_nse": 6.373666406468692e-06,
+      "n": 32,
+      "nse": 0.15608339848769606,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 0.11657277022574794,
+      "matched_nse": 6.109273891756473e-05,
+      "n": 32,
+      "nse": 0.4337541665730902,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.4434586926249137,
+      "matched_nse": 8.234431620575411e-06,
+      "n": 32,
+      "nse": 0.11161519813314531,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.823370104582094,
+      "matched_nse": 1.123162793519733e-05,
+      "n": 32,
+      "nse": 0.4628225787566542,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.7872949177360578,
+      "matched_nse": 5.923507920023441e-06,
+      "n": 32,
+      "nse": 0.012712072263060484,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.12051215369731166,
+      "matched_nse": 6.049310386428003e-05,
+      "n": 32,
+      "nse": 0.4262516435778062,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.44948099869421476,
+      "matched_nse": 8.250821446613432e-06,
+      "n": 32,
+      "nse": 0.10862459807538229,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 0.1632173922293665,
+      "matched_nse": 1.794346073829417e-05,
+      "n": 32,
+      "nse": 0.3552280155752435,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.35932931018481046,
+      "matched_nse": 6.428776707777251e-06,
+      "n": 32,
+      "nse": 0.16045495554665276,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.9862253651307995,
+      "matched_nse": 2.3770873026664197e-05,
+      "n": 32,
+      "nse": 0.1676039274480346,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.7219479243666678,
+      "matched_nse": 7.808918635089646e-06,
+      "n": 32,
+      "nse": 0.022610137241369094,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.16801550264132348,
+      "matched_nse": 1.7486309711552128e-05,
+      "n": 32,
+      "nse": 0.34823552718023604,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.3659467635414506,
+      "matched_nse": 6.373666406468692e-06,
+      "n": 32,
+      "nse": 0.15608339848769606,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/R114/54007/STATE8/H20": {
+      "energy_ratio": 4.017885422340762e-05,
+      "matched_nse": 3.820016856006516,
+      "n": 32,
+      "nse": 1.011446748875012,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.10775638107447479,
+      "matched_nse": 1.0987957691901973e-05,
+      "n": 32,
+      "nse": 0.45123788936539383,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.05489914739404815,
+      "matched_nse": 0.00011101933087057786,
+      "n": 32,
+      "nse": 0.5863331778275389,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.23318205550930027,
+      "matched_nse": 3.0267645471510063e-06,
+      "n": 32,
+      "nse": 0.2674062914572053,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 4.962125985799571e-05,
+      "matched_nse": 3.8507101994762123,
+      "n": 32,
+      "nse": 1.0129393971160625,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.11026454483877278,
+      "matched_nse": 1.0919935889600052e-05,
+      "n": 32,
+      "nse": 0.44614931848578315,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.0013687494722656392,
+      "matched_nse": 0.0001501807472488459,
+      "n": 32,
+      "nse": 0.9273835152282027,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.0940938583831381,
+      "matched_nse": 6.0929244323632e-06,
+      "n": 32,
+      "nse": 0.48060296765873095,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.06478403135534354,
+      "matched_nse": 0.00033430132306540294,
+      "n": 32,
+      "nse": 0.5558717490617743,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.2312799268660467,
+      "matched_nse": 3.29464392471307e-06,
+      "n": 32,
+      "nse": 0.2694515374279348,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.0013359746964232396,
+      "matched_nse": 0.00016806654231595747,
+      "n": 32,
+      "nse": 0.9282427184207278,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.09659812353783656,
+      "matched_nse": 5.953161975567889e-06,
+      "n": 32,
+      "nse": 0.4749968678383706,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 0.11657277022574794,
+      "matched_nse": 6.109273891756473e-05,
+      "n": 32,
+      "nse": 0.4337541665730902,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.4434586926249137,
+      "matched_nse": 8.234431620575411e-06,
+      "n": 32,
+      "nse": 0.11161519813314531,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.05489914739404815,
+      "matched_nse": 0.00011101933087057786,
+      "n": 32,
+      "nse": 0.5863331778275389,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.23318205550930027,
+      "matched_nse": 3.0267645471510063e-06,
+      "n": 32,
+      "nse": 0.2674062914572053,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.12051215369731166,
+      "matched_nse": 6.049310386428003e-05,
+      "n": 32,
+      "nse": 0.4262516435778062,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.44948099869421476,
+      "matched_nse": 8.250821446613432e-06,
+      "n": 32,
+      "nse": 0.10862459807538229,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 0.1632173922293665,
+      "matched_nse": 1.794346073829417e-05,
+      "n": 32,
+      "nse": 0.3552280155752435,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.35932931018481046,
+      "matched_nse": 6.428776707777251e-06,
+      "n": 32,
+      "nse": 0.16045495554665276,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.06478403135534354,
+      "matched_nse": 0.00033430132306540294,
+      "n": 32,
+      "nse": 0.5558717490617743,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.2312799268660467,
+      "matched_nse": 3.29464392471307e-06,
+      "n": 32,
+      "nse": 0.2694515374279348,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.16801550264132348,
+      "matched_nse": 1.7486309711552128e-05,
+      "n": 32,
+      "nse": 0.34823552718023604,
+      "teacher_shift_nse": 0.018415307940685573
+    },
+    "R121_HOLDOUT_2/k6/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.3659467635414506,
+      "matched_nse": 6.373666406468692e-06,
+      "n": 32,
+      "nse": 0.15608339848769606,
+      "teacher_shift_nse": 0.0012956510798107714
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 1.2404355785328862,
+      "matched_nse": 0.00018137656405549374,
+      "n": 32,
+      "nse": 0.013185538190832813,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.6732307036868588,
+      "matched_nse": 2.307724171369402e-05,
+      "n": 32,
+      "nse": 0.03225144511709499,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.34848247984733,
+      "matched_nse": 0.0009316107533810514,
+      "n": 32,
+      "nse": 0.2850618071628819,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9067388779795951,
+      "matched_nse": 0.00019951727838239675,
+      "n": 32,
+      "nse": 0.0024893425428726902,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.2608830653553724,
+      "matched_nse": 0.00018239305903738207,
+      "n": 32,
+      "nse": 0.015352307585007146,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.6804056576220021,
+      "matched_nse": 2.3367660605781715e-05,
+      "n": 32,
+      "nse": 0.030705641146828735,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 1.241267363224514,
+      "matched_nse": 0.000436377581732289,
+      "n": 32,
+      "nse": 0.01353150819072756,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.5766557600596939,
+      "matched_nse": 3.721519594771655e-05,
+      "n": 32,
+      "nse": 0.0579320694000663,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.099654481992445,
+      "matched_nse": 0.0007626287054249767,
+      "n": 32,
+      "nse": 0.2029027050783624,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.8934134785081225,
+      "matched_nse": 0.00013434670470101329,
+      "n": 32,
+      "nse": 0.003154568297570976,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.2709459534653877,
+      "matched_nse": 0.000438068872564798,
+      "n": 32,
+      "nse": 0.016736348217466016,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.5856282940367621,
+      "matched_nse": 3.796249228119747e-05,
+      "n": 32,
+      "nse": 0.055135405055806094,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 1.2404355785328862,
+      "matched_nse": 0.00018137656405549374,
+      "n": 32,
+      "nse": 0.013185538190832813,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.6732307036868588,
+      "matched_nse": 2.307724171369402e-05,
+      "n": 32,
+      "nse": 0.03225144511709499,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 3.949537152754007,
+      "matched_nse": 0.0013122303039082295,
+      "n": 32,
+      "nse": 0.9776343846430404,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9067388779795951,
+      "matched_nse": 0.00019951727838239675,
+      "n": 32,
+      "nse": 0.0024893425428726902,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.2608830653553724,
+      "matched_nse": 0.00018239305903738207,
+      "n": 32,
+      "nse": 0.015352307585007146,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.6804056576220021,
+      "matched_nse": 2.3367660605781715e-05,
+      "n": 32,
+      "nse": 0.030705641146828735,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 1.241267363224514,
+      "matched_nse": 0.000436377581732289,
+      "n": 32,
+      "nse": 0.01353150819072756,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.5766557600596939,
+      "matched_nse": 3.721519594771655e-05,
+      "n": 32,
+      "nse": 0.0579320694000663,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 3.6107362686883437,
+      "matched_nse": 0.000981945366765713,
+      "n": 32,
+      "nse": 0.8124680346152108,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.8934134785081225,
+      "matched_nse": 0.00013434670470101329,
+      "n": 32,
+      "nse": 0.003154568297570976,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.2709459534653877,
+      "matched_nse": 0.000438068872564798,
+      "n": 32,
+      "nse": 0.016736348217466016,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.5856282940367621,
+      "matched_nse": 3.796249228119747e-05,
+      "n": 32,
+      "nse": 0.055135405055806094,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54007/STATE8/H20": {
+      "energy_ratio": 0.15172640064976894,
+      "matched_nse": 2.4303439415403194e-05,
+      "n": 32,
+      "nse": 0.37269464351218073,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.4210265128074603,
+      "matched_nse": 0.001235563924502997,
+      "n": 32,
+      "nse": 0.12411231459885724,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.0109528304767321,
+      "matched_nse": 0.0011229568052398761,
+      "n": 32,
+      "nse": 0.0012395261547663333,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.3791690547984302,
+      "matched_nse": 5.340545883467801e-05,
+      "n": 32,
+      "nse": 0.1476945880038027,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.15366424065001902,
+      "matched_nse": 2.4834222160187436e-05,
+      "n": 32,
+      "nse": 0.3696736345589955,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.4259411065876806,
+      "matched_nse": 0.0012299557076984671,
+      "n": 32,
+      "nse": 0.1214760853775617,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.14996048204209092,
+      "matched_nse": 0.0001579196818952966,
+      "n": 32,
+      "nse": 0.37552875108808925,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.35150734357741564,
+      "matched_nse": 0.0005225928603338481,
+      "n": 32,
+      "nse": 0.16606065957972405,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.3150244540248792,
+      "matched_nse": 0.0006694910610840141,
+      "n": 32,
+      "nse": 0.02243152165257887,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.4781117746950527,
+      "matched_nse": 0.0001744353380598515,
+      "n": 32,
+      "nse": 0.09535338968607406,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.15156628029895616,
+      "matched_nse": 0.0001578236423458515,
+      "n": 32,
+      "nse": 0.37299907851321656,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.3569648456765257,
+      "matched_nse": 0.000518635615349948,
+      "n": 32,
+      "nse": 0.16234858967628013,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 1.2404355785328862,
+      "matched_nse": 0.00018137656405549374,
+      "n": 32,
+      "nse": 0.013185538190832813,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.6732307036868588,
+      "matched_nse": 2.307724171369402e-05,
+      "n": 32,
+      "nse": 0.03225144511709499,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.0109528304767321,
+      "matched_nse": 0.0011229568052398761,
+      "n": 32,
+      "nse": 0.0012395261547663333,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.3791690547984302,
+      "matched_nse": 5.340545883467801e-05,
+      "n": 32,
+      "nse": 0.1476945880038027,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.2608830653553724,
+      "matched_nse": 0.00018239305903738207,
+      "n": 32,
+      "nse": 0.015352307585007146,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.6804056576220021,
+      "matched_nse": 2.3367660605781715e-05,
+      "n": 32,
+      "nse": 0.030705641146828735,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 1.241267363224514,
+      "matched_nse": 0.000436377581732289,
+      "n": 32,
+      "nse": 0.01353150819072756,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.5766557600596939,
+      "matched_nse": 3.721519594771655e-05,
+      "n": 32,
+      "nse": 0.0579320694000663,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.3150244540248792,
+      "matched_nse": 0.0006694910610840141,
+      "n": 32,
+      "nse": 0.02243152165257887,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.4781117746950527,
+      "matched_nse": 0.0001744353380598515,
+      "n": 32,
+      "nse": 0.09535338968607406,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.2709459534653877,
+      "matched_nse": 0.000438068872564798,
+      "n": 32,
+      "nse": 0.016736348217466016,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k0/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.5856282940367621,
+      "matched_nse": 3.796249228119747e-05,
+      "n": 32,
+      "nse": 0.055135405055806094,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 2.1921107203333134,
+      "matched_nse": 0.00010197345448900025,
+      "n": 32,
+      "nse": 0.23115935158844708,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.6409874939215986,
+      "matched_nse": 1.1054941476393298e-05,
+      "n": 32,
+      "nse": 0.039770034399861556,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.9209300110438146,
+      "matched_nse": 0.00024966361854357466,
+      "n": 32,
+      "nse": 0.503322572073559,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9497748487351866,
+      "matched_nse": 3.048973550952294e-05,
+      "n": 32,
+      "nse": 0.0006850618736874425,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 2.231595514009708,
+      "matched_nse": 0.00010027403347358937,
+      "n": 32,
+      "nse": 0.2440937440285071,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.6485208721454205,
+      "matched_nse": 1.1100155836753223e-05,
+      "n": 32,
+      "nse": 0.03792162281865165,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 1.5992450684819812,
+      "matched_nse": 3.18598116934507e-05,
+      "n": 32,
+      "nse": 0.07007585527730523,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.5051950784868018,
+      "matched_nse": 1.1363925676181885e-05,
+      "n": 32,
+      "nse": 0.08366604667561459,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 3.129142623221774,
+      "matched_nse": 0.0006310490526403728,
+      "n": 32,
+      "nse": 0.5926399200722019,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9254698076524381,
+      "matched_nse": 1.9005907566517488e-05,
+      "n": 32,
+      "nse": 0.0014721890308001875,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.624766566613598,
+      "matched_nse": 3.27046033058373e-05,
+      "n": 32,
+      "nse": 0.07549718948757235,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.513346837855874,
+      "matched_nse": 1.1588092997338872e-05,
+      "n": 32,
+      "nse": 0.08039504195261496,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 2.1921107203333134,
+      "matched_nse": 0.00010197345448900025,
+      "n": 32,
+      "nse": 0.23115935158844708,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.6409874939215986,
+      "matched_nse": 1.1054941476393298e-05,
+      "n": 32,
+      "nse": 0.039770034399861556,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 10.356311455251948,
+      "matched_nse": 0.0002386045948240753,
+      "n": 32,
+      "nse": 4.920894702669175,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9497748487351866,
+      "matched_nse": 3.048973550952294e-05,
+      "n": 32,
+      "nse": 0.0006850618736874425,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 2.231595514009708,
+      "matched_nse": 0.00010027403347358937,
+      "n": 32,
+      "nse": 0.2440937440285071,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.6485208721454205,
+      "matched_nse": 1.1100155836753223e-05,
+      "n": 32,
+      "nse": 0.03792162281865165,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 1.5992450684819812,
+      "matched_nse": 3.18598116934507e-05,
+      "n": 32,
+      "nse": 0.07007585527730523,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.5051950784868018,
+      "matched_nse": 1.1363925676181885e-05,
+      "n": 32,
+      "nse": 0.08366604667561459,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 10.404363929676212,
+      "matched_nse": 0.0002152174245081892,
+      "n": 32,
+      "nse": 4.953984034625656,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9254698076524381,
+      "matched_nse": 1.9005907566517488e-05,
+      "n": 32,
+      "nse": 0.0014721890308001875,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.624766566613598,
+      "matched_nse": 3.27046033058373e-05,
+      "n": 32,
+      "nse": 0.07549718948757235,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.513346837855874,
+      "matched_nse": 1.1588092997338872e-05,
+      "n": 32,
+      "nse": 0.08039504195261496,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/R114/54007/STATE8/H20": {
+      "energy_ratio": 0.07498884667146764,
+      "matched_nse": 0.0010424858659392952,
+      "n": 32,
+      "nse": 0.5276465076265725,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.2373109785238739,
+      "matched_nse": 0.00042607294527794576,
+      "n": 32,
+      "nse": 0.2632342550038226,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.6109825946507772,
+      "matched_nse": 0.0003980620557377107,
+      "n": 32,
+      "nse": 0.04816716811250611,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.2662839740636658,
+      "matched_nse": 3.535935209584423e-05,
+      "n": 32,
+      "nse": 0.23425489086340395,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.075261884135611,
+      "matched_nse": 0.001068571672967658,
+      "n": 32,
+      "nse": 0.5269308022890737,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.24080338404022109,
+      "matched_nse": 0.000421097811212863,
+      "n": 32,
+      "nse": 0.2595828946932176,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.054068571581925254,
+      "matched_nse": 0.00011597078172726621,
+      "n": 32,
+      "nse": 0.5890531543729696,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.16898219156793964,
+      "matched_nse": 0.0001592985198298827,
+      "n": 32,
+      "nse": 0.3469015535401069,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.018056118149585,
+      "matched_nse": 0.0013007048230006743,
+      "n": 32,
+      "nse": 0.0019107455941679242,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.3394745897680036,
+      "matched_nse": 0.00014310208078801429,
+      "n": 32,
+      "nse": 0.17427550484001408,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.05328347286364804,
+      "matched_nse": 0.00011390968280042962,
+      "n": 32,
+      "nse": 0.591655246563496,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.1718254918512543,
+      "matched_nse": 0.00015577934965304435,
+      "n": 32,
+      "nse": 0.34285604307443596,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 2.1921107203333134,
+      "matched_nse": 0.00010197345448900025,
+      "n": 32,
+      "nse": 0.23115935158844708,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.6409874939215986,
+      "matched_nse": 1.1054941476393298e-05,
+      "n": 32,
+      "nse": 0.039770034399861556,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.6109825946507772,
+      "matched_nse": 0.0003980620557377107,
+      "n": 32,
+      "nse": 0.04816716811250611,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.2662839740636658,
+      "matched_nse": 3.535935209584423e-05,
+      "n": 32,
+      "nse": 0.23425489086340395,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 2.231595514009708,
+      "matched_nse": 0.00010027403347358937,
+      "n": 32,
+      "nse": 0.2440937440285071,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.6485208721454205,
+      "matched_nse": 1.1100155836753223e-05,
+      "n": 32,
+      "nse": 0.03792162281865165,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 1.5992450684819812,
+      "matched_nse": 3.18598116934507e-05,
+      "n": 32,
+      "nse": 0.07007585527730523,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.5051950784868018,
+      "matched_nse": 1.1363925676181885e-05,
+      "n": 32,
+      "nse": 0.08366604667561459,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.018056118149585,
+      "matched_nse": 0.0013007048230006743,
+      "n": 32,
+      "nse": 0.0019107455941679242,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.3394745897680036,
+      "matched_nse": 0.00014310208078801429,
+      "n": 32,
+      "nse": 0.17427550484001408,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.624766566613598,
+      "matched_nse": 3.27046033058373e-05,
+      "n": 32,
+      "nse": 0.07549718948757235,
+      "teacher_shift_nse": 0.3952055673667678
+    },
+    "R121_HOLDOUT_3/k2/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.513346837855874,
+      "matched_nse": 1.1588092997338872e-05,
+      "n": 32,
+      "nse": 0.08039504195261496,
+      "teacher_shift_nse": 0.0009341121925397168
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 1.2558747290652947,
+      "matched_nse": 0.0006239591412847204,
+      "n": 32,
+      "nse": 0.015284719363209907,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.5667318647589077,
+      "matched_nse": 1.0292270345178822e-05,
+      "n": 32,
+      "nse": 0.0611132257584243,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.2909807132835398,
+      "matched_nse": 8.648365682714654e-05,
+      "n": 32,
+      "nse": 0.018703958829139222,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9095958095261819,
+      "matched_nse": 9.167503880212757e-06,
+      "n": 32,
+      "nse": 0.002155491923653389,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.2822655412827617,
+      "matched_nse": 0.0006142028073417016,
+      "n": 32,
+      "nse": 0.01824512818175266,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.5741181419684753,
+      "matched_nse": 1.0203332783564889e-05,
+      "n": 32,
+      "nse": 0.058719767566415566,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 0.8160790860288578,
+      "matched_nse": 8.29332972300742e-05,
+      "n": 32,
+      "nse": 0.009428093952034405,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.4255610091570196,
+      "matched_nse": 6.928492866910274e-06,
+      "n": 32,
+      "nse": 0.12086891052037155,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.4172957725611968,
+      "matched_nse": 0.00044030386518222053,
+      "n": 32,
+      "nse": 0.036939519411366195,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.880761311434992,
+      "matched_nse": 8.06546126507629e-06,
+      "n": 32,
+      "nse": 0.003797954325256402,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.8285081081294747,
+      "matched_nse": 7.93141695503638e-05,
+      "n": 32,
+      "nse": 0.008147832640265128,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.4330022115474632,
+      "matched_nse": 6.914879451404288e-06,
+      "n": 32,
+      "nse": 0.11695282158826006,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 1.2558747290652947,
+      "matched_nse": 0.0006239591412847204,
+      "n": 32,
+      "nse": 0.015284719363209907,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.5667318647589077,
+      "matched_nse": 1.0292270345178822e-05,
+      "n": 32,
+      "nse": 0.0611132257584243,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 8.48758705222491,
+      "matched_nse": 3.2098505891399454e-05,
+      "n": 32,
+      "nse": 3.6610188128071046,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9095958095261819,
+      "matched_nse": 9.167503880212757e-06,
+      "n": 32,
+      "nse": 0.002155491923653389,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.2822655412827617,
+      "matched_nse": 0.0006142028073417016,
+      "n": 32,
+      "nse": 0.01824512818175266,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.5741181419684753,
+      "matched_nse": 1.0203332783564889e-05,
+      "n": 32,
+      "nse": 0.058719767566415566,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 0.8160790860288578,
+      "matched_nse": 8.29332972300742e-05,
+      "n": 32,
+      "nse": 0.009428093952034405,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.4255610091570196,
+      "matched_nse": 6.928492866910274e-06,
+      "n": 32,
+      "nse": 0.12086891052037155,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 7.9578078668798415,
+      "matched_nse": 9.345192163361105e-05,
+      "n": 32,
+      "nse": 3.316195272772827,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.880761311434992,
+      "matched_nse": 8.06546126507629e-06,
+      "n": 32,
+      "nse": 0.003797954325256402,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.8285081081294747,
+      "matched_nse": 7.93141695503638e-05,
+      "n": 32,
+      "nse": 0.008147832640265128,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.4330022115474632,
+      "matched_nse": 6.914879451404288e-06,
+      "n": 32,
+      "nse": 0.11695282158826006,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/R114/54007/STATE8/H20": {
+      "energy_ratio": 0.027864209070683547,
+      "matched_nse": 0.004451230732241039,
+      "n": 32,
+      "nse": 0.6947638862615871,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.1457920283077527,
+      "matched_nse": 0.00031685063849545836,
+      "n": 32,
+      "nse": 0.3822625997350733,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.18355574201329888,
+      "matched_nse": 0.000348300140396135,
+      "n": 32,
+      "nse": 0.3269023327279531,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.19606712516425834,
+      "matched_nse": 2.522593489053676e-05,
+      "n": 32,
+      "nse": 0.31049191511672797,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.027950861899820056,
+      "matched_nse": 0.004504728833854159,
+      "n": 32,
+      "nse": 0.6943424262420174,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.14864077911611895,
+      "matched_nse": 0.00031077685422788853,
+      "n": 32,
+      "nse": 0.3776854769638683,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.015690701497984457,
+      "matched_nse": 0.0009697893336540475,
+      "n": 32,
+      "nse": 0.7652903650995827,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.0955249068064028,
+      "matched_nse": 0.00010825507798448847,
+      "n": 32,
+      "nse": 0.4774191632084229,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.31640556658240404,
+      "matched_nse": 0.0010066935991386444,
+      "n": 32,
+      "nse": 0.19216087480660332,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.23586532246621275,
+      "matched_nse": 0.00010838767095373847,
+      "n": 32,
+      "nse": 0.2646012181622571,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.015392676837210123,
+      "matched_nse": 0.0009645803589028168,
+      "n": 32,
+      "nse": 0.7673811454436746,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.09756521171783461,
+      "matched_nse": 0.00010485358659702987,
+      "n": 32,
+      "nse": 0.4728922182915319,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 1.2558747290652947,
+      "matched_nse": 0.0006239591412847204,
+      "n": 32,
+      "nse": 0.015284719363209907,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.5667318647589077,
+      "matched_nse": 1.0292270345178822e-05,
+      "n": 32,
+      "nse": 0.0611132257584243,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.18355574201329888,
+      "matched_nse": 0.000348300140396135,
+      "n": 32,
+      "nse": 0.3269023327279531,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.19606712516425834,
+      "matched_nse": 2.522593489053676e-05,
+      "n": 32,
+      "nse": 0.31049191511672797,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.2822655412827617,
+      "matched_nse": 0.0006142028073417016,
+      "n": 32,
+      "nse": 0.01824512818175266,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.5741181419684753,
+      "matched_nse": 1.0203332783564889e-05,
+      "n": 32,
+      "nse": 0.058719767566415566,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 0.8160790860288578,
+      "matched_nse": 8.29332972300742e-05,
+      "n": 32,
+      "nse": 0.009428093952034405,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.4255610091570196,
+      "matched_nse": 6.928492866910274e-06,
+      "n": 32,
+      "nse": 0.12086891052037155,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.31640556658240404,
+      "matched_nse": 0.0010066935991386444,
+      "n": 32,
+      "nse": 0.19216087480660332,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.23586532246621275,
+      "matched_nse": 0.00010838767095373847,
+      "n": 32,
+      "nse": 0.2646012181622571,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.8285081081294747,
+      "matched_nse": 7.93141695503638e-05,
+      "n": 32,
+      "nse": 0.008147832640265128,
+      "teacher_shift_nse": 0.48200111100466825
+    },
+    "R121_HOLDOUT_3/k6/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.4330022115474632,
+      "matched_nse": 6.914879451404288e-06,
+      "n": 32,
+      "nse": 0.11695282158826006,
+      "teacher_shift_nse": 0.00036446780074246603
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 1.7423101956866693,
+      "matched_nse": 0.0014383721168481148,
+      "n": 32,
+      "nse": 0.10432921777976861,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.7594220650286256,
+      "matched_nse": 0.00015875572019231898,
+      "n": 32,
+      "nse": 0.0166807418901384,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 3.6015033956680202,
+      "matched_nse": 0.002364859030692938,
+      "n": 32,
+      "nse": 0.8105830328284617,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.1242493646751595,
+      "matched_nse": 0.0005763164335515769,
+      "n": 32,
+      "nse": 0.004264311248944048,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.7730115783505247,
+      "matched_nse": 0.0014423730435017337,
+      "n": 32,
+      "nse": 0.11189561165698961,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.7677883890988073,
+      "matched_nse": 0.0001602900370142185,
+      "n": 32,
+      "nse": 0.015475300917764521,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 2.0813489165188512,
+      "matched_nse": 0.0017894611163457863,
+      "n": 32,
+      "nse": 0.19857627235064473,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.7016335127038162,
+      "matched_nse": 0.0002394362956772561,
+      "n": 32,
+      "nse": 0.026567395776109982,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 2.9128169819774556,
+      "matched_nse": 0.0021395416171118356,
+      "n": 32,
+      "nse": 0.5032909326775209,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.0036940405850743,
+      "matched_nse": 0.00043316348189191556,
+      "n": 32,
+      "nse": 0.0004656709640635905,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 2.1384805750119362,
+      "matched_nse": 0.0017942416463526123,
+      "n": 32,
+      "nse": 0.2164170250069816,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.7134376938667394,
+      "matched_nse": 0.0002417794162299508,
+      "n": 32,
+      "nse": 0.02434176913483818,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 1.7423101956866693,
+      "matched_nse": 0.0014383721168481148,
+      "n": 32,
+      "nse": 0.10432921777976861,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.7594220650286256,
+      "matched_nse": 0.00015875572019231898,
+      "n": 32,
+      "nse": 0.0166807418901384,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 6.107876138100162,
+      "matched_nse": 0.002479917069564852,
+      "n": 32,
+      "nse": 2.171373970680338,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.1242493646751595,
+      "matched_nse": 0.0005763164335515769,
+      "n": 32,
+      "nse": 0.004264311248944048,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.7730115783505247,
+      "matched_nse": 0.0014423730435017337,
+      "n": 32,
+      "nse": 0.11189561165698961,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.7677883890988073,
+      "matched_nse": 0.0001602900370142185,
+      "n": 32,
+      "nse": 0.015475300917764521,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 2.0813489165188512,
+      "matched_nse": 0.0017894611163457863,
+      "n": 32,
+      "nse": 0.19857627235064473,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.7016335127038162,
+      "matched_nse": 0.0002394362956772561,
+      "n": 32,
+      "nse": 0.026567395776109982,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 5.052880367669059,
+      "matched_nse": 0.002194694224752075,
+      "n": 32,
+      "nse": 1.5623883159233454,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.0036940405850743,
+      "matched_nse": 0.00043316348189191556,
+      "n": 32,
+      "nse": 0.0004656709640635905,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 2.1384805750119362,
+      "matched_nse": 0.0017942416463526123,
+      "n": 32,
+      "nse": 0.2164170250069816,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.7134376938667394,
+      "matched_nse": 0.0002417794162299508,
+      "n": 32,
+      "nse": 0.02434176913483818,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54007/STATE8/H20": {
+      "energy_ratio": 0.14681377099235035,
+      "matched_nse": 0.0007648451763311026,
+      "n": 32,
+      "nse": 0.380781216336725,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.44601314866371733,
+      "matched_nse": 0.00033408297617579935,
+      "n": 32,
+      "nse": 0.11057063865342609,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.4852478179755695,
+      "matched_nse": 0.001985384317409543,
+      "n": 32,
+      "nse": 0.05035384632797599,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.4746991018487957,
+      "matched_nse": 8.57933533458255e-05,
+      "n": 32,
+      "nse": 0.0968212709534345,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.1488514119029855,
+      "matched_nse": 0.0007653511871112961,
+      "n": 32,
+      "nse": 0.3775214944116256,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.4518254120703318,
+      "matched_nse": 0.00033267435921596755,
+      "n": 32,
+      "nse": 0.10770890987520693,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.25771589469362577,
+      "matched_nse": 0.0016496991645348555,
+      "n": 32,
+      "nse": 0.24324122494507225,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.4669719232240379,
+      "matched_nse": 0.00014905282548317161,
+      "n": 32,
+      "nse": 0.10037211823799343,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.5452622984165174,
+      "matched_nse": 0.001624020981498192,
+      "n": 32,
+      "nse": 0.061285680075271576,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.47260050451868485,
+      "matched_nse": 0.00023211710617291464,
+      "n": 32,
+      "nse": 0.09788707954379058,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.2623631651441467,
+      "matched_nse": 0.0016542802244739127,
+      "n": 32,
+      "nse": 0.23878483588477994,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.4750544720730092,
+      "matched_nse": 0.00014761454400984142,
+      "n": 32,
+      "nse": 0.09667754123258751,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 1.7423101956866693,
+      "matched_nse": 0.0014383721168481148,
+      "n": 32,
+      "nse": 0.10432921777976861,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.7594220650286256,
+      "matched_nse": 0.00015875572019231898,
+      "n": 32,
+      "nse": 0.0166807418901384,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.4852478179755695,
+      "matched_nse": 0.001985384317409543,
+      "n": 32,
+      "nse": 0.05035384632797599,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.4746991018487957,
+      "matched_nse": 8.57933533458255e-05,
+      "n": 32,
+      "nse": 0.0968212709534345,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 1.7730115783505247,
+      "matched_nse": 0.0014423730435017337,
+      "n": 32,
+      "nse": 0.11189561165698961,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.7677883890988073,
+      "matched_nse": 0.0001602900370142185,
+      "n": 32,
+      "nse": 0.015475300917764521,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 2.0813489165188512,
+      "matched_nse": 0.0017894611163457863,
+      "n": 32,
+      "nse": 0.19857627235064473,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.7016335127038162,
+      "matched_nse": 0.0002394362956772561,
+      "n": 32,
+      "nse": 0.026567395776109982,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.5452622984165174,
+      "matched_nse": 0.001624020981498192,
+      "n": 32,
+      "nse": 0.061285680075271576,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.47260050451868485,
+      "matched_nse": 0.00023211710617291464,
+      "n": 32,
+      "nse": 0.09788707954379058,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 2.1384805750119362,
+      "matched_nse": 0.0017942416463526123,
+      "n": 32,
+      "nse": 0.2164170250069816,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k0/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.7134376938667394,
+      "matched_nse": 0.0002417794162299508,
+      "n": 32,
+      "nse": 0.02434176913483818,
+      "teacher_shift_nse": 0.0
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 2.274209409824443,
+      "matched_nse": 0.0014149753162348774,
+      "n": 32,
+      "nse": 0.26031839230234277,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.7718248229550415,
+      "matched_nse": 0.00011786036362943647,
+      "n": 32,
+      "nse": 0.014868306792915922,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 4.590177609154133,
+      "matched_nse": 0.00207470151091161,
+      "n": 32,
+      "nse": 1.3097551329994106,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.1798215168386286,
+      "matched_nse": 0.0005478843036812661,
+      "n": 32,
+      "nse": 0.008034918468473248,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 2.318050512550969,
+      "matched_nse": 0.0014150194669351746,
+      "n": 32,
+      "nse": 0.2752477266719373,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.7807126756077426,
+      "matched_nse": 0.00011870138792200585,
+      "n": 32,
+      "nse": 0.013669972317466913,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 2.177726171912416,
+      "matched_nse": 0.0015324792873561907,
+      "n": 32,
+      "nse": 0.22860460607285288,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.6598507047021254,
+      "matched_nse": 0.00020611351147457185,
+      "n": 32,
+      "nse": 0.03539856105335519,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 4.105815081303482,
+      "matched_nse": 0.001978298384183348,
+      "n": 32,
+      "nse": 1.0573903401468443,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.0817396408857456,
+      "matched_nse": 0.00039497844125969267,
+      "n": 32,
+      "nse": 0.0020320376830309486,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 2.228573888351459,
+      "matched_nse": 0.0015319203103476217,
+      "n": 32,
+      "nse": 0.2452196058036744,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.6707581247047469,
+      "matched_nse": 0.00020793484744940222,
+      "n": 32,
+      "nse": 0.032936280876646684,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 2.274209409824443,
+      "matched_nse": 0.0014149753162348774,
+      "n": 32,
+      "nse": 0.26031839230234277,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.7718248229550415,
+      "matched_nse": 0.00011786036362943647,
+      "n": 32,
+      "nse": 0.014868306792915922,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 10.346237736105401,
+      "matched_nse": 0.0021548615874978777,
+      "n": 32,
+      "nse": 4.920211059973276,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.1798215168386286,
+      "matched_nse": 0.0005478843036812661,
+      "n": 32,
+      "nse": 0.008034918468473248,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 2.318050512550969,
+      "matched_nse": 0.0014150194669351746,
+      "n": 32,
+      "nse": 0.2752477266719373,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.7807126756077426,
+      "matched_nse": 0.00011870138792200585,
+      "n": 32,
+      "nse": 0.013669972317466913,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 2.177726171912416,
+      "matched_nse": 0.0015324792873561907,
+      "n": 32,
+      "nse": 0.22860460607285288,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.6598507047021254,
+      "matched_nse": 0.00020611351147457185,
+      "n": 32,
+      "nse": 0.03539856105335519,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 9.133415758903872,
+      "matched_nse": 0.0020011345697650215,
+      "n": 32,
+      "nse": 4.0953788613807705,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 1.0817396408857456,
+      "matched_nse": 0.00039497844125969267,
+      "n": 32,
+      "nse": 0.0020320376830309486,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 2.228573888351459,
+      "matched_nse": 0.0015319203103476217,
+      "n": 32,
+      "nse": 0.2452196058036744,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.6707581247047469,
+      "matched_nse": 0.00020793484744940222,
+      "n": 32,
+      "nse": 0.032936280876646684,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/R114/54007/STATE8/H20": {
+      "energy_ratio": 0.09713082787021335,
+      "matched_nse": 0.0011490134212451958,
+      "n": 32,
+      "nse": 0.4741850635853797,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.3795344840173177,
+      "matched_nse": 0.0006134411843714965,
+      "n": 32,
+      "nse": 0.14779675662708133,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.3581129820801832,
+      "matched_nse": 0.0017928489724935576,
+      "n": 32,
+      "nse": 0.02949551276761764,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.4476721764524918,
+      "matched_nse": 0.00020197722129906837,
+      "n": 32,
+      "nse": 0.10965635310919612,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.09786783751963847,
+      "matched_nse": 0.0011478454158337509,
+      "n": 32,
+      "nse": 0.47256246935744284,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.3849882894697161,
+      "matched_nse": 0.0006131996077030147,
+      "n": 32,
+      "nse": 0.14443226964776495,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.11552689651699377,
+      "matched_nse": 0.0015461873694534653,
+      "n": 32,
+      "nse": 0.4362743644872793,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.3351111222872962,
+      "matched_nse": 0.00042961397980641886,
+      "n": 32,
+      "nse": 0.17759024241516008,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.80640284840315,
+      "matched_nse": 0.0016391295253148364,
+      "n": 32,
+      "nse": 0.12065865126253947,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.5076554445940353,
+      "matched_nse": 0.00036241162865766063,
+      "n": 32,
+      "nse": 0.08293004117889338,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.11549326538966673,
+      "matched_nse": 0.0015465600944544536,
+      "n": 32,
+      "nse": 0.4363393127962147,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.3409291045161139,
+      "matched_nse": 0.00042869739678721985,
+      "n": 32,
+      "nse": 0.1734028834278983,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 2.274209409824443,
+      "matched_nse": 0.0014149753162348774,
+      "n": 32,
+      "nse": 0.26031839230234277,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.7718248229550415,
+      "matched_nse": 0.00011786036362943647,
+      "n": 32,
+      "nse": 0.014868306792915922,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.3581129820801832,
+      "matched_nse": 0.0017928489724935576,
+      "n": 32,
+      "nse": 0.02949551276761764,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.4476721764524918,
+      "matched_nse": 0.00020197722129906837,
+      "n": 32,
+      "nse": 0.10965635310919612,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 2.318050512550969,
+      "matched_nse": 0.0014150194669351746,
+      "n": 32,
+      "nse": 0.2752477266719373,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.7807126756077426,
+      "matched_nse": 0.00011870138792200585,
+      "n": 32,
+      "nse": 0.013669972317466913,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 2.177726171912416,
+      "matched_nse": 0.0015324792873561907,
+      "n": 32,
+      "nse": 0.22860460607285288,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.6598507047021254,
+      "matched_nse": 0.00020611351147457185,
+      "n": 32,
+      "nse": 0.03539856105335519,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.80640284840315,
+      "matched_nse": 0.0016391295253148364,
+      "n": 32,
+      "nse": 0.12065865126253947,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.5076554445940353,
+      "matched_nse": 0.00036241162865766063,
+      "n": 32,
+      "nse": 0.08293004117889338,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 2.228573888351459,
+      "matched_nse": 0.0015319203103476217,
+      "n": 32,
+      "nse": 0.2452196058036744,
+      "teacher_shift_nse": 0.14507692749013715
+    },
+    "R121_HOLDOUT_4/k2/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.6707581247047469,
+      "matched_nse": 0.00020793484744940222,
+      "n": 32,
+      "nse": 0.032936280876646684,
+      "teacher_shift_nse": 0.0013764495117201223
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54007/STATE8/H20": {
+      "energy_ratio": 2.969259244426622,
+      "matched_nse": 0.00018990824997856814,
+      "n": 32,
+      "nse": 0.5233440477391126,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54007/STATE8/H8": {
+      "energy_ratio": 0.5485079880153215,
+      "matched_nse": 3.965786788060616e-05,
+      "n": 32,
+      "nse": 0.06731707614706761,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 3.397337689110304,
+      "matched_nse": 0.00024215965662855582,
+      "n": 32,
+      "nse": 0.7117618570269356,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9485294062724121,
+      "matched_nse": 6.558064975986655e-06,
+      "n": 32,
+      "nse": 0.0006918358205775728,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54007/STATE8_TF1/H20": {
+      "energy_ratio": 3.0224802602390475,
+      "matched_nse": 0.0001872803890343791,
+      "n": 32,
+      "nse": 0.5458152052207834,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.5555362234035364,
+      "matched_nse": 3.8703683133647915e-05,
+      "n": 32,
+      "nse": 0.06488530731737335,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54031/STATE8/H20": {
+      "energy_ratio": 1.8530038525957666,
+      "matched_nse": 2.1050475251457867e-05,
+      "n": 32,
+      "nse": 0.13054783519555924,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54031/STATE8/H8": {
+      "energy_ratio": 0.4137391831976305,
+      "matched_nse": 1.2958829283989115e-05,
+      "n": 32,
+      "nse": 0.1273006172488446,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 3.9759617543736665,
+      "matched_nse": 0.0008750817768037045,
+      "n": 32,
+      "nse": 0.9907413126707754,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.8656833749740753,
+      "matched_nse": 1.7055467709296834e-05,
+      "n": 32,
+      "nse": 0.004864341211194557,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.8765870261460784,
+      "matched_nse": 2.0789734545445526e-05,
+      "n": 32,
+      "nse": 0.1368609341974223,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/DELAYED8/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.42093687344011077,
+      "matched_nse": 1.2351160773839409e-05,
+      "n": 32,
+      "nse": 0.12335625314912899,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54007/STATE8/H20": {
+      "energy_ratio": 2.969259244426622,
+      "matched_nse": 0.00018990824997856814,
+      "n": 32,
+      "nse": 0.5233440477391126,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54007/STATE8/H8": {
+      "energy_ratio": 0.5485079880153215,
+      "matched_nse": 3.965786788060616e-05,
+      "n": 32,
+      "nse": 0.06731707614706761,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 16.925735047998643,
+      "matched_nse": 0.0001420329242609597,
+      "n": 32,
+      "nse": 9.69818008365278,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.9485294062724121,
+      "matched_nse": 6.558064975986655e-06,
+      "n": 32,
+      "nse": 0.0006918358205775728,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54007/STATE8_TF1/H20": {
+      "energy_ratio": 3.0224802602390475,
+      "matched_nse": 0.0001872803890343791,
+      "n": 32,
+      "nse": 0.5458152052207834,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.5555362234035364,
+      "matched_nse": 3.8703683133647915e-05,
+      "n": 32,
+      "nse": 0.06488530731737335,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54031/STATE8/H20": {
+      "energy_ratio": 1.8530038525957666,
+      "matched_nse": 2.1050475251457867e-05,
+      "n": 32,
+      "nse": 0.13054783519555924,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54031/STATE8/H8": {
+      "energy_ratio": 0.4137391831976305,
+      "matched_nse": 1.2958829283989115e-05,
+      "n": 32,
+      "nse": 0.1273006172488446,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 17.064637051588374,
+      "matched_nse": 0.00022963656352963796,
+      "n": 32,
+      "nse": 9.80390092687596,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.8656833749740753,
+      "matched_nse": 1.7055467709296834e-05,
+      "n": 32,
+      "nse": 0.004864341211194557,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.8765870261460784,
+      "matched_nse": 2.0789734545445526e-05,
+      "n": 32,
+      "nse": 0.1368609341974223,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/NATIVE/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.42093687344011077,
+      "matched_nse": 1.2351160773839409e-05,
+      "n": 32,
+      "nse": 0.12335625314912899,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/R114/54007/STATE8/H20": {
+      "energy_ratio": 0.08366209110018041,
+      "matched_nse": 0.0006724849219724716,
+      "n": 32,
+      "nse": 0.5053873023038808,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/R114/54007/STATE8/H8": {
+      "energy_ratio": 0.15162051770702428,
+      "matched_nse": 0.0010327791622974855,
+      "n": 32,
+      "nse": 0.373258031387416,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/R114/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.6248749280780176,
+      "matched_nse": 0.0004692783490892194,
+      "n": 32,
+      "nse": 0.04459240935452571,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/R114/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.2112464801945396,
+      "matched_nse": 0.00020111494451401785,
+      "n": 32,
+      "nse": 0.2921112175633711,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/R114/54007/STATE8_TF1/H20": {
+      "energy_ratio": 0.08379188632045337,
+      "matched_nse": 0.0006720689760344178,
+      "n": 32,
+      "nse": 0.5050676127958744,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/R114/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.15413758649995923,
+      "matched_nse": 0.0010208378499811932,
+      "n": 32,
+      "nse": 0.3693361566820383,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/R114/54031/STATE8/H20": {
+      "energy_ratio": 0.04585766262321579,
+      "matched_nse": 0.0001878463889783688,
+      "n": 32,
+      "nse": 0.6176182326184427,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/R114/54031/STATE8/H8": {
+      "energy_ratio": 0.0995581334137563,
+      "matched_nse": 0.0005623808561955532,
+      "n": 32,
+      "nse": 0.468681617292654,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/R114/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.0869526485210639,
+      "matched_nse": 0.001670773473458148,
+      "n": 32,
+      "nse": 0.004714112786379043,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/R114/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.24763231417854858,
+      "matched_nse": 0.0005942115386207633,
+      "n": 32,
+      "nse": 0.2526783886365883,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/R114/54031/STATE8_TF1/H20": {
+      "energy_ratio": 0.04493063985233636,
+      "matched_nse": 0.0001719175432676745,
+      "n": 32,
+      "nse": 0.6210374501479261,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/R114/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.1013751687695693,
+      "matched_nse": 0.0005513025528311108,
+      "n": 32,
+      "nse": 0.4647640738622719,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54007/STATE8/H20": {
+      "energy_ratio": 2.969259244426622,
+      "matched_nse": 0.00018990824997856814,
+      "n": 32,
+      "nse": 0.5233440477391126,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54007/STATE8/H8": {
+      "energy_ratio": 0.5485079880153215,
+      "matched_nse": 3.965786788060616e-05,
+      "n": 32,
+      "nse": 0.06731707614706761,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54007/STATE8_SIGNED8/H20": {
+      "energy_ratio": 0.6248749280780176,
+      "matched_nse": 0.0004692783490892194,
+      "n": 32,
+      "nse": 0.04459240935452571,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54007/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.2112464801945396,
+      "matched_nse": 0.00020111494451401785,
+      "n": 32,
+      "nse": 0.2921112175633711,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54007/STATE8_TF1/H20": {
+      "energy_ratio": 3.0224802602390475,
+      "matched_nse": 0.0001872803890343791,
+      "n": 32,
+      "nse": 0.5458152052207834,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54007/STATE8_TF1/H8": {
+      "energy_ratio": 0.5555362234035364,
+      "matched_nse": 3.8703683133647915e-05,
+      "n": 32,
+      "nse": 0.06488530731737335,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54031/STATE8/H20": {
+      "energy_ratio": 1.8530038525957666,
+      "matched_nse": 2.1050475251457867e-05,
+      "n": 32,
+      "nse": 0.13054783519555924,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54031/STATE8/H8": {
+      "energy_ratio": 0.4137391831976305,
+      "matched_nse": 1.2958829283989115e-05,
+      "n": 32,
+      "nse": 0.1273006172488446,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54031/STATE8_SIGNED8/H20": {
+      "energy_ratio": 1.0869526485210639,
+      "matched_nse": 0.001670773473458148,
+      "n": 32,
+      "nse": 0.004714112786379043,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54031/STATE8_SIGNED8/H8": {
+      "energy_ratio": 0.24763231417854858,
+      "matched_nse": 0.0005942115386207633,
+      "n": 32,
+      "nse": 0.2526783886365883,
+      "teacher_shift_nse": 0.0054322448825580814
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54031/STATE8_TF1/H20": {
+      "energy_ratio": 1.8765870261460784,
+      "matched_nse": 2.0789734545445526e-05,
+      "n": 32,
+      "nse": 0.1368609341974223,
+      "teacher_shift_nse": 0.5414899519429542
+    },
+    "R121_HOLDOUT_4/k6/SIGNED_ONLY/54031/STATE8_TF1/H8": {
+      "energy_ratio": 0.42093687344011077,
+      "matched_nse": 1.2351160773839409e-05,
+      "n": 32,
+      "nse": 0.12335625314912899,
+      "teacher_shift_nse": 0.0054322448825580814
+    }
+  },
+  "by_graph_delayed_h20": {
+    "0": {
+      "R121_HOLDOUT_1": 0.4276676028895881,
+      "R121_HOLDOUT_2": 0.3392152641891231,
+      "R121_HOLDOUT_3": 0.09112836907087964,
+      "R121_HOLDOUT_4": 0.32418201538339453
+    },
+    "2": {
+      "R121_HOLDOUT_1": 0.8623753622586806,
+      "R121_HOLDOUT_2": 0.20710112631730693,
+      "R121_HOLDOUT_3": 0.28613143875459884,
+      "R121_HOLDOUT_4": 0.5627559673328437
+    },
+    "6": {
+      "R121_HOLDOUT_1": 0.07364130034290191,
+      "R121_HOLDOUT_2": 0.3063680118938727,
+      "R121_HOLDOUT_3": 0.01779154206296125,
+      "R121_HOLDOUT_4": 0.5065118653417647
+    }
+  },
+  "decisions": {
+    "delayed8_temporal_policy": "PASS_BOUNDED",
+    "r120_transfer_on_unseen_topology": "PASS_BOUNDED"
+  },
+  "delayed_vs_native_h8_bit_mismatches": 0,
+  "early_identity": true,
+  "elapsed_seconds": 300.46,
+  "eval_seeds": [
+    121101,
+    121103,
+    121107,
+    121109
+  ],
+  "frozen_checkpoint_pins_unchanged": true,
+  "phase": "R121",
+  "policy_sha256": "e0d42c6476a394a82c363c9dae3d0424d7b768e3f31fa1302edfd17abae0b74a",
+  "protocol_sha256": "76763e2a71fc6f361bc94db8b2b1b16dee8b93eb083f1eb3924d7f797d741b12",
+  "qualify_source_sha256": "e76485f0b114a54d5784267436c5b75bb2b7bb5484dc5de3334e6b811c613e19",
+  "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+  "schema": "elpis.ym_hca.r121.v1",
+  "signatures": {
+    "R121_HOLDOUT_1": [
+      0,
+      0,
+      1,
+      2,
+      1,
+      2,
+      0,
+      0,
+      2,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0
+    ],
+    "R121_HOLDOUT_2": [
+      0,
+      0,
+      1,
+      1,
+      1,
+      2,
+      0,
+      1,
+      3,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "R121_HOLDOUT_3": [
+      0,
+      1,
+      1,
+      0,
+      1,
+      1,
+      2,
+      0,
+      2,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "R121_HOLDOUT_4": [
+      0,
+      1,
+      1,
+      1,
+      2,
+      0,
+      1,
+      0,
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ]
+  },
+  "source_commit_parent": "e2447ae427e5e4fb8196e396e152d52d2e9c1ca3",
+  "structure_seed": 121300,
+  "teacher_k0_parity_max_abs": 0.0,
+  "temporal": {
+    "0": {
+      "delta_native": 0.43772848779222484,
+      "delta_signed_only": -0.19276156259564198,
+      "max_graph_harm_vs_native": -0.21702298450283447,
+      "pass": true
+    },
+    "2": {
+      "delta_native": 1.1841220810092037,
+      "delta_signed_only": -0.26128599131817576,
+      "max_graph_harm_vs_native": -0.2698400789580548,
+      "pass": true
+    },
+    "6": {
+      "delta_native": 1.4912122418224305,
+      "delta_signed_only": -0.016247444571891367,
+      "max_graph_harm_vs_native": -0.059281297957971435,
+      "pass": true
+    }
+  },
+  "transfer": {
+    "0": {
+      "delta_native": 0.6304900503878669,
+      "delta_r114": 0.2632492408837961,
+      "pass": true
+    },
+    "2": {
+      "delta_native": 1.4454080723273794,
+      "delta_r114": 0.2516911574157038,
+      "pass": true
+    },
+    "6": {
+      "delta_native": 1.5074596863943217,
+      "delta_r114": 0.3818885258038167,
+      "pass": true
+    }
+  }
+}

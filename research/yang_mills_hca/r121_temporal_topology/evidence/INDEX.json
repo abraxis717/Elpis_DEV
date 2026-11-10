@@ -1,0 +1,13 @@
+{
+  "evaluation_only": true,
+  "gate": {
+    "delayed8_temporal_policy": "PASS_BOUNDED",
+    "r120_transfer_on_unseen_topology": "PASS_BOUNDED"
+  },
+  "preregistration_commit": "10710f2f48461cf76041df60ad5fe33b42a13cc8",
+  "protocol_sha256": "76763e2a71fc6f361bc94db8b2b1b16dee8b93eb083f1eb3924d7f797d741b12",
+  "qualify_sha256": "e76485f0b114a54d5784267436c5b75bb2b7bb5484dc5de3334e6b811c613e19",
+  "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+  "result_sha256": "a1bdf2e837325b09264012f9a9f3dcfecc727319d61b728b499236b1005d53c5",
+  "schema": "elpis.ym_hca.r121.evidence_index.v1"
+}
