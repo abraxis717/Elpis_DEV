@@ -1,0 +1,17 @@
+{
+ "component_digest": "4f3d407f4280641074264eca91cbbc6420b63e10f0d319a1eb651b1fa3db1f4f",
+ "disposition": "MECHANISM_LOCALIZED_BOUNDED",
+ "evidence_bytes": 2360189,
+ "evidence_within_budget": true,
+ "files_sha256": {
+  "R122_RESULT.json": "12f2d949af0b9ed59e47b527327acec9ffa2af56c1ba636020b8fd08f9ea2246",
+  "R122_TABLES.json": "141df8895437d99e2cfafa181258c48dd4101663c63f9a940cdd284d6a598cf3"
+ },
+ "mode": "REGISTERED_PROSPECTIVE",
+ "phase": "R122",
+ "protocol_sha256": "fe9ec864901d3e027798536576248ede9fe2bb8243fbee146d4edd5ba4bee31d",
+ "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+ "raw_tensor_sha256": "ac290017c4dd1fec53393be9bf74e0541cee931b7f5e256ec9a532f788184c9d",
+ "schema": "elpis.ym_hca.r122.evidence_index.v1",
+ "source_commit": "e7e1db29e0f75eb5eda9b3ad6a0615e2e8cb663a"
+}

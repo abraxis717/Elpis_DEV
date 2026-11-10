@@ -17,10 +17,20 @@ RESEARCH_ONLY. R93 `ENERGY_NORMALIZED_DENOMINATOR_HOLD` is unchanged by everythi
 No prospective graph or seed of `PROTOCOL_R122.json` had been executed when these files were
 written.
 
-## Added by the registered run
+## Registered prospective run
 
+Executed once from preregistration commit `e7e1db29e0f75eb5eda9b3ad6a0615e2e8cb663a`
+(2026-11-10, 487 s). Disposition `MECHANISM_LOCALIZED_BOUNDED`, all integrity gates passing.
+
+- `FINDINGS.md` — interpretation, qualifications and limits. **Start here.**
+- `RESULTS.md` — tables rendered from the JSON files by `make_report.py`.
 - `R122_RESULT.json` — gates, registered decisions, directional census, policy comparison,
-  decayed-regime operator summary, environment and resource record.
-- `R122_TABLES.json` — compact per-stratum, per-cell and per-step tables and per-system spectra.
+  decayed-regime operator summary, environment and resource record
+  (SHA-256 `12f2d949af0b9ed59e47b527327acec9ffa2af56c1ba636020b8fd08f9ea2246`).
+- `R122_TABLES.json` — compact per-stratum, per-cell and per-step tables and per-system spectra
+  (SHA-256 `141df8895437d99e2cfafa181258c48dd4101663c63f9a940cdd284d6a598cf3`).
 - `R122_INDEX.json` — hashes of the above, of the protocol, of the source and of the raw tensor.
-- `RESULTS.md` — the human-readable report.
+
+The 390 MiB raw measurement tensor is volatile and not committed; its SHA-256 is in the index
+and it is regenerated bit for bit by `qualify` on this environment class. The runner refuses a
+second registered execution while `R122_RESULT.json` exists.
