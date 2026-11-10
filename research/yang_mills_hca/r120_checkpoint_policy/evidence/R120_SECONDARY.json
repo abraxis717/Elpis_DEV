@@ -1,0 +1,1878 @@
+{
+  "by_graph": {
+    "R77_OOD_A3/k0/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.4548331091087847,
+          "native_nse": 0.15958133720856002,
+          "r114_nse": 0.6144144463173448,
+          "selected_direction_matched": 0.0009420527253936536,
+          "selected_energy_ratio": 0.3615980695347544,
+          "selected_nse": 0.15958133720856002,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.2842423107106039,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.0049769919293595356,
+          "r114_nse": 0.2892193026399634,
+          "selected_direction_matched": 0.0014149224127024962,
+          "selected_energy_ratio": 0.21430319481605778,
+          "selected_nse": 0.2892193026399634,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.4560184259034881,
+          "native_nse": 0.15600431507272122,
+          "r114_nse": 0.6120227409762093,
+          "selected_direction_matched": 0.000944587655662632,
+          "selected_energy_ratio": 0.3670547983022214,
+          "selected_nse": 0.15600431507272122,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.4315335882185273,
+          "native_nse": 0.11576656799652739,
+          "r114_nse": 0.5473001562150547,
+          "selected_direction_matched": 0.0013221651190104128,
+          "selected_energy_ratio": 0.43706884656977785,
+          "selected_nse": 0.11576656799652739,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.2174968910041195,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.013363599678782267,
+          "r114_nse": 0.23086049068290176,
+          "selected_direction_matched": 0.0011127246071445038,
+          "selected_energy_ratio": 0.27073023784416583,
+          "selected_nse": 0.23086049068290176,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.4332638922856104,
+          "native_nse": 0.11022769557345861,
+          "r114_nse": 0.543491587859069,
+          "selected_direction_matched": 0.0013257065249910951,
+          "selected_energy_ratio": 0.4481032225689645,
+          "selected_nse": 0.11022769557345861,
+          "teacher_composition_shift": 0.0
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.09332008457656817,
+        "R114": 0.4728847874484238,
+        "SIGNED_ONLY": 0.17694328486235542
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_A3/k0/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.06777695920879481,
+          "native_nse": 0.02707251232088998,
+          "r114_nse": 0.0948494715296848,
+          "selected_direction_matched": 0.00035994516116173714,
+          "selected_energy_ratio": 0.6997222628636015,
+          "selected_nse": 0.02707251232088998,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.15072247053423152,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.0072492859730255614,
+          "r114_nse": 0.1579717565072571,
+          "selected_direction_matched": 0.00013029066688925728,
+          "selected_energy_ratio": 0.3632982808857347,
+          "selected_nse": 0.1579717565072571,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.0668017384168901,
+          "native_nse": 0.025741389592831697,
+          "r114_nse": 0.09254312800972181,
+          "selected_direction_matched": 0.0003626633923918335,
+          "selected_energy_ratio": 0.7066601325433676,
+          "selected_nse": 0.025741389592831697,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.04781584652136618,
+          "native_nse": 0.03433421865709338,
+          "r114_nse": 0.08215006517845956,
+          "selected_direction_matched": 0.00046479260510808723,
+          "selected_energy_ratio": 0.6654590543362349,
+          "selected_nse": 0.03433421865709338,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.1024172368937542,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.008921704750415073,
+          "r114_nse": 0.11133894164416928,
+          "selected_direction_matched": 0.00029080241201045326,
+          "selected_energy_ratio": 0.444573599865214,
+          "selected_nse": 0.11133894164416928,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.04708324346201759,
+          "native_nse": 0.0321573158847194,
+          "r114_nse": 0.07924055934673699,
+          "selected_direction_matched": 0.00046904735070286974,
+          "selected_energy_ratio": 0.6753226961802508,
+          "selected_nse": 0.0321573158847194,
+          "teacher_composition_shift": 0.0
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.02257940452982918,
+        "R114": 0.10301565370267159,
+        "SIGNED_ONLY": 0.06476935576782682
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_A3/k2/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": 0.025048012847469714,
+          "native_nse": 0.3983921790732904,
+          "r114_nse": 0.3733441662258207,
+          "selected_direction_matched": 0.0001599346554758685,
+          "selected_energy_ratio": 2.659883436040614,
+          "selected_nse": 0.3983921790732904,
+          "teacher_composition_shift": 0.6252068821461195
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": -3.0037899497557414,
+          "harm_vs_r114": 0.0,
+          "native_nse": 3.070246584692144,
+          "r114_nse": 0.06645663493640275,
+          "selected_direction_matched": 0.0006938049437075211,
+          "selected_energy_ratio": 0.5525565411939768,
+          "selected_nse": 0.06645663493640275,
+          "teacher_composition_shift": 0.6252068821461195
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": 0.04262193111350743,
+          "native_nse": 0.41379213346928045,
+          "r114_nse": 0.371170202355773,
+          "selected_direction_matched": 0.00016265820028531913,
+          "selected_energy_ratio": 2.6994413011475835,
+          "selected_nse": 0.41379213346928045,
+          "teacher_composition_shift": 0.6252068821461195
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.3501209512043219,
+          "native_nse": 0.1440000702285839,
+          "r114_nse": 0.4941210214329058,
+          "selected_direction_matched": 0.00038823894062390424,
+          "selected_energy_ratio": 1.9008604228327803,
+          "selected_nse": 0.1440000702285839,
+          "teacher_composition_shift": 0.6252068821461195
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": -3.112954422858558,
+          "harm_vs_r114": 0.0,
+          "native_nse": 3.12214394649847,
+          "r114_nse": 0.009189523639911965,
+          "selected_direction_matched": 0.0005320987938226274,
+          "selected_energy_ratio": 0.8230906832646099,
+          "selected_nse": 0.009189523639911965,
+          "teacher_composition_shift": 0.6252068821461195
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.3433683676627418,
+          "native_nse": 0.15205846235498646,
+          "r114_nse": 0.4954268300177283,
+          "selected_direction_matched": 0.00039406959442010725,
+          "selected_energy_ratio": 1.9298631329170375,
+          "selected_nse": 0.15205846235498646,
+          "teacher_composition_shift": 0.6252068821461195
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 1.2167722293861258,
+        "R114": 0.30161806310142375,
+        "SIGNED_ONLY": 0.19731483395040936
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 0,
+      "selected_harmful_vs_r114": 2
+    },
+    "R77_OOD_A3/k2/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.14588790628290585,
+          "native_nse": 0.010669425141219538,
+          "r114_nse": 0.1565573314241254,
+          "selected_direction_matched": 7.681795546973097e-05,
+          "selected_energy_ratio": 0.8048193901951561,
+          "selected_nse": 0.010669425141219538,
+          "teacher_composition_shift": 0.014113653548973825
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.17971767346723772,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.001825992771378823,
+          "r114_nse": 0.18154366623861654,
+          "selected_direction_matched": 3.3649645203824574e-05,
+          "selected_energy_ratio": 0.3294398028897425,
+          "selected_nse": 0.18154366623861654,
+          "teacher_composition_shift": 0.014113653548973825
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.14399246659190013,
+          "native_nse": 0.009720471452421435,
+          "r114_nse": 0.15371293804432157,
+          "selected_direction_matched": 7.87878227863012e-05,
+          "selected_energy_ratio": 0.8133328115028395,
+          "selected_nse": 0.009720471452421435,
+          "teacher_composition_shift": 0.014113653548973825
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.18966348786511752,
+          "native_nse": 0.03569282023704807,
+          "r114_nse": 0.2253563081021656,
+          "selected_direction_matched": 0.00014169454143567184,
+          "selected_energy_ratio": 0.6583655809103515,
+          "selected_nse": 0.03569282023704807,
+          "teacher_composition_shift": 0.014113653548973825
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.12043551850916796,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.0007974726481608338,
+          "r114_nse": 0.1212329911573288,
+          "selected_direction_matched": 0.00014336262499878294,
+          "selected_energy_ratio": 0.4250793530928402,
+          "selected_nse": 0.1212329911573288,
+          "teacher_composition_shift": 0.014113653548973825
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.1884513111743287,
+          "native_nse": 0.03346666133402686,
+          "r114_nse": 0.22191797250835557,
+          "selected_direction_matched": 0.0001451565609959446,
+          "selected_energy_ratio": 0.6681502030814163,
+          "selected_nse": 0.03346666133402686,
+          "teacher_composition_shift": 0.014113653548973825
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.015362140597375928,
+        "R114": 0.17672020124581891,
+        "SIGNED_ONLY": 0.06538767259344354
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_A3/k6/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.10863320565055523,
+          "native_nse": 0.3958123592949576,
+          "r114_nse": 0.5044455649455128,
+          "selected_direction_matched": 0.0003878255041021711,
+          "selected_energy_ratio": 2.651993240554327,
+          "selected_nse": 0.3958123592949576,
+          "teacher_composition_shift": 0.7866707928397811
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": -5.549184269156675,
+          "harm_vs_r114": 0.0,
+          "native_nse": 5.791111000530046,
+          "r114_nse": 0.24192673137337084,
+          "selected_direction_matched": 0.0015495975607635812,
+          "selected_energy_ratio": 0.2597342752509244,
+          "selected_nse": 0.24192673137337084,
+          "teacher_composition_shift": 0.7866707928397811
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.08770107893532197,
+          "native_nse": 0.4147519574136945,
+          "r114_nse": 0.5024530363490165,
+          "selected_direction_matched": 0.00038077300431296757,
+          "selected_energy_ratio": 2.700730672937672,
+          "selected_nse": 0.4147519574136945,
+          "teacher_composition_shift": 0.7866707928397811
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.6003427059786512,
+          "native_nse": 0.060819009668033566,
+          "r114_nse": 0.6611617156466848,
+          "selected_direction_matched": 1.9056789600811752e-05,
+          "selected_energy_ratio": 1.5537712480659205,
+          "selected_nse": 0.060819009668033566,
+          "teacher_composition_shift": 0.7866707928397811
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": -5.419706451808621,
+          "harm_vs_r114": 0.0,
+          "native_nse": 5.5564928569723975,
+          "r114_nse": 0.13678640516377583,
+          "selected_direction_matched": 0.005402307506659203,
+          "selected_energy_ratio": 0.407053444225676,
+          "selected_nse": 0.13678640516377583,
+          "teacher_composition_shift": 0.7866707928397811
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.5979271054618498,
+          "native_nse": 0.06505955412663239,
+          "r114_nse": 0.6629866595884822,
+          "selected_direction_matched": 1.813859050350114e-05,
+          "selected_energy_ratio": 1.5749313214480964,
+          "selected_nse": 0.06505955412663239,
+          "teacher_composition_shift": 0.7866707928397811
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 2.0473411230009604,
+        "R114": 0.45162668551114044,
+        "SIGNED_ONLY": 0.21919266950674418
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 0,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_A3/k6/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.2744575566438813,
+          "native_nse": 0.023578388270795843,
+          "r114_nse": 0.2980359449146771,
+          "selected_direction_matched": 8.833495134988323e-06,
+          "selected_energy_ratio": 0.7165634758247479,
+          "selected_nse": 0.023578388270795843,
+          "teacher_composition_shift": 0.016467947610248883
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.2654359445006464,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.00162134942245431,
+          "r114_nse": 0.2670572939231007,
+          "selected_direction_matched": 3.661662628443724e-05,
+          "selected_energy_ratio": 0.23352787703881356,
+          "selected_nse": 0.2670572939231007,
+          "teacher_composition_shift": 0.016467947610248883
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.2717998279885194,
+          "native_nse": 0.02200494295471475,
+          "r114_nse": 0.2938047709432342,
+          "selected_direction_matched": 8.727961422705377e-06,
+          "selected_energy_ratio": 0.7254179509863159,
+          "selected_nse": 0.02200494295471475,
+          "teacher_composition_shift": 0.016467947610248883
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.33574359611191673,
+          "native_nse": 0.07143655231499063,
+          "r114_nse": 0.40718014842690736,
+          "selected_direction_matched": 9.706558360925155e-06,
+          "selected_energy_ratio": 0.5369207120075801,
+          "selected_nse": 0.07143655231499063,
+          "teacher_composition_shift": 0.016467947610248883
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.2135863404541344,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.0005979858671313732,
+          "r114_nse": 0.21418432632126577,
+          "selected_direction_matched": 0.00017131882501685014,
+          "selected_energy_ratio": 0.28869682040334255,
+          "selected_nse": 0.21418432632126577,
+          "teacher_composition_shift": 0.016467947610248883
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.3346955990258383,
+          "native_nse": 0.06821742278518445,
+          "r114_nse": 0.40291302181102273,
+          "selected_direction_matched": 1.0064277848567671e-05,
+          "selected_energy_ratio": 0.545886728993698,
+          "selected_nse": 0.06821742278518445,
+          "teacher_composition_shift": 0.016467947610248883
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.031242773602545227,
+        "R114": 0.31386258439003467,
+        "SIGNED_ONLY": 0.11107982109500869
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_B3/k0/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.12168296832543835,
+          "native_nse": 0.7910062654950047,
+          "r114_nse": 0.9126892338204431,
+          "selected_direction_matched": 0.0002358361605837231,
+          "selected_energy_ratio": 0.012255137155090919,
+          "selected_nse": 0.7910062654950047,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.14230781197774,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.7170376922426527,
+          "r114_nse": 0.8593455042203927,
+          "selected_direction_matched": 0.0004903218203693716,
+          "selected_energy_ratio": 0.00533837370685564,
+          "selected_nse": 0.8593455042203927,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.12239493535638035,
+          "native_nse": 0.7896926872581549,
+          "r114_nse": 0.9120876226145352,
+          "selected_direction_matched": 0.00023673523790983947,
+          "selected_energy_ratio": 0.012419425813724093,
+          "selected_nse": 0.7896926872581549,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.1286203445443984,
+          "native_nse": 0.7642037378840754,
+          "r114_nse": 0.8928240824284738,
+          "selected_direction_matched": 0.0002543000282159702,
+          "selected_energy_ratio": 0.015853256777629207,
+          "selected_nse": 0.7642037378840754,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.10720100752833162,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.7243963752160164,
+          "r114_nse": 0.831597382744348,
+          "selected_direction_matched": 0.0005532131940708881,
+          "selected_energy_ratio": 0.007775617369106351,
+          "selected_nse": 0.831597382744348,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.1300308281525986,
+          "native_nse": 0.7615740662156305,
+          "r114_nse": 0.8916048943682291,
+          "selected_direction_matched": 0.0002536775591803833,
+          "selected_energy_ratio": 0.016234909925511028,
+          "selected_nse": 0.7615740662156305,
+          "teacher_composition_shift": 0.0
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.7579851373852557,
+        "R114": 0.883358120032737,
+        "SIGNED_ONLY": 0.7995699406362676
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_B3/k0/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.051673600589117324,
+          "native_nse": 0.03168529782460011,
+          "r114_nse": 0.08335889841371744,
+          "selected_direction_matched": 0.0003684635096556643,
+          "selected_energy_ratio": 0.6773407508182051,
+          "selected_nse": 0.03168529782460011,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.16698180899061565,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.04336144789744724,
+          "r114_nse": 0.2103432568880629,
+          "selected_direction_matched": 0.0003305015137342118,
+          "selected_energy_ratio": 0.2934586722879351,
+          "selected_nse": 0.2103432568880629,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.05095921861283395,
+          "native_nse": 0.03041593569648504,
+          "r114_nse": 0.08137515430931899,
+          "selected_direction_matched": 0.00037075054293978643,
+          "selected_energy_ratio": 0.683338271730496,
+          "selected_nse": 0.03041593569648504,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.03091373587511379,
+          "native_nse": 0.026706671607096714,
+          "r114_nse": 0.057620407482210506,
+          "selected_direction_matched": 0.00036054375250155896,
+          "selected_energy_ratio": 0.7014847710211793,
+          "selected_nse": 0.026706671607096714,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.09768096479620793,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.028926994443688642,
+          "r114_nse": 0.12660795923989657,
+          "selected_direction_matched": 0.0003202569473305661,
+          "selected_energy_ratio": 0.41561309366693544,
+          "selected_nse": 0.12660795923989657,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.030277372997178476,
+          "native_nse": 0.02506508695221442,
+          "r114_nse": 0.055342459949392894,
+          "selected_direction_matched": 0.00036190726843016163,
+          "selected_energy_ratio": 0.7101274725483095,
+          "selected_nse": 0.02506508695221442,
+          "teacher_composition_shift": 0.0
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.031026905736922027,
+        "R114": 0.10244135604709988,
+        "SIGNED_ONLY": 0.07513736803472597
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_B3/k2/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.4259488292653097,
+          "native_nse": 0.05155885099540247,
+          "r114_nse": 0.47750768026071216,
+          "selected_direction_matched": 0.00020825740605762144,
+          "selected_energy_ratio": 1.5039077624377089,
+          "selected_nse": 0.05155885099540247,
+          "teacher_composition_shift": 0.8845420593983542
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": -0.2415573539765567,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.5222021245500859,
+          "r114_nse": 0.28064477057352916,
+          "selected_direction_matched": 0.0005630711356129567,
+          "selected_energy_ratio": 0.22152510108951506,
+          "selected_nse": 0.28064477057352916,
+          "teacher_composition_shift": 0.8845420593983542
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.4199398486957409,
+          "native_nse": 0.055521577076232405,
+          "r114_nse": 0.4754614257719733,
+          "selected_direction_matched": 0.00020700096334061446,
+          "selected_energy_ratio": 1.5250468042632166,
+          "selected_nse": 0.055521577076232405,
+          "teacher_composition_shift": 0.8845420593983542
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.6080500216503614,
+          "native_nse": 0.00022567366462835235,
+          "r114_nse": 0.6082756953149897,
+          "selected_direction_matched": 0.00012319545083668004,
+          "selected_energy_ratio": 1.0171608915108892,
+          "selected_nse": 0.00022567366462835235,
+          "teacher_composition_shift": 0.8845420593983542
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": -0.6998329375623755,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.7758403976613513,
+          "r114_nse": 0.07600746009897572,
+          "selected_direction_matched": 0.002286080876844211,
+          "selected_energy_ratio": 0.530150176056752,
+          "selected_nse": 0.07600746009897572,
+          "teacher_composition_shift": 0.8845420593983542
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.6094743357827945,
+          "native_nse": 0.00038656553087280655,
+          "r114_nse": 0.6098609013136673,
+          "selected_direction_matched": 0.000126777463425376,
+          "selected_energy_ratio": 1.0305321998757004,
+          "selected_nse": 0.00038656553087280655,
+          "teacher_composition_shift": 0.8845420593983542
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.23428919824642883,
+        "R114": 0.42129298888897454,
+        "SIGNED_ONLY": 0.07739081632327348
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 0,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_B3/k2/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.08881183105874799,
+          "native_nse": 0.008613402585570615,
+          "r114_nse": 0.0974252336443186,
+          "selected_direction_matched": 6.051593675211048e-05,
+          "selected_energy_ratio": 0.8238103150306487,
+          "selected_nse": 0.008613402585570615,
+          "teacher_composition_shift": 0.01594620606630557
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.19210798904846266,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.01159211600956113,
+          "r114_nse": 0.20370010505802377,
+          "selected_direction_matched": 6.552037494512303e-05,
+          "selected_energy_ratio": 0.3011303339883989,
+          "selected_nse": 0.20370010505802377,
+          "teacher_composition_shift": 0.01594620606630557
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.08724789811650886,
+          "native_nse": 0.00785300496338311,
+          "r114_nse": 0.09510090307989197,
+          "selected_direction_matched": 6.144881360312104e-05,
+          "selected_energy_ratio": 0.831491792339063,
+          "selected_nse": 0.00785300496338311,
+          "teacher_composition_shift": 0.01594620606630557
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.13389973293139443,
+          "native_nse": 0.01871759281516505,
+          "r114_nse": 0.15261732574655948,
+          "selected_direction_matched": 0.00011706777109676825,
+          "selected_energy_ratio": 0.745803934105632,
+          "selected_nse": 0.01871759281516505,
+          "teacher_composition_shift": 0.01594620606630557
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.08090632898659983,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.0032180607112078314,
+          "r114_nse": 0.08412438969780767,
+          "selected_direction_matched": 0.00010754929570960803,
+          "selected_energy_ratio": 0.5042924634964809,
+          "selected_nse": 0.08412438969780767,
+          "teacher_composition_shift": 0.01594620606630557
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.13250037190253205,
+          "native_nse": 0.017327208015415933,
+          "r114_nse": 0.14982757991794798,
+          "selected_direction_matched": 0.00011842549894863774,
+          "selected_energy_ratio": 0.7548175225840859,
+          "selected_nse": 0.017327208015415933,
+          "teacher_composition_shift": 0.01594620606630557
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.011220230850050611,
+        "R114": 0.1304659228574249,
+        "SIGNED_ONLY": 0.05672261718922769
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_B3/k6/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.088254074222258,
+          "native_nse": 0.3803752583214238,
+          "r114_nse": 0.46862933254368183,
+          "selected_direction_matched": 0.0003592521263496781,
+          "selected_energy_ratio": 2.6121590849595178,
+          "selected_nse": 0.3803752583214238,
+          "teacher_composition_shift": 0.939737570113166
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": -2.097351484085102,
+          "harm_vs_r114": 0.0,
+          "native_nse": 2.389216675998588,
+          "r114_nse": 0.29186519191348614,
+          "selected_direction_matched": 0.0013243702896334544,
+          "selected_energy_ratio": 0.21220509008538846,
+          "selected_nse": 0.29186519191348614,
+          "teacher_composition_shift": 0.939737570113166
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.06918245267298567,
+          "native_nse": 0.3971804096825216,
+          "r114_nse": 0.4663628623555073,
+          "selected_direction_matched": 0.000354207079683741,
+          "selected_energy_ratio": 2.655948208419454,
+          "selected_nse": 0.3971804096825216,
+          "teacher_composition_shift": 0.939737570113166
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.5795863505044463,
+          "native_nse": 0.059871324563983266,
+          "r114_nse": 0.6394576750684295,
+          "selected_direction_matched": 4.658898910610276e-05,
+          "selected_energy_ratio": 1.5487754412685804,
+          "selected_nse": 0.059871324563983266,
+          "teacher_composition_shift": 0.939737570113166
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": -2.9730895667552977,
+          "harm_vs_r114": 0.0,
+          "native_nse": 3.074002101433094,
+          "r114_nse": 0.10091253467779635,
+          "selected_direction_matched": 0.004375698403941385,
+          "selected_energy_ratio": 0.4751716239087049,
+          "selected_nse": 0.10091253467779635,
+          "teacher_composition_shift": 0.939737570113166
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.5778749414000061,
+          "native_nse": 0.06369310760395397,
+          "r114_nse": 0.64156804900396,
+          "selected_direction_matched": 4.9122170323642744e-05,
+          "selected_energy_ratio": 1.567967804380298,
+          "selected_nse": 0.06369310760395397,
+          "teacher_composition_shift": 0.939737570113166
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 1.0607231462672608,
+        "R114": 0.4347992742604769,
+        "SIGNED_ONLY": 0.21564963779386084
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 0,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_B3/k6/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.12345010951174391,
+          "native_nse": 0.0006184634277326758,
+          "r114_nse": 0.1240685729394766,
+          "selected_direction_matched": 1.705075920639676e-05,
+          "selected_energy_ratio": 0.95229816824645,
+          "selected_nse": 0.0006184634277326758,
+          "teacher_composition_shift": 0.04778896881893793
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.1890028587562105,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.00016899372148786572,
+          "r114_nse": 0.18917185247769838,
+          "selected_direction_matched": 2.520154337842806e-05,
+          "selected_energy_ratio": 0.3193326707929338,
+          "selected_nse": 0.18917185247769838,
+          "teacher_composition_shift": 0.04778896881893793
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.12053213155245096,
+          "native_nse": 0.00040316797241576126,
+          "r114_nse": 0.12093529952486672,
+          "selected_direction_matched": 1.7326744655425663e-05,
+          "selected_energy_ratio": 0.9620573486195876,
+          "selected_nse": 0.00040316797241576126,
+          "teacher_composition_shift": 0.04778896881893793
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.19462740914655363,
+          "native_nse": 0.00982118201909599,
+          "r114_nse": 0.20444859116564962,
+          "selected_direction_matched": 2.9315771469813623e-05,
+          "selected_energy_ratio": 0.8119497749058184,
+          "selected_nse": 0.00982118201909599,
+          "teacher_composition_shift": 0.04778896881893793
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.08334556804745895,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.002347254053638451,
+          "r114_nse": 0.0856928221010974,
+          "selected_direction_matched": 9.629834288277239e-05,
+          "selected_energy_ratio": 0.5004138340860639,
+          "selected_nse": 0.0856928221010974,
+          "teacher_composition_shift": 0.04778896881893793
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.19230364029342328,
+          "native_nse": 0.0087006381187963,
+          "r114_nse": 0.20100427841221957,
+          "selected_direction_matched": 2.9769180878866375e-05,
+          "selected_energy_ratio": 0.822508053915892,
+          "selected_nse": 0.0087006381187963,
+          "teacher_composition_shift": 0.04778896881893793
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.0036766165521945073,
+        "R114": 0.15422023610350138,
+        "SIGNED_ONLY": 0.049068021019472746
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_D2/k0/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.42346543390304303,
+          "native_nse": 0.10269604177456515,
+          "r114_nse": 0.5261614756776082,
+          "selected_direction_matched": 0.0005960073485790016,
+          "selected_energy_ratio": 0.46273296181632473,
+          "selected_nse": 0.10269604177456515,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.23365775681679388,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.00305784066384766,
+          "r114_nse": 0.23671559748064153,
+          "selected_direction_matched": 0.003472596109522018,
+          "selected_energy_ratio": 0.26564617018351794,
+          "selected_nse": 0.23671559748064153,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.4239541408336232,
+          "native_nse": 0.0996625231509422,
+          "r114_nse": 0.5236166639845654,
+          "selected_direction_matched": 0.0005956483712729055,
+          "selected_energy_ratio": 0.4692650000376293,
+          "selected_nse": 0.0996625231509422,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.47197341583321273,
+          "native_nse": 0.09036402789336037,
+          "r114_nse": 0.5623374437265731,
+          "selected_direction_matched": 0.000472957250718227,
+          "selected_energy_ratio": 0.4899704361108973,
+          "selected_nse": 0.09036402789336037,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.13630957819949374,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.0024215994469283545,
+          "r114_nse": 0.1387311776464221,
+          "selected_direction_matched": 0.0028358167219869265,
+          "selected_energy_ratio": 0.3970650917777473,
+          "selected_nse": 0.1387311776464221,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.473808941467865,
+          "native_nse": 0.08575950476039164,
+          "r114_nse": 0.5595684462282566,
+          "selected_direction_matched": 0.00047219944774810896,
+          "selected_energy_ratio": 0.5009216319252388,
+          "selected_nse": 0.08575950476039164,
+          "teacher_composition_shift": 0.0
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.06399358961500591,
+        "R114": 0.42452180079067786,
+        "SIGNED_ONLY": 0.12565481211772048
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_D2/k0/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.05669394466220874,
+          "native_nse": 0.029183609569883043,
+          "r114_nse": 0.08587755423209179,
+          "selected_direction_matched": 8.559053261636418e-05,
+          "selected_energy_ratio": 0.6880899838008747,
+          "selected_nse": 0.029183609569883043,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.11196211359113703,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.04447132377493518,
+          "r114_nse": 0.1564334373660722,
+          "selected_direction_matched": 0.0007744217228865882,
+          "selected_energy_ratio": 0.3662124721154001,
+          "selected_nse": 0.1564334373660722,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.05592437846994264,
+          "native_nse": 0.02797270134226096,
+          "r114_nse": 0.0838970798122036,
+          "selected_direction_matched": 8.553933214856813e-05,
+          "selected_energy_ratio": 0.6940630036860405,
+          "selected_nse": 0.02797270134226096,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.07329691606601092,
+          "native_nse": 0.02681518723001201,
+          "r114_nse": 0.10011210329602294,
+          "selected_direction_matched": 3.236712816927223e-05,
+          "selected_energy_ratio": 0.6995238781914201,
+          "selected_nse": 0.02681518723001201,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.05095503195052405,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.026207193513579287,
+          "r114_nse": 0.07716222546410334,
+          "selected_direction_matched": 0.0007806080543335883,
+          "selected_energy_ratio": 0.5232272354519834,
+          "selected_nse": 0.07716222546410334,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.07194037837969752,
+          "native_nse": 0.025232017724654967,
+          "r114_nse": 0.0971723961043525,
+          "selected_direction_matched": 3.209083750328745e-05,
+          "selected_energy_ratio": 0.7077643617146057,
+          "selected_nse": 0.025232017724654967,
+          "teacher_composition_shift": 0.0
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.02998033885922091,
+        "R114": 0.10010913271247439,
+        "SIGNED_ONLY": 0.05713319644949775
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_D2/k2/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.6352198818376813,
+          "native_nse": 0.02152162620499614,
+          "r114_nse": 0.6567415080426774,
+          "selected_direction_matched": 0.0002603138512964204,
+          "selected_energy_ratio": 0.7297548234706552,
+          "selected_nse": 0.02152162620499614,
+          "teacher_composition_shift": 0.16406710743244976
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.09353802629673857,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.1845623513902419,
+          "r114_nse": 0.2781003776869805,
+          "selected_direction_matched": 0.000796413205793059,
+          "selected_energy_ratio": 0.22382304386293977,
+          "selected_nse": 0.2781003776869805,
+          "teacher_composition_shift": 0.16406710743244976
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.6356046995611067,
+          "native_nse": 0.01946246568226067,
+          "r114_nse": 0.6550671652433673,
+          "selected_direction_matched": 0.00025777769361998853,
+          "selected_energy_ratio": 0.7421873067438335,
+          "selected_nse": 0.01946246568226067,
+          "teacher_composition_shift": 0.16406710743244976
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.6435658841403163,
+          "native_nse": 0.020638226386289767,
+          "r114_nse": 0.6642041105266061,
+          "selected_direction_matched": 0.00011024386290804655,
+          "selected_energy_ratio": 0.734016148645221,
+          "selected_nse": 0.020638226386289767,
+          "teacher_composition_shift": 0.16406710743244976
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": -0.09054879910424576,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.20968686995946817,
+          "r114_nse": 0.1191380708552224,
+          "selected_direction_matched": 0.0012287461817250891,
+          "selected_energy_ratio": 0.43064820874741444,
+          "selected_nse": 0.1191380708552224,
+          "teacher_composition_shift": 0.16406710743244976
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.645726727866161,
+          "native_nse": 0.01817070449204221,
+          "r114_nse": 0.6638974323582032,
+          "selected_direction_matched": 0.00010766195701370634,
+          "selected_energy_ratio": 0.7493153057635802,
+          "selected_nse": 0.01817070449204221,
+          "teacher_composition_shift": 0.16406710743244976
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.07900704068588314,
+        "R114": 0.5061914441188429,
+        "SIGNED_ONLY": 0.07950524521796529
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 1,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_D2/k2/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.08155936632004643,
+          "native_nse": 0.014567390799806824,
+          "r114_nse": 0.09612675711985325,
+          "selected_direction_matched": 3.3125337623063356e-05,
+          "selected_energy_ratio": 0.773661587875386,
+          "selected_nse": 0.014567390799806824,
+          "teacher_composition_shift": 0.005000552974972263
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.12395674538778864,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.027682176063396104,
+          "r114_nse": 0.15163892145118474,
+          "selected_direction_matched": 6.801623301743581e-05,
+          "selected_energy_ratio": 0.37293922268081303,
+          "selected_nse": 0.15163892145118474,
+          "teacher_composition_shift": 0.005000552974972263
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.08006556604069542,
+          "native_nse": 0.013623772667677562,
+          "r114_nse": 0.09368933870837298,
+          "selected_direction_matched": 3.350619823596496e-05,
+          "selected_energy_ratio": 0.7806945394231252,
+          "selected_nse": 0.013623772667677562,
+          "teacher_composition_shift": 0.005000552974972263
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.09869938056427426,
+          "native_nse": 0.015573230688800784,
+          "r114_nse": 0.11427261125307504,
+          "selected_direction_matched": 1.1732930068342196e-05,
+          "selected_energy_ratio": 0.7661557968237301,
+          "selected_nse": 0.015573230688800784,
+          "teacher_composition_shift": 0.005000552974972263
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.05158196975226445,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.010508317265634799,
+          "r114_nse": 0.062090287017899246,
+          "selected_direction_matched": 6.463411130023383e-05,
+          "selected_energy_ratio": 0.5639491560703481,
+          "selected_nse": 0.062090287017899246,
+          "teacher_composition_shift": 0.005000552974972263
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.09683768665404718,
+          "native_nse": 0.01429237350921372,
+          "r114_nse": 0.11113006016326091,
+          "selected_direction_matched": 1.1775280793331622e-05,
+          "selected_energy_ratio": 0.7753692767025562,
+          "selected_nse": 0.01429237350921372,
+          "teacher_composition_shift": 0.005000552974972263
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.016041210165754965,
+        "R114": 0.10482466261894102,
+        "SIGNED_ONLY": 0.045297662689097136
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_D2/k6/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.6902919199845976,
+          "native_nse": 0.061113979439968644,
+          "r114_nse": 0.7514058994245663,
+          "selected_direction_matched": 8.038870044588253e-05,
+          "selected_energy_ratio": 0.5670288621802029,
+          "selected_nse": 0.061113979439968644,
+          "teacher_composition_shift": 0.14667380864643148
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.3290107286199276,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.09488530196101219,
+          "r114_nse": 0.4238960305809398,
+          "selected_direction_matched": 0.00013298142622622522,
+          "selected_energy_ratio": 0.12179328930372049,
+          "selected_nse": 0.4238960305809398,
+          "teacher_composition_shift": 0.14667380864643148
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.6922106930917058,
+          "native_nse": 0.05752324845545706,
+          "r114_nse": 0.7497339415471629,
+          "selected_direction_matched": 7.994645009784529e-05,
+          "selected_energy_ratio": 0.5781996644772728,
+          "selected_nse": 0.05752324845545706,
+          "teacher_composition_shift": 0.14667380864643148
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.6776657488030484,
+          "native_nse": 0.060973914190596015,
+          "r114_nse": 0.7386396629936445,
+          "selected_direction_matched": 2.8355482602646087e-05,
+          "selected_energy_ratio": 0.5672444042388081,
+          "selected_nse": 0.060973914190596015,
+          "teacher_composition_shift": 0.14667380864643148
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.14262089966510094,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.10993875476252966,
+          "r114_nse": 0.2525596544276306,
+          "selected_direction_matched": 0.00018507360060870254,
+          "selected_energy_ratio": 0.2475894351592083,
+          "selected_nse": 0.2525596544276306,
+          "teacher_composition_shift": 0.14667380864643148
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.6812156768992177,
+          "native_nse": 0.05694364245063999,
+          "r114_nse": 0.7381593193498577,
+          "selected_direction_matched": 2.766404786473664e-05,
+          "selected_energy_ratio": 0.5798191722084423,
+          "selected_nse": 0.05694364245063999,
+          "teacher_composition_shift": 0.14667380864643148
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.07356314021003393,
+        "R114": 0.6090657513873002,
+        "SIGNED_ONLY": 0.15216841159087202
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_D2/k6/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.09258023133682383,
+          "native_nse": 0.013322151977101826,
+          "r114_nse": 0.10590238331392565,
+          "selected_direction_matched": 2.991533407267072e-05,
+          "selected_energy_ratio": 0.7829547179557308,
+          "selected_nse": 0.013322151977101826,
+          "teacher_composition_shift": 0.006929688971894751
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.13697962009052916,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.026061361407255255,
+          "r114_nse": 0.16304098149778443,
+          "selected_direction_matched": 3.571722138323574e-05,
+          "selected_energy_ratio": 0.3555462522572552,
+          "selected_nse": 0.16304098149778443,
+          "teacher_composition_shift": 0.006929688971894751
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.09079650034587176,
+          "native_nse": 0.012392172410376174,
+          "r114_nse": 0.10318867275624793,
+          "selected_direction_matched": 3.0294339085523703e-05,
+          "selected_energy_ratio": 0.7902562017772903,
+          "selected_nse": 0.012392172410376174,
+          "teacher_composition_shift": 0.006929688971894751
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.11092056891956602,
+          "native_nse": 0.015549787487789003,
+          "r114_nse": 0.12647035640735502,
+          "selected_direction_matched": 1.1736440356589772e-05,
+          "selected_energy_ratio": 0.7663220401486405,
+          "selected_nse": 0.015549787487789003,
+          "teacher_composition_shift": 0.006929688971894751
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.058226556401192425,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.008801115956635828,
+          "r114_nse": 0.06702767235782825,
+          "selected_direction_matched": 1.9910235569145507e-05,
+          "selected_energy_ratio": 0.5493252016326405,
+          "selected_nse": 0.06702767235782825,
+          "teacher_composition_shift": 0.006929688971894751
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.1088636842224226,
+          "native_nse": 0.014253042006349052,
+          "r114_nse": 0.12311672622877165,
+          "selected_direction_matched": 1.1787186209970268e-05,
+          "selected_energy_ratio": 0.7756611437332934,
+          "selected_nse": 0.014253042006349052,
+          "teacher_composition_shift": 0.006929688971894751
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.015063271874251188,
+        "R114": 0.11479113209365216,
+        "SIGNED_ONLY": 0.047597634622871456
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_D4/k0/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.47047623865083293,
+          "native_nse": 0.014435886473228202,
+          "r114_nse": 0.4849121251240611,
+          "selected_direction_matched": 0.0002480234732881864,
+          "selected_energy_ratio": 1.2452644437612514,
+          "selected_nse": 0.014435886473228202,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": -1.233611397031659,
+          "harm_vs_r114": 0.0,
+          "native_nse": 1.23485596010036,
+          "r114_nse": 0.00124456306870094,
+          "selected_direction_matched": 0.000345342153495333,
+          "selected_energy_ratio": 1.0447064621776745,
+          "selected_nse": 0.00124456306870094,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.46552890153198934,
+          "native_nse": 0.01680776819638051,
+          "r114_nse": 0.48233666972836986,
+          "selected_direction_matched": 0.0002490205318110769,
+          "selected_energy_ratio": 1.2671652858148357,
+          "selected_nse": 0.01680776819638051,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.2992022499895588,
+          "native_nse": 0.046490654904432965,
+          "r114_nse": 0.3456929048939918,
+          "selected_direction_matched": 0.0002925759512678455,
+          "selected_energy_ratio": 1.4722434374222448,
+          "selected_nse": 0.046490654904432965,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": -0.8285678067709236,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.8298176175228368,
+          "r114_nse": 0.0012498107519131993,
+          "selected_direction_matched": 0.0003946541930740788,
+          "selected_energy_ratio": 1.0406931362361556,
+          "selected_nse": 0.0012498107519131993,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.28804386352854405,
+          "native_nse": 0.05374589190807655,
+          "r114_nse": 0.3417897554366206,
+          "selected_direction_matched": 0.00029283381345891063,
+          "selected_energy_ratio": 1.512189604478827,
+          "selected_nse": 0.05374589190807655,
+          "teacher_composition_shift": 0.0
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.36602562985088577,
+        "R114": 0.2762043048339429,
+        "SIGNED_ONLY": 0.02232909588378873
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 0,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_D4/k0/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.1036226299985345,
+          "native_nse": 0.011990873476794228,
+          "r114_nse": 0.11561350347532873,
+          "selected_direction_matched": 9.930610926578431e-05,
+          "selected_energy_ratio": 0.7940207566744923,
+          "selected_nse": 0.011990873476794228,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.09162935861767826,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.0009064131188739597,
+          "r114_nse": 0.09253577173655222,
+          "selected_direction_matched": 0.0006623179732044432,
+          "selected_energy_ratio": 0.48530758596801654,
+          "selected_nse": 0.09253577173655222,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.10178239707756276,
+          "native_nse": 0.010990690657004193,
+          "r114_nse": 0.11277308773456696,
+          "selected_direction_matched": 9.944907730429636e-05,
+          "selected_energy_ratio": 0.8024159490529805,
+          "selected_nse": 0.010990690657004193,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.08320758725165034,
+          "native_nse": 0.018038683288078124,
+          "r114_nse": 0.10124627053972846,
+          "selected_direction_matched": 7.334479353466455e-05,
+          "selected_energy_ratio": 0.7499500399714012,
+          "selected_nse": 0.018038683288078124,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.0999573629402414,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.000195045043171521,
+          "r114_nse": 0.10015240798341293,
+          "selected_direction_matched": 0.000611895165710051,
+          "selected_energy_ratio": 0.46825791089873026,
+          "selected_nse": 0.10015240798341293,
+          "teacher_composition_shift": 0.0
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.08137843955827329,
+          "native_nse": 0.016247561093512584,
+          "r114_nse": 0.09762600065178587,
+          "selected_direction_matched": 7.322700101738966e-05,
+          "selected_energy_ratio": 0.7618807666356949,
+          "selected_nse": 0.016247561093512584,
+          "teacher_composition_shift": 0.0
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.009728211112905769,
+        "R114": 0.1033245070202292,
+        "SIGNED_ONLY": 0.04165933137255905
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_D4/k2/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": 0.6034199796668143,
+          "native_nse": 0.9934795767440483,
+          "r114_nse": 0.390059597077234,
+          "selected_direction_matched": 0.0011670732802608053,
+          "selected_energy_ratio": 3.979642216249528,
+          "selected_nse": 0.9934795767440483,
+          "teacher_composition_shift": 0.4690880817965249
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": -11.357033322794615,
+          "harm_vs_r114": 0.0,
+          "native_nse": 11.409569190821522,
+          "r114_nse": 0.05253586802690556,
+          "selected_direction_matched": 0.001307705413825147,
+          "selected_energy_ratio": 1.4969169260146764,
+          "selected_nse": 0.05253586802690556,
+          "teacher_composition_shift": 0.4690880817965249
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": 0.640352014274179,
+          "native_nse": 1.0295475589783227,
+          "r114_nse": 0.38919554470414375,
+          "selected_direction_matched": 0.0011597159196640033,
+          "selected_energy_ratio": 4.0516181201451005,
+          "selected_nse": 1.0295475589783227,
+          "teacher_composition_shift": 0.4690880817965249
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": 0.16036897625125585,
+          "native_nse": 0.6016365022686456,
+          "r114_nse": 0.4412675260173898,
+          "selected_direction_matched": 0.0006400219781795488,
+          "selected_energy_ratio": 3.1485543253026234,
+          "selected_nse": 0.6016365022686456,
+          "teacher_composition_shift": 0.4690880817965249
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": -10.673686709995138,
+          "harm_vs_r114": 0.0,
+          "native_nse": 10.93622635880812,
+          "r114_nse": 0.2625396488129825,
+          "selected_direction_matched": 0.0022122535021913345,
+          "selected_energy_ratio": 2.273749419261626,
+          "selected_nse": 0.2625396488129825,
+          "teacher_composition_shift": 0.4690880817965249
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": 0.1817102178263491,
+          "native_nse": 0.6256189776926151,
+          "r114_nse": 0.443908759866266,
+          "selected_direction_matched": 0.0006313511572200239,
+          "selected_energy_ratio": 3.203220137908483,
+          "selected_nse": 0.6256189776926151,
+          "teacher_composition_shift": 0.4690880817965249
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 4.266013027552212,
+        "R114": 0.3299178240841536,
+        "SIGNED_ONLY": 0.5942263554205865
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 0,
+      "selected_harmful_vs_r114": 4
+    },
+    "R77_OOD_D4/k2/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.15091619576540086,
+          "native_nse": 0.0026104000930499303,
+          "r114_nse": 0.1535265958584508,
+          "selected_direction_matched": 0.0001527906650932928,
+          "selected_energy_ratio": 0.903595453206254,
+          "selected_nse": 0.0026104000930499303,
+          "teacher_composition_shift": 0.009994038907875386
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.09174153902641566,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.012872994580024234,
+          "r114_nse": 0.1046145336064399,
+          "selected_direction_matched": 0.0005590224470406954,
+          "selected_energy_ratio": 0.45854137007857104,
+          "selected_nse": 0.1046145336064399,
+          "teacher_composition_shift": 0.009994038907875386
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.14815026390871522,
+          "native_nse": 0.002116836385654573,
+          "r114_nse": 0.1502671002943698,
+          "selected_direction_matched": 0.00015154407896400546,
+          "selected_energy_ratio": 0.9136498779244344,
+          "selected_nse": 0.002116836385654573,
+          "teacher_composition_shift": 0.009994038907875386
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.19877475206279252,
+          "native_nse": 0.0175253456108401,
+          "r114_nse": 0.21630009767363262,
+          "selected_direction_matched": 0.0001018634904893026,
+          "selected_energy_ratio": 0.7534296758065059,
+          "selected_nse": 0.0175253456108401,
+          "teacher_composition_shift": 0.009994038907875386
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.049422799129154725,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.012069533653258564,
+          "r114_nse": 0.06149233278241329,
+          "selected_direction_matched": 0.0009203896857620589,
+          "selected_energy_ratio": 0.56767741732125,
+          "selected_nse": 0.06149233278241329,
+          "teacher_composition_shift": 0.009994038907875386
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.19660383967380238,
+          "native_nse": 0.01582536258208415,
+          "r114_nse": 0.21242920225588652,
+          "selected_direction_matched": 0.00010053966065643599,
+          "selected_energy_ratio": 0.7649370384106063,
+          "selected_nse": 0.01582536258208415,
+          "teacher_composition_shift": 0.009994038907875386
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.010503412150818592,
+        "R114": 0.1497716437451988,
+        "SIGNED_ONLY": 0.03403080184341365
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_D4/k6/H20": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.17227672079549133,
+          "native_nse": 0.3918670642984136,
+          "r114_nse": 0.564143785093905,
+          "selected_direction_matched": 0.0008449043951912483,
+          "selected_energy_ratio": 2.638327165910469,
+          "selected_nse": 0.3918670642984136,
+          "teacher_composition_shift": 0.5053920911840903
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": -9.052687823452052,
+          "harm_vs_r114": 0.0,
+          "native_nse": 9.087766642660924,
+          "r114_nse": 0.03507881920887201,
+          "selected_direction_matched": 0.0009674157922753349,
+          "selected_energy_ratio": 0.6640338170966148,
+          "selected_nse": 0.03507881920887201,
+          "teacher_composition_shift": 0.5053920911840903
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.1508893192998817,
+          "native_nse": 0.4128158726546336,
+          "r114_nse": 0.5637051919545153,
+          "selected_direction_matched": 0.0008379444996700208,
+          "selected_energy_ratio": 2.692370103682581,
+          "selected_nse": 0.4128158726546336,
+          "teacher_composition_shift": 0.5053920911840903
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.4427079818392641,
+          "native_nse": 0.17274132701285913,
+          "r114_nse": 0.6154493088521232,
+          "selected_direction_matched": 0.00045772684549932885,
+          "selected_energy_ratio": 1.9996817175607335,
+          "selected_nse": 0.17274132701285913,
+          "teacher_composition_shift": 0.5053920911840903
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": -8.609108715026352,
+          "harm_vs_r114": 0.0,
+          "native_nse": 8.613427705426943,
+          "r114_nse": 0.004318990400591188,
+          "selected_direction_matched": 0.0017916900685298817,
+          "selected_energy_ratio": 1.1006836034013998,
+          "selected_nse": 0.004318990400591188,
+          "teacher_composition_shift": 0.5053920911840903
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.43533778975399334,
+          "native_nse": 0.18279919205555945,
+          "r114_nse": 0.6181369818095528,
+          "selected_direction_matched": 0.0004509215180643067,
+          "selected_energy_ratio": 2.0336890205740126,
+          "selected_nse": 0.18279919205555945,
+          "teacher_composition_shift": 0.5053920911840903
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 3.143569634018222,
+        "R114": 0.4001388462199266,
+        "SIGNED_ONLY": 0.1999368776051548
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 0,
+      "selected_harmful_vs_r114": 0
+    },
+    "R77_OOD_D4/k6/H8": {
+      "cells": [
+        {
+          "checkpoint": "54007/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.21286126663256594,
+          "native_nse": 0.008300630232437184,
+          "r114_nse": 0.22116189686500312,
+          "selected_direction_matched": 9.009155041622696e-05,
+          "selected_energy_ratio": 0.8270921353523428,
+          "selected_nse": 0.008300630232437184,
+          "teacher_composition_shift": 0.006584351119167845
+        },
+        {
+          "checkpoint": "54007/STATE8_SIGNED8",
+          "harm_vs_native": 0.14162083084112745,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.006811352403203042,
+          "r114_nse": 0.1484321832443305,
+          "selected_direction_matched": 0.00029954154178782333,
+          "selected_energy_ratio": 0.37820269160159686,
+          "selected_nse": 0.1484321832443305,
+          "teacher_composition_shift": 0.006584351119167845
+        },
+        {
+          "checkpoint": "54007/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.20977892715998167,
+          "native_nse": 0.007360527216688064,
+          "r114_nse": 0.21713945437666973,
+          "selected_direction_matched": 8.91845170587352e-05,
+          "selected_energy_ratio": 0.8368487426507706,
+          "selected_nse": 0.007360527216688064,
+          "teacher_composition_shift": 0.006584351119167845
+        },
+        {
+          "checkpoint": "54031/STATE8",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.26210799566100373,
+          "native_nse": 0.03392718269324514,
+          "r114_nse": 0.29603517835424886,
+          "selected_direction_matched": 6.251677372548503e-05,
+          "selected_energy_ratio": 0.6658247268263728,
+          "selected_nse": 0.03392718269324514,
+          "teacher_composition_shift": 0.006584351119167845
+        },
+        {
+          "checkpoint": "54031/STATE8_SIGNED8",
+          "harm_vs_native": 0.08849350976193349,
+          "harm_vs_r114": 0.0,
+          "native_nse": 0.007214489627407651,
+          "r114_nse": 0.09570799938934113,
+          "selected_direction_matched": 0.0005488379239197427,
+          "selected_energy_ratio": 0.47787205441399955,
+          "selected_nse": 0.09570799938934113,
+          "teacher_composition_shift": 0.006584351119167845
+        },
+        {
+          "checkpoint": "54031/STATE8_TF1",
+          "harm_vs_native": 0.0,
+          "harm_vs_r114": -0.2600696490957098,
+          "native_nse": 0.03160365273433592,
+          "r114_nse": 0.2916733018300457,
+          "selected_direction_matched": 6.146814324704125e-05,
+          "selected_energy_ratio": 0.676350772768127,
+          "selected_nse": 0.03160365273433592,
+          "teacher_composition_shift": 0.006584351119167845
+        }
+      ],
+      "mean_nse": {
+        "NATIVE": 0.015869639151219504,
+        "R114": 0.21169166900993983,
+        "SIGNED_ONLY": 0.05422202925172965
+      },
+      "n": 6,
+      "selected_harmful_vs_native": 2,
+      "selected_harmful_vs_r114": 0
+    }
+  },
+  "label": "DESCRIPTIVE_NOT_ADDITIONAL_ADMISSION_GATES",
+  "schema": "elpis.ym_hca.r120.secondary.v1"
+}

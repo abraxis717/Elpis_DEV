@@ -1,0 +1,18 @@
+{
+  "capture_wrapper_sha256": "293f3a94a19c4c86dda33c94b4ff5b8c36caaecc1805e00a7a4ea2a4caec847c",
+  "files_sha256": {
+    "R120_RAW_FRESH.json": "ed734e0ac9ac9973a65a71411092aecd5133726f9a147b1e0c88d7eeabdb4f6a",
+    "R120_REGISTERED_SCORE.json": "bd7aebcd882f2a0134982400c2a4e7842a43aa401cf3e7a32a3fcb75c5c899ff",
+    "R120_SECONDARY.json": "5f2c4942896fd2444fd51476fb9500190cd8aa53d328976767c302556372803b"
+  },
+  "gate": "FRESH_SEED_MEASURED_PASS_BOUNDED",
+  "mode": "Whole frozen NATIVE or R114 trajectories, selected by static checkpoint metadata; not per-step splicing",
+  "original_source_sha256": "75b92c459865a1cedb00db2f119b310f82636cc28ce0181b051012c228abb95a",
+  "phase": "R120",
+  "preregistration_commit": "b3f4ca8a00866b506473be5640ea82ac9f29ad5b",
+  "protocol_sha256": "a78b0d6c716fca755d9d2937a05ac8f5137259dde69ab6b21ecbafbca385dd71",
+  "qualification_limit": "Four historical topology classes, new evaluation/structure seeds; R93 remains HOLD",
+  "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+  "schema": "elpis.ym_hca.r120.evidence_index.v1",
+  "status": "MEASURED_FRESH_SEEDS_NO_R93_CLEARANCE"
+}
