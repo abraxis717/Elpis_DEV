@@ -166,3 +166,7 @@ R78 result archive byte-identical, R77 576/576 rows bitwise, 33/33 tests, no bou
 violations, frozen tree unchanged. Record: `evidence/CLOSURE.json`. The verifier lives in
 `evidence/` so that it cannot change the digest it verifies. R118 sources are frozen from
 here on; follow-up numerical work is in `../r119_numerical_hotpath/`.
+
+## Follow-up (R119, 2026-11-10)
+
+The R118-D regime exception (exact path above the A = 1,024 target in input-free decayed regimes) was re-measured under a new registered protocol in `../r119_numerical_hotpath/`. It also fails A = 256 at the decayed peak. It is **closed for the default exact path** by the R119 guarded kernel, which is bit-identical to this kernel in every verification. The R118 sources and evidence above are unchanged.

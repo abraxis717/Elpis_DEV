@@ -1,0 +1,55 @@
+{
+ "decision": {
+  "default_mode": "EXACT_GUARDED",
+  "mode_dispositions": {
+   "EXACT_GUARDED": "EXACT; LATENCY_QUALIFIED",
+   "EXACT_R118": "EXACT; LATENCY_NONQUAL",
+   "FTZ_DAZ": "OPT_IN; NONQUALIFIED; LATENCY_QUALIFIED",
+   "STATE_FLUSH_2P-500": "NONQUALIFIED (negative control)"
+  },
+  "r118d_numerical_exception": "CLOSED_FOR_DEFAULT_EXACT_PATH"
+ },
+ "files": {
+  "diag_ftz.json": {
+   "bytes": 2986,
+   "code_state": "diag_ftz.py in this commit",
+   "kind": "post-hoc diagnostic (not registered)",
+   "produced_by": "diag_ftz.py --steps 60",
+   "sha256": "122171343560bf007984ee66da62e696bad2cc96fb32d48068011f6bdf9835f4"
+  },
+  "forensic_census.json": {
+   "bytes": 67764,
+   "code_state": "forensics.py as committed in 9526124",
+   "kind": "development forensics",
+   "produced_by": "forensics.trajectory_census (all 1,024 instances, 13 checkpoints)",
+   "sha256": "b3fb6ba93c6ab0cf2814dff4f4ad1ae7e2725cfee31def5dcdfc51b4c9d552b8"
+  },
+  "microbench.json": {
+   "bytes": 4447,
+   "code_state": "as committed in 9526124",
+   "kind": "development forensics",
+   "produced_by": "microbench.py",
+   "sha256": "fec66abbc373e9fde418cfd9b4230409dca654d6554601607cbb598f95b0aa9d"
+  },
+  "qualification.json": {
+   "bytes": 50350,
+   "code_state": "commit 9526124 (protocol and code committed before measurement)",
+   "kind": "REGISTERED (PROTOCOL_R119)",
+   "produced_by": "qualify_r119.py --all",
+   "sha256": "40a904034bac56e1460c62bb0aa9babc5059da3bce9ca4777d625ffc6302bc3c"
+  },
+  "repro_r118d.json": {
+   "bytes": 8692,
+   "code_state": "R118 f901cf0",
+   "kind": "development reproduction",
+   "produced_by": "r118_scalable_awr/diag_subnormal.py (unchanged R118)",
+   "sha256": "210995a04c7b2788497e5dd00398527f0e6632e28f26dc8ff5b1e3c0123c96b5"
+  }
+ },
+ "protocol_commit": "9526124",
+ "protocol_sha256": "a8ea1bcdbc74181db677755ed32e52858eaa155e87439ea8f4a28e345f0f070b",
+ "r118_component_digest": "770411b1f6788f9593f5f7adf1d4f6efb57a564f8c207d13dd7f55352af0df71",
+ "r119_kernel_sha256": "125e138b11d0189bc46093b257ec0885ea7e49e875c67fc11b4f91ca21d291e2",
+ "r93_gate": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+ "schema": "elpis.ym_hca.r119.evidence_index.v1"
+}

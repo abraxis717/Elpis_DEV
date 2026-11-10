@@ -1,0 +1,3990 @@
+[
+ {
+  "step": 1000,
+  "instances": 1024,
+  "state_abs_max": 4.0674027276202285e-58,
+  "state_abs_median_nonzero": 1.9872529193191555e-66,
+  "state_log10_p05_p95": [
+   -86.37359682454014,
+   -64.06085474904368
+  ],
+  "state_subnormal_coords": 0,
+  "state_zero_coords": 0,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 3.294589,
+  "native_step_ms_median_all_instances": 3.337862,
+  "native_step_ms_p95_all_instances": 3.8725950000000005,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 0
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 0
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 0
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 327581,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 33253,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 294328,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 320393,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 33217,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 287176,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 334,
+    "sub_operand": 334,
+    "underflow0": 130,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 334
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 334
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 1650,
+  "instances": 1024,
+  "state_abs_max": 6.784214706553493e-95,
+  "state_abs_median_nonzero": 2.8624801581753825e-106,
+  "state_log10_p05_p95": [
+   -142.3956009153484,
+   -104.10230070059411
+  ],
+  "state_subnormal_coords": 0,
+  "state_zero_coords": 0,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 4.794749,
+  "native_step_ms_median_all_instances": 4.79005,
+  "native_step_ms_p95_all_instances": 5.586021499999999,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 777,
+    "sub_operand": 588,
+    "underflow0": 1639,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 377
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 134
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 0
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 1423,
+    "sub_operand": 831,
+    "underflow0": 3080,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 736
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 0
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 230,
+    "sub_operand": 460,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 230
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 3648,
+    "sub_operand": 3952,
+    "underflow0": 112,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 1728
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 0
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 322,
+    "sub_operand": 240,
+    "underflow0": 682,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 166
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 52
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 323648,
+    "sub_result": 805,
+    "sub_operand": 1009,
+    "underflow0": 683,
+    "penalized": {
+     "mul": {
+      "ops": 33243,
+      "penalized": 165
+     },
+     "add": {
+      "ops": 290405,
+      "penalized": 83
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 318248,
+    "sub_result": 785,
+    "sub_operand": 984,
+    "underflow0": 691,
+    "penalized": {
+     "mul": {
+      "ops": 33228,
+      "penalized": 157
+     },
+     "add": {
+      "ops": 285020,
+      "penalized": 90
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 31316,
+    "sub_operand": 31508,
+    "underflow0": 469,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 31316
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 31316
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 1700,
+  "instances": 1024,
+  "state_abs_max": 5.715242300236954e-98,
+  "state_abs_median_nonzero": 2.408630717469899e-109,
+  "state_log10_p05_p95": [
+   -145.82979665973562,
+   -107.1872041904434
+  ],
+  "state_subnormal_coords": 0,
+  "state_zero_coords": 0,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 4.167295,
+  "native_step_ms_median_all_instances": 4.177308,
+  "native_step_ms_p95_all_instances": 4.6913065,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 228,
+    "sub_operand": 182,
+    "underflow0": 1929,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 115
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 35
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 0
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 376,
+    "sub_operand": 254,
+    "underflow0": 3700,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 188
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 0
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 45,
+    "sub_operand": 90,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 45
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 416,
+    "sub_operand": 668,
+    "underflow0": 216,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 144
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 0
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 89,
+    "sub_operand": 72,
+    "underflow0": 820,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 44
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 11
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 325016,
+    "sub_result": 418,
+    "sub_operand": 553,
+    "underflow0": 821,
+    "penalized": {
+     "mul": {
+      "ops": 33202,
+      "penalized": 44
+     },
+     "add": {
+      "ops": 291814,
+      "penalized": 94
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 316784,
+    "sub_result": 394,
+    "sub_operand": 522,
+    "underflow0": 833,
+    "penalized": {
+     "mul": {
+      "ops": 33211,
+      "penalized": 31
+     },
+     "add": {
+      "ops": 283573,
+      "penalized": 105
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 10138,
+    "sub_operand": 10170,
+    "underflow0": 21574,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 10138
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 10138
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 2300,
+  "instances": 1024,
+  "state_abs_max": 1.2004104450061734e-131,
+  "state_abs_median_nonzero": 2.553826924475013e-146,
+  "state_log10_p05_p95": [
+   -197.86869995718516,
+   -144.25981468408605
+  ],
+  "state_subnormal_coords": 0,
+  "state_zero_coords": 0,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 4.342656,
+  "native_step_ms_median_all_instances": 4.310953,
+  "native_step_ms_p95_all_instances": 4.5098655,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 2312,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 0
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 4536,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 0
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 0
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 329639,
+    "sub_result": 25995,
+    "sub_operand": 40812,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 33185,
+      "penalized": 10
+     },
+     "add": {
+      "ops": 296454,
+      "penalized": 8490
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 316469,
+    "sub_result": 45827,
+    "sub_operand": 66440,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 33208,
+      "penalized": 64
+     },
+     "add": {
+      "ops": 283261,
+      "penalized": 20146
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 31808,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 2350,
+  "instances": 1024,
+  "state_abs_max": 1.3958830945718127e-134,
+  "state_abs_median_nonzero": 2.077513920345591e-149,
+  "state_log10_p05_p95": [
+   -201.24366071361504,
+   -147.35657527268046
+  ],
+  "state_subnormal_coords": 0,
+  "state_zero_coords": 0,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 8.930107,
+  "native_step_ms_median_all_instances": 8.978317,
+  "native_step_ms_p95_all_instances": 9.425717,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 2312,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 0
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 4536,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 0
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 0
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 1,
+    "sub_operand": 1,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 1
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 329216,
+    "sub_result": 108004,
+    "sub_operand": 134181,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 33216,
+      "penalized": 439
+     },
+     "add": {
+      "ops": 296000,
+      "penalized": 66017
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 319418,
+    "sub_result": 102021,
+    "sub_operand": 128047,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 33214,
+      "penalized": 443
+     },
+     "add": {
+      "ops": 286204,
+      "penalized": 61756
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 31808,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 2400,
+  "instances": 1024,
+  "state_abs_max": 1.4908454933408375e-137,
+  "state_abs_median_nonzero": 1.6822117274799172e-152,
+  "state_log10_p05_p95": [
+   -205.77740446730107,
+   -150.45114149989664
+  ],
+  "state_subnormal_coords": 0,
+  "state_zero_coords": 0,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 9.1477,
+  "native_step_ms_median_all_instances": 9.122388,
+  "native_step_ms_p95_all_instances": 10.944570500000001,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 575,
+    "sub_operand": 497,
+    "underflow0": 2312,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 509
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 6
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 0
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 1683,
+    "sub_operand": 1458,
+    "underflow0": 4536,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 1484
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 2
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 16,
+    "sub_operand": 32,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 16
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 1984,
+    "sub_operand": 1712,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 1310
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 91
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 422,
+    "sub_operand": 379,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 381
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 3
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 329432,
+    "sub_result": 109868,
+    "sub_operand": 136032,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 33224,
+      "penalized": 808
+     },
+     "add": {
+      "ops": 296208,
+      "penalized": 65788
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 310934,
+    "sub_result": 101242,
+    "sub_operand": 125338,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 33194,
+      "penalized": 1230
+     },
+     "add": {
+      "ops": 277740,
+      "penalized": 59457
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 31808,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 2450,
+  "instances": 1024,
+  "state_abs_max": 1.3219964221913498e-140,
+  "state_abs_median_nonzero": 1.3563705135058578e-155,
+  "state_log10_p05_p95": [
+   -209.47416085178386,
+   -153.54505922465628
+  ],
+  "state_subnormal_coords": 0,
+  "state_zero_coords": 0,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 22.348206,
+  "native_step_ms_median_all_instances": 22.4456,
+  "native_step_ms_p95_all_instances": 23.41612,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 62005,
+    "sub_operand": 36227,
+    "underflow0": 2312,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 36863
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 8057
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 0
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 223456,
+    "sub_operand": 100194,
+    "underflow0": 4536,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 131649
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 2
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 29788,
+    "sub_operand": 59576,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 29788
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 564433,
+    "sub_operand": 570407,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 273686
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 413
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 49490,
+    "sub_operand": 28773,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 29171
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 6562
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 152414,
+    "sub_result": 96961,
+    "sub_operand": 97152,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 32786,
+      "penalized": 29157
+     },
+     "add": {
+      "ops": 119628,
+      "penalized": 13489
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 133361,
+    "sub_result": 93061,
+    "sub_operand": 92525,
+    "underflow0": 1008,
+    "penalized": {
+     "mul": {
+      "ops": 32775,
+      "penalized": 30741
+     },
+     "add": {
+      "ops": 100586,
+      "penalized": 3499
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 0,
+    "sub_operand": 26944,
+    "underflow0": 31808,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 2500,
+  "instances": 1024,
+  "state_abs_max": 1.6569737692489694e-143,
+  "state_abs_median_nonzero": 1.092164095729386e-158,
+  "state_log10_p05_p95": [
+   -214.3045821716279,
+   -156.6428574561964
+  ],
+  "state_subnormal_coords": 0,
+  "state_zero_coords": 0,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 22.626688,
+  "native_step_ms_median_all_instances": 22.611599,
+  "native_step_ms_p95_all_instances": 25.668920999999997,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 70431,
+    "sub_operand": 40268,
+    "underflow0": 2325,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 40235
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 10072
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 0
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 247308,
+    "sub_operand": 106020,
+    "underflow0": 4584,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 141288
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 0
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 35352,
+    "sub_operand": 70704,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 35352
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 597056,
+    "sub_operand": 628480,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 282816
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 0
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 54955,
+    "sub_operand": 31416,
+    "underflow0": 1021,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 31395
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 7856
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 127778,
+    "sub_result": 92419,
+    "sub_operand": 91531,
+    "underflow0": 1018,
+    "penalized": {
+     "mul": {
+      "ops": 32774,
+      "penalized": 31398
+     },
+     "add": {
+      "ops": 95004,
+      "penalized": 52
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 127286,
+    "sub_result": 92379,
+    "sub_operand": 91510,
+    "underflow0": 1036,
+    "penalized": {
+     "mul": {
+      "ops": 32776,
+      "penalized": 31381
+     },
+     "add": {
+      "ops": 94510,
+      "penalized": 50
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 0,
+    "sub_operand": 31424,
+    "underflow0": 31808,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 2550,
+  "instances": 1024,
+  "state_abs_max": 2.6277611260998067e-146,
+  "state_abs_median_nonzero": 8.714642162886025e-162,
+  "state_log10_p05_p95": [
+   -217.80273485922783,
+   -159.74166979973396
+  ],
+  "state_subnormal_coords": 0,
+  "state_zero_coords": 0,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 22.047853,
+  "native_step_ms_median_all_instances": 21.878799,
+  "native_step_ms_p95_all_instances": 22.857186,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 63403,
+    "sub_operand": 38525,
+    "underflow0": 7913,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 34647
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 9769
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 0
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 224386,
+    "sub_operand": 101827,
+    "underflow0": 23169,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 122703
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 0
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 34518,
+    "sub_operand": 69036,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 34518
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 534902,
+    "sub_operand": 598505,
+    "underflow0": 29457,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 246687
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 0
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 49926,
+    "sub_operand": 30360,
+    "underflow0": 5163,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 27253
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 7687
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 125921,
+    "sub_result": 84022,
+    "sub_operand": 87096,
+    "underflow0": 5221,
+    "penalized": {
+     "mul": {
+      "ops": 32772,
+      "penalized": 27195
+     },
+     "add": {
+      "ops": 93149,
+      "penalized": 248
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 122912,
+    "sub_result": 73425,
+    "sub_operand": 80562,
+    "underflow0": 10136,
+    "penalized": {
+     "mul": {
+      "ops": 32772,
+      "penalized": 22284
+     },
+     "add": {
+      "ops": 90140,
+      "penalized": 706
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 0,
+    "sub_operand": 30720,
+    "underflow0": 31104,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 2600,
+  "instances": 1024,
+  "state_abs_max": 5.267984024357653e-149,
+  "state_abs_median_nonzero": 6.929793508179599e-165,
+  "state_log10_p05_p95": [
+   -223.4140822519542,
+   -162.84250450895584
+  ],
+  "state_subnormal_coords": 0,
+  "state_zero_coords": 0,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 4.185541,
+  "native_step_ms_median_all_instances": 4.209625,
+  "native_step_ms_p95_all_instances": 4.7547195,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 355,
+    "sub_operand": 250,
+    "underflow0": 42401,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 182
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 56
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 0
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 1533,
+    "sub_operand": 807,
+    "underflow0": 145218,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 759
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 0
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 269,
+    "sub_operand": 538,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 269
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 3291,
+    "sub_operand": 4291,
+    "underflow0": 968,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 1468
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 0
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 342,
+    "sub_operand": 235,
+    "underflow0": 32267,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 172
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 58
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 36779,
+    "sub_result": 1782,
+    "sub_operand": 2181,
+    "underflow0": 32266,
+    "penalized": {
+     "mul": {
+      "ops": 32773,
+      "penalized": 178
+     },
+     "add": {
+      "ops": 4006,
+      "penalized": 701
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 36269,
+    "sub_result": 1412,
+    "sub_operand": 1768,
+    "underflow0": 32353,
+    "penalized": {
+     "mul": {
+      "ops": 32772,
+      "penalized": 99
+     },
+     "add": {
+      "ops": 3497,
+      "penalized": 646
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 0,
+    "sub_operand": 192,
+    "underflow0": 544,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 2700,
+  "instances": 1024,
+  "state_abs_max": 1.870622013848224e-154,
+  "state_abs_median_nonzero": 4.322688054426681e-171,
+  "state_log10_p05_p95": [
+   -231.09515052311025,
+   -169.0523751649646
+  ],
+  "state_subnormal_coords": 50,
+  "state_zero_coords": 0,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 2.473392,
+  "native_step_ms_median_all_instances": 2.473005,
+  "native_step_ms_p95_all_instances": 2.624143,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 923,
+    "sub_operand": 914,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 631
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 480,
+    "sub_operand": 483,
+    "underflow0": 42560,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 348
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 28
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 313,
+    "sub_operand": 303,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 156
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 3
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 185,
+    "sub_operand": 189,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 29
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 3
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 2520,
+    "sub_operand": 1502,
+    "underflow0": 145872,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 1530
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 0
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 312,
+    "sub_operand": 624,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 312
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 7296,
+    "sub_operand": 6720,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 3456
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 0
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 402,
+    "sub_operand": 396,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 241
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 580,
+    "sub_operand": 442,
+    "underflow0": 32416,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 388
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 56
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 59,
+    "sub_operand": 53,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 6
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 34463,
+    "sub_result": 1297,
+    "sub_operand": 1375,
+    "underflow0": 32416,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 334
+     },
+     "add": {
+      "ops": 1695,
+      "penalized": 300
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 33878,
+    "sub_result": 1060,
+    "sub_operand": 1138,
+    "underflow0": 32417,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 351
+     },
+     "add": {
+      "ops": 1110,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 0,
+    "sub_operand": 434,
+    "underflow0": 384,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 229,
+    "sub_operand": 235,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 64
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 3000,
+  "instances": 1024,
+  "state_abs_max": 2.0279166715432039e-171,
+  "state_abs_median_nonzero": 6.533030539387449e-190,
+  "state_log10_p05_p95": [
+   -255.397987738442,
+   -187.74651386840412
+  ],
+  "state_subnormal_coords": 518,
+  "state_zero_coords": 6,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 2.57387,
+  "native_step_ms_median_all_instances": 2.603781,
+  "native_step_ms_p95_all_instances": 3.3124805000000004,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 8078,
+    "sub_operand": 8787,
+    "underflow0": 569,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 5275
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 0,
+    "sub_operand": 1387,
+    "underflow0": 42851,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 2224,
+    "sub_operand": 2591,
+    "underflow0": 337,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 1050
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 1699,
+    "sub_operand": 1761,
+    "underflow0": 28,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 268
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 0
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 0,
+    "sub_operand": 2626,
+    "underflow0": 147149,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 0
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 0
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 3429,
+    "sub_operand": 4065,
+    "underflow0": 636,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 1626
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 601,
+    "sub_operand": 1202,
+    "underflow0": 32761,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 601
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 324,
+    "sub_operand": 601,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 600,
+    "underflow0": 32760,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 601,
+    "underflow0": 32483,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 0,
+    "sub_operand": 600,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 1825,
+    "sub_operand": 1850,
+    "underflow0": 25,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 299
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 165,
+    "sub_operand": 166,
+    "underflow0": 1,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 82
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ },
+ {
+  "step": 4000,
+  "instances": 1024,
+  "state_abs_max": 6.702490653569413e-229,
+  "state_abs_median_nonzero": 2.5868154706578372e-251,
+  "state_log10_p05_p95": [
+   -321.0656660948332,
+   -248.9387455627246
+  ],
+  "state_subnormal_coords": 833,
+  "state_zero_coords": 30,
+  "replica_vs_native_bit_mismatches": 0,
+  "replica_coords": 16152,
+  "native_step_ms_median_census_subset": 2.637618,
+  "native_step_ms_median_all_instances": 2.611572,
+  "native_step_ms_p95_all_instances": 3.178681,
+  "all_instances": 1024,
+  "census": {
+   "link_op": {
+    "ops": 257664,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 0
+     }
+    }
+   },
+   "transport": {
+    "ops": 257664,
+    "sub_result": 11093,
+    "sub_operand": 13164,
+    "underflow0": 1669,
+    "penalized": {
+     "mul": {
+      "ops": 171776,
+      "penalized": 7048
+     },
+     "add": {
+      "ops": 85888,
+      "penalized": 5
+     }
+    }
+   },
+   "link_norm": {
+    "ops": 96624,
+    "sub_result": 0,
+    "sub_operand": 1975,
+    "underflow0": 42667,
+    "penalized": {
+     "mul": {
+      "ops": 53680,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 32208,
+      "penalized": 0
+     }
+    }
+   },
+   "softmax": {
+    "ops": 128832,
+    "sub_result": 1880,
+    "sub_operand": 3100,
+    "underflow0": 1169,
+    "penalized": {
+     "mul": {
+      "ops": 42944,
+      "penalized": 818
+     },
+     "div": {
+      "ops": 10736,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 64416,
+      "penalized": 0
+     }
+    }
+   },
+   "collective": {
+    "ops": 59328,
+    "sub_result": 2477,
+    "sub_operand": 2662,
+    "underflow0": 97,
+    "penalized": {
+     "div": {
+      "ops": 16384,
+      "penalized": 365
+     },
+     "add": {
+      "ops": 42944,
+      "penalized": 1
+     }
+    }
+   },
+   "invariants": {
+    "ops": 258048,
+    "sub_result": 0,
+    "sub_operand": 3886,
+    "underflow0": 146130,
+    "penalized": {
+     "mul": {
+      "ops": 147456,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 110592,
+      "penalized": 0
+     }
+    }
+   },
+   "squash": {
+    "ops": 81920,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 40960,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 40960,
+      "penalized": 0
+     }
+    }
+   },
+   "gates": {
+    "ops": 688128,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 327680,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 360448,
+      "penalized": 0
+     }
+    }
+   },
+   "activation": {
+    "ops": 49152,
+    "sub_result": 0,
+    "sub_operand": 0,
+    "underflow0": 0,
+    "penalized": {
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "tanh": {
+      "ops": 24576,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 8192,
+      "penalized": 0
+     }
+    }
+   },
+   "update": {
+    "ops": 229376,
+    "sub_result": 4214,
+    "sub_operand": 5966,
+    "underflow0": 1756,
+    "penalized": {
+     "mul": {
+      "ops": 131072,
+      "penalized": 1408
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "clamp": {
+    "ops": 114688,
+    "sub_result": 935,
+    "sub_operand": 1870,
+    "underflow0": 32736,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 935
+     },
+     "div": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "sqrt": {
+      "ops": 8192,
+      "penalized": 0
+     },
+     "add": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_diff": {
+    "ops": 32768,
+    "sub_result": 73,
+    "sub_operand": 937,
+    "underflow0": 0,
+    "penalized": {
+     "add": {
+      "ops": 32768,
+      "penalized": 7
+     }
+    }
+   },
+   "ctrl_norm": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 934,
+    "underflow0": 32735,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_dot": {
+    "ops": 32768,
+    "sub_result": 0,
+    "sub_operand": 944,
+    "underflow0": 31865,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_radial": {
+    "ops": 65536,
+    "sub_result": 0,
+    "sub_operand": 934,
+    "underflow0": 0,
+    "penalized": {
+     "mul": {
+      "ops": 32768,
+      "penalized": 0
+     },
+     "div": {
+      "ops": 32768,
+      "penalized": 0
+     }
+    }
+   },
+   "ctrl_out": {
+    "ops": 163840,
+    "sub_result": 1987,
+    "sub_operand": 2025,
+    "underflow0": 28,
+    "penalized": {
+     "mul": {
+      "ops": 65536,
+      "penalized": 46
+     },
+     "add": {
+      "ops": 98304,
+      "penalized": 0
+     }
+    }
+   },
+   "reconcile": {
+    "ops": 20888,
+    "sub_result": 203,
+    "sub_operand": 204,
+    "underflow0": 1,
+    "penalized": {
+     "div": {
+      "ops": 4272,
+      "penalized": 101
+     },
+     "add": {
+      "ops": 16616,
+      "penalized": 0
+     }
+    }
+   }
+  }
+ }
+]

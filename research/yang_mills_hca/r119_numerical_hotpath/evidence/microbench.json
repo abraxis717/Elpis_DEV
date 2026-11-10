@@ -1,0 +1,204 @@
+{
+ "info": {
+  "source": "fp_microbench.c",
+  "source_sha256": "6415729da843e2bd64adc94d07bc11744ba1d18669c4d3a04bca923c4ef4a7fe",
+  "binary_sha256": "f66690fd7b25b4a888d4d57e924dde62aa7c490555d3053675469bbcd5706c32",
+  "compiler": "/usr/bin/cc",
+  "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "cflags": [
+   "-std=c11",
+   "-O2",
+   "-ffp-contract=off",
+   "-fno-tree-vectorize",
+   "-fPIC",
+   "-shared",
+   "-Wall",
+   "-Wextra",
+   "-Werror"
+  ]
+ },
+ "n": 4096,
+ "reps": 1500,
+ "rows": [
+  {
+   "case": "mul normal*normal->normal",
+   "op": 0,
+   "default_ns": 0.6320782877604166,
+   "ftz_daz_ns": 0.6316974283854166
+  },
+  {
+   "case": "mul tiny*tiny->normal (1e-150^2)",
+   "op": 0,
+   "default_ns": 0.4991066080729167,
+   "ftz_daz_ns": 0.4785755208333333
+  },
+  {
+   "case": "mul normal*normal->SUBNORMAL",
+   "op": 0,
+   "default_ns": 44.43682014973958,
+   "ftz_daz_ns": 0.7012666015625
+  },
+  {
+   "case": "mul normal*normal->underflow 0",
+   "op": 0,
+   "default_ns": 0.49967805989583336,
+   "ftz_daz_ns": 0.47904378255208335
+  },
+  {
+   "case": "mul SUBNORMAL*O(1)->SUBNORMAL",
+   "op": 0,
+   "default_ns": 43.51403645833334,
+   "ftz_daz_ns": 0.48735791015625
+  },
+  {
+   "case": "mul SUBNORMAL*big->normal",
+   "op": 0,
+   "default_ns": 43.2413134765625,
+   "ftz_daz_ns": 0.47089697265625
+  },
+  {
+   "case": "mul SUBNORMAL*tiny->underflow 0",
+   "op": 0,
+   "default_ns": 0.46036865234375,
+   "ftz_daz_ns": 0.46377799479166665
+  },
+  {
+   "case": "add normal+normal",
+   "op": 1,
+   "default_ns": 0.45281412760416667,
+   "ftz_daz_ns": 0.46043961588541665
+  },
+  {
+   "case": "add SUBNORMAL+SUBNORMAL->SUBNORMAL",
+   "op": 1,
+   "default_ns": 0.4603828125,
+   "ftz_daz_ns": 0.4313720703125
+  },
+  {
+   "case": "add SUBNORMAL+normal->normal",
+   "op": 1,
+   "default_ns": 0.4816513671875,
+   "ftz_daz_ns": 0.4679775390625
+  },
+  {
+   "case": "sub normal-normal->SUBNORMAL (cancel)",
+   "op": 2,
+   "default_ns": 43.67303369140625,
+   "ftz_daz_ns": 0.4614697265625
+  },
+  {
+   "case": "add normal+normal->SUBNORMAL (cancel)",
+   "op": 1,
+   "default_ns": 43.71681819661458,
+   "ftz_daz_ns": 0.45686279296875
+  },
+  {
+   "case": "sub normal-normal->normal tiny",
+   "op": 2,
+   "default_ns": 0.47282779947916664,
+   "ftz_daz_ns": 0.48866927083333334
+  },
+  {
+   "case": "add normal+SUBNORMAL->normal tiny",
+   "op": 1,
+   "default_ns": 0.47578955078125,
+   "ftz_daz_ns": 0.4767109375
+  },
+  {
+   "case": "add normal+SUBNORMAL->SUBNORMAL",
+   "op": 1,
+   "default_ns": 0.46805908203125,
+   "ftz_daz_ns": 0.48273160807291665
+  },
+  {
+   "case": "div normal/normal",
+   "op": 3,
+   "default_ns": 1.3554518229166668,
+   "ftz_daz_ns": 1.3518346354166666
+  },
+  {
+   "case": "div SUBNORMAL/1e-24->normal",
+   "op": 3,
+   "default_ns": 45.6535380859375,
+   "ftz_daz_ns": 1.2142962239583333
+  },
+  {
+   "case": "div SUBNORMAL/1->SUBNORMAL",
+   "op": 3,
+   "default_ns": 46.20204231770833,
+   "ftz_daz_ns": 1.3227491861979166
+  },
+  {
+   "case": "div normal/normal->SUBNORMAL",
+   "op": 3,
+   "default_ns": 46.37636604817708,
+   "ftz_daz_ns": 1.1959734700520834
+  },
+  {
+   "case": "div SUBNORMAL/huge->underflow 0",
+   "op": 3,
+   "default_ns": 1.2229988606770834,
+   "ftz_daz_ns": 1.35878369140625
+  },
+  {
+   "case": "div normal/normal->underflow 0",
+   "op": 3,
+   "default_ns": 1.33988623046875,
+   "ftz_daz_ns": 1.3241337890625
+  },
+  {
+   "case": "sqrt normal",
+   "op": 4,
+   "default_ns": 1.9794114583333333,
+   "ftz_daz_ns": 1.9098653971354167
+  },
+  {
+   "case": "sqrt SUBNORMAL",
+   "op": 4,
+   "default_ns": 47.07057568359375,
+   "ftz_daz_ns": 1.5074671223958334
+  },
+  {
+   "case": "exp(normal)",
+   "op": 5,
+   "default_ns": 4.65351171875,
+   "ftz_daz_ns": 4.70584521484375
+  },
+  {
+   "case": "exp(-tiny normal)",
+   "op": 5,
+   "default_ns": 4.79350537109375,
+   "ftz_daz_ns": 4.661067220052083
+  },
+  {
+   "case": "exp(-SUBNORMAL)",
+   "op": 5,
+   "default_ns": 4.933979817708333,
+   "ftz_daz_ns": 4.809055989583333
+  },
+  {
+   "case": "tanh(normal)",
+   "op": 6,
+   "default_ns": 13.706733235677083,
+   "ftz_daz_ns": 14.156737630208333
+  },
+  {
+   "case": "tanh(SUBNORMAL)",
+   "op": 6,
+   "default_ns": 44.698561848958335,
+   "ftz_daz_ns": 3.0175231119791666
+  },
+  {
+   "case": "cmp normal",
+   "op": 7,
+   "default_ns": 0.6808977864583333,
+   "ftz_daz_ns": 0.677470703125
+  },
+  {
+   "case": "cmp SUBNORMAL",
+   "op": 7,
+   "default_ns": 0.6803699544270834,
+   "ftz_daz_ns": 0.6623743489583334
+  }
+ ]
+}
