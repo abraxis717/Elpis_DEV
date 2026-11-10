@@ -1,0 +1,56 @@
+{
+  "schema": "elpis.ym_hca.r119.protocol.v1",
+  "phase": "R119",
+  "status": "FROZEN_BEFORE_REGISTERED_MEASUREMENT",
+  "question": "Does the default exact numerical path qualify for hot inference in the input-free decayed-state regime where R118-D exceeded the A=1,024 target, and what are the dispositions of the exact, guarded and flush-to-zero modes?",
+  "inherited_targets": {
+    "source": "research/yang_mills_hca/r118_scalable_awr/PROTOCOL_R118D.json sha256 7ac1a0f7377772af1e9a0a891dfdbe01104d6621e10ca8dff1310fa476710fbc",
+    "p95_ms": {"64": 2.0, "256": 5.0, "1024": 20.0},
+    "revision": "NONE"
+  },
+  "pre_registration_disclosure": "Development runs before this registration, in the same session and VM: (1) reproduction of the R118-D diagnostic (EXACT_R118 block p95 22.2 ms at A=1,024, SMALL, steps 2,250-2,750); (2) forensic census (instrumented replica bit-identical to the native kernel) and per-operation microbenchmark; (3) kernel differential test suite; (4) one smoke run on the SMALL failure trajectory: EXACT_GUARDED bit-identical to EXACT_R118 at 4,000/4,000 steps, max 250-step-block p95 3.64 ms vs 24.43 ms. Registered measurements below are new runs.",
+  "modes": {
+    "EXACT_R118": "frozen R118 kernel (csrc/awr_kernel.c sha256 87b53392...), default floating-point environment",
+    "EXACT_GUARDED": "R119 kernel (csrc/awr_kernel_r119.c), guards SOFTMAX|GATES|CLAMP|RADIAL, default floating-point environment",
+    "FTZ_DAZ": "frozen R118 kernel with flush-to-zero and denormals-are-zero set for the duration of the kernel call (opt-in)",
+    "STATE_FLUSH_2P-500": "negative control for the numerical classification only: EXACT_R118 followed by flushing every touched relation coordinate with |x| < 2^-500 to +0"
+  },
+  "registry": "STRESS1M of PROTOCOL_R118D (50,000 participants, 1,000,000 relations, 50,000 instances, arity 2-6, Zipf 0.5, seed 11803): the maximum registered relation capacity. Window extraction and initial-state seeding exactly as R118-D.",
+  "controlled_regimes": {
+    "construction": "registry-wide seeded N(0,1) states (PCG64 seed 118500) multiplied by the regime scale; MIXED draws one log10 scale per relation row uniformly in [-320, 0] (PCG64 seed 119500)",
+    "scales": {"NORMAL": 1.0, "NEARZERO": 1e-20, "W1_RADIAL": 1e-104, "LEAD_FSUM": 1e-149, "W2_PEAK": 1e-157, "TAIL": 1e-300, "SUBNORMAL": 1e-310, "MIXED": "per-row 10^U(-320, 0)"},
+    "configuration": "R114 on 54007/STATE8_SIGNED8, 1 pass, MEAN (the R118-D primary configuration)",
+    "active_sizes": [64, 256, 1024],
+    "per_step": "fresh uniform random active set (PCG64 seed 119000 + 10 * regime_index + size_index), identical for all modes; every mode starts the step from the regime snapshot (touched rows restored, untimed); modes interleaved within each step",
+    "warmup_steps": 30,
+    "measured_steps": 300
+  },
+  "organic_trajectories": {
+    "STRESS1M": "fixed uniform random active set of A instances (A = 64, 256, 1,024; PCG64 seed 119100 + A), R104 on 54007/STATE8 (the R118-D failure configuration), registry-wide N(0,1) initial states, 4,000 steps, one independent state per mode, every step timed",
+    "SMALL": "the R118-D failure fixture: SMALL registry of PROTOCOL_R118D, all 1,024 instances active, R104 on 54007/STATE8, 4,000 steps, every step timed",
+    "block": 250
+  },
+  "latency_metrics": "nearest-rank p50, p95, p99 and max per cell; organic: overall p50/p95/p99 and the maximum p95 over 250-step blocks",
+  "latency_admission": "A mode is latency-qualified iff for every active size: p95 <= target in every controlled regime AND the maximum 250-step-block p95 <= target in every organic trajectory with that active size (SMALL counts as A = 1,024), with zero refused or failed steps.",
+  "numerical_verification": {
+    "bit_identity": "uint64 bit patterns (so -0.0 != +0.0): EXACT_GUARDED vs EXACT_R118 on every controlled step (touched rows), every organic step (touched rows), historical replay through the substrate (8 graphs x 2 transports x 6 checkpoints, NATIVE and R114, H1 and H20), and a kernel differential campaign (3 registry families x 6 checkpoints x 3 controllers x 6 state regimes x 4 trials, 32 instances each)",
+    "oracle_parity": "historical replay vs the torch rollout: <= 1e-12 after one pass, <= 1e-10 after 20 (R118-C tolerances)",
+    "covariance": "relation-gauge covariance and participant-gauge invariance, end to end with overlapping windows, per mode at scales 1, 1e-104, 1e-157, 1e-300, 1e-310: absolute error (gated at 1e-9 as in R118-C) and error relative to the state scale (reported); negative control (state-only gauge) must exceed 1e-6 relative",
+    "deviation": "FTZ_DAZ and STATE_FLUSH vs EXACT_R118: maximum absolute deviation over all controlled and organic steps; bit identity in NORMAL and NEARZERO",
+    "weights": "six checkpoint pins unchanged after all runs"
+  },
+  "classification": {
+    "EXACT": "bit-identical to EXACT_R118 in every numerical verification above, without exception",
+    "TOLERANCE_QUALIFIED": "not EXACT, but: bit-identical to EXACT_R118 in NORMAL and NEARZERO; maximum absolute deviation <= 2^-1000 (9.33e-302) everywhere; absolute covariance error <= 1e-9 in every tested scale; weights unchanged",
+    "NONQUALIFIED": "anything else"
+  },
+  "decision_rules": [
+    "The R118-D numerical exception closes for the default exact path iff EXACT_GUARDED is classified EXACT and is latency-qualified; only then does EXACT_GUARDED become the default mode of R119Engine.",
+    "Otherwise the exception remains OPEN and the default stays EXACT_R118.",
+    "FTZ_DAZ is a separate opt-in operating mode: its disposition is its numerical class plus its latency admission, and it is never evidence that the default exact path passes.",
+    "STATE_FLUSH_2P-500 is classified numerically only (negative control).",
+    "R118-E remains descriptive; R93 remains ENERGY_NORMALIZED_DENOMINATOR_HOLD; no capacity expansion; learned HCA unmodified."
+  ],
+  "memory": "peak RSS (getrusage ru_maxrss) of each measurement process; engine scratch bytes; no new allocations in either kernel",
+  "environment": "same host class as R118-D; single thread (OMP/MKL/OPENBLAS=1); torch not imported in latency processes; Python gc enabled"
+}
