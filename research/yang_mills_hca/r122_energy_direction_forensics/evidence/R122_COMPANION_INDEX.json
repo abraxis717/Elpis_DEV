@@ -1,0 +1,17 @@
+{
+ "component_digest": "4f3d407f4280641074264eca91cbbc6420b63e10f0d319a1eb651b1fa3db1f4f",
+ "disposition": "CONSUMED_COMPANION:MECHANISM_MIXED_BOUNDED",
+ "evidence_bytes": 1721267,
+ "evidence_within_budget": true,
+ "files_sha256": {
+  "R122_COMPANION_RESULT.json": "3d0db28943896e380516fd88fad0a5130ea321a0db5c4e5911e554416160c40b",
+  "R122_COMPANION_TABLES.json": "3ea3ba933ddc7b533d6550a435398ef6400378daa613654d8ae0804efa700787"
+ },
+ "mode": "CONSUMED_COMPANION_NO_DECISION_AUTHORITY",
+ "phase": "R122",
+ "protocol_sha256": "fe9ec864901d3e027798536576248ede9fe2bb8243fbee146d4edd5ba4bee31d",
+ "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+ "raw_tensor_sha256": "8be796ad7b5fc2e7c2a44fdb1dc4358d575cc4f69a59943720df18ff54066a5b",
+ "schema": "elpis.ym_hca.r122.evidence_index.v1",
+ "source_commit": "eafdb15293c6e47010c159c9adb8d7977e22e868"
+}

@@ -1,0 +1,721 @@
+{
+ "base_commit": "eafdb15293c6e47010c159c9adb8d7977e22e868",
+ "batch_per_seed": 4,
+ "budgets": {
+  "active_set": "at most 8 x (1 + k) = 56 HCA instances and 152 relation rows per system; all state volatile",
+  "max_engine_steps": 2000000,
+  "max_evidence_bytes": 6000000,
+  "max_raw_tensor_bytes": 1073741824,
+  "max_rss_bytes": 6442450944,
+  "max_seconds": 7200
+ },
+ "cases": [
+  "weak",
+  "anti"
+ ],
+ "checkpoints": [
+  "54007/STATE8",
+  "54007/STATE8_SIGNED8",
+  "54007/STATE8_TF1",
+  "54031/STATE8",
+  "54031/STATE8_SIGNED8",
+  "54031/STATE8_TF1"
+ ],
+ "classifier": {
+  "cos_aligned": 0.9,
+  "cos_antiparallel": -0.9,
+  "cos_deviated": 0.5,
+  "cos_reversed": -0.5,
+  "direction_classes": [
+   "ALIGNED",
+   "DEVIATED",
+   "ORTHOGONAL",
+   "REVERSED",
+   "EXTINGUISHED",
+   "TARGET_NEGLIGIBLE",
+   "UNDEFINED"
+  ],
+  "near_zero_exponent": -511,
+  "norm_classes": [
+   "ORDINARY",
+   "BOTH_ZERO",
+   "ZERO_TARGET",
+   "ZERO_PREDICTION",
+   "NEAR_ZERO",
+   "ILL_CONDITIONED",
+   "NONFINITE"
+  ],
+  "pair_condition_limit": 4194304.0,
+  "r_floor": 0.01,
+  "rule": "norm class first (NONFINITE, BOTH_ZERO, ZERO_TARGET, ZERO_PREDICTION, ILL_CONDITIONED, NEAR_ZERO, else ORDINARY); a direction class is assigned to ORDINARY samples only: EXTINGUISHED if r < r_floor, TARGET_NEGLIGIBLE if r > 1/r_floor, else ALIGNED / DEVIATED / ORTHOGONAL / REVERSED by the cosine thresholds. A zero or extinguished prediction is never a reversal."
+ },
+ "consumed_companion": "the same pipeline on the four R121 graphs with R121 seeds and structure, run before registration and published with it. It is discovery material and a rehearsal, has no decision authority and is the only source of maximum-degree-4 coverage.",
+ "controls": {
+  "classifier_seed": 122600,
+  "deep_check_stride": 4,
+  "gauge_checkpoints": [
+   "54007/STATE8",
+   "54031/STATE8_SIGNED8"
+  ],
+  "gauge_seed": 122700,
+  "negative_controls": [
+   "state-only gauge transformation (frames untouched) must change trajectories by >= 1e-6",
+   "prediction-only half turn must be classified REVERSED, quarter turn ORTHOGONAL",
+   "zero and extinguished predictions must not be classified as reversals"
+  ],
+  "reference_teacher_steps": [
+   1,
+   2,
+   8,
+   20
+  ],
+  "regression_fixture": "consumed R121_HOLDOUT_2 with R121 seeds and structure: published cell means within tolerance; k=0 unsigned 54007 R114 H20 all REVERSED and antiparallel with mean E_direction >= 3.99 while NATIVE is all ALIGNED with c >= 0.999; k=6 all EXTINGUISHED, none REVERSED"
+ },
+ "decision_rules": {
+  "cohort_dispositions": "the same dominance rule applied to the SIGNED and UNSIGNED strata separately; reported, not the overall disposition",
+  "directional_safety": "READOUT view, every recorded step. A controller-induced reversal is a sample that is REVERSED under the policy while the NATIVE sample of the same fixture, checkpoint, pair and step is ALIGNED. Per policy and amplitude regime (in-range scales; above-clamp scale): HAZARD_CONTROLLER_INDUCED_REVERSAL if the count exceeds max_induced_reversals, else NO_INDUCED_REVERSAL_OBSERVED. Pooled NSE never overrides this verdict.",
+  "disposition": {
+   "MECHANISM_INDETERMINATE": "integrity holds but more than max_invalid_strata_fraction of the primary strata are INVALID",
+   "MECHANISM_LOCALIZED_BOUNDED": "integrity holds and DENOMINATOR_COLLAPSE, LOCAL_TRANSITION or ACCUMULATED_DRIFT is dominant over the primary strata",
+   "MECHANISM_MIXED_BOUNDED": "integrity holds and no localizing class is dominant",
+   "NONQUAL": "any integrity gate fails"
+  },
+  "dominance": "a class is dominant iff it holds in >= dominant_fraction of the primary strata AND in a strict majority of the strata of every graph class",
+  "growth_class": "per stratum between horizons growth_from and growth_to, medians of sample-wise logs: NO_GROWTH if median dlog E_rel <= 0; NUMERATOR_DRIVEN if median dlog E_abs > 0; else DENOMINATOR_DRIVEN (absolute defect falls while the normalized defect rises: the R93 pattern)",
+  "primary_strata": "all 6 registered graphs x k in {0,2,6} x {SIGNED, UNSIGNED} at scale '1', horizon 20 (36 strata)",
+  "r93": "remains ENERGY_NORMALIZED_DENOMINATOR_HOLD whatever the disposition",
+  "secondary_findings": {
+   "S1": "readout error collinear with the teacher: median E_perp/E_rel <= collinear_perp_share in >= dominant_fraction of primary strata",
+   "S2": "paired-state direction not preserved: median PAIRED_STATE cosine < cos_aligned in >= dominant_fraction of primary strata",
+   "S3": "teacher-forced one-step skill against teacher persistence > 0: LOCALLY_SKILLFUL if >= dominant_fraction of primary strata, LOCALLY_UNSKILLED if <= 1 - dominant_fraction, else MIXED_LOCAL_SKILL",
+   "S4": "decayed-regime operator: probe vs analytic eight-gate operator and linear-limit trajectories within tolerance (integrity gate LINEAR_OPERATOR_CONTROLS); spectra reported"
+  },
+  "stratum": "graph x overlap k x scale x checkpoint cohort (SIGNED: 2 checkpoints, UNSIGNED: 4); 64 / 128 samples",
+  "stratum_mechanism": "NATIVE policy, READOUT view, one horizon; first matching rule: INVALID if the eligible sample fraction < min_eligible_fraction; DENOMINATOR_COLLAPSE if median A_den >= a_den_collapse; LOCAL_TRANSITION if median lambda >= lambda_local; ACCUMULATED_DRIFT if median lambda <= lambda_accumulated; else MIXED_LOCAL_ACCUMULATED. lambda = |L|^2 / |e|^2 with L the teacher-forced one-step defect of the same step and e the autonomous error; A_den = E_rel(READOUT) / E_rel(PAIRED_STATE).",
+  "worst_graph_harm": "per policy: max over graph blocks and k of the graph-block mean H20 E_rel minus NATIVE, scale '1'"
+ },
+ "evaluation_seeds": [
+  122101,
+  122103,
+  122107,
+  122109
+ ],
+ "expectations_from_consumed_companion": {
+  "E1": "SIGNED strata are ACCUMULATED_DRIFT with numerator-driven H8->H20 growth; UNSIGNED strata are not localized; overall disposition MECHANISM_MIXED_BOUNDED",
+  "E2": "S1 and S2 are supported: the readout error is collinear with the teacher while the paired-state direction is not preserved",
+  "E3": "R114 induces sign reversals at in-range scales; DELAYED8 induces none; the above-clamp scale produces many",
+  "E4": "decayed-regime spectral radius of the HCA exceeds the teacher's for every SIGNED checkpoint; the R104 controller lowers it below the teacher's and raises the dominant phase velocity",
+  "E5": "the teacher-forced one-step NSE is worse under the R114 step than under the NATIVE step in most samples",
+  "status": "NON_BINDING: stated before the prospective run so that confirmation or refutation is visible"
+ },
+ "graph_generation": {
+  "attempts_per_graph": 300000,
+  "degree_schedule": [
+   2,
+   2,
+   3,
+   3,
+   3,
+   3
+  ],
+  "family_inventory": "Exhaustive enumeration: the ten-participant / four 4-member-relation family has 50 connected incidence classes with four distinct relations (11 of maximum degree 2, 31 of degree 3, 8 of degree 4). 33 were used before R122, including all 8 of degree 4, so no unused degree-4 class exists; 17 were unused (3 of degree 2, 14 of degree 3). R122 consumes 6 of them and leaves 11 (1 of degree 2, 10 of degree 3).",
+  "method": "topology.generate: random.Random(seed) scan of four sorted 4-subsets of ten participants; four distinct relations, all ten participants covered, connected relation overlap, registered maximum participant degree, incidence signature absent from every historical class. Row order is slot order: source relation 0, readout relation 3. Explicit graph definitions are the authority.",
+  "seed": 122400
+ },
+ "graphs": {
+  "R122_T1_D2": [
+   [
+    2,
+    5,
+    6,
+    7
+   ],
+   [
+    1,
+    4,
+    7,
+    9
+   ],
+   [
+    2,
+    4,
+    5,
+    8
+   ],
+   [
+    0,
+    1,
+    3,
+    9
+   ]
+  ],
+  "R122_T2_D2": [
+   [
+    0,
+    3,
+    7,
+    9
+   ],
+   [
+    1,
+    4,
+    5,
+    6
+   ],
+   [
+    2,
+    3,
+    5,
+    8
+   ],
+   [
+    1,
+    4,
+    6,
+    8
+   ]
+  ],
+  "R122_T3_D3": [
+   [
+    0,
+    2,
+    6,
+    8
+   ],
+   [
+    4,
+    5,
+    7,
+    8
+   ],
+   [
+    4,
+    5,
+    7,
+    9
+   ],
+   [
+    1,
+    3,
+    4,
+    6
+   ]
+  ],
+  "R122_T4_D3": [
+   [
+    3,
+    6,
+    7,
+    9
+   ],
+   [
+    0,
+    1,
+    2,
+    5
+   ],
+   [
+    0,
+    1,
+    6,
+    8
+   ],
+   [
+    0,
+    3,
+    4,
+    6
+   ]
+  ],
+  "R122_T5_D3": [
+   [
+    0,
+    1,
+    3,
+    8
+   ],
+   [
+    3,
+    6,
+    7,
+    9
+   ],
+   [
+    0,
+    4,
+    6,
+    7
+   ],
+   [
+    0,
+    2,
+    4,
+    5
+   ]
+  ],
+  "R122_T6_D3": [
+   [
+    0,
+    5,
+    8,
+    9
+   ],
+   [
+    3,
+    6,
+    7,
+    9
+   ],
+   [
+    0,
+    1,
+    7,
+    9
+   ],
+   [
+    2,
+    3,
+    4,
+    6
+   ]
+  ]
+ },
+ "horizons": [
+  1,
+  4,
+  8,
+  12,
+  16,
+  20
+ ],
+ "integrity_gates": [
+  "SOURCE_PINS",
+  "FROZEN_PARITY",
+  "CHECKPOINTS_UNCHANGED",
+  "GRAPH_NOVELTY",
+  "SEED_DISJOINTNESS",
+  "DETECTOR_CONTROLS",
+  "AUTONOMOUS_GATE",
+  "LOCAL_TRANSITION_GATE",
+  "ENERGY_DECOMPOSITION_GATE",
+  "NUMERICAL_PARITY",
+  "LINEAR_OPERATOR_CONTROLS",
+  "RESOURCE_BOUND"
+ ],
+ "k_values": [
+  0,
+  2,
+  6
+ ],
+ "limitations": [
+  "Synthetic teacher and synthetic fixtures; six new ten-participant / four-relation incidence classes of maximum degree 2 and 3 only.",
+  "Samples within a graph are correlated; replication is counted over graph classes.",
+  "The paired readout is nearly one-dimensional under the nearly flat registered transport; state-level views are reported beside it.",
+  "A mechanism localization is not a fidelity qualification: R93 stays on HOLD and no policy is promoted.",
+  "Bitwise claims hold for this environment class (CPU, libm, compiler, torch build) only."
+ ],
+ "metrics": {
+  "identities": [
+   "E_rel = 1 + r^2 - 2 r c",
+   "E_rel = E_gain + E_perp",
+   "E_rel = E_mag + E_ang",
+   "e_h = P_h + L_h",
+   "e_20 = sum_b D_b",
+   "dlog E_rel = dlog E_abs - dlog teacher energy",
+   "E_rel(READOUT) = E_rel(PAIRED_STATE) * A_den"
+  ],
+  "no_denominator_floor": true,
+  "per_sample": [
+   "E_abs",
+   "teacher energy",
+   "predicted energy",
+   "r",
+   "c",
+   "rho = r c",
+   "E_rel",
+   "E_gain",
+   "E_perp",
+   "E_mag",
+   "E_ang",
+   "E_direction = 2(1-c)",
+   "energy ratio r^2",
+   "identity residuals"
+  ]
+ },
+ "no_persistent_inference_mutation": true,
+ "no_teacher_in_autonomous_inference": true,
+ "no_training": true,
+ "numerical_mode": "R119 EXACT_GUARDED kernel (R119Engine default), MEAN reconciliation, 1 pass per step",
+ "paths": {
+  "autonomous": "initialized once from the shared initial state; engine steps only; no teacher access",
+  "restart": "offline diagnostic: the policy is run autonomously from the recorded teacher state T_j to step 20; differences between consecutive restarts telescope exactly to the autonomous error",
+  "teacher_forced": "offline diagnostic: the recorded teacher state T_{h-1} is the input of one HCA step; its output is compared with T_h and never enters an autonomous trajectory"
+ },
+ "phase": "R122",
+ "pins": {
+  "checkpoint_sha256": {
+   "54007/STATE8": "3212d1d8a512d010dafc464e7b8fb90adac55f631bbf7d61a9b7baef317a5c0a",
+   "54007/STATE8_SIGNED8": "25e555914e000f2c521a71b5d062c716969428a288681fc42226013b32d87d70",
+   "54007/STATE8_TF1": "1c764544ac67a16234dfa62383b678b05745af87ef89b5f570ad48a7458cdc7e",
+   "54031/STATE8": "4c37c40b9d7656021db39d38ed7caca43877940c395a686fbba0c6c91a636a03",
+   "54031/STATE8_SIGNED8": "711d47c25c96fd20229b65f7e54508e34a701fa2e0500b21bb59a65a4367995f",
+   "54031/STATE8_TF1": "abb9906d0259f4854f1f44942f546aa27e250be070aa42574084772591e640f3"
+  },
+  "controller_reference_sha256": "c2fa879fcf3a128afb9d274ee47b14e4fcd1a542f0c0b927cf894865233d2e8e",
+  "frozen_manifest_sha256": "b0415964e83c2dba01d2a1b6bd9f2f55dad53f147a3747119433a3e07524d855",
+  "r118_characterize_e_sha256": "b13c79abd323f49ba925e2d0cdf1ccff7170a4470689144eae2dc128641a2068",
+  "r118_component_digest": "770411b1f6788f9593f5f7adf1d4f6efb57a564f8c207d13dd7f55352af0df71",
+  "r118_kernel_sha256": "87b53392c475fe2bb15290a52f73c9dfb6acb04294d2c22a859e5fc2d0e31e54",
+  "r119_engine_sha256": "682378ea009e0574a4788b36da587a0998dc4382b4a7007403b175240a491763",
+  "r119_guards_sha256": "8e39e01a46700c8240208437954242e35dc1d50cca70d6643c9d8fe621a18b0f",
+  "r119_kernel_sha256": "125e138b11d0189bc46093b257ec0885ea7e49e875c67fc11b4f91ca21d291e2",
+  "r120_raw_sha256": "ed734e0ac9ac9973a65a71411092aecd5133726f9a147b1e0c88d7eeabdb4f6a",
+  "r121_policy_sha256": "e0d42c6476a394a82c363c9dae3d0424d7b768e3f31fa1302edfd17abae0b74a",
+  "r121_protocol_sha256": "76763e2a71fc6f361bc94db8b2b1b16dee8b93eb083f1eb3924d7f797d741b12",
+  "r121_qualify_sha256": "e76485f0b114a54d5784267436c5b75bb2b7bb5484dc5de3334e6b811c613e19",
+  "r121_result_sha256": "a1bdf2e837325b09264012f9a9f3dcfecc727319d61b728b499236b1005d53c5"
+ },
+ "policies": [
+  "NATIVE",
+  "R114",
+  "SIGNED_ONLY",
+  "DELAYED8"
+ ],
+ "policy_definition": "frozen r121_temporal_topology.policy.controller_at; R114 gains from reference.gains",
+ "question": "What produces the long-horizon energy-normalized error of the frozen 88-parameter HCA against its teacher: collapse of the teacher-energy denominator, an erroneous one-step transition, accumulated autonomous drift, or controller-induced distortion of magnitude or direction?",
+ "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+ "recorded_steps": "every step 1..20",
+ "restart_points": [
+  4,
+  8,
+  12,
+  16
+ ],
+ "scale_definition": "the whole historical initial state pair_state(seed, case, 160, batch=4) multiplied by the scale. '1' is the R118-E / R120 / R121 fixture. '2^-20' is the decayed (linear-limit) regime. '2^2' places the strong source above the operator's clamp radius 4 and is reported as an above-clamp stress condition.",
+ "scales": {
+  "1": 1.0,
+  "2^-2": 0.25,
+  "2^-20": 9.5367431640625e-07,
+  "2^2": 4.0
+ },
+ "schema": "elpis.ym_hca.r122.protocol.v1",
+ "scope": "Mechanism and failure localization only. No training, no parameter or controller change, no new operator, no production admission. A diagnostic result cannot clear R93.",
+ "source_ratio": 160,
+ "source_sha256": {
+  "__init__.py": "b092c651c44475afa748f9197eaee3ce1eeeac8532adba27165be9d823bf6f14",
+  "analyze.py": "0e79224d230bfe74b9029bbb557c0130c6b0eeb43aa86176dce1d5fc2ac39159",
+  "controls.py": "2e8c02bb88053c8f38c19af11ccc3b9fc2dd677768bf7ab7a03765bdd9a5c356",
+  "harness.py": "50f9c15b9745d398e457205bf0edede4854673374d0f28c4d0f545b651417ac5",
+  "linear.py": "04b2e3c68afea150fa8b0b2014e94d6834636c1cbe02936ed65a398a2b00adf3",
+  "measure.py": "0e157ea555fac2ea37ff43aac3398c7115c96970d17bf053ee76a2bd3867456c",
+  "metrics.py": "12108abbac85b2beefc0b832656461f5da3db01fb1c2fedfd806822c70961066",
+  "qualify.py": "a53ba0746bf69ca69d859b89eea69694297076f08efae50720b0917e04daf525",
+  "topology.py": "98b5abbdca8b3c1e44829c385c28617dc4ad56e921abf7f377cf713fa6f2bdf3"
+ },
+ "status": "PREREGISTERED_SOURCE_NOT_MEASURED",
+ "structure_seed": 122300,
+ "thresholds": {
+  "a_den_collapse": 10.0,
+  "above_clamp_scales": [
+   "2^2"
+  ],
+  "bootstrap_resamples": 2000,
+  "bootstrap_seed": 122900,
+  "collinear_perp_share": 0.05,
+  "dominant_fraction": 0.75,
+  "growth_from": 8,
+  "growth_to": 20,
+  "lambda_accumulated": 0.1,
+  "lambda_local": 0.5,
+  "linear_limit_scale": "2^-20",
+  "max_induced_reversals": 0,
+  "max_invalid_strata_fraction": 0.1,
+  "min_eligible_fraction": 0.9,
+  "primary_horizon": 20,
+  "primary_scale": "1"
+ },
+ "title": "Energy-normalized fidelity, directional safety and recurrent error localization",
+ "tolerances": {
+  "bitwise": "autonomous recheck, fresh-state replay, EXACT_GUARDED vs EXACT_R118, DELAYED8 splice and H8 identity: zero mismatching trajectories",
+  "exact_audit_relative": 1e-12,
+  "gauge_covariance_abs": 1e-09,
+  "gauge_metric_invariance": 1e-09,
+  "gauge_negative_control_min": 1e-06,
+  "identity_residual": 1e-09,
+  "linear_analytic_vs_probe_rel": 1e-09,
+  "linear_limit_trajectory_rel": 0.001,
+  "linear_probe_homogeneity_abs": 1e-12,
+  "note": "published R120 / R121 cell means were produced with another torch build and CPU; they reproduce here to about 1e-11 relative, not bitwise. R118-E cells reproduce bitwise on this environment class.",
+  "published_cell_absolute": 1e-13,
+  "published_cell_relative": 1e-09,
+  "reference_teacher_relative": 1e-10,
+  "teacher_k0_parity_abs": 1e-12,
+  "telescoping_residual": 1e-09
+ },
+ "topology_audit": {
+  "audited_sources": "every FROZEN_PROTOCOL_R*.json (R61-R78), research_helpers/r92/protocol.json, PROTOCOL_R121.json",
+  "finding_on_r121": "R121 audited its four graphs against 12 classes (R61 r55_structural, R76, R77). Against the complete inventory, three of them are incidence-isomorphic to earlier graphs: R121_HOLDOUT_1 ~ R61 r52_fan, R121_HOLDOUT_3 ~ R72_G2, R121_HOLDOUT_4 ~ R70_STAR. They remain outside the R77 training class; only R121_HOLDOUT_2 was a class unused anywhere.",
+  "historical_graph_definitions": 54,
+  "historical_incidence_classes": 34,
+  "registered_graphs": {
+   "R122_T1_D2": {
+    "duplicate_within_set": false,
+    "historical_collisions": [],
+    "invariants_consistent": true,
+    "max_degree": 2,
+    "novel": true,
+    "rooted_signature": [
+     1,
+     0,
+     1,
+     1,
+     2,
+     1,
+     0,
+     2,
+     0,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "signature": [
+     0,
+     1,
+     1,
+     1,
+     1,
+     2,
+     0,
+     2,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "source_readout_hops": 2
+   },
+   "R122_T2_D2": {
+    "duplicate_within_set": false,
+    "historical_collisions": [],
+    "invariants_consistent": true,
+    "max_degree": 2,
+    "novel": true,
+    "rooted_signature": [
+     3,
+     0,
+     0,
+     1,
+     1,
+     1,
+     0,
+     0,
+     0,
+     3,
+     0,
+     1,
+     0,
+     0,
+     0
+    ],
+    "signature": [
+     0,
+     0,
+     3,
+     1,
+     1,
+     1,
+     0,
+     3,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0
+    ],
+    "source_readout_hops": 2
+   },
+   "R122_T3_D3": {
+    "duplicate_within_set": false,
+    "historical_collisions": [],
+    "invariants_consistent": true,
+    "max_degree": 3,
+    "novel": true,
+    "rooted_signature": [
+     2,
+     0,
+     1,
+     1,
+     0,
+     2,
+     0,
+     2,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0
+    ],
+    "signature": [
+     0,
+     1,
+     2,
+     2,
+     0,
+     0,
+     1,
+     2,
+     1,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0
+    ],
+    "source_readout_hops": 1
+   },
+   "R122_T4_D3": {
+    "duplicate_within_set": false,
+    "historical_collisions": [],
+    "invariants_consistent": true,
+    "max_degree": 3,
+    "novel": true,
+    "rooted_signature": [
+     2,
+     1,
+     0,
+     2,
+     0,
+     1,
+     0,
+     1,
+     1,
+     0,
+     1,
+     0,
+     0,
+     1,
+     0
+    ],
+    "signature": [
+     1,
+     1,
+     0,
+     2,
+     0,
+     1,
+     1,
+     2,
+     1,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0
+    ],
+    "source_readout_hops": 1
+   },
+   "R122_T5_D3": {
+    "duplicate_within_set": false,
+    "historical_collisions": [],
+    "invariants_consistent": true,
+    "max_degree": 3,
+    "novel": true,
+    "rooted_signature": [
+     2,
+     0,
+     0,
+     1,
+     1,
+     2,
+     0,
+     2,
+     0,
+     1,
+     1,
+     0,
+     0,
+     0,
+     0
+    ],
+    "signature": [
+     0,
+     1,
+     2,
+     2,
+     0,
+     1,
+     0,
+     2,
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0
+    ],
+    "source_readout_hops": 1
+   },
+   "R122_T6_D3": {
+    "duplicate_within_set": false,
+    "historical_collisions": [],
+    "invariants_consistent": true,
+    "max_degree": 3,
+    "novel": true,
+    "rooted_signature": [
+     2,
+     0,
+     0,
+     1,
+     1,
+     1,
+     1,
+     2,
+     0,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "signature": [
+     0,
+     1,
+     1,
+     2,
+     0,
+     1,
+     1,
+     2,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "source_readout_hops": 2
+   }
+  }
+ },
+ "views": {
+  "PAIRED_STATE": "whole fixture window state, copy i minus copy i+4 (32-d)",
+  "READOUT": "A of the readout relation, copy i minus copy i+4 (4-d): the historical paired response; primary",
+  "STRONG_STATE": "whole fixture window state of the strong-source copies (32-d)",
+  "WEAK_STATE": "whole fixture window state of the weak-source copies (32-d)"
+ }
+}
