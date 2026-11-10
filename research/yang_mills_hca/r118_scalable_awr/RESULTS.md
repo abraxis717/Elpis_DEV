@@ -154,3 +154,15 @@ intermediate relations plus new random relations); fresh seeds (checked disjoint
   regimes and evaluates FTZ/DAZ as a candidate with its measured error bound; reset
   state per configuration; measure on target hardware; incremental relation
   registration; multi-threaded sweeps.
+
+## Closure (2026-11-10)
+
+Independently re-verified from a fresh clone of the published branch at
+`f901cf0e4db7d93945b590d1b19262e3af37aeff` with
+`python -B research/yang_mills_hca/r118_scalable_awr/evidence/verify_closure.py --torch --tests`:
+**R118_CLOSURE_PASS, 20/20 checks** — component digest `770411b1…df71`, protocol `7ac1a0f7…0fbc`,
+kernel source `87b53392…1e54`, frozen manifest 39/39 and ledger 26/26, six checkpoint pins,
+R78 result archive byte-identical, R77 576/576 rows bitwise, 33/33 tests, no boundary-policy
+violations, frozen tree unchanged. Record: `evidence/CLOSURE.json`. The verifier lives in
+`evidence/` so that it cannot change the digest it verifies. R118 sources are frozen from
+here on; follow-up numerical work is in `../r119_numerical_hotpath/`.
