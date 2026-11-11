@@ -1,0 +1,9 @@
+{
+  "disposition": "PASS_BOUNDED",
+  "prereg_commit": "0c3da9f2da5d3aa9840132133e00eb8cadafd407",
+  "protocol_sha256": "56e96b829a8f3bb42aef76327624ffc351c11795acf1dc68488dd3deeb9b95b2",
+  "qualify_sha256": "bda71fcca9342573739876763908bd34edbe85a6925ed67ae03705c677c79f32",
+  "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+  "result_sha256": "667fab1efe3b1634e0dd1ec22d2eb1f2065392071c7a6e7f22dadfbda7bb42c6",
+  "schema": "elpis.ym_hca.r123.evidence_index.v1"
+}
