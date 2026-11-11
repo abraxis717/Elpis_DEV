@@ -35,7 +35,8 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 PROTO = HERE / 'PROTOCOL_R123.json'
 EXPECTED_BASE = '501be02d33201ce9c95e211d6ba9a1b531656f43'
-BRANCH = 'research/ym-r123-k4-quarter-prospective-r0'
+BRANCH = 'research/ym-r123-k4-quarter-prospective-r1'
+PREREG_R0 = 'd52ccc20c56bd67ef4770ca020145900f834a9cf'
 R93 = 'ENERGY_NORMALIZED_DENOMINATOR_HOLD'
 
 
@@ -171,7 +172,11 @@ def prereg_guard(proto):
     historical|={TOP.signature(g) for g in r122['graphs'].values()}
     got=[TOP.signature(g) for g in proto['graphs'].values()]
     need(len(set(got))==4 and not historical.intersection(got),'GRAPH_LEAK')
-    need([TOP.hop_distance(g) for g in proto['graphs'].values()]==[1,2,1,2],'HOP_DRIFT')
+    need(set(proto['graphs']) == {'R123_H1_A','R123_H2_A','R123_H1_B','R123_H2_B'}
+         and proto['required_hops'] == [1,2,1,2]
+         and [TOP.hop_distance(proto['graphs'][name]) for name in
+              ('R123_H1_A','R123_H2_A','R123_H1_B','R123_H2_B')] == proto['required_hops'],
+         'HOP_DRIFT')
     from research.yang_mills_hca.r122_energy_direction_forensics.qualify import consumed_seeds, pair_state_generator_seeds
     old=consumed_seeds() | {122101,122103,122107,122109,122300,122301,122302,122303,122304,122305,122400,122600,122900}
     ev=proto['evaluation_seeds']; st=proto['structure_seed']
@@ -184,7 +189,8 @@ def prereg_guard(proto):
     need('github.com' in remote_url and 'abraxis717/Elpis_DEV' in remote_url,'GITHUB_REMOTE_NOT_VERIFIED')
     remote=git('ls-remote','--heads',remote_url,'refs/heads/'+BRANCH)
     need(bool(remote) and remote.split()[0]==local,'PREREG_NOT_PUBLISHED_OR_REMOTE_CHANGED')
-    need(git('rev-parse','HEAD^')==EXPECTED_BASE,'PREREG_PARENT_DRIFT')
+    need(git('rev-parse','HEAD^')==PREREG_R0 and git('rev-parse','HEAD^^')==EXPECTED_BASE,
+         'PREREG_ANCESTRY_DRIFT')
     need(not (HERE/'evidence/R123_RESULT.json').exists(),'PROSPECTIVE_ALREADY_CONSUMED')
     return local
 
