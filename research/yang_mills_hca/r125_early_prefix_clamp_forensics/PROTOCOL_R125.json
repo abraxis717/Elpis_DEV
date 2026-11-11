@@ -1,0 +1,84 @@
+{
+  "arms": [
+    0.0,
+    0.25
+  ],
+  "base_commit": "7e8536ab2deafae6aabb423f3639ba4d218ce357",
+  "branch": "research/ym-r125-early-prefix-clamp-forensics-r0",
+  "budgets": {
+    "max_hazard_events": 40,
+    "max_model_steps": 15000,
+    "max_reference_parity_runs": 8,
+    "max_result_bytes": 750000,
+    "max_rss_mib": 2450,
+    "max_seconds": 1800
+  },
+  "checkpoint_pins": {
+    "54007/STATE8": "3212d1d8a512d010dafc464e7b8fb90adac55f631bbf7d61a9b7baef317a5c0a",
+    "54007/STATE8_SIGNED8": "25e555914e000f2c521a71b5d062c716969428a288681fc42226013b32d87d70",
+    "54007/STATE8_TF1": "1c764544ac67a16234dfa62383b678b05745af87ef89b5f570ad48a7458cdc7e",
+    "54031/STATE8": "4c37c40b9d7656021db39d38ed7caca43877940c395a686fbba0c6c91a636a03",
+    "54031/STATE8_SIGNED8": "711d47c25c96fd20229b65f7e54508e34a701fa2e0500b21bb59a65a4367995f",
+    "54031/STATE8_TF1": "abb9906d0259f4854f1f44942f546aa27e250be070aa42574084772591e640f3"
+  },
+  "classifier": {
+    "aligned": 0,
+    "reversed": 3
+  },
+  "constraints": {
+    "no_gain_tuning": true,
+    "no_new_graphs": true,
+    "no_new_seeds": true,
+    "no_persistent_inference_mutation": true,
+    "no_training": true,
+    "no_unbounded_growth": true
+  },
+  "decisions": {
+    "disposition": "FORENSIC_PREFIX_PASS_BOUNDED if integrity holds, otherwise NONQUAL_NOT_COMPLETED.",
+    "first_step_sufficiency": "A prefix word is conditionally sufficient at the measured event when the matched readout is classified REVERSED by the frozen R122 classifier. Full trajectory causation cannot be deduced uniquely.",
+    "integrity": "All 40 R124 events and H8/H20 R123 scores replay; exactly 38 H3, one H9 and one H11; source/protocol/frozen pins and budget gates pass; instrumented C bitwise equals original R119 on every probe; bounded R118 parity checks pass.",
+    "no_selection_tuning": true,
+    "preclamp": "Count actual raw per-instance, pre-reconciliation A/B proposal clamp activations. A positive clamp count indicates clamp use, but not causal responsibility for a sign reversal."
+  },
+  "evidence_scope": "Published R123/R124 events and seeds only; retrospective, no fresh held-out examples.",
+  "expected_events": 40,
+  "limitations": [
+    "Retrospective, selection-biased sample of 40 failures, not prospective validation.",
+    "Context-dependent finite H1/H2 interventions do not uniquely identify the whole-trajectory cause.",
+    "Preclamp hit attribution only localizes saturation; causal effect of clamp requires its own intervention.",
+    "No production admission, no new learned policy, R93 hold remains."
+  ],
+  "mode": "CONSUMED_R123_R124_RETROSPECTIVE",
+  "phase": "R125",
+  "preclamp_instrument": "Diagnostic-only instrumented R119 C source is compiled exclusively in /dev/shm; count per live slot A/B un-clamped proposal norms whose exact clamp scale < 1, from native/K4 autonomous incoming states at H1,H2,H3; bitwise parity with unmodified R119 is mandatory. R119 original code and weights are never modified.",
+  "prefix_interventions": "Complete 2^2 choices at steps H1,H2; N or K uniform intervening steps H3..H-1; either N or K at target horizon. Enumerate 8 paths for H3 and 16 for H9/H11; all original N^H and K^H endpoints must match native and K4 trajectories.",
+  "prefix_steps": [
+    1,
+    2
+  ],
+  "question": "For each of 40 published R123 scale-4 K4-quarter induced readout reversals, which H1/H2 operator prefixes are conditionally sufficient to reproduce the event under fixed suffix contexts, and does actual preclamp proposal saturation occur in the first three recurrent updates?",
+  "r118_component_digest": "770411b1f6788f9593f5f7adf1d4f6efb57a564f8c207d13dd7f55352af0df71",
+  "r123_protocol_sha256": "56e96b829a8f3bb42aef76327624ffc351c11795acf1dc68488dd3deeb9b95b2",
+  "r123_result_sha256": "667fab1efe3b1634e0dd1ec22d2eb1f2065392071c7a6e7f22dadfbda7bb42c6",
+  "r124_result_sha256": "55267a967b4a344dfe41452d57f8e7097f82ae41fed049654b4ca9f00679bb2d",
+  "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+  "schema": "elpis.ym_hca.r125.early_prefix.forensics.protocol.v1",
+  "source_pins": {
+    "instrument.py": "9e1cfcc33b789cf75a16eecc44c7aa88b970b0549c01182d69f9567ddd89652d",
+    "make_protocol.py": "2e50411c7f6ae476a7fc5e1208e492ad6760902cccca49daec2bb645f6ac8c35",
+    "qualify.py": "c544d9de2d198dc8c0a134fa012e8f2d464c5c8bc34d2b7a262fc5bbda3d7e84"
+  },
+  "status": "PREPUBLISHED_CONSUMED_FORENSICS",
+  "target_scale": "2^2",
+  "upstream_pins": {
+    "r119_numerical_hotpath/csrc/awr_kernel_r119.c": "125e138b11d0189bc46093b257ec0885ea7e49e875c67fc11b4f91ca21d291e2",
+    "r119_numerical_hotpath/engine_r119.py": "682378ea009e0574a4788b36da587a0998dc4382b4a7007403b175240a491763",
+    "r119_numerical_hotpath/guards.py": "8e39e01a46700c8240208437954242e35dc1d50cca70d6643c9d8fe621a18b0f",
+    "r119_numerical_hotpath/native_r119.py": "2ef19b2dc9a2e6543125be1dc6fc0ca3cf97a11d81d7d75b243c88a85d2c66e6",
+    "r122_energy_direction_forensics/harness.py": "50f9c15b9745d398e457205bf0edede4854673374d0f28c4d0f545b651417ac5",
+    "r122_energy_direction_forensics/metrics.py": "12108abbac85b2beefc0b832656461f5da3db01fb1c2fedfd806822c70961066",
+    "r123_k4_prospective/qualify.py": "bda71fcca9342573739876763908bd34edbe85a6925ed67ae03705c677c79f32",
+    "r124_stress_reversal_forensics/PROTOCOL_R124.json": "86b331e327204a0c9c2064e5e74b87b372ab702739c9ec40a5d8bb70431aaa6a",
+    "r124_stress_reversal_forensics/qualify.py": "ad62ad09cc943cdc4e0abe9baf4fb83aa3355eb6a6edac8f9a8ba991d849ed14"
+  }
+}
