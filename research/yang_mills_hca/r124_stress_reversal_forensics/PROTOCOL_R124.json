@@ -1,0 +1,75 @@
+{
+  "arms": [
+    0.0,
+    0.25
+  ],
+  "base_commit": "53057654cd8f11a4e8d95d0dcad469d294ca9498",
+  "branch": "research/ym-r124-stress-reversal-forensics-r0",
+  "budgets": {
+    "max_engine_steps": 12000,
+    "max_hazard_runs": 40,
+    "max_reference_parity_runs": 8,
+    "max_result_bytes": 750000,
+    "max_rss_mib": 2450,
+    "max_seconds": 1500
+  },
+  "checkpoint_pins": {
+    "54007/STATE8": "3212d1d8a512d010dafc464e7b8fb90adac55f631bbf7d61a9b7baef317a5c0a",
+    "54007/STATE8_SIGNED8": "25e555914e000f2c521a71b5d062c716969428a288681fc42226013b32d87d70",
+    "54007/STATE8_TF1": "1c764544ac67a16234dfa62383b678b05745af87ef89b5f570ad48a7458cdc7e",
+    "54031/STATE8": "4c37c40b9d7656021db39d38ed7caca43877940c395a686fbba0c6c91a636a03",
+    "54031/STATE8_SIGNED8": "711d47c25c96fd20229b65f7e54508e34a701fa2e0500b21bb59a65a4367995f",
+    "54031/STATE8_TF1": "abb9906d0259f4854f1f44942f546aa27e250be070aa42574084772591e640f3"
+  },
+  "constraints": {
+    "frozen_weight_mutation": false,
+    "gain_tuning": false,
+    "new_graphs": false,
+    "new_seeds": false,
+    "persistence_during_inference": false,
+    "teacher_for_inference": false,
+    "training": false,
+    "unbounded_growth": false
+  },
+  "data_authority": "Published R123 raw_records only, no new graph, seed or external data",
+  "decision_rules": {
+    "causality_limit": "One-step sufficiency within selected states only; not proof of full-trajectory causal mechanism, clamp activation or universal safety",
+    "counterfactual": "Current-step operator is isolated by applying K4 to N[h-1]; incoming-state history by applying N to K[h-1]. Each path uses exact same fixed teacher target for offline assessment.",
+    "pass": "Every source, replay, numerical parity, bitwise endpoint, seed/graph provenance and resource check passes; all 40 original induced events recovered",
+    "pathway_classes": [
+      "DIRECT_PATH_REVERSED",
+      "INHERITED_PATH_REVERSED",
+      "BOTH_ONE_STEP_PATHS_REVERSED",
+      "JOINT_PATH_ONLY_REVERSED"
+    ],
+    "zero_in_range_replay": true
+  },
+  "expected_induced": 40,
+  "limitations": [
+    "R124 retrospectively analyzes the R123 published holdout; not prospective replication",
+    "The selected event sample has selection bias toward failed high-amplitude trajectories",
+    "Clamping can only be inferred from post-state proxies; no preclamp-hit measurement in this protocol",
+    "No production integration or R93 clearance."
+  ],
+  "mode": "CONSUMED_R123_FORENSICS",
+  "phase": "R124",
+  "question": "Which conditional one-step paths reproduce the 40 above-clamp K4-quarter induced readout reversals observed in the R123 prospective experiment?",
+  "r118_component_digest": "770411b1f6788f9593f5f7adf1d4f6efb57a564f8c207d13dd7f55352af0df71",
+  "r123_protocol_sha256": "56e96b829a8f3bb42aef76327624ffc351c11795acf1dc68488dd3deeb9b95b2",
+  "r123_result_sha256": "667fab1efe3b1634e0dd1ec22d2eb1f2065392071c7a6e7f22dadfbda7bb42c6",
+  "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+  "reversal_definition": "R123_NATIVE_ALIGNED_SHADOW_REVERSED",
+  "scale": "2^2",
+  "schema": "elpis.ym_hca.r124.forensics.protocol.v1",
+  "source_pins": {
+    "r119_numerical_hotpath/csrc/awr_kernel_r119.c": "125e138b11d0189bc46093b257ec0885ea7e49e875c67fc11b4f91ca21d291e2",
+    "r119_numerical_hotpath/engine_r119.py": "682378ea009e0574a4788b36da587a0998dc4382b4a7007403b175240a491763",
+    "r119_numerical_hotpath/guards.py": "8e39e01a46700c8240208437954242e35dc1d50cca70d6643c9d8fe621a18b0f",
+    "r122_energy_direction_forensics/harness.py": "50f9c15b9745d398e457205bf0edede4854673374d0f28c4d0f545b651417ac5",
+    "r122_energy_direction_forensics/metrics.py": "12108abbac85b2beefc0b832656461f5da3db01fb1c2fedfd806822c70961066",
+    "r122_energy_direction_forensics/topology.py": "98b5abbdca8b3c1e44829c385c28617dc4ad56e921abf7f377cf713fa6f2bdf3",
+    "r123_k4_prospective/qualify.py": "bda71fcca9342573739876763908bd34edbe85a6925ed67ae03705c677c79f32"
+  },
+  "source_sha256": "ad62ad09cc943cdc4e0abe9baf4fb83aa3355eb6a6edac8f9a8ba991d849ed14",
+  "status": "REGISTERED_SOURCE_BEFORE_CONSUMED_REPLAY"
+}
