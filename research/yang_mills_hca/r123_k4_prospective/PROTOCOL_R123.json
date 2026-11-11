@@ -1,0 +1,231 @@
+{
+  "arms": [
+    0.0,
+    0.25,
+    0.5
+  ],
+  "base_commit": "501be02d33201ce9c95e211d6ba9a1b531656f43",
+  "batch": 4,
+  "budget": {
+    "max_engine_steps": 250000,
+    "max_result_bytes": 6000000,
+    "max_rss_mib": 2450,
+    "max_seconds": 2400
+  },
+  "cases": [
+    "weak",
+    "anti"
+  ],
+  "checkpoint_pins": {
+    "54007/STATE8": "3212d1d8a512d010dafc464e7b8fb90adac55f631bbf7d61a9b7baef317a5c0a",
+    "54007/STATE8_SIGNED8": "25e555914e000f2c521a71b5d062c716969428a288681fc42226013b32d87d70",
+    "54007/STATE8_TF1": "1c764544ac67a16234dfa62383b678b05745af87ef89b5f570ad48a7458cdc7e",
+    "54031/STATE8": "4c37c40b9d7656021db39d38ed7caca43877940c395a686fbba0c6c91a636a03",
+    "54031/STATE8_SIGNED8": "711d47c25c96fd20229b65f7e54508e34a701fa2e0500b21bb59a65a4367995f",
+    "54031/STATE8_TF1": "abb9906d0259f4854f1f44942f546aa27e250be070aa42574084772591e640f3"
+  },
+  "checkpoints": [
+    "54007/STATE8",
+    "54007/STATE8_SIGNED8",
+    "54007/STATE8_TF1",
+    "54031/STATE8",
+    "54031/STATE8_SIGNED8",
+    "54031/STATE8_TF1"
+  ],
+  "decision_rules": {
+    "above_clamp": [
+      "2^2"
+    ],
+    "disposition": "PASS_BOUNDED only if all source/numerical/finite/weight/budget gates and all primary conditions pass; else NONQUAL or SCIENTIFIC_FAIL_BOUNDED",
+    "in_range_scales": [
+      "2^-20",
+      "2^-2",
+      "1"
+    ],
+    "induced_reversal": "READOUT REVERSED in shadow while matched NATIVE READOUT ALIGNED, from R122 exact classifier; every step",
+    "max_in_range_induced_reversals_primary": 0,
+    "primary_cohort_k_min_relative_improvement": 0.2,
+    "primary_graphs_improving_min_per_cohort_k": 3,
+    "primary_h20_scale": "1",
+    "primary_h8_pooled_noninferiority_relative": 0.05,
+    "primary_max_graph_cohort_k_abs_h20_harm": 0.1,
+    "primary_teacher_forced_h20_pooled_noninferiority_relative": 0.1,
+    "secondary_has_no_rescue_authority": true
+  },
+  "evaluation_seeds": [
+    123101,
+    123103,
+    123107,
+    123109
+  ],
+  "frozen_manifest": "b0415964e83c2dba01d2a1b6bd9f2f55dad53f147a3747119433a3e07524d855",
+  "graph_seed": 123400,
+  "graphs": {
+    "R123_H1_A": [
+      [
+        0,
+        2,
+        5,
+        9
+      ],
+      [
+        1,
+        4,
+        6,
+        8
+      ],
+      [
+        0,
+        2,
+        6,
+        9
+      ],
+      [
+        3,
+        6,
+        7,
+        9
+      ]
+    ],
+    "R123_H1_B": [
+      [
+        1,
+        2,
+        6,
+        8
+      ],
+      [
+        2,
+        3,
+        4,
+        7
+      ],
+      [
+        0,
+        2,
+        5,
+        9
+      ],
+      [
+        4,
+        6,
+        7,
+        9
+      ]
+    ],
+    "R123_H2_A": [
+      [
+        3,
+        4,
+        6,
+        7
+      ],
+      [
+        0,
+        7,
+        8,
+        9
+      ],
+      [
+        0,
+        2,
+        6,
+        8
+      ],
+      [
+        1,
+        2,
+        5,
+        9
+      ]
+    ],
+    "R123_H2_B": [
+      [
+        3,
+        4,
+        7,
+        8
+      ],
+      [
+        2,
+        4,
+        6,
+        7
+      ],
+      [
+        1,
+        3,
+        6,
+        7
+      ],
+      [
+        0,
+        5,
+        6,
+        9
+      ]
+    ]
+  },
+  "k_values": [
+    0,
+    2,
+    6
+  ],
+  "limitations": [
+    "Oracle-derived gate target is offline causal calibration, not learned or teacher-free calibration.",
+    "Four new graph classes in the 10-participant/4-relation family, degree <=3 only.",
+    "Four independent graph classes give limited statistical power; repeated cases/seeds are correlated.",
+    "Zero observed induced reversals does not prove universal directional safety.",
+    "Even PASS_BOUNDED cannot clear R93 or authorize runtime promotion."
+  ],
+  "mode": "PREREGISTERED_FRESH_DATA_CAUSAL_SHADOW",
+  "mode_native": "R119 EXACT_GUARDED; MEAN reconciliation; H1-H20",
+  "no_persistent_inference_mutation": true,
+  "no_teacher_in_autonomous_inference": true,
+  "no_training": true,
+  "phase": "R123",
+  "primary_fraction": 0.25,
+  "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+  "required_hops": [
+    1,
+    2,
+    1,
+    2
+  ],
+  "scales": {
+    "1": 1.0,
+    "2^-2": 0.25,
+    "2^-20": 9.5367431640625e-07,
+    "2^2": 4.0
+  },
+  "schema": "elpis.ym_hca.r123.prospective.v1",
+  "secondary_fraction": 0.5,
+  "source_pins": {
+    "make_protocol.py": "e66bdf247e85c2b34bafdffa795c1ee673a8c4b7062e1a7ffc774c821e1e797d",
+    "qualify.py": "ab304bb3cd5cae1e1d6e55b161b75ecd63615513f00d3e6c9d33fef4188189c4",
+    "r118_component_digest": "770411b1f6788f9593f5f7adf1d4f6efb57a564f8c207d13dd7f55352af0df71",
+    "r119_engine": "682378ea009e0574a4788b36da587a0998dc4382b4a7007403b175240a491763",
+    "r119_guard": "8e39e01a46700c8240208437954242e35dc1d50cca70d6643c9d8fe621a18b0f",
+    "r119_kernel": "125e138b11d0189bc46093b257ec0885ea7e49e875c67fc11b4f91ca21d291e2",
+    "r121_result": "a1bdf2e837325b09264012f9a9f3dcfecc727319d61b728b499236b1005d53c5",
+    "r122_harness": "50f9c15b9745d398e457205bf0edede4854673374d0f28c4d0f545b651417ac5",
+    "r122_linear": "04b2e3c68afea150fa8b0b2014e94d6834636c1cbe02936ed65a398a2b00adf3",
+    "r122_metrics": "12108abbac85b2beefc0b832656461f5da3db01fb1c2fedfd806822c70961066",
+    "r122_result": "12f2d949af0b9ed59e47b527327acec9ffa2af56c1ba636020b8fd08f9ea2246",
+    "r122_topology": "98b5abbdca8b3c1e44829c385c28617dc4ad56e921abf7f377cf713fa6f2bdf3"
+  },
+  "source_ratio": 160,
+  "status": "FROZEN_BEFORE_EVALUATION",
+  "structure_seed": 123300,
+  "target_gate": "k4 B<-B; interpolate post-sigmoid limit, modify only shadow bias[4]",
+  "teacher_k4_limit": 0.6899744811276125,
+  "views": {
+    "primary": "all eight fixture-copy states, each four relations x eight coordinates; no distractor-node averaging",
+    "secondary": [
+      "paired fixture state",
+      "paired readout A at relation slot 3",
+      "teacher forced H8/H20 one-step from T[h-1]",
+      "readout reversal each H1..H20"
+    ]
+  }
+}
