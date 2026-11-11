@@ -1,0 +1,3235 @@
+{
+ "base_commit": "53057654cd8f11a4e8d95d0dcad469d294ca9498",
+ "by_cohort": {
+  "SIGNED": 2,
+  "UNSIGNED": 38
+ },
+ "by_graph": {
+  "R123_H1_A": 22,
+  "R123_H2_A": 1,
+  "R123_H2_B": 17
+ },
+ "by_pathway_class": {
+  "INHERITED_PATH_REVERSED": 40
+ },
+ "by_step": {
+  "11": 1,
+  "3": 38,
+  "9": 1
+ },
+ "disposition": "FORENSIC_REPLAY_PASS_BOUNDED",
+ "events": [
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9997811798764566,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.1970300982132345,
+     "prediction_norm": 0.2999737964623546,
+     "relative_error": 4.826417383906901,
+     "teacher_norm": 0.25059837418467185
+    },
+    "shadow": {
+     "cosine": -0.9997812906972902,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.197234863138794,
+     "prediction_norm": 0.30002511021978984,
+     "relative_error": 4.827317350988361,
+     "teacher_norm": 0.25059837418467185
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.999914018884976,
+   "k": 2,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.8588483819777487,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.027798435642463253,
+     "prediction_norm": 0.011432984565001582,
+     "relative_error": 1.0485220359702525,
+     "teacher_norm": 0.41128158116700736
+    },
+    "KN": {
+     "cosine": -0.8588483819777487,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.027798435642463253,
+     "prediction_norm": 0.011432984565001582,
+     "relative_error": 1.0485220359702525,
+     "teacher_norm": 0.41128158116700736
+    },
+    "NK": {
+     "cosine": 0.9174341695531981,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03573066989694258,
+     "prediction_norm": 0.014695366411370935,
+     "relative_error": 0.9357156058423223,
+     "teacher_norm": 0.41128158116700736
+    },
+    "NN": {
+     "cosine": 0.9174341695531981,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03573066989694258,
+     "prediction_norm": 0.014695366411370935,
+     "relative_error": 0.9357156058423223,
+     "teacher_norm": 0.41128158116700736
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 3.0060727973032635,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.941815026307698,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123101,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9997749090376323,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.1970687024762476,
+     "prediction_norm": 0.29998947550993543,
+     "relative_error": 4.82657198470814,
+     "teacher_norm": 0.25060339050664293
+    },
+    "shadow": {
+     "cosine": -0.9997750230280142,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.1972734604938764,
+     "prediction_norm": 0.3000407885633867,
+     "relative_error": 4.8274719422751735,
+     "teacher_norm": 0.25060339050664293
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.999914018884976,
+   "k": 2,
+   "pair": 1,
+   "paths": {
+    "KK": {
+     "cosine": -0.8555071978096859,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02789535799324037,
+     "prediction_norm": 0.01147286539007403,
+     "relative_error": 1.0485075100949612,
+     "teacher_norm": 0.4112822424739681
+    },
+    "KN": {
+     "cosine": -0.8555071978096859,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02789535799324037,
+     "prediction_norm": 0.01147286539007403,
+     "relative_error": 1.0485075100949612,
+     "teacher_norm": 0.4112822424739681
+    },
+    "NK": {
+     "cosine": 0.9153739849951177,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.035820296882885724,
+     "prediction_norm": 0.01473225202807653,
+     "relative_error": 0.9357051578659876,
+     "teacher_norm": 0.4112822424739681
+    },
+    "NN": {
+     "cosine": 0.9153739849951177,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.035820296882885724,
+     "prediction_norm": 0.01473225202807653,
+     "relative_error": 0.9357051578659876,
+     "teacher_norm": 0.4112822424739681
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 3.0060727973032635,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.941815026307698,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123101,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9998041601714628,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.1968886963320764,
+     "prediction_norm": 0.29991637116943054,
+     "relative_error": 4.825851147117515,
+     "teacher_norm": 0.2505800013723405
+    },
+    "shadow": {
+     "cosine": -0.9998042593740721,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.1970934865665326,
+     "prediction_norm": 0.29996768750666164,
+     "relative_error": 4.826751149056372,
+     "teacher_norm": 0.2505800013723405
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.999914018884976,
+   "k": 2,
+   "pair": 3,
+   "paths": {
+    "KK": {
+     "cosine": -0.87138063571233,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02744052103975073,
+     "prediction_norm": 0.01128571508566932,
+     "relative_error": 1.0485752595307243,
+     "teacher_norm": 0.4112791834134881
+    },
+    "KN": {
+     "cosine": -0.87138063571233,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02744052103975073,
+     "prediction_norm": 0.01128571508566932,
+     "relative_error": 1.0485752595307243,
+     "teacher_norm": 0.4112791834134881
+    },
+    "NK": {
+     "cosine": 0.9251197723616548,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03540044070535286,
+     "prediction_norm": 0.01455946434577513,
+     "relative_error": 0.9357538959084565,
+     "teacher_norm": 0.4112791834134881
+    },
+    "NN": {
+     "cosine": 0.9251197723616548,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03540044070535286,
+     "prediction_norm": 0.01455946434577513,
+     "relative_error": 0.9357538959084565,
+     "teacher_norm": 0.4112791834134881
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 3.0060727973032635,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.941815026307698,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123101,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999637367856882,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3337537741769372,
+     "prediction_norm": 0.3690415931897093,
+     "relative_error": 5.446309946087195,
+     "teacher_norm": 0.2766939448155982
+    },
+    "shadow": {
+     "cosine": -0.9999637516347922,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.333939323848098,
+     "prediction_norm": 0.36909293366018203,
+     "relative_error": 5.447176061164965,
+     "teacher_norm": 0.2766939448155982
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145362129679,
+   "k": 6,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.9288412439367574,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.019075892611950612,
+     "prediction_norm": 0.008577382095479234,
+     "relative_error": 1.035800841324719,
+     "teacher_norm": 0.4496451238200879
+    },
+    "KN": {
+     "cosine": -0.9288412439367574,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.019075892611950612,
+     "prediction_norm": 0.008577382095479234,
+     "relative_error": 1.035800841324719,
+     "teacher_norm": 0.4496451238200879
+    },
+    "NK": {
+     "cosine": 0.9728317095598239,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03058365565567684,
+     "prediction_norm": 0.013751791634167745,
+     "relative_error": 0.9414298599610629,
+     "teacher_norm": 0.4496451238200879
+    },
+    "NN": {
+     "cosine": 0.9728317095598239,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03058365565567684,
+     "prediction_norm": 0.013751791634167745,
+     "relative_error": 0.9414298599610629,
+     "teacher_norm": 0.4496451238200879
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8214741064581847,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7399465741766136,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123101,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999626948044623,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.333767075099807,
+     "prediction_norm": 0.3690482339736645,
+     "relative_error": 5.446369247936833,
+     "teacher_norm": 0.27669616446788375
+    },
+    "shadow": {
+     "cosine": -0.9999627100799018,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3339526228662855,
+     "prediction_norm": 0.3690995743289746,
+     "relative_error": 5.4472353598109695,
+     "teacher_norm": 0.27669616446788375
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145362129679,
+   "k": 6,
+   "pair": 1,
+   "paths": {
+    "KK": {
+     "cosine": -0.9269735157498941,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.019110904989213005,
+     "prediction_norm": 0.008593072983055016,
+     "relative_error": 1.0357958322635328,
+     "teacher_norm": 0.4496423894056983
+    },
+    "KN": {
+     "cosine": -0.9269735157498941,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.019110904989213005,
+     "prediction_norm": 0.008593072983055016,
+     "relative_error": 1.0357958322635328,
+     "teacher_norm": 0.4496423894056983
+    },
+    "NK": {
+     "cosine": 0.9720802296727861,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03061008691728745,
+     "prediction_norm": 0.013763592621405234,
+     "relative_error": 0.9414260567793625,
+     "teacher_norm": 0.4496423894056983
+    },
+    "NN": {
+     "cosine": 0.9720802296727861,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03061008691728745,
+     "prediction_norm": 0.013763592621405234,
+     "relative_error": 0.9414260567793625,
+     "teacher_norm": 0.4496423894056983
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8214741064581847,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7399465741766136,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123101,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999336149265068,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3341389714987295,
+     "prediction_norm": 0.3692339052939187,
+     "relative_error": 5.4480276044418,
+     "teacher_norm": 0.2767582037417984
+    },
+    "shadow": {
+     "cosine": -0.9999336420926281,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3343244660613434,
+     "prediction_norm": 0.36928524243587163,
+     "relative_error": 5.448893626893929,
+     "teacher_norm": 0.2767582037417984
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145362129679,
+   "k": 6,
+   "pair": 2,
+   "paths": {
+    "KK": {
+     "cosine": -0.8785051573427739,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.020064456760723007,
+     "prediction_norm": 0.009020312349118135,
+     "relative_error": 1.0356560399122554,
+     "teacher_norm": 0.4495667366771556
+    },
+    "KN": {
+     "cosine": -0.8785051573427739,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.020064456760723007,
+     "prediction_norm": 0.009020312349118135,
+     "relative_error": 1.0356560399122554,
+     "teacher_norm": 0.4495667366771556
+    },
+    "NK": {
+     "cosine": 0.9518717599422171,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03133936123820753,
+     "prediction_norm": 0.014089134361407503,
+     "relative_error": 0.9413200496882637,
+     "teacher_norm": 0.4495667366771556
+    },
+    "NN": {
+     "cosine": 0.9518717599422171,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03133936123820753,
+     "prediction_norm": 0.014089134361407503,
+     "relative_error": 0.9413200496882637,
+     "teacher_norm": 0.4495667366771556
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8214741064581847,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7399465741766136,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123101,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999675539368357,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3337050627125773,
+     "prediction_norm": 0.36901727275993856,
+     "relative_error": 5.4460927727729,
+     "teacher_norm": 0.2766858153851549
+    },
+    "shadow": {
+     "cosine": -0.9999675672239599,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3338906193602744,
+     "prediction_norm": 0.3690686136523068,
+     "relative_error": 5.446958899586447,
+     "teacher_norm": 0.2766858153851549
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145362129679,
+   "k": 6,
+   "pair": 3,
+   "paths": {
+    "KK": {
+     "cosine": -0.9357684726485034,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.018947100575398695,
+     "prediction_norm": 0.008519661444772425,
+     "relative_error": 1.0358191913533312,
+     "teacher_norm": 0.44965515493354846
+    },
+    "KN": {
+     "cosine": -0.9357684726485034,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.018947100575398695,
+     "prediction_norm": 0.008519661444772425,
+     "relative_error": 1.0358191913533312,
+     "teacher_norm": 0.44965515493354846
+    },
+    "NK": {
+     "cosine": 0.9756015829706274,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.030486646102823867,
+     "prediction_norm": 0.013708477576769528,
+     "relative_error": 0.9414437951958384,
+     "teacher_norm": 0.44965515493354846
+    },
+    "NN": {
+     "cosine": 0.9756015829706274,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.030486646102823867,
+     "prediction_norm": 0.013708477576769528,
+     "relative_error": 0.9414437951958384,
+     "teacher_norm": 0.44965515493354846
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8214741064581847,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7399465741766136,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123101,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999298461360712,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.334187267666645,
+     "prediction_norm": 0.3692580165714262,
+     "relative_error": 5.4482430037530145,
+     "teacher_norm": 0.27676625727152987
+    },
+    "shadow": {
+     "cosine": -0.9999298748421664,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.334372755327217,
+     "prediction_norm": 0.36930935329701275,
+     "relative_error": 5.449109014613831,
+     "teacher_norm": 0.27676625727152987
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145602901043,
+   "k": 6,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.8726947569983002,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02018488874117221,
+     "prediction_norm": 0.009074258538254873,
+     "relative_error": 1.0356379228835235,
+     "teacher_norm": 0.4495570252882106
+    },
+    "KN": {
+     "cosine": -0.8726947569983002,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02018488874117221,
+     "prediction_norm": 0.009074258538254873,
+     "relative_error": 1.0356379228835235,
+     "teacher_norm": 0.4495570252882106
+    },
+    "NK": {
+     "cosine": 0.9493559258778458,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03143272437708577,
+     "prediction_norm": 0.014130802067666901,
+     "relative_error": 0.9413063298540232,
+     "teacher_norm": 0.4495570252882106
+    },
+    "NN": {
+     "cosine": 0.9493559258778458,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03143272437708577,
+     "prediction_norm": 0.014130802067666901,
+     "relative_error": 0.9413063298540232,
+     "teacher_norm": 0.4495570252882106
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8230306198308113,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7425663900672554,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123103,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9998897404113904,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3347026129309183,
+     "prediction_norm": 0.36951528558064795,
+     "relative_error": 5.450541963304421,
+     "teacher_norm": 0.27685214818694104
+    },
+    "shadow": {
+     "cosine": -0.9998897854898825,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3348880270460202,
+     "prediction_norm": 0.36956661787671813,
+     "relative_error": 5.451407850782933,
+     "teacher_norm": 0.27685214818694104
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145602901043,
+   "k": 6,
+   "pair": 1,
+   "paths": {
+    "KK": {
+     "cosine": -0.8164175619656804,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02142655745127067,
+     "prediction_norm": 0.00963027355311393,
+     "relative_error": 1.0354451329555805,
+     "teacher_norm": 0.449455008113906
+    },
+    "KN": {
+     "cosine": -0.8164175619656804,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02142655745127067,
+     "prediction_norm": 0.00963027355311393,
+     "relative_error": 1.0354451329555805,
+     "teacher_norm": 0.449455008113906
+    },
+    "NK": {
+     "cosine": 0.9239184684601912,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.032410793704464626,
+     "prediction_norm": 0.01456719354741828,
+     "relative_error": 0.941160597786537,
+     "teacher_norm": 0.449455008113906
+    },
+    "NN": {
+     "cosine": 0.9239184684601912,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.032410793704464626,
+     "prediction_norm": 0.01456719354741828,
+     "relative_error": 0.941160597786537,
+     "teacher_norm": 0.449455008113906
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8230306198308113,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7425663900672554,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123103,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9998831109817966,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.334788046385464,
+     "prediction_norm": 0.3695579336281995,
+     "relative_error": 5.450923177415948,
+     "teacher_norm": 0.27686637936932607
+    },
+    "shadow": {
+     "cosine": -0.9998831587639303,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3349734483263398,
+     "prediction_norm": 0.3696092651922978,
+     "relative_error": 5.451789044493353,
+     "teacher_norm": 0.27686637936932607
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145602901043,
+   "k": 6,
+   "pair": 2,
+   "paths": {
+    "KK": {
+     "cosine": -0.8079804231116512,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02162528422228836,
+     "prediction_norm": 0.009719232676240494,
+     "relative_error": 1.0354132655093633,
+     "teacher_norm": 0.449438378535772
+    },
+    "KN": {
+     "cosine": -0.8079804231116512,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02162528422228836,
+     "prediction_norm": 0.009719232676240494,
+     "relative_error": 1.0354132655093633,
+     "teacher_norm": 0.449438378535772
+    },
+    "NK": {
+     "cosine": 0.9199342599254421,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03256984870975758,
+     "prediction_norm": 0.014638139993268849,
+     "relative_error": 0.9411365557075876,
+     "teacher_norm": 0.449438378535772
+    },
+    "NN": {
+     "cosine": 0.9199342599254421,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03256984870975758,
+     "prediction_norm": 0.014638139993268849,
+     "relative_error": 0.9411365557075876,
+     "teacher_norm": 0.449438378535772
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8230306198308113,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7425663900672554,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123103,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999013333918313,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.334553383335099,
+     "prediction_norm": 0.36944078960131305,
+     "relative_error": 5.44987614792985,
+     "teacher_norm": 0.27682728485395364
+    },
+    "shadow": {
+     "cosine": -0.9999013737405859,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3347388187276366,
+     "prediction_norm": 0.3694921231775451,
+     "relative_error": 5.450742071079748,
+     "teacher_norm": 0.27682728485395364
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145602901043,
+   "k": 6,
+   "pair": 3,
+   "paths": {
+    "KK": {
+     "cosine": -0.8317219493467797,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02107477987823817,
+     "prediction_norm": 0.009472781583523656,
+     "relative_error": 1.035500860351681,
+     "teacher_norm": 0.4494842479140318
+    },
+    "KN": {
+     "cosine": -0.8317219493467797,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02107477987823817,
+     "prediction_norm": 0.009472781583523656,
+     "relative_error": 1.035500860351681,
+     "teacher_norm": 0.4494842479140318
+    },
+    "NK": {
+     "cosine": 0.9310307720574088,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03213090483715273,
+     "prediction_norm": 0.014442335595524923,
+     "relative_error": 0.9412026727707791,
+     "teacher_norm": 0.4494842479140318
+    },
+    "NN": {
+     "cosine": 0.9310307720574088,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03213090483715273,
+     "prediction_norm": 0.014442335595524923,
+     "relative_error": 0.9412026727707791,
+     "teacher_norm": 0.4494842479140318
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8230306198308113,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7425663900672554,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123103,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9998811932588494,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.196415479760192,
+     "prediction_norm": 0.2997242461768797,
+     "relative_error": 4.82395667528177,
+     "teacher_norm": 0.2505185290957252
+    },
+    "shadow": {
+     "cosine": -0.9998812534811684,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.196620354763785,
+     "prediction_norm": 0.2997755711614282,
+     "relative_error": 4.824856793959593,
+     "teacher_norm": 0.2505185290957252
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999140226531021,
+   "k": 2,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.9170434836687826,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.026207451783893936,
+     "prediction_norm": 0.010778376421434293,
+     "relative_error": 1.0487535762929725,
+     "teacher_norm": 0.41127143952462625
+    },
+    "KN": {
+     "cosine": -0.9170434836687826,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.026207451783893936,
+     "prediction_norm": 0.010778376421434293,
+     "relative_error": 1.0487535762929725,
+     "teacher_norm": 0.41127143952462625
+    },
+    "NK": {
+     "cosine": 0.9525562508221794,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03427215290249669,
+     "prediction_norm": 0.014095157659817911,
+     "relative_error": 0.9358822735117586,
+     "teacher_norm": 0.41127143952462625
+    },
+    "NN": {
+     "cosine": 0.9525562508221794,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03427215290249669,
+     "prediction_norm": 0.014095157659817911,
+     "relative_error": 0.9358822735117586,
+     "teacher_norm": 0.41127143952462625
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 3.010950738069261,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.9464702996289907,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999803344154151,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3335421349683068,
+     "prediction_norm": 0.36893592534046815,
+     "relative_error": 5.445366445901138,
+     "teacher_norm": 0.27665861892638016
+    },
+    "shadow": {
+     "cosine": -0.9999803424709256,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.333727714963244,
+     "prediction_norm": 0.3689872676455679,
+     "relative_error": 5.446232612004896,
+     "teacher_norm": 0.27665861892638016
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145591731038,
+   "k": 6,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.9599871425358004,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.01850963554091,
+     "prediction_norm": 0.00832357765694973,
+     "relative_error": 1.0358806308724517,
+     "teacher_norm": 0.44968890060276756
+    },
+    "KN": {
+     "cosine": -0.9599871425358004,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.01850963554091,
+     "prediction_norm": 0.00832357765694973,
+     "relative_error": 1.0358806308724517,
+     "teacher_norm": 0.44968890060276756
+    },
+    "NK": {
+     "cosine": 0.9850740430082536,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.030159724782971707,
+     "prediction_norm": 0.013562493480136587,
+     "relative_error": 0.9414904849430282,
+     "teacher_norm": 0.44968890060276756
+    },
+    "NN": {
+     "cosine": 0.9850740430082536,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.030159724782971707,
+     "prediction_norm": 0.013562493480136587,
+     "relative_error": 0.9414904849430282,
+     "teacher_norm": 0.44968890060276756
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8233581534888583,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.743117541994035,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9998879866716371,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.334725206520463,
+     "prediction_norm": 0.3695265642578695,
+     "relative_error": 5.450642775936353,
+     "teacher_norm": 0.27685591195299286
+    },
+    "shadow": {
+     "cosine": -0.9998880324654211,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3349106174154926,
+     "prediction_norm": 0.369577896360299,
+     "relative_error": 5.451508658018167,
+     "teacher_norm": 0.27685591195299286
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145591731038,
+   "k": 6,
+   "pair": 1,
+   "paths": {
+    "KK": {
+     "cosine": -0.8141640202116249,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.021479297587009002,
+     "prediction_norm": 0.009653883241672441,
+     "relative_error": 1.0354367027743536,
+     "teacher_norm": 0.4494506024960171
+    },
+    "KN": {
+     "cosine": -0.8141640202116249,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.021479297587009002,
+     "prediction_norm": 0.009653883241672441,
+     "relative_error": 1.0354367027743536,
+     "teacher_norm": 0.4494506024960171
+    },
+    "NK": {
+     "cosine": 0.9228587158816626,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.032452939899405314,
+     "prediction_norm": 0.01458599339055475,
+     "relative_error": 0.9411542364238143,
+     "teacher_norm": 0.4494506024960171
+    },
+    "NN": {
+     "cosine": 0.9228587158816626,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.032452939899405314,
+     "prediction_norm": 0.01458599339055475,
+     "relative_error": 0.9411542364238143,
+     "teacher_norm": 0.4494506024960171
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8233581534888583,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.743117541994035,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9998724885096808,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3349250852455279,
+     "prediction_norm": 0.36962634194651267,
+     "relative_error": 5.451534717134669,
+     "teacher_norm": 0.27688920227199765
+    },
+    "shadow": {
+     "cosine": -0.9998725406223182,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.335110467669089,
+     "prediction_norm": 0.3696776723378878,
+     "relative_error": 5.452400551519062,
+     "teacher_norm": 0.27688920227199765
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145591731038,
+   "k": 6,
+   "pair": 2,
+   "paths": {
+    "KK": {
+     "cosine": -0.7949084501850009,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.021940157627791813,
+     "prediction_norm": 0.009860167288319061,
+     "relative_error": 1.0353622039101775,
+     "teacher_norm": 0.4494118709443131
+    },
+    "KN": {
+     "cosine": -0.7949084501850009,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.021940157627791813,
+     "prediction_norm": 0.009860167288319061,
+     "relative_error": 1.0353622039101775,
+     "teacher_norm": 0.4494118709443131
+    },
+    "NK": {
+     "cosine": 0.9136717710957293,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.032823222319121825,
+     "prediction_norm": 0.014751145752857676,
+     "relative_error": 0.9410980605846486,
+     "teacher_norm": 0.4494118709443131
+    },
+    "NN": {
+     "cosine": 0.9136717710957293,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.032823222319121825,
+     "prediction_norm": 0.014751145752857676,
+     "relative_error": 0.9410980605846486,
+     "teacher_norm": 0.4494118709443131
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8233581534888583,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.743117541994035,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9998730349682732,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3349180310433675,
+     "prediction_norm": 0.36962282059258283,
+     "relative_error": 5.451503235871108,
+     "teacher_norm": 0.27688802757700925
+    },
+    "shadow": {
+     "cosine": -0.9998730868581814,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.335103414471281,
+     "prediction_norm": 0.36967415104428325,
+     "relative_error": 5.452369071937469,
+     "teacher_norm": 0.27688802757700925
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999145591731038,
+   "k": 6,
+   "pair": 3,
+   "paths": {
+    "KK": {
+     "cosine": -0.7955679812385503,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.021924063657716986,
+     "prediction_norm": 0.0098529642726654,
+     "relative_error": 1.0353648306966985,
+     "teacher_norm": 0.44941323043446296
+    },
+    "KN": {
+     "cosine": -0.7955679812385503,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.021924063657716986,
+     "prediction_norm": 0.0098529642726654,
+     "relative_error": 1.0353648306966985,
+     "teacher_norm": 0.44941323043446296
+    },
+    "NK": {
+     "cosine": 0.913990358960411,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.032810231889471055,
+     "prediction_norm": 0.01474535230475102,
+     "relative_error": 0.941100040072177,
+     "teacher_norm": 0.44941323043446296
+    },
+    "NN": {
+     "cosine": 0.913990358960411,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.032810231889471055,
+     "prediction_norm": 0.01474535230475102,
+     "relative_error": 0.941100040072177,
+     "teacher_norm": 0.44941323043446296
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8233581534888583,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.743117541994035,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999819922616288,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3500959211732648,
+     "prediction_norm": 0.3735156729699344,
+     "relative_error": 5.522902214366967,
+     "teacher_norm": 0.27665861892638016
+    },
+    "shadow": {
+     "cosine": -0.9999819996966803,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3502826036650193,
+     "prediction_norm": 0.37356732029028095,
+     "relative_error": 5.523779706097555,
+     "teacher_norm": 0.27665861892638016
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8_TF1",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999146044421036,
+   "k": 6,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.9901783556090584,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.03664788858364841,
+     "prediction_norm": 0.016480148726593567,
+     "relative_error": 1.0739189598462415,
+     "teacher_norm": 0.44968890060276756
+    },
+    "KN": {
+     "cosine": -0.9901783556090584,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.03664788858364841,
+     "prediction_norm": 0.016480148726593567,
+     "relative_error": 1.0739189598462415,
+     "teacher_norm": 0.44968890060276756
+    },
+    "NK": {
+     "cosine": 0.9022415855307433,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01189515585082752,
+     "prediction_norm": 0.005349119557057205,
+     "relative_error": 0.9786768861827436,
+     "teacher_norm": 0.44968890060276756
+    },
+    "NN": {
+     "cosine": 0.9022415855307433,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01189515585082752,
+     "prediction_norm": 0.005349119557057205,
+     "relative_error": 0.9786768861827436,
+     "teacher_norm": 0.44968890060276756
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.8136644079757382,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7270105863845493,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9997275488297824,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.1973605182943503,
+     "prediction_norm": 0.3001080141833673,
+     "relative_error": 4.827740802810053,
+     "teacher_norm": 0.2506413144562955
+    },
+    "shadow": {
+     "cosine": -0.9997276867466597,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.1975652241170434,
+     "prediction_norm": 0.3001593219198439,
+     "relative_error": 4.828640688484058,
+     "teacher_norm": 0.2506413144562955
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.9999140214720066,
+   "k": 2,
+   "pair": 2,
+   "paths": {
+    "KK": {
+     "cosine": -0.8312896586775221,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.0286174694838244,
+     "prediction_norm": 0.011770002736020585,
+     "relative_error": 1.0483977724385034,
+     "teacher_norm": 0.41128733421637453
+    },
+    "KN": {
+     "cosine": -0.8312896586775221,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.0286174694838244,
+     "prediction_norm": 0.011770002736020585,
+     "relative_error": 1.0483977724385034,
+     "teacher_norm": 0.41128733421637453
+    },
+    "NK": {
+     "cosine": 0.9003026939140946,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.036490678067300955,
+     "prediction_norm": 0.015008153706048136,
+     "relative_error": 0.9356262580523254,
+     "teacher_norm": 0.41128733421637453
+    },
+    "NN": {
+     "cosine": 0.9003026939140946,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.036490678067300955,
+     "prediction_norm": 0.015008153706048136,
+     "relative_error": 0.9356262580523254,
+     "teacher_norm": 0.41128733421637453
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 3.007863247305671,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.9435238335070033,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123109,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.999920295931354,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.334309752243381,
+     "prediction_norm": 0.3693191646925422,
+     "relative_error": 5.44878931958638,
+     "teacher_norm": 0.276786678709051
+    },
+    "shadow": {
+     "cosine": -0.9999203285386755,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.334495222407029,
+     "prediction_norm": 0.3693705003631379,
+     "relative_error": 5.4496553010722435,
+     "teacher_norm": 0.276786678709051
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.999914548986658,
+   "k": 6,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.8584032819174285,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.020487046020952714,
+     "prediction_norm": 0.009209593267294848,
+     "relative_error": 1.0355920141370227,
+     "teacher_norm": 0.44953251229464325
+    },
+    "KN": {
+     "cosine": -0.8584032819174285,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.020487046020952714,
+     "prediction_norm": 0.009209593267294848,
+     "relative_error": 1.0355920141370227,
+     "teacher_norm": 0.44953251229464325
+    },
+    "NK": {
+     "cosine": 0.9430810105360531,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03166816486003053,
+     "prediction_norm": 0.014235869709290465,
+     "relative_error": 0.941271582829562,
+     "teacher_norm": 0.44953251229464325
+    },
+    "NN": {
+     "cosine": 0.9430810105360531,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03166816486003053,
+     "prediction_norm": 0.014235869709290465,
+     "relative_error": 0.941271582829562,
+     "teacher_norm": 0.44953251229464325
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.822165364502516,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7411101788969123,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123109,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999229617844264,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3342755472081107,
+     "prediction_norm": 0.36930208858874974,
+     "relative_error": 5.448636749879244,
+     "teacher_norm": 0.276780976284465
+    },
+    "shadow": {
+     "cosine": -0.9999229933029155,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3344610222568758,
+     "prediction_norm": 0.36935342455382325,
+     "relative_error": 5.449502739565193,
+     "teacher_norm": 0.276780976284465
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.999914548986658,
+   "k": 6,
+   "pair": 1,
+   "paths": {
+    "KK": {
+     "cosine": -0.8623319368801367,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.020403130100555698,
+     "prediction_norm": 0.009172009660497252,
+     "relative_error": 1.0356048291139595,
+     "teacher_norm": 0.44953934103706195
+    },
+    "KN": {
+     "cosine": -0.8623319368801367,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.020403130100555698,
+     "prediction_norm": 0.009172009660497252,
+     "relative_error": 1.0356048291139595,
+     "teacher_norm": 0.44953934103706195
+    },
+    "NK": {
+     "cosine": 0.9448183274989345,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03160260745797882,
+     "prediction_norm": 0.014206615331712738,
+     "relative_error": 0.9412812793520374,
+     "teacher_norm": 0.44953934103706195
+    },
+    "NN": {
+     "cosine": 0.9448183274989345,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03160260745797882,
+     "prediction_norm": 0.014206615331712738,
+     "relative_error": 0.9412812793520374,
+     "teacher_norm": 0.44953934103706195
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.822165364502516,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7411101788969123,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123109,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999548202852151,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3338676488667807,
+     "prediction_norm": 0.3690984471635129,
+     "relative_error": 5.446817674907082,
+     "teacher_norm": 0.2767129463534777
+    },
+    "shadow": {
+     "cosine": -0.9999548387819714,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3340531822352901,
+     "prediction_norm": 0.3691497866485601,
+     "relative_error": 5.447683762569435,
+     "teacher_norm": 0.2767129463534777
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.999914548986658,
+   "k": 6,
+   "pair": 2,
+   "paths": {
+    "KK": {
+     "cosine": -0.9131691153152094,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.01937354366529698,
+     "prediction_norm": 0.008710767141813803,
+     "relative_error": 1.0357579776528707,
+     "teacher_norm": 0.44962177763157674
+    },
+    "KN": {
+     "cosine": -0.9131691153152094,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.01937354366529698,
+     "prediction_norm": 0.008710767141813803,
+     "relative_error": 1.0357579776528707,
+     "teacher_norm": 0.44962177763157674
+    },
+    "NK": {
+     "cosine": 0.9664640986447082,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.030809151674128316,
+     "prediction_norm": 0.013852465543042442,
+     "relative_error": 0.9413973258213902,
+     "teacher_norm": 0.44962177763157674
+    },
+    "NN": {
+     "cosine": 0.9664640986447082,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.030809151674128316,
+     "prediction_norm": 0.013852465543042442,
+     "relative_error": 0.9413973258213902,
+     "teacher_norm": 0.44962177763157674
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.822165364502516,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7411101788969123,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123109,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999111810868712,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3344267884275849,
+     "prediction_norm": 0.36937759174263785,
+     "relative_error": 5.449311385854332,
+     "teacher_norm": 0.2768061874551335
+    },
+    "shadow": {
+     "cosine": -0.9999112174160968,
+     "direction_class": "REVERSED",
+     "norm_ratio": 1.3346122418825532,
+     "prediction_norm": 0.369428926406458,
+     "relative_error": 5.450177339301196,
+     "teacher_norm": 0.2768061874551335
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H1_A",
+   "hops": 1,
+   "incoming_state_cosine": 0.999914548986658,
+   "k": 6,
+   "pair": 3,
+   "paths": {
+    "KK": {
+     "cosine": -0.8453095818646427,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02077152733109722,
+     "prediction_norm": 0.009336993569097701,
+     "relative_error": 1.035548198513546,
+     "teacher_norm": 0.4495092450481103
+    },
+    "KN": {
+     "cosine": -0.8453095818646427,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02077152733109722,
+     "prediction_norm": 0.009336993569097701,
+     "relative_error": 1.035548198513546,
+     "teacher_norm": 0.4495092450481103
+    },
+    "NK": {
+     "cosine": 0.9372224462225411,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03189136898327294,
+     "prediction_norm": 0.014335465195221738,
+     "relative_error": 0.9412384457118497,
+     "teacher_norm": 0.4495092450481103
+    },
+    "NN": {
+     "cosine": 0.9372224462225411,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.03189136898327294,
+     "prediction_norm": 0.014335465195221738,
+     "relative_error": 0.9412384457118497,
+     "teacher_norm": 0.4495092450481103
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.822165364502516,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7411101788969123,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123109,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999944928354112,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.6992160358271905,
+     "prediction_norm": 0.02152667291048766,
+     "relative_error": 2.8873274350166866,
+     "teacher_norm": 0.030786869590342065
+    },
+    "shadow": {
+     "cosine": -0.9999958935329898,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.8207393728359419,
+     "prediction_norm": 0.02526799603915928,
+     "relative_error": 3.315085123116702,
+     "teacher_norm": 0.030786869590342065
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54007/STATE8_SIGNED8",
+   "cohort": "SIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_A",
+   "hops": 2,
+   "incoming_state_cosine": 0.9985614439095684,
+   "k": 6,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.9991848824560497,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.10628318556202214,
+     "prediction_norm": 0.004169656360797392,
+     "relative_error": 1.2236892200788985,
+     "teacher_norm": 0.0392315711911379
+    },
+    "KN": {
+     "cosine": -0.9991848824560497,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.10628318556202214,
+     "prediction_norm": 0.004169656360797392,
+     "relative_error": 1.2236892200788985,
+     "teacher_norm": 0.0392315711911379
+    },
+    "NK": {
+     "cosine": 0.9599444133359685,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.014911086893768091,
+     "prediction_norm": 0.0005849853670101061,
+     "relative_error": 0.9715947113914737,
+     "teacher_norm": 0.0392315711911379
+    },
+    "NN": {
+     "cosine": 0.9599444133359685,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.014911086893768091,
+     "prediction_norm": 0.0005849853670101061,
+     "relative_error": 0.9715947113914737,
+     "teacher_norm": 0.0392315711911379
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 0.3694519023080834,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 0.33470843000876255,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 9
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.999995618414149,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9293026122066559,
+     "prediction_norm": 0.05789520521096862,
+     "relative_error": 3.7222004258290724,
+     "teacher_norm": 0.06229962603192816
+    },
+    "shadow": {
+     "cosine": -0.999995618414149,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9293026122066559,
+     "prediction_norm": 0.05789520521096862,
+     "relative_error": 3.7222004258290724,
+     "teacher_norm": 0.06229962603192816
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998787092434402,
+   "k": 0,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.9997402713705156,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04117510802856169,
+     "prediction_norm": 0.005041217863310307,
+     "relative_error": 1.0840242168695329,
+     "teacher_norm": 0.12243362809912715
+    },
+    "KN": {
+     "cosine": -0.9997402713705156,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04117510802856169,
+     "prediction_norm": 0.005041217863310307,
+     "relative_error": 1.0840242168695329,
+     "teacher_norm": 0.12243362809912715
+    },
+    "NK": {
+     "cosine": 0.9984306721425784,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01677122016409446,
+     "prediction_norm": 0.0020533613323393237,
+     "relative_error": 0.9667914725836163,
+     "teacher_norm": 0.12243362809912715
+    },
+    "NN": {
+     "cosine": 0.9984306721425784,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01677122016409446,
+     "prediction_norm": 0.0020533613323393237,
+     "relative_error": 0.9667914725836163,
+     "teacher_norm": 0.12243362809912715
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.944757023251844,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7845074888987957,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123101,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.999996094628899,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292981092094179,
+     "prediction_norm": 0.057895044533520394,
+     "relative_error": 3.7221839356910746,
+     "teacher_norm": 0.062299755008404636
+    },
+    "shadow": {
+     "cosine": -0.999996094628899,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292981092094179,
+     "prediction_norm": 0.057895044533520394,
+     "relative_error": 3.7221839356910746,
+     "teacher_norm": 0.062299755008404636
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998787092434402,
+   "k": 0,
+   "pair": 1,
+   "paths": {
+    "KK": {
+     "cosine": -0.9997675192442701,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041173481662942456,
+     "prediction_norm": 0.005041020087461274,
+     "relative_error": 1.0840230748338673,
+     "teacher_norm": 0.12243366078993423
+    },
+    "KN": {
+     "cosine": -0.9997675192442701,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041173481662942456,
+     "prediction_norm": 0.005041020087461274,
+     "relative_error": 1.0840230748338673,
+     "teacher_norm": 0.12243366078993423
+    },
+    "NK": {
+     "cosine": 0.998595546425165,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01676863598664343,
+     "prediction_norm": 0.002053045490298586,
+     "relative_error": 0.9667910167210787,
+     "teacher_norm": 0.12243366078993423
+    },
+    "NN": {
+     "cosine": 0.998595546425165,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01676863598664343,
+     "prediction_norm": 0.002053045490298586,
+     "relative_error": 0.9667910167210787,
+     "teacher_norm": 0.12243366078993423
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.944757023251844,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7845074888987957,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123101,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999975054172078,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292429013093202,
+     "prediction_norm": 0.05789490994984559,
+     "relative_error": 3.7219735361057,
+     "teacher_norm": 0.06230331151119972
+    },
+    "shadow": {
+     "cosine": -0.9999975054172078,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292429013093202,
+     "prediction_norm": 0.05789490994984559,
+     "relative_error": 3.7219735361057,
+     "teacher_norm": 0.06230331151119972
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998787092434402,
+   "k": 0,
+   "pair": 2,
+   "paths": {
+    "KK": {
+     "cosine": -0.9998498063863073,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04117477615446176,
+     "prediction_norm": 0.005041230510824702,
+     "relative_error": 1.0840325461234463,
+     "teacher_norm": 0.12243492209679994
+    },
+    "KN": {
+     "cosine": -0.9998498063863073,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04117477615446176,
+     "prediction_norm": 0.005041230510824702,
+     "relative_error": 1.0840325461234463,
+     "teacher_norm": 0.12243492209679994
+    },
+    "NK": {
+     "cosine": 0.9990928568531783,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.016746407725642416,
+     "prediction_norm": 0.0020503451252902776,
+     "relative_error": 0.9668180094984331,
+     "teacher_norm": 0.12243492209679994
+    },
+    "NN": {
+     "cosine": 0.9990928568531783,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.016746407725642416,
+     "prediction_norm": 0.0020503451252902776,
+     "relative_error": 0.9668180094984331,
+     "teacher_norm": 0.12243492209679994
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.944757023251844,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7845074888987957,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123101,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999936722274908,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9293205493838707,
+     "prediction_norm": 0.05789588275264187,
+     "relative_error": 3.7222660212168317,
+     "teacher_norm": 0.062299152634713834
+    },
+    "shadow": {
+     "cosine": -0.9999936722274908,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9293205493838707,
+     "prediction_norm": 0.05789588275264187,
+     "relative_error": 3.7222660212168317,
+     "teacher_norm": 0.062299152634713834
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998787092434402,
+   "k": 0,
+   "pair": 3,
+   "paths": {
+    "KK": {
+     "cosine": -0.9996287602841045,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041181942313715796,
+     "prediction_norm": 0.0050420499817588355,
+     "relative_error": 1.0840292602550325,
+     "teacher_norm": 0.12243351572272887
+    },
+    "KN": {
+     "cosine": -0.9996287602841045,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041181942313715796,
+     "prediction_norm": 0.0050420499817588355,
+     "relative_error": 1.0840292602550325,
+     "teacher_norm": 0.12243351572272887
+    },
+    "NK": {
+     "cosine": 0.99775640028134,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.0167814758343078,
+     "prediction_norm": 0.0020546150854103182,
+     "relative_error": 0.9667939680914831,
+     "teacher_norm": 0.12243351572272887
+    },
+    "NN": {
+     "cosine": 0.99775640028134,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.0167814758343078,
+     "prediction_norm": 0.0020546150854103182,
+     "relative_error": 0.9667939680914831,
+     "teacher_norm": 0.12243351572272887
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.944757023251844,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7845074888987957,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123101,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999956757161672,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.929246044835004,
+     "prediction_norm": 0.057895528465369876,
+     "relative_error": 3.72198226486421,
+     "teacher_norm": 0.062303766356788484
+    },
+    "shadow": {
+     "cosine": -0.9999956757161672,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.929246044835004,
+     "prediction_norm": 0.057895528465369876,
+     "relative_error": 3.72198226486421,
+     "teacher_norm": 0.062303766356788484
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786426196714,
+   "k": 0,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.9997468994365702,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041182292962066186,
+     "prediction_norm": 0.005042159595863615,
+     "relative_error": 1.0840397206546417,
+     "teacher_norm": 0.12243513493792214
+    },
+    "KN": {
+     "cosine": -0.9997468994365702,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041182292962066186,
+     "prediction_norm": 0.005042159595863615,
+     "relative_error": 1.0840397206546417,
+     "teacher_norm": 0.12243513493792214
+    },
+    "NK": {
+     "cosine": 0.9984679998044306,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01675237426787527,
+     "prediction_norm": 0.0020510792040178837,
+     "relative_error": 0.9668272227891697,
+     "teacher_norm": 0.12243513493792214
+    },
+    "NN": {
+     "cosine": 0.9984679998044306,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01675237426787527,
+     "prediction_norm": 0.0020510792040178837,
+     "relative_error": 0.9668272227891697,
+     "teacher_norm": 0.12243513493792214
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.945998311882806,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.785770888784331,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123103,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999373621219371,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9294362560287579,
+     "prediction_norm": 0.05791179759524282,
+     "relative_error": 3.722607830248525,
+     "teacher_norm": 0.06230852005137505
+    },
+    "shadow": {
+     "cosine": -0.9999373621219371,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9294362560287579,
+     "prediction_norm": 0.05791179759524282,
+     "relative_error": 3.722607830248525,
+     "teacher_norm": 0.06230852005137505
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786426196714,
+   "k": 0,
+   "pair": 1,
+   "paths": {
+    "KK": {
+     "cosine": -0.996512016977944,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04138966730639388,
+     "prediction_norm": 0.005067672369493171,
+     "relative_error": 1.084203706258815,
+     "teacher_norm": 0.12243810350005678
+    },
+    "KN": {
+     "cosine": -0.996512016977944,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04138966730639388,
+     "prediction_norm": 0.005067672369493171,
+     "relative_error": 1.084203706258815,
+     "teacher_norm": 0.12243810350005678
+    },
+    "NK": {
+     "cosine": 0.9790436320114458,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01699582270921671,
+     "prediction_norm": 0.0020809362999396914,
+     "relative_error": 0.9670095540010548,
+     "teacher_norm": 0.12243810350005678
+    },
+    "NN": {
+     "cosine": 0.9790436320114458,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01699582270921671,
+     "prediction_norm": 0.0020809362999396914,
+     "relative_error": 0.9670095540010548,
+     "teacher_norm": 0.12243810350005678
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.945998311882806,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.785770888784331,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123103,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999196349444819,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9294965605647085,
+     "prediction_norm": 0.0579162712808284,
+     "relative_error": 3.7228075791456523,
+     "teacher_norm": 0.06230929057514943
+    },
+    "shadow": {
+     "cosine": -0.9999196349444819,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9294965605647085,
+     "prediction_norm": 0.0579162712808284,
+     "relative_error": 3.7228075791456523,
+     "teacher_norm": 0.06230929057514943
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786426196714,
+   "k": 0,
+   "pair": 2,
+   "paths": {
+    "KK": {
+     "cosine": -0.9955406803969518,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041449127061809296,
+     "prediction_norm": 0.005074977993419615,
+     "relative_error": 1.0842466144481326,
+     "teacher_norm": 0.12243871833179416
+    },
+    "KN": {
+     "cosine": -0.9955406803969518,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041449127061809296,
+     "prediction_norm": 0.005074977993419615,
+     "relative_error": 1.0842466144481326,
+     "teacher_norm": 0.12243871833179416
+    },
+    "NK": {
+     "cosine": 0.9733099608375867,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.017074017571623943,
+     "prediction_norm": 0.002090520828244168,
+     "relative_error": 0.9670548993280809,
+     "teacher_norm": 0.12243871833179416
+    },
+    "NN": {
+     "cosine": 0.9733099608375867,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.017074017571623943,
+     "prediction_norm": 0.002090520828244168,
+     "relative_error": 0.9670548993280809,
+     "teacher_norm": 0.12243871833179416
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.945998311882806,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.785770888784331,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123103,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999623667824717,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9293509649519845,
+     "prediction_norm": 0.05790522132975528,
+     "relative_error": 3.7223251970271054,
+     "teacher_norm": 0.06230716221696395
+    },
+    "shadow": {
+     "cosine": -0.9999623667824717,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9293509649519845,
+     "prediction_norm": 0.05790522132975528,
+     "relative_error": 3.7223251970271054,
+     "teacher_norm": 0.06230716221696395
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786426196714,
+   "k": 0,
+   "pair": 3,
+   "paths": {
+    "KK": {
+     "cosine": -0.9978907786244497,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041303906525358335,
+     "prediction_norm": 0.005057131073444691,
+     "relative_error": 1.0841395875798983,
+     "teacher_norm": 0.12243711306919333
+    },
+    "KN": {
+     "cosine": -0.9978907786244497,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041303906525358335,
+     "prediction_norm": 0.005057131073444691,
+     "relative_error": 1.0841395875798983,
+     "teacher_norm": 0.12243711306919333
+    },
+    "NK": {
+     "cosine": 0.9872637388786851,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01688728841704783,
+     "prediction_norm": 0.002067630841350164,
+     "relative_error": 0.966940765505806,
+     "teacher_norm": 0.12243711306919333
+    },
+    "NN": {
+     "cosine": 0.9872637388786851,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01688728841704783,
+     "prediction_norm": 0.002067630841350164,
+     "relative_error": 0.966940765505806,
+     "teacher_norm": 0.12243711306919333
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.945998311882806,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.785770888784331,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123103,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9802075126363907,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.1478318244267436,
+     "prediction_norm": 0.012129332339265395,
+     "relative_error": 1.3116659781330156,
+     "teacher_norm": 0.0820481813459317
+    },
+    "shadow": {
+     "cosine": -0.9902990129823135,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.20057997884638826,
+     "prediction_norm": 0.01645722247875161,
+     "relative_error": 1.437500638065201,
+     "teacher_norm": 0.0820481813459317
+    }
+   },
+   "case": "weak",
+   "checkpoint": "54007/STATE8_SIGNED8",
+   "cohort": "SIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9971639245372668,
+   "k": 6,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.7220911319767195,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02897559815536692,
+     "prediction_norm": 0.0023409595195611407,
+     "relative_error": 1.042685630231884,
+     "teacher_norm": 0.08079072283543327
+    },
+    "KN": {
+     "cosine": -0.7220911319767195,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.02897559815536692,
+     "prediction_norm": 0.0023409595195611407,
+     "relative_error": 1.042685630231884,
+     "teacher_norm": 0.08079072283543327
+    },
+    "NK": {
+     "cosine": 0.9115632154151502,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.05210829438416689,
+     "prediction_norm": 0.004209866769018392,
+     "relative_error": 0.9077152655863661,
+     "teacher_norm": 0.08079072283543327
+    },
+    "NN": {
+     "cosine": 0.9115632154151502,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.05210829438416689,
+     "prediction_norm": 0.004209866769018392,
+     "relative_error": 0.9077152655863661,
+     "teacher_norm": 0.08079072283543327
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 0.24488020113254227,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 0.21366335869940006,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 11
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999851453473776,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9293967844290627,
+     "prediction_norm": 0.0578991493526658,
+     "relative_error": 3.7225443400324454,
+     "teacher_norm": 0.06229755721420297
+    },
+    "shadow": {
+     "cosine": -0.9999851453473776,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9293967844290627,
+     "prediction_norm": 0.0578991493526658,
+     "relative_error": 3.7225443400324454,
+     "teacher_norm": 0.06229755721420297
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786447007127,
+   "k": 0,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.9991374559675372,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04121418618143036,
+     "prediction_norm": 0.005045985682484598,
+     "relative_error": 1.084055883404771,
+     "teacher_norm": 0.12243322384849464
+    },
+    "KN": {
+     "cosine": -0.9991374559675372,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04121418618143036,
+     "prediction_norm": 0.005045985682484598,
+     "relative_error": 1.084055883404771,
+     "teacher_norm": 0.12243322384849464
+    },
+    "NK": {
+     "cosine": 0.9947930555997248,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01682327333796257,
+     "prediction_norm": 0.002059727590451183,
+     "relative_error": 0.9668116715476817,
+     "teacher_norm": 0.12243322384849464
+    },
+    "NN": {
+     "cosine": 0.9947930555997248,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01682327333796257,
+     "prediction_norm": 0.002059727590451183,
+     "relative_error": 0.9668116715476817,
+     "teacher_norm": 0.12243322384849464
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.946258911571941,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.786036385418366,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999329243473272,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9294513835739548,
+     "prediction_norm": 0.05791293001496105,
+     "relative_error": 3.722657954459087,
+     "teacher_norm": 0.06230872430602285
+    },
+    "shadow": {
+     "cosine": -0.9999329243473272,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9294513835739548,
+     "prediction_norm": 0.05791293001496105,
+     "relative_error": 3.722657954459087,
+     "teacher_norm": 0.06230872430602285
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786447007127,
+   "k": 0,
+   "pair": 1,
+   "paths": {
+    "KK": {
+     "cosine": -0.9962683986745138,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04140463984026343,
+     "prediction_norm": 0.005069512170387754,
+     "relative_error": 1.0842146126630106,
+     "teacher_norm": 0.12243826271513586
+    },
+    "KN": {
+     "cosine": -0.9962683986745138,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04140463984026343,
+     "prediction_norm": 0.005069512170387754,
+     "relative_error": 1.0842146126630106,
+     "teacher_norm": 0.12243826271513586
+    },
+    "NK": {
+     "cosine": 0.977601055619674,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01701532513079032,
+     "prediction_norm": 0.0020833268485471587,
+     "relative_error": 0.9670211216701612,
+     "teacher_norm": 0.12243826271513586
+    },
+    "NN": {
+     "cosine": 0.977601055619674,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01701532513079032,
+     "prediction_norm": 0.0020833268485471587,
+     "relative_error": 0.9670211216701612,
+     "teacher_norm": 0.12243826271513586
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.946258911571941,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.786036385418366,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9998856091445476,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9296111033628282,
+     "prediction_norm": 0.05792454768520793,
+     "relative_error": 3.723186332202408,
+     "teacher_norm": 0.06231051616710297
+    },
+    "shadow": {
+     "cosine": -0.9998856091445476,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9296111033628282,
+     "prediction_norm": 0.05792454768520793,
+     "relative_error": 3.723186332202408,
+     "teacher_norm": 0.06231051616710297
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786447007127,
+   "k": 0,
+   "pair": 2,
+   "paths": {
+    "KK": {
+     "cosine": -0.9936892410960237,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041561098743954555,
+     "prediction_norm": 0.005088731665566096,
+     "relative_error": 1.0843249582687988,
+     "teacher_norm": 0.12243977708376391
+    },
+    "KN": {
+     "cosine": -0.9936892410960237,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041561098743954555,
+     "prediction_norm": 0.005088731665566096,
+     "relative_error": 1.0843249582687988,
+     "teacher_norm": 0.12243977708376391
+    },
+    "NK": {
+     "cosine": 0.9625165652930927,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01722564118756859,
+     "prediction_norm": 0.0021091036671308004,
+     "relative_error": 0.9671367927326632,
+     "teacher_norm": 0.12243977708376391
+    },
+    "NN": {
+     "cosine": 0.9625165652930927,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01722564118756859,
+     "prediction_norm": 0.0021091036671308004,
+     "relative_error": 0.9671367927326632,
+     "teacher_norm": 0.12243977708376391
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.946258911571941,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.786036385418366,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9998875357506334,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9296046652304623,
+     "prediction_norm": 0.05792408816371732,
+     "relative_error": 3.7231650694973983,
+     "teacher_norm": 0.06231045338972898
+    },
+    "shadow": {
+     "cosine": -0.9998875357506334,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9296046652304623,
+     "prediction_norm": 0.05792408816371732,
+     "relative_error": 3.7231650694973983,
+     "teacher_norm": 0.06231045338972898
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786447007127,
+   "k": 0,
+   "pair": 3,
+   "paths": {
+    "KK": {
+     "cosine": -0.9937936382079489,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04155482150932868,
+     "prediction_norm": 0.005087960727079476,
+     "relative_error": 1.0843206376963475,
+     "teacher_norm": 0.12243972040494205
+    },
+    "KN": {
+     "cosine": -0.9937936382079489,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04155482150932868,
+     "prediction_norm": 0.005087960727079476,
+     "relative_error": 1.0843206376963475,
+     "teacher_norm": 0.12243972040494205
+    },
+    "NK": {
+     "cosine": 0.9631203998694521,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.017217019545229594,
+     "prediction_norm": 0.0021080470593243337,
+     "relative_error": 0.9671323002640975,
+     "teacher_norm": 0.12243972040494205
+    },
+    "NN": {
+     "cosine": 0.9631203998694521,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.017217019545229594,
+     "prediction_norm": 0.0021080470593243337,
+     "relative_error": 0.9671323002640975,
+     "teacher_norm": 0.12243972040494205
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.946258911571941,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.786036385418366,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123107,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999885416253981,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292650284884373,
+     "prediction_norm": 0.057897776468272884,
+     "relative_error": 3.7220422544148883,
+     "teacher_norm": 0.06230491269261544
+    },
+    "shadow": {
+     "cosine": -0.9999885416253981,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292650284884373,
+     "prediction_norm": 0.057897776468272884,
+     "relative_error": 3.7220422544148883,
+     "teacher_norm": 0.06230491269261544
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786743896388,
+   "k": 0,
+   "pair": 0,
+   "paths": {
+    "KK": {
+     "cosine": -0.999346931294165,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04120985825840267,
+     "prediction_norm": 0.005045558876567313,
+     "relative_error": 1.084064143196882,
+     "teacher_norm": 0.12243572508620619
+    },
+    "KN": {
+     "cosine": -0.999346931294165,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04120985825840267,
+     "prediction_norm": 0.005045558876567313,
+     "relative_error": 1.084064143196882,
+     "teacher_norm": 0.12243572508620619
+    },
+    "NK": {
+     "cosine": 0.9960420371841808,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.016778890356369834,
+     "prediction_norm": 0.002054335606924093,
+     "relative_error": 0.966856570897094,
+     "teacher_norm": 0.12243572508620619
+    },
+    "NN": {
+     "cosine": 0.9960420371841808,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.016778890356369834,
+     "prediction_norm": 0.002054335606924093,
+     "relative_error": 0.966856570897094,
+     "teacher_norm": 0.12243572508620619
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.9453088853959675,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7850689351080673,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123109,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999909090053855,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292581238673779,
+     "prediction_norm": 0.05789704976248934,
+     "relative_error": 3.722020012747076,
+     "teacher_norm": 0.06230459360584757
+    },
+    "shadow": {
+     "cosine": -0.9999909090053855,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292581238673779,
+     "prediction_norm": 0.05789704976248934,
+     "relative_error": 3.722020012747076,
+     "teacher_norm": 0.06230459360584757
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786743896388,
+   "k": 0,
+   "pair": 1,
+   "paths": {
+    "KK": {
+     "cosine": -0.9994794638612061,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041200899743613496,
+     "prediction_norm": 0.005044454944977713,
+     "relative_error": 1.0840564205123753,
+     "teacher_norm": 0.12243555301870919
+    },
+    "KN": {
+     "cosine": -0.9994794638612061,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041200899743613496,
+     "prediction_norm": 0.005044454944977713,
+     "relative_error": 1.0840564205123753,
+     "teacher_norm": 0.12243555301870919
+    },
+    "NK": {
+     "cosine": 0.9968453334530648,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.016769761408212007,
+     "prediction_norm": 0.0020532150120062447,
+     "relative_error": 0.9668475080918935,
+     "teacher_norm": 0.12243555301870919
+    },
+    "NN": {
+     "cosine": 0.9968453334530648,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.016769761408212007,
+     "prediction_norm": 0.0020532150120062447,
+     "relative_error": 0.9668475080918935,
+     "teacher_norm": 0.12243555301870919
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.9453088853959675,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7850689351080673,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123109,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999988594401265,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292696064626266,
+     "prediction_norm": 0.05789417138398277,
+     "relative_error": 3.722079094645208,
+     "teacher_norm": 0.062300726270779164
+    },
+    "shadow": {
+     "cosine": -0.9999988594401265,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292696064626266,
+     "prediction_norm": 0.05789417138398277,
+     "relative_error": 3.722079094645208,
+     "teacher_norm": 0.062300726270779164
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786743896388,
+   "k": 0,
+   "pair": 2,
+   "paths": {
+    "KK": {
+     "cosine": -0.9999253901181423,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041164666919301,
+     "prediction_norm": 0.005039952186681496,
+     "relative_error": 1.084017721059308,
+     "teacher_norm": 0.1224339357964876
+    },
+    "KN": {
+     "cosine": -0.9999253901181423,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.041164666919301,
+     "prediction_norm": 0.005039952186681496,
+     "relative_error": 1.084017721059308,
+     "teacher_norm": 0.1224339357964876
+    },
+    "NK": {
+     "cosine": 0.9995518604217506,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01675247073067088,
+     "prediction_norm": 0.0020510709258714965,
+     "relative_error": 0.9667907187045759,
+     "teacher_norm": 0.1224339357964876
+    },
+    "NN": {
+     "cosine": 0.9995518604217506,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.01675247073067088,
+     "prediction_norm": 0.0020510709258714965,
+     "relative_error": 0.9667907187045759,
+     "teacher_norm": 0.1224339357964876
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.9453088853959675,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7850689351080673,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123109,
+   "step": 3
+  },
+  {
+   "before": {
+    "native": {
+     "cosine": -0.9999780875571935,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292981917382889,
+     "prediction_norm": 0.05790085165046498,
+     "relative_error": 3.7221507862576777,
+     "teacher_norm": 0.06230599840311661
+    },
+    "shadow": {
+     "cosine": -0.9999780875571935,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.9292981917382889,
+     "prediction_norm": 0.05790085165046498,
+     "relative_error": 3.7221507862576777,
+     "teacher_norm": 0.06230599840311661
+    }
+   },
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "cohort": "UNSIGNED",
+   "first_induced_for_pair": true,
+   "graph": "R123_H2_B",
+   "hops": 2,
+   "incoming_state_cosine": 0.9998786743896388,
+   "k": 0,
+   "pair": 3,
+   "paths": {
+    "KK": {
+     "cosine": -0.9987635141436461,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04124824074747716,
+     "prediction_norm": 0.00505028430246734,
+     "relative_error": 1.084095893127149,
+     "teacher_norm": 0.12243635633784519
+    },
+    "KN": {
+     "cosine": -0.9987635141436461,
+     "direction_class": "REVERSED",
+     "norm_ratio": 0.04124824074747716,
+     "prediction_norm": 0.00505028430246734,
+     "relative_error": 1.084095893127149,
+     "teacher_norm": 0.12243635633784519
+    },
+    "NK": {
+     "cosine": 0.9925139001416312,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.016821048672252193,
+     "prediction_norm": 0.0020595079092121074,
+     "relative_error": 0.9668926984340958,
+     "teacher_norm": 0.12243635633784519
+    },
+    "NN": {
+     "cosine": 0.9925139001416312,
+     "direction_class": "ALIGNED",
+     "norm_ratio": 0.016821048672252193,
+     "prediction_norm": 0.0020595079092121074,
+     "relative_error": 0.9668926984340958,
+     "teacher_norm": 0.12243635633784519
+    }
+   },
+   "pathway_class": "INHERITED_PATH_REVERSED",
+   "post_norm_proxy": {
+    "native": {
+     "max_post_relation_norm": 2.9453088853959675,
+     "post_relation_vectors_near_4": 0
+    },
+    "shadow": {
+     "max_post_relation_norm": 2.7850689351080673,
+     "post_relation_vectors_near_4": 0
+    }
+   },
+   "seed": 123109,
+   "step": 3
+  }
+ ],
+ "first_events": 40,
+ "integrity": {
+  "all_original_hazards_replayed": true,
+  "checkpoint_pins_unchanged": true,
+  "counterfactual_endpoint_bit_identity": true,
+  "guarded_vs_exact_r118_parity_runs": 8,
+  "in_range_replay_zero": true,
+  "source_guard": true
+ },
+ "limits": [
+  "Retrospective on published R123 samples; no new generalization claim.",
+  "One-step paths are conditional counterfactuals, not full dynamical causal identification.",
+  "Postreconciliation norms are NOT evidence of preclamp activation.",
+  "No trained calibrator, no teacher available at inference, no R93 clearance."
+ ],
+ "mode": "PUBLISHED_R123_CONSUMED_REPLAY",
+ "original_event_count": 40,
+ "phase": "R124",
+ "prereg_commit": "36eefb6db16104cbdb2b2fbaa2cf2622fd52634c",
+ "protocol_sha256": "86b331e327204a0c9c2064e5e74b87b372ab702739c9ec40a5d8bb70431aaa6a",
+ "r123_result_sha256": "667fab1efe3b1634e0dd1ec22d2eb1f2065392071c7a6e7f22dadfbda7bb42c6",
+ "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+ "replayed_events": 40,
+ "resources": {
+  "engine_steps": 1600,
+  "peak_rss_mib": 453.4,
+  "seconds": 32.18
+ },
+ "run_checks": [
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "graph": "R123_H1_A",
+   "in_range_reversals": 0,
+   "k": 2,
+   "published_count": 3,
+   "replayed_count": 3,
+   "seed": 123101
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "graph": "R123_H1_A",
+   "in_range_reversals": 0,
+   "k": 6,
+   "published_count": 4,
+   "replayed_count": 4,
+   "seed": 123101
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "graph": "R123_H1_A",
+   "in_range_reversals": 0,
+   "k": 6,
+   "published_count": 4,
+   "replayed_count": 4,
+   "seed": 123103
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "graph": "R123_H1_A",
+   "in_range_reversals": 0,
+   "k": 2,
+   "published_count": 1,
+   "replayed_count": 1,
+   "seed": 123107
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "graph": "R123_H1_A",
+   "in_range_reversals": 0,
+   "k": 6,
+   "published_count": 4,
+   "replayed_count": 4,
+   "seed": 123107
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8_TF1",
+   "graph": "R123_H1_A",
+   "in_range_reversals": 0,
+   "k": 6,
+   "published_count": 1,
+   "replayed_count": 1,
+   "seed": 123107
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "graph": "R123_H1_A",
+   "in_range_reversals": 0,
+   "k": 2,
+   "published_count": 1,
+   "replayed_count": 1,
+   "seed": 123109
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "graph": "R123_H1_A",
+   "in_range_reversals": 0,
+   "k": 6,
+   "published_count": 4,
+   "replayed_count": 4,
+   "seed": 123109
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54007/STATE8_SIGNED8",
+   "graph": "R123_H2_A",
+   "in_range_reversals": 0,
+   "k": 6,
+   "published_count": 1,
+   "replayed_count": 1,
+   "seed": 123107
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "graph": "R123_H2_B",
+   "in_range_reversals": 0,
+   "k": 0,
+   "published_count": 4,
+   "replayed_count": 4,
+   "seed": 123101
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "graph": "R123_H2_B",
+   "in_range_reversals": 0,
+   "k": 0,
+   "published_count": 4,
+   "replayed_count": 4,
+   "seed": 123103
+  },
+  {
+   "case": "weak",
+   "checkpoint": "54007/STATE8_SIGNED8",
+   "graph": "R123_H2_B",
+   "in_range_reversals": 0,
+   "k": 6,
+   "published_count": 1,
+   "replayed_count": 1,
+   "seed": 123107
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "graph": "R123_H2_B",
+   "in_range_reversals": 0,
+   "k": 0,
+   "published_count": 4,
+   "replayed_count": 4,
+   "seed": 123107
+  },
+  {
+   "case": "anti",
+   "checkpoint": "54031/STATE8",
+   "graph": "R123_H2_B",
+   "in_range_reversals": 0,
+   "k": 0,
+   "published_count": 4,
+   "replayed_count": 4,
+   "seed": 123109
+  }
+ ],
+ "schema": "elpis.ym_hca.r124.forensics.v1",
+ "source_sha256": "ad62ad09cc943cdc4e0abe9baf4fb83aa3355eb6a6edac8f9a8ba991d849ed14"
+}

@@ -1,0 +1,12 @@
+{
+  "disposition": "FORENSIC_REPLAY_PASS_BOUNDED",
+  "mode": "PUBLISHED_R123_CONSUMED_REPLAY",
+  "phase": "R124",
+  "prereg_commit": "36eefb6db16104cbdb2b2fbaa2cf2622fd52634c",
+  "protocol_sha256": "86b331e327204a0c9c2064e5e74b87b372ab702739c9ec40a5d8bb70431aaa6a",
+  "qualify_sha256": "ad62ad09cc943cdc4e0abe9baf4fb83aa3355eb6a6edac8f9a8ba991d849ed14",
+  "r123_evidence_sha256": "667fab1efe3b1634e0dd1ec22d2eb1f2065392071c7a6e7f22dadfbda7bb42c6",
+  "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+  "result_sha256": "55267a967b4a344dfe41452d57f8e7097f82ae41fed049654b4ca9f00679bb2d",
+  "schema": "elpis.ym_hca.r124.evidence_index.v1"
+}
