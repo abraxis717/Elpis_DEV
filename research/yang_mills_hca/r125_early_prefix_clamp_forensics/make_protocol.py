@@ -8,7 +8,7 @@ from research.yang_mills_hca.r122_energy_direction_forensics import metrics as M
 HERE=Path(__file__).resolve().parent
 YM=HERE.parent
 BASE='7e8536ab2deafae6aabb423f3639ba4d218ce357'
-BRANCH='research/ym-r125-early-prefix-clamp-forensics-r0'
+BRANCH='research/ym-r125-early-prefix-clamp-forensics-r1'
 
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 

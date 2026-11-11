@@ -38,7 +38,8 @@ R124_RESULT=YM/'r124_stress_reversal_forensics/evidence/R124_RESULT.json'
 R123_PROTO=YM/'r123_k4_prospective/PROTOCOL_R123.json'
 R123_RESULT=YM/'r123_k4_prospective/evidence/R123_RESULT.json'
 BASE='7e8536ab2deafae6aabb423f3639ba4d218ce357'
-BRANCH='research/ym-r125-early-prefix-clamp-forensics-r0'
+BRANCH='research/ym-r125-early-prefix-clamp-forensics-r1'
+R0='1bac95bebf96843f98adb1200aa70fa0584df700'
 R93='ENERGY_NORMALIZED_DENOMINATOR_HOLD'
 
 
@@ -66,7 +67,7 @@ def source_guard(p):
     need(git('rev-parse','--abbrev-ref','HEAD')==BRANCH,'WRONG_BRANCH')
     need(git('status','--porcelain')=='','DIRTY_BEFORE_REPLAY')
     head=git('rev-parse','HEAD')
-    need(git('rev-parse','HEAD^')==BASE,'PREREG_PARENT_DRIFT')
+    need(git('rev-parse','HEAD^')==R0 and git('rev-parse','HEAD^^')==BASE,'PREREG_ANCESTRY_DRIFT')
     need(not (HERE/'evidence/R125_RESULT.json').exists(),'RESULT_EXISTS')
     remote=os.environ.get('ELPIS_GITHUB_REMOTE','')
     need('github.com' in remote and 'abraxis717/Elpis_DEV' in remote,'REMOTE_NOT_GITHUB')
@@ -104,7 +105,7 @@ def candidate_words(h):
     return sorted(words)
 
 
-def evaluate(out):
+def evaluate(output_path):
     start=time.monotonic()
     p=json.loads(PROTO.read_bytes())
     prereg=source_guard(p)  # check remote authority before any model execution
@@ -246,9 +247,9 @@ def evaluate(out):
               'No new policy, no coefficient tuning, no performance qualification; R93 HOLD.']}
     blob=(json.dumps(result,sort_keys=True,indent=1,allow_nan=False)+'\n').encode()
     need(len(blob)<=p['budgets']['max_result_bytes'],'RESULT_SIZE_BUDGET')
-    need(not out.exists(),'RESULT_EXISTS')
-    out.parent.mkdir(parents=True,exist_ok=True)
-    out.write_bytes(blob)
+    need(not output_path.exists(),'RESULT_EXISTS')
+    output_path.parent.mkdir(parents=True,exist_ok=True)
+    output_path.write_bytes(blob)
     print('=== SEND BACK ===',flush=True)
     for line in [
         'PHASE=R125_EARLY_PREFIX_CLAMP_FORENSICS',

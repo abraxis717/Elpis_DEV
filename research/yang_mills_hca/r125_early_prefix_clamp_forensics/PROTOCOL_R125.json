@@ -4,7 +4,7 @@
     0.25
   ],
   "base_commit": "7e8536ab2deafae6aabb423f3639ba4d218ce357",
-  "branch": "research/ym-r125-early-prefix-clamp-forensics-r0",
+  "branch": "research/ym-r125-early-prefix-clamp-forensics-r1",
   "budgets": {
     "max_hazard_events": 40,
     "max_model_steps": 15000,
@@ -65,8 +65,8 @@
   "schema": "elpis.ym_hca.r125.early_prefix.forensics.protocol.v1",
   "source_pins": {
     "instrument.py": "9e1cfcc33b789cf75a16eecc44c7aa88b970b0549c01182d69f9567ddd89652d",
-    "make_protocol.py": "2e50411c7f6ae476a7fc5e1208e492ad6760902cccca49daec2bb645f6ac8c35",
-    "qualify.py": "c544d9de2d198dc8c0a134fa012e8f2d464c5c8bc34d2b7a262fc5bbda3d7e84"
+    "make_protocol.py": "1fb33f25d0c9143605feeebd67fea3d0775ebc767fc6de01879a10cd28d4a45d",
+    "qualify.py": "28e0ff69dda0468e8c85e80f7a8362673d0e6fd09188c231d03b390516592e8b"
   },
   "status": "PREPUBLISHED_CONSUMED_FORENSICS",
   "target_scale": "2^2",
