@@ -1,0 +1,102 @@
+{
+  "admission_gates": [
+    "method_code_sha_matches",
+    "reanalysis_file_sha_if_supplied",
+    "full_exact_sign_support",
+    "all_24_hypotheses_accounted_including_missing",
+    "paired_seed_integrity",
+    "holm_monotonicity",
+    "sampler_canary_64_unique_LCG_mismatch",
+    "p_values_not_used_if_generator_semantics_invalid",
+    "native_ABI_unqualified_blocks_promotion",
+    "no_fresh_holdout_or_training"
+  ],
+  "analysis_approval_scope": "methodology_for_future_R8_independent_validation_not_retroactive_R7_preregistration",
+  "authority": "RESEARCH_DIAGNOSTIC_ONLY",
+  "current_reliance": "HOLD_STATISTICAL_AND_TASK_PROVENANCE",
+  "enumeration": {
+    "draw_count": "NOT_APPLICABLE_EXACT_ENUMERATION",
+    "max_n": 16,
+    "minimum_possible_two_sided_p_for_nonzero_n16": "2/65536",
+    "name": "exhaustive_two_sided_paired_sign_flip",
+    "null_space": "all_masks_0_through_2_power_n_minus_1",
+    "null_test_statistic": "abs(sum((-1 if mask bit 0 else 1)*delta_i))",
+    "observed_test_statistic": "abs(math.fsum(paired_deltas))",
+    "reported_p": "tail_event_count/(2**n)",
+    "rounding": "IEEE754_DOUBLE_GRAY_CODE_INCREMENTAL_SAME_AS_R7",
+    "support_cardinality": "2**n",
+    "tail_relation": "greater_or_equal_with_tie_tolerance",
+    "tie_tolerance_absolute": 1e-12,
+    "uniform_probability_each_mask": "1/2**n"
+  },
+  "exchangeability_assumption": "paired_seed_delta_signs_symmetrically_exchangeable_under_null; must be justified against shared_task_generator_dependence",
+  "historical_r24_disposition": "BENCHMARK_QUALIFIED_CAPABILITY_PARTIAL_UNCHANGED",
+  "hypotheses": {
+    "compilers": [
+      "gcc",
+      "clang"
+    ],
+    "count_per_compiler": 24,
+    "endpoints": [
+      "E1_acc_tie",
+      "E2_regret_gain",
+      "E3_adapt_utility"
+    ],
+    "families": [
+      "CONTRADICTORY",
+      "DISTRIBUTION_SHIFT",
+      "NOISY_INCOMPLETE",
+      "NULL_INFO",
+      "REPEATED",
+      "RETIREMENT_FRESH",
+      "REVERSAL",
+      "UNSEEN_RELATED"
+    ],
+    "missing_e3_policy": "include_as_p_1_not_delete"
+  },
+  "limitations": [
+    "R7 is retrospective and remains post-hoc",
+    "no native/task generator qualification from p-values",
+    "no new inference model qualification",
+    "may require a preregistered design with fresh independent tasks to support confirmatory claims"
+  ],
+  "method_source_sha256": "6d94f8062b0424c339f3a7302f85ebfa87363dd1fe3a9f94669309cd693d136c",
+  "multiplicity": {
+    "E1_E2_redundant_and_not_independent_replications": true,
+    "alpha": 0.05,
+    "family_definition": "all_8_families_x_3_endpoints_within_compiler",
+    "m": 24,
+    "method": "Holm_step_down_monotone_adjusted_p",
+    "missing_p": 1.0,
+    "no_posthoc_family_shrinking": true
+  },
+  "original_r24_archive_sha256": "cd605851e954ce0e07a1ef12854749918dc227ec98d7e7830967d8e473786169",
+  "phase": "R25A_R8",
+  "primary_estimand": "matched_16_seed_mean_difference_within_each_frozen_generator_and_compiler",
+  "prospective_evaluation_performed": false,
+  "r7_archive_sha256": "9b6c287637405ed9de78900995120be5942117b139595b0423624af6f1588402",
+  "r7_original_capsule_sha256": "3cb892ad833e3d47539d69b3a5929c9da39e02f1dc783e23f7e537da77f671b8",
+  "registration_date": "2026-11-12",
+  "sampler_provenance_receipt_required_fields": [
+    "schema",
+    "phase",
+    "compiler",
+    "family",
+    "endpoint",
+    "unit_of_inference",
+    "n_seed_pairs",
+    "sampler_historical",
+    "sampler_corrected",
+    "paired_deltas",
+    "test_scope",
+    "current_qualification_authority"
+  ],
+  "schema": "elpis.cgc_lao.statistical_method_registration.v1",
+  "seed_inference": {
+    "E3": "adaptive_publication_conditioned_and_exploratory",
+    "n_E1_E2": 16,
+    "query_count_is_not_independent_sample_count": true,
+    "unit": "paired_task_seed"
+  },
+  "status": "METHOD_FROZEN_BEFORE_R8_EXECUTION"
+}
