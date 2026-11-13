@@ -1,0 +1,204 @@
+{
+ "schema": "elpis.ym_hca.r120u.protocol.v1",
+ "phase": "ELPIS_YM_AWR_R120",
+ "status": "FROZEN_BEFORE_REGISTERED_QUALIFICATION_BENCHMARK_AND_UTILITY_RUNS",
+ "base_commit": "501be02d33201ce9c95e211d6ba9a1b531656f43",
+ "naming_note": "The result ledger already uses the label R120 for the unrelated checkpoint-selection study in ../r120_checkpoint_policy (untouched). This phase is ELPIS_YM_AWR_R120, component r120_incremental_geometric_update; its files carry the suffix R120U where a collision is possible.",
+ "principle": "Update existing geometric representations, not the computational architecture.",
+ "pre_registration_disclosure": [
+  "The kernel, engine, reference, suites and this protocol were developed together. Development runs before this freeze: (1) fused path vs the independent reference on small random systems, no bit mismatch observed; (2) propagation-only fused step timed on STRESS1M with threads 1/2/4; (3) a shortened unregistered benchmark on the OVERLAP fixture (60 measured steps); (4) compiler-flag variants (-O3, -march=native) timed on OVERLAP, no reproducible gain, so the kernel keeps the frozen R119 flags plus -fopenmp; (5) one complete development run of the qualification suite.",
+  "Development run (5) passed every check except two that were wrong in the suite, not in the kernel: an instance-budget case whose limits made the row budget trip first, and a coordinate bound of 4 applied to the R114 controller path. The R114 correction is applied after the HCA clamp by design (R118/R119 behaviour, unchanged here), so propagated states under a controller are not bounded by 4; the criterion below now bounds the updated row after the update by 4 and the controller path by the fixed point of the correction. Both corrections are to criteria and suite code.",
+  "The development timings motivated the window cache, the parallel pass, the parallel reconciliation and the latency targets; they are not evidence. They also showed that the single-thread exact path is dominated by the frozen HCA88 pass (about 2.3 us per window NATIVE, 3.6 us with the R114 correction on this host), so the preferred targets at 256 and 1,024 windows were not expected to be met single-threaded with the R114 controller; the targets are kept as requested and reported as measured.",
+  "The update-law constants (eta, gamma, rho_b, kappa) were fixed by design before any utility measurement. The utility code was exercised once mechanically (unregistered seed 999001, 60 batches, no search; only finiteness of the outputs was inspected). No utility number of any arm was looked at before this freeze.",
+  "The memory thresholds were chosen with knowledge of how the Python wrapper allocates (one small report snapshot per call, freed immediately); the development run measured 372 retained bytes and 8 blocks over 16,000 updates."
+ ],
+ "update_law": {
+  "observation_transport": "v = weight * (U[r,p] o), U[r,p] the registry frame of the incident (relation, participant)",
+  "invariants": "x = (tanh<A,v>, tanh<B,v>, tanh<A,B>, tanh|v-A|^2, aux), cast to IEEE single",
+  "coefficients": "(a,b,c) = kappa * tanh(CGC3(x)); CGC3 = frozen cubic operator, weights float32 [3,5,8] (120 scalars), out_o = 0.5 * sum_n (z + z^2 + z^3), z = sum_d x_d w[o,d,n]",
+  "state": "A' = clamp4(A + eta (a A + b B) + gamma v); B' = clamp4(B + eta (c A - a B) + gamma rho_b v)",
+  "eta": 1.0,
+  "gamma": 0.25,
+  "rho_b": 0.63,
+  "kappa": 0.25,
+  "cgc_weights": {
+   "kind": "SYNTHETIC_FIXED",
+   "generator": "numpy PCG64 seed 120120, normal(0, 0.25), float32 [3,5,8]",
+   "limitation": "The repository contains no trained relational CGC weights. Synthetic weights exercise the bridge and its cost; they carry no learned semantics."
+  }
+ },
+ "event_contract": {
+  "event": "(relation_id u64, seq u64, expected_generation u32 or 0, participant index or -1, observation[4], weight in [-1,1], aux in [0,1])",
+  "validation_order": "Batch: REFUSED_EVENT_BUDGET, REFUSED_ARGUMENT. Then per event in batch order, first failure decides: REFUSED_INVALID_VALUE, REFUSED_UNKNOWN_RELATION, REFUSED_NOT_MATERIALIZED, REFUSED_STALE_RELATION, REFUSED_NOT_INCIDENT, duplicate skip or REFUSED_CONFLICT, REFUSED_ROW_BUDGET, REFUSED_NONFINITE. Then for the batch: propagation budgets REFUSED_INSTANCE_BUDGET, REFUSED_ROW_BUDGET, REFUSED_LINK_BUDGET, REFUSED_NONFINITE, REFUSED_KERNEL (or deferral when defer_on_budget), then REFUSED_PENDING_CAPACITY. Nothing is written before all of these have passed.",
+  "duplicates": "seq <= last applied sequence of the relation: skipped and counted (idempotent redelivery)",
+  "conflicts": "same (relation, seq) as an event applied earlier in the same batch but a different payload: whole batch refused",
+  "ordering": "events of one relation apply in batch order; events of different relations commute",
+  "atomicity": "any refusal leaves pool, sequences, pending list, identities and scratch marks bit-identical to the state before the call",
+  "deferral": "propagate=false, or a propagation budget overflow with defer_on_budget, commits the updates and records every touched row in the pending list (COMMITTED_DEFERRED); propagate_pending executes it later. Required propagation is never dropped silently."
+ },
+ "qualification": {
+  "r118_component_digest": "770411b1f6788f9593f5f7adf1d4f6efb57a564f8c207d13dd7f55352af0df71",
+  "r119_kernel_sha256": "125e138b11d0189bc46093b257ec0885ea7e49e875c67fc11b4f91ca21d291e2",
+  "cgc_reference_sha256": "04fc09efffd9272e64a164d512319ad5112a7c3c2433d832a0778ffd7fcb3986",
+  "bitwise_criteria": "native update law == independent reference; fused update-and-propagate == independent reference; fused step == R119 EXACT_GUARDED step; fused update-and-propagate == reference update followed by an R119 step; serial == parallel; replay == first run. Zero mismatches required.",
+  "cgc_torch_relative": 1e-05,
+  "covariance_abs": 1e-12,
+  "negative_control_min": 0.001,
+  "memory_updates": 2000,
+  "max_net_retained_bytes": 4096,
+  "max_net_allocated_blocks": 64,
+  "long_horizon_batches": 5000,
+  "high_frequency_updates": 20000,
+  "state_coordinate_bound": 4.000000001,
+  "state_coordinate_bound_scope": "channel norm of an updated row after the update (before propagation), and every row on the NATIVE (uncorrected HCA) path",
+  "controller_coordinate_bound": 64.2,
+  "controller_coordinate_bound_derivation": "The R114 correction p' = p + alpha r + beta (d - r), d = p - s, is applied after the clamp. With |p|_32 <= 4 sqrt(8) and alpha = 0.70 >= beta the 32-dimensional window norm satisfies M <= 4 sqrt(8) + 0.7 (4 sqrt(8) + M), fixed point (1.7 / 0.3) 4 sqrt(8) = 64.1. Inherited from R114/R118/R119, not introduced by the update."
+ },
+ "benchmark": {
+  "reference": "R119 EXACT_GUARDED Engine.step on the same affected active sets, interleaved in the same process (propagation only: R119 has no update path, so this is a lower bound for any R119-based update pipeline)",
+  "checkpoint": "54007/STATE8_SIGNED8",
+  "primary_configuration": {
+   "fixture": "STRESS1M",
+   "controller": "R114",
+   "threads": 1,
+   "passes": 1,
+   "radius": 1,
+   "reconciliation": "MEAN"
+  },
+  "secondary_configurations": "controller NATIVE; threads 4 (exact parallel Jacobi pass, opt-in); fixture OVERLAP",
+  "fixtures": {
+   "STRESS1M": {
+    "participants": 50000,
+    "relations": 1000000,
+    "instances": 50000,
+    "arity": [
+     2,
+     6
+    ],
+    "zipf": 0.5,
+    "seed": 11803,
+    "note": "the R118-D / R119 million-relation fixture, built by the R118 builder"
+   },
+   "OVERLAP": {
+    "participants": 500,
+    "relations": 4096,
+    "instances": 4096,
+    "arity": [
+     2,
+     6
+    ],
+    "zipf": 1.0,
+    "seed": 12031,
+    "note": "high overlap: every relation is a window seed, relations are bound by many windows"
+   }
+  },
+  "initial_state": "every materialized row N(0,1) per coordinate (PCG64 seed 118500, as R118-D)",
+  "affected_sizes": [
+   64,
+   256,
+   1024
+  ],
+  "workload": "For each target A and iteration, a batch of distinct materialized relations is drawn (PCG64 seed 120400 + A) and grown until the radius-1 affected window set has exactly A windows (rows that would overshoot are skipped). One event per relation: a uniformly random incident participant, observation N(0,1)^4, weight U[-1,1], aux U[0,1]. Batches are generated before timing. State evolves along the R120 trajectory.",
+  "warmup_steps": 100,
+  "measured_steps": 1000,
+  "timer": "time.perf_counter_ns immediately around IncrementalEngine.apply (numpy event arrays in, committed state out; includes the wrapper's copy into the preallocated event buffers). Every measured call is recorded; any disposition other than OK is a failure.",
+  "interleaving": "per iteration: save affected rows; timed R120 apply; save result; restore; timed R119 step on the affected handles; restore; timed R120 propagation-only step; write back the R120 result",
+  "also_reported": [
+   "zero-copy commit() latency",
+   "kernel-internal total",
+   "stage breakdown from a separate profiled pass (validation+update, CGC, affected-window selection, transport+HCA88, reconciliation, commit)",
+   "update-only batches (propagate=false) of 1/16/64/256/1024 events",
+   "allocation behaviour (tracemalloc, allocated blocks)",
+   "memory footprint",
+   "bit parity of the measured path on the benchmark fixture"
+  ],
+  "process": "one subprocess per fixture; Python gc enabled; BLAS threads 1; torch not imported",
+  "statistics": "p50 / p95 / p99 / max / mean in ms, nearest-rank percentiles",
+  "preferred_targets_p95_ms": {
+   "64": 1.0,
+   "256": 1.0,
+   "1024": 3.0
+  },
+  "target_rule": "A target is reported MET only for the complete update-and-propagate apply() latency of a configuration, per configuration. Single-thread and parallel results are reported separately; a parallel result is never reported as the single-thread result. No FTZ/DAZ mode is used anywhere.",
+  "regression_rule": "R120 propagation-only step must be bit-identical to the R119 step on every compared active set; R119 latency measured here is reported next to the R119 registered numbers, not substituted for them."
+ },
+ "utility_study": {
+  "status": "EXPLORATORY_SYNTHETIC",
+  "task": "Latent tracking. Each materialized relation r carries a hidden vector z_r in its relation frame. An observation from incident participant p is o = U[r,p]^T (s z_r) + noise in the participant frame; the state should come to represent z_r. Initial rows N(0, 0.3).",
+  "system": {
+   "participants": 60,
+   "relations": 200,
+   "windows": 80,
+   "arity": [
+    2,
+    6
+   ],
+   "zipf": 0.5
+  },
+  "stream": {
+   "batches": 300,
+   "events_per_batch": 16,
+   "radius": 1,
+   "passes": 1,
+   "controller": "NATIVE",
+   "checkpoint": "54007/STATE8_SIGNED8"
+  },
+  "regimes": {
+   "CLEAN": "noise sd 0.1, weight +1",
+   "NOISY": "noise sd 1.0, weight +1",
+   "REVERSED_FLAGGED": "noise sd 0.1; 30% of observations sign-reversed and flagged with weight -1",
+   "CONTRADICTORY_UNFLAGGED": "noise sd 0.1; 30% of observations sign-reversed, weight +1 (no flag)",
+   "MIXED_RELIABILITY": "half of the events noise sd 0.1 with aux 1, half noise sd 1.5 with aux 0",
+   "CHANGE_POINT": "noise sd 0.1; at batch 150 every latent is redrawn",
+   "note": "aux is 0.5 in every regime except MIXED_RELIABILITY"
+  },
+  "arms": {
+   "NO_UPDATE": "state left at its initial value",
+   "HCA_ONLY": "no evidence; frozen HCA88 propagation on the same affected windows",
+   "DIRECT_NONGEOMETRIC": "A += gamma w o, B += gamma rho_b w o with the untransported participant-frame observation, clamp4",
+   "GEOMETRIC_ADDITIVE": "the R120 law with zero CGC weights (a=b=c=0): transported additive injection; matched lightweight alternative",
+   "GEOMETRIC_EMA": "A += gamma (v - A), B += gamma rho_b (v - B), clamp4: transported error-correcting rule without CGC; matched lightweight alternative",
+   "CGC_SYNTHETIC": "the R120 law with the fixed synthetic weights (seed 120120)",
+   "CGC_SEARCHED": "the R120 law with the best of 256 random weight draws (PCG64 seed 130200; sd cycled over 0.25/0.5/1.0), selected by mean final state cosine over all regimes on the training seeds; not gradient-trained, not a trained relational CGC"
+  },
+  "propagation_variants": [
+   "update only",
+   "update and propagate (frozen HCA88 on affected windows)"
+  ],
+  "seeds": {
+   "evaluation": [
+    130001,
+    130002,
+    130003,
+    130004,
+    130005
+   ],
+   "search_training": [
+    130101,
+    130102,
+    130103
+   ]
+  },
+  "metrics": {
+   "state_fidelity": "mean cosine(A_r, z_r) and mean |A_r - z_r| / |z_r| over updated relations, averaged over the last 50 batches",
+   "downstream": "gauge-invariant link readout on window links (d, s, p): sign accuracy and Pearson correlation of <A_d, L A_s> against <z_d, L z_s>, L = U[d,p] U[s,p]^T; reported separately from state fidelity",
+   "boundedness": "max channel norm"
+  },
+  "decision": "SCIENTIFIC_UTILITY is reported as measured. CGC utility is claimed only if a CGC arm beats both matched lightweight alternatives on the downstream metric in every regime on the evaluation seeds; otherwise the bridge is reported as mechanically qualified with utility not established. Negative results are results."
+ },
+ "boundaries": {
+  "unchanged": [
+   "frozen_host/",
+   "r118_scalable_awr/",
+   "r119_numerical_hotpath/",
+   "r120_checkpoint_policy/",
+   "r121_*",
+   "r122_energy_direction_forensics/",
+   "research/cgc_lao/",
+   "native/",
+   "public RuntimeCore"
+  ],
+  "r93_gate": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+  "production": "Research component. Not production-admitted. HCA88 checkpoints and CGC reference are read-only inputs."
+ }
+}
