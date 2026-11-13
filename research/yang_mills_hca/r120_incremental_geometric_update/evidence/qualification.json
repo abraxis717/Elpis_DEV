@@ -1,0 +1,256 @@
+{
+ "checkpoints_unchanged": true,
+ "checks": {
+  "atomicity": {
+   "cases": {
+    "aux_out_of_range": {
+     "disposition": "REFUSED_INVALID_VALUE",
+     "expected": "REFUSED_INVALID_VALUE",
+     "fail_index": 5,
+     "state_unchanged": true
+    },
+    "bad_radius": {
+     "disposition": "REFUSED_ARGUMENT",
+     "expected": "REFUSED_ARGUMENT",
+     "fail_index": -1,
+     "state_unchanged": true
+    },
+    "conflicting_same_sequence": {
+     "disposition": "REFUSED_CONFLICT",
+     "expected": "REFUSED_CONFLICT",
+     "fail_index": 5,
+     "state_unchanged": true
+    },
+    "event_budget": {
+     "disposition": "REFUSED_EVENT_BUDGET",
+     "expected": "REFUSED_EVENT_BUDGET",
+     "fail_index": -1,
+     "state_unchanged": true
+    },
+    "fresh_reference_accepted": {
+     "disposition": "OK",
+     "generation_changed": true
+    },
+    "inf_observation_first": {
+     "disposition": "REFUSED_INVALID_VALUE",
+     "expected": "REFUSED_INVALID_VALUE",
+     "fail_index": 0,
+     "state_unchanged": true
+    },
+    "instance_budget": {
+     "disposition": "REFUSED_INSTANCE_BUDGET",
+     "expected": "REFUSED_INSTANCE_BUDGET",
+     "fail_index": -1,
+     "state_unchanged": true
+    },
+    "link_budget": {
+     "disposition": "REFUSED_LINK_BUDGET",
+     "expected": "REFUSED_LINK_BUDGET",
+     "fail_index": -1,
+     "state_unchanged": true
+    },
+    "nan_observation_last": {
+     "disposition": "REFUSED_INVALID_VALUE",
+     "expected": "REFUSED_INVALID_VALUE",
+     "fail_index": 5,
+     "state_unchanged": true
+    },
+    "observation_without_frame": {
+     "disposition": "REFUSED_NOT_INCIDENT",
+     "expected": "REFUSED_NOT_INCIDENT",
+     "fail_index": 5,
+     "state_unchanged": true
+    },
+    "participant_not_incident": {
+     "disposition": "REFUSED_NOT_INCIDENT",
+     "expected": "REFUSED_NOT_INCIDENT",
+     "fail_index": 5,
+     "state_unchanged": true
+    },
+    "relation_not_materialized": {
+     "disposition": "REFUSED_NOT_MATERIALIZED",
+     "expected": "REFUSED_NOT_MATERIALIZED",
+     "fail_index": 5,
+     "state_unchanged": true
+    },
+    "row_budget": {
+     "disposition": "REFUSED_ROW_BUDGET",
+     "expected": "REFUSED_ROW_BUDGET",
+     "fail_index": -1,
+     "state_unchanged": true
+    },
+    "stale_generation": {
+     "disposition": "REFUSED_STALE_RELATION",
+     "expected": "REFUSED_STALE_RELATION",
+     "fail_index": 5,
+     "state_unchanged": true
+    },
+    "stale_reference_after_rematerialization": {
+     "disposition": "REFUSED_STALE_RELATION",
+     "expected": "REFUSED_STALE_RELATION",
+     "state_unchanged": true
+    },
+    "unknown_relation": {
+     "disposition": "REFUSED_UNKNOWN_RELATION",
+     "expected": "REFUSED_UNKNOWN_RELATION",
+     "fail_index": 5,
+     "state_unchanged": true
+    },
+    "weight_out_of_range": {
+     "disposition": "REFUSED_INVALID_VALUE",
+     "expected": "REFUSED_INVALID_VALUE",
+     "fail_index": 5,
+     "state_unchanged": true
+    }
+   },
+   "pass": true,
+   "seconds": 1.6
+  },
+  "cgc_and_update_law": {
+   "cgc_native_vs_reference_bit_mismatches": 0,
+   "cgc_reference_vs_torch_frozen_cgc3_max_rel": 2.0263043154500338e-07,
+   "cgc_samples": 2000,
+   "cgc_weights": {
+    "label": "SYNTHETIC_FIXED_WEIGHTS_NOT_TRAINED_NOT_QUALIFIED",
+    "sha256": "bce7c3464f1330dc1b0ad1480b5c741e34ebd06376695aff5db72625bdd34b0f"
+   },
+   "law_native_vs_reference_bit_mismatches": 0,
+   "law_samples": 2000,
+   "pass": true,
+   "seconds": 15.5,
+   "zero_state_injection_equals_gamma_v": true,
+   "zero_state_zero_observation_stays_exactly_zero": true
+  },
+  "event_semantics": {
+   "batch_order_independent_for_distinct_relations": true,
+   "budget_overflow_deferred_not_dropped": true,
+   "deferred_reported_then_equal_to_immediate": true,
+   "in_batch_exact_duplicate_applied_once": true,
+   "pass": true,
+   "redelivery_skipped_and_state_unchanged": true,
+   "repeated_events_coalesce_to_one_propagation": true,
+   "rows_outside_affected_windows_bitwise_unchanged": true,
+   "seconds": 0.3
+  },
+  "geometry": {
+   "negative_observation_only_rotation_min": 0.2456169783502571,
+   "negative_state_only_gauge_min": 0.35652016174870016,
+   "negative_untransported_observation_min": 0.9031899943191578,
+   "participant_gauge_invariance_max_abs": 2.1371793224034263e-15,
+   "pass": true,
+   "relation_gauge_covariance_max_abs": 2.220446049250313e-15,
+   "seconds": 2.2,
+   "single_update_covariance_max_abs": 8.881784197001252e-16,
+   "slot_permutation_max_abs": 2.220446049250313e-16
+  },
+  "identity_and_memory": {
+   "buffers_not_reallocated": true,
+   "engine_scratch_bytes": 999588,
+   "hca88_and_cgc_weights_unchanged": true,
+   "live_instances_unchanged": true,
+   "materialized_rows_unchanged": true,
+   "net_allocated_blocks": 7,
+   "net_retained_python_bytes": 372,
+   "pass": true,
+   "relation_rows_and_generations_unchanged": true,
+   "seconds": 0.6,
+   "transient_peak_python_bytes": 1500,
+   "updates_applied": 16000,
+   "weights_read_only": true,
+   "window_cache_bytes": 110896
+  },
+  "pins": {
+   "cgc_reference_sha256": "04fc09efffd9272e64a164d512319ad5112a7c3c2433d832a0778ffd7fcb3986",
+   "checkpoint_records_authenticated": true,
+   "frozen_manifest_files": 39,
+   "pass": true,
+   "r118_component_digest": "770411b1f6788f9593f5f7adf1d4f6efb57a564f8c207d13dd7f55352af0df71",
+   "r119_kernel_sha256": "125e138b11d0189bc46093b257ec0885ea7e49e875c67fc11b4f91ca21d291e2",
+   "seconds": 0.1
+  },
+  "r119_regression": {
+   "composition_bit_mismatches": 0,
+   "composition_comparisons": 144,
+   "pass": true,
+   "seconds": 6.7,
+   "step_bit_mismatches": 0,
+   "step_comparisons": 144,
+   "weights_sha256_match_pins": true
+  },
+  "reference_parity": {
+   "affected_set_size_mismatches": 0,
+   "batches": 576,
+   "cells": 48,
+   "disposition_mismatches": 0,
+   "max_abs_deviation": 0.0,
+   "pass": true,
+   "rows_not_bit_identical": 0,
+   "seconds": 49.9
+  },
+  "stability_and_replay": {
+   "deterministic_replay_bit_identical": true,
+   "high_frequency": {
+    "all_finite": true,
+    "max_abs_coordinate": 4.166264253045821,
+    "updated_row_after_update_only_norm_bound_holds": true,
+    "updated_row_channel_norms": [
+     1.9434908227606071,
+     2.4940361486116993
+    ],
+    "updates": 20000
+   },
+   "pass": true,
+   "seconds": 3.0,
+   "serial_vs_parallel_bit_identical": true,
+   "threads_1": {
+    "batches": 5000,
+    "max_channel_norm": 3.404831112669574,
+    "saturated_fraction_sampled": 0.0
+   },
+   "threads_4": {
+    "batches": 5000,
+    "max_channel_norm": 3.404831112669574,
+    "saturated_fraction_sampled": 0.0
+   }
+  }
+ },
+ "component_digest": "bb98a741ec8304496109ebcb7531615430ed52406de41023f44e37b3ce5b599d",
+ "environment": {
+  "cpu_count": 4,
+  "cpu_flags_avx512f": true,
+  "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "implementation": "CPython",
+  "machine": "x86_64",
+  "numpy": "2.5.3",
+  "python": "3.13.18",
+  "system": "Linux",
+  "torch": "2.15.0+cpu",
+  "torch_threads": 1
+ },
+ "frozen_tree_unchanged": true,
+ "kernel": {
+  "binary_sha256": "82d151598e2cc20b9e6e5d8e3a1a0591254d15a63643f397a669d66501b6b22b",
+  "cflags": [
+   "-std=c11",
+   "-O2",
+   "-ffp-contract=off",
+   "-fPIC",
+   "-shared",
+   "-Wall",
+   "-Wextra",
+   "-Werror",
+   "-D_POSIX_C_SOURCE=200809L",
+   "-fopenmp"
+  ],
+  "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "r119_kernel_sha256": "125e138b11d0189bc46093b257ec0885ea7e49e875c67fc11b4f91ca21d291e2",
+  "source_sha256": "8ca6d22923f1272345a8f63950bbf0a9788d8e5bd10650de00a2b810aebd2d09"
+ },
+ "openmp_max_threads": 1,
+ "pass": true,
+ "phase": "ELPIS_YM_AWR_R120",
+ "protocol_sha256": "8d47e5b4c9e9258844a0209c55689c043dea37d8e98a27b9de396a441596da14",
+ "r93": "ENERGY_NORMALIZED_DENOMINATOR_HOLD",
+ "schema": "elpis.ym_hca.r120u.qualification.v1",
+ "seconds": 80.6
+}

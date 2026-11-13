@@ -1,0 +1,2389 @@
+{
+ "bit_mismatches": 0,
+ "comparisons": 26640,
+ "failures": 0,
+ "fixtures": {
+  "OVERLAP": {
+   "allocations": {
+    "1024": {
+     "calls": 200,
+     "net_live_blocks_sum": 208,
+     "net_retained_bytes_sum": 8436,
+     "note": "transient bytes are the returned report snapshot and call temporaries; the kernel allocates nothing",
+     "transient_peak_bytes_max": 1248,
+     "transient_peak_bytes_mean": 980.9
+    },
+    "256": {
+     "calls": 200,
+     "net_live_blocks_sum": 208,
+     "net_retained_bytes_sum": 8436,
+     "note": "transient bytes are the returned report snapshot and call temporaries; the kernel allocates nothing",
+     "transient_peak_bytes_max": 1220,
+     "transient_peak_bytes_mean": 961.3
+    },
+    "64": {
+     "calls": 200,
+     "net_live_blocks_sum": 208,
+     "net_retained_bytes_sum": 8436,
+     "note": "transient bytes are the returned report snapshot and call temporaries; the kernel allocates nothing",
+     "transient_peak_bytes_max": 1220,
+     "transient_peak_bytes_mean": 961.3
+    }
+   },
+   "cold": {
+    "instance_creation_s": 0.019623836000022266,
+    "kernel_build_s": 0.800876063000004,
+    "registry_build_s": 0.02108481199999801,
+    "window_extraction_s": 0.34721894699998757,
+    "workload_generation_s": 2.665548634000004
+   },
+   "config": {
+    "arity": [
+     2,
+     6
+    ],
+    "instances": 4096,
+    "participants": 500,
+    "relations": 4096,
+    "seed": 12031,
+    "zipf": 1.0
+   },
+   "environment": {
+    "cpu_count": 4,
+    "cpu_flags_avx512f": true,
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "implementation": "CPython",
+    "machine": "x86_64",
+    "numpy": "2.5.3",
+    "python": "3.13.18",
+    "system": "Linux"
+   },
+   "fixture": {
+    "instances": 4096,
+    "materialized_relations": 4096,
+    "memberships": 16428,
+    "participant_degree": {
+     "max": 1883.0,
+     "mean": 32.856,
+     "min": 2.0,
+     "p50": 12.0,
+     "p99": 393.6799999999994
+    },
+    "participants": 500,
+    "registry_bytes": {
+     "frames": 1051392,
+     "inc_relation": 65712,
+     "members": 65712,
+     "part_incidences": 65712,
+     "part_offsets": 4008,
+     "participant_ids": 4000,
+     "rel_offsets": 32776,
+     "relation_ids": 32768,
+     "total": 1322080
+    },
+    "relation_arity": {
+     "2": 818,
+     "3": 794,
+     "4": 843,
+     "5": 808,
+     "6": 833
+    },
+    "relation_binding_overlap": {
+     "max": 196.0,
+     "mean": 4.0,
+     "min": 1.0,
+     "p50": 2.0,
+     "p99": 42.0
+    },
+    "relations": 4096,
+    "state_bytes": 1679360,
+    "window_bound_slots": {
+     "4": 4096
+    },
+    "window_links": {
+     "max": 48.0,
+     "mean": 26.21875,
+     "min": 6.0,
+     "p50": 26.0,
+     "p99": 44.0
+    }
+   },
+   "fixture_name": "OVERLAP",
+   "kernel": {
+    "binary_sha256": "82d151598e2cc20b9e6e5d8e3a1a0591254d15a63643f397a669d66501b6b22b",
+    "cflags": [
+     "-std=c11",
+     "-O2",
+     "-ffp-contract=off",
+     "-fPIC",
+     "-shared",
+     "-Wall",
+     "-Wextra",
+     "-Werror",
+     "-D_POSIX_C_SOURCE=200809L",
+     "-fopenmp"
+    ],
+    "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "r119_kernel_sha256": "125e138b11d0189bc46093b257ec0885ea7e49e875c67fc11b4f91ca21d291e2",
+    "source_sha256": "8ca6d22923f1272345a8f63950bbf0a9788d8e5bd10650de00a2b810aebd2d09"
+   },
+   "latency": [
+    {
+     "A": 64,
+     "apply": {
+      "max_ms": 1.489928,
+      "mean_ms": 0.27572678700000003,
+      "n": 1000,
+      "p50_ms": 0.262818,
+      "p95_ms": 0.38075,
+      "p99_ms": 0.445799
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0030275619999997616,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.10220592500002113,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 281.97389070658573,
+      "profiled_validate_update_ns_per_event_mean": 462.5435568828773,
+      "zero_copy_commit": {
+       "max_ms": 0.293601,
+       "mean_ms": 0.16408984000000001,
+       "n": 200,
+       "p50_ms": 0.170295,
+       "p95_ms": 0.246243,
+       "p99_ms": 0.262679
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 1.463103,
+      "mean_ms": 0.25998144100000004,
+      "n": 1000,
+      "p50_ms": 0.247629,
+      "p95_ms": 0.352444,
+      "p99_ms": 0.425068
+     },
+     "mean_active_rows": 160.941,
+     "mean_cached_instances": 64.0,
+     "mean_events_per_batch": 22.399,
+     "mean_links": 1673.576,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 0.748013,
+      "mean_ms": 0.33878485999999997,
+      "n": 1000,
+      "p50_ms": 0.323002,
+      "p95_ms": 0.473198,
+      "p99_ms": 0.552197
+     },
+     "r120_step": {
+      "max_ms": 0.84428,
+      "mean_ms": 0.252258021,
+      "n": 1000,
+      "p50_ms": 0.241774,
+      "p95_ms": 0.355985,
+      "p99_ms": 0.416972
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 0.709077,
+      "hca": 226.45945,
+      "reconcile": 15.740367,
+      "select": 5.800198999999999,
+      "total": 259.981441,
+      "validate_update": 11.054818
+     },
+     "stage_share": {
+      "commit": 0.0027274139156725423,
+      "hca": 0.8710600615526245,
+      "reconcile": 0.060544194768118086,
+      "select": 0.022310050200852607,
+      "validate_update": 0.04252156599132013
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 15.745345999999984
+    },
+    {
+     "A": 256,
+     "apply": {
+      "max_ms": 4.134977,
+      "mean_ms": 1.082734676,
+      "n": 1000,
+      "p50_ms": 1.023983,
+      "p95_ms": 1.464904,
+      "p99_ms": 1.649266
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0030275619999997616,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.10220592500002113,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 362.92820778578914,
+      "profiled_validate_update_ns_per_event_mean": 538.3256484642561,
+      "zero_copy_commit": {
+       "max_ms": 1.302974,
+       "mean_ms": 0.33340976499999997,
+       "n": 200,
+       "p50_ms": 0.233606,
+       "p95_ms": 0.977786,
+       "p99_ms": 1.051513
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 4.091895,
+      "mean_ms": 1.056631192,
+      "n": 1000,
+      "p50_ms": 1.001378,
+      "p95_ms": 1.429151,
+      "p99_ms": 1.608806
+     },
+     "mean_active_rows": 531.797,
+     "mean_cached_instances": 256.0,
+     "mean_events_per_batch": 72.08,
+     "mean_links": 6690.552,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 5.112831,
+      "mean_ms": 1.1629750410000002,
+      "n": 1000,
+      "p50_ms": 1.097797,
+      "p95_ms": 1.555719,
+      "p99_ms": 1.796948
+     },
+     "r120_step": {
+      "max_ms": 3.431407,
+      "mean_ms": 1.0248856759999998,
+      "n": 1000,
+      "p50_ms": 0.966623,
+      "p95_ms": 1.380609,
+      "p99_ms": 1.626139
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 3.363946,
+      "hca": 910.7597290000001,
+      "reconcile": 86.233433,
+      "select": 21.900333,
+      "total": 1056.631192,
+      "validate_update": 33.983209
+     },
+     "stage_share": {
+      "commit": 0.0031836519927380675,
+      "hca": 0.8619466620856675,
+      "reconcile": 0.0816116670157888,
+      "select": 0.020726563029572192,
+      "validate_update": 0.03216184536032512
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": false,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 26.10348399999998
+    },
+    {
+     "A": 1024,
+     "apply": {
+      "max_ms": 7.472765,
+      "mean_ms": 4.1250685140000005,
+      "n": 1000,
+      "p50_ms": 3.975141,
+      "p95_ms": 5.308973,
+      "p99_ms": 6.117606
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0030275619999997616,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.10220592500002113,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 389.6029252689937,
+      "profiled_validate_update_ns_per_event_mean": 558.1476906121868,
+      "zero_copy_commit": {
+       "max_ms": 5.604286,
+       "mean_ms": 0.38157629,
+       "n": 200,
+       "p50_ms": 0.061947,
+       "p95_ms": 2.134205,
+       "p99_ms": 4.498799
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 7.429514,
+      "mean_ms": 4.089363342,
+      "n": 1000,
+      "p50_ms": 3.942352,
+      "p95_ms": 5.261444,
+      "p99_ms": 6.055864
+     },
+     "mean_active_rows": 1619.763,
+     "mean_cached_instances": 1024.0,
+     "mean_events_per_batch": 276.988,
+     "mean_links": 26835.342,
+     "preferred_target_p95_ms": 3.0,
+     "r119_step": {
+      "max_ms": 10.234469,
+      "mean_ms": 4.170298985,
+      "n": 1000,
+      "p50_ms": 4.017351,
+      "p95_ms": 5.196862,
+      "p99_ms": 6.229536
+     },
+     "r120_step": {
+      "max_ms": 7.505003,
+      "mean_ms": 3.926304397,
+      "n": 1000,
+      "p50_ms": 3.798634,
+      "p95_ms": 4.74691,
+      "p99_ms": 5.883412
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 12.512647000000001,
+      "hca": 3467.906156,
+      "reconcile": 426.106648,
+      "select": 64.18729,
+      "total": 4089.363342,
+      "validate_update": 118.176707
+     },
+     "stage_share": {
+      "commit": 0.003059803190263938,
+      "hca": 0.8480308219088055,
+      "reconcile": 0.10419877432353625,
+      "select": 0.015696157233269392,
+      "validate_update": 0.028898558801625798
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": false,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 35.70517199999949
+    },
+    {
+     "A": 64,
+     "apply": {
+      "max_ms": 0.558461,
+      "mean_ms": 0.266261197,
+      "n": 1000,
+      "p50_ms": 0.261306,
+      "p95_ms": 0.295905,
+      "p99_ms": 0.33583
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0025385879999930694,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.09218556900000863,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 0.532831,
+      "mean_ms": 0.251569147,
+      "n": 1000,
+      "p50_ms": 0.246312,
+      "p95_ms": 0.27897,
+      "p99_ms": 0.319608
+     },
+     "mean_active_rows": 160.941,
+     "mean_cached_instances": 64.0,
+     "mean_events_per_batch": 22.399,
+     "mean_links": 1673.576,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 0.671363,
+      "mean_ms": 0.32232661399999996,
+      "n": 1000,
+      "p50_ms": 0.318255,
+      "p95_ms": 0.36599,
+      "p99_ms": 0.402245
+     },
+     "r120_step": {
+      "max_ms": 0.387665,
+      "mean_ms": 0.241713495,
+      "n": 1000,
+      "p50_ms": 0.239613,
+      "p95_ms": 0.274958,
+      "p99_ms": 0.302779
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 0.7668550000000001,
+      "hca": 218.97949799999998,
+      "reconcile": 15.824343,
+      "select": 5.812418,
+      "total": 251.569147,
+      "validate_update": 9.967424000000001
+     },
+     "stage_share": {
+      "commit": 0.0030482871574072637,
+      "hca": 0.8704545076825339,
+      "reconcile": 0.06290255855579938,
+      "select": 0.02310465360841725,
+      "validate_update": 0.03962101123632621
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 14.692050000000052
+    },
+    {
+     "A": 256,
+     "apply": {
+      "max_ms": 1.178746,
+      "mean_ms": 0.40789599600000004,
+      "n": 1000,
+      "p50_ms": 0.411785,
+      "p95_ms": 0.504127,
+      "p99_ms": 0.695919
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0025385879999930694,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.09218556900000863,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 1.156824,
+      "mean_ms": 0.389201058,
+      "n": 1000,
+      "p50_ms": 0.394541,
+      "p95_ms": 0.480598,
+      "p99_ms": 0.675247
+     },
+     "mean_active_rows": 531.797,
+     "mean_cached_instances": 256.0,
+     "mean_events_per_batch": 72.08,
+     "mean_links": 6690.552,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 2.761686,
+      "mean_ms": 1.1140279730000002,
+      "n": 1000,
+      "p50_ms": 1.052236,
+      "p95_ms": 1.591958,
+      "p99_ms": 1.649242
+     },
+     "r120_step": {
+      "max_ms": 2.913556,
+      "mean_ms": 0.385297712,
+      "n": 1000,
+      "p50_ms": 0.371958,
+      "p95_ms": 0.470399,
+      "p99_ms": 0.839213
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 4.165339,
+      "hca": 278.690373,
+      "reconcile": 56.841709,
+      "select": 19.408831999999997,
+      "total": 389.20105800000005,
+      "validate_update": 29.741312
+     },
+     "stage_share": {
+      "commit": 0.010702280773347743,
+      "hca": 0.7160575935536126,
+      "reconcile": 0.14604715951208952,
+      "select": 0.04986839475652195,
+      "validate_update": 0.07641631847773651
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 18.694937999999922
+    },
+    {
+     "A": 1024,
+     "apply": {
+      "max_ms": 9.841805,
+      "mean_ms": 1.698739481,
+      "n": 1000,
+      "p50_ms": 1.672602,
+      "p95_ms": 2.038713,
+      "p99_ms": 4.017487
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0025385879999930694,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.09218556900000863,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 9.806376,
+      "mean_ms": 1.666979253,
+      "n": 1000,
+      "p50_ms": 1.643898,
+      "p95_ms": 1.998222,
+      "p99_ms": 3.980384
+     },
+     "mean_active_rows": 1619.763,
+     "mean_cached_instances": 1024.0,
+     "mean_events_per_batch": 276.988,
+     "mean_links": 26835.342,
+     "preferred_target_p95_ms": 3.0,
+     "r119_step": {
+      "max_ms": 10.791882,
+      "mean_ms": 4.3835308610000006,
+      "n": 1000,
+      "p50_ms": 4.037135,
+      "p95_ms": 5.995741,
+      "p99_ms": 6.334465
+     },
+     "r120_step": {
+      "max_ms": 5.689456,
+      "mean_ms": 1.6166904089999998,
+      "n": 1000,
+      "p50_ms": 1.611051,
+      "p95_ms": 2.011228,
+      "p99_ms": 3.800136
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 11.460325000000001,
+      "hca": 1169.806676,
+      "reconcile": 301.735363,
+      "select": 63.860976,
+      "total": 1666.979253,
+      "validate_update": 119.632286
+     },
+     "stage_share": {
+      "commit": 0.006874905599080063,
+      "hca": 0.7017523906759744,
+      "reconcile": 0.18100726956078078,
+      "select": 0.038309400602959995,
+      "validate_update": 0.07176591177406813
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 31.760228000000097
+    },
+    {
+     "A": 64,
+     "apply": {
+      "max_ms": 2.313685,
+      "mean_ms": 0.20794592599999998,
+      "n": 1000,
+      "p50_ms": 0.184221,
+      "p95_ms": 0.300874,
+      "p99_ms": 0.409885
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0022108900000148424,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.11375556599998049,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 388.9562874360074,
+      "profiled_validate_update_ns_per_event_mean": 615.8676446013758,
+      "zero_copy_commit": {
+       "max_ms": 0.331204,
+       "mean_ms": 0.178601685,
+       "n": 200,
+       "p50_ms": 0.183895,
+       "p95_ms": 0.277012,
+       "p99_ms": 0.307355
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 2.193893,
+      "mean_ms": 0.190300909,
+      "n": 1000,
+      "p50_ms": 0.170004,
+      "p95_ms": 0.26515,
+      "p99_ms": 0.361145
+     },
+     "mean_active_rows": 160.941,
+     "mean_cached_instances": 64.0,
+     "mean_events_per_batch": 22.399,
+     "mean_links": 1673.576,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 1.246277,
+      "mean_ms": 0.26266950599999994,
+      "n": 1000,
+      "p50_ms": 0.234531,
+      "p95_ms": 0.411793,
+      "p99_ms": 0.523417
+     },
+     "r120_step": {
+      "max_ms": 0.67592,
+      "mean_ms": 0.172880024,
+      "n": 1000,
+      "p50_ms": 0.156546,
+      "p95_ms": 0.25488,
+      "p99_ms": 0.307309
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 0.790657,
+      "hca": 155.34731299999999,
+      "reconcile": 15.881319,
+      "select": 6.641492,
+      "total": 190.30090900000002,
+      "validate_update": 11.410416
+     },
+     "stage_share": {
+      "commit": 0.004154772587029524,
+      "hca": 0.8163245977979011,
+      "reconcile": 0.08345372118007066,
+      "select": 0.0348999489014527,
+      "validate_update": 0.059959860727727785
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 17.645016999999967
+    },
+    {
+     "A": 256,
+     "apply": {
+      "max_ms": 4.60611,
+      "mean_ms": 0.760270679,
+      "n": 1000,
+      "p50_ms": 0.684387,
+      "p95_ms": 1.070841,
+      "p99_ms": 1.633698
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0022108900000148424,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.11375556599998049,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 331.534421027129,
+      "profiled_validate_update_ns_per_event_mean": 498.8060678842469,
+      "zero_copy_commit": {
+       "max_ms": 0.700082,
+       "mean_ms": 0.21534042500000003,
+       "n": 200,
+       "p50_ms": 0.159498,
+       "p95_ms": 0.603895,
+       "p99_ms": 0.663591
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 4.57257,
+      "mean_ms": 0.735042638,
+      "n": 1000,
+      "p50_ms": 0.663569,
+      "p95_ms": 1.04292,
+      "p99_ms": 1.585371
+     },
+     "mean_active_rows": 531.797,
+     "mean_cached_instances": 256.0,
+     "mean_events_per_batch": 72.08,
+     "mean_links": 6690.552,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 4.082744,
+      "mean_ms": 0.8519032480000001,
+      "n": 1000,
+      "p50_ms": 0.77284,
+      "p95_ms": 1.170596,
+      "p99_ms": 1.790721
+     },
+     "r120_step": {
+      "max_ms": 4.817921,
+      "mean_ms": 0.718389175,
+      "n": 1000,
+      "p50_ms": 0.650181,
+      "p95_ms": 1.005501,
+      "p99_ms": 1.27545
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 3.014224,
+      "hca": 590.807558,
+      "reconcile": 84.18936,
+      "select": 22.282566,
+      "total": 735.042638,
+      "validate_update": 34.324635
+     },
+     "stage_share": {
+      "commit": 0.004100747146045153,
+      "hca": 0.8037731792097752,
+      "reconcile": 0.11453670256336884,
+      "select": 0.030314657746425857,
+      "validate_update": 0.04669747471166428
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": false,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 25.228040999999962
+    },
+    {
+     "A": 1024,
+     "apply": {
+      "max_ms": 6.713701,
+      "mean_ms": 2.887869599,
+      "n": 1000,
+      "p50_ms": 2.707642,
+      "p95_ms": 3.979725,
+      "p99_ms": 4.40131
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0022108900000148424,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.11375556599998049,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 383.5811355485223,
+      "profiled_validate_update_ns_per_event_mean": 547.6528797893224,
+      "zero_copy_commit": {
+       "max_ms": 2.751669,
+       "mean_ms": 0.268934585,
+       "n": 200,
+       "p50_ms": 0.058539,
+       "p95_ms": 1.525676,
+       "p99_ms": 2.317453
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 6.629429,
+      "mean_ms": 2.854276603,
+      "n": 1000,
+      "p50_ms": 2.677429,
+      "p95_ms": 3.9384,
+      "p99_ms": 4.342611
+     },
+     "mean_active_rows": 1619.763,
+     "mean_cached_instances": 1024.0,
+     "mean_events_per_batch": 276.988,
+     "mean_links": 26835.342,
+     "preferred_target_p95_ms": 3.0,
+     "r119_step": {
+      "max_ms": 9.673991,
+      "mean_ms": 2.9827816709999997,
+      "n": 1000,
+      "p50_ms": 2.772962,
+      "p95_ms": 4.15075,
+      "p99_ms": 4.573529
+     },
+     "r120_step": {
+      "max_ms": 8.623385,
+      "mean_ms": 2.7596775589999996,
+      "n": 1000,
+      "p50_ms": 2.572213,
+      "p95_ms": 3.825442,
+      "p99_ms": 4.25006
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 12.252744,
+      "hca": 2240.8445,
+      "reconcile": 424.845511,
+      "select": 61.868588,
+      "total": 2854.2766030000003,
+      "validate_update": 113.93744000000001
+     },
+     "stage_share": {
+      "commit": 0.004292766856275142,
+      "hca": 0.7850831617527013,
+      "reconcile": 0.14884524875881483,
+      "select": 0.021675750673558668,
+      "validate_update": 0.0399181494464291
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": false,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 33.5929959999994
+    },
+    {
+     "A": 64,
+     "apply": {
+      "max_ms": 1.175777,
+      "mean_ms": 0.20733894700000002,
+      "n": 1000,
+      "p50_ms": 0.188783,
+      "p95_ms": 0.293929,
+      "p99_ms": 0.334567
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0033351920000086466,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.11125464999997803,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 0.721727,
+      "mean_ms": 0.189700664,
+      "n": 1000,
+      "p50_ms": 0.172908,
+      "p95_ms": 0.267721,
+      "p99_ms": 0.298989
+     },
+     "mean_active_rows": 160.941,
+     "mean_cached_instances": 64.0,
+     "mean_events_per_batch": 22.399,
+     "mean_links": 1673.576,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 2.052396,
+      "mean_ms": 0.26630618500000003,
+      "n": 1000,
+      "p50_ms": 0.239249,
+      "p95_ms": 0.378513,
+      "p99_ms": 0.415414
+     },
+     "r120_step": {
+      "max_ms": 1.031681,
+      "mean_ms": 0.17864198199999998,
+      "n": 1000,
+      "p50_ms": 0.16171,
+      "p95_ms": 0.25301,
+      "p99_ms": 0.29108
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 0.862936,
+      "hca": 154.219606,
+      "reconcile": 16.721715,
+      "select": 6.297364,
+      "total": 189.700664,
+      "validate_update": 11.336739
+     },
+     "stage_share": {
+      "commit": 0.004548935052752372,
+      "hca": 0.8129629214160263,
+      "reconcile": 0.08814789915548214,
+      "select": 0.03319632028277982,
+      "validate_update": 0.05976119830555786
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 17.63828300000003
+    },
+    {
+     "A": 256,
+     "apply": {
+      "max_ms": 2.515403,
+      "mean_ms": 0.33878259200000005,
+      "n": 1000,
+      "p50_ms": 0.327835,
+      "p95_ms": 0.43301,
+      "p99_ms": 0.578946
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0033351920000086466,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.11125464999997803,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 2.47475,
+      "mean_ms": 0.317155399,
+      "n": 1000,
+      "p50_ms": 0.308928,
+      "p95_ms": 0.401883,
+      "p99_ms": 0.551712
+     },
+     "mean_active_rows": 531.797,
+     "mean_cached_instances": 256.0,
+     "mean_events_per_batch": 72.08,
+     "mean_links": 6690.552,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 4.990274,
+      "mean_ms": 0.875719075,
+      "n": 1000,
+      "p50_ms": 0.776748,
+      "p95_ms": 1.157685,
+      "p99_ms": 1.220551
+     },
+     "r120_step": {
+      "max_ms": 9.568341,
+      "mean_ms": 0.33036549200000004,
+      "n": 1000,
+      "p50_ms": 0.293103,
+      "p95_ms": 0.406656,
+      "p99_ms": 1.259839
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 4.324552,
+      "hca": 197.819334,
+      "reconcile": 59.633281000000004,
+      "select": 20.652622,
+      "total": 317.155399,
+      "validate_update": 34.351302000000004
+     },
+     "stage_share": {
+      "commit": 0.013635435542435776,
+      "hca": 0.6237299904833088,
+      "reconcile": 0.1880254322897401,
+      "select": 0.06511830498587855,
+      "validate_update": 0.1083106329209928
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 21.627193000000034
+    },
+    {
+     "A": 1024,
+     "apply": {
+      "max_ms": 8.278541,
+      "mean_ms": 1.2419621969999999,
+      "n": 1000,
+      "p50_ms": 1.211735,
+      "p95_ms": 1.510207,
+      "p99_ms": 2.630724
+     },
+     "cache": {
+      "bytes": 5596264,
+      "cached": 4096,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0033351920000086466,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.11125464999997803,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 8.240175,
+      "mean_ms": 1.211937477,
+      "n": 1000,
+      "p50_ms": 1.18503,
+      "p95_ms": 1.469178,
+      "p99_ms": 2.6036
+     },
+     "mean_active_rows": 1619.763,
+     "mean_cached_instances": 1024.0,
+     "mean_events_per_batch": 276.988,
+     "mean_links": 26835.342,
+     "preferred_target_p95_ms": 3.0,
+     "r119_step": {
+      "max_ms": 8.493983,
+      "mean_ms": 2.9384363970000003,
+      "n": 1000,
+      "p50_ms": 2.781712,
+      "p95_ms": 3.978563,
+      "p99_ms": 4.333099
+     },
+     "r120_step": {
+      "max_ms": 5.989075,
+      "mean_ms": 1.144317611,
+      "n": 1000,
+      "p50_ms": 1.133987,
+      "p95_ms": 1.413578,
+      "p99_ms": 2.3817
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 11.047773,
+      "hca": 725.7747929999999,
+      "reconcile": 298.98689399999995,
+      "select": 64.431229,
+      "total": 1211.937477,
+      "validate_update": 111.152446
+     },
+     "stage_share": {
+      "commit": 0.00911579451057771,
+      "hca": 0.5988549795461107,
+      "reconcile": 0.24670158293982683,
+      "select": 0.05316382257564266,
+      "validate_update": 0.09171467019498729
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 30.024720000000343
+    }
+   ],
+   "memory": {
+    "engine_scratch_bytes": 999588,
+    "note": "all R120 storage is allocated at construction; an update writes only existing rows",
+    "per_update_growth_bytes": 0,
+    "r120_side_table_bytes": {
+     "inst_mark": 4096,
+     "pending_list": 65536,
+     "row_gen": 65536,
+     "row_pending": 16384,
+     "row_seq": 131072
+    },
+    "r120_side_table_total": 282624,
+    "registry_bytes": {
+     "frames": 1051392,
+     "inc_relation": 65712,
+     "members": 65712,
+     "part_incidences": 65712,
+     "part_offsets": 4008,
+     "participant_ids": 4000,
+     "rel_offsets": 32776,
+     "relation_ids": 32768,
+     "total": 1322080
+    },
+    "state_bytes_r118_layout": 1679360,
+    "window_cache_offsets_bytes": 32768,
+    "window_cache_reserved_bytes": 134217728,
+    "window_cache_used_bytes": 5596264
+   },
+   "openmp_max_threads": 1,
+   "protocol_sha256": "8d47e5b4c9e9258844a0209c55689c043dea37d8e98a27b9de396a441596da14",
+   "registered_run": true,
+   "rss_peak_mib": 113.93359375,
+   "torch_imported": false,
+   "update_only": {
+    "1": {
+     "events": 1,
+     "failures": 0,
+     "max_ms": 0.07379,
+     "mean_ms": 0.015128451000000001,
+     "n": 1000,
+     "p50_ms": 0.013567,
+     "p50_ns_per_event": 13567.0,
+     "p95_ms": 0.023455,
+     "p95_ns_per_event": 23455.0,
+     "p99_ms": 0.053942
+    },
+    "1024": {
+     "events": 1024,
+     "failures": 0,
+     "max_ms": 1.674376,
+     "mean_ms": 0.456687222,
+     "n": 1000,
+     "p50_ms": 0.42635,
+     "p50_ns_per_event": 416.357421875,
+     "p95_ms": 0.580615,
+     "p95_ns_per_event": 567.0068359375,
+     "p99_ms": 0.671631
+    },
+    "16": {
+     "events": 16,
+     "failures": 0,
+     "max_ms": 0.115338,
+     "mean_ms": 0.029640248999999997,
+     "n": 1000,
+     "p50_ms": 0.026607,
+     "p50_ns_per_event": 1662.9375,
+     "p95_ms": 0.049919,
+     "p95_ns_per_event": 3119.9375,
+     "p99_ms": 0.082854
+    },
+    "256": {
+     "events": 256,
+     "failures": 0,
+     "max_ms": 0.215926,
+     "mean_ms": 0.11227153,
+     "n": 1000,
+     "p50_ms": 0.107432,
+     "p50_ns_per_event": 419.65625,
+     "p95_ms": 0.135289,
+     "p95_ns_per_event": 528.47265625,
+     "p99_ms": 0.150626
+    },
+    "64": {
+     "events": 64,
+     "failures": 0,
+     "max_ms": 0.088758,
+     "mean_ms": 0.037435774000000005,
+     "n": 1000,
+     "p50_ms": 0.035488,
+     "p50_ns_per_event": 554.5,
+     "p95_ms": 0.052046,
+     "p95_ns_per_event": 813.21875,
+     "p99_ms": 0.066901
+    }
+   }
+  },
+  "STRESS1M": {
+   "allocations": {
+    "1024": {
+     "calls": 200,
+     "net_live_blocks_sum": 208,
+     "net_retained_bytes_sum": 8436,
+     "note": "transient bytes are the returned report snapshot and call temporaries; the kernel allocates nothing",
+     "transient_peak_bytes_max": 1248,
+     "transient_peak_bytes_mean": 989.3
+    },
+    "256": {
+     "calls": 200,
+     "net_live_blocks_sum": 208,
+     "net_retained_bytes_sum": 8436,
+     "note": "transient bytes are the returned report snapshot and call temporaries; the kernel allocates nothing",
+     "transient_peak_bytes_max": 1220,
+     "transient_peak_bytes_mean": 961.3
+    },
+    "64": {
+     "calls": 200,
+     "net_live_blocks_sum": 208,
+     "net_retained_bytes_sum": 8436,
+     "note": "transient bytes are the returned report snapshot and call temporaries; the kernel allocates nothing",
+     "transient_peak_bytes_max": 1220,
+     "transient_peak_bytes_mean": 961.3
+    }
+   },
+   "cold": {
+    "instance_creation_s": 0.1929993990000014,
+    "kernel_build_s": 0.7331956330000082,
+    "registry_build_s": 6.682191630999995,
+    "window_extraction_s": 3.1381640749999917,
+    "workload_generation_s": 3.9791567480000083
+   },
+   "config": {
+    "arity": [
+     2,
+     6
+    ],
+    "instances": 50000,
+    "participants": 50000,
+    "relations": 1000000,
+    "seed": 11803,
+    "zipf": 0.5
+   },
+   "environment": {
+    "cpu_count": 4,
+    "cpu_flags_avx512f": true,
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "implementation": "CPython",
+    "machine": "x86_64",
+    "numpy": "2.5.3",
+    "python": "3.13.18",
+    "system": "Linux"
+   },
+   "fixture": {
+    "instances": 50000,
+    "materialized_relations": 81182,
+    "memberships": 3997898,
+    "participant_degree": {
+     "max": 9025.0,
+     "mean": 79.95796,
+     "min": 21.0,
+     "p50": 58.0,
+     "p99": 401.01000000000204
+    },
+    "participants": 50000,
+    "registry_bytes": {
+     "frames": 255865472,
+     "inc_relation": 15991592,
+     "members": 15991592,
+     "part_incidences": 15991592,
+     "part_offsets": 400008,
+     "participant_ids": 400000,
+     "rel_offsets": 8000008,
+     "relation_ids": 8000000,
+     "total": 320640264
+    },
+    "relation_arity": {
+     "2": 200245,
+     "3": 200553,
+     "4": 199829,
+     "5": 199805,
+     "6": 199568
+    },
+    "relation_binding_overlap": {
+     "max": 219.0,
+     "mean": 2.463600305486438,
+     "min": 1.0,
+     "p50": 1.0,
+     "p99": 28.0
+    },
+    "relations": 1000000,
+    "state_bytes": 24300000,
+    "window_bound_slots": {
+     "4": 50000
+    },
+    "window_links": {
+     "max": 26.0,
+     "mean": 9.39932,
+     "min": 6.0,
+     "p50": 8.0,
+     "p99": 20.0
+    }
+   },
+   "fixture_name": "STRESS1M",
+   "kernel": {
+    "binary_sha256": "82d151598e2cc20b9e6e5d8e3a1a0591254d15a63643f397a669d66501b6b22b",
+    "cflags": [
+     "-std=c11",
+     "-O2",
+     "-ffp-contract=off",
+     "-fPIC",
+     "-shared",
+     "-Wall",
+     "-Wextra",
+     "-Werror",
+     "-D_POSIX_C_SOURCE=200809L",
+     "-fopenmp"
+    ],
+    "compiler_version": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "r119_kernel_sha256": "125e138b11d0189bc46093b257ec0885ea7e49e875c67fc11b4f91ca21d291e2",
+    "source_sha256": "8ca6d22923f1272345a8f63950bbf0a9788d8e5bd10650de00a2b810aebd2d09"
+   },
+   "latency": [
+    {
+     "A": 64,
+     "apply": {
+      "max_ms": 0.960147,
+      "mean_ms": 0.28706397,
+      "n": 1000,
+      "p50_ms": 0.279136,
+      "p95_ms": 0.344985,
+      "p99_ms": 0.444267
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0338057530000242,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.1173480679999841,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 293.02903343680833,
+      "profiled_validate_update_ns_per_event_mean": 530.0395799092053,
+      "zero_copy_commit": {
+       "max_ms": 0.30358,
+       "mean_ms": 0.244211435,
+       "n": 200,
+       "p50_ms": 0.243435,
+       "p95_ms": 0.270177,
+       "p99_ms": 0.299087
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 0.932364,
+      "mean_ms": 0.271079572,
+      "n": 1000,
+      "p50_ms": 0.263766,
+      "p95_ms": 0.325024,
+      "p99_ms": 0.413481
+     },
+     "mean_active_rows": 209.85,
+     "mean_cached_instances": 64.0,
+     "mean_events_per_batch": 33.832,
+     "mean_links": 597.968,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 0.75658,
+      "mean_ms": 0.331794399,
+      "n": 1000,
+      "p50_ms": 0.319987,
+      "p95_ms": 0.422449,
+      "p99_ms": 0.535862
+     },
+     "r120_step": {
+      "max_ms": 0.867982,
+      "mean_ms": 0.228302371,
+      "n": 1000,
+      "p50_ms": 0.220891,
+      "p95_ms": 0.289457,
+      "p99_ms": 0.403316
+     },
+     "role": "primary",
+     "stage_mean_us": {
+      "commit": 1.268926,
+      "hca": 208.112625,
+      "reconcile": 10.428696,
+      "select": 11.601965,
+      "total": 271.079572,
+      "validate_update": 39.45158
+     },
+     "stage_share": {
+      "commit": 0.004681009308956707,
+      "hca": 0.7677178455925849,
+      "reconcile": 0.038470977075321634,
+      "select": 0.04279911213671239,
+      "validate_update": 0.14553505344917692
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 15.984397999999999
+    },
+    {
+     "A": 256,
+     "apply": {
+      "max_ms": 4.08522,
+      "mean_ms": 1.060147051,
+      "n": 1000,
+      "p50_ms": 1.016917,
+      "p95_ms": 1.300413,
+      "p99_ms": 1.567805
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0338057530000242,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.1173480679999841,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 323.9866106414597,
+      "profiled_validate_update_ns_per_event_mean": 709.409979847937,
+      "zero_copy_commit": {
+       "max_ms": 1.122399,
+       "mean_ms": 0.85307421,
+       "n": 200,
+       "p50_ms": 0.865953,
+       "p95_ms": 0.968016,
+       "p99_ms": 0.989477
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 4.052431,
+      "mean_ms": 1.033352792,
+      "n": 1000,
+      "p50_ms": 0.992335,
+      "p95_ms": 1.264884,
+      "p99_ms": 1.5347
+     },
+     "mean_active_rows": 783.642,
+     "mean_cached_instances": 256.0,
+     "mean_events_per_batch": 112.663,
+     "mean_links": 2397.098,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 3.696508,
+      "mean_ms": 1.101281213,
+      "n": 1000,
+      "p50_ms": 1.063812,
+      "p95_ms": 1.347388,
+      "p99_ms": 1.560623
+     },
+     "r120_step": {
+      "max_ms": 3.02038,
+      "mean_ms": 0.8790832470000001,
+      "n": 1000,
+      "p50_ms": 0.849303,
+      "p95_ms": 1.09596,
+      "p99_ms": 1.289652
+     },
+     "role": "primary",
+     "stage_mean_us": {
+      "commit": 9.193985000000001,
+      "hca": 795.173849,
+      "reconcile": 52.997945,
+      "select": 44.843035,
+      "total": 1033.352792,
+      "validate_update": 130.687868
+     },
+     "stage_share": {
+      "commit": 0.008897237295121182,
+      "hca": 0.7695085890860012,
+      "reconcile": 0.05128736808019385,
+      "select": 0.043395668301441044,
+      "validate_update": 0.12646974877482114
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": false,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 26.79425900000001
+    },
+    {
+     "A": 1024,
+     "apply": {
+      "max_ms": 6.460477,
+      "mean_ms": 4.3109124240000005,
+      "n": 1000,
+      "p50_ms": 4.049165,
+      "p95_ms": 5.637705,
+      "p99_ms": 5.955171
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.0338057530000242,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.1173480679999841,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 413.32208175760803,
+      "profiled_validate_update_ns_per_event_mean": 1027.0099059492409,
+      "zero_copy_commit": {
+       "max_ms": 4.076286,
+       "mean_ms": 2.60327442,
+       "n": 200,
+       "p50_ms": 2.561153,
+       "p95_ms": 3.748423,
+       "p99_ms": 4.007213
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 6.420152,
+      "mean_ms": 4.267965082,
+      "n": 1000,
+      "p50_ms": 4.006859,
+      "p95_ms": 5.584624,
+      "p99_ms": 5.903612
+     },
+     "mean_active_rows": 2940.909,
+     "mean_cached_instances": 1024.0,
+     "mean_events_per_batch": 424.33,
+     "mean_links": 9635.036,
+     "preferred_target_p95_ms": 3.0,
+     "r119_step": {
+      "max_ms": 12.233121,
+      "mean_ms": 4.289705008,
+      "n": 1000,
+      "p50_ms": 4.004427,
+      "p95_ms": 5.594431,
+      "p99_ms": 5.94837
+     },
+     "r120_step": {
+      "max_ms": 8.618535,
+      "mean_ms": 3.633254319,
+      "n": 1000,
+      "p50_ms": 3.381722,
+      "p95_ms": 4.813491,
+      "p99_ms": 5.176725
+     },
+     "role": "primary",
+     "stage_mean_us": {
+      "commit": 87.469322,
+      "hca": 3272.587247,
+      "reconcile": 238.77097,
+      "select": 194.885372,
+      "total": 4267.965082000001,
+      "validate_update": 473.66796999999997
+     },
+     "stage_share": {
+      "commit": 0.020494385572388803,
+      "hca": 0.7667792927364909,
+      "reconcile": 0.05594492115387929,
+      "select": 0.04566236327047813,
+      "validate_update": 0.11098215681231291
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": false,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 42.94734199999948
+    },
+    {
+     "A": 64,
+     "apply": {
+      "max_ms": 0.495678,
+      "mean_ms": 0.29063816699999995,
+      "n": 1000,
+      "p50_ms": 0.284119,
+      "p95_ms": 0.348799,
+      "p99_ms": 0.387665
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.021763529999986986,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.1293824969999946,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 0.462478,
+      "mean_ms": 0.273573969,
+      "n": 1000,
+      "p50_ms": 0.267522,
+      "p95_ms": 0.327013,
+      "p99_ms": 0.365502
+     },
+     "mean_active_rows": 209.85,
+     "mean_cached_instances": 64.0,
+     "mean_events_per_batch": 33.832,
+     "mean_links": 597.968,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 0.56835,
+      "mean_ms": 0.34019579099999997,
+      "n": 1000,
+      "p50_ms": 0.331659,
+      "p95_ms": 0.406657,
+      "p99_ms": 0.466999
+     },
+     "r120_step": {
+      "max_ms": 0.508011,
+      "mean_ms": 0.229364466,
+      "n": 1000,
+      "p50_ms": 0.22319,
+      "p95_ms": 0.282374,
+      "p99_ms": 0.340423
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 1.2076500000000001,
+      "hca": 208.77601,
+      "reconcile": 10.610546000000001,
+      "select": 12.031031,
+      "total": 273.573969,
+      "validate_update": 40.694523000000004
+     },
+     "stage_share": {
+      "commit": 0.0044143454306502395,
+      "hca": 0.7631428193374642,
+      "reconcile": 0.03878492547659021,
+      "select": 0.04397725062796454,
+      "validate_update": 0.14875144425747613
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 17.064198000000033
+    },
+    {
+     "A": 256,
+     "apply": {
+      "max_ms": 3.797324,
+      "mean_ms": 0.49839293800000006,
+      "n": 1000,
+      "p50_ms": 0.456629,
+      "p95_ms": 0.641627,
+      "p99_ms": 1.027256
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.021763529999986986,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.1293824969999946,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 3.765458,
+      "mean_ms": 0.473732421,
+      "n": 1000,
+      "p50_ms": 0.434847,
+      "p95_ms": 0.606082,
+      "p99_ms": 0.963918
+     },
+     "mean_active_rows": 783.642,
+     "mean_cached_instances": 256.0,
+     "mean_events_per_batch": 112.663,
+     "mean_links": 2397.098,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 4.149573,
+      "mean_ms": 1.1448332749999999,
+      "n": 1000,
+      "p50_ms": 1.068668,
+      "p95_ms": 1.531985,
+      "p99_ms": 1.992752
+     },
+     "r120_step": {
+      "max_ms": 3.852976,
+      "mean_ms": 0.348447085,
+      "n": 1000,
+      "p50_ms": 0.31126,
+      "p95_ms": 0.457561,
+      "p99_ms": 1.173822
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 9.431624,
+      "hca": 241.50483,
+      "reconcile": 43.230187,
+      "select": 45.300027,
+      "total": 473.732421,
+      "validate_update": 133.853414
+     },
+     "stage_share": {
+      "commit": 0.019909179912345497,
+      "hca": 0.5097916445959269,
+      "reconcile": 0.09125444044708944,
+      "select": 0.09562365798054595,
+      "validate_update": 0.2825506722074232
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 24.660517000000027
+    },
+    {
+     "A": 1024,
+     "apply": {
+      "max_ms": 6.928594,
+      "mean_ms": 1.8449959949999999,
+      "n": 1000,
+      "p50_ms": 1.716217,
+      "p95_ms": 2.317145,
+      "p99_ms": 3.778755
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.021763529999986986,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "R114",
+     "engine_construction_s": 0.1293824969999946,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 6.891453,
+      "mean_ms": 1.807069902,
+      "n": 1000,
+      "p50_ms": 1.678395,
+      "p95_ms": 2.263525,
+      "p99_ms": 3.74109
+     },
+     "mean_active_rows": 2940.909,
+     "mean_cached_instances": 1024.0,
+     "mean_events_per_batch": 424.33,
+     "mean_links": 9635.036,
+     "preferred_target_p95_ms": 3.0,
+     "r119_step": {
+      "max_ms": 12.216583,
+      "mean_ms": 4.131336557000001,
+      "n": 1000,
+      "p50_ms": 3.87896,
+      "p95_ms": 5.40285,
+      "p99_ms": 5.893496
+     },
+     "r120_step": {
+      "max_ms": 5.469702,
+      "mean_ms": 1.30446734,
+      "n": 1000,
+      "p50_ms": 1.192397,
+      "p95_ms": 1.714395,
+      "p99_ms": 3.40078
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 55.385554,
+      "hca": 964.000536,
+      "reconcile": 178.566787,
+      "select": 169.177301,
+      "total": 1807.069902,
+      "validate_update": 439.383404
+     },
+     "stage_share": {
+      "commit": 0.03064936997661311,
+      "hca": 0.5334605678137181,
+      "reconcile": 0.09881565002126852,
+      "select": 0.09361967725363621,
+      "validate_update": 0.24314687744713484
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 37.92609300000004
+    },
+    {
+     "A": 64,
+     "apply": {
+      "max_ms": 4.40748,
+      "mean_ms": 0.213482348,
+      "n": 1000,
+      "p50_ms": 0.19585,
+      "p95_ms": 0.297629,
+      "p99_ms": 0.327398
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.02370910700000195,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.11852654799997708,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 293.216675075527,
+      "profiled_validate_update_ns_per_event_mean": 529.5215853410439,
+      "zero_copy_commit": {
+       "max_ms": 0.220568,
+       "mean_ms": 0.167779655,
+       "n": 200,
+       "p50_ms": 0.164593,
+       "p95_ms": 0.193307,
+       "p99_ms": 0.208147
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 4.370107,
+      "mean_ms": 0.19723680200000002,
+      "n": 1000,
+      "p50_ms": 0.180648,
+      "p95_ms": 0.275888,
+      "p99_ms": 0.302347
+     },
+     "mean_active_rows": 209.85,
+     "mean_cached_instances": 64.0,
+     "mean_events_per_batch": 33.832,
+     "mean_links": 597.968,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 2.38441,
+      "mean_ms": 0.25318306,
+      "n": 1000,
+      "p50_ms": 0.230044,
+      "p95_ms": 0.35012,
+      "p99_ms": 0.423643
+     },
+     "r120_step": {
+      "max_ms": 1.130637,
+      "mean_ms": 0.142091308,
+      "n": 1000,
+      "p50_ms": 0.128426,
+      "p95_ms": 0.206984,
+      "p99_ms": 0.245175
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 1.3078589999999999,
+      "hca": 133.86497,
+      "reconcile": 10.458735,
+      "select": 11.969182,
+      "total": 197.23680199999998,
+      "validate_update": 39.402531
+     },
+     "stage_share": {
+      "commit": 0.006630907552435371,
+      "hca": 0.6787017871036055,
+      "reconcile": 0.05302628563202926,
+      "select": 0.060684324013730466,
+      "validate_update": 0.19977271280235015
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 16.24554600000002
+    },
+    {
+     "A": 256,
+     "apply": {
+      "max_ms": 2.444529,
+      "mean_ms": 0.7151368640000001,
+      "n": 1000,
+      "p50_ms": 0.688411,
+      "p95_ms": 0.962,
+      "p99_ms": 1.051522
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.02370910700000195,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.11852654799997708,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 395.3328189861898,
+      "profiled_validate_update_ns_per_event_mean": 923.5660613783496,
+      "zero_copy_commit": {
+       "max_ms": 1.337332,
+       "mean_ms": 0.70270979,
+       "n": 200,
+       "p50_ms": 0.670907,
+       "p95_ms": 0.958836,
+       "p99_ms": 1.051605
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 2.406287,
+      "mean_ms": 0.690408627,
+      "n": 1000,
+      "p50_ms": 0.665371,
+      "p95_ms": 0.922958,
+      "p99_ms": 1.008715
+     },
+     "mean_active_rows": 783.642,
+     "mean_cached_instances": 256.0,
+     "mean_events_per_batch": 112.663,
+     "mean_links": 2397.098,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 3.282262,
+      "mean_ms": 0.760289938,
+      "n": 1000,
+      "p50_ms": 0.725131,
+      "p95_ms": 1.021042,
+      "p99_ms": 1.141196
+     },
+     "r120_step": {
+      "max_ms": 1.716517,
+      "mean_ms": 0.549425217,
+      "n": 1000,
+      "p50_ms": 0.528451,
+      "p95_ms": 0.754951,
+      "p99_ms": 0.830909
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 8.435818,
+      "hca": 465.67994699999997,
+      "reconcile": 51.921177,
+      "select": 41.622434999999996,
+      "total": 690.408627,
+      "validate_update": 122.347539
+     },
+     "stage_share": {
+      "commit": 0.012218587181703915,
+      "hca": 0.6744990267915641,
+      "reconcile": 0.07520354608778665,
+      "select": 0.060286667014663474,
+      "validate_update": 0.17721032764557273
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 24.728237000000036
+    },
+    {
+     "A": 1024,
+     "apply": {
+      "max_ms": 4.849294,
+      "mean_ms": 2.8168934979999998,
+      "n": 1000,
+      "p50_ms": 2.709672,
+      "p95_ms": 3.659197,
+      "p99_ms": 4.107913
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.02370910700000195,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.11852654799997708,
+     "extra": {
+      "note": "the profiled pass adds two clock reads per event; its per-event figure is an upper bound",
+      "profiled_update_law_ns_per_event_mean": 394.85514543491774,
+      "profiled_validate_update_ns_per_event_mean": 967.1794001963469,
+      "zero_copy_commit": {
+       "max_ms": 3.98723,
+       "mean_ms": 1.87297644,
+       "n": 200,
+       "p50_ms": 1.737249,
+       "p95_ms": 3.017074,
+       "p99_ms": 3.693365
+      }
+     },
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 4.812346,
+      "mean_ms": 2.7784615759999998,
+      "n": 1000,
+      "p50_ms": 2.672693,
+      "p95_ms": 3.615483,
+      "p99_ms": 4.061183
+     },
+     "mean_active_rows": 2940.909,
+     "mean_cached_instances": 1024.0,
+     "mean_events_per_batch": 424.33,
+     "mean_links": 9635.036,
+     "preferred_target_p95_ms": 3.0,
+     "r119_step": {
+      "max_ms": 7.431456,
+      "mean_ms": 2.782409178,
+      "n": 1000,
+      "p50_ms": 2.669317,
+      "p95_ms": 3.552324,
+      "p99_ms": 4.231402
+     },
+     "r120_step": {
+      "max_ms": 5.541549,
+      "mean_ms": 2.204531516,
+      "n": 1000,
+      "p50_ms": 2.101328,
+      "p95_ms": 2.909755,
+      "p99_ms": 3.379024
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 74.121237,
+      "hca": 1864.386542,
+      "reconcile": 228.893118,
+      "select": 169.75194699999997,
+      "total": 2778.4615759999997,
+      "validate_update": 440.770758
+     },
+     "stage_share": {
+      "commit": 0.026677078294063836,
+      "hca": 0.6710139733816495,
+      "reconcile": 0.08238124290692009,
+      "select": 0.0610956611623842,
+      "validate_update": 0.15863842127863928
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": false,
+     "threads": 1,
+     "threads_requested": 1,
+     "wrapper_overhead_mean_us": 38.43192200000067
+    },
+    {
+     "A": 64,
+     "apply": {
+      "max_ms": 2.288624,
+      "mean_ms": 0.197756181,
+      "n": 1000,
+      "p50_ms": 0.189489,
+      "p95_ms": 0.229189,
+      "p99_ms": 0.30573
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.02194662899998434,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.10791985299999851,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 2.256017,
+      "mean_ms": 0.18314300700000002,
+      "n": 1000,
+      "p50_ms": 0.175081,
+      "p95_ms": 0.213447,
+      "p99_ms": 0.288421
+     },
+     "mean_active_rows": 209.85,
+     "mean_cached_instances": 64.0,
+     "mean_events_per_batch": 33.832,
+     "mean_links": 597.968,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 2.351047,
+      "mean_ms": 0.22874872999999996,
+      "n": 1000,
+      "p50_ms": 0.219091,
+      "p95_ms": 0.267855,
+      "p99_ms": 0.320173
+     },
+     "r120_step": {
+      "max_ms": 1.515674,
+      "mean_ms": 0.133063303,
+      "n": 1000,
+      "p50_ms": 0.124661,
+      "p95_ms": 0.162549,
+      "p99_ms": 0.199064
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 1.272499,
+      "hca": 122.431898,
+      "reconcile": 10.167598,
+      "select": 11.092366,
+      "total": 183.143007,
+      "validate_update": 37.936636
+     },
+     "stage_share": {
+      "commit": 0.0069481167795830715,
+      "hca": 0.6685043562706164,
+      "reconcile": 0.05551726034508104,
+      "select": 0.06056669147078053,
+      "validate_update": 0.20714214875810136
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 14.613174000000015
+    },
+    {
+     "A": 256,
+     "apply": {
+      "max_ms": 5.32381,
+      "mean_ms": 0.40625975700000005,
+      "n": 1000,
+      "p50_ms": 0.360893,
+      "p95_ms": 0.496303,
+      "p99_ms": 2.020501
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.02194662899998434,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.10791985299999851,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 5.291757,
+      "mean_ms": 0.383921234,
+      "n": 1000,
+      "p50_ms": 0.339872,
+      "p95_ms": 0.462647,
+      "p99_ms": 1.989613
+     },
+     "mean_active_rows": 783.642,
+     "mean_cached_instances": 256.0,
+     "mean_events_per_batch": 112.663,
+     "mean_links": 2397.098,
+     "preferred_target_p95_ms": 1.0,
+     "r119_step": {
+      "max_ms": 3.00541,
+      "mean_ms": 0.790784596,
+      "n": 1000,
+      "p50_ms": 0.734927,
+      "p95_ms": 1.06432,
+      "p99_ms": 1.160837
+     },
+     "r120_step": {
+      "max_ms": 5.262165,
+      "mean_ms": 0.24536928900000002,
+      "n": 1000,
+      "p50_ms": 0.206297,
+      "p95_ms": 0.321359,
+      "p99_ms": 1.149669
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 7.591215,
+      "hca": 163.448315,
+      "reconcile": 46.320959,
+      "select": 42.340233999999995,
+      "total": 383.92123399999997,
+      "validate_update": 123.832465
+     },
+     "stage_share": {
+      "commit": 0.01977284486431923,
+      "hca": 0.42573398011113917,
+      "reconcile": 0.12065224555930658,
+      "select": 0.11028364740044568,
+      "validate_update": 0.32254653828290203
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 22.338523000000066
+    },
+    {
+     "A": 1024,
+     "apply": {
+      "max_ms": 12.04044,
+      "mean_ms": 1.403669383,
+      "n": 1000,
+      "p50_ms": 1.29109,
+      "p95_ms": 1.728053,
+      "p99_ms": 3.322511
+     },
+     "cache": {
+      "bytes": 61638208,
+      "cached": 50000,
+      "uncached": 0
+     },
+     "cache_build_s": 0.02194662899998434,
+     "composition_bit_mismatches": 0,
+     "composition_comparisons": 10,
+     "controller": "NATIVE",
+     "engine_construction_s": 0.10791985299999851,
+     "failures": 0,
+     "kernel_total": {
+      "max_ms": 11.997226,
+      "mean_ms": 1.368569667,
+      "n": 1000,
+      "p50_ms": 1.25599,
+      "p95_ms": 1.682997,
+      "p99_ms": 3.291152
+     },
+     "mean_active_rows": 2940.909,
+     "mean_cached_instances": 1024.0,
+     "mean_events_per_batch": 424.33,
+     "mean_links": 9635.036,
+     "preferred_target_p95_ms": 3.0,
+     "r119_step": {
+      "max_ms": 6.531429,
+      "mean_ms": 2.710147932,
+      "n": 1000,
+      "p50_ms": 2.604595,
+      "p95_ms": 3.567193,
+      "p99_ms": 3.774092
+     },
+     "r120_step": {
+      "max_ms": 5.215736,
+      "mean_ms": 0.887982776,
+      "n": 1000,
+      "p50_ms": 0.802307,
+      "p95_ms": 1.16228,
+      "p99_ms": 2.520755
+     },
+     "role": "secondary",
+     "stage_mean_us": {
+      "commit": 45.97154,
+      "hca": 578.204921,
+      "reconcile": 180.57786,
+      "select": 151.888064,
+      "total": 1368.569667,
+      "validate_update": 411.39364
+     },
+     "stage_share": {
+      "commit": 0.033590938852804494,
+      "hca": 0.4224884819108007,
+      "reconcile": 0.13194641409511818,
+      "select": 0.11098307061923214,
+      "validate_update": 0.3006011677153444
+     },
+     "step_bit_mismatches_vs_r119": 0,
+     "step_comparisons": 1100,
+     "target_met": true,
+     "threads": 4,
+     "threads_requested": 4,
+     "wrapper_overhead_mean_us": 35.099715999999944
+    }
+   ],
+   "memory": {
+    "engine_scratch_bytes": 999588,
+    "note": "all R120 storage is allocated at construction; an update writes only existing rows",
+    "per_update_growth_bytes": 0,
+    "r120_side_table_bytes": {
+     "inst_mark": 50000,
+     "pending_list": 800000,
+     "row_gen": 800000,
+     "row_pending": 200000,
+     "row_seq": 1600000
+    },
+    "r120_side_table_total": 3450000,
+    "registry_bytes": {
+     "frames": 255865472,
+     "inc_relation": 15991592,
+     "members": 15991592,
+     "part_incidences": 15991592,
+     "part_offsets": 400008,
+     "participant_ids": 400000,
+     "rel_offsets": 8000008,
+     "relation_ids": 8000000,
+     "total": 320640264
+    },
+    "state_bytes_r118_layout": 24300000,
+    "window_cache_offsets_bytes": 400000,
+    "window_cache_reserved_bytes": 134217728,
+    "window_cache_used_bytes": 61638208
+   },
+   "openmp_max_threads": 1,
+   "protocol_sha256": "8d47e5b4c9e9258844a0209c55689c043dea37d8e98a27b9de396a441596da14",
+   "registered_run": true,
+   "rss_peak_mib": 1072.90625,
+   "torch_imported": false,
+   "update_only": {
+    "1": {
+     "events": 1,
+     "failures": 0,
+     "max_ms": 0.049387,
+     "mean_ms": 0.010382337,
+     "n": 1000,
+     "p50_ms": 0.009268,
+     "p50_ns_per_event": 9268.0,
+     "p95_ms": 0.015178,
+     "p95_ns_per_event": 15178.0,
+     "p99_ms": 0.024958
+    },
+    "1024": {
+     "events": 1024,
+     "failures": 0,
+     "max_ms": 6.498746,
+     "mean_ms": 0.871600212,
+     "n": 1000,
+     "p50_ms": 0.82454,
+     "p50_ns_per_event": 805.21484375,
+     "p95_ms": 1.046381,
+     "p95_ns_per_event": 1021.8564453125,
+     "p99_ms": 1.309912
+    },
+    "16": {
+     "events": 16,
+     "failures": 0,
+     "max_ms": 0.070544,
+     "mean_ms": 0.024269097,
+     "n": 1000,
+     "p50_ms": 0.02181,
+     "p50_ns_per_event": 1363.125,
+     "p95_ms": 0.036567,
+     "p95_ns_per_event": 2285.4375,
+     "p99_ms": 0.056897
+    },
+    "256": {
+     "events": 256,
+     "failures": 0,
+     "max_ms": 0.591174,
+     "mean_ms": 0.19698739399999998,
+     "n": 1000,
+     "p50_ms": 0.183174,
+     "p50_ns_per_event": 715.5234375,
+     "p95_ms": 0.255558,
+     "p95_ns_per_event": 998.2734375,
+     "p99_ms": 0.291978
+    },
+    "64": {
+     "events": 64,
+     "failures": 0,
+     "max_ms": 0.200062,
+     "mean_ms": 0.058469062,
+     "n": 1000,
+     "p50_ms": 0.054302,
+     "p50_ns_per_event": 848.46875,
+     "p95_ms": 0.084549,
+     "p95_ns_per_event": 1321.078125,
+     "p99_ms": 0.102579
+    }
+   }
+  }
+ },
+ "ftz_daz_used": false,
+ "phase": "ELPIS_YM_AWR_R120",
+ "primary": {
+  "1024": {
+   "apply_max_ms": 6.460477,
+   "apply_p50_ms": 4.049165,
+   "apply_p95_ms": 5.637705,
+   "apply_p99_ms": 5.955171,
+   "r119_step_p95_ms": 5.594431,
+   "target_met": false
+  },
+  "256": {
+   "apply_max_ms": 4.08522,
+   "apply_p50_ms": 1.016917,
+   "apply_p95_ms": 1.300413,
+   "apply_p99_ms": 1.567805,
+   "r119_step_p95_ms": 1.347388,
+   "target_met": false
+  },
+  "64": {
+   "apply_max_ms": 0.960147,
+   "apply_p50_ms": 0.279136,
+   "apply_p95_ms": 0.344985,
+   "apply_p99_ms": 0.444267,
+   "r119_step_p95_ms": 0.422449,
+   "target_met": true
+  }
+ },
+ "protocol_sha256": "8d47e5b4c9e9258844a0209c55689c043dea37d8e98a27b9de396a441596da14",
+ "schema": "elpis.ym_hca.r120u.benchmark.v1"
+}

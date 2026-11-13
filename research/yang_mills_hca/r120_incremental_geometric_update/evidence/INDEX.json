@@ -1,0 +1,19 @@
+{
+ "phase": "ELPIS_YM_AWR_R120",
+ "schema": "elpis.ym_hca.r120u.evidence_index.v1",
+ "base_commit": "501be02d33201ce9c95e211d6ba9a1b531656f43",
+ "frozen_source_commit": "7144ffb19986a88f162bed8d0ff5a912af40bfb1",
+ "protocol_sha256": "8d47e5b4c9e9258844a0209c55689c043dea37d8e98a27b9de396a441596da14",
+ "component_digest": "bb98a741ec8304496109ebcb7531615430ed52406de41023f44e37b3ce5b599d",
+ "kernel_source_sha256": "8ca6d22923f1272345a8f63950bbf0a9788d8e5bd10650de00a2b810aebd2d09",
+ "runs": "each registered runner executed once, in sequence, after the frozen source commit",
+ "files": {
+  "benchmark.json": "e519de8da253b9b6042b4c850321cae386a1d89a0620b3271ec6f6deb130e286",
+  "benchmark.log": "5052a79adf8f6bed994c57b909f45403ed7f8e47fa900c4eae45c0be53888119",
+  "qualification.json": "8f05cbe609db4df874c8a4f09de6333a8f628b7a5dd1d6e3839a9d8eacc5c10d",
+  "qualification.log": "554b2d5198b44ff3227f1f05e50aff7cf218762a82f5c76ee7b6d4f4770450a7",
+  "utility.json": "e920b1b9a26bf1f0256fbf68606ed3bc8b70aeee6ff75ee57ea8f61ba1e86a2d",
+  "utility.log": "a35ad43294dcb521f58f03170774dc7e7c61c755ade52c02e9c83cf4ee719e64"
+ },
+ "r93_gate": "ENERGY_NORMALIZED_DENOMINATOR_HOLD"
+}

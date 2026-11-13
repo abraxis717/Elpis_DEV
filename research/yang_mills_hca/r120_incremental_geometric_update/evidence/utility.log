@@ -1,0 +1,21 @@
+R120F search candidate 0: training cosine 0.5415
+R120F search candidate 1: training cosine 0.5427
+R120F search candidate 3: training cosine 0.5447
+R120F search candidate 6: training cosine 0.5468
+R120F search candidate 8: training cosine 0.5518
+R120F search candidate 15: training cosine 0.5520
+R120F search candidate 17: training cosine 0.5543
+R120F search candidate 26: training cosine 0.5547
+R120F search candidate 58: training cosine 0.5547
+R120F search candidate 77: training cosine 0.5581
+R120F search candidate 91: training cosine 0.5584
+R120F search candidate 106: training cosine 0.5585
+R120F search candidate 164: training cosine 0.5599
+R120F search candidate 254: training cosine 0.5609
+R120F evaluation seed 130001 done
+R120F evaluation seed 130002 done
+R120F evaluation seed 130003 done
+R120F evaluation seed 130004 done
+R120F evaluation seed 130005 done
+R120F_CGC_UTILITY_ESTABLISHED=FALSE
+EXIT=0

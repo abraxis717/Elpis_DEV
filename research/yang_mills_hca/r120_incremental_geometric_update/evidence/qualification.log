@@ -1,0 +1,11 @@
+R120D pins: PASS (0.1 s)
+R120D cgc_and_update_law: PASS (15.5 s)
+R120D reference_parity: PASS (49.9 s)
+R120D r119_regression: PASS (6.7 s)
+R120D identity_and_memory: PASS (0.6 s)
+R120D atomicity: PASS (1.6 s)
+R120D event_semantics: PASS (0.3 s)
+R120D geometry: PASS (2.2 s)
+R120D stability_and_replay: PASS (3.0 s)
+R120D_QUALIFICATION=PASS
+EXIT=0

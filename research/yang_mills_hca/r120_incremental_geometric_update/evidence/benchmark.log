@@ -1,0 +1,25 @@
+R120E STRESS1M R114 threads=1 A=64: apply p50/p95/p99 0.279/0.345/0.444 ms | R119 step 0.320/0.422 | mismatches 0+0
+R120E STRESS1M R114 threads=1 A=256: apply p50/p95/p99 1.017/1.300/1.568 ms | R119 step 1.064/1.347 | mismatches 0+0
+R120E STRESS1M R114 threads=1 A=1024: apply p50/p95/p99 4.049/5.638/5.955 ms | R119 step 4.004/5.594 | mismatches 0+0
+R120E STRESS1M R114 threads=4 A=64: apply p50/p95/p99 0.284/0.349/0.388 ms | R119 step 0.332/0.407 | mismatches 0+0
+R120E STRESS1M R114 threads=4 A=256: apply p50/p95/p99 0.457/0.642/1.027 ms | R119 step 1.069/1.532 | mismatches 0+0
+R120E STRESS1M R114 threads=4 A=1024: apply p50/p95/p99 1.716/2.317/3.779 ms | R119 step 3.879/5.403 | mismatches 0+0
+R120E STRESS1M NATIVE threads=1 A=64: apply p50/p95/p99 0.196/0.298/0.327 ms | R119 step 0.230/0.350 | mismatches 0+0
+R120E STRESS1M NATIVE threads=1 A=256: apply p50/p95/p99 0.688/0.962/1.052 ms | R119 step 0.725/1.021 | mismatches 0+0
+R120E STRESS1M NATIVE threads=1 A=1024: apply p50/p95/p99 2.710/3.659/4.108 ms | R119 step 2.669/3.552 | mismatches 0+0
+R120E STRESS1M NATIVE threads=4 A=64: apply p50/p95/p99 0.189/0.229/0.306 ms | R119 step 0.219/0.268 | mismatches 0+0
+R120E STRESS1M NATIVE threads=4 A=256: apply p50/p95/p99 0.361/0.496/2.021 ms | R119 step 0.735/1.064 | mismatches 0+0
+R120E STRESS1M NATIVE threads=4 A=1024: apply p50/p95/p99 1.291/1.728/3.323 ms | R119 step 2.605/3.567 | mismatches 0+0
+R120E OVERLAP R114 threads=1 A=64: apply p50/p95/p99 0.263/0.381/0.446 ms | R119 step 0.323/0.473 | mismatches 0+0
+R120E OVERLAP R114 threads=1 A=256: apply p50/p95/p99 1.024/1.465/1.649 ms | R119 step 1.098/1.556 | mismatches 0+0
+R120E OVERLAP R114 threads=1 A=1024: apply p50/p95/p99 3.975/5.309/6.118 ms | R119 step 4.017/5.197 | mismatches 0+0
+R120E OVERLAP R114 threads=4 A=64: apply p50/p95/p99 0.261/0.296/0.336 ms | R119 step 0.318/0.366 | mismatches 0+0
+R120E OVERLAP R114 threads=4 A=256: apply p50/p95/p99 0.412/0.504/0.696 ms | R119 step 1.052/1.592 | mismatches 0+0
+R120E OVERLAP R114 threads=4 A=1024: apply p50/p95/p99 1.673/2.039/4.017 ms | R119 step 4.037/5.996 | mismatches 0+0
+R120E OVERLAP NATIVE threads=1 A=64: apply p50/p95/p99 0.184/0.301/0.410 ms | R119 step 0.235/0.412 | mismatches 0+0
+R120E OVERLAP NATIVE threads=1 A=256: apply p50/p95/p99 0.684/1.071/1.634 ms | R119 step 0.773/1.171 | mismatches 0+0
+R120E OVERLAP NATIVE threads=1 A=1024: apply p50/p95/p99 2.708/3.980/4.401 ms | R119 step 2.773/4.151 | mismatches 0+0
+R120E OVERLAP NATIVE threads=4 A=64: apply p50/p95/p99 0.189/0.294/0.335 ms | R119 step 0.239/0.379 | mismatches 0+0
+R120E OVERLAP NATIVE threads=4 A=256: apply p50/p95/p99 0.328/0.433/0.579 ms | R119 step 0.777/1.158 | mismatches 0+0
+R120E OVERLAP NATIVE threads=4 A=1024: apply p50/p95/p99 1.212/1.510/2.631 ms | R119 step 2.782/3.979 | mismatches 0+0
+EXIT=0
