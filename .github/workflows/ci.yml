@@ -407,3 +407,43 @@ jobs:
         run: cmake --build build --parallel
       - name: Test
         run: ctest --test-dir build --output-on-failure --timeout 1800
+
+  torch:
+    # Elpis Torch R0 (research/elpis_torch): the optional PyTorch research prototype. Every other job runs without
+    # PyTorch, where its tests are skipped and say so; this is the job in which they execute. ELPIS_REQUIRE_TORCH
+    # makes a missing PyTorch, or a missing strace for the system-call zero-write gate, a failure and never a skip;
+    # ELPIS_REQUIRE_NATIVE does the same for the native ECS_G kernel the E0 reference is compared with.
+    # RESEARCH_ONLY: nothing is installed into the Elpis distribution (base neutrality is the Boundary job's proof),
+    # no weights are downloaded or written, and this job is not one of the required jobs of docs/CI_POLICY.md.
+    name: Elpis Torch research (PyTorch CPU)
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+      ELPIS_REQUIRE_TORCH: "1"
+      ELPIS_REQUIRE_NATIVE: "1"
+      ELPIS_NATIVE_BUILD: ${{ github.workspace }}/build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Native build dependencies and strace (system-call zero-write gate)
+        run: sudo apt-get update && sudo apt-get install -y $NATIVE_DEPS
+      - name: Qualified ECS_G math kernel only (the oracle of the native parity test; unmodified sources)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target elpis_ecsg_math
+      - name: Install (CPU PyTorch from its own index, pytest; not the Elpis package)
+        run: |
+          python -m venv /tmp/torch-venv
+          /tmp/torch-venv/bin/python -m pip install --upgrade pip
+          /tmp/torch-venv/bin/python -m pip install "pytest>=8"
+          /tmp/torch-venv/bin/python -m pip install -r research/elpis_torch/requirements.txt --index-url https://download.pytorch.org/whl/cpu
+          /tmp/torch-venv/bin/python -c "import torch, platform; print('torch', torch.__version__, '| python', platform.python_version())"
+      - name: Elpis Torch R0 tests (CGC reference, operators, model, training, sessions, isolation)
+        run: timeout 1500 /tmp/torch-venv/bin/python -B -m pytest -p no:cacheprovider -rs --durations=10 tests/research/elpis_torch
+      - name: Example and experiment smoke run (nothing is written)
+        run: |
+          timeout 600 /tmp/torch-venv/bin/python -B -m research.elpis_torch.examples.quickstart
+          timeout 600 /tmp/torch-venv/bin/python -B -m research.elpis_torch.experiments.run_r0 --quick --threads 2 > /dev/null
