@@ -21,8 +21,8 @@ byte-identical to the committed ones except for a docstring in `e0.py` and a tra
 
 ## 2. Tests executed
 
-`ELPIS_REQUIRE_TORCH=1 ELPIS_REQUIRE_NATIVE=1 pytest tests/research/elpis_torch`: **196 passed, 0 failed,
-0 skipped** (about 75 s, one thread).
+`ELPIS_REQUIRE_TORCH=1 ELPIS_REQUIRE_NATIVE=1 pytest tests/research/elpis_torch`: **197 passed, 0 failed,
+0 skipped** (about 60 s, one thread) at the final head.
 
 | File | Tests | What it establishes |
 |---|---:|---|
@@ -30,7 +30,7 @@ byte-identical to the committed ones except for a docstring in `e0.py` and a tra
 | `test_cgc_operator.py` | 22 | the batched core is E0 per channel; the bottleneck is a factorized E0 weight; the bound is a bounded deviation that caps every cell; exact gradients; formulas |
 | `test_model.py` | 90 | configuration validation, deterministic initialization, causality, cache parity, generation, gradients, deep-stack stability, accounting |
 | `test_training.py` | 17 | the verified data split, learning on all three configurations, reproducibility, divergence handling, explicit checkpoints |
-| `test_session.py` | 32 | fast weights, isolation, bounds, refusal and rollback, provenance, cache coherence, no serialization, zero writes |
+| `test_session.py` | 33 | fast weights, isolation, bounds, refusal and rollback, provenance, cache coherence, no serialization, zero writes |
 | `test_isolation.py` | 7 | the prototype is research only, PyTorch optional, mission unedited |
 
 Without PyTorch (Python 3.11, checked): the five PyTorch modules are skipped with the reason
@@ -63,9 +63,16 @@ error.
 | Cache invalidated and recomputed after an update; stale caches refused | PASS, with a negative control | `test_an_update_invalidates_the_cache_and_the_stream_is_recomputed_under_the_new_weights` |
 | No filesystem write in a session lifetime | PASS at the Python audit level and at the system-call level (strace), each with a negative control | `test_a_session_lifetime_performs_no_python_level_filesystem_write`, `test_a_session_lifetime_issues_no_write_class_system_call` |
 
-One defect was found by these tests during development and fixed: a candidate fast weight whose norm
-overflowed was rescaled to zero by the projection and committed as a valid update. It is now refused
-(`REFUSED_NONFINITE_CANDIDATE`) and tested.
+Two defects were found by these tests and fixed:
+
+* In the implementation, during development: a candidate fast weight whose norm overflowed was rescaled to
+  zero by the projection and committed as a valid update. It is now refused (`REFUSED_NONFINITE_CANDIDATE`).
+* In the test itself, after the first push: the strace trace parser assumed one blank after the process id.
+  strace pads that column, so with a process id below 10000 no line was recognized, and the "no write-class
+  system call" assertion would have passed vacuously. The negative control caught it (locally after a
+  process restart, and in the first CI run of the new job: 195 passed, 1 failed). The parser now splits on
+  any run of blanks and has its own test over process-id widths. The earlier local passes used five-digit
+  process ids, for which the parser was correct.
 
 ## 3. The experiment
 
@@ -207,7 +214,8 @@ What this supports:
    to keep it, and at what `b`, is open.
 5. **CGC is slower per step here** (section 3), although its multiply-accumulate count is within 3.3% of
    the baseline's.
-6. **A defect in the first implementation** of the delta projection (section 2), found by a test and fixed.
+6. **Two defects**, one in the delta projection and one in the zero-write test's trace parser (section 2),
+   both found by tests and fixed.
 
 ## 6. Not executed, not verified
 
@@ -227,8 +235,28 @@ What this supports:
 
 ## 7. Existing repository
 
-Run on the changed tree with the native libraries built from it (Python 3.12, PyTorch installed):
-see the pull request for the per-lane counts. The base commit's FAST lane passed in a clean worktree before
-any change. No file under `src/`, `native/`, `docs/ELPIS_MISSION.md`, `ELPIS_SYSTEM.json`, `tests/lanes.py`
-or any existing test was modified; the only edit to an existing file is the added job in
-`.github/workflows/ci.yml`.
+No file under `src/`, `native/`, `docs/ELPIS_MISSION.md`, `ELPIS_SYSTEM.json`, `docs/CI_POLICY.md`,
+`pyproject.toml`, `tests/lanes.py` or any existing test or evidence was modified. The only edit to an
+existing file is the added job in `.github/workflows/ci.yml`.
+
+Local runs (Python 3.12, PyTorch installed, native libraries built from this tree, `ELPIS_REQUIRE_NATIVE=1`):
+
+| Lane | Base commit, clean worktree | Changed tree |
+|---|---|---|
+| FAST (includes the boundary suite) | 1902 passed, 25 skipped | 1902 passed, 25 skipped |
+| HISTORICAL | not run | 444 passed, 102 skipped |
+| STRESS | not run | 104 passed |
+| SCIENTIFIC | not run as a lane | 830 passed, 24 skipped, 5 failed on the first run; see below |
+
+The five first-run SCIENTIFIC failures, each classified by running it on the base commit as well:
+
+| Test | Class | Finding |
+|---|---|---|
+| `ecs_k1_native/test_plan.py::test_the_plan_was_committed_before_any_differential_evidence`, `ecs_memory_mf_r0/test_evidence.py::test_chronology_preregistration_laboratory_dev_freeze_qual`, `ecs_retention_r0/test_evidence.py::test_the_specification_predates_dev_and_the_freeze_predates_qual` | CI-ENVIRONMENT (this container) | chronology gates on a shallow clone. They fail identically on the base commit and pass on both trees once full history is fetched. |
+| `qualification_k1_recovery_r0_v4/test_freeze.py::test_an_isolated_interpreter_imports_the_checkouts_own_package_whatever_pythonpath_says` | CI-ENVIRONMENT (this container) | needs the Elpis package installed in the interpreter; fails identically on the base commit and passes after `pip install .`. |
+| `elpis_torch/test_session.py::test_a_session_lifetime_issues_no_write_class_system_call` | TEST-CONTRACT DEFECT, in this change | the trace parser defect of section 2. Fixed; passes. |
+
+After those corrections the four affected existing test files and the whole new suite pass. The complete
+SCIENTIFIC lane was not re-run locally after the corrections; the Scientific authority job is its owner.
+The first GitHub run on this pull request failed only in the new job, on the parser defect; the status of
+every job on the final head is the pull request's, not this file's.

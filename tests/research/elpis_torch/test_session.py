@@ -505,6 +505,26 @@ TRACED = ("openat,open,creat,write,pwrite64,writev,pwritev,rename,renameat,renam
           "copy_file_range,fallocate,memfd_create")
 
 
+def _call(line: str) -> str:
+    """The system call of one ``strace -f`` line. The pid column is padded, so split on any run of blanks."""
+    parts = line.split(None, 1)
+    return parts[1] if len(parts) == 2 and parts[0].isdigit() else line
+
+
+def test_the_trace_parser_reads_lines_of_any_pid_width():
+    """A 4-digit pid is followed by two blanks. Misreading that would make the zero-write gate vacuous."""
+    for pid in ("7", "3076", "13227", "1234567"):
+        pad = " " * max(1, 6 - len(pid))
+        trace = "\n".join([f'{pid}{pad}write(2</dev/pts/0>, "ELPIS_SESSION_BEGIN\\n", 20) = 20',
+                           f'{pid}{pad}openat(AT_FDCWD</r>, "/x/leak", O_WRONLY|O_CREAT|O_TRUNC|O_CLOEXEC, 0666) = 3',
+                           f'{pid}{pad}openat(AT_FDCWD</r>, "/x/read", O_RDONLY|O_CLOEXEC) = 4</x/read>',
+                           f'{pid}{pad}write(3</x/leak>, "not volatile", 12) = 12',
+                           f'{pid}{pad}unlinkat(AT_FDCWD</r>, "/x/leak", 0) = 0',
+                           f'{pid}{pad}write(2</dev/pts/0>, "ELPIS_SESSION_END\\n", 18) = 18'])
+        seen = [_call(line).split("(", 1)[0] for line in _write_class(trace)]
+        assert seen == ["openat", "write", "unlinkat"], (pid, seen)
+
+
 def _write_class(trace: str) -> list[str]:
     """Write-class system calls between the session markers (the markers themselves go to stderr, fd 2)."""
     lines = trace.splitlines()
@@ -512,7 +532,7 @@ def _write_class(trace: str) -> list[str]:
     end = next(i for i, line in enumerate(lines) if "ELPIS_SESSION_END" in line)
     out = []
     for line in lines[begin + 1:end]:
-        call = line.split(" ", 1)[1] if " " in line else line
+        call = _call(line)
         if call.startswith(("openat(", "open(")):
             if any(flag in call for flag in WRITE_OPEN):
                 out.append(line)
@@ -538,4 +558,4 @@ def test_a_session_lifetime_issues_no_write_class_system_call(tmp_path):
     assert control.returncode == 0, control.stderr
     seen = _write_class(trace.read_text())
     assert any(str(target) in line and "O_WRONLY" in line for line in seen)                  # the trace can see
-    assert any(line.split(" ", 1)[1].startswith("write(") for line in seen)
+    assert any(_call(line).startswith("write(") and str(target) in line for line in seen)

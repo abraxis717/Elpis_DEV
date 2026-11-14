@@ -111,7 +111,7 @@ def test_the_bound_caps_every_cell_whatever_the_weights_and_inputs_are():
 
 def test_the_unbounded_core_grows_cubically_which_is_why_the_bound_exists():
     core, x = _core(8, 4, 5, scale=1.0), _inputs(64, 8)
-    small, large = core(x).abs().mean(), core(10 * x).abs().mean()
+    small, large = core(x).detach().abs().mean(), core(10 * x).detach().abs().mean()
     assert 300 < float(large / small) < 1000            # between quadratic (100x) and cubic (1000x) growth
     huge = _core(8, 4, 5, scale=1.0, dtype=torch.float32)(1e13 * x.float())
     assert not bool(torch.isfinite(huge).all())          # float32 overflows: the documented hazard

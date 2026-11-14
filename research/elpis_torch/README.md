@@ -31,7 +31,7 @@ package is unaffected and still installs no dependency.
 ## Reproduce
 
 ```sh
-# Tests: about 70 s on one CPU thread. Without PyTorch they are skipped; with ELPIS_REQUIRE_TORCH=1 they fail.
+# Tests: about 60 s on one CPU thread. Without PyTorch they are skipped; with ELPIS_REQUIRE_TORCH=1 they fail.
 ELPIS_REQUIRE_TORCH=1 PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python -B -m pytest -p no:cacheprovider -q tests/research/elpis_torch
 
 # Example: train, generate from text, adapt in a session, reset. About 20 s. Writes nothing.
