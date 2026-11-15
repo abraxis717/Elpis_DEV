@@ -33,6 +33,7 @@ from .. import accounting
 from ..config import ModelConfig
 from ..data import SINGLE, build_splits, generate as generate_r0, make_world, rewire
 from ..model import ElpisTorchLM, parameter_digest
+from ..ersa_model import ErsaConfig, ErsaLM
 from ..scroll import ScrollConfig, ScrollLM
 from ..scroll_data import VOCAB, generate, probe_loss, score
 from ..scroll_session import ScrollSession
@@ -53,16 +54,28 @@ EVENTS = 48                    # facts and questions per evaluation stream, at e
 EVAL_SEED = 9_000_000          # training draws seeds below 5,000,000
 
 
+# R2: ERSA as the token mixer, with and without attention beside it (same widths and CGC channel as R1).
+ERSA_VARIANTS = {
+    "ersa": dict(),                                                    # no attention anywhere
+    "ersa_conv": dict(conv_kernel=4),                                  # plus a short causal convolution
+    "ersa_window": dict(attention="window", attn_window=16, chunk=15),   # plus 2 heads over the last 16 tokens
+    "ersa_gqa": dict(attention="window", attn_window=512, chunk=64),     # plus 2 grouped-query heads over 512
+}
+TOPOLOGIES = ("sparse", "local", "dense", *ERSA_VARIANTS)
+
+
 def build(topology: str, *, horizon: int, seed: int, dense_context: int = 512):
     model = ModelConfig(**MODEL, max_seq_len=dense_context, seed=seed)
     if topology == "dense":
         return ElpisTorchLM(model)
+    if topology in ERSA_VARIANTS:
+        return ErsaLM(ErsaConfig(model, **ERSA_VARIANTS[topology]))
     layers = (model.n_layers - 1,) if topology == "sparse" else ()
     return ScrollLM(ScrollConfig(model, horizon=horizon, global_layers=layers, **SCROLL))
 
 
 def _forward(model, tokens):
-    return model.run(tokens)[0] if isinstance(model, ScrollLM) else model(tokens)
+    return model.run(tokens)[0] if isinstance(model, (ScrollLM, ErsaLM)) else model(tokens)
 
 
 def _quick_eval(model, seed: int, length: int, events: int, count: int = 32) -> dict:
@@ -136,10 +149,10 @@ def stream_through(model, streams, *, chunk: int | None = None, diagnose: bool =
     count, length = tokens.shape
     predicted = torch.zeros(count, length, dtype=torch.long)
     nll = torch.zeros(count, length, dtype=torch.float32)
-    scroll = isinstance(model, ScrollLM)
-    step = chunk or (model.scroll.chunk if scroll else 256)
-    state = model.new_state(count) if scroll else model.new_cache(count)
-    sizes = state.nbytes() if scroll else None
+    scroll, recurrent = isinstance(model, ScrollLM), isinstance(model, ErsaLM)
+    step = chunk or (model.scroll.chunk if scroll else model.ersa.chunk if recurrent else 256)
+    state = model.new_state(count) if scroll or recurrent else model.new_cache(count)
+    sizes = state.nbytes() if scroll or recurrent else None
     hits = {"selected": 0, "fine": 0, "eligible": 0}
     layer = model.scroll.global_layers[-1] if scroll and model.scroll.global_layers else None
     started = time.perf_counter()
@@ -180,6 +193,10 @@ def stream_through(model, streams, *, chunk: int | None = None, diagnose: bool =
             out["memory_reads"] = {"probes_beyond_window": hits["eligible"],
                                    "fact_block_selected": hits["selected"] / hits["eligible"],
                                    "fact_block_read_as_raw_tokens": hits["fine"] / hits["eligible"]}
+    elif recurrent:
+        out["state_bytes"] = state.nbytes()
+        out["state_bytes_constant"] = state.nbytes() == sizes
+        out["position"] = state.position
     else:
         out["cache_bytes"] = state.nbytes()
     return out
@@ -346,7 +363,7 @@ def _write(path: str, record: dict) -> None:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("command", choices=["train", "ladder", "adapt", "capacity", "smoke"])
-    parser.add_argument("--topology", choices=["sparse", "local", "dense"], default="sparse")
+    parser.add_argument("--topology", choices=list(TOPOLOGIES), default="sparse")
     parser.add_argument("--steps", type=int, default=4000)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--eval-every", type=int, default=250)
