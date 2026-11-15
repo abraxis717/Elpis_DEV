@@ -29,7 +29,7 @@ SHAPE = dict(window=48, block=8, chunk=32, horizon=128, global_topk=4, fine_bloc
 
 
 def _model(global_layers=(0, 1), sharpen=True, **changes):
-    shape = {**SHAPE, **{k: v for k, v in changes.items() if k in SHAPE}}
+    shape = {**SHAPE, **{k: v for k, v in changes.items() if k in SHAPE or k == "memory_keys"}}
     widths = {**WIDTHS, **{k: v for k, v in changes.items() if k in WIDTHS}}
     model = ScrollLM(ScrollConfig(ModelConfig(**widths), global_layers=global_layers, **shape)).eval()
     if sharpen:      # make the memory logits large enough that what gets selected decides the output
@@ -37,6 +37,8 @@ def _model(global_layers=(0, 1), sharpen=True, **changes):
             for name, parameter in model.named_parameters():
                 if ".attn.g" in name:
                     parameter.mul_(20.0)
+                elif name.endswith((".attn.q.weight", ".attn.k.weight")) and shape.get("memory_keys") != "separate":
+                    parameter.mul_(6.0)                     # shared maps: the window's own query and key
     return model
 
 
@@ -72,8 +74,8 @@ def oracle(model, tokens, origin=0):
                     logits.append((_rotate(q, W + c.sinks - j, m.rope_theta, e) * wide(store["k"][origin + j])).sum(-1))
                     values.append(wide(store["v"][origin + j]))
             if a.is_global:
-                gq, slope = a.gq(xn).view(h, e), torch.nn.functional.softplus(a.recency)
-                store["gk"][p], store["gate"][p] = a.gk(xn).view(g, e), a.gate(xn)
+                gq, slope = (a.gq(xn).view(h, e) if a.separate else q), torch.nn.functional.softplus(a.recency)
+                store["gk"][p], store["gate"][p] = (a.gk(xn).view(g, e) if a.separate else store["k"][p]), a.gate(xn)
                 reachable = []
                 for b in range(origin // s, p // s):
                     end = b * s + s - 1
@@ -130,10 +132,11 @@ def test_with_everything_in_the_window_the_model_is_the_r0_dense_model():
         assert float((scroll.run(tokens)[0] - dense(tokens)).abs().max()) < 1e-10
 
 
+@pytest.mark.parametrize("keys", ["shared", "separate"])
 @pytest.mark.parametrize("layers,sinks,origin", [((0, 1), 3, 0), ((1,), 0, 0), ((0, 1), 3, 1 << 20), ((), 2, 64)])
-def test_the_chunked_ring_implementation_equals_the_per_token_oracle(layers, sinks, origin):
+def test_the_chunked_ring_implementation_equals_the_per_token_oracle(layers, sinks, origin, keys):
     """300 tokens through a 128-token horizon: 2.3 horizons of wrap-around, eviction and re-selection."""
-    model = _model(layers, sinks=sinks)
+    model = _model(layers, sinks=sinks, memory_keys=keys)
     tokens = _tokens(1, 300, seed=3)
     with torch.no_grad():
         got = model.run(tokens, model.new_state(1, origin=origin))[0][0]
@@ -293,7 +296,7 @@ def test_the_training_path_is_the_inference_path_and_every_memory_parameter_lear
     next_token_loss(logits[:, :-1], tokens).backward()
     for name, parameter in model.named_parameters():
         assert parameter.grad is not None and bool(torch.isfinite(parameter.grad).all()), name
-        if any(key in name for key in (".attn.gq", ".attn.gk", ".attn.gate", ".attn.recency", "cgc.core")):
+        if any(key in name for key in (".attn.q.", ".attn.k.", ".attn.gate", ".attn.recency", "cgc.core")):
             assert float(parameter.grad.abs().sum()) > 0, name
     assert float(torch.nn.functional.softplus(model.blocks[1].attn.recency).min()) > 0
 

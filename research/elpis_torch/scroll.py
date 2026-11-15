@@ -66,6 +66,8 @@ class ScrollConfig:
     global_topk: int = 8           # old blocks a query reads (compressed and fine together)
     fine_blocks: int = 2           # of those, how many are read as raw tokens (0: no fine tier)
     sinks: int = 0                 # first tokens of the stream kept visible forever
+    memory_keys: str = "shared"    # "shared": memory is addressed with the window's own query and key maps
+                                   # (unrotated); "separate": memory has its own maps, as in NSA
 
     def __post_init__(self):
         if not isinstance(self.model, ModelConfig):
@@ -83,6 +85,8 @@ class ScrollConfig:
         layers = tuple(self.global_layers)
         if any(type(i) is not int or not 0 <= i < self.model.n_layers for i in layers) or len(set(layers)) != len(layers):
             raise ConfigError("global_layers must be distinct layer indices")
+        if self.memory_keys not in ("shared", "separate"):
+            raise ConfigError("memory_keys must be 'shared' or 'separate'")
         if self.fine_blocks > self.global_topk:
             raise ConfigError("fine_blocks cannot exceed global_topk")
         object.__setattr__(self, "global_layers", layers)
@@ -180,11 +184,14 @@ class ScrollAttention(nn.Module):
         self.k = nn.Linear(m.d_model, self.kv_heads * self.head_dim, bias=False, dtype=dtype)
         self.v = nn.Linear(m.d_model, self.kv_heads * self.head_dim, bias=False, dtype=dtype)
         self.out = nn.Linear(self.heads * self.head_dim, m.d_model, bias=False, dtype=dtype)
-        if is_global:
-            # Memory has its own query and key maps (content addressing without rotary phase) and a gate that
-            # decides how a block's tokens are pooled into its compressed key and value.
+        self.separate = is_global and c.memory_keys == "separate"
+        if self.separate:
+            # Memory with its own query and key maps. What the window learns about matching does not transfer.
             self.gq = nn.Linear(m.d_model, self.heads * self.head_dim, bias=False, dtype=dtype)
             self.gk = nn.Linear(m.d_model, self.kv_heads * self.head_dim, bias=False, dtype=dtype)
+        if is_global:
+            # Memory is addressed by content, without rotary phase. A gate decides how a block's tokens are
+            # pooled into its compressed key and value.
             self.gate = nn.Linear(m.d_model, self.kv_heads, bias=False, dtype=dtype)
             self.recency = nn.Parameter(torch.zeros(self.heads, dtype=dtype))     # slope on log-distance, >= 0
 
@@ -237,7 +244,7 @@ class ScrollAttention(nn.Module):
         selected = None
         blocks_done = p0 // c.block - origin // c.block
         if self.is_global and blocks_done:
-            gq = self._split(self.gq(x), self.heads)
+            gq = self._split(self.gq(x), self.heads) if self.separate else q_u
             slope = F.softplus(self.recency)[None, :, None, None]
             used = min(blocks_done, c.slots)
             blocks = torch.arange(p0 // c.block - used, p0 // c.block)          # resident, oldest first
@@ -285,7 +292,7 @@ class ScrollAttention(nn.Module):
         attended = self.out(mixed.transpose(1, 2).reshape(batch, length, self.heads * e))
         pending = {"k": k_u, "v": v}
         if self.is_global:
-            pending["gk"] = self._split(self.gk(x), self.kv_heads)
+            pending["gk"] = self._split(self.gk(x), self.kv_heads) if self.separate else k_u
             pending["gate"] = self.gate(x).transpose(1, 2)                      # [B, g, T]
         return attended, pending, selected
 

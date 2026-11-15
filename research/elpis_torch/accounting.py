@@ -125,7 +125,7 @@ def scroll_compute_per_token(scroll, *, resident_blocks: int | None = None) -> d
 def deployment_projection(*, d_model: int = 2048, n_layers: int = 24, n_heads: int = 16, n_kv_heads: int = 4,
                           vocab: int = 100_000, window: int = 8192, block: int = 64, horizon: int = 1 << 20,
                           memory_layers: int = 6, chunk: int = 512, scalar_bytes: int = 2, gpu_bytes: int = 24 << 30,
-                          fine_on_gpu: bool = False) -> dict:
+                          fine_on_gpu: bool = False, separate_memory_keys: bool = False) -> dict:
     """PROJECTED (never measured) placement of one 1M-token stream of a deployment-scale model on a 24 GB GPU.
 
     Three classes of memory: GPU-resident state, CPU RAM, and immutable persistent resources (the checkpoint,
@@ -135,7 +135,8 @@ def deployment_projection(*, d_model: int = 2048, n_layers: int = 24, n_heads: i
     kv = n_kv_heads * head_dim * scalar_bytes
     attention = d_model * head_dim * (2 * n_heads + 2 * n_kv_heads)
     parameters = n_layers * (attention + 8 * d_model * d_model + 2 * d_model) \
-        + memory_layers * d_model * (head_dim * (n_heads + n_kv_heads) + n_kv_heads) + vocab * d_model
+        + memory_layers * d_model * (head_dim * (n_heads + n_kv_heads) * separate_memory_keys + n_kv_heads) \
+        + vocab * d_model
     fine = memory_layers * 2 * kv * (horizon + block)
     gpu = {"weights": parameters * scalar_bytes, "window": n_layers * 2 * kv * window,
            "compressed": memory_layers * 2 * kv * (horizon // block),
