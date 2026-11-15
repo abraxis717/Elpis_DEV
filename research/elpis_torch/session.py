@@ -36,6 +36,7 @@ from dataclasses import dataclass
 import torch
 from torch.func import functional_call
 
+from .lastblock import capture_pre, last_block_logits
 from .model import ContextLengthError, ElpisTorchLM, KVCache, next_token_loss, parameter_digest, sample_next
 
 FAST_WEIGHT_SUFFIX = "cgc.core.weight"
@@ -77,6 +78,7 @@ class SessionConfig:
     max_steps: int = 64               # committed updates per session; reset restores the budget
     reject_loss_increase: bool = False
     verify_base_on_close: bool = True
+    fast_scope: str = "all"           # "all": every block's CGC core (R0). "last": the final block's only.
 
     def __post_init__(self):
         for name in ("lr", "grad_clip", "max_delta_ratio"):
@@ -87,6 +89,8 @@ class SessionConfig:
             raise ValueError("momentum must be in [0, 1)")
         if type(self.max_steps) is not int or self.max_steps < 0:
             raise ValueError("max_steps must be a non-negative integer")
+        if self.fast_scope not in ("all", "last"):
+            raise ValueError("fast_scope must be 'all' or 'last'")
 
 
 @dataclass(frozen=True)
@@ -134,6 +138,55 @@ class AdaptResult:
         return self.status is Status.APPLIED
 
 
+def bounded_update(config: SessionConfig, base_norm: dict, delta: dict, velocity: dict, steps_used: int, loss_of):
+    """The bounded fast-weight transaction, shared by every session: ``(status, fields, candidate, velocity)``.
+
+    ``loss_of(delta)`` is the support loss under ``W_base + delta``. Nothing is mutated: the caller commits the
+    returned candidate only when the status is ``APPLIED``.
+    """
+    c = config
+    if not c.learning_enabled:
+        return Status.REFUSED_LEARNING_DISABLED, {}, None, None
+    if not delta:
+        return Status.REFUSED_NO_FAST_WEIGHTS, {}, None, None
+    if steps_used >= c.max_steps:
+        return Status.REFUSED_STEP_BUDGET, {}, None, None
+    names = list(delta)
+    trial = {name: delta[name].clone().requires_grad_(True) for name in names}
+    with torch.enable_grad():
+        loss = loss_of(trial)
+        before = float(loss.detach())
+        if not math.isfinite(before):
+            return Status.REFUSED_NONFINITE_LOSS, dict(loss_before=before), None, None
+        grads = torch.autograd.grad(loss, [trial[name] for name in names])
+    grad_norm = math.sqrt(sum(float(g.pow(2).sum()) for g in grads))
+    if not math.isfinite(grad_norm):
+        return Status.REFUSED_NONFINITE_GRADIENT, dict(loss_before=before, grad_norm=grad_norm), None, None
+    scale = min(1.0, c.grad_clip / grad_norm) if grad_norm > 0 else 1.0
+    candidate, moved, projected = {}, {}, False
+    refused = Status.REFUSED_NONFINITE_CANDIDATE, dict(loss_before=before, grad_norm=grad_norm), None, None
+    with torch.no_grad():
+        for name, grad in zip(names, grads):
+            moved[name] = c.momentum * velocity[name] + scale * grad
+            value = delta[name] - c.lr * moved[name]
+            limit = c.max_delta_ratio * base_norm[name]
+            norm = float(value.norm())
+            if not math.isfinite(norm):      # an overflowed norm must refuse, never rescale to zero
+                return refused
+            if norm > limit:
+                value, projected = value * (limit / norm), True
+            candidate[name] = value
+        if not all(bool(torch.isfinite(v).all()) for v in (*candidate.values(), *moved.values())):
+            return refused
+        after = float(loss_of(candidate))
+    fields = dict(loss_before=before, loss_after=after, grad_norm=grad_norm, clipped=scale < 1.0, projected=projected)
+    if not math.isfinite(after):
+        return Status.ROLLED_BACK_NONFINITE_AFTER, fields, None, None
+    if c.reject_loss_increase and after > before:
+        return Status.ROLLED_BACK_LOSS_INCREASED, fields, None, None
+    return Status.APPLIED, fields, candidate, moved
+
+
 class VolatileSession:
     """One inference session: a token stream, its KV cache, and the session-owned CGC fast-weight deltas."""
 
@@ -143,11 +196,13 @@ class VolatileSession:
         if model.training or any(p.requires_grad for p in model.parameters()):
             raise SessionError("open a session only over a frozen checkpoint (training.freeze / load_checkpoint)")
         self._model, self.config = model, config
-        self._base = {name: p for name, p in model.named_parameters() if name.endswith(FAST_WEIGHT_SUFFIX)}
+        last = f"blocks.{len(model.blocks) - 1}."
+        self._base = {name: p for name, p in model.named_parameters() if name.endswith(FAST_WEIGHT_SUFFIX)
+                      and (config.fast_scope == "all" or name.startswith(last))}
         self._base_norm = {name: float(p.norm()) for name, p in self._base.items()}
         self._base_digest = parameter_digest(model)
         self._identity = object()       # unique per session object: no other session's cache can carry it
-        self._version = 0
+        self._version = 0               # advances whenever cached keys and values stop being valid
         self._closed = False
         self.cache_rebuilds = 0
         self._start()
@@ -161,6 +216,7 @@ class VolatileSession:
         self._provenance: list[Provenance] = []
         self._cache: KVCache | None = None
         self._next_logits: torch.Tensor | None = None
+        self._last_pre: torch.Tensor | None = None      # last block's pre-channel stream at the stream's end
 
     # -- contracts ----------------------------------------------------------------------------------------
 
@@ -250,7 +306,9 @@ class VolatileSession:
         self._cache = self._model.new_cache(1, weights_tag=self._tag)
         self._next_logits = None
         if self._tokens:
-            self._next_logits = self._call(torch.tensor([self._tokens]), self._cache)[0, -1]
+            with capture_pre(self._model) as captured:
+                self._next_logits = self._call(torch.tensor([self._tokens]), self._cache)[0, -1]
+            self._last_pre = captured.pre[0, -1]
             self.cache_rebuilds += 1
 
     @torch.no_grad()
@@ -258,7 +316,9 @@ class VolatileSession:
         if len(self._tokens) + len(tokens) > self._model.config.max_seq_len:
             raise ContextLengthError("the session stream would exceed max_seq_len; nothing was appended")
         self._ensure_cache()
-        logits = self._call(torch.tensor([tokens]), self._cache)[0]
+        with capture_pre(self._model) as captured:
+            logits = self._call(torch.tensor([tokens]), self._cache)[0]
+        self._last_pre = captured.pre[0, -1]
         self._tokens += tokens
         self._provenance += [provenance] * len(tokens)
         self._next_logits = logits[-1]
@@ -334,62 +394,46 @@ class VolatileSession:
         return AdaptResult(status, delta_norm=self.delta_norm(), steps_used=self._steps, **fields)
 
     def _adapt(self, tokens: torch.Tensor, mask: torch.Tensor | None, steps: int) -> list[AdaptResult]:
+        if self.config.fast_scope == "last" and self._base:
+            # Nothing before the last block's channel transformation depends on its CGC weight: compute that
+            # stream once, without a graph, and reuse it for every step of this call.
+            with torch.no_grad(), capture_pre(self._model) as captured:
+                self._call(tokens[:, :-1])
+            pre, (name,) = captured.pre, tuple(self._base)
+
+            def loss_of(delta):
+                return next_token_loss(last_block_logits(self._model, pre, self._base[name] + delta[name]), tokens, mask)
+        else:
+            def loss_of(delta):
+                return next_token_loss(self._call(tokens[:, :-1], delta=delta), tokens, mask)
         results = []
         for _ in range(steps):
-            results.append(self._update(tokens, mask))
+            results.append(self._update(loss_of))
             if not results[-1].applied:
                 break
         return results
 
-    def _update(self, tokens: torch.Tensor, mask: torch.Tensor | None) -> AdaptResult:
+    def _update(self, loss_of) -> AdaptResult:
         """One atomic update: nothing of the session changes unless every check passes."""
-        c = self.config
-        if not c.learning_enabled:
-            return self._refusal(Status.REFUSED_LEARNING_DISABLED)
-        if not self._base:
-            return self._refusal(Status.REFUSED_NO_FAST_WEIGHTS)
-        if self._steps >= c.max_steps:
-            return self._refusal(Status.REFUSED_STEP_BUDGET)
-        names = list(self._delta)
-        trial = {name: self._delta[name].clone().requires_grad_(True) for name in names}
-        with torch.enable_grad():
-            loss = next_token_loss(self._call(tokens[:, :-1], delta=trial), tokens, mask)
-            before = float(loss.detach())
-            if not math.isfinite(before):
-                return self._refusal(Status.REFUSED_NONFINITE_LOSS, loss_before=before)
-            grads = torch.autograd.grad(loss, [trial[name] for name in names])
-        grad_norm = math.sqrt(sum(float(g.pow(2).sum()) for g in grads))
-        if not math.isfinite(grad_norm):
-            return self._refusal(Status.REFUSED_NONFINITE_GRADIENT, loss_before=before, grad_norm=grad_norm)
-        scale = min(1.0, c.grad_clip / grad_norm) if grad_norm > 0 else 1.0
-        candidate, velocity, projected = {}, {}, False
-        with torch.no_grad():
-            for name, grad in zip(names, grads):
-                velocity[name] = c.momentum * self._velocity[name] + scale * grad
-                value = self._delta[name] - c.lr * velocity[name]
-                limit = c.max_delta_ratio * self._base_norm[name]
-                norm = float(value.norm())
-                if not math.isfinite(norm):      # an overflowed norm must refuse, never rescale to zero
-                    return self._refusal(Status.REFUSED_NONFINITE_CANDIDATE, loss_before=before,
-                                         grad_norm=grad_norm)
-                if norm > limit:
-                    value, projected = value * (limit / norm), True
-                candidate[name] = value
-            if not all(bool(torch.isfinite(v).all()) for v in (*candidate.values(), *velocity.values())):
-                return self._refusal(Status.REFUSED_NONFINITE_CANDIDATE, loss_before=before, grad_norm=grad_norm)
-            after = float(next_token_loss(self._call(tokens[:, :-1], delta=candidate), tokens, mask))
-        fields = dict(loss_before=before, loss_after=after, grad_norm=grad_norm, clipped=scale < 1.0,
-                      projected=projected)
-        if not math.isfinite(after):
-            return self._refusal(Status.ROLLED_BACK_NONFINITE_AFTER, **fields)
-        if c.reject_loss_increase and after > before:
-            return self._refusal(Status.ROLLED_BACK_LOSS_INCREASED, **fields)
-        # Commit. The weights changed, so every cache written before this point is stale: drop the stream's
-        # cache (rebuilt on next use) and advance the version so no older cache is ever accepted again.
+        status, fields, candidate, velocity = bounded_update(
+            self.config, self._base_norm, self._delta, self._velocity, self._steps, loss_of)
+        if status is not Status.APPLIED:
+            return self._refusal(status, **fields)
         self._delta, self._velocity = candidate, velocity
         self._steps += 1
-        self._version += 1
-        self._cache, self._next_logits = None, None
+        if self.config.fast_scope == "last":
+            # Cached keys and values do not depend on the last block's CGC weight: the cache stays valid and is
+            # kept. Only the logits change, and they follow from the stored pre-channel stream.
+            if self._last_pre is not None:
+                with torch.no_grad():
+                    (name,) = tuple(self._base)
+                    self._next_logits = last_block_logits(self._model, self._last_pre, self._base[name] + candidate[name])
+        else:
+            # The weights changed below some attention layer, so every cache written before this point is
+            # stale: drop the stream's cache (rebuilt on next use) and advance the version so no older cache
+            # is ever accepted again.
+            self._version += 1
+            self._cache, self._next_logits = None, None
         return AdaptResult(Status.APPLIED, delta_norm=self.delta_norm(), steps_used=self._steps, **fields)
 
     # -- lifetime -----------------------------------------------------------------------------------------

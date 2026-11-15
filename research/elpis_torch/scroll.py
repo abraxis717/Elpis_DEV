@@ -195,6 +195,12 @@ class ScrollAttention(nn.Module):
         """Key/value heads -> query heads (each kv head serves ``group`` consecutive query heads)."""
         return x if self.group == 1 else x.repeat_interleave(self.group, dim=1)
 
+    @staticmethod
+    def _take(buffer: torch.Tensor, slots: torch.Tensor) -> torch.Tensor:
+        """``buffer[b, :, slots[b, t, j]]`` for every stream, query and pick: ``[B, g, T, J, e]``."""
+        rows = torch.arange(buffer.shape[0])[:, None, None]
+        return buffer[rows, :, slots].permute(0, 3, 1, 2, 4)
+
     def forward(self, x: torch.Tensor, rotary: Rotary, layer: dict, state: StreamState):
         c, e, scale = self.c, self.head_dim, self.head_dim ** -0.5
         batch, length, _ = x.shape
@@ -252,16 +258,12 @@ class ScrollAttention(nn.Module):
             if coarse.shape[-1]:
                 picked = coarse[:, None].expand(batch, self.heads, length, coarse.shape[-1])
                 logits.append(block_logits.gather(-1, picked).masked_fill(~valid[:, None, :, fine:], float("-inf")))
-                index = coarse[:, None, :, :, None].expand(*kv, length, coarse.shape[-1], e)
-                cv = layer["cv"][:, :, blocks % c.slots][:, :, None].expand(*kv, length, used, e)
-                parts.append(("each", self._wide(cv.gather(3, index))))
+                parts.append(("each", self._wide(self._take(layer["cv"], blocks[coarse] % c.slots))))
             if fine:
                 tokens = (blocks[top.indices[..., :fine]][..., None] * c.block + torch.arange(c.block)).flatten(-2)
-                index = (tokens % c.fine_capacity)[:, None, :, :, None].expand(*kv, length, tokens.shape[-1], e)
 
                 def read(buffer):                                               # [B, h, T, fine * s, e]
-                    source = buffer[:, :, None].expand(*kv, length, c.fine_capacity, e)
-                    return self._wide(source.gather(3, index))
+                    return self._wide(self._take(buffer, tokens % c.fine_capacity))
 
                 gap = (positions[None, :, None] - tokens).clamp(min=1).to(x.dtype)
                 fine_logits = (gq[:, :, :, None] * read(layer["fk"])).sum(-1) * scale - slope * torch.log(gap)[:, None]

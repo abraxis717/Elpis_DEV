@@ -80,3 +80,75 @@ def session_memory(c: ModelConfig) -> dict:
     fast = c.n_layers * (c.cgc_bottleneck or c.d_model) * c.cgc_cells * c.cgc_units if c.has_cgc else 0
     return {"fast_weight_scalars": fast, "fast_weight_bytes": fast * width,
             "kv_cache_bytes": 2 * c.n_layers * c.kv_heads * c.head_dim * c.max_seq_len * width}
+
+
+# -- R1: scrolling context -------------------------------------------------------------------------------------
+
+def scroll_state_bytes(scroll, *, batch: int = 1, scalar_bytes: int | None = None) -> dict:
+    """Bytes of a ``StreamState`` by tier, from the configuration alone (equals ``StreamState.nbytes()``).
+
+    None of it depends on how many tokens have been streamed.
+    """
+    m = scroll.model
+    width = scalar_bytes or (8 if m.dtype == "float64" else 4)
+    kv = batch * m.kv_heads * m.head_dim * width            # one key or one value, all heads
+    layers, memory = m.n_layers, len(scroll.global_layers)
+    out = {"token_history": batch * scroll.fine_capacity * 4,
+           "window": layers * 2 * kv * scroll.window,
+           "compressed": memory * 2 * kv * scroll.slots,
+           "open_block": memory * (2 * kv * scroll.block + batch * m.kv_heads * scroll.block * width)}
+    if scroll.sinks:
+        out["sinks"] = layers * 2 * kv * scroll.sinks
+    if scroll.fine_blocks and memory:
+        out["fine"] = memory * 2 * kv * scroll.fine_capacity
+    out["total"] = sum(out.values())
+    return out
+
+
+def scroll_compute_per_token(scroll, *, resident_blocks: int | None = None) -> dict:
+    """Theoretical multiply-accumulates of the ATTENTION MIXING for one token, per layer kind.
+
+    Local layers cost ``O(window)``, independent of the stream length. Memory layers add a score against every
+    resident compressed block (``O(horizon / block)``: linear in the horizon, with a small constant) and a
+    constant number of selected keys. Nothing is quadratic in the stream length.
+    """
+    m = scroll.model
+    blocks = scroll.slots if resident_blocks is None else min(resident_blocks, scroll.slots)
+    per_key = 2 * m.n_heads * m.head_dim
+    local = per_key * (scroll.window + scroll.sinks)
+    coarse = scroll.global_topk - scroll.fine_blocks
+    return {"local_layer": local, "memory_scoring": m.n_heads * m.head_dim * blocks,
+            "memory_selected": per_key * (coarse + scroll.fine_blocks * scroll.block),
+            "dense_reference_at_horizon": per_key * scroll.horizon}
+
+
+def deployment_projection(*, d_model: int = 2048, n_layers: int = 24, n_heads: int = 16, n_kv_heads: int = 4,
+                          vocab: int = 100_000, window: int = 8192, block: int = 64, horizon: int = 1 << 20,
+                          memory_layers: int = 6, chunk: int = 512, scalar_bytes: int = 2, gpu_bytes: int = 24 << 30,
+                          fine_on_gpu: bool = False) -> dict:
+    """PROJECTED (never measured) placement of one 1M-token stream of a deployment-scale model on a 24 GB GPU.
+
+    Three classes of memory: GPU-resident state, CPU RAM, and immutable persistent resources (the checkpoint,
+    read-only). ``fine_on_gpu`` moves the raw-token tier of the memory layers onto the GPU.
+    """
+    head_dim = d_model // n_heads
+    kv = n_kv_heads * head_dim * scalar_bytes
+    attention = d_model * head_dim * (2 * n_heads + 2 * n_kv_heads)
+    parameters = n_layers * (attention + 8 * d_model * d_model + 2 * d_model) \
+        + memory_layers * d_model * (head_dim * (n_heads + n_kv_heads) + n_kv_heads) + vocab * d_model
+    fine = memory_layers * 2 * kv * (horizon + block)
+    gpu = {"weights": parameters * scalar_bytes, "window": n_layers * 2 * kv * window,
+           "compressed": memory_layers * 2 * kv * (horizon // block),
+           "chunk_activations_estimate": 64 * chunk * d_model * scalar_bytes,
+           "block_scores_per_chunk": n_heads * chunk * (horizon // block) * scalar_bytes}
+    cpu = {"token_history": (horizon + block) * 4}
+    (gpu if fine_on_gpu else cpu)["fine"] = fine
+    gpu["total"], cpu["total"] = sum(gpu.values()), sum(cpu.values())
+    return {"assumptions": {"d_model": d_model, "n_layers": n_layers, "n_heads": n_heads, "n_kv_heads": n_kv_heads,
+                            "window": window, "block": block, "horizon": horizon, "memory_layers": memory_layers,
+                            "chunk": chunk, "scalar_bytes": scalar_bytes, "parameters": parameters,
+                            "fine_on_gpu": fine_on_gpu},
+            "gpu_resident": gpu, "cpu_ram": cpu, "immutable_persistent": {"checkpoint": parameters * scalar_bytes},
+            "gpu_budget": gpu_bytes, "fits_gpu": gpu["total"] <= gpu_bytes,
+            "dense_kv_cache_at_horizon_for_comparison": n_layers * 2 * kv * horizon,
+            "status": "PROJECTED"}
