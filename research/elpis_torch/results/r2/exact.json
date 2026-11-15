@@ -1,0 +1,141 @@
+{
+ "environment": {
+  "machine": "x86_64",
+  "python": "3.12.3",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "exact_policy": {
+  "cells": 64,
+  "instructions_after_the_write": 1048576,
+  "instructions_per_second": 25736.80506618905,
+  "marker_recovered_bit_for_bit": true,
+  "seconds": 40.74227540300001,
+  "state_bytes": 256,
+  "state_bytes_after": 256,
+  "state_finite": true
+ },
+ "learning_policy_recall_capacity": [
+  {
+   "key_dim": 16,
+   "load": 0.25,
+   "mean_cosine": 0.9793407457487663,
+   "pairs": 4,
+   "recalled_fraction": 1.0,
+   "state_norm": 3.4542647074343438
+  },
+  {
+   "key_dim": 16,
+   "load": 0.5,
+   "mean_cosine": 0.8540480842297385,
+   "pairs": 8,
+   "recalled_fraction": 0.875,
+   "state_norm": 3.5192525396826344
+  },
+  {
+   "key_dim": 16,
+   "load": 1.0,
+   "mean_cosine": 0.637941819050192,
+   "pairs": 16,
+   "recalled_fraction": 0.625,
+   "state_norm": 3.168185204041098
+  },
+  {
+   "key_dim": 16,
+   "load": 2.0,
+   "mean_cosine": 0.4825164502938212,
+   "pairs": 32,
+   "recalled_fraction": 0.4375,
+   "state_norm": 2.574373892637461
+  },
+  {
+   "key_dim": 16,
+   "load": 4.0,
+   "mean_cosine": 0.18964489583649605,
+   "pairs": 64,
+   "recalled_fraction": 0.15625,
+   "state_norm": 2.031694289638049
+  },
+  {
+   "key_dim": 32,
+   "load": 0.25,
+   "mean_cosine": 0.9429925741588312,
+   "pairs": 8,
+   "recalled_fraction": 1.0,
+   "state_norm": 3.5524141359102543
+  },
+  {
+   "key_dim": 32,
+   "load": 0.5,
+   "mean_cosine": 0.881097599033601,
+   "pairs": 16,
+   "recalled_fraction": 1.0,
+   "state_norm": 3.7583068207883836
+  },
+  {
+   "key_dim": 32,
+   "load": 1.0,
+   "mean_cosine": 0.6308253689536232,
+   "pairs": 32,
+   "recalled_fraction": 0.75,
+   "state_norm": 3.087282808434202
+  },
+  {
+   "key_dim": 32,
+   "load": 2.0,
+   "mean_cosine": 0.44386339394653906,
+   "pairs": 64,
+   "recalled_fraction": 0.359375,
+   "state_norm": 2.602296249632254
+  },
+  {
+   "key_dim": 32,
+   "load": 4.0,
+   "mean_cosine": 0.22212123092026798,
+   "pairs": 128,
+   "recalled_fraction": 0.1484375,
+   "state_norm": 1.998220811091125
+  },
+  {
+   "key_dim": 64,
+   "load": 0.25,
+   "mean_cosine": 0.9314364883851118,
+   "pairs": 16,
+   "recalled_fraction": 1.0,
+   "state_norm": 3.681748288119637
+  },
+  {
+   "key_dim": 64,
+   "load": 0.5,
+   "mean_cosine": 0.8421840208904665,
+   "pairs": 32,
+   "recalled_fraction": 0.9375,
+   "state_norm": 3.726960511294583
+  },
+  {
+   "key_dim": 64,
+   "load": 1.0,
+   "mean_cosine": 0.6640070288599977,
+   "pairs": 64,
+   "recalled_fraction": 0.71875,
+   "state_norm": 3.15672260491234
+  },
+  {
+   "key_dim": 64,
+   "load": 2.0,
+   "mean_cosine": 0.4321535754347771,
+   "pairs": 128,
+   "recalled_fraction": 0.3515625,
+   "state_norm": 2.6640853965310933
+  },
+  {
+   "key_dim": 64,
+   "load": 4.0,
+   "mean_cosine": 0.23415417544720174,
+   "pairs": 256,
+   "recalled_fraction": 0.1640625,
+   "state_norm": 2.0523945381902715
+  }
+ ],
+ "phase": "ELPIS_TORCH_ERSA_R2"
+}

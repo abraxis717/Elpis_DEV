@@ -16,6 +16,7 @@ Elpis cognitive path; what it would take to change that is a separate, unadopted
 | R0: what was run and what it showed | `docs/research/elpis_torch/EVIDENCE_R0.md` |
 | R1: scrolling context, last-block fast weights, capacity model | `docs/research/elpis_torch/DESIGN_R1.md` |
 | R1: long-horizon results, failures, recommendation | `docs/research/elpis_torch/EVIDENCE_R1.md` |
+| R2: ERSA design notes, results, failures, gates | `docs/research/elpis_torch/EVIDENCE_R2.md` |
 | Where the CGC mathematics comes from | `PROVENANCE.md` |
 
 ## Install
@@ -102,6 +103,7 @@ with VolatileSession(model, SessionConfig(lr=0.1, max_steps=16)) as session:
 | `scroll.py` | R1: `ScrollLM`, ring-buffer window, compressed and fine memory tiers, sinks, `StreamState` |
 | `lastblock.py`, `scroll_session.py` | R1: last-block CGC fast weights that leave every cache valid; `ScrollSession` |
 | `scroll_data.py`, `experiments/run_r1.py` | R1: the long-stream retrieval task; train, ladder, adapt, capacity |
+| `ersa.py`, `ersa_model.py`, `experiments/run_r2.py` | R2: ERSA kernel, mixer, exact cells, `ErsaLM`; `run_r2 smoke|exact|latency|projection|transduction`; train with `run_r1 train --topology ersa_conv` |
 
 ## Not here, on purpose
 
