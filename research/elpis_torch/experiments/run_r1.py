@@ -43,7 +43,7 @@ from ..upstream import UPSTREAM_COMMIT
 PHASE = "ELPIS_TORCH_SCROLLING_CONTEXT_R1"
 MODEL = dict(vocab_size=VOCAB, d_model=64, n_layers=2, n_heads=4, n_kv_heads=2, channel="cgc", cgc_bottleneck=32,
              cgc_channels=96, cgc_units=4)
-SCROLL = dict(window=64, block=16, chunk=48, global_topk=6, fine_blocks=2, sinks=4)
+SCROLL = dict(window=64, block=16, chunk=48, global_topk=8, fine_blocks=6, sinks=4)
 HORIZON = 1 << 20
 TRAINING = dict(length=384, events=84, batch=24, lr=3e-3, warmup=100, weight_decay=0.01, grad_clip=1.0)
 EDGES = (64, 512, 8192, 32768, 131072, 262144, 1048576)
