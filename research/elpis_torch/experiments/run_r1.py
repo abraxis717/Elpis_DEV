@@ -34,20 +34,21 @@ from ..config import ModelConfig
 from ..data import SINGLE, build_splits, generate as generate_r0, make_world, rewire
 from ..model import ElpisTorchLM, parameter_digest
 from ..scroll import ScrollConfig, ScrollLM
-from ..scroll_data import KINDS, generate, probe_loss, score
+from ..scroll_data import VOCAB, generate, probe_loss, score
 from ..scroll_session import ScrollSession
 from ..session import SessionConfig, SupportSet, VolatileSession
 from ..training import TrainConfig, freeze, train as train_r0
 from ..upstream import UPSTREAM_COMMIT
 
 PHASE = "ELPIS_TORCH_SCROLLING_CONTEXT_R1"
-MODEL = dict(vocab_size=259, d_model=64, n_layers=2, n_heads=4, n_kv_heads=2, channel="cgc", cgc_bottleneck=32,
+MODEL = dict(vocab_size=VOCAB, d_model=64, n_layers=2, n_heads=4, n_kv_heads=2, channel="cgc", cgc_bottleneck=32,
              cgc_channels=96, cgc_units=4)
 SCROLL = dict(window=64, block=16, chunk=48, global_topk=6, fine_blocks=2, sinks=4)
 HORIZON = 1 << 20
-TRAINING = dict(length=512, events=60, batch=24, lr=3e-3, warmup=100, weight_decay=0.01, grad_clip=1.0)
+TRAINING = dict(length=384, events=84, batch=24, lr=3e-3, warmup=100, weight_decay=0.01, grad_clip=1.0)
 EDGES = (64, 512, 8192, 32768, 131072, 262144, 1048576)
-LADDER = ((8192, 4), (32768, 4), (131072, 4), (262144, 2), (1048576, 2), (1310720, 1))     # (tokens, streams)
+LADDER = ((8192, 4), (32768, 4), (131072, 4), (262144, 4), (1048576, 4), (1310720, 2))     # (tokens, streams)
+EVENTS = 48                    # facts and questions per evaluation stream, at every length
 EVAL_SEED = 9_000_000          # training draws seeds below 5,000,000
 
 
@@ -73,7 +74,7 @@ def _quick_eval(model, seed: int, length: int, events: int, count: int = 32) -> 
 
 
 def command_train(args) -> dict:
-    t = dict(TRAINING, **({"length": 256, "events": 28, "batch": 4} if args.smoke else {}))
+    t = dict(TRAINING, **({"length": 256, "events": 50, "batch": 4} if args.smoke else {}))
     horizon = max(1024, t["length"] * 2)
     model = build(args.topology, horizon=horizon, seed=args.seed, dense_context=t["length"])
     named = dict(model.named_parameters())
@@ -195,7 +196,7 @@ def command_ladder(args) -> dict:
         if record["topology"] == "dense" and length > args.dense_limit:
             out["stages"].append({"tokens": length, "status": "NOT_RUN_DENSE_REFERENCE_INFEASIBLE"})
             continue
-        streams = generate(count, length, events=128 if not args.smoke else 48, seed=EVAL_SEED + length, span=True)
+        streams = generate(count, length, events=EVENTS, seed=EVAL_SEED + length, span=True)
         result = stream_through(model, streams)
         result["status"] = "MEASURED"
         result["beyond_horizon"] = length > horizon
@@ -279,7 +280,7 @@ def _scroll_update_cost(ckpt: str, length: int) -> dict:
     model, record = load(ckpt, horizon=max(2048, length))
     if not isinstance(model, ScrollLM):
         return {"status": "NOT_RUN_NOT_A_SCROLLING_CHECKPOINT"}
-    stream = generate(1, length, events=128, seed=EVAL_SEED + 77).tokens[0].tolist()
+    stream = generate(1, length, events=EVENTS, seed=EVAL_SEED + 77).tokens[0].tolist()
     with ScrollSession(model, SessionConfig(lr=0.1, max_steps=8, fast_scope="last"), learn_window=256) as session:
         started = time.perf_counter()
         session.observe(stream)

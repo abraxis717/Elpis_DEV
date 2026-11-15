@@ -19,8 +19,9 @@ from research.elpis_torch import accounting  # noqa: E402
 from research.elpis_torch.config import ConfigError, ModelConfig  # noqa: E402
 from research.elpis_torch.model import ElpisTorchLM, next_token_loss  # noqa: E402
 from research.elpis_torch.scroll import ChunkError, EvictedError, ScrollConfig, ScrollLM  # noqa: E402
-from research.elpis_torch.scroll_data import (ASSOC_OF, ASSOC_Q, BASE, DIRECT, HOP1, HOP2, SPAN_Q,  # noqa: E402
-                                               generate, probe_loss, score)
+from research.elpis_torch import scroll_data as task  # noqa: E402
+from research.elpis_torch.scroll_data import (ASSOC_Q, DIRECT, HOP1, HOP2, SPAN_Q, generate,  # noqa: E402
+                                               probe_loss, score)
 
 WIDTHS = dict(vocab_size=259, d_model=32, n_layers=2, n_heads=4, n_kv_heads=2, max_seq_len=512, channel="cgc",
               cgc_bottleneck=8, cgc_channels=16, dtype="float64", seed=1)
@@ -318,29 +319,42 @@ def test_the_long_stream_task_is_consistent_and_deterministic():
     again = generate(3, 4096, events=96, seed=5, span=True)
     assert torch.equal(streams.tokens, again.tokens) and not torch.equal(
         streams.tokens, generate(3, 4096, events=96, seed=6, span=True).tokens)
-    kinds = {int(k) for k in streams.kind.unique()}
-    assert kinds == {0, DIRECT, ASSOC_Q, HOP1, HOP2, SPAN_Q}
+    assert int(streams.tokens.max()) < task.VOCAB and int(streams.tokens[0, 0]) == task.BOS
+    assert {int(k) for k in streams.kind.unique()} == {0, DIRECT, ASSOC_Q, HOP1, HOP2, SPAN_Q}
+
+    def fact(token):                                        # a pair token -> (key, value)
+        assert task.PAIR0 <= token < task.ASK0
+        return divmod(token - task.PAIR0, task.VALUE_COUNT)
+
     rows, cols = torch.nonzero(streams.kind != 0, as_tuple=True)
     checked = contradicted = 0
     for row, col in zip(rows.tolist(), cols.tolist()):
         kind, source = int(streams.kind[row, col]), col - int(streams.distance[row, col])
-        answer, text = int(streams.tokens[row, col]), streams.tokens[row].tolist()
-        assert text[source] == answer and text[source - 1] in (ord(":"), ord(">"))     # the fact holds the answer
-        key = text[source - 2]
-        if kind in (DIRECT, SPAN_Q):
-            assert text[col - 2] == key and text[col - 3] == ord("?")
-        elif kind == ASSOC_Q:                               # asked with a different symbol than was stored
-            assert text[col - 2] == ASSOC_OF[key] != key and text[col - 2] not in BASE
-        elif kind == HOP2:                                  # the key is the token the model emitted at hop 1
-            assert text[col - 2] == key and int(streams.kind[row, col - 2]) == HOP1
-        if kind in (DIRECT, ASSOC_Q, HOP2):                 # the latest binding wins
-            later = [t for t in range(source + 1, col) if text[t] == ord(":") and text[t - 1] == key
-                     and text[t - 2] == ord("[")]
+        text = streams.tokens[row].tolist()
+        answer, question = text[col], text[col - 1]
+        if kind == HOP1:                                    # the alias fact names the key the model must emit
+            symbol, key = divmod(text[source] - task.ALIAS0, task.KEYS)
+            assert question == task.HOP0 + symbol and answer == task.ASK0 + key
+            later = [t for t in range(source + 1, col) if task.ALIAS0 <= text[t] < task.HOP0
+                     and (text[t] - task.ALIAS0) // task.KEYS == symbol]
             assert not later
-            earlier = [t for t in range(source - 2) if text[t] == ord(":") and text[t - 1] == key
-                       and text[t - 2] == ord("[") and text[t + 1] != answer]
-            contradicted += bool(streams.contradicted[row, col])
-            assert bool(earlier) <= bool(streams.contradicted[row, col])
+            checked += 1
+            continue
+        key, value = fact(text[source])
+        assert answer == task.VALUE0 + value
+        if kind == ASSOC_Q:                                 # asked with a token of another family
+            assert question == task.ASSOC_OF[key] and not task.ASK0 <= question < task.ASSOC0
+        else:
+            assert question == task.ASK0 + key
+        if kind == HOP2:
+            assert int(streams.kind[row, col - 1]) == HOP1
+        # The latest fact for the key wins, and the flag marks keys that had held another value before.
+        facts = [t for t in range(col) if task.PAIR0 <= text[t] < task.ASK0 and fact(text[t])[0] == key]
+        assert facts[-1] == source
+        if any(fact(text[t])[1] != value for t in facts[:-1]):
+            assert bool(streams.contradicted[row, col])
+        contradicted += bool(streams.contradicted[row, col])
+        assert question != text[source]                     # never a lexical match
         checked += 1
     assert checked > 100 and contradicted > 10
     span = streams.distance[streams.kind == SPAN_Q]
@@ -359,8 +373,8 @@ def test_scoring_reports_kinds_distances_and_contradictions():
     assert report["direct"]["contradicted"]["n"] + report["direct"]["uncontradicted"]["n"] == report["direct"]["n"]
     wrong = score(torch.zeros_like(perfect), torch.ones(2, 2048), streams)
     assert all(entry["accuracy"] == 0.0 for entry in wrong.values())
-    logits = torch.zeros(2, 2047, 259)
-    assert float(probe_loss(logits, streams.tokens, streams.kind)) == pytest.approx(1.1 * math.log(259), rel=1e-5)
+    logits = torch.zeros(2, 2047, task.VOCAB)
+    assert float(probe_loss(logits, streams.tokens, streams.kind)) == pytest.approx(1.1 * math.log(task.VOCAB), rel=1e-5)
 
 
 # -- capacity model ----------------------------------------------------------------------------------------

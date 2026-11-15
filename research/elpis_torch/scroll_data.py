@@ -1,18 +1,24 @@
 """Generated long-stream retrieval task for the scrolling-context experiments. SEMANTICS=NONE.
 
-A stream is filler bytes with sparse events. Records write facts, queries ask for them later:
+A stream is filler tokens with sparse events. A fact is ONE token, so reading it back is one attention hop:
 
-    [K:v]      bind      base key K now has value v. Binding K again CONTRADICTS the earlier fact: the latest wins.
-    [d>K]      alias     alias symbol d now points at base key K.
-    ?K=v       direct    v is the latest value of K.
-    ~c=v       assoc     c is NOT a key symbol. A fixed permutation pairs each c with one base key; the model has
-                         to have learned the pairing, so the stored and the asked symbols never match lexically.
-    ^d>K=v     two-hop   K is what d points at (hop 1, emitted), then v is the latest value of K (hop 2).
+    pair(K, v)             bind      key K now has value v. A later pair for K CONTRADICTS it: the latest wins.
+    alias(d, K)            alias     alias symbol d now points at key K.
+    ask(K) v               direct    v is the latest value of K.
+    assoc(c) v             assoc     a second family of question tokens, paired with the keys by a fixed
+                                     permutation: nothing in the question shares a token with the fact.
+    hop(d) ask(K) v        two-hop   ask(K) is what d points at (hop 1, emitted as a token), then v is the latest
+                                     value of K (hop 2, scored with the true ask(K) in the input).
 
-Only the answer tokens are determined by the past. Each one is a probe with a kind, a distance (tokens back to
-the fact it depends on) and a flag saying whether an older, contradicted fact for the same key exists.
-``span`` probes bind reserved keys in the first 2% of a stream and ask for them in the last 2%: their
+No question token equals a fact token, so every retrieval goes through learned associations, never through
+lexical identity. Only the answers are determined by the past. Each answer is a probe with a kind, a distance
+(tokens back to the fact it depends on) and a flag saying whether an older, contradicted fact for the same
+key exists. ``span`` probes bind reserved keys at the start of a stream and ask for them at its end: their
 distance is the whole stream, which is how eviction beyond the horizon is observed.
+
+Version 1 of this task spelled facts as byte strings (``[K:v]`` ... ``?K=v``), which needs a two-layer
+induction circuit. No topology learned it in the budget, the dense reference included
+(docs/research/elpis_torch/EVIDENCE_R1.md, "Failures"); it was replaced by this single-token form.
 
 Streams are drawn fresh from a seed; training and evaluation use disjoint seed domains.
 """
@@ -23,20 +29,26 @@ from dataclasses import dataclass
 
 import torch
 
-from .tokenizer import ByteTokenizer
-
-BASE = [ord("A") + i for i in range(20)]            # ordinary keys
-SPAN = [ord("U") + i for i in range(4)]             # reserved for whole-stream probes
-ALIAS = [ord("0") + i for i in range(8)]
-VALUES = [ord("a") + i for i in range(16)]
-ASSOC = [0xC0 + i for i in range(20)]               # one per base key, through a fixed permutation
-FILLER = [0xE0 + i for i in range(16)]
-_PAIRING = random.Random("elpis-torch-r1:assoc").sample(range(20), 20)
-ASSOC_OF = {BASE[k]: ASSOC[_PAIRING[k]] for k in range(20)}      # key symbol -> the symbol that asks for it
+KEYS, SPAN_KEYS, VALUE_COUNT, ALIASES, FILLERS = 8, 2, 8, 4, 8        # SPAN_KEYS are the keys after KEYS
+FILLER0, VALUE0 = 0, FILLERS
+PAIR0 = VALUE0 + VALUE_COUNT                 # pair(K, v) = PAIR0 + K * VALUE_COUNT + v
+ASK0 = PAIR0 + (KEYS + SPAN_KEYS) * VALUE_COUNT    # ask(K)
+ASSOC0 = ASK0 + KEYS + SPAN_KEYS                   # assoc(c), c < KEYS
+ALIAS0 = ASSOC0 + KEYS                             # alias(d, K) = ALIAS0 + d * KEYS + K
+HOP0 = ALIAS0 + ALIASES * KEYS                     # hop(d)
+BOS = HOP0 + ALIASES
+VOCAB = BOS + 1
+_PAIRING = random.Random("elpis-torch-r1:assoc").sample(range(KEYS), KEYS)
+ASSOC_OF = {key: ASSOC0 + _PAIRING[key] for key in range(KEYS)}        # key -> the assoc token that asks for it
 
 DIRECT, ASSOC_Q, HOP1, HOP2, SPAN_Q = 1, 2, 3, 4, 5
 KINDS = {DIRECT: "direct", ASSOC_Q: "assoc", HOP1: "hop1", HOP2: "hop2", SPAN_Q: "span"}
-CHANCE = {"direct": 1 / 16, "assoc": 1 / 16, "hop2": 1 / 16, "span": 1 / 16, "hop1": 1 / 20}
+CHANCE = {"direct": 1 / VALUE_COUNT, "assoc": 1 / VALUE_COUNT, "hop2": 1 / VALUE_COUNT, "span": 1 / VALUE_COUNT,
+          "hop1": 1 / KEYS}
+
+
+def pair(key: int, value: int) -> int:
+    return PAIR0 + key * VALUE_COUNT + value
 
 
 @dataclass(frozen=True)
@@ -50,26 +62,25 @@ class Streams:
 
 
 def _events(length: int, events: int, rng: random.Random, span: bool):
-    """Event start positions with room for the longest event (6 tokens) and a gap, in order."""
-    lo, hi = (int(0.02 * length), int(0.98 * length)) if span else (2, length - 8)
+    """Event start positions with room for the longest event (3 tokens) and a gap, in order."""
+    lo, hi = (int(0.02 * length), int(0.98 * length)) if span else (2, length - 4)
     step = (hi - lo) // events
-    if step < 8:
+    if step < 4:
         raise ValueError("the stream is too short for this many events")
-    return [lo + i * step + rng.randrange(step - 7) for i in range(events)]
+    return [lo + i * step + rng.randrange(step - 3) for i in range(events)]
 
 
 def generate(count: int, length: int, *, events: int, seed: int, span: bool = False) -> Streams:
-    """``count`` streams of ``length`` tokens with about ``events`` records and queries each."""
-    tokens = torch.tensor(FILLER)[torch.randint(len(FILLER), (count, length),
-                                                generator=torch.Generator().manual_seed(seed))]
+    """``count`` streams of ``length`` tokens with about ``events`` facts and questions each."""
+    tokens = torch.randint(FILLERS, (count, length), generator=torch.Generator().manual_seed(seed))
     kind = torch.zeros(count, length, dtype=torch.int8)
     distance = torch.zeros(count, length, dtype=torch.int64)
     contradicted = torch.zeros(count, length, dtype=torch.bool)
-    tokens[:, 0] = ByteTokenizer.BOS
+    tokens[:, 0] = BOS
     for row in range(count):
         rng = random.Random(f"elpis-torch-r1:{seed}:{row}")
-        bound: dict = {}          # key -> (value, position of the value token, rebound?)
-        alias: dict = {}          # alias symbol -> (key, position of the key token)
+        bound: dict = {}          # key -> (value, position of the pair token, contradicts an earlier fact?)
+        alias: dict = {}          # alias symbol -> (key, position of the alias token)
 
         def write(at, symbols, probes=()):
             tokens[row, at:at + len(symbols)] = torch.tensor(symbols)
@@ -78,44 +89,41 @@ def generate(count: int, length: int, *, events: int, seed: int, span: bool = Fa
                 contradicted[row, at + offset] = flag
 
         if span:
-            cursor = 2
-            for key in SPAN:
-                value = rng.choice(VALUES)
-                write(cursor, [ord("["), key, ord(":"), value, ord("]")])
-                bound[key] = (value, cursor + 3, False)
-                cursor += 8
+            for index in range(SPAN_KEYS):
+                value = rng.randrange(VALUE_COUNT)
+                write(2 + 3 * index, [pair(KEYS + index, value)])
+                bound[KEYS + index] = (value, 2 + 3 * index, False)
         for at in _events(length, events, rng, span):
             roll = rng.random()
-            keys = [k for k in bound if k in BASE]
+            keys = [k for k in bound if k < KEYS]
             if roll < 0.40 or not keys:
-                key, value = rng.choice(BASE), rng.choice(VALUES)
+                key, value = rng.randrange(KEYS), rng.randrange(VALUE_COUNT)
                 changed = key in bound and (bound[key][2] or bound[key][0] != value)
-                write(at, [ord("["), key, ord(":"), value, ord("]")])
-                bound[key] = (value, at + 3, changed)
+                write(at, [pair(key, value)])
+                bound[key] = (value, at, changed)
             elif roll < 0.50:
-                symbol, key = rng.choice(ALIAS), rng.choice(keys)
-                write(at, [ord("["), symbol, ord(">"), key, ord("]")])
-                alias[symbol] = (key, at + 3)
+                symbol, key = rng.randrange(ALIASES), rng.choice(keys)
+                write(at, [ALIAS0 + symbol * KEYS + key])
+                alias[symbol] = (key, at)
             elif roll < 0.75 or (roll >= 0.90 and not alias):
                 key = rng.choice(keys)
                 value, source, flag = bound[key]
-                write(at, [ord("?"), key, ord("="), value], [(3, DIRECT, source, flag)])
+                write(at, [ASK0 + key, VALUE0 + value], [(1, DIRECT, source, flag)])
             elif roll < 0.90:
                 key = rng.choice(keys)
                 value, source, flag = bound[key]
-                write(at, [ord("~"), ASSOC_OF[key], ord("="), value], [(3, ASSOC_Q, source, flag)])
+                write(at, [ASSOC_OF[key], VALUE0 + value], [(1, ASSOC_Q, source, flag)])
             else:
                 symbol = rng.choice(sorted(alias))
                 key, where = alias[symbol]
                 value, source, flag = bound[key]
-                write(at, [ord("^"), symbol, ord(">"), key, ord("="), value],
-                      [(3, HOP1, where, False), (5, HOP2, source, flag)])
+                write(at, [HOP0 + symbol, ASK0 + key, VALUE0 + value],
+                      [(1, HOP1, where, False), (2, HOP2, source, flag)])
         if span:
-            cursor = length - 6 * len(SPAN) - 2
-            for key in SPAN:
-                value, source, _ = bound[key]
-                write(cursor, [ord("?"), key, ord("="), value], [(3, SPAN_Q, source, False)])
-                cursor += 6
+            for index in range(SPAN_KEYS):
+                value, source, _ = bound[KEYS + index]
+                at = length - 3 * SPAN_KEYS - 1 + 3 * index
+                write(at, [ASK0 + KEYS + index, VALUE0 + value], [(1, SPAN_Q, source, False)])
     return Streams(tokens, kind, distance, contradicted)
 
 
