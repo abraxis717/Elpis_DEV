@@ -64,8 +64,9 @@ def test_the_only_storage_writers_are_the_explicit_offline_operations():
         hits = re.findall(r"torch\.save\(|\bopen\([^)]*[\"'][wax+b]+[\"']|\.write_text\(|\.write_bytes\(|pickle\.dump", text)
         if hits:
             writers[str(path.relative_to(LAB))] = len(hits)
-    assert writers == {"training.py": 1, "experiments/run_r0.py": 1, "experiments/run_r1.py": 2}
-    for module in ("session.py", "scroll_session.py", "scroll.py", "lastblock.py"):     # inference never writes
+    assert writers == {"training.py": 1, "experiments/run_r0.py": 1, "experiments/run_r1.py": 2,
+                       "experiments/run_r2.py": 1}
+    for module in ("session.py", "scroll_session.py", "scroll.py", "lastblock.py", "ersa.py", "ersa_model.py"):
         source = (LAB / module).read_text(encoding="utf-8")
         assert "save_checkpoint" not in source and "torch.save" not in source and "open(" not in source, module
 
@@ -86,3 +87,35 @@ def test_the_mission_does_not_name_the_prototype_and_the_amendment_is_only_a_pro
     for needle in ("PROPOSAL", "NOT ADOPTED", "not repository authority", "docs/ELPIS_MISSION.md",
                    "prohibited topology", "research/elpis_torch"):
         assert needle in text, needle
+
+
+def test_the_historical_ersa_archive_is_byte_for_byte_what_its_manifest_says():
+    """R2 preserves the archive unchanged: every file it lists is present with the recorded size and digest."""
+    import hashlib
+    root = REPO / "research" / "ersa" / "source_handoff"
+    manifest = json.loads((root / "SOURCE_MANIFEST.json").read_text(encoding="utf-8"))
+    assert manifest["file_count"] == len(manifest["files"]) == 131
+    for entry in manifest["files"]:
+        data = (root / "ERSA_DEV" / entry["path"]).read_bytes()
+        assert len(data) == entry["size"] and hashlib.sha256(data).hexdigest() == entry["sha256"], entry["path"]
+    tracked = sorted(p for p in (root / "ERSA_DEV").rglob("*") if p.is_file() and "__pycache__" not in p.parts)
+    assert len(tracked) == 131                              # nothing added beside the archived sources
+
+
+def test_the_elpis_native_ersa_shares_no_code_path_with_the_archive_or_its_donor():
+    """Independence: the new layer imports nothing from the archive, from FLA or from the studied projects."""
+    for path in sorted(LAB.rglob("*.py")):
+        if "upstream" in path.parts:
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            code = line.split("#", 1)[0].strip()
+            if code.startswith(("import ", "from ")):
+                assert not re.search(r"research\.ersa|\bfla\b|naive_recurrent_gsa|chipformer|qgpu|qwentpu|einops", code), (
+                    path.name, line)
+    text = (LAB / "PROVENANCE.md").read_text(encoding="utf-8")
+    for needle in ("7b423a174fa58e6f0d2f3156ed496dcb67f53361", "0cab57038a8b218dabe481f994174c3437405e3d",
+                   "e2695f6a0a818ebc68e2e14b6b990eddf04c51b3", "856720f3e5d27c0fc1c19f370a39487853e722ae", "MIT",
+                   "Songlin Yang"):
+        assert needle in text, needle
+    licence = REPO / "research/ersa/source_handoff/ERSA_DEV/worktrees/R35_DONOR_BACKED_SLOT_WRITE_READ_R0/third_party/fla_gsa/LICENSE.txt"
+    assert "MIT License" in licence.read_text(encoding="utf-8")       # the donor's notice stays with its file

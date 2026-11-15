@@ -38,3 +38,39 @@ weights, no evidence.
   tasks) says nothing about language models, and nothing here reproduces or extends it.
 * Agreement with the upstream file is established on the tested shapes and inputs
   (`tests/research/elpis_torch/test_e0_reference.py`), not for all inputs.
+
+---
+
+# R2 (ERSA): provenance, licences and what was not copied
+
+## Sources studied
+
+| Source | Identity | Licence | Use in R2 |
+|---|---|---|---|
+| Historical ERSA archive, `research/ersa/` | commit `7b423a174fa58e6f0d2f3156ed496dcb67f53361` ("research(ersa): archive pinned R18 R35 R36 sources"), 133 tracked files (131 sources, the manifest, a README), manifest SHA-256 `b67dc98c473d3f307d2efd4890242e6027077b784e774be23dd9b66c6b625ede` | first-party research archive; contains one third-party file (next row) | **Read only.** It is the starting research authority for what ERSA is meant to be: R18 a read-only multi-hop slot reader over host-supplied state, R35 gated slot writes, R36 a C state owner. Nothing in it is edited, imported, installed or executed by R2. |
+| `research/ersa/.../R35_.../third_party/fla_gsa/naive.py` | adapted from `fla-org/flash-linear-attention`, `fla/ops/gsa/naive.py`; Copyright (c) 2023-2026 Songlin Yang, Yu Zhang, Zhiyuan Li | MIT; the licence text is retained beside it in the archive (`LICENSE.txt`) | **Not used.** R2 does not import it, call it or reproduce it. R2's update is a gated delta rule on one matrix, not the two-matrix gated-slot recurrence of that file. |
+| `divagr18/qwenputer` | commit `0cab57038a8b218dabe481f994174c3437405e3d` | MIT, Copyright (c) 2026 Divyansh Agrawal | README and design notes read. **Idea adopted:** the state of a gated delta-rule layer is exact RAM when keys are one-hot, the gate is open and the write strength is 1; gate 0 wipes a head, gate 1/2 halves it. No code, compiler, weights or trace format copied. |
+| `vixhal-baraiya/qwenGPU` | commit `e2695f6a0a818ebc68e2e14b6b990eddf04c51b3` | MIT, Copyright (c) 2026 vixhal-baraiya | README read: registers, program ROM and memory as rows of the recurrent state; the token stream as execution log. No code copied. |
+| `Bobliuuu/qwentpu` | commit `856720f3e5d27c0fc1c19f370a39487853e722ae` | MIT, Copyright (c) 2026 Bobliuuu | README read: exact integer computation replayed against a reference, position by position. The replay-against-a-reference test method was adopted. No code copied. |
+| The gated delta rule | the published recurrence used by delta-rule linear attention and Gated DeltaNet | mathematics, not code | R2's kernel is that recurrence written from its definition. No reference implementation was consulted for the code, and no chunk-parallel kernel was ported. |
+
+The three external repositories were cloned read-only outside this repository for study and are not vendored.
+
+## What R2 wrote
+
+| File | Content | Relation to the sources |
+|---|---|---|
+| `ersa.py` | `delta_step` (one state transition), `ERSAMixer` (trainable multi-head recurrent mixer), `ERSACells` (exact addressable bank), `compile_cell_mixer` (weights computed so the mixer's forward pass is exact RAM), `recall_capacity` | New. Shares the name and the purpose of the historical ERSA (a recurrent associative token mixer over bounded volatile state) and none of its code. Unlike R18 it writes its own state; unlike R35 it needs no donor routine and no host-supplied admission mask. |
+| `ersa_model.py` | `ErsaLM`: ERSA as the token mixer of the CGC transformer, optionally beside R1's ring-buffer window attention | New; reuses R0/R1 modules of this package only. |
+| `experiments/run_r2.py`, `tests/research/elpis_torch/test_ersa.py` | experiments and qualification tests | New. |
+
+No new dependency: PyTorch only, as for R0 and R1.
+
+## Not claimed, and left to the owner
+
+* R2 is not the historical ERSA lineage's R11/R14 native authority, selector, halting controller or admission
+  model. None of those is implemented, replaced or qualified here.
+* The archive's third-party MIT file is carried with its licence inside the archive. This change does not edit
+  the repository's top-level `NOTICE` or `LICENSES/`; whether the archive's presence calls for an entry there
+  is the owner's decision.
+* The archive's own tests and install scripts were not run.

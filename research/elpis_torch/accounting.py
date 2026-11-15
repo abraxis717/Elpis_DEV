@@ -154,3 +154,36 @@ def deployment_projection(*, d_model: int = 2048, n_layers: int = 24, n_heads: i
             "gpu_budget": gpu_bytes, "fits_gpu": gpu["total"] <= gpu_bytes,
             "dense_kv_cache_at_horizon_for_comparison": n_layers * 2 * kv * horizon,
             "status": "PROJECTED"}
+
+
+# -- R2: ERSA context state ----------------------------------------------------------------------------------------
+
+def ersa_context_projection(*, d_model: int = 2048, n_layers: int = 24, ersa_heads: int = 16, key_dim: int = 128,
+                            value_dim: int = 128, conv_kernel: int = 4, attn_window: int = 4096,
+                            attn_kv_heads: int = 4, attn_head_dim: int = 128, index_layers: int = 0,
+                            index_block: int = 64, horizon: int = 1 << 20, chunk: int = 512, scalar_bytes: int = 2,
+                            target_bytes: int = 1 << 30, ceiling_bytes: int = 2 << 30) -> dict:
+    """PROJECTED (never measured) active context state of one 1,048,576-token stream of a deployment-scale
+    ERSA model, against the 1 GiB target and the 2 GiB ceiling. Model weights are not context and are excluded.
+
+    GPU: the ERSA cells, the convolution tails, the attention window's keys and values, an optional compressed
+    long-range index (R1's compressed tier, no raw-token tier) and per-chunk scratch. CPU: the token history.
+    """
+    kv = attn_kv_heads * attn_head_dim * scalar_bytes
+    gpu = {"ersa_cells": n_layers * ersa_heads * key_dim * value_dim * scalar_bytes,
+           "conv_tails": n_layers * max(0, conv_kernel - 1) * d_model * scalar_bytes,
+           "attention_window": n_layers * 2 * kv * attn_window if attn_window else 0,
+           "long_range_index": index_layers * 2 * kv * (horizon // index_block),
+           "scratch_per_chunk_estimate": 64 * chunk * d_model * scalar_bytes}
+    gpu = {name: size for name, size in gpu.items() if size}
+    gpu["total"] = sum(gpu.values())
+    cpu = {"token_history": horizon * 4}
+    cpu["total"] = sum(cpu.values())
+    return {"status": "PROJECTED", "gpu_resident": gpu, "cpu_ram": cpu, "combined": gpu["total"] + cpu["total"],
+            "within_target": gpu["total"] <= target_bytes, "within_ceiling": gpu["total"] <= ceiling_bytes,
+            "assumptions": {"d_model": d_model, "n_layers": n_layers, "ersa_heads": ersa_heads, "key_dim": key_dim,
+                            "value_dim": value_dim, "conv_kernel": conv_kernel, "attn_window": attn_window,
+                            "attn_kv_heads": attn_kv_heads, "attn_head_dim": attn_head_dim,
+                            "index_layers": index_layers, "index_block": index_block, "horizon": horizon,
+                            "chunk": chunk, "scalar_bytes": scalar_bytes},
+            "exact_recall_claim": "none: the recurrent state holds on the order of key_dim associations per head"}

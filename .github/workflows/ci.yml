@@ -441,10 +441,11 @@ jobs:
           /tmp/torch-venv/bin/python -m pip install "pytest>=8"
           /tmp/torch-venv/bin/python -m pip install -r research/elpis_torch/requirements.txt --index-url https://download.pytorch.org/whl/cpu
           /tmp/torch-venv/bin/python -c "import torch, platform; print('torch', torch.__version__, '| python', platform.python_version())"
-      - name: Elpis Torch tests (R0 substrate and R1 scrolling context)
+      - name: Elpis Torch tests (R0 substrate, R1 scrolling context, R2 ERSA)
         run: timeout 1500 /tmp/torch-venv/bin/python -B -m pytest -p no:cacheprovider -rs --durations=10 tests/research/elpis_torch
       - name: Example and experiment smoke runs (nothing is kept)
         run: |
           timeout 600 /tmp/torch-venv/bin/python -B -m research.elpis_torch.examples.quickstart
           timeout 600 /tmp/torch-venv/bin/python -B -m research.elpis_torch.experiments.run_r0 --quick --threads 2 > /dev/null
           timeout 900 /tmp/torch-venv/bin/python -B -m research.elpis_torch.experiments.run_r1 smoke --threads 2 > /dev/null
+          timeout 900 /tmp/torch-venv/bin/python -B -m research.elpis_torch.experiments.run_r2 smoke --threads 2 > /dev/null
