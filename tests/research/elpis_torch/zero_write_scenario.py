@@ -34,6 +34,42 @@ def hook(event, args):
         events.append([event, repr(args)[:200]])
 
 
+def scroll_main():
+    """The same lifetime for a scrolling session: stream past the horizon, adapt the last block, reset, fail."""
+    global armed
+    from research.elpis_torch.scroll import ScrollConfig, ScrollLM
+    from research.elpis_torch.scroll_session import ScrollSession
+    torch.set_num_threads(1)
+    widths = ModelConfig(vocab_size=259, d_model=32, n_layers=2, n_heads=2, max_seq_len=32, channel="cgc",
+                         cgc_bottleneck=8, cgc_channels=16, seed=0)
+    model = freeze(ScrollLM(ScrollConfig(widths, window=48, block=8, chunk=32, horizon=256, global_layers=(1,),
+                                         global_topk=4, fine_blocks=2, sinks=2)))
+    if "--audit" in sys.argv:
+        sys.addaudithook(hook)
+    armed = True
+    os.write(2, b"ELPIS_SESSION_BEGIN\n")
+    applied, position = 0, 0
+    stream = [256] + [65 + (i * 7) % 5 for i in range(1200)]
+    try:
+        with ScrollSession(model, SessionConfig(lr=0.1, max_steps=3, momentum=0.5, fast_scope="last")) as session:
+            session.observe(stream[:900])                       # 3.5 horizons
+            session.generate(4)
+            applied += sum(r.applied for r in session.adapt_on_stream(steps=4))      # the fourth is refused: budget
+            session.observe(stream[900:1100])
+            position = session.position
+            session.reset()
+            session.observe(stream[:40])
+            if "--negative-control" in sys.argv:
+                with open(sys.argv[sys.argv.index("--negative-control") + 1], "w") as handle:
+                    handle.write("not volatile")
+            raise RuntimeError("a fault inside a live session")
+    except RuntimeError:
+        pass
+    os.write(2, b"ELPIS_SESSION_END\n")
+    armed = False
+    print(json.dumps({"applied_updates": applied, "position": position, "write_events": events}))
+
+
 def main():
     global armed
     torch.set_num_threads(1)
@@ -67,4 +103,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    scroll_main() if "--scroll" in sys.argv else main()

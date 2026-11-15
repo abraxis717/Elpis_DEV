@@ -54,8 +54,8 @@ def test_no_weights_or_build_products_are_committed_with_the_prototype():
     assert max(p.stat().st_size for p in files) < 400_000         # proportional: no evidence archive
 
 
-def test_the_only_storage_writers_are_the_two_explicit_offline_operations():
-    """Sources of the package that can open a file for writing: the checkpoint saver and the experiment's --out."""
+def test_the_only_storage_writers_are_the_explicit_offline_operations():
+    """Sources of the package that can open a file for writing: checkpoint savers and the experiments' --out."""
     writers = {}
     for path in sorted(LAB.rglob("*.py")):
         if "upstream" in path.parts:
@@ -64,9 +64,10 @@ def test_the_only_storage_writers_are_the_two_explicit_offline_operations():
         hits = re.findall(r"torch\.save\(|\bopen\([^)]*[\"'][wax+b]+[\"']|\.write_text\(|\.write_bytes\(|pickle\.dump", text)
         if hits:
             writers[str(path.relative_to(LAB))] = len(hits)
-    assert writers == {"training.py": 1, "experiments/run_r0.py": 1}
-    session = (LAB / "session.py").read_text(encoding="utf-8")
-    assert "save_checkpoint" not in session and "torch.save" not in session and "open(" not in session
+    assert writers == {"training.py": 1, "experiments/run_r0.py": 1, "experiments/run_r1.py": 2}
+    for module in ("session.py", "scroll_session.py", "scroll.py", "lastblock.py"):     # inference never writes
+        source = (LAB / module).read_text(encoding="utf-8")
+        assert "save_checkpoint" not in source and "torch.save" not in source and "open(" not in source, module
 
 
 def test_the_deferred_systems_are_not_implemented():
