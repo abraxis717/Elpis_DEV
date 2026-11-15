@@ -72,9 +72,12 @@ def test_the_only_storage_writers_are_the_explicit_offline_operations():
 
 
 def test_the_deferred_systems_are_not_implemented():
-    """No supervisor, expert selector, halting agent, energy function or persistent learner hides in the package."""
+    """No supervisor, expert selector, halting agent, energy function or persistent learner hides in the package.
+
+    ERSA left this list in R2, by the owner's directive: it is now the token mixer (ersa.py, ersa_model.py).
+    """
     names = {p.stem.lower() for p in LAB.rglob("*.py")}
-    assert not names & {"ralph", "moe", "engram", "mhc", "hca", "awr", "gdn", "ersa", "halt", "energy", "router",
+    assert not names & {"ralph", "moe", "engram", "mhc", "hca", "awr", "gdn", "halt", "energy", "router",
                         "controller", "supervisor", "memory", "retrieval"}
     code = "\n".join(p.read_text(encoding="utf-8") for p in LAB.rglob("*.py") if "upstream" not in p.parts)
     assert not re.search(r"(?im)^\s*(class|def)\s+\w*(ralph|halt|expert|router|energy|metacog|supervis)\w*", code)
