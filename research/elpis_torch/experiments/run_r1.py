@@ -48,6 +48,7 @@ HORIZON = 1 << 20
 TRAINING = dict(length=384, events=84, batch=24, lr=3e-3, warmup=100, weight_decay=0.01, grad_clip=1.0)
 EDGES = (64, 512, 8192, 32768, 131072, 262144, 1048576)
 LADDER = ((8192, 4), (32768, 4), (131072, 4), (262144, 4), (1048576, 4), (1310720, 2))     # (tokens, streams)
+NEAR = ((384, 32), (768, 16), (1536, 16), (3072, 8), (6144, 8))     # just past the 384-token training length
 EVENTS = 48                    # facts and questions per evaluation stream, at every length
 EVAL_SEED = 9_000_000          # training draws seeds below 5,000,000
 
@@ -185,7 +186,7 @@ def stream_through(model, streams, *, chunk: int | None = None, diagnose: bool =
 
 
 def command_ladder(args) -> dict:
-    stages = ((2048, 2), (4096, 1)) if args.smoke else LADDER
+    stages = ((2048, 2), (4096, 1)) if args.smoke else NEAR if args.near else LADDER
     horizon = 2048 if args.smoke else HORIZON
     limit = args.max_tokens or (1 << 62)
     out = {"phase": PHASE, "horizon": horizon, "stages": []}
@@ -196,7 +197,7 @@ def command_ladder(args) -> dict:
         if record["topology"] == "dense" and length > args.dense_limit:
             out["stages"].append({"tokens": length, "status": "NOT_RUN_DENSE_REFERENCE_INFEASIBLE"})
             continue
-        streams = generate(count, length, events=EVENTS, seed=EVAL_SEED + length, span=True)
+        streams = generate(count, length, events=84 if length == 384 else EVENTS, seed=EVAL_SEED + length, span=True)
         result = stream_through(model, streams)
         result["status"] = "MEASURED"
         result["beyond_horizon"] = length > horizon
@@ -315,7 +316,7 @@ def command_smoke(args) -> dict:
         for topology in ("sparse", "local", "dense"):
             path = os.path.join(folder, topology)
             namespace = argparse.Namespace(topology=topology, steps=12, seed=0, eval_every=12, out=path, smoke=True,
-                                           ckpt=path, max_tokens=None, dense_limit=4096)
+                                           ckpt=path, max_tokens=None, dense_limit=4096, near=False)
             trained = command_train(namespace)
             ladder = command_ladder(argparse.Namespace(**{**vars(namespace), "out": None}))
             out[topology] = {"train_status": trained["status"], "stages": [s["status"] for s in ladder["stages"]]}
@@ -353,6 +354,7 @@ def main(argv=None) -> int:
     parser.add_argument("--out", default=None)
     parser.add_argument("--max-tokens", type=int, default=None)
     parser.add_argument("--dense-limit", type=int, default=32768)
+    parser.add_argument("--near", action="store_true", help="ladder: lengths just past the training length")
     parser.add_argument("--threads", type=int, default=4)
     args = parser.parse_args(argv)
     args.smoke = args.command == "smoke"

@@ -101,6 +101,7 @@ def scroll_state_bytes(scroll, *, batch: int = 1, scalar_bytes: int | None = Non
         out["sinks"] = layers * 2 * kv * scroll.sinks
     if scroll.fine_blocks and memory:
         out["fine"] = memory * 2 * kv * scroll.fine_capacity
+    out = {tier: size for tier, size in out.items() if size}
     out["total"] = sum(out.values())
     return out
 
