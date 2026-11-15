@@ -1,0 +1,718 @@
+{
+  "ersa_implementation_candidates": [
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/frozen_r6_native/ersa_native.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/frozen_r6_native/ersa_native_r0.c",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ersa_controller_r13.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ersa_native_snapshot_r18.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ersa_recur_r14.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ersa_selector_r12.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ersa_trainable_layer_r18.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/gdn_rule_r15.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/gdn_trainable_r16.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ssc_native_r10.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ssc_native_r11.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ssc_r8.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ssc_r9.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/__init__.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_authority_r10.c",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_authority_r10.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_halt_r13.c",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_native.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_native_r0.c",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_read_r7.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_recur_r14.c",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_selector_r12.c",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_ssc_reduce_r8.c",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_state_machine_r11.c",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_state_r9.c",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_state_r9.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ssc_compat_r8.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/__init__.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/adapter_ssc.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/bank_ersa.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/contract_ersa.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/fixtures_ersa.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/fixtures_r2.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/geometry_ersa.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/harness_ersa.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/oracle_ersa.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/retention_ersa.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/ssc_predecessor/src/elpis_ssc/mutants_r0.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_qualification_r0.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r10_native_authority.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r11_native_state_machine.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r12_learned_recurrent_probe.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r13_trainable_halt.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r14_native_recurrent_operator.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r15_gdn_rule.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r18_trainable_layer.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r1_attack_integrity.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r2_protocol_attack.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r3_independent_break.py",
+    "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r4_retrieval_semantics.py"
+  ],
+  "file_count": 131,
+  "files": [
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R10_CANDIDATE.md",
+      "sha256": "b7053d67d84807e757734c476eb351db22c0807e8ded5b9389f52c8add0820ba",
+      "size": 4643
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R11_CANDIDATE.md",
+      "sha256": "39cedf9cdbfd83eb2d393fde5ec4a328224bbe3831036e4d3091f414385da05c",
+      "size": 3958
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R12_CANDIDATE.md",
+      "sha256": "8d297eac4da7b785b740ccb3d60e5d23e8a6a591c934a8d49d8a4a1df292db4a",
+      "size": 3622
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R13_CANDIDATE.md",
+      "sha256": "4d5d0b9d7089f3e9a36dc5b1802a4e307853f4344f9eb7b5a5d1217ebdef1e5a",
+      "size": 2833
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R14_CANDIDATE.md",
+      "sha256": "f024db700ef841d997ae6c784252037929a3ee24a37a957883c0cb937c1c1111",
+      "size": 3553
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R15_CANDIDATE.md",
+      "sha256": "62030027d49996525feaa0b9f3fa6e1805077b895cd205327792d35531dff0c6",
+      "size": 3302
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R16_CANDIDATE.md",
+      "sha256": "1b26aff2b5f8abb8a6429b2a2353156381f024108c5140c51be378c1f5512cea",
+      "size": 3566
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R17_CANDIDATE.md",
+      "sha256": "d1bd6185d6b6753a3b8d7f376a367bc9b073925220b733b3b07dc4373203e441",
+      "size": 4293
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R18_CANDIDATE.md",
+      "sha256": "8f1f1e9599244ce9b3956fb0c6657ae241b42dbe4564f2d72c287a4ba6a690fb",
+      "size": 4710
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R4_CANDIDATE.md",
+      "sha256": "ee414d7fa8240f15d79ffd33a8feec24086fa02e8921d68e90f551e2c5662830",
+      "size": 3711
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R5_CANDIDATE.md",
+      "sha256": "c95ab50acfce63b2ba0365be09b653fde72ea1b239177cd2ff210f2775a598f2",
+      "size": 3521
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R6_CANDIDATE.md",
+      "sha256": "e13dbf38d9653ec263132f4cbc45f4d3cd32dd82ae8e75a793c4c1e1fbd41a7c",
+      "size": 3028
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R7_CANDIDATE.md",
+      "sha256": "333fab0700209f16bdc72ba415fe7728a4a95dae0d1c4dd35443c369c9bba91d",
+      "size": 2994
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R8_CANDIDATE.md",
+      "sha256": "1fc1f09721d26f281b5da9c4b281bd0e901c655d839277210dd4f51020497582",
+      "size": 5142
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/README_R9_CANDIDATE.md",
+      "sha256": "92fce21051fb98ae26e7d5cf1d1b2aae1340d3008b1911b228c753b4b653c9c1",
+      "size": 4382
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/frozen_r6_native/ersa_native.py",
+      "sha256": "6837a01d0d0e6bd49c250d0a7d908e39f153665de86c49f94ab1359e14179bc5",
+      "size": 4017
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/frozen_r6_native/ersa_native_r0.c",
+      "sha256": "a83209348c3e170961d7fd82b954c3a6b8d6aaae4c73a618a732b68568e27268",
+      "size": 4207
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ersa_controller_r13.py",
+      "sha256": "02b3cf51cea484136ca16cfa54a52b647b6814481cdcec3976534a0cf74141cf",
+      "size": 9595
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ersa_native_snapshot_r18.py",
+      "sha256": "b45db37f4c1887e718c1cf5c169fe860c25bc04f6db466043c9a684bdd900901",
+      "size": 2168
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ersa_recur_r14.py",
+      "sha256": "1bd1bd770fdc6cf186a8e2a25943f8ef28e4cbd26af49c541b51a834f468b6c3",
+      "size": 6470
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ersa_selector_r12.py",
+      "sha256": "8bf917d8384c907475bc433a72ba5aee248933cd50996a9db861da761e29a0a9",
+      "size": 10793
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ersa_trainable_layer_r18.py",
+      "sha256": "13aaa7451655ccf7ca691fc9861789d03afff5b0e445dec1366ffcf99eee42e7",
+      "size": 9096
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/gdn_layer_reference_r17.py",
+      "sha256": "eaa8388c5b0c0a737d61456de472c1418decf6e55809b9c9441d36af51b1cae1",
+      "size": 8719
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/gdn_rule_r15.py",
+      "sha256": "1c290eceb65c2ce917d5e1f0cfddace84087fcf5222e7c295b16a07c227d04b2",
+      "size": 4925
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/gdn_trainable_r16.py",
+      "sha256": "feb240e2b98dc552baa990b3ade29ba794f6cdf09c2783980486126712e10884",
+      "size": 10596
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ssc_native_r10.py",
+      "sha256": "ba61d4c20cb1c96fe957167a4aea41e1a7c9c359c103bd637af6c4f8bbb2f174",
+      "size": 17559
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ssc_native_r11.py",
+      "sha256": "180b638d4e4e34cba94db84a6b36dea1969ef5fa49980eeb1d75f2d5c3d0aae1",
+      "size": 16895
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ssc_r8.py",
+      "sha256": "78f9a91b0df30d8601cb203aa0911927608c6c38cfd6c8bbfdf9a966c322521e",
+      "size": 12191
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/integration/ssc_r9.py",
+      "sha256": "236c36614292c77c5b7702ada157cb551397287d436c50953cf4db02e3805061",
+      "size": 6831
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/__init__.py",
+      "sha256": "f34e4b1ca2ef7b75a015becf062792da56d28f3bfbd754b0cbdf697465b84560",
+      "size": 56
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_authority_r10.c",
+      "sha256": "50ed7bd06fbf935f12852b4edb7da3035c0fa098f9ea433edea7f63b2b430ae1",
+      "size": 2808
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_authority_r10.py",
+      "sha256": "66a4eabe89ac0e365bab9ad5f66ab5e6d94c39f429c620535cb7957e6a3415e1",
+      "size": 3797
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_halt_r13.c",
+      "sha256": "1f48795d1d3e5a185e507af65d80d748a29f90687297fceff8a28eb03ca996fe",
+      "size": 1078
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_native.py",
+      "sha256": "3630a7661b7f1cdcab8245c6a4c2491f7f4a5ead955ea8cc0f31b2d8c56ee34a",
+      "size": 7013
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_native_r0.c",
+      "sha256": "fae15274bed7cd95e012e09835ffb70cd309723cbbb5ef551c5a2431f2a160f7",
+      "size": 6743
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_read_r7.py",
+      "sha256": "24df1e6747d9af78f165e864d54f70169fc32746625146149dd492cc1048a05b",
+      "size": 5964
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_recur_r14.c",
+      "sha256": "470643d23ab7ce17f83d86536bbff63153d85a5bcdeea3fefd99acf86fd1e723",
+      "size": 6126
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_selector_r12.c",
+      "sha256": "547f86eeb4b58975922558f7a07927d683f5d151c159236e60dd20790030dde6",
+      "size": 972
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_ssc_reduce_r8.c",
+      "sha256": "6e69c24882888b77d62f46ca09f43b3b36fe5c8d99ac656070efe23ae4d1191f",
+      "size": 1662
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_state_machine_r11.c",
+      "sha256": "f3293ff25742f0567f18bbbf571b02ebba33812ed3788074cd6f37db59ffdbe3",
+      "size": 17920
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_state_r9.c",
+      "sha256": "0bcd64efa0e7ca6131cb71e7a5135dcced3ed6546122bf3e4f39918895fb5d5e",
+      "size": 2988
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ersa_state_r9.py",
+      "sha256": "31109421500ce8d761e82dc95014c62b75aa9d8a08ee3e0e7217b8e61a901df5",
+      "size": 5193
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/native/ssc_compat_r8.py",
+      "sha256": "0039cf1a065b9a0d4d98a6b9ea28e8c1f7532bee4f5405162eb0970cc2fde90b",
+      "size": 2043
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/__init__.py",
+      "sha256": "322f195793080aa8ef710b7fdad48686a766da4baa0f25282442157958fa55d2",
+      "size": 458
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/adapter_ssc.py",
+      "sha256": "c5b7c06c1454b5de80628e49e3cf0c9dd88e06881d340aefbc81b3c15c1f55b8",
+      "size": 3032
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/bank_ersa.py",
+      "sha256": "b5c60369f3985188f6fbd67a1202f474a909e1c34c2107e7c4d49c26d6dff301",
+      "size": 60101
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/contract_ersa.py",
+      "sha256": "5afa1abba0a92e38ea36d62c720be448b45b3de67802e8ee4075f255fd81b502",
+      "size": 10625
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/fixtures_ersa.py",
+      "sha256": "aa3596f9ae369825d8dabf441cd98aeaec7e124f5577fca407b75d6d62ea2b3a",
+      "size": 17270
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/fixtures_r2.py",
+      "sha256": "d0fcb5e0c46f8dbdfde4b3b5dce908a10e03bc76bcb2b10d6f1a9d11a2fbf329",
+      "size": 9707
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/geometry_ersa.py",
+      "sha256": "4ccee665b33c18f869ab31c682115dc750514647018eaaf65eb3c2690fa246d2",
+      "size": 7597
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/harness_ersa.py",
+      "sha256": "fa6a7981df896718d680a4adffe52463d2d85cc43596dee2d13ac84776be7915",
+      "size": 8453
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/head_ersa.py",
+      "sha256": "0e8f2758936ce4edf4a2910c86e12bbdf3278f0456c8ca116cbfec701b3f4e08",
+      "size": 3903
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/oracle_ersa.py",
+      "sha256": "9c61d2418691e1225c4679fee53040c41df45908c94cc630ae875b7413fb0402",
+      "size": 7249
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/src/elpis_ersa/retention_ersa.py",
+      "sha256": "8e3a8b45d4bca8353770d2564f0050bb2c7ed8608f20a86a65d889cf0ecbbc3b",
+      "size": 6498
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/ssc_predecessor/src/elpis_ssc/contract_r0.py",
+      "sha256": "8a905676e73226e0c2151130200f1819ced8d9fa6f837a53982c2a2014b406f0",
+      "size": 10040
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/ssc_predecessor/src/elpis_ssc/fixtures_r0.py",
+      "sha256": "65ad060410398abcf6df397617aa2e0bfaabe9bfdd9c92c549e69038e41ac56b",
+      "size": 13505
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/ssc_predecessor/src/elpis_ssc/geometry_r0.py",
+      "sha256": "56d76bd9c5eeaefd5340eece4b235c25cd7fac944250d6e15f4b855a13cabbed",
+      "size": 7979
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/ssc_predecessor/src/elpis_ssc/harness_r0.py",
+      "sha256": "70b58385e2f25926178233f5695cfafa815bd8e6ca96769b52afe59a1ed731a3",
+      "size": 3789
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/ssc_predecessor/src/elpis_ssc/mutants_r0.py",
+      "sha256": "71da2eff159b9098879dcb903c7e7df2a10be5576d4f6471a6eb1096c999dc5e",
+      "size": 7463
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/ssc_predecessor/src/elpis_ssc/oracle_r0.py",
+      "sha256": "bc58ef2dd8c85d802b3d836560e4625db18921db8dfea469d9d1e54501ced8d5",
+      "size": 20117
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/ssc_predecessor/src/elpis_ssc/reference_backend.py",
+      "sha256": "35ef5cf91bfff467224db9ccb1b849171cd0deb792e414ea8cdf5c8fc07ac879",
+      "size": 22857
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_qualification_r0.py",
+      "sha256": "4892fe12c0af43053a6dd79f161a66d23f788846e62705db4468164511bdfbc4",
+      "size": 14955
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r10_native_authority.py",
+      "sha256": "c3a118cdc78171a3703653ca2de547dc4237a35dc7238e33287a6264f88bc595",
+      "size": 9241
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r11_native_state_machine.py",
+      "sha256": "e89b3d07a1fc22e8841cfed79f142339c6e70c1813a02d153a5ae6c3479b3b41",
+      "size": 9597
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r12_learned_recurrent_probe.py",
+      "sha256": "10d6cf09c3d7d6479f939e773dedb1eac6682e9a79dded3197268f71ebaad7c6",
+      "size": 6757
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r13_trainable_halt.py",
+      "sha256": "9f25240f1e7e6b35fd472ed2ce456cf2f54cd135b4b73e1d52700154dbb2b3c8",
+      "size": 6040
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r14_native_recurrent_operator.py",
+      "sha256": "34f56b54787988791e9f7811468b2505be59070571f62d904f447c997c130078",
+      "size": 8849
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r15_gdn_rule.py",
+      "sha256": "8ee1182866d6441cb744176278aaf6a88031759cdf539d52f1a9a4fe786af083",
+      "size": 3342
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r16_trained_gdn.py",
+      "sha256": "9900ec5a39066bbbd4a6985c59a12284252ce76378c0aac019c9be71d3cc2f7d",
+      "size": 4649
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r17_cpu_layer.py",
+      "sha256": "24e9a92cc446819a360f66944c57eb4fb3dc8ba03f8bf035b4fbc1860aada10f",
+      "size": 6773
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r18_trainable_layer.py",
+      "sha256": "fe8dd95b1f762c3329bf75d848df6328de9189ee6ae57b4f92230b0514e2f341",
+      "size": 12149
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r1_attack_integrity.py",
+      "sha256": "e864bd602bc756d22679331dd69447a5383634f36abce13fb978f25ed744e853",
+      "size": 13387
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r2_protocol_attack.py",
+      "sha256": "5e2685ed4ca7f0cf33706cb2cf49da377e28383116f8415adeb0c908dc9ba73c",
+      "size": 6106
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r3_independent_break.py",
+      "sha256": "ec771ce5bd5ed73c0a9afbabaa83f3d808804a69c5fd1adfaeaf61e2002d643f",
+      "size": 12909
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r4_retrieval_semantics.py",
+      "sha256": "194b108d61057d19358e3e6eaa7d252bad7f2776191e1c1f649ad71c0a7ad36c",
+      "size": 8942
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r5_complete_and_scoped.py",
+      "sha256": "97e68c0f1a26ec3a6f4c145afc78885df1598e9f5293e0504e420a63d5de6a33",
+      "size": 9827
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r6_native_operator.py",
+      "sha256": "d39e795097aa559b691454ef13c4154cee32e2bd95c9309695bbd9228ea37e02",
+      "size": 5636
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r7_native_read_path.py",
+      "sha256": "1944085dfeae15a5324e470489bd27f68b92063de7f68927b8f41d7e5556fe67",
+      "size": 7795
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r8_ssc_real_contract.py",
+      "sha256": "f851dd007536301c8c420aa81f597cfe1810a9b87b0e3bce2d458731cae215f0",
+      "size": 14354
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tests/test_r9_ssc_guard_and_native_state.py",
+      "sha256": "adfd31ed9192b4877f07feb8aa76a10d92ae3f4bd6414a05a21855e03969ded7",
+      "size": 10508
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/collect_ssc_predecessor.py",
+      "sha256": "ddefa7fd03f12cf3086a3819047d07dae4119e12268463b76bc6330be5d5d7b2",
+      "size": 3014
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r10.py",
+      "sha256": "dad55027b1a6539c1958a21f5018947c99b2ea448461ccb2473432cd26020454",
+      "size": 6858
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r11.py",
+      "sha256": "1c0389e0702f9633b6d50d5bb6e0811ff20b2dd4f0591bc2a69474555aaf0242",
+      "size": 7278
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r12.py",
+      "sha256": "899a8e14e44144a570587f299efaf78ed663b5631d333ef0eb621152aa3e5f5a",
+      "size": 6164
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r13.py",
+      "sha256": "800457db0a467c9e74fde3d596590b12bcecf56145e085d3623fc41ee2a3cbc9",
+      "size": 5785
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r14.py",
+      "sha256": "4d0d0df5e97bd19b38d10899fcbe4fbf2b9c4bf1d3f87d3533d4fb7b359f963c",
+      "size": 6982
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r15.py",
+      "sha256": "3fd2eabe2a0f8bfe04234c4548ff803cb1c739b3707395eb02e443cc3b30a4f6",
+      "size": 5835
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r16.py",
+      "sha256": "821a4aade534854d19286ef05f8aa5be6376a0a53ab0d99dc240b0d4d40b6c7f",
+      "size": 5616
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r17.py",
+      "sha256": "ea8c189058ea9b1d86f75c23645679fc7cfd523da033be5ea5de90166a7aa693",
+      "size": 6702
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r17_r1.py",
+      "sha256": "074fd93cea424ae7015b590faf71afb93fa9a47c48f25c1ef633ec8362ce7d7a",
+      "size": 6958
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r18.py",
+      "sha256": "ad8b36ddb88815db62ba2b00ece9bfc6cb515811a78effe61aa28f34a7efcfa7",
+      "size": 8546
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r4.py",
+      "sha256": "a5d51587ea6d0ef926c41ed55bd33e5bb39ee3e420e1f4b103f57b93649fabed",
+      "size": 6730
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r5.py",
+      "sha256": "b6c5be706205b41400a4f21e9b0e456be0148a1c54fe2352bad476499c96f782",
+      "size": 7502
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r6.py",
+      "sha256": "0619efe5ce744873408e16f9e2a987c8ee6d5a5d804df732e7855d786d645b97",
+      "size": 6673
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r7.py",
+      "sha256": "87357f0657935012031d1d9dfcaf5d2d1ee07e6819993b967b462a5c422bc12a",
+      "size": 6750
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r8.py",
+      "sha256": "9948950b8c053291bfb955cb053acb7090a5190db4fbea4a286e79d847e7d26c",
+      "size": 7261
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/qualify_ersa_r9.py",
+      "sha256": "afdcd2db2320dc1b51ad4890ab477abd26e4eca31f69f48c4c780384d50fa2d4",
+      "size": 6850
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r11_native_benchmark.py",
+      "sha256": "ab18b3557a9df4c20b884a31852bf367cae10d79928317b8f7a89041354e8766",
+      "size": 2152
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r12_science.py",
+      "sha256": "6bb183d72d36406be7ee039178023cabcbf48769c9878966ebd796b5411fcef1",
+      "size": 4244
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r13_science.py",
+      "sha256": "1d35740fc99b39105ece78d0117463a77afedcd51e8fa057e72b4aa6496f580b",
+      "size": 4198
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r14_science.py",
+      "sha256": "9e11180c3060a86a74aa1c8c26404ecc2f7d403a34998de9e095c0e3bbcb0e34",
+      "size": 6441
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r15_science.py",
+      "sha256": "ccdc1262830002982cdb899aebf0fa6658279956aadfc74a6485a58c0589c98b",
+      "size": 7192
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r16_science.py",
+      "sha256": "33f7f6a39f4e2df3422a241d779e7796c5a6fd91fcee868e17023e67e45d07fc",
+      "size": 5493
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r17_readonly_state_probe.py",
+      "sha256": "5be99051d973fe39d6c410e4526ce5470bdcbf1b03afed5de6d6bc91753e251b",
+      "size": 1579
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r17_science.py",
+      "sha256": "2238df6d1cd5e52704ceb8b4ce921dbe4870e3b4663bf451d8f0749939161785",
+      "size": 4465
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r18_science.py",
+      "sha256": "8322064c4b534147c8be88eae4070f85d3222714ada4f79bad4da9a2f9f2e5b2",
+      "size": 7845
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r3_capacity_stress.py",
+      "sha256": "70c5b3e03385722d66b1f7d3121f1bbac256d32f0762fd5a4d1944e1f3b09d9e",
+      "size": 2158
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r3_retrieval_check.py",
+      "sha256": "bd17b99bd190764aeeaf45dddcf43dab89c177a1c6ac9da542f6675dedbe0656",
+      "size": 1698
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r4_retrieval_check.py",
+      "sha256": "2b11bd97f31429a31f34006d15c56ef5507e25d3ee855cd2c724e6a7228d47cd",
+      "size": 2426
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r5_performance.py",
+      "sha256": "ba13b3365ad3013797e1ff34d8eff9067c20933c33783b809cdfd5028c5544f2",
+      "size": 1738
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r5_retrieval_check.py",
+      "sha256": "2f5cc5591e0904a4f9901973ed9e1712a3ba66aceb99434d1a9e459098f053f6",
+      "size": 1795
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r6_native_bench.py",
+      "sha256": "00793fd9c053276f1fac9eebffe84f323a2874d9361053e0e22ed14a1e66d5d0",
+      "size": 1712
+    },
+    {
+      "path": "releases/R18_TRAINABLE_TOKEN_MIXER_NATIVE_READ_BRIDGE_R0/tools/r7_end_to_end_bench.py",
+      "sha256": "2dab3b76a06080b16e696feaa17153e1dce70ba41568663a8aa34152318b3ab8",
+      "size": 3455
+    },
+    {
+      "path": "worktrees/R35_DONOR_BACKED_SLOT_WRITE_READ_R0/README_R35.txt",
+      "sha256": "0ef1d06601078e90e6b6a7fc071ac021b4e9c2bad3758b53cc77f8dd326836c5",
+      "size": 1427
+    },
+    {
+      "path": "worktrees/R35_DONOR_BACKED_SLOT_WRITE_READ_R0/install_r35.sh",
+      "sha256": "b9b382ca32d6d4f3957935d1a5e2becd5ea20b90bc3654431159fba1f87b57c4",
+      "size": 955
+    },
+    {
+      "path": "worktrees/R35_DONOR_BACKED_SLOT_WRITE_READ_R0/qualify_r35.py",
+      "sha256": "da1918d1588bb3f9acb2f16e14c9d0c054c3756714d950e6dad2b8589a11c706",
+      "size": 8797
+    },
+    {
+      "path": "worktrees/R35_DONOR_BACKED_SLOT_WRITE_READ_R0/r35/__init__.py",
+      "sha256": "e73555beb9bd4e4f959d3aa47c93e1505378951a369a9855d53434b9b7d0bd18",
+      "size": 81
+    },
+    {
+      "path": "worktrees/R35_DONOR_BACKED_SLOT_WRITE_READ_R0/r35/slot_write.py",
+      "sha256": "585e5e5e3930404d46ba7bb477e83bf8b2bfa845cb144a5edf64745d321f6dbc",
+      "size": 5697
+    },
+    {
+      "path": "worktrees/R35_DONOR_BACKED_SLOT_WRITE_READ_R0/science_r35.py",
+      "sha256": "7f4231fa094d2dbb6004ad18d3dbafbbac38865494beddb3b6704ec65f3df2f6",
+      "size": 1530
+    },
+    {
+      "path": "worktrees/R35_DONOR_BACKED_SLOT_WRITE_READ_R0/tests/test_r35_donor_parity.py",
+      "sha256": "5b2ccfd83137b3bfd2e79b3e948a071d57bd85cedd19881d2fab492be2459527",
+      "size": 2353
+    },
+    {
+      "path": "worktrees/R35_DONOR_BACKED_SLOT_WRITE_READ_R0/tests/test_r35_slot_write.py",
+      "sha256": "8e9662ef45a70f6ad15bc16846d4ac0ca1123ff7105ca4f01220961adde76a71",
+      "size": 3198
+    },
+    {
+      "path": "worktrees/R35_DONOR_BACKED_SLOT_WRITE_READ_R0/third_party/fla_gsa/LICENSE.txt",
+      "sha256": "163f84551d6f615ec349daf02ae944e3f08ba62b88099c89a7e357291bd208a5",
+      "size": 1097
+    },
+    {
+      "path": "worktrees/R35_DONOR_BACKED_SLOT_WRITE_READ_R0/third_party/fla_gsa/naive.py",
+      "sha256": "0164ea952967753ea0dae7f18ac1dc442a2fd6fcdd03c0066a8750c2f764a304",
+      "size": 2159
+    },
+    {
+      "path": "worktrees/R36_NATIVE_GSA_SLOT_STATE_PARITY_R0/README_R36.txt",
+      "sha256": "56b58df5185224ba5669f727aba355d61952d629d618069f9e025edb57f8c572",
+      "size": 1806
+    },
+    {
+      "path": "worktrees/R36_NATIVE_GSA_SLOT_STATE_PARITY_R0/install_r36.sh",
+      "sha256": "a9368b9ea7c954cf65bae4e18f72d3b961b4f4fddd3325109520e532ff0316e5",
+      "size": 969
+    },
+    {
+      "path": "worktrees/R36_NATIVE_GSA_SLOT_STATE_PARITY_R0/native/ersa_slot_r36.c",
+      "sha256": "ab9b7dbfc16988160ed04639f31733dc2aadae059828698527e3ed8f628b6d97",
+      "size": 6279
+    },
+    {
+      "path": "worktrees/R36_NATIVE_GSA_SLOT_STATE_PARITY_R0/qualify_r36.py",
+      "sha256": "c1c45b633042f71cc2527e2feda76ccdb96c1224a7fdc2066cf140683a8f794d",
+      "size": 8834
+    },
+    {
+      "path": "worktrees/R36_NATIVE_GSA_SLOT_STATE_PARITY_R0/r36/__init__.py",
+      "sha256": "d6e2d5aca2deef0b388b220de93933e67fc99c63f4e5c521a3d2fb427ca707b3",
+      "size": 80
+    },
+    {
+      "path": "worktrees/R36_NATIVE_GSA_SLOT_STATE_PARITY_R0/r36/native_bridge.py",
+      "sha256": "a0e92a5fef9e0ddaf8f63f22fe811661400b6f0db8b9b8f71b6d354c6c724563",
+      "size": 6664
+    },
+    {
+      "path": "worktrees/R36_NATIVE_GSA_SLOT_STATE_PARITY_R0/science_r36.py",
+      "sha256": "bbf5106360d8dd4c61aa739b0e465a5b3dd836f21dac17a1df5a63b520104b75",
+      "size": 1046
+    },
+    {
+      "path": "worktrees/R36_NATIVE_GSA_SLOT_STATE_PARITY_R0/tests/test_r36_native_slot.py",
+      "sha256": "6c3f6c70028691de8f3aa706e1257972cf4024caaa4b794fd1ec1438561d224f",
+      "size": 7751
+    }
+  ],
+  "purpose": "SOURCE_REVIEW_ONLY_NO_GITHUB_MUTATION",
+  "root": "/mnt/primesauce/RALPH/DEV/Hermes/ERSA_DEV",
+  "selected_worktrees": [
+    "R35_DONOR_BACKED_SLOT_WRITE_READ_R0",
+    "R36_NATIVE_GSA_SLOT_STATE_PARITY_R0"
+  ]
+}
