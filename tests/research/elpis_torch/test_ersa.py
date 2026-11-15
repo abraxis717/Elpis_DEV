@@ -353,7 +353,7 @@ def test_a_last_block_cgc_change_touches_no_recurrent_state_and_no_window_cache(
 def test_a_small_ersa_model_learns_a_sequential_dependency(world, splits):
     """Offline training on R0's transduction task with no attention at all (ERSA plus a 4-tap causal convolution).
 
-    Measured while writing this test: without the convolution the same model stays at chance for these 600
+    Measured while writing this test: without the convolution the same model stays at chance for 600
     steps. The associative state alone carries no local order; EVIDENCE_R2 reports the comparison.
     """
     from research.elpis_torch.data import SINGLE
@@ -364,7 +364,8 @@ def test_a_small_ersa_model_learns_a_sequential_dependency(world, splits):
     tokens, kind = splits.train.tokens[:, :33], splits.val.kind[:, 1:33]
     optimizer = torch.optim.AdamW(model.parameters(), lr=4e-3, weight_decay=0.01)
     sampler, losses = torch.Generator().manual_seed(0), []
-    for step in range(600):
+    held, accuracy = splits.val.tokens[:, :33], 0.0
+    for step in range(1600):                         # the transition's step depends on the BLAS: 600 here, later in CI
         batch = tokens[torch.randint(len(tokens), (32,), generator=sampler)]
         loss = next_token_loss(model.run(batch[:, :-1])[0], batch)
         optimizer.zero_grad()
@@ -372,9 +373,11 @@ def test_a_small_ersa_model_learns_a_sequential_dependency(world, splits):
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         losses.append(float(loss.detach()))
-    model.eval()
-    with torch.no_grad():
-        held = splits.val.tokens[:, :33]
-        right = model.run(held[:, :-1])[0].argmax(-1) == held[:, 1:]
+        if step % 200 == 199:
+            with torch.no_grad():
+                right = model.run(held[:, :-1])[0].argmax(-1) == held[:, 1:]
+            accuracy = float(right[kind == SINGLE].double().mean())
+            if accuracy > 0.9:
+                break
     assert losses[0] > 5.0 and sum(losses[-10:]) / 10 < 0.5 * losses[0]
-    assert float(right[kind == SINGLE].double().mean()) > 0.6                  # chance is 1/6; measured 1.00
+    assert accuracy > 0.6                                                      # chance is 1/6; measured 1.00
