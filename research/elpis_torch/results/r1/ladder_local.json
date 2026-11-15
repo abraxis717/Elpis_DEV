@@ -1,0 +1,1575 @@
+{
+ "checkpoint": {
+  "history": [
+   {
+    "held_out": {
+     "assoc": {
+      "accuracy": 0.5171503957783641,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.6462093862815884,
+        "n": 277
+       },
+       "64..inf": {
+        "accuracy": 0.16666666666666666,
+        "n": 102
+       }
+      }
+     },
+     "direct": {
+      "accuracy": 0.5021337126600285,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.6518046709129511,
+        "n": 471
+       },
+       "64..inf": {
+        "accuracy": 0.19827586206896552,
+        "n": 232
+       }
+      }
+     },
+     "hop1": {
+      "accuracy": 0.210727969348659,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.1949685534591195,
+        "n": 159
+       },
+       "64..inf": {
+        "accuracy": 0.23529411764705882,
+        "n": 102
+       }
+      }
+     },
+     "hop2": {
+      "accuracy": 0.47126436781609193,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.673202614379085,
+        "n": 153
+       },
+       "64..inf": {
+        "accuracy": 0.18518518518518517,
+        "n": 108
+       }
+      }
+     }
+    },
+    "loss": 1.7965123653411865,
+    "seconds": 118.49224089100016,
+    "step": 250
+   },
+   {
+    "held_out": {
+     "assoc": {
+      "accuracy": 0.8111702127659575,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.992619926199262,
+        "n": 271
+       },
+       "64..inf": {
+        "accuracy": 0.34285714285714286,
+        "n": 105
+       }
+      }
+     },
+     "direct": {
+      "accuracy": 0.7968970380818053,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.984,
+        "n": 500
+       },
+       "64..inf": {
+        "accuracy": 0.3492822966507177,
+        "n": 209
+       }
+      }
+     },
+     "hop1": {
+      "accuracy": 0.7521367521367521,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.9791666666666666,
+        "n": 144
+       },
+       "64..inf": {
+        "accuracy": 0.3888888888888889,
+        "n": 90
+       }
+      }
+     },
+     "hop2": {
+      "accuracy": 0.7735042735042735,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.9928571428571429,
+        "n": 140
+       },
+       "64..inf": {
+        "accuracy": 0.44680851063829785,
+        "n": 94
+       }
+      }
+     }
+    },
+    "loss": 0.9470526576042175,
+    "seconds": 233.7862676110003,
+    "step": 500
+   },
+   {
+    "held_out": {
+     "assoc": {
+      "accuracy": 0.80306905370844,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.9927536231884058,
+        "n": 276
+       },
+       "64..inf": {
+        "accuracy": 0.34782608695652173,
+        "n": 115
+       }
+      }
+     },
+     "direct": {
+      "accuracy": 0.7911227154046997,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.9962049335863378,
+        "n": 527
+       },
+       "64..inf": {
+        "accuracy": 0.3389121338912134,
+        "n": 239
+       }
+      }
+     },
+     "hop1": {
+      "accuracy": 0.6589861751152074,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 112
+       },
+       "64..inf": {
+        "accuracy": 0.29523809523809524,
+        "n": 105
+       }
+      }
+     },
+     "hop2": {
+      "accuracy": 0.7603686635944701,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.9829059829059829,
+        "n": 117
+       },
+       "64..inf": {
+        "accuracy": 0.5,
+        "n": 100
+       }
+      }
+     }
+    },
+    "loss": 0.8780414462089539,
+    "seconds": 344.309778283,
+    "step": 750
+   },
+   {
+    "held_out": {
+     "assoc": {
+      "accuracy": 0.7918781725888325,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.9963235294117647,
+        "n": 272
+       },
+       "64..inf": {
+        "accuracy": 0.3360655737704918,
+        "n": 122
+       }
+      }
+     },
+     "direct": {
+      "accuracy": 0.8111587982832618,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.9900990099009901,
+        "n": 505
+       },
+       "64..inf": {
+        "accuracy": 0.34536082474226804,
+        "n": 194
+       }
+      }
+     },
+     "hop1": {
+      "accuracy": 0.7137096774193549,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.993103448275862,
+        "n": 145
+       },
+       "64..inf": {
+        "accuracy": 0.32038834951456313,
+        "n": 103
+       }
+      }
+     },
+     "hop2": {
+      "accuracy": 0.7943548387096774,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.9874213836477987,
+        "n": 159
+       },
+       "64..inf": {
+        "accuracy": 0.449438202247191,
+        "n": 89
+       }
+      }
+     }
+    },
+    "loss": 0.8781923055648804,
+    "seconds": 464.7102286410004,
+    "step": 1000
+   },
+   {
+    "held_out": {
+     "assoc": {
+      "accuracy": 0.801980198019802,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.9861111111111112,
+        "n": 288
+       },
+       "64..inf": {
+        "accuracy": 0.3448275862068966,
+        "n": 116
+       }
+      }
+     },
+     "direct": {
+      "accuracy": 0.7971428571428572,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.9938271604938271,
+        "n": 486
+       },
+       "64..inf": {
+        "accuracy": 0.35046728971962615,
+        "n": 214
+       }
+      }
+     },
+     "hop1": {
+      "accuracy": 0.669260700389105,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.993103448275862,
+        "n": 145
+       },
+       "64..inf": {
+        "accuracy": 0.25,
+        "n": 112
+       }
+      }
+     },
+     "hop2": {
+      "accuracy": 0.7782101167315175,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 161
+       },
+       "64..inf": {
+        "accuracy": 0.40625,
+        "n": 96
+       }
+      }
+     }
+    },
+    "loss": 0.802750825881958,
+    "seconds": 577.550974624,
+    "step": 1250
+   },
+   {
+    "held_out": {
+     "assoc": {
+      "accuracy": 0.7675544794188862,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 0.9964539007092199,
+        "n": 282
+       },
+       "64..inf": {
+        "accuracy": 0.2748091603053435,
+        "n": 131
+       }
+      }
+     },
+     "direct": {
+      "accuracy": 0.7566371681415929,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 446
+       },
+       "64..inf": {
+        "accuracy": 0.28879310344827586,
+        "n": 232
+       }
+      }
+     },
+     "hop1": {
+      "accuracy": 0.6832579185520362,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 126
+       },
+       "64..inf": {
+        "accuracy": 0.2631578947368421,
+        "n": 95
+       }
+      }
+     },
+     "hop2": {
+      "accuracy": 0.7873303167420814,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 141
+       },
+       "64..inf": {
+        "accuracy": 0.4125,
+        "n": 80
+       }
+      }
+     }
+    },
+    "loss": 0.7471137642860413,
+    "seconds": 693.7784435450003,
+    "step": 1500
+   },
+   {
+    "held_out": {
+     "assoc": {
+      "accuracy": 0.7969151670951157,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 260
+       },
+       "64..inf": {
+        "accuracy": 0.3875968992248062,
+        "n": 129
+       }
+      }
+     },
+     "direct": {
+      "accuracy": 0.8328767123287671,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 538
+       },
+       "64..inf": {
+        "accuracy": 0.3645833333333333,
+        "n": 192
+       }
+      }
+     },
+     "hop1": {
+      "accuracy": 0.7169811320754716,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 105
+       },
+       "64..inf": {
+        "accuracy": 0.4392523364485981,
+        "n": 107
+       }
+      }
+     },
+     "hop2": {
+      "accuracy": 0.8349056603773585,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 149
+       },
+       "64..inf": {
+        "accuracy": 0.4444444444444444,
+        "n": 63
+       }
+      }
+     }
+    },
+    "loss": 0.7801467776298523,
+    "seconds": 813.67415274,
+    "step": 1750
+   },
+   {
+    "held_out": {
+     "assoc": {
+      "accuracy": 0.8374384236453202,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 283
+       },
+       "64..inf": {
+        "accuracy": 0.4634146341463415,
+        "n": 123
+       }
+      }
+     },
+     "direct": {
+      "accuracy": 0.8091822094691535,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 486
+       },
+       "64..inf": {
+        "accuracy": 0.3696682464454976,
+        "n": 211
+       }
+      }
+     },
+     "hop1": {
+      "accuracy": 0.7540983606557377,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 142
+       },
+       "64..inf": {
+        "accuracy": 0.4117647058823529,
+        "n": 102
+       }
+      }
+     },
+     "hop2": {
+      "accuracy": 0.8483606557377049,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 158
+       },
+       "64..inf": {
+        "accuracy": 0.5697674418604651,
+        "n": 86
+       }
+      }
+     }
+    },
+    "loss": 0.7902781963348389,
+    "seconds": 945.3415951970001,
+    "step": 2000
+   },
+   {
+    "held_out": {
+     "assoc": {
+      "accuracy": 0.8117913832199547,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 309
+       },
+       "64..inf": {
+        "accuracy": 0.3712121212121212,
+        "n": 132
+       }
+      }
+     },
+     "direct": {
+      "accuracy": 0.776034236804565,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 494
+       },
+       "64..inf": {
+        "accuracy": 0.24154589371980675,
+        "n": 207
+       }
+      }
+     },
+     "hop1": {
+      "accuracy": 0.7489177489177489,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 126
+       },
+       "64..inf": {
+        "accuracy": 0.44761904761904764,
+        "n": 105
+       }
+      }
+     },
+     "hop2": {
+      "accuracy": 0.7662337662337663,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 134
+       },
+       "64..inf": {
+        "accuracy": 0.44329896907216493,
+        "n": 97
+       }
+      }
+     }
+    },
+    "loss": 0.8205007314682007,
+    "seconds": 1071.169195163,
+    "step": 2250
+   },
+   {
+    "held_out": {
+     "assoc": {
+      "accuracy": 0.7903225806451613,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 248
+       },
+       "64..inf": {
+        "accuracy": 0.3709677419354839,
+        "n": 124
+       }
+      }
+     },
+     "direct": {
+      "accuracy": 0.8345428156748912,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 494
+       },
+       "64..inf": {
+        "accuracy": 0.4153846153846154,
+        "n": 195
+       }
+      }
+     },
+     "hop1": {
+      "accuracy": 0.75,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 115
+       },
+       "64..inf": {
+        "accuracy": 0.4536082474226804,
+        "n": 97
+       }
+      }
+     },
+     "hop2": {
+      "accuracy": 0.8726415094339622,
+      "by_distance": {
+       "0..64": {
+        "accuracy": 1.0,
+        "n": 133
+       },
+       "64..inf": {
+        "accuracy": 0.6582278481012658,
+        "n": 79
+       }
+      }
+     }
+    },
+    "loss": 0.7512233257293701,
+    "seconds": 1200.8733001560004,
+    "step": 2500
+   }
+  ],
+  "parameter_digest": "100e44ba71ee61b46c35cae35208235e310aff2c686c9390b6be3a9fafacbc50",
+  "parameters": 75520,
+  "phase": "ELPIS_TORCH_SCROLLING_CONTEXT_R1",
+  "seed": 0,
+  "status": "COMPLETED",
+  "steps": 2500,
+  "topology": "local",
+  "train_seconds": 1200.876679164,
+  "training": {
+   "batch": 24,
+   "events": 84,
+   "grad_clip": 1.0,
+   "length": 384,
+   "lr": 0.003,
+   "warmup": 100,
+   "weight_decay": 0.01
+  }
+ },
+ "environment": {
+  "cgc_upstream_commit": "0895c2bc732a377b5a5f0d063ae13cc72684ec9a",
+  "machine": "x86_64",
+  "python": "3.12.3",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "horizon": 1048576,
+ "phase": "ELPIS_TORCH_SCROLLING_CONTEXT_R1",
+ "stages": [
+  {
+   "beyond_horizon": false,
+   "coordinates": {
+    "blocks_resident": 512,
+    "evicted_blocks": 0,
+    "oldest_addressable_token": 0,
+    "oldest_reachable_position": 0,
+    "oldest_resident_block": 0,
+    "position": 8192,
+    "tokens_seen": 8192,
+    "window": [
+     8128,
+     8192
+    ]
+   },
+   "peak_rss_bytes": 269164544,
+   "probes": {
+    "assoc": {
+     "accuracy": 0.037037037037037035,
+     "by_distance": {
+      "512..8192": {
+       "accuracy": 0.038461538461538464,
+       "n": 26
+      },
+      "64..512": {
+       "accuracy": 0.0,
+       "n": 1
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.14285714285714285,
+      "n": 7
+     },
+     "loss": 3.4612364592375577,
+     "n": 27,
+     "uncontradicted": {
+      "accuracy": 0.0,
+      "n": 20
+     }
+    },
+    "direct": {
+     "accuracy": 0.10416666666666667,
+     "by_distance": {
+      "512..8192": {
+       "accuracy": 0.11764705882352941,
+       "n": 34
+      },
+      "64..512": {
+       "accuracy": 0.07142857142857142,
+       "n": 14
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.17647058823529413,
+      "n": 17
+     },
+     "loss": 2.486197844147682,
+     "n": 48,
+     "uncontradicted": {
+      "accuracy": 0.06451612903225806,
+      "n": 31
+     }
+    },
+    "hop1": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "512..8192": {
+       "accuracy": 0.0,
+       "n": 15
+      },
+      "64..512": {
+       "accuracy": 0.0,
+       "n": 3
+      }
+     },
+     "chance": 0.125,
+     "loss": 2.3563605546951294,
+     "n": 18
+    },
+    "hop2": {
+     "accuracy": 0.05555555555555555,
+     "by_distance": {
+      "512..8192": {
+       "accuracy": 0.0,
+       "n": 15
+      },
+      "64..512": {
+       "accuracy": 0.3333333333333333,
+       "n": 3
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.08333333333333333,
+      "n": 12
+     },
+     "loss": 3.5526934266090393,
+     "n": 18,
+     "uncontradicted": {
+      "accuracy": 0.0,
+      "n": 6
+     }
+    },
+    "span": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "512..8192": {
+       "accuracy": 0.0,
+       "n": 8
+      }
+     },
+     "chance": 0.125,
+     "loss": 11.953631520271301,
+     "n": 8
+    }
+   },
+   "seconds": 0.5179006940002182,
+   "state_bytes": {
+    "sinks": 8192,
+    "token_history": 16777472,
+    "total": 16916736,
+    "window": 131072
+   },
+   "state_bytes_constant": true,
+   "state_bytes_formula": {
+    "compressed": 0,
+    "open_block": 0,
+    "sinks": 8192,
+    "token_history": 16777472,
+    "total": 16916736,
+    "window": 131072
+   },
+   "status": "MEASURED",
+   "streams": 4,
+   "tokens": 8192,
+   "tokens_per_second": 63270.81693384677
+  },
+  {
+   "beyond_horizon": false,
+   "coordinates": {
+    "blocks_resident": 2048,
+    "evicted_blocks": 0,
+    "oldest_addressable_token": 0,
+    "oldest_reachable_position": 0,
+    "oldest_resident_block": 0,
+    "position": 32768,
+    "tokens_seen": 32768,
+    "window": [
+     32704,
+     32768
+    ]
+   },
+   "peak_rss_bytes": 272420864,
+   "probes": {
+    "assoc": {
+     "accuracy": 0.17142857142857143,
+     "by_distance": {
+      "512..8192": {
+       "accuracy": 0.21052631578947367,
+       "n": 19
+      },
+      "64..512": {
+       "accuracy": 0.3333333333333333,
+       "n": 3
+      },
+      "8192..32768": {
+       "accuracy": 0.07692307692307693,
+       "n": 13
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.15789473684210525,
+      "n": 19
+     },
+     "loss": 3.6545168672289168,
+     "n": 35,
+     "uncontradicted": {
+      "accuracy": 0.1875,
+      "n": 16
+     }
+    },
+    "direct": {
+     "accuracy": 0.12280701754385964,
+     "by_distance": {
+      "512..8192": {
+       "accuracy": 0.10810810810810811,
+       "n": 37
+      },
+      "64..512": {
+       "accuracy": 0.0,
+       "n": 2
+      },
+      "8192..32768": {
+       "accuracy": 0.16666666666666666,
+       "n": 18
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.18181818181818182,
+      "n": 22
+     },
+     "loss": 2.5821006298065186,
+     "n": 57,
+     "uncontradicted": {
+      "accuracy": 0.08571428571428572,
+      "n": 35
+     }
+    },
+    "hop1": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "512..8192": {
+       "accuracy": 0.0,
+       "n": 1
+      },
+      "64..512": {
+       "accuracy": 0.0,
+       "n": 1
+      },
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 3
+      }
+     },
+     "chance": 0.125,
+     "loss": 2.297975015640259,
+     "n": 5
+    },
+    "hop2": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "512..8192": {
+       "accuracy": 0.0,
+       "n": 2
+      },
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 3
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.0,
+      "n": 2
+     },
+     "loss": 2.984543704986572,
+     "n": 5,
+     "uncontradicted": {
+      "accuracy": 0.0,
+      "n": 3
+     }
+    },
+    "span": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 8
+      }
+     },
+     "chance": 0.125,
+     "loss": 11.722175121307373,
+     "n": 8
+    }
+   },
+   "seconds": 3.3913075079999544,
+   "state_bytes": {
+    "sinks": 8192,
+    "token_history": 16777472,
+    "total": 16916736,
+    "window": 131072
+   },
+   "state_bytes_constant": true,
+   "state_bytes_formula": {
+    "compressed": 0,
+    "open_block": 0,
+    "sinks": 8192,
+    "token_history": 16777472,
+    "total": 16916736,
+    "window": 131072
+   },
+   "status": "MEASURED",
+   "streams": 4,
+   "tokens": 32768,
+   "tokens_per_second": 38649.39988214179
+  },
+  {
+   "beyond_horizon": false,
+   "coordinates": {
+    "blocks_resident": 8192,
+    "evicted_blocks": 0,
+    "oldest_addressable_token": 0,
+    "oldest_reachable_position": 0,
+    "oldest_resident_block": 0,
+    "position": 131072,
+    "tokens_seen": 131072,
+    "window": [
+     131008,
+     131072
+    ]
+   },
+   "peak_rss_bytes": 286838784,
+   "probes": {
+    "assoc": {
+     "accuracy": 0.037037037037037035,
+     "by_distance": {
+      "32768..131072": {
+       "accuracy": 0.0,
+       "n": 7
+      },
+      "512..8192": {
+       "accuracy": 0.0,
+       "n": 4
+      },
+      "8192..32768": {
+       "accuracy": 0.0625,
+       "n": 16
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.09090909090909091,
+      "n": 11
+     },
+     "loss": 4.075485251567982,
+     "n": 27,
+     "uncontradicted": {
+      "accuracy": 0.0,
+      "n": 16
+     }
+    },
+    "direct": {
+     "accuracy": 0.1111111111111111,
+     "by_distance": {
+      "32768..131072": {
+       "accuracy": 0.0625,
+       "n": 16
+      },
+      "512..8192": {
+       "accuracy": 0.09090909090909091,
+       "n": 11
+      },
+      "8192..32768": {
+       "accuracy": 0.14814814814814814,
+       "n": 27
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.10526315789473684,
+      "n": 19
+     },
+     "loss": 2.6721543459980577,
+     "n": 54,
+     "uncontradicted": {
+      "accuracy": 0.11428571428571428,
+      "n": 35
+     }
+    },
+    "hop1": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "32768..131072": {
+       "accuracy": 0.0,
+       "n": 6
+      },
+      "512..8192": {
+       "accuracy": 0.0,
+       "n": 3
+      },
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 6
+      }
+     },
+     "chance": 0.125,
+     "loss": 2.080895455678304,
+     "n": 15
+    },
+    "hop2": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "32768..131072": {
+       "accuracy": 0.0,
+       "n": 4
+      },
+      "512..8192": {
+       "accuracy": 0.0,
+       "n": 5
+      },
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 6
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.0,
+      "n": 12
+     },
+     "loss": 3.847780950864156,
+     "n": 15,
+     "uncontradicted": {
+      "accuracy": 0.0,
+      "n": 3
+     }
+    },
+    "span": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "32768..131072": {
+       "accuracy": 0.0,
+       "n": 8
+      }
+     },
+     "chance": 0.125,
+     "loss": 11.642509698867798,
+     "n": 8
+    }
+   },
+   "seconds": 9.166670447999877,
+   "state_bytes": {
+    "sinks": 8192,
+    "token_history": 16777472,
+    "total": 16916736,
+    "window": 131072
+   },
+   "state_bytes_constant": true,
+   "state_bytes_formula": {
+    "compressed": 0,
+    "open_block": 0,
+    "sinks": 8192,
+    "token_history": 16777472,
+    "total": 16916736,
+    "window": 131072
+   },
+   "status": "MEASURED",
+   "streams": 4,
+   "tokens": 131072,
+   "tokens_per_second": 57195.03095198509
+  },
+  {
+   "beyond_horizon": false,
+   "coordinates": {
+    "blocks_resident": 16384,
+    "evicted_blocks": 0,
+    "oldest_addressable_token": 0,
+    "oldest_reachable_position": 0,
+    "oldest_resident_block": 0,
+    "position": 262144,
+    "tokens_seen": 262144,
+    "window": [
+     262080,
+     262144
+    ]
+   },
+   "peak_rss_bytes": 299945984,
+   "probes": {
+    "assoc": {
+     "accuracy": 0.13513513513513514,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.0,
+       "n": 2
+      },
+      "32768..131072": {
+       "accuracy": 0.14285714285714285,
+       "n": 14
+      },
+      "512..8192": {
+       "accuracy": 0.14285714285714285,
+       "n": 7
+      },
+      "8192..32768": {
+       "accuracy": 0.14285714285714285,
+       "n": 14
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.13333333333333333,
+      "n": 15
+     },
+     "loss": 3.65370522701257,
+     "n": 37,
+     "uncontradicted": {
+      "accuracy": 0.13636363636363635,
+      "n": 22
+     }
+    },
+    "direct": {
+     "accuracy": 0.3023255813953488,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.0,
+       "n": 1
+      },
+      "32768..131072": {
+       "accuracy": 0.30434782608695654,
+       "n": 23
+      },
+      "512..8192": {
+       "accuracy": 0.375,
+       "n": 8
+      },
+      "8192..32768": {
+       "accuracy": 0.2727272727272727,
+       "n": 11
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.15,
+      "n": 20
+     },
+     "loss": 2.0962230396825214,
+     "n": 43,
+     "uncontradicted": {
+      "accuracy": 0.43478260869565216,
+      "n": 23
+     }
+    },
+    "hop1": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.0,
+       "n": 2
+      },
+      "32768..131072": {
+       "accuracy": 0.0,
+       "n": 6
+      },
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 2
+      }
+     },
+     "chance": 0.125,
+     "loss": 2.812781000137329,
+     "n": 10
+    },
+    "hop2": {
+     "accuracy": 0.1,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.0,
+       "n": 1
+      },
+      "32768..131072": {
+       "accuracy": 0.125,
+       "n": 8
+      },
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 1
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.125,
+      "n": 8
+     },
+     "loss": 2.7106083035469055,
+     "n": 10,
+     "uncontradicted": {
+      "accuracy": 0.0,
+      "n": 2
+     }
+    },
+    "span": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.0,
+       "n": 8
+      }
+     },
+     "chance": 0.125,
+     "loss": 11.578685283660889,
+     "n": 8
+    }
+   },
+   "seconds": 17.642876866999814,
+   "state_bytes": {
+    "sinks": 8192,
+    "token_history": 16777472,
+    "total": 16916736,
+    "window": 131072
+   },
+   "state_bytes_constant": true,
+   "state_bytes_formula": {
+    "compressed": 0,
+    "open_block": 0,
+    "sinks": 8192,
+    "token_history": 16777472,
+    "total": 16916736,
+    "window": 131072
+   },
+   "status": "MEASURED",
+   "streams": 4,
+   "tokens": 262144,
+   "tokens_per_second": 59433.39104527295
+  },
+  {
+   "beyond_horizon": false,
+   "coordinates": {
+    "blocks_resident": 65536,
+    "evicted_blocks": 0,
+    "oldest_addressable_token": 0,
+    "oldest_reachable_position": 0,
+    "oldest_resident_block": 0,
+    "position": 1048576,
+    "tokens_seen": 1048576,
+    "window": [
+     1048512,
+     1048576
+    ]
+   },
+   "peak_rss_bytes": 394678272,
+   "probes": {
+    "assoc": {
+     "accuracy": 0.19230769230769232,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.0,
+       "n": 7
+      },
+      "262144..1048576": {
+       "accuracy": 0.2,
+       "n": 10
+      },
+      "32768..131072": {
+       "accuracy": 0.3333333333333333,
+       "n": 6
+      },
+      "512..8192": {
+       "accuracy": 0.0,
+       "n": 2
+      },
+      "8192..32768": {
+       "accuracy": 1.0,
+       "n": 1
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.4166666666666667,
+      "n": 12
+     },
+     "loss": 2.6757806631234975,
+     "n": 26,
+     "uncontradicted": {
+      "accuracy": 0.0,
+      "n": 14
+     }
+    },
+    "direct": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.0,
+       "n": 9
+      },
+      "262144..1048576": {
+       "accuracy": 0.0,
+       "n": 19
+      },
+      "32768..131072": {
+       "accuracy": 0.0,
+       "n": 23
+      },
+      "512..8192": {
+       "accuracy": 0.0,
+       "n": 2
+      },
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 6
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.0,
+      "n": 19
+     },
+     "loss": 2.7614830691935652,
+     "n": 59,
+     "uncontradicted": {
+      "accuracy": 0.0,
+      "n": 40
+     }
+    },
+    "hop1": {
+     "accuracy": 0.08333333333333333,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.0,
+       "n": 3
+      },
+      "262144..1048576": {
+       "accuracy": 0.25,
+       "n": 4
+      },
+      "32768..131072": {
+       "accuracy": 0.0,
+       "n": 4
+      },
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 1
+      }
+     },
+     "chance": 0.125,
+     "loss": 2.254123424490293,
+     "n": 12
+    },
+    "hop2": {
+     "accuracy": 0.08333333333333333,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.0,
+       "n": 4
+      },
+      "262144..1048576": {
+       "accuracy": 0.0,
+       "n": 5
+      },
+      "32768..131072": {
+       "accuracy": 0.5,
+       "n": 2
+      },
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 1
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.25,
+      "n": 4
+     },
+     "loss": 2.7936605662107468,
+     "n": 12,
+     "uncontradicted": {
+      "accuracy": 0.0,
+      "n": 8
+     }
+    },
+    "span": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "262144..1048576": {
+       "accuracy": 0.0,
+       "n": 8
+      }
+     },
+     "chance": 0.125,
+     "loss": 11.738317966461182,
+     "n": 8
+    }
+   },
+   "seconds": 72.11831837,
+   "state_bytes": {
+    "sinks": 8192,
+    "token_history": 16777472,
+    "total": 16916736,
+    "window": 131072
+   },
+   "state_bytes_constant": true,
+   "state_bytes_formula": {
+    "compressed": 0,
+    "open_block": 0,
+    "sinks": 8192,
+    "token_history": 16777472,
+    "total": 16916736,
+    "window": 131072
+   },
+   "status": "MEASURED",
+   "streams": 4,
+   "tokens": 1048576,
+   "tokens_per_second": 58158.64949153833
+  },
+  {
+   "beyond_horizon": true,
+   "coordinates": {
+    "blocks_resident": 65536,
+    "evicted_blocks": 16384,
+    "oldest_addressable_token": 262128,
+    "oldest_reachable_position": 262144,
+    "oldest_resident_block": 16384,
+    "position": 1310720,
+    "tokens_seen": 1310720,
+    "window": [
+     1310656,
+     1310720
+    ]
+   },
+   "peak_rss_bytes": 465350656,
+   "probes": {
+    "assoc": {
+     "accuracy": 0.1111111111111111,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.0,
+       "n": 3
+      },
+      "262144..1048576": {
+       "accuracy": 0.0,
+       "n": 2
+      },
+      "32768..131072": {
+       "accuracy": 0.3333333333333333,
+       "n": 3
+      },
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 1
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.25,
+      "n": 4
+     },
+     "loss": 3.140521936946445,
+     "n": 9,
+     "uncontradicted": {
+      "accuracy": 0.0,
+      "n": 5
+     }
+    },
+    "direct": {
+     "accuracy": 0.20833333333333334,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.2,
+       "n": 5
+      },
+      "262144..1048576": {
+       "accuracy": 0.0,
+       "n": 8
+      },
+      "32768..131072": {
+       "accuracy": 0.4,
+       "n": 10
+      },
+      "8192..32768": {
+       "accuracy": 0.0,
+       "n": 1
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.3333333333333333,
+      "n": 12
+     },
+     "loss": 2.6644745767116547,
+     "n": 24,
+     "uncontradicted": {
+      "accuracy": 0.08333333333333333,
+      "n": 12
+     }
+    },
+    "hop1": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.0,
+       "n": 2
+      },
+      "262144..1048576": {
+       "accuracy": 0.0,
+       "n": 2
+      },
+      "32768..131072": {
+       "accuracy": 0.0,
+       "n": 2
+      }
+     },
+     "chance": 0.125,
+     "loss": 2.083618481953939,
+     "n": 6
+    },
+    "hop2": {
+     "accuracy": 0.3333333333333333,
+     "by_distance": {
+      "131072..262144": {
+       "accuracy": 0.5,
+       "n": 2
+      },
+      "262144..1048576": {
+       "accuracy": 0.3333333333333333,
+       "n": 3
+      },
+      "32768..131072": {
+       "accuracy": 0.0,
+       "n": 1
+      }
+     },
+     "chance": 0.125,
+     "contradicted": {
+      "accuracy": 0.25,
+      "n": 4
+     },
+     "loss": 3.1838310758272805,
+     "n": 6,
+     "uncontradicted": {
+      "accuracy": 0.5,
+      "n": 2
+     }
+    },
+    "span": {
+     "accuracy": 0.0,
+     "by_distance": {
+      "1048576..inf": {
+       "accuracy": 0.0,
+       "n": 4
+      }
+     },
+     "chance": 0.125,
+     "loss": 11.9421546459198,
+     "n": 4
+    }
+   },
+   "seconds": 67.79667512199967,
+   "state_bytes": {
+    "sinks": 4096,
+    "token_history": 8388736,
+    "total": 8458368,
+    "window": 65536
+   },
+   "state_bytes_constant": true,
+   "state_bytes_formula": {
+    "compressed": 0,
+    "open_block": 0,
+    "sinks": 4096,
+    "token_history": 8388736,
+    "total": 8458368,
+    "window": 65536
+   },
+   "status": "MEASURED",
+   "streams": 2,
+   "tokens": 1310720,
+   "tokens_per_second": 38666.20295586378
+  }
+ ],
+ "topology": "local"
+}
