@@ -12,8 +12,10 @@ Elpis cognitive path; what it would take to change that is a separate, unadopted
 
 | | |
 |---|---|
-| Architecture, tensor shapes, update semantics, scaling | `docs/research/elpis_torch/DESIGN.md` |
-| What was run and what it showed | `docs/research/elpis_torch/EVIDENCE_R0.md` |
+| R0: architecture, tensor shapes, update semantics, scaling | `docs/research/elpis_torch/DESIGN.md` |
+| R0: what was run and what it showed | `docs/research/elpis_torch/EVIDENCE_R0.md` |
+| R1: scrolling context, last-block fast weights, capacity model | `docs/research/elpis_torch/DESIGN_R1.md` |
+| R1: long-horizon results, failures, recommendation | `docs/research/elpis_torch/EVIDENCE_R1.md` |
 | Where the CGC mathematics comes from | `PROVENANCE.md` |
 
 ## Install
@@ -31,7 +33,7 @@ package is unaffected and still installs no dependency.
 ## Reproduce
 
 ```sh
-# Tests: about 60 s on one CPU thread. Without PyTorch they are skipped; with ELPIS_REQUIRE_TORCH=1 they fail.
+# Tests: about 70 s on one CPU thread. Without PyTorch they are skipped; with ELPIS_REQUIRE_TORCH=1 they fail.
 ELPIS_REQUIRE_TORCH=1 PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python -B -m pytest -p no:cacheprovider -q tests/research/elpis_torch
 
 # Example: train, generate from text, adapt in a session, reset. About 20 s. Writes nothing.
@@ -40,7 +42,17 @@ PYTHONDONTWRITEBYTECODE=1 python -B -m research.elpis_torch.examples.quickstart
 # The R0 experiment (FFN versus CGC versus FFN+CGC, three seeds, then session adaptation). About 20 minutes on 4 cores.
 PYTHONDONTWRITEBYTECODE=1 python -B -m research.elpis_torch.experiments.run_r0 --out /tmp/elpis_torch_r0.json
 PYTHONDONTWRITEBYTECODE=1 python -B -m research.elpis_torch.experiments.run_r0 --quick     # 20 s smoke run
+
+# R1 (scrolling context). Checkpoints and records go only where --out says; nothing is committed.
+PYTHONDONTWRITEBYTECODE=1 python -B -m research.elpis_torch.experiments.run_r1 smoke        # every path once, about 2 min
+PYTHONDONTWRITEBYTECODE=1 python -B -m research.elpis_torch.experiments.run_r1 train --topology sparse --out /tmp/sparse.ckpt
+PYTHONDONTWRITEBYTECODE=1 python -B -m research.elpis_torch.experiments.run_r1 ladder --ckpt /tmp/sparse.ckpt --out /tmp/sparse.json
+PYTHONDONTWRITEBYTECODE=1 python -B -m research.elpis_torch.experiments.run_r1 adapt --ckpt /tmp/sparse.ckpt --out /tmp/adapt.json
+PYTHONDONTWRITEBYTECODE=1 python -B -m research.elpis_torch.experiments.run_r1 capacity     # the projected 24 GB placement
 ```
+
+`--topology` is `sparse`, `local` or `dense`. The ladder streams 8K, 32K, 128K, 256K, 1M and 1.31M tokens in
+48-token chunks; the dense reference stops at 32K.
 
 The system-call zero-write test needs `strace`; without it that one test is skipped (it fails instead under
 `ELPIS_REQUIRE_TORCH=1`).
@@ -87,6 +99,9 @@ with VolatileSession(model, SessionConfig(lr=0.1, max_steps=16)) as session:
 | `data.py` | the generated finite-state transduction task and its verified splits |
 | `accounting.py` | parameters, theoretical multiply-accumulates, memory estimates |
 | `experiments/run_r0.py`, `examples/quickstart.py` | the comparison protocol; a short walk-through |
+| `scroll.py` | R1: `ScrollLM`, ring-buffer window, compressed and fine memory tiers, sinks, `StreamState` |
+| `lastblock.py`, `scroll_session.py` | R1: last-block CGC fast weights that leave every cache valid; `ScrollSession` |
+| `scroll_data.py`, `experiments/run_r1.py` | R1: the long-stream retrieval task; train, ladder, adapt, capacity |
 
 ## Not here, on purpose
 
