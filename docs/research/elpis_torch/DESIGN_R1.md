@@ -12,7 +12,7 @@ That is lossy. Nothing here is equivalent to attention over the full context, at
 
 | Source | Its mechanism | Taken | Not taken |
 |---|---|---|---|
-| Native Sparse Attention (arXiv 2502.11089) | three branches per query: compressed blocks, selected raw blocks, sliding window; block selection reuses the compressed attention scores; trained end to end | the three kinds of key, selection by the query's own attention logits (no auxiliary selector), separate key maps for memory | three separate softmaxes with a learned gate (one joint softmax here); its MLP compressor (softmax-gated pooling here); its kernels and its results |
+| Native Sparse Attention (arXiv 2502.11089) | three branches per query: compressed blocks, selected raw blocks, sliding window; block selection reuses the compressed attention scores; trained end to end | the three kinds of key, selection by the query's own attention logits (no auxiliary selector), optionally separate key maps for memory (`memory_keys="separate"`) | three separate softmaxes with a learned gate (one joint softmax here); its MLP compressor (softmax-gated pooling here); its kernels and its results |
 | StreamingLLM attention sinks (arXiv 2309.17453) | keep the first tokens' keys and values forever beside a rolling window; assign positions inside the cache, not in the text; cache keys before the rotary transform | pinned first tokens (`sinks`); rotary phase computed relative to the window from unrotated cached keys | its use on a pretrained dense model |
 | Kimi Linear (arXiv 2510.26692) | interleave linear-attention layers (Kimi Delta Attention, a gated delta rule) with full-attention layers 3:1; constant-size recurrent state in the linear layers | the hybrid layout: only some layers carry long-range state (`global_layers`); the 3:1 ratio is the default of the capacity projection | linear attention itself. KDA is a recurrent fast-weight state, not an addressable history, and was not implemented or measured |
 | `research/dsv41_tower` (this repository) | local ring window, compressed keys at a ratio, top-k index selection, a learned sink | read as a second description of the same family | no code, no numerics, no weights |
@@ -48,7 +48,11 @@ For a query at absolute position `p`, in one softmax:
   block's compressed key. The top `global_topk` reachable blocks are read: the first `fine_blocks` as raw
   tokens, the rest as their single compressed token. No controller, ranker, index model or second network.
 * **Compression.** `ck_b = sum_t softmax(gate_t) gk_t`, `cv_b = sum_t softmax(gate_t) v_t` over the block's
-  `s` tokens; `gate` is a linear map of the layer input. Memory has its own `gq`, `gk` maps and no rotary phase.
+  `s` tokens; `gate` is a linear map of the layer input. Memory keys carry no rotary phase.
+* **Memory keys.** `memory_keys="shared"` (default): `gq = q`, `gk = k`, the window's own maps, unrotated, so
+  whatever the window learns about matching content is what addresses memory. `"separate"`: memory has its own
+  `gq`, `gk` maps, as in NSA. Both are implemented and tested against the oracle; `EVIDENCE_R1.md` reports
+  what each did when trained.
 * **Layers.** `global_layers` lists the layers that carry memory; the others are local only. With memory in
   more than one layer information persists beyond one horizon (layer `l + 1` remembers what layer `l`
   remembered): tested, and a reason to prefer few memory layers.
