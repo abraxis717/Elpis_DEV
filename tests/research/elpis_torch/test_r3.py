@@ -364,3 +364,13 @@ def test_cuda_matches_cpu_and_bf16_is_finite():   # pragma: no cover - needs the
     with torch.autocast("cuda", dtype=torch.bfloat16), torch.no_grad():
         out = _stream(float_model, tokens.cuda(), 32)[0]
     assert bool(torch.isfinite(out).all())
+
+
+def test_the_byte_tokenizer_satisfies_the_subword_interface_and_lengths_are_compared_in_bytes():
+    from research.elpis_torch.tokenizer import ByteTokenizer, SubwordTokenizerProtocol, bytes_per_token
+    tokenizer = ByteTokenizer()
+    assert isinstance(tokenizer, SubwordTokenizerProtocol) and tokenizer.byte_fallback
+    data = "Elpis — ε".encode()
+    assert tokenizer.decode_bytes(tokenizer.encode_bytes(data)) == data
+    assert b"".join(tokenizer.token_bytes(t) for t in tokenizer.encode_bytes(data)) == data
+    assert bytes_per_token(tokenizer, data) == 1.0

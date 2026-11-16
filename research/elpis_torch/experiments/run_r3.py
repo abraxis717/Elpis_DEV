@@ -58,7 +58,7 @@ ARCHS = {   # name: (channel, ERSA options, history?, how the history path is tr
     "history_local128": (CGC, dict(conv_kernel=4, attn_window=128, **LOCAL), True, "learned"),
 }
 TASKS = {
-    "facts": dict(length=1024, batch=16, task=facts_task.FactTask(keys=48, events=112)),
+    "facts": dict(length=1024, batch=16, task=facts_task.FactTask(keys=32, events=112)),
     "program": dict(length=1792, batch=12, task=program_task.ProgramTask()),
 }
 OPTIM = dict(lr=3e-3, warmup=100, weight_decay=0.01, grad_clip=1.0, aux_weight=1.0)
@@ -101,7 +101,7 @@ def eligible_address(blocks: torch.Tensor, model) -> torch.Tensor:
 def _batch(task: str, seed: int, count: int, length: int, keys: int | None = None):
     spec = TASKS[task]
     if task == "facts":
-        fact = spec["task"] if keys is None else facts_task.FactTask(keys=keys, events=length * 7 // 64)
+        fact = facts_task.FactTask(keys=keys or spec["task"].keys, events=length * 7 // 64)   # 112 per 1,024 tokens
         return facts_task.generate(fact, count, length, seed=seed)
     return program_task.generate(spec["task"], count, seed=seed, length=length)
 
@@ -170,8 +170,8 @@ def command_train(args) -> dict:
             print(f"[{args.arch}/{args.task} s{args.seed}] step {step + 1} loss {float(loss.detach()):.3f} "
                   + json.dumps(val), file=sys.stderr, flush=True)
             if args.out:
-                _save(model, args, history, status, started)
-    record = _save(model, args, history, status, started) if args.out else None
+                _save(model, args, history, status, started, length, batch_size)
+    record = _save(model, args, history, status, started, length, batch_size) if args.out else None
     return {"arch": args.arch, "task": args.task, "status": status, "history": history, "checkpoint": record}
 
 
@@ -191,12 +191,12 @@ def _validate(arch, task, model, length, count, keys=None) -> dict:
     return out
 
 
-def _save(model, args, history, status, started) -> dict:
+def _save(model, args, history, status, started, length, batch_size) -> dict:
     """EXPLICIT OFFLINE ARTIFACT: the checkpoint requested with --out."""
     record = {"phase": PHASE, "arch": args.arch, "task": args.task, "seed": args.seed, "steps": args.steps,
               "status": status, "history": history, "train_seconds": round(time.perf_counter() - started, 1),
-              "optim": OPTIM, "train_length": args.length or TASKS[args.task]["length"],
-              "train_batch": args.batch or TASKS[args.task]["batch"], "train_keys": args.keys,
+              "optim": OPTIM, "train_length": length, "train_batch": batch_size,
+              "train_keys": args.keys or (TASKS[args.task]["task"].keys if args.task == "facts" else None),
               "parameters": sum(p.numel() for p in model.parameters()), "parameter_digest": parameter_digest(model)}
     torch.save({"record": record, "state_dict": {k: v.detach() for k, v in model.state_dict().items()}}, args.out)
     return record
@@ -291,7 +291,7 @@ def command_facts(args) -> dict:
     for length, count in ladder:
         if length > args.max_tokens:
             continue
-        task = facts_task.FactTask(keys=spec.keys, events=EVAL_EVENTS, planted=PLANTED)
+        task = facts_task.FactTask(keys=spec.keys, events=min(EVAL_EVENTS, length * 7 // 64), planted=PLANTED)
         data = facts_task.generate(task, count if not args.streams else min(count, args.streams), length,
                                    seed=TEST_SEED + length)
         for mode in _modes(record):
@@ -374,6 +374,71 @@ def command_program(args) -> dict:
     return out
 
 
+def command_gpu(args) -> dict:
+    """Workstation qualification (RTX PRO 4000 Blackwell, 24 GB). Without CUDA everything is NOT_RUN.
+
+    1. CPU/CUDA parity of the R3 model (float32; trained checkpoint if --ckpt, else seed weights): logits and
+       block selections over a stream longer than the history horizon, chunked.
+    2. bfloat16 autocast on CUDA: finite logits, ERSA state kept in float32, agreement with float32.
+    3. Memory at length: the 500M configuration (seed weights: NOT a trained model) streamed to 1,048,576 tokens
+       with torch.cuda.max_memory_allocated recorded at 2^16 .. 2^20 tokens. Pass: flat from 2^18 to 2^20, and the
+       context part within the 1 GiB target (2 GiB ceiling).
+    """
+    if not torch.cuda.is_available():
+        return {"phase": PHASE, "status": "NOT_RUN", "reason": "torch.cuda.is_available() is False on this host",
+                "environment": _environment()}
+    from .. import scaling
+    out = {"phase": PHASE, "status": "MEASURED", "device": torch.cuda.get_device_name(0),
+           "capability": list(torch.cuda.get_device_capability(0)), "environment": _environment()}
+    if args.ckpt:
+        model, _ = load(args.ckpt, chunk=256, horizon=4096)
+    else:
+        model = build("history", "facts", 0, chunk=256, horizon=4096).eval()
+    data = facts_task.generate(facts_task.FactTask(keys=32, events=200), 2, 8192, seed=TEST_SEED + 99)
+
+    def run(device, autocast=False):
+        model.to(device)
+        state, logits, picks = model.new_state(2), [], []
+        with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16, enabled=autocast):
+            for at in range(0, 8192, 256):
+                out, diag = model(data.tokens[:, at:at + 256].to(device), state, diagnostics=True)
+                logits.append(out.float().cpu())
+                picks.append(diag[model.read_layers[-1]]["selected"].cpu())
+        return torch.cat(logits, 1), torch.cat(picks, 1), state
+
+    reference, chosen, _ = run("cpu")
+    on_gpu, chosen_gpu, _ = run("cuda")
+    low, _, state = run("cuda", autocast=True)
+    out["parity_float32"] = {"max_abs_logit_difference": float((on_gpu - reference).abs().max()),
+                             "selection_agreement": float((chosen_gpu == chosen).double().mean())}
+    out["bf16_autocast"] = {"finite": bool(torch.isfinite(low).all()), "ersa_state_dtype": str(state.cells[0].dtype),
+                            "argmax_agreement_with_float32": float((low.argmax(-1) == reference.argmax(-1))
+                                                                   .double().mean())}
+    model.to("cpu")
+    torch.cuda.empty_cache()
+    ersa, history = scaling.configuration("r3_500m")
+    big = ErsaHistoryLM(ersa, history).to("cuda").eval()
+    weights = torch.cuda.memory_allocated()
+    torch.cuda.reset_peak_memory_stats()
+    state, peaks, chunk = big.new_state(1), {}, 512
+    piece = torch.randint(0, 1000, (1, chunk), device="cuda")
+    started = time.perf_counter()
+    with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
+        for step in range((1 << 20) // chunk):
+            big(piece, state)
+            if (step + 1) * chunk in (1 << 16, 1 << 17, 1 << 18, 1 << 19, 1 << 20):
+                torch.cuda.synchronize()
+                peaks[(step + 1) * chunk] = torch.cuda.max_memory_allocated() - weights
+    out["r3_500m_stream"] = {"weights_bytes": weights, "context_peak_bytes_by_tokens": peaks,
+                             "state_bytes": state.nbytes(), "seconds": time.perf_counter() - started,
+                             "flat_from_256k": max(peaks[k] for k in peaks if k >= 1 << 18)
+                             <= 1.05 * peaks[1 << 18],
+                             "within_1GiB_target": peaks[1 << 20] <= 1 << 30,
+                             "within_2GiB_ceiling": peaks[1 << 20] <= 2 << 30,
+                             "note": "seed weights: a memory and numerics qualification, not a trained model"}
+    return out
+
+
 def command_scale(args) -> dict:
     from .. import scaling
     return scaling.report(measure=not args.smoke)
@@ -421,7 +486,7 @@ def _write(path: str, record: dict) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("command", choices=["train", "facts", "program", "scale", "smoke"])
+    parser.add_argument("command", choices=["train", "facts", "program", "scale", "gpu", "smoke"])
     parser.add_argument("--arch", choices=list(ARCHS), default="history")
     parser.add_argument("--task", choices=list(TASKS), default="facts")
     parser.add_argument("--steps", type=int, default=1200)
@@ -435,15 +500,15 @@ def main(argv=None) -> int:
     parser.add_argument("--streams", type=int, default=None)
     parser.add_argument("--generate", type=int, default=2048)
     parser.add_argument("--threads", type=int, default=4)
-    parser.add_argument("--keys", type=int, default=None, help="facts: training fact density (default 48)")
+    parser.add_argument("--keys", type=int, default=None, help="facts: training fact density (default 32)")
     parser.add_argument("--length", type=int, default=None, help="training length override")
     parser.add_argument("--batch", type=int, default=None, help="training batch override")
     args = parser.parse_args(argv)
     args.smoke = args.command == "smoke"
     torch.set_num_threads(args.threads)
     result = {"train": command_train, "facts": command_facts, "program": command_program, "scale": command_scale,
-              "smoke": command_smoke}[args.command](args)
-    if args.command == "scale" and args.out:
+              "gpu": command_gpu, "smoke": command_smoke}[args.command](args)
+    if args.command in ("scale", "gpu") and args.out:
         _write(args.out, result)
     elif not args.out or args.command == "smoke":
         print(json.dumps(_finite(result if args.command != "train" else {k: v for k, v in result.items()
