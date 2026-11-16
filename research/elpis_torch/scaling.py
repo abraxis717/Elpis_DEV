@@ -200,3 +200,63 @@ def report(*, measure: bool = True) -> dict:
     if measure:
         out["measured_small_model_state_at_1M"] = measure_small()
     return out
+
+
+# -- R4: exact fixed state and bounded scratch of a streaming session ---------------------------------------------
+
+def _width(dtype) -> int:
+    return torch.empty((), dtype=dtype).element_size()
+
+
+def fixed_state_bytes(model, batch: int = 1, *, state_dtype=None) -> dict:
+    """EXACT bytes of a fresh state of ``model`` (equal to ``model.new_state(batch).nbytes()``; tested), from the
+    configuration alone. ``state_dtype`` overrides the parameter dtype for the floating state tiers."""
+    c = model.ersa
+    m = c.model
+    w = _width(state_dtype or getattr(torch, m.dtype))
+    out = {"ersa_cells": m.n_layers * batch * c.ersa_heads * c.value_dim * c.key_dim * w}
+    if c.conv_kernel:
+        out["conv_tail"] = m.n_layers * batch * (c.conv_kernel - 1) * m.d_model * w
+    if c.attention == "window":
+        head_dim = m.d_model // c.attn_heads
+        out["attention_window"] = len(c.window_layers) * 2 * batch * c.attn_kv_heads * c.attn_window * head_dim * w
+        out["token_history"] = batch * (c.attn_window + 1) * 4            # the window ring's own token slots
+    h = getattr(model, "history", None)
+    if h is not None:
+        reads = len(model.read_layers)
+        out["history_tokens"] = batch * h.history_capacity * 4
+        out["block_index"] = reads * (batch * h.slots * h.per_block * h.index_dim * w + h.slots * 8)
+    out["total"] = sum(out.values())
+    return out
+
+
+def session_scratch_bytes(model, *, batch: int = 1, chunk: int, scorer: str = "tiled", tile: int = 4096,
+                          activation_bytes: int | None = None) -> dict:
+    """PROJECTED upper bound of the per-chunk working memory of one forward call (not measured).
+
+    Selection: the reference scorer holds the full ``[B, T, horizon/block (+ new)]`` score table with its distance,
+    eligibility and pooled-match intermediates; the tiled scorer holds one tile and the running top-K. Reread:
+    encoded selected blocks and their readout keys/values. New blocks: encoder activations. Logits: the head is
+    applied to the positions asked for only (one per stream assumed)."""
+    c, m = model.ersa, model.ersa.model
+    w = activation_bytes or _width(getattr(torch, m.dtype))
+    d, T, out = m.d_model, chunk, {}
+    out["chunk_activations"] = batch * T * d * 16 * w + batch * T * c.ersa_heads * (c.key_dim + c.value_dim) * 4 * w
+    out["logits"] = batch * m.vocab_size * w
+    h = getattr(model, "history", None)
+    if h is not None:
+        reads = len(model.read_layers)
+        records = h.slots + T // h.block + 1
+        n = records if scorer == "reference" else min(tile, records)
+        per_tile = batch * T * n * (h.per_block + 2) * w + T * n * (8 + w + 1)
+        if scorer == "tiled":
+            per_tile += batch * T * (h.topk + n) * (w + 8) * 2
+        out["selection"] = reads * per_tile
+        width = h.encoder_dim or d
+        blocks = min(T * h.topk, h.slots) + T // h.block + 2
+        kv = 2 * h.read_kv_heads * h.read_head_dim
+        out["reread_states"] = reads * batch * blocks * (h.block + 1) * width * w
+        out["readout"] = reads * batch * (blocks * h.block * kv + T * h.topk * h.block * kv * 2) * w
+        out["encoder_activations"] = batch * (T // h.block + 2 + min(T * h.topk, h.slots)) * h.span * width * 8 * w
+    out["total"] = sum(out.values())
+    return out

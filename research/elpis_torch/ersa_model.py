@@ -105,6 +105,14 @@ class ErsaState:
             self.window = StreamState(model.ersa.window_config(), batch, 0, self.cells[0].dtype, self.device)
         self.ring = {layer: slot for slot, layer in enumerate(model.ersa.window_layers)}
 
+    def reset(self) -> None:
+        """R4: an empty stream in the same buffers. Tensors that carry a training graph are replaced by zeros."""
+        self.cells = [c.detach().zero_() for c in self.cells]
+        self.tails = [None if t is None else t.detach().zero_() for t in self.tails]
+        if self.window is not None:
+            self.window.reset()
+        self.position = 0
+
     def nbytes(self) -> dict:
         size = lambda t: t.numel() * t.element_size()   # noqa: E731
         out = {"ersa_cells": sum(size(c) for c in self.cells),
@@ -192,8 +200,12 @@ class ErsaLM(nn.Module):
     def new_state(self, batch: int) -> ErsaState:
         return ErsaState(self, batch)
 
-    def forward(self, tokens: torch.Tensor, state: ErsaState, *, return_pre: bool = False, **extra):
-        """Logits ``[batch, T, vocab]`` for the next ``T <= chunk`` tokens. ``state`` advances at the end."""
+    def forward(self, tokens: torch.Tensor, state: ErsaState, *, return_pre: bool = False,
+                logit_positions: torch.Tensor | None = None, **extra):
+        """Logits ``[batch, T, vocab]`` for the next ``T <= chunk`` tokens. ``state`` advances at the end.
+
+        ``logit_positions`` (R4): indices into the chunk; only those positions get logits ``[batch, n, vocab]``
+        (and ``pre`` is restricted alike). The state advance is unchanged."""
         c = self.ersa
         if tokens.ndim != 2 or tokens.dtype != torch.long:
             raise ValueError("tokens must be an int64 tensor of shape [batch, T]")
@@ -222,6 +234,9 @@ class ErsaLM(nn.Module):
                 mixed = mixed + read
             pre = x + mixed
             x = pre + block.channel(block.channel_norm(pre))
+        if logit_positions is not None:          # R4: the head only where the caller needs it ([B, T, V] is avoided)
+            x = x[:, logit_positions]
+            pre = pre[:, logit_positions]
         x = self.final_norm(x)
         logits = F.linear(x, self.embed.weight) if self.head is None else self.head(x)
         graph = torch.is_grad_enabled() and any(t.requires_grad for t in cells)

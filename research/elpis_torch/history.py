@@ -61,6 +61,11 @@ class TokenHistory:
         self.tokens.index_copy_(1, slots, tokens.to(device=self.device, dtype=torch.int32))
         self.position += length
 
+    def reset(self) -> None:
+        """An empty history in the same buffer."""
+        self.tokens.zero_()
+        self.position = self.origin
+
     def read(self, start: int, length: int) -> torch.Tensor:
         """Token ids at absolute positions ``start .. start + length - 1``: ``[batch, length]`` int64."""
         if length < 0 or start < self.oldest or start + length > self.position:
@@ -106,6 +111,12 @@ class BlockIndex:
         self.keys.index_copy_(1, slots, keys.detach().to(self.keys.dtype))
         self.ids.index_copy_(0, slots, blocks)
         self.next_block = first_block + count
+
+    def reset(self) -> None:
+        """An empty index in the same buffers."""
+        self.keys.zero_()
+        self.ids.fill_(-1)
+        self.next_block = None
 
     def resident(self) -> tuple[torch.Tensor, torch.Tensor]:
         """``(ids [n], keys [batch, n, per_block, dim])`` of the held records, oldest first."""

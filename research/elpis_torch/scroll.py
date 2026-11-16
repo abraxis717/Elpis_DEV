@@ -139,6 +139,14 @@ class StreamState:
     TIERS = {"lk": "window", "lv": "window", "sk": "sinks", "sv": "sinks", "pk": "open_block", "pv": "open_block",
              "pg": "open_block", "ck": "compressed", "cv": "compressed", "fk": "fine", "fv": "fine"}
 
+    def reset(self) -> None:
+        """R4: an empty stream in the same buffers (every tier zeroed in place)."""
+        self.tokens.zero_()
+        for layer in self.layers:
+            for tensor in layer.values():
+                tensor.detach().zero_()
+        self.position = self.origin
+
     def nbytes(self) -> dict:
         """Bytes held, by tier. Constant for the life of the state."""
         out = {"token_history": self.tokens.numel() * self.tokens.element_size()}

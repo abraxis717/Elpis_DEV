@@ -42,6 +42,7 @@ from torch.nn import functional as F
 from .cgc import CGCTransform
 from .config import ConfigError
 from .ersa_model import ErsaConfig, ErsaLM, ErsaState
+from .context_runtime import exact_topk, tiled_select
 from .history import BlockIndex, TokenHistory
 from .model import RMSNorm, SwiGLU, _seeded_normal
 
@@ -247,7 +248,8 @@ class HistoryReader(nn.Module):
 class HistoryState(ErsaState):
     """ERSA state plus the exact token history and the bounded block index. Fixed size from creation."""
 
-    def __init__(self, model: "ErsaHistoryLM", batch: int, origin: int = 0):
+    def __init__(self, model: "ErsaHistoryLM", batch: int, origin: int = 0, *, history_device=None,
+                 index_device=None):
         super().__init__(model, batch)
         h = model.history
         if origin < 0 or origin % h.block:
@@ -255,9 +257,23 @@ class HistoryState(ErsaState):
         self.origin = self.position = origin
         if model.ersa.attention == "window":
             self.window.origin = self.window.position = origin
-        self.tokens = TokenHistory(batch, h.history_capacity, origin=origin, device=self.device)
+        # R4 placement: the token ring and the index may live off the model's device (e.g. in CPU RAM).
+        self.tokens = TokenHistory(batch, h.history_capacity, origin=origin,
+                                   device=self.device if history_device is None else history_device)
         self.indexes = {layer: BlockIndex(batch, h.slots, h.per_block, h.index_dim, dtype=self.cells[0].dtype,
-                                          device=self.device) for layer in model.read_layers}
+                                          device=self.device if index_device is None else index_device)
+                        for layer in model.read_layers}
+        self.runtime = None             # R4: None is the R3 reference path (context_runtime.RuntimeOptions)
+
+    def reset(self) -> None:
+        """R4: an empty stream in the same buffers."""
+        super().reset()
+        self.position = self.origin
+        if self.window is not None:
+            self.window.origin = self.window.position = self.origin
+        self.tokens.reset()
+        for index in self.indexes.values():
+            index.reset()
 
     def nbytes(self) -> dict:
         out = super().nbytes()
@@ -321,8 +337,8 @@ class ErsaHistoryLM(ErsaLM):
         if hasattr(self, "encoder"):
             self._init_history()
 
-    def new_state(self, batch: int, *, origin: int = 0) -> HistoryState:
-        return HistoryState(self, batch, origin)
+    def new_state(self, batch: int, *, origin: int = 0, history_device=None, index_device=None) -> HistoryState:
+        return HistoryState(self, batch, origin, history_device=history_device, index_device=index_device)
 
     # -- encoding blocks from token ids --------------------------------------------------------------------
 
@@ -374,12 +390,12 @@ class ErsaHistoryLM(ErsaLM):
             old = where < p0
             if bool(old.any()):                                  # earlier positions come from the exact history
                 safe = torch.where(old, where, torch.full_like(where, int(where[old].min())))
-                out = torch.where(old[None], held_tokens.gather(safe), out)
+                out = torch.where(old[None], held_tokens.gather(safe).to(out.device), out)
             return out
 
         windows, valid = self._windows_from(new_ids * s - h.overlap, source, state.origin)
         new_states = self._encode(windows, valid) if mode != "off" else None
-        context = {"mode": mode, "address": address, "positions": positions, "new_ids": new_ids,
+        context = {"mode": mode, "address": address, "positions": positions, "new_ids": new_ids, "first_new": first_new,
                    "new_states": new_states, "new_keys": {}, "diagnostics": {} if diagnose else None,
                    "source": source}
         return context
@@ -396,9 +412,28 @@ class ErsaHistoryLM(ErsaLM):
         new_keys = reader.block_keys(context["new_states"]) if new_ids.numel() else \
             u.new_zeros(batch, 0, h.per_block, h.index_dim)
         context["new_keys"][index] = new_keys
+        runtime = getattr(state, "runtime", None)
+        if runtime is not None and runtime.scorer == "tiled":
+            if mode != "learned":
+                raise ValueError("the tiled scorer serves the learned mode; the oracle diagnosis modes use the "
+                                 "reference path")
+            return self._tiled_read(index, u, state, context, new_keys, runtime)
         ring = state.indexes[index]
         held = ring.ids >= 0                                    # empty slots are never scored
         ring_ids, ring_keys = (ring.ids, ring.keys) if bool(held.all()) else (ring.ids[held], ring.keys[:, held])
+        ring_ids, ring_keys = ring_ids.to(device), ring_keys.to(device)
+        if runtime is not None and runtime.key_grad_blocks and torch.is_grad_enabled() and ring_ids.numel():
+            # R4 replay: the keys of recent resident blocks are recomputed from their original tokens WITH
+            # gradient (same encoder, same pooling, same values for unchanged weights) instead of the stored,
+            # detached ones. Scoring mathematics and eligibility are unchanged.
+            span = runtime.key_grad_blocks
+            replay = (ring_ids >= context["first_new"] - span) if span > 0 else torch.ones_like(ring_ids, dtype=torch.bool)
+            replay = replay.nonzero(as_tuple=True)[0]
+            if replay.numel():
+                windows, ok = self._windows_from(ring_ids[replay] * s - h.overlap, context["source"], state.origin)
+                fresh = reader.block_keys(self._encode(windows, ok))
+                ring_keys = torch.index_copy(ring_keys.detach().to(fresh.dtype), 1, replay, fresh)
+                runtime.count("replayed_key_blocks", int(replay.numel()))
         table_ids = torch.cat((ring_ids, new_ids))                                       # [N]
         keys = torch.cat((ring_keys.to(new_keys.dtype), new_keys), dim=1)                # [B, N, per, dim]
         resident = ring_ids.shape[0]
@@ -420,13 +455,11 @@ class ErsaHistoryLM(ErsaLM):
                     "scores": scores, "table_ids": table_ids}
             return torch.zeros_like(u)
         if mode in ("learned", "oracle_override"):
-            top = scores.topk(min(h.topk, scores.shape[-1]), dim=-1)
-            chosen, picked = top.indices, top.values
-            if chosen.shape[-1] < h.topk:                       # fewer candidates than K: pad with invalid picks
-                pad = h.topk - chosen.shape[-1]
-                chosen = F.pad(chosen, (0, pad))
-                picked = F.pad(picked, (0, pad), value=float("-inf"))
+            # Deterministic exact top-K (R4): the R3 ranking, with exact ties resolved newer-block-first.
+            picked, chosen = exact_topk(scores, table_ids, h.topk)
             valid = picked > float("-inf")
+            if runtime is not None:
+                runtime.count("records_scored", int(table_ids.numel()) * length)
         if mode in ("oracle", "oracle_override"):
             address = address.to(device)
             if address.shape != (batch, length):
@@ -455,6 +488,8 @@ class ErsaHistoryLM(ErsaLM):
         if reread.numel():
             windows, ok = self._windows_from(ring_ids[reread] * s - h.overlap, context["source"], state.origin)
             old_states = self._encode(windows, ok)
+            if runtime is not None:
+                runtime.count("blocks_reencoded", int(reread.numel()))
         else:
             old_states = u.new_zeros(batch, 0, s + 1, self.encoder.width)
         compact = torch.full((table_ids.shape[0],), 0, dtype=torch.long, device=device)
@@ -481,10 +516,76 @@ class ErsaHistoryLM(ErsaLM):
                                              "null_weight": null, "scores": scores, "table_ids": table_ids}
         return out
 
+    def _tiled_read(self, index, u, state, context, new_keys, runtime):
+        """R4 inference path: the R3 selection evaluated by ``tiled_select`` (exact, bounded scratch), resident
+        selected blocks taken from the block cache or re-encoded from the token history, the R3 readout."""
+        h, reader = self.history, self.readers[str(index)]
+        s, device, batch = h.block, u.device, u.shape[0]
+        ring, positions, new_ids = state.indexes[index], context["positions"], context["new_ids"]
+        chosen, picked = tiled_select(reader, u, [(ring.keys, ring.ids), (new_keys, new_ids)], positions, block=s,
+                                      slots=h.slots, k=h.topk, tile=runtime.tile, counters=runtime.counters)
+        valid = chosen >= 0
+        unique = torch.unique(chosen[valid])                                               # ascending block ids
+        first_new = context["first_new"]
+        resident = unique[unique < first_new]
+        cache = runtime.cache if (runtime.cache is not None and not torch.is_grad_enabled()) else None
+        if runtime.cache is not None and cache is None:
+            runtime.cache.stats["bypassed"] += 1
+        parts = []
+        if resident.numel():
+            ids = resident.tolist()
+            found = {}
+            if cache is not None:
+                cache.check(self)
+                found = {b: e for b in ids for e in [cache.get(b)] if e is not None}
+            missing = [b for b in ids if b not in found]
+            if missing:
+                starts = torch.tensor(missing, dtype=torch.long, device=device) * s - h.overlap
+                windows, ok = self._windows_from(starts, context["source"], state.origin)
+                encoded = self._encode(windows, ok)
+                runtime.count("blocks_reencoded", len(missing))
+                for column, block in enumerate(missing):
+                    found[block] = encoded[:, column]
+                    if cache is not None:
+                        cache.put(block, encoded[:, column])
+            parts.append(torch.stack([found[b] for b in ids], dim=1))
+        fresh = unique[unique >= first_new]
+        if fresh.numel():
+            parts.append(context["new_states"][:, fresh - first_new])
+        parts.append(u.new_zeros(batch, 1, s + 1, self.encoder.width))                     # invalid picks
+        states = torch.cat(parts, dim=1)
+        where = torch.where(valid, torch.searchsorted(unique, chosen.clamp(min=0)), torch.full_like(chosen,
+                                                                                                    unique.numel()))
+        rows = torch.arange(batch, device=device)[:, None, None]
+        block_keys, block_values = reader.project(states)
+        distance = positions[None, :, None] - ((chosen + 1) * s - 1)
+        picked_scores = torch.where(valid, picked, torch.zeros_like(picked))
+        out, weights = reader.read(u, block_keys[rows, where], block_values[rows, where], picked_scores, valid,
+                                   distance)
+        if context["diagnostics"] is not None:
+            mass = weights[..., :-1].mean(dim=2)
+            best = mass.argmax(-1)
+            pick, offset = best // s, best % s
+            source_block = torch.gather(chosen, 2, pick[..., None])[..., 0]
+            read_position = torch.where(source_block >= 0, source_block * s + offset, torch.full_like(best, -1))
+            context["diagnostics"][index] = {"selected": chosen, "read_position": read_position,
+                                             "null_weight": weights[..., -1].mean(dim=2), "scores": None,
+                                             "table_ids": None}
+        return out
+
     def _commit_context(self, tokens, state, context) -> None:
         if context is None:
             return
         new_ids = context["new_ids"]
+        runtime = getattr(state, "runtime", None)
+        cache = runtime.cache if runtime is not None else None
+        if cache is not None and new_ids.numel() and context["new_states"] is not None \
+                and not torch.is_grad_enabled():
+            cache.check(self)
+            for column, block in enumerate(new_ids.tolist()):          # fresh blocks are likely to be read next
+                cache.put(block, context["new_states"][:, column])
+        if cache is not None and new_ids.numel():
+            cache.purge_below(int(new_ids[-1]) + 1 - self.history.slots)   # outside every future query's horizon
         if new_ids.numel():
             for index in self.read_layers:
                 keys = context["new_keys"].get(index)
@@ -510,6 +611,8 @@ def addressing_loss(diagnostics: dict, gold_block: torch.Tensor) -> torch.Tensor
     total, count = None, 0
     for record in diagnostics.values():
         scores, table = record["scores"], record["table_ids"]
+        if scores is None:
+            raise ValueError("the addressing loss needs the reference scorer's full score table")
         match = (table[None, None, :] == gold_block[..., None]) & (gold_block[..., None] >= 0)
         target = match.float().argmax(-1)
         usable = match.any(-1)
