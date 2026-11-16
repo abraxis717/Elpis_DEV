@@ -15,8 +15,9 @@ followed some earlier occurrence:
 
 Every answer token is a PROBE with a kind, the absolute position of the token that holds its evidence
 (``source``: the answer token of the latest binding it depends on), and whether an older, contradicted binding
-of the same key exists. ``planted`` keys are bound once at fixed fractions of the stream (begin / middle /
-end) and asked for in the final 2 % of the stream: their distance is set by where they were planted.
+of the same key exists. ``planted`` keys (the last ``len(planted)`` of the ``keys``, kept out of the
+regular events) are bound once at fixed fractions of the stream (begin / middle / end) and asked for in the final
+2 % of the stream: their distance is set by where they were planted.
 
 Labels (``kind``, ``source``, ``contradicted``, ``region``) are for scoring and for the TRAINING-ONLY
 addressing loss. They are never inputs of a model at evaluation.
@@ -65,9 +66,10 @@ class FactTask:
     distractor_keys: int = 16
 
     def __post_init__(self):
-        if not 1 <= self.keys or self.keys + len(self.planted) + (self.distractor_keys if self.p_distract else 0) \
-                > MAX_KEYS:
-            raise ValueError("keys + planted + distractor keys must fit MAX_KEYS")
+        # Planted keys are the LAST ``len(planted)`` of the ``keys`` (so a model trained on ``keys`` knows them);
+        # regular events use the others. Distractor keys come after ``keys`` and are never asked.
+        if not len(self.planted) < self.keys or self.keys + (self.distractor_keys if self.p_distract else 0) > MAX_KEYS:
+            raise ValueError("planted keys must leave regular keys, and keys + distractor keys must fit MAX_KEYS")
         if any(not 0.0 < f < 0.95 for f in self.planted):
             raise ValueError("planted fractions must be in (0, 0.95)")
 
@@ -108,8 +110,9 @@ def generate(task: FactTask, count: int, length: int, *, seed: int) -> FactStrea
     contradicted = torch.zeros(count, length, dtype=torch.bool)
     region = torch.zeros(count, length, dtype=torch.int8)
     tokens[:, 0] = BOS
-    planted_keys = list(range(task.keys, task.keys + len(task.planted)))
-    distract0 = task.keys + len(task.planted)
+    regular = task.keys - len(task.planted)
+    planted_keys = list(range(regular, task.keys))
+    distract0 = task.keys
     for row in range(count):
         rng = random.Random(f"elpis-torch-r3:{seed}:{row}")
         bound: dict = {}       # key -> (value, position of the VAL token, an older different binding existed?)
@@ -134,11 +137,11 @@ def generate(task: FactTask, count: int, length: int, *, seed: int) -> FactStrea
             if any(a in busy for a in range(at, at + 4)):
                 continue
             roll = rng.random()
-            keys = [k for k in bound if k < task.keys]
+            keys = [k for k in bound if k < regular]
             cuts = [task.p_bind, task.p_alias, task.p_link, task.p_distract, task.p_assoc, task.p_hop2, task.p_hop3]
             edges = [sum(cuts[:i + 1]) for i in range(len(cuts))]
             if roll < edges[0] or not keys:
-                key, value = rng.randrange(task.keys), rng.randrange(VALUES)
+                key, value = rng.randrange(regular), rng.randrange(VALUES)
                 changed = key in bound and (bound[key][2] or bound[key][0] != value)
                 put(at, [KEY0 + key, VAL0 + value])
                 bound[key] = (value, at + 1, changed)

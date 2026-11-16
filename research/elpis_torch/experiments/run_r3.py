@@ -47,13 +47,18 @@ HISTORY = dict(block=32, topk=2, index_dim=32, per_block=2, read_heads=2, read_k
                overlap=8, layers=(-1,))
 LOCAL = dict(attention="window", attn_heads=2, attn_kv_heads=1, attn_layers=(1,))
 ARCHS = {   # name: (channel, ERSA options, history?, how the history path is trained)
+    # "learned": learned selection + the training-only addressing loss; "learned-noaux": no addressing loss;
+    # "oracle": the fixture's source block is read (diagnosis), no addressing loss; "oracle+aux": both
     "ersa": (CGC, dict(), False, None),
     "ersa_conv": (CGC, dict(conv_kernel=4), False, None),
     "ersa_conv_ffn": (FFN, dict(conv_kernel=4), False, None),
     "ersa_conv_local128": (CGC, dict(conv_kernel=4, attn_window=128, **LOCAL), False, None),
     "ersa_conv_local512": (CGC, dict(conv_kernel=4, attn_window=512, **LOCAL), False, None),
+    "ersa_conv_local1025": (CGC, dict(conv_kernel=4, attn_window=1025, **LOCAL), False, None),   # covers training
     "history": (CGC, dict(conv_kernel=4), True, "learned"),
     "history_oracle": (CGC, dict(conv_kernel=4), True, "oracle"),
+    "history_oracle_aux": (CGC, dict(conv_kernel=4), True, "oracle+aux"),      # oracle reads + addressing loss
+    "history_noaux": (CGC, dict(conv_kernel=4), True, "learned-noaux"),         # end-to-end gradient only
     "history_ffn": (FFN, dict(conv_kernel=4), True, "learned"),
     "history_local128": (CGC, dict(conv_kernel=4, attn_window=128, **LOCAL), True, "learned"),
 }
@@ -111,11 +116,11 @@ def _loss(arch, task, model, batch, *, diagnostics_needed: bool):
     state = model.new_state(tokens.shape[0])
     mode = ARCHS[arch][3]
     extra = {}
-    if mode == "oracle":
+    if mode in ("oracle", "oracle+aux"):
         extra = dict(mode="oracle", address=eligible_address(batch.query_block(model.history.block)[:, :-1], model))
     if mode is not None:
         extra["diagnostics"] = True
-    supervise = mode == "learned" and task == "facts"
+    supervise = mode in ("learned", "oracle+aux") and task == "facts"
     gold = eligible_address(batch.query_block(model.history.block)[:, :-1], model) if supervise else None
     logits, aux = [], []
     step = model.ersa.chunk
@@ -178,7 +183,8 @@ def command_train(args) -> dict:
 @torch.no_grad()
 def _validate(arch, task, model, length, count, keys=None) -> dict:
     data = _batch(task, VAL_SEED, count, length, keys)
-    modes = ["learned"] if ARCHS[arch][3] == "learned" else ["oracle"] if ARCHS[arch][3] == "oracle" else [None]
+    kind = ARCHS[arch][3]
+    modes = [None] if kind is None else ["oracle"] if kind.startswith("oracle") else ["learned"]
     out = {}
     for mode in modes:
         run = stream(model, data, mode=mode, chunk=model.ersa.chunk)
@@ -278,8 +284,8 @@ def stream(model, data, *, mode=None, chunk=256) -> dict:
 def _modes(record) -> list:
     if not ARCHS[record["arch"]][2]:
         return [None]
-    if ARCHS[record["arch"]][3] == "oracle":
-        return ["oracle", "off"]
+    if ARCHS[record["arch"]][3].startswith("oracle"):
+        return ["oracle", "learned", "off"]
     return ["learned", "oracle_override", "off"]
 
 
