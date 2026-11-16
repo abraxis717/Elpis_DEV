@@ -46,14 +46,17 @@ class TokenHistory:
         return max(self.origin, self.position - self.capacity)
 
     def append(self, tokens: torch.Tensor) -> None:
-        """Write ``[batch, n]`` token ids at the next ``n`` positions (``n <= capacity``)."""
+        """Write ``[batch, n]`` token ids at the next ``n`` positions. Beyond ``capacity`` only the newest are held."""
         if tokens.ndim != 2 or tokens.shape[0] != self.batch:
             raise ValueError("append expects [batch, n] token ids for this history's batch")
-        length = tokens.shape[1]
-        if not 1 <= length <= self.capacity:
-            raise ValueError(f"append takes 1 .. {self.capacity} tokens at a time")
+        if tokens.shape[1] < 1:
+            raise ValueError("append needs at least one token")
         if tokens.dtype not in (torch.int32, torch.int64) or int(tokens.min()) < 0:
             raise ValueError("token ids must be non-negative integers")
+        if tokens.shape[1] > self.capacity:                 # the older ones would be evicted at once
+            self.position += tokens.shape[1] - self.capacity
+            tokens = tokens[:, -self.capacity:]
+        length = tokens.shape[1]
         slots = (self.position + torch.arange(length, device=self.device)) % self.capacity
         self.tokens.index_copy_(1, slots, tokens.to(device=self.device, dtype=torch.int32))
         self.position += length

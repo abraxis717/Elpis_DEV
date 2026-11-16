@@ -61,16 +61,19 @@ class HistoryConfig:
     overlap: int = 8                 # tokens before a block that its encoder sees (context, never read)
     layers: tuple = (-1,)            # blocks that carry a history read (negative: from the end)
     encoder_heads: int = 2
-    distance_buckets: int = 24       # floor(log2(distance + 1)), capped
+    encoder_dim: int | None = None   # width of the block encoder; None = d_model (a narrower one is cheaper)
     mode: str = "learned"            # default mode of forward()
 
     def __post_init__(self):
         for name in ("block", "horizon", "topk", "index_dim", "per_block", "read_heads", "read_kv_heads",
-                     "read_head_dim", "encoder_heads", "distance_buckets"):
+                     "read_head_dim", "encoder_heads"):
             if type(getattr(self, name)) is not int or getattr(self, name) < 1:
                 raise ConfigError(f"{name} must be a positive integer")
-        if type(self.overlap) is not int or self.overlap < 0:
-            raise ConfigError("overlap must be a non-negative integer")
+        if type(self.overlap) is not int or self.overlap < 1:
+            raise ConfigError("overlap must be a positive integer (the readout keys need each token's predecessor)")
+        if self.encoder_dim is not None and (type(self.encoder_dim) is not int or self.encoder_dim < 2
+                                             or self.encoder_dim % 2 or self.encoder_dim % self.encoder_heads):
+            raise ConfigError("encoder_dim must be None or an even positive multiple of encoder_heads")
         if self.horizon % self.block:
             raise ConfigError("horizon must be a multiple of block")
         if self.read_heads % self.read_kv_heads:
@@ -97,16 +100,9 @@ class HistoryConfig:
         return self.overlap + self.block
 
 
-def distance_bucket(distance: torch.Tensor, buckets: int) -> torch.Tensor:
-    """``floor(log2(distance + 1))`` capped at ``buckets - 1``; exact for every integer distance >= 0."""
-    d = distance.clamp(min=0) + 1
-    # bit_length - 1 of a positive int64, without floating point
-    out = torch.zeros_like(d)
-    for shift in (32, 16, 8, 4, 2, 1):
-        big = d >= (1 << shift)
-        out = out + big * shift
-        d = torch.where(big, d >> shift, d)
-    return out.clamp(max=buckets - 1)
+def log_distance(distance: torch.Tensor, dtype) -> torch.Tensor:
+    """``log(1 + distance)``: the only distance signal, so that it extrapolates beyond the trained lengths."""
+    return torch.log1p(distance.clamp(min=0).to(dtype))
 
 
 class _Channel(nn.Module):
@@ -135,18 +131,28 @@ class BlockEncoder(nn.Module):
     def __init__(self, m, h: HistoryConfig, dtype):
         super().__init__()
         self.heads, self.span, self.block = h.encoder_heads, h.span, h.block
-        if m.d_model % self.heads:
-            raise ConfigError("d_model must be divisible by encoder_heads")
-        self.position = nn.Parameter(torch.zeros(h.span, m.d_model, dtype=dtype))
-        self.attn_norm = RMSNorm(m.d_model, m.norm_eps, dtype)
-        self.qkv = nn.Linear(m.d_model, 3 * m.d_model, bias=False, dtype=dtype)
-        self.attn_out = nn.Linear(m.d_model, m.d_model, bias=False, dtype=dtype)
-        self.channel_norm = RMSNorm(m.d_model, m.norm_eps, dtype)
+        width = h.encoder_dim or m.d_model
+        if width % self.heads:
+            raise ConfigError("the encoder width must be divisible by encoder_heads")
+        # A narrower encoder projects the shared embeddings down and uses a channel of the same kind at its width.
+        self.down = nn.Linear(m.d_model, width, bias=False, dtype=dtype) if width != m.d_model else None
+        if width != m.d_model:
+            m = m.replace(d_model=width, n_heads=1, n_kv_heads=None, cgc_bottleneck=max(2, width // 2),
+                          cgc_channels=2 * width, ffn_hidden=round(8 * width / 3))
+        self.width = width
+        self.position = nn.Parameter(torch.zeros(h.span, width, dtype=dtype))
+        self.attn_norm = RMSNorm(width, m.norm_eps, dtype)
+        self.qkv = nn.Linear(width, 3 * width, bias=False, dtype=dtype)
+        self.attn_out = nn.Linear(width, width, bias=False, dtype=dtype)
+        self.channel_norm = RMSNorm(width, m.norm_eps, dtype)
         self.channel = _Channel(m, dtype)
-        self.out_norm = RMSNorm(m.d_model, m.norm_eps, dtype)
+        self.out_norm = RMSNorm(width, m.norm_eps, dtype)
 
     def forward(self, embedded: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
-        """``embedded [N, span, d]``, ``valid [N, span]`` (False before the stream origin) -> ``[N, s, d]``."""
+        """``embedded [N, span, d_model]``, ``valid [N, span]`` (False before the stream origin) -> ``[N, s + 1, width]``:
+        the block's ``s`` token states preceded by the state of the token before the block."""
+        if self.down is not None:
+            embedded = self.down(embedded)
         n, span, d = embedded.shape
         x = embedded + self.position
         q, k, v = self.qkv(self.attn_norm(x)).view(n, span, 3, self.heads, d // self.heads).permute(2, 0, 3, 1, 4)
@@ -155,7 +161,8 @@ class BlockEncoder(nn.Module):
         weights = torch.softmax(scores.masked_fill(~mask, float("-inf")), dim=-1)
         x = x + self.attn_out((weights @ v).transpose(1, 2).reshape(n, span, d))
         x = x + self.channel(self.channel_norm(x))
-        return self.out_norm(x[:, -self.block:])
+        out = self.out_norm(x[:, -(self.block + 1):])           # the block and the token before it
+        return out * valid[:, -(self.block + 1):, None]          # nothing before the stream origin
 
 
 class HistoryReader(nn.Module):
@@ -164,23 +171,26 @@ class HistoryReader(nn.Module):
     def __init__(self, m, h: HistoryConfig, dtype):
         super().__init__()
         self.h = h
-        d, e = m.d_model, h.read_head_dim
-        self.pool = nn.Linear(d, h.per_block, bias=False, dtype=dtype)            # which tokens make each key
-        self.index_key = nn.Linear(d, h.index_dim, bias=False, dtype=dtype)
+        d, e, width = m.d_model, h.read_head_dim, h.encoder_dim or m.d_model
+        self.pool = nn.Linear(width, h.per_block, bias=False, dtype=dtype)        # which tokens make each key
+        self.index_key = nn.Linear(width, h.index_dim, bias=False, dtype=dtype)
         self.index_query = nn.Linear(d, h.index_dim, bias=False, dtype=dtype)
-        self.recency = nn.Parameter(torch.zeros(h.distance_buckets, dtype=dtype))
+        self.recency = nn.Parameter(torch.full((1,), -2.0, dtype=dtype))     # index: -softplus(.) log(1 + d)
         self.select_scale = nn.Parameter(torch.ones(1, dtype=dtype))          # weight of the selection prior
         self.index_scale = nn.Parameter(torch.full((1,), 0.5 * math.log(h.index_dim), dtype=dtype))   # log temp
         self.q = nn.Linear(d, h.read_heads * e, bias=False, dtype=dtype)
-        self.k = nn.Linear(d, h.read_kv_heads * e, bias=False, dtype=dtype)
-        self.v = nn.Linear(d, h.read_kv_heads * e, bias=False, dtype=dtype)
+        self.k = nn.Linear(width, h.read_kv_heads * e, bias=False, dtype=dtype)
+        self.k_prev = nn.Linear(width, h.read_kv_heads * e, bias=False, dtype=dtype)     # the previous token
+        self.v = nn.Linear(width, h.read_kv_heads * e, bias=False, dtype=dtype)
         self.key_position = nn.Parameter(torch.zeros(h.block, h.read_kv_heads * e, dtype=dtype))
-        self.key_distance = nn.Parameter(torch.zeros(h.distance_buckets, h.read_kv_heads * e, dtype=dtype))
+        self.key_rank = nn.Parameter(torch.zeros(h.topk, h.read_kv_heads * e, dtype=dtype))   # newest first
+        self.read_recency = nn.Parameter(torch.full((h.read_heads,), -2.0, dtype=dtype))   # readout slope
         self.null = nn.Parameter(torch.zeros(h.read_heads, dtype=dtype))       # "read nothing" logit per head
         self.out = nn.Linear(h.read_heads * e, d, bias=False, dtype=dtype)
 
     def block_keys(self, states: torch.Tensor) -> torch.Tensor:
-        """``[..., s, d]`` encoded block -> ``[..., per_block, index_dim]`` index keys."""
+        """``[..., s + 1, w]`` encoded block -> ``[..., per_block, index_dim]`` index keys (the block's own tokens)."""
+        states = states[..., 1:, :]
         weights = torch.softmax(self.pool(states), dim=-2)                       # [..., s, per_block]
         pooled = weights.transpose(-1, -2) @ states                              # [..., per_block, d]
         return F.normalize(self.index_key(pooled), dim=-1)
@@ -189,27 +199,42 @@ class HistoryReader(nn.Module):
         """``u [B, T, d]``, ``keys [B, N, per_block, index_dim]``, ``distance [T, N]`` -> ``[B, T, N]``."""
         query = F.normalize(self.index_query(u), dim=-1)
         match = torch.einsum("btd,bnkd->btnk", query, keys.to(query.dtype)).amax(dim=-1)
-        return match * self.index_scale.exp() + self.recency[distance_bucket(distance, self.h.distance_buckets)][None]
+        slope = F.softplus(self.recency)
+        return match * self.index_scale.exp() - slope * log_distance(distance, match.dtype)[None]
 
-    def read(self, u, states, chosen_scores, valid, distance):
+    def project(self, states: torch.Tensor):
+        """Readout keys and values, once per block: ``[B, n, s + 1, w]`` -> two ``[B, n, s, g e]``.
+
+        A token's key also carries its PREDECESSOR's state, so a query that matches what came before a token reads
+        that token (``KEY_k`` matched, ``VAL_v`` read): the induction pattern, built into the readout's keys."""
+        return (self.k(states[..., 1:, :]) + self.k_prev(states[..., :-1, :]) + self.key_position,
+                self.v(states[..., 1:, :]))
+
+    def read(self, u, keys, values, chosen_scores, valid, distance):
         """Readout over the selected blocks.
 
-        ``states [B, T, K, s, d]`` encoded selected blocks; ``chosen_scores [B, T, K]`` their index scores;
-        ``valid [B, T, K]``; ``distance [B, T, K]`` from the query to each block's end. Returns the mixer term
-        ``[B, T, d]``, the readout weights ``[B, T, heads, K * s + 1]`` (last: null).
+        ``keys``/``values [B, T, K, s, g e]`` of the selected blocks (from ``project``); ``chosen_scores
+        [B, T, K]`` their index scores; ``valid [B, T, K]``; ``distance [B, T, K]`` from the query to each block's
+        end. Returns the mixer term ``[B, T, d]`` and the readout weights ``[B, T, heads, K * s + 1]`` (last: null).
         """
         h, e = self.h, self.h.read_head_dim
-        batch, length, picks, s, _ = states.shape
+        batch, length, picks, s, _ = keys.shape
         group = h.read_heads // h.read_kv_heads
         q = self.q(u).view(batch, length, h.read_kv_heads, group, e)
-        bucket = distance_bucket(distance, h.distance_buckets)
-        k = (self.k(states) + self.key_position[None, None, None] + self.key_distance[bucket][:, :, :, None])
-        k = k.view(batch, length, picks, s, h.read_kv_heads, e)
-        v = self.v(states).view(batch, length, picks, s, h.read_kv_heads, e)
-        logits = torch.einsum("btgqe,btksge->btgqks", q, k) * e ** -0.5           # [B, T, g, group, K, s]
+        k = keys.view(batch, length, picks, s, h.read_kv_heads, e)
+        v = values.view(batch, length, picks, s, h.read_kv_heads, e)
+        # Source identity, length-invariant: each selected block's recency rank among the selection (newest 0)
+        # as a key embedding, and a per-head slope on log-distance. Both are per block, not per token.
+        far = torch.where(valid, distance, torch.full_like(distance, 1 << 62))
+        rank = torch.argsort(torch.argsort(far, dim=-1), dim=-1)
+        where = self.key_rank[rank].view(batch, length, picks, h.read_kv_heads, e)
+        logits = torch.einsum("btgqe,btksge->btgqks", q, k)
+        logits = (logits + torch.einsum("btgqe,btkge->btgqk", q, where)[..., None]) * e ** -0.5
+        slope = F.softplus(self.read_recency).view(1, 1, h.read_kv_heads, group, 1, 1)
+        logits = logits - slope * log_distance(distance, logits.dtype)[:, :, None, None, :, None]
         prior = torch.log_softmax(chosen_scores.masked_fill(~valid, float("-inf")), dim=-1)
-        prior = torch.where(valid, prior, torch.full_like(prior, float("-inf")))
-        logits = logits + self.select_scale * torch.nan_to_num(prior, neginf=-1e30)[:, :, None, None, :, None]
+        prior = torch.where(valid, prior, torch.zeros_like(prior))
+        logits = logits + self.select_scale * prior[:, :, None, None, :, None]
         logits = logits.masked_fill(~valid[:, :, None, None, :, None], float("-inf"))
         logits = logits.reshape(batch, length, h.read_heads, picks * s)
         null = self.null.view(1, 1, h.read_heads, 1).expand(batch, length, h.read_heads, 1)
@@ -267,7 +292,9 @@ class ErsaHistoryLM(ErsaLM):
         for name, parameter in self.named_parameters():
             if not name.startswith(("encoder.", "readers.")):
                 continue
-            if name.endswith(("recency", "null")):
+            if name.endswith("recency"):
+                parameter.fill_(-2.0)
+            elif name.endswith("null"):
                 parameter.zero_()
             elif name.endswith("select_scale"):
                 parameter.fill_(1.0)
@@ -300,14 +327,14 @@ class ErsaHistoryLM(ErsaLM):
     # -- encoding blocks from token ids --------------------------------------------------------------------
 
     def _encode(self, windows: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
-        """``windows [B, n, span]`` token ids (positions before the origin masked) -> ``[B, n, s, d]``."""
+        """``windows [B, n, span]`` token ids (positions before the origin masked) -> ``[B, n, s + 1, width]``."""
         batch, count, span = windows.shape
         if count == 0:
-            return torch.zeros(batch, 0, self.history.block, self.config.d_model,
+            return torch.zeros(batch, 0, self.history.block + 1, self.encoder.width,
                                dtype=self.embed.weight.dtype, device=windows.device)
         embedded = self.embed(windows.reshape(batch * count, span))
         out = self.encoder(embedded, valid.reshape(batch * count, span))
-        return out.view(batch, count, self.history.block, -1)
+        return out.view(batch, count, self.history.block + 1, -1)
 
     def _windows_from(self, starts: torch.Tensor, source, origin: int):
         """Token windows ``[B, n, span]`` starting at absolute positions ``starts [n]``, and their validity."""
@@ -370,9 +397,11 @@ class ErsaHistoryLM(ErsaLM):
             u.new_zeros(batch, 0, h.per_block, h.index_dim)
         context["new_keys"][index] = new_keys
         ring = state.indexes[index]
-        table_ids = torch.cat((ring.ids, new_ids))                                       # [N]
-        keys = torch.cat((ring.keys.to(new_keys.dtype), new_keys), dim=1)                # [B, N, per, dim]
-        resident = ring.ids.shape[0]
+        held = ring.ids >= 0                                    # empty slots are never scored
+        ring_ids, ring_keys = (ring.ids, ring.keys) if bool(held.all()) else (ring.ids[held], ring.keys[:, held])
+        table_ids = torch.cat((ring_ids, new_ids))                                       # [N]
+        keys = torch.cat((ring_keys.to(new_keys.dtype), new_keys), dim=1)                # [B, N, per, dim]
+        resident = ring_ids.shape[0]
         ends = (table_ids + 1) * s - 1
         distance = positions[:, None] - ends[None, :]                                     # [T, N]
         complete = (positions + 1) // s                                                   # blocks complete at p
@@ -380,11 +409,23 @@ class ErsaHistoryLM(ErsaLM):
         scores = reader.scores(u, keys, distance).masked_fill(~eligible[None], float("-inf"))   # [B, T, N]
 
         address = context["address"]
+        if not table_ids.numel():                               # nothing complete yet: the read is empty
+            if mode in ("oracle", "oracle_override") and bool((address >= 0).any()):
+                raise ValueError("an oracle address is not an eligible resident block for its query")
+            if context["diagnostics"] is not None:
+                none = torch.full((batch, length), -1, dtype=torch.long, device=device)
+                context["diagnostics"][index] = {
+                    "selected": torch.full((batch, length, h.topk), -1, dtype=torch.long, device=device),
+                    "read_position": none, "null_weight": torch.ones(batch, length, dtype=u.dtype, device=device),
+                    "scores": scores, "table_ids": table_ids}
+            return torch.zeros_like(u)
         if mode in ("learned", "oracle_override"):
-            top = scores.topk(min(h.topk, scores.shape[-1]), dim=-1) if scores.shape[-1] else None
-            if top is None:
-                return None
+            top = scores.topk(min(h.topk, scores.shape[-1]), dim=-1)
             chosen, picked = top.indices, top.values
+            if chosen.shape[-1] < h.topk:                       # fewer candidates than K: pad with invalid picks
+                pad = h.topk - chosen.shape[-1]
+                chosen = F.pad(chosen, (0, pad))
+                picked = F.pad(picked, (0, pad), value=float("-inf"))
             valid = picked > float("-inf")
         if mode in ("oracle", "oracle_override"):
             address = address.to(device)
@@ -404,29 +445,30 @@ class ErsaHistoryLM(ErsaLM):
             if mode == "oracle":
                 chosen, valid = oracle_choice, oracle_valid
             else:
-                width = chosen.shape[-1]
-                chosen = torch.where(given[..., None], oracle_choice[..., :width], chosen)
-                valid = torch.where(given[..., None], oracle_valid[..., :width], valid)
+                chosen = torch.where(given[..., None], oracle_choice, chosen)
+                valid = torch.where(given[..., None], oracle_valid, valid)
             picked = torch.gather(scores, 2, chosen)
             picked = torch.where(valid, picked, torch.zeros_like(picked))
         # -- reread: resident selected blocks are re-encoded from the token history; new ones are at hand -------
         flat = chosen[valid]
         reread = torch.unique(flat[flat < resident])                                      # table indices
         if reread.numel():
-            windows, ok = self._windows_from(ring.ids[reread] * s - h.overlap, context["source"], state.origin)
+            windows, ok = self._windows_from(ring_ids[reread] * s - h.overlap, context["source"], state.origin)
             old_states = self._encode(windows, ok)
         else:
-            old_states = u.new_zeros(batch, 0, s, u.shape[-1])
+            old_states = u.new_zeros(batch, 0, s + 1, self.encoder.width)
         compact = torch.full((table_ids.shape[0],), 0, dtype=torch.long, device=device)
         compact[reread] = torch.arange(reread.numel(), device=device)
         compact[resident:] = reread.numel() + torch.arange(new_ids.numel(), device=device)
         # A zero block at the end stands in for invalid picks (they are masked out of the readout).
-        states = torch.cat((old_states, context["new_states"], old_states.new_zeros(batch, 1, s, u.shape[-1])), dim=1)
+        states = torch.cat((old_states, context["new_states"], old_states.new_zeros(batch, 1, s + 1, self.encoder.width)),
+                           dim=1)
         where = torch.where(valid, compact[chosen], torch.full_like(chosen, states.shape[1] - 1))   # [B, T, K]
         rows = torch.arange(batch, device=device)[:, None, None]
-        gathered = states[rows, where]                                                     # [B, T, K, s, d]
+        block_keys, block_values = reader.project(states)                                  # [B, U + n + 1, s, g e]
         block_distance = torch.gather(distance[None].expand(batch, -1, -1), 2, chosen)
-        out, weights = reader.read(u, gathered, picked, valid, block_distance)
+        out, weights = reader.read(u, block_keys[rows, where], block_values[rows, where], picked, valid,
+                                   block_distance)
         if context["diagnostics"] is not None:
             selected = torch.where(valid, table_ids[chosen], torch.full_like(chosen, -1))
             mass = weights[..., :-1].mean(dim=2)                                            # [B, T, K * s]
