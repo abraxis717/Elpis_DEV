@@ -49,6 +49,9 @@ class ErsaConfig:
     attn_kv_heads: int = 1
     attn_window: int = 16
     chunk: int = 64                    # most tokens one forward call may process
+    attn_layers: tuple | None = None   # R3: layers that carry the window attention; None = every layer
+    ersa_kernel: str = "serial"        # R3: "serial" (the R2 reference loop) or "chunked" (exact, block-parallel)
+    scan_block: int = 64               # R3: positions per block of the chunked kernel
 
     def __post_init__(self):
         if not isinstance(self.model, ModelConfig):
@@ -60,12 +63,32 @@ class ErsaConfig:
             raise ConfigError("conv_kernel must be 0 or at least 2")
         if self.attention not in ("none", "window"):
             raise ConfigError("attention must be 'none' or 'window'")
+        if self.ersa_kernel not in ("serial", "chunked"):
+            raise ConfigError("ersa_kernel must be 'serial' or 'chunked'")
+        if type(self.scan_block) is not int or self.scan_block < 1:
+            raise ConfigError("scan_block must be a positive integer")
+        if self.attn_layers is not None:
+            layers = tuple(self.attn_layers)
+            if (not layers or len(set(layers)) != len(layers)
+                    or any(type(i) is not int or not 0 <= i < self.model.n_layers for i in layers)):
+                raise ConfigError("attn_layers must be distinct layer indices (or None for every layer)")
+            if self.attention != "window":
+                raise ConfigError("attn_layers needs attention='window'")
+            object.__setattr__(self, "attn_layers", tuple(sorted(layers)))
         if self.attention == "window":
             self.window_config()            # validates heads, head dimension and window >= chunk + 1
 
+    @property
+    def window_layers(self) -> tuple:
+        """The layers that carry window attention (empty without attention)."""
+        if self.attention != "window":
+            return ()
+        return tuple(range(self.model.n_layers)) if self.attn_layers is None else self.attn_layers
+
     def window_config(self) -> ScrollConfig:
-        """R1's local topology with this model's attention geometry."""
-        widths = self.model.replace(n_heads=self.attn_heads, n_kv_heads=self.attn_kv_heads)
+        """R1's local topology with this model's attention geometry; one ring per attention-carrying layer."""
+        layers = self.model.n_layers if self.attn_layers is None else len(self.attn_layers)
+        widths = self.model.replace(n_heads=self.attn_heads, n_kv_heads=self.attn_kv_heads, n_layers=layers)
         return ScrollConfig(widths, window=self.attn_window, block=1, chunk=self.chunk, horizon=self.attn_window)
 
 
@@ -74,11 +97,13 @@ class ErsaState:
 
     def __init__(self, model: "ErsaLM", batch: int):
         self.batch, self.position = batch, 0
-        self.cells = [block.ersa.new_state(batch) for block in model.blocks]
+        self.cells = [block.ersa.new_state(batch) for block in model.blocks]      # on the model's device
         self.tails = [block.ersa.new_tail(batch) for block in model.blocks]
+        self.device = self.cells[0].device
         self.window = None
         if model.ersa.attention == "window":
-            self.window = StreamState(model.ersa.window_config(), batch, 0, self.cells[0].dtype)
+            self.window = StreamState(model.ersa.window_config(), batch, 0, self.cells[0].dtype, self.device)
+        self.ring = {layer: slot for slot, layer in enumerate(model.ersa.window_layers)}
 
     def nbytes(self) -> dict:
         size = lambda t: t.numel() * t.element_size()   # noqa: E731
@@ -94,13 +119,14 @@ class ErsaState:
 
 
 class ErsaBlock(nn.Module):
-    def __init__(self, c: ErsaConfig, dtype: torch.dtype):
+    def __init__(self, c: ErsaConfig, dtype: torch.dtype, index: int = 0):
         super().__init__()
         m = c.model
         self.mix_norm = RMSNorm(m.d_model, m.norm_eps, dtype)
         self.ersa = ERSAMixer(m.d_model, heads=c.ersa_heads, key_dim=c.key_dim, value_dim=c.value_dim,
-                              conv_kernel=c.conv_kernel, tie_erase=c.tie_erase, dtype=dtype)
-        self.attn = ScrollAttention(c.window_config(), False, dtype) if c.attention == "window" else None
+                              conv_kernel=c.conv_kernel, tie_erase=c.tie_erase, dtype=dtype,
+                              kernel=c.ersa_kernel, scan_block=c.scan_block)
+        self.attn = ScrollAttention(c.window_config(), False, dtype) if index in c.window_layers else None
         self.channel_norm = RMSNorm(m.d_model, m.norm_eps, dtype)
         self.ffn = SwiGLU(m.d_model, m.ffn_width, dtype) if m.has_ffn else None
         self.cgc = CGCTransform(m.d_model, m.cgc_cells, m.cgc_units, bottleneck=m.cgc_bottleneck,
@@ -127,7 +153,7 @@ class ErsaLM(nn.Module):
         self.ersa, self.config = config, config.model
         m, dtype = config.model, getattr(torch, config.model.dtype)
         self.embed = nn.Embedding(m.vocab_size, m.d_model, dtype=dtype)
-        self.blocks = nn.ModuleList(ErsaBlock(config, dtype) for _ in range(m.n_layers))
+        self.blocks = nn.ModuleList(ErsaBlock(config, dtype, index) for index in range(m.n_layers))
         self.rotary = None
         if config.attention == "window":
             scroll = config.window_config()
@@ -166,7 +192,7 @@ class ErsaLM(nn.Module):
     def new_state(self, batch: int) -> ErsaState:
         return ErsaState(self, batch)
 
-    def forward(self, tokens: torch.Tensor, state: ErsaState, *, return_pre: bool = False):
+    def forward(self, tokens: torch.Tensor, state: ErsaState, *, return_pre: bool = False, **extra):
         """Logits ``[batch, T, vocab]`` for the next ``T <= chunk`` tokens. ``state`` advances at the end."""
         c = self.ersa
         if tokens.ndim != 2 or tokens.dtype != torch.long:
@@ -179,6 +205,7 @@ class ErsaLM(nn.Module):
         if int(tokens.min()) < 0 or int(tokens.max()) >= self.config.vocab_size:
             raise ValueError(f"token ids must be in [0, {self.config.vocab_size})")
         x = self.embed(tokens)
+        context = self._chunk_context(tokens, state, extra)
         cells, tails, staged, pre = [], [], [], None
         for index, block in enumerate(self.blocks):
             u = block.mix_norm(x)
@@ -186,9 +213,13 @@ class ErsaLM(nn.Module):
             cells.append(new_cells)
             tails.append(new_tail)
             if block.attn is not None:
-                attended, pending, _ = block.attn(u, self.rotary, state.window.layers[index], state.window)
+                ring = state.window.layers[state.ring[index]]
+                attended, pending, _ = block.attn(u, self.rotary, ring, state.window)
                 mixed = mixed + attended
-                staged.append(pending)
+                staged.append((index, pending))
+            read = self._extra_mix(index, u, state, context)
+            if read is not None:
+                mixed = mixed + read
             pre = x + mixed
             x = pre + block.channel(block.channel_norm(pre))
         x = self.final_norm(x)
@@ -201,14 +232,31 @@ class ErsaLM(nn.Module):
                 state.cells[index].copy_(cells[index])         # inference: the same buffer, overwritten
             if tails[index] is not None:
                 state.tails[index] = tails[index] if graph else state.tails[index].copy_(tails[index])
-            if block.attn is not None:
-                block.attn.commit(state.window.layers[index], state.window, staged[index])
+        for index, pending in staged:
+            self.blocks[index].attn.commit(state.window.layers[state.ring[index]], state.window, pending)
         if state.window is not None:
-            positions = state.window.position + torch.arange(length)
+            positions = state.window.position + torch.arange(length, device=tokens.device)
             state.window.tokens.index_copy_(1, positions % state.window.config.fine_capacity, tokens.to(torch.int32))
             state.window.position += length
+        self._commit_context(tokens, state, context)
         state.position += length
+        if context is not None and context.get("diagnostics") is not None:
+            return (logits, pre, context["diagnostics"]) if return_pre else (logits, context["diagnostics"])
         return (logits, pre) if return_pre else logits
+
+    # -- extension points (R3): a subclass adds a mixer term per block and commits its own state ----------------
+
+    def _chunk_context(self, tokens, state, extra):
+        """Per-chunk context for ``_extra_mix``; ``None`` here: ERSA [+ window] only."""
+        if extra:
+            raise TypeError(f"unexpected arguments {sorted(extra)}")
+        return None
+
+    def _extra_mix(self, index, u, state, context):
+        return None
+
+    def _commit_context(self, tokens, state, context) -> None:
+        return None
 
     def run(self, tokens: torch.Tensor, state: ErsaState | None = None, *, chunk: int | None = None):
         """Feed a whole ``[batch, T]`` sequence in chunks: ``(logits [batch, T, vocab], state)``."""

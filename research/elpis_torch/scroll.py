@@ -109,29 +109,31 @@ class ScrollConfig:
 class StreamState:
     """All volatile state of ``batch`` parallel streams. Preallocated; its size never changes."""
 
-    def __init__(self, config: ScrollConfig, batch: int, origin: int, dtype: torch.dtype):
+    def __init__(self, config: ScrollConfig, batch: int, origin: int, dtype: torch.dtype, device=None):
         c, m = config, config.model
         if origin < 0 or origin % c.block:
             raise ValueError("the stream origin must be a non-negative multiple of the block size")
         self.config, self.batch, self.origin, self.position = c, batch, origin, origin
         shape = (batch, m.kv_heads)
-        self.tokens = torch.zeros(batch, c.fine_capacity, dtype=torch.int32)
+        self.device = torch.device("cpu") if device is None else torch.device(device)
+        zeros = lambda *shape, dtype=dtype: torch.zeros(*shape, dtype=dtype, device=self.device)   # noqa: E731
+        self.tokens = zeros(batch, c.fine_capacity, dtype=torch.int32)
         self.layers = []
         for index in range(m.n_layers):
-            layer = {"lk": torch.zeros(*shape, c.window, m.head_dim, dtype=dtype),
-                     "lv": torch.zeros(*shape, c.window, m.head_dim, dtype=dtype)}
+            layer = {"lk": zeros(*shape, c.window, m.head_dim),
+                     "lv": zeros(*shape, c.window, m.head_dim)}
             if c.sinks:
-                layer["sk"] = torch.zeros(*shape, c.sinks, m.head_dim, dtype=dtype)
-                layer["sv"] = torch.zeros(*shape, c.sinks, m.head_dim, dtype=dtype)
+                layer["sk"] = zeros(*shape, c.sinks, m.head_dim)
+                layer["sv"] = zeros(*shape, c.sinks, m.head_dim)
             if index in c.global_layers:
-                layer["pk"] = torch.zeros(*shape, c.block, m.head_dim, dtype=dtype)     # the open block
-                layer["pv"] = torch.zeros(*shape, c.block, m.head_dim, dtype=dtype)
-                layer["pg"] = torch.zeros(*shape, c.block, dtype=dtype)
-                layer["ck"] = torch.zeros(*shape, c.slots, m.head_dim, dtype=dtype)
-                layer["cv"] = torch.zeros(*shape, c.slots, m.head_dim, dtype=dtype)
+                layer["pk"] = zeros(*shape, c.block, m.head_dim)     # the open block
+                layer["pv"] = zeros(*shape, c.block, m.head_dim)
+                layer["pg"] = zeros(*shape, c.block)
+                layer["ck"] = zeros(*shape, c.slots, m.head_dim)
+                layer["cv"] = zeros(*shape, c.slots, m.head_dim)
                 if c.fine_blocks:
-                    layer["fk"] = torch.zeros(*shape, c.fine_capacity, m.head_dim, dtype=dtype)
-                    layer["fv"] = torch.zeros(*shape, c.fine_capacity, m.head_dim, dtype=dtype)
+                    layer["fk"] = zeros(*shape, c.fine_capacity, m.head_dim)
+                    layer["fv"] = zeros(*shape, c.fine_capacity, m.head_dim)
             self.layers.append(layer)
 
     TIERS = {"lk": "window", "lv": "window", "sk": "sinks", "sv": "sinks", "pk": "open_block", "pv": "open_block",
@@ -205,7 +207,7 @@ class ScrollAttention(nn.Module):
     @staticmethod
     def _take(buffer: torch.Tensor, slots: torch.Tensor) -> torch.Tensor:
         """``buffer[b, :, slots[b, t, j]]`` for every stream, query and pick: ``[B, g, T, J, e]``."""
-        rows = torch.arange(buffer.shape[0])[:, None, None]
+        rows = torch.arange(buffer.shape[0], device=buffer.device)[:, None, None]
         return buffer[rows, :, slots].permute(0, 3, 1, 2, 4)
 
     def forward(self, x: torch.Tensor, rotary: Rotary, layer: dict, state: StreamState):
@@ -213,13 +215,14 @@ class ScrollAttention(nn.Module):
         batch, length, _ = x.shape
         p0, origin, W = state.position, state.origin, c.window
         seen = p0 - origin
-        positions = p0 + torch.arange(length)                                   # absolute, int64
+        device = x.device
+        positions = p0 + torch.arange(length, device=device)                    # absolute, int64
         q_u, k_u, v = self._split(self.q(x), self.heads), self._split(self.k(x), self.kv_heads), \
             self._split(self.v(x), self.kv_heads)
 
         # -- local: the resident window, in chronological order, then this chunk -----------------------------
         held = min(seen, W)
-        ring = torch.arange(p0 - held, p0)
+        ring = torch.arange(p0 - held, p0, device=device)
         keys_u = torch.cat((layer["lk"][:, :, ring % W], k_u), dim=2)
         values = torch.cat((layer["lv"][:, :, ring % W], v), dim=2)
         # Rotary positions are relative to the window (W - held .. W + length - 1), never absolute.
@@ -232,12 +235,12 @@ class ScrollAttention(nn.Module):
 
         # -- sinks: pinned first tokens, at a constant relative offset behind the window ---------------------
         if c.sinks:
-            offsets = W + c.sinks - torch.arange(c.sinks)                       # distance of sink j from the query
+            offsets = W + c.sinks - torch.arange(c.sinks, device=device)                     # distance of sink j from the query
             cos, sin = rotary.cos[offsets], rotary.sin[offsets]                 # [sinks, e/2]
             even, odd = q_u[..., None, 0::2], q_u[..., None, 1::2]              # [B, h, T, 1, e/2]
             q_s = torch.stack((even * cos - odd * sin, even * sin + odd * cos), dim=-1).flatten(-2)
             sink_logits = (q_s * self._wide(layer["sk"])[:, :, None]).sum(-1) * scale     # [B, h, T, sinks]
-            behind = (origin + torch.arange(c.sinks))[None, :] <= positions[:, None] - W
+            behind = (origin + torch.arange(c.sinks, device=device))[None, :] <= positions[:, None] - W
             logits.append(sink_logits.masked_fill(~behind, float("-inf")))
 
         # -- memory: blocks that ended at or before p - W -----------------------------------------------------
@@ -247,7 +250,7 @@ class ScrollAttention(nn.Module):
             gq = self._split(self.gq(x), self.heads) if self.separate else q_u
             slope = F.softplus(self.recency)[None, :, None, None]
             used = min(blocks_done, c.slots)
-            blocks = torch.arange(p0 // c.block - used, p0 // c.block)          # resident, oldest first
+            blocks = torch.arange(p0 // c.block - used, p0 // c.block, device=device)        # resident, oldest first
             kv = (batch, self.kv_heads)
             ck = layer["ck"][:, :, blocks % c.slots]                            # [B, g, used, e]
             distance = positions[:, None] - (blocks * c.block + c.block - 1)[None, :]       # [T, used], exact ints
@@ -267,7 +270,7 @@ class ScrollAttention(nn.Module):
                 logits.append(block_logits.gather(-1, picked).masked_fill(~valid[:, None, :, fine:], float("-inf")))
                 parts.append(("each", self._wide(self._take(layer["cv"], blocks[coarse] % c.slots))))
             if fine:
-                tokens = (blocks[top.indices[..., :fine]][..., None] * c.block + torch.arange(c.block)).flatten(-2)
+                tokens = (blocks[top.indices[..., :fine]][..., None] * c.block + torch.arange(c.block, device=device)).flatten(-2)
 
                 def read(buffer):                                               # [B, h, T, fine * s, e]
                     return self._wide(self._take(buffer, tokens % c.fine_capacity))
@@ -299,12 +302,13 @@ class ScrollAttention(nn.Module):
     def commit(self, layer: dict, state: StreamState, pending: dict) -> None:
         """Write this chunk into the rings. Overwriting the oldest slot is the eviction; nothing else evicts."""
         c, p0, length = self.c, state.position, pending["k"].shape[2]
-        positions = p0 + torch.arange(length)
+        device = pending["k"].device
+        positions = p0 + torch.arange(length, device=device)
         layer["lk"] = _put(layer["lk"], 2, positions % c.window, pending["k"])
         layer["lv"] = _put(layer["lv"], 2, positions % c.window, pending["v"])
         if c.sinks and p0 - state.origin < c.sinks:
             take = min(length, c.sinks - (p0 - state.origin))
-            index = torch.arange(p0 - state.origin, p0 - state.origin + take)
+            index = torch.arange(p0 - state.origin, p0 - state.origin + take, device=device)
             layer["sk"] = _put(layer["sk"], 2, index, pending["k"][:, :, :take])
             layer["sv"] = _put(layer["sv"], 2, index, pending["v"][:, :, :take])
         if not self.is_global:
@@ -322,11 +326,11 @@ class ScrollAttention(nn.Module):
             shape = (keys.shape[0], keys.shape[1], complete, c.block)
             pool = torch.softmax(gates[:, :, :span].reshape(shape), dim=-1)[..., None]
             first = (p0 - opened) // c.block
-            index = (first + torch.arange(complete)) % c.slots
+            index = (first + torch.arange(complete, device=device)) % c.slots
             layer["ck"] = _put(layer["ck"], 2, index, (pool * keys[:, :, :span].reshape(*shape, -1)).sum(3))
             layer["cv"] = _put(layer["cv"], 2, index, (pool * values[:, :, :span].reshape(*shape, -1)).sum(3))
         rest = keys.shape[2] - complete * c.block
-        index = torch.arange(rest)
+        index = torch.arange(rest, device=device)
         layer["pk"] = _put(layer["pk"], 2, index, keys[:, :, complete * c.block:])
         layer["pv"] = _put(layer["pv"], 2, index, values[:, :, complete * c.block:])
         layer["pg"] = _put(layer["pg"], 2, index, gates[:, :, complete * c.block:])
@@ -388,7 +392,7 @@ class ScrollLM(nn.Module):
                 parameter.fill_(1.0)
 
     def new_state(self, batch: int, *, origin: int = 0) -> StreamState:
-        return StreamState(self.scroll, batch, origin, getattr(torch, self.config.dtype))
+        return StreamState(self.scroll, batch, origin, getattr(torch, self.config.dtype), self.embed.weight.device)
 
     def forward(self, tokens: torch.Tensor, state: StreamState, *, return_pre: bool = False,
                 return_selected: bool = False):
@@ -420,7 +424,7 @@ class ScrollLM(nn.Module):
         logits = F.linear(x, self.embed.weight) if self.head is None else self.head(x)
         for index, block in enumerate(self.blocks):
             block.attn.commit(state.layers[index], state, staged[index])
-        positions = state.position + torch.arange(length)
+        positions = state.position + torch.arange(length, device=tokens.device)
         state.tokens.index_copy_(1, positions % c.fine_capacity, tokens.to(torch.int32))
         state.position += length
         out = (logits,)
