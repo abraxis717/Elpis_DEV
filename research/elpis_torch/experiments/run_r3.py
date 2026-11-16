@@ -292,12 +292,13 @@ def _modes(record) -> list:
 def command_facts(args) -> dict:
     model, record = load(args.ckpt, chunk=args.chunk, horizon=1 << 20)
     out = {"phase": PHASE, "checkpoint": record, "ladder": [], "density": [], "chunk": model.ersa.chunk}
-    spec = TASKS["facts"]["task"]
+    keys = record.get("train_keys") or TASKS["facts"]["task"].keys          # the density the model was trained on
+    out["keys"] = keys
     ladder = ((512, 2), (1024, 2)) if args.smoke else LADDER
     for length, count in ladder:
         if length > args.max_tokens:
             continue
-        task = facts_task.FactTask(keys=spec.keys, events=min(EVAL_EVENTS, length * 7 // 64), planted=PLANTED)
+        task = facts_task.FactTask(keys=keys, events=min(EVAL_EVENTS, length * 7 // 64), planted=PLANTED)
         data = facts_task.generate(task, count if not args.streams else min(count, args.streams), length,
                                    seed=TEST_SEED + length)
         for mode in _modes(record):
@@ -314,7 +315,7 @@ def command_facts(args) -> dict:
                 _write(args.out, out)
     out["distractors"] = []
     for length in (() if args.smoke else (4096, 16384)):
-        task = facts_task.FactTask(keys=spec.keys, events=min(EVAL_EVENTS * 2, length * 7 // 64), p_bind=0.25,
+        task = facts_task.FactTask(keys=keys, events=min(EVAL_EVENTS * 2, length * 7 // 64), p_bind=0.25,
                                    p_distract=0.30, distractor_keys=32)
         data = facts_task.generate(task, 8 if length == 4096 else 4, length, seed=TEST_SEED + 11 + length)
         for mode in _modes(record)[:1]:
@@ -373,19 +374,24 @@ def command_program(args) -> dict:
             body, state = free_run(model, prompt, generated, temperature=temperature, seed=TEST_SEED,
                                    chunk=model.ersa.chunk)
             checks = [program_task.check(prompt[row].tolist(), body[row].tolist()) for row in range(count)]
-            summary = {key: (sum(c[key] for c in checks) / count if checks[0][key] is not None and
-                             not isinstance(checks[0][key], bool) else None)
-                       for key in checks[0] if key != "first_error_token"}
+            summary = {}
+            for key in checks[0]:
+                if key == "first_error_token":
+                    continue
+                values = [c[key] for c in checks if c[key] is not None]       # streams with such statements
+                summary[key] = sum(values) / len(values) if values else None
+                if key.endswith(("_fraction", "_accuracy")):
+                    summary[key + "_streams"] = len(values)
             summary["first_error_token_median"] = sorted(
                 (c["first_error_token"] if c["first_error_token"] is not None else generated) for c in checks)[count // 2]
             entry = {"header_tokens": header, "prompt_tokens": cut, "generated_tokens": generated,
                      "temperature": temperature, "streams": count, "mean": summary,
                      "seconds": round(time.perf_counter() - started, 1), "state_bytes": state.nbytes()}
             out["free_running"].append(entry)
-            print(f"[{record['arch']} s{record['seed']}] header {header} T={temperature}: valid "
-                  f"{summary['valid_statement_fraction']:.3f} arity {summary['arity_accuracy']:.3f} print "
-                  f"{summary['print_accuracy']:.3f} viol/1k {summary['violations_per_1k_tokens']:.1f}",
-                  file=sys.stderr, flush=True)
+            print(f"[{record['arch']} s{record['seed']}] header {header} T={temperature}: " + " ".join(
+                f"{k}={summary[k]}" for k in ("valid_statement_fraction", "arity_accuracy", "print_accuracy",
+                                              "violations_per_1k_tokens", "statements", "calls", "prints")),
+                file=sys.stderr, flush=True)
             if args.out:
                 _write(args.out, out)
     return out

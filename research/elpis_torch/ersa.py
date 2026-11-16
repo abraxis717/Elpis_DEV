@@ -98,7 +98,7 @@ def chunked_scan(state, query, key, value, retain, erase, write, *, block: int =
     ``G`` is a cumulative PRODUCT of masked gates (never a ratio of cumulative products), so a retain of
     exactly 0 (a wipe) is exact and nothing is divided. ``I + L`` is unit lower triangular: the solve is
     forward substitution of the same recurrence on ``u``. Rounding differs from the serial loop (different
-    summation order); parity is tested to 1e-10 in float64 and to the float32 tolerance in the tests.
+    summation order); parity is tested to 1e-12 in float64 and to 1e-4 in float32.
     """
     batch, length, heads, _ = key.shape
     reads = []

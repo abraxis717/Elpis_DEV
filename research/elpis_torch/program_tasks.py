@@ -271,11 +271,12 @@ def check(prompt: list[int], generated: list[int]) -> dict:
             error(at)
         at = end + 1
     stats["distinct_functions_called"] = len(called)
-    n = max(1, stats["statements"])
-    calls, prints = max(1, stats["calls"]), max(1, stats["prints"])
     bad = (stats["grammar_errors"] + stats["call_unknown_function"] + stats["call_arity_wrong"]
            + stats["call_undefined_variable"] + stats["print_undefined_variable"] + stats["print_wrong_value"])
-    stats.update(valid_statement_fraction=1 - min(1.0, bad / n), arity_accuracy=1 - stats["call_arity_wrong"] / calls,
-                 print_accuracy=1 - (stats["print_wrong_value"] + stats["print_undefined_variable"]) / prints,
+    # A fraction over zero statements is None (no evidence), never a perfect score.
+    stats.update(valid_statement_fraction=1 - min(1.0, bad / stats["statements"]) if stats["statements"] else None,
+                 arity_accuracy=1 - stats["call_arity_wrong"] / stats["calls"] if stats["calls"] else None,
+                 print_accuracy=(1 - (stats["print_wrong_value"] + stats["print_undefined_variable"]) / stats["prints"]
+                                 if stats["prints"] else None),
                  violations_per_1k_tokens=1000 * bad / max(1, len(generated)))
     return stats
