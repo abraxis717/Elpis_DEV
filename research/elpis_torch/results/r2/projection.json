@@ -1,0 +1,115 @@
+{
+ "environment": {
+  "machine": "x86_64",
+  "python": "3.12.3",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "ersa_only": {
+  "assumptions": {
+   "attn_head_dim": 128,
+   "attn_kv_heads": 4,
+   "attn_window": 0,
+   "chunk": 512,
+   "conv_kernel": 4,
+   "d_model": 2048,
+   "ersa_heads": 16,
+   "horizon": 1048576,
+   "index_block": 64,
+   "index_layers": 0,
+   "key_dim": 128,
+   "n_layers": 24,
+   "scalar_bytes": 2,
+   "value_dim": 128
+  },
+  "combined": 151289856,
+  "cpu_ram": {
+   "token_history": 4194304,
+   "total": 4194304
+  },
+  "exact_recall_claim": "none: the recurrent state holds on the order of key_dim associations per head",
+  "gpu_resident": {
+   "conv_tails": 294912,
+   "ersa_cells": 12582912,
+   "scratch_per_chunk_estimate": 134217728,
+   "total": 147095552
+  },
+  "status": "PROJECTED",
+  "within_ceiling": true,
+  "within_target": true
+ },
+ "ersa_with_4096_token_window": {
+  "assumptions": {
+   "attn_head_dim": 128,
+   "attn_kv_heads": 4,
+   "attn_window": 4096,
+   "chunk": 512,
+   "conv_kernel": 4,
+   "d_model": 2048,
+   "ersa_heads": 16,
+   "horizon": 1048576,
+   "index_block": 64,
+   "index_layers": 0,
+   "key_dim": 128,
+   "n_layers": 24,
+   "scalar_bytes": 2,
+   "value_dim": 128
+  },
+  "combined": 352616448,
+  "cpu_ram": {
+   "token_history": 4194304,
+   "total": 4194304
+  },
+  "exact_recall_claim": "none: the recurrent state holds on the order of key_dim associations per head",
+  "gpu_resident": {
+   "attention_window": 201326592,
+   "conv_tails": 294912,
+   "ersa_cells": 12582912,
+   "scratch_per_chunk_estimate": 134217728,
+   "total": 348422144
+  },
+  "status": "PROJECTED",
+  "within_ceiling": true,
+  "within_target": true
+ },
+ "ersa_with_window_and_compressed_index": {
+  "assumptions": {
+   "attn_head_dim": 128,
+   "attn_kv_heads": 4,
+   "attn_window": 4096,
+   "chunk": 512,
+   "conv_kernel": 4,
+   "d_model": 2048,
+   "ersa_heads": 16,
+   "horizon": 1048576,
+   "index_block": 64,
+   "index_layers": 6,
+   "key_dim": 128,
+   "n_layers": 24,
+   "scalar_bytes": 2,
+   "value_dim": 128
+  },
+  "combined": 553943040,
+  "cpu_ram": {
+   "token_history": 4194304,
+   "total": 4194304
+  },
+  "exact_recall_claim": "none: the recurrent state holds on the order of key_dim associations per head",
+  "gpu_resident": {
+   "attention_window": 201326592,
+   "conv_tails": 294912,
+   "ersa_cells": 12582912,
+   "long_range_index": 201326592,
+   "scratch_per_chunk_estimate": 134217728,
+   "total": 549748736
+  },
+  "status": "PROJECTED",
+  "within_ceiling": true,
+  "within_target": true
+ },
+ "r1_hybrid_for_comparison": {
+  "compressed": 201326592,
+  "fine": 12885688320,
+  "window": 402653184
+ }
+}

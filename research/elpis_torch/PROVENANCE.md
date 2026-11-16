@@ -1,0 +1,76 @@
+# Provenance of the CGC mathematics in `research/elpis_torch`
+
+## Upstream source
+
+| | |
+|---|---|
+| Repository | https://github.com/abraxis717/CGC |
+| Commit | `0895c2bc732a377b5a5f0d063ae13cc72684ec9a` (2026-11-09, `main`) |
+| License | Apache-2.0 (the upstream `LICENSE` is byte-identical to this repository's `LICENSE`, SHA-256 `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4`) |
+| File | `src/cgc/ecsg_e0.py` |
+| File SHA-256 | `92c987e0fb54d80193fd60ecc9a3e31088f0f9b7cd2cfe8e08c4636a198d7084` (equals the digest the upstream `SOURCE_SHA256SUMS.txt` and its R97W experiment pin as `SHA_E0`) |
+
+The same mathematics is stated in this repository by `native/ECS_G/README.md` (the qualified native kernel)
+and implemented by `native/ECS_G/src/ecsg_math.c`. Neither is modified by this work.
+
+## What was copied
+
+`upstream/cgc_ecsg_e0.py` is the upstream file, byte for byte. It is never edited. Its digest is checked by
+`tests/research/elpis_torch/test_e0_reference.py`, which loads it from the file and uses it only as an oracle.
+Nothing else was copied: not the `CGC120` wrapper, not the R97W experiment, not the native C sources, no
+weights, no evidence.
+
+## What was written here, and how it relates to the upstream
+
+| File | Relation to the upstream mathematics | Changes |
+|---|---|---|
+| `e0.py` | A separate float64 implementation of the same E0 cell (`phi`, `phi'`, `f_W`, the mean-squared-error gradient, one explicit gradient step). Written after reading the upstream file and the ECS_G README; it follows their formulas and the upstream operation order. | Equal to the upstream bitwise on every tested case. Adds the unpacked moment form `(mu, M, T3)` (the upstream packs the upper triangle). Raises `E0Error` with descriptive messages instead of the upstream's code strings. No K1, no FMS, no state. |
+| `cgc.py` `CGCCore` | `C` E0 cells sharing one input, evaluated as one matrix product. With `preact_bound=None` each output channel equals `e0.forward` of that channel's `[d, N]` weight. | New tensor layout `[d, C, N]` (the upstream `CGC120` holds four separate `[5, 6]` cells). `phi` in Horner form (agrees with the reference to round-off, not bitwise). Runs in float32 or float64 and on inputs of any leading shape. |
+| `cgc.py` `preact_bound` | **Extension, not E0.** `u -> b tanh(u/b)` before `phi`. Deviates from E0 by at most `\|u\|^3 / (3 b^2)` in the pre-activation and converges to E0 as `b -> inf`. | New. Exists to cap the cubic's growth. |
+| `cgc.py` `CGCTransform` | **Architecture around E0.** Optional linear bottleneck `P_in` and linear readout `P_out`. Without the bound, cell `c` is exactly E0 on the full hidden input with weight `P_in^T W_c` (a rank constraint on `W`). | New. E0 has neither a readout nor a factorized weight. |
+| `model.py`, `session.py` | Use `CGCTransform` inside a transformer block and adapt the core weights `W` per session. | New. The session's update is plain gradient descent on a language-model loss; it is not the G1 recurrence, not K1 and not the R97W Reptile procedure. |
+
+## What is not claimed
+
+* None of the tensorized or bounded operators is a qualified ECS_G kernel. The qualified kernel is
+  `native/ECS_G`, in its frozen regime `d = 6`, `N in {36, 48, 72}`, float64.
+* The R97W result (a 120-parameter CGC against a parameter-matched GELU network on synthetic meta-learning
+  tasks) says nothing about language models, and nothing here reproduces or extends it.
+* Agreement with the upstream file is established on the tested shapes and inputs
+  (`tests/research/elpis_torch/test_e0_reference.py`), not for all inputs.
+
+---
+
+# R2 (ERSA): provenance, licences and what was not copied
+
+## Sources studied
+
+| Source | Identity | Licence | Use in R2 |
+|---|---|---|---|
+| Historical ERSA archive, `research/ersa/` | commit `7b423a174fa58e6f0d2f3156ed496dcb67f53361` ("research(ersa): archive pinned R18 R35 R36 sources"), 133 tracked files (131 sources, the manifest, a README), manifest SHA-256 `b67dc98c473d3f307d2efd4890242e6027077b784e774be23dd9b66c6b625ede` | first-party research archive; contains one third-party file (next row) | **Read only.** It is the starting research authority for what ERSA is meant to be: R18 a read-only multi-hop slot reader over host-supplied state, R35 gated slot writes, R36 a C state owner. Nothing in it is edited, imported, installed or executed by R2. |
+| `research/ersa/.../R35_.../third_party/fla_gsa/naive.py` | adapted from `fla-org/flash-linear-attention`, `fla/ops/gsa/naive.py`; Copyright (c) 2023-2026 Songlin Yang, Yu Zhang, Zhiyuan Li | MIT; the licence text is retained beside it in the archive (`LICENSE.txt`) | **Not used.** R2 does not import it, call it or reproduce it. R2's update is a gated delta rule on one matrix, not the two-matrix gated-slot recurrence of that file. |
+| `divagr18/qwenputer` | commit `0cab57038a8b218dabe481f994174c3437405e3d` | MIT, Copyright (c) 2026 Divyansh Agrawal | README and design notes read. **Idea adopted:** the state of a gated delta-rule layer is exact RAM when keys are one-hot, the gate is open and the write strength is 1; gate 0 wipes a head, gate 1/2 halves it. No code, compiler, weights or trace format copied. |
+| `vixhal-baraiya/qwenGPU` | commit `e2695f6a0a818ebc68e2e14b6b990eddf04c51b3` | MIT, Copyright (c) 2026 vixhal-baraiya | README read: registers, program ROM and memory as rows of the recurrent state; the token stream as execution log. No code copied. |
+| `Bobliuuu/qwentpu` | commit `856720f3e5d27c0fc1c19f370a39487853e722ae` | MIT, Copyright (c) 2026 Bobliuuu | README read: exact integer computation replayed against a reference, position by position. The replay-against-a-reference test method was adopted. No code copied. |
+| The gated delta rule | the published recurrence used by delta-rule linear attention and Gated DeltaNet | mathematics, not code | R2's kernel is that recurrence written from its definition. No reference implementation was consulted for the code, and no chunk-parallel kernel was ported. |
+
+The three external repositories were cloned read-only outside this repository for study and are not vendored.
+
+## What R2 wrote
+
+| File | Content | Relation to the sources |
+|---|---|---|
+| `ersa.py` | `delta_step` (one state transition), `ERSAMixer` (trainable multi-head recurrent mixer), `ERSACells` (exact addressable bank), `compile_cell_mixer` (weights computed so the mixer's forward pass is exact RAM), `recall_capacity` | New. Shares the name and the purpose of the historical ERSA (a recurrent associative token mixer over bounded volatile state) and none of its code. Unlike R18 it writes its own state; unlike R35 it needs no donor routine and no host-supplied admission mask. |
+| `ersa_model.py` | `ErsaLM`: ERSA as the token mixer of the CGC transformer, optionally beside R1's ring-buffer window attention | New; reuses R0/R1 modules of this package only. |
+| `experiments/run_r2.py`, `tests/research/elpis_torch/test_ersa.py` | experiments and qualification tests | New. |
+
+No new dependency: PyTorch only, as for R0 and R1.
+
+## Not claimed, and left to the owner
+
+* R2 is not the historical ERSA lineage's R11/R14 native authority, selector, halting controller or admission
+  model. None of those is implemented, replaced or qualified here.
+* The archive's third-party MIT file is carried with its licence inside the archive. This change does not edit
+  the repository's top-level `NOTICE` or `LICENSES/`; whether the archive's presence calls for an entry there
+  is the owner's decision.
+* The archive's own tests and install scripts were not run.
