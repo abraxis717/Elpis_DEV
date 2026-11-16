@@ -306,6 +306,17 @@ def command_facts(args) -> dict:
                   f"{result['tokens_per_second']} tok/s", file=sys.stderr, flush=True)
             if args.out:
                 _write(args.out, out)
+    out["distractors"] = []
+    for length in (() if args.smoke else (4096, 16384)):
+        task = facts_task.FactTask(keys=spec.keys, events=min(EVAL_EVENTS * 2, length * 7 // 64), p_bind=0.25,
+                                   p_distract=0.30, distractor_keys=32)
+        data = facts_task.generate(task, 8 if length == 4096 else 4, length, seed=TEST_SEED + 11 + length)
+        for mode in _modes(record)[:1]:
+            result = stream(model, data, mode=mode, chunk=model.ersa.chunk)
+            out["distractors"].append({"tokens": length, "mode": mode or "recurrent", "p_distract": 0.30,
+                                       "probes": {k: {"n": v["n"], "accuracy": v["accuracy"]}
+                                                  for k, v in result["probes"].items()},
+                                       "recall_at_k": result.get("recall_at_k")})
     for keys in (() if args.smoke else DENSITY):
         task = facts_task.FactTask(keys=keys, events=EVAL_EVENTS)
         data = facts_task.generate(task, 16, 1024, seed=TEST_SEED + 7 + keys)

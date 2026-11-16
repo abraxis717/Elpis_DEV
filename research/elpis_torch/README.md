@@ -104,9 +104,14 @@ with VolatileSession(model, SessionConfig(lr=0.1, max_steps=16)) as session:
 | `lastblock.py`, `scroll_session.py` | R1: last-block CGC fast weights that leave every cache valid; `ScrollSession` |
 | `scroll_data.py`, `experiments/run_r1.py` | R1: the long-stream retrieval task; train, ladder, adapt, capacity |
 | `ersa.py`, `ersa_model.py`, `experiments/run_r2.py` | R2: ERSA kernel, mixer, exact cells, `ErsaLM`; `run_r2 smoke|exact|latency|projection|transduction`; train with `run_r1 train --topology ersa_conv` |
+| `ersa.py` `chunked_scan` | R3: the same ERSA recurrence evaluated block-parallel (exact; `ErsaConfig(ersa_kernel="chunked")`) |
+| `history.py`, `history_model.py` | R3: exact token-history ring, bounded block index, `ErsaHistoryLM` (learned addressing, rereading, readout; `off` / `learned` / oracle diagnosis modes) |
+| `longrange_tasks.py`, `program_tasks.py` | R3: long-range fact streams with source labels; a structured program language with an exact checker for free-running generation |
+| `scaling.py`, `experiments/run_r3.py` | R3: 500M / 1B configurations and context accounting; `run_r3 train|facts|program|scale|gpu|smoke` (`docs/research/elpis_torch/DESIGN_R3.md`, `EVIDENCE_R3.md`) |
 
 ## Not here, on purpose
 
-RALPH in any role, MoE routing, Engram, mHC, HCA, AWR, GDN, ERSA, persistent inference learning, an energy
-function, a metacognitive controller, a retrieval controller, model weights, and any claim that the DSV4.1
+RALPH in any role, MoE routing, Engram, mHC, HCA, AWR, GDN, persistent inference learning, an energy
+function, a metacognitive controller, a retrieval controller or host-side retriever (R3's block selection is the
+model's own learned query; the host only stores, evicts and gathers), model weights, and any claim that the DSV4.1
 research tower was translated: it was read for its mechanics and not ported.
