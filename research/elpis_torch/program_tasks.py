@@ -55,6 +55,36 @@ class Programs:
     tokens: torch.Tensor               # [n, T]
     role: torch.Tensor                 # [n, T]
     header: list = field(default_factory=list)   # header length per row (tokens, BOS included)
+    source: torch.Tensor | None = None  # [n, T]: evidence position of each determined token (-1: none)
+
+    def query_source(self) -> torch.Tensor:
+        """Aligned to INPUT positions (the token at q predicts q + 1). TRAINING-ONLY label."""
+        out = torch.full_like(self.source, -1)
+        out[:, :-1] = self.source[:, 1:]
+        return out
+
+    def query_block(self, block: int) -> torch.Tensor:
+        src = self.query_source()
+        return torch.where(src >= 0, src // block, src)
+
+
+def evidence(tokens: list[int], roles: list[int]) -> list[int]:
+    """The position whose token decides each determined token: the arity token of the latest DEF of the called
+    function (where a CALL continues or ends), the value token of the latest LET of a printed variable."""
+    fn_at, var_at, out, at = {}, {}, [-1] * len(tokens), 0
+    current = None
+    for at, t in enumerate(tokens):
+        if t == DEF and at + 3 < len(tokens) and tokens[at + 3] == END:
+            fn_at[tokens[at + 1] - FN0] = at + 2
+        elif t == LET and at + 3 < len(tokens) and tokens[at + 3] == END:
+            var_at[tokens[at + 1] - VAR0] = at + 2
+        if t == CALL and at + 1 < len(tokens):
+            current = fn_at.get(tokens[at + 1] - FN0, -1)
+        if roles[at] in (ARITY_ARG, ARITY_END):
+            out[at] = current if current is not None else -1
+        elif roles[at] == PRINT_VALUE:
+            out[at] = var_at.get(tokens[at - 2] - VAR0, -1)
+    return out
 
 
 def _statement(rng, kind, state, task):
@@ -134,7 +164,8 @@ def generate(task: ProgramTask, count: int, *, seed: int, length: int | None = N
             roles[index] += role
     tokens = torch.tensor([r[:size] for r in rows], dtype=torch.long)
     role = torch.tensor([r[:size] for r in roles], dtype=torch.int8)
-    return Programs(tokens, role, headers)
+    source = torch.tensor([evidence(r[:size], q[:size]) for r, q in zip(rows, roles)], dtype=torch.long)
+    return Programs(tokens, role, headers, source)
 
 
 def program_loss(logits, tokens, role, *, comment_weight: float = 0.02):

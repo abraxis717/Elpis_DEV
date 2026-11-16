@@ -120,7 +120,7 @@ def _loss(arch, task, model, batch, *, diagnostics_needed: bool):
         extra = dict(mode="oracle", address=eligible_address(batch.query_block(model.history.block)[:, :-1], model))
     if mode is not None:
         extra["diagnostics"] = True
-    supervise = mode in ("learned", "oracle+aux") and task == "facts"
+    supervise = mode in ("learned", "oracle+aux")      # both tasks carry training-only evidence positions
     gold = eligible_address(batch.query_block(model.history.block)[:, :-1], model) if supervise else None
     logits, aux = [], []
     step = model.ersa.chunk

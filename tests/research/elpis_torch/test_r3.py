@@ -374,3 +374,16 @@ def test_the_byte_tokenizer_satisfies_the_subword_interface_and_lengths_are_comp
     assert tokenizer.decode_bytes(tokenizer.encode_bytes(data)) == data
     assert b"".join(tokenizer.token_bytes(t) for t in tokenizer.encode_bytes(data)) == data
     assert bytes_per_token(tokenizer, data) == 1.0
+
+
+def test_program_evidence_labels_point_back_at_the_deciding_token():
+    p = programs.generate(programs.ProgramTask(functions=6, variables=6, header_tokens=200, body_statements=40),
+                          2, seed=4)
+    position = torch.arange(p.tokens.shape[1])[None].expand_as(p.tokens)
+    labelled = p.source >= 0
+    assert bool(labelled.any()) and bool((p.source[labelled] < position[labelled]).all())
+    printed = p.role == programs.PRINT_VALUE
+    assert bool((p.tokens[printed] == p.tokens.gather(1, p.source.clamp(min=0))[printed]).all())
+    ends = p.role == programs.ARITY_END
+    arity = p.tokens.gather(1, p.source.clamp(min=0))[ends]
+    assert bool(((arity >= programs.AR0) & (arity < programs.AR0 + programs.ARITIES)).all())
