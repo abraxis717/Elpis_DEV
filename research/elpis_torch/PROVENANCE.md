@@ -94,3 +94,21 @@ for R3. The following were used as research references for design principles onl
 What R3 wrote: `history.py`, `history_model.py`, `longrange_tasks.py`, `program_tasks.py`, `scaling.py`,
 `experiments/run_r3.py`, `tests/research/elpis_torch/test_r3.py`, the `chunked_scan` kernel and the device and
 precision changes in `ersa.py`, `ersa_model.py`, `scroll.py`, and the tokenizer interface. All new and original.
+
+---
+
+# R4 (context runtime): references and what was not copied
+
+No third-party code, weights or data were copied, imported, vendored or executed. No new dependency.
+
+| Reference | Licence | Used for | Not taken |
+|---|---|---|---|
+| XHToken Spark-X2.5-4B and Spark-X2.6-4B model cards and `config.json` (huggingface.co/XHToken), fetched 2026-11-16 | Apache-2.0 (weights, code) | the published geometry only: 36 layers (27 sliding, 9 full), window 512, 16 query / 4 KV heads, head dim 256, head-wise sigmoid attention-output gate, partial rotary 0.25 (theta 5e6) on full layers, full rotary (theta 1e4) on sliding layers, 1,048,576 positions; the cards' statements that X2.6 keeps X2.5's architecture and improves long context through post-training | its modeling code (never downloaded), weights, tokenizer, training data, benchmark numbers |
+| StreamingLLM (arXiv 2309.17453; mit-han-lab/streaming-llm, MIT) | paper | the distinction between a bounded streaming window and retained information | code not consulted |
+| Native Sparse Attention (arXiv 2502.11089), Kimi Linear (arXiv 2510.26692) | papers | sparse placement of expensive attention; selection over compressed blocks (already in R1/R3) | code |
+
+What R4 wrote (all original): `context_runtime.py` (deterministic exact top-K, tiled exact scoring, the
+encoded-block cache, runtime options, the streaming session), `spark_reference.py` (an independent, untrained,
+scaled-down comparator written from the published configuration), the R4 parts of `history_model.py`,
+`history.py`, `scroll.py`, `ersa_model.py`, `scaling.py`, `experiments/run_r4.py` and
+`tests/research/elpis_torch/test_r4.py`.

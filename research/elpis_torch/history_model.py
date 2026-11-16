@@ -42,7 +42,7 @@ from torch.nn import functional as F
 from .cgc import CGCTransform
 from .config import ConfigError
 from .ersa_model import ErsaConfig, ErsaLM, ErsaState
-from .context_runtime import exact_topk, tiled_select
+from .context_runtime import exact_topk, ring_order, tiled_select
 from .history import BlockIndex, TokenHistory
 from .model import RMSNorm, SwiGLU, _seeded_normal
 
@@ -522,8 +522,10 @@ class ErsaHistoryLM(ErsaLM):
         h, reader = self.history, self.readers[str(index)]
         s, device, batch = h.block, u.device, u.shape[0]
         ring, positions, new_ids = state.indexes[index], context["positions"], context["new_ids"]
-        chosen, picked = tiled_select(reader, u, [(ring.keys, ring.ids), (new_keys, new_ids)], positions, block=s,
-                                      slots=h.slots, k=h.topk, tile=runtime.tile, counters=runtime.counters)
+        order, first_held = ring_order(ring)
+        segments = [(ring.keys, ring.ids, order, first_held), (new_keys, new_ids, None, context["first_new"])]
+        chosen, picked = tiled_select(reader, u, segments, positions, block=s, slots=h.slots, k=h.topk,
+                                      tile=runtime.tile, counters=runtime.counters)
         valid = chosen >= 0
         unique = torch.unique(chosen[valid])                                               # ascending block ids
         first_new = context["first_new"]

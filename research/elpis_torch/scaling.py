@@ -260,3 +260,42 @@ def session_scratch_bytes(model, *, batch: int = 1, chunk: int, scorer: str = "t
         out["encoder_activations"] = batch * (T // h.block + 2 + min(T * h.topk, h.slots)) * h.span * width * 8 * w
     out["total"] = sum(out.values())
     return out
+
+
+def r4_context_budget(name: str, *, chunk: int = 512, tile: int = 4096, cache_bytes: int = 32 << 20,
+                      horizon: int = HORIZON) -> dict:
+    """The complete 1M-token active context of a configuration under the R4 runtime.
+
+    ``state_fp32`` is EXACT tensor storage of the state as allocated by a float32 model (instantiated on ``meta``);
+    ``state_deployment`` is the same tensors with the ERSA cells kept float32 (the accumulation precision) and every
+    other floating tier in bfloat16 (exact sizes, deployment layout). The cache is the configured hard bound.
+    Scratch is PROJECTED (``session_scratch_bytes``) for 16-bit activations, for the tiled scorer and, for
+    comparison, the R3 reference scorer."""
+    model, _ = instantiate(name, horizon=horizon)
+    ersa, history = configuration(name, horizon=horizon, chunk=chunk)
+    fp32 = fixed_state_bytes(model, 1)
+    deployment = {k: (v if k in ("ersa_cells", "history_tokens", "token_history") else
+                      (v // 2 if k != "block_index" else v - (v - history.slots * 8 * len(model.read_layers)) // 2))
+                  for k, v in fp32.items() if k != "total"}
+    deployment["total"] = sum(deployment.values())
+    tiled = session_scratch_bytes(model, chunk=chunk, scorer="tiled", tile=tile, activation_bytes=2)
+    reference = session_scratch_bytes(model, chunk=chunk, scorer="reference", activation_bytes=2)
+    entry = (history.block + 1) * (history.encoder_dim or ersa.model.d_model) * 2
+    gpu = {"state": deployment["total"], "block_cache": cache_bytes, "scratch_tiled": tiled["total"]}
+    gpu["total"] = sum(gpu.values())
+    cpu_history = dict(gpu, state=deployment["total"] - deployment["history_tokens"])
+    cpu_history["total"] = cpu_history["state"] + cache_bytes + tiled["total"]
+    weights = sum(p.numel() for p in model.parameters())
+    return {"parameters": weights, "weights_bytes": {"bf16": 2 * weights, "fp32": 4 * weights},
+            "state_fp32_instantiated": fp32, "state_deployment_exact": deployment,
+            "block_cache": {"capacity_bytes": cache_bytes, "entry_bytes_bf16": entry,
+                            "blocks_held_at_capacity": cache_bytes // entry},
+            "scratch_tiled_projected": tiled, "scratch_reference_projected": reference,
+            "placement_all_gpu": {"gpu": gpu, "cpu": {"total": 0}},
+            "placement_history_in_cpu_ram": {"gpu": cpu_history,
+                                             "cpu": {"history_tokens": deployment["history_tokens"],
+                                                     "total": deployment["history_tokens"]}},
+            "gpu_target_1GiB": gpu["total"] <= 1 << 30, "gpu_ceiling_2GiB": gpu["total"] <= 2 << 30,
+            "gpu_total_with_bf16_weights": gpu["total"] + 2 * weights,
+            "chunk": chunk, "tile": tile, "horizon": horizon,
+            "status": "state INSTANTIATED / exact; cache configured; scratch PROJECTED; nothing measured on a GPU"}

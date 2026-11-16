@@ -79,26 +79,39 @@ def exact_topk(scores: torch.Tensor, ids: torch.Tensor, k: int):
 
 def tiled_select(reader, u: torch.Tensor, segments, positions: torch.Tensor, *, block: int, slots: int, k: int,
                  tile: int, counters: dict | None = None):
-    """R3's learned selection, exact, over index ``segments`` ``[(keys [B, n, per, dim], ids [n]), ...]``.
+    """R3's learned selection, exact, over index ``segments``.
 
-    For each segment and each tile of ``tile`` records: the R3 score (``reader.scores``), the R3 eligibility
-    (complete at the query and inside its horizon; empty slots have id -1), then an exact top-K merge with the
-    running best. Scratch is ``O(B T tile per)``, independent of the horizon. Keys may live on another device
-    (CPU index): each tile is copied to the query's device for scoring. Returns absolute block ids
-    ``[B, T, k]`` (-1: none) and scores ``[B, T, k]`` (-inf: none).
+    Each segment is ``(keys [B, n, per, dim], ids [n], order)``: ``order`` lists the occupied record slots in
+    increasing block order (``None``: all ``n`` records, already in order). Only occupied slots are scored, so a
+    partially filled index costs what it holds, not its capacity. For each tile of ``tile`` records: the R3 score
+    (``reader.scores``), the R3 eligibility (complete at the query and inside its horizon), then an exact top-K
+    merge with the running best. Tiles that no query of the chunk can see are skipped by scalar bounds (no device
+    synchronization). Scratch is ``O(B T tile per)``, independent of the horizon. Keys may live on another device
+    (a CPU index): each tile is copied to the query's device. Returns absolute block ids ``[B, T, k]`` (-1: none)
+    and scores ``[B, T, k]`` (-inf: none).
     """
     batch, length = u.shape[0], u.shape[1]
     best = u.new_full((batch, length, k), NEG)
     best_ids = torch.full((batch, length, k), -1, dtype=torch.long, device=u.device)
     complete = (positions + 1) // block
-    for keys, ids in segments:
-        for at in range(0, ids.shape[0], tile):
-            tile_ids = ids[at:at + tile].to(u.device)
-            tile_keys = keys[:, at:at + tile].to(u.device)
+    first_position, last_position = int(positions[0]), int(positions[-1])
+    lowest = (first_position + 1) // block - slots              # the oldest block any query of the chunk may see
+    highest = (last_position + 1) // block - 1                  # the newest block complete by the chunk's end
+    for keys, ids, order, first_block in segments:
+        count = ids.shape[0] if order is None else order.shape[0]
+        for at in range(0, count, tile):
+            span_lo = first_block + at                          # blocks in this tile, by construction (in order)
+            span_hi = first_block + min(at + tile, count) - 1
+            if span_hi < lowest or span_lo > highest:
+                continue
+            if order is None:
+                tile_ids, tile_keys = ids[at:at + tile], keys[:, at:at + tile]
+            else:
+                where = order[at:at + tile]
+                tile_ids, tile_keys = ids.index_select(0, where), keys.index_select(1, where)
+            tile_ids, tile_keys = tile_ids.to(u.device), tile_keys.to(u.device)
             distance = positions[:, None] - ((tile_ids + 1) * block - 1)[None, :]                     # [T, n]
             eligible = (tile_ids[None, :] >= 0) & (distance >= 0) & (tile_ids[None, :] >= complete[:, None] - slots)
-            if not bool(eligible.any()):
-                continue
             scores = reader.scores(u, tile_keys, distance).masked_fill(~eligible[None], NEG)
             if counters is not None:
                 counters["records_scored"] = counters.get("records_scored", 0) + int(tile_ids.shape[0]) * length
@@ -107,6 +120,16 @@ def tiled_select(reader, u: torch.Tensor, segments, positions: torch.Tensor, *, 
             best, where = exact_topk(pool, pool_ids, k)
             best_ids = torch.where(torch.isfinite(best), pool_ids.gather(-1, where), torch.full_like(where, -1))
     return best_ids, best
+
+
+def ring_order(index, device=None):
+    """The occupied slots of a ``BlockIndex`` in increasing block order, and the first block they hold."""
+    if index.next_block is None:
+        return torch.zeros(0, dtype=torch.long, device=device or index.ids.device), 0
+    held = min(index.next_block, index.slots)
+    first = index.next_block - held
+    order = (first + torch.arange(held, device=index.ids.device)) % index.slots
+    return order, first
 
 
 # -- the encoded-block cache ----------------------------------------------------------------------------------
