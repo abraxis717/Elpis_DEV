@@ -181,7 +181,9 @@ def test_logit_positions_equal_slices_of_the_full_logits():
     tokens = _tokens(length=100)
     full = model(tokens, model.new_state(2))
     some = model(tokens, model.new_state(2), logit_positions=torch.tensor([0, 7, 99]))
-    assert float((some - full[:, [0, 7, 99]]).abs().max()) == 0.0
+    # Different matrix shapes (3 rows vs 100): equal up to BLAS rounding, which depends on the CPU (CI run 435
+    # measured 8e-17 where the development CPU gave 0.0). Bitwise equality is not the contract.
+    assert float((some - full[:, [0, 7, 99]]).abs().max()) < 1e-12
 
 
 def test_reset_is_in_place_and_reproduces_a_fresh_stream():
@@ -252,7 +254,9 @@ def test_streams_continue_across_absolute_position_2_pow_20_with_unchanged_logit
     origin = (1 << 20) - 160
     crossing, picks_crossing, state = _run(model, tokens, 64, RuntimeOptions(scorer="tiled"), origin=origin)
     assert state.position == origin + 320 > 1 << 20
-    assert float((at_zero - crossing).abs().max()) == 0.0
+    # The index ring wraps at a different slot for another origin, so the scoring matrices have other shapes:
+    # equal to rounding (CI run 435: 1.7e-16), with identical selections.
+    assert float((at_zero - crossing).abs().max()) < 1e-12
     shift = origin // model.history.block
     assert torch.equal(torch.where(picks_crossing >= 0, picks_crossing - shift, picks_crossing), picks_zero)
 

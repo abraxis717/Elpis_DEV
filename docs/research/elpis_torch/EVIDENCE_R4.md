@@ -106,8 +106,8 @@ identical recall@K and evidence-read rates.
 | tiled selection = reference selection | PASS | tests: float64, chunk 64/13/1, tiles 1..1000, partially filled index, past the horizon, with and without window attention: identical block ids, logits <= 1e-10; float32: identical ids, <= 1e-4. Trained checkpoint, 32K tokens (`results/r4/parity_32k.json`): 65,536 selections identical, logit difference 0.0 for B and C |
 | exact ties | PASS within the stated tolerance | bitwise ties are resolved newer-first in every path (brute-force-checked `exact_topk`; repeated-block fixture). Across DIFFERENT chunkings or tilings a block may be encoded in a different batch and its score differ in the last bits; such near-ties can be ordered differently (this is true of the R3 reference itself); the selected scores then agree to 1e-12 (tested) |
 | streaming API | PASS | prefill probes and final logits equal `model.run` (<= 1e-10), continuation over calls, token-by-token decode, in-place reset reproduces a fresh stream bitwise with the same buffers, plain `ErsaLM` too |
-| logits not materialized | PASS | the head runs only at requested positions (`logit_positions`, equal to slicing the full logits exactly); B/C keep one `[B, vocab]` per call |
-| crossing absolute position 2^20 | PASS | a stream from origin 2^20 - 160 equals the same stream from 0 bitwise, with block ids shifted exactly |
+| logits not materialized | PASS | the head runs only at requested positions (`logit_positions`; equal to slicing the full logits to rounding, <= 1e-12 float64); B/C keep one `[B, vocab]` per call |
+| crossing absolute position 2^20 | PASS | a stream from origin 2^20 - 160 equals the same stream from 0 to rounding (<= 1e-12 float64), with block ids shifted exactly |
 | eviction, horizon | PASS | selections never older than the query's horizon or incomplete; the ring holds exactly the last `horizon/block` blocks; repeat runs select identically |
 | 1M stream past the horizon | MEASURED | 1,114,368 tokens (2^20 + 2^16 + 256 decoded) in A/B/C: final position 1,114,368, oldest token held 65,752, state bytes constant, buffers never reallocated |
 | invalid addresses / evicted positions | PASS | refused (`EvictedError`, `ValueError`) |
@@ -241,6 +241,13 @@ decoded token for the model's one read layer (`records_scored` 8,388,616 over 25
    decoding at 1M would move 8 MiB per token per read layer. Implemented for memory-constrained placements, not
    recommended; not measured on a GPU.
 10. The comparator is untrained and tiny; its numbers compare context costs, not models.
-11. Not built: a hierarchical or approximate index (would change selections: a separate scientific experiment),
+11. **CI found two over-strict assertions (TEST-CONTRACT DEFECT, docs/CI_POLICY.md).** Push run 435 on head
+    `166548b` failed `test_logit_positions_equal_slices_of_the_full_logits` (8.3e-17) and
+    `test_streams_continue_across_absolute_position_2_pow_20_with_unchanged_logits` (1.7e-16), while pull-request
+    run 436 on the same head passed: same tree, different verdicts, i.e. ENVIRONMENT-SENSITIVE. Cause: both tests
+    demanded bitwise equality between computations with different matrix shapes (BLAS rounding depends on shape
+    and CPU). The asserted law is unchanged and now carries the documented float64 tolerance (1e-12); selections
+    are still required to be identical. Nothing was re-run to obtain a green result.
+12. Not built: a hierarchical or approximate index (would change selections: a separate scientific experiment),
     a fused GPU kernel, any learned-addressing change (owned elsewhere).
 
