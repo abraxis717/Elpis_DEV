@@ -156,7 +156,7 @@ def training_memory(name: str, *, batch: int = 1, length: int = 4096, horizon: i
             "note": "without activation checkpointing; chunked ERSA keeps per-block intermediates", "status": "PROJECTED"}
 
 
-def measure_small(length: int = 1 << 20, *, chunk: int = 4096) -> dict:
+def measure_small(length: int = 1 << 20, *, chunk: int = 512) -> dict:
     """MEASURED on this CPU: the R3 experiment model's history state streamed to ``length`` tokens. Its size is
     allocated once; the record compares bytes before and after, and to the formula."""
     from .experiments.run_r3 import build
