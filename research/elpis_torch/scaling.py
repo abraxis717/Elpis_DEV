@@ -231,7 +231,7 @@ def fixed_state_bytes(model, batch: int = 1, *, state_dtype=None) -> dict:
 
 
 def session_scratch_bytes(model, *, batch: int = 1, chunk: int, scorer: str = "tiled", tile: int = 4096,
-                          activation_bytes: int | None = None) -> dict:
+                          tile_elements: int = 1 << 21, activation_bytes: int | None = None) -> dict:
     """PROJECTED upper bound of the per-chunk working memory of one forward call (not measured).
 
     Selection: the reference scorer holds the full ``[B, T, horizon/block (+ new)]`` score table with its distance,
@@ -247,7 +247,7 @@ def session_scratch_bytes(model, *, batch: int = 1, chunk: int, scorer: str = "t
     if h is not None:
         reads = len(model.read_layers)
         records = h.slots + T // h.block + 1
-        n = records if scorer == "reference" else min(tile, records)
+        n = records if scorer == "reference" else min(max(tile, tile_elements // max(1, batch * T)), records)
         per_tile = batch * T * n * (h.per_block + 2) * w + T * n * (8 + w + 1)
         if scorer == "tiled":
             per_tile += batch * T * (h.topk + n) * (w + 8) * 2

@@ -1,0 +1,1 @@
+{"B":{"max_abs_logit_difference":0.0,"probes":11,"selected_blocks_identical":true,"selections_compared":65536},"C":{"max_abs_logit_difference":0.0,"probes":11,"selected_blocks_identical":true,"selections_compared":65536},"chunk":512,"phase":"ELPIS_TORCH_R4_CONTEXT_RUNTIME","tile":4096,"tokens":32768}

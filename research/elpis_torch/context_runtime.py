@@ -78,38 +78,34 @@ def exact_topk(scores: torch.Tensor, ids: torch.Tensor, k: int):
 
 
 def tiled_select(reader, u: torch.Tensor, segments, positions: torch.Tensor, *, block: int, slots: int, k: int,
-                 tile: int, counters: dict | None = None):
+                 tile: int, tile_elements: int = 0, counters: dict | None = None):
     """R3's learned selection, exact, over index ``segments``.
 
-    Each segment is ``(keys [B, n, per, dim], ids [n], order)``: ``order`` lists the occupied record slots in
-    increasing block order (``None``: all ``n`` records, already in order). Only occupied slots are scored, so a
-    partially filled index costs what it holds, not its capacity. For each tile of ``tile`` records: the R3 score
-    (``reader.scores``), the R3 eligibility (complete at the query and inside its horizon), then an exact top-K
-    merge with the running best. Tiles that no query of the chunk can see are skipped by scalar bounds (no device
-    synchronization). Scratch is ``O(B T tile per)``, independent of the horizon. Keys may live on another device
-    (a CPU index): each tile is copied to the query's device. Returns absolute block ids ``[B, T, k]`` (-1: none)
-    and scores ``[B, T, k]`` (-inf: none).
+    Each segment is ``(keys [B, n, per, dim], ids [n], first_block)``: contiguous records holding blocks
+    ``first_block, first_block + 1, ...`` in order (views of the index ring, never copies). For each tile: the R3
+    score (``reader.scores``), the R3 eligibility (complete at the query and inside its horizon), then an exact
+    top-K merge with the running best. Tiles that no query of the chunk can see are skipped by scalar bounds.
+    The tile holds ``max(tile, tile_elements // (B T))`` records, so decoding (``T = 1``) scores the index in few
+    tiles while a prefill chunk stays within ``O(max(B T tile, tile_elements))`` scratch, independent of the
+    horizon. Keys may live on another device (a CPU index): each tile is copied to the query's device.
+    Returns absolute block ids ``[B, T, k]`` (-1: none) and scores ``[B, T, k]`` (-inf: none).
     """
     batch, length = u.shape[0], u.shape[1]
+    width = max(tile, tile_elements // max(1, batch * length))
     best = u.new_full((batch, length, k), NEG)
     best_ids = torch.full((batch, length, k), -1, dtype=torch.long, device=u.device)
     complete = (positions + 1) // block
     first_position, last_position = int(positions[0]), int(positions[-1])
     lowest = (first_position + 1) // block - slots              # the oldest block any query of the chunk may see
     highest = (last_position + 1) // block - 1                  # the newest block complete by the chunk's end
-    for keys, ids, order, first_block in segments:
-        count = ids.shape[0] if order is None else order.shape[0]
-        for at in range(0, count, tile):
-            span_lo = first_block + at                          # blocks in this tile, by construction (in order)
-            span_hi = first_block + min(at + tile, count) - 1
+    for keys, ids, first_block in segments:
+        count = ids.shape[0]
+        for at in range(0, count, width):
+            span_lo, span_hi = first_block + at, first_block + min(at + width, count) - 1
             if span_hi < lowest or span_lo > highest:
                 continue
-            if order is None:
-                tile_ids, tile_keys = ids[at:at + tile], keys[:, at:at + tile]
-            else:
-                where = order[at:at + tile]
-                tile_ids, tile_keys = ids.index_select(0, where), keys.index_select(1, where)
-            tile_ids, tile_keys = tile_ids.to(u.device), tile_keys.to(u.device)
+            tile_ids = ids[at:at + width].to(u.device)
+            tile_keys = keys[:, at:at + width].to(u.device)
             distance = positions[:, None] - ((tile_ids + 1) * block - 1)[None, :]                     # [T, n]
             eligible = (tile_ids[None, :] >= 0) & (distance >= 0) & (tile_ids[None, :] >= complete[:, None] - slots)
             scores = reader.scores(u, tile_keys, distance).masked_fill(~eligible[None], NEG)
@@ -122,14 +118,19 @@ def tiled_select(reader, u: torch.Tensor, segments, positions: torch.Tensor, *, 
     return best_ids, best
 
 
-def ring_order(index, device=None):
-    """The occupied slots of a ``BlockIndex`` in increasing block order, and the first block they hold."""
+def ring_segments(index):
+    """The occupied records of a ``BlockIndex`` as at most two contiguous views, in increasing block order:
+    ``[(keys, ids, first_block), ...]``. Nothing is copied."""
     if index.next_block is None:
-        return torch.zeros(0, dtype=torch.long, device=device or index.ids.device), 0
+        return []
     held = min(index.next_block, index.slots)
     first = index.next_block - held
-    order = (first + torch.arange(held, device=index.ids.device)) % index.slots
-    return order, first
+    start = first % index.slots
+    head = min(held, index.slots - start)
+    out = [(index.keys[:, start:start + head], index.ids[start:start + head], first)]
+    if held > head:
+        out.append((index.keys[:, :held - head], index.ids[:held - head], first + head))
+    return out
 
 
 # -- the encoded-block cache ----------------------------------------------------------------------------------
@@ -215,6 +216,7 @@ class RuntimeOptions:
     recent ``key_grad_blocks`` blocks instead of using the detached stored keys (``-1``: all resident blocks)."""
     scorer: str = "reference"
     tile: int = 4096
+    tile_elements: int = 1 << 21                 # scores per tile at least this many (B T tile), see tiled_select
     cache: BlockCache | None = None
     key_grad_blocks: int = 0
     counters: dict = field(default_factory=dict)
@@ -224,6 +226,8 @@ class RuntimeOptions:
             raise ValueError("scorer must be 'reference' or 'tiled'")
         if type(self.tile) is not int or self.tile < 1:
             raise ValueError("tile must be a positive integer")
+        if type(self.tile_elements) is not int or self.tile_elements < 0:
+            raise ValueError("tile_elements must be a non-negative integer")
         if type(self.key_grad_blocks) is not int or self.key_grad_blocks < -1:
             raise ValueError("key_grad_blocks must be -1 (all) or a non-negative integer")
 

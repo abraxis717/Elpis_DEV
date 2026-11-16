@@ -36,6 +36,7 @@ PHASE = "ELPIS_TORCH_R4_CONTEXT_RUNTIME"
 LENGTHS = (4096, 32768, 131072, 262144, 1 << 20)
 PAST_HORIZON = 1 << 16          # extra tokens streamed after 2^20 at the 1M stage: rollover and eviction
 CACHE_BYTES = 32 << 20
+DECODE_TOKENS = 256
 
 
 def _model(ckpt: str | None, chunk: int, horizon: int):
@@ -59,7 +60,9 @@ def bench_one(args) -> dict:
     chunk, length, path = args.chunk, args.length, args.path
     model = _model(args.ckpt, chunk, 1 << 20)
     total = length + (PAST_HORIZON if length >= 1 << 20 else 0)
-    tokens = torch.randint(1, model.config.vocab_size, (1, total + 64), generator=torch.Generator().manual_seed(1))
+    decode_tokens = DECODE_TOKENS
+    tokens = torch.randint(1, model.config.vocab_size, (1, total + decode_tokens),
+                           generator=torch.Generator().manual_seed(1))
     rss0 = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     out = {"path": path, "tokens": total, "chunk": chunk}
     if path == "A":
@@ -72,11 +75,12 @@ def bench_one(args) -> dict:
                 logits = model(tokens[:, at:at + chunk], state)  # R3: [B, chunk, vocab] every chunk
                 logits.argmax(-1)
         prefill = time.perf_counter() - started
-        started = time.perf_counter()
+        times = []
         with torch.no_grad():
-            for i in range(64):
+            for i in range(decode_tokens):
+                started = time.perf_counter()
                 model(tokens[:, total + i:total + i + 1], state)
-        decode = (time.perf_counter() - started) / 64
+                times.append(time.perf_counter() - started)
         counters, after = dict(state.runtime.counters), state.nbytes()
         stable = state.tokens.tokens.data_ptr() == pointers
         position, oldest = state.position, state.tokens.oldest
@@ -89,10 +93,11 @@ def bench_one(args) -> dict:
         session.prefill(tokens[:, :total])
         prefill = time.perf_counter() - started
         mark = dict(session.counters())
-        started = time.perf_counter()
-        for i in range(64):
+        times = []
+        for i in range(decode_tokens):
+            started = time.perf_counter()
             session.step(tokens[:, total + i])
-        decode = (time.perf_counter() - started) / 64
+            times.append(time.perf_counter() - started)
         counters = session.counters()
         counters = {k: v for k, v in counters.items()}
         out["decode_counters"] = {k: counters.get(k, 0) - mark.get(k, 0) for k in counters
@@ -103,8 +108,12 @@ def bench_one(args) -> dict:
         out["logits_bytes_per_chunk"] = model.config.vocab_size * 4
         out["projected_bytes"] = session.projected_bytes()
         session.close()
+    times.sort()
+    decode = sum(times) / len(times)
     out.update({"prefill_seconds": round(prefill, 2), "prefill_tokens_per_second": round(total / prefill),
                 "decode_ms_per_token": round(decode * 1000, 3), "decode_tokens_per_second": round(1 / decode, 1),
+                "decode_ms_median": round(times[len(times) // 2] * 1000, 3),
+                "decode_ms_p90": round(times[int(len(times) * 0.9)] * 1000, 3), "decode_tokens": decode_tokens,
                 "counters": counters, "state_bytes_before": before, "state_bytes_after": after,
                 "state_bytes_constant": before["total"] == after["total"] if path != "C" else
                 {k: v for k, v in after.items() if k not in ("block_cache", "total")} ==
@@ -132,7 +141,7 @@ def command_bench(args) -> dict:
                 record["status"] = "MEASURED"
             out["runs"].append(record)
             print(f"[{path} {length}] {record.get('prefill_tokens_per_second')} tok/s prefill, "
-                  f"{record.get('decode_ms_per_token')} ms/token decode, peak RSS "
+                  f"{record.get('decode_ms_median')} ms/token decode (median), peak RSS "
                   f"{record.get('peak_rss_bytes', 0) >> 20} MiB {record['status']}", file=sys.stderr, flush=True)
             if args.out:
                 _write(args.out, out)
@@ -207,6 +216,49 @@ def command_spark(args) -> dict:
     for length in LENGTHS:
         if length not in args.spark_lengths:
             out["measured"].append({"tokens": length, "status": "NOT_RUN (analytical only)"})
+    return out
+
+
+def command_gradients(args) -> dict:
+    """P4: chunked training with and without key replay against the unchunked gradient (float64, small model).
+    Reports the largest parameter-gradient difference per replay horizon and the replay work and activations."""
+    from ..config import ModelConfig
+    from ..ersa_model import ErsaConfig
+    from ..history_model import ErsaHistoryLM, HistoryConfig
+    widths = dict(vocab_size=64, d_model=32, n_layers=2, n_heads=4, n_kv_heads=2, max_seq_len=64, channel="cgc",
+                  cgc_bottleneck=8, cgc_channels=16, dtype="float64", seed=1)
+    config = ErsaConfig(ModelConfig(**widths), ersa_heads=2, key_dim=8, value_dim=8, conv_kernel=3, chunk=512,
+                        ersa_kernel="chunked")
+    model = ErsaHistoryLM(config, HistoryConfig(block=8, horizon=512, topk=2, index_dim=8, read_head_dim=8,
+                                                overlap=3)).train()
+    tokens = torch.randint(0, 64, (2, 480), generator=torch.Generator().manual_seed(0))
+    weights = torch.randn(480, 64, generator=torch.Generator().manual_seed(5), dtype=torch.float64)
+
+    def gradients(step, replay):
+        model.zero_grad(set_to_none=True)
+        state = model.new_state(2)
+        state.runtime = RuntimeOptions(key_grad_blocks=replay)
+        loss = 0.0
+        for at in range(0, tokens.shape[1], step):
+            logits = model(tokens[:, at:at + step], state)
+            loss = loss + (torch.log_softmax(logits, -1) * weights[at:at + step]).sum()
+        loss.backward()
+        return {n: p.grad.clone() for n, p in model.named_parameters() if p.grad is not None}, state.runtime.counters
+
+    whole, _ = gradients(480, 0)
+    scale = max(float(g.abs().max()) for g in whole.values())
+    out = {"phase": PHASE, "tokens": 480, "chunk": 60, "block": 8, "reference": "one 480-token chunk",
+           "largest_gradient_entry": scale, "runs": []}
+    for replay in (0, 2, 8, 32, -1):
+        grads, counters = gradients(60, replay)
+        encoder = max(float((grads[n] - whole[n]).abs().max()) for n in whole if n.startswith(("encoder.", "readers.")))
+        everything = max(float((grads[n] - whole[n]).abs().max()) for n in whole)
+        replayed = counters.get("replayed_key_blocks", 0)
+        out["runs"].append({"key_grad_blocks": replay, "max_gradient_difference_all": everything,
+                            "max_gradient_difference_encoder_and_readers": encoder,
+                            "replayed_key_blocks": replayed,
+                            "replay_activation_scalars_projected": replayed * model.history.span
+                            * model.encoder.width * 8})
     return out
 
 
@@ -310,7 +362,8 @@ def _write(path: str, record: dict) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("command", choices=["bench", "bench-one", "parity", "spark", "scale", "gpu", "smoke"])
+    parser.add_argument("command", choices=["bench", "bench-one", "parity", "spark", "scale", "gradients", "gpu",
+                                            "smoke"])
     parser.add_argument("--ckpt", default=None, help="an R3 history checkpoint (default: seed weights)")
     parser.add_argument("--lengths", type=int, nargs="+", default=list(LENGTHS))
     parser.add_argument("--spark-lengths", type=int, nargs="+", default=[4096, 32768, 131072])
@@ -330,7 +383,7 @@ def main(argv=None) -> int:
     if args.command == "smoke":
         args.timeout, args.out = 600, None
     result = {"bench": command_bench, "parity": command_parity, "spark": command_spark, "scale": command_scale,
-              "gpu": command_gpu, "smoke": command_smoke}[args.command](args)
+              "gradients": command_gradients, "gpu": command_gpu, "smoke": command_smoke}[args.command](args)
     if args.out and args.command != "bench":
         _write(args.out, result)
     elif not args.out:
