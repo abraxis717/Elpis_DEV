@@ -164,9 +164,10 @@ class _EncoderLayer(nn.Module):
 
 
 class CausalBlockEncoder(nn.Module):
-    """Encodes a block from its exact token ids: the core's token embeddings (read, as in R3) plus a learned
-    zero-initialized correction ``delta`` (so the evidence path can adapt while the core is frozen), a learned
-    position inside the span, ``encoder_layers`` CAUSAL attention + channel layers. A token's state depends only on
+    """Encodes a block from its exact token ids: the core's token embeddings (read, as in R3; projected down by
+    a learned ``down`` map when ``encoder_dim < d_model``, R6) plus a learned zero-initialized correction ``delta``
+    (so the evidence path can adapt while the core is frozen), a learned position inside the span,
+    ``encoder_layers`` CAUSAL attention + channel layers. A token's state depends only on
     the tokens at or before it inside the span, so a partial block's states equal the complete block's states
     on the shared prefix (the local slot and the later index record agree). Output: ``[N, s + 1, width]``, the
     block's tokens preceded by the token before the block."""
@@ -174,8 +175,12 @@ class CausalBlockEncoder(nn.Module):
     def __init__(self, m, e: EvidenceConfig, dtype):
         super().__init__()
         width = e.encoder_dim
-        if width != m.d_model:
-            raise ConfigError("encoder_dim must equal d_model (the encoder reads the core's embeddings)")
+        if width > m.d_model:
+            raise ConfigError("encoder_dim cannot exceed d_model (the encoder reads the core's embeddings)")
+        self.down = nn.Linear(m.d_model, width, bias=False, dtype=dtype) if width != m.d_model else None
+        if width != m.d_model:                     # R6: a narrower encoder, as in R3 (re-encoding cost ~ width^2)
+            m = m.replace(d_model=width, n_heads=1, n_kv_heads=None, cgc_bottleneck=max(2, width // 2),
+                          cgc_channels=2 * width, ffn_hidden=round(8 * width / 3))
         self.block, self.span, self.width = e.block, e.span, width
         self.delta = nn.Embedding(m.vocab_size, width, dtype=dtype)
         # causal n-gram mixing: each token's input also carries its three predecessors (statements are 2-4 tokens)
@@ -188,6 +193,8 @@ class CausalBlockEncoder(nn.Module):
     def forward(self, embedded: torch.Tensor, windows: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:
         """``embedded [N, span, d]`` (the core's embeddings of ``windows [N, span]``), ``valid [N, span]`` ->
         ``[N, s + 1, width]`` (invalid positions zero)."""
+        if self.down is not None:
+            embedded = self.down(embedded)
         x = (embedded + self.delta(windows)) * valid[..., None]
         mixed = x
         for back, linear in enumerate(self.shift, start=1):
@@ -374,17 +381,22 @@ class EvidenceInterface(ContextInterface):
         out["total"] = sum(out.values())
         return out
 
-    def scratch_bytes(self, *, batch: int, chunk: int, options: dict) -> dict:
-        """PROJECTED working memory of one chunk call (largest intermediates summed as if live at once)."""
+    def scratch_bytes(self, *, batch: int, chunk: int, options: dict, queries: int | None = None) -> dict:
+        """PROJECTED inference working memory of one call with ``queries`` read positions (default: every position
+        of the chunk; 1 for a decode step): the largest intermediates summed as if live at once. Re-encoded blocks:
+        at most ``coarse_top`` distinct candidates per query of the largest query tile."""
         from .scaling import session_scratch_bytes
         out = session_scratch_bytes(self.model, batch=batch, chunk=chunk, scorer="tiled", tile=4096)
         out.pop("total")
         e, w = self.model.evidence, self.model.embed.weight.element_size()
-        tile = max(1, min(e.query_tile, e.tile_elements // max(1, batch * e.slots * e.per_block)))
+        queries = chunk if queries is None else queries
+        tile = max(1, min(e.query_tile, e.tile_elements // max(1, batch * e.slots * e.per_block), queries))
         unique = min(tile * e.coarse_top, e.slots) + chunk // e.block + 2
+        heads = e.encoder_heads
+        per_token = e.encoder_dim * 6 + e.span * heads                                 # x, qkv, out; scores
         out["coarse_tile"] = batch * tile * e.slots * (e.per_block + 4) * 4
         out["resident_keys"] = batch * e.slots * e.per_block * e.key_dim * 4         # a float32 copy if needed
-        out["encoded_blocks"] = batch * unique * e.span * e.encoder_dim * (2 + 8 * e.encoder_layers) * w
+        out["encoded_blocks"] = batch * unique * e.span * per_token * w
         out["fine_and_readout"] = batch * tile * unique * e.block * (1 + 3 * e.read_heads) * w + \
             batch * unique * e.block * (e.fine_dim + 2 * e.read_head_dim) * w
         out["total"] = sum(out.values())

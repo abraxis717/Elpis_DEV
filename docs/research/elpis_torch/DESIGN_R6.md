@@ -81,8 +81,8 @@ hard selection receive no direct next-token gradient; label-free addressing is n
 
 | Name | Widths | Experts | Window attention | Evidence |
 |---|---|---|---|---|
-| `r6_500m` | d 768, 16 blocks, vocabulary 65,536 | 8 routed, top-2, in blocks 1, 3, ..., 15 | 4,096 tokens in blocks 3, 7, 11, 15 | R5 defaults, encoder at d |
-| `r6_1b` | d 1,024, 16 blocks | 16 routed, top-2, plus a shared expert | same | same |
+| `r6_500m` | d 768, 20 blocks, vocabulary 65,536 | 8 routed, top-2, in blocks 1, 3, ..., 19 | 4,096 tokens in blocks 3, 7, ..., 19 | R5 defaults, encoder width 256 |
+| `r6_1b` | d 1,024, 18 blocks | 16 routed, top-2, plus a shared expert | 4,096 tokens in blocks 3, 7, 11, 15 | same |
 
 Counts are instantiated on the `meta` device; total, resident and active parameters are reported separately
 (resident = total: every expert must be in memory to serve an arbitrary route). Context memory is EXACT for the

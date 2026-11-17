@@ -35,8 +35,8 @@ from ..training import TrainConfig
 PHASE = "ELPIS_TORCH_R6_EXPERTIZED_BACKBONE"
 VOCAB = 65_536
 SCALES = {   # name: (d_model, layers, experts, top_k, shared expert)
-    "r6_500m": (768, 16, 8, 2, False),
-    "r6_1b": (1024, 16, 16, 2, True),
+    "r6_500m": (768, 20, 8, 2, False),
+    "r6_1b": (1024, 18, 16, 2, True),
 }
 CONTEXTS = (8192, 32768, 131072, 262144, 1 << 20)
 
@@ -53,8 +53,8 @@ def scale_model(name: str, *, capacity: int = 1 << 20, device="meta"):
     ersa = ErsaConfig(m, ersa_heads=heads, key_dim=128, value_dim=128, conv_kernel=4, attention="window",
                       attn_heads=heads, attn_kv_heads=kv, attn_window=4096, attn_layers=tuple(range(3, layers, 4)),
                       chunk=512, ersa_kernel="chunked", scan_block=64, sparse=sparse)
-    evidence = EvidenceConfig(capacity=capacity, encoder_dim=d, encoder_heads=heads, read_heads=8, read_head_dim=128,
-                              fine_dim=64)
+    evidence = EvidenceConfig(capacity=capacity, encoder_dim=256, encoder_heads=4, read_heads=8, read_head_dim=128,
+                              fine_dim=64)                          # a narrow evidence encoder, as in R3's scaling
     with torch.device(device):
         return EvidenceLM(ersa, evidence)
 
@@ -101,9 +101,12 @@ def command_scale(args) -> dict:
             sized = scale_model(name, capacity=length)
             fixed = sized.context_interface().fixed_bytes(1, {"history_device": "cuda"})      # bfloat16 index
             fixed_cpu = sized.context_interface().fixed_bytes(1)
-            scratch = sized.context_interface().scratch_bytes(batch=1, chunk=512, options={})
+            decode = sized.context_interface().scratch_bytes(batch=1, chunk=1, options={}, queries=1)
+            prefill = sized.context_interface().scratch_bytes(batch=1, chunk=512, options={}, queries=512)
             contexts[length] = {"state_exact_bf16_index": fixed, "state_exact_fp32_index": fixed_cpu["total"],
-                                "scratch_projected_fp32": scratch["total"],
+                                "scratch_decode_projected_fp32": decode["total"],
+                                "scratch_prefill512_projected_fp32": prefill["total"],
+                                "scratch_prefill512_by_component": prefill,
                                 "coarse_scan_macs_per_query": (length // sized.evidence.block) *
                                 sized.evidence.per_block * sized.evidence.key_dim}
         out["configurations"][name] = {

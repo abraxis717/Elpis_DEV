@@ -637,3 +637,18 @@ def test_r5_with_window_attention_and_experts_runs_and_is_chunk_invariant(r5_str
         state = small.new_state(2)
         parts = torch.cat([small(r5_stream[:, a:a + 16], state) for a in range(0, 320, 16)], 1)
     assert float((whole - parts).abs().max()) < 1e-9
+
+
+def test_a_narrower_evidence_encoder_reads_projected_core_embeddings_and_stays_exact(r5_stream):
+    """R6: encoder_dim < d_model (a learned down-projection, as in R3) keeps causality and chunk parity."""
+    model = _frozen(tiny_evidence(encoder_dim=16, sparse=EXPERTS))
+    assert model.encoder.down is not None and model.encoder.width == 16
+    small = _frozen(tiny_evidence(chunk=37, encoder_dim=16, sparse=EXPERTS))
+    small.load_state_dict(model.state_dict())
+    with torch.no_grad():
+        whole = model(r5_stream, model.new_state(2))
+        state = small.new_state(2)
+        parts = torch.cat([small(r5_stream[:, a:a + 37], state) for a in range(0, 600, 37)], 1)
+    assert float((whole - parts).abs().max()) < 1e-9
+    with pytest.raises(ConfigError):
+        tiny_evidence(encoder_dim=64)                                          # wider than the model: refused
