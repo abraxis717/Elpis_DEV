@@ -66,11 +66,11 @@ def test_the_only_storage_writers_are_the_explicit_offline_operations():
             writers[str(path.relative_to(LAB))] = len(hits)
     assert writers == {"training.py": 1, "experiments/run_r0.py": 1, "experiments/run_r1.py": 2,
                        "experiments/run_r2.py": 1, "experiments/run_r3.py": 2, "experiments/run_r4.py": 1,
-                       "experiments/run_r5.py": 3}
+                       "experiments/run_r5.py": 3, "lm_training.py": 1}
     for module in ("session.py", "scroll_session.py", "scroll.py", "lastblock.py", "ersa.py", "ersa_model.py",
                    "history.py", "history_model.py", "longrange_tasks.py", "program_tasks.py", "scaling.py",
                    "context_runtime.py", "spark_reference.py", "evidence_ring.py", "evidence_model.py",
-                   "evidence_tasks.py"):
+                   "evidence_tasks.py", "sparse_channel.py"):
         source = (LAB / module).read_text(encoding="utf-8")
         assert "save_checkpoint" not in source and "torch.save" not in source and "open(" not in source, module
 

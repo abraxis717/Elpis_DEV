@@ -446,3 +446,142 @@ def test_injected_and_exposed_evidence_counts_are_independent_and_all_ranks_trai
     assert grad is not None and int((grad.abs().sum(-1) > 0).sum()) >= 6          # ranks beyond 4 are trained
     narrow = tiny_evidence(evidence=4, fine_top=8, coarse_top=8)
     assert narrow.evidence.fine_top == 8 and narrow.lookup.key_rank.shape[0] == 5
+
+
+# -- P5: autoregressive training of the expertized backbone ------------------------------------------------------
+
+from research.elpis_torch import lm_training as lmt  # noqa: E402
+from research.elpis_torch.tokenizer import ByteTokenizer, SubwordTokenizerProtocol, TokenizerProtocol  # noqa: E402
+from research.elpis_torch.training import TrainConfig  # noqa: E402
+
+TOK = ByteTokenizer()
+
+
+def byte_model(sparse=EXPERTS, dtype="float32", chunk=32):
+    widths = ModelConfig(vocab_size=259, d_model=32, n_layers=2, n_heads=2, n_kv_heads=1, max_seq_len=64, **CGC,
+                         seed=13, dtype=dtype)
+    return ErsaLM(ErsaConfig(widths, conv_kernel=4, chunk=chunk, sparse=sparse))
+
+
+def test_rows_never_cross_documents_and_padding_is_ignored():
+    docs = [b"abc", b"defghij"]
+    rows = list(lmt.document_rows(docs, TOK, 6))
+    assert [r for r, _ in rows][0][:5] == [TOK.BOS, 97, 98, 99, TOK.EOS]           # BOS doc EOS, then padding
+    assert all(TOK.EOS not in r[1:-1] or r.index(TOK.EOS) == n for r, n in rows)
+    (inputs, targets), = lmt.document_batches(rows[:2], 2, seed=0, ignore_pad=TOK.PAD)
+    for i in range(2):
+        valid = targets[i] != lmt.IGNORE
+        assert torch.equal(targets[i][valid], torch.tensor([r for r, _ in rows[:2]][i])[1:][valid])
+        assert bool((torch.tensor([r for r, _ in rows[:2]][i])[1:][~valid] == TOK.PAD).all())
+
+
+def test_loss_is_normalized_over_valid_targets_and_chunking_does_not_change_it():
+    torch.manual_seed(0)
+    model = byte_model(sparse=None, dtype="float64", chunk=64)
+    inputs = torch.randint(0, 256, (3, 40))
+    targets = torch.randint(0, 256, (3, 40))
+    targets[1, 30:] = lmt.IGNORE
+    logits = model(inputs, model.new_state(3))
+    manual = F_ce(logits, targets)
+    for chunk in (40, 16, 7):
+        loss, info = lmt.batch_loss(model, inputs, targets, lmt.LMConfig(seq=40, chunk=chunk), backward=False)
+        assert abs(float(loss) - manual) < 1e-9 and info["targets"] == 3 * 40 - 10
+
+
+def F_ce(logits, targets):
+    return float(torch.nn.functional.cross_entropy(logits.reshape(-1, logits.shape[-1]), targets.reshape(-1),
+                                                   ignore_index=lmt.IGNORE))
+
+
+def test_truncated_backpropagation_detaches_between_chunks_and_full_does_not():
+    torch.manual_seed(1)
+    inputs = torch.randint(0, 256, (2, 32))
+    targets = torch.randint(0, 256, (2, 32))
+    grads = {}
+    for tbptt in (False, True):
+        model = byte_model(sparse=None, dtype="float64")
+        lmt.batch_loss(model, inputs, targets, lmt.LMConfig(seq=32, chunk=16, tbptt=tbptt), backward=True)
+        grads[tbptt] = model.embed.weight.grad.clone()
+    assert float((grads[False] - grads[True]).abs().max()) > 1e-9          # the truncation is real
+    single = {}
+    for tbptt in (False, True):
+        model = byte_model(sparse=None, dtype="float64")
+        lmt.batch_loss(model, inputs, targets, lmt.LMConfig(seq=32, chunk=32, tbptt=tbptt), backward=True)
+        single[tbptt] = model.embed.weight.grad.clone()
+    assert float((single[False] - single[True]).abs().max()) < 1e-12       # one chunk: nothing to truncate
+
+
+def test_router_auxiliary_losses_are_added_with_their_configured_weights():
+    sparse = SparseConfig(experts=4, top_k=2, layers=(1,), balance_weight=0.5, z_weight=0.0)
+    model = byte_model(sparse=sparse, dtype="float64")
+    inputs, targets = torch.randint(0, 256, (2, 32)), torch.randint(0, 256, (2, 32))
+    loss, info = lmt.batch_loss(model, inputs, targets, lmt.LMConfig(seq=32, chunk=32), backward=False)
+    assert abs(float(loss) - info["cross_entropy"] - info["aux"]) < 1e-9 and info["aux"] > 0
+
+
+def test_training_refuses_a_non_finite_loss_and_is_deterministic():
+    rows = list(lmt.document_rows([b"hello world " * 20, b"elpis " * 30], TOK, 32))
+    def run(poison=False):
+        model = byte_model()
+        if poison:
+            with torch.no_grad():
+                model.blocks[0].sparse.experts[0].ffn.up.weight.fill_(float("nan"))
+        before = parameter_digest(model)
+        result = lmt.train_lm(model, lmt.document_batches(rows, 2, seed=0, ignore_pad=TOK.PAD),
+                              TrainConfig(steps=3, batch_size=2, warmup_steps=1), lmt.LMConfig(seq=32, chunk=16))
+        return result, before, parameter_digest(model)
+    bad, before, after = run(poison=True)
+    assert bad["status"] == "DIVERGED" and before == after                  # nothing applied
+    first, second = run(), run()
+    assert first[0]["status"] == "COMPLETED" and first[2] == second[2] != first[1]
+
+
+def test_a_small_code_fixture_is_learned_and_generation_mechanics_hold(tmp_path):
+    """Trainability on real bytes (this repository's own source), not language competence."""
+    from research.elpis_torch.config import ModelConfig as MC
+    docs = list(lmt.iter_documents([str(__import__("pathlib").Path(lmt.__file__).parent)], suffixes=(".py",)))
+    lm = lmt.LMConfig(seq=64, chunk=32)
+    rows = list(lmt.document_rows(docs[2:], TOK, lm.seq))
+    val = list(lmt.document_batches(list(lmt.document_rows(docs[:2], TOK, lm.seq)), 8, seed=1, ignore_pad=TOK.PAD))[:3]
+    model = byte_model()
+    lmt.check_vocabulary(model, TOK)
+    start = lmt.evaluate_lm(model, val, lm)["nats_per_token"]
+    result = lmt.train_lm(model, lmt.document_batches(rows, 8, seed=0, ignore_pad=TOK.PAD),
+                          TrainConfig(steps=40, batch_size=8, lr=3e-3, warmup_steps=5), lm)
+    end = lmt.evaluate_lm(model, val, lm)["nats_per_token"]
+    assert result["status"] == "COMPLETED" and end < start - 1.5, (start, end)
+    prompt = torch.tensor([TOK.encode("def train(model", bos=True)] * 2)
+    one = lmt.generate(model, prompt, 12, chunk=8)
+    three = lmt.generate(model, prompt, 12, chunk=8, prefill_calls=3)
+    assert torch.equal(one, three)                                          # generation after several prefills
+    with torch.no_grad():                                                   # teacher-forced equals free-running
+        state = model.new_state(2)
+        logits = model(torch.cat((prompt, one[:, :-1]), 1), state)
+    assert torch.equal(logits[:, prompt.shape[1] - 1:].argmax(-1), one)
+    path = tmp_path / "lm.pt"
+    digest = lmt.save_lm_checkpoint(model, path, tokenizer=TOK, step=result["steps"], seed=13,
+                                    optimizer=result["optimizer"])
+    loaded, record = lmt.load_lm_checkpoint(path, tokenizer=TOK)
+    assert parameter_digest(loaded) == digest == record["parameter_digest"]
+    assert record["architecture"]["sparse_config"]["experts"] == 4 and record["step"] == 40
+    assert torch.equal(lmt.generate(loaded, prompt, 12, chunk=8), one)
+    with pytest.raises(ValueError):
+        lmt.load_lm_checkpoint(path, tokenizer=type("T", (), {"vocab_size": 300})())
+    del MC
+
+
+def test_generation_with_r5_and_experts_and_the_tokenizer_protocols(tmp_path):
+    model = tiny_evidence(sparse=EXPERTS, dtype="float32")
+    prompt = et.generate_records(et.RecordTask(queries=4), 1, 300, seed=2).tokens
+    one = lmt.generate(model, prompt, 10, chunk=64)
+    two = lmt.generate(model, prompt, 10, chunk=64, prefill_calls=4)
+    assert torch.equal(one, two)
+    path = tmp_path / "ev.pt"
+    lmt.save_lm_checkpoint(model, path, tokenizer=type("V", (), {"vocab_size": et.VOCAB})(), step=0, seed=5)
+    loaded, record = lmt.load_lm_checkpoint(path)
+    assert record["architecture"]["family"] == "evidence" and torch.equal(lmt.generate(loaded, prompt, 10, chunk=64), one)
+    assert isinstance(TOK, TokenizerProtocol) and isinstance(TOK, SubwordTokenizerProtocol)
+    data = "naïve — ünïcode ✓".encode()
+    assert TOK.decode_bytes(TOK.encode_bytes(data)) == data
+    with pytest.raises(ValueError):
+        lmt.check_vocabulary(tiny_evidence(), TOK)                          # synthetic vocabulary != bytes
