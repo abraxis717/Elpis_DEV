@@ -1,0 +1,260 @@
+{
+ "configurations": {
+  "r6_1b": {
+   "bounded_forward": {
+    "build_seconds": 21.9,
+    "decode_seconds_per_token": 0.223,
+    "finite": true,
+    "note": "capacity 16,384 for the forward (the 1M ring is accounted above); untrained weights",
+    "peak_rss_bytes": 4946292736,
+    "prefill_128_seconds": 1.35,
+    "routed_blocks": 8,
+    "state_bytes": 42749956
+   },
+   "by_group": {
+    "attention": 10485760,
+    "dense_channels": 121643016,
+    "embeddings_and_head": 67108864,
+    "ersa": 67568000,
+    "evidence_path": 111928979,
+    "norms_other": 33792,
+    "routed_experts": 570556544,
+    "routers": 131072,
+    "shared_experts": 35659784
+   },
+   "context": {
+    "1048576": {
+     "coarse_scan_macs_per_query": 8388608,
+     "scratch_projected_fp32": 6506766336,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 196608,
+      "ersa_cells": 8388608,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 16777216,
+      "token_history": 16388,
+      "total": 63389700
+     },
+     "state_exact_fp32_index": 80166916
+    },
+    "131072": {
+     "coarse_scan_macs_per_query": 1048576,
+     "scratch_projected_fp32": 14057848832,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 196608,
+      "ersa_cells": 8388608,
+      "history_tokens": 524288,
+      "index_ids": 32768,
+      "index_keys": 2097152,
+      "token_history": 16388,
+      "total": 44810244
+     },
+     "state_exact_fp32_index": 46907396
+    },
+    "262144": {
+     "coarse_scan_macs_per_query": 2097152,
+     "scratch_projected_fp32": 28003909632,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 196608,
+      "ersa_cells": 8388608,
+      "history_tokens": 1048576,
+      "index_ids": 65536,
+      "index_keys": 4194304,
+      "token_history": 16388,
+      "total": 47464452
+     },
+     "state_exact_fp32_index": 51658756
+    },
+    "32768": {
+     "coarse_scan_macs_per_query": 262144,
+     "scratch_projected_fp32": 3598303232,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 196608,
+      "ersa_cells": 8388608,
+      "history_tokens": 131072,
+      "index_ids": 8192,
+      "index_keys": 524288,
+      "token_history": 16388,
+      "total": 42819588
+     },
+     "state_exact_fp32_index": 43343876
+    },
+    "8192": {
+     "coarse_scan_macs_per_query": 65536,
+     "scratch_projected_fp32": 983416832,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 196608,
+      "ersa_cells": 8388608,
+      "history_tokens": 32768,
+      "index_ids": 2048,
+      "index_keys": 131072,
+      "token_history": 16388,
+      "total": 42321924
+     },
+     "state_exact_fp32_index": 42452996
+    }
+   },
+   "geometry": {
+    "d_model": 1024,
+    "experts": 16,
+    "layers": 16,
+    "shared": true,
+    "top_k": 2
+   },
+   "interface": "r5-evidence",
+   "macs_per_token_at_1M": {
+    "active_weights": 418769971,
+    "coarse_scan": 8388608,
+    "note": "per query of the evidence read; the core terms are per token",
+    "output_head": 67108864,
+    "reread_reencode": 107484282880
+   },
+   "parameters": {
+    "active_per_token": 485878835,
+    "resident": 985115811,
+    "total": 985115811
+   },
+   "weight_bytes": {
+    "bf16": 1970231622,
+    "fp32": 3940463244,
+    "note": "all experts resident: sparse activation saves compute, not weight memory"
+   }
+  },
+  "r6_500m": {
+   "bounded_forward": {
+    "build_seconds": 10.5,
+    "decode_seconds_per_token": 0.141,
+    "finite": true,
+    "note": "capacity 16,384 for the forward (the 1M ring is accounted above); untrained weights",
+    "peak_rss_bytes": 2733002752,
+    "prefill_128_seconds": 0.69,
+    "routed_blocks": 8,
+    "state_bytes": 40603652
+   },
+   "by_group": {
+    "attention": 6291456,
+    "dense_channels": 68419592,
+    "embeddings_and_head": 50331648,
+    "ersa": 38019360,
+    "evidence_path": 76082579,
+    "norms_other": 25344,
+    "routed_experts": 235929664,
+    "routers": 49152
+   },
+   "context": {
+    "1048576": {
+     "coarse_scan_macs_per_query": 8388608,
+     "scratch_projected_fp32": 4970962944,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 147456,
+      "ersa_cells": 6291456,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 16777216,
+      "token_history": 16388,
+      "total": 61243396
+     },
+     "state_exact_fp32_index": 78020612
+    },
+    "131072": {
+     "coarse_scan_macs_per_query": 1048576,
+     "scratch_projected_fp32": 11012096000,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 147456,
+      "ersa_cells": 6291456,
+      "history_tokens": 524288,
+      "index_ids": 32768,
+      "index_keys": 2097152,
+      "token_history": 16388,
+      "total": 42663940
+     },
+     "state_exact_fp32_index": 44761092
+    },
+    "262144": {
+     "coarse_scan_macs_per_query": 2097152,
+     "scratch_projected_fp32": 21938257920,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 147456,
+      "ersa_cells": 6291456,
+      "history_tokens": 1048576,
+      "index_ids": 65536,
+      "index_keys": 4194304,
+      "token_history": 16388,
+      "total": 45318148
+     },
+     "state_exact_fp32_index": 49512452
+    },
+    "32768": {
+     "coarse_scan_macs_per_query": 262144,
+     "scratch_projected_fp32": 2817474560,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 147456,
+      "ersa_cells": 6291456,
+      "history_tokens": 131072,
+      "index_ids": 8192,
+      "index_keys": 524288,
+      "token_history": 16388,
+      "total": 40673284
+     },
+     "state_exact_fp32_index": 41197572
+    },
+    "8192": {
+     "coarse_scan_macs_per_query": 65536,
+     "scratch_projected_fp32": 768819200,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 147456,
+      "ersa_cells": 6291456,
+      "history_tokens": 32768,
+      "index_ids": 2048,
+      "index_keys": 131072,
+      "token_history": 16388,
+      "total": 40175620
+     },
+     "state_exact_fp32_index": 40306692
+    }
+   },
+   "geometry": {
+    "d_model": 768,
+    "experts": 8,
+    "layers": 16,
+    "shared": false,
+    "top_k": 2
+   },
+   "interface": "r5-evidence",
+   "macs_per_token_at_1M": {
+    "active_weights": 247869899,
+    "coarse_scan": 8388608,
+    "note": "per query of the evidence read; the core terms are per token",
+    "output_head": 50331648,
+    "reread_reencode": 60476620800
+   },
+   "parameters": {
+    "active_per_token": 298201547,
+    "resident": 475148795,
+    "total": 475148795
+   },
+   "weight_bytes": {
+    "bf16": 950297590,
+    "fp32": 1900595180,
+    "note": "all experts resident: sparse activation saves compute, not weight memory"
+   }
+  }
+ },
+ "environment": {
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "phase": "ELPIS_TORCH_R6_EXPERTIZED_BACKBONE"
+}

@@ -1,0 +1,78 @@
+{
+ "environment": {
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "model": "R5 default geometry, UNTRAINED (mechanics only)",
+ "phase": "ELPIS_TORCH_R6_EXPERTIZED_BACKBONE",
+ "rows": [
+  {
+   "blocks_reencoded": 2777,
+   "cache_bytes": 0,
+   "cache_hits": null,
+   "cache_misses": null,
+   "probes": 70,
+   "queries": 70,
+   "reread_ms_per_query": 13.5,
+   "seconds": 2.83,
+   "tokens": 65536
+  },
+  {
+   "blocks_reencoded": 989,
+   "cache_bytes": 16777216,
+   "cache_hits": 1788,
+   "cache_misses": 989,
+   "probes": 70,
+   "queries": 70,
+   "reread_ms_per_query": 6.65,
+   "seconds": 2.28,
+   "tokens": 65536
+  },
+  {
+   "blocks_reencoded": 989,
+   "cache_bytes": 67108864,
+   "cache_hits": 1788,
+   "cache_misses": 989,
+   "probes": 70,
+   "queries": 70,
+   "reread_ms_per_query": 5.23,
+   "seconds": 3.76,
+   "tokens": 65536
+  },
+  {
+   "blocks_reencoded": 4038,
+   "cache_bytes": 0,
+   "cache_hits": null,
+   "cache_misses": null,
+   "probes": 70,
+   "queries": 70,
+   "reread_ms_per_query": 18.97,
+   "seconds": 10.14,
+   "tokens": 262144
+  },
+  {
+   "blocks_reencoded": 1898,
+   "cache_bytes": 16777216,
+   "cache_hits": 2140,
+   "cache_misses": 1898,
+   "probes": 70,
+   "queries": 70,
+   "reread_ms_per_query": 11.92,
+   "seconds": 14.9,
+   "tokens": 262144
+  },
+  {
+   "blocks_reencoded": 1898,
+   "cache_bytes": 67108864,
+   "cache_hits": 2140,
+   "cache_misses": 1898,
+   "probes": 70,
+   "queries": 70,
+   "reread_ms_per_query": 6.68,
+   "seconds": 7.58,
+   "tokens": 262144
+  }
+ ]
+}

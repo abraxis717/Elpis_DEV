@@ -1,0 +1,114 @@
+{
+ "corpus": {
+  "source": "research/elpis_torch/*.py of this repository (project-owned)",
+  "train_bytes": 601279,
+  "train_documents": 36,
+  "val_bytes": 25096,
+  "val_documents": 4
+ },
+ "environment": {
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "phase": "ELPIS_TORCH_R6_EXPERTIZED_BACKBONE",
+ "rows": [
+  {
+   "parameters": {
+    "active_per_token": 158362,
+    "resident": 158362,
+    "total": 158362
+   },
+   "routing": [],
+   "seed": 0,
+   "status": "COMPLETED",
+   "train_seconds": 42.5,
+   "val_bits_per_byte": 2.6056,
+   "variant": "dense_ffn_cgc"
+  },
+  {
+   "parameters": {
+    "active_per_token": 158362,
+    "resident": 158362,
+    "total": 158362
+   },
+   "routing": [],
+   "seed": 1,
+   "status": "COMPLETED",
+   "train_seconds": 35.4,
+   "val_bits_per_byte": 2.6299,
+   "variant": "dense_ffn_cgc"
+  },
+  {
+   "parameters": {
+    "active_per_token": 158362,
+    "resident": 158362,
+    "total": 158362
+   },
+   "routing": [],
+   "seed": 2,
+   "status": "COMPLETED",
+   "train_seconds": 33.8,
+   "val_bits_per_byte": 2.6476,
+   "variant": "dense_ffn_cgc"
+  },
+  {
+   "parameters": {
+    "active_per_token": 118808,
+    "resident": 316952,
+    "total": 316952
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 33536,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 1.742188,
+     "router_entropy": 1.485351,
+     "top1_probability": 0.497383
+    },
+    {
+     "active_macs_per_token": 33536,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 3.367188,
+     "router_entropy": 1.607265,
+     "top1_probability": 0.46354
+    }
+   ],
+   "seed": 0,
+   "status": "COMPLETED",
+   "train_seconds": 34.7,
+   "val_bits_per_byte": 2.5786,
+   "variant": "routed_ffn"
+  },
+  {
+   "parameters": {
+    "active_per_token": 118808,
+    "resident": 316952,
+    "total": 316952
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 33536,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 2.242188,
+     "router_entropy": 1.387209,
+     "top1_probability": 0.548508
+    },
+    {
+     "active_macs_per_token": 33536,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 3.121094,
+     "router_entropy": 1.691342,
+     "top1_probability": 0.409053
+    }
+   ],
+   "seed": 1,
+   "status": "COMPLETED",
+   "train_seconds": 34.9,
+   "val_bits_per_byte": 2.631,
+   "variant": "routed_ffn"
+  }
+ ],
+ "steps": 400
+}
