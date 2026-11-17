@@ -38,7 +38,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from .config import ConfigError
-from .context_runtime import exact_topk
+from .context_runtime import BlockCache, ContextInterface, exact_topk
 from .ersa_model import ErsaConfig, ErsaLM, ErsaState
 from .evidence_ring import EvidenceRing
 from .history_model import _Channel
@@ -311,6 +311,8 @@ class EvidenceState(ErsaState):
                                  origin=origin, overlap=e.overlap, key_dtype=model.key_dtype(device), device=device)
         self.shuffle = None             # ABLATION ONLY: a seed; descriptors are attributed to permuted blocks
         self.timing = None              # a dict to accumulate per-stage seconds (measurement only)
+        self.cache = None               # R6: optional bounded cache of reread encodings (BlockCache), volatile
+        self.counters = {}              # R6: session-local retrieval counters (volatile, fixed key set)
 
     def reset(self) -> None:
         super().reset()
@@ -318,11 +320,73 @@ class EvidenceState(ErsaState):
         if self.window is not None:
             self.window.origin = self.window.position = self.origin
         self.ring.reset()
+        if self.cache is not None:
+            self.cache.clear()
+        self.counters.clear()
 
     def nbytes(self) -> dict:
         out = super().nbytes()
         out.pop("total")
         out.update(self.ring.nbytes())
+        out["total"] = sum(out.values())
+        return out
+
+
+class EvidenceInterface(ContextInterface):
+    """R6: the evidence family for ``ContextSession``. The ring keeps its tokens and its index together on
+    ``history_device``; the coarse scan is exact and tiled by query (``query_tile``, ``tile_elements``), so the R4
+    ``scorer``/``tile`` options do not apply and non-default values are refused; ``cache_bytes`` bounds the
+    reread-encoding cache."""
+
+    kind = "r5-evidence"
+    placement_tiers = {"history_tokens": "history_device", "index_keys": "history_device",
+                       "index_ids": "history_device"}
+
+    def new_state(self, batch: int, *, origin: int, placement: dict, options: dict):
+        ring, index = placement.get("history_device"), placement.get("index_device")
+        if index is not None and (ring is None or torch.device(index) != torch.device(ring)):
+            raise ValueError("the R5 ring keeps tokens and index together: index_device must equal history_device")
+        if options["scorer"] != "tiled" or options["tile"] != 4096:
+            raise ValueError("R5 scans its index exactly in query tiles set by EvidenceConfig; the R4 scorer/tile "
+                             "options do not apply")
+        state = self.model.new_state(batch, origin=origin, ring_device=ring)
+        if options["cache_bytes"]:
+            state.cache = BlockCache(options["cache_bytes"])
+        return state
+
+    def cache(self, state):
+        return state.cache
+
+    def counters(self, state) -> dict:
+        out = dict(state.counters)
+        out.update({f"ring_{k}": v for k, v in state.ring.stats.items()})
+        return out
+
+    def fixed_bytes(self, batch: int, placement: dict | None = None) -> dict:
+        """EXACT bytes of a fresh ``EvidenceState`` (equal to its ``nbytes()``; tested), from the configuration."""
+        out = super().fixed_bytes(batch)
+        out.pop("total")
+        e = self.model.evidence
+        device = (placement or {}).get("history_device") or self.model.embed.weight.device
+        width = torch.empty(0, dtype=self.model.key_dtype(device)).element_size()
+        out.update(history_tokens=batch * e.capacity * 4, index_keys=batch * e.slots * e.per_block * e.key_dim * width,
+                   index_ids=e.slots * 8)
+        out["total"] = sum(out.values())
+        return out
+
+    def scratch_bytes(self, *, batch: int, chunk: int, options: dict) -> dict:
+        """PROJECTED working memory of one chunk call (largest intermediates summed as if live at once)."""
+        from .scaling import session_scratch_bytes
+        out = session_scratch_bytes(self.model, batch=batch, chunk=chunk, scorer="tiled", tile=4096)
+        out.pop("total")
+        e, w = self.model.evidence, self.model.embed.weight.element_size()
+        tile = max(1, min(e.query_tile, e.tile_elements // max(1, batch * e.slots * e.per_block)))
+        unique = min(tile * e.coarse_top, e.slots) + chunk // e.block + 2
+        out["coarse_tile"] = batch * tile * e.slots * (e.per_block + 4) * 4
+        out["resident_keys"] = batch * e.slots * e.per_block * e.key_dim * 4         # a float32 copy if needed
+        out["encoded_blocks"] = batch * unique * e.span * e.encoder_dim * (2 + 8 * e.encoder_layers) * w
+        out["fine_and_readout"] = batch * tile * unique * e.block * (1 + 3 * e.read_heads) * w + \
+            batch * unique * e.block * (e.fine_dim + 2 * e.read_head_dim) * w
         out["total"] = sum(out.values())
         return out
 
@@ -385,6 +449,10 @@ class EvidenceLM(ErsaLM):
 
     def new_state(self, batch: int, *, origin: int = 0, ring_device=None) -> EvidenceState:
         return EvidenceState(self, batch, origin, ring_device=ring_device)
+
+    def context_interface(self):
+        """R6: what ``ContextSession`` needs from the evidence family (``EvidenceInterface``)."""
+        return EvidenceInterface(self)
 
     def forward(self, tokens, state, *, return_pre=False, logit_positions=None, **extra):
         """``ErsaLM.forward``; the evidence read is computed exactly where logits are requested."""
@@ -540,6 +608,9 @@ class EvidenceLM(ErsaLM):
         eligible = (table[None] >= 0) & (table[None] < local[:, None]) & (start[None] >= pos[:, None] + 1 - e.capacity)
         coarse = coarse.masked_fill(~eligible[None], float("-inf"))
         values, picks = exact_topk(coarse.detach(), table, k_top)
+        state.counters["queries"] = state.counters.get("queries", 0) + batch * count
+        state.counters["coarse_records_scored"] = state.counters.get("coarse_records_scored", 0) + \
+            batch * count * max(0, table.numel() - 1)
         cand = torch.where(torch.isfinite(values), table[picks], torch.full_like(picks, -1))   # [B, Q, K]
         cvals = torch.gather(coarse, 2, picks)
         clock.lap("coarse_scan")
@@ -571,8 +642,7 @@ class EvidenceLM(ErsaLM):
         if old.numel():
             pairs = valid_c & (cand < first)
             ring._check(cand[pairs], pos[None, :, None].expand_as(cand)[pairs])            # every (block, query)
-            tokens, ok = ring.reread(old.to(ring.device), e.overlap)
-            old_states = self._encode(tokens.to(device), ok.to(device))
+            old_states = self._reread_encoded(state, old, device)
         else:
             old_states = states.new_zeros(batch, 0, s + 1, states.shape[-1])
         block_ids = torch.cat((old, first + torch.arange(states.shape[1], device=device)))
@@ -648,6 +718,33 @@ class EvidenceLM(ErsaLM):
             return out, None
         return out, self._diagnose(coarse, table, cand, fine, sel, weights, blocks, gold, hist, gcol, values,
                                    pos, local)
+
+    def _reread_encoded(self, state, blocks: torch.Tensor, device) -> torch.Tensor:
+        """Encodings ``[B, n, s + 1, w]`` of resident ``blocks`` (already validated live for their queries): from the
+        optional cache (R6), else by the mandatory exact reread and re-encoding. The cache is bypassed with
+        gradients, keyed by absolute block within this state's ring, cleared on reset, purged below the live
+        window and invalidated whenever an embedding or encoder parameter changes."""
+        e, ring = self.evidence, state.ring
+        counters = state.counters
+        cache = state.cache if (state.cache is not None and not torch.is_grad_enabled()) else None
+        if state.cache is not None and cache is None:
+            state.cache.stats["bypassed"] += 1
+        ids = blocks.tolist()
+        found = {}
+        if cache is not None:
+            cache.check(self)
+            cache.purge_below(ring.live()[0])
+            found = {b: entry for b in ids for entry in [cache.get(b)] if entry is not None}
+        missing = [b for b in ids if b not in found]
+        if missing:
+            tokens, ok = ring.reread(torch.tensor(missing, dtype=torch.long, device=ring.device), e.overlap)
+            encoded = self._encode(tokens.to(device), ok.to(device))
+            counters["blocks_reencoded"] = counters.get("blocks_reencoded", 0) + len(missing)
+            for column, block in enumerate(missing):
+                found[block] = encoded[:, column]
+                if cache is not None:
+                    cache.put(block, encoded[:, column])
+        return torch.stack([found[b] for b in ids], dim=1)
 
     def _losses(self, context, coarse, cand, fine, gold, hist, gcol, old, old_states, cq, pos, ends, n_res, table,
                 first, sl):

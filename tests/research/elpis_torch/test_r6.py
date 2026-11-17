@@ -111,3 +111,95 @@ def test_r5_training_smoke_is_reproducible_and_its_checkpoint_round_trips(tmp_pa
     model, record = run_r5.load(str(tmp_path / "a.pt"))
     assert parameter_digest(model) == record["parameter_digest"] == digests[0]
     assert repro["model_config_digest"] == model.config.digest()
+
+
+# -- P1: R5 as a first-class context-session model -----------------------------------------------------------------
+
+from research.elpis_torch.context_runtime import ContextSession, ModelRevisionError  # noqa: E402
+
+
+def _frozen(model):
+    model.eval()
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
+    return model
+
+
+@pytest.fixture(scope="module")
+def r5_stream():
+    return et.generate_records(et.RecordTask(queries=6, background=20.0), 2, 600, seed=7).tokens
+
+
+def test_r5_session_equals_direct_execution_across_chunks_calls_steps_and_wraparound(r5_stream):
+    model = _frozen(tiny_evidence())
+    with torch.no_grad():
+        direct = model(r5_stream, model.new_state(2))                       # one call, every position
+    small = _frozen(tiny_evidence(chunk=37))
+    small.load_state_dict(model.state_dict())
+    probes = [0, 15, 16, 200, 255, 256, 257, 400, 511]
+    with ContextSession(small, batch=2) as session:
+        first = session.prefill(r5_stream[:, :300], probes=[p for p in probes if p < 300])
+        second = session.prefill(r5_stream[:, 300:520], probes=[p for p in probes if 300 <= p < 520])
+        for position, logits in {**first.probes, **second.probes}.items():
+            assert float((logits - direct[:, position]).abs().max()) < 1e-9, position
+        for position in range(520, 600):                                   # single-token decoding
+            logits = session.step(r5_stream[:, position])
+            assert float((logits - direct[:, position]).abs().max()) < 1e-9, position
+        assert session.position == 600 and session.state.ring.oldest == 600 - 256      # the ring wrapped
+        assert session.counters()["ring_stale_rejections"] == 0
+
+
+def test_r5_sessions_reset_in_place_and_never_share_state(r5_stream):
+    model = _frozen(tiny_evidence(chunk=64))
+    with ContextSession(model, batch=2) as a, ContextSession(model, batch=2) as b:
+        a.prefill(r5_stream[:, :300])
+        b.prefill(r5_stream.flip(1)[:, :300])
+        a.reset()
+        fresh = a.prefill(r5_stream[:, :128]).last_logits
+        with ContextSession(model, batch=2) as c:
+            assert torch.equal(fresh, c.prefill(r5_stream[:, :128]).last_logits)
+        assert a.state.ring.session != b.state.ring.session and a.state.ring.epoch == 1
+
+
+def test_r5_session_accounting_is_exact_and_includes_the_ring():
+    model = _frozen(tiny_evidence(chunk=64))
+    with ContextSession(model, batch=2) as session:
+        projected = session.projected_bytes()
+        held = session.nbytes()
+        assert projected["state"] == held["total"]
+        assert projected["state_by_tier"] == {k: v for k, v in held.items() if k != "total"}
+        assert {"history_tokens", "index_keys", "index_ids"} <= set(projected["state_by_tier"])
+        assert projected["scratch"] > 0 and session.interface.kind == "r5-evidence"
+
+
+def test_options_that_do_not_apply_are_refused_not_ignored():
+    model = _frozen(tiny_evidence(chunk=64))
+    with pytest.raises(ValueError):
+        ContextSession(model, scorer="reference")
+    with pytest.raises(ValueError):
+        ContextSession(model, history_device="cpu", index_device="meta")
+    from research.elpis_torch.ersa_model import ErsaLM
+    core = _frozen(ErsaLM(tiny_evidence().ersa))
+    with pytest.raises(ValueError):
+        ContextSession(core, cache_bytes=1 << 20)
+
+
+def test_r5_reread_cache_is_exact_bounded_and_identity_safe(r5_stream):
+    model = _frozen(tiny_evidence(chunk=64))
+    probes = list(range(64, 600, 7))
+    with ContextSession(model, batch=2) as plain, ContextSession(model, batch=2, cache_bytes=1 << 16) as cached:
+        reference = plain.prefill(r5_stream, probes=probes).probes
+        warm = cached.prefill(r5_stream, probes=probes).probes
+        for position in probes:
+            assert float((reference[position] - warm[position]).abs().max()) < 1e-10
+        stats = cached.counters()
+        assert stats["cache_hits"] > 0 and stats["cache_bytes"] <= 1 << 16
+        lo = cached.state.ring.live()[0]
+        assert all(block >= lo for block in cached.state.cache.entries)      # nothing outside the live window
+        assert stats["blocks_reencoded"] < plain.counters()["blocks_reencoded"]
+        cached.reset()
+        assert not cached.state.cache.entries
+        with torch.no_grad():
+            model.encoder.delta.weight.add_(1e-3)                             # the model changes under the session
+        with pytest.raises(ModelRevisionError):
+            cached.prefill(r5_stream[:, :10])

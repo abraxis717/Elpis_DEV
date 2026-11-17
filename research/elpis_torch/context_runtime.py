@@ -314,6 +314,66 @@ class RuntimeOptions:
         self.counters[name] = self.counters.get(name, 0) + amount
 
 
+# -- what a model offers a context session (R6) ----------------------------------------------------------------
+
+class ContextInterface:
+    """The narrow interface between ``ContextSession`` and a model family (R6). The session never inspects the
+    model's type: the model's ``context_interface()`` (or this core-only default) says how to build a state with a
+    placement and options, which tiers it holds, its EXACT fixed bytes, its scratch ESTIMATE, its counters and its
+    cache. A model without long-range state refuses options that would not apply instead of ignoring them."""
+
+    kind = "core"
+    placement_tiers: dict = {}                    # state tier -> the session placement option it follows
+
+    def __init__(self, model):
+        self.model = model
+
+    def new_state(self, batch: int, *, origin: int, placement: dict, options: dict):
+        if origin or any(v is not None for v in placement.values()) or options.get("cache_bytes"):
+            raise ValueError(f"a {self.kind} model has no long-range state: origin, placement and cache do not apply")
+        return self.model.new_state(batch)
+
+    def cache(self, state):
+        return None
+
+    def counters(self, state) -> dict:
+        return {}
+
+    def fixed_bytes(self, batch: int, placement: dict | None = None) -> dict:
+        from .scaling import fixed_state_bytes
+        return fixed_state_bytes(self.model, batch)
+
+    def scratch_bytes(self, *, batch: int, chunk: int, options: dict) -> dict:
+        from .scaling import session_scratch_bytes
+        return session_scratch_bytes(self.model, batch=batch, chunk=chunk, scorer=options["scorer"],
+                                     tile=options["tile"])
+
+
+class HistoryInterface(ContextInterface):
+    """R3/R4 ``ErsaHistoryLM``: token history and block index placed by the session, R4 runtime options."""
+
+    kind = "r3-history"
+    placement_tiers = {"history_tokens": "history_device", "block_index": "index_device"}
+
+    def new_state(self, batch: int, *, origin: int, placement: dict, options: dict):
+        state = self.model.new_state(batch, origin=origin, **placement)
+        cache = BlockCache(options["cache_bytes"]) if options["cache_bytes"] else None
+        state.runtime = RuntimeOptions(scorer=options["scorer"], tile=options["tile"], cache=cache)
+        return state
+
+    def cache(self, state):
+        return state.runtime.cache
+
+    def counters(self, state) -> dict:
+        return dict(state.runtime.counters)
+
+
+def context_interface(model) -> ContextInterface:
+    """The model's own interface if it declares one, else the core-only default."""
+    provide = getattr(model, "context_interface", None)
+    return provide() if provide is not None else ContextInterface(model)
+
+
 # -- the streaming session ------------------------------------------------------------------------------------
 
 @dataclass
@@ -324,7 +384,8 @@ class PrefillResult:
 
 
 class ContextSession:
-    """Bounded streaming inference over a FROZEN ``ErsaHistoryLM`` (or ``ErsaLM``).
+    """Bounded streaming inference over a FROZEN ``ErsaLM``, ``ErsaHistoryLM`` or ``EvidenceLM`` (any model; its
+    ``context_interface()`` supplies everything family-specific, R6).
 
     Memory held: the model's fixed-size state (ERSA cells, window rings, token history, block index) plus the
     optional block cache (bounded) plus per-chunk scratch (bounded by ``chunk`` and ``tile``). Logits are computed
@@ -335,11 +396,10 @@ class ContextSession:
     def __init__(self, model, *, batch: int = 1, chunk: int | None = None, scorer: str = "tiled", tile: int = 4096,
                  cache_bytes: int = 0, history_device=None, index_device=None, budget_bytes: int | None = None,
                  origin: int = 0, record_digest: bool = False):
-        from .history_model import ErsaHistoryLM
         if model.training or any(p.requires_grad for p in model.parameters()):
             raise ValueError("a context session needs a frozen model (eval mode, no parameter requires grad)")
         self.model = model
-        self.history = isinstance(model, ErsaHistoryLM)
+        self.interface = context_interface(model)
         self.chunk = chunk or model.ersa.chunk
         if not 1 <= self.chunk <= model.ersa.chunk:
             raise ValueError(f"chunk must be in [1, {model.ersa.chunk}] (the model's chunk limit)")
@@ -360,13 +420,8 @@ class ContextSession:
     # -- lifetime ---------------------------------------------------------------------------------------------
 
     def _allocate(self) -> None:
-        if self.history:
-            self.state = self.model.new_state(self.batch, origin=self.origin, **self._placement)
-            cache = BlockCache(self._options["cache_bytes"]) if self._options["cache_bytes"] else None
-            self.state.runtime = RuntimeOptions(scorer=self._options["scorer"], tile=self._options["tile"],
-                                                cache=cache)
-        else:
-            self.state = self.model.new_state(self.batch)
+        self.state = self.interface.new_state(self.batch, origin=self.origin, placement=self._placement,
+                                              options=self._options)
         self._last, self._last_position = None, None
         self._bind()
 
@@ -415,8 +470,9 @@ class ContextSession:
         """A fresh stream in the same buffers: every state tensor zeroed in place, the cache emptied."""
         self._live()
         self.state.reset()
-        if self.history and self.state.runtime.cache is not None:
-            self.state.runtime.cache.clear()
+        cache = self.interface.cache(self.state)
+        if cache is not None:
+            cache.clear()
         self._last, self._last_position = None, None
         self._bind()                       # the fresh stream is computed with the model as it is now
 
@@ -451,21 +507,21 @@ class ContextSession:
 
     def counters(self) -> dict:
         self._live()
-        if not self.history:
-            return {}
-        out = dict(self.state.runtime.counters)
-        if self.state.runtime.cache is not None:
-            out.update({f"cache_{k}": v for k, v in self.state.runtime.cache.stats.items()})
-            out["cache_bytes"] = self.state.runtime.cache.bytes
+        out = self.interface.counters(self.state)
+        cache = self.interface.cache(self.state)
+        if cache is not None:
+            out.update({f"cache_{k}": v for k, v in cache.stats.items()})
+            out["cache_bytes"] = cache.bytes
         return out
 
     def nbytes(self) -> dict:
         """Bytes held now: fixed state by tier, and the cache's current (not configured) size."""
         self._live()
         out = self.state.nbytes()
-        if self.history and self.state.runtime.cache is not None:
+        cache = self.interface.cache(self.state)
+        if cache is not None:
             out = dict(out)
-            out["block_cache"] = self.state.runtime.cache.bytes
+            out["block_cache"] = cache.bytes
             out["total"] = out["total"] + out["block_cache"]
         return out
 
@@ -482,12 +538,10 @@ class ContextSession:
         ``by_device`` places each class where the session puts it: the token history on ``history_device``, the
         index on ``index_device``, everything else on the model's device. The budget refusal at construction uses
         ``total``; it refuses clearly over-budget configurations early and guarantees nothing about the peak."""
-        from .scaling import fixed_state_bytes, session_scratch_bytes
-        fixed = fixed_state_bytes(self.model, self.batch)
-        scratch = session_scratch_bytes(self.model, batch=self.batch, chunk=self.chunk,
-                                        scorer=self._options["scorer"], tile=self._options["tile"])
+        fixed = self.interface.fixed_bytes(self.batch, self._placement)
+        scratch = self.interface.scratch_bytes(batch=self.batch, chunk=self.chunk, options=self._options)
         home = str(self.model.embed.weight.device)
-        place = {"history_tokens": self._placement["history_device"], "block_index": self._placement["index_device"]}
+        place = {tier: self._placement[option] for tier, option in self.interface.placement_tiers.items()}
         by_device: dict = {}
         for tier, size in fixed.items():
             if tier != "total":
