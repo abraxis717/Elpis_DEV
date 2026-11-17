@@ -33,6 +33,7 @@ from .config import ConfigError, ModelConfig
 from .ersa import ERSAMixer
 from .model import ElpisTorchLM, RMSNorm, Rotary, SwiGLU, _seeded_normal, sample_next
 from .scroll import ChunkError, ScrollAttention, ScrollConfig, StreamState
+from .sparse_channel import SparseChannel, SparseConfig
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class ErsaConfig:
     attn_layers: tuple | None = None   # R3: layers that carry the window attention; None = every layer
     ersa_kernel: str = "serial"        # R3: "serial" (the R2 reference loop) or "chunked" (exact, block-parallel)
     scan_block: int = 64               # R3: positions per block of the chunked kernel
+    sparse: SparseConfig | None = None # R6: blocks whose channel is a routed bank of FFN + CGC experts
 
     def __post_init__(self):
         if not isinstance(self.model, ModelConfig):
@@ -77,6 +79,11 @@ class ErsaConfig:
             object.__setattr__(self, "attn_layers", tuple(sorted(layers)))
         if self.attention == "window":
             self.window_config()            # validates heads, head dimension and window >= chunk + 1
+        if self.sparse is not None:
+            if not isinstance(self.sparse, SparseConfig):
+                raise ConfigError("sparse must be a SparseConfig (or None for the dense channel everywhere)")
+            if any(i >= self.model.n_layers for i in self.sparse.layers):
+                raise ConfigError("sparse.layers must name blocks of the model")
 
     @property
     def window_layers(self) -> tuple:
@@ -140,8 +147,14 @@ class ErsaBlock(nn.Module):
         self.cgc = CGCTransform(m.d_model, m.cgc_cells, m.cgc_units, bottleneck=m.cgc_bottleneck,
                                 preact_bound=m.cgc_preact_bound, dtype=dtype) if m.has_cgc else None
         self.cgc_gate = nn.Parameter(torch.zeros(1, dtype=dtype)) if m.channel == "ffn+cgc" else None
+        self.sparse = None
+        if c.sparse is not None and index in c.sparse.layers:      # R6: the routed channel replaces the dense one
+            self.ffn = self.cgc = self.cgc_gate = None
+            self.sparse = SparseChannel(m, c.sparse, dtype)
 
     def channel(self, x: torch.Tensor) -> torch.Tensor:
+        if self.sparse is not None:
+            return self.sparse(x)
         if self.cgc is None:
             return self.ffn(x)
         if self.ffn is None:
@@ -193,7 +206,8 @@ class ErsaLM(nn.Module):
                 if std is not None:
                     parameter.copy_(_seeded_normal(m.seed, name, parameter.shape, std, parameter.dtype))
                 elif name.endswith("cgc_gate"):
-                    parameter.fill_(m.cgc_gate_init)
+                    sparse = ".sparse." in name
+                    parameter.fill_(self.ersa.sparse.gate_init if sparse else m.cgc_gate_init)
                 else:
                     parameter.fill_(1.0)
 

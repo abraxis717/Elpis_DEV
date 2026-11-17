@@ -203,3 +203,185 @@ def test_r5_reread_cache_is_exact_bounded_and_identity_safe(r5_stream):
             model.encoder.delta.weight.add_(1e-3)                             # the model changes under the session
         with pytest.raises(ModelRevisionError):
             cached.prefill(r5_stream[:, :10])
+
+
+# -- P2 / P3: sparse FFN + CGC experts ---------------------------------------------------------------------------
+
+from research.elpis_torch.ersa_model import ErsaLM  # noqa: E402
+from research.elpis_torch.sparse_channel import (SparseChannel, SparseConfig, active_parameters,  # noqa: E402
+                                                 aux_loss, channel_reports, upcycle)
+
+
+def core_widths(channel="cgc", dtype="float64", **changes):
+    base = dict(vocab_size=97, d_model=32, n_layers=2, n_heads=2, n_kv_heads=1, max_seq_len=64, channel=channel,
+                seed=11, dtype=dtype)
+    if "cgc" in channel:
+        base.update(cgc_bottleneck=8, cgc_channels=24, cgc_units=4)
+    if "ffn" in channel:
+        base.update(ffn_hidden=48)
+    base.update(changes)
+    return ModelConfig(**base)
+
+
+def sparse_core(sparse=None, channel="cgc", dtype="float64", chunk=64):
+    return ErsaLM(ErsaConfig(core_widths(channel, dtype), conv_kernel=4, chunk=chunk, sparse=sparse))
+
+
+def channel_alone(experts=8, top_k=2, dtype=torch.float64, **changes):
+    m = core_widths(dtype="float64")
+    config = SparseConfig(experts=experts, top_k=top_k, layers=(0,), **changes)
+    channel = SparseChannel(m, config, dtype)
+    generator = torch.Generator().manual_seed(3)
+    with torch.no_grad():
+        for parameter in channel.parameters():
+            parameter.copy_(torch.randn(parameter.shape, generator=generator, dtype=dtype) * 0.3)
+    return channel
+
+
+def test_routing_ties_resolve_to_the_lower_expert_deterministically():
+    channel = channel_alone()
+    with torch.no_grad():
+        channel.router.weight.zero_()                                   # every probability equal
+    u = torch.randn(10, 32, dtype=torch.float64)
+    _, probs, index, weight = channel.router(u)
+    assert index.tolist() == [[0, 1]] * 10 and torch.allclose(weight, torch.full_like(weight, 0.5))
+    assert torch.equal(channel.router(u)[2], index)
+
+
+@pytest.mark.parametrize("experts,top_k,shape", [(8, 2, (2, 13)), (16, 2, (1, 1)), (4, 3, (3, 7)), (16, 1, (2, 5))])
+def test_grouped_dispatch_equals_the_reference_in_value_and_gradient(experts, top_k, shape):
+    grouped = channel_alone(experts, top_k, shared=True)
+    reference = channel_alone(experts, top_k, shared=True, dispatch="reference")
+    reference.load_state_dict(grouped.state_dict())
+    u = torch.randn(*shape, 32, dtype=torch.float64)
+    a, b = grouped(u), reference(u)
+    assert float((a - b).abs().max()) < 1e-12
+    a.square().sum().backward()
+    b.square().sum().backward()
+    for (name, p), q in zip(grouped.named_parameters(), reference.parameters()):
+        if p.grad is None:
+            assert q.grad is None or float(q.grad.abs().max()) == 0.0, name    # an unselected expert
+        else:
+            assert float((p.grad - q.grad).abs().max()) < 1e-10, name
+    counts = grouped.report["stats"]["counts"]
+    assert sum(counts) == shape[0] * shape[1] * top_k                         # no token dropped, none doubled
+    strided = torch.randn(32, *shape, dtype=torch.float64).movedim(0, -1)    # a non-contiguous input
+    assert float((grouped(strided) - reference(strided)).abs().max()) < 1e-12
+
+
+def test_every_expert_owns_its_parameters_and_its_cgc_acts_alone():
+    channel = channel_alone()
+    pointers = [p.data_ptr() for p in channel.parameters()]
+    assert len(set(pointers)) == len(pointers)                                # no aliased storage
+    u = torch.randn(40, 32, dtype=torch.float64)
+    before = channel(u)
+    _, _, index, _ = channel.router(u)
+    with torch.no_grad():
+        channel.experts[0].cgc.core.weight.add_(0.5)                          # expert 0's CGC only
+    after = channel(u)
+    uses_0 = (index == 0).any(-1)
+    changed = (after - before).abs().amax(-1) > 0
+    assert torch.equal(changed, uses_0) and bool(uses_0.any()) and bool((~uses_0).any())
+
+
+def test_gradients_reach_router_experts_local_cgc_shared_ersa_embeddings_and_head():
+    model = sparse_core(SparseConfig(experts=4, top_k=2, layers=(0, 1), shared=True))
+    tokens = torch.randint(0, 97, (2, 40), generator=torch.Generator().manual_seed(0))
+    logits = model(tokens, model.new_state(2))
+    torch.nn.functional.cross_entropy(logits[:, :-1].reshape(-1, 97), tokens[:, 1:].reshape(-1)).backward()
+    grads = {n: p.grad for n, p in model.named_parameters()}
+    nonzero = lambda n: grads[n] is not None and float(grads[n].abs().max()) > 0      # noqa: E731
+    for block in (0, 1):
+        assert nonzero(f"blocks.{block}.sparse.router.weight")
+        active = [e for e, c in enumerate(channel_reports(model)[block]["stats"]["counts"]) if c]
+        for e in active:
+            for part in ("ffn.gate.weight", "ffn.out.weight", "cgc.core.weight", "cgc.proj_in.weight", "cgc_gate"):
+                assert nonzero(f"blocks.{block}.sparse.experts.{e}.{part}"), (block, e, part)
+        assert nonzero(f"blocks.{block}.sparse.shared.cgc.core.weight")
+    assert nonzero("blocks.0.ersa.qkv.weight" if "blocks.0.ersa.qkv.weight" in grads else
+                   next(n for n in grads if n.startswith("blocks.0.ersa.") and n.endswith("weight")))
+    assert nonzero("embed.weight")                                            # the tied output head as well
+
+
+def test_a_zero_gate_is_exactly_the_ffn_and_its_cgc_then_starts_learning():
+    channel = channel_alone(gate_init=0.0, kind="ffn+cgc")
+    with torch.no_grad():
+        for expert in channel.experts:
+            expert.cgc_gate.zero_()
+    u = torch.randn(30, 32, dtype=torch.float64)
+    plain = channel_alone(kind="ffn")
+    plain.load_state_dict({k: v for k, v in channel.state_dict().items() if ".cgc" not in k})
+    assert float((channel(u) - plain(u)).abs().max()) == 0.0                  # exact control
+    optimizer = torch.optim.SGD(channel.parameters(), lr=0.1)
+    channel(u).square().sum().backward()
+    used = [e for e, c in enumerate(channel.report["stats"]["counts"]) if c]
+    assert all(float(channel.experts[e].cgc_gate.grad.abs()) > 0 for e in used)
+    assert all(float(channel.experts[e].cgc.core.weight.grad.abs().max()) == 0 for e in used)
+    optimizer.step()
+    optimizer.zero_grad()
+    channel(u).square().sum().backward()
+    assert any(float(channel.experts[e].cgc.core.weight.grad.abs().max()) > 0 for e in used)
+
+
+def test_without_a_sparse_config_the_model_is_the_old_dense_model():
+    old = ErsaLM(ErsaConfig(core_widths(), conv_kernel=4, chunk=64))
+    new = sparse_core(None)
+    empty = sparse_core(SparseConfig(layers=()))
+    assert list(old.state_dict()) == list(new.state_dict()) == list(empty.state_dict())
+    tokens = torch.randint(0, 97, (2, 30), generator=torch.Generator().manual_seed(1))
+    with torch.no_grad():
+        reference = old(tokens, old.new_state(2))
+        assert torch.equal(reference, new(tokens, new.new_state(2)))
+        assert torch.equal(reference, empty(tokens, empty.new_state(2)))
+
+
+@pytest.mark.parametrize("channel", ["cgc", "ffn", "ffn+cgc"])
+def test_upcycling_reproduces_the_dense_model(channel):
+    dense = ErsaLM(ErsaConfig(core_widths(channel), conv_kernel=4, chunk=64)).eval()
+    if channel == "ffn+cgc":
+        with torch.no_grad():
+            for block in dense.blocks:
+                block.cgc_gate.fill_(0.7)
+    kind = "ffn" if channel == "ffn" else "ffn+cgc"
+    tokens = torch.randint(0, 97, (2, 30), generator=torch.Generator().manual_seed(2))
+    with torch.no_grad():
+        reference = dense(tokens, dense.new_state(2))
+        clones = upcycle(dense, SparseConfig(experts=4, top_k=2, layers=(0, 1), kind=kind)).eval()
+        assert float((clones(tokens, clones.new_state(2)) - reference).abs().max()) < 1e-12
+        shared = upcycle(dense, SparseConfig(experts=4, top_k=2, layers=(0, 1), kind=kind, shared=True)).eval()
+        assert torch.equal(shared(tokens, shared.new_state(2)), reference)          # bitwise: routed outputs are 0
+        for block in shared.blocks:
+            block.sparse.routed_enabled = False                                 # the disabled-routing control
+        assert torch.equal(shared(tokens, shared.new_state(2)), reference)
+
+
+def test_routing_statistics_and_auxiliary_losses():
+    model = sparse_core(SparseConfig(experts=8, top_k=2, layers=(1,), balance_weight=0.01, z_weight=0.001))
+    tokens = torch.randint(0, 97, (3, 50), generator=torch.Generator().manual_seed(4))
+    model(tokens, model.new_state(3))
+    report = channel_reports(model)[0]
+    stats = report["stats"]
+    assert sum(stats["counts"]) == 150 * 2 and len(stats["coactivation"]) == 8
+    assert [stats["coactivation"][i][i] for i in range(8)] == stats["counts"]
+    assert 0 <= stats["router_entropy"] <= stats["router_entropy_max"] + 1e-9
+    assert stats["load_imbalance_max_over_mean"] >= 1.0 and 0 <= stats["inactive_fraction"] <= 1
+    total = aux_loss(model)
+    expected = 0.01 * report["balance_loss"] + 0.001 * report["z_loss"]
+    assert torch.isfinite(total) and float((total - expected).abs()) < 1e-12 and total.requires_grad
+    counts = active_parameters(model)
+    assert counts["active_per_token"] < counts["total"] == counts["resident"]
+
+
+def test_extreme_routing_stays_finite_and_mixed_precision_routes_in_float32():
+    channel = channel_alone(experts=8, top_k=8)
+    with torch.no_grad():
+        channel.router.weight.mul_(1e4)                                         # saturated router
+    u = torch.randn(20, 32, dtype=torch.float64, requires_grad=True)
+    out = channel(u)
+    out.sum().backward()
+    assert bool(torch.isfinite(out).all()) and bool(torch.isfinite(u.grad).all())
+    low = channel_alone(dtype=torch.float32)
+    with torch.autocast("cpu", dtype=torch.bfloat16):
+        result = low(torch.randn(16, 32))
+    logits, probs, _, _ = low.router(torch.randn(4, 32))
+    assert bool(torch.isfinite(result).all()) and logits.dtype == torch.float32 == probs.dtype
