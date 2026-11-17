@@ -19,11 +19,11 @@ from research.elpis_torch.model import parameter_digest  # noqa: E402
 CGC = dict(channel="cgc", cgc_bottleneck=8, cgc_channels=24, cgc_units=4)
 
 
-def tiny_evidence(chunk=1024, dtype="float64", **changes):
+def tiny_evidence(chunk=1024, dtype="float64", sparse=None, **changes):
     widths = ModelConfig(vocab_size=et.VOCAB, d_model=32, n_layers=2, n_heads=2, n_kv_heads=1, max_seq_len=64,
                          **CGC, seed=5, dtype=dtype)
     ersa = ErsaConfig(widths, ersa_heads=2, key_dim=8, value_dim=8, ersa_kernel="chunked", scan_block=16,
-                      conv_kernel=4, chunk=chunk)
+                      conv_kernel=4, chunk=chunk, sparse=sparse)
     evidence = dict(block=16, capacity=256, per_block=2, key_dim=16, coarse_top=6, evidence=3, fine_top=4, overlap=4,
                     encoder_dim=32, fine_dim=8, read_heads=2, read_head_dim=8, query_tile=7)
     evidence.update(changes)
@@ -385,3 +385,64 @@ def test_extreme_routing_stays_finite_and_mixed_precision_routes_in_float32():
         result = low(torch.randn(16, 32))
     logits, probs, _, _ = low.router(torch.randn(4, 32))
     assert bool(torch.isfinite(result).all()) and logits.dtype == torch.float32 == probs.dtype
+
+
+# -- P4: routed experts with the R5 evidence path ----------------------------------------------------------------
+
+EXPERTS = SparseConfig(experts=4, top_k=2, layers=(0, 1), shared=True)
+
+
+def test_experts_with_r5_are_causal_and_chunk_invariant(r5_stream):
+    model = _frozen(tiny_evidence(sparse=EXPERTS))
+    changed = r5_stream.clone()
+    changed[:, 301:] = torch.randint(1, 30, changed[:, 301:].shape, generator=torch.Generator().manual_seed(0))
+    with torch.no_grad():
+        whole = model(r5_stream, model.new_state(2))
+        assert torch.equal(whole[:, :301], model(changed, model.new_state(2))[:, :301])     # no future leakage
+        small = _frozen(tiny_evidence(chunk=29, sparse=EXPERTS))
+        small.load_state_dict(model.state_dict())
+        state = small.new_state(2)
+        parts = torch.cat([small(r5_stream[:, a:a + 29], state) for a in range(0, 600, 29)], dim=1)
+    assert float((parts - whole).abs().max()) < 1e-9
+    assert state.ring.stats["stale_rejections"] == 0
+
+
+def test_r5_off_is_the_routed_core_and_no_label_reaches_the_routes(r5_stream):
+    model = _frozen(tiny_evidence(sparse=EXPERTS))
+    core = _frozen(ErsaLM(model.ersa))
+    core.load_state_dict({k: v for k, v in model.state_dict().items() if k in core.state_dict()})
+    tokens = r5_stream[:, :200]
+    labels = et.EvidenceStreams(r5_stream, torch.zeros_like(r5_stream, dtype=torch.int8),
+                                torch.full_like(r5_stream, -1)).query_source()[:, :200]
+    with torch.no_grad():
+        assert torch.equal(model(tokens, model.new_state(2), mode="off"), core(tokens, core.new_state(2)))
+        plain = model(tokens, model.new_state(2))
+        routes = [r["stats"]["counts"] for r in channel_reports(model)]
+        labelled, _ = model(tokens, model.new_state(2), evidence=labels, diagnostics=True)
+        assert torch.equal(plain, labelled) and routes == [r["stats"]["counts"] for r in channel_reports(model)]
+
+
+def test_expert_selection_adds_no_persistent_state_and_revisions_are_refused(r5_stream):
+    model = _frozen(tiny_evidence(chunk=64, sparse=EXPERTS))
+    dense = _frozen(tiny_evidence(chunk=64))
+    with ContextSession(model, batch=2) as session:
+        assert session.nbytes() == ContextSession(dense, batch=2).nbytes()          # experts are weights, not state
+        before = session.nbytes()
+        session.prefill(r5_stream)
+        assert session.nbytes() == before
+        with torch.no_grad():
+            model.blocks[0].sparse.router.weight.add_(1e-3)
+        with pytest.raises(ModelRevisionError):
+            session.step(r5_stream[:, 0])
+
+
+def test_injected_and_exposed_evidence_counts_are_independent_and_all_ranks_train():
+    model = tiny_evidence(evidence=8, fine_top=8, coarse_top=8, sparse=EXPERTS, dtype="float32")
+    assert model.lookup.key_rank.shape[0] == 9
+    stream = et.generate_records(et.RecordTask(queries=6, background=20.0), 2, 600, seed=7)
+    logits = model(stream.tokens[:, :-1], model.new_state(2))
+    torch.nn.functional.cross_entropy(logits.reshape(-1, logits.shape[-1]), stream.tokens[:, 1:].reshape(-1)).backward()
+    grad = model.lookup.key_rank.grad
+    assert grad is not None and int((grad.abs().sum(-1) > 0).sum()) >= 6          # ranks beyond 4 are trained
+    narrow = tiny_evidence(evidence=4, fine_top=8, coarse_top=8)
+    assert narrow.evidence.fine_top == 8 and narrow.lookup.key_rank.shape[0] == 5
