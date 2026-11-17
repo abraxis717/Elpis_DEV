@@ -108,6 +108,8 @@ with VolatileSession(model, SessionConfig(lr=0.1, max_steps=16)) as session:
 | `history.py`, `history_model.py` | R3: exact token-history ring, bounded block index, `ErsaHistoryLM` (learned addressing, rereading, readout; `off` / `learned` / oracle diagnosis modes) |
 | `longrange_tasks.py`, `program_tasks.py` | R3: long-range fact streams with source labels; a structured program language with an exact checker for free-running generation |
 | `scaling.py`, `experiments/run_r3.py` | R3: 500M / 1B configurations and context accounting; `run_r3 train|facts|program|scale|gpu|smoke` (`docs/research/elpis_torch/DESIGN_R3.md`, `EVIDENCE_R3.md`) |
+| `context_runtime.py` | R4: deterministic exact top-K, tiled exact index scoring, bounded encoded-block cache, `ContextSession` (bounded streaming prefill/decode, reset, budget refusal) |
+| `spark_reference.py`, `experiments/run_r4.py` | R4: a Spark-style 3:1 hybrid comparator (published geometry, untrained); `run_r4 bench|parity|spark|scale|gradients|gpu|gpu-horizon|cache-patterns|cache-workloads|smoke` (`docs/research/elpis_torch/EVIDENCE_R4.md`; R4.1 corrections: `EVIDENCE_R4_1.md`) |
 
 ## Not here, on purpose
 

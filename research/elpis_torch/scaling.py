@@ -200,3 +200,105 @@ def report(*, measure: bool = True) -> dict:
     if measure:
         out["measured_small_model_state_at_1M"] = measure_small()
     return out
+
+
+# -- R4: exact fixed state and bounded scratch of a streaming session ---------------------------------------------
+
+def _width(dtype) -> int:
+    return torch.empty((), dtype=dtype).element_size()
+
+
+def fixed_state_bytes(model, batch: int = 1, *, state_dtype=None) -> dict:
+    """EXACT bytes of a fresh state of ``model`` (equal to ``model.new_state(batch).nbytes()``; tested), from the
+    configuration alone. ``state_dtype`` overrides the parameter dtype for the floating state tiers."""
+    c = model.ersa
+    m = c.model
+    w = _width(state_dtype or getattr(torch, m.dtype))
+    out = {"ersa_cells": m.n_layers * batch * c.ersa_heads * c.value_dim * c.key_dim * w}
+    if c.conv_kernel:
+        out["conv_tail"] = m.n_layers * batch * (c.conv_kernel - 1) * m.d_model * w
+    if c.attention == "window":
+        head_dim = m.d_model // c.attn_heads
+        out["attention_window"] = len(c.window_layers) * 2 * batch * c.attn_kv_heads * c.attn_window * head_dim * w
+        out["token_history"] = batch * (c.attn_window + 1) * 4            # the window ring's own token slots
+    h = getattr(model, "history", None)
+    if h is not None:
+        reads = len(model.read_layers)
+        out["history_tokens"] = batch * h.history_capacity * 4
+        out["block_index"] = reads * (batch * h.slots * h.per_block * h.index_dim * w + h.slots * 8)
+    out["total"] = sum(out.values())
+    return out
+
+
+def session_scratch_bytes(model, *, batch: int = 1, chunk: int, scorer: str = "tiled", tile: int = 4096,
+                          tile_elements: int = 1 << 21, activation_bytes: int | None = None) -> dict:
+    """PROJECTED estimate of the per-chunk working memory of one forward call: every component's size summed as if
+    all were live at once (not measured, and not an allocator ceiling: caching-allocator reserve, fragmentation,
+    autocast weight casts and library workspaces are not modelled). On CPU it bounded the measured RSS growth of
+    the tiled path at 1.11M tokens (149 MiB measured, 235 MiB projected with the state; R4.1 evidence).
+
+    Selection: the reference scorer holds the full ``[B, T, horizon/block (+ new)]`` score table with its distance,
+    eligibility and pooled-match intermediates; the tiled scorer holds one tile and the running top-K. Reread:
+    encoded selected blocks and their readout keys/values. New blocks: encoder activations. Logits: the head is
+    applied to the positions asked for only (one per stream assumed)."""
+    c, m = model.ersa, model.ersa.model
+    w = activation_bytes or _width(getattr(torch, m.dtype))
+    d, T, out = m.d_model, chunk, {}
+    out["chunk_activations"] = batch * T * d * 16 * w + batch * T * c.ersa_heads * (c.key_dim + c.value_dim) * 4 * w
+    out["logits"] = batch * m.vocab_size * w
+    h = getattr(model, "history", None)
+    if h is not None:
+        reads = len(model.read_layers)
+        records = h.slots + T // h.block + 1
+        n = records if scorer == "reference" else min(max(tile, tile_elements // max(1, batch * T)), records)
+        per_tile = batch * T * n * (h.per_block + 2) * w + T * n * (8 + w + 1)
+        if scorer == "tiled":
+            per_tile += batch * T * (h.topk + n) * (w + 8) * 2
+        out["selection"] = reads * per_tile
+        width = h.encoder_dim or d
+        blocks = min(T * h.topk, h.slots) + T // h.block + 2
+        kv = 2 * h.read_kv_heads * h.read_head_dim
+        out["reread_states"] = reads * batch * blocks * (h.block + 1) * width * w
+        out["readout"] = reads * batch * (blocks * h.block * kv + T * h.topk * h.block * kv * 2) * w
+        out["encoder_activations"] = batch * (T // h.block + 2 + min(T * h.topk, h.slots)) * h.span * width * 8 * w
+    out["total"] = sum(out.values())
+    return out
+
+
+def r4_context_budget(name: str, *, chunk: int = 512, tile: int = 4096, cache_bytes: int = 32 << 20,
+                      horizon: int = HORIZON) -> dict:
+    """The complete 1M-token active context of a configuration under the R4 runtime.
+
+    ``state_fp32`` is EXACT tensor storage of the state as allocated by a float32 model (instantiated on ``meta``);
+    ``state_deployment`` is the same tensors with the ERSA cells kept float32 (the accumulation precision) and every
+    other floating tier in bfloat16 (exact sizes, deployment layout). The cache is the configured hard bound.
+    Scratch is PROJECTED (``session_scratch_bytes``) for 16-bit activations, for the tiled scorer and, for
+    comparison, the R3 reference scorer."""
+    model, _ = instantiate(name, horizon=horizon)
+    ersa, history = configuration(name, horizon=horizon, chunk=chunk)
+    fp32 = fixed_state_bytes(model, 1)
+    deployment = {k: (v if k in ("ersa_cells", "history_tokens", "token_history") else
+                      (v // 2 if k != "block_index" else v - (v - history.slots * 8 * len(model.read_layers)) // 2))
+                  for k, v in fp32.items() if k != "total"}
+    deployment["total"] = sum(deployment.values())
+    tiled = session_scratch_bytes(model, chunk=chunk, scorer="tiled", tile=tile, activation_bytes=2)
+    reference = session_scratch_bytes(model, chunk=chunk, scorer="reference", activation_bytes=2)
+    entry = (history.block + 1) * (history.encoder_dim or ersa.model.d_model) * 2
+    gpu = {"state": deployment["total"], "block_cache": cache_bytes, "scratch_tiled": tiled["total"]}
+    gpu["total"] = sum(gpu.values())
+    cpu_history = dict(gpu, state=deployment["total"] - deployment["history_tokens"])
+    cpu_history["total"] = cpu_history["state"] + cache_bytes + tiled["total"]
+    weights = sum(p.numel() for p in model.parameters())
+    return {"parameters": weights, "weights_bytes": {"bf16": 2 * weights, "fp32": 4 * weights},
+            "state_fp32_instantiated": fp32, "state_deployment_exact": deployment,
+            "block_cache": {"capacity_bytes": cache_bytes, "entry_bytes_bf16": entry,
+                            "blocks_held_at_capacity": cache_bytes // entry},
+            "scratch_tiled_projected": tiled, "scratch_reference_projected": reference,
+            "placement_all_gpu": {"gpu": gpu, "cpu": {"total": 0}},
+            "placement_history_in_cpu_ram": {"gpu": cpu_history,
+                                             "cpu": {"history_tokens": deployment["history_tokens"],
+                                                     "total": deployment["history_tokens"]}},
+            "gpu_target_1GiB": gpu["total"] <= 1 << 30, "gpu_ceiling_2GiB": gpu["total"] <= 2 << 30,
+            "gpu_total_with_bf16_weights": gpu["total"] + 2 * weights,
+            "chunk": chunk, "tile": tile, "horizon": horizon,
+            "status": "state INSTANTIATED / exact; cache configured; scratch PROJECTED; nothing measured on a GPU"}

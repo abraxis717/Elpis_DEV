@@ -1,0 +1,1 @@
+{"environment":{"cuda_available":false,"machine":"x86_64","python":"3.13.18","threads":4,"torch":"2.15.0+cpu"},"phase":"ELPIS_TORCH_R4_CONTEXT_RUNTIME","reason":"torch.cuda.is_available() is False","status":"NOT_RUN"}

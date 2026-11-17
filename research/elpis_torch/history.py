@@ -61,6 +61,11 @@ class TokenHistory:
         self.tokens.index_copy_(1, slots, tokens.to(device=self.device, dtype=torch.int32))
         self.position += length
 
+    def reset(self) -> None:
+        """An empty history in the same buffer."""
+        self.tokens.zero_()
+        self.position = self.origin
+
     def read(self, start: int, length: int) -> torch.Tensor:
         """Token ids at absolute positions ``start .. start + length - 1``: ``[batch, length]`` int64."""
         if length < 0 or start < self.oldest or start + length > self.position:
@@ -82,7 +87,11 @@ class TokenHistory:
 
 class BlockIndex:
     """A ring of ``slots`` index records per stream: ``keys [batch, slots, per_block, dim]`` and the absolute
-    block number held in each slot (``-1``: empty). Records are written in increasing block order."""
+    block number held in each slot (``-1``: empty). Records are written in increasing block order.
+
+    Occupancy invariant (R4.1): ``count`` is the number of records written and still held, so the held blocks
+    are exactly ``next_block - count .. next_block - 1`` in slots ``(block mod slots)``, whatever the stream's
+    absolute origin. It equals ``(ids >= 0).sum()`` at all times (tested), without a scan."""
 
     def __init__(self, batch: int, slots: int, per_block: int, dim: int, *, dtype=torch.float32, device=None):
         for name, value in (("batch", batch), ("slots", slots), ("per_block", per_block), ("dim", dim)):
@@ -92,6 +101,7 @@ class BlockIndex:
         self.keys = torch.zeros(batch, slots, per_block, dim, dtype=dtype, device=device)
         self.ids = torch.full((slots,), -1, dtype=torch.int64, device=device)
         self.next_block = None                       # the block number the next write must carry
+        self.count = 0                               # R4.1: records written and still held (0 .. slots)
 
     def write(self, first_block: int, keys: torch.Tensor) -> None:
         """Store records for blocks ``first_block .. first_block + n - 1`` (``keys [batch, n, per_block, dim]``),
@@ -106,6 +116,14 @@ class BlockIndex:
         self.keys.index_copy_(1, slots, keys.detach().to(self.keys.dtype))
         self.ids.index_copy_(0, slots, blocks)
         self.next_block = first_block + count
+        self.count = min(self.count + count, self.slots)
+
+    def reset(self) -> None:
+        """An empty index in the same buffers."""
+        self.keys.zero_()
+        self.ids.fill_(-1)
+        self.next_block = None
+        self.count = 0
 
     def resident(self) -> tuple[torch.Tensor, torch.Tensor]:
         """``(ids [n], keys [batch, n, per_block, dim])`` of the held records, oldest first."""
