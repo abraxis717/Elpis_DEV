@@ -70,6 +70,59 @@ def read_cells(state: torch.Tensor, query: torch.Tensor) -> torch.Tensor:
     return (state @ query[..., None])[..., 0]
 
 
+def serial_scan(state, query, key, value, retain, erase, write):
+    """The reference recurrence: ``delta_step`` then ``read_cells``, one position at a time.
+
+    ``state`` ``[B, h, V, K]``; ``query``/``key`` ``[B, T, h, K]``; ``value`` ``[B, T, h, V]``; gates ``[B, T, h]``.
+    Returns the reads ``[B, T, h, V]`` and the final state.
+    """
+    reads = []
+    for t in range(key.shape[1]):
+        state = delta_step(state, key[:, t], value[:, t], retain=retain[:, t], erase=erase[:, t], write=write[:, t])
+        reads.append(read_cells(state, query[:, t]))
+    return torch.stack(reads, dim=1), state
+
+
+def chunked_scan(state, query, key, value, retain, erase, write, *, block: int = 64):
+    """The same recurrence as ``serial_scan``, evaluated ``block`` positions at a time (R3).
+
+    Algebraically equal, not an approximation. Write ``S_t = r_t S_{t-1} + u_t k_t^T`` with
+    ``u_t = w_t v_t - r_t e_t S_{t-1} k_t``. Inside a block that starts from ``S_0``, with
+    ``G[t, i] = r_{i+1} ... r_t`` (``G[t, t] = 1``) and ``g_t = r_1 ... r_t``:
+
+        S_{t-1} k_t r_t = g_t S_0 k_t + sum_{i<t} G[t, i] (k_i . k_t) u_i
+        (I + L) U = diag(w) V - diag(e g) (K S_0^T),     L[t, i] = e_t G[t, i] (k_t . k_i) for i < t
+        o_t = g_t S_0 q_t + sum_{i<=t} G[t, i] (k_i . q_t) u_i
+        S_end = g_end S_0 + sum_i G[end, i] u_i k_i^T
+
+    ``G`` is a cumulative PRODUCT of masked gates (never a ratio of cumulative products), so a retain of
+    exactly 0 (a wipe) is exact and nothing is divided. ``I + L`` is unit lower triangular: the solve is
+    forward substitution of the same recurrence on ``u``. Rounding differs from the serial loop (different
+    summation order); parity is tested to 1e-12 in float64 and to 1e-4 in float32.
+    """
+    batch, length, heads, _ = key.shape
+    reads = []
+    for at in range(0, length, block):
+        q, k, v = (t[:, at:at + block].transpose(1, 2) for t in (query, key, value))      # [B, h, C, .]
+        r, e, w = (t[:, at:at + block].transpose(1, 2) for t in (retain, erase, write))   # [B, h, C]
+        size = k.shape[2]
+        lower = torch.ones(size, size, dtype=torch.bool, device=k.device).tril(-1)       # i < t
+        # G[t, i] = prod_{j = i+1 .. t} r_j: a cumulative product along t of r_t masked to 1 where t <= i.
+        masked = torch.where(lower, r[..., :, None], torch.ones_like(r)[..., :, None])    # [B, h, t, i]
+        decay = torch.cumprod(masked, dim=2)                                               # G, valid for t >= i
+        decay = decay.masked_fill(~(lower | torch.eye(size, dtype=torch.bool, device=k.device)), 0.0)
+        g = torch.cumprod(r, dim=2)                                                        # [B, h, C]
+        s0k = k @ state.transpose(-1, -2)                                                  # rows (S_0 k_t)^T
+        rhs = w[..., None] * v - (e * g)[..., None] * s0k
+        system = (e[..., None] * decay * (k @ k.transpose(-1, -2))).masked_fill(~lower, 0.0)
+        eye = torch.eye(size, dtype=k.dtype, device=k.device)
+        u = torch.linalg.solve_triangular(eye + system, rhs, upper=False, unitriangular=True)
+        attend = decay * (q @ k.transpose(-1, -2))                                         # [B, h, t, i], i <= t
+        reads.append(g[..., None] * (q @ state.transpose(-1, -2)) + attend @ u)
+        state = g[..., -1, None, None] * state + (decay[..., -1, :, None] * u).transpose(-1, -2) @ k
+    return torch.cat(reads, dim=2).transpose(1, 2), state
+
+
 class ERSAMixer(nn.Module):
     """Causal, content-dependent token mixing through a recurrent associative state.
 
@@ -80,8 +133,13 @@ class ERSAMixer(nn.Module):
 
     def __init__(self, dim: int, *, heads: int, key_dim: int, value_dim: int, conv_kernel: int = 0,
                  tie_erase: bool = True, key_norm: bool = True, read_norm: bool = True, out_gate: bool = True,
-                 dtype: torch.dtype = torch.float32):
+                 dtype: torch.dtype = torch.float32, kernel: str = "serial", scan_block: int = 64):
         super().__init__()
+        if kernel not in ("serial", "chunked"):
+            raise ValueError("kernel must be 'serial' (the reference) or 'chunked'")
+        if type(scan_block) is not int or scan_block < 1:
+            raise ValueError("scan_block must be a positive integer")
+        self.kernel, self.scan_block = kernel, scan_block
         for name, number in (("dim", dim), ("heads", heads), ("key_dim", key_dim), ("value_dim", value_dim)):
             if type(number) is not int or number < 1:
                 raise ValueError(f"ERSAMixer {name} must be a positive integer")
@@ -100,12 +158,15 @@ class ERSAMixer(nn.Module):
         self.out = nn.Linear(heads * value_dim, dim, bias=False, dtype=dtype)
 
     def new_state(self, batch: int) -> torch.Tensor:
-        return torch.zeros(batch, self.heads, self.value_dim, self.key_dim, dtype=self.q.weight.dtype)
+        """Zero state on the module's device, in its parameter dtype (the accumulation precision)."""
+        weight = self.q.weight
+        return torch.zeros(batch, self.heads, self.value_dim, self.key_dim, dtype=weight.dtype, device=weight.device)
 
     def new_tail(self, batch: int) -> torch.Tensor | None:
         if self.conv is None:
             return None
-        return torch.zeros(batch, self.conv_kernel - 1, self.dim, dtype=self.q.weight.dtype)
+        weight = self.q.weight
+        return torch.zeros(batch, self.conv_kernel - 1, self.dim, dtype=weight.dtype, device=weight.device)
 
     def signals(self, x: torch.Tensor, tail: torch.Tensor | None):
         """Everything a chunk needs except the recurrence itself, computed for all its tokens at once."""
@@ -133,12 +194,17 @@ class ERSAMixer(nn.Module):
         if state.shape != (x.shape[0], self.heads, self.value_dim, self.key_dim):
             raise ValueError("the state does not belong to this mixer and batch")
         query, key, value, retain, erase, write, opened, new_tail = self.signals(x, tail)
-        reads = []
-        for t in range(x.shape[1]):                       # the recurrence: sequential by definition
-            state = delta_step(state, key[:, t], value[:, t], retain=retain[:, t], erase=erase[:, t],
-                               write=write[:, t])
-            reads.append(read_cells(state, query[:, t]))
-        read = torch.stack(reads, dim=1)                   # [B, T, heads, V]
+        # The recurrence runs in the state's dtype with autocast off: under mixed precision the projections may
+        # be 16-bit, but the state is accumulated in its own (float32 or float64) precision.
+        precision = state.dtype
+        with torch.autocast(device_type=x.device.type, enabled=False):
+            signals = [t.to(precision) for t in (query, key, value, retain, erase, write)]
+            if self.kernel == "chunked":
+                read, state = chunked_scan(state, *signals, block=self.scan_block)
+            else:
+                read, state = serial_scan(state, *signals)      # [B, T, heads, V]
+            if new_tail is not None:
+                new_tail = new_tail.to(precision)
         if self.read_norm:
             read = read * torch.rsqrt(read.pow(2).mean(dim=-1, keepdim=True) + 1e-6)
         if opened is not None:

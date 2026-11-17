@@ -48,3 +48,35 @@ class ByteTokenizer:
     def decode(self, ids: Sequence[int]) -> str:
         """Text for display. A generated sequence may end inside a UTF-8 character; that tail is replaced."""
         return self.decode_bytes(ids).decode("utf-8", errors="replace")
+
+    byte_fallback = True
+
+    def token_bytes(self, token: int) -> bytes:
+        return bytes([token]) if 0 <= token < 256 else b""
+
+
+@runtime_checkable
+class SubwordTokenizerProtocol(TokenizerProtocol, Protocol):
+    """R3: the interface a future subword tokenizer must satisfy before any language pretraining.
+
+    * ``byte_fallback`` must be true: every byte string is encodable (unknown text falls back to byte tokens),
+      and ``decode_bytes(encode_bytes(b)) == b`` for every ``b``.
+    * ``token_bytes(i)`` gives the exact bytes of token ``i`` (control tokens: ``b""``), so lengths can always be
+      reported in BYTES. Byte-token lengths and subword-token lengths are never compared directly; compare bytes
+      (``bytes_per_token``) or report both.
+    * The vocabulary is a read-only resource shipped with a checkpoint. Nothing here downloads or trains one, and
+      no model in this package depends on an external tokenizer.
+    """
+    byte_fallback: bool
+
+    def encode_bytes(self, data: bytes) -> list[int]: ...
+
+    def decode_bytes(self, ids: Sequence[int]) -> bytes: ...
+
+    def token_bytes(self, token: int) -> bytes: ...
+
+
+def bytes_per_token(tokenizer, data: bytes) -> float:
+    """Compression of ``data`` under a tokenizer, in bytes per token: the unit for cross-tokenizer comparison."""
+    ids = tokenizer.encode_bytes(data)
+    return len(data) / max(1, len(ids))

@@ -74,3 +74,57 @@ No new dependency: PyTorch only, as for R0 and R1.
   the repository's top-level `NOTICE` or `LICENSES/`; whether the archive's presence calls for an entry there
   is the owner's decision.
 * The archive's own tests and install scripts were not run.
+
+---
+
+# R3 (long-context addressing): references and what was not copied
+
+No third-party code was copied, vendored, imported or executed. No repository listed in the directive was cloned
+for R3. The following were used as research references for design principles only:
+
+| Reference | Licence (code) | Principle taken | Not taken |
+|---|---|---|---|
+| Native Sparse Attention, arXiv 2502.11089 | paper | select blocks by a learned score and read their raw tokens; keep a local branch beside it | its three-branch gated attention, compression MLP, kernels |
+| StreamingLLM / attention sinks, arXiv 2309.17453 (`mit-han-lab/streaming-llm`, MIT) | paper; code not consulted | a "read nothing" sink (R3's learned null logit) and position semantics relative to the cache, not the text | sink tokens in a dense model |
+| Kimi Linear, arXiv 2510.26692 (`MoonshotAI/Kimi-Linear`, MIT) | paper; code not consulted | a hybrid of recurrent layers with few attention layers (configurable `attn_layers`; 3:1 is the scaling default) | Kimi Delta Attention, its kernels |
+| Chunkwise delta rule (the WY/UT form of DeltaNet; Yang et al., "Parallelizing Linear Transformers with the Delta Rule over Sequence Length", 2024) | mathematics | that the delta-rule recurrence has an exact block-parallel form with a unit-triangular solve | any code; R3's `chunked_scan` was derived from R2's own recurrence (with untied erase and exact zero gates via masked cumulative products) and is tested against the serial loop |
+| RULER (`NVIDIA/RULER`, Apache-2.0) | benchmark reference | the idea of a graded synthetic ladder with multi-hop, distractor and position variants | its tasks, code and data |
+| FlashAttention (`Dao-AILab/flash-attention`, BSD-3) | not used | | no fused kernel was written or imported |
+
+What R3 wrote: `history.py`, `history_model.py`, `longrange_tasks.py`, `program_tasks.py`, `scaling.py`,
+`experiments/run_r3.py`, `tests/research/elpis_torch/test_r3.py`, the `chunked_scan` kernel and the device and
+precision changes in `ersa.py`, `ersa_model.py`, `scroll.py`, and the tokenizer interface. All new and original.
+
+---
+
+# R4 (context runtime): references and what was not copied
+
+No third-party code, weights or data were copied, imported, vendored or executed. No new dependency.
+
+| Reference | Licence | Used for | Not taken |
+|---|---|---|---|
+| XHToken Spark-X2.5-4B and Spark-X2.6-4B model cards and `config.json` (huggingface.co/XHToken), fetched 2026-11-16 | Apache-2.0 (weights, code) | the published geometry only: 36 layers (27 sliding, 9 full), window 512, 16 query / 4 KV heads, head dim 256, head-wise sigmoid attention-output gate, partial rotary 0.25 (theta 5e6) on full layers, full rotary (theta 1e4) on sliding layers, 1,048,576 positions; the cards' statements that X2.6 keeps X2.5's architecture and improves long context through post-training | its modeling code (never downloaded), weights, tokenizer, training data, benchmark numbers |
+| StreamingLLM (arXiv 2309.17453; mit-han-lab/streaming-llm, MIT) | paper | the distinction between a bounded streaming window and retained information | code not consulted |
+| Native Sparse Attention (arXiv 2502.11089), Kimi Linear (arXiv 2510.26692) | papers | sparse placement of expensive attention; selection over compressed blocks (already in R1/R3) | code |
+
+What R4 wrote (all original): `context_runtime.py` (deterministic exact top-K, tiled exact scoring, the
+encoded-block cache, runtime options, the streaming session), `spark_reference.py` (an independent, untrained,
+scaled-down comparator written from the published configuration), the R4 parts of `history_model.py`,
+`history.py`, `scroll.py`, `ersa_model.py`, `scaling.py`, `experiments/run_r4.py` and
+`tests/research/elpis_torch/test_r4.py`.
+
+
+# R5 (learned evidence retrieval): references and what was not copied
+
+No third-party code, weights or data were consulted, copied, imported, vendored or executed, and no dependency was
+added. By directive, nothing of DeepSeek-V4.1-Flash or Spark-X2.6 was reproduced and no VGGT-Omega code, weight or
+dependency was used. The design follows general retrieval practice (a cheap coarse candidate scan followed by an
+exact reread and a learned reranker; token-level matching of a query against candidate tokens), written from
+scratch for this repository; no specific paper's implementation was followed.
+
+What R5 wrote (all original): `evidence_ring.py`, `evidence_model.py`, `evidence_tasks.py`,
+`experiments/run_r5.py`, `tests/research/elpis_torch/test_r5.py`, the `--evidence` scenario of
+`tests/research/elpis_torch/zero_write_scenario.py`, and `docs/research/elpis_torch/BASELINE_R5.md`,
+`DESIGN_R5.md`, `EVIDENCE_R5.md`. It reuses this repository's ERSA/CGC core unchanged (`ersa_model.ErsaLM`
+through its extension hooks), R3's channel module and R4's deterministic `exact_topk`.
+

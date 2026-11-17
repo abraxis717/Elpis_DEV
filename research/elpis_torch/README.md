@@ -104,9 +104,20 @@ with VolatileSession(model, SessionConfig(lr=0.1, max_steps=16)) as session:
 | `lastblock.py`, `scroll_session.py` | R1: last-block CGC fast weights that leave every cache valid; `ScrollSession` |
 | `scroll_data.py`, `experiments/run_r1.py` | R1: the long-stream retrieval task; train, ladder, adapt, capacity |
 | `ersa.py`, `ersa_model.py`, `experiments/run_r2.py` | R2: ERSA kernel, mixer, exact cells, `ErsaLM`; `run_r2 smoke|exact|latency|projection|transduction`; train with `run_r1 train --topology ersa_conv` |
+| `ersa.py` `chunked_scan` | R3: the same ERSA recurrence evaluated block-parallel (exact; `ErsaConfig(ersa_kernel="chunked")`) |
+| `history.py`, `history_model.py` | R3: exact token-history ring, bounded block index, `ErsaHistoryLM` (learned addressing, rereading, readout; `off` / `learned` / oracle diagnosis modes) |
+| `longrange_tasks.py`, `program_tasks.py` | R3: long-range fact streams with source labels; a structured program language with an exact checker for free-running generation |
+| `scaling.py`, `experiments/run_r3.py` | R3: 500M / 1B configurations and context accounting; `run_r3 train|facts|program|scale|gpu|smoke` (`docs/research/elpis_torch/DESIGN_R3.md`, `EVIDENCE_R3.md`) |
+| `context_runtime.py` | R4: deterministic exact top-K, tiled exact index scoring, bounded encoded-block cache, `ContextSession` (bounded streaming prefill/decode, reset, budget refusal) |
+| `spark_reference.py`, `experiments/run_r4.py` | R4: a Spark-style 3:1 hybrid comparator (published geometry, untrained); `run_r4 bench|parity|spark|scale|gradients|gpu|gpu-horizon|cache-patterns|cache-workloads|smoke` (`docs/research/elpis_torch/EVIDENCE_R4.md`; R4.1 corrections: `EVIDENCE_R4_1.md`) |
+| `evidence_ring.py` | R5: exact FIFO token ring of 2^20 tokens and bounded descriptor index with session / epoch / slot / generation identity; stale addresses refused |
+| `evidence_model.py` | R5: `EvidenceLM` (unchanged ERSA/CGC core + coarse learned block index, exact candidate reread, fine reranker with a supersession feature, bounded injection in the last block) |
+| `evidence_tasks.py`, `experiments/run_r5.py` | R5: records / scoped-symbol / R3 tasks with explicit hard negatives; `run_r5 train|eval|ablate|r3base|r3eval|memory|smoke` (`docs/research/elpis_torch/DESIGN_R5.md`, `EVIDENCE_R5.md`) |
 
 ## Not here, on purpose
 
-RALPH in any role, MoE routing, Engram, mHC, HCA, AWR, GDN, ERSA, persistent inference learning, an energy
-function, a metacognitive controller, a retrieval controller, model weights, and any claim that the DSV4.1
+RALPH in any role, MoE routing, Engram, mHC, HCA, AWR, GDN, persistent inference learning, an energy
+function, a metacognitive controller, a retrieval controller or host-side retriever (R3's block selection and R5's
+coarse scan and reranking are the model's own learned functions; the host only stores, validates, evicts and
+gathers), model weights, and any claim that the DSV4.1
 research tower was translated: it was read for its mechanics and not ported.

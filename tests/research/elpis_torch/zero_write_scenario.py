@@ -70,6 +70,43 @@ def scroll_main():
     print(json.dumps({"applied_updates": applied, "position": position, "write_events": events}))
 
 
+def evidence_main():
+    """R5: stream an evidence model past its ring capacity with retrieval at query positions, reset, a fault."""
+    global armed
+    from research.elpis_torch.ersa_model import ErsaConfig
+    from research.elpis_torch.evidence_model import EvidenceConfig, EvidenceLM
+    torch.set_num_threads(1)
+    widths = ModelConfig(vocab_size=700, d_model=32, n_layers=2, n_heads=2, max_seq_len=32, channel="cgc",
+                         cgc_bottleneck=8, cgc_channels=16, seed=0)
+    model = freeze(EvidenceLM(ErsaConfig(widths, ersa_heads=2, key_dim=8, value_dim=8, conv_kernel=4, chunk=64),
+                              EvidenceConfig(block=16, capacity=256, per_block=2, key_dim=16, coarse_top=8,
+                                             evidence=2, fine_top=4, overlap=4, encoder_dim=32, fine_dim=8,
+                                             read_heads=2, read_head_dim=8)))
+    if "--audit" in sys.argv:
+        sys.addaudithook(hook)
+    armed = True
+    os.write(2, b"ELPIS_SESSION_BEGIN\n")
+    tokens = torch.randint(0, 700, (2, 900), generator=torch.Generator().manual_seed(0))
+    position = 0
+    try:
+        with torch.no_grad():
+            state = model.new_state(2)
+            for at in range(0, 900, 64):                       # 3.5 ring capacities
+                model(tokens[:, at:at + 64], state, logit_positions=torch.tensor([0, 31, 63])[:tokens[:, at:at + 64].shape[1] // 32 + 1])
+            position = state.position
+            state.reset()
+            model(tokens[:, :64], state)
+            if "--negative-control" in sys.argv:
+                with open(sys.argv[sys.argv.index("--negative-control") + 1], "w") as handle:
+                    handle.write("not volatile")
+            raise RuntimeError("a fault inside a live stream")
+    except RuntimeError:
+        pass
+    os.write(2, b"ELPIS_SESSION_END\n")
+    armed = False
+    print(json.dumps({"applied_updates": 0, "position": position, "write_events": events}))
+
+
 def main():
     global armed
     torch.set_num_threads(1)
@@ -103,4 +140,4 @@ def main():
 
 
 if __name__ == "__main__":
-    scroll_main() if "--scroll" in sys.argv else main()
+    scroll_main() if "--scroll" in sys.argv else evidence_main() if "--evidence" in sys.argv else main()
