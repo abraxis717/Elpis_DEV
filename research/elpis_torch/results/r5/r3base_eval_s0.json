@@ -662,6 +662,41 @@
     }
    },
    "tokens": 1048576
+  },
+  {
+   "seconds": 917.16,
+   "set": "scoped",
+   "streams": 1,
+   "summary": {
+    "all": {
+     "accuracy": 0.237,
+     "accuracy_ci95": [
+      0.1732,
+      0.3154
+     ],
+     "n": 135,
+     "recall_at_2": 0.2519
+    },
+    "historical": {
+     "accuracy": 0.2348,
+     "accuracy_ci95": [
+      0.1707,
+      0.314
+     ],
+     "n": 132,
+     "recall_at_2": 0.2576
+    },
+    "revised": {
+     "accuracy": 0.2154,
+     "accuracy_ci95": [
+      0.1329,
+      0.3297
+     ],
+     "n": 65,
+     "recall_at_2": 0.2154
+    }
+   },
+   "tokens": 1048576
   }
  ]
 }
