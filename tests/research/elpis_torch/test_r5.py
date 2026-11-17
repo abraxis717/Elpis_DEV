@@ -238,7 +238,8 @@ def test_topk_is_deterministic_with_ties_to_the_newer_block():
     with torch.no_grad():
         _, diag = model(tokens, model.new_state(1), logit_positions=torch.tensor([199]), diagnostics=True)
     chosen = diag["fine_top"][0, 0]
-    assert chosen[chosen >= 0].tolist() == sorted(chosen[chosen >= 0].tolist(), reverse=True)
+    same = [b for b in chosen.tolist() if b >= 1]           # block 0 has no left context: it is not identical
+    assert len(same) >= 3 and same == sorted(same, reverse=True)
 
 
 def test_the_working_context_is_bounded_and_ranges_are_exposed(streams):
