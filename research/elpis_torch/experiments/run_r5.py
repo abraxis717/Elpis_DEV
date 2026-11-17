@@ -369,7 +369,12 @@ def load(path: str, *, chunk: int = 4096, **changes):
     record = saved["record"]
     evidence = {"supersession": "sum", **record.get("evidence", {})}     # records before the option: "sum"
     model = build(record["seed"], chunk=chunk, **{**evidence, **changes})
-    model.load_state_dict(saved["state_dict"], strict=True)
+    state = dict(saved["state_dict"])
+    rows = model.lookup.key_rank.shape[0]
+    if state["lookup.key_rank"].shape[0] < rows:     # more evidence slots than trained: ranks beyond share the
+        trained = state["lookup.key_rank"]            # last trained embedding (exactly the trained clamping)
+        state["lookup.key_rank"] = torch.cat((trained, trained[-1:].expand(rows - trained.shape[0], -1)))
+    model.load_state_dict(state, strict=True)
     model.eval()
     for parameter in model.parameters():
         parameter.requires_grad_(False)
@@ -559,7 +564,10 @@ def command_eval(args) -> dict:
 
 def _eval_overrides(args) -> dict:
     """Evaluation-time configuration changes (recorded with the results)."""
-    return {"supersession": args.supersession} if getattr(args, "supersession", None) else {}
+    out = {"supersession": args.supersession} if getattr(args, "supersession", None) else {}
+    if getattr(args, "evidence", None):
+        out["evidence"] = args.evidence
+    return out
 
 
 def command_ablate(args) -> dict:
