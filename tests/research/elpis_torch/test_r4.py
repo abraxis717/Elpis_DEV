@@ -22,6 +22,8 @@ WIDTHS = dict(vocab_size=64, d_model=32, n_layers=2, n_heads=4, n_kv_heads=2, ma
               cgc_bottleneck=8, cgc_channels=16, dtype="float64", seed=1)
 HISTORY = dict(block=8, horizon=64, topk=2, index_dim=8, read_head_dim=8, overlap=3)
 CUDA = torch.cuda.is_available()
+# R4.1: the CUDA tests run only on the device named here (default cuda:0); nothing else on the GPU is touched.
+CUDA_DEVICE = __import__("os").environ.get("ELPIS_TORCH_CUDA_DEVICE", "cuda:0")
 
 
 def _model(window=False, frozen=True, dtype="float64", **h):
@@ -377,9 +379,9 @@ def test_cuda_session_with_cpu_token_history_matches_cpu():   # pragma: no cover
     model = _model()
     tokens = _tokens()
     reference = ContextSession(model, batch=2).prefill(tokens).last_logits
-    gpu = copy.deepcopy(model).cuda()
+    gpu = copy.deepcopy(model).to(CUDA_DEVICE)
     with ContextSession(gpu, batch=2, history_device="cpu", cache_bytes=1 << 20) as session:
-        out = session.prefill(tokens.cuda()).last_logits.cpu()
+        out = session.prefill(tokens.to(CUDA_DEVICE)).last_logits.cpu()
         assert session.state.tokens.device.type == "cpu" and session.state.cells[0].is_cuda
     assert float((out - reference).abs().max()) < 1e-9
 

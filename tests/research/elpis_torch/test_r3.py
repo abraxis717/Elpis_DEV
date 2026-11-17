@@ -23,6 +23,8 @@ WIDTHS = dict(vocab_size=64, d_model=32, n_layers=2, n_heads=4, n_kv_heads=2, ma
               cgc_bottleneck=8, cgc_channels=16, dtype="float64", seed=1)
 HISTORY = dict(block=8, horizon=64, topk=2, index_dim=8, read_head_dim=8, overlap=3)
 CUDA = torch.cuda.is_available()
+# R4.1: the CUDA tests run only on the device named here (default cuda:0); nothing else on the GPU is touched.
+CUDA_DEVICE = __import__("os").environ.get("ELPIS_TORCH_CUDA_DEVICE", "cuda:0")
 NOT_RUN_CUDA = "NOT_RUN: no CUDA device in this environment (not a PASS)"
 
 
@@ -356,13 +358,13 @@ def test_cuda_matches_cpu_and_bf16_is_finite():   # pragma: no cover - needs the
     model = _model(window=True)
     tokens = _tokens(length=128)
     cpu = _stream(model, tokens, 32)[0]
-    gpu_model = _model(window=True).cuda()
-    gpu = _stream(gpu_model, tokens.cuda(), 32)[0].cpu()
+    gpu_model = _model(window=True).to(CUDA_DEVICE)
+    gpu = _stream(gpu_model, tokens.to(CUDA_DEVICE), 32)[0].cpu()
     assert float((cpu - gpu).abs().max()) < 1e-8
     float_model = ErsaHistoryLM(gpu_model.ersa.__class__(**{**gpu_model.ersa.__dict__, "model":
-                                gpu_model.config.replace(dtype="float32")}), gpu_model.history).cuda().eval()
+                                gpu_model.config.replace(dtype="float32")}), gpu_model.history).to(CUDA_DEVICE).eval()
     with torch.autocast("cuda", dtype=torch.bfloat16), torch.no_grad():
-        out = _stream(float_model, tokens.cuda(), 32)[0]
+        out = _stream(float_model, tokens.to(CUDA_DEVICE), 32)[0]
     assert bool(torch.isfinite(out).all())
 
 

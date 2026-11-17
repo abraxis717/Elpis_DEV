@@ -304,3 +304,113 @@ def test_writes_that_bypass_version_tracking_are_caught_only_by_the_opt_in_diges
         session.step(tokens[:, 61])
     with pytest.raises(ValueError):
         ContextSession(model).verify_digest()                              # opt-in only
+
+
+# -- P3: the encoded-block cache under adversarial access ---------------------------------------------------------
+
+def _stream_pair(model, tokens, step, capacity, **runtime):
+    """Run the tiled path without and with a cache; return logits, selections and the cache."""
+    out = []
+    for cache in (None, BlockCache(capacity)):
+        state = model.new_state(tokens.shape[0])
+        state.runtime = RuntimeOptions(scorer="tiled", cache=cache, **runtime)
+        logits, picks = [], []
+        with torch.no_grad():
+            for at in range(0, tokens.shape[1], step):
+                lo, diag = model(tokens[:, at:at + step], state, diagnostics=True)
+                logits.append(lo)
+                picks.append(diag[model.read_layers[-1]]["selected"])
+        out.append((torch.cat(logits, 1), torch.cat(picks, 1), cache, state))
+    return out
+
+
+ENTRY = 2 * 9 * 32 * 8           # one encoded block of the fixture: batch 2 x (s + 1) x width x float64
+
+
+@pytest.mark.parametrize("pattern,capacity", [("random", ENTRY - 1), ("random", 3 * ENTRY), ("periodic", 3 * ENTRY),
+                                              ("periodic", 1 << 20), ("hot", 2 * ENTRY), ("random", 1 << 20)])
+def test_cache_output_equals_uncached_output_under_adversarial_access(pattern, capacity):
+    """random: cold scattered selections; periodic: every block has identical tokens at a different address
+    (identical contents, exact score ties); hot: a two-symbol stream that keeps re-reading the same blocks.
+    Tiny capacities force misses, rejections and evictions; outputs must not change."""
+    model = _model()
+    if pattern == "random":
+        tokens = _tokens(batch=2, length=500)
+    elif pattern == "periodic":
+        tokens = (torch.arange(500) % 8).repeat(2, 1)
+    else:
+        tokens = (torch.arange(500) % 2 * 5).repeat(2, 1)
+    (plain, plain_picks, _, _), (cached, picks, cache, state) = _stream_pair(model, tokens, 1, capacity)
+    assert torch.equal(picks, plain_picks)
+    assert float((cached - plain).abs().max()) < 1e-12
+    assert cache.bytes <= capacity
+    if capacity < ENTRY:
+        assert cache.stats["hits"] == 0 and cache.stats["rejected_too_large"] > 0 and not cache.entries
+    h = model.history
+    oldest = state.position // h.block - h.slots
+    assert all(block >= oldest for block in cache.entries)            # nothing from before the horizon survives
+
+
+def test_a_reused_ring_slot_never_serves_the_evicted_blocks_encoding():
+    """Block b and block b + slots share an index slot; the cache is keyed by absolute block id and purged."""
+    model = _model()
+    tokens = _tokens(batch=1, length=200)
+    cache = BlockCache(1 << 20)
+    state = model.new_state(1)
+    state.runtime = RuntimeOptions(scorer="tiled", cache=cache)
+    with torch.no_grad():
+        model(tokens[:, :100], state)                                    # blocks 0..11 (8 slots)
+        early = dict(cache.entries)
+        model(tokens[:, 100:200], state)                                 # blocks 12..24 reuse the same slots
+    slots = model.history.slots
+    evicted = [block for block in early if block < 200 // 8 - slots]
+    assert evicted                                                       # the fixture really wraps the ring
+    for block in evicted:
+        assert block not in cache.entries                                # purged, never aliased by its slot
+        assert any(other % slots == block % slots for other in cache.entries)   # the slot itself was reused
+    # and the cached run equals an uncached one through the wrap
+    plain = model.new_state(1)
+    plain.runtime = RuntimeOptions(scorer="tiled")
+    again = model.new_state(1)
+    again.runtime = RuntimeOptions(scorer="tiled", cache=BlockCache(1 << 20))
+    with torch.no_grad():
+        assert float((model(tokens[:, :128], plain) - model(tokens[:, :128], again)).abs().max()) < 1e-12
+
+
+def test_interleaved_sessions_with_separate_small_caches_match_their_solo_runs():
+    model = _model()
+    streams = [_tokens(batch=1, length=300, seed=s) for s in (1, 2, 3)]
+    solo = [ContextSession(model, chunk=7).prefill(t).last_logits for t in streams]
+    sessions = [ContextSession(model, chunk=7, cache_bytes=3 * 9 * 32 * 8) for _ in streams]
+    for at in range(0, 300, 13):                                         # interleave the three sessions
+        for session, tokens in zip(sessions, streams):
+            session.prefill(tokens[:, at:at + 13])
+    for session, expected in zip(sessions, solo):
+        assert float((session.current_logits() - expected).abs().max()) < 1e-12
+        assert session.state.runtime.cache.bytes <= 3 * 9 * 32 * 8
+
+
+# -- P4: the projection says what it is and where it lives ---------------------------------------------------------
+
+def test_projected_bytes_separate_exact_state_from_the_estimate_and_split_by_placement():
+    model = _model()
+    session = ContextSession(model, chunk=50, cache_bytes=1 << 16, history_device="meta", index_device="meta")
+    need = session.projected_bytes()
+    tiers = need["state_by_tier"]
+    assert need["by_device"]["meta"] == tiers["history_tokens"] + tiers["block_index"]
+    assert sum(need["by_device"].values()) == need["total"] == need["state"] + need["block_cache"] + need["scratch"]
+    assert need["state"] == sum(tiers.values()) and "not a physical ceiling" in need["status"]
+    assert session.state.tokens.device.type == "meta" and session.state.indexes[1].keys.device.type == "meta"
+
+
+def test_an_unrelated_registration_costs_a_slow_check_but_never_a_false_refusal_and_dtype_moves_are_caught():
+    model = _model()
+    tokens = _tokens()
+    session = ContextSession(model, chunk=50)
+    session.prefill(tokens[:, :60])
+    other = torch.nn.Linear(3, 3)                                          # registers parameters elsewhere
+    other.extra = torch.nn.Parameter(torch.zeros(1))
+    session.step(tokens[:, 60])                                            # still the same model revision
+    model.blocks[0].ersa.k.to(torch.float32)                              # storage replaced in place via .data
+    with pytest.raises(ModelRevisionError):
+        session.step(tokens[:, 61])

@@ -232,7 +232,10 @@ def fixed_state_bytes(model, batch: int = 1, *, state_dtype=None) -> dict:
 
 def session_scratch_bytes(model, *, batch: int = 1, chunk: int, scorer: str = "tiled", tile: int = 4096,
                           tile_elements: int = 1 << 21, activation_bytes: int | None = None) -> dict:
-    """PROJECTED upper bound of the per-chunk working memory of one forward call (not measured).
+    """PROJECTED estimate of the per-chunk working memory of one forward call: every component's size summed as if
+    all were live at once (not measured, and not an allocator ceiling: caching-allocator reserve, fragmentation,
+    autocast weight casts and library workspaces are not modelled). On CPU it bounded the measured RSS growth of
+    the tiled path at 1.11M tokens (149 MiB measured, 235 MiB projected with the state; R4.1 evidence).
 
     Selection: the reference scorer holds the full ``[B, T, horizon/block (+ new)]`` score table with its distance,
     eligibility and pooled-match intermediates; the tiled scorer holds one tile and the running top-K. Reread:

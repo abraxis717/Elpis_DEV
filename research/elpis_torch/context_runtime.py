@@ -20,6 +20,7 @@ bitwise.
 """
 from __future__ import annotations
 
+import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 
@@ -29,7 +30,8 @@ NEG = float("-inf")
 
 
 class BudgetError(MemoryError):
-    """A session would exceed its declared context-memory budget. Refused at creation; nothing is allocated."""
+    """A session's PROJECTED context memory exceeds its declared budget. Refused at creation, before anything is
+    allocated. Passing this check is not a guarantee about the allocator's measured peak."""
 
 
 class SessionClosedError(RuntimeError):
@@ -54,6 +56,50 @@ def model_revision(model) -> tuple:
     items = [(name, id(t), t.data_ptr(), t._version, t.dtype, str(t.device), tuple(t.shape), t.requires_grad)
              for name, t in (*model.named_parameters(), *model.named_buffers())]
     return (model.training, *items)
+
+
+_REGISTRATIONS = [0]          # bumped by PyTorch whenever any module registers a parameter, buffer or submodule
+_HOOKS: list = []
+
+
+def _bump(*_args, **_kwargs):
+    _REGISTRATIONS[0] += 1
+
+
+def _registration_hooks() -> None:
+    """Installed once, lazily (first session): global PyTorch registration hooks that only count events."""
+    if not _HOOKS:
+        from torch.nn.modules import module as nn_module
+        _HOOKS.extend((nn_module.register_module_parameter_registration_hook(_bump),
+                       nn_module.register_module_buffer_registration_hook(_bump),
+                       nn_module.register_module_module_registration_hook(_bump)))
+
+
+class RevisionWatch:
+    """``model_revision`` without walking the module tree on every call.
+
+    Fast path (every call): the training flag, then, for the tensors cached at bind time, version counter,
+    storage pointer, dtype, device, shape and requires_grad. Replacement of a parameter, buffer or submodule is
+    seen through a global registration counter; when it moved, the full ``model_revision`` is recomputed and
+    compared (slow path), so an unrelated registration elsewhere costs one slow check, never a false refusal."""
+
+    def __init__(self, model):
+        _registration_hooks()
+        self.full = model_revision(model)
+        self.epoch = _REGISTRATIONS[0]
+        self.training = model.training
+        self.watch = [(t, t._version, t.data_ptr(), t.dtype, t.device, t.shape, t.requires_grad)
+                      for _, t in (*model.named_parameters(), *model.named_buffers())]
+
+    def unchanged(self, model) -> bool:
+        if model.training != self.training:
+            return False
+        if self.epoch != _REGISTRATIONS[0]:
+            if model_revision(model) != self.full:
+                return False
+            self.epoch = _REGISTRATIONS[0]
+        return all(t._version == v and t.data_ptr() == p and t.dtype == d and t.device == dev and t.shape == sh
+                   and t.requires_grad == g for t, v, p, d, dev, sh, g in self.watch)
 
 
 # -- deterministic exact top-K --------------------------------------------------------------------------------
@@ -175,7 +221,7 @@ class BlockCache:
         self.bytes = 0
         self.fingerprint = None
         self.stats = {"hits": 0, "misses": 0, "inserts": 0, "evictions": 0, "purged": 0, "invalidations": 0,
-                      "bypassed": 0, "rejected_too_large": 0}
+                      "bypassed": 0, "rejected_too_large": 0, "management_ns": 0}
 
     def __getstate__(self):
         raise TypeError("a block cache is volatile session state and is never serialized")
@@ -186,27 +232,38 @@ class BlockCache:
         return tuple((t.data_ptr(), t._version, t.dtype, str(t.device), tuple(t.shape)) for t in tensors)
 
     def check(self, model) -> None:
+        started = time.perf_counter_ns()
         fingerprint = self.model_fingerprint(model)
         if fingerprint != self.fingerprint:
             if self.entries:
                 self.stats["invalidations"] += 1
             self.clear()
             self.fingerprint = fingerprint
+        self.stats["management_ns"] += time.perf_counter_ns() - started
 
     def clear(self) -> None:
         self.entries.clear()
         self.bytes = 0
 
     def get(self, block: int):
+        started = time.perf_counter_ns()
         entry = self.entries.get(block)
         if entry is None:
             self.stats["misses"] += 1
-            return None
-        self.entries.move_to_end(block)
-        self.stats["hits"] += 1
+        else:
+            self.entries.move_to_end(block)
+            self.stats["hits"] += 1
+        self.stats["management_ns"] += time.perf_counter_ns() - started
         return entry
 
     def put(self, block: int, states: torch.Tensor) -> None:
+        started = time.perf_counter_ns()
+        try:
+            self._put(block, states)
+        finally:
+            self.stats["management_ns"] += time.perf_counter_ns() - started
+
+    def _put(self, block: int, states: torch.Tensor) -> None:
         size = states.numel() * states.element_size()
         if size > self.capacity_bytes:
             self.stats["rejected_too_large"] += 1
@@ -223,10 +280,12 @@ class BlockCache:
         self.stats["inserts"] += 1
 
     def purge_below(self, block: int) -> None:
+        started = time.perf_counter_ns()
         for old in [b for b in self.entries if b < block]:
             entry = self.entries.pop(old)
             self.bytes -= entry.numel() * entry.element_size()
             self.stats["purged"] += 1
+        self.stats["management_ns"] += time.perf_counter_ns() - started
 
 
 @dataclass
@@ -289,7 +348,7 @@ class ContextSession:
         self._placement = dict(history_device=history_device, index_device=index_device)
         if budget_bytes is not None:
             need = self.projected_bytes()
-            if need["total"] > budget_bytes:
+            if need["total"] > budget_bytes:     # early refusal of a clearly over-budget configuration only
                 raise BudgetError(f"projected context memory {need['total']} bytes exceeds the budget {budget_bytes}")
         self.budget_bytes = budget_bytes
         self.state = None
@@ -315,7 +374,7 @@ class ContextSession:
         """Bind the session to the model revision its (fresh) state will be computed with."""
         if self.model.training or any(p.requires_grad for p in self.model.parameters()):
             raise ValueError("a context session needs a frozen model (eval mode, no parameter requires grad)")
-        self._revision = model_revision(self.model)
+        self._revision = RevisionWatch(self.model)
         self._refused = False
         self._digest = None
         if self._record_digest:
@@ -324,7 +383,7 @@ class ContextSession:
 
     def _check_revision(self) -> None:
         """Every call: refuse to continue a state computed with another model revision (no data is read)."""
-        if self._refused or model_revision(self.model) != self._revision:
+        if self._refused or not self._revision.unchanged(self.model):
             self._refused = True
             raise ModelRevisionError("the model changed under this session (parameter, buffer, device, dtype or "
                                      "mode); its state and index were computed with the old revision. reset() "
@@ -411,14 +470,36 @@ class ContextSession:
         return out
 
     def projected_bytes(self) -> dict:
-        """Upper bound of the session's context memory, from the configuration: fixed state + configured cache
-        capacity + per-chunk scratch of the selected scorer. Used for budget refusal."""
+        """PROJECTED context memory of this session from its configuration (R4.1 wording). Three classes:
+
+        * ``state``: EXACT bytes of the fixed state tensors (equal to what is allocated; tested), by tier;
+        * ``block_cache``: the cache's configured hard bound (enforced at every insertion);
+        * ``scratch``: an ESTIMATE of one call's working memory, summed as if every intermediate were live at
+          once. It is not an allocator ceiling: the CUDA caching allocator's reserve and fragmentation, autocast's
+          cached weight casts and library workspaces are not modelled. Only a measured allocator peak
+          (``run_r4 gpu-horizon``) qualifies a physical bound.
+
+        ``by_device`` places each class where the session puts it: the token history on ``history_device``, the
+        index on ``index_device``, everything else on the model's device. The budget refusal at construction uses
+        ``total``; it refuses clearly over-budget configurations early and guarantees nothing about the peak."""
         from .scaling import fixed_state_bytes, session_scratch_bytes
-        fixed = fixed_state_bytes(self.model, self.batch)["total"]
+        fixed = fixed_state_bytes(self.model, self.batch)
         scratch = session_scratch_bytes(self.model, batch=self.batch, chunk=self.chunk,
                                         scorer=self._options["scorer"], tile=self._options["tile"])
-        out = {"state": fixed, "block_cache": self._options["cache_bytes"], "scratch": scratch["total"]}
-        out["total"] = sum(out.values())
+        home = str(self.model.embed.weight.device)
+        place = {"history_tokens": self._placement["history_device"], "block_index": self._placement["index_device"]}
+        by_device: dict = {}
+        for tier, size in fixed.items():
+            if tier != "total":
+                where = str(torch.device(place[tier])) if place.get(tier) is not None else home
+                by_device[where] = by_device.get(where, 0) + size
+        by_device[home] = by_device.get(home, 0) + self._options["cache_bytes"] + scratch["total"]
+        out = {"state": fixed["total"], "state_by_tier": {k: v for k, v in fixed.items() if k != "total"},
+               "block_cache": self._options["cache_bytes"], "scratch": scratch["total"],
+               "scratch_by_component": {k: v for k, v in scratch.items() if k != "total"}}
+        out["total"] = out["state"] + out["block_cache"] + out["scratch"]
+        out["by_device"] = by_device
+        out["status"] = "state EXACT; cache = configured bound; scratch PROJECTED estimate (not a physical ceiling)"
         return out
 
     # -- streaming --------------------------------------------------------------------------------------------
@@ -468,6 +549,9 @@ class ContextSession:
         """One token per stream ``[B]`` -> the next-token logits ``[B, vocab]``."""
         self._live()
         self._check_revision()
+        return self._step(token)
+
+    def _step(self, token: torch.Tensor) -> torch.Tensor:
         token = token.reshape(self.batch, 1)
         index = torch.zeros(1, dtype=torch.long, device=token.device)
         return self._remember(self.model(token, self.state, logit_positions=index)[:, 0])
@@ -491,5 +575,5 @@ class ContextSession:
         for _ in range(count):
             token = sample_next(self._last, temperature=temperature, top_k=top_k, generator=generator)
             out.append(token)
-            self.step(token)
+            self._step(token)                      # one revision check per generate call (above)
         return torch.stack(out, dim=1)
