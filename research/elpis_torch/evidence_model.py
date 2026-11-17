@@ -70,6 +70,7 @@ class EvidenceConfig:
     tile_elements: int = 1 << 22    # bound of a tile's [batch, queries, blocks, per_block] coarse scratch
     mode: str = "learned"
     rerank: str = "learned"
+    supersession: str = "max"       # "max": strongest newer match (bounded); "sum": all newer matches; "off"
 
     def __post_init__(self):
         for name in ("block", "capacity", "per_block", "key_dim", "coarse_top", "evidence", "fine_top", "overlap",
@@ -87,6 +88,8 @@ class EvidenceConfig:
             raise ConfigError("key_dtype must be auto, float32, bfloat16 or float16")
         if self.mode not in MODES or self.rerank not in RERANK:
             raise ConfigError(f"mode in {MODES}, rerank in {RERANK}")
+        if self.supersession not in ("max", "sum", "off"):
+            raise ConfigError("supersession must be max, sum or off")
 
     @property
     def slots(self) -> int:
@@ -566,7 +569,12 @@ class EvidenceLM(ErsaLM):
         ok_all = torch.cat((valid_c, torch.ones_like(m_l[..., None], dtype=torch.bool)), dim=-1)
         strength = torch.sigmoid(head.sup_sharpness.exp() * (m_all - head.sup_threshold)) * ok_all
         newer = ids_all[..., None, :] > cand[..., :, None]                                  # [B, Q, K, K + 1]
-        superseded = (newer * strength[..., None, :]).sum(-1)
+        if e.supersession == "sum":       # grows with the number of newer candidates: penalizes old evidence
+            superseded = (newer * strength[..., None, :]).sum(-1)
+        elif e.supersession == "max":     # is there a newer candidate that matches strongly? bounded by 1
+            superseded = (newer * strength[..., None, :]).amax(-1)
+        else:
+            superseded = torch.zeros_like(m_c)
         if rerank == "learned":
             fine = m_c + head.coarse_weight * cvals.masked_fill(~valid_c, 0.0) - F.softplus(head.sup_weight) * superseded
         else:

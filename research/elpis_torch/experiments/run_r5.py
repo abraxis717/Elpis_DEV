@@ -227,6 +227,12 @@ def command_train(args) -> dict:
     started, history, status = time.perf_counter(), [], "COMPLETED"
     saved = _resume_state(args)
     resume = None
+    if saved is None and getattr(args, "init", None):               # fine-tune: Phase B from a trained model
+        init = torch.load(args.init, map_location="cpu", weights_only=True)
+        model.load_state_dict(init["state_dict"])
+        history = [{"phase": "init", "from": args.init, "parameter_digest": init["record"]["parameter_digest"],
+                    "train_seconds": init["record"].get("train_seconds")}]
+        resume = {"phase": "B", "done": 0, "optimizer": None, "rng": None}
     if saved is not None:
         resume = saved["resume"]
         model.load_state_dict(saved["state_dict"])
@@ -280,7 +286,7 @@ def command_train(args) -> dict:
         optimizer = _optimizer(params, OPTIM["lr_b"])
         rng = random.Random(f"elpis-torch-r5-curriculum:{args.seed}")
         done = 0
-        if resume is not None:                                   # resuming inside Phase B
+        if resume is not None and resume["optimizer"] is not None:            # resuming inside Phase B
             optimizer.load_state_dict(resume["optimizer"])
             done = resume["done"]
             rng.setstate((resume["rng"][0], tuple(resume["rng"][1]), resume["rng"][2]))
@@ -326,7 +332,7 @@ def command_train(args) -> dict:
 
 def _overrides(args) -> dict:
     out = {}
-    for name in ("per_block", "block", "coarse_top", "evidence"):
+    for name in ("per_block", "block", "coarse_top", "evidence", "supersession"):
         value = getattr(args, name, None)
         if value is not None:
             out[name] = value
@@ -351,7 +357,7 @@ def _save(model, args, history, status, started, resume=None) -> dict:
     """EXPLICIT OFFLINE ARTIFACT: the checkpoint requested with --out (with the resumable training state)."""
     record = {"phase": PHASE, "seed": args.seed, "steps": args.steps, "status": status, "history": history,
               "train_seconds": round(time.perf_counter() - started, 1), "optim": OPTIM, "curriculum": CURRICULUM,
-              "evidence": _overrides(args), "parameters": sum(p.numel() for p in model.parameters()),
+              "evidence": {**_overrides(args), "supersession": model.evidence.supersession}, "parameters": sum(p.numel() for p in model.parameters()),
               "parameter_digest": parameter_digest(model)}
     torch.save({"record": record, "state_dict": {k: v.detach() for k, v in model.state_dict().items()},
                 "resume": resume}, args.out)
@@ -361,7 +367,8 @@ def _save(model, args, history, status, started, resume=None) -> dict:
 def load(path: str, *, chunk: int = 4096, **changes):
     saved = torch.load(path, map_location="cpu", weights_only=True)
     record = saved["record"]
-    model = build(record["seed"], chunk=chunk, **{**record.get("evidence", {}), **changes})
+    evidence = {"supersession": "sum", **record.get("evidence", {})}     # records before the option: "sum"
+    model = build(record["seed"], chunk=chunk, **{**evidence, **changes})
     model.load_state_dict(saved["state_dict"], strict=True)
     model.eval()
     for parameter in model.parameters():
@@ -525,8 +532,9 @@ def summarize(run: dict) -> dict:
 
 
 def command_eval(args) -> dict:
-    model, record = load(args.ckpt, chunk=args.chunk)
-    out = {"phase": PHASE, "checkpoint": {k: v for k, v in record.items() if k != "history"}, "rows": []}
+    model, record = load(args.ckpt, chunk=args.chunk, **_eval_overrides(args))
+    out = {"phase": PHASE, "checkpoint": {k: v for k, v in record.items() if k != "history"}, "rows": [],
+           "evaluated_with": _eval_overrides(args)}
     lengths = (512, 1024) if args.smoke else [x for x in LADDER if x <= args.max_length]
     if getattr(args, "lengths", None):
         lengths = [int(x) for x in args.lengths.split(",")]
@@ -549,9 +557,14 @@ def command_eval(args) -> dict:
     return out
 
 
+def _eval_overrides(args) -> dict:
+    """Evaluation-time configuration changes (recorded with the results)."""
+    return {"supersession": args.supersession} if getattr(args, "supersession", None) else {}
+
+
 def command_ablate(args) -> dict:
     """Evaluation-time controls at one length on the given sets."""
-    model, record = load(args.ckpt, chunk=args.chunk)
+    model, record = load(args.ckpt, chunk=args.chunk, **_eval_overrides(args))
     length = args.length
     sets = args.sets.split(",") if args.sets else ("records", "revision", "scoped")
     variants = [("learned", {}), ("oracle_source", {"mode": "oracle"}), ("coarse_only", {"rerank": "coarse"}),
@@ -570,13 +583,14 @@ def command_ablate(args) -> dict:
             use = model
             options = dict(options)
             if options.pop("untrained", False):
-                use, _ = load(args.ckpt, chunk=args.chunk, coarse_top=options.get("coarse_top", 64))
+                use, _ = load(args.ckpt, chunk=args.chunk, coarse_top=options.get("coarse_top", 64),
+                              **_eval_overrides(args))
                 fresh = build(record["seed"] + 1000, chunk=args.chunk, **record.get("evidence", {}))
                 with torch.no_grad():
                     for part in ("pool", "descriptor", "coarse_q"):
                         getattr(use.lookup, part).weight.copy_(getattr(fresh.lookup, part).weight)
             if "coarse_top" in options and options["coarse_top"] > 64:
-                use, _ = load(args.ckpt, chunk=args.chunk, coarse_top=options["coarse_top"])
+                use, _ = load(args.ckpt, chunk=args.chunk, coarse_top=options["coarse_top"], **_eval_overrides(args))
             run = evaluate(use, data, chunk=min(args.chunk, length), **options)
             row = {"set": name, "variant": label, "summary": summarize(run), "system": run["system"]}
             out["rows"].append(row)
@@ -908,6 +922,8 @@ def main(argv=None) -> int:
     parser.add_argument("--max-length", type=int, default=1 << 20)
     parser.add_argument("--no-curriculum", action="store_true")
     parser.add_argument("--resume", action="store_true", help="continue an interrupted run saved at --out")
+    parser.add_argument("--init", default=None, help="train: start Phase B from this checkpoint (fine-tune)")
+    parser.add_argument("--supersession", choices=["max", "sum", "off"], default=None)
     parser.add_argument("--ckpt", default=None)
     parser.add_argument("--out", default=None)
     parser.add_argument("--chunk", type=int, default=4096)
@@ -916,7 +932,7 @@ def main(argv=None) -> int:
     parser.add_argument("--lengths", default=None, help="eval: comma-separated lengths (default: the ladder)")
     parser.add_argument("--streams", type=int, default=None)
     parser.add_argument("--variants", default=None)
-    parser.add_argument("--records", default="research/elpis_torch/results/r5/eval_s*_*.json", help="gates: glob")
+    parser.add_argument("--records", default="research/elpis_torch/results/r5/final_s*_*.json", help="gates: glob")
     parser.add_argument("--threads", type=int, default=4)
     for name in ("per_block", "block", "coarse_top", "evidence"):
         parser.add_argument("--" + name.replace("_", "-"), type=int, default=None)
