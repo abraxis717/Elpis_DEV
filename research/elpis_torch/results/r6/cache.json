@@ -15,8 +15,8 @@
    "cache_misses": null,
    "probes": 70,
    "queries": 70,
-   "reread_ms_per_query": 13.5,
-   "seconds": 2.83,
+   "reread_ms_per_query": 13.12,
+   "seconds": 2.68,
    "tokens": 65536
   },
   {
@@ -26,8 +26,8 @@
    "cache_misses": 989,
    "probes": 70,
    "queries": 70,
-   "reread_ms_per_query": 6.65,
-   "seconds": 2.28,
+   "reread_ms_per_query": 3.08,
+   "seconds": 1.98,
    "tokens": 65536
   },
   {
@@ -37,8 +37,8 @@
    "cache_misses": 989,
    "probes": 70,
    "queries": 70,
-   "reread_ms_per_query": 5.23,
-   "seconds": 3.76,
+   "reread_ms_per_query": 3.44,
+   "seconds": 2.11,
    "tokens": 65536
   },
   {
@@ -48,8 +48,8 @@
    "cache_misses": null,
    "probes": 70,
    "queries": 70,
-   "reread_ms_per_query": 18.97,
-   "seconds": 10.14,
+   "reread_ms_per_query": 26.23,
+   "seconds": 12.95,
    "tokens": 262144
   },
   {
@@ -59,8 +59,8 @@
    "cache_misses": 1898,
    "probes": 70,
    "queries": 70,
-   "reread_ms_per_query": 11.92,
-   "seconds": 14.9,
+   "reread_ms_per_query": 11.2,
+   "seconds": 16.61,
    "tokens": 262144
   },
   {
@@ -70,8 +70,8 @@
    "cache_misses": 1898,
    "probes": 70,
    "queries": 70,
-   "reread_ms_per_query": 6.68,
-   "seconds": 7.58,
+   "reread_ms_per_query": 17.29,
+   "seconds": 13.83,
    "tokens": 262144
   }
  ]

@@ -108,6 +108,174 @@
    "train_seconds": 34.9,
    "val_bits_per_byte": 2.631,
    "variant": "routed_ffn"
+  },
+  {
+   "parameters": {
+    "active_per_token": 118808,
+    "resident": 316952,
+    "total": 316952
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 33536,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 2.203125,
+     "router_entropy": 1.538097,
+     "top1_probability": 0.488823
+    },
+    {
+     "active_macs_per_token": 33536,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 2.78125,
+     "router_entropy": 1.586187,
+     "top1_probability": 0.464138
+    }
+   ],
+   "seed": 2,
+   "status": "COMPLETED",
+   "train_seconds": 57.6,
+   "val_bits_per_byte": 2.5704,
+   "variant": "routed_ffn"
+  },
+  {
+   "parameters": {
+    "active_per_token": 147484,
+    "resident": 431656,
+    "total": 431656
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 1.546875,
+     "router_entropy": 1.434776,
+     "top1_probability": 0.515212
+    },
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 3.136719,
+     "router_entropy": 1.686165,
+     "top1_probability": 0.414328
+    }
+   ],
+   "seed": 0,
+   "status": "COMPLETED",
+   "train_seconds": 51.4,
+   "val_bits_per_byte": 2.5546,
+   "variant": "routed_ffn_cgc"
+  },
+  {
+   "parameters": {
+    "active_per_token": 147484,
+    "resident": 431656,
+    "total": 431656
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 1.976562,
+     "router_entropy": 1.50813,
+     "top1_probability": 0.491661
+    },
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 2.578125,
+     "router_entropy": 1.510822,
+     "top1_probability": 0.508
+    }
+   ],
+   "seed": 1,
+   "status": "COMPLETED",
+   "train_seconds": 51.8,
+   "val_bits_per_byte": 2.6138,
+   "variant": "routed_ffn_cgc"
+  },
+  {
+   "parameters": {
+    "active_per_token": 147484,
+    "resident": 431656,
+    "total": 431656
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 2.121094,
+     "router_entropy": 1.456582,
+     "top1_probability": 0.521211
+    },
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 2.628906,
+     "router_entropy": 1.593749,
+     "top1_probability": 0.462753
+    }
+   ],
+   "seed": 2,
+   "status": "COMPLETED",
+   "train_seconds": 50.5,
+   "val_bits_per_byte": 2.575,
+   "variant": "routed_ffn_cgc"
+  },
+  {
+   "parameters": {
+    "active_per_token": 145310,
+    "resident": 330410,
+    "total": 330410
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 46784,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 1.617188,
+     "router_entropy": 1.480564,
+     "top1_probability": 0.495122
+    },
+    {
+     "active_macs_per_token": 46784,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 3.03125,
+     "router_entropy": 1.592329,
+     "top1_probability": 0.458295
+    }
+   ],
+   "seed": 0,
+   "status": "COMPLETED",
+   "train_seconds": 54.2,
+   "val_bits_per_byte": 2.5477,
+   "variant": "routed_ffn_cgc_shared"
+  },
+  {
+   "parameters": {
+    "active_per_token": 145310,
+    "resident": 330410,
+    "total": 330410
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 46784,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 1.875,
+     "router_entropy": 1.617787,
+     "top1_probability": 0.447125
+    },
+    {
+     "active_macs_per_token": 46784,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 2.75,
+     "router_entropy": 1.583045,
+     "top1_probability": 0.474509
+    }
+   ],
+   "seed": 1,
+   "status": "COMPLETED",
+   "train_seconds": 52.1,
+   "val_bits_per_byte": 2.5778,
+   "variant": "routed_ffn_cgc_shared"
   }
  ],
  "steps": 400
