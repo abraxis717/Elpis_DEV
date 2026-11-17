@@ -112,3 +112,19 @@ encoded-block cache, runtime options, the streaming session), `spark_reference.p
 scaled-down comparator written from the published configuration), the R4 parts of `history_model.py`,
 `history.py`, `scroll.py`, `ersa_model.py`, `scaling.py`, `experiments/run_r4.py` and
 `tests/research/elpis_torch/test_r4.py`.
+
+
+# R5 (learned evidence retrieval): references and what was not copied
+
+No third-party code, weights or data were consulted, copied, imported, vendored or executed, and no dependency was
+added. By directive, nothing of DeepSeek-V4.1-Flash or Spark-X2.6 was reproduced and no VGGT-Omega code, weight or
+dependency was used. The design follows general retrieval practice (a cheap coarse candidate scan followed by an
+exact reread and a learned reranker; token-level matching of a query against candidate tokens), written from
+scratch for this repository; no specific paper's implementation was followed.
+
+What R5 wrote (all original): `evidence_ring.py`, `evidence_model.py`, `evidence_tasks.py`,
+`experiments/run_r5.py`, `tests/research/elpis_torch/test_r5.py`, the `--evidence` scenario of
+`tests/research/elpis_torch/zero_write_scenario.py`, and `docs/research/elpis_torch/BASELINE_R5.md`,
+`DESIGN_R5.md`, `EVIDENCE_R5.md`. It reuses this repository's ERSA/CGC core unchanged (`ersa_model.ErsaLM`
+through its extension hooks), R3's channel module and R4's deterministic `exact_topk`.
+
