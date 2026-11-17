@@ -104,6 +104,40 @@ class EvidenceConfig:
         return dataclasses.replace(self, **changes)
 
 
+# Fields an evaluation may change without touching the trained parameters' meaning or shapes (recorded with
+# every result). Everything else must equal the checkpoint's configuration.
+EVALUATION_OVERRIDES = frozenset({"evidence", "fine_top", "coarse_top", "mode", "rerank", "supersession",
+                                  "query_tile", "tile_elements", "key_dtype", "capacity"})
+
+
+def evaluation_state_dict(state_dict: dict, trained: EvidenceConfig, target: EvidenceConfig) -> dict:
+    """An EVALUATION-ONLY topology override of a trained checkpoint.
+
+    Only ``EVALUATION_OVERRIDES`` may differ between ``trained`` and ``target``; anything else is refused. The one
+    field that changes a parameter shape is ``evidence`` (the number of injected reranked blocks), through the
+    readout's rank table ``lookup.key_rank`` ``[evidence + 1, r]``. More slots than trained are allowed with an
+    explicit rule: a rank beyond the trained range uses the OLDEST trained rank embedding, which is exactly what
+    the trained readout does with any rank it never saw (``read`` clamps ranks to the table). Learned rows are
+    kept bit for bit; nothing is invented or randomly initialized. Fewer slots than trained are refused (the rows
+    for the dropped ranks would be silently discarded)."""
+    import dataclasses
+    changed = {f.name for f in dataclasses.fields(EvidenceConfig) if getattr(trained, f.name) != getattr(target, f.name)}
+    if changed - EVALUATION_OVERRIDES:
+        raise ConfigError(f"not an evaluation override (the checkpoint was trained with other values): "
+                          f"{sorted(changed - EVALUATION_OVERRIDES)}")
+    key = "lookup.key_rank"
+    table = state_dict[key]
+    if table.shape[0] != trained.evidence + 1:
+        raise ConfigError(f"checkpoint rank table has {table.shape[0]} rows; its configuration implies "
+                          f"{trained.evidence + 1}")
+    if target.evidence < trained.evidence:
+        raise ConfigError("fewer evidence slots than trained would discard trained rank embeddings: refused")
+    out = dict(state_dict)
+    if target.evidence > trained.evidence:
+        out[key] = torch.cat((table, table[-1:].expand(target.evidence - trained.evidence, -1))).clone()
+    return out
+
+
 def _gather_rows(x: torch.Tensor, rows: torch.Tensor) -> torch.Tensor:
     """``x [B, U, ...]``, ``rows [B, *idx]`` -> ``[B, *idx, ...]``."""
     batch = torch.arange(x.shape[0], device=x.device).view(-1, *([1] * (rows.ndim - 1)))
