@@ -36,6 +36,26 @@ class SessionClosedError(RuntimeError):
     """The session was closed (or never usable)."""
 
 
+class ModelRevisionError(RuntimeError):
+    """The model under a running session is no longer the revision the session's state was computed with.
+
+    Raised before any further computation; the session stays refused until ``reset`` (which discards every
+    state tensor computed with the old revision and binds the session to the model as it is now)."""
+
+
+def model_revision(model) -> tuple:
+    """A cheap identity of every parameter and buffer: (name, object id, storage pointer, version counter,
+    dtype, device, shape, requires_grad) plus the training flag. No tensor data is read.
+
+    Detected: in-place operations through the parameter itself (PyTorch advances its version counter), replaced
+    tensors, moves between devices or dtypes, reshapes, unfreezing, ``train()``. NOT detected: writes that bypass
+    version tracking (``param.data.mul_(...)``, foreign views such as NumPy or DLPack aliases, raw storage
+    access). Those need ``ContextSession.verify_digest``, which hashes every tensor and is therefore opt-in."""
+    items = [(name, id(t), t.data_ptr(), t._version, t.dtype, str(t.device), tuple(t.shape), t.requires_grad)
+             for name, t in (*model.named_parameters(), *model.named_buffers())]
+    return (model.training, *items)
+
+
 # -- deterministic exact top-K --------------------------------------------------------------------------------
 
 def exact_topk(scores: torch.Tensor, ids: torch.Tensor, k: int):
@@ -121,9 +141,9 @@ def tiled_select(reader, u: torch.Tensor, segments, positions: torch.Tensor, *, 
 def ring_segments(index):
     """The occupied records of a ``BlockIndex`` as at most two contiguous views, in increasing block order:
     ``[(keys, ids, first_block), ...]``. Nothing is copied."""
-    if index.next_block is None:
+    if index.next_block is None or index.count == 0:
         return []
-    held = min(index.next_block, index.slots)
+    held = index.count                      # R4.1: written records only, independent of the absolute origin
     first = index.next_block - held
     start = first % index.slots
     head = min(held, index.slots - start)
@@ -255,7 +275,7 @@ class ContextSession:
 
     def __init__(self, model, *, batch: int = 1, chunk: int | None = None, scorer: str = "tiled", tile: int = 4096,
                  cache_bytes: int = 0, history_device=None, index_device=None, budget_bytes: int | None = None,
-                 origin: int = 0):
+                 origin: int = 0, record_digest: bool = False):
         from .history_model import ErsaHistoryLM
         if model.training or any(p.requires_grad for p in model.parameters()):
             raise ValueError("a context session needs a frozen model (eval mode, no parameter requires grad)")
@@ -274,7 +294,8 @@ class ContextSession:
         self.budget_bytes = budget_bytes
         self.state = None
         self._closed = False
-        self._last = None
+        self._last, self._last_position = None, None
+        self._record_digest = record_digest
         self._allocate()
 
     # -- lifetime ---------------------------------------------------------------------------------------------
@@ -287,7 +308,49 @@ class ContextSession:
                                                 cache=cache)
         else:
             self.state = self.model.new_state(self.batch)
-        self._last = None
+        self._last, self._last_position = None, None
+        self._bind()
+
+    def _bind(self) -> None:
+        """Bind the session to the model revision its (fresh) state will be computed with."""
+        if self.model.training or any(p.requires_grad for p in self.model.parameters()):
+            raise ValueError("a context session needs a frozen model (eval mode, no parameter requires grad)")
+        self._revision = model_revision(self.model)
+        self._refused = False
+        self._digest = None
+        if self._record_digest:
+            from .model import parameter_digest
+            self._digest = parameter_digest(self.model)
+
+    def _check_revision(self) -> None:
+        """Every call: refuse to continue a state computed with another model revision (no data is read)."""
+        if self._refused or model_revision(self.model) != self._revision:
+            self._refused = True
+            raise ModelRevisionError("the model changed under this session (parameter, buffer, device, dtype or "
+                                     "mode); its state and index were computed with the old revision. reset() "
+                                     "to start a fresh stream with the model as it is now")
+
+    def verify_digest(self) -> None:
+        """Opt-in (``record_digest=True``): SHA-256 of every parameter, compared with the digest taken when the
+        session was bound. Detects writes that bypass version tracking; costs a full read of the weights."""
+        self._live()
+        if self._digest is None:
+            raise ValueError("open the session with record_digest=True to verify the weights' digest")
+        from .model import parameter_digest
+        if parameter_digest(self.model) != self._digest:
+            self._refused = True
+            raise ModelRevisionError("the model's parameter digest changed under this session")
+
+    def _remember(self, logits: torch.Tensor) -> torch.Tensor:
+        """Keep ``logits`` as THE prediction for the state's current position (and for no other)."""
+        self._last, self._last_position = logits, self.state.position
+        return logits
+
+    def current_logits(self):
+        """The next-token logits for the current position, or ``None`` if the state has advanced past the last
+        prediction that was kept (or none was kept)."""
+        self._live()
+        return self._last if self._last_position == self.state.position else None
 
     def reset(self) -> None:
         """A fresh stream in the same buffers: every state tensor zeroed in place, the cache emptied."""
@@ -295,10 +358,11 @@ class ContextSession:
         self.state.reset()
         if self.history and self.state.runtime.cache is not None:
             self.state.runtime.cache.clear()
-        self._last = None
+        self._last, self._last_position = None, None
+        self._bind()                       # the fresh stream is computed with the model as it is now
 
     def close(self) -> None:
-        self.state, self._last, self._closed = None, None, True
+        self.state, self._last, self._last_position, self._closed = None, None, None, True
 
     def __enter__(self):
         return self
@@ -361,11 +425,20 @@ class ContextSession:
 
     @torch.no_grad()
     def prefill(self, tokens: torch.Tensor, *, probes=None, keep_last: bool = True) -> PrefillResult:
-        """Feed ``tokens [B, n]`` (any n) chunk by chunk. Returns the logits after the last token (``keep_last``)
-        and at the requested absolute ``probes`` positions only; nothing else is kept."""
+        """Feed ``tokens [B, n]`` (any n >= 0) chunk by chunk. Returns the logits after the last token
+        (``keep_last``) and at the requested absolute ``probes`` positions only; nothing else is kept.
+
+        Invariant (R4.1): the session keeps a prediction only for the position the state is at. With
+        ``keep_last=False`` any earlier prediction is discarded, so ``generate`` refuses until a ``step`` or a
+        ``keep_last=True`` prefill establishes one. An empty prefill (n = 0) changes nothing."""
         self._live()
+        self._check_revision()
         if tokens.ndim != 2 or tokens.shape[0] != self.batch:
             raise ValueError("tokens must be [batch, n]")
+        if tokens.shape[1] == 0:
+            if probes:
+                raise ValueError("probe positions must lie in this call's span")
+            return PrefillResult(self.current_logits() if keep_last else None, {}, 0)
         start = self.state.position
         wanted = sorted({int(p) for p in (probes or ())})
         if wanted and not all(start <= p < start + tokens.shape[1] for p in wanted):
@@ -385,26 +458,35 @@ class ContextSession:
                 if first + position in wanted:
                     out[first + position] = logits[:, column]
                 if last and keep_last and position == piece.shape[1] - 1:
-                    self._last = logits[:, column]
+                    self._remember(logits[:, column])
+        if not keep_last:
+            self._last, self._last_position = None, None       # the state moved on; no current prediction is kept
         return PrefillResult(self._last if keep_last else None, out, tokens.shape[1])
 
     @torch.no_grad()
     def step(self, token: torch.Tensor) -> torch.Tensor:
         """One token per stream ``[B]`` -> the next-token logits ``[B, vocab]``."""
         self._live()
+        self._check_revision()
         token = token.reshape(self.batch, 1)
         index = torch.zeros(1, dtype=torch.long, device=token.device)
-        self._last = self.model(token, self.state, logit_positions=index)[:, 0]
-        return self._last
+        return self._remember(self.model(token, self.state, logit_positions=index)[:, 0])
 
     @torch.no_grad()
     def generate(self, count: int, *, temperature: float = 0.0, top_k: int | None = None,
                  generator: torch.Generator | None = None) -> torch.Tensor:
-        """Continue every stream by ``count`` tokens from the last logits. Unbounded by the horizon."""
+        """Continue every stream by ``count`` tokens from the logits of the CURRENT position. Unbounded by the
+        horizon. ``count = 0`` returns an empty ``[B, 0]`` tensor and changes nothing; a negative or non-integer
+        count is refused."""
         from .model import sample_next
         self._live()
-        if self._last is None:
-            raise ValueError("generate needs a prefill (or a step) first")
+        self._check_revision()
+        if type(count) is not int or count < 0:
+            raise ValueError("count must be a non-negative integer")
+        if self.current_logits() is None:
+            raise ValueError("no logits for the current position: prefill with keep_last=True or step first")
+        if count == 0:
+            return torch.zeros(self.batch, 0, dtype=torch.long, device=self._last.device)
         out = []
         for _ in range(count):
             token = sample_next(self._last, temperature=temperature, top_k=top_k, generator=generator)
