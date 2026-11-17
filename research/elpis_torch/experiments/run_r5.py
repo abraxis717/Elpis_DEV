@@ -210,43 +210,68 @@ def stream_backward(model, data: et.EvidenceStreams, *, chunk: int, rng: random.
     return totals
 
 
+def _resume_state(args):
+    """The resumable state saved with ``--out`` (``None``: start fresh)."""
+    import os
+    if not (getattr(args, "resume", False) and args.out and os.path.exists(args.out)):
+        return None
+    saved = torch.load(args.out, map_location="cpu", weights_only=True)
+    return saved if saved.get("resume") is not None else None
+
+
 def command_train(args) -> dict:
+    """Phase A then Phase B. With ``--resume`` an interrupted run continues from its last saved step (model,
+    optimizer, step counters and the curriculum's random state are saved with the checkpoint)."""
     torch.manual_seed(args.seed)
     model = build(args.seed, chunk=1024, **_overrides(args))
     started, history, status = time.perf_counter(), [], "COMPLETED"
+    saved = _resume_state(args)
+    resume = None
+    if saved is not None:
+        resume = saved["resume"]
+        model.load_state_dict(saved["state_dict"])
+        history, status = saved["record"]["history"], saved["record"]["status"]
+        started -= saved["record"].get("train_seconds", 0.0)
+        if resume["phase"] == "done":
+            return {"status": status, "history": history, "checkpoint": saved["record"]}
     # Phase A
-    params = _trainable(model, "A")
-    optimizer = _optimizer(params, OPTIM["lr"])
-    schedule = TrainConfig(steps=args.steps, lr=OPTIM["lr"], warmup_steps=min(OPTIM["warmup"], args.steps))
-    batch = 4 if args.smoke else args.batch
-    length = 256 if args.smoke else 1024
-    for step in range(args.steps):
-        model.train()
-        data = mixture(TRAIN_SEED + args.seed * 10_000_000 + step, length, batch)
-        loss, parts = dense_loss(model, data)
-        if not torch.isfinite(loss):
-            status = "DIVERGED"
-            break
-        optimizer.zero_grad(set_to_none=True)
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(params, OPTIM["grad_clip"])
-        for group in optimizer.param_groups:
-            group["lr"] = schedule.lr_at(step)
-        optimizer.step()
-        if (step + 1) % args.eval_every == 0 or step + 1 == args.steps:
-            val = quick_val(model, 1024 if not args.smoke else 256, smoke=args.smoke)
-            history.append({"phase": "A", "step": step + 1, "seconds": round(time.perf_counter() - started, 1),
-                            **parts, "val": val})
-            print(f"[r5 s{args.seed}] A {step + 1} {json.dumps(parts)} {json.dumps(val)}", file=sys.stderr, flush=True)
-            if args.out:
-                _save(model, args, history, status, started)
+    if resume is None or resume["phase"] == "A":
+        params = _trainable(model, "A")
+        optimizer = _optimizer(params, OPTIM["lr"])
+        first = 0
+        if resume is not None:
+            optimizer.load_state_dict(resume["optimizer"])
+            first = resume["step"]
+        schedule = TrainConfig(steps=args.steps, lr=OPTIM["lr"], warmup_steps=min(OPTIM["warmup"], args.steps))
+        batch = 4 if args.smoke else args.batch
+        length = 256 if args.smoke else 1024
+        for step in range(first, args.steps):
+            model.train()
+            data = mixture(TRAIN_SEED + args.seed * 10_000_000 + step, length, batch)
+            loss, parts = dense_loss(model, data)
+            if not torch.isfinite(loss):
+                status = "DIVERGED"
+                break
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(params, OPTIM["grad_clip"])
+            for group in optimizer.param_groups:
+                group["lr"] = schedule.lr_at(step)
+            optimizer.step()
+            if (step + 1) % args.eval_every == 0 or step + 1 == args.steps:
+                val = quick_val(model, 1024 if not args.smoke else 256, smoke=args.smoke)
+                history.append({"phase": "A", "step": step + 1, "seconds": round(time.perf_counter() - started, 1),
+                                **parts, "val": val})
+                print(f"[r5 s{args.seed}] A {step + 1} {json.dumps(parts)} {json.dumps(val)}", file=sys.stderr,
+                      flush=True)
+                if args.out:
+                    _save(model, args, history, status, started,
+                          {"phase": "A", "step": step + 1, "optimizer": optimizer.state_dict()})
+        resume = None
     # Phase B: the curriculum, core frozen
     if status == "COMPLETED" and not args.no_curriculum:
-        params = _trainable(model, "B")
-        optimizer = _optimizer(params, OPTIM["lr_b"])
         stages = ((512, 2, 2), (1024, 1, 1)) if args.smoke else CURRICULUM
         total = sum(steps for _, _, steps in stages)
-        done = 0
         long_model = build(args.seed, chunk=256 if args.smoke else 4096, **_overrides(args))
         long_model.load_state_dict(model.state_dict())
         long_model.train()
@@ -254,10 +279,19 @@ def command_train(args) -> dict:
         params = [p for p in long_model.parameters() if p.requires_grad]
         optimizer = _optimizer(params, OPTIM["lr_b"])
         rng = random.Random(f"elpis-torch-r5-curriculum:{args.seed}")
+        done = 0
+        if resume is not None:                                   # resuming inside Phase B
+            optimizer.load_state_dict(resume["optimizer"])
+            done = resume["done"]
+            rng.setstate((resume["rng"][0], tuple(resume["rng"][1]), resume["rng"][2]))
+        index = 0
         for length, batch, steps in stages:
             if length > args.max_length:
                 break
             for step in range(steps):
+                if index < done:
+                    index += 1
+                    continue
                 lr = OPTIM["lr_b"] * 0.5 * (1 + math.cos(math.pi * done / total))
                 for group in optimizer.param_groups:
                     group["lr"] = lr
@@ -271,19 +305,22 @@ def command_train(args) -> dict:
                 torch.nn.utils.clip_grad_norm_(params, OPTIM["grad_clip"])
                 optimizer.step()
                 done += 1
+                index += 1
                 record = {"phase": "B", "length": length, "step": done,
-                          "seconds": round(time.perf_counter() - started, 1), **totals,
-                          "rehearsal": rparts}
+                          "seconds": round(time.perf_counter() - started, 1), **totals, "rehearsal": rparts}
                 if step + 1 == steps:
                     record["val"] = quick_val(long_model, min(length, 16384), smoke=args.smoke)
                 history.append(record)
                 print(f"[r5 s{args.seed}] B {length} {step + 1}/{steps} {json.dumps(totals)} "
                       f"{json.dumps(record.get('val', {}))}", file=sys.stderr, flush=True)
-            if args.out:
-                model.load_state_dict(long_model.state_dict())
-                _save(model, args, history, status, started)
+                if args.out and (done % 5 == 0 or step + 1 == steps or length >= 1 << 18):
+                    model.load_state_dict(long_model.state_dict())
+                    state = rng.getstate()
+                    _save(model, args, history, status, started,
+                          {"phase": "B", "done": done, "optimizer": optimizer.state_dict(),
+                           "rng": [state[0], list(state[1]), state[2]]})
         model.load_state_dict(long_model.state_dict())
-    record = _save(model, args, history, status, started) if args.out else None
+    record = _save(model, args, history, status, started, {"phase": "done"}) if args.out else None
     return {"status": status, "history": history, "checkpoint": record}
 
 
@@ -310,13 +347,14 @@ def quick_val(model, length: int, *, smoke: bool = False) -> dict:
     return out
 
 
-def _save(model, args, history, status, started) -> dict:
-    """EXPLICIT OFFLINE ARTIFACT: the checkpoint requested with --out."""
+def _save(model, args, history, status, started, resume=None) -> dict:
+    """EXPLICIT OFFLINE ARTIFACT: the checkpoint requested with --out (with the resumable training state)."""
     record = {"phase": PHASE, "seed": args.seed, "steps": args.steps, "status": status, "history": history,
               "train_seconds": round(time.perf_counter() - started, 1), "optim": OPTIM, "curriculum": CURRICULUM,
               "evidence": _overrides(args), "parameters": sum(p.numel() for p in model.parameters()),
               "parameter_digest": parameter_digest(model)}
-    torch.save({"record": record, "state_dict": {k: v.detach() for k, v in model.state_dict().items()}}, args.out)
+    torch.save({"record": record, "state_dict": {k: v.detach() for k, v in model.state_dict().items()},
+                "resume": resume}, args.out)
     return record
 
 
@@ -452,6 +490,8 @@ def summarize(run: dict) -> dict:
         subsets[f"distance_{lo}_{hi if hi < 1 << 62 else 'inf'}"] = (run["distance"] >= lo) & (run["distance"] < hi)
     for name, bit in et.NEG_BIT.items():
         subsets[f"neg_{name}"] = ((run["negatives"] & bit) != 0) & hist
+    for code, name in et.KINDS.items():
+        subsets[f"kind_{name}"] = run["kind"] == code
     out = {}
     for name, sub in subsets.items():
         n = int(sub.sum())
@@ -572,8 +612,26 @@ def command_r3base(args) -> dict:
     params = list(model.parameters())
     optimizer = _optimizer(params, OPTIM["lr"])
     schedule = TrainConfig(steps=args.steps, lr=OPTIM["lr"], warmup_steps=min(OPTIM["warmup"], args.steps))
-    started, history = time.perf_counter(), []
-    for step in range(args.steps):
+    started, history, first = time.perf_counter(), [], 0
+    saved = _resume_state(args)
+    if saved is not None:
+        if saved["resume"]["phase"] == "done":
+            return {"status": "COMPLETED", "history": saved["record"]["history"]}
+        model.load_state_dict(saved["state_dict"])
+        optimizer.load_state_dict(saved["resume"]["optimizer"])
+        first, history = saved["resume"]["step"], saved["record"]["history"]
+        started -= saved["record"].get("train_seconds", 0.0)
+
+    def save(resume):
+        record = {"phase": PHASE, "arch": "r3_history_on_r5_mixture", "seed": args.seed, "steps": args.steps,
+                  "status": "COMPLETED", "history": history, "train_seconds": round(time.perf_counter() - started, 1),
+                  "parameters": sum(p.numel() for p in model.parameters()), "parameter_digest": parameter_digest(model)}
+        if args.out:
+            torch.save({"record": record, "state_dict": {k: v.detach() for k, v in model.state_dict().items()},
+                        "resume": resume}, args.out)
+        return record
+
+    for step in range(first, args.steps):
         model.train()
         data = mixture(TRAIN_SEED + args.seed * 10_000_000 + step, length, 4 if args.smoke else args.batch)
         tokens = data.tokens[:, :-1]
@@ -595,12 +653,8 @@ def command_r3base(args) -> dict:
                             "loss": float(loss.detach()), "aux": float(aux.detach())})
             print(f"[r3base s{args.seed}] {step + 1} loss {float(loss.detach()):.3f} aux {float(aux.detach()):.3f}",
                   file=sys.stderr, flush=True)
-    record = {"phase": PHASE, "arch": "r3_history_on_r5_mixture", "seed": args.seed, "steps": args.steps,
-              "history": history, "train_seconds": round(time.perf_counter() - started, 1),
-              "parameters": sum(p.numel() for p in model.parameters()), "parameter_digest": parameter_digest(model)}
-    if args.out:
-        torch.save({"record": record, "state_dict": {k: v.detach() for k, v in model.state_dict().items()}},
-                   args.out)
+            save({"phase": "A", "step": step + 1, "optimizer": optimizer.state_dict()})
+    save({"phase": "done"})
     return {"status": "COMPLETED", "history": history}
 
 
@@ -733,6 +787,78 @@ def command_memory(args) -> dict:
     return out
 
 
+GATE_SETS = ("records", "revision", "scoped", "lexical", "low_overlap")
+
+
+def _pool(rows, subset: str, key: str):
+    """Pooled ``(k, n)`` of a rate over several rows' summaries (rate x n recovers k)."""
+    k = n = 0
+    for row in rows:
+        entry = row["summary"].get(subset, {})
+        value = entry.get(key)
+        if isinstance(value, dict):
+            count, rate = value.get("n") or 0, value.get("rate")
+        else:
+            count, rate = entry.get("historical_n" if key != "accuracy" else "n") or 0, value
+        if rate is None or not count:
+            continue
+        k += round(rate * count)
+        n += count
+    return k, n
+
+
+def gate_table(rows: list, tokens: int = 1 << 20) -> dict:
+    """The pre-declared R5 gates at ``tokens`` from evaluation rows of one seed."""
+    at = [r for r in rows if r["tokens"] == tokens and r["set"] in GATE_SETS]
+    gates = {}
+    for name, subset, key, threshold in (
+            ("coarse_recall_64", "historical", "coarse_recall_64", 0.99),
+            ("fine_recall_4", "historical", "fine_recall_4", 0.97),
+            ("fine_recall_8", "historical", "fine_recall_8", 0.97),
+            ("conditional_accuracy", "historical", "conditional_accuracy", 0.95),
+            ("end_to_end_accuracy", "all", "accuracy", 0.95),
+            ("latest_binding_accuracy", "revised", "accuracy", 0.95)):
+        pool = at if name != "latest_binding_accuracy" else [r for r in at if r["set"] != "scoped"]
+        if key == "accuracy" and subset != "all":
+            k = n = 0
+            for row in pool:
+                entry = row["summary"].get(subset, {})
+                if entry.get("n"):
+                    k += round(entry["accuracy"] * entry["n"])
+                    n += entry["n"]
+        else:
+            k, n = _pool(pool, subset, key)
+        rate = k / n if n else None
+        gates[name] = {"k": k, "n": n, "rate": None if rate is None else round(rate, 4), "ci95": wilson(k, n),
+                       "threshold": threshold, "status": "NOT_RUN" if rate is None else
+                       ("PASS" if rate >= threshold else "FAIL")}
+    scoped = [r for r in at if r["set"] == "scoped"]
+    k = sum(round(r["summary"]["all"]["accuracy"] * r["summary"]["all"]["n"]) for r in scoped)
+    n = sum(r["summary"]["all"]["n"] for r in scoped)
+    gates["scoped_symbol_accuracy"] = {"k": k, "n": n, "rate": round(k / n, 4) if n else None, "ci95": wilson(k, n),
+                                       "threshold": 0.95, "status": "NOT_RUN" if not n else
+                                       ("PASS" if k / n >= 0.95 else "FAIL")}
+    stale = sum(r["system"]["ring_stats"]["stale_rejections"] for r in rows)
+    gates["stale_reads"] = {"value": stale, "threshold": 0, "status": "PASS" if stale == 0 else "FAIL"}
+    sizes = {json.dumps(r["system"]["state_bytes"], sort_keys=True) for r in rows}
+    gates["unbounded_state_growth"] = {"distinct_state_sizes_over_all_lengths": len(sizes),
+                                       "status": "PASS" if len(sizes) == 1 else "FAIL"}
+    return gates
+
+
+def command_gates(args) -> dict:
+    import glob
+    out = {"phase": PHASE, "seeds": {}}
+    for path in sorted(glob.glob(args.records)):
+        with open(path, encoding="utf-8") as handle:
+            record = json.load(handle)
+        seed = record["checkpoint"]["seed"]
+        out["seeds"].setdefault(str(seed), []).extend(record["rows"])
+    out["gates"] = {seed: gate_table(rows) for seed, rows in out["seeds"].items()}
+    out.pop("seeds")
+    return out
+
+
 def command_smoke(args) -> dict:
     import os
     import tempfile
@@ -773,13 +899,15 @@ def _write(path: str, record: dict) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("command", choices=["train", "eval", "ablate", "memory", "r3base", "r3eval", "smoke"])
+    parser.add_argument("command", choices=["train", "eval", "ablate", "memory", "r3base", "r3eval", "gates",
+                                            "smoke"])
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--steps", type=int, default=1500)
     parser.add_argument("--batch", type=int, default=16)
     parser.add_argument("--eval-every", type=int, default=250)
     parser.add_argument("--max-length", type=int, default=1 << 20)
     parser.add_argument("--no-curriculum", action="store_true")
+    parser.add_argument("--resume", action="store_true", help="continue an interrupted run saved at --out")
     parser.add_argument("--ckpt", default=None)
     parser.add_argument("--out", default=None)
     parser.add_argument("--chunk", type=int, default=4096)
@@ -788,6 +916,7 @@ def main(argv=None) -> int:
     parser.add_argument("--lengths", default=None, help="eval: comma-separated lengths (default: the ladder)")
     parser.add_argument("--streams", type=int, default=None)
     parser.add_argument("--variants", default=None)
+    parser.add_argument("--records", default="research/elpis_torch/results/r5/eval_s*_*.json", help="gates: glob")
     parser.add_argument("--threads", type=int, default=4)
     for name in ("per_block", "block", "coarse_top", "evidence"):
         parser.add_argument("--" + name.replace("_", "-"), type=int, default=None)
@@ -795,8 +924,9 @@ def main(argv=None) -> int:
     args.smoke = args.command == "smoke"
     torch.set_num_threads(args.threads)
     result = {"train": command_train, "eval": command_eval, "ablate": command_ablate, "memory": command_memory,
-              "r3base": command_r3base, "r3eval": command_r3eval, "smoke": command_smoke}[args.command](args)
-    if args.command == "memory" and args.out:
+              "r3base": command_r3base, "r3eval": command_r3eval, "gates": command_gates,
+              "smoke": command_smoke}[args.command](args)
+    if args.command in ("memory", "gates") and args.out:
         _write(args.out, result)
     if not args.out or args.command == "smoke":
         print(json.dumps(_finite(result if args.command != "train" else {k: v for k, v in result.items()
