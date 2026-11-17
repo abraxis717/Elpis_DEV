@@ -339,10 +339,10 @@ def test_scoped_labels_respect_scope_and_wrong_scope_declarations_are_marked():
         assert int(tokens[row, src - 2]) == int(tokens[row, answer - 2])          # same scope
         assert int(tokens[row, src - 1]) == int(tokens[row, answer - 1])          # same symbol
         assert int(tokens[row, src]) == int(tokens[row, answer])
-        for w in p["wrong_scope"][i][p["wrong_scope"][i] >= 0].tolist():
-            assert int(tokens[row, w - 2]) != int(tokens[row, answer - 2])
-            assert int(tokens[row, w - 1]) == int(tokens[row, answer - 1])
-            assert int(tokens[row, w]) != int(tokens[row, answer])
+        for w in p["wrong_scope"][i][p["wrong_scope"][i] >= 0].tolist():     # planted and background alike
+            assert w < answer - 3 and int(tokens[row, w - 3]) == et.DEF
+            assert int(tokens[row, w - 2]) != int(tokens[row, answer - 2])         # another scope
+            assert int(tokens[row, w - 1]) == int(tokens[row, answer - 1])         # the same symbol
             wrong_seen += 1
     assert wrong_seen > 0
 

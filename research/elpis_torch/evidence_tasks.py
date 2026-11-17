@@ -377,7 +377,26 @@ def generate_scoped(task: ScopeTask, count: int, length: int, *, seed: int) -> E
                 s, x = rng.choice(free_pairs)
                 row.put(at, [DEF, SCOPE0 + s, SYM0 + x, r3.VAL0 + rng.randrange(VALUES)])
         rows.append(row)
-    return _assemble(rows, length, "scoped")
+    streams = _assemble(rows, length, "scoped")
+    _mark_wrong_scope(streams)
+    return streams
+
+
+def _mark_wrong_scope(streams: EvidenceStreams) -> None:
+    """Every DEF of the probe's symbol in ANOTHER scope before the question (planted or background) is a
+    wrong-scope declaration: the ``SLOTS`` most recent value positions are recorded and the bit is set."""
+    tokens, p = streams.tokens, streams.probes
+    for i in range(p["row"].numel()):
+        row, answer = int(p["row"][i]), int(p["answer"][i])
+        scope, symbol = int(tokens[row, answer - 2]), int(tokens[row, answer - 1])
+        head = tokens[row, :max(0, answer - 3)]
+        if head.numel() < 4:
+            continue
+        hit = (head[:-3] == DEF) & (head[2:-1] == symbol) & (head[1:-2] != scope)
+        where = (hit.nonzero(as_tuple=True)[0] + 3)[-SLOTS:].tolist()
+        p["wrong_scope"][i] = torch.tensor(where + [-1] * (SLOTS - len(where)), dtype=torch.long)
+        if where:
+            p["negatives"][i] |= NEG_BIT["wrong_scope"]
 
 
 def from_r3(streams: r3.FactStreams) -> EvidenceStreams:

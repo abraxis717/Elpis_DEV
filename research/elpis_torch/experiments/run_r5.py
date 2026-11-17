@@ -429,7 +429,7 @@ def evaluate(model, data: et.EvidenceStreams, *, chunk: int = 4096, mode: str = 
         gold = p["source"] // s
         out.update(historical=cat["historical"][rows, cols], local=cat["local_block"][rows, cols] == gold,
                    coarse_rank=cat["coarse_rank"][rows, cols], fine_rank=cat["fine_rank"][rows, cols],
-                   read_hit=cat["read_position"][rows, cols] == p["source"],
+                   read_hit=(cat["read_position"][rows, cols] >= 0) & (cat["read_position"][rows, cols] // s == gold),
                    null_weight=cat["null_weight"][rows, cols].float(),
                    selected_hit=(selected[rows, cols] == gold[:, None]).any(-1),
                    eligible=cat["eligible"][rows, cols])
@@ -517,7 +517,7 @@ def summarize(run: dict) -> dict:
             sel = h & run["selected_hit"]
             entry["conditional_accuracy"] = _rate(run["correct"], sel)
             entry["accuracy_when_not_selected"] = _rate(run["correct"], h & ~run["selected_hit"])["rate"]
-            entry["read_hit_given_selected"] = _rate(run["read_hit"], sel)["rate"]
+            entry["read_block_hit_given_selected"] = _rate(run["read_hit"], sel)["rate"]
             entry["stale_top1_rate"] = _rate(run["stale_top1"], h & run["revised"])
             entry["wrong_scope_top1_rate"] = _rate(run["wrong_scope_top1"], h & (run["family"] == 2))
         out[name] = entry
