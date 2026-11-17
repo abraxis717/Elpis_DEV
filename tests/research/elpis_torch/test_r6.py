@@ -585,3 +585,55 @@ def test_generation_with_r5_and_experts_and_the_tokenizer_protocols(tmp_path):
     assert TOK.decode_bytes(TOK.encode_bytes(data)) == data
     with pytest.raises(ValueError):
         lmt.check_vocabulary(tiny_evidence(), TOK)                          # synthetic vocabulary != bytes
+
+
+# -- P6: sparse scaling configurations and context accounting ----------------------------------------------------
+
+def test_the_500m_and_1b_sparse_configurations_account_for_every_parameter():
+    from research.elpis_torch.experiments import run_r6
+    for name, target in (("r6_500m", 500e6), ("r6_1b", 1e9)):
+        model = run_r6.scale_model(name)                                       # meta device: no memory
+        counts = active_parameters(model)
+        groups = run_r6._group_counts(model)
+        assert sum(groups.values()) == counts["total"] == counts["resident"]
+        assert abs(counts["total"] - target) / target < 0.06, (name, counts["total"])
+        assert counts["active_per_token"] < counts["total"]
+        assert {"routers", "routed_experts", "evidence_path", "ersa", "attention", "embeddings_and_head"} <= set(groups)
+        assert (groups.get("shared_experts", 0) > 0) == run_r6.SCALES[name][4]
+        macs = run_r6.per_token_macs(model, 1 << 20)
+        assert macs["coarse_scan"] == 32768 * 4 * 64
+
+
+def test_context_state_formula_is_exact_and_linear_in_the_ring():
+    sizes = {}
+    for capacity in (4096, 16384):
+        model = tiny_evidence(capacity=capacity, sparse=EXPERTS)
+        state = model.new_state(1)
+        fixed = model.context_interface().fixed_bytes(1)
+        assert fixed == state.nbytes()
+        sizes[capacity] = fixed
+    grow = {k: sizes[16384][k] - sizes[4096][k] for k in sizes[4096] if k != "total"}
+    assert grow["ersa_cells"] == 0 and grow["conv_tail"] == 0                  # the core state is constant
+    assert grow["history_tokens"] == (16384 - 4096) * 4                        # exact tokens: 4 B each
+    assert grow["index_keys"] == (16384 - 4096) // 16 * 2 * 16 * 4             # per_block x key_dim x float32
+
+
+def test_r5_with_window_attention_and_experts_runs_and_is_chunk_invariant(r5_stream):
+    """Regression (found by the bounded 500M forward): the core's window-slot map and the R5 ring shared the
+    attribute name ``ring``; an evidence model with window attention crashed."""
+    def build(chunk):
+        widths = ModelConfig(vocab_size=et.VOCAB, d_model=32, n_layers=2, n_heads=2, n_kv_heads=1, max_seq_len=64,
+                             **CGC, seed=5, dtype="float64")
+        ersa = ErsaConfig(widths, conv_kernel=4, attention="window", attn_heads=2, attn_kv_heads=1, attn_window=65,
+                          attn_layers=(1,), chunk=chunk, sparse=EXPERTS)
+        return _frozen(EvidenceLM(ersa, EvidenceConfig(block=16, capacity=256, per_block=2, key_dim=16, coarse_top=6,
+                                                       evidence=3, fine_top=4, overlap=4, encoder_dim=32, fine_dim=8,
+                                                       read_heads=2, read_head_dim=8)))
+    whole_model, small = build(64), build(16)
+    small.load_state_dict(whole_model.state_dict())
+    with torch.no_grad():
+        state = whole_model.new_state(2)
+        whole = torch.cat([whole_model(r5_stream[:, a:a + 64], state) for a in range(0, 320, 64)], 1)
+        state = small.new_state(2)
+        parts = torch.cat([small(r5_stream[:, a:a + 16], state) for a in range(0, 320, 16)], 1)
+    assert float((whole - parts).abs().max()) < 1e-9

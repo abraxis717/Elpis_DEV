@@ -110,7 +110,7 @@ class ErsaState:
         self.window = None
         if model.ersa.attention == "window":
             self.window = StreamState(model.ersa.window_config(), batch, 0, self.cells[0].dtype, self.device)
-        self.ring = {layer: slot for slot, layer in enumerate(model.ersa.window_layers)}
+        self.window_slots = {layer: slot for slot, layer in enumerate(model.ersa.window_layers)}
 
     def reset(self) -> None:
         """R4: an empty stream in the same buffers. Tensors that carry a training graph are replaced by zeros."""
@@ -239,7 +239,7 @@ class ErsaLM(nn.Module):
             cells.append(new_cells)
             tails.append(new_tail)
             if block.attn is not None:
-                ring = state.window.layers[state.ring[index]]
+                ring = state.window.layers[state.window_slots[index]]
                 attended, pending, _ = block.attn(u, self.rotary, ring, state.window)
                 mixed = mixed + attended
                 staged.append((index, pending))
@@ -262,7 +262,7 @@ class ErsaLM(nn.Module):
             if tails[index] is not None:
                 state.tails[index] = tails[index] if graph else state.tails[index].copy_(tails[index])
         for index, pending in staged:
-            self.blocks[index].attn.commit(state.window.layers[state.ring[index]], state.window, pending)
+            self.blocks[index].attn.commit(state.window.layers[state.window_slots[index]], state.window, pending)
         if state.window is not None:
             positions = state.window.position + torch.arange(length, device=tokens.device)
             state.window.tokens.index_copy_(1, positions % state.window.config.fine_capacity, tokens.to(torch.int32))
