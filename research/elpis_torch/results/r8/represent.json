@@ -1,0 +1,365 @@
+{
+ "command": "represent",
+ "environment": {
+  "aten_cpu_capability": null,
+  "cpu_capability": "AVX512",
+  "cuda_available": false,
+  "mkl_enable_instructions": null,
+  "python": "3.13.18",
+  "source_revision": "80a85637b44fd23f70e336bb82cc3b141b7f8683",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "geometries": {
+  "enc256": {
+   "evidence": {
+    "block": 32,
+    "capacity": 1048576,
+    "coarse_top": 64,
+    "encoder_dim": 256,
+    "encoder_heads": 4,
+    "encoder_layers": 2,
+    "evidence": 4,
+    "fine_dim": 64,
+    "fine_keys": "reread",
+    "fine_top": 8,
+    "key_dim": 64,
+    "key_dtype": "auto",
+    "mode": "learned",
+    "overlap": 8,
+    "per_block": 4,
+    "query_tile": 32,
+    "read_head_dim": 128,
+    "read_heads": 8,
+    "rerank": "learned",
+    "supersession": "max",
+    "tile_elements": 4194304
+   },
+   "per_block": {
+    "descriptors": {
+     "bytes_bf16": 512,
+     "bytes_fp32": 1024,
+     "per_stream_mib_bf16": {
+      "1048576": 16.0,
+      "262144": 4.0,
+      "4096": 0.06,
+      "65536": 1.0
+     },
+     "per_stream_mib_fp32": {
+      "1048576": 32.0,
+      "262144": 8.0,
+      "4096": 0.12,
+      "65536": 2.0
+     },
+     "shape": [
+      4,
+      64
+     ],
+     "used_by": "coarse scan (already stored at completion, in the ring's index)",
+     "values": 256
+    },
+    "encoding": {
+     "bytes_bf16": 16896,
+     "bytes_fp32": 33792,
+     "per_stream_mib_bf16": {
+      "1048576": 528.0,
+      "262144": 132.0,
+      "4096": 2.06,
+      "65536": 33.0
+     },
+     "per_stream_mib_fp32": {
+      "1048576": 1056.0,
+      "262144": 264.0,
+      "4096": 4.12,
+      "65536": 66.0
+     },
+     "shape": [
+      33,
+      256
+     ],
+     "used_by": "fine keys, read keys and values, descriptors (and the training replay)",
+     "values": 8448
+    },
+    "fine_keys": {
+     "bytes_bf16": 4096,
+     "bytes_fp32": 8192,
+     "per_stream_mib_bf16": {
+      "1048576": 128.0,
+      "262144": 32.0,
+      "4096": 0.5,
+      "65536": 8.0
+     },
+     "per_stream_mib_fp32": {
+      "1048576": 256.0,
+      "262144": 64.0,
+      "4096": 1.0,
+      "65536": 16.0
+     },
+     "shape": [
+      32,
+      64
+     ],
+     "used_by": "fine reranking of EVERY coarse candidate",
+     "values": 2048
+    },
+    "read_keys_values": {
+     "bytes_bf16": 16384,
+     "bytes_fp32": 32768,
+     "per_stream_mib_bf16": {
+      "1048576": 512.0,
+      "262144": 128.0,
+      "4096": 2.0,
+      "65536": 32.0
+     },
+     "per_stream_mib_fp32": {
+      "1048576": 1024.0,
+      "262144": 256.0,
+      "4096": 4.0,
+      "65536": 64.0
+     },
+     "shape": [
+      2,
+      32,
+      128
+     ],
+     "used_by": "readout of the SELECTED blocks only",
+     "values": 8192
+    }
+   }
+  },
+  "enc64": {
+   "evidence": {
+    "block": 32,
+    "capacity": 1048576,
+    "coarse_top": 64,
+    "encoder_dim": 64,
+    "encoder_heads": 2,
+    "encoder_layers": 2,
+    "evidence": 4,
+    "fine_dim": 32,
+    "fine_keys": "reread",
+    "fine_top": 8,
+    "key_dim": 64,
+    "key_dtype": "auto",
+    "mode": "learned",
+    "overlap": 8,
+    "per_block": 4,
+    "query_tile": 128,
+    "read_head_dim": 32,
+    "read_heads": 2,
+    "rerank": "learned",
+    "supersession": "max",
+    "tile_elements": 4194304
+   },
+   "per_block": {
+    "descriptors": {
+     "bytes_bf16": 512,
+     "bytes_fp32": 1024,
+     "per_stream_mib_bf16": {
+      "1048576": 16.0,
+      "262144": 4.0,
+      "4096": 0.06,
+      "65536": 1.0
+     },
+     "per_stream_mib_fp32": {
+      "1048576": 32.0,
+      "262144": 8.0,
+      "4096": 0.12,
+      "65536": 2.0
+     },
+     "shape": [
+      4,
+      64
+     ],
+     "used_by": "coarse scan (already stored at completion, in the ring's index)",
+     "values": 256
+    },
+    "encoding": {
+     "bytes_bf16": 4224,
+     "bytes_fp32": 8448,
+     "per_stream_mib_bf16": {
+      "1048576": 132.0,
+      "262144": 33.0,
+      "4096": 0.52,
+      "65536": 8.25
+     },
+     "per_stream_mib_fp32": {
+      "1048576": 264.0,
+      "262144": 66.0,
+      "4096": 1.03,
+      "65536": 16.5
+     },
+     "shape": [
+      33,
+      64
+     ],
+     "used_by": "fine keys, read keys and values, descriptors (and the training replay)",
+     "values": 2112
+    },
+    "fine_keys": {
+     "bytes_bf16": 2048,
+     "bytes_fp32": 4096,
+     "per_stream_mib_bf16": {
+      "1048576": 64.0,
+      "262144": 16.0,
+      "4096": 0.25,
+      "65536": 4.0
+     },
+     "per_stream_mib_fp32": {
+      "1048576": 128.0,
+      "262144": 32.0,
+      "4096": 0.5,
+      "65536": 8.0
+     },
+     "shape": [
+      32,
+      32
+     ],
+     "used_by": "fine reranking of EVERY coarse candidate",
+     "values": 1024
+    },
+    "read_keys_values": {
+     "bytes_bf16": 4096,
+     "bytes_fp32": 8192,
+     "per_stream_mib_bf16": {
+      "1048576": 128.0,
+      "262144": 32.0,
+      "4096": 0.5,
+      "65536": 8.0
+     },
+     "per_stream_mib_fp32": {
+      "1048576": 256.0,
+      "262144": 64.0,
+      "4096": 1.0,
+      "65536": 16.0
+     },
+     "shape": [
+      2,
+      32,
+      32
+     ],
+     "used_by": "readout of the SELECTED blocks only",
+     "values": 2048
+    }
+   }
+  }
+ },
+ "phase": "ELPIS_TORCH_R8_EVIDENCE_READ_PATH",
+ "scale_budget_1m": {
+  "r6_1b": {
+   "budget_bytes": 1073741824,
+   "cache_blocks_that_fit": {
+    "bf16_index_tile16_decode": 28216,
+    "bf16_index_tile16_prefill512": 15671,
+    "bf16_index_tile32_decode": 28216,
+    "bf16_index_tile32_prefill512": 1028,
+    "fp32_index_tile16_decode": 27719,
+    "fp32_index_tile16_prefill512": 15174,
+    "fp32_index_tile32_decode": 27719,
+    "fp32_index_tile32_prefill512": 532
+   },
+   "full_tier_bytes_fp32": {
+    "encoding": 1107296256,
+    "fine_keys": 268435456,
+    "read_keys_values": 1073741824
+   },
+   "headroom_bytes": {
+    "bf16_index_tile16_decode": 953491196,
+    "bf16_index_tile16_prefill512": 529565692,
+    "bf16_index_tile32_decode": 953491196,
+    "bf16_index_tile32_prefill512": 34764796,
+    "fp32_index_tile16_decode": 936713980,
+    "fp32_index_tile16_prefill512": 512788476,
+    "fp32_index_tile32_decode": 936713980,
+    "fp32_index_tile32_prefill512": 17987580
+   },
+   "live_blocks": 32768,
+   "scratch_bytes_by_query_tile": {
+    "16": {
+     "decode": 55787776,
+     "prefill512": 479713280
+    },
+    "32": {
+     "decode": 55787776,
+     "prefill512": 974514176
+    }
+   },
+   "state_bytes": {
+    "bf16_index": 64462852,
+    "fp32_index": 81240068
+   },
+   "stored_fine_keys_by_query_tile": {
+    "16": {
+     "decode": 37355776,
+     "prefill512": 140564480,
+     "state_bf16_index": 332898308,
+     "state_fp32_index": 349675524
+    },
+    "32": {
+     "decode": 37355776,
+     "prefill512": 201844736,
+     "state_bf16_index": 332898308,
+     "state_fp32_index": 349675524
+    }
+   }
+  },
+  "r6_500m": {
+   "budget_bytes": 1073741824,
+   "cache_blocks_that_fit": {
+    "bf16_index_tile16_decode": 28016,
+    "bf16_index_tile16_prefill512": 15843,
+    "bf16_index_tile32_decode": 28016,
+    "bf16_index_tile32_prefill512": 1200,
+    "fp32_index_tile16_decode": 27520,
+    "fp32_index_tile16_prefill512": 15346,
+    "fp32_index_tile32_decode": 27520,
+    "fp32_index_tile32_prefill512": 704
+   },
+   "full_tier_bytes_fp32": {
+    "encoding": 1107296256,
+    "fine_keys": 268435456,
+    "read_keys_values": 1073741824
+   },
+   "headroom_bytes": {
+    "bf16_index_tile16_decode": 946736892,
+    "bf16_index_tile16_prefill512": 535369724,
+    "bf16_index_tile32_decode": 946736892,
+    "bf16_index_tile32_prefill512": 40568828,
+    "fp32_index_tile16_decode": 929959676,
+    "fp32_index_tile16_prefill512": 518592508,
+    "fp32_index_tile32_decode": 929959676,
+    "fp32_index_tile32_prefill512": 23791612
+   },
+   "live_blocks": 32768,
+   "scratch_bytes_by_query_tile": {
+    "16": {
+     "decode": 55763200,
+     "prefill512": 467130368
+    },
+    "32": {
+     "decode": 55763200,
+     "prefill512": 961931264
+    }
+   },
+   "state_bytes": {
+    "bf16_index": 71241732,
+    "fp32_index": 88018948
+   },
+   "stored_fine_keys_by_query_tile": {
+    "16": {
+     "decode": 37331200,
+     "prefill512": 127981568,
+     "state_bf16_index": 339677188,
+     "state_fp32_index": 356454404
+    },
+    "32": {
+     "decode": 37331200,
+     "prefill512": 189261824,
+     "state_bf16_index": 339677188,
+     "state_fp32_index": 356454404
+    }
+   }
+  }
+ },
+ "status": "EXACT shapes and byte counts; PROJECTED budgets"
+}
