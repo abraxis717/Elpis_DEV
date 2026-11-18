@@ -276,6 +276,118 @@
    "train_seconds": 52.1,
    "val_bits_per_byte": 2.5778,
    "variant": "routed_ffn_cgc_shared"
+  },
+  {
+   "parameters": {
+    "active_per_token": 145310,
+    "resident": 330410,
+    "total": 330410
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 46784,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 2.097656,
+     "router_entropy": 1.50985,
+     "top1_probability": 0.478039
+    },
+    {
+     "active_macs_per_token": 46784,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 2.816406,
+     "router_entropy": 1.589886,
+     "top1_probability": 0.462987
+    }
+   ],
+   "seed": 2,
+   "status": "COMPLETED",
+   "train_seconds": 54.0,
+   "val_bits_per_byte": 2.6154,
+   "variant": "routed_ffn_cgc_shared"
+  },
+  {
+   "parameters": {
+    "active_per_token": 147484,
+    "resident": 431656,
+    "total": 431656
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 1.515625,
+     "router_entropy": 2.059238,
+     "top1_probability": 0.169401
+    },
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 1.394531,
+     "router_entropy": 2.067403,
+     "top1_probability": 0.15802
+    }
+   ],
+   "seed": 0,
+   "status": "COMPLETED",
+   "train_seconds": 50.0,
+   "val_bits_per_byte": 2.5412,
+   "variant": "routed_ffn_cgc_frozen_router"
+  },
+  {
+   "parameters": {
+    "active_per_token": 147484,
+    "resident": 431656,
+    "total": 431656
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 1.484375,
+     "router_entropy": 2.066238,
+     "top1_probability": 0.16063
+    },
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 1.609375,
+     "router_entropy": 2.06336,
+     "top1_probability": 0.163034
+    }
+   ],
+   "seed": 1,
+   "status": "COMPLETED",
+   "train_seconds": 49.1,
+   "val_bits_per_byte": 2.5937,
+   "variant": "routed_ffn_cgc_frozen_router"
+  },
+  {
+   "parameters": {
+    "active_per_token": 147484,
+    "resident": 431656,
+    "total": 431656
+   },
+   "routing": [
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 1.398438,
+     "router_entropy": 2.066891,
+     "top1_probability": 0.159255
+    },
+    {
+     "active_macs_per_token": 47872,
+     "inactive_fraction": 0.0,
+     "load_imbalance_max_over_mean": 1.863281,
+     "router_entropy": 2.061006,
+     "top1_probability": 0.169282
+    }
+   ],
+   "seed": 2,
+   "status": "COMPLETED",
+   "train_seconds": 48.7,
+   "val_bits_per_byte": 2.5499,
+   "variant": "routed_ffn_cgc_frozen_router"
   }
  ],
  "steps": 400
