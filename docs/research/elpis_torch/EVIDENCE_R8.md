@@ -270,7 +270,141 @@ failed, natively and with the AVX2 paths forced. The skips are 3 native-library 
 
 ## 5. P4 — admission
 
-<!-- P4 -->
+Records: `results/r8/admission_enc64.json`, `admission_enc256_ple_off.json`, `admission_enc256_ple_on.json` (4
+threads, native ISA), `admission_enc256_threads1.json` (1 thread), `admission_enc256_avx2.json` (PyTorch's and MKL's
+AVX2 paths forced). They were produced by `run_r8 admission` at `838057d`; each record stamps the revision at
+process start, and later stamps differ from it only by result files.
+
+**Setup.** The P0 timing models, streams and snapshots, with one warm-up pass before anything is measured. Five
+configurations, interleaved step by step:
+
+- R5 off;
+- the R5 reference (`fine_keys="reread"`), uncached and with the R6 cache bounded to 512 blocks;
+- stored fine keys (`"stored"`), uncached and with the same cache.
+
+The reference runs on copies of the snapshot without the tier, so it is exactly an R5 state. The stored keys run on
+the tiered snapshot. Logits of the two paths are compared at every measured step.
+
+**Decode, ms per token, p50 / p95.** The last two columns give the R5 read alone, as the step minus R5 off (p50
+of the paired per-step differences), and the largest float32 logit difference between the paths over all 64 steps.
+
+| head | PLE | tokens | R5 off | reference | reference + cache | stored | stored + cache | R5 read, reference → stored | logit gap |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| enc64 | off | 4K | 5.72 / 11.7 | 31.6 / 48.5 | 11.2 / 24.0 | 12.3 / 22.6 | 10.9 / 22.5 | 25.5 → 6.33 (4.0x) | 1.5e-07 |
+| enc64 | off | 64K | 5.75 / 10.5 | 28.2 / 39.8 | 19.8 / 36.5 | 12.1 / 20.4 | 11.9 / 21.3 | 22.3 → 6.32 (3.5x) | 2.4e-07 |
+| enc64 | off | 262K | 5.50 / 6.79 | 19.7 / 24.5 | 18.5 / 23.2 | 11.8 / 14.7 | 11.7 / 14.6 | 14.1 → 6.19 (2.3x) | 2.4e-07 |
+| enc64 | off | 1M | 5.80 / 8.53 | 24.8 / 31.5 | 24.6 / 33.6 | 16.1 / 20.0 | 15.9 / 20.3 | 18.9 → 10.2 (1.9x) | 2.4e-07 |
+| enc64 | on | 4K | 6.19 / 12.4 | 20.6 / 29.5 | 10.6 / 16.6 | 12.2 / 16.0 | 11.5 / 14.1 | 13.9 → 5.92 (2.3x) | 2.4e-07 |
+| enc64 | on | 64K | 6.26 / 8.48 | 20.4 / 30.0 | 18.8 / 25.0 | 12.6 / 17.7 | 12.5 / 15.9 | 14.2 → 6.17 (2.3x) | 2.4e-07 |
+| enc64 | on | 262K | 6.18 / 9.62 | 20.4 / 34.4 | 19.6 / 30.5 | 12.8 / 20.9 | 12.6 / 22.8 | 14.0 → 6.43 (2.2x) | 2.4e-07 |
+| enc64 | on | 1M | 6.20 / 9.56 | 24.2 / 32.6 | 25.4 / 34.1 | 15.9 / 21.8 | 16.1 / 23.2 | 17.0 → 9.41 (1.8x) | 2.4e-07 |
+| enc256 | off | 4K | 5.70 / 8.72 | 74.6 / 119.6 | 13.8 / 19.8 | 15.6 / 21.9 | 13.5 / 17.5 | 68.7 → 9.89 (6.9x) | 2.4e-07 |
+| enc256 | off | 64K | 5.85 / 10.2 | 74.2 / 101.4 | 48.1 / 67.7 | 16.0 / 25.1 | 15.8 / 21.3 | 67.8 → 10.2 (6.6x) | 2.4e-07 |
+| enc256 | off | 262K | 6.06 / 10.9 | 63.1 / 115.9 | 60.3 / 92.7 | 17.9 / 29.4 | 17.6 / 33.9 | 55.9 → 11.5 (4.9x) | 3.0e-07 |
+| enc256 | off | 1M | 5.74 / 8.01 | 51.1 / 64.9 | 51.1 / 73.8 | 18.8 / 26.0 | 17.8 / 25.9 | 44.7 → 13.0 (3.4x) | 3.6e-07 |
+| enc256 | on | 4K | 5.71 / 8.57 | 62.4 / 92.5 | 13.1 / 33.2 | 14.6 / 31.5 | 12.9 / 17.4 | 56.9 → 9.02 (6.3x) | 3.0e-07 |
+| enc256 | on | 64K | 6.20 / 10.5 | 72.3 / 128.8 | 51.7 / 89.3 | 16.7 / 27.4 | 15.8 / 24.2 | 64.8 → 9.91 (6.5x) | 3.6e-07 |
+| enc256 | on | 262K | 5.95 / 8.57 | 56.7 / 82.8 | 52.8 / 80.1 | 16.9 / 23.6 | 15.7 / 22.4 | 50.9 → 10.9 (4.7x) | 2.4e-07 |
+| enc256 | on | 1M | 5.99 / 8.53 | 58.2 / 81.9 | 59.7 / 81.8 | 20.8 / 27.9 | 18.4 / 27.6 | 51.8 → 14.9 (3.5x) | 3.6e-07 |
+
+**Prefill of 512 tokens with logits at every position, ms p50** (a cold chunk, then a warm chunk, 2 runs; blocks
+re-encoded per chunk in brackets):
+
+| head | PLE | tokens | R5 off | reference | reference + cache | stored | stored + cache | reference ÷ stored |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| enc64 | off | 4K | 49.4, 46.4 | 311.1, 309.0 (512) | 146.9, 116.4 (128) | 259.1, 315.4 (431) | 156.9, 114.0 (123) | 1.2x |
+| enc64 | off | 64K | 47.1, 43.8 | 3763.8, 3622.8 (7,228) | 2970.3, 2807.2 (5,827) | 749.5, 683.5 (1,449) | 468.4, 485.6 (947) | 5.0x |
+| enc64 | off | 262K | 40.9, 39.0 | 9750.9, 9931.9 (15,912) | 8865.5, 8150.4 (14,877) | 1012.0, 971.2 (1,750) | 766.7, 689.8 (1,410) | 9.6x |
+| enc64 | off | 1M | 58.0, 56.3 | 16150.3, 15853.9 (29,048) | 15330.8, 14415.5 (27,696) | 679.8, 687.0 (1,995) | 821.9, 642.5 (1,780) | 23.8x |
+| enc64 | on | 4K | 62.3, 53.1 | 178.7, 189.3 (512) | 107.0, 83.5 (128) | 218.1, 182.4 (453) | 103.1, 88.2 (126) | 0.8x |
+| enc64 | on | 64K | 45.3, 45.3 | 3942.0, 4064.5 (7,314) | 3074.8, 3059.8 (5,892) | 564.6, 534.6 (1,480) | 371.5, 286.2 (945) | 7.0x |
+| enc64 | on | 262K | 45.1, 42.1 | 9093.4, 10047.6 (16,322) | 8985.0, 8844.7 (15,267) | 1066.0, 937.0 (1,782) | 795.5, 673.4 (1,486) | 8.5x |
+| enc64 | on | 1M | 45.0, 44.5 | 15685.8, 15276.6 (29,835) | 14380.4, 14544.5 (28,518) | 666.4, 693.2 (2,012) | 703.5, 715.5 (1,773) | 23.5x |
+| enc256 | off | 4K | 62.3, 65.8 | 2335.4, 2625.7 (2,048) | 369.6, 302.1 (128) | 1530.9, 1503.1 (1,175) | 329.5, 233.8 (128) | 1.5x |
+| enc256 | off | 64K | 67.6, 56.1 | 31514.2, 32133.8 (18,876) | 22670.3, 21621.9 (14,105) | 2250.2, 2189.3 (1,884) | 1344.7, 1155.5 (1,264) | 14.0x |
+| enc256 | off | 262K | 142.5, 83.8 | 44956.2, 46848.7 (26,557) | 41238.8, 39377.9 (24,353) | 1560.4, 1731.3 (1,977) | 1676.0, 1545.0 (1,682) | 28.8x |
+| enc256 | off | 1M | 58.7, 50.4 | 50153.4, 49875.5 (30,125) | 48870.4, 51621.1 (29,166) | 1882.7, 2158.6 (2,012) | 2016.0, 2197.7 (1,908) | 26.6x |
+| enc256 | on | 4K | 63.1, 61.4 | 2187.3, 2373.2 (2,048) | 352.2, 236.2 (128) | 1246.0, 1405.5 (1,188) | 270.9, 210.8 (128) | 1.8x |
+| enc256 | on | 64K | 55.3, 53.1 | 31522.5, 34738.3 (19,589) | 22240.6, 20919.1 (14,668) | 2009.0, 1931.4 (1,931) | 1308.2, 1249.9 (1,334) | 15.7x |
+| enc256 | on | 262K | 45.8, 44.6 | 50845.5, 48564.8 (27,623) | 44913.2, 47542.5 (25,348) | 1964.8, 1783.8 (2,008) | 1883.6, 1740.8 (1,795) | 25.9x |
+| enc256 | on | 1M | 48.5, 45.9 | 51873.9, 53499.1 (30,816) | 53089.1, 52164.1 (30,011) | 1640.6, 1937.6 (2,031) | 1964.8, 2212.4 (1,947) | 31.6x |
+
+**Where a decode step goes at 1M, PLE off** (mean ms; reference → stored):
+
+| head | coarse scan | top-K | validation | token rereads | re-encoding | rerank | readout | local block | outside the laps |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| enc64 | 2.53 → 2.61 | 0.60 → 0.59 | 0.15 → 0.21 | 0.11 → 0.06 | 11.2 → 2.35 | 1.20 → 0.65 | 0.56 → 0.52 | 1.38 → 1.43 | 7.86 → 8.11 |
+| enc256 | 2.23 → 2.21 | 0.56 → 0.53 | 0.14 → 0.20 | 0.11 → 0.06 | 36.8 → 4.45 | 2.89 → 0.67 | 0.72 → 0.62 | 2.31 → 2.49 | 7.66 → 8.14 |
+
+**Memory and traffic per stream, capacity 1,048,576.**
+
+- State is EXACT `nbytes`, with a float32 index on this CPU.
+- Scratch is the interface's PROJECTED estimate.
+- Cache bytes are MEASURED after the 64 natural steps, with a 512-block bound.
+- Logical reads are per decoded token.
+
+| head | state | of which the tier | decode scratch | 512-token prefill scratch | cache held | token ids reread | fine keys read | descriptors scanned at 1M |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| enc64, reference | 36.3 MiB | — | 38.5 MiB | 300.0 MiB | 4.3 MB | 10,240 B | — | 32 MiB |
+| enc64, stored | 164.3 MiB | 128 MiB | 33.8 MiB | 104.0 MiB | 2.1 MB | 640 B | 256 KiB | 32 MiB |
+| enc256, reference | 36.3 MiB | — | 52.9 MiB | 890.1 MiB | 17.3 MB | 10,240 B | — | 32 MiB |
+| enc256, stored | 292.3 MiB | 256 MiB | 35.3 MiB | 153.2 MiB | 8.6 MB | 640 B | 512 KiB | 32 MiB |
+
+For the R6 scale configurations (bfloat16 index, query tile 32) the same accounting gives the 1 GiB-target table
+in section 2:
+
+- worst case, a 512-token prefill reading at every position: 0.97 GiB (reference) and 0.50 GiB (stored);
+- decode only: 0.11 GiB (reference) and 0.34 GiB (stored).
+
+The peak RSS of the measurement processes, 3.5-6.3 GB, counts every snapshot copy and cache the runner holds at
+once. It is not one session's footprint.
+
+<!-- P4_ROBUST -->
+
+<!-- P4_LAST -->
+
+**Findings.**
+
+1. **Read cost.** Per decoded token, the R5 read costs 1.8-4.0x less with `enc64` and 3.4-6.9x less with `enc256`,
+   at every occupancy, with and without the PLE. At 1M:
+   - `enc256`: 44.7-51.8 ms falls to 13.0-14.9 ms; the whole step goes from 51.1-58.2 to 18.8-20.8 ms.
+   - `enc64`: 17.0-18.9 ms falls to 9.4-10.2 ms; the step goes from 24.2-24.8 to 15.9-16.1 ms.
+   - The p95 falls with the p50; with `enc256` at 1M, from 64.9-81.9 to 26.0-27.9 ms.
+2. **The mechanism is what removes the cost.** Re-encoding falls from 64 blocks per step to the 4 injected ones:
+   from 11.2 to 2.35 ms (`enc64`) and from 36.8 to 4.45 ms (`enc256`) at 1M. Rerank also drops: its key
+   projections over 64 candidates become a 256-512 KiB gather.
+   - Token rereads fall from 10,240 to 640 bytes per step.
+   - Validation costs up to 0.14 ms more: `read_fine` checks again, as `reread` does.
+   - What remains: the core (about 5.7 ms), the coarse scan (2.2-2.6 ms plus 0.5-0.6 ms of top-K at 1M; it is
+     unchanged and scans 32 MiB of descriptors per query), the local block's encoding (1.4-2.5 ms) and about
+     2.3 ms of setup outside the laps.
+3. **It needs no warming.** The stored path's cold steps (the first 8) cost about what its warm steps cost: the
+   medians differ, in both directions, by up to 3.5 ms. With its cache emptied before every step (novel), it reads
+   in 5.9-13.0 ms. With every injected block already cached (replay), the read costs 3.7-9.3 ms.
+   - Replay is unrealistic warming, reported separately.
+   - The R6 cache adds little on top of stored keys: hit rates of 0.8-64%, and at most 2.4 ms per step.
+   - Without stored keys, the cache still gains only where the history is small: at 4K it holds every block.
+4. **Prefill reading at every position.** From 64K on it is 5.0-31.6x faster. At 1M it takes 0.67-0.69 s
+   (`enc64`) and 1.6-2.2 s (`enc256`), against 15.3-16.2 s and 49.9-53.5 s for the reference, and re-encodes about
+   2,000 blocks per chunk instead of 29,000-31,000.
+   - At 4K the gain is small or none (0.8-1.8x): 128 blocks exist, so the reference re-encodes at most 512 or
+     2,048 per chunk.
+   - At 4K the R6 cache holds every block. There, the reference with the cache and stored keys with the cache are
+     both fastest.
+5. **Exactness at timing scale.** The float32 logits of the two paths differ by at most 3.6e-7 at decode and 7.2e-7
+   in prefill, over every measured step and chunk. That is rounding, as the float64 tests require (section 4).
+6. **Memory.**
+   - The tier is 128 MiB (`enc64`) or 256 MiB (`enc256`) of state per stream at 1M. It is EXACT and fixed from
+     creation.
+   - Decode scratch falls by 5-18 MiB, and the worst-case prefill scratch by 196-737 MiB.
+   - The R6 scale configurations stay within the 1 GiB target in both read modes. At 0.50 GiB, the worst case is
+     about half the reference's 0.97 GiB.
+7. **The prediction made before measuring** (recorded from P0 data alone: about 13 ms for `enc64` and about 19 ms
+   for `enc256`, decode p50 at 1M, PLE off) gave 16.1 ms and 18.8 ms when measured.
+   - `enc64` missed by 3 ms. Re-encoding 4 blocks costs 2.35 ms, not the 4/64 of 9 ms assumed: a small encoder
+     call has a fixed overhead of about 2 ms. The setup outside the laps also adds about 2 ms.
+
+<!-- P4_VERDICT -->
 
 ## 6. Limits
 
