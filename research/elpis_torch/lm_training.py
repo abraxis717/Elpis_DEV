@@ -40,12 +40,14 @@ from torch.nn import functional as F
 from .config import ModelConfig
 from .ersa_model import ErsaConfig, ErsaLM
 from .model import parameter_digest, sample_next
+from .ple import PLEConfig
 from .sparse_channel import SparseConfig, aux_loss
 from .tokenizer import ByteTokenizer
 from .training import TrainConfig
 
 IGNORE = -100
-SCHEMA = "elpis-torch-r6-lm/1"
+SCHEMA = "elpis-torch-r7-lm/1"                     # R7: adds the PLE configuration and its addressing digest
+READABLE_SCHEMAS = ("elpis-torch-r6-lm/1", SCHEMA)  # an R6 checkpoint is a model without PLE
 
 
 @dataclass(frozen=True)
@@ -120,6 +122,11 @@ def document_batches(rows, batch: int, *, seed: int, ignore_pad: int):
 
 # -- training ---------------------------------------------------------------------------------------------------
 
+def _values(gradient: torch.Tensor) -> torch.Tensor:
+    """The stored values of a gradient (a lookup table's gradient is sparse: only the rows it addressed)."""
+    return gradient.coalesce().values() if gradient.is_sparse else gradient
+
+
 def _detach(state) -> None:
     state.cells = [c.detach() for c in state.cells]
     state.tails = [None if t is None else t.detach() for t in state.tails]
@@ -178,9 +185,15 @@ def train_lm(model, train_batches, config: TrainConfig, lm: LMConfig, *, val_bat
     torch.manual_seed(config.seed)
     named = dict(model.named_parameters())
     trainable = [p for p in named.values() if p.requires_grad]
-    optimizer = torch.optim.AdamW([{"params": [p for p in trainable if p.ndim >= 2], "weight_decay": config.weight_decay},
-                                   {"params": [p for p in trainable if p.ndim < 2], "weight_decay": 0.0}],
+    # R7: lookup tables (sparse gradients) take lazy Adam, no weight decay, at ple.lr_multiplier x the learning rate:
+    # a row that a step does not address is left exactly as it was by that step
+    tables = [p for name, p in named.items() if p.requires_grad and name.endswith("ple.table.weight")]
+    dense = [p for p in trainable if all(p is not t for t in tables)]
+    optimizer = torch.optim.AdamW([{"params": [p for p in dense if p.ndim >= 2], "weight_decay": config.weight_decay},
+                                   {"params": [p for p in dense if p.ndim < 2], "weight_decay": 0.0}],
                                   lr=config.lr, betas=(0.9, 0.95))
+    lazy = torch.optim.SparseAdam(tables, lr=config.lr, betas=(0.9, 0.95)) if tables else None
+    multiplier = model.ersa.ple.lr_multiplier if tables else 1.0
     history, status, step = [], "COMPLETED", 0
     iterator = iter(train_batches)
     while step < config.steps:
@@ -191,15 +204,23 @@ def train_lm(model, train_batches, config: TrainConfig, lm: LMConfig, *, val_bat
         model.train()
         for group in optimizer.param_groups:
             group["lr"] = config.lr_at(step)
+        if lazy is not None:
+            for group in lazy.param_groups:
+                group["lr"] = config.lr_at(step) * multiplier
+            lazy.zero_grad(set_to_none=True)
         optimizer.zero_grad(set_to_none=True)
         loss, info = batch_loss(model, inputs, targets, lm, backward=True)
-        if not torch.isfinite(loss) or any(p.grad is not None and not bool(torch.isfinite(p.grad).all())
+        if not torch.isfinite(loss) or any(p.grad is not None and not bool(torch.isfinite(_values(p.grad)).all())
                                            for p in trainable):
             status = "DIVERGED"
             optimizer.zero_grad(set_to_none=True)
+            if lazy is not None:
+                lazy.zero_grad(set_to_none=True)
             break
         torch.nn.utils.clip_grad_norm_(trainable, config.grad_clip)
         optimizer.step()
+        if lazy is not None and any(t.grad is not None for t in tables):
+            lazy.step()
         step += 1
         if (config.eval_every and step % config.eval_every == 0) or step == config.steps:
             record = {"step": step, "loss": float(loss), "aux": info["aux"]}
@@ -208,7 +229,7 @@ def train_lm(model, train_batches, config: TrainConfig, lm: LMConfig, *, val_bat
             history.append(record)
             if log is not None:
                 log(record)
-    return {"status": status, "steps": step, "history": history, "optimizer": optimizer}
+    return {"status": status, "steps": step, "history": history, "optimizer": optimizer, "table_optimizer": lazy}
 
 
 @torch.no_grad()
@@ -237,9 +258,11 @@ def generate(model, prompt: torch.Tensor, count: int, *, chunk: int = 64, temper
 # -- checkpoints ------------------------------------------------------------------------------------------------
 
 def architecture(model) -> dict:
-    ersa = {k: v for k, v in dataclasses.asdict(model.ersa).items() if k not in ("model", "sparse")}
+    ersa = {k: v for k, v in dataclasses.asdict(model.ersa).items() if k not in ("model", "sparse", "ple")}
     out = {"family": "evidence" if hasattr(model, "evidence") else "ersa", "model_config": model.config.to_dict(),
-           "ersa_config": ersa, "sparse_config": None if model.ersa.sparse is None else model.ersa.sparse.to_dict()}
+           "ersa_config": ersa, "sparse_config": None if model.ersa.sparse is None else model.ersa.sparse.to_dict(),
+           "ple_config": None if model.ersa.ple is None else model.ersa.ple.to_dict(),
+           "ple_addressing_digest": None if model.ple is None else model.ple.addresser.digest()}
     if hasattr(model, "evidence"):
         out["evidence_config"] = dataclasses.asdict(model.evidence)
     return out
@@ -252,7 +275,8 @@ def build_from(arch: dict):
     ersa_fields = dict(arch["ersa_config"])
     if ersa_fields.get("attn_layers") is not None:
         ersa_fields["attn_layers"] = tuple(ersa_fields["attn_layers"])
-    ersa = ErsaConfig(m, sparse=sparse, **ersa_fields)
+    ple = None if arch.get("ple_config") is None else PLEConfig.from_dict(arch["ple_config"])
+    ersa = ErsaConfig(m, sparse=sparse, ple=ple, **ersa_fields)
     if arch["family"] == "evidence":
         from .evidence_model import EvidenceConfig, EvidenceLM
         return EvidenceLM(ersa, EvidenceConfig(**arch["evidence_config"]))
@@ -277,11 +301,14 @@ def load_lm_checkpoint(path, *, tokenizer=None):
     tokenizer identity verified."""
     saved = torch.load(path, map_location="cpu", weights_only=True)
     record = saved["record"]
-    if record.get("schema") != SCHEMA:
-        raise ValueError(f"not an {SCHEMA} checkpoint")
+    if record.get("schema") not in READABLE_SCHEMAS:
+        raise ValueError(f"not an {' or '.join(READABLE_SCHEMAS)} checkpoint")
     if tokenizer is not None and tokenizer_identity(tokenizer)["digest"] != record["tokenizer"]["digest"]:
         raise ValueError("the tokenizer does not match the checkpoint's tokenizer identity")
     model = build_from(record["architecture"])
+    recorded = record["architecture"].get("ple_addressing_digest")
+    if (None if model.ple is None else model.ple.addresser.digest()) != recorded:
+        raise ValueError("the checkpoint's PLE addressing does not match this code's addressing for its configuration")
     model.load_state_dict(saved["state_dict"], strict=True)
     if parameter_digest(model) != record["parameter_digest"]:
         raise ValueError("the stored weights do not match the recorded parameter digest")

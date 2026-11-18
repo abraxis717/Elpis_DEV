@@ -226,6 +226,8 @@ def fixed_state_bytes(model, batch: int = 1, *, state_dtype=None) -> dict:
         reads = len(model.read_layers)
         out["history_tokens"] = batch * h.history_capacity * 4
         out["block_index"] = reads * (batch * h.slots * h.per_block * h.index_dim * w + h.slots * 8)
+    if getattr(c, "ple", None) is not None:
+        out["ple_history"] = batch * c.ple.history * 8                    # R7: int64 token ids, nothing else
     out["total"] = sum(out.values())
     return out
 

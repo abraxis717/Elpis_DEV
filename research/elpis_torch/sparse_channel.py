@@ -233,6 +233,9 @@ def active_parameters(model) -> dict:
             continue
         per_expert = sum(p.numel() for p in channel.experts[0].parameters())
         inactive += per_expert * (len(channel.experts) - channel.config.top_k)
+    ple = getattr(model, "ple", None)
+    if ple is not None:                      # R7: a token reads `lookups` rows of the table, not the table
+        inactive += ple.table.weight.numel() - ple.config.lookups * ple.config.head_dim
     return {"total": total, "resident": total, "active_per_token": total - inactive}
 
 
