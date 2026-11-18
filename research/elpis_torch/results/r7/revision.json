@@ -1,0 +1,64 @@
+{
+ "environment": {
+  "cpu_capability": "AVX512",
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "phase": "ELPIS_TORCH_R7_PLE_ADMISSION",
+ "rows": [
+  {
+   "all_nats": 3.74196,
+   "answer_nats": 3.14844,
+   "answer_nats_revised": 3.16056,
+   "seed": 0,
+   "train": {
+    "seconds": 10.3,
+    "status": "COMPLETED"
+   },
+   "variant": "r6"
+  },
+  {
+   "all_nats": 3.71831,
+   "answer_nats": 2.98612,
+   "answer_nats_revised": 2.96821,
+   "seed": 1,
+   "train": {
+    "seconds": 10.9,
+    "status": "COMPLETED"
+   },
+   "variant": "r6"
+  },
+  {
+   "all_nats": 3.72228,
+   "all_nats_ple_removed": 3.72154,
+   "answer_nats": 2.91392,
+   "answer_nats_ple_removed": 2.91384,
+   "answer_nats_revised": 2.9182,
+   "answer_nats_revised_ple_removed": 2.91814,
+   "seed": 0,
+   "train": {
+    "seconds": 11.6,
+    "status": "COMPLETED"
+   },
+   "variant": "ple"
+  },
+  {
+   "all_nats": 3.71681,
+   "all_nats_ple_removed": 3.71684,
+   "answer_nats": 3.07568,
+   "answer_nats_ple_removed": 3.08147,
+   "answer_nats_revised": 3.05593,
+   "answer_nats_revised_ple_removed": 3.06034,
+   "seed": 1,
+   "train": {
+    "seconds": 12.3,
+    "status": "COMPLETED"
+   },
+   "variant": "ple"
+  }
+ ],
+ "steps": 400,
+ "task": "R5 records, revisions 1-3, 2,048-token streams"
+}

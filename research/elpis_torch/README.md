@@ -115,6 +115,7 @@ with VolatileSession(model, SessionConfig(lr=0.1, max_steps=16)) as session:
 | `evidence_tasks.py`, `experiments/run_r5.py` | R5: records / scoped-symbol / R3 tasks with explicit hard negatives; `run_r5 train|eval|ablate|r3base|r3eval|memory|smoke` (`docs/research/elpis_torch/DESIGN_R5.md`, `EVIDENCE_R5.md`) |
 | `sparse_channel.py` | R6: token-routed channel experts (each a SwiGLU + its own CGC + gate), optional shared expert, deterministic top-K routing, grouped dispatch, routing statistics, auxiliary losses, exact upcycling; `ErsaConfig.sparse` places it in selected blocks |
 | `lm_training.py`, `experiments/run_r6.py` | R6: one autoregressive training path for every ERSA-family variant (documents, chunked state, full or truncated backpropagation, router losses, generation, versioned checkpoints); `run_r6 scale|dispatch|controls|cache|smoke` (`docs/research/elpis_torch/DESIGN_R6.md`, `EVIDENCE_R6.md`) |
+| `ple.py`, `ple_store.py`, `experiments/run_r7.py` | R7 (admission candidate): parametric lookup embeddings: seeded hashed n-gram addresses (bounded history, document boundaries), trainable tables with lazy updates, a gated fusion before one block, an exact removal control; immutable and read-only file-backed stores; `run_r7 study|local|revision|collisions|latency|accounting|combine|smoke` (`docs/research/elpis_torch/DESIGN_R7.md`, `EVIDENCE_R7.md`) |
 
 ## Not here, on purpose
 
