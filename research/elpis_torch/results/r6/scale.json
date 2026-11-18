@@ -2,12 +2,12 @@
  "configurations": {
   "r6_1b": {
    "bounded_forward": {
-    "build_seconds": 23.2,
-    "decode_seconds_per_token": 0.128,
+    "build_seconds": 27.5,
+    "decode_seconds_per_token": 0.112,
     "finite": true,
     "note": "capacity 16,384 for the forward (the 1M ring is accounted above); untrained weights",
-    "peak_rss_bytes": 5339557888,
-    "prefill_128_seconds": 1.31,
+    "peak_rss_bytes": 5339508736,
+    "prefill_128_seconds": 1.06,
     "routed_blocks": 9,
     "state_bytes": 43823108
    },
@@ -35,6 +35,12 @@
       "resident_keys": 33554432,
       "total": 974514176
      },
+     "scratch_prefill512_by_query_tile": {
+      "128": 974514176,
+      "16": 479713280,
+      "32": 974514176,
+      "64": 974514176
+     },
      "scratch_prefill512_projected_fp32": 974514176,
      "state_exact_bf16_index": {
       "attention_window": 33554432,
@@ -53,14 +59,20 @@
      "scratch_decode_projected_fp32": 25510144,
      "scratch_prefill512_by_component": {
       "chunk_activations": 50331648,
-      "coarse_tile": 16777216,
-      "encoded_blocks": 1116375040,
-      "fine_and_readout": 1853603840,
+      "coarse_tile": 4194304,
+      "encoded_blocks": 560629760,
+      "fine_and_readout": 296181760,
       "logits": 262144,
       "resident_keys": 4194304,
-      "total": 3041544192
+      "total": 915793920
      },
-     "scratch_prefill512_projected_fp32": 3041544192,
+     "scratch_prefill512_by_query_tile": {
+      "128": 3041544192,
+      "16": 435673088,
+      "32": 915793920,
+      "64": 2190608384
+     },
+     "scratch_prefill512_projected_fp32": 915793920,
      "state_exact_bf16_index": {
       "attention_window": 33554432,
       "conv_tail": 221184,
@@ -78,14 +90,20 @@
      "scratch_decode_projected_fp32": 29835520,
      "scratch_prefill512_by_component": {
       "chunk_activations": 50331648,
-      "coarse_tile": 33554432,
-      "encoded_blocks": 2227865600,
-      "fine_and_readout": 3699097600,
+      "coarse_tile": 8388608,
+      "encoded_blocks": 560629760,
+      "fine_and_readout": 296181760,
       "logits": 262144,
       "resident_keys": 8388608,
-      "total": 6019500032
+      "total": 924182528
      },
-     "scratch_prefill512_projected_fp32": 6019500032,
+     "scratch_prefill512_by_query_tile": {
+      "128": 6019500032,
+      "16": 441964544,
+      "32": 924182528,
+      "64": 2203191296
+     },
+     "scratch_prefill512_projected_fp32": 924182528,
      "state_exact_bf16_index": {
       "attention_window": 33554432,
       "conv_tail": 221184,
@@ -103,14 +121,20 @@
      "scratch_decode_projected_fp32": 22266112,
      "scratch_prefill512_by_component": {
       "chunk_activations": 50331648,
-      "coarse_tile": 4194304,
+      "coarse_tile": 1048576,
       "encoded_blocks": 282757120,
-      "fine_and_readout": 469483520,
+      "fine_and_readout": 149381120,
       "logits": 262144,
       "resident_keys": 1048576,
-      "total": 808077312
+      "total": 484829184
      },
-     "scratch_prefill512_projected_fp32": 808077312,
+     "scratch_prefill512_by_query_tile": {
+      "128": 808077312,
+      "16": 430954496,
+      "32": 484829184,
+      "64": 592578560
+     },
+     "scratch_prefill512_projected_fp32": 484829184,
      "state_exact_bf16_index": {
       "attention_window": 33554432,
       "conv_tail": 221184,
@@ -128,14 +152,20 @@
      "scratch_decode_projected_fp32": 21455104,
      "scratch_prefill512_by_component": {
       "chunk_activations": 50331648,
-      "coarse_tile": 1048576,
+      "coarse_tile": 262144,
       "encoded_blocks": 74352640,
-      "fine_and_readout": 123453440,
+      "fine_and_readout": 39280640,
       "logits": 262144,
       "resident_keys": 262144,
-      "total": 249710592
+      "total": 164751360
      },
-     "scratch_prefill512_projected_fp32": 249710592,
+     "scratch_prefill512_by_query_tile": {
+      "128": 249710592,
+      "16": 150591488,
+      "32": 164751360,
+      "64": 193071104
+     },
+     "scratch_prefill512_projected_fp32": 164751360,
      "state_exact_bf16_index": {
       "attention_window": 33554432,
       "conv_tail": 221184,
@@ -177,12 +207,12 @@
   },
   "r6_500m": {
    "bounded_forward": {
-    "build_seconds": 12.0,
-    "decode_seconds_per_token": 0.112,
+    "build_seconds": 14.8,
+    "decode_seconds_per_token": 0.091,
     "finite": true,
     "note": "capacity 16,384 for the forward (the 1M ring is accounted above); untrained weights",
-    "peak_rss_bytes": 3084238848,
-    "prefill_128_seconds": 0.89,
+    "peak_rss_bytes": 3085570048,
+    "prefill_128_seconds": 0.65,
     "routed_blocks": 10,
     "state_bytes": 50601988
    },
@@ -209,6 +239,12 @@
       "resident_keys": 33554432,
       "total": 961931264
      },
+     "scratch_prefill512_by_query_tile": {
+      "128": 961931264,
+      "16": 467130368,
+      "32": 961931264,
+      "64": 961931264
+     },
      "scratch_prefill512_projected_fp32": 961931264,
      "state_exact_bf16_index": {
       "attention_window": 41943040,
@@ -227,14 +263,20 @@
      "scratch_decode_projected_fp32": 25485568,
      "scratch_prefill512_by_component": {
       "chunk_activations": 37748736,
-      "coarse_tile": 16777216,
-      "encoded_blocks": 1116375040,
-      "fine_and_readout": 1853603840,
+      "coarse_tile": 4194304,
+      "encoded_blocks": 560629760,
+      "fine_and_readout": 296181760,
       "logits": 262144,
       "resident_keys": 4194304,
-      "total": 3028961280
+      "total": 903211008
      },
-     "scratch_prefill512_projected_fp32": 3028961280,
+     "scratch_prefill512_by_query_tile": {
+      "128": 3028961280,
+      "16": 423090176,
+      "32": 903211008,
+      "64": 2178025472
+     },
+     "scratch_prefill512_projected_fp32": 903211008,
      "state_exact_bf16_index": {
       "attention_window": 41943040,
       "conv_tail": 184320,
@@ -252,14 +294,20 @@
      "scratch_decode_projected_fp32": 29810944,
      "scratch_prefill512_by_component": {
       "chunk_activations": 37748736,
-      "coarse_tile": 33554432,
-      "encoded_blocks": 2227865600,
-      "fine_and_readout": 3699097600,
+      "coarse_tile": 8388608,
+      "encoded_blocks": 560629760,
+      "fine_and_readout": 296181760,
       "logits": 262144,
       "resident_keys": 8388608,
-      "total": 6006917120
+      "total": 911599616
      },
-     "scratch_prefill512_projected_fp32": 6006917120,
+     "scratch_prefill512_by_query_tile": {
+      "128": 6006917120,
+      "16": 429381632,
+      "32": 911599616,
+      "64": 2190608384
+     },
+     "scratch_prefill512_projected_fp32": 911599616,
      "state_exact_bf16_index": {
       "attention_window": 41943040,
       "conv_tail": 184320,
@@ -277,14 +325,20 @@
      "scratch_decode_projected_fp32": 22241536,
      "scratch_prefill512_by_component": {
       "chunk_activations": 37748736,
-      "coarse_tile": 4194304,
+      "coarse_tile": 1048576,
       "encoded_blocks": 282757120,
-      "fine_and_readout": 469483520,
+      "fine_and_readout": 149381120,
       "logits": 262144,
       "resident_keys": 1048576,
-      "total": 795494400
+      "total": 472246272
      },
-     "scratch_prefill512_projected_fp32": 795494400,
+     "scratch_prefill512_by_query_tile": {
+      "128": 795494400,
+      "16": 418371584,
+      "32": 472246272,
+      "64": 579995648
+     },
+     "scratch_prefill512_projected_fp32": 472246272,
      "state_exact_bf16_index": {
       "attention_window": 41943040,
       "conv_tail": 184320,
@@ -302,14 +356,20 @@
      "scratch_decode_projected_fp32": 21430528,
      "scratch_prefill512_by_component": {
       "chunk_activations": 37748736,
-      "coarse_tile": 1048576,
+      "coarse_tile": 262144,
       "encoded_blocks": 74352640,
-      "fine_and_readout": 123453440,
+      "fine_and_readout": 39280640,
       "logits": 262144,
       "resident_keys": 262144,
-      "total": 237127680
+      "total": 152168448
      },
-     "scratch_prefill512_projected_fp32": 237127680,
+     "scratch_prefill512_by_query_tile": {
+      "128": 237127680,
+      "16": 138008576,
+      "32": 152168448,
+      "64": 180488192
+     },
+     "scratch_prefill512_projected_fp32": 152168448,
      "state_exact_bf16_index": {
       "attention_window": 41943040,
       "conv_tail": 184320,

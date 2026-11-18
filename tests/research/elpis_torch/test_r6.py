@@ -618,6 +618,31 @@ def test_context_state_formula_is_exact_and_linear_in_the_ring():
     assert grow["index_keys"] == (16384 - 4096) // 16 * 2 * 16 * 4             # per_block x key_dim x float32
 
 
+def test_the_query_tile_is_an_execution_option_that_changes_no_logit(r5_stream):
+    """The scaled configurations bound a read at every position with smaller query tiles; a tile only partitions
+    independent queries, so it must change no logit."""
+    reference = _frozen(tiny_evidence(sparse=EXPERTS, query_tile=128))
+    with torch.no_grad():
+        expected = reference(r5_stream, reference.new_state(2))
+        for tile in (1, 5, 32):
+            model = _frozen(tiny_evidence(sparse=EXPERTS, query_tile=tile))
+            model.load_state_dict(reference.state_dict())
+            assert float((model(r5_stream, model.new_state(2)) - expected).abs().max()) < 1e-12, tile
+
+
+def test_the_scaled_configurations_stay_within_the_context_target_even_when_every_position_reads():
+    """P6 budget per stream (target 1 GiB): EXACT state with a bfloat16 index plus the PROJECTED scratch of a decode
+    step and of a 512-token prefill that reads at every position, at every reported length."""
+    from research.elpis_torch.experiments import run_r6
+    for name in run_r6.SCALES:
+        for length in run_r6.CONTEXTS:
+            face = run_r6.scale_model(name, capacity=length).context_interface()
+            state = face.fixed_bytes(1, {"history_device": "cuda"})["total"]
+            for chunk in (1, 512):
+                scratch = face.scratch_bytes(batch=1, chunk=chunk, options={}, queries=chunk)["total"]
+                assert state + scratch <= 1 << 30, (name, length, chunk, state + scratch)
+
+
 def test_r5_with_window_attention_and_experts_runs_and_is_chunk_invariant(r5_stream):
     """Regression (found by the bounded 500M forward): the core's window-slot map and the R5 ring shared the
     attribute name ``ring``; an evidence model with window attention crashed."""

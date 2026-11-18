@@ -53,8 +53,11 @@ def scale_model(name: str, *, capacity: int = 1 << 20, device="meta"):
     ersa = ErsaConfig(m, ersa_heads=heads, key_dim=128, value_dim=128, conv_kernel=4, attention="window",
                       attn_heads=heads, attn_kv_heads=kv, attn_window=4096, attn_layers=tuple(range(3, layers, 4)),
                       chunk=512, ersa_kernel="chunked", scan_block=64, sparse=sparse)
+    # A narrow evidence encoder, as in R3's scaling. 32-query tiles bound a read at every position (R5's default
+    # 128-query tile can re-encode 8,192 distinct candidates at once: over the 2 GiB ceiling at 262K); the tile is an
+    # execution option and changes no logit (tested).
     evidence = EvidenceConfig(capacity=capacity, encoder_dim=256, encoder_heads=4, read_heads=8, read_head_dim=128,
-                              fine_dim=64)                          # a narrow evidence encoder, as in R3's scaling
+                              fine_dim=64, query_tile=32)
     with torch.device(device):
         return EvidenceLM(ersa, evidence)
 
@@ -107,6 +110,7 @@ def command_scale(args) -> dict:
                                 "scratch_decode_projected_fp32": decode["total"],
                                 "scratch_prefill512_projected_fp32": prefill["total"],
                                 "scratch_prefill512_by_component": prefill,
+                                "scratch_prefill512_by_query_tile": _prefill_by_query_tile(sized),
                                 "coarse_scan_macs_per_query": (length // sized.evidence.block) *
                                 sized.evidence.per_block * sized.evidence.key_dim}
         out["configurations"][name] = {
@@ -118,6 +122,19 @@ def command_scale(args) -> dict:
             "context": contexts, "interface": interface.kind}
         if not args.smoke and not args.no_forward:
             out["configurations"][name]["bounded_forward"] = _bounded_forward(name)
+    return out
+
+
+def _prefill_by_query_tile(model, tiles=(128, 64, 32, 16)) -> dict:
+    """PROJECTED scratch of a 512-token prefill reading at every position, per query tile (R5's default is 128)."""
+    kept, out = model.evidence, {}
+    try:
+        for tile in tiles:
+            model.evidence = kept.replace(query_tile=tile)
+            out[str(tile)] = model.context_interface().scratch_bytes(batch=1, chunk=512, options={},
+                                                                      queries=512)["total"]
+    finally:
+        model.evidence = kept
     return out
 
 

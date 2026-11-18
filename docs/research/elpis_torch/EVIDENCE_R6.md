@@ -124,7 +124,8 @@ learning addressing without labels is NOT claimed. **AUTOREGRESSIVE_EXPERT_TRAIN
 
 ## 6. P6 — 500M and 1B sparse configurations
 
-Instantiated on `meta` (EXACT counts); vocabulary 65,536; R5 in the last block with a 256-wide encoder.
+Instantiated on `meta` (EXACT counts); vocabulary 65,536; R5 in the last block with a 256-wide encoder and
+32-query tiles.
 
 | | `r6_500m` | `r6_1b` |
 |---|---|---|
@@ -142,28 +143,39 @@ dominant per-query cost; with an encoder as wide as the model it was 60-107 G mu
 why the configurations use a 256-wide encoder (a down-projection added in R6, as in R3); the reread cache
 removes about half of it in the measurement above.
 
-Context memory per stream (state EXACT with a bfloat16 index; scratch PROJECTED in float32):
+Context memory per stream (state EXACT with a bfloat16 index; scratch PROJECTED in float32, shown for `r6_500m`;
+`r6_1b`'s scratch is within 0.02 GiB of it):
 
-| tokens | `r6_500m` state | of which R5 ring + index | `r6_1b` state | decode scratch | coarse scan per query |
-|---:|---:|---:|---:|---:|---:|
-| 8,192 | 47.9 MiB | 0.16 MiB | 41.4 MiB | 20.4 MiB | 65.5K |
-| 32,768 | 48.3 MiB | 0.63 MiB | 41.9 MiB | 21.2 MiB | 262K |
-| 131,072 | 50.2 MiB | 2.53 MiB | 43.8 MiB | 24.3 MiB | 1.05M |
-| 262,144 | 52.8 MiB | 5.06 MiB | 46.3 MiB | 28.4 MiB | 2.10M |
-| 1,048,576 | 67.9 MiB | 20.25 MiB | 61.5 MiB | 53.2 MiB | 8.39M |
+| tokens | `r6_500m` state | of which R5 ring + index | `r6_1b` state | decode scratch | 512-token prefill reading at every position: scratch | coarse scan per query |
+|---:|---:|---:|---:|---:|---:|---:|
+| 8,192 | 47.9 MiB | 0.16 MiB | 41.4 MiB | 20.4 MiB | 0.14 GiB | 65.5K |
+| 32,768 | 48.3 MiB | 0.63 MiB | 41.9 MiB | 21.2 MiB | 0.44 GiB | 262K |
+| 131,072 | 50.2 MiB | 2.53 MiB | 43.8 MiB | 24.3 MiB | 0.84 GiB | 1.05M |
+| 262,144 | 52.8 MiB | 5.06 MiB | 46.3 MiB | 28.4 MiB | 0.85 GiB | 2.10M |
+| 1,048,576 | 67.9 MiB | 20.25 MiB | 61.5 MiB | 53.2 MiB | 0.90 GiB | 8.39M |
 
 The rest of the state is the ERSA matrices, convolution tails and the 4,096-token window caches; no per-token KV
-cache and no per-expert index. One decode step's projected total at 1M is about 0.12 GiB (target 1 GiB). A
-prefill that reads at EVERY position (training-style) projects 0.2-5.7 GiB of scratch, largest at 128K-262K where a
-128-query tile can touch thousands of distinct candidate blocks; inference prefill reads only where logits are
-requested. Bounded real forwards (untrained weights, capacity 16,384, two CPU threads, MEASURED): `r6_500m`
-finite, 128-token prefill 0.89 s, 0.112 s per decoded token, peak RSS 3.1 GB; `r6_1b` finite, 1.31 s, 0.128 s,
-5.3 GB. **SPARSE_SCALING_ACCOUNTING: PASS.** No large model was trained; no capability is implied.
+cache and no per-expert index. Per stream, state plus scratch stays within the 1 GiB target at every reported length
+in both read modes (a test pins it): about 0.12 GiB for a decode step at 1M, and at most 0.97 GiB (`r6_1b` at 1M)
+for a 512-token prefill that reads at every position. The second needs 32-query tiles: with R5's default 128, one
+tile can re-encode 8,192 distinct candidate blocks, projecting 2.82 GiB at 128K and 5.59 GiB at 262K, over the
+2 GiB ceiling (the projection for tiles of 128, 64, 32 and 16 is in `scale.json`). The tile only partitions
+independent queries and changes no logit (tested); generation reads only where logits are requested.
+
+Bounded real forwards (untrained weights, capacity 16,384, two CPU threads, MEASURED): `r6_500m` finite,
+128-token prefill 0.65 s, 0.091 s per decoded token, peak RSS 3.1 GB; `r6_1b` finite, 1.06 s, 0.112 s, 5.3 GB (the run
+recorded at the previous head: 0.89 s / 0.112 s and 1.31 s / 0.128 s; wall-clock is PERFORMANCE_ONLY). Training at these sizes is NOT_RUN; PROJECTED
+from the EXACT counts, float32 weights, gradients and two AdamW moments take 16 bytes per parameter, 7.6 GiB
+(`r6_500m`) and 14.8 GiB (`r6_1b`), before activations. **SPARSE_SCALING_ACCOUNTING: PASS.** No large model was
+trained; no capability is implied.
 
 ## 7. Regression
 
-* Elpis Torch research suite on the final head: 436 passed, 5 skipped (CUDA tests and an optional dependency),
-  0 failed (`python -B -m pytest tests/research/elpis_torch`); R6 adds 39 tests (`test_r6.py`), R5 has 18.
+* Elpis Torch research suite on the final head: 438 passed, 5 skipped, 0 failed (`python -B -m pytest
+  tests/research/elpis_torch`, 175 s); the skips are two CUDA tests (NOT_RUN) and three native-kernel parity tests
+  whose library is not built in this container (CI's research job builds it and requires it). R6 adds 41 tests
+  (`test_r6.py`), R5 has 18. CI's research job now also runs the R5 and R6 experiment smoke commands (4.9 s and
+  12.3 s on two threads here; nothing is kept).
 * Repository FAST lane (`PYTHONPATH=src pytest`): 1,200 passed, 712 skipped, 5 failed and 10 errors, all in
   native-backed canonical tests (K1 boundary, HACF, structural evidence, context substrate); the same 5 failures
   and 10 errors occur on `main` (`bdbc690`) in this container (native libraries are not built here). R6 changes
