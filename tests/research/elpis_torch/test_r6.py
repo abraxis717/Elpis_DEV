@@ -3,6 +3,7 @@ context session, sparse FFN+CGC experts and their integration with R5, autoregre
 from __future__ import annotations
 
 import argparse
+import dataclasses
 
 import pytest
 
@@ -391,20 +392,75 @@ def test_extreme_routing_stays_finite_and_mixed_precision_routes_in_float32():
 
 EXPERTS = SparseConfig(experts=4, top_k=2, layers=(0, 1), shared=True)
 
+# Causality contract for routed experts (the exact-head CI failure at eba8646; EVIDENCE_R6 section 10). The grouped
+# dispatch runs each expert's GEMMs on the rows routed to it, so their row count depends on every token's route in
+# the call, future tokens included, and MKL's double-precision GEMM can round a row differently for a different row
+# count (measured: AVX2 kernels with 4 threads change earlier rows for 299 of 301 row counts; the largest logit
+# difference was 2.2e-16). Hence: past routes must be identical and, with the fixed-shape reference dispatch, past
+# logits bit for bit; with the grouped dispatch, within GROUPED_ROUNDING (4,500x the largest difference measured, and
+# 1/100 of the smallest planted leak the test below must detect).
+GROUPED_ROUNDING = 1e-12
+CAUSAL_CUT = 301                                      # a query-tile boundary (query_tile 7): no tile mixes the two
+
+
+def _future_mutation(model, stream, changed, cut=CAUSAL_CUT):
+    """Run two streams that differ only from ``cut`` on; return (past routes identical, largest |difference| of the
+    past routing weights, past logits of each run). Routes come from forward hooks on every router."""
+    seen = []
+    hooks = [block.sparse.router.register_forward_hook(lambda m, i, o: seen.append((o[2].clone(), o[3].clone())))
+             for block in model.blocks if block.sparse is not None]
+    try:
+        with torch.no_grad():
+            a = model(stream, model.new_state(stream.shape[0]))
+            b = model(changed, model.new_state(changed.shape[0]))
+    finally:
+        for hook in hooks:
+            hook.remove()
+    half, (batch, length) = len(seen) // 2, stream.shape
+    past = [(x.view(batch, length, -1)[:, :cut], y.view(batch, length, -1)[:, :cut]) for pair in
+            zip(seen[:half], seen[half:]) for x, y in zip(*pair)]
+    same_routes = all(torch.equal(x, y) for x, y in past[0::2])
+    weight_gap = max(float((x - y).abs().max()) for x, y in past[1::2])
+    return same_routes, weight_gap, a[:, :cut], b[:, :cut]
+
+
+def _changed_future(stream, cut=CAUSAL_CUT):
+    changed = stream.clone()
+    changed[:, cut:] = torch.randint(1, 30, changed[:, cut:].shape, generator=torch.Generator().manual_seed(0))
+    return changed
+
 
 def test_experts_with_r5_are_causal_and_chunk_invariant(r5_stream):
     model = _frozen(tiny_evidence(sparse=EXPERTS))
-    changed = r5_stream.clone()
-    changed[:, 301:] = torch.randint(1, 30, changed[:, 301:].shape, generator=torch.Generator().manual_seed(0))
+    reference = _frozen(tiny_evidence(sparse=dataclasses.replace(EXPERTS, dispatch="reference")))
+    reference.load_state_dict(model.state_dict())
+    changed = _changed_future(r5_stream)
+    same, gap, a, b = _future_mutation(reference, r5_stream, changed)           # fixed shapes: bit for bit
+    assert same and gap == 0.0 and torch.equal(a, b)
+    same, gap, ga, gb = _future_mutation(model, r5_stream, changed)              # grouped: identical routes,
+    assert same and gap <= GROUPED_ROUNDING                                      # logits within rounding of each
+    assert float((ga - gb).abs().max()) <= GROUPED_ROUNDING                      # other and of the reference
+    assert float((ga - a).abs().max()) <= GROUPED_ROUNDING
     with torch.no_grad():
         whole = model(r5_stream, model.new_state(2))
-        assert torch.equal(whole[:, :301], model(changed, model.new_state(2))[:, :301])     # no future leakage
         small = _frozen(tiny_evidence(chunk=29, sparse=EXPERTS))
         small.load_state_dict(model.state_dict())
         state = small.new_state(2)
         parts = torch.cat([small(r5_stream[:, a:a + 29], state) for a in range(0, 600, 29)], dim=1)
     assert float((parts - whole).abs().max()) < 1e-9
     assert state.ring.stats["stale_rejections"] == 0
+
+
+@pytest.mark.parametrize("dispatch", ["reference", "grouped"])
+def test_the_causality_contract_detects_a_planted_future_leak(r5_stream, monkeypatch, dispatch):
+    """The contract above must still catch genuine leakage: a routed channel that adds 1e-7 of the call's mean over
+    time (which includes the future) moves past logits far beyond GROUPED_ROUNDING, under either dispatch."""
+    from research.elpis_torch import sparse_channel as sc
+    forward = sc.SparseChannel.forward
+    monkeypatch.setattr(sc.SparseChannel, "forward", lambda self, u: forward(self, u) + 1e-7 * u.mean(1, keepdim=True))
+    model = _frozen(tiny_evidence(sparse=dataclasses.replace(EXPERTS, dispatch=dispatch)))
+    _, _, a, b = _future_mutation(model, r5_stream, _changed_future(r5_stream))
+    assert float((a - b).abs().max()) > 100 * GROUPED_ROUNDING
 
 
 def test_r5_off_is_the_routed_core_and_no_label_reaches_the_routes(r5_stream):

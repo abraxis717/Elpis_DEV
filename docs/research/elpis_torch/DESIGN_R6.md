@@ -48,7 +48,9 @@ not done: it has not been shown to pay for its cost.
   No labels or keywords enter routing.
 * Dispatch: every token goes to exactly its K experts (no capacity limit, no dropping). The grouped path sorts the
   N x K assignments by expert once and runs each expert on its contiguous segment, scattering weighted outputs;
-  the masked reference path (every expert on every token) exists only for tests.
+  the masked reference path (every expert on every token) exists only for tests. The grouped path is batch-variant
+  at the rounding level: a segment's length depends on all routes in the call, and the BLAS may round a row
+  differently for a different row count (found by the exact-head CI at `eba8646`; `EVIDENCE_R6.md` section 10).
 * Per call, each sparse channel reports the load-balance loss `E sum_e f_e P_e`, the router z-loss, their weighted
   sum (the configured `balance_weight`, `z_weight`; zero by default), and detached statistics: counts,
   frequencies, imbalance (max/mean, CV), router entropy, top-1 probability, co-activation, inactive fraction and

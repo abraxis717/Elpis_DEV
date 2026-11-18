@@ -63,14 +63,18 @@ the tied head; a zero gate is exactly the FFN and its gate learns first, then th
 router and bfloat16 autocast; `sparse=None` is the old model; upcycling reproduces dense models with CGC, FFN and
 FFN + CGC channels (clones to 1e-12 in float64; shared copy and routing-disabled control bitwise).
 
-Grouped dispatch, MEASURED (forward + backward, d 256, top-2; identical outputs, max |difference| 0.0):
+Grouped dispatch, MEASURED (forward + backward, d 256, top-2, float32, two threads). CORRECTED at the closeout
+(section 10): the first record said "identical outputs, max |difference| 0.0" because its writer rounded every float
+to six decimal places; the two paths agree to float32 rounding, not bit for bit. Re-measured:
 
-| experts | tokens | expert evaluations (grouped / reference) | grouped s | reference s | speedup |
-|---:|---:|---|---:|---:|---:|
-| 8 | 512 | 1,024 / 4,096 | 0.041 | 0.100 | 2.4 |
-| 8 | 4,096 | 8,192 / 32,768 | 0.228 | 0.673 | 3.0 |
-| 16 | 4,096 | 8,192 / 65,536 | 0.210 | 1.359 | 6.5 |
-| 64 | 4,096 | 8,192 / 262,144 | 0.306 | 5.988 | 19.6 |
+| experts | tokens | expert evaluations (grouped / reference) | grouped s | reference s | speedup | max \|difference\| |
+|---:|---:|---|---:|---:|---:|---:|
+| 8 | 512 | 1,024 / 4,096 | 0.076 | 0.160 | 2.1 | 6.0e-8 |
+| 8 | 4,096 | 8,192 / 32,768 | 0.366 | 0.932 | 2.5 | 3.0e-8 |
+| 16 | 4,096 | 8,192 / 65,536 | 0.372 | 2.066 | 5.6 | 6.0e-8 |
+| 64 | 4,096 | 8,192 / 262,144 | 0.576 | 8.065 | 14.0 | 1.2e-7 |
+
+The first run measured speedups of 2.4, 3.0, 6.5 and 19.6; wall-clock on this shared CPU varies between runs.
 
 Training controls, MEASURED (d 64, 2 blocks, both blocks sparse for routed variants; 400 steps of 16 x 128 bytes
 of this repository's source code; held-out: 4 other source files, 25,096 bytes; three seeds):
@@ -171,9 +175,9 @@ trained; no capability is implied.
 
 ## 7. Regression
 
-* Elpis Torch research suite on the final head: 438 passed, 5 skipped, 0 failed (`python -B -m pytest
-  tests/research/elpis_torch`, 175 s); the skips are two CUDA tests (NOT_RUN) and three native-kernel parity tests
-  whose library is not built in this container (CI's research job builds it and requires it). R6 adds 41 tests
+* Elpis Torch research suite on the final head: 440 passed, 5 skipped, 0 failed (`python -B -m pytest
+  tests/research/elpis_torch`, 236 s; the same with MKL's AVX2 kernels, the CI-like path of section 10); the skips are two CUDA tests (NOT_RUN) and three native-kernel parity tests
+  whose library is not built in this container (CI's research job builds it and requires it). R6 adds 43 tests
   (`test_r6.py`), R5 has 18. CI's research job now also runs the R5 and R6 experiment smoke commands (4.9 s and
   12.3 s on two threads here; nothing is kept).
 * Repository FAST lane (`PYTHONPATH=src pytest`): 1,200 passed, 712 skipped, 5 failed and 10 errors, all in
@@ -199,4 +203,61 @@ python -B -m research.elpis_torch.experiments.run_r6 dispatch --out dispatch.jso
 python -B -m research.elpis_torch.experiments.run_r6 scale --out scale.json
 python -B -m research.elpis_torch.experiments.run_r6 cache --out cache.json
 python -B -m research.elpis_torch.experiments.run_r6 smoke
+```
+
+## 10. Closeout: the exact-head CI failure at `eba8646`
+
+CI run 44207120535 (`eba8646`): 15 of 16 jobs passed; `Elpis Torch research (PyTorch CPU)` reported 1 failed, 440
+passed, 2 skipped. `test_experts_with_r5_are_causal_and_chunk_invariant` asserted that the first 301 positions'
+logits are bit-for-bit equal for two streams that differ only from position 301 on. CI used the same torch
+(2.15.0+cpu) on Python 3.12.16. The test had passed here (AVX-512, 4 threads).
+
+Reproduced here by forcing MKL's AVX2 kernels (`MKL_ENABLE_INSTRUCTIONS=AVX2`). Diagnosed with `run_r6 causality`
+(records `results/r6/causality_native.json` and `causality_avx2.json`; float64; MEASURED):
+
+| check | native (AVX-512, 4 threads) | AVX2 kernels, 4 threads |
+|---|---|---|
+| grouped dispatch: past logits bit for bit | yes | no: 77,258 of 388,892 differ, at most 2.2e-16 (4.1e-16 of the largest logit), from position 6 |
+| past routes (selected experts) | identical | identical; block 1's routing weights within 1.1e-16 |
+| first module output that differs | none | block 0's routed channel (6.9e-18); block 0's ERSA output is identical |
+| reference dispatch (fixed shapes) | bit for bit | bit for bit |
+| grouped routing, but every expert's GEMMs on all rows | bit for bit | bit for bit |
+| R5 off | bit for bit | differs the same way (R5 is not involved) |
+| token-serial causal control: distance from each full run | 7.5e-11, 7.5e-11 | 7.5e-11, 7.5e-11 |
+| row counts M in [500, 800] that change one expert's rows [0, 500) | 13 of 301 | 299 of 301 |
+| planted leak: past logits moved by 1e-10 x the call's mean over time | 2.2e-10 | 2.2e-10 |
+
+**Diagnosis: numerical ordering, not leakage.**
+- The grouped dispatch runs each expert's GEMMs on the rows routed to it. A row count depends on every route in the
+  call, including future tokens': block 0's segments of 641 / 599 / 548 / 612 rows become 614 / 582 / 577 / 627.
+- MKL's double-precision GEMM rounds a given row differently for some row counts: most of them under AVX2 kernels
+  with several threads, a few natively. An exploratory probe with AVX2 kernels on one thread was bit for bit.
+- No route and no value of a future token enters a past computation. The past routes are identical, and the
+  fixed-shape reference and the all-rows control are bit for bit. The token-serial control, which cannot see the
+  future, is equally far from both runs, 340,000 times the difference between them.
+- The grouped path is causal to rounding.
+
+**Repair (the test's contract, not the model):**
+- Past routes must be identical.
+- With the reference dispatch, past logits must be equal bit for bit.
+- With the grouped dispatch, past logits must be within 1e-12 of each other and of the reference: 4,500 times the
+  largest difference measured.
+- New test `test_the_causality_contract_detects_a_planted_future_leak` plants a 1e-7 future dependence and must see
+  it exceed 100 x 1e-12 under both dispatches.
+
+Both tests pass natively and with AVX2 kernels, and so does the whole research suite. The exact-head CI result is
+reported in the pull request, since a commit cannot record the CI run that qualifies it.
+
+**Record writer:**
+- `run_r6`'s writer rounded every float to six decimal places. That erased the dispatch difference (section 3, now
+  corrected and re-measured) and would have erased this section's values. It now keeps six significant digits.
+- The R1–R5 drivers still round to six decimal places. Their zero-valued difference fields bound those values below
+  5e-7 only: `r1/adapt.json` `stream_logits_error_vs_recompute`, the `max_abs_logit_difference*` fields of
+  `r4/parity_32k*.json`, `r4_1/parity_32k.json` and `r4_1/cache_workloads_*.json`, and `r4/gradients.json`
+  `max_gradient_difference_*`. Their tests assert directly. The historical records are left unchanged.
+
+```bash
+python -B -m research.elpis_torch.experiments.run_r6 causality --threads 4 --out causality_native.json
+MKL_ENABLE_INSTRUCTIONS=AVX2 python -B -m research.elpis_torch.experiments.run_r6 causality --threads 4 --out causality_avx2.json
+MKL_ENABLE_INSTRUCTIONS=AVX2 python -B -m pytest tests/research/elpis_torch
 ```

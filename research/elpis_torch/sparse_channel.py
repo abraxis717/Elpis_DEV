@@ -15,6 +15,12 @@ evaluates only selected experts: tokens are sorted by expert once, each expert r
 and weighted outputs are scattered back. The reference dispatch evaluates every expert on every token and masks;
 it exists only to test the grouped path.
 
+Batch variance (R6 closeout): an expert's GEMMs run on the rows routed to it, so their row count depends on every
+token's route in the call, future tokens included, and the BLAS may round a row differently for a different row
+count (MKL double precision on AVX2 kernels with several threads does; ``run_r6 causality`` measures it). Routes
+and values never cross tokens, so the grouped path is causal to rounding, not bit for bit: the tests check the
+fixed-shape reference dispatch bit for bit, the grouped path within 1e-12 in float64, and a planted leak.
+
 Per call, ``self.report`` holds the auxiliary losses (load balance, router z-loss; differentiable, with their
 configured weights) and detached routing statistics. It is overwritten by every call (bounded, never persisted).
 Token routing never reads labels: the router sees the hidden state only.

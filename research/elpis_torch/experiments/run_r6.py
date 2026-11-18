@@ -288,6 +288,155 @@ def command_cache(args) -> dict:
     return out
 
 
+CAUSAL_CUT = 301
+
+
+def _causality_model(chunk: int = 1024, dispatch: str = "grouped"):
+    """The model of test_experts_with_r5_are_causal_and_chunk_invariant (float64, untrained, frozen)."""
+    widths = ModelConfig(vocab_size=et.VOCAB, d_model=32, n_layers=2, n_heads=2, n_kv_heads=1, max_seq_len=64,
+                         channel="cgc", cgc_bottleneck=8, cgc_channels=24, cgc_units=4, seed=5, dtype="float64")
+    sparse = SparseConfig(experts=4, top_k=2, layers=(0, 1), shared=True, dispatch=dispatch)
+    ersa = ErsaConfig(widths, ersa_heads=2, key_dim=8, value_dim=8, ersa_kernel="chunked", scan_block=16,
+                      conv_kernel=4, chunk=chunk, sparse=sparse)
+    model = EvidenceLM(ersa, EvidenceConfig(block=16, capacity=256, per_block=2, key_dim=16, coarse_top=6,
+                                            evidence=3, fine_top=4, overlap=4, encoder_dim=32, fine_dim=8,
+                                            read_heads=2, read_head_dim=8, query_tile=7)).eval()
+    for p in model.parameters():
+        p.requires_grad_(False)
+    return model
+
+
+def _ordered_bits(x: torch.Tensor) -> torch.Tensor:
+    bits = x.contiguous().view(torch.int64)
+    magnitude = bits & 0x7FFFFFFFFFFFFFFF
+    return torch.where(bits < 0, -magnitude, magnitude)       # monotone in the value: differences count ULPs
+
+
+def _prefix_difference(a: torch.Tensor, b: torch.Tensor, cut: int = CAUSAL_CUT) -> dict:
+    a, b = a[:, :cut], b[:, :cut]
+    gap = (a - b).abs()
+    differing = gap != 0
+    row = {"bitwise_equal": bool(torch.equal(a, b)), "max_abs": float(gap.max()),
+           "differing_elements": int(differing.sum()), "elements": a.numel()}
+    if bool(differing.any()):
+        scale = torch.maximum(a.abs(), b.abs())
+        row.update(max_abs_over_largest_value=float(gap.max() / scale.max()),
+                   max_rel=float((gap / scale.clamp_min(torch.finfo(a.dtype).tiny)).max()),
+                   earliest_position=int(differing.any(-1).nonzero()[:, 1].min()),
+                   positions_affected=int(differing.any(-1).any(0).sum()),
+                   max_ulp=int((_ordered_bits(a) - _ordered_bits(b)).abs().max()))
+    return row
+
+
+def _grouped_on_all_rows(self, flat, index, weight, out):
+    """DIAGNOSIS ONLY: the grouped selection and scatter, with every expert's GEMMs run on all rows (a fixed row
+    count) and the routed rows selected afterwards."""
+    k = index.shape[1]
+    assignment = index.reshape(-1)
+    order = torch.argsort(assignment, stable=True)
+    counts = torch.bincount(assignment, minlength=len(self.experts)).tolist()
+    token, scale, start = order // k, weight.reshape(-1)[order], 0
+    for expert, count in zip(self.experts, counts):
+        if count:
+            rows = token[start:start + count]
+            out = out.index_add(0, rows, expert(flat)[rows] * scale[start:start + count, None])
+        start += count
+    return out
+
+
+@torch.no_grad()
+def command_causality(args) -> dict:
+    """Diagnosis of the exact-head CI failure at eba8646: two streams that differ only from position 301 on, through
+    the R6 test model, compared bit for bit per module and dispatch, against a token-serial causal control, plus the
+    row-count dependence of one routed expert's GEMMs and the size of planted leaks. MEASURED in this process's BLAS
+    configuration (repeat with MKL_ENABLE_INSTRUCTIONS=AVX2 for the kernel path of CI's runners)."""
+    import os
+    import types
+    stream = et.generate_records(et.RecordTask(queries=6, background=20.0), 2, 600, seed=7).tokens
+    changed = stream.clone()
+    changed[:, CAUSAL_CUT:] = torch.randint(1, 30, changed[:, CAUSAL_CUT:].shape,
+                                            generator=torch.Generator().manual_seed(0))
+    model = _causality_model()
+    reference = _causality_model(dispatch="reference")
+    reference.load_state_dict(model.state_dict())
+    out = {"phase": PHASE, "cut": CAUSAL_CUT, "blas": {"MKL_ENABLE_INSTRUCTIONS": os.environ.get(
+        "MKL_ENABLE_INSTRUCTIONS"), "cpu_capability": torch.backends.cpu.get_cpu_capability(),
+        "threads": torch.get_num_threads()}, "test_contract_tolerance": 1e-12}
+    captured, routes = {}, {}
+    hooks = []
+    for i, block in enumerate(model.blocks):
+        for name, module in (("ersa", block.ersa), ("routed_channel", block.sparse)):
+            hooks.append(module.register_forward_hook(
+                lambda m, inputs, output, key=f"block{i}.{name}": captured.setdefault(key, []).append(
+                    (output[0] if isinstance(output, tuple) else output).clone())))   # the mixer returns (y, state, ...)
+        def route(module, inputs, output, i=i):             # returns None: a hook's return value replaces outputs
+            captured.setdefault(f"block{i}.router_weights", []).append(output[3])
+            routes.setdefault(i, []).append(output[2])
+        hooks.append(block.sparse.router.register_forward_hook(route))
+    whole, other = model(stream, model.new_state(2)), model(changed, model.new_state(2))
+    for hook in hooks:
+        hook.remove()
+    batch, length = stream.shape
+    out["grouped_logits"] = _prefix_difference(whole, other)
+    out["per_module"] = {key: _prefix_difference(*(v.view(batch, length, -1) for v in values))
+                         for key, values in captured.items()}
+    out["past_routes_identical"] = {f"block{i}": bool(torch.equal(*(v.view(batch, length, -1)[:, :CAUSAL_CUT]
+                                                                    for v in values))) for i, values in routes.items()}
+    out["reference_logits"] = _prefix_difference(reference(stream, reference.new_state(2)),
+                                                 reference(changed, reference.new_state(2)))
+    out["grouped_vs_reference_whole_sequence_max_abs"] = float((whole - reference(stream, reference.new_state(2)))
+                                                               .abs().max())
+    for channel in (b.sparse for b in model.blocks):
+        channel._grouped = types.MethodType(_grouped_on_all_rows, channel)
+    try:
+        out["grouped_gemms_on_all_rows_logits"] = _prefix_difference(model(stream, model.new_state(2)),
+                                                                     model(changed, model.new_state(2)))
+    finally:
+        for channel in (b.sparse for b in model.blocks):
+            del channel._grouped
+    out["r5_off_logits"] = _prefix_difference(model(stream, model.new_state(2), mode="off"),
+                                              model(changed, model.new_state(2), mode="off"))
+    model(stream, model.new_state(2))
+    sizes = [b.sparse.report["stats"]["counts"] for b in model.blocks]
+    model(changed, model.new_state(2))
+    out["expert_row_counts"] = {"original": sizes, "changed": [b.sparse.report["stats"]["counts"]
+                                                               for b in model.blocks]}
+    serial = _causality_model(chunk=1)
+    serial.load_state_dict(model.state_dict())
+    state = serial.new_state(2)
+    steps = torch.cat([serial(stream[:, t:t + 1], state) for t in range(CAUSAL_CUT)], dim=1)
+    out["token_serial_control"] = {
+        "note": "positions < cut computed one token at a time, before any changed token exists",
+        "max_abs_vs_original_whole": float((steps - whole[:, :CAUSAL_CUT]).abs().max()),
+        "max_abs_vs_changed_whole": float((steps - other[:, :CAUSAL_CUT]).abs().max())}
+    expert = model.blocks[1].sparse.experts[0]
+    x = torch.randn(800, 32, dtype=torch.float64, generator=torch.Generator().manual_seed(3))
+    probes = {"expert": expert, "expert.ffn": expert.ffn, "expert.cgc": expert.cgc,
+              "expert.cgc.proj_out": lambda v: expert.cgc.proj_out(v[:, :expert.cgc.proj_out.in_features])}
+    out["row_count_dependence"] = {"note": "row counts M in [500, 800] for which rows [0, 500) differ from M = 700"}
+    for name, fn in probes.items():
+        base = fn(x[:700])[:500]
+        changed_rows = [m for m in range(500, 801) if not torch.equal(fn(x[:m])[:500], base)]
+        out["row_count_dependence"][name] = {"row_counts_changing_earlier_rows": len(changed_rows), "of": 301,
+                                             "max_abs": max([float((fn(x[:m])[:500] - base).abs().max())
+                                                             for m in changed_rows] or [0.0])}
+    leaks = {}
+    for scale in (1e-6, 1e-8, 1e-10):
+        for name, net in (("grouped", model), ("reference", reference)):
+            for channel in (b.sparse for b in net.blocks):
+                plain = type(channel).forward
+                channel.forward = types.MethodType(
+                    lambda self, u, plain=plain, scale=scale: plain(self, u) + scale * u.mean(1, keepdim=True), channel)
+            try:
+                leaks[f"{name}_scale_{scale:g}"] = _prefix_difference(net(stream, net.new_state(2)),
+                                                                      net(changed, net.new_state(2)))["max_abs"]
+            finally:
+                for channel in (b.sparse for b in net.blocks):
+                    del channel.forward
+    out["planted_leak_max_abs"] = leaks
+    return out
+
+
 def command_smoke(args) -> dict:
     ns = argparse.Namespace(**{**vars(args), "smoke": True, "out": None, "no_forward": True})
     return {"scale": sorted(command_scale(ns)["configurations"]), "dispatch": len(command_dispatch(ns)["rows"]),
@@ -295,8 +444,8 @@ def command_smoke(args) -> dict:
 
 
 def _finite(value):
-    if isinstance(value, float):
-        return round(value, 6) if math.isfinite(value) else None
+    if isinstance(value, float):      # six significant digits: rounding to decimal places erased small differences
+        return float(f"{value:.6g}") if math.isfinite(value) else None
     if isinstance(value, dict):
         return {str(k): _finite(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
@@ -314,7 +463,7 @@ def _write(path: str, record: dict) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("command", choices=["scale", "dispatch", "controls", "cache", "smoke"])
+    parser.add_argument("command", choices=["scale", "dispatch", "controls", "cache", "causality", "smoke"])
     parser.add_argument("--out", default=None)
     parser.add_argument("--steps", type=int, default=400)
     parser.add_argument("--seeds", type=int, default=3)
@@ -324,7 +473,7 @@ def main(argv=None) -> int:
     args.smoke = args.command == "smoke"
     torch.set_num_threads(args.threads)
     result = {"scale": command_scale, "dispatch": command_dispatch, "controls": command_controls,
-              "cache": command_cache, "smoke": command_smoke}[args.command](args)
+              "cache": command_cache, "causality": command_causality, "smoke": command_smoke}[args.command](args)
     if args.out and args.command != "controls":
         _write(args.out, result)
     elif not args.out:
