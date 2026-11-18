@@ -1,0 +1,420 @@
+{
+ "configurations": {
+  "r6_1b": {
+   "bounded_forward": {
+    "build_seconds": 27.5,
+    "decode_seconds_per_token": 0.112,
+    "finite": true,
+    "note": "capacity 16,384 for the forward (the 1M ring is accounted above); untrained weights",
+    "peak_rss_bytes": 5339508736,
+    "prefill_128_seconds": 1.06,
+    "routed_blocks": 9,
+    "state_bytes": 43823108
+   },
+   "by_group": {
+    "attention": 10485760,
+    "dense_channels": 136848393,
+    "embeddings_and_head": 67108864,
+    "ersa": 76014000,
+    "evidence_path": 22056339,
+    "norms_other": 37888,
+    "routed_experts": 641876112,
+    "routers": 147456,
+    "shared_experts": 40117257
+   },
+   "context": {
+    "1048576": {
+     "coarse_scan_macs_per_query": 8388608,
+     "scratch_decode_projected_fp32": 55787776,
+     "scratch_prefill512_by_component": {
+      "chunk_activations": 50331648,
+      "coarse_tile": 33554432,
+      "encoded_blocks": 560629760,
+      "fine_and_readout": 296181760,
+      "logits": 262144,
+      "resident_keys": 33554432,
+      "total": 974514176
+     },
+     "scratch_prefill512_by_query_tile": {
+      "128": 974514176,
+      "16": 479713280,
+      "32": 974514176,
+      "64": 974514176
+     },
+     "scratch_prefill512_projected_fp32": 974514176,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 221184,
+      "ersa_cells": 9437184,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 16777216,
+      "token_history": 16388,
+      "total": 64462852
+     },
+     "state_exact_fp32_index": 81240068
+    },
+    "131072": {
+     "coarse_scan_macs_per_query": 1048576,
+     "scratch_decode_projected_fp32": 25510144,
+     "scratch_prefill512_by_component": {
+      "chunk_activations": 50331648,
+      "coarse_tile": 4194304,
+      "encoded_blocks": 560629760,
+      "fine_and_readout": 296181760,
+      "logits": 262144,
+      "resident_keys": 4194304,
+      "total": 915793920
+     },
+     "scratch_prefill512_by_query_tile": {
+      "128": 3041544192,
+      "16": 435673088,
+      "32": 915793920,
+      "64": 2190608384
+     },
+     "scratch_prefill512_projected_fp32": 915793920,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 221184,
+      "ersa_cells": 9437184,
+      "history_tokens": 524288,
+      "index_ids": 32768,
+      "index_keys": 2097152,
+      "token_history": 16388,
+      "total": 45883396
+     },
+     "state_exact_fp32_index": 47980548
+    },
+    "262144": {
+     "coarse_scan_macs_per_query": 2097152,
+     "scratch_decode_projected_fp32": 29835520,
+     "scratch_prefill512_by_component": {
+      "chunk_activations": 50331648,
+      "coarse_tile": 8388608,
+      "encoded_blocks": 560629760,
+      "fine_and_readout": 296181760,
+      "logits": 262144,
+      "resident_keys": 8388608,
+      "total": 924182528
+     },
+     "scratch_prefill512_by_query_tile": {
+      "128": 6019500032,
+      "16": 441964544,
+      "32": 924182528,
+      "64": 2203191296
+     },
+     "scratch_prefill512_projected_fp32": 924182528,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 221184,
+      "ersa_cells": 9437184,
+      "history_tokens": 1048576,
+      "index_ids": 65536,
+      "index_keys": 4194304,
+      "token_history": 16388,
+      "total": 48537604
+     },
+     "state_exact_fp32_index": 52731908
+    },
+    "32768": {
+     "coarse_scan_macs_per_query": 262144,
+     "scratch_decode_projected_fp32": 22266112,
+     "scratch_prefill512_by_component": {
+      "chunk_activations": 50331648,
+      "coarse_tile": 1048576,
+      "encoded_blocks": 282757120,
+      "fine_and_readout": 149381120,
+      "logits": 262144,
+      "resident_keys": 1048576,
+      "total": 484829184
+     },
+     "scratch_prefill512_by_query_tile": {
+      "128": 808077312,
+      "16": 430954496,
+      "32": 484829184,
+      "64": 592578560
+     },
+     "scratch_prefill512_projected_fp32": 484829184,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 221184,
+      "ersa_cells": 9437184,
+      "history_tokens": 131072,
+      "index_ids": 8192,
+      "index_keys": 524288,
+      "token_history": 16388,
+      "total": 43892740
+     },
+     "state_exact_fp32_index": 44417028
+    },
+    "8192": {
+     "coarse_scan_macs_per_query": 65536,
+     "scratch_decode_projected_fp32": 21455104,
+     "scratch_prefill512_by_component": {
+      "chunk_activations": 50331648,
+      "coarse_tile": 262144,
+      "encoded_blocks": 74352640,
+      "fine_and_readout": 39280640,
+      "logits": 262144,
+      "resident_keys": 262144,
+      "total": 164751360
+     },
+     "scratch_prefill512_by_query_tile": {
+      "128": 249710592,
+      "16": 150591488,
+      "32": 164751360,
+      "64": 193071104
+     },
+     "scratch_prefill512_projected_fp32": 164751360,
+     "state_exact_bf16_index": {
+      "attention_window": 33554432,
+      "conv_tail": 221184,
+      "ersa_cells": 9437184,
+      "history_tokens": 32768,
+      "index_ids": 2048,
+      "index_keys": 131072,
+      "token_history": 16388,
+      "total": 43395076
+     },
+     "state_exact_fp32_index": 43526148
+    }
+   },
+   "geometry": {
+    "d_model": 1024,
+    "experts": 16,
+    "layers": 18,
+    "shared": true,
+    "top_k": 2
+   },
+   "interface": "r5-evidence",
+   "macs_per_token_at_1M": {
+    "active_weights": 365941607,
+    "coarse_scan": 8388608,
+    "note": "per query of the evidence read; the core terms are per token",
+    "output_head": 67108864,
+    "reread_reencode": 7409500160
+   },
+   "parameters": {
+    "active_per_token": 433050471,
+    "resident": 994692069,
+    "total": 994692069
+   },
+   "weight_bytes": {
+    "bf16": 1989384138,
+    "fp32": 3978768276,
+    "note": "all experts resident: sparse activation saves compute, not weight memory"
+   }
+  },
+  "r6_500m": {
+   "bounded_forward": {
+    "build_seconds": 14.8,
+    "decode_seconds_per_token": 0.091,
+    "finite": true,
+    "note": "capacity 16,384 for the forward (the 1M ring is accounted above); untrained weights",
+    "peak_rss_bytes": 3085570048,
+    "prefill_128_seconds": 0.65,
+    "routed_blocks": 10,
+    "state_bytes": 50601988
+   },
+   "by_group": {
+    "attention": 7864320,
+    "dense_channels": 85524490,
+    "embeddings_and_head": 50331648,
+    "ersa": 47524200,
+    "evidence_path": 21433747,
+    "norms_other": 31488,
+    "routed_experts": 294912080,
+    "routers": 61440
+   },
+   "context": {
+    "1048576": {
+     "coarse_scan_macs_per_query": 8388608,
+     "scratch_decode_projected_fp32": 55763200,
+     "scratch_prefill512_by_component": {
+      "chunk_activations": 37748736,
+      "coarse_tile": 33554432,
+      "encoded_blocks": 560629760,
+      "fine_and_readout": 296181760,
+      "logits": 262144,
+      "resident_keys": 33554432,
+      "total": 961931264
+     },
+     "scratch_prefill512_by_query_tile": {
+      "128": 961931264,
+      "16": 467130368,
+      "32": 961931264,
+      "64": 961931264
+     },
+     "scratch_prefill512_projected_fp32": 961931264,
+     "state_exact_bf16_index": {
+      "attention_window": 41943040,
+      "conv_tail": 184320,
+      "ersa_cells": 7864320,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 16777216,
+      "token_history": 16388,
+      "total": 71241732
+     },
+     "state_exact_fp32_index": 88018948
+    },
+    "131072": {
+     "coarse_scan_macs_per_query": 1048576,
+     "scratch_decode_projected_fp32": 25485568,
+     "scratch_prefill512_by_component": {
+      "chunk_activations": 37748736,
+      "coarse_tile": 4194304,
+      "encoded_blocks": 560629760,
+      "fine_and_readout": 296181760,
+      "logits": 262144,
+      "resident_keys": 4194304,
+      "total": 903211008
+     },
+     "scratch_prefill512_by_query_tile": {
+      "128": 3028961280,
+      "16": 423090176,
+      "32": 903211008,
+      "64": 2178025472
+     },
+     "scratch_prefill512_projected_fp32": 903211008,
+     "state_exact_bf16_index": {
+      "attention_window": 41943040,
+      "conv_tail": 184320,
+      "ersa_cells": 7864320,
+      "history_tokens": 524288,
+      "index_ids": 32768,
+      "index_keys": 2097152,
+      "token_history": 16388,
+      "total": 52662276
+     },
+     "state_exact_fp32_index": 54759428
+    },
+    "262144": {
+     "coarse_scan_macs_per_query": 2097152,
+     "scratch_decode_projected_fp32": 29810944,
+     "scratch_prefill512_by_component": {
+      "chunk_activations": 37748736,
+      "coarse_tile": 8388608,
+      "encoded_blocks": 560629760,
+      "fine_and_readout": 296181760,
+      "logits": 262144,
+      "resident_keys": 8388608,
+      "total": 911599616
+     },
+     "scratch_prefill512_by_query_tile": {
+      "128": 6006917120,
+      "16": 429381632,
+      "32": 911599616,
+      "64": 2190608384
+     },
+     "scratch_prefill512_projected_fp32": 911599616,
+     "state_exact_bf16_index": {
+      "attention_window": 41943040,
+      "conv_tail": 184320,
+      "ersa_cells": 7864320,
+      "history_tokens": 1048576,
+      "index_ids": 65536,
+      "index_keys": 4194304,
+      "token_history": 16388,
+      "total": 55316484
+     },
+     "state_exact_fp32_index": 59510788
+    },
+    "32768": {
+     "coarse_scan_macs_per_query": 262144,
+     "scratch_decode_projected_fp32": 22241536,
+     "scratch_prefill512_by_component": {
+      "chunk_activations": 37748736,
+      "coarse_tile": 1048576,
+      "encoded_blocks": 282757120,
+      "fine_and_readout": 149381120,
+      "logits": 262144,
+      "resident_keys": 1048576,
+      "total": 472246272
+     },
+     "scratch_prefill512_by_query_tile": {
+      "128": 795494400,
+      "16": 418371584,
+      "32": 472246272,
+      "64": 579995648
+     },
+     "scratch_prefill512_projected_fp32": 472246272,
+     "state_exact_bf16_index": {
+      "attention_window": 41943040,
+      "conv_tail": 184320,
+      "ersa_cells": 7864320,
+      "history_tokens": 131072,
+      "index_ids": 8192,
+      "index_keys": 524288,
+      "token_history": 16388,
+      "total": 50671620
+     },
+     "state_exact_fp32_index": 51195908
+    },
+    "8192": {
+     "coarse_scan_macs_per_query": 65536,
+     "scratch_decode_projected_fp32": 21430528,
+     "scratch_prefill512_by_component": {
+      "chunk_activations": 37748736,
+      "coarse_tile": 262144,
+      "encoded_blocks": 74352640,
+      "fine_and_readout": 39280640,
+      "logits": 262144,
+      "resident_keys": 262144,
+      "total": 152168448
+     },
+     "scratch_prefill512_by_query_tile": {
+      "128": 237127680,
+      "16": 138008576,
+      "32": 152168448,
+      "64": 180488192
+     },
+     "scratch_prefill512_projected_fp32": 152168448,
+     "state_exact_bf16_index": {
+      "attention_window": 41943040,
+      "conv_tail": 184320,
+      "ersa_cells": 7864320,
+      "history_tokens": 32768,
+      "index_ids": 2048,
+      "index_keys": 131072,
+      "token_history": 16388,
+      "total": 50173956
+     },
+     "state_exact_fp32_index": 50305028
+    }
+   },
+   "geometry": {
+    "d_model": 768,
+    "experts": 8,
+    "layers": 20,
+    "shared": false,
+    "top_k": 2
+   },
+   "interface": "r5-evidence",
+   "macs_per_token_at_1M": {
+    "active_weights": 236167705,
+    "coarse_scan": 8388608,
+    "note": "per query of the evidence read; the core terms are per token",
+    "output_head": 50331648,
+    "reread_reencode": 7241728000
+   },
+   "parameters": {
+    "active_per_token": 286499353,
+    "resident": 507683413,
+    "total": 507683413
+   },
+   "weight_bytes": {
+    "bf16": 1015366826,
+    "fp32": 2030733652,
+    "note": "all experts resident: sparse activation saves compute, not weight memory"
+   }
+  }
+ },
+ "environment": {
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "phase": "ELPIS_TORCH_R6_EXPERTIZED_BACKBONE"
+}

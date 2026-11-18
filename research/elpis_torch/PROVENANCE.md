@@ -128,3 +128,19 @@ What R5 wrote (all original): `evidence_ring.py`, `evidence_model.py`, `evidence
 `DESIGN_R5.md`, `EVIDENCE_R5.md`. It reuses this repository's ERSA/CGC core unchanged (`ersa_model.ErsaLM`
 through its extension hooks), R3's channel module and R4's deterministic `exact_topk`.
 
+
+# R6 (expertized backbone): references and what was not copied
+
+No third-party code, weights or data were copied, imported, vendored or executed, and no dependency was added.
+The directive named three papers as motivation for sparse expert capacity, granularity, routing stability and
+the reuse of dense checkpoints: OLMoE (arXiv 2409.02060), Sparse Upcycling (arXiv 2212.05055) and DeepSeek-V3
+(arXiv 2412.19437). They were not consulted for code during R6; the routing (softmax top-K with renormalized
+weights), the load-balance loss (`E sum f_e P_e`), the router z-loss and the upcycling-by-cloning idea are
+standard techniques implemented here from their mathematical definitions, and the expert anatomy (each expert a
+SwiGLU plus its own CGC and gate) is Elpis's own. No architecture of those papers is reproduced.
+
+What R6 wrote (all original): `sparse_channel.py`, `lm_training.py`, `experiments/run_r6.py`, the R6 parts of
+`ersa_model.py`, `context_runtime.py`, `history_model.py`, `evidence_model.py` and `experiments/run_r5.py`,
+`tests/research/elpis_torch/test_r6.py`, and `docs/research/elpis_torch/EVIDENCE_R5.md`, `DESIGN_R6.md`,
+`EVIDENCE_R6.md`. The training fixture is this repository's own source code.
+

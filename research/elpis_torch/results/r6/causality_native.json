@@ -1,0 +1,149 @@
+{
+ "blas": {
+  "MKL_ENABLE_INSTRUCTIONS": null,
+  "cpu_capability": "AVX512",
+  "threads": 4
+ },
+ "cut": 301,
+ "environment": {
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "expert_row_counts": {
+  "changed": [
+   [
+    614,
+    582,
+    577,
+    627
+   ],
+   [
+    549,
+    554,
+    622,
+    675
+   ]
+  ],
+  "original": [
+   [
+    641,
+    599,
+    548,
+    612
+   ],
+   [
+    562,
+    554,
+    611,
+    673
+   ]
+  ]
+ },
+ "grouped_gemms_on_all_rows_logits": {
+  "bitwise_equal": true,
+  "differing_elements": 0,
+  "elements": 388892,
+  "max_abs": 0.0
+ },
+ "grouped_logits": {
+  "bitwise_equal": true,
+  "differing_elements": 0,
+  "elements": 388892,
+  "max_abs": 0.0
+ },
+ "grouped_vs_reference_whole_sequence_max_abs": 3.05311e-16,
+ "past_routes_identical": {
+  "block0": true,
+  "block1": true
+ },
+ "per_module": {
+  "block0.ersa": {
+   "bitwise_equal": true,
+   "differing_elements": 0,
+   "elements": 19264,
+   "max_abs": 0.0
+  },
+  "block0.routed_channel": {
+   "bitwise_equal": true,
+   "differing_elements": 0,
+   "elements": 19264,
+   "max_abs": 0.0
+  },
+  "block0.router_weights": {
+   "bitwise_equal": true,
+   "differing_elements": 0,
+   "elements": 1204,
+   "max_abs": 0.0
+  },
+  "block1.ersa": {
+   "bitwise_equal": true,
+   "differing_elements": 0,
+   "elements": 19264,
+   "max_abs": 0.0
+  },
+  "block1.routed_channel": {
+   "bitwise_equal": true,
+   "differing_elements": 0,
+   "elements": 19264,
+   "max_abs": 0.0
+  },
+  "block1.router_weights": {
+   "bitwise_equal": true,
+   "differing_elements": 0,
+   "elements": 1204,
+   "max_abs": 0.0
+  }
+ },
+ "phase": "ELPIS_TORCH_R6_EXPERTIZED_BACKBONE",
+ "planted_leak_max_abs": {
+  "grouped_scale_1e-06": 2.18465e-06,
+  "grouped_scale_1e-08": 2.18464e-08,
+  "grouped_scale_1e-10": 2.18464e-10,
+  "reference_scale_1e-06": 2.18465e-06,
+  "reference_scale_1e-08": 2.18464e-08,
+  "reference_scale_1e-10": 2.18464e-10
+ },
+ "r5_off_logits": {
+  "bitwise_equal": true,
+  "differing_elements": 0,
+  "elements": 388892,
+  "max_abs": 0.0
+ },
+ "reference_logits": {
+  "bitwise_equal": true,
+  "differing_elements": 0,
+  "elements": 388892,
+  "max_abs": 0.0
+ },
+ "row_count_dependence": {
+  "expert": {
+   "max_abs": 8.67362e-19,
+   "of": 301,
+   "row_counts_changing_earlier_rows": 13
+  },
+  "expert.cgc": {
+   "max_abs": 0.0,
+   "of": 301,
+   "row_counts_changing_earlier_rows": 0
+  },
+  "expert.cgc.proj_out": {
+   "max_abs": 0.0,
+   "of": 301,
+   "row_counts_changing_earlier_rows": 0
+  },
+  "expert.ffn": {
+   "max_abs": 2.1684e-19,
+   "of": 301,
+   "row_counts_changing_earlier_rows": 17
+  },
+  "note": "row counts M in [500, 800] for which rows [0, 500) differ from M = 700"
+ },
+ "test_contract_tolerance": 1e-12,
+ "token_serial_control": {
+  "max_abs_vs_changed_whole": 7.49515e-11,
+  "max_abs_vs_original_whole": 7.49515e-11,
+  "note": "positions < cut computed one token at a time, before any changed token exists"
+ }
+}

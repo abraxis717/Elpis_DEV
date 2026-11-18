@@ -441,8 +441,15 @@ jobs:
           /tmp/torch-venv/bin/python -m pip install "pytest>=8"
           /tmp/torch-venv/bin/python -m pip install -r research/elpis_torch/requirements.txt --index-url https://download.pytorch.org/whl/cpu
           /tmp/torch-venv/bin/python -c "import torch, platform; print('torch', torch.__version__, '| python', platform.python_version())"
-      - name: Elpis Torch tests (R0 substrate, R1 scrolling context, R2 ERSA, R3 long-context addressing, R4 context runtime)
+      - name: Elpis Torch tests (R0 substrate, R1 scrolling context, R2 ERSA, R3 long-context addressing, R4 context runtime, R5 evidence, R6 experts)
         run: timeout 1500 /tmp/torch-venv/bin/python -B -m pytest -p no:cacheprovider -rs --durations=10 tests/research/elpis_torch
+      # Runners differ in CPU, and PyTorch and MKL pick their kernels from it: the R6 exact-head CI met two different
+      # kernel paths on two runs (EVIDENCE_R6 section 10). Forcing the AVX2 paths covers them whatever the runner is.
+      - name: Elpis Torch tests on the AVX2 kernel paths, whatever the runner's CPU
+        env:
+          ATEN_CPU_CAPABILITY: avx2
+          MKL_ENABLE_INSTRUCTIONS: AVX2
+        run: timeout 1500 /tmp/torch-venv/bin/python -B -m pytest -p no:cacheprovider -rs tests/research/elpis_torch
       - name: Example and experiment smoke runs (nothing is kept)
         run: |
           timeout 600 /tmp/torch-venv/bin/python -B -m research.elpis_torch.examples.quickstart
@@ -451,3 +458,5 @@ jobs:
           timeout 900 /tmp/torch-venv/bin/python -B -m research.elpis_torch.experiments.run_r2 smoke --threads 2 > /dev/null
           timeout 900 /tmp/torch-venv/bin/python -B -m research.elpis_torch.experiments.run_r3 smoke --threads 2 > /dev/null
           timeout 900 /tmp/torch-venv/bin/python -B -m research.elpis_torch.experiments.run_r4 smoke --threads 2 > /dev/null
+          timeout 900 /tmp/torch-venv/bin/python -B -m research.elpis_torch.experiments.run_r5 smoke --threads 2 > /dev/null
+          timeout 900 /tmp/torch-venv/bin/python -B -m research.elpis_torch.experiments.run_r6 smoke --threads 2 > /dev/null

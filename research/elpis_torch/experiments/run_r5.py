@@ -353,23 +353,64 @@ def quick_val(model, length: int, *, smoke: bool = False) -> dict:
     return out
 
 
+CHECKPOINT_SCHEMA = "elpis-torch-r5-checkpoint/2"     # /1: the R5 runs (record without the fields below)
+
+
+def reproducibility_record(model: EvidenceLM) -> dict:
+    """What a reader needs to rebuild and check a checkpoint: configurations and their digests, the vocabulary
+    layout, and the identity of the task generators' source code."""
+    import dataclasses
+    import hashlib
+    import inspect
+    from .. import longrange_tasks
+    digest = lambda value: hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()   # noqa: E731
+    ersa = {k: v for k, v in dataclasses.asdict(model.ersa).items() if k != "model"}
+    evidence = dataclasses.asdict(model.evidence)
+    layout = {name: getattr(et, name) for name in ("NOT", "USE", "DEF", "GET", "CALL", "ASK", "SCOPE0", "SYM0", "VOCAB")}
+    layout.update({name: getattr(longrange_tasks, name) for name in ("BOS", "FILLER0", "KEY0", "VAL0", "ASK0",
+                                                                     "ASSOC0", "ALIAS0", "LINK0", "HOP0", "VOCAB")})
+    source = inspect.getsource(et) + inspect.getsource(longrange_tasks)
+    return {"schema": CHECKPOINT_SCHEMA, "model_config": model.config.to_dict(),
+            "model_config_digest": model.config.digest(), "ersa_config": ersa, "ersa_config_digest": digest(ersa),
+            "evidence_config": evidence, "evidence_config_digest": digest(evidence),
+            "vocabulary": {"name": "elpis-torch-r5-synthetic", "size": et.VOCAB, "layout": layout,
+                           "digest": digest(layout)},
+            "generator_source_sha256": hashlib.sha256(source.encode()).hexdigest()}
+
+
 def _save(model, args, history, status, started, resume=None) -> dict:
     """EXPLICIT OFFLINE ARTIFACT: the checkpoint requested with --out (with the resumable training state)."""
     record = {"phase": PHASE, "seed": args.seed, "steps": args.steps, "status": status, "history": history,
               "train_seconds": round(time.perf_counter() - started, 1), "optim": OPTIM, "curriculum": CURRICULUM,
-              "evidence": {**_overrides(args), "supersession": model.evidence.supersession}, "parameters": sum(p.numel() for p in model.parameters()),
+              "evidence": {**_overrides(args), "supersession": model.evidence.supersession},
+              "reproducibility": reproducibility_record(model), "parameters": sum(p.numel() for p in model.parameters()),
               "parameter_digest": parameter_digest(model)}
     torch.save({"record": record, "state_dict": {k: v.detach() for k, v in model.state_dict().items()},
                 "resume": resume}, args.out)
     return record
 
 
-def load(path: str, *, chunk: int = 4096, **changes):
+def load(path: str, *, chunk: int = 4096, allow_slot_extension: bool = False, **changes):
+    """A checkpoint for evaluation. ``changes`` are EVALUATION-ONLY overrides (``EVALUATION_OVERRIDES``); a
+    different number of injected evidence blocks additionally needs ``allow_slot_extension=True`` (rule:
+    ``evidence_model.evaluation_state_dict``). The loaded model records ``trained_evidence`` and
+    ``evaluation_override``; the parameter digest of the stored weights is verified."""
+    from ..evidence_model import evaluation_state_dict
     saved = torch.load(path, map_location="cpu", weights_only=True)
     record = saved["record"]
     evidence = {"supersession": "sum", **record.get("evidence", {})}     # records before the option: "sum"
+    trained = build(record["seed"], chunk=chunk, **evidence).evidence
+    target = trained.replace(**changes)
+    if target.evidence != trained.evidence and not allow_slot_extension:
+        raise ValueError("a different number of evidence slots than trained needs allow_slot_extension=True")
     model = build(record["seed"], chunk=chunk, **{**evidence, **changes})
-    model.load_state_dict(saved["state_dict"], strict=True)
+    reference = build(record["seed"], chunk=chunk, **evidence)
+    reference.load_state_dict(saved["state_dict"], strict=True)
+    if record.get("parameter_digest") and parameter_digest(reference) != record["parameter_digest"]:
+        raise ValueError("the stored weights do not match the checkpoint record's parameter digest")
+    model.load_state_dict(evaluation_state_dict(saved["state_dict"], trained, target), strict=True)
+    model.trained_evidence = trained
+    model.evaluation_override = {k: v for k, v in changes.items() if getattr(trained, k) != v}
     model.eval()
     for parameter in model.parameters():
         parameter.requires_grad_(False)
@@ -532,9 +573,10 @@ def summarize(run: dict) -> dict:
 
 
 def command_eval(args) -> dict:
-    model, record = load(args.ckpt, chunk=args.chunk, **_eval_overrides(args))
+    model, record = load(args.ckpt, chunk=args.chunk, allow_slot_extension=bool(getattr(args, "evidence", None)),
+                         **_eval_overrides(args))
     out = {"phase": PHASE, "checkpoint": {k: v for k, v in record.items() if k != "history"}, "rows": [],
-           "evaluated_with": _eval_overrides(args)}
+           "evaluated_with": model.evaluation_override}
     lengths = (512, 1024) if args.smoke else [x for x in LADDER if x <= args.max_length]
     if getattr(args, "lengths", None):
         lengths = [int(x) for x in args.lengths.split(",")]
@@ -559,12 +601,16 @@ def command_eval(args) -> dict:
 
 def _eval_overrides(args) -> dict:
     """Evaluation-time configuration changes (recorded with the results)."""
-    return {"supersession": args.supersession} if getattr(args, "supersession", None) else {}
+    out = {"supersession": args.supersession} if getattr(args, "supersession", None) else {}
+    if getattr(args, "evidence", None):
+        out["evidence"] = args.evidence
+    return out
 
 
 def command_ablate(args) -> dict:
     """Evaluation-time controls at one length on the given sets."""
-    model, record = load(args.ckpt, chunk=args.chunk, **_eval_overrides(args))
+    model, record = load(args.ckpt, chunk=args.chunk, allow_slot_extension=bool(getattr(args, "evidence", None)),
+                         **_eval_overrides(args))
     length = args.length
     sets = args.sets.split(",") if args.sets else ("records", "revision", "scoped")
     variants = [("learned", {}), ("oracle_source", {"mode": "oracle"}), ("coarse_only", {"rerank": "coarse"}),
@@ -584,13 +630,14 @@ def command_ablate(args) -> dict:
             options = dict(options)
             if options.pop("untrained", False):
                 use, _ = load(args.ckpt, chunk=args.chunk, coarse_top=options.get("coarse_top", 64),
-                              **_eval_overrides(args))
+                              allow_slot_extension=bool(getattr(args, "evidence", None)), **_eval_overrides(args))
                 fresh = build(record["seed"] + 1000, chunk=args.chunk, **record.get("evidence", {}))
                 with torch.no_grad():
                     for part in ("pool", "descriptor", "coarse_q"):
                         getattr(use.lookup, part).weight.copy_(getattr(fresh.lookup, part).weight)
             if "coarse_top" in options and options["coarse_top"] > 64:
-                use, _ = load(args.ckpt, chunk=args.chunk, coarse_top=options["coarse_top"], **_eval_overrides(args))
+                use, _ = load(args.ckpt, chunk=args.chunk, coarse_top=options["coarse_top"],
+                              allow_slot_extension=bool(getattr(args, "evidence", None)), **_eval_overrides(args))
             run = evaluate(use, data, chunk=min(args.chunk, length), **options)
             row = {"set": name, "variant": label, "summary": summarize(run), "system": run["system"]}
             out["rows"].append(row)
