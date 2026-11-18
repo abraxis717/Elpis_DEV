@@ -446,65 +446,89 @@ def _percentiles(samples: list) -> dict:
             "mean_ms": round(1000 * statistics.fmean(ordered), 3), "samples": len(ordered)}
 
 
+LATENCY_MODES = ("off", "resident", "file")
+
+
+def _timed(fn, *args) -> float:
+    started = time.perf_counter()
+    fn(*args)
+    return time.perf_counter() - started
+
+
 @torch.no_grad()
 def command_latency(args) -> dict:
+    """Paired, interleaved timing. For R5 off and on, ONE model serves three identical streams (PLE off; resident
+    rows; file-backed rows), fed the same fixed tokens mode after mode in a rotating order, so drift and noise
+    touch all three alike; per-step differences against PLE off are reported beside each mode's own percentiles.
+    Then the PLE's parts alone: addressing, row gather, fusion."""
     steps, prefills = (8, 2) if args.smoke else (args.decode_steps, args.prefill_runs)
     generator = torch.Generator().manual_seed(0)
     warm = torch.randint(0, 256, (1, 1024), generator=generator)
-    chunk = torch.randint(0, 256, (1, 512), generator=generator)
-    out = {"phase": PHASE, "threads": torch.get_num_threads(), "model": "d 256, 4 blocks, 8 experts top-2 in blocks "
-           "1 and 3, UNTRAINED (timing only)", "rows": []}
+    chunks = torch.randint(0, 256, (prefills, 1, 512), generator=generator)
+    feed = torch.randint(0, 256, (steps, 1, 1), generator=generator)              # the same tokens for every mode
+    out = {"phase": PHASE, "threads": torch.get_num_threads(), "decode_steps": steps, "prefill_runs": prefills,
+           "model": "d 256, 4 blocks, 8 experts top-2 in blocks 1 and 3, PLE 2 orders x 4 heads x 32771 rows x 32 "
+                    "(before block 1), UNTRAINED (timing only)", "rows": []}
     folder = tempfile.mkdtemp(prefix="elpis-r7-store-")
     path = os.path.join(folder, "table.ple")
     try:
         for evidence in (False, True):
-            base = latency_model(True, evidence)
-            export_store(base.ple.table.weight, path, addressing_digest=base.ple.addresser.digest())
-            for mode in ("off", "resident", "file"):
-                model = base
+            model = latency_model(True, evidence)
+            export_store(model.ple.table.weight, path, addressing_digest=model.ple.addresser.digest())
+            store = FileStore(path)
+            states = {mode: model.new_state(1) for mode in LATENCY_MODES}
+
+            def run(mode, tokens):
                 model.ple.enabled = mode != "off"
-                store = FileStore(path) if mode == "file" else None
-                model.ple.attach_store(store)
-                state = model.new_state(1)
-                for at in range(0, warm.shape[1], 512):
-                    model(warm[:, at:at + 512], state)
-                prefill = []
-                for _ in range(prefills):
-                    started = time.perf_counter()
-                    logits = model(chunk, state)
-                    prefill.append(time.perf_counter() - started)
-                token = logits[:, -1].argmax(-1, keepdim=True)
-                decode, addressing = [], []
-                for _ in range(steps):
-                    if model.ple.enabled:
-                        a0 = time.perf_counter()
-                        model.ple.addresser.addresses(token, state.ple_history)
-                        addressing.append(time.perf_counter() - a0)
-                    started = time.perf_counter()
-                    logits = model(token, state)
-                    decode.append(time.perf_counter() - started)
-                    token = logits[:, -1].argmax(-1, keepdim=True)
-                row = {"r5": evidence, "ple": mode, "prefill_512": _percentiles(prefill),
-                       "decode_per_token": _percentiles(decode),
+                model.ple.attach_store(store if mode == "file" else None)
+                return _timed(model, tokens, states[mode])
+
+            for at in range(0, warm.shape[1], 512):
+                for mode in LATENCY_MODES:
+                    run(mode, warm[:, at:at + 512])
+            prefill = {mode: [] for mode in LATENCY_MODES}
+            decode = {mode: [] for mode in LATENCY_MODES}
+            for i in range(prefills):
+                for k in range(3):
+                    mode = LATENCY_MODES[(i + k) % 3]
+                    prefill[mode].append(run(mode, chunks[i]))
+            store.reset_counters()
+            for i in range(steps):
+                for k in range(3):
+                    mode = LATENCY_MODES[(i + k) % 3]
+                    decode[mode].append(run(mode, feed[i]))
+            counters = dict(store.counters)
+            model.ple.attach_store(None)
+            store.close()
+            for mode in LATENCY_MODES:
+                row = {"r5": evidence, "ple": mode, "prefill_512": _percentiles(prefill[mode]),
+                       "decode_per_token": _percentiles(decode[mode]),
                        "rows_read_per_token": model.ple.config.lookups if mode != "off" else 0,
                        "logical_bytes_read_per_token": model.ple.lookup_bytes_per_token() if mode != "off" else 0}
-                if addressing:
-                    row["addressing_per_token"] = _percentiles(addressing)
-                if store is not None:
-                    row["store_counters"] = dict(store.counters)
-                    model.ple.attach_store(None)
-                    store.close()
+                if mode != "off":
+                    row["decode_minus_off"] = _percentiles([a - b for a, b in zip(decode[mode], decode["off"])])
+                    row["prefill_minus_off"] = _percentiles([a - b for a, b in zip(prefill[mode], prefill["off"])])
+                if mode == "file":
+                    row["store_counters_during_decode"] = counters
                 out["rows"].append(row)
-                print(f"[r7 latency] r5={evidence} ple={mode}: decode p50 {row['decode_per_token']['p50_ms']} ms, "
-                      f"prefill p50 {row['prefill_512']['p50_ms']} ms", flush=True)
+                print(f"[r7 latency] r5={evidence} ple={mode}: decode p50 {row['decode_per_token']['p50_ms']} ms"
+                      + (f" (paired difference p50 {row['decode_minus_off']['p50_ms']} ms)" if mode != "off" else "")
+                      + f", prefill p50 {row['prefill_512']['p50_ms']} ms", flush=True)
         model = latency_model(True, False)
-        addresses = model.ple.addresser.addresses(chunk, model.ple.addresser.new_history(1))
-        gather = []
-        for _ in range(20 if not args.smoke else 2):
-            started = time.perf_counter()
-            model.ple.table(addresses)
-            gather.append(time.perf_counter() - started)
-        out["resident_gather_512_tokens"] = _percentiles(gather)
+        repeats = 2 if args.smoke else 200
+        parts = {}
+        for length in (1, 512):
+            tokens = chunks[0][:, :length]
+            history = model.ple.addresser.new_history(1)
+            addresses = model.ple.addresser.addresses(tokens, history)
+            x = torch.randn(1, length, model.config.d_model, generator=generator)
+            parts[f"addressing_{length}_tokens"] = _percentiles(
+                [_timed(model.ple.addresser.addresses, tokens, history) for _ in range(repeats)])
+            parts[f"row_gather_{length}_tokens"] = _percentiles([_timed(model.ple.table, addresses)
+                                                                for _ in range(repeats)])
+            parts[f"fusion_with_gather_{length}_tokens"] = _percentiles([_timed(model.ple, x, addresses)
+                                                                        for _ in range(repeats)])
+        out["ple_parts_resident"] = parts
         out["cold_device_reads"] = "NOT_RUN: the store is read back from the page cache in this container"
     finally:
         for name in os.listdir(folder):

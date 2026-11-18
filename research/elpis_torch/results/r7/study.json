@@ -1,0 +1,410 @@
+{
+ "corpus": {
+  "digest": "ab516f5f3db9f2314636110a81478ae96aea161fc01044852ab10467ce1c86d7",
+  "revision": "c05adffafbd5d8a94ee40c285031d1cd219f1c4c",
+  "source": "src/ and research/elpis_torch/ (*.py, without upstream/) and docs/ (*.md) of this repository; held out: SHA-256(path) % 10 == 0",
+  "train": {
+   "bytes": 2915823,
+   "documents": 275
+  },
+  "val_code": {
+   "bytes": 151683,
+   "documents": 15
+  },
+  "val_prose": {
+   "bytes": 70745,
+   "documents": 5
+  }
+ },
+ "environment": {
+  "cpu_capability": "AVX512",
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "matched_experts": 97,
+ "phase": "ELPIS_TORCH_R7_PLE_ADMISSION",
+ "ple": {
+  "addressing": "hash",
+  "boundary": 256,
+  "head_dim": 8,
+  "heads": 4,
+  "layer": 1,
+  "lr_multiplier": 5.0,
+  "orders": [
+   2,
+   3
+  ],
+  "rows": 65536,
+  "seed": 0
+ },
+ "processes": [
+  {
+   "cpu_capability": "AVX512",
+   "cuda_available": false,
+   "python": "3.13.18",
+   "threads": 2,
+   "torch": "2.15.0+cpu"
+  },
+  {
+   "cpu_capability": "AVX512",
+   "cuda_available": false,
+   "python": "3.13.18",
+   "threads": 2,
+   "torch": "2.15.0+cpu"
+  }
+ ],
+ "rows": [
+  {
+   "parameters": {
+    "active_per_token": 147484,
+    "resident": 431656,
+    "total": 431656
+   },
+   "seed": 0,
+   "train": {
+    "seconds": 421.4,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.85388,
+   "val_prose_bits_per_byte": 2.30454,
+   "variant": "r6"
+  },
+  {
+   "parameters": {
+    "active_per_token": 147484,
+    "resident": 431656,
+    "total": 431656
+   },
+   "seed": 1,
+   "train": {
+    "seconds": 174.8,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.81759,
+   "val_prose_bits_per_byte": 2.27401,
+   "variant": "r6"
+  },
+  {
+   "parameters": {
+    "active_per_token": 147484,
+    "resident": 431656,
+    "total": 431656
+   },
+   "seed": 2,
+   "train": {
+    "seconds": 176.9,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.80865,
+   "val_prose_bits_per_byte": 2.27437,
+   "variant": "r6"
+  },
+  {
+   "gates_val_code": {
+    "above_0.95": 0.0556844,
+    "below_0.05": 0.0139567,
+    "mean": 0.67354,
+    "p05": 0.125251,
+    "p50": 0.774908,
+    "p95": 0.952017,
+    "positions": 98304,
+    "std": 0.26377
+   },
+   "gradient_norms": {
+    "embeddings": 0.264594,
+    "ersa": 0.398331,
+    "other": 0.0728876,
+    "ple.key": 0.0452522,
+    "ple.key_norm": 0.00382168,
+    "ple.query_norm": 0.00382168,
+    "ple.table": 0.0217936,
+    "ple.table_rows_with_gradient": 6354,
+    "ple.value": 0.214264,
+    "routed_experts": 0.234892
+   },
+   "parameters": {
+    "active_per_token": 155868,
+    "resident": 4635576,
+    "total": 4635576
+   },
+   "rows_used_in_training": 0.288182,
+   "rows_used_val_code": 0.0801697,
+   "seed": 0,
+   "train": {
+    "seconds": 203.5,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.71834,
+   "val_code_bits_per_byte_ple_removed": 4.48203,
+   "val_prose_bits_per_byte": 2.19864,
+   "val_prose_bits_per_byte_ple_removed": 4.26004,
+   "variant": "ple"
+  },
+  {
+   "gates_val_code": {
+    "above_0.95": 0.0971069,
+    "below_0.05": 0.00902303,
+    "mean": 0.690182,
+    "p05": 0.125883,
+    "p50": 0.801361,
+    "p95": 0.964181,
+    "positions": 98304,
+    "std": 0.266531
+   },
+   "gradient_norms": {
+    "embeddings": 0.259754,
+    "ersa": 0.393832,
+    "other": 0.0689842,
+    "ple.key": 0.0562977,
+    "ple.key_norm": 0.00547862,
+    "ple.query_norm": 0.00547862,
+    "ple.table": 0.0228064,
+    "ple.table_rows_with_gradient": 6354,
+    "ple.value": 0.229565,
+    "routed_experts": 0.229624
+   },
+   "parameters": {
+    "active_per_token": 155868,
+    "resident": 4635576,
+    "total": 4635576
+   },
+   "rows_used_in_training": 0.288191,
+   "rows_used_val_code": 0.0801697,
+   "seed": 1,
+   "train": {
+    "seconds": 196.6,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.73956,
+   "val_code_bits_per_byte_ple_removed": 4.51376,
+   "val_prose_bits_per_byte": 2.19643,
+   "val_prose_bits_per_byte_ple_removed": 4.22842,
+   "variant": "ple"
+  },
+  {
+   "gates_val_code": {
+    "above_0.95": 0.0369771,
+    "below_0.05": 0.00881958,
+    "mean": 0.652476,
+    "p05": 0.135972,
+    "p50": 0.71277,
+    "p95": 0.944377,
+    "positions": 98304,
+    "std": 0.251076
+   },
+   "gradient_norms": {
+    "embeddings": 0.281476,
+    "ersa": 0.416128,
+    "other": 0.0675591,
+    "ple.key": 0.0678608,
+    "ple.key_norm": 0.00863051,
+    "ple.query_norm": 0.00863051,
+    "ple.table": 0.0222691,
+    "ple.table_rows_with_gradient": 6354,
+    "ple.value": 0.221478,
+    "routed_experts": 0.250645
+   },
+   "parameters": {
+    "active_per_token": 155868,
+    "resident": 4635576,
+    "total": 4635576
+   },
+   "rows_used_in_training": 0.288174,
+   "rows_used_val_code": 0.0801697,
+   "seed": 2,
+   "train": {
+    "seconds": 194.3,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.73904,
+   "val_code_bits_per_byte_ple_removed": 4.38369,
+   "val_prose_bits_per_byte": 2.21491,
+   "val_prose_bits_per_byte_ple_removed": 4.3443,
+   "variant": "ple"
+  },
+  {
+   "gates_val_code": {
+    "above_0.95": 0.0,
+    "below_0.05": 0.0,
+    "mean": 0.498798,
+    "p05": 0.314655,
+    "p50": 0.498547,
+    "p95": 0.682392,
+    "positions": 98304,
+    "std": 0.111697
+   },
+   "gradient_norms": {
+    "embeddings": 0.422113,
+    "ersa": 0.698428,
+    "other": 0.123809,
+    "ple.key": 0.00368444,
+    "ple.key_norm": 0.000447067,
+    "ple.query_norm": 0.000447067,
+    "ple.table": 0.00113059,
+    "ple.table_rows_with_gradient": 16144,
+    "ple.value": 0.124722,
+    "routed_experts": 0.338177
+   },
+   "parameters": {
+    "active_per_token": 155868,
+    "resident": 4635576,
+    "total": 4635576
+   },
+   "rows_used_in_training": 1.0,
+   "rows_used_val_code": 0.776309,
+   "seed": 0,
+   "train": {
+    "seconds": 195.6,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.83938,
+   "val_code_bits_per_byte_ple_removed": 1.83765,
+   "val_prose_bits_per_byte": 2.30703,
+   "val_prose_bits_per_byte_ple_removed": 2.30502,
+   "variant": "ple_random"
+  },
+  {
+   "gates_val_code": {
+    "above_0.95": 0.0,
+    "below_0.05": 0.0,
+    "mean": 0.499323,
+    "p05": 0.299111,
+    "p50": 0.498792,
+    "p95": 0.700725,
+    "positions": 98304,
+    "std": 0.121941
+   },
+   "gradient_norms": {
+    "embeddings": 0.475934,
+    "ersa": 0.753794,
+    "other": 0.123748,
+    "ple.key": 0.00280117,
+    "ple.key_norm": 0.000374151,
+    "ple.query_norm": 0.000374151,
+    "ple.table": 0.00106356,
+    "ple.table_rows_with_gradient": 16146,
+    "ple.value": 0.110041,
+    "routed_experts": 0.333517
+   },
+   "parameters": {
+    "active_per_token": 155868,
+    "resident": 4635576,
+    "total": 4635576
+   },
+   "rows_used_in_training": 1.0,
+   "rows_used_val_code": 0.7764,
+   "seed": 1,
+   "train": {
+    "seconds": 192.4,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.8797,
+   "val_code_bits_per_byte_ple_removed": 1.87775,
+   "val_prose_bits_per_byte": 2.34441,
+   "val_prose_bits_per_byte_ple_removed": 2.34268,
+   "variant": "ple_random"
+  },
+  {
+   "gates_val_code": {
+    "above_0.95": 0.0,
+    "below_0.05": 0.0,
+    "mean": 0.498778,
+    "p05": 0.316627,
+    "p50": 0.498755,
+    "p95": 0.681098,
+    "positions": 98304,
+    "std": 0.110685
+   },
+   "gradient_norms": {
+    "embeddings": 0.407367,
+    "ersa": 0.679557,
+    "other": 0.103189,
+    "ple.key": 0.0026918,
+    "ple.key_norm": 0.000310255,
+    "ple.query_norm": 0.000310255,
+    "ple.table": 0.00106412,
+    "ple.table_rows_with_gradient": 16122,
+    "ple.value": 0.116859,
+    "routed_experts": 0.345594
+   },
+   "parameters": {
+    "active_per_token": 155868,
+    "resident": 4635576,
+    "total": 4635576
+   },
+   "rows_used_in_training": 1.0,
+   "rows_used_val_code": 0.77742,
+   "seed": 2,
+   "train": {
+    "seconds": 194.5,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.83118,
+   "val_code_bits_per_byte_ple_removed": 1.82945,
+   "val_prose_bits_per_byte": 2.30602,
+   "val_prose_bits_per_byte_ple_removed": 2.30394,
+   "variant": "ple_random"
+  },
+  {
+   "parameters": {
+    "active_per_token": 158876,
+    "resident": 4658266,
+    "total": 4658266
+   },
+   "seed": 0,
+   "train": {
+    "seconds": 541.6,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.77442,
+   "val_prose_bits_per_byte": 2.24408,
+   "variant": "more_experts"
+  },
+  {
+   "parameters": {
+    "active_per_token": 158876,
+    "resident": 4658266,
+    "total": 4658266
+   },
+   "seed": 1,
+   "train": {
+    "seconds": 314.1,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.77791,
+   "val_prose_bits_per_byte": 2.22997,
+   "variant": "more_experts"
+  },
+  {
+   "parameters": {
+    "active_per_token": 158876,
+    "resident": 4658266,
+    "total": 4658266
+   },
+   "seed": 2,
+   "train": {
+    "seconds": 322.7,
+    "status": "COMPLETED",
+    "steps": 1432
+   },
+   "val_code_bits_per_byte": 1.78854,
+   "val_prose_bits_per_byte": 2.23451,
+   "variant": "more_experts"
+  }
+ ],
+ "steps": 1500,
+ "tokens_per_step": 2048
+}
