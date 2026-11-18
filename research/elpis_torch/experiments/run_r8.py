@@ -17,6 +17,10 @@ Records go only where --out says.
                 into validation, token reads, re-encoding and the rest (measurement only).
     represent   P1. The query-independent tensors of the read path: shapes, bytes per block and per stream, when
                 they exist, and the 1M context budget of the R6 scale configurations (formulas; nothing allocated)
+    admission   P4. The R5 reference read (``fine_keys="reread"``) against R8's stored fine keys (``"stored"``),
+                each without and with the R6 cache, from the same snapshots: decode (natural, replay, novel),
+                prefill (every position, last position), stage times, counters, bytes, and the logit gap between
+                the two paths at every measured step. A warm-up pass precedes the first measurement.
     smoke       every command once, tiny
 
 Wall-clock numbers are PERFORMANCE_ONLY: one shared CPU, untrained weights (the candidate sets of an untrained
@@ -57,28 +61,35 @@ COLD_STEPS = 8                          # decode steps reported as "cold" (the c
 
 # -- models and state -------------------------------------------------------------------------------------------
 
-def timing_model(geometry: str, *, capacity: int = 1 << 20) -> EvidenceLM:
+def timing_model(geometry: str, *, capacity: int = 1 << 20, fine_keys: str = "reread") -> EvidenceLM:
     """The R7 latency core (d 256, 4 blocks, 8 experts top-2 in blocks 1 and 3, a PLE before block 1) with an R5
-    head of ``geometry``. UNTRAINED, frozen, float32. ``model.ple.enabled`` switches the PLE (exactly)."""
+    head of ``geometry``. UNTRAINED, frozen, float32. ``model.ple.enabled`` switches the PLE (exactly). The weights
+    are seeded by name: models built with other ``fine_keys`` are identical."""
     from .run_r7 import latency_model
     ersa = latency_model(True, False).ersa
-    model = EvidenceLM(ersa, EvidenceConfig(capacity=capacity, **GEOMETRIES[geometry])).eval()
+    model = EvidenceLM(ersa, EvidenceConfig(capacity=capacity, fine_keys=fine_keys, **GEOMETRIES[geometry])).eval()
     for p in model.parameters():
         p.requires_grad_(False)
     return model
 
 
-def clone_state(state):
+def clone_state(state, *, tier: bool = True):
     """An independent copy of an ``EvidenceState`` (measurement only): tensors copied, a new ring identity, no
-    cache, no timing. The cache is volatile and never copied (it refuses serialization)."""
-    cache, timing = state.cache, state.timing
+    cache, no timing. The cache is volatile and never copied (it refuses serialization). ``tier=False`` drops an R8
+    fine-key tier: the copy is then exactly an R5 state (nothing is maintained that the reference does not need)."""
+    cache, timing, fine = state.cache, state.timing, state.ring.fine
     state.cache = state.timing = None
+    if not tier:
+        state.ring.fine = None
     try:
         twin = copy.deepcopy(state)
     finally:
-        state.cache, state.timing = cache, timing
+        state.cache, state.timing, state.ring.fine = cache, timing, fine
     twin.ring.session = next(evidence_ring._SESSIONS)
     twin.counters = {}
+    if not tier:
+        twin.ring.stats.pop("fine_reads", None)
+        twin.fine_revision, twin.fine_stale = None, False
     return twin
 
 
@@ -119,8 +130,15 @@ class StageProbe:
                 self.in_reread = False
 
         model._encode, model._reread_encoded = timed_encode, timed_reread
-        topk = evidence_model.exact_topk                        # a module global of evidence_model: wrapped there
-        evidence_model.exact_topk = lambda scores, ids, k: self._timed("topk", topk, scores, ids, k)
+        if not _TOPK:                                           # a module global of evidence_model: wrapped once
+            topk = evidence_model.exact_topk
+            _TOPK.append(topk)
+            evidence_model.exact_topk = lambda scores, ids, k: (
+                _ACTIVE[0]._timed("topk", topk, scores, ids, k) if _ACTIVE[0] is not None else topk(scores, ids, k))
+        _ACTIVE[0] = self
+
+    def activate(self) -> None:
+        _ACTIVE[0] = self
 
     def attach(self, ring) -> None:
         check, reread = ring._check, ring.reread
@@ -145,6 +163,8 @@ class StageProbe:
         return out, asked
 
 
+_TOPK: list = []
+_ACTIVE: list = [None]
 LAPS = ("coarse_scan", "exact_reread", "rerank", "readout")
 SUBSTAGES = ("validate", "token_reads", "reencode", "reread_rest", "chunk_encode", "topk")
 
@@ -152,10 +172,12 @@ SUBSTAGES = ("validate", "token_reads", "reencode", "reread_rest", "chunk_encode
 class Run:
     """One configuration on its own clone of a snapshot."""
 
-    def __init__(self, model, probe, snapshot, name: str, *, cache_blocks: int = 0, cache=None):
+    def __init__(self, model, probe, snapshot, name: str, *, cache_blocks: int = 0, cache=None, tier: bool = True,
+                 keep_logits: bool = False):
         self.model, self.probe, self.name = model, probe, name
         self.mode = "off" if name == "off" else "learned"
-        self.state = clone_state(snapshot)
+        self.state = clone_state(snapshot, tier=tier)
+        self.keep_logits, self.logits = keep_logits, []
         if cache is not None:
             self.state.cache = cache
         elif cache_blocks:
@@ -166,8 +188,8 @@ class Run:
         self.records: list = []
         self.previous: set | None = None
 
-    def call(self, tokens: torch.Tensor, positions: torch.Tensor) -> None:
-        self.model(tokens, self.state, logit_positions=positions, mode=self.mode)
+    def call(self, tokens: torch.Tensor, positions: torch.Tensor):
+        return self.model(tokens, self.state, logit_positions=positions, mode=self.mode)
 
     def forward(self, tokens: torch.Tensor, positions: torch.Tensor) -> dict:
         state, e = self.state, self.model.evidence
@@ -176,10 +198,13 @@ class Run:
         counters0, ring0 = dict(state.counters), dict(state.ring.stats)
         cache0 = dict(cache.stats) if cache is not None else {}
         cached0 = set(cache.entries) if cache is not None else set()
+        self.probe.activate()
         self.probe.take()
         started = time.perf_counter()
-        self.call(tokens, positions)
+        logits = self.call(tokens, positions)
         seconds = time.perf_counter() - started
+        if self.keep_logits:
+            self.logits.append(logits)
         sub, asked = self.probe.take()
         row = {"seconds": seconds}
         for name in LAPS:
@@ -191,6 +216,7 @@ class Run:
         row["queries"] = delta(state.counters, counters0, "queries")
         row["coarse_records"] = delta(state.counters, counters0, "coarse_records_scored")
         row["token_rereads"] = delta(state.ring.stats, ring0, "rereads")
+        row["fine_tier_reads"] = delta(state.counters, counters0, "fine_tier_reads")
         if cache is not None:
             for key in ("hits", "misses", "evictions", "purged", "inserts"):
                 row[f"cache_{key}"] = delta(cache.stats, cache0, key)
@@ -213,6 +239,8 @@ class Run:
         row["token_bytes"] = row["token_rereads"] * e.span * state.ring.tokens.element_size() * state.batch
         row["descriptor_bytes"] = row["coarse_records"] * e.per_block * e.key_dim * state.ring.keys.element_size()
         row["cache_bytes_served"] = row.get("cache_hits", 0) * entry_bytes(self.model, state.batch)
+        row["fine_key_bytes"] = row["fine_tier_reads"] * e.block * e.fine_dim * \
+            (state.ring.fine.element_size() if state.ring.fine is not None else 0) * state.batch
         self.records.append(row)
         return row
 
@@ -227,10 +255,10 @@ class SessionRun(Run):
         self.session = ContextSession(model, batch=1, cache_bytes=cache_blocks * entry_bytes(model))
         self.session.state = self.state
 
-    def call(self, tokens: torch.Tensor, positions: torch.Tensor) -> None:
+    def call(self, tokens: torch.Tensor, positions: torch.Tensor):
         if tokens.shape[1] != 1 or positions.tolist() != [0]:
             raise ValueError("the session run measures decode steps only")
-        self.session.step(tokens.reshape(1))
+        return self.session.step(tokens.reshape(1))[:, None]
 
 
 def percentiles(samples: list, scale: float = 1000.0) -> dict:
@@ -255,7 +283,7 @@ def summarize(records: list, *, paired: list | None = None) -> dict:
     out["reencoded_per_step"] = percentiles([r["reencoded"] for r in records], 1.0)
     for key in ("queries", "reencoded", "requested", "first_time", "repeat_served_by_cache", "token_rereads",
                 "coarse_records", "cache_hits", "cache_misses", "cache_evictions", "cache_purged", "cache_inserts",
-                "token_bytes", "descriptor_bytes", "cache_bytes_served"):
+                "token_bytes", "descriptor_bytes", "cache_bytes_served", "fine_tier_reads", "fine_key_bytes"):
         if any(key in r for r in records):
             out[key] = sum(r.get(key, 0) for r in records)
     if any("cache_management_s" in r for r in records):
@@ -425,6 +453,181 @@ def command_baseline(args) -> dict:
     return out
 
 
+# -- P4: admission -------------------------------------------------------------------------------------------------
+
+# name: (path, cache blocks). "off" is the reference model with the read disabled. Reference configurations run on a
+# copy without the fine-key tier (an R5 state); stored configurations on the tiered snapshot.
+ADMISSION = {"off": ("reread", 0), "reread": ("reread", 0), "reread_cache": ("reread", None),
+             "stored": ("stored", 0), "stored_cache": ("stored", None)}
+
+
+def _logit_gap(a: list, b: list) -> float:
+    return max(float((x - y).abs().max()) for x, y in zip(a, b)) if a else 0.0
+
+
+@torch.no_grad()
+def warm_up(models, probes, snapshot, feed, chunks) -> None:
+    """Throwaway calls before anything is measured, so allocator growth and first-use costs land here (P0 found the
+    first occupancy of a process measured slow: EVIDENCE_R8)."""
+    one = torch.zeros(1, dtype=torch.long)
+    for path, model in models.items():
+        run = Run(model, probes[path], snapshot, path, tier=path == "stored")
+        for i in range(min(8, feed.shape[0])):
+            run.forward(feed[i], one)
+        run.forward(chunks[0], torch.arange(chunks.shape[-1]))
+
+
+@torch.no_grad()
+def measure_admission(models, probes, snapshot, args, feed, chunks) -> dict:
+    blocks = args.admission_cache_blocks
+    configs = {n: (path, blocks if cache is None else cache) for n, (path, cache) in ADMISSION.items()}
+    lo, hi = snapshot.ring.live()
+    out = {"tokens": snapshot.position, "live_blocks": hi - lo, "configs": {}}
+    one = torch.zeros(1, dtype=torch.long)
+
+    def make(name, **kw):
+        path, cache = configs[name]
+        model = models[path]
+        return Run(model, probes[path], snapshot, name, cache_blocks=cache, tier=path == "stored", **kw)
+
+    for name, (path, cache) in configs.items():
+        model = models[path]
+        face = model.context_interface()
+        out["configs"][name] = {
+            "path": path, "cache_blocks": cache, "cache_capacity_bytes": cache * entry_bytes(model),
+            "projected_scratch_bytes": {
+                "decode": face.scratch_bytes(batch=1, chunk=1, options={}, queries=1)["total"],
+                "prefill_512_every_position": face.scratch_bytes(batch=1, chunk=512, options={}, queries=512)["total"]}}
+    # decode: natural, interleaved; logits kept to measure the gap between the paths
+    runs = {n: make(n, keep_logits=True) for n in configs}
+    order = list(runs)
+    for i in range(feed.shape[0]):
+        for k in range(len(order)):
+            runs[order[(i + k) % len(order)]].forward(feed[i], one)
+    off = runs["off"].records
+    for n in order:
+        records = runs[n].records
+        row = {"all": summarize(records, paired=off if n != "off" else None)}
+        if n != "off":
+            row["cold"] = summarize(records[:COLD_STEPS], paired=off[:COLD_STEPS])
+            row["warm"] = summarize(records[COLD_STEPS:], paired=off[COLD_STEPS:])
+        out["configs"][n]["decode_natural"] = row
+        out["configs"][n]["state_bytes"] = runs[n].state.nbytes()
+        if runs[n].state.cache is not None:
+            out["configs"][n]["cache_bytes_end"] = runs[n].state.cache.bytes
+    out["decode_logit_gap"] = {"stored_vs_reread": _logit_gap(runs["stored"].logits, runs["reread"].logits),
+                               "stored_cache_vs_reread": _logit_gap(runs["stored_cache"].logits,
+                                                                    runs["reread"].logits),
+                               "reread_cache_vs_reread": _logit_gap(runs["reread_cache"].logits,
+                                                                    runs["reread"].logits)}
+    # decode: replay (repeated queries, each cache as the natural pass left it) and novel (cache emptied every step)
+    cached = [n for n in order if configs[n][1]]
+    both = {}
+    for n in cached:
+        both[f"replay:{n}"] = make(n, cache=runs[n].state.cache)
+        both[f"novel:{n}"] = make(n)
+    names = list(both)
+    for i in range(feed.shape[0]):
+        for k in range(len(names)):
+            name = names[(i + k) % len(names)]
+            if name.startswith("novel:"):
+                both[name].state.cache.clear()
+            both[name].forward(feed[i], one)
+    for name, run in both.items():
+        kind, n = name.split(":")
+        out["configs"][n][f"decode_{kind}"] = summarize(run.records, paired=off)
+    learned = {path: [r for run in (*runs.values(), *both.values()) if run.mode == "learned"
+                      and configs[run.name][0] == path for r in run.records] for path in models}
+    out["decode_cost_fit"] = {path: cost_fit(records) for path, records in learned.items()}
+    del runs, both
+    # prefill: logits at every position (a cold chunk, then a warm one) and at the last position only
+    every = torch.arange(chunks.shape[-1])
+    last = torch.tensor([chunks.shape[-1] - 1])
+    kinds = (("prefill_all", every, chunks.shape[0]), ("prefill_last", last, 1))
+    for label, positions, pieces in kinds[1:] if args.no_prefill_all else kinds:
+        rows = {n: [[] for _ in range(pieces)] for n in configs}
+        logits = {n: [] for n in configs}
+        for repeat in range(args.prefill_runs):
+            for k in range(len(order)):
+                n = order[(repeat + k) % len(order)]
+                run = make(n, keep_logits=True)
+                for piece in range(pieces):
+                    rows[n][piece].append(run.forward(chunks[piece], positions))
+                logits[n].extend(run.logits)
+                del run
+        for n in configs:
+            out["configs"][n][label] = [summarize(rows[n][piece], paired=rows["off"][piece] if n != "off" else None)
+                                        for piece in range(pieces)]
+        out[f"{label}_logit_gap"] = {"stored_vs_reread": _logit_gap(logits["stored"], logits["reread"]),
+                                     "stored_cache_vs_reread": _logit_gap(logits["stored_cache"], logits["reread"])}
+    # ingest without reads: the reference (no tier) against stored keys (the tier written at every completion)
+    ingest = {"reread": [], "stored": []}
+    none = torch.zeros(0, dtype=torch.long)
+    for repeat in range(args.prefill_runs):
+        for path in (("reread", "stored") if repeat % 2 == 0 else ("stored", "reread")):
+            run = Run(models[path], probes[path], snapshot, path, tier=path == "stored")
+            for piece in range(chunks.shape[0]):
+                ingest[path].append(run.forward(chunks[piece], none)["seconds"] / chunks.shape[-1])
+            del run
+    out["ingest_us_per_token_no_reads"] = {path: percentiles(v, 1e6) for path, v in ingest.items()}
+    import resource
+    out["peak_rss_mib"] = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
+    return out
+
+
+@torch.no_grad()
+def command_admission(args) -> dict:
+    occupancies = tuple(int(x) for x in args.occupancies.split(",")) if args.occupancies else \
+        ((2048, 4096) if args.smoke else OCCUPANCIES)
+    geometries = args.geometries.split(",") if args.geometries else list(GEOMETRIES)
+    ples = [p == "on" for p in args.ple.split(",")]
+    steps, chunk = (COLD_STEPS + 4, 512) if args.smoke else (args.decode_steps, 512)
+    generator = torch.Generator().manual_seed(SEED)
+    stream = torch.randint(0, 256, (1, max(occupancies)), generator=generator)
+    feed = torch.randint(0, 256, (steps, 1, 1), generator=generator)
+    chunks = torch.randint(0, 256, (2, 1, chunk), generator=generator)
+    out = {"phase": PHASE, "command": "admission", "seed": SEED, "decode_steps": steps, "cold_steps": COLD_STEPS,
+           "prefill_runs": args.prefill_runs, "cache_blocks": args.admission_cache_blocks,
+           "threads": torch.get_num_threads(), "configs": {n: {"path": p, "cache": c} for n, (p, c) in ADMISSION.items()},
+           "model": "R7 latency core (d 256, 4 blocks, 8 experts top-2 in blocks 1 and 3, PLE 2 x 4 x 32771 x 32 "
+                    "before block 1), R5 head per geometry, capacity 1,048,576; UNTRAINED (timing only)",
+           "stream": "the same seeded byte stream, decode feed and prefill chunks as P0 (run_r8 baseline)",
+           "rows": []}
+    warmed = False
+    for geometry in geometries:
+        reference = timing_model(geometry, capacity=args.capacity)
+        stored = timing_model(geometry, capacity=args.capacity, fine_keys="stored")
+        stored.load_state_dict(reference.state_dict())
+        models = {"reread": reference, "stored": stored}
+        probes = {path: StageProbe(model) for path, model in models.items()}
+        for ple in ples:
+            for model in models.values():
+                model.ple.enabled = ple
+            snapshot = stored.new_state(1)                     # tiered: the reference runs on copies without it
+            ingest, at = [], 0
+            for target in occupancies:
+                while at < target:
+                    piece = stream[:, at:min(target, at + chunk)]
+                    started = time.perf_counter()
+                    stored(piece, snapshot, logit_positions=torch.zeros(0, dtype=torch.long))
+                    ingest.append((time.perf_counter() - started) / piece.shape[1])
+                    at += piece.shape[1]
+                if not warmed:
+                    warm_up(models, probes, snapshot, feed, chunks)
+                    warmed = True
+                row = {"geometry": geometry, "evidence": dataclass_dict(stored.evidence), "ple": ple,
+                       "occupancy": target, "ingest_us_per_token_no_reads_with_tier": percentiles(ingest, 1e6)}
+                row.update(measure_admission(models, probes, snapshot, args, feed, chunks))
+                out["rows"].append(row)
+                decode = {n: c["decode_natural"]["all"]["step_ms"]["p50"] for n, c in row["configs"].items()}
+                print(f"[r8 admission] {geometry} ple={ple} {target}: decode p50 ms {decode} gap "
+                      f"{row['decode_logit_gap']['stored_vs_reread']:.2e}", flush=True)
+                if args.out:
+                    _write(args.out, out)
+        del models, probes, reference, stored
+    return out
+
+
 def dataclass_dict(config) -> dict:
     import dataclasses
     return dataclasses.asdict(config)
@@ -486,21 +689,37 @@ def command_represent(args) -> dict:
         tiers = {k: 4 * t["values"] * e.slots for k, t in tensors.items() if k != "descriptors"}
         headroom = {f"{index}_tile{tile}_{mode}": budget - state[index] - scratch[tile][mode]
                     for index in state for tile in scratch for mode in ("decode", "prefill512")}
+        stored = {}
+        try:                                    # R8: the same configuration with the fine-key tier (stored keys)
+            for tile in (32, 16):
+                model.evidence = kept.replace(query_tile=tile, fine_keys="stored")
+                face = model.context_interface()
+                stored[str(tile)] = {
+                    "state_bf16_index": face.fixed_bytes(1, {"history_device": "cuda"})["total"],
+                    "state_fp32_index": face.fixed_bytes(1)["total"],
+                    "decode": face.scratch_bytes(batch=1, chunk=1, options={}, queries=1)["total"],
+                    "prefill512": face.scratch_bytes(batch=1, chunk=512, options={}, queries=512)["total"]}
+        finally:
+            model.evidence = kept
         out["scale_budget_1m"][name] = {
             "budget_bytes": budget, "state_bytes": state, "scratch_bytes_by_query_tile": scratch,
             "headroom_bytes": headroom,
             "full_tier_bytes_fp32": tiers,
             "cache_blocks_that_fit": {k: max(0, v // (4 * (e.block + 1) * e.encoder_dim)) for k, v in headroom.items()},
+            "stored_fine_keys_by_query_tile": stored,
             "live_blocks": e.slots}
     return out
 
 
 def command_smoke(args) -> dict:
-    ns = argparse.Namespace(**{**vars(args), "smoke": True, "out": None, "occupancies": "2048,4096",
+    ns = argparse.Namespace(**{**vars(args), "smoke": True, "out": None, "occupancies": "2048,4096", "no_prefill_all": False,
                                "geometries": "enc64", "ple": "off,on", "cache_blocks": (64,),
                                "prefill_cache_blocks": (64,), "prefill_runs": 1, "capacity": 1 << 12})
     base = command_baseline(ns)
-    return {"baseline_rows": len(base["rows"]), "represent": sorted(command_represent(ns)["geometries"])}
+    admit = command_admission(argparse.Namespace(**{**vars(ns), "ple": "on", "admission_cache_blocks": 64}))
+    return {"baseline_rows": len(base["rows"]), "admission_rows": len(admit["rows"]),
+            "admission_gap": max(r["decode_logit_gap"]["stored_vs_reread"] for r in admit["rows"]),
+            "represent": sorted(command_represent(ns)["geometries"])}
 
 
 # -- records ------------------------------------------------------------------------------------------------------
@@ -516,15 +735,21 @@ def _finite(value):
 
 
 def _revision() -> str:
-    """The source revision measured: HEAD, marked "+dirty" if a tracked research source differs from it."""
+    """The source revision measured: HEAD, marked "+dirty" if a tracked research source or test (records excluded)
+    differs from it. Read once, when the process starts (P0's records read it at every write, so a record written
+    while results were being committed names a later commit: EVIDENCE_R8 section 1)."""
     try:
         head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True,
                               check=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "--", "research", "tests"],
+        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "--", "research", "tests",
+                                ":(exclude)research/elpis_torch/results"],
                                cwd=REPO, capture_output=True, text=True, check=True).stdout.strip()
         return head + ("+dirty" if dirty else "")
     except (OSError, subprocess.CalledProcessError):
         return "unknown"
+
+
+_STARTED_AT: list = []
 
 
 def _write(path: str, record: dict) -> None:
@@ -533,7 +758,7 @@ def _write(path: str, record: dict) -> None:
                    "cpu_capability": torch.backends.cpu.get_cpu_capability(),
                    "aten_cpu_capability": os.environ.get("ATEN_CPU_CAPABILITY"),
                    "mkl_enable_instructions": os.environ.get("MKL_ENABLE_INSTRUCTIONS"),
-                   "source_revision": _revision()}
+                   "source_revision": _STARTED_AT[0] if _STARTED_AT else _revision()}
     text = json.dumps(_finite(dict(record, environment=environment)), indent=1, sort_keys=True, allow_nan=False)
     with open(path, "w", encoding="utf-8") as handle:           # explicit offline artifact, requested by --out
         handle.write(text + "\n")
@@ -545,7 +770,7 @@ def _ints(text: str) -> tuple:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("command", choices=["baseline", "represent", "smoke"])
+    parser.add_argument("command", choices=["baseline", "represent", "admission", "smoke"])
     parser.add_argument("--out", default=None)
     parser.add_argument("--geometries", default=None, help="comma-separated: " + ",".join(GEOMETRIES))
     parser.add_argument("--occupancies", default=None)
@@ -553,13 +778,17 @@ def main(argv=None) -> int:
     parser.add_argument("--capacity", type=int, default=1 << 20)
     parser.add_argument("--cache-blocks", type=_ints, default=CACHE_BLOCKS)
     parser.add_argument("--prefill-cache-blocks", type=_ints, default=(512,))
+    parser.add_argument("--admission-cache-blocks", type=int, default=512)
+    parser.add_argument("--no-prefill-all", action="store_true", help="admission: skip the every-position prefill")
     parser.add_argument("--decode-steps", type=int, default=64)
     parser.add_argument("--prefill-runs", type=int, default=2)
     parser.add_argument("--threads", type=int, default=4)
     args = parser.parse_args(argv)
     args.smoke = args.command == "smoke"
     torch.set_num_threads(args.threads)
-    result = {"baseline": command_baseline, "represent": command_represent, "smoke": command_smoke}[args.command](args)
+    _STARTED_AT[:] = [_revision()]
+    result = {"baseline": command_baseline, "represent": command_represent, "admission": command_admission,
+              "smoke": command_smoke}[args.command](args)
     if args.out:
         _write(args.out, result)
     else:
