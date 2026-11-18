@@ -10,10 +10,19 @@ reported.
 
 ## 0. Base
 
-Neither earlier PR is merged: PR abraxis717/Elpis_DEV#76 (R6, base `main`) and PR abraxis717/Elpis_DEV#77 (R7,
-stacked on R6) are both open. As the directive requires, R8 therefore branches from the R7 head
-`b41842c1e9a6ba5be96806b15d9412ec143f919b` (`claude/r7-ple-admission`) as `claude/r8-evidence-read-path`. Its PR is
-stacked on the R7 branch.
+When R8 started, neither earlier PR was merged: abraxis717/Elpis_DEV#76 (R6, base `main`) and
+abraxis717/Elpis_DEV#77 (R7, stacked on R6) were both open. As the directive requires, R8 branched from the R7 head
+`b41842c1e9a6ba5be96806b15d9412ec143f919b` (`claude/r7-ple-admission`) as `claude/r8-evidence-read-path`.
+
+The owner merged both on 18 Nov 2026 at 17:23 UTC:
+
+- #76 went into `main` (`bfe4a12`).
+- #77 went into its base branch, `claude/r6-expert-backbone` (`ea81dae`), after that branch had already landed in
+  `main`.
+
+So `main` holds R6 but not R7. The R8 pull request, abraxis717/Elpis_DEV#78, was opened by the owner against
+`main`. It therefore also carries R7's two commits, `a48a4a2` and `b41842c`, unchanged. The R8 branch needs no
+rebase either way, since `main`'s tree equals the R6 head's.
 
 The R7 head's exact-head CI is green: push run 44318126199 and pull-request run 44318200660, 16 of 16 jobs each. The
 research job passed with 473 passed and 2 skipped, both on the runner's own kernels and with the AVX2 paths forced.
@@ -270,10 +279,17 @@ failed, natively and with the AVX2 paths forced. The skips are 3 native-library 
 
 ## 5. P4 — admission
 
-Records: `results/r8/admission_enc64.json`, `admission_enc256_ple_off.json`, `admission_enc256_ple_on.json` (4
-threads, native ISA), `admission_enc256_threads1.json` (1 thread), `admission_enc256_avx2.json` (PyTorch's and MKL's
-AVX2 paths forced). They were produced by `run_r8 admission` at `838057d`; each record stamps the revision at
-process start, and later stamps differ from it only by result files.
+Records:
+
+- `results/r8/admission_enc64.json`, `admission_enc256_ple_off.json` and `admission_enc256_ple_on.json`: 4 threads,
+  native ISA;
+- `admission_enc256_threads1.json`: 1 thread;
+- `admission_enc256_avx2.json`: PyTorch's and MKL's AVX2 paths forced;
+- `admission_prefill_last.json`: 12-run prefill and ingest.
+
+They were produced by `run_r8 admission` with the runner and model code of `838057d`. Each record stamps the
+revision at process start. Later stamps differ from `838057d` only by result records and this document; no source
+or test changed.
 
 **Setup.** The P0 timing models, streams and snapshots, with one warm-up pass before anything is measured. Five
 configurations, interleaved step by step:
@@ -376,7 +392,32 @@ The reduction holds in every setting. It is largest where re-encoding is slowest
 paths, re-encoding 64 candidates costs more and the stored path avoids it. The core (R5 off) barely changes with
 the thread count at batch 1.
 
-<!-- P4_LAST -->
+**Prefill of 512 tokens with logits at the last position only (prompt ingestion), and ingest without reads.**
+Record: `results/r8/admission_prefill_last.json`, PLE on, 12 interleaved runs. The main matrix had only 2 runs per
+cell, too few for these cells. Prefill in ms, p50 / p95; the last column is the R5 read alone, p50 of the paired
+differences against R5 off:
+
+| head | tokens | R5 off | reference | reference + cache | stored | stored + cache | R5 read, reference → stored |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| enc64 | 64K | 48.1 / 54.1 | 74.7 / 94.9 | 75.6 / 100.2 | 52.0 / 69.3 | 55.6 / 68.6 | 20.2 → 7.71 |
+| enc64 | 1M | 43.4 / 48.1 | 65.4 / 86.8 | 64.7 / 107.4 | 56.9 / 77.3 | 52.5 / 68.9 | 22.6 → 11.9 |
+| enc256 | 64K | 51.8 / 56.9 | 116.3 / 157.7 | 114.2 / 170.2 | 59.9 / 73.0 | 59.1 / 87.5 | 61.7 → 7.72 |
+| enc256 | 1M | 62.1 / 74.7 | 129.7 / 161.3 | 137.2 / 182.3 | 77.8 / 97.6 | 79.4 / 88.9 | 69.5 → 19.3 |
+
+- One read per 512-token chunk costs 1.9-8.0x less with stored keys.
+- The logits of the two paths differ by at most 1.8e-7.
+- **Ingest without reads** (µs per token, p50 over 24 chunks) measures the tier's only extra work: each completed
+  block's fine keys are computed and written with its descriptors.
+
+  | head | tokens | reference | stored | difference |
+  |---|---:|---:|---:|---:|
+  | enc64 | 64K | 85.3 | 84.8 | -0.6% |
+  | enc64 | 1M | 81.7 | 83.6 | +2.4% |
+  | enc256 | 64K | 101.1 | 110.5 | +9.4% |
+  | enc256 | 1M | 107.7 | 110.6 | +2.7% |
+
+  The difference is between -1% and +9%, inside this VM's spread: the p95 is up to 2x the p50. The projection of
+  one block's keys is a `w x f` product over 32 rows, twice: 1-2% of the multiply-adds of encoding the block.
 
 **Findings.**
 
@@ -466,4 +507,48 @@ The owner decides whether to admit it and whether to make it the default.
 
 ## 7. Regression, CI, reproduction
 
-<!-- CI -->
+**Local regression** (this container: Python 3.13, torch 2.15 CPU):
+
+- `tests/research/elpis_torch` has 507 tests: the 475 of the R7 head plus the 32 of `test_r8.py`.
+- 502 passed and 5 skipped, 0 failed, on the native kernels and with `ATEN_CPU_CAPABILITY=avx2
+  MKL_ENABLE_INSTRUCTIONS=AVX2`. The skips are 3 native-library tests (library not built here) and 2 CUDA tests
+  (NOT_RUN).
+- The isolation gate registers `run_r8`'s one writer (`--out`). The largest record is 384 KB, under the gate's
+  400 KB limit.
+
+**CI.** On `838057d`, the head carrying the R8 code and tests, the Elpis Torch research job is green (run
+44353316463):
+
+- the suite on the runner's kernels;
+- the suite with the AVX2 paths forced;
+- the experiment smokes, `run_r8 smoke` included.
+
+From about 16:30 UTC on 18 Nov 2026, the native C/C++ jobs of every branch are red, `main` included (run
+44358066804, after the merge of abraxis717/Elpis_DEV#76). Two causes, both in the `ubuntu-latest` runner image:
+
+- **GCC 15.** The build now compiles against `/usr/include/c++/15`. GCC 15 reports `-Wmaybe-uninitialized` at
+  `native/pipeline/ingress/src/regex_hacf_query_ingress.cpp:284`, a `std::variant` move, and `-Werror` makes it a
+  build failure.
+- **Host smoke on clang.** On some clang builds `runtime.native_host_smoke` fails: the host reports Landlock ABI 8
+  and "the lineage's initial composite could not be built".
+
+R8 changes nothing under `native/` or `src/`, and neither do R6 or R7. The same native tree was green at 16:22 (run
+44346508710) and red from 16:31 on a commit that only added a JSON record (run 44348237360). Repairing it touches
+`native/` or the CI's native-build configuration, which this directive does not authorize. It is reported to the
+owner. The final head's CI is reported with the pull request.
+
+**Reproduction** (records go only where `--out` says; P0 used the runner at `d3e5662`, P4 at `838057d`):
+
+```
+python -B -m research.elpis_torch.experiments.run_r8 baseline --geometries enc64 --out baseline_enc64.json
+python -B -m research.elpis_torch.experiments.run_r8 baseline --geometries enc256 --ple off --out baseline_enc256_ple_off.json
+python -B -m research.elpis_torch.experiments.run_r8 baseline --geometries enc256 --ple on --out baseline_enc256_ple_on.json
+python -B -m research.elpis_torch.experiments.run_r8 represent --out represent.json
+python -B -m research.elpis_torch.experiments.run_r8 admission --geometries enc64 --out admission_enc64.json
+python -B -m research.elpis_torch.experiments.run_r8 admission --geometries enc256 --ple off --out admission_enc256_ple_off.json
+python -B -m research.elpis_torch.experiments.run_r8 admission --geometries enc256 --ple on --out admission_enc256_ple_on.json
+python -B -m research.elpis_torch.experiments.run_r8 admission --geometries enc256 --ple on --occupancies 65536,1048576 --no-prefill-all --threads 1 --out admission_enc256_threads1.json
+ATEN_CPU_CAPABILITY=avx2 MKL_ENABLE_INSTRUCTIONS=AVX2 python -B -m research.elpis_torch.experiments.run_r8 admission --geometries enc256 --ple on --occupancies 65536,1048576 --no-prefill-all --out admission_enc256_avx2.json
+python -B -m research.elpis_torch.experiments.run_r8 admission --geometries enc64,enc256 --ple on --occupancies 65536,1048576 --no-prefill-all --decode-steps 16 --prefill-runs 12 --out admission_prefill_last.json
+python -B -m pytest -p no:cacheprovider tests/research/elpis_torch/test_r8.py
+```
