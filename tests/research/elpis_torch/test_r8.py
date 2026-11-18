@@ -89,8 +89,18 @@ def run(model, tokens, *, piece=PIECE, state=None, labels=None, **options):
             out, diag = model(tokens[:, at:at + piece], state, diagnostics=True, **options)
             logits.append(out)
             seen.append(diag)
-    exposed = {k: torch.cat([d[k] for d in seen], dim=1) for k in seen[0] if k != "losses"}
+    exposed = {k: _joined([d[k] for d in seen]) for k in seen[0] if k != "losses"}
     return torch.cat(logits, dim=1), exposed, state
+
+
+def _joined(parts):
+    """Diagnostics of successive calls along the query axis; per-query lists (``rerank="all"`` exposes every
+    candidate, as many as the call's table offers) padded to a common width: -1 for ids, -inf for scores."""
+    if parts[0].ndim == 3:
+        width = max(p.shape[-1] for p in parts)
+        fill = -1 if not parts[0].is_floating_point() else float("-inf")
+        parts = [torch.nn.functional.pad(p, (0, width - p.shape[-1]), value=fill) for p in parts]
+    return torch.cat(parts, dim=1)
 
 
 def finite_gap(a, b):
@@ -211,6 +221,15 @@ def _future(stream):
     return changed
 
 
+def _past_gap(a, a_seen, b, b_seen):
+    """The largest difference before CUT in the logits and in the read's exposed scores (the fine scores and the
+    readout's null weight). An untrained readout writes little into the residual stream, so a change in the scores
+    reaches the logits only damped; the scores themselves carry it at full size."""
+    return max(float((a[:, :CUT] - b[:, :CUT]).abs().max()),
+               finite_gap(a_seen["fine_scores"][:, :CUT], b_seen["fine_scores"][:, :CUT]),
+               float((a_seen["null_weight"][:, :CUT] - b_seen["null_weight"][:, :CUT]).abs().max()))
+
+
 @pytest.mark.parametrize("dispatch", ["reference", "grouped"])
 def test_stored_keys_are_causal(stream, dispatch):
     """Changing every token from CUT on changes nothing before it: bit for bit with the fixed-shape expert dispatch,
@@ -221,8 +240,9 @@ def test_stored_keys_are_causal(stream, dispatch):
     assert all(torch.equal(a_seen[k][:, :CUT], b_seen[k][:, :CUT]) for k in EXPOSED)
     if dispatch == "reference":
         assert torch.equal(a[:, :CUT], b[:, :CUT])
+        assert all(torch.equal(a_seen[k][:, :CUT], b_seen[k][:, :CUT]) for k in ("fine_scores", "null_weight"))
     else:
-        assert float((a[:, :CUT] - b[:, :CUT]).abs().max()) <= ROUNDING
+        assert _past_gap(a, a_seen, b, b_seen) <= ROUNDING
 
 
 @pytest.mark.parametrize("target", ["fine_keys", "read_keys"])
@@ -239,9 +259,9 @@ def test_the_causality_test_detects_a_planted_future_leak(stream, monkeypatch, t
 
     monkeypatch.setattr(EvidenceHead, target, leaky)
     model = frozen(build("stored", dispatch="reference"))
-    a, _, _ = run(model, stream)
-    b, _, _ = run(model, _future(stream))
-    assert float((a[:, :CUT] - b[:, :CUT]).abs().max()) > 100 * ROUNDING
+    a, a_seen, _ = run(model, stream)
+    b, b_seen, _ = run(model, _future(stream))
+    assert _past_gap(a, a_seen, b, b_seen) > 100 * ROUNDING
 
 
 # -- identity: wrong blocks, wraparound, reset, sessions ------------------------------------------------------------

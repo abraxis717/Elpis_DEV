@@ -66,21 +66,105 @@ Records: `results/r8/baseline_enc64.json`, `baseline_enc256_ple_off.json`, `base
 the previous step also asked for. `first-time` is the fraction of requested blocks never requested before in the
 64 steps.
 
-<!-- P0_DECODE -->
+| head | PLE | tokens | R5 off | uncached | cache 512 | cache 4,096 | session, cache 512 | replay, cache 4,096 | novel, cache 512 | overlap | first-time |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| enc64 | off | 4K | 5.53 / 7.39 | 29.9 / 43.1 † | 9.90 / 14.0 (97%) | 9.87 / 13.5 (97%) | 10.0 / 14.9 | 10.3 / 14.9 | 30.5 / 38.8 | 52.2% | 3% |
+| enc64 | off | 64K | 5.65 / 9.17 | 20.0 / 35.6 | 17.7 / 33.1 (31%) | 14.6 / 31.2 (63%) | 18.3 / 30.6 | 10.1 / 14.6 | 20.1 / 33.5 | 5.3% | 37% |
+| enc64 | off | 262K | 5.53 / 6.85 | 20.9 / 26.3 | 19.5 / 27.5 (12%) | 18.1 / 26.7 (35%) | 20.1 / 27.1 | 10.0 / 13.8 | 18.7 / 22.9 | 2.2% | 65% |
+| enc64 | off | 1M | 5.62 / 8.70 | 21.2 / 28.6 | 21.3 / 26.7 (6%) | 20.5 / 26.9 (18%) | 21.8 / 28.4 | 13.2 / 19.2 | 23.2 / 34.9 | 1.3% | 82% |
+| enc64 | on | 4K | 5.57 / 7.47 | 18.8 / 22.2 | 9.40 / 16.9 (97%) | 9.63 / 14.8 (97%) | 9.65 / 11.9 | 9.74 / 13.5 | 19.5 / 27.6 | 49.3% | 3% |
+| enc64 | on | 64K | 5.67 / 7.25 | 18.5 / 22.7 | 16.5 / 23.4 (31%) | 14.0 / 23.6 (62%) | 16.6 / 23.0 | 10.4 / 15.6 | 19.3 / 25.8 | 3.8% | 38% |
+| enc64 | on | 262K | 5.53 / 9.26 | 17.7 / 23.7 | 17.4 / 24.1 (12%) | 16.1 / 24.2 (33%) | 17.8 / 26.3 | 10.9 / 14.2 | 19.4 / 27.6 | 1.3% | 67% |
+| enc64 | on | 1M | 5.92 / 7.67 | 20.4 / 26.1 | 20.6 / 25.5 (4%) | 19.9 / 27.0 (16%) | 21.2 / 30.6 | 12.4 / 15.2 | 20.2 / 24.9 | 0.4% | 84% |
+| enc256 | off | 4K | 5.51 / 7.82 | 82.4 / 110 † | 14.7 / 21.5 (97%) | 13.9 / 26.8 (97%) | 13.5 / 23.8 | 14.0 / 19.0 | 86.8 / 108 | 51.0% | 3% |
+| enc256 | off | 64K | 6.27 / 9.31 | 65.5 / 84.2 | 49.6 / 71.7 (29%) | 33.8 / 66.4 (60%) | 48.5 / 70.9 | 14.2 / 20.3 | 71.6 / 88.6 | 4.7% | 40% |
+| enc256 | off | 262K | 6.13 / 8.89 | 62.2 / 87.0 | 58.0 / 73.0 (10%) | 45.1 / 65.8 (29%) | 53.2 / 69.7 | 14.6 / 24.2 | 59.6 / 86.1 | 1.8% | 71% |
+| enc256 | off | 1M | 6.03 / 9.63 | 59.3 / 83.9 | 58.1 / 80.7 (3%) | 54.5 / 80.3 (12%) | 58.5 / 77.7 | 17.7 / 27.9 | 66.7 / 96.3 | 0.9% | 88% |
+| enc256 | on | 4K | 5.99 / 9.17 | 84.1 / 128 † | 14.5 / 47.2 (97%) | 14.8 / 32.9 (97%) | 14.8 / 23.6 | 14.3 / 19.7 | 89.4 / 109 | 49.4% | 3% |
+| enc256 | on | 64K | 7.75 / 11.7 | 88.3 / 116 | 63.5 / 86.7 (26%) | 40.4 / 89.2 (59%) | 63.9 / 92.2 | 15.3 / 23.1 | 77.5 / 94.7 | 3.0% | 41% |
+| enc256 | on | 262K | 6.96 / 10.9 | 59.1 / 80.2 | 57.7 / 83.2 (8%) | 47.4 / 82.0 (27%) | 56.5 / 82.2 | 16.0 / 21.2 | 67.5 / 88.0 | 1.0% | 73% |
+| enc256 | on | 1M | 6.86 / 9.78 | 56.1 / 87.8 | 55.5 / 76.0 (3%) | 53.2 / 80.2 (11%) | 55.6 / 94.3 | 20.9 / 26.8 | 66.3 / 91.7 | 0.4% | 89% |
+
+† The first occupancy measured in a process. See finding 6.
 
 **Where the uncached step goes** (ms per step, mean): coarse scan (top-K included), top-K alone, validation, token
 rereads, re-encoding, the rest of the reread, fine reranking (its key projections included), readout, the local
 block's encoding, and everything outside the laps (the core, about 5.6 ms, included).
 
-<!-- P0_STAGES -->
+| head | PLE | tokens | step | coarse scan | top-K | validation | token rereads | re-encoding | reread, rest | rerank | readout | local block | outside the laps |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| enc64 | off | 64K | 22.5 | 0.60 | 0.33 | 0.14 | 0.09 | 11.6 | 0.32 | 1.14 | 0.57 | 1.33 | 6.49 |
+| enc64 | off | 1M | 22.1 | 2.30 | 0.57 | 0.15 | 0.10 | 9.06 | 0.29 | 1.07 | 0.51 | 1.39 | 7.09 |
+| enc64 | on | 64K | 18.7 | 0.55 | 0.28 | 0.12 | 0.08 | 8.83 | 0.27 | 0.98 | 0.48 | 1.15 | 6.12 |
+| enc64 | on | 1M | 20.9 | 2.13 | 0.51 | 0.12 | 0.10 | 8.34 | 0.27 | 1.01 | 0.48 | 1.20 | 7.09 |
+| enc256 | off | 64K | 66.4 | 0.64 | 0.37 | 0.14 | 0.10 | 50.2 | 0.65 | 3.44 | 0.82 | 2.41 | 7.75 |
+| enc256 | off | 1M | 61.5 | 2.39 | 0.60 | 0.14 | 0.10 | 41.2 | 0.66 | 3.14 | 0.75 | 2.35 | 10.4 |
+| enc256 | on | 64K | 86.9 | 0.72 | 0.42 | 0.16 | 0.11 | 67.9 | 0.73 | 4.21 | 1.09 | 2.91 | 8.80 |
+| enc256 | on | 1M | 60.7 | 2.46 | 0.61 | 0.14 | 0.11 | 41.5 | 0.69 | 3.52 | 0.83 | 2.40 | 8.72 |
+
+The top-K is also inside the coarse scan and rerank laps. The validation, token rereads, re-encoding and rest of
+the reread are inside the `exact_reread` lap. The 4K and 262K rows are in the records.
 
 **Prefill of 512 tokens, ms p50** (cold chunk, warm chunk; blocks re-encoded per chunk in brackets):
 
-<!-- P0_PREFILL -->
+| head | PLE | tokens | R5 off, every position | uncached, every position | cache 512, every position | R5 off, last | uncached, last | cache 512, last |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| enc64 | off | 4K | 44.5, 43.0 | 389, 266 (512, 576) | 180, 115 (128, 16) | 52.6 | 87.1 | 85.3 |
+| enc64 | off | 64K | 61.4, 57.2 | 4,337, 4,447 (7,228, 7,316) | 3,511, 2,952 (5,827, 5,453) | 79.1 | 74.4 | 77.6 |
+| enc64 | off | 262K | 52.6, 47.9 | 9,828, 9,855 (15,912, 16,225) | 9,220, 9,743 (14,877, 14,839) | 57.2 | 61.2 | 61.3 |
+| enc64 | off | 1M | 55.9, 50.4 | 15,302, 14,709 (29,048, 29,346) | 13,465, 13,676 (27,696, 27,937) | 45.1 | 71.3 | 67.1 |
+| enc64 | on | 1M | 58.1, 43.0 | 12,612, 13,089 (29,835, 29,887) | 13,021, 12,923 (28,518, 28,534) | 44.6 | 55.1 | 56.5 |
+| enc256 | off | 64K | 65.7, 47.3 | 33,089, 34,596 (18,876, 19,099) | 25,042, 22,890 (14,105, 14,067) | 56.4 | 90.5 | 93.2 |
+| enc256 | off | 1M | 52.3, 48.2 | 56,056, 54,699 (30,125, 30,322) | 52,379, 51,528 (29,166, 29,352) | 48.1 | 90.4 | 86.5 |
+| enc256 | on | 1M | 76.5, 64.2 | 61,141, 59,541 (30,816, 30,809) | 56,334, 58,829 (30,011, 29,957) | 71.5 | 112 | 122 |
+
+The other rows are in the records.
 
 **Findings.**
 
-<!-- P0_FINDINGS -->
+1. **R5 off costs 5.5-7.8 ms per decoded token.** That is the core with experts and the PLE.
+2. **Re-encoding the candidates is the read's largest stage.** From 64K on it takes 8.2-11.6 ms per step for
+   `enc64` (40-52% of the uncached step) and 41-68 ms for `enc256` (67-78%). The other stages:
+   - The coarse scan grows with occupancy, to 2.1-2.5 ms at 1M, plus 0.5-0.6 ms of top-K.
+   - Validation and token rereads together stay under 0.3 ms: exact source identity is cheap.
+   - The local block's encoding is 1.1-2.9 ms.
+   - Fine reranking, with the projections of every candidate's keys, is about 1-4.2 ms.
+   - The readout is 0.5-1.2 ms.
+3. **The R6 cache helps only where candidates repeat, and at long occupancies they rarely do.**
+   - Successive steps share 49-52% of their candidates at 4K (128 blocks exist), 3-5% at 64K, 1-2% at 262K and
+     0.4-1.3% at 1M.
+   - At 1M, 82-89% of the blocks requested in 64 steps had not been requested before.
+   - At 1M a 4,096-block cache hits 11-18% and saves at most about 1 ms (`enc64`) or 3-5 ms (`enc256`) per step. A
+     512-block cache hits 3-6% and saves nothing measurable.
+   - The 1 GiB target leaves room for about 500-1,200 `enc256` blocks beside a 512-token prefill reading at every
+     position (section 2).
+   - Through `ContextSession(cache_bytes=...)` the cache measures within noise of the same cache attached directly.
+4. **The warm bound is not reachable by warming.** Replaying the same 64 steps, with a cache already holding their
+   candidates, gives 10-21 ms per step: 12.4-13.2 ms (`enc64`) and 17.7-20.9 ms (`enc256`) at 1M. That is what
+   perfect reuse would buy. It is UNREALISTIC WARMING: a stream does not repeat its queries.
+   - The novel pass, with the cache emptied before every step, ran in the same second pass as the replay. It is no
+     faster than uncached.
+5. **Prefill reading at every position is dominated by re-encoding.** A 512-token chunk costs:
+   - 0.14-15 s with `enc64` and 2.6-61 s with `enc256`, against 41-77 ms with R5 off;
+   - with 7,000-31,000 blocks re-encoded per chunk from 64K on.
+
+   The 512-block cache (4.1 MiB for `enc64`, 16.5 MiB for `enc256`) saves 34-91% at 4K, 19-34% at 64K, and
+   between -3% and 12% from 262K on. Reading only at the last position costs between -5 and +83 ms relative to
+   R5 off; 2 runs each, noisy.
+6. **Measurement notes.**
+   - The first occupancy measured in a process was slow for every configuration with R5 on. With `enc64` and the
+     PLE off at 4K, re-encoding ran at 0.34 ms per block, against 0.16 ms later in the same process. Its uncached
+     step was 29.9 ms, against 18.8 ms at 4K in the later PLE-on pass. The `enc256` 4K rows were each first in
+     their process too (marked †). P4 adds a warm-up pass first.
+   - Absolute levels drift between processes: R5 off measured 5.5-6.3 ms in two processes and 6.0-7.8 ms in a
+     third. Comparisons are made only within a process.
+   - The records' `source_revision` was read at each write. The `enc256` records name later commits, which differ
+     from the runner commit `d3e5662` only by result files; their `+dirty` is the record file itself. The P4
+     runner reads the revision once, at start, and ignores the records directory.
+
+**P0 diagnosis.** The existing cache is not sufficient. Re-encoding remains the dominant cost at every occupancy
+from 64K on, and most of it is FIRST-TIME re-encoding of blocks whose encodings were computed once already, when
+they completed. Hence P1.
 
 ## 2. P1 — query-independent representations
 
