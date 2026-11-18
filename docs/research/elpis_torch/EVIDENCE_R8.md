@@ -230,7 +230,43 @@ Excluded by construction:
 
 ## 4. P3 — qualification tests
 
-<!-- P3 -->
+`tests/research/elpis_torch/test_r8.py`: 32 tests, all PASS, both natively and with the AVX2 kernel paths forced.
+
+The models are float64, with routed experts (grouped dispatch unless stated) and a 256-token ring. The streams
+are 600-token R5 record streams, read at every position in calls of 70 tokens, so earlier calls' blocks come from
+the ring and the ring wraps.
+
+- "Identical" means bit for bit. That covers candidates, eligible counts, the exposed fine top-K, the selected
+  blocks, the read block and position, and the local block.
+- "Within ROUNDING" means within `1e-12`, the R6 bound for comparisons whose tensor shapes differ.
+
+| Requirement (directive) | Test | Result |
+|---|---|---|
+| original vs accelerated outputs | batches 1, 2 and 3: identical identities; fine scores, null weights and logits within ROUNDING; fewer blocks re-encoded; tier reads counted; no stale rejection; the ring wrapped | PASS |
+| PLE on / off; grouped vs reference dispatch | the same parity for all four combinations | PASS |
+| every reranking variant | `rerank` coarse and all, `supersession` sum and off, a wider configuration (`coarse_top` 12, `evidence` 4) | PASS |
+| revision-heavy streams and stale controls | 3-5 revisions per key and a stale question for every superseded bind. Identical coarse and fine ranks of the labelled gold, gold blocks and historical masks; logits within ROUNDING | PASS |
+| oracle diagnosis | the forced gold is reread and injected; selections identical, logits within ROUNDING | PASS |
+| deterministic candidate ids and rankings | two runs identical in logits and every exposed field | PASS |
+| chunk vs incremental | the R5 reference in one 600-token call vs stored keys in a session: a 300-token prefill in 37-token chunks with probes at the first, middle and last positions of blocks, then 300 single-token steps; within `1e-9` (R6's bound) | PASS |
+| same-token and cross-block queries | logits at chosen positions only (first, second, last of blocks, across call edges) equal the every-position run's within ROUNDING | PASS |
+| future-token mutation | changing every token from position 301 on changes nothing before it. Identities identical under both dispatches. Logits, fine scores and null weights identical with the fixed-shape dispatch, within ROUNDING with the grouped one | PASS |
+| a leakage perturbation must fail | a fine-key or read-key projection that adds `1e-7` of the mean over a call's blocks, later blocks included, moves the past far beyond `100 x ROUNDING` | PASS (detected) |
+| an incorrect block must not be accepted | `read_fine` refuses evicted, edge, unwritten and never-existing blocks (4 refusals, counted). Keys served for the wrong blocks (rolled by one) change the selections or the logits by more than `1e6 x ROUNDING` | PASS (detected) |
+| exact source identification; wraparound | every live block's stored keys equal the keys recomputed from that block's own token ids reread from the ring (within ROUNDING); the slot of an overwritten block holds its successor and the overwritten address is refused | PASS |
+| reset, session isolation | two sessions hold distinct, different tiers. Reset zeros the tier, clears the recorded revision and starts epoch 1. A reset session equals a fresh one bit for bit | PASS |
+| invalidation after revision; no stale features | an in-place encoder change mid-stream retires the tier (1 invalidation, no tier read afterwards); outputs equal the reference model's under the same change within ROUNDING. Reset restores a valid tier. NEGATIVE CONTROL: with a blind fingerprint the stale keys move the logits by more than `1e6 x ROUNDING`. A session refuses the changed model (`ModelRevisionError`) | PASS |
+| preserved gradients in training | with gradients the tier is never read (bypass counted). Losses and every gradient, the fine projections' included, equal the reference model's bit for bit | PASS |
+| with the R6 cache | stored keys with a 32 KiB cache equal stored keys without one (within ROUNDING), within the bound, nothing below the live window, fewer blocks re-encoded | PASS |
+| accounting | `fixed_bytes == nbytes` with the tier at capacities 256 and 4,096; `index_fine_keys = B x slots x 16 x 8 x 8 B`; projected state equals held state in a session | PASS |
+| 1M accounting | `r6_500m` and `r6_1b` at 1M with stored keys: the tier is exactly 256 MiB; state plus decode scratch and state plus 512-token-prefill scratch are both within 1 GiB; the state grows and the prefill scratch shrinks against R5 | PASS |
+| configuration, checkpoints | an unknown value is refused; the default is `"reread"`; an evaluation override changes no weight; `lm_training` records carry the option; a record without it builds the reference | PASS |
+| ring contract | a tiered ring refuses a write without keys or with the wrong width; a plain ring refuses keys and `read_fine`; reset zeros and invalidates | PASS |
+| zero-write | in a separate interpreter with an audit hook, a stored-keys stream to 3.5 ring capacities with reads, a reset and a fault records no write event; the deliberate-write control is detected | PASS |
+
+The full research suite: 507 tests, the 475 of the R7 head plus these 32. Locally 502 passed and 5 skipped, 0
+failed, natively and with the AVX2 paths forced. The skips are 3 native-library tests (library not built here) and
+2 CUDA tests (NOT_RUN). **P3: PASS.**
 
 ## 5. P4 — admission
 
