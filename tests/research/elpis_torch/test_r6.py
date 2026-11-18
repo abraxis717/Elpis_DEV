@@ -19,6 +19,13 @@ from research.elpis_torch.model import parameter_digest  # noqa: E402
 
 CGC = dict(channel="cgc", cgc_bottleneck=8, cgc_channels=24, cgc_units=4)
 
+# float64 agreement bound for comparisons whose tensor shapes differ between the two runs (grouped expert segments of
+# different lengths; a readout with one more, masked slot). BLAS kernels and PyTorch's vectorized reductions may
+# associate sums of different lengths differently, so such comparisons agree to rounding, not bit for bit: the
+# exact-head CI found 2.2e-16 on two runner kernel paths (EVIDENCE_R6 section 10). 1e-12 is 4,500x that and far below
+# every planted defect the tests below must detect.
+ROUNDING = 1e-12
+
 
 def tiny_evidence(chunk=1024, dtype="float64", sparse=None, **changes):
     widths = ModelConfig(vocab_size=et.VOCAB, d_model=32, n_layers=2, n_heads=2, n_kv_heads=1, max_seq_len=64,
@@ -59,14 +66,26 @@ def test_evaluation_overrides_are_validated():
 
 
 def test_more_slots_change_nothing_while_no_more_evidence_exists():
-    """With at most ``trained.evidence`` historical candidates, the wider model selects the same blocks, so every
-    logit equals the trained model's (the extension invents no behaviour)."""
+    """With at most ``trained.evidence`` historical candidates, the wider model selects the same blocks (its extra
+    slot stays empty), so every logit equals the trained model's to rounding: the extension invents no behaviour.
+    Not bit for bit: the wider readout reduces over one more, masked slot, and vectorized sums of different lengths
+    associate differently on PyTorch's AVX2 and default kernels (CI at 76d373b: 2.2e-16; EVIDENCE_R6 section 10).
+    A wrongly extended rank table (the new row first) moves the logits by 4e-5 and must fail the same bound."""
     model = tiny_evidence()
-    wide = tiny_evidence(evidence=4)
-    wide.load_state_dict(evaluation_state_dict(model.state_dict(), model.evidence, wide.evidence))
+    extended = evaluation_state_dict(model.state_dict(), model.evidence, model.evidence.replace(evidence=4))
+    wide, shifted = tiny_evidence(evidence=4), tiny_evidence(evidence=4)
+    wide.load_state_dict(extended)
+    trained = model.state_dict()["lookup.key_rank"]
+    shifted.load_state_dict({**extended, "lookup.key_rank": torch.cat((trained[:1], trained))})
     tokens = torch.randint(1, et.VOCAB, (2, 63), generator=torch.Generator().manual_seed(1))   # <= 3 complete blocks
     with torch.no_grad():
-        assert torch.equal(model(tokens, model.new_state(2)), wide(tokens, wide.new_state(2)))
+        logits, seen = model(tokens, model.new_state(2), diagnostics=True)
+        wider, wide_seen = wide(tokens, wide.new_state(2), diagnostics=True)
+        wrong = shifted(tokens, shifted.new_state(2))
+    assert torch.equal(seen["selected"], wide_seen["selected"][..., :3])
+    assert bool((wide_seen["selected"][..., 3] == -1).all())
+    assert float((logits - wider).abs().max()) <= ROUNDING
+    assert float((logits - wrong).abs().max()) > 1e6 * ROUNDING
 
 
 def _checkpoint(tmp_path, model, record_extra=None):
@@ -397,9 +416,8 @@ EXPERTS = SparseConfig(experts=4, top_k=2, layers=(0, 1), shared=True)
 # the call, future tokens included, and MKL's double-precision GEMM can round a row differently for a different row
 # count (measured: AVX2 kernels with 4 threads change earlier rows for 299 of 301 row counts; the largest logit
 # difference was 2.2e-16). Hence: past routes must be identical and, with the fixed-shape reference dispatch, past
-# logits bit for bit; with the grouped dispatch, within GROUPED_ROUNDING (4,500x the largest difference measured, and
-# 1/100 of the smallest planted leak the test below must detect).
-GROUPED_ROUNDING = 1e-12
+# logits bit for bit; with the grouped dispatch, within ROUNDING (1/100 of the smallest planted leak the test below
+# must detect).
 CAUSAL_CUT = 301                                      # a query-tile boundary (query_tile 7): no tile mixes the two
 
 
@@ -438,9 +456,9 @@ def test_experts_with_r5_are_causal_and_chunk_invariant(r5_stream):
     same, gap, a, b = _future_mutation(reference, r5_stream, changed)           # fixed shapes: bit for bit
     assert same and gap == 0.0 and torch.equal(a, b)
     same, gap, ga, gb = _future_mutation(model, r5_stream, changed)              # grouped: identical routes,
-    assert same and gap <= GROUPED_ROUNDING                                      # logits within rounding of each
-    assert float((ga - gb).abs().max()) <= GROUPED_ROUNDING                      # other and of the reference
-    assert float((ga - a).abs().max()) <= GROUPED_ROUNDING
+    assert same and gap <= ROUNDING                                              # logits within rounding of each
+    assert float((ga - gb).abs().max()) <= ROUNDING                              # other and of the reference
+    assert float((ga - a).abs().max()) <= ROUNDING
     with torch.no_grad():
         whole = model(r5_stream, model.new_state(2))
         small = _frozen(tiny_evidence(chunk=29, sparse=EXPERTS))
@@ -454,13 +472,13 @@ def test_experts_with_r5_are_causal_and_chunk_invariant(r5_stream):
 @pytest.mark.parametrize("dispatch", ["reference", "grouped"])
 def test_the_causality_contract_detects_a_planted_future_leak(r5_stream, monkeypatch, dispatch):
     """The contract above must still catch genuine leakage: a routed channel that adds 1e-7 of the call's mean over
-    time (which includes the future) moves past logits far beyond GROUPED_ROUNDING, under either dispatch."""
+    time (which includes the future) moves past logits far beyond ROUNDING, under either dispatch."""
     from research.elpis_torch import sparse_channel as sc
     forward = sc.SparseChannel.forward
     monkeypatch.setattr(sc.SparseChannel, "forward", lambda self, u: forward(self, u) + 1e-7 * u.mean(1, keepdim=True))
     model = _frozen(tiny_evidence(sparse=dataclasses.replace(EXPERTS, dispatch=dispatch)))
     _, _, a, b = _future_mutation(model, r5_stream, _changed_future(r5_stream))
-    assert float((a - b).abs().max()) > 100 * GROUPED_ROUNDING
+    assert float((a - b).abs().max()) > 100 * ROUNDING
 
 
 def test_r5_off_is_the_routed_core_and_no_label_reaches_the_routes(r5_stream):

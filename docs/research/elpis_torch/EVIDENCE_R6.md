@@ -176,7 +176,7 @@ trained; no capability is implied.
 ## 7. Regression
 
 * Elpis Torch research suite on the final head: 440 passed, 5 skipped, 0 failed (`python -B -m pytest
-  tests/research/elpis_torch`, 236 s; the same with MKL's AVX2 kernels, the CI-like path of section 10); the skips are two CUDA tests (NOT_RUN) and three native-kernel parity tests
+  tests/research/elpis_torch`, 278 s), the same with PyTorch's and MKL's AVX2 paths forced and with PyTorch's default kernels and MKL's SSE4.2 (section 10); the skips are two CUDA tests (NOT_RUN) and three native-kernel parity tests
   whose library is not built in this container (CI's research job builds it and requires it). R6 adds 43 tests
   (`test_r6.py`), R5 has 18. CI's research job now also runs the R5 and R6 experiment smoke commands (4.9 s and
   12.3 s on two threads here; nothing is kept).
@@ -245,8 +245,37 @@ Reproduced here by forcing MKL's AVX2 kernels (`MKL_ENABLE_INSTRUCTIONS=AVX2`). 
 - New test `test_the_causality_contract_detects_a_planted_future_leak` plants a 1e-7 future dependence and must see
   it exceed 100 x 1e-12 under both dispatches.
 
-Both tests pass natively and with AVX2 kernels, and so does the whole research suite. The exact-head CI result is
-reported in the pull request, since a commit cannot record the CI run that qualifies it.
+Both tests pass natively and with AVX2 kernels, and so does the whole research suite.
+
+**Second exact-head CI run (`76d373b`, run 44302489190).** The repaired causality tests passed. A different test
+failed on a different runner: `test_more_slots_change_nothing_while_no_more_evidence_exists` (R6 P0) compared a
+3-slot model with its 4-slot evaluation extension bit for bit (1 failed, 442 passed, 2 skipped). Diagnosis, MEASURED
+here by forcing each kernel family:
+
+| PyTorch kernels (`ATEN_CPU_CAPABILITY`) | MKL paths tried | selections | largest logit difference | wrongly extended table |
+|---|---|---|---|---|
+| AVX-512 (native) | native, AVX512, AVX2, AVX, SSE4.2 | identical; the 4th slot always empty | 0 (bit for bit) | 4.0e-5 |
+| avx2 | the same | identical; the 4th slot always empty | 1.7e-16 to 2.8e-16 (native MKL: 2.2e-16 at 7 positions) | 4.0e-5 |
+| default | the same | identical; the 4th slot always empty | 1.4e-16 to 2.8e-16 (native MKL: 1.7e-16 at 5 positions) | 4.0e-5 |
+
+PyTorch's own vectorized kernels decide this one; MKL's path only changes the size of the difference.
+
+- The cause is the same class as the first failure: the wider readout's softmax and prior normalization run over
+  one more slot, which is masked and contributes exact zeros. Vectorized sums of different lengths associate
+  differently except on the AVX-512 paths.
+- The two runs evidently met different runner CPUs. The first broke only the grouped-dispatch test and the second
+  only this one, and those failures match, respectively, MKL's AVX2 GEMMs under AVX-512 PyTorch kernels and
+  PyTorch's AVX2 reductions.
+- Forcing PyTorch's AVX2 or default kernels over the whole research suite failed this test alone.
+- **Repair (contract):** the selections must be identical, with the extra slot empty, and the logits within 1e-12.
+  A wrongly extended rank table (the new row first, shifting the trained rows) moves the logits by 4.0e-5 and must
+  exceed 1e-6.
+- **Repair (CI):** the research job now runs the suite a second time with PyTorch's and MKL's AVX2 paths forced, so
+  it covers both kernel families whatever CPU the runner has.
+
+The whole research suite passes natively, with AVX2 forced for both libraries, and with PyTorch's default kernels
+and MKL's SSE4.2. The exact-head CI result is reported in the pull request, since a commit cannot record the CI run
+that qualifies it.
 
 **Record writer:**
 - `run_r6`'s writer rounded every float to six decimal places. That erased the dispatch difference (section 3, now
