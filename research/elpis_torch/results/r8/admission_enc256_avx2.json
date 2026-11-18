@@ -1478,6 +1478,1446 @@
     "stored_vs_reread": 1.19209e-07
    },
    "tokens": 65536
+  },
+  {
+   "configs": {
+    "off": {
+     "cache_blocks": 0,
+     "cache_capacity_bytes": 0,
+     "decode_natural": {
+      "all": {
+       "cache_bytes_served": 0,
+       "coarse_records": 0,
+       "descriptor_bytes": 0,
+       "fine_key_bytes": 0,
+       "fine_tier_reads": 0,
+       "first_time": 0,
+       "queries": 0,
+       "reencoded": 0,
+       "reencoded_per_step": {
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "samples": 64
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 0,
+       "stage_ms_mean": {
+        "chunk_encode": 0.1036,
+        "coarse_scan": 0.0,
+        "exact_reread": 0.0,
+        "outside_laps": 6.5957,
+        "readout": 0.0,
+        "reencode": 0.0,
+        "rerank": 0.0,
+        "reread_rest": 0.0,
+        "token_reads": 0.0,
+        "topk": 0.0,
+        "validate": 0.0
+       },
+       "step_ms": {
+        "mean": 6.6994,
+        "p50": 6.1442,
+        "p95": 10.5934,
+        "samples": 64
+       },
+       "token_bytes": 0,
+       "token_rereads": 0
+      }
+     },
+     "path": "reread",
+     "prefill_last": [
+      {
+       "cache_bytes_served": 0,
+       "coarse_records": 0,
+       "descriptor_bytes": 0,
+       "fine_key_bytes": 0,
+       "fine_tier_reads": 0,
+       "first_time": 0,
+       "queries": 0,
+       "reencoded": 0,
+       "reencoded_per_step": {
+        "mean": 0.0,
+        "p50": 0.0,
+        "p95": 0.0,
+        "samples": 2
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 0,
+       "stage_ms_mean": {
+        "chunk_encode": 17.2707,
+        "coarse_scan": 0.0,
+        "exact_reread": 0.0,
+        "outside_laps": 45.4989,
+        "readout": 0.0,
+        "reencode": 0.0,
+        "rerank": 0.0,
+        "reread_rest": 0.0,
+        "token_reads": 0.0,
+        "topk": 0.0,
+        "validate": 0.0
+       },
+       "step_ms": {
+        "mean": 62.7696,
+        "p50": 64.326,
+        "p95": 64.326,
+        "samples": 2
+       },
+       "token_bytes": 0,
+       "token_rereads": 0
+      }
+     ],
+     "projected_scratch_bytes": {
+      "decode": 55446796,
+      "prefill_512_every_position": 933358604
+     },
+     "state_bytes": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 38039568
+     }
+    },
+    "reread": {
+     "cache_blocks": 0,
+     "cache_capacity_bytes": 0,
+     "decode_natural": {
+      "all": {
+       "age_blocks_quantiles": {
+        "0.0": 12,
+        "0.1": 2845,
+        "0.5": 15843,
+        "0.9": 29115,
+        "1.0": 32763
+       },
+       "cache_bytes_served": 0,
+       "coarse_records": 2097077,
+       "descriptor_bytes": 2147406848,
+       "fine_key_bytes": 0,
+       "fine_tier_reads": 0,
+       "first_time": 3627,
+       "first_time_fraction": 0.8855,
+       "minus_off_ms": {
+        "mean": 86.9722,
+        "p50": 84.5393,
+        "p95": 125.294,
+        "samples": 64
+       },
+       "overlap_with_previous_step_mean": 0.004,
+       "queries": 64,
+       "reencoded": 4096,
+       "reencoded_per_step": {
+        "mean": 64.0,
+        "p50": 64.0,
+        "p95": 64.0,
+        "samples": 64
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 4096,
+       "stage_ms_mean": {
+        "chunk_encode": 2.6731,
+        "coarse_scan": 2.171,
+        "exact_reread": 75.3544,
+        "outside_laps": 8.7558,
+        "readout": 0.7715,
+        "reencode": 74.1614,
+        "rerank": 3.9458,
+        "reread_rest": 0.6672,
+        "token_reads": 0.1035,
+        "topk": 0.5707,
+        "validate": 0.1359
+       },
+       "step_ms": {
+        "mean": 93.6716,
+        "p50": 91.3785,
+        "p95": 132.685,
+        "samples": 64
+       },
+       "token_bytes": 655360,
+       "token_rereads": 4096
+      },
+      "cold": {
+       "age_blocks_quantiles": {
+        "0.0": 55,
+        "0.1": 2961,
+        "0.5": 16376,
+        "0.9": 29528,
+        "1.0": 32699
+       },
+       "cache_bytes_served": 0,
+       "coarse_records": 262137,
+       "descriptor_bytes": 268428288,
+       "fine_key_bytes": 0,
+       "fine_tier_reads": 0,
+       "first_time": 510,
+       "first_time_fraction": 0.9961,
+       "minus_off_ms": {
+        "mean": 102.822,
+        "p50": 104.353,
+        "p95": 148.967,
+        "samples": 8
+       },
+       "overlap_with_previous_step_mean": 0.0,
+       "queries": 8,
+       "reencoded": 512,
+       "reencoded_per_step": {
+        "mean": 64.0,
+        "p50": 64.0,
+        "p95": 64.0,
+        "samples": 8
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 512,
+       "stage_ms_mean": {
+        "chunk_encode": 2.5152,
+        "coarse_scan": 2.1101,
+        "exact_reread": 93.2925,
+        "outside_laps": 7.1287,
+        "readout": 0.7217,
+        "reencode": 92.1062,
+        "rerank": 3.5327,
+        "reread_rest": 0.6701,
+        "token_reads": 0.1034,
+        "topk": 0.536,
+        "validate": 0.1432
+       },
+       "step_ms": {
+        "mean": 109.301,
+        "p50": 110.471,
+        "p95": 154.861,
+        "samples": 8
+       },
+       "token_bytes": 81920,
+       "token_rereads": 512
+      },
+      "warm": {
+       "age_blocks_quantiles": {
+        "0.0": 12,
+        "0.1": 2840,
+        "0.5": 15819,
+        "0.9": 29064,
+        "1.0": 32763
+       },
+       "cache_bytes_served": 0,
+       "coarse_records": 1834940,
+       "descriptor_bytes": 1878978560,
+       "fine_key_bytes": 0,
+       "fine_tier_reads": 0,
+       "first_time": 3117,
+       "first_time_fraction": 0.8697,
+       "minus_off_ms": {
+        "mean": 84.708,
+        "p50": 84.5393,
+        "p95": 117.152,
+        "samples": 56
+       },
+       "overlap_with_previous_step_mean": 0.0045,
+       "queries": 56,
+       "reencoded": 3584,
+       "reencoded_per_step": {
+        "mean": 64.0,
+        "p50": 64.0,
+        "p95": 64.0,
+        "samples": 56
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 3584,
+       "stage_ms_mean": {
+        "chunk_encode": 2.6957,
+        "coarse_scan": 2.1797,
+        "exact_reread": 72.7918,
+        "outside_laps": 8.9882,
+        "readout": 0.7786,
+        "reencode": 71.5979,
+        "rerank": 4.0048,
+        "reread_rest": 0.6668,
+        "token_reads": 0.1035,
+        "topk": 0.5756,
+        "validate": 0.1348
+       },
+       "step_ms": {
+        "mean": 91.4389,
+        "p50": 91.1901,
+        "p95": 123.116,
+        "samples": 56
+       },
+       "token_bytes": 573440,
+       "token_rereads": 3584
+      }
+     },
+     "path": "reread",
+     "prefill_last": [
+      {
+       "age_blocks_quantiles": {
+        "0.0": 416,
+        "0.1": 3941,
+        "0.5": 15802,
+        "0.9": 30923,
+        "1.0": 32381
+       },
+       "cache_bytes_served": 0,
+       "coarse_records": 65568,
+       "descriptor_bytes": 67141632,
+       "fine_key_bytes": 0,
+       "fine_tier_reads": 0,
+       "first_time": 128,
+       "first_time_fraction": 1.0,
+       "minus_off_ms": {
+        "mean": 84.33,
+        "p50": 105.085,
+        "p95": 105.085,
+        "samples": 2
+       },
+       "queries": 2,
+       "reencoded": 128,
+       "reencoded_per_step": {
+        "mean": 64.0,
+        "p50": 64.0,
+        "p95": 64.0,
+        "samples": 2
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 128,
+       "stage_ms_mean": {
+        "chunk_encode": 15.8056,
+        "coarse_scan": 2.4559,
+        "exact_reread": 69.7177,
+        "outside_laps": 53.8564,
+        "readout": 0.9535,
+        "reencode": 68.3059,
+        "rerank": 4.3105,
+        "reread_rest": 0.6573,
+        "token_reads": 0.1736,
+        "topk": 0.65,
+        "validate": 0.1779
+       },
+       "step_ms": {
+        "mean": 147.1,
+        "p50": 169.411,
+        "p95": 169.411,
+        "samples": 2
+       },
+       "token_bytes": 20480,
+       "token_rereads": 128
+      }
+     ],
+     "projected_scratch_bytes": {
+      "decode": 55446796,
+      "prefill_512_every_position": 933358604
+     },
+     "state_bytes": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 38039568
+     }
+    },
+    "reread_cache": {
+     "cache_blocks": 512,
+     "cache_bytes_end": 17301504,
+     "cache_capacity_bytes": 17301504,
+     "decode_natural": {
+      "all": {
+       "age_blocks_quantiles": {
+        "0.0": 12,
+        "0.1": 2845,
+        "0.5": 15843,
+        "0.9": 29115,
+        "1.0": 32763
+       },
+       "cache_bytes_end": 17301504,
+       "cache_bytes_served": 4021248,
+       "cache_evictions": 3465,
+       "cache_hits": 119,
+       "cache_inserts": 3977,
+       "cache_management_ms_mean": 0.4259,
+       "cache_misses": 3977,
+       "cache_purged": 0,
+       "coarse_records": 2097077,
+       "descriptor_bytes": 2147406848,
+       "fine_key_bytes": 0,
+       "fine_tier_reads": 0,
+       "first_time": 3627,
+       "first_time_fraction": 0.8855,
+       "hit_rate": 0.0291,
+       "minus_off_ms": {
+        "mean": 83.3188,
+        "p50": 81.1037,
+        "p95": 109.615,
+        "samples": 64
+       },
+       "overlap_with_previous_step_mean": 0.004,
+       "queries": 64,
+       "reencoded": 3977,
+       "reencoded_per_step": {
+        "mean": 62.1406,
+        "p50": 63.0,
+        "p95": 64.0,
+        "samples": 64
+       },
+       "repeat_served_by_cache": 119,
+       "requested": 4096,
+       "stage_ms_mean": {
+        "chunk_encode": 2.6196,
+        "coarse_scan": 2.2848,
+        "exact_reread": 70.406,
+        "outside_laps": 9.8996,
+        "readout": 0.8273,
+        "reencode": 68.5186,
+        "rerank": 3.9809,
+        "reread_rest": 1.2993,
+        "token_reads": 0.1085,
+        "topk": 0.5946,
+        "validate": 0.1615
+       },
+       "step_ms": {
+        "mean": 90.0182,
+        "p50": 88.4842,
+        "p95": 115.937,
+        "samples": 64
+       },
+       "token_bytes": 636320,
+       "token_rereads": 3977
+      },
+      "cold": {
+       "age_blocks_quantiles": {
+        "0.0": 55,
+        "0.1": 2961,
+        "0.5": 16376,
+        "0.9": 29528,
+        "1.0": 32699
+       },
+       "cache_bytes_end": 17233920,
+       "cache_bytes_served": 67584,
+       "cache_evictions": 0,
+       "cache_hits": 2,
+       "cache_inserts": 510,
+       "cache_management_ms_mean": 0.2886,
+       "cache_misses": 510,
+       "cache_purged": 0,
+       "coarse_records": 262137,
+       "descriptor_bytes": 268428288,
+       "fine_key_bytes": 0,
+       "fine_tier_reads": 0,
+       "first_time": 510,
+       "first_time_fraction": 0.9961,
+       "hit_rate": 0.0039,
+       "minus_off_ms": {
+        "mean": 81.7106,
+        "p50": 75.9968,
+        "p95": 120.412,
+        "samples": 8
+       },
+       "overlap_with_previous_step_mean": 0.0,
+       "queries": 8,
+       "reencoded": 510,
+       "reencoded_per_step": {
+        "mean": 63.75,
+        "p50": 64.0,
+        "p95": 64.0,
+        "samples": 8
+       },
+       "repeat_served_by_cache": 2,
+       "requested": 512,
+       "stage_ms_mean": {
+        "chunk_encode": 2.3571,
+        "coarse_scan": 2.0615,
+        "exact_reread": 71.2593,
+        "outside_laps": 7.4174,
+        "readout": 0.9915,
+        "reencode": 69.4554,
+        "rerank": 4.1028,
+        "reread_rest": 1.2449,
+        "token_reads": 0.1077,
+        "topk": 0.5934,
+        "validate": 0.1517
+       },
+       "step_ms": {
+        "mean": 88.1896,
+        "p50": 82.1947,
+        "p95": 126.207,
+        "samples": 8
+       },
+       "token_bytes": 81600,
+       "token_rereads": 510
+      },
+      "warm": {
+       "age_blocks_quantiles": {
+        "0.0": 12,
+        "0.1": 2840,
+        "0.5": 15819,
+        "0.9": 29064,
+        "1.0": 32763
+       },
+       "cache_bytes_end": 17301504,
+       "cache_bytes_served": 3953664,
+       "cache_evictions": 3465,
+       "cache_hits": 117,
+       "cache_inserts": 3467,
+       "cache_management_ms_mean": 0.4456,
+       "cache_misses": 3467,
+       "cache_purged": 0,
+       "coarse_records": 1834940,
+       "descriptor_bytes": 1878978560,
+       "fine_key_bytes": 0,
+       "fine_tier_reads": 0,
+       "first_time": 3117,
+       "first_time_fraction": 0.8697,
+       "hit_rate": 0.0326,
+       "minus_off_ms": {
+        "mean": 83.5486,
+        "p50": 81.636,
+        "p95": 102.481,
+        "samples": 56
+       },
+       "overlap_with_previous_step_mean": 0.0045,
+       "queries": 56,
+       "reencoded": 3467,
+       "reencoded_per_step": {
+        "mean": 61.9107,
+        "p50": 62.0,
+        "p95": 64.0,
+        "samples": 56
+       },
+       "repeat_served_by_cache": 117,
+       "requested": 3584,
+       "stage_ms_mean": {
+        "chunk_encode": 2.6571,
+        "coarse_scan": 2.3167,
+        "exact_reread": 70.2841,
+        "outside_laps": 10.2542,
+        "readout": 0.8038,
+        "reencode": 68.3848,
+        "rerank": 3.9635,
+        "reread_rest": 1.307,
+        "token_reads": 0.1087,
+        "topk": 0.5947,
+        "validate": 0.1629
+       },
+       "step_ms": {
+        "mean": 90.2794,
+        "p50": 88.6325,
+        "p95": 113.689,
+        "samples": 56
+       },
+       "token_bytes": 554720,
+       "token_rereads": 3467
+      }
+     },
+     "decode_novel": {
+      "age_blocks_quantiles": {
+       "0.0": 12,
+       "0.1": 2845,
+       "0.5": 15843,
+       "0.9": 29115,
+       "1.0": 32763
+      },
+      "cache_bytes_end": 2162688,
+      "cache_bytes_served": 0,
+      "cache_evictions": 0,
+      "cache_hits": 0,
+      "cache_inserts": 4096,
+      "cache_management_ms_mean": 0.2996,
+      "cache_misses": 4096,
+      "cache_purged": 0,
+      "coarse_records": 2097077,
+      "descriptor_bytes": 2147406848,
+      "fine_key_bytes": 0,
+      "fine_tier_reads": 0,
+      "first_time": 3627,
+      "first_time_fraction": 0.8855,
+      "hit_rate": 0.0,
+      "minus_off_ms": {
+       "mean": 72.0843,
+       "p50": 70.3791,
+       "p95": 98.4455,
+       "samples": 64
+      },
+      "overlap_with_previous_step_mean": 0.004,
+      "queries": 64,
+      "reencoded": 4096,
+      "reencoded_per_step": {
+       "mean": 64.0,
+       "p50": 64.0,
+       "p95": 64.0,
+       "samples": 64
+      },
+      "repeat_served_by_cache": 0,
+      "requested": 4096,
+      "stage_ms_mean": {
+       "chunk_encode": 2.6571,
+       "coarse_scan": 2.2559,
+       "exact_reread": 60.5744,
+       "outside_laps": 8.7058,
+       "readout": 0.7834,
+       "reencode": 58.892,
+       "rerank": 3.807,
+       "reread_rest": 1.1248,
+       "token_reads": 0.1127,
+       "topk": 0.6307,
+       "validate": 0.1537
+      },
+      "step_ms": {
+       "mean": 78.7837,
+       "p50": 76.2816,
+       "p95": 104.308,
+       "samples": 64
+      },
+      "token_bytes": 655360,
+      "token_rereads": 4096
+     },
+     "decode_replay": {
+      "age_blocks_quantiles": {
+       "0.0": 12,
+       "0.1": 2845,
+       "0.5": 15843,
+       "0.9": 29115,
+       "1.0": 32763
+      },
+      "cache_bytes_end": 17301504,
+      "cache_bytes_served": 4257792,
+      "cache_evictions": 3970,
+      "cache_hits": 126,
+      "cache_inserts": 3970,
+      "cache_management_ms_mean": 0.4597,
+      "cache_misses": 3970,
+      "cache_purged": 0,
+      "coarse_records": 2097077,
+      "descriptor_bytes": 2147406848,
+      "fine_key_bytes": 0,
+      "fine_tier_reads": 0,
+      "first_time": 3627,
+      "first_time_fraction": 0.8855,
+      "hit_rate": 0.0308,
+      "minus_off_ms": {
+       "mean": 70.2922,
+       "p50": 70.6915,
+       "p95": 85.857,
+       "samples": 64
+      },
+      "overlap_with_previous_step_mean": 0.004,
+      "queries": 64,
+      "reencoded": 3970,
+      "reencoded_per_step": {
+       "mean": 62.0312,
+       "p50": 63.0,
+       "p95": 64.0,
+       "samples": 64
+      },
+      "repeat_served_by_cache": 126,
+      "requested": 4096,
+      "stage_ms_mean": {
+       "chunk_encode": 2.5405,
+       "coarse_scan": 2.1932,
+       "exact_reread": 58.9876,
+       "outside_laps": 8.4648,
+       "readout": 0.8309,
+       "reencode": 57.0852,
+       "rerank": 3.9745,
+       "reread_rest": 1.3328,
+       "token_reads": 0.1036,
+       "topk": 0.6122,
+       "validate": 0.1556
+      },
+      "step_ms": {
+       "mean": 76.9916,
+       "p50": 77.3341,
+       "p95": 92.7053,
+       "samples": 64
+      },
+      "token_bytes": 635200,
+      "token_rereads": 3970
+     },
+     "path": "reread",
+     "prefill_last": [
+      {
+       "age_blocks_quantiles": {
+        "0.0": 416,
+        "0.1": 3941,
+        "0.5": 15802,
+        "0.9": 30923,
+        "1.0": 32381
+       },
+       "cache_bytes_end": 2162688,
+       "cache_bytes_served": 0,
+       "cache_evictions": 0,
+       "cache_hits": 0,
+       "cache_inserts": 128,
+       "cache_management_ms_mean": 0.2649,
+       "cache_misses": 128,
+       "cache_purged": 0,
+       "coarse_records": 65568,
+       "descriptor_bytes": 67141632,
+       "fine_key_bytes": 0,
+       "fine_tier_reads": 0,
+       "first_time": 128,
+       "first_time_fraction": 1.0,
+       "hit_rate": 0.0,
+       "minus_off_ms": {
+        "mean": 61.5058,
+        "p50": 63.5525,
+        "p95": 63.5525,
+        "samples": 2
+       },
+       "queries": 2,
+       "reencoded": 128,
+       "reencoded_per_step": {
+        "mean": 64.0,
+        "p50": 64.0,
+        "p95": 64.0,
+        "samples": 2
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 128,
+       "stage_ms_mean": {
+        "chunk_encode": 15.3094,
+        "coarse_scan": 2.2149,
+        "exact_reread": 57.342,
+        "outside_laps": 45.2409,
+        "readout": 0.7363,
+        "reencode": 55.7021,
+        "rerank": 3.4318,
+        "reread_rest": 0.9124,
+        "token_reads": 0.1344,
+        "topk": 0.6583,
+        "validate": 0.1993
+       },
+       "step_ms": {
+        "mean": 124.275,
+        "p50": 127.879,
+        "p95": 127.879,
+        "samples": 2
+       },
+       "token_bytes": 20480,
+       "token_rereads": 128
+      }
+     ],
+     "projected_scratch_bytes": {
+      "decode": 55446796,
+      "prefill_512_every_position": 933358604
+     },
+     "state_bytes": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 38039568
+     }
+    },
+    "stored": {
+     "cache_blocks": 0,
+     "cache_capacity_bytes": 0,
+     "decode_natural": {
+      "all": {
+       "age_blocks_quantiles": {
+        "0.0": 34,
+        "0.1": 2785,
+        "0.5": 16735,
+        "0.9": 29766,
+        "1.0": 32468
+       },
+       "cache_bytes_served": 0,
+       "coarse_records": 2097077,
+       "descriptor_bytes": 2147406848,
+       "fine_key_bytes": 33554432,
+       "fine_tier_reads": 4096,
+       "first_time": 254,
+       "first_time_fraction": 0.9922,
+       "minus_off_ms": {
+        "mean": 15.8802,
+        "p50": 15.104,
+        "p95": 23.012,
+        "samples": 64
+       },
+       "overlap_with_previous_step_mean": 0.0,
+       "queries": 64,
+       "reencoded": 256,
+       "reencoded_per_step": {
+        "mean": 4.0,
+        "p50": 4.0,
+        "p95": 4.0,
+        "samples": 64
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 256,
+       "stage_ms_mean": {
+        "chunk_encode": 2.7613,
+        "coarse_scan": 2.3626,
+        "exact_reread": 6.8537,
+        "outside_laps": 9.3698,
+        "readout": 0.5916,
+        "reencode": 5.859,
+        "rerank": 0.6406,
+        "reread_rest": 0.0826,
+        "token_reads": 0.0663,
+        "topk": 0.5359,
+        "validate": 0.2288
+       },
+       "step_ms": {
+        "mean": 22.5796,
+        "p50": 21.6906,
+        "p95": 29.9329,
+        "samples": 64
+       },
+       "token_bytes": 40960,
+       "token_rereads": 256
+      },
+      "cold": {
+       "age_blocks_quantiles": {
+        "0.0": 55,
+        "0.1": 3896,
+        "0.5": 19514,
+        "0.9": 30776,
+        "1.0": 32273
+       },
+       "cache_bytes_served": 0,
+       "coarse_records": 262137,
+       "descriptor_bytes": 268428288,
+       "fine_key_bytes": 4194304,
+       "fine_tier_reads": 512,
+       "first_time": 32,
+       "first_time_fraction": 1.0,
+       "minus_off_ms": {
+        "mean": 12.9746,
+        "p50": 12.8997,
+        "p95": 16.3979,
+        "samples": 8
+       },
+       "overlap_with_previous_step_mean": 0.0,
+       "queries": 8,
+       "reencoded": 32,
+       "reencoded_per_step": {
+        "mean": 4.0,
+        "p50": 4.0,
+        "p95": 4.0,
+        "samples": 8
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 32,
+       "stage_ms_mean": {
+        "chunk_encode": 2.7225,
+        "coarse_scan": 2.1458,
+        "exact_reread": 6.2248,
+        "outside_laps": 7.2309,
+        "readout": 0.5219,
+        "reencode": 5.3383,
+        "rerank": 0.6077,
+        "reread_rest": 0.075,
+        "token_reads": 0.0638,
+        "topk": 0.5142,
+        "validate": 0.192
+       },
+       "step_ms": {
+        "mean": 19.4536,
+        "p50": 19.2871,
+        "p95": 22.2599,
+        "samples": 8
+       },
+       "token_bytes": 5120,
+       "token_rereads": 32
+      },
+      "warm": {
+       "age_blocks_quantiles": {
+        "0.0": 34,
+        "0.1": 2634,
+        "0.5": 15819,
+        "0.9": 29627,
+        "1.0": 32468
+       },
+       "cache_bytes_served": 0,
+       "coarse_records": 1834940,
+       "descriptor_bytes": 1878978560,
+       "fine_key_bytes": 29360128,
+       "fine_tier_reads": 3584,
+       "first_time": 222,
+       "first_time_fraction": 0.9911,
+       "minus_off_ms": {
+        "mean": 16.2953,
+        "p50": 15.7261,
+        "p95": 23.012,
+        "samples": 56
+       },
+       "overlap_with_previous_step_mean": 0.0,
+       "queries": 56,
+       "reencoded": 224,
+       "reencoded_per_step": {
+        "mean": 4.0,
+        "p50": 4.0,
+        "p95": 4.0,
+        "samples": 56
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 224,
+       "stage_ms_mean": {
+        "chunk_encode": 2.7668,
+        "coarse_scan": 2.3936,
+        "exact_reread": 6.9435,
+        "outside_laps": 9.6753,
+        "readout": 0.6016,
+        "reencode": 5.9333,
+        "rerank": 0.6453,
+        "reread_rest": 0.0837,
+        "token_reads": 0.0667,
+        "topk": 0.539,
+        "validate": 0.2341
+       },
+       "step_ms": {
+        "mean": 23.0261,
+        "p50": 22.1619,
+        "p95": 29.9329,
+        "samples": 56
+       },
+       "token_bytes": 35840,
+       "token_rereads": 224
+      }
+     },
+     "path": "stored",
+     "prefill_last": [
+      {
+       "age_blocks_quantiles": {
+        "0.0": 2589,
+        "0.1": 2589,
+        "0.5": 7382,
+        "0.9": 19741,
+        "1.0": 19741
+       },
+       "cache_bytes_served": 0,
+       "coarse_records": 65568,
+       "descriptor_bytes": 67141632,
+       "fine_key_bytes": 1048576,
+       "fine_tier_reads": 128,
+       "first_time": 8,
+       "first_time_fraction": 1.0,
+       "minus_off_ms": {
+        "mean": 11.3051,
+        "p50": 13.1384,
+        "p95": 13.1384,
+        "samples": 2
+       },
+       "queries": 2,
+       "reencoded": 8,
+       "reencoded_per_step": {
+        "mean": 4.0,
+        "p50": 4.0,
+        "p95": 4.0,
+        "samples": 2
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 8,
+       "stage_ms_mean": {
+        "chunk_encode": 15.3303,
+        "coarse_scan": 2.1451,
+        "exact_reread": 6.4855,
+        "outside_laps": 48.8404,
+        "readout": 0.6138,
+        "reencode": 5.4975,
+        "rerank": 0.6595,
+        "reread_rest": 0.0759,
+        "token_reads": 0.0545,
+        "topk": 0.5084,
+        "validate": 0.2167
+       },
+       "step_ms": {
+        "mean": 74.0747,
+        "p50": 74.3515,
+        "p95": 74.3515,
+        "samples": 2
+       },
+       "token_bytes": 1280,
+       "token_rereads": 8
+      }
+     ],
+     "projected_scratch_bytes": {
+      "decode": 37014796,
+      "prefill_512_every_position": 160689164
+     },
+     "state_bytes": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_fine_keys": 268435456,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 306475024
+     }
+    },
+    "stored_cache": {
+     "cache_blocks": 512,
+     "cache_bytes_end": 8583168,
+     "cache_capacity_bytes": 17301504,
+     "decode_natural": {
+      "all": {
+       "age_blocks_quantiles": {
+        "0.0": 34,
+        "0.1": 2785,
+        "0.5": 16735,
+        "0.9": 29766,
+        "1.0": 32468
+       },
+       "cache_bytes_end": 8583168,
+       "cache_bytes_served": 67584,
+       "cache_evictions": 0,
+       "cache_hits": 2,
+       "cache_inserts": 254,
+       "cache_management_ms_mean": 0.1834,
+       "cache_misses": 254,
+       "cache_purged": 0,
+       "coarse_records": 2097077,
+       "descriptor_bytes": 2147406848,
+       "fine_key_bytes": 33554432,
+       "fine_tier_reads": 4096,
+       "first_time": 254,
+       "first_time_fraction": 0.9922,
+       "hit_rate": 0.0078,
+       "minus_off_ms": {
+        "mean": 16.2806,
+        "p50": 14.578,
+        "p95": 20.8301,
+        "samples": 64
+       },
+       "overlap_with_previous_step_mean": 0.0,
+       "queries": 64,
+       "reencoded": 254,
+       "reencoded_per_step": {
+        "mean": 3.9688,
+        "p50": 4.0,
+        "p95": 4.0,
+        "samples": 64
+       },
+       "repeat_served_by_cache": 2,
+       "requested": 256,
+       "stage_ms_mean": {
+        "chunk_encode": 2.5735,
+        "coarse_scan": 2.2098,
+        "exact_reread": 8.4531,
+        "outside_laps": 8.4908,
+        "readout": 0.6148,
+        "reencode": 7.25,
+        "rerank": 0.638,
+        "reread_rest": 0.2835,
+        "token_reads": 0.0645,
+        "topk": 0.5266,
+        "validate": 0.2046
+       },
+       "step_ms": {
+        "mean": 22.9799,
+        "p50": 20.8699,
+        "p95": 30.0082,
+        "samples": 64
+       },
+       "token_bytes": 40640,
+       "token_rereads": 254
+      },
+      "cold": {
+       "age_blocks_quantiles": {
+        "0.0": 55,
+        "0.1": 3896,
+        "0.5": 19514,
+        "0.9": 30776,
+        "1.0": 32273
+       },
+       "cache_bytes_end": 1081344,
+       "cache_bytes_served": 0,
+       "cache_evictions": 0,
+       "cache_hits": 0,
+       "cache_inserts": 32,
+       "cache_management_ms_mean": 0.1387,
+       "cache_misses": 32,
+       "cache_purged": 0,
+       "coarse_records": 262137,
+       "descriptor_bytes": 268428288,
+       "fine_key_bytes": 4194304,
+       "fine_tier_reads": 512,
+       "first_time": 32,
+       "first_time_fraction": 1.0,
+       "hit_rate": 0.0,
+       "minus_off_ms": {
+        "mean": 12.6104,
+        "p50": 12.298,
+        "p95": 17.34,
+        "samples": 8
+       },
+       "overlap_with_previous_step_mean": 0.0,
+       "queries": 8,
+       "reencoded": 32,
+       "reencoded_per_step": {
+        "mean": 4.0,
+        "p50": 4.0,
+        "p95": 4.0,
+        "samples": 8
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 32,
+       "stage_ms_mean": {
+        "chunk_encode": 2.4419,
+        "coarse_scan": 2.1682,
+        "exact_reread": 6.1642,
+        "outside_laps": 7.1216,
+        "readout": 0.562,
+        "reencode": 5.1329,
+        "rerank": 0.6316,
+        "reread_rest": 0.2319,
+        "token_reads": 0.0558,
+        "topk": 0.5265,
+        "validate": 0.2054
+       },
+       "step_ms": {
+        "mean": 19.0895,
+        "p50": 18.2882,
+        "p95": 25.9055,
+        "samples": 8
+       },
+       "token_bytes": 5120,
+       "token_rereads": 32
+      },
+      "warm": {
+       "age_blocks_quantiles": {
+        "0.0": 34,
+        "0.1": 2634,
+        "0.5": 15819,
+        "0.9": 29627,
+        "1.0": 32468
+       },
+       "cache_bytes_end": 8583168,
+       "cache_bytes_served": 67584,
+       "cache_evictions": 0,
+       "cache_hits": 2,
+       "cache_inserts": 222,
+       "cache_management_ms_mean": 0.1898,
+       "cache_misses": 222,
+       "cache_purged": 0,
+       "coarse_records": 1834940,
+       "descriptor_bytes": 1878978560,
+       "fine_key_bytes": 29360128,
+       "fine_tier_reads": 3584,
+       "first_time": 222,
+       "first_time_fraction": 0.9911,
+       "hit_rate": 0.0089,
+       "minus_off_ms": {
+        "mean": 16.8049,
+        "p50": 15.0451,
+        "p95": 20.8301,
+        "samples": 56
+       },
+       "overlap_with_previous_step_mean": 0.0,
+       "queries": 56,
+       "reencoded": 222,
+       "reencoded_per_step": {
+        "mean": 3.9643,
+        "p50": 4.0,
+        "p95": 4.0,
+        "samples": 56
+       },
+       "repeat_served_by_cache": 2,
+       "requested": 224,
+       "stage_ms_mean": {
+        "chunk_encode": 2.5923,
+        "coarse_scan": 2.2157,
+        "exact_reread": 8.7801,
+        "outside_laps": 8.6864,
+        "readout": 0.6223,
+        "reencode": 7.5524,
+        "rerank": 0.6389,
+        "reread_rest": 0.2908,
+        "token_reads": 0.0657,
+        "topk": 0.5267,
+        "validate": 0.2044
+       },
+       "step_ms": {
+        "mean": 23.5357,
+        "p50": 20.9463,
+        "p95": 30.0082,
+        "samples": 56
+       },
+       "token_bytes": 35520,
+       "token_rereads": 222
+      }
+     },
+     "decode_novel": {
+      "age_blocks_quantiles": {
+       "0.0": 34,
+       "0.1": 2785,
+       "0.5": 16735,
+       "0.9": 29766,
+       "1.0": 32468
+      },
+      "cache_bytes_end": 135168,
+      "cache_bytes_served": 0,
+      "cache_evictions": 0,
+      "cache_hits": 0,
+      "cache_inserts": 256,
+      "cache_management_ms_mean": 0.1439,
+      "cache_misses": 256,
+      "cache_purged": 0,
+      "coarse_records": 2097077,
+      "descriptor_bytes": 2147406848,
+      "fine_key_bytes": 33554432,
+      "fine_tier_reads": 4096,
+      "first_time": 254,
+      "first_time_fraction": 0.9922,
+      "hit_rate": 0.0,
+      "minus_off_ms": {
+       "mean": 15.0105,
+       "p50": 13.9443,
+       "p95": 21.491,
+       "samples": 64
+      },
+      "overlap_with_previous_step_mean": 0.0,
+      "queries": 64,
+      "reencoded": 256,
+      "reencoded_per_step": {
+       "mean": 4.0,
+       "p50": 4.0,
+       "p95": 4.0,
+       "samples": 64
+      },
+      "repeat_served_by_cache": 0,
+      "requested": 256,
+      "stage_ms_mean": {
+       "chunk_encode": 2.8688,
+       "coarse_scan": 2.3472,
+       "exact_reread": 6.7405,
+       "outside_laps": 8.5379,
+       "readout": 0.5905,
+       "reencode": 5.6556,
+       "rerank": 0.6249,
+       "reread_rest": 0.2454,
+       "token_reads": 0.0649,
+       "topk": 0.5697,
+       "validate": 0.2062
+      },
+      "step_ms": {
+       "mean": 21.7098,
+       "p50": 20.2129,
+       "p95": 27.5658,
+       "samples": 64
+      },
+      "token_bytes": 40960,
+      "token_rereads": 256
+     },
+     "decode_replay": {
+      "age_blocks_quantiles": {
+       "0.0": 34,
+       "0.1": 2785,
+       "0.5": 16735,
+       "0.9": 29766,
+       "1.0": 32468
+      },
+      "cache_bytes_end": 8583168,
+      "cache_bytes_served": 8650752,
+      "cache_evictions": 0,
+      "cache_hits": 256,
+      "cache_inserts": 0,
+      "cache_management_ms_mean": 0.2279,
+      "cache_misses": 0,
+      "cache_purged": 0,
+      "coarse_records": 2097077,
+      "descriptor_bytes": 2147406848,
+      "fine_key_bytes": 33554432,
+      "fine_tier_reads": 4096,
+      "first_time": 254,
+      "first_time_fraction": 0.9922,
+      "hit_rate": 1.0,
+      "minus_off_ms": {
+       "mean": 9.486,
+       "p50": 8.7272,
+       "p95": 14.761,
+       "samples": 64
+      },
+      "overlap_with_previous_step_mean": 0.0,
+      "queries": 64,
+      "reencoded": 0,
+      "reencoded_per_step": {
+       "mean": 0.0,
+       "p50": 0.0,
+       "p95": 0.0,
+       "samples": 64
+      },
+      "repeat_served_by_cache": 256,
+      "requested": 256,
+      "stage_ms_mean": {
+       "chunk_encode": 2.7743,
+       "coarse_scan": 2.2871,
+       "exact_reread": 1.0657,
+       "outside_laps": 8.7397,
+       "readout": 0.5925,
+       "reencode": 0.0,
+       "rerank": 0.726,
+       "reread_rest": 0.2811,
+       "token_reads": 0.0,
+       "topk": 0.5719,
+       "validate": 0.1376
+      },
+      "step_ms": {
+       "mean": 16.1854,
+       "p50": 15.1688,
+       "p95": 21.2738,
+       "samples": 64
+      },
+      "token_bytes": 0,
+      "token_rereads": 0
+     },
+     "path": "stored",
+     "prefill_last": [
+      {
+       "age_blocks_quantiles": {
+        "0.0": 2589,
+        "0.1": 2589,
+        "0.5": 7382,
+        "0.9": 19741,
+        "1.0": 19741
+       },
+       "cache_bytes_end": 135168,
+       "cache_bytes_served": 0,
+       "cache_evictions": 0,
+       "cache_hits": 0,
+       "cache_inserts": 8,
+       "cache_management_ms_mean": 0.1577,
+       "cache_misses": 8,
+       "cache_purged": 0,
+       "coarse_records": 65568,
+       "descriptor_bytes": 67141632,
+       "fine_key_bytes": 1048576,
+       "fine_tier_reads": 128,
+       "first_time": 8,
+       "first_time_fraction": 1.0,
+       "hit_rate": 0.0,
+       "minus_off_ms": {
+        "mean": 11.9978,
+        "p50": 15.2422,
+        "p95": 15.2422,
+        "samples": 2
+       },
+       "queries": 2,
+       "reencoded": 8,
+       "reencoded_per_step": {
+        "mean": 4.0,
+        "p50": 4.0,
+        "p95": 4.0,
+        "samples": 2
+       },
+       "repeat_served_by_cache": 0,
+       "requested": 8,
+       "stage_ms_mean": {
+        "chunk_encode": 17.5049,
+        "coarse_scan": 2.0422,
+        "exact_reread": 5.9784,
+        "outside_laps": 48.0395,
+        "readout": 0.5627,
+        "reencode": 4.9053,
+        "rerank": 0.6396,
+        "reread_rest": 0.2487,
+        "token_reads": 0.0853,
+        "topk": 0.4951,
+        "validate": 0.1803
+       },
+       "step_ms": {
+        "mean": 74.7674,
+        "p50": 76.4553,
+        "p95": 76.4553,
+        "samples": 2
+       },
+       "token_bytes": 1280,
+       "token_rereads": 8
+      }
+     ],
+     "projected_scratch_bytes": {
+      "decode": 37014796,
+      "prefill_512_every_position": 160689164
+     },
+     "state_bytes": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_fine_keys": 268435456,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 306475024
+     }
+    }
+   },
+   "decode_cost_fit": {
+    "reread": {
+     "fixed_ms": 19.9046,
+     "per_reencoded_block_ms": 1.0304,
+     "r2": 0.0153,
+     "samples": 256
+    },
+    "stored": {
+     "fixed_ms": 16.2285,
+     "per_reencoded_block_ms": 1.5491,
+     "r2": 0.1715,
+     "samples": 256
+    }
+   },
+   "decode_logit_gap": {
+    "reread_cache_vs_reread": 2.38419e-07,
+    "stored_cache_vs_reread": 2.38419e-07,
+    "stored_vs_reread": 2.38419e-07
+   },
+   "evidence": {
+    "block": 32,
+    "capacity": 1048576,
+    "coarse_top": 64,
+    "encoder_dim": 256,
+    "encoder_heads": 4,
+    "encoder_layers": 2,
+    "evidence": 4,
+    "fine_dim": 64,
+    "fine_keys": "stored",
+    "fine_top": 8,
+    "key_dim": 64,
+    "key_dtype": "auto",
+    "mode": "learned",
+    "overlap": 8,
+    "per_block": 4,
+    "query_tile": 32,
+    "read_head_dim": 128,
+    "read_heads": 8,
+    "rerank": "learned",
+    "supersession": "max",
+    "tile_elements": 4194304
+   },
+   "geometry": "enc256",
+   "ingest_us_per_token_no_reads": {
+    "reread": {
+     "mean": 133.748,
+     "p50": 140.474,
+     "p95": 140.701,
+     "samples": 4
+    },
+    "stored": {
+     "mean": 137.066,
+     "p50": 136.595,
+     "p95": 151.625,
+     "samples": 4
+    }
+   },
+   "ingest_us_per_token_no_reads_with_tier": {
+    "mean": 127.625,
+    "p50": 119.066,
+    "p95": 174.533,
+    "samples": 2048
+   },
+   "live_blocks": 32768,
+   "occupancy": 1048576,
+   "peak_rss_mib": 5001.6,
+   "ple": true,
+   "prefill_last_logit_gap": {
+    "stored_cache_vs_reread": 1.3411e-07,
+    "stored_vs_reread": 1.3411e-07
+   },
+   "tokens": 1048576
   }
  ],
  "seed": 8,
