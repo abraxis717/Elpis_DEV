@@ -359,7 +359,22 @@ in section 2:
 The peak RSS of the measurement processes, 3.5-6.3 GB, counts every snapshot copy and cache the runner holds at
 once. It is not one session's footprint.
 
-<!-- P4_ROBUST -->
+**Robustness: thread count and ISA.** `enc256`, PLE on, decode p50 / p95 in ms, as in the main table. One thread
+uses this CPU's AVX-512 kernels; the AVX2 run forces PyTorch's and MKL's AVX2 paths on 4 threads (the record's
+`cpu_capability` reads AVX2):
+
+| setting | tokens | R5 off | reference | reference + cache | stored | stored + cache | R5 read, reference → stored | logit gap |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 4 threads, native | 64K | 6.20 / 10.5 | 72.3 / 128.8 | 51.7 / 89.3 | 16.7 / 27.4 | 15.8 / 24.2 | 64.8 → 9.91 (6.5x) | 3.6e-07 |
+| 4 threads, native | 1M | 5.99 / 8.53 | 58.2 / 81.9 | 59.7 / 81.8 | 20.8 / 27.9 | 18.4 / 27.6 | 51.8 → 14.9 (3.5x) | 3.6e-07 |
+| 1 thread, native | 64K | 6.68 / 8.80 | 153.4 / 182.3 | 122.2 / 155.2 | 23.9 / 28.9 | 22.5 / 30.1 | 146.7 → 17.3 (8.5x) | 3.6e-07 |
+| 1 thread, native | 1M | 6.89 / 9.42 | 184.5 / 228.3 | 182.0 / 241.2 | 34.2 / 43.5 | 32.5 / 43.1 | 177.2 → 26.8 (6.6x) | 3.6e-07 |
+| 4 threads, AVX2 forced | 64K | 6.63 / 9.50 | 81.5 / 103.8 | 66.1 / 94.9 | 19.3 / 27.1 | 18.2 / 23.9 | 74.2 → 12.3 (6.1x) | 3.0e-07 |
+| 4 threads, AVX2 forced | 1M | 6.14 / 10.6 | 91.4 / 132.7 | 88.5 / 115.9 | 21.7 / 29.9 | 20.9 / 30.0 | 84.5 → 15.1 (5.6x) | 2.4e-07 |
+
+The reduction holds in every setting. It is largest where re-encoding is slowest: on one thread and on the AVX2
+paths, re-encoding 64 candidates costs more and the stored path avoids it. The core (R5 off) barely changes with
+the thread count at batch 1.
 
 <!-- P4_LAST -->
 
@@ -404,11 +419,50 @@ once. It is not one session's footprint.
    - `enc64` missed by 3 ms. Re-encoding 4 blocks costs 2.35 ms, not the 4/64 of 9 ms assumed: a small encoder
      call has a fixed overhead of about 2 ms. The setup outside the laps also adds about 2 ms.
 
-<!-- P4_VERDICT -->
+**P4 verdict. `fine_keys="stored"`: PASS on CPU as an admission candidate, opt-in. The default stays `"reread"`.**
+
+| Criterion (directive) | Result |
+|---|---|
+| end-to-end reduction of read cost | MEASURED. Decode reads at every occupancy cost 1.8-6.9x less. From 64K on, every-position prefill is 5-32x faster. The p50 and p95 of every configuration are reported |
+| robust across threads and ISA | MEASURED on 1 thread and with the AVX2 paths forced: 3.5-8.5x |
+| same results | PASS. Same selections, bit for bit; scores and logits within rounding (section 4). At timing scale the float32 logit gap is at most 7.2e-7 |
+| bounded memory (1M, 512-token prefill) | PASS (EXACT state, PROJECTED scratch). The tier is a fixed 128 / 256 MiB per stream at 1M. The worst case at 1M falls from 0.97 to 0.50 GiB; decode only rises from 0.11 to 0.34 GiB |
+| no unrealistic warming | PASS. Cold and novel steps cost what warm steps cost; replay is reported separately |
+| CUDA | NOT_RUN: no device here |
+| 60-100 tokens/s goal | not an R8 claim. No throughput target is claimed |
+
+The owner decides whether to admit it and whether to make it the default.
 
 ## 6. Limits
 
-<!-- LIMITS -->
+- **Untrained timing models.** The candidate dynamics measured (overlap, novelty, ages) are an untrained model's.
+  A trained model may repeat candidates more, which would help the R6 cache. The stored path's gain does not depend
+  on repetition: its novel bound was measured.
+- **CPU only.** The CPU has 4 cores with AVX-512 and AMX; the AVX2 paths were also forced, and 1 thread measured.
+  CUDA is NOT_RUN. On a GPU, the gather bandwidth of the tier and the launch overhead of small encoder calls are
+  unmeasured.
+- **Memory is traded, not saved, at decode.** The tier is resident whether or not a session reads: 128 MiB
+  (`enc64`) or 256 MiB (`enc256`) per stream at 1M, in float32. A model in bfloat16 would store it in bfloat16;
+  that is not tested. Hence opt-in.
+- **Training is unchanged.** Stored keys are never used with gradients, so training gets no speed-up. The R5
+  losses keep their reference path, bit for bit.
+- **What remains of the read at 1M is not addressed** (one acceleration only):
+  - the coarse scan: 2.2-2.6 ms, 32 MiB of descriptors per query;
+  - the local block's encoding: 1.4-2.5 ms;
+  - the fixed overhead of small encoder calls: about 2 ms for 4 blocks;
+  - about 2.3 ms of setup outside the stage laps.
+- **The fingerprint has R6's and R4.1's limit.** Writes that bypass PyTorch's version tracking (`.data`, foreign
+  views) are not seen. A `ContextSession` refuses any revision change it can see, and `verify_digest` remains the
+  opt-in full check.
+- **Retrieval quality is unchanged by construction**, and so are the earlier limits:
+  - R5 did not solve autonomous recall;
+  - label-free hard coarse selection has no gradient;
+  - the PLE improved only small-scale perplexity;
+  - router specialization is unproven.
+- **Measurement.**
+  - Absolute times drift between processes on this VM, so comparisons are made within a process.
+  - P0's first occupancy per process was slow; P4 warms up first.
+  - The measurement wrappers add the same small cost to every configuration.
 
 ## 7. Regression, CI, reproduction
 
