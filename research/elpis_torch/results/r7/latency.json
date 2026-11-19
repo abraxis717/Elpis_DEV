@@ -1,0 +1,225 @@
+{
+ "cold_device_reads": "NOT_RUN: the store is read back from the page cache in this container",
+ "decode_steps": 400,
+ "environment": {
+  "cpu_capability": "AVX512",
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "model": "d 256, 4 blocks, 8 experts top-2 in blocks 1 and 3, PLE 2 orders x 4 heads x 32771 rows x 32 (before block 1), UNTRAINED (timing only)",
+ "phase": "ELPIS_TORCH_R7_PLE_ADMISSION",
+ "ple_parts_resident": {
+  "addressing_1_tokens": {
+   "mean_ms": 0.208,
+   "p50_ms": 0.194,
+   "p95_ms": 0.289,
+   "samples": 200
+  },
+  "addressing_512_tokens": {
+   "mean_ms": 0.255,
+   "p50_ms": 0.238,
+   "p95_ms": 0.331,
+   "samples": 200
+  },
+  "fusion_with_gather_1_tokens": {
+   "mean_ms": 0.113,
+   "p50_ms": 0.098,
+   "p95_ms": 0.161,
+   "samples": 200
+  },
+  "fusion_with_gather_512_tokens": {
+   "mean_ms": 0.719,
+   "p50_ms": 0.713,
+   "p95_ms": 0.91,
+   "samples": 200
+  },
+  "row_gather_1_tokens": {
+   "mean_ms": 0.004,
+   "p50_ms": 0.004,
+   "p95_ms": 0.004,
+   "samples": 200
+  },
+  "row_gather_512_tokens": {
+   "mean_ms": 0.014,
+   "p50_ms": 0.012,
+   "p95_ms": 0.017,
+   "samples": 200
+  }
+ },
+ "prefill_runs": 20,
+ "rows": [
+  {
+   "decode_per_token": {
+    "mean_ms": 4.643,
+    "p50_ms": 4.409,
+    "p95_ms": 6.205,
+    "samples": 400
+   },
+   "logical_bytes_read_per_token": 0,
+   "ple": "off",
+   "prefill_512": {
+    "mean_ms": 43.896,
+    "p50_ms": 42.781,
+    "p95_ms": 52.176,
+    "samples": 20
+   },
+   "r5": false,
+   "rows_read_per_token": 0
+  },
+  {
+   "decode_minus_off": {
+    "mean_ms": 0.549,
+    "p50_ms": 0.487,
+    "p95_ms": 1.361,
+    "samples": 400
+   },
+   "decode_per_token": {
+    "mean_ms": 5.192,
+    "p50_ms": 4.883,
+    "p95_ms": 7.052,
+    "samples": 400
+   },
+   "logical_bytes_read_per_token": 1024,
+   "ple": "resident",
+   "prefill_512": {
+    "mean_ms": 44.688,
+    "p50_ms": 43.755,
+    "p95_ms": 54.984,
+    "samples": 20
+   },
+   "prefill_minus_off": {
+    "mean_ms": 0.792,
+    "p50_ms": 1.312,
+    "p95_ms": 4.276,
+    "samples": 20
+   },
+   "r5": false,
+   "rows_read_per_token": 8
+  },
+  {
+   "decode_minus_off": {
+    "mean_ms": 0.771,
+    "p50_ms": 0.588,
+    "p95_ms": 2.029,
+    "samples": 400
+   },
+   "decode_per_token": {
+    "mean_ms": 5.414,
+    "p50_ms": 4.973,
+    "p95_ms": 7.211,
+    "samples": 400
+   },
+   "logical_bytes_read_per_token": 1024,
+   "ple": "file",
+   "prefill_512": {
+    "mean_ms": 51.335,
+    "p50_ms": 48.41,
+    "p95_ms": 67.013,
+    "samples": 20
+   },
+   "prefill_minus_off": {
+    "mean_ms": 7.44,
+    "p50_ms": 5.87,
+    "p95_ms": 17.878,
+    "samples": 20
+   },
+   "r5": false,
+   "rows_read_per_token": 8,
+   "store_counters_during_decode": {
+    "bytes_read": 409600,
+    "calls": 400,
+    "reads": 3200,
+    "rows_read": 3200,
+    "rows_requested": 3200
+   }
+  },
+  {
+   "decode_per_token": {
+    "mean_ms": 18.134,
+    "p50_ms": 17.214,
+    "p95_ms": 24.064,
+    "samples": 400
+   },
+   "logical_bytes_read_per_token": 0,
+   "ple": "off",
+   "prefill_512": {
+    "mean_ms": 285.129,
+    "p50_ms": 301.483,
+    "p95_ms": 424.267,
+    "samples": 20
+   },
+   "r5": true,
+   "rows_read_per_token": 0
+  },
+  {
+   "decode_minus_off": {
+    "mean_ms": 1.316,
+    "p50_ms": 0.842,
+    "p95_ms": 7.912,
+    "samples": 400
+   },
+   "decode_per_token": {
+    "mean_ms": 19.45,
+    "p50_ms": 18.111,
+    "p95_ms": 27.945,
+    "samples": 400
+   },
+   "logical_bytes_read_per_token": 1024,
+   "ple": "resident",
+   "prefill_512": {
+    "mean_ms": 282.441,
+    "p50_ms": 317.928,
+    "p95_ms": 381.757,
+    "samples": 20
+   },
+   "prefill_minus_off": {
+    "mean_ms": -2.689,
+    "p50_ms": -4.329,
+    "p95_ms": 61.851,
+    "samples": 20
+   },
+   "r5": true,
+   "rows_read_per_token": 8
+  },
+  {
+   "decode_minus_off": {
+    "mean_ms": 0.935,
+    "p50_ms": 0.795,
+    "p95_ms": 5.542,
+    "samples": 400
+   },
+   "decode_per_token": {
+    "mean_ms": 19.069,
+    "p50_ms": 18.052,
+    "p95_ms": 24.555,
+    "samples": 400
+   },
+   "logical_bytes_read_per_token": 1024,
+   "ple": "file",
+   "prefill_512": {
+    "mean_ms": 294.056,
+    "p50_ms": 285.735,
+    "p95_ms": 478.403,
+    "samples": 20
+   },
+   "prefill_minus_off": {
+    "mean_ms": 8.926,
+    "p50_ms": 5.587,
+    "p95_ms": 74.32,
+    "samples": 20
+   },
+   "r5": true,
+   "rows_read_per_token": 8,
+   "store_counters_during_decode": {
+    "bytes_read": 409600,
+    "calls": 400,
+    "reads": 3200,
+    "rows_read": 3200,
+    "rows_requested": 3200
+   }
+  }
+ ],
+ "threads": 4
+}

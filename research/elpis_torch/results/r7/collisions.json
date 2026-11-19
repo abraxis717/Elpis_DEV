@@ -1,0 +1,106 @@
+{
+ "corpus": {
+  "digest": "ab516f5f3db9f2314636110a81478ae96aea161fc01044852ab10467ce1c86d7",
+  "revision": "c05adffafbd5d8a94ee40c285031d1cd219f1c4c",
+  "train": {
+   "bytes": 2915823,
+   "documents": 275
+  },
+  "val_code": {
+   "bytes": 151683,
+   "documents": 15
+  },
+  "val_prose": {
+   "bytes": 70745,
+   "documents": 5
+  }
+ },
+ "environment": {
+  "cpu_capability": "AVX512",
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 1,
+  "torch": "2.15.0+cpu"
+ },
+ "orders": {
+  "2": {
+   "distinct_ngrams": 4918,
+   "heads": [
+    {
+     "ngrams_sharing_a_row": 0.0819439,
+     "rows_used": 4715,
+     "table_rows": 65537
+    },
+    {
+     "ngrams_sharing_a_row": 0.0744205,
+     "rows_used": 4733,
+     "table_rows": 65539
+    },
+    {
+     "ngrams_sharing_a_row": 0.0732005,
+     "rows_used": 4736,
+     "table_rows": 65543
+    },
+    {
+     "ngrams_sharing_a_row": 0.0833672,
+     "rows_used": 4711,
+     "table_rows": 65551
+    }
+   ],
+   "shared_in_every_head": 0.0,
+   "shared_in_some_head": 0.277755
+  },
+  "3": {
+   "distinct_ngrams": 44079,
+   "heads": [
+    {
+     "ngrams_sharing_a_row": 0.487534,
+     "rows_used": 32141,
+     "table_rows": 65557
+    },
+    {
+     "ngrams_sharing_a_row": 0.489802,
+     "rows_used": 32085,
+     "table_rows": 65563
+    },
+    {
+     "ngrams_sharing_a_row": 0.489371,
+     "rows_used": 32096,
+     "table_rows": 65579
+    },
+    {
+     "ngrams_sharing_a_row": 0.489939,
+     "rows_used": 32079,
+     "table_rows": 65581
+    }
+   ],
+   "shared_in_every_head": 0.057102,
+   "shared_in_some_head": 0.931532
+  }
+ },
+ "phase": "ELPIS_TORCH_R7_PLE_ADMISSION",
+ "ple": {
+  "addressing": "hash",
+  "boundary": 256,
+  "head_dim": 8,
+  "heads": 4,
+  "layer": 1,
+  "lr_multiplier": 5.0,
+  "orders": [
+   2,
+   3
+  ],
+  "rows": 65536,
+  "seed": 0
+ },
+ "table_sizes": [
+  65537,
+  65539,
+  65543,
+  65551,
+  65557,
+  65563,
+  65579,
+  65581
+ ]
+}

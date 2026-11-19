@@ -78,22 +78,23 @@ def evidence_main():
     torch.set_num_threads(1)
     widths = ModelConfig(vocab_size=700, d_model=32, n_layers=2, n_heads=2, max_seq_len=32, channel="cgc",
                          cgc_bottleneck=8, cgc_channels=16, seed=0)
+    fine_keys = "stored" if "--stored-fine-keys" in sys.argv else "reread"     # R8: the fine-key tier
     model = freeze(EvidenceLM(ErsaConfig(widths, ersa_heads=2, key_dim=8, value_dim=8, conv_kernel=4, chunk=64),
                               EvidenceConfig(block=16, capacity=256, per_block=2, key_dim=16, coarse_top=8,
                                              evidence=2, fine_top=4, overlap=4, encoder_dim=32, fine_dim=8,
-                                             read_heads=2, read_head_dim=8)))
+                                             read_heads=2, read_head_dim=8, fine_keys=fine_keys)))
     if "--audit" in sys.argv:
         sys.addaudithook(hook)
     armed = True
     os.write(2, b"ELPIS_SESSION_BEGIN\n")
     tokens = torch.randint(0, 700, (2, 900), generator=torch.Generator().manual_seed(0))
-    position = 0
+    position, tier_reads = 0, 0
     try:
         with torch.no_grad():
             state = model.new_state(2)
             for at in range(0, 900, 64):                       # 3.5 ring capacities
                 model(tokens[:, at:at + 64], state, logit_positions=torch.tensor([0, 31, 63])[:tokens[:, at:at + 64].shape[1] // 32 + 1])
-            position = state.position
+            position, tier_reads = state.position, state.counters.get("fine_tier_reads", 0)
             state.reset()
             model(tokens[:, :64], state)
             if "--negative-control" in sys.argv:
@@ -104,7 +105,58 @@ def evidence_main():
         pass
     os.write(2, b"ELPIS_SESSION_END\n")
     armed = False
-    print(json.dumps({"applied_updates": 0, "position": position, "write_events": events}))
+    print(json.dumps({"applied_updates": 0, "position": position, "fine_tier_reads": tier_reads,
+                      "write_events": events}))
+
+
+def ple_main():
+    """R7: inference that reads PLE rows from a file-backed store: open the store, prefill, decode, reset, a fault.
+    The store is written (offline) before the window opens; inside it only read-only opens and reads may occur."""
+    global armed
+    import tempfile
+    from research.elpis_torch.ersa_model import ErsaConfig, ErsaLM
+    from research.elpis_torch.experiments.run_r7 import export_store
+    from research.elpis_torch.ple import PLEConfig
+    from research.elpis_torch.ple_store import FileStore
+    torch.set_num_threads(1)
+    widths = ModelConfig(vocab_size=259, d_model=32, n_layers=2, n_heads=2, max_seq_len=32, channel="cgc",
+                         cgc_bottleneck=8, cgc_channels=16, seed=0)
+    model = freeze(ErsaLM(ErsaConfig(widths, ersa_heads=2, key_dim=8, value_dim=8, conv_kernel=4, chunk=64,
+                                     ple=PLEConfig(rows=257, head_dim=4, layer=1, boundary=256))))
+    folder = tempfile.mkdtemp(prefix="elpis-ple-scenario-")
+    path = os.path.join(folder, "table.ple")
+    export_store(model.ple.table.weight, path, addressing_digest=model.ple.addresser.digest())
+    if "--audit" in sys.argv:
+        sys.addaudithook(hook)
+    armed = True
+    os.write(2, b"ELPIS_SESSION_BEGIN\n")
+    position, rows_read, store = 0, 0, None
+    try:
+        with torch.no_grad():
+            store = FileStore(path)
+            model.ple.attach_store(store)
+            tokens = torch.randint(0, 259, (2, 300), generator=torch.Generator().manual_seed(0))
+            state = model.new_state(2)
+            for at in range(0, 300, 64):
+                model(tokens[:, at:at + 64], state)
+            for at in range(5):
+                model(tokens[:, at:at + 1], state)
+            position, rows_read = state.position, store.counters["rows_read"]
+            state.reset()
+            model(tokens[:, :64], state)
+            if "--negative-control" in sys.argv:
+                with open(sys.argv[sys.argv.index("--negative-control") + 1], "w") as handle:
+                    handle.write("not volatile")
+            raise RuntimeError("a fault inside a live stream")
+    except RuntimeError:
+        pass
+    os.write(2, b"ELPIS_SESSION_END\n")
+    armed = False
+    if store is not None:
+        store.close()
+    os.remove(path)
+    os.rmdir(folder)
+    print(json.dumps({"applied_updates": 0, "position": position, "rows_read": rows_read, "write_events": events}))
 
 
 def main():
@@ -140,4 +192,5 @@ def main():
 
 
 if __name__ == "__main__":
-    scroll_main() if "--scroll" in sys.argv else evidence_main() if "--evidence" in sys.argv else main()
+    (scroll_main() if "--scroll" in sys.argv else evidence_main() if "--evidence" in sys.argv else
+     ple_main() if "--ple" in sys.argv else main())

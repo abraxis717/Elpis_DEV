@@ -66,13 +66,25 @@ def test_the_only_storage_writers_are_the_explicit_offline_operations():
             writers[str(path.relative_to(LAB))] = len(hits)
     assert writers == {"training.py": 1, "experiments/run_r0.py": 1, "experiments/run_r1.py": 2,
                        "experiments/run_r2.py": 1, "experiments/run_r3.py": 2, "experiments/run_r4.py": 1,
-                       "experiments/run_r5.py": 3, "experiments/run_r6.py": 1, "lm_training.py": 1}
+                       "experiments/run_r5.py": 3, "experiments/run_r6.py": 1, "experiments/run_r7.py": 2,
+                       "experiments/run_r8.py": 1, "lm_training.py": 1}
     for module in ("session.py", "scroll_session.py", "scroll.py", "lastblock.py", "ersa.py", "ersa_model.py",
                    "history.py", "history_model.py", "longrange_tasks.py", "program_tasks.py", "scaling.py",
                    "context_runtime.py", "spark_reference.py", "evidence_ring.py", "evidence_model.py",
-                   "evidence_tasks.py", "sparse_channel.py"):
+                   "evidence_tasks.py", "sparse_channel.py", "ple.py"):
         source = (LAB / module).read_text(encoding="utf-8")
         assert "save_checkpoint" not in source and "torch.save" not in source and "open(" not in source, module
+
+
+def test_the_ple_store_only_ever_reads():
+    """R7: the inference store opens its file read only and reads rows with positioned reads; nothing in it can
+    write, map, truncate or replace a file (the offline writer lives in experiments/run_r7.py)."""
+    source = (LAB / "ple_store.py").read_text(encoding="utf-8")
+    code = "\n".join(line.split("#", 1)[0] for line in source.splitlines())
+    opens = re.findall(r"\bopen\([^)]*\)", code)
+    assert opens == ["open(self.path, os.O_RDONLY)"], opens
+    assert not re.search(r"os\.(write|pwrite|ftruncate|truncate|rename|replace|remove|unlink)|\.write\(|mmap|"
+                         r"O_WRONLY|O_RDWR|O_CREAT|torch\.save", code)
 
 
 def test_the_deferred_systems_are_not_implemented():
@@ -82,6 +94,9 @@ def test_the_deferred_systems_are_not_implemented():
     Token-routed channel experts left it in R6, by the owner's directive (ELPIS_TORCH_R6 P2): a learned per-token
     router over FFN + CGC experts inside the channel sublayer (sparse_channel.py). An expert SELECTOR in the
     agentic sense (RALPH as selector, an action policy, a halting agent, a controller) stays absent.
+    Parametric lookup embeddings were admitted for evaluation in R7, by the owner's directive (ELPIS_TORCH_R7):
+    hashed n-gram rows fused by a learned gate at one block (ple.py, read-only stores in ple_store.py). The names
+    below stay forbidden: no Engram reproduction and no general memory or retrieval framework.
     """
     names = {p.stem.lower() for p in LAB.rglob("*.py")}
     assert not names & {"ralph", "moe", "engram", "mhc", "hca", "awr", "gdn", "halt", "energy", "router",
