@@ -115,7 +115,8 @@ event sources), so DRAM traffic is not measured. HBM is not measured either: CUD
   measurement (`run_r8 admission`) on `enc256`, with the PLE on and off;
 - a large-copy memory bandwidth of this machine (`run_r9_p3 bandwidth`), labelled as this VM, not the DDR3
   scenario;
-- RSS and USS growth when a 1M-capacity state is created and filled (`rss`), against its EXACT bytes.
+- RSS and USS growth when a 1M-capacity state is created and filled (`rss`), against its EXACT bytes. The fill
+  goes through R8's no-read ingest; the measured decode step reads.
 
 ### 3.2 Corrections made before the P3 records were produced
 

@@ -328,6 +328,17 @@ showed no measurable benefit over FFN width, and cost 11% decode latency at this
 - GPU behaviour: CUDA NOT_RUN.
 - Decoding in bfloat16 on CPU: this implementation does not.
 
+## README corrections made in R9
+
+`research/elpis_torch/README.md`, with pointers back to this ledger:
+
+1. **The introduction (L3).** It called the operator "the ECS_G E0 cubic cell … inside every block". It now
+   describes an E0-derived bounded operator with learned projections, in every block's dense channel from R0 to R5
+   and inside routed experts from R6 on.
+2. **Claim status.** A pointer to this ledger was added, with R9's verdict.
+3. **"Not here, on purpose".** It still listed "MoE routing" after R6 admitted token-routed channel experts by the
+   owner's directive. It now reads "MoE routing beyond R6's token-routed channel experts".
+
 ## R9 result
 
 The verdict wording follows `PREREGISTRATION_R9.md` §5 exactly.

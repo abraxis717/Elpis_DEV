@@ -1,8 +1,17 @@
 # Elpis Torch R0
 
-A trainable, autoregressive, decoder-only transformer in PyTorch with the Cubic Geometric Core (CGC, the
-ECS_G E0 cubic cell) as a neural operator inside every block, and a bounded, session-local, volatile
-fast-weight mechanism for the CGC weights.
+A trainable, autoregressive, decoder-only transformer in PyTorch. Its channel sublayer carries a neural operator
+derived from the Cubic Geometric Core: batched ECS_G E0 cubic cells behind a pre-activation bound (default 3.0),
+with learned input and output projections. It is not the native 120-parameter CGC and not K1; it is exactly E0
+only with the bound off (`docs/research/elpis_torch/CLAIM_AUDIT_R9.md`, L3). The operator sits in every block's
+dense channel from R0 to R5, and inside routed FFN + CGC experts from R6 on. The prototype also has a bounded,
+session-local, volatile fast-weight mechanism for the CGC weights.
+
+**Claim status (R9).** `docs/research/elpis_torch/CLAIM_AUDIT_R9.md` records what each result here supports.
+- In R7's architecture, a preregistered parameter- and compute-matched comparison found no measurable benefit of
+  CGC over FFN width: `CGC_NOT_ESTABLISHED` (`EVIDENCE_R9.md`).
+- The trained models do use their CGC path: removing it at evaluation raises the loss.
+- At this scale, CGC cost 11% decode latency.
 
 **RESEARCH_ONLY. NO_RUNTIME_AUTHORITY. NO_LANGUAGE_CLAIM.** This is an architectural research prototype at
 toy scale. It is not part of the Elpis runtime, nothing in `src/` or `native/` imports it, and passing its
@@ -17,6 +26,8 @@ Elpis cognitive path; what it would take to change that is a separate, unadopted
 | R1: scrolling context, last-block fast weights, capacity model | `docs/research/elpis_torch/DESIGN_R1.md` |
 | R1: long-horizon results, failures, recommendation | `docs/research/elpis_torch/EVIDENCE_R1.md` |
 | R2: ERSA design notes, results, failures, gates | `docs/research/elpis_torch/EVIDENCE_R2.md` |
+| R3–R8: design and evidence of each phase | `docs/research/elpis_torch/DESIGN_R*.md`, `EVIDENCE_R*.md` |
+| R9: claim audit, CGC attribution (preregistered), whole-model memory and bandwidth, Gate A (HOLD) | `docs/research/elpis_torch/CLAIM_AUDIT_R9.md`, `PREREGISTRATION_R9.md`, `DESIGN_R9.md`, `EVIDENCE_R9.md`, `GATE_A_PROTOCOL_R9.md` |
 | Where the CGC mathematics comes from | `PROVENANCE.md` |
 
 ## Install
@@ -117,10 +128,11 @@ with VolatileSession(model, SessionConfig(lr=0.1, max_steps=16)) as session:
 | `lm_training.py`, `experiments/run_r6.py` | R6: one autoregressive training path for every ERSA-family variant (documents, chunked state, full or truncated backpropagation, router losses, generation, versioned checkpoints); `run_r6 scale|dispatch|controls|cache|smoke` (`docs/research/elpis_torch/DESIGN_R6.md`, `EVIDENCE_R6.md`) |
 | `ple.py`, `ple_store.py`, `experiments/run_r7.py` | R7 (admission candidate): parametric lookup embeddings: seeded hashed n-gram addresses (bounded history, document boundaries), trainable tables with lazy updates, a gated fusion before one block, an exact removal control; immutable and read-only file-backed stores; `run_r7 study|local|revision|collisions|latency|accounting|combine|smoke` (`docs/research/elpis_torch/DESIGN_R7.md`, `EVIDENCE_R7.md`) |
 | `evidence_ring.py`, `evidence_model.py` (`EvidenceConfig.fine_keys`), `experiments/run_r8.py` | R8 (admission candidate, opt-in): the R5 read with stored fine keys: each block's fine keys computed once at completion and kept in the ring's index beside its descriptors (same slots, same validation, reset and invalidation); candidates reranked from them, only injected blocks reread and re-encoded; the R5 reread stays the default; `run_r8 baseline|represent|admission|smoke` (`docs/research/elpis_torch/DESIGN_R8.md`, `EVIDENCE_R8.md`) |
+| `experiments/run_r9.py`, `experiments/run_r9_p3.py` | R9: the preregistered CGC attribution study (`run_r9 accounting|integrity|train|latency|combine|manifest|smoke`) and whole-model memory and bandwidth accounting (`run_r9_p3 account|trace|bandwidth|rss|roofline|measured`; `docs/research/elpis_torch/DESIGN_R9.md`, `EVIDENCE_R9.md`) |
 
 ## Not here, on purpose
 
-RALPH in any role, MoE routing, Engram, mHC, HCA, AWR, GDN, persistent inference learning, an energy
+RALPH in any role, MoE routing beyond R6's token-routed channel experts, Engram, mHC, HCA, AWR, GDN, persistent inference learning, an energy
 function, a metacognitive controller, a retrieval controller or host-side retriever (R3's block selection and R5's
 coarse scan and reranking are the model's own learned functions; the host only stores, validates, evicts and
 gathers), model weights, and any claim that the DSV4.1
