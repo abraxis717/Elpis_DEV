@@ -15,8 +15,9 @@ Commands
                by data class and pipeline stage, at each length, after a synthetic history fill that is validated
                against a real prefill. Logical operand bytes, not DRAM transfers (this VM exposes no PMU)
     bandwidth  MEASURED memory-copy bandwidth of this machine (large tensor copies, best of several)
-    rss        MEASURED process RSS / USS growth when one session state at capacity 1M is created, filled and one
-               token decoded (enc256, PLE on; one fine-key mode per process), against its EXACT bytes
+    rss        MEASURED process RSS / USS growth when one session state at capacity 1M is created, filled through
+               R8's ingest path (no reads) and one token decoded with its read (enc256, PLE on; one fine-key mode per
+               process), against its EXACT bytes
     roofline   PROJECTED DDR3-scenario and GPU-scenario ceilings from ``account`` and the frozen assumptions
     measured   the R8 admission records measured for R9, summarized by length (decode p50/p95, stages, RSS)
 
@@ -735,8 +736,9 @@ def command_rss(args) -> dict:
         state = model.new_state(1)
         created = _proc_memory()
         tokens = torch.randint(0, 259, (1, args.fill), generator=torch.Generator().manual_seed(9))
-        for at in range(0, args.fill, 512):                      # live history before the measured decode step
-            model(tokens[:, at:at + 512], state)
+        for at in range(0, args.fill, 512):          # live history, ingested as R8 does: no read, no logits (a read at
+            model(tokens[:, at:at + 512], state,     # every position measures prefill scratch, and at 64K in reread
+                  logit_positions=torch.zeros(0, dtype=torch.long))      # mode takes hours on this CPU)
         filled = _proc_memory()
         peak_before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
         model(tokens[:, -1:], state)
