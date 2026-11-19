@@ -1,0 +1,153 @@
+{
+ "phase": "ELPIS_TORCH_R9_BOARDY_QUALIFICATION",
+ "document": "docs/research/elpis_torch/PREREGISTRATION_R9.md",
+ "status": "FROZEN before any confirmatory run. Every confirmatory record carries the SHA-256 of this file and of experiments/run_r9.py; a record whose digests differ from the committed files is not confirmatory evidence.",
+ "question": "What measurable benefit, if any, does CGC contribute to the R7 Elpis PyTorch architecture beyond a parameter-matched FFN, and does it survive computation and memory accounting?",
+ "hypotheses": {
+  "H1": "CGC-specific benefit: arm A has lower held-out bits/byte than the parameter-matched FFN arm C on code and on prose, and also lower than the multiply-add-matched FFN arm C_mac.",
+  "H2": "CGC contributes over the smaller FFN-only architecture: arm A has lower held-out bits/byte than arm B on code and on prose.",
+  "D": "Reliance diagnostic: held-out bits/byte of the trained arm A with every CGC gate forced to 0 at evaluation, minus arm A. Descriptive; never a trained replacement and never evidence of superiority.",
+  "predictions_of_the_claim_under_test": "If CGC is useful in this architecture: A < C, A < C_mac and A < B on both domains (lower is better). Ties or C <= A falsify the claim at this scale."
+ },
+ "corpus": {
+  "revision": "c05adffafbd5d8a94ee40c285031d1cd219f1c4c",
+  "digest": "ab516f5f3db9f2314636110a81478ae96aea161fc01044852ab10467ce1c86d7",
+  "rule": "R7's corpus: src/ and research/elpis_torch/ (*.py, without upstream/) and docs/ (*.md) read from git at the revision; a file is held out when SHA-256 of its path is 0 mod 10",
+  "train": {"documents": 275, "bytes": 2915823},
+  "val_code": {"documents": 15, "bytes": 151683},
+  "val_prose": {"documents": 5, "bytes": 70745}
+ },
+ "tokenizer": "ByteTokenizer: 256 bytes + BOS 256, EOS 257, PAD 258 (vocab 259)",
+ "model": {
+  "d_model": 64, "n_layers": 2, "n_heads": 4, "n_kv_heads": 2, "max_seq_len": 64, "vocab_size": 259,
+  "conv_kernel": 4, "chunk": 64, "ersa_kernel": "chunked", "scan_block": 64,
+  "experts": 8, "top_k": 2, "sparse_layers": [0, 1], "normalize": true, "balance_weight": 0.0, "z_weight": 0.0,
+  "cgc_channels": 48, "cgc_bottleneck": 16, "cgc_units": 4, "cgc_preact_bound": 3.0, "cgc_gate_init": 0.1,
+  "ple": {"orders": [2, 3], "heads": 4, "rows": 65536, "head_dim": 8, "layer": 1, "boundary": 256, "addressing": "hash", "lr_multiplier": 5.0},
+  "dtype": "float32",
+  "initialization": "R0's rule: every parameter is a function of (seed, parameter name), so every parameter two arms share starts identical"
+ },
+ "arms": {
+  "A": {"role": "primary", "kind": "ffn+cgc", "ffn_hidden": 86, "ple": true, "purpose": "CGC-positive reference: R7's PLE model (routed FFN + CGC experts)"},
+  "B": {"role": "primary", "kind": "ffn", "ffn_hidden": 86, "ple": true, "purpose": "trained control with CGC absent from training (the same FFN width, fewer parameters)"},
+  "C": {"role": "primary", "kind": "ffn", "ffn_hidden": 123, "ple": true, "purpose": "DECISIVE: the CGC replaced by FFN width at the closest total parameter count"},
+  "D": {"role": "primary_diagnostic", "from": "A", "intervention": "every CGC gate set to 0 at evaluation (parameters and compute still counted)", "purpose": "model reliance on CGC; not a fair trained replacement"},
+  "C_mac": {"role": "primary_resource_control", "kind": "ffn", "ffn_hidden": 126, "ple": true, "purpose": "the CGC replaced by FFN width at the closest per-token multiply-add count"},
+  "A0": {"role": "secondary_factorial", "kind": "ffn+cgc", "ffn_hidden": 86, "ple": false, "purpose": "no-PLE factorial: CGC x PLE interaction"},
+  "B0": {"role": "secondary_factorial", "kind": "ffn", "ffn_hidden": 86, "ple": false, "purpose": "no-PLE factorial"},
+  "C0": {"role": "secondary_factorial", "kind": "ffn", "ffn_hidden": 123, "ple": false, "purpose": "no-PLE factorial"}
+ },
+ "matching": {
+  "computed_before_training": "run_r9 accounting on the meta device (results/r9/accounting.json); widths fixed in this file before any confirmatory run",
+  "C": "ffn_hidden 123: total parameters -0.022% of A, active parameters per token -0.17%, per-expert parameters -0.27%, per-expert multiply-adds -2.64% (A counts the CGC's cubic terms)",
+  "C_mac": "ffn_hidden 126: per-expert multiply-adds -0.26% of A, total parameters +0.18%, active parameters per token +1.31%",
+  "B": "ffn_hidden 86 without CGC: total parameters -2.47%, active parameters per token -18.4% (deliberately unmatched)",
+  "rule": "a control is called matched only on the resource it is matched on; every residual mismatch is reported"
+ },
+ "seeds": [0, 1, 2],
+ "training": {
+  "steps": 1500,
+  "batch": 16, "seq": 128, "chunk": 64, "tokens_per_step": 2048,
+  "batch_stream": "R7's seeded epoch (document_batches, seed s: 1,432 full batches for this corpus) continued by a second seeded epoch (seed s + 1000) until exactly 1,500 batches; identical for every arm of a seed",
+  "optimizer": "AdamW, betas (0.9, 0.95), weight decay 0.01 on matrices and 0 on vectors; PLE tables: SparseAdam at lr_multiplier x the learning rate, no decay",
+  "lr": 0.003, "warmup_steps": 50, "min_lr_fraction": 0.1, "schedule": "linear warmup, cosine decay to 0.1 x lr at step 1,500",
+  "weight_decay": 0.01, "grad_clip": 1.0,
+  "eval_every": 250,
+  "threads": 2, "parallel_processes": 2,
+  "intermediate_evaluations": "held-out bits/byte at steps 250, 500, ..., 1,500 are recorded for the learning curve only; no decision, early stop or selection uses them"
+ },
+ "evaluation": {"val_batches_per_domain": 48, "val_seed": 99, "domains": ["code", "prose"], "metric": "bits per byte (mean cross-entropy over valid targets / ln 2; one byte per target)", "primary_step": 1500},
+ "analysis": {
+  "delta_min_bits_per_byte": 0.02,
+  "delta_justification": "about 1.2% of R7's reference code loss (1.732) and more than twice the spread (max - min = 0.018) of R7's paired PLE-versus-capacity differences on code",
+  "paired_difference": "bpb(X, seed) - bpb(A, seed), same seed, same data order, same shared initialization; positive means A is better",
+  "classes": {
+   "A_BETTER": "every seed's difference > 0 and the mean >= delta_min",
+   "X_BETTER": "every seed's difference < 0 and the mean <= -delta_min",
+   "NOT_DISTINGUISHED": "every other outcome (ties within delta_min, inconsistent signs)"
+  },
+  "primary_verdict": {
+   "CGC_BENEFIT_QUALIFIED": "A_BETTER against C on code and on prose AND A_BETTER against C_mac on code and on prose",
+   "FFN_PREFERRED": "C is X_BETTER on at least one domain and A is A_BETTER against C on no domain",
+   "CGC_NOT_ESTABLISHED": "every other complete outcome (ties, mixed domains, a win against C but not against C_mac)",
+   "NONQUAL": "a run of A, C or C_mac (any seed) not COMPLETED within its limit, a corpus digest mismatch, or a record whose preregistration or runner digest differs"
+  },
+  "secondary_verdict_B": {
+   "CGC_ADDS_OVER_SMALLER_FFN": "A_BETTER against B on code and on prose",
+   "SMALLER_FFN_NOT_WORSE": "no domain A_BETTER against B",
+   "MIXED": "otherwise"
+  },
+  "factorial": "secondary and descriptive: the same classes for A0 against C0 and B0; interaction per seed and domain = (bpb(C) - bpb(A)) - (bpb(C0) - bpb(A0)); no qualification decision",
+  "reliance_D": "per seed and mean bpb(D) - bpb(A); descriptive",
+  "interval": {"confidence": 0.95, "t_critical_df2": 4.302652729911275, "use": "reported for transparency; with three seeds it decides nothing"},
+  "latency_material_ratio": 1.10,
+  "latency_use": "measured decode latency of A over C above 1.10 is reported as a material latency cost of CGC; it does not change the quality classes",
+  "no_p_values": true
+ },
+ "integrity": {
+  "r7_reproduction": {
+   "arm": "A", "seed": 0,
+   "protocol": "R7 as executed: run_r7.study_model('ple', 0) trained by run_r7._train for a configured 1,500 steps, which ends after one epoch (1,432 steps)",
+   "expected": {"code": 1.71834, "prose": 2.19864},
+   "tolerance_bits_per_byte": 0.005,
+   "use": "pipeline integrity only; a FAIL is reported and investigated, it does not enter the verdict"
+  },
+  "construction_identity": "build('A', seed) must equal run_r7.study_model('ple', seed) parameter by parameter at initialization"
+ },
+ "secondary_endpoints": [
+  "CGC gate values (16 per model) at every evaluation step",
+  "gradient norms by parameter group: training gradients (after clipping) at every evaluation step, and one held-out batch at the end",
+  "routing on held-out batches: per-block channel shares, maximum over mean, coefficient of variation, router entropy, inactive channels",
+  "training stability: status, loss at every evaluation step",
+  "free-running generation mechanics: greedy continuation of fixed held-out prompts",
+  "held-out bits/byte against cumulative training compute (3 x measured forward matmul FLOPs per token x 2,048 tokens per step)",
+  "decode and prefill cost (latency command)",
+  "quality per unit of measured cost"
+ ],
+ "generation": {"prompts_per_domain": 4, "prompt_bytes": 64, "new_tokens": 96, "temperature": 0.0, "prompts": "the first held-out documents of each domain in corpus order"},
+ "latency": {"threads": 1, "prompt_tokens": 128, "decode_steps": 96, "prefill_rounds": 5, "weights": "untrained (seed 0); the operation counts do not depend on weight values", "order": "arms interleaved step by step with a rotating order"},
+ "measurement_labels": {
+  "EXACT": "a formula or the nbytes of an allocated tensor",
+  "MEASURED": "counted or timed on this machine (FlopCounterMode matmul FLOPs, wall-clock, peak RSS)",
+  "PROJECTED": "derived from EXACT quantities and stated assumptions",
+  "BOUND": "an upper bound by construction (weights read per token = active parameters x bytes, with no reuse)"
+ },
+ "limits": {
+  "run_timeout_seconds": 1800,
+  "primary_budget_seconds": 10800,
+  "secondary_budget_seconds": 7200,
+  "order": "integrity and the 12 primary training runs (seeds 0, 1, 2 of A, B, C, C_mac), then latency alone on an idle machine, then the 9 factorial runs, then combine"
+ },
+ "stopping_rules": [
+  "no early stopping and no selection of steps: the endpoint is step 1,500",
+  "a run that diverges or exceeds its limit is recorded as such and is not repeated; its arm cannot qualify",
+  "no seeds are added, and no confirmatory run is repeated, after any outcome has been seen",
+  "delta_min, arms, widths, data, endpoints and classes do not change after this file is committed",
+  "whatever the verdict, no larger model is trained in R9 to change it",
+  "the factorial runs only after every primary run has finished and only within the secondary budget"
+ ],
+ "p3": {
+  "context_lengths": [1024, 8192, 65536, 262144, 1048576],
+  "capacity": 1048576,
+  "accounted_configurations": [
+   "the R9 study arms (d 64): no history head, state independent of context",
+   "the R8 timing geometry enc256 (d 256, 4 ERSA blocks, 8 experts top-2 in blocks 1 and 3, PLE before block 1, R5 head with a 256-wide encoder) with fine_keys reread and stored, PLE on and off",
+   "the R6 scale configurations r6_500m and r6_1b on the meta device"
+  ],
+  "measured_configuration": "the R8 timing geometry enc256 at capacity 1,048,576, untrained, float32, 4 threads, decode p50/p95 at each length, R5 off / reread / stored, PLE on and off",
+  "ddr3_scenario": {"ram_gib": 8, "bandwidth_gb_per_s": [10, 15, 20], "achieved_fraction": [0.5, 0.8], "compute_gflop_per_s": [50, 100, 200], "weight_bytes_per_parameter": {"float32": 4.0, "bfloat16": 2.0, "int4_group32": 0.5625}, "batch": [1, 4], "cache_resident_weight_fraction": [0.0, 0.5], "status": "ASSUMED platform; not a property of this execution environment"},
+  "gpu_scenario": {"bandwidth_gb_per_s": [300, 900], "compute_tflop_per_s": [20, 80], "status": "PROJECTED only; CUDA NOT_RUN"},
+  "target_tokens_per_second": [60, 100],
+  "target_use": "a future performance target; compared against projections, never claimed",
+  "retrieval_quality_metric": {
+   "definition": "exact-answer accuracy at answer positions (argmax over the value vocabulary equals the gold value) on held-out R5 streams, per case, with recall@64 (coarse) and recall@4 (fine) of the gold evidence block; labels are used for scoring only",
+   "cases": {
+    "latest_binding": "records family, keys revised 1-3 times, direct ASK questions",
+    "revision_sensitive": "the same probes scored separately where superseded binds or stale questions are present",
+    "contradiction": "probes whose key has a negated bind (NOT KEY_k VAL_x) in context",
+    "provenance": "scoped family: GET SCOPE_s SYM_x with wrong-scope declarations in context"
+   },
+   "status": "NOT_RUN in R9: no model trained for retrieval exists in R9's scope (the study arms have no history head; R5's trained models are not retained as checkpoints), and training one is outside R9's priority order. R5's own result stands as the reference: it did not solve autonomous recall."
+  }
+ }
+}

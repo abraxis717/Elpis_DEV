@@ -1,0 +1,5751 @@
+{
+ "command": "trace",
+ "configurations": [
+  {
+   "configuration": "r6_500m",
+   "dtype": "torch.float32",
+   "modes": {
+    "reread": {
+     "fixed_bytes_exact": {
+      "attention_window": 41943040,
+      "conv_tail": 184320,
+      "ersa_cells": 7864320,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "token_history": 16388,
+      "total": 88018948
+     },
+     "state_nbytes": {
+      "attention_window": 41943040,
+      "conv_tail": 184320,
+      "ersa_cells": 7864320,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "token_history": 16388,
+      "total": 88018948
+     },
+     "steps": [
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 4055040,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 1351680,
+         "encoder_intermediates": 855953015
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 256,
+         "r5_descriptor_scan": 32768,
+         "r5_ring_tokens": 5280,
+         "window_kv": 10649600
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 1664,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 24302,
+         "r5_rerank_readout_inject_intermediates": 24964127,
+         "state_commits": 10248,
+         "window_attention_recompute": 183605480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 24037956,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 32,
+        "coarse_records_scored": 32,
+        "queries": 1
+       },
+       "length": 1024,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16384,
+        "r5_key_projections": 276824064,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 7481344,
+        "r5_reencode_candidates": 7320371200,
+        "r5_rerank_and_select": 233472,
+        "routed_channel": 147580160,
+        "window_attention": 31718400
+       },
+       "position": 1040,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 220918,
+        "r5_coarse_scan": 34432,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 33300480,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 9987773,
+        "r5_reencode_candidates": 847593514,
+        "r5_rerank_and_select": 5489044,
+        "r5_validate_and_fetch": 9922,
+        "routed_channel": 302052320,
+        "window_attention": 225701760,
+        "window_attention_commit": 20840
+       },
+       "total": 2303305512,
+       "unique_persistent": {
+        "gathered_rows": 5409792,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 512,
+         "descriptors_read": 32768,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 5280,
+         "ring_tokens_write": 4,
+         "window_kv_read": 10649600,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1111024396,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 4055040,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 1351680,
+         "encoder_intermediates": 855953375
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 256,
+         "r5_descriptor_scan": 32768,
+         "r5_ring_tokens": 5280,
+         "window_kv": 10803200
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 2724,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 24894,
+         "r5_rerank_readout_inject_intermediates": 25056212,
+         "state_commits": 11280,
+         "window_attention_recompute": 186245480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 24107588,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 32,
+        "coarse_records_scored": 33,
+        "queries": 1
+       },
+       "length": 1024,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16896,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 276824064,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 7481344,
+        "r5_reencode_candidates": 7320371200,
+        "r5_rerank_and_select": 233472,
+        "routed_channel": 147580160,
+        "window_attention": 31948800
+       },
+       "position": 1055,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 221510,
+        "r5_coarse_scan": 35492,
+        "r5_commit": 2188,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 33300480,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 9987773,
+        "r5_reencode_candidates": 847593514,
+        "r5_rerank_and_select": 5490905,
+        "r5_validate_and_fetch": 9922,
+        "routed_channel": 302052320,
+        "window_attention": 228495360,
+        "window_attention_commit": 20840
+       },
+       "total": 2306263873,
+       "unique_persistent": {
+        "gathered_rows": 5409792,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 512,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 32768,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 5280,
+         "ring_tokens_write": 4,
+         "window_kv_read": 10803200,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1111248660,
+        "weights": 1078888548
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 7987200,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1686972759
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 262144,
+         "r5_ring_tokens": 10400,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 9728,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 93110,
+         "r5_rerank_readout_inject_intermediates": 49010382,
+         "state_commits": 10248,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 40815172,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 256,
+        "queries": 1
+       },
+       "length": 8192,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 131072,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 11675648,
+        "r5_reencode_candidates": 14640742400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 8208,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 289726,
+        "r5_coarse_scan": 271872,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 13428413,
+        "r5_reencode_candidates": 1683861258,
+        "r5_rerank_and_select": 10618499,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 3749852671,
+       "unique_persistent": {
+        "gathered_rows": 10652672,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 262144,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1147795724,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 7987200,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1686973119
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 262144,
+         "r5_ring_tokens": 10400,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 10788,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 93390,
+         "r5_rerank_readout_inject_intermediates": 49100606,
+         "state_commits": 11280,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 40884804,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 257,
+        "queries": 1
+       },
+       "length": 8192,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 131584,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 11675648,
+        "r5_reencode_candidates": 14640742400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 8223,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 290006,
+        "r5_coarse_scan": 272932,
+        "r5_commit": 2188,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 13428413,
+        "r5_reencode_candidates": 1683861258,
+        "r5_rerank_and_select": 10618499,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 3750015259,
+       "unique_persistent": {
+        "gathered_rows": 10652672,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1024,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 262144,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1147866388,
+        "weights": 1078888548
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 7987200,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1686972759
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 2097152,
+         "r5_ring_tokens": 10400,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 74240,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 566198,
+         "r5_rerank_readout_inject_intermediates": 49010382,
+         "state_commits": 10248,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 40815172,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 2048,
+        "queries": 1
+       },
+       "length": 65536,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 1048576,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 11675648,
+        "r5_reencode_candidates": 14640742400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 65552,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 762814,
+        "r5_coarse_scan": 2171392,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 13428413,
+        "r5_reencode_candidates": 1683861258,
+        "r5_rerank_and_select": 10618499,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 3752225279,
+       "unique_persistent": {
+        "gathered_rows": 10652672,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 2097152,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1149630732,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 7987200,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1686973119
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 2097152,
+         "r5_ring_tokens": 10400,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 75300,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 566478,
+         "r5_rerank_readout_inject_intermediates": 49100606,
+         "state_commits": 11280,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 40884804,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 2049,
+        "queries": 1
+       },
+       "length": 65536,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 1049088,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 11675648,
+        "r5_reencode_candidates": 14640742400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 65567,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 763094,
+        "r5_coarse_scan": 2172452,
+        "r5_commit": 2188,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 13428413,
+        "r5_reencode_candidates": 1683861258,
+        "r5_rerank_and_select": 10618499,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 3752387867,
+       "unique_persistent": {
+        "gathered_rows": 10652672,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1024,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 2097152,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1149701396,
+        "weights": 1078888548
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 7987200,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1686972759
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 8388608,
+         "r5_ring_tokens": 10400,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 295424,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 2188214,
+         "r5_rerank_readout_inject_intermediates": 49010382,
+         "state_commits": 10248,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 40815172,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 8192,
+        "queries": 1
+       },
+       "length": 262144,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 4194304,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 11675648,
+        "r5_reencode_candidates": 14640742400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 262160,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 2384830,
+        "r5_coarse_scan": 8684032,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 13428413,
+        "r5_reencode_candidates": 1683861258,
+        "r5_rerank_and_select": 10618499,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 3760359935,
+       "unique_persistent": {
+        "gathered_rows": 10652672,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 8388608,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1155922188,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 7987200,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1686973119
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 8388608,
+         "r5_ring_tokens": 10400,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 296484,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 2188494,
+         "r5_rerank_readout_inject_intermediates": 49100606,
+         "state_commits": 11280,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 40884804,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 8193,
+        "queries": 1
+       },
+       "length": 262144,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 4194816,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 11675648,
+        "r5_reencode_candidates": 14640742400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 262175,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 2385110,
+        "r5_coarse_scan": 8685092,
+        "r5_commit": 2188,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 13428413,
+        "r5_reencode_candidates": 1683861258,
+        "r5_rerank_and_select": 10618499,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 3760522523,
+       "unique_persistent": {
+        "gathered_rows": 10652672,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1024,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 8388608,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1155992852,
+        "weights": 1078888548
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 7987200,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1686972759
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 10400,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 1180124,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 8676014,
+         "r5_rerank_readout_inject_intermediates": 49010382,
+         "state_commits": 10248,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 40815172,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 32767,
+        "queries": 1
+       },
+       "largest_ops": [
+        {
+         "bytes": 201591808,
+         "op": "aten.mm.default",
+         "operands": [
+          "scratch",
+          "param:embed.weight"
+         ],
+         "stage": "core_forward"
+        },
+        {
+         "bytes": 62914560,
+         "op": "aten.mul.Tensor",
+         "operands": [
+          "scratch",
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        },
+        {
+         "bytes": 62914560,
+         "op": "aten.mul.Tensor",
+         "operands": [
+          "scratch",
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        },
+        {
+         "bytes": 62914560,
+         "op": "aten.mul.Tensor",
+         "operands": [
+          "scratch",
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        },
+        {
+         "bytes": 62914560,
+         "op": "aten.mul.Tensor",
+         "operands": [
+          "scratch",
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        },
+        {
+         "bytes": 41943040,
+         "op": "aten._unsafe_view.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        },
+        {
+         "bytes": 41943040,
+         "op": "aten.div.Tensor",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        },
+        {
+         "bytes": 41943040,
+         "op": "aten.tanh.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        }
+       ],
+       "length": 1048576,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 11675648,
+        "r5_reencode_candidates": 14640742400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 1048592,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 8872630,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 13428413,
+        "r5_reencode_candidates": 1683861258,
+        "r5_rerank_and_select": 10618499,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 3792897235,
+       "unique_persistent": {
+        "gathered_rows": 10652672,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1181086988,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 7987200,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1686973119
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 33552384,
+         "r5_ring_tokens": 10400,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 1181148,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 8676030,
+         "r5_rerank_readout_inject_intermediates": 49100606,
+         "state_commits": 11280,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 40884804,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 32767,
+        "queries": 1
+       },
+       "length": 1048576,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16776704,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 11675648,
+        "r5_reencode_candidates": 14640742400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 1048607,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 8872646,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 2188,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 13428413,
+        "r5_reencode_candidates": 1683861258,
+        "r5_rerank_and_select": 10618499,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 3793058499,
+       "unique_persistent": {
+        "gathered_rows": 10652672,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1024,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 33552384,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1181156628,
+        "weights": 1078888548
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 7987200,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1686972759
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 10400,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 34733532,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 42229422,
+         "r5_rerank_readout_inject_intermediates": 49010382,
+         "state_commits": 10248,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 40815172,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 32767,
+        "queries": 1
+       },
+       "largest_ops": [
+        {
+         "bytes": 201591808,
+         "op": "aten.mm.default",
+         "operands": [
+          "scratch",
+          "param:embed.weight"
+         ],
+         "stage": "core_forward"
+        },
+        {
+         "bytes": 67106816,
+         "op": "aten.cat.default",
+         "operands": [],
+         "stage": "r5_coarse_bookkeeping"
+        },
+        {
+         "bytes": 62914560,
+         "op": "aten.mul.Tensor",
+         "operands": [
+          "scratch",
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        },
+        {
+         "bytes": 62914560,
+         "op": "aten.mul.Tensor",
+         "operands": [
+          "scratch",
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        },
+        {
+         "bytes": 62914560,
+         "op": "aten.mul.Tensor",
+         "operands": [
+          "scratch",
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        },
+        {
+         "bytes": 62914560,
+         "op": "aten.mul.Tensor",
+         "operands": [
+          "scratch",
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        },
+        {
+         "bytes": 41943040,
+         "op": "aten._unsafe_view.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        },
+        {
+         "bytes": 41943040,
+         "op": "aten.div.Tensor",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "r5_reencode_candidates"
+        }
+       ],
+       "length": 1052672,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 11675648,
+        "r5_reencode_candidates": 14640742400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 1052688,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 75979446,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 13428413,
+        "r5_reencode_candidates": 1683861258,
+        "r5_rerank_and_select": 10618499,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 3860004051,
+       "unique_persistent": {
+        "gathered_rows": 10652672,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1181086988,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 7987200,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1686973119
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 33552384,
+         "r5_ring_tokens": 10400,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 34733532,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 42228414,
+         "r5_rerank_readout_inject_intermediates": 49100606,
+         "state_commits": 11280,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 40884804,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 32767,
+        "queries": 1
+       },
+       "length": 1052672,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16776704,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 11675648,
+        "r5_reencode_candidates": 14640742400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 1052703,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 75977414,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 2188,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 13428413,
+        "r5_reencode_candidates": 1683861258,
+        "r5_rerank_and_select": 10618499,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 3860163267,
+       "unique_persistent": {
+        "gathered_rows": 10652672,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1024,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 33552384,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1181156628,
+        "weights": 1078888548
+       }
+      }
+     ],
+     "validation": {
+      "counters_equal": true,
+      "differing_keys": 182,
+      "differing_keys_not_routed_expert_weights": [],
+      "equal_totals": true,
+      "length": 2064,
+      "real_total": 3371158783,
+      "synthetic_total": 3371158783
+     }
+    },
+    "stored": {
+     "fixed_bytes_exact": {
+      "attention_window": 41943040,
+      "conv_tail": 184320,
+      "ersa_cells": 7864320,
+      "history_tokens": 4194304,
+      "index_fine_keys": 268435456,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "token_history": 16388,
+      "total": 356454404
+     },
+     "state_nbytes": {
+      "attention_window": 41943040,
+      "conv_tail": 184320,
+      "ersa_cells": 7864320,
+      "history_tokens": 4194304,
+      "index_fine_keys": 268435456,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "token_history": 16388,
+      "total": 356454404
+     },
+     "steps": [
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128810739
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 32768,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 262144,
+         "window_kv": 10649600
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 1664,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 24302,
+         "r5_rerank_readout_inject_intermediates": 4001341,
+         "state_commits": 10248,
+         "window_attention_recompute": 183605480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 8825412,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 32,
+        "fine_tier_reads": 32,
+        "queries": 1
+       },
+       "length": 1024,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16384,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 233472,
+        "routed_channel": 147580160,
+        "window_attention": 31718400
+       },
+       "position": 1040,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 220918,
+        "r5_coarse_scan": 34432,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 1423856,
+        "r5_validate_and_fetch": 541060,
+        "routed_channel": 302052320,
+        "window_attention": 225701760,
+        "window_attention_commit": 20840
+       },
+       "total": 1535658306,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 544,
+         "descriptors_read": 32768,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 262144,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 10649600,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1106694572,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128811099
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 32768,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 262144,
+         "window_kv": 10803200
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 2724,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 24894,
+         "r5_rerank_readout_inject_intermediates": 4257274,
+         "state_commits": 19472,
+         "window_attention_recompute": 186245480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 9034308,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 33,
+        "fine_tier_reads": 32,
+        "queries": 1
+       },
+       "length": 1024,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16896,
+        "r5_commit": 2097152,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 233472,
+        "routed_channel": 147580160,
+        "window_attention": 31948800
+       },
+       "position": 1055,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 221510,
+        "r5_coarse_scan": 35492,
+        "r5_commit": 313492,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 1425717,
+        "r5_validate_and_fetch": 541060,
+        "routed_channel": 302052320,
+        "window_attention": 228495360,
+        "window_attention_commit": 20840
+       },
+       "total": 1538927971,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 544,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 32768,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 262144,
+         "fine_keys_write": 8192,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 10803200,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1106927028,
+        "weights": 1078888548
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128810739
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 262144,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 9728,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 93110,
+         "r5_rerank_readout_inject_intermediates": 5149100,
+         "state_commits": 10248,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 8825412,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 256,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 8192,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 131072,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 8208,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 289726,
+        "r5_coarse_scan": 271872,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 2293215,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 2106524409,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 262144,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 524288,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1138480044,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128811099
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 262144,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 10788,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 93390,
+         "r5_rerank_readout_inject_intermediates": 5403172,
+         "state_commits": 19472,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 9034308,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 257,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 8192,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 131584,
+        "r5_commit": 2097152,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 8223,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 290006,
+        "r5_coarse_scan": 272932,
+        "r5_commit": 313492,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 2293215,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 2106998301,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1056,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 262144,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 524288,
+         "fine_keys_write": 8192,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1138558900,
+        "weights": 1078888548
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128810739
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 2097152,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 74240,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 566198,
+         "r5_rerank_readout_inject_intermediates": 5149100,
+         "state_commits": 10248,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 8825412,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 2048,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 65536,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 1048576,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 65552,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 762814,
+        "r5_coarse_scan": 2171392,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 2293215,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 2108897017,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 2097152,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 524288,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1140315052,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128811099
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 2097152,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 75300,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 566478,
+         "r5_rerank_readout_inject_intermediates": 5403172,
+         "state_commits": 19472,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 9034308,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 2049,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 65536,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 1049088,
+        "r5_commit": 2097152,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 65567,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 763094,
+        "r5_coarse_scan": 2172452,
+        "r5_commit": 313492,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 2293215,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 2109370909,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1056,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 2097152,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 524288,
+         "fine_keys_write": 8192,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1140393908,
+        "weights": 1078888548
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128810739
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 8388608,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 295424,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 2188214,
+         "r5_rerank_readout_inject_intermediates": 5149100,
+         "state_commits": 10248,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 8825412,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 8192,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 262144,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 4194304,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 262160,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 2384830,
+        "r5_coarse_scan": 8684032,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 2293215,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 2117031673,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 8388608,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 524288,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1146606508,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128811099
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 8388608,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 296484,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 2188494,
+         "r5_rerank_readout_inject_intermediates": 5403172,
+         "state_commits": 19472,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 9034308,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 8193,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 262144,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 4194816,
+        "r5_commit": 2097152,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 262175,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 2385110,
+        "r5_coarse_scan": 8685092,
+        "r5_commit": 313492,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 2293215,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 2117505565,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1056,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 8388608,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 524288,
+         "fine_keys_write": 8192,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1146685364,
+        "weights": 1078888548
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128810739
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 1180124,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 8676014,
+         "r5_rerank_readout_inject_intermediates": 5149100,
+         "state_commits": 10248,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 8825412,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 32767,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "largest_ops": [
+        {
+         "bytes": 201591808,
+         "op": "aten.mm.default",
+         "operands": [
+          "scratch",
+          "param:embed.weight"
+         ],
+         "stage": "core_forward"
+        },
+        {
+         "bytes": 34077936,
+         "op": "aten.bmm.default",
+         "operands": [
+          "scratch",
+          "state:descriptors"
+         ],
+         "stage": "r5_coarse_scan"
+        },
+        {
+         "bytes": 25171968,
+         "op": "aten.clone.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "window_attention"
+        },
+        {
+         "bytes": 25171968,
+         "op": "aten.clone.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "window_attention"
+        },
+        {
+         "bytes": 25171968,
+         "op": "aten.clone.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "window_attention"
+        },
+        {
+         "bytes": 25171968,
+         "op": "aten.clone.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "window_attention"
+        },
+        {
+         "bytes": 25171968,
+         "op": "aten.clone.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "window_attention"
+        },
+        {
+         "bytes": 25171968,
+         "op": "aten.clone.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "window_attention"
+        }
+       ],
+       "length": 1048576,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 1048592,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 8872630,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 2293215,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 2149568973,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 524288,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1171771308,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128811099
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 33552384,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 1181148,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 8676030,
+         "r5_rerank_readout_inject_intermediates": 5403172,
+         "state_commits": 19472,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 9034308,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 32767,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 1048576,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16776704,
+        "r5_commit": 2097152,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 1048607,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 8872646,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 313492,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 2293215,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 2150041541,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1056,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 33552384,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 524288,
+         "fine_keys_write": 8192,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1171849140,
+        "weights": 1078888548
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128810739
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 34733532,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 42229422,
+         "r5_rerank_readout_inject_intermediates": 5149100,
+         "state_commits": 10248,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 8825412,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 32767,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "largest_ops": [
+        {
+         "bytes": 201591808,
+         "op": "aten.mm.default",
+         "operands": [
+          "scratch",
+          "param:embed.weight"
+         ],
+         "stage": "core_forward"
+        },
+        {
+         "bytes": 67106816,
+         "op": "aten.cat.default",
+         "operands": [],
+         "stage": "r5_coarse_bookkeeping"
+        },
+        {
+         "bytes": 34077936,
+         "op": "aten.bmm.default",
+         "operands": [
+          "scratch",
+          "scratch"
+         ],
+         "stage": "r5_coarse_scan"
+        },
+        {
+         "bytes": 25171968,
+         "op": "aten.clone.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "window_attention"
+        },
+        {
+         "bytes": 25171968,
+         "op": "aten.clone.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "window_attention"
+        },
+        {
+         "bytes": 25171968,
+         "op": "aten.clone.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "window_attention"
+        },
+        {
+         "bytes": 25171968,
+         "op": "aten.clone.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "window_attention"
+        },
+        {
+         "bytes": 25171968,
+         "op": "aten.clone.default",
+         "operands": [
+          "scratch"
+         ],
+         "stage": "window_attention"
+        }
+       ],
+       "length": 1052672,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 1052688,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 75979446,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 18440,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415357,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 2293215,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 2216675789,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 524288,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1171771308,
+        "weights": 1078818916
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 3072
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "ersa_state_read": 23592960,
+         "ersa_state_write": 7864320,
+         "state_sized_intermediates": 67868600
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 614400,
+         "encoder_and_key_projection_weights": 22643856,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 128811099
+        },
+        "kv_history_reads": {
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 33552384,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288,
+         "window_kv": 41943040
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 14781288,
+         "embedding_output_and_logits": 1228936,
+         "r5_coarse_scan_intermediates": 34733532,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 42228414,
+         "r5_rerank_readout_inject_intermediates": 5403172,
+         "state_commits": 19472,
+         "window_attention_recompute": 721461480
+        },
+        "weight_traffic": {
+         "dense_channels": 342097960,
+         "ersa_projections": 190096800,
+         "norms": 125952,
+         "r5_head_projections": 9034308,
+         "routed_experts_top_k": 294912080,
+         "routing_matrices": 245760,
+         "tied_lm_head": 201326592,
+         "window_attention_projections": 31457280
+        }
+       },
+       "completes_block": true,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 32767,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 1052672,
+       "matmul_flops_by_stage": {
+        "core_forward": 100663296,
+        "dense_channel": 171048960,
+        "ersa_mixer": 106813440,
+        "r5_coarse_bookkeeping": 98304,
+        "r5_coarse_scan": 16776704,
+        "r5_commit": 2097152,
+        "r5_describe_inject": 262144,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 228761600,
+        "r5_readout": 3811328,
+        "r5_reencode_candidates": 915046400,
+        "r5_rerank_and_select": 364544,
+        "routed_channel": 147580160,
+        "window_attention": 78658560
+       },
+       "position": 1052703,
+       "stages": {
+        "core_channel": 153640,
+        "core_forward": 202558604,
+        "dense_channel": 348948480,
+        "ersa_mixer": 273694040,
+        "ersa_state_commit": 16097280,
+        "norms": 1008600,
+        "r5_coarse_bookkeeping": 75977414,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 313492,
+        "r5_describe_inject": 177208,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 36415717,
+        "r5_readout": 6977213,
+        "r5_reencode_candidates": 115859238,
+        "r5_rerank_and_select": 2293215,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 302052320,
+        "window_attention": 794851200,
+        "window_attention_commit": 20840
+       },
+       "total": 2217146309,
+       "unique_persistent": {
+        "gathered_rows": 822272,
+        "state_tiers": {
+         "conv_tail_read": 184320,
+         "conv_tail_write": 184320,
+         "descriptor_ids_read": 1056,
+         "descriptor_ids_write": 8,
+         "descriptors_read": 33552384,
+         "descriptors_write": 1024,
+         "ersa_state_read": 7864320,
+         "ersa_state_write": 7864320,
+         "fine_keys_read": 524288,
+         "fine_keys_write": 8192,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4,
+         "window_kv_read": 41943040,
+         "window_kv_write": 10240,
+         "window_tokens_write": 4
+        },
+        "total": 1171849140,
+        "weights": 1078888548
+       }
+      }
+     ],
+     "validation": {
+      "counters_equal": true,
+      "differing_keys": 238,
+      "differing_keys_not_routed_expert_weights": [],
+      "equal_totals": true,
+      "length": 2064,
+      "real_total": 1727830521,
+      "synthetic_total": 1727830521
+     }
+    }
+   },
+   "parameters": 507683413,
+   "ple": null
+  },
+  {
+   "configuration": "enc256",
+   "dtype": "torch.float32",
+   "modes": {
+    "reread": {
+     "fixed_bytes_exact": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 38039568
+     },
+     "state_nbytes": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 38039568
+     },
+     "steps": [
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 1351680,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 1351680,
+         "encoder_intermediates": 599133815
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 256,
+         "r5_descriptor_scan": 32768,
+         "r5_ring_tokens": 5280
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 1664,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 22254,
+         "r5_rerank_readout_inject_intermediates": 24933407,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 19581508,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 32,
+        "coarse_records_scored": 32,
+        "queries": 1
+       },
+       "length": 1024,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16384,
+        "r5_key_projections": 276824064,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 5384192,
+        "r5_reencode_candidates": 5390991360,
+        "r5_rerank_and_select": 167936,
+        "routed_channel": 2562304
+       },
+       "position": 1040,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 87798,
+        "r5_coarse_scan": 34432,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 33300480,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 5785277,
+        "r5_reencode_candidates": 592920618,
+        "r5_rerank_and_select": 5347732,
+        "r5_validate_and_fetch": 9922,
+        "routed_channel": 5419232
+       },
+       "total": 676531220,
+       "unique_persistent": {
+        "gathered_rows": 2705408,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 512,
+         "descriptors_read": 32768,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 5280,
+         "ring_tokens_write": 4
+        },
+        "total": 26301976,
+        "weights": 23500580
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 2662400,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1181116759
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 262144,
+         "r5_ring_tokens": 10400
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 9728,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 91062,
+         "r5_rerank_readout_inject_intermediates": 48979662,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 36358724,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 256,
+        "queries": 1
+       },
+       "length": 8192,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 131072,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 9578496,
+        "r5_reencode_candidates": 10781982720,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 8208,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 156606,
+        "r5_coarse_scan": 271872,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 9225917,
+        "r5_reencode_candidates": 1177530122,
+        "r5_rerank_and_select": 10477187,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 5419232
+       },
+       "total": 1302270699,
+       "unique_persistent": {
+        "gathered_rows": 5326848,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 262144,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4
+        },
+        "total": 29158424,
+        "weights": 23500580
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 2662400,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1181116759
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 2097152,
+         "r5_ring_tokens": 10400
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 74240,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 564150,
+         "r5_rerank_readout_inject_intermediates": 48979662,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 36358724,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 2048,
+        "queries": 1
+       },
+       "length": 65536,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 1048576,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 9578496,
+        "r5_reencode_candidates": 10781982720,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 65552,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 629694,
+        "r5_coarse_scan": 2171392,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 9225917,
+        "r5_reencode_candidates": 1177530122,
+        "r5_rerank_and_select": 10477187,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 5419232
+       },
+       "total": 1304643307,
+       "unique_persistent": {
+        "gathered_rows": 5326848,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 2097152,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4
+        },
+        "total": 30993432,
+        "weights": 23500580
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 2662400,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1181116759
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 8388608,
+         "r5_ring_tokens": 10400
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 295424,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 2186166,
+         "r5_rerank_readout_inject_intermediates": 48979662,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 36358724,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 8192,
+        "queries": 1
+       },
+       "length": 262144,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 4194304,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 9578496,
+        "r5_reencode_candidates": 10781982720,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 262160,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 2251710,
+        "r5_coarse_scan": 8684032,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 9225917,
+        "r5_reencode_candidates": 1177530122,
+        "r5_rerank_and_select": 10477187,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 5419232
+       },
+       "total": 1312777963,
+       "unique_persistent": {
+        "gathered_rows": 5326848,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 8388608,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4
+        },
+        "total": 37284888,
+        "weights": 23500580
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 2662400,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1181116759
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 10400
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 1180124,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 8673966,
+         "r5_rerank_readout_inject_intermediates": 48979662,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 36358724,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 32767,
+        "queries": 1
+       },
+       "length": 1048576,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 9578496,
+        "r5_reencode_candidates": 10781982720,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 1048592,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 8739510,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 9225917,
+        "r5_reencode_candidates": 1177530122,
+        "r5_rerank_and_select": 10477187,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 5419232
+       },
+       "total": 1345315263,
+       "unique_persistent": {
+        "gathered_rows": 5326848,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4
+        },
+        "total": 62449688,
+        "weights": 23500580
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 2662400,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1181116759
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 10400
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 34733532,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 42227374,
+         "r5_rerank_readout_inject_intermediates": 48979662,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 36358724,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 32767,
+        "queries": 1
+       },
+       "length": 1052672,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 9578496,
+        "r5_reencode_candidates": 10781982720,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 1052688,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 75846326,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 9225917,
+        "r5_reencode_candidates": 1177530122,
+        "r5_rerank_and_select": 10477187,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 5419232
+       },
+       "total": 1412422079,
+       "unique_persistent": {
+        "gathered_rows": 5326848,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4
+        },
+        "total": 62449688,
+        "weights": 23500580
+       }
+      }
+     ],
+     "validation": {
+      "counters_equal": true,
+      "differing_keys": 42,
+      "differing_keys_not_routed_expert_weights": [],
+      "equal_totals": true,
+      "length": 2064,
+      "real_total": 1302016491,
+      "synthetic_total": 1302016491
+     }
+    },
+    "stored": {
+     "fixed_bytes_exact": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_fine_keys": 268435456,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 306475024
+     },
+     "state_nbytes": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_fine_keys": 268435456,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 306475024
+     },
+     "steps": [
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 32768,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 262144
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 1664,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 22254,
+         "r5_rerank_readout_inject_intermediates": 3970621,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 32,
+        "fine_tier_reads": 32,
+        "queries": 1
+       },
+       "length": 1024,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16384,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 167936,
+        "routed_channel": 2562304
+       },
+       "position": 1040,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 87798,
+        "r5_coarse_scan": 34432,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 1282544,
+        "r5_validate_and_fetch": 541060,
+        "routed_channel": 5419232
+       },
+       "total": 129084974,
+       "unique_persistent": {
+        "gathered_rows": 411648,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 544,
+         "descriptors_read": 32768,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 262144,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 24265912,
+        "weights": 23500580
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 262144,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 9728,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 91062,
+         "r5_rerank_readout_inject_intermediates": 5118380,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 256,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 8192,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 131072,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 8208,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 156606,
+        "r5_coarse_scan": 271872,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 2151903,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 5419232
+       },
+       "total": 130801637,
+       "unique_persistent": {
+        "gathered_rows": 411648,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 262144,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 524288,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 24757944,
+        "weights": 23500580
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 2097152,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 74240,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 564150,
+         "r5_rerank_readout_inject_intermediates": 5118380,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 2048,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 65536,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 1048576,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 65552,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 629694,
+        "r5_coarse_scan": 2171392,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 2151903,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 5419232
+       },
+       "total": 133174245,
+       "unique_persistent": {
+        "gathered_rows": 411648,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 2097152,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 524288,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 26592952,
+        "weights": 23500580
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 8388608,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 295424,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 2186166,
+         "r5_rerank_readout_inject_intermediates": 5118380,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 8192,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 262144,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 4194304,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 262160,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 2251710,
+        "r5_coarse_scan": 8684032,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 2151903,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 5419232
+       },
+       "total": 141308901,
+       "unique_persistent": {
+        "gathered_rows": 411648,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 8388608,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 524288,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 32884408,
+        "weights": 23500580
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 1180124,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 8673966,
+         "r5_rerank_readout_inject_intermediates": 5118380,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 32767,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 1048576,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 1048592,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 8739510,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 2151903,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 5419232
+       },
+       "total": 173846201,
+       "unique_persistent": {
+        "gathered_rows": 411648,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 524288,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 58049208,
+        "weights": 23500580
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024,
+         "ple_rows": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 64,
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 670368,
+         "embedding_output_and_logits": 41848,
+         "r5_coarse_scan_intermediates": 34733532,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 42227374,
+         "r5_rerank_readout_inject_intermediates": 5118380,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "ple_fusion": 526336,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 32767,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 1052672,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "ple": 262144,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 1052688,
+       "stages": {
+        "core__check": 112,
+        "core_addresses": 128,
+        "core_channel": 10248,
+        "core_forward": 306316,
+        "core_grams": 572,
+        "core_next_history": 48,
+        "core_rows_of": 992,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "ple": 557272,
+        "r5_coarse_bookkeeping": 75846326,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 2151903,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 5419232
+       },
+       "total": 240953017,
+       "unique_persistent": {
+        "gathered_rows": 411648,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 524288,
+         "ple_history_read": 64,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 58049208,
+        "weights": 23500580
+       }
+      }
+     ],
+     "validation": {
+      "counters_equal": true,
+      "differing_keys": 14,
+      "differing_keys_not_routed_expert_weights": [],
+      "equal_totals": true,
+      "length": 2064,
+      "real_total": 130547429,
+      "synthetic_total": 130547429
+     }
+    }
+   },
+   "parameters": 18184981,
+   "ple": true
+  },
+  {
+   "configuration": "enc256",
+   "dtype": "torch.float32",
+   "modes": {
+    "reread": {
+     "fixed_bytes_exact": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 38039568
+     },
+     "state_nbytes": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 38039568
+     },
+     "steps": [
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 1351680,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 1351680,
+         "encoder_intermediates": 599133815
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 256,
+         "r5_descriptor_scan": 32768,
+         "r5_ring_tokens": 5280
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 1664,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 22254,
+         "r5_rerank_readout_inject_intermediates": 24933407,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 19581508,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 32,
+        "coarse_records_scored": 32,
+        "queries": 1
+       },
+       "length": 1024,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16384,
+        "r5_key_projections": 276824064,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 5384192,
+        "r5_reencode_candidates": 5390991360,
+        "r5_rerank_and_select": 167936,
+        "routed_channel": 2562304
+       },
+       "position": 1040,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 87798,
+        "r5_coarse_scan": 34432,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 33300480,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 5785277,
+        "r5_reencode_candidates": 592920618,
+        "r5_rerank_and_select": 5347732,
+        "r5_validate_and_fetch": 9922,
+        "routed_channel": 5419232
+       },
+       "total": 675969072,
+       "unique_persistent": {
+        "gathered_rows": 2704384,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 512,
+         "descriptors_read": 32768,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 5280,
+         "ring_tokens_write": 4
+        },
+        "total": 25774568,
+        "weights": 22974244
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 2662400,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1181116759
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 262144,
+         "r5_ring_tokens": 10400
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 9728,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 91062,
+         "r5_rerank_readout_inject_intermediates": 48979662,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 36358724,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 256,
+        "queries": 1
+       },
+       "length": 8192,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 131072,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 9578496,
+        "r5_reencode_candidates": 10781982720,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 8208,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 156606,
+        "r5_coarse_scan": 271872,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 9225917,
+        "r5_reencode_candidates": 1177530122,
+        "r5_rerank_and_select": 10477187,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 5419232
+       },
+       "total": 1301708551,
+       "unique_persistent": {
+        "gathered_rows": 5325824,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 262144,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4
+        },
+        "total": 28631016,
+        "weights": 22974244
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 2662400,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1181116759
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 2097152,
+         "r5_ring_tokens": 10400
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 74240,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 564150,
+         "r5_rerank_readout_inject_intermediates": 48979662,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 36358724,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 2048,
+        "queries": 1
+       },
+       "length": 65536,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 1048576,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 9578496,
+        "r5_reencode_candidates": 10781982720,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 65552,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 629694,
+        "r5_coarse_scan": 2171392,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 9225917,
+        "r5_reencode_candidates": 1177530122,
+        "r5_rerank_and_select": 10477187,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 5419232
+       },
+       "total": 1304081159,
+       "unique_persistent": {
+        "gathered_rows": 5325824,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 2097152,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4
+        },
+        "total": 30466024,
+        "weights": 22974244
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 2662400,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1181116759
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 8388608,
+         "r5_ring_tokens": 10400
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 295424,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 2186166,
+         "r5_rerank_readout_inject_intermediates": 48979662,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 36358724,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 8192,
+        "queries": 1
+       },
+       "length": 262144,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 4194304,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 9578496,
+        "r5_reencode_candidates": 10781982720,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 262160,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 2251710,
+        "r5_coarse_scan": 8684032,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 9225917,
+        "r5_reencode_candidates": 1177530122,
+        "r5_rerank_and_select": 10477187,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 5419232
+       },
+       "total": 1312215815,
+       "unique_persistent": {
+        "gathered_rows": 5325824,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 8388608,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4
+        },
+        "total": 36757480,
+        "weights": 22974244
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 2662400,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1181116759
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 10400
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 1180124,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 8673966,
+         "r5_rerank_readout_inject_intermediates": 48979662,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 36358724,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 32767,
+        "queries": 1
+       },
+       "length": 1048576,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 9578496,
+        "r5_reencode_candidates": 10781982720,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 1048592,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 8739510,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 9225917,
+        "r5_reencode_candidates": 1177530122,
+        "r5_rerank_and_select": 10477187,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 5419232
+       },
+       "total": 1344753115,
+       "unique_persistent": {
+        "gathered_rows": 5325824,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4
+        },
+        "total": 61922280,
+        "weights": 22974244
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 2662400,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 2662400,
+         "encoder_intermediates": 1181116759
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 10400
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 34733532,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 42227374,
+         "r5_rerank_readout_inject_intermediates": 48979662,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 36358724,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 64,
+        "coarse_records_scored": 32767,
+        "queries": 1
+       },
+       "length": 1052672,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 545259520,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 9578496,
+        "r5_reencode_candidates": 10781982720,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 1052688,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 75846326,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 65544192,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 9225917,
+        "r5_reencode_candidates": 1177530122,
+        "r5_rerank_and_select": 10477187,
+        "r5_validate_and_fetch": 19842,
+        "routed_channel": 5419232
+       },
+       "total": 1411859931,
+       "unique_persistent": {
+        "gathered_rows": 5325824,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1024,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 10400,
+         "ring_tokens_write": 4
+        },
+        "total": 61922280,
+        "weights": 22974244
+       }
+      }
+     ],
+     "validation": {}
+    },
+    "stored": {
+     "fixed_bytes_exact": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_fine_keys": 268435456,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 306475024
+     },
+     "state_nbytes": {
+      "conv_tail": 12288,
+      "ersa_cells": 16384,
+      "history_tokens": 4194304,
+      "index_fine_keys": 268435456,
+      "index_ids": 262144,
+      "index_keys": 33554432,
+      "ple_history": 16,
+      "total": 306475024
+     },
+     "steps": [
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 512,
+         "r5_descriptor_scan": 32768,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 262144
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 1664,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 22254,
+         "r5_rerank_readout_inject_intermediates": 3970621,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 32,
+        "fine_tier_reads": 32,
+        "queries": 1
+       },
+       "length": 1024,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16384,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 167936,
+        "routed_channel": 2562304
+       },
+       "position": 1040,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 87798,
+        "r5_coarse_scan": 34432,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 1282544,
+        "r5_validate_and_fetch": 541060,
+        "routed_channel": 5419232
+       },
+       "total": 128522826,
+       "unique_persistent": {
+        "gathered_rows": 410624,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 544,
+         "descriptors_read": 32768,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 262144,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 23738504,
+        "weights": 22974244
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 262144,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 9728,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 91062,
+         "r5_rerank_readout_inject_intermediates": 5118380,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 256,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 8192,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 131072,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 8208,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 156606,
+        "r5_coarse_scan": 271872,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 2151903,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 5419232
+       },
+       "total": 130239489,
+       "unique_persistent": {
+        "gathered_rows": 410624,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 262144,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 524288,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 24230536,
+        "weights": 22974244
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 2097152,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 74240,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 564150,
+         "r5_rerank_readout_inject_intermediates": 5118380,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 2048,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 65536,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 1048576,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 65552,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 629694,
+        "r5_coarse_scan": 2171392,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 2151903,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 5419232
+       },
+       "total": 132612097,
+       "unique_persistent": {
+        "gathered_rows": 410624,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 2097152,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 524288,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 26065544,
+        "weights": 22974244
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 8388608,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 295424,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 2186166,
+         "r5_rerank_readout_inject_intermediates": 5118380,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 8192,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 262144,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 4194304,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 262160,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 2251710,
+        "r5_coarse_scan": 8684032,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 2151903,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 5419232
+       },
+       "total": 140746753,
+       "unique_persistent": {
+        "gathered_rows": 410624,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 8388608,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 524288,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 32357000,
+        "weights": 22974244
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 1180124,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 8673966,
+         "r5_rerank_readout_inject_intermediates": 5118380,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 32767,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 1048576,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 1048592,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 8739510,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 2151903,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 5419232
+       },
+       "total": 173284053,
+       "unique_persistent": {
+        "gathered_rows": 410624,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 524288,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 57521800,
+        "weights": 22974244
+       }
+      },
+      {
+       "classes": {
+        "embedding_lookups": {
+         "input_token_embedding_row": 1024
+        },
+        "ersa_recurrent_state": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "ersa_state_read": 49152,
+         "ersa_state_write": 16384,
+         "state_sized_intermediates": 282712
+        },
+        "evidence_reencoding": {
+         "core_embedding_rows": 204800,
+         "encoder_and_key_projection_weights": 16614544,
+         "encoder_delta_rows": 204800,
+         "encoder_intermediates": 89898739
+        },
+        "kv_history_reads": {
+         "ple_history": 16,
+         "r5_descriptor_ids": 1024,
+         "r5_descriptor_scan": 33553408,
+         "r5_ring_tokens": 800,
+         "r8_fine_keys": 524288
+        },
+        "other": {
+         "channel_ple_norm_intermediates": 640456,
+         "embedding_output_and_logits": 37020,
+         "r5_coarse_scan_intermediates": 34733532,
+         "r5_per_block_bookkeeping_and_wrapped_index_copy": 42227374,
+         "r5_rerank_readout_inject_intermediates": 5118380,
+         "state_commits": 20
+        },
+        "weight_traffic": {
+         "dense_channels": 5376008,
+         "ersa_projections": 1114304,
+         "norms": 9216,
+         "r5_head_projections": 4368964,
+         "routed_experts_top_k": 5107728,
+         "routing_matrices": 16384,
+         "tied_lm_head": 265216
+        }
+       },
+       "completes_block": false,
+       "counters": {
+        "blocks_reencoded": 4,
+        "coarse_records_scored": 32767,
+        "fine_tier_reads": 64,
+        "queries": 1
+       },
+       "length": 1052672,
+       "matmul_flops_by_stage": {
+        "core_forward": 132608,
+        "dense_channel": 2688000,
+        "ersa_mixer": 574976,
+        "r5_coarse_bookkeeping": 32768,
+        "r5_coarse_scan": 16776704,
+        "r5_key_projections": 33554432,
+        "r5_local_block_encode": 168468480,
+        "r5_readout": 1714176,
+        "r5_reencode_candidates": 673873920,
+        "r5_rerank_and_select": 299008,
+        "routed_channel": 2562304
+       },
+       "position": 1052688,
+       "stages": {
+        "core_channel": 10248,
+        "core_forward": 303244,
+        "core_next_history": 48,
+        "dense_channel": 5646368,
+        "ersa_mixer": 1429784,
+        "ersa_state_commit": 57344,
+        "norms": 73944,
+        "r5_coarse_bookkeeping": 75846326,
+        "r5_coarse_scan": 34733532,
+        "r5_commit": 68,
+        "r5_describe_inject": 6152,
+        "r5_key_projections": 3932160,
+        "r5_local_block_encode": 25536381,
+        "r5_readout": 2774717,
+        "r5_reencode_candidates": 81387302,
+        "r5_rerank_and_select": 2151903,
+        "r5_validate_and_fetch": 1082116,
+        "routed_channel": 5419232
+       },
+       "total": 240390869,
+       "unique_persistent": {
+        "gathered_rows": 410624,
+        "state_tiers": {
+         "conv_tail_read": 12288,
+         "conv_tail_write": 12288,
+         "descriptor_ids_read": 1056,
+         "descriptors_read": 33553408,
+         "ersa_state_read": 16384,
+         "ersa_state_write": 16384,
+         "fine_keys_read": 524288,
+         "ple_history_read": 16,
+         "ple_history_write": 16,
+         "ring_tokens_read": 800,
+         "ring_tokens_write": 4
+        },
+        "total": 57521800,
+        "weights": 22974244
+       }
+      }
+     ],
+     "validation": {}
+    }
+   },
+   "parameters": 18184981,
+   "ple": false
+  }
+ ],
+ "labels": {
+  "all": "EXECUTED LOGICAL operand bytes per decoded token (a dense op reads every operand and writes every result in full; a gather reads the gathered elements; views move nothing). Not DRAM transfers: this VM exposes no hardware counters (pmu). float32 as executed; CUDA NOT_RUN",
+  "unique_persistent": "per-token unique bytes of persistent tensors touched (each weight once, gathered rows, each state tier's reads once and writes once): the compulsory traffic when nothing survives in cache between tokens"
+ },
+ "lengths": [
+  1024,
+  8192,
+  65536,
+  262144,
+  1048576,
+  1052672
+ ],
+ "phase": "ELPIS_TORCH_R9_BOARDY_QUALIFICATION_P3",
+ "pmu": {
+  "event_sources": [
+   "breakpoint",
+   "msr",
+   "power",
+   "software",
+   "tracepoint",
+   "uprobe"
+  ],
+  "hardware_pmu": false,
+  "perf_event_paranoid": "2"
+ },
+ "provenance": {
+  "cpu_capability": "AVX512",
+  "git_revision": "6421bbb58543f5307c8b4892f5cab5edccca8e09",
+  "p3_runner_sha256": "43b32c57daa2450d167131bf31fb5d9419588947cdb252f274006e094433050c",
+  "preregistration_sha256": "9974d72da622823ff9fe9c35c54a7406cfde44ab6bc953c3f9b64b031e0be191",
+  "python": "3.13.18",
+  "runner_sha256": "47b46a9ed991fdb0920c80e11be59135f19263020b0b59bebdb82025f08ce107",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "threads": 2
+}

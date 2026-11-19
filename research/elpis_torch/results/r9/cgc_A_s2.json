@@ -1,0 +1,482 @@
+{
+ "accounting": {
+  "active_parameters_per_token": 155868,
+  "channel_macs_per_token": 98048,
+  "expert": {
+   "cgc_macs_including_cubic": 7744,
+   "ffn_hidden": 86,
+   "ffn_macs": 16512,
+   "kind": "ffn+cgc",
+   "macs": 24256,
+   "parameters": 23681
+  },
+  "labels": {
+   "all": "EXACT"
+  },
+  "parameters_by_group": {
+   "cgc": 114688,
+   "cgc_gate": 16,
+   "channel_ffn": 264192,
+   "embedding": 16576,
+   "ersa_norms_head": 35160,
+   "ple_other": 8320,
+   "ple_table": 4195600,
+   "routing": 1024
+  },
+  "resident_weight_bytes": 18542304,
+  "total_parameters": 4635576,
+  "weight_bytes_read_per_token_bound": 623472
+ },
+ "arm": "A",
+ "cgc_gates_final": [
+  0.04891581833362579,
+  0.0658789724111557,
+  0.011118120513856411,
+  0.06402938067913055,
+  0.028726909309625626,
+  0.017804371193051338,
+  0.02906613238155842,
+  0.03589924797415733,
+  0.04405159503221512,
+  0.07994701713323593,
+  0.055649109184741974,
+  0.0458044596016407,
+  0.12411873042583466,
+  0.08523868024349213,
+  0.10589341819286346,
+  0.10429780185222626
+ ],
+ "command": "train",
+ "corpus": {
+  "digest": "ab516f5f3db9f2314636110a81478ae96aea161fc01044852ab10467ce1c86d7",
+  "revision": "c05adffafbd5d8a94ee40c285031d1cd219f1c4c",
+  "train": {
+   "bytes": 2915823,
+   "documents": 275
+  },
+  "val_code": {
+   "bytes": 151683,
+   "documents": 15
+  },
+  "val_prose": {
+   "bytes": 70745,
+   "documents": 5
+  }
+ },
+ "curve": [
+  {
+   "cgc_gates": [
+    0.06929001957178116,
+    0.08489453792572021,
+    0.07344798743724823,
+    0.0910620167851448,
+    0.08105354011058807,
+    0.09962419420480728,
+    0.06365657597780228,
+    0.06307729333639145,
+    0.06095565855503082,
+    0.0854291021823883,
+    0.11144877970218658,
+    0.1078891009092331,
+    0.09391525387763977,
+    0.09635836631059647,
+    0.09736549109220505,
+    0.1034829169511795
+   ],
+   "step": 250,
+   "train_gradient_norms": {
+    "cgc": 0.031037951941456986,
+    "cgc_gate": 0.04425736733699567,
+    "channel_ffn": 0.16679071693803574,
+    "embedding": 0.3363274879315186,
+    "ersa_norms_head": 0.5168121350282917,
+    "ple_other": 0.2093062894854312,
+    "ple_table": 0.01807363024631906,
+    "routing": 0.04292983010860742
+   },
+   "train_loss": 2.076046943664551,
+   "val_code_bits_per_byte": 2.482706133881367,
+   "val_prose_bits_per_byte": 3.04145878156072
+  },
+  {
+   "cgc_gates": [
+    0.041375402361154556,
+    0.06607437878847122,
+    0.04422185570001602,
+    0.055301420390605927,
+    0.034711625427007675,
+    0.018828656524419785,
+    0.04155496880412102,
+    0.036131348460912704,
+    0.06272859126329422,
+    0.0335649773478508,
+    0.06557860970497131,
+    0.05190953239798546,
+    0.08655412495136261,
+    0.06926095485687256,
+    0.08310921490192413,
+    0.09110210090875626
+   ],
+   "step": 500,
+   "train_gradient_norms": {
+    "cgc": 0.02857458324304827,
+    "cgc_gate": 0.018052506517215704,
+    "channel_ffn": 0.19788292671472554,
+    "embedding": 0.28117107919036854,
+    "ersa_norms_head": 0.369812057786678,
+    "ple_other": 0.2025534935392829,
+    "ple_table": 0.020039917931234635,
+    "routing": 0.04357847822402294
+   },
+   "train_loss": 1.493617057800293,
+   "val_code_bits_per_byte": 2.13824300314174,
+   "val_prose_bits_per_byte": 2.6023396916633312
+  },
+  {
+   "cgc_gates": [
+    0.02978772111237049,
+    0.059131745249032974,
+    0.0013397170696407557,
+    0.04870104044675827,
+    0.023773344233632088,
+    -0.005519746337085962,
+    0.028217855840921402,
+    0.02488456293940544,
+    0.019529933109879494,
+    0.05945102497935295,
+    0.03631909191608429,
+    0.024846555665135384,
+    0.09265058487653732,
+    0.06831403076648712,
+    0.08411692082881927,
+    0.08621678501367569
+   ],
+   "step": 750,
+   "train_gradient_norms": {
+    "cgc": 0.029669194935891482,
+    "cgc_gate": 0.08458739297476504,
+    "channel_ffn": 0.21154365216893256,
+    "embedding": 0.274471120599959,
+    "ersa_norms_head": 0.40050291802095583,
+    "ple_other": 0.21386479608319645,
+    "ple_table": 0.022065523359028238,
+    "routing": 0.05138081333330936
+   },
+   "train_loss": 1.4164149761199951,
+   "val_code_bits_per_byte": 1.941391036722537,
+   "val_prose_bits_per_byte": 2.4377600475116497
+  },
+  {
+   "cgc_gates": [
+    0.03875552862882614,
+    0.060248855501413345,
+    0.0005288040265440941,
+    0.05870897322893143,
+    0.023294541984796524,
+    0.009793665260076523,
+    0.022487889975309372,
+    0.023627016693353653,
+    0.02080639638006687,
+    0.06730479747056961,
+    0.045504555106163025,
+    0.014561563730239868,
+    0.10845714062452316,
+    0.07111869007349014,
+    0.09656361490488052,
+    0.0944228321313858
+   ],
+   "step": 1000,
+   "train_gradient_norms": {
+    "cgc": 0.03710398424120986,
+    "cgc_gate": 0.049063262932115076,
+    "channel_ffn": 0.21691239292371692,
+    "embedding": 0.2827168469588421,
+    "ersa_norms_head": 0.39533806049664727,
+    "ple_other": 0.2056368528853764,
+    "ple_table": 0.020865071500066345,
+    "routing": 0.04682899262321322
+   },
+   "train_loss": 1.4806137084960938,
+   "val_code_bits_per_byte": 1.8287263458569305,
+   "val_prose_bits_per_byte": 2.3031541904785677
+  },
+  {
+   "cgc_gates": [
+    0.045403651893138885,
+    0.06503526866436005,
+    0.002174634486436844,
+    0.06569747626781464,
+    0.019410880282521248,
+    0.0033878369722515345,
+    0.02580348029732704,
+    0.0328686386346817,
+    0.03852829337120056,
+    0.07019542157649994,
+    0.05288394168019295,
+    0.046360865235328674,
+    0.12007567286491394,
+    0.08032193034887314,
+    0.1037367656826973,
+    0.09776970744132996
+   ],
+   "step": 1250,
+   "train_gradient_norms": {
+    "cgc": 0.03868358908271934,
+    "cgc_gate": 0.0350997453413741,
+    "channel_ffn": 0.2282625403555588,
+    "embedding": 0.26291567994745896,
+    "ersa_norms_head": 0.39774338038662693,
+    "ple_other": 0.20784250697778817,
+    "ple_table": 0.02128204143768474,
+    "routing": 0.055519931624340615
+   },
+   "train_loss": 1.446793556213379,
+   "val_code_bits_per_byte": 1.7666265397997603,
+   "val_prose_bits_per_byte": 2.246484523962979
+  },
+  {
+   "cgc_gates": [
+    0.04891581833362579,
+    0.0658789724111557,
+    0.011118120513856411,
+    0.06402938067913055,
+    0.028726909309625626,
+    0.017804371193051338,
+    0.02906613238155842,
+    0.03589924797415733,
+    0.04405159503221512,
+    0.07994701713323593,
+    0.055649109184741974,
+    0.0458044596016407,
+    0.12411873042583466,
+    0.08523868024349213,
+    0.10589341819286346,
+    0.10429780185222626
+   ],
+   "step": 1500,
+   "train_gradient_norms": {
+    "cgc": 0.03769727331282148,
+    "cgc_gate": 0.05808823908145794,
+    "channel_ffn": 0.22963300547074478,
+    "embedding": 0.238408639851998,
+    "ersa_norms_head": 0.427186708658544,
+    "ple_other": 0.20873215957243035,
+    "ple_table": 0.020070466133174997,
+    "routing": 0.0614197059543087
+   },
+   "train_loss": 1.2758431434631348,
+   "val_code_bits_per_byte": 1.7309940980531062,
+   "val_prose_bits_per_byte": 2.2119283479321443
+  }
+ ],
+ "final": {
+  "val_code_bits_per_byte": 1.7309940980531062,
+  "val_prose_bits_per_byte": 2.2119283479321443
+ },
+ "flops": {
+  "matmul_flops": 1525153792,
+  "matmul_flops_per_token": 372352.0,
+  "tokens": 4096
+ },
+ "gates_zeroed": {
+  "val_code_bits_per_byte": 1.7624924356403002,
+  "val_prose_bits_per_byte": 2.2433824336078168
+ },
+ "generation": {
+  "code": {
+   "mean": {
+    "distinct_4gram_fraction": 0.1881720430107527,
+    "first_32_bytes_agreement": 0.1015625,
+    "leading_bytes_matching_source": 0.75,
+    "longest_byte_run": 1.0,
+    "printable_fraction": 1.0,
+    "special_tokens": 0.0
+   },
+   "prompts": [
+    {
+     "distinct_4gram_fraction": 0.25806451612903225,
+     "first_32_bytes_agreement": 0.15625,
+     "leading_bytes_matching_source": 2,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.15053763440860216,
+     "first_32_bytes_agreement": 0.0,
+     "leading_bytes_matching_source": 0,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.15053763440860216,
+     "first_32_bytes_agreement": 0.09375,
+     "leading_bytes_matching_source": 0,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.1935483870967742,
+     "first_32_bytes_agreement": 0.15625,
+     "leading_bytes_matching_source": 1,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    }
+   ]
+  },
+  "prose": {
+   "mean": {
+    "distinct_4gram_fraction": 0.3279569892473118,
+    "first_32_bytes_agreement": 0.109375,
+    "leading_bytes_matching_source": 1.75,
+    "longest_byte_run": 1.25,
+    "printable_fraction": 1.0,
+    "special_tokens": 0.0
+   },
+   "prompts": [
+    {
+     "distinct_4gram_fraction": 0.15053763440860216,
+     "first_32_bytes_agreement": 0.125,
+     "leading_bytes_matching_source": 1,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.15053763440860216,
+     "first_32_bytes_agreement": 0.0625,
+     "leading_bytes_matching_source": 1,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.15053763440860216,
+     "first_32_bytes_agreement": 0.15625,
+     "leading_bytes_matching_source": 2,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.8602150537634409,
+     "first_32_bytes_agreement": 0.09375,
+     "leading_bytes_matching_source": 3,
+     "longest_byte_run": 2,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    }
+   ]
+  }
+ },
+ "held_out_gradient_norms": {
+  "cgc": 0.045925172744693515,
+  "cgc_gate": 0.04490479577931183,
+  "channel_ffn": 0.23938740879815099,
+  "embedding": 0.27247553109053013,
+  "ersa_norms_head": 0.43187558728726766,
+  "ple_other": 0.2479878332319343,
+  "ple_table": 0.02420129261746551,
+  "routing": 0.05556966745596924
+ },
+ "peak_rss_kib": 569492,
+ "phase": "ELPIS_TORCH_R9_BOARDY_QUALIFICATION",
+ "provenance": {
+  "cpu_capability": "AVX512",
+  "git_revision": "3bdd449d146cd708de4c7dbf07b2caa32fa6c89e",
+  "preregistration_sha256": "9974d72da622823ff9fe9c35c54a7406cfde44ab6bc953c3f9b64b031e0be191",
+  "python": "3.13.18",
+  "runner_sha256": "47b46a9ed991fdb0920c80e11be59135f19263020b0b59bebdb82025f08ce107",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "role": "primary",
+ "routing": {
+  "code": [
+   {
+    "below_1_percent": 0,
+    "block": 0,
+    "cv": 0.916865298396025,
+    "max_over_mean": 2.791015625,
+    "router_entropy": 1.1574183404445648,
+    "router_entropy_max": 2.0794415416798357,
+    "share": [
+     0.28186,
+     0.09814,
+     0.11316,
+     0.03845,
+     0.05164,
+     0.02979,
+     0.34888,
+     0.03809
+    ]
+   },
+   {
+    "below_1_percent": 2,
+    "block": 1,
+    "cv": 0.8942358870316452,
+    "max_over_mean": 2.755859375,
+    "router_entropy": 1.1300228536128998,
+    "router_entropy_max": 2.0794415416798357,
+    "share": [
+     0.00269,
+     0.06555,
+     0.09375,
+     0.00818,
+     0.34448,
+     0.21216,
+     0.21008,
+     0.06311
+    ]
+   }
+  ],
+  "prose": [
+   {
+    "below_1_percent": 0,
+    "block": 0,
+    "cv": 0.9239256728692067,
+    "max_over_mean": 2.796875,
+    "router_entropy": 1.1901237070560455,
+    "router_entropy_max": 2.0794415416798357,
+    "share": [
+     0.28833,
+     0.11292,
+     0.07715,
+     0.04639,
+     0.04138,
+     0.03137,
+     0.34961,
+     0.05286
+    ]
+   },
+   {
+    "below_1_percent": 1,
+    "block": 1,
+    "cv": 0.7854376900554981,
+    "max_over_mean": 2.2900390625,
+    "router_entropy": 1.1040287017822266,
+    "router_entropy_max": 2.0794415416798357,
+    "share": [
+     0.00378,
+     0.05029,
+     0.08936,
+     0.01245,
+     0.28625,
+     0.19299,
+     0.23572,
+     0.12915
+    ]
+   }
+  ]
+ },
+ "seed": 2,
+ "status": "COMPLETED",
+ "train": {
+  "seconds": 267.0,
+  "status": "COMPLETED",
+  "steps": 1500
+ }
+}
