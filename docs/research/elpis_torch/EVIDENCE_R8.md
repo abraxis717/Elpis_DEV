@@ -533,9 +533,16 @@ From about 16:30 UTC on 18 Nov 2026, the native C/C++ jobs of every branch are r
   and "the lineage's initial composite could not be built".
 
 R8 changes nothing under `native/` or `src/`, and neither do R6 or R7. The same native tree was green at 16:22 (run
-44346508710) and red from 16:31 on a commit that only added a JSON record (run 44348237360). Repairing it touches
-`native/` or the CI's native-build configuration, which this directive does not authorize. It is reported to the
-owner. The final head's CI is reported with the pull request.
+44346508710) and red from 16:31 on a commit that only added a JSON record (run 44348237360).
+
+The cause is the runner image. `ubuntu-latest` moved from ubuntu-24.04 (GCC 13.3, clang 18.1) to ubuntu-26.04
+(GCC 15.2, clang 21.1, Landlock ABI 8), and in run 44348237360 each job's verdict followed its image.
+
+With the owner's authorization, the jobs that build or run native code are pinned to ubuntu-24.04, the image their
+toolchain was qualified on. No source, test or warning setting changed. The incident record is CI-RUNNER-IMAGE-1 in
+`docs/CI_INCIDENTS.md`.
+
+The final head's CI is reported with the pull request.
 
 **Reproduction** (records go only where `--out` says; P0 used the runner at `d3e5662`, P4 at `838057d`):
 

@@ -12,10 +12,17 @@ env:
   # writes (a required tool under ELPIS_REQUIRE_NATIVE, never an implicit pass).
   NATIVE_DEPS: build-essential cmake clang pkg-config libsqlite3-dev libpcre2-dev strace
 
+# Runner image (docs/CI_INCIDENTS.md, CI-RUNNER-IMAGE-1). Every job that compiles or executes this repository's
+# native code (CMake C/C++, the Rust crates, the ECS_G kernel) runs on ubuntu-24.04, the image its toolchain was
+# qualified on: GCC 13.3, clang 18.1, CMake 3.28 from NATIVE_DEPS. ubuntu-latest moved to ubuntu-26.04 (GCC 15.2,
+# clang 21.1, CMake 4.2, Landlock ABI 8) on 18 Nov 2026, where that code is not qualified. The pins change
+# together, so that one run never qualifies the native code under two toolchains. Donor parity builds nothing
+# native and keeps ubuntu-latest.
+
 jobs:
   boundary:
     name: Boundary
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       PYTHONDONTWRITEBYTECODE: "1"
     steps:
@@ -90,7 +97,7 @@ jobs:
 
   python:
     name: Python ${{ matrix.python }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -130,7 +137,7 @@ jobs:
     # matrices and scaling; the DSV4.1 tower, the ECS dynamics laboratory and the retained model-execution
     # mechanics. Owned here so the Python 3.11 / 3.12 jobs run the FAST lane only.
     name: Python stress and historical
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONNOUSERSITE: "1"
@@ -165,7 +172,7 @@ jobs:
 
   airgap:
     name: Python without network
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ELPIS_NATIVE_BUILD: ${{ github.workspace }}/build
     steps:
@@ -207,7 +214,7 @@ jobs:
     # inside a network namespace with no interfaces up: deployments, restarts, SIGKILL at registered durability
     # boundaries and the refusal catalog, against the installed package only.
     name: Installed system acceptance
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -259,7 +266,7 @@ jobs:
     # suites above: a focused, declared-environment run of the evidence and
     # reproduction contracts, with the effective numerical environment printed.
     name: Scientific authority
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONNOUSERSITE: "1"
@@ -323,7 +330,7 @@ jobs:
     # them through CMake and runs `ctest -L ECS_C` and `ctest -L runtime` (RuntimeCore's C ABI over real native K1).
     # The job keeps its id and name (a required check).
     name: Continuity and RuntimeCore (Rust)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Rust toolchain
@@ -361,7 +368,7 @@ jobs:
 
   native:
     name: Native (${{ matrix.compiler }}, ${{ matrix.build }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -382,7 +389,7 @@ jobs:
 
   sanitizers:
     name: Native ${{ matrix.name }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -416,7 +423,7 @@ jobs:
     # RESEARCH_ONLY: nothing is installed into the Elpis distribution (base neutrality is the Boundary job's proof),
     # no weights are downloaded or written, and this job is not one of the required jobs of docs/CI_POLICY.md.
     name: Elpis Torch research (PyTorch CPU)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONNOUSERSITE: "1"
