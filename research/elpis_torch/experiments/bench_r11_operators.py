@@ -79,6 +79,8 @@ def main(argv=None) -> int:
     parser.add_argument("--out", help="the JSON record to write")
     args = parser.parse_args(argv)
     record = measure()
+    from .run_r11 import provenance
+    record["provenance"] = provenance(None)       # source digests and the git revision the numbers were measured at
     if args.out:
         Path(args.out).write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     else:
