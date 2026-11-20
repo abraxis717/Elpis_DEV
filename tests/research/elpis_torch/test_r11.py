@@ -324,3 +324,53 @@ def test_confirmation_commands_refuse_unplanned_seeds():
     import argparse
     with pytest.raises(SystemExit, match="not a preregistered"):
         r.command_stage_a(argparse.Namespace(dev=False, family="smooth", seed=11, lr_proj=None))
+
+
+# -- Stage C (amendment) --------------------------------------------------------------------------------------------------
+
+def test_the_stage_c_stack_is_the_repository_blocks_with_the_micro_specialist():
+    from research.elpis_torch import specialist_stack as ss
+    from research.elpis_torch.ersa_model import ErsaBlock
+    g2 = ss.RegressionStack("G2", "BOUNDED_SPECIALIST", 7)
+    assert all(isinstance(b, ErsaBlock) and b.sparse is not None for b in g2.blocks)
+    expert = g2.blocks[0].sparse.experts[0]
+    assert expert.cgc_gate is None and expert.cgc.core.weight.shape == (5, 3, 8)
+    assert cs.check_adapter(expert, 64, 86)["counted"]["total"] == 632
+    g0 = ss.RegressionStack("G0", "BOUNDED_SPECIALIST", 7)
+    assert g0.blocks[0].sparse.experts[0].cgc is None
+
+
+def test_the_stage_c_stack_is_causal_and_its_ablation_removes_only_the_specialist():
+    from research.elpis_torch import specialist_stack as ss
+    model = ss.RegressionStack("G2", "BOUNDED_SPECIALIST", 7).eval()
+    tokens, _ = ss.batch_tokens("TEST", ["smooth"], 7, "TEST", 0, 1, 8)
+    with torch.no_grad():
+        full = model(tokens, model.new_state(1))
+        prefix = model(tokens[:, :20], model.new_state(1))
+        assert float((full[:, :20] - prefix).abs().max()) < 1e-5            # no future-token influence
+        ablated = model(tokens, model.new_state(1), ablate_blocks=(0, 1))
+        assert float((ablated - full).abs().max()) > 1e-6
+    g0 = ss.RegressionStack("G0", "BOUNDED_SPECIALIST", 7).eval()
+    with torch.no_grad():
+        assert torch.allclose(g0(tokens, g0.new_state(1)), g0(tokens, g0.new_state(1), ablate_blocks=(0, 1)))
+
+
+def test_stage_c_evaluation_leaves_the_weights_byte_identical():
+    from research.elpis_torch import specialist_stack as ss
+    model = ss.RegressionStack("G2", "BOUNDED_SPECIALIST", 7)
+    before = _byte_digest(model)
+    ss.evaluate_stack(model, "TEST", "smooth", 7, 1)
+    assert _byte_digest(model) == before
+
+
+def test_a_stage_c_amendment_that_drifted_from_its_runner_is_refused(tmp_path, monkeypatch):
+    import json
+    from research.elpis_torch.experiments import run_r11_stage_c as c
+    plan = json.loads(c.AMENDMENT.read_text(encoding="utf-8"))
+    assert c.frozen()["phase"] == c.PHASE
+    plan["k_grid"] = [0, 32]
+    path = tmp_path / "amendment.json"
+    path.write_text(json.dumps(plan), encoding="utf-8")
+    monkeypatch.setattr(c, "AMENDMENT", path)
+    with pytest.raises(ValueError, match="does not describe this runner"):
+        c.frozen()
