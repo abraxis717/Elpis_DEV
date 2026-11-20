@@ -67,7 +67,7 @@ def test_the_only_storage_writers_are_the_explicit_offline_operations():
     assert writers == {"training.py": 1, "experiments/run_r0.py": 1, "experiments/run_r1.py": 2,
                        "experiments/run_r2.py": 1, "experiments/run_r3.py": 2, "experiments/run_r4.py": 1,
                        "experiments/run_r5.py": 3, "experiments/run_r6.py": 1, "experiments/run_r7.py": 2,
-                       "experiments/run_r8.py": 1, "experiments/run_r9.py": 1, "experiments/run_r9_p3.py": 1, "experiments/run_r10.py": 1, "experiments/run_r11.py": 1,
+                       "experiments/run_r8.py": 1, "experiments/run_r9.py": 1, "experiments/run_r9_p3.py": 1, "experiments/run_r10.py": 1, "experiments/run_r11.py": 1, "experiments/bench_r11_operators.py": 1,
                        "lm_training.py": 1}
     for module in ("session.py", "scroll_session.py", "scroll.py", "lastblock.py", "ersa.py", "ersa_model.py",
                    "history.py", "history_model.py", "longrange_tasks.py", "program_tasks.py", "scaling.py",
