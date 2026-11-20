@@ -181,3 +181,32 @@ What R8 wrote (all original): `experiments/run_r8.py`, the R8 parts of `evidence
 the stored-keys scenario of `zero_write_scenario.py`, `tests/research/elpis_torch/test_r8.py`, and
 `docs/research/elpis_torch/DESIGN_R8.md` and `EVIDENCE_R8.md`. The timing streams are seeded random byte ids; the
 test streams are the R5 synthetic record generators.
+
+
+# R11 (the bounded expert-local CGC specialist): the R97W protocol, re-implemented
+
+**Sources read, in this repository and in the public CGC repository** (`abraxis717/CGC`, read-only clone at commit
+`0895c2b`):
+- the pinned E0 cell already vendored here (`upstream/cgc_ecsg_e0.py`, unchanged);
+- R97O's archived result (`evidence/phase97o_ecsg_e0_differentiable_unroll/run_YwHfIlCG/result.json`);
+- R97W's archived result and its portable port (`research/benchmarks/r97w/`).
+
+**What was taken.** No code was copied, vendored or imported from the CGC repository in R11. `specialist_tasks.py`
+re-implements R97W's portable protocol from its specification, under R11's own seeds and namespaces:
+- the teacher families;
+- the 120-parameter E0 and GELU learners;
+- the 8-step clipped inner SGD;
+- first-order Reptile.
+
+It is a new experiment, never a re-run of R97W's held-out episodes. The geometry (5 inputs, 3 cells, 8 units) is
+R97W's.
+
+**What R11 wrote (all original).**
+- New modules: `cgc_specialist.py`, `specialist_tasks.py`, `specialist_stack.py`.
+- Experiment scripts: `experiments/run_r11.py`, `experiments/run_r11_stage_c.py`,
+  `experiments/bench_r11_operators.py`.
+- Opt-in additions to existing modules: in `sparse_channel.py`, `model.py` and `ersa_model.py`.
+- Tests: `tests/research/elpis_torch/test_r11.py`.
+- Documents: the R11 documents under `docs/research/elpis_torch/`.
+
+**Data.** Every task is generated synthetically by the harness. No external data, weights or checkpoints were used.
