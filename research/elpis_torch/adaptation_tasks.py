@@ -277,17 +277,35 @@ def make_episode(variant: str, rng: random.Random, spec: TaskSpec = TaskSpec()) 
 # -- training batches and frozen evaluation sets ------------------------------------------------------------------
 
 TRAIN_MIX = ("A",) * 6 + ("B",) * 5 + ("C_short", "C_long", "C_gap", "C_long", "C_gap")   # 16 rows per batch
+RESERVED_MOD = 10                     # signatures whose hash is 0 mod 10 belong to evaluation, never to training
+
+
+def reserved(signature: str) -> bool:
+    """Train/test disjointness by construction: an evaluation episode's mappings and rules (its signature) are
+    reserved, and a training episode with a reserved signature is redrawn. Family B's rule space (regime symbols x
+    offsets) is small enough that random draws would otherwise repeat across splits."""
+    return int(signature[:8], 16) % RESERVED_MOD == 0
 
 
 def train_episode(run_seed: int, step: int, row: int, spec: TaskSpec = TaskSpec()) -> Episode:
     variant = TRAIN_MIX[row % len(TRAIN_MIX)]
-    return make_episode(variant, random.Random(episode_seed("train", run_seed, step, row)), spec)
+    for attempt in range(1000):
+        e = make_episode(variant, random.Random(episode_seed("train", run_seed, step, row, attempt)), spec)
+        if not reserved(e.signature):
+            return e
+    raise RuntimeError("no unreserved training episode")
 
 
 def eval_set(variant: str, count: int, *, split_seed: int, spec: TaskSpec = TaskSpec()) -> list:
-    """A frozen evaluation set: ``count`` episodes of ``variant`` from ``split_seed`` (never a training seed)."""
-    return [make_episode(variant, random.Random(episode_seed("eval", split_seed, variant, n)), spec)
-            for n in range(count)]
+    """A frozen evaluation set: ``count`` episodes of ``variant`` from ``split_seed``, every one with a reserved
+    signature (so no training episode of any run can share its mappings or rules)."""
+    out, n = [], 0
+    while len(out) < count:
+        e = make_episode(variant, random.Random(episode_seed("eval", split_seed, variant, n)), spec)
+        n += 1
+        if reserved(e.signature):
+            out.append(e)
+    return out
 
 
 def set_digest(episodes) -> str:

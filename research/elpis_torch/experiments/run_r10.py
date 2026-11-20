@@ -96,6 +96,8 @@ def frozen() -> dict:
         drift["model"] = "differs"
     if list(plan["evaluation"]["k_grid"]) != list(K_GRID) or list(plan["evaluation"]["k_adapt"]) != list(K_ADAPT):
         drift["k"] = "differs"
+    if not set(plan.get("confirmation_arms", ())) <= set(ARMS) or "A" not in plan.get("confirmation_arms", ()):
+        drift["confirmation_arms"] = "invalid"
     if drift:
         raise ValueError(f"the preregistration does not describe this runner: {drift}")
     return plan
@@ -478,7 +480,10 @@ def _train_and_evaluate(arm_name: str, seed: int, plan: dict, *, smoke: bool, la
 
 def command_pilot(args) -> dict:
     args.pilot = True
-    record = _train_and_evaluate(args.arm, args.seed, _plan_or_pilot(args), smoke=False, label="pilot")
+    plan = _plan_or_pilot(args)
+    if getattr(args, "steps", None):
+        plan["training"]["steps"] = args.steps
+    record = _train_and_evaluate(args.arm, args.seed, plan, smoke=False, label="pilot")
     record["label"] = "PILOT (pre-registration calibration; development seeds and development episodes only)"
     return record
 
@@ -487,6 +492,10 @@ def command_train(args, *, smoke: bool = False) -> dict:
     plan = frozen()
     if args.arm not in plan["arms"]:
         raise SystemExit(f"unknown arm {args.arm}")
+    if stage_of(plan, args.seed) == "development":
+        raise SystemExit(f"seed {args.seed} is not a preregistered screening or confirmation seed")
+    if stage_of(plan, args.seed) == "confirmation" and args.arm not in plan["confirmation_arms"]:
+        raise SystemExit(f"arm {args.arm} is not a confirmation arm")
     return _train_and_evaluate(args.arm, args.seed, plan, smoke=smoke, label="train")
 
 
@@ -588,13 +597,20 @@ def analyse(results: dict, seeds, analysis: dict, stage: str) -> dict:
             entry = {"per_seed": diffs, "mean": statistics.fmean(diffs), "positive": sum(d > 0 for d in diffs),
                      "class": _classify(diffs, delta), "t": _t(diffs)}
             e["comparisons"][f"{ref}-{other}"] = entry
-        learned_key = "ADAPT" if endpoint == "ADAPT" else "RETAIN_pre"
-        best = max((statistics.fmean(results[(arm, s)][learned_key] for s in seeds)
-                    for arm in ("A", "B", "C", "C_mac")
-                    if all((arm, s) in results and results[(arm, s)].get(learned_key) is not None for s in seeds)),
-                   default=None)
-        e["best_primary_arm_mean"] = best
-        e["learned"] = best is not None and best >= analysis["learned_threshold"][endpoint]
+        def best(key):
+            means = [statistics.fmean(results[(arm, s)][key] for s in seeds) for arm in ("A", "B", "C", "C_mac")
+                     if all((arm, s) in results and results[(arm, s)].get(key) is not None for s in seeds)]
+            return max(means) if means else None
+        threshold = analysis["learned_threshold"]
+        if endpoint == "ADAPT":
+            e["best_primary_arm_mean"] = best("ADAPT")
+            e["learned"] = e["best_primary_arm_mean"] is not None and e["best_primary_arm_mean"] >= threshold["ADAPT"]
+        else:                          # the bindings were learned AND retention itself is measurable in some arm
+            e["best_primary_arm_mean"] = best("RETAIN")
+            e["best_primary_arm_pre_mean"] = best("RETAIN_pre")
+            e["learned"] = (e["best_primary_arm_mean"] is not None and e["best_primary_arm_pre_mean"] is not None
+                            and e["best_primary_arm_mean"] >= threshold["RETAIN"]
+                            and e["best_primary_arm_pre_mean"] >= threshold["RETAIN_pre"])
         c, cm = e["comparisons"].get("A-C", {}), e["comparisons"].get("A-C_mac", {})
         if not e["learned"]:
             e["verdict"] = "ASSAY_NOT_LEARNED"
@@ -618,6 +634,47 @@ def analyse(results: dict, seeds, analysis: dict, stage: str) -> dict:
                 "PERSISTS_WITHOUT_ATTENTION" if d["mean"] >= delta / 2 else "ATTENTION_DEPENDENT")
         out["endpoints"][endpoint] = e
     return out
+
+
+def complete_blocks(results: dict, seeds, arms) -> list:
+    """The seeds for which every listed arm has a completed run (PREREGISTRATION_R10.md section 6)."""
+    return [s for s in seeds if all((a, s) in results for a in arms)]
+
+
+def overall(out: dict, plan: dict, latency: dict | None) -> dict:
+    """Map the stage verdicts to the preregistered overall verdicts (section 5), mechanically."""
+    verdicts = {}
+    ratio = None
+    if latency is not None:
+        arms = latency.get("arms", {})
+        if "A" in arms and "C" in arms:
+            ratio = arms["A"]["decode_ms_p50"] / arms["C"]["decode_ms_p50"]
+    for endpoint, name in (("ADAPT", "ADAPTATION"), ("RETAIN", "RETENTION")):
+        screen = out["screening"]["endpoints"][endpoint]["verdict"]
+        conf = out.get("confirmation")
+        v = {"screening": screen}
+        if screen in ("ASSAY_NOT_LEARNED", "NONQUAL"):
+            v["verdict"] = screen
+        elif screen == "SCREEN_NOT_FAVORABLE":
+            v["verdict"] = f"NO_INCREMENTAL_CGC_{name}_BENEFIT_ESTABLISHED"
+        elif conf is None or conf.get("status") == "PARTIAL":
+            v["verdict"] = "PARTIAL"                  # favorable screening without a complete confirmation
+        else:
+            c = conf["endpoints"][endpoint]
+            v["confirmation"] = c["verdict"]
+            if c["verdict"] in ("CONFIRMED", "CONFIRMED_IN_DISTRIBUTION_ONLY"):
+                v["verdict"] = f"CGC_{name}_BENEFIT_CONFIRMED"
+                v["held_out"] = "SURVIVES" if c["verdict"] == "CONFIRMED" else "IN_DISTRIBUTION_ONLY"
+                v["attribution"] = c.get("attribution")
+                v["latency_ratio_A_over_C"] = ratio
+                v["latency"] = None if ratio is None else (
+                    "QUALITY_LATENCY_TRADEOFF" if ratio > plan["analysis"]["latency_material_ratio"] else "NOT_MATERIAL")
+            elif c["verdict"] in ("ASSAY_NOT_LEARNED", "NONQUAL"):
+                v["verdict"] = c["verdict"]
+            else:
+                v["verdict"] = f"NO_INCREMENTAL_CGC_{name}_BENEFIT_ESTABLISHED"
+        verdicts[endpoint] = v
+    return verdicts
 
 
 def command_combine(args) -> dict:
@@ -649,7 +706,16 @@ def command_combine(args) -> dict:
            "screening": analyse(results, plan["seeds"]["screening"], analysis, "screening")}
     conf_seeds = plan["seeds"]["confirmation"]
     if any((a, s) in results for a in ARMS for s in conf_seeds):
-        out["confirmation"] = analyse(results, conf_seeds, analysis, "confirmation")
+        blocks = complete_blocks(results, conf_seeds, plan["confirmation_arms"])
+        conf = analyse(results, blocks, analysis, "confirmation") if len(blocks) >= 2 else {"endpoints": {}}
+        conf.update(complete_blocks=blocks, required_blocks=len(conf_seeds),
+                    status="COMPLETE" if len(blocks) == len(conf_seeds) else "PARTIAL")
+        out["confirmation"] = conf
+    latency_path = folder / "latency.json"
+    latency = json.loads(latency_path.read_text(encoding="utf-8")) if latency_path.exists() else None
+    if latency is not None:
+        inputs[latency_path.name] = sha256_file(latency_path)
+    out["overall"] = overall(out, plan, latency)
     out["per_run"] = {f"{a}_s{s}": v for (a, s), v in sorted(results.items())}
     return out
 
@@ -682,6 +748,7 @@ def main(argv=None) -> int:
     parser.add_argument("command", choices=sorted(COMMANDS))
     parser.add_argument("--arm", default="B")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--steps", type=int, default=None, help="pilot only: training steps")
     parser.add_argument("--inputs", help="combine: the folder holding the run records (default: results/r10)")
     parser.add_argument("--out", help="the JSON record to write (nothing is written without it)")
     args = parser.parse_args(argv)

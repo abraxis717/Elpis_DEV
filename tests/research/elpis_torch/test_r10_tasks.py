@@ -157,7 +157,11 @@ def test_no_global_static_mapping_predicts_the_answers():
 
 
 def test_training_never_sees_held_out_variants_or_evaluation_episodes():
+    """Disjoint by construction (reserved signatures), not by luck: family B's rule space is small enough that
+    unreserved random draws did repeat across splits (the R10 pilot counted 5 in 24,000 training episodes)."""
     assert not set(at.TRAIN_MIX) & set(at.HELDOUT_VARIANTS)
+    assert all(at.reserved(e.signature) for v in at.TRAIN_VARIANTS for e in at.eval_set(v, 32, split_seed=3))
+    assert not any(at.reserved(at.train_episode(0, step, row).signature) for step in range(20) for row in range(16))
     train = {at.train_episode(seed, step, row).signature for seed in range(3) for step in range(30) for row in range(16)}
     for v in at.TRAIN_VARIANTS + at.HELDOUT_VARIANTS:
         assert not train & {e.signature for e in at.eval_set(v, 64, split_seed=7001)}

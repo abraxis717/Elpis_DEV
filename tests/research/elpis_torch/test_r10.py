@@ -125,8 +125,9 @@ def test_the_summary_reports_every_preregistered_measure(model):
     assert set(ends) == {"ADAPT", "RETAIN", "RETAIN_pre", "RETAIN_change"}
 
 
-ANALYSIS = {"delta_adapt": 0.03, "delta_retain": 0.05, "learned_threshold": {"ADAPT": 0.3, "RETAIN": 0.5},
-            "screen_min_positive": 2, "t_critical_one_sided": 1.796}
+ANALYSIS = {"delta_adapt": 0.03, "delta_retain": 0.05,
+            "learned_threshold": {"ADAPT": 0.3, "RETAIN": 0.2, "RETAIN_pre": 0.4},
+            "screen_min_positive": 2, "t_critical_one_sided": 1.796, "latency_material_ratio": 1.1}
 
 
 def _fabricate(seeds, a=0.6, c=0.6, cm=0.6, b=0.55, da=0.4, dc=0.4, pre=0.8, held_gap=0.0, noise=0.0):
@@ -146,6 +147,8 @@ def test_the_preregistered_rules_on_fabricated_records():
     out = r.analyse(_fabricate(s3, a=0.1, c=0.1, cm=0.1, b=0.1, pre=0.2), s3, ANALYSIS, "screening")
     assert out["endpoints"]["ADAPT"]["verdict"] == "ASSAY_NOT_LEARNED"
     assert out["endpoints"]["RETAIN"]["verdict"] == "ASSAY_NOT_LEARNED"
+    out = r.analyse(_fabricate(s3, a=0.1, c=0.1, cm=0.1, b=0.1, pre=0.9), s3, ANALYSIS, "screening")
+    assert out["endpoints"]["RETAIN"]["verdict"] == "ASSAY_NOT_LEARNED"      # bindings learned, retention at floor
     out = r.analyse(_fabricate(s3), s3, ANALYSIS, "screening")
     assert out["endpoints"]["ADAPT"]["verdict"] == "SCREEN_NOT_FAVORABLE"
     out = r.analyse(_fabricate(s3, a=0.7), s3, ANALYSIS, "screening")
@@ -165,6 +168,46 @@ def test_the_preregistered_rules_on_fabricated_records():
     del partial[("C_mac", 2)]
     out = r.analyse(partial, s3, ANALYSIS, "screening")
     assert out["endpoints"]["ADAPT"]["verdict"] == "NONQUAL"
+    # the floor rule never masks a CGC benefit: A alone lifting retention off the floor makes the endpoint learned
+    out = r.analyse(_fabricate(s3, a=0.3, c=0.1, cm=0.1, b=0.1, pre=0.9), s3, ANALYSIS, "screening")
+    assert out["endpoints"]["RETAIN"]["learned"] and out["endpoints"]["RETAIN"]["verdict"] == "SCREEN_FAVORABLE"
+
+
+PLAN = {"seeds": {"screening": [0, 1, 2], "confirmation": list(range(100, 112))},
+        "confirmation_arms": ["A", "C", "C_mac", "D_A", "D_C"], "analysis": ANALYSIS}
+
+
+def _stages(screen_records, conf_records=None):
+    out = {"screening": r.analyse(screen_records, [0, 1, 2], ANALYSIS, "screening")}
+    if conf_records is not None:
+        blocks = r.complete_blocks(conf_records, PLAN["seeds"]["confirmation"], PLAN["confirmation_arms"])
+        conf = r.analyse(conf_records, blocks, ANALYSIS, "confirmation") if len(blocks) >= 2 else {"endpoints": {}}
+        conf.update(status="COMPLETE" if len(blocks) == 12 else "PARTIAL")
+        out["confirmation"] = conf
+    return out
+
+
+def test_the_overall_verdicts_follow_the_preregistered_mapping():
+    s3, s12 = [0, 1, 2], list(range(100, 112))
+    v = r.overall(_stages(_fabricate(s3)), PLAN, None)
+    assert v["ADAPT"]["verdict"] == "NO_INCREMENTAL_CGC_ADAPTATION_BENEFIT_ESTABLISHED"
+    assert v["RETAIN"]["verdict"] == "NO_INCREMENTAL_CGC_RETENTION_BENEFIT_ESTABLISHED"
+    v = r.overall(_stages(_fabricate(s3, a=0.1, c=0.1, cm=0.1, b=0.1, pre=0.2)), PLAN, None)
+    assert v["ADAPT"]["verdict"] == v["RETAIN"]["verdict"] == "ASSAY_NOT_LEARNED"
+    v = r.overall(_stages(_fabricate(s3, a=0.7)), PLAN, None)                    # favorable, never confirmed
+    assert v["ADAPT"]["verdict"] == "PARTIAL"
+    short = _fabricate(s12, a=0.7, noise=0.01, da=0.5, dc=0.4)
+    for arm in ("A", "C"):
+        del short[(arm, 111)]
+    v = r.overall(_stages(_fabricate(s3, a=0.7), short), PLAN, None)            # budget ran out: 11 blocks
+    assert v["ADAPT"]["verdict"] == "PARTIAL"
+    latency = {"arms": {"A": {"decode_ms_p50": 1.2}, "C": {"decode_ms_p50": 1.0}}}
+    v = r.overall(_stages(_fabricate(s3, a=0.7), _fabricate(s12, a=0.7, noise=0.01, da=0.5, dc=0.4)), PLAN, latency)
+    assert v["ADAPT"]["verdict"] == "CGC_ADAPTATION_BENEFIT_CONFIRMED"
+    assert v["ADAPT"]["held_out"] == "SURVIVES" and v["ADAPT"]["attribution"] == "PERSISTS_WITHOUT_ATTENTION"
+    assert v["ADAPT"]["latency"] == "QUALITY_LATENCY_TRADEOFF"
+    v = r.overall(_stages(_fabricate(s3, a=0.7), _fabricate(s12, a=0.62, noise=0.05)), PLAN, None)
+    assert v["ADAPT"]["verdict"] == "NO_INCREMENTAL_CGC_ADAPTATION_BENEFIT_ESTABLISHED"
 
 
 def test_the_r10_runner_has_exactly_one_write_site():
