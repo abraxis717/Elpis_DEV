@@ -12,6 +12,25 @@ session-local, volatile fast-weight mechanism for the CGC weights.
   CGC over FFN width: `CGC_NOT_ESTABLISHED` (`EVIDENCE_R9.md`).
 - The trained models do use their CGC path: removing it at evaluation raises the loss.
 - At this scale, CGC cost 11% decode latency.
+- **Scope** (`ASSAY_CANNOT_TEST_META_LEARNING_CLAIM`, ledger section "R10 additions"):
+  - R9 measured static next-byte prediction only.
+  - It neither establishes nor refutes a CGC benefit for in-context adaptation or meta-learning.
+  - The CGC here is stateless: unlike native K1 it holds no memory of its own, and unlike the historical R97W
+    setting it is not adapted by gradient steps at inference.
+  - R10 tests adaptation and retention directly (`PREREGISTRATION_R10.md`, `EVIDENCE_R10.md`).
+
+**Claim status (R10).** R10 is a preregistered test of in-context adaptation and retention (`EVIDENCE_R10.md`). It
+used R9's d 64 backbone with a 64-token attention window, against parameter- and compute-matched FFN arms and an
+attention-free pair. At this scale (3,000 steps, three screening seeds):
+- **Adaptation: `NO_INCREMENTAL_CGC_ADAPTATION_BENEFIT_ESTABLISHED`.** The CGC arms adapted worse than the FFN
+  arms, including without attention on every seed.
+- **Retention: `ASSAY_NOT_LEARNED`.** No arm kept earlier conflicting bindings through interference above the
+  floor.
+- **Attribution.** What retention exists is carried by attention (inside the window) or by the ERSA state (behind
+  a gap). Zeroing CGC at evaluation changes almost nothing.
+- **Cost.** CGC costs 10% decode latency.
+- **What did not run.** Confirmation did not run (only a favorable screening triggers it), and no width sweep is
+  justified.
 
 **RESEARCH_ONLY. NO_RUNTIME_AUTHORITY. NO_LANGUAGE_CLAIM.** This is an architectural research prototype at
 toy scale. It is not part of the Elpis runtime, nothing in `src/` or `native/` imports it, and passing its
@@ -28,6 +47,7 @@ Elpis cognitive path; what it would take to change that is a separate, unadopted
 | R2: ERSA design notes, results, failures, gates | `docs/research/elpis_torch/EVIDENCE_R2.md` |
 | R3–R8: design and evidence of each phase | `docs/research/elpis_torch/DESIGN_R*.md`, `EVIDENCE_R*.md` |
 | R9: claim audit, CGC attribution (preregistered), whole-model memory and bandwidth, Gate A (HOLD) | `docs/research/elpis_torch/CLAIM_AUDIT_R9.md`, `PREREGISTRATION_R9.md`, `DESIGN_R9.md`, `EVIDENCE_R9.md`, `GATE_A_PROTOCOL_R9.md` |
+| R10: CGC and in-context adaptation and retention (preregistered), R11 performance handoff | `docs/research/elpis_torch/PREREGISTRATION_R10.md`, `DESIGN_R10.md`, `EVIDENCE_R10.md`, `R11_PERFORMANCE_NOTE.md` |
 | Where the CGC mathematics comes from | `PROVENANCE.md` |
 
 ## Install
