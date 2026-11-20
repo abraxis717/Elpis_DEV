@@ -296,3 +296,31 @@ def test_the_r11_runner_writes_in_one_place_and_never_saves_weights():
     source = r.RUNNER.read_text(encoding="utf-8")
     assert source.count(".write_text(") == 1 and "def _write(" in source
     assert "torch.save" not in source
+
+
+@pytest.mark.parametrize("edit", ["geometry", "bounds", "stage_a_arms", "stage_b_arms", "protocol"])
+def test_a_plan_that_drifted_from_the_runner_is_refused(tmp_path, monkeypatch, edit):
+    import json
+    plan = json.loads(r.PREREGISTRATION.read_text(encoding="utf-8"))
+    assert r.frozen()["phase"] == r.PHASE
+    if edit == "geometry":
+        plan["profile"]["geometry"] = [16, 48, 4]
+    elif edit == "bounds":
+        plan["profile"]["bounds"]["BOUNDED_SPECIALIST"] = 5.0
+    elif edit == "stage_a_arms":
+        plan["stage_a"]["arms"]["E0_META"][1] = 64
+    elif edit == "stage_b_arms":
+        plan["stage_b"]["arms"]["G2"]["gate_mode"] = "learned"
+    else:
+        plan["stage_a"]["protocol"]["inner_steps"] = 16
+    path = tmp_path / "preregistration.json"
+    path.write_text(json.dumps(plan), encoding="utf-8")
+    monkeypatch.setattr(r, "PREREGISTRATION", path)
+    with pytest.raises(ValueError, match="does not describe this runner"):
+        r.frozen()
+
+
+def test_confirmation_commands_refuse_unplanned_seeds():
+    import argparse
+    with pytest.raises(SystemExit, match="not a preregistered"):
+        r.command_stage_a(argparse.Namespace(dev=False, family="smooth", seed=11, lr_proj=None))
