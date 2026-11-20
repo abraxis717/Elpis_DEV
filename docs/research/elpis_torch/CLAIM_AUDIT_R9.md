@@ -424,3 +424,74 @@ Every arm trained 3,000 steps on the same episode streams. There were three scre
 - R9's `CGC_NOT_ESTABLISHED`.
 - L15's separation of R97W, native K1 and `CGCTransform`.
 - Gate A HOLD.
+
+
+## R11 result (the R9 and R10 verdicts above are unchanged)
+
+### L17. R11: a bounded, specialized expert-local CGC — QUALIFIED under explicit offline adaptation only; NOT_ESTABLISHED for frozen-weight transfer (Stage C)
+
+**Plans.**
+- `PREREGISTRATION_R11.md`, frozen at `47537ef`.
+- The Stage C amendment, `PREREGISTRATION_R11_STAGE_C.md`, frozen at `369e333` before any Stage C data.
+
+**Evidence.** `EVIDENCE_R11.md`, from records whose verdicts `test_r11_records.py` recomputes independently.
+
+**Supported.**
+- **The footprint correction** (exact; `CGC_BOUNDING_R11.md`).
+  - The legacy geometry makes CGC 28.6% of the R6 500M layout and 42.5% of the 1B layout. That is a second large
+    network, not a specialist.
+  - The opt-in micro profile (R97W's 5 / 3 / 8 core, 120 parameters, adapter `8H + 121`) takes CGC to 0.39% and
+    0.38%, within a 5% per-expert budget.
+  - The defaults, and every historical count, are unchanged.
+- **Naming** (consistent with L3).
+  - `E0_REFERENCE` equals E0 within 1e-12.
+  - `BOUNDED_SPECIALIST` (b = 3) is E0-derived, not E0, and its departure is quantified.
+- **Stage A.**
+  - On fresh R97W-protocol episodes, faithful E0 meta-learns in every group and beats the 120-parameter GELU by 46%:
+    `MICRO_REFERENCE_QUALIFIED`.
+  - With learned projections, the bounded adapter qualifies: `PROJECTED_ADAPTATION_QUALIFIED`.
+  - Fixed random projections cost 2.2× and do not qualify.
+- **Stage B, inside the real `ChannelExpert`, in a laboratory harness with a known expert assignment.** The
+  fixed-gate bounded micro CGC is `EXPERT_SPECIALIZATION_QUALIFIED` under explicit offline inner updates:
+  - its adapted loss is 0.113 of the FFN alone's;
+  - it is causal: ablation multiplies the loss by 10.2;
+  - its specialist objective is necessary: the pooled objective gives 0.986 of the FFN alone;
+  - it beats a matched GELU specialist: 0.851, 10/12 groups.
+- **The learned gate (historical, initialized at 0.1).**
+  - It is slot-functional, but without a CGC-specific advantage (0.973 against GELU, p = 0.078).
+  - The gate is not limiting by the frozen rule. It starves early gradients 13× and settles near 0.45.
+- **Mode B.** Without inner updates, both CGC specialists are worse than the FFN alone (2.76× and 6.10× at k = 0):
+  `ADAPTIVE_SPECIALIST_REQUIRES_INNER_UPDATES`.
+- **Stage C.**
+  - Trained end to end in the actual ERSA stack and then frozen, with the support examples in context, neither CGC
+    specialist beats the FFN alone at k = 32: `NOT_ESTABLISHED` for G1 and G2. G2's loss is 1.43× G0's, pooled.
+  - All in-context information is ERSA's: an ERSA reset after the support returns every arm to its k = 0 loss.
+  - Ablating the frozen G2 specialist multiplies its loss by 200. That is reliance, not benefit.
+  - A learned top-1 router does not separate the task families: `INTEGRATION_GAP_LEARNED_ROUTING` (2 of 12 blocks;
+    mean purity 0.69).
+
+**Not supported.**
+- Any claim that CGC adapts or learns at inference with frozen weights (Stage C: `NOT_ESTABLISHED`).
+- Any language-model, scale (500M / 1B) or GPU-throughput claim.
+- Any claim that Stage B's qualification transfers outside its harness:
+  - one expert per family;
+  - a synthetic hidden state;
+  - a fixed readout;
+  - two R97W-form task families.
+- Promotion of the mechanical qualification (tests and exact records) into a specialist result (A4).
+- Any claim about retention under conflicting interference: that belongs to K1, which R11 did not touch (A3).
+
+**The R10 retention finding, restated (A2; R10's verdict is unchanged).**
+- R10's verdict stays `ASSAY_NOT_LEARNED`.
+- The tested d 64 transformers learned regime-conditioned bindings (pre-interference accuracy often above 0.90).
+- They did not reliably preserve earlier bindings through conflicting interference: best aggregate 0.173 against
+  the 0.20 floor.
+- This identifies a weakness of the tested architectures, not a failure to learn the task.
+- It shows neither that every attention or ERSA configuration forgets, nor that K1 would solve the task if
+  integrated.
+
+**Unchanged.**
+- R9's `CGC_NOT_ESTABLISHED`.
+- R10's verdicts.
+- L15's separation of R97W, native K1 and `CGCTransform`.
+- Gate A HOLD.

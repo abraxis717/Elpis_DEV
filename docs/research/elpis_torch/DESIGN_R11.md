@@ -37,6 +37,10 @@ RALPH or Yang–Mills/HCA.
 | `research/elpis_torch/model.py`, `ersa_model.py` | Initialization rules for the control's new parameter names only |
 | `research/elpis_torch/specialist_tasks.py` (new) | The R97W-form teacher under R11's namespaces; the Stage A learners; the Stage B harness around the real `ChannelExpert` |
 | `research/elpis_torch/experiments/run_r11.py` (new) | `audit`, `parity`, `calibrate`, `stage_a`, `stage_b`, `latency`, `combine`, `manifest` |
+| `research/elpis_torch/specialist_stack.py` (new) | Stage C: the regression stack of the repository's `ErsaBlock`s (built and initialized by `ErsaLM`) with the micro specialist in each block's expert; in-context episodes; frozen ablations, ERSA reset, routing purity |
+| `research/elpis_torch/experiments/run_r11_stage_c.py` (new) | `run`, `router`, `combine`, `dev`, under the frozen Stage C amendment |
+| `research/elpis_torch/experiments/bench_r11_operators.py` (new) | PERFORMANCE_ONLY supplement: operators in rotated order, the bound alone, and the experts' measured memory |
+| `tests/research/elpis_torch/test_r11_records.py` (new) | JSON only: digests, chronology, planned groups, development labels, every verdict recomputed independently, the manifest |
 | `tests/research/elpis_torch/test_r11.py` (new) | Compatibility, profile, E0 parity, bound, gates, zero-gate starvation, routing-conditional gradients, the causal path, harness contracts, decision rules |
 
 ## 3. The experiment
@@ -48,7 +52,8 @@ RALPH or Yang–Mills/HCA.
 | C | Whether a qualified specialist contributes to frozen-weight inference in the actual ERSA stack | `PREREGISTRATION_R11.md` §5 |
 
 Stage B runs G0–G3 and a no-objective control, plus ablation, swap and misrouting. Stage C is conditional on Stage B
-and needs a separate frozen amendment before it runs.
+and needs a separate frozen amendment before it runs. Stage B triggered it, and it ran under
+`PREREGISTRATION_R11_STAGE_C.md` (frozen at `369e333`). Results: `EVIDENCE_R11.md`.
 
 ## 4. Runtime contract
 
