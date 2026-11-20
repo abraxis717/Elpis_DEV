@@ -1,0 +1,48 @@
+{
+ "arms": {
+  "A": {
+   "decode_ms_p50": 4.8943699998744705,
+   "decode_ms_p95": 5.756389999987732,
+   "samples": 96
+  },
+  "B": {
+   "decode_ms_p50": 4.401546000281087,
+   "decode_ms_p95": 5.330076999598532,
+   "samples": 96
+  },
+  "C": {
+   "decode_ms_p50": 4.446260999884544,
+   "decode_ms_p95": 5.439432000002853,
+   "samples": 96
+  },
+  "C_mac": {
+   "decode_ms_p50": 4.4367609998516855,
+   "decode_ms_p95": 5.207470999721409,
+   "samples": 96
+  },
+  "D_A": {
+   "decode_ms_p50": 3.9519000001746463,
+   "decode_ms_p95": 4.71251899989511,
+   "samples": 96
+  },
+  "D_C": {
+   "decode_ms_p50": 3.5808880002150545,
+   "decode_ms_p95": 4.3709100000342005,
+   "samples": 96
+  }
+ },
+ "command": "latency",
+ "label": "MEASURED, one thread, this VM, untrained seed-0 weights; PERFORMANCE_ONLY",
+ "phase": "ELPIS_TORCH_R10_CGC_ADAPTATION",
+ "provenance": {
+  "cpu_capability": "AVX512",
+  "git_revision": "34cdbf5fc1735a63bc71511ae460b48bdf6ad76d",
+  "preregistration_sha256": "9d0bc46d9ea684f22ee60e7dc0904dc73637176e17944ca6f14c78a8ab389e2c",
+  "python": "3.13.18",
+  "runner_sha256": "c220bc54dac69563d5e3b446907b9891e9926f994292b2109be94aa0a4487e85",
+  "task_spec_digest": "d6fae2b6ac77241764b3d98e539d97d8c8685b45247d1f7060f9260d52dda493",
+  "tasks_sha256": "204498f65198ddf5428fccfb5309c93d6ce89a02084f49b204f9b2314ec5dadb",
+  "threads": 1,
+  "torch": "2.15.0+cpu"
+ }
+}
