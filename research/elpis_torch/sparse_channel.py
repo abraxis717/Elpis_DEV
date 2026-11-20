@@ -39,8 +39,10 @@ from .cgc import CGCTransform
 from .config import ConfigError
 from .model import SwiGLU
 
-KINDS = ("ffn+cgc", "ffn")
+KINDS = ("ffn+cgc", "ffn", "ffn+mlp")    # "ffn+mlp": R11's matched ordinary-nonlinear CONTROL, not an architecture
 DISPATCH = ("grouped", "reference")
+GATE_MODES = ("learned", "fixed")        # R11: "fixed" is the gate g = 1 with no parameter (identifiability control)
+INHERIT = "model"                        # cgc_preact_bound: take the model's bound (the historical behaviour)
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,9 @@ class SparseConfig:
     cgc_bottleneck: int | None = None
     cgc_units: int | None = None
     gate_init: float = 0.1                # g_i at initialization (0.0: exactly the FFN; then g_i learns first)
+    cgc_gate_mode: str = "learned"        # R11: "learned" (historical scalar g_i) or "fixed" (g = 1, no parameter)
+    cgc_preact_bound: float | None | str = INHERIT   # R11: "model" (historical), None (faithful E0) or a bound b > 0
+    mlp_width: int | None = None          # R11 kind "ffn+mlp" only: hidden width of the matched GELU specialist
     normalize: bool = True                # renormalize the selected probabilities to sum to 1
     balance_weight: float = 0.0           # weight of the load-balance loss in ``aux_loss`` (always reported)
     z_weight: float = 0.0                 # weight of the router z-loss in ``aux_loss`` (always reported)
@@ -72,10 +77,17 @@ class SparseConfig:
         if len(set(layers)) != len(layers) or any(type(i) is not int or i < 0 for i in layers):
             raise ConfigError("layers must be distinct non-negative block indices")
         object.__setattr__(self, "layers", tuple(sorted(layers)))
-        for name in ("ffn_hidden", "cgc_channels", "cgc_bottleneck", "cgc_units"):
+        for name in ("ffn_hidden", "cgc_channels", "cgc_bottleneck", "cgc_units", "mlp_width"):
             value = getattr(self, name)
             if value is not None and (type(value) is not int or value < 1):
                 raise ConfigError(f"{name} must be None or a positive integer")
+        if self.cgc_gate_mode not in GATE_MODES:
+            raise ConfigError(f"cgc_gate_mode in {GATE_MODES}")
+        bound = self.cgc_preact_bound
+        if not (bound is None or bound == INHERIT or (type(bound) in (int, float) and math.isfinite(bound) and bound > 0)):
+            raise ConfigError(f"cgc_preact_bound must be {INHERIT!r}, None or a positive finite number")
+        if self.kind == "ffn+mlp" and self.cgc_bottleneck is None:
+            raise ConfigError("the ffn+mlp control needs an explicit cgc_bottleneck (its input width)")
         for name in ("gate_init", "balance_weight", "z_weight"):
             if not math.isfinite(float(getattr(self, name))) or (name != "gate_init" and getattr(self, name) < 0):
                 raise ConfigError(f"{name} must be finite (weights non-negative)")
@@ -88,21 +100,38 @@ class SparseConfig:
 
 
 class ChannelExpert(nn.Module):
-    """``FFN(u) + g * CGC(u)`` with its own parameters (``kind="ffn"``: the FFN alone)."""
+    """``FFN(u) + g * CGC(u)`` with its own parameters (``kind="ffn"``: the FFN alone).
+
+    R11 options, all off by default (the historical expert is unchanged, parameter for parameter):
+    ``cgc_gate_mode="fixed"`` makes ``g = 1`` with no parameter; ``cgc_preact_bound`` overrides the model's bound;
+    ``kind="ffn+mlp"`` replaces the CGC by the budget-matched GELU specialist (a CONTROL arm), always with ``g = 1``.
+    """
 
     def __init__(self, m, s: SparseConfig, dtype):
         super().__init__()
         self.ffn = SwiGLU(m.d_model, s.ffn_hidden or m.ffn_width, dtype)
-        self.cgc = self.cgc_gate = None
+        self.cgc = self.cgc_gate = self.mlp = None
         if s.kind == "ffn+cgc":
+            bound = m.cgc_preact_bound if s.cgc_preact_bound == INHERIT else s.cgc_preact_bound
             self.cgc = CGCTransform(m.d_model, s.cgc_channels or m.cgc_cells, s.cgc_units or m.cgc_units,
-                                    bottleneck=s.cgc_bottleneck or m.cgc_bottleneck, preact_bound=m.cgc_preact_bound,
+                                    bottleneck=s.cgc_bottleneck or m.cgc_bottleneck, preact_bound=bound,
                                     dtype=dtype)
-            self.cgc_gate = nn.Parameter(torch.full((1,), float(s.gate_init), dtype=dtype))
+            if s.cgc_gate_mode == "learned":
+                self.cgc_gate = nn.Parameter(torch.full((1,), float(s.gate_init), dtype=dtype))
+        elif s.kind == "ffn+mlp":
+            from .cgc_specialist import GeluSpecialist
+            self.mlp = GeluSpecialist(m.d_model, s.cgc_bottleneck, s.mlp_width or 13, s.cgc_channels or 3, dtype=dtype)
+
+    def specialist(self, u: torch.Tensor) -> torch.Tensor | None:
+        """The specialist branch's contribution to the expert output (gate included), or ``None``."""
+        if self.cgc is not None:
+            return self.cgc(u) if self.cgc_gate is None else self.cgc_gate * self.cgc(u)
+        return None if self.mlp is None else self.mlp(u)
 
     def forward(self, u: torch.Tensor) -> torch.Tensor:
         out = self.ffn(u)
-        return out if self.cgc is None else out + self.cgc_gate * self.cgc(u)
+        branch = self.specialist(u)
+        return out if branch is None else out + branch
 
     def macs(self) -> int:
         """Multiply-accumulates per token (weights only; elementwise work not counted)."""
@@ -279,6 +308,8 @@ def upcycle(dense, sparse: SparseConfig):
 
 
 def _copy_dense_channel(block, expert: ChannelExpert, m, sparse: SparseConfig) -> None:
+    if sparse.cgc_gate_mode != "learned" or sparse.kind == "ffn+mlp":
+        raise ConfigError("upcycling reproduces the dense channel only with the historical learned-gate CGC experts")
     if block.ffn is not None:
         if expert.ffn.gate.weight.shape != block.ffn.gate.weight.shape:
             raise ConfigError("the expert FFN width must equal the dense FFN width to upcycle")
