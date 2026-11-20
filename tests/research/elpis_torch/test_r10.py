@@ -210,6 +210,35 @@ def test_the_overall_verdicts_follow_the_preregistered_mapping():
     assert v["ADAPT"]["verdict"] == "NO_INCREMENTAL_CGC_ADAPTATION_BENEFIT_ESTABLISHED"
 
 
+@pytest.mark.parametrize("edit", ["window", "arms", "k_grid", "task_spec", "confirmation_arms"])
+def test_a_plan_that_drifted_from_the_runner_is_refused(tmp_path, monkeypatch, edit):
+    plan = json.loads(r.PREREGISTRATION.read_text(encoding="utf-8"))
+    assert r.frozen()["phase"] == r.PHASE
+    if edit == "window":
+        plan["model"]["window"] = 128
+    elif edit == "arms":
+        plan["arms"]["C"]["ffn_hidden"] = 124
+    elif edit == "k_grid":
+        plan["evaluation"]["k_grid"] = [0, 1, 2, 4, 8]
+    elif edit == "task_spec":
+        plan["task_spec"]["c_gap"] = 32
+    else:
+        plan["confirmation_arms"] = ["C", "C_mac", "X"]
+    path = tmp_path / "preregistration.json"
+    path.write_text(json.dumps(plan), encoding="utf-8")
+    monkeypatch.setattr(r, "PREREGISTRATION", path)
+    with pytest.raises(ValueError, match="does not describe this runner"):
+        r.frozen()
+
+
+def test_the_train_command_refuses_unplanned_seeds_and_arms():
+    import argparse
+    with pytest.raises(SystemExit, match="not a preregistered"):
+        r.command_train(argparse.Namespace(arm="A", seed=900))
+    with pytest.raises(SystemExit, match="not a confirmation arm"):
+        r.command_train(argparse.Namespace(arm="B", seed=100))
+
+
 def test_the_r10_runner_has_exactly_one_write_site():
     source = r.RUNNER.read_text(encoding="utf-8")
     assert source.count(".write_text(") == 1 and "def _write(" in source

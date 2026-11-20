@@ -1,0 +1,445 @@
+{
+ "analysis": {
+  "delta_adapt": 0.03,
+  "delta_retain": 0.05,
+  "latency_material_ratio": 1.1,
+  "learned_rule": "ADAPT: the best primary arm's (A, B, C, C_mac) seed-mean ADAPT >= 0.30. RETAIN: the best primary arm's seed-mean RETAIN >= 0.20 AND the best primary arm's seed-mean RETAIN_pre >= 0.40. Otherwise the endpoint is ASSAY_NOT_LEARNED.",
+  "learned_threshold": {
+   "ADAPT": 0.3,
+   "RETAIN": 0.2,
+   "RETAIN_pre": 0.4
+  },
+  "screen_min_positive": 2,
+  "t_critical_one_sided": 1.7958848187036691
+ },
+ "arms": {
+  "A": {
+   "attention": "window",
+   "ffn_hidden": 86,
+   "kind": "ffn+cgc",
+   "role": "FFN + CGC (the complementary design)"
+  },
+  "B": {
+   "attention": "window",
+   "ffn_hidden": 86,
+   "kind": "ffn",
+   "role": "same FFN, CGC absent (incremental)"
+  },
+  "C": {
+   "attention": "window",
+   "ffn_hidden": 123,
+   "kind": "ffn",
+   "role": "wider FFN, total parameters matched"
+  },
+  "C_mac": {
+   "attention": "window",
+   "ffn_hidden": 126,
+   "kind": "ffn",
+   "role": "wider FFN, multiply-adds matched"
+  },
+  "D_A": {
+   "attention": "none",
+   "ffn_hidden": 86,
+   "kind": "ffn+cgc",
+   "role": "A, attention-free (ERSA only)"
+  },
+  "D_C": {
+   "attention": "none",
+   "ffn_hidden": 123,
+   "kind": "ffn",
+   "role": "C, attention-free (ERSA only)"
+  }
+ },
+ "base": {
+  "branch": "claude/r10-cgc-adaptation",
+  "main": "eac4611f35eaa8a3f0ac9864bddacd4e2a9d98da",
+  "r9_post_merge_ci": "44609229785 (16/16)"
+ },
+ "budget": {
+  "confirmation_hours": 10,
+  "rule": "only complete seed blocks (every confirmation arm completed for that seed) are analysed; fewer than 12 confirmation blocks = PARTIAL",
+  "screening_hours": 4,
+  "threads_per_worker": 2,
+  "workers": 2
+ },
+ "confirmation_arms": [
+  "A",
+  "C",
+  "C_mac",
+  "D_A",
+  "D_C"
+ ],
+ "endpoints": {
+  "ADAPT": "mean over families A and B of mean accuracy at k in {1,2,4,8,16} (main sets)",
+  "RETAIN": "mean over C_short, C_long, C_gap of post-interference accuracy on the earliest regime",
+  "RETAIN_pre": "same variants, pre-interference accuracy (last phase-1 exposures)",
+  "heldout_adapt": "B_heldout adapt_auc",
+  "heldout_retain": "mean of C_gap128 and C_4reg post"
+ },
+ "evaluation": {
+  "counts": {
+   "dev": 32,
+   "diagnostic": 128,
+   "main": 256
+  },
+  "k_adapt": [
+   1,
+   2,
+   4,
+   8,
+   16
+  ],
+  "k_grid": [
+   0,
+   1,
+   2,
+   4,
+   8,
+   16
+  ],
+  "prediction": "argmax over the vocabulary at the key token, teacher-forced (prequential)",
+  "split_seeds": {
+   "confirmation": {
+    "dev": 7100,
+    "diagnostic": 7103,
+    "heldout": 7102,
+    "main": 7101
+   },
+   "screening": {
+    "dev": 7000,
+    "diagnostic": 7003,
+    "heldout": 7002,
+    "main": 7001
+   }
+  },
+  "variants": {
+   "dev": [
+    "A",
+    "B",
+    "C_long"
+   ],
+   "diagnostic": [
+    "A",
+    "B",
+    "C_short",
+    "C_long",
+    "C_gap"
+   ],
+   "heldout": [
+    "B_heldout",
+    "C_gap128",
+    "C_4reg"
+   ],
+   "main": [
+    "A",
+    "B",
+    "C_short",
+    "C_long",
+    "C_gap"
+   ]
+  }
+ },
+ "hypotheses": {
+  "H1": "rapid adaptation: ADAPT(A) exceeds ADAPT(C) and ADAPT(C_mac)",
+  "H2": "interference resistance: RETAIN(A) exceeds RETAIN(C) and RETAIN(C_mac)",
+  "H3": "resource efficiency: gains are set against parameters, active compute, state and latency"
+ },
+ "latency": {
+  "decode_steps": 96,
+  "prefill": 128,
+  "threads": 1
+ },
+ "model": {
+  "attn_heads": 4,
+  "attn_kv_heads": 2,
+  "backbone": "R9 d64 = R7 study model (2 ERSA blocks, routed channels in both, R7 PLE)",
+  "chunk": 32,
+  "conv_kernel": 4,
+  "d_model": 64,
+  "ersa_heads": 4,
+  "key_dim": 16,
+  "n_layers": 2,
+  "ple": {
+   "addressing": "hash",
+   "boundary": 256,
+   "head_dim": 8,
+   "heads": 4,
+   "layer": 1,
+   "lr_multiplier": 5.0,
+   "orders": [
+    2,
+    3
+   ],
+   "rows": 65536,
+   "seed": 0
+  },
+  "r5_history": false,
+  "scan_block": 32,
+  "sparse": {
+   "balance_weight": 0.0,
+   "cgc_bottleneck": 16,
+   "cgc_channels": 48,
+   "cgc_units": null,
+   "dispatch": "grouped",
+   "experts": 8,
+   "ffn_hidden": 86,
+   "gate_init": 0.1,
+   "kind": "ffn+cgc",
+   "layers": [
+    0,
+    1
+   ],
+   "normalize": true,
+   "shared": false,
+   "top_k": 2,
+   "z_weight": 0.0
+  },
+  "value_dim": 16,
+  "window": 64
+ },
+ "overall_mapping": {
+  "ASSAY_NOT_LEARNED or NONQUAL at screening": "that verdict",
+  "CONFIRMED or CONFIRMED_IN_DISTRIBUTION_ONLY": "CGC_<ADAPTATION|RETENTION>_BENEFIT_CONFIRMED with held_out (SURVIVES | IN_DISTRIBUTION_ONLY), attribution (PERSISTS_WITHOUT_ATTENTION | ATTENTION_DEPENDENT) and latency (QUALITY_LATENCY_TRADEOFF if A/C decode p50 > 1.10)",
+  "NOT_CONFIRMED": "NO_INCREMENTAL_CGC_<ADAPTATION|RETENTION>_BENEFIT_ESTABLISHED",
+  "SCREEN_FAVORABLE without 12 complete confirmation blocks": "PARTIAL",
+  "SCREEN_NOT_FAVORABLE": "NO_INCREMENTAL_CGC_<ADAPTATION|RETENTION>_BENEFIT_ESTABLISHED"
+ },
+ "phase": "ELPIS_TORCH_R10_CGC_ADAPTATION",
+ "pilot": {
+  "decision": "3000 steps: family-A k=1 rose by >= 0.05 (B 0.124 -> 0.302) and ADAPT by >= 0.03; measured step times project screening ~2.5 h and confirmation ~8.3 h on 2 workers",
+  "findings": [
+   "The 1,500-step pilots found 5 train/test signature collisions (family B's rule space is small); evaluation episodes now come from a reserved signature class training never draws (3,000-step pilots: overlap 0).",
+   "At 3,000 steps both CGC-negative arms learn the bindings (RETAIN_pre 0.92 and 0.84) but post-interference retention stays at the floor (RETAIN 0.043 and 0.044, chance 0.05): 85-97% of post answers are a conflicting regime's binding (latest binding wins). The RETAIN learned floor (best arm >= 0.20) was set before this pilot.",
+   "Family B in distribution reaches k=1 0.935 (window arm) but B_heldout (unseen shifts) is near chance (0.08 and 0.07): in-distribution family-B adaptation at this budget is identification of trained rules, not learning a new rule; the held-out endpoint is reported beside it."
+  ],
+  "label": "PILOT: arms B and D_C only (no CGC arm), development seed 900, development split seeds 9100-9103",
+  "records": {
+   "pilot_B_s900_1500steps.json": {
+    "ADAPT": 0.538,
+    "A_by_k": {
+     "0": 0.04,
+     "1": 0.124,
+     "16": 0.799,
+     "2": 0.18,
+     "4": 0.256,
+     "8": 0.471
+    },
+    "B_by_k": {
+     "0": 0.021,
+     "1": 0.457,
+     "16": 0.802,
+     "2": 0.746,
+     "4": 0.77,
+     "8": 0.77
+    },
+    "B_heldout_adapt": 0.338,
+    "C_post_conflict_rate": {
+     "C_gap": 0.146,
+     "C_long": 0.377,
+     "C_short": 0.502
+    },
+    "RETAIN": 0.065,
+    "RETAIN_pre": 0.442,
+    "arm": "B",
+    "sha256": "0954afd51d868b3e51bb7587496d8ac78b091b7e71e98b434fcc91f7c334c494",
+    "steps": 1500,
+    "train_seconds": 533.3,
+    "train_test_signature_overlap": 5
+   },
+   "pilot_B_s900_3000steps.json": {
+    "ADAPT": 0.745,
+    "A_by_k": {
+     "0": 0.017,
+     "1": 0.302,
+     "16": 0.959,
+     "2": 0.363,
+     "4": 0.505,
+     "8": 0.777
+    },
+    "B_by_k": {
+     "0": 0.023,
+     "1": 0.935,
+     "16": 0.883,
+     "2": 0.958,
+     "4": 0.879,
+     "8": 0.887
+    },
+    "B_heldout_adapt": 0.082,
+    "C_post_conflict_rate": {
+     "C_gap": 0.848,
+     "C_long": 0.87,
+     "C_short": 0.967
+    },
+    "RETAIN": 0.043,
+    "RETAIN_pre": 0.92,
+    "arm": "B",
+    "sha256": "3abf08d17bae0fa4591d5f8be948d33b91fb93497da7786fcfbc823142a3253f",
+    "steps": 3000,
+    "train_seconds": 1006.7,
+    "train_test_signature_overlap": 0
+   },
+   "pilot_D_C_s900_1500steps.json": {
+    "ADAPT": 0.532,
+    "A_by_k": {
+     "0": 0.035,
+     "1": 0.162,
+     "16": 0.598,
+     "2": 0.209,
+     "4": 0.283,
+     "8": 0.467
+    },
+    "B_by_k": {
+     "0": 0.023,
+     "1": 0.538,
+     "16": 0.766,
+     "2": 0.794,
+     "4": 0.768,
+     "8": 0.735
+    },
+    "B_heldout_adapt": 0.152,
+    "C_post_conflict_rate": {
+     "C_gap": 0.352,
+     "C_long": 0.365,
+     "C_short": 0.514
+    },
+    "RETAIN": 0.089,
+    "RETAIN_pre": 0.522,
+    "arm": "D_C",
+    "sha256": "d2b4fe2a05e7a5830fd199e529db9e2c240aeae0eedbe146d330f35ec9bf53fc",
+    "steps": 1500,
+    "train_seconds": 452.2,
+    "train_test_signature_overlap": 5
+   },
+   "pilot_D_C_s900_3000steps.json": {
+    "ADAPT": 0.657,
+    "A_by_k": {
+     "0": 0.021,
+     "1": 0.229,
+     "16": 0.937,
+     "2": 0.349,
+     "4": 0.564,
+     "8": 0.809
+    },
+    "B_by_k": {
+     "0": 0.027,
+     "1": 0.533,
+     "16": 0.856,
+     "2": 0.793,
+     "4": 0.744,
+     "8": 0.754
+    },
+    "B_heldout_adapt": 0.072,
+    "C_post_conflict_rate": {
+     "C_gap": 0.853,
+     "C_long": 0.831,
+     "C_short": 0.91
+    },
+    "RETAIN": 0.044,
+    "RETAIN_pre": 0.835,
+    "arm": "D_C",
+    "sha256": "f9ee4e2f1c46e171b307ac6fabbc8d71f09a7bff36a911c60b42e9811e7db252",
+    "steps": 3000,
+    "train_seconds": 833.9,
+    "train_test_signature_overlap": 0
+   }
+  },
+  "step_rule": "Written 2026-11-20T14:04:45Z, before the 3,000-step pilot records exist.\nStep-count rule: use 3,000 steps if, in either pilot arm (B or D_C, seed 900, development episodes), going from\n1,500 to 3,000 steps raises family-A k=1 accuracy by >= 0.05, or RETAIN (post) by >= 0.05, or ADAPT by >= 0.03,\nAND the measured step times project screening <= 4 h and confirmation <= 10 h on 2 workers. Otherwise 1,500."
+ },
+ "question": "Does a CGC-augmented Elpis transformer adapt to new in-context relationships and retain earlier conflicting relationships more reliably than otherwise equivalent FFN-only transformers, without inference-time weight updates?",
+ "seeds": {
+  "confirmation": [
+   100,
+   101,
+   102,
+   103,
+   104,
+   105,
+   106,
+   107,
+   108,
+   109,
+   110,
+   111
+  ],
+  "screening": [
+   0,
+   1,
+   2
+  ]
+ },
+ "task_spec": {
+  "a_examples": 63,
+  "a_keys": 4,
+  "a_regimes": 3,
+  "a_zipf": 1.0,
+  "b_examples": 63,
+  "b_regimes": 3,
+  "b_segment": [
+   3,
+   12
+  ],
+  "c_gap": 64,
+  "c_gap_heldout": 128,
+  "c_long": [
+   3,
+   4,
+   3
+  ],
+  "c_reentry": 1,
+  "c_short": [
+   3,
+   2,
+   2
+  ],
+  "length": 256
+ },
+ "task_spec_digest": "d6fae2b6ac77241764b3d98e539d97d8c8685b45247d1f7060f9260d52dda493",
+ "tasks_sha256": "204498f65198ddf5428fccfb5309c93d6ce89a02084f49b204f9b2314ec5dadb",
+ "training": {
+  "batch": 16,
+  "eval_every": 250,
+  "full_backprop_through_episode": true,
+  "grad_clip": 1.0,
+  "loss": "cross-entropy on answer positions only (IGNORE elsewhere)",
+  "lr": 0.003,
+  "min_lr_fraction": 0.1,
+  "mix": [
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "B",
+   "B",
+   "B",
+   "B",
+   "B",
+   "C_short",
+   "C_long",
+   "C_gap",
+   "C_long",
+   "C_gap"
+  ],
+  "seq": 256,
+  "steps": 3000,
+  "threads": 2,
+  "warmup_steps": 50,
+  "weight_decay": 0.01
+ },
+ "verdicts": [
+  "ASSAY_NOT_LEARNED",
+  "NONQUAL",
+  "SCREEN_FAVORABLE",
+  "SCREEN_NOT_FAVORABLE",
+  "CONFIRMED",
+  "CONFIRMED_IN_DISTRIBUTION_ONLY",
+  "NOT_CONFIRMED",
+  "PARTIAL",
+  "NO_INCREMENTAL_CGC_ADAPTATION_BENEFIT_ESTABLISHED",
+  "NO_INCREMENTAL_CGC_RETENTION_BENEFIT_ESTABLISHED",
+  "CGC_ADAPTATION_BENEFIT_CONFIRMED",
+  "CGC_RETENTION_BENEFIT_CONFIRMED",
+  "QUALITY_LATENCY_TRADEOFF"
+ ]
+}
