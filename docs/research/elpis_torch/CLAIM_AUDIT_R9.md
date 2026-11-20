@@ -381,3 +381,46 @@ in-context adaptation in the Elpis transformer must be carried by:
 
 The question R10 asks is therefore whether CGC improves the use of those mechanisms. A result that credits CGC with
 their capability is not admissible. Neither R97W nor K1 is evidence about it.
+
+## R10 result
+
+### L16. R10: CGC and in-context adaptation and retention — NOT ESTABLISHED (adaptation); ASSAY_NOT_LEARNED (retention)
+
+**Plan.** `PREREGISTRATION_R10.md`, frozen at `34cdbf5`.
+
+**Setup.** R9's d 64 backbone with a 64-token attention window. Arm A (FFN + CGC) was compared with:
+- C: parameter-matched FFN;
+- C_mac: multiply-add-matched FFN;
+- B: the same FFN without CGC;
+- an attention-free pair, D_A against D_C.
+
+Every arm trained 3,000 steps on the same episode streams. There were three screening seeds.
+
+**Supported.**
+- **Adaptation: `NO_INCREMENTAL_CGC_ADAPTATION_BENEFIT_ESTABLISHED`.** The assay was learned (best arm 0.80; floor
+  0.30), and screening was not favorable:
+  - A − C ADAPT −0.143;
+  - A − C_mac −0.155;
+  - D_A − D_C −0.054, negative on every seed.
+
+  The CGC arms adapted worse to new in-context bindings.
+- **Retention: `ASSAY_NOT_LEARNED`.** The best arm reached 0.173 against a floor of 0.20. No arm kept earlier
+  conflicting bindings through interference. So no CGC retention benefit is established, and R10 cannot say
+  whether CGC would help a model that does retain them.
+- **Attribution, by state resets.**
+  - In-window retention is attention's.
+  - Retention behind a gap is the ERSA state's.
+  - Zeroing CGC at evaluation changes accuracy by at most 0.028. The CGC arms' deficit therefore arises in
+    training, not in what CGC computes at inference.
+- **Cost.** CGC costs 10% decode latency (A/C 1.101; D_A/D_C 1.104) and about 22% training time.
+
+**Not supported.**
+- Any claim that CGC improves in-context adaptation or retention in this architecture at this scale.
+- Any claim credited to CGC from the exploratory patterns in `EVIDENCE_R10.md` §8, which were not preregistered:
+  - retention behind a gap in the window arms, which is ERSA-carried and reverses in the attention-free pair;
+  - held-out shift learning, where D_A is ahead of D_C on every seed but at low levels.
+
+**Unchanged.**
+- R9's `CGC_NOT_ESTABLISHED`.
+- L15's separation of R97W, native K1 and `CGCTransform`.
+- Gate A HOLD.

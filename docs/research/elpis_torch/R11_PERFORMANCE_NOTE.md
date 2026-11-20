@@ -34,8 +34,11 @@ tie order must be preserved; R5 and R8 test both.
 **Cost.**
 - R9's trace: 688 MiB of the 2,050 MiB a float32 `r6_500m` decode step executes at 1M (5 attention layers, a
   4,096-token window). That is 17× the KV bytes themselves.
-- R10, measured at d 64, 2 threads, 32-token chunks: a training step takes 0.74 s with a 64-token window in both
-  blocks, against 0.33 s without attention.
+- R10's 18 screening runs, at d 64, 2 threads, 32-token chunks, two runs sharing a 4-core VM. The window FFN arms
+  (B, C, C_mac) trained 3,000 steps in 1,162–1,225 s on average, 0.39–0.41 s per step. D_C, with no attention,
+  took 991 s, 0.33 s per step. Both include periodic evaluation (`EVIDENCE_R10.md` §7, §9).
+- An earlier figure of 0.74 against 0.33 s per step, quoted here before the study, came from the opening steps of
+  one run and overstated the gap.
 
 **Candidates.**
 - Cache rotated keys with their absolute positions, so that only the query is rotated per call. This changes
