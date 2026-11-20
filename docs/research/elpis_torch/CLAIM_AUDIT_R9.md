@@ -346,3 +346,38 @@ The verdict wording follows `PREREGISTRATION_R9.md` §5 exactly.
 - Secondary (B): `SMALLER_FFN_NOT_WORSE`.
 
 R9 adds no claim that CGC improves the PyTorch architecture. It keeps every adverse result (`EVIDENCE_R9.md`).
+
+## R10 additions (the R9 verdict above is unchanged)
+
+### Scope of L13: `ASSAY_CANNOT_TEST_META_LEARNING_CLAIM`
+
+R9's executed verdict stays **`CGC_NOT_ESTABLISHED`**. Its scope is static predictive efficiency:
+- **What it established:** static held-out bits/byte at d 64 did not show an incremental CGC benefit over matched
+  FFN width.
+- **What it did not test:** whether CGC helps a model adapt, or meta-learn. Its assay (next-byte prediction on a
+  fixed corpus) gives the model nothing new to adapt to within a sequence. So it neither establishes nor refutes a
+  CGC-specific adaptation or meta-learning benefit.
+- **The complementary-component hypothesis is untested.** The claim is that CGC complements the FFN, rather than
+  replacing it, in adapting to new relationships and resisting interference. R9 did not test it in the current
+  transformer.
+
+`ASSAY_CANNOT_TEST_META_LEARNING_CLAIM` is a scope assessment of R9's assay. It does not replace R9's verdict
+retroactively. R10 tests the hypothesis directly (`PREREGISTRATION_R10.md`).
+
+### L15. Three CGC-related mechanisms that must not be conflated
+
+| Mechanism | What it is | What its evidence shows | What it does not show |
+|---|---|---|---|
+| **Microscopic R97W** (historical; the separate CGC repository, summarized in `research/cgc_lao/EVIDENCE_LEDGER.md`) | A three-output, 120-parameter CGC against a 120-parameter GELU network, with first-order Reptile meta-learning: eight gradient-based inner adaptation steps per episode (episode-local fast weights) | 48/48 paired held-out adaptation comparisons won (4 groups × 12) | Inference-time in-context learning: its adaptation is gradient descent on the weights |
+| **Native K1** (Retention R3; L1) | A bounded additional state (28,552 B) carrying conflicting experiences under a frozen synthetic regime | Causal retention: removal, reset and transplant change the outcome as predicted | Anything about the PyTorch CGCTransform, which has no such state |
+| **PyTorch `CGCTransform`** (`research/elpis_torch/cgc.py`; L3) | A stateless cubic feed-forward transformation with learned input and output projections, inside routed experts beside an FFN | R9: no static-prediction benefit over matched FFN width at d 64 (L13) | — |
+
+**Where in-context adaptation can come from.** `CGCTransform` owns no addressable or mutable temporal memory. Any
+in-context adaptation in the Elpis transformer must be carried by:
+- model activations;
+- ERSA's recurrent state;
+- window attention;
+- R5 history, where enabled.
+
+The question R10 asks is therefore whether CGC improves the use of those mechanisms. A result that credits CGC with
+their capability is not admissible. Neither R97W nor K1 is evidence about it.
