@@ -6,7 +6,10 @@ influence, stable causal chunking, no inference-time parameter update, exact CGC
 """
 from __future__ import annotations
 
+import ctypes
 import dataclasses
+import hashlib
+import importlib.util
 import json
 
 import pytest
@@ -89,13 +92,32 @@ def test_a_reset_changes_only_what_follows_it_and_a_restart_equals_a_fresh_sessi
         assert [x[1] for x in restart] == [x[1] for x in base]
 
 
+def _byte_digest(model) -> str:
+    """SHA-256 over every state-dict entry's name and raw bytes, read through ctypes (no NumPy): the convention of
+    ``model.py`` and ``run_r7.py``."""
+    h = hashlib.sha256()
+    for name, p in sorted(model.state_dict().items()):
+        data = p.detach().contiguous()
+        h.update(name.encode())
+        h.update(ctypes.string_at(data.data_ptr(), data.numel() * data.element_size()))
+    return h.hexdigest()
+
+
 def test_evaluation_and_diagnostics_update_no_parameter(model):
-    before = r._parameters_digest(model)
+    before = _byte_digest(model)
     diag = {v: at.eval_set(v, 2, split_seed=15) for v in at.TRAIN_VARIANTS}
     r.diagnostics(model, r.ARMS["A"], diag)
     r.evaluate(model, diag)
-    assert r._parameters_digest(model) == before
+    assert _byte_digest(model) == before
     assert all(p.grad is None for p in model.parameters())
+
+
+@pytest.mark.skipif(importlib.util.find_spec("numpy") is None,
+                    reason="NOT_RUN: NumPy is not installed here, and the frozen R10 runner hashes parameters through "
+                           "NumPy (a documented defect; EVIDENCE_R10.md, limitations). Not a PASS")
+def test_the_runner_parameter_digest_is_the_byte_digest(model):
+    """The digest behind every record's ``parameters_unchanged_by_evaluation`` hashes the same bytes."""
+    assert r._parameters_digest(model) == _byte_digest(model)
 
 
 def test_zeroed_gates_remove_cgc_exactly_and_restore():
