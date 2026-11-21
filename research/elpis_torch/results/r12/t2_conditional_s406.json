@@ -1,0 +1,5191 @@
+{
+ "arms": {
+  "G0": {
+   "ablated_last_frozen": [
+    0.007080455776304007,
+    0.005170668009668589,
+    0.009201424196362495,
+    0.00297162146307528,
+    0.003388047218322754,
+    0.0034946277737617493,
+    0.004364232067018747,
+    0.006809927988797426,
+    0.003404302056878805,
+    0.0024410656187683344,
+    0.0033167386427521706,
+    0.0034424159675836563
+   ],
+   "gates": [],
+   "parameters": 69083,
+   "rows": [
+    {
+     "episode": 0,
+     "frozen": {
+      "context_free": 0.10607960820198059,
+      "ood": 0.01571725495159626,
+      "query": 0.007080455776304007
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.11853782087564468
+    },
+    {
+     "episode": 1,
+     "frozen": {
+      "context_free": 0.08561530709266663,
+      "ood": 0.015857132151722908,
+      "query": 0.005170668009668589
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.15599802136421204
+    },
+    {
+     "episode": 2,
+     "frozen": {
+      "context_free": 0.09178449958562851,
+      "ood": 0.01739749126136303,
+      "query": 0.009201424196362495
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.19251026213169098
+    },
+    {
+     "episode": 3,
+     "frozen": {
+      "context_free": 0.07890856266021729,
+      "ood": 0.004968767985701561,
+      "query": 0.00297162146307528
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.12178877741098404
+    },
+    {
+     "episode": 4,
+     "frozen": {
+      "context_free": 0.08804000169038773,
+      "ood": 0.012795746326446533,
+      "query": 0.003388047218322754
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.13843992352485657
+    },
+    {
+     "episode": 5,
+     "frozen": {
+      "context_free": 0.09282593429088593,
+      "ood": 0.007588786538690329,
+      "query": 0.0034946277737617493
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.13325174152851105
+    },
+    {
+     "episode": 6,
+     "frozen": {
+      "context_free": 0.07701829820871353,
+      "ood": 0.008675748482346535,
+      "query": 0.004364232067018747
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.1280975639820099
+    },
+    {
+     "episode": 7,
+     "frozen": {
+      "context_free": 0.10351332277059555,
+      "ood": 0.010639720596373081,
+      "query": 0.006809927988797426
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.11082854121923447
+    },
+    {
+     "episode": 8,
+     "frozen": {
+      "context_free": 0.08276974409818649,
+      "ood": 0.00711070979014039,
+      "query": 0.003404302056878805
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.14393025636672974
+    },
+    {
+     "episode": 9,
+     "frozen": {
+      "context_free": 0.0937512069940567,
+      "ood": 0.009220055304467678,
+      "query": 0.0024410656187683344
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.16889284551143646
+    },
+    {
+     "episode": 10,
+     "frozen": {
+      "context_free": 0.09538687765598297,
+      "ood": 0.02819249778985977,
+      "query": 0.0033167386427521706
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.13007524609565735
+    },
+    {
+     "episode": 11,
+     "frozen": {
+      "context_free": 0.08285422623157501,
+      "ood": 0.006513019558042288,
+      "query": 0.0034424159675836563
+     },
+     "leakage": {
+      "query_support_disjoint": true
+     },
+     "null": 0.12063687294721603
+    }
+   ],
+   "selected_step": 2000,
+   "specialist_core": [],
+   "specialist_parameters": 0,
+   "trace": [
+    {
+     "dev_k32": 1.1913751363754272,
+     "step": 0
+    },
+    {
+     "dev_k32": 0.01677922159433365,
+     "step": 250
+    },
+    {
+     "dev_k32": 0.011779159307479858,
+     "step": 500
+    },
+    {
+     "dev_k32": 0.010362979024648666,
+     "step": 750
+    },
+    {
+     "dev_k32": 0.010499460622668266,
+     "step": 1000
+    },
+    {
+     "dev_k32": 0.006325710564851761,
+     "step": 1250
+    },
+    {
+     "dev_k32": 0.005910168401896954,
+     "step": 1500
+    },
+    {
+     "dev_k32": 0.004214515443891287,
+     "step": 1750
+    },
+    {
+     "dev_k32": 0.004105950240045786,
+     "step": 2000
+    }
+   ],
+   "training_seconds": 83.4
+  },
+  "G1": {
+   "ablated_last_frozen": [
+    0.19509871304035187,
+    0.08327344805002213,
+    0.06435516476631165,
+    0.06466321647167206,
+    0.20743989944458008,
+    0.04897424951195717,
+    0.06507740914821625,
+    0.18857058882713318,
+    0.17541712522506714,
+    0.18351440131664276,
+    0.05129171907901764,
+    0.058262214064598083
+   ],
+   "gates": [
+    0.06658383458852768,
+    0.2364848405122757
+   ],
+   "parameters": 70349,
+   "rows": [
+    {
+     "alignment_r2": 0.9817122588533951,
+     "cosine_successive_updates": [
+      -0.3085101503991532,
+      -0.3844190531653697,
+      -0.25769303124314213,
+      -0.07598264042999066,
+      0.22380509924926148,
+      0.5213139263849036,
+      0.757340577740174
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.08533479273319244,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 0,
+     "fast": {
+      "0": 0.08533479273319244,
+      "1": 0.0324627086520195,
+      "2": 0.008995451964437962,
+      "4": 0.005429927725344896,
+      "8": 0.005153765436261892
+     },
+     "fast_context_free": 0.00507455924525857,
+     "fast_ood": 0.01245950534939766,
+     "frozen": {
+      "context_free": 0.09539880603551865,
+      "ood": 0.09569831937551498,
+      "query": 0.08533479273319244
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.11853782087564468,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.32376644015312195,
+     "reset": {
+      "exact": true,
+      "query": 0.08533479273319244
+     },
+     "shuffled": 0.02871224284172058,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.12191932113805257,
+       "grad_norm": 1.5239915671628395,
+       "loss_after": 0.02948247827589512,
+       "loss_before": 0.1028357446193695,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11772244663854656,
+       "grad_norm": 0.7229691936160957,
+       "loss_after": 0.012555141001939774,
+       "loss_before": 0.02948247827589512,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1388737190094796,
+       "grad_norm": 0.399016800655789,
+       "loss_after": 0.007295476738363504,
+       "loss_before": 0.012555141001939774,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.145699285451499,
+       "grad_norm": 0.24671917868801027,
+       "loss_after": 0.004978823475539684,
+       "loss_before": 0.007295476738363504,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1545129120691071,
+       "grad_norm": 0.1577506364297195,
+       "loss_after": 0.003835726296529174,
+       "loss_before": 0.004978823475539684,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1591507645524363,
+       "grad_norm": 0.10832323438388292,
+       "loss_after": 0.003184917150065303,
+       "loss_before": 0.003835726296529174,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16374019344099763,
+       "grad_norm": 0.08050350276696534,
+       "loss_after": 0.002768959617242217,
+       "loss_before": 0.003184917150065303,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16686130436227373,
+       "grad_norm": 0.06442316399301783,
+       "loss_after": 0.002478234702721238,
+       "loss_before": 0.002768959617242217,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9899549195995765,
+     "cosine_successive_updates": [
+      0.03878653227339909,
+      -0.017110735194658184,
+      0.2311743343269731,
+      0.5315791049748906,
+      0.7761436346311512,
+      0.9053706491762387,
+      0.9632158171304752
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.08495272696018219,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 1,
+     "fast": {
+      "0": 0.08495272696018219,
+      "1": 0.01826407015323639,
+      "2": 0.01131163164973259,
+      "4": 0.005940874107182026,
+      "8": 0.002536160172894597
+     },
+     "fast_context_free": 0.0031494342256337404,
+     "fast_ood": 0.010242565535008907,
+     "frozen": {
+      "context_free": 0.08839263021945953,
+      "ood": 0.09326481074094772,
+      "query": 0.08495272696018219
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.15599802136421204,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.23102109134197235,
+     "reset": {
+      "exact": true,
+      "query": 0.08495272696018219
+     },
+     "shuffled": 0.04655568674206734,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.12081722249403443,
+       "grad_norm": 1.5102153073844151,
+       "loss_after": 0.028571007773280144,
+       "loss_before": 0.11295908689498901,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1303558626457327,
+       "grad_norm": 0.556064320766559,
+       "loss_after": 0.016231777146458626,
+       "loss_before": 0.028571007773280144,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14604903061984836,
+       "grad_norm": 0.3256808942828765,
+       "loss_after": 0.01135533582419157,
+       "loss_before": 0.016231777146458626,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1544310191866052,
+       "grad_norm": 0.21654574996883905,
+       "loss_after": 0.008731632493436337,
+       "loss_before": 0.01135533582419157,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16240085685998973,
+       "grad_norm": 0.16260643668996297,
+       "loss_after": 0.007007087115198374,
+       "loss_before": 0.008731632493436337,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16823067315040247,
+       "grad_norm": 0.1322473957548104,
+       "loss_after": 0.005769494455307722,
+       "loss_before": 0.007007087115198374,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17367503572162707,
+       "grad_norm": 0.11232553371508111,
+       "loss_after": 0.004843361675739288,
+       "loss_before": 0.005769494455307722,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17828871665383803,
+       "grad_norm": 0.09738724852617493,
+       "loss_after": 0.0041364701464772224,
+       "loss_before": 0.004843361675739288,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9756524521122935,
+     "cosine_successive_updates": [
+      -0.4004009923498479,
+      0.07825055844377928,
+      0.7114715375090422,
+      0.9388761826665285,
+      0.9885500074802356,
+      0.9954750414511863,
+      0.9971539881869482
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.10569201409816742,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 2,
+     "fast": {
+      "0": 0.10569201409816742,
+      "1": 0.02438066340982914,
+      "2": 0.009893637150526047,
+      "4": 0.0066486201249063015,
+      "8": 0.004403371829539537
+     },
+     "fast_context_free": 0.004401465877890587,
+     "fast_ood": 0.012104280292987823,
+     "frozen": {
+      "context_free": 0.10481835901737213,
+      "ood": 0.1287953108549118,
+      "query": 0.10569201409816742
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.19251026213169098,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.12347391992807388,
+     "reset": {
+      "exact": true,
+      "query": 0.10569201409816742
+     },
+     "shuffled": 0.031730491667985916,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.12939853302147672,
+       "grad_norm": 1.6174816656473867,
+       "loss_after": 0.027989422902464867,
+       "loss_before": 0.10753476619720459,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11857408525122924,
+       "grad_norm": 0.6414634753404488,
+       "loss_after": 0.010763600468635559,
+       "loss_before": 0.027989422902464867,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13290397915580807,
+       "grad_norm": 0.21736206236699865,
+       "loss_after": 0.008013573475182056,
+       "loss_before": 0.010763600468635559,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13815873532409984,
+       "grad_norm": 0.14061013778986609,
+       "loss_after": 0.0066286674700677395,
+       "loss_before": 0.008013573475182056,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14318986844868442,
+       "grad_norm": 0.11249401470660565,
+       "loss_after": 0.005693560931831598,
+       "loss_before": 0.0066286674700677395,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14700469114642287,
+       "grad_norm": 0.09645565644172246,
+       "loss_after": 0.004995831288397312,
+       "loss_before": 0.005693560931831598,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1504175917488228,
+       "grad_norm": 0.08477335808897636,
+       "loss_after": 0.004452897701412439,
+       "loss_before": 0.004995831288397312,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15346722337285443,
+       "grad_norm": 0.07555618020733758,
+       "loss_after": 0.004019442945718765,
+       "loss_before": 0.004452897701412439,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9752955142057476,
+     "cosine_successive_updates": [
+      -0.10608307676255045,
+      -0.11608106089730802,
+      -0.2037936895072029,
+      -0.20949082542729583,
+      -0.11156967927668814,
+      0.04215889108956799,
+      0.24221060853200627
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.08069952577352524,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 3,
+     "fast": {
+      "0": 0.08069952577352524,
+      "1": 0.0179643165320158,
+      "2": 0.0073835235089063644,
+      "4": 0.004373069386929274,
+      "8": 0.0028446612413972616
+     },
+     "fast_context_free": 0.003551021683961153,
+     "fast_ood": 0.00656230328604579,
+     "frozen": {
+      "context_free": 0.08673577010631561,
+      "ood": 0.09883412718772888,
+      "query": 0.08069952577352524
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.12178877741098404,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.18532690405845642,
+     "reset": {
+      "exact": true,
+      "query": 0.08069952577352524
+     },
+     "shuffled": 0.03692876175045967,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.11741488569172735,
+       "grad_norm": 1.4676860445747426,
+       "loss_after": 0.021357351914048195,
+       "loss_before": 0.0990205779671669,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12031719567065394,
+       "grad_norm": 0.5190828726098872,
+       "loss_after": 0.011273953132331371,
+       "loss_before": 0.021357351914048195,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13314244714543674,
+       "grad_norm": 0.33342003688111627,
+       "loss_after": 0.00750674307346344,
+       "loss_before": 0.011273953132331371,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.141018092907896,
+       "grad_norm": 0.23821970660785605,
+       "loss_after": 0.005591653753072023,
+       "loss_before": 0.00750674307346344,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1478790267773349,
+       "grad_norm": 0.17516363042447464,
+       "loss_after": 0.004471019376069307,
+       "loss_before": 0.005591653753072023,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15249583404744818,
+       "grad_norm": 0.13185572299133208,
+       "loss_after": 0.0037536798045039177,
+       "loss_before": 0.004471019376069307,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15662872193123928,
+       "grad_norm": 0.10234248073169365,
+       "loss_after": 0.0032536888029426336,
+       "loss_before": 0.0037536798045039177,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15976860654515815,
+       "grad_norm": 0.082255607286665,
+       "loss_after": 0.0028827348724007607,
+       "loss_before": 0.0032536888029426336,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9807193931215554,
+     "cosine_successive_updates": [
+      -0.377645078123508,
+      -0.25895980685670433,
+      0.12291674959860995,
+      0.5020643780865277,
+      0.8024801423260276,
+      0.9336042242773289,
+      0.9795721250358316
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.06815227121114731,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 4,
+     "fast": {
+      "0": 0.06815227121114731,
+      "1": 0.02046208642423153,
+      "2": 0.006833167746663094,
+      "4": 0.003562419442459941,
+      "8": 0.0021563374903053045
+     },
+     "fast_context_free": 0.0024089652579277754,
+     "fast_ood": 0.006298162508755922,
+     "frozen": {
+      "context_free": 0.07168518006801605,
+      "ood": 0.08305352181196213,
+      "query": 0.06815227121114731
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.13843992352485657,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.23553214967250824,
+     "reset": {
+      "exact": true,
+      "query": 0.06815227121114731
+     },
+     "shuffled": 0.026279250159859657,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.10792619491073174,
+       "grad_norm": 1.3490774870378683,
+       "loss_after": 0.021950120106339455,
+       "loss_before": 0.07830440998077393,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10014255261154435,
+       "grad_norm": 0.5901573812581462,
+       "loss_after": 0.009433007799088955,
+       "loss_before": 0.021950120106339455,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11697143663607193,
+       "grad_norm": 0.287421154530424,
+       "loss_after": 0.005920611321926117,
+       "loss_before": 0.009433007799088955,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12169064798481011,
+       "grad_norm": 0.16675680983655913,
+       "loss_after": 0.004427367355674505,
+       "loss_before": 0.005920611321926117,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12813646044299684,
+       "grad_norm": 0.113356507723174,
+       "loss_after": 0.003592105582356453,
+       "loss_before": 0.004427367355674505,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1317703225071873,
+       "grad_norm": 0.08847249592241849,
+       "loss_after": 0.003032960696145892,
+       "loss_before": 0.003592105582356453,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13534566197600512,
+       "grad_norm": 0.0744632064312351,
+       "loss_after": 0.0026213843375444412,
+       "loss_before": 0.003032960696145892,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1381279054720198,
+       "grad_norm": 0.06506093576705609,
+       "loss_after": 0.00230230251327157,
+       "loss_before": 0.0026213843375444412,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9848931249562728,
+     "cosine_successive_updates": [
+      -0.5537536771200349,
+      0.09103001448523207,
+      0.7939402179663729,
+      0.958456415284501,
+      0.9885711346718418,
+      0.995015551058137,
+      0.9967521879640854
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.10275612026453018,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 5,
+     "fast": {
+      "0": 0.10275612026453018,
+      "1": 0.02368205226957798,
+      "2": 0.00466392794623971,
+      "4": 0.0026052193716168404,
+      "8": 0.001457894453778863
+     },
+     "fast_context_free": 0.0018793729832395911,
+     "fast_ood": 0.005364719778299332,
+     "frozen": {
+      "context_free": 0.11264077574014664,
+      "ood": 0.10115984082221985,
+      "query": 0.10275612026453018
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.13325174152851105,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.3497755825519562,
+     "reset": {
+      "exact": true,
+      "query": 0.10275612026453018
+     },
+     "shuffled": 0.03255019336938858,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.14243058186929725,
+       "grad_norm": 1.7803823131220118,
+       "loss_after": 0.02545883320271969,
+       "loss_before": 0.11438357830047607,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.121647434184914,
+       "grad_norm": 0.6476223889599949,
+       "loss_after": 0.007774564903229475,
+       "loss_before": 0.02545883320271969,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13289199581706296,
+       "grad_norm": 0.2043082910561041,
+       "loss_after": 0.005225658882409334,
+       "loss_before": 0.007774564903229475,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13835201850215834,
+       "grad_norm": 0.13578302468960737,
+       "loss_after": 0.003938388079404831,
+       "loss_before": 0.005225658882409334,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14312133776048053,
+       "grad_norm": 0.10573660868572207,
+       "loss_after": 0.003125865012407303,
+       "loss_before": 0.003938388079404831,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14683150169814732,
+       "grad_norm": 0.08739837179269296,
+       "loss_after": 0.002561979927122593,
+       "loss_before": 0.003125865012407303,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14996955806063772,
+       "grad_norm": 0.074289833711927,
+       "loss_after": 0.0021510329097509384,
+       "loss_before": 0.002561979927122593,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1526612067516007,
+       "grad_norm": 0.06422216765969244,
+       "loss_after": 0.001842054887674749,
+       "loss_before": 0.0021510329097509384,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.986502905531091,
+     "cosine_successive_updates": [
+      -0.19219017991161572,
+      -0.4208565889018474,
+      -0.340507251216892,
+      -0.10863532604276627,
+      0.2192811568419028,
+      0.5221220890880535,
+      0.7437798910753294
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.07668644189834595,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 6,
+     "fast": {
+      "0": 0.07668644189834595,
+      "1": 0.02129293419420719,
+      "2": 0.008183467201888561,
+      "4": 0.004536578431725502,
+      "8": 0.0029163463041186333
+     },
+     "fast_context_free": 0.0028932983987033367,
+     "fast_ood": 0.009457139298319817,
+     "frozen": {
+      "context_free": 0.08505067229270935,
+      "ood": 0.08896715193986893,
+      "query": 0.07668644189834595
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.1280975639820099,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.1953563094139099,
+     "reset": {
+      "exact": true,
+      "query": 0.07668644189834595
+     },
+     "shuffled": 0.02178565040230751,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.11669598658726406,
+       "grad_norm": 1.4586999250772203,
+       "loss_after": 0.014850422739982605,
+       "loss_before": 0.08628465980291367,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11555618674186623,
+       "grad_norm": 0.473303942207193,
+       "loss_after": 0.008128867484629154,
+       "loss_before": 0.014850422739982605,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12465604757080702,
+       "grad_norm": 0.28746280844248423,
+       "loss_after": 0.00557599077001214,
+       "loss_before": 0.008128867484629154,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1279414732068701,
+       "grad_norm": 0.18910688044889917,
+       "loss_after": 0.004256179556250572,
+       "loss_before": 0.00557599077001214,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1326955111740462,
+       "grad_norm": 0.13334731103850342,
+       "loss_after": 0.0034276980441063643,
+       "loss_before": 0.004256179556250572,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13530187066200705,
+       "grad_norm": 0.10098652098817763,
+       "loss_after": 0.0028475539293140173,
+       "loss_before": 0.0034276980441063643,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13840596130403,
+       "grad_norm": 0.08167132822404355,
+       "loss_after": 0.002412468660622835,
+       "loss_before": 0.0028475539293140173,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14072007038565237,
+       "grad_norm": 0.06931399280197785,
+       "loss_after": 0.0020736234728246927,
+       "loss_before": 0.002412468660622835,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9867489656798628,
+     "cosine_successive_updates": [
+      -0.3099631926331071,
+      -0.2691748868729732,
+      -0.05776326114036616,
+      0.1775566320260814,
+      0.4695620040396493,
+      0.7047096461683237,
+      0.8616352356760258
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.08025676012039185,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 7,
+     "fast": {
+      "0": 0.08025676012039185,
+      "1": 0.030023958534002304,
+      "2": 0.012863732874393463,
+      "4": 0.0068146116100251675,
+      "8": 0.004223862662911415
+     },
+     "fast_context_free": 0.004610579926520586,
+     "fast_ood": 0.008794565685093403,
+     "frozen": {
+      "context_free": 0.08646000921726227,
+      "ood": 0.09998950362205505,
+      "query": 0.08025676012039185
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.11082854121923447,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.2385769635438919,
+     "reset": {
+      "exact": true,
+      "query": 0.08025676012039185
+     },
+     "shuffled": 0.036641206592321396,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.10134153445742489,
+       "grad_norm": 1.2667691275080601,
+       "loss_after": 0.02669440768659115,
+       "loss_before": 0.0778355672955513,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.09812346749566848,
+       "grad_norm": 0.6247722926182946,
+       "loss_after": 0.0131610706448555,
+       "loss_before": 0.02669440768659115,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11883630737559103,
+       "grad_norm": 0.3565583768266865,
+       "loss_after": 0.008308113552629948,
+       "loss_before": 0.0131610706448555,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12595680732488285,
+       "grad_norm": 0.22634816719304948,
+       "loss_after": 0.006010334938764572,
+       "loss_before": 0.008308113552629948,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13531145875102876,
+       "grad_norm": 0.15245130605766868,
+       "loss_after": 0.004763312637805939,
+       "loss_before": 0.006010334938764572,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14045823328368634,
+       "grad_norm": 0.11182483074985397,
+       "loss_after": 0.003983353264629841,
+       "loss_before": 0.004763312637805939,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1457053386325762,
+       "grad_norm": 0.08876377943182126,
+       "loss_after": 0.0034393444657325745,
+       "loss_before": 0.003983353264629841,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14944734389694184,
+       "grad_norm": 0.07490449564104375,
+       "loss_after": 0.003030014457181096,
+       "loss_before": 0.0034393444657325745,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9851939628848051,
+     "cosine_successive_updates": [
+      -0.43584593215883805,
+      -0.2851693017548222,
+      0.19001686348325936,
+      0.631180553377618,
+      0.8891594918796906,
+      0.9700685675824369,
+      0.992217837522024
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.06572020053863525,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 8,
+     "fast": {
+      "0": 0.06572020053863525,
+      "1": 0.025169458240270615,
+      "2": 0.00853521004319191,
+      "4": 0.005026409402489662,
+      "8": 0.002692819805815816
+     },
+     "fast_context_free": 0.0025353259406983852,
+     "fast_ood": 0.0075703090988099575,
+     "frozen": {
+      "context_free": 0.07023350149393082,
+      "ood": 0.09457653760910034,
+      "query": 0.06572020053863525
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.14393025636672974,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.1264542192220688,
+     "reset": {
+      "exact": true,
+      "query": 0.06572020053863525
+     },
+     "shuffled": 0.0525386668741703,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.10863197360628743,
+       "grad_norm": 1.3578997093438037,
+       "loss_after": 0.020692117512226105,
+       "loss_before": 0.07606998085975647,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.09779976789343581,
+       "grad_norm": 0.5622309465143975,
+       "loss_after": 0.009408288635313511,
+       "loss_before": 0.020692117512226105,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11236780300421359,
+       "grad_norm": 0.25923943826208423,
+       "loss_after": 0.00643627904355526,
+       "loss_before": 0.009408288635313511,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11621749282427743,
+       "grad_norm": 0.15358190028019142,
+       "loss_after": 0.005054953973740339,
+       "loss_before": 0.00643627904355526,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12206628792804111,
+       "grad_norm": 0.11253459451499398,
+       "loss_after": 0.0041736941784620285,
+       "loss_before": 0.005054953973740339,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12571880674254227,
+       "grad_norm": 0.0937035564777159,
+       "loss_after": 0.0035253188107162714,
+       "loss_before": 0.0041736941784620285,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12944429268459137,
+       "grad_norm": 0.08170649412893846,
+       "loss_after": 0.0030233359429985285,
+       "loss_before": 0.0035253188107162714,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13259415349240375,
+       "grad_norm": 0.07245842242952923,
+       "loss_after": 0.0026261049788445234,
+       "loss_before": 0.0030233359429985285,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9770002479357679,
+     "cosine_successive_updates": [
+      -0.29872321410911595,
+      0.3414836590377006,
+      0.8552174029290207,
+      0.9731738838392582,
+      0.9942480370611396,
+      0.9976224928645784,
+      0.9984732228743755
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.08742034435272217,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 9,
+     "fast": {
+      "0": 0.08742034435272217,
+      "1": 0.023006759583950043,
+      "2": 0.007312427740544081,
+      "4": 0.004103358369320631,
+      "8": 0.0024729014839977026
+     },
+     "fast_context_free": 0.0024178181774914265,
+     "fast_ood": 0.010394067503511906,
+     "frozen": {
+      "context_free": 0.08961156755685806,
+      "ood": 0.10549542307853699,
+      "query": 0.08742034435272217
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.16889284551143646,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.11588064581155777,
+     "reset": {
+      "exact": true,
+      "query": 0.08742034435272217
+     },
+     "shuffled": 0.03870227932929993,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.11885971816830662,
+       "grad_norm": 1.4857465330491366,
+       "loss_after": 0.026074007153511047,
+       "loss_before": 0.10137898474931717,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1135934277179664,
+       "grad_norm": 0.5193689996439311,
+       "loss_after": 0.013459472917020321,
+       "loss_before": 0.026074007153511047,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12823805879935388,
+       "grad_norm": 0.23960242851842387,
+       "loss_after": 0.009741649962961674,
+       "loss_before": 0.013459472917020321,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13609325512862863,
+       "grad_norm": 0.17394650104012993,
+       "loss_after": 0.007564072031527758,
+       "loss_before": 0.009741649962961674,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1432322949732536,
+       "grad_norm": 0.1428858493217523,
+       "loss_after": 0.006054760422557592,
+       "loss_before": 0.007564072031527758,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1491276545352285,
+       "grad_norm": 0.12192608896526538,
+       "loss_after": 0.004946533590555191,
+       "loss_before": 0.006054760422557592,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1543523531781181,
+       "grad_norm": 0.10557996219968996,
+       "loss_after": 0.004111867863684893,
+       "loss_before": 0.004946533590555191,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15898748507257812,
+       "grad_norm": 0.09221695090089842,
+       "loss_after": 0.0034730862826108932,
+       "loss_before": 0.004111867863684893,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.975312798567917,
+     "cosine_successive_updates": [
+      -0.5827795206452595,
+      0.022028520733501433,
+      0.7602056182990501,
+      0.9488684236378933,
+      0.9883345268399663,
+      0.9956104327269295,
+      0.9974735829814538
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.10250350832939148,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 10,
+     "fast": {
+      "0": 0.10250350832939148,
+      "1": 0.024418162181973457,
+      "2": 0.006191794760525227,
+      "4": 0.0033476250246167183,
+      "8": 0.0017977399984374642
+     },
+     "fast_context_free": 0.002029653638601303,
+     "fast_ood": 0.022120902314782143,
+     "frozen": {
+      "context_free": 0.10385323315858841,
+      "ood": 0.1559659093618393,
+      "query": 0.10250350832939148
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.13007524609565735,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.23417465388774872,
+     "reset": {
+      "exact": true,
+      "query": 0.10250350832939148
+     },
+     "shuffled": 0.020864062011241913,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.13437648927617385,
+       "grad_norm": 1.6797062362690485,
+       "loss_after": 0.0237420666962862,
+       "loss_before": 0.10115950554609299,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11278509550152753,
+       "grad_norm": 0.626189363821987,
+       "loss_after": 0.007443948183208704,
+       "loss_before": 0.0237420666962862,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12436602427093592,
+       "grad_norm": 0.19842916981791647,
+       "loss_after": 0.0050761704333126545,
+       "loss_before": 0.007443948183208704,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1294192380529438,
+       "grad_norm": 0.13195269324286807,
+       "loss_after": 0.0038617721293121576,
+       "loss_before": 0.0050761704333126545,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13417427962731526,
+       "grad_norm": 0.10343581397794392,
+       "loss_after": 0.003082417184486985,
+       "loss_before": 0.0038617721293121576,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1378153014384876,
+       "grad_norm": 0.08594533223527387,
+       "loss_after": 0.002536773681640625,
+       "loss_before": 0.003082417184486985,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14093577959063686,
+       "grad_norm": 0.07309545441752738,
+       "loss_after": 0.002139442367479205,
+       "loss_before": 0.002536773681640625,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14360459426843153,
+       "grad_norm": 0.06295976067027899,
+       "loss_after": 0.0018433615332469344,
+       "loss_before": 0.002139442367479205,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9860704628037958,
+     "cosine_successive_updates": [
+      -0.5139012325212596,
+      -0.30659752109637894,
+      0.2400222171441889,
+      0.7383422370971555,
+      0.9480227653151447,
+      0.9900495674537791,
+      0.997849313553839
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.0908026248216629,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 11,
+     "fast": {
+      "0": 0.0908026248216629,
+      "1": 0.022340884432196617,
+      "2": 0.006952477619051933,
+      "4": 0.0039726439863443375,
+      "8": 0.0020931288599967957
+     },
+     "fast_context_free": 0.0025283105205744505,
+     "fast_ood": 0.005417689681053162,
+     "frozen": {
+      "context_free": 0.09461197257041931,
+      "ood": 0.09851372241973877,
+      "query": 0.0908026248216629
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.12063687294721603,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.12294585257768631,
+     "reset": {
+      "exact": true,
+      "query": 0.0908026248216629
+     },
+     "shuffled": 0.017043082043528557,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.12331104682379335,
+       "grad_norm": 1.541388056899532,
+       "loss_after": 0.022198572754859924,
+       "loss_before": 0.09050823003053665,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10647475858998211,
+       "grad_norm": 0.640577337771504,
+       "loss_after": 0.007048273459076881,
+       "loss_before": 0.022198572754859924,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12122198206365861,
+       "grad_norm": 0.22324586900293686,
+       "loss_after": 0.0047975205816328526,
+       "loss_before": 0.007048273459076881,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12350290804838829,
+       "grad_norm": 0.12914281148611503,
+       "loss_after": 0.0037547890096902847,
+       "loss_before": 0.0047975205816328526,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12793131819988834,
+       "grad_norm": 0.09820887605674683,
+       "loss_after": 0.0030548134818673134,
+       "loss_before": 0.0037547890096902847,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13068395215203268,
+       "grad_norm": 0.08439997208565012,
+       "loss_after": 0.0025207793805748224,
+       "loss_before": 0.0030548134818673134,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1335540852026846,
+       "grad_norm": 0.07451902056272737,
+       "loss_after": 0.0021015035454183817,
+       "loss_before": 0.0025207793805748224,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13607962950057545,
+       "grad_norm": 0.06628656822102165,
+       "loss_after": 0.0017689861124381423,
+       "loss_before": 0.0021015035454183817,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    }
+   ],
+   "selected_step": 2000,
+   "specialist_core": [
+    "cgc.core.weight"
+   ],
+   "specialist_parameters": 1266,
+   "trace": [
+    {
+     "dev_k32": 1.1646223068237305,
+     "seconds": 0.1,
+     "step": 0
+    },
+    {
+     "dev_k32": 0.015647269785404205,
+     "seconds": 15.4,
+     "step": 250
+    },
+    {
+     "dev_k32": 0.009934966452419758,
+     "seconds": 32.9,
+     "step": 500
+    },
+    {
+     "dev_k32": 0.0075167519971728325,
+     "seconds": 53.4,
+     "step": 750
+    },
+    {
+     "dev_k32": 0.00450640544295311,
+     "seconds": 73.2,
+     "step": 1000
+    },
+    {
+     "dev_k32": 0.004732493311166763,
+     "seconds": 92.1,
+     "step": 1250
+    },
+    {
+     "dev_k32": 0.004173386842012405,
+     "seconds": 110.9,
+     "step": 1500
+    },
+    {
+     "dev_k32": 0.004765074700117111,
+     "seconds": 129.9,
+     "step": 1750
+    },
+    {
+     "dev_k32": 0.004020073916763067,
+     "seconds": 148.3,
+     "step": 2000
+    }
+   ],
+   "training_seconds": 148.3
+  },
+  "G2": {
+   "ablated_last_frozen": [
+    1.2118452787399292,
+    0.6292916536331177,
+    0.3203285038471222,
+    0.7890464663505554,
+    0.9764251708984375,
+    0.5479980111122131,
+    0.62699955701828,
+    1.2095531225204468,
+    0.9244969487190247,
+    0.6619230508804321,
+    0.5074154734611511,
+    0.31521737575531006
+   ],
+   "gates": [],
+   "parameters": 70347,
+   "rows": [
+    {
+     "alignment_r2": 0.9877349960038466,
+     "cosine_successive_updates": [
+      0.6723334157519382,
+      0.9102305020133354,
+      0.9714209147065124,
+      0.9908693110674672,
+      0.996623400847972,
+      0.9983178070161562,
+      0.9988410589339485
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.1307278275489807,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 0,
+     "fast": {
+      "0": 0.1307278275489807,
+      "1": 0.010234083980321884,
+      "2": 0.007748303469270468,
+      "4": 0.005824207793921232,
+      "8": 0.00411637406796217
+     },
+     "fast_context_free": 0.004362739156931639,
+     "fast_ood": 0.009250839240849018,
+     "frozen": {
+      "context_free": 0.1358056366443634,
+      "ood": 0.14059633016586304,
+      "query": 0.1307278275489807
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.11853782087564468,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.35430505871772766,
+     "reset": {
+      "exact": true,
+      "query": 0.1307278275489807
+     },
+     "shuffled": 0.031440094113349915,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.1453978679990794,
+       "grad_norm": 1.8174733954663957,
+       "loss_after": 0.01123058795928955,
+       "loss_before": 0.14074476063251495,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15741685049969487,
+       "grad_norm": 0.2139604182375464,
+       "loss_after": 0.008294271305203438,
+       "loss_before": 0.01123058795928955,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1647330499990329,
+       "grad_norm": 0.14286599427181385,
+       "loss_after": 0.00684012146666646,
+       "loss_before": 0.008294271305203438,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1694002036138198,
+       "grad_norm": 0.11509823839605841,
+       "loss_after": 0.005857307463884354,
+       "loss_before": 0.00684012146666646,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1729952758946136,
+       "grad_norm": 0.0993478323954737,
+       "loss_after": 0.005114215891808271,
+       "loss_before": 0.005857307463884354,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1759936056658662,
+       "grad_norm": 0.0879756595606564,
+       "loss_after": 0.004527855198830366,
+       "loss_before": 0.005114215891808271,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17866741755320925,
+       "grad_norm": 0.07880331255720315,
+       "loss_after": 0.0040557291358709335,
+       "loss_before": 0.004527855198830366,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.18112559776589246,
+       "grad_norm": 0.07107262546444335,
+       "loss_after": 0.0036706926766783,
+       "loss_before": 0.0040557291358709335,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9903559963521982,
+     "cosine_successive_updates": [
+      -0.19832427462705685,
+      0.5886376514322424,
+      0.9724753727149607,
+      0.9950918714406819,
+      0.9984184185118149,
+      0.9990518603845288,
+      0.9991035524684355
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.07262777537107468,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 1,
+     "fast": {
+      "0": 0.07262777537107468,
+      "1": 0.014628414995968342,
+      "2": 0.01076256949454546,
+      "4": 0.006253287196159363,
+      "8": 0.0025690989568829536
+     },
+     "fast_context_free": 0.0030397288501262665,
+     "fast_ood": 0.009007387794554234,
+     "frozen": {
+      "context_free": 0.07466046512126923,
+      "ood": 0.09089473634958267,
+      "query": 0.07262777537107468
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.15599802136421204,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.22596924006938934,
+     "reset": {
+      "exact": true,
+      "query": 0.07262777537107468
+     },
+     "shuffled": 0.04222214221954346,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.12089287339873686,
+       "grad_norm": 1.5111608929864409,
+       "loss_after": 0.020916031673550606,
+       "loss_before": 0.09746876358985901,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11861390013009597,
+       "grad_norm": 0.3670373772068713,
+       "loss_after": 0.013574541546404362,
+       "loss_before": 0.020916031673550606,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12748553071244495,
+       "grad_norm": 0.2170151822793353,
+       "loss_after": 0.010150938294827938,
+       "loss_before": 0.013574541546404362,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1353256916461171,
+       "grad_norm": 0.18235891100984858,
+       "loss_after": 0.007694713305681944,
+       "loss_before": 0.010150938294827938,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1431027844628786,
+       "grad_norm": 0.15511000927637583,
+       "loss_after": 0.005911735817790031,
+       "loss_before": 0.007694713305681944,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15020380554195842,
+       "grad_norm": 0.13245524011416943,
+       "loss_after": 0.004609283525496721,
+       "loss_before": 0.005911735817790031,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15664831889370961,
+       "grad_norm": 0.1134778528255041,
+       "loss_after": 0.0036517884582281113,
+       "loss_before": 0.004609283525496721,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.162388584106887,
+       "grad_norm": 0.09755405323814927,
+       "loss_after": 0.0029429541900753975,
+       "loss_before": 0.0036517884582281113,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.980055830679798,
+     "cosine_successive_updates": [
+      -0.19163884724085573,
+      0.6050615120789652,
+      0.8475164130828017,
+      0.9499339197032737,
+      0.9770297404541018,
+      0.9884711629004588,
+      0.991706881520285
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.06690478324890137,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 2,
+     "fast": {
+      "0": 0.06690478324890137,
+      "1": 0.014180852100253105,
+      "2": 0.008795034140348434,
+      "4": 0.005353049375116825,
+      "8": 0.003450536634773016
+     },
+     "fast_context_free": 0.0031010385137051344,
+     "fast_ood": 0.00925524067133665,
+     "frozen": {
+      "context_free": 0.07443523406982422,
+      "ood": 0.08813466876745224,
+      "query": 0.06690478324890137
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.19251026213169098,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.11219779402017593,
+     "reset": {
+      "exact": true,
+      "query": 0.06690478324890137
+     },
+     "shuffled": 0.032839443534612656,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.09794802470064168,
+       "grad_norm": 1.224350313226938,
+       "loss_after": 0.013874796219170094,
+       "loss_before": 0.07501038163900375,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.0963339354780599,
+       "grad_norm": 0.3124441931485138,
+       "loss_after": 0.00843223836272955,
+       "loss_before": 0.013874796219170094,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1076777445314727,
+       "grad_norm": 0.20474531325482895,
+       "loss_after": 0.0057238321751356125,
+       "loss_before": 0.00843223836272955,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11290906735686845,
+       "grad_norm": 0.147614512776402,
+       "loss_after": 0.004224249627441168,
+       "loss_before": 0.0057238321751356125,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11893249530355773,
+       "grad_norm": 0.11196926030615766,
+       "loss_after": 0.0033380044624209404,
+       "loss_before": 0.004224249627441168,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1230745852013304,
+       "grad_norm": 0.08783606849300311,
+       "loss_after": 0.002782761352136731,
+       "loss_before": 0.0033380044624209404,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12674966060011753,
+       "grad_norm": 0.07100953207117393,
+       "loss_after": 0.00241479161195457,
+       "loss_before": 0.002782761352136731,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12962073221740528,
+       "grad_norm": 0.059018420032036105,
+       "loss_after": 0.0021574622951447964,
+       "loss_before": 0.00241479161195457,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9824934319971278,
+     "cosine_successive_updates": [
+      -0.5077096812737838,
+      0.5279299455273866,
+      0.987541725564857,
+      0.9978265269283106,
+      0.9985938063290114,
+      0.9985246854725581,
+      0.9984825914939846
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.08022499829530716,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 3,
+     "fast": {
+      "0": 0.08022499829530716,
+      "1": 0.010768046602606773,
+      "2": 0.005896520335227251,
+      "4": 0.00326348259113729,
+      "8": 0.0013739981222897768
+     },
+     "fast_context_free": 0.002205514581874013,
+     "fast_ood": 0.003841603873297572,
+     "frozen": {
+      "context_free": 0.08233214169740677,
+      "ood": 0.09336447715759277,
+      "query": 0.08022499829530716
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.12178877741098404,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.20503206551074982,
+     "reset": {
+      "exact": true,
+      "query": 0.08022499829530716
+     },
+     "shuffled": 0.045826975256204605,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.12277714745247129,
+       "grad_norm": 1.534714341562942,
+       "loss_after": 0.013667546212673187,
+       "loss_before": 0.09324121475219727,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11187990959012994,
+       "grad_norm": 0.3235722496077335,
+       "loss_after": 0.008256754837930202,
+       "loss_before": 0.013667546212673187,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11840975652245989,
+       "grad_norm": 0.16867572575953388,
+       "loss_after": 0.006197852548211813,
+       "loss_before": 0.008256754837930202,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1237463822702977,
+       "grad_norm": 0.13845183147622173,
+       "loss_after": 0.004791072104126215,
+       "loss_before": 0.006197852548211813,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12893125985023624,
+       "grad_norm": 0.11587685962401831,
+       "loss_after": 0.0038010061252862215,
+       "loss_before": 0.004791072104126215,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13363125815514845,
+       "grad_norm": 0.09791540568212771,
+       "loss_after": 0.0030912805814296007,
+       "loss_before": 0.0038010061252862215,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13784624174318114,
+       "grad_norm": 0.08345222436090013,
+       "loss_after": 0.0025737506803125143,
+       "loss_before": 0.0030912805814296007,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1415905652215284,
+       "grad_norm": 0.07171924666209896,
+       "loss_after": 0.002190076047554612,
+       "loss_before": 0.0025737506803125143,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9878226889889983,
+     "cosine_successive_updates": [
+      -0.23671969998586345,
+      0.7066790620792749,
+      0.9784563873170308,
+      0.9966823962539508,
+      0.9981968530068945,
+      0.9982971887179621,
+      0.9983308409982024
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.08382514119148254,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 4,
+     "fast": {
+      "0": 0.08382514119148254,
+      "1": 0.009878373704850674,
+      "2": 0.006364187225699425,
+      "4": 0.004475926514714956,
+      "8": 0.0025981152430176735
+     },
+     "fast_context_free": 0.0030538619030267,
+     "fast_ood": 0.00674206530675292,
+     "frozen": {
+      "context_free": 0.09607535600662231,
+      "ood": 0.09566909074783325,
+      "query": 0.08382514119148254
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.13843992352485657,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.2264464646577835,
+     "reset": {
+      "exact": true,
+      "query": 0.08382514119148254
+     },
+     "shuffled": 0.03559417650103569,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.12097022847711114,
+       "grad_norm": 1.512127882524663,
+       "loss_after": 0.009372737258672714,
+       "loss_before": 0.10092995315790176,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11814028130188567,
+       "grad_norm": 0.20828727968134808,
+       "loss_after": 0.006810227874666452,
+       "loss_before": 0.009372737258672714,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12339804885068854,
+       "grad_norm": 0.13938026421488572,
+       "loss_after": 0.005392027553170919,
+       "loss_before": 0.006810227874666452,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12678764268518644,
+       "grad_norm": 0.11754632690942846,
+       "loss_after": 0.004363633692264557,
+       "loss_before": 0.005392027553170919,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1302892663881697,
+       "grad_norm": 0.10146370998186041,
+       "loss_after": 0.0035946739371865988,
+       "loss_before": 0.004363633692264557,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1335670689937973,
+       "grad_norm": 0.08812865767091557,
+       "loss_after": 0.003013257635757327,
+       "loss_before": 0.0035946739371865988,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1366422030192577,
+       "grad_norm": 0.07691004292653493,
+       "loss_after": 0.002569440519437194,
+       "loss_before": 0.003013257635757327,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13948034293362732,
+       "grad_norm": 0.06744906720293371,
+       "loss_after": 0.002227270742878318,
+       "loss_before": 0.002569440519437194,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9813593679638511,
+     "cosine_successive_updates": [
+      0.42273815624958055,
+      0.676238515879326,
+      0.9206483021317013,
+      0.9736820973507626,
+      0.9873815093380786,
+      0.9927535451041748,
+      0.9943866537586721
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.08091506361961365,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 5,
+     "fast": {
+      "0": 0.08091506361961365,
+      "1": 0.007206855341792107,
+      "2": 0.004343656823039055,
+      "4": 0.0027039283886551857,
+      "8": 0.001765858381986618
+     },
+     "fast_context_free": 0.0014114080695435405,
+     "fast_ood": 0.005205890629440546,
+     "frozen": {
+      "context_free": 0.08817075937986374,
+      "ood": 0.07556737214326859,
+      "query": 0.08091506361961365
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.13325174152851105,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.33995214104652405,
+     "reset": {
+      "exact": true,
+      "query": 0.08091506361961365
+     },
+     "shuffled": 0.04689479619264603,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.11953125296075356,
+       "grad_norm": 1.4941407047845159,
+       "loss_after": 0.010608546435832977,
+       "loss_before": 0.09651803225278854,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13041421984194188,
+       "grad_norm": 0.2761032272767498,
+       "loss_after": 0.006283161696046591,
+       "loss_before": 0.010608546435832977,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13820704608226153,
+       "grad_norm": 0.17106796575503572,
+       "loss_after": 0.004312716890126467,
+       "loss_before": 0.006283161696046591,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1436530574155879,
+       "grad_norm": 0.12682928500808735,
+       "loss_after": 0.00318268989212811,
+       "loss_before": 0.004312716890126467,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14793230973612395,
+       "grad_norm": 0.09856207359901457,
+       "loss_after": 0.0024874177761375904,
+       "loss_before": 0.00318268989212811,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15128461369780116,
+       "grad_norm": 0.07878910861394589,
+       "loss_after": 0.002037313999608159,
+       "loss_before": 0.0024874177761375904,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1540406610802852,
+       "grad_norm": 0.06451248556542341,
+       "loss_after": 0.0017323256470263004,
+       "loss_before": 0.002037313999608159,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15632402931311903,
+       "grad_norm": 0.05398501778094335,
+       "loss_after": 0.0015167323872447014,
+       "loss_before": 0.0017323256470263004,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9913022990502776,
+     "cosine_successive_updates": [
+      -0.2825744424336456,
+      0.5416569803733793,
+      0.9968973581064341,
+      0.9995692785082162,
+      0.9996830388918797,
+      0.999704538617483,
+      0.9996964333695992
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.06611806899309158,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 6,
+     "fast": {
+      "0": 0.06611806899309158,
+      "1": 0.01208411529660225,
+      "2": 0.007563122548162937,
+      "4": 0.004549575038254261,
+      "8": 0.002000030828639865
+     },
+     "fast_context_free": 0.002550415927544236,
+     "fast_ood": 0.0077537852339446545,
+     "frozen": {
+      "context_free": 0.06858758628368378,
+      "ood": 0.08035441488027573,
+      "query": 0.06611806899309158
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.1280975639820099,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.2184644192457199,
+     "reset": {
+      "exact": true,
+      "query": 0.06611806899309158
+     },
+     "shuffled": 0.024958236142992973,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.1081880770730705,
+       "grad_norm": 1.352351008262968,
+       "loss_after": 0.01168400701135397,
+       "loss_before": 0.07195107638835907,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10404338445592935,
+       "grad_norm": 0.28947021753086793,
+       "loss_after": 0.007363046053797007,
+       "loss_before": 0.01168400701135397,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10881871293657602,
+       "grad_norm": 0.14761083449426246,
+       "loss_after": 0.005738846957683563,
+       "loss_before": 0.007363046053797007,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11326779088272716,
+       "grad_norm": 0.12787185701346668,
+       "loss_after": 0.004515972454100847,
+       "loss_before": 0.005738846957683563,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11764218812477314,
+       "grad_norm": 0.11126360362037749,
+       "loss_after": 0.003589332802221179,
+       "loss_before": 0.004515972454100847,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12181884422510954,
+       "grad_norm": 0.09698080602937473,
+       "loss_after": 0.002884802408516407,
+       "loss_before": 0.003589332802221179,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12573114783373018,
+       "grad_norm": 0.08466522229941947,
+       "loss_after": 0.00234744930639863,
+       "loss_before": 0.002884802408516407,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1293413520792552,
+       "grad_norm": 0.07403217568569566,
+       "loss_after": 0.0019362791208550334,
+       "loss_before": 0.00234744930639863,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9863486313566356,
+     "cosine_successive_updates": [
+      0.6864260984262116,
+      0.9408935762842529,
+      0.9863658585116833,
+      0.9934277643651284,
+      0.9956191415776394,
+      0.9964685288212591,
+      0.9970178101772744
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.10850419849157333,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 7,
+     "fast": {
+      "0": 0.10850419849157333,
+      "1": 0.011178935877978802,
+      "2": 0.006417902652174234,
+      "4": 0.003438020823523402,
+      "8": 0.0019477715250104666
+     },
+     "fast_context_free": 0.0036628490779548883,
+     "fast_ood": 0.0055169579572975636,
+     "frozen": {
+      "context_free": 0.1211797297000885,
+      "ood": 0.12891623377799988,
+      "query": 0.10850419849157333
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.11082854121923447,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.2379232794046402,
+     "reset": {
+      "exact": true,
+      "query": 0.10850419849157333
+     },
+     "shuffled": 0.05165495723485947,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.11950974270925867,
+       "grad_norm": 1.4938718067767387,
+       "loss_after": 0.01699581928551197,
+       "loss_before": 0.11204186826944351,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13752650336031738,
+       "grad_norm": 0.3068959819045905,
+       "loss_after": 0.010826135985553265,
+       "loss_before": 0.01699581928551197,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1478541858999709,
+       "grad_norm": 0.20854528592773902,
+       "loss_after": 0.007774312514811754,
+       "loss_before": 0.010826135985553265,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15530136145211743,
+       "grad_norm": 0.15978834298489,
+       "loss_after": 0.005939992144703865,
+       "loss_before": 0.007774312514811754,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16111914258827914,
+       "grad_norm": 0.1281921228340603,
+       "loss_after": 0.004743510391563177,
+       "loss_before": 0.005939992144703865,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16592381126351005,
+       "grad_norm": 0.10570188205126363,
+       "loss_after": 0.003922092262655497,
+       "loss_before": 0.004743510391563177,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17000665961046843,
+       "grad_norm": 0.08894863692894907,
+       "loss_after": 0.003335817949846387,
+       "loss_before": 0.003922092262655497,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17353696226469315,
+       "grad_norm": 0.07609385076727647,
+       "loss_after": 0.002903933869674802,
+       "loss_before": 0.003335817949846387,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9894883419294165,
+     "cosine_successive_updates": [
+      -0.24742256394256107,
+      0.5936369995344283,
+      0.9559533717088756,
+      0.9949117661272449,
+      0.998368361474437,
+      0.9986195417103544,
+      0.9987104147804955
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.08209147304296494,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 8,
+     "fast": {
+      "0": 0.08209147304296494,
+      "1": 0.01110024843364954,
+      "2": 0.00804066751152277,
+      "4": 0.005699236411601305,
+      "8": 0.003268146188929677
+     },
+     "fast_context_free": 0.003830589819699526,
+     "fast_ood": 0.006824981886893511,
+     "frozen": {
+      "context_free": 0.09450103342533112,
+      "ood": 0.10174766927957535,
+      "query": 0.08209147304296494
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.14393025636672974,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.13527804613113403,
+     "reset": {
+      "exact": true,
+      "query": 0.08209147304296494
+     },
+     "shuffled": 0.05866536125540733,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.11813613466988067,
+       "grad_norm": 1.4767015987050471,
+       "loss_after": 0.009544056840240955,
+       "loss_before": 0.09641151875257492,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11511425854024937,
+       "grad_norm": 0.21252462440756392,
+       "loss_after": 0.007036241237074137,
+       "loss_before": 0.009544056840240955,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12047492232262798,
+       "grad_norm": 0.13760099494950018,
+       "loss_after": 0.0056699723936617374,
+       "loss_before": 0.007036241237074137,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1234744491987635,
+       "grad_norm": 0.11579953629700646,
+       "loss_after": 0.004669423680752516,
+       "loss_before": 0.0056699723936617374,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12688224721279648,
+       "grad_norm": 0.10072629357990477,
+       "loss_after": 0.0039081936702132225,
+       "loss_before": 0.004669423680752516,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13007668674807968,
+       "grad_norm": 0.08835948024561353,
+       "loss_after": 0.003320687683299184,
+       "loss_before": 0.0039081936702132225,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13314735749826273,
+       "grad_norm": 0.077977628589379,
+       "loss_after": 0.002861917717382312,
+       "loss_before": 0.003320687683299184,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13603160385236543,
+       "grad_norm": 0.06919945797298813,
+       "loss_after": 0.002499713795259595,
+       "loss_before": 0.002861917717382312,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9834238736344171,
+     "cosine_successive_updates": [
+      -0.36193224748577174,
+      0.48297680087969436,
+      0.8444224054049083,
+      0.9633215227194143,
+      0.989046334218573,
+      0.9949438894733323,
+      0.9959433670898427
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.08813244104385376,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 9,
+     "fast": {
+      "0": 0.08813244104385376,
+      "1": 0.01235924195498228,
+      "2": 0.005253730341792107,
+      "4": 0.0029364752117544413,
+      "8": 0.0019269933691248298
+     },
+     "fast_context_free": 0.0018094016704708338,
+     "fast_ood": 0.00612854165956378,
+     "frozen": {
+      "context_free": 0.09762638807296753,
+      "ood": 0.1038522720336914,
+      "query": 0.08813244104385376
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.16889284551143646,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.10906519740819931,
+     "reset": {
+      "exact": true,
+      "query": 0.08813244104385376
+     },
+     "shuffled": 0.05235150456428528,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.1318799828315674,
+       "grad_norm": 1.648499907989083,
+       "loss_after": 0.013222726993262768,
+       "loss_before": 0.10749431699514389,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12461595846740368,
+       "grad_norm": 0.34196610757064283,
+       "loss_after": 0.0072528594173491,
+       "loss_before": 0.013222726993262768,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13061180466756978,
+       "grad_norm": 0.19704311398658733,
+       "loss_after": 0.004755471367388964,
+       "loss_before": 0.0072528594173491,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13527813498183633,
+       "grad_norm": 0.1419649525671289,
+       "loss_after": 0.0033540937583893538,
+       "loss_before": 0.004755471367388964,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13978925687481875,
+       "grad_norm": 0.10895274602314511,
+       "loss_after": 0.002508345991373062,
+       "loss_before": 0.0033540937583893538,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14336405962116391,
+       "grad_norm": 0.086089482080491,
+       "loss_after": 0.0019741207361221313,
+       "loss_before": 0.002508345991373062,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14635846130568075,
+       "grad_norm": 0.06942787254144396,
+       "loss_after": 0.0016237185336649418,
+       "loss_before": 0.0019741207361221313,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14880251551485127,
+       "grad_norm": 0.05699153833758196,
+       "loss_after": 0.001385813462547958,
+       "loss_before": 0.0016237185336649418,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9849106902009138,
+     "cosine_successive_updates": [
+      0.36103195500875224,
+      0.516027797462884,
+      0.8054572111105743,
+      0.9296443936319088,
+      0.9728624579891376,
+      0.9895407131783942,
+      0.994631713757378
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.07476922124624252,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 10,
+     "fast": {
+      "0": 0.07476922124624252,
+      "1": 0.009334965609014034,
+      "2": 0.005441323854029179,
+      "4": 0.003632951993495226,
+      "8": 0.00223367172293365
+     },
+     "fast_context_free": 0.0012997217709198594,
+     "fast_ood": 0.014832175336778164,
+     "frozen": {
+      "context_free": 0.08467862010002136,
+      "ood": 0.11348266154527664,
+      "query": 0.07476922124624252
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.13007524609565735,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.23727160692214966,
+     "reset": {
+      "exact": true,
+      "query": 0.07476922124624252
+     },
+     "shuffled": 0.024246208369731903,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.11078045215911232,
+       "grad_norm": 1.3847556389581754,
+       "loss_after": 0.01001692283898592,
+       "loss_before": 0.08331943303346634,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11970421892180909,
+       "grad_norm": 0.2559125422790579,
+       "loss_after": 0.006527772638946772,
+       "loss_before": 0.01001692283898592,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1271487709193392,
+       "grad_norm": 0.16646617450694667,
+       "loss_after": 0.004736593458801508,
+       "loss_before": 0.006527772638946772,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13209427142079821,
+       "grad_norm": 0.12710675700515595,
+       "loss_after": 0.003603509860113263,
+       "loss_before": 0.004736593458801508,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13648014364468872,
+       "grad_norm": 0.10309444971994784,
+       "loss_after": 0.0028335917741060257,
+       "loss_before": 0.003603509860113263,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14006264486692632,
+       "grad_norm": 0.08592110173955647,
+       "loss_after": 0.002290738746523857,
+       "loss_before": 0.0028335917741060257,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.143265647288248,
+       "grad_norm": 0.07279828337502221,
+       "loss_after": 0.0018978629959747195,
+       "loss_before": 0.002290738746523857,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14605258244326091,
+       "grad_norm": 0.06244782415727302,
+       "loss_after": 0.001607071259059012,
+       "loss_before": 0.0018978629959747195,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9874545231607031,
+     "cosine_successive_updates": [
+      -0.25407509268814144,
+      0.3339353209384218,
+      0.8193871828072326,
+      0.9626736557647462,
+      0.9920941061129025,
+      0.9979056796088768,
+      0.9989061308091178
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.0560690313577652,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 11,
+     "fast": {
+      "0": 0.0560690313577652,
+      "1": 0.009385623969137669,
+      "2": 0.006392566952854395,
+      "4": 0.004066729452461004,
+      "8": 0.002107121516019106
+     },
+     "fast_context_free": 0.0021783781703561544,
+     "fast_ood": 0.0045501370914280415,
+     "frozen": {
+      "context_free": 0.06239413470029831,
+      "ood": 0.06160775199532509,
+      "query": 0.0560690313577652
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.12063687294721603,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.11703011393547058,
+     "reset": {
+      "exact": true,
+      "query": 0.0560690313577652
+     },
+     "shuffled": 0.01838783174753189,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.09129560347576982,
+       "grad_norm": 1.1411951286269442,
+       "loss_after": 0.006923991721123457,
+       "loss_before": 0.05989007651805878,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.08848821087551809,
+       "grad_norm": 0.21778721616118157,
+       "loss_after": 0.004640748258680105,
+       "loss_before": 0.006923991721123457,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.09474783589702375,
+       "grad_norm": 0.1352848540888062,
+       "loss_after": 0.0034332815557718277,
+       "loss_before": 0.004640748258680105,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.09716671794297162,
+       "grad_norm": 0.10706490680112654,
+       "loss_after": 0.0026041464880108833,
+       "loss_before": 0.0034332815557718277,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10097796699240746,
+       "grad_norm": 0.08987385307695693,
+       "loss_after": 0.0020083750132471323,
+       "loss_before": 0.0026041464880108833,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10404380964136652,
+       "grad_norm": 0.07642592649204756,
+       "loss_after": 0.0015756249194964767,
+       "loss_before": 0.0020083750132471323,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10700669685718533,
+       "grad_norm": 0.06525411821026646,
+       "loss_after": 0.0012596320593729615,
+       "loss_before": 0.0015756249194964767,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10960019718961876,
+       "grad_norm": 0.05585901937171464,
+       "loss_after": 0.0010277902474626899,
+       "loss_before": 0.0012596320593729615,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    }
+   ],
+   "selected_step": 1750,
+   "specialist_core": [
+    "cgc.core.weight"
+   ],
+   "specialist_parameters": 1264,
+   "trace": [
+    {
+     "dev_k32": 0.7032009959220886,
+     "seconds": 0.0,
+     "step": 0
+    },
+    {
+     "dev_k32": 0.01696518063545227,
+     "seconds": 17.3,
+     "step": 250
+    },
+    {
+     "dev_k32": 0.010244917124509811,
+     "seconds": 34.2,
+     "step": 500
+    },
+    {
+     "dev_k32": 0.006668849848210812,
+     "seconds": 52.0,
+     "step": 750
+    },
+    {
+     "dev_k32": 0.004444343503564596,
+     "seconds": 71.7,
+     "step": 1000
+    },
+    {
+     "dev_k32": 0.00439040269702673,
+     "seconds": 90.8,
+     "step": 1250
+    },
+    {
+     "dev_k32": 0.0034545399248600006,
+     "seconds": 108.8,
+     "step": 1500
+    },
+    {
+     "dev_k32": 0.0033418741077184677,
+     "seconds": 126.5,
+     "step": 1750
+    },
+    {
+     "dev_k32": 0.00357453734613955,
+     "seconds": 144.8,
+     "step": 2000
+    }
+   ],
+   "training_seconds": 144.8
+  },
+  "G3": {
+   "ablated_last_frozen": [
+    0.16808229684829712,
+    0.16877835988998413,
+    0.06442007422447205,
+    0.13382592797279358,
+    0.19235162436962128,
+    0.034614335745573044,
+    0.17945775389671326,
+    0.15567797422409058,
+    0.20265720784664154,
+    0.10349797457456589,
+    0.024387622252106667,
+    0.07791773229837418
+   ],
+   "gates": [],
+   "parameters": 70347,
+   "rows": [
+    {
+     "alignment_r2": 0.8722145376286028,
+     "cosine_successive_updates": [
+      0.9933392669962794,
+      0.9938098161577331,
+      0.9937272847957841,
+      0.9936213057514112,
+      0.9938211983683136,
+      0.9944203204021209,
+      0.9953126135370766
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.0793381929397583,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 0,
+     "fast": {
+      "0": 0.0793381929397583,
+      "1": 0.04568365216255188,
+      "2": 0.027261825278401375,
+      "4": 0.011740739457309246,
+      "8": 0.006788607221096754
+     },
+     "fast_context_free": 0.020419353619217873,
+     "fast_ood": 0.01833268813788891,
+     "frozen": {
+      "context_free": 0.1157003790140152,
+      "ood": 0.0879727303981781,
+      "query": 0.0793381929397583
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.11853782087564468,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.2338990569114685,
+     "reset": {
+      "exact": true,
+      "query": 0.0793381929397583
+     },
+     "shuffled": 0.006504667457193136,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.05797363019763042,
+       "grad_norm": 0.7246703589503712,
+       "loss_after": 0.08209440112113953,
+       "loss_before": 0.11916974931955338,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1023736643567673,
+       "grad_norm": 0.5571000868155751,
+       "loss_after": 0.06002337858080864,
+       "loss_before": 0.08209440112113953,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13681476901447123,
+       "grad_norm": 0.4355300839409909,
+       "loss_after": 0.04642273858189583,
+       "loss_before": 0.06002337858080864,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16390833519216302,
+       "grad_norm": 0.3470773546158719,
+       "loss_after": 0.03770327940583229,
+       "loss_before": 0.04642273858189583,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.18555649142105046,
+       "grad_norm": 0.28264858493393263,
+       "loss_after": 0.03186076879501343,
+       "loss_before": 0.03770327940583229,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.20314492540351173,
+       "grad_norm": 0.23549293530537554,
+       "loss_after": 0.02776332013309002,
+       "loss_before": 0.03186076879501343,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.2176813415462808,
+       "grad_norm": 0.20056480970160168,
+       "loss_after": 0.024763336405158043,
+       "loss_before": 0.02776332013309002,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.229897870163235,
+       "grad_norm": 0.1741626854914512,
+       "loss_after": 0.022483423352241516,
+       "loss_before": 0.024763336405158043,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.8830742780404264,
+     "cosine_successive_updates": [
+      0.9944847504863141,
+      0.9949895459495897,
+      0.9948166655369312,
+      0.9946307248176726,
+      0.9947673223595142,
+      0.9952890055714972,
+      0.9960712039182247
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.05961389094591141,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 1,
+     "fast": {
+      "0": 0.05961389094591141,
+      "1": 0.03250844404101372,
+      "2": 0.01890200562775135,
+      "4": 0.009079014882445335,
+      "8": 0.007853093557059765
+     },
+     "fast_context_free": 0.02279266156256199,
+     "fast_ood": 0.020807649940252304,
+     "frozen": {
+      "context_free": 0.09721505641937256,
+      "ood": 0.07397831231355667,
+      "query": 0.05961389094591141
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.15599802136421204,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.13507765531539917,
+     "reset": {
+      "exact": true,
+      "query": 0.05961389094591141
+     },
+     "shuffled": 0.008807041682302952,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.0570495106506808,
+       "grad_norm": 0.7131188784941703,
+       "loss_after": 0.08870559185743332,
+       "loss_before": 0.12445834279060364,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10036156656581362,
+       "grad_norm": 0.5431021811149517,
+       "loss_after": 0.06778775900602341,
+       "loss_before": 0.08870559185743332,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.13379645740475216,
+       "grad_norm": 0.42190276491670975,
+       "loss_after": 0.05504787340760231,
+       "loss_before": 0.06778775900602341,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16005256168628787,
+       "grad_norm": 0.3348491763072651,
+       "loss_after": 0.0469391904771328,
+       "loss_before": 0.05504787340760231,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.18105618033219983,
+       "grad_norm": 0.2721448941273527,
+       "loss_after": 0.04152345657348633,
+       "loss_before": 0.0469391904771328,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.19818466474623728,
+       "grad_norm": 0.2266637136332423,
+       "loss_after": 0.03772587329149246,
+       "loss_before": 0.04152345657348633,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.21242221315941598,
+       "grad_norm": 0.19319838962945313,
+       "loss_after": 0.03494003042578697,
+       "loss_before": 0.03772587329149246,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.22447321573631615,
+       "grad_norm": 0.16802400996665162,
+       "loss_after": 0.03281579539179802,
+       "loss_before": 0.03494003042578697,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.8499413524954597,
+     "cosine_successive_updates": [
+      0.994209507279318,
+      0.9941692324245328,
+      0.9939480596786886,
+      0.9939209069537803,
+      0.9943072759725613,
+      0.9950868768685376,
+      0.996070782488434
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.051080115139484406,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 2,
+     "fast": {
+      "0": 0.051080115139484406,
+      "1": 0.0307098850607872,
+      "2": 0.019701087847352028,
+      "4": 0.010490160435438156,
+      "8": 0.007422123569995165
+     },
+     "fast_context_free": 0.023937150835990906,
+     "fast_ood": 0.016661904752254486,
+     "frozen": {
+      "context_free": 0.08315235376358032,
+      "ood": 0.06357849389314651,
+      "query": 0.051080115139484406
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.19251026213169098,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.11250531673431396,
+     "reset": {
+      "exact": true,
+      "query": 0.051080115139484406
+     },
+     "shuffled": 0.008171661756932735,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.045674884258372045,
+       "grad_norm": 0.5709360946000643,
+       "loss_after": 0.06659400463104248,
+       "loss_before": 0.08959701657295227,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.08065334595360595,
+       "grad_norm": 0.43866826223242783,
+       "loss_after": 0.05288920924067497,
+       "loss_before": 0.06659400463104248,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10790817413293774,
+       "grad_norm": 0.3443143589332691,
+       "loss_after": 0.044360820204019547,
+       "loss_before": 0.05288920924067497,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12953185668639286,
+       "grad_norm": 0.27658000463671145,
+       "loss_after": 0.038797300308942795,
+       "loss_before": 0.044360820204019547,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14701715892196462,
+       "grad_norm": 0.22771214624405167,
+       "loss_after": 0.0349833182990551,
+       "loss_before": 0.038797300308942795,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16143522467528282,
+       "grad_norm": 0.19214424013293677,
+       "loss_after": 0.03223855420947075,
+       "loss_before": 0.0349833182990551,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17355576518161675,
+       "grad_norm": 0.1658296420520226,
+       "loss_after": 0.030174976214766502,
+       "loss_before": 0.03223855420947075,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.18393223448120305,
+       "grad_norm": 0.14587421309985515,
+       "loss_after": 0.02856609970331192,
+       "loss_before": 0.030174976214766502,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.8254322306810524,
+     "cosine_successive_updates": [
+      0.9932515472363912,
+      0.9934194651511156,
+      0.9933723158265105,
+      0.9935190603454807,
+      0.9940410027321145,
+      0.9948945636055384,
+      0.9959034203204923
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.06705238670110703,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 3,
+     "fast": {
+      "0": 0.06705238670110703,
+      "1": 0.03939780592918396,
+      "2": 0.023858966305851936,
+      "4": 0.009699868969619274,
+      "8": 0.003140176646411419
+     },
+     "fast_context_free": 0.01724974252283573,
+     "fast_ood": 0.006507654208689928,
+     "frozen": {
+      "context_free": 0.08550793677568436,
+      "ood": 0.06900262087583542,
+      "query": 0.06705238670110703
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.12178877741098404,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.13290220499038696,
+     "reset": {
+      "exact": true,
+      "query": 0.06705238670110703
+     },
+     "shuffled": 0.003195459023118019,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.049825560048014174,
+       "grad_norm": 0.6228195248074774,
+       "loss_after": 0.06953994929790497,
+       "loss_before": 0.09688995033502579,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.08791368201929083,
+       "grad_norm": 0.4779279747622133,
+       "loss_after": 0.053269773721694946,
+       "loss_before": 0.06953994929790497,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11758866462326754,
+       "grad_norm": 0.3754659806028087,
+       "loss_after": 0.043120041489601135,
+       "loss_before": 0.053269773721694946,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14115197252757591,
+       "grad_norm": 0.302256879398382,
+       "loss_after": 0.0364687405526638,
+       "loss_before": 0.043120041489601135,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16022230420879616,
+       "grad_norm": 0.2494408499752604,
+       "loss_after": 0.03188856318593025,
+       "loss_before": 0.0364687405526638,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17594942099771507,
+       "grad_norm": 0.21082133017139493,
+       "loss_after": 0.028583480045199394,
+       "loss_before": 0.03188856318593025,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1891552747743156,
+       "grad_norm": 0.18201001396465202,
+       "loss_after": 0.026098651811480522,
+       "loss_before": 0.028583480045199394,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.2004305001222733,
+       "grad_norm": 0.15992795142524274,
+       "loss_after": 0.024166978895664215,
+       "loss_before": 0.026098651811480522,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.8750333984832248,
+     "cosine_successive_updates": [
+      0.9949761531622989,
+      0.9953480630109394,
+      0.9950072927914274,
+      0.9946011075512816,
+      0.9945080107487004,
+      0.9948585687315362,
+      0.9955702492739583
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.06897302716970444,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 4,
+     "fast": {
+      "0": 0.06897302716970444,
+      "1": 0.039372947067022324,
+      "2": 0.023455793038010597,
+      "4": 0.010400457307696342,
+      "8": 0.0062185050919651985
+     },
+     "fast_context_free": 0.0180515106767416,
+     "fast_ood": 0.014518298208713531,
+     "frozen": {
+      "context_free": 0.09988249838352203,
+      "ood": 0.08523110300302505,
+      "query": 0.06897302716970444
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.13843992352485657,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.12290450185537338,
+     "reset": {
+      "exact": true,
+      "query": 0.06897302716970444
+     },
+     "shuffled": 0.006830564700067043,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.05502370954210337,
+       "grad_norm": 0.6877963881947212,
+       "loss_after": 0.07279001921415329,
+       "loss_before": 0.10610755532979965,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.0969266767478834,
+       "grad_norm": 0.525284311797128,
+       "loss_after": 0.05323861911892891,
+       "loss_before": 0.07279001921415329,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12919900675236862,
+       "grad_norm": 0.4069262903088843,
+       "loss_after": 0.041417378932237625,
+       "loss_before": 0.05323861911892891,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15439421631019679,
+       "grad_norm": 0.320934647714782,
+       "loss_after": 0.03399503603577614,
+       "loss_before": 0.041417378932237625,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1743864640267323,
+       "grad_norm": 0.2587198424658853,
+       "loss_after": 0.029119597747921944,
+       "loss_before": 0.03399503603577614,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.19053825058143065,
+       "grad_norm": 0.21365049308483944,
+       "loss_after": 0.025758078321814537,
+       "loss_before": 0.029119597747921944,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.2038329902873487,
+       "grad_norm": 0.18069540944752274,
+       "loss_after": 0.023328768089413643,
+       "loss_before": 0.025758078321814537,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.21497880994173327,
+       "grad_norm": 0.15615888955312884,
+       "loss_after": 0.021498316898941994,
+       "loss_before": 0.023328768089413643,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.8843082513892608,
+     "cosine_successive_updates": [
+      0.9949394205707806,
+      0.9947710959897619,
+      0.9943714290463289,
+      0.9940032532493611,
+      0.9939260551794601,
+      0.9942786717979313,
+      0.9950177073600726
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.04954575002193451,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 5,
+     "fast": {
+      "0": 0.04954575002193451,
+      "1": 0.027247421443462372,
+      "2": 0.015358595177531242,
+      "4": 0.006042318884283304,
+      "8": 0.004629936069250107
+     },
+     "fast_context_free": 0.015052586793899536,
+     "fast_ood": 0.006578878033906221,
+     "frozen": {
+      "context_free": 0.07755875587463379,
+      "ood": 0.05230545625090599,
+      "query": 0.04954575002193451
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.13325174152851105,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.22063155472278595,
+     "reset": {
+      "exact": true,
+      "query": 0.04954575002193451
+     },
+     "shuffled": 0.003954934421926737,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.04791284353901555,
+       "grad_norm": 0.5989105468476621,
+       "loss_after": 0.057967379689216614,
+       "loss_before": 0.08325406908988953,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.08448561913103507,
+       "grad_norm": 0.45847458452219825,
+       "loss_after": 0.0430511049926281,
+       "loss_before": 0.057967379689216614,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11273875503327326,
+       "grad_norm": 0.35652385233819245,
+       "loss_after": 0.03396058827638626,
+       "loss_before": 0.0430511049926281,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1348568652109037,
+       "grad_norm": 0.28236175971526384,
+       "loss_after": 0.028207698836922646,
+       "loss_before": 0.03396058827638626,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15242147209908719,
+       "grad_norm": 0.22826309408613574,
+       "loss_after": 0.0244111567735672,
+       "loss_before": 0.028207698836922646,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16658414494746274,
+       "grad_norm": 0.18862371363771635,
+       "loss_after": 0.021792547777295113,
+       "loss_before": 0.0244111567735672,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17818669797810385,
+       "grad_norm": 0.15931118114801943,
+       "loss_after": 0.019906727597117424,
+       "loss_before": 0.021792547777295113,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1878456371264423,
+       "grad_norm": 0.13727537092808464,
+       "loss_after": 0.018494904041290283,
+       "loss_before": 0.019906727597117424,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.9102105823396623,
+     "cosine_successive_updates": [
+      0.9955119490091975,
+      0.9960624244947621,
+      0.9957665023741492,
+      0.9951955001557775,
+      0.9947459206211249,
+      0.9946677793817598,
+      0.9950296068741354
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.05999071151018143,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 6,
+     "fast": {
+      "0": 0.05999071151018143,
+      "1": 0.032303135842084885,
+      "2": 0.01828608289361,
+      "4": 0.007813174277544022,
+      "8": 0.005283911246806383
+     },
+     "fast_context_free": 0.018375011160969734,
+     "fast_ood": 0.012684497982263565,
+     "frozen": {
+      "context_free": 0.09296689182519913,
+      "ood": 0.06423311680555344,
+      "query": 0.05999071151018143
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.1280975639820099,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.124365895986557,
+     "reset": {
+      "exact": true,
+      "query": 0.05999071151018143
+     },
+     "shuffled": 0.005355486646294594,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.05470876990726927,
+       "grad_norm": 0.6838595849245551,
+       "loss_after": 0.06007428467273712,
+       "loss_before": 0.09272988885641098,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.09557105431478599,
+       "grad_norm": 0.512093403727301,
+       "loss_after": 0.04163765534758568,
+       "loss_before": 0.06007428467273712,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12649498254687078,
+       "grad_norm": 0.3894939940385287,
+       "loss_after": 0.030895957723259926,
+       "loss_before": 0.04163765534758568,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1502111726387942,
+       "grad_norm": 0.30132590298581957,
+       "loss_after": 0.024411899968981743,
+       "loss_before": 0.030895957723259926,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16867142109966649,
+       "grad_norm": 0.23787817717161355,
+       "loss_after": 0.02033056505024433,
+       "loss_before": 0.024411899968981743,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1832764554971551,
+       "grad_norm": 0.19215224724317465,
+       "loss_after": 0.01763860322535038,
+       "loss_before": 0.02033056505024433,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.19503209329136934,
+       "grad_norm": 0.15900406366819772,
+       "loss_after": 0.01577535830438137,
+       "loss_before": 0.01763860322535038,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.2046616465318158,
+       "grad_norm": 0.13467347194975232,
+       "loss_after": 0.014425414614379406,
+       "loss_before": 0.01577535830438137,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.8619011783960082,
+     "cosine_successive_updates": [
+      0.9945089376999853,
+      0.9947444816929019,
+      0.9943170015362724,
+      0.9937393655103308,
+      0.9934157505037745,
+      0.9935846452181246,
+      0.9942502138740458
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.07253557443618774,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 7,
+     "fast": {
+      "0": 0.07253557443618774,
+      "1": 0.04226522147655487,
+      "2": 0.025553319603204727,
+      "4": 0.010843884199857712,
+      "8": 0.004049766343086958
+     },
+     "fast_context_free": 0.02422606572508812,
+     "fast_ood": 0.009030056186020374,
+     "frozen": {
+      "context_free": 0.10351033508777618,
+      "ood": 0.07586353272199631,
+      "query": 0.07253557443618774
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.11082854121923447,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.1477326601743698,
+     "reset": {
+      "exact": true,
+      "query": 0.07253557443618774
+     },
+     "shuffled": 0.0052414825186133385,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.05239448242364063,
+       "grad_norm": 0.6549310192823893,
+       "loss_after": 0.06862065941095352,
+       "loss_before": 0.09867238253355026,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.09180927089876646,
+       "grad_norm": 0.4942326078445433,
+       "loss_after": 0.051401492208242416,
+       "loss_before": 0.06862065941095352,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12178754109672053,
+       "grad_norm": 0.378431444754915,
+       "loss_after": 0.04123173654079437,
+       "loss_before": 0.051401492208242416,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1448765511977573,
+       "grad_norm": 0.2949239192644694,
+       "loss_after": 0.03499872609972954,
+       "loss_before": 0.04123173654079437,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1629206053610426,
+       "grad_norm": 0.23482998968088453,
+       "loss_after": 0.0310047697275877,
+       "loss_before": 0.03499872609972954,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17725486904416377,
+       "grad_norm": 0.19158931227009368,
+       "loss_after": 0.02831571362912655,
+       "loss_before": 0.0310047697275877,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.18884468525547274,
+       "grad_norm": 0.16030727148243876,
+       "loss_after": 0.026411904022097588,
+       "loss_before": 0.02831571362912655,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.19838761141744118,
+       "grad_norm": 0.13736922180053013,
+       "loss_after": 0.024999892339110374,
+       "loss_before": 0.026411904022097588,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.872782610273117,
+     "cosine_successive_updates": [
+      0.9951873555994324,
+      0.9955665233450522,
+      0.995185605683705,
+      0.9946691362481839,
+      0.9944160626209614,
+      0.9946136079548483,
+      0.9952306395372754
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.06951679289340973,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 8,
+     "fast": {
+      "0": 0.06951679289340973,
+      "1": 0.038928404450416565,
+      "2": 0.022322513163089752,
+      "4": 0.008375335484743118,
+      "8": 0.003139427863061428
+     },
+     "fast_context_free": 0.021769119426608086,
+     "fast_ood": 0.006556818727403879,
+     "frozen": {
+      "context_free": 0.10011430829763412,
+      "ood": 0.07101251929998398,
+      "query": 0.06951679289340973
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.14393025636672974,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.02632647007703781,
+     "reset": {
+      "exact": true,
+      "query": 0.06951679289340973
+     },
+     "shuffled": 0.003443589434027672,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.05425980579681431,
+       "grad_norm": 0.6782475731514376,
+       "loss_after": 0.066220723092556,
+       "loss_before": 0.09855034202337265,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.09537173078383508,
+       "grad_norm": 0.5153091537543766,
+       "loss_after": 0.047453850507736206,
+       "loss_before": 0.066220723092556,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12684499732059387,
+       "grad_norm": 0.39670616057574865,
+       "loss_after": 0.036254093050956726,
+       "loss_before": 0.047453850507736206,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15124391590138572,
+       "grad_norm": 0.31057587978665185,
+       "loss_after": 0.029328055679798126,
+       "loss_before": 0.036254093050956726,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17044973240483652,
+       "grad_norm": 0.248324469862731,
+       "loss_after": 0.024853656068444252,
+       "loss_before": 0.029328055679798126,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.18583054572762672,
+       "grad_norm": 0.2033414840139149,
+       "loss_after": 0.021820081397891045,
+       "loss_before": 0.024853656068444252,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1983745902744999,
+       "grad_norm": 0.1706062243301717,
+       "loss_after": 0.019661782309412956,
+       "loss_before": 0.021820081397891045,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.20879387483518447,
+       "grad_norm": 0.14641023001154752,
+       "loss_after": 0.01805730350315571,
+       "loss_before": 0.019661782309412956,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.796172615712342,
+     "cosine_successive_updates": [
+      0.994663744469915,
+      0.9949180952701049,
+      0.9946567941097874,
+      0.9943162631556342,
+      0.9942655978975606,
+      0.9946667309964458,
+      0.9954454865612088
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.06652547419071198,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 9,
+     "fast": {
+      "0": 0.06652547419071198,
+      "1": 0.03835812583565712,
+      "2": 0.02271212823688984,
+      "4": 0.00921561662107706,
+      "8": 0.003941455855965614
+     },
+     "fast_context_free": 0.020354563370347023,
+     "fast_ood": 0.012519325129687786,
+     "frozen": {
+      "context_free": 0.09110036492347717,
+      "ood": 0.06862122565507889,
+      "query": 0.06652547419071198
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.16889284551143646,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.10859131067991257,
+     "reset": {
+      "exact": true,
+      "query": 0.06652547419071198
+     },
+     "shuffled": 0.004086753819137812,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.050785049430092995,
+       "grad_norm": 0.6348131321588955,
+       "loss_after": 0.07156774401664734,
+       "loss_before": 0.10004536062479019,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.08975167964004875,
+       "grad_norm": 0.48855712327407524,
+       "loss_after": 0.054605644196271896,
+       "loss_before": 0.07156774401664734,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.11994357905630246,
+       "grad_norm": 0.3809626199779409,
+       "loss_after": 0.04422217980027199,
+       "loss_before": 0.054605644196271896,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1436085030300048,
+       "grad_norm": 0.30187584514324073,
+       "loss_after": 0.03764689713716507,
+       "loss_before": 0.04422217980027199,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.1624198971918101,
+       "grad_norm": 0.24399325077147685,
+       "loss_after": 0.03330855444073677,
+       "loss_before": 0.03764689713716507,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17761792873707044,
+       "grad_norm": 0.20167980927451526,
+       "loss_after": 0.030313260853290558,
+       "loss_before": 0.03330855444073677,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.19011386067312888,
+       "grad_norm": 0.17054516141051657,
+       "loss_after": 0.028150008991360664,
+       "loss_before": 0.030313260853290558,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.20057245843318086,
+       "grad_norm": 0.14726086055133986,
+       "loss_after": 0.026523226872086525,
+       "loss_before": 0.028150008991360664,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.8120893144618023,
+     "cosine_successive_updates": [
+      0.9950171463426616,
+      0.9947274393452671,
+      0.9943286020866177,
+      0.994069288080847,
+      0.9941536200156514,
+      0.9946439480364505,
+      0.9954429342460626
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.05036075413227081,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 10,
+     "fast": {
+      "0": 0.05036075413227081,
+      "1": 0.030065026134252548,
+      "2": 0.018540315330028534,
+      "4": 0.008118678815662861,
+      "8": 0.003733330639079213
+     },
+     "fast_context_free": 0.020448066294193268,
+     "fast_ood": 0.0263800248503685,
+     "frozen": {
+      "context_free": 0.07983215898275375,
+      "ood": 0.08252479135990143,
+      "query": 0.05036075413227081
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.13007524609565735,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.12748664617538452,
+     "reset": {
+      "exact": true,
+      "query": 0.05036075413227081
+     },
+     "shuffled": 0.003919455222785473,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.04386246695783034,
+       "grad_norm": 0.5482808730086456,
+       "loss_after": 0.05181780084967613,
+       "loss_before": 0.07305263727903366,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.07750760254319702,
+       "grad_norm": 0.4217528027839304,
+       "loss_after": 0.039162520319223404,
+       "loss_before": 0.05181780084967613,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10365953590637639,
+       "grad_norm": 0.33000012849668486,
+       "loss_after": 0.031349215656518936,
+       "loss_before": 0.039162520319223404,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12428567803632258,
+       "grad_norm": 0.2633188419411239,
+       "loss_after": 0.026327498257160187,
+       "loss_before": 0.031349215656518936,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14080738658115913,
+       "grad_norm": 0.21466466298557255,
+       "loss_after": 0.022956572473049164,
+       "loss_before": 0.026327498257160187,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15425636807925114,
+       "grad_norm": 0.17891929448593574,
+       "loss_after": 0.020591508597135544,
+       "loss_before": 0.022956572473049164,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.16538444447061407,
+       "grad_norm": 0.15233307466333756,
+       "loss_after": 0.018861472606658936,
+       "loss_before": 0.020591508597135544,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17474084241913254,
+       "grad_norm": 0.1321724344186505,
+       "loss_after": 0.01754901371896267,
+       "loss_before": 0.018861472606658936,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    },
+    {
+     "alignment_r2": 0.8849015586472816,
+     "cosine_successive_updates": [
+      0.9945238491612832,
+      0.994459431581522,
+      0.9941487652888774,
+      0.9939754605191625,
+      0.994208265608256,
+      0.9948831445212752,
+      0.9958354983871032
+     ],
+     "disabled": {
+      "exact": true,
+      "query": 0.05114799737930298,
+      "status": [
+       "REFUSED_LEARNING_DISABLED"
+      ]
+     },
+     "episode": 11,
+     "fast": {
+      "0": 0.05114799737930298,
+      "1": 0.030193796381354332,
+      "2": 0.018584640696644783,
+      "4": 0.008368338458240032,
+      "8": 0.003871933789923787
+     },
+     "fast_context_free": 0.01543832290917635,
+     "fast_ood": 0.007428289856761694,
+     "frozen": {
+      "context_free": 0.07487758994102478,
+      "ood": 0.05055541917681694,
+      "query": 0.05114799737930298
+     },
+     "leakage": {
+      "probe_tokens_carry_no_target": true,
+      "query_support_disjoint": true
+     },
+     "null": 0.12063687294721603,
+     "parity": {
+      "full_vs_cached_max_abs": 0.0,
+      "states_unchanged_by_the_core": true
+     },
+     "previous_episode_core": 0.032696228474378586,
+     "reset": {
+      "exact": true,
+      "query": 0.05114799737930298
+     },
+     "shuffled": 0.0036239856854081154,
+     "trace": [
+      {
+       "clipped": false,
+       "delta_norm": 0.04543933728489292,
+       "grad_norm": 0.5679917412095866,
+       "loss_after": 0.05055207014083862,
+       "loss_before": 0.07332039624452591,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 1
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.08023141434172594,
+       "grad_norm": 0.436253080617028,
+       "loss_after": 0.03701147809624672,
+       "loss_before": 0.05055207014083862,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 2
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.10727605002241676,
+       "grad_norm": 0.34147354099858646,
+       "loss_after": 0.028639107942581177,
+       "loss_before": 0.03701147809624672,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 3
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.12864407113144577,
+       "grad_norm": 0.273044526198095,
+       "loss_after": 0.02323031984269619,
+       "loss_before": 0.028639107942581177,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 4
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.14582935513746695,
+       "grad_norm": 0.22353859720825198,
+       "loss_after": 0.019564762711524963,
+       "loss_before": 0.02323031984269619,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 5
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.15991291642440372,
+       "grad_norm": 0.18752075372424243,
+       "loss_after": 0.016957230865955353,
+       "loss_before": 0.019564762711524963,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 6
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.17167636145782667,
+       "grad_norm": 0.16096660228692578,
+       "loss_after": 0.015017270110547543,
+       "loss_before": 0.016957230865955353,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 7
+      },
+      {
+       "clipped": false,
+       "delta_norm": 0.18168399097480514,
+       "grad_norm": 0.1409479743234771,
+       "loss_after": 0.013517997227609158,
+       "loss_before": 0.015017270110547543,
+       "projected": false,
+       "status": "APPLIED",
+       "step": 8
+      }
+     ]
+    }
+   ],
+   "selected_step": 2000,
+   "specialist_core": [
+    "mlp.hidden.weight",
+    "mlp.hidden.bias",
+    "mlp.out.weight",
+    "mlp.out.bias"
+   ],
+   "specialist_parameters": 1264,
+   "trace": [
+    {
+     "dev_k32": 0.8420462608337402,
+     "seconds": 0.1,
+     "step": 0
+    },
+    {
+     "dev_k32": 0.01881890371441841,
+     "seconds": 18.6,
+     "step": 250
+    },
+    {
+     "dev_k32": 0.01755707524716854,
+     "seconds": 37.0,
+     "step": 500
+    },
+    {
+     "dev_k32": 0.01793389953672886,
+     "seconds": 54.5,
+     "step": 750
+    },
+    {
+     "dev_k32": 0.016146618872880936,
+     "seconds": 73.8,
+     "step": 1000
+    },
+    {
+     "dev_k32": 0.01448040921241045,
+     "seconds": 94.8,
+     "step": 1250
+    },
+    {
+     "dev_k32": 0.009842338040471077,
+     "seconds": 114.9,
+     "step": 1500
+    },
+    {
+     "dev_k32": 0.0063758427277207375,
+     "seconds": 133.0,
+     "step": 1750
+    },
+    {
+     "dev_k32": 0.005501642357558012,
+     "seconds": 151.2,
+     "step": 2000
+    }
+   ],
+   "training_seconds": 151.2
+  }
+ },
+ "command": "episodic",
+ "eval_split": "TEST",
+ "family": "conditional",
+ "namespace": "R12C",
+ "phase": "ELPIS_TORCH_R12_FAST_STATE",
+ "provenance": {
+  "cgc_sha256": "2a5a1103a361c8a9a29865caca4300f5b5eac659b612465fcca1f8c1feb02d3d",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "ersa_model_sha256": "5583a9c5dc0c86dadff3b24c98f06df46eb36d10c663156351647c154efb17e1",
+  "ersa_sha256": "ebcbbbf4f50d0b530bec97f2c3287017aea046204f7141ba621513a9739fbabe",
+  "fast_episodes_sha256": "9f600e06798198aabfdec5798402769c6e91ef790eb2cef12dd7f044d6cbcbb3",
+  "fast_state_sha256": "90798e649f49b8b86cb852de14ac969e4db9eefdbacdcdaa0015d554c231b898",
+  "git_revision": "fae196d74bb02531cc3397c7574e817200bf52ee",
+  "lastblock_sha256": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "preregistration_sha256": "f0f106067f1672a3dd4b5fa17f0f51543d2eca4753dc4e48080cdeed4552d44c",
+  "profile_sha256": "8e8ae728f14f6aae7458a20125e77fb93427e7a047ff63b64500266197c5b4ad",
+  "python": "3.13.18",
+  "r11_amendment_sha256": "ede13d3d982963fa341f4e46ccf9d2d6ad87670a61561b38bad8298e3dd51a20",
+  "r11_stage_c_runner_sha256": "2831eb02f7e3e96f132bc285ceb02d4333fce7a2aeb6bae4bde160cae308b8e8",
+  "runner_sha256": "f4d1ad996d15281de264e2fec88982d4233eb3f7d67a2130862d6929d3a25a21",
+  "session_sha256": "6e4d58bdb868c308584b614cfe728237a5dd2b1492645834a830e5dfb59a0568",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "stack_sha256": "3945ae033d8aadaa48e8e42d40deef2d92329b16069197765560f52ba22a905b",
+  "tasks_sha256": "dd016c5dd233cd3d1625e49dae019545e2f1d045846d283f0e15462ffc35d101",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "regime": "T2",
+ "seconds": 531.3,
+ "seed": 406,
+ "stage": "confirmation",
+ "status": "COMPLETED",
+ "training": {
+  "adam_lr": 0.003,
+  "batch": 16,
+  "dev_episodes": 8,
+  "select_every": 250,
+  "steps": 2000
+ }
+}
