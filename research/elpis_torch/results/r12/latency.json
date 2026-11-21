@@ -1,0 +1,70 @@
+{
+ "arms": {
+  "G2": {
+   "fast_state_bytes": {
+    "delta": 480,
+    "total": 960,
+    "velocity": 480
+   },
+   "median_us": {
+    "adapted_query_output_cached": 741.8195000354899,
+    "adapted_query_output_full": 4851.716500070324,
+    "eight_bounded_updates": 25314.760999208374,
+    "eight_updates_full_recomputation": 62532.368499887525,
+    "frozen_stack_forward_80_tokens": 4934.483999932127,
+    "gradient_cached_32": 1120.6644994672388,
+    "one_bounded_update": 1995.694499782985,
+    "reset": 2.2550002540810965,
+    "support_evaluation_cached_32": 661.7684998673212
+   },
+   "support_activations_bytes": 8192,
+   "support_targets_bytes": 384
+  },
+  "G3": {
+   "fast_state_bytes": {
+    "delta": 480,
+    "total": 960,
+    "velocity": 480
+   },
+   "median_us": {
+    "adapted_query_output_cached": 854.6799999749055,
+    "adapted_query_output_full": 5261.459500161436,
+    "eight_bounded_updates": 18924.149999747897,
+    "eight_updates_full_recomputation": 63245.423000353185,
+    "frozen_stack_forward_80_tokens": 4894.215499916754,
+    "gradient_cached_32": 1859.3585000417079,
+    "one_bounded_update": 3527.140000187501,
+    "reset": 7.248000201798277,
+    "support_evaluation_cached_32": 782.5630000297679
+   },
+   "support_activations_bytes": 8192,
+   "support_targets_bytes": 384
+  }
+ },
+ "command": "latency",
+ "label": "MEASURED CPU wall-clock, one thread; PERFORMANCE_ONLY",
+ "phase": "ELPIS_TORCH_R12_FAST_STATE",
+ "provenance": {
+  "cgc_sha256": "2a5a1103a361c8a9a29865caca4300f5b5eac659b612465fcca1f8c1feb02d3d",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "ersa_model_sha256": "5583a9c5dc0c86dadff3b24c98f06df46eb36d10c663156351647c154efb17e1",
+  "ersa_sha256": "ebcbbbf4f50d0b530bec97f2c3287017aea046204f7141ba621513a9739fbabe",
+  "fast_episodes_sha256": "9f600e06798198aabfdec5798402769c6e91ef790eb2cef12dd7f044d6cbcbb3",
+  "fast_state_sha256": "90798e649f49b8b86cb852de14ac969e4db9eefdbacdcdaa0015d554c231b898",
+  "git_revision": "388559b53781ee2477a183d022f57fb40723f6a2",
+  "lastblock_sha256": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "preregistration_sha256": null,
+  "profile_sha256": "8e8ae728f14f6aae7458a20125e77fb93427e7a047ff63b64500266197c5b4ad",
+  "python": "3.13.18",
+  "r11_amendment_sha256": "ede13d3d982963fa341f4e46ccf9d2d6ad87670a61561b38bad8298e3dd51a20",
+  "r11_stage_c_runner_sha256": "2831eb02f7e3e96f132bc285ceb02d4333fce7a2aeb6bae4bde160cae308b8e8",
+  "runner_sha256": "f4d1ad996d15281de264e2fec88982d4233eb3f7d67a2130862d6929d3a25a21",
+  "session_sha256": "6e4d58bdb868c308584b614cfe728237a5dd2b1492645834a830e5dfb59a0568",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "stack_sha256": "3945ae033d8aadaa48e8e42d40deef2d92329b16069197765560f52ba22a905b",
+  "tasks_sha256": "dd016c5dd233cd3d1625e49dae019545e2f1d045846d283f0e15462ffc35d101",
+  "threads": 1,
+  "torch": "2.15.0+cpu"
+ }
+}

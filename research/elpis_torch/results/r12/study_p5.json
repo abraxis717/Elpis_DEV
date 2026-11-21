@@ -1,0 +1,586 @@
+{
+ "attribution": {
+  "absence_of_benefit": {
+   "T1": "IN_CONTEXT_INFERENCE_BETTER",
+   "T2": "IN_CONTEXT_INFERENCE_BETTER"
+  },
+  "initialization": "EXPLAINS_THE_T1_CURVE",
+  "routing": "FIXED_SINGLE_EXPERT_NOT_A_FACTOR; identity IDENTITY_MATTERS",
+  "task_feature_access": "STACK_REPRESENTATION_BETTER"
+ },
+ "command": "combine",
+ "comparisons": {
+  "T1": {
+   "in_context_g0_vs_stage_b_g2": {
+    "better": true,
+    "group_geomeans": [
+     2.2717900031268017,
+     0.9364967951054829,
+     0.34930320538302273,
+     0.35008990750326774,
+     0.3340126020148793,
+     0.6983281648366112,
+     0.18644153220531354,
+     1.9359403137135376,
+     0.20671068442512205,
+     0.22377416022476748,
+     1.1944099030916187,
+     0.5132441800072178
+    ],
+    "groups_below_one": 0.75,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.5404601334176102,
+    "sign_test_p": 3.066470581631991e-07
+   },
+   "stack_g2_vs_stage_b_g2": {
+    "better": false,
+    "group_geomeans": [
+     2.4874614834412307,
+     1.285221433150144,
+     1.2948833037058922,
+     1.3827844809881078,
+     0.4040504099377218,
+     1.0477511679628735,
+     0.798642333100387,
+     1.0541296948310248,
+     1.1444134303387485,
+     0.8623330864322022,
+     2.1776043715603173,
+     3.094240993126842
+    ],
+    "groups_below_one": 0.25,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 1.242713129829685,
+    "sign_test_p": 0.9923147425250431
+   },
+   "stage_b_g2_vs_in_context_g0": {
+    "better": false,
+    "group_geomeans": [
+     0.44018153025747964,
+     1.0678093136318363,
+     2.862842323200173,
+     2.856409106825412,
+     2.9938990144912343,
+     1.4319915053604797,
+     5.363611788487009,
+     0.5165448505392148,
+     4.837679304197919,
+     4.468791208938338,
+     0.8372335137305822,
+     1.9483903353486383
+    ],
+    "groups_below_one": 0.25,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 1.8502752343202085,
+    "sign_test_p": 0.9999998775968699
+   },
+   "stage_b_g2_vs_stack_g2": {
+    "better": true,
+    "group_geomeans": [
+     0.40201627508883847,
+     0.7780760374879124,
+     0.7722703637756771,
+     0.7231784950937703,
+     2.4749387091430863,
+     0.9544250873461536,
+     1.2521249607667653,
+     0.9486498719308901,
+     0.8738100877617262,
+     1.1596447077513607,
+     0.45922023902049336,
+     0.3231810328352815
+    ],
+    "groups_below_one": 0.75,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.804690942741589,
+    "sign_test_p": 0.01205568238806894
+   },
+   "stage_b_g2_vs_stage_b_g0": {
+    "better": true,
+    "group_geomeans": [
+     0.06705565473503589,
+     0.07809348012226841,
+     0.03163238314418394,
+     0.06023285055597269,
+     0.12080157258612935,
+     0.057354094433955595,
+     0.17737318077903155,
+     0.08070547323118103,
+     0.10768352153868328,
+     0.10125802764318766,
+     0.11251106261746331,
+     0.051904522753557274
+    ],
+    "groups_below_one": 1.0,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.07942402358223796,
+    "sign_test_p": 4.484155085839415e-44
+   },
+   "stage_b_g2_vs_stage_b_g3": {
+    "better": true,
+    "group_geomeans": [
+     0.9552014537699385,
+     0.7163623247600074,
+     0.4416005275426815,
+     0.5822089282503292,
+     1.3169937851486155,
+     0.6241698566329575,
+     0.7759706522787192,
+     0.5264773769046174,
+     0.6845252449401765,
+     0.6700943766357493,
+     0.7135796865740266,
+     0.5976250511575385
+    ],
+    "groups_below_one": 0.9166666666666666,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.6895573096376558,
+    "sign_test_p": 1.4617903504106194e-17
+   },
+   "stage_b_g2_vs_stage_b_misrouted": {
+    "better": true,
+    "group_geomeans": [
+     0.12271923828115745,
+     0.14209804005370627,
+     0.07110582619977349,
+     0.11571824998168943,
+     0.20373724992936637,
+     0.07748261535845538,
+     0.25488948757556973,
+     0.12241454143357787,
+     0.17396060342119724,
+     0.15670269523875807,
+     0.13563416862819613,
+     0.07648090781900563
+    ],
+    "groups_below_one": 1.0,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.12834917417414068,
+    "sign_test_p": 4.681906325124933e-40
+   }
+  },
+  "T2": {
+   "in_context_g0_vs_stage_b_g2": {
+    "better": true,
+    "group_geomeans": [
+     1.062698915660119,
+     0.38288591372694325,
+     0.48924056178977776,
+     0.6318748587608503,
+     2.6539404389167824,
+     0.2931362249002233,
+     0.12122862127913141,
+     0.2707454840712208,
+     0.3628356992721151,
+     0.2238666970173367,
+     0.2245013113183037,
+     0.6508305999071199
+    ],
+    "groups_below_one": 0.8333333333333334,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.4283139437363278,
+    "sign_test_p": 1.906165627559443e-21
+   },
+   "stack_g2_vs_stage_b_g2": {
+    "better": true,
+    "group_geomeans": [
+     0.39155969585025785,
+     1.0288467182830625,
+     0.28024176332443096,
+     0.3038385830556828,
+     1.1278711164408606,
+     0.6845071837083954,
+     0.25912819324330166,
+     0.6601347249245111,
+     0.25042555792515453,
+     0.20889025379547455,
+     0.36196358976553794,
+     0.35904760025382937
+    ],
+    "groups_below_one": 0.8333333333333334,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.42076884509833445,
+    "sign_test_p": 1.2773577340182916e-20
+   },
+   "stage_b_g2_vs_in_context_g0": {
+    "better": false,
+    "group_geomeans": [
+     0.9410003014624587,
+     2.6117440317043226,
+     2.0439842443597125,
+     1.5825918473177873,
+     0.3767982074262957,
+     3.411383224097863,
+     8.248877117042182,
+     3.693505741861037,
+     2.756068385790319,
+     4.4669440042819675,
+     4.454316966470518,
+     1.5364981304546992
+    ],
+    "groups_below_one": 0.16666666666666666,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 2.334736037955386,
+    "sign_test_p": 1.0
+   },
+   "stage_b_g2_vs_stack_g2": {
+    "better": false,
+    "group_geomeans": [
+     2.5538889998076435,
+     0.9719620835927806,
+     3.568347515863714,
+     3.291221246304771,
+     0.8866261272437103,
+     1.460905047895022,
+     3.8590937847549305,
+     1.5148422924038025,
+     3.9932026438726083,
+     4.7872027623610665,
+     2.7627088145737266,
+     2.7851460343783057
+    ],
+    "groups_below_one": 0.16666666666666666,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 2.376601812727599,
+    "sign_test_p": 1.0
+   },
+   "stage_b_g2_vs_stage_b_g0": {
+    "better": true,
+    "group_geomeans": [
+     0.13796854735983033,
+     0.05908307277325985,
+     0.1339065330080364,
+     0.09261282899149073,
+     0.049165775947487646,
+     0.08264638156057669,
+     0.30167517770248287,
+     0.0636719471040972,
+     0.07631945054226395,
+     0.10141330082860664,
+     0.07755636306256775,
+     0.06585565780989774
+    ],
+    "groups_below_one": 1.0,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.09074776429792349,
+    "sign_test_p": 4.484155085839415e-44
+   },
+   "stage_b_g2_vs_stage_b_g3": {
+    "better": true,
+    "group_geomeans": [
+     0.7636240060779556,
+     0.5640113391685172,
+     0.8565344539407799,
+     0.8883875286071726,
+     1.2384636333045402,
+     0.9766049359064994,
+     0.8870811331473758,
+     0.631401456656979,
+     0.713607035074499,
+     0.9673499966152886,
+     0.609528010183561,
+     0.7385838538921322
+    ],
+    "groups_below_one": 0.9166666666666666,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.8002674799132199,
+    "sign_test_p": 1.85317092044342e-12
+   },
+   "stage_b_g2_vs_stage_b_misrouted": {
+    "better": true,
+    "group_geomeans": [
+     0.18804239479297857,
+     0.07642083714801488,
+     0.17537503700122936,
+     0.16083718861298396,
+     0.11795575069697622,
+     0.1759056600972236,
+     0.43573164818863136,
+     0.105604529254926,
+     0.08891190820962624,
+     0.14883848050566645,
+     0.09752092234991927,
+     0.1025777353568279
+    ],
+    "groups_below_one": 1.0,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.1388233025220098,
+    "sign_test_p": 6.502024874467151e-42
+   }
+  },
+  "T2_stack": {
+   "correct_vs_misrouted_branch": {
+    "better": true,
+    "group_geomeans": [
+     0.36365174725342253,
+     0.4083403731960323,
+     0.3373462209086697,
+     0.3158742361187666,
+     0.19148097974256556,
+     0.6026097577280947,
+     0.45601023741642405,
+     0.15369580143706144,
+     0.1624914590661701,
+     0.11728692361752009,
+     0.2848789201349003,
+     0.28762308601468933
+    ],
+    "groups_below_one": 1.0,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.27651692588324156,
+    "sign_test_p": 7.926488932380923e-37
+   },
+   "correct_vs_misrouted_unit": {
+    "better": true,
+    "group_geomeans": [
+     0.2781040803992461,
+     0.2500391111840196,
+     0.3297298764991658,
+     0.26283709096410274,
+     0.21131791596114247,
+     0.5059571082855059,
+     0.3530362306159041,
+     0.138579122567301,
+     0.09672297287703158,
+     0.11954735645523266,
+     0.23556963598112085,
+     0.20219999827747218
+    ],
+    "groups_below_one": 1.0,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.22557958138151854,
+    "sign_test_p": 4.681906325124933e-40
+   },
+   "fixed_vs_learned_projection": {
+    "better": false,
+    "group_geomeans": [
+     0.3937118839102655,
+     0.4206275037591794,
+     1.0080260250938868,
+     1.9740303779624286,
+     0.6059939812712769,
+     1.239202679111915,
+     1.0202938280875795,
+     1.125017965259447,
+     1.622115194625894,
+     2.4716008091658486,
+     0.7205042950464934,
+     0.827283297308165
+    ],
+    "groups_below_one": 0.4166666666666667,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 0.9682310351526826,
+    "sign_test_p": 0.7200894311446014
+   },
+   "learned_vs_fixed_projection": {
+    "better": false,
+    "group_geomeans": [
+     2.5399284117822543,
+     2.3774004102511737,
+     0.9920378790883506,
+     0.5065778172229489,
+     1.6501814059310662,
+     0.8069704955097888,
+     0.9801098198098308,
+     0.8888746943426669,
+     0.6164790289327315,
+     0.40459608052058144,
+     1.3879167783940427,
+     1.208775764304471
+    ],
+    "groups_below_one": 0.5833333333333334,
+    "n_episodes": 144,
+    "pooled_geomean_ratio": 1.0328113473891154,
+    "sign_test_p": 0.33853489718341645
+   }
+  }
+ },
+ "decodability_median": {
+  "fixed_probe_code": 0.9456480322977516,
+  "fixed_probe_stream": 0.9975029224803611,
+  "fixed_query_code": 0.9301706866638813,
+  "fixed_query_stream": 0.997705604960714,
+  "learned_probe_code": 0.9748438159451451,
+  "learned_probe_stream": 0.997955218481704,
+  "learned_query_code": 0.9714708061337185,
+  "learned_query_stream": 0.9975933642623618
+ },
+ "disposition": "COMPLETED",
+ "groups": {
+  "T1": [
+   [
+    "smooth",
+    301
+   ],
+   [
+    "conditional",
+    301
+   ],
+   [
+    "smooth",
+    302
+   ],
+   [
+    "conditional",
+    302
+   ],
+   [
+    "smooth",
+    303
+   ],
+   [
+    "conditional",
+    303
+   ],
+   [
+    "smooth",
+    304
+   ],
+   [
+    "conditional",
+    304
+   ],
+   [
+    "smooth",
+    305
+   ],
+   [
+    "conditional",
+    305
+   ],
+   [
+    "smooth",
+    306
+   ],
+   [
+    "conditional",
+    306
+   ]
+  ],
+  "T2": [
+   [
+    "smooth",
+    401
+   ],
+   [
+    "conditional",
+    401
+   ],
+   [
+    "smooth",
+    402
+   ],
+   [
+    "conditional",
+    402
+   ],
+   [
+    "smooth",
+    403
+   ],
+   [
+    "conditional",
+    403
+   ],
+   [
+    "smooth",
+    404
+   ],
+   [
+    "conditional",
+    404
+   ],
+   [
+    "smooth",
+    405
+   ],
+   [
+    "conditional",
+    405
+   ],
+   [
+    "smooth",
+    406
+   ],
+   [
+    "conditional",
+    406
+   ]
+  ]
+ },
+ "inputs": {
+  "p5_b_T1_s301.json": "4a9c8354c195f2301bac4050bf654568470c61c204b2b163a390897739b3fc61",
+  "p5_b_T1_s302.json": "40e28fa51ee30dd90901ca798e1509ac6a813affd9a698f5a24636c3758c8d49",
+  "p5_b_T1_s303.json": "73096d33d2ff8ce2f0a403476aa53cfbd9d5bca07663b40318fe9b36c82bf6fb",
+  "p5_b_T1_s304.json": "ca2735c67e28e24ea2620fa561fdea571dcbfc260bbe7ceff5f0a9c0314a4074",
+  "p5_b_T1_s305.json": "e82578b2c6645a8fa68335e029c6042e1c15054b1e9a07bb75f184fca7e471aa",
+  "p5_b_T1_s306.json": "3e0107a0ddcca871ce3df6ece084bc025a3a5bc28696cbd481fe949ce5a47185",
+  "p5_b_T2_s401.json": "4c20524273fce2cadf0c436cc1e8f7c4a22b2d67d56899fabe6fd0b99ba31af7",
+  "p5_b_T2_s402.json": "bfbc842991965b6e36ae88173b596cdef58bb24fd14ee9eaa7bffbdce903e706",
+  "p5_b_T2_s403.json": "7a5f119706eb529e6157e81f0295fdf2d7592028510fdbdc69040afb8e255997",
+  "p5_b_T2_s404.json": "2f8197f79ef03ee66a8ab3dbc712fe76e5f34a7675939b17b849512ada3179f1",
+  "p5_b_T2_s405.json": "badb93ed79630adad9a59916054a1598004991a66474a55aca79b4f2435f4dfd",
+  "p5_b_T2_s406.json": "49ff0f52e72422607f8ec41287daf2d8274c59b65c0d6babd3cd7a97e52f9705",
+  "p5_c_s401.json": "9177bbea9f2de3f91057c195cfdf04b02bff53e7161c25c5cfe33244e7c4a2d7",
+  "p5_c_s402.json": "8c81048c43762a7ffa11ffb04013cbc00cea618136e2039493b6adae780403b9",
+  "p5_c_s403.json": "b4574fd0f0f418b7e73b553f3abdef8410549f6eb0bc0f3d228ff3a5c3e4ddd7",
+  "p5_c_s404.json": "3ef85cd2e53400d6507638345dce4108a433bd03e4ede13111f159f3014f8c6d",
+  "p5_c_s405.json": "b0b2352129a1fae905d54e7cbc1b3d94eb1ecc894cf689513fb917f1f05bbd70",
+  "p5_c_s406.json": "5ba0b496d46242800c1249d16d7fad6000053ddc26d5544bf517bd3599be307c"
+ },
+ "integrity": {
+  "all": true,
+  "fixed_projection_unchanged": true,
+  "gates": true,
+  "rebuilt_identical": true
+ },
+ "label": "DIAGNOSIS ONLY: P5 qualifies nothing and changes no R12 disposition. The Stage B condition reads the exact task coordinates (an oracle by construction) and is never a claimed inference path.",
+ "phase": "ELPIS_TORCH_R12_P5_REPRESENTATION_SEAM",
+ "provenance": {
+  "amendment_sha256": "e655c3fc0f46063b4a5c42622276004539628deac04cd212863307203705fdb7",
+  "cgc_sha256": "2a5a1103a361c8a9a29865caca4300f5b5eac659b612465fcca1f8c1feb02d3d",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "ersa_model_sha256": "5583a9c5dc0c86dadff3b24c98f06df46eb36d10c663156351647c154efb17e1",
+  "ersa_sha256": "ebcbbbf4f50d0b530bec97f2c3287017aea046204f7141ba621513a9739fbabe",
+  "fast_episodes_sha256": "9f600e06798198aabfdec5798402769c6e91ef790eb2cef12dd7f044d6cbcbb3",
+  "fast_state_sha256": "90798e649f49b8b86cb852de14ac969e4db9eefdbacdcdaa0015d554c231b898",
+  "git_revision": "1593a1e8a2f52eab6ba91f67e7ce5a149c35d05b",
+  "lastblock_sha256": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "p5_runner_sha256": "a03a95b3450f28d2b5104d2d8589a825a0d66d348c1572ae5d648d994fa426e7",
+  "preregistration_sha256": "f0f106067f1672a3dd4b5fa17f0f51543d2eca4753dc4e48080cdeed4552d44c",
+  "profile_sha256": "8e8ae728f14f6aae7458a20125e77fb93427e7a047ff63b64500266197c5b4ad",
+  "python": "3.13.18",
+  "r11_amendment_sha256": "ede13d3d982963fa341f4e46ccf9d2d6ad87670a61561b38bad8298e3dd51a20",
+  "r11_runner_sha256": "a7cf027f0ce9b58061c28962855640be8d389924062a2b0c37c57a01b66480b1",
+  "r11_stage_c_runner_sha256": "2831eb02f7e3e96f132bc285ceb02d4333fce7a2aeb6bae4bde160cae308b8e8",
+  "runner_sha256": "f4d1ad996d15281de264e2fec88982d4233eb3f7d67a2130862d6929d3a25a21",
+  "session_sha256": "6e4d58bdb868c308584b614cfe728237a5dd2b1492645834a830e5dfb59a0568",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "stack_sha256": "3945ae033d8aadaa48e8e42d40deef2d92329b16069197765560f52ba22a905b",
+  "study_r12_sha256": "0fe130cf7aebcb1cd2d7b41ac9e4cb3c1ea090ede0a658c3491fdc103732cafc",
+  "tasks_sha256": "dd016c5dd233cd3d1625e49dae019545e2f1d045846d283f0e15462ffc35d101",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "readings": {
+  "T1": {
+   "benefit_ceiling": "IN_CONTEXT_INFERENCE_BETTER",
+   "stage_b_assay": "REPRODUCED",
+   "stage_b_identity": "IDENTITY_MATTERS",
+   "task_feature_access": "COORDINATE_ACCESS_BETTER"
+  },
+  "T2": {
+   "benefit_ceiling": "IN_CONTEXT_INFERENCE_BETTER",
+   "stage_b_assay": "REPRODUCED",
+   "stage_b_identity": "IDENTITY_MATTERS",
+   "task_feature_access": "STACK_REPRESENTATION_BETTER"
+  },
+  "T2_stack": {
+   "identity_branch": "IDENTITY_MATTERS",
+   "identity_unit": "IDENTITY_MATTERS",
+   "projection": "NO_DIFFERENCE_ESTABLISHED"
+  }
+ },
+ "refused": []
+}

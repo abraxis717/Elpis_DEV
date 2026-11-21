@@ -1,0 +1,183 @@
+{
+ "arms": {
+  "G0": {
+   "gate_mode": "learned",
+   "kind": "ffn"
+  },
+  "G1": {
+   "gate_mode": "learned",
+   "kind": "ffn+cgc"
+  },
+  "G2": {
+   "gate_mode": "fixed",
+   "kind": "ffn+cgc"
+  },
+  "G3": {
+   "gate_mode": "fixed",
+   "kind": "ffn+mlp"
+  }
+ },
+ "base": {
+  "branch": "claude/funny-turing-obbdy5",
+  "main": "72b66b1f2c069ff331bf39992bec47f31efdc377",
+  "post_merge_ci": "44850567035 (success)"
+ },
+ "budgets": {
+  "hours": 3,
+  "memory": "well under 2 GiB per process",
+  "threads": "2 per process"
+ },
+ "development": {
+  "label": "DEVELOPMENT ONLY: T1 on R11C_DEV seed 31 (split R12DEV), T2 on R12C_DEV seed 41; no confirmation seed, namespace or split was used",
+  "records": {
+   "dev_t1_smooth_s31.json": "fe532f4340249ad30ac24f376e1840d4b8c2121b6f43555d63b6730ec4efdbba",
+   "dev_t2_smooth_s41.json": "2bfc53761e42198229922f8b22fc7f4f406301311f28008224c5cc2f94580c5e"
+  }
+ },
+ "episodes": {
+  "ood": 32,
+  "probe_rule": "the same 32 observed support pairs, inputs in query format [x, 0, 1], run WITHOUT context; targets enter only the support loss",
+  "probes": 32,
+  "queries": 48,
+  "support_in_context": 32,
+  "test": 12
+ },
+ "families": [
+  "smooth",
+  "conditional"
+ ],
+ "fast_state": {
+  "delta_bound": 1.28,
+  "grad_clip": 2.0,
+  "lr": 0.08,
+  "max_steps": 8,
+  "momentum": 0.0,
+  "reject_loss_increase": false,
+  "steps_recorded": [
+   0,
+   1,
+   2,
+   4,
+   8
+  ]
+ },
+ "k_grid": [
+  0,
+  1,
+  2,
+  4,
+  8,
+  16,
+  32
+ ],
+ "phase": "ELPIS_TORCH_R12_FAST_STATE",
+ "question": "Inside R11's actual Stage C ERSA stack, does restoring the exact episode-local update of the LAST block's 120-parameter specialist core (R11 Stage B's 8 clipped SGD steps on the observed support) recover CGC's specialist advantage over the FFN-only stack and over a matched fast-adapted GELU specialist?",
+ "r11_amendment_sha256": "ede13d3d982963fa341f4e46ccf9d2d6ad87670a61561b38bad8298e3dd51a20",
+ "regimes": {
+  "T1": {
+   "eval_split": "R12TEST",
+   "name": "R11 Stage C models, rebuilt from their recorded seeds with R11's own code",
+   "namespace": "R11C",
+   "seeds": [
+    301,
+    302,
+    303,
+    304,
+    305,
+    306
+   ],
+   "training": "R11 amendment_stage_c training, unchanged (never trained for adaptation)",
+   "verification": "each rebuilt arm's R11 TEST rows, trace and selected step equal the committed R11 record (bitwise); a mismatch is reported and the group is NONQUAL"
+  },
+  "T2": {
+   "eval_split": "TEST",
+   "name": "the same stack trained with the fast update in the loop (episodic objective)",
+   "namespace": "R12C",
+   "seeds": [
+    401,
+    402,
+    403,
+    404,
+    405,
+    406
+   ],
+   "training": "R11's training plan (Adam 3e-3, cosine, 2,000 steps of 16 episodes, k from the grid, DEV selection at k = 32 every 250 steps) with ONE change: a specialist arm's query pass runs under its last-block core adapted on that step's probes (first-order outer gradient), and its DEV score is taken after adaptation. G0 trains with R11's train_stack."
+  }
+ },
+ "representation_stage": {
+  "procedure": "a separate amendment, frozen before any of its data; oracle task coordinates are diagnosis only and never part of a claimed path",
+  "trigger": "reading NOT_ESTABLISHED_REPRESENTATION_STAGE_TRIGGERED"
+ },
+ "rules": {
+  "better": {
+   "alpha": 0.05,
+   "max_ratio": 0.95,
+   "method": "pooled geometric-mean ratio over all paired episodes (12 groups x 12 episodes), one-sided exact sign test on the paired log ratios, and the fraction of (family, seed) groups with a geometric mean below 1",
+   "min_group_fraction": 0.6666666666666666
+  },
+  "dispositions": {
+   "ASSAY_NOT_LEARNED": "the FFN-only stack does not learn the in-context assay",
+   "INTEGRATED_FAST_CGC_SPECIALIST_QUALIFIED": "all six criteria (per regime, per gate mode)",
+   "NONQUAL": "a planned record is missing",
+   "NONQUAL_INTEGRITY": "an integrity gate fails",
+   "NOT_ESTABLISHED": "integrity and assay hold, some other criterion fails"
+  },
+  "gate_modes": "G2 (fixed g = 1) and G1 (learned gate, init 0.1) are judged separately; no pooling",
+  "integrity_gates": [
+   "reset before the queries restores the frozen output bit for bit",
+   "updates disabled (all else identical) leave the frozen output bit for bit, every attempt refused REFUSED_LEARNING_DISABLED",
+   "no probe token carries a target; no query input equals a support input",
+   "the recurrent states of a full recomputation under the adapted core equal the frozen states bit for bit",
+   "cached and full-recomputation outputs agree within 1e-5",
+   "every update APPLIED; the delta bound never binds; every value finite"
+  ],
+  "max_g0_over_null": 0.5,
+  "multiplicity": "four primary judgements (2 regimes x 2 gate modes) are reported separately, uncorrected; a qualification is stated only for the arm and regime that meet every criterion",
+  "primary_endpoint": "query MSE with the 32 support pairs in context after 8 fast steps (fast8)",
+  "qualification": {
+   "adaptation_curve": "arm fast8 better than the same arm frozen (k = 32, 0 steps)",
+   "assay_learned": "G0's median frozen k = 32 query MSE <= 0.5 x the zero predictor's, every group",
+   "beats_fast_gelu": "arm fast8 better than G3 fast8 (same update budget: 120 core values, 8 steps)",
+   "beats_ffn": "arm fast8 better than G0 (frozen, k = 32)",
+   "integrity": "every integrity gate holds for the arm and for G3",
+   "target_driven": "arm fast8 better than the same arm adapted on permuted support targets"
+  },
+  "reading": {
+   "DIRECT_RESTORATION_QUALIFIED": "a T1 arm qualifies",
+   "NONQUAL": "integrity failure or a missing record",
+   "NOT_ESTABLISHED_REPRESENTATION_STAGE_TRIGGERED": "no arm qualifies in either regime (the representation stage then needs its own frozen amendment)",
+   "QUALIFIED_ONLY_WITH_ADAPTATION_TRAINED_INITIALIZATION": "no T1 arm qualifies, a T2 arm does"
+  }
+ },
+ "secondary": [
+  "the adaptation curve at 0, 1, 2, 4, 8 steps",
+  "context-free queries (fast-only)",
+  "OOD queries (inputs x 1.4)",
+  "interference: this episode's queries under the previous episode's adapted core",
+  "reliance: the last block's specialist ablated (frozen)",
+  "projection alignment: R^2 of P_in(h) on the probe inputs",
+  "gradient norms, clipping, cosine of successive updates",
+  "fast-state bytes and measured latency",
+  "T1 reproduction exactness"
+ ],
+ "stack": {
+  "conv_kernel": 4,
+  "d_model": 64,
+  "ersa_heads": 4,
+  "ffn_hidden": 86,
+  "key_dim": 16,
+  "layers": 2,
+  "queries": 48,
+  "scan_block": 16,
+  "support_max": 32,
+  "value_dim": 16
+ },
+ "stopping": [
+  "no rerun of a confirmation record",
+  "no added seeds",
+  "no threshold or endpoint changed after a result",
+  "no change of the fast-update protocol, the bound or the geometry to rescue a result",
+  "no K1, LAO, RALPH, larger core, extra experts, new memory tier or native/GGUF code",
+  "a failed run is recorded as failed"
+ ]
+}

@@ -1,0 +1,110 @@
+{
+ "budget": "about 100 CPU-minutes at 2 threads: 24 G2 stack trainings (12 rebuilt, 12 fixed projection) and 72 Stage B trainings",
+ "development": {
+  "changed_the_plan": false,
+  "checks": [
+   "run_stage_b rebuilt R11's own Stage B group (R11B, seed 201; G0, G2, G3, and G2's misrouted control) identically to R11's record",
+   "the stack mechanics ran in R12C_DEV at a few training steps"
+  ],
+  "records": {
+   "p5dev_stack.json": "40d036237cea14d02044d6cfb95e929e5f9e5ace8f1d9ebd5e82ba83250278fe",
+   "p5dev_stage_b_r11b_s201.json": "0b07e5626dc1dcaa8b587f98d0d6f5c952b45f1d8c63a908caf4b969a28b1ebf"
+  }
+ },
+ "groups": {
+  "T1": {
+   "episodes": 12,
+   "namespace": "R11C",
+   "seeds": [
+    301,
+    302,
+    303,
+    304,
+    305,
+    306
+   ],
+   "split": "R12TEST"
+  },
+  "T2": {
+   "episodes": 12,
+   "namespace": "R12C",
+   "seeds": [
+    401,
+    402,
+    403,
+    404,
+    405,
+    406
+   ],
+   "split": "TEST"
+  }
+ },
+ "label": "DIAGNOSIS ONLY: P5 qualifies nothing and changes no R12 disposition. The Stage B condition reads the exact task coordinates (an oracle by construction) and is never a claimed inference path.",
+ "multiplicity": "all P5 readings are diagnostic and uncorrected; none can qualify an arm",
+ "pairing": "every comparison pairs the same (family, seed, episode): the P5 conditions run on the R12 records' own evaluation episodes",
+ "phase": "ELPIS_TORCH_R12_P5_REPRESENTATION_SEAM",
+ "question": "Does the last block's 120-parameter specialist receive the information its adaptation protocol needs (directive P5)? Is the failure explained by initialization, task-feature access, routing or a demonstrated absence of benefit (directive P8)?",
+ "rules": {
+  "better": "R12's frozen rule (preregistration.json rules.better): pooled geometric-mean ratio <= 0.95, one-sided exact sign test p < 0.05, and at least 2/3 of the 12 groups below 1; 144 paired episodes",
+  "readings": {
+   "attribution (P8)": {
+    "absence_of_benefit": "the benefit_ceiling readings",
+    "initialization": "from study_r12.json: EXPLAINS_THE_T1_CURVE if G2's adaptation-curve criterion fails in T1 and holds in T2",
+    "routing": "the expert is fixed (one expert, weight 1), so routing cannot cause the failure; the identity readings say whether the trained specialist's identity matters",
+    "task_feature_access": "the T2 task_feature_access reading"
+   },
+   "benefit_ceiling (per regime)": "HEADROOM_UNDER_COORDINATE_ACCESS if Stage B G2 better than the regime's FFN-only stack in context (G0, k = 32); IN_CONTEXT_INFERENCE_BETTER if that G0 is better than Stage B G2; else INDETERMINATE",
+   "identity (T2 stack; Stage B)": "IDENTITY_MATTERS if the correct specialist (or expert) better than the misrouted one; else NOT_ESTABLISHED",
+   "integrity": "every rebuild identical to its T2 record, the fixed projection unchanged, and every R12 integrity gate held in every stack evaluation; else NONQUAL_INTEGRITY",
+   "projection (T2 stack)": "LEARNED_PROJECTION_BETTER if the rebuilt G2 better than the fixed-projection G2; FIXED_PROJECTION_BETTER if the reverse; else NO_DIFFERENCE_ESTABLISHED",
+   "stage_b_assay (per regime)": "REPRODUCED if Stage B G2 better than Stage B G0 (R11 Stage B's specialization on these groups); else NOT_REPRODUCED",
+   "task_feature_access (per regime; T2 attributes)": "COORDINATE_ACCESS_BETTER if Stage B G2 better than the stack's G2 fast8; STACK_REPRESENTATION_BETTER if the reverse; else NO_DIFFERENCE_ESTABLISHED"
+  }
+ },
+ "stack": {
+  "arm": "G2",
+  "decodability": "out-of-sample linear R\u00b2 of the 4 task coordinates z from the specialist code q = P_in h (5 values) and from its input h = channel_norm(pre) (64 values); least squares with an intercept fitted on the fit episodes, scored per TEST episode; context-free probes and queries in context separately; for the rebuilt and the fixed-projection models",
+  "decodability_fit": {
+   "episodes": 8,
+   "split": "DEV"
+  },
+  "fixed_projection": "the same training with blocks.1.sparse.experts.0.cgc.proj_in.weight never learning (its initial value); nothing else changes",
+  "measure": "query MSE after 8 fast steps (fast['8']), with every R12 integrity gate per episode",
+  "misrouted_branch": "this family's rebuilt G2 with the other family's last-block specialist branch (proj_in, core, proj_out) substituted, then the standard 8-step evaluation",
+  "misrouted_unit": "this family's rebuilt G2 with the other family's whole last-block expert (FFN and specialist) substituted, then the standard 8-step evaluation",
+  "rebuilt": "fast_episodes.train_fast exactly as run_r12 episodic trains G2; verified against the T2 record: rows identical, selected step equal, the (step, dev_k32) trace equal",
+  "regime": "T2"
+ },
+ "stage_b": {
+  "access": "u = Q_task x + Q_nuisance xi: the exact task coordinates through a fixed orthonormal embedding, with unit nuisance; no context",
+  "arms": [
+   "G0",
+   "G2",
+   "G3"
+  ],
+  "measure": "query MSE after 8 inner steps (row curve['8'][0])",
+  "misrouted": "G2 only: the other family's trained G2 expert on this family's episodes (R11's expert_misrouted control)",
+  "plan_b": {
+   "adam_lr": 0.003,
+   "dev_episodes": 5,
+   "meta_batch": 4,
+   "outer_steps": 1000,
+   "select_every": 100
+  },
+  "procedure": "run_r11.train_stage_b, then specialist_tasks.evaluate_arm, unchanged; every arm trains for both families before any evaluation; torch.manual_seed(0) first (R11's command_stage_b loop, restricted to the arms below)",
+  "profile": "BOUNDED_SPECIALIST"
+ },
+ "stopping": [
+  "no P5 record is rerun and no seed is added",
+  "no rule or measure changes after a P5 result",
+  "P5 changes no R12 record, rule or disposition",
+  "no new architecture: the oracle access is R11's Stage B harness, not a new path into the stack",
+  "a failed run is recorded as failed"
+ ],
+ "trigger": {
+  "preregistration_sha256": "f0f106067f1672a3dd4b5fa17f0f51543d2eca4753dc4e48080cdeed4552d44c",
+  "reading": "NOT_ESTABLISHED_REPRESENTATION_STAGE_TRIGGERED",
+  "rule": "PREREGISTRATION_R12.md section 7: the representation stage runs only under its own amendment, frozen before its data",
+  "study_r12_sha256": "0fe130cf7aebcb1cd2d7b41ac9e4cb3c1ea090ede0a658c3491fdc103732cafc"
+ }
+}
