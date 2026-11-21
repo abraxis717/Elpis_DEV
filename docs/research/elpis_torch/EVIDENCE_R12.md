@@ -718,6 +718,13 @@ A future phase should revisit packaging only after a qualified mechanism exists.
 7. **The session's worker process restarted after the P5 runs had finished.** All 18 P5 records had been written.
    Each was checked before it was committed: its status, its clean provenance at the freeze commit, and its
    integrity. Nothing was rerun.
+8. **One unit test was too strict for some CI runners.** From the first confirmation record on, CI on the branch was
+   intermittently red, always in the same test, on the forced-AVX2 pass of the Elpis Torch job, depending on the
+   runner's CPU. The test asserted that the vectorized training override equals the routed channel bit for bit.
+   The two compute the same function, but they multiply the same matrices batched (`vmap`) or flattened, and on the
+   AVX2 kernel path the summation order differs: 2.4e-7 in float32 and 4.4e-16 in float64, reproduced locally.
+   The test now asserts equality to rounding (1e-5 and 1e-12) and that a changed core changes the output. Only the
+   test changed. No source, record or result changed, and `fast_episodes.py`'s pinned bytes are untouched.
 
 ## 12. Reproduction
 

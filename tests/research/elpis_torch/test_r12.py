@@ -190,15 +190,27 @@ def test_the_batched_training_update_is_the_transactional_update(arm):
             assert float((fast._base[n] + d - batched[n][b]).abs().max()) < 1e-12
 
 
-def test_the_training_override_with_base_cores_is_the_routed_channel():
-    model = _stack("G2")
+@pytest.mark.parametrize("dtype, tolerance", [(torch.float32, 1e-5), (torch.float64, 1e-12)])
+def test_the_training_override_with_base_cores_is_the_routed_channel(dtype, tolerance):
+    """Under base cores, the vectorized override computes the routed channel's own function (one expert, weight 1).
+
+    Equal up to rounding, not bit for bit. The override multiplies the same matrices batched per episode (``vmap``),
+    while the grouped dispatch multiplies them flattened, so a kernel path may sum them in a different order. The
+    AVX2 path does: 2.4e-7 in float32 and 4.4e-16 in float64, at outputs near 2.8. The default path matches bit for
+    bit. A changed core must change the output, so the hook is live."""
+    model = _stack("G2", dtype)
     tokens, _ = ss.batch_tokens(NS, ["smooth"], 7, "UNIT", 0, 3, 8)
+    tokens = tokens.to(dtype)
     live = dict(last_channel(model)[2].named_parameters())
     cores = {"cgc.core.weight": live["cgc.core.weight"].unsqueeze(0).expand(3, 5, 3, 8)}
-    with torch.no_grad(), fe.override_last_core(model, cores):
-        hooked = model(tokens, model.new_state(3))
     with torch.no_grad():
-        assert torch.equal(hooked, model(tokens, model.new_state(3)))
+        with fe.override_last_core(model, cores):
+            hooked = model(tokens, model.new_state(3))
+        plain = model(tokens, model.new_state(3))
+        with fe.override_last_core(model, {"cgc.core.weight": cores["cgc.core.weight"] + 0.1}):
+            changed = model(tokens, model.new_state(3))
+    assert float((hooked - plain).abs().max()) <= tolerance
+    assert float((changed - plain).abs().max()) > 1e3 * tolerance
 
 
 def test_probes_carry_no_target_and_a_probe_after_the_support_context_would_read_its_target():
