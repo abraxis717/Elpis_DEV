@@ -1,0 +1,107 @@
+{
+ "arms": {
+  "G0": {
+   "gate_mode": "learned",
+   "kind": "ffn"
+  },
+  "G1": {
+   "gate_mode": "learned",
+   "kind": "ffn+cgc"
+  },
+  "G2": {
+   "gate_mode": "fixed",
+   "kind": "ffn+cgc"
+  },
+  "G3": {
+   "gate_mode": "fixed",
+   "kind": "ffn+mlp"
+  }
+ },
+ "budget": {
+  "hours": 2,
+  "threads": 4
+ },
+ "constants": {
+  "conv_kernel": 4,
+  "d_model": 64,
+  "ersa_heads": 4,
+  "ffn_hidden": 86,
+  "key_dim": 16,
+  "layers": 2,
+  "queries": 48,
+  "scan_block": 16,
+  "support_max": 32,
+  "value_dim": 16
+ },
+ "development": {
+  "label": "DEVELOPMENT ONLY: namespace R11C_DEV, seed 31",
+  "observed": "400 steps (smooth): every arm learns in context (k=32 ~0.011 against null 0.176); an ERSA reset returns k=32 to the k=0 level; 2,000 steps (conditional, ad hoc shell run, not recorded as a file): G0 keeps improving to 0.002 while G2 plateaus near 0.015. Training length 2,000 and selection every 250 steps were fixed from this, the same for every arm.",
+  "records": {
+   "dev_c_smooth_s31.json": "825ac2d3324d5d397437ebcf25013276be4b933e0a9ed5c9594f5c53bebe7966"
+  }
+ },
+ "families": [
+  "smooth",
+  "conditional"
+ ],
+ "harness": "the repository's ErsaBlocks (built and initialized by ErsaLM) between a linear input map (9 -> 64) and a linear readout (64 -> 3); one expert per block (fixed assignment) for the primary comparison; two experts with a learned top-1 router for the routing test (mixed families); the A1 branch initialization for every specialist; k drawn per step from the K grid; loss on queries only",
+ "k_grid": [
+  0,
+  1,
+  2,
+  4,
+  8,
+  16,
+  32
+ ],
+ "namespace": "R11C",
+ "phase": "ELPIS_TORCH_R11_STAGE_C",
+ "preregistration_sha256": "a7df440a779b0e5154dabacec4968e45588cb3beeb0cd1be2a42c339a2edc198",
+ "profile": "BOUNDED_SPECIALIST",
+ "question": "Does the qualified expert-local micro CGC specialist, trained END TO END and then FROZEN inside the actual ERSA stack, contribute to in-context adaptation (the episode's support examples in the sequence, no inner loop, no weight update at inference) beyond the FFN alone and beyond a matched GELU specialist?",
+ "router_episodes": 12,
+ "rules": {
+  "FROZEN_INFERENCE_TRANSFER_QUALIFIED": "arm better than G0 AND better than G3 at k = 32, and ablating its specialist in every block at k = 32 raises the loss >= 1.10x",
+  "NOT_ESTABLISHED_FROZEN_SPECIALIST_WORSE_THAN_FFN": "G0 better than the arm at k = 32",
+  "assay": "G0 median k = 32 query MSE <= 0.5 x the zero predictor's, in every group, else ASSAY_NOT_LEARNED",
+  "attribution": "the ERSA reset after the support prefix is reported per arm; the in-context benefit is ERSA's, the specialist's share is the arm-against-G0 difference only",
+  "better": {
+   "alpha": 0.05,
+   "max_ratio": 0.95,
+   "min_group_fraction": 0.6666666666666666
+  },
+  "max_g0_k32_over_null": 0.5,
+  "min_ablation_ratio": 1.1,
+  "min_router_purity": 0.8,
+  "router": "LEARNED_ROUTING_SEPARATES_FAMILIES when, in every block of every seed, the two families' majority experts differ and the mean purity is >= 0.8; otherwise INTEGRATION_GAP_LEARNED_ROUTING"
+ },
+ "seeds": [
+  301,
+  302,
+  303,
+  304,
+  305,
+  306
+ ],
+ "test_episodes": 12,
+ "training": {
+  "adam_lr": 0.003,
+  "batch": 16,
+  "dev_episodes": 8,
+  "select_every": 250,
+  "steps": 2000
+ },
+ "trigger": {
+  "rule": "PREREGISTRATION_R11.md \u00a75: EXPERT_SPECIALIZATION_QUALIFIED for G1 or G2 triggers Stage C",
+  "stage_b_dispositions": {
+   "G1": "SPECIALIST_SLOT_FUNCTIONAL_NO_CGC_SPECIFIC_ADVANTAGE",
+   "G2": "EXPERT_SPECIALIZATION_QUALIFIED",
+   "gate_identifiability": "GATE_NOT_LIMITING",
+   "mode_b": {
+    "G1": "ADAPTIVE_SPECIALIST_REQUIRES_INNER_UPDATES",
+    "G2": "ADAPTIVE_SPECIALIST_REQUIRES_INNER_UPDATES"
+   }
+  },
+  "study_r11_sha256": "eb179f6833473b6423762ee21cd4446233ad329b4e93f0217c61a3ba46d8baf2"
+ }
+}

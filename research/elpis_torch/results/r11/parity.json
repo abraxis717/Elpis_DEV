@@ -1,0 +1,72 @@
+{
+ "bounded_vs_e0": [
+  {
+   "cell_gap_max": 0.0018838689110608764,
+   "cell_relative_gap": 0.0060094229552293465,
+   "preact_gap_max": 0.002194740577014964,
+   "preact_rms": 0.0789880168097471,
+   "saturated_fraction": 0.0,
+   "taylor_bound_holds": true,
+   "weight_scale": 0.1
+  },
+  {
+   "cell_gap_max": 1.3629979950401179,
+   "cell_relative_gap": 0.2861374188744308,
+   "preact_gap_max": 0.23621098202155788,
+   "preact_rms": 0.3949400840487355,
+   "saturated_fraction": 0.0,
+   "taylor_bound_holds": true,
+   "weight_scale": 0.5
+  },
+  {
+   "cell_gap_max": 16.96586661965931,
+   "cell_relative_gap": 0.7133349142270339,
+   "preact_gap_max": 1.3203746665222522,
+   "preact_rms": 0.789880168097471,
+   "saturated_fraction": 0.001621271076523995,
+   "taylor_bound_holds": true,
+   "weight_scale": 1.0
+  },
+  {
+   "cell_gap_max": 123.67892720190481,
+   "cell_relative_gap": 0.825773466348911,
+   "preact_gap_max": 4.847515042142386,
+   "preact_rms": 1.579760336194942,
+   "saturated_fraction": 0.0627431906614786,
+   "taylor_bound_holds": true,
+   "weight_scale": 2.0
+  },
+  {
+   "cell_gap_max": 1020.0734164689732,
+   "cell_relative_gap": 0.9686649433889437,
+   "preact_gap_max": 12.630021605648768,
+   "preact_rms": 3.159520672389884,
+   "saturated_fraction": 0.312094682230869,
+   "taylor_bound_holds": true,
+   "weight_scale": 4.0
+  }
+ ],
+ "command": "parity",
+ "e0_reference_forward_max_abs": 1.4210854715202004e-14,
+ "e0_reference_grad_autograd_vs_analytic_max_abs": 7.105427357601002e-15,
+ "e0_reference_qualified": true,
+ "float32_vs_float64_micro_adapter": {
+  "1024": {
+   "max_abs": 3.2918418238381264e-05,
+   "max_rel": 0.15427833124335666,
+   "rms": 4.17575413353134
+  },
+  "64": {
+   "max_abs": 1.0758739325211764e-05,
+   "max_rel": 0.0029655196478302003,
+   "rms": 3.0002796913883323
+  },
+  "768": {
+   "max_abs": 1.8995387019771215e-05,
+   "max_rel": 0.05575038699879823,
+   "rms": 3.2120568151833355
+  }
+ },
+ "phase": "ELPIS_TORCH_R11_BOUNDED_CGC_SPECIALIST",
+ "tolerance_e0": 1e-12
+}

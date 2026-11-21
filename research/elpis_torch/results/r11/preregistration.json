@@ -1,0 +1,340 @@
+{
+ "analysis": {
+  "better": {
+   "alpha": 0.05,
+   "max_ratio": 0.95,
+   "method": "pooled geometric-mean ratio over all paired episodes, one-sided exact sign test on the paired log ratios, and the fraction of (family, seed) groups whose geometric mean is below 1",
+   "min_group_fraction": 0.6666666666666666
+  },
+  "bound_destroys": {
+   "max_ratio_bounded_over_unbounded": 1.1,
+   "rule": "the bounded projected arm fails utility where the unbounded passes, or its pooled k=8 loss exceeds the unbounded's by more than 10%"
+  },
+  "stage_a_utility": {
+   "max_auc_ratio": 0.95,
+   "max_geomean_meta_vs_cold": 0.95,
+   "min_paired_positive_fraction": 0.6666666666666666,
+   "min_reset_to_fast_ratio": 1.1,
+   "rule": "R97W's four utility criteria, in EVERY (family, seed) group"
+  },
+  "stage_b": {
+   "max_g0_over_null": 0.9,
+   "max_ratio_over_ffn": 0.8,
+   "min_ablation_ratio": 1.25,
+   "rules": {
+    "EXPERT_SPECIALIZATION_QUALIFIED": "all four, cost within budget",
+    "SPECIALIST_SLOT_FUNCTIONAL_NO_CGC_SPECIFIC_ADVANTAGE": "benefit, causal and objective, but not better than G3",
+    "adaptive_benefit": "arm better than G0 (better rule) with pooled ratio <= 0.80",
+    "assay": "G0 median k=0 query MSE <= 0.90 x the zero predictor's, in every group",
+    "causal": "pooled geomean(ablated / intact at k=8) >= 1.25",
+    "cgc_specific": "arm better than G3",
+    "gate": "G2 slot-functional and G1 not: GATE_IDENTIFIABILITY_FAILURE; both: GATE_NOT_LIMITING; neither: SPECIALIST_OPERATION_NOT_ESTABLISHED",
+    "mode_b": "arm better than G0 at k = 0: FROZEN_BENEFIT; else, if slot-functional: ADAPTIVE_SPECIALIST_REQUIRES_INNER_UPDATES",
+    "specialist_objective": "arm better than G2_POOLED"
+   }
+  }
+ },
+ "base": {
+  "branch": "claude/r11-cgc-specialist",
+  "main": "d2d683ad874dda6312e27f87a8a2f1b0a64f6096",
+  "post_merge_ci": "44795525346 (16/16)"
+ },
+ "budgets": {
+  "memory": "the d64 expert and 120-parameter learners: well under 1 GiB per process",
+  "stage_a_minutes": 30,
+  "stage_b_hours": 3,
+  "threads": "2 workers x 2 threads"
+ },
+ "development": {
+  "calibration_sha256": "8ac5e6dbe4d7e76542a6df61a9b1aa96f8b8d50128613f7050c0781a61a5e3fc",
+  "label": "DEVELOPMENT ONLY: namespaces R11A_DEV / R11B_DEV, seeds 11, 12, 21; no confirmation seed or episode was used",
+  "records": {
+   "dev_stage_a_conditional_s11.json": "b3daeec1409546f94f08b35c26a818674a37b58a9bf84b4f0d8da54b60e54ebf",
+   "dev_stage_a_conditional_s12.json": "6a44bf3e0529ba2311fbaeb765731f098cf6c756cb262c96461ee7840504c8b4",
+   "dev_stage_a_smooth_s11.json": "c910d7796dc479d83700bf77d98023020bf6c50c6f676d87403139e00c905974",
+   "dev_stage_a_smooth_s12.json": "e0e8264fdde61bb4b38abb982836df8a5169ca4bee3faed02c3cf4147a7e0b2c",
+   "dev_stage_b_s21.json": "e991eaa55d2bd732c7f9532ea62ade4ebf2ad46d59e055414b09c81c8de38039"
+  }
+ },
+ "dispositions": [
+  "MICRO_REFERENCE_QUALIFIED",
+  "PROJECTED_ADAPTATION_QUALIFIED",
+  "EXPERT_SPECIALIZATION_QUALIFIED",
+  "FROZEN_INFERENCE_TRANSFER_QUALIFIED",
+  "INTEGRATION_GAP",
+  "NOT_ESTABLISHED",
+  "NONQUAL",
+  "HOLD",
+  "NOT_RUN",
+  "ASSAY_NOT_LEARNED",
+  "ADAPTIVE_SPECIALIST_REQUIRES_INNER_UPDATES",
+  "GATE_IDENTIFIABILITY_FAILURE",
+  "GATE_NOT_LIMITING",
+  "SPECIALIST_OPERATION_NOT_ESTABLISHED",
+  "SPECIALIST_SLOT_FUNCTIONAL_NO_CGC_SPECIFIC_ADVANTAGE"
+ ],
+ "parity": {
+  "e0_forward_max_abs": 1.4210854715202004e-14,
+  "e0_reference_qualified": true,
+  "record_sha256": "acfa1eacf96ce373fa6ed2b7cf912e1b6822c37fc27c93f0a8960f4725c9c3ac",
+  "tolerance": 1e-12
+ },
+ "phase": "ELPIS_TORCH_R11_BOUNDED_CGC_SPECIALIST",
+ "profile": {
+  "adapter_formula": "8H + 121 (P_in 5H, core 120, P_out 3H, gate 1)",
+  "bounds": {
+   "BOUNDED_SPECIALIST": 3.0,
+   "E0_REFERENCE": null
+  },
+  "budget_fraction_of_swiglu": 0.05,
+  "geometry": [
+   5,
+   3,
+   8
+  ]
+ },
+ "question": "Does a correctly bounded, explicitly specialized expert-local CGCTransform (inside the existing FFN expert) keep R97W's microscopic adaptive behaviour under the transformer adapter, make a causal, specialized and cubic-specific contribution to its expert, and does any of it transfer to frozen-weight inference?",
+ "router": {
+  "rule": "learned-router selection is tested only if a specialist qualifies; never oracle routing at inference; oracle-routed success is not learned-routing success"
+ },
+ "stage_a": {
+  "arms": {
+   "E0_COLD": [
+    "e0",
+    null,
+    null,
+    false,
+    "cold"
+   ],
+   "E0_META": [
+    "e0",
+    null,
+    null,
+    false,
+    "reptile"
+   ],
+   "E0_SHUFFLED": [
+    "e0",
+    null,
+    null,
+    false,
+    "shuffled"
+   ],
+   "GELU_COLD": [
+    "gelu",
+    null,
+    null,
+    false,
+    "cold"
+   ],
+   "GELU_META": [
+    "gelu",
+    null,
+    null,
+    false,
+    "reptile"
+   ],
+   "PROJ_B3_COLD": [
+    "e0",
+    64,
+    3.0,
+    false,
+    "cold"
+   ],
+   "PROJ_B3_FIXED_META": [
+    "e0",
+    64,
+    3.0,
+    false,
+    "reptile"
+   ],
+   "PROJ_B3_LEARNED_META": [
+    "e0",
+    64,
+    3.0,
+    true,
+    "reptile"
+   ],
+   "PROJ_E0_COLD": [
+    "e0",
+    64,
+    null,
+    false,
+    "cold"
+   ],
+   "PROJ_E0_FIXED_META": [
+    "e0",
+    64,
+    null,
+    false,
+    "reptile"
+   ],
+   "PROJ_E0_LEARNED_META": [
+    "e0",
+    64,
+    null,
+    true,
+    "reptile"
+   ],
+   "PROJ_GELU_COLD": [
+    "gelu",
+    64,
+    null,
+    false,
+    "cold"
+   ],
+   "PROJ_GELU_FIXED_META": [
+    "gelu",
+    64,
+    null,
+    false,
+    "reptile"
+   ],
+   "PROJ_GELU_LEARNED_META": [
+    "gelu",
+    64,
+    null,
+    true,
+    "reptile"
+   ]
+  },
+  "calibration_sha256": "8ac5e6dbe4d7e76542a6df61a9b1aa96f8b8d50128613f7050c0781a61a5e3fc",
+  "families": [
+   "smooth",
+   "conditional"
+  ],
+  "hidden": 64,
+  "lr_proj": {
+   "e0": 0.1,
+   "e0_b3": 0.3,
+   "gelu": 0.3
+  },
+  "namespace": "R11A",
+  "outer": "first-order Reptile on the core (interpolation 0.28); LEARNED arms add one clipped SGD step on the projections per episode (query loss of the adapted core)",
+  "primary_metric": "held-out query MSE after 8 explicit inner steps on the 120 core parameters",
+  "protocol": {
+   "dev_checkpoints": [
+    0,
+    16,
+    32,
+    64
+   ],
+   "dev_episodes": 5,
+   "eval_steps": [
+    0,
+    1,
+    2,
+    4,
+    8
+   ],
+   "forget_probe_episodes": 8,
+   "gradient_clip_l2": 2.0,
+   "inner_lr": 0.08,
+   "inner_steps": 8,
+   "ood": 32,
+   "outer_interpolation": 0.28,
+   "query": 48,
+   "support": 32,
+   "test_episodes": 12,
+   "train_episodes": 64
+  },
+  "seeds": [
+   101,
+   102,
+   103,
+   104,
+   105,
+   106
+  ]
+ },
+ "stage_b": {
+  "arms": {
+   "G0": {
+    "gate_mode": "learned",
+    "kind": "ffn",
+    "objective": "pooled"
+   },
+   "G1": {
+    "gate_mode": "learned",
+    "kind": "ffn+cgc",
+    "objective": "specialist"
+   },
+   "G2": {
+    "gate_mode": "fixed",
+    "kind": "ffn+cgc",
+    "objective": "specialist"
+   },
+   "G2_POOLED": {
+    "gate_mode": "fixed",
+    "kind": "ffn+cgc",
+    "objective": "pooled"
+   },
+   "G3": {
+    "gate_mode": "fixed",
+    "kind": "ffn+mlp",
+    "objective": "specialist"
+   }
+  },
+  "branch_initialization": "Stage A's projected-adapter rule for every specialist arm (A1 calibration); G1 keeps the historical gate init 0.1",
+  "checkpoint_selection": "per arm, the best DEV-episode k=8 query MSE among checkpoints every 100 steps (same rule for every arm)",
+  "constants": {
+   "dev_episodes": 5,
+   "eval_steps": [
+    0,
+    1,
+    2,
+    4,
+    8
+   ],
+   "ffn_hidden": 86,
+   "gradient_clip_l2": 2.0,
+   "hidden": 64,
+   "inner_lr": 0.08,
+   "inner_steps": 8,
+   "nuisance": 1.0,
+   "test_episodes": 12
+  },
+  "families": [
+   "smooth",
+   "conditional"
+  ],
+  "namespace": "R11B",
+  "primary_metric": "held-out TEST query MSE after 8 inner steps (Mode A); k = 0 is Mode B",
+  "profile_rule": "BOUNDED_SPECIALIST, unless Stage A's confirmation finds bound_destroys_behavior; then E0_REFERENCE (run_r11 stage_b reads Stage A's records to apply it)",
+  "seeds": [
+   201,
+   202,
+   203,
+   204,
+   205,
+   206
+  ],
+  "training": {
+   "adam_lr": 0.003,
+   "dev_episodes": 5,
+   "meta_batch": 4,
+   "outer_steps": 1000,
+   "select_every": 100
+  }
+ },
+ "stage_c": {
+  "rule": "Stage C runs only after the trigger, under its own frozen amendment written before any Stage C data; otherwise NOT_RUN with the reason",
+  "trigger": "EXPERT_SPECIALIZATION_QUALIFIED for G1 or G2 in Stage B"
+ },
+ "stopping": [
+  "no rerun of a confirmation record",
+  "no added seeds",
+  "no threshold or endpoint changed after results",
+  "no retuning of the bound or the geometry to rescue a result",
+  "no second specialist if the first fails",
+  "no runtime weight update"
+ ],
+ "upstream": {
+  "cgc_commit": "0895c2bc732a377b5a5f0d063ae13cc72684ec9a",
+  "e0_sha256": "92c987e0fb54d80193fd60ecc9a3e31088f0f9b7cd2cfe8e08c4636a198d7084",
+  "r97o_result_sha256": "edc2aebc97de29d8fc6208eceee725643f4aaca5f44f3e6a5e8ad09743824207",
+  "r97w_archived_result_sha256": "576922cb74ba4aa13f824ac399a389bb215e12cc4e4b936315a279386169c0db",
+  "r97w_portable_experiment_sha256": "cf6912fc7d09ff12d1d01b484ce15d364b204424542916bd633c0be7d7465bbf",
+  "r97w_portable_spec_sha256": "e6515004c8db33f4aa777bcd89d27db0143b769c2ad1b23c262d49fbdaee7849"
+ }
+}

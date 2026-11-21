@@ -228,6 +228,8 @@ class ErsaLM(nn.Module):
                 elif name.endswith("cgc_gate"):
                     sparse = ".sparse." in name
                     parameter.fill_(self.ersa.sparse.gate_init if sparse else m.cgc_gate_init)
+                elif name.endswith(("mlp.hidden.bias", "mlp.out.bias")):     # R11 control arm only
+                    parameter.zero_()
                 else:
                     parameter.fill_(1.0)
 

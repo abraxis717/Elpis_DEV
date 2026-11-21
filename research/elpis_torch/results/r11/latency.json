@@ -1,0 +1,72 @@
+{
+ "command": "latency",
+ "expert_d64_64_tokens_us": {
+  "G0": 47.74149988406862,
+  "G1": 99.66100014935364,
+  "G2": 96.6639997841412,
+  "G2_POOLED": 100.37849983746128,
+  "G3": 104.37550008646213,
+  "LEGACY_R10_A": 137.28500016441103
+ },
+ "label": "MEASURED CPU wall-clock, one thread; PERFORMANCE_ONLY",
+ "operator_64_tokens": {
+  "1024": {
+   "legacy_r6_routed": {
+    "median_us_64_tokens": 7388.777499727439,
+    "parameters": 2359296
+   },
+   "micro_bounded": {
+    "median_us_64_tokens": 237.6575000653247,
+    "parameters": 8312
+   },
+   "micro_e0": {
+    "median_us_64_tokens": 85.86199987803411,
+    "parameters": 8312
+   }
+  },
+  "64": {
+   "legacy_r6_routed": {
+    "median_us_64_tokens": 81.5470000361529,
+    "parameters": 9216
+   },
+   "micro_bounded": {
+    "median_us_64_tokens": 38.748499946450465,
+    "parameters": 632
+   },
+   "micro_e0": {
+    "median_us_64_tokens": 31.047000220496557,
+    "parameters": 632
+   }
+  },
+  "768": {
+   "legacy_r6_routed": {
+    "median_us_64_tokens": 3637.225500142449,
+    "parameters": 1327104
+   },
+   "micro_bounded": {
+    "median_us_64_tokens": 212.95950000421726,
+    "parameters": 6264
+   },
+   "micro_e0": {
+    "median_us_64_tokens": 74.12100012516021,
+    "parameters": 6264
+   }
+  }
+ },
+ "phase": "ELPIS_TORCH_R11_BOUNDED_CGC_SPECIALIST",
+ "provenance": {
+  "cgc_sha256": "2a5a1103a361c8a9a29865caca4300f5b5eac659b612465fcca1f8c1feb02d3d",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "git_revision": "47537ef90800733d5878e55161f309227e422a58",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "preregistration_sha256": null,
+  "profile_sha256": "8e8ae728f14f6aae7458a20125e77fb93427e7a047ff63b64500266197c5b4ad",
+  "python": "3.13.18",
+  "runner_sha256": "a7cf027f0ce9b58061c28962855640be8d389924062a2b0c37c57a01b66480b1",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "tasks_sha256": "dd016c5dd233cd3d1625e49dae019545e2f1d045846d283f0e15462ffc35d101",
+  "threads": 1,
+  "torch": "2.15.0+cpu",
+  "upstream_e0_sha256": "92c987e0fb54d80193fd60ecc9a3e31088f0f9b7cd2cfe8e08c4636a198d7084"
+ }
+}
