@@ -62,6 +62,27 @@ preregistered stages (`EVIDENCE_R11.md`).
   - Runtime adaptation: R11 did not implement it, since inference weights stay frozen.
 - **Unchanged.** The verdicts of R9 and R10 stand.
 
+**Claim status (R12).** R12 restores the micro CGC's episode-local update inside the Stage C stack, as a private,
+volatile and bounded fast state, and tests it under preregistered rules (`EVIDENCE_R12.md`).
+- **The mechanism is exact.** It adapts only the last block's 120 core values, through the block's own
+  `SparseChannel` and `ChannelExpert`.
+  - The cached path equals full recomputation, and reset and disabled learning restore the frozen model bit for bit.
+  - No recurrent state changes, no target leaks, and earlier blocks are refused.
+  - It costs 960 bytes, and 15–25 ms for 8 updates on one CPU thread.
+- **The decisive test: `NOT_ESTABLISHED`.**
+  - T1, R11's Stage C models adapted at test time: the update barely moves them and, for the fixed gate, makes the
+    queries worse (1.60×).
+  - T2, the same stack trained with the update in the loop: the update is steep, and it beats a matched GELU (0.52).
+    But the stack leans on it instead of the context, and only draws level with the FFN-only stack (0.98,
+    p = 0.66).
+- **P5, the representation seam (diagnosis only).**
+  - The task coordinates reach the specialist, a fixed projection suffices, and the specialist's identity matters.
+  - But even with exact coordinates, the 8-step CGC is about 2× worse than the FFN-only stack's in-context
+    inference. On these tasks there is no advantage to recover.
+- **Not established.** Any specialist advantage in the stack, and any language-model, scale, GPU, packaging or GGUF
+  claim. No sidecar is proposed.
+- **Unchanged.** The verdicts of R9, R10 and R11 stand.
+
 **RESEARCH_ONLY. NO_RUNTIME_AUTHORITY. NO_LANGUAGE_CLAIM.** This is an architectural research prototype at
 toy scale. It is not part of the Elpis runtime, nothing in `src/` or `native/` imports it, and passing its
 tests says nothing about language or reasoning ability. Under the current mission a transformer is not the
@@ -79,6 +100,7 @@ Elpis cognitive path; what it would take to change that is a separate, unadopted
 | R9: claim audit, CGC attribution (preregistered), whole-model memory and bandwidth, Gate A (HOLD) | `docs/research/elpis_torch/CLAIM_AUDIT_R9.md`, `PREREGISTRATION_R9.md`, `DESIGN_R9.md`, `EVIDENCE_R9.md`, `GATE_A_PROTOCOL_R9.md` |
 | R10: CGC and in-context adaptation and retention (preregistered), R11 performance handoff | `docs/research/elpis_torch/PREREGISTRATION_R10.md`, `DESIGN_R10.md`, `EVIDENCE_R10.md`, `R11_PERFORMANCE_NOTE.md` |
 | R11: the bounded expert-local CGC specialist: capability audit, bounding, specialization, preregistration (Stages A–C), evidence | `docs/research/elpis_torch/CGC_CAPABILITY_R11.md`, `CGC_BOUNDING_R11.md`, `CGC_SPECIALIZATION_R11.md`, `DESIGN_R11.md`, `PREREGISTRATION_R11.md`, `PREREGISTRATION_R11_STAGE_C.md`, `EVIDENCE_R11.md` |
+| R12: the micro-CGC volatile fast state: design (P0 audit, dependency diagram), state contract, preregistration, the P5 amendment (the representation seam), evidence (the Stage C seam experiment) | `docs/research/elpis_torch/DESIGN_R12.md`, `CGC_FAST_STATE_CONTRACT_R12.md`, `PREREGISTRATION_R12.md`, `PREREGISTRATION_R12_P5.md`, `EVIDENCE_R12.md` |
 | Where the CGC mathematics comes from | `PROVENANCE.md` |
 
 ## Install
@@ -182,6 +204,7 @@ with VolatileSession(model, SessionConfig(lr=0.1, max_steps=16)) as session:
 | `experiments/run_r9.py`, `experiments/run_r9_p3.py` | R9: the preregistered CGC attribution study (`run_r9 accounting|integrity|train|latency|combine|manifest|smoke`) and whole-model memory and bandwidth accounting (`run_r9_p3 account|trace|bandwidth|rss|roofline|measured`; `docs/research/elpis_torch/DESIGN_R9.md`, `EVIDENCE_R9.md`) |
 | `adaptation_tasks.py`, `experiments/run_r10.py` | R10: the in-context adaptation and retention assay and its preregistered study (`docs/research/elpis_torch/DESIGN_R10.md`, `EVIDENCE_R10.md`) |
 | `cgc_specialist.py`, `specialist_tasks.py`, `specialist_stack.py`, `experiments/run_r11.py`, `experiments/run_r11_stage_c.py`, `experiments/bench_r11_operators.py` | R11: the opt-in micro CGC profile (R97W's 5 / 3 / 8 core, adapter `8H + 121`), exact census and budget, branch diagnostics, the matched GELU control; the R97W-form Stage A/B harness around the real `ChannelExpert`; the Stage C regression stack of the repository's `ErsaBlock`s; `run_r11 audit|parity|calibrate|stage_a|stage_b|latency|combine|manifest`, `run_r11_stage_c run|router|combine|dev` (`docs/research/elpis_torch/DESIGN_R11.md`, `EVIDENCE_R11.md`) |
+| `fast_state.py`, `fast_episodes.py`, `experiments/run_r12.py`, `experiments/run_r12_p5.py` | R12: `SpecialistFastState`, a private, volatile, bounded `ΔW` for the LAST block's single expert's specialist core (120 values), updated through `session.bounded_update` and executed through the block's own `SparseChannel`/`ChannelExpert`; the Stage C seam harness (context-free probes, controls, batched training update); `run_r12 audit|parity|reproduce|episodic|latency|combine|manifest|dev`; the P5 diagnosis, `run_r12_p5 stage_b|stack|combine|dev` (`docs/research/elpis_torch/DESIGN_R12.md`, `PREREGISTRATION_R12_P5.md`, `EVIDENCE_R12.md`) |
 
 ## Not here, on purpose
 

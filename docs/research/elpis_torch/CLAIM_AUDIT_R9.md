@@ -495,3 +495,45 @@ Every arm trained 3,000 steps on the same episode streams. There were three scre
 - R10's verdicts.
 - L15's separation of R97W, native K1 and `CGCTransform`.
 - Gate A HOLD.
+
+## R12 result (the R9, R10 and R11 verdicts above are unchanged)
+
+### L18. R12: the micro-CGC volatile fast state in the Stage C stack — mechanism EXACT; specialist advantage NOT_ESTABLISHED in both regimes; P5: no headroom over in-context inference
+
+**Plans.**
+- `PREREGISTRATION_R12.md`, frozen at `e01b2b2`.
+- The P5 amendment, `PREREGISTRATION_R12_P5.md`, frozen at `4561a9a` before any P5 data.
+
+**Evidence.** `EVIDENCE_R12.md`, from records whose verdicts `test_r12_records.py` recomputes independently.
+
+**Supported.**
+- **The volatile fast state** (mechanical and numerical; engineering, not a specialist result).
+  - It is exact: cached = full recomputation, and the analytic gradient equals autograd to at most 6.9e-17.
+  - It is coherent: last block only, with the states unchanged.
+  - It is isolated: private per session, never serialized, and the checkpoint is never written.
+  - It is 960 bytes. 8 updates take 15–25 ms on one CPU thread.
+- **R11's Stage C models rebuild bit for bit** from their recorded seeds: 48 of 48 arms.
+- **T2.** With an adaptation-trained initialization, the restored update is steep, target-driven and CGC-specific.
+  G2 after 8 steps is 0.044× its frozen loss, 0.116× the shuffled-target update, and 0.519× the matched fast GELU.
+- **P5, diagnosis only.**
+  - R11 Stage B's specialization reproduces on the R12 groups: 0.079 to 0.091× the FFN alone, and 0.69 to 0.80× the
+    GELU.
+  - The task coordinates reach the specialist (R² 0.998 from its input).
+  - A fixed `P_in` suffices, and the specialist's identity matters.
+
+**Not supported.**
+- **Any claim that restoring the update recovers a specialist advantage in the Stage C stack.** It is
+  `NOT_ESTABLISHED` for G1 and G2 in T1 and T2. Fast G2 against the FFN-only stack is 2.30 in T1, and 0.982
+  (p = 0.66) in T2.
+- **Any claim that the CGC fast update beats ERSA's in-context inference on these tasks.** Even under exact
+  coordinate access it is 1.85 to 2.34× worse.
+- **Any claim the harness cannot carry.** That covers any language-model, scale, GPU, sidecar or GGUF claim, any
+  learned-routing claim, and any claim outside R97W's regression families.
+
+**Unchanged.**
+- R9's `CGC_NOT_ESTABLISHED`.
+- R10's verdicts.
+- R11's verdicts and records. R11 remains historical authority: R12 rebuilt its models and changed none of its
+  conclusions.
+- L15's separation of R97W, native K1 and `CGCTransform`.
+- Gate A HOLD.

@@ -70,7 +70,7 @@ The gradient is the local update the CGC lineage defines:
 
     ∇_{w_ci} L = Σ_s δ_{s,c} φ′(r̃_sci) κ(r_sci) q_s,    δ_{s,c} = ∂L/∂a_{s,c},    κ = sech²(r/b)
 
-`parity.json` checks it against autograd: 3.5e-17 in float64.
+`parity.json` checks it against autograd: at most 6.9e-17 in float64.
 
 **What teaches.** Only observed `(x, y)` pairs, through `ObservedSupport.observed(…, source=…)`. The R11 teacher's
 targets are observed synthetic data. Nothing else teaches:
@@ -86,8 +86,9 @@ A general next-token teaching interface would need its own gradient and provenan
 | `research/elpis_torch/fast_state.py` (new) | `FastStateConfig`, `ObservedSupport`, `SpecialistFastState` (identity, `adapt` through `session.bounded_update`, `reset`, `close`, refusals, `channel`/`output` through the last block's own `SparseChannel` and `ChannelExpert` by `functional_call`), `last_channel`, `head`, `frozen_pass` |
 | `research/elpis_torch/fast_episodes.py` (new) | The Stage C seam harness: context-free probes (the leakage contract), `evaluate_fast` (curve, controls, parity, integrity), the batched training update (`torch.func.vmap`, the same mathematics), `override_last_core`, `train_fast` (R11's `train_stack` plus the inner update) |
 | `research/elpis_torch/experiments/run_r12.py` (new) | `audit`, `parity`, `reproduce` (T1), `episodic` (T2), `latency`, `combine`, `manifest`, `dev` |
-| `tests/research/elpis_torch/test_r12.py`, `test_r12_records.py` (new) | Contract, parity, refusal, isolation, leakage and trainer-equivalence tests; the JSON-only record tests |
-| `tests/research/elpis_torch/test_isolation.py` | `run_r12.py`'s single write site registered |
+| `research/elpis_torch/experiments/run_r12_p5.py` (new) | P5, diagnosis only (`PREREGISTRATION_R12_P5.md`): `stage_b` (R11 Stage B's procedure on an R12 group's own tasks), `stack` (T2's G2 rebuilt, with a fixed `P_in`, misrouted, and the decodability of the task coordinates), `combine`, `dev` |
+| `tests/research/elpis_torch/test_r12.py`, `test_r12_p5.py`, `test_r12_records.py` (new) | Contract, parity, refusal, isolation, leakage and trainer-equivalence tests; the P5 mechanics; the JSON-only record tests, R12's and P5's |
+| `tests/research/elpis_torch/test_isolation.py` | The single write sites of `run_r12.py` and `run_r12_p5.py` registered |
 
 ## 5. The experiment, in one paragraph
 
@@ -113,4 +114,4 @@ Everything is on fresh episodes and seeds. The rules are in `PREREGISTRATION_R12
 ## 6. Runtime and packaging
 
 See `CGC_FAST_STATE_CONTRACT_R12.md`. The GGUF or sidecar interface is specified only as far as the evidence
-justifies (`EVIDENCE_R12.md` §9). No runtime outside PyTorch is implemented.
+justifies (`EVIDENCE_R12.md` §9). No runtime outside PyTorch is implemented. The results are in `EVIDENCE_R12.md`.

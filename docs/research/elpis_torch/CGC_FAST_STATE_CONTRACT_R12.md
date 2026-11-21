@@ -107,6 +107,6 @@ provenance contract.
 - **Precision.** `ΔW` stays in float32, with a float64 reference. The 120 mutable values are not quantized.
 - **Parity tolerances**, from `parity.json`:
   - cached against full recomputation: 0.0;
-  - analytic against autograd gradient: about 1e-8 in float32 and 4e-17 in float64;
+  - analytic against autograd gradient: at most 3.0e-8 in float32 and 6.9e-17 in float64;
   - batched training update against the transactional update: about 3e-8 and 6e-17;
   - adapted output, float32 against float64: recorded per arm.
