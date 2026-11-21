@@ -1,0 +1,889 @@
+{
+ "checks": {
+  "arcs": {
+   "0->12": {
+    "arc": 0,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "0->131": {
+    "arc": 2,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "0->250": {
+    "arc": 4,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "0->369": {
+    "arc": 6,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "0->488": {
+    "arc": 8,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "1->130": {
+    "arc": 10,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "1->607": {
+    "arc": 12,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "1->726": {
+    "arc": 14,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "1->845": {
+    "arc": 16,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "1->964": {
+    "arc": 18,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "144001->1081": {
+    "arc": 10779,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "144001->1082": {
+    "arc": 10787,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "144001->143999": {
+    "arc": 863997,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "144001->144000": {
+    "arc": 863999,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "144001->3461": {
+    "arc": 34455,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "144001->3462": {
+    "arc": 34459,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "71999->71938": {
+    "arc": 439065,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "71999->71939": {
+    "arc": 439069,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "71999->71998": {
+    "arc": 439415,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "71999->72000": {
+    "arc": 439420,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "71999->72058": {
+    "arc": 439422,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   },
+   "71999->72059": {
+    "arc": 439424,
+    "ok_endpoints": true,
+    "ok_port": true,
+    "ok_reverse": true
+   }
+  },
+  "built_once": {
+   "ok_singleton": true
+  },
+  "elpis_base_sources": {
+   "modified_or_removed": [],
+   "ok_additive_only": true,
+   "ok_prior_records_untouched": true,
+   "prior_records_modified_or_removed": []
+  },
+  "identity": {
+   "equal_invariants": true
+  },
+  "modules": {
+   "ok_inside_vendored": true
+  },
+  "nonedge": {
+   "code": "NONEDGE",
+   "error": "KeyError",
+   "refused": true
+  },
+  "out_of_range_arc": {
+   "code": "ARC_RANGE",
+   "error": "ValueError",
+   "refused": true
+  },
+  "roundtrips": {
+   "0": {
+    "address": [
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "ok_address": true,
+    "ok_coordinate": true
+   },
+   "1": {
+    "address": [
+     [
+      1,
+      0
+     ],
+     [
+      0,
+      -1
+     ],
+     [
+      1,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      1,
+      0
+     ],
+     [
+      -1,
+      1
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "ok_address": true,
+    "ok_coordinate": true
+   },
+   "144001": {
+    "address": [
+     [
+      0,
+      -1
+     ],
+     [
+      1,
+      0
+     ],
+     [
+      -1,
+      1
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      -1,
+      0
+     ],
+     [
+      -1,
+      1
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "ok_address": true,
+    "ok_coordinate": true
+   },
+   "71999": {
+    "address": [
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      1,
+      -1
+     ],
+     [
+      1,
+      0
+     ],
+     [
+      -1,
+      0
+     ],
+     [
+      -1,
+      1
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "ok_address": true,
+    "ok_coordinate": true
+   }
+  },
+  "sources": {
+   "ok_verified": true
+  }
+ },
+ "command": "identity",
+ "gate_1": "PASS",
+ "identity": {
+  "arcs": 864000,
+  "build_seconds": 1.111,
+  "capacity": 823543,
+  "degree_five_vertices": 12,
+  "depth": 7,
+  "edge_sha256": "712a8fc3d94685aeb614456ba8c88f6df7e6c6ea8a4c19e86d4d3865ad014231",
+  "edges": 432000,
+  "index_payload_bytes": 11502238,
+  "mapping_sha256": "abe96202b554608bd8f5e702b70459daaaf4ab33eb7dfd058723fd4d1724f51b",
+  "vertices": 144002
+ },
+ "logical_prefixes_disconnected": 16,
+ "logical_prefixes_examined": 27,
+ "modules_loaded_from": {
+  "GEO144K": null,
+  "GEO144K.g1c_compact": "research/elpis_torch/upstream/geodome_v1/GEO144K/g1c_compact.py",
+  "GEO144K.g2b_bridge": "research/elpis_torch/upstream/geodome_v1/GEO144K/g2b_bridge.py",
+  "Hexaflag": "research/elpis_torch/upstream/geodome_v1/Hexaflag.py",
+  "geodome": "research/elpis_torch/upstream/geodome_v1/geodome.py",
+  "geodome_index": "research/elpis_torch/upstream/geodome_v1/geodome_index.py",
+  "geodome_scheduler": "research/elpis_torch/upstream/geodome_v1/geodome_scheduler.py",
+  "geodome_state": "research/elpis_torch/upstream/geodome_v1/geodome_state.py"
+ },
+ "pentagon_sample": 0,
+ "phase": "ELPIS_TORCH_R13_GEODOME_SUBSTRATE",
+ "prefix_groups": [
+  {
+   "components": 1,
+   "prefix": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 1,
+   "prefix": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 1,
+   "prefix": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 1,
+   "prefix": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 1,
+   "prefix": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 1,
+   "prefix": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 1,
+   "prefix": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 1,
+   "prefix": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 1,
+   "prefix": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     1,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     1,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     1,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 1,
+   "prefix": [
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 1,
+   "prefix": [
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "vertices": 420
+  },
+  {
+   "components": 2,
+   "prefix": [
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     0,
+     1
+    ]
+   ],
+   "vertices": 420
+  }
+ ],
+ "provenance": {
+  "activation_sha256": "16d8c613527345d0018f6de7eaecd3a514a5b26261e6a8e3d31e446ed249dbd0",
+  "binding_sha256": "318c033d57ac3ed2f3281b1e6cf24f626e74ecc02b69d493fd17a819e3050c72",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "context_runtime_sha256": "71f593b7b2242316fd5c5d2936a664827fce3cbe49fc6f06055059e423cf6449",
+  "elpis_base": "d73cdde3a5050de50cce098472ee966eec103000",
+  "ersa_model_sha256": "5583a9c5dc0c86dadff3b24c98f06df46eb36d10c663156351647c154efb17e1",
+  "evidence_model_sha256": "62c75634ddf0a0c9b6fef0e4d718f3ae1a4eafb22e1c456fed22b1f967961c4c",
+  "evidence_ring_sha256": "149da9f9489d813b22a8c85d7e21fffb9dc4c57544a3f03bb8d85cbed6fc65b7",
+  "geodome_commit": "4e5fe56670c61a0d8906770b03033658c3087c3a",
+  "geodome_files_sha256": {
+   "GEO144K/g1c_compact.py": "4961c9f346dc4061aa2a7db61ea7a59fe700636e86f4490ff33fce2e162a2087",
+   "GEO144K/g2b_bridge.py": "18d226749b3c74b8b4d62f961c027414c3d1783b7c2101a8010c1b239a870d39",
+   "Hexaflag.py": "190ddd3128d646135dcdc3553968edf798a30d43835e5d51e281d068249b2648",
+   "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+   "NOTICE": "7349216806d083f687ccb94fdba9738f20663e2fb5248084fc3e488178235ae3",
+   "PUBLIC.sha256": "e44d288fec19a09c17be0ce503f011d400b499e4d393f1275d305e2b23d31cb8",
+   "geodome.py": "a9e6a6fe0de6ee29500ff90a2c4b767ab6c63a9fac98255e5031d98a0adc3eca",
+   "geodome_index.py": "9b8a3061da0d0a310c5b683988c9063e19ecbc2cbd1434000c2a5ccd3eedd26d",
+   "geodome_scheduler.py": "556566221ece714fdca027471c503e81cc68335a41a6f6195d533a3b29d54d9c",
+   "geodome_state.py": "83f3b2d1414f62d4afb0301e7cdd80464c1e8703acc6b6968304a7b61509c7be"
+  },
+  "git_revision": "4178b3abc6ffdb518353c624b0ed6cf52bb8a7ef",
+  "kernels_sha256": "f5fed567bd6f73a7fd176895ffcbb8f996ef8bd20af59dda537e16ffdb7c6468",
+  "lastblock_sha256": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "plan_sha256": "f41fa21a3452777a49e9e6243db17ff6213631c0075e64b372f64419db7ad393",
+  "ple_sha256": "8f1efe30aff86a29778042b1c3cfe077446a5988393fb0607d989ca1aca36927",
+  "python": "3.13.18",
+  "reference_sha256": "e36cf993a333353599962de61405a471a5d974ef516c692b573398a3a7613165",
+  "runner_sha256": "4584e561dd83b678e100815a0cfa1aa759c1dff4291dc75031a4754379ad4ab0",
+  "scroll_sha256": "acf67f28858dcf6ae184d128d20fb0deb7f4acae670be9f3d317584a00952d4a",
+  "source_sha256": "e0b69e625fea9dcd0a89c4822d4dc54c69af04b82ee83bb0099cb1073c2f1066",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "state_sha256": "3ca57ec61e2f4e9a8d6ed076edd3a993cbf8efcd45d31d86a3b8840c0bdbc72c",
+  "threads": 2,
+  "topology_sha256": "9a1ad35c96789b2b96c82e6a783509c2ef080a7eecc31d2137b276ecf0213192",
+  "torch": "2.15.0+cpu"
+ },
+ "source": {
+  "api_version": "1.0.0",
+  "commit": "4e5fe56670c61a0d8906770b03033658c3087c3a",
+  "files": {
+   "GEO144K/g1c_compact.py": "4961c9f346dc4061aa2a7db61ea7a59fe700636e86f4490ff33fce2e162a2087",
+   "GEO144K/g2b_bridge.py": "18d226749b3c74b8b4d62f961c027414c3d1783b7c2101a8010c1b239a870d39",
+   "Hexaflag.py": "190ddd3128d646135dcdc3553968edf798a30d43835e5d51e281d068249b2648",
+   "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+   "NOTICE": "7349216806d083f687ccb94fdba9738f20663e2fb5248084fc3e488178235ae3",
+   "PUBLIC.sha256": "e44d288fec19a09c17be0ce503f011d400b499e4d393f1275d305e2b23d31cb8",
+   "geodome.py": "a9e6a6fe0de6ee29500ff90a2c4b767ab6c63a9fac98255e5031d98a0adc3eca",
+   "geodome_index.py": "9b8a3061da0d0a310c5b683988c9063e19ecbc2cbd1434000c2a5ccd3eedd26d",
+   "geodome_scheduler.py": "556566221ece714fdca027471c503e81cc68335a41a6f6195d533a3b29d54d9c",
+   "geodome_state.py": "83f3b2d1414f62d4afb0301e7cdd80464c1e8703acc6b6968304a7b61509c7be"
+  },
+  "identity": {
+   "arcs": 864000,
+   "capacity": 823543,
+   "depth": 7,
+   "edge_sha256": "712a8fc3d94685aeb614456ba8c88f6df7e6c6ea8a4c19e86d4d3865ad014231",
+   "edges": 432000,
+   "index_payload_bytes": 11502238,
+   "mapping_sha256": "abe96202b554608bd8f5e702b70459daaaf4ab33eb7dfd058723fd4d1724f51b",
+   "vertices": 144002
+  },
+  "license": "Apache-2.0",
+  "repository": "https://github.com/abraxis717/HexaFlake",
+  "source_pin": "993429cc94e9e3dcfd42df40502fa5b57175d883",
+  "vendored": "research/elpis_torch/upstream/geodome_v1"
+ }
+}

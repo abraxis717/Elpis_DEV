@@ -1,0 +1,119 @@
+{
+ "checks": {
+  "chunk_limit": {
+   "code": "71 tokens do not fit one chunk of 70; split the input",
+   "equal_state_unchanged": true,
+   "error": "ChunkError",
+   "refused": true
+  },
+  "chunk_partition": {
+   "final_logits_max_abs_diff_70_vs_35_35": 3.3306690738754696e-16,
+   "note": "informational: the routed channel is batch-variant across partitions (R6)"
+  },
+  "diagnostics": {
+   "keys": [
+    "candidates",
+    "eligible",
+    "fine_scores",
+    "fine_top",
+    "local_block",
+    "null_weight",
+    "read_block",
+    "read_position",
+    "selected"
+   ],
+   "ok_triple": true
+  },
+  "evidence_modes": {
+   "equal_rows_before_final": true,
+   "equal_state": true,
+   "final_row_read_max_abs": 0.006261895599308773,
+   "ok_read_present": true
+  },
+  "invalid_tokens": {
+   "code": "token ids must be in [0, 646)",
+   "equal_state_unchanged": true,
+   "error": "ValueError",
+   "refused": true
+  },
+  "oracle_without_labels": {
+   "code": "the oracle diagnosis mode and teacher insertion need evidence labels",
+   "equal_state_unchanged": true,
+   "error": "ValueError",
+   "refused": true
+  },
+  "placement": {
+   "ok_last_block": true,
+   "read_layer": 1
+  },
+  "return_pre": {
+   "captured_rows_shape": [
+    1,
+    70,
+    32
+   ],
+   "equal_final_row": true,
+   "logits_shape": [
+    1,
+    1,
+    646
+   ],
+   "ok_captured_every_row": true,
+   "ok_position_advanced_by_chunk": true,
+   "ok_state_changed": true,
+   "pre_shape": [
+    1,
+    1,
+    32
+   ]
+  },
+  "tail": {
+   "equal_T_row_recomputation": true,
+   "full_forward_last_position_max_abs_diff": 1.1102230246251565e-16,
+   "note": "the routed channel's grouped dispatch is batch-variant (R6): the bridge recomputes the final channel over the same T rows as the forward, never one row",
+   "single_row_max_abs_diff": 5.551115123125783e-17
+  }
+ },
+ "command": "audit",
+ "gate_seam": "PASS",
+ "phase": "ELPIS_TORCH_R13_GEODOME_SUBSTRATE",
+ "provenance": {
+  "activation_sha256": "16d8c613527345d0018f6de7eaecd3a514a5b26261e6a8e3d31e446ed249dbd0",
+  "binding_sha256": "318c033d57ac3ed2f3281b1e6cf24f626e74ecc02b69d493fd17a819e3050c72",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "context_runtime_sha256": "71f593b7b2242316fd5c5d2936a664827fce3cbe49fc6f06055059e423cf6449",
+  "elpis_base": "d73cdde3a5050de50cce098472ee966eec103000",
+  "ersa_model_sha256": "5583a9c5dc0c86dadff3b24c98f06df46eb36d10c663156351647c154efb17e1",
+  "evidence_model_sha256": "62c75634ddf0a0c9b6fef0e4d718f3ae1a4eafb22e1c456fed22b1f967961c4c",
+  "evidence_ring_sha256": "149da9f9489d813b22a8c85d7e21fffb9dc4c57544a3f03bb8d85cbed6fc65b7",
+  "geodome_commit": "4e5fe56670c61a0d8906770b03033658c3087c3a",
+  "geodome_files_sha256": {
+   "GEO144K/g1c_compact.py": "4961c9f346dc4061aa2a7db61ea7a59fe700636e86f4490ff33fce2e162a2087",
+   "GEO144K/g2b_bridge.py": "18d226749b3c74b8b4d62f961c027414c3d1783b7c2101a8010c1b239a870d39",
+   "Hexaflag.py": "190ddd3128d646135dcdc3553968edf798a30d43835e5d51e281d068249b2648",
+   "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+   "NOTICE": "7349216806d083f687ccb94fdba9738f20663e2fb5248084fc3e488178235ae3",
+   "PUBLIC.sha256": "e44d288fec19a09c17be0ce503f011d400b499e4d393f1275d305e2b23d31cb8",
+   "geodome.py": "a9e6a6fe0de6ee29500ff90a2c4b767ab6c63a9fac98255e5031d98a0adc3eca",
+   "geodome_index.py": "9b8a3061da0d0a310c5b683988c9063e19ecbc2cbd1434000c2a5ccd3eedd26d",
+   "geodome_scheduler.py": "556566221ece714fdca027471c503e81cc68335a41a6f6195d533a3b29d54d9c",
+   "geodome_state.py": "83f3b2d1414f62d4afb0301e7cdd80464c1e8703acc6b6968304a7b61509c7be"
+  },
+  "git_revision": "4178b3abc6ffdb518353c624b0ed6cf52bb8a7ef",
+  "kernels_sha256": "f5fed567bd6f73a7fd176895ffcbb8f996ef8bd20af59dda537e16ffdb7c6468",
+  "lastblock_sha256": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "plan_sha256": "f41fa21a3452777a49e9e6243db17ff6213631c0075e64b372f64419db7ad393",
+  "ple_sha256": "8f1efe30aff86a29778042b1c3cfe077446a5988393fb0607d989ca1aca36927",
+  "python": "3.13.18",
+  "reference_sha256": "e36cf993a333353599962de61405a471a5d974ef516c692b573398a3a7613165",
+  "runner_sha256": "4584e561dd83b678e100815a0cfa1aa759c1dff4291dc75031a4754379ad4ab0",
+  "scroll_sha256": "acf67f28858dcf6ae184d128d20fb0deb7f4acae670be9f3d317584a00952d4a",
+  "source_sha256": "e0b69e625fea9dcd0a89c4822d4dc54c69af04b82ee83bb0099cb1073c2f1066",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "state_sha256": "3ca57ec61e2f4e9a8d6ed076edd3a993cbf8efcd45d31d86a3b8840c0bdbc72c",
+  "threads": 2,
+  "topology_sha256": "9a1ad35c96789b2b96c82e6a783509c2ef080a7eecc31d2137b276ecf0213192",
+  "torch": "2.15.0+cpu"
+ }
+}
