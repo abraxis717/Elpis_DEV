@@ -1,0 +1,38 @@
+HexaFlake
+
+Original HexaFlake concept and geometric architecture: @Akitti (https://x.com/Akitti).
+Computational implementation and experimental development: Elpis / abraxis717 (https://github.com/abraxis717).
+Attribution does not assign or extinguish any contributor rights.
+
+CGC reference: https://github.com/abraxis717/CGC (Apache-2.0).
+
+Upstream Elpis NOTICE (retained):
+Elpis (development foundation)
+
+Development repository:
+https://github.com/abraxis717/Elpis_DEV
+
+Historical beta donor (read-only provenance):
+https://github.com/abraxis717/Elpis
+
+First-party Elpis software is licensed under the Apache License, Version 2.0.
+
+When redistributing Elpis or derivative works, preserve this NOTICE together
+with the other notices required by the applicable licenses.
+
+This NOTICE is informational and does not modify the Apache License.
+
+Third-party mechanisms
+----------------------
+The inference subsystem independently implements mechanisms whose design
+follows DeepSeek V4.1 (MIT), ds4.c (MIT), DeepSpec (MIT), vLLM (Apache-2.0)
+and ZCode (Apache-2.0). No upstream code, weights or data are included. The
+upstream license texts and the provenance table are in LICENSES/.
+
+CPython-derived summation in HCA88.c (awr_fsum):
+Copyright (c) 2001 Python Software Foundation; All Rights Reserved.
+The retained CPython 3.13 license also includes the PSF copyright range through 2024.
+Python license: licenses/CPython.txt (CPython 3.13 license text; original port revision not recorded).
+CPython comparison: https://github.com/python/cpython/blob/v3.11.9/Modules/mathmodule.c
+CPython credits the precision summation algorithm to Raymond Hettinger and the exact-partials and rounding enhancements to Mark Dickinson.
+Changes relative to CPython: standalone finite-input C implementation operating on a bounded double array and fixed stack partials, without Python object, iterator, allocation or special-value exception machinery; final half-even correction retained.
