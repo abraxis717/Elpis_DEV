@@ -1,0 +1,341 @@
+{
+ "adapter_formula": {
+  "1024": {
+   "core": 120,
+   "gate": 1,
+   "proj_in": 5120,
+   "proj_out": 3072,
+   "total": 8313
+  },
+  "64": {
+   "core": 120,
+   "gate": 1,
+   "proj_in": 320,
+   "proj_out": 192,
+   "total": 633
+  },
+  "768": {
+   "core": 120,
+   "gate": 1,
+   "proj_in": 3840,
+   "proj_out": 2304,
+   "total": 6265
+  }
+ },
+ "causal_path": "ErsaLM.forward computes each block's ERSA (and attention, evidence) mixing BEFORE its channel: x -> mix -> pre -> pre + channel(norm(pre)). A block's CGC cannot change that block's ERSA state; it changes the input of every later block and, in the last block, only the readout (tested in test_r11.py).",
+ "command": "audit",
+ "d64_expert": {
+  "budget": {
+   "adapter_fraction": 0.03833575581395349,
+   "adapter_parameters": 633,
+   "budget_fraction": 0.05,
+   "budget_parameters": 825.6,
+   "swiglu_parameters": 16512,
+   "within_budget": true
+  },
+  "cgc_formula_parameter_count": 632,
+  "counted": {
+   "core": 120,
+   "gate": 1,
+   "proj_in": 320,
+   "proj_out": 192,
+   "total": 633
+  }
+ },
+ "label": "EXACT (meta tensors; nothing allocated or trained)",
+ "phase": "ELPIS_TORCH_R11_BOUNDED_CGC_SPECIALIST",
+ "scales": {
+  "r6_1b": {
+   "BOUNDED_SPECIALIST": {
+    "active_as_built": {
+     "active_per_token": 308831303,
+     "resident": 574248917,
+     "total": 574248917
+    },
+    "census_as_built": {
+     "active_cgc_parameters_per_token": 299268,
+     "by_component": {
+      "core": 1068016,
+      "gate": 164,
+      "proj_in": 894976,
+      "proj_out": 759808
+     },
+     "by_placement": {
+      "dense": 74817,
+      "routed": 1197072,
+      "shared": 74817
+     },
+     "cgc_share_of_model": 0.004741783431173628,
+     "instances": {
+      "dense": 9,
+      "routed": 144,
+      "shared": 9
+     },
+     "instances_total": 162,
+     "model_total_parameters": 574248917,
+     "resident_cgc_parameters": 2722964
+    },
+    "core_model_cgc_parameters": 1346706,
+    "evidence_encoder_cgc_as_built": 1376258,
+    "note": "the R5 evidence encoder inherits cgc_units and the bound from the core ModelConfig, so the as-built micro model also changes the encoder's CGC (units 4 -> 8); R11 leaves the encoder to R5 and reports its legacy CGC separately (total_parameters_with_legacy_encoder)",
+    "total_parameters_with_legacy_encoder": 573724629
+   },
+   "E0_REFERENCE": {
+    "active_as_built": {
+     "active_per_token": 308831303,
+     "resident": 574248917,
+     "total": 574248917
+    },
+    "census_as_built": {
+     "active_cgc_parameters_per_token": 299268,
+     "by_component": {
+      "core": 1068016,
+      "gate": 164,
+      "proj_in": 894976,
+      "proj_out": 759808
+     },
+     "by_placement": {
+      "dense": 74817,
+      "routed": 1197072,
+      "shared": 74817
+     },
+     "cgc_share_of_model": 0.004741783431173628,
+     "instances": {
+      "dense": 9,
+      "routed": 144,
+      "shared": 9
+     },
+     "instances_total": 162,
+     "model_total_parameters": 574248917,
+     "resident_cgc_parameters": 2722964
+    },
+    "core_model_cgc_parameters": 1346706,
+    "evidence_encoder_cgc_as_built": 1376258,
+    "note": "the R5 evidence encoder inherits cgc_units and the bound from the core ModelConfig, so the as-built micro model also changes the encoder's CGC (units 4 -> 8); R11 leaves the encoder to R5 and reports its legacy CGC separately (total_parameters_with_legacy_encoder)",
+    "total_parameters_with_legacy_encoder": 573724629
+   },
+   "budget_dense_channel": {
+    "adapter_fraction": 0.0009908658687294031,
+    "adapter_parameters": 8313,
+    "budget_fraction": 0.05,
+    "budget_parameters": 419481.60000000003,
+    "swiglu_parameters": 8389632,
+    "within_budget": true
+   },
+   "budget_routed_expert": {
+    "adapter_fraction": 0.003962012719619327,
+    "adapter_parameters": 8313,
+    "budget_fraction": 0.05,
+    "budget_parameters": 104908.8,
+    "swiglu_parameters": 2098176,
+    "within_budget": true
+   },
+   "legacy": {
+    "active": {
+     "active_per_token": 433050471,
+     "resident": 994692069,
+     "total": 994692069
+    },
+    "census": {
+     "active_cgc_parameters_per_token": 125042724,
+     "by_component": {
+      "core": 198705152,
+      "gate": 164,
+      "proj_in": 44892160,
+      "proj_out": 179568640
+     },
+     "by_placement": {
+      "dense": 61341705,
+      "routed": 339738768,
+      "shared": 21233673
+     },
+     "cgc_share_of_model": 0.4254242385037052,
+     "instances": {
+      "dense": 9,
+      "routed": 144,
+      "shared": 9
+     },
+     "instances_total": 162,
+     "model_total_parameters": 994692069,
+     "resident_cgc_parameters": 423166116
+    },
+    "core_model_cgc_excluding_gates": 422313984,
+    "core_model_cgc_parameters": 422314146,
+    "evidence_encoder_cgc_parameters": 851970
+   },
+   "micro_adapter": {
+    "core": 120,
+    "gate": 1,
+    "proj_in": 5120,
+    "proj_out": 3072,
+    "total": 8313
+   },
+   "operator_costs_legacy_routed": {
+    "core_macs": 1048576,
+    "cubic_horner_multiplies": 12288,
+    "gate_multiplies": 1024,
+    "proj_in_macs": 262144,
+    "proj_out_macs": 1048576,
+    "tanh_evaluations": 4096,
+    "unit_sum_adds": 4096,
+    "weight_macs": 2359296
+   },
+   "operator_costs_micro_bounded": {
+    "core_macs": 120,
+    "cubic_horner_multiplies": 72,
+    "gate_multiplies": 1024,
+    "proj_in_macs": 5120,
+    "proj_out_macs": 3072,
+    "tanh_evaluations": 24,
+    "unit_sum_adds": 24,
+    "weight_macs": 8312
+   }
+  },
+  "r6_500m": {
+   "BOUNDED_SPECIALIST": {
+    "active_as_built": {
+     "active_per_token": 222330921,
+     "resident": 364264581,
+     "total": 364264581
+    },
+    "census_as_built": {
+     "active_cgc_parameters_per_token": 187950,
+     "by_component": {
+      "core": 1059376,
+      "gate": 92,
+      "proj_in": 411136,
+      "proj_out": 469504
+     },
+     "by_placement": {
+      "dense": 62650,
+      "routed": 501200,
+      "shared": 0
+     },
+     "cgc_share_of_model": 0.00532609564914026,
+     "instances": {
+      "dense": 10,
+      "routed": 80,
+      "shared": 0
+     },
+     "instances_total": 90,
+     "model_total_parameters": 364264581,
+     "resident_cgc_parameters": 1940108
+    },
+    "core_model_cgc_parameters": 563850,
+    "evidence_encoder_cgc_as_built": 1376258,
+    "note": "the R5 evidence encoder inherits cgc_units and the bound from the core ModelConfig, so the as-built micro model also changes the encoder's CGC (units 4 -> 8); R11 leaves the encoder to R5 and reports its legacy CGC separately (total_parameters_with_legacy_encoder)",
+    "total_parameters_with_legacy_encoder": 363740293
+   },
+   "E0_REFERENCE": {
+    "active_as_built": {
+     "active_per_token": 222330921,
+     "resident": 364264581,
+     "total": 364264581
+    },
+    "census_as_built": {
+     "active_cgc_parameters_per_token": 187950,
+     "by_component": {
+      "core": 1059376,
+      "gate": 92,
+      "proj_in": 411136,
+      "proj_out": 469504
+     },
+     "by_placement": {
+      "dense": 62650,
+      "routed": 501200,
+      "shared": 0
+     },
+     "cgc_share_of_model": 0.00532609564914026,
+     "instances": {
+      "dense": 10,
+      "routed": 80,
+      "shared": 0
+     },
+     "instances_total": 90,
+     "model_total_parameters": 364264581,
+     "resident_cgc_parameters": 1940108
+    },
+    "core_model_cgc_parameters": 563850,
+    "evidence_encoder_cgc_as_built": 1376258,
+    "note": "the R5 evidence encoder inherits cgc_units and the bound from the core ModelConfig, so the as-built micro model also changes the encoder's CGC (units 4 -> 8); R11 leaves the encoder to R5 and reports its legacy CGC separately (total_parameters_with_legacy_encoder)",
+    "total_parameters_with_legacy_encoder": 363740293
+   },
+   "budget_dense_channel": {
+    "adapter_fraction": 0.001327726576063368,
+    "adapter_parameters": 6265,
+    "budget_fraction": 0.05,
+    "budget_parameters": 235929.6,
+    "swiglu_parameters": 4718592,
+    "within_budget": true
+   },
+   "budget_routed_expert": {
+    "adapter_fraction": 0.002655453152126736,
+    "adapter_parameters": 6265,
+    "budget_fraction": 0.05,
+    "budget_parameters": 117964.8,
+    "swiglu_parameters": 2359296,
+    "within_budget": true
+   },
+   "legacy": {
+    "active": {
+     "active_per_token": 286499353,
+     "resident": 507683413,
+     "total": 507683413
+    },
+    "census": {
+     "active_cgc_parameters_per_token": 64880670,
+     "by_component": {
+      "core": 71303168,
+      "gate": 92,
+      "proj_in": 14811136,
+      "proj_out": 59244544
+     },
+     "by_placement": {
+      "dense": 38338570,
+      "routed": 106168400,
+      "shared": 0
+     },
+     "cgc_share_of_model": 0.2863180798857417,
+     "instances": {
+      "dense": 10,
+      "routed": 80,
+      "shared": 0
+     },
+     "instances_total": 90,
+     "model_total_parameters": 507683413,
+     "resident_cgc_parameters": 145358940
+    },
+    "core_model_cgc_excluding_gates": 144506880,
+    "core_model_cgc_parameters": 144506970,
+    "evidence_encoder_cgc_parameters": 851970
+   },
+   "micro_adapter": {
+    "core": 120,
+    "gate": 1,
+    "proj_in": 3840,
+    "proj_out": 2304,
+    "total": 6265
+   },
+   "operator_costs_legacy_routed": {
+    "core_macs": 589824,
+    "cubic_horner_multiplies": 9216,
+    "gate_multiplies": 768,
+    "proj_in_macs": 147456,
+    "proj_out_macs": 589824,
+    "tanh_evaluations": 3072,
+    "unit_sum_adds": 3072,
+    "weight_macs": 1327104
+   },
+   "operator_costs_micro_bounded": {
+    "core_macs": 120,
+    "cubic_horner_multiplies": 72,
+    "gate_multiplies": 768,
+    "proj_in_macs": 3840,
+    "proj_out_macs": 2304,
+    "tanh_evaluations": 24,
+    "unit_sum_adds": 24,
+    "weight_macs": 6264
+   }
+  }
+ }
+}

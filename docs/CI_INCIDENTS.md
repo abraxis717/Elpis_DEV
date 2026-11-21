@@ -129,3 +129,117 @@ Not done, by policy: an `any(... == COLD)` relaxation, a mocked eviction, a retr
 ### Closure condition
 
 The repair is accepted only with the required jobs green on its exact head commit (`docs/CI_POLICY.md` rules 1, 2).
+
+## CI-RUNNER-IMAGE-1 — `ubuntu-latest` became Ubuntu 26.04 under the native jobs
+
+**Status:** repair applied: the jobs that build or run native code are pinned to `ubuntu-24.04`, the image their
+toolchain was qualified on. Classified CI-ENVIRONMENT DEFECT. Whether the native code is correct under GCC 15.2 and
+clang 21.1 is **not established** (below).
+
+### Observations
+
+Each job log records its image (`Runner Image`). `src/` and `native/` are byte-identical in every head below; the
+workflow differs between them only in the Elpis Torch research job.
+
+| run | head | image (in every job log checked) | verdict |
+|---|---|---|---|
+| 474 (44346508710), 16:22 UTC 18 Nov | `93b0db6` | ubuntu-24.04 `20261111.127.1`, `20261111.370.1` | 16 of 16 green |
+| 475 (44348237360), 16:31 UTC | `7106981` (adds one JSON record) | mixed | 12 green, 4 red. Native (gcc, Release) and Native (clang, Release) green on ubuntu-24.04; Python 3.11 and Native (clang, Debug) red on ubuntu-26.04 `20261111.196.1` |
+| 478 (44358066804) | `bfe4a12` (`main`, after #76) | ubuntu-26.04 `20261111.196.1` | 10 red |
+| 480 (44383238228), 481 (44383589088) | `9338e9d` (R8, #78) | ubuntu-26.04 `20261111.196.1` | the same 10 red |
+
+The 10 red jobs are Native (gcc, Release), Native (clang, Release), Native (clang, Debug) and the seven jobs whose first
+step is the Release native build: Boundary, Python 3.11, Python 3.12, Python stress and historical, Python without
+network, Installed system acceptance and Scientific authority. `NATIVE_DEPS` installs the image's distribution
+toolchain:
+
+| | ubuntu-24.04 (24.04.5) | ubuntu-26.04 (26.04.1) |
+|---|---|---|
+| GCC | 13.3.0 | 15.2.0 |
+| clang | 18.1.3 | 21.1.8 (package `1:21.1.6-71`) |
+| CMake | 3.28.3 | 4.2.3 |
+| Landlock ABI reported by the native host | not printed (its smoke test passes) | 8 |
+
+### Mechanism (what is evidenced)
+
+* **GCC 15.2, Release.** `ELPIS_WARNINGS_AS_ERRORS` is ON by default (`CMakeLists.txt`).
+  * GCC 15.2 reports four `-Wmaybe-uninitialized` errors in `native/pipeline/ingress/src/regex_hacf_query_ingress.cpp`. They sit inside libstdc++'s `<variant>` move, for the `std::nullptr_t` and `bool` alternatives of `detail::J`, inlined from the two moves of a `detail::J::O` into a `detail::J` in `build_context_proposal` (lines 269 and 284).
+  * The target `elpis_query_ingress` fails, and so does every job whose first step is the Release build.
+  * The Debug builds (Native gcc Debug, ASan+UBSan, TSan) compile the file without the diagnostic.
+
+  Run 481, Native (gcc, Release):
+
+  ```
+  -- The CXX compiler identification is GNU 15.2.0
+  /usr/include/c++/15/variant:229:11: error: '*(std::nullptr_t*)((char*)&<unnamed> + offsetof(elpis::regex_hacf_query_ingress::detail::J, [...]::_M_u))' may be used uninitialized [-Werror=maybe-uninitialized]
+  [...]/native/pipeline/ingress/src/regex_hacf_query_ingress.cpp:284:55: note: '<anonymous>' declared here
+    284 |             hit_rows.push_back(detail::J(std::move(ho)));
+  cc1plus: all warnings being treated as errors
+  gmake[2]: *** [native/pipeline/CMakeFiles/elpis_query_ingress.dir/build.make:79: native/pipeline/CMakeFiles/elpis_query_ingress.dir/ingress/src/regex_hacf_query_ingress.cpp.o] Error 1
+  ```
+
+* **clang 21.1, Release and Debug.**
+  * The build succeeds, and 185 of 186 ctest tests pass. `runtime.native_host_smoke` fails.
+  * The host establishes its containment (Landlock ABI 8, no write grant). Every ECS operation then fails with `ECS_STATE`, and the host exits 3.
+
+  Run 481, Native (clang, Release):
+
+  ```
+  -- The CXX compiler identification is Clang 21.1.8
+  152/186 Test #152: runtime.native_host_smoke ........................***Failed    0.07 sec
+  CMake Error at [...]/native/runtime/host/tests/host_smoke.cmake:42 (message):
+    [...]/build/native/runtime/elpis;--native-build;[...]/build;--catalog-sha256;def766f8[...];--seed;7;session;--script;-:
+    exit 3 (expected 0)
+    {"op":"status", [...] "containment":{"restricted":true,"landlock_abi":8,"write_grants":0,"core_limit":0,"dumpable":false,"fsize_limit":0,"swap_areas":1,"memory_locked":true}, [...]}
+    {"op":"source_found","ok":false,"code":"ECS_STATE","detail":"the lineage's initial composite could not be built"}
+    {"op":"learn","ok":false,"code":"ECS_STATE","detail":"the lineage's initial composite could not be built"}
+  99% tests passed, 1 tests failed out of 186
+  ```
+
+  * On the same image, the GCC 15.2 Debug build passes the same test (run 481, Native (gcc, Debug): `Test #152: runtime.native_host_smoke ... Passed`, `100% tests passed out of 186`), and so do the GCC sanitizer builds.
+  * On ubuntu-24.04 the clang 18.1 builds pass it (run 474; run 475, Native (clang, Release)).
+* In run 475 the verdict follows the image job by job, on one commit.
+
+### Classification
+
+CI-ENVIRONMENT DEFECT (`docs/CI_POLICY.md`, "Repairing a red line"):
+
+* The jobs' runner image changed under an unchanged native tree, and with it their compilers, CMake and kernel.
+* It is the case rule 3 names: one tree with different verdicts, environment-sensitive. The deciding environment is identified. Every job checked on ubuntu-24.04 passed, and every failing job checked ran on ubuntu-26.04.
+
+### What the evidence does not establish
+
+* **The GCC 15.2 diagnostic.** Whether it is a false positive of the `std::variant` move (the moved alternative is a `detail::J::O`, not the flagged `std::nullptr_t` or `bool`), or a real read of uninitialized storage. That question is work in `native/` and was not taken up here.
+* **The clang 21.1 host-smoke failure.** Whether it comes from the compiler, from the Landlock ABI 8 kernel, or from both. The GCC Debug build passing on the same kernel shows that ABI 8 alone does not fail it. A local check could not separate the two: the kernel available to it reports Landlock ABI 7.
+* **ubuntu-26.04 is therefore not qualified.** The native code is not qualified on ubuntu-26.04 (GCC 15.2, clang 21.1, Landlock ABI 8). The repair restores the qualified environment; it does not qualify the new one.
+
+### Repair
+
+`.github/workflows/ci.yml`: every job that compiles or executes the repository's native code runs on `ubuntu-24.04`:
+
+* Boundary;
+* Python 3.11 and 3.12;
+* Python stress and historical;
+* Python without network;
+* Installed system acceptance;
+* Scientific authority;
+* Continuity and RuntimeCore (Rust);
+* the four Native jobs;
+* Native ASan+UBSan and Native TSan;
+* Elpis Torch research.
+
+They are pinned together, so that one run never qualifies the native code under two toolchains. Four of these jobs were green on ubuntu-26.04 and would otherwise have stayed there, building with GCC 15: Native (gcc, Debug), the two sanitizer jobs, and the research job, which builds the ECS_G kernel. Donor parity runs no native code and keeps `ubuntu-latest`. `NATIVE_DEPS` is unchanged; on ubuntu-24.04 it installs the toolchain above.
+
+Not done, by policy:
+
+* No source, test, build flag or warning setting changed; `ELPIS_WARNINGS_AS_ERRORS` stays ON.
+* No test was excluded or skipped.
+* No containment check was relaxed.
+* No job was re-run until green.
+
+### Closure condition
+
+* **Acceptance.** The repair is accepted only with every job green on its exact head commit, in both the push and the pull-request run (`docs/CI_POLICY.md` rules 1, 2). The logs must show `Image: ubuntu-24.04` and the toolchain above.
+* **Duration.** The pin lasts only as long as GitHub provides ubuntu-24.04.
+* **Qualifying ubuntu-26.04.** This needs the two open questions above answered in `native/`, under the owner's authorization.
+* **Reopening.** A pinned job failing for a toolchain or image reason reopens this incident.

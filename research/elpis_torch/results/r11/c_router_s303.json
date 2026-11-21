@@ -1,0 +1,74 @@
+{
+ "command": "router",
+ "median_k32_mse": {
+  "conditional": 0.0140574905090034,
+  "smooth": 0.018807915039360523
+ },
+ "phase": "ELPIS_TORCH_R11_STAGE_C",
+ "provenance": {
+  "amendment_sha256": "ede13d3d982963fa341f4e46ccf9d2d6ad87670a61561b38bad8298e3dd51a20",
+  "cgc_sha256": "2a5a1103a361c8a9a29865caca4300f5b5eac659b612465fcca1f8c1feb02d3d",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "git_revision": "fb0c05143cc3b88efc6668b65a4c739254c84475",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "preregistration_sha256": "a7df440a779b0e5154dabacec4968e45588cb3beeb0cd1be2a42c339a2edc198",
+  "profile_sha256": "8e8ae728f14f6aae7458a20125e77fb93427e7a047ff63b64500266197c5b4ad",
+  "python": "3.13.18",
+  "runner_sha256": "a7cf027f0ce9b58061c28962855640be8d389924062a2b0c37c57a01b66480b1",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "stack_sha256": "3945ae033d8aadaa48e8e42d40deef2d92329b16069197765560f52ba22a905b",
+  "stage_c_runner_sha256": "2831eb02f7e3e96f132bc285ceb02d4333fce7a2aeb6bae4bde160cae308b8e8",
+  "tasks_sha256": "dd016c5dd233cd3d1625e49dae019545e2f1d045846d283f0e15462ffc35d101",
+  "threads": 2,
+  "torch": "2.15.0+cpu",
+  "upstream_e0_sha256": "92c987e0fb54d80193fd60ecc9a3e31088f0f9b7cd2cfe8e08c4636a198d7084"
+ },
+ "purity": {
+  "0": {
+   "counts": {
+    "conditional": [
+     525.0,
+     435.0
+    ],
+    "smooth": [
+     520.0,
+     440.0
+    ]
+   },
+   "families_separated": false,
+   "majority_expert": {
+    "conditional": 0,
+    "smooth": 0
+   },
+   "purity": {
+    "conditional": 0.546875,
+    "smooth": 0.5416666865348816
+   }
+  },
+  "1": {
+   "counts": {
+    "conditional": [
+     303.0,
+     657.0
+    ],
+    "smooth": [
+     306.0,
+     654.0
+    ]
+   },
+   "families_separated": false,
+   "majority_expert": {
+    "conditional": 1,
+    "smooth": 1
+   },
+   "purity": {
+    "conditional": 0.684374988079071,
+    "smooth": 0.6812499761581421
+   }
+  }
+ },
+ "seed": 303,
+ "selected_step": 2000,
+ "stage": "confirmation",
+ "status": "COMPLETED"
+}

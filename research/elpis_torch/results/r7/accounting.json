@@ -1,0 +1,127 @@
+{
+ "environment": {
+  "cpu_capability": "AVX512",
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 1,
+  "torch": "2.15.0+cpu"
+ },
+ "note": "formulas; PLE before block 1; orders (2, 3); 8 heads per order",
+ "phase": "ELPIS_TORCH_R7_PLE_ADMISSION",
+ "rows": [
+  {
+   "addressing_integer_ops_per_token": 80,
+   "bytes_read_per_token": {
+    "bf16": 2048,
+    "fp32": 4096
+   },
+   "configuration": "r6_500m",
+   "fusion_macs_over_active_weight_macs": 0.00665995,
+   "fusion_macs_per_token": 1574400,
+   "fusion_parameters": 1574400,
+   "row_values_over_active_weights_per_token": 4.3359e-06,
+   "rows_per_head": 65536,
+   "rows_read_per_token": 16,
+   "table_bytes": {
+    "bf16": 134326016,
+    "fp32": 268652032
+   },
+   "table_parameters": 67163008
+  },
+  {
+   "addressing_integer_ops_per_token": 80,
+   "bytes_read_per_token": {
+    "bf16": 2048,
+    "fp32": 4096
+   },
+   "configuration": "r6_500m",
+   "fusion_macs_over_active_weight_macs": 0.00665995,
+   "fusion_macs_per_token": 1574400,
+   "fusion_parameters": 1574400,
+   "row_values_over_active_weights_per_token": 4.3359e-06,
+   "rows_per_head": 1048576,
+   "rows_read_per_token": 16,
+   "table_bytes": {
+    "bf16": 2147684096,
+    "fp32": 4295368192
+   },
+   "table_parameters": 1073842048
+  },
+  {
+   "addressing_integer_ops_per_token": 80,
+   "bytes_read_per_token": {
+    "bf16": 2048,
+    "fp32": 4096
+   },
+   "configuration": "r6_500m",
+   "fusion_macs_over_active_weight_macs": 0.00665995,
+   "fusion_macs_per_token": 1574400,
+   "fusion_parameters": 1574400,
+   "row_values_over_active_weights_per_token": 4.3359e-06,
+   "rows_per_head": 16777216,
+   "rows_read_per_token": 16,
+   "table_bytes": {
+    "bf16": 34360151552,
+    "fp32": 68720303104
+   },
+   "table_parameters": 17180075776
+  },
+  {
+   "addressing_integer_ops_per_token": 80,
+   "bytes_read_per_token": {
+    "bf16": 2048,
+    "fp32": 4096
+   },
+   "configuration": "r6_1b",
+   "fusion_macs_over_active_weight_macs": 0.00573084,
+   "fusion_macs_per_token": 2099200,
+   "fusion_parameters": 2099200,
+   "row_values_over_active_weights_per_token": 2.79826e-06,
+   "rows_per_head": 65536,
+   "rows_read_per_token": 16,
+   "table_bytes": {
+    "bf16": 134326016,
+    "fp32": 268652032
+   },
+   "table_parameters": 67163008
+  },
+  {
+   "addressing_integer_ops_per_token": 80,
+   "bytes_read_per_token": {
+    "bf16": 2048,
+    "fp32": 4096
+   },
+   "configuration": "r6_1b",
+   "fusion_macs_over_active_weight_macs": 0.00573084,
+   "fusion_macs_per_token": 2099200,
+   "fusion_parameters": 2099200,
+   "row_values_over_active_weights_per_token": 2.79826e-06,
+   "rows_per_head": 1048576,
+   "rows_read_per_token": 16,
+   "table_bytes": {
+    "bf16": 2147684096,
+    "fp32": 4295368192
+   },
+   "table_parameters": 1073842048
+  },
+  {
+   "addressing_integer_ops_per_token": 80,
+   "bytes_read_per_token": {
+    "bf16": 2048,
+    "fp32": 4096
+   },
+   "configuration": "r6_1b",
+   "fusion_macs_over_active_weight_macs": 0.00573084,
+   "fusion_macs_per_token": 2099200,
+   "fusion_parameters": 2099200,
+   "row_values_over_active_weights_per_token": 2.79826e-06,
+   "rows_per_head": 16777216,
+   "rows_read_per_token": 16,
+   "table_bytes": {
+    "bf16": 34360151552,
+    "fp32": 68720303104
+   },
+   "table_parameters": 17180075776
+  }
+ ]
+}

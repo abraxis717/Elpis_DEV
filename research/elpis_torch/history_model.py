@@ -340,6 +340,11 @@ class ErsaHistoryLM(ErsaLM):
     def new_state(self, batch: int, *, origin: int = 0, history_device=None, index_device=None) -> HistoryState:
         return HistoryState(self, batch, origin, history_device=history_device, index_device=index_device)
 
+    def context_interface(self):
+        """R6: what ``ContextSession`` needs from this family (``context_runtime.HistoryInterface``)."""
+        from .context_runtime import HistoryInterface
+        return HistoryInterface(self)
+
     # -- encoding blocks from token ids --------------------------------------------------------------------
 
     def _encode(self, windows: torch.Tensor, valid: torch.Tensor) -> torch.Tensor:

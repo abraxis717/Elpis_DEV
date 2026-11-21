@@ -1,0 +1,40 @@
+{
+ "command": "bandwidth",
+ "copies": [
+  {
+   "best_seconds": 0.01938208699993993,
+   "bytes": 268435456,
+   "copy_gb_per_s_read_plus_write": 27.699334545431768
+  },
+  {
+   "best_seconds": 0.046243505000347795,
+   "bytes": 1073741824,
+   "copy_gb_per_s_read_plus_write": 46.438600360933904
+  }
+ ],
+ "label": "MEASURED on this execution environment (a VM); not the DDR3 scenario",
+ "phase": "ELPIS_TORCH_R9_BOARDY_QUALIFICATION_P3",
+ "pmu": {
+  "event_sources": [
+   "breakpoint",
+   "msr",
+   "power",
+   "software",
+   "tracepoint",
+   "uprobe"
+  ],
+  "hardware_pmu": false,
+  "perf_event_paranoid": "2"
+ },
+ "provenance": {
+  "cpu_capability": "AVX512",
+  "git_revision": "421912dd1faa9074bd6cfe07d2a92713d95bd9d6",
+  "p3_runner_sha256": "bb893682428be87efa94c5bbaf12f66b8a5fdb08cfab7e52a0a7d973d728cd19",
+  "preregistration_sha256": "9974d72da622823ff9fe9c35c54a7406cfde44ab6bc953c3f9b64b031e0be191",
+  "python": "3.13.18",
+  "runner_sha256": "47b46a9ed991fdb0920c80e11be59135f19263020b0b59bebdb82025f08ce107",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "threads": 4
+}

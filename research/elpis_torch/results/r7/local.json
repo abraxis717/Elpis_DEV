@@ -1,0 +1,84 @@
+{
+ "environment": {
+  "cpu_capability": "AVX512",
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "phase": "ELPIS_TORCH_R7_PLE_ADMISSION",
+ "rows": [
+  {
+   "inside_word_bits_per_byte": 3.31788,
+   "seed": 0,
+   "train": {
+    "seconds": 22.3,
+    "status": "COMPLETED",
+    "steps": 200
+   },
+   "val_bits_per_byte": 3.54566,
+   "variant": "r6"
+  },
+  {
+   "inside_word_bits_per_byte": 3.29489,
+   "seed": 1,
+   "train": {
+    "seconds": 20.6,
+    "status": "COMPLETED",
+    "steps": 200
+   },
+   "val_bits_per_byte": 3.52544,
+   "variant": "r6"
+  },
+  {
+   "inside_word_bits_per_byte": 1.06571,
+   "seed": 0,
+   "train": {
+    "seconds": 22.2,
+    "status": "COMPLETED",
+    "steps": 200
+   },
+   "val_bits_per_byte": 1.66457,
+   "val_bits_per_byte_ple_removed": 5.95098,
+   "variant": "ple"
+  },
+  {
+   "inside_word_bits_per_byte": 1.09717,
+   "seed": 1,
+   "train": {
+    "seconds": 23.9,
+    "status": "COMPLETED",
+    "steps": 200
+   },
+   "val_bits_per_byte": 1.69015,
+   "val_bits_per_byte_ple_removed": 5.74108,
+   "variant": "ple"
+  },
+  {
+   "inside_word_bits_per_byte": 3.81543,
+   "seed": 0,
+   "train": {
+    "seconds": 22.7,
+    "status": "COMPLETED",
+    "steps": 200
+   },
+   "val_bits_per_byte": 3.95997,
+   "val_bits_per_byte_ple_removed": 3.95135,
+   "variant": "ple_random"
+  },
+  {
+   "inside_word_bits_per_byte": 3.99056,
+   "seed": 1,
+   "train": {
+    "seconds": 23.6,
+    "status": "COMPLETED",
+    "steps": 200
+   },
+   "val_bits_per_byte": 4.10625,
+   "val_bits_per_byte_ple_removed": 4.10076,
+   "variant": "ple_random"
+  }
+ ],
+ "steps": 400,
+ "task": "512 fixed words, uniform word sequences"
+}

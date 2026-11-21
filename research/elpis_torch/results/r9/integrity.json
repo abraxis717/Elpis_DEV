@@ -1,0 +1,38 @@
+{
+ "command": "integrity",
+ "construction_identity": {
+  "0": true,
+  "1": true,
+  "2": true
+ },
+ "corpus_digest": "ab516f5f3db9f2314636110a81478ae96aea161fc01044852ab10467ce1c86d7",
+ "deviation": {
+  "code": 3.4188129969248138e-06,
+  "prose": 4.3353982763782994e-06
+ },
+ "expected": {
+  "code": 1.71834,
+  "prose": 2.19864
+ },
+ "found": {
+  "code": 1.718336581187003,
+  "prose": 2.1986356646017238
+ },
+ "phase": "ELPIS_TORCH_R9_BOARDY_QUALIFICATION",
+ "provenance": {
+  "cpu_capability": "AVX512",
+  "git_revision": "3bdd449d146cd708de4c7dbf07b2caa32fa6c89e+dirty",
+  "preregistration_sha256": "9974d72da622823ff9fe9c35c54a7406cfde44ab6bc953c3f9b64b031e0be191",
+  "python": "3.13.18",
+  "runner_sha256": "47b46a9ed991fdb0920c80e11be59135f19263020b0b59bebdb82025f08ce107",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "seconds": 237.3,
+ "status": "PASS",
+ "train": {
+  "seconds": 233.2,
+  "status": "COMPLETED",
+  "steps": 1432
+ }
+}

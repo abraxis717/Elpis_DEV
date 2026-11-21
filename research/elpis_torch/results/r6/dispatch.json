@@ -1,0 +1,55 @@
+{
+ "environment": {
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "phase": "ELPIS_TORCH_R6_EXPERTIZED_BACKBONE",
+ "rows": [
+  {
+   "expert_evaluations_grouped": 1024,
+   "expert_evaluations_reference": 4096,
+   "experts": 8,
+   "grouped_seconds_median": 0.0763,
+   "max_abs_difference": 5.96046e-08,
+   "reference_seconds_median": 0.1604,
+   "speedup": 2.1,
+   "tokens": 512,
+   "top_k": 2
+  },
+  {
+   "expert_evaluations_grouped": 8192,
+   "expert_evaluations_reference": 32768,
+   "experts": 8,
+   "grouped_seconds_median": 0.3659,
+   "max_abs_difference": 2.98023e-08,
+   "reference_seconds_median": 0.9319,
+   "speedup": 2.55,
+   "tokens": 4096,
+   "top_k": 2
+  },
+  {
+   "expert_evaluations_grouped": 8192,
+   "expert_evaluations_reference": 65536,
+   "experts": 16,
+   "grouped_seconds_median": 0.3717,
+   "max_abs_difference": 5.96046e-08,
+   "reference_seconds_median": 2.0658,
+   "speedup": 5.56,
+   "tokens": 4096,
+   "top_k": 2
+  },
+  {
+   "expert_evaluations_grouped": 8192,
+   "expert_evaluations_reference": 262144,
+   "experts": 64,
+   "grouped_seconds_median": 0.5756,
+   "max_abs_difference": 1.19209e-07,
+   "reference_seconds_median": 8.0645,
+   "speedup": 14.01,
+   "tokens": 4096,
+   "top_k": 2
+  }
+ ]
+}

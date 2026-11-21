@@ -1,0 +1,179 @@
+{
+ "blas": {
+  "MKL_ENABLE_INSTRUCTIONS": "AVX2",
+  "cpu_capability": "AVX512",
+  "threads": 4
+ },
+ "cut": 301,
+ "environment": {
+  "cuda_available": false,
+  "python": "3.13.18",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "expert_row_counts": {
+  "changed": [
+   [
+    614,
+    582,
+    577,
+    627
+   ],
+   [
+    549,
+    554,
+    622,
+    675
+   ]
+  ],
+  "original": [
+   [
+    641,
+    599,
+    548,
+    612
+   ],
+   [
+    562,
+    554,
+    611,
+    673
+   ]
+  ]
+ },
+ "grouped_gemms_on_all_rows_logits": {
+  "bitwise_equal": true,
+  "differing_elements": 0,
+  "elements": 388892,
+  "max_abs": 0.0
+ },
+ "grouped_logits": {
+  "bitwise_equal": false,
+  "differing_elements": 77258,
+  "earliest_position": 6,
+  "elements": 388892,
+  "max_abs": 2.22045e-16,
+  "max_abs_over_largest_value": 4.10157e-16,
+  "max_rel": 1.05236e-11,
+  "max_ulp": 76096,
+  "positions_affected": 143
+ },
+ "grouped_vs_reference_whole_sequence_max_abs": 3.05311e-16,
+ "past_routes_identical": {
+  "block0": true,
+  "block1": true
+ },
+ "per_module": {
+  "block0.ersa": {
+   "bitwise_equal": true,
+   "differing_elements": 0,
+   "elements": 19264,
+   "max_abs": 0.0
+  },
+  "block0.routed_channel": {
+   "bitwise_equal": false,
+   "differing_elements": 134,
+   "earliest_position": 9,
+   "elements": 19264,
+   "max_abs": 6.93889e-18,
+   "max_abs_over_largest_value": 2.19835e-16,
+   "max_rel": 8.56795e-14,
+   "max_ulp": 512,
+   "positions_affected": 6
+  },
+  "block0.router_weights": {
+   "bitwise_equal": true,
+   "differing_elements": 0,
+   "elements": 1204,
+   "max_abs": 0.0
+  },
+  "block1.ersa": {
+   "bitwise_equal": false,
+   "differing_elements": 2897,
+   "earliest_position": 9,
+   "elements": 19264,
+   "max_abs": 3.46945e-17,
+   "max_abs_over_largest_value": 2.57646e-16,
+   "max_rel": 1.53414e-13,
+   "max_ulp": 741,
+   "positions_affected": 144
+  },
+  "block1.routed_channel": {
+   "bitwise_equal": false,
+   "differing_elements": 4545,
+   "earliest_position": 4,
+   "elements": 19264,
+   "max_abs": 2.08167e-17,
+   "max_abs_over_largest_value": 5.24536e-16,
+   "max_rel": 2.12787e-12,
+   "max_ulp": 10240,
+   "positions_affected": 143
+  },
+  "block1.router_weights": {
+   "bitwise_equal": false,
+   "differing_elements": 28,
+   "earliest_position": 12,
+   "elements": 1204,
+   "max_abs": 1.11022e-16,
+   "max_abs_over_largest_value": 1.8886e-16,
+   "max_rel": 2.36458e-16,
+   "max_ulp": 2,
+   "positions_affected": 21
+  }
+ },
+ "phase": "ELPIS_TORCH_R6_EXPERTIZED_BACKBONE",
+ "planted_leak_max_abs": {
+  "grouped_scale_1e-06": 2.18465e-06,
+  "grouped_scale_1e-08": 2.18464e-08,
+  "grouped_scale_1e-10": 2.18464e-10,
+  "reference_scale_1e-06": 2.18465e-06,
+  "reference_scale_1e-08": 2.18464e-08,
+  "reference_scale_1e-10": 2.18464e-10
+ },
+ "r5_off_logits": {
+  "bitwise_equal": false,
+  "differing_elements": 79515,
+  "earliest_position": 5,
+  "elements": 388892,
+  "max_abs": 2.22045e-16,
+  "max_abs_over_largest_value": 4.09314e-16,
+  "max_rel": 8.62042e-12,
+  "max_ulp": 65536,
+  "positions_affected": 145
+ },
+ "reference_logits": {
+  "bitwise_equal": true,
+  "differing_elements": 0,
+  "elements": 388892,
+  "max_abs": 0.0
+ },
+ "row_count_dependence": {
+  "expert": {
+   "max_abs": 2.25514e-17,
+   "of": 301,
+   "row_counts_changing_earlier_rows": 299
+  },
+  "expert.cgc": {
+   "max_abs": 2.22045e-16,
+   "of": 301,
+   "row_counts_changing_earlier_rows": 299
+  },
+  "expert.cgc.proj_out": {
+   "max_abs": 8.32667e-17,
+   "of": 301,
+   "row_counts_changing_earlier_rows": 297
+  },
+  "expert.ffn": {
+   "max_abs": 1.73472e-18,
+   "of": 301,
+   "row_counts_changing_earlier_rows": 297
+  },
+  "note": "row counts M in [500, 800] for which rows [0, 500) differ from M = 700"
+ },
+ "test_contract_tolerance": 1e-12,
+ "token_serial_control": {
+  "max_abs_vs_changed_whole": 7.49516e-11,
+  "max_abs_vs_original_whole": 7.49516e-11,
+  "note": "positions < cut computed one token at a time, before any changed token exists"
+ }
+}

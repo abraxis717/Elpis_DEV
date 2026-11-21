@@ -1,0 +1,320 @@
+{
+ "accounting": {
+  "active_parameters_per_token": 118808,
+  "channel_macs_per_token": 67072,
+  "expert": {
+   "cgc_macs_including_cubic": 0,
+   "ffn_hidden": 86,
+   "ffn_macs": 16512,
+   "kind": "ffn",
+   "macs": 16512,
+   "parameters": 16512
+  },
+  "labels": {
+   "all": "EXACT"
+  },
+  "parameters_by_group": {
+   "channel_ffn": 264192,
+   "embedding": 16576,
+   "ersa_norms_head": 35160,
+   "routing": 1024
+  },
+  "resident_weight_bytes": 1267808,
+  "total_parameters": 316952,
+  "weight_bytes_read_per_token_bound": 475232
+ },
+ "arm": "B0",
+ "command": "train",
+ "corpus": {
+  "digest": "ab516f5f3db9f2314636110a81478ae96aea161fc01044852ab10467ce1c86d7",
+  "revision": "c05adffafbd5d8a94ee40c285031d1cd219f1c4c",
+  "train": {
+   "bytes": 2915823,
+   "documents": 275
+  },
+  "val_code": {
+   "bytes": 151683,
+   "documents": 15
+  },
+  "val_prose": {
+   "bytes": 70745,
+   "documents": 5
+  }
+ },
+ "curve": [
+  {
+   "step": 250,
+   "train_gradient_norms": {
+    "channel_ffn": 0.21486116928647717,
+    "embedding": 0.4738573960452088,
+    "ersa_norms_head": 0.747204235591304,
+    "routing": 0.06909219149249993
+   },
+   "train_loss": 2.150674343109131,
+   "val_code_bits_per_byte": 2.9233722005019858,
+   "val_prose_bits_per_byte": 3.4885524392016163
+  },
+  {
+   "step": 500,
+   "train_gradient_norms": {
+    "channel_ffn": 0.282142496076956,
+    "embedding": 0.4541542320022408,
+    "ersa_norms_head": 0.7657110978602552,
+    "routing": 0.08976273785218829
+   },
+   "train_loss": 1.8805464506149292,
+   "val_code_bits_per_byte": 2.4009351454340417,
+   "val_prose_bits_per_byte": 2.8980524539212156
+  },
+  {
+   "step": 750,
+   "train_gradient_norms": {
+    "channel_ffn": 0.3322032949524626,
+    "embedding": 0.49218595780455765,
+    "ersa_norms_head": 0.7994241278248826,
+    "routing": 0.09117812873287541
+   },
+   "train_loss": 1.4522137641906738,
+   "val_code_bits_per_byte": 2.139988200088705,
+   "val_prose_bits_per_byte": 2.6056027749725095
+  },
+  {
+   "step": 1000,
+   "train_gradient_norms": {
+    "channel_ffn": 0.31237698693000837,
+    "embedding": 0.5386099258837079,
+    "ersa_norms_head": 0.732733007267304,
+    "routing": 0.08409975253513267
+   },
+   "train_loss": 1.5347509384155273,
+   "val_code_bits_per_byte": 1.9970445478132899,
+   "val_prose_bits_per_byte": 2.4445915461961847
+  },
+  {
+   "step": 1250,
+   "train_gradient_norms": {
+    "channel_ffn": 0.30515178478174415,
+    "embedding": 0.35560889196807755,
+    "ersa_norms_head": 0.6163884796669171,
+    "routing": 0.07278160529609806
+   },
+   "train_loss": 1.3516255617141724,
+   "val_code_bits_per_byte": 1.8968722621664809,
+   "val_prose_bits_per_byte": 2.358630140895982
+  },
+  {
+   "step": 1500,
+   "train_gradient_norms": {
+    "channel_ffn": 0.3580601705185011,
+    "embedding": 0.4057188177441652,
+    "ersa_norms_head": 0.7204805666959252,
+    "routing": 0.0825869977597204
+   },
+   "train_loss": 1.440826654434204,
+   "val_code_bits_per_byte": 1.8508291122886984,
+   "val_prose_bits_per_byte": 2.31160456061929
+  }
+ ],
+ "final": {
+  "val_code_bits_per_byte": 1.8508291122886984,
+  "val_prose_bits_per_byte": 2.31160456061929
+ },
+ "flops": {
+  "matmul_flops": 1223163904,
+  "matmul_flops_per_token": 298624.0,
+  "tokens": 4096
+ },
+ "generation": {
+  "code": {
+   "mean": {
+    "distinct_4gram_fraction": 0.25,
+    "first_32_bytes_agreement": 0.046875,
+    "leading_bytes_matching_source": 1.25,
+    "longest_byte_run": 1.0,
+    "printable_fraction": 1.0,
+    "special_tokens": 0.0
+   },
+   "prompts": [
+    {
+     "distinct_4gram_fraction": 0.16129032258064516,
+     "first_32_bytes_agreement": 0.09375,
+     "leading_bytes_matching_source": 2,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.15053763440860216,
+     "first_32_bytes_agreement": 0.0,
+     "leading_bytes_matching_source": 0,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.34408602150537637,
+     "first_32_bytes_agreement": 0.0,
+     "leading_bytes_matching_source": 0,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.34408602150537637,
+     "first_32_bytes_agreement": 0.09375,
+     "leading_bytes_matching_source": 3,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    }
+   ]
+  },
+  "prose": {
+   "mean": {
+    "distinct_4gram_fraction": 0.3279569892473118,
+    "first_32_bytes_agreement": 0.109375,
+    "leading_bytes_matching_source": 1.75,
+    "longest_byte_run": 3.0,
+    "printable_fraction": 1.0,
+    "special_tokens": 0.0
+   },
+   "prompts": [
+    {
+     "distinct_4gram_fraction": 0.3763440860215054,
+     "first_32_bytes_agreement": 0.09375,
+     "leading_bytes_matching_source": 1,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.3548387096774194,
+     "first_32_bytes_agreement": 0.03125,
+     "leading_bytes_matching_source": 1,
+     "longest_byte_run": 5,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.3763440860215054,
+     "first_32_bytes_agreement": 0.125,
+     "leading_bytes_matching_source": 2,
+     "longest_byte_run": 5,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    },
+    {
+     "distinct_4gram_fraction": 0.20430107526881722,
+     "first_32_bytes_agreement": 0.1875,
+     "leading_bytes_matching_source": 3,
+     "longest_byte_run": 1,
+     "printable_fraction": 1.0,
+     "special_tokens": 0
+    }
+   ]
+  }
+ },
+ "held_out_gradient_norms": {
+  "channel_ffn": 0.41344608949498274,
+  "embedding": 0.4195336768737518,
+  "ersa_norms_head": 0.8706074944689488,
+  "routing": 0.10205819624567711
+ },
+ "peak_rss_kib": 478608,
+ "phase": "ELPIS_TORCH_R9_BOARDY_QUALIFICATION",
+ "provenance": {
+  "cpu_capability": "AVX512",
+  "git_revision": "3bdd449d146cd708de4c7dbf07b2caa32fa6c89e",
+  "preregistration_sha256": "9974d72da622823ff9fe9c35c54a7406cfde44ab6bc953c3f9b64b031e0be191",
+  "python": "3.13.18",
+  "runner_sha256": "47b46a9ed991fdb0920c80e11be59135f19263020b0b59bebdb82025f08ce107",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "role": "secondary_factorial",
+ "routing": {
+  "code": [
+   {
+    "below_1_percent": 0,
+    "block": 0,
+    "cv": 0.46702997620333253,
+    "max_over_mean": 2.015625,
+    "router_entropy": 0.9714094400405884,
+    "router_entropy_max": 2.0794415416798357,
+    "share": [
+     0.06274,
+     0.08582,
+     0.16418,
+     0.06323,
+     0.25195,
+     0.1145,
+     0.13989,
+     0.11768
+    ]
+   },
+   {
+    "below_1_percent": 0,
+    "block": 1,
+    "cv": 0.9214722351594093,
+    "max_over_mean": 3.046875,
+    "router_entropy": 1.1261394917964935,
+    "router_entropy_max": 2.0794415416798357,
+    "share": [
+     0.38086,
+     0.11951,
+     0.02966,
+     0.03796,
+     0.23486,
+     0.0575,
+     0.04468,
+     0.09497
+    ]
+   }
+  ],
+  "prose": [
+   {
+    "below_1_percent": 0,
+    "block": 0,
+    "cv": 0.5118817950532463,
+    "max_over_mean": 2.146484375,
+    "router_entropy": 0.9792831093072891,
+    "router_entropy_max": 2.0794415416798357,
+    "share": [
+     0.06653,
+     0.10291,
+     0.17041,
+     0.06262,
+     0.26831,
+     0.12988,
+     0.12256,
+     0.07678
+    ]
+   },
+   {
+    "below_1_percent": 0,
+    "block": 1,
+    "cv": 0.8987891794294411,
+    "max_over_mean": 2.9658203125,
+    "router_entropy": 1.1179039180278778,
+    "router_entropy_max": 2.0794415416798357,
+    "share": [
+     0.37073,
+     0.12415,
+     0.02405,
+     0.02808,
+     0.22815,
+     0.09497,
+     0.03137,
+     0.09851
+    ]
+   }
+  ]
+ },
+ "seed": 1,
+ "status": "COMPLETED",
+ "train": {
+  "seconds": 184.4,
+  "status": "COMPLETED",
+  "steps": 1500
+ }
+}

@@ -1,0 +1,109 @@
+{
+ "label": "MEASURED CPU wall-clock, one thread, rotated order; PERFORMANCE_ONLY",
+ "memory_d64": {
+  "G0": {
+   "mode_a_inner_state_bytes": 0,
+   "parameter_bytes": 66048,
+   "saved_for_backward_bytes": 170496,
+   "specialist_parameter_bytes": 0
+  },
+  "G1": {
+   "mode_a_inner_state_bytes": 480,
+   "parameter_bytes": 68580,
+   "saved_for_backward_bytes": 222180,
+   "specialist_parameter_bytes": 2532
+  },
+  "G2": {
+   "mode_a_inner_state_bytes": 480,
+   "parameter_bytes": 68576,
+   "saved_for_backward_bytes": 205792,
+   "specialist_parameter_bytes": 2528
+  },
+  "G2_POOLED": {
+   "mode_a_inner_state_bytes": 480,
+   "parameter_bytes": 68576,
+   "saved_for_backward_bytes": 205792,
+   "specialist_parameter_bytes": 2528
+  },
+  "G3": {
+   "mode_a_inner_state_bytes": 480,
+   "parameter_bytes": 68576,
+   "saved_for_backward_bytes": 181664,
+   "specialist_parameter_bytes": 2528
+  }
+ },
+ "operators": {
+  "1024": {
+   "bound_only_24_units": {
+    "median_us": 57.75099998572841,
+    "p90_us": 81.36399992508814
+   },
+   "legacy_r6_routed": {
+    "median_us": 7482.379999601108,
+    "p90_us": 8831.529999952181
+   },
+   "micro_bounded": {
+    "median_us": 183.74750015937025,
+    "p90_us": 289.4199997172109
+   },
+   "micro_e0": {
+    "median_us": 100.08750041379244,
+    "p90_us": 201.25699938944308
+   }
+  },
+  "64": {
+   "bound_only_24_units": {
+    "median_us": 8.586499916418688,
+    "p90_us": 16.914999832806643
+   },
+   "legacy_r6_routed": {
+    "median_us": 90.17249976750463,
+    "p90_us": 160.64099963841727
+   },
+   "micro_bounded": {
+    "median_us": 44.224000248505035,
+    "p90_us": 79.03999994596234
+   },
+   "micro_e0": {
+    "median_us": 35.148999813827686,
+    "p90_us": 66.8459997541504
+   }
+  },
+  "768": {
+   "bound_only_24_units": {
+    "median_us": 55.606999467272544,
+    "p90_us": 77.33099937468069
+   },
+   "legacy_r6_routed": {
+    "median_us": 3615.5225002403313,
+    "p90_us": 4843.796999921324
+   },
+   "micro_bounded": {
+    "median_us": 170.3484999779903,
+    "p90_us": 252.26399975508684
+   },
+   "micro_e0": {
+    "median_us": 82.86350066555315,
+    "p90_us": 172.319999364845
+   }
+  }
+ },
+ "provenance": {
+  "cgc_sha256": "2a5a1103a361c8a9a29865caca4300f5b5eac659b612465fcca1f8c1feb02d3d",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "git_revision": "63ea520925404c7356511e6c3b99aecf096e5a22",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "preregistration_sha256": null,
+  "profile_sha256": "8e8ae728f14f6aae7458a20125e77fb93427e7a047ff63b64500266197c5b4ad",
+  "python": "3.13.18",
+  "runner_sha256": "a7cf027f0ce9b58061c28962855640be8d389924062a2b0c37c57a01b66480b1",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "tasks_sha256": "dd016c5dd233cd3d1625e49dae019545e2f1d045846d283f0e15462ffc35d101",
+  "threads": 1,
+  "torch": "2.15.0+cpu",
+  "upstream_e0_sha256": "92c987e0fb54d80193fd60ecc9a3e31088f0f9b7cd2cfe8e08c4636a198d7084"
+ },
+ "python": "3.13.18",
+ "tokens": 64,
+ "torch": "2.15.0+cpu"
+}

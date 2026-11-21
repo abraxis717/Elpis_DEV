@@ -196,6 +196,18 @@ class ElpisTorchLM(nn.Module):
             return c.cgc_init_gain * (c.cgc_bottleneck or c.d_model) ** -0.5
         if name.endswith(("norm.weight", "cgc_gate")):
             return None
+        # R11's matched GELU specialist (control arm; no historical parameter has these names): the CGC's rules for
+        # its projections and its first layer, unit gain for its readout, and zero biases (``None``: set by caller).
+        if name.endswith("mlp.proj_out.weight"):
+            return residual
+        if name.endswith("mlp.proj_in.weight"):
+            return c.d_model ** -0.5
+        if name.endswith("mlp.hidden.weight"):
+            return c.cgc_init_gain * (c.cgc_bottleneck or c.d_model) ** -0.5
+        if name.endswith("mlp.out.weight"):
+            return 13 ** -0.5
+        if name.endswith(("mlp.hidden.bias", "mlp.out.bias")):
+            return None
         return c.init_std
 
     @torch.no_grad()

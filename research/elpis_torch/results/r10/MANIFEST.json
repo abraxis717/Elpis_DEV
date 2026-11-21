@@ -1,0 +1,32 @@
+{
+ "command": "manifest",
+ "files": {
+  "latency.json": "e2fe15c7d06ebb7129b5e90817a5c8440db4e140b463e8646f151d7409f5f99f",
+  "pilot_B_s900_1500steps.json": "0954afd51d868b3e51bb7587496d8ac78b091b7e71e98b434fcc91f7c334c494",
+  "pilot_B_s900_3000steps.json": "3abf08d17bae0fa4591d5f8be948d33b91fb93497da7786fcfbc823142a3253f",
+  "pilot_D_C_s900_1500steps.json": "d2b4fe2a05e7a5830fd199e529db9e2c240aeae0eedbe146d330f35ec9bf53fc",
+  "pilot_D_C_s900_3000steps.json": "f9ee4e2f1c46e171b307ac6fabbc8d71f09a7bff36a911c60b42e9811e7db252",
+  "preregistration.json": "9d0bc46d9ea684f22ee60e7dc0904dc73637176e17944ca6f14c78a8ab389e2c",
+  "run_A_s0.json": "9f572386733e09d34bbce8a38b98451dd3d0408197ec5f10c87b4bd289802d04",
+  "run_A_s1.json": "9d419fa2603e55a91350211a368f103cd86016cbd869d3ab781b44000f36a653",
+  "run_A_s2.json": "5249f2c07923c7f0ee86179b7bc08f24b39e9f0c02422570dc7a641e8c3d3616",
+  "run_B_s0.json": "d8cbccdfbdbe457a8f9c0f4cdd7ddbe7cbb366ce276ed28c36c7a736a26e9d96",
+  "run_B_s1.json": "92257c33dfd7170632de71c818111010f5bed5c85b230491e3d03a222c68b310",
+  "run_B_s2.json": "c6d3bb615098770c3b648b7c09dfbc4ba5573fa99adffcf06b4d83729aada994",
+  "run_C_mac_s0.json": "a0c1200a8a0d8d00c83d2eb01bc2f6cf31a874491ba49555b491e3c5c4d65e9f",
+  "run_C_mac_s1.json": "6f79ad918e16bac3a21ac907da2e9e11689f66c10d54b3363800117e4bbec668",
+  "run_C_mac_s2.json": "ee3e94c2103f8352feca4c57acb7f01b9d33f97e3751313050a1f026e7187bfa",
+  "run_C_s0.json": "057a94834c060e5eb380fa34cead54a18d1cdb6519e365ae2af85edaee1695b8",
+  "run_C_s1.json": "645c0e4dda760983f80563d12d3736a56aaec9632d094bbfc926c249b0c6290d",
+  "run_C_s2.json": "04798b824ce319321b306b4a7c3e54615613d16fc34a3a40575124516e8c111c",
+  "run_D_A_s0.json": "9996ce4874f0dc7d5cc551309608603d14488a68f96168c6b10de03a23fd8e98",
+  "run_D_A_s1.json": "79e64d42d17cb4bba85562be49071803446b7f9481d37bf2287dfccc87186f3d",
+  "run_D_A_s2.json": "30f88ac9fd9a5b8b4e27366990ade166e835949055d07232d0852e044afcbd72",
+  "run_D_C_s0.json": "6ea6bdbb7d0399cd9d77e2f10158ba4c43564e5ef62d2754efc60a3adb9053a0",
+  "run_D_C_s1.json": "d5045c09ad5e06a3273c9a2f12b6679e650870a9b690fcd5ab9407a0cc6bf719",
+  "run_D_C_s2.json": "fab78e4f8249d691b4a094e20c0e7b07fe210a97b0469cbc9b7ad514ac52dea3",
+  "study_cgc_adaptation.json": "0eab1a49a802ba18b8ecffe2bff3d02c4d5c64f24ec79746bb59e244880be435"
+ },
+ "phase": "ELPIS_TORCH_R10_CGC_ADAPTATION",
+ "runner_sha256": "c220bc54dac69563d5e3b446907b9891e9926f994292b2109be94aa0a4487e85"
+}

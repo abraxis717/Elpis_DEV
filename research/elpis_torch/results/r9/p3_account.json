@@ -1,0 +1,3424 @@
+{
+ "command": "account",
+ "configurations": [
+  {
+   "configuration": "r9_arm_A_d64",
+   "fine_keys": null,
+   "history_capacity": null,
+   "ple": true,
+   "rows": [
+    {
+     "exact": {
+      "cgc_parameters": 114704,
+      "conv_tail_bytes": 1536,
+      "encoder_matrix_parameters": 0,
+      "ersa_state_bytes": 8192,
+      "fixed_state_bytes_allocated_total": 9744,
+      "ple_other_parameters": 8320,
+      "ple_table_parameters": 4195600,
+      "row_read_tables": {},
+      "weights_active_parameters_per_token": 155868,
+      "weights_resident_parameters": 4635576,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1024,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "ersa_state_read_write": 19456,
+       "ple_rows": 256,
+       "total": 642928,
+       "weights": 623216,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "total": 311608,
+       "weights": 311608
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 1024,
+      "decode_step_bytes": null,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": null,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 114704,
+      "conv_tail_bytes": 1536,
+      "encoder_matrix_parameters": 0,
+      "ersa_state_bytes": 8192,
+      "fixed_state_bytes_allocated_total": 9744,
+      "ple_other_parameters": 8320,
+      "ple_table_parameters": 4195600,
+      "row_read_tables": {},
+      "weights_active_parameters_per_token": 155868,
+      "weights_resident_parameters": 4635576,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 8192,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "ersa_state_read_write": 19456,
+       "ple_rows": 256,
+       "total": 642928,
+       "weights": 623216,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "total": 311608,
+       "weights": 311608
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 1024,
+      "decode_step_bytes": null,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": null,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 114704,
+      "conv_tail_bytes": 1536,
+      "encoder_matrix_parameters": 0,
+      "ersa_state_bytes": 8192,
+      "fixed_state_bytes_allocated_total": 9744,
+      "ple_other_parameters": 8320,
+      "ple_table_parameters": 4195600,
+      "row_read_tables": {},
+      "weights_active_parameters_per_token": 155868,
+      "weights_resident_parameters": 4635576,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 65536,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "ersa_state_read_write": 19456,
+       "ple_rows": 256,
+       "total": 642928,
+       "weights": 623216,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "total": 311608,
+       "weights": 311608
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 1024,
+      "decode_step_bytes": null,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": null,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 114704,
+      "conv_tail_bytes": 1536,
+      "encoder_matrix_parameters": 0,
+      "ersa_state_bytes": 8192,
+      "fixed_state_bytes_allocated_total": 9744,
+      "ple_other_parameters": 8320,
+      "ple_table_parameters": 4195600,
+      "row_read_tables": {},
+      "weights_active_parameters_per_token": 155868,
+      "weights_resident_parameters": 4635576,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 262144,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "ersa_state_read_write": 19456,
+       "ple_rows": 256,
+       "total": 642928,
+       "weights": 623216,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "total": 311608,
+       "weights": 311608
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 1024,
+      "decode_step_bytes": null,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": null,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 114704,
+      "conv_tail_bytes": 1536,
+      "encoder_matrix_parameters": 0,
+      "ersa_state_bytes": 8192,
+      "fixed_state_bytes_allocated_total": 9744,
+      "ple_other_parameters": 8320,
+      "ple_table_parameters": 4195600,
+      "row_read_tables": {},
+      "weights_active_parameters_per_token": 155868,
+      "weights_resident_parameters": 4635576,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1048576,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "ersa_state_read_write": 19456,
+       "ple_rows": 256,
+       "total": 642928,
+       "weights": 623216,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "total": 311608,
+       "weights": 311608
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 1024,
+      "decode_step_bytes": null,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": null,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    }
+   ]
+  },
+  {
+   "configuration": "r8_enc256_reread",
+   "fine_keys": "reread",
+   "history_capacity": 1048576,
+   "ple": true,
+   "rows": [
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33024,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4096,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1024,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 1351680,
+       "encoder_rows_gathered": 1351680,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 32768,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 5120,
+       "total": 26369828,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16384,
+       "r5_reencoding": 5289415680,
+       "r5_rerank": 131072,
+       "total": 5462510126,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 264192,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 32768,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 8192,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2662400,
+       "encoder_rows_gathered": 2662400,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 262144,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 29225764,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 131072,
+       "r5_reencoding": 10578831360,
+       "r5_rerank": 262144,
+       "total": 10752171566,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 2113536,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 262144,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 65536,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2662400,
+       "encoder_rows_gathered": 2662400,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 2097152,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 31060772,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 1048576,
+       "r5_reencoding": 10578831360,
+       "r5_rerank": 262144,
+       "total": 10753089070,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 8454144,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 1048576,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 262144,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2662400,
+       "encoder_rows_gathered": 2662400,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 8388608,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 37352228,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 4194304,
+       "r5_reencoding": 10578831360,
+       "r5_rerank": 262144,
+       "total": 10756234798,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33816576,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1048576,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2662400,
+       "encoder_rows_gathered": 2662400,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 33554432,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 62518052,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16777216,
+       "r5_reencoding": 10578831360,
+       "r5_rerank": 262144,
+       "total": 10768817710,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33815544,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1052672,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2662400,
+       "encoder_rows_gathered": 2662400,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 33553408,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "r5_wrapped_index_copy": 67106816,
+       "total": 129623844,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16776704,
+       "r5_reencoding": 10578831360,
+       "r5_rerank": 262144,
+       "total": 10768817198,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": true
+    }
+   ]
+  },
+  {
+   "configuration": "r8_enc256_reread",
+   "fine_keys": "reread",
+   "history_capacity": 1048576,
+   "ple": false,
+   "rows": [
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33024,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4096,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1024,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 1351680,
+       "encoder_rows_gathered": 1351680,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 32768,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 5120,
+       "total": 25842468,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16384,
+       "r5_reencoding": 5289415680,
+       "r5_rerank": 131072,
+       "total": 5462246958,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 264192,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 32768,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 8192,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2662400,
+       "encoder_rows_gathered": 2662400,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 262144,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 28698404,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 131072,
+       "r5_reencoding": 10578831360,
+       "r5_rerank": 262144,
+       "total": 10751908398,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 2113536,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 262144,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 65536,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2662400,
+       "encoder_rows_gathered": 2662400,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 2097152,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 30533412,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 1048576,
+       "r5_reencoding": 10578831360,
+       "r5_rerank": 262144,
+       "total": 10752825902,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 8454144,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 1048576,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 262144,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2662400,
+       "encoder_rows_gathered": 2662400,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 8388608,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 36824868,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 4194304,
+       "r5_reencoding": 10578831360,
+       "r5_rerank": 262144,
+       "total": 10755971630,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33816576,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1048576,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2662400,
+       "encoder_rows_gathered": 2662400,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33554432,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 61990692,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16777216,
+       "r5_reencoding": 10578831360,
+       "r5_rerank": 262144,
+       "total": 10768554542,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33815544,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 38039568,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1052672,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2662400,
+       "encoder_rows_gathered": 2662400,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33553408,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "r5_wrapped_index_copy": 67106816,
+       "total": 129096484,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16776704,
+       "r5_reencoding": 10578831360,
+       "r5_rerank": 262144,
+       "total": 10768554030,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 55446796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 933358604,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": true
+    }
+   ]
+  },
+  {
+   "configuration": "r6_500m_reread",
+   "fine_keys": "reread",
+   "history_capacity": 1048576,
+   "ple": false,
+   "rows": [
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33024,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 88018948,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4096,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 10485760
+     },
+     "length": 1024,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2027520,
+       "encoder_rows_gathered": 675840,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 32768,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 5120,
+       "total": 563525682,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 5242880
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 16384,
+       "r5_reencoding": 7218795520,
+       "r5_rerank": 131072,
+       "total": 7994063566,
+       "weights": 533804590,
+       "window_attention": 15728640
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 55763200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 961931264,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 264192,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 88018948,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 32768,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 41943040
+     },
+     "length": 8192,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 3993600,
+       "encoder_rows_gathered": 1331200,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 262144,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 582110258,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 20971520
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 131072,
+       "r5_reencoding": 14437591040,
+       "r5_rerank": 262144,
+       "total": 15260290766,
+       "weights": 533804590,
+       "window_attention": 62914560
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 55763200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 961931264,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 2113536,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 88018948,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 262144,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 41943040
+     },
+     "length": 65536,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 3993600,
+       "encoder_rows_gathered": 1331200,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 2097152,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 583945266,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 20971520
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 1048576,
+       "r5_reencoding": 14437591040,
+       "r5_rerank": 262144,
+       "total": 15261208270,
+       "weights": 533804590,
+       "window_attention": 62914560
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 55763200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 961931264,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 8454144,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 88018948,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 1048576,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 41943040
+     },
+     "length": 262144,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 3993600,
+       "encoder_rows_gathered": 1331200,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 8388608,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 590236722,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 20971520
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 4194304,
+       "r5_reencoding": 14437591040,
+       "r5_rerank": 262144,
+       "total": 15264353998,
+       "weights": 533804590,
+       "window_attention": 62914560
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 55763200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 961931264,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33816576,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 88018948,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 41943040
+     },
+     "length": 1048576,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 3993600,
+       "encoder_rows_gathered": 1331200,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33554432,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 615402546,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 20971520
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 16777216,
+       "r5_reencoding": 14437591040,
+       "r5_rerank": 262144,
+       "total": 15276936910,
+       "weights": 533804590,
+       "window_attention": 62914560
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 55763200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 961931264,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33815544,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 88018948,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 41943040
+     },
+     "length": 1052672,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 3993600,
+       "encoder_rows_gathered": 1331200,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33553408,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "r5_wrapped_index_copy": 67106816,
+       "total": 682508338,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 20971520
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 16776704,
+       "r5_reencoding": 14437591040,
+       "r5_rerank": 262144,
+       "total": 15276936398,
+       "weights": 533804590,
+       "window_attention": 62914560
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 55763200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 961931264,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": true
+    }
+   ]
+  },
+  {
+   "configuration": "r6_1b_reread",
+   "fine_keys": "reread",
+   "history_capacity": 1048576,
+   "ple": false,
+   "rows": [
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33024,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 81240068,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4096,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 8388608
+     },
+     "length": 1024,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 2703360,
+       "encoder_rows_gathered": 675840,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 32768,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 5120,
+       "total": 859474638,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 4194304
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 16384,
+       "r5_reencoding": 7386567680,
+       "r5_rerank": 131072,
+       "total": 8461098346,
+       "weights": 826775754,
+       "window_attention": 16777216
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 55787776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 974514176,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 264192,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 81240068,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 32768,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 33554432
+     },
+     "length": 8192,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 5324800,
+       "encoder_rows_gathered": 1331200,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 262144,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 875568846,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 16777216
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 131072,
+       "r5_reencoding": 14773135360,
+       "r5_rerank": 262144,
+       "total": 15898243434,
+       "weights": 826775754,
+       "window_attention": 67108864
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 55787776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 974514176,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 2113536,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 81240068,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 262144,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 33554432
+     },
+     "length": 65536,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 5324800,
+       "encoder_rows_gathered": 1331200,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 2097152,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 877403854,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 16777216
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 1048576,
+       "r5_reencoding": 14773135360,
+       "r5_rerank": 262144,
+       "total": 15899160938,
+       "weights": 826775754,
+       "window_attention": 67108864
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 55787776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 974514176,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 8454144,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 81240068,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 1048576,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 33554432
+     },
+     "length": 262144,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 5324800,
+       "encoder_rows_gathered": 1331200,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 8388608,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 883695310,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 16777216
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 4194304,
+       "r5_reencoding": 14773135360,
+       "r5_rerank": 262144,
+       "total": 15902306666,
+       "weights": 826775754,
+       "window_attention": 67108864
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 55787776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 974514176,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33816576,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 81240068,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 33554432
+     },
+     "length": 1048576,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 5324800,
+       "encoder_rows_gathered": 1331200,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33554432,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "total": 908861134,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 16777216
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 16777216,
+       "r5_reencoding": 14773135360,
+       "r5_rerank": 262144,
+       "total": 15914889578,
+       "weights": 826775754,
+       "window_attention": 67108864
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 55787776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 974514176,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33815544,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 0,
+      "fine_key_bytes_live": 0,
+      "fixed_state_bytes_allocated_total": 81240068,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 33554432
+     },
+     "length": 1052672,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 5324800,
+       "encoder_rows_gathered": 1331200,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33553408,
+       "r5_fine_keys_gathered": 0,
+       "r5_token_reread": 10240,
+       "r5_wrapped_index_copy": 67106816,
+       "total": 975966926,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 16777216
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 16776704,
+       "r5_reencoding": 14773135360,
+       "r5_rerank": 262144,
+       "total": 15914889066,
+       "weights": 826775754,
+       "window_attention": 67108864
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 55787776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 974514176,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": true
+    }
+   ]
+  },
+  {
+   "configuration": "r8_enc256_stored",
+   "fine_keys": "stored",
+   "history_capacity": 1048576,
+   "ple": true,
+   "rows": [
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33024,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 262144,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4096,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1024,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 32768,
+       "r5_fine_keys_gathered": 262144,
+       "r5_token_reread": 640,
+       "total": 24333732,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16384,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 131072,
+       "total": 834271406,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 264192,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 2097152,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 32768,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 8192,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 262144,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 24825252,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 131072,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 262144,
+       "total": 834517166,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 2113536,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 16777216,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 262144,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 65536,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 2097152,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 26660260,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 1048576,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 262144,
+       "total": 835434670,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 8454144,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 67108864,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 1048576,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 262144,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 8388608,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 32951716,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 4194304,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 262144,
+       "total": 838580398,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33816576,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 268435456,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1048576,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 33554432,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 58117540,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16777216,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 262144,
+       "total": 851163310,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33815544,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 268427264,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 131584,
+      "ple_table_parameters": 8395328,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5959113,
+      "weights_resident_parameters": 18184981,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1052672,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 1024,
+       "r5_descriptor_scan": 33553408,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "r5_wrapped_index_copy": 67106816,
+       "total": 125223332,
+       "weights": 23570212,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16776704,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 262144,
+       "total": 851162798,
+       "weights": 7652750
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": true
+    }
+   ]
+  },
+  {
+   "configuration": "r8_enc256_stored",
+   "fine_keys": "stored",
+   "history_capacity": 1048576,
+   "ple": false,
+   "rows": [
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33024,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 262144,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4096,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1024,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 32768,
+       "r5_fine_keys_gathered": 262144,
+       "r5_token_reread": 640,
+       "total": 23806372,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16384,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 131072,
+       "total": 834008238,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 264192,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 2097152,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 32768,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 8192,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 262144,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 24297892,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 131072,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 262144,
+       "total": 834253998,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 2113536,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 16777216,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 262144,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 65536,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 2097152,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 26132900,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 1048576,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 262144,
+       "total": 835171502,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 8454144,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 67108864,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 1048576,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 262144,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 8388608,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 32424356,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 4194304,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 262144,
+       "total": 838317230,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33816576,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 268435456,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1048576,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33554432,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 57590180,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16777216,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 262144,
+       "total": 850900142,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 1212432,
+      "conv_tail_bytes": 12288,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33815544,
+      "encoder_matrix_parameters": 2066178,
+      "ersa_state_bytes": 16384,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 268427264,
+      "fixed_state_bytes_allocated_total": 306475024,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 259,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 5827273,
+      "weights_resident_parameters": 9658069,
+      "window_kv_bytes_allocated": 0,
+      "window_kv_bytes_live": 0
+     },
+     "length": 1052672,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 204800,
+       "encoder_rows_gathered": 204800,
+       "ersa_state_read_write": 57344,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33553408,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "r5_wrapped_index_copy": 67106816,
+       "total": 124695972,
+       "weights": 23043876,
+       "weights_bytes_per_parameter": 4,
+       "window_kv_read": 0
+      },
+      "flops": {
+       "local_block_encoding": 165294240,
+       "r5_descriptor_scan": 16776704,
+       "r5_reencoding": 661176960,
+       "r5_rerank": 262144,
+       "total": 850899630,
+       "weights": 7389582
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 5376,
+      "decode_step_bytes": 37014796,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 160689164,
+      "routing_values_per_token": {
+       "routed_blocks": 2,
+       "router_logits_per_token": 16,
+       "routing_index_per_token": 4
+      }
+     },
+     "steady_state_wrapped": true
+    }
+   ]
+  },
+  {
+   "configuration": "r6_500m_stored",
+   "fine_keys": "stored",
+   "history_capacity": 1048576,
+   "ple": false,
+   "rows": [
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33024,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 262144,
+      "fixed_state_bytes_allocated_total": 356454404,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4096,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 10485760
+     },
+     "length": 1024,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 307200,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 32768,
+       "r5_fine_keys_gathered": 262144,
+       "r5_token_reread": 640,
+       "total": 561489586,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 5242880
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 16384,
+       "r5_reencoding": 902349440,
+       "r5_rerank": 131072,
+       "total": 1677617486,
+       "weights": 533804590,
+       "window_attention": 15728640
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 37331200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 189261824,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 264192,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 2097152,
+      "fixed_state_bytes_allocated_total": 356454404,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 32768,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 41943040
+     },
+     "length": 8192,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 307200,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 262144,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 577709746,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 20971520
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 131072,
+       "r5_reencoding": 902349440,
+       "r5_rerank": 262144,
+       "total": 1725049166,
+       "weights": 533804590,
+       "window_attention": 62914560
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 37331200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 189261824,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 2113536,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 16777216,
+      "fixed_state_bytes_allocated_total": 356454404,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 262144,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 41943040
+     },
+     "length": 65536,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 307200,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 2097152,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 579544754,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 20971520
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 1048576,
+       "r5_reencoding": 902349440,
+       "r5_rerank": 262144,
+       "total": 1725966670,
+       "weights": 533804590,
+       "window_attention": 62914560
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 37331200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 189261824,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 8454144,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 67108864,
+      "fixed_state_bytes_allocated_total": 356454404,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 1048576,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 41943040
+     },
+     "length": 262144,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 307200,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 8388608,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 585836210,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 20971520
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 4194304,
+       "r5_reencoding": 902349440,
+       "r5_rerank": 262144,
+       "total": 1729112398,
+       "weights": 533804590,
+       "window_attention": 62914560
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 37331200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 189261824,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33816576,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 268435456,
+      "fixed_state_bytes_allocated_total": 356454404,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 41943040
+     },
+     "length": 1048576,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 307200,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33554432,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 611002034,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 20971520
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 16777216,
+       "r5_reencoding": 902349440,
+       "r5_rerank": 262144,
+       "total": 1741695310,
+       "weights": 533804590,
+       "window_attention": 62914560
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 37331200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 189261824,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 144506960,
+      "conv_tail_bytes": 184320,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33815544,
+      "encoder_matrix_parameters": 2819842,
+      "ersa_state_bytes": 7864320,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 268427264,
+      "fixed_state_bytes_allocated_total": 356454404,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 286499353,
+      "weights_resident_parameters": 507683413,
+      "window_kv_bytes_allocated": 41943040,
+      "window_kv_bytes_live": 41943040
+     },
+     "length": 1052672,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 307200,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 16097280,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33553408,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "r5_wrapped_index_copy": 67106816,
+       "total": 678107826,
+       "weights": 539444274,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 20971520
+      },
+      "flops": {
+       "local_block_encoding": 225587360,
+       "r5_descriptor_scan": 16776704,
+       "r5_reencoding": 902349440,
+       "r5_rerank": 262144,
+       "total": 1741694798,
+       "weights": 533804590,
+       "window_attention": 62914560
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 161280,
+      "decode_step_bytes": 37331200,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 189261824,
+      "routing_values_per_token": {
+       "routed_blocks": 10,
+       "router_logits_per_token": 80,
+       "routing_index_per_token": 20
+      }
+     },
+     "steady_state_wrapped": true
+    }
+   ]
+  },
+  {
+   "configuration": "r6_1b_stored",
+   "fine_keys": "stored",
+   "history_capacity": 1048576,
+   "ple": false,
+   "rows": [
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33024,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 262144,
+      "fixed_state_bytes_allocated_total": 349675524,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4096,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 8388608
+     },
+     "length": 1024,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 409600,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 32768,
+       "r5_fine_keys_gathered": 262144,
+       "r5_token_reread": 640,
+       "total": 856865102,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 4194304
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 16384,
+       "r5_reencoding": 923320960,
+       "r5_rerank": 131072,
+       "total": 1997851626,
+       "weights": 826775754,
+       "window_attention": 16777216
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 37355776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 201844736,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 264192,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 2097152,
+      "fixed_state_bytes_allocated_total": 349675524,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 32768,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 33554432
+     },
+     "length": 8192,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 409600,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 262144,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 869939534,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 16777216
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 131072,
+       "r5_reencoding": 923320960,
+       "r5_rerank": 262144,
+       "total": 2048429034,
+       "weights": 826775754,
+       "window_attention": 67108864
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 37355776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 201844736,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 2113536,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 16777216,
+      "fixed_state_bytes_allocated_total": 349675524,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 262144,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 33554432
+     },
+     "length": 65536,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 409600,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 2097152,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 871774542,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 16777216
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 1048576,
+       "r5_reencoding": 923320960,
+       "r5_rerank": 262144,
+       "total": 2049346538,
+       "weights": 826775754,
+       "window_attention": 67108864
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 37355776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 201844736,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 8454144,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 67108864,
+      "fixed_state_bytes_allocated_total": 349675524,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 1048576,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 33554432
+     },
+     "length": 262144,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 409600,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 8388608,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 878065998,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 16777216
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 4194304,
+       "r5_reencoding": 923320960,
+       "r5_rerank": 262144,
+       "total": 2052492266,
+       "weights": 826775754,
+       "window_attention": 67108864
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 37355776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 201844736,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33816576,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 268435456,
+      "fixed_state_bytes_allocated_total": 349675524,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 33554432
+     },
+     "length": 1048576,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 409600,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33554432,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "total": 903231822,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 16777216
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 16777216,
+       "r5_reencoding": 923320960,
+       "r5_rerank": 262144,
+       "total": 2065075178,
+       "weights": 826775754,
+       "window_attention": 67108864
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 37355776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 201844736,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": false
+    },
+    {
+     "exact": {
+      "cgc_parameters": 422314137,
+      "conv_tail_bytes": 221184,
+      "descriptor_bytes_allocated": 33816576,
+      "descriptor_bytes_live": 33815544,
+      "encoder_matrix_parameters": 2885378,
+      "ersa_state_bytes": 9437184,
+      "fine_key_bytes_allocated": 268435456,
+      "fine_key_bytes_live": 268427264,
+      "fixed_state_bytes_allocated_total": 349675524,
+      "ple_other_parameters": 0,
+      "ple_table_parameters": 0,
+      "r5_token_ring_bytes_allocated": 4194304,
+      "r5_token_ring_bytes_live": 4194304,
+      "row_read_tables": {
+       "encoder.delta": {
+        "rows": 65536,
+        "width": 256
+       }
+      },
+      "weights_active_parameters_per_token": 433050471,
+      "weights_resident_parameters": 994692069,
+      "window_kv_bytes_allocated": 33554432,
+      "window_kv_bytes_live": 33554432
+     },
+     "length": 1052672,
+     "projected_per_decoded_token": {
+      "bytes": {
+       "encoder_core_embedding_rows": 409600,
+       "encoder_rows_gathered": 102400,
+       "ersa_state_read_write": 19316736,
+       "ple_rows": 0,
+       "r5_descriptor_scan": 33553408,
+       "r5_fine_keys_gathered": 524288,
+       "r5_token_reread": 640,
+       "r5_wrapped_index_copy": 67106816,
+       "total": 970337614,
+       "weights": 832546510,
+       "weights_bytes_per_parameter": 2,
+       "window_kv_read": 16777216
+      },
+      "flops": {
+       "local_block_encoding": 230830240,
+       "r5_descriptor_scan": 16776704,
+       "r5_reencoding": 923320960,
+       "r5_rerank": 262144,
+       "total": 2065074666,
+       "weights": 826775754,
+       "window_attention": 67108864
+      },
+      "labels": "PROJECTED compulsory traffic from EXACT counts: active path, each persistent byte once, nothing reused across tokens, intermediates excluded (the executed operand traffic is in trace)"
+     },
+     "projected_scratch": {
+      "cgc_intermediate_values_per_token": 241920,
+      "decode_step_bytes": 37355776,
+      "note": "PROJECTED working memory: the largest intermediates as if live at once; allocator reserve and fragmentation are not modelled",
+      "prefill_512_every_position_bytes": 201844736,
+      "routing_values_per_token": {
+       "routed_blocks": 9,
+       "router_logits_per_token": 144,
+       "routing_index_per_token": 18
+      }
+     },
+     "steady_state_wrapped": true
+    }
+   ]
+  }
+ ],
+ "labels": {
+  "exact": "EXACT",
+  "projected_per_decoded_token": "PROJECTED",
+  "projected_scratch": "PROJECTED"
+ },
+ "notes": [
+  "fixed state is EXACT and allocated at capacity (1,048,576 tokens of history), whatever the live length; *_live fields give what live history occupies inside that allocation",
+  "the last row of every configuration with an R5 head is the steady state of an endless stream (capacity + 4,096 tokens): the ring has wrapped, one edge block is not live, and the live index is copied before every scan",
+  "r6_500m / r6_1b weights and window KV at 2 bytes (bfloat16) are a PROJECTION: this implementation does not decode in bfloat16 on CPU (the chunked ERSA scan's triangular solve has no bfloat16 CPU kernel); descriptors and ERSA state are counted at their float32 CPU widths",
+  "r6_500m / r6_1b carry no PLE; the R7 accounting (results/r7/accounting.json) gives PLE tables at that scale",
+  "the 28,552-byte figure of K1 retention describes none of these configurations"
+ ],
+ "phase": "ELPIS_TORCH_R9_BOARDY_QUALIFICATION_P3",
+ "provenance": {
+  "cpu_capability": "AVX512",
+  "git_revision": "6421bbb58543f5307c8b4892f5cab5edccca8e09",
+  "p3_runner_sha256": "43b32c57daa2450d167131bf31fb5d9419588947cdb252f274006e094433050c",
+  "preregistration_sha256": "9974d72da622823ff9fe9c35c54a7406cfde44ab6bc953c3f9b64b031e0be191",
+  "python": "3.13.18",
+  "runner_sha256": "47b46a9ed991fdb0920c80e11be59135f19263020b0b59bebdb82025f08ce107",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ }
+}

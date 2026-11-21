@@ -1,0 +1,40 @@
+{
+ "capacity": 1048576,
+ "command": "rss",
+ "label": "MEASURED (Linux /proc/self/smaps_rollup) in a process holding one model; allocator effects included, which is the point",
+ "phase": "ELPIS_TORCH_R9_BOARDY_QUALIFICATION_P3",
+ "provenance": {
+  "cpu_capability": "AVX512",
+  "git_revision": "9873ba849fba1100715545813ef2f93d43c59ae1",
+  "p3_runner_sha256": "43b32c57daa2450d167131bf31fb5d9419588947cdb252f274006e094433050c",
+  "preregistration_sha256": "9974d72da622823ff9fe9c35c54a7406cfde44ab6bc953c3f9b64b031e0be191",
+  "python": "3.13.18",
+  "runner_sha256": "47b46a9ed991fdb0920c80e11be59135f19263020b0b59bebdb82025f08ce107",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ },
+ "states": {
+  "reread": {
+   "exact_fixed_bytes": {
+    "conv_tail": 12288,
+    "ersa_cells": 16384,
+    "history_tokens": 4194304,
+    "index_ids": 262144,
+    "index_keys": 33554432,
+    "ple_history": 16,
+    "total": 38039568
+   },
+   "live_history_tokens": 65536,
+   "measured_state_rss_bytes": 37851136,
+   "measured_state_uss_bytes": 37851136,
+   "process_peak_rss_after_step_bytes": 483184640,
+   "process_peak_rss_before_step_bytes": 435216384,
+   "process_rss_after_bytes": 405323776,
+   "process_uss_after_bytes": 402964480,
+   "rss_retained_after_filling_bytes": 24981504,
+   "rss_retained_after_one_decode_step_bytes": 29782016,
+   "state_rss_over_exact": 0.9950464211370644
+  }
+ },
+ "threads": 4
+}

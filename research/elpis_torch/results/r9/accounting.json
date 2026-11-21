@@ -1,0 +1,238 @@
+{
+ "arms": {
+  "A": {
+   "active_parameters_per_token": 155868,
+   "channel_macs_per_token": 98048,
+   "expert": {
+    "cgc_macs_including_cubic": 7744,
+    "ffn_hidden": 86,
+    "ffn_macs": 16512,
+    "kind": "ffn+cgc",
+    "macs": 24256,
+    "parameters": 23681
+   },
+   "labels": {
+    "all": "EXACT"
+   },
+   "parameters_by_group": {
+    "cgc": 114688,
+    "cgc_gate": 16,
+    "channel_ffn": 264192,
+    "embedding": 16576,
+    "ersa_norms_head": 35160,
+    "ple_other": 8320,
+    "ple_table": 4195600,
+    "routing": 1024
+   },
+   "relative_to_A": {
+    "active_parameters_per_token": 0.0,
+    "expert_macs": 0.0,
+    "expert_parameters": 0.0,
+    "total_parameters": 0.0
+   },
+   "resident_weight_bytes": 18542304,
+   "total_parameters": 4635576,
+   "weight_bytes_read_per_token_bound": 623472
+  },
+  "A0": {
+   "active_parameters_per_token": 147484,
+   "channel_macs_per_token": 98048,
+   "expert": {
+    "cgc_macs_including_cubic": 7744,
+    "ffn_hidden": 86,
+    "ffn_macs": 16512,
+    "kind": "ffn+cgc",
+    "macs": 24256,
+    "parameters": 23681
+   },
+   "labels": {
+    "all": "EXACT"
+   },
+   "parameters_by_group": {
+    "cgc": 114688,
+    "cgc_gate": 16,
+    "channel_ffn": 264192,
+    "embedding": 16576,
+    "ersa_norms_head": 35160,
+    "routing": 1024
+   },
+   "relative_to_A": {
+    "active_parameters_per_token": -0.0537891036004825,
+    "expert_macs": 0.0,
+    "expert_parameters": 0.0,
+    "total_parameters": -0.9068819063693487
+   },
+   "resident_weight_bytes": 1726624,
+   "total_parameters": 431656,
+   "weight_bytes_read_per_token_bound": 589936
+  },
+  "B": {
+   "active_parameters_per_token": 127192,
+   "channel_macs_per_token": 67072,
+   "expert": {
+    "cgc_macs_including_cubic": 0,
+    "ffn_hidden": 86,
+    "ffn_macs": 16512,
+    "kind": "ffn",
+    "macs": 16512,
+    "parameters": 16512
+   },
+   "labels": {
+    "all": "EXACT"
+   },
+   "parameters_by_group": {
+    "channel_ffn": 264192,
+    "embedding": 16576,
+    "ersa_norms_head": 35160,
+    "ple_other": 8320,
+    "ple_table": 4195600,
+    "routing": 1024
+   },
+   "relative_to_A": {
+    "active_parameters_per_token": -0.18397618497703183,
+    "expert_macs": -0.3192612137203166,
+    "expert_parameters": -0.3027321481356362,
+    "total_parameters": -0.02474428204822876
+   },
+   "resident_weight_bytes": 18083488,
+   "total_parameters": 4520872,
+   "weight_bytes_read_per_token_bound": 508768
+  },
+  "B0": {
+   "active_parameters_per_token": 118808,
+   "channel_macs_per_token": 67072,
+   "expert": {
+    "cgc_macs_including_cubic": 0,
+    "ffn_hidden": 86,
+    "ffn_macs": 16512,
+    "kind": "ffn",
+    "macs": 16512,
+    "parameters": 16512
+   },
+   "labels": {
+    "all": "EXACT"
+   },
+   "parameters_by_group": {
+    "channel_ffn": 264192,
+    "embedding": 16576,
+    "ersa_norms_head": 35160,
+    "routing": 1024
+   },
+   "relative_to_A": {
+    "active_parameters_per_token": -0.23776528857751433,
+    "expert_macs": -0.3192612137203166,
+    "expert_parameters": -0.3027321481356362,
+    "total_parameters": -0.9316261884175775
+   },
+   "resident_weight_bytes": 1267808,
+   "total_parameters": 316952,
+   "weight_bytes_read_per_token_bound": 475232
+  },
+  "C": {
+   "active_parameters_per_token": 155608,
+   "channel_macs_per_token": 95488,
+   "expert": {
+    "cgc_macs_including_cubic": 0,
+    "ffn_hidden": 123,
+    "ffn_macs": 23616,
+    "kind": "ffn",
+    "macs": 23616,
+    "parameters": 23616
+   },
+   "labels": {
+    "all": "EXACT"
+   },
+   "parameters_by_group": {
+    "channel_ffn": 377856,
+    "embedding": 16576,
+    "ersa_norms_head": 35160,
+    "ple_other": 8320,
+    "ple_table": 4195600,
+    "routing": 1024
+   },
+   "relative_to_A": {
+    "active_parameters_per_token": -0.0016680781173813441,
+    "expert_macs": -0.02638522427440637,
+    "expert_parameters": -0.0027448165195727015,
+    "total_parameters": -0.00022435183890845423
+   },
+   "resident_weight_bytes": 18538144,
+   "total_parameters": 4634536,
+   "weight_bytes_read_per_token_bound": 622432
+  },
+  "C0": {
+   "active_parameters_per_token": 147224,
+   "channel_macs_per_token": 95488,
+   "expert": {
+    "cgc_macs_including_cubic": 0,
+    "ffn_hidden": 123,
+    "ffn_macs": 23616,
+    "kind": "ffn",
+    "macs": 23616,
+    "parameters": 23616
+   },
+   "labels": {
+    "all": "EXACT"
+   },
+   "parameters_by_group": {
+    "channel_ffn": 377856,
+    "embedding": 16576,
+    "ersa_norms_head": 35160,
+    "routing": 1024
+   },
+   "relative_to_A": {
+    "active_parameters_per_token": -0.055457181717863846,
+    "expert_macs": -0.02638522427440637,
+    "expert_parameters": -0.0027448165195727015,
+    "total_parameters": -0.9071062582082572
+   },
+   "resident_weight_bytes": 1722464,
+   "total_parameters": 430616,
+   "weight_bytes_read_per_token_bound": 588896
+  },
+  "C_mac": {
+   "active_parameters_per_token": 157912,
+   "channel_macs_per_token": 97792,
+   "expert": {
+    "cgc_macs_including_cubic": 0,
+    "ffn_hidden": 126,
+    "ffn_macs": 24192,
+    "kind": "ffn",
+    "macs": 24192,
+    "parameters": 24192
+   },
+   "labels": {
+    "all": "EXACT"
+   },
+   "parameters_by_group": {
+    "channel_ffn": 387072,
+    "embedding": 16576,
+    "ersa_norms_head": 35160,
+    "ple_other": 8320,
+    "ple_table": 4195600,
+    "routing": 1024
+   },
+   "relative_to_A": {
+    "active_parameters_per_token": 0.013113660276644401,
+    "expert_macs": -0.0026385224274406704,
+    "expert_parameters": 0.02157848063848644,
+    "total_parameters": 0.00176375061049594
+   },
+   "resident_weight_bytes": 18575008,
+   "total_parameters": 4643752,
+   "weight_bytes_read_per_token_bound": 631648
+  }
+ },
+ "command": "accounting",
+ "note": "Arm D is arm A evaluated with every CGC gate at 0: its parameters and compute are arm A's",
+ "phase": "ELPIS_TORCH_R9_BOARDY_QUALIFICATION",
+ "provenance": {
+  "cpu_capability": "AVX512",
+  "git_revision": "4534fbd856ce1b90b7b49e478059f0e67ef9cfaa+dirty",
+  "preregistration_sha256": "9974d72da622823ff9fe9c35c54a7406cfde44ab6bc953c3f9b64b031e0be191",
+  "python": "3.13.18",
+  "runner_sha256": "47b46a9ed991fdb0920c80e11be59135f19263020b0b59bebdb82025f08ce107",
+  "threads": 4,
+  "torch": "2.15.0+cpu"
+ }
+}

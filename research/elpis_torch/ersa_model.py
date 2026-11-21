@@ -32,7 +32,9 @@ from .cgc import CGCTransform
 from .config import ConfigError, ModelConfig
 from .ersa import ERSAMixer
 from .model import ElpisTorchLM, RMSNorm, Rotary, SwiGLU, _seeded_normal, sample_next
+from .ple import PLE, PLEConfig
 from .scroll import ChunkError, ScrollAttention, ScrollConfig, StreamState
+from .sparse_channel import SparseChannel, SparseConfig
 
 
 @dataclass(frozen=True)
@@ -52,6 +54,8 @@ class ErsaConfig:
     attn_layers: tuple | None = None   # R3: layers that carry the window attention; None = every layer
     ersa_kernel: str = "serial"        # R3: "serial" (the R2 reference loop) or "chunked" (exact, block-parallel)
     scan_block: int = 64               # R3: positions per block of the chunked kernel
+    sparse: SparseConfig | None = None # R6: blocks whose channel is a routed bank of FFN + CGC experts
+    ple: PLEConfig | None = None       # R7: hashed n-gram lookup rows fused before one block's mixer
 
     def __post_init__(self):
         if not isinstance(self.model, ModelConfig):
@@ -77,6 +81,16 @@ class ErsaConfig:
             object.__setattr__(self, "attn_layers", tuple(sorted(layers)))
         if self.attention == "window":
             self.window_config()            # validates heads, head dimension and window >= chunk + 1
+        if self.sparse is not None:
+            if not isinstance(self.sparse, SparseConfig):
+                raise ConfigError("sparse must be a SparseConfig (or None for the dense channel everywhere)")
+            if any(i >= self.model.n_layers for i in self.sparse.layers):
+                raise ConfigError("sparse.layers must name blocks of the model")
+        if self.ple is not None:
+            if not isinstance(self.ple, PLEConfig):
+                raise ConfigError("ple must be a PLEConfig (or None for no lookup rows)")
+            if self.ple.layer >= self.model.n_layers:
+                raise ConfigError("ple.layer must name a block of the model")
 
     @property
     def window_layers(self) -> tuple:
@@ -103,7 +117,11 @@ class ErsaState:
         self.window = None
         if model.ersa.attention == "window":
             self.window = StreamState(model.ersa.window_config(), batch, 0, self.cells[0].dtype, self.device)
-        self.ring = {layer: slot for slot, layer in enumerate(model.ersa.window_layers)}
+        self.window_slots = {layer: slot for slot, layer in enumerate(model.ersa.window_layers)}
+        self.ple_history = None             # R7: the last max_order - 1 token ids (n-gram addressing only)
+        if model.ple is not None:
+            self.ple_history = model.ple.addresser.new_history(batch, self.device)
+        self._ple_sentinel = None if model.ple is None else model.ple.addresser.sentinel
 
     def reset(self) -> None:
         """R4: an empty stream in the same buffers. Tensors that carry a training graph are replaced by zeros."""
@@ -111,6 +129,8 @@ class ErsaState:
         self.tails = [None if t is None else t.detach().zero_() for t in self.tails]
         if self.window is not None:
             self.window.reset()
+        if self.ple_history is not None:
+            self.ple_history.fill_(self._ple_sentinel)
         self.position = 0
 
     def nbytes(self) -> dict:
@@ -121,6 +141,8 @@ class ErsaState:
             ring = self.window.nbytes()
             out["attention_window"] = ring["window"]
             out["token_history"] = ring["token_history"]
+        if self.ple_history is not None:
+            out["ple_history"] = size(self.ple_history)
         out = {k: v for k, v in out.items() if v}
         out["total"] = sum(out.values())
         return out
@@ -140,8 +162,14 @@ class ErsaBlock(nn.Module):
         self.cgc = CGCTransform(m.d_model, m.cgc_cells, m.cgc_units, bottleneck=m.cgc_bottleneck,
                                 preact_bound=m.cgc_preact_bound, dtype=dtype) if m.has_cgc else None
         self.cgc_gate = nn.Parameter(torch.zeros(1, dtype=dtype)) if m.channel == "ffn+cgc" else None
+        self.sparse = None
+        if c.sparse is not None and index in c.sparse.layers:      # R6: the routed channel replaces the dense one
+            self.ffn = self.cgc = self.cgc_gate = None
+            self.sparse = SparseChannel(m, c.sparse, dtype)
 
     def channel(self, x: torch.Tensor) -> torch.Tensor:
+        if self.sparse is not None:
+            return self.sparse(x)
         if self.cgc is None:
             return self.ffn(x)
         if self.ffn is None:
@@ -162,6 +190,7 @@ class ErsaLM(nn.Module):
         m, dtype = config.model, getattr(torch, config.model.dtype)
         self.embed = nn.Embedding(m.vocab_size, m.d_model, dtype=dtype)
         self.blocks = nn.ModuleList(ErsaBlock(config, dtype, index) for index in range(m.n_layers))
+        self.ple = None if config.ple is None else PLE(m, config.ple, dtype)
         self.rotary = None
         if config.attention == "window":
             scroll = config.window_config()
@@ -188,12 +217,19 @@ class ErsaLM(nn.Module):
                 parameter.view(heads, -1)[:, 1:] = self.WRITE_BIAS
             elif name.endswith("ersa.og.bias"):
                 parameter.fill_(2.0)                            # output gate starts mostly open
+            elif name == "ple.table.weight":                    # unit-RMS rows, like an embedding's
+                parameter.copy_(_seeded_normal(m.seed, name, parameter.shape, 1.0, parameter.dtype))
+            elif name == "ple.value.weight":                    # writes into the residual stream
+                parameter.copy_(_seeded_normal(m.seed, name, parameter.shape, residual, parameter.dtype))
             else:
                 std = ElpisTorchLM._init_std(self, name)
                 if std is not None:
                     parameter.copy_(_seeded_normal(m.seed, name, parameter.shape, std, parameter.dtype))
                 elif name.endswith("cgc_gate"):
-                    parameter.fill_(m.cgc_gate_init)
+                    sparse = ".sparse." in name
+                    parameter.fill_(self.ersa.sparse.gate_init if sparse else m.cgc_gate_init)
+                elif name.endswith(("mlp.hidden.bias", "mlp.out.bias")):     # R11 control arm only
+                    parameter.zero_()
                 else:
                     parameter.fill_(1.0)
 
@@ -218,14 +254,19 @@ class ErsaLM(nn.Module):
             raise ValueError(f"token ids must be in [0, {self.config.vocab_size})")
         x = self.embed(tokens)
         context = self._chunk_context(tokens, state, extra)
+        addresses = None
+        if self.ple is not None and self.ple.enabled:          # R7: once per call, from token ids alone
+            addresses = self.ple.addresser.addresses(tokens, state.ple_history)
         cells, tails, staged, pre = [], [], [], None
         for index, block in enumerate(self.blocks):
+            if addresses is not None and index == c.ple.layer:
+                x = x + self.ple(x, addresses)
             u = block.mix_norm(x)
             mixed, new_cells, new_tail = block.ersa(u, state.cells[index], state.tails[index])
             cells.append(new_cells)
             tails.append(new_tail)
             if block.attn is not None:
-                ring = state.window.layers[state.ring[index]]
+                ring = state.window.layers[state.window_slots[index]]
                 attended, pending, _ = block.attn(u, self.rotary, ring, state.window)
                 mixed = mixed + attended
                 staged.append((index, pending))
@@ -248,12 +289,14 @@ class ErsaLM(nn.Module):
             if tails[index] is not None:
                 state.tails[index] = tails[index] if graph else state.tails[index].copy_(tails[index])
         for index, pending in staged:
-            self.blocks[index].attn.commit(state.window.layers[state.ring[index]], state.window, pending)
+            self.blocks[index].attn.commit(state.window.layers[state.window_slots[index]], state.window, pending)
         if state.window is not None:
             positions = state.window.position + torch.arange(length, device=tokens.device)
             state.window.tokens.index_copy_(1, positions % state.window.config.fine_capacity, tokens.to(torch.int32))
             state.window.position += length
         self._commit_context(tokens, state, context)
+        if state.ple_history is not None:
+            state.ple_history.copy_(self.ple.addresser.next_history(tokens, state.ple_history))
         state.position += length
         if context is not None and context.get("diagnostics") is not None:
             return (logits, pre, context["diagnostics"]) if return_pre else (logits, context["diagnostics"])
