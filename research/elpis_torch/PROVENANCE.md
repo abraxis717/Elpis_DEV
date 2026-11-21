@@ -210,3 +210,25 @@ R97W's.
 - Documents: the R11 documents under `docs/research/elpis_torch/`.
 
 **Data.** Every task is generated synthetically by the harness. No external data, weights or checkpoints were used.
+
+
+# R12 (the micro-CGC volatile fast state): no external code
+
+**What R12 is built from.**
+- **The update.** The CGC lineage's own explicit local update: R97W's and R11 Stage B's 8 clipped SGD steps, with
+  the analytic gradient of the PDF's adaptive specialist contract. It is checked against autograd in `parity.json`.
+- **The transaction.** It runs through this repository's `session.bounded_update` (R0), unchanged.
+- **The research context.** The owner supplied an analysis, "CGC, LAO, and the Missing Specialization Mechanism in
+  Elpis". R12 implements its first minimal discriminating experiment: fast-update restoration inside the frozen
+  ERSA stack. The analysis was read as context; nothing in it was copied as code.
+- **P5 reuses R11's own Stage B procedure** (`run_r11.train_stage_b`, `specialist_tasks.evaluate_arm`), unchanged.
+- **Nothing from LAO or K1** is used. No external code, weights or data were used.
+
+**What R12 wrote (all original).**
+- `fast_state.py`, `fast_episodes.py`, `experiments/run_r12.py` and `experiments/run_r12_p5.py`.
+- `tests/research/elpis_torch/test_r12.py`, `test_r12_p5.py` and `test_r12_records.py`.
+- `DESIGN_R12.md`, `CGC_FAST_STATE_CONTRACT_R12.md`, `PREREGISTRATION_R12.md`, `PREREGISTRATION_R12_P5.md` and
+  `EVIDENCE_R12.md`.
+
+**Data.** Every task is the R11 teacher's synthetic data. R12 retrains R11's Stage C models from their recorded
+seeds with R11's own code; it neither downloads nor loads any checkpoint.
