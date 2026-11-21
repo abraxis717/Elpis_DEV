@@ -1,0 +1,632 @@
+{
+ "command": "stack",
+ "families": {
+  "conditional": {
+   "decodability": {
+    "fixed": {
+     "probe_code": [
+      0.9591747224226853,
+      0.9562942599178489
+     ],
+     "probe_stream": [
+      0.9864956684439383,
+      0.9878958570781374
+     ],
+     "query_code": [
+      0.9658666132601103,
+      0.9409230759479829
+     ],
+     "query_stream": [
+      0.9891107287840918,
+      0.9909021599369792
+     ]
+    },
+    "learned": {
+     "probe_code": [
+      0.9589484355446897,
+      0.9409557493178361
+     ],
+     "probe_stream": [
+      0.9859907937967735,
+      0.9886478861923291
+     ],
+     "query_code": [
+      0.9597406594510992,
+      0.9355864842047279
+     ],
+     "query_stream": [
+      0.9878816660007378,
+      0.9890513551293515
+     ]
+    }
+   },
+   "fixed_projection": {
+    "projection_unchanged": true,
+    "rows": [
+     {
+      "alignment_r2": 0.8660976503784938,
+      "episode": 0,
+      "fast": {
+       "0": 0.10258708149194717,
+       "1": 0.05684465914964676,
+       "2": 0.04040290787816048,
+       "4": 0.028314895927906036,
+       "8": 0.021783556789159775
+      },
+      "fast_context_free": 0.024247094988822937,
+      "frozen": 0.10258708149194717,
+      "frozen_context_free": 0.10278936475515366,
+      "grad_norm_first": 0.7667687106292064,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.02375134825706482
+     },
+     {
+      "alignment_r2": 0.8874396026744564,
+      "episode": 1,
+      "fast": {
+       "0": 0.12497597187757492,
+       "1": 0.08447131514549255,
+       "2": 0.06368833780288696,
+       "4": 0.04453255981206894,
+       "8": 0.03176088258624077
+      },
+      "fast_context_free": 0.032153088599443436,
+      "frozen": 0.12497597187757492,
+      "frozen_context_free": 0.12432101368904114,
+      "grad_norm_first": 0.7299029356949054,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.03427135571837425
+     }
+    ],
+    "selected_step": 20,
+    "training_seconds": 1.6
+   },
+   "misrouted_branch": {
+    "rows": [
+     {
+      "alignment_r2": 0.8620639255336263,
+      "episode": 0,
+      "fast": {
+       "0": 0.11994275450706482,
+       "1": 0.042905211448669434,
+       "2": 0.033195462077856064,
+       "4": 0.02614620327949524,
+       "8": 0.022905386984348297
+      },
+      "fast_context_free": 0.025989830493927002,
+      "frozen": 0.11994275450706482,
+      "frozen_context_free": 0.12404600530862808,
+      "grad_norm_first": 1.3222833404030447,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.026746930554509163
+     },
+     {
+      "alignment_r2": 0.8749609879000464,
+      "episode": 1,
+      "fast": {
+       "0": 0.1795107126235962,
+       "1": 0.08045962452888489,
+       "2": 0.05627985671162605,
+       "4": 0.04230363667011261,
+       "8": 0.034252867102622986
+      },
+      "fast_context_free": 0.03498302400112152,
+      "frozen": 0.1795107126235962,
+      "frozen_context_free": 0.1763371378183365,
+      "grad_norm_first": 1.2690463974228643,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.03699241578578949
+     }
+    ],
+    "substituted": [
+     "blocks.1.sparse.experts.0.cgc.proj_in.weight",
+     "blocks.1.sparse.experts.0.cgc.core.weight",
+     "blocks.1.sparse.experts.0.cgc.proj_out.weight"
+    ]
+   },
+   "misrouted_unit": {
+    "rows": [
+     {
+      "alignment_r2": 0.8620639255336263,
+      "episode": 0,
+      "fast": {
+       "0": 0.11898316442966461,
+       "1": 0.04538504779338837,
+       "2": 0.035313382744789124,
+       "4": 0.02804996632039547,
+       "8": 0.024734577164053917
+      },
+      "fast_context_free": 0.027961263433098793,
+      "frozen": 0.11898316442966461,
+      "frozen_context_free": 0.1228146180510521,
+      "grad_norm_first": 1.2785400947725651,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.028234653174877167
+     },
+     {
+      "alignment_r2": 0.8749609879000464,
+      "episode": 1,
+      "fast": {
+       "0": 0.17506085336208344,
+       "1": 0.08059059828519821,
+       "2": 0.05769680067896843,
+       "4": 0.04407715052366257,
+       "8": 0.03628965839743614
+      },
+      "fast_context_free": 0.037160083651542664,
+      "frozen": 0.17506085336208344,
+      "frozen_context_free": 0.17202292382717133,
+      "grad_norm_first": 1.2168274901627325,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.038788020610809326
+     }
+    ],
+    "substituted": [
+     "blocks.1.sparse.experts.0.ffn.gate.weight",
+     "blocks.1.sparse.experts.0.ffn.up.weight",
+     "blocks.1.sparse.experts.0.ffn.out.weight",
+     "blocks.1.sparse.experts.0.cgc.proj_in.weight",
+     "blocks.1.sparse.experts.0.cgc.core.weight",
+     "blocks.1.sparse.experts.0.cgc.proj_out.weight"
+    ]
+   },
+   "rebuilt": {
+    "rows": [
+     {
+      "alignment_r2": 0.8712937054619366,
+      "episode": 0,
+      "fast": {
+       "0": 0.08626117557287216,
+       "1": 0.040567755699157715,
+       "2": 0.03327016159892082,
+       "4": 0.026369472965598106,
+       "8": 0.02291252464056015
+      },
+      "fast_context_free": 0.025469087064266205,
+      "frozen": 0.08626117557287216,
+      "frozen_context_free": 0.08906671404838562,
+      "grad_norm_first": 0.9365506133431629,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.02558901533484459
+     },
+     {
+      "alignment_r2": 0.8848927490147025,
+      "episode": 1,
+      "fast": {
+       "0": 0.1655116081237793,
+       "1": 0.08432409167289734,
+       "2": 0.061696067452430725,
+       "4": 0.04605100676417351,
+       "8": 0.03625711426138878
+      },
+      "fast_context_free": 0.03630823642015457,
+      "frozen": 0.1655116081237793,
+      "frozen_context_free": 0.1623396873474121,
+      "grad_norm_first": 1.1350901364569137,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.04003133252263069
+     }
+    ],
+    "selected_step": 20,
+    "training_seconds": 1.4
+   }
+  },
+  "smooth": {
+   "decodability": {
+    "fixed": {
+     "probe_code": [
+      0.9463432961678747,
+      0.9340535986135073
+     ],
+     "probe_stream": [
+      0.9859062375496533,
+      0.9779032355300652
+     ],
+     "query_code": [
+      0.9522944553649315,
+      0.9404478156059998
+     ],
+     "query_stream": [
+      0.9925119405595276,
+      0.9919522008530712
+     ]
+    },
+    "learned": {
+     "probe_code": [
+      0.9498108213589709,
+      0.9362210810998775
+     ],
+     "probe_stream": [
+      0.9881890688985682,
+      0.9781095543252049
+     ],
+     "query_code": [
+      0.9656574181207757,
+      0.9490328019722477
+     ],
+     "query_stream": [
+      0.9937840749589261,
+      0.9923921451384217
+     ]
+    }
+   },
+   "fixed_projection": {
+    "projection_unchanged": true,
+    "rows": [
+     {
+      "alignment_r2": 0.9095799313486037,
+      "episode": 0,
+      "fast": {
+       "0": 0.0662185326218605,
+       "1": 0.053928494453430176,
+       "2": 0.0473165325820446,
+       "4": 0.041397880762815475,
+       "8": 0.038100507110357285
+      },
+      "fast_context_free": 0.03851998224854469,
+      "frozen": 0.0662185326218605,
+      "frozen_context_free": 0.061994366347789764,
+      "grad_norm_first": 0.4118581250023174,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.043818533420562744
+     },
+     {
+      "alignment_r2": 0.8311003537598509,
+      "episode": 1,
+      "fast": {
+       "0": 0.12311238795518875,
+       "1": 0.08918152749538422,
+       "2": 0.07254306972026825,
+       "4": 0.05645590275526047,
+       "8": 0.04313388466835022
+      },
+      "fast_context_free": 0.045278191566467285,
+      "frozen": 0.12311238795518875,
+      "frozen_context_free": 0.12303246557712555,
+      "grad_norm_first": 0.7292798408598975,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.046767979860305786
+     }
+    ],
+    "selected_step": 20,
+    "training_seconds": 1.6
+   },
+   "misrouted_branch": {
+    "rows": [
+     {
+      "alignment_r2": 0.9102887603194292,
+      "episode": 0,
+      "fast": {
+       "0": 0.07077232003211975,
+       "1": 0.0445084385573864,
+       "2": 0.037283096462488174,
+       "4": 0.03322698175907135,
+       "8": 0.0317654088139534
+      },
+      "fast_context_free": 0.03360898047685623,
+      "frozen": 0.07077232003211975,
+      "frozen_context_free": 0.0699566975235939,
+      "grad_norm_first": 0.7306751632764904,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.037743035703897476
+     },
+     {
+      "alignment_r2": 0.8486595863958583,
+      "episode": 1,
+      "fast": {
+       "0": 0.20574623346328735,
+       "1": 0.12430103868246078,
+       "2": 0.08238936215639114,
+       "4": 0.0533638522028923,
+       "8": 0.03754337131977081
+      },
+      "fast_context_free": 0.042532701045274734,
+      "frozen": 0.20574623346328735,
+      "frozen_context_free": 0.21125377714633942,
+      "grad_norm_first": 1.1332341954870975,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.03970909118652344
+     }
+    ],
+    "substituted": [
+     "blocks.1.sparse.experts.0.cgc.proj_in.weight",
+     "blocks.1.sparse.experts.0.cgc.core.weight",
+     "blocks.1.sparse.experts.0.cgc.proj_out.weight"
+    ]
+   },
+   "misrouted_unit": {
+    "rows": [
+     {
+      "alignment_r2": 0.9102887603194292,
+      "episode": 0,
+      "fast": {
+       "0": 0.0705002099275589,
+       "1": 0.045049186795949936,
+       "2": 0.038037750869989395,
+       "4": 0.03419516608119011,
+       "8": 0.03291443735361099
+      },
+      "fast_context_free": 0.03467709943652153,
+      "frozen": 0.0705002099275589,
+      "frozen_context_free": 0.06958881765604019,
+      "grad_norm_first": 0.7098689170505574,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.03902619704604149
+     },
+     {
+      "alignment_r2": 0.8486595863958583,
+      "episode": 1,
+      "fast": {
+       "0": 0.194426029920578,
+       "1": 0.11668966710567474,
+       "2": 0.07828820496797562,
+       "4": 0.051768068224191666,
+       "8": 0.0377093181014061
+      },
+      "fast_context_free": 0.04251841455698013,
+      "frozen": 0.194426029920578,
+      "frozen_context_free": 0.19987548887729645,
+      "grad_norm_first": 1.1011122195839929,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.04012366011738777
+     }
+    ],
+    "substituted": [
+     "blocks.1.sparse.experts.0.ffn.gate.weight",
+     "blocks.1.sparse.experts.0.ffn.up.weight",
+     "blocks.1.sparse.experts.0.ffn.out.weight",
+     "blocks.1.sparse.experts.0.cgc.proj_in.weight",
+     "blocks.1.sparse.experts.0.cgc.core.weight",
+     "blocks.1.sparse.experts.0.cgc.proj_out.weight"
+    ]
+   },
+   "rebuilt": {
+    "rows": [
+     {
+      "alignment_r2": 0.9064129747119445,
+      "episode": 0,
+      "fast": {
+       "0": 0.05352111533284187,
+       "1": 0.037879373878240585,
+       "2": 0.03292091190814972,
+       "4": 0.030222468078136444,
+       "8": 0.029625216498970985
+      },
+      "fast_context_free": 0.031392984092235565,
+      "frozen": 0.05352111533284187,
+      "frozen_context_free": 0.05157919600605965,
+      "grad_norm_first": 0.49499988859348776,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.03465805575251579
+     },
+     {
+      "alignment_r2": 0.8370585714015094,
+      "episode": 1,
+      "fast": {
+       "0": 0.15935848653316498,
+       "1": 0.08673755079507828,
+       "2": 0.06275853514671326,
+       "4": 0.0454818457365036,
+       "8": 0.03478412330150604
+      },
+      "fast_context_free": 0.03932730853557587,
+      "frozen": 0.15935848653316498,
+      "frozen_context_free": 0.16505160927772522,
+      "grad_norm_first": 1.1240975150879122,
+      "integrity": {
+       "all": true,
+       "bound_never_binds": true,
+       "disabled_exact": true,
+       "disabled_refused": true,
+       "every_update_applied": true,
+       "finite": true,
+       "full_vs_cached_parity": true,
+       "no_leakage": true,
+       "reset_exact": true,
+       "states_unchanged_by_the_core": true
+      },
+      "shuffled": 0.03854065760970116
+     }
+    ],
+    "selected_step": 20,
+    "training_seconds": 2.5
+   }
+  }
+ },
+ "label": "DEVELOPMENT ONLY",
+ "phase": "ELPIS_TORCH_R12_P5_REPRESENTATION_SEAM",
+ "provenance": {
+  "amendment_sha256": null,
+  "cgc_sha256": "2a5a1103a361c8a9a29865caca4300f5b5eac659b612465fcca1f8c1feb02d3d",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "ersa_model_sha256": "5583a9c5dc0c86dadff3b24c98f06df46eb36d10c663156351647c154efb17e1",
+  "ersa_sha256": "ebcbbbf4f50d0b530bec97f2c3287017aea046204f7141ba621513a9739fbabe",
+  "fast_episodes_sha256": "9f600e06798198aabfdec5798402769c6e91ef790eb2cef12dd7f044d6cbcbb3",
+  "fast_state_sha256": "90798e649f49b8b86cb852de14ac969e4db9eefdbacdcdaa0015d554c231b898",
+  "git_revision": "9f7b203c580bc47e26c0f89e5d56b8420c26ccb8+dirty",
+  "lastblock_sha256": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "p5_runner_sha256": "a03a95b3450f28d2b5104d2d8589a825a0d66d348c1572ae5d648d994fa426e7",
+  "preregistration_sha256": "f0f106067f1672a3dd4b5fa17f0f51543d2eca4753dc4e48080cdeed4552d44c",
+  "profile_sha256": "8e8ae728f14f6aae7458a20125e77fb93427e7a047ff63b64500266197c5b4ad",
+  "python": "3.13.18",
+  "r11_amendment_sha256": "ede13d3d982963fa341f4e46ccf9d2d6ad87670a61561b38bad8298e3dd51a20",
+  "r11_runner_sha256": "a7cf027f0ce9b58061c28962855640be8d389924062a2b0c37c57a01b66480b1",
+  "r11_stage_c_runner_sha256": "2831eb02f7e3e96f132bc285ceb02d4333fce7a2aeb6bae4bde160cae308b8e8",
+  "runner_sha256": "f4d1ad996d15281de264e2fec88982d4233eb3f7d67a2130862d6929d3a25a21",
+  "session_sha256": "6e4d58bdb868c308584b614cfe728237a5dd2b1492645834a830e5dfb59a0568",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "stack_sha256": "3945ae033d8aadaa48e8e42d40deef2d92329b16069197765560f52ba22a905b",
+  "study_r12_sha256": "0fe130cf7aebcb1cd2d7b41ac9e4cb3c1ea090ede0a658c3491fdc103732cafc",
+  "tasks_sha256": "dd016c5dd233cd3d1625e49dae019545e2f1d045846d283f0e15462ffc35d101",
+  "threads": 2,
+  "torch": "2.15.0+cpu"
+ },
+ "seconds": 9.1,
+ "stage": "development"
+}
