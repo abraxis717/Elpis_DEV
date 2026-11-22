@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 
 import pytest
 
@@ -72,18 +73,39 @@ def _records():
 
 
 def test_every_record_was_produced_under_the_frozen_plan_by_the_committed_sources():
+    """Every source digest the runner records equals the committed source.
+
+    A known key collision in the frozen runner: ``run_r13_p5.provenance`` writes the plan FILE's digest under
+    ``plan_sha256``, which shadows the digest of the source named ``plan`` (``geodome_cognitive/plan.py``). That
+    source is therefore pinned by the record's clean git revision instead (the next test)."""
     records = _records()
     if not records:
         pytest.skip("no P5 record yet")
-    expected = {f"{k}_sha256": _sha(v) for k, v in SOURCES.items()}
+    expected = {f"{k}_sha256": _sha(v) for k, v in SOURCES.items() if k != "plan"}
     for name, record in records.items():
         assert record["plan_sha256"] == PLAN_SHA256, name
         provenance = record["provenance"]
         assert {k: provenance[k] for k in expected} == expected, name
-        assert provenance["plan_sha256"] == PLAN_SHA256, name
+        assert provenance["plan_sha256"] == PLAN_SHA256, name                    # the plan FILE (the collision)
         assert provenance["r13_supplement_manifest_sha256"] == _sha(TORCH / "results" / "r13_hardening" /
                                                                     "MANIFEST.json"), name
         assert provenance["git_revision"] and not provenance["git_revision"].endswith("+dirty"), name
+
+
+def test_every_source_is_the_one_at_the_records_clean_revision():
+    """Each record's clean revision holds exactly the committed sources, ``plan.py`` included (whose digest the
+    runner's provenance does not carry by name; see above)."""
+    records = _records()
+    if not records:
+        pytest.skip("no P5 record yet")
+    for name, record in records.items():
+        revision = record["provenance"]["git_revision"]
+        for key, path in SOURCES.items():
+            shown = subprocess.run(["git", "show", f"{revision}:{path.relative_to(REPO).as_posix()}"], cwd=REPO,
+                                   capture_output=True)
+            if shown.returncode != 0:
+                pytest.skip("the recorded revision is not in this checkout's history (shallow clone)")
+            assert hashlib.sha256(shown.stdout).hexdigest() == _sha(path), (name, key)
 
 
 def test_the_pilot_is_development_only_and_records_what_was_asked():
@@ -137,3 +159,4 @@ def test_the_manifest_lists_every_p5_record():
     assert set(manifest["files"]) == files
     for name, digest in manifest["files"].items():
         assert _sha(RESULTS / name) == digest, name
+    assert manifest["sources"] == {k: _sha(v) for k, v in SOURCES.items()}     # every source by name, plan.py too
