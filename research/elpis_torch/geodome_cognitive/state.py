@@ -127,8 +127,17 @@ class TensorWorkingState:
         self.version += 1
 
     def release(self, handles) -> None:
+        """Make the vertices of ``handles`` non-resident and zero their rows: all or none. The whole batch is checked
+        before anything changes: it must be non-empty, every handle valid (this state's, of the current epoch and
+        slot generation) and every vertex named once. A repeated handle would otherwise be released once and then
+        refused as stale, leaving a partial update (R13 owner review, hardening 1)."""
+        self._live()
         handles = tuple(handles)
+        if not handles:
+            raise ValueError("EMPTY_BATCH")
         self.validate(handles)
+        if len({h.vertex for h in handles}) != len(handles):
+            raise ValueError("DUPLICATE_HANDLE")
         slots = self._slots(handles)
         for h in handles:
             self.nodes.release(h)

@@ -16,7 +16,9 @@ refined logits equal the backbone's bit for bit (the routed channel's batch vari
 ``CognitiveSession`` (batch 1, final-position query, frozen backbone):
 
     observe(tokens)          consume one chunk ONCE through EvidenceLM (state committed by the model itself);
-                             keep its final-position logits (the safe bypass) and pre-channel rows
+                             keep its final-position logits (the safe bypass) and pre-channel rows; with
+                             ``capture_candidates = n`` also keep the backbone's own n best fine-ranked live blocks
+                             at the query, from the same forward (``diagnostics``; no extra token, no label)
     enrol(vertices)          make Geodome vertices resident in the bounded working state (all or none)
     admit_evidence(addrs)    validate exact historical ``BlockAddress`` identities against the ring (session, epoch,
                              block, slot generation, canonical form, liveness at the query) and causality (strictly
@@ -69,6 +71,8 @@ class Observation:
     logits: torch.Tensor                # [1, vocab]: the backbone's prediction there (the bypass)
     pre: torch.Tensor                   # [1, d]: the final block's pre-channel stream there (return_pre)
     rows: torch.Tensor                  # [1, T, d]: every row the final channel consumed in that forward
+    candidates: tuple = ()              # capture_candidates > 0: the backbone's own fine-ranked live blocks at the
+                                        # query (BlockAddress, rank order, at most capture_candidates); no labels
 
 
 @dataclass(frozen=True)
@@ -95,7 +99,7 @@ class CognitiveSession:
     """Batch-1 cognitive session over a FROZEN ``EvidenceLM`` (see the module docstring)."""
 
     def __init__(self, model, kernels: CognitiveKernels, *, origin: int = 0, evidence_options: dict | None = None,
-                 budget_bytes: int | None = None, residency: str | None = None):
+                 budget_bytes: int | None = None, residency: str | None = None, capture_candidates: int = 0):
         if model.training or any(p.requires_grad for p in model.parameters()):
             raise ValueError("a cognitive session needs a frozen backbone (eval mode, no parameter requires grad)")
         if not hasattr(model, "evidence") or not hasattr(model, "lookup"):
@@ -111,6 +115,12 @@ class CognitiveSession:
         self.evidence_options = dict(evidence_options or {})
         if set(self.evidence_options) - {"mode", "rerank", "coarse_top"}:
             raise ValueError("evidence_options: mode, rerank or coarse_top only")
+        mode = self.evidence_options.get("mode") or model.evidence.mode
+        if type(capture_candidates) is not int or not 0 <= capture_candidates <= model.evidence.fine_top:
+            raise ValueError(f"capture_candidates must be an integer in [0, {model.evidence.fine_top}] (fine_top)")
+        if capture_candidates and mode == "off":
+            raise ValueError("candidate capture needs the backbone's evidence read (mode 'off' ranks nothing)")
+        self.capture_candidates = capture_candidates
         self._residency = residency or self.config.residency
         self.session_id = next(_SESSIONS)
         self.epoch = 0
@@ -191,17 +201,32 @@ class CognitiveSession:
         if not 1 <= length <= self.model.ersa.chunk:
             raise ValueError(f"1 <= T <= {self.model.ersa.chunk} tokens per observation")
         last = torch.tensor([length - 1], device=tokens.device)
+        extra = {"diagnostics": True} if self.capture_candidates else {}
         with capture_pre(self.model) as captured:
-            out = self.model(tokens, self.state, return_pre=True, logit_positions=last, **self.evidence_options)
+            out = self.model(tokens, self.state, return_pre=True, logit_positions=last, **self.evidence_options,
+                             **extra)
         logits, pre = out[0], out[1]
         rows = captured.pre
         if rows is None or rows.shape[1] != length or not torch.equal(rows[:, -1:], pre):
             raise CognitiveError("SEAM", "the captured pre-channel rows disagree with return_pre")
+        candidates = self._ranked_candidates(out[2]) if self.capture_candidates else ()
         self._serial += 1
-        self._observation = Observation(self._serial, self.state.position - 1, logits[:, 0], pre[:, 0], rows)
+        self._observation = Observation(self._serial, self.state.position - 1, logits[:, 0], pre[:, 0], rows,
+                                        candidates)
         self._evidence = self._reasoning = self._readout = None
         self.working.detach()                      # no training graph crosses an external step
         return logits[:, 0]
+
+    def _ranked_candidates(self, diagnostics: dict) -> tuple:
+        """The backbone's own ranking at the query, from the SAME forward (no extra token, no label): the
+        ``fine_top`` blocks of its evidence read, which are the coarse candidates reranked by the learned fine
+        score (``EvidenceLM._diagnose``; deterministic exact top-K, unused slots -1). The first
+        ``capture_candidates`` are returned as the ring's canonical addresses, after the forward committed its
+        state (``StaleAddressError`` if one were not live, which eligibility excludes)."""
+        ranked = diagnostics["fine_top"][0, -1].tolist()            # host side: the external step, not the
+        ring = self.state.ring                                      # differentiable path
+        blocks = [b for b in ranked if b >= 0][:self.capture_candidates]
+        return tuple(ring.address(b) for b in blocks)
 
     # -- working state --------------------------------------------------------------------------------------------
     def enrol(self, vertices) -> tuple:

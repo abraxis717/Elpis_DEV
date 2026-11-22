@@ -19,8 +19,13 @@ Commands (each writes one JSON record with ``--out``):
                 parity, zero-gate parity, the context clock, admission and its refusals, atomicity, isolation,
                 immutability, reset
     resources   parameters, state, topology and plan bytes, gradient scratch, visits, active vertices, latency, RSS
-    verdict     the R13 dispositions, computed from the six records above
-    manifest    every R13 record with its digest
+    hardening   the owner-review hardening (supplemental receipt): all-or-none release with duplicate refusal, the
+                synchronous touched-vertex budget, and the bit-exact capture of the backbone's ranked candidates
+    verdict     the R13 dispositions, computed from the records above (``--results`` names the directory)
+    manifest    every record of that directory with its digest
+
+The original qualification receipts are ``results/r13``; the supplemental receipts on the corrected sources are
+``results/r13_hardening`` (every command rerun there, plus ``hardening``).
 """
 from __future__ import annotations
 
@@ -857,6 +862,9 @@ def refusal_battery() -> dict:
         "wrong_token_dtype": (lambda: session.observe(tokens[:, :8].float()), None),
         "too_many_tokens": (lambda: session.observe(tokens[:, :71]), None),
         "batch_two": (lambda: session.observe(tokens[:, :8].expand(2, -1)), None),
+        "synchronous_active_budget": (lambda: session.reason(plan(max_active=len(path) - 1)), "ACTIVE_BUDGET"),
+        "release_duplicate": (lambda: session.working.release((session.working.handle(path[0]),) * 2),
+                              "DUPLICATE_HANDLE"),
     }
     kinds = (PlanError, KeyError, ValueError, OverflowError, StaleAddressError, CognitiveError, WorkingStateError)
     for name, (fn, code) in cases.items():
@@ -1023,11 +1031,165 @@ def command_resources(args) -> dict:
     return record
 
 
+# -- the owner-review hardening (supplemental receipt) ---------------------------------------------------------------
+
+def working_snapshot(working, vertices) -> dict:
+    """Everything observable of a working state: latent bytes, version, epoch, resident count, Geodome's payload
+    accounting, and each named vertex's handle (slot, generation, epoch) or None when it is not resident."""
+    handles = {}
+    for v in vertices:
+        try:
+            h = working.handle(v)
+            handles[v] = (h.slot, h.generation, h.epoch)
+        except KeyError:
+            handles[v] = None
+    return {"latent": hashlib.sha256(tensor_bytes(working.latent)).hexdigest(), "version": working.version,
+            "epoch": working.epoch, "resident": working.resident, "payload": working.nodes.payload(),
+            "handles": handles}
+
+
+def release_battery() -> dict:
+    """Hardening 1: ``release`` is all or none. Every invalid batch is refused against a complete snapshot."""
+    sub = substrate()
+    path = chain(sub, 6, start=7000)
+    working = TensorWorkingState(sub, capacity=8, width=3)
+    handles = working.acquire(path[:5])
+    working.publish(handles, working.slots(handles), seeded_rows(5, 3, seed=2, dtype=torch.float32) + 1.0)
+    stale = handles[4]
+    working.release((stale,))
+    working.acquire((path[4],))                                   # the same vertex, a new slot generation
+    foreign = TensorWorkingState(sub, capacity=8, width=3).acquire((path[0],))[0]
+    base = working_snapshot(working, path)
+    cases = {"duplicate_pair": ((handles[0], handles[0]), "DUPLICATE_HANDLE"),
+             "duplicate_in_batch": ((handles[0], handles[1], handles[0]), "DUPLICATE_HANDLE"),
+             "valid_and_stale_generation": ((handles[1], stale), "STALE_HANDLE"),
+             "valid_and_foreign": ((handles[1], foreign), "FOREIGN_OR_STALE_HANDLE"),
+             "valid_and_not_a_handle": ((handles[1], "h"), "FOREIGN_OR_STALE_HANDLE"),
+             "empty": ((), "EMPTY_BATCH")}
+    out = {}
+    for name, (batch, code) in cases.items():
+        out[name] = _refuses(lambda: working.release(batch), (ValueError, WorkingStateError), code)
+        out[name]["equal_unchanged"] = working_snapshot(working, path) == base
+    other = TensorWorkingState(sub, capacity=4, width=3)
+    old = other.acquire(path[:2])
+    other.reset()
+    after_reset = working_snapshot(other, path)
+    out["earlier_epoch"] = _refuses(lambda: other.release(old), ValueError, "FOREIGN_OR_STALE_HANDLE")
+    out["earlier_epoch"]["equal_unchanged"] = working_snapshot(other, path) == after_reset
+    before = working.latent.clone()
+    slots = working.slots(handles[:2])
+    working.release(handles[:2])
+    keep = [i for i in range(working.latent.shape[0]) if i not in slots.tolist()]
+    out["valid_release"] = {"ok_nonresident": all(working_snapshot(working, path)["handles"][v] is None
+                                                  for v in path[:2]),
+                            "ok_rows_zeroed": not bool(working.latent[slots].any()),
+                            "equal_other_rows": torch.equal(working.latent[keep], before[keep]),
+                            "ok_version_advanced": working.version == base["version"] + 1,
+                            "stale_after_release": _refuses(lambda: working.validate(handles[:1]), ValueError,
+                                                            "STALE_HANDLE")}
+    return out
+
+
+def active_budget_battery() -> dict:
+    """Hardening 2: a synchronous plan's touched set (every source and destination of an admitted arc) must fit the
+    active budget before anything runs. Boundary and overflow, explicit and Geodome's default cap of 1024."""
+    sub = substrate()
+    limits = dict(max_rounds=16, max_arcs=24576, max_visits=6291456, max_evidence=8)
+    path = chain(sub, 5, start=300)
+    working = TensorWorkingState(sub, capacity=8, width=3)
+    working.acquire(path)
+    arcs = sub.physical_arcs(path)
+    partial = sub.physical_arcs(path[:3])                         # touches 3 of the 5 enrolled vertices
+    make = lambda arcs_, active, schedule="synchronous", start=(): ExecutionPlan(  # noqa: E731
+        vertices=path, arcs=arcs_, rounds=2, schedule=schedule, start=start, readout=(path[0],), max_active=active)
+    out = {"explicit_boundary": {"touched": compile_plan(make(arcs, 5), working, **limits).touched,
+                                 "ok_compiles": compile_plan(make(arcs, 5), working, **limits).touched == 5},
+           "explicit_overflow": _refuses(lambda: compile_plan(make(arcs, 4), working, **limits), PlanError,
+                                         "ACTIVE_BUDGET"),
+           "partial_boundary": {"ok_compiles": compile_plan(make(partial, 3), working, **limits).touched == 3},
+           "partial_overflow": _refuses(lambda: compile_plan(make(partial, 2), working, **limits), PlanError,
+                                        "ACTIVE_BUDGET")}
+    for size, refused in ((1024, False), (1025, True)):
+        region = ball(sub, 9000, size)
+        big = TensorWorkingState(sub, capacity=size, width=1)
+        big.acquire(region)
+        plan = ExecutionPlan(vertices=region, arcs=sub.physical_arcs(region), rounds=1, readout=(region[0],))
+        name = f"default_cap_{size}"
+        if refused:
+            out[name] = _refuses(lambda: compile_plan(plan, big, **limits), PlanError, "ACTIVE_BUDGET")
+        else:
+            out[name] = {"ok_compiles": compile_plan(plan, big, **limits).touched == size}
+    # a changed-destination plan keeps Geodome's run-time semantics: it compiles, and stops with ACTIVE_BUDGET
+    compiled = compile_plan(make(arcs, 4, "changed_destination", path), working, **limits)
+    run = run_changed_destination(torch.zeros(len(path), 3) + 0.5, compiled, reference_kernels(width=3, hidden=4).float())
+    out["changed_destination_unchanged"] = {"ok_compiles": compiled.touched is None,
+                                            "equal_runtime_status": run.status == "ACTIVE_BUDGET"}
+    return out
+
+
+def capture_battery() -> dict:
+    """The explicit candidate capture: bit-exact against the plain observation, and the backbone's own ranked,
+    canonical, live, causal addresses (no extra token, no label)."""
+    out = {}
+    variants = [dict(fine_keys="reread", ple=False, origin=0, window=False),
+                dict(fine_keys="stored", ple=True, origin=64, window=False),
+                dict(fine_keys="reread", ple=False, origin=0, window=True),
+                dict(fine_keys="stored", ple=True, origin=64, window=True)]
+    for v in variants:
+        model = build_backbone(fine_keys=v["fine_keys"], ple=v["ple"], window=v["window"])
+        n = model.evidence.fine_top
+        tokens = stream_tokens(600, seed=11)
+        options = {"mode": "learned"}
+        plain = CognitiveSession(model, kernels_for(model), origin=v["origin"], evidence_options=options)
+        ranked = CognitiveSession(model, kernels_for(model), origin=v["origin"], evidence_options=options,
+                                  capture_candidates=n)
+        equal_logits, equal_state, lengths = [], [], []
+        with torch.no_grad():
+            for a, b in zip(observe_stream(plain, tokens), observe_stream(ranked, tokens)):
+                equal_logits.append(torch.equal(a, b))
+                equal_state.append(state_digest(plain.state) == state_digest(ranked.state))
+                lengths.append(len(ranked._observation.candidates))
+        ring, obs = ranked.state.ring, ranked._observation
+        qb = query_block(ranked)
+        blocks = [c.block for c in obs.candidates]
+        canonical = all(ring.address(c.block) == c for c in obs.candidates)
+        counters_equal = counters(plain.state) == counters(ranked.state)
+        admitted = ranked.admit_evidence(obs.candidates)
+        out["-".join(f"{k}={v[k]}" for k in v)] = {
+            "equal_logits_every_chunk": all(equal_logits), "equal_state_every_chunk": all(equal_state),
+            "equal_counters": counters_equal, "candidates": blocks, "query_block": qb,
+            "ok_at_most_fine_top": max(lengths) <= n, "ok_distinct": len(set(blocks)) == len(blocks),
+            "ok_canonical_live": canonical, "ok_causal": all(b < qb for b in blocks),
+            "ok_admitted": admitted == len(blocks)}
+        plain.close()
+        ranked.close()
+    model = build_backbone()
+    out["refusals"] = {
+        "beyond_fine_top": _refuses(lambda: CognitiveSession(model, kernels_for(model),
+                                                             capture_candidates=model.evidence.fine_top + 1),
+                                    ValueError),
+        "mode_off": _refuses(lambda: CognitiveSession(model, kernels_for(model), evidence_options={"mode": "off"},
+                                                      capture_candidates=2), ValueError)}
+    return out
+
+
+def command_hardening(args) -> dict:
+    release, budget, capture = release_battery(), active_budget_battery(), capture_battery()
+    gates = {"release": _gate(release), "active_budget": _gate(budget), "capture": _gate(capture)}
+    return {"phase": PHASE, "command": "hardening",
+            "scope": "owner review of PR #83 (head 343dc92): all-or-none release with duplicate refusal; the "
+                     "synchronous touched-vertex budget; the explicit capture of the backbone's fine-ranked "
+                     "candidates for P5. Additive only: the executor and its numerical semantics are unchanged.",
+            "release": release, "active_budget": budget, "capture": capture, "gates": gates,
+            "gate_hardening": _gate({"r": release, "a": budget, "c": capture}), "provenance": provenance()}
+
+
 RECORDS = ("identity", "audit", "parity", "gradients", "bridge", "resources")
+HARDENING = "hardening"                     # the owner-review hardening receipt (supplemental records only)
 REASONS = {
-    "DISTRIBUTED_COMPETENCE": "P5 was not run: the owner asked for the P0-P4 results before any competence study. The "
-                              "protocol is a DRAFT for review (PREREGISTRATION_R13_P5.md); nothing was trained for "
-                              "competence and no data was collected.",
+    "DISTRIBUTED_COMPETENCE": "No P5 confirmation evidence exists. Competence is decided only by the confirmation run "
+                              "of the frozen P5 protocol (PREREGISTRATION_R13_P5.md), which needs the owner's "
+                              "further authorization; development pilots never decide a disposition.",
     "LEARNED_ADDRESSING": "P6 is admitted only after P1-P5; plans here are host-supplied and validated.",
     "CGC_ADMISSION": "P7 (optional) was not started; no CGC volatile weight adaptation enters this first integration.",
     "HCA88_ADMISSION": "HCA88 is qualified only for C4 two-arc relation windows; it is not used here.",
@@ -1035,9 +1197,18 @@ REASONS = {
 }
 
 
+def results_dir(args) -> Path:
+    return Path(args.results) if getattr(args, "results", None) else RESULTS
+
+
 def command_verdict(args) -> dict:
-    """The R13 dispositions, computed from the raw gate records (the records test recomputes them independently)."""
-    r = {name: json.loads((RESULTS / f"{name}.json").read_text(encoding="utf-8")) for name in RECORDS}
+    """The R13 dispositions, computed from the raw gate records (the records test recomputes them independently).
+    In a directory that holds a hardening receipt, its gates join SESSION_ISOLATION (all-or-none release),
+    BOUNDED_COMPUTATION (the synchronous touched budget) and EVIDENCE_ADMISSION (bit-exact candidate capture)."""
+    where = results_dir(args)
+    names = RECORDS + ((HARDENING,) if (where / f"{HARDENING}.json").is_file() else ())
+    r = {name: json.loads((where / f"{name}.json").read_text(encoding="utf-8")) for name in names}
+    hardening = r.get(HARDENING, {}).get("gates", {})
     bridge, refusals = r["bridge"]["gates"], r["bridge"]["refusals"]
 
     def passed(*values) -> str:
@@ -1059,16 +1230,19 @@ def command_verdict(args) -> dict:
         "DISABLED_PATH_PARITY": passed(bridge["gate_2"]),
         "CONTEXT_STATE_COHERENCE": passed(r["audit"]["gate_seam"], bridge["gate_11"], bridge["gate_12"],
                                           bridge["training_mode"]),
-        "EVIDENCE_ADMISSION": passed(bridge["evidence_admission"]),
-        "SESSION_ISOLATION": passed(bridge["gate_8"], bridge["gate_9"], bridge["gate_10"], bridge["variants"]),
-        "BOUNDED_COMPUTATION": "PASS" if bounded else "FAIL",
+        "EVIDENCE_ADMISSION": passed(bridge["evidence_admission"], *[hardening[k] for k in ("capture",)
+                                                                       if k in hardening]),
+        "SESSION_ISOLATION": passed(bridge["gate_8"], bridge["gate_9"], bridge["gate_10"], bridge["variants"],
+                                    *[hardening[k] for k in ("release",) if k in hardening]),
+        "BOUNDED_COMPUTATION": passed("PASS" if bounded else "FAIL",
+                                      *[hardening[k] for k in ("active_budget",) if k in hardening]),
         "DISTRIBUTED_COMPETENCE": "HOLD",
         "LEARNED_ADDRESSING": "NOT_STARTED",
         "CGC_ADMISSION": "NOT_STARTED",
         "HCA88_ADMISSION": "NOT_ADMITTED",
         "COGNITIVE_ADVANTAGE": "NOT_CLAIMED",
     }
-    return {"phase": PHASE, "command": "verdict", "inputs": {f"{n}.json": sha(RESULTS / f"{n}.json") for n in RECORDS},
+    return {"phase": PHASE, "command": "verdict", "inputs": {f"{n}.json": sha(where / f"{n}.json") for n in names},
             "dispositions": dispositions, "reasons": REASONS,
             "scope": "Mechanical and gradient qualification of P0-P4 on CPU (float64 reference checks, float32 "
                      "resources). A mechanical PASS and a learned-competence HOLD are independent outcomes.",
@@ -1078,14 +1252,14 @@ def command_verdict(args) -> dict:
 
 
 def command_manifest(args) -> dict:
-    files = sorted(p for p in RESULTS.glob("*.json") if p.name != "MANIFEST.json")
+    files = sorted(p for p in results_dir(args).glob("*.json") if p.name != "MANIFEST.json")
     return {"phase": PHASE, "command": "manifest", "files": {p.name: sha(p) for p in files},
             "geodome": gsource.source_record(), "sources": {k: sha(v) for k, v in SOURCES.items()}}
 
 
 COMMANDS = {"identity": command_identity, "audit": command_audit, "parity": command_parity,
             "gradients": command_gradients, "bridge": command_bridge, "resources": command_resources,
-            "verdict": command_verdict, "manifest": command_manifest}
+            "hardening": command_hardening, "verdict": command_verdict, "manifest": command_manifest}
 
 
 def main(argv=None) -> int:
@@ -1093,6 +1267,7 @@ def main(argv=None) -> int:
     parser.add_argument("command", choices=sorted(COMMANDS))
     parser.add_argument("--threads", type=int, default=2)
     parser.add_argument("--out", help="the JSON record to write")
+    parser.add_argument("--results", help="the records directory verdict and manifest read (default results/r13)")
     args = parser.parse_args(argv)
     torch.set_num_threads(args.threads)
     record = COMMANDS[args.command](args)

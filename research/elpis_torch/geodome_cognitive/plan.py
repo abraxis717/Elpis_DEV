@@ -11,6 +11,11 @@ identity is not authority); duplicates are refused; the enrolment, arc, round an
 (4096, 24576, 256, 6291456) intersected with the session's configured bounds. Every vertex must already be
 resident in the working state (a valid Geodome handle of the current epoch). Arcs are sorted by identity, so the
 aggregation order of every destination is the arc order Geodome's scheduler hands its update callback.
+
+The touched-vertex budget (Geodome's ``max_active``, at most 1024 per round). A changed-destination plan meets it
+round by round at run time (status ``ACTIVE_BUDGET``, as Geodome's scheduler). A synchronous round touches the same
+vertices every round, every source and every destination of an admitted arc, so a synchronous plan whose touched
+set exceeds the budget is refused here, before anything runs (R13 owner review, hardening 2).
 """
 from __future__ import annotations
 
@@ -43,7 +48,7 @@ class ExecutionPlan:
     evidence: tuple = ()                # evidence[k] is written with admitted evidence item k
     readout: tuple = ()                 # vertices pooled into the readout latent
     max_visits: int | None = None       # arc visits allowed (default: rounds x arcs)
-    max_active: int | None = None       # changed_destination: touched vertices per round (Geodome's max_active)
+    max_active: int | None = None       # touched vertices per round (Geodome's max_active; default min(1024, N))
 
 
 @dataclass(frozen=True)
@@ -64,6 +69,7 @@ class CompiledPlan:
     readout: torch.Tensor
     max_visits: int
     max_active: int
+    touched: int | None = None          # synchronous: the vertices every round touches; changed_destination: None
 
 
 def _ints(values, code: str) -> tuple:
@@ -136,6 +142,10 @@ def compile_plan(plan: ExecutionPlan, working, *, max_rounds: int, max_arcs: int
     active = plan.max_active if plan.max_active is not None else min(GEODOME_MAX_ACTIVE, len(vertices))
     if type(active) is not int or not 1 <= active <= GEODOME_MAX_ACTIVE:
         raise PlanError("ACTIVE_BUDGET")
+    touched = len(set(src) | set(dst)) if plan.schedule == "synchronous" else None
+    if touched is not None and touched > active:
+        raise PlanError("ACTIVE_BUDGET", f"a synchronous round touches {touched} vertices (every source and "
+                                         f"destination of an admitted arc); the budget is {active}")
     device = working.latent.device
     as_long = lambda values: torch.tensor(values, dtype=torch.long, device=device)   # noqa: E731
     dst_t = as_long(dst)
@@ -148,7 +158,8 @@ def compile_plan(plan: ExecutionPlan, working, *, max_rounds: int, max_arcs: int
     return CompiledPlan(plan=plan, handles=handles, epoch=working.epoch, slots=working.slots(handles),
                         src=as_long(src), dst=dst_t, ports=as_long(ports), back_ports=as_long(back),
                         arc_ids=as_long(ordered), incoming=incoming, start=start_mask, query=as_long(query),
-                        evidence=as_long(evidence), readout=as_long(readout), max_visits=budget, max_active=active)
+                        evidence=as_long(evidence), readout=as_long(readout), max_visits=budget, max_active=active,
+                        touched=touched)
 
 
 def _bound(values, local: dict, code: str) -> list:

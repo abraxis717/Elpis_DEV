@@ -451,3 +451,34 @@ def test_a_session_refuses_an_unfrozen_or_mismatched_backbone_and_a_budget_overr
     with pytest.raises(CognitiveError, match="NO_OBSERVATION"):
         session.admit_evidence([])
     session.close()
+
+
+# -- owner review of PR #83: hardening and the explicit candidate capture ---------------------------------------------
+
+def test_release_is_all_or_none_and_refuses_repeated_handles(sub):
+    """Before the fix, release((h, h)) released the vertex and then failed on the second copy as stale: a partial
+    update (the vertex gone, its row not zeroed, the version unchanged). Every invalid batch is now refused first."""
+    battery = r13.release_battery()
+    assert r13._gate(battery) == "PASS", battery
+    for name in ("duplicate_pair", "duplicate_in_batch"):
+        assert battery[name]["code"] == "DUPLICATE_HANDLE" and battery[name]["equal_unchanged"], name
+    path = r13.chain(sub, 2, start=8100)
+    working = TensorWorkingState(sub, capacity=4, width=2)
+    handle = working.acquire(path[:1])[0]
+    working.publish((handle,), working.slots((handle,)), torch.ones(1, 2))
+    before = r13.working_snapshot(working, path)
+    with pytest.raises(ValueError, match="DUPLICATE_HANDLE"):
+        working.release((handle, handle))
+    assert r13.working_snapshot(working, path) == before
+
+
+def test_a_synchronous_plan_must_fit_the_touched_vertex_budget(sub):
+    battery = r13.active_budget_battery()
+    assert r13._gate(battery) == "PASS", battery
+    assert battery["explicit_boundary"]["touched"] == 5
+    assert battery["default_cap_1025"]["code"] == "ACTIVE_BUDGET"
+
+
+def test_candidate_capture_is_bit_exact_and_returns_the_backbones_own_ranking():
+    battery = r13.capture_battery()
+    assert r13._gate(battery) == "PASS", battery
