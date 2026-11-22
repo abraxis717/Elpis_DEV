@@ -232,3 +232,63 @@ R97W's.
 
 **Data.** Every task is the R11 teacher's synthetic data. R12 retrains R11's Stage C models from their recorded
 seeds with R11's own code; it neither downloads nor loads any checkpoint.
+
+
+# R13 (the Geodome cognitive substrate): Geodome v1.0.0, vendored byte for byte
+
+**Upstream source.**
+
+| | |
+|---|---|
+| Repository | https://github.com/abraxis717/HexaFlake |
+| Commit | `4e5fe56670c61a0d8906770b03033658c3087c3a` ("Release Geodome Reference v1.0.0"), directory `Geodome/` |
+| API | Geodome Reference API 1.0.0; its frozen upstream commit (`SOURCE_PIN`) is `993429cc94e9e3dcfd42df40502fa5b57175d883` |
+| Public manifest | `PUBLIC.sha256`, SHA-256 `e44d288fec19a09c17be0ce503f011d400b499e4d393f1275d305e2b23d31cb8` |
+| Identity fingerprints | mapping `abe96202b554608bd8f5e702b70459daaaf4ab33eb7dfd058723fd4d1724f51b`, edges `712a8fc3d94685aeb614456ba8c88f6df7e6c6ea8a4c19e86d4d3865ad014231` |
+| License | Apache-2.0. The upstream `LICENSE` is byte-identical to this repository's `LICENSE` (SHA-256 `c71d239d…0ab4`) |
+
+**What was copied.** `upstream/geodome_v1/` holds these files, each equal to its line in the upstream
+`PUBLIC.sha256`, and never edited:
+- the seven modules the Geodome core imports: `geodome.py`, `geodome_index.py`, `geodome_state.py`,
+  `geodome_scheduler.py`, `Hexaflag.py`, `GEO144K/g1c_compact.py`, `GEO144K/g2b_bridge.py`;
+- the upstream `LICENSE`, `NOTICE` and `PUBLIC.sha256`.
+
+`geodome_cognitive/source.py` pins every file by SHA-256 and checks it against both the pin and the manifest line.
+
+Nothing else was copied. That leaves out the optional C4 adapter (`adapters/geodome_compute.py`), `CGC120.py`,
+HCA88, the qualification replays and receipts, `run.py` and `example.py`.
+
+The upstream manifest also lists `src/ecsg_e0.py` with SHA-256 `92c987e0…7d084`. That is the same digest as the CGC
+E0 file vendored here in R0 (`upstream/cgc_ecsg_e0.py`), so the two lineages agree on that file.
+
+**Attribution** (from the vendored upstream `NOTICE`, kept with the files):
+- `Original HexaFlake concept and geometric architecture: @Akitti (https://x.com/Akitti).`
+- `Computational implementation and experimental development: Elpis / abraxis717 (https://github.com/abraxis717).`
+- "Attribution does not assign or extinguish any contributor rights."
+
+The `NOTICE` also retains the upstream Elpis notice and its third-party statements, which concern components not
+vendored here (HCA88's CPython-derived summation, the inference subsystem's references). It is preserved unchanged,
+as the Apache License requires on redistribution.
+
+**The import mechanism.** `load_geodome` admits the sources in five steps:
+1. It verifies every file against its pin and the manifest, and refuses unpinned files.
+2. It refuses a Geodome module name already loaded from elsewhere.
+3. It puts the vendored directory on `sys.path` only for the import, with bytecode writing disabled, and restores
+   both.
+4. It requires every Geodome module, the `GEO144K` namespace path included, to resolve inside the vendored tree.
+5. It checks the API constants against the pins.
+
+The frequency-120 index is then built once per process by Geodome's own `build_index()`, which rejects identity
+drift.
+
+**What R13 wrote (all original).**
+- `geodome_cognitive/` (`source`, `topology`, `plan`, `state`, `kernels`, `activation`, `binding`, `reference`).
+- `experiments/run_r13.py`.
+- `tests/research/elpis_torch/test_r13.py` and `test_r13_records.py`.
+- `DESIGN_R13.md`, `EVIDENCE_R13.md` and `PREREGISTRATION_R13_P5.md` (a draft).
+
+The tensor executor, the kernels and the bridge are new. Geodome's scheduler is used unchanged, as the float64
+reference only.
+
+**Data.** Synthetic token streams from seeded generators. No external data, weights or checkpoints were used, and
+nothing is written but the runner's `--out` records.
