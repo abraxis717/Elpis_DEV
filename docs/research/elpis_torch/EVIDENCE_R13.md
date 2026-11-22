@@ -17,7 +17,7 @@ the computation is off?
 
 **Records.** `research/elpis_torch/results/r13/`: `identity`, `audit`, `parity`, `gradients`, `bridge`, `resources`
 and `verdict`, with `MANIFEST.json`.
-- They were produced by `experiments/run_r13.py` on the clean revision `4178b3a`.
+- They were produced by `experiments/run_r13.py` on the clean revision `ae2f804`.
 - `test_r13_records.py` recomputes every gate and every disposition from the raw rows, reading JSON only.
 - `test_r13.py` runs the mechanics in CI.
 
@@ -194,9 +194,9 @@ window).
 | autograd nodes per training step | 387, constant |
 | message visits per `reason()` (8 rounds × 238 arcs) | 1,904 |
 | active vertices per round | 48 |
-| latency, median (observe 70 tokens; admit 4 blocks; reason; readout; reason + readout + backward) | 8.9; 1.5; 2.6; 1.5; 9.8 ms |
-| index build (once per process) | 1.15 s |
-| process peak RSS (the whole runner) | 281.5 MB |
+| latency, median (observe 70 tokens; admit 4 blocks; reason; readout; reason + readout + backward) | 7.9; 1.3; 2.1; 1.2; 8.0 ms |
+| index build (once per process) | 1.14 s |
+| process peak RSS (the whole runner) | 282.1 MB |
 
 The latencies are one container's measurement, not a benchmark. Geodome's own README notes that its generic
 scheduler is slower than task-specific traversal. The trainable path here does not use that scheduler.
@@ -226,3 +226,12 @@ and `test_r13_records.py` (JSON only).
 
 **CI_STATUS.** The pull request's exact-head CI is reported in the pull request. The default and forced-AVX2 kernel
 paths of the Elpis Torch job both run these tests.
+
+**The first red run.** The first CI run of this branch failed six R13 tests, all with "Numpy is not available".
+- **Cause.** The Elpis Torch job installs PyTorch without NumPy (R10 documents the same constraint), and the
+  runner's state digest hashed tensors through `.numpy()`.
+- **Fix.** `ae2f804` hashes each tensor's dtype, shape and raw bytes through `ctypes`, as `model.parameter_digest`
+  does. The cognitive path never used NumPy, and its modules still import neither NumPy nor ctypes.
+- **Records.** They were regenerated on `ae2f804`. Every deterministic field is identical to the first records;
+  only the provenance and the timing and RSS measurements differ.
+- **Verified.** The R13 tests pass locally with NumPy made unimportable (as in CI).

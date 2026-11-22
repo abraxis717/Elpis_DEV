@@ -18,12 +18,12 @@
   "SUBSTRATE_IDENTITY_PARITY": "PASS"
  },
  "inputs": {
-  "audit.json": "ca580a083114beaed6918adbe224d66f7282489f6375f7a1a2b187ca0d6f5841",
-  "bridge.json": "e40bab18e9fe94d084e4310818e10bb44fa89f629fca403587eb7b5aecfc1631",
-  "gradients.json": "11a2005fb27da4bf9302f94880df9256ae6404899a542382291a1326cc13e824",
-  "identity.json": "f01292bc45d115617f51b21e77e6ea728cb108d4a076c08da710acbcc2711e2d",
-  "parity.json": "d9ce1ab9d9cb6e0daafe35f11df1d22dfd8e1928bfcf28f6e7805324efb31505",
-  "resources.json": "5b25ad034cc49412505a68f93854b36c8caed6497749037f1a706a0510c3f2ea"
+  "audit.json": "3e9d62a30f44e63f957439e36f969e2a199b0dddc4d1e06a1c9d3034517be5cb",
+  "bridge.json": "137f4efcf4788589fc4762837b23ecebb458a9bc49e1dd60478fafd3788ad5cd",
+  "gradients.json": "3b2c8aa9f48dae2e6ce06d9feabc087e9d3f8f9e13deb32c3c012c549b50aeee",
+  "identity.json": "89a80c9640aa42e7e8dec374a1e1307d81c8f7f353d5eeca57f4802a2d4f1cfc",
+  "parity.json": "c61071263c239d784df2ee4ba574525365dfaaaade92aef7a9ac789aa948d658",
+  "resources.json": "3e0827386f7b0b1dbb2c80fddb25b1b10b941204f0def7e892185525a38bf619"
  },
  "phase": "ELPIS_TORCH_R13_GEODOME_SUBSTRATE",
  "provenance": {
@@ -48,7 +48,7 @@
    "geodome_scheduler.py": "556566221ece714fdca027471c503e81cc68335a41a6f6195d533a3b29d54d9c",
    "geodome_state.py": "83f3b2d1414f62d4afb0301e7cdd80464c1e8703acc6b6968304a7b61509c7be"
   },
-  "git_revision": "4178b3abc6ffdb518353c624b0ed6cf52bb8a7ef",
+  "git_revision": "ae2f804ea15a94dc88e3d565f2a614a829da486a",
   "kernels_sha256": "f5fed567bd6f73a7fd176895ffcbb8f996ef8bd20af59dda537e16ffdb7c6468",
   "lastblock_sha256": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
   "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
@@ -56,7 +56,7 @@
   "ple_sha256": "8f1efe30aff86a29778042b1c3cfe077446a5988393fb0607d989ca1aca36927",
   "python": "3.13.18",
   "reference_sha256": "e36cf993a333353599962de61405a471a5d974ef516c692b573398a3a7613165",
-  "runner_sha256": "4584e561dd83b678e100815a0cfa1aa759c1dff4291dc75031a4754379ad4ab0",
+  "runner_sha256": "62dd38f11fa8ed5508a4e38616eb787f082b1f70b644579528856d37c2715594",
   "scroll_sha256": "acf67f28858dcf6ae184d128d20fb0deb7f4acae670be9f3d317584a00952d4a",
   "source_sha256": "e0b69e625fea9dcd0a89c4822d4dc54c69af04b82ee83bb0099cb1073c2f1066",
   "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
