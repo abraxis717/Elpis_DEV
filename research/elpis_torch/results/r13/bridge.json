@@ -1,0 +1,2198 @@
+{
+ "command": "bridge",
+ "gates": {
+  "evidence_admission": "PASS",
+  "gate_10": "PASS",
+  "gate_11": "PASS",
+  "gate_12": "PASS",
+  "gate_2": "PASS",
+  "gate_4_bridge": "PASS",
+  "gate_8": "PASS",
+  "gate_9": "PASS",
+  "training_mode": "PASS",
+  "variants": "PASS"
+ },
+ "immutability": {
+  "equal_parameter_digest": true,
+  "ok_kernels_trained": true,
+  "ok_no_backbone_grad": true
+ },
+ "phase": "ELPIS_TORCH_R13_GEODOME_SUBSTRATE",
+ "provenance": {
+  "activation_sha256": "16d8c613527345d0018f6de7eaecd3a514a5b26261e6a8e3d31e446ed249dbd0",
+  "binding_sha256": "318c033d57ac3ed2f3281b1e6cf24f626e74ecc02b69d493fd17a819e3050c72",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "context_runtime_sha256": "71f593b7b2242316fd5c5d2936a664827fce3cbe49fc6f06055059e423cf6449",
+  "elpis_base": "d73cdde3a5050de50cce098472ee966eec103000",
+  "ersa_model_sha256": "5583a9c5dc0c86dadff3b24c98f06df46eb36d10c663156351647c154efb17e1",
+  "evidence_model_sha256": "62c75634ddf0a0c9b6fef0e4d718f3ae1a4eafb22e1c456fed22b1f967961c4c",
+  "evidence_ring_sha256": "149da9f9489d813b22a8c85d7e21fffb9dc4c57544a3f03bb8d85cbed6fc65b7",
+  "geodome_commit": "4e5fe56670c61a0d8906770b03033658c3087c3a",
+  "geodome_files_sha256": {
+   "GEO144K/g1c_compact.py": "4961c9f346dc4061aa2a7db61ea7a59fe700636e86f4490ff33fce2e162a2087",
+   "GEO144K/g2b_bridge.py": "18d226749b3c74b8b4d62f961c027414c3d1783b7c2101a8010c1b239a870d39",
+   "Hexaflag.py": "190ddd3128d646135dcdc3553968edf798a30d43835e5d51e281d068249b2648",
+   "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+   "NOTICE": "7349216806d083f687ccb94fdba9738f20663e2fb5248084fc3e488178235ae3",
+   "PUBLIC.sha256": "e44d288fec19a09c17be0ce503f011d400b499e4d393f1275d305e2b23d31cb8",
+   "geodome.py": "a9e6a6fe0de6ee29500ff90a2c4b767ab6c63a9fac98255e5031d98a0adc3eca",
+   "geodome_index.py": "9b8a3061da0d0a310c5b683988c9063e19ecbc2cbd1434000c2a5ccd3eedd26d",
+   "geodome_scheduler.py": "556566221ece714fdca027471c503e81cc68335a41a6f6195d533a3b29d54d9c",
+   "geodome_state.py": "83f3b2d1414f62d4afb0301e7cdd80464c1e8703acc6b6968304a7b61509c7be"
+  },
+  "git_revision": "ae2f804ea15a94dc88e3d565f2a614a829da486a",
+  "kernels_sha256": "f5fed567bd6f73a7fd176895ffcbb8f996ef8bd20af59dda537e16ffdb7c6468",
+  "lastblock_sha256": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "plan_sha256": "f41fa21a3452777a49e9e6243db17ff6213631c0075e64b372f64419db7ad393",
+  "ple_sha256": "8f1efe30aff86a29778042b1c3cfe077446a5988393fb0607d989ca1aca36927",
+  "python": "3.13.18",
+  "reference_sha256": "e36cf993a333353599962de61405a471a5d974ef516c692b573398a3a7613165",
+  "runner_sha256": "62dd38f11fa8ed5508a4e38616eb787f082b1f70b644579528856d37c2715594",
+  "scroll_sha256": "acf67f28858dcf6ae184d128d20fb0deb7f4acae670be9f3d317584a00952d4a",
+  "source_sha256": "e0b69e625fea9dcd0a89c4822d4dc54c69af04b82ee83bb0099cb1073c2f1066",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "state_sha256": "3ca57ec61e2f4e9a8d6ed076edd3a993cbf8efcd45d31d86a3b8840c0bdbc72c",
+  "threads": 2,
+  "topology_sha256": "9a1ad35c96789b2b96c82e6a783509c2ef080a7eecc31d2137b276ecf0213192",
+  "torch": "2.15.0+cpu"
+ },
+ "refusals": {
+  "after_readout": {
+   "equal_committed": true,
+   "ok_cognitive": true
+  },
+  "already_resident": {
+   "code": "ALREADY_RESIDENT",
+   "equal_unchanged": true,
+   "error": "ValueError",
+   "ok_code": true,
+   "refused": true
+  },
+  "arc_out_of_range": {
+   "code": "ARC_RANGE",
+   "equal_unchanged": true,
+   "error": "PlanError",
+   "ok_code": true,
+   "refused": true
+  },
+  "backbone_revision": {
+   "code": "the backbone changed under this cognitive session; reset() to continue",
+   "error": "ModelRevisionError",
+   "refused": true
+  },
+  "backbone_revision_sticky": {
+   "code": "the backbone changed under this cognitive session; reset() to continue",
+   "error": "ModelRevisionError",
+   "refused": true
+  },
+  "batch_two": {
+   "code": "tokens must be an int64 tensor [1, T] (batch one)",
+   "equal_unchanged": true,
+   "error": "ValueError",
+   "refused": true
+  },
+  "before_readout": {
+   "ok_bypass": true
+  },
+  "binding_overlap": {
+   "code": "BINDING_OVERLAP",
+   "equal_unchanged": true,
+   "error": "PlanError",
+   "ok_code": true,
+   "refused": true
+  },
+  "capacity_overflow": {
+   "code": "STATE_CAPACITY",
+   "equal_unchanged": true,
+   "error": "OverflowError",
+   "ok_code": true,
+   "refused": true
+  },
+  "closed_session": {
+   "code": "the cognitive session is closed",
+   "error": "SessionClosedError",
+   "refused": true
+  },
+  "closed_session_reason": {
+   "code": "the cognitive session is closed",
+   "error": "SessionClosedError",
+   "refused": true
+  },
+  "duplicate_arc": {
+   "code": "DUPLICATE_ARC",
+   "equal_unchanged": true,
+   "error": "PlanError",
+   "ok_code": true,
+   "refused": true
+  },
+  "evidence_binding_without_evidence": {
+   "code": "EVIDENCE_BINDING",
+   "equal_unchanged": true,
+   "error": "PlanError",
+   "ok_code": true,
+   "refused": true
+  },
+  "fabricated_non_edge": {
+   "code": "NONEDGE",
+   "equal_unchanged": true,
+   "error": "KeyError",
+   "refused": true
+  },
+  "foreign_address": {
+   "code": "not the ring's canonical address of that block",
+   "equal_unchanged": true,
+   "error": "StaleAddressError",
+   "refused": true
+  },
+  "foreign_handle": {
+   "code": "FOREIGN_OR_STALE_HANDLE",
+   "equal_unchanged": true,
+   "error": "ValueError",
+   "ok_code": true,
+   "refused": true
+  },
+  "frontier_on_synchronous": {
+   "code": "START",
+   "equal_unchanged": true,
+   "error": "PlanError",
+   "ok_code": true,
+   "refused": true
+  },
+  "no_copy": {
+   "code": "a cognitive session is volatile and is never copied",
+   "error": "TypeError",
+   "refused": true
+  },
+  "no_serialization": {
+   "code": "a cognitive session is volatile and is never serialized",
+   "error": "TypeError",
+   "refused": true
+  },
+  "nonfinite_computation": {
+   "code": "NONFINITE",
+   "equal_committed_answer": true,
+   "equal_unchanged": true,
+   "error": "CognitiveError",
+   "ok_code": true,
+   "refused": true
+  },
+  "nonresident_vertex": {
+   "code": "NONRESIDENT",
+   "equal_unchanged": true,
+   "error": "PlanError",
+   "ok_code": true,
+   "refused": true
+  },
+  "publish_foreign_slots": {
+   "code": "slots do not belong to the handles",
+   "equal_unchanged": true,
+   "error": "WorkingStateError",
+   "refused": true
+  },
+  "publish_nonfinite_rows": {
+   "code": "NONFINITE_ROWS: nothing was published",
+   "equal_unchanged": true,
+   "error": "WorkingStateError",
+   "refused": true
+  },
+  "publish_wrong_dtype": {
+   "code": "rows have the wrong dtype or device",
+   "equal_unchanged": true,
+   "error": "WorkingStateError",
+   "refused": true
+  },
+  "publish_wrong_shape": {
+   "code": "rows must be [5, 16]",
+   "equal_unchanged": true,
+   "error": "WorkingStateError",
+   "refused": true
+  },
+  "readout_missing": {
+   "code": "READOUT_BINDING",
+   "equal_unchanged": true,
+   "error": "PlanError",
+   "ok_code": true,
+   "refused": true
+  },
+  "rounds_over_cap": {
+   "code": "ROUND_RANGE",
+   "equal_unchanged": true,
+   "error": "PlanError",
+   "ok_code": true,
+   "refused": true
+  },
+  "too_many_tokens": {
+   "code": "1 <= T <= 70 tokens per observation",
+   "equal_unchanged": true,
+   "error": "ValueError",
+   "refused": true
+  },
+  "too_much_evidence": {
+   "code": "EVIDENCE_COUNT",
+   "equal_unchanged": true,
+   "error": "CognitiveError",
+   "ok_code": true,
+   "refused": true
+  },
+  "unauthorized_arc": {
+   "code": "ARC_AUTHORITY",
+   "equal_unchanged": true,
+   "error": "PlanError",
+   "ok_code": true,
+   "refused": true
+  },
+  "unknown_schedule": {
+   "code": "SCHEDULE",
+   "equal_unchanged": true,
+   "error": "PlanError",
+   "ok_code": true,
+   "refused": true
+  },
+  "visit_budget": {
+   "code": "VISIT_BUDGET",
+   "equal_unchanged": true,
+   "error": "PlanError",
+   "ok_code": true,
+   "refused": true
+  },
+  "wrong_token_dtype": {
+   "code": "tokens must be an int64 tensor [1, T] (batch one)",
+   "equal_unchanged": true,
+   "error": "ValueError",
+   "refused": true
+  }
+ },
+ "residency_bridge": {
+  "equal_latent": true,
+  "equal_logits": true
+ },
+ "variants": [
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 0",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     20,
+     35
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 34,
+    "query_position": 559
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": false
+   },
+   "variant": {
+    "fine_keys": "reread",
+    "mode": "off",
+    "origin": 0,
+    "ple": false,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 4",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     24,
+     39
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 38,
+    "query_position": 623
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": false
+   },
+   "variant": {
+    "fine_keys": "reread",
+    "mode": "off",
+    "origin": 64,
+    "ple": false,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 0",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     20,
+     35
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 34,
+    "query_position": 559
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": false
+   },
+   "variant": {
+    "fine_keys": "reread",
+    "mode": "off",
+    "origin": 0,
+    "ple": true,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 4",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     24,
+     39
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 38,
+    "query_position": 623
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": false
+   },
+   "variant": {
+    "fine_keys": "reread",
+    "mode": "off",
+    "origin": 64,
+    "ple": true,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 0",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     20,
+     35
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 34,
+    "query_position": 559
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": true
+   },
+   "variant": {
+    "fine_keys": "stored",
+    "mode": "off",
+    "origin": 0,
+    "ple": false,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 4",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     24,
+     39
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 38,
+    "query_position": 623
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": true
+   },
+   "variant": {
+    "fine_keys": "stored",
+    "mode": "off",
+    "origin": 64,
+    "ple": false,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 0",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     20,
+     35
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 34,
+    "query_position": 559
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": true
+   },
+   "variant": {
+    "fine_keys": "stored",
+    "mode": "off",
+    "origin": 0,
+    "ple": true,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 4",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     24,
+     39
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 38,
+    "query_position": 623
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": true
+   },
+   "variant": {
+    "fine_keys": "stored",
+    "mode": "off",
+    "origin": 64,
+    "ple": true,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 0",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     20,
+     35
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 34,
+    "query_position": 559
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": false
+   },
+   "variant": {
+    "fine_keys": "reread",
+    "mode": "learned",
+    "origin": 0,
+    "ple": false,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 4",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     24,
+     39
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 38,
+    "query_position": 623
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": false
+   },
+   "variant": {
+    "fine_keys": "reread",
+    "mode": "learned",
+    "origin": 64,
+    "ple": false,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 0",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     20,
+     35
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 34,
+    "query_position": 559
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": false
+   },
+   "variant": {
+    "fine_keys": "reread",
+    "mode": "learned",
+    "origin": 0,
+    "ple": true,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 4",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     24,
+     39
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 38,
+    "query_position": 623
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": false
+   },
+   "variant": {
+    "fine_keys": "reread",
+    "mode": "learned",
+    "origin": 64,
+    "ple": true,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 0",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     20,
+     35
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 34,
+    "query_position": 559
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 32,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": true
+   },
+   "variant": {
+    "fine_keys": "stored",
+    "mode": "learned",
+    "origin": 0,
+    "ple": false,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 4",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     24,
+     39
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 38,
+    "query_position": 623
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 32,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": true
+   },
+   "variant": {
+    "fine_keys": "stored",
+    "mode": "learned",
+    "origin": 64,
+    "ple": false,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 0",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     20,
+     35
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 34,
+    "query_position": 559
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 33,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": true
+   },
+   "variant": {
+    "fine_keys": "stored",
+    "mode": "learned",
+    "origin": 0,
+    "ple": true,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 4",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 8,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     24,
+     39
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 38,
+    "query_position": 623
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 33,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": true
+   },
+   "variant": {
+    "fine_keys": "stored",
+    "mode": "learned",
+    "origin": 64,
+    "ple": true,
+    "window": false
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 0",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 18,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     21,
+     36
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 35,
+    "query_position": 575
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 0,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": false
+   },
+   "variant": {
+    "fine_keys": "reread",
+    "mode": "learned",
+    "origin": 0,
+    "ple": false,
+    "window": true
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  },
+  {
+   "admission": {
+    "admitted": 2,
+    "duplicate": {
+     "code": "EVIDENCE_DUPLICATE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "evicted": {
+     "code": "1 block address(es) are not live (slot reused, evicted, or not complete at the query): first 4",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "future_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "not_an_address": {
+     "code": "EVIDENCE_TYPE",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "other_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "own_block": {
+     "code": "EVIDENCE_CAUSALITY",
+     "error": "CognitiveError",
+     "ok_code": true,
+     "refused": true
+    },
+    "tampered_generation": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "tampered_span": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    }
+   },
+   "context_clock": {
+    "counter_deltas": {
+     "blocks_reencoded": 2,
+     "ring_rereads": 2
+    },
+    "equal_state_after_admit_reason_readout": true,
+    "equal_state_after_refusals": true,
+    "ok_exact_reread_only": true
+   },
+   "disabled_path": {
+    "chunks": 18,
+    "equal_logits_every_chunk": true,
+    "equal_state_every_chunk": true
+   },
+   "pass": true,
+   "reset": {
+    "equal_fresh_cognitive_latent": true,
+    "equal_fresh_cognitive_logits": true,
+    "equal_fresh_session_logits": true,
+    "equal_fresh_session_state": true,
+    "ok_working_empty": true,
+    "stale_address_of_the_previous_epoch": {
+     "code": "not the ring's canonical address of that block",
+     "error": "StaleAddressError",
+     "refused": true
+    },
+    "stale_handle": {
+     "code": "FOREIGN_OR_STALE_HANDLE",
+     "error": "ValueError",
+     "refused": true
+    }
+   },
+   "ring": {
+    "live": [
+     25,
+     40
+    ],
+    "ok_evicted": true,
+    "ok_wrapped": true,
+    "query_block": 39,
+    "query_position": 639
+   },
+   "training_mode": {
+    "fine_tier_reads_total": 95,
+    "ok_backbone_without_grad": true,
+    "stored_fine_keys": true
+   },
+   "variant": {
+    "fine_keys": "stored",
+    "mode": "learned",
+    "origin": 64,
+    "ple": true,
+    "window": true
+   },
+   "zero_gate": {
+    "equal_refined_logits": true,
+    "ok_latent_finite": true
+   }
+  }
+ ]
+}

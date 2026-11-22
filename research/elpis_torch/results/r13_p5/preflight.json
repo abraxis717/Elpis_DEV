@@ -1,0 +1,78 @@
+{
+ "checks": {
+  "ok_confirmation_within_ram_limit": true,
+  "ok_pilot_within_ram_limit": true,
+  "ok_plan_frozen": true,
+  "ok_ram_available": true,
+  "ok_scratch": true,
+  "ok_threads": true
+ },
+ "command": "preflight",
+ "confirmation": {
+  "cached_episodes_per_seed": 2900,
+  "projected_hours_total": 1.6141678862028064,
+  "projected_peak_rss_bytes": 820119584,
+  "projected_seconds_per_seed": 1162.2008780660206,
+  "seeds": 5,
+  "view_cache_bytes": 155834400,
+  "within_ram_limit": true
+ },
+ "cpu_count": 4,
+ "go": true,
+ "memory": {
+  "MemAvailable": 15736360960,
+  "MemTotal": 16869113856,
+  "SwapFree": 0,
+  "SwapTotal": 0
+ },
+ "phase": "ELPIS_TORCH_R13_P5_DISTRIBUTED_COMPETENCE",
+ "pilot": {
+  "cached_episodes_per_seed": 560,
+  "projected_hours_total": 0.21332437479069102,
+  "projected_peak_rss_bytes": 694377344,
+  "projected_seconds_per_seed": 767.9677492464876,
+  "seeds": 1,
+  "view_cache_bytes": 30092160,
+  "within_ram_limit": true
+ },
+ "plan_sha256": "094adb4500857103bbac6f7d215e1873c4167d2dbfb86daa1844a05999dcd432",
+ "probe_seconds": {
+  "arm_evaluation_episode": 0.005011249333316907,
+  "arm_training_step": 0.016239951499983363,
+  "backbone_step": 0.5661872076666441,
+  "observe_episode": 0.06059932533329023
+ },
+ "provenance": {
+  "activation_sha256": "16d8c613527345d0018f6de7eaecd3a514a5b26261e6a8e3d31e446ed249dbd0",
+  "arms_sha256": "81e97265b2ea468c92d66506698765a40354c48fc82475d445a02a43d2bb5af5",
+  "binding_sha256": "88d9189793ab72443084bf9661e6f1e4cd878d9cc25e4be3694042b5c25ff2f9",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "controls_sha256": "f9a5440cd855a97e5454048b5f472977525c363c185a9927fbc93ec3598ac812",
+  "ersa_model_sha256": "5583a9c5dc0c86dadff3b24c98f06df46eb36d10c663156351647c154efb17e1",
+  "evidence_model_sha256": "62c75634ddf0a0c9b6fef0e4d718f3ae1a4eafb22e1c456fed22b1f967961c4c",
+  "evidence_ring_sha256": "149da9f9489d813b22a8c85d7e21fffb9dc4c57544a3f03bb8d85cbed6fc65b7",
+  "git_revision": "f57d2525a486ae33c0a7572a5ba335694ff26d33",
+  "kernels_sha256": "f5fed567bd6f73a7fd176895ffcbb8f996ef8bd20af59dda537e16ffdb7c6468",
+  "lastblock_sha256": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "plan_sha256": "094adb4500857103bbac6f7d215e1873c4167d2dbfb86daa1844a05999dcd432",
+  "python": "3.13.18",
+  "r13_supplement_manifest_sha256": "282657f8eef2cd88a2b06d173c3cc47e7be5583a2e462fa2a465d868bde7b363",
+  "regions_sha256": "9db8d81f3dc85a62bf099ae84a563147e45d16f685161a395ab40838ae99ee58",
+  "runner_sha256": "cd59556e7cdc66f868b82d3ab076520f553c0aff53c2ca3f132f622081d2c4c5",
+  "source_sha256": "e0b69e625fea9dcd0a89c4822d4dc54c69af04b82ee83bb0099cb1073c2f1066",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "state_sha256": "e74f92bade4b9ebe8a4588c633d0efc00dc9547cc840d272b05602215c4e6c52",
+  "tasks_sha256": "97a5ac5dcae70b2b8d300771e530fa97182b8689bfbf98041bb595d77df9e78d",
+  "threads": 2,
+  "topology_sha256": "9a1ad35c96789b2b96c82e6a783509c2ef080a7eecc31d2137b276ecf0213192",
+  "torch": "2.15.0+cpu"
+ },
+ "scratch_free_bytes": {
+  "/home/user/Elpis_DEV/research/elpis_torch/results": 30740688896,
+  "/tmp": 30740688896
+ },
+ "seconds": 4.081738952999785,
+ "threads": 2,
+ "view_bytes": 53736
+}

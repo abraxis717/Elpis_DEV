@@ -83,6 +83,35 @@ volatile and bounded fast state, and tests it under preregistered rules (`EVIDEN
   claim. No sidecar is proposed.
 - **Unchanged.** The verdicts of R9, R10 and R11 stand.
 
+**Claim status (R13).** R13 admits Geodome Reference API v1.0.0 (HexaFlake `4e5fe566`, vendored byte for byte) as a
+frozen dependency. It adds an opt-in, differentiable cognitive substrate at the EvidenceLM final block
+(`geodome_cognitive/`, `EVIDENCE_R13.md`).
+- **Mechanically qualified (P0–P4): all twelve gates pass.**
+  - The identity invariants hold.
+  - The tensor executor equals Geodome's own scheduler (records, statuses, visits; rows within 6.1e-16) in dense
+    and sparse residency.
+  - Gradients reach every kernel through 5 hops, stop exactly at the hop bound, and pass float64 gradcheck through
+    the actual routed final channel.
+- **The disabled path, and a zero gate, are bit-exact.** That holds in 18 EvidenceLM variants (evidence, stored
+  fine keys, PLE, window attention, nonzero origins, ring wrap).
+- **Reasoning never moves the external clock.** Every refusal is atomic, and the backbone is never written.
+- **The owner-review hardening is in.**
+  - `release` is all or none and refuses repeated handles.
+  - A synchronous plan beyond the touched-vertex budget is refused before execution.
+  - The backbone's own candidate ranking can be captured bit-exactly.
+  - Every gate is re-qualified in supplemental receipts (`results/r13_hardening/`); the original receipts are
+    unchanged.
+- **`DISTRIBUTED_COMPETENCE`: HOLD.**
+  - P5 is frozen (`PREREGISTRATION_R13_P5.md`, plan `094adb45…`).
+  - Only its DEVELOPMENT-ONLY feasibility pilot has run (`PILOT_R13_P5.md`). It decides nothing.
+  - On seed 9001, the backbone's own top 8 held every required fact (complete-set recall 1.000).
+  - The native backbone stayed at chance.
+  - Within 200 updates no arm moved any prediction away from it.
+  - The confirmation awaits the owner's authorization.
+- **Not established.** Any cognitive, geometric or semantic advantage. Learned addressing, CGC admission and HCA88
+  were not attempted.
+- **Unchanged.** The verdicts of R9 to R12 stand.
+
 **RESEARCH_ONLY. NO_RUNTIME_AUTHORITY. NO_LANGUAGE_CLAIM.** This is an architectural research prototype at
 toy scale. It is not part of the Elpis runtime, nothing in `src/` or `native/` imports it, and passing its
 tests says nothing about language or reasoning ability. Under the current mission a transformer is not the
@@ -101,6 +130,7 @@ Elpis cognitive path; what it would take to change that is a separate, unadopted
 | R10: CGC and in-context adaptation and retention (preregistered), R11 performance handoff | `docs/research/elpis_torch/PREREGISTRATION_R10.md`, `DESIGN_R10.md`, `EVIDENCE_R10.md`, `R11_PERFORMANCE_NOTE.md` |
 | R11: the bounded expert-local CGC specialist: capability audit, bounding, specialization, preregistration (Stages A–C), evidence | `docs/research/elpis_torch/CGC_CAPABILITY_R11.md`, `CGC_BOUNDING_R11.md`, `CGC_SPECIALIZATION_R11.md`, `DESIGN_R11.md`, `PREREGISTRATION_R11.md`, `PREREGISTRATION_R11_STAGE_C.md`, `EVIDENCE_R11.md` |
 | R12: the micro-CGC volatile fast state: design (P0 audit, dependency diagram), state contract, preregistration, the P5 amendment (the representation seam), evidence (the Stage C seam experiment) | `docs/research/elpis_torch/DESIGN_R12.md`, `CGC_FAST_STATE_CONTRACT_R12.md`, `PREREGISTRATION_R12.md`, `PREREGISTRATION_R12_P5.md`, `EVIDENCE_R12.md` |
+| R13: the Geodome cognitive substrate: design (P0 seam audit, dependency admission, schedules, bridge contracts, gates, the owner-review hardening), evidence (P0–P4 and the supplemental receipts), the P5 competence protocol (FROZEN), its preflight and DEVELOPMENT-ONLY pilot | `docs/research/elpis_torch/DESIGN_R13.md`, `EVIDENCE_R13.md`, `PREREGISTRATION_R13_P5.md`, `PILOT_R13_P5.md` |
 | Where the CGC mathematics comes from | `PROVENANCE.md` |
 
 ## Install
@@ -205,6 +235,7 @@ with VolatileSession(model, SessionConfig(lr=0.1, max_steps=16)) as session:
 | `adaptation_tasks.py`, `experiments/run_r10.py` | R10: the in-context adaptation and retention assay and its preregistered study (`docs/research/elpis_torch/DESIGN_R10.md`, `EVIDENCE_R10.md`) |
 | `cgc_specialist.py`, `specialist_tasks.py`, `specialist_stack.py`, `experiments/run_r11.py`, `experiments/run_r11_stage_c.py`, `experiments/bench_r11_operators.py` | R11: the opt-in micro CGC profile (R97W's 5 / 3 / 8 core, adapter `8H + 121`), exact census and budget, branch diagnostics, the matched GELU control; the R97W-form Stage A/B harness around the real `ChannelExpert`; the Stage C regression stack of the repository's `ErsaBlock`s; `run_r11 audit|parity|calibrate|stage_a|stage_b|latency|combine|manifest`, `run_r11_stage_c run|router|combine|dev` (`docs/research/elpis_torch/DESIGN_R11.md`, `EVIDENCE_R11.md`) |
 | `fast_state.py`, `fast_episodes.py`, `experiments/run_r12.py`, `experiments/run_r12_p5.py` | R12: `SpecialistFastState`, a private, volatile, bounded `ΔW` for the LAST block's single expert's specialist core (120 values), updated through `session.bounded_update` and executed through the block's own `SparseChannel`/`ChannelExpert`; the Stage C seam harness (context-free probes, controls, batched training update); `run_r12 audit|parity|reproduce|episodic|latency|combine|manifest|dev`; the P5 diagnosis, `run_r12_p5 stage_b|stack|combine|dev` (`docs/research/elpis_torch/DESIGN_R12.md`, `PREREGISTRATION_R12_P5.md`, `EVIDENCE_R12.md`) |
+| `upstream/geodome_v1/`, `geodome_cognitive/`, `experiments/run_r13.py`, `composition_tasks.py`, `experiments/run_r13_p5.py` | R13 (opt-in research): Geodome Reference API v1.0.0, byte-identical and digest-verified (`source.py`: isolated import, pins); `topology.py` (the frequency-120 identity index built once, physical arcs, ports); `plan.py` (validated host-supplied execution plans); `state.py` (a bounded working state on Geodome's own `NodeState` handles); `kernels.py`, `activation.py` (shared trainable kernels; the synchronous and changed-destination schedules); `reference.py` (Geodome's scheduler as the float64 reference); `binding.py` (`CognitiveSession`, the session-owned bridge to the EvidenceLM final block; candidate capture); `run_r13 identity|audit|parity|gradients|bridge|resources|hardening|verdict|manifest`; P5: `composition_tasks.py` (the multi-hop record-composition task), `regions.py` (physical BFS regions and their statistics), `controls.py` (nongeometric control graphs), `arms.py` (the eight arms), `run_r13_p5 plan|preflight|pilot|confirm|combine|manifest` (`docs/research/elpis_torch/DESIGN_R13.md`, `EVIDENCE_R13.md`, `PREREGISTRATION_R13_P5.md`, `PILOT_R13_P5.md`) |
 
 ## Not here, on purpose
 

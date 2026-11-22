@@ -537,3 +537,78 @@ Every arm trained 3,000 steps on the same episode streams. There were three scre
   conclusions.
 - L15's separation of R97W, native K1 and `CGCTransform`.
 - Gate A HOLD.
+
+## R13 result (the R9 to R12 verdicts above are unchanged)
+
+### L19. R13: the Geodome cognitive substrate admission — P0–P4 mechanically PASS; distributed competence HOLD; no advantage claimed
+
+**Plans.**
+- R13 ran no preregistered competence study. The owner asked for the P0–P4 results first.
+- `PREREGISTRATION_R13_P5.md` is a DRAFT for review. It is not frozen, and no data was collected under it.
+
+**Evidence.** `EVIDENCE_R13.md`, from records (`results/r13/`) whose gates and dispositions `test_r13_records.py`
+recomputes from the raw rows.
+
+**Supported (mechanical and numerical; engineering, not a cognitive result).**
+- **Geodome Reference API v1.0.0 is admitted as a frozen dependency.** HexaFlake `4e5fe566` is vendored byte for
+  byte and verified against its pins and its own `PUBLIC.sha256`, and imported in isolation. Its identity
+  invariants hold: 144002 vertices, 432000 edges, 864000 arcs, and the mapping and edge digests.
+- **The tensor executor equals Geodome's own scheduler on matched semantics.** Round records, statuses, rounds and
+  visits are equal, and rows agree within 6.1e-16, in dense and sparse residency. All four stop statuses were
+  exercised.
+- **The synchronous schedule equals the scheduler on the class where the two coincide** (4.4e-16). Outside it they
+  differ, and are not claimed equal.
+- **Gradients.**
+  - They reach all 19 kernel tensors through 5 hops.
+  - They are exactly zero beyond the hop bound.
+  - float64 gradcheck passes end to end through the actual routed final channel.
+  - The cognitive path makes no host extraction, and one call is one bounded graph.
+- **The bridge to the actual EvidenceLM**, in 18 variants:
+  - The disabled path and the zero gate are bit-exact.
+  - Reasoning never moves the external clock.
+  - Admission is causal, canonical, live and an exact reread.
+  - All 31 refusals are atomic.
+  - Sessions are isolated, the backbone is immutable, and reset is clean.
+
+**Not supported.**
+- **Any claim that the substrate computes anything useful.** No task was trained or evaluated;
+  `DISTRIBUTED_COMPETENCE` is `HOLD`.
+- **Any cognitive, geometric or semantic advantage.** `COGNITIVE_ADVANTAGE` is `NOT_CLAIMED`.
+- **Learned addressing** (P6, `NOT_STARTED`), **CGC admission** (P7, `NOT_STARTED`) and **HCA88**
+  (`NOT_ADMITTED`).
+- **Any language-model, scale, GPU or throughput claim.** The latencies are one CPU container's measurement.
+
+**Unchanged.**
+- R9's `CGC_NOT_ESTABLISHED`.
+- The R10–R12 verdicts.
+- Gate A HOLD.
+- No earlier record or existing source changed; `identity.json` checks this against `d73cdde`.
+
+### L19 addendum: the owner's review of the R13 pull request — hardening re-qualified; P5 frozen; a DEVELOPMENT-ONLY pilot only
+
+**What changed.**
+- **The two requested hardening fixes,** additive:
+  - `release` is all or none and refuses repeated handles;
+  - a synchronous plan beyond the touched-vertex budget is refused before execution.
+- **The P5 evidence source.** The explicit, bit-exact capture of the backbone's own fine-ranked candidates.
+- **Re-qualified.** Every gate is re-qualified in supplemental receipts (`results/r13_hardening/`). Every
+  deterministic result of the original receipts reappears unchanged, and the original receipts are untouched.
+
+**P5.**
+- `PREREGISTRATION_R13_P5.md` is FROZEN (plan `094adb45…`), with every decision and threshold resolved.
+- Its DEVELOPMENT-ONLY feasibility pilot (seed 9001, `PILOT_R13_P5.md`) measured retrieval coverage, training
+  behavior and the resource envelope.
+  - Complete-set recall on the primary set was 1.000.
+  - The native backbone was at chance.
+  - The zero gate opened, and every kernel group received gradients from the second training step on.
+  - No arm changed any prediction within its 200 updates.
+  - The whole confirmation is projected at about 1.1 h and 0.8 GB.
+- The pilot is not evidence for or against any reading, and it is never pooled with confirmation data.
+- No confirmation run has started; one needs the owner's further authorization.
+
+**Supported (mechanical only).** The hardening contracts, as tested and receipted.
+
+**Not supported, unchanged.**
+- `DISTRIBUTED_COMPETENCE` is `HOLD`.
+- `COGNITIVE_ADVANTAGE` is `NOT_CLAIMED`.
+- There is no geometric, cognitive or semantic advantage claim.

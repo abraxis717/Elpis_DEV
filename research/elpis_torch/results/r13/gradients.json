@@ -1,0 +1,193 @@
+{
+ "checks": {
+  "bounded_graph": {
+   "equal_sizes": true,
+   "graph_nodes_per_call": [
+    185,
+    185,
+    185
+   ],
+   "ok_observation_drops_results": true,
+   "ok_working_state_holds_no_graph": true
+  },
+  "gradcheck_bridge_float64": {
+   "inputs": [
+    "query_in.weight",
+    "evidence_query",
+    "evidence_in.weight",
+    "message_in.weight",
+    "port_out",
+    "update_cand.weight",
+    "readout_proj.weight",
+    "inject.weight",
+    "gate"
+   ],
+   "ok_gradcheck": true,
+   "outputs": "refined logits @ a fixed [vocab, 4] map"
+  },
+  "gradcheck_executor_float64": {
+   "hops": 3,
+   "inputs": [
+    "initial_rows",
+    "message_in.weight",
+    "port_out",
+    "port_in",
+    "message_out.weight",
+    "update_gate.weight",
+    "update_cand.weight",
+    "readout_proj.weight"
+   ],
+   "ok_gradcheck": true,
+   "rounds": 3
+  },
+  "hop_bound": {
+   "4": {
+    "distance": 5,
+    "evidence_ingress_grad_l1": 0.0,
+    "ok_bound": true
+   },
+   "5": {
+    "distance": 5,
+    "evidence_ingress_grad_l1": 0.0012407439940072514,
+    "ok_bound": true
+   }
+  },
+  "host_extraction": {
+   "calls_on_cognitive_path": [],
+   "detector_positive_control": [
+    "item",
+    "tolist",
+    "__bool__",
+    "__float__",
+    "__int__",
+    "numpy"
+   ],
+   "imports": {
+    "activation": [
+     "__future__",
+     "dataclasses",
+     "torch"
+    ],
+    "binding": [
+     "__future__",
+     "dataclasses",
+     "itertools",
+     "torch"
+    ],
+    "kernels": [
+     "__future__",
+     "dataclasses",
+     "math",
+     "torch"
+    ],
+    "plan": [
+     "__future__",
+     "dataclasses",
+     "torch"
+    ],
+    "reference": [
+     "__future__",
+     "torch"
+    ],
+    "source": [
+     "__future__",
+     "geodome",
+     "hashlib",
+     "pathlib",
+     "sys"
+    ],
+    "state": [
+     "__future__",
+     "torch"
+    ],
+    "topology": [
+     "__future__",
+     "collections",
+     "geodome_index",
+     "time"
+    ]
+   },
+   "ok_detector_sees_extraction": true,
+   "ok_no_numpy_or_ctypes_imports": true,
+   "ok_none_on_cognitive_path": true,
+   "scope": "ingress, synchronous rounds, readout and injection. The backbone's routed channel keeps its own integer routing bookkeeping (R6) and the reference path (reference.py, Geodome's scheduler) converts rows by design."
+  },
+  "multi_hop": {
+   "grad_l1": {
+    "evidence_in.bias": 0.00017520745889660415,
+    "evidence_in.weight": 0.004403243869597007,
+    "evidence_query": 0.00016939098865840276,
+    "gate": 0.08320210737131961,
+    "inject.weight": 5.574984543751153,
+    "message_in.bias": 0.39155219998212343,
+    "message_in.weight": 1.9787920478517602,
+    "message_out.bias": 0.6422718347417391,
+    "message_out.weight": 5.239606685289836,
+    "port_in": 0.4116329657858647,
+    "port_out": 0.4116352554051365,
+    "query_in.bias": 0.014201261788025114,
+    "query_in.weight": 0.02523458713890534,
+    "readout_proj.bias": 0.7894264412187034,
+    "readout_proj.weight": 3.846798277374723,
+    "update_cand.bias": 0.7996661547932803,
+    "update_cand.weight": 8.25145572017287,
+    "update_gate.bias": 0.04688012285999699,
+    "update_gate.weight": 0.4460753019870972
+   },
+   "hops_evidence_to_readout": 5,
+   "ok_all_finite_nonzero": true,
+   "rounds": 6
+  },
+  "zero_gate": {
+   "nonzero_gradients": [
+    "gate"
+   ],
+   "ok_only_gate": true
+  }
+ },
+ "command": "gradients",
+ "gate_5": "PASS",
+ "gate_6": "PASS",
+ "gate_7": "PASS",
+ "gate_differentiable_path": "PASS",
+ "phase": "ELPIS_TORCH_R13_GEODOME_SUBSTRATE",
+ "provenance": {
+  "activation_sha256": "16d8c613527345d0018f6de7eaecd3a514a5b26261e6a8e3d31e446ed249dbd0",
+  "binding_sha256": "318c033d57ac3ed2f3281b1e6cf24f626e74ecc02b69d493fd17a819e3050c72",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "context_runtime_sha256": "71f593b7b2242316fd5c5d2936a664827fce3cbe49fc6f06055059e423cf6449",
+  "elpis_base": "d73cdde3a5050de50cce098472ee966eec103000",
+  "ersa_model_sha256": "5583a9c5dc0c86dadff3b24c98f06df46eb36d10c663156351647c154efb17e1",
+  "evidence_model_sha256": "62c75634ddf0a0c9b6fef0e4d718f3ae1a4eafb22e1c456fed22b1f967961c4c",
+  "evidence_ring_sha256": "149da9f9489d813b22a8c85d7e21fffb9dc4c57544a3f03bb8d85cbed6fc65b7",
+  "geodome_commit": "4e5fe56670c61a0d8906770b03033658c3087c3a",
+  "geodome_files_sha256": {
+   "GEO144K/g1c_compact.py": "4961c9f346dc4061aa2a7db61ea7a59fe700636e86f4490ff33fce2e162a2087",
+   "GEO144K/g2b_bridge.py": "18d226749b3c74b8b4d62f961c027414c3d1783b7c2101a8010c1b239a870d39",
+   "Hexaflag.py": "190ddd3128d646135dcdc3553968edf798a30d43835e5d51e281d068249b2648",
+   "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+   "NOTICE": "7349216806d083f687ccb94fdba9738f20663e2fb5248084fc3e488178235ae3",
+   "PUBLIC.sha256": "e44d288fec19a09c17be0ce503f011d400b499e4d393f1275d305e2b23d31cb8",
+   "geodome.py": "a9e6a6fe0de6ee29500ff90a2c4b767ab6c63a9fac98255e5031d98a0adc3eca",
+   "geodome_index.py": "9b8a3061da0d0a310c5b683988c9063e19ecbc2cbd1434000c2a5ccd3eedd26d",
+   "geodome_scheduler.py": "556566221ece714fdca027471c503e81cc68335a41a6f6195d533a3b29d54d9c",
+   "geodome_state.py": "83f3b2d1414f62d4afb0301e7cdd80464c1e8703acc6b6968304a7b61509c7be"
+  },
+  "git_revision": "ae2f804ea15a94dc88e3d565f2a614a829da486a",
+  "kernels_sha256": "f5fed567bd6f73a7fd176895ffcbb8f996ef8bd20af59dda537e16ffdb7c6468",
+  "lastblock_sha256": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "plan_sha256": "f41fa21a3452777a49e9e6243db17ff6213631c0075e64b372f64419db7ad393",
+  "ple_sha256": "8f1efe30aff86a29778042b1c3cfe077446a5988393fb0607d989ca1aca36927",
+  "python": "3.13.18",
+  "reference_sha256": "e36cf993a333353599962de61405a471a5d974ef516c692b573398a3a7613165",
+  "runner_sha256": "62dd38f11fa8ed5508a4e38616eb787f082b1f70b644579528856d37c2715594",
+  "scroll_sha256": "acf67f28858dcf6ae184d128d20fb0deb7f4acae670be9f3d317584a00952d4a",
+  "source_sha256": "e0b69e625fea9dcd0a89c4822d4dc54c69af04b82ee83bb0099cb1073c2f1066",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "state_sha256": "3ca57ec61e2f4e9a8d6ed076edd3a993cbf8efcd45d31d86a3b8840c0bdbc72c",
+  "threads": 2,
+  "topology_sha256": "9a1ad35c96789b2b96c82e6a783509c2ef080a7eecc31d2137b276ecf0213192",
+  "torch": "2.15.0+cpu"
+ }
+}

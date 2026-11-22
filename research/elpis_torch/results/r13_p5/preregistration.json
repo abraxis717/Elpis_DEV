@@ -1,0 +1,346 @@
+{
+ "arms": [
+  "NATIVE",
+  "GEODOME",
+  "EQUAL_BUDGET",
+  "COMPUTE_MATCHED",
+  "FLAT_RECURRENT",
+  "RELABEL_ISOMORPHIC",
+  "REWIRED",
+  "DIAGNOSTIC_ORACLE"
+ ],
+ "backbone": {
+  "ersa": {
+   "chunk": 72,
+   "conv_kernel": 4,
+   "ersa_heads": 4,
+   "ersa_kernel": "chunked",
+   "key_dim": 16,
+   "scan_block": 24,
+   "value_dim": 16
+  },
+  "evidence": {
+   "block": 16,
+   "capacity": 512,
+   "coarse_top": 17,
+   "encoder_dim": 32,
+   "evidence": 3,
+   "fine_dim": 8,
+   "fine_keys": "reread",
+   "fine_top": 8,
+   "key_dim": 16,
+   "mode": "learned",
+   "overlap": 4,
+   "per_block": 2,
+   "query_tile": 72,
+   "read_head_dim": 16,
+   "read_heads": 2,
+   "rerank": "learned",
+   "supersession": "off"
+  },
+  "model": {
+   "cgc_bottleneck": 8,
+   "cgc_channels": 32,
+   "cgc_units": 4,
+   "channel": "cgc",
+   "d_model": 64,
+   "dtype": "float32",
+   "max_seq_len": 64,
+   "n_heads": 4,
+   "n_kv_heads": 2,
+   "n_layers": 2,
+   "vocab_size": 58
+  },
+  "sparse": {
+   "experts": 4,
+   "layers": [
+    0,
+    1
+   ],
+   "shared": true,
+   "top_k": 2
+  },
+  "training": {
+   "background_weight": 0.05,
+   "batch": 8,
+   "betas": [
+    0.9,
+    0.95
+   ],
+   "episodes": "split train, indices from 1,000,000 (disjoint from the arms' training episodes)",
+   "evidence_label": "the hop-1 fact block (the only block whose subject is the query's start entity), at the ASK position only; never a hop-2 or hop-3 fact",
+   "grad_clip": 1.0,
+   "lr": 0.003,
+   "min_lr_fraction": 0.1,
+   "recipe": "R5 dense loss: the answer's cross-entropy + 0.05 x the mean next-token cross-entropy of every position + R5's training-only coarse_source_loss and fine_evidence_loss",
+   "steps": 1200,
+   "teacher": true,
+   "time_limit_minutes": 60,
+   "warmup": 50,
+   "weight_decay": 0.01
+  }
+ },
+ "base": {
+  "elpis_base": "d73cdde3a5050de50cce098472ee966eec103000",
+  "r13_supplemental_receipts": "research/elpis_torch/results/r13_hardening (mechanics on the corrected sources; their manifest digest is recorded with every P5 record)"
+ },
+ "compute": {
+  "device": "cpu",
+  "on_exhaustion": "stop and report; never retried silently",
+  "ram_limit_bytes": 5368709120,
+  "threads": 2,
+  "time_limit_minutes_per_arm_seed": 60
+ },
+ "controls": {
+  "COMPUTE_MATCHED": "a fully mixed random graph with the region's degree sequence (Havel-Hakimi, then 10 |E| successful degree-preserving swaps), simple and connected; bindings placed to match the evidence-to-readout distance 2; same kernels and rounds",
+  "EQUAL_BUDGET": "DirectReader (attention read of the evidence rows by the query row, then an MLP of hidden 72): 9,128 parameters in place of the kernels' 9,120 message, port and update parameters; the same ingress, readout and injection",
+  "FLAT_RECURRENT": "a hub (query and readout) reading 8 evidence leaves (arcs leaf to hub, port 0) for 8 rounds",
+  "RELABEL_ISOMORPHIC": "the region under a declared seeded vertex permutation; arc order and port ordinals kept, so the kernels receive the same inputs, permuted",
+  "REWIRED": "the region rewired by |E| / 2 successful degree-preserving double-edge swaps (simple, connected); bindings placed to match distance 2; same kernels and rounds",
+  "mismatches": "every control's vertex, arc, degree, connectivity and distance statistics are recorded",
+  "port_permutation": "evaluation-only diagnostic on the trained GEODOME arm: ports remapped by (1,2,3,4,5,0)"
+ },
+ "evaluation": {
+  "iid": {
+   "1": 100,
+   "2": 100,
+   "3": 100
+  },
+  "metric": "accuracy: the argmax of the refined logits (NATIVE: the backbone's logits) is the answer",
+  "primary": {
+   "heldout_combination": {
+    "2": 150,
+    "3": 150
+   },
+   "heldout_structure": {
+    "2": 150,
+    "3": 150
+   }
+  }
+ },
+ "evidence": {
+  "complete_set_recall": "every required fact block among the deployable candidates",
+  "deployable": "the frozen backbone's own top-8 fine-ranked live blocks at the query, captured from the same forward (CognitiveSession capture_candidates=8; no extra token, no label) and admitted through the exact reread; binding k receives rank k",
+  "oracle": "the episode's 8 FACT blocks in a seeded order (DIAGNOSTIC_ORACLE only; never deployable)"
+ },
+ "interventions": {
+  "arm": "the trained GEODOME arm, evaluation only, on the primary set",
+  "disabled_injection": "the backbone's own tail: must equal NATIVE bit for bit (decisive)",
+  "evidence_removal": "no evidence ingress (no evidence binding)",
+  "evidence_swap": "the deployable evidence of the next primary episode (cyclic)",
+  "intermediate_state_erasure": "after 4 of 8 rounds every row but the query and evidence rows set to zero (reported, not decisive)",
+  "interrupted_communication": "every arc between the readout's 1-hop disc and the rest of the region removed",
+  "port_permutation": "reported, not decisive",
+  "reduced_depth": "4 rounds instead of 8 (decisive); 2 rounds (reported)"
+ },
+ "kernels": {
+  "capacity": 64,
+  "evidence_heads": 2,
+  "gate_init": 0.0,
+  "hidden": 64,
+  "max_arcs": 1024,
+  "max_evidence": 8,
+  "max_rounds": 16,
+  "max_visits": 16384,
+  "seed": "the study seed: the same initialization in every trainable arm of a seed",
+  "width": 32
+ },
+ "phase": "ELPIS_TORCH_R13_P5_DISTRIBUTED_COMPETENCE",
+ "pilot": {
+  "backbone_steps": 1200,
+  "evaluation": {
+   "iid": {
+    "1": 40,
+    "2": 40,
+    "3": 40
+   },
+   "primary": {
+    "heldout_combination": {
+     "2": 60,
+     "3": 60
+    },
+    "heldout_structure": {
+     "2": 60,
+     "3": 60
+    }
+   }
+  },
+  "label": "DEVELOPMENT ONLY",
+  "max_updates_per_trainable_arm": 200,
+  "records": "retrieval recall, gate opening and per-group gradients, loss movement, latency, RSS and the projected resource envelope",
+  "seed": 9001
+ },
+ "question": "Does a learned, bounded, distributed computation over admitted evidence on Geodome's physical topology, injected at the EvidenceLM final block, improve the final answer of multi-hop record composition over the native backbone and over parameter-, compute-, recurrence- and graph-matched controls, and does the gain survive the causal interventions that should remove it?",
+ "readings": [
+  "GEOMETRY_SPECIFIC_GAIN: GEODOME passes the distributed family, the decisive interventions and the relabel check, AND the geometry family",
+  "DISTRIBUTED_COMPETENCE_ESTABLISHED: GEODOME passes the distributed family, the decisive interventions and the relabel check; the geometry family does not pass and no nongeometric graph control passes the distributed family",
+  "SUBSTRATE_AGNOSTIC_GAIN: distributed processing helps (GEODOME as above, or COMPUTE_MATCHED or REWIRED passes the distributed family) but GEODOME does not pass the geometry family, and a nongeometric graph control passes the distributed family",
+  "RETRIEVAL_LIMITED: none of the above, and the pooled complete-set recall of the deployable evidence on the primary set is below the recall threshold",
+  "NOT_ESTABLISHED: every other case"
+ ],
+ "seeds": {
+  "confirmation": [
+   1301,
+   1302,
+   1303,
+   1304,
+   1305
+  ],
+  "development": [
+   9001
+  ]
+ },
+ "statistics": {
+  "alpha": 0.05,
+  "bootstrap": {
+   "draws": 10000,
+   "generator_seed": 13013,
+   "kind": "hierarchical, seed-aware",
+   "procedure": "draw 5 seeds with replacement; within each drawn seed draw its episodes with replacement; the statistic is the mean over the drawn seeds of the mean paired difference"
+  },
+  "bound": "one-sided lower bound: the (alpha / m) quantile of the bootstrap distribution (Bonferroni over the m comparisons of the family)",
+  "criteria": {
+   "comparison": "estimate >= margin AND positive in >= 4 of 5 seeds AND lower bound > 0",
+   "disabled_injection": "bit-exact NATIVE logits in every primary episode of every seed",
+   "intervention": "drop estimate > 0 AND positive in >= 4 of 5 seeds AND lower bound > 0",
+   "relabel": "|estimate(GEODOME - RELABEL_ISOMORPHIC)| <= 0.02"
+  },
+  "estimate": "the mean over seeds of the per-seed mean paired difference",
+  "families": {
+   "distributed": [
+    "NATIVE",
+    "EQUAL_BUDGET",
+    "FLAT_RECURRENT"
+   ],
+   "geometry": [
+    "COMPUTE_MATCHED",
+    "REWIRED"
+   ],
+   "interventions": [
+    "evidence_removal",
+    "evidence_swap",
+    "reduced_depth",
+    "interrupted_communication"
+   ],
+   "substrate_agnostic": "each of COMPUTE_MATCHED and REWIRED against the distributed family"
+  },
+  "margin": 0.05,
+  "paired": "per seed and episode: correct(GEODOME) - correct(X) on the same episodes, the same frozen backbone",
+  "positive_seeds": 4,
+  "primary_metric": "accuracy over the primary set (held-out combinations and held-out structures, 2 and 3 hops; 600 episodes per seed)",
+  "recall_threshold": 0.9
+ },
+ "status": "FROZEN",
+ "substrate": {
+  "assignment": "training and primary episode i on training region i mod 3; the held-out-region test evaluates every primary episode on the held-out region",
+  "centers": "uniform and independent over all vertices, regions disjoint, generator seeded by the study seed; bindings fixed by the region alone (no episode, route or answer)",
+  "evidence_bindings": 8,
+  "evidence_ring": 2,
+  "heldout_regions": 1,
+  "query": "center",
+  "readout": "center",
+  "region_size": 48,
+  "rounds": 8,
+  "schedule": "synchronous",
+  "training_regions": 3
+ },
+ "task": {
+  "block": 16,
+  "blocks": 18,
+  "entities": 48,
+  "fact_blocks": 8,
+  "heldout_fraction": 0.2,
+  "heldout_pairs": 451,
+  "heldout_seed": 1300,
+  "heldout_structures": {
+   "2": [
+    [
+     1,
+     0
+    ]
+   ],
+   "3": [
+    [
+     1,
+     2,
+     0
+    ],
+    [
+     2,
+     0,
+     1
+    ]
+   ]
+  },
+  "invariants": "every required edge in its own earlier FACT block; one outgoing edge per entity (ambiguous paths rejected); no shortcut edge; hard negatives: an overshoot edge out of the answer, converging edges into path entities, unrelated edges, NOTE blocks with entity mentions; no held-out pair in any training fact; every entity in training facts",
+  "length": 288,
+  "module": "research/elpis_torch/composition_tasks.py",
+  "note_blocks": 8,
+  "query": "QUERY start HOPk ASK; the answer is the next token (never in the stream as a query input)",
+  "train_structures": {
+   "1": [
+    [
+     0
+    ]
+   ],
+   "2": [
+    [
+     0,
+     1
+    ]
+   ],
+   "3": [
+    [
+     0,
+     1,
+     2
+    ],
+    [
+     2,
+     1,
+     0
+    ],
+    [
+     1,
+     0,
+     2
+    ],
+    [
+     0,
+     2,
+     1
+    ]
+   ]
+  },
+  "vocab": 58
+ },
+ "training": {
+  "batch": 1,
+  "betas": [
+   0.9,
+   0.999
+  ],
+  "episodes": "split train, indices 0 .. steps - 1, hop counts cycling 1, 2, 3",
+  "grad_clip": 1.0,
+  "isolation": "every episode observed from a reset session; every arm starts each episode from rows of zero; no state or graph crosses episodes; one frozen backbone per seed for every arm",
+  "log_steps": [
+   0,
+   1,
+   2,
+   5,
+   10,
+   20,
+   50,
+   100,
+   200,
+   500,
+   1000,
+   1999
+  ],
+  "lr": 0.001,
+  "optimizer": "AdamW",
+  "steps": 2000,
+  "supervision": "final answer only: cross-entropy of the refined logits at the query",
+  "weight_decay": 0.0
+ }
+}

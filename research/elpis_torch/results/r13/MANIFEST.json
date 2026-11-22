@@ -1,0 +1,64 @@
+{
+ "command": "manifest",
+ "files": {
+  "audit.json": "3e9d62a30f44e63f957439e36f969e2a199b0dddc4d1e06a1c9d3034517be5cb",
+  "bridge.json": "137f4efcf4788589fc4762837b23ecebb458a9bc49e1dd60478fafd3788ad5cd",
+  "gradients.json": "3b2c8aa9f48dae2e6ce06d9feabc087e9d3f8f9e13deb32c3c012c549b50aeee",
+  "identity.json": "89a80c9640aa42e7e8dec374a1e1307d81c8f7f353d5eeca57f4802a2d4f1cfc",
+  "parity.json": "c61071263c239d784df2ee4ba574525365dfaaaade92aef7a9ac789aa948d658",
+  "resources.json": "3e0827386f7b0b1dbb2c80fddb25b1b10b941204f0def7e892185525a38bf619",
+  "verdict.json": "c2f8af4dcea92a665931f4245c3b0cfc96cd4b1aca1f73529d04dc9ac0f18b58"
+ },
+ "geodome": {
+  "api_version": "1.0.0",
+  "commit": "4e5fe56670c61a0d8906770b03033658c3087c3a",
+  "files": {
+   "GEO144K/g1c_compact.py": "4961c9f346dc4061aa2a7db61ea7a59fe700636e86f4490ff33fce2e162a2087",
+   "GEO144K/g2b_bridge.py": "18d226749b3c74b8b4d62f961c027414c3d1783b7c2101a8010c1b239a870d39",
+   "Hexaflag.py": "190ddd3128d646135dcdc3553968edf798a30d43835e5d51e281d068249b2648",
+   "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+   "NOTICE": "7349216806d083f687ccb94fdba9738f20663e2fb5248084fc3e488178235ae3",
+   "PUBLIC.sha256": "e44d288fec19a09c17be0ce503f011d400b499e4d393f1275d305e2b23d31cb8",
+   "geodome.py": "a9e6a6fe0de6ee29500ff90a2c4b767ab6c63a9fac98255e5031d98a0adc3eca",
+   "geodome_index.py": "9b8a3061da0d0a310c5b683988c9063e19ecbc2cbd1434000c2a5ccd3eedd26d",
+   "geodome_scheduler.py": "556566221ece714fdca027471c503e81cc68335a41a6f6195d533a3b29d54d9c",
+   "geodome_state.py": "83f3b2d1414f62d4afb0301e7cdd80464c1e8703acc6b6968304a7b61509c7be"
+  },
+  "identity": {
+   "arcs": 864000,
+   "capacity": 823543,
+   "depth": 7,
+   "edge_sha256": "712a8fc3d94685aeb614456ba8c88f6df7e6c6ea8a4c19e86d4d3865ad014231",
+   "edges": 432000,
+   "index_payload_bytes": 11502238,
+   "mapping_sha256": "abe96202b554608bd8f5e702b70459daaaf4ab33eb7dfd058723fd4d1724f51b",
+   "vertices": 144002
+  },
+  "license": "Apache-2.0",
+  "repository": "https://github.com/abraxis717/HexaFlake",
+  "source_pin": "993429cc94e9e3dcfd42df40502fa5b57175d883",
+  "vendored": "research/elpis_torch/upstream/geodome_v1"
+ },
+ "phase": "ELPIS_TORCH_R13_GEODOME_SUBSTRATE",
+ "sources": {
+  "activation": "16d8c613527345d0018f6de7eaecd3a514a5b26261e6a8e3d31e446ed249dbd0",
+  "binding": "318c033d57ac3ed2f3281b1e6cf24f626e74ecc02b69d493fd17a819e3050c72",
+  "config": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "context_runtime": "71f593b7b2242316fd5c5d2936a664827fce3cbe49fc6f06055059e423cf6449",
+  "ersa_model": "5583a9c5dc0c86dadff3b24c98f06df46eb36d10c663156351647c154efb17e1",
+  "evidence_model": "62c75634ddf0a0c9b6fef0e4d718f3ae1a4eafb22e1c456fed22b1f967961c4c",
+  "evidence_ring": "149da9f9489d813b22a8c85d7e21fffb9dc4c57544a3f03bb8d85cbed6fc65b7",
+  "kernels": "f5fed567bd6f73a7fd176895ffcbb8f996ef8bd20af59dda537e16ffdb7c6468",
+  "lastblock": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
+  "model": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "plan": "f41fa21a3452777a49e9e6243db17ff6213631c0075e64b372f64419db7ad393",
+  "ple": "8f1efe30aff86a29778042b1c3cfe077446a5988393fb0607d989ca1aca36927",
+  "reference": "e36cf993a333353599962de61405a471a5d974ef516c692b573398a3a7613165",
+  "runner": "62dd38f11fa8ed5508a4e38616eb787f082b1f70b644579528856d37c2715594",
+  "scroll": "acf67f28858dcf6ae184d128d20fb0deb7f4acae670be9f3d317584a00952d4a",
+  "source": "e0b69e625fea9dcd0a89c4822d4dc54c69af04b82ee83bb0099cb1073c2f1066",
+  "sparse_channel": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "state": "3ca57ec61e2f4e9a8d6ed076edd3a993cbf8efcd45d31d86a3b8840c0bdbc72c",
+  "topology": "9a1ad35c96789b2b96c82e6a783509c2ef080a7eecc31d2137b276ecf0213192"
+ }
+}

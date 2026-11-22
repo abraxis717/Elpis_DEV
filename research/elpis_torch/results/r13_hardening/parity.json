@@ -1,0 +1,313 @@
+{
+ "command": "parity",
+ "divergence_witness": {
+  "claimed_equal": false,
+  "max_abs_difference": 0.8685912821193265,
+  "workload": "chain of 8, forward arcs only, frontier = the first vertex, 6 rounds"
+ },
+ "gate_3": "PASS",
+ "gate_4_executor": "PASS",
+ "gate_7_executor": "PASS",
+ "hop_causality": {
+  "1": {
+   "moved_hops": [
+    1
+   ],
+   "ok_reaches_hop": true,
+   "ok_within_hops": true
+  },
+  "3": {
+   "moved_hops": [
+    1,
+    2,
+    3
+   ],
+   "ok_reaches_hop": true,
+   "ok_within_hops": true
+  },
+  "6": {
+   "moved_hops": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "ok_reaches_hop": true,
+   "ok_within_hops": true
+  }
+ },
+ "pentagon": 0,
+ "phase": "ELPIS_TORCH_R13_GEODOME_SUBSTRATE",
+ "provenance": {
+  "activation_sha256": "16d8c613527345d0018f6de7eaecd3a514a5b26261e6a8e3d31e446ed249dbd0",
+  "binding_sha256": "88d9189793ab72443084bf9661e6f1e4cd878d9cc25e4be3694042b5c25ff2f9",
+  "config_sha256": "1cbaea5ed242193c149045303487aefdf8c1e52fd51246dcd8af29eae03100ab",
+  "context_runtime_sha256": "71f593b7b2242316fd5c5d2936a664827fce3cbe49fc6f06055059e423cf6449",
+  "elpis_base": "d73cdde3a5050de50cce098472ee966eec103000",
+  "ersa_model_sha256": "5583a9c5dc0c86dadff3b24c98f06df46eb36d10c663156351647c154efb17e1",
+  "evidence_model_sha256": "62c75634ddf0a0c9b6fef0e4d718f3ae1a4eafb22e1c456fed22b1f967961c4c",
+  "evidence_ring_sha256": "149da9f9489d813b22a8c85d7e21fffb9dc4c57544a3f03bb8d85cbed6fc65b7",
+  "geodome_commit": "4e5fe56670c61a0d8906770b03033658c3087c3a",
+  "geodome_files_sha256": {
+   "GEO144K/g1c_compact.py": "4961c9f346dc4061aa2a7db61ea7a59fe700636e86f4490ff33fce2e162a2087",
+   "GEO144K/g2b_bridge.py": "18d226749b3c74b8b4d62f961c027414c3d1783b7c2101a8010c1b239a870d39",
+   "Hexaflag.py": "190ddd3128d646135dcdc3553968edf798a30d43835e5d51e281d068249b2648",
+   "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+   "NOTICE": "7349216806d083f687ccb94fdba9738f20663e2fb5248084fc3e488178235ae3",
+   "PUBLIC.sha256": "e44d288fec19a09c17be0ce503f011d400b499e4d393f1275d305e2b23d31cb8",
+   "geodome.py": "a9e6a6fe0de6ee29500ff90a2c4b767ab6c63a9fac98255e5031d98a0adc3eca",
+   "geodome_index.py": "9b8a3061da0d0a310c5b683988c9063e19ecbc2cbd1434000c2a5ccd3eedd26d",
+   "geodome_scheduler.py": "556566221ece714fdca027471c503e81cc68335a41a6f6195d533a3b29d54d9c",
+   "geodome_state.py": "83f3b2d1414f62d4afb0301e7cdd80464c1e8703acc6b6968304a7b61509c7be"
+  },
+  "git_revision": "fffe0cc48b6cffa16586ccc7410c772dbe8670c3",
+  "kernels_sha256": "f5fed567bd6f73a7fd176895ffcbb8f996ef8bd20af59dda537e16ffdb7c6468",
+  "lastblock_sha256": "961c9f032644838ec784795ab943441f09f96434f442475e5056474441a48182",
+  "model_sha256": "0e4b6058c44a7a0777c762e9b153854459c68514d74dc42b2a2381b34c1d6630",
+  "plan_sha256": "5474fb48a3029836d831dff55e6b7ed8fb12f2d286e1c97ce1b46ddbbac77139",
+  "ple_sha256": "8f1efe30aff86a29778042b1c3cfe077446a5988393fb0607d989ca1aca36927",
+  "python": "3.13.18",
+  "reference_sha256": "e36cf993a333353599962de61405a471a5d974ef516c692b573398a3a7613165",
+  "runner_sha256": "bf6dcc9f0cbeb223ad923fc6e6505b183ace89539582873a9ab3878f1a42a078",
+  "scroll_sha256": "acf67f28858dcf6ae184d128d20fb0deb7f4acae670be9f3d317584a00952d4a",
+  "source_sha256": "e0b69e625fea9dcd0a89c4822d4dc54c69af04b82ee83bb0099cb1073c2f1066",
+  "sparse_channel_sha256": "fcfa1696a1df7875012d371512859ad474ea82d3aa5b7cc001eb5692ec92fa04",
+  "state_sha256": "e74f92bade4b9ebe8a4588c633d0efc00dc9547cc840d272b05602215c4e6c52",
+  "threads": 2,
+  "topology_sha256": "9a1ad35c96789b2b96c82e6a783509c2ef080a7eecc31d2137b276ecf0213192",
+  "torch": "2.15.0+cpu"
+ },
+ "statuses_exercised": [
+  "ACTIVE_BUDGET",
+  "ARC_BUDGET",
+  "QUIESCENT",
+  "ROUND_BUDGET"
+ ],
+ "synchronous_matched": {
+  "equal_visits": true,
+  "ok_in_matched_class": true,
+  "rows_max_abs_diff": 4.440892098500626e-16,
+  "within_tolerance": true
+ },
+ "tolerance": 1e-12,
+ "workloads": {
+  "active_budget": {
+   "admitted_arcs": 198,
+   "dense": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 0,
+    "rows_max_abs_diff": 0.0,
+    "status": "ACTIVE_BUDGET",
+    "visits": 0,
+    "within_tolerance": true
+   },
+   "enrolled": 40,
+   "equal_dense_sparse_tensor_rows": true,
+   "sparse": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 0,
+    "rows_max_abs_diff": 0.0,
+    "status": "ACTIVE_BUDGET",
+    "visits": 0,
+    "within_tolerance": true
+   }
+  },
+  "arc_budget": {
+   "admitted_arcs": 198,
+   "dense": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 2,
+    "rows_max_abs_diff": 2.7755575615628914e-16,
+    "status": "ARC_BUDGET",
+    "visits": 35,
+    "within_tolerance": true
+   },
+   "enrolled": 40,
+   "equal_dense_sparse_tensor_rows": true,
+   "sparse": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 2,
+    "rows_max_abs_diff": 2.7755575615628914e-16,
+    "status": "ARC_BUDGET",
+    "visits": 35,
+    "within_tolerance": true
+   }
+  },
+  "chain_forward_arcs": {
+   "admitted_arcs": 7,
+   "dense": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 8,
+    "rows_max_abs_diff": 2.220446049250313e-16,
+    "status": "QUIESCENT",
+    "visits": 7,
+    "within_tolerance": true
+   },
+   "enrolled": 8,
+   "equal_dense_sparse_tensor_rows": true,
+   "sparse": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 8,
+    "rows_max_abs_diff": 2.220446049250313e-16,
+    "status": "QUIESCENT",
+    "visits": 7,
+    "within_tolerance": true
+   }
+  },
+  "degree_five_centre": {
+   "admitted_arcs": 144,
+   "dense": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 8,
+    "rows_max_abs_diff": 3.469446951953614e-16,
+    "status": "ROUND_BUDGET",
+    "visits": 849,
+    "within_tolerance": true
+   },
+   "enrolled": 30,
+   "equal_dense_sparse_tensor_rows": true,
+   "sparse": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 8,
+    "rows_max_abs_diff": 3.469446951953614e-16,
+    "status": "ROUND_BUDGET",
+    "visits": 849,
+    "within_tolerance": true
+   }
+  },
+  "multi_source": {
+   "admitted_arcs": 306,
+   "dense": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 10,
+    "rows_max_abs_diff": 4.440892098500626e-16,
+    "status": "ROUND_BUDGET",
+    "visits": 1790,
+    "within_tolerance": true
+   },
+   "enrolled": 60,
+   "equal_dense_sparse_tensor_rows": true,
+   "sparse": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 10,
+    "rows_max_abs_diff": 4.440892098500626e-16,
+    "status": "ROUND_BUDGET",
+    "visits": 1790,
+    "within_tolerance": true
+   }
+  },
+  "quiescent_no_outgoing": {
+   "admitted_arcs": 1,
+   "dense": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 1,
+    "rows_max_abs_diff": 0.0,
+    "status": "QUIESCENT",
+    "visits": 0,
+    "within_tolerance": true
+   },
+   "enrolled": 2,
+   "equal_dense_sparse_tensor_rows": true,
+   "sparse": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 1,
+    "rows_max_abs_diff": 0.0,
+    "status": "QUIESCENT",
+    "visits": 0,
+    "within_tolerance": true
+   }
+  },
+  "round_budget": {
+   "admitted_arcs": 198,
+   "dense": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 2,
+    "rows_max_abs_diff": 2.220446049250313e-16,
+    "status": "ROUND_BUDGET",
+    "visits": 35,
+    "within_tolerance": true
+   },
+   "enrolled": 40,
+   "equal_dense_sparse_tensor_rows": true,
+   "sparse": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 2,
+    "rows_max_abs_diff": 2.220446049250313e-16,
+    "status": "ROUND_BUDGET",
+    "visits": 35,
+    "within_tolerance": true
+   }
+  },
+  "spread_single_source": {
+   "admitted_arcs": 198,
+   "dense": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 12,
+    "rows_max_abs_diff": 6.106226635438361e-16,
+    "status": "ROUND_BUDGET",
+    "visits": 1880,
+    "within_tolerance": true
+   },
+   "enrolled": 40,
+   "equal_dense_sparse_tensor_rows": true,
+   "sparse": {
+    "equal_records": true,
+    "equal_rounds": true,
+    "equal_status": true,
+    "equal_visits": true,
+    "rounds": 12,
+    "rows_max_abs_diff": 6.106226635438361e-16,
+    "status": "ROUND_BUDGET",
+    "visits": 1880,
+    "within_tolerance": true
+   }
+  }
+ }
+}
