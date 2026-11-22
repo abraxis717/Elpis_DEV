@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import ast
 import copy
+import ctypes
 import hashlib
 import json
 import math
@@ -128,6 +129,13 @@ def kernels_for(model, *, width: int = 16, hidden: int = 32, capacity: int = 64,
     return CognitiveKernels(config, model.config.d_model, model.encoder.width, dtype=model.embed.weight.dtype)
 
 
+def tensor_bytes(t: torch.Tensor) -> bytes:
+    """A tensor's dtype, shape and raw bytes (no NumPy: CI's PyTorch environment has none, as R10 documents)."""
+    data = t.detach().contiguous().cpu()
+    head = f"{data.dtype}|{tuple(data.shape)}|".encode()
+    return head + (ctypes.string_at(data.data_ptr(), data.numel() * data.element_size()) if data.numel() else b"")
+
+
 def state_digest(state) -> str:
     """SHA-256 of every semantic tensor of an EvidenceState and its clocks: ERSA cells and tails, the window cache,
     the PLE history, ring tokens, index keys, ids and stored fine keys, positions. Identity (session, epoch) and
@@ -143,7 +151,7 @@ def state_digest(state) -> str:
         tensors.append(state.window.tokens)
         tensors.extend(t for layer in state.window.layers for _, t in sorted(layer.items()))
     for t in tensors:
-        h.update(t.detach().contiguous().cpu().numpy().tobytes())
+        h.update(tensor_bytes(t))
     clocks = (state.position, state.ring.position, state.ring.next_block, state.ring.count,
               None if state.window is None else state.window.position)
     h.update(repr(clocks).encode())
@@ -622,7 +630,11 @@ def command_gradients(args) -> dict:
     # no host extraction on the cognitive path (ingress, synchronous rounds, readout, injection)
     with HostExtraction() as control:
         t = torch.ones(3, dtype=torch.float64)
-        t.sum().item(), t.tolist(), bool(t.any()), float(t[0]), int(t[1]), t.numpy()
+        t.sum().item(), t.tolist(), bool(t.any()), float(t[0]), int(t[1])
+        try:
+            t.numpy()
+        except RuntimeError:                       # NumPy absent (as in CI): the request is still recorded
+            pass
     with torch.enable_grad(), HostExtraction() as watch:
         _, latent = s.compute(compiled, rows0, s._observation, s._evidence)
         k.injection(latent)
