@@ -583,3 +583,32 @@ recomputes from the raw rows.
 - The R10–R12 verdicts.
 - Gate A HOLD.
 - No earlier record or existing source changed; `identity.json` checks this against `d73cdde`.
+
+### L19 addendum: the owner's review of the R13 pull request — hardening re-qualified; P5 frozen; a DEVELOPMENT-ONLY pilot only
+
+**What changed.**
+- **The two requested hardening fixes,** additive:
+  - `release` is all or none and refuses repeated handles;
+  - a synchronous plan beyond the touched-vertex budget is refused before execution.
+- **The P5 evidence source.** The explicit, bit-exact capture of the backbone's own fine-ranked candidates.
+- **Re-qualified.** Every gate is re-qualified in supplemental receipts (`results/r13_hardening/`). Every
+  deterministic result of the original receipts reappears unchanged, and the original receipts are untouched.
+
+**P5.**
+- `PREREGISTRATION_R13_P5.md` is FROZEN (plan `094adb45…`), with every decision and threshold resolved.
+- Its DEVELOPMENT-ONLY feasibility pilot (seed 9001, `PILOT_R13_P5.md`) measured retrieval coverage, training
+  behavior and the resource envelope.
+  - Complete-set recall on the primary set was 1.000.
+  - The native backbone was at chance.
+  - The zero gate opened, and every kernel group received gradients from the second training step on.
+  - No arm changed any prediction within its 200 updates.
+  - The whole confirmation is projected at about 1.1 h and 0.8 GB.
+- The pilot is not evidence for or against any reading, and it is never pooled with confirmation data.
+- No confirmation run has started; one needs the owner's further authorization.
+
+**Supported (mechanical only).** The hardening contracts, as tested and receipted.
+
+**Not supported, unchanged.**
+- `DISTRIBUTED_COMPETENCE` is `HOLD`.
+- `COGNITIVE_ADVANTAGE` is `NOT_CLAIMED`.
+- There is no geometric, cognitive or semantic advantage claim.

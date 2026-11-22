@@ -11,9 +11,11 @@ EvidenceLM final block. It does five things:
 It is research-only and opt-in. It is not a parallel language model and it replaces nothing.
 
 **The phase plan.** The owner's directive has seven phases. R13 implements and qualifies P0 to P4: the seam audit,
-the dependency admission, the tensor backend, the session bridge and the twelve gates. P5 (a competence study) is
-drafted as a protocol for review, `PREREGISTRATION_R13_P5.md`. P6 (learned addressing) and P7 (CGC and HCA88
-admission) are not started. The evidence is in `EVIDENCE_R13.md`.
+the dependency admission, the tensor backend, the session bridge and the twelve gates. The owner's review of the
+pull request (head `343dc92`) accepted P0 to P4 and asked for two additive hardening fixes (§8). P5, the
+competence study, is frozen as `PREREGISTRATION_R13_P5.md` (§9). Only its DEVELOPMENT-ONLY feasibility pilot has
+run (`PILOT_R13_P5.md`), and its confirmation awaits the owner's further authorization. P6 (learned addressing)
+and P7 (CGC and HCA88 admission) are not started. The evidence is in `EVIDENCE_R13.md`.
 
 **What R13 does not change.**
 - Nothing under `src/` or `native/`.
@@ -21,7 +23,8 @@ admission) are not started. The evidence is in `EVIDENCE_R13.md`.
 - No default configuration.
 - No existing source file of `research/elpis_torch`: the R13 runner checks against the base `d73cdde` that no
   `.py` file there is modified, and that no earlier record is modified (`identity.json`).
-- The one changed test is `test_isolation.py`, which registers the R13 runner's single `--out` write site.
+- The one changed test is `test_isolation.py`. It registers the single `--out` write site of each R13 runner:
+  `run_r13.py` and, for P5, `run_r13_p5.py`.
 - The upstream Geodome sources are vendored byte for byte and never edited.
 
 ## 1. P0: the seam, audited
@@ -157,6 +160,23 @@ semantics.
   with the session's configuration (by default 64 resident vertices, 1024 arcs, 16 rounds, 16384 visits and 8
   evidence items).
 - A synchronous plan must fit `rounds × arcs` in its visit budget at compile time.
+- **A synchronous plan must also fit the touched-vertex budget at compile time** (owner review, hardening 2).
+  - Every round of a synchronous plan touches the same set: the sources and destinations of its admitted arcs.
+  - That set must not exceed `max_active`, Geodome's touched-per-round cap (by default `min(1024, N)`).
+  - A plan that exceeds it is refused before any execution (`ACTIVE_BUDGET`), and `CompiledPlan.touched` records
+    the count.
+  - The changed-destination schedule keeps Geodome's own run-time semantics: its frontier is decided per round,
+    so `ACTIVE_BUDGET` remains a run-time status there.
+
+**Releasing vertices is all or none** (owner review, hardening 1). `TensorWorkingState.release(handles)` checks the
+whole batch before it changes anything:
+- an empty batch is refused (`EMPTY_BATCH`);
+- so is any invalid handle: foreign, of an earlier epoch, of a stale generation, or not a handle
+  (`FOREIGN_OR_STALE_HANDLE`, `STALE_HANDLE`);
+- so is a vertex named twice (`DUPLICATE_HANDLE`).
+
+Only then are the Geodome handles released, the rows zeroed and the version advanced. Before the fix,
+`release((h, h))` released the vertex, then failed as stale, with its row not zeroed and the version unchanged.
 
 **Gradient horizon.** The working state keeps values only: published rows are stored detached. A training graph
 therefore spans one `reason()` call (its ingress, rounds and readout) plus the injection of its `readout()`, never
@@ -170,13 +190,29 @@ gradient), and kernels of the backbone's own width and dtype.
 
 | Operation | Contract |
 |---|---|
-| `observe(tokens)` | Feeds `[1, T]` once through `EvidenceLM.forward`. The model commits its own state. Keeps the final-position logits (the bypass), `pre[T-1]` and the T channel rows. Runs under `no_grad`, even inside `enable_grad` |
+| `observe(tokens)` | Feeds `[1, T]` once through `EvidenceLM.forward`. The model commits its own state. Keeps the final-position logits (the bypass), `pre[T-1]` and the T channel rows. Runs under `no_grad`, even inside `enable_grad`. With `capture_candidates = n`, it also keeps the backbone's own n best fine-ranked live blocks at the query, from the same forward (below) |
 | `enrol(vertices)` | Makes Geodome vertices resident with zero rows, all or none. Refuses an already-resident vertex, a duplicate, an out-of-range vertex or an overflow before anything changes |
 | `admit_evidence(addresses)` | Takes 1 to 8 exact `BlockAddress` values. Checks the type, duplicates, causality, the canonical form and liveness. Then rereads the original tokens and encodes them through the existing `_reread_encoded` path. All or none |
 | `reason(plan)` | Compiles and validates the plan, then runs the bounded computation. Publishes every enrolled row or nothing. Does not advance the external clock |
 | `readout()` | Returns the latent and the refined final-position logits, through the actual final channel over the same T rows |
 | `prediction()` | Returns the refined logits of the current observation's last committed readout, else the backbone's cached logits. Says which (`"cognitive"` or `"backbone"`) |
 | `reset()`, `close()` | `reset` gives a clean session in the same identity: a new ring epoch and a new Geodome epoch, so every earlier handle and address is refused. `close` drops everything |
+| `compute(compiled, rows, observation, evidence)`, `refine(latent, observation)` | The pure computation that `reason` and `readout` wrap: ingress, rounds and readout; then the injection and the backbone's own tail over the observation's T rows. They validate and publish nothing. The P5 arms train through them on a validated plan, so every arm uses the bridge's own computation |
+
+**Candidate capture** (owner review, P5 evidence source). `CognitiveSession(capture_candidates=n)` keeps the
+backbone's own ranking at the query, so the P5 deployable arms can use it without consuming a token or seeing a
+gold address.
+- **The same forward.** The observation's forward also runs with `diagnostics=True`, and the session keeps the
+  first n entries of its `fine_top`.
+  - Those are the coarse candidates reranked by the learned fine score, in rank order: a deterministic exact top-K,
+    every one strictly before the query block.
+  - They are returned as the ring's canonical addresses, after the forward has committed its state.
+- **Bit-exact.** The hardening receipt shows equal logits and state digests in every chunk, and equal counters, in
+  four EvidenceLM variants (reread and stored fine keys, PLE, origin 64, window attention).
+- **What it does not use.** No extra token, label, oracle or answer-bearing input.
+- **Bounds.** `n` must lie in 0 to `fine_top`. Capture with the evidence read off is refused, since nothing is
+  ranked.
+- **Admission.** Captured addresses still pass the ordinary admission: causal, canonical, live and an exact reread.
 
 **The admission rules.** All checks run before any reread.
 - The address must be the ring's own `BlockAddress` type.
@@ -231,6 +267,16 @@ gradients, and the cognitive path's evidence is the exact reread.
 | 11 internal reasoning does not advance the external clock | `bridge.json` (`context_clock`) | `test_the_bridge_on_actual_evidence_lm` |
 | 12 reset restores clean-session behavior | `bridge.json` (`reset`) | `test_the_bridge_on_actual_evidence_lm` |
 
+**The hardening receipt** (`results/r13_hardening/hardening.json`, owner review) adds three checks, and the verdict
+folds each into a disposition:
+- the all-or-none `release` battery into `SESSION_ISOLATION`;
+- the synchronous touched budget into `BOUNDED_COMPUTATION`;
+- the candidate capture into `EVIDENCE_ADMISSION`.
+
+The tests are `test_release_is_all_or_none_and_refuses_repeated_handles`,
+`test_a_synchronous_plan_must_fit_the_touched_vertex_budget` and
+`test_candidate_capture_is_bit_exact_and_returns_the_backbones_own_ranking`.
+
 **The EvidenceLM variants** (`bridge.json`) form the full matrix of:
 - evidence `off` and `learned`;
 - fine keys `reread` and `stored`;
@@ -262,7 +308,8 @@ directive requires to be used as it is. The reference path converts rows by desi
 
 ## 7. Deliberately absent
 
-- Competence training of any kind. P5 is a draft protocol for the owner's review.
+- Competence evidence. P5 is frozen, and only its DEVELOPMENT-ONLY pilot has run; the pilot decides nothing. The
+  confirmation needs the owner's further authorization.
 - Learned addressing (P6). Plans are host-supplied and validated: "the controller proposes, the runtime validates"
   is a P6 concern, and there is no controller here.
 - Autonomous halting. Rounds are fixed.
@@ -272,3 +319,43 @@ directive requires to be used as it is. The reference path converts rows by desi
 - A substrate KV cache. Geodome allocates no token-indexed KV, and Elpis's window and evidence memory keep their
   duties.
 - Any claim of cognitive, geometric or semantic advantage. Mechanical tests cannot carry one.
+
+## 8. The owner review of the pull request: what changed, and what did not
+
+**The review.** It covered head `343dc92`, accepted the P0–P4 mechanical qualification, and asked for two additive
+hardening fixes before merge. It authorized finalizing the P5 design, but not running it at scale.
+
+**What changed** (`fffe0cc`, additive only).
+
+| Source | Change |
+|---|---|
+| `state.py` | `release` checks the whole batch first: an empty batch, invalid handles and a repeated vertex are refused before any mutation (§3) |
+| `plan.py` | a synchronous plan's touched set must fit `max_active` at compile time (`ACTIVE_BUDGET`); `CompiledPlan.touched` (§3) |
+| `binding.py` | `capture_candidates`: the backbone's own fine-ranked candidates, from the same forward, for P5's deployable evidence (§4) |
+| `run_r13.py` | the `hardening` receipt; two more refusals in the bridge battery (`synchronous_active_budget`, `release_duplicate`); `--results` for the supplemental directory |
+
+**What did not change.** The tensor executor (`activation.py`), the kernels, the topology, the reference and every
+numerical semantics are as qualified.
+
+**The receipts.**
+- **The original receipts** in `results/r13/` are kept byte for byte. `test_r13_records.py` pins their manifest
+  digest.
+- **The supplemental receipts** are in `results/r13_hardening/`. They were produced by the corrected sources on
+  `fffe0cc` and committed in `c565097`.
+- **Lineage checks** in `test_r13_records.py`:
+  - every deterministic field of the original records reappears unchanged in the supplement;
+  - exactly the declared sources changed (plan, state, binding, runner);
+  - the verdict is recomputed with the hardening gates folded in.
+
+## 9. P5: the study's components (frozen as `PREREGISTRATION_R13_P5.md`)
+
+| Module | Concern |
+|---|---|
+| `composition_tasks.py` | the synthetic multi-hop record-composition task (1, 2 and 3 hops): seeded episodes, held-out pairs and held-out fact-order structures, hard negatives, and `solve`, which re-derives every invariant from the tokens |
+| `geodome_cognitive/regions.py` | per seed, disjoint breadth-first balls of 48 physical vertices around independent centers; the query and readout at the center, the 8 evidence vertices on the distance-2 ring; every topology, port and distance statistic |
+| `geodome_cognitive/controls.py` | the nongeometric control graphs, labelled as not Geodome topology: a relabeled isomorphic copy (ports kept), degree-preserving rewiring, a fully mixed random graph of the same degree sequence, a flat hub, and a port permutation (diagnostic) |
+| `geodome_cognitive/arms.py` | the eight arms on one cached observation per episode; `DirectReader` (the parameter-matched direct baseline); grouped gradient norms |
+| `experiments/run_r13_p5.py` | `plan`, `preflight`, `pilot`, `confirm` (refused without `--authorization`), `combine` and `manifest`; the frozen backbone recipe, the hierarchical seed-aware bootstrap and the reading rule |
+
+**The plan file is the runner's constants.** `run_r13_p5 plan` writes `results/r13_p5/preregistration.json`.
+Every other command refuses to run when that file differs from the constants.

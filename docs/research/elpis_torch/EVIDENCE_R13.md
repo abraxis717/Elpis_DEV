@@ -12,14 +12,31 @@ the computation is off?
   finite differences end to end through the actual routed final channel.
 - With the gate at zero, the refined logits equal the backbone's bit for bit in all 18 EvidenceLM variants.
   Reasoning never moves the external clock.
-- **Competence is not tested.** `DISTRIBUTED_COMPETENCE` is `HOLD`, by the owner's instruction to return P0–P4 for
-  review first. Nothing here supports a cognitive or geometric advantage claim.
+- **The owner's review hardening is in, and re-qualified** (§9).
+  - `release` is all or none and refuses a repeated handle.
+  - A synchronous plan beyond the touched-vertex budget is refused before execution.
+  - The backbone's own candidate ranking can be captured bit-exactly for P5.
+  - Every gate passes again on the corrected sources, and every deterministic result of the original records
+    reappears unchanged.
+- **Competence is not tested yet.** `DISTRIBUTED_COMPETENCE` is `HOLD`.
+  - P5 is frozen (`PREREGISTRATION_R13_P5.md`).
+  - Only its DEVELOPMENT-ONLY feasibility pilot has run (`PILOT_R13_P5.md`), and the pilot decides nothing.
+  - The pilot found complete retrieval coverage on its primary set (recall 1.000).
+  - It also found a chance-level native backbone, and no learning signal within its 200 updates: every arm's
+    predictions equal the backbone's.
+  - The confirmation needs the owner's further authorization.
+  - Nothing here supports a cognitive or geometric advantage claim.
 
-**Records.** `research/elpis_torch/results/r13/`: `identity`, `audit`, `parity`, `gradients`, `bridge`, `resources`
-and `verdict`, with `MANIFEST.json`.
-- They were produced by `experiments/run_r13.py` on the clean revision `ae2f804`.
-- `test_r13_records.py` recomputes every gate and every disposition from the raw rows, reading JSON only.
-- `test_r13.py` runs the mechanics in CI.
+**Records.**
+- **The original receipts** are in `research/elpis_torch/results/r13/`: `identity`, `audit`, `parity`,
+  `gradients`, `bridge`, `resources` and `verdict`, with `MANIFEST.json`. They were produced by
+  `experiments/run_r13.py` on the clean revision `ae2f804`, and are kept unchanged.
+- **The supplemental receipts** are in `research/elpis_torch/results/r13_hardening/`: the same seven records plus
+  `hardening`, with `MANIFEST.json`. They were produced on the corrected sources at `fffe0cc` (§9).
+- **Tests.**
+  - `test_r13_records.py` reads JSON only. It recomputes every gate and every disposition of both sets from the
+    raw rows, and checks the supplement's lineage against the original.
+  - `test_r13.py` runs the mechanics in CI.
 
 ## Disposition
 
@@ -31,17 +48,18 @@ and `verdict`, with `MANIFEST.json`.
 | `DIFFERENTIABLE_EXECUTION` | **PASS** | gates 5, 6, 7; no host extraction; bounded graph |
 | `DISABLED_PATH_PARITY` | **PASS** | gate 2 |
 | `CONTEXT_STATE_COHERENCE` | **PASS** | P0 seam; gates 11, 12; training-mode qualification |
-| `EVIDENCE_ADMISSION` | **PASS** | causal, canonical, live, exact-reread admission in all 18 variants |
-| `SESSION_ISOLATION` | **PASS** | gates 8, 9, 10 |
-| `BOUNDED_COMPUTATION` | **PASS** | caps refused atomically; constant graph and gradient scratch |
-| `DISTRIBUTED_COMPETENCE` | **HOLD** | P5 not run; protocol drafted for review (`PREREGISTRATION_R13_P5.md`) |
+| `EVIDENCE_ADMISSION` | **PASS** | causal, canonical, live, exact-reread admission in all 18 variants; candidate capture bit-exact (§9) |
+| `SESSION_ISOLATION` | **PASS** | gates 8, 9, 10; all-or-none `release` (§9) |
+| `BOUNDED_COMPUTATION` | **PASS** | caps refused atomically; constant graph and gradient scratch; the synchronous touched budget (§9) |
+| `DISTRIBUTED_COMPETENCE` | **HOLD** | P5 frozen (plan `094adb45…`); only the DEVELOPMENT-ONLY pilot ran (`PILOT_R13_P5.md`); the confirmation is not authorized yet |
 | `LEARNED_ADDRESSING` | **NOT_STARTED** | P6 follows P1–P5 |
 | `CGC_ADMISSION` | **NOT_STARTED** | P7; no CGC volatile adaptation in this integration |
 | `HCA88_ADMISSION` | **NOT_ADMITTED** | qualified upstream only for C4 two-arc relation windows; not used |
 | `COGNITIVE_ADVANTAGE` | **NOT_CLAIMED** | mechanical tests cannot carry it |
 | `CI_STATUS` | see §8 | exact-head CI of the pull request |
 
-A mechanical PASS and a learned-competence HOLD are independent outcomes. This phase reports both.
+A mechanical PASS and a learned-competence HOLD are independent outcomes. This phase reports both. Each
+mechanical disposition is PASS in the original receipts and again in the supplemental receipts.
 
 ## 1. The dependency and its identity (gate 1, `identity.json`)
 
@@ -203,9 +221,10 @@ scheduler is slower than task-specific traversal. The trainable path here does n
 
 ## 7. Limitations
 
-- **No competence.** Nothing was trained to do anything, and no task was evaluated. Whether the substrate helps
-  any task is P5's question, with its controls (native, equal-budget, compute-matched, flat-recurrent,
-  relabel-isomorphic, rewired). That study is not admitted yet.
+- **No competence.** In P0–P4 nothing was trained to do anything, and no task was evaluated.
+  - Whether the substrate helps any task is P5's question, with its controls: native, equal-budget,
+    compute-matched, flat-recurrent, relabel-isomorphic and rewired.
+  - That study is frozen, but only its DEVELOPMENT-ONLY pilot has run, and the pilot decides nothing.
 - **Plans are host-supplied** (tests use chains and BFS balls). No learned addressing or routing exists (P6).
 - **The fixture is a toy.** A two-block, 32-wide EvidenceLM, as in R5–R8 tests. There is no scale, GPU or
   language claim.
@@ -221,8 +240,13 @@ python -m research.elpis_torch.experiments.run_r13 identity --out research/elpis
 ```
 
 The other commands are `audit`, `parity`, `gradients`, `bridge`, `resources`, `verdict` and `manifest`, in that
-order. Each takes seconds on one CPU. The tests are `tests/research/elpis_torch/test_r13.py` (32 tests, about 10 s)
-and `test_r13_records.py` (JSON only).
+order. Each takes seconds on one CPU.
+
+**The supplemental receipts** are produced the same way, with `--results research/elpis_torch/results/r13_hardening`,
+`--out` into that directory, and the extra `hardening` command before `verdict`.
+
+**The tests** are `tests/research/elpis_torch/test_r13.py` (35 tests, about 10 s) and `test_r13_records.py`
+(JSON only, both receipt sets).
 
 **CI_STATUS.** The pull request's exact-head CI is reported in the pull request. The default and forced-AVX2 kernel
 paths of the Elpis Torch job both run these tests.
@@ -235,3 +259,64 @@ paths of the Elpis Torch job both run these tests.
 - **Records.** They were regenerated on `ae2f804`. Every deterministic field is identical to the first records;
   only the provenance and the timing and RSS measurements differ.
 - **Verified.** The R13 tests pass locally with NumPy made unimportable (as in CI).
+
+## 9. The owner's review: hardening and supplemental receipts (`results/r13_hardening/`)
+
+**Authority.** The owner's review of the pull request at head `343dc92` accepted the P0–P4 mechanical
+qualification and asked for two additive hardening fixes before merge. The executor and its numerical semantics
+were not to change. The corrections are in `fffe0cc`, and the supplemental receipts in `c565097`.
+
+**1. `release` is all or none.**
+- **The defect, reproduced on the reviewed sources.** `release((h, h))` released the vertex, then failed on the
+  second handle as stale. The row was left unzeroed and the version unadvanced: a partial mutation.
+- **The fix.** The whole batch is checked first: emptiness, every handle's validity, and repeated vertices.
+- **The receipt.** Each invalid batch below is refused with its code. A complete snapshot of the working state is
+  equal before and after the refusal: the latent bytes, version, epoch, resident count, Geodome's payload
+  accounting, and every vertex's handle (slot, generation, epoch) or its absence.
+
+| Batch | Code |
+|---|---|
+| `(h, h)`; `(h₁, h₂, h₁)` | `DUPLICATE_HANDLE` |
+| empty | `EMPTY_BATCH` |
+| a valid handle with another working state's handle; a valid handle with a non-handle; an earlier epoch's handles (after `reset`) | `FOREIGN_OR_STALE_HANDLE` |
+| a valid handle with a stale generation's handle | `STALE_HANDLE` |
+
+A valid release makes its vertices non-resident, zeroes their rows, leaves every other row unchanged and advances
+the version. The released handle is then refused as stale.
+
+**2. The synchronous touched-vertex budget.**
+- **The rule.** A synchronous plan whose touched set (the sources and destinations of its arcs) exceeds
+  `max_active` is refused at compile time (`ACTIVE_BUDGET`), before any execution.
+- **The receipt.**
+
+| Case | Result |
+|---|---|
+| a chain touching 5 vertices, `max_active = 5` / `4` | compiles / `ACTIVE_BUDGET` |
+| a partial arc set, at its touched count / one below | compiles / `ACTIVE_BUDGET` |
+| Geodome's default cap: 1024 touched / 1025 touched | compiles / `ACTIVE_BUDGET` |
+| a changed-destination plan with a budget below its touched count | compiles, and stops at run time with Geodome's own `ACTIVE_BUDGET` status, as before |
+
+- **The bridge battery** gains the same refusal through `reason()`, and the duplicate release through the working
+  state. That makes 33 coded refusals, each leaving the full state unchanged.
+
+**3. Candidate capture for P5** (the owner's decision on the evidence source).
+- **What it captures.** `CognitiveSession(capture_candidates=n)` keeps the backbone's own top-n fine-ranked live
+  blocks at the query, from the same forward.
+- **Bit-exact.** In four EvidenceLM variants (reread and stored fine keys, PLE on and off, origins 0 and 64,
+  window attention on and off), capture leaves every chunk's logits and state digest, and every counter, equal to a
+  session without it.
+- **Admissible.** The captured addresses are distinct, causal, canonical and live, at most `fine_top`, and admitted
+  by the ordinary exact-reread admission.
+- **Refusals.** Capture beyond `fine_top`, and capture with the evidence read off, are refused.
+
+**Lineage.**
+- **Every gate passes again** on the corrected sources, with the same dispositions.
+- **Every deterministic field** of the original records reappears unchanged in the supplement: identity, seam
+  measurements, parity rows and records, gradients, bridge results and resource counts. Only three things differ:
+  the provenance, the timing and RSS measurements, and the two added refusals.
+- **The sources that changed** since the original receipts are exactly the declared four: `plan`, `state`,
+  `binding` and the runner.
+- **The original receipts** are untouched; their manifest digest `c97841af…` is pinned in `test_r13_records.py`.
+
+**CI.** The exact-head CI of `c565097` passed every job, in both the push and the pull-request runs, including the
+default and forced-AVX2 kernel paths of the Elpis Torch job.

@@ -285,10 +285,20 @@ drift.
 - `geodome_cognitive/` (`source`, `topology`, `plan`, `state`, `kernels`, `activation`, `binding`, `reference`).
 - `experiments/run_r13.py`.
 - `tests/research/elpis_torch/test_r13.py` and `test_r13_records.py`.
-- `DESIGN_R13.md`, `EVIDENCE_R13.md` and `PREREGISTRATION_R13_P5.md` (a draft).
+- `DESIGN_R13.md`, `EVIDENCE_R13.md` and `PREREGISTRATION_R13_P5.md`.
+- **After the owner's review**, also original:
+  - the hardening of `state.py`, `plan.py` and `binding.py`;
+  - the P5 harness: `composition_tasks.py`, `geodome_cognitive/regions.py`, `controls.py`, `arms.py` and
+    `experiments/run_r13_p5.py`;
+  - `test_r13_p5.py` and `test_r13_p5_records.py`;
+  - `PILOT_R13_P5.md`.
+- **Algorithms taken from the literature, written here.** The control graphs use textbook constructions: the
+  Havel-Hakimi construction of a graph with a given degree sequence, and degree-preserving double-edge swaps. No
+  external code was copied for them.
 
 The tensor executor, the kernels and the bridge are new. Geodome's scheduler is used unchanged, as the float64
 reference only.
 
-**Data.** Synthetic token streams from seeded generators. No external data, weights or checkpoints were used, and
-nothing is written but the runner's `--out` records.
+**Data.** Synthetic token streams from seeded generators, and P5's synthetic record-composition episodes
+(`composition_tasks.py`). No external data, weights or checkpoints were used, and nothing is written but the
+runners' `--out` records. P5's frozen backbone is trained from its seed inside each run and never saved.
